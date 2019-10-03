@@ -12,4 +12,10 @@ defmodule Ash.Resource.Actions do
       @actions Keyword.put(@actions, :get, unquote(boolean))
     end
   end
+
+  defmacro index(boolean) do
+    quote do
+      @actions Keyword.put(@actions, :index, unquote(boolean))
+    end
+  end
 end

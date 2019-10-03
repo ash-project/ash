@@ -4,14 +4,10 @@ defmodule Ash.JsonApi.Controllers.Get do
     options
   end
 
-  def call(%{path_params: %{"id" => id} = path_params} = conn, options) do
+  def call(%{path_params: %{"id" => id}} = conn, options) do
     resource = options[:resource]
 
-    request = %Ash.Request{
-      resource: resource,
-      action: :get,
-      path_params: path_params
-    }
+    request = Ash.Request.from(conn, resource, :get)
 
     case Ash.Repo.get(resource, id) do
       nil ->
