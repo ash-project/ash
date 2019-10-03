@@ -7,8 +7,7 @@ defmodule Ash.Application do
 
   def start(_type, _args) do
     children = [
-      # Starts a worker by calling: Ash.Worker.start_link(arg)
-      # {Ash.Worker, arg}
+      {Ash.Repo, []}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
