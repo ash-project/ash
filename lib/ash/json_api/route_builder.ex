@@ -12,7 +12,8 @@ defmodule Ash.JsonApi.RouteBuilder do
 
       case get_config do
         true ->
-          get path, to: Ash.JsonApi.Controllers.Get, init_opts: [resource: resource]
+          get(path, to: Ash.JsonApi.Controllers.Get, init_opts: [resource: resource])
+
         _ ->
           # Eventually it will be a configuration, not just a boolean
           nil

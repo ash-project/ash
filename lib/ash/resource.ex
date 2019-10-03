@@ -26,12 +26,21 @@ defmodule Ash.Resource do
     end
   end
 
-  defmacro resource(name, do: block) do
+  defmacro resource(name, resource_type, do: block) do
     quote do
+      name = unquote(name)
+      resource_type = unquote(resource_type)
+
+      @name name
+      @resource_type resource_type
       unquote(block)
       require Ash.Resource.Schema
 
-      Ash.Resource.Schema.define_schema(unquote(name))
+      Ash.Resource.Schema.define_schema(name)
+
+      def type() do
+        @resource_type
+      end
 
       def actions() do
         @actions

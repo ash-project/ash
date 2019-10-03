@@ -14,4 +14,8 @@ defmodule Ash do
   def name(resource) do
     resource.name()
   end
+
+  def type(resource) do
+    resource.type()
+  end
 end

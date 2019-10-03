@@ -1,7 +1,7 @@
 defmodule AshKetchum.Pokemon do
   use Ash.Resource
 
-  resource "pokemon" do
+  resource "pokemon", "pokemon" do
     actions do
       get true
     end
