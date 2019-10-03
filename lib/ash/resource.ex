@@ -13,34 +13,16 @@ defmodule Ash.Resource do
 
       # Module.put_attribute(__MODULE__, :custom_threshold_for_lib, 10)
       import Ash.Resource
+      import Ash.Resource.Actions, only: [actions: 1]
+      import Ash.Resource.Attributes, only: [attributes: 1]
     end
-  end
-
-  def resources() do
-    Application.get_env(:ash, :resources) || []
   end
 
   defmacro __before_compile__(_env) do
     quote do
-      if __MODULE__ not in Ash.Resource.resources() do
+      if __MODULE__ not in Ash.resources() do
         raise "Your module (#{inspect(__MODULE__)}) must be in config, :ash, resources: [...]"
       end
-    end
-  end
-
-  defmacro actions(do: block) do
-    quote do
-      import Ash.Resource.Actions
-      unquote(block)
-      import Ash.Resource.Actions, only: []
-    end
-  end
-
-  defmacro attributes(do: block) do
-    quote do
-      import Ash.Resource.Attributes
-      unquote(block)
-      import Ash.Resource.Attributes, only: []
     end
   end
 
