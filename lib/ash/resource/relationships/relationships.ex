@@ -21,6 +21,7 @@ defmodule Ash.Resource.Relationships do
   defmacro belongs_to(relationship_name, resource, config \\ []) do
     quote do
       @relationships Ash.Resource.Relationships.BelongsTo.new(
+                       @name,
                        unquote(relationship_name),
                        unquote(resource),
                        unquote(config)

@@ -20,6 +20,14 @@ defmodule Ash.Resource do
 
       @name name
       @resource_type resource_type
+
+      unless @name do
+        raise "Must set name"
+      end
+
+      unless @resource_type do
+        raise "Must set resource type"
+      end
     end
   end
 

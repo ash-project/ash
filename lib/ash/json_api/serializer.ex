@@ -9,8 +9,16 @@ defmodule Ash.JsonApi.Serializer do
     Jason.encode!(%{data: data, json_api: json_api, links: links})
   end
 
+  def serialize_one(request, nil) do
+    # TODO `included`
+    json_api = %{version: "1.0"}
+    links = one_links(request)
+
+    Jason.encode!(%{data: nil, json_api: json_api, links: links})
+  end
+
   def serialize_one(request, record) do
-    # TODO `links` and `included`
+    # TODO `included`
     data = serialize_one_record(request, record)
     json_api = %{version: "1.0"}
     links = one_links(request)
@@ -135,20 +143,23 @@ defmodule Ash.JsonApi.Serializer do
       id: record.id,
       type: Ash.type(resource),
       attributes: serialize_attributes(resource, record),
-      relationships: serialize_relationships(resource, record),
+      relationships: serialize_relationships(request, record),
       links: %{
         self: at_host(request, Ash.Routes.get(resource, record.id))
       }
     }
   end
 
-  defp serialize_relationships(resource, _record) do
+  defp serialize_relationships(request, record) do
     # TODO: links.self, links.related
-    resource
+    request.resource
     |> Ash.relationships()
+    |> Enum.filter(& &1.expose?)
     |> Enum.into(%{}, fn relationship ->
       value = %{
-        links: %{},
+        links: %{
+          self: at_host(with_path_params(request, %{"id" => record.id}), relationship.route)
+        },
         data: %{},
         meta: %{}
       }
@@ -157,11 +168,28 @@ defmodule Ash.JsonApi.Serializer do
     end)
   end
 
+  defp with_path_params(request, params) do
+    Map.update!(request, :path_params, &Map.merge(&1, params))
+  end
+
   defp at_host(request, route) do
     request.url
     |> URI.parse()
     |> Map.put(:query, nil)
     |> Map.put(:path, "/" <> Path.join(request.json_api_prefix, route))
+    |> Map.update!(:path, fn path ->
+      path
+      |> Path.split()
+      |> Enum.map(fn path_element ->
+        if String.starts_with?(path_element, ":") do
+          "replacing #{path_element}"
+          Map.get(request.path_params, String.slice(path_element, 1..-1)) || ""
+        else
+          path_element
+        end
+      end)
+      |> Path.join()
+    end)
     |> URI.to_string()
   end
 

@@ -15,6 +15,10 @@ defmodule Ash.Resource.Schema do
         for relationship <- Enum.filter(@relationships, &(&1.type == :belongs_to)) do
           belongs_to relationship.name, relationship.destination
         end
+
+        for relationship <- Enum.filter(@relationships, &(&1.type == :has_one)) do
+          has_one relationship.name, relationship.destination
+        end
       end
     end
   end

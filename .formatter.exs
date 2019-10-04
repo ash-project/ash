@@ -5,6 +5,9 @@ locals_without_parens = [
   post: 1,
   attribute: 2,
   belongs_to: 2,
+  belongs_to: 3,
+  has_one: 2,
+  has_one: 3,
   has_many: 2,
   field: 2
 ]
