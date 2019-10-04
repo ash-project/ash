@@ -1,20 +1,25 @@
 defmodule Ash.Resource do
-  defmacro __using__(_opts) do
+  defmacro __using__(opts) do
     quote do
       @before_compile Ash.Resource
 
-      @actions [
-        get: false
-      ]
+      Module.register_attribute(__MODULE__, :actions, accumulate: true)
+      Module.register_attribute(__MODULE__, :attributes, accumulate: true)
+      Module.register_attribute(__MODULE__, :relationships, accumulate: true)
 
-      @attributes [
-        id: [ecto_type: :binary_id, type: :uuid]
-      ]
+      @attributes Ash.Resource.Attributes.Attribute.new(:id, :uuid)
 
       # Module.put_attribute(__MODULE__, :custom_threshold_for_lib, 10)
       import Ash.Resource
       import Ash.Resource.Actions, only: [actions: 1]
       import Ash.Resource.Attributes, only: [attributes: 1]
+      import Ash.Resource.Relationships, only: [relationships: 1]
+
+      name = unquote(opts[:name])
+      resource_type = unquote(opts[:type])
+
+      @name name
+      @resource_type resource_type
     end
   end
 
@@ -23,23 +28,15 @@ defmodule Ash.Resource do
       if __MODULE__ not in Ash.resources() do
         raise "Your module (#{inspect(__MODULE__)}) must be in config, :ash, resources: [...]"
       end
-    end
-  end
 
-  defmacro resource(name, resource_type, do: block) do
-    quote do
-      name = unquote(name)
-      resource_type = unquote(resource_type)
-
-      @name name
-      @resource_type resource_type
-      unquote(block)
       require Ash.Resource.Schema
-
-      Ash.Resource.Schema.define_schema(name)
 
       def type() do
         @resource_type
+      end
+
+      def relationships() do
+        @relationships
       end
 
       def actions() do
@@ -51,8 +48,10 @@ defmodule Ash.Resource do
       end
 
       def name() do
-        unquote(name)
+        @name
       end
+
+      Ash.Resource.Schema.define_schema(@name)
     end
   end
 end

@@ -3,6 +3,10 @@ defmodule Ash do
     Application.get_env(:ash, :resources) || []
   end
 
+  def relationships(resource) do
+    resource.relationships()
+  end
+
   def actions(resource) do
     resource.actions()
   end

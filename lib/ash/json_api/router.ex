@@ -1,6 +1,8 @@
 defmodule Ash.JsonApi.Router do
   defmacro __using__(_) do
     quote do
+      # TODO: Make it so that these can have their routes printed
+      # And get that into phoenix
       use Plug.Router
       require Ash.JsonApi.RouteBuilder
 

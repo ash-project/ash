@@ -6,10 +6,14 @@ defmodule Ash.Resource.Schema do
       @foreign_key_type :binary_id
 
       schema unquote(name) do
-        for {field_name, config} <- @attributes do
-          unless field_name == :id do
-            field field_name, config[:ecto_type]
+        for attribute <- @attributes do
+          unless attribute.name == :id do
+            field attribute.name, attribute.ecto_type
           end
+        end
+
+        for relationship <- Enum.filter(@relationships, &(&1.type == :belongs_to)) do
+          belongs_to relationship.name, relationship.destination
         end
       end
     end

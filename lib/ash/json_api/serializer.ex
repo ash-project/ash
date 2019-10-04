@@ -135,10 +135,26 @@ defmodule Ash.JsonApi.Serializer do
       id: record.id,
       type: Ash.type(resource),
       attributes: serialize_attributes(resource, record),
+      relationships: serialize_relationships(resource, record),
       links: %{
         self: at_host(request, Ash.Routes.get(resource, record.id))
       }
     }
+  end
+
+  defp serialize_relationships(resource, _record) do
+    # TODO: links.self, links.related
+    resource
+    |> Ash.relationships()
+    |> Enum.into(%{}, fn relationship ->
+      value = %{
+        links: %{},
+        data: %{},
+        meta: %{}
+      }
+
+      {relationship.name, value}
+    end)
   end
 
   defp at_host(request, route) do
@@ -153,8 +169,8 @@ defmodule Ash.JsonApi.Serializer do
     resource
     |> Ash.attributes()
     |> Keyword.delete(:id)
-    |> Enum.reduce(%{}, fn {attribute, _config}, acc ->
-      Map.put(acc, attribute, Map.get(record, attribute))
+    |> Enum.reduce(%{}, fn attribute, acc ->
+      Map.put(acc, attribute.name, Map.get(record, attribute.name))
     end)
   end
 end
