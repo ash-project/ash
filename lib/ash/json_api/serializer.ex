@@ -1,15 +1,19 @@
 defmodule Ash.JsonApi.Serializer do
-  alias Ash.Request
+  alias Ash.JsonApi.Request
 
-  def serialize_many(request, paginator, records) do
+  def serialize_many(request, paginator, records, includes \\ []) do
     data = Enum.map(records, &serialize_one_record(request, &1))
     json_api = %{version: "1.0"}
     links = many_links(request, paginator)
 
-    Jason.encode!(%{data: data, json_api: json_api, links: links})
+    %{data: data, json_api: json_api, links: links}
+    |> add_includes(request, includes)
+    |> Jason.encode!()
   end
 
-  def serialize_one(request, nil) do
+  def serialize_one(request, record, includes \\ [])
+
+  def serialize_one(request, nil, _) do
     # TODO `included`
     json_api = %{version: "1.0"}
     links = one_links(request)
@@ -17,13 +21,21 @@ defmodule Ash.JsonApi.Serializer do
     Jason.encode!(%{data: nil, json_api: json_api, links: links})
   end
 
-  def serialize_one(request, record) do
-    # TODO `included`
+  def serialize_one(request, record, includes) do
     data = serialize_one_record(request, record)
     json_api = %{version: "1.0"}
     links = one_links(request)
 
-    Jason.encode!(%{data: data, json_api: json_api, links: links})
+    %{data: data, json_api: json_api, links: links}
+    |> add_includes(request, includes)
+    |> Jason.encode!()
+  end
+
+  defp add_includes(payload, _request, []), do: payload
+
+  defp add_includes(payload, request, includes) do
+    includes = Enum.map(includes, &serialize_one_record(request, &1))
+    Map.put(payload, :includes, includes)
   end
 
   defp many_links(%{url: url} = request, paginator) do
@@ -137,12 +149,12 @@ defmodule Ash.JsonApi.Serializer do
     }
   end
 
-  defp serialize_one_record(%Request{resource: resource} = request, record) do
+  defp serialize_one_record(request, %resource{} = record) do
     # TODO: `relationships` `meta`
     %{
       id: record.id,
       type: Ash.type(resource),
-      attributes: serialize_attributes(resource, record),
+      attributes: serialize_attributes(record),
       relationships: serialize_relationships(request, record),
       links: %{
         self: at_host(request, Ash.Routes.get(resource, record.id))
@@ -150,22 +162,47 @@ defmodule Ash.JsonApi.Serializer do
     }
   end
 
-  defp serialize_relationships(request, record) do
+  # TODO: Decide if this is a hard guaruntee that record struct == resource module
+  defp serialize_relationships(request, %resource{} = record) do
     # TODO: links.self, links.related
-    request.resource
+    resource
     |> Ash.relationships()
     |> Enum.filter(& &1.expose?)
     |> Enum.into(%{}, fn relationship ->
       value = %{
         links: %{
-          self: at_host(with_path_params(request, %{"id" => record.id}), relationship.route)
+          self: at_host(with_path_params(request, %{"id" => record.id}), relationship.path)
         },
-        data: %{},
+        data: render_linkage(record, relationship),
         meta: %{}
       }
 
       {relationship.name, value}
     end)
+  end
+
+  defp render_linkage(record, %{destination: destination, cardinality: :one, name: name}) do
+    # TODO: There could be another case here if a bug in the system gave us a list of more than one?
+    case record do
+      %{__linkage__: %{^name => [id]}} ->
+        %{id: id, type: Ash.type(destination)}
+
+      _ ->
+        nil
+    end
+  end
+
+  defp render_linkage(record, %{destination: destination, cardinality: :many, name: name}) do
+    # TODO: There could be another case here if a bug in the system gave us a list of more than one?
+    case record do
+      %{__linkage__: %{^name => linkage}} ->
+        type = Ash.type(destination)
+
+        Enum.map(linkage, &%{id: &1, type: type})
+
+      _ ->
+        []
+    end
   end
 
   defp with_path_params(request, params) do
@@ -193,12 +230,13 @@ defmodule Ash.JsonApi.Serializer do
     |> URI.to_string()
   end
 
-  defp serialize_attributes(resource, record) do
+  defp serialize_attributes(%resource{} = record) do
     resource
     |> Ash.attributes()
-    |> Keyword.delete(:id)
-    |> Enum.reduce(%{}, fn attribute, acc ->
-      Map.put(acc, attribute.name, Map.get(record, attribute.name))
+    |> Stream.filter(& &1.expose?)
+    |> Stream.reject(&(&1.name == :id))
+    |> Enum.into(%{}, fn attribute ->
+      {attribute.name, Map.get(record, attribute.name)}
     end)
   end
 end

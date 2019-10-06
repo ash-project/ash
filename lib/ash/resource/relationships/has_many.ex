@@ -1,4 +1,4 @@
-defmodule Ash.Resource.Relationships.HasOne do
+defmodule Ash.Resource.Relationships.HasMany do
   defstruct [
     :name,
     :type,
@@ -16,8 +16,8 @@ defmodule Ash.Resource.Relationships.HasOne do
 
     %__MODULE__{
       name: name,
-      type: :has_one,
-      cardinality: :one,
+      type: :has_many,
+      cardinality: :many,
       expose?: opts[:expose?] || false,
       path: path,
       destination: related_resource,

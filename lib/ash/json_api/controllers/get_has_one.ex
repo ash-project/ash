@@ -8,7 +8,7 @@ defmodule Ash.JsonApi.Controllers.GetHasOne do
     resource = options[:resource]
     relationship = options[:relationship]
 
-    request = Ash.Request.from(conn, relationship.destination, :get_has_one)
+    request = Ash.JsonApi.Request.from(conn, relationship.destination, :get_has_one)
 
     case Ash.Repo.get(resource, id) do
       nil ->

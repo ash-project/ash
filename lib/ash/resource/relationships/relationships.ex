@@ -29,33 +29,25 @@ defmodule Ash.Resource.Relationships do
     end
   end
 
-  # defmacro has_many(name, resource, config \\ []) do
-  #   quote do
-  #     @relationships Keyword.put(@relationships, unquote(name),
-  #                      type: :has_many,
-  #                      resource: unquote(resource),
-  #                      config: unquote(config)
-  #                    )
-  #   end
-  # end
+  defmacro has_many(relationship_name, resource, config \\ []) do
+    quote do
+      @relationships Ash.Resource.Relationships.HasMany.new(
+                       @name,
+                       unquote(relationship_name),
+                       unquote(resource),
+                       unquote(config)
+                     )
+    end
+  end
 
-  # defmacro belongs_to(name, resource, config \\ []) do
-  #   quote do
-  #     @relationships Keyword.put(@relationships, unquote(name),
-  #                      type: :belongs_to,
-  #                      resource: unquote(resource),
-  #                      config: unquote(config)
-  #                    )
-  #   end
-  # end
-
-  # defmacro many_to_many(name, resource, config \\ []) do
-  #   quote do
-  #     @relationships Keyword.put(@relationships, unquote(name),
-  #                      type: :many_to_many,
-  #                      resource: unquote(resource),
-  #                      config: unquote(config)
-  #                    )
-  #   end
-  # end
+  defmacro many_to_many(relationship_name, resource, config \\ []) do
+    quote do
+      @relationships Ash.Resource.Relationships.ManyToMany.new(
+                       @name,
+                       unquote(relationship_name),
+                       unquote(resource),
+                       unquote(config)
+                     )
+    end
+  end
 end

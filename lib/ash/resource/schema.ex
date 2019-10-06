@@ -19,6 +19,20 @@ defmodule Ash.Resource.Schema do
         for relationship <- Enum.filter(@relationships, &(&1.type == :has_one)) do
           has_one relationship.name, relationship.destination
         end
+
+        for relationship <- Enum.filter(@relationships, &(&1.type == :has_many)) do
+          has_many relationship.name, relationship.destination
+        end
+
+        for relationship <- Enum.filter(@relationships, &(&1.type == :many_to_many)) do
+          many_to_many(relationship.name, relationship.destination,
+            join_through: relationship.through,
+            join_keys: [
+              {relationship.source_field_on_join_table, relationship.source_field},
+              {relationship.destination_field_on_join_table, relationship.destination_field}
+            ]
+          )
+        end
       end
     end
   end

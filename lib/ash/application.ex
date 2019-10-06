@@ -7,6 +7,7 @@ defmodule Ash.Application do
 
   def start(_type, _args) do
     children = [
+      {Task.Supervisor, name: Ash.JsonApi.Includes.TaskSupervisor},
       {Ash.Repo, []}
     ]
 

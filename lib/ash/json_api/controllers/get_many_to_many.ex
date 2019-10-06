@@ -1,4 +1,4 @@
-defmodule Ash.JsonApi.Controllers.GetBelongsTo do
+defmodule Ash.JsonApi.Controllers.GetManyToMany do
   def init(options) do
     # initialize options
     options
@@ -8,7 +8,7 @@ defmodule Ash.JsonApi.Controllers.GetBelongsTo do
     resource = options[:resource]
     relationship = options[:relationship]
 
-    request = Ash.JsonApi.Request.from(conn, relationship.destination, :get_belongs_to)
+    request = Ash.JsonApi.Request.from(conn, relationship.destination, :get_has_one)
 
     case Ash.Repo.get(resource, id) do
       nil ->
@@ -17,12 +17,13 @@ defmodule Ash.JsonApi.Controllers.GetBelongsTo do
         |> Plug.Conn.send_resp(404, "uh oh")
 
       found ->
-        related =
-          found
-          |> Ecto.assoc(relationship.name)
-          |> Ash.Repo.one()
+        query = Ecto.assoc(found, relationship.name)
 
-        serialized = Ash.JsonApi.Serializer.serialize_one(request, related)
+        paginator = Ash.JsonApi.Paginator.paginate(request, query)
+
+        related = Ash.Repo.all(paginator.query)
+
+        serialized = Ash.JsonApi.Serializer.serialize_many(request, paginator, related)
 
         conn
         |> Plug.Conn.put_resp_content_type("application/vnd.api+json")

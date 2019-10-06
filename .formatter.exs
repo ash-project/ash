@@ -4,12 +4,15 @@ locals_without_parens = [
   index: 1,
   post: 1,
   attribute: 2,
+  attribute: 3,
   belongs_to: 2,
   belongs_to: 3,
   has_one: 2,
   has_one: 3,
   has_many: 2,
-  field: 2
+  has_many: 3,
+  many_to_many: 2,
+  many_to_many: 3
 ]
 
 [

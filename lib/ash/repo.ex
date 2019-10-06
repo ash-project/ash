@@ -1,6 +1,6 @@
 defmodule Ash.Repo do
   use Ecto.Repo,
-    # TODO: Is this wrong? Maybe not? Maybe better to only configure priv/other things
+    # TODO: Make them own their repo
     otp_app: Application.get_env(:ash, :otp_app),
     adapter: Ecto.Adapters.Postgres
 

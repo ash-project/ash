@@ -7,7 +7,7 @@ defmodule Ash.JsonApi.Controllers.Index do
   def call(conn, options) do
     resource = options[:resource]
 
-    request = Ash.Request.from(conn, resource, :index)
+    request = Ash.JsonApi.Request.from(conn, resource, :index)
 
     paginator = Ash.JsonApi.Paginator.paginate(request, resource)
 
