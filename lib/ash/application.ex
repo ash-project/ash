@@ -7,8 +7,7 @@ defmodule Ash.Application do
 
   def start(_type, _args) do
     children = [
-      {Task.Supervisor, name: Ash.JsonApi.Includes.TaskSupervisor},
-      {Ash.Repo, []}
+      {Task.Supervisor, name: Ash.JsonApi.Includes.TaskSupervisor}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

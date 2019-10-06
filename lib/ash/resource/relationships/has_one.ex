@@ -11,6 +11,17 @@ defmodule Ash.Resource.Relationships.HasOne do
     :source_field
   ]
 
+  @type t :: %__MODULE__{
+          type: :has_one,
+          cardinality: :one
+        }
+
+  @spec new(
+          resource_name :: String.t(),
+          name :: atom,
+          related_resource :: Ash.resource(),
+          opts :: Keyword.t()
+        ) :: t()
   def new(resource_name, name, related_resource, opts \\ []) do
     path = opts[:path] || resource_name <> "/:id/" <> to_string(name)
 

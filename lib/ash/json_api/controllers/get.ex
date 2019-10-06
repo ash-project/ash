@@ -8,10 +8,10 @@ defmodule Ash.JsonApi.Controllers.Get do
     resource = options[:resource]
 
     with {:ok, request} <- Ash.JsonApi.Request.from(conn, resource, :get),
-         {:record, record} when not is_nil(record) <- {:record, Ash.Repo.get(resource, id)},
+         {:record, {:ok, record}} when not is_nil(record) <-
+           {:record, Ash.get_by_id(resource, id)},
          {:ok, record, includes} <-
            Ash.JsonApi.Includes.Includer.get_includes(record, request) do
-      IO.inspect(includes)
       serialized = Ash.JsonApi.Serializer.serialize_one(request, record, includes)
 
       conn

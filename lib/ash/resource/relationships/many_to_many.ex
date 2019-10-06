@@ -14,6 +14,17 @@ defmodule Ash.Resource.Relationships.ManyToMany do
     :destination_field_on_join_table
   ]
 
+  @type t :: %__MODULE__{
+          type: :many_to_many,
+          cardinality: :many
+        }
+
+  @spec new(
+          resource_name :: String.t(),
+          name :: atom,
+          related_resource :: Ash.resource(),
+          opts :: Keyword.t()
+        ) :: t()
   def new(resource_name, name, related_resource, opts \\ []) do
     path = opts[:path] || resource_name <> "/:id/" <> to_string(name)
 

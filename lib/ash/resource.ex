@@ -20,6 +20,7 @@ defmodule Ash.Resource do
 
       @name name
       @resource_type resource_type
+      @data_layer Application.get_env(:ash, :default_data_layer)
 
       unless @name do
         raise "Must set name"
@@ -28,6 +29,12 @@ defmodule Ash.Resource do
       unless @resource_type do
         raise "Must set resource type"
       end
+    end
+  end
+
+  defmacro data_layer(module) do
+    quote do
+      @data_layer unquote(module)
     end
   end
 
@@ -57,6 +64,14 @@ defmodule Ash.Resource do
 
       def name() do
         @name
+      end
+
+      unless @data_layer do
+        raise "Must define a data layer for #{__MODULE__} (or a default)"
+      end
+
+      def data_layer() do
+        @data_layer
       end
 
       Ash.Resource.Schema.define_schema(@name)

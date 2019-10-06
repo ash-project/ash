@@ -22,8 +22,6 @@ defmodule Ash.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:ecto_sql, "~> 3.0"},
-      {:postgrex, ">= 0.0.0"},
       {:plug, "~> 1.8"},
       {:jason, "~> 1.1"}
     ]

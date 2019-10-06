@@ -1,19 +1,22 @@
 defmodule Ash.JsonApi.Includes.Includer do
   alias Ash.JsonApi.Request
 
-  @spec get_includes(record_or_records :: struct | list(struct), Request.t()) ::
+  @spec get_includes(record_or_records :: struct | list(struct) | nil, Request.t()) ::
           {:ok, struct | list(struct), list(struct)}
+  def get_incldues(nil, _) do
+    {:ok, nil, []}
+  end
+
   def get_includes(_record_or_records, %Request{includes: includes}) when includes == %{}, do: %{}
 
-  def get_includes(records, %Request{includes: includes}) when is_list(records) do
-    include_keyword = includes_to_keyword(includes) |> IO.inspect()
+  def get_includes(records, %Request{includes: includes, resource: resource})
+      when is_list(records) do
+    include_keyword = includes_to_keyword(includes)
 
-    preloaded = Ash.Repo.preload(records, include_keyword)
-
-    {preloaded_with_linkage, includes_list} =
-      get_includes_list(preloaded, include_keyword) |> IO.inspect()
-
-    {:ok, preloaded_with_linkage, includes_list}
+    with {:ok, preloaded} <- Ash.side_load(records, include_keyword, resource),
+         {preloaded_with_linkage, includes_list} <- get_includes_list(preloaded, include_keyword) do
+      {:ok, preloaded_with_linkage, includes_list}
+    end
   end
 
   def get_includes(record, request) do
