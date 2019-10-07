@@ -56,7 +56,6 @@ defmodule Ash.JsonApi.Includes.Includer do
   end
 
   defp add_linkage(record, relationship, related) do
-    # TODO: Structify linkage
     record
     |> Map.put_new(:__linkage__, %{})
     |> Map.update!(:__linkage__, fn linkage ->

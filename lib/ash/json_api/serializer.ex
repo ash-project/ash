@@ -1,35 +1,39 @@
 defmodule Ash.JsonApi.Serializer do
-  alias Ash.JsonApi.Request
-
-  def serialize_many(request, paginator, records, includes \\ []) do
+  def serialize_many(request, paginator, records, includes, meta \\ nil) do
     data = Enum.map(records, &serialize_one_record(request, &1))
     json_api = %{version: "1.0"}
     links = many_links(request, paginator)
 
     %{data: data, json_api: json_api, links: links}
     |> add_includes(request, includes)
+    |> add_top_level_meta(meta)
     |> Jason.encode!()
   end
 
-  def serialize_one(request, record, includes \\ [])
+  def serialize_one(request, record, includes, meta \\ nil)
 
-  def serialize_one(request, nil, _) do
-    # TODO `included`
+  def serialize_one(request, nil, _, meta) do
     json_api = %{version: "1.0"}
     links = one_links(request)
 
-    Jason.encode!(%{data: nil, json_api: json_api, links: links})
+    %{data: nil, json_api: json_api, links: links}
+    |> add_top_level_meta(meta)
+    |> Jason.encode!()
   end
 
-  def serialize_one(request, record, includes) do
+  def serialize_one(request, record, includes, meta) do
     data = serialize_one_record(request, record)
     json_api = %{version: "1.0"}
     links = one_links(request)
 
     %{data: data, json_api: json_api, links: links}
     |> add_includes(request, includes)
+    |> add_top_level_meta(meta)
     |> Jason.encode!()
   end
+
+  defp add_top_level_meta(payload, meta) when is_map(meta), do: Map.put(payload, :meta, meta)
+  defp add_top_level_meta(payload, _), do: payload
 
   defp add_includes(payload, _request, []), do: payload
 
@@ -149,8 +153,9 @@ defmodule Ash.JsonApi.Serializer do
     }
   end
 
-  defp serialize_one_record(request, %resource{} = record) do
-    # TODO: `relationships` `meta`
+  defp serialize_one_record(request, record) do
+    resource = Ash.to_resource(record)
+
     %{
       id: record.id,
       type: Ash.type(resource),
@@ -160,17 +165,23 @@ defmodule Ash.JsonApi.Serializer do
         self: at_host(request, Ash.Routes.get(resource, record.id))
       }
     }
+    |> add_meta(record)
   end
 
-  # TODO: Decide if this is a hard guaruntee that record struct == resource module
-  defp serialize_relationships(request, %resource{} = record) do
-    # TODO: links.self, links.related
-    resource
+  defp add_meta(json_record, %{__json_api_meta__: meta}) when is_map(meta),
+    do: Map.put(json_record, :meta, meta)
+
+  defp add_meta(json_record, _), do: json_record
+
+  defp serialize_relationships(request, record) do
+    record
+    |> Ash.to_resource()
     |> Ash.relationships()
     |> Enum.filter(& &1.expose?)
     |> Enum.into(%{}, fn relationship ->
       value = %{
         links: %{
+          # TODO: related
           self: at_host(with_path_params(request, %{"id" => record.id}), relationship.path)
         },
         data: render_linkage(record, relationship),
@@ -182,10 +193,12 @@ defmodule Ash.JsonApi.Serializer do
   end
 
   defp render_linkage(record, %{destination: destination, cardinality: :one, name: name}) do
-    # TODO: There could be another case here if a bug in the system gave us a list of more than one?
     case record do
       %{__linkage__: %{^name => [id]}} ->
         %{id: id, type: Ash.type(destination)}
+
+      # There could be another case here if a bug in the system gave us a list
+      # of more than one shouldn't happen though
 
       _ ->
         nil
@@ -193,7 +206,6 @@ defmodule Ash.JsonApi.Serializer do
   end
 
   defp render_linkage(record, %{destination: destination, cardinality: :many, name: name}) do
-    # TODO: There could be another case here if a bug in the system gave us a list of more than one?
     case record do
       %{__linkage__: %{^name => linkage}} ->
         type = Ash.type(destination)
