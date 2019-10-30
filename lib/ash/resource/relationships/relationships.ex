@@ -9,45 +9,77 @@ defmodule Ash.Resource.Relationships do
 
   defmacro has_one(relationship_name, resource, config \\ []) do
     quote do
-      @relationships Ash.Resource.Relationships.HasOne.new(
-                       @name,
-                       unquote(relationship_name),
-                       unquote(resource),
-                       unquote(config)
-                     )
+      relationship =
+        Ash.Resource.Relationships.HasOne.new(
+          @name,
+          unquote(relationship_name),
+          unquote(resource),
+          unquote(config)
+        )
+
+      @relationships relationship
+      @current_relationship relationship
+
+      def relationship(unquote(relationship_name)) do
+        @current_relationship
+      end
     end
   end
 
   defmacro belongs_to(relationship_name, resource, config \\ []) do
     quote do
-      @relationships Ash.Resource.Relationships.BelongsTo.new(
-                       @name,
-                       unquote(relationship_name),
-                       unquote(resource),
-                       unquote(config)
-                     )
+      relationship =
+        Ash.Resource.Relationships.BelongsTo.new(
+          @name,
+          unquote(relationship_name),
+          unquote(resource),
+          unquote(config)
+        )
+
+      @relationships relationship
+      @current_relationship relationship
+
+      def relationship(unquote(relationship_name)) do
+        @current_relationship
+      end
     end
   end
 
   defmacro has_many(relationship_name, resource, config \\ []) do
     quote do
-      @relationships Ash.Resource.Relationships.HasMany.new(
-                       @name,
-                       unquote(relationship_name),
-                       unquote(resource),
-                       unquote(config)
-                     )
+      relationship =
+        Ash.Resource.Relationships.HasMany.new(
+          @name,
+          unquote(relationship_name),
+          unquote(resource),
+          unquote(config)
+        )
+
+      @relationships relationship
+      @current_relationship relationship
+
+      def relationship(unquote(relationship_name)) do
+        @current_relationship
+      end
     end
   end
 
   defmacro many_to_many(relationship_name, resource, config \\ []) do
     quote do
-      @relationships Ash.Resource.Relationships.ManyToMany.new(
-                       @name,
-                       unquote(relationship_name),
-                       unquote(resource),
-                       unquote(config)
-                     )
+      relationship =
+        Ash.Resource.Relationships.ManyToMany.new(
+          @name,
+          unquote(relationship_name),
+          unquote(resource),
+          unquote(config)
+        )
+
+      @relationships relationship
+      @current_relationship relationship
+
+      def relationship(unquote(relationship_name)) do
+        @current_relationship
+      end
     end
   end
 end

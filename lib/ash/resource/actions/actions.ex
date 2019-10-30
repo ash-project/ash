@@ -7,22 +7,31 @@ defmodule Ash.Resource.Actions do
     end
   end
 
-  defmacro get(opts) do
+  defmacro get(name \\ :get, _opts \\ []) do
     quote do
-      name = unquote(opts[:name]) || :get
-      # TODO: do this somewhere centrally somewhere else
-      path = unquote(opts[:path]) || Path.join("#{@name}/", unquote(opts[:path]) || "/:id")
-      expose? = unquote(opts[:expose?]) || false
-      @actions Ash.Resource.Actions.Action.new(name, :get, expose?: expose?, path: path)
+      action = Ash.Resource.Actions.Action.new(unquote(name), :get)
+
+      @actions action
+
+      @current_action action
+
+      def action(unquote(name)) do
+        @current_action
+      end
     end
   end
 
-  defmacro index(opts) do
+  defmacro index(name \\ :index, _opts \\ []) do
     quote do
-      name = unquote(opts[:name]) || :index
-      path = "#{@name}/"
-      expose? = unquote(opts[:expose?]) || false
-      @actions Ash.Resource.Actions.Action.new(name, :index, expose?: expose?, path: path)
+      action = Ash.Resource.Actions.Action.new(unquote(name), :index)
+
+      @actions action
+
+      @current_action action
+
+      def action(unquote(name)) do
+        @current_action
+      end
     end
   end
 end

@@ -1,7 +1,7 @@
 defmodule Ash.Resource.Attributes.Attribute do
-  defstruct [:name, :type, :ecto_type, :expose?]
+  defstruct [:name, :type, :ecto_type]
 
-  def new(name, type, opts \\ []) do
+  def new(name, type, _opts \\ []) do
     ecto_type =
       if type == :uuid do
         :binary_id
@@ -11,7 +11,6 @@ defmodule Ash.Resource.Attributes.Attribute do
 
     %__MODULE__{
       name: name,
-      expose?: opts[:expose?] || false,
       type: type,
       ecto_type: ecto_type
     }

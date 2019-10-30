@@ -13,5 +13,4 @@
 * DSL level validations! Things like includes validating that their chain exists.
 * break up the `Ash` module
 * Wire up/formalize the error handling
-* Consider adding an `expose do` block *inside* of attributes that will be the same as defining an attribute but will automatically add `expose?: true` so developers don't have to type it all the time.
 * Ensure that errors are properly propagated up from the data_layer behaviour, and every operation is allowed to fail

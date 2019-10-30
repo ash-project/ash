@@ -1,7 +1,6 @@
 defmodule Ash.Resource.Relationships.BelongsTo do
   defstruct [
     :name,
-    :expose?,
     :cardinality,
     :type,
     :path,
@@ -29,7 +28,6 @@ defmodule Ash.Resource.Relationships.BelongsTo do
       name: name,
       type: :belongs_to,
       cardinality: :one,
-      expose?: opts[:expose?] || false,
       path: path,
       destination: related_resource,
       destination_field: opts[:destination_field] || "id",

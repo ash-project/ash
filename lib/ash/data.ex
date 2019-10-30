@@ -1,5 +1,5 @@
 defmodule Ash.Data do
-  @spec get_by_id(Ash.resource(), id :: any) :: {:ok, Ash.record()} | {:error, Ash.error()}
+  @spec get_by_id(Ash.resource(), id :: any) :: {:ok, Ash.record() | nil} | {:error, Ash.error()}
   def get_by_id(resource, id) do
     data_layer = Ash.data_layer(resource)
 
@@ -72,8 +72,8 @@ defmodule Ash.Data do
   end
 
   @spec relationship_query(Ash.record(), association :: Ash.relationship()) ::
-          {:ok, list(Ash.record())} | {:error, Ash.error()}
+          {:ok, Ash.query()} | {:error, Ash.error()}
   def relationship_query(record, association) do
-    Ash.data_layer(record).relationship_query(Ash.to_resource(record), association)
+    Ash.data_layer(Ash.to_resource(record)).relationship_query(record, association)
   end
 end
