@@ -21,7 +21,7 @@ defmodule Ash.Resource.Relationships.HasMany do
           related_resource :: Ash.resource(),
           opts :: Keyword.t()
         ) :: t()
-  def new(resource_name, name, related_resource, opts \\ []) do
+  def new(resource_name, resource_type, name, related_resource, opts \\ []) do
     path = opts[:path] || resource_name <> "/:id/" <> to_string(name)
 
     %__MODULE__{
@@ -30,9 +30,12 @@ defmodule Ash.Resource.Relationships.HasMany do
       cardinality: :many,
       path: path,
       destination: related_resource,
-      destination_field: opts[:destination_field] || "#{resource_name}_id",
-      source_field: opts[:source_field] || "id",
+      destination_field: atomize(opts[:destination_field] || "#{resource_type}_id"),
+      source_field: atomize(opts[:source_field] || "id"),
       side_load: opts[:side_load]
     }
   end
+
+  defp atomize(value) when is_atom(value), do: value
+  defp atomize(value) when is_bitstring(value), do: String.to_atom(value)
 end

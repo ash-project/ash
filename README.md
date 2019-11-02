@@ -14,3 +14,4 @@
 * break up the `Ash` module
 * Wire up/formalize the error handling
 * Ensure that errors are properly propagated up from the data_layer behaviour, and every operation is allowed to fail
+* figure out the ecto schema warning

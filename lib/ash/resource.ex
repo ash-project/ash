@@ -11,7 +11,9 @@ defmodule Ash.Resource do
       Module.register_attribute(__MODULE__, :relationships, accumulate: true)
       Module.register_attribute(__MODULE__, :mix_ins, accumulate: true)
 
-      @attributes Ash.Resource.Attributes.Attribute.new(:id, :uuid)
+      if unquote(Keyword.get(opts, :primary_key?, true)) do
+        @attributes Ash.Resource.Attributes.Attribute.new(:id, :uuid, primary_key?: true)
+      end
 
       # Module.put_attribute(__MODULE__, :custom_threshold_for_lib, 10)
       import Ash.Resource
@@ -41,28 +43,44 @@ defmodule Ash.Resource do
         raise "Your module (#{inspect(__MODULE__)}) must be in config, :ash, resources: [...]"
       end
 
+      @sanitized_actions Ash.Resource.mark_primaries(@actions)
+      @ash_primary_key Ash.Resource.primary_key(@attributes)
+
+      unless @ash_primary_key do
+        raise "Must have a primary key for a resource: #{__MODULE__}"
+      end
+
       def type() do
         @resource_type
       end
 
-      def relationship(_name) do
-        nil
+      def create(action, attributes, parameters) do
+        data_layer().create(__MODULE__, action, attributes, parameters)
+      end
+
+      def relationship(name) do
+        # TODO: Make this happen at compile time
+        Enum.find(relationships(), &(&1.name == name))
       end
 
       def relationships() do
         @relationships
       end
 
-      def action(_name) do
-        nil
+      def action(name) do
+        Enum.find(actions(), &(&1.name == name))
       end
 
       def actions() do
-        @actions
+        @sanitized_actions
       end
 
       def attributes() do
         @attributes
+      end
+
+      def primary_key() do
+        @ash_primary_key
       end
 
       def name() do
@@ -90,5 +108,47 @@ defmodule Ash.Resource do
         Module.eval_quoted(__MODULE__, code)
       end)
     end
+  end
+
+  @doc false
+  def primary_key(attributes) do
+    attributes
+    |> Enum.filter(& &1.primary_key?)
+    |> Enum.map(& &1.name)
+    |> case do
+      [] ->
+        nil
+
+      [single] ->
+        single
+
+      other ->
+        other
+    end
+  end
+
+  @doc false
+  def mark_primaries(all_actions) do
+    all_actions
+    |> Enum.group_by(& &1.type)
+    |> Enum.flat_map(fn {type, actions} ->
+      case actions do
+        [action] ->
+          [%{action | primary?: true}]
+
+        actions ->
+          case Enum.count(actions, & &1.primary?) do
+            0 ->
+              # TODO: Format these prettier
+              raise "Must declare a primary action for #{type}, as there are more than one."
+
+            1 ->
+              actions
+
+            _ ->
+              raise "Duplicate primary actions declared for #{type}, but there can only be one primary action."
+          end
+      end
+    end)
   end
 end

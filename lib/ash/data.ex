@@ -9,6 +9,42 @@ defmodule Ash.Data do
     end
   end
 
+  @spec create(Ash.resource(), Ash.action(), Ash.attributes(), Ash.relationships(), Ash.params()) ::
+          {:ok, Ash.record()} | {:errro, Ash.error()}
+  def create(resource, action, attributes, relationships, params) do
+    Ash.data_layer(resource).create(resource, action, attributes, relationships, params)
+  end
+
+  @spec update(Ash.record(), Ash.action(), Ash.attributes(), Ash.relationships(), Ash.params()) ::
+          {:ok, Ash.record()} | {:errro, Ash.error()}
+  def update(%resource{} = record, action, attributes, relationships, params) do
+    Ash.data_layer(resource).update(record, action, attributes, relationships, params)
+  end
+
+  @spec delete(Ash.record(), Ash.action(), Ash.params()) ::
+          {:ok, Ash.record()} | {:error, Ash.error()}
+  def delete(%resource{} = record, action, params) do
+    Ash.data_layer(resource).delete(record, action, params)
+  end
+
+  @spec append_related(Ash.record(), Ash.relationship(), Ash.resource_identifiers()) ::
+          {:ok, Ash.record()} | {:error, Ash.error()}
+  def append_related(%resource{} = record, relationship, resource_identifiers) do
+    Ash.data_layer(resource).append_related(record, relationship, resource_identifiers)
+  end
+
+  @spec delete_related(Ash.record(), Ash.relationship(), Ash.resource_identifiers()) ::
+          {:ok, Ash.record()} | {:error, Ash.error()}
+  def delete_related(%resource{} = record, relationship, resource_identifiers) do
+    Ash.data_layer(resource).delete_related(record, relationship, resource_identifiers)
+  end
+
+  @spec replace_related(Ash.record(), Ash.relationship(), Ash.resource_identifiers()) ::
+          {:ok, Ash.record()} | {:error, Ash.error()}
+  def replace_related(%resource{} = record, relationship, resource_identifiers) do
+    Ash.data_layer(resource).replace_related(record, relationship, resource_identifiers)
+  end
+
   @spec resource_to_query(Ash.resource()) :: Ash.query()
   def resource_to_query(resource) do
     Ash.data_layer(resource).resource_to_query(resource)

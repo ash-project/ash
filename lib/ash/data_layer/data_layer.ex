@@ -15,4 +15,33 @@ defmodule Ash.DataLayer do
               {:ok, [Ash.record()]} | {:error, Ash.error()}
   @callback side_load([Ash.record()], Ash.side_load_keyword(), Ash.resource()) ::
               {:ok, [Ash.resource()]} | {:error, Ash.error()}
+  @callback create(
+              Ash.resource(),
+              Ash.action(),
+              Ash.attributes(),
+              Ash.relationships(),
+              Ash.params()
+            ) ::
+              {:ok, Ash.record()} | {:error, Ash.error()}
+
+  @callback update(
+              Ash.record(),
+              Ash.action(),
+              Ash.attributes(),
+              Ash.relationships(),
+              Ash.params()
+            ) ::
+              {:ok, Ash.record()} | {:error, Ash.error()}
+
+  @callback delete(Ash.record(), Ash.action(), Ash.params()) ::
+              {:ok, Ash.record()} | {:error, Ash.error()}
+
+  @callback append_related(Ash.record(), Ash.relationship(), Ash.resource_identifiers()) ::
+              {:ok, Ash.record()} | {:error, Ash.error()}
+
+  @callback delete_related(Ash.record(), Ash.relationship(), Ash.resource_identifiers()) ::
+              {:ok, Ash.record()} | {:error, Ash.error()}
+
+  @callback replace_related(Ash.record(), Ash.relationship(), Ash.resource_identifiers()) ::
+              {:ok, Ash.record()} | {:error, Ash.error()}
 end

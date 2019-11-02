@@ -7,31 +7,48 @@ defmodule Ash.Resource.Actions do
     end
   end
 
-  defmacro get(name \\ :get, _opts \\ []) do
-    quote do
-      action = Ash.Resource.Actions.Action.new(unquote(name), :get)
+  # TODO: Originally I had it in my mind that you had to set up your own actions
+  # for the basic capabilities. Instead, these capabilities will just automatically exist
+  # for all resources. What you can do is create actions that are a variation of one of the
+  # basic kinds of resource actions, with special rules. That will be hooked up later.
 
-      @actions action
+  # defmacro create(name \\ :create, opts \\ []) do
+  #   quote bind_quoted: [name: name, opts: opts] do
+  #     action = Ash.Resource.Actions.Create.new(name, primary?: opts[:primary?] || false)
 
-      @current_action action
+  #     @actions action
+  #   end
+  # end
 
-      def action(unquote(name)) do
-        @current_action
-      end
-    end
-  end
+  # defmacro update(name \\ :update, opts \\ []) do
+  #   quote bind_quoted: [name: name, opts: opts] do
+  #     action = Ash.Resource.Actions.Update.new(name, primary?: opts[:primary?] || false)
 
-  defmacro index(name \\ :index, _opts \\ []) do
-    quote do
-      action = Ash.Resource.Actions.Action.new(unquote(name), :index)
+  #     @actions action
+  #   end
+  # end
 
-      @actions action
+  # defmacro delete(name \\ :delete, opts \\ []) do
+  #   quote bind_quoted: [name: name, opts: opts] do
+  #     action = Ash.Resource.Actions.Delete.new(name, primary?: opts[:primary?] || false)
 
-      @current_action action
+  #     @actions action
+  #   end
+  # end
 
-      def action(unquote(name)) do
-        @current_action
-      end
-    end
-  end
+  # defmacro get(name \\ :get, opts \\ []) do
+  #   quote bind_quoted: [name: name, opts: opts] do
+  #     action = Ash.Resource.Actions.Get.new(name, primary?: opts[:primary?] || false)
+
+  #     @actions action
+  #   end
+  # end
+
+  # defmacro index(name \\ :index, opts \\ []) do
+  #   quote bind_quoted: [name: name, opts: opts] do
+  #     action = Ash.Resource.Actions.Index.new(name, primary?: opts[:primary?] || false)
+
+  #     @actions action
+  #   end
+  # end
 end

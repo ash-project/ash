@@ -5,6 +5,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :type,
     :path,
     :destination,
+    :primary_key?,
     :side_load,
     :destination_field,
     :source_field
@@ -29,10 +30,14 @@ defmodule Ash.Resource.Relationships.BelongsTo do
       type: :belongs_to,
       cardinality: :one,
       path: path,
+      primary_key?: Keyword.get(opts, :primary_key, false),
       destination: related_resource,
-      destination_field: opts[:destination_field] || "id",
-      source_field: opts[:source_field] || "#{name}_id",
+      destination_field: atomize(opts[:destination_field] || "id"),
+      source_field: atomize(opts[:source_field] || "#{name}_id"),
       side_load: opts[:side_load]
     }
   end
+
+  defp atomize(value) when is_atom(value), do: value
+  defp atomize(value) when is_bitstring(value), do: String.to_atom(value)
 end

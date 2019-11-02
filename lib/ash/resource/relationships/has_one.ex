@@ -30,9 +30,12 @@ defmodule Ash.Resource.Relationships.HasOne do
       cardinality: :one,
       path: path,
       destination: related_resource,
-      destination_field: opts[:destination_field] || "#{resource_name}_id",
-      source_field: opts[:source_field] || "id",
+      destination_field: atomize(opts[:destination_field] || "#{resource_name}_id"),
+      source_field: atomize(opts[:source_field] || "id"),
       side_load: opts[:side_load]
     }
   end
+
+  defp atomize(value) when is_atom(value), do: value
+  defp atomize(value) when is_bitstring(value), do: String.to_atom(value)
 end

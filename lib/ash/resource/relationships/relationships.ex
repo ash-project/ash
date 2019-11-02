@@ -18,11 +18,6 @@ defmodule Ash.Resource.Relationships do
         )
 
       @relationships relationship
-      @current_relationship relationship
-
-      def relationship(unquote(relationship_name)) do
-        @current_relationship
-      end
     end
   end
 
@@ -36,12 +31,11 @@ defmodule Ash.Resource.Relationships do
           unquote(config)
         )
 
-      @relationships relationship
-      @current_relationship relationship
+      @attributes Ash.Resource.Attributes.Attribute.new(relationship.source_field, :binary_id,
+                    primary_key?: relationship.primary_key?
+                  )
 
-      def relationship(unquote(relationship_name)) do
-        @current_relationship
-      end
+      @relationships relationship
     end
   end
 
@@ -50,17 +44,13 @@ defmodule Ash.Resource.Relationships do
       relationship =
         Ash.Resource.Relationships.HasMany.new(
           @name,
+          @resource_type,
           unquote(relationship_name),
           unquote(resource),
           unquote(config)
         )
 
       @relationships relationship
-      @current_relationship relationship
-
-      def relationship(unquote(relationship_name)) do
-        @current_relationship
-      end
     end
   end
 
@@ -75,11 +65,6 @@ defmodule Ash.Resource.Relationships do
         )
 
       @relationships relationship
-      @current_relationship relationship
-
-      def relationship(unquote(relationship_name)) do
-        @current_relationship
-      end
     end
   end
 end

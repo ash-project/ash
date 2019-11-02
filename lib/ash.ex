@@ -14,6 +14,10 @@ defmodule Ash do
     Application.get_env(:ash, :resources) || []
   end
 
+  def primary_key(resource) do
+    resource.primary_key()
+  end
+
   def relationship(resource, relationship_name) do
     resource.relationship(relationship_name)
   end
@@ -53,6 +57,18 @@ defmodule Ash do
 
   def run_index_action(resource, action, params) do
     Ash.DataLayer.Actions.run_index_action(resource, action, params)
+  end
+
+  def run_create_action(resource, action, attributes, relationships, params) do
+    Ash.DataLayer.Actions.run_create_action(resource, action, attributes, relationships, params)
+  end
+
+  def run_update_action(record, action, attributes, relationships, params) do
+    Ash.DataLayer.Actions.run_update_action(record, action, attributes, relationships, params)
+  end
+
+  def run_delete_action(record, action, params) do
+    Ash.DataLayer.Actions.run_delete_action(record, action, params)
   end
 
   # TODO: Implement a to_resource protocol, like ecto's to query logic
