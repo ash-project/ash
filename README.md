@@ -10,7 +10,8 @@
 * Finish the serializer
 * Make primary key type configurable
 * Make a DSL for join tables to support complex validation/hooks into how they work, support more than just table names in `join_through`
-* DSL level validations! Things like includes validating that their chain exists.
+* DSL level validations! Things like includes validating that their chain exists. All DSL structs should be strictly validated when they are created.
+* Especially at compile time, we should *never* ignore or skip invalid options. If an option is present and invalid, an error is raised.
 * break up the `Ash` module
 * Wire up/formalize the error handling
 * Ensure that errors are properly propagated up from the data_layer behaviour, and every operation is allowed to fail

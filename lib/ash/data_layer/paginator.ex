@@ -6,19 +6,25 @@ defmodule Ash.DataLayer.Paginator do
           limit: nil | non_neg_integer(),
           offset: nil | non_neg_integer(),
           total: nil | non_neg_integer(),
-          query: Ash.query()
+          query: Ash.query(),
+          results: list(Ash.resource())
         }
 
-  @spec paginate(Ash.resource(), Ash.query(), params :: %{optional(String.t()) => term}) ::
+  @spec paginate(
+          Ash.resource(),
+          Ash.action(),
+          Ash.query(),
+          params :: %{optional(String.t()) => term}
+        ) ::
           {:ok, t()} | {:error, Ash.error()}
-  def paginate(resource, query, %{paginate?: false}) do
+  def paginate(_resource, %{paginate?: false}, query, _params) do
     {:ok,
      %__MODULE__{
        query: query
      }}
   end
 
-  def paginate(resource, query, params) do
+  def paginate(resource, _action, query, params) do
     with %__MODULE__{limit: limit, offset: offset} = paginator <- paginator(params),
          {:ok, query} <- Ash.Data.offset(query, offset, resource),
          {:ok, query} <- Ash.Data.limit(query, limit, resource) do

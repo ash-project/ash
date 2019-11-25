@@ -11,10 +11,11 @@ defmodule Ash.DataLayer.Actions do
     Ash.Data.delete(record, action, params)
   end
 
-  def run_read_action(resource, _action, params) do
+  def run_read_action(resource, action, params) do
     with {:ok, query} <- Ash.Data.resource_to_query(resource),
          {:ok, filtered_query} <- Ash.Data.filter(resource, query, params),
-         {:ok, paginator} <- Ash.DataLayer.Paginator.paginate(resource, filtered_query, params),
+         {:ok, paginator} <-
+           Ash.DataLayer.Paginator.paginate(resource, action, filtered_query, params),
          {:ok, found} <- Ash.Data.get_many(paginator.query, resource) do
       {:ok, %{paginator | results: found}}
     end
