@@ -81,21 +81,24 @@ defmodule Ash do
   end
 
   # TODO: params
-  def read(resource, params \\ %{}, action \\ nil) do
+  def read(resource, user, params \\ %{}, action \\ nil) do
     action = action || primary_action(resource, :read)
     Ash.DataLayer.Actions.run_read_action(resource, action, params)
   end
 
+  # TODO: auth
   def create(resource, attributes, relationships, params \\ %{}, action \\ nil) do
     action = action || primary_action(resource, :create)
     Ash.DataLayer.Actions.run_create_action(resource, action, attributes, relationships, params)
   end
 
+  # TODO: auth
   def update(%resource{} = record, attributes, relationships, params \\ %{}, action \\ nil) do
     action = action || primary_action(resource, :update)
     Ash.DataLayer.Actions.run_update_action(record, action, attributes, relationships, params)
   end
 
+  # TODO: auth
   def destroy(%resource{} = record, params \\ %{}, action \\ nil) do
     action = action || primary_action(resource, :destroy)
     Ash.DataLayer.Actions.run_destroy_action(record, action, params)

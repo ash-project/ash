@@ -13,21 +13,23 @@ defmodule Ash.Resource.Actions do
     end
   end
 
-  defmacro defaults(defaults) do
+  defmacro defaults(defaults, opts \\ []) do
     quote do
+      opts = unquote(opts)
+
       for default <- unquote(defaults) do
         case default do
           :create ->
-            create(:default, [])
+            create(:default, opts)
 
           :update ->
-            update(:default, [])
+            update(:default, opts)
 
           :destroy ->
-            destroy(:default, [])
+            destroy(:default, opts)
 
           :read ->
-            read(:default, [])
+            read(:default, opts)
 
           action ->
             raise "Invalid action type #{action} listed in defaults list for resource: #{
@@ -40,7 +42,11 @@ defmodule Ash.Resource.Actions do
 
   defmacro create(name, opts \\ []) do
     quote bind_quoted: [name: name, opts: opts] do
-      action = Ash.Resource.Actions.Create.new(name, primary?: opts[:primary?] || false)
+      action =
+        Ash.Resource.Actions.Create.new(name,
+          primary?: opts[:primary?] || false,
+          rules: Enum.map(opts[:rules] || [], &Ash.Authorization.Rule.new/1)
+        )
 
       @actions action
     end
@@ -48,7 +54,11 @@ defmodule Ash.Resource.Actions do
 
   defmacro update(name, opts \\ []) do
     quote bind_quoted: [name: name, opts: opts] do
-      action = Ash.Resource.Actions.Update.new(name, primary?: opts[:primary?] || false)
+      action =
+        Ash.Resource.Actions.Update.new(name,
+          primary?: opts[:primary?] || false,
+          rules: Enum.map(opts[:rules] || [], &Ash.Authorization.Rule.new/1)
+        )
 
       @actions action
     end
@@ -56,7 +66,11 @@ defmodule Ash.Resource.Actions do
 
   defmacro destroy(name, opts \\ []) do
     quote bind_quoted: [name: name, opts: opts] do
-      action = Ash.Resource.Actions.Destroy.new(name, primary?: opts[:primary?] || false)
+      action =
+        Ash.Resource.Actions.Destroy.new(name,
+          primary?: opts[:primary?] || false,
+          rules: Enum.map(opts[:rules] || [], &Ash.Authorization.Rule.new/1)
+        )
 
       @actions action
     end
@@ -64,7 +78,11 @@ defmodule Ash.Resource.Actions do
 
   defmacro read(name, opts \\ []) do
     quote bind_quoted: [name: name, opts: opts] do
-      action = Ash.Resource.Actions.Read.new(name, primary?: opts[:primary?] || false)
+      action =
+        Ash.Resource.Actions.Read.new(name,
+          primary?: opts[:primary?] || false,
+          rules: Enum.map(opts[:rules] || [], &Ash.Authorization.Rule.new/1)
+        )
 
       @actions action
     end

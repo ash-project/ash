@@ -20,6 +20,7 @@ defmodule Ash.Resource do
       import Ash.Resource.Actions, only: [actions: 1]
       import Ash.Resource.Attributes, only: [attributes: 1]
       import Ash.Resource.Relationships, only: [relationships: 1]
+      import Ash.Authorization.Rule
 
       name = unquote(opts[:name])
       resource_type = unquote(opts[:type])

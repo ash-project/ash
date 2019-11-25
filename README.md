@@ -16,3 +16,6 @@
 * Wire up/formalize the error handling
 * Ensure that errors are properly propagated up from the data_layer behaviour, and every operation is allowed to fail
 * figure out the ecto schema warning
+* all actions need to be performed in a transaction
+* document authorization thoroughly. *batch* (default) checks need to return a list of `ids` for which the check passed.
+* So many parts of the system are reliant on things having an `id` key explicitly. THis will need to be addressed some day, and will be a huge pain in the ass

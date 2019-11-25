@@ -10,13 +10,13 @@ defmodule Ash.Data do
   end
 
   @spec create(Ash.resource(), Ash.action(), Ash.attributes(), Ash.relationships(), Ash.params()) ::
-          {:ok, Ash.record()} | {:errro, Ash.error()}
+          {:ok, Ash.record()} | {:error, Ash.error()}
   def create(resource, action, attributes, relationships, params) do
     Ash.data_layer(resource).create(resource, action, attributes, relationships, params)
   end
 
   @spec update(Ash.record(), Ash.action(), Ash.attributes(), Ash.relationships(), Ash.params()) ::
-          {:ok, Ash.record()} | {:errro, Ash.error()}
+          {:ok, Ash.record()} | {:error, Ash.error()}
   def update(%resource{} = record, action, attributes, relationships, params) do
     Ash.data_layer(resource).update(record, action, attributes, relationships, params)
   end
@@ -45,7 +45,7 @@ defmodule Ash.Data do
     Ash.data_layer(resource).replace_related(record, relationship, resource_identifiers)
   end
 
-  @spec resource_to_query(Ash.resource()) :: Ash.query()
+  @spec resource_to_query(Ash.resource()) :: {:ok, Ash.query()} | {:error, Ash.error()}
   def resource_to_query(resource) do
     Ash.data_layer(resource).resource_to_query(resource)
   end
@@ -59,7 +59,6 @@ defmodule Ash.Data do
     filtered_query =
       params
       |> Map.get(:filter, %{})
-      |> IO.inspect(label: "filter")
       |> Enum.reduce(query, fn {key, value}, query ->
         case query do
           {:error, error} ->
@@ -116,7 +115,16 @@ defmodule Ash.Data do
   # into things like "get batch" and whatnot. This will happen when I integrate
   # dataloader
   @spec side_load(list(Ash.record()), Ash.side_load_keyword(), Ash.resource()) ::
-          {:ok, list(Ash.record())} | {:error, Ash.error()}
+          {:ok, list(Ash.record()) | Ash.record()} | {:error, Ash.error()}
+  def side_load(records, [], _), do: {:ok, records}
+
+  def side_load(record, keyword, resource) when not is_list(record) do
+    case side_load([record], keyword, resource) do
+      {:ok, [result]} -> {:ok, result}
+      {:error, error} -> {:error, error}
+    end
+  end
+
   def side_load(records, side_load_keyword, resource) do
     Ash.data_layer(resource).side_load(records, side_load_keyword, resource)
   end
