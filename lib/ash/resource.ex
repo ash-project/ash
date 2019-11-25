@@ -67,8 +67,8 @@ defmodule Ash.Resource do
         @relationships
       end
 
-      def action(name) do
-        Enum.find(actions(), &(&1.name == name))
+      def action(name, type) do
+        Enum.find(actions(), &(&1.name == name && &1.type == type))
       end
 
       def actions() do

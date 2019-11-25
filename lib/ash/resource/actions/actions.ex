@@ -7,48 +7,66 @@ defmodule Ash.Resource.Actions do
     end
   end
 
-  # TODO: Originally I had it in my mind that you had to set up your own actions
-  # for the basic capabilities. Instead, these capabilities will just automatically exist
-  # for all resources. What you can do is create actions that are a variation of one of the
-  # basic kinds of resource actions, with special rules. That will be hooked up later.
+  defmacro defaults(:all) do
+    quote do
+      defaults([:create, :update, :destroy, :read])
+    end
+  end
 
-  # defmacro create(name \\ :create, opts \\ []) do
-  #   quote bind_quoted: [name: name, opts: opts] do
-  #     action = Ash.Resource.Actions.Create.new(name, primary?: opts[:primary?] || false)
+  defmacro defaults(defaults) do
+    quote do
+      for default <- unquote(defaults) do
+        case default do
+          :create ->
+            create(:default, [])
 
-  #     @actions action
-  #   end
-  # end
+          :update ->
+            update(:default, [])
 
-  # defmacro update(name \\ :update, opts \\ []) do
-  #   quote bind_quoted: [name: name, opts: opts] do
-  #     action = Ash.Resource.Actions.Update.new(name, primary?: opts[:primary?] || false)
+          :destroy ->
+            destroy(:default, [])
 
-  #     @actions action
-  #   end
-  # end
+          :read ->
+            read(:default, [])
 
-  # defmacro delete(name \\ :delete, opts \\ []) do
-  #   quote bind_quoted: [name: name, opts: opts] do
-  #     action = Ash.Resource.Actions.Delete.new(name, primary?: opts[:primary?] || false)
+          action ->
+            raise "Invalid action type #{action} listed in defaults list for resource: #{
+                    __MODULE__
+                  }"
+        end
+      end
+    end
+  end
 
-  #     @actions action
-  #   end
-  # end
+  defmacro create(name, opts \\ []) do
+    quote bind_quoted: [name: name, opts: opts] do
+      action = Ash.Resource.Actions.Create.new(name, primary?: opts[:primary?] || false)
 
-  # defmacro get(name \\ :get, opts \\ []) do
-  #   quote bind_quoted: [name: name, opts: opts] do
-  #     action = Ash.Resource.Actions.Get.new(name, primary?: opts[:primary?] || false)
+      @actions action
+    end
+  end
 
-  #     @actions action
-  #   end
-  # end
+  defmacro update(name, opts \\ []) do
+    quote bind_quoted: [name: name, opts: opts] do
+      action = Ash.Resource.Actions.Update.new(name, primary?: opts[:primary?] || false)
 
-  # defmacro index(name \\ :index, opts \\ []) do
-  #   quote bind_quoted: [name: name, opts: opts] do
-  #     action = Ash.Resource.Actions.Index.new(name, primary?: opts[:primary?] || false)
+      @actions action
+    end
+  end
 
-  #     @actions action
-  #   end
-  # end
+  defmacro destroy(name, opts \\ []) do
+    quote bind_quoted: [name: name, opts: opts] do
+      action = Ash.Resource.Actions.Destroy.new(name, primary?: opts[:primary?] || false)
+
+      @actions action
+    end
+  end
+
+  defmacro read(name, opts \\ []) do
+    quote bind_quoted: [name: name, opts: opts] do
+      action = Ash.Resource.Actions.Read.new(name, primary?: opts[:primary?] || false)
+
+      @actions action
+    end
+  end
 end

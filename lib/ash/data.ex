@@ -50,6 +50,32 @@ defmodule Ash.Data do
     Ash.data_layer(resource).resource_to_query(resource)
   end
 
+  @spec filter(Ash.resource(), Ash.query(), Ash.params()) ::
+          {:ok, Ash.query()} | {:error, Ash.error()}
+  # TODO This is a really dumb implementation of this.
+  def filter(resource, query, params) do
+    data_layer = Ash.data_layer(resource)
+
+    filtered_query =
+      params
+      |> Map.get(:filter, %{})
+      |> IO.inspect(label: "filter")
+      |> Enum.reduce(query, fn {key, value}, query ->
+        case query do
+          {:error, error} ->
+            {:error, error}
+
+          query ->
+            case data_layer.filter(query, key, value, resource) do
+              {:ok, query} -> query
+              {:error, query} -> {:error, query}
+            end
+        end
+      end)
+
+    {:ok, filtered_query}
+  end
+
   @spec limit(Ash.query(), limit :: non_neg_integer, Ash.resource()) ::
           {:ok, Ash.query()} | {:error, Ash.error()}
   def limit(query, limit, resource) do

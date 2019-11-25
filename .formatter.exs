@@ -2,6 +2,8 @@
 locals_without_parens = [
   get: 1,
   index: 1,
+  actions: 1,
+  defaults: 1,
   attribute: 2,
   attribute: 3,
   belongs_to: 2,

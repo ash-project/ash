@@ -1,10 +1,10 @@
-defmodule Ash.Resource.Actions.Delete do
+defmodule Ash.Resource.Actions.Read do
   defstruct [:type, :name, :primary?]
 
   def new(name, opts \\ []) do
     %__MODULE__{
       name: name,
-      type: :delete,
+      type: :read,
       primary?: opts[:primary?]
     }
   end

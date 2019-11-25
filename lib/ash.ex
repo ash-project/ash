@@ -26,8 +26,16 @@ defmodule Ash do
     resource.relationships()
   end
 
-  def action(resource, action) do
-    resource.action(action)
+  def primary_action(resource, type) do
+    resource
+    |> actions()
+    |> Enum.find(fn action ->
+      action.primary? && action.type == type
+    end)
+  end
+
+  def action(resource, action, type) do
+    resource.action(action, type)
   end
 
   def actions(resource) do
@@ -50,25 +58,47 @@ defmodule Ash do
     resource.data_layer()
   end
 
+  def get(resource, id, params \\ %{}, action \\ nil) do
+    # TODO: Figure out this interface
+    params_with_filter =
+      params
+      |> Map.put_new(:filter, %{})
+      |> Map.update!(:filter, &Map.put(&1, :id, id))
+
+    case read(resource, params_with_filter, action) do
+      {:ok, %{results: [single_result]}} ->
+        {:ok, single_result}
+
+      {:ok, %{results: []}} ->
+        {:ok, nil}
+
+      {:error, error} ->
+        {:error, error}
+
+      {:ok, %{results: results}} when is_list(results) ->
+        {:error, :too_many_results}
+    end
+  end
+
   # TODO: params
-  def run_get_action(resource, action, id, params) do
-    Ash.DataLayer.Actions.run_get_action(resource, action, id, params)
+  def read(resource, params \\ %{}, action \\ nil) do
+    action = action || primary_action(resource, :read)
+    Ash.DataLayer.Actions.run_read_action(resource, action, params)
   end
 
-  def run_index_action(resource, action, params) do
-    Ash.DataLayer.Actions.run_index_action(resource, action, params)
-  end
-
-  def run_create_action(resource, action, attributes, relationships, params) do
+  def create(resource, attributes, relationships, params \\ %{}, action \\ nil) do
+    action = action || primary_action(resource, :create)
     Ash.DataLayer.Actions.run_create_action(resource, action, attributes, relationships, params)
   end
 
-  def run_update_action(record, action, attributes, relationships, params) do
+  def update(%resource{} = record, attributes, relationships, params \\ %{}, action \\ nil) do
+    action = action || primary_action(resource, :update)
     Ash.DataLayer.Actions.run_update_action(record, action, attributes, relationships, params)
   end
 
-  def run_delete_action(record, action, params) do
-    Ash.DataLayer.Actions.run_delete_action(record, action, params)
+  def destroy(%resource{} = record, params \\ %{}, action \\ nil) do
+    action = action || primary_action(resource, :destroy)
+    Ash.DataLayer.Actions.run_destroy_action(record, action, params)
   end
 
   # TODO: Implement a to_resource protocol, like ecto's to query logic

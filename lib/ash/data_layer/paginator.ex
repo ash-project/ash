@@ -11,6 +11,13 @@ defmodule Ash.DataLayer.Paginator do
 
   @spec paginate(Ash.resource(), Ash.query(), params :: %{optional(String.t()) => term}) ::
           {:ok, t()} | {:error, Ash.error()}
+  def paginate(resource, query, %{paginate?: false}) do
+    {:ok,
+     %__MODULE__{
+       query: query
+     }}
+  end
+
   def paginate(resource, query, params) do
     with %__MODULE__{limit: limit, offset: offset} = paginator <- paginator(params),
          {:ok, query} <- Ash.Data.offset(query, offset, resource),
@@ -22,11 +29,11 @@ defmodule Ash.DataLayer.Paginator do
     end
   end
 
-  defp paginator(%{"page" => page}) do
+  defp paginator(%{page: page}) do
     # TODO: Make limit configurable
     %__MODULE__{
-      offset: Map.get(page, "offset", 0) |> to_integer(),
-      limit: Map.get(page, "limit", 20) |> to_integer(),
+      offset: Map.get(page, :offset, 0) |> to_integer(),
+      limit: Map.get(page, :limit, 20) |> to_integer(),
       total: nil
     }
   end
