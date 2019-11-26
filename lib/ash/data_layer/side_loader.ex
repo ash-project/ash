@@ -27,6 +27,7 @@ defmodule Ash.DataLayer.SideLoader do
         action_params =
           global_params
           |> Map.put(:filter, %{
+            # TODO: This filter needs to be supported and documented, e.g for authorization
             from_related: {records, relationship}
           })
           |> Map.put_new(:paginate?, false)
