@@ -20,3 +20,4 @@
 * document authorization thoroughly. *batch* (default) checks need to return a list of `ids` for which the check passed.
 * So many parts of the system are reliant on things having an `id` key explicitly. THis will need to be addressed some day, and will be a huge pain in the ass
 * Validate that the user resource has a get action
+* The fact that the code level interface shouldn't be authorization is a potentially good reason to split the code level interface off of the interface that an API frontend my call into. Specifically, the grossness of it is highlighted by how we default `user` when handling actions to `:__none__`. This is because a client must be able to set the user to `nil` or a value, but the code lever interface should just skip validation (which is what `:__none__` does)
