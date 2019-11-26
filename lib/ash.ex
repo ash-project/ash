@@ -58,14 +58,29 @@ defmodule Ash do
     resource.data_layer()
   end
 
-  def get(resource, id, params \\ %{}, action \\ %{}) do
+  def get_authorized(resource, id, params \\ %{}) do
+    do_get(resource, id, true, params)
+  end
+
+  def get(resource, id, params \\ %{}) do
+    do_get(resource, id, false, params)
+  end
+
+  defp do_get(resource, id, auth?, params) do
     # TODO: Figure out this interface
     params_with_filter =
       params
       |> Map.put_new(:filter, %{})
       |> Map.update!(:filter, &Map.put(&1, :id, id))
 
-    case read(resource, params_with_filter) do
+    read =
+      if auth? do
+        read_authorized(resource, params_with_filter)
+      else
+        read(resource, params_with_filter)
+      end
+
+    case read do
       {:ok, %{results: [single_result]}} ->
         {:ok, single_result}
 
@@ -81,10 +96,17 @@ defmodule Ash do
   end
 
   # TODO: params
+  def read_authorized(resource, params \\ %{}) do
+    do_read(resource, true, params)
+  end
+
   def read(resource, params \\ %{}) do
+    do_read(resource, false, params)
+  end
+
+  defp do_read(resource, auth?, params) do
     action = Map.get(params, :action) || primary_action(resource, :read)
-    params = Map.put_new(params, :user, :__none__)
-    Ash.DataLayer.Actions.run_read_action(resource, action, params)
+    Ash.DataLayer.Actions.run_read_action(resource, action, params, auth?)
   end
 
   # TODO: auth

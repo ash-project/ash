@@ -23,7 +23,7 @@ defmodule Ash.DataLayer.Actions do
     Ash.Data.delete(record, action, params)
   end
 
-  def run_read_action(resource, action, params) do
+  def run_read_action(resource, action, params, auth? \\ true) do
     auth_context = %{
       resource: resource,
       action: action,
@@ -34,7 +34,7 @@ defmodule Ash.DataLayer.Actions do
 
     with {%{prediction: prediction} = instructions, per_check_data}
          when prediction != :unauthorized <-
-           Ash.Authorization.Authorizer.authorize_precheck(user, action.rules, auth_context),
+           maybe_authorize_precheck(auth?, user, action.rules, auth_context),
          {:ok, query} <- Ash.Data.resource_to_query(resource),
          {:ok, filtered_query} <- Ash.Data.filter(resource, query, params),
          {:ok, paginator} <-
@@ -48,13 +48,7 @@ defmodule Ash.DataLayer.Actions do
          {:ok, side_loaded} <-
            Ash.Data.side_load(found, side_load_param, resource),
          :allow <-
-           Ash.Authorization.Authorizer.authorize(
-             user,
-             side_loaded,
-             action.rules,
-             auth_context,
-             per_check_data
-           ) do
+           maybe_authorize(auth?, user, side_loaded, action.rules, auth_context, per_check_data) do
       {:ok, %{paginator | results: side_loaded}}
     else
       {%{prediction: :unauthorized}, _} ->
@@ -67,13 +61,17 @@ defmodule Ash.DataLayer.Actions do
     end
   end
 
-  defp add_auth_side_loads(params, %{side_load: side_load}) do
-    params
-    |> Map.put_new(:side_load, [])
-    |> Map.update!(:side_load, &deep_merge_side_loads(&1, side_load))
+  defp maybe_authorize(false, _, _, _, _, _), do: :allow
+
+  defp maybe_authorize(true, user, data, rules, auth_context, per_check_data) do
+    Ash.Authorization.Authorizer.authorize(user, data, rules, auth_context, per_check_data)
   end
 
-  defp add_auth_side_loads(params, _), do: params
+  defp maybe_authorize_precheck(false, _, _, _), do: {%{prediction: :allow}, []}
+
+  defp maybe_authorize_precheck(true, user, rules, auth_context) do
+    Ash.Authorization.Authorizer.authorize_precheck(user, rules, auth_context)
+  end
 
   defp deep_merge_side_loads(left, right) do
     left_sanitized = sanitize_side_load_part(left)
