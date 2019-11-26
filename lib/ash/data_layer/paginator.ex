@@ -7,7 +7,7 @@ defmodule Ash.DataLayer.Paginator do
           offset: nil | non_neg_integer(),
           total: nil | non_neg_integer(),
           query: Ash.query(),
-          results: list(Ash.resource())
+          results: nil | list(Ash.resource())
         }
 
   @spec paginate(
@@ -31,7 +31,6 @@ defmodule Ash.DataLayer.Paginator do
       {:ok, %{paginator | query: query}}
     else
       {:error, error} -> {:error, error}
-      other -> {:error, other}
     end
   end
 
@@ -54,6 +53,7 @@ defmodule Ash.DataLayer.Paginator do
   end
 
   defp to_integer(value) when is_bitstring(value) do
+    # TODO: This will raise, should be turned into returning an error.
     String.to_integer(value)
   end
 

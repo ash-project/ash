@@ -58,29 +58,15 @@ defmodule Ash do
     resource.data_layer()
   end
 
-  def get_authorized(resource, id, params \\ %{}) do
-    do_get(resource, id, true, params)
-  end
-
   def get(resource, id, params \\ %{}) do
-    do_get(resource, id, false, params)
-  end
-
-  defp do_get(resource, id, auth?, params) do
     # TODO: Figure out this interface
     params_with_filter =
       params
       |> Map.put_new(:filter, %{})
       |> Map.update!(:filter, &Map.put(&1, :id, id))
+      |> Map.put(:page, %{limit: 2})
 
-    read =
-      if auth? do
-        read_authorized(resource, params_with_filter)
-      else
-        read(resource, params_with_filter)
-      end
-
-    case read do
+    case read(resource, params_with_filter) do
       {:ok, %{results: [single_result]}} ->
         {:ok, single_result}
 
@@ -95,37 +81,28 @@ defmodule Ash do
     end
   end
 
-  # TODO: params
-  def read_authorized(resource, params \\ %{}) do
-    do_read(resource, true, params)
-  end
-
   def read(resource, params \\ %{}) do
-    do_read(resource, false, params)
-  end
-
-  defp do_read(resource, auth?, params) do
     action = Map.get(params, :action) || primary_action(resource, :read)
-    Ash.DataLayer.Actions.run_read_action(resource, action, params, auth?)
+    Ash.DataLayer.Actions.run_read_action(resource, action, params)
   end
 
-  # TODO: auth
-  def create(resource, attributes, relationships, params \\ %{}) do
-    action = Map.get(params, :action) || primary_action(resource, :create)
-    Ash.DataLayer.Actions.run_create_action(resource, action, attributes, relationships, params)
-  end
+  # # TODO: auth
+  # def create(resource, attributes, relationships, params \\ %{}) do
+  #   action = Map.get(params, :action) || primary_action(resource, :create)
+  #   Ash.DataLayer.Actions.run_create_action(resource, action, attributes, relationships, params)
+  # end
 
-  # TODO: auth
-  def update(%resource{} = record, attributes, relationships, params \\ %{}) do
-    action = Map.get(params, :action) || primary_action(resource, :update)
-    Ash.DataLayer.Actions.run_update_action(record, action, attributes, relationships, params)
-  end
+  # # TODO: auth
+  # def update(%resource{} = record, attributes, relationships, params \\ %{}) do
+  #   action = Map.get(params, :action) || primary_action(resource, :update)
+  #   Ash.DataLayer.Actions.run_update_action(record, action, attributes, relationships, params)
+  # end
 
-  # TODO: auth
-  def destroy(%resource{} = record, params \\ %{}) do
-    action = Map.get(params, :action) || primary_action(resource, :destroy)
-    Ash.DataLayer.Actions.run_destroy_action(record, action, params)
-  end
+  # # TODO: auth
+  # def destroy(%resource{} = record, params \\ %{}) do
+  #   action = Map.get(params, :action) || primary_action(resource, :destroy)
+  #   Ash.DataLayer.Actions.run_destroy_action(record, action, params)
+  # end
 
   # TODO: Implement a to_resource protocol, like ecto's to query logic
   def to_resource(%resource{}), do: resource

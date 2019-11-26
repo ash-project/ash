@@ -1,56 +1,65 @@
 defmodule Ash.DataLayer.Actions do
-  def run_create_action(resource, action, attributes, relationships, params) do
-    case Ash.Data.create(resource, action, attributes, relationships, params) do
-      {:ok, record} ->
-        Ash.Data.side_load(record, Map.get(params, :side_load, []), resource)
+  # def run_create_action(resource, action, attributes, relationships, params) do
+  #   case Ash.Data.create(resource, action, attributes, relationships, params) do
+  #     {:ok, record} ->
+  #       Ash.Data.side_load(record, Map.get(params, :side_load, []), resource)
 
-      {:error, error} ->
-        {:error, error}
-    end
-  end
+  #     {:error, error} ->
+  #       {:error, error}
+  #   end
+  # end
 
-  def run_update_action(%resource{} = record, action, attributes, relationships, params) do
-    with {:ok, record} <- Ash.Data.update(record, action, attributes, relationships, params),
-         {:ok, [record]} <-
-           Ash.Data.side_load([record], Map.get(params, :side_load, []), resource) do
-      {:ok, record}
-    else
-      {:error, error} -> {:error, error}
-    end
-  end
+  # def run_update_action(%resource{} = record, action, attributes, relationships, params) do
+  #   with {:ok, record} <- Ash.Data.update(record, action, attributes, relationships, params),
+  #        {:ok, [record]} <-
+  #          Ash.Data.side_load([record], Map.get(params, :side_load, []), resource) do
+  #     {:ok, record}
+  #   else
+  #     {:error, error} -> {:error, error}
+  #   end
+  # end
 
-  def run_destroy_action(record, action, params) do
-    Ash.Data.delete(record, action, params)
-  end
+  # def run_destroy_action(record, action, params) do
+  #   Ash.Data.delete(record, action, params)
+  # end
 
-  def run_read_action(resource, action, params, auth? \\ true) do
+  def run_read_action(resource, action, params) do
     auth_context = %{
       resource: resource,
       action: action,
       params: params
     }
 
-    user = Map.get(params || %{}, :user)
+    user = Map.get(params, :user)
+    auth? = Map.get(params, :authorize?, false)
 
     with {%{prediction: prediction} = instructions, per_check_data}
          when prediction != :unauthorized <-
            maybe_authorize_precheck(auth?, user, action.rules, auth_context),
-         {:ok, query} <- Ash.Data.resource_to_query(resource),
+         query <- Ash.Data.resource_to_query(resource),
          {:ok, filtered_query} <- Ash.Data.filter(resource, query, params),
          {:ok, paginator} <-
            Ash.DataLayer.Paginator.paginate(resource, action, filtered_query, params),
-         {:ok, found} <- Ash.Data.get_many(paginator.query, resource),
+         {:ok, found} <- Ash.Data.run_query(paginator.query, resource),
          side_load_param <-
            deep_merge_side_loads(
              Map.get(params, :side_load, []),
              Map.get(instructions, :side_load, [])
            ),
          {:ok, side_loaded} <-
-           Ash.Data.side_load(found, side_load_param, resource),
+           Ash.DataLayer.SideLoader.side_load(
+             resource,
+             found,
+             side_load_param,
+             Map.take(params, [:authorize?, :user])
+           ),
          :allow <-
            maybe_authorize(auth?, user, side_loaded, action.rules, auth_context, per_check_data) do
       {:ok, %{paginator | results: side_loaded}}
     else
+      {:error, error} ->
+        {:error, error}
+
       {%{prediction: :unauthorized}, _} ->
         # TODO: Nice errors here!
         {:error, :unauthorized}
