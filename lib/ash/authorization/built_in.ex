@@ -9,6 +9,7 @@ defmodule Ash.Authorization.BuiltIn do
       item
       |> Map.get(relationship_name)
       |> Kernel.||([])
+      |> List.wrap()
       |> Enum.find(fn related ->
         Map.get(related, relationship.destination_field) == user.id
       end)

@@ -19,3 +19,4 @@
 * all actions need to be performed in a transaction
 * document authorization thoroughly. *batch* (default) checks need to return a list of `ids` for which the check passed.
 * So many parts of the system are reliant on things having an `id` key explicitly. THis will need to be addressed some day, and will be a huge pain in the ass
+* Validate that the user resource has a get action

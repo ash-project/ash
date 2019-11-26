@@ -58,14 +58,14 @@ defmodule Ash do
     resource.data_layer()
   end
 
-  def get(resource, id, params \\ %{}, action \\ nil) do
+  def get(resource, id, params \\ %{}, action \\ %{}) do
     # TODO: Figure out this interface
     params_with_filter =
       params
       |> Map.put_new(:filter, %{})
       |> Map.update!(:filter, &Map.put(&1, :id, id))
 
-    case read(resource, params_with_filter, action) do
+    case read(resource, params_with_filter) do
       {:ok, %{results: [single_result]}} ->
         {:ok, single_result}
 
@@ -81,26 +81,27 @@ defmodule Ash do
   end
 
   # TODO: params
-  def read(resource, user, params \\ %{}, action \\ nil) do
-    action = action || primary_action(resource, :read)
+  def read(resource, params \\ %{}) do
+    action = Map.get(params, :action) || primary_action(resource, :read)
+    params = Map.put_new(params, :user, :__none__)
     Ash.DataLayer.Actions.run_read_action(resource, action, params)
   end
 
   # TODO: auth
-  def create(resource, attributes, relationships, params \\ %{}, action \\ nil) do
-    action = action || primary_action(resource, :create)
+  def create(resource, attributes, relationships, params \\ %{}) do
+    action = Map.get(params, :action) || primary_action(resource, :create)
     Ash.DataLayer.Actions.run_create_action(resource, action, attributes, relationships, params)
   end
 
   # TODO: auth
-  def update(%resource{} = record, attributes, relationships, params \\ %{}, action \\ nil) do
-    action = action || primary_action(resource, :update)
+  def update(%resource{} = record, attributes, relationships, params \\ %{}) do
+    action = Map.get(params, :action) || primary_action(resource, :update)
     Ash.DataLayer.Actions.run_update_action(record, action, attributes, relationships, params)
   end
 
   # TODO: auth
-  def destroy(%resource{} = record, params \\ %{}, action \\ nil) do
-    action = action || primary_action(resource, :destroy)
+  def destroy(%resource{} = record, params \\ %{}) do
+    action = Map.get(params, :action) || primary_action(resource, :destroy)
     Ash.DataLayer.Actions.run_destroy_action(record, action, params)
   end
 

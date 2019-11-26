@@ -1,6 +1,9 @@
 defmodule Ash.Authorization.Authorizer do
   alias Ash.Authorization.Rule
 
+  def authorize_precheck(:__none__, rules, _context),
+    do: {%{prediction: :allow}, Enum.map(rules, fn _ -> %{} end)}
+
   def authorize_precheck(user, rules, context) do
     rules
     |> Enum.reduce({%{}, []}, fn rule, {instructions, per_check_data} ->
@@ -17,6 +20,8 @@ defmodule Ash.Authorization.Authorizer do
 
   # Never call authorize w/o first calling authorize_precheck before
   # the operation
+  def authorize(:__none__, _, _, _, _), do: :allow
+
   def authorize(user, data, rules, context, per_check_data) do
     {_decision, remaining_records} =
       rules

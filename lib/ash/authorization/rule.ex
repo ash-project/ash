@@ -51,7 +51,7 @@ defmodule Ash.Authorization.Rule do
   end
 
   def run_check(
-        %{check: check, extra_context: extra_context, kind: kind},
+        %{check: check, extra_context: extra_context, kind: kind} = rule,
         user,
         data,
         context
