@@ -1,6 +1,6 @@
 defmodule Ash.Resource do
   defmacro __using__(opts) do
-    quote do
+    quote location: :keep do
       @before_compile Ash.Resource
       @skip_data_layer unquote(Keyword.get(opts, :no_data_layer, false))
 
@@ -39,7 +39,7 @@ defmodule Ash.Resource do
   end
 
   defmacro __before_compile__(env) do
-    quote do
+    quote location: :keep do
       if __MODULE__ not in Ash.resources() do
         raise "Your module (#{inspect(__MODULE__)}) must be in config, :ash, resources: [...]"
       end
@@ -55,21 +55,8 @@ defmodule Ash.Resource do
         @resource_type
       end
 
-      def create(action, attributes, parameters) do
-        data_layer().create(__MODULE__, action, attributes, parameters)
-      end
-
-      def relationship(name) do
-        # TODO: Make this happen at compile time
-        Enum.find(relationships(), &(&1.name == name))
-      end
-
       def relationships() do
         @relationships
-      end
-
-      def action(name, type) do
-        Enum.find(actions(), &(&1.name == name && &1.type == type))
       end
 
       def actions() do

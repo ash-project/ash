@@ -6,8 +6,8 @@ defmodule Ash.DataLayer do
   @callback offset(Ash.query(), offset :: non_neg_integer(), resource :: Ash.resource()) ::
               {:ok, Ash.query()} | {:error, Ash.error()}
   @callback resource_to_query(Ash.resource()) :: Ash.query()
-  @callback relationship_query(Ash.record() | list(Ash.record()), Ash.relationship()) ::
-              Ash.query()
+  # @callback relationship_query(Ash.record() | list(Ash.record()), Ash.relationship()) ::
+  #             Ash.query()
   @callback can_query_async?(Ash.resource()) :: boolean
   @callback run_query(Ash.query(), Ash.resource()) ::
               {:ok, list(Ash.resource())} | {:error, Ash.error()}

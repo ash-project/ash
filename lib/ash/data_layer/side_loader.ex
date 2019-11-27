@@ -3,20 +3,29 @@ defmodule Ash.DataLayer.SideLoader do
 
   def side_load(_resource, record_or_records, [], _global_params), do: {:ok, record_or_records}
 
-  def side_load(resource, record, side_load_keyword, global_params) when not is_list(record) do
-    case side_load(resource, [record], side_load_keyword, global_params) do
+  def side_load(resource, record, side_loads, global_params) when not is_list(record) do
+    case side_load(resource, [record], side_loads, global_params) do
       {:ok, [side_loaded]} -> side_loaded
       {:error, error} -> {:error, error}
     end
   end
 
-  def side_load(resource, records, side_load_keyword, global_params) do
+  def side_load(resource, records, side_loads, global_params) do
     # TODO: No global config!
     config = Application.get_env(:ash, :side_loader)
     parallel_supervisor = config[:parallel_supervisor]
 
+    side_loads =
+      Enum.map(side_loads, fn side_load_part ->
+        if is_atom(side_load_part) do
+          {side_load_part, []}
+        else
+          side_load_part
+        end
+      end)
+
     side_loaded =
-      side_load_keyword
+      side_loads
       |> maybe_async_stream(config, parallel_supervisor, fn relationship_name, further ->
         relationship = Ash.relationship(resource, relationship_name)
 
@@ -35,16 +44,14 @@ defmodule Ash.DataLayer.SideLoader do
         with {:ok, related_records} <- Ash.read(relationship.destination, action_params),
              {:ok, %{results: side_loaded_related}} <-
                side_load(relationship.destination, related_records, further, global_params) do
-          # Somehow stitch them all together, the only way I can think of doing this is by making the `read`
-          # action stitch everything together
           keyed_by_id =
             Enum.group_by(side_loaded_related, fn record ->
+              # This is required for many to many relationships
               Map.get(record, :__related_id__) ||
                 Map.get(record, relationship.destination_field)
             end)
 
           Enum.map(records, fn record ->
-            # This is required for many to many relationships
             related_to_this_record =
               Map.get(keyed_by_id, Map.get(record, relationship.source_field)) || []
 

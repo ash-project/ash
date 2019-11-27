@@ -41,20 +41,29 @@ defmodule Ash.DataLayer.Actions do
          {:ok, paginator} <-
            Ash.DataLayer.Paginator.paginate(resource, action, filtered_query, params),
          {:ok, found} <- Ash.Data.run_query(paginator.query, resource),
-         side_load_param <-
-           deep_merge_side_loads(
-             Map.get(params, :side_load, []),
-             Map.get(instructions, :side_load, [])
+         {:ok, side_loaded_for_auth} <-
+           Ash.DataLayer.SideLoader.side_load(
+             resource,
+             found,
+             Map.get(instructions, :side_load, []),
+             Map.take(params, [:authorize?, :user])
+           ),
+         :allow <-
+           maybe_authorize(
+             auth?,
+             user,
+             side_loaded_for_auth,
+             action.rules,
+             auth_context,
+             per_check_data
            ),
          {:ok, side_loaded} <-
            Ash.DataLayer.SideLoader.side_load(
              resource,
-             found,
-             side_load_param,
+             side_loaded_for_auth,
+             Map.get(params, :side_load, []),
              Map.take(params, [:authorize?, :user])
-           ),
-         :allow <-
-           maybe_authorize(auth?, user, side_loaded, action.rules, auth_context, per_check_data) do
+           ) do
       {:ok, %{paginator | results: side_loaded}}
     else
       {:error, error} ->
@@ -81,27 +90,4 @@ defmodule Ash.DataLayer.Actions do
   defp maybe_authorize_precheck(true, user, rules, auth_context) do
     Ash.Authorization.Authorizer.authorize_precheck(user, rules, auth_context)
   end
-
-  defp deep_merge_side_loads(left, right) do
-    left_sanitized = sanitize_side_load_part(left)
-    right_sanitized = sanitize_side_load_part(right)
-
-    Keyword.merge(left_sanitized, right_sanitized, fn _, v1, v2 ->
-      deep_merge_side_loads(v1, v2)
-    end)
-  end
-
-  defp sanitize_side_load_part(list) when is_list(list) do
-    Enum.map(list, fn item ->
-      case item do
-        item when is_atom(item) ->
-          {item, []}
-
-        {k, v} ->
-          {k, v}
-      end
-    end)
-  end
-
-  defp sanitize_side_load_part(item), do: [{item, []}]
 end

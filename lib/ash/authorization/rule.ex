@@ -1,5 +1,36 @@
 defmodule Ash.Authorization.Rule do
-  defstruct [:kind, :check, :describe, :extra_context, :precheck, batch?: true]
+  defstruct [:kind, :check, :describe, :precheck]
+
+  @type kind :: :allow | :allow_unless | :allow_only | :deny | :deny_unless | :deny_only
+  @type user :: Ash.user() | nil
+  @type data :: list(Ash.resource())
+  @type context :: %{
+          required(:resource) => Ash.resource(),
+          required(:action) => Ash.action(),
+          required(:params) => Ash.params(),
+          optional(atom) => term
+        }
+  @type resource_ids :: list(term)
+
+  # Required sideloads before checks are run
+  @type side_load_instruction :: {:side_load, Ash.side_load()}
+  # The result for this check is predetermined for all records
+  # that could be passed in from this request.
+  @type precheck_instruction :: {:precheck, boolean}
+  @type precheck_context :: {:context, %{optional(atom) => term}}
+  @type precheck_result :: side_load_instruction() | precheck_instruction() | precheck_context()
+
+  @type check :: {module, atom, list(term)}
+  @type precheck :: {module, atom, list(term)}
+  @type describe :: String.t()
+  @type rule_options :: Keyword.t()
+
+  @type t() :: %__MODULE__{
+          kind: kind(),
+          check: check(),
+          describe: describe(),
+          precheck: precheck() | nil
+        }
 
   @kinds [
     :allow,
@@ -10,53 +41,77 @@ defmodule Ash.Authorization.Rule do
     :deny_only
   ]
 
-  def allow(opts), do: new(:allow, opts)
-  def allow_unless(opts), do: new(:allow_unless, opts)
-  def allow_only(opts), do: new(:allow_only, opts)
-  def deny(opts), do: new(:deny, opts)
-  def deny_unless(opts), do: new(:deny_unless, opts)
-  def deny_only(opts), do: new(:deny_only, opts)
+  @builtin_checks %{
+    relationship_access: Ash.Authorization.Check.RelationshipAccess,
+    static: Ash.Authorization.Check.Static
+  }
 
-  def new({left, right}), do: new(left, right)
+  @builtin_check_names Map.keys(@builtin_checks)
 
-  def new(:owner_relationship, relationship) do
-    new(:allow,
-      check: &Ash.Authorization.BuiltIn.owner_relationship/3,
-      describe: "the current user is the `#{relationship}`",
-      extra_context: %{relationship: relationship},
-      precheck: &Ash.Authorization.BuiltIn.owner_relationship_precheck/2
-    )
+  @doc false
+  def kinds(), do: @kinds
+
+  for kind <- @kinds do
+    def unquote(kind)(opts) do
+      new(unquote(kind), opts)
+    end
+
+    def unquote(kind)(check, opts) do
+      new(unquote(kind), {check, opts})
+    end
   end
+
+  def new({kind, opts}), do: new(kind, opts)
 
   def new(kind, opts) when kind not in @kinds do
     raise "Invalid rule declaration: #{kind}: #{inspect(opts)}"
   end
 
-  def new(kind, opts) do
+  def new(kind, module) when is_atom(module) do
+    new(kind, {module, []})
+  end
+
+  def new(kind, {name, opts}) when name in @builtin_check_names() do
+    new(kind, {Map.get(@builtin_checks, name), opts})
+  end
+
+  def new(kind, {check_module, opts}) when is_list(opts) and is_atom(check_module) do
+    case check_module.init(opts) do
+      {:ok, opts} ->
+        new(kind,
+          check: {check_module, :check, [opts]},
+          describe: check_module.describe(opts),
+          precheck: {check_module, :precheck, [opts]}
+        )
+
+      {:error, error} ->
+        # TODO: nicer
+        raise error
+    end
+  end
+
+  def new(kind, opts) when is_list(opts) do
     struct!(__MODULE__, Keyword.put(opts, :kind, kind))
   end
 
   def run_check(
-        %{batch?: false, check: check, extra_context: extra_context, kind: kind},
+        %{check: check, kind: kind},
         user,
         data,
         context
       ) do
-    Enum.map(data, fn item ->
-      result = check.(user, data, Map.merge(extra_context, context))
-      decision = result_to_decision(kind, result)
+    check_function =
+      case check do
+        {module, function, args} ->
+          fn user, data, context ->
+            apply(module, function, [user, data, context] ++ args)
+          end
 
-      Map.put(item, :__authorization_decision__, decision)
-    end)
-  end
+        function ->
+          function
+      end
 
-  def run_check(
-        %{check: check, extra_context: extra_context, kind: kind} = rule,
-        user,
-        data,
-        context
-      ) do
-    result = check.(user, data, Map.merge(extra_context, context))
+    result = check_function.(user, data, context)
 
     Enum.map(data, fn item ->
       result =
@@ -71,11 +126,12 @@ defmodule Ash.Authorization.Rule do
     end)
   end
 
+  @spec result_to_decision(kind(), boolean()) :: Authorizer.result()
   def result_to_decision(:allow, true), do: :allow
   def result_to_decision(:allow, false), do: :undecided
 
   def result_to_decision(:allow_only, true), do: :allow
-  def result_to_decision(:allow_only, false), do: :unauthorizez
+  def result_to_decision(:allow_only, false), do: :unauthorized
 
   def result_to_decision(:allow_unless, true), do: :undecided
   def result_to_decision(:allow_unless, false), do: :allow

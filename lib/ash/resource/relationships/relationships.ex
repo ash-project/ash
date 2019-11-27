@@ -31,6 +31,7 @@ defmodule Ash.Resource.Relationships do
           unquote(config)
         )
 
+      # TODO: This assumes binary_id
       @attributes Ash.Resource.Attributes.Attribute.new(relationship.source_field, :binary_id,
                     primary_key?: relationship.primary_key?
                   )

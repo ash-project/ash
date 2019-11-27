@@ -1,8 +1,7 @@
 defmodule Ash.Authorization.Authorizer do
   alias Ash.Authorization.Rule
 
-  def authorize_precheck(:__none__, rules, _context),
-    do: {%{prediction: :allow}, Enum.map(rules, fn _ -> %{} end)}
+  @type result :: :allow | :unauthorized | :undecided
 
   def authorize_precheck(user, rules, context) do
     rules
@@ -20,8 +19,6 @@ defmodule Ash.Authorization.Authorizer do
 
   # Never call authorize w/o first calling authorize_precheck before
   # the operation
-  def authorize(:__none__, _, _, _, _), do: :allow
-
   def authorize(user, data, rules, context, per_check_data) do
     {_decision, remaining_records} =
       rules
@@ -37,7 +34,9 @@ defmodule Ash.Authorization.Authorizer do
                 rule
             end
 
-          checked_records = Rule.run_check(rule_with_per_check_data, user, data, context)
+          full_context = Map.merge(context, Map.get(per_check_data, :context) || %{})
+
+          checked_records = Rule.run_check(rule_with_per_check_data, user, data, full_context)
 
           if Enum.any?(checked_records, &(&1.__authorization_decision__ == :unauthorized)) do
             {:unauthorized, data}
@@ -94,6 +93,10 @@ defmodule Ash.Authorization.Authorizer do
 
   defp handle_precheck_result(nil, instructions_and_data), do: instructions_and_data
 
+  defp handle_precheck_result({:context, context}, {instructions, data}) do
+    {instructions, Map.update(data, :context, context, &Map.merge(&1, context))}
+  end
+
   defp handle_precheck_result({:precheck, boolean}, {instructions, data})
        when is_boolean(boolean) do
     {instructions, Map.put(data, :precheck, boolean)}
@@ -110,7 +113,17 @@ defmodule Ash.Authorization.Authorizer do
 
   defp precheck_result(%{precheck: nil}, _user, _context), do: nil
 
-  defp precheck_result(%{precheck: precheck, extra_context: extra_context}, user, context) do
-    precheck.(user, Map.merge(extra_context, context))
+  defp precheck_result(%{precheck: precheck}, user, context) do
+    case precheck do
+      {module, function, args} ->
+        if Module.defines?(module, {function, Enum.count(args) + 2}) do
+          apply(module, function, [user, context] ++ args)
+        else
+          nil
+        end
+
+      function ->
+        function.(user, context)
+    end
   end
 end

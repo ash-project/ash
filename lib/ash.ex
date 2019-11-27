@@ -8,7 +8,7 @@ defmodule Ash do
   @type query :: struct
   @type resource :: module
   @type error :: struct
-  @type side_load_keyword :: Keyword.t()
+  @type side_loads :: Keyword.t()
 
   def resources() do
     Application.get_env(:ash, :resources) || []
@@ -19,7 +19,8 @@ defmodule Ash do
   end
 
   def relationship(resource, relationship_name) do
-    resource.relationship(relationship_name)
+    # TODO: Make this happen at compile time
+    Enum.find(resource.relationships(), &(&1.name == relationship_name))
   end
 
   def relationships(resource) do
@@ -29,17 +30,23 @@ defmodule Ash do
   def primary_action(resource, type) do
     resource
     |> actions()
-    |> Enum.find(fn action ->
-      action.primary? && action.type == type
-    end)
+    |> Enum.filter(&(&1.type == type))
+    |> case do
+      [action] -> action
+      actions -> Enum.find(actions, & &1.primary?)
+    end
   end
 
-  def action(resource, action, type) do
-    resource.action(action, type)
+  def action(resource, name, type) do
+    Enum.find(resource.actions(), &(&1.name == name && &1.type == type))
   end
 
   def actions(resource) do
     resource.actions()
+  end
+
+  def attribute(resource, name) do
+    Enum.find(resource.attributes, &(&1.name == name))
   end
 
   def attributes(resource) do

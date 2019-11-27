@@ -2,8 +2,26 @@ defmodule Ash.Resource.Actions do
   defmacro actions(do: block) do
     quote do
       import Ash.Resource.Actions
+
+      import Ash.Authorization.Rule,
+        only: [
+          allow: 1,
+          allow: 2,
+          allow_unless: 1,
+          allow_unless: 2,
+          allow_only: 1,
+          allow_only: 2,
+          deny: 1,
+          deny: 2,
+          deny_unless: 1,
+          deny_unless: 2,
+          deny_only: 1,
+          deny_only: 2
+        ]
+
       unquote(block)
       import Ash.Resource.Actions, only: [actions: 1]
+      import Ash.Authorization.Rule, only: []
     end
   end
 
@@ -45,7 +63,7 @@ defmodule Ash.Resource.Actions do
       action =
         Ash.Resource.Actions.Create.new(name,
           primary?: opts[:primary?] || false,
-          rules: Enum.map(opts[:rules] || [], &Ash.Authorization.Rule.new/1)
+          rules: opts[:rules] || []
         )
 
       @actions action
@@ -57,7 +75,7 @@ defmodule Ash.Resource.Actions do
       action =
         Ash.Resource.Actions.Update.new(name,
           primary?: opts[:primary?] || false,
-          rules: Enum.map(opts[:rules] || [], &Ash.Authorization.Rule.new/1)
+          rules: opts[:rules] || []
         )
 
       @actions action
@@ -69,7 +87,7 @@ defmodule Ash.Resource.Actions do
       action =
         Ash.Resource.Actions.Destroy.new(name,
           primary?: opts[:primary?] || false,
-          rules: Enum.map(opts[:rules] || [], &Ash.Authorization.Rule.new/1)
+          rules: opts[:rules] || []
         )
 
       @actions action
@@ -81,7 +99,7 @@ defmodule Ash.Resource.Actions do
       action =
         Ash.Resource.Actions.Read.new(name,
           primary?: opts[:primary?] || false,
-          rules: Enum.map(opts[:rules] || [], &Ash.Authorization.Rule.new/1)
+          rules: opts[:rules] || []
         )
 
       @actions action
