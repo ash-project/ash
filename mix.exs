@@ -13,6 +13,6 @@ defmodule Ash.MixProject do
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do
-    [{:dataloader, "~> 1.0.6"}]
+    []
   end
 end
