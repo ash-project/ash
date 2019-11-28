@@ -36,11 +36,11 @@ defmodule Ash.DataLayer.Actions do
     with {%{prediction: prediction} = instructions, per_check_data}
          when prediction != :unauthorized <-
            maybe_authorize_precheck(auth?, user, action.rules, auth_context),
-         query <- Ash.Data.resource_to_query(resource),
-         {:ok, filtered_query} <- Ash.Data.filter(resource, query, params),
+         query <- Ash.DataLayer.resource_to_query(resource),
+         {:ok, filtered_query} <- Ash.DataLayer.filter(resource, query, params),
          {:ok, paginator} <-
            Ash.DataLayer.Paginator.paginate(resource, action, filtered_query, params),
-         {:ok, found} <- Ash.Data.run_query(paginator.query, resource),
+         {:ok, found} <- Ash.DataLayer.run_query(paginator.query, resource),
          {:ok, side_loaded_for_auth} <-
            Ash.DataLayer.SideLoader.side_load(
              resource,
@@ -76,6 +76,109 @@ defmodule Ash.DataLayer.Actions do
       {:unauthorized, _data} ->
         # TODO: Nice errors here!
         {:error, :unauthorized}
+    end
+  end
+
+  def run_create_action(resource, action, params) do
+    auth_context = %{
+      resource: resource,
+      action: action,
+      params: params
+    }
+
+    user = Map.get(params, :user)
+    auth? = Map.get(params, :authorize?, false)
+
+    # TODO: no instrutions relevant to creates right now?
+    with {:ok, attributes, relationships} <- prepare_create_params(resource, params),
+         {%{prediction: prediction}, per_check_data}
+         when prediction != :unauthorized <-
+           maybe_authorize_precheck(auth?, user, action.rules, auth_context),
+         {:ok, created} <-
+           Ash.DataLayer.create(resource, attributes, relationships),
+         :allow <-
+           maybe_authorize(
+             auth?,
+             user,
+             created,
+             action.rules,
+             auth_context,
+             per_check_data
+           ),
+         {:ok, side_loaded} <-
+           Ash.DataLayer.SideLoader.side_load(
+             resource,
+             created,
+             Map.get(params, :side_load, []),
+             Map.take(params, [:authorize?, :user])
+           ) do
+      {:ok, side_loaded}
+    else
+      {:error, error} ->
+        {:error, error}
+
+      {%{prediction: :unauthorized}, _} ->
+        # TODO: Nice errors here!
+        {:error, :unauthorized}
+
+      {:unauthorized, _data} ->
+        # TODO: Nice errors here!
+        {:error, :unauthorized}
+    end
+  end
+
+  defp prepare_create_params(resource, params) do
+    attributes = Map.get(params, :attributes, %{})
+    relationships = Map.get(params, :relationships, %{})
+
+    with {:ok, attributes} <- prepare_create_attributes(resource, attributes),
+         {:ok, relationships} <- prepare_create_relationships(resource, relationships) do
+      {:ok, attributes, relationships}
+    else
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp prepare_create_attributes(resource, attributes) do
+    # resource_attributes = Ash.attributes(resource)
+
+    attributes
+    # Eventually we'll have to just copy changeset's logic
+    # and/or use it directly (now that ecto is split up, maybe thats the way to do all of this?)
+    |> Enum.reduce({%{}, []}, fn {key, value}, {changes, errors} ->
+      case Ash.attribute(resource, key) do
+        nil ->
+          {changes, ["unknown attribute #{key}" | errors]}
+
+        _attribute ->
+          # TODO do actual value validation here
+          {Map.put(changes, key, value), errors}
+      end
+    end)
+    |> case do
+      {changes, []} -> {:ok, changes}
+      {_, errors} -> {:error, errors}
+    end
+  end
+
+  defp prepare_create_relationships(resource, relationships) do
+    relationships
+    # Eventually we'll have to just copy changeset's logic
+    # and/or use it directly (now that ecto is split up, maybe thats the way to do all of this?)
+    |> Enum.reduce({%{}, []}, fn {key, value}, {changes, errors} ->
+      case Ash.attribute(resource, key) do
+        nil ->
+          {changes, ["unknown attribute #{key}" | errors]}
+
+        _attribute ->
+          # TODO do actual value validation here
+          {Map.put(changes, key, value), errors}
+      end
+    end)
+    |> case do
+      {changes, []} -> {:ok, changes}
+      {_, errors} -> {:error, errors}
     end
   end
 

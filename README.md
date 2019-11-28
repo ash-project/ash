@@ -24,3 +24,4 @@
 * Since actions contain rules now, consider making it possible to list each action as its own `do` block, with an internal DSL for configuring the action. (overkill?)
 * Validate rules at creation
 * Maybe fix the crappy parts of optimal and bring it in for opts validation?
+* The ecto internals that live on structs are going to cause problems w/ pluggability of backends, like the `%Ecto.Association.NotLoaded{}`. That backend may need to scrub the ecto specifics off of those structs.

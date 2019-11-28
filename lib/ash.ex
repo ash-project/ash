@@ -89,8 +89,23 @@ defmodule Ash do
   end
 
   def read(resource, params \\ %{}) do
-    action = Map.get(params, :action) || primary_action(resource, :read)
-    Ash.DataLayer.Actions.run_read_action(resource, action, params)
+    case Map.get(params, :action) || primary_action(resource, :read) do
+      nil ->
+        {:error, "no action provided, and no primary action found"}
+
+      action ->
+        Ash.DataLayer.Actions.run_read_action(resource, action, params)
+    end
+  end
+
+  def create(resource, params) do
+    case Map.get(params, :action) || primary_action(resource, :create) do
+      nil ->
+        {:error, "no action provided, and no primary action found"}
+
+      action ->
+        Ash.DataLayer.Actions.run_create_action(resource, action, params)
+    end
   end
 
   # # TODO: auth
