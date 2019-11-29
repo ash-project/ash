@@ -40,7 +40,7 @@ defmodule Ash.DataLayer.Actions do
          {:ok, filter} <- Ash.DataLayer.Filter.process(resource, Map.get(params, :filter, %{})),
          {:ok, sort} <- Ash.DataLayer.Sort.process(resource, Map.get(params, :sort, [])),
          {:ok, filtered_query} <- Ash.DataLayer.filter(query, filter, resource),
-         {:ok, sorted_query} <- Ash.DataLayer.sort(query, sort, resource),
+         {:ok, sorted_query} <- Ash.DataLayer.sort(filtered_query, sort, resource),
          {:ok, paginator} <-
            Ash.DataLayer.Paginator.paginate(resource, action, sorted_query, params),
          {:ok, found} <- Ash.DataLayer.run_query(paginator.query, resource),

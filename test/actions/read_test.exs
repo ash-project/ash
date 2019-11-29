@@ -70,4 +70,34 @@ defmodule Ash.Test.Actions.Read do
       assert post2 in results
     end
   end
+
+  describe "sort" do
+    setup do
+      {:ok, post1} = Ash.create(Post, %{attributes: %{title: "abc", contents: "abc"}})
+      {:ok, post2} = Ash.create(Post, %{attributes: %{title: "xyz", contents: "abc"}})
+
+      %{post1: post1, post2: post2}
+    end
+
+    test "a sort will sort the rows accordingly when ascending", %{
+      post1: post1,
+      post2: post2
+    } do
+      assert {:ok, %{results: [^post1, ^post2]}} = Ash.read(Post, %{sort: [asc: :title]})
+    end
+
+    test "a sort will sor rows accordingly when descending", %{
+      post1: post1,
+      post2: post2
+    } do
+      assert {:ok, %{results: [^post2, ^post1]}} = Ash.read(Post, %{sort: [desc: :title]})
+    end
+
+    test "a nested sort sorts accordingly", %{post1: post1, post2: post2} do
+      {:ok, middle_post} = Ash.create(Post, %{attributes: %{title: "abc", contents: "xyz"}})
+
+      assert {:ok, %{results: [^post1, ^middle_post, ^post2]}} =
+               Ash.read(Post, %{sort: [asc: :title, asc: :contents]})
+    end
+  end
 end

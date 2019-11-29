@@ -38,7 +38,7 @@ if Code.ensure_loaded?(Ets) do
     end
 
     defmodule Query do
-      defstruct [:resource, :filter, :limit, offset: 0]
+      defstruct [:resource, :filter, :limit, :sort, offset: 0]
     end
 
     @impl true
@@ -69,22 +69,57 @@ if Code.ensure_loaded?(Ets) do
       end)
     end
 
+    @impl true
+    def sort(query, sort, _resource) do
+      {:ok, %{query | sort: sort}}
+    end
+
     defp do_filter(query, field, id, _resource) do
       {:ok, %{query | filter: Map.put(query.filter || %{}, field, id)}}
     end
 
     @impl true
     def run_query(
-          %Query{resource: resource, filter: filter, offset: offset, limit: limit},
+          %Query{resource: resource, filter: filter, offset: offset, limit: limit, sort: sort},
           _
         ) do
       with {:ok, match_spec} <- filter_to_matchspec(resource, filter),
            {:ok, table} <- wrap_or_create_table(resource),
-           {:ok, results} <- match_limit(table, match_spec, limit, offset) do
-        ret = results |> Enum.drop(offset) |> Enum.map(&elem(&1, 1))
-
-        {:ok, ret}
+           {:ok, results} <- match_limit(table, match_spec, limit, offset),
+           records <- Enum.map(results, &elem(&1, 1)),
+           sorted <- do_sort(records, sort),
+           without_offset <- Enum.drop(sorted, offset) do
+        {:ok, without_offset}
       end
+    end
+
+    defp do_sort(results, empty) when empty in [nil, []], do: results
+
+    defp do_sort(results, [{:asc, field}]) do
+      Enum.sort_by(results, &Map.get(&1, field))
+    end
+
+    defp do_sort(results, [{:desc, field}]) do
+      results |> Enum.sort_by(&Map.get(&1, field)) |> Enum.reverse()
+    end
+
+    defp do_sort(results, [{:asc, field} | rest]) do
+      results
+      |> Enum.group_by(&Map.get(&1, field))
+      |> Enum.sort_by(fn {key, _value} -> key end)
+      |> Enum.flat_map(fn {_, records} ->
+        do_sort(records, rest)
+      end)
+    end
+
+    defp do_sort(results, [{:desc, field} | rest]) do
+      results
+      |> Enum.group_by(&Map.get(&1, field))
+      |> Enum.sort_by(fn {key, _value} -> key end)
+      |> Enum.reverse()
+      |> Enum.flat_map(fn {_, records} ->
+        do_sort(records, rest)
+      end)
     end
 
     defp filter_to_matchspec(resource, filter) do
