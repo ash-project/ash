@@ -16,12 +16,15 @@ defmodule Ash.MixProject do
     ["lib", "test/support"]
   end
 
-  defp elixirc_paths(_), do: ["/lib"]
+  defp elixirc_paths(_), do: ["lib"]
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:ets, "~> 0.7.3", only: [:dev, :test]}
+      {:ets,
+       github: "zachdaniel/ets",
+       ref: "b96da05e75926e340e8a0fdfea9c095d97ed8d50",
+       only: [:dev, :test]}
     ]
   end
 end

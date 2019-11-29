@@ -1,5 +1,5 @@
 defmodule Ash.DataLayer do
-  @callback filter(Ash.query(), field :: atom, value :: term, resource :: Ash.resource()) ::
+  @callback filter(Ash.query(), Ash.filter(), resource :: Ash.resource()) ::
               {:ok, Ash.query()} | {:error, Ash.error()}
   @callback limit(Ash.query(), limit :: non_neg_integer(), resource :: Ash.resource()) ::
               {:ok, Ash.query()} | {:error, Ash.error()}
@@ -88,29 +88,11 @@ defmodule Ash.DataLayer do
     Ash.data_layer(resource).create(resource, attributes, relationships)
   end
 
-  @spec filter(Ash.resource(), Ash.query(), Ash.params()) ::
+  @spec filter(Ash.query(), Ash.filter(), Ash.resource()) ::
           {:ok, Ash.query()} | {:error, Ash.error()}
-  # TODO This is a really dumb implementation of this.
-  def filter(resource, query, params) do
+  def filter(query, filter, resource) do
     data_layer = Ash.data_layer(resource)
-
-    filtered_query =
-      params
-      |> Map.get(:filter, %{})
-      |> Enum.reduce(query, fn {key, value}, query ->
-        case query do
-          {:error, error} ->
-            {:error, error}
-
-          query ->
-            case data_layer.filter(query, key, value, resource) do
-              {:ok, query} -> query
-              {:error, query} -> {:error, query}
-            end
-        end
-      end)
-
-    {:ok, filtered_query}
+    data_layer.filter(query, filter, resource)
   end
 
   @spec limit(Ash.query(), limit :: non_neg_integer, Ash.resource()) ::

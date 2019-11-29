@@ -8,6 +8,7 @@ defmodule Ash do
   @type query :: struct
   @type resource :: module
   @type error :: struct
+  @type filter :: map()
   @type side_loads :: Keyword.t()
 
   def resources() do

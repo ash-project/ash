@@ -37,7 +37,8 @@ defmodule Ash.DataLayer.Actions do
          when prediction != :unauthorized <-
            maybe_authorize_precheck(auth?, user, action.rules, auth_context),
          query <- Ash.DataLayer.resource_to_query(resource),
-         {:ok, filtered_query} <- Ash.DataLayer.filter(resource, query, params),
+         {:ok, filter} <- Ash.DataLayer.Filter.process(resource, Map.get(params, :filter, %{})),
+         {:ok, filtered_query} <- Ash.DataLayer.filter(query, filter, resource),
          {:ok, paginator} <-
            Ash.DataLayer.Paginator.paginate(resource, action, filtered_query, params),
          {:ok, found} <- Ash.DataLayer.run_query(paginator.query, resource),

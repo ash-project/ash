@@ -25,3 +25,10 @@
 * Validate rules at creation
 * Maybe fix the crappy parts of optimal and bring it in for opts validation?
 * The ecto internals that live on structs are going to cause problems w/ pluggability of backends, like the `%Ecto.Association.NotLoaded{}`. That backend may need to scrub the ecto specifics off of those structs.
+* Add a mixin compatibility checker framework, to allow for mixins to declare what features they do/don't support.
+* Make `Ash.Type` that is a superset of things like `Ecto.Type`. If we bring in ecto database-less(looking like more and more of a good idea to me) that kind of thing gets easier and we can potentially lean on ecto for type validations well.
+* use a process to hold constructed DSL state, and then coalesce it all at the end. This can clean things up, and also allow us to potentially eliminate the registry. This will probably go hand in hand w/ the "capabilities" layer, where the DSL confirms that your data layer is capable of performing everything that your DSL declares
+
+go through all the remaining endpoints and make them use all the goodness that get and index have now.
+start on the work that will make it “well featured” like supporting all the different field types and whatnot
+

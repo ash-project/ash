@@ -46,4 +46,28 @@ defmodule Ash.Test.Actions.Read do
       assert {:ok, %{results: [_]}} = Ash.read(Post, %{page: %{limit: 1, offset: 1}})
     end
   end
+
+  describe "filters" do
+    setup do
+      {:ok, post1} = Ash.create(Post, %{attributes: %{title: "test", contents: "yeet"}})
+      {:ok, post2} = Ash.create(Post, %{attributes: %{title: "test1", contents: "yeet"}})
+
+      %{post1: post1, post2: post2}
+    end
+
+    test "a filter that matches nothing returns no results" do
+      assert {:ok, %{results: []}} = Ash.read(Post, %{filter: %{contents: "not_yeet"}})
+    end
+
+    test "a filter returns only matching records", %{post1: post1} do
+      assert {:ok, %{results: [^post1]}} = Ash.read(Post, %{filter: %{title: post1.title}})
+    end
+
+    test "a filter returns multiple records if they match", %{post1: post1, post2: post2} do
+      assert {:ok, %{results: [_, _] = results}} = Ash.read(Post, %{filter: %{contents: "yeet"}})
+
+      assert post1 in results
+      assert post2 in results
+    end
+  end
 end
