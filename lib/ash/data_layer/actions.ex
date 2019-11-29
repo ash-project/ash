@@ -38,9 +38,11 @@ defmodule Ash.DataLayer.Actions do
            maybe_authorize_precheck(auth?, user, action.rules, auth_context),
          query <- Ash.DataLayer.resource_to_query(resource),
          {:ok, filter} <- Ash.DataLayer.Filter.process(resource, Map.get(params, :filter, %{})),
+         {:ok, sort} <- Ash.DataLayer.Sort.process(resource, Map.get(params, :sort, [])),
          {:ok, filtered_query} <- Ash.DataLayer.filter(query, filter, resource),
+         {:ok, sorted_query} <- Ash.DataLayer.sort(query, sort, resource),
          {:ok, paginator} <-
-           Ash.DataLayer.Paginator.paginate(resource, action, filtered_query, params),
+           Ash.DataLayer.Paginator.paginate(resource, action, sorted_query, params),
          {:ok, found} <- Ash.DataLayer.run_query(paginator.query, resource),
          {:ok, side_loaded_for_auth} <-
            Ash.DataLayer.SideLoader.side_load(

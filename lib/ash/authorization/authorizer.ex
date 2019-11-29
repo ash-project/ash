@@ -116,7 +116,7 @@ defmodule Ash.Authorization.Authorizer do
   defp precheck_result(%{precheck: precheck}, user, context) do
     case precheck do
       {module, function, args} ->
-        if Module.defines?(module, {function, Enum.count(args) + 2}) do
+        if function_exported?(module, function, Enum.count(args) + 2) do
           apply(module, function, [user, context] ++ args)
         else
           nil

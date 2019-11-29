@@ -9,6 +9,7 @@ defmodule Ash do
   @type resource :: module
   @type error :: struct
   @type filter :: map()
+  @type sort :: Keyword.t()
   @type side_loads :: Keyword.t()
 
   def resources() do
@@ -17,6 +18,10 @@ defmodule Ash do
 
   def primary_key(resource) do
     resource.primary_key()
+  end
+
+  def relationship(resource, relationship_name) when is_bitstring(relationship_name) do
+    Enum.find(resource.relationships(), &(to_string(&1.name) == relationship_name))
   end
 
   def relationship(resource, relationship_name) do
@@ -44,6 +49,10 @@ defmodule Ash do
 
   def actions(resource) do
     resource.actions()
+  end
+
+  def attribute(resource, name) when is_bitstring(name) do
+    Enum.find(resource.attributes, &(to_string(&1.name) == name))
   end
 
   def attribute(resource, name) do

@@ -1,6 +1,8 @@
 defmodule Ash.DataLayer do
   @callback filter(Ash.query(), Ash.filter(), resource :: Ash.resource()) ::
               {:ok, Ash.query()} | {:error, Ash.error()}
+  @callback sort(Ash.query(), Ash.sort(), resource :: Ash.resource()) ::
+              {:ok, Ash.query()} | {:error, Ash.error()}
   @callback limit(Ash.query(), limit :: non_neg_integer(), resource :: Ash.resource()) ::
               {:ok, Ash.query()} | {:error, Ash.error()}
   @callback offset(Ash.query(), offset :: non_neg_integer(), resource :: Ash.resource()) ::
@@ -93,6 +95,13 @@ defmodule Ash.DataLayer do
   def filter(query, filter, resource) do
     data_layer = Ash.data_layer(resource)
     data_layer.filter(query, filter, resource)
+  end
+
+  @spec sort(Ash.query(), Ash.sort(), Ash.resource()) ::
+          {:ok, Ash.query()} | {:error, Ash.error()}
+  def sort(query, sort, resource) do
+    data_layer = Ash.data_layer(resource)
+    data_layer.sort(query, sort, resource)
   end
 
   @spec limit(Ash.query(), limit :: non_neg_integer, Ash.resource()) ::
