@@ -19,7 +19,9 @@ locals_without_parens = [
   has_many: 2,
   has_many: 3,
   many_to_many: 2,
-  many_to_many: 3
+  many_to_many: 3,
+  default_page_size: 1,
+  resources: 1
 ]
 
 [

@@ -1,19 +1,20 @@
 defmodule Ash.DataLayer.SideLoader do
-  def side_load(resource, record, keyword, global_params \\ %{})
+  def side_load(resource, record, keyword, api, global_params \\ %{})
 
-  def side_load(_resource, record_or_records, [], _global_params), do: {:ok, record_or_records}
+  def side_load(_resource, record_or_records, [], _api, _global_params),
+    do: {:ok, record_or_records}
 
-  def side_load(resource, record, side_loads, global_params) when not is_list(record) do
-    case side_load(resource, [record], side_loads, global_params) do
+  def side_load(resource, record, side_loads, api, global_params) when not is_list(record) do
+    case side_load(resource, [record], side_loads, api, global_params) do
       {:ok, [side_loaded]} -> side_loaded
       {:error, error} -> {:error, error}
     end
   end
 
-  def side_load(resource, records, side_loads, global_params) do
+  def side_load(resource, records, side_loads, api, global_params) do
     # TODO: No global config!
-    config = Application.get_env(:ash, :side_loader)
-    parallel_supervisor = config[:parallel_supervisor]
+    {side_load_type, config} = Ash.side_load_config(resource)
+    async? = side_load_type == :parallel
 
     side_loads =
       Enum.map(side_loads, fn side_load_part ->
@@ -26,7 +27,7 @@ defmodule Ash.DataLayer.SideLoader do
 
     side_loaded =
       side_loads
-      |> maybe_async_stream(config, parallel_supervisor, fn relationship_name, further ->
+      |> maybe_async_stream(config, async?, fn relationship_name, further ->
         relationship = Ash.relationship(resource, relationship_name)
 
         # Combining filters, and handling boolean filters is
@@ -41,7 +42,7 @@ defmodule Ash.DataLayer.SideLoader do
           })
           |> Map.put_new(:paginate?, false)
 
-        with {:ok, related_records} <- Ash.read(relationship.destination, action_params),
+        with {:ok, related_records} <- api.read(relationship.destination, action_params),
              {:ok, %{results: side_loaded_related}} <-
                side_load(relationship.destination, related_records, further, global_params) do
           keyed_by_id =
@@ -87,13 +88,13 @@ defmodule Ash.DataLayer.SideLoader do
     first_error || {:ok, Enum.map(side_loaded, &elem(&1, 1))}
   end
 
-  defp maybe_async_stream(preloads, _opts, nil, function) do
+  defp maybe_async_stream(preloads, _opts, false, function) do
     Enum.map(preloads, fn {association, further} ->
       function.(association, further)
     end)
   end
 
-  defp maybe_async_stream(preloads, opts, supervisor, function) do
+  defp maybe_async_stream(preloads, opts, true, function) do
     # We could theoretically do one of them outside of a task whlie we wait for the rest
     # Not worth implementing to start, IMO.
     opts = [
@@ -104,7 +105,7 @@ defmodule Ash.DataLayer.SideLoader do
       shutdown: opts[:shutdown] || :timer.seconds(5)
     ]
 
-    supervisor
+    opts[:supervisor]
     |> Task.Supervisor.async_stream_nolink(
       preloads,
       fn {key, further} -> function.(key, further) end,

@@ -12,8 +12,8 @@ defmodule Ash do
   @type sort :: Keyword.t()
   @type side_loads :: Keyword.t()
 
-  def resources() do
-    Application.get_env(:ash, :resources) || []
+  def resources(api) do
+    api.resources()
   end
 
   def primary_key(resource) do
@@ -31,6 +31,10 @@ defmodule Ash do
 
   def relationships(resource) do
     resource.relationships()
+  end
+
+  def side_load_config(api) do
+    api.side_load_config()
   end
 
   def primary_action(resource, type) do
@@ -75,49 +79,6 @@ defmodule Ash do
     resource.data_layer()
   end
 
-  def get(resource, id, params \\ %{}) do
-    # TODO: Figure out this interface
-    params_with_filter =
-      params
-      |> Map.put_new(:filter, %{})
-      |> Map.update!(:filter, &Map.put(&1, :id, id))
-      |> Map.put(:page, %{limit: 2})
-
-    case read(resource, params_with_filter) do
-      {:ok, %{results: [single_result]}} ->
-        {:ok, single_result}
-
-      {:ok, %{results: []}} ->
-        {:ok, nil}
-
-      {:error, error} ->
-        {:error, error}
-
-      {:ok, %{results: results}} when is_list(results) ->
-        {:error, :too_many_results}
-    end
-  end
-
-  def read(resource, params \\ %{}) do
-    case Map.get(params, :action) || primary_action(resource, :read) do
-      nil ->
-        {:error, "no action provided, and no primary action found"}
-
-      action ->
-        Ash.DataLayer.Actions.run_read_action(resource, action, params)
-    end
-  end
-
-  def create(resource, params) do
-    case Map.get(params, :action) || primary_action(resource, :create) do
-      nil ->
-        {:error, "no action provided, and no primary action found"}
-
-      action ->
-        Ash.DataLayer.Actions.run_create_action(resource, action, params)
-    end
-  end
-
   # # TODO: auth
   # def create(resource, attributes, relationships, params \\ %{}) do
   #   action = Map.get(params, :action) || primary_action(resource, :create)
@@ -135,10 +96,6 @@ defmodule Ash do
   #   action = Map.get(params, :action) || primary_action(resource, :destroy)
   #   Ash.DataLayer.Actions.run_destroy_action(record, action, params)
   # end
-
-  # TODO: Implement a to_resource protocol, like ecto's to query logic
-  def to_resource(%resource{}), do: resource
-  def to_resource(resource) when is_atom(resource), do: resource
 
   ## Datalayer shit TODO move this elsewhere
 end

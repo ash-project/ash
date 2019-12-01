@@ -40,10 +40,6 @@ defmodule Ash.Resource do
 
   defmacro __before_compile__(env) do
     quote location: :keep do
-      if __MODULE__ not in Ash.resources() do
-        raise "Your module (#{inspect(__MODULE__)}) must be in config, :ash, resources: [...]"
-      end
-
       @sanitized_actions Ash.Resource.mark_primaries(@actions)
       @ash_primary_key Ash.Resource.primary_key(@attributes)
 

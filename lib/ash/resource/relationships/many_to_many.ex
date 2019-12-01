@@ -67,10 +67,6 @@ defmodule Ash.Resource.Relationships.ManyToMany do
   defp through!(opts, _source_field_on_join_table, _destination_field_on_join_table) do
     case opts[:through] do
       through when is_atom(through) ->
-        unless through in Ash.resources() do
-          raise "Got an atom/module for `through`, but it was not a resource."
-        end
-
         through
 
       # TODO: do this check at runtime. When done at compilation, it forces the modules

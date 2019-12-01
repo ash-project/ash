@@ -23,7 +23,7 @@ defmodule Ash.DataLayer.Actions do
   #   Ash.Data.delete(record, action, params)
   # end
 
-  def run_read_action(resource, action, params) do
+  def run_read_action(resource, action, api, params) do
     auth_context = %{
       resource: resource,
       action: action,
@@ -49,6 +49,7 @@ defmodule Ash.DataLayer.Actions do
              resource,
              found,
              Map.get(instructions, :side_load, []),
+             api,
              Map.take(params, [:authorize?, :user])
            ),
          :allow <-
@@ -65,6 +66,7 @@ defmodule Ash.DataLayer.Actions do
              resource,
              side_loaded_for_auth,
              Map.get(params, :side_load, []),
+             api,
              Map.take(params, [:authorize?, :user])
            ) do
       {:ok, %{paginator | results: side_loaded}}
@@ -82,7 +84,7 @@ defmodule Ash.DataLayer.Actions do
     end
   end
 
-  def run_create_action(resource, action, params) do
+  def run_create_action(resource, action, params, api) do
     auth_context = %{
       resource: resource,
       action: action,
@@ -113,6 +115,7 @@ defmodule Ash.DataLayer.Actions do
              resource,
              created,
              Map.get(params, :side_load, []),
+             api,
              Map.take(params, [:authorize?, :user])
            ) do
       {:ok, side_loaded}
