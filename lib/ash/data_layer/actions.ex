@@ -42,7 +42,7 @@ defmodule Ash.DataLayer.Actions do
          {:ok, filtered_query} <- Ash.DataLayer.filter(query, filter, resource),
          {:ok, sorted_query} <- Ash.DataLayer.sort(filtered_query, sort, resource),
          {:ok, paginator} <-
-           Ash.DataLayer.Paginator.paginate(resource, action, sorted_query, params),
+           Ash.DataLayer.Paginator.paginate(api, resource, action, sorted_query, params),
          {:ok, found} <- Ash.DataLayer.run_query(paginator.query, resource),
          {:ok, side_loaded_for_auth} <-
            Ash.DataLayer.SideLoader.side_load(

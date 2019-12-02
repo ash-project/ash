@@ -99,7 +99,8 @@ defmodule Ash.Resource.Actions do
       action =
         Ash.Resource.Actions.Read.new(name,
           primary?: opts[:primary?] || false,
-          rules: opts[:rules] || []
+          rules: opts[:rules] || [],
+          paginate?: Keyword.get(opts, :paginate?, true)
         )
 
       @actions action

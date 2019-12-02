@@ -27,6 +27,8 @@ defmodule Ash.Resource do
 
       @name name
       @resource_type resource_type
+      @max_page_size nil
+      @default_page_size nil
 
       unless @name do
         raise "Must set name"
@@ -75,6 +77,14 @@ defmodule Ash.Resource do
         @mix_ins
       end
 
+      def max_page_size() do
+        @max_page_size
+      end
+
+      def default_page_size() do
+        @default_page_size
+      end
+
       unless @skip_data_layer || @data_layer do
         raise "Must `use` a data layer module or pass `no_data_layer: true`"
       end
@@ -91,6 +101,18 @@ defmodule Ash.Resource do
         code = hook_module.before_compile_hook(unquote(Macro.escape(env)))
         Module.eval_quoted(__MODULE__, code)
       end)
+    end
+  end
+
+  defmacro max_page_size(page_size) do
+    quote do
+      @max_page_size unquote(page_size)
+    end
+  end
+
+  defmacro default_page_size(page_size) do
+    quote do
+      @default_page_size unquote(page_size)
     end
   end
 

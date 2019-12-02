@@ -7,6 +7,7 @@ defmodule Ash do
   @type relationship :: cardinality_one_relationship() | cardinality_many_relationship()
   @type query :: struct
   @type resource :: module
+  @type api :: module
   @type error :: struct
   @type filter :: map()
   @type sort :: Keyword.t()
@@ -73,6 +74,14 @@ defmodule Ash do
 
   def type(resource) do
     resource.type()
+  end
+
+  def max_page_size(api, resource) do
+    min(api.max_page_size(), resource.max_page_size())
+  end
+
+  def default_page_size(api, resource) do
+    min(api.default_page_size(), resource.default_page_size())
   end
 
   def data_layer(resource) do

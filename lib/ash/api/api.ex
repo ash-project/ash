@@ -5,6 +5,7 @@ defmodule Ash.Api do
       @before_compile Ash.Api
 
       @default_page_size nil
+      @max_page_size nil
       @no_interface !!opts[:no_interface?]
       @side_load_type :simple
       @side_load_config []
@@ -20,6 +21,7 @@ defmodule Ash.Api do
       import Ash.Api,
         only: [
           default_page_size: 1,
+          max_page_size: 1,
           resources: 1,
           side_load: 2,
           side_load: 1
@@ -77,9 +79,16 @@ defmodule Ash.Api do
     end
   end
 
+  defmacro max_page_size(value) do
+    quote do
+      @max_page_size unquote(value)
+    end
+  end
+
   defmacro __before_compile__(env) do
     quote do
       def default_page_size(), do: @default_page_size
+      def max_page_size(), do: @max_page_size
       def mix_ins(), do: @mix_ins
       def resources(), do: @resources
       def side_load_config(), do: {@side_load_type, @side_load_config}
