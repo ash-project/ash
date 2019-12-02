@@ -5,11 +5,11 @@ defmodule Ash.Api.Interface do
         Ash.Api.Interface.get(__MODULE__, resource, id, params)
       end
 
-      def read(resource, params) do
+      def read(resource, params \\ %{}) do
         Ash.Api.Interface.read(__MODULE__, resource, params)
       end
 
-      def create(resource, params) do
+      def create(resource, params \\ %{}) do
         Ash.Api.Interface.create(__MODULE__, resource, params)
       end
     end
@@ -65,11 +65,17 @@ defmodule Ash.Api.Interface do
   end
 
   defp add_default_page_size(api, params) do
-    params
-    |> Map.update(
-      :page,
-      %{limit: api.default_page_size},
-      &Map.put(&1, :limit, api.default_page_size)
-    )
+    case api.default_page_size() do
+      nil ->
+        params
+
+      page_size ->
+        Map.update(
+          params,
+          :page,
+          %{limit: api.default_page_size},
+          &Map.put(&1, :limit, page_size)
+        )
+    end
   end
 end

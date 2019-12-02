@@ -84,7 +84,7 @@ defmodule Ash.DataLayer.Actions do
     end
   end
 
-  def run_create_action(resource, action, params, api) do
+  def run_create_action(resource, action, api, params) do
     auth_context = %{
       resource: resource,
       action: action,
