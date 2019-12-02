@@ -9,26 +9,12 @@ defmodule Ash.DataLayer.Ets do
   defmacro __using__(opts) do
     quote bind_quoted: [opts: opts] do
       @data_layer Ash.DataLayer.Ets
-      @mix_ins Ash.DataLayer.Ets
 
       @ets_private? Keyword.get(opts, :private?, false)
 
       def ets_private?() do
         @ets_private?
       end
-    end
-  end
-
-  def before_compile_hook(_env) do
-    quote do
-      struct_fields =
-        @attributes
-        |> Enum.map(fn attr ->
-          {attr.name, nil}
-        end)
-        |> Enum.concat(Enum.map(@relationships, fn rel -> {rel.name, :not_loaded} end))
-
-      defstruct struct_fields
     end
   end
 

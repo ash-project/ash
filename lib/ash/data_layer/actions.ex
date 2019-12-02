@@ -95,12 +95,12 @@ defmodule Ash.DataLayer.Actions do
     auth? = Map.get(params, :authorize?, false)
 
     # TODO: no instrutions relevant to creates right now?
-    with {:ok, attributes, relationships} <- prepare_create_params(resource, params),
+    with {:ok, changeset, relationships} <- prepare_create_params(resource, params),
          {%{prediction: prediction}, per_check_data}
          when prediction != :unauthorized <-
            maybe_authorize_precheck(auth?, user, action.rules, auth_context),
          {:ok, created} <-
-           Ash.DataLayer.create(resource, attributes, relationships),
+           Ash.DataLayer.create(resource, changeset, relationships),
          :allow <-
            maybe_authorize(
              auth?,
@@ -120,6 +120,10 @@ defmodule Ash.DataLayer.Actions do
            ) do
       {:ok, side_loaded}
     else
+      %Ecto.Changeset{valid?: false} ->
+        # TODO: Explain validation problems
+        {:error, "invalid changes"}
+
       {:error, error} ->
         {:error, error}
 
@@ -147,24 +151,21 @@ defmodule Ash.DataLayer.Actions do
   end
 
   defp prepare_create_attributes(resource, attributes) do
-    # resource_attributes = Ash.attributes(resource)
+    allowed_keys =
+      resource
+      |> Ash.attributes()
+      |> Enum.map(& &1.name)
 
-    attributes
-    # Eventually we'll have to just copy changeset's logic
-    # and/or use it directly (now that ecto is split up, maybe thats the way to do all of this?)
-    |> Enum.reduce({%{}, []}, fn {key, value}, {changes, errors} ->
-      case Ash.attribute(resource, key) do
-        nil ->
-          {changes, ["unknown attribute #{key}" | errors]}
-
-        _attribute ->
-          # TODO do actual value validation here
-          {Map.put(changes, key, value), errors}
-      end
-    end)
+    resource
+    |> struct()
+    |> Ecto.Changeset.cast(attributes, allowed_keys)
     |> case do
-      {changes, []} -> {:ok, changes}
-      {_, errors} -> {:error, errors}
+      %{valid?: true} = changeset ->
+        changeset
+
+      _error_changeset ->
+        # TODO: Print the errors here.
+        {:error, "invalid attributes"}
     end
   end
 

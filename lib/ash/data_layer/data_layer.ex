@@ -85,9 +85,10 @@ defmodule Ash.DataLayer do
     Ash.data_layer(resource).resource_to_query(resource)
   end
 
-  @spec create(Ash.resource(), map, map) :: {:ok, Ash.record()} | {:error, Ash.error()}
-  def create(resource, attributes, relationships) do
-    Ash.data_layer(resource).create(resource, attributes, relationships)
+  @spec create(Ash.resource(), Ecto.Changeset.t(), map) ::
+          {:ok, Ash.record()} | {:error, Ash.error()}
+  def create(resource, changeset, relationships) do
+    Ash.data_layer(resource).create(resource, changeset, relationships)
   end
 
   @spec filter(Ash.query(), Ash.filter(), Ash.resource()) ::

@@ -93,6 +93,14 @@ defmodule Ash.Api do
       def resources(), do: @resources
       def side_load_config(), do: {@side_load_type, @side_load_config}
 
+      @resources
+      |> Enum.group_by(&Ash.type/1)
+      |> Enum.map(fn {type, resources} ->
+        if Enum.count(resources) > 1 do
+          raise "multiple resources w/ conflicting type #{type} in #{__MODULE__}"
+        end
+      end)
+
       unless @no_interface do
         use Ash.Api.Interface
       end

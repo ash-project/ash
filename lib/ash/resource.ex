@@ -49,6 +49,10 @@ defmodule Ash.Resource do
         raise "Must have a primary key for a resource: #{__MODULE__}"
       end
 
+      require Ash.Schema
+
+      Ash.Schema.define_schema(@name)
+
       def type() do
         @resource_type
       end

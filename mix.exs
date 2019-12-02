@@ -21,6 +21,7 @@ defmodule Ash.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:ecto, "~> 3.0"},
       {:ets, github: "zachdaniel/ets", ref: "b96da05e75926e340e8a0fdfea9c095d97ed8d50"}
     ]
   end
