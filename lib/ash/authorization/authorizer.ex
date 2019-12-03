@@ -92,6 +92,7 @@ defmodule Ash.Authorization.Authorizer do
   end
 
   defp handle_precheck_result(nil, instructions_and_data), do: instructions_and_data
+  defp handle_precheck_result(:ok, instructions_and_data), do: instructions_and_data
 
   defp handle_precheck_result({:context, context}, {instructions, data}) do
     {instructions, Map.update(data, :context, context, &Map.merge(&1, context))}

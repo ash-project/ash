@@ -98,14 +98,19 @@ defmodule Ash.DataLayer.Actions do
     with {:ok, changeset, relationships} <- prepare_create_params(resource, params),
          {%{prediction: prediction}, per_check_data}
          when prediction != :unauthorized <-
-           maybe_authorize_precheck(auth?, user, action.rules, auth_context),
+           maybe_authorize_precheck(
+             auth?,
+             user,
+             action.rules,
+             Map.merge(auth_context, %{changeset: changeset, relationships: relationships})
+           ),
          {:ok, created} <-
            Ash.DataLayer.create(resource, changeset, relationships),
          :allow <-
            maybe_authorize(
              auth?,
              user,
-             created,
+             [created],
              action.rules,
              auth_context,
              per_check_data
@@ -141,9 +146,9 @@ defmodule Ash.DataLayer.Actions do
     attributes = Map.get(params, :attributes, %{})
     relationships = Map.get(params, :relationships, %{})
 
-    with {:ok, attributes} <- prepare_create_attributes(resource, attributes),
+    with {:ok, changeset} <- prepare_create_attributes(resource, attributes),
          {:ok, relationships} <- prepare_create_relationships(resource, relationships) do
-      {:ok, attributes, relationships}
+      {:ok, changeset, relationships}
     else
       {:error, error} ->
         {:error, error}
@@ -158,10 +163,10 @@ defmodule Ash.DataLayer.Actions do
 
     resource
     |> struct()
-    |> Ecto.Changeset.cast(attributes, allowed_keys)
+    |> Ecto.Changeset.cast(Map.put_new(attributes, :id, Ecto.UUID.generate()), allowed_keys)
     |> case do
       %{valid?: true} = changeset ->
-        changeset
+        {:ok, changeset}
 
       _error_changeset ->
         # TODO: Print the errors here.
@@ -174,7 +179,7 @@ defmodule Ash.DataLayer.Actions do
     # Eventually we'll have to just copy changeset's logic
     # and/or use it directly (now that ecto is split up, maybe thats the way to do all of this?)
     |> Enum.reduce({%{}, []}, fn {key, value}, {changes, errors} ->
-      case Ash.attribute(resource, key) do
+      case Ash.relationship(resource, key) do
         nil ->
           {changes, ["unknown attribute #{key}" | errors]}
 

@@ -53,6 +53,39 @@ defmodule Ash.Authorization.Check.RelationshipAccess do
 
   def precheck(nil, _, _), do: {:precheck, false}
 
+  def precheck(
+        user,
+        %{resource: resource, changeset: changeset, relationships: relationships},
+        opts
+      ) do
+    relationship_name = opts[:relationship]
+    relationship = Ash.relationship(resource, relationship_name)
+    source_field = relationship.source_field
+
+    cond do
+      Ecto.Changeset.get_field(changeset, source_field) == user.id ->
+        {:precheck, true}
+
+      match?(
+        %{^relationship_name => relationship_change_value}
+        when not is_nil(relationship_change_value),
+        relationships
+      ) ->
+        related =
+          relationships
+          |> Map.get(relationship_name)
+          |> Enum.find(&(&1.id == user.id))
+
+        {:precheck, !!related}
+
+      opts[:enforce_access?] ->
+        {:precheck, false}
+
+      true ->
+        :ok
+    end
+  end
+
   def precheck(user, %{resource: resource, params: params}, opts) do
     relationship_name = opts[:relationship]
     relationship = Ash.relationship(resource, relationship_name)
@@ -61,8 +94,6 @@ defmodule Ash.Authorization.Check.RelationshipAccess do
 
     cond do
       match?(%{filter: %{^relationship_name => ^user_id}}, params) ->
-        # TODO: relationship filters not yet supported, so this won't actually work
-        # remove this TODO and double check this functionality when they are
         {:precheck, true}
 
       relationship.type != :many_to_many &&

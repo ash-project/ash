@@ -87,24 +87,4 @@ defmodule Ash do
   def data_layer(resource) do
     resource.data_layer()
   end
-
-  # # TODO: auth
-  # def create(resource, attributes, relationships, params \\ %{}) do
-  #   action = Map.get(params, :action) || primary_action(resource, :create)
-  #   Ash.DataLayer.Actions.run_create_action(resource, action, attributes, relationships, params)
-  # end
-
-  # # TODO: auth
-  # def update(%resource{} = record, attributes, relationships, params \\ %{}) do
-  #   action = Map.get(params, :action) || primary_action(resource, :update)
-  #   Ash.DataLayer.Actions.run_update_action(record, action, attributes, relationships, params)
-  # end
-
-  # # TODO: auth
-  # def destroy(%resource{} = record, params \\ %{}) do
-  #   action = Map.get(params, :action) || primary_action(resource, :destroy)
-  #   Ash.DataLayer.Actions.run_destroy_action(record, action, params)
-  # end
-
-  ## Datalayer shit TODO move this elsewhere
 end

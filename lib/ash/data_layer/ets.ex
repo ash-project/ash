@@ -171,11 +171,10 @@ defmodule Ash.DataLayer.Ets do
     {:error, "#{inspect(__MODULE__)} does not support creating with relationships"}
   end
 
-  def create(resource, attributes, _relationships) do
+  def create(resource, changeset, _relationships) do
     with {:ok, table} <- wrap_or_create_table(resource),
-         attrs <- Map.put_new_lazy(attributes, :id, &Ash.UUID.generate/0),
-         record <- struct(resource, attrs),
-         {:ok, _} <- Ets.Set.put(table, {attrs.id, record}) do
+         record <- Ecto.Changeset.apply_changes(changeset),
+         {:ok, _} <- Ets.Set.put(table, {record.id, record}) do
       {:ok, record}
     else
       {:error, error} -> {:error, error}

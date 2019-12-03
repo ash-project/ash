@@ -43,7 +43,8 @@ defmodule Ash.Authorization.Rule do
 
   @builtin_checks %{
     relationship_access: Ash.Authorization.Check.RelationshipAccess,
-    static: Ash.Authorization.Check.Static
+    static: Ash.Authorization.Check.Static,
+    user_field: Ash.Authorization.Check.UserField
   }
 
   @builtin_check_names Map.keys(@builtin_checks)

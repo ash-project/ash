@@ -37,7 +37,7 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     test "it returns nil when there is no matching record" do
-      assert {:ok, nil} = Api.get(Post, Ash.UUID.generate())
+      assert {:ok, nil} = Api.get(Post, Ecto.UUID.generate())
     end
   end
 
