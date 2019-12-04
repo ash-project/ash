@@ -1,5 +1,5 @@
 defmodule Ash.DataLayer.Sort do
-  def process(resource, empty) when empty in [nil, []], do: {:ok, []}
+  def process(_resource, empty) when empty in [nil, []], do: {:ok, []}
 
   def process(resource, sort) when is_list(sort) do
     sort
@@ -20,5 +20,5 @@ defmodule Ash.DataLayer.Sort do
     end
   end
 
-  def process(resource, _), do: {:error, "invalid sort"}
+  def process(_resource, _), do: {:error, "invalid sort"}
 end
