@@ -1,6 +1,11 @@
 defmodule Ash.MixProject do
   use Mix.Project
 
+  @description """
+  A resource declaration and interaction library. Built with pluggable data layers, and
+  designed to be used by multiple front ends.
+  """
+
   def project do
     [
       app: :ash,
@@ -10,6 +15,7 @@ defmodule Ash.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       package: package(),
       deps: deps(),
+      description: @description,
       source_url: "https://github.com/ash-project/ash",
       homepage_url: "https://github.com/ash-project/ash"
     ]
