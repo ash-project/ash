@@ -8,7 +8,20 @@ defmodule Ash.MixProject do
       elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
-      deps: deps()
+      package: package(),
+      deps: deps(),
+      source_url: "https://github.com/ash-project/ash",
+      homepage_url: "https://github.com/ash-project/ash"
+    ]
+  end
+
+  defp package do
+    [
+      name: :ash,
+      licenses: ["MIT"],
+      links: %{
+        GitHub: "https://github.com/ash-project/ash"
+      }
     ]
   end
 
@@ -22,7 +35,8 @@ defmodule Ash.MixProject do
   defp deps do
     [
       {:ecto, "~> 3.0"},
-      {:ets, github: "zachdaniel/ets", ref: "b96da05e75926e340e8a0fdfea9c095d97ed8d50"}
+      {:ets, github: "zachdaniel/ets", ref: "b96da05e75926e340e8a0fdfea9c095d97ed8d50"},
+      {:ex_doc, "~> 0.21", only: :dev, runtime: false}
     ]
   end
 end
