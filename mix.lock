@@ -1,4 +1,5 @@
 %{
+  "ashton": {:hex, :ashton, "0.3.6", "95f5d598c2e05662498349d81e7579e897b1e1cfe1aa79606d07a35305a47efe", [:mix], [], "hexpm"},
   "connection": {:hex, :connection, "1.0.4", "a1cae72211f0eef17705aaededacac3eb30e6625b04a6117c1b2db6ace7d5976", [:mix], [], "hexpm"},
   "dataloader": {:hex, :dataloader, "1.0.6", "fb724d6d3fb6acb87d27e3b32dea3a307936ad2d245faf9cf5221d1323d6a4ba", [:mix], [{:ecto, ">= 0.0.0", [hex: :ecto, repo: "hexpm", optional: true]}], "hexpm"},
   "db_connection": {:hex, :db_connection, "2.1.1", "a51e8a2ee54ef2ae6ec41a668c85787ed40cb8944928c191280fe34c15b76ae5", [:mix], [{:connection, "~> 1.0.2", [hex: :connection, repo: "hexpm", optional: false]}], "hexpm"},

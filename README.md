@@ -30,6 +30,6 @@
 * use a process to hold constructed DSL state, and then coalesce it all at the end. This can clean things up, and also allow us to potentially eliminate the registry. This will probably go hand in hand w/ the "capabilities" layer, where the DSL confirms that your data layer is capable of performing everything that your DSL declares
 * make ets dep optional
 * Bake in descriptions to the DSL
-
+* Contributor guideline and code of conduct
 
 

@@ -26,7 +26,6 @@ defmodule Ash do
   end
 
   def relationship(resource, relationship_name) do
-    # TODO: Make this happen at compile time
     Enum.find(resource.relationships(), &(&1.name == relationship_name))
   end
 

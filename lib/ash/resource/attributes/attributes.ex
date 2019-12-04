@@ -9,7 +9,7 @@ defmodule Ash.Resource.Attributes do
 
   defmacro attribute(name, type, opts \\ []) do
     quote bind_quoted: [type: type, name: name, opts: opts] do
-      @attributes Ash.Resource.Attributes.Attribute.new(name, type, opts)
+      @attributes Ash.Resource.Attributes.Attribute.new(__MODULE__, name, type, opts)
     end
   end
 end

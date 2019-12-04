@@ -1,6 +1,6 @@
 defmodule Ash.Resource do
   defmacro __using__(opts) do
-    quote location: :keep do
+    quote do
       @before_compile Ash.Resource
       @skip_data_layer unquote(Keyword.get(opts, :no_data_layer, false))
 
@@ -12,7 +12,9 @@ defmodule Ash.Resource do
       Module.register_attribute(__MODULE__, :mix_ins, accumulate: true)
 
       if unquote(Keyword.get(opts, :primary_key?, true)) do
-        @attributes Ash.Resource.Attributes.Attribute.new(:id, :uuid, primary_key?: true)
+        @attributes Ash.Resource.Attributes.Attribute.new(__MODULE__, :id, :uuid,
+                      primary_key?: true
+                    )
       end
 
       # Module.put_attribute(__MODULE__, :custom_threshold_for_lib, 10)
@@ -41,7 +43,7 @@ defmodule Ash.Resource do
   end
 
   defmacro __before_compile__(env) do
-    quote location: :keep do
+    quote do
       @sanitized_actions Ash.Resource.mark_primaries(@actions)
       @ash_primary_key Ash.Resource.primary_key(@attributes)
 
