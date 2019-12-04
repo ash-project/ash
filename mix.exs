@@ -41,7 +41,7 @@ defmodule Ash.MixProject do
   defp deps do
     [
       {:ecto, "~> 3.0"},
-      {:ets, github: "zachdaniel/ets", ref: "b96da05e75926e340e8a0fdfea9c095d97ed8d50"},
+      {:ets, "~> 0.7.3"},
       {:ex_doc, "~> 0.21", only: :dev, runtime: false}
     ]
   end
