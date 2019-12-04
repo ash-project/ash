@@ -10,7 +10,8 @@ defmodule Ash.Resource.Relationships.ManyToMany do
     :source_field,
     :destination_field,
     :source_field_on_join_table,
-    :destination_field_on_join_table
+    :destination_field_on_join_table,
+    :join_table_fields
   ]
 
   @type t :: %__MODULE__{
@@ -57,7 +58,8 @@ defmodule Ash.Resource.Relationships.ManyToMany do
       source_field: source_field,
       destination_field: destination_field,
       source_field_on_join_table: source_field_on_join_table,
-      destination_field_on_join_table: destination_field_on_join_table
+      destination_field_on_join_table: destination_field_on_join_table,
+      join_table_fields: opts[:join_table_fields] || []
     }
   end
 
