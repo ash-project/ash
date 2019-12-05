@@ -31,5 +31,7 @@
 * make ets dep optional
 * Bake in descriptions to the DSL
 * Contributor guideline and code of conduct
+* Do branch analysis of each record after authorizing it, in authorizer
+* consider moving `type` and `name` for resources out into json api (or perhaps just `name`) since only json api uses that
 
 

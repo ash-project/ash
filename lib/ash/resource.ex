@@ -1,44 +1,117 @@
 defmodule Ash.Resource do
+  @primary_key_schema Ashton.schema(
+                        opts: [field: :atom, type: :atom],
+                        defaults: [field: :id, type: :uuid],
+                        describe: [
+                          field: "The field name of the primary key of the resource.",
+                          type: "The data type of the primary key of the resource."
+                        ]
+                      )
+
+  @resource_opts_schema Ashton.schema(
+                          opts: [
+                            name: :string,
+                            type: :string,
+                            max_page_size: :integer,
+                            default_page_size: :integer,
+                            primary_key: [
+                              :boolean,
+                              @primary_key_schema
+                            ]
+                          ],
+                          describe: [
+                            name:
+                              "The name of the resource. This will typically be the pluralized form of the type",
+                            type:
+                              "The type of the resource, e.g `post` or `author`. This is used throughout the system.",
+                            max_page_size:
+                              "The maximum page size for any read action. Any request for a higher page size will simply use this number.",
+                            default_page_size:
+                              "The default page size for any read action. If no page size is specified, this value is used.",
+                            primary_key:
+                              "If true, a default `id` uuid primary key is used. If false, none is created. See the primary_key opts for info on specifying primary key options."
+                          ],
+                          required: [:name, :type],
+                          defaults: [
+                            primary_key: true
+                          ],
+                          constraints: [
+                            max_page_size:
+                              {&Ash.Constraints.greater_than_zero?/1, "must be greater than zero"},
+                            default_page_size:
+                              {&Ash.Constraints.greater_than_zero?/1, "must be greater than zero"}
+                          ]
+                        )
+
+  @moduledoc """
+  The entry point for creating an `Ash.Resource`.
+
+  This brings in the top level DSL macros, defines module attributes for aggregating state as
+  DSL functions are called, and defines a set of functions internal to the resource that can be
+  used to inspect them.
+
+  Simply add `use Ash.Resource, ...` at the top of your resource module, and refer to the DSL documentation
+  at `Ash.Resource.DSL` for the rest. The options for `use Ash.Resource` are described below.
+
+  #{Ashton.document(@resource_opts_schema)}
+
+  Note:
+  *Do not* call the functions on a resource, as in `MyResource.type()` as this is a *private*
+  API and can change at any time. Instead, use the `Ash` module, for example: `Ash.type(MyResource)`
+  """
+
   defmacro __using__(opts) do
     quote do
       @before_compile Ash.Resource
-      @skip_data_layer unquote(Keyword.get(opts, :no_data_layer, false))
 
-      Module.register_attribute(__MODULE__, :before_compile_hooks, accumulate: true)
+      opts = Ash.Resource.validate_use_opts(__MODULE__, unquote(opts))
+      Ash.Resource.define_resource_module_attributes(__MODULE__, opts)
+      Ash.Resource.define_primary_key(__MODULE__, opts)
 
-      Module.register_attribute(__MODULE__, :actions, accumulate: true)
-      Module.register_attribute(__MODULE__, :attributes, accumulate: true)
-      Module.register_attribute(__MODULE__, :relationships, accumulate: true)
-      Module.register_attribute(__MODULE__, :mix_ins, accumulate: true)
+      use Ash.Resource.DSL
+    end
+  end
 
-      if unquote(Keyword.get(opts, :primary_key?, true)) do
-        @attributes Ash.Resource.Attributes.Attribute.new(__MODULE__, :id, :uuid,
-                      primary_key?: true
-                    )
-      end
+  @doc false
+  def define_resource_module_attributes(mod, opts) do
+    Module.register_attribute(mod, :before_compile_hooks, accumulate: true)
+    Module.register_attribute(mod, :actions, accumulate: true)
+    Module.register_attribute(mod, :attributes, accumulate: true)
+    Module.register_attribute(mod, :relationships, accumulate: true)
+    Module.register_attribute(mod, :mix_ins, accumulate: true)
 
-      # Module.put_attribute(__MODULE__, :custom_threshold_for_lib, 10)
-      import Ash.Resource
-      import Ash.Resource.Actions, only: [actions: 1]
-      import Ash.Resource.Attributes, only: [attributes: 1]
-      import Ash.Resource.Relationships, only: [relationships: 1]
-      import Ash.Authorization.Rule
+    Module.put_attribute(mod, :name, opts[:name])
+    Module.put_attribute(mod, :resource_type, opts[:type])
+    Module.put_attribute(mod, :max_page_size, opts[:max_page_size])
+    Module.put_attribute(mod, :default_page_size, opts[:default_page_size])
+  end
 
-      name = unquote(opts[:name])
-      resource_type = unquote(opts[:type])
+  @doc false
+  def define_primary_key(mod, opts) do
+    case opts[:primary_key] do
+      true ->
+        attribute = Ash.Resource.Attributes.Attribute.new(mod, :id, :uuid, primary_key?: true)
+        Module.put_attribute(mod, :attributes, attribute)
 
-      @name name
-      @resource_type resource_type
-      @max_page_size nil
-      @default_page_size nil
+      false ->
+        :ok
 
-      unless @name do
-        raise "Must set name"
-      end
+      opts ->
+        attribute =
+          Ash.Resource.Attributes.Attribute.new(mod, opts[:field], opts[:type], primary_key?: true)
 
-      unless @resource_type do
-        raise "Must set resource type"
-      end
+        Module.put_attribute(mod, :attributes, attribute)
+    end
+  end
+
+  @doc false
+  def validate_use_opts(mod, opts) do
+    case Ashton.validate(opts, @resource_opts_schema) do
+      {:error, [{key, message} | _]} ->
+        raise Ash.Error.ResourceDslError, resource: mod, option: key, message: message
+
+      {:ok, opts} ->
+        opts
     end
   end
 
@@ -91,34 +164,14 @@ defmodule Ash.Resource do
         @default_page_size
       end
 
-      unless @skip_data_layer || @data_layer do
-        raise "Must `use` a data layer module or pass `no_data_layer: true`"
-      end
-
       def data_layer() do
-        if @skip_data_layer do
-          false
-        else
-          @data_layer
-        end
+        @data_layer || false
       end
 
       Enum.map(@mix_ins || [], fn hook_module ->
         code = hook_module.before_compile_hook(unquote(Macro.escape(env)))
         Module.eval_quoted(__MODULE__, code)
       end)
-    end
-  end
-
-  defmacro max_page_size(page_size) do
-    quote do
-      @max_page_size unquote(page_size)
-    end
-  end
-
-  defmacro default_page_size(page_size) do
-    quote do
-      @default_page_size unquote(page_size)
     end
   end
 

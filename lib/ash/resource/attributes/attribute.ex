@@ -1,12 +1,22 @@
 defmodule Ash.Resource.Attributes.Attribute do
+  @moduledoc """
+  The struct containing information about an attribute.
+  See the DSL documentation for more information on their usage in the DSL
+  """
+
   defstruct [:name, :type, :primary_key?]
 
-  @builtins Ash.Type.builtins()
+  @type t :: %__MODULE__{
+          name: atom(),
+          type: Ash.type(),
+          primary_key?: boolean()
+        }
 
-  @option_schema Ashton.schema(opts: [primary_key?: :boolean])
+  @builtins Ash.Type.builtins()
+  @schema Ashton.schema(opts: [primary_key?: :boolean], defaults: [primary_key?: false])
 
   @doc false
-  def attribute_schema(), do: @option_schema
+  def attribute_schema(), do: @schema
 
   def new(resource, name, type, opts \\ [])
 
@@ -25,7 +35,7 @@ defmodule Ash.Resource.Attributes.Attribute do
   end
 
   def new(resource, name, type, opts) when type in @builtins do
-    case Ashton.validate(opts, @option_schema) do
+    case Ashton.validate(opts, @schema) do
       {:error, [{key, message} | _]} ->
         raise Ash.Error.ResourceDslError,
           resource: resource,
