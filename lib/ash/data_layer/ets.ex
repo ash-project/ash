@@ -1,7 +1,6 @@
 defmodule Ash.DataLayer.Ets do
   @moduledoc """
-  An ETS backed Ash Datalayer. Should only be used for testing, or for
-  unimportant/small datasets.
+  An ETS (Erlang Term Storage) backed Ash Datalayer. This was initially built for testing purposes, since it comes built into OTP, as opposed to using Postgres, which would have required adding in another dependency into Ash. While this data layer can be used in your application, it should only be used for small/unimportant data sets that do not require long term persistence.
   """
 
   @behaviour Ash.DataLayer
