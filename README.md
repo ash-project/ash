@@ -1,6 +1,6 @@
 # Ash
 
-Traditional MVC Frameworks (Rails, Django, .Net, Phoenix, etc) leave it up to the user to build the glue requests for data (HTTP requests in various forms as well as server side domain logic) and their respective ORMs. In that space there is an incredible amount of boilerplate code that must get written from scratch for each application (authentication, authorization, sorting, filtering, pagination, sideloading relationships, serialization, etc). Often this code is untested, lacks many feature support, is tighly coupled to a specific web layer, and varies widely between each piece of data.
+Traditional MVC Frameworks (Rails, Django, .Net, Phoenix, etc) leave it up to the user to build the glue between requests for data (HTTP requests in various forms as well as server side domain logic) and their respective ORMs. In that space there is an incredible amount of boilerplate code that must get written from scratch for each application (authentication, authorization, sorting, filtering, pagination, sideloading relationships, serialization, etc). Often this code is untested, lacks many feature support, is tighly coupled to a specific web layer, and varies widely between each piece of data.
 
 Ash is an opinionated yet configurable framework designed to reduce boilerplate in any Elixir application by providing a layer of abstraction over the data layer of your system called a `Resource`. Don't worry Phoenix developers - Ash is designed to play well with Phoenix :)
 
