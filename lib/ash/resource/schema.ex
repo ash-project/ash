@@ -1,4 +1,4 @@
-defmodule Ash.Resource.Schema do
+defmodule Ash.Schema do
   defmacro define_schema(name) do
     quote do
       use Ecto.Schema
@@ -8,12 +8,40 @@ defmodule Ash.Resource.Schema do
       schema unquote(name) do
         for attribute <- @attributes do
           unless attribute.name == :id do
-            field attribute.name, attribute.ecto_type
+            field(attribute.name, Ash.Type.ecto_type(attribute.type))
           end
         end
 
         for relationship <- Enum.filter(@relationships, &(&1.type == :belongs_to)) do
-          belongs_to relationship.name, relationship.destination
+          belongs_to(relationship.name, relationship.destination,
+            define_field: false,
+            foreign_key: relationship.source_field,
+            references: relationship.destination_field
+          )
+        end
+
+        for relationship <- Enum.filter(@relationships, &(&1.type == :has_one)) do
+          has_one(relationship.name, relationship.destination,
+            foreign_key: relationship.destination_field,
+            references: relationship.source_field
+          )
+        end
+
+        for relationship <- Enum.filter(@relationships, &(&1.type == :has_many)) do
+          has_many(relationship.name, relationship.destination,
+            foreign_key: relationship.destination_field,
+            references: relationship.source_field
+          )
+        end
+
+        for relationship <- Enum.filter(@relationships, &(&1.type == :many_to_many)) do
+          many_to_many(relationship.name, relationship.destination,
+            join_through: relationship.through,
+            join_keys: [
+              {relationship.source_field_on_join_table, relationship.source_field},
+              {relationship.destination_field_on_join_table, relationship.destination_field}
+            ]
+          )
         end
       end
     end

@@ -1,12 +1,28 @@
 # Used by "mix format"
 locals_without_parens = [
-  get: 1,
-  index: 1,
-  post: 1,
+  read: 1,
+  read: 2,
+  create: 1,
+  create: 2,
+  update: 1,
+  update: 2,
+  destroy: 1,
+  destroy: 2,
+  actions: 1,
+  defaults: 1,
   attribute: 2,
+  attribute: 3,
   belongs_to: 2,
+  belongs_to: 3,
+  has_one: 2,
+  has_one: 3,
   has_many: 2,
-  field: 2
+  has_many: 3,
+  many_to_many: 2,
+  many_to_many: 3,
+  resources: 1,
+  max_page_size: 1,
+  default_page_size: 1
 ]
 
 [
