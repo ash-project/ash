@@ -44,21 +44,25 @@ defmodule Ash.Resource do
                         )
 
   @moduledoc """
-  The entry point for creating an `Ash.Resource`.
+  A resource is a public, standardized API on top of your data layer(s). A resource defines which CRUD operations are allowed to be performed, which data attributes are exposed, as well as relationships to other resources.
 
-  This brings in the top level DSL macros, defines module attributes for aggregating state as
-  DSL functions are called, and defines a set of functions internal to the resource that can be
-  used to inspect them.
+  Resource definitions should be placed in the `lib/resources` directory. The file name should be the single underscored name of the data that backs the resource with a `.ex` extension (ie: `lib/resoruces/post.ex`).
 
-  Simply add `use Ash.Resource, ...` at the top of your resource module, and refer to the DSL
+  Resources are declaritive and can be configured using the DSL described below. Once declared, resources can be consumed anywhere in an application and are designed to be fully compliant with JSON:API and GraphQL web layers by using the AshJsonApi and AshGraphQL packages respectively.
+
+  To create a resource simply add `use Ash.Resource, ...` at the top of your resource module, and refer to the DSL
   documentation for the rest. The options for `use Ash.Resource` are described below.
 
+  ```
+  defmodule MyApp.Challenge do
+    use Ash.Resource, type: "challenge", name: "challenges", primary_key: false
+    use AshPostgres, repo: AshKetchum.Repo
+  end
+  ```
 
   Resource DSL documentation: `Ash.Resource.DSL`
 
-
   #{Ashton.document(@resource_opts_schema)}
-
 
   Note:
   *Do not* call the functions on a resource, as in `MyResource.type()` as this is a *private*
