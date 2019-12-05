@@ -32,7 +32,10 @@ defmodule Ash.Resource.Relationships do
         )
 
       # TODO: This assumes binary_id
-      @attributes Ash.Resource.Attributes.Attribute.new(relationship.source_field, :binary_id,
+      @attributes Ash.Resource.Attributes.Attribute.new(
+                    __MODULE__,
+                    relationship.source_field,
+                    :uuid,
                     primary_key?: relationship.primary_key?
                   )
 

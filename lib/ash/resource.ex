@@ -168,7 +168,7 @@ defmodule Ash.Resource do
         @data_layer || false
       end
 
-      Enum.map(@mix_ins || [], fn hook_module ->
+      Enum.map(@mix_ins, fn hook_module ->
         code = hook_module.before_compile_hook(unquote(Macro.escape(env)))
         Module.eval_quoted(__MODULE__, code)
       end)

@@ -1,5 +1,5 @@
 defmodule Ash.Type do
-  def builtins(), do: [:string, :uuid]
+  def builtins(), do: [:string, :uuid, :utc_datetime]
 
   def ash_type?(module) do
     :erlang.function_exported(module, :module_info, 0) and ash_type_module?(module)
