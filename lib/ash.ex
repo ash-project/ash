@@ -1,6 +1,6 @@
 defmodule Ash do
   @moduledoc """
-  The primary interface for interrogating apis and resources, an
+  The primary interface for interrogating apis and resources.
 
   This is not the code level interface for a resource. Instead, call functions
   on an `Api` module that contains those resources.

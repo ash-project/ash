@@ -1,6 +1,8 @@
 defmodule Ash.Test.Actions.ReadTest do
   use ExUnit.Case, async: true
 
+  # TODO: test the bang versions of read actions
+
   defmodule Post do
     use Ash.Resource, name: "posts", type: "post"
     use Ash.DataLayer.Ets, private?: true

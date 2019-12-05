@@ -7,6 +7,29 @@ defmodule Ash.Resource.DSL do
   * `actions` - `Ash.Resource.Actions`
   * `attributes` - `Ash.Resource.Attributes`
   * `relationships` - `Ash.Resource.Relationships`
+
+  See the relevant module documentation. To use sections in your resource:
+
+  ```elixir
+  defmodule MyModule do
+    use Ash.Resource, name: "foos", type: "foo"
+
+    actions do
+      ...
+      # see actions documentation
+    end
+
+    attributes do
+      ...
+      # see attributes documentation
+    end
+
+    relationships do
+      ...
+      # see relationships documentation
+    end
+  end
+  ```
   """
 
   defmacro __using__(_) do

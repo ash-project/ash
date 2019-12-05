@@ -15,10 +15,16 @@ defmodule Ash.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       package: package(),
       deps: deps(),
+      docs: docs(),
       description: @description,
       source_url: "https://github.com/ash-project/ash",
       homepage_url: "https://github.com/ash-project/ash"
     ]
+  end
+
+  defp docs() do
+    # The main page in the docs
+    [main: "readme", extras: ["README.md"]]
   end
 
   defp package do

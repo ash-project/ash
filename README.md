@@ -1,6 +1,7 @@
 # Ash
 
-**TODO: Add description**
+## Quick Links
+* For Resource DSL documentation, see: [Ash.Resource](Ash.Resource.html)
 
 ## TODO LIST (in no order)
 
@@ -34,5 +35,7 @@
 * consider moving `type` and `name` for resources out into json api (or perhaps just `name`) since only json api uses that
 * When we support embedding, figure out `embed_as` on `Ash.Type`
 * Consider allowing declaring a data layer at the *api* level, or overriding the resource's data layer at the *api* level
-
+* Since actions can return multiple errors, we need a testing utility to unwrap/assert on them
+* Flesh out relationship options
+* Flesh out field options (sortable, filterable, other behavior?)
 

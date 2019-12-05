@@ -5,10 +5,17 @@ defmodule Ash.DataLayer.Sort do
     sort
     |> Enum.reduce({[], []}, fn
       {order, field}, {sorts, errors} when order in [:asc, :desc] ->
-        if Ash.attribute(resource, field) do
-          {sorts ++ [{order, field}], errors}
-        else
-          {sorts, ["invalid sort attribute: #{field}" | errors]}
+        attribute = Ash.attribute(resource, field)
+
+        cond do
+          !attribute ->
+            {sorts, ["no such attribute: #{field}" | errors]}
+
+          !Ash.Type.sortable?(attribute.type, Ash.data_layer(resource)) ->
+            {sorts, ["Cannot sort on #{inspect(field)}"]}
+
+          true ->
+            {sorts ++ [{order, field}], errors}
         end
 
       sort, {sorts, errors} ->

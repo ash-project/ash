@@ -1,11 +1,9 @@
 defmodule Ash.DataLayer.Filter do
   @filter_types [
-    :equal,
-    :greater_than,
-    :less_than
+    :equal
   ]
 
-  @type filter_type :: :equal | :not_equal | :greater_than | :less_than
+  @type filter_type :: :equal
 
   @spec filter_types() :: list(filter_type())
   def filter_types() do
@@ -23,10 +21,6 @@ defmodule Ash.DataLayer.Filter do
       {filter, []} -> {:ok, filter}
       {_, errors} -> {:error, errors}
     end
-  end
-
-  defp process_filter(_resource, :id, value, {filter, errors}) do
-    {Map.put(filter, :id, value), errors}
   end
 
   # TODO: Look into making `from_related` accept a full filter statement for the source entity,
@@ -62,9 +56,18 @@ defmodule Ash.DataLayer.Filter do
     end
   end
 
-  defp process_attribute_filter(_resource, %{name: name}, value, {filter, errors}) do
-    # TODO: Type validate
-    {Map.put(filter, name, value), errors}
+  defp process_attribute_filter(resource, %{name: name, type: type}, value, {filter, errors}) do
+    with {:ok, casted} <- Ash.Type.cast_input(type, value),
+         filters <- Ash.Type.supported_filter_types(type, Ash.data_layer(resource)),
+         {:supported, true} <- {:supported, :equal in filters} do
+      {Map.put(filter, name, casted), errors}
+    else
+      :error ->
+        {filter, ["Invalid value: #{inspect(value)} for #{inspect(name)}" | errors]}
+
+      {:supported, false} ->
+        {filter, ["Cannot filter #{inspect(name)} for equality." | errors]}
+    end
   end
 
   defp process_relationship_filter(_resource, %{name: name}, value, {filter, errors}) do

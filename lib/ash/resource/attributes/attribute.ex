@@ -1,8 +1,5 @@
 defmodule Ash.Resource.Attributes.Attribute do
-  @moduledoc """
-  The struct containing information about an attribute.
-  See the DSL documentation for more information on their usage in the DSL
-  """
+  @doc false
 
   defstruct [:name, :type, :primary_key?]
 

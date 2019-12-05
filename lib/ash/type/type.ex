@@ -8,6 +8,7 @@ defmodule Ash.Type do
   everything yourself.
   """
   @callback supported_filter_types(Ash.data_layer()) :: list(Ash.DataLayer.Filter.filter_type())
+  @callback sortable?(Ash.data_layer()) :: boolean
   @callback storage_type() :: Ecto.Type.t()
   @callback ecto_type() :: Ecto.Type.t()
   @callback cast_input(term) :: {:ok, term} | {:error, keyword()} | :error
@@ -17,9 +18,9 @@ defmodule Ash.Type do
   @callback describe() :: String.t()
 
   @builtins [
-    string: [ecto_type: :string, filters: [:equal]],
-    uuid: [ecto_type: :binary_id, filters: [:equal]],
-    utc_datetime: [ecto_type: :utc_datetime, filters: [:equal]]
+    string: [ecto_type: :string, filters: [:equal], sortable?: true],
+    uuid: [ecto_type: :binary_id, filters: [:equal], sortable?: true],
+    utc_datetime: [ecto_type: :utc_datetime, filters: [:equal], sortable?: true]
   ]
 
   @builtin_names Keyword.keys(@builtins)
@@ -36,6 +37,16 @@ defmodule Ash.Type do
   end
 
   def supported_filter_types(type, data_layer), do: type.supported_filter_types(data_layer)
+
+  @doc """
+  Determines whether or not this value can be sorted.
+  """
+  @spec sortable?(t, Ash.data_layer()) :: boolean
+  def sortable?(type, _data_layer) when type in @builtin_names do
+    @builtins[type][:sortable?]
+  end
+
+  def sortable?(type, data_layer), do: type.sortable?(data_layer)
 
   @doc """
   Returns the *underlying* storage type (the underlying type of the *ecto type* of the *ash type*)
@@ -156,12 +167,19 @@ defmodule Ash.Type do
         def embed_as(_), do: :self
       end
 
+      @impl true
       def ecto_type(), do: EctoType
 
+      @impl true
       def supported_filter_types(_data_layer), do: [:equal]
+
+      @impl true
+      def sortable?(_data_layer), do: true
+
+      @impl true
       def equal?(left, right), do: left == right
 
-      defoverridable supported_filter_types: 1, equal?: 2
+      defoverridable supported_filter_types: 1, equal?: 2, sortable?: 1
     end
   end
 

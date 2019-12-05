@@ -12,8 +12,6 @@ defmodule Ash.Schema do
           end
         end
 
-        # TODO: Alot of relationship options are ignored here
-
         for relationship <- Enum.filter(@relationships, &(&1.type == :belongs_to)) do
           belongs_to(relationship.name, relationship.destination,
             define_field: false,

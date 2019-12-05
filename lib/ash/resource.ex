@@ -50,10 +50,15 @@ defmodule Ash.Resource do
   DSL functions are called, and defines a set of functions internal to the resource that can be
   used to inspect them.
 
-  Simply add `use Ash.Resource, ...` at the top of your resource module, and refer to the DSL documentation
-  at `Ash.Resource.DSL` for the rest. The options for `use Ash.Resource` are described below.
+  Simply add `use Ash.Resource, ...` at the top of your resource module, and refer to the DSL
+  documentation for the rest. The options for `use Ash.Resource` are described below.
+
+
+  Resource DSL documentation: `Ash.Resource.DSL`
+
 
   #{Ashton.document(@resource_opts_schema)}
+
 
   Note:
   *Do not* call the functions on a resource, as in `MyResource.type()` as this is a *private*
