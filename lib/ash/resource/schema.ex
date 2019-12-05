@@ -8,7 +8,7 @@ defmodule Ash.Schema do
       schema unquote(name) do
         for attribute <- @attributes do
           unless attribute.name == :id do
-            field(attribute.name, Ash.Schema.type(attribute.type))
+            field(attribute.name, Ash.Type.ecto_type(attribute.type))
           end
         end
 
@@ -48,7 +48,4 @@ defmodule Ash.Schema do
       end
     end
   end
-
-  def type(:uuid), do: :binary_id
-  def type(other), do: other
 end

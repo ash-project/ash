@@ -1,5 +1,9 @@
 defmodule Ash.Error.ResourceDslError do
-  defexception [:message, :path, :option, :resource]
+  defexception [:message, :path, :option, :resource, :using]
+
+  def message(%{message: message, path: nil, option: option, resource: resource, using: using}) do
+    "#{inspect(resource)}: `use #{inspect(using)}, ...` #{option} #{message} "
+  end
 
   def message(%{message: message, path: nil, option: option, resource: resource}) do
     "#{inspect(resource)}: #{option} #{message}"

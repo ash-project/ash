@@ -1,7 +1,6 @@
 defmodule Ash.Api do
   defmacro __using__(opts) do
     quote bind_quoted: [opts: opts] do
-      import Ash.Api, only: [api: 1]
       @before_compile Ash.Api
 
       @default_page_size nil
@@ -13,11 +12,7 @@ defmodule Ash.Api do
       Module.register_attribute(__MODULE__, :mix_ins, accumulate: true)
       Module.register_attribute(__MODULE__, :resources, accumulate: true)
       Module.register_attribute(__MODULE__, :named_resources, accumulate: true)
-    end
-  end
 
-  defmacro api(do: block) do
-    quote do
       import Ash.Api,
         only: [
           default_page_size: 1,
@@ -26,10 +21,6 @@ defmodule Ash.Api do
           side_load: 2,
           side_load: 1
         ]
-
-      unquote(block)
-
-      import Ash.Api, only: []
     end
   end
 

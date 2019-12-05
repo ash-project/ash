@@ -1,4 +1,17 @@
 defmodule Ash.DataLayer.Filter do
+  @filter_types [
+    :equal,
+    :greater_than,
+    :less_than
+  ]
+
+  @type filter_type :: :equal | :not_equal | :greater_than | :less_than
+
+  @spec filter_types() :: list(filter_type())
+  def filter_types() do
+    @filter_types
+  end
+
   # This logic will need to get more complex as the ability to customize filter handling arises
   # as well as when complex filter types are added
   def process(resource, filter) do

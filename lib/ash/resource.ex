@@ -84,6 +84,7 @@ defmodule Ash.Resource do
     Module.put_attribute(mod, :resource_type, opts[:type])
     Module.put_attribute(mod, :max_page_size, opts[:max_page_size])
     Module.put_attribute(mod, :default_page_size, opts[:default_page_size])
+    Module.put_attribute(mod, :data_layer, nil)
   end
 
   @doc false
@@ -108,7 +109,11 @@ defmodule Ash.Resource do
   def validate_use_opts(mod, opts) do
     case Ashton.validate(opts, @resource_opts_schema) do
       {:error, [{key, message} | _]} ->
-        raise Ash.Error.ResourceDslError, resource: mod, option: key, message: message
+        raise Ash.Error.ResourceDslError,
+          resource: mod,
+          using: __MODULE__,
+          option: key,
+          message: message
 
       {:ok, opts} ->
         opts
@@ -165,10 +170,10 @@ defmodule Ash.Resource do
       end
 
       def data_layer() do
-        @data_layer || false
+        @data_layer
       end
 
-      Enum.map(@mix_ins, fn hook_module ->
+      Enum.map(@mix_ins || [], fn hook_module ->
         code = hook_module.before_compile_hook(unquote(Macro.escape(env)))
         Module.eval_quoted(__MODULE__, code)
       end)

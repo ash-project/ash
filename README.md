@@ -4,8 +4,6 @@
 
 ## TODO LIST (in no order)
 
-* Add central API configuration DSL `api do ... end`
-  * Use this for `default_page_size` and `max_page_size`
 * Make our router cabaple of describing its routes in `mix phx.routes` Chris McCord says that we could probably power that, seeing as phoenix controls both APIs, and that capability could be added to `Plug.Router`
 * Finish the serializer
 * Make primary key type configurable
@@ -26,6 +24,7 @@
 * Maybe fix the crappy parts of optimal and bring it in for opts validation?
 * The ecto internals that live on structs are going to cause problems w/ pluggability of backends, like the `%Ecto.Association.NotLoaded{}`. That backend may need to scrub the ecto specifics off of those structs.
 * Add a mixin compatibility checker framework, to allow for mix_ins to declare what features they do/don't support.
+  * Have ecto types ask the data layer about the kinds of filtering they can do, and that kind of thing.
 * Make `Ash.Type` that is a superset of things like `Ecto.Type`. If we bring in ecto database-less(looking like more and more of a good idea to me) that kind of thing gets easier and we can potentially lean on ecto for type validations well.
 * use a process to hold constructed DSL state, and then coalesce it all at the end. This can clean things up, and also allow us to potentially eliminate the registry. This will probably go hand in hand w/ the "capabilities" layer, where the DSL confirms that your data layer is capable of performing everything that your DSL declares
 * make ets dep optional
@@ -33,5 +32,7 @@
 * Contributor guideline and code of conduct
 * Do branch analysis of each record after authorizing it, in authorizer
 * consider moving `type` and `name` for resources out into json api (or perhaps just `name`) since only json api uses that
+* When we support embedding, figure out `embed_as` on `Ash.Type`
+* Consider allowing declaring a data layer at the *api* level, or overriding the resource's data layer at the *api* level
 
 

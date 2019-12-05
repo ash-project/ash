@@ -18,9 +18,7 @@ defmodule Ash.Test.Actions.ReadTest do
   defmodule Api do
     use Ash.Api
 
-    api do
-      resources [Post]
-    end
+    resources [Post]
   end
 
   describe "api.get/3" do
