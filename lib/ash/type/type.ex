@@ -76,7 +76,7 @@ defmodule Ash.Type do
   """
   @spec cast_input(t(), term) :: {:ok, term} | {:error, keyword()} | :error
   def cast_input(type, term) when type in @builtin_names do
-    Ecto.Type.cast(@builtins[term][:ecto_type], term)
+    Ecto.Type.cast(@builtins[type][:ecto_type], term)
   end
 
   def cast_input(type, term) do
@@ -189,9 +189,11 @@ defmodule Ash.Type do
   @doc "Returns true if the value is a builtin type or adopts the `Ash.Type` behaviour"
   def ash_type?(atom) when atom in @builtin_names, do: true
 
-  def ash_type?(module) do
-    :erlang.function_exported(module, :module_info, 0) and ash_type_module?(module)
+  def ash_type?(module) when is_atom(module) do
+    :erlang.function_exported(module, :__info__, 1) and ash_type_module?(module)
   end
+
+  def ash_type?(_), do: false
 
   defp ash_type_module?(module) do
     :attributes

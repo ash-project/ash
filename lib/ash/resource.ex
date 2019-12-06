@@ -86,7 +86,18 @@ defmodule Ash.Resource do
     quote do
       @before_compile Ash.Resource
 
-      opts = Ash.Resource.validate_use_opts(__MODULE__, unquote(opts))
+      opts =
+        case Ashton.validate(unquote(opts), Ash.Resource.resource_opts_schema()) do
+          {:error, [{key, message} | _]} ->
+            raise Ash.Error.ResourceDslError,
+              using: __MODULE__,
+              option: key,
+              message: message
+
+          {:ok, opts} ->
+            opts
+        end
+
       Ash.Resource.define_resource_module_attributes(__MODULE__, opts)
       Ash.Resource.define_primary_key(__MODULE__, opts)
 
@@ -113,43 +124,29 @@ defmodule Ash.Resource do
   def define_primary_key(mod, opts) do
     case opts[:primary_key] do
       true ->
-        attribute = Ash.Resource.Attributes.Attribute.new(mod, :id, :uuid, primary_key?: true)
+        {:ok, attribute} = Ash.Resource.Attributes.Attribute.new(:id, :uuid, primary_key?: true)
         Module.put_attribute(mod, :attributes, attribute)
 
       false ->
         :ok
 
       opts ->
-        attribute =
-          Ash.Resource.Attributes.Attribute.new(mod, opts[:field], opts[:type], primary_key?: true)
+        {:ok, attribute} =
+          Ash.Resource.Attributes.Attribute.new(opts[:field], opts[:type], primary_key?: true)
 
         Module.put_attribute(mod, :attributes, attribute)
     end
   end
 
   @doc false
-  def validate_use_opts(mod, opts) do
-    case Ashton.validate(opts, @resource_opts_schema) do
-      {:error, [{key, message} | _]} ->
-        raise Ash.Error.ResourceDslError,
-          resource: mod,
-          using: __MODULE__,
-          option: key,
-          message: message
-
-      {:ok, opts} ->
-        opts
-    end
+  def resource_opts_schema() do
+    @resource_opts_schema
   end
 
   defmacro __before_compile__(env) do
     quote do
       @sanitized_actions Ash.Resource.mark_primaries(@actions)
       @ash_primary_key Ash.Resource.primary_key(@attributes)
-
-      unless @ash_primary_key do
-        raise "Must have a primary key for a resource: #{__MODULE__}"
-      end
 
       require Ash.Schema
 

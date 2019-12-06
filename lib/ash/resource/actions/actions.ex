@@ -1,4 +1,23 @@
 defmodule Ash.Resource.Actions do
+  @moduledoc """
+  DSL components for declaring resource actions.
+
+  All manipulation of data through the underlying data layer happens through actions.
+  There are four types of action: `create`, `read`, `update`, and `delete`. You may
+  recognize these from the acronym `CRUD`. You can have multiple actions of the same
+  type, as long as they have different names. This is the primary mechanism for customizing
+  your resources to conform to your business logic. It is normal and expected to have
+  multiple actions of each type in a large application.
+
+  If you have multiple actions of the same type, one of them must be designated as the
+  primary action for that type, via: `primary?: true`. This tells the ash what to do
+  if an action of that type is requested, but no specific action name is given.
+
+  Authorization in ash is done via supplying a list of rules to actions in the
+  `rules` option. To understand rules and authorization, see the documentation in `Ash.Authorization`
+  """
+
+  @doc false
   defmacro actions(do: block) do
     quote do
       import Ash.Resource.Actions
@@ -25,85 +44,144 @@ defmodule Ash.Resource.Actions do
     end
   end
 
-  defmacro defaults(:all) do
-    quote do
-      defaults([:create, :update, :destroy, :read])
-    end
-  end
+  @doc """
+  Sets up simple defaults for the supplied list of action types.
 
-  defmacro defaults(defaults, opts \\ []) do
+  These defaults will have the name `:default`. If you need to configure your actions,
+  you will have to declare them each separately.
+  """
+  defmacro defaults(defaults) do
     quote do
-      opts = unquote(opts)
-
       for default <- unquote(defaults) do
         case default do
+          :all ->
+            create(:default)
+            read(:default)
+            update(:default)
+            destroy(:default)
+
           :create ->
-            create(:default, opts)
-
-          :update ->
-            update(:default, opts)
-
-          :destroy ->
-            destroy(:default, opts)
+            create(:default)
 
           :read ->
-            read(:default, opts)
+            read(:default)
+
+          :update ->
+            update(:default)
+
+          :destroy ->
+            destroy(:default)
 
           action ->
-            raise "Invalid action type #{action} listed in defaults list for resource: #{
-                    __MODULE__
-                  }"
+            raise Ash.Error.ResourceDslError,
+              path: [:actions, :defaults],
+              message: "Invalid default #{action}"
         end
       end
     end
   end
 
+  @doc """
+  Declares a `create` action. For calling this action, see the `Ash.Api` documentation.
+
+  #{Ashton.document(Ash.Resource.Actions.Create.opt_schema())}
+  """
   defmacro create(name, opts \\ []) do
     quote bind_quoted: [name: name, opts: opts] do
-      action =
-        Ash.Resource.Actions.Create.new(name,
-          primary?: opts[:primary?] || false,
-          rules: opts[:rules] || []
-        )
+      unless is_atom(name) do
+        raise Ash.Error.ResourceDslError,
+          message: "action name must be an atom",
+          path: [:actions, :create]
+      end
 
-      @actions action
+      case Ash.Resource.Actions.Create.new(name, opts) do
+        {:ok, action} ->
+          @actions action
+
+        {:error, [{key, message} | _]} ->
+          raise Ash.Error.ResourceDslError,
+            message: message,
+            option: key,
+            path: [:actions, :create, name]
+      end
     end
   end
 
-  defmacro update(name, opts \\ []) do
-    quote bind_quoted: [name: name, opts: opts] do
-      action =
-        Ash.Resource.Actions.Update.new(name,
-          primary?: opts[:primary?] || false,
-          rules: opts[:rules] || []
-        )
+  @doc """
+  Declares a `read` action. For calling this action, see the `Ash.Api` documentation.
 
-      @actions action
-    end
-  end
-
-  defmacro destroy(name, opts \\ []) do
-    quote bind_quoted: [name: name, opts: opts] do
-      action =
-        Ash.Resource.Actions.Destroy.new(name,
-          primary?: opts[:primary?] || false,
-          rules: opts[:rules] || []
-        )
-
-      @actions action
-    end
-  end
-
+  #{Ashton.document(Ash.Resource.Actions.Read.opt_schema())}
+  """
   defmacro read(name, opts \\ []) do
     quote bind_quoted: [name: name, opts: opts] do
-      action =
-        Ash.Resource.Actions.Read.new(name,
-          primary?: opts[:primary?] || false,
-          rules: opts[:rules] || [],
-          paginate?: Keyword.get(opts, :paginate?, true)
-        )
+      unless is_atom(name) do
+        raise Ash.Error.ResourceDslError,
+          message: "action name must be an atom",
+          path: [:actions, :read]
+      end
 
-      @actions action
+      case Ash.Resource.Actions.Read.new(name, opts) do
+        {:ok, action} ->
+          @actions action
+
+        {:error, [{key, message} | _]} ->
+          raise Ash.Error.ResourceDslError,
+            message: message,
+            option: key,
+            path: [:actions, :read, name]
+      end
+    end
+  end
+
+  @doc """
+  Declares an `update` action. For calling this action, see the `Ash.Api` documentation.
+
+  #{Ashton.document(Ash.Resource.Actions.Update.opt_schema())}
+  """
+  defmacro update(name, opts \\ []) do
+    quote bind_quoted: [name: name, opts: opts] do
+      unless is_atom(name) do
+        raise Ash.Error.ResourceDslError,
+          message: "action name must be an atom",
+          path: [:actions, :update]
+      end
+
+      case Ash.Resource.Actions.Update.new(name, opts) do
+        {:ok, action} ->
+          @actions action
+
+        {:error, [{key, message} | _]} ->
+          raise Ash.Error.ResourceDslError,
+            message: message,
+            option: key,
+            path: [:actions, :update, name]
+      end
+    end
+  end
+
+  @doc """
+  Declares an `destroy` action. For calling this action, see the `Ash.Api` documentation.
+
+  #{Ashton.document(Ash.Resource.Actions.Destroy.opt_schema())}
+  """
+  defmacro destroy(name, opts \\ []) do
+    quote bind_quoted: [name: name, opts: opts] do
+      unless is_atom(name) do
+        raise Ash.Error.ResourceDslError,
+          message: "action name must be an atom",
+          path: [:actions, :destroy]
+      end
+
+      case Ash.Resource.Actions.Destroy.new(name, opts) do
+        {:ok, action} ->
+          @actions action
+
+        {:error, [{key, message} | _]} ->
+          raise Ash.Error.ResourceDslError,
+            message: message,
+            option: key,
+            path: [:actions, :destroy, name]
+      end
     end
   end
 end

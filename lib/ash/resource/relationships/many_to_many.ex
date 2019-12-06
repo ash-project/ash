@@ -13,7 +13,14 @@ defmodule Ash.Resource.Relationships.ManyToMany do
 
   @type t :: %__MODULE__{
           type: :many_to_many,
-          cardinality: :many
+          cardinality: :many,
+          name: atom,
+          through: Ash.resource() | String.t(),
+          destination: Ash.resource(),
+          source_field: atom,
+          destination_field: atom,
+          source_field_on_join_table: atom,
+          destination_field_on_join_table: atom
         }
 
   @opt_schema Ashton.schema(
@@ -32,10 +39,12 @@ defmodule Ash.Resource.Relationships.ManyToMany do
                   :through
                 ],
                 describe: [
+                  through:
+                    "Either a string representing a table/generic name for the join table or a module name of a resource.",
                   source_field_on_join_table:
-                    "The field on the join table that should line up with `source_field` on this resource. Default: <resource_name>_id",
+                    "The field on the join table that should line up with `source_field` on this resource. Default: [resource_name]_id",
                   destination_field_on_join_table:
-                    "The field on the join table that should line up with `destination_field` on the related resource. Default: <relationshihp_name>_id",
+                    "The field on the join table that should line up with `destination_field` on the related resource. Default: [relationshihp_name]_id",
                   source_field:
                     "The field on this resource that should line up with `source_field_on_join_table` on the join table.",
                   destination_field:
@@ -51,7 +60,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
           name :: atom,
           related_resource :: Ash.resource(),
           opts :: Keyword.t()
-        ) :: t()
+        ) :: {:ok, t()} | {:error, term}
   def new(resource_name, name, related_resource, opts \\ []) do
     case Ashton.validate(opts, @opt_schema) do
       {:ok, opts} ->
@@ -67,7 +76,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
            source_field_on_join_table:
              opts[:source_field_on_join_table] || :"#{resource_name}_id",
            destination_field_on_join_table:
-             opts[:destination_field_on_join_table] || ":#{name}_id"
+             opts[:destination_field_on_join_table] || :"#{name}_id"
          }}
 
       {:error, errors} ->

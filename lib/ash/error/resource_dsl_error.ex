@@ -1,22 +1,22 @@
 defmodule Ash.Error.ResourceDslError do
-  defexception [:message, :path, :option, :resource, :using]
+  defexception [:message, :path, :option, :using]
 
-  def message(%{message: message, path: nil, option: option, resource: resource, using: using}) do
-    "#{inspect(resource)}: `use #{inspect(using)}, ...` #{option} #{message} "
+  def message(%{message: message, path: nil, option: option, using: using}) do
+    "`use #{inspect(using)}, ...` #{option} #{message} "
   end
 
-  def message(%{message: message, path: nil, option: option, resource: resource}) do
-    "#{inspect(resource)}: #{option} #{message}"
+  def message(%{message: message, path: nil, option: option}) do
+    "#{option} #{message}"
   end
 
-  def message(%{message: message, path: dsl_path, option: nil, resource: resource}) do
-    dsl_path = Enum.join(dsl_path, "->")
-    "#{inspect(resource)}: #{message} at #{dsl_path}"
+  def message(%{message: message, path: dsl_path, option: nil}) do
+    dsl_path = Enum.join(dsl_path, " -> ")
+    "#{message} at #{dsl_path}"
   end
 
-  def message(%{message: message, path: dsl_path, option: option, resource: resource}) do
-    dsl_path = Enum.join(dsl_path, "->")
+  def message(%{message: message, path: dsl_path, option: option}) do
+    dsl_path = Enum.join(dsl_path, " -> ")
 
-    "#{inspect(resource)}: option #{option} at #{dsl_path} #{message}"
+    "option #{option} at #{dsl_path} #{message}"
   end
 end

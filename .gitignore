@@ -24,3 +24,5 @@ ash-*.tar
 
 # Ignoring Elixir Language Server
 .elixir_ls/
+
+.DS_Store

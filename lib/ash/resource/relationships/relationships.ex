@@ -35,14 +35,30 @@ defmodule Ash.Resource.Relationships do
 
   #{Ashton.document(Ash.Resource.Relationships.HasOne.opt_schema(), header_depth: 2)}
   """
-  defmacro has_one(relationship_name, resource, opts \\ []) do
-    quote do
+  defmacro has_one(relationship_name, destination, opts \\ []) do
+    quote bind_quoted: [
+            relationship_name: relationship_name,
+            destination: destination,
+            opts: opts
+          ] do
+      unless is_atom(relationship_name) do
+        raise Ash.Error.ResourceDslError,
+          message: "relationship_name must be an atom",
+          path: [:relationships, :has_one]
+      end
+
+      unless is_atom(destination) do
+        raise Ash.Error.ResourceDslError,
+          message: "related resource must be a module representing a resource",
+          path: [:relationships, :has_one, relationship_name]
+      end
+
       relationship =
         Ash.Resource.Relationships.HasOne.new(
-          @name,
-          unquote(relationship_name),
-          unquote(resource),
-          unquote(opts)
+          @resource_type,
+          relationship_name,
+          destination,
+          opts
         )
 
       case relationship do
@@ -53,14 +69,15 @@ defmodule Ash.Resource.Relationships do
           raise Ash.Error.ResourceDslError,
             message: message,
             option: key,
-            resource: __MODULE__,
-            path: [:relationships, :has_one, unquote(relationship_name)]
+            path: [:relationships, :has_one, relationship_name]
       end
     end
   end
 
   @doc """
-  Declares a belongs_to relationship. In a relationsal database, the foreign key would be on the *source* table.
+  Declares a belongs_to relationship. In a relational database, the foreign key would be on the *source* table.
+
+  This creates a field on the resource with the corresponding name, unless `define_field?: false` is provided.
 
   Practically speaking, a belongs_to and a has_one are interchangable in every way.
 
@@ -75,33 +92,47 @@ defmodule Ash.Resource.Relationships do
 
   #{Ashton.document(Ash.Resource.Relationships.BelongsTo.opt_schema(), header_depth: 2)}
   """
-  defmacro belongs_to(relationship_name, resource, config \\ []) do
-    quote do
+  defmacro belongs_to(relationship_name, destination, config \\ []) do
+    quote bind_quoted: [
+            relationship_name: relationship_name,
+            destination: destination,
+            config: config
+          ] do
+      unless is_atom(relationship_name) do
+        raise Ash.Error.ResourceDslError,
+          message: "relationship_name must be an atom",
+          path: [:relationships, :belongs_to]
+      end
+
+      unless is_atom(destination) do
+        raise Ash.Error.ResourceDslError,
+          message: "related resource must be a module representing a resource",
+          path: [:relationships, :belongs_to, relationship_name]
+      end
+
       relationship =
-        Ash.Resource.Relationships.BelongsTo.new(
-          @name,
-          unquote(relationship_name),
-          unquote(resource),
-          unquote(config)
-        )
+        Ash.Resource.Relationships.BelongsTo.new(relationship_name, destination, config)
 
       case relationship do
         {:ok, relationship} ->
-          # TODO: This assumes binary_id
-          @attributes Ash.Resource.Attributes.Attribute.new(
-                        __MODULE__,
-                        relationship.source_field,
-                        :uuid,
-                        primary_key?: relationship.primary_key?
-                      )
+          if relationship.define_field? do
+            {:ok, attribute} =
+              Ash.Resource.Attributes.Attribute.new(
+                relationship.source_field,
+                relationship.field_type,
+                primary_key?: relationship.primary_key?
+              )
+
+            @attributes attribute
+          end
+
           @relationships relationship
 
         {:error, [{key, message}]} ->
           raise Ash.Error.ResourceDslError,
             message: message,
             option: key,
-            resource: __MODULE__,
-            path: [:relationships, :belongs_to, unquote(relationship_name)]
+            path: [:relationships, :belongs_to, relationship_name]
       end
     end
   end
@@ -120,15 +151,30 @@ defmodule Ash.Resource.Relationships do
 
   #{Ashton.document(Ash.Resource.Relationships.HasMany.opt_schema(), header_depth: 2)}
   """
-  defmacro has_many(relationship_name, resource, config \\ []) do
-    quote do
+  defmacro has_many(relationship_name, destination, opts \\ []) do
+    quote bind_quoted: [
+            relationship_name: relationship_name,
+            destination: destination,
+            opts: opts
+          ] do
+      unless is_atom(relationship_name) do
+        raise Ash.Error.ResourceDslError,
+          message: "relationship_name must be an atom",
+          path: [:relationships, :has_many]
+      end
+
+      unless is_atom(destination) do
+        raise Ash.Error.ResourceDslError,
+          message: "related resource must be a module representing a resource",
+          path: [:relationships, :has_many, relationship_name]
+      end
+
       relationship =
         Ash.Resource.Relationships.HasMany.new(
-          @name,
           @resource_type,
-          unquote(relationship_name),
-          unquote(resource),
-          unquote(config)
+          relationship_name,
+          destination,
+          opts
         )
 
       case relationship do
@@ -139,8 +185,7 @@ defmodule Ash.Resource.Relationships do
           raise Ash.Error.ResourceDslError,
             message: message,
             option: key,
-            resource: __MODULE__,
-            path: [:relationships, :has_many, unquote(relationship_name)]
+            path: [:relationships, :has_many, relationship_name]
       end
     end
   end
@@ -184,7 +229,6 @@ defmodule Ash.Resource.Relationships do
           raise Ash.Error.ResourceDslError,
             message: message,
             option: key,
-            resource: __MODULE__,
             path: [:relationships, :many_to_many, unquote(relationship_name)]
       end
     end

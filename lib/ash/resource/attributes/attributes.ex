@@ -1,4 +1,12 @@
 defmodule Ash.Resource.Attributes do
+  @moduledoc """
+  A DSL component for declaring attributes
+
+  Attributes are fields on an instance of a resource. The two required
+  pieces of knowledge are the field name, and the type.
+  """
+
+  @doc false
   defmacro attributes(do: block) do
     quote do
       import Ash.Resource.Attributes
@@ -7,9 +15,39 @@ defmodule Ash.Resource.Attributes do
     end
   end
 
+  @doc """
+  Declares an attribute on the resource
+
+  Type can be either a built in type (see `Ash.Type`) for more, or a module
+  implementing the `Ash.Type` behaviour.
+
+  #{Ashton.document(Ash.Resource.Attributes.Attribute.attribute_schema())}
+  """
   defmacro attribute(name, type, opts \\ []) do
     quote bind_quoted: [type: type, name: name, opts: opts] do
-      @attributes Ash.Resource.Attributes.Attribute.new(__MODULE__, name, type, opts)
+      unless is_atom(name) do
+        raise Ash.Error.ResourceDslError,
+          message: "Attribute name must be an atom, got: #{inspect(name)}",
+          path: [:attributes, :attribute]
+      end
+
+      unless type in Ash.Type.builtins() or Ash.Type.ash_type?(type) do
+        raise Ash.Error.ResourceDslError,
+          message:
+            "Attribute type must be a built in type or a type module, got: #{inspect(type)}",
+          path: [:attributes, :attribute, name]
+      end
+
+      case Ash.Resource.Attributes.Attribute.new(name, type, opts) do
+        {:ok, attribute} ->
+          @attributes attribute
+
+        {:error, [{key, message} | _]} ->
+          raise Ash.Error.ResourceDslError,
+            message: message,
+            path: [:attributes, :attribute],
+            option: key
+      end
     end
   end
 end
