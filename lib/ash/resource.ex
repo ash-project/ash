@@ -67,9 +67,9 @@ defmodule Ash.Resource do
 
   For example, here is a resource definition using Postgres:
   ```elixir
-  defmodule AshKetchum.Pokemon do
-    use Ash.Resource, name: "pokemon", type: "pokemon"
-    use AshPostgres, repo: AshKetchum.Repo
+  defmodule MyApp.Post do
+    use Ash.Resource, name: "post", type: "post"
+    use AshPostgres, repo: MyApp.Repo
   end
   ```
 
