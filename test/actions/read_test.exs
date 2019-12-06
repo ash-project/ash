@@ -8,7 +8,8 @@ defmodule Ash.Test.Actions.ReadTest do
     use Ash.DataLayer.Ets, private?: true
 
     actions do
-      defaults [:read, :create]
+      read :default
+      create :default
     end
 
     attributes do

@@ -45,43 +45,6 @@ defmodule Ash.Resource.Actions do
   end
 
   @doc """
-  Sets up simple defaults for the supplied list of action types.
-
-  These defaults will have the name `:default`. If you need to configure your actions,
-  you will have to declare them each separately.
-  """
-  defmacro defaults(defaults) do
-    quote do
-      for default <- unquote(defaults) do
-        case default do
-          :all ->
-            create(:default)
-            read(:default)
-            update(:default)
-            destroy(:default)
-
-          :create ->
-            create(:default)
-
-          :read ->
-            read(:default)
-
-          :update ->
-            update(:default)
-
-          :destroy ->
-            destroy(:default)
-
-          action ->
-            raise Ash.Error.ResourceDslError,
-              path: [:actions, :defaults],
-              message: "Invalid default #{action}"
-        end
-      end
-    end
-  end
-
-  @doc """
   Declares a `create` action. For calling this action, see the `Ash.Api` documentation.
 
   #{Ashton.document(Ash.Resource.Actions.Create.opt_schema())}

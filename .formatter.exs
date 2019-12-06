@@ -9,7 +9,6 @@ locals_without_parens = [
   destroy: 1,
   destroy: 2,
   actions: 1,
-  defaults: 1,
   attribute: 2,
   attribute: 3,
   belongs_to: 2,

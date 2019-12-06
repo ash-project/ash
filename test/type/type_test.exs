@@ -39,7 +39,8 @@ defmodule Ash.Test.Type.TypeTest do
     end
 
     actions do
-      defaults [:create, :read]
+      create :default
+      read :default
     end
   end
 
