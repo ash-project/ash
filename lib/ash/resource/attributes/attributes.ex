@@ -22,6 +22,11 @@ defmodule Ash.Resource.Attributes do
   implementing the `Ash.Type` behaviour.
 
   #{Ashton.document(Ash.Resource.Attributes.Attribute.attribute_schema())}
+
+  ## Examples
+  ```elixir
+  attribute :first_name, :string, primary_key?: true
+  ```
   """
   defmacro attribute(name, type, opts \\ []) do
     quote bind_quoted: [type: type, name: name, opts: opts] do

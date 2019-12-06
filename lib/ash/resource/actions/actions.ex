@@ -48,6 +48,11 @@ defmodule Ash.Resource.Actions do
   Declares a `create` action. For calling this action, see the `Ash.Api` documentation.
 
   #{Ashton.document(Ash.Resource.Actions.Create.opt_schema())}
+
+  ## Examples
+  ```elixir
+  create :register, primary?: true
+  ```
   """
   defmacro create(name, opts \\ []) do
     quote bind_quoted: [name: name, opts: opts] do
@@ -74,6 +79,11 @@ defmodule Ash.Resource.Actions do
   Declares a `read` action. For calling this action, see the `Ash.Api` documentation.
 
   #{Ashton.document(Ash.Resource.Actions.Read.opt_schema())}
+
+  ## Examples
+  ```elixir
+  read :read_all, primary?: true
+  ```
   """
   defmacro read(name, opts \\ []) do
     quote bind_quoted: [name: name, opts: opts] do
@@ -100,6 +110,11 @@ defmodule Ash.Resource.Actions do
   Declares an `update` action. For calling this action, see the `Ash.Api` documentation.
 
   #{Ashton.document(Ash.Resource.Actions.Update.opt_schema())}
+
+  ## Examples
+  ```elixir
+  update :flag_for_review, primary?: true
+  ```
   """
   defmacro update(name, opts \\ []) do
     quote bind_quoted: [name: name, opts: opts] do
@@ -126,6 +141,11 @@ defmodule Ash.Resource.Actions do
   Declares an `destroy` action. For calling this action, see the `Ash.Api` documentation.
 
   #{Ashton.document(Ash.Resource.Actions.Destroy.opt_schema())}
+
+  ## Examples
+  ```elixir
+  destroy :soft_delete, primary?: true
+  ```
   """
   defmacro destroy(name, opts \\ []) do
     quote bind_quoted: [name: name, opts: opts] do

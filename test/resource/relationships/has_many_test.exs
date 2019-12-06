@@ -1,4 +1,4 @@
-defmodule Ash.Test.Dsl.Resource.Relationshihps.HasManyTest do
+defmodule Ash.Test.Resource.Relationshihps.HasManyTest do
   use ExUnit.Case, async: true
 
   defmacrop defposts(do: body) do

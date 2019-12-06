@@ -145,7 +145,23 @@ defmodule Ash.Resource do
 
   defmacro __before_compile__(env) do
     quote do
-      @sanitized_actions Ash.Resource.mark_primaries(@actions)
+      case Ash.Resource.mark_primaries(@actions) do
+        {:ok, actions} ->
+          @sanitized_actions actions
+
+        {:error, {:no_primary, type}} ->
+          raise Ash.Error.ResourceDslError,
+            message:
+              "Multiple actions of type #{type} defined, one must be designated as `primary?: true`",
+            path: [:actions, type]
+
+        {:error, {:duplicate_primaries, type}} ->
+          raise Ash.Error.ResourceDslError,
+            message:
+              "Multiple actions of type #{type} defined, one must be designated as `primary?: true`",
+            path: [:actions, type]
+      end
+
       @ash_primary_key Ash.Resource.primary_key(@attributes)
 
       require Ash.Schema
@@ -218,26 +234,28 @@ defmodule Ash.Resource do
 
   @doc false
   def mark_primaries(all_actions) do
-    all_actions
-    |> Enum.group_by(& &1.type)
-    |> Enum.flat_map(fn {type, actions} ->
-      case actions do
-        [action] ->
-          [%{action | primary?: true}]
+    actions =
+      all_actions
+      |> Enum.group_by(& &1.type)
+      |> Enum.flat_map(fn {type, actions} ->
+        case actions do
+          [action] ->
+            [%{action | primary?: true}]
 
-        actions ->
-          case Enum.count(actions, & &1.primary?) do
-            0 ->
-              # TODO: Format these prettier
-              raise "Must declare a primary action for #{type}, as there are more than one."
+          actions ->
+            case Enum.count(actions, & &1.primary?) do
+              0 ->
+                [{:error, {:no_primary, type}}]
 
-            1 ->
-              actions
+              1 ->
+                actions
 
-            _ ->
-              raise "Duplicate primary actions declared for #{type}, but there can only be one primary action."
-          end
-      end
-    end)
+              _ ->
+                [{:error, {:duplicate_primaries, type}}]
+            end
+        end
+      end)
+
+    Enum.find(actions, fn action -> match?({:error, _}, action) end) || {:ok, actions}
   end
 end

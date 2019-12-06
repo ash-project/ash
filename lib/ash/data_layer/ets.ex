@@ -175,7 +175,7 @@ defmodule Ash.DataLayer.Ets do
   def create(resource, changeset, _relationships) do
     with {:ok, table} <- wrap_or_create_table(resource),
          record <- Ecto.Changeset.apply_changes(changeset),
-         {:ok, _} <- Ets.Set.put(table, {record.id, record}) do
+         {:ok, _} <- ETS.Set.put(table, {record.id, record}) do
       {:ok, record}
     else
       {:error, error} -> {:error, error}
@@ -189,9 +189,9 @@ defmodule Ash.DataLayer.Ets do
     # or find a way to skip in ETS
     result =
       if limit do
-        Ets.Set.select(table, [match_spec], limit + offset)
+        ETS.Set.select(table, [match_spec], limit + offset)
       else
-        Ets.Set.select(table, [match_spec])
+        ETS.Set.select(table, [match_spec])
       end
 
     case result do
@@ -202,7 +202,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defp wrap_or_create_table(resource) do
-    case Ets.Set.wrap_existing(resource) do
+    case ETS.Set.wrap_existing(resource) do
       {:error, :table_not_found} ->
         protection =
           if private?(resource) do
@@ -211,7 +211,7 @@ defmodule Ash.DataLayer.Ets do
             :public
           end
 
-        Ets.Set.new(
+        ETS.Set.new(
           name: resource,
           protection: protection,
           ordered: true,

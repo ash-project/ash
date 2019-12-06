@@ -1,4 +1,4 @@
-defmodule Ash.Test.Dsl.Resource.AttributesTest do
+defmodule Ash.Test.Resource.AttributesTest do
   use ExUnit.Case, async: true
 
   defmacrop defposts(do: body) do

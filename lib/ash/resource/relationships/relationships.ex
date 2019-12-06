@@ -24,8 +24,9 @@ defmodule Ash.Resource.Relationships do
 
   Practically speaking, a has_one and a belongs_to are interchangable in every way.
 
-  Example:
+  #{Ashton.document(Ash.Resource.Relationships.HasOne.opt_schema(), header_depth: 2)}
 
+  ## Examples
   ```elixir
   # In a resource called `Word`
   has_one :dictionary_entry, DictionaryEntry,
@@ -33,7 +34,6 @@ defmodule Ash.Resource.Relationships do
     destination_field: :word_text
   ```
 
-  #{Ashton.document(Ash.Resource.Relationships.HasOne.opt_schema(), header_depth: 2)}
   """
   defmacro has_one(relationship_name, destination, opts \\ []) do
     quote bind_quoted: [
@@ -81,8 +81,9 @@ defmodule Ash.Resource.Relationships do
 
   Practically speaking, a belongs_to and a has_one are interchangable in every way.
 
-  Example:
+  #{Ashton.document(Ash.Resource.Relationships.BelongsTo.opt_schema(), header_depth: 2)}
 
+  ## Examples
   ```elixir
   # In a resource called `Word`
   belongs_to :dictionary_entry, DictionaryEntry,
@@ -90,7 +91,6 @@ defmodule Ash.Resource.Relationships do
     destination_field: :word_text
   ```
 
-  #{Ashton.document(Ash.Resource.Relationships.BelongsTo.opt_schema(), header_depth: 2)}
   """
   defmacro belongs_to(relationship_name, destination, config \\ []) do
     quote bind_quoted: [
@@ -140,16 +140,15 @@ defmodule Ash.Resource.Relationships do
   @doc """
   Declares a has_many relationship. There can be any number of related entities.
 
-  Example:
+  #{Ashton.document(Ash.Resource.Relationships.HasMany.opt_schema(), header_depth: 2)}
 
+  ## Examples
   ```elixir
   # In a resource called `Word`
   has_many :definitions, DictionaryDefinition,
     source_field: :text,
     destination_field: :word_text
   ```
-
-  #{Ashton.document(Ash.Resource.Relationships.HasMany.opt_schema(), header_depth: 2)}
   """
   defmacro has_many(relationship_name, destination, opts \\ []) do
     quote bind_quoted: [
@@ -197,8 +196,9 @@ defmodule Ash.Resource.Relationships do
 
   You can specify a join table as a string or as another resource.
 
-  Example:
+  #{Ashton.document(Ash.Resource.Relationships.ManyToMany.opt_schema(), header_depth: 2)}
 
+  ## Examples
   ```elixir
   # In a resource called `Word`
   many_to_many :books, Book,
@@ -208,8 +208,6 @@ defmodule Ash.Resource.Relationships do
     destination_field: :id,
     destination_field_on_join_table: :book_id
   ```
-
-  #{Ashton.document(Ash.Resource.Relationships.ManyToMany.opt_schema(), header_depth: 2)}
   """
   defmacro many_to_many(relationship_name, resource, config \\ []) do
     quote do

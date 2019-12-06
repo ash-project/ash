@@ -1,4 +1,4 @@
-defmodule Ash.Test.Dsl.Resource.Relationships.ManyToManyTest do
+defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
   use ExUnit.Case, async: true
 
   defmacrop defposts(do: body) do
