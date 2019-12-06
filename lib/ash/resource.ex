@@ -57,10 +57,10 @@ defmodule Ash.Resource do
   | Consumer | Use Case |
   | :--- | :--- |
   | Business Logic | Server side code such as from Phoenix Contexts |
-  | Web Layer | Full JSON:API and GraphQL web layer compliance via AshJsonApi and AshGraphQl |
+  | Web Layer | Full JSON:API web layer compliance via AshJsonApi and AshGraphQl |
   | Front Ends | UIs can use a schema file to know exactly how to interact web layer API |
 
-  In your typical application using Ash, resources would be located in the `lib/resources` directory. The file name should be the single underscored name of the data that backs the resource with a `.ex` extension (ie: `lib/resoruces/post.ex`).
+  In your typical application using Ash, resources would be located in the `lib/resources` directory. The file name should be the single underscored name of the data that backs the resource with a `.ex` extension (ie: `lib/resources/post.ex`).
 
   To create a resource simply add `use Ash.Resource, ...` at the top of your resource module, and refer to the DSL
   documentation for the rest. The options for `use Ash.Resource` are described below.
