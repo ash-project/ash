@@ -47,17 +47,9 @@ defmodule Ash.Resource do
   A resource is a static definition of an entity in your system.
 
   In general an entity will refer to a single data concept and use a `Data Layer`, which allow them to be persisted and manipulated via Ash.
+  Currently Ash supports Postgres and ETS (Erlang Term Storage) as Data Layers, but feel free to make an extention for other data layers such MySQL, JSON files, CSV files, or External APIs.
 
-  | Data Layer | Use Case |
-  | :--- | :--- |
-  | Postgres | Database tables ("Posts" or "Authors" or "Tweets") |
-  | Postgres | Database views (SQL statistic such as Tweets Per Hour by Country) |
-  | ETS | _________???________ |
-  | File | Imagine a large json file of thousands of cities with metadata |
-  | External | 3rd Party APIs such as Stripe |
-  | External | Other systems where a Phoenix API is merely a "front end" of the _real_ backend... |
-
-  There will, however, be entities that are _not_ backed by data. These could be for concepts such as User Registration or _________???________.
+  It is also possible to create a resource without a Data Layer, which for example could be used to provide autogemerated documentation of an API that you already made.
 
   Regaurdless of whether or not a resource is backed by data, resources are designed to contain as much of your business logic as possible in a static declaration. Resources provide opportunities to declare CRUD operations, attributes, relationships, and other behavior, all of which can be customized to map to your underlying business logic.
 
