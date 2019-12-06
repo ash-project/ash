@@ -1,7 +1,8 @@
 # Ash
 
 ## Quick Links
-* [Resource DSL Documentation](Ash.Resource.html)
+* [Resource Documentation](Ash.Resource.html)
+* [DSL Documentation](Ash.Resource.Dsl.html)
 
 ## Introduction
 
