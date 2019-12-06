@@ -44,21 +44,38 @@ defmodule Ash.Resource do
                         )
 
   @moduledoc """
-  The entry point for creating an `Ash.Resource`.
+  A resource is a static definition of an entity in your system.
 
-  This brings in the top level DSL macros, defines module attributes for aggregating state as
-  DSL functions are called, and defines a set of functions internal to the resource that can be
-  used to inspect them.
+  In general an entity will refer to a single data concept and use a `Data Layer`, which allow them to be persisted and manipulated via Ash. Currently Ash provides Postgres and ETS (Erlang Term Storage) as Data Layers, but more are planned. Any one can create a Data Layer, either to provide support for a new database, a new storage format like CSV, or to power a custom use case like a resource that is backed by an external API.
 
-  Simply add `use Ash.Resource, ...` at the top of your resource module, and refer to the DSL
+  It is also possible to create a resource without a Data Layer, which for example could be used to provide autogemerated documentation of an API that you already made.
+
+  Regardless of whether or not a resource is backed by data, resources are designed to contain as much of your business logic as possible in a static declaration. Resources provide opportunities to declare CRUD operations, attributes, relationships, and other behavior, all of which can be customized to map to your underlying business logic.
+
+  Once a resource is declared, it will expose a public, standardized API that can be consumed in many different forms.
+
+  | Consumer | Use Case |
+  | :--- | :--- |
+  | Business Logic | Server side code such as from Phoenix Contexts |
+  | Web Layer | Full JSON:API web layer compliance via AshJsonApi and AshGraphQl |
+  | Front Ends | UIs can use a schema file to know exactly how to interact web layer API |
+
+  In your typical application using Ash, resources would be located in the `lib/resources` directory. The file name should be the single underscored name of the data that backs the resource with a `.ex` extension (ie: `lib/resources/post.ex`).
+
+  To create a resource simply add `use Ash.Resource, ...` at the top of your resource module, and refer to the DSL
   documentation for the rest. The options for `use Ash.Resource` are described below.
 
+  For example, here is a resource definition using Postgres:
+  ```elixir
+  defmodule MyApp.Post do
+    use Ash.Resource, name: "post", type: "post"
+    use AshPostgres, repo: MyApp.Repo
+  end
+  ```
 
   Resource DSL documentation: `Ash.Resource.DSL`
 
-
   #{Ashton.document(@resource_opts_schema)}
-
 
   Note:
   *Do not* call the functions on a resource, as in `MyResource.type()` as this is a *private*
