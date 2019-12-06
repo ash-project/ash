@@ -1,5 +1,10 @@
 # Ash
 
+## Quick Links
+* [Resource DSL Documentation](Ash.Resource.html)
+
+## Introduction
+
 Traditional MVC Frameworks (Rails, Django, .Net, Phoenix, etc) leave it up to the user to build the glue between requests for data (HTTP requests in various forms as well as server side domain logic) and their respective ORMs. In that space there is an incredible amount of boilerplate code that must get written from scratch for each application (authentication, authorization, sorting, filtering, pagination, sideloading relationships, serialization, etc). Often this code is untested, lacks many feature support, is tighly coupled to a specific web layer, and varies widely between each piece of data.
 
 Ash is an opinionated yet configurable framework designed to reduce boilerplate in any Elixir application by providing a layer of abstraction over the data layer of your system called a `Resource`. Don't worry Phoenix developers - Ash is designed to play well with Phoenix :)
@@ -12,14 +17,12 @@ Developers shoud be focusing on their core business logic - not boilerplate code
 
 Ash is an open source project, and draws inspiration from similar ideas in other frameworks and concepts. The goal of Ash is to lower the barrier to adopting and using Elixir and Phoenix, and in doing so help these amazing communities attract new develpers, projects, and companies.
 
-## Quick Links
-* For Resource DSL documentation, see: [Ash.Resource](Ash.Resource.html)
 
 ## TODO LIST (in no order)
 
 * Make our router cabaple of describing its routes in `mix phx.routes` Chris McCord says that we could probably power that, seeing as phoenix controls both APIs, and that capability could be added to `Plug.Router`
 * Finish the serializer
-* Make primary key type configurable
+* Make primary key type configurable, and support composite primary keys
 * Make a DSL for join tables to support complex validation/hooks into how they work, support more than just table names in `join_through`
 * DSL level validations! Things like includes validating that their chain exists. All DSL structs should be strictly validated when they are created.
 * Especially at compile time, we should *never* ignore or skip invalid options. If an option is present and invalid, an error is raised.

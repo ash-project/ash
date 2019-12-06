@@ -75,7 +75,7 @@ defmodule Ash.Resource do
 
   Resource DSL documentation: `Ash.Resource.DSL`
 
-  #{Ashton.document(@resource_opts_schema)}
+  #{Ashton.document(@resource_opts_schema, header_depth: 2, name: "Ash.Resource")}
 
   Note:
   *Do not* call the functions on a resource, as in `MyResource.type()` as this is a *private*

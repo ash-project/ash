@@ -1,12 +1,12 @@
 defmodule Ash.Resource.Relationships.BelongsTo do
+  @doc false
+
   defstruct [
     :name,
     :cardinality,
     :type,
-    :path,
     :destination,
     :primary_key?,
-    :side_load,
     :destination_field,
     :source_field
   ]
@@ -16,6 +16,29 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           cardinality: :one
         }
 
+  @opt_schema Ashton.schema(
+                opts: [
+                  destination_field: :atom,
+                  source_field: :atom,
+                  primary_key?: :boolean
+                ],
+                defaults: [
+                  destination_field: :id,
+                  primary_key?: false
+                ],
+                describe: [
+                  destination_field:
+                    "The field on the related resource that should match the `source_field` on this resource.",
+                  source_field:
+                    "The field on this resource that should match the `destination_field` on the related resource.  Default: <relationship_name>_id",
+                  primary_key?:
+                    "Whether this field is, or is part of, the primary key of a resource."
+                ]
+              )
+
+  @doc false
+  def opt_schema(), do: @opt_schema
+
   @spec new(
           resource_name :: String.t(),
           name :: atom,
@@ -23,21 +46,22 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           opts :: Keyword.t()
         ) :: t()
   def new(resource_name, name, related_resource, opts \\ []) do
-    path = opts[:path] || resource_name <> "/:id/" <> to_string(name)
+    opts =
+      case Ashton.validate(opts, @opt_schema) do
+        {:ok, opts} ->
+          {:ok,
+           %__MODULE__{
+             name: name,
+             type: :belongs_to,
+             cardinality: :one,
+             primary_key?: opts[:primary_key?],
+             destination: related_resource,
+             destination_field: opts[:destination_field],
+             source_field: opts[:source_field] || :"#{name}_id"
+           }}
 
-    %__MODULE__{
-      name: name,
-      type: :belongs_to,
-      cardinality: :one,
-      path: path,
-      primary_key?: Keyword.get(opts, :primary_key, false),
-      destination: related_resource,
-      destination_field: atomize(opts[:destination_field] || "id"),
-      source_field: atomize(opts[:source_field] || "#{name}_id"),
-      side_load: opts[:side_load]
-    }
+        {:error, error} ->
+          {:error, error}
+      end
   end
-
-  defp atomize(value) when is_atom(value), do: value
-  defp atomize(value) when is_bitstring(value), do: String.to_atom(value)
 end
