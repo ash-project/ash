@@ -21,7 +21,7 @@ There are two options.
 First for truly one-off situations, write custom actions that configure fields to be hidden, and call those actions.
 */TBD*
 
-Start thinking in [Domain Driven Design](https://en.wikipedia.org/wiki/Domain-driven_design). This is key to making easy to understand authoriation code, but will require a slight learning curve for folks who haven't seen this before. Let's take an example of a small blog publishing app with Users, Posts, and Comments database tables.
+Second, and most importantly, start thinking in [Domain Driven Design](https://en.wikipedia.org/wiki/Domain-driven_design). This is a critical concept ushered into Phoenix with Contexts in 1.3 and is the key to making easy to understand authoriation code. However, this will require a slight learning curve for folks who haven't seen this before - but it's pretty easy to grasp. Let's take an example of a small blog publishing app with Users, Posts, and Comments database tables.
 
 ```
 Users Table
@@ -114,16 +114,16 @@ Instead of polluting your resources with loads of conditional rules that breach 
 
 If we were to think of the differnet domain models - we could come up with something like this:
 ```
-Blog
+Blog Context
   Author
   Post
   Comment
   Reader
 
-Account
+Account Context
   User
 
-Billing
+Billing Context
   User
 ```
 
