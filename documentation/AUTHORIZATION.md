@@ -11,7 +11,7 @@ This is bad becasue ______
 
 Ash tries to encourage good architecture and separation of concerns, and thus does not support features such as hiding fields based off the user.
 
-*The only outcome that authorization code should respond to a request is to either succeed with an {ok: "success" } tuple or fail with a {error: "forbidden"} tuple. Thats it. Ash does not and never will change its response based on the user provided to an action.*
+*The only outcome that an authorization check should result in is either a {ok: "success" } tuple or a {error: "forbidden"} tuple. Thats it. Ash does not and never will change the underlying data of a response based on the user provided to an action.*
 
 So what to do about changing the shape of the data depending on who is requesting it or in what context they are requesting it?
 
