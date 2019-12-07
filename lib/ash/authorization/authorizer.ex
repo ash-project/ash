@@ -3,7 +3,16 @@ defmodule Ash.Authorization.Authorizer do
 
   @type result :: :allow | :unauthorized | :undecided
 
-  def authorize_precheck(user, rules, context) do
+  def authorize(user, rules, context, callback) do
+    case authorize_precheck(user, rules, context) do
+      {%{prediction: :unknown}, per_check_data} ->
+        callback.(fn user, data, rules, context ->
+          do_authorize(user, data, rules, context, per_check_data)
+        end)
+    end
+  end
+
+  defp authorize_precheck(user, rules, context) do
     rules
     |> Enum.reduce({%{}, []}, fn rule, {instructions, per_check_data} ->
       {instructions, check_data} =
@@ -19,7 +28,7 @@ defmodule Ash.Authorization.Authorizer do
 
   # Never call authorize w/o first calling authorize_precheck before
   # the operation
-  def authorize(user, data, rules, context, per_check_data) do
+  defp do_authorize(user, data, rules, context, per_check_data) do
     {_decision, remaining_records} =
       rules
       |> Enum.zip(per_check_data)

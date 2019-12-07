@@ -4,6 +4,19 @@ defmodule Ash.Actions.SideLoader do
   def side_load(_resource, record_or_records, [], _api, _global_params),
     do: {:ok, record_or_records}
 
+  def side_load(
+        resource,
+        %Ash.Actions.Paginator{results: results} = paginator,
+        side_loads,
+        api,
+        global_params
+      ) do
+    case side_load(resource, results, side_loads, api, global_params) do
+      {:ok, side_loaded} -> %{paginator | results: side_loaded}
+      {:error, error} -> {:error, error}
+    end
+  end
+
   def side_load(resource, record, side_loads, api, global_params) when not is_list(record) do
     case side_load(resource, [record], side_loads, api, global_params) do
       {:ok, [side_loaded]} -> side_loaded

@@ -58,3 +58,7 @@ Ash is an open source project, and draws inspiration from similar ideas in other
 * Improve pagination in the ETS data layer
 * Rearchitect relationship updates so that they can be sensible authorized. As in, which resource is responsible for authorizing updates to a relationship? Should there be some unified way to describe it? Or is updating a user's posts an entirely separate operation from updating a post's user?
 * Test authorization
+* Member specific authorization, defaulting to unauthorized
+* Validate that all relationships on all resources in the API have destinations *in* that API, or don't and add in logic to pretend those don't exist through the API.
+* Make authorization spit out informative errors (at least for developers)
+* Use telemetry and/or some kind of hook system to add metrics

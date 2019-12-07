@@ -6,6 +6,10 @@ defmodule Ash.DataLayer.Ets do
   This makes it possible to test resources easily, quickly and in isolation from the data layer.
   While this data layer can be used in your application, it should only be used for small/unimportant
   data sets that do not require long term persistence.
+
+  The Ets datalayer *can not perform transactions*. This means that in place updates to many_to_many
+  relationships, as well as relationships where the foreign key is stored on the destination table,
+  are not possible. Separate requests will have to be made to those resources.
   """
 
   @behaviour Ash.DataLayer
@@ -29,6 +33,10 @@ defmodule Ash.DataLayer.Ets do
   defmodule Query do
     defstruct [:resource, :filter, :limit, :sort, offset: 0]
   end
+
+  @impl true
+  def can?(:query_async), do: false
+  def can?(:transact), do: false
 
   @impl true
   def resource_to_query(resource) do
@@ -178,11 +186,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   @impl true
-  def create(_resource, _attributes, relationships) when relationships != %{} do
-    {:error, "#{inspect(__MODULE__)} does not support creating with relationships"}
-  end
-
-  def create(resource, changeset, _relationships) do
+  def create(resource, changeset) do
     pkey =
       resource
       |> Ash.primary_key()

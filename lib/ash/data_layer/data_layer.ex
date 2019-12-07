@@ -1,4 +1,6 @@
 defmodule Ash.DataLayer do
+  @type feature() :: :transact | :query_async
+
   @callback filter(Ash.query(), Ash.filter(), resource :: Ash.resource()) ::
               {:ok, Ash.query()} | {:error, Ash.error()}
   @callback sort(Ash.query(), Ash.sort(), resource :: Ash.resource()) ::
@@ -11,8 +13,10 @@ defmodule Ash.DataLayer do
   @callback can_query_async?(Ash.resource()) :: boolean
   @callback run_query(Ash.query(), Ash.resource()) ::
               {:ok, list(Ash.resource())} | {:error, Ash.error()}
-  @callback create(Ash.resource(), attributes :: map(), relationships :: map()) ::
+  @callback create(Ash.resource(), changeset :: Ecto.Changeset.t()) ::
               {:ok, Ash.resource()} | {:error, Ash.error()}
+
+  @callback can?(feature()) :: boolean
 
   # @callback create(
   #             Ash.resource(),
@@ -85,10 +89,10 @@ defmodule Ash.DataLayer do
     Ash.data_layer(resource).resource_to_query(resource)
   end
 
-  @spec create(Ash.resource(), Ecto.Changeset.t(), map) ::
+  @spec create(Ash.resource(), Ecto.Changeset.t()) ::
           {:ok, Ash.record()} | {:error, Ash.error()}
-  def create(resource, changeset, relationships) do
-    Ash.data_layer(resource).create(resource, changeset, relationships)
+  def create(resource, changeset) do
+    Ash.data_layer(resource).create(resource, changeset)
   end
 
   @spec filter(Ash.query(), Ash.filter(), Ash.resource()) ::
@@ -117,6 +121,12 @@ defmodule Ash.DataLayer do
   def offset(query, offset, resource) do
     data_layer = Ash.data_layer(resource)
     data_layer.limit(query, offset, resource)
+  end
+
+  @spec can?(feature, Ash.resource()) :: boolean
+  def can?(feature, resource) do
+    data_layer = Ash.data_layer(resource)
+    data_layer.can?(feature)
   end
 
   # @spec get_related(Ash.record(), Ash.relationship()) ::

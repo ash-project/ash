@@ -73,18 +73,18 @@ defmodule Ash.Api.Interface do
   def read(api, resource, params \\ %{}) do
     params = add_default_page_size(api, params)
 
-    case Map.get(params, :action) || Ash.primary_action(resource, :read) do
-      nil ->
-        {:error, "no action provided, and no primary action found"}
+    case api.get_resource(resource) do
+      {:ok, resource} ->
+        case Map.get(params, :action) || Ash.primary_action(resource, :read) do
+          nil ->
+            {:error, "no action provided, and no primary action found"}
 
-      action ->
-        case api.get_resource(resource) do
-          {:ok, resource} ->
-            Ash.Actions.run_read_action(resource, action, api, params)
-
-          :error ->
-            {:error, "no such resource"}
+          action ->
+            Ash.Actions.Read.run(resource, action, api, params)
         end
+
+      :error ->
+        {:error, "no such resource"}
     end
   end
 
@@ -95,18 +95,18 @@ defmodule Ash.Api.Interface do
   end
 
   def create(api, resource, params) do
-    case Map.get(params, :action) || Ash.primary_action(resource, :create) do
-      nil ->
-        {:error, "no action provided, and no primary action found"}
+    case api.get_resource(resource) do
+      {:ok, resource} ->
+        case Map.get(params, :action) || Ash.primary_action(resource, :create) do
+          nil ->
+            {:error, "no action provided, and no primary action found"}
 
-      action ->
-        case api.get_resource(resource) do
-          {:ok, resource} ->
-            Ash.Actions.run_create_action(resource, action, api, params)
-
-          :error ->
-            {:error, "no such resource"}
+          action ->
+            Ash.Actions.Create.run(resource, action, api, params)
         end
+
+      :error ->
+        {:error, "no such resource"}
     end
   end
 

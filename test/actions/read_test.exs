@@ -1,8 +1,6 @@
 defmodule Ash.Test.Actions.ReadTest do
   use ExUnit.Case, async: true
 
-  # TODO: test the bang versions of read actions
-
   defmodule Post do
     use Ash.Resource, name: "posts", type: "post"
     use Ash.DataLayer.Ets, private?: true
@@ -41,13 +39,36 @@ defmodule Ash.Test.Actions.ReadTest do
     end
   end
 
-  describe "Ash.read/2 with no records" do
+  describe "api.get!/3" do
+    setup do
+      {:ok, post} = Api.create(Post, %{attributes: %{title: "test", contents: "yeet"}})
+      %{post: post}
+    end
+
+    test "it returns a matching record", %{post: post} do
+      assert ^post = Api.get!(Post, post.id)
+    end
+
+    test "it raises on an error", %{post: post} do
+      assert_raise(Ash.Error.FrameworkError, "no such resource", fn ->
+        Api.get!(Something, post.id)
+      end)
+    end
+  end
+
+  describe "api.read/2 with no records" do
     test "returns an empty result" do
       assert {:ok, %{results: []}} = Api.read(Post)
     end
   end
 
-  describe "Ash.read/2" do
+  describe "Ash.read!/2 with no records" do
+    test "returns an empty result" do
+      assert %{results: []} = Api.read!(Post)
+    end
+  end
+
+  describe "api.read/2" do
     setup do
       {:ok, post1} = Api.create(Post, %{attributes: %{title: "test", contents: "yeet"}})
       {:ok, post2} = Api.create(Post, %{attributes: %{title: "test1", contents: "yeet2"}})
@@ -65,6 +86,25 @@ defmodule Ash.Test.Actions.ReadTest do
 
     test "with page size of 1 and an offset of 1, it returns 1 record" do
       assert {:ok, %{results: [_]}} = Api.read(Post, %{page: %{limit: 1, offset: 1}})
+    end
+  end
+
+  describe "api.read!/2" do
+    setup do
+      {:ok, post1} = Api.create(Post, %{attributes: %{title: "test", contents: "yeet"}})
+      {:ok, post2} = Api.create(Post, %{attributes: %{title: "test1", contents: "yeet2"}})
+
+      %{post1: post1, post2: post2}
+    end
+
+    test "it returns the records not in a tuple" do
+      assert %{results: [_, _]} = Api.read!(Post)
+    end
+
+    test "it raises on an error" do
+      assert_raise(Ash.Error.FrameworkError, "Invalid value: 10 for :title", fn ->
+        Api.read!(Post, %{filter: %{title: 10}})
+      end)
     end
   end
 
