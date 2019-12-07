@@ -106,11 +106,11 @@ This will absolutely work with Ash, but as you will see, it becomes problematic 
 
 Here's an example requirement that seems simple but is non-trivial: _a commenter's email should not be fetchable when loading comments on a post._
 
-If you try to load a post and sideload comments `Ash.get(Post, 1, side_load: [:user, :comments, :user.comments], user_requesting_this_data)` which would coorespond to a web request from `/api/posts/1?include=user,comments,comments.user` - this should not return the emails of the users that made comments (although it _should_ return the email of the user who is the author).
+If you try to load a post and sideload comments `Ash.get(Post, 1, side_load: [:user, :comments, :user.comments], user_requesting_this_data)` which would correspond to a web request from `/api/posts/1?include=user,comments,comments.user` - this should not return the emails of the users that made comments (although it _should_ return the email of the user who is the author).
 
 As you can imagine, making this authorization rule gets...complicated. Do you inspect the URL of the request? Do you look at the current user and just return the email for the user that is logged in and hide the emails of the other users?
 
-Instead of polluting your resources with loads of conditional rules that breach the web and data layers - instead opt for a DDD approach.
+Instead of polluting your resources with loads of conditional rules that breach the web and data layers - opt for a DDD approach.
 
 If we were to think of the differnet domain models - we could come up with something like this:
 ```
