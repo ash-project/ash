@@ -1,4 +1,4 @@
-defmodule Ash.DataLayer.Actions do
+defmodule Ash.Actions do
   # def run_create_action(resource, action, attributes, relationships, params) do
   #   case Ash.Data.create(resource, action, attributes, relationships, params) do
   #     {:ok, record} ->
@@ -37,15 +37,15 @@ defmodule Ash.DataLayer.Actions do
          when prediction != :unauthorized <-
            maybe_authorize_precheck(auth?, user, action.rules, auth_context),
          query <- Ash.DataLayer.resource_to_query(resource),
-         {:ok, filter} <- Ash.DataLayer.Filter.process(resource, Map.get(params, :filter, %{})),
-         {:ok, sort} <- Ash.DataLayer.Sort.process(resource, Map.get(params, :sort, [])),
+         {:ok, filter} <- Ash.Actions.Filter.process(resource, Map.get(params, :filter, %{})),
+         {:ok, sort} <- Ash.Actions.Sort.process(resource, Map.get(params, :sort, [])),
          {:ok, filtered_query} <- Ash.DataLayer.filter(query, filter, resource),
          {:ok, sorted_query} <- Ash.DataLayer.sort(filtered_query, sort, resource),
          {:ok, paginator} <-
-           Ash.DataLayer.Paginator.paginate(api, resource, action, sorted_query, params),
+           Ash.Actions.Paginator.paginate(api, resource, action, sorted_query, params),
          {:ok, found} <- Ash.DataLayer.run_query(paginator.query, resource),
          {:ok, side_loaded_for_auth} <-
-           Ash.DataLayer.SideLoader.side_load(
+           Ash.Actions.SideLoader.side_load(
              resource,
              found,
              Map.get(instructions, :side_load, []),
@@ -62,7 +62,7 @@ defmodule Ash.DataLayer.Actions do
              per_check_data
            ),
          {:ok, side_loaded} <-
-           Ash.DataLayer.SideLoader.side_load(
+           Ash.Actions.SideLoader.side_load(
              resource,
              side_loaded_for_auth,
              Map.get(params, :side_load, []),
@@ -116,7 +116,7 @@ defmodule Ash.DataLayer.Actions do
              per_check_data
            ),
          {:ok, side_loaded} <-
-           Ash.DataLayer.SideLoader.side_load(
+           Ash.Actions.SideLoader.side_load(
              resource,
              created,
              Map.get(params, :side_load, []),

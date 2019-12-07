@@ -21,7 +21,7 @@ defmodule Ash.Resource.Attributes do
   Type can be either a built in type (see `Ash.Type`) for more, or a module
   implementing the `Ash.Type` behaviour.
 
-  #{Ashton.document(Ash.Resource.Attributes.Attribute.attribute_schema())}
+  #{Ashton.document(Ash.Resource.Attributes.Attribute.attribute_schema(), header_depth: 2)}
 
   ## Examples
   ```elixir

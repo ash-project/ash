@@ -47,7 +47,7 @@ defmodule Ash.Resource.Actions do
   @doc """
   Declares a `create` action. For calling this action, see the `Ash.Api` documentation.
 
-  #{Ashton.document(Ash.Resource.Actions.Create.opt_schema())}
+  #{Ashton.document(Ash.Resource.Actions.Create.opt_schema(), header_depth: 2)}
 
   ## Examples
   ```elixir
@@ -78,7 +78,7 @@ defmodule Ash.Resource.Actions do
   @doc """
   Declares a `read` action. For calling this action, see the `Ash.Api` documentation.
 
-  #{Ashton.document(Ash.Resource.Actions.Read.opt_schema())}
+  #{Ashton.document(Ash.Resource.Actions.Read.opt_schema(), header_depth: 2)}
 
   ## Examples
   ```elixir
@@ -109,7 +109,7 @@ defmodule Ash.Resource.Actions do
   @doc """
   Declares an `update` action. For calling this action, see the `Ash.Api` documentation.
 
-  #{Ashton.document(Ash.Resource.Actions.Update.opt_schema())}
+  #{Ashton.document(Ash.Resource.Actions.Update.opt_schema(), header_depth: 2)}
 
   ## Examples
   ```elixir
@@ -140,7 +140,7 @@ defmodule Ash.Resource.Actions do
   @doc """
   Declares an `destroy` action. For calling this action, see the `Ash.Api` documentation.
 
-  #{Ashton.document(Ash.Resource.Actions.Destroy.opt_schema())}
+  #{Ashton.document(Ash.Resource.Actions.Destroy.opt_schema(), header_depth: 2)}
 
   ## Examples
   ```elixir

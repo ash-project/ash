@@ -64,6 +64,7 @@ defmodule Ash.Authorization.Rule do
 
   def new({kind, opts}), do: new(kind, opts)
 
+  # TODO: return ok/error so DSL builder can raise
   def new(kind, opts) when kind not in @kinds do
     raise "Invalid rule declaration: #{kind}: #{inspect(opts)}"
   end

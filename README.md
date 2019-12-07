@@ -54,4 +54,7 @@ Ash is an open source project, and draws inspiration from similar ideas in other
 * Since actions can return multiple errors, we need a testing utility to unwrap/assert on them
 * Flesh out relationship options
 * Flesh out field options (sortable, filterable, other behavior?)
-
+* Unit test the Ets data layer
+* Improve pagination in the ETS data layer
+* Rearchitect relationship updates so that they can be sensible authorized. As in, which resource is responsible for authorizing updates to a relationship? Should there be some unified way to describe it? Or is updating a user's posts an entirely separate operation from updating a post's user?
+* Test authorization

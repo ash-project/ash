@@ -158,7 +158,7 @@ defmodule Ash.Resource do
         {:error, {:duplicate_primaries, type}} ->
           raise Ash.Error.ResourceDslError,
             message:
-              "Multiple actions of type #{type} defined, one must be designated as `primary?: true`",
+              "Multiple actions of type #{type} configured as `primary?: true`, but only one action per type can be the primary",
             path: [:actions, type]
       end
 
@@ -220,16 +220,6 @@ defmodule Ash.Resource do
     attributes
     |> Enum.filter(& &1.primary_key?)
     |> Enum.map(& &1.name)
-    |> case do
-      [] ->
-        nil
-
-      [single] ->
-        single
-
-      other ->
-        other
-    end
   end
 
   @doc false

@@ -29,7 +29,7 @@ defmodule Ash do
     api.resources()
   end
 
-  @spec primary_key(resource()) :: nil | attribute() | list(attribute)
+  @spec primary_key(resource()) :: list(attribute)
   def primary_key(resource) do
     resource.primary_key()
   end

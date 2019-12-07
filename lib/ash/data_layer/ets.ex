@@ -2,7 +2,10 @@ defmodule Ash.DataLayer.Ets do
   @moduledoc """
   An ETS (Erlang Term Storage) backed Ash Datalayer.
 
-  This was initially built for testing purposes, since it comes built into OTP. This makes it possible to test resources easily, quickly and in isolation from the data layer. While this data layer can be used in your application, it should only be used for small/unimportant data sets that do not require long term persistence.
+  This was initially built for testing purposes, since it comes built into OTP.
+  This makes it possible to test resources easily, quickly and in isolation from the data layer.
+  While this data layer can be used in your application, it should only be used for small/unimportant
+  data sets that do not require long term persistence.
   """
 
   @behaviour Ash.DataLayer
@@ -108,11 +111,31 @@ defmodule Ash.DataLayer.Ets do
     end)
   end
 
+  # Id matching will have to be smarter when new filter types
+  # are added. Id matching naturally only supports equality
+  # filters
   defp filter_to_matchspec(resource, filter) do
-    starting_matchspec = {{:_, %{__struct__: resource}}, [], [:"$_"]}
+    filter = filter || %{}
+
+    {pkey_match, pkey_names} =
+      resource
+      |> Ash.primary_key()
+      |> Enum.reduce({%{}, []}, fn
+        _attr, {:_, pkey_names} ->
+          {:_, pkey_names}
+
+        attr, {pkey_match, pkey_names} ->
+          case Map.fetch(filter, attr) do
+            {:ok, value} -> {Map.put(pkey_match, attr, value), [attr | pkey_names]}
+            :error -> {:_, [attr | pkey_names]}
+          end
+      end)
+
+    starting_matchspec = {{pkey_match, %{__struct__: resource}}, [], [:"$_"]}
 
     filter
     |> Kernel.||(%{})
+    |> Map.drop(pkey_names)
     |> Enum.reduce({:ok, {starting_matchspec, 1}}, fn
       {key, value}, {:ok, {spec, binding}} ->
         do_filter_to_matchspec(resource, key, value, spec, binding)
@@ -124,19 +147,6 @@ defmodule Ash.DataLayer.Ets do
       {:error, error} -> {:error, error}
       {:ok, {spec, _}} -> {:ok, spec}
     end
-  end
-
-  # TODO: Assuming id field, fix at somepoint
-  defp do_filter_to_matchspec(
-         _resource,
-         :id,
-         id,
-         {{_, struct_match}, conditions, matcher},
-         binding
-       ) do
-    condition = {:==, :"$#{binding}", id}
-
-    {:ok, {{{:"$#{binding}", struct_match}, [condition | conditions], matcher}, binding + 1}}
   end
 
   defp do_filter_to_matchspec(resource, key, value, spec, binding) do
@@ -173,9 +183,16 @@ defmodule Ash.DataLayer.Ets do
   end
 
   def create(resource, changeset, _relationships) do
+    pkey =
+      resource
+      |> Ash.primary_key()
+      |> Enum.into(%{}, fn attr ->
+        {attr, Ecto.Changeset.get_field(changeset, attr)}
+      end)
+
     with {:ok, table} <- wrap_or_create_table(resource),
          record <- Ecto.Changeset.apply_changes(changeset),
-         {:ok, _} <- ETS.Set.put(table, {record.id, record}) do
+         {:ok, _} <- ETS.Set.put(table, {pkey, record}) do
       {:ok, record}
     else
       {:error, error} -> {:error, error}
@@ -183,10 +200,6 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defp match_limit(table, match_spec, limit, offset) do
-    # TODO: Fix this
-    # This is a hack :(
-    # Either implement cursor based pagination
-    # or find a way to skip in ETS
     result =
       if limit do
         ETS.Set.select(table, [match_spec], limit + offset)

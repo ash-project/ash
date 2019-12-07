@@ -1,4 +1,4 @@
-defmodule Ash.DataLayer.Sort do
+defmodule Ash.Actions.Sort do
   def process(_resource, empty) when empty in [nil, []], do: {:ok, []}
 
   def process(resource, sort) when is_list(sort) do

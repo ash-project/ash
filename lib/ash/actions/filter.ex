@@ -1,4 +1,4 @@
-defmodule Ash.DataLayer.Filter do
+defmodule Ash.Actions.Filter do
   @filter_types [
     :equal
   ]

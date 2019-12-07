@@ -1,4 +1,4 @@
-defmodule Ash.DataLayer.SideLoader do
+defmodule Ash.Actions.SideLoader do
   def side_load(resource, record, keyword, api, global_params \\ %{})
 
   def side_load(_resource, record_or_records, [], _api, _global_params),

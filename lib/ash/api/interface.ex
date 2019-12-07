@@ -79,7 +79,7 @@ defmodule Ash.Api.Interface do
         {:error, "no action provided, and no primary action found"}
 
       action ->
-        Ash.DataLayer.Actions.run_read_action(resource, action, api, params)
+        Ash.Actions.run_read_action(resource, action, api, params)
     end
   end
 
@@ -95,7 +95,7 @@ defmodule Ash.Api.Interface do
         {:error, "no action provided, and no primary action found"}
 
       action ->
-        Ash.DataLayer.Actions.run_create_action(resource, action, api, params)
+        Ash.Actions.run_create_action(resource, action, api, params)
     end
   end
 

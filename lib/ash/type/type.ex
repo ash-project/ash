@@ -7,7 +7,7 @@ defmodule Ash.Type do
   Much better to `use Ash.Type` than to say `@behaviour Ash.Type` and define
   everything yourself.
   """
-  @callback supported_filter_types(Ash.data_layer()) :: list(Ash.DataLayer.Filter.filter_type())
+  @callback supported_filter_types(Ash.data_layer()) :: list(Ash.Actions.Filter.filter_type())
   @callback sortable?(Ash.data_layer()) :: boolean
   @callback storage_type() :: Ecto.Type.t()
   @callback ecto_type() :: Ecto.Type.t()
@@ -31,7 +31,7 @@ defmodule Ash.Type do
   Returns a list of filter types supported by this type. By default, a type supports only the `:equal` filter
   """
   @spec supported_filter_types(t, Ash.data_layer()) ::
-          list(Ash.DataLayer.Filter.filter_type())
+          list(Ash.Actions.Filter.filter_type())
   def supported_filter_types(type, _data_layer) when type in @builtin_names do
     @builtins[type][:filters]
   end
