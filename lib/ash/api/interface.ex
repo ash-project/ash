@@ -43,7 +43,6 @@ defmodule Ash.Api.Interface do
   end
 
   def get(api, resource, id, params \\ %{}) do
-    # TODO: Figure out this interface
     params_with_filter =
       params
       |> Map.put_new(:filter, %{})
@@ -79,7 +78,13 @@ defmodule Ash.Api.Interface do
         {:error, "no action provided, and no primary action found"}
 
       action ->
-        Ash.Actions.run_read_action(resource, action, api, params)
+        case api.get_resource(resource) do
+          {:ok, resource} ->
+            Ash.Actions.run_read_action(resource, action, api, params)
+
+          :error ->
+            {:error, "no such resource"}
+        end
     end
   end
 
@@ -95,7 +100,13 @@ defmodule Ash.Api.Interface do
         {:error, "no action provided, and no primary action found"}
 
       action ->
-        Ash.Actions.run_create_action(resource, action, api, params)
+        case api.get_resource(resource) do
+          {:ok, resource} ->
+            Ash.Actions.run_create_action(resource, action, api, params)
+
+          :error ->
+            {:error, "no such resource"}
+        end
     end
   end
 

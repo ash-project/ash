@@ -17,6 +17,12 @@ defmodule Ash.Api do
                       "The maximum page size for any read action. Any request for a higher page size will simply use this number. Uses the smaller of the Api's or Resource's value.",
                     default_page_size:
                       "The default page size for any read action. If no page size is specified, this value is used. Uses the smaller of the Api's or Resource's value."
+                  ],
+                  constraints: [
+                    max_page_size:
+                      {&Ash.Constraints.greater_than_zero?/1, "must be greater than zero"},
+                    default_page_size:
+                      {&Ash.Constraints.greater_than_zero?/1, "must be greater than zero"}
                   ]
                 )
   @moduledoc """
@@ -122,6 +128,9 @@ defmodule Ash.Api do
                                ]
                              )
 
+  @doc false
+  def parallel_side_load_schema(), do: @parallel_side_load_schema
+
   @doc """
   By default, side loading data happens synchronously. In order to
   side load in parallel, you must start a task supervisor in your application
@@ -136,13 +145,13 @@ defmodule Ash.Api do
   """
   defmacro parallel_side_load(opts \\ []) do
     quote bind_quoted: [opts: opts] do
-      case Ashton.validate(opts, @parallel_side_load_schema) do
+      case Ashton.validate(opts, Ash.Api.parallel_side_load_schema()) do
         {:ok, opts} ->
           @side_load_type :parallel
 
           @side_load_config [
-            supervisor: config[:supervisor],
-            max_concurrency: config[:max_concurrency],
+            supervisor: opts[:supervisor],
+            max_concurrency: opts[:max_concurrency],
             timeout: opts[:timeout],
             shutdown: opts[:shutdown]
           ]
@@ -157,18 +166,24 @@ defmodule Ash.Api do
   end
 
   defmacro __before_compile__(env) do
-    quote do
+    quote generated: true do
       def default_page_size(), do: @default_page_size
       def max_page_size(), do: @max_page_size
       def mix_ins(), do: @mix_ins
       def resources(), do: @resources
       def side_load_config(), do: {@side_load_type, @side_load_config}
 
+      def get_resource(mod) when mod in @resources, do: {:ok, mod}
+
+      def get_resource(name) do
+        Keyword.fetch(@named_resources, name)
+      end
+
       if @interface? do
         use Ash.Api.Interface
       end
 
-      Enum.map(@mix_ins || [], fn hook_module ->
+      Enum.map(@mix_ins, fn hook_module ->
         code = hook_module.before_compile_hook(unquote(Macro.escape(env)))
         Module.eval_quoted(__MODULE__, code)
       end)

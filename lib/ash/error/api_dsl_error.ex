@@ -2,7 +2,7 @@ defmodule Ash.Error.ApiDslError do
   defexception [:message, :path, :option, :using]
 
   def message(%{message: message, path: nil, option: option, using: using}) do
-    "`use #{inspect(using)}, ...` #{option} #{message} "
+    "`use #{inspect(using)}, ...` #{option} #{message}"
   end
 
   def message(%{message: message, path: nil, option: option}) do
