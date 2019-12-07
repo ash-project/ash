@@ -1,10 +1,12 @@
-The defintion of authorization is "the function of specifying access rights/privileges to resources". Many authorization libraries comingle authorization (which ultimately is boolean yes or no result) along with the shape and scope of data returned depending on the result of an authorization check.
+# Authorization
+
+The defintion of authorization is _"the function of specifying access rights/privileges to resources"_. Many authorization libraries comingle authorization (which ultimately is boolean yes or no result) along with the shape and scope of data returned depending on the result of an authorization check.
 
 Here's a small example. Admin users can see the captured IP address of that users had when the signed up, but regular users can't. If we were to build an authorization scheme with this in mind we would show/hide that field depending on the user that was passed in. This would mean that the result of the same exact query would be different depending on the user:
 
-```
-Ash.get(User, 1, some_non-admin_user) #does NOT include the IP address
-Ash.get(User, 1, some_admin_user) #includes the IP address
+```elixir
+Ash.get(User, 1, some_non_admin_user) # does NOT include the IP address
+Ash.get(User, 1, some_admin_user) # includes the IP address
 ```
 
 This is bad becasue ______
@@ -48,7 +50,7 @@ In this small app, Users can be either authors or readers and will have differen
 
 The simplist approach, which most apps do, is to just map your database tables 1-to-1 to resources.
 
-```
+```elixir
 defmodule User do
   use Ash.Resource, name: "users", type: "user"
   use AshJsonApi.JsonApiResource
@@ -128,7 +130,7 @@ Billing Context
 ```
 
 In turn, we would create the corresponding resources
-```
+```elixir
 defmodule BlogAuthor do
   use Ash.Resource, name: "users", type: "user"
   use AshJsonApi.JsonApiResource

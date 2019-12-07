@@ -24,7 +24,7 @@ defmodule Ash.MixProject do
 
   defp docs() do
     # The main page in the docs
-    [main: "readme", extras: ["README.md"]]
+    [main: "readme", extras: ["README.md", "documentation/AUTHORIZATION.md"]]
   end
 
   defp package do

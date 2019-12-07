@@ -3,7 +3,7 @@
 ## Quick Links
 * [Resource Documentation](Ash.Resource.html)
 * [DSL Documentation](Ash.Resource.Dsl.html)
-* [Authorization](../documentation/AUTHORIZATION.md)
+* [Authorization](AUTHORIZATION.html)
 
 ## Introduction
 
