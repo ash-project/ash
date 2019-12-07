@@ -112,7 +112,7 @@ As you can imagine, making this authorization rule gets...complicated. Do you in
 
 Instead of polluting your resources with loads of conditional rules that breach the web and data layers - opt for a DDD approach.
 
-If we were to think of the differnet domain models - we could come up with something like this:
+If we were to think of the different domain models - we could come up with something like this:
 ```
 Blog Context
   Author
@@ -221,6 +221,8 @@ end
 ```
 
 This would allow us have clients make more specific web requests such as to `/api/blog_posts/1?include=blog_author,blog_comments,blog_comments.blog_commenter` which underlying would use `Ash.get(BlogPost, 1, side_load: [:blog_author, :blog_comments, :blog_comments,commenter], user_requesting_this_data)` to get the data we want. As you can see, much of the logic to hide/show fields has gone into what a _resource_ is by using DDD.
+
+The fundamental thing to understand about DDD is that the concept of a resource is not the same thing as a database table. In this example you can see that the Users table is broken up into multiple different resources - BlogAuthor, BlogReader, BillingUser and AccountUser. In practice, each of these 4 resources is a different _database view_ of the users table with only the columns needed for a narrow use case. By breaking database tables up into resources using DDD, it allows us to keep the code within a resouce extremely simple. The hard and complex upfront task of doing a proper domain mapping will pay off in dividens later - which is why Phoenix and now Ash encourage this pattern.
 
 There will still be authorization rules, but by first thinking through architecture, we can limit and simplify them.
 
