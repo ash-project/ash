@@ -22,25 +22,105 @@ defmodule Ash.Resource.Actions do
     quote do
       import Ash.Resource.Actions
 
-      import Ash.Authorization.Rule,
-        only: [
-          allow: 1,
-          allow: 2,
-          allow_unless: 1,
-          allow_unless: 2,
-          allow_only: 1,
-          allow_only: 2,
-          deny: 1,
-          deny: 2,
-          deny_unless: 1,
-          deny_unless: 2,
-          deny_only: 1,
-          deny_only: 2
-        ]
-
       unquote(block)
       import Ash.Resource.Actions, only: [actions: 1]
       import Ash.Authorization.Rule, only: []
+    end
+  end
+
+  @doc "Returns an `allow` rule. See `Ash.Authorization.Rule.new/2 for more."
+  defmacro allow(check, opts \\ []) do
+    quote bind_quoted: [check: check, opts: opts] do
+      case Ash.Authorization.Rule.allow(check, opts) do
+        {:ok, rule} ->
+          rule
+
+        {:error, [{key, message} | _]} ->
+          raise Ash.Error.ResourceDslError,
+            message: message,
+            path: [:actions, :allow],
+            option: key
+      end
+    end
+  end
+
+  @doc "Returns an `allow_unless` rule. See `Ash.Authorization.Rule.new/2 for more."
+  defmacro allow_unless(check, opts \\ []) do
+    quote bind_quoted: [check: check, opts: opts] do
+      case Ash.Authorization.Rule.allow_unless(check, opts) do
+        {:ok, rule} ->
+          rule
+
+        {:error, [{key, message} | _]} ->
+          raise Ash.Error.ResourceDslError,
+            message: message,
+            path: [:actions, :allow_unless],
+            option: key
+      end
+    end
+  end
+
+  @doc "Returns an `allow_only` rule. See `Ash.Authorization.Rule.new/2 for more."
+  defmacro allow_only(check, opts \\ []) do
+    quote bind_quoted: [check: check, opts: opts] do
+      case Ash.Authorization.Rule.allow_only(check, opts) do
+        {:ok, rule} ->
+          rule
+
+        {:error, [{key, message} | _]} ->
+          raise Ash.Error.ResourceDslError,
+            message: message,
+            path: [:actions, :allow_only],
+            option: key
+      end
+    end
+  end
+
+  @doc "Returns a `deny` rule. See `Ash.Authorization.Rule.new/2 for more."
+  defmacro deny(check, opts \\ []) do
+    quote bind_quoted: [check: check, opts: opts] do
+      case Ash.Authorization.Rule.deny(check, opts) do
+        {:ok, rule} ->
+          rule
+
+        {:error, [{key, message} | _]} ->
+          raise Ash.Error.ResourceDslError,
+            message: message,
+            path: [:actions, :deny],
+            option: key
+      end
+    end
+  end
+
+  @doc "Returns a `deny_unless` rule. See `Ash.Authorization.Rule.new/2 for more."
+  defmacro deny_unless(check, opts \\ []) do
+    quote bind_quoted: [check: check, opts: opts] do
+      case Ash.Authorization.Rule.deny_unless(check, opts) do
+        {:ok, rule} ->
+          rule
+
+        {:error, [{key, message} | _]} ->
+          raise Ash.Error.ResourceDslError,
+            message: message,
+            path: [:actions, :deny_unless],
+            option: key
+      end
+    end
+  end
+
+  @doc "Returns a `deny_only` rule. See `Ash.Authorization.Rule.new/2 for more."
+  defmacro deny_only(check, opts \\ []) do
+    quote bind_quoted: [check: check, opts: opts] do
+      case Ash.Authorization.Rule.deny_only(check, opts) do
+        {:ok, rule} ->
+          rule
+
+        {:error, [{key, message} | _]} ->
+          raise Ash.Error.ResourceDslError,
+            message: message,
+            path: [:actions, :deny_only],
+            option: key
+      end
     end
   end
 

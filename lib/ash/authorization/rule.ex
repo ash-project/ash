@@ -64,9 +64,8 @@ defmodule Ash.Authorization.Rule do
 
   def new({kind, opts}), do: new(kind, opts)
 
-  # TODO: return ok/error so DSL builder can raise
-  def new(kind, opts) when kind not in @kinds do
-    raise "Invalid rule declaration: #{kind}: #{inspect(opts)}"
+  def new(kind, _opts) when kind not in @kinds do
+    {:error, :no_such_kind}
   end
 
   def new(kind, module) when is_atom(module) do
@@ -87,13 +86,12 @@ defmodule Ash.Authorization.Rule do
         )
 
       {:error, error} ->
-        # TODO: nicer
-        raise error
+        {:error, error}
     end
   end
 
   def new(kind, opts) when is_list(opts) do
-    struct!(__MODULE__, Keyword.put(opts, :kind, kind))
+    {:ok, struct(__MODULE__, Keyword.put(opts, :kind, kind))}
   end
 
   def run_check(
