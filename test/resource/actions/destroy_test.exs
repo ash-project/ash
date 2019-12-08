@@ -23,7 +23,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.DestroyTest do
                %Ash.Resource.Actions.Destroy{
                  name: :default,
                  primary?: true,
-                 rules: [],
+                 authorization_steps: [],
                  type: :destroy
                }
              ] = Ash.actions(Post)
@@ -62,11 +62,11 @@ defmodule Ash.Test.Dsl.Resource.Actions.DestroyTest do
     test "it fails if `rules` is not a list" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option rules at actions -> destroy -> default must be [{:struct, Ash.Authorization.Rule}]",
+        "option authorization_steps at actions -> destroy -> default must be [%Ash.Authorization.Rule{}]",
         fn ->
           defposts do
             actions do
-              destroy :default, rules: 10
+              destroy :default, authorization_steps: 10
             end
           end
         end
@@ -76,11 +76,11 @@ defmodule Ash.Test.Dsl.Resource.Actions.DestroyTest do
     test "it fails if the elements of the rules list are not rules" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option rules at actions -> destroy -> default must be [{:struct, Ash.Authorization.Rule}]",
+        "option authorization_steps at actions -> destroy -> default must be [%Ash.Authorization.Rule{}]",
         fn ->
           defposts do
             actions do
-              destroy :default, rules: [10]
+              destroy :default, authorization_steps: [10]
             end
           end
         end

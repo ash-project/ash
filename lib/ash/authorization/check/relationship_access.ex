@@ -55,7 +55,12 @@ defmodule Ash.Authorization.Check.RelationshipAccess do
 
   def precheck(
         user,
-        %{resource: resource, changeset: changeset, relationships: relationships},
+        %{
+          resource: resource,
+          changeset: changeset,
+          relationships: relationships,
+          action: %{type: :create}
+        },
         opts
       ) do
     relationship_name = opts[:relationship]

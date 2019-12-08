@@ -2,7 +2,9 @@ defmodule Ash.Actions.Create do
   alias Ash.Authorization.Authorizer
   alias Ash.Actions.SideLoader
 
-  def run(resource, action, api, %{authorize?: true} = params) do
+  @spec run(Ash.api(), Ash.resource(), Ash.action(), Ash.params()) ::
+          {:ok, Ash.record()} | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
+  def run(api, resource, action, %{authorize?: true} = params) do
     case prepare_create_params(resource, params) do
       {:ok, changeset} ->
         auth_context = %{
@@ -14,26 +16,32 @@ defmodule Ash.Actions.Create do
 
         user = Map.get(params, :user)
 
-        Authorizer.authorize(user, action.rules, auth_context, fn authorize_data_fun ->
-          with {:ok, result} <- Ash.DataLayer.create(resource, changeset),
-               {:auth, :allow} <-
-                 {:auth, authorize_data_fun.(user, result, action.rules, auth_context)} do
-            side_loads = Map.get(params, :side_load, [])
-            global_params = Map.take(params, [:authorize?, :user])
+        Authorizer.authorize(
+          user,
+          action.authorization_steps,
+          auth_context,
+          fn authorize_data_fun ->
+            with {:ok, result} <- Ash.DataLayer.create(resource, changeset),
+                 {:auth, :allow} <-
+                   {:auth,
+                    authorize_data_fun.(user, result, action.authorization_steps, auth_context)} do
+              side_loads = Map.get(params, :side_load, [])
+              global_params = Map.take(params, [:authorize?, :user])
 
-            SideLoader.side_load(resource, result, side_loads, api, global_params)
-          else
-            {:error, error} -> {:error, error}
-            {:auth, _} -> {:error, :forbidden}
+              SideLoader.side_load(resource, result, side_loads, api, global_params)
+            else
+              {:error, error} -> {:error, error}
+              {:auth, _} -> {:error, :forbidden}
+            end
           end
-        end)
+        )
 
       {:error, changeset} ->
         {:error, changeset}
     end
   end
 
-  def run(resource, _action, api, params) do
+  def run(api, resource, _action, params) do
     with {:ok, changeset} <- prepare_create_params(resource, params),
          {:ok, result} <- Ash.DataLayer.create(resource, changeset) do
       side_loads = Map.get(params, :side_load, [])

@@ -1,34 +1,36 @@
 defmodule Ash.Resource.Actions.Read do
   @moduledoc "The representation of a `read` action"
 
-  defstruct [:type, :name, :primary?, :rules, :paginate?]
+  defstruct [:type, :name, :primary?, :authorization_steps, :paginate?]
+
+  alias Ash.Authorization.Rule
 
   @type t :: %__MODULE__{
           type: :read,
           name: atom,
           primary?: boolean,
-          rules: list(Ash.Authorization.Rule.t()),
-          paginate?: boolean
+          paginate?: boolean,
+          authorization_steps: list(Rule.t())
         }
 
   @opt_schema Ashton.schema(
                 opts: [
                   primary?: :boolean,
-                  rules: {:list, {:struct, Ash.Authorization.Rule}},
-                  paginate?: :boolean
+                  paginate?: :boolean,
+                  authorization_steps: {:list, %Rule{}}
                 ],
                 defaults: [
                   primary?: false,
-                  rules: [],
-                  paginate?: true
+                  paginate?: true,
+                  authorization_steps: []
                 ],
                 describe: [
                   primary?:
                     "Whether or not this action should be used when no action is specified by the caller.",
-                  rules:
-                    "A list of `Ash.Authorization.Rule`s declaring the authorization of the action.",
                   paginate?:
-                    "If false, a page is still returned from a read action, but no limit or offset is performed."
+                    "If false, a page is still returned from a read action, but no limit or offset is performed.",
+                  authorization_steps:
+                    "A list of `Ash.Authorization.Rule`s that will be stepped through and applied in order."
                 ]
               )
 
@@ -44,7 +46,7 @@ defmodule Ash.Resource.Actions.Read do
            name: name,
            type: :read,
            primary?: opts[:primary?],
-           rules: opts[:rules],
+           authorization_steps: opts[:authorization_steps],
            paginate?: opts[:paginate?]
          }}
 

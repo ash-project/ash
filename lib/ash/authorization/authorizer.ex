@@ -45,7 +45,7 @@ defmodule Ash.Authorization.Authorizer do
 
           full_context = Map.merge(context, Map.get(per_check_data, :context) || %{})
 
-          checked_records = Rule.run_check(rule_with_per_check_data, user, data, full_context)
+          checked_records = run_check(rule_with_per_check_data, user, data, full_context)
 
           if Enum.any?(checked_records, &(&1.__authorization_decision__ == :unauthorized)) do
             {:unauthorized, data}
@@ -71,6 +71,38 @@ defmodule Ash.Authorization.Authorizer do
       # Maybe full auth breakdown in dev envs?
       {:unauthorized, nil}
     end
+  end
+
+  defp run_check(
+         %{check: check, kind: kind},
+         user,
+         data,
+         context
+       ) do
+    check_function =
+      case check do
+        {module, function, args} ->
+          fn user, data, context ->
+            apply(module, function, [user, data, context] ++ args)
+          end
+
+        function ->
+          function
+      end
+
+    result = check_function.(user, data, context)
+
+    Enum.map(data, fn item ->
+      result =
+        case result do
+          true -> true
+          false -> false
+          ids -> item.id in ids
+        end
+
+      decision = Rule.result_to_decision(kind, result)
+      Map.put(item, :__authorization_decision__, decision)
+    end)
   end
 
   defp predict_result({instructions, per_check_data}, rules) do

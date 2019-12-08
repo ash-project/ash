@@ -80,7 +80,7 @@ defmodule Ash.Api.Interface do
             {:error, "no action provided, and no primary action found"}
 
           action ->
-            Ash.Actions.Read.run(resource, action, api, params)
+            Ash.Actions.Read.run(api, resource, action, params)
         end
 
       :error ->
@@ -102,7 +102,7 @@ defmodule Ash.Api.Interface do
             {:error, "no action provided, and no primary action found"}
 
           action ->
-            Ash.Actions.Create.run(resource, action, api, params)
+            Ash.Actions.Create.run(api, resource, action, params)
         end
 
       :error ->

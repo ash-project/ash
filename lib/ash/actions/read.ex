@@ -2,7 +2,7 @@ defmodule Ash.Actions.Read do
   alias Ash.Authorization.Authorizer
   alias Ash.Actions.SideLoader
 
-  def run(resource, action, api, %{authorize?: true} = params) do
+  def run(api, resource, action, %{authorize?: true} = params) do
     auth_context = %{
       resource: resource,
       action: action,
@@ -11,10 +11,16 @@ defmodule Ash.Actions.Read do
 
     user = Map.get(params, :user)
 
-    Authorizer.authorize(user, action.rules, auth_context, fn authorize_data_fun ->
+    Authorizer.authorize(user, action.authorization_steps, auth_context, fn authorize_data_fun ->
       with {:ok, paginator} <- do_run(resource, action, api, params),
            {:auth, :allow} <-
-             {:auth, authorize_data_fun.(user, paginator.results, action.rules, auth_context)} do
+             {:auth,
+              authorize_data_fun.(
+                user,
+                paginator.results,
+                action.authorization_steps,
+                auth_context
+              )} do
         side_loads = Map.get(params, :side_load, [])
         global_params = Map.take(params, [:authorize?, :user])
 
@@ -26,7 +32,7 @@ defmodule Ash.Actions.Read do
     end)
   end
 
-  def run(resource, action, api, params) do
+  def run(api, resource, action, params) do
     case do_run(resource, action, api, params) do
       {:ok, paginator} ->
         side_loads = Map.get(params, :side_load, [])

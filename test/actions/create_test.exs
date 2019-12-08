@@ -53,5 +53,17 @@ defmodule Ash.Test.Actions.CreateTest do
       assert %Post{title: "foo", contents: "bar"} =
                Api.create!(Post, %{attributes: %{title: "foo", contents: "bar"}})
     end
+
+    test "constant default values are set properly" do
+      assert %Post{tag: "garbage"} = Api.create!(Post, %{attributes: %{title: "foo"}})
+    end
+
+    test "constant functions values are set properly" do
+      assert %Post{tag2: "garbage2"} = Api.create!(Post, %{attributes: %{title: "foo"}})
+    end
+
+    test "constant module/function values are set properly" do
+      assert %Post{tag3: "garbage3"} = Api.create!(Post, %{attributes: %{title: "foo"}})
+    end
   end
 end

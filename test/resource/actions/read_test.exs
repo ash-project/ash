@@ -23,7 +23,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.ReadTest do
                %Ash.Resource.Actions.Read{
                  name: :default,
                  primary?: true,
-                 rules: [],
+                 authorization_steps: [],
                  type: :read
                }
              ] = Ash.actions(Post)
@@ -62,11 +62,11 @@ defmodule Ash.Test.Dsl.Resource.Actions.ReadTest do
     test "it fails if `rules` is not a list" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option rules at actions -> read -> default must be [{:struct, Ash.Authorization.Rule}]",
+        "option authorization_steps at actions -> read -> default must be [%Ash.Authorization.Rule{}]",
         fn ->
           defposts do
             actions do
-              read :default, rules: 10
+              read :default, authorization_steps: 10
             end
           end
         end
@@ -76,11 +76,11 @@ defmodule Ash.Test.Dsl.Resource.Actions.ReadTest do
     test "it fails if the elements of the rules list are not rules" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option rules at actions -> read -> default must be [{:struct, Ash.Authorization.Rule}]",
+        "option authorization_steps at actions -> read -> default must be [%Ash.Authorization.Rule{}]",
         fn ->
           defposts do
             actions do
-              read :default, rules: [10]
+              read :default, authorization_steps: [10]
             end
           end
         end
