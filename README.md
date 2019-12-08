@@ -1,8 +1,8 @@
 # Ash
 
 ## Quick Links
-* [Resource Documentation](Ash.Resource.html)
-* [DSL Documentation](Ash.Resource.DSL.html)
+* [Resource Documentation](https://hexdocs.pm/ash/Ash.Resource.html)
+* [DSL Documentation](https://hexdocs.pm/ash/Ash.Resource.DSL.html)
 
 ## Introduction
 
