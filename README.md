@@ -2,7 +2,7 @@
 
 ## Quick Links
 * [Resource Documentation](Ash.Resource.html)
-* [DSL Documentation](Ash.Resource.Dsl.html)
+* [DSL Documentation](Ash.Resource.DSL.html)
 
 ## Introduction
 
@@ -17,6 +17,36 @@ First you declare your resources using the Ash resource DSL. You could technical
 Developers shoud be focusing on their core business logic - not boilerplate code. Ash builds upon the incredible productivity of Phoenix and empowers developers to get up and running with a fully functional app in substantially less time, while still being flexible enough to allow customization when the need inevitably arises.
 
 Ash is an open source project, and draws inspiration from similar ideas in other frameworks and concepts. The goal of Ash is to lower the barrier to adopting and using Elixir and Phoenix, and in doing so help these amazing communities attract new develpers, projects, and companies.
+
+## Example Resource
+```elixir
+defmodule Post do
+  use Ash.Resource, name: "posts", type: "post"
+  use AshJsonApi.JsonApiResource
+  use Ash.DataLayer.Postgres
+
+  actions do
+    read :default,
+      authorization_steps: [
+        allow_if: user_is(:admin)
+      ]
+
+    create :default,
+      authorization_steps: [
+        allow_if: user_is(:admin)
+      ]
+    
+  end
+
+  attributes do
+    attribute :name, :string
+  end
+
+  relationships do
+    belongs_to :author, Author
+  end
+end
+```
 
 
 ## TODO LIST (in no order)
