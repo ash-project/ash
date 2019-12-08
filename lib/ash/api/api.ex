@@ -41,7 +41,7 @@ defmodule Ash.Api do
   ```
 
   Then you can interact through that Api with the actions that those resources expose.
-  For example: `MyApp.Api.create(OneResource, %{attributes: %{name: "thing"}}), or
+  For example: `MyApp.Api.create(OneResource, %{attributes: %{name: "thing"}})`, or
   `MyApp.Api.read(OneResource, %{filter: %{name: "thing"}})`. Corresponding actions must
   be defined in your resources in order to call them through the Api.
   """
@@ -115,7 +115,7 @@ defmodule Ash.Api do
                                  max_concurrency:
                                    "The total number of side loads (per side load nesting level, per ongoing side load) that can be running. Uses `System.schedulers_online/0` if unset.",
                                  timeout:
-                                   "the maximum amount of time to wait (in milliseconds) without receiving a task reply. see `task.supervisor.async_stream/6",
+                                   "the maximum amount of time to wait (in milliseconds) without receiving a task reply. see `task.supervisor.async_stream/6`",
                                  shutdown:
                                    "an integer indicating the timeout value. Defaults to 5000 milliseconds"
                                ],

@@ -36,7 +36,7 @@ defmodule Ash.Test.Resource.Relationshihps.HasOneTest do
     test "fails if destination_field is not an atom" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option destination_field at relationships -> has_one -> foobar must be of type :atom",
+        "option destination_field at relationships -> has_one -> foobar must be atom",
         fn ->
           defposts do
             relationships do
@@ -50,7 +50,7 @@ defmodule Ash.Test.Resource.Relationshihps.HasOneTest do
     test "fails if source_field is not an atom" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option source_field at relationships -> has_one -> foobar must be of type :atom",
+        "option source_field at relationships -> has_one -> foobar must be atom",
         fn ->
           defposts do
             relationships do

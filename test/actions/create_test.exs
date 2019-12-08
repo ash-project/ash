@@ -15,6 +15,11 @@ defmodule Ash.Test.Actions.CreateTest do
     end
   end
 
+  defmodule PostDefaults do
+    def garbage2(), do: "garbage2"
+    def garbage3(), do: "garbage3"
+  end
+
   defmodule Post do
     use Ash.Resource, name: "posts", type: "post"
     use Ash.DataLayer.Ets, private?: true
@@ -27,6 +32,9 @@ defmodule Ash.Test.Actions.CreateTest do
     attributes do
       attribute :title, :string
       attribute :contents, :string
+      attribute :tag, :string, default: {:constant, "garbage"}
+      attribute :tag2, :string, default: &PostDefaults.garbage2/0
+      attribute :tag3, :string, default: {PostDefaults, :garbage3}
     end
 
     relationships do

@@ -55,7 +55,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "it fails if you dont pass an atom for `source_field_on_join_table`" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option source_field_on_join_table at relationships -> many_to_many -> foobars must be of type :atom",
+        "option source_field_on_join_table at relationships -> many_to_many -> foobars must be atom",
         fn ->
           defposts do
             relationships do
@@ -69,7 +69,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "it fails if you dont pass an atom for `destination_field_on_join_table`" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option destination_field_on_join_table at relationships -> many_to_many -> foobars must be of type :atom",
+        "option destination_field_on_join_table at relationships -> many_to_many -> foobars must be atom",
         fn ->
           defposts do
             relationships do
@@ -85,7 +85,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "it fails if you dont pass an atom for `source_field`" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option source_field at relationships -> many_to_many -> foobars must be of type :atom",
+        "option source_field at relationships -> many_to_many -> foobars must be atom",
         fn ->
           defposts do
             relationships do
@@ -101,7 +101,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "it fails if you dont pass an atom for `destination_field`" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option destination_field at relationships -> many_to_many -> foobars must be of type :atom",
+        "option destination_field at relationships -> many_to_many -> foobars must be atom",
         fn ->
           defposts do
             relationships do

@@ -29,7 +29,7 @@ defmodule Ash.Resource do
                             default_page_size:
                               "The default page size for any read action. If no page size is specified, this value is used.",
                             primary_key:
-                              "If true, a default `id` uuid primary key is used. If false, none is created. See the primary_key opts for info on specifying primary key options."
+                              "If true, a default `id` uuid primary key that autogenerates is used. If false, none is created. See the primary_key opts for info on specifying primary key options."
                           ],
                           required: [:name, :type],
                           defaults: [
@@ -124,7 +124,12 @@ defmodule Ash.Resource do
   def define_primary_key(mod, opts) do
     case opts[:primary_key] do
       true ->
-        {:ok, attribute} = Ash.Resource.Attributes.Attribute.new(:id, :uuid, primary_key?: true)
+        {:ok, attribute} =
+          Ash.Resource.Attributes.Attribute.new(:id, :uuid,
+            primary_key?: true,
+            default: &Ecto.UUID.generate/0
+          )
+
         Module.put_attribute(mod, :attributes, attribute)
 
       false ->

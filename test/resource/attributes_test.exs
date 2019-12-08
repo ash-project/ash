@@ -56,7 +56,7 @@ defmodule Ash.Test.Resource.AttributesTest do
     test "raises if you pass an invalid value for `primary_key?`" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option primary_key? at attributes -> attribute must be of type :boolean",
+        "option primary_key? at attributes -> attribute must be boolean",
         fn ->
           defposts do
             attributes do

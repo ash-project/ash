@@ -62,3 +62,4 @@ Ash is an open source project, and draws inspiration from similar ideas in other
 * Validate that all relationships on all resources in the API have destinations *in* that API, or don't and add in logic to pretend those don't exist through the API.
 * Make authorization spit out informative errors (at least for developers)
 * Use telemetry and/or some kind of hook system to add metrics
+* Forbid impossible auth/creation situations (e.g "the id field is not exposed on a create action, and doesn't have a default, therefore writes will always fail.)

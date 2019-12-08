@@ -49,7 +49,7 @@ defmodule Ash.Test.Resource.ApiTest do
     test "it fails if `interface?` is not a boolean" do
       assert_raise(
         Ash.Error.ApiDslError,
-        "`use Ash.Test.Resource.ApiTest.Api, ...` interface? must be of type :boolean",
+        "`use Ash.Test.Resource.ApiTest.Api, ...` interface? must be boolean",
         fn ->
           defapi(interface?: 10) do
           end
@@ -60,7 +60,7 @@ defmodule Ash.Test.Resource.ApiTest do
     test "it fails if `max_page_size` is not an integer" do
       assert_raise(
         Ash.Error.ApiDslError,
-        "`use Ash.Test.Resource.ApiTest.Api, ...` max_page_size must be of type :integer",
+        "`use Ash.Test.Resource.ApiTest.Api, ...` max_page_size must be integer",
         fn ->
           defapi(max_page_size: "ten") do
           end
@@ -82,7 +82,7 @@ defmodule Ash.Test.Resource.ApiTest do
     test "it fails if `default_page_size` is not an integer" do
       assert_raise(
         Ash.Error.ApiDslError,
-        "`use Ash.Test.Resource.ApiTest.Api, ...` default_page_size must be of type :integer",
+        "`use Ash.Test.Resource.ApiTest.Api, ...` default_page_size must be integer",
         fn ->
           defapi(default_page_size: "ten") do
           end
@@ -104,7 +104,7 @@ defmodule Ash.Test.Resource.ApiTest do
     test "it fails if the parallel_side_load supervisor is not an atom" do
       assert_raise(
         Ash.Error.ApiDslError,
-        "option supervisor at parallel_side_load must be of type :atom",
+        "option supervisor at parallel_side_load must be atom",
         fn ->
           defapi do
             parallel_side_load(supervisor: "foo")
@@ -116,7 +116,7 @@ defmodule Ash.Test.Resource.ApiTest do
     test "it fails if the max_concurrency is not an integer" do
       assert_raise(
         Ash.Error.ApiDslError,
-        "option max_concurrency at parallel_side_load must be of type :integer",
+        "option max_concurrency at parallel_side_load must be integer",
         fn ->
           defapi do
             parallel_side_load(supervisor: :foo, max_concurrency: "foo")
@@ -140,7 +140,7 @@ defmodule Ash.Test.Resource.ApiTest do
     test "it fails if the timeout is not an integer" do
       assert_raise(
         Ash.Error.ApiDslError,
-        "option timeout at parallel_side_load must be of type :integer",
+        "option timeout at parallel_side_load must be integer",
         fn ->
           defapi do
             parallel_side_load(supervisor: :foo, timeout: "foo")
@@ -164,7 +164,7 @@ defmodule Ash.Test.Resource.ApiTest do
     test "it fails if the shutdown is not an integer" do
       assert_raise(
         Ash.Error.ApiDslError,
-        "option shutdown at parallel_side_load must be of type :integer",
+        "option shutdown at parallel_side_load must be integer",
         fn ->
           defapi do
             parallel_side_load(supervisor: :foo, shutdown: "foo")

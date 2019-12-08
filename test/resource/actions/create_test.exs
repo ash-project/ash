@@ -48,7 +48,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.CreateTest do
     test "it fails if `primary?` is not a boolean" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option primary? at actions -> create -> default must be of type :boolean",
+        "option primary? at actions -> create -> default must be boolean",
         fn ->
           defposts do
             actions do
@@ -62,7 +62,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.CreateTest do
     test "it fails if `rules` is not a list" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option rules at actions -> create -> default must be of type {:list, {:struct, Ash.Authorization.Rule}}",
+        "option rules at actions -> create -> default must be [{:struct, Ash.Authorization.Rule}]",
         fn ->
           defposts do
             actions do
@@ -76,7 +76,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.CreateTest do
     test "it fails if the elements of the rules list are not rules" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option rules at actions -> create -> default must be of type {:list, {:struct, Ash.Authorization.Rule}}",
+        "option rules at actions -> create -> default must be [{:struct, Ash.Authorization.Rule}]",
         fn ->
           defposts do
             actions do

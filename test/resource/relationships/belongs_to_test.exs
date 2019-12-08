@@ -55,7 +55,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if destination_field is not an atom" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option destination_field at relationships -> belongs_to -> foobar must be of type :atom",
+        "option destination_field at relationships -> belongs_to -> foobar must be atom",
         fn ->
           defposts do
             relationships do
@@ -69,7 +69,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if source_field is not an atom" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option source_field at relationships -> belongs_to -> foobar must be of type :atom",
+        "option source_field at relationships -> belongs_to -> foobar must be atom",
         fn ->
           defposts do
             relationships do
@@ -111,7 +111,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if `primary_key?` is not a boolean" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option primary_key? at relationships -> belongs_to -> foobar must be of type :boolean",
+        "option primary_key? at relationships -> belongs_to -> foobar must be boolean",
         fn ->
           defposts do
             relationships do
@@ -126,7 +126,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
   test "fails if `define_field?` is not a boolean" do
     assert_raise(
       Ash.Error.ResourceDslError,
-      "option define_field? at relationships -> belongs_to -> foobar must be of type :boolean",
+      "option define_field? at relationships -> belongs_to -> foobar must be boolean",
       fn ->
         defposts do
           relationships do
@@ -140,7 +140,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
   test "fails if `field_type` is not an atom" do
     assert_raise(
       Ash.Error.ResourceDslError,
-      "option field_type at relationships -> belongs_to -> foobar must be of type :atom",
+      "option field_type at relationships -> belongs_to -> foobar must be atom",
       fn ->
         defposts do
           relationships do

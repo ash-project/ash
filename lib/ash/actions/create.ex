@@ -65,9 +65,23 @@ defmodule Ash.Actions.Create do
       |> Ash.attributes()
       |> Enum.map(& &1.name)
 
+    # Map.put_new(attributes, :id, Ecto.UUID.generate())
+
+    attributes_with_defaults =
+      resource
+      |> Ash.attributes()
+      |> Stream.filter(&(not is_nil(&1.default)))
+      |> Enum.reduce(attributes, fn attr, attributes ->
+        if Map.has_key?(attributes, attr.name) do
+          attributes
+        else
+          Map.put(attributes, attr.name, default(attr))
+        end
+      end)
+
     resource
     |> struct()
-    |> Ecto.Changeset.cast(Map.put_new(attributes, :id, Ecto.UUID.generate()), allowed_keys)
+    |> Ecto.Changeset.cast(attributes_with_defaults, allowed_keys)
     |> case do
       %{valid?: true} = changeset ->
         {:ok, changeset}
@@ -77,6 +91,10 @@ defmodule Ash.Actions.Create do
         {:error, "invalid attributes"}
     end
   end
+
+  defp default(%{default: {:constant, value}}), do: value
+  defp default(%{default: {mod, func}}), do: apply(mod, func, [])
+  defp default(%{default: function}), do: function.()
 
   defp prepare_create_relationships(changeset, _resource, _relationships) do
     {:ok, changeset}

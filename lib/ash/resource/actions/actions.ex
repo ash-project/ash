@@ -28,7 +28,7 @@ defmodule Ash.Resource.Actions do
     end
   end
 
-  @doc "Returns an `allow` rule. See `Ash.Authorization.Rule.new/2 for more."
+  @doc "Returns an `allow` rule. See `Ash.Authorization.Rule.new/2` for more."
   defmacro allow(check, opts \\ []) do
     quote bind_quoted: [check: check, opts: opts] do
       case Ash.Authorization.Rule.allow(check, opts) do
@@ -44,7 +44,7 @@ defmodule Ash.Resource.Actions do
     end
   end
 
-  @doc "Returns an `allow_unless` rule. See `Ash.Authorization.Rule.new/2 for more."
+  @doc "Returns an `allow_unless` rule. See `Ash.Authorization.Rule.new/2` for more."
   defmacro allow_unless(check, opts \\ []) do
     quote bind_quoted: [check: check, opts: opts] do
       case Ash.Authorization.Rule.allow_unless(check, opts) do
@@ -60,7 +60,7 @@ defmodule Ash.Resource.Actions do
     end
   end
 
-  @doc "Returns an `allow_only` rule. See `Ash.Authorization.Rule.new/2 for more."
+  @doc "Returns an `allow_only` rule. See `Ash.Authorization.Rule.new/2` for more."
   defmacro allow_only(check, opts \\ []) do
     quote bind_quoted: [check: check, opts: opts] do
       case Ash.Authorization.Rule.allow_only(check, opts) do
@@ -76,7 +76,7 @@ defmodule Ash.Resource.Actions do
     end
   end
 
-  @doc "Returns a `deny` rule. See `Ash.Authorization.Rule.new/2 for more."
+  @doc "Returns a `deny` rule. See `Ash.Authorization.Rule.new/2` for more."
   defmacro deny(check, opts \\ []) do
     quote bind_quoted: [check: check, opts: opts] do
       case Ash.Authorization.Rule.deny(check, opts) do
@@ -92,7 +92,7 @@ defmodule Ash.Resource.Actions do
     end
   end
 
-  @doc "Returns a `deny_unless` rule. See `Ash.Authorization.Rule.new/2 for more."
+  @doc "Returns a `deny_unless` rule. See `Ash.Authorization.Rule.new/2` for more."
   defmacro deny_unless(check, opts \\ []) do
     quote bind_quoted: [check: check, opts: opts] do
       case Ash.Authorization.Rule.deny_unless(check, opts) do
@@ -108,7 +108,7 @@ defmodule Ash.Resource.Actions do
     end
   end
 
-  @doc "Returns a `deny_only` rule. See `Ash.Authorization.Rule.new/2 for more."
+  @doc "Returns a `deny_only` rule. See `Ash.Authorization.Rule.new/2` for more."
   defmacro deny_only(check, opts \\ []) do
     quote bind_quoted: [check: check, opts: opts] do
       case Ash.Authorization.Rule.deny_only(check, opts) do
