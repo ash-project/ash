@@ -16,7 +16,7 @@ defmodule Ash.Authorization.Rule do
   @type side_load_instruction :: {:side_load, Ash.side_load()}
   # The result for this check is predetermined for all records
   # that could be passed in from this request.
-  @type precheck_instruction :: {:precheck, boolean}
+  @type precheck_instruction :: {:decision, boolean}
   @type precheck_context :: {:context, %{optional(atom) => term}}
   @type precheck_result :: side_load_instruction() | precheck_instruction() | precheck_context()
 
@@ -32,20 +32,13 @@ defmodule Ash.Authorization.Rule do
           precheck: precheck() | nil
         }
 
-  # @kinds [
-  #   :forbid_if,
-  #   :forbid_unless,
-  #   :approve_if,
-  #   :approve_unless
-  # ]
-
-  # def new(kind, {check_module, opts}) when is_atom(module) do
-  #   new(kind,
-  #     check: {check_module, :check, [opts]},
-  #     describe: check_module.describe(opts),
-  #     precheck: {check_module, :precheck, [opts]}
-  #   )
-  # end
+  def new(kind, check_module, opts) when is_atom(check_module) do
+    new(kind,
+      check: {check_module, :check, [opts]},
+      describe: check_module.describe(opts),
+      precheck: {check_module, :precheck, [opts]}
+    )
+  end
 
   def new(kind, opts) when is_list(opts) do
     {:ok, struct(__MODULE__, Keyword.put(opts, :kind, kind))}

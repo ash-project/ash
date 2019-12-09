@@ -1,11 +1,14 @@
 defmodule Ash.Actions.Create do
   alias Ash.Authorization.Authorizer
   alias Ash.Actions.SideLoader
+  alias Ash.Actions.ChangesetHelpers
+
+  # TODO Run in a transaction!
 
   @spec run(Ash.api(), Ash.resource(), Ash.action(), Ash.params()) ::
           {:ok, Ash.record()} | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
   def run(api, resource, action, %{authorize?: true} = params) do
-    case prepare_create_params(resource, params) do
+    case prepare_create_params(api, resource, params) do
       {:ok, changeset} ->
         auth_context = %{
           resource: resource,
@@ -42,7 +45,7 @@ defmodule Ash.Actions.Create do
   end
 
   def run(api, resource, _action, params) do
-    with {:ok, changeset} <- prepare_create_params(resource, params),
+    with {:ok, changeset} <- prepare_create_params(api, resource, params),
          {:ok, result} <- Ash.DataLayer.create(resource, changeset) do
       side_loads = Map.get(params, :side_load, [])
       global_params = Map.take(params, [:authorize?, :user])
@@ -53,17 +56,19 @@ defmodule Ash.Actions.Create do
     end
   end
 
-  defp prepare_create_params(resource, params) do
+  defp prepare_create_params(api, resource, params) do
     attributes = Map.get(params, :attributes, %{})
     relationships = Map.get(params, :relationships, %{})
+    authorize? = Map.get(params, :authorize?, false)
+    user = Map.get(params, :user)
 
-    with {:ok, %{valid?: true} = changeset} <- prepare_create_attributes(resource, attributes),
-         {:ok, %{valid?: true}} <-
-           prepare_create_relationships(changeset, resource, relationships) do
+    with %{valid?: true} = changeset <- prepare_create_attributes(resource, attributes),
+         changeset <- Map.put(changeset, :__ash_api__, api),
+         %{valid?: true} <-
+           prepare_create_relationships(changeset, resource, relationships, authorize?, user) do
       {:ok, changeset}
     else
-      {:error, error} ->
-        {:error, error}
+      %{valid?: false} = changeset -> {:error, changeset}
     end
   end
 
@@ -72,8 +77,6 @@ defmodule Ash.Actions.Create do
       resource
       |> Ash.attributes()
       |> Enum.map(& &1.name)
-
-    # Map.put_new(attributes, :id, Ecto.UUID.generate())
 
     attributes_with_defaults =
       resource
@@ -90,38 +93,64 @@ defmodule Ash.Actions.Create do
     resource
     |> struct()
     |> Ecto.Changeset.cast(attributes_with_defaults, allowed_keys)
-    |> case do
-      %{valid?: true} = changeset ->
-        {:ok, changeset}
-
-      _error_changeset ->
-        # TODO: Print the errors here.
-        {:error, "invalid attributes"}
-    end
   end
 
   defp default(%{default: {:constant, value}}), do: value
   defp default(%{default: {mod, func}}), do: apply(mod, func, [])
   defp default(%{default: function}), do: function.()
 
-  defp prepare_create_relationships(changeset, _resource, _relationships) do
-    {:ok, changeset}
-    # relationships
-    # # Eventually we'll have to just copy changeset's logic
-    # # and/or use it directly (now that ecto is split up, maybe thats the way to do all of this?)
-    # |> Enum.reduce({%{}, []}, fn {key, value}, {changes, errors} ->
-    #   case Ash.relationship(resource, key) do
-    #     nil ->
-    #       {changes, ["unknown attribute #{key}" | errors]}
+  defp prepare_create_relationships(changeset, resource, relationships, authorize?, user) do
+    Enum.reduce(relationships, changeset, fn {relationship, value}, changeset ->
+      case Ash.relationship(resource, relationship) do
+        # %{type: :belongs_to, source_field: source_field} ->
+        #   belongs_to_assoc_update(changeset, source_field, value)
 
-    #     _attribute ->
-    #       # TODO do actual value validation here
-    #       {Map.put(changes, key, value), errors}
-    #   end
-    # end)
-    # |> case do
-    #   {changes, []} -> {:ok, changes}
-    #   {_, errors} -> {:error, errors}
-    # end
+        %{type: :has_one} = rel ->
+          ChangesetHelpers.has_one_assoc_update(changeset, rel, value, authorize?, user)
+
+        # %{type: :has_many} = rel ->
+        #   has_many_assoc_update(changeset, rel, value)
+
+        # %{type: :many_to_many} = rel ->
+        #   many_to_many_assoc_update(changeset, rel, value, repo)
+
+        _ ->
+          Ecto.Changeset.add_error(changeset, relationship, "No such relationship")
+      end
+    end)
   end
+
+  # defp has_one_assoc_update(
+  #        changeset,
+  #        repo,
+  #        %{
+  #          destination: destination,
+  #          destination_field: destination_field,
+  #          source_field: source_field
+  #        },
+  #        identifier
+  #      ) do
+  #       # destination_primary_key = Ash.primary_key(destination)
+  #       # source_primary_key =
+  #       # ChangesetHelpers.before_changes(changeset, func)
+  #   Ecto.Changeset.prepare_changes(changeset, fn changeset ->
+
+  #     validate_primary_key()
+  #     case identifier_to_primary_key(destination, identifier) do
+
+  #     query =
+  #       from(row in destination,
+  #         where:
+  #           field(row, ^destination_field) == ^Ecto.Changeset.get_field(changeset, source_field)
+  #       )
+
+  #     repo.update_all(query, set: [{destination_field, value}])
+
+  #     changeset
+  #   end)
+  # end
+
+  # defp identifier_to_primary_key() do
+
+  # end
 end

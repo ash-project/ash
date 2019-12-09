@@ -42,11 +42,23 @@ defmodule Ash.Api.Interface do
     |> unwrap_or_raise!()
   end
 
-  def get(api, resource, id, params \\ %{}) do
+  def get(api, resource, id, params \\ %{})
+
+  def get(api, resource, id, params) when not is_map(id) do
+    with {:ok, resource} <- api.get_resource(resource),
+         {:ok, filter} <- Ash.Actions.Filter.value_to_primary_key_filter(resource, id) do
+      get(api, resource, filter, params)
+    else
+      {:error, error} -> {:error, error}
+      :error -> {:error, "no such resource"}
+    end
+  end
+
+  def get(api, resource, filter, params) do
     params_with_filter =
       params
       |> Map.put_new(:filter, %{})
-      |> Map.update!(:filter, &Map.put(&1, :id, id))
+      |> Map.update!(:filter, &Map.merge(&1, filter))
       |> Map.put(:page, %{limit: 2})
 
     case read(api, resource, params_with_filter) do
@@ -116,6 +128,9 @@ defmodule Ash.Api.Interface do
     raise Ash.Error.FrameworkError.exception(message: error)
   end
 
+  defp unwrap_or_raise!({:error, %Ecto.Changeset{}}),
+    do: raise(Ash.Error.FrameworkError, message: "invalid changes")
+
   defp unwrap_or_raise!({:error, error}) when not is_list(error) do
     raise error
   end
@@ -125,10 +140,16 @@ defmodule Ash.Api.Interface do
       error
       |> List.wrap()
       |> Stream.map(fn error ->
-        if is_bitstring(error) do
-          Ash.Error.FrameworkError.exception(message: error)
-        else
-          error
+        case error do
+          string when is_bitstring(string) ->
+            Ash.Error.FrameworkError.exception(message: string)
+
+          _ = %Ecto.Changeset{} ->
+            # TODO: format these
+            "invalid changes"
+
+          error ->
+            error
         end
       end)
       |> Enum.map_join("\n", &Exception.message/1)

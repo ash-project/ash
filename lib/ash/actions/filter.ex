@@ -10,6 +10,39 @@ defmodule Ash.Actions.Filter do
     @filter_types
   end
 
+  def value_to_primary_key_filter(resource, value) do
+    do_value_to_primary_key_filter(resource, Ash.primary_key(resource), value)
+  end
+
+  defp do_value_to_primary_key_filter(_resource, [], _value), do: {:error, :no_primary_key}
+
+  defp do_value_to_primary_key_filter(resource, primary_key, value) when is_map(value) do
+    if Enum.all?(primary_key, &Map.has_key?(value, &1)) do
+      value
+      |> Map.take(primary_key)
+      |> Enum.reduce({:ok, %{}}, fn
+        {key, val}, {:ok, filter} ->
+          attr = Ash.attribute(resource, key)
+
+          case Ash.Type.cast_input(attr.type, val) do
+            {:ok, casted} -> {:ok, Map.put(filter, attr.name, casted)}
+            :error -> {:error, {key, "is invalid"}}
+          end
+
+        _, {:error, error} ->
+          {:error, error}
+      end)
+    else
+      {:error, "Invalid primary key"}
+    end
+  end
+
+  defp do_value_to_primary_key_filter(resource, [field], value) do
+    do_value_to_primary_key_filter(resource, [field], %{field => value})
+  end
+
+  defp do_value_to_primary_key_filter(_, _, _), do: {:error, "Invalid primary key"}
+
   # This logic will need to get more complex as the ability to customize filter handling arises
   # as well as when complex filter types are added
   def process(resource, filter) do

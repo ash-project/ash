@@ -36,7 +36,7 @@ defmodule Ash.Authorization.Authorizer do
         {rule, per_check_data}, {:undecided, data} ->
           rule_with_per_check_data =
             case per_check_data do
-              %{precheck: value} ->
+              %{decision: value} ->
                 %{rule | check: fn _, _, _ -> value end}
 
               _ ->
@@ -113,7 +113,7 @@ defmodule Ash.Authorization.Authorizer do
 
   defp get_prediction([]), do: :unknown
 
-  defp get_prediction([{rule, %{precheck: value}} | rest]) do
+  defp get_prediction([{rule, %{decision: value}} | rest]) do
     case Rule.result_to_decision(rule.kind, value) do
       :allow -> :allow
       :undecided -> get_prediction(rest)
@@ -153,9 +153,9 @@ defmodule Ash.Authorization.Authorizer do
     {new_instructions, data}
   end
 
-  defp precheck_result(%{precheck: nil}, _user, _context), do: nil
+  defp precheck_result(%{decision: nil}, _user, _context), do: nil
 
-  defp precheck_result(%{precheck: precheck}, user, context) do
+  defp precheck_result(%{decision: precheck}, user, context) do
     case precheck do
       {module, function, args} ->
         if function_exported?(module, function, Enum.count(args) + 2) do
