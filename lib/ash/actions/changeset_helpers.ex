@@ -26,23 +26,27 @@ defmodule Ash.Actions.ChangesetHelpers do
         user
       ) do
     case Filter.value_to_primary_key_filter(destination, identifier) do
-      {:error, error} ->
+      {:error, _error} ->
         Ecto.Changeset.add_error(changeset, rel_name, "Invalid primary key supplied")
 
       {:ok, filter} ->
-        after_changes(changeset, fn changeset, result ->
+        after_changes(changeset, fn _changeset, result ->
           value = Map.get(result, source_field)
 
-          case api.get(destination, %{filter: filter, authorize?: authorize?, user: user}) do
-            {:ok, record} ->
-              api.update(record, %{
-                attributes: %{destination_field => value}
-              })
-
-            {:error, error} ->
-              {:error, error}
-          end
+          get_and_update(api, destination, filter, authorize?, user, %{destination_field => value})
         end)
+    end
+  end
+
+  defp get_and_update(api, destination, filter, authorize?, user, attribute_updates) do
+    case api.get(destination, %{filter: filter, authorize?: authorize?, user: user}) do
+      {:ok, record} ->
+        api.update(record, %{
+          attributes: attribute_updates
+        })
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 end
