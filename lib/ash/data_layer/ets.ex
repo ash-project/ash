@@ -203,6 +203,11 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
+  @impl true
+  def update(resource, changeset) do
+    create(resource, changeset)
+  end
+
   defp match_limit(table, match_spec, limit, offset) do
     result =
       if limit do

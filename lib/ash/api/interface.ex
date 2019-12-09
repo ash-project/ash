@@ -33,6 +33,17 @@ defmodule Ash.Api.Interface do
           {:error, error} -> {:error, List.wrap(error)}
         end
       end
+
+      def update!(record, params \\ %{}) do
+        Ash.Api.Interface.update!(__MODULE__, record, params)
+      end
+
+      def update(record, params \\ %{}) do
+        case Ash.Api.Interface.update(__MODULE__, record, params) do
+          {:ok, instance} -> {:ok, instance}
+          {:error, error} -> {:error, List.wrap(error)}
+        end
+      end
     end
   end
 
@@ -89,7 +100,7 @@ defmodule Ash.Api.Interface do
       {:ok, resource} ->
         case Map.get(params, :action) || Ash.primary_action(resource, :read) do
           nil ->
-            {:error, "no action provided, and no primary action found"}
+            {:error, "no action provided, and no primary action found for read"}
 
           action ->
             Ash.Actions.Read.run(api, resource, action, params)
@@ -111,10 +122,32 @@ defmodule Ash.Api.Interface do
       {:ok, resource} ->
         case Map.get(params, :action) || Ash.primary_action(resource, :create) do
           nil ->
-            {:error, "no action provided, and no primary action found"}
+            {:error, "no action provided, and no primary action found for create"}
 
           action ->
             Ash.Actions.Create.run(api, resource, action, params)
+        end
+
+      :error ->
+        {:error, "no such resource"}
+    end
+  end
+
+  def update!(api, record, params) do
+    api
+    |> update(record, params)
+    |> unwrap_or_raise!()
+  end
+
+  def update(api, %resource{} = record, params) do
+    case api.get_resource(resource) do
+      {:ok, resource} ->
+        case Map.get(params, :action) || Ash.primary_action(resource, :update) do
+          nil ->
+            {:error, "no action provided, and no primary action found for update"}
+
+          action ->
+            Ash.Actions.Update.run(api, record, action, params)
         end
 
       :error ->

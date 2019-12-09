@@ -1,15 +1,13 @@
-defmodule Ash.Actions.Create do
+defmodule Ash.Actions.Update do
   alias Ash.Authorization.Authorizer
   alias Ash.Actions.SideLoader
   alias Ash.Actions.ChangesetHelpers
 
-  # TODO Run in a transaction!
-
-  @spec run(Ash.api(), Ash.resource(), Ash.action(), Ash.params()) ::
+  @spec run(Ash.api(), Ash.record(), Ash.action(), Ash.params()) ::
           {:ok, Ash.record()} | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
-  def run(api, resource, action, %{authorize?: true} = params) do
-    case prepare_create_params(api, resource, params) do
-      %{valid?: true} = changeset ->
+  def run(api, %resource{} = record, action, %{authorize?: true} = params) do
+    case prepare_update_params(api, record, params) do
+      %Ecto.Changeset{valid?: true} = changeset ->
         auth_context = %{
           resource: resource,
           action: action,
@@ -24,7 +22,7 @@ defmodule Ash.Actions.Create do
           action.authorization_steps,
           auth_context,
           fn authorize_data_fun ->
-            with {:ok, result} <- do_create(resource, changeset),
+            with {:ok, result} <- do_update(resource, changeset),
                  {:auth, :allow} <-
                    {:auth,
                     authorize_data_fun.(user, result, action.authorization_steps, auth_context)} do
@@ -39,14 +37,17 @@ defmodule Ash.Actions.Create do
           end
         )
 
-      %Ecto.Changeset{} = changeset ->
+      changeset ->
         {:error, changeset}
     end
   end
 
-  def run(api, resource, _action, params) do
-    with %{valid?: true} = changeset <- prepare_create_params(api, resource, params),
-         {:ok, result} <- do_create(resource, changeset) do
+  def run(api, %resource{} = record, _action, params) do
+    with %Ecto.Changeset{valid?: true} = changeset <- prepare_update_params(api, record, params),
+         %Ecto.Changeset{valid?: true} = changeset <-
+           ChangesetHelpers.run_before_changes(changeset),
+         {:ok, result} <- Ash.DataLayer.update(resource, changeset),
+         {:ok, result} <- ChangesetHelpers.run_after_changes(changeset, result) do
       side_loads = Map.get(params, :side_load, [])
       global_params = Map.take(params, [:authorize?, :user])
 
@@ -57,7 +58,7 @@ defmodule Ash.Actions.Create do
     end
   end
 
-  defp do_create(resource, changeset) do
+  defp do_update(resource, changeset) do
     if Ash.data_layer_can?(resource, :transact) do
       Ash.data_layer(resource).transaction(fn ->
         with %{valid?: true} = changeset <- ChangesetHelpers.run_before_changes(changeset),
@@ -73,48 +74,28 @@ defmodule Ash.Actions.Create do
     end
   end
 
-  defp prepare_create_params(api, resource, params) do
+  defp prepare_update_params(api, %resource{} = record, params) do
     attributes = Map.get(params, :attributes, %{})
     relationships = Map.get(params, :relationships, %{})
     authorize? = Map.get(params, :authorize?, false)
     user = Map.get(params, :user)
 
-    with %{valid?: true} = changeset <- prepare_create_attributes(resource, attributes),
+    with %{valid?: true} = changeset <- prepare_update_attributes(record, attributes),
          changeset <- Map.put(changeset, :__ash_api__, api) do
-      prepare_create_relationships(changeset, resource, relationships, authorize?, user)
-    else
-      %{valid?: false} = changeset -> changeset
+      prepare_update_relationships(changeset, resource, relationships, authorize?, user)
     end
   end
 
-  defp prepare_create_attributes(resource, attributes) do
+  defp prepare_update_attributes(%resource{} = record, attributes) do
     allowed_keys =
       resource
       |> Ash.attributes()
       |> Enum.map(& &1.name)
 
-    attributes_with_defaults =
-      resource
-      |> Ash.attributes()
-      |> Stream.filter(&(not is_nil(&1.default)))
-      |> Enum.reduce(attributes, fn attr, attributes ->
-        if Map.has_key?(attributes, attr.name) do
-          attributes
-        else
-          Map.put(attributes, attr.name, default(attr))
-        end
-      end)
-
-    resource
-    |> struct()
-    |> Ecto.Changeset.cast(attributes_with_defaults, allowed_keys)
+    Ecto.Changeset.cast(record, attributes, allowed_keys)
   end
 
-  defp default(%{default: {:constant, value}}), do: value
-  defp default(%{default: {mod, func}}), do: apply(mod, func, [])
-  defp default(%{default: function}), do: function.()
-
-  defp prepare_create_relationships(changeset, resource, relationships, authorize?, user) do
+  defp prepare_update_relationships(changeset, resource, relationships, authorize?, user) do
     Enum.reduce(relationships, changeset, fn {relationship, value}, changeset ->
       case Ash.relationship(resource, relationship) do
         # %{type: :belongs_to, source_field: source_field} ->

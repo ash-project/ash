@@ -1,6 +1,25 @@
 defmodule Ash.Test.Actions.CreateTest do
   use ExUnit.Case, async: true
 
+  defmodule Profile do
+    use Ash.Resource, name: "authors", type: "author"
+    use Ash.DataLayer.Ets, private?: true
+
+    actions do
+      read :default
+      create :default
+      update :default
+    end
+
+    attributes do
+      attribute :bio, :string
+    end
+
+    relationships do
+      belongs_to :author, __MODULE__.Author
+    end
+  end
+
   defmodule Author do
     use Ash.Resource, name: "authors", type: "author"
     use Ash.DataLayer.Ets, private?: true
@@ -12,6 +31,10 @@ defmodule Ash.Test.Actions.CreateTest do
 
     attributes do
       attribute :name, :string
+    end
+
+    relationships do
+      has_one :profile, Profile
     end
   end
 
@@ -45,7 +68,7 @@ defmodule Ash.Test.Actions.CreateTest do
   defmodule Api do
     use Ash.Api
 
-    resources [Author, Post]
+    resources [Author, Post, Profile]
   end
 
   describe "simple creates" do
@@ -64,6 +87,29 @@ defmodule Ash.Test.Actions.CreateTest do
 
     test "constant module/function values are set properly" do
       assert %Post{tag3: "garbage3"} = Api.create!(Post, %{attributes: %{title: "foo"}})
+    end
+  end
+
+  describe "creating with has_one relationships" do
+    test "allows creating with has_one relationship" do
+      profile = Api.create!(Profile, %{attributes: %{bio: "best dude"}})
+
+      Api.create!(Author, %{
+        attributes: %{name: "fred"},
+        relationships: %{profile: profile.id}
+      })
+    end
+
+    test "it sets the relationship on the destination record accordingly" do
+      profile = Api.create!(Profile, %{attributes: %{bio: "best dude"}})
+
+      author =
+        Api.create!(Author, %{
+          attributes: %{name: "fred"},
+          relationships: %{profile: profile.id}
+        })
+
+      assert Api.get!(Profile, profile.id).author_id == author.id
     end
   end
 end

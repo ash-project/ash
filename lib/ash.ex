@@ -24,6 +24,13 @@ defmodule Ash do
   @type action :: Create.t() | Read.t() | Update.t() | Destroy.t()
   @type side_load_config :: Keyword.t()
 
+  @spec data_layer_can?(resource(), Ash.DataLayer.feature()) :: boolean
+  def data_layer_can?(resource, feature) do
+    data_layer = data_layer(resource)
+
+    data_layer && data_layer.can?(feature)
+  end
+
   @spec resources(api) :: list(resource())
   def resources(api) do
     api.resources()
