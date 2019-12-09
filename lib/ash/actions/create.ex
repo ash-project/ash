@@ -117,8 +117,8 @@ defmodule Ash.Actions.Create do
   defp prepare_create_relationships(changeset, resource, relationships, authorize?, user) do
     Enum.reduce(relationships, changeset, fn {relationship, value}, changeset ->
       case Ash.relationship(resource, relationship) do
-        # %{type: :belongs_to, source_field: source_field} ->
-        #   belongs_to_assoc_update(changeset, source_field, value)
+        %{type: :belongs_to} = rel ->
+          ChangesetHelpers.belongs_to_assoc_update(changeset, rel, value, authorize?, user)
 
         %{type: :has_one} = rel ->
           ChangesetHelpers.has_one_assoc_update(changeset, rel, value, authorize?, user)

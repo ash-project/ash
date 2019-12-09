@@ -111,5 +111,66 @@ defmodule Ash.Test.Actions.CreateTest do
 
       assert Api.get!(Profile, profile.id).author_id == author.id
     end
+
+    test "it responds with the relationshi filled in" do
+      profile = Api.create!(Profile, %{attributes: %{bio: "best dude"}})
+
+      author =
+        Api.create!(Author, %{
+          attributes: %{name: "fred"},
+          relationships: %{profile: profile.id}
+        })
+
+      assert author.profile == Map.put(profile, :author_id, author.id)
+    end
+  end
+
+  describe "creating with belongs_to relationships" do
+    test "allows creating with belongs_to relationship" do
+      author = Api.create!(Author, %{attributes: %{bio: "best dude"}})
+
+      Api.create!(Post, %{
+        attributes: %{title: "foobar"},
+        relationships: %{
+          author: author.id
+        }
+      })
+    end
+
+    test "it sets the relationship on the destination record accordingly" do
+      author = Api.create!(Author, %{attributes: %{bio: "best dude"}})
+
+      post =
+        Api.create!(Post, %{
+          attributes: %{title: "foobar"},
+          relationships: %{
+            author: author.id
+          }
+        })
+
+      assert Api.get!(Post, post.id).author_id == author.id
+    end
+
+    test "it responds with the relationship field filled in" do
+      author = Api.create!(Author, %{attributes: %{bio: "best dude"}})
+
+      assert Api.create!(Post, %{
+               attributes: %{title: "foobar"},
+               relationships: %{
+                 author: author.id
+               }
+             }).author_id == author.id
+    end
+
+    test "it responds with the relationshi filled in" do
+      author = Api.create!(Author, %{attributes: %{bio: "best dude"}})
+
+      assert Api.create!(Post, %{
+               attributes: %{title: "foobar"},
+               relationships: %{
+                 author: author.id
+               }
+             }).author == author
+    end
   end
 end

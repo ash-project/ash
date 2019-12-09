@@ -56,7 +56,6 @@ defmodule Ash.DataLayer.Ets do
 
   @impl true
   def filter(query, filter, resource) do
-    # :ets.fun2ms(fn {_, })
     Enum.reduce(filter, {:ok, query}, fn
       _, {:error, error} ->
         {:error, error}
