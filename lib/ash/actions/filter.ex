@@ -76,6 +76,24 @@ defmodule Ash.Actions.Filter do
     end
   end
 
+  defp process_filter(_resource, :from_related, {_related, relationship}, {filter, errors})
+       when is_atom(relationship) do
+    {filter,
+     [
+       "Must provide structs, or a relationship struct. Cannot pass ids and an atom relationship. #{
+         relationship
+       }"
+       | errors
+     ]}
+  end
+
+  defp process_filter(_resource, :from_related, {related, relationship}, {filter, errors}) do
+    {Map.put(filter, :from_related, {related, relationship}), errors}
+  end
+
+  # {:from_related, {[_ | _] = related, %{} = relationship}} ->
+  #   {Map.put(filter, :from_related, {related, relationship}), errors}
+
   defp process_filter(resource, field, value, {filter, errors}) do
     cond do
       attr = Ash.attribute(resource, field) ->

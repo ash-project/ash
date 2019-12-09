@@ -104,8 +104,8 @@ defmodule Ash.Actions.Update do
         %{type: :has_one} = rel ->
           ChangesetHelpers.has_one_assoc_update(changeset, rel, value, authorize?, user)
 
-        # %{type: :has_many} = rel ->
-        #   has_many_assoc_update(changeset, rel, value)
+        %{type: :has_many} = rel ->
+          ChangesetHelpers.has_many_assoc_update(changeset, rel, value, authorize?, user)
 
         # %{type: :many_to_many} = rel ->
         #   many_to_many_assoc_update(changeset, rel, value, repo)

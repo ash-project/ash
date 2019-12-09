@@ -12,21 +12,20 @@ defmodule Ash.Actions.SideLoader do
         global_params
       ) do
     case side_load(resource, results, side_loads, api, global_params) do
-      {:ok, side_loaded} -> %{paginator | results: side_loaded}
+      {:ok, side_loaded} -> {:ok, %{paginator | results: side_loaded}}
       {:error, error} -> {:error, error}
     end
   end
 
   def side_load(resource, record, side_loads, api, global_params) when not is_list(record) do
     case side_load(resource, [record], side_loads, api, global_params) do
-      {:ok, [side_loaded]} -> side_loaded
+      {:ok, [side_loaded]} -> {:ok, side_loaded}
       {:error, error} -> {:error, error}
     end
   end
 
   def side_load(resource, records, side_loads, api, global_params) do
-    # TODO: No global config!
-    {side_load_type, config} = Ash.side_load_config(resource)
+    {side_load_type, config} = Ash.side_load_config(api)
     async? = side_load_type == :parallel
 
     side_loads =
@@ -38,7 +37,7 @@ defmodule Ash.Actions.SideLoader do
         end
       end)
 
-    side_loaded =
+    side_load_results =
       side_loads
       |> maybe_async_stream(config, async?, fn relationship_name, further ->
         relationship = Ash.relationship(resource, relationship_name)
@@ -50,14 +49,14 @@ defmodule Ash.Actions.SideLoader do
         action_params =
           global_params
           |> Map.put(:filter, %{
-            # TODO: This filter needs to be supported and documented, e.g for authorization
             from_related: {records, relationship}
           })
           |> Map.put_new(:paginate?, false)
 
-        with {:ok, related_records} <- api.read(relationship.destination, action_params),
-             {:ok, %{results: side_loaded_related}} <-
-               side_load(relationship.destination, related_records, further, global_params) do
+        with {:ok, %{results: related_records}} <-
+               api.read(relationship.destination, action_params),
+             {:ok, side_loaded_related} <-
+               side_load(relationship.destination, related_records, further, api, global_params) do
           keyed_by_id =
             Enum.group_by(side_loaded_related, fn record ->
               # This is required for many to many relationships
@@ -65,44 +64,54 @@ defmodule Ash.Actions.SideLoader do
                 Map.get(record, relationship.destination_field)
             end)
 
-          Enum.map(records, fn record ->
-            related_to_this_record =
-              Map.get(keyed_by_id, Map.get(record, relationship.source_field)) || []
-
-            unwrapped =
-              if relationship.cardinality == :many do
-                related_to_this_record
-              else
-                List.first(related_to_this_record)
-              end
-
-            related_ids = Enum.map(related_to_this_record, fn record -> record.id end)
-
-            linked_record =
-              record
-              |> Map.put(relationship_name, unwrapped)
-              |> Map.put_new(:__linkage__, %{})
-              |> Map.update!(:__linkage__, &Map.put(&1, relationship_name, related_ids))
-
-            {:ok, linked_record}
-          end)
+          {:ok, {relationship, keyed_by_id}}
         else
           {:error, error} -> {:error, error}
         end
       end)
-      |> List.flatten()
+      |> Enum.to_list()
 
     # This is dumb, should handle these errors better
     first_error =
-      Enum.find(side_loaded, fn side_loaded ->
+      Enum.find(side_load_results, fn side_loaded ->
         match?({:error, _error}, side_loaded)
       end)
 
-    first_error || {:ok, Enum.map(side_loaded, &elem(&1, 1))}
+    if first_error do
+      first_error
+    else
+      {:ok, link_records(Enum.map(side_load_results, &elem(&1, 1)), records)}
+    end
+  end
+
+  defp link_records(results, records) do
+    Enum.reduce(results, records, fn {relationship, keyed_by_id}, records ->
+      Enum.map(records, fn record ->
+        related_to_this_record =
+          Map.get(keyed_by_id, Map.get(record, relationship.source_field)) || []
+
+        unwrapped =
+          if relationship.cardinality == :many do
+            related_to_this_record
+          else
+            List.first(related_to_this_record)
+          end
+
+        related_ids = Enum.map(related_to_this_record, fn record -> record.id end)
+
+        linked_record =
+          record
+          |> Map.put(relationship.name, unwrapped)
+          |> Map.put_new(:__linkage__, %{})
+          |> Map.update!(:__linkage__, &Map.put(&1, relationship.name, related_ids))
+
+        linked_record
+      end)
+    end)
   end
 
   defp maybe_async_stream(preloads, _opts, false, function) do
-    Enum.map(preloads, fn {association, further} ->
+    Stream.map(preloads, fn {association, further} ->
       function.(association, further)
     end)
   end
@@ -110,7 +119,7 @@ defmodule Ash.Actions.SideLoader do
   defp maybe_async_stream(preloads, opts, true, function) do
     # We could theoretically do one of them outside of a task whlie we wait for the rest
     # Not worth implementing to start, IMO.
-    opts = [
+    async_opts = [
       opts[:max_concurrency] || System.schedulers_online(),
       ordered: false,
       timeout: opts[:timeout] || :timer.seconds(5),
@@ -118,11 +127,11 @@ defmodule Ash.Actions.SideLoader do
       shutdown: opts[:shutdown] || :timer.seconds(5)
     ]
 
-    opts[:supervisor]
-    |> Task.Supervisor.async_stream_nolink(
+    Task.Supervisor.async_stream_nolink(
+      opts[:supervisor],
       preloads,
       fn {key, further} -> function.(key, further) end,
-      opts
+      async_opts
     )
     |> Stream.map(&to_result/1)
   end

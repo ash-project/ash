@@ -96,3 +96,7 @@ end
 * Don't let users declare `has_one` relationships without claiming that there is a unique constraint on the destination field.
 * Set up "atomic updates" (upserts). If an adapter supports them, and the auth passes precheck, we could turn `get + update` combos into `upserts` 
 * Use data layer compatibility features to disallow incompatible setups. For instance, if the data layer can't transact, then they can't have an editable `has_one` or `many_to_many` resource.
+* Add `can?(:bulk_update)` to data layers, so we can more efficiently update relationships
+* Figure out under what circumstances we can bulk fetch when reading before updating many_to_many and to_many relationships, and do so.
+* most relationship stuff can't be done w/o primary keys
+* includer errors are super obscure because you can't tell what action they are about
