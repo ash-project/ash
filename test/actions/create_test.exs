@@ -16,7 +16,7 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     relationships do
-      belongs_to :author, __MODULE__.Author
+      belongs_to :author, Ash.Test.Actions.CreateTest.Author
     end
   end
 
@@ -27,6 +27,7 @@ defmodule Ash.Test.Actions.CreateTest do
     actions do
       read :default
       create :default
+      update :default
     end
 
     attributes do
@@ -35,6 +36,8 @@ defmodule Ash.Test.Actions.CreateTest do
 
     relationships do
       has_one :profile, Profile
+
+      has_many :posts, Ash.Test.Actions.CreateTest.Post
     end
   end
 
@@ -50,6 +53,7 @@ defmodule Ash.Test.Actions.CreateTest do
     actions do
       read :default
       create :default
+      update :default
     end
 
     attributes do
@@ -125,6 +129,19 @@ defmodule Ash.Test.Actions.CreateTest do
     end
   end
 
+  describe "creating with a has_many relationship" do
+    test "allows creating with a has_many relationship" do
+      post = Api.create!(Post, %{attributes: %{title: "sup"}})
+
+      Api.create!(Author, %{
+        attributes: %{title: "foobar"},
+        relationships: %{
+          posts: [post.id]
+        }
+      })
+    end
+  end
+
   describe "creating with belongs_to relationships" do
     test "allows creating with belongs_to relationship" do
       author = Api.create!(Author, %{attributes: %{bio: "best dude"}})
@@ -162,7 +179,7 @@ defmodule Ash.Test.Actions.CreateTest do
              }).author_id == author.id
     end
 
-    test "it responds with the relationshi filled in" do
+    test "it responds with the relationship filled in" do
       author = Api.create!(Author, %{attributes: %{bio: "best dude"}})
 
       assert Api.create!(Post, %{

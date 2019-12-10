@@ -42,10 +42,12 @@ defmodule Ash.Authorization.Check.UserField do
     {:precheck, value_will_equal_field?}
   end
 
-  def precheck(user, context, opts) do
+  def precheck(user, context = %{resource: resource}, opts) do
     user_value = Map.get(user, opts[:user_field])
     record_field = opts[:record_field]
+    filter = Map.get(context, :filter, [])
 
-    {:precheck, match?(%{params: %{filter: %{^record_field => ^user_value}}}, context)}
+    {:precheck,
+     Ash.Actions.Filter.is_filter_subset?(resource, filter, [{record_field, user_value}])}
   end
 end

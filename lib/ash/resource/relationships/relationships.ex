@@ -55,6 +55,7 @@ defmodule Ash.Resource.Relationships do
 
       relationship =
         Ash.Resource.Relationships.HasOne.new(
+          __MODULE__,
           @resource_type,
           relationship_name,
           destination,
@@ -65,7 +66,7 @@ defmodule Ash.Resource.Relationships do
         {:ok, relationship} ->
           @relationships relationship
 
-        {:error, [{key, message}]} ->
+        {:error, [{key, message} | _]} ->
           raise Ash.Error.ResourceDslError,
             message: message,
             option: key,
@@ -111,7 +112,12 @@ defmodule Ash.Resource.Relationships do
       end
 
       relationship =
-        Ash.Resource.Relationships.BelongsTo.new(relationship_name, destination, config)
+        Ash.Resource.Relationships.BelongsTo.new(
+          __MODULE__,
+          relationship_name,
+          destination,
+          config
+        )
 
       case relationship do
         {:ok, relationship} ->
@@ -128,7 +134,7 @@ defmodule Ash.Resource.Relationships do
 
           @relationships relationship
 
-        {:error, [{key, message}]} ->
+        {:error, [{key, message} | _]} ->
           raise Ash.Error.ResourceDslError,
             message: message,
             option: key,
@@ -170,6 +176,7 @@ defmodule Ash.Resource.Relationships do
 
       relationship =
         Ash.Resource.Relationships.HasMany.new(
+          __MODULE__,
           @resource_type,
           relationship_name,
           destination,
@@ -180,7 +187,7 @@ defmodule Ash.Resource.Relationships do
         {:ok, relationship} ->
           @relationships relationship
 
-        {:error, [{key, message}]} ->
+        {:error, [{key, message} | _]} ->
           raise Ash.Error.ResourceDslError,
             message: message,
             option: key,
@@ -213,6 +220,7 @@ defmodule Ash.Resource.Relationships do
     quote do
       relationship =
         Ash.Resource.Relationships.ManyToMany.new(
+          __MODULE__,
           @name,
           unquote(relationship_name),
           unquote(resource),
@@ -223,7 +231,7 @@ defmodule Ash.Resource.Relationships do
         {:ok, relationship} ->
           @relationships relationship
 
-        {:error, [{key, message}]} ->
+        {:error, [{key, message} | _]} ->
           raise Ash.Error.ResourceDslError,
             message: message,
             option: key,

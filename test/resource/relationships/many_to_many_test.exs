@@ -15,7 +15,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "it creates a relationship" do
       defposts do
         relationships do
-          many_to_many :foobars, Foobar, through: "some_table"
+          many_to_many :foobars, Foobar, through: SomeResource
         end
       end
 
@@ -28,7 +28,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                  name: :foobars,
                  source_field: :id,
                  source_field_on_join_table: :posts_id,
-                 through: "some_table",
+                 through: SomeResource,
                  type: :many_to_many
                }
              ] = Ash.relationships(Post)
@@ -36,12 +36,18 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
   end
 
   describe "validation" do
-    test "you can pass a string to `through`" do
-      defposts do
-        relationships do
-          many_to_many :foobars, Foobar, through: "some_table"
+    test "it fails if you pass a string to `through`" do
+      assert_raise(
+        Ash.Error.ResourceDslError,
+        "option through at relationships -> many_to_many -> foobars must be atom",
+        fn ->
+          defposts do
+            relationships do
+              many_to_many :foobars, Foobar, through: "some_table"
+            end
+          end
         end
-      end
+      )
     end
 
     test "you can pass a module to `through`" do
@@ -59,7 +65,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
         fn ->
           defposts do
             relationships do
-              many_to_many :foobars, Foobar, through: "table", source_field_on_join_table: "what"
+              many_to_many :foobars, Foobar, through: FooBars, source_field_on_join_table: "what"
             end
           end
         end
@@ -74,7 +80,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
           defposts do
             relationships do
               many_to_many :foobars, Foobar,
-                through: "table",
+                through: FooBar,
                 destination_field_on_join_table: "what"
             end
           end
@@ -90,7 +96,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
           defposts do
             relationships do
               many_to_many :foobars, Foobar,
-                through: "table",
+                through: FooBar,
                 source_field: "what"
             end
           end
@@ -106,7 +112,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
           defposts do
             relationships do
               many_to_many :foobars, Foobar,
-                through: "table",
+                through: FooBars,
                 destination_field: "what"
             end
           end

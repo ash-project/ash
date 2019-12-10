@@ -108,7 +108,7 @@ defmodule Ash.Actions.Update do
           ChangesetHelpers.has_many_assoc_update(changeset, rel, value, authorize?, user)
 
         # %{type: :many_to_many} = rel ->
-        #   many_to_many_assoc_update(changeset, rel, value, repo)
+        #   ChangesetHelpers.many_to_many_assoc_update(changeset, rel, value, authorize?, user)
 
         _ ->
           Ecto.Changeset.add_error(changeset, relationship, "No such relationship")

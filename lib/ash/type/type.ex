@@ -27,16 +27,15 @@ defmodule Ash.Type do
 
   @type t :: module | atom
 
-  @doc """
-  Returns a list of filter types supported by this type. By default, a type supports only the `:equal` filter
-  """
-  @spec supported_filter_types(t, Ash.data_layer()) ::
-          list(Ash.Actions.Filter.filter_type())
-  def supported_filter_types(type, _data_layer) when type in @builtin_names do
-    @builtins[type][:filters]
+  @spec supports_filter?(t(), Ash.DataLayer.filter_type(), Ash.data_layer()) :: boolean
+  def supports_filter?(type, filter_type, data_layer) when type in @builtin_names do
+    data_layer.can?({:filter, filter_type}) and filter_type in @builtins[type][:filters]
   end
 
-  def supported_filter_types(type, data_layer), do: type.supported_filter_types(data_layer)
+  def supports_filter?(type, filter_type, data_layer) do
+    data_layer.can?({:filter, filter_type}) and
+      filter_type in type.supported_filter_types(data_layer)
+  end
 
   @doc """
   Determines whether or not this value can be sorted.
@@ -171,7 +170,7 @@ defmodule Ash.Type do
       def ecto_type(), do: EctoType
 
       @impl true
-      def supported_filter_types(_data_layer), do: [:equal]
+      def supported_filter_types(_data_layer), do: [:equal, :in]
 
       @impl true
       def sortable?(_data_layer), do: true

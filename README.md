@@ -53,7 +53,6 @@ end
 
 * Make our router cabaple of describing its routes in `mix phx.routes` Chris McCord says that we could probably power that, seeing as phoenix controls both APIs, and that capability could be added to `Plug.Router`
 * Finish the serializer
-* Make primary key type configurable, and support composite primary keys
 * Make a DSL for join tables to support complex validation/hooks into how they work, support more than just table names in `join_through`
 * DSL level validations! Things like includes validating that their chain exists. All DSL structs should be strictly validated when they are created.
 * Especially at compile time, we should *never* ignore or skip invalid options. If an option is present and invalid, an error is raised.
@@ -100,3 +99,7 @@ end
 * Figure out under what circumstances we can bulk fetch when reading before updating many_to_many and to_many relationships, and do so.
 * most relationship stuff can't be done w/o primary keys
 * includer errors are super obscure because you can't tell what action they are about
+* Allow encoding database-level constraints into the resource, like "nullable: false" or something. This will let us validate things like not leaving orphans when bulk updating a many to many
+* Validate filters, now that there can be duplicates. Doesn't make sense to provide two "exact equals" filters
+* Eventually data_layers should state what raw types they support, and the filters they support on those raw types
+* Raise on composite primary key if data layer can't do it

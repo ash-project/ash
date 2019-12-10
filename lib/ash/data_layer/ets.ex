@@ -37,6 +37,10 @@ defmodule Ash.DataLayer.Ets do
   @impl true
   def can?(:query_async), do: false
   def can?(:transact), do: false
+  def can?({:filter, :equal}), do: true
+  def can?({:filter, :in}), do: true
+  def can?(:composite_primary_key), do: true
+  def can?(_), do: false
 
   @impl true
   def resource_to_query(resource) do
@@ -56,6 +60,8 @@ defmodule Ash.DataLayer.Ets do
 
   @impl true
   def filter(query, filter, resource) do
+    query = %{query | filter: query.filter || []}
+
     Enum.reduce(filter, {:ok, query}, fn
       _, {:error, error} ->
         {:error, error}
@@ -71,7 +77,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defp do_filter(query, field, id, _resource) do
-    {:ok, %{query | filter: Map.put(query.filter || %{}, field, id)}}
+    {:ok, %{query | filter: [{field, id} | query.filter]}}
   end
 
   @impl true
@@ -118,11 +124,10 @@ defmodule Ash.DataLayer.Ets do
     end)
   end
 
-  # Id matching will have to be smarter when new filter types
-  # are added. Id matching naturally only supports equality
-  # filters
+  # Id matching would be great here for performance, but
+  # for behaviour is technically unnecessary
   defp filter_to_matchspec(resource, filter) do
-    filter = filter || %{}
+    filter = filter || []
 
     {pkey_match, pkey_names} =
       resource
@@ -132,20 +137,28 @@ defmodule Ash.DataLayer.Ets do
           {:_, pkey_names}
 
         attr, {pkey_match, pkey_names} ->
-          case Map.fetch(filter, attr) do
-            {:ok, value} -> {Map.put(pkey_match, attr, value), [attr | pkey_names]}
-            :error -> {:_, [attr | pkey_names]}
+          with {:ok, field_filter} <- Keyword.fetch(filter, attr),
+               {:ok, value} <- Keyword.fetch(field_filter, :equal) do
+            {Map.put(pkey_match, attr, value), [attr | pkey_names]}
+          else
+            :error ->
+              {:_, [attr | pkey_names]}
           end
       end)
 
     starting_matchspec = {{pkey_match, %{__struct__: resource}}, [], [:"$_"]}
 
     filter
-    |> Kernel.||(%{})
-    |> Map.drop(pkey_names)
-    |> Enum.reduce({:ok, {starting_matchspec, 1}}, fn
-      {key, value}, {:ok, {spec, binding}} ->
-        do_filter_to_matchspec(resource, key, value, spec, binding)
+    |> Kernel.||([])
+    |> Keyword.drop(pkey_names)
+    |> Enum.flat_map(fn {field, filter} ->
+      Enum.map(filter, fn {type, value} ->
+        {field, type, value}
+      end)
+    end)
+    |> Enum.reduce({:ok, {starting_matchspec, %{}}}, fn
+      {key, type, value}, {:ok, {spec, bindings}} ->
+        do_filter_to_matchspec(resource, key, type, value, spec, bindings)
 
       _, {:error, error} ->
         {:error, error}
@@ -156,10 +169,10 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  defp do_filter_to_matchspec(resource, key, value, spec, binding) do
+  defp do_filter_to_matchspec(resource, key, type, value, spec, binding) do
     cond do
       attr = Ash.attribute(resource, key) ->
-        do_filter_to_matchspec_attribute(resource, attr, value, spec, binding)
+        do_filter_to_matchspec_attribute(resource, attr.name, type, value, spec, binding)
 
       _rel = Ash.relationship(resource, key) ->
         {:error, "relationship filtering not supported"}
@@ -171,17 +184,38 @@ defmodule Ash.DataLayer.Ets do
 
   defp do_filter_to_matchspec_attribute(
          _resource,
-         %{name: name},
+         name,
+         type,
          value,
          {{id_match, struct_match}, conditions, matcher},
-         binding
+         bindings
        ) do
-    condition = {:==, :"$#{binding}", value}
+    case Map.get(bindings, name) do
+      nil ->
+        binding = bindings |> Map.values() |> Enum.max(fn -> 0 end) |> Kernel.+(1)
+        condition = condition(type, value, binding)
 
-    new_spec =
-      {{id_match, Map.put(struct_match, name, :"$#{binding}")}, [condition | conditions], matcher}
+        new_spec =
+          {{id_match, Map.put(struct_match, name, :"$#{binding}")}, [condition | conditions],
+           matcher}
 
-    {:ok, {new_spec, binding + 1}}
+        {:ok, {new_spec, Map.put(bindings, name, binding)}}
+
+      binding ->
+        condition = condition(type, value, binding)
+
+        new_spec = {{id_match, struct_match}, [condition | conditions], matcher}
+
+        {:ok, new_spec, bindings}
+    end
+  end
+
+  def condition(:equal, value, binding) do
+    {:==, :"$#{binding}", value}
+  end
+
+  def condition(:in, value, binding) do
+    {:in, value, :"$#{binding}"}
   end
 
   @impl true

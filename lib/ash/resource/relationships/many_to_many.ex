@@ -2,6 +2,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
   defstruct [
     :name,
     :type,
+    :source,
     :through,
     :cardinality,
     :destination,
@@ -14,8 +15,9 @@ defmodule Ash.Resource.Relationships.ManyToMany do
   @type t :: %__MODULE__{
           type: :many_to_many,
           cardinality: :many,
+          source: Ash.resource(),
           name: atom,
-          through: Ash.resource() | String.t(),
+          through: Ash.resource(),
           destination: Ash.resource(),
           source_field: atom,
           destination_field: atom,
@@ -29,7 +31,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
                   destination_field_on_join_table: :atom,
                   source_field: :atom,
                   destination_field: :atom,
-                  through: [:atom, :string]
+                  through: :atom
                 ],
                 defaults: [
                   source_field: :id,
@@ -39,8 +41,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
                   :through
                 ],
                 describe: [
-                  through:
-                    "Either a string representing a table/generic name for the join table or a module name of a resource.",
+                  through: "The resource to use as the join table.",
                   source_field_on_join_table:
                     "The field on the join table that should line up with `source_field` on this resource. Default: [resource_name]_id",
                   destination_field_on_join_table:
@@ -56,18 +57,21 @@ defmodule Ash.Resource.Relationships.ManyToMany do
   def opt_schema(), do: @opt_schema
 
   @spec new(
+          resource :: Ash.resource(),
           resource_name :: String.t(),
           name :: atom,
           related_resource :: Ash.resource(),
           opts :: Keyword.t()
         ) :: {:ok, t()} | {:error, term}
-  def new(resource_name, name, related_resource, opts \\ []) do
+  def new(resource, resource_name, name, related_resource, opts \\ []) do
+    # Don't call functions on the resource! We don't want it to compile here
     case Ashton.validate(opts, @opt_schema) do
       {:ok, opts} ->
         {:ok,
          %__MODULE__{
            name: name,
            type: :many_to_many,
+           source: resource,
            cardinality: :many,
            through: opts[:through],
            destination: related_resource,

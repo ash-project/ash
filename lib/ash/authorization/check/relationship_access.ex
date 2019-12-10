@@ -9,6 +9,8 @@ defmodule Ash.Authorization.Check.RelationshipAccess do
   """
   use Ash.Authorization.Check
 
+  alias Ash.Actions.Filter
+
   def init(opts) do
     with {:key, {:ok, relationship}} <- {:key, Keyword.fetch(opts, :relationship)},
          {:is_nil, false} <- {:is_nil, is_nil(relationship)},
@@ -93,16 +95,12 @@ defmodule Ash.Authorization.Check.RelationshipAccess do
 
   def precheck(user, %{resource: resource, params: params}, opts) do
     relationship_name = opts[:relationship]
-    relationship = Ash.relationship(resource, relationship_name)
     user_id = user.id
-    source_field = relationship.source_field
+
+    filter = Map.get(params, :filter, [])
 
     cond do
-      match?(%{filter: %{^relationship_name => ^user_id}}, params) ->
-        {:precheck, true}
-
-      relationship.type != :many_to_many &&
-          match?(%{filter: %{^source_field => ^user_id}}, params) ->
+      Filter.is_filter_subset?(resource, filter, [{relationship_name, user_id}]) ->
         {:precheck, true}
 
       opts[:enforce_access?] ->

@@ -9,13 +9,15 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :define_field?,
     :field_type,
     :destination_field,
-    :source_field
+    :source_field,
+    :source
   ]
 
   @type t :: %__MODULE__{
           type: :belongs_to,
           cardinality: :one,
           name: atom,
+          source: Ash.resource(),
           destination: Ash.resource(),
           primary_key?: boolean,
           define_field?: boolean,
@@ -55,16 +57,19 @@ defmodule Ash.Resource.Relationships.BelongsTo do
   def opt_schema(), do: @opt_schema
 
   @spec new(
+          resource :: Ash.resource(),
           name :: atom,
           related_resource :: Ash.resource(),
           opts :: Keyword.t()
         ) :: {:ok, t()} | {:error, term}
-  def new(name, related_resource, opts \\ []) do
+  def new(resource, name, related_resource, opts \\ []) do
+    # Don't call functions on the resource! We don't want it to compile here
     case Ashton.validate(opts, @opt_schema) do
       {:ok, opts} ->
         {:ok,
          %__MODULE__{
            name: name,
+           source: resource,
            type: :belongs_to,
            cardinality: :one,
            field_type: opts[:field_type],

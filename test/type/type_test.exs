@@ -68,8 +68,8 @@ defmodule Ash.Test.Type.TypeTest do
     # As we add more filter types, we may want to test their multiplicity here
     post = Api.create!(Post, %{attributes: %{title: "foobar"}})
 
-    assert_raise(Ash.Error.FrameworkError, "Cannot filter :title for equality.", fn ->
-      Api.read!(Post, %{filter: %{title: post.title}})
+    assert_raise(Ash.Error.FrameworkError, "Cannot use filter type equal on :title.", fn ->
+      Api.read!(Post, %{filter: [title: post.title]})
     end)
   end
 

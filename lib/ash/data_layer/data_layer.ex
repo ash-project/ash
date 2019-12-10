@@ -1,5 +1,6 @@
 defmodule Ash.DataLayer do
-  @type feature() :: :transact | :query_async
+  @type filter_type :: :equal | :in
+  @type feature() :: :transact | :query_async | {:filter, filter_type}
 
   @callback filter(Ash.query(), Ash.filter(), resource :: Ash.resource()) ::
               {:ok, Ash.query()} | {:error, Ash.error()}

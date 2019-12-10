@@ -47,12 +47,13 @@ defmodule Ash.Actions.Read do
 
   defp do_run(resource, action, api, params) do
     with query <- Ash.DataLayer.resource_to_query(resource),
-         {:ok, filter} <- Ash.Actions.Filter.process(resource, Map.get(params, :filter, %{})),
          {:ok, sort} <- Ash.Actions.Sort.process(resource, Map.get(params, :sort, [])),
-         {:ok, filtered_query} <- Ash.DataLayer.filter(query, filter, resource),
-         {:ok, sorted_query} <- Ash.DataLayer.sort(filtered_query, sort, resource),
+         {:ok, filter, authorization} <-
+           Ash.Actions.Filter.process(resource, Map.get(params, :filter, %{})),
+         {:ok, sorted_query} <- Ash.DataLayer.sort(query, sort, resource),
+         {:ok, filtered_query} <- Ash.DataLayer.filter(sorted_query, filter, resource),
          {:ok, paginator} <-
-           Ash.Actions.Paginator.paginate(api, resource, action, sorted_query, params),
+           Ash.Actions.Paginator.paginate(api, resource, action, filtered_query, params),
          {:ok, found} <- Ash.DataLayer.run_query(paginator.query, resource) do
       {:ok, %{paginator | results: found}}
     else

@@ -3,6 +3,7 @@ defmodule Ash.Resource.Relationships.HasOne do
   defstruct [
     :name,
     :type,
+    :source,
     :cardinality,
     :destination,
     :destination_field,
@@ -12,6 +13,7 @@ defmodule Ash.Resource.Relationships.HasOne do
   @type t :: %__MODULE__{
           type: :has_one,
           cardinality: :one,
+          source: Ash.resource(),
           name: atom,
           type: Ash.Type.t(),
           destination: Ash.resource(),
@@ -39,18 +41,21 @@ defmodule Ash.Resource.Relationships.HasOne do
   def opt_schema(), do: @opt_schema
 
   @spec new(
+          resource :: Ash.resource(),
           resource_type :: String.t(),
           name :: atom,
           related_resource :: Ash.resource(),
           opts :: Keyword.t()
         ) :: {:ok, t()} | {:error, term}
   @doc false
-  def new(resource_type, name, related_resource, opts \\ []) do
+  def new(resource, resource_type, name, related_resource, opts \\ []) do
+    # Don't call functions on the resource! We don't want it to compile here
     case Ashton.validate(opts, @opt_schema) do
       {:ok, opts} ->
         {:ok,
          %__MODULE__{
            name: name,
+           source: resource,
            type: :has_one,
            cardinality: :one,
            destination: related_resource,

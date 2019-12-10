@@ -103,7 +103,7 @@ defmodule Ash.Test.Actions.ReadTest do
 
     test "it raises on an error" do
       assert_raise(Ash.Error.FrameworkError, "Invalid value: 10 for :title", fn ->
-        Api.read!(Post, %{filter: %{title: 10}})
+        Api.read!(Post, %{filter: [title: 10]})
       end)
     end
   end
@@ -117,15 +117,15 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     test "a filter that matches nothing returns no results" do
-      assert {:ok, %{results: []}} = Api.read(Post, %{filter: %{contents: "not_yeet"}})
+      assert {:ok, %{results: []}} = Api.read(Post, %{filter: [contents: "not_yeet"]})
     end
 
     test "a filter returns only matching records", %{post1: post1} do
-      assert {:ok, %{results: [^post1]}} = Api.read(Post, %{filter: %{title: post1.title}})
+      assert {:ok, %{results: [^post1]}} = Api.read(Post, %{filter: [title: post1.title]})
     end
 
     test "a filter returns multiple records if they match", %{post1: post1, post2: post2} do
-      assert {:ok, %{results: [_, _] = results}} = Api.read(Post, %{filter: %{contents: "yeet"}})
+      assert {:ok, %{results: [_, _] = results}} = Api.read(Post, %{filter: [contents: "yeet"]})
 
       assert post1 in results
       assert post2 in results
