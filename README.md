@@ -103,3 +103,4 @@ end
 * Validate filters, now that there can be duplicates. Doesn't make sense to provide two "exact equals" filters
 * Eventually data_layers should state what raw types they support, and the filters they support on those raw types
 * Raise on composite primary key if data layer can't do it
+* Add impossibility checking for filters to avoid running queries that will never be possible.

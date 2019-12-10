@@ -114,18 +114,11 @@ defmodule Ash.Actions.Filter do
          {related, rel},
          state
        ) do
-    case related do
-      [] ->
-        process_filter(resource, rel.destination_field, [in: []], state)
+    values = Enum.map(related, &Map.get(&1, rel.source_field))
+    # This may be insufficient. I'm not exactly sure how this is going to
+    # behave when/if the list is empty.
 
-      [related] ->
-        process_filter(resource, rel.destination_field, Map.get(related, rel.source_field), state)
-
-      [_ | _] = related ->
-        values = Enum.map(related, &Map.get(&1, rel.source_field))
-
-        process_filter(resource, rel.destination_field, [in: values], state)
-    end
+    process_filter(resource, rel.destination_field, [in: values], state)
   end
 
   defp process_filter(resource, field, value, state) when not is_list(value) do
@@ -145,6 +138,11 @@ defmodule Ash.Actions.Filter do
             add_error(state, "no filtering on many to many")
 
           %{source_field: source_field} ->
+            state = add_authorization(state, {:get, rel.destination, value})
+            # if is_list(value) do
+
+            # end
+
             process_filter(resource, source_field, [equal: value], state)
         end
 
@@ -154,7 +152,7 @@ defmodule Ash.Actions.Filter do
   end
 
   defp do_process_filter(resource, field, field_type, filter_type, value, state) do
-    with {:ok, casted} <- Ash.Type.cast_input(field_type, value),
+    with {:ok, casted} <- cast_value(field_type, value),
          {:supported?, true} <- {:supported?, supports_filter?(resource, field_type, filter_type)} do
       %{state | filter: add_filter(state.filter, field, filter_type, casted)}
     else
@@ -166,55 +164,37 @@ defmodule Ash.Actions.Filter do
     end
   end
 
+  defp cast_value(field_type, value) when is_list(value) do
+    Enum.reduce(value, {:ok, []}, fn
+      value, {:ok, casted_values} ->
+        case Ash.Type.cast_input(field_type, value) do
+          {:ok, casted_value} ->
+            {:ok, [casted_value | casted_values]}
+
+          :error ->
+            :error
+        end
+
+      _value, :error ->
+        :error
+    end)
+  end
+
+  defp cast_value(field_type, value) do
+    Ash.Type.cast_input(field_type, value)
+  end
+
   defp supports_filter?(resource, type, filter_type) do
     Ash.Type.supports_filter?(type, filter_type, Ash.data_layer(resource))
   end
 
-  defp add_filter(filter, field, :equal, value) do
-    cond do
-      colliding_equal_filter?(filter, field, value) ->
-        filter
-        |> Keyword.put(:__impossible__, true)
-        |> Keyword.put(field, [{:equal, value} | filter[field]])
-
-      colliding_in_filter?(filter, field, value) ->
-        filter
-        |> Keyword.put(:__impossible__, true)
-        |> Keyword.put(field, [{:equal, value} | filter[field]])
-
-      true ->
-        Keyword.put(filter, field, equal: value)
-    end
-  end
-
-  # defp process_relationship_filter(_resource, %{name: name}, value, {filter, errors}) do
-  #   # TODO: type validate, potentially expand list of ids into a boolean filter statement
-  #   {filter, ["no relationship filters" | errors]}
-  # end
-
-  defp colliding_equal_filter?(filter, name, casted) do
-    case Keyword.fetch(filter, name) do
-      :error ->
-        false
-
-      {:ok, filter} ->
-        Enum.any?(filter, fn {key, value} ->
-          key == :equal and value != casted
-        end)
-    end
-  end
-
-  defp colliding_in_filter?(filter, name, casted) do
-    case Keyword.fetch(filter, name) do
-      :error ->
-        false
-
-      {:ok, filter} ->
-        Enum.any?(filter, fn {key, value} ->
-          key == :in and casted not in value
-        end)
-    end
+  defp add_filter(filter, field, filter_type, value) do
+    current_value = filter[field] || []
+    Keyword.put(filter, field, [{filter_type, value} | current_value])
   end
 
   defp add_error(state, error), do: %{state | errors: [error | state.errors]}
+
+  defp add_authorization(state, authorization),
+    do: %{state | authorization: [authorization | state.authorization]}
 end

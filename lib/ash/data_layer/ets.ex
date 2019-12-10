@@ -214,8 +214,20 @@ defmodule Ash.DataLayer.Ets do
     {:==, :"$#{binding}", value}
   end
 
-  def condition(:in, value, binding) do
-    {:in, value, :"$#{binding}"}
+  def condition(:in, [value], binding) do
+    condition(:equal, value, binding)
+  end
+
+  def condition(:in, [value1, value2], binding) do
+    [{:orelse, {:"=:=", :"$#{binding}", value1}, {:"=:=", :"$#{binding}", value2}}]
+  end
+
+  def condition(:in, [value1 | rest], binding) do
+    {:orelse, condition(:equal, value1, binding), condition(:in, rest, binding)}
+  end
+
+  def condition(:in, [], _binding) do
+    [{:==, false, true}]
   end
 
   @impl true

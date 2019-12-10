@@ -176,8 +176,10 @@ defmodule Ash.Actions.ChangesetHelpers do
   defp relate_items(api, to_relate, destination_field, destination_field_value, authorize?, user) do
     Enum.reduce(to_relate, {:ok, []}, fn
       {to_be_related, updates}, {:ok, now_related} ->
+        attributes = Map.put(updates, destination_field, destination_field_value)
+
         case api.update(to_be_related, %{
-               attributes: Map.put(updates, destination_field, destination_field_value),
+               attributes: attributes,
                authorize?: authorize?,
                user: user
              }) do

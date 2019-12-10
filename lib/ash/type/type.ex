@@ -18,9 +18,9 @@ defmodule Ash.Type do
   @callback describe() :: String.t()
 
   @builtins [
-    string: [ecto_type: :string, filters: [:equal], sortable?: true],
-    uuid: [ecto_type: :binary_id, filters: [:equal], sortable?: true],
-    utc_datetime: [ecto_type: :utc_datetime, filters: [:equal], sortable?: true]
+    string: [ecto_type: :string, filters: [:equal, :in], sortable?: true],
+    uuid: [ecto_type: :binary_id, filters: [:equal, :in], sortable?: true],
+    utc_datetime: [ecto_type: :utc_datetime, filters: [:equal, :in], sortable?: true]
   ]
 
   @builtin_names Keyword.keys(@builtins)
