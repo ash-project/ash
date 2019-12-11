@@ -31,7 +31,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defmodule Query do
-    defstruct [:resource, :filter, :limit, :sort, offset: 0]
+    defstruct [:resource, :filter, :limit, :sort, joins: [], offset: 0]
   end
 
   @impl true
@@ -40,6 +40,7 @@ defmodule Ash.DataLayer.Ets do
   def can?({:filter, :equal}), do: true
   def can?({:filter, :in}), do: true
   def can?(:composite_primary_key), do: true
+  def can?(:inner_join), do: true
   def can?(_), do: false
 
   @impl true

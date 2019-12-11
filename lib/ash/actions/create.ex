@@ -1,59 +1,34 @@
 defmodule Ash.Actions.Create do
   alias Ash.Authorization.Authorizer
-  alias Ash.Actions.SideLoader
+  alias Ash.Actions.SideLoad
   alias Ash.Actions.ChangesetHelpers
-
-  # TODO Run in a transaction!
 
   @spec run(Ash.api(), Ash.resource(), Ash.action(), Ash.params()) ::
           {:ok, Ash.record()} | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
-  def run(api, resource, action, %{authorize?: true} = params) do
-    case prepare_create_params(api, resource, params) do
-      %{valid?: true} = changeset ->
-        auth_context = %{
-          resource: resource,
-          action: action,
-          params: params,
-          changeset: changeset
-        }
+  def run(_, _, _, %{side_load: side_load}) when side_load not in [[], nil] do
+    {:error, "Cannot side load on create currently"}
+  end
 
+  def run(api, resource, action, params) do
+    case prepare_create_params(api, resource, params) do
+      %Ecto.Changeset{valid?: true} = changeset ->
         user = Map.get(params, :user)
 
-        Authorizer.authorize(
-          user,
-          action.authorization_steps,
-          auth_context,
-          fn authorize_data_fun ->
-            with {:ok, result} <- do_create(resource, changeset),
-                 {:auth, :allow} <-
-                   {:auth,
-                    authorize_data_fun.(user, result, action.authorization_steps, auth_context)} do
-              side_loads = Map.get(params, :side_load, [])
-              global_params = Map.take(params, [:authorize?, :user])
-
-              SideLoader.side_load(resource, result, side_loads, api, global_params)
-            else
-              {:error, error} -> {:error, error}
-              {:auth, _} -> {:error, :forbidden}
-            end
+        precheck_data =
+          if Map.get(params, :authorize?, false) do
+            Authorizer.run_precheck(%{request: [{:create, resource, changeset}]}, user)
+          else
+            :allowed
           end
-        )
+
+        if precheck_data == :forbidden do
+          {:error, :forbidden}
+        else
+          do_create(resource, changeset)
+        end
 
       %Ecto.Changeset{} = changeset ->
         {:error, changeset}
-    end
-  end
-
-  def run(api, resource, _action, params) do
-    with %{valid?: true} = changeset <- prepare_create_params(api, resource, params),
-         {:ok, result} <- do_create(resource, changeset) do
-      side_loads = Map.get(params, :side_load, [])
-      global_params = Map.take(params, [:authorize?, :user])
-
-      SideLoader.side_load(resource, result, side_loads, api, global_params)
-    else
-      {:error, error} -> {:error, error}
-      %Ecto.Changeset{} = changeset -> {:error, changeset}
     end
   end
 
@@ -126,8 +101,8 @@ defmodule Ash.Actions.Create do
         %{type: :has_many} = rel ->
           ChangesetHelpers.has_many_assoc_update(changeset, rel, value, authorize?, user)
 
-        %{type: :many_to_many} = rel ->
-          ChangesetHelpers.many_to_many_assoc_on_create(changeset, rel, value, authorize?, user)
+        # %{type: :many_to_many} = rel ->
+        #   ChangesetHelpers.many_to_many_assoc_on_create(changeset, rel, value, authorize?, user)
 
         _ ->
           Ecto.Changeset.add_error(changeset, relationship, "No such relationship")

@@ -1,7 +1,45 @@
-defmodule Ash.Actions.SideLoader do
-  def side_load(resource, record, keyword, api, global_params \\ %{})
+defmodule Ash.Actions.SideLoad do
+  def process(resource, side_load, source_filter, path \\ [])
+  def process(_, [], _, _), do: {:ok, []}
 
-  def side_load(_resource, record_or_records, [], _api, _global_params),
+  def process(resource, side_load, source_filter, path) do
+    # TODO: return authorizations here.
+    Enum.reduce(side_load, {:ok, []}, fn
+      _, {:error, error} ->
+        {:error, error}
+
+      {key, true}, {:ok, acc} ->
+        do_process(resource, key, [], source_filter, path, acc)
+
+      {key, further}, {:ok, acc} ->
+        do_process(resource, key, further, source_filter, path, acc)
+
+      key, {:ok, acc} ->
+        do_process(resource, key, [], source_filter, path, acc)
+    end)
+  end
+
+  defp do_process(resource, key, further, source_filter, path, acc) do
+    with {:rel, relationship} when not is_nil(relationship) <-
+           {:rel, Ash.relationship(resource, key)},
+         nested_path <- path ++ [key],
+         {:ok, authorizations} <-
+           process(relationship.destination, further, source_filter, nested_path) do
+      auth =
+        {nested_path,
+         {:read, relationship.destination,
+          [from_related_filter: {resource, source_filter, nested_path}]}}
+
+      {:ok, [auth | authorizations] ++ acc}
+    else
+      {:rel, nil} -> {:error, "no such relationship: #{key}"}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  def side_load(resource, record, keyword, api, prechecks_by_path, global_params \\ %{})
+
+  def side_load(_resource, record_or_records, [], _api, _prechecks_by_path, _global_params),
     do: {:ok, record_or_records}
 
   def side_load(
@@ -9,22 +47,24 @@ defmodule Ash.Actions.SideLoader do
         %Ash.Actions.Paginator{results: results} = paginator,
         side_loads,
         api,
+        prechecks_by_path,
         global_params
       ) do
-    case side_load(resource, results, side_loads, api, global_params) do
+    case side_load(resource, results, side_loads, api, prechecks_by_path, global_params) do
       {:ok, side_loaded} -> {:ok, %{paginator | results: side_loaded}}
       {:error, error} -> {:error, error}
     end
   end
 
-  def side_load(resource, record, side_loads, api, global_params) when not is_list(record) do
-    case side_load(resource, [record], side_loads, api, global_params) do
+  def side_load(resource, record, side_loads, api, prechecks_by_path, global_params)
+      when not is_list(record) do
+    case side_load(resource, [record], side_loads, api, prechecks_by_path, global_params) do
       {:ok, [side_loaded]} -> {:ok, side_loaded}
       {:error, error} -> {:error, error}
     end
   end
 
-  def side_load(resource, records, side_loads, api, global_params) do
+  def side_load(resource, records, side_loads, api, _prechecks_by_path, global_params) do
     {side_load_type, config} = Ash.side_load_config(api)
     async? = side_load_type == :parallel
 
@@ -48,9 +88,9 @@ defmodule Ash.Actions.SideLoader do
         # need to be able to configure options specific to the path of the preload!
         action_params =
           global_params
-          |> Map.put(:filter, %{
+          |> Map.put(:filter,
             from_related: {records, relationship}
-          })
+          )
           |> Map.put_new(:paginate?, false)
 
         with {:ok, %{results: related_records}} <-

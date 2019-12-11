@@ -55,9 +55,9 @@ defmodule Ash.Api.Interface do
 
   def get(api, resource, id, params \\ %{})
 
-  def get(api, resource, id, params) when not is_map(id) do
+  def get(api, resource, id, params) when not is_list(id) do
     with {:ok, resource} <- api.get_resource(resource),
-         {:ok, filter} <- Ash.Actions.Filter.value_to_primary_key_filter(resource, id) do
+         {:ok, filter} <- Ash.Actions.PrimaryKeyHelpers.value_to_primary_key_filter(resource, id) do
       get(api, resource, filter, params)
     else
       {:error, error} -> {:error, error}
@@ -68,8 +68,8 @@ defmodule Ash.Api.Interface do
   def get(api, resource, filter, params) do
     params_with_filter =
       params
-      |> Map.put_new(:filter, %{})
-      |> Map.update!(:filter, &Map.merge(&1, filter))
+      |> Map.put_new(:filter, [])
+      |> Map.update!(:filter, &Kernel.++(&1, filter))
       |> Map.put(:page, %{limit: 2})
 
     case read(api, resource, params_with_filter) do
@@ -161,8 +161,9 @@ defmodule Ash.Api.Interface do
     raise Ash.Error.FrameworkError.exception(message: error)
   end
 
-  defp unwrap_or_raise!({:error, %Ecto.Changeset{}}),
-    do: raise(Ash.Error.FrameworkError, message: "invalid changes")
+  defp unwrap_or_raise!({:error, %Ecto.Changeset{} = cs}) do
+    raise(Ash.Error.FrameworkError, message: "invalid changes")
+  end
 
   defp unwrap_or_raise!({:error, error}) when not is_list(error) do
     raise error

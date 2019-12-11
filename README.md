@@ -87,7 +87,6 @@ end
 * Improve pagination in the ETS data layer
 * Rearchitect relationship updates so that they can be sensible authorized. As in, which resource is responsible for authorizing updates to a relationship? Should there be some unified way to describe it? Or is updating a user's posts an entirely separate operation from updating a post's user?
 * Test authorization
-* Member specific authorization, defaulting to unauthorized
 * Validate that all relationships on all resources in the API have destinations *in* that API, or don't and add in logic to pretend those don't exist through the API.
 * Make authorization spit out informative errors (at least for developers)
 * Use telemetry and/or some kind of hook system to add metrics
@@ -104,3 +103,6 @@ end
 * Eventually data_layers should state what raw types they support, and the filters they support on those raw types
 * Raise on composite primary key if data layer can't do it
 * Add impossibility checking for filters to avoid running queries that will never be possible.
+* As soon as we add array types, the filter logic is going to break because we use "is a list" as a criterion for "has not been passed a raw value to match". This may not be too big of a problem if we just don't support a list. But using some sort of actual struct to represent "this is constructed filter" may be the real answer.
+* Add a runtime-intialization to checks that can return data loading instructions to be executed prior to pre-check
+* Naturally, only inner joins are allowed now. I think only inner joins will be necessary, as the pattern in ash would be to side load related data.

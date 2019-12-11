@@ -1,6 +1,24 @@
 defmodule Ash.Test.Actions.ReadTest do
   use ExUnit.Case, async: true
 
+  defmodule Author do
+    use Ash.Resource, name: "posts", type: "post"
+    use Ash.DataLayer.Ets, private?: true
+
+    actions do
+      read :default
+      create :default
+    end
+
+    attributes do
+      attribute :name, :string
+    end
+
+    relationships do
+      has_many :posts, Ash.Test.Actions.ReadTest.Post
+    end
+  end
+
   defmodule Post do
     use Ash.Resource, name: "posts", type: "post"
     use Ash.DataLayer.Ets, private?: true
@@ -14,12 +32,17 @@ defmodule Ash.Test.Actions.ReadTest do
       attribute :title, :string
       attribute :contents, :string
     end
+
+    relationships do
+      belongs_to :author1, Ash.Test.Actions.ReadTest.Author
+      belongs_to :author2, Ash.Test.Actions.ReadTest.Author
+    end
   end
 
   defmodule Api do
     use Ash.Api
 
-    resources [Post]
+    resources [Post, Author]
   end
 
   describe "api.get/3" do
@@ -129,6 +152,30 @@ defmodule Ash.Test.Actions.ReadTest do
 
       assert post1 in results
       assert post2 in results
+    end
+  end
+
+  describe "relationship filters" do
+    setup do
+      author1 = Api.create!(Author, %{attributes: %{name: "bruh"}})
+      author2 = Api.create!(Author, %{attributes: %{name: "bruh"}})
+
+      {:ok, post} =
+        Api.create(Post, %{
+          attributes: %{title: "test", contents: "yeet"},
+          relationships: %{author1: author1.id, author2: author2.id}
+        })
+
+      %{post: post, author1: author1, author2: author2}
+    end
+
+    test "you can filter on a related value", %{author1: author1} do
+      assert %{results: [_] = results} = Api.read!(Post, %{filter: [author1: author1.id]})
+    end
+
+    test "you can filter on multiple related values", %{author1: author1, author2: author2} do
+      assert %{results: [_] = results} =
+               Api.read!(Post, %{filter: [author1: author1.id, author2: author2.id]})
     end
   end
 

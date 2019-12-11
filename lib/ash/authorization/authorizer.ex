@@ -1,7 +1,19 @@
 defmodule Ash.Authorization.Authorizer do
   alias Ash.Authorization.Rule
 
-  @type result :: :allow | :unauthorized | :undecided
+  @type result :: :allowed | :forbidden | :undecided
+
+  def run_precheck(_, _) do
+    :allowed
+  end
+
+  ######
+
+  def authorize(user, :none, context, callback) do
+    callback.(fn _user, _data, _rules, _context ->
+      :allowed
+    end)
+  end
 
   def authorize(user, rules, context, callback) do
     case authorize_precheck(user, rules, context) do
@@ -47,11 +59,11 @@ defmodule Ash.Authorization.Authorizer do
 
           checked_records = run_check(rule_with_per_check_data, user, data, full_context)
 
-          if Enum.any?(checked_records, &(&1.__authorization_decision__ == :unauthorized)) do
-            {:unauthorized, data}
+          if Enum.any?(checked_records, &(&1.__authorization_decision__ == :forbidden)) do
+            {:forbiden, data}
           else
             remaining_records =
-              Enum.reject(checked_records, &(&1.__authorization_decision__ == :allow))
+              Enum.reject(checked_records, &(&1.__authorization_decision__ == :allowed))
 
             if Enum.empty?(remaining_records) do
               {:allow, []}
@@ -65,11 +77,11 @@ defmodule Ash.Authorization.Authorizer do
       end)
 
     if Enum.empty?(remaining_records) do
-      :allow
+      :allowed
     else
       # Return some kind of information here?
       # Maybe full auth breakdown in dev envs?
-      {:unauthorized, nil}
+      {:forbidden, nil}
     end
   end
 
@@ -115,9 +127,9 @@ defmodule Ash.Authorization.Authorizer do
 
   defp get_prediction([{rule, %{decision: value}} | rest]) do
     case Rule.result_to_decision(rule.kind, value) do
-      :allow -> :allow
+      :allowed -> :allowed
+      :forbidden -> :forbidden
       :undecided -> get_prediction(rest)
-      :unauthorized -> :unauthorized
     end
   end
 
@@ -125,8 +137,8 @@ defmodule Ash.Authorization.Authorizer do
     result_if_true = Rule.result_to_decision(rule.kind, true)
     result_if_false = Rule.result_to_decision(rule.kind, false)
 
-    if result_if_true != :allow and result_if_false != :allow do
-      :unauthorized
+    if result_if_true != :allowed and result_if_false != :allowed do
+      :forbidden
     else
       get_prediction(rest)
     end

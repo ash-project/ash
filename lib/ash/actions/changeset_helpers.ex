@@ -1,5 +1,5 @@
 defmodule Ash.Actions.ChangesetHelpers do
-  alias Ash.Actions.Filter
+  alias Ash.Actions.PrimaryKeyHelpers
 
   def before_change(changeset, func) do
     Map.update(changeset, :__before_ash_changes__, [func], fn funcs ->
@@ -61,7 +61,7 @@ defmodule Ash.Actions.ChangesetHelpers do
         authorize?,
         user
       ) do
-    case Filter.value_to_primary_key_filter(destination, identifier) do
+    case PrimaryKeyHelpers.value_to_primary_key_filter(destination, identifier) do
       {:error, _error} ->
         Ecto.Changeset.add_error(changeset, relationship.name, "Invalid primary key supplied")
 
@@ -93,7 +93,7 @@ defmodule Ash.Actions.ChangesetHelpers do
         authorize?,
         user
       ) do
-    case Filter.value_to_primary_key_filter(destination, identifier) do
+    case PrimaryKeyHelpers.value_to_primary_key_filter(destination, identifier) do
       {:error, _error} ->
         Ecto.Changeset.add_error(changeset, relationship.name, "Invalid primary key supplied")
 
@@ -144,7 +144,7 @@ defmodule Ash.Actions.ChangesetHelpers do
         authorize?,
         user
       ) do
-    case values_to_primary_key_filters(destination, identifiers) do
+    case PrimaryKeyHelpers.values_to_primary_key_filters(destination, identifiers) do
       {:error, _error} ->
         Ecto.Changeset.add_error(changeset, relationship.name, "Invalid primary key supplied")
 
@@ -175,11 +175,9 @@ defmodule Ash.Actions.ChangesetHelpers do
 
   defp relate_items(api, to_relate, destination_field, destination_field_value, authorize?, user) do
     Enum.reduce(to_relate, {:ok, []}, fn
-      {to_be_related, updates}, {:ok, now_related} ->
-        attributes = Map.put(updates, destination_field, destination_field_value)
-
+      to_be_related, {:ok, now_related} ->
         case api.update(to_be_related, %{
-               attributes: attributes,
+               attributes: %{destination_field: destination_field_value},
                authorize?: authorize?,
                user: user
              }) do
@@ -214,7 +212,7 @@ defmodule Ash.Actions.ChangesetHelpers do
 
     to_relate_pkeys =
       to_relate
-      |> Enum.map(fn {to_relate_item, _updates} ->
+      |> Enum.map(fn to_relate_item ->
         Map.take(to_relate_item, primary_key)
       end)
       |> MapSet.new()
@@ -226,33 +224,10 @@ defmodule Ash.Actions.ChangesetHelpers do
 
   defp get_to_relate(api, filters, destination, authorize?, user) do
     Enum.reduce(filters, {:ok, []}, fn
-      {filter, updates}, {:ok, to_relate} ->
+      filter, {:ok, to_relate} ->
         case api.get(destination, filter, %{authorize?: authorize?, user: user}) do
-          {:ok, to_relate_item} -> {:ok, [{to_relate_item, updates} | to_relate]}
+          {:ok, to_relate_item} -> {:ok, [to_relate_item | to_relate]}
           {:error, errors} -> {:error, errors}
-        end
-
-      _, {:error, error} ->
-        {:error, error}
-    end)
-  end
-
-  defp values_to_primary_key_filters(destination, identifiers) do
-    Enum.reduce(identifiers, {:ok, []}, fn
-      identifier, {:ok, filters} ->
-        case Filter.value_to_primary_key_filter(destination, identifier) do
-          {:ok, filter} ->
-            updates =
-              if is_map(identifier) do
-                Map.drop(identifier, Ash.primary_key(destination))
-              else
-                %{}
-              end
-
-            {:ok, [{filter, updates} | filters]}
-
-          {:error, error} ->
-            {:error, error}
         end
 
       _, {:error, error} ->

@@ -1,60 +1,41 @@
 defmodule Ash.Actions.Update do
   alias Ash.Authorization.Authorizer
-  alias Ash.Actions.SideLoader
+  alias Ash.Actions.SideLoad
   alias Ash.Actions.ChangesetHelpers
 
   @spec run(Ash.api(), Ash.record(), Ash.action(), Ash.params()) ::
           {:ok, Ash.record()} | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
-  def run(api, %resource{} = record, action, %{authorize?: true} = params) do
-    case prepare_update_params(api, record, params) do
-      %Ecto.Changeset{valid?: true} = changeset ->
-        auth_context = %{
-          resource: resource,
-          action: action,
-          params: params,
-          changeset: changeset
-        }
-
-        user = Map.get(params, :user)
-
-        Authorizer.authorize(
-          user,
-          action.authorization_steps,
-          auth_context,
-          fn authorize_data_fun ->
-            with {:ok, result} <- do_update(resource, changeset),
-                 {:auth, :allow} <-
-                   {:auth,
-                    authorize_data_fun.(user, result, action.authorization_steps, auth_context)} do
-              side_loads = Map.get(params, :side_load, [])
-              global_params = Map.take(params, [:authorize?, :user])
-
-              SideLoader.side_load(resource, result, side_loads, api, global_params)
-            else
-              {:error, error} -> {:error, error}
-              {:auth, _} -> {:error, :forbidden}
-            end
-          end
-        )
-
-      changeset ->
-        {:error, changeset}
-    end
+  def run(_, _, _, %{side_load: side_load}) when side_load not in [[], nil] do
+    {:error, "Cannot side load on update currently"}
   end
 
   def run(api, %resource{} = record, _action, params) do
-    with %Ecto.Changeset{valid?: true} = changeset <- prepare_update_params(api, record, params),
-         %Ecto.Changeset{valid?: true} = changeset <-
-           ChangesetHelpers.run_before_changes(changeset),
-         {:ok, result} <- Ash.DataLayer.update(resource, changeset),
-         {:ok, result} <- ChangesetHelpers.run_after_changes(changeset, result) do
-      side_loads = Map.get(params, :side_load, [])
-      global_params = Map.take(params, [:authorize?, :user])
+    case prepare_update_params(api, record, params) do
+      %Ecto.Changeset{valid?: true} = changeset ->
+        user = Map.get(params, :user)
 
-      SideLoader.side_load(resource, result, side_loads, api, global_params)
-    else
-      {:error, error} -> {:error, error}
-      %Ecto.Changeset{} = changeset -> {:error, changeset}
+        precheck_data =
+          if Map.get(params, :authorize?, false) do
+            Authorizer.run_precheck(%{request: [{:update, resource, changeset}]}, user)
+          else
+            :allowed
+          end
+
+        with precheck_data when precheck_data != :forbidden <- precheck_data,
+             %Ecto.Changeset{valid?: true} = changeset <-
+               prepare_update_params(api, record, params),
+             %Ecto.Changeset{valid?: true} = changeset <-
+               ChangesetHelpers.run_before_changes(changeset),
+             {:ok, result} <- do_update(resource, changeset) do
+          ChangesetHelpers.run_after_changes(changeset, result)
+        else
+          :forbidden -> {:error, :forbidden}
+          {:error, error} -> {:error, error}
+          %Ecto.Changeset{} = changeset -> {:error, changeset}
+        end
+
+      changeset ->
+        {:error, changeset}
     end
   end
 
@@ -70,6 +51,9 @@ defmodule Ash.Actions.Update do
       with %{valid?: true} = changeset <- ChangesetHelpers.run_before_changes(changeset),
            {:ok, result} <- Ash.DataLayer.create(resource, changeset) do
         ChangesetHelpers.run_after_changes(changeset, result)
+      else
+        %Ecto.Changeset{valid?: false} = changeset ->
+          {:error, changeset}
       end
     end
   end

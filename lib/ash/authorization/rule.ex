@@ -45,15 +45,15 @@ defmodule Ash.Authorization.Rule do
   end
 
   @spec result_to_decision(kind(), boolean()) :: Authorizer.result()
-  def result_to_decision(:allow_if, true), do: :allow
+  def result_to_decision(:allow_if, true), do: :allowed
   def result_to_decision(:allow_if, false), do: :undecided
 
   def result_to_decision(:allow_unless, true), do: :undecided
-  def result_to_decision(:allow_unless, false), do: :allow
+  def result_to_decision(:allow_unless, false), do: :allowed
 
-  def result_to_decision(:forbid_if, true), do: :unauthorized
+  def result_to_decision(:forbid_if, true), do: :forbidden
   def result_to_decision(:forbid_if, false), do: :undecided
 
   def result_to_decision(:forbid_unless, true), do: :undecided
-  def result_to_decision(:forbid_unless, false), do: :unauthorized
+  def result_to_decision(:forbid_unless, false), do: :forbidden
 end
