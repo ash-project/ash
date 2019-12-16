@@ -3,19 +3,17 @@ defmodule Ash.Resource.Actions.Update do
 
   defstruct [:type, :name, :primary?, :authorization_steps]
 
-  alias Ash.Authorization.Rule
-
   @type t :: %__MODULE__{
           type: :update,
           name: atom,
           primary?: boolean,
-          authorization_steps: list(Rule.t())
+          authorization_steps: Authorization.steps()
         }
 
   @opt_schema Ashton.schema(
                 opts: [
                   primary?: :boolean,
-                  authorization_steps: {:list, %Rule{}}
+                  authorization_steps: {:list, :any}
                 ],
                 defaults: [
                   primary?: false,
@@ -24,8 +22,8 @@ defmodule Ash.Resource.Actions.Update do
                 describe: [
                   primary?:
                     "Whether or not this action should be used when no action is specified by the caller.",
-                  authorization_steps:
-                    "A list of `Ash.Authorization.Rule`s that will be stepped through and applied in order."
+                  # TODO: doc better
+                  authorization_steps: "A list of authorization steps"
                 ]
               )
 

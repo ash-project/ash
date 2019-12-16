@@ -37,10 +37,11 @@ defmodule Ash.DataLayer.Ets do
   @impl true
   def can?(:query_async), do: false
   def can?(:transact), do: false
-  def can?({:filter, :equal}), do: true
-  def can?({:filter, :in}), do: true
   def can?(:composite_primary_key), do: true
-  def can?(:inner_join), do: true
+  def can?({:filter, :in}), do: true
+  def can?({:filter, :eq}), do: true
+  def can?({:filter, :and}), do: true
+  def can?({:filter_related, _}), do: true
   def can?(_), do: false
 
   @impl true
@@ -61,15 +62,16 @@ defmodule Ash.DataLayer.Ets do
 
   @impl true
   def filter(query, filter, resource) do
-    query = %{query | filter: query.filter || []}
+    # query = %{query | filter: query.filter || []}
 
-    Enum.reduce(filter, {:ok, query}, fn
-      _, {:error, error} ->
-        {:error, error}
+    # Enum.reduce(filter, {:ok, query}, fn
+    #   _, {:error, error} ->
+    #     {:error, error}
 
-      {key, value}, {:ok, query} ->
-        do_filter(query, key, value, resource)
-    end)
+    #   {key, value}, {:ok, query} ->
+    #     do_filter(query, key, value, resource)
+    # end)
+    {:ok, query}
   end
 
   @impl true

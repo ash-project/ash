@@ -15,7 +15,7 @@ defmodule Ash.Test.Actions.SideLoadTest do
     end
 
     relationships do
-      has_many :posts, Ash.Test.Actions.SideLoadTest.Post
+      has_many :posts, Ash.Test.Actions.SideLoadTest.Post, reverse_relationship: :author
     end
   end
 
@@ -34,7 +34,7 @@ defmodule Ash.Test.Actions.SideLoadTest do
     end
 
     relationships do
-      belongs_to :author, Author
+      belongs_to :author, Author, reverse_relationship: :posts
     end
   end
 
@@ -46,20 +46,20 @@ defmodule Ash.Test.Actions.SideLoadTest do
 
   describe "side_loads" do
     setup do
-      author = Api.create!(Author, %{attributes: %{name: "zerg"}})
+      author = Api.create!(Author, attributes: %{name: "zerg"})
 
       post1 =
-        Api.create!(Post, %{attributes: %{title: "post1"}, relationships: %{author: author.id}})
+        Api.create!(Post, attributes: %{title: "post1"}, relationships: %{author: author.id})
 
       post2 =
-        Api.create!(Post, %{attributes: %{title: "post2"}, relationships: %{author: author.id}})
+        Api.create!(Post, attributes: %{title: "post2"}, relationships: %{author: author.id})
 
       %{post1: post1, post2: post2}
     end
 
     test "it allows sideloading related data", %{post1: post1, post2: post2} do
       %{results: [author]} =
-        Api.read!(Author, %{side_load: [posts: [:author]], filter: [posts: post1.id]})
+        Api.read!(Author, side_load: [posts: [:author]], filter: [posts: [id: post1.id]])
 
       assert Enum.sort(Enum.map(author.posts, &Map.get(&1, :id))) ==
                Enum.sort([post1.id, post2.id])

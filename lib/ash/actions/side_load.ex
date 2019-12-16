@@ -25,10 +25,8 @@ defmodule Ash.Actions.SideLoad do
          nested_path <- path ++ [key],
          {:ok, authorizations} <-
            process(relationship.destination, further, source_filter, nested_path) do
-      auth =
-        {nested_path,
-         {:read, relationship.destination,
-          [from_related_filter: {resource, source_filter, nested_path}]}}
+      filter = put_nested_relationship(nested_path, source_filter)
+      auth = {resource, :read, [filter: filter]}
 
       {:ok, [auth | authorizations] ++ acc}
     else
@@ -37,7 +35,17 @@ defmodule Ash.Actions.SideLoad do
     end
   end
 
-  def side_load(resource, record, keyword, api, prechecks_by_path, global_params \\ %{})
+  defp put_nested_relationship([rel | rest], value) do
+    [
+      {rel, put_nested_relationship(rest, value)}
+    ]
+  end
+
+  defp put_nested_relationship([], value) do
+    value
+  end
+
+  def side_load(resource, record, keyword, api, prechecks_by_path, global_params \\ [])
 
   def side_load(_resource, record_or_records, [], _api, _prechecks_by_path, _global_params),
     do: {:ok, record_or_records}
@@ -86,12 +94,17 @@ defmodule Ash.Actions.SideLoad do
         # going to come into play here. #TODO
 
         # need to be able to configure options specific to the path of the preload!
+        unless relationship.reverse_relationship do
+          raise "no reverse relationship for #{inspect(relationship)}. This should be validated at compile time."
+        end
+
         action_params =
           global_params
-          |> Map.put(:filter,
-            from_related: {records, relationship}
+          |> Keyword.put(
+            :filter,
+            [{relationship.reverse_relationship, reverse_relationship_filter(records)}]
           )
-          |> Map.put_new(:paginate?, false)
+          |> Keyword.put_new(:paginate?, false)
 
         with {:ok, %{results: related_records}} <-
                api.read(relationship.destination, action_params),
@@ -122,6 +135,14 @@ defmodule Ash.Actions.SideLoad do
     else
       {:ok, link_records(Enum.map(side_load_results, &elem(&1, 1)), records)}
     end
+  end
+
+  defp reverse_relationship_filter(records) when is_list(records) do
+    [or: records |> List.wrap() |> Enum.map(&reverse_relationship_filter/1)]
+  end
+
+  defp reverse_relationship_filter(%resource{} = record) do
+    record |> Map.take(Ash.primary_key(resource)) |> Map.to_list()
   end
 
   defp link_records(results, records) do

@@ -7,13 +7,13 @@ defmodule Ash.Resource.Actions.Create do
           type: :create,
           name: atom,
           primary?: boolean,
-          authorization_steps: list(Rule.t())
+          authorization_steps: Authorizer.steps()
         }
 
   @opt_schema Ashton.schema(
                 opts: [
                   primary?: :boolean,
-                  authorization_steps: {:list, %Rule{}}
+                  authorization_steps: {:list, :any}
                 ],
                 defaults: [
                   primary?: false,
@@ -22,8 +22,8 @@ defmodule Ash.Resource.Actions.Create do
                 describe: [
                   primary?:
                     "Whether or not this action should be used when no action is specified by the caller.",
-                  authorization_steps:
-                    "A list of `Ash.Authorization.Rule`s that will be stepped through and applied in order."
+                  # TODO: doc better
+                  authorization_steps: "A list of authorization steps"
                 ]
               )
 

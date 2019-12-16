@@ -5,37 +5,46 @@ defmodule Ash.Actions.Update do
 
   @spec run(Ash.api(), Ash.record(), Ash.action(), Ash.params()) ::
           {:ok, Ash.record()} | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
-  def run(_, _, _, %{side_load: side_load}) when side_load not in [[], nil] do
-    {:error, "Cannot side load on update currently"}
-  end
+  def run(api, %resource{} = record, action, params) do
+    if Keyword.get(params, :side_load, []) in [[], nil] do
+      case prepare_update_params(api, record, params) do
+        %Ecto.Changeset{valid?: true} = changeset ->
+          user = Keyword.get(params, :user)
 
-  def run(api, %resource{} = record, _action, params) do
-    case prepare_update_params(api, record, params) do
-      %Ecto.Changeset{valid?: true} = changeset ->
-        user = Map.get(params, :user)
-
-        precheck_data =
-          if Map.get(params, :authorize?, false) do
-            Authorizer.run_precheck(%{request: [{:update, resource, changeset}]}, user)
+          with {:auth, :authorized} <-
+                 {:auth, do_authorize(params, action, user, resource, changeset)},
+               %Ecto.Changeset{valid?: true} = changeset <-
+                 prepare_update_params(api, record, params),
+               %Ecto.Changeset{valid?: true} = changeset <-
+                 ChangesetHelpers.run_before_changes(changeset),
+               {:ok, result} <- do_update(resource, changeset) do
+            ChangesetHelpers.run_after_changes(changeset, result)
           else
-            :allowed
+            :forbidden -> {:error, :forbidden}
+            {:error, error} -> {:error, error}
+            %Ecto.Changeset{} = changeset -> {:error, changeset}
           end
 
-        with precheck_data when precheck_data != :forbidden <- precheck_data,
-             %Ecto.Changeset{valid?: true} = changeset <-
-               prepare_update_params(api, record, params),
-             %Ecto.Changeset{valid?: true} = changeset <-
-               ChangesetHelpers.run_before_changes(changeset),
-             {:ok, result} <- do_update(resource, changeset) do
-          ChangesetHelpers.run_after_changes(changeset, result)
-        else
-          :forbidden -> {:error, :forbidden}
-          {:error, error} -> {:error, error}
-          %Ecto.Changeset{} = changeset -> {:error, changeset}
-        end
+        changeset ->
+          {:error, changeset}
+      end
+    else
+      {:error, "Cannot side load on update currently"}
+    end
+  end
 
-      changeset ->
-        {:error, changeset}
+  defp do_authorize(params, action, user, resource, changeset) do
+    if Keyword.get(params, :authorize?, false) do
+      auth_request =
+        Ash.Authorization.Request.new(
+          resource: resource,
+          rules: action.rules,
+          changeset: changeset
+        )
+
+      Authorizer.authorize(user, [auth_request])
+    else
+      :authorized
     end
   end
 
@@ -59,10 +68,10 @@ defmodule Ash.Actions.Update do
   end
 
   defp prepare_update_params(api, %resource{} = record, params) do
-    attributes = Map.get(params, :attributes, %{})
-    relationships = Map.get(params, :relationships, %{})
-    authorize? = Map.get(params, :authorize?, false)
-    user = Map.get(params, :user)
+    attributes = Keyword.get(params, :attributes, %{})
+    relationships = Keyword.get(params, :relationships, %{})
+    authorize? = Keyword.get(params, :authorize?, false)
+    user = Keyword.get(params, :user)
 
     with %{valid?: true} = changeset <- prepare_update_attributes(record, attributes),
          changeset <- Map.put(changeset, :__ash_api__, api) do

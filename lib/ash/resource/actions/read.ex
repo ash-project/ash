@@ -10,14 +10,14 @@ defmodule Ash.Resource.Actions.Read do
           name: atom,
           primary?: boolean,
           paginate?: boolean,
-          authorization_steps: list(Rule.t())
+          authorization_steps: Authorization.steps()
         }
 
   @opt_schema Ashton.schema(
                 opts: [
                   primary?: :boolean,
                   paginate?: :boolean,
-                  authorization_steps: {:list, %Rule{}}
+                  authorization_steps: {:list, :any}
                 ],
                 defaults: [
                   primary?: false,
@@ -29,8 +29,8 @@ defmodule Ash.Resource.Actions.Read do
                     "Whether or not this action should be used when no action is specified by the caller.",
                   paginate?:
                     "If false, a page is still returned from a read action, but no limit or offset is performed.",
-                  authorization_steps:
-                    "A list of `Ash.Authorization.Rule`s that will be stepped through and applied in order."
+                  # TODO: doc better
+                  authorization_steps: "A list of authorization steps"
                 ]
               )
 

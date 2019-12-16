@@ -10,7 +10,8 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :field_type,
     :destination_field,
     :source_field,
-    :source
+    :source,
+    :reverse_relationship
   ]
 
   @type t :: %__MODULE__{
@@ -23,7 +24,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           define_field?: boolean,
           field_type: Ash.Type.t(),
           destination_field: atom,
-          source_field: atom
+          source_field: atom | nil
         }
 
   @opt_schema Ashton.schema(
@@ -32,7 +33,8 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                   source_field: :atom,
                   primary_key?: :boolean,
                   define_field?: :boolean,
-                  field_type: :atom
+                  field_type: :atom,
+                  reverse_relationship: :atom
                 ],
                 defaults: [
                   destination_field: :id,
@@ -41,6 +43,8 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                   field_type: :uuid
                 ],
                 describe: [
+                  reverse_relationship:
+                    "A requirement for side loading data. Must be the name of an inverse relationship on the destination resource.",
                   define_field?:
                     "If set to `false` a field is not created on the resource for this relationship, and one must be manually added in `attributes`.",
                   field_type: "The field type of the automatically created field.",
@@ -77,7 +81,8 @@ defmodule Ash.Resource.Relationships.BelongsTo do
            primary_key?: opts[:primary_key?],
            destination: related_resource,
            destination_field: opts[:destination_field],
-           source_field: opts[:source_field] || :"#{name}_id"
+           source_field: opts[:source_field] || :"#{name}_id",
+           reverse_relationship: opts[:reverse_relationship]
          }}
 
       {:error, error} ->

@@ -1,183 +1,187 @@
 defmodule Ash.Authorization.Authorizer do
   alias Ash.Authorization.Rule
 
-  @type result :: :allowed | :forbidden | :undecided
+  @type result :: :authorized | :forbidden | :undecided
 
-  def run_precheck(_, _) do
-    :allowed
+  def authorize(user, requests) do
+    :authorized
   end
 
-  ######
+  # def run_precheck(_, _) do
+  #   :authorized
+  # end
 
-  def authorize(user, :none, context, callback) do
-    callback.(fn _user, _data, _rules, _context ->
-      :allowed
-    end)
-  end
+  # ######
 
-  def authorize(user, rules, context, callback) do
-    case authorize_precheck(user, rules, context) do
-      {%{prediction: :unknown}, per_check_data} ->
-        callback.(fn user, data, rules, context ->
-          do_authorize(user, data, rules, context, per_check_data)
-        end)
-    end
-  end
+  # def authorize(user, :none, context, callback) do
+  #   callback.(fn _user, _data, _rules, _context ->
+  #     :authorized
+  #   end)
+  # end
 
-  defp authorize_precheck(user, rules, context) do
-    rules
-    |> Enum.reduce({%{}, []}, fn rule, {instructions, per_check_data} ->
-      {instructions, check_data} =
-        rule
-        |> precheck_result(user, context)
-        |> List.wrap()
-        |> Enum.reduce({instructions, %{}}, &handle_precheck_result/2)
+  # def authorize(user, rules, context, callback) do
+  #   case authorize_precheck(user, rules, context) do
+  #     {%{prediction: :unknown}, per_check_data} ->
+  #       callback.(fn user, data, rules, context ->
+  #         do_authorize(user, data, rules, context, per_check_data)
+  #       end)
+  #   end
+  # end
 
-      {instructions, [check_data | per_check_data]}
-    end)
-    |> predict_result(rules)
-  end
+  # defp authorize_precheck(user, rules, context) do
+  #   rules
+  #   |> Enum.reduce({%{}, []}, fn rule, {instructions, per_check_data} ->
+  #     {instructions, check_data} =
+  #       rule
+  #       |> precheck_result(user, context)
+  #       |> List.wrap()
+  #       |> Enum.reduce({instructions, %{}}, &handle_precheck_result/2)
 
-  # Never call authorize w/o first calling authorize_precheck before
-  # the operation
-  defp do_authorize(user, data, rules, context, per_check_data) do
-    {_decision, remaining_records} =
-      rules
-      |> Enum.zip(per_check_data)
-      |> Enum.reduce({:undecided, data}, fn
-        {rule, per_check_data}, {:undecided, data} ->
-          rule_with_per_check_data =
-            case per_check_data do
-              %{decision: value} ->
-                %{rule | check: fn _, _, _ -> value end}
+  #     {instructions, [check_data | per_check_data]}
+  #   end)
+  #   |> predict_result(rules)
+  # end
 
-              _ ->
-                rule
-            end
+  # # Never call authorize w/o first calling authorize_precheck before
+  # # the operation
+  # defp do_authorize(user, data, rules, context, per_check_data) do
+  #   {_decision, remaining_records} =
+  #     rules
+  #     |> Enum.zip(per_check_data)
+  #     |> Enum.reduce({:undecided, data}, fn
+  #       {rule, per_check_data}, {:undecided, data} ->
+  #         rule_with_per_check_data =
+  #           case per_check_data do
+  #             %{decision: value} ->
+  #               %{rule | check: fn _, _, _ -> value end}
 
-          full_context = Map.merge(context, Map.get(per_check_data, :context) || %{})
+  #             _ ->
+  #               rule
+  #           end
 
-          checked_records = run_check(rule_with_per_check_data, user, data, full_context)
+  #         full_context = Map.merge(context, Map.get(per_check_data, :context) || %{})
 
-          if Enum.any?(checked_records, &(&1.__authorization_decision__ == :forbidden)) do
-            {:forbiden, data}
-          else
-            remaining_records =
-              Enum.reject(checked_records, &(&1.__authorization_decision__ == :allowed))
+  #         checked_records = run_check(rule_with_per_check_data, user, data, full_context)
 
-            if Enum.empty?(remaining_records) do
-              {:allow, []}
-            else
-              {:undecided, remaining_records}
-            end
-          end
+  #         if Enum.any?(checked_records, &(&1.__authorization_decision__ == :forbidden)) do
+  #           {:forbiden, data}
+  #         else
+  #           remaining_records =
+  #             Enum.reject(checked_records, &(&1.__authorization_decision__ == :authorized))
 
-        _, {decision, data} ->
-          {decision, data}
-      end)
+  #           if Enum.empty?(remaining_records) do
+  #             {:allow, []}
+  #           else
+  #             {:undecided, remaining_records}
+  #           end
+  #         end
 
-    if Enum.empty?(remaining_records) do
-      :allowed
-    else
-      # Return some kind of information here?
-      # Maybe full auth breakdown in dev envs?
-      {:forbidden, nil}
-    end
-  end
+  #       _, {decision, data} ->
+  #         {decision, data}
+  #     end)
 
-  defp run_check(
-         %{check: check, kind: kind},
-         user,
-         data,
-         context
-       ) do
-    check_function =
-      case check do
-        {module, function, args} ->
-          fn user, data, context ->
-            apply(module, function, [user, data, context] ++ args)
-          end
+  #   if Enum.empty?(remaining_records) do
+  #     :authorized
+  #   else
+  #     # Return some kind of information here?
+  #     # Maybe full auth breakdown in dev envs?
+  #     {:forbidden, nil}
+  #   end
+  # end
 
-        function ->
-          function
-      end
+  # defp run_check(
+  #        %{check: check, kind: kind},
+  #        user,
+  #        data,
+  #        context
+  #      ) do
+  #   check_function =
+  #     case check do
+  #       {module, function, args} ->
+  #         fn user, data, context ->
+  #           apply(module, function, [user, data, context] ++ args)
+  #         end
 
-    result = check_function.(user, data, context)
+  #       function ->
+  #         function
+  #     end
 
-    Enum.map(data, fn item ->
-      result =
-        case result do
-          true -> true
-          false -> false
-          ids -> item.id in ids
-        end
+  #   result = check_function.(user, data, context)
 
-      decision = Rule.result_to_decision(kind, result)
-      Map.put(item, :__authorization_decision__, decision)
-    end)
-  end
+  #   Enum.map(data, fn item ->
+  #     result =
+  #       case result do
+  #         true -> true
+  #         false -> false
+  #         ids -> item.id in ids
+  #       end
 
-  defp predict_result({instructions, per_check_data}, rules) do
-    prediction = get_prediction(Enum.zip(rules, per_check_data))
+  #     decision = Rule.result_to_decision(kind, result)
+  #     Map.put(item, :__authorization_decision__, decision)
+  #   end)
+  # end
 
-    {Map.put(instructions, :prediction, prediction), per_check_data}
-  end
+  # defp predict_result({instructions, per_check_data}, rules) do
+  #   prediction = get_prediction(Enum.zip(rules, per_check_data))
 
-  defp get_prediction([]), do: :unknown
+  #   {Map.put(instructions, :prediction, prediction), per_check_data}
+  # end
 
-  defp get_prediction([{rule, %{decision: value}} | rest]) do
-    case Rule.result_to_decision(rule.kind, value) do
-      :allowed -> :allowed
-      :forbidden -> :forbidden
-      :undecided -> get_prediction(rest)
-    end
-  end
+  # defp get_prediction([]), do: :unknown
 
-  defp get_prediction([{rule, _} | rest]) do
-    result_if_true = Rule.result_to_decision(rule.kind, true)
-    result_if_false = Rule.result_to_decision(rule.kind, false)
+  # defp get_prediction([{rule, %{decision: value}} | rest]) do
+  #   case Rule.result_to_decision(rule.kind, value) do
+  #     :authorized -> :authorized
+  #     :forbidden -> :forbidden
+  #     :undecided -> get_prediction(rest)
+  #   end
+  # end
 
-    if result_if_true != :allowed and result_if_false != :allowed do
-      :forbidden
-    else
-      get_prediction(rest)
-    end
-  end
+  # defp get_prediction([{rule, _} | rest]) do
+  #   result_if_true = Rule.result_to_decision(rule.kind, true)
+  #   result_if_false = Rule.result_to_decision(rule.kind, false)
 
-  defp handle_precheck_result(nil, instructions_and_data), do: instructions_and_data
-  defp handle_precheck_result(:ok, instructions_and_data), do: instructions_and_data
+  #   if result_if_true != :authorized and result_if_false != :authorized do
+  #     :forbidden
+  #   else
+  #     get_prediction(rest)
+  #   end
+  # end
 
-  defp handle_precheck_result({:context, context}, {instructions, data}) do
-    {instructions, Map.update(data, :context, context, &Map.merge(&1, context))}
-  end
+  # defp handle_precheck_result(nil, instructions_and_data), do: instructions_and_data
+  # defp handle_precheck_result(:ok, instructions_and_data), do: instructions_and_data
 
-  defp handle_precheck_result({:precheck, boolean}, {instructions, data})
-       when is_boolean(boolean) do
-    {instructions, Map.put(data, :precheck, boolean)}
-  end
+  # defp handle_precheck_result({:context, context}, {instructions, data}) do
+  #   {instructions, Map.update(data, :context, context, &Map.merge(&1, context))}
+  # end
 
-  defp handle_precheck_result({:side_load, relationship}, {instructions, data}) do
-    new_instructions =
-      instructions
-      |> Map.put_new(:side_load, [])
-      |> Map.update!(:side_load, &Keyword.put_new(&1, relationship, []))
+  # defp handle_precheck_result({:precheck, boolean}, {instructions, data})
+  #      when is_boolean(boolean) do
+  #   {instructions, Map.put(data, :precheck, boolean)}
+  # end
 
-    {new_instructions, data}
-  end
+  # defp handle_precheck_result({:side_load, relationship}, {instructions, data}) do
+  #   new_instructions =
+  #     instructions
+  #     |> Map.put_new(:side_load, [])
+  #     |> Map.update!(:side_load, &Keyword.put_new(&1, relationship, []))
 
-  defp precheck_result(%{decision: nil}, _user, _context), do: nil
+  #   {new_instructions, data}
+  # end
 
-  defp precheck_result(%{decision: precheck}, user, context) do
-    case precheck do
-      {module, function, args} ->
-        if function_exported?(module, function, Enum.count(args) + 2) do
-          apply(module, function, [user, context] ++ args)
-        else
-          nil
-        end
+  # defp precheck_result(%{decision: nil}, _user, _context), do: nil
 
-      function ->
-        function.(user, context)
-    end
-  end
+  # defp precheck_result(%{decision: precheck}, user, context) do
+  #   case precheck do
+  #     {module, function, args} ->
+  #       if function_exported?(module, function, Enum.count(args) + 2) do
+  #         apply(module, function, [user, context] ++ args)
+  #       else
+  #         nil
+  #       end
+
+  #     function ->
+  #       function.(user, context)
+  #   end
+  # end
 end

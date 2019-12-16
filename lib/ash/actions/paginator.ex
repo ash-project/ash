@@ -15,7 +15,7 @@ defmodule Ash.Actions.Paginator do
           Ash.resource(),
           Ash.action(),
           Ash.query(),
-          params :: %{optional(String.t()) => term}
+          params :: Keyword.t()
         ) ::
           {:ok, t()} | {:error, Ash.error()}
   def paginate(_api, _resource, %{paginate?: false}, query, _params) do
@@ -26,8 +26,14 @@ defmodule Ash.Actions.Paginator do
   end
 
   def paginate(api, resource, _action, query, params) do
+    pagination_params =
+      case Keyword.fetch(params, :page) do
+        {:ok, value} -> [page: Enum.into(value, %{})]
+        :error -> []
+      end
+
     with {:ok, %__MODULE__{limit: limit, offset: offset} = paginator} <-
-           paginator(api, resource, params),
+           paginator(api, resource, pagination_params),
          {:ok, query} <- Ash.DataLayer.offset(query, offset, resource),
          {:ok, query} <- Ash.DataLayer.limit(query, limit, resource) do
       {:ok, %{paginator | query: query}}

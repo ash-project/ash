@@ -24,7 +24,7 @@ defmodule Ash.Resource.Actions do
 
       unquote(block)
       import Ash.Resource.Actions, only: [actions: 1]
-      import Ash.Authorization.Rule, only: []
+      import Ash.Authorization.Checks
     end
   end
 

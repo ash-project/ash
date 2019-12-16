@@ -7,7 +7,8 @@ defmodule Ash.Resource.Relationships.HasOne do
     :cardinality,
     :destination,
     :destination_field,
-    :source_field
+    :source_field,
+    :reverse_relationship
   ]
 
   @type t :: %__MODULE__{
@@ -18,18 +19,22 @@ defmodule Ash.Resource.Relationships.HasOne do
           type: Ash.Type.t(),
           destination: Ash.resource(),
           destination_field: atom,
-          source_field: atom
+          source_field: atom,
+          reverse_relationship: atom | nil
         }
 
   @opt_schema Ashton.schema(
                 opts: [
                   destination_field: :atom,
-                  source_field: :atom
+                  source_field: :atom,
+                  reverse_relationship: :atom
                 ],
                 defaults: [
                   source_field: :id
                 ],
                 describe: [
+                  reverse_relationship:
+                    "A requirement for side loading data. Must be the name of an inverse relationship on the destination resource.",
                   destination_field:
                     "The field on the related resource that should match the `source_field` on this resource. Default: [resource.name]_id",
                   source_field:
@@ -60,7 +65,8 @@ defmodule Ash.Resource.Relationships.HasOne do
            cardinality: :one,
            destination: related_resource,
            destination_field: opts[:destination_field] || :"#{resource_type}_id",
-           source_field: opts[:source_field]
+           source_field: opts[:source_field],
+           reverse_relationship: opts[:reverse_relationship]
          }}
 
       {:error, errors} ->

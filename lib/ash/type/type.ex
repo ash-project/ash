@@ -19,6 +19,7 @@ defmodule Ash.Type do
 
   @builtins [
     string: [ecto_type: :string, filters: [:equal, :in], sortable?: true],
+    boolean: [ecto_type: :boolean, filters: [:equal], sortable?: true],
     uuid: [ecto_type: :binary_id, filters: [:equal, :in], sortable?: true],
     utc_datetime: [ecto_type: :utc_datetime, filters: [:equal, :in], sortable?: true]
   ]
@@ -51,6 +52,7 @@ defmodule Ash.Type do
   Returns the *underlying* storage type (the underlying type of the *ecto type* of the *ash type*)
   """
   @spec storage_type(t()) :: Ecto.Type.t()
+  def storage_type(type) when type in @builtin_names, do: type
   def storage_type(type), do: type.storage_type()
 
   @doc """

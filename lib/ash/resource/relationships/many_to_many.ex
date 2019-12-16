@@ -9,7 +9,8 @@ defmodule Ash.Resource.Relationships.ManyToMany do
     :source_field,
     :destination_field,
     :source_field_on_join_table,
-    :destination_field_on_join_table
+    :destination_field_on_join_table,
+    :reverse_relationship
   ]
 
   @type t :: %__MODULE__{
@@ -22,7 +23,8 @@ defmodule Ash.Resource.Relationships.ManyToMany do
           source_field: atom,
           destination_field: atom,
           source_field_on_join_table: atom,
-          destination_field_on_join_table: atom
+          destination_field_on_join_table: atom,
+          reverse_relationship: atom
         }
 
   @opt_schema Ashton.schema(
@@ -31,7 +33,8 @@ defmodule Ash.Resource.Relationships.ManyToMany do
                   destination_field_on_join_table: :atom,
                   source_field: :atom,
                   destination_field: :atom,
-                  through: :atom
+                  through: :atom,
+                  reverse_relationship: :atom
                 ],
                 defaults: [
                   source_field: :id,
@@ -42,6 +45,8 @@ defmodule Ash.Resource.Relationships.ManyToMany do
                 ],
                 describe: [
                   through: "The resource to use as the join table.",
+                  reverse_relationship:
+                    "A requirement for side loading data. Must be the name of an inverse relationship on the destination resource.",
                   source_field_on_join_table:
                     "The field on the join table that should line up with `source_field` on this resource. Default: [resource_name]_id",
                   destination_field_on_join_table:
@@ -75,6 +80,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
            cardinality: :many,
            through: opts[:through],
            destination: related_resource,
+           reverse_relationship: opts[:reverse_relationship],
            source_field: opts[:source_field],
            destination_field: opts[:destination_field],
            source_field_on_join_table:

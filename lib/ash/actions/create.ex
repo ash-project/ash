@@ -5,30 +5,40 @@ defmodule Ash.Actions.Create do
 
   @spec run(Ash.api(), Ash.resource(), Ash.action(), Ash.params()) ::
           {:ok, Ash.record()} | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
-  def run(_, _, _, %{side_load: side_load}) when side_load not in [[], nil] do
-    {:error, "Cannot side load on create currently"}
-  end
-
   def run(api, resource, action, params) do
-    case prepare_create_params(api, resource, params) do
-      %Ecto.Changeset{valid?: true} = changeset ->
-        user = Map.get(params, :user)
+    if Keyword.get(params, :side_load, []) in [[], nil] do
+      case prepare_create_params(api, resource, params) do
+        %Ecto.Changeset{valid?: true} = changeset ->
+          user = Keyword.get(params, :user)
 
-        precheck_data =
-          if Map.get(params, :authorize?, false) do
-            Authorizer.run_precheck(%{request: [{:create, resource, changeset}]}, user)
+          precheck_data = do_authorize(params, action, user, resource, changeset)
+
+          if precheck_data == :forbidden do
+            {:error, :forbidden}
           else
-            :allowed
+            do_create(resource, changeset)
           end
 
-        if precheck_data == :forbidden do
-          {:error, :forbidden}
-        else
-          do_create(resource, changeset)
-        end
+        %Ecto.Changeset{} = changeset ->
+          {:error, changeset}
+      end
+    else
+      {:error, "Cannot side load on create currently"}
+    end
+  end
 
-      %Ecto.Changeset{} = changeset ->
-        {:error, changeset}
+  defp do_authorize(params, action, user, resource, changeset) do
+    if Keyword.get(params, :authorize?, false) do
+      auth_request =
+        Ash.Authorization.Request.new(
+          resource: resource,
+          rules: action.rules,
+          changeset: changeset
+        )
+
+      Authorizer.authorize(user, [auth_request])
+    else
+      :authorized
     end
   end
 
@@ -49,10 +59,10 @@ defmodule Ash.Actions.Create do
   end
 
   defp prepare_create_params(api, resource, params) do
-    attributes = Map.get(params, :attributes, %{})
-    relationships = Map.get(params, :relationships, %{})
-    authorize? = Map.get(params, :authorize?, false)
-    user = Map.get(params, :user)
+    attributes = Keyword.get(params, :attributes, %{})
+    relationships = Keyword.get(params, :relationships, %{})
+    authorize? = Keyword.get(params, :authorize?, false)
+    user = Keyword.get(params, :user)
 
     with %{valid?: true} = changeset <- prepare_create_attributes(resource, attributes),
          changeset <- Map.put(changeset, :__ash_api__, api) do

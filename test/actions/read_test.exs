@@ -47,7 +47,7 @@ defmodule Ash.Test.Actions.ReadTest do
 
   describe "api.get/3" do
     setup do
-      {:ok, post} = Api.create(Post, %{attributes: %{title: "test", contents: "yeet"}})
+      {:ok, post} = Api.create(Post, attributes: %{title: "test", contents: "yeet"})
       %{post: post}
     end
 
@@ -64,7 +64,7 @@ defmodule Ash.Test.Actions.ReadTest do
 
   describe "api.get!/3" do
     setup do
-      {:ok, post} = Api.create(Post, %{attributes: %{title: "test", contents: "yeet"}})
+      {:ok, post} = Api.create(Post, attributes: %{title: "test", contents: "yeet"})
       %{post: post}
     end
 
@@ -93,29 +93,29 @@ defmodule Ash.Test.Actions.ReadTest do
 
   describe "api.read/2" do
     setup do
-      {:ok, post1} = Api.create(Post, %{attributes: %{title: "test", contents: "yeet"}})
-      {:ok, post2} = Api.create(Post, %{attributes: %{title: "test1", contents: "yeet2"}})
+      {:ok, post1} = Api.create(Post, attributes: %{title: "test", contents: "yeet"})
+      {:ok, post2} = Api.create(Post, attributes: %{title: "test1", contents: "yeet2"})
 
       %{post1: post1, post2: post2}
     end
 
     test "with page size of 1, returns only 1 record" do
-      assert {:ok, %{results: [_post]}} = Api.read(Post, %{page: %{limit: 1}})
+      assert {:ok, %{results: [_post]}} = Api.read(Post, page: %{limit: 1})
     end
 
     test "with page size of 2, returns 2 records" do
-      assert {:ok, %{results: [_, _]}} = Api.read(Post, %{page: %{limit: 2}})
+      assert {:ok, %{results: [_, _]}} = Api.read(Post, page: %{limit: 2})
     end
 
     test "with page size of 1 and an offset of 1, it returns 1 record" do
-      assert {:ok, %{results: [_]}} = Api.read(Post, %{page: %{limit: 1, offset: 1}})
+      assert {:ok, %{results: [_]}} = Api.read(Post, page: %{limit: 1, offset: 1})
     end
   end
 
   describe "api.read!/2" do
     setup do
-      {:ok, post1} = Api.create(Post, %{attributes: %{title: "test", contents: "yeet"}})
-      {:ok, post2} = Api.create(Post, %{attributes: %{title: "test1", contents: "yeet2"}})
+      {:ok, post1} = Api.create(Post, attributes: %{title: "test", contents: "yeet"})
+      {:ok, post2} = Api.create(Post, attributes: %{title: "test1", contents: "yeet2"})
 
       %{post1: post1, post2: post2}
     end
@@ -126,29 +126,29 @@ defmodule Ash.Test.Actions.ReadTest do
 
     test "it raises on an error" do
       assert_raise(Ash.Error.FrameworkError, "Invalid value: 10 for :title", fn ->
-        Api.read!(Post, %{filter: [title: 10]})
+        Api.read!(Post, filter: [title: 10])
       end)
     end
   end
 
   describe "filters" do
     setup do
-      {:ok, post1} = Api.create(Post, %{attributes: %{title: "test", contents: "yeet"}})
-      {:ok, post2} = Api.create(Post, %{attributes: %{title: "test1", contents: "yeet"}})
+      {:ok, post1} = Api.create(Post, attributes: %{title: "test", contents: "yeet"})
+      {:ok, post2} = Api.create(Post, attributes: %{title: "test1", contents: "yeet"})
 
       %{post1: post1, post2: post2}
     end
 
     test "a filter that matches nothing returns no results" do
-      assert {:ok, %{results: []}} = Api.read(Post, %{filter: [contents: "not_yeet"]})
+      assert {:ok, %{results: []}} = Api.read(Post, filter: [contents: "not_yeet"])
     end
 
     test "a filter returns only matching records", %{post1: post1} do
-      assert {:ok, %{results: [^post1]}} = Api.read(Post, %{filter: [title: post1.title]})
+      assert {:ok, %{results: [^post1]}} = Api.read(Post, filter: [title: post1.title])
     end
 
     test "a filter returns multiple records if they match", %{post1: post1, post2: post2} do
-      assert {:ok, %{results: [_, _] = results}} = Api.read(Post, %{filter: [contents: "yeet"]})
+      assert {:ok, %{results: [_, _] = results}} = Api.read(Post, filter: [contents: "yeet"])
 
       assert post1 in results
       assert post2 in results
@@ -157,32 +157,32 @@ defmodule Ash.Test.Actions.ReadTest do
 
   describe "relationship filters" do
     setup do
-      author1 = Api.create!(Author, %{attributes: %{name: "bruh"}})
-      author2 = Api.create!(Author, %{attributes: %{name: "bruh"}})
+      author1 = Api.create!(Author, attributes: %{name: "bruh"})
+      author2 = Api.create!(Author, attributes: %{name: "bruh"})
 
       {:ok, post} =
-        Api.create(Post, %{
+        Api.create(Post,
           attributes: %{title: "test", contents: "yeet"},
           relationships: %{author1: author1.id, author2: author2.id}
-        })
+        )
 
       %{post: post, author1: author1, author2: author2}
     end
 
     test "you can filter on a related value", %{author1: author1} do
-      assert %{results: [_] = results} = Api.read!(Post, %{filter: [author1: author1.id]})
+      assert %{results: [_] = results} = Api.read!(Post, filter: [author1: author1.id])
     end
 
     test "you can filter on multiple related values", %{author1: author1, author2: author2} do
       assert %{results: [_] = results} =
-               Api.read!(Post, %{filter: [author1: author1.id, author2: author2.id]})
+               Api.read!(Post, filter: [author1: author1.id, author2: author2.id])
     end
   end
 
   describe "sort" do
     setup do
-      {:ok, post1} = Api.create(Post, %{attributes: %{title: "abc", contents: "abc"}})
-      {:ok, post2} = Api.create(Post, %{attributes: %{title: "xyz", contents: "abc"}})
+      {:ok, post1} = Api.create(Post, attributes: %{title: "abc", contents: "abc"})
+      {:ok, post2} = Api.create(Post, attributes: %{title: "xyz", contents: "abc"})
 
       %{post1: post1, post2: post2}
     end
@@ -191,21 +191,21 @@ defmodule Ash.Test.Actions.ReadTest do
       post1: post1,
       post2: post2
     } do
-      assert {:ok, %{results: [^post1, ^post2]}} = Api.read(Post, %{sort: [asc: :title]})
+      assert {:ok, %{results: [^post1, ^post2]}} = Api.read(Post, sort: [asc: :title])
     end
 
     test "a sort will sor rows accordingly when descending", %{
       post1: post1,
       post2: post2
     } do
-      assert {:ok, %{results: [^post2, ^post1]}} = Api.read(Post, %{sort: [desc: :title]})
+      assert {:ok, %{results: [^post2, ^post1]}} = Api.read(Post, sort: [desc: :title])
     end
 
     test "a nested sort sorts accordingly", %{post1: post1, post2: post2} do
-      {:ok, middle_post} = Api.create(Post, %{attributes: %{title: "abc", contents: "xyz"}})
+      {:ok, middle_post} = Api.create(Post, attributes: %{title: "abc", contents: "xyz"})
 
       assert {:ok, %{results: [^post1, ^middle_post, ^post2]}} =
-               Api.read(Post, %{sort: [asc: :title, asc: :contents]})
+               Api.read(Post, sort: [asc: :title, asc: :contents])
     end
   end
 end

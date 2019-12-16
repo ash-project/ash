@@ -28,12 +28,12 @@ defmodule Post do
   actions do
     read :default,
       authorization_steps: [
-        allow_if: user_is(:admin)
+        authorize_if: user_is(:admin)
       ]
 
     create :default,
       authorization_steps: [
-        allow_if: user_is(:admin)
+        authorize_if: user_is(:admin)
       ]
     
   end
@@ -106,3 +106,10 @@ end
 * As soon as we add array types, the filter logic is going to break because we use "is a list" as a criterion for "has not been passed a raw value to match". This may not be too big of a problem if we just don't support a list. But using some sort of actual struct to represent "this is constructed filter" may be the real answer.
 * Add a runtime-intialization to checks that can return data loading instructions to be executed prior to pre-check
 * Naturally, only inner joins are allowed now. I think only inner joins will be necessary, as the pattern in ash would be to side load related data.
+* certain attribute names are not going to be allowed, like `or`, `and`, `in`, things like that.
+* consider, just for the sake of good old fashion fun/cool factor, a parser that can parse a string into a query at compile time, so that queries can look nice in code.
+* validate reverse relationships
+* Factor out shared relationship options into its own schema, and merge them, for clearer docs.
+* Consider making a "params builder" so you can say things like `Ash.Params.add_side_load(params, [:foo, :bar, :baz])` and build params up over time.
+* validate using composite primary keys using the `data_layer.can?(:composite_primary_key)`
+* Think hard about the data_layer.can? pattern to make sure we're giving enough info, but not too much.
