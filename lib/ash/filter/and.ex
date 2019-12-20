@@ -1,7 +1,28 @@
 defmodule Ash.Filter.And do
   defstruct [:left, :right]
 
-  def new([first | [last | []]]), do: {:ok, %__MODULE__{left: first, right: last}}
-  def new([first | rest]), do: {:ok, %__MODULE__{left: first, right: new(rest)}}
-  def new(left, right), do: {:ok, %__MODULE__{left: left, right: right}}
+  def new(resource, attr_type, [first | [last | []]]) do
+    with {:ok, first} <- Ash.Filter.parse_predicates(resource, first, attr_type),
+         {:ok, right} <- Ash.Filter.parse_predicates(resource, last, attr_type) do
+      {:ok, %__MODULE__{left: first, right: right}}
+    end
+  end
+
+  def new(resource, attr_type, [first | rest]) do
+    case Ash.Filter.parse_predicates(resource, first, attr_type) do
+      {:ok, first} ->
+        {:ok, %__MODULE__{left: first, right: new(resource, attr_type, rest)}}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  def new(resource, attr_type, {left, right}) do
+    new(resource, attr_type, [left, right])
+  end
+
+  def prebuilt_new(left, right) do
+    %__MODULE__{left: left, right: right}
+  end
 end

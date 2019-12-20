@@ -14,6 +14,8 @@ defmodule Ash.DataLayer.Ets do
 
   @behaviour Ash.DataLayer
 
+  alias Ash.Filter.{Eq, In, And, Or}
+
   defmacro __using__(opts) do
     quote bind_quoted: [opts: opts] do
       @data_layer Ash.DataLayer.Ets
@@ -31,7 +33,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defmodule Query do
-    defstruct [:resource, :filter, :limit, :sort, joins: [], offset: 0]
+    defstruct [:resource, :filter, :limit, :sort, relationships: %{}, joins: [], offset: 0]
   end
 
   @impl true
@@ -41,6 +43,7 @@ defmodule Ash.DataLayer.Ets do
   def can?({:filter, :in}), do: true
   def can?({:filter, :eq}), do: true
   def can?({:filter, :and}), do: true
+  def can?({:filter, :or}), do: true
   def can?({:filter_related, _}), do: true
   def can?(_), do: false
 
@@ -61,17 +64,8 @@ defmodule Ash.DataLayer.Ets do
   def can_query_async?(_), do: false
 
   @impl true
-  def filter(query, filter, resource) do
-    # query = %{query | filter: query.filter || []}
-
-    # Enum.reduce(filter, {:ok, query}, fn
-    #   _, {:error, error} ->
-    #     {:error, error}
-
-    #   {key, value}, {:ok, query} ->
-    #     do_filter(query, key, value, resource)
-    # end)
-    {:ok, query}
+  def filter(query, filter, _resource) do
+    {:ok, %{query | filter: filter}}
   end
 
   @impl true
@@ -79,22 +73,90 @@ defmodule Ash.DataLayer.Ets do
     {:ok, %{query | sort: sort}}
   end
 
-  defp do_filter(query, field, id, _resource) do
-    {:ok, %{query | filter: [{field, id} | query.filter]}}
-  end
-
   @impl true
   def run_query(
         %Query{resource: resource, filter: filter, offset: offset, limit: limit, sort: sort},
         _
       ) do
-    with {:ok, match_spec} <- filter_to_matchspec(resource, filter),
+    query_results =
+      filter
+      |> all_top_level_queries()
+      |> Enum.reduce({:ok, []}, fn query, {:ok, records} ->
+        case do_run_query(resource, query, limit + offset) do
+          {:ok, results} -> {:ok, records ++ results}
+          {:error, error} -> {:eror, error}
+        end
+      end)
+
+    case query_results do
+      {:ok, results} ->
+        final_results =
+          results
+          |> Enum.uniq_by(&Map.take(&1, Ash.primary_key(resource)))
+          |> do_sort(sort)
+          |> Enum.drop(offset)
+          |> Enum.take(limit)
+
+        {:ok, final_results}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp do_run_query(resource, filter, limit) do
+    with %{errors: []} = filter <- relationships_to_attribute_filters(resource, filter),
+         {:ok, match_spec} <- filter_to_matchspec(resource, filter),
          {:ok, table} <- wrap_or_create_table(resource),
-         {:ok, results} <- match_limit(table, match_spec, limit, offset),
-         records <- Enum.map(results, &elem(&1, 1)),
-         sorted <- do_sort(records, sort),
-         without_offset <- Enum.drop(sorted, offset) do
-      {:ok, without_offset}
+         {:ok, results} <- match_limit(table, match_spec, limit) do
+      {:ok, results}
+    else
+      %{errors: errors} ->
+        {:error, errors}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp relationships_to_attribute_filters(_, %{relationships: relationships} = filter)
+       when relationships in [nil, %{}] do
+    filter
+  end
+
+  defp relationships_to_attribute_filters(resource, %{relationships: relationships} = filter) do
+    Enum.reduce(relationships, filter, fn {rel, related_filter}, filter ->
+      relationship = Ash.relationship(resource, rel)
+
+      {field, parsed_related_filter} = related_ids_filter(relationship, related_filter)
+
+      Ash.Filter.add_to_filter(filter, [{field, parsed_related_filter}])
+    end)
+  end
+
+  defp related_ids_filter(%{cardinality: :many_to_many} = rel, filter) do
+    with {:ok, results} <- do_run_query(rel.destination, filter, nil),
+         destination_values <- Enum.map(results, &Map.get(&1, rel.destination_field)),
+         %{errors: []} = through_query <-
+           Ash.Filter.parse(rel.through, [
+             {rel.destination_field_on_join_table, [in: destination_values]}
+           ]),
+         {:ok, join_results} <- do_run_query(rel.through, through_query, nil) do
+      {rel.source_field,
+       [in: Enum.map(join_results, &Map.get(&1, rel.source_field_on_join_table))]}
+    else
+      %{errors: errors} -> {:error, errors}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp related_ids_filter(rel, filter) do
+    case do_run_query(rel.destination, filter, nil) do
+      {:ok, results} ->
+        {rel.source_field, [in: Enum.map(results, &Map.get(&1, rel.destination_field))]}
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 
@@ -127,41 +189,33 @@ defmodule Ash.DataLayer.Ets do
     end)
   end
 
-  # Id matching would be great here for performance, but
-  # for behaviour is technically unnecessary
   defp filter_to_matchspec(resource, filter) do
     filter = filter || []
 
-    {pkey_match, pkey_names} =
+    pkey_match =
       resource
       |> Ash.primary_key()
-      |> Enum.reduce({%{}, []}, fn
-        _attr, {:_, pkey_names} ->
-          {:_, pkey_names}
+      |> Enum.reduce(%{}, fn
+        _attr, :_ ->
+          :_
 
-        attr, {pkey_match, pkey_names} ->
-          with {:ok, field_filter} <- Keyword.fetch(filter, attr),
-               {:ok, value} <- Keyword.fetch(field_filter, :equal) do
-            {Map.put(pkey_match, attr, value), [attr | pkey_names]}
-          else
-            :error ->
-              {:_, [attr | pkey_names]}
+        attr, pkey_match ->
+          case Map.fetch(filter.attributes, attr) do
+            {:ok, %Eq{value: value}} ->
+              Map.put(pkey_match, attr, value)
+
+            _ ->
+              :_
           end
       end)
 
     starting_matchspec = {{pkey_match, %{__struct__: resource}}, [], [:"$_"]}
 
     filter
-    |> Kernel.||([])
-    |> Keyword.drop(pkey_names)
-    |> Enum.flat_map(fn {field, filter} ->
-      Enum.map(filter, fn {type, value} ->
-        {field, type, value}
-      end)
-    end)
+    |> Map.get(:attributes)
     |> Enum.reduce({:ok, {starting_matchspec, %{}}}, fn
-      {key, type, value}, {:ok, {spec, bindings}} ->
-        do_filter_to_matchspec(resource, key, type, value, spec, bindings)
+      {field, value}, {:ok, {spec, bindings}} ->
+        do_filter_to_matchspec(resource, field, value, spec, bindings)
 
       _, {:error, error} ->
         {:error, error}
@@ -172,13 +226,27 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  defp do_filter_to_matchspec(resource, key, type, value, spec, binding) do
-    cond do
-      attr = Ash.attribute(resource, key) ->
-        do_filter_to_matchspec_attribute(resource, attr.name, type, value, spec, binding)
+  defp all_top_level_queries(filter = %{ors: ors}) when is_list(ors) do
+    [filter | Enum.flat_map(ors, &all_top_level_queries/1)]
+  end
 
-      _rel = Ash.relationship(resource, key) ->
-        {:error, "relationship filtering not supported"}
+  defp all_top_level_queries(filter), do: [filter]
+
+  # defp attributes_to_expression(%{ors: [first | rest]} = filter, bindings, conditions) do
+  #   {left, bindings, conditions} = attributes_to_conditions(first, bindings, conditions)
+  #   {right, bindings, conditions} = attributes_to_conditions(rest, bindings, conditions)
+
+  #   {this_expression, bindings, conditions} = attributes_to_conditions(%{filter | ors: []})
+
+  #   {{:orelse, {:orelse, left, right}, this_expression}, bindings, conditions}
+  # end
+
+  # defp attributes_to_conditions(%{ors: [first]})
+
+  defp do_filter_to_matchspec(resource, field, value, spec, binding) do
+    cond do
+      attr = Ash.attribute(resource, field) ->
+        do_filter_to_matchspec_attribute(attr.name, value, spec, binding)
 
       true ->
         {:error, "unsupported filter"}
@@ -186,9 +254,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defp do_filter_to_matchspec_attribute(
-         _resource,
          name,
-         type,
          value,
          {{id_match, struct_match}, conditions, matcher},
          bindings
@@ -196,7 +262,7 @@ defmodule Ash.DataLayer.Ets do
     case Map.get(bindings, name) do
       nil ->
         binding = bindings |> Map.values() |> Enum.max(fn -> 0 end) |> Kernel.+(1)
-        condition = condition(type, value, binding)
+        condition = condition(value, binding)
 
         new_spec =
           {{id_match, Map.put(struct_match, name, :"$#{binding}")}, [condition | conditions],
@@ -205,7 +271,7 @@ defmodule Ash.DataLayer.Ets do
         {:ok, {new_spec, Map.put(bindings, name, binding)}}
 
       binding ->
-        condition = condition(type, value, binding)
+        condition = condition(value, binding)
 
         new_spec = {{id_match, struct_match}, [condition | conditions], matcher}
 
@@ -213,24 +279,32 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  def condition(:equal, value, binding) do
+  def condition(%Eq{value: value}, binding) do
     {:==, :"$#{binding}", value}
   end
 
-  def condition(:in, [value], binding) do
-    condition(:equal, value, binding)
+  def condition(%In{values: []}, _binding) do
+    {:==, true, false}
   end
 
-  def condition(:in, [value1, value2], binding) do
-    [{:orelse, {:"=:=", :"$#{binding}", value1}, {:"=:=", :"$#{binding}", value2}}]
+  def condition(%In{values: [value1, value2]}, binding) do
+    {:orelse, {:"=:=", :"$#{binding}", value1}, {:"=:=", :"$#{binding}", value2}}
   end
 
-  def condition(:in, [value1 | rest], binding) do
-    {:orelse, condition(:equal, value1, binding), condition(:in, rest, binding)}
+  def condition(%In{values: [value1 | rest]}, binding) do
+    {:orelse, condition(%Eq{value: value1}, binding), condition(%In{values: rest}, binding)}
+  end
+
+  def condition(%Or{left: left, right: right}, binding) do
+    {:orelse, condition(left, binding), condition(right, binding)}
+  end
+
+  def condition(%And{left: left, right: right}, binding) do
+    {:andalso, condition(left, binding), condition(right, binding)}
   end
 
   def condition(:in, [], _binding) do
-    [{:==, false, true}]
+    {:==, false, true}
   end
 
   @impl true
@@ -256,10 +330,10 @@ defmodule Ash.DataLayer.Ets do
     create(resource, changeset)
   end
 
-  defp match_limit(table, match_spec, limit, offset) do
+  defp match_limit(table, match_spec, limit) do
     result =
       if limit do
-        ETS.Set.select(table, [match_spec], limit + offset)
+        ETS.Set.select(table, [match_spec], limit)
       else
         ETS.Set.select(table, [match_spec])
       end
@@ -267,6 +341,7 @@ defmodule Ash.DataLayer.Ets do
     case result do
       {:ok, {matches, _}} -> {:ok, matches}
       {:ok, :"$end_of_table"} -> {:ok, []}
+      {:ok, matches} -> {:ok, matches}
       {:error, error} -> {:error, error}
     end
   end

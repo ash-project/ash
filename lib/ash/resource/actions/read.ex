@@ -3,8 +3,6 @@ defmodule Ash.Resource.Actions.Read do
 
   defstruct [:type, :name, :primary?, :authorization_steps, :paginate?]
 
-  alias Ash.Authorization.Rule
-
   @type t :: %__MODULE__{
           type: :read,
           name: atom,

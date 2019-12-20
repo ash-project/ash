@@ -113,3 +113,5 @@ end
 * Consider making a "params builder" so you can say things like `Ash.Params.add_side_load(params, [:foo, :bar, :baz])` and build params up over time.
 * validate using composite primary keys using the `data_layer.can?(:composite_primary_key)`
 * Think hard about the data_layer.can? pattern to make sure we're giving enough info, but not too much.
+* Use the sat solver at compile time to tell people when requests they've configured (and maybe all combinations of includes they've allowed?) couldn't possibly be allowed together.
+* Support arbitrary "through" relationships

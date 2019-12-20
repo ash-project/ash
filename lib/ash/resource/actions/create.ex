@@ -1,7 +1,6 @@
 defmodule Ash.Resource.Actions.Create do
   @moduledoc "The representation of a `create` action."
   defstruct [:type, :name, :primary?, :authorization_steps]
-  alias Ash.Authorization.Rule
 
   @type t :: %__MODULE__{
           type: :create,

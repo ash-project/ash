@@ -68,12 +68,15 @@ defmodule Ash.Actions.ChangesetHelpers do
       {:ok, filter} ->
         before_change(changeset, fn changeset ->
           case api.get(destination, filter, authorize?: authorize?, user: user) do
-            {:ok, record} ->
+            {:ok, record} when not is_nil(record) ->
               changeset
               |> Ecto.Changeset.put_change(source_field, Map.get(record, destination_field))
               |> after_change(fn _changeset, result ->
                 {:ok, Map.put(result, relationship.name, record)}
               end)
+
+            {:ok, nil} ->
+              {:error, "not found"}
 
             {:error, error} ->
               {:error, error}
@@ -178,7 +181,7 @@ defmodule Ash.Actions.ChangesetHelpers do
     end
   end
 
-  defp relate_items(api, to_relate, destination_field, destination_field_value, authorize?, user) do
+  defp relate_items(api, to_relate, _destination_field, destination_field_value, authorize?, user) do
     Enum.reduce(to_relate, {:ok, []}, fn
       to_be_related, {:ok, now_related} ->
         case api.update(to_be_related,

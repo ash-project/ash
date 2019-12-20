@@ -4,6 +4,7 @@ defmodule Ash.Filter do
     :ors,
     attributes: %{},
     relationships: %{},
+    authorizations: [],
     errors: []
   ]
 
@@ -14,7 +15,8 @@ defmodule Ash.Filter do
           ors: %__MODULE__{} | nil,
           attributes: Keyword.t(),
           relationships: Keyword.t(),
-          errors: list(String.t())
+          errors: list(String.t()),
+          authorizations: list(Ash.Authorization.Request.t())
         }
 
   @predicates %{
@@ -24,17 +26,56 @@ defmodule Ash.Filter do
     or: Ash.Filter.Or
   }
 
-  @spec parse(Ash.resource(), Keyword.t()) :: t()
-  def parse(resource, filter) do
-    do_parse(resource, filter, %Ash.Filter{resource: resource})
+  @spec parse(Ash.resource(), Keyword.t(), rules :: list(term)) :: t()
+  def parse(resource, filter, authorization_steps \\ nil) do
+    authorization_steps =
+      authorization_steps || Ash.primary_action(resource, :read).authorization_steps
+
+    filter
+    |> do_parse(%Ash.Filter{resource: resource})
+    |> lift_ors()
+    |> add_authorization(
+      Ash.Authorization.Request.new(
+        resource: resource,
+        authorization_steps: authorization_steps,
+        filter: filter
+      )
+    )
   end
 
-  defp do_parse(resource, filter_statement, filter) do
+  def add_to_filter(filter, additions) do
+    do_parse(additions, filter)
+  end
+
+  defp lift_ors(%Ash.Filter{
+         ors: [or_filter | rest],
+         relationships: rels,
+         attributes: attrs,
+         errors: errors,
+         authorizations: authorizations
+       })
+       when attrs == %{} and rels == %{} do
+    or_filter
+    |> Map.put(:ors, rest)
+    |> add_error(errors)
+    |> add_authorization(authorizations)
+    |> lift_ors()
+  end
+
+  defp lift_ors(filter), do: filter
+
+  defp do_parse(filter_statement, %{resource: resource} = filter) do
     Enum.reduce(filter_statement, filter, fn
       {key, value}, filter ->
         cond do
           key == :or || key == :and ->
-            add_expression_level_boolean_filter(filter, resource, key, value)
+            new_filter = add_expression_level_boolean_filter(filter, resource, key, value)
+
+            if Ash.data_layer(resource).can?({:filter, key}) do
+              new_filter
+            else
+              add_error(new_filter, "data layer does not support #{inspect(key)} filters")
+            end
 
           attr = Ash.attribute(resource, key) ->
             add_attribute_filter(filter, attr, value)
@@ -57,9 +98,9 @@ defmodule Ash.Filter do
     add_expression_level_boolean_filter(filter, resource, key, [left, right])
   end
 
-  defp add_expression_level_boolean_filter(filter, resource, :and, expressions) do
+  defp add_expression_level_boolean_filter(filter, _resource, :and, expressions) do
     Enum.reduce(expressions, filter, fn expression, filter ->
-      do_parse(resource, expression, filter)
+      do_parse(expression, filter)
     end)
   end
 
@@ -68,8 +109,9 @@ defmodule Ash.Filter do
       parsed_expression = parse(resource, expression)
 
       filter
-      |> Map.update!(:ors, fn ors -> [parsed_expression | ors] end)
+      |> Map.update!(:ors, fn ors -> [parsed_expression | ors || []] end)
       |> add_error(parsed_expression.errors)
+      |> add_authorization(parsed_expression.authorizations)
     end)
   end
 
@@ -90,51 +132,78 @@ defmodule Ash.Filter do
          predicate_name,
          value
        ) do
+    case parse_predicate(resource, predicate_name, attr_type, value) do
+      {:ok, predicate} ->
+        new_attributes =
+          Map.update(
+            attributes,
+            attr_name,
+            predicate,
+            &Merge.merge(&1, predicate)
+          )
+
+        %{filter | attributes: new_attributes}
+
+      {:error, error} ->
+        add_error(filter, error)
+    end
+  end
+
+  def parse_predicates(resource, keyword, attr_type) do
+    Enum.reduce(keyword, {:ok, nil}, fn {predicate_name, value}, {:ok, existing_predicate} ->
+      case parse_predicate(resource, predicate_name, attr_type, value) do
+        {:ok, predicate} ->
+          if existing_predicate do
+            {:ok, Merge.merge(existing_predicate, predicate)}
+          else
+            {:ok, predicate}
+          end
+
+        {:error, error} ->
+          {:error, error}
+      end
+    end)
+  end
+
+  defp parse_predicate(resource, predicate_name, attr_type, value) do
     with {:predicate_type, {:ok, predicate_type}} <-
            {:predicate_type, Map.fetch(@predicates, predicate_name)},
          {:data_layer_can?, _, true} <-
            {:data_layer_can?, predicate_name,
             Ash.data_layer(resource).can?({:filter, predicate_name})},
-         {:casted, {:ok, casted}} <- {:casted, Ash.Type.cast_input(attr_type, value)},
-         {:predicate, {:ok, predicate}} = {:predicate, predicate_type.new(casted)} do
-      new_attributes =
-        Map.update(
-          attributes,
-          attr_name,
-          predicate,
-          &Merge.merge(&1, predicate)
-        )
-
-      %{filter | attributes: new_attributes}
+         {:predicate, {:ok, predicate}} =
+           {:predicate, predicate_type.new(resource, attr_type, value)} do
+      {:ok, predicate}
     else
       {:predicate_type, :error} ->
-        add_error(filter, "No such filter type #{predicate_name}")
+        {:error, "No such filter type #{predicate_name}"}
 
       {:casted, _} ->
-        add_error(filter, "Invalid value: #{inspect(value)} for #{inspect(attr_name)}")
+        {:error, "Invalid value: #{inspect(value)} for #{inspect(attr_type)}"}
 
       {:predicate, {:error, error}} ->
-        add_error(filter, error)
+        {:error, error}
 
       {:data_layer_can?, predicate_name, false} ->
-        add_error(filter, "data layer not capable of provided filter: #{predicate_name}")
+        {:error, "data layer not capable of provided filter: #{predicate_name}"}
     end
   end
 
-  def add_relationship_filter(
-        %{relationships: relationships} = filter,
-        %{destination: destination, name: name} = relationship,
-        value
-      ) do
+  defp add_relationship_filter(
+         %{relationships: relationships} = filter,
+         %{destination: destination, name: name} = relationship,
+         value
+       ) do
     related_filter = parse(destination, value)
-    filter_with_errors = Enum.reduce(related_filter.errors, filter, &add_error(&2, &1))
 
     new_relationships =
       Map.update(relationships, name, related_filter, &Merge.merge(&1, related_filter))
 
-    filter_with_errors
+    filter
     |> Map.put(:relationships, new_relationships)
     |> add_relationship_compatibility_error(relationship)
+    |> add_error(related_filter.errors)
+    |> add_authorization(related_filter.authorizations)
   end
 
   defp add_relationship_compatibility_error(%{resource: resource} = filter, %{
@@ -161,6 +230,13 @@ defmodule Ash.Filter do
         filter
     end
   end
+
+  defp add_authorization(%{authorizations: authorizations} = filter, authorizations)
+       when is_list(authorizations),
+       do: %{filter | authorizations: filter.authorizations ++ authorizations}
+
+  defp add_authorization(%{authorizations: authorizations} = filter, authorization),
+    do: %{filter | authorizations: [authorization | authorizations]}
 
   defp add_error(%{errors: errors} = filter, errors) when is_list(errors),
     do: %{filter | errors: filter.errors ++ errors}

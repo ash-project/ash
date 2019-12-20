@@ -18,6 +18,12 @@ defmodule Ash.Filter.InspectHelpers do
     %{opts | custom_options: Keyword.put(custom, :attr, attr)}
   end
 
+  def make_non_root(%{custom_options: custom} = opts) do
+    new_options = Keyword.put(custom, :path, custom[:path] || [])
+
+    %{opts | custom_options: new_options}
+  end
+
   def add_to_path(%{custom_options: custom} = opts, path_item) do
     new_options =
       Keyword.update(custom, :path, [to_string(path_item)], fn path ->
@@ -40,44 +46,80 @@ defimpl Inspect, for: Ash.Filter do
   import Inspect.Algebra
   import Ash.Filter.InspectHelpers
 
-  def inspect(%{or: nil} = filter, opts) do
+  def inspect(%Ash.Filter{ors: ors, relationships: relationships, attributes: attributes}, opts)
+      when ors in [nil, []] and relationships in [nil, %{}] and attributes in [nil, %{}] do
+    if root?(opts) do
+      concat(["#Filter<", to_doc(nil, opts), ">"])
+    else
+      concat([to_doc(nil, opts)])
+    end
+  end
+
+  def inspect(filter, opts) do
     rels =
       filter
       |> Map.get(:relationships)
-      |> Enum.map(fn {key, value} ->
-        to_doc(value, add_to_path(opts, key))
-      end)
+      |> case do
+        rels when rels == %{} ->
+          []
+
+        rels ->
+          Enum.map(rels, fn {key, value} ->
+            to_doc(value, add_to_path(opts, key))
+          end)
+      end
 
     attrs =
       filter
       |> Map.get(:attributes)
-      |> Enum.map(fn {key, value} ->
-        to_doc(value, put_attr(opts, key))
-      end)
-      |> Enum.concat(rels)
-      |> Enum.intersperse(" and ")
-      |> concat()
+      |> case do
+        attrs when attrs == %{} ->
+          []
+
+        attrs ->
+          Enum.map(attrs, fn {key, value} ->
+            to_doc(value, put_attr(opts, key))
+          end)
+      end
+
+    and_container =
+      case attrs ++ rels do
+        [] ->
+          empty()
+
+        and_clauses ->
+          Inspect.Algebra.container_doc("(", and_clauses, ")", opts, fn term, _ -> term end,
+            break: :flex,
+            separator: " and "
+          )
+      end
+
+    all_container =
+      case Map.get(filter, :ors) do
+        nil ->
+          and_container
+
+        [] ->
+          and_container
+
+        ors ->
+          inspected_ors = Enum.map(ors, fn filter -> to_doc(filter, make_non_root(opts)) end)
+
+          Inspect.Algebra.container_doc(
+            "",
+            [and_container | inspected_ors],
+            "",
+            opts,
+            fn term, _ -> term end,
+            break: :strict,
+            separator: " or "
+          )
+      end
 
     if root?(opts) do
-      concat(["#Filter< ", attrs, " >"])
+      concat(["#Filter<", all_container, ">"])
     else
-      concat([attrs])
-    end
-  end
-
-  def inspect(%{or: or_filter} = filter, opts) do
-    filter_without_or = %{filter | or: nil}
-
-    if root?(opts) do
-      concat([
-        "#Ash.Filter<(",
-        to_doc(filter_without_or, opts),
-        ") or (",
-        to_doc(or_filter, opts),
-        ")>"
-      ])
-    else
-      concat(["(", to_doc(filter_without_or, opts), ") or (", to_doc(or_filter, opts), ")"])
+      concat([all_container])
     end
   end
 end

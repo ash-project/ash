@@ -1,6 +1,5 @@
 defmodule Ash.Actions.Create do
   alias Ash.Authorization.Authorizer
-  alias Ash.Actions.SideLoad
   alias Ash.Actions.ChangesetHelpers
 
   @spec run(Ash.api(), Ash.resource(), Ash.action(), Ash.params()) ::
@@ -32,7 +31,7 @@ defmodule Ash.Actions.Create do
       auth_request =
         Ash.Authorization.Request.new(
           resource: resource,
-          rules: action.rules,
+          authorization_steps: action.authorization_steps,
           changeset: changeset
         )
 

@@ -1,6 +1,27 @@
 defmodule Ash.Filter.In do
   defstruct [:values]
 
-  def new([]), do: {:ok, %Ash.Filter.Impossible{cause: :empty_in}}
-  def new(values), do: {:ok, %__MODULE__{values: List.wrap(values)}}
+  def new(_resource, attr_type, values) do
+    casted =
+      values
+      |> List.wrap()
+      |> Enum.reduce({:ok, []}, fn
+        value, {:ok, casted} ->
+          case Ash.Type.cast_input(attr_type, value) do
+            {:ok, value} -> {:ok, [value | casted]}
+            :error -> {:error, "invalid value #{inspect(value)} for type #{inspect(attr_type)}"}
+          end
+
+        _, {:error, error} ->
+          {:error, error}
+      end)
+
+    case casted do
+      {:error, error} ->
+        {:error, error}
+
+      {:ok, values} ->
+        {:ok, %__MODULE__{values: values}}
+    end
+  end
 end

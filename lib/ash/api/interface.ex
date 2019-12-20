@@ -168,7 +168,7 @@ defmodule Ash.Api.Interface do
     raise Ash.Error.FrameworkError.exception(message: error)
   end
 
-  defp unwrap_or_raise!({:error, %Ecto.Changeset{} = cs}) do
+  defp unwrap_or_raise!({:error, %Ecto.Changeset{}}) do
     raise(Ash.Error.FrameworkError, message: "invalid changes")
   end
 
