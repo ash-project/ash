@@ -19,6 +19,8 @@ defmodule Ash.Type do
 
   @builtins [
     string: [ecto_type: :string, filters: [:equal, :in], sortable?: true],
+    integer: [ecto_type: :integer, filters: [:equal, :in], sortable?: true],
+    int: [ecto_type: :integer, filters: [:equal, :in], sortable?: true],
     boolean: [ecto_type: :boolean, filters: [:equal], sortable?: true],
     uuid: [ecto_type: :binary_id, filters: [:equal, :in], sortable?: true],
     utc_datetime: [ecto_type: :utc_datetime, filters: [:equal, :in], sortable?: true]

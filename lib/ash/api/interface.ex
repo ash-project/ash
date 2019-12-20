@@ -90,7 +90,7 @@ defmodule Ash.Api.Interface do
         end
 
       :error ->
-        {:error, "no such resource"}
+        {:error, "no such resource #{resource}"}
     end
   end
 
@@ -114,7 +114,7 @@ defmodule Ash.Api.Interface do
         end
 
       :error ->
-        {:error, "no such resource"}
+        {:error, "no such resource #{resource}"}
     end
   end
 
@@ -136,7 +136,7 @@ defmodule Ash.Api.Interface do
         end
 
       :error ->
-        {:error, "no such resource"}
+        {:error, "no such resource #{resource}"}
     end
   end
 
@@ -158,7 +158,7 @@ defmodule Ash.Api.Interface do
         end
 
       :error ->
-        {:error, "no such resource"}
+        {:error, "no such resource #{resource}"}
     end
   end
 

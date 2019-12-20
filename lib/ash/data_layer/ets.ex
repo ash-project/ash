@@ -84,7 +84,7 @@ defmodule Ash.DataLayer.Ets do
       |> Enum.reduce({:ok, []}, fn query, {:ok, records} ->
         case do_run_query(resource, query, limit + offset) do
           {:ok, results} -> {:ok, records ++ results}
-          {:error, error} -> {:eror, error}
+          {:error, error} -> {:error, error}
         end
       end)
 
@@ -109,7 +109,7 @@ defmodule Ash.DataLayer.Ets do
          {:ok, match_spec} <- filter_to_matchspec(resource, filter),
          {:ok, table} <- wrap_or_create_table(resource),
          {:ok, results} <- match_limit(table, match_spec, limit) do
-      {:ok, results}
+      {:ok, Enum.map(results, &elem(&1, 1))}
     else
       %{errors: errors} ->
         {:error, errors}

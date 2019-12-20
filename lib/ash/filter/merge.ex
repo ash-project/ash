@@ -45,10 +45,7 @@ defmodule Ash.Filter.Merge do
   # end
 
   defp do_merge(left, right) do
-    # There is no way this can reasonably fail
-    {:ok, predicate} = And.prebuilt_new(left, right)
-
-    predicate
+    And.prebuilt_new(left, right)
   end
 
   ## Equals + In filters

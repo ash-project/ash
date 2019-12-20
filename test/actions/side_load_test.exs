@@ -45,36 +45,28 @@ defmodule Ash.Test.Actions.SideLoadTest do
   end
 
   describe "side_loads" do
-    # setup do
-    #   author = Api.create!(Author, attributes: %{name: "zerg"})
+    setup do
+      author = Api.create!(Author, attributes: %{name: "zerg"})
 
-    #   post1 =
-    #     Api.create!(Post, attributes: %{title: "post1"}, relationships: %{author: author.id})
+      post1 =
+        Api.create!(Post, attributes: %{title: "post1"}, relationships: %{author: author.id})
 
-    #   post2 =
-    #     Api.create!(Post, attributes: %{title: "post2"}, relationships: %{author: author.id})
+      post2 =
+        Api.create!(Post, attributes: %{title: "post2"}, relationships: %{author: author.id})
 
-    #   %{post1: post1, post2: post2}
-    # end
-
-    test "mything" do
-      Api.read!(Author, filter: [or: [[name: "zach"], [posts: [id: Ecto.UUID.generate()]]]])
+      %{post1: post1, post2: post2}
     end
 
-    # test "it allows sideloading related data", %{post1: post1, post2: post2} do
-    #   %{results: [author]} =
-    #     Api.read!(Author, side_load: [posts: [:author]], filter: [posts: [id: post1.id]])
+    test "it allows sideloading related data", %{post1: post1, post2: post2} do
+      %{results: [author]} =
+        Api.read!(Author, side_load: [posts: [:author]], filter: [posts: [id: post1.id]])
 
-    #   Api.read!(Author,
-    #     filter: [name: "zach", posts: [id: post1.id, title: "foo", contents: "bar"]]
-    #   )
+      assert Enum.sort(Enum.map(author.posts, &Map.get(&1, :id))) ==
+               Enum.sort([post1.id, post2.id])
 
-    #   assert Enum.sort(Enum.map(author.posts, &Map.get(&1, :id))) ==
-    #            Enum.sort([post1.id, post2.id])
-
-    #   for post <- author.posts do
-    #     assert post.author.id == author.id
-    #   end
-    # end
+      for post <- author.posts do
+        assert post.author.id == author.id
+      end
+    end
   end
 end
