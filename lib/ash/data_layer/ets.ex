@@ -1,20 +1,13 @@
 defmodule Ash.DataLayer.Ets do
   @moduledoc """
-  An ETS (Erlang Term Storage) backed Ash Datalayer.
+  An ETS (Erlang Term Storage) backed Ash Datalayer, for testing.
 
-  This was initially built for testing purposes, since it comes built into OTP.
-  This makes it possible to test resources easily, quickly and in isolation from the data layer.
-  While this data layer can be used in your application, it should only be used for small/unimportant
-  data sets that do not require long term persistence.
-
-  The Ets datalayer *can not perform transactions*. This means that in place updates to many_to_many
-  relationships, as well as relationships where the foreign key is stored on the destination table,
-  are not possible. Separate requests will have to be made to those resources.
+  This is used for testing. *Do not use this data layer in production*
   """
 
   @behaviour Ash.DataLayer
 
-  alias Ash.Filter.{Eq, In, And, Or}
+  alias Ash.Filter.{Eq, In, And, Or, NotEq, NotIn}
 
   defmacro __using__(opts) do
     quote bind_quoted: [opts: opts] do
@@ -33,7 +26,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defmodule Query do
-    defstruct [:resource, :filter, :limit, :sort, relationships: %{}, joins: [], offset: 0]
+    defstruct [:resource, :filter, :limit, :sort, relationships: %{}, offset: 0]
   end
 
   @impl true
@@ -41,9 +34,12 @@ defmodule Ash.DataLayer.Ets do
   def can?(:transact), do: false
   def can?(:composite_primary_key), do: true
   def can?({:filter, :in}), do: true
+  def can?({:filter, :not_in}), do: true
+  def can?({:filter, :not_eq}), do: true
   def can?({:filter, :eq}), do: true
   def can?({:filter, :and}), do: true
   def can?({:filter, :or}), do: true
+  def can?({:filter, :not}), do: true
   def can?({:filter_related, _}), do: true
   def can?(_), do: false
 
@@ -76,46 +72,115 @@ defmodule Ash.DataLayer.Ets do
   @impl true
   def run_query(
         %Query{resource: resource, filter: filter, offset: offset, limit: limit, sort: sort},
-        _
+        _resource
       ) do
-    query_results =
-      filter
-      |> all_top_level_queries()
-      |> Enum.reduce({:ok, []}, fn query, {:ok, records} ->
-        case do_run_query(resource, query, limit + offset) do
-          {:ok, results} -> {:ok, records ++ results}
-          {:error, error} -> {:error, error}
+    with {:ok, table} <- wrap_or_create_table(resource),
+         {:ok, records} <- ETS.Set.to_list(table),
+         records <- Enum.map(records, &elem(&1, 1)),
+         {:ok, filtered_records} <-
+           filter_matches(records, filter) do
+      offset_records =
+        filtered_records
+        |> do_sort(sort)
+        |> Enum.drop(offset || 0)
+
+      limited_records =
+        if limit do
+          Enum.take(offset_records, limit)
+        else
+          offset_records
         end
-      end)
 
-    case query_results do
-      {:ok, results} ->
-        final_results =
-          results
-          |> Enum.uniq_by(&Map.take(&1, Ash.primary_key(resource)))
-          |> do_sort(sort)
-          |> Enum.drop(offset)
-          |> Enum.take(limit)
-
-        {:ok, final_results}
-
-      {:error, error} ->
-        {:error, error}
+      {:ok, limited_records}
+    else
+      {:error, error} -> {:error, error}
     end
   end
 
-  defp do_run_query(resource, filter, limit) do
-    with %{errors: []} = filter <- relationships_to_attribute_filters(resource, filter),
-         {:ok, match_spec} <- filter_to_matchspec(resource, filter),
-         {:ok, table} <- wrap_or_create_table(resource),
-         {:ok, results} <- match_limit(table, match_spec, limit) do
-      {:ok, Enum.map(results, &elem(&1, 1))}
-    else
+  defp filter_matches(records, filter) do
+    Enum.reduce_while(records, {:ok, []}, fn record, {:ok, acc} ->
+      case matches_filter(record, filter) do
+        {:ok, true} -> {:cont, {:ok, [record | acc]}}
+        {:ok, false} -> {:cont, {:ok, acc}}
+        {:error, error} -> {:error, error}
+      end
+    end)
+  end
+
+  defp matches_filter(record, %{ors: empty} = filter) when empty in [nil, []] do
+    do_matches_filter(record, filter)
+  end
+
+  defp matches_filter(record, %{ors: [first | rest]} = filter) do
+    case do_matches_filter(record, first) do
+      {:ok, true} -> {:ok, true}
+      {:ok, false} -> matches_filter(record, %{filter | ors: rest})
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp do_matches_filter(record, filter = %{resource: resource, not: nil}) do
+    case relationships_to_attribute_filters(resource, filter) do
+      %{errors: [], attributes: attributes} ->
+        Enum.reduce_while(attributes, {:ok, true}, fn {key, predicate}, {:ok, true} ->
+          case matches_predicate?(Map.get(record, key), predicate) do
+            {:ok, true} -> {:cont, {:ok, true}}
+            {:ok, false} -> {:halt, {:ok, false}}
+            {:error, error} -> {:error, error}
+          end
+        end)
+
       %{errors: errors} ->
         {:error, errors}
+    end
+  end
 
-      {:error, error} ->
-        {:error, error}
+  defp do_matches_filter(record, filter = %{resource: resource, not: not_filter}) do
+    case do_matches_filter(record, not_filter) do
+      {:ok, true} -> {:ok, false}
+      {:ok, false} -> do_matches_filter(record, %{filter | not: nil})
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  # alias Ash.Filter.{In, NotIn}
+
+  defp matches_predicate?(value, %Eq{value: predicate_value}) do
+    {:ok, value == predicate_value}
+  end
+
+  defp matches_predicate?(value, %NotEq{value: predicate_value}) do
+    {:ok, value != predicate_value}
+  end
+
+  defp matches_predicate?(value, %In{values: predicate_value}) do
+    {:ok, value in predicate_value}
+  end
+
+  defp matches_predicate?(value, %NotIn{values: predicate_value}) do
+    {:ok, value not in predicate_value}
+  end
+
+  defp matches_predicate?(value, %And{left: left, right: right}) do
+    case matches_predicate?(value, left) do
+      {:ok, true} -> matches_predicate?(value, right)
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp matches_predicate?(value, %Or{left: left, right: right}) do
+    case matches_predicate?(value, left) do
+      {:ok, true} -> {:ok, true}
+      {:ok, false} -> matches_predicate?(value, right)
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp matches_predicate?(value, %Or{left: left, right: right}) do
+    case matches_predicate?(value, left) do
+      {:ok, true} -> {:ok, true}
+      {:ok, false} -> matches_predicate?(value, right)
+      {:error, error} -> {:error, error}
     end
   end
 
@@ -135,13 +200,19 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defp related_ids_filter(%{cardinality: :many_to_many} = rel, filter) do
-    with {:ok, results} <- do_run_query(rel.destination, filter, nil),
+    destination_query = %Query{
+      resource: rel.destination,
+      filter: filter
+    }
+
+    with {:ok, results} <- run_query(destination_query, rel.destination),
          destination_values <- Enum.map(results, &Map.get(&1, rel.destination_field)),
-         %{errors: []} = through_query <-
+         %{errors: []} = through_filter <-
            Ash.Filter.parse(rel.through, [
              {rel.destination_field_on_join_table, [in: destination_values]}
            ]),
-         {:ok, join_results} <- do_run_query(rel.through, through_query, nil) do
+         {:ok, join_results} <-
+           run_query(%Query{resource: rel.through, filter: through_filter}, rel.through) do
       {rel.source_field,
        [in: Enum.map(join_results, &Map.get(&1, rel.source_field_on_join_table))]}
     else
@@ -151,7 +222,12 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defp related_ids_filter(rel, filter) do
-    case do_run_query(rel.destination, filter, nil) do
+    query = %Query{
+      resource: rel.destination,
+      filter: filter
+    }
+
+    case run_query(query, rel.destination) do
       {:ok, results} ->
         {rel.source_field, [in: Enum.map(results, &Map.get(&1, rel.destination_field))]}
 
@@ -189,124 +265,6 @@ defmodule Ash.DataLayer.Ets do
     end)
   end
 
-  defp filter_to_matchspec(resource, filter) do
-    filter = filter || []
-
-    pkey_match =
-      resource
-      |> Ash.primary_key()
-      |> Enum.reduce(%{}, fn
-        _attr, :_ ->
-          :_
-
-        attr, pkey_match ->
-          case Map.fetch(filter.attributes, attr) do
-            {:ok, %Eq{value: value}} ->
-              Map.put(pkey_match, attr, value)
-
-            _ ->
-              :_
-          end
-      end)
-
-    starting_matchspec = {{pkey_match, %{__struct__: resource}}, [], [:"$_"]}
-
-    filter
-    |> Map.get(:attributes)
-    |> Enum.reduce({:ok, {starting_matchspec, %{}}}, fn
-      {field, value}, {:ok, {spec, bindings}} ->
-        do_filter_to_matchspec(resource, field, value, spec, bindings)
-
-      _, {:error, error} ->
-        {:error, error}
-    end)
-    |> case do
-      {:error, error} -> {:error, error}
-      {:ok, {spec, _}} -> {:ok, spec}
-    end
-  end
-
-  defp all_top_level_queries(filter = %{ors: ors}) when is_list(ors) do
-    [filter | Enum.flat_map(ors, &all_top_level_queries/1)]
-  end
-
-  defp all_top_level_queries(filter), do: [filter]
-
-  # defp attributes_to_expression(%{ors: [first | rest]} = filter, bindings, conditions) do
-  #   {left, bindings, conditions} = attributes_to_conditions(first, bindings, conditions)
-  #   {right, bindings, conditions} = attributes_to_conditions(rest, bindings, conditions)
-
-  #   {this_expression, bindings, conditions} = attributes_to_conditions(%{filter | ors: []})
-
-  #   {{:orelse, {:orelse, left, right}, this_expression}, bindings, conditions}
-  # end
-
-  # defp attributes_to_conditions(%{ors: [first]})
-
-  defp do_filter_to_matchspec(resource, field, value, spec, binding) do
-    cond do
-      attr = Ash.attribute(resource, field) ->
-        do_filter_to_matchspec_attribute(attr.name, value, spec, binding)
-
-      true ->
-        {:error, "unsupported filter"}
-    end
-  end
-
-  defp do_filter_to_matchspec_attribute(
-         name,
-         value,
-         {{id_match, struct_match}, conditions, matcher},
-         bindings
-       ) do
-    case Map.get(bindings, name) do
-      nil ->
-        binding = bindings |> Map.values() |> Enum.max(fn -> 0 end) |> Kernel.+(1)
-        condition = condition(value, binding)
-
-        new_spec =
-          {{id_match, Map.put(struct_match, name, :"$#{binding}")}, [condition | conditions],
-           matcher}
-
-        {:ok, {new_spec, Map.put(bindings, name, binding)}}
-
-      binding ->
-        condition = condition(value, binding)
-
-        new_spec = {{id_match, struct_match}, [condition | conditions], matcher}
-
-        {:ok, new_spec, bindings}
-    end
-  end
-
-  def condition(%Eq{value: value}, binding) do
-    {:==, :"$#{binding}", value}
-  end
-
-  def condition(%In{values: []}, _binding) do
-    {:==, true, false}
-  end
-
-  def condition(%In{values: [value1, value2]}, binding) do
-    {:orelse, {:"=:=", :"$#{binding}", value1}, {:"=:=", :"$#{binding}", value2}}
-  end
-
-  def condition(%In{values: [value1 | rest]}, binding) do
-    {:orelse, condition(%Eq{value: value1}, binding), condition(%In{values: rest}, binding)}
-  end
-
-  def condition(%Or{left: left, right: right}, binding) do
-    {:orelse, condition(left, binding), condition(right, binding)}
-  end
-
-  def condition(%And{left: left, right: right}, binding) do
-    {:andalso, condition(left, binding), condition(right, binding)}
-  end
-
-  def condition(:in, [], _binding) do
-    {:==, false, true}
-  end
-
   @impl true
   def create(resource, changeset) do
     pkey =
@@ -328,22 +286,6 @@ defmodule Ash.DataLayer.Ets do
   @impl true
   def update(resource, changeset) do
     create(resource, changeset)
-  end
-
-  defp match_limit(table, match_spec, limit) do
-    result =
-      if limit do
-        ETS.Set.select(table, [match_spec], limit)
-      else
-        ETS.Set.select(table, [match_spec])
-      end
-
-    case result do
-      {:ok, {matches, _}} -> {:ok, matches}
-      {:ok, :"$end_of_table"} -> {:ok, []}
-      {:ok, matches} -> {:ok, matches}
-      {:error, error} -> {:error, error}
-    end
   end
 
   defp wrap_or_create_table(resource) do

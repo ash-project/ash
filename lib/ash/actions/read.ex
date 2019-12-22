@@ -8,14 +8,6 @@ defmodule Ash.Actions.Read do
     user = Keyword.get(params, :user, [])
     side_loads = Keyword.get(params, :side_load, [])
 
-    # * We need to be able to perform relationship filters when there is no way to perform a join.
-    # * There will be unpredictable crossover between what data is fetched during authorization
-    #   and the joins/relationship filters applied.
-    # * Thus: The first pass will be done without this cache, and as such will not have good
-    #   performance characteristics.
-    # * The addition of a cache that keys on filters, and compares filters to determine if the data
-    #   has been cached, should improve those performance characteristics significantly.
-
     with %Ash.Filter{errors: []} = filter <-
            Ash.Filter.parse(resource, filter),
          {:ok, side_load_auths} <- SideLoad.process(resource, side_loads, filter),

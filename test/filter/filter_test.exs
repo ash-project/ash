@@ -93,14 +93,15 @@ defmodule Ash.Test.Filter.FilterTest do
       many_to_many :related_posts, __MODULE__,
         through: PostLink,
         source_field_on_join_table: :source_post_id,
-        destination_field_on_join_table: :destination_post_id
+        destination_field_on_join_table: :destination_post_id,
+        reverse_relationship: :related_posts
     end
   end
 
   defmodule Api do
     use Ash.Api
 
-    resources [Post, User, Profile]
+    resources [Post, User, Profile, PostLink]
   end
 
   describe "simple attribute filters" do
@@ -158,11 +159,11 @@ defmodule Ash.Test.Filter.FilterTest do
       post1 = Api.create!(Post, attributes: %{title: "title1", contents: "contents1", points: 1})
       post2 = Api.create!(Post, attributes: %{title: "title2", contents: "contents2", points: 2})
 
-      # post3 =
-      #   Api.create!(Post,
-      #     attributes: %{title: "title3", contents: "contents3", points: 3},
-      #     relationships: %{related_posts: [post1, post2]}
-      #   )
+      post3 =
+        Api.create!(Post,
+          attributes: %{title: "title3", contents: "contents3", points: 3},
+          relationships: %{related_posts: [post1, post2]}
+        )
 
       profile1 = Api.create!(Profile, attributes: %{bio: "dope"})
 

@@ -2,6 +2,7 @@ defmodule Ash.Filter do
   defstruct [
     :resource,
     :ors,
+    :not,
     attributes: %{},
     relationships: %{},
     authorizations: [],
@@ -12,7 +13,8 @@ defmodule Ash.Filter do
 
   @type t :: %__MODULE__{
           resource: Ash.resource(),
-          ors: %__MODULE__{} | nil,
+          ors: list(%__MODULE__{} | nil),
+          not: %__MODULE__{} | nil,
           attributes: Keyword.t(),
           relationships: Keyword.t(),
           errors: list(String.t()),
@@ -20,6 +22,8 @@ defmodule Ash.Filter do
         }
 
   @predicates %{
+    not_eq: Ash.Filter.NotEq,
+    not_in: Ash.Filter.NotIn,
     eq: Ash.Filter.Eq,
     in: Ash.Filter.In,
     and: Ash.Filter.And,
@@ -34,6 +38,7 @@ defmodule Ash.Filter do
     filter
     |> do_parse(%Ash.Filter{resource: resource})
     |> lift_ors()
+    |> add_not_filter_info()
     |> add_authorization(
       Ash.Authorization.Request.new(
         resource: resource,
@@ -41,6 +46,18 @@ defmodule Ash.Filter do
         filter: filter
       )
     )
+  end
+
+  defp add_not_filter_info(filter) do
+    case filter.not do
+      nil ->
+        filter
+
+      not_filter ->
+        filter
+        |> add_authorization(not_filter.authorizations)
+        |> add_error(not_filter.errors)
+    end
   end
 
   def add_to_filter(filter, additions) do
@@ -68,7 +85,7 @@ defmodule Ash.Filter do
     Enum.reduce(filter_statement, filter, fn
       {key, value}, filter ->
         cond do
-          key == :or || key == :and ->
+          key in [:or, :and, :not] ->
             new_filter = add_expression_level_boolean_filter(filter, resource, key, value)
 
             if Ash.data_layer(resource).can?({:filter, key}) do
@@ -91,6 +108,16 @@ defmodule Ash.Filter do
               }"
             )
         end
+    end)
+  end
+
+  defp add_expression_level_boolean_filter(filter, resource, :not, expression) do
+    Map.update!(filter, :not, fn
+      nil ->
+        parse(resource, expression)
+
+      not_filter ->
+        do_parse(expression, not_filter)
     end)
   end
 
@@ -166,12 +193,16 @@ defmodule Ash.Filter do
   end
 
   defp parse_predicate(resource, predicate_name, attr_type, value) do
+    data_layer = Ash.data_layer(resource)
+
     with {:predicate_type, {:ok, predicate_type}} <-
            {:predicate_type, Map.fetch(@predicates, predicate_name)},
+         {:type_can?, _, true} <-
+           {:type_can?, predicate_name,
+            Ash.Type.supports_filter?(attr_type, predicate_name, data_layer)},
          {:data_layer_can?, _, true} <-
-           {:data_layer_can?, predicate_name,
-            Ash.data_layer(resource).can?({:filter, predicate_name})},
-         {:predicate, {:ok, predicate}} =
+           {:data_layer_can?, predicate_name, data_layer.can?({:filter, predicate_name})},
+         {:predicate, {:ok, predicate}} <-
            {:predicate, predicate_type.new(resource, attr_type, value)} do
       {:ok, predicate}
     else
@@ -184,6 +215,10 @@ defmodule Ash.Filter do
       {:predicate, {:error, error}} ->
         {:error, error}
 
+      {:type_can?, predicate_name, false} ->
+        {:error,
+         "Cannot use filter type #{inspect(predicate_name)} on type #{inspect(attr_type)}."}
+
       {:data_layer_can?, predicate_name, false} ->
         {:error, "data layer not capable of provided filter: #{predicate_name}"}
     end
@@ -194,16 +229,29 @@ defmodule Ash.Filter do
          %{destination: destination, name: name} = relationship,
          value
        ) do
-    related_filter = parse(destination, value)
+    provided_filter =
+      if is_list(value) or is_map(value) do
+        {:ok, value}
+      else
+        Ash.Actions.PrimaryKeyHelpers.value_to_primary_key_filter(destination, value)
+      end
 
-    new_relationships =
-      Map.update(relationships, name, related_filter, &Merge.merge(&1, related_filter))
+    case provided_filter do
+      {:ok, provided_filter} ->
+        related_filter = parse(destination, provided_filter)
 
-    filter
-    |> Map.put(:relationships, new_relationships)
-    |> add_relationship_compatibility_error(relationship)
-    |> add_error(related_filter.errors)
-    |> add_authorization(related_filter.authorizations)
+        new_relationships =
+          Map.update(relationships, name, related_filter, &Merge.merge(&1, related_filter))
+
+        filter
+        |> Map.put(:relationships, new_relationships)
+        |> add_relationship_compatibility_error(relationship)
+        |> add_error(related_filter.errors)
+        |> add_authorization(related_filter.authorizations)
+
+      {:error, error} ->
+        add_error(filter, error)
+    end
   end
 
   defp add_relationship_compatibility_error(%{resource: resource} = filter, %{

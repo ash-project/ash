@@ -1,4 +1,4 @@
-defmodule Ash.Filter.In do
+defmodule Ash.Filter.NotIn do
   defstruct [:values]
 
   def new(_resource, attr_type, values) do

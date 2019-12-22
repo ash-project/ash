@@ -108,10 +108,14 @@ end
 * Naturally, only inner joins are allowed now. I think only inner joins will be necessary, as the pattern in ash would be to side load related data.
 * certain attribute names are not going to be allowed, like `or`, `and`, `in`, things like that.
 * consider, just for the sake of good old fashion fun/cool factor, a parser that can parse a string into a query at compile time, so that queries can look nice in code.
-* validate reverse relationships
+* validate reverse relationships!!
 * Factor out shared relationship options into its own schema, and merge them, for clearer docs.
 * Consider making a "params builder" so you can say things like `Ash.Params.add_side_load(params, [:foo, :bar, :baz])` and build params up over time.
 * validate using composite primary keys using the `data_layer.can?(:composite_primary_key)`
 * Think hard about the data_layer.can? pattern to make sure we're giving enough info, but not too much.
 * Use the sat solver at compile time to tell people when requests they've configured (and maybe all combinations of includes they've allowed?) couldn't possibly be allowed together.
 * Support arbitrary "through" relationships
+* Replace all my ugly `reduce` with tuples with `reduce_while`
+* Framework internals need to stop using `api.foo`, because the code interface
+  is supposed to be optional
+* relationships updates are *extremely* unoptimized

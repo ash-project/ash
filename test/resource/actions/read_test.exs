@@ -62,25 +62,11 @@ defmodule Ash.Test.Dsl.Resource.Actions.ReadTest do
     test "it fails if `rules` is not a list" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option authorization_steps at actions -> read -> default must be [%Ash.Authorization.Rule{}]",
+        "option authorization_steps at actions -> read -> default must be [any]",
         fn ->
           defposts do
             actions do
               read :default, authorization_steps: 10
-            end
-          end
-        end
-      )
-    end
-
-    test "it fails if the elements of the rules list are not rules" do
-      assert_raise(
-        Ash.Error.ResourceDslError,
-        "option authorization_steps at actions -> read -> default must be [%Ash.Authorization.Rule{}]",
-        fn ->
-          defposts do
-            actions do
-              read :default, authorization_steps: [10]
             end
           end
         end

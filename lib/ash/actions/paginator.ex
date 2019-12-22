@@ -28,7 +28,7 @@ defmodule Ash.Actions.Paginator do
   def paginate(api, resource, _action, query, params) do
     pagination_params =
       case Keyword.fetch(params, :page) do
-        {:ok, value} -> [page: Enum.into(value, %{})]
+        {:ok, value} -> %{page: Enum.into(value, %{})}
         :error -> []
       end
 
@@ -43,12 +43,11 @@ defmodule Ash.Actions.Paginator do
   end
 
   defp paginator(api, resource, %{page: page}) do
-    # TODO: Make limit configurable
     page_size =
       page
       |> Map.get(:limit)
       |> Kernel.||(Ash.default_page_size(api, resource))
-      |> Kernel.||(20)
+      |> Kernel.||(Ash.max_page_size(api, resource))
       |> Kernel.min(Ash.max_page_size(api, resource))
 
     offset = Map.get(page, :offset, 0)

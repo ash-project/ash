@@ -1,4 +1,4 @@
-defmodule Ash.Filter.Eq do
+defmodule Ash.Filter.NotEq do
   defstruct [:value]
 
   def new(_resource, attr_type, value) do
@@ -7,7 +7,7 @@ defmodule Ash.Filter.Eq do
         {:ok, %__MODULE__{value: value}}
 
       :error ->
-        {:error, "Invalid value #{inspect(value)} for type #{inspect(attr_type)}"}
+        {:error, "invalid value #{inspect(value)} for type #{inspect(attr_type)}"}
     end
   end
 end

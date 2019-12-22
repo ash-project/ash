@@ -1,27 +1,4 @@
 defmodule Ash.Actions.PrimaryKeyHelpers do
-  def join_values_to_primary_key_filters(destination, identifiers) do
-    Enum.reduce(identifiers, {:ok, []}, fn
-      identifier, {:ok, filters} ->
-        case value_to_primary_key_filter(destination, identifier) do
-          {:ok, filter} ->
-            updates =
-              if is_map(identifier) do
-                Map.drop(identifier, Ash.primary_key(destination))
-              else
-                %{}
-              end
-
-            {:ok, [{filter, updates} | filters]}
-
-          {:error, error} ->
-            {:error, error}
-        end
-
-      _, {:error, error} ->
-        {:error, error}
-    end)
-  end
-
   def values_to_primary_key_filters(destination, identifiers) do
     Enum.reduce(identifiers, {:ok, []}, fn
       identifier, {:ok, filters} ->
