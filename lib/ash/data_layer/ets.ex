@@ -135,7 +135,7 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  defp do_matches_filter(record, filter = %{resource: resource, not: not_filter}) do
+  defp do_matches_filter(record, filter = %{not: not_filter}) do
     case do_matches_filter(record, not_filter) do
       {:ok, true} -> {:ok, false}
       {:ok, false} -> do_matches_filter(record, %{filter | not: nil})
@@ -164,14 +164,6 @@ defmodule Ash.DataLayer.Ets do
   defp matches_predicate?(value, %And{left: left, right: right}) do
     case matches_predicate?(value, left) do
       {:ok, true} -> matches_predicate?(value, right)
-      {:error, error} -> {:error, error}
-    end
-  end
-
-  defp matches_predicate?(value, %Or{left: left, right: right}) do
-    case matches_predicate?(value, left) do
-      {:ok, true} -> {:ok, true}
-      {:ok, false} -> matches_predicate?(value, right)
       {:error, error} -> {:error, error}
     end
   end
@@ -278,6 +270,18 @@ defmodule Ash.DataLayer.Ets do
          record <- Ecto.Changeset.apply_changes(changeset),
          {:ok, _} <- ETS.Set.put(table, {pkey, record}) do
       {:ok, record}
+    else
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  @impl true
+  def destroy(%resource{} = record) do
+    pkey = Map.take(record, Ash.primary_key(resource))
+
+    with {:ok, table} <- wrap_or_create_table(resource),
+         {:ok, _} <- ETS.Set.delete(table, pkey) do
+      :ok
     else
       {:error, error} -> {:error, error}
     end

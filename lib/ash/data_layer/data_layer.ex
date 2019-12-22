@@ -18,77 +18,11 @@ defmodule Ash.DataLayer do
               {:ok, Ash.resource()} | {:error, Ash.error()}
   @callback update(Ash.resource(), changeset :: Ecto.Changeset.t()) ::
               {:ok, Ash.resource()} | {:error, Ash.error()}
-
+  @callback destroy(record :: Ash.record()) :: :ok | {:error, Ash.error()}
   @callback transaction((() -> term)) :: term
   @callback can?(feature()) :: boolean
 
   @optional_callbacks transaction: 1
-
-  # @callback create(
-  #             Ash.resource(),
-  #             Ash.action(),
-  #             Ash.attributes(),
-  #             Ash.relationships(),
-  #             Ash.params()
-  #           ) ::
-  #             {:ok, Ash.record()} | {:error, Ash.error()}
-
-  # @callback update(
-  #             Ash.record(),
-  #             Ash.action(),
-  #             Ash.attributes(),
-  #             Ash.relationships(),
-  #             Ash.params()
-  #           ) ::
-  #             {:ok, Ash.record()} | {:error, Ash.error()}
-
-  # @callback delete(Ash.record(), Ash.action(), Ash.params()) ::
-  #             {:ok, Ash.record()} | {:error, Ash.error()}
-
-  # @callback append_related(Ash.record(), Ash.relationship(), Ash.resource_identifiers()) ::
-  #             {:ok, Ash.record()} | {:error, Ash.error()}
-
-  # @callback delete_related(Ash.record(), Ash.relationship(), Ash.resource_identifiers()) ::
-  #             {:ok, Ash.record()} | {:error, Ash.error()}
-
-  # @callback replace_related(Ash.record(), Ash.relationship(), Ash.resource_identifiers()) ::
-  #             {:ok, Ash.record()} | {:error, Ash.error()}
-
-  # @spec create(Ash.resource(), Ash.action(), Ash.attributes(), Ash.relationships(), Ash.params()) ::
-  #         {:ok, Ash.record()} | {:error, Ash.error()}
-  # def create(resource, action, attributes, relationships, params) do
-  #   Ash.data_layer(resource).create(resource, action, attributes, relationships, params)
-  # end
-
-  # @spec update(Ash.record(), Ash.action(), Ash.attributes(), Ash.relationships(), Ash.params()) ::
-  #         {:ok, Ash.record()} | {:error, Ash.error()}
-  # def update(%resource{} = record, action, attributes, relationships, params) do
-  #   Ash.data_layer(resource).update(record, action, attributes, relationships, params)
-  # end
-
-  # @spec delete(Ash.record(), Ash.action(), Ash.params()) ::
-  #         {:ok, Ash.record()} | {:error, Ash.error()}
-  # def delete(%resource{} = record, action, params) do
-  #   Ash.data_layer(resource).delete(record, action, params)
-  # end
-
-  # @spec append_related(Ash.record(), Ash.relationship(), Ash.resource_identifiers()) ::
-  #         {:ok, Ash.record()} | {:error, Ash.error()}
-  # def append_related(%resource{} = record, relationship, resource_identifiers) do
-  #   Ash.data_layer(resource).append_related(record, relationship, resource_identifiers)
-  # end
-
-  # @spec delete_related(Ash.record(), Ash.relationship(), Ash.resource_identifiers()) ::
-  #         {:ok, Ash.record()} | {:error, Ash.error()}
-  # def delete_related(%resource{} = record, relationship, resource_identifiers) do
-  #   Ash.data_layer(resource).delete_related(record, relationship, resource_identifiers)
-  # end
-
-  # @spec replace_related(Ash.record(), Ash.relationship(), Ash.resource_identifiers()) ::
-  #         {:ok, Ash.record()} | {:error, Ash.error()}
-  # def replace_related(%resource{} = record, relationship, resource_identifiers) do
-  #   Ash.data_layer(resource).replace_related(record, relationship, resource_identifiers)
-  # end
 
   @spec resource_to_query(Ash.resource()) :: Ash.query()
   def resource_to_query(resource) do
@@ -140,28 +74,6 @@ defmodule Ash.DataLayer do
     data_layer = Ash.data_layer(resource)
     data_layer.can?(feature)
   end
-
-  # @spec get_related(Ash.record(), Ash.relationship()) ::
-  #         {:ok, list(Ash.record()) | Ash.record() | nil} | {:error, Ash.error()}
-  # def get_related(record, %{cardinality: :many} = relationship) do
-  #   case relationship_query(record, relationship) do
-  #     {:ok, query} ->
-  #       get_many(query, Ash.to_resource(record))
-
-  #     {:error, error} ->
-  #       {:error, error}
-  #   end
-  # end
-
-  # def get_related(record, %{cardinality: :one} = relationship) do
-  #   case relationship_query(record, relationship) do
-  #     {:ok, query} ->
-  #       get_one(query, Ash.to_resource(record))
-
-  #     {:error, error} ->
-  #       {:error, error}
-  #   end
-  # end
 
   @spec run_query(Ash.query(), central_resource :: Ash.resource()) ::
           {:ok, list(Ash.record())} | {:error, Ash.error()}

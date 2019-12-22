@@ -129,17 +129,17 @@ defmodule Ash.Actions.ChangesetHelpers do
         |> before_change(fn %{__ash_api__: api} = changeset ->
           source_field_value = Ecto.Changeset.get_field(changeset, rel.source_field)
 
-          delete_result =
-            delete_no_longer_related_join_table_rows(
+          destroy_result =
+            destroy_no_longer_related_join_table_rows(
               api,
               source_field_value,
               rel,
-              identifiers,
+              filters,
               authorize?,
               user
             )
 
-          case delete_result do
+          case destroy_result do
             :ok -> changeset
             {:error, error} -> {:error, error}
           end
@@ -191,7 +191,7 @@ defmodule Ash.Actions.ChangesetHelpers do
     end
   end
 
-  defp delete_no_longer_related_join_table_rows(
+  defp destroy_no_longer_related_join_table_rows(
          api,
          source_field_value,
          rel,
@@ -203,16 +203,9 @@ defmodule Ash.Actions.ChangesetHelpers do
       raise "Need reverse relationship for #{inspect(rel)}"
     end
 
-    pkey_filters =
-      Enum.map(identifiers, fn identifier ->
-        identifier
-        |> Map.take(Ash.primary_key(rel.destination))
-        |> Map.to_list()
-      end)
-
     filter = [
       {rel.reverse_relationship, [{rel.source_field, source_field_value}]},
-      {:not, [or: pkey_filters]}
+      {:not, [or: identifiers]}
     ]
 
     case api.read(rel.destination, filter: filter, authorize?: authorize?, user: user) do

@@ -57,7 +57,7 @@ end
 * DSL level validations! Things like includes validating that their chain exists. All DSL structs should be strictly validated when they are created.
 * Especially at compile time, we should *never* ignore or skip invalid options. If an option is present and invalid, an error is raised.
 * break up the `Ash` module
-* Wire up/formalize the error handling
+* Wire up/formalize the error handling (this is high priority)
 * Ensure that errors are properly propagated up from the data_layer behaviour, and every operation is allowed to fail
 * figure out the ecto schema warning
 * all actions need to be performed in a transaction

@@ -177,11 +177,17 @@ defmodule Ash.Test.Filter.FilterTest do
 
       profile2 = Api.create!(Profile, attributes: %{bio: "dope2"}, relationships: %{user: user2})
 
-      %{post1: post1, post2: post2}
+      %{
+        post1: post1,
+        post2: post2,
+        post3: post3,
+        profile1: profile1,
+        user1: user1,
+        user2: user2,
+        profile2: profile2
+      }
     end
 
-    test "it works" do
-      assert true
-    end
+    test "it works"
   end
 end

@@ -3,7 +3,7 @@ defmodule Ash.Resource.Actions do
   DSL components for declaring resource actions.
 
   All manipulation of data through the underlying data layer happens through actions.
-  There are four types of action: `create`, `read`, `update`, and `delete`. You may
+  There are four types of action: `create`, `read`, `update`, and `destroy`. You may
   recognize these from the acronym `CRUD`. You can have multiple actions of the same
   type, as long as they have different names. This is the primary mechanism for customizing
   your resources to conform to your business logic. It is normal and expected to have

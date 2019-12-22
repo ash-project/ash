@@ -44,6 +44,17 @@ defmodule Ash.Api.Interface do
           {:error, error} -> {:error, List.wrap(error)}
         end
       end
+
+      def destroy!(record, params \\ []) do
+        Ash.Api.Interface.destroy!(__MODULE__, record, params)
+      end
+
+      def destory(record, params \\ []) do
+        case Ash.Api.Interface.destroy(__MODULE__, record, params) do
+          {:ok, instance} -> {:ok, instance}
+          {:error, error} -> {:error, List.wrap(error)}
+        end
+      end
     end
   end
 
@@ -155,6 +166,28 @@ defmodule Ash.Api.Interface do
 
           action ->
             Ash.Actions.Update.run(api, record, action, params)
+        end
+
+      :error ->
+        {:error, "no such resource #{resource}"}
+    end
+  end
+
+  def destroy!(api, record, params) do
+    api
+    |> destroy(record, params)
+    |> unwrap_or_raise!()
+  end
+
+  def destroy(api, %resource{} = record, params) do
+    case api.get_resource(resource) do
+      {:ok, resource} ->
+        case Keyword.get(params, :action) || Ash.primary_action(resource, :destroy) do
+          nil ->
+            {:error, "no action provided, and no primary action found for destroy"}
+
+          action ->
+            Ash.Actions.Destroy.run(api, record, action, params)
         end
 
       :error ->
