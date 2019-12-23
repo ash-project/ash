@@ -1,13 +1,162 @@
 defmodule Ash.Api.Interface do
+  @moduledoc """
+  The primary entry point for interacting with resources and their data.
+
+  #TODO describe - Big picture description here
+  """
+
+  @shared_read_get_opts_schema Ashton.schema(
+                                 opts: [
+                                   user: :any,
+                                   authorize?: :boolean,
+                                   side_load: :keyword
+                                 ],
+                                 defaults: [
+                                   authorize?: false,
+                                   side_load: []
+                                 ],
+                                 describe: [
+                                   user: "# TODO describe",
+                                   side_load: "# TODO describe",
+                                   authorize?: "# TODO describe"
+                                 ]
+                               )
+
+  @pagination_schema Ashton.schema(
+                       opts: [
+                         limit: :integer,
+                         offset: :integer
+                       ],
+                       constraints: [
+                         limit: {&Ash.Constraints.positive?/1, "must be positive"},
+                         offset: {&Ash.Constraints.positive?/1, "must be positive"}
+                       ]
+                     )
+
+  @read_opts_schema Ashton.merge(
+                      Ashton.schema(
+                        opts: [
+                          filter: :keyword,
+                          sort: [{:tuple, {[{:const, :asc}, {:const, :desc}], :atom}}],
+                          page: [@pagination_schema]
+                        ],
+                        defaults: [
+                          filter: [],
+                          sort: [],
+                          page: []
+                        ],
+                        describe: [
+                          filter: "# TODO describe",
+                          sort: "# TODO describe",
+                          page: "# TODO describe"
+                        ]
+                      ),
+                      @shared_read_get_opts_schema,
+                      annotate: "Shared Read Opts"
+                    )
+
+  @get_opts_schema Ashton.merge(Ashton.schema(opts: []), @shared_read_get_opts_schema,
+                     annotate: "Shared Read Opts"
+                   )
+
+  @create_and_update_opts_schema Ashton.schema(
+                                   opts: [
+                                     attributes: :map,
+                                     relationships: :map
+                                   ],
+                                   defaults: [
+                                     attributes: %{},
+                                     relationships: %{}
+                                   ],
+                                   describe: [
+                                     attributes: "#TODO describe",
+                                     relationships: "#TODO describe"
+                                   ]
+                                 )
+
+  @doc """
+  #TODO describe
+
+  #{Ashton.document(@get_opts_schema)}
+  """
+  @callback get!(Ash.resource(), term(), Ash.params()) :: Ash.record() | no_return
+
+  @doc """
+  #TODO describe
+
+  #{Ashton.document(@get_opts_schema)}
+  """
+  @callback get(Ash.resource(), term(), Ash.params()) ::
+              {:ok, Ash.record()} | {:error, Ash.error()}
+
+  @doc """
+  #TODO describe
+
+  #{Ashton.document(@read_opts_schema)}
+  """
+  @callback read!(Ash.resource(), Ash.params()) :: Ash.page() | no_return
+
+  @doc """
+  #TODO describe
+
+  #{Ashton.document(@read_opts_schema)}
+  """
+  @callback read(Ash.resource(), Ash.params()) :: {:ok, Ash.page()} | {:error, Ash.error()}
+
+  @doc """
+  #TODO describe
+
+  #{Ashton.document(@create_and_update_opts_schema)}
+  """
+  @callback create!(Ash.resource(), Ash.create_params()) :: Ash.record() | no_return
+
+  @doc """
+  #TODO describe
+
+  #{Ashton.document(@create_and_update_opts_schema)}
+  """
+  @callback create(Ash.resource(), Ash.create_params()) ::
+              {:ok, Ash.record()} | {:error, Ash.error()}
+
+  @doc """
+  #TODO describe
+
+  #{Ashton.document(@create_and_update_opts_schema)}
+  """
+  @callback update!(Ash.record(), Ash.update_params()) :: Ash.record() | no_return
+
+  @doc """
+  #TODO describe
+
+  #{Ashton.document(@create_and_update_opts_schema)}
+  """
+  @callback update(Ash.record(), Ash.update_params()) ::
+              {:ok, Ash.record()} | {:error, Ash.error()}
+
+  @doc """
+  #TODO describe
+
+  Currenty supports no options
+  """
+  @callback destroy!(Ash.record(), Ash.update_params()) :: Ash.record() | no_return
+
+  @doc """
+  #TODO describe
+
+  Currenty supports no options
+  """
+  @callback destroy(Ash.record(), Ash.update_params()) ::
+              {:ok, Ash.record()} | {:error, Ash.error()}
   defmacro __using__(_) do
     quote do
-      @spec get!(Ash.resource(), term(), Ash.params()) :: Ash.record() | no_return
+      @behaviour Ash.Api.Interface
+
+      @impl true
       def get!(resource, id, params \\ []) do
         Ash.Api.Interface.get!(__MODULE__, resource, id, params)
       end
 
-      @spec get(Ash.resource(), term(), Ash.params()) ::
-              {:ok, Ash.record()} | {:error, Ash.error()}
+      @impl true
       def get(resource, id, params \\ []) do
         case Ash.Api.Interface.get(__MODULE__, resource, id, params) do
           {:ok, instance} -> {:ok, instance}
@@ -15,12 +164,12 @@ defmodule Ash.Api.Interface do
         end
       end
 
-      @spec read!(Ash.resource(), Ash.params()) :: Ash.page() | no_return
+      @impl true
       def read!(resource, params \\ []) do
         Ash.Api.Interface.read!(__MODULE__, resource, params)
       end
 
-      @spec read(Ash.resource(), Ash.params()) :: {:ok, Ash.page()} | {:error, Ash.error()}
+      @impl true
       def read(resource, params \\ []) do
         case Ash.Api.Interface.read(__MODULE__, resource, params) do
           {:ok, paginator} -> {:ok, paginator}
@@ -28,13 +177,12 @@ defmodule Ash.Api.Interface do
         end
       end
 
-      @spec create!(Ash.resource(), Ash.create_params()) :: Ash.record() | no_return
+      @impl true
       def create!(resource, params \\ []) do
         Ash.Api.Interface.create!(__MODULE__, resource, params)
       end
 
-      @spec create(Ash.resource(), Ash.create_params()) ::
-              {:ok, Ash.record()} | {:error, Ash.error()}
+      @impl true
       def create(resource, params \\ []) do
         case Ash.Api.Interface.create(__MODULE__, resource, params) do
           {:ok, instance} -> {:ok, instance}
@@ -42,13 +190,12 @@ defmodule Ash.Api.Interface do
         end
       end
 
-      @spec update!(Ash.record(), Ash.update_params()) :: Ash.record() | no_return
+      @impl true
       def update!(record, params \\ []) do
         Ash.Api.Interface.update!(__MODULE__, record, params)
       end
 
-      @spec update(Ash.record(), Ash.update_params()) ::
-              {:ok, Ash.record()} | {:error, Ash.error()}
+      @impl true
       def update(record, params \\ []) do
         case Ash.Api.Interface.update(__MODULE__, record, params) do
           {:ok, instance} -> {:ok, instance}
@@ -56,13 +203,12 @@ defmodule Ash.Api.Interface do
         end
       end
 
-      @spec destroy!(Ash.record(), Ash.update_params()) :: Ash.record() | no_return
+      @impl true
       def destroy!(record, params \\ []) do
         Ash.Api.Interface.destroy!(__MODULE__, record, params)
       end
 
-      @spec destroy(Ash.record(), Ash.update_params()) ::
-              {:ok, Ash.record()} | {:error, Ash.error()}
+      @impl true
       def destroy(record, params \\ []) do
         case Ash.Api.Interface.destroy(__MODULE__, record, params) do
           {:ok, instance} -> {:ok, instance}

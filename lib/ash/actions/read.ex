@@ -7,6 +7,7 @@ defmodule Ash.Actions.Read do
     sort = Keyword.get(params, :sort, [])
     user = Keyword.get(params, :user, [])
     side_loads = Keyword.get(params, :side_load, [])
+    page_params = Keyword.get(params, :page, [])
 
     with %Ash.Filter{errors: []} = filter <-
            Ash.Filter.parse(resource, filter),
@@ -18,7 +19,7 @@ defmodule Ash.Actions.Read do
          {:ok, sorted_query} <- Ash.DataLayer.sort(query, sort, resource),
          {:ok, filtered_query} <- Ash.DataLayer.filter(sorted_query, filter, resource),
          {:ok, paginator} <-
-           Ash.Actions.Paginator.paginate(api, resource, action, filtered_query, params),
+           Ash.Actions.Paginator.paginate(api, resource, action, filtered_query, page_params),
          {:ok, found} <- Ash.DataLayer.run_query(paginator.query, resource),
          paginator <- %{paginator | results: found} do
       SideLoad.side_load(resource, paginator, side_loads, api, user)

@@ -25,12 +25,8 @@ defmodule Ash.Actions.Paginator do
      }}
   end
 
-  def paginate(api, resource, _action, query, params) do
-    pagination_params =
-      case Keyword.fetch(params, :page) do
-        {:ok, value} -> %{page: Enum.into(value, %{})}
-        :error -> []
-      end
+  def paginate(api, resource, _action, query, page_params) do
+    pagination_params = page_params || []
 
     with {:ok, %__MODULE__{limit: limit, offset: offset} = paginator} <-
            paginator(api, resource, pagination_params),

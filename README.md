@@ -3,6 +3,7 @@
 ## Quick Links
 * [Resource Documentation](https://hexdocs.pm/ash/Ash.Resource.html)
 * [DSL Documentation](https://hexdocs.pm/ash/Ash.Resource.DSL.html)
+* [Code API documentation](https://hexdocs.pm/ash/Ash.Api.Interface.html)
 
 ## Introduction
 
@@ -53,7 +54,6 @@ end
 
 * Make our router cabaple of describing its routes in `mix phx.routes` Chris McCord says that we could probably power that, seeing as phoenix controls both APIs, and that capability could be added to `Plug.Router`
 * Finish the serializer
-* Make a DSL for join tables to support complex validation/hooks into how they work, support more than just table names in `join_through`
 * DSL level validations! Things like includes validating that their chain exists. All DSL structs should be strictly validated when they are created.
 * Especially at compile time, we should *never* ignore or skip invalid options. If an option is present and invalid, an error is raised.
 * break up the `Ash` module
@@ -121,3 +121,4 @@ end
 * relationships updates are *extremely* unoptimized
 * Clean up and test filter inspecting code.
 * Handle related values on delete
+* Use ashton to validate interface opts, not just document them: Easy and important
