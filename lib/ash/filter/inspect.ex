@@ -46,6 +46,25 @@ defimpl Inspect, for: Ash.Filter do
   import Inspect.Algebra
   import Ash.Filter.InspectHelpers
 
+  def inspect(%Ash.Filter{not: not_filter} = filter, opts) do
+    if root?(opts) do
+      concat([
+        "#Filter<not (",
+        to_doc(not_filter, make_non_root(opts)),
+        ") and ",
+        to_doc(%{filter | not: nil}, make_non_root(opts)),
+        ">"
+      ])
+    else
+      concat([
+        "not (",
+        to_doc(not_filter, make_non_root(opts)),
+        ") and ",
+        to_doc(%{filter | not: nil}, make_non_root(opts))
+      ])
+    end
+  end
+
   def inspect(%Ash.Filter{ors: ors, relationships: relationships, attributes: attributes}, opts)
       when ors in [nil, []] and relationships in [nil, %{}] and attributes in [nil, %{}] do
     if root?(opts) do
@@ -133,6 +152,15 @@ defimpl Inspect, for: Ash.Filter.And do
   end
 end
 
+defimpl Inspect, for: Ash.Filter.Or do
+  import Inspect.Algebra
+  import Ash.Filter.InspectHelpers
+
+  def inspect(%{left: left, right: right}, opts) do
+    concat([to_doc(left, opts), " or ", to_doc(right, opts)])
+  end
+end
+
 defimpl Inspect, for: Ash.Filter.Eq do
   import Inspect.Algebra
   import Ash.Filter.InspectHelpers
@@ -142,11 +170,29 @@ defimpl Inspect, for: Ash.Filter.Eq do
   end
 end
 
+defimpl Inspect, for: Ash.Filter.NotEq do
+  import Inspect.Algebra
+  import Ash.Filter.InspectHelpers
+
+  def inspect(%{value: value}, opts) do
+    concat([attr(opts), " != ", to_doc(value, opts)])
+  end
+end
+
 defimpl Inspect, for: Ash.Filter.In do
   import Inspect.Algebra
   import Ash.Filter.InspectHelpers
 
   def inspect(%{values: values}, opts) do
     concat([attr(opts), " in ", to_doc(values, opts)])
+  end
+end
+
+defimpl Inspect, for: Ash.Filter.NotIn do
+  import Inspect.Algebra
+  import Ash.Filter.InspectHelpers
+
+  def inspect(%{values: values}, opts) do
+    concat([attr(opts), " not in ", to_doc(values, opts)])
   end
 end

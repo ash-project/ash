@@ -3,11 +3,11 @@ defmodule Ash do
   The primary interface for interrogating apis and resources.
 
   This is not the code level interface for a resource. Instead, call functions
-  on an `Api` module that contains those resources.
+  on an `Api` module that contains those resources. This is for retrieving
+  resource/api configurations.
   """
   alias Ash.Resource.Relationships.{BelongsTo, HasOne, HasMany, ManyToMany}
   alias Ash.Resource.Actions.{Create, Read, Update, Destroy}
-
   @type record :: struct
   @type cardinality_one_relationship() :: HasOne.t() | BelongsTo.t()
   @type cardinality_many_relationship() :: HasMany.t() | ManyToMany.t()
@@ -18,6 +18,11 @@ defmodule Ash do
   @type api :: module
   @type error :: struct
   @type filter :: map()
+  @type page :: Ash.Actions.Paginator.t()
+  @type params :: Keyword.t()
+  @type create_params :: Keyword.t()
+  @type update_params :: Keyword.t()
+  @type delete_params :: Keyword.t()
   @type sort :: Keyword.t()
   @type side_loads :: Keyword.t()
   @type attribute :: Ash.Attributes.Attribute.t()

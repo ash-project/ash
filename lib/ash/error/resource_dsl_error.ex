@@ -1,4 +1,5 @@
 defmodule Ash.Error.ResourceDslError do
+  @moduledoc "Raised when a resource's DSL is incorrectly configured."
   defexception [:message, :path, :option, :using]
 
   def message(%{message: message, path: nil, option: option, using: using}) do

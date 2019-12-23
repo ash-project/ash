@@ -119,3 +119,4 @@ end
 * Framework internals need to stop using `api.foo`, because the code interface
   is supposed to be optional
 * relationships updates are *extremely* unoptimized
+* Clean up and test filter inspecting code.

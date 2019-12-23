@@ -1,10 +1,13 @@
 defmodule Ash.Api.Interface do
   defmacro __using__(_) do
     quote do
+      @spec get!(Ash.resource(), term(), Ash.params()) :: Ash.record() | no_return
       def get!(resource, id, params \\ []) do
         Ash.Api.Interface.get!(__MODULE__, resource, id, params)
       end
 
+      @spec get(Ash.resource(), term(), Ash.params()) ::
+              {:ok, Ash.record()} | {:error, Ash.error()}
       def get(resource, id, params \\ []) do
         case Ash.Api.Interface.get(__MODULE__, resource, id, params) do
           {:ok, instance} -> {:ok, instance}
@@ -12,10 +15,12 @@ defmodule Ash.Api.Interface do
         end
       end
 
+      @spec read!(Ash.resource(), Ash.params()) :: Ash.page() | no_return
       def read!(resource, params \\ []) do
         Ash.Api.Interface.read!(__MODULE__, resource, params)
       end
 
+      @spec read(Ash.resource(), Ash.params()) :: {:ok, Ash.page()} | {:error, Ash.error()}
       def read(resource, params \\ []) do
         case Ash.Api.Interface.read(__MODULE__, resource, params) do
           {:ok, paginator} -> {:ok, paginator}
@@ -23,10 +28,13 @@ defmodule Ash.Api.Interface do
         end
       end
 
+      @spec create!(Ash.resource(), Ash.create_params()) :: Ash.record() | no_return
       def create!(resource, params \\ []) do
         Ash.Api.Interface.create!(__MODULE__, resource, params)
       end
 
+      @spec create(Ash.resource(), Ash.create_params()) ::
+              {:ok, Ash.record()} | {:error, Ash.error()}
       def create(resource, params \\ []) do
         case Ash.Api.Interface.create(__MODULE__, resource, params) do
           {:ok, instance} -> {:ok, instance}
@@ -34,10 +42,13 @@ defmodule Ash.Api.Interface do
         end
       end
 
+      @spec update!(Ash.record(), Ash.update_params()) :: Ash.record() | no_return
       def update!(record, params \\ []) do
         Ash.Api.Interface.update!(__MODULE__, record, params)
       end
 
+      @spec update(Ash.record(), Ash.update_params()) ::
+              {:ok, Ash.record()} | {:error, Ash.error()}
       def update(record, params \\ []) do
         case Ash.Api.Interface.update(__MODULE__, record, params) do
           {:ok, instance} -> {:ok, instance}
@@ -45,10 +56,13 @@ defmodule Ash.Api.Interface do
         end
       end
 
+      @spec destroy!(Ash.record(), Ash.update_params()) :: Ash.record() | no_return
       def destroy!(record, params \\ []) do
         Ash.Api.Interface.destroy!(__MODULE__, record, params)
       end
 
+      @spec destroy(Ash.record(), Ash.update_params()) ::
+              {:ok, Ash.record()} | {:error, Ash.error()}
       def destory(record, params \\ []) do
         case Ash.Api.Interface.destroy(__MODULE__, record, params) do
           {:ok, instance} -> {:ok, instance}
@@ -58,12 +72,15 @@ defmodule Ash.Api.Interface do
     end
   end
 
+  @spec get!(Ash.api(), Ash.resource(), term(), Ash.params()) :: Ash.record() | no_return
   def get!(api, resource, id, params \\ []) do
     api
     |> get(resource, id, params)
     |> unwrap_or_raise!()
   end
 
+  @spec get(Ash.api(), Ash.resource(), term(), Ash.params()) ::
+          {:ok, Ash.record()} | {:error, Ash.error()}
   def get(api, resource, filter, params) do
     case api.get_resource(resource) do
       {:ok, resource} ->
@@ -105,12 +122,15 @@ defmodule Ash.Api.Interface do
     end
   end
 
-  def read!(api, resource, params \\ []) do
+  @spec read!(Ash.api(), Ash.resource(), Ash.params()) :: Ash.page() | no_return
+  def(read!(api, resource, params \\ [])) do
     api
     |> read(resource, params)
     |> unwrap_or_raise!()
   end
 
+  @spec read(Ash.api(), Ash.resource(), Ash.params()) ::
+          {:ok, Ash.page()} | {:error, Ash.error()}
   def read(api, resource, params \\ []) do
     params = add_default_page_size(api, params)
 
@@ -129,12 +149,16 @@ defmodule Ash.Api.Interface do
     end
   end
 
+  @spec create!(Ash.api(), Ash.resource(), Ash.create_params()) ::
+          Ash.record() | {:error, Ash.error()}
   def create!(api, resource, params) do
     api
     |> create(resource, params)
     |> unwrap_or_raise!()
   end
 
+  @spec create(Ash.api(), Ash.resource(), Ash.create_params()) ::
+          {:ok, Ash.resource()} | {:error, Ash.error()}
   def create(api, resource, params) do
     case api.get_resource(resource) do
       {:ok, resource} ->
@@ -151,12 +175,15 @@ defmodule Ash.Api.Interface do
     end
   end
 
+  @spec update!(Ash.api(), Ash.record(), Ash.update_params()) :: Ash.resource() | no_return
   def update!(api, record, params) do
     api
     |> update(record, params)
     |> unwrap_or_raise!()
   end
 
+  @spec update(Ash.api(), Ash.record(), Ash.update_params()) ::
+          {:ok, Ash.resource()} | {:error, Ash.error()}
   def update(api, %resource{} = record, params) do
     case api.get_resource(resource) do
       {:ok, resource} ->
@@ -173,12 +200,15 @@ defmodule Ash.Api.Interface do
     end
   end
 
+  @spec destroy!(Ash.api(), Ash.record(), Ash.delete_params()) :: Ash.resource() | no_return
   def destroy!(api, record, params) do
     api
     |> destroy(record, params)
     |> unwrap_or_raise!()
   end
 
+  @spec destroy(Ash.api(), Ash.record(), Ash.delete_params()) ::
+          {:ok, Ash.resource()} | {:error, Ash.error()}
   def destroy(api, %resource{} = record, params) do
     case api.get_resource(resource) do
       {:ok, resource} ->

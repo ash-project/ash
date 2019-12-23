@@ -1,7 +1,7 @@
 defmodule Ash.Type do
   @moduledoc """
   This behaviour is a superset of the Ecto.Type behavior, that also contains
-  API level information, like what kinds of filters are allowed. Eventually,
+  api level information, like what kinds of filters are allowed. Eventually,
   this may be used for composite types or serialization.
 
   Much better to `use Ash.Type` than to say `@behaviour Ash.Type` and define
@@ -71,6 +71,20 @@ defmodule Ash.Type do
   def ecto_type(type) do
     type.ecto_type()
   end
+
+  @doc "A list of the built in type names"
+  @spec builtins() :: list(atom)
+  def builtins(), do: @builtin_names
+
+  @spec ash_type?(term) :: boolean
+  @doc "Returns true if the value is a builtin type or adopts the `Ash.Type` behaviour"
+  def ash_type?(atom) when atom in @builtin_names, do: true
+
+  def ash_type?(module) when is_atom(module) do
+    :erlang.function_exported(module, :__info__, 1) and ash_type_module?(module)
+  end
+
+  def ash_type?(_), do: false
 
   @doc """
   Casts input (e.g. unknown) data to an instance of the type, or errors
@@ -185,18 +199,6 @@ defmodule Ash.Type do
       defoverridable supported_filter_types: 1, equal?: 2, sortable?: 1
     end
   end
-
-  @doc "A list of the built in type names"
-  def builtins(), do: @builtin_names
-
-  @doc "Returns true if the value is a builtin type or adopts the `Ash.Type` behaviour"
-  def ash_type?(atom) when atom in @builtin_names, do: true
-
-  def ash_type?(module) when is_atom(module) do
-    :erlang.function_exported(module, :__info__, 1) and ash_type_module?(module)
-  end
-
-  def ash_type?(_), do: false
 
   defp ash_type_module?(module) do
     :attributes
