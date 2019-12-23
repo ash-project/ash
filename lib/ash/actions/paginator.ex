@@ -26,7 +26,7 @@ defmodule Ash.Actions.Paginator do
   end
 
   def paginate(api, resource, _action, query, page_params) do
-    pagination_params = page_params || []
+    pagination_params = Enum.into(page_params || [], %{})
 
     with {:ok, %__MODULE__{limit: limit, offset: offset} = paginator} <-
            paginator(api, resource, pagination_params),
@@ -38,18 +38,23 @@ defmodule Ash.Actions.Paginator do
     end
   end
 
-  defp paginator(api, resource, %{page: page}) do
+  defp paginator(api, resource, page) do
     page_size =
       page
       |> Map.get(:limit)
       |> Kernel.||(Ash.default_page_size(api, resource))
-      |> Kernel.||(Ash.max_page_size(api, resource))
-      |> Kernel.min(Ash.max_page_size(api, resource))
+      |> case do
+        nil ->
+          Ash.max_page_size(api, resource)
+
+        page_size ->
+          min(page_size, Ash.max_page_size(api, resource))
+      end
 
     offset = Map.get(page, :offset, 0)
 
     with {:offset, true} <- {:offset, is_integer(offset) and offset >= 0},
-         {:limit, true} <- {:limit, is_integer(page_size) and page_size >= 0} do
+         {:limit, true} <- {:limit, is_valid_limit?(page_size)} do
       {:ok,
        %__MODULE__{
          offset: Map.get(page, :offset, 0),
@@ -62,13 +67,7 @@ defmodule Ash.Actions.Paginator do
     end
   end
 
-  defp paginator(api, resource, _) do
-    # TODO: Make limit configurable
-    {:ok,
-     %__MODULE__{
-       offset: 0,
-       limit: Ash.default_page_size(api, resource) || 20,
-       total: nil
-     }}
-  end
+  defp is_valid_limit?(nil), do: true
+  defp is_valid_limit?(limit) when is_integer(limit) and limit >= 0, do: true
+  defp is_valid_limit?(_), do: false
 end

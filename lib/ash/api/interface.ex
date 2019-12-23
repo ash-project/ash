@@ -45,7 +45,7 @@ defmodule Ash.Api.Interface do
   @read_opts_schema [
                       opts: [
                         filter: :keyword,
-                        sort: [{:tuple, {[{:const, :asc}, {:const, :desc}], :atom}}],
+                        sort: {:list, {:tuple, {[{:enum, [:asc, :desc]}], :atom}}},
                         page: [@pagination_schema]
                       ],
                       defaults: [
@@ -94,14 +94,15 @@ defmodule Ash.Api.Interface do
 
   #{Ashton.document(@get_opts_schema)}
   """
-  @callback get!(Ash.resource(), term(), Ash.params()) :: Ash.record() | no_return
+  @callback get!(resource :: Ash.resource(), id_or_filter :: term(), params :: Ash.params()) ::
+              Ash.record() | no_return
 
   @doc """
   #TODO describe
 
   #{Ashton.document(@get_opts_schema)}
   """
-  @callback get(Ash.resource(), term(), Ash.params()) ::
+  @callback get(resource :: Ash.resource(), id_or_filter :: term(), params :: Ash.params()) ::
               {:ok, Ash.record()} | {:error, Ash.error()}
 
   @doc """
@@ -109,28 +110,30 @@ defmodule Ash.Api.Interface do
 
   #{Ashton.document(@read_opts_schema)}
   """
-  @callback read!(Ash.resource(), Ash.params()) :: Ash.page() | no_return
+  @callback read!(resource :: Ash.resource(), params :: Ash.params()) :: Ash.page() | no_return
 
   @doc """
   #TODO describe
 
   #{Ashton.document(@read_opts_schema)}
   """
-  @callback read(Ash.resource(), Ash.params()) :: {:ok, Ash.page()} | {:error, Ash.error()}
+  @callback read(resource :: Ash.resource(), params :: Ash.params()) ::
+              {:ok, Ash.page()} | {:error, Ash.error()}
 
   @doc """
   #TODO describe
 
   #{Ashton.document(@create_and_update_opts_schema)}
   """
-  @callback create!(Ash.resource(), Ash.create_params()) :: Ash.record() | no_return
+  @callback create!(resource :: Ash.resource(), params :: Ash.create_params()) ::
+              Ash.record() | no_return
 
   @doc """
   #TODO describe
 
   #{Ashton.document(@create_and_update_opts_schema)}
   """
-  @callback create(Ash.resource(), Ash.create_params()) ::
+  @callback create(resource :: Ash.resource(), params :: Ash.create_params()) ::
               {:ok, Ash.record()} | {:error, Ash.error()}
 
   @doc """
@@ -138,14 +141,15 @@ defmodule Ash.Api.Interface do
 
   #{Ashton.document(@create_and_update_opts_schema)}
   """
-  @callback update!(Ash.record(), Ash.update_params()) :: Ash.record() | no_return
+  @callback update!(record :: Ash.record(), params :: Ash.update_params()) ::
+              Ash.record() | no_return
 
   @doc """
   #TODO describe
 
   #{Ashton.document(@create_and_update_opts_schema)}
   """
-  @callback update(Ash.record(), Ash.update_params()) ::
+  @callback update(record :: Ash.record(), params :: Ash.update_params()) ::
               {:ok, Ash.record()} | {:error, Ash.error()}
 
   @doc """
@@ -153,15 +157,17 @@ defmodule Ash.Api.Interface do
 
   #{Ashton.document(@delete_opts_schema)}
   """
-  @callback destroy!(Ash.record(), Ash.update_params()) :: Ash.record() | no_return
+  @callback destroy!(record :: Ash.record(), params :: Ash.update_params()) ::
+              Ash.record() | no_return
 
   @doc """
   #TODO describe
 
   #{Ashton.document(@delete_opts_schema)}
   """
-  @callback destroy(Ash.record(), Ash.update_params()) ::
+  @callback destroy(record :: Ash.record(), params :: Ash.update_params()) ::
               {:ok, Ash.record()} | {:error, Ash.error()}
+
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Api.Interface

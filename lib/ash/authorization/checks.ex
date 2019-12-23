@@ -6,12 +6,12 @@ defmodule Ash.Authorization.Checks do
   end
 
   def related_to_user_via(relationship) do
-    filter =
+    relationship_requirement =
       relationship
       |> List.wrap()
       |> put_nested_relationship()
 
-    [filter: filter]
+    [relationship_requirement: relationship_requirement]
   end
 
   defp put_nested_relationship([rel | rest]) do
