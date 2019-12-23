@@ -5,20 +5,29 @@ defmodule Ash.Api.Interface do
   #TODO describe - Big picture description here
   """
 
+  @global_opts Ashton.schema(
+                 opts: [
+                   user: :any,
+                   authorize?: :boolean
+                 ],
+                 defaults: [
+                   authorize?: false
+                 ],
+                 describe: [
+                   user: "# TODO describe",
+                   authorize?: "# TODO describe"
+                 ]
+               )
+
   @shared_read_get_opts_schema Ashton.schema(
                                  opts: [
-                                   user: :any,
-                                   authorize?: :boolean,
                                    side_load: :keyword
                                  ],
                                  defaults: [
-                                   authorize?: false,
                                    side_load: []
                                  ],
                                  describe: [
-                                   user: "# TODO describe",
-                                   side_load: "# TODO describe",
-                                   authorize?: "# TODO describe"
+                                   side_load: "# TODO describe"
                                  ]
                                )
 
@@ -33,33 +42,33 @@ defmodule Ash.Api.Interface do
                        ]
                      )
 
-  @read_opts_schema Ashton.merge(
-                      Ashton.schema(
-                        opts: [
-                          filter: :keyword,
-                          sort: [{:tuple, {[{:const, :asc}, {:const, :desc}], :atom}}],
-                          page: [@pagination_schema]
-                        ],
-                        defaults: [
-                          filter: [],
-                          sort: [],
-                          page: []
-                        ],
-                        describe: [
-                          filter: "# TODO describe",
-                          sort: "# TODO describe",
-                          page: "# TODO describe"
-                        ]
-                      ),
-                      @shared_read_get_opts_schema,
-                      annotate: "Shared Read Opts"
-                    )
+  @read_opts_schema [
+                      opts: [
+                        filter: :keyword,
+                        sort: [{:tuple, {[{:const, :asc}, {:const, :desc}], :atom}}],
+                        page: [@pagination_schema]
+                      ],
+                      defaults: [
+                        filter: [],
+                        sort: [],
+                        page: []
+                      ],
+                      describe: [
+                        filter: "# TODO describe",
+                        sort: "# TODO describe",
+                        page: "# TODO describe"
+                      ]
+                    ]
+                    |> Ashton.schema()
+                    |> Ashton.merge(@shared_read_get_opts_schema, annotate: "Shared Read Opts")
+                    |> Ashton.merge(@global_opts, annotate: "Global Opts")
 
-  @get_opts_schema Ashton.merge(Ashton.schema(opts: []), @shared_read_get_opts_schema,
-                     annotate: "Shared Read Opts"
-                   )
+  @get_opts_schema []
+                   |> Ashton.schema()
+                   |> Ashton.merge(@shared_read_get_opts_schema, annotate: "Shared Read Opts")
+                   |> Ashton.merge(@global_opts, annotate: "Global Opts")
 
-  @create_and_update_opts_schema Ashton.schema(
+  @create_and_update_opts_schema [
                                    opts: [
                                      attributes: :map,
                                      relationships: :map
@@ -72,7 +81,13 @@ defmodule Ash.Api.Interface do
                                      attributes: "#TODO describe",
                                      relationships: "#TODO describe"
                                    ]
-                                 )
+                                 ]
+                                 |> Ashton.schema()
+                                 |> Ashton.merge(@global_opts, annotate: "Global Opts")
+
+  @delete_opts_schema []
+                      |> Ashton.schema()
+                      |> Ashton.merge(@global_opts, annotate: "Global Opts")
 
   @doc """
   #TODO describe
@@ -136,14 +151,14 @@ defmodule Ash.Api.Interface do
   @doc """
   #TODO describe
 
-  Currenty supports no options
+  #{Ashton.document(@delete_opts_schema)}
   """
   @callback destroy!(Ash.record(), Ash.update_params()) :: Ash.record() | no_return
 
   @doc """
   #TODO describe
 
-  Currenty supports no options
+  #{Ashton.document(@delete_opts_schema)}
   """
   @callback destroy(Ash.record(), Ash.update_params()) ::
               {:ok, Ash.record()} | {:error, Ash.error()}
@@ -218,6 +233,7 @@ defmodule Ash.Api.Interface do
     end
   end
 
+  @doc false
   @spec get!(Ash.api(), Ash.resource(), term(), Ash.params()) :: Ash.record() | no_return
   def get!(api, resource, id, params \\ []) do
     api
@@ -225,6 +241,7 @@ defmodule Ash.Api.Interface do
     |> unwrap_or_raise!()
   end
 
+  @doc false
   @spec get(Ash.api(), Ash.resource(), term(), Ash.params()) ::
           {:ok, Ash.record()} | {:error, Ash.error()}
   def get(api, resource, filter, params) do
@@ -268,6 +285,7 @@ defmodule Ash.Api.Interface do
     end
   end
 
+  @doc false
   @spec read!(Ash.api(), Ash.resource(), Ash.params()) :: Ash.page() | no_return
   def(read!(api, resource, params \\ [])) do
     api
@@ -275,6 +293,7 @@ defmodule Ash.Api.Interface do
     |> unwrap_or_raise!()
   end
 
+  @doc false
   @spec read(Ash.api(), Ash.resource(), Ash.params()) ::
           {:ok, Ash.page()} | {:error, Ash.error()}
   def read(api, resource, params \\ []) do
@@ -295,6 +314,7 @@ defmodule Ash.Api.Interface do
     end
   end
 
+  @doc false
   @spec create!(Ash.api(), Ash.resource(), Ash.create_params()) ::
           Ash.record() | {:error, Ash.error()}
   def create!(api, resource, params) do
@@ -303,6 +323,7 @@ defmodule Ash.Api.Interface do
     |> unwrap_or_raise!()
   end
 
+  @doc false
   @spec create(Ash.api(), Ash.resource(), Ash.create_params()) ::
           {:ok, Ash.resource()} | {:error, Ash.error()}
   def create(api, resource, params) do
@@ -321,6 +342,7 @@ defmodule Ash.Api.Interface do
     end
   end
 
+  @doc false
   @spec update!(Ash.api(), Ash.record(), Ash.update_params()) :: Ash.resource() | no_return
   def update!(api, record, params) do
     api
@@ -328,6 +350,7 @@ defmodule Ash.Api.Interface do
     |> unwrap_or_raise!()
   end
 
+  @doc false
   @spec update(Ash.api(), Ash.record(), Ash.update_params()) ::
           {:ok, Ash.resource()} | {:error, Ash.error()}
   def update(api, %resource{} = record, params) do
@@ -346,6 +369,7 @@ defmodule Ash.Api.Interface do
     end
   end
 
+  @doc false
   @spec destroy!(Ash.api(), Ash.record(), Ash.delete_params()) :: Ash.resource() | no_return
   def destroy!(api, record, params) do
     api
@@ -353,6 +377,7 @@ defmodule Ash.Api.Interface do
     |> unwrap_or_raise!()
   end
 
+  @doc false
   @spec destroy(Ash.api(), Ash.record(), Ash.delete_params()) ::
           {:ok, Ash.resource()} | {:error, Ash.error()}
   def destroy(api, %resource{} = record, params) do
