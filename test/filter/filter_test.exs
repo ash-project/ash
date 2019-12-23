@@ -38,7 +38,7 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     relationships do
-      has_many :posts, Ash.Test.Filter.FilterTest.Post
+      has_many :posts, Ash.Test.Filter.FilterTest.Post, reverse_relationship: :author1
 
       has_one :profile, Profile,
         destination_field: :user_id,

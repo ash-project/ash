@@ -46,7 +46,7 @@ defimpl Inspect, for: Ash.Filter do
   import Inspect.Algebra
   import Ash.Filter.InspectHelpers
 
-  def inspect(%Ash.Filter{not: not_filter} = filter, opts) do
+  def inspect(%Ash.Filter{not: not_filter} = filter, opts) when not is_nil(not_filter) do
     if root?(opts) do
       concat([
         "#Filter<not (",

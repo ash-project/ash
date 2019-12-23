@@ -59,7 +59,7 @@ defmodule Ash.Test.Type.TypeTest do
   test "it rejects invalid data" do
     # As we add informative errors, this test will fail and we will know to test those
     # more informative errors.
-    assert_raise(Ash.Error.FrameworkError, "invalid changes", fn ->
+    assert_raise(Ash.Error.FrameworkError, ~r/invalid changes/, fn ->
       Api.create!(Post, attributes: %{title: "foobarbazbuzbiz"})
     end)
   end

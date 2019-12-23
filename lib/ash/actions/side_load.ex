@@ -47,6 +47,10 @@ defmodule Ash.Actions.SideLoad do
 
   def side_load(resource, record, keyword, api, prechecks_by_path, global_params \\ [])
 
+  def side_load(_resource, [], _side_loads, _api, _prechecks_by_auth, _global_params) do
+    {:ok, []}
+  end
+
   def side_load(_resource, record_or_records, [], _api, _prechecks_by_path, _global_params),
     do: {:ok, record_or_records}
 

@@ -37,13 +37,30 @@ defmodule Ash.Test.Actions.CreateTest do
     relationships do
       has_one :profile, Profile
 
-      has_many :posts, Ash.Test.Actions.CreateTest.Post
+      has_many :posts, Ash.Test.Actions.CreateTest.Post, reverse_relationship: :author
     end
   end
 
   defmodule PostDefaults do
     def garbage2(), do: "garbage2"
     def garbage3(), do: "garbage3"
+  end
+
+  defmodule PostLink do                      
+    use Ash.Resource, name: "post_links", type: "post_link", primary_key: false
+    use Ash.DataLayer.Ets, private?: true
+
+    actions do
+      read :default
+
+      create :default
+      update :default
+    end
+
+    relationships do
+      belongs_to :source_post, Ash.Test.Filter.FilterTest.Post, primary_key?: true
+      belongs_to :destination_post, Ash.Test.Filter.FilterTest.Post, primary_key?: true
+    end
   end
 
   defmodule Post do
@@ -66,13 +83,19 @@ defmodule Ash.Test.Actions.CreateTest do
 
     relationships do
       belongs_to :author, Author
+
+      many_to_many :related_posts, __MODULE__,
+        through: PostLink,
+        source_field_on_join_table: :source_post_id,
+        destination_field_on_join_table: :destination_post_id,
+        reverse_relationship: :related_posts
     end
   end
 
   defmodule Api do
     use Ash.Api
 
-    resources [Author, Post, Profile]
+    resources [Author, Post, Profile, PostLink]
   end
 
   describe "simple creates" do
@@ -91,6 +114,35 @@ defmodule Ash.Test.Actions.CreateTest do
 
     test "constant module/function values are set properly" do
       assert %Post{tag3: "garbage3"} = Api.create!(Post, attributes: %{title: "foo"})
+    end
+  end
+
+  describe "creating many to many relationships" do
+    test "allows creating with a many_to_many relationship" do
+      post2 = Api.create!(Post, attributes: %{title: "title2"})
+      post3 = Api.create!(Post, attributes: %{title: "title3"})
+
+      Api.create!(Post, relationships: %{related_posts: [post2.id, post3.id]})
+    end
+
+    test "it updates the join table properly" do
+      post2 = Api.create!(Post, attributes: %{title: "title2"})
+      post3 = Api.create!(Post, attributes: %{title: "title3"})
+
+      Api.create!(Post, relationships: %{related_posts: [post2.id, post3.id]})
+
+      assert %{results: [_, _]} = Api.read!(PostLink, filter: [])
+    end
+
+    test "it responds with the relationship filled in" do
+      post2 = Api.create!(Post, attributes: %{title: "title2"})
+      post3 = Api.create!(Post, attributes: %{title: "title3"})
+
+      assert Api.create!(Post, relationships: %{related_posts: [post2.id, post3.id]}).related_posts ==
+               [
+                 Api.get!(Post, post2.id),
+                 Api.get!(Post, post3.id)
+               ]
     end
   end
 

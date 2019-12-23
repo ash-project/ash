@@ -21,6 +21,7 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
+  @doc 
   def private?(resource) do
     resource.ets_private?()
   end
@@ -50,8 +51,8 @@ defmodule Ash.DataLayer.Ets do
     }
   end
 
-  @impl true
-  def limit(query, limit, _), do: {:ok, %Query{query | limit: limit}}
+  @impl true                                         
+  def limit(query, offset, _), do: {:ok, %{query | limit: offset}}
 
   @impl true
   def offset(query, offset, _), do: {:ok, %{query | offset: offset}}
@@ -66,7 +67,8 @@ defmodule Ash.DataLayer.Ets do
 
   @impl true
   def sort(query, sort, _resource) do
-    {:ok, %{query | sort: sort}}
+ 
+  {:ok, %{query | sort: sort}}
   end
 
   @impl true
@@ -91,7 +93,7 @@ defmodule Ash.DataLayer.Ets do
           offset_records
         end
 
-      {:ok, limited_records}
+      {:ok, limited_records}                          
     else
       {:error, error} -> {:error, error}
     end
