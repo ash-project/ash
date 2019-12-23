@@ -63,7 +63,7 @@ defmodule Ash.Api.Interface do
 
       @spec destroy(Ash.record(), Ash.update_params()) ::
               {:ok, Ash.record()} | {:error, Ash.error()}
-      def destory(record, params \\ []) do
+      def destroy(record, params \\ []) do
         case Ash.Api.Interface.destroy(__MODULE__, record, params) do
           {:ok, instance} -> {:ok, instance}
           {:error, error} -> {:error, List.wrap(error)}
@@ -231,7 +231,8 @@ defmodule Ash.Api.Interface do
     raise Ash.Error.FrameworkError.exception(message: error)
   end
 
-  defp unwrap_or_raise!({:error, %Ecto.Changeset{}}) do
+  defp unwrap_or_raise!({:error, %Ecto.Changeset{} = cs}) do
+    IO.inspect(cs)
     raise(Ash.Error.FrameworkError, message: "invalid changes")
   end
 
@@ -248,8 +249,9 @@ defmodule Ash.Api.Interface do
           string when is_bitstring(string) ->
             Ash.Error.FrameworkError.exception(message: string)
 
-          _ = %Ecto.Changeset{} ->
+          _ = %Ecto.Changeset{} = cs ->
             # TODO: format these
+            IO.inspect(cs)
             "invalid changes"
 
           error ->

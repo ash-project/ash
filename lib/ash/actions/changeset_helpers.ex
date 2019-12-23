@@ -1,43 +1,47 @@
 defmodule Ash.Actions.ChangesetHelpers do
   alias Ash.Actions.PrimaryKeyHelpers
 
+  @type before_change_callback :: (Ecto.Changeset.t() -> Ecto.Changeset.t())
+  @type after_change_callback ::
+          (Ecto.Changeset.t(), Ash.record() -> {:ok, Ash.record()} | {:error, Ash.error()})
+
+  @spec before_change(Ecto.Changeset.t(), before_change_callback) :: Ecto.Changeset.t()
   def before_change(changeset, func) do
     Map.update(changeset, :__before_ash_changes__, [func], fn funcs ->
       [func | funcs]
     end)
   end
 
+  @spec after_change(Ecto.Changeset.t(), after_change_callback) :: Ecto.Changeset.t()
   def after_change(changeset, func) do
     Map.update(changeset, :__after_ash_changes__, [func], fn funcs ->
       [func | funcs]
     end)
   end
 
+  @spec run_before_changes(Ecto.Changeset.t()) :: Ecto.Changeset.t()
   def run_before_changes(%{__before_ash_changes__: hooks} = changeset) do
     Enum.reduce(hooks, changeset, fn
       hook, %Ecto.Changeset{valid?: true} = changeset ->
         case hook.(changeset) do
           :ok -> changeset
-          {:ok, changeset} -> changeset
           %Ecto.Changeset{} = changeset -> changeset
         end
 
       _, %Ecto.Changeset{} = changeset ->
         changeset
-
-      _, {:error, error} ->
-        {:error, error}
     end)
   end
 
   def run_before_changes(changeset), do: changeset
 
+  @spec run_after_changes(Ecto.Changeset.t(), Ash.record()) ::
+          {:ok, Ash.record()} | {:error, Ash.error()}
   def run_after_changes(%{__after_ash_changes__: hooks} = changeset, result) do
     Enum.reduce(hooks, {:ok, result}, fn
       hook, {:ok, result} ->
         case hook.(changeset, result) do
           {:ok, result} -> {:ok, result}
-          :ok -> {:ok, result}
           {:error, error} -> {:error, error}
         end
 
@@ -50,110 +54,208 @@ defmodule Ash.Actions.ChangesetHelpers do
     {:ok, result}
   end
 
-  def belongs_to_assoc_update(
-        %{__ash_api__: api} = changeset,
-        %{
-          destination: destination,
-          destination_field: destination_field,
-          source_field: source_field
-        } = relationship,
-        identifier,
+  @spec prepare_relationship_changes(
+          Ecto.Changeset.t(),
+          Ash.resource(),
+          map(),
+          boolean,
+          Ash.user()
+        ) :: Ecto.Changeset.t()
+  def prepare_relationship_changes(
+        changeset,
+        resource,
+        relationships,
         authorize?,
         user
       ) do
-    case PrimaryKeyHelpers.value_to_primary_key_filter(destination, identifier) do
-      {:error, _error} ->
-        Ecto.Changeset.add_error(changeset, relationship.name, "Invalid primary key supplied")
+    Enum.reduce(relationships, changeset, fn {relationship, value}, changeset ->
+      with {:rel, rel} when not is_nil(rel) <- {:rel, Ash.relationship(resource, relationship)},
+           {:ok, filter} <- primary_key_filter(rel, value) do
+        case rel.type do
+          :belongs_to ->
+            belongs_to_assoc_update(changeset, rel, filter, authorize?, user)
 
-      {:ok, filter} ->
-        before_change(changeset, fn changeset ->
-          case api.get(destination, filter, authorize?: authorize?, user: user) do
-            {:ok, record} when not is_nil(record) ->
-              changeset
-              |> Ecto.Changeset.put_change(source_field, Map.get(record, destination_field))
-              |> after_change(fn _changeset, result ->
-                {:ok, Map.put(result, relationship.name, record)}
-              end)
+          :has_one ->
+            has_one_assoc_update(changeset, rel, filter, authorize?, user)
 
-            {:ok, nil} ->
-              {:error, "not found"}
+          :has_many ->
+            has_many_assoc_update(changeset, rel, filter, authorize?, user)
 
-            {:error, error} ->
-              {:error, error}
-          end
-        end)
-    end
+          :many_to_many ->
+            many_to_many_assoc_update(changeset, rel, filter, value, authorize?, user)
+        end
+      else
+        {:rel, nil} ->
+          Ecto.Changeset.add_error(changeset, relationship, "No such relationship")
+
+        {:error, error} ->
+          Ecto.Changeset.add_error(changeset, relationship, error)
+      end
+    end)
   end
 
-  def has_one_assoc_update(
-        %{__ash_api__: api} = changeset,
-        %{
-          destination: destination,
-          destination_field: destination_field,
-          source_field: source_field
-        } = relationship,
-        identifier,
-        authorize?,
-        user
-      ) do
-    case PrimaryKeyHelpers.value_to_primary_key_filter(destination, identifier) do
-      {:error, _error} ->
-        Ecto.Changeset.add_error(changeset, relationship.name, "Invalid primary key supplied")
-
-      {:ok, filter} ->
-        after_change(changeset, fn _changeset, result ->
-          value = Map.get(result, source_field)
-
-          with {:ok, record} <-
-                 api.get(destination, filter, authorize?: authorize?, user: user),
-               {:ok, updated_record} <-
-                 api.update(record, attributes: %{destination_field => value}) do
-            {:ok, Map.put(result, relationship.name, updated_record)}
-          end
-        end)
-    end
+  defp primary_key_filter(%{cardinality: :many, destination: destination}, value) do
+    PrimaryKeyHelpers.values_to_primary_key_filters(destination, value)
   end
 
-  def many_to_many_assoc_on_create(changeset, %{name: rel_name}, identifier, _, _)
-      when not is_list(identifier) do
+  defp primary_key_filter(%{destination: destination}, value) do
+    PrimaryKeyHelpers.value_to_primary_key_filter(destination, value)
+  end
+
+  defp belongs_to_assoc_update(
+         %{__ash_api__: api} = changeset,
+         %{
+           destination: destination,
+           destination_field: destination_field,
+           source_field: source_field
+         } = relationship,
+         filter,
+         authorize?,
+         user
+       ) do
+    before_change(changeset, fn changeset ->
+      case api.get(destination, filter, authorize?: authorize?, user: user) do
+        {:ok, record} when not is_nil(record) ->
+          changeset
+          |> Ecto.Changeset.put_change(source_field, Map.get(record, destination_field))
+          |> after_change(fn _changeset, result ->
+            {:ok, Map.put(result, relationship.name, record)}
+          end)
+
+        {:ok, nil} ->
+          {:error, "not found"}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    end)
+  end
+
+  defp has_one_assoc_update(
+         %{__ash_api__: api} = changeset,
+         %{
+           destination: destination,
+           destination_field: destination_field,
+           source_field: source_field
+         } = relationship,
+         filter,
+         authorize?,
+         user
+       ) do
+    changeset
+    |> before_change(fn changeset ->
+      value = Map.get(changeset.data, source_field)
+
+      if changeset.action == :update && value do
+        case api.get(destination, [{destination_field, value}]) do
+          {:ok, nil} ->
+            changeset
+
+          {:ok, record} ->
+            case api.update(record, attributes: %{destination_field => nil}) do
+              {:ok, _} ->
+                changeset
+
+              {:error, error} ->
+                Ecto.Changeset.add_error(changeset, relationship.name, error)
+            end
+
+          {:error, error} ->
+            Ecto.Changeset.add_error(
+              changeset,
+              relationship.name,
+              error
+            )
+        end
+      else
+        changeset
+      end
+    end)
+    |> after_change(fn _changeset, result ->
+      value = Map.get(result, source_field)
+
+      with {:ok, record} <-
+             api.get(destination, filter, authorize?: authorize?, user: user),
+           {:ok, updated_record} <-
+             api.update(record, attributes: %{destination_field => value}) do
+        {:ok, Map.put(result, relationship.name, updated_record)}
+      end
+    end)
+  end
+
+  defp many_to_many_assoc_update(changeset, %{name: rel_name}, filter, _, _, _)
+       when not is_list(filter) do
     Ecto.Changeset.add_error(changeset, rel_name, "Invalid value")
   end
 
-  def many_to_many_assoc_on_create(changeset, rel, identifiers, authorize?, user) do
-    case PrimaryKeyHelpers.values_to_primary_key_filters(rel.destination, identifiers) do
-      {:error, _error} ->
-        Ecto.Changeset.add_error(changeset, rel.name, "Invalid primary key supplied")
+  defp many_to_many_assoc_update(changeset, rel, filters, identifiers, authorize?, user) do
+    changeset
+    |> before_change(fn %{__ash_api__: api} = changeset ->
+      source_field_value = Ecto.Changeset.get_field(changeset, rel.source_field)
 
-      {:ok, filters} ->
-        changeset
-        |> before_change(fn %{__ash_api__: api} = changeset ->
-          source_field_value = Ecto.Changeset.get_field(changeset, rel.source_field)
+      destroy_result =
+        destroy_no_longer_related_join_table_rows(
+          api,
+          source_field_value,
+          rel,
+          filters,
+          authorize?,
+          user
+        )
 
-          destroy_result =
-            destroy_no_longer_related_join_table_rows(
-              api,
-              source_field_value,
-              rel,
-              filters,
-              authorize?,
-              user
-            )
+      case destroy_result do
+        :ok -> changeset
+        {:error, error} -> {:error, error}
+      end
+    end)
+    |> after_change(fn %{__ash_api__: api}, result ->
+      case fetch_and_ensure_related(identifiers, api, result, rel, authorize?, user) do
+        {:error, error} ->
+          {:error, error}
 
-          case destroy_result do
-            :ok -> changeset
-            {:error, error} -> {:error, error}
-          end
-        end)
-        |> after_change(fn %{__ash_api__: api}, result ->
-          case fetch_and_ensure_related(identifiers, api, result, rel, authorize?, user) do
-            {:error, error} ->
-              {:error, error}
+        {:ok, related} ->
+          {:ok, Map.put(result, rel.name, related)}
+      end
+    end)
+  end
 
-            {:ok, related} ->
-              {:ok, Map.put(result, rel.name, related)}
-          end
-        end)
-    end
+  defp has_many_assoc_update(
+         %{__ash_api__: api} = changeset,
+         %{
+           destination: destination,
+           destination_field: destination_field,
+           source_field: source_field
+         } = relationship,
+         filters,
+         authorize?,
+         user
+       ) do
+    after_change(changeset, fn _changeset, %resource{} = result ->
+      value = Map.get(result, source_field)
+
+      currently_related_filter =
+        result
+        |> Map.take(Ash.primary_key(resource))
+        |> Map.to_list()
+
+      params = [
+        filter: currently_related_filter,
+        paginate?: false,
+        authorize?: authorize?,
+        user: user
+      ]
+
+      with {:ok, %{results: related}} <-
+             api.read(destination, params),
+           {:ok, to_relate} <-
+             get_to_relate(api, filters, destination, authorize?, user),
+           to_clear <- get_no_longer_present(resource, related, to_relate),
+           :ok <- clear_related(api, resource, to_clear, destination_field, authorize?, user),
+           {:ok, now_related} <-
+             relate_items(api, to_relate, destination_field, value, authorize?, user) do
+        {:ok, Map.put(result, relationship.name, now_related)}
+      end
+    end)
   end
 
   defp fetch_and_ensure_related(identifiers, api, %resource{} = result, rel, authorize?, user) do
@@ -273,61 +375,6 @@ defmodule Ash.Actions.ChangesetHelpers do
           {:error, error} ->
             {:error, error}
         end
-    end
-  end
-
-  def many_to_many_assoc_update(changeset, %{name: rel_name}, identifier, _, _)
-      when not is_list(identifier) do
-    Ecto.Changeset.add_error(changeset, rel_name, "Invalid value")
-  end
-
-  def has_many_assoc_update(changeset, %{name: rel_name}, identifier, _, _)
-      when not is_list(identifier) do
-    Ecto.Changeset.add_error(changeset, rel_name, "Invalid value")
-  end
-
-  def has_many_assoc_update(
-        %{__ash_api__: api} = changeset,
-        %{
-          destination: destination,
-          destination_field: destination_field,
-          source_field: source_field
-        } = relationship,
-        identifiers,
-        authorize?,
-        user
-      ) do
-    case PrimaryKeyHelpers.values_to_primary_key_filters(destination, identifiers) do
-      {:error, _error} ->
-        Ecto.Changeset.add_error(changeset, relationship.name, "Invalid primary key supplied")
-
-      {:ok, filters} ->
-        after_change(changeset, fn _changeset, %resource{} = result ->
-          value = Map.get(result, source_field)
-
-          currently_related_filter =
-            result
-            |> Map.take(Ash.primary_key(resource))
-            |> Map.to_list()
-
-          params = [
-            filter: currently_related_filter,
-            paginate?: false,
-            authorize?: authorize?,
-            user: user
-          ]
-
-          with {:ok, %{results: related}} <-
-                 api.read(destination, params),
-               {:ok, to_relate} <-
-                 get_to_relate(api, filters, destination, authorize?, user),
-               to_clear <- get_no_longer_present(resource, related, to_relate),
-               :ok <- clear_related(api, resource, to_clear, destination_field, authorize?, user),
-               {:ok, now_related} <-
-                 relate_items(api, to_relate, destination_field, value, authorize?, user) do
-            {:ok, Map.put(result, relationship.name, now_related)}
-          end
-        end)
     end
   end
 

@@ -63,11 +63,20 @@ defmodule Ash.Actions.Create do
     authorize? = Keyword.get(params, :authorize?, false)
     user = Keyword.get(params, :user)
 
-    with %{valid?: true} = changeset <- prepare_create_attributes(resource, attributes),
-         changeset <- Map.put(changeset, :__ash_api__, api) do
-      prepare_create_relationships(changeset, resource, relationships, authorize?, user)
-    else
-      %{valid?: false} = changeset -> changeset
+    case prepare_create_attributes(resource, attributes) do
+      %{valid?: true} = changeset ->
+        changeset = Map.put(changeset, :__ash_api__, api)
+
+        ChangesetHelpers.prepare_relationship_changes(
+          changeset,
+          resource,
+          relationships,
+          authorize?,
+          user
+        )
+
+      changeset ->
+        changeset
     end
   end
 
@@ -92,30 +101,10 @@ defmodule Ash.Actions.Create do
     resource
     |> struct()
     |> Ecto.Changeset.cast(attributes_with_defaults, allowed_keys)
+    |> Map.put(:action, :create)
   end
 
   defp default(%{default: {:constant, value}}), do: value
   defp default(%{default: {mod, func}}), do: apply(mod, func, [])
   defp default(%{default: function}), do: function.()
-
-  defp prepare_create_relationships(changeset, resource, relationships, authorize?, user) do
-    Enum.reduce(relationships, changeset, fn {relationship, value}, changeset ->
-      case Ash.relationship(resource, relationship) do
-        %{type: :belongs_to} = rel ->
-          ChangesetHelpers.belongs_to_assoc_update(changeset, rel, value, authorize?, user)
-
-        %{type: :has_one} = rel ->
-          ChangesetHelpers.has_one_assoc_update(changeset, rel, value, authorize?, user)
-
-        %{type: :has_many} = rel ->
-          ChangesetHelpers.has_many_assoc_update(changeset, rel, value, authorize?, user)
-
-        %{type: :many_to_many} = rel ->
-          ChangesetHelpers.many_to_many_assoc_on_create(changeset, rel, value, authorize?, user)
-
-        _ ->
-          Ecto.Changeset.add_error(changeset, relationship, "No such relationship")
-      end
-    end)
-  end
 end

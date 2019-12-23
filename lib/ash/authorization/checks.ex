@@ -1,12 +1,17 @@
 defmodule Ash.Authorization.Checks do
   @moduledoc "Built in authorization checks."
 
-  def always(), do: [__always__: true]
+  def always() do
+    [always: true]
+  end
 
   def related_to_user_via(relationship) do
-    relationship
-    |> List.wrap()
-    |> put_nested_relationship()
+    filter =
+      relationship
+      |> List.wrap()
+      |> put_nested_relationship()
+
+    [filter: filter]
   end
 
   defp put_nested_relationship([rel | rest]) do

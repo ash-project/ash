@@ -74,7 +74,13 @@ defmodule Ash.Actions.Update do
 
     with %{valid?: true} = changeset <- prepare_update_attributes(record, attributes),
          changeset <- Map.put(changeset, :__ash_api__, api) do
-      prepare_update_relationships(changeset, resource, relationships, authorize?, user)
+      ChangesetHelpers.prepare_relationship_changes(
+        changeset,
+        resource,
+        relationships,
+        authorize?,
+        user
+      )
     end
   end
 
@@ -84,27 +90,8 @@ defmodule Ash.Actions.Update do
       |> Ash.attributes()
       |> Enum.map(& &1.name)
 
-    Ecto.Changeset.cast(record, attributes, allowed_keys)
-  end
-
-  defp prepare_update_relationships(changeset, resource, relationships, authorize?, user) do
-    Enum.reduce(relationships, changeset, fn {relationship, value}, changeset ->
-      case Ash.relationship(resource, relationship) do
-        %{type: :belongs_to} = rel ->
-          ChangesetHelpers.belongs_to_assoc_update(changeset, rel, value, authorize?, user)
-
-        %{type: :has_one} = rel ->
-          ChangesetHelpers.has_one_assoc_update(changeset, rel, value, authorize?, user)
-
-        %{type: :has_many} = rel ->
-          ChangesetHelpers.has_many_assoc_update(changeset, rel, value, authorize?, user)
-
-        # %{type: :many_to_many} = rel ->
-        #   ChangesetHelpers.many_to_many_assoc_update(changeset, rel, value, authorize?, user)
-
-        _ ->
-          Ecto.Changeset.add_error(changeset, relationship, "No such relationship")
-      end
-    end)
+    record
+    |> Ecto.Changeset.cast(attributes, allowed_keys)
+    |> Map.put(:action, :update)
   end
 end

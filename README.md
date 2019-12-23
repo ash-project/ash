@@ -120,3 +120,4 @@ end
   is supposed to be optional
 * relationships updates are *extremely* unoptimized
 * Clean up and test filter inspecting code.
+* Handle related values on delete
