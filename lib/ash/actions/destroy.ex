@@ -23,7 +23,7 @@ defmodule Ash.Actions.Destroy do
   end
 
   defp do_authorize(params, action, user, %resource{} = record) do
-    if Keyword.get(params, :authorize?, false) do
+    if params[:authorization] do
       auth_request =
         Ash.Authorization.Request.new(
           resource: resource,

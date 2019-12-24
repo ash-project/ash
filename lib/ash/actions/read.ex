@@ -31,12 +31,13 @@ defmodule Ash.Actions.Read do
   end
 
   defp do_authorize(params, action, user, resource, filter, side_load_auths) do
-    if Keyword.get(params, :authorize?, false) do
+    if params[:authorization] do
       auth_request =
         Ash.Authorization.Request.new(
           resource: resource,
-          authorization_steps: action.rules,
-          filter: filter
+          authorization_steps: action.authorization_steps,
+          filter: filter,
+          strict_access?: Keyword.get(params[:authorization], :strict_access?, true)
         )
 
       Authorizer.authorize(user, %{}, [auth_request | side_load_auths])

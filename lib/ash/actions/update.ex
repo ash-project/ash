@@ -33,7 +33,7 @@ defmodule Ash.Actions.Update do
   end
 
   defp do_authorize(params, action, user, resource, changeset) do
-    if Keyword.get(params, :authorize?, false) do
+    if params[:authorization] do
       auth_request =
         Ash.Authorization.Request.new(
           resource: resource,
@@ -69,8 +69,7 @@ defmodule Ash.Actions.Update do
   defp prepare_update_params(api, %resource{} = record, params) do
     attributes = Keyword.get(params, :attributes, %{})
     relationships = Keyword.get(params, :relationships, %{})
-    authorize? = Keyword.get(params, :authorize?, false)
-    user = Keyword.get(params, :user)
+    authorization = Keyword.get(params, :authorization, false)
 
     with %{valid?: true} = changeset <- prepare_update_attributes(record, attributes),
          changeset <- Map.put(changeset, :__ash_api__, api) do
@@ -78,8 +77,7 @@ defmodule Ash.Actions.Update do
         changeset,
         resource,
         relationships,
-        authorize?,
-        user
+        authorization
       )
     end
   end

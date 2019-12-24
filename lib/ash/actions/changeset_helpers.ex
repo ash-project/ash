@@ -58,31 +58,29 @@ defmodule Ash.Actions.ChangesetHelpers do
           Ecto.Changeset.t(),
           Ash.resource(),
           map(),
-          boolean,
-          Ash.user()
+          Ash.authorization()
         ) :: Ecto.Changeset.t()
   def prepare_relationship_changes(
         changeset,
         resource,
         relationships,
-        authorize?,
-        user
+        authorization
       ) do
     Enum.reduce(relationships, changeset, fn {relationship, value}, changeset ->
       with {:rel, rel} when not is_nil(rel) <- {:rel, Ash.relationship(resource, relationship)},
            {:ok, filter} <- primary_key_filter(rel, value) do
         case rel.type do
           :belongs_to ->
-            belongs_to_assoc_update(changeset, rel, filter, authorize?, user)
+            belongs_to_assoc_update(changeset, rel, filter, authorization)
 
           :has_one ->
-            has_one_assoc_update(changeset, rel, filter, authorize?, user)
+            has_one_assoc_update(changeset, rel, filter, authorization)
 
           :has_many ->
-            has_many_assoc_update(changeset, rel, filter, authorize?, user)
+            has_many_assoc_update(changeset, rel, filter, authorization)
 
           :many_to_many ->
-            many_to_many_assoc_update(changeset, rel, filter, authorize?, user)
+            many_to_many_assoc_update(changeset, rel, filter, authorization)
         end
       else
         {:rel, nil} ->
@@ -110,11 +108,10 @@ defmodule Ash.Actions.ChangesetHelpers do
            source_field: source_field
          } = relationship,
          filter,
-         authorize?,
-         user
+         authorization
        ) do
     before_change(changeset, fn changeset ->
-      case api.get(destination, filter, authorize?: authorize?, user: user) do
+      case api.get(destination, filter, authorization: authorization) do
         {:ok, record} when not is_nil(record) ->
           changeset
           |> Ecto.Changeset.put_change(source_field, Map.get(record, destination_field))
@@ -139,8 +136,7 @@ defmodule Ash.Actions.ChangesetHelpers do
            source_field: source_field
          } = relationship,
          filter,
-         authorize?,
-         user
+         authorization
        ) do
     changeset
     |> before_change(fn changeset ->
@@ -150,7 +146,8 @@ defmodule Ash.Actions.ChangesetHelpers do
         case api.read(destination,
                filter: [{destination_field, value}],
                limit: 1,
-               paginate?: false
+               paginate?: false,
+               authorization: authorization
              ) do
           {:ok, %{results: []}} ->
             changeset
@@ -179,9 +176,12 @@ defmodule Ash.Actions.ChangesetHelpers do
       value = Map.get(result, source_field)
 
       with {:ok, record} <-
-             api.get(destination, filter, authorize?: authorize?, user: user),
+             api.get(destination, filter, authorization: authorization),
            {:ok, updated_record} <-
-             api.update(record, attributes: %{destination_field => value}) do
+             api.update(record,
+               attributes: %{destination_field => value},
+               authorization: authorization
+             ) do
         {:ok, Map.put(result, relationship.name, updated_record)}
       end
     end)
@@ -192,7 +192,7 @@ defmodule Ash.Actions.ChangesetHelpers do
     Ecto.Changeset.add_error(changeset, rel_name, "Invalid value")
   end
 
-  defp many_to_many_assoc_update(changeset, rel, filters, authorize?, user) do
+  defp many_to_many_assoc_update(changeset, rel, filters, authorization) do
     changeset
     |> before_change(fn %{__ash_api__: api} = changeset ->
       if changeset.action == :update do
@@ -204,8 +204,7 @@ defmodule Ash.Actions.ChangesetHelpers do
             source_field_value,
             rel,
             filters,
-            authorize?,
-            user
+            authorization
           )
 
         case destroy_result do
@@ -217,7 +216,7 @@ defmodule Ash.Actions.ChangesetHelpers do
       end
     end)
     |> after_change(fn %{__ash_api__: api}, result ->
-      case fetch_and_ensure_related(filters, api, result, rel, authorize?, user) do
+      case fetch_and_ensure_related(filters, api, result, rel, authorization) do
         {:error, error} ->
           {:error, error}
 
@@ -235,8 +234,7 @@ defmodule Ash.Actions.ChangesetHelpers do
            source_field: source_field
          } = relationship,
          filters,
-         authorize?,
-         user
+         authorization
        ) do
     after_change(changeset, fn _changeset, %resource{} = result ->
       value = Map.get(result, source_field)
@@ -253,32 +251,30 @@ defmodule Ash.Actions.ChangesetHelpers do
       params = [
         filter: [{relationship.reverse_relationship, currently_related_filter}],
         paginate?: false,
-        authorize?: authorize?,
-        user: user
+        authorization: authorization
       ]
 
       with {:ok, %{results: related}} <-
              api.read(destination, params),
            {:ok, to_relate} <-
-             get_to_relate(api, filters, destination, authorize?, user),
+             get_to_relate(api, filters, destination, authorization),
            to_clear <-
              get_no_longer_present(resource, related, to_relate),
            :ok <-
-             clear_no_longer_related(api, resource, to_clear, destination_field, authorize?, user),
+             clear_no_longer_related(api, resource, to_clear, destination_field, authorization),
            {:ok, now_related} <-
-             relate_items(api, to_relate, destination_field, value, authorize?, user) do
+             relate_items(api, to_relate, destination_field, value, authorization) do
         {:ok, Map.put(result, relationship.name, now_related)}
       end
     end)
   end
 
-  defp fetch_and_ensure_related(filters, api, %resource{} = result, rel, authorize?, user) do
+  defp fetch_and_ensure_related(filters, api, %resource{} = result, rel, authorization) do
     pkey_filter = result |> Map.take(Ash.primary_key(resource)) |> Map.to_list()
 
     case api.read(rel.destination,
            filter: [{rel.reverse_relationship, pkey_filter}],
-           authorize?: authorize?,
-           user: user
+           authorization: authorization
          ) do
       {:ok, %{results: currently_related}} ->
         Enum.reduce_while(filters, {:ok, []}, fn filter, {:ok, records} ->
@@ -295,7 +291,7 @@ defmodule Ash.Actions.ChangesetHelpers do
           if already_related do
             {:ok, already_related}
           else
-            case do_fetch_and_ensure_related(api, result, filter, rel, authorize?, user) do
+            case do_fetch_and_ensure_related(api, result, filter, rel, authorization) do
               {:ok, related} -> {:cont, {:ok, [related | records]}}
               {:error, error} -> {:halt, {:error, error}}
             end
@@ -312,8 +308,7 @@ defmodule Ash.Actions.ChangesetHelpers do
          source_field_value,
          rel,
          identifiers,
-         authorize?,
-         user
+         authorization
        ) do
     unless rel.reverse_relationship do
       raise "Need reverse relationship for #{inspect(rel)}"
@@ -324,7 +319,7 @@ defmodule Ash.Actions.ChangesetHelpers do
       {:not, [or: identifiers]}
     ]
 
-    case api.read(rel.destination, filter: filter, authorize?: authorize?, user: user) do
+    case api.read(rel.destination, filter: filter, authorization: authorization) do
       {:error, error} ->
         {:error, error}
 
@@ -337,7 +332,7 @@ defmodule Ash.Actions.ChangesetHelpers do
                    {rel.source_field_on_join_table, source_field_value},
                    {rel.destination_field_on_join_table, destination_field_value}
                  ]),
-               {:ok, _} <- api.destroy(record, authorize?: authorize?, user: user) do
+               {:ok, _} <- api.destroy(record, authorization: authorization) do
             {:cont, :ok}
           else
             {:ok, nil} -> {:cont, :ok}
@@ -347,8 +342,8 @@ defmodule Ash.Actions.ChangesetHelpers do
     end
   end
 
-  defp do_fetch_and_ensure_related(api, result, id_filter, rel, authorize?, user) do
-    case api.get(rel.destination, id_filter, authorize?: authorize?, user: user) do
+  defp do_fetch_and_ensure_related(api, result, id_filter, rel, authorization) do
+    case api.get(rel.destination, id_filter, authorization: authorization) do
       {:error, error} ->
         {:error, error}
 
@@ -367,12 +362,11 @@ defmodule Ash.Actions.ChangesetHelpers do
         # unless we feel that verifying at *runtime* that the record exists before-hand is a good
         # idea
 
-        case api.get(rel.through, filter, authorize?: authorize?, user: user) do
+        case api.get(rel.through, filter, authorization: authorization) do
           {:ok, nil} ->
             create_result =
               api.create(rel.through,
-                authorize?: authorize?,
-                user: user,
+                authorization: authorization,
                 attributes: %{
                   rel.destination_field_on_join_table => destination_field_value,
                   rel.source_field_on_join_table => source_field_value
@@ -393,13 +387,12 @@ defmodule Ash.Actions.ChangesetHelpers do
     end
   end
 
-  defp relate_items(api, to_relate, destination_field, destination_field_value, authorize?, user) do
+  defp relate_items(api, to_relate, destination_field, destination_field_value, authorization) do
     Enum.reduce(to_relate, {:ok, []}, fn
       to_be_related, {:ok, now_related} ->
         case api.update(to_be_related,
                attributes: %{destination_field => destination_field_value},
-               authorize?: authorize?,
-               user: user
+               authorization: authorization
              ) do
           {:ok, newly_related} -> {:ok, [newly_related | now_related]}
           {:error, error} -> {:error, error}
@@ -410,13 +403,12 @@ defmodule Ash.Actions.ChangesetHelpers do
     end)
   end
 
-  defp clear_no_longer_related(api, _resource, to_clear, destination_key, authorize?, user) do
+  defp clear_no_longer_related(api, _resource, to_clear, destination_key, authorization) do
     Enum.reduce(to_clear, :ok, fn
       record, :ok ->
         case api.update(record,
                attributes: %{destination_key => nil},
-               authorize?: authorize?,
-               user: user
+               authorization: authorization
              ) do
           {:ok, _} -> :ok
           {:error, error} -> {:error, error}
@@ -442,11 +434,11 @@ defmodule Ash.Actions.ChangesetHelpers do
     end)
   end
 
-  defp get_to_relate(api, filters, destination, authorize?, user) do
+  defp get_to_relate(api, filters, destination, authorization) do
     # TODO: Only fetch the ones that we don't already have
     Enum.reduce(filters, {:ok, []}, fn
       filter, {:ok, to_relate} ->
-        case api.get(destination, filter, authorize?: authorize?, user: user) do
+        case api.get(destination, filter, authorization: authorization) do
           {:ok, to_relate_item} -> {:ok, [to_relate_item | to_relate]}
           {:error, errors} -> {:error, errors}
         end

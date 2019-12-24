@@ -8,6 +8,7 @@ defmodule Ash do
   """
   alias Ash.Resource.Relationships.{BelongsTo, HasOne, HasMany, ManyToMany}
   alias Ash.Resource.Actions.{Create, Read, Update, Destroy}
+  @type authorization :: Keyword.t()
   @type record :: struct
   @type cardinality_one_relationship() :: HasOne.t() | BelongsTo.t()
   @type cardinality_many_relationship() :: HasMany.t() | ManyToMany.t()

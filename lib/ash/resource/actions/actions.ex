@@ -21,10 +21,10 @@ defmodule Ash.Resource.Actions do
   defmacro actions(do: block) do
     quote do
       import Ash.Resource.Actions
+      import Ash.Authorization.Checks
 
       unquote(block)
       import Ash.Resource.Actions, only: [actions: 1]
-      import Ash.Authorization.Checks
     end
   end
 

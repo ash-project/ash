@@ -44,7 +44,11 @@ defmodule Ash.Test.Authorization.AuthorizationTest do
     use Ash.DataLayer.Ets, private?: true
 
     actions do
-      read :default
+      read :default,
+        authorization_steps: [
+          authorize_if: related_to_user_via(:authors)
+        ]
+
       create :default
     end
 
@@ -65,5 +69,15 @@ defmodule Ash.Test.Authorization.AuthorizationTest do
     resources [Post, Author, AuthorPost]
   end
 
-  test "it lives"
+  defmodule User do
+    defstruct [:id]
+  end
+
+  describe "read authorization" do
+    test "it works" do
+      author = Api.create!(Author, attributes: %{name: "foo"})
+      user = %{id: author.id}
+      Api.read!(Post, authorization: [user: user])
+    end
+  end
 end

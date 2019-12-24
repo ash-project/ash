@@ -27,7 +27,7 @@ defmodule Ash.Actions.Create do
   end
 
   defp do_authorize(params, action, user, resource, changeset) do
-    if Keyword.get(params, :authorize?, false) do
+    if params[:authorization] do
       auth_request =
         Ash.Authorization.Request.new(
           resource: resource,
@@ -60,8 +60,7 @@ defmodule Ash.Actions.Create do
   defp prepare_create_params(api, resource, params) do
     attributes = Keyword.get(params, :attributes, %{})
     relationships = Keyword.get(params, :relationships, %{})
-    authorize? = Keyword.get(params, :authorize?, false)
-    user = Keyword.get(params, :user)
+    authorization = Keyword.get(params, :authorization, false)
 
     case prepare_create_attributes(resource, attributes) do
       %{valid?: true} = changeset ->
@@ -71,8 +70,7 @@ defmodule Ash.Actions.Create do
           changeset,
           resource,
           relationships,
-          authorize?,
-          user
+          authorization
         )
 
       changeset ->

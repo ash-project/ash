@@ -5,17 +5,28 @@ defmodule Ash.Api.Interface do
   #TODO describe - Big picture description here
   """
 
+  @authorization_schema Ashton.schema(
+                          opts: [
+                            user: :any,
+                            strict_access?: :boolean
+                          ],
+                          defaults: [strict_access?: true],
+                          describe: [
+                            user: "# TODO describe",
+                            strict_access?:
+                              "only applies to `read` actions, so maybe belongs somewhere else"
+                          ]
+                        )
+
   @global_opts Ashton.schema(
                  opts: [
-                   user: :any,
-                   authorize?: :boolean
+                   authorization: [{:const, false}, @authorization_schema]
                  ],
                  defaults: [
-                   authorize?: false
+                   authorization: false
                  ],
                  describe: [
-                   user: "# TODO describe",
-                   authorize?: "# TODO describe"
+                   authorization: "# TODO describe"
                  ]
                )
 
@@ -283,6 +294,11 @@ defmodule Ash.Api.Interface do
   def get(api, resource, filter, params) do
     with {:resource, {:ok, resource}} <- {:resource, api.get_resource(resource)},
          {:pkey, primary_key} when primary_key != [] <- {:pkey, Ash.primary_key(resource)} do
+      params =
+        Keyword.update(params, :authorization, false, fn authorization ->
+          Keyword.put(authorization, :strict_access?, false)
+        end)
+
       adjusted_filter =
         case {primary_key, filter} do
           {[field], [{field, value}]} ->
@@ -305,6 +321,7 @@ defmodule Ash.Api.Interface do
             params
             |> Keyword.update(:filter, adjusted_filter, &Kernel.++(&1, adjusted_filter))
             |> Keyword.put(:page, %{limit: 2})
+            |> Keyword.put(:enforce_filter_access, false)
 
           case read(api, resource, params_with_filter) do
             {:ok, %{results: [single_result]}} ->
