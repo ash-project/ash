@@ -16,9 +16,7 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     relationships do
-      belongs_to :user, Ash.Test.Filter.FilterTest.User,
-        source_field: :user_id,
-        destination_field: :id
+      belongs_to :user, Ash.Test.Filter.FilterTest.User
     end
   end
 
@@ -38,11 +36,15 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     relationships do
-      has_many :posts, Ash.Test.Filter.FilterTest.Post, reverse_relationship: :author1
+      has_many :posts, Ash.Test.Filter.FilterTest.Post,
+        reverse_relationship: :author1,
+        destination_field: :author1_id
 
-      has_one :profile, Profile,
-        destination_field: :user_id,
-        source_field: :id
+      has_many :second_posts, Ash.Test.Filter.FilterTest.Post,
+        reverse_relationship: :author2,
+        destination_field: :author1_id
+
+      has_one :profile, Profile
     end
   end
 
@@ -165,6 +167,12 @@ defmodule Ash.Test.Filter.FilterTest do
           relationships: %{related_posts: [post1, post2]}
         )
 
+      post4 =
+        Api.create!(Post,
+          attributes: %{title: "title4", contents: "contents3", points: 4},
+          relationships: %{related_posts: [post3]}
+        )
+
       profile1 = Api.create!(Profile, attributes: %{bio: "dope"})
 
       user1 =
@@ -178,16 +186,31 @@ defmodule Ash.Test.Filter.FilterTest do
       profile2 = Api.create!(Profile, attributes: %{bio: "dope2"}, relationships: %{user: user2})
 
       %{
-        post1: post1,
-        post2: post2,
-        post3: post3,
-        profile1: profile1,
-        user1: user1,
-        user2: user2,
-        profile2: profile2
+        post1: Api.reload!(post1),
+        post2: Api.reload!(post2),
+        post3: Api.reload!(post3),
+        post4: Api.reload!(post4),
+        profile1: Api.reload!(profile1),
+        user1: Api.reload!(user1),
+        user2: Api.reload!(user2),
+        profile2: Api.reload!(profile2)
       }
     end
 
-    test "it works"
+    test "filtering on a has_one relationship", %{profile2: profile2, user2: user2} do
+      assert %{results: [^user2]} = Api.read!(User, filter: [profile: profile2.id])
+    end
+
+    test "filtering on a belongs_to relationship", %{profile1: profile1, user1: user1} do
+      assert %{results: [^profile1]} = Api.read!(Profile, filter: [user: user1.id])
+    end
+
+    test "filtering on a has_many relationship", %{user2: user2, post2: post2} do
+      assert %{results: [^user2]} = Api.read!(User, filter: [posts: post2.id])
+    end
+
+    test "filtering on a many_to_many relationship", %{post4: post4, post3: post3} do
+      assert %{results: [^post4]} = Api.read!(Post, filter: [related_posts: post3.id])
+    end
   end
 end

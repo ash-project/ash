@@ -122,3 +122,6 @@ end
 * Clean up and test filter inspecting code.
 * Handle related values on delete
 * Use ashton to validate interface opts, not just document them: Easy and important
+* Make an automatic test suite that confirms that data layers behave the way
+  they claim to behave, maybe.
+* Perhaps, reverse relationships should eliminate the need to set destination field.

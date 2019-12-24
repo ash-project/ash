@@ -191,21 +191,25 @@ defmodule Ash.Actions.ChangesetHelpers do
   defp many_to_many_assoc_update(changeset, rel, filters, authorize?, user) do
     changeset
     |> before_change(fn %{__ash_api__: api} = changeset ->
-      source_field_value = Ecto.Changeset.get_field(changeset, rel.source_field)
+      if changeset.action == :update do
+        source_field_value = Ecto.Changeset.get_field(changeset, rel.source_field)
 
-      destroy_result =
-        destroy_no_longer_related_join_table_rows(
-          api,
-          source_field_value,
-          rel,
-          filters,
-          authorize?,
-          user
-        )
+        destroy_result =
+          destroy_no_longer_related_join_table_rows(
+            api,
+            source_field_value,
+            rel,
+            filters,
+            authorize?,
+            user
+          )
 
-      case destroy_result do
-        :ok -> changeset
-        {:error, error} -> {:error, error}
+        case destroy_result do
+          :ok -> changeset
+          {:error, error} -> {:error, error}
+        end
+      else
+        changeset
       end
     end)
     |> after_change(fn %{__ash_api__: api}, result ->

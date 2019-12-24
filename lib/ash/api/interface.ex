@@ -168,6 +168,24 @@ defmodule Ash.Api.Interface do
   @callback destroy(record :: Ash.record(), params :: Ash.update_params()) ::
               {:ok, Ash.record()} | {:error, Ash.error()}
 
+  @doc """
+  Refetches a record from the database
+  """
+  @callback reload(record :: Ash.record(), params :: Ash.params()) ::
+              {:ok, Ash.record()} | {:error, Ash.error()}
+
+  @doc """
+  Refetches a record from the database, raising on error.
+
+  See `reload/1`.
+  """
+  @callback reload!(record :: Ash.record(), params :: Ash.params()) :: Ash.record() | no_return
+
+  @doc """
+  Refetches a record from the database
+  """
+  @callback reload(record :: Ash.record()) :: {:ok, Ash.record()} | {:error, Ash.error()}
+
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Api.Interface
@@ -235,6 +253,18 @@ defmodule Ash.Api.Interface do
           {:ok, instance} -> {:ok, instance}
           {:error, error} -> {:error, List.wrap(error)}
         end
+      end
+
+      @impl true
+      def reload!(%resource{} = record, params \\ []) do
+        id = record |> Map.take(Ash.primary_key(resource)) |> Enum.to_list()
+        get!(resource, id, params)
+      end
+
+      @impl true
+      def reload(%resource{} = record, params \\ []) do
+        id = record |> Map.take(Ash.primary_key(resource)) |> Enum.to_list()
+        get(resource, id, params)
       end
     end
   end

@@ -191,7 +191,7 @@ defmodule Ash.DataLayer.Ets do
     end)
   end
 
-  defp related_ids_filter(%{cardinality: :many_to_many} = rel, filter) do
+  defp related_ids_filter(%{type: :many_to_many} = rel, filter) do
     destination_query = %Query{
       resource: rel.destination,
       filter: filter
