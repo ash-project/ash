@@ -5,11 +5,7 @@ defmodule Ash.Api do
                     max_page_size: :integer,
                     default_page_size: :integer
                   ],
-                  defaults: [
-                    interface?: true,
-                    max_page_size: 100,
-                    default_page_size: 25
-                  ],
+                  defaults: [interface?: true, max_page_size: 100, default_page_size: 25],
                   describe: [
                     interface?:
                       "If set to false, no code interface is defined for this resource e.g `MyApi.create(...)` is not defined.",
@@ -25,6 +21,7 @@ defmodule Ash.Api do
                       {&Ash.Constraints.greater_than_zero?/1, "must be greater than zero"}
                   ]
                 )
+
   @moduledoc """
   An Api allows you to interact with your resources, anc holds non-resource-specific configuration.
 

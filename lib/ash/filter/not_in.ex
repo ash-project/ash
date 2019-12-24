@@ -8,8 +8,11 @@ defmodule Ash.Filter.NotIn do
       |> Enum.reduce({:ok, []}, fn
         value, {:ok, casted} ->
           case Ash.Type.cast_input(attr_type, value) do
-            {:ok, value} -> {:ok, [value | casted]}
-            :error -> {:error, "Invalid value #{inspect(value)} for type #{inspect(attr_type)}"}
+            {:ok, value} ->
+              {:ok, [value | casted]}
+
+            :error ->
+              {:error, "Invalid value #{inspect(value)} for type `not in #{inspect(attr_type)}}`"}
           end
 
         _, {:error, error} ->

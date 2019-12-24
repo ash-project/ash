@@ -281,42 +281,50 @@ defmodule Ash.Api.Interface do
   @spec get(Ash.api(), Ash.resource(), term(), Ash.params()) ::
           {:ok, Ash.record()} | {:error, Ash.error()}
   def get(api, resource, filter, params) do
-    case api.get_resource(resource) do
-      {:ok, resource} ->
-        primary_key = Ash.primary_key(resource)
+    with {:resource, {:ok, resource}} <- {:resource, api.get_resource(resource)},
+         {:pkey, primary_key} when primary_key != [] <- {:pkey, Ash.primary_key(resource)} do
+      adjusted_filter =
+        case {primary_key, filter} do
+          {[field], [{field, value}]} ->
+            {:ok, [{field, value}]}
 
-        adjusted_filter =
-          cond do
-            Keyword.keyword?(filter) ->
-              filter
+          {[field], value} ->
+            {:ok, [{field, value}]}
 
-            Enum.count(primary_key) == 1 ->
-              [{List.first(primary_key), filter}]
-
-            true ->
-              filter
-          end
-
-        params_with_filter =
-          params
-          |> Keyword.update(:filter, adjusted_filter, &Kernel.++(&1, adjusted_filter))
-          |> Keyword.put(:page, %{limit: 2})
-
-        case read(api, resource, params_with_filter) do
-          {:ok, %{results: [single_result]}} ->
-            {:ok, single_result}
-
-          {:ok, %{results: []}} ->
-            {:ok, nil}
-
-          {:error, error} ->
-            {:error, error}
-
-          {:ok, %{results: results}} when is_list(results) ->
-            {:error, :too_many_results}
+          {fields, value} ->
+            if Keyword.keyword?(value) and Enum.sort(Keyword.keys(value)) == Enum.sort(fields) do
+              {:ok, value}
+            else
+              {:error, "invalid primary key provided to `get/3`"}
+            end
         end
 
-      :error ->
+      case adjusted_filter do
+        {:ok, adjusted_filter} ->
+          params_with_filter =
+            params
+            |> Keyword.update(:filter, adjusted_filter, &Kernel.++(&1, adjusted_filter))
+            |> Keyword.put(:page, %{limit: 2})
+
+          case read(api, resource, params_with_filter) do
+            {:ok, %{results: [single_result]}} ->
+              {:ok, single_result}
+
+            {:ok, %{results: []}} ->
+              {:ok, nil}
+
+            {:error, error} ->
+              {:error, error}
+
+            {:ok, %{results: results}} when is_list(results) ->
+              {:error, :too_many_results}
+          end
+
+        {:error, error} ->
+          {:error, error}
+      end
+    else
+      {:resource, :error} ->
         {:error, "no such resource #{resource}"}
     end
   end

@@ -7,7 +7,7 @@ defmodule Ash.Filter.Eq do
         {:ok, %__MODULE__{value: value}}
 
       :error ->
-        {:error, "Invalid value #{inspect(value)} for type #{inspect(attr_type)}"}
+        {:error, "Invalid value #{inspect(value)} for type `== #{inspect(attr_type)}`"}
     end
   end
 end

@@ -125,7 +125,7 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     test "it raises on an error" do
-      assert_raise(Ash.Error.FrameworkError, "Invalid value 10 for type :string", fn ->
+      assert_raise(Ash.Error.FrameworkError, "Invalid value 10 for type `== :string`", fn ->
         Api.read!(Post, filter: [title: 10])
       end)
     end

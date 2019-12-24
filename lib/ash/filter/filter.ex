@@ -209,9 +209,6 @@ defmodule Ash.Filter do
       {:predicate_type, :error} ->
         {:error, "No such filter type #{predicate_name}"}
 
-      {:casted, _} ->
-        {:error, "Invalid value: #{inspect(value)} for #{inspect(attr_type)}"}
-
       {:predicate, {:error, error}} ->
         {:error, error}
 

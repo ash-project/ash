@@ -147,11 +147,15 @@ defmodule Ash.Actions.ChangesetHelpers do
       value = Map.get(changeset.data, source_field)
 
       if changeset.action == :update && value do
-        case api.get(destination, [{destination_field, value}]) do
-          {:ok, nil} ->
+        case api.read(destination,
+               filter: [{destination_field, value}],
+               limit: 1,
+               paginate?: false
+             ) do
+          {:ok, %{results: []}} ->
             changeset
 
-          {:ok, record} ->
+          {:ok, %{results: [record]}} ->
             case api.update(record, attributes: %{destination_field => nil}) do
               {:ok, _} ->
                 changeset
@@ -353,8 +357,8 @@ defmodule Ash.Actions.ChangesetHelpers do
         source_field_value = Map.get(result, rel.source_field)
 
         filter = [
-          {rel.source_field_on_join_table, [eq: source_field_value]},
-          {rel.destination_field_on_join_table, [eq: destination_field_value]}
+          {rel.source_field_on_join_table, source_field_value},
+          {rel.destination_field_on_join_table, destination_field_value}
         ]
 
         # This is very unoptimized. Also, if `destination_key` is present in the identifier
@@ -362,6 +366,7 @@ defmodule Ash.Actions.ChangesetHelpers do
         # read authorization without running the read action and then there is no reason to read,
         # unless we feel that verifying at *runtime* that the record exists before-hand is a good
         # idea
+
         case api.get(rel.through, filter, authorize?: authorize?, user: user) do
           {:ok, nil} ->
             create_result =
