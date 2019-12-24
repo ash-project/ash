@@ -35,7 +35,7 @@ defmodule Ash.Actions.Create do
           changeset: changeset
         )
 
-      Authorizer.authorize(user, [auth_request])
+      Authorizer.authorize(user, %{}, [auth_request])
     else
       :authorized
     end

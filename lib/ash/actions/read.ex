@@ -39,7 +39,7 @@ defmodule Ash.Actions.Read do
           filter: filter
         )
 
-      Authorizer.authorize(user, [auth_request | side_load_auths])
+      Authorizer.authorize(user, %{}, [auth_request | side_load_auths])
     else
       :authorized
     end
