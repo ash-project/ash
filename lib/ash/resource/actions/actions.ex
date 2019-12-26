@@ -21,7 +21,14 @@ defmodule Ash.Resource.Actions do
   defmacro actions(do: block) do
     quote do
       import Ash.Resource.Actions
-      import Ash.Authorization.Checks
+      import Ash.Authorization.Check.Static, only: [always: 0, never: 0]
+      import Ash.Authorization.Check.RelatedToUserVia, only: [related_to_user_via: 1]
+      import Ash.Authorization.Check.AttributeEquals, only: [attribute_equals: 2]
+
+      import Ash.Authorization.Check.UserAttributeMatchesRecord,
+        only: [user_attribute_matches_record: 2]
+
+      import Ash.Authorization.Check.UserAttribute, only: [user_attribute: 2]
 
       unquote(block)
       import Ash.Resource.Actions, only: [actions: 1]

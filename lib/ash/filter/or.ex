@@ -21,4 +21,11 @@ defmodule Ash.Filter.Or do
   def new(resource, attr_type, {left, right}) do
     new(resource, attr_type, [left, right])
   end
+
+  def contains?(%{left: left, right: right}, predicate) do
+    Ash.Filter.predicate_contains?(left, predicate) and
+      Ash.Filter.predicate_contains?(right, predicate)
+  end
+
+  def contains?(_, _), do: false
 end

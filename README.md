@@ -125,3 +125,7 @@ end
 * Make an automatic test suite that confirms that data layers behave the way
   they claim to behave, maybe.
 * Perhaps, reverse relationships should eliminate the need to set destination field.
+* When checking for filter inclusion, we should allow for `and` filters to each
+  contain *part* of the filter, requiring that the whole thing is covered by all
+  of the `and`s at least
+* add `init` to checks, and error check their construction when building the DSL

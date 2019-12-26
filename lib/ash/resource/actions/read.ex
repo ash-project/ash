@@ -15,7 +15,7 @@ defmodule Ash.Resource.Actions.Read do
                 opts: [
                   primary?: :boolean,
                   paginate?: :boolean,
-                  authorization_steps: {:list, :any}
+                  authorization_steps: {:keyword, {:tuple, {:module, :any}}}
                 ],
                 defaults: [
                   primary?: false,

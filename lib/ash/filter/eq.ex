@@ -10,4 +10,14 @@ defmodule Ash.Filter.Eq do
         {:error, "Invalid value #{inspect(value)} for type `== #{inspect(attr_type)}`"}
     end
   end
+
+  def contains?(%__MODULE__{value: value}, %__MODULE__{value: candidate}) do
+    value == candidate
+  end
+
+  def contains?(%__MODULE__{value: value}, %Ash.Filter.In{values: [candidate]}) do
+    value == candidate
+  end
+
+  def contains?(_, _), do: false
 end

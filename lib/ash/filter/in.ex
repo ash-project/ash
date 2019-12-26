@@ -27,4 +27,14 @@ defmodule Ash.Filter.In do
         {:ok, %__MODULE__{values: values}}
     end
   end
+
+  def contains?(%__MODULE__{values: values}, %__MODULE__{values: candidate_values}) do
+    Enum.all?(candidate_values, fn candidate -> candidate in values end)
+  end
+
+  def contains?(%__MODULE__{values: values}, %Ash.Filter.Eq{value: candidate}) do
+    candidate in values
+  end
+
+  def contains?(_, _), do: false
 end

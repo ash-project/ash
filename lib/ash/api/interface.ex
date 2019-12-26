@@ -296,7 +296,11 @@ defmodule Ash.Api.Interface do
          {:pkey, primary_key} when primary_key != [] <- {:pkey, Ash.primary_key(resource)} do
       params =
         Keyword.update(params, :authorization, false, fn authorization ->
-          Keyword.put(authorization, :strict_access?, false)
+          if authorization do
+            Keyword.put(authorization, :strict_access?, false)
+          else
+            authorization
+          end
         end)
 
       adjusted_filter =

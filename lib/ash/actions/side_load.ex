@@ -45,13 +45,13 @@ defmodule Ash.Actions.SideLoad do
     value
   end
 
-  def side_load(resource, record, keyword, api, prechecks_by_path, global_params \\ [])
+  def side_load(resource, record, keyword, api, global_params \\ [])
 
-  def side_load(_resource, [], _side_loads, _api, _prechecks_by_auth, _global_params) do
+  def side_load(_resource, [], _side_loads, _api, _global_params) do
     {:ok, []}
   end
 
-  def side_load(_resource, record_or_records, [], _api, _prechecks_by_path, _global_params),
+  def side_load(_resource, record_or_records, [], _api, _global_params),
     do: {:ok, record_or_records}
 
   def side_load(
@@ -59,24 +59,23 @@ defmodule Ash.Actions.SideLoad do
         %Ash.Actions.Paginator{results: results} = paginator,
         side_loads,
         api,
-        prechecks_by_path,
         global_params
       ) do
-    case side_load(resource, results, side_loads, api, prechecks_by_path, global_params) do
+    case side_load(resource, results, side_loads, api, global_params) do
       {:ok, side_loaded} -> {:ok, %{paginator | results: side_loaded}}
       {:error, error} -> {:error, error}
     end
   end
 
-  def side_load(resource, record, side_loads, api, prechecks_by_path, global_params)
+  def side_load(resource, record, side_loads, api, global_params)
       when not is_list(record) do
-    case side_load(resource, [record], side_loads, api, prechecks_by_path, global_params) do
+    case side_load(resource, [record], side_loads, api, global_params) do
       {:ok, [side_loaded]} -> {:ok, side_loaded}
       {:error, error} -> {:error, error}
     end
   end
 
-  def side_load(resource, records, side_loads, api, _prechecks_by_path, global_params) do
+  def side_load(resource, records, side_loads, api, global_params) do
     {side_load_type, config} = Ash.side_load_config(api)
     async? = side_load_type == :parallel
 

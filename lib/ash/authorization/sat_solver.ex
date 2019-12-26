@@ -1,92 +1,155 @@
 defmodule Ash.Authorization.SatSolver do
-  def solve(authorization_steps) do
-    authorization_steps_expression = compile_authorization_steps_expression(authorization_steps)
+  def solve(sets_of_authorization_steps, facts, negations \\ []) do
+    authorization_steps_expression =
+      Enum.reduce(sets_of_authorization_steps, nil, fn authorization_steps, acc ->
+        case acc do
+          nil ->
+            compile_authorization_steps_expression(authorization_steps, facts)
 
-    {bindings, expression} = extract_bindings(authorization_steps_expression)
+          expr ->
+            {:and, expr, compile_authorization_steps_expression(authorization_steps, facts)}
+        end
+      end)
+
+    facts_expression = facts_to_statement(facts)
+
+    negations =
+      Enum.reduce(negations, nil, fn negation, expr ->
+        negation_statement = facts_to_statement(negation)
+
+        if expr do
+          {:and, expr, {:not, negation_statement}}
+        else
+          {:not, negation_statement}
+        end
+      end)
+
+    authorization_steps_with_facts =
+      if facts_expression do
+        {:and, facts_expression, authorization_steps_expression}
+      else
+        authorization_steps_expression
+      end
+
+    full_expression =
+      if negations do
+        {:and, authorization_steps_with_facts, negations}
+      else
+        authorization_steps_with_facts
+      end
+
+    {bindings, expression} = extract_bindings(full_expression)
 
     expression
     |> to_conjunctive_normal_form()
     |> lift_clauses()
     |> negations_to_negative_numbers()
-    |> Picosat.solve()
+    |> picosat_solve()
     |> solutions_to_predicate_values(bindings)
   end
 
-  defp solutions_to_predicate_values({:ok, solution}, bindings) do
-    Enum.reduce(solution, %{}, fn var, state ->
-      default_value_state = %{
-        require_true: [],
-        require_false: []
-      }
+  defp picosat_solve(equation) do
+    Picosat.solve(equation)
+  end
 
-      bindings
-      |> Map.get(abs(var))
-      |> Enum.reduce(state, fn {key_or_relationship, filter}, state ->
-        state
-        |> Map.put_new(key_or_relationship, default_value_state)
-        |> Map.update!(key_or_relationship, fn filter_state ->
-          key =
-            if var < 0 do
-              :require_true
-            else
-              :require_false
-            end
+  defp facts_to_statement(facts) do
+    Enum.reduce(facts, nil, fn {fact, true?}, expr ->
+      expr_component =
+        if true? do
+          fact
+        else
+          {:not, fact}
+        end
 
-          Map.update!(filter_state, key, fn current_filters_for_key ->
-            [filter | current_filters_for_key]
-          end)
-        end)
-      end)
+      if expr do
+        {:and, expr, expr_component}
+      else
+        expr_component
+      end
     end)
+  end
 
-    # format this in a queryable way? What to do here? PTFO, thats what
+  defp solutions_to_predicate_values({:ok, solution}, bindings) do
+    scenario =
+      Enum.reduce(solution, %{true: [], false: []}, fn var, state ->
+        fact = Map.get(bindings, abs(var))
 
-    # Enum.reduce(solution, %{}, fn solution, acc ->
-    #   filter = Map.get(bindings, abs(solution))
+        Map.put(state, fact, var > 0)
+      end)
 
-    #   Enum.reduce(filter, acc, fn {key, value}, acc ->
-    #     Map.update(acc, key, [{required_value, value}], fn statements ->
-    #       Keyword.update(statements, required_value, [value], fn existing_values ->
-    #         [value | existing_values]
-    #       end)
-    #     end)
-    #   end)
-    # end)
+    {:ok, scenario}
   end
 
   defp solutions_to_predicate_values({:error, error}, _), do: {:error, error}
 
   # Is it really this easy
-  defp compile_authorization_steps_expression([{:authorize_if, clause}]) do
-    clause
+  defp compile_authorization_steps_expression([{:authorize_if, clause}], facts) do
+    case Map.fetch(facts, clause) do
+      {:ok, true} -> true
+      {:ok, false} -> false
+      :error -> clause
+    end
   end
 
-  defp compile_authorization_steps_expression([{:authorize_if, clause} | rest]) do
-    {:or, clause, compile_authorization_steps_expression(rest)}
+  defp compile_authorization_steps_expression([{:authorize_if, clause} | rest], facts) do
+    case Map.fetch(facts, clause) do
+      {:ok, true} ->
+        true
+
+      {:ok, false} ->
+        compile_authorization_steps_expression(rest, facts)
+
+      :error ->
+        {:or, clause, compile_authorization_steps_expression(rest, facts)}
+    end
   end
 
-  defp compile_authorization_steps_expression([{:authorize_unless, clause}]) do
-    {:not, clause}
+  defp compile_authorization_steps_expression([{:authorize_unless, clause}], facts) do
+    case Map.fetch(facts, clause) do
+      {:ok, true} -> false
+      {:ok, false} -> true
+      :error -> {:not, clause}
+    end
   end
 
-  defp compile_authorization_steps_expression([{:authorize_unless, clause} | rest]) do
-    {:or, {:not, clause}, compile_authorization_steps_expression(rest)}
+  defp compile_authorization_steps_expression([{:authorize_unless, clause} | rest], facts) do
+    case Map.fetch(facts, clause) do
+      {:ok, true} -> compile_authorization_steps_expression(rest, facts)
+      {:ok, false} -> true
+      :error -> {:or, {:not, clause}, compile_authorization_steps_expression(rest, facts)}
+    end
   end
 
-  defp compile_authorization_steps_expression([{:forbid_if, clause}]) do
-    {:not, clause}
+  defp compile_authorization_steps_expression([{:forbid_if, clause}], facts) do
+    case Map.fetch(facts, clause) do
+      {:ok, true} -> false
+      {:ok, false} -> true
+      :error -> {:not, clause}
+    end
   end
 
-  defp compile_authorization_steps_expression([{:forbid_if, clause} | rest]) do
-    {:and, {:not, clause}, compile_authorization_steps_expression(rest)}
+  defp compile_authorization_steps_expression([{:forbid_if, clause} | rest], facts) do
+    case Map.fetch(facts, clause) do
+      {:ok, true} -> false
+      {:ok, false} -> compile_authorization_steps_expression(rest, facts)
+      :error -> {:and, {:not, clause}, compile_authorization_steps_expression(rest, facts)}
+    end
   end
 
-  defp compile_authorization_steps_expression([{:forbid_unless, clause}]) do
-    clause
+  defp compile_authorization_steps_expression([{:forbid_unless, clause}], facts) do
+    case Map.fetch(facts, clause) do
+      {:ok, true} -> true
+      {:ok, false} -> false
+      :error -> clause
+    end
   end
 
-  defp compile_authorization_steps_expression([{:forbid_unless, clause} | rest]) do
-    {:and, clause, compile_authorization_steps_expression(rest)}
+  defp compile_authorization_steps_expression([{:forbid_unless, clause} | rest], facts) do
+    case Map.fetch(facts, clause) do
+      {:ok, true} -> compile_authorization_steps_expression(rest, facts)
+      {:ok, false} -> false
+      :error -> {:and, clause, compile_authorization_steps_expression(rest, facts)}
+    end
   end
 
   defp extract_bindings(expr, bindings \\ %{current: 1})
@@ -105,12 +168,23 @@ defmodule Ash.Authorization.SatSolver do
   end
 
   defp extract_bindings(value, %{current: current} = bindings) do
-    new_bindings =
-      bindings
-      |> Map.put(:current, current + 1)
-      |> Map.put(current, value)
+    current_binding =
+      Enum.find(bindings, fn {key, binding_value} ->
+        key != :current && binding_value == value
+      end)
 
-    {new_bindings, current}
+    case current_binding do
+      nil ->
+        new_bindings =
+          bindings
+          |> Map.put(:current, current + 1)
+          |> Map.put(current, value)
+
+        {new_bindings, current}
+
+      {binding, _} ->
+        {bindings, binding}
+    end
   end
 
   # A helper function for formatting to the same output we'd give to picosat
@@ -127,17 +201,31 @@ defmodule Ash.Authorization.SatSolver do
   end
 
   defp negations_to_negative_numbers(clauses) do
-    Enum.map(clauses, fn clause ->
-      if is_integer(clause) do
-        [clause]
-      else
-        Enum.map(clause, fn
-          {:not, var} -> -var
-          var -> var
-        end)
+    Enum.map(
+      clauses,
+      fn
+        {:not, var} when is_integer(var) ->
+          [negate_var(var)]
+
+        var when is_integer(var) ->
+          [var]
+
+        clause ->
+          Enum.map(clause, fn
+            {:not, var} -> negate_var(var)
+            var -> var
+          end)
       end
-    end)
+    )
   end
+
+  defp negate_var(var, multiplier \\ -1)
+
+  defp negate_var({:not, value}, multiplier) do
+    negate_var(value, multiplier * -1)
+  end
+
+  defp negate_var(value, multiplier), do: value * multiplier
 
   defp format_clause(clause) do
     Enum.map_join(clause, " ", fn
@@ -146,45 +234,26 @@ defmodule Ash.Authorization.SatSolver do
     end)
   end
 
-  defp lift_clauses({:and, {:and, _, _} = left, {:and, _, _} = right}) do
-    lift_clauses(left) ++ lift_clauses(right)
-  end
+  # {:and, {:or, 1, 2}, {:and, {:or, 3, 4}, {:or, 5, 6}}}
 
-  defp lift_clauses({:and, {:and, _, _} = left, right}) do
-    [[lift_clauses(left)]] ++ lift_clauses(right)
-  end
+  # [[1, 2], [3]]
 
-  defp lift_clauses({:and, left, {:and, _, _} = right}) do
-    [[lift_clauses(right)]] ++ lift_clauses(left)
-  end
-
+  # TODO: Is this so simple?
   defp lift_clauses({:and, left, right}) do
-    [lift_clauses(left), lift_clauses(right)]
-  end
-
-  defp lift_clauses({:or, {:or, _, _} = left, {:or, _, _} = right}) do
     lift_clauses(left) ++ lift_clauses(right)
-  end
-
-  defp lift_clauses({:or, {:or, _, _} = left, right}) do
-    [right | lift_clauses(left)]
-  end
-
-  defp lift_clauses({:or, left, {:or, _, _} = right}) do
-    [left | lift_clauses(right)]
   end
 
   defp lift_clauses({:or, left, right}) do
-    [left, right]
+    [lift_or_clauses(left) ++ lift_or_clauses(right)]
   end
 
-  defp lift_clauses({:not, var}) do
-    [{:not, var}]
+  defp lift_clauses(value), do: [[value]]
+
+  defp lift_or_clauses({:or, left, right}) do
+    lift_or_clauses(left) ++ lift_or_clauses(right)
   end
 
-  defp lift_clauses(var) do
-    [var]
-  end
+  defp lift_or_clauses(value), do: [value]
 
   defp to_conjunctive_normal_form(expression) do
     expression

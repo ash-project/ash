@@ -6,6 +6,7 @@ defmodule Ash.Filter do
     attributes: %{},
     relationships: %{},
     authorizations: [],
+    path: [],
     errors: []
   ]
 
@@ -17,6 +18,7 @@ defmodule Ash.Filter do
           not: %__MODULE__{} | nil,
           attributes: Keyword.t(),
           relationships: Keyword.t(),
+          path: list(atom),
           errors: list(String.t()),
           authorizations: list(Ash.Authorization.Request.t())
         }
@@ -30,22 +32,82 @@ defmodule Ash.Filter do
     or: Ash.Filter.Or
   }
 
-  @spec parse(Ash.resource(), Keyword.t(), rules :: list(term)) :: t()
-  def parse(resource, filter, authorization_steps \\ nil) do
-    authorization_steps =
-      authorization_steps || Ash.primary_action(resource, :read).authorization_steps
+  @spec parse(Ash.resource(), Keyword.t(), relationship_path :: list(atom)) :: t()
+  def parse(resource, filter, path \\ []) do
+    authorization_steps = Ash.primary_action(resource, :read).authorization_steps
 
-    filter
-    |> do_parse(%Ash.Filter{resource: resource})
-    |> lift_ors()
-    |> add_not_filter_info()
-    |> add_authorization(
+    parsed_filter =
+      filter
+      |> do_parse(%Ash.Filter{resource: resource, path: path})
+      |> lift_ors()
+      |> add_not_filter_info()
+
+    add_authorization(
+      parsed_filter,
       Ash.Authorization.Request.new(
         resource: resource,
         authorization_steps: authorization_steps,
-        filter: filter
+        filter: parsed_filter,
+        action_type: :read,
+        relationship: path
       )
     )
+  end
+
+  @doc "Returns true if the second argument is a strict subset (always returns the same or less data) as the first"
+  def strict_subset?(%{not: nil, ors: [], relationships: rels, attributes: attrs}, %{
+        not: nil,
+        ors: [],
+        relationships: rels,
+        attributes: attrs
+      })
+      when attrs == %{} and rels == %{} do
+    true
+  end
+
+  def strict_subset?(_, %{not: nil, ors: [], relationships: rels, attributes: attrs})
+      when attrs == %{} and rels == %{} do
+  end
+
+  def contains?(nil, nil), do: true
+
+  def contains?(_, nil), do: false
+
+  def contains?(filter, candidate) do
+    unless filter.ors in [[], nil], do: raise("Can't do ors contains yet")
+    unless filter.not in [[], nil], do: raise("Can't do not contains yet")
+    unless candidate.ors in [[], nil], do: raise("Can't do ors contains yet")
+    unless candidate.not in [[], nil], do: raise("Can't do not contains yet")
+
+    attributes_contained? =
+      Enum.all?(filter.attributes, fn {attr, predicate} ->
+        contains_attribute?(candidate, attr, predicate)
+      end)
+
+    relationships_contained? =
+      Enum.all?(filter.relationships, fn {relationship, relationship_filter} ->
+        contains_relationship?(candidate, relationship, relationship_filter)
+      end)
+
+    # TODO: put these behind functions to optimize them.
+    attributes_contained? && relationships_contained?
+  end
+
+  defp contains_relationship?(filter, relationship, candidate_relationship_filter) do
+    case filter.relationships do
+      %{^relationship => relationship_filter} ->
+        contains?(relationship_filter, candidate_relationship_filter)
+
+      _ ->
+        false
+    end
+  end
+
+  defp contains_attribute?(filter, attr, candidate_predicate) do
+    case filter.attributes do
+      %{^attr => predicate} -> predicate_contains?(predicate, candidate_predicate)
+      _ -> false
+    end
   end
 
   defp add_not_filter_info(filter) do
@@ -58,6 +120,10 @@ defmodule Ash.Filter do
         |> add_authorization(not_filter.authorizations)
         |> add_error(not_filter.errors)
     end
+  end
+
+  def predicate_contains?(%left_struct{} = left, right) do
+    left_struct.contains?(left, right)
   end
 
   def add_to_filter(filter, additions) do
@@ -235,7 +301,7 @@ defmodule Ash.Filter do
 
     case provided_filter do
       {:ok, provided_filter} ->
-        related_filter = parse(destination, provided_filter)
+        related_filter = parse(destination, provided_filter, [name | filter.path])
 
         new_relationships =
           Map.update(relationships, name, related_filter, &Merge.merge(&1, related_filter))
@@ -276,7 +342,7 @@ defmodule Ash.Filter do
     end
   end
 
-  defp add_authorization(%{authorizations: authorizations} = filter, authorizations)
+  defp add_authorization(filter, authorizations)
        when is_list(authorizations),
        do: %{filter | authorizations: filter.authorizations ++ authorizations}
 

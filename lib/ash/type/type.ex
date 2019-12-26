@@ -18,12 +18,16 @@ defmodule Ash.Type do
   @callback describe() :: String.t()
 
   @builtins [
-    string: [ecto_type: :string, filters: [:eq, :in], sortable?: true],
-    integer: [ecto_type: :integer, filters: [:eq, :in], sortable?: true],
-    int: [ecto_type: :integer, filters: [:eq, :in], sortable?: true],
-    boolean: [ecto_type: :boolean, filters: [:eq], sortable?: true],
-    uuid: [ecto_type: :binary_id, filters: [:eq, :in], sortable?: true],
-    utc_datetime: [ecto_type: :utc_datetime, filters: [:eq, :in], sortable?: true]
+    string: [ecto_type: :string, filters: [:eq, :in, :not_eq, :not_in], sortable?: true],
+    integer: [ecto_type: :integer, filters: [:eq, :in, :not_eq, :not_in], sortable?: true],
+    int: [ecto_type: :integer, filters: [:eq, :in, :not_eq, :not_in], sortable?: true],
+    boolean: [ecto_type: :boolean, filters: [:eq, :not_eq], sortable?: true],
+    uuid: [ecto_type: :binary_id, filters: [:eq, :in, :not_eq, :not_in], sortable?: true],
+    utc_datetime: [
+      ecto_type: :utc_datetime,
+      filters: [:eq, :in, :not_eq, :not_in],
+      sortable?: true
+    ]
   ]
 
   @builtin_names Keyword.keys(@builtins)
