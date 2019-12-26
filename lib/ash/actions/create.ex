@@ -32,7 +32,8 @@ defmodule Ash.Actions.Create do
         Ash.Authorization.Request.new(
           resource: resource,
           authorization_steps: action.authorization_steps,
-          changeset: changeset
+          changeset: changeset,
+          source: "create request"
         )
 
       Authorizer.authorize(user, %{}, [auth_request])
@@ -96,10 +97,21 @@ defmodule Ash.Actions.Create do
         end
       end)
 
+    changeset =
+      resource
+      |> struct()
+      |> Ecto.Changeset.cast(attributes_with_defaults, allowed_keys)
+      |> Map.put(:action, :create)
+
     resource
-    |> struct()
-    |> Ecto.Changeset.cast(attributes_with_defaults, allowed_keys)
-    |> Map.put(:action, :create)
+    |> Ash.attributes()
+    |> Enum.reject(&Map.get(&1, :allow_nil?))
+    |> Enum.reduce(changeset, fn attr, changeset ->
+      case Ecto.Changeset.get_field(changeset, attr.name) do
+        nil -> Ecto.Changeset.add_error(changeset, attr.name, "must not be nil")
+        _value -> changeset
+      end
+    end)
   end
 
   defp default(%{default: {:constant, value}}), do: value

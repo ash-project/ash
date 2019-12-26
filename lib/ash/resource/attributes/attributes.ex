@@ -36,6 +36,15 @@ defmodule Ash.Resource.Attributes do
           path: [:attributes, :attribute]
       end
 
+      unless is_atom(type) do
+        raise Ash.Error.ResourceDslError,
+          message:
+            "Attribute type must be a built in type or a type module, got: #{inspect(type)}",
+          path: [:attributes, :attribute, name]
+      end
+
+      type = Ash.Type.get_type(type)
+
       unless type in Ash.Type.builtins() or Ash.Type.ash_type?(type) do
         raise Ash.Error.ResourceDslError,
           message:

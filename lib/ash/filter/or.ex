@@ -22,10 +22,10 @@ defmodule Ash.Filter.Or do
     new(resource, attr_type, [left, right])
   end
 
-  def contains?(%{left: left, right: right}, predicate) do
-    Ash.Filter.predicate_contains?(left, predicate) and
-      Ash.Filter.predicate_contains?(right, predicate)
+  def strict_subset_of?(attr, %{left: left, right: right}, predicate) do
+    Ash.Filter.predicate_strict_subset_of?(attr, left, predicate) and
+      Ash.Filter.predicate_strict_subset_of?(attr, right, predicate)
   end
 
-  def contains?(_, _), do: false
+  def strict_subset_of?(_, _, _), do: false
 end

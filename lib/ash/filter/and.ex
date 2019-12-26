@@ -26,10 +26,10 @@ defmodule Ash.Filter.And do
     %__MODULE__{left: left, right: right}
   end
 
-  def contains?(%{left: left, right: right}, predicate) do
-    Ash.Filter.predicate_contains?(left, predicate) or
-      Ash.Filter.predicate_contains?(right, predicate)
+  def strict_subset_of?(attribute, %{left: left, right: right}, predicate) do
+    Ash.Filter.predicate_strict_subset_of?(attribute, left, predicate) or
+      Ash.Filter.predicate_strict_subset_of?(attribute, right, predicate)
   end
 
-  def contains?(_, _), do: false
+  def strict_subset_of?(_, _), do: false
 end

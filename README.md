@@ -129,3 +129,6 @@ end
   contain *part* of the filter, requiring that the whole thing is covered by all
   of the `and`s at least
 * add `init` to checks, and error check their construction when building the DSL
+* Support filtering side loads. Especially useful in authorization code?
+* Booleans need to not support `nil` values. That has to be a different type.
+  boolean filter/authorization logic is greatly enhanced if that is the case.

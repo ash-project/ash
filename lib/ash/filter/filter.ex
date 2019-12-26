@@ -49,54 +49,43 @@ defmodule Ash.Filter do
         authorization_steps: authorization_steps,
         filter: parsed_filter,
         action_type: :read,
-        relationship: path
+        relationship: path,
+        source: "#{Enum.join(path, ".")} filter"
       )
     )
   end
 
-  @doc "Returns true if the second argument is a strict subset (always returns the same or less data) as the first"
-  def strict_subset?(%{not: nil, ors: [], relationships: rels, attributes: attrs}, %{
-        not: nil,
-        ors: [],
-        relationships: rels,
-        attributes: attrs
-      })
-      when attrs == %{} and rels == %{} do
-    true
-  end
+  @doc """
+  Returns true if the second argument is a strict subset (always returns the same or less data) of the first
+  """
+  def strict_subset_of?(nil, nil), do: true
 
-  def strict_subset?(_, %{not: nil, ors: [], relationships: rels, attributes: attrs})
-      when attrs == %{} and rels == %{} do
-  end
+  def strict_subset_of?(_, nil), do: false
 
-  def contains?(nil, nil), do: true
-
-  def contains?(_, nil), do: false
-
-  def contains?(filter, candidate) do
+  def strict_subset_of?(filter, candidate) do
     unless filter.ors in [[], nil], do: raise("Can't do ors contains yet")
     unless filter.not in [[], nil], do: raise("Can't do not contains yet")
     unless candidate.ors in [[], nil], do: raise("Can't do ors contains yet")
     unless candidate.not in [[], nil], do: raise("Can't do not contains yet")
 
     attributes_contained? =
-      Enum.all?(filter.attributes, fn {attr, predicate} ->
+      Enum.any?(filter.attributes, fn {attr, predicate} ->
         contains_attribute?(candidate, attr, predicate)
       end)
 
     relationships_contained? =
-      Enum.all?(filter.relationships, fn {relationship, relationship_filter} ->
+      Enum.any?(filter.relationships, fn {relationship, relationship_filter} ->
         contains_relationship?(candidate, relationship, relationship_filter)
       end)
 
     # TODO: put these behind functions to optimize them.
-    attributes_contained? && relationships_contained?
+    attributes_contained? or relationships_contained?
   end
 
   defp contains_relationship?(filter, relationship, candidate_relationship_filter) do
     case filter.relationships do
       %{^relationship => relationship_filter} ->
-        contains?(relationship_filter, candidate_relationship_filter)
+        strict_subset_of?(relationship_filter, candidate_relationship_filter)
 
       _ ->
         false
@@ -105,8 +94,13 @@ defmodule Ash.Filter do
 
   defp contains_attribute?(filter, attr, candidate_predicate) do
     case filter.attributes do
-      %{^attr => predicate} -> predicate_contains?(predicate, candidate_predicate)
-      _ -> false
+      %{^attr => predicate} ->
+        attribute = Ash.attribute(filter.resource, attr)
+
+        predicate_strict_subset_of?(attribute, predicate, candidate_predicate)
+
+      _ ->
+        false
     end
   end
 
@@ -122,8 +116,8 @@ defmodule Ash.Filter do
     end
   end
 
-  def predicate_contains?(%left_struct{} = left, right) do
-    left_struct.contains?(left, right)
+  def predicate_strict_subset_of?(attribute, %left_struct{} = left, right) do
+    left_struct.strict_subset_of?(attribute, left, right)
   end
 
   def add_to_filter(filter, additions) do

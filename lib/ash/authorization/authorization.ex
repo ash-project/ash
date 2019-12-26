@@ -11,12 +11,6 @@ defmodule Ash.Authorization do
 
   @type request :: Ash.Authorization.Request.t()
 
-  # Required sideloads before checks are run
-  # @type side_load_instruction :: {:side_load, Ash.side_load()}
-  # The result for this check is predetermined for all records
-  # that could be passed in from this request.
-  @type decision :: {:decision, boolean}
-  # @type precheck_context :: {:context, %{optional(atom) => term}}
-  # @type precheck_result :: side_load_instruction() | decision() | precheck_context()
-  @type precheck_result :: decision()
+  @type side_load :: {:side_load, Keyword.t()}
+  @type prepare_instruction :: side_load
 end

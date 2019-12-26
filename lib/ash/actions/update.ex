@@ -38,7 +38,8 @@ defmodule Ash.Actions.Update do
         Ash.Authorization.Request.new(
           resource: resource,
           authorization_steps: action.authorization_steps,
-          changeset: changeset
+          changeset: changeset,
+          source: "update action"
         )
 
       Authorizer.authorize(user, %{}, [auth_request])
@@ -88,8 +89,22 @@ defmodule Ash.Actions.Update do
       |> Ash.attributes()
       |> Enum.map(& &1.name)
 
-    record
-    |> Ecto.Changeset.cast(attributes, allowed_keys)
-    |> Map.put(:action, :update)
+    changeset =
+      record
+      |> Ecto.Changeset.cast(attributes, allowed_keys)
+      |> Map.put(:action, :update)
+
+    resource
+    |> Ash.attributes()
+    |> Enum.reject(&Map.get(&1, :allow_nil?))
+    |> Enum.reduce(changeset, fn attr, changeset ->
+      case Ecto.Changeset.fetch_change(changeset, attr.name) do
+        {:ok, nil} ->
+          Ecto.Changeset.add_error(changeset, attr.name, "must not be nil")
+
+        _ ->
+          changeset
+      end
+    end)
   end
 end

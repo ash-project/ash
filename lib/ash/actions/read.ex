@@ -8,11 +8,13 @@ defmodule Ash.Actions.Read do
     side_loads = Keyword.get(params, :side_load, [])
     page_params = Keyword.get(params, :page, [])
 
+    # TODO: Going to have to figure out side loads. I don't
+    # think that they can actually reasonably share facts :/
+
     with %Ash.Filter{errors: [], authorizations: filter_auths} = filter <-
            Ash.Filter.parse(resource, filter),
          {:ok, side_load_auths} <- SideLoad.process(resource, side_loads, filter),
-         {:auth, :authorized} <-
-           {:auth, do_authorize(params, side_load_auths ++ filter_auths)},
+         :ok <- do_authorize(params, side_load_auths ++ filter_auths),
          query <- Ash.DataLayer.resource_to_query(resource),
          {:ok, sort} <- Ash.Actions.Sort.process(resource, sort),
          {:ok, sorted_query} <- Ash.DataLayer.sort(query, sort, resource),
@@ -26,16 +28,23 @@ defmodule Ash.Actions.Read do
       SideLoad.side_load(resource, paginator, side_loads, api)
     else
       %Ash.Filter{errors: errors} -> {:error, errors}
-      {:auth, :forbidden} -> {:error, "forbidden"}
       {:error, error} -> {:error, error}
     end
   end
 
   defp do_authorize(params, auths) do
     if params[:authorization] do
+      strict_access =
+        case Keyword.fetch(params[:authorization], :strict_access?) do
+          {:ok, value} -> value
+          :error -> true
+        end
+
+      auths = Enum.map(auths, fn auth -> %{auth | strict_access?: strict_access} end)
+
       Authorizer.authorize(params[:authorization][:user], %{}, auths)
     else
-      :authorized
+      :ok
     end
   end
 end

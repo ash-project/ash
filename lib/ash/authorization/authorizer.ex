@@ -22,29 +22,30 @@ defmodule Ash.Authorization.Authorizer do
 
     authorization_steps = authorization_steps_with_relationship_path(requests_by_relationship)
 
-    {facts, instructions} = strict_check_facts(user, requests)
+    facts = strict_check_facts(user, requests)
 
-    solve(authorization_steps, facts, instructions)
+    solve(authorization_steps, facts, facts)
   end
 
-  defp solve(authorization_steps, facts, instructions) do
+  defp solve(authorization_steps, facts, strict_check_facts) do
     case SatSolver.solve(authorization_steps, facts) do
       {:error, :unsatisfiable} ->
-        :forbidden
+        {:error,
+         Ash.Error.Forbidden.exception(
+           authorization_steps: authorization_steps,
+           facts: facts,
+           strict_check_facts: strict_check_facts
+         )}
 
       {:ok, scenario} ->
-        case get_all_scenarios(authorization_steps, scenario, facts, instructions) do
-          {:ok, []} ->
-            :forbidden
+        scenarios = get_all_scenarios(authorization_steps, scenario, facts)
 
-          {:ok, scenarios} ->
-            irrelevant_clauses = irrelevant_clauses(scenarios)
+        irrelevant_clauses = irrelevant_clauses(scenarios)
 
-            scenarios
-            |> Enum.map(&Map.drop(&1, irrelevant_clauses))
-            |> Enum.uniq()
-            |> verify_scenarios(facts, instructions)
-        end
+        scenarios
+        |> Enum.map(&Map.drop(&1, irrelevant_clauses))
+        |> Enum.uniq()
+        |> verify_scenarios(authorization_steps, facts, strict_check_facts)
     end
   end
 
@@ -72,15 +73,14 @@ defmodule Ash.Authorization.Authorizer do
          authorization_steps,
          scenario,
          facts,
-         instructions,
          negations \\ [],
-         scenarios \\ nil
+         scenarios \\ []
        ) do
-    scenarios = scenarios || [scenario]
+    scenarios = [scenario | scenarios]
 
     case scenario_is_reality(scenario, facts) do
       :reality ->
-        {:ok, scenarios}
+        scenarios
 
       :not_reality ->
         raise "SAT SOLVER ERROR"
@@ -94,26 +94,38 @@ defmodule Ash.Authorization.Authorizer do
               authorization_steps,
               scenario_after_negation,
               facts,
-              instructions,
               negations_assuming_scenario_false,
               scenarios
             )
 
           {:error, :unsatisfiable} ->
-            {:ok, [scenario | scenarios]}
+            scenarios
         end
     end
   end
 
-  defp verify_scenarios(scenarios, facts, _instructions) do
+  defp verify_scenarios(scenarios, authorization_steps, facts, strict_check_facts) do
     if any_scenarios_reality?(scenarios, facts) do
-      :authorized
+      :ok
     else
-      # TODO: Start gathering facts. If no facts remain to be gathered,
-      # and no scenario is reality, then we are forbidden.
-      # Use instructions from strict checks here.
-      :forbidden
+      case fetch_facts(scenarios, facts) do
+        :all_facts_fetched ->
+          {:error,
+           Ash.Error.Forbidden.exception(
+             scenarios: scenarios,
+             authorization_steps: authorization_steps,
+             facts: facts,
+             strict_check_facts: strict_check_facts
+           )}
+
+        {:ok, new_facts} ->
+          solve(authorization_steps, new_facts, strict_check_facts)
+      end
     end
+  end
+
+  defp fetch_facts(scenarios, facts) do
+    Ash.Authorization.FactFinder.find_facts(scenarios, facts)
   end
 
   defp any_scenarios_reality?(scenarios, facts) do
@@ -123,17 +135,20 @@ defmodule Ash.Authorization.Authorizer do
   end
 
   defp scenario_is_reality(scenario, facts) do
-    Enum.reduce_while(scenario, :reality, fn {fact, requirement}, status ->
+    scenario
+    |> Map.drop([true, false])
+    |> Enum.reduce_while(:reality, fn {fact, requirement}, status ->
       case Map.fetch(facts, fact) do
         {:ok, value} ->
-          if value == requirement do
-            if status == :reality do
-              {:cont, :reality}
-            else
+          cond do
+            value == requirement ->
               {:cont, status}
-            end
-          else
-            {:halt, :not_reality}
+
+            value == :unknowable ->
+              {:cont, :maybe}
+
+            true ->
+              {:halt, :not_reality}
           end
 
         :error ->
@@ -143,10 +158,8 @@ defmodule Ash.Authorization.Authorizer do
   end
 
   defp strict_check_facts(user, requests) do
-    Enum.reduce(requests, {%{true: true, false: false}, []}, fn request, {facts, instructions} ->
-      {new_facts, new_instructions} = Ash.Authorization.Checker.strict_check(user, request, facts)
-
-      {new_facts, instructions ++ new_instructions}
+    Enum.reduce(requests, %{true: true, false: false}, fn request, facts ->
+      Ash.Authorization.Checker.strict_check(user, request, facts)
     end)
   end
 

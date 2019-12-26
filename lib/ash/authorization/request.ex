@@ -5,7 +5,8 @@ defmodule Ash.Authorization.Request do
     :filter,
     :action_type,
     :relationship,
-    :strict_access?
+    :strict_access?,
+    :source
   ]
 
   @type t :: %__MODULE__{
@@ -14,7 +15,8 @@ defmodule Ash.Authorization.Request do
           authorization_steps: list(term),
           filter: Ash.Filter.t(),
           relationship: list(atom),
-          strict_access?: boolean
+          strict_access?: boolean,
+          source: String.t()
         }
 
   def new(opts) do

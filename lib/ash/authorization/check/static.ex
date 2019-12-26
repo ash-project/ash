@@ -16,6 +16,6 @@ defmodule Ash.Authorization.Check.Static do
 
   @impl true
   def strict_check(_user, _request, options) do
-    [decision: options[:result]]
+    {:ok, options[:result]}
   end
 end

@@ -11,13 +11,33 @@ defmodule Ash.Filter.NotEq do
     end
   end
 
-  def contains?(%__MODULE__{value: value}, %__MODULE__{value: candidate}) do
-    value != candidate
+  def strict_subset_of?(
+        %{type: :boolean, allow_nil?: false},
+        %__MODULE__{value: true},
+        %Ash.Filter.NotEq{value: false}
+      ) do
+    true
   end
 
-  def contains?(%__MODULE__{value: value}, %Ash.Filter.In{values: candidate_values}) do
+  def strict_subset_of?(
+        %{type: :boolean, allow_nil?: false},
+        %__MODULE__{value: false},
+        %Ash.Filter.NotEq{value: true}
+      ) do
+    true
+  end
+
+  def strict_subset_of?(_attr, %__MODULE__{value: value}, %__MODULE__{value: candidate}) do
+    value == candidate
+  end
+
+  def strict_subset_of?(_attr, %__MODULE__{value: value}, %Ash.Filter.Eq{value: other_value}) do
+    value != other_value
+  end
+
+  def strict_subset_of?(_attr, %__MODULE__{value: value}, %Ash.Filter.In{values: candidate_values}) do
     value not in candidate_values
   end
 
-  def contains?(_, _), do: false
+  def strict_subset_of?(_, _, _), do: false
 end

@@ -28,7 +28,8 @@ defmodule Ash.Actions.Destroy do
         Ash.Authorization.Request.new(
           resource: resource,
           authorization_steps: action.authorization_steps,
-          destroy: record
+          destroy: record,
+          source: "destroy request"
         )
 
       Authorizer.authorize(user, %{}, [auth_request])

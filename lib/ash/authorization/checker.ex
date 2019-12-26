@@ -1,37 +1,44 @@
 defmodule Ash.Authorization.Checker do
   def strict_check(user, request, facts) do
-    Enum.reduce(
-      request.authorization_steps,
-      {facts, []},
-      fn {
-           _step_type,
-           condition
-         },
-         {facts, instructions} ->
-        case Map.fetch(facts, {request.relationship, condition}) do
-          {:ok, _boolean_result} ->
-            {facts, instructions}
+    request.authorization_steps
+    |> Enum.reduce(facts, fn {_step, condition}, facts ->
+      case Map.fetch(facts, {request.relationship, condition}) do
+        {:ok, _boolean_result} ->
+          facts
 
-          :error ->
-            case do_strict_check(condition, user, request) do
-              {:unknown, new_instructions} ->
-                {facts, instructions ++ new_instructions}
+        :error ->
+          case do_strict_check(condition, user, request) do
+            :unknown ->
+              facts
 
-              {boolean, new_instructions} ->
-                {Map.put(facts, {request.relationship, condition}, boolean),
-                 instructions ++ new_instructions}
-            end
-        end
+            :unknowable ->
+              Map.put(facts, {request.relationship, condition}, :unknowable)
+
+            boolean ->
+              Map.put(facts, {request.relationship, condition}, boolean)
+          end
       end
-    )
+    end)
   end
 
   defp do_strict_check({module, opts}, user, request) do
-    strict_check_results = module.strict_check(user, request, opts)
+    case module.strict_check(user, request, opts) do
+      {:ok, boolean} when is_boolean(boolean) ->
+        boolean
 
-    case Keyword.fetch(strict_check_results, :decision) do
-      {:ok, boolean} -> {boolean, []}
-      :error -> {:unknown, []}
+      {:ok, :unknown} ->
+        cond do
+          request.strict_access? ->
+            # This means "we needed a fact that we have no way of getting"
+            # Because the fact was needed in the `strict_check` step
+            :unknowable
+
+          Ash.Authorization.Check.defines_check?(module) ->
+            :unknown
+
+          true ->
+            :unknowable
+        end
     end
   end
 end

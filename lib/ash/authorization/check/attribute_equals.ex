@@ -7,7 +7,7 @@ defmodule Ash.Authorization.Check.AttributeEquals do
 
   @impl true
   def describe(opts) do
-    "record.#{opts[:field]} == #{inspect(opts[:value])}"
+    "this_record.#{opts[:field]} == #{inspect(opts[:value])}"
   end
 
   @impl true
@@ -17,19 +17,21 @@ defmodule Ash.Authorization.Check.AttributeEquals do
 
     case Ash.Filter.parse(request.resource, [{field, eq: value}]) do
       %{errors: []} = parsed ->
-        cond do
-          Ash.Filter.contains?(parsed, request.filter) ->
-            [decision: true]
-
-          request.strict_access? ->
-            [decision: false]
-
-          true ->
-            []
+        if Ash.Filter.strict_subset_of?(parsed, request.filter) do
+          {:ok, true}
+        else
+          case Ash.Filter.parse(request.resource, [{field, not_eq: value}]) do
+            %{errors: []} = parsed ->
+              if Ash.Filter.strict_subset_of?(parsed, request.filter) do
+                {:ok, false}
+              else
+                {:ok, :unknown}
+              end
+          end
         end
 
       %{errors: errors} ->
-        [error: errors]
+        {:error, errors}
     end
   end
 end

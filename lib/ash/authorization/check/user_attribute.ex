@@ -12,6 +12,6 @@ defmodule Ash.Authorization.Check.UserAttribute do
 
   @impl true
   def strict_check(user, _request, options) do
-    [decision: Map.get(user, options[:field]) == options[:value]]
+    {:ok, Map.fetch(user, options[:field]) == {:ok, options[:value]}}
   end
 end

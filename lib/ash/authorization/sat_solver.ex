@@ -11,6 +11,15 @@ defmodule Ash.Authorization.SatSolver do
         end
       end)
 
+    facts =
+      Enum.reduce(facts, %{}, fn {key, value}, acc ->
+        if value == :unknowable do
+          acc
+        else
+          Map.put(acc, key, value)
+        end
+      end)
+
     facts_expression = facts_to_statement(facts)
 
     negations =
@@ -82,11 +91,11 @@ defmodule Ash.Authorization.SatSolver do
 
   defp solutions_to_predicate_values({:error, error}, _), do: {:error, error}
 
-  # Is it really this easy
   defp compile_authorization_steps_expression([{:authorize_if, clause}], facts) do
     case Map.fetch(facts, clause) do
       {:ok, true} -> true
       {:ok, false} -> false
+      {:ok, :unknowable} -> false
       :error -> clause
     end
   end
@@ -99,6 +108,9 @@ defmodule Ash.Authorization.SatSolver do
       {:ok, false} ->
         compile_authorization_steps_expression(rest, facts)
 
+      {:ok, :unknowable} ->
+        compile_authorization_steps_expression(rest, facts)
+
       :error ->
         {:or, clause, compile_authorization_steps_expression(rest, facts)}
     end
@@ -106,31 +118,56 @@ defmodule Ash.Authorization.SatSolver do
 
   defp compile_authorization_steps_expression([{:authorize_unless, clause}], facts) do
     case Map.fetch(facts, clause) do
-      {:ok, true} -> false
-      {:ok, false} -> true
-      :error -> {:not, clause}
+      {:ok, true} ->
+        false
+
+      {:ok, false} ->
+        true
+
+      {:ok, :unknowable} ->
+        false
+
+      :error ->
+        {:not, clause}
     end
   end
 
   defp compile_authorization_steps_expression([{:authorize_unless, clause} | rest], facts) do
     case Map.fetch(facts, clause) do
-      {:ok, true} -> compile_authorization_steps_expression(rest, facts)
-      {:ok, false} -> true
-      :error -> {:or, {:not, clause}, compile_authorization_steps_expression(rest, facts)}
+      {:ok, true} ->
+        compile_authorization_steps_expression(rest, facts)
+
+      {:ok, false} ->
+        true
+
+      {:ok, :unknowable} ->
+        compile_authorization_steps_expression(rest, facts)
+
+      :error ->
+        {:or, {:not, clause}, compile_authorization_steps_expression(rest, facts)}
     end
   end
 
   defp compile_authorization_steps_expression([{:forbid_if, clause}], facts) do
     case Map.fetch(facts, clause) do
-      {:ok, true} -> false
-      {:ok, false} -> true
-      :error -> {:not, clause}
+      {:ok, true} ->
+        false
+
+      {:ok, false} ->
+        true
+
+      {:ok, :unknowable} ->
+        false
+
+      :error ->
+        {:not, clause}
     end
   end
 
   defp compile_authorization_steps_expression([{:forbid_if, clause} | rest], facts) do
     case Map.fetch(facts, clause) do
       {:ok, true} -> false
+      {:ok, :unknowable} -> false
       {:ok, false} -> compile_authorization_steps_expression(rest, facts)
       :error -> {:and, {:not, clause}, compile_authorization_steps_expression(rest, facts)}
     end
@@ -140,6 +177,7 @@ defmodule Ash.Authorization.SatSolver do
     case Map.fetch(facts, clause) do
       {:ok, true} -> true
       {:ok, false} -> false
+      {:ok, :unknowable} -> false
       :error -> clause
     end
   end
@@ -148,6 +186,7 @@ defmodule Ash.Authorization.SatSolver do
     case Map.fetch(facts, clause) do
       {:ok, true} -> compile_authorization_steps_expression(rest, facts)
       {:ok, false} -> false
+      {:ok, :unknowable} -> false
       :error -> {:and, clause, compile_authorization_steps_expression(rest, facts)}
     end
   end

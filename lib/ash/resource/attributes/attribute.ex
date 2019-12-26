@@ -1,7 +1,7 @@
 defmodule Ash.Resource.Attributes.Attribute do
   @doc false
 
-  defstruct [:name, :type, :primary_key?, :default]
+  defstruct [:name, :type, :allow_nil?, :primary_key?, :default]
 
   @type t :: %__MODULE__{
           name: atom(),
@@ -13,6 +13,7 @@ defmodule Ash.Resource.Attributes.Attribute do
   @schema Ashton.schema(
             opts: [
               primary_key?: :boolean,
+              allow_nil?: :boolean,
               default: [
                 {:function, 0},
                 {:tuple, {:module, :atom}},
@@ -20,9 +21,14 @@ defmodule Ash.Resource.Attributes.Attribute do
               ]
             ],
             defaults: [
-              primary_key?: false
+              primary_key?: false,
+              allow_nil?: true
             ],
             describe: [
+              allow_nil?: """
+              Whether or not to allow `null` values. Ash can perform optimizations with this information, so if you do not
+              expect any null values, make sure to set this switch.
+              """,
               primary_key?:
                 "Whether this field is, or is part of, the primary key of a resource.",
               default:
@@ -41,6 +47,7 @@ defmodule Ash.Resource.Attributes.Attribute do
        %__MODULE__{
          name: name,
          type: type,
+         allow_nil?: opts[:allow_nil?],
          primary_key?: opts[:primary_key?],
          default: default
        }}

@@ -1,6 +1,10 @@
 defmodule Ash.Filter.In do
   defstruct [:values]
 
+  def new(resource, attr_type, [value]) do
+    Ash.Filter.Eq.new(resource, attr_type, value)
+  end
+
   def new(_resource, attr_type, values) do
     casted =
       values
@@ -28,13 +32,13 @@ defmodule Ash.Filter.In do
     end
   end
 
-  def contains?(%__MODULE__{values: values}, %__MODULE__{values: candidate_values}) do
+  def strict_subset_of?(_attr, %__MODULE__{values: values}, %__MODULE__{values: candidate_values}) do
     Enum.all?(candidate_values, fn candidate -> candidate in values end)
   end
 
-  def contains?(%__MODULE__{values: values}, %Ash.Filter.Eq{value: candidate}) do
+  def strict_subset_of?(_attr, %__MODULE__{values: values}, %Ash.Filter.Eq{value: candidate}) do
     candidate in values
   end
 
-  def contains?(_, _), do: false
+  def strict_subset_of?(_attr, _, _), do: false
 end

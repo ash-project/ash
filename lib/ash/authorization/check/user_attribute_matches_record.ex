@@ -7,7 +7,7 @@ defmodule Ash.Authorization.Check.UserAttributeMatchesRecord do
 
   @impl true
   def describe(opts) do
-    "user.#{opts[:user_field]} == record.#{opts[:record_field]}"
+    "user.#{opts[:user_field]} == this_record.#{opts[:record_field]}"
   end
 
   @impl true
@@ -17,19 +17,14 @@ defmodule Ash.Authorization.Check.UserAttributeMatchesRecord do
 
     case Ash.Filter.parse(request.resource, [{record_field, eq: Map.get(user, user_field)}]) do
       %{errors: []} = parsed ->
-        cond do
-          Ash.Filter.contains?(parsed, request.filter) ->
-            [decision: true]
-
-          request.strict_access? ->
-            [decision: false]
-
-          true ->
-            []
+        if Ash.Filter.strict_subset_of?(parsed, request.filter) do
+          {:ok, true}
+        else
+          {:ok, :unknown}
         end
 
       %{errors: errors} ->
-        [error: errors]
+        {:error, errors}
     end
   end
 end

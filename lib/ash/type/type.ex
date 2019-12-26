@@ -20,8 +20,8 @@ defmodule Ash.Type do
   @builtins [
     string: [ecto_type: :string, filters: [:eq, :in, :not_eq, :not_in], sortable?: true],
     integer: [ecto_type: :integer, filters: [:eq, :in, :not_eq, :not_in], sortable?: true],
-    int: [ecto_type: :integer, filters: [:eq, :in, :not_eq, :not_in], sortable?: true],
     boolean: [ecto_type: :boolean, filters: [:eq, :not_eq], sortable?: true],
+    int: [ecto_type: :integer, filters: [:eq, :in, :not_eq, :not_in], sortable?: true],
     uuid: [ecto_type: :binary_id, filters: [:eq, :in, :not_eq, :not_in], sortable?: true],
     utc_datetime: [
       ecto_type: :utc_datetime,
@@ -30,9 +30,19 @@ defmodule Ash.Type do
     ]
   ]
 
+  @short_names []
+
   @builtin_names Keyword.keys(@builtins)
 
   @type t :: module | atom
+
+  @spec get_type(atom | module) :: atom | module
+  def get_type(value) do
+    case Keyword.fetch(@short_names, value) do
+      {:ok, mod} -> mod
+      :error -> value
+    end
+  end
 
   @spec supports_filter?(t(), Ash.DataLayer.filter_type(), Ash.data_layer()) :: boolean
   def supports_filter?(type, filter_type, data_layer) when type in @builtin_names do
@@ -85,7 +95,7 @@ defmodule Ash.Type do
   def ash_type?(atom) when atom in @builtin_names, do: true
 
   def ash_type?(module) when is_atom(module) do
-    :erlang.function_exported(module, :__info__, 1) and ash_type_module?(module)
+    Code.ensure_compiled?(module) and ash_type_module?(module)
   end
 
   def ash_type?(_), do: false

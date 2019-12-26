@@ -6,8 +6,8 @@ defmodule Ash.Authorization.Check.RelatedToUserVia do
   end
 
   @impl true
-  def describe(relationship) do
-    "#{Enum.join(relationship, ".")} is the user"
+  def describe(opts) do
+    "#{Enum.join(opts[:relationship], ".")} is the user"
   end
 
   @impl true
@@ -20,20 +20,46 @@ defmodule Ash.Authorization.Check.RelatedToUserVia do
 
     case Ash.Filter.parse(request.resource, candidate_filter) do
       %{errors: []} = parsed ->
-        cond do
-          Ash.Filter.contains?(parsed, request.filter) ->
-            [decision: true]
-
-          request.strict_access? ->
-            [decision: false]
-
-          true ->
-            []
+        if Ash.Filter.strict_subset_of?(parsed, request.filter) do
+          {:ok, true}
+        else
+          {:ok, :unknown}
         end
 
       %{errors: errors} ->
-        [error: errors]
+        {:error, errors}
     end
+  end
+
+  @impl true
+  def prepare(_user, _request, opts) do
+    [side_load: put_into_relationship_path(opts[:relationship], [])]
+  end
+
+  @impl true
+  def check(user, records, _request, options) do
+    matches =
+      Enum.filter(records, fn record ->
+        related_records = get_related(record, options[:relationship])
+
+        Enum.any?(related_records, fn related ->
+          primary_key = Ash.primary_key(user)
+          Map.take(related, primary_key) == Map.take(user, primary_key)
+        end)
+      end)
+
+    {:ok, matches}
+  end
+
+  defp get_related(record, []), do: record
+
+  defp get_related(record, [relationship | rest]) do
+    Enum.flat_map(record, fn record ->
+      record
+      |> Map.get(relationship)
+      |> List.wrap()
+      |> Enum.map(&get_related(&1, rest))
+    end)
   end
 
   defp put_into_relationship_path([], value), do: value

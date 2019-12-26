@@ -109,7 +109,7 @@ defimpl Inspect, for: Ash.Filter do
         and_clauses ->
           Inspect.Algebra.container_doc("(", and_clauses, ")", opts, fn term, _ -> term end,
             break: :flex,
-            separator: " and "
+            separator: " and"
           )
       end
 
