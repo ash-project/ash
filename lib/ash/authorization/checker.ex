@@ -21,6 +21,11 @@ defmodule Ash.Authorization.Checker do
     end)
   end
 
+  # TODO: Work on this. Gunna move it to checker
+  def run_checks(scenarios, facts) do
+    :all_facts_fetched
+  end
+
   defp do_strict_check({module, opts}, user, request) do
     case module.strict_check(user, request, opts) do
       {:ok, boolean} when is_boolean(boolean) ->

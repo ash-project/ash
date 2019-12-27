@@ -34,4 +34,14 @@ defmodule Ash.Authorization.Check.AttributeEquals do
         {:error, errors}
     end
   end
+
+  @impl true
+  def check(_user, records, _request, options) do
+    matches =
+      Enum.filter(records, fn record ->
+        Map.fetch(record, options[:field]) == {:ok, options[:value]}
+      end)
+
+    {:ok, matches}
+  end
 end

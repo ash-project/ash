@@ -9,8 +9,9 @@ defmodule Ash.Authorization.Authorizer do
   important thing to understand is that Ash may or may not run any/all of your
   authorization rules as they may be deemed unnecessary. As such, authorization
   checks should have no side effects. Ideally, the checks built-in to ash should
-  cover the bulk of your needs. If you need to write your own checks see #TODO:
-  Link to a guide about writing checks here.
+  cover the bulk of your needs.
+
+  If you need to write your own checks see #TODO: Link to a guide about writing checks here.
   """
   @type result :: :authorized | :forbidden
 
@@ -38,35 +39,49 @@ defmodule Ash.Authorization.Authorizer do
          )}
 
       {:ok, scenario} ->
-        scenarios = get_all_scenarios(authorization_steps, scenario, facts)
-
-        irrelevant_clauses = irrelevant_clauses(scenarios)
-
-        scenarios
-        |> Enum.map(&Map.drop(&1, irrelevant_clauses))
+        authorization_steps
+        |> get_all_scenarios(scenario, facts)
         |> Enum.uniq()
+        |> remove_irrelevant_clauses()
         |> verify_scenarios(authorization_steps, facts, strict_check_facts)
     end
   end
 
-  defp irrelevant_clauses(scenarios) do
-    scenarios
-    |> Enum.reduce([], fn scenario, acc ->
-      scenario
-      |> Enum.filter(fn {fact, result} ->
-        Enum.any?(scenarios, fn potential_irrelevant_maker ->
-          rest_of_scenario_matches =
-            Map.delete(potential_irrelevant_maker, fact) == Map.delete(scenario, fact)
+  defp remove_irrelevant_clauses(scenarios) do
+    new_scenarios =
+      scenarios
+      |> Enum.uniq()
+      |> Enum.map(fn scenario ->
+        unnecessary_fact =
+          Enum.find_value(scenario, fn
+            {_fact, :unknowable} ->
+              false
 
-          fact_doesnt_match = {:ok, !result} == Map.fetch(potential_irrelevant_maker, fact)
+            {fact, value_in_this_scenario} ->
+              matching =
+                Enum.find(scenarios, fn potential_irrelevant_maker ->
+                  potential_irrelevant_maker != scenario &&
+                    Map.delete(scenario, fact) == Map.delete(potential_irrelevant_maker, fact)
+                end)
 
-          rest_of_scenario_matches && fact_doesnt_match
-        end)
+              case matching do
+                %{^fact => value} when is_boolean(value) and value != value_in_this_scenario ->
+                  fact
+
+                _ ->
+                  false
+              end
+          end)
+
+        Map.delete(scenario, unnecessary_fact)
       end)
-      |> Enum.map(&elem(&1, 0))
-      |> Kernel.++(acc)
-    end)
-    |> Enum.uniq()
+      |> Enum.uniq()
+
+    if new_scenarios == scenarios do
+      new_scenarios
+    else
+      remove_irrelevant_clauses(new_scenarios)
+    end
   end
 
   defp get_all_scenarios(
@@ -125,7 +140,7 @@ defmodule Ash.Authorization.Authorizer do
   end
 
   defp fetch_facts(scenarios, facts) do
-    Ash.Authorization.FactFinder.find_facts(scenarios, facts)
+    Ash.Authorization.Checker.run_checks(scenarios, facts)
   end
 
   defp any_scenarios_reality?(scenarios, facts) do
@@ -145,14 +160,14 @@ defmodule Ash.Authorization.Authorizer do
               {:cont, status}
 
             value == :unknowable ->
-              {:cont, :maybe}
+              {:halt, :not_reality}
 
             true ->
               {:halt, :not_reality}
           end
 
         :error ->
-          {:halt, :maybe}
+          {:cont, :maybe}
       end
     end)
   end

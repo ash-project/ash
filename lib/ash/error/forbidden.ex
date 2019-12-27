@@ -58,7 +58,7 @@ defmodule Ash.Error.Forbidden do
 
   defp status_to_mark(true), do: "✓"
   defp status_to_mark(false), do: "✗"
-  defp status_to_mark(:unknowable), do: "?!"
+  defp status_to_mark(:unknowable), do: "!"
   defp status_to_mark(nil), do: "?"
 
   defp indent(string) do
@@ -72,13 +72,18 @@ defmodule Ash.Error.Forbidden do
     Enum.map_join(sets_of_authorization_steps, "---", fn authorization_steps ->
       authorization_steps
       |> Enum.map(fn {step, {relationship, {mod, opts}}} ->
-        mark = step_to_mark(step, Map.get(facts, {relationship, {mod, opts}}))
+        status_mark = status_to_mark(Map.get(facts, {relationship, {mod, opts}}))
+
+        mark =
+          status_mark <> " " <> step_to_mark(step, Map.get(facts, {relationship, {mod, opts}}))
 
         if relationship == [] do
-          to_string(step) <> ": " <> mod.describe(opts) <> " " <> mark
+          mark <> " | " <> to_string(step) <> ": " <> mod.describe(opts)
         else
-          to_string(step) <>
-            ": #{Enum.join(relationship, ".")} " <> mod.describe(opts) <> " " <> mark
+          mark <>
+            " | " <>
+            to_string(step) <>
+            ": #{Enum.join(relationship, ".")} " <> mod.describe(opts)
         end
       end)
       |> Enum.join("\n")
