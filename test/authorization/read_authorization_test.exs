@@ -190,4 +190,20 @@ defmodule Ash.Test.Authorization.ReadAuthorizationTest do
       )
     end
   end
+
+  test "it can handle conflicting results" do
+    author = Api.create!(Author, attributes: %{name: "foo", fired: false, self_manager: true})
+    Api.create!(Author, attributes: %{name: "foo", fired: false, self_manager: false})
+    user = Api.create!(User, attributes: %{manager: true, id: author.id})
+
+    Api.read!(Author, authorization: [user: user, strict_access?: false])
+  end
+
+  test "it fails properly on conflicting results" do
+    author = Api.create!(Author, attributes: %{name: "foo", fired: false, self_manager: true})
+    Api.create!(Author, attributes: %{name: "foo", fired: false, self_manager: false})
+    user = Api.create!(User, attributes: %{manager: false, id: author.id})
+
+    Api.read!(Author, authorization: [user: user, strict_access?: false])
+  end
 end

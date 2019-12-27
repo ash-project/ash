@@ -29,7 +29,7 @@ defmodule Ash.Authorization.Check.UserAttributeMatchesRecord do
   end
 
   @impl true
-  def check(user, records, _request, options) do
+  def check(user, records, _state, options) do
     user_value = Map.fetch(user, options[:user_field])
 
     matches =

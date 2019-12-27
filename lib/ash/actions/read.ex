@@ -14,7 +14,7 @@ defmodule Ash.Actions.Read do
     with %Ash.Filter{errors: [], authorizations: filter_auths} = filter <-
            Ash.Filter.parse(resource, filter),
          {:ok, side_load_auths} <- SideLoad.process(resource, side_loads, filter),
-         :ok <- do_authorize(params, side_load_auths ++ filter_auths),
+         {:ok, auth_callback} <- do_authorize(params, side_load_auths ++ filter_auths),
          query <- Ash.DataLayer.resource_to_query(resource),
          {:ok, sort} <- Ash.Actions.Sort.process(resource, sort),
          {:ok, sorted_query} <- Ash.DataLayer.sort(query, sort, resource),
@@ -22,6 +22,7 @@ defmodule Ash.Actions.Read do
          {:ok, paginator} <-
            Ash.Actions.Paginator.paginate(api, resource, action, filtered_query, page_params),
          {:ok, found} <- Ash.DataLayer.run_query(paginator.query, resource),
+         :ok <- auth_callback.(found),
          paginator <- %{paginator | results: found} do
       # TODO: side loading is a read only, filter based operation, and as such should be covered
       # by the strict checks. Figure out if that is true for sure.
@@ -44,7 +45,7 @@ defmodule Ash.Actions.Read do
 
       Authorizer.authorize(params[:authorization][:user], %{}, auths)
     else
-      :ok
+      {:ok, fn _ -> :ok end}
     end
   end
 end

@@ -32,12 +32,12 @@ defmodule Ash.Authorization.Check.RelatedToUserVia do
   end
 
   @impl true
-  def prepare(_user, _request, opts) do
+  def prepare(opts) do
     [side_load: put_into_relationship_path(opts[:relationship], [])]
   end
 
   @impl true
-  def check(user, records, _request, options) do
+  def check(user, records, _state, options) do
     matches =
       Enum.filter(records, fn record ->
         related_records = get_related(record, options[:relationship])

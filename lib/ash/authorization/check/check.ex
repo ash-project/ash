@@ -8,13 +8,13 @@ defmodule Ash.Authorization.Check do
 
   @callback strict_check(Ash.user(), Ash.Authorization.request(), options) :: boolean | :unknown
 
-  @callback prepare(Ash.user(), Ash.Authorization.request(), options) ::
+  @callback prepare(options) ::
               list(Ash.Authorization.prepare_instruction()) | {:error, Ash.error()}
-  @callback check(Ash.user(), list(Ash.record()), Ash.Authorization.request(), options) ::
+  @callback check(Ash.user(), list(Ash.record()), term, options) ::
               {:ok, list(Ash.record())} | {:error, Ash.error()}
   @callback describe(options()) :: String.t()
 
-  @optional_callbacks check: 4, prepare: 3
+  @optional_callbacks check: 4, prepare: 1
 
   def defines_check?(module) do
     :erlang.function_exported(module, :check, 4)
@@ -25,9 +25,9 @@ defmodule Ash.Authorization.Check do
       @behaviour Ash.Authorization.Check
 
       @impl true
-      def prepare(_, _, _), do: []
+      def prepare(_), do: []
 
-      defoverridable prepare: 3
+      defoverridable prepare: 1
     end
   end
 end

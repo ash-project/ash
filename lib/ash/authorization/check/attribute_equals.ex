@@ -36,7 +36,7 @@ defmodule Ash.Authorization.Check.AttributeEquals do
   end
 
   @impl true
-  def check(_user, records, _request, options) do
+  def check(_user, records, _state, options) do
     matches =
       Enum.filter(records, fn record ->
         Map.fetch(record, options[:field]) == {:ok, options[:value]}
