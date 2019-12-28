@@ -30,13 +30,14 @@ defmodule Ash.Actions.Create do
     if params[:authorization] do
       auth_request =
         Ash.Authorization.Request.new(
+          state_key: :data,
           resource: resource,
           authorization_steps: action.authorization_steps,
           changeset: changeset,
           source: "create request"
         )
 
-      Authorizer.authorize(user, %{}, [auth_request])
+      Authorizer.authorize(user, [auth_request])
     else
       :authorized
     end

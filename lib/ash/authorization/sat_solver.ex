@@ -1,13 +1,16 @@
 defmodule Ash.Authorization.SatSolver do
   alias Ash.Authorization.Clause
 
-  def solve(sets_of_authorization_steps, facts, negations, ids) when is_nil(ids) do
-    sets_of_authorization_steps
+  def solve(requests, facts, negations, ids) when is_nil(ids) do
+    requests
+    |> Enum.map(&Map.get(&1, :authorization_steps))
     |> build_requirements_expression(facts, nil)
     |> add_negations_and_solve(negations)
   end
 
-  def solve(sets_of_authorization_steps, facts, negations, ids) do
+  def solve(requests, facts, negations, ids) do
+    sets_of_authorization_steps = Enum.map(requests, &Map.get(&1, :authorization_steps))
+
     ids
     |> Enum.reduce(nil, fn id, expr ->
       requirements_expression =

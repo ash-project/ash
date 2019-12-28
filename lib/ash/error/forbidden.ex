@@ -3,18 +3,18 @@ defmodule Ash.Error.Forbidden do
   defexception [
     :resource,
     :scenarios,
-    :authorization_steps,
+    :requests,
     :facts,
     :strict_check_facts,
     :state,
+    :strict_access?,
     no_steps_configured?: false
   ]
 
   # TODO: Use better logic to format this
+  # TODO: Remove reliance on "this_record" description
 
   alias Ash.Authorization.Clause
-
-  # TODO: Put `resource` in the pkey info so that we can display what kind of record it is
 
   def message(%{no_steps_configured?: true}) do
     "One of the authorizations required had no authorization steps configured."
@@ -27,18 +27,21 @@ defmodule Ash.Error.Forbidden do
     explained_steps =
       case error.state do
         %{data: data} ->
-          explain_steps_with_data(error.authorization_steps, error.facts, data)
+          explain_steps_with_data(error.requests, error.facts, data)
 
         _ ->
-          explain_steps(error.authorization_steps, error.facts)
+          if error.strict_access? do
+            "\n\nAuthorization run with `strict_access?: true`. This is the only safe way to authorize requests for lists of filtered data.\n" <>
+              "Some checks may still fetch data from the database, like filters on related data when their primary key was given.\n" <>
+              explain_steps(error.requests, error.facts)
+          else
+            explain_steps(error.requests, error.facts)
+          end
       end
 
     explained_facts = explain_facts(error.facts, error.strict_check_facts || %{})
 
-    main_message =
-      header <>
-        "Facts Gathered\n" <>
-        indent(explained_facts) <> "\n\nAuthorization Steps:\n" <> indent(explained_steps)
+    main_message = header <> "Facts Gathered\n" <> indent(explained_facts) <> explained_steps
 
     main_message <> "\n\nScenarios:\n" <> indent(explain_scenarios(error.scenarios))
   end
@@ -57,61 +60,70 @@ defmodule Ash.Error.Forbidden do
     """
   end
 
-  defp explain_steps_with_data(sets_of_authorization_steps, facts, data) do
-    sets_of_authorization_steps
-    |> Enum.map_join("\n---\n", fn [{_, %{relationship: relationship, resource: resource}} | _] =
-                                     steps ->
-      title =
-        if relationship == [] do
-          inspect(resource)
-        else
-          # Enum.join(relationship, ".") <> " - #{inspect(resource)}"
-          raise "Ack, can't do relationships now!"
-        end
+  defp explain_steps_with_data(requests, facts, data) do
+    title = "\n\nAuthorization Steps:\n\n"
 
-      authorization_steps_legend =
-        steps
-        |> Enum.with_index()
-        |> Enum.map_join("\n", fn {{step, check}, index} ->
-          "#{index + 1}| " <>
-            to_string(step) <> ": " <> check.check_module.describe(check.check_opts)
-        end)
+    contents =
+      requests
+      |> Enum.map_join("\n---\n", fn request ->
+        relationship = request.relationship
+        resource = request.resource
 
-      pkey = Ash.primary_key(resource)
+        inner_title =
+          if relationship == [] do
+            request.source <> " -> " <> inspect(resource) <> ": "
+          else
+            # Enum.join(relationship, ".") <> " - #{inspect(resource)}"
+            raise "Ack, can't do relationships now!"
+          end
 
-      # TODO: data has to change with relationships
-      data_info =
-        data
-        |> Enum.map(fn item ->
-          formatted =
-            item
-            |> Map.take(pkey)
-            |> format_pkey()
+        authorization_steps_legend =
+          request.authorization_steps
+          |> Enum.with_index()
+          |> Enum.map_join("\n", fn {{step, check}, index} ->
+            "#{index + 1}| " <>
+              to_string(step) <> ": " <> check.check_module.describe(check.check_opts)
+          end)
 
-          {formatted, Map.take(item, pkey)}
-        end)
-        |> add_header_line(title)
-        |> pad()
-        |> add_step_info(steps, facts)
+        pkey = Ash.primary_key(resource)
 
-      authorization_steps_legend <> "\n\n" <> data_info <> "\n"
-    end)
+        # TODO: data has to change with relationships
+        data_info =
+          data
+          |> Enum.map(fn item ->
+            formatted =
+              item
+              |> Map.take(pkey)
+              |> format_pkey()
+
+            {formatted, Map.take(item, pkey)}
+          end)
+          |> add_header_line(indent("Record"))
+          |> pad()
+          |> add_step_info(request.authorization_steps, facts)
+
+        inner_title <> ":\n" <> indent(authorization_steps_legend <> "\n\n" <> data_info <> "\n")
+      end)
+
+    title <> indent(contents)
   end
 
   defp add_step_info([header | rest], steps, facts) do
     key = Enum.join(1..Enum.count(steps), "|")
 
     header <>
-      "|" <>
-      key <>
-      "|\n" <>
-      do_add_step_info(rest, steps, facts)
+      indent(
+        " |" <>
+          key <>
+          "|\n" <>
+          do_add_step_info(rest, steps, facts)
+      )
   end
 
   defp do_add_step_info(pkeys, steps, facts) do
     Enum.map_join(pkeys, "\n", fn {pkey_line, pkey} ->
       steps
-      |> Enum.reduce({true, pkey_line}, fn
+      |> Enum.reduce({true, pkey_line <> " "}, fn
         {_step, _clause}, {false, string} ->
           {false, string <> "|~"}
 
@@ -183,29 +195,39 @@ defmodule Ash.Error.Forbidden do
       title = format_pkey(pkey) <> " facts"
 
       contents =
-        Enum.map_join(clauses_and_statuses, fn {clause, status} ->
-          gets_star? =
-            Clause.find(strict_check_facts, clause) in [
-              {:ok, true},
-              {:ok, false}
-            ]
+        clauses_and_statuses
+        |> Enum.group_by(fn {clause, _} ->
+          clause.relationship
+        end)
+        |> Enum.sort_by(fn {relationship, _} ->
+          {Enum.count(relationship), relationship}
+        end)
+        |> Enum.map_join("\n", fn {relationship, clauses_and_statuses} ->
+          contents =
+            Enum.map_join(clauses_and_statuses, "\n", fn {clause, status} ->
+              gets_star? =
+                Clause.find(strict_check_facts, clause) in [
+                  {:ok, true},
+                  {:ok, false}
+                ]
 
-          star =
-            if gets_star? do
-              " ⭑"
-            else
-              ""
-            end
+              star =
+                if gets_star? do
+                  " ⭑"
+                else
+                  ""
+                end
 
-          relationship = clause.relationship
-          mod = clause.check_module
-          opts = clause.check_opts
+              mod = clause.check_module
+              opts = clause.check_opts
 
-          if clause.relationship == [] do
-            status_to_mark(status) <> " " <> mod.describe(opts) <> star
+              status_to_mark(status) <> " " <> mod.describe(opts) <> star
+            end)
+
+          if relationship == [] do
+            contents
           else
-            status_to_mark(status) <>
-              " " <> Enum.join(relationship, ".") <> " " <> mod.describe(opts) <> star
+            "Related " <> Enum.join(relationship) <> ":\n" <> indent(contents)
           end
         end)
 
@@ -235,37 +257,52 @@ defmodule Ash.Error.Forbidden do
     |> Enum.join("\n")
   end
 
-  defp explain_steps(sets_of_authorization_steps, facts) do
-    Enum.map_join(sets_of_authorization_steps, "---", fn authorization_steps ->
-      authorization_steps
-      |> Enum.map(fn {step, clause} ->
-        status =
-          case Clause.find(facts, clause) do
-            {:ok, value} -> value
-            _ -> nil
-          end
+  defp explain_steps(requests, facts) do
+    title = "\n\nAuthorization Steps:\n"
 
-        status_mark = status_to_mark(status)
+    contents =
+      Enum.map_join(requests, "\n------\n", fn request ->
+        title = request.source
 
-        mark = status_mark <> " " <> step_to_mark(step, status)
+        contents =
+          request.authorization_steps
+          |> Enum.sort_by(fn {_step, clause} ->
+            {Enum.count(clause.relationship), clause.relationship}
+          end)
+          |> Enum.map(fn {step, clause} ->
+            status =
+              case Clause.find(facts, clause) do
+                {:ok, value} -> value
+                _ -> nil
+              end
 
-        mod = clause.check_module
-        opts = clause.check_opts
-        relationship = clause.relationship
+            mark =
+              case {status_to_mark(status), step_to_mark(step, status)} do
+                {"?", "↓"} -> "?  "
+                {status_mark, step_mark} -> status_mark <> " " <> step_mark
+              end
 
-        if relationship == [] do
-          mark <>
-            " | " <> to_string(step) <> ": " <> mod.describe(opts)
-        else
-          mark <>
-            " | " <>
-            to_string(step) <>
-            ": #{Enum.join(relationship, ".")} " <>
-            mod.describe(opts)
-        end
+            mod = clause.check_module
+            opts = clause.check_opts
+            relationship = clause.relationship
+
+            if relationship == [] do
+              mark <>
+                " | " <> to_string(step) <> ": " <> mod.describe(opts)
+            else
+              mark <>
+                " | " <>
+                to_string(step) <>
+                ": #{Enum.join(relationship, ".")}: " <>
+                mod.describe(opts)
+            end
+          end)
+          |> Enum.join("\n")
+
+        title <> ":\n" <> indent(contents)
       end)
-      |> Enum.join("\n")
-    end)
+
+    title <> indent(contents)
   end
 
   defp step_to_mark(:authorize_if, true), do: "✓"

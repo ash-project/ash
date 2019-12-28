@@ -16,39 +16,38 @@ defmodule Ash.Authorization.Authorizer do
   @type result :: :authorized | :forbidden
 
   alias Ash.Authorization.SatSolver
+  alias Ash.Authorization.Request
 
-  # TODO: remove _context
-  def authorize(user, _context, requests) do
-    requests_by_relationship = requests_by_relationship(requests)
+  def authorize(user, requests, opts \\ []) do
+    strict_access? = Keyword.get(opts, :strict_access?, true)
 
-    authorization_steps = authorization_steps_with_relationship_path(requests_by_relationship)
-
-    if Enum.any?(authorization_steps, &Enum.empty?/1) do
+    if Enum.any?(requests, fn request -> Enum.empty?(request.authorization_steps) end) do
       {:error, Ash.Error.Forbidden.exception(no_steps_configured?: true)}
     else
-      facts = strict_check_facts(user, requests)
+      facts = strict_check_facts(user, requests, strict_access?)
 
-      solve(authorization_steps, facts, facts, %{user: user})
+      solve(requests, user, facts, facts, %{user: user}, strict_access?)
     end
   end
 
-  defp solve(authorization_steps, facts, strict_check_facts, state) do
-    case sat_solver(authorization_steps, facts, [], state) do
+  defp solve(requests, user, facts, strict_check_facts, state, strict_access?) do
+    case sat_solver(requests, facts, [], state) do
       {:error, :unsatisfiable} ->
         {:error,
          Ash.Error.Forbidden.exception(
-           authorization_steps: authorization_steps,
+           requests: requests,
            facts: facts,
            strict_check_facts: strict_check_facts,
+           strict_access?: strict_access?,
            state: state
          )}
 
       {:ok, scenario} ->
-        authorization_steps
+        requests
         |> get_all_scenarios(scenario, facts, state)
         |> Enum.uniq()
         |> remove_irrelevant_clauses()
-        |> verify_scenarios(authorization_steps, facts, strict_check_facts, state)
+        |> verify_scenarios(user, requests, facts, strict_check_facts, state, strict_access?)
     end
   end
 
@@ -90,7 +89,7 @@ defmodule Ash.Authorization.Authorizer do
   end
 
   defp get_all_scenarios(
-         authorization_steps,
+         requests,
          scenario,
          facts,
          state,
@@ -111,14 +110,14 @@ defmodule Ash.Authorization.Authorizer do
         negations_assuming_scenario_false = [scenario | negations]
 
         case sat_solver(
-               authorization_steps,
+               requests,
                facts,
                negations_assuming_scenario_false,
                state
              ) do
           {:ok, scenario_after_negation} ->
             get_all_scenarios(
-              authorization_steps,
+              requests,
               scenario_after_negation,
               facts,
               state,
@@ -132,76 +131,78 @@ defmodule Ash.Authorization.Authorizer do
     end
   end
 
-  defp sat_solver(authorization_steps, facts, negations, state) do
+  defp sat_solver(requests, facts, negations, state) do
     case state do
       %{data: [%resource{} | _] = data} ->
         # TODO: Needs primary key
         pkey = Ash.primary_key(resource)
 
         ids = Enum.map(data, &Map.take(&1, pkey))
-        SatSolver.solve(authorization_steps, facts, negations, ids)
+        SatSolver.solve(requests, facts, negations, ids)
 
       _ ->
-        SatSolver.solve(authorization_steps, facts, negations, nil)
+        SatSolver.solve(requests, facts, negations, nil)
     end
   end
 
   defp verify_scenarios(
          scenarios,
-         authorization_steps,
+         user,
+         requests,
          facts,
          strict_check_facts,
-         state
+         state,
+         strict_access?
        ) do
     if any_scenarios_reality?(scenarios, facts) do
-      if Map.has_key?(state, :data) do
-        :ok
-      else
-        {:ok, fn _ -> :ok end}
-      end
+      fetch_must_fetch(requests, state)
     else
-      if Map.has_key?(state, :data) do
-        case fetch_facts(scenarios, facts, state) do
-          :all_scenarios_known ->
-            {:error,
-             Ash.Error.Forbidden.exception(
-               scenarios: scenarios,
-               authorization_steps: authorization_steps,
-               facts: facts,
-               strict_check_facts: strict_check_facts,
-               state: state
-             )}
-
-          {:error, error} ->
-            {:error, error}
-
-          {:ok, new_facts, state} ->
-            solve(authorization_steps, new_facts, strict_check_facts, state)
-        end
-      else
-        callback = fn data ->
-          data = List.wrap(data)
-
-          if data == [] do
-            {:ok, fn _ -> :ok end}
-          else
-            verify_scenarios(
-              scenarios,
-              authorization_steps,
-              facts,
-              strict_check_facts,
-              Map.put(state, :data, List.wrap(data))
+      case Ash.Authorization.Checker.run_checks(
+             scenarios,
+             user,
+             requests,
+             facts,
+             state,
+             strict_access?
+           ) do
+        :all_scenarios_known ->
+          error =
+            Ash.Error.Forbidden.exception(
+              scenarios: scenarios,
+              requests: requests,
+              facts: facts,
+              strict_check_facts: strict_check_facts,
+              state: state,
+              strict_access?: strict_access?
             )
-          end
-        end
 
-        {:ok, callback}
+          {:error, error}
+
+        {:error, error} ->
+          {:error, error}
+
+        {:ok, new_facts, state} ->
+          solve(requests, user, new_facts, strict_check_facts, state, strict_access?)
       end
     end
   end
 
-  defp fetch_facts(scenarios, facts, state) do
-    Ash.Authorization.Checker.run_checks(scenarios, facts, state)
+  defp fetch_must_fetch(requests, state) do
+    Enum.reduce_while(requests, {:ok, state}, fn request, {:ok, state} ->
+      case Request.fetch_request_state(state, request) do
+        {:ok, _state} ->
+          {:cont, {:ok, state}}
+
+        :error ->
+          case request.fetcher.() do
+            {:ok, value} ->
+              {:cont, {:ok, Request.put_request_state(state, request, value)}}
+
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
+      end
+    end)
   end
 
   defp any_scenarios_reality?(scenarios, facts) do
@@ -233,23 +234,9 @@ defmodule Ash.Authorization.Authorizer do
     end)
   end
 
-  defp strict_check_facts(user, requests) do
+  defp strict_check_facts(user, requests, strict_access?) do
     Enum.reduce(requests, %{true: true, false: false}, fn request, facts ->
-      Ash.Authorization.Checker.strict_check(user, request, facts)
+      Ash.Authorization.Checker.strict_check(user, request, facts, strict_access?)
     end)
-  end
-
-  defp authorization_steps_with_relationship_path(requests_by_relationship) do
-    Enum.flat_map(requests_by_relationship, fn {path, requests} ->
-      Enum.map(requests, fn request ->
-        Enum.map(request.authorization_steps, fn {step, fact} ->
-          {step, Ash.Authorization.Clause.new(path, request.resource, fact)}
-        end)
-      end)
-    end)
-  end
-
-  defp requests_by_relationship(requests) do
-    Enum.group_by(requests, &Map.get(&1, :relationship))
   end
 end

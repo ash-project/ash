@@ -1,13 +1,17 @@
 defmodule Ash.Authorization.Check.RelatedToUserVia do
   use Ash.Authorization.Check
 
-  def related_to_user_via(relationship) do
-    {__MODULE__, relationship: List.wrap(relationship)}
+  defmacro related_to_user_via(relationship) do
+    quote do
+      {unquote(__MODULE__), relationship: List.wrap(unquote(relationship)), source: __MODULE__}
+    end
   end
 
   @impl true
   def describe(opts) do
-    "#{Enum.join(opts[:relationship], ".")} is the user"
+    description = describe_relationship(opts[:source], opts[:relationship])
+
+    description <> "this_record is the user"
   end
 
   @impl true
@@ -49,6 +53,28 @@ defmodule Ash.Authorization.Check.RelatedToUserVia do
       end)
 
     {:ok, matches}
+  end
+
+  defp describe_relationship(resource, relationships) do
+    reversed_relationships =
+      relationships
+      |> Enum.reduce({resource, []}, fn relationship_name, {resource, acc} ->
+        relationship = Ash.relationship(resource, relationship_name)
+        {relationship.destination, [relationship | acc]}
+      end)
+      |> elem(1)
+
+    do_describe_relationship(reversed_relationships)
+  end
+
+  defp do_describe_relationship([]), do: ""
+
+  defp do_describe_relationship([%{name: name, cardinality: :many} | rest]) do
+    "one of the #{name} of " <> do_describe_relationship(rest)
+  end
+
+  defp do_describe_relationship([%{name: name, cardinality: :one} | rest]) do
+    "the #{name} of " <> do_describe_relationship(rest)
   end
 
   defp get_related(record, []), do: record

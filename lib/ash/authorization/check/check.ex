@@ -10,8 +10,8 @@ defmodule Ash.Authorization.Check do
 
   @callback prepare(options) ::
               list(Ash.Authorization.prepare_instruction()) | {:error, Ash.error()}
-  @callback check(Ash.user(), list(Ash.record()), term, options) ::
-              {:ok, list(Ash.record())} | {:error, Ash.error()}
+  @callback check(Ash.user(), list(Ash.record()), map, options) ::
+              {:ok, list(Ash.record()) | boolean} | {:error, Ash.error()}
   @callback describe(options()) :: String.t()
 
   @optional_callbacks check: 4, prepare: 1

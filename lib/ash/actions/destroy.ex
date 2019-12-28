@@ -32,7 +32,7 @@ defmodule Ash.Actions.Destroy do
           source: "destroy request"
         )
 
-      Authorizer.authorize(user, %{}, [auth_request])
+      Authorizer.authorize(user, [auth_request])
     else
       :authorized
     end

@@ -36,13 +36,14 @@ defmodule Ash.Actions.Update do
     if params[:authorization] do
       auth_request =
         Ash.Authorization.Request.new(
+          state_key: :data,
           resource: resource,
           authorization_steps: action.authorization_steps,
           changeset: changeset,
           source: "update action"
         )
 
-      Authorizer.authorize(user, %{}, [auth_request])
+      Authorizer.authorize(user, [auth_request])
     else
       :authorized
     end

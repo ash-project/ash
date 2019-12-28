@@ -32,27 +32,54 @@ defmodule Ash.Filter do
     or: Ash.Filter.Or
   }
 
-  @spec parse(Ash.resource(), Keyword.t(), relationship_path :: list(atom)) :: t()
+  @spec parse(
+          Ash.resource(),
+          Keyword.t(),
+          relationship_path :: list(atom)
+        ) :: t()
   def parse(resource, filter, path \\ []) do
-    authorization_steps = Ash.primary_action(resource, :read).authorization_steps
-
     parsed_filter =
       filter
       |> do_parse(%Ash.Filter{resource: resource, path: path})
       |> lift_ors()
       |> add_not_filter_info()
 
-    add_authorization(
-      parsed_filter,
-      Ash.Authorization.Request.new(
-        resource: resource,
-        authorization_steps: authorization_steps,
-        filter: parsed_filter,
-        action_type: :read,
-        relationship: path,
-        source: "#{Enum.join(path, ".")} filter"
+    source =
+      case path do
+        [] -> "filter"
+        path -> "related #{Enum.join(path, ".")} filter"
+      end
+
+    if path == [] do
+      parsed_filter
+    else
+      authorization_request =
+        Ash.Authorization.Request.new(
+          resource: resource,
+          authorization_steps: Ash.primary_action(resource, :read).authorization_steps,
+          filter: parsed_filter,
+          fetcher: fn ->
+            query = Ash.DataLayer.resource_to_query(resource)
+
+            case Ash.DataLayer.filter(query, parsed_filter, resource) do
+              {:ok, filtered_query} ->
+                Ash.DataLayer.run_query(filtered_query, resource)
+
+              {:error, error} ->
+                {:error, error}
+            end
+          end,
+          action_type: :read,
+          bypass_strict_access?: bypass_strict_access?(parsed_filter),
+          relationship: path,
+          source: source
+        )
+
+      add_authorization(
+        parsed_filter,
+        authorization_request
       )
-    )
+    end
   end
 
   @doc """
@@ -81,6 +108,45 @@ defmodule Ash.Filter do
     # TODO: put these behind functions to optimize them.
     attributes_contained? or relationships_contained?
   end
+
+  defp bypass_strict_access?(%{ors: ors, not: not_filter} = filter) when is_nil(not_filter) do
+    pkey_fields = Ash.primary_key(filter.resource)
+
+    Enum.all?(pkey_fields, &is_filtering_on_known_value_for_attribute(filter, &1)) &&
+      Enum.all?(ors || [], fn filter ->
+        Enum.all?(pkey_fields, &is_filtering_on_known_value_for_attribute(filter, &1))
+      end)
+  end
+
+  defp bypass_strict_access?(_), do: false
+
+  defp is_filtering_on_known_value_for_attribute(filter, field) do
+    case Map.fetch(filter.attributes, field) do
+      {:ok, attribute_filter} ->
+        known_value_filter?(attribute_filter)
+
+      :error ->
+        false
+    end
+  end
+
+  defp known_value_filter?(%Ash.Filter.And{left: left, right: right}) do
+    known_value_filter?(left) or known_value_filter?(right)
+  end
+
+  defp known_value_filter?(%Ash.Filter.Or{left: left, right: right}) do
+    known_value_filter?(left) and known_value_filter?(right)
+  end
+
+  defp known_value_filter?(%Ash.Filter.In{values: values}) when values != [] do
+    true
+  end
+
+  defp known_value_filter?(%Ash.Filter.Eq{value: value}) when not is_nil(value) do
+    true
+  end
+
+  defp known_value_filter?(_), do: false
 
   defp contains_relationship?(filter, relationship, candidate_relationship_filter) do
     case filter.relationships do

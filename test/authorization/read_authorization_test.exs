@@ -204,6 +204,22 @@ defmodule Ash.Test.Authorization.ReadAuthorizationTest do
     Api.create!(Author, attributes: %{name: "foo", fired: false, self_manager: false})
     user = Api.create!(User, attributes: %{manager: false, id: author.id})
 
-    Api.read!(Author, authorization: [user: user, strict_access?: false])
+    assert_raise Ash.Error.Forbidden, ~r/forbidden/, fn ->
+      Api.read!(Author, authorization: [user: user, strict_access?: false])
+    end
+  end
+
+  test "it handles authorizing destination records properly" do
+    author = Api.create!(Author, attributes: %{name: "foo", fired: false, self_manager: true})
+
+    other_author =
+      Api.create!(Author, attributes: %{name: "foo", fired: false, self_manager: false})
+
+    user = Api.create!(User, attributes: %{manager: false, id: author.id})
+
+    Api.read!(Post,
+      filter: [authors: [id: other_author.id]],
+      authorization: [user: user, strict_access?: false]
+    )
   end
 end
