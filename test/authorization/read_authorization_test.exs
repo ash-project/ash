@@ -205,7 +205,9 @@ defmodule Ash.Test.Authorization.ReadAuthorizationTest do
     user = Api.create!(User, attributes: %{manager: false, id: author.id})
 
     assert_raise Ash.Error.Forbidden, ~r/forbidden/, fn ->
-      Api.read!(Author, authorization: [user: user, strict_access?: false])
+      Api.read!(Author,
+        authorization: [user: user, strict_access?: false]
+      )
     end
   end
 

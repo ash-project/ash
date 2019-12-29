@@ -62,7 +62,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.DestroyTest do
     test "it fails if `rules` is not a list" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option authorization_steps at actions -> destroy -> default must be [any]",
+        "option authorization_steps at actions -> destroy -> default must be keyword",
         fn ->
           defposts do
             actions do

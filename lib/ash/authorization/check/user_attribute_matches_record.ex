@@ -1,9 +1,5 @@
 defmodule Ash.Authorization.Check.UserAttributeMatchesRecord do
-  use Ash.Authorization.Check
-
-  def user_attribute_matches_record(user_field, record_field) do
-    {__MODULE__, user_field: user_field, record_field: record_field}
-  end
+  use Ash.Authorization.Check, action_types: [:read, :update, :delete]
 
   @impl true
   def describe(opts) do

@@ -1,9 +1,5 @@
 defmodule Ash.Authorization.Check.AttributeEquals do
-  use Ash.Authorization.Check
-
-  def attribute_equals(field, value) do
-    {__MODULE__, field: field, value: value}
-  end
+  use Ash.Authorization.Check, action_types: [:read, :update, :delete]
 
   @impl true
   def describe(opts) do

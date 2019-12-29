@@ -28,4 +28,20 @@ defmodule Ash.Error.Forbidden do
 
     Report.report(report)
   end
+
+  def report_text(error, header \\ "forbidden:") do
+    report = %Report{
+      scenarios: error.scenarios,
+      requests: error.requests,
+      facts: error.facts,
+      strict_check_facts: error.strict_check_facts,
+      state: error.state,
+      strict_access?: error.strict_access?,
+      no_steps_configured?: error.no_steps_configured?,
+      header: header,
+      authorized?: false
+    }
+
+    Report.report(report)
+  end
 end

@@ -23,7 +23,11 @@ defmodule Ash.Authorization.Authorizer do
     strict_access? = Keyword.get(opts, :strict_access?, true)
 
     if Enum.any?(requests, fn request -> Enum.empty?(request.authorization_steps) end) do
-      {:error, Ash.Error.Forbidden.exception(no_steps_configured?: true)}
+      {:error,
+       Ash.Error.Forbidden.exception(
+         no_steps_configured?: true,
+         log_final_report?: opts[:log_final_report?] || false
+       )}
     else
       facts = strict_check_facts(user, requests, strict_access?)
 
@@ -50,14 +54,20 @@ defmodule Ash.Authorization.Authorizer do
        ) do
     case sat_solver(requests, facts, [], state) do
       {:error, :unsatisfiable} ->
-        {:error,
-         Ash.Error.Forbidden.exception(
-           requests: requests,
-           facts: facts,
-           strict_check_facts: strict_check_facts,
-           strict_access?: strict_access?,
-           state: state
-         )}
+        exception =
+          Ash.Error.Forbidden.exception(
+            requests: requests,
+            facts: facts,
+            strict_check_facts: strict_check_facts,
+            strict_access?: strict_access?,
+            state: state
+          )
+
+        if log_final_report? do
+          Logger.info(Ash.Error.Forbidden.report_text(exception))
+        end
+
+        {:error, exception}
 
       {:ok, scenario} ->
         requests
@@ -212,7 +222,7 @@ defmodule Ash.Authorization.Authorizer do
              strict_access?
            ) do
         :all_scenarios_known ->
-          error =
+          exception =
             Ash.Error.Forbidden.exception(
               scenarios: scenarios,
               requests: requests,
@@ -222,7 +232,11 @@ defmodule Ash.Authorization.Authorizer do
               strict_access?: strict_access?
             )
 
-          {:error, error}
+          if log_final_report? do
+            Logger.info(Ash.Error.Forbidden.report_text(exception))
+          end
+
+          {:error, exception}
 
         {:error, error} ->
           {:error, error}

@@ -1,19 +1,21 @@
 defmodule Ash.Resource.Attributes.Attribute do
   @doc false
 
-  defstruct [:name, :type, :allow_nil?, :primary_key?, :default]
+  defstruct [:name, :type, :allow_nil?, :primary_key?, :default, :authorization_steps]
 
   @type t :: %__MODULE__{
           name: atom(),
           type: Ash.type(),
           primary_key?: boolean(),
-          default: (() -> term)
+          default: (() -> term),
+          authorization_steps: Keyword.t()
         }
 
   @schema Ashton.schema(
             opts: [
               primary_key?: :boolean,
               allow_nil?: :boolean,
+              authorization_steps: [{:const, false}, :keyword],
               default: [
                 {:function, 0},
                 {:tuple, {:module, :atom}},
@@ -22,9 +24,14 @@ defmodule Ash.Resource.Attributes.Attribute do
             ],
             defaults: [
               primary_key?: false,
-              allow_nil?: true
+              allow_nil?: true,
+              authorization_steps: []
             ],
             describe: [
+              authorization_steps: """
+              Rules applied on an attribute during create or update. If no rules are defined, authorization to change will fail.
+              If set to false, no rules are applied and any changes are allowed (assuming the action was authorized as a whole)
+              """,
               allow_nil?: """
               Whether or not to allow `null` values. Ash can perform optimizations with this information, so if you do not
               expect any null values, make sure to set this switch.
@@ -43,10 +50,27 @@ defmodule Ash.Resource.Attributes.Attribute do
   def new(name, type, opts) do
     with {:ok, opts} <- Ashton.validate(opts, @schema),
          {:default, {:ok, default}} <- {:default, cast_default(type, opts)} do
+      authorization_steps =
+        case opts[:authorization_steps] do
+          false ->
+            false
+
+          steps ->
+            base_attribute_opts = [
+              attribute_name: name,
+              attribute_type: type
+            ]
+
+            Enum.map(steps, fn {step, {mod, opts}} ->
+              {step, {mod, Keyword.merge(base_attribute_opts, opts)}}
+            end)
+        end
+
       {:ok,
        %__MODULE__{
          name: name,
          type: type,
+         authorization_steps: authorization_steps,
          allow_nil?: opts[:allow_nil?],
          primary_key?: opts[:primary_key?],
          default: default

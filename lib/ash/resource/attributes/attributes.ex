@@ -10,8 +10,14 @@ defmodule Ash.Resource.Attributes do
   defmacro attributes(do: block) do
     quote do
       import Ash.Resource.Attributes
+      import Ash.Authorization.Check.BuiltInChecks
+      import Ash.Authorization.Check.AttributeBuiltInChecks
+
       unquote(block)
+
       import Ash.Resource.Attributes, only: [attributes: 1]
+      import Ash.Authorization.Check.BuiltInChecks, only: []
+      import Ash.Authorization.Check.AttributeBuiltInChecks, only: []
     end
   end
 

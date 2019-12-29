@@ -1,6 +1,4 @@
 defmodule Ash.Authorization.Report do
-  # TODO: Make this not garbage code :D
-  # Use `reduce` instead of map join, and stop printing rules when a decision was reached.
   alias Ash.Authorization.Clause
 
   defstruct [

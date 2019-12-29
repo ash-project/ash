@@ -1,11 +1,5 @@
 defmodule Ash.Authorization.Check.RelatedToUserVia do
-  use Ash.Authorization.Check
-
-  defmacro related_to_user_via(relationship) do
-    quote do
-      {unquote(__MODULE__), relationship: List.wrap(unquote(relationship)), source: __MODULE__}
-    end
-  end
+  use Ash.Authorization.Check, action_types: [:read, :update, :delete]
 
   @impl true
   def describe(opts) do

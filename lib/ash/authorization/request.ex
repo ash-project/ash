@@ -10,7 +10,8 @@ defmodule Ash.Authorization.Request do
     :source,
     :must_fetch?,
     :state_key,
-    :api
+    :api,
+    :changeset
   ]
 
   @type t :: %__MODULE__{
@@ -18,6 +19,7 @@ defmodule Ash.Authorization.Request do
           resource: Ash.resource(),
           authorization_steps: list(term),
           filter: Ash.Filter.t(),
+          changeset: Ecto.Changeset.t(),
           # TODO: fetcher is a function
           fetcher: term,
           relationship: list(atom),

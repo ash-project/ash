@@ -13,7 +13,7 @@ defmodule Ash.Resource.Actions.Update do
   @opt_schema Ashton.schema(
                 opts: [
                   primary?: :boolean,
-                  authorization_steps: {:list, :any}
+                  authorization_steps: :keyword
                 ],
                 defaults: [
                   primary?: false,

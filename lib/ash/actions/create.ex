@@ -6,40 +6,76 @@ defmodule Ash.Actions.Create do
           {:ok, Ash.record()} | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
   def run(api, resource, action, params) do
     if Keyword.get(params, :side_load, []) in [[], nil] do
-      case prepare_create_params(api, resource, params) do
-        %Ecto.Changeset{valid?: true} = changeset ->
-          user = Keyword.get(params, :user)
-
-          precheck_data = do_authorize(params, action, user, resource, changeset)
-
-          if precheck_data == :forbidden do
-            {:error, :forbidden}
-          else
-            do_create(resource, changeset)
-          end
-
+      with %{valid?: true} = changeset <- prepare_create_params(api, resource, params),
+           {:ok, %{data: created}} <- do_authorized(changeset, params, action, resource, api) do
+        ChangesetHelpers.run_after_changes(changeset, created)
+      else
         %Ecto.Changeset{} = changeset ->
           {:error, changeset}
+
+        {:error, error} ->
+          {:error, error}
       end
     else
       {:error, "Cannot side load on create currently"}
     end
   end
 
-  defp do_authorize(params, action, user, resource, changeset) do
+  defp do_authorized(changeset, params, action, resource, api) do
     if params[:authorization] do
-      auth_request =
+      create_authorization_request =
         Ash.Authorization.Request.new(
-          state_key: :data,
-          resource: resource,
+          api: api,
           authorization_steps: action.authorization_steps,
+          resource: resource,
           changeset: changeset,
-          source: "create request"
+          action_type: action.type,
+          fetcher: fn -> do_create(resource, changeset) end,
+          state_key: :data,
+          relationship: [],
+          source: "#{action.type} - `#{action.name}`"
         )
 
-      Authorizer.authorize(user, [auth_request])
+      attribute_requests =
+        resource
+        |> Ash.attributes()
+        |> Enum.reject(fn attribute ->
+          attribute.primary_key?
+        end)
+        |> Enum.filter(fn attribute ->
+          attribute.authorization_steps && Map.has_key?(changeset.changes, attribute.name)
+        end)
+        |> Enum.map(fn attribute ->
+          Ash.Authorization.Request.new(
+            api: api,
+            authorization_steps: attribute.authorization_steps,
+            resource: resource,
+            changeset: changeset,
+            action_type: action.type,
+            fetcher: fn -> :ok end,
+            state_key: :data,
+            relationship: [],
+            source: "change on `#{attribute.name}`"
+          )
+        end)
+
+      strict_access? =
+        case Keyword.fetch(params[:authorization], :strict_access?) do
+          {:ok, value} -> value
+          :error -> true
+        end
+
+      Authorizer.authorize(
+        params[:authorization][:user],
+        [create_authorization_request | attribute_requests],
+        strict_access?: strict_access?,
+        log_final_report?: params[:authorization][:log_final_report?] || false
+      )
     else
-      :authorized
+      case do_create(resource, changeset) do
+        {:ok, result} -> {:ok, %{data: result}}
+        {:error, error} -> {:error, error}
+      end
     end
   end
 

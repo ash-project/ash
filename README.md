@@ -132,3 +132,10 @@ end
 * Support filtering side loads. Especially useful in authorization code?
 * Booleans need to not support `nil` values. That has to be a different type.
   boolean filter/authorization logic is greatly enhanced if that is the case.
+* Consider that authorization steps may eventually need to be able to branch.
+  This may or may not be difficult :) 
+* Allow a feature called `verify_after_write` that fetches the final attribute
+  variable from data somehow. Authorization fetchers will need to take state as
+  an argument or something like that, and maybe need to specify dependencies?.
+* Validate that checks have the correct action type when compiling an action
+

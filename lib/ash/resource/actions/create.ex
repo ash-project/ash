@@ -12,7 +12,7 @@ defmodule Ash.Resource.Actions.Create do
   @opt_schema Ashton.schema(
                 opts: [
                   primary?: :boolean,
-                  authorization_steps: {:list, :any}
+                  authorization_steps: :keyword
                 ],
                 defaults: [
                   primary?: false,
