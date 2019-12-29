@@ -8,11 +8,14 @@ defmodule Ash.Api.Interface do
   @authorization_schema Ashton.schema(
                           opts: [
                             user: :any,
-                            strict_access?: :boolean
+                            strict_access?: :boolean,
+                            log_final_report?: :boolean
                           ],
-                          defaults: [strict_access?: true],
+                          defaults: [strict_access?: true, log_final_report?: false],
                           describe: [
                             user: "# TODO describe",
+                            log_final_report?:
+                              "If true, an info log with an auth report is emitted on successful authorization",
                             strict_access?:
                               "only applies to `read` actions, so maybe belongs somewhere else"
                           ]
@@ -479,7 +482,7 @@ defmodule Ash.Api.Interface do
     combo_message =
       error
       |> List.wrap()
-      |> Stream.map(fn error ->
+      |> Enum.map(fn error ->
         case error do
           string when is_bitstring(string) ->
             Ash.Error.FrameworkError.exception(message: string)
@@ -491,6 +494,11 @@ defmodule Ash.Api.Interface do
           error ->
             error
         end
+      end)
+      |> Enum.reject(fn error ->
+        # A lot of the error logic here, including this annoying scrubbing code
+        # is temporary.
+        error == []
       end)
       |> Enum.map_join("\n", &Exception.message/1)
 

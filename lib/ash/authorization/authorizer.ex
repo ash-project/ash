@@ -15,8 +15,9 @@ defmodule Ash.Authorization.Authorizer do
   """
   @type result :: :authorized | :forbidden
 
-  alias Ash.Authorization.SatSolver
-  alias Ash.Authorization.Request
+  alias Ash.Authorization.{Report, Request, SatSolver}
+
+  require Logger
 
   def authorize(user, requests, opts \\ []) do
     strict_access? = Keyword.get(opts, :strict_access?, true)
@@ -26,11 +27,27 @@ defmodule Ash.Authorization.Authorizer do
     else
       facts = strict_check_facts(user, requests, strict_access?)
 
-      solve(requests, user, facts, facts, %{user: user}, strict_access?)
+      solve(
+        requests,
+        user,
+        facts,
+        facts,
+        %{user: user},
+        strict_access?,
+        opts[:log_final_report?] || false
+      )
     end
   end
 
-  defp solve(requests, user, facts, strict_check_facts, state, strict_access?) do
+  defp solve(
+         requests,
+         user,
+         facts,
+         strict_check_facts,
+         state,
+         strict_access?,
+         log_final_report?
+       ) do
     case sat_solver(requests, facts, [], state) do
       {:error, :unsatisfiable} ->
         {:error,
@@ -47,7 +64,15 @@ defmodule Ash.Authorization.Authorizer do
         |> get_all_scenarios(scenario, facts, state)
         |> Enum.uniq()
         |> remove_irrelevant_clauses()
-        |> verify_scenarios(user, requests, facts, strict_check_facts, state, strict_access?)
+        |> verify_scenarios(
+          user,
+          requests,
+          facts,
+          strict_check_facts,
+          state,
+          strict_access?,
+          log_final_report?
+        )
     end
   end
 
@@ -60,6 +85,12 @@ defmodule Ash.Authorization.Authorizer do
           Enum.find_value(scenario, fn
             {_fact, :unknowable} ->
               false
+
+            # TODO: Is this acceptable?
+            # If the check refers to empty data, and its meant to bypass strict checks
+            # Then we consider that fact an irrelevant fact? Probably.
+            {_fact, :irrelevant} ->
+              true
 
             {fact, value_in_this_scenario} ->
               matching =
@@ -152,9 +183,24 @@ defmodule Ash.Authorization.Authorizer do
          facts,
          strict_check_facts,
          state,
-         strict_access?
+         strict_access?,
+         log_final_report?
        ) do
     if any_scenarios_reality?(scenarios, facts) do
+      if log_final_report? do
+        report = %Report{
+          scenarios: scenarios,
+          requests: requests,
+          facts: facts,
+          strict_check_facts: strict_check_facts,
+          state: state,
+          strict_access?: strict_access?,
+          authorized?: true
+        }
+
+        Logger.info(Report.report(report))
+      end
+
       fetch_must_fetch(requests, state)
     else
       case Ash.Authorization.Checker.run_checks(
@@ -182,7 +228,15 @@ defmodule Ash.Authorization.Authorizer do
           {:error, error}
 
         {:ok, new_facts, state} ->
-          solve(requests, user, new_facts, strict_check_facts, state, strict_access?)
+          solve(
+            requests,
+            user,
+            new_facts,
+            strict_check_facts,
+            state,
+            strict_access?,
+            log_final_report?
+          )
       end
     end
   end
@@ -219,6 +273,9 @@ defmodule Ash.Authorization.Authorizer do
         {:ok, value} ->
           cond do
             value == requirement ->
+              {:cont, status}
+
+            value == :irrelevant ->
               {:cont, status}
 
             value == :unknowable ->

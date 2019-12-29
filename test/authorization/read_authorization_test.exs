@@ -44,7 +44,7 @@ defmodule Ash.Test.Authorization.ReadAuthorizationTest do
 
     attributes do
       attribute :name, :string
-      attribute :manager, :boolean
+      attribute :manager, :boolean, default: {:constant, false}, allow_nil?: false
     end
   end
 
@@ -210,16 +210,12 @@ defmodule Ash.Test.Authorization.ReadAuthorizationTest do
   end
 
   test "it handles authorizing destination records properly" do
-    author = Api.create!(Author, attributes: %{name: "foo", fired: false, self_manager: true})
-
-    other_author =
-      Api.create!(Author, attributes: %{name: "foo", fired: false, self_manager: false})
-
-    user = Api.create!(User, attributes: %{manager: false, id: author.id})
+    author = Api.create!(Author, attributes: %{name: "foo"})
+    user = Api.create!(User, attributes: %{manager: true})
 
     Api.read!(Post,
-      filter: [authors: [id: other_author.id]],
-      authorization: [user: user, strict_access?: false]
+      authorization: [user: user],
+      filter: [published: true, authors: [id: author.id]]
     )
   end
 end

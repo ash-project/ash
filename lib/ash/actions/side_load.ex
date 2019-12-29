@@ -19,6 +19,22 @@ defmodule Ash.Actions.SideLoad do
     end)
   end
 
+  def merge([], right), do: right
+  def merge(left, []), do: left
+  def merge(left, right) when is_atom(left), do: merge([{left, []}], right)
+  def merge(left, right) when is_atom(right), do: merge(left, [{right, []}])
+
+  def merge(left, right) when is_list(left) and is_list(right) do
+    right
+    |> sanitize_side_loads()
+    |> Enum.reduce(sanitize_side_loads(left), fn {rel, rest}, acc ->
+      case Keyword.fetch(acc, rel) do
+        {:ok, value} -> merge(value, rest)
+        :error -> Keyword.put(acc, rel, rest)
+      end
+    end)
+  end
+
   defp do_process(resource, key, further, source_filter, path, acc) do
     with {:rel, relationship} when not is_nil(relationship) <-
            {:rel, Ash.relationship(resource, key)},
@@ -79,14 +95,7 @@ defmodule Ash.Actions.SideLoad do
     {side_load_type, config} = Ash.side_load_config(api)
     async? = side_load_type == :parallel
 
-    side_loads =
-      Enum.map(side_loads, fn side_load_part ->
-        if is_atom(side_load_part) do
-          {side_load_part, []}
-        else
-          side_load_part
-        end
-      end)
+    side_loads = sanitize_side_loads(side_loads)
 
     side_load_results =
       side_loads
@@ -138,6 +147,16 @@ defmodule Ash.Actions.SideLoad do
     else
       {:ok, link_records(Enum.map(side_load_results, &elem(&1, 1)), records)}
     end
+  end
+
+  defp sanitize_side_loads(side_loads) do
+    Enum.map(side_loads, fn side_load_part ->
+      if is_atom(side_load_part) do
+        {side_load_part, []}
+      else
+        side_load_part
+      end
+    end)
   end
 
   defp reverse_relationship_filter(records) when is_list(records) do

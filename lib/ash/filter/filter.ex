@@ -1,5 +1,6 @@
 defmodule Ash.Filter do
   defstruct [
+    :api,
     :resource,
     :ors,
     :not,
@@ -13,6 +14,7 @@ defmodule Ash.Filter do
   alias Ash.Filter.Merge
 
   @type t :: %__MODULE__{
+          api: Ash.api(),
           resource: Ash.resource(),
           ors: list(%__MODULE__{} | nil),
           not: %__MODULE__{} | nil,
@@ -35,12 +37,18 @@ defmodule Ash.Filter do
   @spec parse(
           Ash.resource(),
           Keyword.t(),
+          Ash.api(),
           relationship_path :: list(atom)
         ) :: t()
-  def parse(resource, filter, path \\ []) do
+  # The `api` argument is here primarily because the authorization requests
+  # need to have the `api`.
+  # TODO: Remove this by making it so that authorization steps are generated
+  # *after* the filter is generated. We can traverse all the relationships
+  # and figure out what authorizations are required. That makes this much nicer.
+  def parse(resource, filter, api \\ nil, path \\ []) do
     parsed_filter =
       filter
-      |> do_parse(%Ash.Filter{resource: resource, path: path})
+      |> do_parse(%Ash.Filter{resource: resource, api: api, path: path})
       |> lift_ors()
       |> add_not_filter_info()
 
@@ -56,6 +64,7 @@ defmodule Ash.Filter do
       authorization_request =
         Ash.Authorization.Request.new(
           resource: resource,
+          api: api,
           authorization_steps: Ash.primary_action(resource, :read).authorization_steps,
           filter: parsed_filter,
           fetcher: fn ->
@@ -240,7 +249,7 @@ defmodule Ash.Filter do
   defp add_expression_level_boolean_filter(filter, resource, :not, expression) do
     Map.update!(filter, :not, fn
       nil ->
-        parse(resource, expression)
+        parse(resource, expression, filter.api)
 
       not_filter ->
         do_parse(expression, not_filter)
@@ -259,7 +268,7 @@ defmodule Ash.Filter do
 
   defp add_expression_level_boolean_filter(filter, resource, :or, expressions) do
     Enum.reduce(expressions, filter, fn expression, filter ->
-      parsed_expression = parse(resource, expression)
+      parsed_expression = parse(resource, expression, filter.api)
 
       filter
       |> Map.update!(:ors, fn ors -> [parsed_expression | ors || []] end)
@@ -361,7 +370,7 @@ defmodule Ash.Filter do
 
     case provided_filter do
       {:ok, provided_filter} ->
-        related_filter = parse(destination, provided_filter, [name | filter.path])
+        related_filter = parse(destination, provided_filter, filter.api, [name | filter.path])
 
         new_relationships =
           Map.update(relationships, name, related_filter, &Merge.merge(&1, related_filter))

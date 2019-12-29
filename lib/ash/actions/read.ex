@@ -12,7 +12,7 @@ defmodule Ash.Actions.Read do
     # think that they can actually reasonably share facts :/
 
     with %Ash.Filter{errors: [], authorizations: filter_auths} = filter <-
-           Ash.Filter.parse(resource, filter),
+           Ash.Filter.parse(resource, filter, api),
          {:ok, side_load_auths} <- SideLoad.process(resource, side_loads, filter),
          query <- Ash.DataLayer.resource_to_query(resource),
          {:ok, sort} <- Ash.Actions.Sort.process(resource, sort),
@@ -26,6 +26,7 @@ defmodule Ash.Actions.Read do
              params,
              filter,
              resource,
+             api,
              action,
              side_load_auths ++ filter_auths
            ),
@@ -39,10 +40,11 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp do_authorized(query, params, filter, resource, action, auths) do
+  defp do_authorized(query, params, filter, resource, api, action, auths) do
     if params[:authorization] do
       filter_authorization_request =
         Ash.Authorization.Request.new(
+          api: api,
           resource: resource,
           authorization_steps: action.authorization_steps,
           filter: filter,
@@ -60,7 +62,8 @@ defmodule Ash.Actions.Read do
         end
 
       Authorizer.authorize(params[:authorization][:user], [filter_authorization_request | auths],
-        strict_access?: strict_access?
+        strict_access?: strict_access?,
+        log_final_report?: params[:authorization][:log_final_report?] || false
       )
     else
       case Ash.DataLayer.run_query(query, resource) do

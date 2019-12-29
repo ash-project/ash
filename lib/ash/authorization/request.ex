@@ -9,7 +9,8 @@ defmodule Ash.Authorization.Request do
     :fetcher,
     :source,
     :must_fetch?,
-    :state_key
+    :state_key,
+    :api
   ]
 
   @type t :: %__MODULE__{
@@ -23,7 +24,8 @@ defmodule Ash.Authorization.Request do
           bypass_strict_access?: boolean,
           source: String.t(),
           must_fetch?: boolean,
-          state_key: term
+          state_key: term,
+          api: Ash.api()
         }
 
   def new(opts) do

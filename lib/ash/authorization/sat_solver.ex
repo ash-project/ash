@@ -125,6 +125,7 @@ defmodule Ash.Authorization.SatSolver do
       {:ok, true} -> true
       {:ok, false} -> false
       {:ok, :unknowable} -> false
+      {:ok, :irrelevant} -> true
       :error -> Clause.expression(clause)
     end
   end
@@ -138,6 +139,9 @@ defmodule Ash.Authorization.SatSolver do
 
       {:ok, false} ->
         compile_authorization_steps_expression(rest, facts, pkey)
+
+      {:ok, :irrelevant} ->
+        true
 
       {:ok, :unknowable} ->
         compile_authorization_steps_expression(rest, facts, pkey)
@@ -158,6 +162,9 @@ defmodule Ash.Authorization.SatSolver do
       {:ok, false} ->
         true
 
+      {:ok, :irrelevant} ->
+        true
+
       {:ok, :unknowable} ->
         false
 
@@ -174,6 +181,9 @@ defmodule Ash.Authorization.SatSolver do
         compile_authorization_steps_expression(rest, facts, pkey)
 
       {:ok, false} ->
+        true
+
+      {:ok, :irrelevant} ->
         true
 
       {:ok, :unknowable} ->
@@ -195,6 +205,9 @@ defmodule Ash.Authorization.SatSolver do
     case Clause.find(facts, clause) do
       {:ok, true} ->
         false
+
+      {:ok, :irrelevant} ->
+        compile_authorization_steps_expression(rest, facts, pkey)
 
       {:ok, :unknowable} ->
         false
@@ -220,6 +233,9 @@ defmodule Ash.Authorization.SatSolver do
         compile_authorization_steps_expression(rest, facts, pkey)
 
       {:ok, false} ->
+        false
+
+      {:ok, :irrelevant} ->
         false
 
       {:ok, :unknowable} ->
