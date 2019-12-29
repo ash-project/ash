@@ -179,7 +179,7 @@ defmodule Ash.Authorization.Checker do
         Map.put(facts, clause, false)
 
       {_, []} ->
-        Map.put(facts, clause, false)
+        Map.put(facts, clause, true)
 
       {true_data, false_data} ->
         facts = set_records_to(true_data, facts, clause, true, pkey)

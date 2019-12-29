@@ -113,88 +113,13 @@ defmodule Ash.Test.Authorization.GetAuthorizationTest do
     Api.get!(Author, author.id, authorization: [user: user])
   end
 
-  # test "it succeeds if you match the first rule" do
-  # end
+  test "it fails if you dont match the data checks" do
+    author = Api.create!(Author, attributes: %{name: "foo", fired: false, self_manager: true})
 
-  # test "it succeeds if you match the second rule" do
-  #   user = Api.create!(User)
+    user = Api.create!(User, attributes: %{manager: true})
 
-  #   Api.read!(Post,
-  #     authorization: [user: user],
-  #     filter: [published: true]
-  #   )
-  # end
-
-  # test "it succeeds if you match both rules" do
-  #   author = Api.create!(Author, attributes: %{name: "foo"})
-  #   user = Api.create!(User, attributes: %{id: author.id})
-
-  #   Api.read!(Post,
-  #     authorization: [user: user],
-  #     filter: [published: true, authors: [id: author.id]]
-  #   )
-  # end
-
-  # test "it fails if you don't match either" do
-  #   user = Api.create!(User)
-
-  #   assert_raise Ash.Error.Forbidden, ~r/forbidden/, fn ->
-  #     Api.read!(Post,
-  #       authorization: [user: user],
-  #       filter: [published: false]
-  #     )
-  #   end
-  # end
-
-  # test "it fails if it can't confirm that you match either" do
-  #   user = Api.create!(User)
-
-  #   assert_raise Ash.Error.Forbidden, ~r/forbidden/, fn ->
-  #     Api.read!(Post,
-  #       authorization: [user: user]
-  #     )
-  #   end
-  # end
-
-  # test "authorize_if falls through properly" do
-  #   user = Api.create!(User, attributes: %{manager: true})
-
-  #   Api.read!(Author,
-  #     filter: [fired: [not_eq: true], self_manager: false],
-  #     authorization: [user: user]
-  #   )
-  # end
-
-  # test "authorize_unless doesn't trigger if its check is not true" do
-  #   user = Api.create!(User, attributes: %{manager: true})
-
-  #   assert_raise Ash.Error.Forbidden, ~r/forbidden/, fn ->
-  #     Api.read!(Author,
-  #       filter: [fired: false, self_manager: true],
-  #       authorization: [user: user]
-  #     )
-  #   end
-  # end
-
-  # test "forbid_if triggers if its check is true" do
-  #   user = Api.create!(User, attributes: %{manager: true})
-
-  #   assert_raise Ash.Error.Forbidden, ~r/forbidden/, fn ->
-  #     Api.read!(Author,
-  #       filter: [fired: true, self_manager: false],
-  #       authorization: [user: user]
-  #     )
-  #   end
-  # end
-
-  # test "forbid_unless doesn't trigger if its check is true" do
-  #   user = Api.create!(User, attributes: %{manager: false})
-
-  #   assert_raise Ash.Error.Forbidden, ~r/forbidden/, fn ->
-  #     Api.read!(Author,
-  #       filter: [fired: false, self_manager: false],
-  #       authorization: [user: user]
-  #     )
-  #   end
-  # end
+    assert_raise Ash.Error.Forbidden, ~r/forbidden/, fn ->
+      Api.get!(Author, author.id, authorization: [user: user, log_final_report?: true])
+    end
+  end
 end
