@@ -119,7 +119,7 @@ defmodule Ash.Test.Authorization.GetAuthorizationTest do
     user = Api.create!(User, attributes: %{manager: true})
 
     assert_raise Ash.Error.Forbidden, ~r/forbidden/, fn ->
-      Api.get!(Author, author.id, authorization: [user: user, log_final_report?: true])
+      Api.get!(Author, author.id, authorization: [user: user])
     end
   end
 end
