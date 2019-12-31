@@ -49,7 +49,7 @@ defmodule Ash.Resource.Actions do
           path: [:actions, :create]
       end
 
-      case Ash.Resource.Actions.Create.new(name, opts) do
+      case Ash.Resource.Actions.Create.new(__MODULE__, name, opts) do
         {:ok, action} ->
           @actions action
 
@@ -80,7 +80,7 @@ defmodule Ash.Resource.Actions do
           path: [:actions, :read]
       end
 
-      case Ash.Resource.Actions.Read.new(name, opts) do
+      case Ash.Resource.Actions.Read.new(__MODULE__, name, opts) do
         {:ok, action} ->
           @actions action
 
@@ -111,7 +111,7 @@ defmodule Ash.Resource.Actions do
           path: [:actions, :update]
       end
 
-      case Ash.Resource.Actions.Update.new(name, opts) do
+      case Ash.Resource.Actions.Update.new(__MODULE__, name, opts) do
         {:ok, action} ->
           @actions action
 
@@ -142,7 +142,7 @@ defmodule Ash.Resource.Actions do
           path: [:actions, :destroy]
       end
 
-      case Ash.Resource.Actions.Destroy.new(name, opts) do
+      case Ash.Resource.Actions.Destroy.new(__MODULE__, name, opts) do
         {:ok, action} ->
           @actions action
 

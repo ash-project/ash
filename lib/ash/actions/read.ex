@@ -41,20 +41,21 @@ defmodule Ash.Actions.Read do
   end
 
   defp do_authorized(query, params, filter, resource, api, action, auths) do
-    if params[:authorization] do
-      filter_authorization_request =
-        Ash.Authorization.Request.new(
-          api: api,
-          resource: resource,
-          authorization_steps: action.authorization_steps,
-          filter: filter,
-          action_type: action.type,
-          fetcher: fn -> Ash.DataLayer.run_query(query, resource) end,
-          state_key: :data,
-          relationship: [],
-          source: "#{action.type} - `#{action.name}`"
-        )
+    filter_authorization_request =
+      Ash.Authorization.Request.new(
+        api: api,
+        resource: resource,
+        authorization_steps: action.authorization_steps,
+        filter: filter,
+        action_type: action.type,
+        fetcher: fn -> Ash.DataLayer.run_query(query, resource) end,
+        must_fetch?: true,
+        state_key: :data,
+        relationship: [],
+        source: "#{action.type} - `#{action.name}`"
+      )
 
+    if params[:authorization] do
       strict_access? =
         case Keyword.fetch(params[:authorization], :strict_access?) do
           {:ok, value} -> value
@@ -66,10 +67,11 @@ defmodule Ash.Actions.Read do
         log_final_report?: params[:authorization][:log_final_report?] || false
       )
     else
-      case Ash.DataLayer.run_query(query, resource) do
-        {:ok, found} -> {:ok, %{data: found}}
-        {:error, error} -> {:error, error}
-      end
+      authorization = params[:authorization] || []
+
+      Authorizer.authorize(authorization[:user], [filter_authorization_request | auths],
+        fetch_only?: true
+      )
     end
   end
 end

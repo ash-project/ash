@@ -89,7 +89,7 @@ defmodule Ash.Test.Authorization.ReadAuthorizationTest do
 
     relationships do
       has_many :author_posts, AuthorPost
-      many_to_many :authors, Author, through: :author_posts
+      many_to_many :authors, Author, through: AuthorPost
     end
   end
 

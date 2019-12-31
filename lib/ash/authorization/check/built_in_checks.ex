@@ -13,11 +13,12 @@ defmodule Ash.Authorization.Check.BuiltInChecks do
     {Ash.Authorization.Check.AttributeEquals, field: field, value: value}
   end
 
-  defmacro related_to_user_via(relationship) do
-    quote do
-      {Ash.Authorization.Check.RelatedToUserVia,
-       relationship: List.wrap(unquote(relationship)), source: __MODULE__}
-    end
+  def related_to_user_via(relationship) do
+    {Ash.Authorization.Check.RelatedToUserVia, relationship: List.wrap(relationship)}
+  end
+
+  def setting_relationship(relationship) do
+    {Ash.Authorization.Check.SettingRelationship, relationship_name: relationship}
   end
 
   def setting_attribute(name, opts) do
@@ -36,5 +37,14 @@ defmodule Ash.Authorization.Check.BuiltInChecks do
   def user_attribute_matches_record(user_field, record_field) do
     {Ash.Authorization.Check.UserAttributeMatchesRecord,
      user_field: user_field, record_field: record_field}
+  end
+
+  def relating_to_user(relationship_name, opts) do
+    {Ash.Authorization.Check.RelatingToUser,
+     Keyword.put(opts, :relationship_name, relationship_name)}
+  end
+
+  def relationship_set(relationship_name) do
+    {Ash.Authorization.Check.RelationshipSet, [relationship_name: relationship_name]}
   end
 end

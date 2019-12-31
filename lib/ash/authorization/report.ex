@@ -10,11 +10,12 @@ defmodule Ash.Authorization.Report do
     :strict_access?,
     :header,
     :authorized?,
-    no_steps_configured?: false
+    no_steps_configured: false
   ]
 
-  def report(%{no_steps_configured?: true}) do
-    "One of the authorizations required had no authorization steps configured."
+  def report(%{no_steps_configured: %Ash.Authorization.Request{} = request}) do
+    "forbidden:\n" <>
+      request.source <> ": no authorization steps configured. Resource: #{request.resource}"
   end
 
   # We know that each group of authorization steps shares the same relationship

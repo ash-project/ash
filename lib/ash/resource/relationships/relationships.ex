@@ -12,7 +12,13 @@ defmodule Ash.Resource.Relationships do
   defmacro relationships(do: block) do
     quote do
       import Ash.Resource.Relationships
+      import Ash.Authorization.Check.BuiltInChecks
+      import Ash.Authorization.Check.RelationshipBuiltInChecks
+
       unquote(block)
+
+      import Ash.Authorization.Check.BuiltInChecks, only: []
+      import Ash.Authorization.Check.RelationshipBuiltInChecks, only: []
       import Ash.Resource.Relationships, only: [relationships: 1]
     end
   end
@@ -124,6 +130,7 @@ defmodule Ash.Resource.Relationships do
           if relationship.define_field? do
             {:ok, attribute} =
               Ash.Resource.Attributes.Attribute.new(
+                __MODULE__,
                 relationship.source_field,
                 relationship.field_type,
                 primary_key?: relationship.primary_key?

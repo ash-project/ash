@@ -2,29 +2,46 @@ defmodule Ash.Authorization.Checker do
   alias Ash.Authorization.Request
   alias Ash.Actions.SideLoad
 
-  def strict_check(user, request, facts, strict_access?) do
-    request.authorization_steps
-    |> Enum.reduce(facts, fn {_step, clause}, facts ->
-      case Map.fetch(facts, {request.relationship, clause}) do
-        {:ok, _boolean_result} ->
-          facts
+  # TODO: strict_check can't do things with dependencies. Meaning,
+  # we need to run strict check for things with dependencies in the
+  # second phase. So we should prioritize things in this way:
+  # 1.) Things who's dependencies unlock strict checks
+  # 2.) things who's strict checks were never run
+  # 3.) Generate the changeset for those
+  # 3.5) probably make it invalid to have an auth request with a changeset function
+  #      but no dependencies.
+  # 4.) run strict checks
 
-        :error ->
-          case do_strict_check(clause, user, request, strict_access?) do
-            :unknown ->
+  def strict_check(user, request, facts, strict_access?) do
+    if Request.can_strict_check?(request) do
+      new_facts =
+        request.authorization_steps
+        |> Enum.reduce(facts, fn {_step, clause}, facts ->
+          case Map.fetch(facts, {request.relationship, clause}) do
+            {:ok, _boolean_result} ->
               facts
 
-            :unknowable ->
-              Map.put(facts, clause, :unknowable)
+            :error ->
+              case do_strict_check(clause, user, request, strict_access?) do
+                :unknown ->
+                  facts
 
-            :irrelevant ->
-              Map.put(facts, clause, :irrelevant)
+                :unknowable ->
+                  Map.put(facts, clause, :unknowable)
 
-            boolean ->
-              Map.put(facts, clause, boolean)
+                :irrelevant ->
+                  Map.put(facts, clause, :irrelevant)
+
+                boolean ->
+                  Map.put(facts, clause, boolean)
+              end
           end
-      end
-    end)
+        end)
+
+      {Map.put(request, :strict_check_completed?, true), new_facts}
+    else
+      {request, facts}
+    end
   end
 
   def run_checks(scenarios, user, requests, facts, state, strict_access?) do
@@ -60,39 +77,48 @@ defmodule Ash.Authorization.Checker do
 
   # TODO: We could be smart here, and likely fetch multiple requests at a time
   defp fetch_requests(requests, state, strict_access?) do
-    unfetched_requests =
-      Enum.reject(requests, fn request ->
+    fetchable_requests =
+      requests
+      |> Enum.reject(fn request ->
         Request.fetched?(state, request)
+      end)
+      |> Enum.filter(fn request ->
+        Request.dependencies_met?(state, request)
       end)
 
     requests_without_strict_access =
       if strict_access? do
-        Enum.filter(unfetched_requests, fn request ->
+        Enum.filter(fetchable_requests, fn request ->
           request.bypass_strict_access?
         end)
       else
-        unfetched_requests
+        fetchable_requests
       end
 
     requests_without_strict_access
+    |> Enum.filter(fn request ->
+      Request.dependencies_met?(state, request) && request.strict_check_completed?
+    end)
+    |> Enum.map(fn request ->
+      Request.fetch_changeset(state, request)
+    end)
     |> Enum.sort_by(fn request ->
       # Requests that bypass strict access should generally perform well
       # as they would generally be more efficient checks
       {Enum.count(request.relationship), not request.bypass_strict_access?, request.relationship}
     end)
-    |> Enum.at(0)
     |> case do
-      nil ->
-        :all_scenarios_known
+      [request | _] = requests ->
+        case Request.fetch_request_state(state, request) do
+          {:ok, new_state} ->
+            {:ok, {requests, new_state}}
 
-      request ->
-        case request.fetcher.() do
-          {:ok, value} ->
-            {:ok, Request.put_request_state(state, request, value)}
-
-          {:error, error} ->
-            {:error, error}
+          :error ->
+            {:ok, {requests, state}}
         end
+
+      _ ->
+        :all_scenarios_known
     end
   end
 
@@ -143,7 +169,8 @@ defmodule Ash.Authorization.Checker do
   defp clauses_checkable_without_fetching_data(clauses, requests, state) do
     Enum.split_with(clauses, fn clause ->
       Enum.any?(requests, fn request ->
-        Request.fetched?(state, request) && Request.contains_clause?(request, clause)
+        Request.fetched?(state, request) && Request.contains_clause?(request, clause) &&
+          Request.dependencies_met?(state, request)
       end)
     end)
   end

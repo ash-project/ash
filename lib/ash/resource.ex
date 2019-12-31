@@ -125,7 +125,7 @@ defmodule Ash.Resource do
     case opts[:primary_key] do
       true ->
         {:ok, attribute} =
-          Ash.Resource.Attributes.Attribute.new(:id, :uuid,
+          Ash.Resource.Attributes.Attribute.new(mod, :id, :uuid,
             primary_key?: true,
             default: &Ecto.UUID.generate/0
           )
@@ -137,7 +137,7 @@ defmodule Ash.Resource do
 
       opts ->
         {:ok, attribute} =
-          Ash.Resource.Attributes.Attribute.new(opts[:field], opts[:type], primary_key?: true)
+          Ash.Resource.Attributes.Attribute.new(mod, opts[:field], opts[:type], primary_key?: true)
 
         Module.put_attribute(mod, :attributes, attribute)
     end

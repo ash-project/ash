@@ -38,8 +38,11 @@ defmodule Ash.Actions.PrimaryKeyHelpers do
           attr = Ash.attribute(resource, key)
 
           case Ash.Type.cast_input(attr.type, val) do
-            {:ok, casted} -> {:ok, Keyword.put(filter, attr.name, casted)}
-            :error -> {:error, {key, "is invalid"}}
+            {:ok, casted} ->
+              {:ok, Keyword.put(filter, attr.name, casted)}
+
+            :error ->
+              {:error, "#{key} is invalid"}
           end
 
         _, {:error, error} ->

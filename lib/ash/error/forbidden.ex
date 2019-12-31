@@ -10,7 +10,7 @@ defmodule Ash.Error.Forbidden do
     :strict_check_facts,
     :state,
     :strict_access?,
-    no_steps_configured?: false
+    no_steps_configured: false
   ]
 
   def message(error) do
@@ -21,7 +21,7 @@ defmodule Ash.Error.Forbidden do
       strict_check_facts: error.strict_check_facts,
       state: error.state,
       strict_access?: error.strict_access?,
-      no_steps_configured?: error.no_steps_configured?,
+      no_steps_configured: error.no_steps_configured,
       header: "forbidden:",
       authorized?: false
     }
@@ -37,7 +37,7 @@ defmodule Ash.Error.Forbidden do
       strict_check_facts: error.strict_check_facts,
       state: error.state,
       strict_access?: error.strict_access?,
-      no_steps_configured?: error.no_steps_configured?,
+      no_steps_configured: error.no_steps_configured,
       header: header,
       authorized?: false
     }

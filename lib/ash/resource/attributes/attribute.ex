@@ -28,10 +28,6 @@ defmodule Ash.Resource.Attributes.Attribute do
               authorization_steps: []
             ],
             describe: [
-              authorization_steps: """
-              Rules applied on an attribute during create or update. If no rules are defined, authorization to change will fail.
-              If set to false, no rules are applied and any changes are allowed (assuming the action was authorized as a whole)
-              """,
               allow_nil?: """
               Whether or not to allow `null` values. Ash can perform optimizations with this information, so if you do not
               expect any null values, make sure to set this switch.
@@ -39,15 +35,20 @@ defmodule Ash.Resource.Attributes.Attribute do
               primary_key?:
                 "Whether this field is, or is part of, the primary key of a resource.",
               default:
-                "A one argument function that returns a default value, an mfa that does the same, or a raw value via specifying `{:constant, value}`."
+                "A one argument function that returns a default value, an mfa that does the same, or a raw value via specifying `{:constant, value}`.",
+              authorization_steps: """
+              Rules applied on an attribute during create or update. If no rules are defined, authorization to change will fail.
+              If set to false, no rules are applied and any changes are allowed (assuming the action was authorized as a whole)
+              """
             ]
           )
 
   @doc false
   def attribute_schema(), do: @schema
 
-  @spec new(atom, Ash.Type.t(), Keyword.t()) :: {:ok, t()} | {:error, term}
-  def new(name, type, opts) do
+  @spec new(Ash.resource(), atom, Ash.Type.t(), Keyword.t()) :: {:ok, t()} | {:error, term}
+  def new(resource, name, type, opts) do
+    # Don't call functions on the resource! We don't want it to compile here
     with {:ok, opts} <- Ashton.validate(opts, @schema),
          {:default, {:ok, default}} <- {:default, cast_default(type, opts)} do
       authorization_steps =
@@ -58,7 +59,8 @@ defmodule Ash.Resource.Attributes.Attribute do
           steps ->
             base_attribute_opts = [
               attribute_name: name,
-              attribute_type: type
+              attribute_type: type,
+              resource: resource
             ]
 
             Enum.map(steps, fn {step, {mod, opts}} ->

@@ -3,13 +3,13 @@ defmodule Ash.Authorization.Check.RelatedToUserVia do
 
   @impl true
   def describe(opts) do
-    description = describe_relationship(opts[:source], opts[:relationship])
+    description = describe_relationship(opts[:resource], opts[:relationship])
 
     description <> "this_record is the user"
   end
 
   @impl true
-  def strict_check(%user_resource{} = user, request, opts) do
+  def strict_check(%user_resource{} = user, request = %{action_type: :read}, opts) do
     full_relationship_path = request.relationship ++ opts[:relationship]
 
     pkey_filter = user |> Map.take(Ash.primary_key(user_resource)) |> Map.to_list()
@@ -28,6 +28,8 @@ defmodule Ash.Authorization.Check.RelatedToUserVia do
         {:error, errors}
     end
   end
+
+  def strict_check(_, _, _), do: {:ok, :unknown}
 
   @impl true
   def prepare(opts) do

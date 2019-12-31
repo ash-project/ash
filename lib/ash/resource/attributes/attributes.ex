@@ -58,7 +58,7 @@ defmodule Ash.Resource.Attributes do
           path: [:attributes, :attribute, name]
       end
 
-      case Ash.Resource.Attributes.Attribute.new(name, type, opts) do
+      case Ash.Resource.Attributes.Attribute.new(__MODULE__, name, type, opts) do
         {:ok, attribute} ->
           @attributes attribute
 

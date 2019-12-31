@@ -138,4 +138,14 @@ end
   variable from data somehow. Authorization fetchers will need to take state as
   an argument or something like that, and maybe need to specify dependencies?.
 * Validate that checks have the correct action type when compiling an action
-
+* Make sure updating foreign key attributes behaves the same as setting a
+  relationship, or just disallow having editable attributes for relationship fkeys
+* Validate `dependencies` and `must_fetch` (all `must_fetch` with dependencies
+  must have those dependencies as `must_fetch` also)
+* Support branching/more complicated control flow in authorization steps
+* The Authorization flow for creates/updates may be insufficient. Instead of
+  adding requests if relationships/attributes are changing, we may instead want
+  to embed that knowledge inside the sat solver itself. Basically a
+  `relationship_foo_is_changing?` fact, *and*ed with the resulting conditions.
+  I'm not even sure if thats possible though.
+* We need to validate incoming attributes/relationships better.

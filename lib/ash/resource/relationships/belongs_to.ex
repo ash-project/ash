@@ -11,7 +11,8 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :destination_field,
     :source_field,
     :source,
-    :reverse_relationship
+    :reverse_relationship,
+    :authorization_steps
   ]
 
   @type t :: %__MODULE__{
@@ -24,7 +25,8 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           define_field?: boolean,
           field_type: Ash.Type.t(),
           destination_field: atom,
-          source_field: atom | nil
+          source_field: atom | nil,
+          authorization_steps: Keyword.t()
         }
 
   @opt_schema Ashton.schema(
@@ -34,13 +36,15 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                   primary_key?: :boolean,
                   define_field?: :boolean,
                   field_type: :atom,
-                  reverse_relationship: :atom
+                  reverse_relationship: :atom,
+                  authorization_steps: :keyword
                 ],
                 defaults: [
                   destination_field: :id,
                   primary_key?: false,
                   define_field?: true,
-                  field_type: :uuid
+                  field_type: :uuid,
+                  authorization_steps: []
                 ],
                 describe: [
                   reverse_relationship:
@@ -53,7 +57,12 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                   source_field:
                     "The field on this resource that should match the `destination_field` on the related resource.  Default: [relationship_name]_id",
                   primary_key?:
-                    "Whether this field is, or is part of, the primary key of a resource."
+                    "Whether this field is, or is part of, the primary key of a resource.",
+                  authorization_steps: """
+                  Steps applied on an relationship during create or update. If no steps are defined, authorization to change will fail.
+                  If set to false, no steps are applied and any changes are allowed (assuming the action was authorized as a whole)
+                  Remember that any changes against the destination records *will* still be authorized regardless of this setting.
+                  """
                 ]
               )
 
@@ -70,9 +79,27 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     # Don't call functions on the resource! We don't want it to compile here
     case Ashton.validate(opts, @opt_schema) do
       {:ok, opts} ->
+        authorization_steps =
+          case opts[:authorization_steps] do
+            false ->
+              false
+
+            steps ->
+              base_attribute_opts = [
+                relationship_name: name,
+                destination: related_resource,
+                resource: resource
+              ]
+
+              Enum.map(steps, fn {step, {mod, opts}} ->
+                {step, {mod, Keyword.merge(base_attribute_opts, opts)}}
+              end)
+          end
+
         {:ok,
          %__MODULE__{
            name: name,
+           authorization_steps: authorization_steps,
            source: resource,
            type: :belongs_to,
            cardinality: :one,

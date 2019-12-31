@@ -99,6 +99,7 @@ defmodule Ash.Filter do
   def strict_subset_of?(_, nil), do: false
 
   def strict_subset_of?(filter, candidate) do
+    # TODO: Finish this!
     unless filter.ors in [[], nil], do: raise("Can't do ors contains yet")
     unless filter.not in [[], nil], do: raise("Can't do not contains yet")
     unless candidate.ors in [[], nil], do: raise("Can't do ors contains yet")

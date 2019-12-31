@@ -30,6 +30,8 @@ defmodule Ash.Test.Authorization.GetAuthorizationTest do
     relationships do
       many_to_many :posts, Ash.Test.Authorization.AuthorizationTest.Post,
         through: Ash.Test.Authorization.AuthorizationTest.AuthorPost
+
+      has_many :drafts, Draft
     end
   end
 
@@ -89,7 +91,7 @@ defmodule Ash.Test.Authorization.GetAuthorizationTest do
 
     relationships do
       has_many :author_posts, AuthorPost
-      many_to_many :authors, Author, through: :author_posts
+      many_to_many :authors, Author, through: AuthorPost
     end
   end
 

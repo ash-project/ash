@@ -22,24 +22,30 @@ defmodule Ash.Authorization.Authorizer do
   def authorize(user, requests, opts \\ []) do
     strict_access? = Keyword.get(opts, :strict_access?, true)
 
-    if Enum.any?(requests, fn request -> Enum.empty?(request.authorization_steps) end) do
-      {:error,
-       Ash.Error.Forbidden.exception(
-         no_steps_configured?: true,
-         log_final_report?: opts[:log_final_report?] || false
-       )}
+    if opts[:fetch_only?] do
+      fetch_must_fetch(requests, %{})
     else
-      facts = strict_check_facts(user, requests, strict_access?)
+      case Enum.find(requests, fn request -> Enum.empty?(request.authorization_steps) end) do
+        nil ->
+          {new_requests, facts} = strict_check_facts(user, requests, strict_access?)
 
-      solve(
-        requests,
-        user,
-        facts,
-        facts,
-        %{user: user},
-        strict_access?,
-        opts[:log_final_report?] || false
-      )
+          solve(
+            new_requests,
+            user,
+            facts,
+            facts,
+            %{user: user},
+            strict_access?,
+            opts[:log_final_report?] || false
+          )
+
+        request ->
+          {:error,
+           Ash.Error.Forbidden.exception(
+             no_steps_configured: request,
+             log_final_report?: opts[:log_final_report?] || false
+           )}
+      end
     end
   end
 
@@ -175,7 +181,8 @@ defmodule Ash.Authorization.Authorizer do
   defp sat_solver(requests, facts, negations, state) do
     case state do
       %{data: [%resource{} | _] = data} ->
-        # TODO: Needs primary key
+        # TODO: Needs primary key, looks like some kind of primary key is necessary for
+        # almost everything ash does :/
         pkey = Ash.primary_key(resource)
 
         ids = Enum.map(data, &Map.take(&1, pkey))
@@ -241,36 +248,75 @@ defmodule Ash.Authorization.Authorizer do
         {:error, error} ->
           {:error, error}
 
-        {:ok, new_facts, state} ->
-          solve(
-            requests,
-            user,
-            new_facts,
-            strict_check_facts,
-            state,
-            strict_access?,
-            log_final_report?
-          )
+        {:ok, new_requests, new_facts, new_state} ->
+          if new_requests == requests && new_facts == new_facts && state == new_state do
+            exception =
+              Ash.Error.Forbidden.exception(
+                scenarios: scenarios,
+                requests: requests,
+                facts: facts,
+                strict_check_facts: strict_check_facts,
+                state: state,
+                strict_access?: strict_access?
+              )
+
+            if log_final_report? do
+              Logger.info(Ash.Error.Forbidden.report_text(exception))
+            end
+
+            {:error, exception}
+          else
+            solve(
+              new_requests,
+              user,
+              new_facts,
+              strict_check_facts,
+              new_state,
+              strict_access?,
+              log_final_report?
+            )
+          end
       end
     end
   end
 
   defp fetch_must_fetch(requests, state) do
-    Enum.reduce_while(requests, {:ok, state}, fn request, {:ok, state} ->
-      case Request.fetch_request_state(state, request) do
-        {:ok, _state} ->
-          {:cont, {:ok, state}}
+    unfetched = Enum.reject(requests, &Request.fetched?(state, &1))
 
-        :error ->
-          case request.fetcher.() do
-            {:ok, value} ->
-              {:cont, {:ok, Request.put_request_state(state, request, value)}}
+    {safe_to_fetch, unmet} =
+      Enum.split_with(unfetched, fn request -> Request.dependencies_met?(state, request) end)
 
-            {:error, error} ->
-              {:halt, {:error, error}}
-          end
-      end
-    end)
+    case Enum.filter(safe_to_fetch, &Map.get(&1, :must_fetch?)) do
+      [] ->
+        if unmet == [] do
+          {:ok, state}
+        else
+          {:error,
+           "Could not fetch all required data due to data dependency issues, unmet dependencies existed"}
+        end
+
+      must_fetch ->
+        new_state =
+          Enum.reduce_while(must_fetch, {:ok, state}, fn request, {:ok, state} ->
+            case Request.fetch(state, request) do
+              {:ok, new_state} -> {:cont, {:ok, new_state}}
+              {:error, error} -> {:halt, {:error, error}}
+            end
+          end)
+
+        case new_state do
+          {:ok, new_state} ->
+            if new_state == state do
+              {:error,
+               "Could not fetch all required data due to data dependency issues, no step affected state"}
+            else
+              fetch_must_fetch(unfetched, new_state)
+            end
+
+          {:error, error} ->
+            {:error, error}
+        end
+    end
   end
 
   defp any_scenarios_reality?(scenarios, facts) do
@@ -306,8 +352,11 @@ defmodule Ash.Authorization.Authorizer do
   end
 
   defp strict_check_facts(user, requests, strict_access?) do
-    Enum.reduce(requests, %{true: true, false: false}, fn request, facts ->
-      Ash.Authorization.Checker.strict_check(user, request, facts, strict_access?)
+    Enum.reduce(requests, {[], %{true: true, false: false}}, fn request, {requests, facts} ->
+      {new_request, new_facts} =
+        Ash.Authorization.Checker.strict_check(user, request, facts, strict_access?)
+
+      {[new_request | requests], new_facts}
     end)
   end
 end

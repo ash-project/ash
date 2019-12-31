@@ -30,16 +30,32 @@ defmodule Ash.Resource.Actions.Destroy do
   @doc false
   def opt_schema(), do: @opt_schema
 
-  @spec new(atom, Keyword.t()) :: {:ok, t()} | {:error, term}
-  def new(name, opts \\ []) do
+  @spec new(Ash.resource(), atom, Keyword.t()) :: {:ok, t()} | {:error, term}
+  def new(resource, name, opts \\ []) do
+    # Don't call functions on the resource! We don't want it to compile here
     case Ashton.validate(opts, @opt_schema) do
       {:ok, opts} ->
+        authorization_steps =
+          case opts[:authorization_steps] do
+            false ->
+              false
+
+            steps ->
+              base_attribute_opts = [
+                resource: resource
+              ]
+
+              Enum.map(steps, fn {step, {mod, opts}} ->
+                {step, {mod, Keyword.merge(base_attribute_opts, opts)}}
+              end)
+          end
+
         {:ok,
          %__MODULE__{
            name: name,
            type: :destroy,
            primary?: opts[:primary?],
-           authorization_steps: opts[:authorization_steps]
+           authorization_steps: authorization_steps
          }}
 
       {:error, error} ->
