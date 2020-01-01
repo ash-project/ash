@@ -13,7 +13,7 @@ defmodule Ash.Actions.Read do
 
     with %Ash.Filter{errors: [], authorizations: filter_auths} = filter <-
            Ash.Filter.parse(resource, filter, api),
-         {:ok, side_load_auths} <- SideLoad.process(resource, side_loads, filter),
+         {:ok, side_load_auths} <- SideLoad.process(api, resource, side_loads, filter),
          query <- Ash.DataLayer.resource_to_query(resource),
          {:ok, sort} <- Ash.Actions.Sort.process(resource, sort),
          {:ok, sorted_query} <- Ash.DataLayer.sort(query, sort, resource),

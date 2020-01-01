@@ -46,7 +46,7 @@ defmodule Ash.Test.Actions.CreateTest do
     def garbage3(), do: "garbage3"
   end
 
-  defmodule PostLink do                      
+  defmodule PostLink do
     use Ash.Resource, name: "post_links", type: "post_link", primary_key: false
     use Ash.DataLayer.Ets, private?: true
 
@@ -138,11 +138,13 @@ defmodule Ash.Test.Actions.CreateTest do
       post2 = Api.create!(Post, attributes: %{title: "title2"})
       post3 = Api.create!(Post, attributes: %{title: "title3"})
 
-      assert Api.create!(Post, relationships: %{related_posts: [post2.id, post3.id]}).related_posts ==
-               [
+      assert Enum.sort(
+               Api.create!(Post, relationships: %{related_posts: [post2.id, post3.id]}).related_posts
+             ) ==
+               Enum.sort([
                  Api.get!(Post, post2.id),
                  Api.get!(Post, post3.id)
-               ]
+               ])
     end
   end
 

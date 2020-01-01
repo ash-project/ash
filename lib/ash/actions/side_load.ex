@@ -1,21 +1,21 @@
 defmodule Ash.Actions.SideLoad do
-  def process(resource, side_load, source_filter, path \\ [])
-  def process(_, [], _, _), do: {:ok, []}
+  def process(api, resource, side_load, source_filter, path \\ [])
+  def process(_, _, [], _, _), do: {:ok, []}
 
-  def process(resource, side_load, source_filter, path) do
+  def process(api, resource, side_load, source_filter, path) do
     # TODO: return authorizations here.
     Enum.reduce(side_load, {:ok, []}, fn
       _, {:error, error} ->
         {:error, error}
 
       {key, true}, {:ok, acc} ->
-        do_process(resource, key, [], source_filter, path, acc)
+        do_process(api, resource, key, [], source_filter, path, acc)
 
       {key, further}, {:ok, acc} ->
-        do_process(resource, key, further, source_filter, path, acc)
+        do_process(api, resource, key, further, source_filter, path, acc)
 
       key, {:ok, acc} ->
-        do_process(resource, key, [], source_filter, path, acc)
+        do_process(api, resource, key, [], source_filter, path, acc)
     end)
   end
 
@@ -35,14 +35,35 @@ defmodule Ash.Actions.SideLoad do
     end)
   end
 
-  defp do_process(resource, key, further, source_filter, path, acc) do
+  defp do_process(api, resource, key, further, source_filter, path, acc) do
     with {:rel, relationship} when not is_nil(relationship) <-
            {:rel, Ash.relationship(resource, key)},
          nested_path <- path ++ [key],
          {:ok, authorizations} <-
-           process(relationship.destination, further, source_filter, nested_path) do
+           process(api, relationship.destination, further, source_filter, nested_path) do
       filter = put_nested_relationship(nested_path, source_filter)
-      auth = {resource, :read, [filter: filter]}
+
+      default_read =
+        Ash.primary_action(resource, :read) ||
+          raise "Must set default read for #{inspect(resource)}"
+
+      # TODO: I guess side loads should just use the authorizer request pattern too :/
+      auth =
+        Ash.Authorization.Request.new(
+          action_type: :read,
+          authorization_steps: default_read.authorization_steps,
+          filter: filter,
+          fetcher: fn ->
+            case api.read(resource, filter: filter, paginate: false) do
+              {:ok, %{results: results}} -> {:ok, results}
+              {:error, error} -> {:error, error}
+            end
+          end,
+          relationship: nested_path,
+          source: "Include #{Enum.join(nested_path, ".")}",
+          must_fetch?: false,
+          api: api
+        )
 
       {:ok, [auth | authorizations] ++ acc}
     else

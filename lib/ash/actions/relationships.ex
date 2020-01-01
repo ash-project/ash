@@ -277,14 +277,20 @@ defmodule Ash.Actions.Relationships do
         action_type: :update,
         state_key: :data,
         is_fetched: fn data ->
-          Map.get(data, name) != %Ecto.Association.NotLoaded{}
+          case data do
+            %{^name => %Ecto.Association.NotLoaded{}} -> false
+            _ -> true
+          end
         end,
         must_fetch?: true,
         dependencies: [:data, [:relationships, name, :to_add]],
         bypass_strict_access?: true,
         changeset: changeset,
         fetcher: fn %{data: data, relationships: %{^name => %{:to_add => to_add}}} ->
-          {:ok, Map.put(data, name, to_add)}
+          case to_add do
+            [item] -> {:ok, Map.put(data, name, item)}
+            _ -> raise "Internal relationship assumption failed."
+          end
         end,
         relationship: [],
         source: "Set relationship #{relationship.name}"
@@ -311,7 +317,10 @@ defmodule Ash.Actions.Relationships do
         must_fetch?: true,
         dependencies: [:data, [:relationships, name, :to_add]],
         is_fetched: fn data ->
-          Map.get(data, name) != %Ecto.Association.NotLoaded{}
+          case data do
+            %{^name => %Ecto.Association.NotLoaded{}} -> false
+            _ -> true
+          end
         end,
         fetcher: fn %{data: data, relationships: %{^name => %{:to_add => to_add}}} ->
           pkey_value = Keyword.take(identifier, pkey)
