@@ -35,7 +35,7 @@ defmodule Ash.Test.Authorization.CreateAuthorizationTest do
     use Ash.DataLayer.Ets, private?: true
 
     actions do
-      read :default
+      read :default, authorization_steps: [authorize_if: always()]
 
       create :default,
         authorization_steps: [
@@ -54,6 +54,10 @@ defmodule Ash.Test.Authorization.CreateAuthorizationTest do
           authorize_if: always()
         ]
 
+      attribute :bio_locked, :boolean,
+        default: {:constant, false},
+        authorization_steps: false
+
       attribute :self_manager, :boolean, authorization_steps: false
       # [
       # authorize_if: user_attribute(:admin, true)
@@ -68,8 +72,14 @@ defmodule Ash.Test.Authorization.CreateAuthorizationTest do
     end
 
     relationships do
-      many_to_many :posts, Ash.Test.Authorization.AuthorizationTest.Post,
-        through: Ash.Test.Authorization.AuthorizationTest.AuthorPost
+      many_to_many :posts, Ash.Test.Authorization.CreateAuthorizationTest.Post,
+        through: Ash.Test.Authorization.CreateAuthorizationTest.AuthorPost
+
+      has_one :bio, Ash.Test.Authorization.CreateAuthorizationTest.Bio,
+        authorization_steps: [
+          forbid_if: attribute_equals(:bio_locked, true),
+          authorize_if: always()
+        ]
     end
   end
 
@@ -78,12 +88,28 @@ defmodule Ash.Test.Authorization.CreateAuthorizationTest do
     use Ash.DataLayer.Ets, private?: true
 
     actions do
-      read :default
+      read :default,
+        authorization_steps: [
+          authorize_if: always()
+        ]
 
       create :default,
         authorization_steps: [
           forbid_unless: setting_relationship(:author),
           authorize_if: user_attribute(:author, true)
+        ]
+
+      update :default,
+        authorization_steps: [
+          authorize_if: always()
+        ]
+    end
+
+    attributes do
+      attribute :admin_only?, :boolean,
+        default: {:constant, false},
+        authorization_steps: [
+          authorize_if: always()
         ]
     end
 
@@ -126,7 +152,7 @@ defmodule Ash.Test.Authorization.CreateAuthorizationTest do
     end
 
     relationships do
-      belongs_to :post, Ash.Test.Authorization.AuthorizationTest.Post, primary_key?: true
+      belongs_to :post, Ash.Test.Authorization.CreateAuthorizationTest.Post, primary_key?: true
       belongs_to :author, Author, primary_key?: true
     end
   end
@@ -161,7 +187,7 @@ defmodule Ash.Test.Authorization.CreateAuthorizationTest do
   defmodule Api do
     use Ash.Api
 
-    resources [Post, Author, AuthorPost, User, Draft]
+    resources [Post, Author, AuthorPost, User, Draft, Bio]
   end
 
   test "should fail if a user does not match the action requirements" do
@@ -211,5 +237,19 @@ defmodule Ash.Test.Authorization.CreateAuthorizationTest do
       relationships: %{author: author.id},
       authorization: [user: user]
     )
+  end
+
+  test "it forbids has_one relationships properly" do
+    user = Api.create!(User, attributes: %{name: "foo", author: true, manager: true})
+
+    bio = Api.create!(Bio, attributes: %{admin_only?: false})
+
+    assert_raise Ash.Error.Forbidden, ~r/forbidden/, fn ->
+      Api.create!(Author,
+        attributes: %{contents: "best ever", bio_locked: true},
+        relationships: %{bio: bio.id},
+        authorization: [user: user]
+      )
+    end
   end
 end

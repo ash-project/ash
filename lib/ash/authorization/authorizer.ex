@@ -40,11 +40,13 @@ defmodule Ash.Authorization.Authorizer do
           )
 
         request ->
-          {:error,
-           Ash.Error.Forbidden.exception(
-             no_steps_configured: request,
-             log_final_report?: opts[:log_final_report?] || false
-           )}
+          exception = Ash.Error.Forbidden.exception(no_steps_configured: request)
+
+          if opts[:log_final_report?] do
+            Logger.info(Ash.Error.Forbidden.report_text(exception))
+          end
+
+          {:error, exception}
       end
     end
   end

@@ -80,4 +80,13 @@ defmodule Ash.DataLayer do
   def run_query(query, central_resource) do
     Ash.data_layer(central_resource).run_query(query, central_resource)
   end
+
+  def transact(resource, func) do
+    if can?(:transact, resource) do
+      data_layer = Ash.data_layer(resource)
+      data_layer.transaction(func)
+    else
+      func.()
+    end
+  end
 end

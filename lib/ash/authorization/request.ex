@@ -10,6 +10,7 @@ defmodule Ash.Authorization.Request do
     :fetcher,
     :source,
     :must_fetch?,
+    :is_fetched,
     :state_key,
     :strict_check_completed?,
     :api,
@@ -23,6 +24,7 @@ defmodule Ash.Authorization.Request do
           filter: Ash.Filter.t(),
           changeset: Ecto.Changeset.t(),
           dependencies: list(term),
+          is_fetched: (term -> boolean),
           # TODO: fetcher is a function
           fetcher: term,
           relationship: list(atom),
@@ -42,6 +44,7 @@ defmodule Ash.Authorization.Request do
       |> Keyword.put_new(:bypass_strict_access?, false)
       |> Keyword.put_new(:dependencies, [])
       |> Keyword.put_new(:strict_check_completed?, false)
+      |> Keyword.put_new(:is_fetched, fn _ -> true end)
       |> Keyword.update!(:authorization_steps, fn steps ->
         Enum.map(steps, fn {step, fact} ->
           {step, Ash.Authorization.Clause.new(opts[:relationship] || [], opts[:resource], fact)}
@@ -55,6 +58,7 @@ defmodule Ash.Authorization.Request do
   def can_strict_check?(_), do: true
 
   def dependencies_met?(_state, %{dependencies: []}), do: true
+  def dependencies_met?(_state, %{dependencies: nil}), do: true
 
   def dependencies_met?(state, %{dependencies: dependencies}) do
     Enum.all?(dependencies, fn dependency ->
@@ -73,8 +77,11 @@ defmodule Ash.Authorization.Request do
 
   def fetched?(state, request) do
     case fetch_request_state(state, request) do
-      {:ok, _} -> true
-      :error -> false
+      {:ok, value} ->
+        request.is_fetched.(value)
+
+      :error ->
+        false
     end
   end
 
@@ -143,6 +150,8 @@ defmodule Ash.Authorization.Request do
     end
   end
 
+  def fetch_changeset(_state, request), do: request
+
   defp fetch_nested_value(state, [key]) when is_map(state) do
     Map.fetch(state, key)
   end
@@ -170,5 +179,9 @@ defmodule Ash.Authorization.Request do
       :error ->
         Map.put(state, key, put_nested_key(%{}, rest, value))
     end
+  end
+
+  defp put_nested_key(state, key, value) do
+    Map.put(state, key, value)
   end
 end

@@ -53,8 +53,8 @@ defmodule Ash.Authorization.Checker do
 
       {[], _clauses_requiring_fetch} ->
         case fetch_requests(requests, state, strict_access?) do
-          {:ok, new_state} ->
-            run_checks(scenarios, user, requests, facts, new_state, strict_access?)
+          {:ok, {new_requests, new_state}} ->
+            run_checks(scenarios, user, new_requests, facts, new_state, strict_access?)
 
           :all_scenarios_known ->
             :all_scenarios_known
@@ -67,7 +67,10 @@ defmodule Ash.Authorization.Checker do
         # TODO: We could limit/smartly choose the checks that we prepare and run here as an optimization
         case prepare_checks(clauses, requests, state) do
           {:ok, new_state} ->
-            do_run_checks(clauses, user, requests, facts, new_state, strict_access?)
+            case do_run_checks(clauses, user, requests, facts, new_state, strict_access?) do
+              {:ok, new_facts, new_state} -> {:ok, requests, new_facts, new_state}
+              {:error, error} -> {:error, error}
+            end
 
           {:error, error} ->
             {:error, error}
@@ -77,25 +80,20 @@ defmodule Ash.Authorization.Checker do
 
   # TODO: We could be smart here, and likely fetch multiple requests at a time
   defp fetch_requests(requests, state, strict_access?) do
-    fetchable_requests =
-      requests
-      |> Enum.reject(fn request ->
-        Request.fetched?(state, request)
-      end)
-      |> Enum.filter(fn request ->
-        Request.dependencies_met?(state, request)
+    {fetchable_requests, other_requests} =
+      Enum.split_with(requests, fn request ->
+        bypass_strict? =
+          if strict_access? do
+            request.bypass_strict_access?
+          else
+            true
+          end
+
+        bypass_strict? && !Request.fetched?(state, request) &&
+          Request.dependencies_met?(state, request)
       end)
 
-    requests_without_strict_access =
-      if strict_access? do
-        Enum.filter(fetchable_requests, fn request ->
-          request.bypass_strict_access?
-        end)
-      else
-        fetchable_requests
-      end
-
-    requests_without_strict_access
+    fetchable_requests
     |> Enum.filter(fn request ->
       Request.dependencies_met?(state, request) && request.strict_check_completed?
     end)
@@ -109,12 +107,12 @@ defmodule Ash.Authorization.Checker do
     end)
     |> case do
       [request | _] = requests ->
-        case Request.fetch_request_state(state, request) do
+        case Request.fetch(state, request) do
           {:ok, new_state} ->
-            {:ok, {requests, new_state}}
+            {:ok, {requests ++ other_requests, new_state}}
 
           :error ->
-            {:ok, {requests, state}}
+            {:ok, {requests ++ other_requests, state}}
         end
 
       _ ->

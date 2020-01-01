@@ -1,5 +1,5 @@
 defmodule Ash.Authorization.Check.AttributeEquals do
-  use Ash.Authorization.Check, action_types: [:read, :update, :delete]
+  use Ash.Authorization.Check, action_types: [:read, :create, :update, :delete]
 
   @impl true
   def describe(opts) do
@@ -7,7 +7,7 @@ defmodule Ash.Authorization.Check.AttributeEquals do
   end
 
   @impl true
-  def strict_check(_user, request, options) do
+  def strict_check(_user, request = %{action_type: :read}, options) do
     field = options[:field]
     value = options[:value]
 
@@ -29,6 +29,17 @@ defmodule Ash.Authorization.Check.AttributeEquals do
       %{errors: errors} ->
         {:error, errors}
     end
+  end
+
+  def strict_check(_user, %{action_type: :create, changeset: changeset}, options) do
+    case Ecto.Changeset.fetch_field(changeset, options[:field]) do
+      {_, value} -> {:ok, options[:value] == value}
+      _ -> {:ok, false}
+    end
+  end
+
+  def strict_check(_user, %{action_type: :update, changeset: changeset}, options) do
+    {:ok, {:ok, options[:value]} == Map.fetch(changeset.data, options[:field])}
   end
 
   @impl true

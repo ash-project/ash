@@ -1,159 +1,272 @@
 defmodule Ash.Actions.Relationships do
-  alias Ash.Actions.PrimaryKeyHelpers
-
   def relationship_change_authorizations(api, resource, changeset) do
     resource
     |> Ash.relationships()
     |> Enum.filter(fn relationship ->
       Map.has_key?(changeset.__ash_relationships__, relationship.name)
     end)
-    |> Enum.reduce_while({:ok, []}, fn relationship, {:ok, authorizations} ->
-      case add_related_authorizations(resource, api, relationship, changeset) do
-        {:ok, new_authorizations} -> {:cont, {:ok, authorizations ++ new_authorizations}}
-        {:error, error} -> {:halt, {:error, error}}
-      end
+    |> Enum.flat_map(fn relationship ->
+      add_related_authorizations(api, relationship, changeset)
     end)
-  end
-
-  def add_relationships_to_result(resource, result, state) do
-    state
-    |> Map.get(:relationships, %{})
-    |> Enum.reduce(result, fn {name, value}, result ->
-      # TODO: Figure out `to_remove`
-      # how does that look for has_one?
-      case Map.fetch(value, :to_add) do
-        {:ok, to_add} ->
-          case Ash.relationship(resource, name) do
-            %{cardinality: :many} ->
-              Map.put(result, name, Map.keys(to_add))
-
-            %{cardinality: :one} ->
-              Map.put(result, name, to_add)
-          end
-      end
-    end)
-  end
-
-  defp wrap_in_list(list) do
-    if Keyword.keyword?(list) do
-      [list]
-    else
-      List.wrap(list)
-    end
   end
 
   defp add_related_authorizations(
-         resource,
          api,
          %{destination: destination} = relationship,
          changeset
        ) do
-    default_read = Ash.primary_action(resource, :read) || raise "Need a default read action for #{resource}"
+    default_read =
+      Ash.primary_action(destination, :read) ||
+        raise "Need a default read action for #{destination}"
+
     relationship_name = relationship.name
 
-    changeset.__ash_relationships__
-    |> Map.get(relationship_name)
-    |> Map.get(:add, [])
-    |> wrap_in_list()
-    |> Enum.reduce_while({:ok, []}, fn related_read, {:ok, authorizations} ->
-      with {:ok, filters} <-
-             PrimaryKeyHelpers.values_to_primary_key_filters(
-               destination,
-               wrap_in_list(related_read)
-             ),
-           %{errors: []} = filter <- Ash.Filter.parse(destination, [or: filters], api) do
-        read_request =
-          Ash.Authorization.Request.new(
-            api: api,
-            authorization_steps: default_read.authorization_steps,
-            resource: relationship.destination,
-            action_type: :read,
-            filter: filter,
-            state_key: [:relationships, relationship_name, :to_add],
-            fetcher: fn ->
-              api.read(destination, filter: filter)
-            end,
-            relationship: [relationship.name],
-            source: "read prior to write related #{relationship.name}"
-          )
+    value =
+      changeset.__ash_relationships__
+      |> Map.get(relationship_name)
+      |> Map.get(:add, [])
 
-        related_requests =
-          related_add_authorization_requests(api, related_read, relationship, changeset)
+    filter =
+      case relationship.cardinality do
+        :many ->
+          [or: value]
 
-        {:cont, {:ok, [read_request | authorizations] ++ related_requests}}
-      else
-        {:error, error} -> {:halt, {:error, error}}
-      %{errors: errors} -> {:halt, {:error, errors}}
+        :one ->
+          value
       end
+
+    read_request =
+      Ash.Authorization.Request.new(
+        api: api,
+        authorization_steps: default_read.authorization_steps,
+        resource: relationship.destination,
+        action_type: :read,
+        filter: filter,
+        must_fetch?: true,
+        state_key: [:relationships, relationship_name, :to_add],
+        fetcher: fn ->
+          case api.read(destination, filter: filter, paginate: false) do
+            {:ok, %{results: results}} -> {:ok, results}
+            {:error, error} -> {:error, error}
+          end
+        end,
+        relationship: [relationship.name],
+        source: "read prior to write related #{relationship.name}"
+      )
+
+    related_requests = related_add_authorization_requests(api, value, relationship, changeset)
+
+    [read_request | related_requests]
+  end
+
+  defp related_add_authorization_requests(
+         api,
+         identifiers,
+         %{destination: destination, name: name, type: :many_to_many} = relationship,
+         changeset
+       ) do
+    Enum.flat_map(identifiers, fn identifier ->
+      pkey = Ash.primary_key(destination)
+
+      default_create =
+        Ash.primary_action(relationship.through, :create) ||
+          raise "Must define a default create action for #{relationship.through}"
+
+      [
+        Ash.Authorization.Request.new(
+          api: api,
+          authorization_steps: default_create.authorization_steps,
+          resource: relationship.through,
+          changeset: fn %{data: data, relationships: %{^name => %{to_add: to_add}}} ->
+            pkey_value = Keyword.take(identifier, pkey)
+
+            related =
+              Enum.find(to_add, fn to_relate ->
+                to_relate
+                |> Map.take(pkey)
+                |> Map.to_list()
+                |> Kernel.==(pkey_value)
+              end)
+
+            attributes = %{
+              relationship.destination_field_on_join_table =>
+                Map.fetch!(related, relationship.destination_field_on_join_table),
+              relationship.source_field_on_join_table =>
+                Map.fetch!(data, relationship.source_field_on_join_table)
+            }
+
+            changeset = Ash.Actions.Create.changeset(relationship.through, attributes)
+
+            if changeset.valid? do
+              {:ok, changeset}
+            else
+              {:error, changeset}
+            end
+          end,
+          action_type: :create,
+          state_key: [:relationships, name, :created_join_table_rows],
+          must_fetch?: true,
+          dependencies: [[:relationships, name, :to_add], :data],
+          fetcher: fn %{data: data, relationships: %{^name => %{to_add: to_add}}} ->
+            pkey_value = Keyword.take(identifier, pkey)
+
+            related =
+              Enum.find(to_add, fn to_relate ->
+                to_relate
+                |> Map.take(pkey)
+                |> Map.to_list()
+                |> Kernel.==(pkey_value)
+              end)
+
+            attributes = %{
+              relationship.destination_field_on_join_table =>
+                Map.fetch!(related, relationship.destination_field),
+              relationship.source_field_on_join_table =>
+                Map.fetch!(data, relationship.source_field)
+            }
+
+            api.create(relationship.through, attributes: attributes)
+          end,
+          relationship: [],
+          bypass_strict_access?: true,
+          source: "Create join entry for relationship #{name}"
+        ),
+        Ash.Authorization.Request.new(
+          api: api,
+          authorization_steps: relationship.authorization_steps,
+          resource: relationship.source,
+          changeset: changeset,
+          action_type: :create,
+          state_key: :data,
+          must_fetch?: true,
+          dependencies: [[:relationships, name, :to_add], :data],
+          is_fetched: fn data ->
+            case Map.get(data, name) do
+              %Ecto.Association.NotLoaded{} ->
+                false
+
+              related ->
+                Enum.any?(related, fn related ->
+                  related
+                  |> Map.take(pkey)
+                  |> Map.to_list()
+                  |> Kernel.==(identifier)
+                end)
+            end
+          end,
+          fetcher: fn %{data: data, relationships: %{^name => %{to_add: to_add}}} ->
+            pkey_value = Keyword.take(identifier, pkey)
+
+            related =
+              Enum.find(to_add, fn to_relate ->
+                to_relate
+                |> Map.take(pkey)
+                |> Map.to_list()
+                |> Kernel.==(pkey_value)
+              end)
+
+            data_with_related =
+              Map.update!(data, name, fn
+                %Ecto.Association.NotLoaded{} ->
+                  [related]
+
+                items ->
+                  items ++ [related]
+              end)
+
+            {:ok, data_with_related}
+          end,
+          relationship: [],
+          bypass_strict_access?: true,
+          source: "Update relationship #{name}"
+        )
+      ]
     end)
   end
 
   defp related_add_authorization_requests(
          api,
-         identifier,
+         identifiers,
          %{destination: destination, name: name, type: :has_many} = relationship,
          changeset
        ) do
-    pkey = Ash.primary_key(destination)
-    default_update = Ash.primary_action(destination, :update)
+    Enum.flat_map(identifiers, fn identifier ->
+      pkey = Ash.primary_key(destination)
 
-    [
-      Ash.Authorization.Request.new(
-        api: api,
-        authorization_steps: relationship.authorization_steps,
-        resource: relationship.source,
-        changeset: changeset,
-        action_type: :create,
-        state_key: [:data],
-        depends_on: [:data],
-        fetcher: fn %{data: data} -> data end,
-        relationship: [],
-        bypass_strict_access?: true,
-        source: "Update relationship #{name}"
-      ),
-      Ash.Authorization.Request.new(
-        api: api,
-        authorization_steps: default_update.authorization_steps,
-        resource: relationship.destinion,
-        action_type: :update,
-        state_key: [:relationships, relationship.name, Map.take(identifier, pkey)],
-        bypass_strict_access?: true,
-        dependencies: [[:relationships, name, :to_add], :data],
-        changeset: fn %{data: data, relationships: %{^name => %{:to_add => to_add}}} ->
-          related =
-            Enum.find(to_add, fn to_relate ->
-              Map.take(to_relate, pkey) == Map.take(identifier, pkey)
-            end)
+      [
+        Ash.Authorization.Request.new(
+          api: api,
+          authorization_steps: relationship.authorization_steps,
+          resource: relationship.source,
+          changeset: changeset,
+          action_type: :create,
+          state_key: :data,
+          must_fetch?: true,
+          dependencies: [[:relationships, name, :to_add], :data],
+          is_fetched: fn data ->
+            case Map.get(data, name) do
+              %Ecto.Association.NotLoaded{} ->
+                false
 
-          {:ok,
-           Ecto.Changeset.cast(
-             related,
-             %{
-               relationship.destination_field => Map.get(data, relationship.source_field)
-             },
-             [relationship.destination_field]
-           )}
-        end,
-        fetcher: fn %{data: data, relationships: %{^name => %{:to_add => to_add}}} ->
-          related =
-            Enum.find(to_add, fn to_relate ->
-              Map.take(to_relate, pkey) == Map.take(identifier, pkey)
-            end)
+              related ->
+                Enum.any?(related, fn related ->
+                  related
+                  |> Map.take(pkey)
+                  |> Map.to_list()
+                  |> Kernel.==(identifier)
+                end)
+            end
+          end,
+          fetcher: fn %{data: data, relationships: %{^name => %{to_add: to_add}}} ->
+            pkey_value = Keyword.take(identifier, pkey)
 
-          api.update(related, %{
-            relationship.destination_field => Map.get(data, relationship.source_field)
-          })
-        end,
-        relationship: [relationship.name],
-        source: "Update related #{name} from create"
-      )
-    ]
+            related =
+              Enum.find(to_add, fn to_relate ->
+                to_relate
+                |> Map.take(pkey)
+                |> Map.to_list()
+                |> Kernel.==(pkey_value)
+              end)
+
+            updated =
+              api.update(related,
+                attributes: %{
+                  relationship.destination_field => Map.get(data, relationship.source_field)
+                },
+                # TODO: This does nothing, but is intended for use when we disallow writing to fields that point to
+                # relationships
+                system?: true
+              )
+
+            case updated do
+              {:ok, updated} ->
+                updated_with_related =
+                  Map.update!(data, name, fn
+                    %Ecto.Association.NotLoaded{} ->
+                      [updated]
+
+                    items ->
+                      items ++ [updated]
+                  end)
+
+                {:ok, updated_with_related}
+
+              {:error, error} ->
+                {:error, error}
+            end
+          end,
+          relationship: [],
+          bypass_strict_access?: true,
+          source: "Update relationship #{name}"
+        )
+      ]
+    end)
   end
 
   defp related_add_authorization_requests(
          api,
-         identifier,
-         %{type: :belongs_to} = relationship,
+         _identifier,
+         %{type: :belongs_to, name: name} = relationship,
          changeset
        ) do
     [
@@ -163,19 +276,72 @@ defmodule Ash.Actions.Relationships do
         resource: relationship.source,
         action_type: :update,
         state_key: :data,
-        dependencies: [:data],
+        is_fetched: fn data ->
+          Map.get(data, name) != %Ecto.Association.NotLoaded{}
+        end,
+        must_fetch?: true,
+        dependencies: [:data, [:relationships, name, :to_add]],
         bypass_strict_access?: true,
-        changeset:
-          Ecto.Changeset.put_change(
-            changeset,
-            relationship.source_field,
-            Keyword.get(identifier, relationship.destination_field)
-          ),
-        fetcher: fn %{data: data} ->
-          data
+        changeset: changeset,
+        fetcher: fn %{data: data, relationships: %{^name => %{:to_add => to_add}}} ->
+          {:ok, Map.put(data, name, to_add)}
         end,
         relationship: [],
         source: "Set relationship #{relationship.name}"
+      )
+    ]
+  end
+
+  defp related_add_authorization_requests(
+         api,
+         identifier,
+         %{type: :has_one, name: name, destination: destination} = relationship,
+         changeset
+       ) do
+    pkey = Ash.primary_key(destination)
+
+    [
+      Ash.Authorization.Request.new(
+        api: api,
+        authorization_steps: relationship.authorization_steps,
+        resource: relationship.source,
+        changeset: changeset,
+        action_type: :create,
+        state_key: :data,
+        must_fetch?: true,
+        dependencies: [:data, [:relationships, name, :to_add]],
+        is_fetched: fn data ->
+          Map.get(data, name) != %Ecto.Association.NotLoaded{}
+        end,
+        fetcher: fn %{data: data, relationships: %{^name => %{:to_add => to_add}}} ->
+          pkey_value = Keyword.take(identifier, pkey)
+
+          related =
+            Enum.find(to_add, fn to_relate ->
+              to_relate
+              |> Map.take(pkey)
+              |> Map.to_list()
+              |> Kernel.==(pkey_value)
+            end)
+
+          updated =
+            api.update(related,
+              attributes: %{
+                relationship.destination_field => Map.get(data, relationship.source_field)
+              },
+              # TODO: This does nothing, but is intended for use when we disallow writing to fields that point to
+              # relationships
+              system?: true
+            )
+
+          case updated do
+            {:ok, updated} -> {:ok, Map.put(data, relationship.name, updated)}
+            {:error, error} -> {:error, error}
+          end
+        end,
+        relationship: [],
+        bypass_strict_access?: true,
+        source: "Update relationship #{name}"
       )
     ]
   end
