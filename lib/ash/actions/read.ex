@@ -8,9 +8,6 @@ defmodule Ash.Actions.Read do
     side_loads = Keyword.get(params, :side_load, [])
     page_params = Keyword.get(params, :page, [])
 
-    # TODO: Going to have to figure out side loads. I don't
-    # think that they can actually reasonably share facts :/
-
     with %Ash.Filter{errors: [], authorizations: filter_auths} = filter <-
            Ash.Filter.parse(resource, filter, api),
          {:ok, side_load_auths} <- SideLoad.process(api, resource, side_loads, filter),
@@ -31,8 +28,6 @@ defmodule Ash.Actions.Read do
              side_load_auths ++ filter_auths
            ),
          paginator <- %{paginator | results: found} do
-      # TODO: side loading is a read only, filter based operation, and as such should be covered
-      # by the strict checks. Figure out if that is true for sure.
       SideLoad.side_load(resource, paginator, side_loads, api)
     else
       %Ash.Filter{errors: errors} -> {:error, errors}

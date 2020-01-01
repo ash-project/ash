@@ -149,3 +149,4 @@ end
   `relationship_foo_is_changing?` fact, *and*ed with the resulting conditions.
   I'm not even sure if thats possible though.
 * We need to validate incoming attributes/relationships better.
+* Side load authorization testing

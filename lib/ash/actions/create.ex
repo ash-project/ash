@@ -25,22 +25,16 @@ defmodule Ash.Actions.Create do
   end
 
   # TODO: Rewrite attributes that reference foreign keys to the primary relationship
-  # for that foriegn key
+  # for that foriegn key. Also require a "primary relationship" for a foreign key
   def changeset(resource, params) do
     attributes = Keyword.get(params, :attributes, %{})
     relationships = Keyword.get(params, :relationships, %{})
 
     case prepare_create_attributes(resource, attributes) do
       %{valid?: true} = changeset ->
-        # TODO: If you are saying to `add` somethign to a to_one relationship
-        # but not removing the old thing, that should be a validation error
-        # assuming you were authorized to read the original data.
-        # If you are changing a foreign key, that needs to map to a relationship update
         relationships
         |> Enum.reduce(changeset, fn {key, value}, changeset ->
           case Ash.relationship(resource, key) do
-            # TODO remove the `type` checks here
-            # TODO: ew
             %{cardinality: :many, destination: destination, name: name} ->
               case Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
                      destination,
@@ -190,7 +184,6 @@ defmodule Ash.Actions.Create do
       |> Ash.attributes()
       |> Enum.map(& &1.name)
 
-    # TODO: Reject any changes for attributes that are the source field of any `belongs_to` relationships!
     attributes_with_defaults =
       resource
       |> Ash.attributes()
