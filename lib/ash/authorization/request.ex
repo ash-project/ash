@@ -75,6 +75,10 @@ defmodule Ash.Authorization.Request do
     end)
   end
 
+  def fetched?(_, %{is_fetched: boolean}) when is_boolean(boolean) do
+    boolean
+  end
+
   def fetched?(state, request) do
     case fetch_request_state(state, request) do
       {:ok, value} ->

@@ -54,7 +54,13 @@ defmodule Ash.Authorization.Checker do
       {[], _clauses_requiring_fetch} ->
         case fetch_requests(requests, state, strict_access?) do
           {:ok, {new_requests, new_state}} ->
-            run_checks(scenarios, user, new_requests, facts, new_state, strict_access?)
+            {new_requests, new_facts} =
+              Enum.reduce(new_requests, {[], facts}, fn request, {requests, facts} ->
+                {request, new_facts} = strict_check(user, request, facts, strict_access?)
+                {[request | requests], new_facts}
+              end)
+
+            run_checks(scenarios, user, new_requests, new_facts, new_state, strict_access?)
 
           :all_scenarios_known ->
             :all_scenarios_known
@@ -106,10 +112,11 @@ defmodule Ash.Authorization.Checker do
       {Enum.count(request.relationship), not request.bypass_strict_access?, request.relationship}
     end)
     |> case do
-      [request | _] = requests ->
+      [request | rest] = requests ->
         case Request.fetch(state, request) do
           {:ok, new_state} ->
-            {:ok, {requests ++ other_requests, new_state}}
+            new_requests = [%{request | is_fetched: true} | rest] ++ other_requests
+            {:ok, {new_requests, new_state}}
 
           :error ->
             {:ok, {requests ++ other_requests, state}}

@@ -7,7 +7,7 @@ defmodule Ash.Actions.Create do
   def run(api, resource, action, params) do
     if Keyword.get(params, :side_load, []) in [[], nil] do
       Ash.DataLayer.transact(resource, fn ->
-        with %{valid?: true} = changeset <- changeset(resource, params),
+        with %{valid?: true} = changeset <- changeset(api, resource, params),
              {:ok, %{data: created}} <-
                do_authorized(changeset, params, action, resource, api) do
           {:ok, created}
@@ -26,91 +26,34 @@ defmodule Ash.Actions.Create do
 
   # TODO: Rewrite attributes that reference foreign keys to the primary relationship
   # for that foriegn key. Also require a "primary relationship" for a foreign key
-  def changeset(resource, params) do
+  # if the foreign key doesn't reference the
+  def changeset(api, resource, params) do
     attributes = Keyword.get(params, :attributes, %{})
     relationships = Keyword.get(params, :relationships, %{})
 
-    case prepare_create_attributes(resource, attributes) do
-      %{valid?: true} = changeset ->
-        relationships
-        |> Enum.reduce(changeset, fn {key, value}, changeset ->
-          case Ash.relationship(resource, key) do
-            %{cardinality: :many, destination: destination, name: name} ->
-              case Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
-                     destination,
-                     value
-                   ) do
-                {:ok, values} ->
-                  Map.update!(changeset, :__ash_relationships__, fn ash_relationships ->
-                    Map.put(ash_relationships, key, %{add: values})
-                  end)
-
-                {:error, _error} ->
-                  Ecto.Changeset.add_error(changeset, name, "Invalid Identifiers")
-              end
-
-            %{type: :has_one, destination: destination, name: name} ->
-              case Ash.Actions.PrimaryKeyHelpers.value_to_primary_key_filter(
-                     destination,
-                     value
-                   ) do
-                {:ok, value} ->
-                  Map.update!(changeset, :__ash_relationships__, fn ash_relationships ->
-                    Map.put(ash_relationships, key, %{add: value})
-                  end)
-
-                {:error, _error} ->
-                  Ecto.Changeset.add_error(changeset, name, "Invalid Identifier")
-              end
-
-            %{
-              type: :belongs_to,
-              destination: destination,
-              name: name,
-              source_field: source_field,
-              destination_field: destination_field
-            } ->
-              case Ash.Actions.PrimaryKeyHelpers.value_to_primary_key_filter(destination, value) do
-                {:ok, value} ->
-                  changeset
-                  |> Map.update!(:__ash_relationships__, fn ash_relationships ->
-                    Map.put(ash_relationships, key, %{add: value})
-                  end)
-                  # Does this assumption hold?
-                  |> Ecto.Changeset.put_change(
-                    source_field,
-                    Keyword.fetch!(value, destination_field)
-                  )
-                  |> Map.put_new(:__ash_skip_authorization_fields__, [])
-                  |> Map.update!(:__ash_skip_authorization_fields__, fn fields ->
-                    [source_field | fields]
-                  end)
-
-                {:error, _error} ->
-                  Ecto.Changeset.add_error(changeset, name, "Invalid Identifier(s)")
-              end
-
-            _ ->
-              Ecto.Changeset.add_error(changeset, key, "No such relationship")
-          end
-        end)
-
-      changeset ->
-        changeset
-    end
+    resource
+    |> prepare_create_attributes(attributes)
+    |> Ash.Actions.Relationships.handle_create_relationships(api, relationships)
   end
 
   defp do_authorized(changeset, params, action, resource, api) do
+    relationships = Keyword.get(params, :relationships, %{})
+
     create_authorization_request =
       Ash.Authorization.Request.new(
         api: api,
         authorization_steps: action.authorization_steps,
         resource: resource,
-        changeset: changeset,
+        changeset:
+          Ash.Actions.Relationships.authorization_changeset_with_foreign_keys(
+            changeset,
+            relationships
+          ),
         action_type: action.type,
         fetcher: fn ->
           do_create(resource, changeset)
         end,
+        dependencies: Map.get(changeset, :__changes_depend_on__) || [],
         state_key: :data,
         must_fetch?: true,
         relationship: [],
@@ -144,14 +87,13 @@ defmodule Ash.Actions.Create do
         )
       end)
 
-    relationship_auths =
-      Ash.Actions.Relationships.relationship_change_authorizations(api, resource, changeset)
+    relationship_auths = Map.get(changeset, :__authorizations__, [])
 
     if params[:authorization] do
       strict_access? =
         case Keyword.fetch(params[:authorization], :strict_access?) do
           {:ok, value} -> value
-          :error -> true
+          :error -> false
         end
 
       Authorizer.authorize(

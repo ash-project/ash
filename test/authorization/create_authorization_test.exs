@@ -59,16 +59,8 @@ defmodule Ash.Test.Authorization.CreateAuthorizationTest do
         authorization_steps: false
 
       attribute :self_manager, :boolean, authorization_steps: false
-      # [
-      # authorize_if: user_attribute(:admin, true)
-      # ]
 
       attribute :fired, :boolean, authorization_steps: false
-      # [
-      # authorize_if: user_attribute(:admin, true),
-      # forbid_if: attribute_equals(:self_manager, true),
-      # authorize_if: always()
-      # ]
     end
 
     relationships do

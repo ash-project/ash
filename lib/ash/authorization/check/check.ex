@@ -7,7 +7,6 @@ defmodule Ash.Authorization.Check do
   @type options :: Keyword.t()
 
   @callback strict_check(Ash.user(), Ash.Authorization.request(), options) :: boolean | :unknown
-
   @callback prepare(options) ::
               list(Ash.Authorization.prepare_instruction()) | {:error, Ash.error()}
   @callback check(Ash.user(), list(Ash.record()), map, options) ::
