@@ -1,85 +1,106 @@
 defmodule Ash.Actions.Update do
   alias Ash.Authorization.Authorizer
-  alias Ash.Actions.ChangesetHelpers
+  alias Ash.Actions.{Attributes, Relationships}
 
   @spec run(Ash.api(), Ash.record(), Ash.action(), Ash.params()) ::
           {:ok, Ash.record()} | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
+  # TODO: To support a "read and update" pattern, we would support taking a filter instead of a record here.
   def run(api, %resource{} = record, action, params) do
     if Keyword.get(params, :side_load, []) in [[], nil] do
-      case prepare_update_params(api, record, params) do
-        %Ecto.Changeset{valid?: true} = changeset ->
-          user = Keyword.get(params, :user)
-
-          with {:auth, :authorized} <-
-                 {:auth, do_authorize(params, action, user, resource, changeset)},
-               %Ecto.Changeset{valid?: true} = changeset <-
-                 prepare_update_params(api, record, params),
-               %Ecto.Changeset{valid?: true} = changeset <-
-                 ChangesetHelpers.run_before_changes(changeset),
-               {:ok, result} <- do_update(resource, changeset) do
-            ChangesetHelpers.run_after_changes(changeset, result)
-          else
-            :forbidden -> {:error, :forbidden}
-            {:error, error} -> {:error, error}
-            %Ecto.Changeset{} = changeset -> {:error, changeset}
-          end
-
-        changeset ->
-          {:error, changeset}
-      end
+      Ash.DataLayer.transact(resource, fn ->
+        do_run(api, record, action, params)
+      end)
     else
       {:error, "Cannot side load on update currently"}
     end
   end
 
-  defp do_authorize(params, action, user, resource, changeset) do
-    if params[:authorization] do
-      auth_request =
-        Ash.Authorization.Request.new(
-          state_key: :data,
-          resource: resource,
-          authorization_steps: action.authorization_steps,
-          changeset: changeset,
-          source: "update action"
-        )
-
-      Authorizer.authorize(user, [auth_request])
-    else
-      :authorized
-    end
-  end
-
-  defp do_update(resource, changeset) do
-    if Ash.data_layer_can?(resource, :transact) do
-      Ash.data_layer(resource).transaction(fn ->
-        with %{valid?: true} = changeset <- ChangesetHelpers.run_before_changes(changeset),
-             {:ok, result} <- Ash.DataLayer.create(resource, changeset) do
-          ChangesetHelpers.run_after_changes(changeset, result)
-        end
-      end)
-    else
-      with %{valid?: true} = changeset <- ChangesetHelpers.run_before_changes(changeset),
-           {:ok, result} <- Ash.DataLayer.create(resource, changeset) do
-        ChangesetHelpers.run_after_changes(changeset, result)
-      else
-        %Ecto.Changeset{valid?: false} = changeset ->
-          {:error, changeset}
-      end
-    end
-  end
-
-  defp prepare_update_params(api, %resource{} = record, params) do
+  defp do_run(api, %resource{} = record, action, params) do
     attributes = Keyword.get(params, :attributes, %{})
     relationships = Keyword.get(params, :relationships, %{})
-    authorization = Keyword.get(params, :authorization, false)
 
-    with %{valid?: true} = changeset <- prepare_update_attributes(record, attributes),
-         changeset <- Map.put(changeset, :__ash_api__, api) do
-      ChangesetHelpers.prepare_relationship_changes(
-        changeset,
-        resource,
-        relationships,
-        authorization
+    with {:ok, relationships} <-
+           Relationships.validate_not_changing_relationship_and_source_field(
+             relationships,
+             attributes,
+             resource
+           ),
+         {:ok, attributes, relationships} <-
+           Relationships.field_changes_into_relationship_changes(
+             relationships,
+             attributes,
+             resource
+           ),
+         params <- Keyword.merge(params, attributes: attributes, relationships: relationships),
+         %{valid?: true} = changeset <- changeset(record, api, params),
+         {:ok, %{data: updated}} <- do_authorized(changeset, params, action, resource, api) do
+      {:ok, updated}
+    else
+      %Ecto.Changeset{} = changeset ->
+        {:error, changeset}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  def changeset(record, api, params) do
+    attributes = Keyword.get(params, :attributes, %{})
+    relationships = Keyword.get(params, :relationships, %{})
+
+    record
+    |> prepare_update_attributes(attributes)
+    |> Relationships.handle_update_relationships(api, relationships)
+  end
+
+  defp do_authorized(changeset, params, action, resource, api) do
+    relationships = Keyword.get(params, :relationships)
+
+    update_authorization_request =
+      Ash.Authorization.Request.new(
+        api: api,
+        authorization_steps: action.authorization_steps,
+        changeset:
+          Ash.Actions.Relationships.authorization_changeset(
+            changeset,
+            relationships
+          ),
+        action_type: action.type,
+        fetcher: fn _ ->
+          Ash.DataLayer.update(resource, changeset)
+        end,
+        dependencies: Map.get(changeset, :__changes_depend_on__) || [],
+        state_key: :data,
+        must_fetch?: true,
+        relationship: [],
+        source: "#{action.type} - `#{action.name}`"
+      )
+
+    attribute_requests =
+      Attributes.attribute_change_authorizations(changeset, api, resource, action)
+
+    relationship_auths = Map.get(changeset, :__authorizations__, [])
+
+    if params[:authorization] do
+      strict_access? =
+        case Keyword.fetch(params[:authorization], :strict_access?) do
+          {:ok, value} -> value
+          :error -> false
+        end
+
+      Authorizer.authorize(
+        params[:authorization][:user],
+        [update_authorization_request | attribute_requests] ++ relationship_auths,
+        strict_access?: strict_access?,
+        log_final_report?: params[:authorization][:log_final_report?] || false
+      )
+    else
+      authorization = params[:authorization] || []
+
+      Authorizer.authorize(
+        authorization[:user],
+        [update_authorization_request | attribute_requests] ++ relationship_auths,
+        fetch_only?: true
       )
     end
   end

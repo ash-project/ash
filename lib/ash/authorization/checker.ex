@@ -52,15 +52,9 @@ defmodule Ash.Authorization.Checker do
         :all_scenarios_known
 
       {[], _clauses_requiring_fetch} ->
-        case fetch_requests(requests, state, strict_access?) do
-          {:ok, {new_requests, new_state}} ->
-            {new_requests, new_facts} =
-              Enum.reduce(new_requests, {[], facts}, fn request, {requests, facts} ->
-                {request, new_facts} = strict_check(user, request, facts, strict_access?)
-                {[request | requests], new_facts}
-              end)
-
-            run_checks(scenarios, user, new_requests, new_facts, new_state, strict_access?)
+        case fetch_requests(requests, state, facts, strict_access?, user) do
+          {:ok, {new_requests, new_facts, new_state}} ->
+            {:ok, new_requests, new_facts, new_state}
 
           :all_scenarios_known ->
             :all_scenarios_known
@@ -85,7 +79,7 @@ defmodule Ash.Authorization.Checker do
   end
 
   # TODO: We could be smart here, and likely fetch multiple requests at a time
-  defp fetch_requests(requests, state, strict_access?) do
+  defp fetch_requests(requests, state, facts, strict_access?, user) do
     {fetchable_requests, other_requests} =
       Enum.split_with(requests, fn request ->
         bypass_strict? =
@@ -99,31 +93,48 @@ defmodule Ash.Authorization.Checker do
           Request.dependencies_met?(state, request)
       end)
 
-    fetchable_requests
-    |> Enum.filter(fn request ->
-      Request.dependencies_met?(state, request) && request.strict_check_completed?
-    end)
-    |> Enum.map(fn request ->
-      Request.fetch_changeset(state, request)
-    end)
-    |> Enum.sort_by(fn request ->
-      # Requests that bypass strict access should generally perform well
-      # as they would generally be more efficient checks
-      {Enum.count(request.relationship), not request.bypass_strict_access?, request.relationship}
-    end)
-    |> case do
-      [request | rest] = requests ->
-        case Request.fetch(state, request) do
-          {:ok, new_state} ->
-            new_requests = [%{request | is_fetched: true} | rest] ++ other_requests
-            {:ok, {new_requests, new_state}}
-
-          :error ->
-            {:ok, {requests ++ other_requests, state}}
+    requests_with_changesets =
+      Enum.reduce_while(fetchable_requests, {:ok, []}, fn request, {:ok, requests} ->
+        case Request.fetch_changeset(state, request) do
+          {:ok, request} -> {:cont, {:ok, [request | requests]}}
+          {:error, error} -> {:halt, {:error, error}}
         end
+      end)
 
-      _ ->
-        :all_scenarios_known
+    case requests_with_changesets do
+      {:error, error} ->
+        {:error, error}
+
+      {:ok, requests_with_changesets} ->
+        requests_with_changesets
+        |> Enum.sort_by(fn request ->
+          # Requests that bypass strict access should generally perform well
+          # as they would generally be more efficient checks
+          {request.strict_check_completed?, Enum.count(request.relationship),
+           not request.bypass_strict_access?, request.relationship}
+        end)
+        |> Enum.reduce({[], facts}, fn request, {requests, facts} ->
+          {request, new_facts} = strict_check(user, request, facts, strict_access?)
+          {[request | requests], new_facts}
+        end)
+        |> case do
+          {[request | rest] = requests, new_facts} ->
+            case Request.fetch(state, request) do
+              {:ok, new_state} ->
+                new_requests = [%{request | is_fetched: true} | rest] ++ other_requests
+                {:ok, {new_requests, new_facts, new_state}}
+
+              :error ->
+                {:ok, {requests ++ other_requests, new_facts, state}}
+            end
+
+          {[], new_facts} ->
+            if new_facts == facts do
+              :all_scenarios_known
+            else
+              {:ok, {other_requests, new_facts, state}}
+            end
+        end
     end
   end
 

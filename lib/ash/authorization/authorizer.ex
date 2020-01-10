@@ -251,7 +251,7 @@ defmodule Ash.Authorization.Authorizer do
           {:error, error}
 
         {:ok, new_requests, new_facts, new_state} ->
-          if new_requests == requests && new_facts == new_facts && state == new_state do
+          if new_requests == requests && new_facts == facts && state == new_state do
             exception =
               Ash.Error.Forbidden.exception(
                 scenarios: scenarios,

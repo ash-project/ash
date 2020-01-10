@@ -111,16 +111,6 @@ defmodule Ash.Authorization.Request do
     fetch_nested_value(state, key)
   end
 
-  def fetch(state, %{fetcher: fetcher, dependencies: []} = request) do
-    case fetcher.() do
-      {:ok, value} ->
-        {:ok, put_request_state(state, request, value)}
-
-      {:error, error} ->
-        {:error, error}
-    end
-  end
-
   def fetch(state, %{fetcher: fetcher, dependencies: dependencies} = request) do
     arg =
       Enum.reduce(dependencies, %{}, fn dependency, acc ->
@@ -154,7 +144,7 @@ defmodule Ash.Authorization.Request do
     end
   end
 
-  def fetch_changeset(_state, request), do: request
+  def fetch_changeset(_state, request), do: {:ok, request}
 
   defp fetch_nested_value(state, [key]) when is_map(state) do
     Map.fetch(state, key)

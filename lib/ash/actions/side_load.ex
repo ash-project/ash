@@ -53,7 +53,7 @@ defmodule Ash.Actions.SideLoad do
           action_type: :read,
           authorization_steps: default_read.authorization_steps,
           filter: filter,
-          fetcher: fn ->
+          fetcher: fn _ ->
             case api.read(resource, filter: filter, paginate: false) do
               {:ok, %{results: results}} -> {:ok, results}
               {:error, error} -> {:error, error}

@@ -244,4 +244,16 @@ defmodule Ash.Test.Authorization.CreateAuthorizationTest do
       )
     end
   end
+
+  test "it allows has_one relationships properly" do
+    user = Api.create!(User, attributes: %{name: "foo", author: true, manager: true})
+
+    bio = Api.create!(Bio, attributes: %{admin_only?: false})
+
+    Api.create!(Author,
+      attributes: %{contents: "best ever"},
+      relationships: %{bio: bio.id},
+      authorization: [user: user]
+    )
+  end
 end

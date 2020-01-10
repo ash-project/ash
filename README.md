@@ -150,3 +150,4 @@ end
   I'm not even sure if thats possible though.
 * We need to validate incoming attributes/relationships better.
 * Side load authorization testing
+* Validate that params on the way in are either all strings or all atoms
