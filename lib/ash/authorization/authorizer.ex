@@ -22,32 +22,35 @@ defmodule Ash.Authorization.Authorizer do
   def authorize(user, requests, opts \\ []) do
     strict_access? = Keyword.get(opts, :strict_access?, true)
 
-    if opts[:fetch_only?] do
-      fetch_must_fetch(requests, %{})
-    else
-      case Enum.find(requests, fn request -> Enum.empty?(request.authorization_steps) end) do
-        nil ->
-          {new_requests, facts} = strict_check_facts(user, requests, strict_access?)
-
-          solve(
-            new_requests,
-            user,
-            facts,
-            facts,
-            %{user: user},
-            strict_access?,
-            opts[:log_final_report?] || false
-          )
-
-        request ->
-          exception = Ash.Error.Forbidden.exception(no_steps_configured: request)
-
-          if opts[:log_final_report?] do
-            Logger.info(Ash.Error.Forbidden.report_text(exception))
-          end
-
-          {:error, exception}
+    requests =
+      if opts[:fetch_only?] do
+        Enum.map(requests, &Request.authorize_always/1)
+      else
+        requests
       end
+
+    case Enum.find(requests, fn request -> Enum.empty?(request.rules) end) do
+      nil ->
+        {new_requests, facts} = strict_check_facts(user, requests, strict_access?)
+
+        solve(
+          new_requests,
+          user,
+          facts,
+          facts,
+          %{user: user},
+          strict_access?,
+          opts[:log_final_report?] || false
+        )
+
+      request ->
+        exception = Ash.Error.Forbidden.exception(no_steps_configured: request)
+
+        if opts[:log_final_report?] do
+          Logger.info(Ash.Error.Forbidden.report_text(exception))
+        end
+
+        {:error, exception}
     end
   end
 
@@ -55,42 +58,63 @@ defmodule Ash.Authorization.Authorizer do
          requests,
          user,
          facts,
-         strict_check_facts,
+         initial_strict_check_facts,
          state,
          strict_access?,
          log_final_report?
        ) do
-    case sat_solver(requests, facts, [], state) do
-      {:error, :unsatisfiable} ->
-        exception =
-          Ash.Error.Forbidden.exception(
-            requests: requests,
-            facts: facts,
-            strict_check_facts: strict_check_facts,
-            strict_access?: strict_access?,
-            state: state
-          )
-
-        if log_final_report? do
-          Logger.info(Ash.Error.Forbidden.report_text(exception))
+    requests_with_changeset =
+      Enum.reduce_while(requests, {:ok, []}, fn request, {:ok, requests} ->
+        if Request.dependencies_met?(state, request) do
+          case Request.fetch_changeset(state, request) do
+            {:ok, request} -> {:cont, {:ok, [request | requests]}}
+            {:error, error} -> {:halt, {:error, error}}
+          end
+        else
+          {:cont, {:ok, [request | requests]}}
         end
+      end)
 
-        {:error, exception}
+    case requests_with_changeset do
+      {:error, error} ->
+        {:error, error}
 
-      {:ok, scenario} ->
-        requests
-        |> get_all_scenarios(scenario, facts, state)
-        |> Enum.uniq()
-        |> remove_irrelevant_clauses()
-        |> verify_scenarios(
-          user,
-          requests,
-          facts,
-          strict_check_facts,
-          state,
-          strict_access?,
-          log_final_report?
-        )
+      {:ok, requests_with_changeset} ->
+        {new_requests, new_facts} =
+          strict_check_facts(user, requests_with_changeset, strict_access?, facts)
+
+        case sat_solver(new_requests, new_facts, [], state) do
+          {:error, :unsatisfiable} ->
+            exception =
+              Ash.Error.Forbidden.exception(
+                requests: new_requests,
+                facts: new_facts,
+                strict_check_facts: initial_strict_check_facts,
+                strict_access?: strict_access?,
+                state: state
+              )
+
+            if log_final_report? do
+              Logger.info(Ash.Error.Forbidden.report_text(exception))
+            end
+
+            {:error, exception}
+
+          {:ok, scenario} ->
+            new_requests
+            |> get_all_scenarios(scenario, new_facts, state)
+            |> Enum.uniq()
+            |> remove_irrelevant_clauses()
+            |> verify_scenarios(
+              user,
+              new_requests,
+              new_facts,
+              initial_strict_check_facts,
+              state,
+              strict_access?,
+              log_final_report?
+            )
+        end
     end
   end
 
@@ -353,8 +377,8 @@ defmodule Ash.Authorization.Authorizer do
     end)
   end
 
-  defp strict_check_facts(user, requests, strict_access?) do
-    Enum.reduce(requests, {[], %{true: true, false: false}}, fn request, {requests, facts} ->
+  defp strict_check_facts(user, requests, strict_access?, initial \\ %{true: true, false: false}) do
+    Enum.reduce(requests, {[], initial}, fn request, {requests, facts} ->
       {new_request, new_facts} =
         Ash.Authorization.Checker.strict_check(user, request, facts, strict_access?)
 

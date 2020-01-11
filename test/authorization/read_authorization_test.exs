@@ -7,7 +7,7 @@ defmodule Ash.Test.Authorization.ReadAuthorizationTest do
 
     actions do
       read :default,
-        authorization_steps: [
+        rules: [
           # You can see yourself
           authorize_if: user_attribute_matches_record(:id, :id),
           # You can't see anything else unless you're a manager
@@ -73,7 +73,7 @@ defmodule Ash.Test.Authorization.ReadAuthorizationTest do
 
     actions do
       read :default,
-        authorization_steps: [
+        rules: [
           authorize_if: attribute_equals(:published, true),
           authorize_if: related_to_user_via(:authors)
         ]

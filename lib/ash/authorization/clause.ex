@@ -11,8 +11,17 @@ defmodule Ash.Authorization.Clause do
     }
   end
 
+  # TODO: Should we for sure special case this? I see no reason not to.
+  def put_new_fact(facts, _rel, _resource, {Ash.Authorization.Clause.Static, _}, _) do
+    facts
+  end
+
   def put_new_fact(facts, rel, resource, {mod, opts}, value, pkey \\ nil) do
     Map.put(facts, new(rel, resource, {mod, opts}, pkey), value)
+  end
+
+  def find(_clauses, %{check_module: Ash.Authorization.Check.Static, check_opts: check_opts}) do
+    {:ok, check_opts[:result]}
   end
 
   def find(clauses, clause) do

@@ -59,14 +59,14 @@ defmodule Ash.Actions.Update do
     update_authorization_request =
       Ash.Authorization.Request.new(
         api: api,
-        authorization_steps: action.authorization_steps,
+        rules: action.rules,
         changeset:
           Ash.Actions.Relationships.authorization_changeset(
             changeset,
             relationships
           ),
         action_type: action.type,
-        fetcher: fn _ ->
+        fetcher: fn changeset, _ ->
           Ash.DataLayer.update(resource, changeset)
         end,
         dependencies: Map.get(changeset, :__changes_depend_on__) || [],

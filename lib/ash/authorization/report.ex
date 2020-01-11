@@ -25,7 +25,12 @@ defmodule Ash.Authorization.Report do
     explained_steps =
       case report.state do
         %{data: data} when data not in [[], nil] ->
-          explain_steps_with_data(report.requests, report.facts, data, report.strict_access?)
+          explain_steps_with_data(
+            report.requests,
+            report.facts,
+            List.wrap(data),
+            report.strict_access?
+          )
 
         _ ->
           if report.strict_access? do
@@ -86,8 +91,8 @@ defmodule Ash.Authorization.Report do
             inner_title
           end
 
-        authorization_steps_legend =
-          request.authorization_steps
+        rules_legend =
+          request.rules
           |> Enum.with_index()
           |> Enum.map_join("\n", fn {{step, check}, index} ->
             "#{index + 1}| " <>
@@ -109,10 +114,10 @@ defmodule Ash.Authorization.Report do
           end)
           |> add_header_line(indent("Record"))
           |> pad()
-          |> add_step_info(request.authorization_steps, facts)
+          |> add_step_info(request.rules, facts)
 
         full_inner_title <>
-          ":\n" <> indent(authorization_steps_legend <> "\n\n" <> data_info <> "\n")
+          ":\n" <> indent(rules_legend <> "\n\n" <> data_info <> "\n")
       end)
 
     title <> indent(contents)
@@ -281,7 +286,7 @@ defmodule Ash.Authorization.Report do
           end
 
         contents =
-          request.authorization_steps
+          request.rules
           |> Enum.sort_by(fn {_step, clause} ->
             {Enum.count(clause.relationship), clause.relationship}
           end)

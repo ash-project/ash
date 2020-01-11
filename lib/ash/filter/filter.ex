@@ -65,9 +65,9 @@ defmodule Ash.Filter do
         Ash.Authorization.Request.new(
           resource: resource,
           api: api,
-          authorization_steps: Ash.primary_action(resource, :read).authorization_steps,
+          rules: Ash.primary_action(resource, :read).rules,
           filter: parsed_filter,
-          fetcher: fn _ ->
+          fetcher: fn _, _ ->
             query = Ash.DataLayer.resource_to_query(resource)
 
             case Ash.DataLayer.filter(query, parsed_filter, resource) do

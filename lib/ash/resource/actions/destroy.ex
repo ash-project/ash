@@ -1,29 +1,29 @@
 defmodule Ash.Resource.Actions.Destroy do
   @moduledoc "The representation of a `destroy` action"
 
-  defstruct [:type, :name, :primary?, :authorization_steps]
+  defstruct [:type, :name, :primary?, :rules]
 
   @type t :: %__MODULE__{
           type: :destroy,
           name: atom,
           primary?: boolean,
-          authorization_steps: Authorization.steps()
+          rules: Authorization.steps()
         }
 
   @opt_schema Ashton.schema(
                 opts: [
                   primary?: :boolean,
-                  authorization_steps: :keyword
+                  rules: :keyword
                 ],
                 defaults: [
                   primary?: false,
-                  authorization_steps: []
+                  rules: []
                 ],
                 describe: [
                   primary?:
                     "Whether or not this action should be used when no action is specified by the caller.",
                   # TODO: doc better
-                  authorization_steps: "A list of authorization steps"
+                  rules: "A list of authorization steps"
                 ]
               )
 
@@ -35,8 +35,8 @@ defmodule Ash.Resource.Actions.Destroy do
     # Don't call functions on the resource! We don't want it to compile here
     case Ashton.validate(opts, @opt_schema) do
       {:ok, opts} ->
-        authorization_steps =
-          case opts[:authorization_steps] do
+        rules =
+          case opts[:rules] do
             false ->
               false
 
@@ -55,7 +55,7 @@ defmodule Ash.Resource.Actions.Destroy do
            name: name,
            type: :destroy,
            primary?: opts[:primary?],
-           authorization_steps: authorization_steps
+           rules: rules
          }}
 
       {:error, error} ->

@@ -9,7 +9,7 @@ defmodule Ash.Resource.Relationships.HasOne do
     :destination_field,
     :source_field,
     :reverse_relationship,
-    :authorization_steps,
+    :write_rules,
     :allow_orphans?
   ]
 
@@ -19,7 +19,7 @@ defmodule Ash.Resource.Relationships.HasOne do
           source: Ash.resource(),
           name: atom,
           type: Ash.Type.t(),
-          authorization_steps: Keyword.t(),
+          write_rules: Keyword.t(),
           destination: Ash.resource(),
           destination_field: atom,
           source_field: atom,
@@ -32,12 +32,12 @@ defmodule Ash.Resource.Relationships.HasOne do
                   destination_field: :atom,
                   source_field: :atom,
                   reverse_relationship: :atom,
-                  authorization_steps: :keyword,
+                  write_rules: :keyword,
                   allow_orphans?: :boolean
                 ],
                 defaults: [
                   source_field: :id,
-                  authorization_steps: [],
+                  write_rules: [],
                   # TODO: When we add constraint expressions, we should validate this with that.
                   allow_orphans?: true
                 ],
@@ -51,7 +51,7 @@ defmodule Ash.Resource.Relationships.HasOne do
                   # TODO: Explain this better
                   allow_orphans:
                     "Whether or not to allow orphaned records that would result in replaced relationships.",
-                  authorization_steps: """
+                  write_rules: """
                   Steps applied on an relationship during create or update. If no steps are defined, authorization to change will fail.
                   If set to false, no steps are applied and any changes are allowed (assuming the action was authorized as a whole)
                   Remember that any changes against the destination records *will* still be authorized regardless of this setting.
@@ -74,8 +74,8 @@ defmodule Ash.Resource.Relationships.HasOne do
     # Don't call functions on the resource! We don't want it to compile here
     case Ashton.validate(opts, @opt_schema) do
       {:ok, opts} ->
-        authorization_steps =
-          case opts[:authorization_steps] do
+        write_rules =
+          case opts[:write_rules] do
             false ->
               false
 
@@ -101,7 +101,7 @@ defmodule Ash.Resource.Relationships.HasOne do
            destination_field: opts[:destination_field] || :"#{resource_type}_id",
            source_field: opts[:source_field],
            reverse_relationship: opts[:reverse_relationship],
-           authorization_steps: authorization_steps
+           write_rules: write_rules
          }}
 
       {:error, errors} ->

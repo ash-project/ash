@@ -28,12 +28,12 @@ defmodule Post do
 
   actions do
     read :default,
-      authorization_steps: [
+      rules: [
         authorize_if: user_is(:admin)
       ]
 
     create :default,
-      authorization_steps: [
+      rules: [
         authorize_if: user_is(:admin)
       ]
     
@@ -151,3 +151,5 @@ end
 * We need to validate incoming attributes/relationships better.
 * Side load authorization testing
 * Validate that params on the way in are either all strings or all atoms
+* Make it `rules: :none` (or something better) than `rules: false`
+* Support `read_rules`, `create_rules`, `update_rules` for attributes/relationships

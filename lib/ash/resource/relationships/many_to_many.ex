@@ -11,7 +11,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
     :source_field_on_join_table,
     :destination_field_on_join_table,
     :reverse_relationship,
-    :authorization_steps
+    :write_rules
   ]
 
   @type t :: %__MODULE__{
@@ -26,7 +26,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
           source_field_on_join_table: atom,
           destination_field_on_join_table: atom,
           reverse_relationship: atom,
-          authorization_steps: Keyword.t()
+          write_rules: Keyword.t()
         }
 
   @opt_schema Ashton.schema(
@@ -35,15 +35,15 @@ defmodule Ash.Resource.Relationships.ManyToMany do
                   destination_field_on_join_table: :atom,
                   source_field: :atom,
                   destination_field: :atom,
-                  authorization_steps: :keyword,
+                  write_rules: :keyword,
                   through: :atom,
                   reverse_relationship: :atom,
-                  authorization_steps: :keyword
+                  write_rules: :keyword
                 ],
                 defaults: [
                   source_field: :id,
                   destination_field: :id,
-                  authorization_steps: []
+                  write_rules: []
                 ],
                 required: [
                   :through
@@ -60,7 +60,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
                     "The field on this resource that should line up with `source_field_on_join_table` on the join table.",
                   destination_field:
                     "The field on the related resource that should line up with `destination_field_on_join_table` on the join table.",
-                  authorization_steps: """
+                  write_rules: """
                   Steps applied on an relationship during create or update. If no steps are defined, authorization to change will fail.
                   If set to false, no steps are applied and any changes are allowed (assuming the action was authorized as a whole)
                   Remember that any changes against the destination records *will* still be authorized regardless of this setting.
@@ -82,8 +82,8 @@ defmodule Ash.Resource.Relationships.ManyToMany do
     # Don't call functions on the resource! We don't want it to compile here
     case Ashton.validate(opts, @opt_schema) do
       {:ok, opts} ->
-        authorization_steps =
-          case opts[:authorization_steps] do
+        write_rules =
+          case opts[:write_rules] do
             false ->
               false
 
@@ -110,7 +110,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
            reverse_relationship: opts[:reverse_relationship],
            source_field: opts[:source_field],
            destination_field: opts[:destination_field],
-           authorization_steps: authorization_steps,
+           write_rules: write_rules,
            source_field_on_join_table:
              opts[:source_field_on_join_table] || :"#{resource_name}_id",
            destination_field_on_join_table:

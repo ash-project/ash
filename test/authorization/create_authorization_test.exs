@@ -7,24 +7,28 @@ defmodule Ash.Test.Authorization.CreateAuthorizationTest do
 
     actions do
       read :default,
-        authorization_steps: [
+        rules: [
           authorize_if: always()
         ]
 
       create :default,
-        authorization_steps: [
+        rules: [
           forbid_unless: setting_relationship(:author),
           authorize_if: user_attribute(:author, true)
         ]
     end
 
+    # Change rules to `rules`
+    # for attributes/relationship change them to `write_rules`
     attributes do
-      attribute :contents, :string, authorization_steps: false
+      attribute :contents, :string, write_rules: false
+      attribute :color, :string, write_rules: false
+      attribute :size, :string, write_rules: false
     end
 
     relationships do
       belongs_to :author, Ash.Test.Authorization.CreateAuthorizationTest.Author,
-        authorization_steps: [
+        write_rules: [
           authorize_if: relating_to_user()
         ]
     end
@@ -35,20 +39,20 @@ defmodule Ash.Test.Authorization.CreateAuthorizationTest do
     use Ash.DataLayer.Ets, private?: true
 
     actions do
-      read :default, authorization_steps: [authorize_if: always()]
+      read :default, rules: [authorize_if: always()]
 
       create :default,
-        authorization_steps: [
+        rules: [
           authorize_if: user_attribute(:admin, true),
           authorize_if: user_attribute(:manager, true)
         ]
     end
 
     attributes do
-      attribute :name, :string, authorization_steps: false
+      attribute :name, :string, write_rules: false
 
       attribute :state, :string,
-        authorization_steps: [
+        write_rules: [
           authorize_if: user_attribute(:admin, true),
           forbid_if: setting(to: "closed"),
           authorize_if: always()
@@ -56,11 +60,11 @@ defmodule Ash.Test.Authorization.CreateAuthorizationTest do
 
       attribute :bio_locked, :boolean,
         default: {:constant, false},
-        authorization_steps: false
+        write_rules: false
 
-      attribute :self_manager, :boolean, authorization_steps: false
+      attribute :self_manager, :boolean, write_rules: false
 
-      attribute :fired, :boolean, authorization_steps: false
+      attribute :fired, :boolean, write_rules: false
     end
 
     relationships do
@@ -68,7 +72,7 @@ defmodule Ash.Test.Authorization.CreateAuthorizationTest do
         through: Ash.Test.Authorization.CreateAuthorizationTest.AuthorPost
 
       has_one :bio, Ash.Test.Authorization.CreateAuthorizationTest.Bio,
-        authorization_steps: [
+        write_rules: [
           forbid_if: attribute_equals(:bio_locked, true),
           authorize_if: always()
         ]
@@ -81,18 +85,18 @@ defmodule Ash.Test.Authorization.CreateAuthorizationTest do
 
     actions do
       read :default,
-        authorization_steps: [
+        rules: [
           authorize_if: always()
         ]
 
       create :default,
-        authorization_steps: [
+        rules: [
           forbid_unless: setting_relationship(:author),
           authorize_if: user_attribute(:author, true)
         ]
 
       update :default,
-        authorization_steps: [
+        rules: [
           authorize_if: always()
         ]
     end
@@ -100,14 +104,14 @@ defmodule Ash.Test.Authorization.CreateAuthorizationTest do
     attributes do
       attribute :admin_only?, :boolean,
         default: {:constant, false},
-        authorization_steps: [
+        write_rules: [
           authorize_if: always()
         ]
     end
 
     relationships do
       belongs_to :author, Author,
-        authorization_steps: [
+        write_rules: [
           authorize_if: relating_to_user()
         ]
     end
@@ -157,18 +161,18 @@ defmodule Ash.Test.Authorization.CreateAuthorizationTest do
       read :default
 
       create :default,
-        authorization_steps: [
+        rules: [
           authorize_if: user_attribute(:admin, true),
           authorize_if: user_attribute(:manager, true)
         ]
     end
 
     attributes do
-      attribute :title, :string, authorization_steps: false
+      attribute :title, :string, write_rules: false
 
-      attribute :contents, :string, authorization_steps: false
+      attribute :contents, :string, write_rules: false
 
-      attribute :published, :boolean, authorization_steps: false
+      attribute :published, :boolean, write_rules: false
     end
 
     relationships do

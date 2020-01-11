@@ -23,7 +23,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.CreateTest do
                %Ash.Resource.Actions.Create{
                  name: :default,
                  primary?: true,
-                 authorization_steps: [],
+                 rules: [],
                  type: :create
                }
              ] = Ash.actions(Post)
@@ -62,11 +62,11 @@ defmodule Ash.Test.Dsl.Resource.Actions.CreateTest do
     test "it fails if `rules` is not a list" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option authorization_steps at actions -> create -> default must be keyword",
+        "option rules at actions -> create -> default must be keyword",
         fn ->
           defposts do
             actions do
-              create :default, authorization_steps: 10
+              create :default, rules: 10
             end
           end
         end

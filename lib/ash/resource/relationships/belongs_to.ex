@@ -12,7 +12,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :source_field,
     :source,
     :reverse_relationship,
-    :authorization_steps
+    :write_rules
   ]
 
   @type t :: %__MODULE__{
@@ -26,7 +26,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           field_type: Ash.Type.t(),
           destination_field: atom,
           source_field: atom | nil,
-          authorization_steps: Keyword.t()
+          write_rules: Keyword.t()
         }
 
   @opt_schema Ashton.schema(
@@ -37,14 +37,14 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                   define_field?: :boolean,
                   field_type: :atom,
                   reverse_relationship: :atom,
-                  authorization_steps: :keyword
+                  write_rules: :keyword
                 ],
                 defaults: [
                   destination_field: :id,
                   primary_key?: false,
                   define_field?: true,
                   field_type: :uuid,
-                  authorization_steps: []
+                  write_rules: []
                 ],
                 describe: [
                   reverse_relationship:
@@ -58,7 +58,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                     "The field on this resource that should match the `destination_field` on the related resource.  Default: [relationship_name]_id",
                   primary_key?:
                     "Whether this field is, or is part of, the primary key of a resource.",
-                  authorization_steps: """
+                  write_rules: """
                   Steps applied on an relationship during create or update. If no steps are defined, authorization to change will fail.
                   If set to false, no steps are applied and any changes are allowed (assuming the action was authorized as a whole)
                   Remember that any changes against the destination records *will* still be authorized regardless of this setting.
@@ -79,8 +79,8 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     # Don't call functions on the resource! We don't want it to compile here
     case Ashton.validate(opts, @opt_schema) do
       {:ok, opts} ->
-        authorization_steps =
-          case opts[:authorization_steps] do
+        write_rules =
+          case opts[:write_rules] do
             false ->
               false
 
@@ -99,7 +99,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
         {:ok,
          %__MODULE__{
            name: name,
-           authorization_steps: authorization_steps,
+           write_rules: write_rules,
            source: resource,
            type: :belongs_to,
            cardinality: :one,

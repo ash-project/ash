@@ -1,28 +1,28 @@
 defmodule Ash.Resource.Actions.Create do
   @moduledoc "The representation of a `create` action."
-  defstruct [:type, :name, :primary?, :authorization_steps]
+  defstruct [:type, :name, :primary?, :rules]
 
   @type t :: %__MODULE__{
           type: :create,
           name: atom,
           primary?: boolean,
-          authorization_steps: Authorizer.steps()
+          rules: Authorizer.steps()
         }
 
   @opt_schema Ashton.schema(
                 opts: [
                   primary?: :boolean,
-                  authorization_steps: :keyword
+                  rules: :keyword
                 ],
                 defaults: [
                   primary?: false,
-                  authorization_steps: []
+                  rules: []
                 ],
                 describe: [
                   primary?:
                     "Whether or not this action should be used when no action is specified by the caller.",
                   # TODO: doc better
-                  authorization_steps: "A list of authorization steps"
+                  rules: "A list of authorization steps"
                 ]
               )
 
@@ -33,8 +33,8 @@ defmodule Ash.Resource.Actions.Create do
   def new(resource, name, opts \\ []) do
     case Ashton.validate(opts, @opt_schema) do
       {:ok, opts} ->
-        authorization_steps =
-          case opts[:authorization_steps] do
+        rules =
+          case opts[:rules] do
             false ->
               false
 
@@ -53,7 +53,7 @@ defmodule Ash.Resource.Actions.Create do
            name: name,
            type: :create,
            primary?: opts[:primary?],
-           authorization_steps: authorization_steps
+           rules: rules
          }}
 
       {:error, error} ->

@@ -128,7 +128,7 @@ defmodule Ash.Resource do
           Ash.Resource.Attributes.Attribute.new(mod, :id, :uuid,
             primary_key?: true,
             default: &Ecto.UUID.generate/0,
-            authorization_steps: false
+            write_rules: false
           )
 
         Module.put_attribute(mod, :attributes, attribute)
@@ -140,7 +140,7 @@ defmodule Ash.Resource do
         {:ok, attribute} =
           Ash.Resource.Attributes.Attribute.new(mod, opts[:field], opts[:type],
             primary_key?: true,
-            authorization_steps: false
+            write_rules: false
           )
 
         Module.put_attribute(mod, :attributes, attribute)

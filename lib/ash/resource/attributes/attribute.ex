@@ -1,21 +1,21 @@
 defmodule Ash.Resource.Attributes.Attribute do
   @doc false
 
-  defstruct [:name, :type, :allow_nil?, :primary_key?, :default, :authorization_steps]
+  defstruct [:name, :type, :allow_nil?, :primary_key?, :default, :write_rules]
 
   @type t :: %__MODULE__{
           name: atom(),
           type: Ash.type(),
           primary_key?: boolean(),
           default: (() -> term),
-          authorization_steps: Keyword.t()
+          write_rules: Keyword.t()
         }
 
   @schema Ashton.schema(
             opts: [
               primary_key?: :boolean,
               allow_nil?: :boolean,
-              authorization_steps: [{:const, false}, :keyword],
+              write_rules: [{:const, false}, :keyword],
               default: [
                 {:function, 0},
                 {:tuple, {:module, :atom}},
@@ -25,7 +25,7 @@ defmodule Ash.Resource.Attributes.Attribute do
             defaults: [
               primary_key?: false,
               allow_nil?: true,
-              authorization_steps: []
+              write_rules: []
             ],
             describe: [
               allow_nil?: """
@@ -36,9 +36,9 @@ defmodule Ash.Resource.Attributes.Attribute do
                 "Whether this field is, or is part of, the primary key of a resource.",
               default:
                 "A one argument function that returns a default value, an mfa that does the same, or a raw value via specifying `{:constant, value}`.",
-              authorization_steps: """
-              Rules applied on an attribute during create or update. If no rules are defined, authorization to change will fail.
-              If set to false, no rules are applied and any changes are allowed (assuming the action was authorized as a whole)
+              write_rules: """
+              Write_Rules applied on an attribute during create or update. If no write_rules are defined, authorization to change will fail.
+              If set to false, no write_rules are applied and any changes are allowed (assuming the action was authorized as a whole)
               """
             ]
           )
@@ -51,8 +51,8 @@ defmodule Ash.Resource.Attributes.Attribute do
     # Don't call functions on the resource! We don't want it to compile here
     with {:ok, opts} <- Ashton.validate(opts, @schema),
          {:default, {:ok, default}} <- {:default, cast_default(type, opts)} do
-      authorization_steps =
-        case opts[:authorization_steps] do
+      write_rules =
+        case opts[:write_rules] do
           false ->
             false
 
@@ -72,7 +72,7 @@ defmodule Ash.Resource.Attributes.Attribute do
        %__MODULE__{
          name: name,
          type: type,
-         authorization_steps: authorization_steps,
+         write_rules: write_rules,
          allow_nil?: opts[:allow_nil?],
          primary_key?: opts[:primary_key?],
          default: default

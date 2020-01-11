@@ -40,10 +40,10 @@ defmodule Ash.Actions.Read do
       Ash.Authorization.Request.new(
         api: api,
         resource: resource,
-        authorization_steps: action.authorization_steps,
+        rules: action.rules,
         filter: filter,
         action_type: action.type,
-        fetcher: fn _ -> Ash.DataLayer.run_query(query, resource) end,
+        fetcher: fn _, _ -> Ash.DataLayer.run_query(query, resource) end,
         must_fetch?: true,
         state_key: :data,
         relationship: [],

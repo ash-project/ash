@@ -23,7 +23,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.UpdateTest do
                %Ash.Resource.Actions.Update{
                  name: :default,
                  primary?: true,
-                 authorization_steps: [],
+                 rules: [],
                  type: :update
                }
              ] = Ash.actions(Post)
@@ -62,11 +62,11 @@ defmodule Ash.Test.Dsl.Resource.Actions.UpdateTest do
     test "it fails if `rules` is not a list" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option authorization_steps at actions -> update -> default must be keyword",
+        "option rules at actions -> update -> default must be keyword",
         fn ->
           defposts do
             actions do
-              update :default, authorization_steps: 10
+              update :default, rules: 10
             end
           end
         end

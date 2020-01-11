@@ -15,7 +15,7 @@ defmodule Ash.Authorization.Checker do
   def strict_check(user, request, facts, strict_access?) do
     if Request.can_strict_check?(request) do
       new_facts =
-        request.authorization_steps
+        request.rules
         |> Enum.reduce(facts, fn {_step, clause}, facts ->
           case Map.fetch(facts, {request.relationship, clause}) do
             {:ok, _boolean_result} ->
@@ -52,9 +52,9 @@ defmodule Ash.Authorization.Checker do
         :all_scenarios_known
 
       {[], _clauses_requiring_fetch} ->
-        case fetch_requests(requests, state, facts, strict_access?, user) do
-          {:ok, {new_requests, new_facts, new_state}} ->
-            {:ok, new_requests, new_facts, new_state}
+        case fetch_requests(requests, state, strict_access?) do
+          {:ok, {new_requests, new_state}} ->
+            {:ok, new_requests, facts, new_state}
 
           :all_scenarios_known ->
             :all_scenarios_known
@@ -79,7 +79,7 @@ defmodule Ash.Authorization.Checker do
   end
 
   # TODO: We could be smart here, and likely fetch multiple requests at a time
-  defp fetch_requests(requests, state, facts, strict_access?, user) do
+  defp fetch_requests(requests, state, strict_access?) do
     {fetchable_requests, other_requests} =
       Enum.split_with(requests, fn request ->
         bypass_strict? =
@@ -93,7 +93,7 @@ defmodule Ash.Authorization.Checker do
           Request.dependencies_met?(state, request)
       end)
 
-    requests_with_changesets =
+    fetchable_requests_with_changeset =
       Enum.reduce_while(fetchable_requests, {:ok, []}, fn request, {:ok, requests} ->
         case Request.fetch_changeset(state, request) do
           {:ok, request} -> {:cont, {:ok, [request | requests]}}
@@ -101,39 +101,31 @@ defmodule Ash.Authorization.Checker do
         end
       end)
 
-    case requests_with_changesets do
+    case fetchable_requests_with_changeset do
       {:error, error} ->
         {:error, error}
 
-      {:ok, requests_with_changesets} ->
-        requests_with_changesets
+      {:ok, fetchable_requests_with_changeset} ->
+        fetchable_requests_with_changeset
         |> Enum.sort_by(fn request ->
           # Requests that bypass strict access should generally perform well
           # as they would generally be more efficient checks
-          {request.strict_check_completed?, Enum.count(request.relationship),
-           not request.bypass_strict_access?, request.relationship}
-        end)
-        |> Enum.reduce({[], facts}, fn request, {requests, facts} ->
-          {request, new_facts} = strict_check(user, request, facts, strict_access?)
-          {[request | requests], new_facts}
+          {Enum.count(request.relationship), not request.bypass_strict_access?,
+           request.relationship}
         end)
         |> case do
-          {[request | rest] = requests, new_facts} ->
+          [request | rest] = requests ->
             case Request.fetch(state, request) do
               {:ok, new_state} ->
                 new_requests = [%{request | is_fetched: true} | rest] ++ other_requests
-                {:ok, {new_requests, new_facts, new_state}}
+                {:ok, {new_requests, new_state}}
 
               :error ->
-                {:ok, {requests ++ other_requests, new_facts, state}}
+                {:ok, {requests ++ other_requests, state}}
             end
 
-          {[], new_facts} ->
-            if new_facts == facts do
-              :all_scenarios_known
-            else
-              {:ok, {other_requests, new_facts, state}}
-            end
+          _ ->
+            :all_scenarios_known
         end
     end
   end
@@ -186,7 +178,7 @@ defmodule Ash.Authorization.Checker do
     Enum.split_with(clauses, fn clause ->
       Enum.any?(requests, fn request ->
         Request.fetched?(state, request) && Request.contains_clause?(request, clause) &&
-          Request.dependencies_met?(state, request)
+          Request.dependencies_met?(state, request) && Request.changeset_fetched?(request)
       end)
     end)
   end
@@ -199,7 +191,7 @@ defmodule Ash.Authorization.Checker do
       |> Enum.map(&elem(&1, 0))
     end)
     |> Enum.reject(fn clause ->
-      Map.has_key?(facts, clause)
+      match?({:ok, _}, Ash.Authorization.Clause.find(facts, clause))
     end)
   end
 

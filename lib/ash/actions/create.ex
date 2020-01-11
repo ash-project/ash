@@ -59,15 +59,15 @@ defmodule Ash.Actions.Create do
     create_authorization_request =
       Ash.Authorization.Request.new(
         api: api,
-        authorization_steps: action.authorization_steps,
+        rules: action.rules,
         resource: resource,
         changeset:
-          Ash.Actions.Relationships.authorization_changeset(
+          Relationships.authorization_changeset(
             changeset,
             relationships
           ),
         action_type: action.type,
-        fetcher: fn _ ->
+        fetcher: fn changeset, _ ->
           Ash.DataLayer.create(resource, changeset)
         end,
         dependencies: Map.get(changeset, :__changes_depend_on__) || [],
@@ -80,7 +80,16 @@ defmodule Ash.Actions.Create do
     attribute_requests =
       Attributes.attribute_change_authorizations(changeset, api, resource, action)
 
-    relationship_auths = Map.get(changeset, :__authorizations__, [])
+    relationship_read_auths = Map.get(changeset, :__authorizations__, [])
+
+    relationship_change_auths =
+      Relationships.relationship_change_authorizations(
+        changeset,
+        api,
+        resource,
+        action,
+        relationships
+      )
 
     if params[:authorization] do
       strict_access? =
@@ -91,7 +100,8 @@ defmodule Ash.Actions.Create do
 
       Authorizer.authorize(
         params[:authorization][:user],
-        [create_authorization_request | attribute_requests] ++ relationship_auths,
+        [create_authorization_request | attribute_requests] ++
+          relationship_read_auths ++ relationship_change_auths,
         strict_access?: strict_access?,
         log_final_report?: params[:authorization][:log_final_report?] || false
       )
@@ -100,7 +110,8 @@ defmodule Ash.Actions.Create do
 
       Authorizer.authorize(
         authorization[:user],
-        [create_authorization_request | attribute_requests] ++ relationship_auths,
+        [create_authorization_request | attribute_requests] ++
+          relationship_read_auths ++ relationship_change_auths,
         fetch_only?: true
       )
     end

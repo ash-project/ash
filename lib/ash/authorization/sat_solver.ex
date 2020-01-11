@@ -3,18 +3,17 @@ defmodule Ash.Authorization.SatSolver do
 
   def solve(requests, facts, negations, ids) when is_nil(ids) do
     requests
-    |> Enum.map(&Map.get(&1, :authorization_steps))
+    |> Enum.map(&Map.get(&1, :rules))
     |> build_requirements_expression(facts, nil)
     |> add_negations_and_solve(negations)
   end
 
   def solve(requests, facts, negations, ids) do
-    sets_of_authorization_steps = Enum.map(requests, &Map.get(&1, :authorization_steps))
+    sets_of_rules = Enum.map(requests, &Map.get(&1, :rules))
 
     ids
     |> Enum.reduce(nil, fn id, expr ->
-      requirements_expression =
-        build_requirements_expression(sets_of_authorization_steps, facts, id)
+      requirements_expression = build_requirements_expression(sets_of_rules, facts, id)
 
       if expr do
         {:and, expr, requirements_expression}
@@ -75,15 +74,15 @@ defmodule Ash.Authorization.SatSolver do
     end)
   end
 
-  defp build_requirements_expression(sets_of_authorization_steps, facts, pkey) do
-    authorization_steps_expression =
-      Enum.reduce(sets_of_authorization_steps, nil, fn authorization_steps, acc ->
+  defp build_requirements_expression(sets_of_rules, facts, pkey) do
+    rules_expression =
+      Enum.reduce(sets_of_rules, nil, fn rules, acc ->
         case acc do
           nil ->
-            compile_authorization_steps_expression(authorization_steps, facts, pkey)
+            compile_rules_expression(rules, facts, pkey)
 
           expr ->
-            {:and, expr, compile_authorization_steps_expression(authorization_steps, facts, pkey)}
+            {:and, expr, compile_rules_expression(rules, facts, pkey)}
         end
       end)
 
@@ -99,9 +98,9 @@ defmodule Ash.Authorization.SatSolver do
     facts_expression = facts_to_statement(facts)
 
     if facts_expression do
-      {:and, facts_expression, authorization_steps_expression}
+      {:and, facts_expression, rules_expression}
     else
-      authorization_steps_expression
+      rules_expression
     end
   end
 
@@ -118,7 +117,7 @@ defmodule Ash.Authorization.SatSolver do
 
   defp solutions_to_predicate_values({:error, error}, _), do: {:error, error}
 
-  defp compile_authorization_steps_expression([{:authorize_if, clause}], facts, pkey) do
+  defp compile_rules_expression([{:authorize_if, clause}], facts, pkey) do
     clause = %{clause | pkey: pkey}
 
     case Clause.find(facts, clause) do
@@ -130,7 +129,7 @@ defmodule Ash.Authorization.SatSolver do
     end
   end
 
-  defp compile_authorization_steps_expression([{:authorize_if, clause} | rest], facts, pkey) do
+  defp compile_rules_expression([{:authorize_if, clause} | rest], facts, pkey) do
     clause = %{clause | pkey: pkey}
 
     case Clause.find(facts, clause) do
@@ -138,21 +137,20 @@ defmodule Ash.Authorization.SatSolver do
         true
 
       {:ok, false} ->
-        compile_authorization_steps_expression(rest, facts, pkey)
+        compile_rules_expression(rest, facts, pkey)
 
       {:ok, :irrelevant} ->
         true
 
       {:ok, :unknowable} ->
-        compile_authorization_steps_expression(rest, facts, pkey)
+        compile_rules_expression(rest, facts, pkey)
 
       :error ->
-        {:or, Clause.expression(clause),
-         compile_authorization_steps_expression(rest, facts, pkey)}
+        {:or, Clause.expression(clause), compile_rules_expression(rest, facts, pkey)}
     end
   end
 
-  defp compile_authorization_steps_expression([{:authorize_unless, clause}], facts, pkey) do
+  defp compile_rules_expression([{:authorize_unless, clause}], facts, pkey) do
     clause = %{clause | pkey: pkey}
 
     case Clause.find(facts, clause) do
@@ -173,12 +171,12 @@ defmodule Ash.Authorization.SatSolver do
     end
   end
 
-  defp compile_authorization_steps_expression([{:authorize_unless, clause} | rest], facts, pkey) do
+  defp compile_rules_expression([{:authorize_unless, clause} | rest], facts, pkey) do
     clause = %{clause | pkey: pkey}
 
     case Clause.find(facts, clause) do
       {:ok, true} ->
-        compile_authorization_steps_expression(rest, facts, pkey)
+        compile_rules_expression(rest, facts, pkey)
 
       {:ok, false} ->
         true
@@ -187,19 +185,18 @@ defmodule Ash.Authorization.SatSolver do
         true
 
       {:ok, :unknowable} ->
-        compile_authorization_steps_expression(rest, facts, pkey)
+        compile_rules_expression(rest, facts, pkey)
 
       :error ->
-        {:or, {:not, Clause.expression(clause)},
-         compile_authorization_steps_expression(rest, facts, pkey)}
+        {:or, {:not, Clause.expression(clause)}, compile_rules_expression(rest, facts, pkey)}
     end
   end
 
-  defp compile_authorization_steps_expression([{:forbid_if, _clause}], _facts, _) do
+  defp compile_rules_expression([{:forbid_if, _clause}], _facts, _) do
     false
   end
 
-  defp compile_authorization_steps_expression([{:forbid_if, clause} | rest], facts, pkey) do
+  defp compile_rules_expression([{:forbid_if, clause} | rest], facts, pkey) do
     clause = %{clause | pkey: pkey}
 
     case Clause.find(facts, clause) do
@@ -207,30 +204,29 @@ defmodule Ash.Authorization.SatSolver do
         false
 
       {:ok, :irrelevant} ->
-        compile_authorization_steps_expression(rest, facts, pkey)
+        compile_rules_expression(rest, facts, pkey)
 
       {:ok, :unknowable} ->
         false
 
       {:ok, false} ->
-        compile_authorization_steps_expression(rest, facts, pkey)
+        compile_rules_expression(rest, facts, pkey)
 
       :error ->
-        {:and, {:not, Clause.expression(clause)},
-         compile_authorization_steps_expression(rest, facts, pkey)}
+        {:and, {:not, Clause.expression(clause)}, compile_rules_expression(rest, facts, pkey)}
     end
   end
 
-  defp compile_authorization_steps_expression([{:forbid_unless, _clause}], _facts, _id) do
+  defp compile_rules_expression([{:forbid_unless, _clause}], _facts, _id) do
     false
   end
 
-  defp compile_authorization_steps_expression([{:forbid_unless, clause} | rest], facts, pkey) do
+  defp compile_rules_expression([{:forbid_unless, clause} | rest], facts, pkey) do
     clause = %{clause | pkey: pkey}
 
     case Clause.find(facts, clause) do
       {:ok, true} ->
-        compile_authorization_steps_expression(rest, facts, pkey)
+        compile_rules_expression(rest, facts, pkey)
 
       {:ok, false} ->
         false
@@ -242,8 +238,7 @@ defmodule Ash.Authorization.SatSolver do
         false
 
       :error ->
-        {:and, Clause.expression(clause),
-         compile_authorization_steps_expression(rest, facts, pkey)}
+        {:and, Clause.expression(clause), compile_rules_expression(rest, facts, pkey)}
     end
   end
 

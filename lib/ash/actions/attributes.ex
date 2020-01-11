@@ -6,17 +6,17 @@ defmodule Ash.Actions.Attributes do
       attribute.name in Map.get(changeset, :__ash_skip_authorization_fields__, [])
     end)
     |> Enum.filter(fn attribute ->
-      attribute.authorization_steps != false && Map.has_key?(changeset.changes, attribute.name)
+      attribute.write_rules != false && Map.has_key?(changeset.changes, attribute.name)
     end)
     |> Enum.map(fn attribute ->
       Ash.Authorization.Request.new(
         api: api,
-        authorization_steps: attribute.authorization_steps,
+        rules: attribute.write_rules,
         resource: resource,
         changeset: changeset,
         action_type: action.type,
         dependencies: [[:data]],
-        fetcher: fn %{data: data} -> {:ok, data} end,
+        fetcher: fn _, %{data: data} -> {:ok, data} end,
         state_key: :data,
         relationship: [],
         source: "change on `#{attribute.name}`"

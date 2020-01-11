@@ -1,7 +1,7 @@
 defmodule Ash.Authorization.Request do
   defstruct [
     :resource,
-    :authorization_steps,
+    :rules,
     :filter,
     :action_type,
     :dependencies,
@@ -20,7 +20,7 @@ defmodule Ash.Authorization.Request do
   @type t :: %__MODULE__{
           action_type: atom,
           resource: Ash.resource(),
-          authorization_steps: list(term),
+          rules: list(term),
           filter: Ash.Filter.t(),
           changeset: Ecto.Changeset.t(),
           dependencies: list(term),
@@ -40,12 +40,12 @@ defmodule Ash.Authorization.Request do
     opts =
       opts
       |> Keyword.put_new(:relationship, [])
-      |> Keyword.put_new(:authorization_steps, [])
+      |> Keyword.put_new(:rules, [])
       |> Keyword.put_new(:bypass_strict_access?, false)
       |> Keyword.put_new(:dependencies, [])
       |> Keyword.put_new(:strict_check_completed?, false)
       |> Keyword.put_new(:is_fetched, fn _ -> true end)
-      |> Keyword.update!(:authorization_steps, fn steps ->
+      |> Keyword.update!(:rules, fn steps ->
         Enum.map(steps, fn {step, fact} ->
           {step, Ash.Authorization.Clause.new(opts[:relationship] || [], opts[:resource], fact)}
         end)
@@ -54,8 +54,23 @@ defmodule Ash.Authorization.Request do
     struct!(__MODULE__, opts)
   end
 
+  def authorize_always(request) do
+    %{
+      request
+      | rules: [
+          authorize_if:
+            Ash.Authorization.Clause.new(
+              request.relationship,
+              request.resource,
+              {Ash.Authorization.Check.Static, result: true}
+            )
+        ]
+    }
+  end
+
   def can_strict_check?(%{changeset: changeset}) when is_function(changeset), do: false
-  def can_strict_check?(_), do: true
+  def can_strict_check?(%{strict_check_completed?: false}), do: true
+  def can_strict_check?(_), do: false
 
   def dependencies_met?(_state, %{dependencies: []}), do: true
   def dependencies_met?(_state, %{dependencies: nil}), do: true
@@ -70,7 +85,7 @@ defmodule Ash.Authorization.Request do
   end
 
   def contains_clause?(request, clause) do
-    Enum.any?(request.authorization_steps, fn {_step, request_clause} ->
+    Enum.any?(request.rules, fn {_step, request_clause} ->
       clause == request_clause
     end)
   end
@@ -111,14 +126,17 @@ defmodule Ash.Authorization.Request do
     fetch_nested_value(state, key)
   end
 
-  def fetch(state, %{fetcher: fetcher, dependencies: dependencies} = request) do
-    arg =
+  def fetch(
+        state,
+        %{fetcher: fetcher, dependencies: dependencies, changeset: changeset} = request
+      ) do
+    fetcher_state =
       Enum.reduce(dependencies, %{}, fn dependency, acc ->
         {:ok, value} = fetch_nested_value(state, dependency)
         put_nested_key(acc, dependency, value)
       end)
 
-    case fetcher.(arg) do
+    case fetcher.(changeset, fetcher_state) do
       {:ok, value} ->
         {:ok, put_request_state(state, request, value)}
 
@@ -126,6 +144,9 @@ defmodule Ash.Authorization.Request do
         {:error, error}
     end
   end
+
+  def changeset_fetched?(%{changeset: changeset}) when is_function(changeset), do: false
+  def changeset_fetched?(%{changeset: _}), do: true
 
   def fetch_changeset(state, %{dependencies: dependencies, changeset: changeset} = request)
       when is_function(changeset) do
@@ -136,6 +157,9 @@ defmodule Ash.Authorization.Request do
       end)
 
     case changeset.(arg) do
+      %Ecto.Changeset{} = new_changeset ->
+        {:ok, %{request | changeset: new_changeset}}
+
       {:ok, new_changeset} ->
         {:ok, %{request | changeset: new_changeset}}
 

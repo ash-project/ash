@@ -1,26 +1,26 @@
 defmodule Ash.Resource.Actions.Read do
   @moduledoc "The representation of a `read` action"
 
-  defstruct [:type, :name, :primary?, :authorization_steps, :paginate?]
+  defstruct [:type, :name, :primary?, :rules, :paginate?]
 
   @type t :: %__MODULE__{
           type: :read,
           name: atom,
           primary?: boolean,
           paginate?: boolean,
-          authorization_steps: Authorization.steps()
+          rules: Authorization.steps()
         }
 
   @opt_schema Ashton.schema(
                 opts: [
                   primary?: :boolean,
                   paginate?: :boolean,
-                  authorization_steps: :keyword
+                  rules: :keyword
                 ],
                 defaults: [
                   primary?: false,
                   paginate?: true,
-                  authorization_steps: []
+                  rules: []
                 ],
                 describe: [
                   primary?:
@@ -28,7 +28,7 @@ defmodule Ash.Resource.Actions.Read do
                   paginate?:
                     "If false, a page is still returned from a read action, but no limit or offset is performed.",
                   # TODO: doc better
-                  authorization_steps: "A list of authorization steps"
+                  rules: "A list of authorization steps"
                 ]
               )
 
@@ -40,8 +40,8 @@ defmodule Ash.Resource.Actions.Read do
     # Don't call functions on the resource! We don't want it to compile here
     case Ashton.validate(opts, @opt_schema) do
       {:ok, opts} ->
-        authorization_steps =
-          case opts[:authorization_steps] do
+        rules =
+          case opts[:rules] do
             false ->
               false
 
@@ -60,7 +60,7 @@ defmodule Ash.Resource.Actions.Read do
            name: name,
            type: :read,
            primary?: opts[:primary?],
-           authorization_steps: authorization_steps,
+           rules: rules,
            paginate?: opts[:paginate?]
          }}
 

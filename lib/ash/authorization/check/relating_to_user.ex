@@ -21,7 +21,7 @@ defmodule Ash.Authorization.Check.RelatingToUser do
 
   def strict_check_relating?(pkey, pkey_value, changeset, opts) do
     case Map.fetch(changeset.__ash_relationships__, opts[:relationship_name]) do
-      {:ok, %{add: relationship_change}} when is_list(relationship_change) ->
+      {:ok, %{add: adding}} ->
         op =
           if opts[:allow_additional?] do
             :any?
@@ -29,25 +29,15 @@ defmodule Ash.Authorization.Check.RelatingToUser do
             :all?
           end
 
-        relationship_change =
-          if Keyword.keyword?(relationship_change) do
-            [relationship_change]
-          else
-            relationship_change
-          end
-
         found? =
           apply(Enum, op, [
-            relationship_change,
+            adding,
             fn relationship_change ->
-              Keyword.take(relationship_change, pkey) == pkey_value
+              Map.take(relationship_change, pkey) == Enum.into(pkey_value, %{})
             end
           ])
 
         found?
-
-      %{add: nil} ->
-        false
 
       _ ->
         false
