@@ -1,16 +1,20 @@
 defmodule Ash.Authorization.Checker do
-  alias Ash.Authorization.Request
-  alias Ash.Actions.SideLoad
+  @moduledoc """
+  Determines if a set of authorization requests can be met or not.
 
-  # TODO: strict_check can't do things with dependencies. Meaning,
-  # we need to run strict check for things with dependencies in the
-  # second phase. So we should prioritize things in this way:
-  # 1.) Things who's dependencies unlock strict checks
-  # 2.) things who's strict checks were never run
-  # 3.) Generate the changeset for those
-  # 3.5) probably make it invalid to have an auth request with a changeset function
-  #      but no dependencies.
-  # 4.) run strict checks
+  To read more about boolean satisfiability, see this page:
+  https://en.wikipedia.org/wiki/Boolean_satisfiability_problem. At the end of
+  the day, however, it is not necessary to understand exactly how Ash takes your
+  authorization requirements and determines if a request is allowed. The
+  important thing to understand is that Ash may or may not run any/all of your
+  authorization rules as they may be deemed unnecessary. As such, authorization
+  checks should have no side effects. Ideally, the checks built-in to ash should
+  cover the bulk of your needs.
+
+  If you need to write your own checks see #TODO: Link to a guide about writing checks here.
+  """
+  alias Ash.Engine.Request
+  alias Ash.Actions.SideLoad
 
   def strict_check(user, request, facts, strict_access?) do
     if Request.can_strict_check?(request) do
@@ -93,15 +97,15 @@ defmodule Ash.Authorization.Checker do
           Request.dependencies_met?(state, request)
       end)
 
-    fetchable_requests_with_changeset =
+    fetchable_requests_with_dependent_fields =
       Enum.reduce_while(fetchable_requests, {:ok, []}, fn request, {:ok, requests} ->
-        case Request.fetch_changeset(state, request) do
+        case Request.fetch_dependent_fields(state, request) do
           {:ok, request} -> {:cont, {:ok, [request | requests]}}
           {:error, error} -> {:halt, {:error, error}}
         end
       end)
 
-    case fetchable_requests_with_changeset do
+    case fetchable_requests_with_dependent_fields do
       {:error, error} ->
         {:error, error}
 
@@ -178,7 +182,7 @@ defmodule Ash.Authorization.Checker do
     Enum.split_with(clauses, fn clause ->
       Enum.any?(requests, fn request ->
         Request.fetched?(state, request) && Request.contains_clause?(request, clause) &&
-          Request.dependencies_met?(state, request) && Request.changeset_fetched?(request)
+          Request.dependencies_met?(state, request) && Request.dependent_fields_fetched?(request)
       end)
     end)
   end

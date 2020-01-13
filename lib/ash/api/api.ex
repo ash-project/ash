@@ -71,7 +71,6 @@ defmodule Ash.Api do
       @max_page_size nil
       @interface? opts[:interface?]
       @side_load_type :simple
-      @side_load_config []
       @authorization_explanations opts[:authorization_explanations] || false
 
       Module.register_attribute(__MODULE__, :mix_ins, accumulate: true)
@@ -80,8 +79,7 @@ defmodule Ash.Api do
 
       import Ash.Api,
         only: [
-          resources: 1,
-          parallel_side_load: 1
+          resources: 1
         ]
     end
   end
@@ -134,43 +132,6 @@ defmodule Ash.Api do
                                  shutdown: {&Ash.Constraints.positive?/1, "must be positive"}
                                ]
                              )
-
-  @doc false
-  def parallel_side_load_schema(), do: @parallel_side_load_schema
-
-  @doc """
-  By default, side loading data happens synchronously. In order to
-  side load in parallel, you must start a task supervisor in your application
-  and provide the name of that task supervisor to your `Api`. Other concurrency
-  options for parallel side loading can happen here.
-
-  You can add a task supervisor to your application, by adding:
-  `{Task.Supervisor, name: MyApp.MyName}` to the list of children. Then, you'd configure
-  `supervisor: MyApp.MyName`.
-
-  #{Ashton.document(@parallel_side_load_schema, header_depth: 2)}
-  """
-  defmacro parallel_side_load(opts \\ []) do
-    quote bind_quoted: [opts: opts] do
-      case Ashton.validate(opts, Ash.Api.parallel_side_load_schema()) do
-        {:ok, opts} ->
-          @side_load_type :parallel
-
-          @side_load_config [
-            supervisor: opts[:supervisor],
-            max_concurrency: opts[:max_concurrency],
-            timeout: opts[:timeout],
-            shutdown: opts[:shutdown]
-          ]
-
-        {:error, [{key, message} | _]} ->
-          raise Ash.Error.ApiDslError,
-            path: [:parallel_side_load],
-            option: key,
-            message: message
-      end
-    end
-  end
 
   defmacro __before_compile__(env) do
     quote generated: true do

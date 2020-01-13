@@ -1,17 +1,7 @@
-defmodule Ash.Authorization.Authorizer do
+defmodule Ash.Engine do
   @moduledoc """
-  Determines if a set of authorization requests can be met or not.
-
-  To read more about boolean satisfiability, see this page:
-  https://en.wikipedia.org/wiki/Boolean_satisfiability_problem. At the end of
-  the day, however, it is not necessary to understand exactly how Ash takes your
-  authorization requirements and determines if a request is allowed. The
-  important thing to understand is that Ash may or may not run any/all of your
-  authorization rules as they may be deemed unnecessary. As such, authorization
-  checks should have no side effects. Ideally, the checks built-in to ash should
-  cover the bulk of your needs.
-
-  If you need to write your own checks see #TODO: Link to a guide about writing checks here.
+  Runs a list of requests, fetching them incrementally and checking at each point
+  if authorization is still possible. This module has a lot of growing to do.
   """
   @type result :: :authorized | :forbidden
 
@@ -19,7 +9,7 @@ defmodule Ash.Authorization.Authorizer do
 
   require Logger
 
-  def authorize(user, requests, opts \\ []) do
+  def run(user, requests, opts \\ []) do
     strict_access? = Keyword.get(opts, :strict_access?, true)
 
     requests =
@@ -63,10 +53,10 @@ defmodule Ash.Authorization.Authorizer do
          strict_access?,
          log_final_report?
        ) do
-    requests_with_changeset =
+    requests_with_dependent_fields =
       Enum.reduce_while(requests, {:ok, []}, fn request, {:ok, requests} ->
         if Request.dependencies_met?(state, request) do
-          case Request.fetch_changeset(state, request) do
+          case Request.fetch_dependent_fields(state, request) do
             {:ok, request} -> {:cont, {:ok, [request | requests]}}
             {:error, error} -> {:halt, {:error, error}}
           end
@@ -75,7 +65,7 @@ defmodule Ash.Authorization.Authorizer do
         end
       end)
 
-    case requests_with_changeset do
+    case requests_with_dependent_fields do
       {:error, error} ->
         {:error, error}
 
@@ -312,7 +302,9 @@ defmodule Ash.Authorization.Authorizer do
     {safe_to_fetch, unmet} =
       Enum.split_with(unfetched, fn request -> Request.dependencies_met?(state, request) end)
 
-    case Enum.filter(safe_to_fetch, &Map.get(&1, :must_fetch?)) do
+    must_fetch = filter_must_fetch(safe_to_fetch)
+
+    case must_fetch do
       [] ->
         if unmet == [] do
           {:ok, state}
@@ -324,8 +316,10 @@ defmodule Ash.Authorization.Authorizer do
       must_fetch ->
         new_state =
           Enum.reduce_while(must_fetch, {:ok, state}, fn request, {:ok, state} ->
-            case Request.fetch(state, request) do
-              {:ok, new_state} -> {:cont, {:ok, new_state}}
+            with {:ok, request} <- Request.fetch_dependent_fields(state, request),
+                 {:ok, new_state} <- Request.fetch(state, request) do
+              {:cont, {:ok, new_state}}
+            else
               {:error, error} -> {:halt, {:error, error}}
             end
           end)
@@ -343,6 +337,17 @@ defmodule Ash.Authorization.Authorizer do
             {:error, error}
         end
     end
+  end
+
+  defp filter_must_fetch(requests) do
+    Enum.filter(requests, &must_fetch?(&1, requests))
+  end
+
+  defp must_fetch?(request, other_requests) do
+    request.must_fetch? ||
+      Enum.any?(other_requests, fn other_request ->
+        must_fetch?(other_request, other_requests -- [other_request])
+      end)
   end
 
   defp any_scenarios_reality?(scenarios, facts) do

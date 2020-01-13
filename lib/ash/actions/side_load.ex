@@ -38,22 +38,37 @@ defmodule Ash.Actions.SideLoad do
   defp do_process(api, resource, key, further, source_filter, path, acc) do
     with {:rel, relationship} when not is_nil(relationship) <-
            {:rel, Ash.relationship(resource, key)},
-         nested_path <- path ++ [key],
+         nested_path <- path ++ [relationship.reverse_relationship || raise("need reverse")],
          {:ok, authorizations} <-
            process(api, relationship.destination, further, source_filter, nested_path) do
-      filter = put_nested_relationship(nested_path, source_filter)
+      # filter = put_nested_relationship(nested_path, source_filter)
 
       default_read =
         Ash.primary_action(resource, :read) ||
           raise "Must set default read for #{inspect(resource)}"
 
+      dependency = [Enum.reverse(path)]
+
       # TODO: I guess side loads should just use the authorizer request pattern too :/
       auth =
-        Ash.Authorization.Request.new(
+        Ash.Engine.Request.new(
           action_type: :read,
           rules: default_read.rules,
-          filter: filter,
-          fetcher: fn _, _ ->
+          filter: fn data ->
+            data = get_in(data, [:include | dependency)
+            ids = 
+            filter = Ash.Filter.parse(resource, [])
+
+
+            
+            ## Build filter that matches
+            
+          end,
+          resource: resource,
+          dependencies: [:include | dependency]
+          state_key: [:include | Enum.reverse(nested_path)],
+          fetcher: fn _, %{} ->
+            # build fitcher here also
             case api.read(resource, filter: filter, paginate: false) do
               {:ok, %{results: results}} -> {:ok, results}
               {:error, error} -> {:error, error}
@@ -114,7 +129,6 @@ defmodule Ash.Actions.SideLoad do
 
   def side_load(resource, records, side_loads, api, global_params) do
     {side_load_type, config} = Ash.side_load_config(api)
-    async? = side_load_type == :parallel
 
     side_loads = sanitize_side_loads(side_loads)
 

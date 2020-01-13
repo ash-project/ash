@@ -153,3 +153,5 @@ end
 * Validate that params on the way in are either all strings or all atoms
 * Make it `rules: :none` (or something better) than `rules: false`
 * Support `read_rules`, `create_rules`, `update_rules` for attributes/relationships
+* Make an `Ash.Changeset` that is a superset of an ecto changeset
+* Engine parallelization!

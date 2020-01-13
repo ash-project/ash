@@ -1,5 +1,5 @@
 defmodule Ash.Actions.Destroy do
-  alias Ash.Authorization.Authorizer
+  alias Ash.Engine
 
   @spec run(Ash.api(), Ash.record(), Ash.action(), Ash.params()) ::
           {:ok, Ash.record()} | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
@@ -25,14 +25,14 @@ defmodule Ash.Actions.Destroy do
   defp do_authorize(params, action, user, %resource{} = record) do
     if params[:authorization] do
       auth_request =
-        Ash.Authorization.Request.new(
+        Ash.Engine.Request.new(
           resource: resource,
           rules: action.rules,
           destroy: record,
           source: "destroy request"
         )
 
-      Authorizer.authorize(user, [auth_request])
+      Engine.run(user, [auth_request])
     else
       :authorized
     end

@@ -58,8 +58,8 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     relationships do
-      belongs_to :source_post, Ash.Test.Filter.FilterTest.Post, primary_key?: true
-      belongs_to :destination_post, Ash.Test.Filter.FilterTest.Post, primary_key?: true
+      belongs_to :source_post, Ash.Test.Actions.CreateTest.Post, primary_key?: true
+      belongs_to :destination_post, Ash.Test.Actions.CreateTest.Post, primary_key?: true
     end
   end
 
@@ -179,7 +179,7 @@ defmodule Ash.Test.Actions.CreateTest do
           relationships: %{profile: profile.id}
         )
 
-      assert author.profile == Map.put(profile, :author_id, author.id)
+      assert author.profile.author_id == author.id
     end
   end
 

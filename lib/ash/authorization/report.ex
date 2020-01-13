@@ -13,7 +13,7 @@ defmodule Ash.Authorization.Report do
     no_steps_configured: false
   ]
 
-  def report(%{no_steps_configured: %Ash.Authorization.Request{} = request}) do
+  def report(%{no_steps_configured: %Ash.Engine.Request{} = request}) do
     "forbidden:\n" <>
       request.source <> ": no authorization steps configured. Resource: #{request.resource}"
   end

@@ -9,7 +9,7 @@ defmodule Ash.Authorization do
   In the case of `read` actions
   """
 
-  @type request :: Ash.Authorization.Request.t()
+  @type request :: Ash.Engine.Request.t()
 
   @type side_load :: {:side_load, Keyword.t()}
   @type prepare_instruction :: side_load

@@ -1,4 +1,10 @@
-defmodule Ash.Authorization.Request do
+defmodule Ash.Engine.Request do
+  @fields_that_change_sometimes [
+    :changeset,
+    :is_fetched,
+    :strict_check_completed?
+  ]
+
   defstruct [
     :resource,
     :rules,
@@ -105,7 +111,7 @@ defmodule Ash.Authorization.Request do
   end
 
   def put_request_state(state, %{state_key: state_key} = request, value) do
-    state_key = state_key || request
+    state_key = state_key || Map.drop(request, @fields_that_change_sometimes)
 
     key =
       state_key
@@ -116,7 +122,7 @@ defmodule Ash.Authorization.Request do
   end
 
   def fetch_request_state(state, %{state_key: state_key} = request) do
-    state_key = state_key || request
+    state_key = state_key || Map.drop(request, @fields_that_change_sometimes)
 
     key =
       state_key
@@ -145,11 +151,22 @@ defmodule Ash.Authorization.Request do
     end
   end
 
-  def changeset_fetched?(%{changeset: changeset}) when is_function(changeset), do: false
-  def changeset_fetched?(%{changeset: _}), do: true
+  def dependent_fields_fetched?(%{changeset: changeset}) when is_function(changeset), do: false
+  def dependent_fields_fetched?(%{filter: filter}) when is_function(filter), do: false
+  def dependent_fields_fetched?(%{changeset: _}), do: true
 
-  def fetch_changeset(state, %{dependencies: dependencies, changeset: changeset} = request)
-      when is_function(changeset) do
+  def fetch_dependent_fields(state, request) do
+    case fetch_changeset(state, request) do
+      {:ok, request} ->
+        fetch_filter(state, request)
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp fetch_changeset(state, %{dependencies: dependencies, changeset: changeset} = request)
+       when is_function(changeset) do
     arg =
       Enum.reduce(dependencies, %{}, fn dependency, acc ->
         {:ok, value} = fetch_nested_value(state, dependency)
@@ -168,7 +185,29 @@ defmodule Ash.Authorization.Request do
     end
   end
 
-  def fetch_changeset(_state, request), do: {:ok, request}
+  defp fetch_changeset(_state, request), do: {:ok, request}
+
+  defp fetch_filter(state, %{dependencies: dependencies, filter: filter} = request)
+       when is_function(filter) do
+    arg =
+      Enum.reduce(dependencies, %{}, fn dependency, acc ->
+        {:ok, value} = fetch_nested_value(state, dependency)
+        put_nested_key(acc, dependency, value)
+      end)
+
+    case filter.(arg) do
+      %Ash.Filter{} = new_filter ->
+        {:ok, %{request | filter: new_filter}}
+
+      {:ok, new_filter} ->
+        {:ok, %{request | filter: new_filter}}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp fetch_filter(_state, request), do: {:ok, request}
 
   defp fetch_nested_value(state, [key]) when is_map(state) do
     Map.fetch(state, key)

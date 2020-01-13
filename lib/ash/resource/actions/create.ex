@@ -6,7 +6,7 @@ defmodule Ash.Resource.Actions.Create do
           type: :create,
           name: atom,
           primary?: boolean,
-          rules: Authorizer.steps()
+          rules: Engine.steps()
         }
 
   @opt_schema Ashton.schema(

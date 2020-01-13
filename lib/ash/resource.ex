@@ -43,6 +43,11 @@ defmodule Ash.Resource do
                           ]
                         )
 
+  # TODO: Flesh out the resource callbacks, to allow for functionally derived resources. Maybe
+  # This one is just here so I can make this a behaviour, so that we can check if a module
+  # is a resource or not.
+  @callback primary_key() :: [atom]
+
   @moduledoc """
   A resource is a static definition of an entity in your system.
 
@@ -85,6 +90,7 @@ defmodule Ash.Resource do
   defmacro __using__(opts) do
     quote do
       @before_compile Ash.Resource
+      @behaviour Ash.Resource
 
       opts =
         case Ashton.validate(unquote(opts), Ash.Resource.resource_opts_schema()) do

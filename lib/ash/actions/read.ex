@@ -1,5 +1,5 @@
 defmodule Ash.Actions.Read do
-  alias Ash.Authorization.Authorizer
+  alias Ash.Engine
   alias Ash.Actions.SideLoad
 
   def run(api, resource, action, params) do
@@ -37,7 +37,7 @@ defmodule Ash.Actions.Read do
 
   defp do_authorized(query, params, filter, resource, api, action, auths) do
     filter_authorization_request =
-      Ash.Authorization.Request.new(
+      Ash.Engine.Request.new(
         api: api,
         resource: resource,
         rules: action.rules,
@@ -57,16 +57,14 @@ defmodule Ash.Actions.Read do
           :error -> true
         end
 
-      Authorizer.authorize(params[:authorization][:user], [filter_authorization_request | auths],
+      Engine.run(params[:authorization][:user], [filter_authorization_request | auths],
         strict_access?: strict_access?,
         log_final_report?: params[:authorization][:log_final_report?] || false
       )
     else
       authorization = params[:authorization] || []
 
-      Authorizer.authorize(authorization[:user], [filter_authorization_request | auths],
-        fetch_only?: true
-      )
+      Engine.run(authorization[:user], [filter_authorization_request | auths], fetch_only?: true)
     end
   end
 end

@@ -8,6 +8,7 @@ defmodule Ash do
   """
   alias Ash.Resource.Relationships.{BelongsTo, HasOne, HasMany, ManyToMany}
   alias Ash.Resource.Actions.{Create, Read, Update, Destroy}
+
   @type authorization :: Keyword.t()
   @type record :: struct
   @type cardinality_one_relationship() :: HasOne.t() | BelongsTo.t()
@@ -28,8 +29,15 @@ defmodule Ash do
   @type side_loads :: Keyword.t()
   @type attribute :: Ash.Attributes.Attribute.t()
   @type action :: Create.t() | Read.t() | Update.t() | Destroy.t()
-  @type side_load_type :: :simple | :parallel
   @type side_load_config :: {side_load_type, Keyword.t()}
+
+  @spec resource_module?(module) :: boolean
+  def resource_module?(module) do
+    :attributes
+    |> module.module_info()
+    |> Keyword.get(:behaviour, [])
+    |> Enum.any?(&(&1 == Ash.Resource))
+  end
 
   @spec data_layer_can?(resource(), Ash.DataLayer.feature()) :: boolean
   def data_layer_can?(resource, feature) do
@@ -60,11 +68,6 @@ defmodule Ash do
   @spec relationships(resource()) :: list(relationship())
   def relationships(resource) do
     resource.relationships()
-  end
-
-  @spec side_load_config(api()) :: side_load_config()
-  def side_load_config(api) do
-    api.side_load_config()
   end
 
   @spec primary_action(resource(), atom()) :: action() | nil

@@ -1,5 +1,5 @@
 defmodule Ash.Actions.Create do
-  alias Ash.Authorization.Authorizer
+  alias Ash.Engine
   alias Ash.Actions.{Attributes, Relationships}
 
   @spec run(Ash.api(), Ash.resource(), Ash.action(), Ash.params()) ::
@@ -57,18 +57,31 @@ defmodule Ash.Actions.Create do
     relationships = Keyword.get(params, :relationships, %{})
 
     create_authorization_request =
-      Ash.Authorization.Request.new(
+      Ash.Engine.Request.new(
         api: api,
         rules: action.rules,
         resource: resource,
         changeset:
           Relationships.authorization_changeset(
             changeset,
+            api,
             relationships
           ),
         action_type: action.type,
         fetcher: fn changeset, _ ->
-          Ash.DataLayer.create(resource, changeset)
+          resource
+          |> Ash.DataLayer.create(changeset)
+          |> case do
+            {:ok, result} ->
+              changeset
+              |> Map.get(:__after_changes__, [])
+              |> Enum.reduce_while({:ok, result}, fn func, {:ok, result} ->
+                case func.(changeset, result) do
+                  {:ok, result} -> {:cont, {:ok, result}}
+                  {:error, error} -> {:halt, {:error, error}}
+                end
+              end)
+          end
         end,
         dependencies: Map.get(changeset, :__changes_depend_on__) || [],
         state_key: :data,
@@ -98,7 +111,7 @@ defmodule Ash.Actions.Create do
           :error -> false
         end
 
-      Authorizer.authorize(
+      Engine.run(
         params[:authorization][:user],
         [create_authorization_request | attribute_requests] ++
           relationship_read_auths ++ relationship_change_auths,
@@ -108,7 +121,7 @@ defmodule Ash.Actions.Create do
     else
       authorization = params[:authorization] || []
 
-      Authorizer.authorize(
+      Engine.run(
         authorization[:user],
         [create_authorization_request | attribute_requests] ++
           relationship_read_auths ++ relationship_change_auths,

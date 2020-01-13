@@ -75,11 +75,11 @@ defmodule Ash.Actions.Relationships do
 
         relationship ->
           authorization =
-            Ash.Authorization.Request.new(
+            Ash.Engine.Request.new(
               api: api,
               rules: relationship.write_rules,
               resource: resource,
-              changeset: authorization_changeset(changeset, relationships),
+              changeset: authorization_changeset(changeset, api, relationships),
               action_type: action.type,
               fetcher: fn _, %{data: data} ->
                 {:ok, data}
@@ -200,11 +200,21 @@ defmodule Ash.Actions.Relationships do
           end
 
         :one ->
-          identifiers
+          case identifiers do
+            [single_identifier] ->
+              if Keyword.keyword?(single_identifier) do
+                single_identifier
+              else
+                [single_identifier]
+              end
+
+            many ->
+              [or: many]
+          end
       end
 
     authorization =
-      Ash.Authorization.Request.new(
+      Ash.Engine.Request.new(
         api: api,
         rules: default_read.rules,
         resource: relationship.destination,
@@ -261,6 +271,15 @@ defmodule Ash.Actions.Relationships do
             {:error, "Relationship change invalid for #{relationship.name} 2"}
         end
 
+      Map.get(data, :__struct__) && Ash.resource_module?(data.__struct__) ->
+        # TODO: If they pass structs, we can avoid reading in the future
+        new_data =
+          data
+          |> Map.take(Ash.primary_key(data.__struct__))
+          |> Map.to_list()
+
+        validate_relationship_change(relationship, new_data, action_type)
+
       Map.has_key?(data, :remove) and action_type == :create ->
         {:error, "Cannot remove from a relationship on create."}
 
@@ -269,6 +288,8 @@ defmodule Ash.Actions.Relationships do
         validate_relationship_change(relationship, data, action_type)
 
       relationship.cardinality == :one ->
+        IO.inspect(data, structs: false)
+        IO.inspect(Ash.resource_module?(data.__struct__))
         validate_to_one_relationship_data(relationship, data)
 
       relationship.cardinality == :many ->
@@ -331,7 +352,7 @@ defmodule Ash.Actions.Relationships do
     end
   end
 
-  def authorization_changeset(changeset, relationships) do
+  def authorization_changeset(changeset, api, relationships) do
     if relationships == %{} do
       changeset
     else
@@ -341,7 +362,7 @@ defmodule Ash.Actions.Relationships do
         |> Enum.reduce(changeset, fn {relationship, relationship_data}, changeset ->
           relationship = Ash.relationship(changeset.data.__struct__, relationship)
 
-          add_relationship_to_changeset(changeset, relationship, relationship_data)
+          add_relationship_to_changeset(changeset, api, relationship, relationship_data)
         end)
       end
     end
@@ -349,7 +370,8 @@ defmodule Ash.Actions.Relationships do
 
   defp add_relationship_to_changeset(
          changeset,
-         %{type: :belongs_to, destination: destination} = relationship,
+         api,
+         %{type: :has_one, destination: destination} = relationship,
          relationship_data
        ) do
     pkey = Ash.primary_key(destination)
@@ -357,31 +379,24 @@ defmodule Ash.Actions.Relationships do
     case relationship_data do
       %{current: [], replace: [new]} ->
         changeset
-        |> Ecto.Changeset.put_change(
-          relationship.source_field,
-          Map.get(new, relationship.destination_field)
-        )
+        |> relate_has_one(api, relationship, new)
         |> add_relationship_change_metadata(relationship.name, %{add: [new]})
 
       %{current: [current], replace: []} ->
         changeset
-        |> Ecto.Changeset.put_change(
-          relationship.source_field,
-          nil
-        )
+        |> unrelate_has_one(api, relationship, current)
         |> add_relationship_change_metadata(relationship.name, %{remove: [current]})
+        |> relate_has_one(api, relationship, nil)
 
       %{current: [current], replace: [new]} ->
         changeset
-        |> Ecto.Changeset.put_change(
-          relationship.source_field,
-          Map.get(new, relationship.destination_field)
-        )
+        |> unrelate_has_one(api, relationship, current)
+        |> relate_has_one(api, relationship, new)
         |> add_relationship_change_metadata(relationship.name, %{remove: [current], add: [new]})
 
       %{current: [current], add: [add]} ->
         if Map.take(current, pkey) == Map.take(add, pkey) do
-          changeset
+          relate_has_one(changeset, api, relationship, current)
         else
           Ecto.Changeset.add_error(
             changeset,
@@ -399,22 +414,394 @@ defmodule Ash.Actions.Relationships do
 
       %{current: [current], remove: [remove]} ->
         if Map.take(current, pkey) == Map.take(remove, pkey) do
-          Ecto.Changeset.put_change(changeset, relationship.source_field, nil)
+          changeset
+          |> unrelate_has_one(api, relationship, current)
+          |> relate_has_one(api, relationship, nil)
+          |> add_relationship_change_metadata(relationship.name, %{remove: [current]})
         else
           Ecto.Changeset.add_error(
             changeset,
             relationship.name,
-            "Can't remove a related value if a different record is related"
+            "Can't remove a has_one related value if a different record is related"
           )
         end
     end
   end
 
-  defp add_relationship_to_changeset(changeset, relationship, relationship_data) do
-    IO.inspect(relationship, label: "relationship")
-    IO.inspect(relationship_data, label: "relationship data")
+  defp add_relationship_to_changeset(
+         changeset,
+         _api,
+         %{type: :belongs_to, destination: destination} = relationship,
+         relationship_data
+       ) do
+    pkey = Ash.primary_key(destination)
 
-    {:ok, changeset}
+    case relationship_data do
+      %{current: [], replace: [new]} ->
+        changeset
+        |> relate_belongs_to(relationship, new)
+        # |> Ecto.Changeset.put_change(
+        #   relationship.source_field,
+        #   Map.get(new, relationship.destination_field)
+        # )
+        |> add_relationship_change_metadata(relationship.name, %{add: [new]})
+
+      %{current: [current], replace: []} ->
+        changeset
+        # |> Ecto.Changeset.put_change(
+        #   relationship.source_field,
+        #   nil
+        # )
+        |> relate_belongs_to(relationship, nil)
+        |> add_relationship_change_metadata(relationship.name, %{remove: [current]})
+
+      %{current: [current], replace: [new]} ->
+        changeset
+        # |> Ecto.Changeset.put_change(
+        #   relationship.source_field,
+        #   Map.get(new, relationship.destination_field)
+        # )
+        |> relate_belongs_to(relationship, new)
+        |> add_relationship_change_metadata(relationship.name, %{remove: [current], add: [new]})
+
+      %{current: [current], add: [add]} ->
+        if Map.take(current, pkey) == Map.take(add, pkey) do
+          relate_belongs_to(changeset, relationship, current)
+        else
+          Ecto.Changeset.add_error(
+            changeset,
+            relationship.name,
+            "Can't add a value to a belongs to when something is already related."
+          )
+        end
+
+      %{current: [], remove: [_]} ->
+        Ecto.Changeset.add_error(
+          changeset,
+          relationship.name,
+          "Can't remove a value from a belongs to when nothing is related"
+        )
+
+      %{current: [current], remove: [remove]} ->
+        if Map.take(current, pkey) == Map.take(remove, pkey) do
+          changeset
+          |> add_relationship_change_metadata(relationship.name, %{remove: [current]})
+          |> relate_belongs_to(relationship, nil)
+        else
+          Ecto.Changeset.add_error(
+            changeset,
+            relationship.name,
+            "Can't remove a belongs_to related value if a different record is related"
+          )
+        end
+    end
+  end
+
+  defp add_relationship_to_changeset(
+         changeset,
+         api,
+         %{type: :has_many, destination: destination} = relationship,
+         relationship_data
+       ) do
+    pkey = Ash.primary_key(destination)
+
+    relationship_data =
+      case relationship_data do
+        %{replace: values, current: current} ->
+          split_relationship_data(current, values, pkey)
+
+        other ->
+          other
+      end
+
+    changeset
+    |> set_relationship(relationship.name, [])
+    |> relate_has_many(api, relationship, relationship_data, pkey)
+    |> remove_has_many(api, relationship, relationship_data, pkey)
+  end
+
+  defp add_relationship_to_changeset(
+         changeset,
+         api,
+         %{type: :many_to_many, destination: destination} = relationship,
+         relationship_data
+       ) do
+    pkey = Ash.primary_key(destination)
+
+    relationship_data =
+      case relationship_data do
+        %{replace: values, current: current} ->
+          split_relationship_data(current, values, pkey)
+
+        other ->
+          other
+      end
+
+    changeset
+    |> relate_many_to_many(api, relationship, relationship_data, pkey)
+    |> remove_many_to_many(api, relationship, relationship_data, pkey)
+  end
+
+  defp split_relationship_data(current, replace, pkey) do
+    adding = Enum.reject(replace, &any_pkey_matches?(current, &1, pkey))
+
+    removing = Enum.reject(current, &any_pkey_matches?(replace, &1, pkey))
+
+    %{add: adding, remove: removing, current: current}
+  end
+
+  defp relate_many_to_many(changeset, api, relationship, %{add: add, current: current}, pkey)
+       when is_list(add) do
+    Enum.reduce(add, changeset, fn to_relate_record, changeset ->
+      case find_pkey_match(current, to_relate_record, pkey) do
+        nil ->
+          # If they want to change fields here, I think we could support it by authorizing
+          # a *create* and *update* with those attributes, and then, if it already exists we don't
+          # fail, we just feed that into the authorizer.
+          add_after_changes(changeset, fn _changeset, record ->
+            join_attrs = %{
+              relationship.source_field_on_join_table() =>
+                Map.get(record, relationship.source_field),
+              relationship.destination_field_on_join_table() =>
+                Map.get(to_relate_record, relationship.destination_field)
+            }
+
+            relationship.through
+            |> api.create(attributes: join_attrs)
+            |> case do
+              {:ok, _join_row} ->
+                {:ok, add_to_set_relationship(record, relationship.name, to_relate_record)}
+
+              {:error, error} ->
+                {:error, error}
+            end
+          end)
+
+        _record ->
+          changeset
+      end
+    end)
+  end
+
+  defp relate_many_to_many(changeset, _, _, _, _) do
+    changeset
+  end
+
+  defp remove_many_to_many(
+         changeset,
+         api,
+         relationship,
+         %{current: current, remove: remove},
+         pkey
+       ) do
+    Enum.reduce(remove, changeset, fn to_remove_record, changeset ->
+      case find_pkey_match(current, to_remove_record, pkey) do
+        nil ->
+          changeset
+
+        to_remove_record ->
+          add_after_changes(changeset, fn _changeset, record ->
+            filter = [
+              {relationship.source_field_on_join_table,
+               Map.get(record, relationship.source_field)},
+              {
+                relationship.destination_field_on_join_table,
+                Map.get(to_remove_record, relationship.destination_field)
+              }
+            ]
+
+            case api.get(relationship.destination, filter: filter) do
+              {:ok, nil} ->
+                changeset
+
+              {:error, error} ->
+                {:error, error}
+
+              {:ok, found} ->
+                case api.destroy(found) do
+                  {:ok, destroyed} ->
+                    {:ok,
+                     remove_from_set_relationship(
+                       record,
+                       relationship.name,
+                       destroyed,
+                       pkey
+                     )}
+
+                  {:error, error} ->
+                    {:error, error}
+                end
+            end
+          end)
+      end
+    end)
+  end
+
+  defp remove_many_to_many(changeset, _, _, _, _) do
+    changeset
+  end
+
+  defp relate_has_many(changeset, api, relationship, %{add: add, current: current}, pkey)
+       when is_list(add) do
+    Enum.reduce(add, changeset, fn to_relate_record, changeset ->
+      if any_pkey_matches?(current, to_relate_record, pkey) do
+        changeset
+      else
+        add_after_changes(changeset, fn _changeset, record ->
+          to_relate_record
+          |> api.update(
+            attributes: %{
+              relationship.destination_field => Map.get(record, relationship.source_field)
+            }
+          )
+          |> case do
+            {:ok, related} ->
+              {:ok, add_to_set_relationship(record, relationship.name, related)}
+
+            {:error, error} ->
+              {:error, error}
+          end
+        end)
+      end
+    end)
+  end
+
+  defp relate_has_many(changeset, _, _, _, _) do
+    changeset
+  end
+
+  defp remove_has_many(changeset, api, relationship, %{current: current, remove: remove}, pkey) do
+    Enum.reduce(remove, changeset, fn to_relate_record, changeset ->
+      if any_pkey_matches?(current, to_relate_record, pkey) do
+        add_after_changes(changeset, fn _changeset, record ->
+          to_relate_record
+          |> api.update(
+            attributes: %{
+              relationship.destination_field => nil
+            }
+          )
+          |> case do
+            {:ok, related} ->
+              {:ok, remove_from_set_relationship(record, relationship.name, related, pkey)}
+
+            {:error, error} ->
+              {:error, error}
+          end
+        end)
+      else
+        changeset
+      end
+    end)
+  end
+
+  defp remove_has_many(changeset, _, _, _, _) do
+    changeset
+  end
+
+  defp find_pkey_match(records, to_relate_record, pkey) do
+    search_pkey = Map.take(to_relate_record, pkey)
+
+    Enum.find(records, fn record ->
+      Map.take(record, pkey) == search_pkey
+    end)
+  end
+
+  defp any_pkey_matches?(records, to_relate_record, pkey) do
+    not is_nil(find_pkey_match(records, to_relate_record, pkey))
+  end
+
+  defp set_relationship(changeset, relationship_name, value) do
+    Map.update!(changeset, :data, fn data ->
+      Map.put(data, relationship_name, value)
+    end)
+  end
+
+  defp add_to_set_relationship(record, relationship_name, to_relate) do
+    Map.update!(record, relationship_name, fn
+      %Ecto.Association.NotLoaded{} -> [to_relate]
+      set_relationship -> [to_relate | set_relationship]
+    end)
+  end
+
+  defp remove_from_set_relationship(record, relationship_name, to_remove, pkey) do
+    Map.update!(record, relationship_name, fn
+      %Ecto.Association.NotLoaded{} ->
+        []
+
+      set_relationship ->
+        search_pkey = Map.take(to_remove, pkey)
+
+        Enum.reject(set_relationship, fn set -> Map.take(set, pkey) == search_pkey end)
+    end)
+  end
+
+  defp relate_belongs_to(changeset, relationship, new) do
+    changeset =
+      if new do
+        Ecto.Changeset.cast(
+          changeset,
+          %{
+            relationship.source_field => Map.get(new, relationship.destination_field)
+          },
+          [relationship.source_field]
+        )
+      else
+        Ecto.Changeset.cast(changeset, %{relationship.source_field => nil}, [
+          relationship.source_field
+        ])
+      end
+
+    add_after_changes(changeset, fn _changeset, result ->
+      if new do
+        {:ok, Map.put(result, relationship.name, new)}
+      else
+        {:ok, Map.put(result, relationship.name, nil)}
+      end
+    end)
+  end
+
+  defp relate_has_one(changeset, api, relationship, to_relate_record) do
+    add_after_changes(changeset, fn _changeset, record ->
+      if to_relate_record do
+        to_relate_record
+        |> api.update(
+          attributes: %{
+            relationship.destination_field => Map.get(record, relationship.source_field)
+          }
+        )
+        |> case do
+          {:ok, related} ->
+            {:ok, Map.put(record, relationship.name, related)}
+
+          {:error, error} ->
+            {:error, error}
+        end
+      else
+        {:ok, Map.put(record, relationship.name, nil)}
+      end
+    end)
+  end
+
+  defp unrelate_has_one(changeset, api, relationship, to_relate_record) do
+    add_after_changes(changeset, fn _changeset, record ->
+      to_relate_record
+      |> api.update(
+        attributes: %{
+          relationship.destination_field => nil
+        }
+      )
+      |> case do
+        {:ok, related} ->
+          {:ok, Map.put(record, relationship.name, related)}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    end)
+  end
+
+  defp add_after_changes(changeset, func) do
+    Map.update(changeset, :__after_changes__, [func], fn funcs -> [func | funcs] end)
   end
 
   defp add_relationship_change_metadata(changeset, relationship_name, data) do
@@ -436,6 +823,30 @@ defmodule Ash.Actions.Relationships do
   defp add_relationship_currently_related_authorization(
          changeset,
          api,
+         %{type: :many_to_many, destination: destination, source: resource} = relationship
+       ) do
+    # TODO: Support field updates here
+    # TODO: When we support joins, send this request to the data layer as a join (if the datalayer supports it)
+    default_read =
+      Ash.primary_action(destination, :read) ||
+        raise "Must have a default read for #{destination}"
+
+    authorization =
+      join_through_request =
+      many_to_many_join_resource_authorization_request(api, changeset, relationship)
+
+    destination_request = many_to_many_destination_authorization_request(api, relationship)
+
+    [join_through_request, destination_request]
+
+    changeset
+    |> add_authorizations(authorization)
+    |> changes_depend_on([:relationships, relationship.name, :current])
+  end
+
+  defp add_relationship_currently_related_authorization(
+         changeset,
+         api,
          %{destination: destination} = relationship
        ) do
     default_read =
@@ -447,7 +858,7 @@ defmodule Ash.Actions.Relationships do
     filter = Ash.Filter.parse(destination, filter_statement)
 
     authorization =
-      Ash.Authorization.Request.new(
+      Ash.Engine.Request.new(
         api: api,
         rules: default_read.rules,
         resource: destination,
@@ -469,6 +880,81 @@ defmodule Ash.Actions.Relationships do
     changeset
     |> add_authorizations(authorization)
     |> changes_depend_on([:relationships, relationship.name, :current])
+  end
+
+  defp many_to_many_join_resource_authorization_request(
+         api,
+         changeset,
+         %{through: through} = relationship
+       ) do
+    default_read =
+      Ash.primary_action(through, :read) || raise "Must have default read for #{inspect(through)}"
+
+    value = Ecto.Changeset.get_field(changeset, relationship.source_field)
+    filter_statement = [{relationship.source_field_on_join_table, value}]
+    filter = Ash.Filter.parse(through, filter_statement)
+
+    Ash.Engine.Request.new(
+      api: api,
+      rules: default_read.rules,
+      resource: through,
+      action_type: :read,
+      state_key: [:relationships, relationship.name, :current_join],
+      filter: filter,
+      fetcher: fn _, _ ->
+        case api.read(through, filter: filter_statement) do
+          {:ok, %{results: results}} -> {:ok, results}
+          {:error, error} -> {:error, error}
+        end
+      end,
+      relationship: [],
+      bypass_strict_access?: true,
+      source: "Read related join for #{relationship.name} before replace"
+    )
+  end
+
+  defp many_to_many_destination_authorization_request(
+         api,
+         %{destination: destination, name: name} = relationship
+       ) do
+    default_read =
+      Ash.primary_action(destination, :read) ||
+        raise "Must have default read for #{inspect(destination)}"
+
+    # value = Ecto.Changeset.get_field(changeset, relationship.source_field)
+    # filter_statement = [{relationship.source_field_on_join_table, value}]
+    # filter = Ash.Filter.parse(through, filter_statement)
+
+    Ash.Engine.Request.new(
+      api: api,
+      rules: default_read.rules,
+      resource: destination,
+      action_type: :read,
+      state_key: [:relationships, name, :current],
+      dependencies: [[:relationships, name, :current_join]],
+      filter: fn %{relationships: %{^name => %{current_join: current_join}}} ->
+        field_values =
+          Enum.map(current_join, &Map.get(&1, relationship.destination_field_on_join_table))
+
+        filter_statement = [{relationship.destination_field, in: field_values}]
+
+        Ash.Filter.parse(relationship.through, filter_statement)
+      end,
+      fetcher: fn _, %{relationships: %{^name => %{current_join: current_join}}} ->
+        field_values =
+          Enum.map(current_join, &Map.get(&1, relationship.destination_field_on_join_table))
+
+        filter_statement = [{relationship.destination_field, in: field_values}]
+
+        case api.read(destination, filter: filter_statement) do
+          {:ok, %{results: results}} -> {:ok, results}
+          {:error, error} -> {:error, error}
+        end
+      end,
+      relationship: [],
+      bypass_strict_access?: true,
+      source: "Read related join for #{name} before replace"
+    )
   end
 
   defp changes_depend_on(changeset, path) do

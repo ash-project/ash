@@ -9,7 +9,7 @@ defmodule Ash.Actions.Attributes do
       attribute.write_rules != false && Map.has_key?(changeset.changes, attribute.name)
     end)
     |> Enum.map(fn attribute ->
-      Ash.Authorization.Request.new(
+      Ash.Engine.Request.new(
         api: api,
         rules: attribute.write_rules,
         resource: resource,

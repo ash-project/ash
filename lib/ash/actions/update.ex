@@ -1,5 +1,5 @@
 defmodule Ash.Actions.Update do
-  alias Ash.Authorization.Authorizer
+  alias Ash.Engine
   alias Ash.Actions.{Attributes, Relationships}
 
   @spec run(Ash.api(), Ash.record(), Ash.action(), Ash.params()) ::
@@ -50,24 +50,37 @@ defmodule Ash.Actions.Update do
 
     record
     |> prepare_update_attributes(attributes)
-    |> Relationships.handle_update_relationships(api, relationships)
+    |> Relationships.handle_relationship_changes(api, relationships, :update)
   end
 
   defp do_authorized(changeset, params, action, resource, api) do
     relationships = Keyword.get(params, :relationships)
 
     update_authorization_request =
-      Ash.Authorization.Request.new(
+      Ash.Engine.Request.new(
         api: api,
         rules: action.rules,
         changeset:
           Ash.Actions.Relationships.authorization_changeset(
             changeset,
+            api,
             relationships
           ),
         action_type: action.type,
         fetcher: fn changeset, _ ->
-          Ash.DataLayer.update(resource, changeset)
+          resource
+          |> Ash.DataLayer.update(changeset)
+          |> case do
+            {:ok, result} ->
+              changeset
+              |> Map.get(:__after_changes__, [])
+              |> Enum.reduce_while({:ok, result}, fn func, {:ok, result} ->
+                case func.(changeset, result) do
+                  {:ok, result} -> {:cont, {:ok, result}}
+                  {:error, error} -> {:halt, {:error, error}}
+                end
+              end)
+          end
         end,
         dependencies: Map.get(changeset, :__changes_depend_on__) || [],
         state_key: :data,
@@ -88,7 +101,7 @@ defmodule Ash.Actions.Update do
           :error -> false
         end
 
-      Authorizer.authorize(
+      Engine.run(
         params[:authorization][:user],
         [update_authorization_request | attribute_requests] ++ relationship_auths,
         strict_access?: strict_access?,
@@ -97,7 +110,7 @@ defmodule Ash.Actions.Update do
     else
       authorization = params[:authorization] || []
 
-      Authorizer.authorize(
+      Engine.run(
         authorization[:user],
         [update_authorization_request | attribute_requests] ++ relationship_auths,
         fetch_only?: true

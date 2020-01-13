@@ -53,8 +53,8 @@ defmodule Ash.Test.Actions.UpdateTest do
     end
 
     relationships do
-      belongs_to :source_post, Ash.Test.Filter.FilterTest.Post, primary_key?: true
-      belongs_to :destination_post, Ash.Test.Filter.FilterTest.Post, primary_key?: true
+      belongs_to :source_post, Ash.Test.Actions.UpdateTest.Post, primary_key?: true
+      belongs_to :destination_post, Ash.Test.Actions.UpdateTest.Post, primary_key?: true
     end
   end
 

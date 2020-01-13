@@ -22,7 +22,7 @@ defmodule Ash.Filter do
           relationships: Keyword.t(),
           path: list(atom),
           errors: list(String.t()),
-          authorizations: list(Ash.Authorization.Request.t())
+          authorizations: list(Ash.Engine.Request.t())
         }
 
   @predicates %{
@@ -62,7 +62,7 @@ defmodule Ash.Filter do
       parsed_filter
     else
       authorization_request =
-        Ash.Authorization.Request.new(
+        Ash.Engine.Request.new(
           resource: resource,
           api: api,
           rules: Ash.primary_action(resource, :read).rules,
