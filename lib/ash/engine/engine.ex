@@ -5,7 +5,8 @@ defmodule Ash.Engine do
   """
   @type result :: :authorized | :forbidden
 
-  alias Ash.Authorization.{Report, Request, SatSolver}
+  alias Ash.Authorization.{Report, SatSolver}
+  alias Ash.Engine.Request
 
   require Logger
 

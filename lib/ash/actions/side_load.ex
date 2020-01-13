@@ -1,21 +1,21 @@
 defmodule Ash.Actions.SideLoad do
-  def process(api, resource, side_load, source_filter, path \\ [])
-  def process(_, _, [], _, _), do: {:ok, []}
+  def requests(api, resource, side_load, source_filter, path \\ [])
+  def requests(_, _, [], _, _), do: {:ok, []}
 
-  def process(api, resource, side_load, source_filter, path) do
+  def requests(api, resource, side_load, source_filter, path) do
     # TODO: return authorizations here.
     Enum.reduce(side_load, {:ok, []}, fn
       _, {:error, error} ->
         {:error, error}
 
       {key, true}, {:ok, acc} ->
-        do_process(api, resource, key, [], source_filter, path, acc)
+        do_requests(api, resource, key, [], source_filter, path, acc)
 
       {key, further}, {:ok, acc} ->
-        do_process(api, resource, key, further, source_filter, path, acc)
+        do_requests(api, resource, key, further, source_filter, path, acc)
 
       key, {:ok, acc} ->
-        do_process(api, resource, key, [], source_filter, path, acc)
+        do_requests(api, resource, key, [], source_filter, path, acc)
     end)
   end
 
@@ -35,56 +35,55 @@ defmodule Ash.Actions.SideLoad do
     end)
   end
 
-  defp do_process(api, resource, key, further, source_filter, path, acc) do
-    with {:rel, relationship} when not is_nil(relationship) <-
-           {:rel, Ash.relationship(resource, key)},
-         nested_path <- path ++ [relationship.reverse_relationship || raise("need reverse")],
-         {:ok, authorizations} <-
-           process(api, relationship.destination, further, source_filter, nested_path) do
-      # filter = put_nested_relationship(nested_path, source_filter)
+  defp do_requests(api, resource, key, further, source_filter, path, requestrequests) do
+    []
+    # with {:rel, relationship} when not is_nil(relationship) <-
+    #        {:rel, Ash.relationship(resource, key)},
+    #      nested_path <- path ++ [relationship],
+    #      {:ok, authorizations} <-
+    #        process(api, relationship.destination, further, source_filter, nested_path) do
+    #   # filter = put_nested_relationship(nested_path, source_filter)
 
-      default_read =
-        Ash.primary_action(resource, :read) ||
-          raise "Must set default read for #{inspect(resource)}"
+    #   default_read =
+    #     Ash.primary_action(resource, :read) ||
+    #       raise "Must set default read for #{inspect(resource)}"
 
-      dependency = [Enum.reverse(path)]
+    #   dependency = [Enum.reverse(path)]
 
-      # TODO: I guess side loads should just use the authorizer request pattern too :/
-      auth =
-        Ash.Engine.Request.new(
-          action_type: :read,
-          rules: default_read.rules,
-          filter: fn data ->
-            data = get_in(data, [:include | dependency)
-            ids = 
-            filter = Ash.Filter.parse(resource, [])
+    #   # TODO: I guess side loads should just use the authorizer request pattern too :/
+    #   auth =
+    #     Ash.Engine.Request.new(
+    #       action_type: :read,
+    #       rules: default_read.rules,
+    #       filter: fn data ->
+    #         data = get_in(data, [:include | dependency)
+    #         ids =
+    #         filter = Ash.Filter.parse(resource, [])
 
+    #         ## Build filter that matches
 
-            
-            ## Build filter that matches
-            
-          end,
-          resource: resource,
-          dependencies: [:include | dependency]
-          state_key: [:include | Enum.reverse(nested_path)],
-          fetcher: fn _, %{} ->
-            # build fitcher here also
-            case api.read(resource, filter: filter, paginate: false) do
-              {:ok, %{results: results}} -> {:ok, results}
-              {:error, error} -> {:error, error}
-            end
-          end,
-          relationship: nested_path,
-          source: "Include #{Enum.join(nested_path, ".")}",
-          must_fetch?: false,
-          api: api
-        )
+    #       end,
+    #       resource: resource,
+    #       dependencies: [:include | dependency]
+    #       state_key: [:include | Enum.reverse(nested_path)],
+    #       fetcher: fn _, %{} ->
+    #         # build fitcher here also
+    #         case api.read(resource, filter: filter, paginate: false) do
+    #           {:ok, %{results: results}} -> {:ok, results}
+    #           {:error, error} -> {:error, error}
+    #         end
+    #       end,
+    #       relationship: nested_path,
+    #       source: "Include #{Enum.join(nested_path, ".")}",
+    #       must_fetch?: false,
+    #       api: api
+    #     )
 
-      {:ok, [auth | authorizations] ++ acc}
-    else
-      {:rel, nil} -> {:error, "no such relationship: #{key}"}
-      {:error, error} -> {:error, error}
-    end
+    #   {:ok, [auth | authorizations] ++ acc}
+    # else
+    #   {:rel, nil} -> {:error, "no such relationship: #{key}"}
+    #   {:error, error} -> {:error, error}
+    # end
   end
 
   defp put_nested_relationship([rel | rest], value) do
@@ -97,92 +96,92 @@ defmodule Ash.Actions.SideLoad do
     value
   end
 
-  def side_load(resource, record, keyword, api, global_params \\ [])
+  # def side_load(resource, record, keyword, api, global_params \\ [])
 
-  def side_load(_resource, [], _side_loads, _api, _global_params) do
-    {:ok, []}
-  end
+  # def side_load(_resource, [], _side_loads, _api, _global_params) do
+  #   {:ok, []}
+  # end
 
-  def side_load(_resource, record_or_records, [], _api, _global_params),
-    do: {:ok, record_or_records}
+  # def side_load(_resource, record_or_records, [], _api, _global_params),
+  #   do: {:ok, record_or_records}
 
-  def side_load(
-        resource,
-        %Ash.Actions.Paginator{results: results} = paginator,
-        side_loads,
-        api,
-        global_params
-      ) do
-    case side_load(resource, results, side_loads, api, global_params) do
-      {:ok, side_loaded} -> {:ok, %{paginator | results: side_loaded}}
-      {:error, error} -> {:error, error}
-    end
-  end
+  # def side_load(
+  #       resource,
+  #       %Ash.Actions.Paginator{results: results} = paginator,
+  #       side_loads,
+  #       api,
+  #       global_params
+  #     ) do
+  #   case side_load(resource, results, side_loads, api, global_params) do
+  #     {:ok, side_loaded} -> {:ok, %{paginator | results: side_loaded}}
+  #     {:error, error} -> {:error, error}
+  #   end
+  # end
 
-  def side_load(resource, record, side_loads, api, global_params)
-      when not is_list(record) do
-    case side_load(resource, [record], side_loads, api, global_params) do
-      {:ok, [side_loaded]} -> {:ok, side_loaded}
-      {:error, error} -> {:error, error}
-    end
-  end
+  # def side_load(resource, record, side_loads, api, global_params)
+  #     when not is_list(record) do
+  #   case side_load(resource, [record], side_loads, api, global_params) do
+  #     {:ok, [side_loaded]} -> {:ok, side_loaded}
+  #     {:error, error} -> {:error, error}
+  #   end
+  # end
 
-  def side_load(resource, records, side_loads, api, global_params) do
-    {side_load_type, config} = Ash.side_load_config(api)
+  # def side_load(resource, records, side_loads, api, global_params) do
+  #   {side_load_type, config} = Ash.side_load_config(api)
 
-    side_loads = sanitize_side_loads(side_loads)
+  #   side_loads = sanitize_side_loads(side_loads)
 
-    side_load_results =
-      side_loads
-      |> maybe_async_stream(config, async?, fn relationship_name, further ->
-        relationship = Ash.relationship(resource, relationship_name)
+  #   side_load_results =
+  #     side_loads
+  #     |> maybe_async_stream(config, async?, fn relationship_name, further ->
+  #       relationship = Ash.relationship(resource, relationship_name)
 
-        # Combining filters, and handling boolean filters is
-        # going to come into play here. #TODO
+  #       # Combining filters, and handling boolean filters is
+  #       # going to come into play here. #TODO
 
-        # need to be able to configure options specific to the path of the preload!
-        unless relationship.reverse_relationship do
-          raise "no reverse relationship for #{inspect(relationship)}. This should be validated at compile time."
-        end
+  #       # need to be able to configure options specific to the path of the preload!
+  #       unless relationship.reverse_relationship do
+  #         raise "no reverse relationship for #{inspect(relationship)}. This should be validated at compile time."
+  #       end
 
-        action_params =
-          global_params
-          |> Keyword.put(
-            :filter,
-            [{relationship.reverse_relationship, reverse_relationship_filter(records)}]
-          )
-          |> Keyword.put_new(:paginate?, false)
+  #       action_params =
+  #         global_params
+  #         |> Keyword.put(
+  #           :filter,
+  #           [{relationship.reverse_relationship, reverse_relationship_filter(records)}]
+  #         )
+  #         |> Keyword.put_new(:paginate?, false)
 
-        with {:ok, %{results: related_records}} <-
-               api.read(relationship.destination, action_params),
-             {:ok, side_loaded_related} <-
-               side_load(relationship.destination, related_records, further, api, global_params) do
-          keyed_by_id =
-            Enum.group_by(side_loaded_related, fn record ->
-              # This is required for many to many relationships
-              Map.get(record, :__related_id__) ||
-                Map.get(record, relationship.destination_field)
-            end)
+  #       with {:ok, %{results: related_records}} <-
+  #              api.read(relationship.destination, action_params),
+  #            {:ok, side_loaded_related} <-
+  #              side_load(relationship.destination, related_records, further, api, global_params) do
+  #         keyed_by_id =
+  #           Enum.group_by(side_loaded_related, fn record ->
+  #             # This is required for many to many relationships
+  #             Map.get(record, :__related_id__) ||
+  #               Map.get(record, relationship.destination_field)
+  #           end)
 
-          {:ok, {relationship, keyed_by_id}}
-        else
-          {:error, error} -> {:error, error}
-        end
-      end)
-      |> Enum.to_list()
+  #         {:ok, {relationship, keyed_by_id}}
+  #       else
+  #         {:error, error} -> {:error, error}
+  #       end
+  #     end)
+  #     |> Enum.to_list()
 
-    # This is dumb, should handle these errors better
-    first_error =
-      Enum.find(side_load_results, fn side_loaded ->
-        match?({:error, _error}, side_loaded)
-      end)
+  #   # This is dumb, should handle these errors better
+  #   first_error =
+  #     Enum.find(side_load_results, fn side_loaded ->
+  #       match?({:error, _error}, side_loaded)
+  #     end)
 
-    if first_error do
-      first_error
-    else
-      {:ok, link_records(Enum.map(side_load_results, &elem(&1, 1)), records)}
-    end
-  end
+  #   if first_error do
+  #     first_error
+  #   else
+  #     {:ok, link_records(Enum.map(side_load_results, &elem(&1, 1)), records)}
+  #   end
+  # end
 
   defp sanitize_side_loads(side_loads) do
     Enum.map(side_loads, fn side_load_part ->
@@ -194,67 +193,67 @@ defmodule Ash.Actions.SideLoad do
     end)
   end
 
-  defp reverse_relationship_filter(records) when is_list(records) do
-    [or: records |> List.wrap() |> Enum.map(&reverse_relationship_filter/1)]
-  end
+  # defp reverse_relationship_filter(records) when is_list(records) do
+  #   [or: records |> List.wrap() |> Enum.map(&reverse_relationship_filter/1)]
+  # end
 
-  defp reverse_relationship_filter(%resource{} = record) do
-    record |> Map.take(Ash.primary_key(resource)) |> Map.to_list()
-  end
+  # defp reverse_relationship_filter(%resource{} = record) do
+  #   record |> Map.take(Ash.primary_key(resource)) |> Map.to_list()
+  # end
 
-  defp link_records(results, records) do
-    Enum.reduce(results, records, fn {relationship, keyed_by_id}, records ->
-      Enum.map(records, fn record ->
-        related_to_this_record =
-          Map.get(keyed_by_id, Map.get(record, relationship.source_field)) || []
+  # defp link_records(results, records) do
+  #   Enum.reduce(results, records, fn {relationship, keyed_by_id}, records ->
+  #     Enum.map(records, fn record ->
+  #       related_to_this_record =
+  #         Map.get(keyed_by_id, Map.get(record, relationship.source_field)) || []
 
-        unwrapped =
-          if relationship.cardinality == :many do
-            related_to_this_record
-          else
-            List.first(related_to_this_record)
-          end
+  #       unwrapped =
+  #         if relationship.cardinality == :many do
+  #           related_to_this_record
+  #         else
+  #           List.first(related_to_this_record)
+  #         end
 
-        related_ids = Enum.map(related_to_this_record, fn record -> record.id end)
+  #       related_ids = Enum.map(related_to_this_record, fn record -> record.id end)
 
-        linked_record =
-          record
-          |> Map.put(relationship.name, unwrapped)
-          |> Map.put_new(:__linkage__, %{})
-          |> Map.update!(:__linkage__, &Map.put(&1, relationship.name, related_ids))
+  #       linked_record =
+  #         record
+  #         |> Map.put(relationship.name, unwrapped)
+  #         |> Map.put_new(:__linkage__, %{})
+  #         |> Map.update!(:__linkage__, &Map.put(&1, relationship.name, related_ids))
 
-        linked_record
-      end)
-    end)
-  end
+  #       linked_record
+  #     end)
+  #   end)
+  # end
 
-  defp maybe_async_stream(preloads, _opts, false, function) do
-    Stream.map(preloads, fn {association, further} ->
-      function.(association, further)
-    end)
-  end
+  # defp maybe_async_stream(preloads, _opts, false, function) do
+  #   Stream.map(preloads, fn {association, further} ->
+  #     function.(association, further)
+  #   end)
+  # end
 
-  defp maybe_async_stream(preloads, opts, true, function) do
-    # We could theoretically do one of them outside of a task whlie we wait for the rest
-    # Not worth implementing to start, IMO.
-    async_opts = [
-      opts[:max_concurrency] || System.schedulers_online(),
-      ordered: false,
-      timeout: opts[:timeout] || :timer.seconds(5),
-      on_timeout: :kill_task,
-      shutdown: opts[:shutdown] || :timer.seconds(5)
-    ]
+  # defp maybe_async_stream(preloads, opts, true, function) do
+  #   # We could theoretically do one of them outside of a task whlie we wait for the rest
+  #   # Not worth implementing to start, IMO.
+  #   async_opts = [
+  #     opts[:max_concurrency] || System.schedulers_online(),
+  #     ordered: false,
+  #     timeout: opts[:timeout] || :timer.seconds(5),
+  #     on_timeout: :kill_task,
+  #     shutdown: opts[:shutdown] || :timer.seconds(5)
+  #   ]
 
-    Task.Supervisor.async_stream_nolink(
-      opts[:supervisor],
-      preloads,
-      fn {key, further} -> function.(key, further) end,
-      async_opts
-    )
-    |> Stream.map(&to_result/1)
-  end
+  #   Task.Supervisor.async_stream_nolink(
+  #     opts[:supervisor],
+  #     preloads,
+  #     fn {key, further} -> function.(key, further) end,
+  #     async_opts
+  #   )
+  #   |> Stream.map(&to_result/1)
+  # end
 
-  defp to_result({:exit, reason}), do: {:error, {:exit, reason}}
-  defp to_result({:ok, {:ok, value}}), do: {:ok, value}
-  defp to_result({:ok, {:error, error}}), do: {:error, error}
+  # defp to_result({:exit, reason}), do: {:error, {:exit, reason}}
+  # defp to_result({:ok, {:ok, value}}), do: {:ok, value}
+  # defp to_result({:ok, {:error, error}}), do: {:error, error}
 end

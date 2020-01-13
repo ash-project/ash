@@ -100,4 +100,5 @@ defmodule Ash.Test.Resource.ApiTest do
         end
       )
     end
+  end
 end

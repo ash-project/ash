@@ -139,7 +139,6 @@ defmodule Ash.Api do
       def max_page_size(), do: @max_page_size
       def mix_ins(), do: @mix_ins
       def resources(), do: @resources
-      def side_load_config(), do: {@side_load_type, @side_load_config}
       def authorization_explanations(), do: @authorization_explanations
 
       def get_resource(mod) when mod in @resources, do: {:ok, mod}

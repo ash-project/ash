@@ -29,7 +29,6 @@ defmodule Ash do
   @type side_loads :: Keyword.t()
   @type attribute :: Ash.Attributes.Attribute.t()
   @type action :: Create.t() | Read.t() | Update.t() | Destroy.t()
-  @type side_load_config :: {side_load_type, Keyword.t()}
 
   @spec resource_module?(module) :: boolean
   def resource_module?(module) do

@@ -10,7 +10,7 @@ defmodule Ash.Actions.Read do
 
     with %Ash.Filter{errors: [], authorizations: filter_auths} = filter <-
            Ash.Filter.parse(resource, filter, api),
-         {:ok, side_load_auths} <- SideLoad.process(api, resource, side_loads, filter),
+         {:ok, side_load_auths} <- SideLoad.requests(api, resource, side_loads, filter),
          query <- Ash.DataLayer.resource_to_query(resource),
          {:ok, sort} <- Ash.Actions.Sort.process(resource, sort),
          {:ok, sorted_query} <- Ash.DataLayer.sort(query, sort, resource),
@@ -28,7 +28,7 @@ defmodule Ash.Actions.Read do
              side_load_auths ++ filter_auths
            ),
          paginator <- %{paginator | results: found} do
-      SideLoad.side_load(resource, paginator, side_loads, api)
+      {:ok, paginator}
     else
       %Ash.Filter{errors: errors} -> {:error, errors}
       {:error, error} -> {:error, error}
