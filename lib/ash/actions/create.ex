@@ -1,21 +1,19 @@
 defmodule Ash.Actions.Create do
   alias Ash.Engine
-  alias Ash.Actions.{Attributes, Relationships}
+  alias Ash.Actions.{Attributes, Relationships, SideLoad}
 
   @spec run(Ash.api(), Ash.resource(), Ash.action(), Ash.params()) ::
           {:ok, Ash.record()} | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
   def run(api, resource, action, params) do
-    if Keyword.get(params, :side_load, []) in [[], nil] do
-      Ash.DataLayer.transact(resource, fn ->
-        do_run(api, resource, action, params)
-      end)
-    else
-      {:error, "Cannot side load on create currently"}
-    end
+    Ash.DataLayer.transact(resource, fn ->
+      do_run(api, resource, action, params)
+    end)
   end
 
   defp do_run(api, resource, action, params) do
     attributes = Keyword.get(params, :attributes, %{})
+
+    side_loads = Keyword.get(params, :side_load, [])
     relationships = Keyword.get(params, :relationships, %{})
 
     with {:ok, relationships} <-
@@ -32,9 +30,10 @@ defmodule Ash.Actions.Create do
            ),
          params <- Keyword.merge(params, attributes: attributes, relationships: relationships),
          %{valid?: true} = changeset <- changeset(api, resource, params),
-         {:ok, %{data: created}} <-
-           do_authorized(changeset, params, action, resource, api) do
-      {:ok, created}
+         {:ok, side_load_requests} <- SideLoad.requests(api, resource, side_loads),
+         {:ok, %{data: created} = state} <-
+           do_authorized(changeset, params, action, resource, api, side_load_requests) do
+      {:ok, SideLoad.attach_side_loads(created, state)}
     else
       %Ecto.Changeset{} = changeset ->
         {:error, changeset}
@@ -53,7 +52,7 @@ defmodule Ash.Actions.Create do
     |> Relationships.handle_relationship_changes(api, relationships, :create)
   end
 
-  defp do_authorized(changeset, params, action, resource, api) do
+  defp do_authorized(changeset, params, action, resource, api, side_load_requests) do
     relationships = Keyword.get(params, :relationships, %{})
 
     create_request =
@@ -113,7 +112,7 @@ defmodule Ash.Actions.Create do
       Engine.run(
         params[:authorization][:user],
         [create_request | attribute_requests] ++
-          relationship_read_requests ++ relationship_change_requests,
+          relationship_read_requests ++ relationship_change_requests ++ side_load_requests,
         strict_access?: strict_access?,
         log_final_report?: params[:authorization][:log_final_report?] || false
       )
@@ -123,7 +122,7 @@ defmodule Ash.Actions.Create do
       Engine.run(
         authorization[:user],
         [create_request | attribute_requests] ++
-          relationship_read_requests ++ relationship_change_requests,
+          relationship_read_requests ++ relationship_change_requests ++ side_load_requests,
         fetch_only?: true
       )
     end

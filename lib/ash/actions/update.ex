@@ -1,6 +1,6 @@
 defmodule Ash.Actions.Update do
   alias Ash.Engine
-  alias Ash.Actions.{Attributes, Relationships}
+  alias Ash.Actions.{Attributes, Relationships, SideLoad}
 
   @spec run(Ash.api(), Ash.record(), Ash.action(), Ash.params()) ::
           {:ok, Ash.record()} | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
@@ -18,6 +18,7 @@ defmodule Ash.Actions.Update do
   defp do_run(api, %resource{} = record, action, params) do
     attributes = Keyword.get(params, :attributes, %{})
     relationships = Keyword.get(params, :relationships, %{})
+    side_loads = Keyword.get(params, :side_load, [])
 
     with {:ok, relationships} <-
            Relationships.validate_not_changing_relationship_and_source_field(
@@ -33,8 +34,10 @@ defmodule Ash.Actions.Update do
            ),
          params <- Keyword.merge(params, attributes: attributes, relationships: relationships),
          %{valid?: true} = changeset <- changeset(record, api, params),
-         {:ok, %{data: updated}} <- do_authorized(changeset, params, action, resource, api) do
-      {:ok, updated}
+         {:ok, side_load_requests} <- SideLoad.requests(api, resource, side_loads),
+         {:ok, %{data: updated}} = state <-
+           do_authorized(changeset, params, action, resource, api, side_load_requests) do
+      {:ok, SideLoad.attach_side_loads(updated, state)}
     else
       %Ecto.Changeset{} = changeset ->
         {:error, changeset}
@@ -53,7 +56,7 @@ defmodule Ash.Actions.Update do
     |> Relationships.handle_relationship_changes(api, relationships, :update)
   end
 
-  defp do_authorized(changeset, params, action, resource, api) do
+  defp do_authorized(changeset, params, action, resource, api, side_load_requests) do
     relationships = Keyword.get(params, :relationships)
 
     update_request =
@@ -102,7 +105,7 @@ defmodule Ash.Actions.Update do
 
       Engine.run(
         params[:authorization][:user],
-        [update_request | attribute_requests] ++ relationship_requests,
+        [update_request | attribute_requests] ++ relationship_requests ++ side_load_requests,
         strict_access?: strict_access?,
         log_final_report?: params[:authorization][:log_final_report?] || false
       )
@@ -111,7 +114,7 @@ defmodule Ash.Actions.Update do
 
       Engine.run(
         authorization[:user],
-        [update_request | attribute_requests] ++ relationship_requests,
+        [update_request | attribute_requests] ++ relationship_requests ++ side_load_requests,
         fetch_only?: true
       )
     end

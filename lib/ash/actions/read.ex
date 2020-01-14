@@ -3,6 +3,12 @@ defmodule Ash.Actions.Read do
   alias Ash.Actions.SideLoad
 
   def run(api, resource, action, params) do
+    Ash.DataLayer.transact(resource, fn ->
+      do_run(api, resource, action, params)
+    end)
+  end
+
+  defp do_run(api, resource, action, params) do
     filter = Keyword.get(params, :filter, [])
     sort = Keyword.get(params, :sort, [])
     side_loads = Keyword.get(params, :side_load, [])
@@ -10,7 +16,7 @@ defmodule Ash.Actions.Read do
 
     with %Ash.Filter{errors: [], requests: filter_requests} = filter <-
            Ash.Filter.parse(resource, filter, api),
-         {:ok, side_load_requests} <- SideLoad.requests(api, resource, side_loads, filter),
+         {:ok, side_load_requests} <- SideLoad.requests(api, resource, side_loads),
          query <- Ash.DataLayer.resource_to_query(resource),
          {:ok, sort} <- Ash.Actions.Sort.process(resource, sort),
          {:ok, sorted_query} <- Ash.DataLayer.sort(query, sort, resource),
