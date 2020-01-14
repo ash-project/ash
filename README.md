@@ -155,3 +155,5 @@ end
 * Support `read_rules`, `create_rules`, `update_rules` for attributes/relationships
 * Make an `Ash.Changeset` that is a superset of an ecto changeset
 * Engine parallelization!
+* Big optimization: If the filter *did* need to fetch anything, find a way to
+  get that fetched value into the final query.

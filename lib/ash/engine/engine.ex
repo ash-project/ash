@@ -10,6 +10,7 @@ defmodule Ash.Engine do
 
   require Logger
 
+  # TODO: user should be an opt
   def run(user, requests, opts \\ []) do
     strict_access? = Keyword.get(opts, :strict_access?, true)
 
@@ -29,7 +30,7 @@ defmodule Ash.Engine do
           user,
           facts,
           facts,
-          %{user: user},
+          opts[:state] || %{},
           strict_access?,
           opts[:log_final_report?] || false
         )
@@ -310,8 +311,17 @@ defmodule Ash.Engine do
         if unmet == [] do
           {:ok, state}
         else
+          unmet_deps =
+            unmet
+            |> Enum.map(&Request.unmet_dependencies(state, &1))
+            |> Enum.concat()
+            |> Enum.map(&List.wrap/1)
+            |> Enum.uniq()
+            |> Enum.map_join(", ", &inspect/1)
+
           {:error,
-           "Could not fetch all required data due to data dependency issues, unmet dependencies existed"}
+           "Could not fetch all required data due to data dependency issues, unmet dependencies existed: " <>
+             unmet_deps}
         end
 
       must_fetch ->

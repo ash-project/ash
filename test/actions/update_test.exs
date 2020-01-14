@@ -123,11 +123,13 @@ defmodule Ash.Test.Actions.UpdateTest do
       post2 = Api.create!(Post, attributes: %{title: "title2"})
       post3 = Api.create!(Post, attributes: %{title: "title3"})
 
-      assert Api.update!(post, relationships: %{related_posts: [post2.id, post3.id]}).related_posts ==
-               [
+      assert Enum.sort(
+               Api.update!(post, relationships: %{related_posts: [post2.id, post3.id]}).related_posts
+             ) ==
+               Enum.sort([
                  Api.get!(Post, post2.id),
                  Api.get!(Post, post3.id)
-               ]
+               ])
     end
   end
 

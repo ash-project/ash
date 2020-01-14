@@ -271,7 +271,7 @@ defmodule Ash.Authorization.Checker do
   defp run_preparation(_, nil, :side_load, _), do: {:ok, nil}
 
   defp run_preparation(request, data, :side_load, side_load) do
-    SideLoad.side_load(request.resource, data, side_load, request.api)
+    SideLoad.side_load(request.api, request.resource, data, side_load, request.api)
   end
 
   defp run_preparation(_, _, preparation, _), do: {:error, "Unknown preparation #{preparation}"}

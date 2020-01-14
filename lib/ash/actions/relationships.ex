@@ -58,7 +58,7 @@ defmodule Ash.Actions.Relationships do
         relationship ->
           case validate_relationship_change(relationship, data, action_type) do
             {:ok, input} ->
-              add_relationship_read_authorizations(changeset, api, relationship, input)
+              add_relationship_read_requests(changeset, api, relationship, input)
 
             {:error, error} ->
               {:error, error}
@@ -67,19 +67,19 @@ defmodule Ash.Actions.Relationships do
     end)
   end
 
-  def relationship_change_authorizations(changeset, api, resource, action, relationships) do
+  def relationship_change_requests(changeset, api, resource, action, relationships) do
     Enum.flat_map(relationships, fn {relationship_name, _data} ->
       case Ash.relationship(resource, relationship_name) do
         nil ->
           []
 
         relationship ->
-          authorization =
+          request =
             Ash.Engine.Request.new(
               api: api,
               rules: relationship.write_rules,
               resource: resource,
-              changeset: authorization_changeset(changeset, api, relationships),
+              changeset: changeset(changeset, api, relationships),
               action_type: action.type,
               fetcher: fn _, %{data: data} ->
                 {:ok, data}
@@ -91,19 +91,19 @@ defmodule Ash.Actions.Relationships do
               source: "#{relationship_name} edit"
             )
 
-          [authorization]
+          [request]
       end
     end)
   end
 
-  defp add_relationship_read_authorizations(changeset, api, relationship, input) do
+  defp add_relationship_read_requests(changeset, api, relationship, input) do
     changeset
-    |> add_replace_authorizations(api, relationship, input)
-    |> add_remove_authorizations(api, relationship, input)
-    |> add_add_authorizations(api, relationship, input)
+    |> add_replace_requests(api, relationship, input)
+    |> add_remove_requests(api, relationship, input)
+    |> add_add_requests(api, relationship, input)
   end
 
-  defp add_add_authorizations(changeset, api, relationship, input) do
+  defp add_add_requests(changeset, api, relationship, input) do
     case Map.fetch(input, :add) do
       {:ok, identifiers} ->
         changeset =
@@ -126,26 +126,26 @@ defmodule Ash.Actions.Relationships do
               changeset
           end
 
-        do_add_relationship_read_authorizations(changeset, api, relationship, identifiers, :add)
+        do_add_relationship_read_requests(changeset, api, relationship, identifiers, :add)
 
       :error ->
         changeset
     end
   end
 
-  defp add_replace_authorizations(changeset, api, relationship, input) do
+  defp add_replace_requests(changeset, api, relationship, input) do
     case Map.fetch(input, :replace) do
       {:ok, identifiers} ->
         changeset
-        |> do_add_relationship_read_authorizations(api, relationship, identifiers, :replace)
-        |> add_relationship_currently_related_authorization(api, relationship)
+        |> do_add_relationship_read_requests(api, relationship, identifiers, :replace)
+        |> add_relationship_currently_related_request(api, relationship)
 
       :error ->
         changeset
     end
   end
 
-  defp add_remove_authorizations(changeset, api, relationship, input) do
+  defp add_remove_requests(changeset, api, relationship, input) do
     case Map.fetch(input, :remove) do
       {:ok, identifiers} ->
         changeset =
@@ -162,7 +162,7 @@ defmodule Ash.Actions.Relationships do
               changeset
           end
 
-        do_add_relationship_read_authorizations(
+        do_add_relationship_read_requests(
           changeset,
           api,
           relationship,
@@ -175,7 +175,7 @@ defmodule Ash.Actions.Relationships do
     end
   end
 
-  defp do_add_relationship_read_authorizations(
+  defp do_add_relationship_read_requests(
          changeset,
          api,
          %{destination: destination} = relationship,
@@ -189,31 +189,19 @@ defmodule Ash.Actions.Relationships do
     relationship_name = relationship.name
 
     filter =
-      case relationship.cardinality do
-        :many ->
-          case identifiers do
-            [single_identifier] ->
-              single_identifier
-
-            many ->
-              [or: many]
+      case identifiers do
+        [single_identifier] ->
+          if Keyword.keyword?(single_identifier) do
+            single_identifier
+          else
+            [single_identifier]
           end
 
-        :one ->
-          case identifiers do
-            [single_identifier] ->
-              if Keyword.keyword?(single_identifier) do
-                single_identifier
-              else
-                [single_identifier]
-              end
-
-            many ->
-              [or: many]
-          end
+        many ->
+          [or: many]
       end
 
-    authorization =
+    request =
       Ash.Engine.Request.new(
         api: api,
         rules: default_read.rules,
@@ -233,7 +221,7 @@ defmodule Ash.Actions.Relationships do
       )
 
     changeset
-    |> add_authorizations(authorization)
+    |> add_requests(request)
     |> changes_depend_on([:relationships, relationship_name, type])
   end
 
@@ -288,8 +276,6 @@ defmodule Ash.Actions.Relationships do
         validate_relationship_change(relationship, data, action_type)
 
       relationship.cardinality == :one ->
-        IO.inspect(data, structs: false)
-        IO.inspect(Ash.resource_module?(data.__struct__))
         validate_to_one_relationship_data(relationship, data)
 
       relationship.cardinality == :many ->
@@ -352,7 +338,7 @@ defmodule Ash.Actions.Relationships do
     end
   end
 
-  def authorization_changeset(changeset, api, relationships) do
+  def changeset(changeset, api, relationships) do
     if relationships == %{} do
       changeset
     else
@@ -385,8 +371,8 @@ defmodule Ash.Actions.Relationships do
       %{current: [current], replace: []} ->
         changeset
         |> unrelate_has_one(api, relationship, current)
-        |> add_relationship_change_metadata(relationship.name, %{remove: [current]})
         |> relate_has_one(api, relationship, nil)
+        |> add_relationship_change_metadata(relationship.name, %{remove: [current]})
 
       %{current: [current], replace: [new]} ->
         changeset
@@ -440,27 +426,15 @@ defmodule Ash.Actions.Relationships do
       %{current: [], replace: [new]} ->
         changeset
         |> relate_belongs_to(relationship, new)
-        # |> Ecto.Changeset.put_change(
-        #   relationship.source_field,
-        #   Map.get(new, relationship.destination_field)
-        # )
         |> add_relationship_change_metadata(relationship.name, %{add: [new]})
 
       %{current: [current], replace: []} ->
         changeset
-        # |> Ecto.Changeset.put_change(
-        #   relationship.source_field,
-        #   nil
-        # )
         |> relate_belongs_to(relationship, nil)
         |> add_relationship_change_metadata(relationship.name, %{remove: [current]})
 
       %{current: [current], replace: [new]} ->
         changeset
-        # |> Ecto.Changeset.put_change(
-        #   relationship.source_field,
-        #   Map.get(new, relationship.destination_field)
-        # )
         |> relate_belongs_to(relationship, new)
         |> add_relationship_change_metadata(relationship.name, %{remove: [current], add: [new]})
 
@@ -515,9 +489,9 @@ defmodule Ash.Actions.Relationships do
       end
 
     changeset
-    |> set_relationship(relationship.name, [])
-    |> relate_has_many(api, relationship, relationship_data, pkey)
+    |> set_relationship(relationship.name, Map.get(relationship_data, :current, []))
     |> remove_has_many(api, relationship, relationship_data, pkey)
+    |> relate_has_many(api, relationship, relationship_data, pkey)
   end
 
   defp add_relationship_to_changeset(
@@ -538,8 +512,9 @@ defmodule Ash.Actions.Relationships do
       end
 
     changeset
-    |> relate_many_to_many(api, relationship, relationship_data, pkey)
+    |> set_relationship(relationship.name, Map.get(relationship_data, :current, []))
     |> remove_many_to_many(api, relationship, relationship_data, pkey)
+    |> relate_many_to_many(api, relationship, relationship_data, pkey)
   end
 
   defp split_relationship_data(current, replace, pkey) do
@@ -570,7 +545,12 @@ defmodule Ash.Actions.Relationships do
             |> api.create(attributes: join_attrs)
             |> case do
               {:ok, _join_row} ->
-                {:ok, add_to_set_relationship(record, relationship.name, to_relate_record)}
+                {:ok,
+                 add_to_set_relationship(
+                   record,
+                   relationship.name,
+                   to_relate_record
+                 )}
 
               {:error, error} ->
                 {:error, error}
@@ -712,14 +692,20 @@ defmodule Ash.Actions.Relationships do
 
   defp set_relationship(changeset, relationship_name, value) do
     Map.update!(changeset, :data, fn data ->
-      Map.put(data, relationship_name, value)
+      case value do
+        values when is_list(values) ->
+          Map.put(data, relationship_name, Enum.map(values, &clear_relationships/1))
+
+        value ->
+          Map.put(data, relationship_name, value)
+      end
     end)
   end
 
   defp add_to_set_relationship(record, relationship_name, to_relate) do
     Map.update!(record, relationship_name, fn
-      %Ecto.Association.NotLoaded{} -> [to_relate]
-      set_relationship -> [to_relate | set_relationship]
+      %Ecto.Association.NotLoaded{} -> [clear_relationships(to_relate)]
+      set_relationship -> [clear_relationships(to_relate) | set_relationship]
     end)
   end
 
@@ -753,7 +739,7 @@ defmodule Ash.Actions.Relationships do
 
     add_after_changes(changeset, fn _changeset, result ->
       if new do
-        {:ok, Map.put(result, relationship.name, new)}
+        {:ok, Map.put(result, relationship.name, clear_relationships(new))}
       else
         {:ok, Map.put(result, relationship.name, nil)}
       end
@@ -771,7 +757,7 @@ defmodule Ash.Actions.Relationships do
         )
         |> case do
           {:ok, related} ->
-            {:ok, Map.put(record, relationship.name, related)}
+            {:ok, Map.put(record, relationship.name, clear_relationships(related))}
 
           {:error, error} ->
             {:error, error}
@@ -791,8 +777,8 @@ defmodule Ash.Actions.Relationships do
         }
       )
       |> case do
-        {:ok, related} ->
-          {:ok, Map.put(record, relationship.name, related)}
+        {:ok, _related} ->
+          {:ok, record}
 
         {:error, error} ->
           {:error, error}
@@ -820,31 +806,25 @@ defmodule Ash.Actions.Relationships do
     end
   end
 
-  defp add_relationship_currently_related_authorization(
+  defp add_relationship_currently_related_request(
          changeset,
          api,
-         %{type: :many_to_many, destination: destination, source: resource} = relationship
+         %{type: :many_to_many} = relationship
        ) do
     # TODO: Support field updates here
     # TODO: When we support joins, send this request to the data layer as a join (if the datalayer supports it)
-    default_read =
-      Ash.primary_action(destination, :read) ||
-        raise "Must have a default read for #{destination}"
+    join_through_request = many_to_many_join_resource_request(api, changeset, relationship)
 
-    authorization =
-      join_through_request =
-      many_to_many_join_resource_authorization_request(api, changeset, relationship)
+    destination_request = many_to_many_destination_request(api, relationship)
 
-    destination_request = many_to_many_destination_authorization_request(api, relationship)
-
-    [join_through_request, destination_request]
+    requests = [join_through_request, destination_request]
 
     changeset
-    |> add_authorizations(authorization)
+    |> add_requests(requests)
     |> changes_depend_on([:relationships, relationship.name, :current])
   end
 
-  defp add_relationship_currently_related_authorization(
+  defp add_relationship_currently_related_request(
          changeset,
          api,
          %{destination: destination} = relationship
@@ -857,7 +837,7 @@ defmodule Ash.Actions.Relationships do
     filter_statement = [{relationship.destination_field, value}]
     filter = Ash.Filter.parse(destination, filter_statement)
 
-    authorization =
+    request =
       Ash.Engine.Request.new(
         api: api,
         rules: default_read.rules,
@@ -867,7 +847,7 @@ defmodule Ash.Actions.Relationships do
         must_fetch?: true,
         filter: filter,
         fetcher: fn _, _ ->
-          case api.read(destination, filter: filter_statement) do
+          case api.read(destination, filter: filter_statement, paginate: false) do
             {:ok, %{results: results}} -> {:ok, results}
             {:error, error} -> {:error, error}
           end
@@ -878,11 +858,11 @@ defmodule Ash.Actions.Relationships do
       )
 
     changeset
-    |> add_authorizations(authorization)
+    |> add_requests(request)
     |> changes_depend_on([:relationships, relationship.name, :current])
   end
 
-  defp many_to_many_join_resource_authorization_request(
+  defp many_to_many_join_resource_request(
          api,
          changeset,
          %{through: through} = relationship
@@ -901,6 +881,7 @@ defmodule Ash.Actions.Relationships do
       action_type: :read,
       state_key: [:relationships, relationship.name, :current_join],
       filter: filter,
+      must_fetch?: true,
       fetcher: fn _, _ ->
         case api.read(through, filter: filter_statement) do
           {:ok, %{results: results}} -> {:ok, results}
@@ -913,7 +894,7 @@ defmodule Ash.Actions.Relationships do
     )
   end
 
-  defp many_to_many_destination_authorization_request(
+  defp many_to_many_destination_request(
          api,
          %{destination: destination, name: name} = relationship
        ) do
@@ -921,15 +902,12 @@ defmodule Ash.Actions.Relationships do
       Ash.primary_action(destination, :read) ||
         raise "Must have default read for #{inspect(destination)}"
 
-    # value = Ecto.Changeset.get_field(changeset, relationship.source_field)
-    # filter_statement = [{relationship.source_field_on_join_table, value}]
-    # filter = Ash.Filter.parse(through, filter_statement)
-
     Ash.Engine.Request.new(
       api: api,
       rules: default_read.rules,
       resource: destination,
       action_type: :read,
+      must_fetch?: true,
       state_key: [:relationships, name, :current],
       dependencies: [[:relationships, name, :current_join]],
       filter: fn %{relationships: %{^name => %{current_join: current_join}}} ->
@@ -946,7 +924,7 @@ defmodule Ash.Actions.Relationships do
 
         filter_statement = [{relationship.destination_field, in: field_values}]
 
-        case api.read(destination, filter: filter_statement) do
+        case api.read(destination, filter: filter_statement, paginate: false) do
           {:ok, %{results: results}} -> {:ok, results}
           {:error, error} -> {:error, error}
         end
@@ -961,8 +939,23 @@ defmodule Ash.Actions.Relationships do
     Map.update(changeset, :__changes_depend_on__, [path], fn paths -> [path | paths] end)
   end
 
-  defp add_authorizations(changeset, authorizations) do
-    authorizations = List.wrap(authorizations)
-    Map.update(changeset, :__authorizations__, authorizations, &Kernel.++(&1, authorizations))
+  defp add_requests(changeset, requests) do
+    requests = List.wrap(requests)
+    Map.update(changeset, :__requests__, requests, &Kernel.++(&1, requests))
+  end
+
+  # TODO: This is the only way to ensure that we aren't showing stale relationships after updating
+  defp clear_relationships(%resource{} = record) do
+    resource
+    |> Ash.relationships()
+    |> Enum.reduce(record, fn relationship, record ->
+      not_loaded = %Ecto.Association.NotLoaded{
+        __cardinality__: relationship.cardinality,
+        __field__: relationship.name,
+        __owner__: relationship.source
+      }
+
+      Map.put(record, relationship.name, not_loaded)
+    end)
   end
 end

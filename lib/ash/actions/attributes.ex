@@ -1,5 +1,5 @@
 defmodule Ash.Actions.Attributes do
-  def attribute_change_authorizations(changeset, api, resource, action) do
+  def attribute_change_requests(changeset, api, resource, action) do
     resource
     |> Ash.attributes()
     |> Enum.reject(fn attribute ->

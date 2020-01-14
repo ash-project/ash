@@ -56,12 +56,12 @@ defmodule Ash.Actions.Update do
   defp do_authorized(changeset, params, action, resource, api) do
     relationships = Keyword.get(params, :relationships)
 
-    update_authorization_request =
+    update_request =
       Ash.Engine.Request.new(
         api: api,
         rules: action.rules,
         changeset:
-          Ash.Actions.Relationships.authorization_changeset(
+          Ash.Actions.Relationships.changeset(
             changeset,
             api,
             relationships
@@ -89,10 +89,9 @@ defmodule Ash.Actions.Update do
         source: "#{action.type} - `#{action.name}`"
       )
 
-    attribute_requests =
-      Attributes.attribute_change_authorizations(changeset, api, resource, action)
+    attribute_requests = Attributes.attribute_change_requests(changeset, api, resource, action)
 
-    relationship_auths = Map.get(changeset, :__authorizations__, [])
+    relationship_requests = Map.get(changeset, :__requests__, [])
 
     if params[:authorization] do
       strict_access? =
@@ -103,7 +102,7 @@ defmodule Ash.Actions.Update do
 
       Engine.run(
         params[:authorization][:user],
-        [update_authorization_request | attribute_requests] ++ relationship_auths,
+        [update_request | attribute_requests] ++ relationship_requests,
         strict_access?: strict_access?,
         log_final_report?: params[:authorization][:log_final_report?] || false
       )
@@ -112,7 +111,7 @@ defmodule Ash.Actions.Update do
 
       Engine.run(
         authorization[:user],
-        [update_authorization_request | attribute_requests] ++ relationship_auths,
+        [update_request | attribute_requests] ++ relationship_requests,
         fetch_only?: true
       )
     end

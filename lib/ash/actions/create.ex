@@ -56,13 +56,13 @@ defmodule Ash.Actions.Create do
   defp do_authorized(changeset, params, action, resource, api) do
     relationships = Keyword.get(params, :relationships, %{})
 
-    create_authorization_request =
+    create_request =
       Ash.Engine.Request.new(
         api: api,
         rules: action.rules,
         resource: resource,
         changeset:
-          Relationships.authorization_changeset(
+          Relationships.changeset(
             changeset,
             api,
             relationships
@@ -90,13 +90,12 @@ defmodule Ash.Actions.Create do
         source: "#{action.type} - `#{action.name}`"
       )
 
-    attribute_requests =
-      Attributes.attribute_change_authorizations(changeset, api, resource, action)
+    attribute_requests = Attributes.attribute_change_requests(changeset, api, resource, action)
 
-    relationship_read_auths = Map.get(changeset, :__authorizations__, [])
+    relationship_read_requests = Map.get(changeset, :__requests__, [])
 
-    relationship_change_auths =
-      Relationships.relationship_change_authorizations(
+    relationship_change_requests =
+      Relationships.relationship_change_requests(
         changeset,
         api,
         resource,
@@ -113,8 +112,8 @@ defmodule Ash.Actions.Create do
 
       Engine.run(
         params[:authorization][:user],
-        [create_authorization_request | attribute_requests] ++
-          relationship_read_auths ++ relationship_change_auths,
+        [create_request | attribute_requests] ++
+          relationship_read_requests ++ relationship_change_requests,
         strict_access?: strict_access?,
         log_final_report?: params[:authorization][:log_final_report?] || false
       )
@@ -123,8 +122,8 @@ defmodule Ash.Actions.Create do
 
       Engine.run(
         authorization[:user],
-        [create_authorization_request | attribute_requests] ++
-          relationship_read_auths ++ relationship_change_auths,
+        [create_request | attribute_requests] ++
+          relationship_read_requests ++ relationship_change_requests,
         fetch_only?: true
       )
     end

@@ -6,7 +6,7 @@ defmodule Ash.Filter do
     :not,
     attributes: %{},
     relationships: %{},
-    authorizations: [],
+    requests: [],
     path: [],
     errors: []
   ]
@@ -22,7 +22,7 @@ defmodule Ash.Filter do
           relationships: Keyword.t(),
           path: list(atom),
           errors: list(String.t()),
-          authorizations: list(Ash.Engine.Request.t())
+          requests: list(Ash.Engine.Request.t())
         }
 
   @predicates %{
@@ -40,9 +40,9 @@ defmodule Ash.Filter do
           Ash.api(),
           relationship_path :: list(atom)
         ) :: t()
-  # The `api` argument is here primarily because the authorization requests
+  # The `api` argument is here primarily because the requests
   # need to have the `api`.
-  # TODO: Remove this by making it so that authorization steps are generated
+  # TODO: Remove this by making it so that steps are generated
   # *after* the filter is generated. We can traverse all the relationships
   # and figure out what authorizations are required. That makes this much nicer.
   def parse(resource, filter, api \\ nil, path \\ []) do
@@ -61,7 +61,7 @@ defmodule Ash.Filter do
     if path == [] do
       parsed_filter
     else
-      authorization_request =
+      request =
         Ash.Engine.Request.new(
           resource: resource,
           api: api,
@@ -84,9 +84,9 @@ defmodule Ash.Filter do
           source: source
         )
 
-      add_authorization(
+      add_request(
         parsed_filter,
-        authorization_request
+        request
       )
     end
   end
@@ -187,7 +187,7 @@ defmodule Ash.Filter do
 
       not_filter ->
         filter
-        |> add_authorization(not_filter.authorizations)
+        |> add_request(not_filter.requests)
         |> add_error(not_filter.errors)
     end
   end
@@ -205,13 +205,13 @@ defmodule Ash.Filter do
          relationships: rels,
          attributes: attrs,
          errors: errors,
-         authorizations: authorizations
+         requests: requests
        })
        when attrs == %{} and rels == %{} do
     or_filter
     |> Map.put(:ors, rest)
     |> add_error(errors)
-    |> add_authorization(authorizations)
+    |> add_request(requests)
     |> lift_ors()
   end
 
@@ -274,7 +274,7 @@ defmodule Ash.Filter do
       filter
       |> Map.update!(:ors, fn ors -> [parsed_expression | ors || []] end)
       |> add_error(parsed_expression.errors)
-      |> add_authorization(parsed_expression.authorizations)
+      |> add_request(parsed_expression.requests)
     end)
   end
 
@@ -380,7 +380,7 @@ defmodule Ash.Filter do
         |> Map.put(:relationships, new_relationships)
         |> add_relationship_compatibility_error(relationship)
         |> add_error(related_filter.errors)
-        |> add_authorization(related_filter.authorizations)
+        |> add_request(related_filter.requests)
 
       {:error, error} ->
         add_error(filter, error)
@@ -412,12 +412,12 @@ defmodule Ash.Filter do
     end
   end
 
-  defp add_authorization(filter, authorizations)
-       when is_list(authorizations),
-       do: %{filter | authorizations: filter.authorizations ++ authorizations}
+  defp add_request(filter, requests)
+       when is_list(requests),
+       do: %{filter | requests: filter.requests ++ requests}
 
-  defp add_authorization(%{authorizations: authorizations} = filter, authorization),
-    do: %{filter | authorizations: [authorization | authorizations]}
+  defp add_request(%{requests: requests} = filter, request),
+    do: %{filter | requests: [request | requests]}
 
   defp add_error(%{errors: errors} = filter, errors) when is_list(errors),
     do: %{filter | errors: filter.errors ++ errors}

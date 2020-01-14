@@ -31,7 +31,6 @@ defmodule Ash.Engine.Request do
           changeset: Ecto.Changeset.t(),
           dependencies: list(term),
           is_fetched: (term -> boolean),
-          # TODO: fetcher is a function
           fetcher: term,
           relationship: list(atom),
           bypass_strict_access?: boolean,
@@ -48,7 +47,7 @@ defmodule Ash.Engine.Request do
       |> Keyword.put_new(:relationship, [])
       |> Keyword.put_new(:rules, [])
       |> Keyword.put_new(:bypass_strict_access?, false)
-      |> Keyword.put_new(:dependencies, [])
+      |> Keyword.update(:dependencies, [], &List.wrap/1)
       |> Keyword.put_new(:strict_check_completed?, false)
       |> Keyword.put_new(:is_fetched, fn _ -> true end)
       |> Keyword.update!(:rules, fn steps ->
@@ -83,6 +82,18 @@ defmodule Ash.Engine.Request do
 
   def dependencies_met?(state, %{dependencies: dependencies}) do
     Enum.all?(dependencies, fn dependency ->
+      case fetch_nested_value(state, dependency) do
+        {:ok, _} -> true
+        _ -> false
+      end
+    end)
+  end
+
+  def unmet_dependencies(_state, %{dependencies: []}), do: []
+  def unmet_dependencies(_state, %{dependencies: nil}), do: []
+
+  def unmet_dependencies(state, %{dependencies: dependencies}) do
+    Enum.reject(dependencies, fn dependency ->
       case fetch_nested_value(state, dependency) do
         {:ok, _} -> true
         _ -> false
