@@ -15,6 +15,7 @@ defmodule Ash.Engine.Request do
     :relationship,
     :fetcher,
     :source,
+    :optional_state,
     :must_fetch?,
     :is_fetched,
     :state_key,
@@ -30,6 +31,7 @@ defmodule Ash.Engine.Request do
           filter: Ash.Filter.t(),
           changeset: Ecto.Changeset.t(),
           dependencies: list(term),
+          optional_state: list(term),
           is_fetched: (term -> boolean),
           fetcher: term,
           relationship: list(atom),
@@ -48,8 +50,10 @@ defmodule Ash.Engine.Request do
       |> Keyword.put_new(:rules, [])
       |> Keyword.put_new(:bypass_strict_access?, false)
       |> Keyword.update(:dependencies, [], &List.wrap/1)
+      |> Keyword.update(:optional_state, [], &List.wrap/1)
       |> Keyword.put_new(:strict_check_completed?, false)
       |> Keyword.put_new(:is_fetched, fn _ -> true end)
+      |> Keyword.put_new(:must_fetch?, false)
       |> Keyword.update!(:rules, fn steps ->
         Enum.map(steps, fn {step, fact} ->
           {step, Ash.Authorization.Clause.new(opts[:relationship] || [], opts[:resource], fact)}
@@ -74,6 +78,7 @@ defmodule Ash.Engine.Request do
   end
 
   def can_strict_check?(%{changeset: changeset}) when is_function(changeset), do: false
+  def can_strict_check?(%{filter: filter}) when is_function(filter), do: false
   def can_strict_check?(%{strict_check_completed?: false}), do: true
   def can_strict_check?(_), do: false
 
@@ -121,37 +126,34 @@ defmodule Ash.Engine.Request do
     end
   end
 
-  def put_request_state(state, %{state_key: state_key} = request, value) do
-    state_key = state_key || Map.drop(request, @fields_that_change_sometimes)
+  def depends_on?(request, other_request) do
+    state_key(request) in other_request.dependencies
+  end
 
-    key =
-      state_key
-      |> Kernel.||(request)
-      |> List.wrap()
+  def state_key(%{state_key: state_key} = request) do
+    List.wrap(state_key || Map.drop(request, @fields_that_change_sometimes))
+  end
+
+  def put_request_state(state, request, value) do
+    key = state_key(request)
 
     put_nested_key(state, key, value)
   end
 
-  def fetch_request_state(state, %{state_key: state_key} = request) do
-    state_key = state_key || Map.drop(request, @fields_that_change_sometimes)
-
-    key =
-      state_key
-      |> Kernel.||(request)
-      |> List.wrap()
+  def fetch_request_state(state, request) do
+    key = state_key(request)
 
     fetch_nested_value(state, key)
   end
 
   def fetch(
         state,
-        %{fetcher: fetcher, dependencies: dependencies, changeset: changeset} = request
+        %{fetcher: fetcher, changeset: changeset} = request
       ) do
     fetcher_state =
-      Enum.reduce(dependencies, %{}, fn dependency, acc ->
-        {:ok, value} = fetch_nested_value(state, dependency)
-        put_nested_key(acc, dependency, value)
-      end)
+      %{}
+      |> add_dependent_state(state, request)
+      |> add_optional_state(state, request)
 
     case fetcher.(changeset, fetcher_state) do
       {:ok, value} ->
@@ -167,13 +169,49 @@ defmodule Ash.Engine.Request do
   def dependent_fields_fetched?(%{changeset: _}), do: true
 
   def fetch_dependent_fields(state, request) do
-    case fetch_changeset(state, request) do
+    fetcher_state =
+      %{}
+      |> add_dependent_state(state, request)
+      |> add_optional_state(state, request)
+
+    case fetch_changeset(fetcher_state, request) do
       {:ok, request} ->
-        fetch_filter(state, request)
+        fetch_filter(fetcher_state, request)
 
       {:error, error} ->
         {:error, error}
     end
+  end
+
+  def fetch_nested_value(state, [key]) when is_map(state) do
+    Map.fetch(state, key)
+  end
+
+  def fetch_nested_value(state, [key | rest]) when is_map(state) do
+    case Map.fetch(state, key) do
+      {:ok, value} -> fetch_nested_value(value, rest)
+      :error -> :error
+    end
+  end
+
+  def fetch_nested_value(state, key) when is_map(state) do
+    Map.fetch(state, key)
+  end
+
+  defp add_dependent_state(arg, state, %{dependencies: dependencies}) do
+    Enum.reduce(dependencies, arg, fn dependency, acc ->
+      {:ok, value} = fetch_nested_value(state, dependency)
+      put_nested_key(acc, dependency, value)
+    end)
+  end
+
+  defp add_optional_state(arg, state, %{optional_state: optional_state}) do
+    Enum.reduce(optional_state, arg, fn optional, arg ->
+      case fetch_nested_value(state, optional) do
+        {:ok, value} -> put_nested_key(arg, optional, value)
+        :error -> arg
+      end
+    end)
   end
 
   defp fetch_changeset(state, %{dependencies: dependencies, changeset: changeset} = request)
@@ -219,21 +257,6 @@ defmodule Ash.Engine.Request do
   end
 
   defp fetch_filter(_state, request), do: {:ok, request}
-
-  defp fetch_nested_value(state, [key]) when is_map(state) do
-    Map.fetch(state, key)
-  end
-
-  defp fetch_nested_value(state, [key | rest]) when is_map(state) do
-    case Map.fetch(state, key) do
-      {:ok, value} -> fetch_nested_value(value, rest)
-      :error -> :error
-    end
-  end
-
-  defp fetch_nested_value(state, key) when is_map(state) do
-    Map.fetch(state, key)
-  end
 
   defp put_nested_key(state, [key], value) do
     Map.put(state, key, value)

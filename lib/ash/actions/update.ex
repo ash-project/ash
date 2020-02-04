@@ -4,14 +4,16 @@ defmodule Ash.Actions.Update do
 
   @spec run(Ash.api(), Ash.record(), Ash.action(), Ash.params()) ::
           {:ok, Ash.record()} | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
-  # TODO: To support a "read and update" pattern, we would support taking a filter instead of a record here.
+  # TODO: To support an upsert/ "find and update" pattern, we would support taking a filter instead of a record here.
   def run(api, %resource{} = record, action, params) do
-    if Keyword.get(params, :side_load, []) in [[], nil] do
+    transaction_result =
       Ash.DataLayer.transact(resource, fn ->
         do_run(api, record, action, params)
       end)
-    else
-      {:error, "Cannot side load on update currently"}
+
+    case transaction_result do
+      {:ok, value} -> value
+      {:error, error} -> {:error, error}
     end
   end
 

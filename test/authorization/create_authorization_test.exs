@@ -18,8 +18,6 @@ defmodule Ash.Test.Authorization.CreateAuthorizationTest do
         ]
     end
 
-    # Change rules to `rules`
-    # for attributes/relationship change them to `write_rules`
     attributes do
       attribute :contents, :string, write_rules: false
       attribute :color, :string, write_rules: false

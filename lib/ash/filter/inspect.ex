@@ -65,16 +65,31 @@ defimpl Inspect, for: Ash.Filter do
     end
   end
 
-  def inspect(%Ash.Filter{ors: ors, relationships: relationships, attributes: attributes}, opts)
+  def inspect(
+        %Ash.Filter{
+          ors: ors,
+          relationships: relationships,
+          attributes: attributes,
+          impossible: impossible
+        },
+        opts
+      )
       when ors in [nil, []] and relationships in [nil, %{}] and attributes in [nil, %{}] do
+    impossible =
+      if impossible do
+        "X"
+      else
+        ""
+      end
+
     if root?(opts) do
-      concat(["#Filter<", to_doc(nil, opts), ">"])
+      concat(["#Filter<#{impossible}", to_doc(nil, opts), ">"])
     else
-      concat([to_doc(nil, opts)])
+      concat([impossible])
     end
   end
 
-  def inspect(filter, opts) do
+  def inspect(%{impossible: impossible} = filter, opts) do
     rels =
       filter
       |> Map.get(:relationships)
@@ -135,10 +150,17 @@ defimpl Inspect, for: Ash.Filter do
           )
       end
 
+    impossible =
+      if impossible do
+        "X"
+      else
+        ""
+      end
+
     if root?(opts) do
-      concat(["#Filter<", all_container, ">"])
+      concat(["#Filter<#{impossible}", all_container, ">"])
     else
-      concat([all_container])
+      concat([impossible, all_container])
     end
   end
 end

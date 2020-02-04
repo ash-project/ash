@@ -5,14 +5,19 @@ defmodule Ash.Actions.Create do
   @spec run(Ash.api(), Ash.resource(), Ash.action(), Ash.params()) ::
           {:ok, Ash.record()} | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
   def run(api, resource, action, params) do
-    Ash.DataLayer.transact(resource, fn ->
-      do_run(api, resource, action, params)
-    end)
+    transaction_result =
+      Ash.DataLayer.transact(resource, fn ->
+        do_run(api, resource, action, params)
+      end)
+
+    case transaction_result do
+      {:ok, value} -> value
+      {:error, error} -> {:error, error}
+    end
   end
 
   defp do_run(api, resource, action, params) do
     attributes = Keyword.get(params, :attributes, %{})
-
     side_loads = Keyword.get(params, :side_load, [])
     relationships = Keyword.get(params, :relationships, %{})
 

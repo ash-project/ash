@@ -19,10 +19,10 @@ defmodule Ash.DataLayer do
   @callback update(Ash.resource(), changeset :: Ecto.Changeset.t()) ::
               {:ok, Ash.resource()} | {:error, Ash.error()}
   @callback destroy(record :: Ash.record()) :: :ok | {:error, Ash.error()}
-  @callback transaction((() -> term)) :: term
+  @callback transaction(Ash.resource(), (() -> term)) :: {:ok, term} | {:error, Ash.error()}
   @callback can?(feature()) :: boolean
 
-  @optional_callbacks transaction: 1
+  @optional_callbacks transaction: 2
 
   @spec resource_to_query(Ash.resource()) :: Ash.query()
   def resource_to_query(resource) do
@@ -84,9 +84,9 @@ defmodule Ash.DataLayer do
   def transact(resource, func) do
     if can?(:transact, resource) do
       data_layer = Ash.data_layer(resource)
-      data_layer.transaction(func)
+      data_layer.transaction(resource, func)
     else
-      func.()
+      {:ok, func.()}
     end
   end
 end

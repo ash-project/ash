@@ -114,7 +114,7 @@ defmodule Ash.Authorization.Checker do
         |> Enum.sort_by(fn request ->
           # Requests that bypass strict access should generally perform well
           # as they would generally be more efficient checks
-          {Enum.count(request.relationship), not request.bypass_strict_access?,
+          {-Enum.count(request.relationship), not request.bypass_strict_access?,
            request.relationship}
         end)
         |> case do
@@ -145,7 +145,8 @@ defmodule Ash.Authorization.Checker do
         end)
         |> Enum.find(fn request ->
           Request.contains_clause?(request, clause)
-        end) || raise "Internal assumption failed"
+        end) ||
+          raise "Internal assumption failed"
 
       {:ok, request_state} = Request.fetch_request_state(state, request)
       request_state = List.wrap(request_state)

@@ -3,9 +3,15 @@ defmodule Ash.Actions.Read do
   alias Ash.Actions.SideLoad
 
   def run(api, resource, action, params) do
-    Ash.DataLayer.transact(resource, fn ->
-      do_run(api, resource, action, params)
-    end)
+    transaction_result =
+      Ash.DataLayer.transact(resource, fn ->
+        do_run(api, resource, action, params)
+      end)
+
+    case transaction_result do
+      {:ok, value} -> value
+      {:error, error} -> {:error, error}
+    end
   end
 
   defp do_run(api, resource, action, params) do
@@ -20,9 +26,10 @@ defmodule Ash.Actions.Read do
          query <- Ash.DataLayer.resource_to_query(resource),
          {:ok, sort} <- Ash.Actions.Sort.process(resource, sort),
          {:ok, sorted_query} <- Ash.DataLayer.sort(query, sort, resource),
-         {:ok, filtered_query} <- Ash.DataLayer.filter(sorted_query, filter, resource),
+         # We parse the query for validation, but don't use it here.
+         {:ok, _filtered_query} <- Ash.DataLayer.filter(sorted_query, filter, resource),
          {:ok, paginator} <-
-           Ash.Actions.Paginator.paginate(api, resource, action, filtered_query, page_params),
+           Ash.Actions.Paginator.paginate(api, resource, action, sorted_query, page_params),
          {:ok, %{data: found} = state} <-
            do_authorized(
              paginator.query,
@@ -47,9 +54,20 @@ defmodule Ash.Actions.Read do
         api: api,
         resource: resource,
         rules: action.rules,
-        filter: filter,
+        filter: Ash.Filter.request_filter(filter),
         action_type: action.type,
-        fetcher: fn _, _ -> Ash.DataLayer.run_query(query, resource) end,
+        optional_state: Ash.Filter.optional_paths(filter),
+        fetcher: fn _, state ->
+          fetch_filter = Ash.Filter.request_filter_for_fetch(filter, state)
+
+          case Ash.DataLayer.filter(query, fetch_filter, resource) do
+            {:ok, final_query} ->
+              Ash.DataLayer.run_query(final_query, resource)
+
+            {:error, error} ->
+              {:error, error}
+          end
+        end,
         must_fetch?: true,
         state_key: :data,
         relationship: [],

@@ -2,15 +2,17 @@ defmodule Ash.Filter do
   defstruct [
     :api,
     :resource,
-    :ors,
     :not,
+    ors: [],
     attributes: %{},
     relationships: %{},
     requests: [],
     path: [],
-    errors: []
+    errors: [],
+    impossible: false
   ]
 
+  alias Ash.Engine.Request
   alias Ash.Filter.Merge
 
   @type t :: %__MODULE__{
@@ -19,8 +21,9 @@ defmodule Ash.Filter do
           ors: list(%__MODULE__{} | nil),
           not: %__MODULE__{} | nil,
           attributes: Keyword.t(),
-          relationships: Keyword.t(),
+          relationships: Map.t(),
           path: list(atom),
+          impossible: boolean,
           errors: list(String.t()),
           requests: list(Ash.Engine.Request.t())
         }
@@ -62,11 +65,12 @@ defmodule Ash.Filter do
       parsed_filter
     else
       request =
-        Ash.Engine.Request.new(
+        Request.new(
           resource: resource,
           api: api,
           rules: Ash.primary_action(resource, :read).rules,
           filter: parsed_filter,
+          state_key: [:filter, path],
           fetcher: fn _, _ ->
             query = Ash.DataLayer.resource_to_query(resource)
 
@@ -89,6 +93,89 @@ defmodule Ash.Filter do
         request
       )
     end
+  end
+
+  def optional_paths(filter) do
+    filter
+    |> do_optional_paths()
+    |> Enum.uniq()
+  end
+
+  defp do_optional_paths(%{relationships: relationships, requests: requests, ors: ors})
+       when relationships == %{} and ors in [[], nil] do
+    Enum.map(requests, fn request ->
+      Request.state_key(request)
+    end)
+  end
+
+  defp do_optional_paths(%{ors: [first | rest]} = filter) do
+    do_optional_paths(first) ++ do_optional_paths(%{filter | ors: rest})
+  end
+
+  defp do_optional_paths(%{relationships: relationships} = filter) when is_map(relationships) do
+    relationship_paths =
+      Enum.flat_map(relationships, fn {_, value} ->
+        do_optional_paths(value)
+      end)
+
+    relationship_paths ++ do_optional_paths(%{filter | relationships: %{}})
+  end
+
+  def request_filter(filter) do
+    case optional_paths(filter) do
+      [] ->
+        filter
+
+      paths ->
+        fn data ->
+          request_filter_for_fetch(filter, data, paths)
+        end
+    end
+  end
+
+  # TODO: This is ugly, and is necessary because `filter` isn't threaded through
+  # to `fetcher` after it is generated
+  def request_filter_for_fetch(filter, data, paths \\ nil) do
+    paths = paths || optional_paths(filter)
+
+    paths
+    |> paths_and_data(data)
+    |> most_specific_paths()
+    |> Enum.reduce(filter, fn {path, related_data}, filter ->
+      [:filter, relationship_path] = path
+
+      filter
+      |> add_records_to_relationship_filter(
+        relationship_path,
+        List.wrap(related_data)
+      )
+      |> lift_impossibility()
+    end)
+  end
+
+  defp most_specific_paths(paths_and_data) do
+    Enum.reject(paths_and_data, fn {path, _} ->
+      Enum.any?(paths_and_data, &path_is_more_specific?(path, &1))
+    end)
+  end
+
+  # I don't think this is a possibility
+  defp path_is_more_specific?([], []), do: false
+  defp path_is_more_specific?(_, []), do: true
+  # first element of the search matches first element of candidate
+  defp path_is_more_specific?([part | rest], [part | candidate_rest]) do
+    path_is_more_specific?(rest, candidate_rest)
+  end
+
+  defp path_is_more_specific?(_, _), do: false
+
+  defp paths_and_data(paths, data) do
+    Enum.flat_map(paths, fn path ->
+      case Request.fetch_nested_value(data, path) do
+        {:ok, related_data} -> [{path, related_data}]
+        :error -> []
+      end
+    end)
   end
 
   @doc """
@@ -117,6 +204,63 @@ defmodule Ash.Filter do
 
     # TODO: put these behind functions to optimize them.
     attributes_contained? or relationships_contained?
+  end
+
+  defp add_records_to_relationship_filter(filter, [], records) do
+    case Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(filter.resource, records) do
+      {:error, _error} ->
+        # TODO: We should get this error out somehow?
+        filter
+
+      {:ok, []} ->
+        if filter.ors in [[], nil] do
+          # TODO: We should probably include some kind of filter that *makes* it immediately impossible
+          # that way, if the data layer doesn't check impossibility they will run the simpler query,
+          # like for each pkey field say `[field: [in: []]]`
+          %{filter | impossible: true}
+        else
+          filter
+        end
+
+      {:ok, [single]} ->
+        do_parse(single, filter)
+
+      {:ok, many} ->
+        do_parse([or: many], filter)
+    end
+  end
+
+  defp add_records_to_relationship_filter(filter, [relationship | rest] = path, records) do
+    filter
+    |> Map.update!(:relationships, fn relationships ->
+      case Map.fetch(relationships, relationship) do
+        {:ok, related_filter} ->
+          Map.put(
+            relationships,
+            relationship,
+            add_records_to_relationship_filter(related_filter, rest, records)
+          )
+
+        :error ->
+          relationships
+      end
+    end)
+    |> Map.update!(:ors, fn ors ->
+      Enum.map(ors, &add_records_to_relationship_filter(&1, path, records))
+    end)
+  end
+
+  defp lift_impossibility(filter) do
+    with_related_impossibility =
+      if Enum.any?(filter.relationships || %{}, fn {_, val} -> Map.get(val, :impossible) end) do
+        Map.put(filter, :impossible, true)
+      else
+        filter
+      end
+
+    Map.update!(with_related_impossibility, :ors, fn ors ->
+      Enum.reject(ors, &Map.get(&1, :impossible))
+    end)
   end
 
   defp bypass_strict_access?(%{ors: ors, not: not_filter} = filter) when is_nil(not_filter) do
@@ -158,14 +302,28 @@ defmodule Ash.Filter do
 
   defp known_value_filter?(_), do: false
 
+  # defp contains_relationship?(filter, relationship, candidate_relationship_filter) do
+  #   case filt do
+  #   end
+  # end
   defp contains_relationship?(filter, relationship, candidate_relationship_filter) do
-    case filter.relationships do
-      %{^relationship => relationship_filter} ->
-        strict_subset_of?(relationship_filter, candidate_relationship_filter)
+    contains_as_relationship? =
+      case filter.relationships do
+        %{^relationship => relationship_filter} ->
+          strict_subset_of?(relationship_filter, candidate_relationship_filter)
 
-      _ ->
-        false
-    end
+        _ ->
+          false
+      end
+
+    contains_as_field? =
+      case Ash.relationship(filter.resource, relationship) do
+        %{type: :many_to_many} ->
+          false
+
+        %{source_field: source_field, destination_field: destination_field} ->
+          nil
+      end
   end
 
   defp contains_attribute?(filter, attr, candidate_predicate) do
@@ -362,14 +520,7 @@ defmodule Ash.Filter do
          %{destination: destination, name: name} = relationship,
          value
        ) do
-    provided_filter =
-      if is_list(value) or is_map(value) do
-        {:ok, value}
-      else
-        Ash.Actions.PrimaryKeyHelpers.value_to_primary_key_filter(destination, value)
-      end
-
-    case provided_filter do
+    case parse_relationship_filter(value, relationship) do
       {:ok, provided_filter} ->
         related_filter = parse(destination, provided_filter, filter.api, [name | filter.path])
 
@@ -384,6 +535,30 @@ defmodule Ash.Filter do
 
       {:error, error} ->
         add_error(filter, error)
+    end
+  end
+
+  defp parse_relationship_filter(value, %{destination: destination} = relationship) do
+    cond do
+      match?(%^destination{}, value) ->
+        Ash.Actions.PrimaryKeyHelpers.value_to_primary_key_filter(destination, value)
+
+      is_map(value) ->
+        {:ok, Map.to_list(value)}
+
+      Keyword.keyword?(value) ->
+        {:ok, value}
+
+      is_list(value) ->
+        Enum.reduce_while(value, {:ok, []}, fn item, items ->
+          case parse_relationship_filter(item, relationship) do
+            {:ok, item_filter} -> {:cont, {:ok, [item_filter | items]}}
+            {:error, error} -> {:halt, {:error, error}}
+          end
+        end)
+
+      true ->
+        Ash.Actions.PrimaryKeyHelpers.value_to_primary_key_filter(destination, value)
     end
   end
 

@@ -157,3 +157,5 @@ end
 * Engine parallelization!
 * Big optimization: If the filter *did* need to fetch anything, find a way to
   get that fetched value into the final query.
+* Consider supporting one resource being a "more specific" version of another resource at
+  the *resource* level, not the data layer level.

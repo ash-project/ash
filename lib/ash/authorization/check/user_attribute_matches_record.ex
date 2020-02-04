@@ -11,12 +11,21 @@ defmodule Ash.Authorization.Check.UserAttributeMatchesRecord do
     user_field = options[:user_field]
     record_field = options[:record_field]
 
-    case Ash.Filter.parse(request.resource, [{record_field, eq: Map.get(user, user_field)}]) do
+    value = Map.get(user, user_field)
+
+    case Ash.Filter.parse(request.resource, [{record_field, eq: value}]) do
       %{errors: []} = parsed ->
         if Ash.Filter.strict_subset_of?(parsed, request.filter) do
           {:ok, true}
         else
-          {:ok, :unknown}
+          case Ash.Filter.parse(request.resource, [{record_field, not_eq: value}]) do
+            %{errors: []} = parsed ->
+              if Ash.Filter.strict_subset_of?(parsed, request.filter) do
+                {:ok, false}
+              else
+                {:ok, :unknown}
+              end
+          end
         end
 
       %{errors: errors} ->

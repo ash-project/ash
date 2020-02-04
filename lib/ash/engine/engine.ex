@@ -306,6 +306,8 @@ defmodule Ash.Engine do
 
     must_fetch = filter_must_fetch(safe_to_fetch)
 
+    IO.inspect(must_fetch)
+
     case must_fetch do
       [] ->
         if unmet == [] do
@@ -326,7 +328,9 @@ defmodule Ash.Engine do
 
       must_fetch ->
         new_state =
-          Enum.reduce_while(must_fetch, {:ok, state}, fn request, {:ok, state} ->
+          must_fetch
+          |> Enum.sort_by(fn request -> -length(request.relationship) end)
+          |> Enum.reduce_while({:ok, state}, fn request, {:ok, state} ->
             with {:ok, request} <- Request.fetch_dependent_fields(state, request),
                  {:ok, new_state} <- Request.fetch(state, request) do
               {:cont, {:ok, new_state}}
@@ -357,7 +361,8 @@ defmodule Ash.Engine do
   defp must_fetch?(request, other_requests) do
     request.must_fetch? ||
       Enum.any?(other_requests, fn other_request ->
-        must_fetch?(other_request, other_requests -- [other_request])
+        must_fetch?(other_request, other_requests -- [other_request]) and
+          Request.depends_on?(request, other_request)
       end)
   end
 

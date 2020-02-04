@@ -8,6 +8,11 @@ defmodule Ash.Authorization.Check.RelatedToUserVia do
     description <> "this_record is the user"
   end
 
+  # TODO: If they aren't filtering on the "user equaling this", but are
+  # filtering based on field values and we can trace those field value
+  # filters from the record all the way to the user, then we can
+  # allow this at strict check time
+
   @impl true
   def strict_check(%user_resource{} = user, request = %{action_type: :read}, opts) do
     full_relationship_path = request.relationship ++ opts[:relationship]
