@@ -102,37 +102,6 @@ defmodule Ash.Api do
     end
   end
 
-  @parallel_side_load_schema Ashton.schema(
-                               opts: [
-                                 supervisor: :atom,
-                                 max_concurrency: :integer,
-                                 timeout: :integer,
-                                 shutdown: :integer
-                               ],
-                               required: [:supervisor],
-                               defaults: [
-                                 timeout: 5000,
-                                 shutdown: 5000
-                               ],
-                               describe: [
-                                 supervisor:
-                                   "The name of the task supervisor that will supervise the parallel side loading tasks.",
-                                 max_concurrency:
-                                   "The total number of side loads (per side load nesting level, per ongoing side load) that can be running. Uses `System.schedulers_online/0` if unset.",
-                                 timeout:
-                                   "the maximum amount of time to wait (in milliseconds) without receiving a task reply. see `task.supervisor.async_stream/6`",
-                                 shutdown:
-                                   "an integer indicating the timeout value. Defaults to 5000 milliseconds"
-                               ],
-                               constraints: [
-                                 max_concurrency:
-                                   {&Ash.Constraints.greater_than_zero?/1,
-                                    "must be greater than zero"},
-                                 timeout: {&Ash.Constraints.positive?/1, "must be positive"},
-                                 shutdown: {&Ash.Constraints.positive?/1, "must be positive"}
-                               ]
-                             )
-
   defmacro __before_compile__(env) do
     quote generated: true do
       def default_page_size(), do: @default_page_size
