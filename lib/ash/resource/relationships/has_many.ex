@@ -6,7 +6,6 @@ defmodule Ash.Resource.Relationships.HasMany do
     :destination,
     :destination_field,
     :source_field,
-    :write_rules,
     :source,
     :reverse_relationship,
     :write_rules
