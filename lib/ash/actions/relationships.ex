@@ -74,21 +74,22 @@ defmodule Ash.Actions.Relationships do
           []
 
         relationship ->
+          dependencies = [:data | Map.get(changeset, :__changes_depend_on__, [])]
+
           request =
-            Ash.Engine.Request.new(
+            Ash.Engine2.Request.new(
               api: api,
               rules: relationship.write_rules,
               resource: resource,
               changeset: changeset(changeset, api, relationships),
               action_type: action.type,
-              fetcher: fn _, %{data: data} ->
-                {:ok, data}
-              end,
-              dependencies: [:data | Map.get(changeset, :__changes_depend_on__, [])],
-              state_key: :data,
-              must_fetch?: false,
-              relationship: [],
-              source: "#{relationship_name} edit"
+              data:
+                Ash.Engine2.Request.UnresolvedField.data(dependencies, fn _request,
+                                                                          %{root: %{data: data}} ->
+                  {:ok, data}
+                end),
+              path: :data,
+              name: "#{relationship_name} edit"
             )
 
           [request]
@@ -202,22 +203,22 @@ defmodule Ash.Actions.Relationships do
       end
 
     request =
-      Ash.Engine.Request.new(
+      Ash.Engine2.Request.new(
         api: api,
         rules: default_read.rules,
         resource: relationship.destination,
         action_type: :read,
         filter: filter,
-        must_fetch?: true,
-        state_key: [:relationships, relationship_name, type],
-        fetcher: fn _, _ ->
-          case api.read(destination, filter: filter, paginate: false) do
-            {:ok, %{results: results}} -> {:ok, results}
-            {:error, error} -> {:error, error}
-          end
-        end,
-        relationship: [relationship.name],
-        source: "read prior to write related #{relationship.name}"
+        resolve_when_fetch_only?: true,
+        path: [:relationships, relationship_name, type],
+        data:
+          Ash.Engine2.Request.UnresolvedField.data([], fn _, _ ->
+            case api.read(destination, filter: filter, paginate: false) do
+              {:ok, %{results: results}} -> {:ok, results}
+              {:error, error} -> {:error, error}
+            end
+          end),
+        name: "read prior to write related #{relationship.name}"
       )
 
     changeset
@@ -342,7 +343,9 @@ defmodule Ash.Actions.Relationships do
     if relationships == %{} do
       changeset
     else
-      fn data ->
+      dependencies = Map.get(changeset, :__changes_depend_on__, [])
+
+      Ash.Engine2.Request.UnresolvedField.field(dependencies, fn _request, _, %{root: data} ->
         data
         |> Map.get(:relationships, %{})
         |> Enum.reduce(changeset, fn {relationship, relationship_data}, changeset ->
@@ -350,7 +353,7 @@ defmodule Ash.Actions.Relationships do
 
           add_relationship_to_changeset(changeset, api, relationship, relationship_data)
         end)
-      end
+      end)
     end
   end
 
@@ -838,23 +841,24 @@ defmodule Ash.Actions.Relationships do
     filter = Ash.Filter.parse(destination, filter_statement)
 
     request =
-      Ash.Engine.Request.new(
+      Ash.Engine2.Request.new(
         api: api,
         rules: default_read.rules,
         resource: destination,
         action_type: :read,
-        state_key: [:relationships, relationship.name, :current],
-        must_fetch?: true,
+        path: [:relationships, relationship.name, :current],
+        resolve_when_fetch_only?: true,
         filter: filter,
-        fetcher: fn _, _ ->
-          case api.read(destination, filter: filter_statement, paginate: false) do
-            {:ok, %{results: results}} -> {:ok, results}
-            {:error, error} -> {:error, error}
-          end
-        end,
-        relationship: [],
-        bypass_strict_access?: true,
-        source: "Read related #{relationship.name} before replace"
+        data:
+          Ash.Engine2.Request.UnresolvedField.data([], fn _, _ ->
+            case api.read(destination, filter: filter_statement, paginate: false) do
+              {:ok, %{results: results}} -> {:ok, results}
+              {:error, error} -> {:error, error}
+            end
+          end),
+        # TODO: Is this right?
+        strict_access?: false,
+        name: "Read related #{relationship.name} before replace"
       )
 
     changeset
@@ -874,23 +878,23 @@ defmodule Ash.Actions.Relationships do
     filter_statement = [{relationship.source_field_on_join_table, value}]
     filter = Ash.Filter.parse(through, filter_statement)
 
-    Ash.Engine.Request.new(
+    Ash.Engine2.Request.new(
       api: api,
       rules: default_read.rules,
       resource: through,
       action_type: :read,
-      state_key: [:relationships, relationship.name, :current_join],
+      path: [:relationships, relationship.name, :current_join],
       filter: filter,
-      must_fetch?: true,
-      fetcher: fn _, _ ->
-        case api.read(through, filter: filter_statement) do
-          {:ok, %{results: results}} -> {:ok, results}
-          {:error, error} -> {:error, error}
-        end
-      end,
-      relationship: [],
-      bypass_strict_access?: true,
-      source: "Read related join for #{relationship.name} before replace"
+      resolve_when_fetch_only?: true,
+      data:
+        Ash.Engine2.Request.UnresolvedField.data([], fn _, _ ->
+          case api.read(through, filter: filter_statement) do
+            {:ok, %{results: results}} -> {:ok, results}
+            {:error, error} -> {:error, error}
+          end
+        end),
+      strict_access?: false,
+      name: "Read related join for #{relationship.name} before replace"
     )
   end
 
@@ -902,36 +906,42 @@ defmodule Ash.Actions.Relationships do
       Ash.primary_action(destination, :read) ||
         raise "Must have default read for #{inspect(destination)}"
 
-    Ash.Engine.Request.new(
+    Ash.Engine2.Request.new(
       api: api,
       rules: default_read.rules,
       resource: destination,
       action_type: :read,
-      must_fetch?: true,
-      state_key: [:relationships, name, :current],
-      dependencies: [[:relationships, name, :current_join]],
-      filter: fn %{relationships: %{^name => %{current_join: current_join}}} ->
-        field_values =
-          Enum.map(current_join, &Map.get(&1, relationship.destination_field_on_join_table))
+      resolve_when_fetch_only?: true,
+      path: [:relationships, name, :current],
+      filter:
+        Ash.Engine2.Request.UnresolvedField.field(
+          [[:relationships, name, :current_join]],
+          fn _, _, %{root: %{relationships: %{^name => %{current_join: current_join}}}} ->
+            field_values =
+              Enum.map(current_join, &Map.get(&1, relationship.destination_field_on_join_table))
 
-        filter_statement = [{relationship.destination_field, in: field_values}]
+            filter_statement = [{relationship.destination_field, in: field_values}]
 
-        Ash.Filter.parse(relationship.through, filter_statement)
-      end,
-      fetcher: fn _, %{relationships: %{^name => %{current_join: current_join}}} ->
-        field_values =
-          Enum.map(current_join, &Map.get(&1, relationship.destination_field_on_join_table))
+            Ash.Filter.parse(relationship.through, filter_statement)
+          end
+        ),
+      data:
+        Ash.Engine2.Request.UnresolvedField.field(
+          [[:relationships, name, :current_join]],
+          fn _, _, %{root: %{relationships: %{^name => %{current_join: current_join}}}} ->
+            field_values =
+              Enum.map(current_join, &Map.get(&1, relationship.destination_field_on_join_table))
 
-        filter_statement = [{relationship.destination_field, in: field_values}]
+            filter_statement = [{relationship.destination_field, in: field_values}]
 
-        case api.read(destination, filter: filter_statement, paginate: false) do
-          {:ok, %{results: results}} -> {:ok, results}
-          {:error, error} -> {:error, error}
-        end
-      end,
-      relationship: [],
-      bypass_strict_access?: true,
-      source: "Read related join for #{name} before replace"
+            case api.read(destination, filter: filter_statement, paginate: false) do
+              {:ok, %{results: results}} -> {:ok, results}
+              {:error, error} -> {:error, error}
+            end
+          end
+        ),
+      strict_access?: false,
+      name: "Read related join for #{name} before replace"
     )
   end
 

@@ -37,7 +37,7 @@ defmodule Ash.Actions.Create do
          params <- Keyword.merge(params, attributes: attributes, relationships: relationships),
          %{valid?: true} = changeset <- changeset(api, resource, params),
          {:ok, side_load_requests} <-
-           SideLoad.requests(api, resource, side_loads, side_load_filter),
+           SideLoad.requests(api, resource, side_loads, :create, side_load_filter),
          {:ok, %{data: created} = state} <-
            do_authorized(changeset, params, action, resource, api, side_load_requests) do
       {:ok, SideLoad.attach_side_loads(created, state)}
@@ -63,7 +63,7 @@ defmodule Ash.Actions.Create do
     relationships = Keyword.get(params, :relationships, %{})
 
     create_request =
-      Ash.Engine.Request.new(
+      Ash.Engine2.Request.new(
         api: api,
         rules: action.rules,
         resource: resource,
@@ -74,26 +74,25 @@ defmodule Ash.Actions.Create do
             relationships
           ),
         action_type: action.type,
-        fetcher: fn changeset, _ ->
-          resource
-          |> Ash.DataLayer.create(changeset)
-          |> case do
-            {:ok, result} ->
-              changeset
-              |> Map.get(:__after_changes__, [])
-              |> Enum.reduce_while({:ok, result}, fn func, {:ok, result} ->
-                case func.(changeset, result) do
-                  {:ok, result} -> {:cont, {:ok, result}}
-                  {:error, error} -> {:halt, {:error, error}}
-                end
-              end)
-          end
-        end,
-        dependencies: Map.get(changeset, :__changes_depend_on__) || [],
-        state_key: :data,
-        must_fetch?: true,
-        relationship: [],
-        source: "#{action.type} - `#{action.name}`"
+        data:
+          Ash.Engine2.Request.UnresolvedField.data([], fn request, _data ->
+            resource
+            |> Ash.DataLayer.create(request.changeset)
+            |> case do
+              {:ok, result} ->
+                request.changeset
+                |> Map.get(:__after_changes__, [])
+                |> Enum.reduce_while({:ok, result}, fn func, {:ok, result} ->
+                  case func.(request.changeset, result) do
+                    {:ok, result} -> {:cont, {:ok, result}}
+                    {:error, error} -> {:halt, {:error, error}}
+                  end
+                end)
+            end
+          end),
+        resolve_when_fetch_only?: true,
+        path: [:data],
+        name: "#{action.type} - `#{action.name}`"
       )
 
     attribute_requests = Attributes.attribute_change_requests(changeset, api, resource, action)

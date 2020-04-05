@@ -166,3 +166,4 @@ end
 - Add the ability to configure what fields can identify a user (for instance email) and use those in checks.
 - Figure out how to handle cross data layer filters for boolean.
 - Is it possible/reasonable to do join tables that aren't unique on source_id/destination_id? Probably, but metadata would need to be organized differently.
+- relationship changes are an artifact of the old way of doing things and are very ugly right now

@@ -87,19 +87,19 @@ defmodule Ash.Actions.SideLoad do
             source_value = Map.get(record, last_relationship.source_field)
 
             join_values =
-              Enum.filter(join_data, fn join_row ->
+              join_data
+              |> Enum.filter(fn join_row ->
                 Map.get(join_row, last_relationship.source_field_on_join_table) ==
                   source_value
               end)
+              |> Enum.map(&Map.get(&1, last_relationship.destination_field_on_join_table))
 
             related_records =
-              Enum.filter(value, fn value ->
+              value
+              |> Enum.filter(fn value ->
                 destination_value = Map.get(value, last_relationship.destination_field)
 
-                Enum.any?(join_values, fn join_value ->
-                  Map.get(join_value, last_relationship.destination_field_on_join_table) ==
-                    destination_value
-                end)
+                destination_value in join_values
               end)
 
             Map.put(record, last_relationship.name, related_records)
@@ -239,6 +239,7 @@ defmodule Ash.Actions.SideLoad do
               name: "side_load join #{join_relationship.name}",
               api: api,
               path: [:include, join_relationship_path],
+              strict_access?: root_filter not in [:create, :update],
               resolve_when_fetch_only?: true,
               filter:
                 side_load_filter2(
@@ -292,6 +293,31 @@ defmodule Ash.Actions.SideLoad do
     end)
   end
 
+  defp side_load_filter2(relationship, request_filter, prior_path, root_filter)
+       when root_filter in [:update, :create] do
+    Ash.Engine2.Request.UnresolvedField.field([:data], fn _, _, %{root: %{data: data}} ->
+      root_filter =
+        case data do
+          [%resource{} = item] ->
+            item
+            |> Map.take(Ash.primary_key(resource))
+            |> Enum.to_list()
+
+          [%resource{} | _] = items ->
+            pkey = Ash.primary_key(resource)
+            [or: Enum.map(items, fn item -> item |> Map.take(pkey) |> Enum.to_list() end)]
+        end
+
+      case reverse_relationship_path(relationship, prior_path) do
+        {:ok, reverse_path} ->
+          Ash.Filter.parse(
+            relationship.destination,
+            put_nested_relationship(request_filter, reverse_path, root_filter)
+          )
+      end
+    end)
+  end
+
   defp side_load_filter2(relationship, request_filter, prior_path, root_filter) do
     # TODO: If the root request is non `strict_access?`, then we could actually
     # do something like this, using the full path. For now, we'll just authorize
@@ -333,75 +359,6 @@ defmodule Ash.Actions.SideLoad do
         )
     end
   end
-
-  # defp side_load_filter2(
-  #        relationship,
-  #        request_filter,
-  #        _dependencies,
-  #        api
-  #      ) do
-  #   Ash.Engine2.Request.UnresolvedField.field([:data], fn %{path: include_path},
-  #                                                         _unresolved,
-  #                                                         %{data: data} ->
-  #     prior_path = include_path |> Enum.reverse() |> tl()
-  #     # TODO: clean up return of this function
-  #     {:ok, path, values} = reverse_relationship_path_and_values(relationship, data, prior_path)
-
-  #     Ash.Filter.parse(
-  #       relationship.destination,
-  #       put_nested_relationship(request_filter, path, values),
-  #       api
-  #     )
-  #   end)
-  # end
-
-  # defp side_load_filter(
-  #        %{reverse_relationship: nil, type: :many_to_many} = relationship,
-  #        _,
-  #        _,
-  #        _
-  #      ) do
-  #   # TODO: Validate this is unreachable at compile time
-  #   raise "require reverse relationship for #{inspect(relationship)}"
-  # end
-
-  # defp side_load_filter(
-  #        %{reverse_relationship: nil} = relationship,
-  #        request_filter,
-  #        %{data: data},
-  #        []
-  #      ) do
-  #   # %Ash.Engine2.Request.UnresolvedField{}
-  #   new_values = Enum.map(data, &Map.get(&1, relationship.source_field))
-  #   add_relationship_id_filter(request_filter, relationship.destination_field, new_values)
-  # end
-
-  # defp side_load_filter(
-  #        %{reverse_relationship: nil} = relationship,
-  #        request_filter,
-  #        %{data: data},
-  #        prior_path
-  #      ) do
-  #   prior_path_names = Enum.map(prior_path, &Map.get(&1, :name))
-  #   source_fields = get_field(data, relationship.source_field, prior_path_names)
-
-  #   add_relationship_id_filter(request_filter, relationship.destination_field, source_fields)
-  # end
-
-  # defp side_load_filter(relationship, request_filter, %{data: data} = state, prior_path) do
-  #   case reverse_relationship_path_and_values(relationship, data, prior_path) do
-  #     {:ok, path, values} ->
-  #       put_nested_relationship(request_filter, path, values)
-
-  #     :error ->
-  #       prior_path_names = Enum.map(prior_path, &Map.get(&1, :name))
-  #       related_data = get_in(state, [:include, prior_path_names])
-
-  #       related_keys = get_field(related_data, relationship.source_field, [])
-
-  #       add_relationship_id_filter(request_filter, relationship.destination_field, related_keys)
-  #   end
-  # end
 
   defp true_side_load_filter(
          %{type: :many_to_many, reverse_relationship: nil} = relationship,
