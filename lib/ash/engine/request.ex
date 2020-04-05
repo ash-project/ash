@@ -1,4 +1,6 @@
 defmodule Ash.Engine.Request do
+  require Logger
+
   @fields_that_change_sometimes [
     :changeset,
     :is_fetched,
@@ -54,9 +56,16 @@ defmodule Ash.Engine.Request do
       |> Keyword.put_new(:strict_check_completed?, false)
       |> Keyword.put_new(:is_fetched, fn _ -> true end)
       |> Keyword.put_new(:must_fetch?, false)
+      |> Keyword.delete(:clause_source)
       |> Keyword.update!(:rules, fn steps ->
         Enum.map(steps, fn {step, fact} ->
-          {step, Ash.Authorization.Clause.new(opts[:relationship] || [], opts[:resource], fact)}
+          {step,
+           Ash.Authorization.Clause.new(
+             opts[:relationship] || [],
+             opts[:resource],
+             fact,
+             opts[:clause_source] || :root
+           )}
         end)
       end)
 
@@ -71,7 +80,8 @@ defmodule Ash.Engine.Request do
             Ash.Authorization.Clause.new(
               request.relationship,
               request.resource,
-              {Ash.Authorization.Check.Static, result: true}
+              {Ash.Authorization.Check.Static, result: true},
+              :root
             )
         ]
     }
@@ -155,6 +165,8 @@ defmodule Ash.Engine.Request do
       |> add_dependent_state(state, request)
       |> add_optional_state(state, request)
 
+    Logger.debug("Fetching: #{request.source}")
+
     case fetcher.(changeset, fetcher_state) do
       {:ok, value} ->
         {:ok, put_request_state(state, request, value)}
@@ -173,6 +185,8 @@ defmodule Ash.Engine.Request do
       %{}
       |> add_dependent_state(state, request)
       |> add_optional_state(state, request)
+
+    Logger.debug("Fetching changeset for #{request.source}")
 
     case fetch_changeset(fetcher_state, request) do
       {:ok, request} ->
@@ -243,6 +257,8 @@ defmodule Ash.Engine.Request do
         {:ok, value} = fetch_nested_value(state, dependency)
         put_nested_key(acc, dependency, value)
       end)
+
+    Logger.debug("Fetching filter: #{request.source}")
 
     case filter.(arg) do
       %Ash.Filter{} = new_filter ->

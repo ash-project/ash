@@ -13,20 +13,27 @@ defmodule Ash.Authorization.Checker do
 
   If you need to write your own checks see #TODO: Link to a guide about writing checks here.
   """
+  require Logger
+
   alias Ash.Engine.Request
   alias Ash.Actions.SideLoad
+  alias Ash.Authorization.Clause
 
   def strict_check(user, request, facts, strict_access?) do
-    if Request.can_strict_check?(request) do
+    if request.__struct__.can_strict_check?(request) do
       new_facts =
         request.rules
         |> Enum.reduce(facts, fn {_step, clause}, facts ->
-          case Map.fetch(facts, {request.relationship, clause}) do
+          case Clause.find(facts, clause) do
             {:ok, _boolean_result} ->
               facts
 
             :error ->
               case do_strict_check(clause, user, request, strict_access?) do
+                {:error, _error} ->
+                  # TODO: Surface this error
+                  facts
+
                 :unknown ->
                   facts
 
@@ -42,7 +49,47 @@ defmodule Ash.Authorization.Checker do
           end
         end)
 
+      Logger.debug("Completed strict_check for #{request.name}")
+
       {Map.put(request, :strict_check_completed?, true), new_facts}
+    else
+      {request, facts}
+    end
+  end
+
+  def strict_check2(user, request, facts) do
+    if Ash.Engine2.Request.can_strict_check?(request) do
+      new_facts =
+        request.rules
+        |> Enum.reduce(facts, fn {_step, clause}, facts ->
+          case Clause.find(facts, clause) do
+            {:ok, _boolean_result} ->
+              facts
+
+            :error ->
+              case do_strict_check2(clause, user, request) do
+                {:error, _error} ->
+                  # TODO: Surface this error
+                  facts
+
+                :unknown ->
+                  facts
+
+                :unknowable ->
+                  Map.put(facts, clause, :unknowable)
+
+                :irrelevant ->
+                  Map.put(facts, clause, :irrelevant)
+
+                boolean ->
+                  Map.put(facts, clause, boolean)
+              end
+          end
+        end)
+
+      Logger.debug("Completed strict_check for #{request.name}")
+
+      {Map.put(request, :strict_check_complete?, true), new_facts}
     else
       {request, facts}
     end
@@ -95,6 +142,12 @@ defmodule Ash.Authorization.Checker do
 
         bypass_strict? && !Request.fetched?(state, request) &&
           Request.dependencies_met?(state, request)
+
+        # TODO: In the new engine, we need to authorize requests as their
+        # individual rules are met/be able to check if an individual request
+        # can be authorized, so we can fetch it if other checks depend on it
+        # (Enum.any?(requests, &Request.depends_on?(request, &1)) &&
+        #    passes_via_strict_check?(request, state))
       end)
 
     fetchable_requests_with_dependent_fields =
@@ -114,8 +167,8 @@ defmodule Ash.Authorization.Checker do
         |> Enum.sort_by(fn request ->
           # Requests that bypass strict access should generally perform well
           # as they would generally be more efficient checks
-          {-Enum.count(request.relationship), not request.bypass_strict_access?,
-           request.relationship}
+          {request.strict_check_completed?, -Enum.count(request.relationship),
+           not request.bypass_strict_access?, request.relationship}
         end)
         |> case do
           [request | rest] = requests ->
@@ -124,7 +177,7 @@ defmodule Ash.Authorization.Checker do
                 new_requests = [%{request | is_fetched: true} | rest] ++ other_requests
                 {:ok, {new_requests, new_state}}
 
-              :error ->
+              {:error, _} ->
                 {:ok, {requests ++ other_requests, state}}
             end
 
@@ -272,7 +325,7 @@ defmodule Ash.Authorization.Checker do
   defp run_preparation(_, nil, :side_load, _), do: {:ok, nil}
 
   defp run_preparation(request, data, :side_load, side_load) do
-    SideLoad.side_load(request.api, request.resource, data, side_load)
+    SideLoad.side_load(request.api, request.resource, data, [], side_load)
   end
 
   defp run_preparation(_, _, preparation, _), do: {:error, "Unknown preparation #{preparation}"}
@@ -328,6 +381,9 @@ defmodule Ash.Authorization.Checker do
 
   defp do_strict_check(%{check_module: module, check_opts: opts}, user, request, strict_access?) do
     case module.strict_check(user, request, opts) do
+      {:error, error} ->
+        {:error, error}
+
       {:ok, boolean} when is_boolean(boolean) ->
         boolean
 
@@ -337,6 +393,33 @@ defmodule Ash.Authorization.Checker do
       {:ok, :unknown} ->
         cond do
           strict_access? && not request.bypass_strict_access? ->
+            # This means "we needed a fact that we have no way of getting"
+            # Because the fact was needed in the `strict_check` step
+            :unknowable
+
+          Ash.Authorization.Check.defines_check?(module) ->
+            :unknown
+
+          true ->
+            :unknowable
+        end
+    end
+  end
+
+  defp do_strict_check2(%{check_module: module, check_opts: opts}, user, request) do
+    case module.strict_check(user, request, opts) do
+      {:error, error} ->
+        {:error, error}
+
+      {:ok, boolean} when is_boolean(boolean) ->
+        boolean
+
+      {:ok, :irrelevant} ->
+        :irrelevant
+
+      {:ok, :unknown} ->
+        cond do
+          request.strict_access? ->
             # This means "we needed a fact that we have no way of getting"
             # Because the fact was needed in the `strict_check` step
             :unknowable

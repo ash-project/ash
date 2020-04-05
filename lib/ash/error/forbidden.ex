@@ -10,11 +10,13 @@ defmodule Ash.Error.Forbidden do
     :strict_check_facts,
     :state,
     :strict_access?,
+    :reason,
     no_steps_configured: false
   ]
 
   def message(error) do
     report = %Report{
+      reason: error.reason,
       scenarios: error.scenarios,
       requests: error.requests,
       facts: error.facts,
@@ -31,6 +33,7 @@ defmodule Ash.Error.Forbidden do
 
   def report_text(error, header \\ "forbidden:") do
     report = %Report{
+      reason: error.reason,
       scenarios: error.scenarios,
       requests: error.requests,
       facts: error.facts,

@@ -35,13 +35,16 @@ defmodule Ash.Api.Interface do
 
   @shared_read_get_opts_schema Ashton.schema(
                                  opts: [
-                                   side_load: :keyword
+                                   side_load: :keyword,
+                                   side_load_filter: :map
                                  ],
                                  defaults: [
-                                   side_load: []
+                                   side_load: [],
+                                   side_load_filter: %{}
                                  ],
                                  describe: [
-                                   side_load: "# TODO describe"
+                                   side_load: "# TODO describe",
+                                   side_load_filter: "# TODO describe"
                                  ]
                                )
 

@@ -21,6 +21,7 @@ defmodule Ash.Actions.Update do
     attributes = Keyword.get(params, :attributes, %{})
     relationships = Keyword.get(params, :relationships, %{})
     side_loads = Keyword.get(params, :side_load, [])
+    side_load_filter = Keyword.get(params, :side_load_filter)
 
     with {:ok, relationships} <-
            Relationships.validate_not_changing_relationship_and_source_field(
@@ -36,7 +37,8 @@ defmodule Ash.Actions.Update do
            ),
          params <- Keyword.merge(params, attributes: attributes, relationships: relationships),
          %{valid?: true} = changeset <- changeset(record, api, params),
-         {:ok, side_load_requests} <- SideLoad.requests(api, resource, side_loads),
+         {:ok, side_load_requests} <-
+           SideLoad.requests(api, resource, side_loads, side_load_filter),
          {:ok, %{data: updated}} = state <-
            do_authorized(changeset, params, action, resource, api, side_load_requests) do
       {:ok, SideLoad.attach_side_loads(updated, state)}

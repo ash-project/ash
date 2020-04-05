@@ -1,5 +1,6 @@
 defmodule Ash.Actions.Read do
-  alias Ash.Engine
+  alias Ash.Engine2
+  alias Ash.Engine2.Request
   alias Ash.Actions.SideLoad
 
   def run(api, resource, action, params) do
@@ -18,19 +19,27 @@ defmodule Ash.Actions.Read do
     filter = Keyword.get(params, :filter, [])
     sort = Keyword.get(params, :sort, [])
     side_loads = Keyword.get(params, :side_load, [])
+    side_load_filter = Keyword.get(params, :side_load_filter)
     page_params = Keyword.get(params, :page, [])
 
+    filter =
+      case filter do
+        %Ash.Filter{} -> filter
+        filter -> Ash.Filter.parse(resource, filter, api)
+      end
+
     with %Ash.Filter{errors: [], requests: filter_requests} = filter <-
-           Ash.Filter.parse(resource, filter, api),
-         {:ok, side_load_requests} <- SideLoad.requests(api, resource, side_loads),
+           filter,
          query <- Ash.DataLayer.resource_to_query(resource),
          {:ok, sort} <- Ash.Actions.Sort.process(resource, sort),
          {:ok, sorted_query} <- Ash.DataLayer.sort(query, sort, resource),
-         # We parse the query for validation, but don't use it here.
+         # We parse the query for validation/side_load auth, but don't use it for querying.
          {:ok, _filtered_query} <- Ash.DataLayer.filter(sorted_query, filter, resource),
+         {:ok, side_load_requests} <-
+           SideLoad.requests(api, resource, side_loads, filter, side_load_filter),
          {:ok, paginator} <-
            Ash.Actions.Paginator.paginate(api, resource, action, sorted_query, page_params),
-         {:ok, %{data: found} = state} <-
+         %{data: %{root: %{data: data}}, errors: errors} = engine when errors == %{} <-
            do_authorized(
              paginator.query,
              params,
@@ -40,9 +49,10 @@ defmodule Ash.Actions.Read do
              action,
              side_load_requests ++ filter_requests
            ),
-         paginator <- %{paginator | results: found} do
-      {:ok, SideLoad.attach_side_loads(paginator, state)}
+         paginator <- %{paginator | results: data} do
+      {:ok, SideLoad.attach_side_loads(paginator, engine.data)}
     else
+      %{errors: errors} -> {:error, errors}
       %Ash.Filter{errors: errors} -> {:error, errors}
       {:error, error} -> {:error, error}
     end
@@ -50,45 +60,37 @@ defmodule Ash.Actions.Read do
 
   defp do_authorized(query, params, filter, resource, api, action, requests) do
     request =
-      Ash.Engine.Request.new(
-        api: api,
+      Request.new(
         resource: resource,
         rules: action.rules,
-        filter: Ash.Filter.request_filter(filter),
+        filter: filter,
         action_type: action.type,
-        optional_state: Ash.Filter.optional_paths(filter),
-        fetcher: fn _, state ->
-          fetch_filter = Ash.Filter.request_filter_for_fetch(filter, state)
+        data:
+          Request.UnresolvedField.data([], Ash.Filter.optional_paths(filter), fn request, data ->
+            fetch_filter = Ash.Filter.request_filter_for_fetch(request.filter, data)
 
-          case Ash.DataLayer.filter(query, fetch_filter, resource) do
-            {:ok, final_query} ->
-              Ash.DataLayer.run_query(final_query, resource)
+            case Ash.DataLayer.filter(query, fetch_filter, resource) do
+              {:ok, final_query} ->
+                Ash.DataLayer.run_query(final_query, resource)
 
-            {:error, error} ->
-              {:error, error}
-          end
-        end,
-        must_fetch?: true,
-        state_key: :data,
-        relationship: [],
-        source: "#{action.type} - `#{action.name}`"
+              {:error, error} ->
+                {:error, error}
+            end
+          end),
+        resolve_when_fetch_only?: true,
+        path: [:data],
+        name: "#{action.type} - `#{action.name}`"
       )
 
     if params[:authorization] do
-      strict_access? =
-        case Keyword.fetch(params[:authorization], :strict_access?) do
-          {:ok, value} -> value
-          :error -> true
-        end
-
-      Engine.run(params[:authorization][:user], [request | requests],
-        strict_access?: strict_access?,
+      Engine2.run(
+        [request | requests],
+        api,
+        user: params[:authorization][:user],
         log_final_report?: params[:authorization][:log_final_report?] || false
       )
     else
-      authorization = params[:authorization] || []
-
-      Engine.run(authorization[:user], [request | requests], fetch_only?: true)
+      Engine2.run([request | requests], api, fetch_only?: true)
     end
   end
 end

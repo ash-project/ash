@@ -225,7 +225,7 @@ defmodule Ash.Resource.Relationships do
   """
   defmacro many_to_many(relationship_name, resource, config \\ []) do
     quote do
-      relationship =
+      many_to_many =
         Ash.Resource.Relationships.ManyToMany.new(
           __MODULE__,
           @name,
@@ -234,15 +234,34 @@ defmodule Ash.Resource.Relationships do
           unquote(config)
         )
 
-      case relationship do
-        {:ok, relationship} ->
-          @relationships relationship
+      has_many_name = String.to_atom(to_string(unquote(relationship_name)) <> "_join_assoc")
 
-        {:error, [{key, message} | _]} ->
+      has_many =
+        Ash.Resource.Relationships.HasMany.new(
+          __MODULE__,
+          @name,
+          has_many_name,
+          unquote(config)[:through],
+          destination_field: unquote(config)[:source_field_on_join_table],
+          source_field: unquote(config)[:source_field]
+        )
+
+      with {:many_to_many, {:ok, many_to_many}} <- {:many_to_many, many_to_many},
+           {:has_many, {:ok, has_many}} <- {:has_many, has_many} do
+        @relationships many_to_many
+        @relationships has_many
+      else
+        {:many_to_many, {:error, [{key, message} | _]}} ->
           raise Ash.Error.ResourceDslError,
             message: message,
             option: key,
             path: [:relationships, :many_to_many, unquote(relationship_name)]
+
+        {:has_many, {:error, [{key, message}]}} ->
+          raise Ash.Error.ResourceDslError,
+            message: message,
+            option: key,
+            path: [:relationships, :many_to_many, has_many_name]
       end
     end
   end

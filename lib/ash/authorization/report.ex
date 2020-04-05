@@ -10,6 +10,7 @@ defmodule Ash.Authorization.Report do
     :strict_access?,
     :header,
     :authorized?,
+    :reason,
     no_steps_configured: false
   ]
 
@@ -44,8 +45,15 @@ defmodule Ash.Authorization.Report do
 
     explained_facts = explain_facts(report.facts, report.strict_check_facts || %{})
 
+    reason =
+      if report.reason do
+        "\n" <> report.reason <> "\n"
+      else
+        ""
+      end
+
     main_message =
-      header <> indent("Facts Gathered\n" <> indent(explained_facts) <> explained_steps)
+      header <> reason <> indent("Facts Gathered\n" <> indent(explained_facts) <> explained_steps)
 
     if report.authorized? do
       main_message
@@ -212,12 +220,12 @@ defmodule Ash.Authorization.Report do
       contents =
         clauses_and_statuses
         |> Enum.group_by(fn {clause, _} ->
-          clause.relationship
+          {clause.source, clause.path}
         end)
-        |> Enum.sort_by(fn {relationship, _} ->
+        |> Enum.sort_by(fn {{_, relationship}, _} ->
           {Enum.count(relationship), relationship}
         end)
-        |> Enum.map_join("\n", fn {relationship, clauses_and_statuses} ->
+        |> Enum.map_join("\n", fn {{source, relationship}, clauses_and_statuses} ->
           contents =
             Enum.map_join(clauses_and_statuses, "\n", fn {clause, status} ->
               gets_star? =
@@ -242,7 +250,14 @@ defmodule Ash.Authorization.Report do
           if relationship == [] do
             indent(contents)
           else
-            "Related " <> Enum.join(relationship) <> ":\n" <> indent(contents)
+            operation =
+              if source == :side_load do
+                "SideLoad "
+              else
+                "Related "
+              end
+
+            operation <> Enum.join(relationship, ".") <> ":\n" <> indent(contents)
           end
         end)
 
@@ -250,7 +265,7 @@ defmodule Ash.Authorization.Report do
     end)
   end
 
-  defp format_pkey(nil), do: "Global"
+  defp format_pkey(nil), do: "Root"
 
   defp format_pkey(pkey) do
     if Enum.count(pkey) == 1 do
@@ -288,7 +303,7 @@ defmodule Ash.Authorization.Report do
         contents =
           request.rules
           |> Enum.sort_by(fn {_step, clause} ->
-            {Enum.count(clause.relationship), clause.relationship}
+            {Enum.count(clause.path), clause.path}
           end)
           |> Enum.map(fn {step, clause} ->
             status =
@@ -302,7 +317,7 @@ defmodule Ash.Authorization.Report do
 
             mod = clause.check_module
             opts = clause.check_opts
-            relationship = clause.relationship
+            relationship = clause.path
 
             if relationship == [] do
               step_mark <>

@@ -66,7 +66,7 @@ defmodule Ash.DataLayer do
           {:ok, Ash.query()} | {:error, Ash.error()}
   def offset(query, offset, resource) do
     data_layer = Ash.data_layer(resource)
-    data_layer.limit(query, offset, resource)
+    data_layer.offset(query, offset, resource)
   end
 
   @spec can?(feature, Ash.resource()) :: boolean

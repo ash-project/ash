@@ -46,15 +46,15 @@ defmodule Ash.Engine do
     end
   end
 
-  defp solve(
-         requests,
-         user,
-         facts,
-         initial_strict_check_facts,
-         state,
-         strict_access?,
-         log_final_report?
-       ) do
+  def solve(
+        requests,
+        user,
+        facts,
+        initial_strict_check_facts,
+        state,
+        strict_access?,
+        log_final_report?
+      ) do
     requests_with_dependent_fields =
       Enum.reduce_while(requests, {:ok, []}, fn request, {:ok, requests} ->
         if Request.dependencies_met?(state, request) do
@@ -83,7 +83,8 @@ defmodule Ash.Engine do
                 facts: new_facts,
                 strict_check_facts: initial_strict_check_facts,
                 strict_access?: strict_access?,
-                state: state
+                state: state,
+                reason: "No scenario leads to authorization"
               )
 
             if log_final_report? do
@@ -254,7 +255,8 @@ defmodule Ash.Engine do
               facts: facts,
               strict_check_facts: strict_check_facts,
               state: state,
-              strict_access?: strict_access?
+              strict_access?: strict_access?,
+              reason: "All fetchable information was fetched, and no scenario is reality."
             )
 
           if log_final_report? do
@@ -275,7 +277,8 @@ defmodule Ash.Engine do
                 facts: facts,
                 strict_check_facts: strict_check_facts,
                 state: state,
-                strict_access?: strict_access?
+                strict_access?: strict_access?,
+                reason: "No new information could be generated, and no scenario is reality."
               )
 
             if log_final_report? do
@@ -305,8 +308,6 @@ defmodule Ash.Engine do
       Enum.split_with(unfetched, fn request -> Request.dependencies_met?(state, request) end)
 
     must_fetch = filter_must_fetch(safe_to_fetch)
-
-    IO.inspect(must_fetch)
 
     case must_fetch do
       [] ->

@@ -45,9 +45,6 @@ defmodule Ash.Filter do
         ) :: t()
   # The `api` argument is here primarily because the requests
   # need to have the `api`.
-  # TODO: Remove this by making it so that steps are generated
-  # *after* the filter is generated. We can traverse all the relationships
-  # and figure out what authorizations are required. That makes this much nicer.
   def parse(resource, filter, api \\ nil, path \\ []) do
     parsed_filter =
       filter
@@ -65,27 +62,29 @@ defmodule Ash.Filter do
       parsed_filter
     else
       request =
-        Request.new(
+        Ash.Engine2.Request.new(
           resource: resource,
           api: api,
           rules: Ash.primary_action(resource, :read).rules,
           filter: parsed_filter,
-          state_key: [:filter, path],
-          fetcher: fn _, _ ->
-            query = Ash.DataLayer.resource_to_query(resource)
+          path: [:filter, path],
+          data:
+            Ash.Engine2.Request.UnresolvedField.data([], fn request, _data ->
+              query = Ash.DataLayer.resource_to_query(resource)
 
-            case Ash.DataLayer.filter(query, parsed_filter, resource) do
-              {:ok, filtered_query} ->
-                Ash.DataLayer.run_query(filtered_query, resource)
+              case Ash.DataLayer.filter(query, request.filter, resource) do
+                {:ok, filtered_query} ->
+                  Ash.DataLayer.run_query(filtered_query, resource)
 
-              {:error, error} ->
-                {:error, error}
-            end
-          end,
+                {:error, error} ->
+                  {:error, error}
+              end
+            end),
           action_type: :read,
-          bypass_strict_access?: bypass_strict_access?(parsed_filter),
+          # TODO: replace `bypass_strict_access?/1` with `strict_access?/1`
+          strict_access?: not bypass_strict_access?(parsed_filter),
           relationship: path,
-          source: source
+          name: source
         )
 
       add_request(
@@ -104,7 +103,7 @@ defmodule Ash.Filter do
   defp do_optional_paths(%{relationships: relationships, requests: requests, ors: ors})
        when relationships == %{} and ors in [[], nil] do
     Enum.map(requests, fn request ->
-      Request.state_key(request)
+      request.path
     end)
   end
 
@@ -121,28 +120,13 @@ defmodule Ash.Filter do
     relationship_paths ++ do_optional_paths(%{filter | relationships: %{}})
   end
 
-  def request_filter(filter) do
-    case optional_paths(filter) do
-      [] ->
-        filter
-
-      paths ->
-        fn data ->
-          request_filter_for_fetch(filter, data, paths)
-        end
-    end
-  end
-
-  # TODO: This is ugly, and is necessary because `filter` isn't threaded through
-  # to `fetcher` after it is generated
-  def request_filter_for_fetch(filter, data, paths \\ nil) do
-    paths = paths || optional_paths(filter)
-
-    paths
+  def request_filter_for_fetch(filter, data) do
+    filter
+    |> optional_paths()
     |> paths_and_data(data)
     |> most_specific_paths()
     |> Enum.reduce(filter, fn {path, related_data}, filter ->
-      [:filter, relationship_path] = path
+      [:root, :filter, relationship_path] = path
 
       filter
       |> add_records_to_relationship_filter(
@@ -192,18 +176,23 @@ defmodule Ash.Filter do
     unless candidate.ors in [[], nil], do: raise("Can't do ors contains yet")
     unless candidate.not in [[], nil], do: raise("Can't do not contains yet")
 
-    attributes_contained? =
-      Enum.any?(filter.attributes, fn {attr, predicate} ->
-        contains_attribute?(candidate, attr, predicate)
-      end)
+    attributes_contained?(filter, candidate) || relationships_contained?(filter, candidate)
+  end
 
-    relationships_contained? =
-      Enum.any?(filter.relationships, fn {relationship, relationship_filter} ->
-        contains_relationship?(candidate, relationship, relationship_filter)
-      end)
+  # defp not_doesnt_contain?(filter, candidate) do
 
-    # TODO: put these behind functions to optimize them.
-    attributes_contained? or relationships_contained?
+  # end
+
+  defp attributes_contained?(filter, candidate) do
+    Enum.any?(filter.attributes, fn {attr, predicate} ->
+      contains_attribute?(candidate, attr, predicate)
+    end)
+  end
+
+  defp relationships_contained?(filter, candidate) do
+    Enum.any?(filter.relationships, fn {relationship, relationship_filter} ->
+      contains_relationship?(candidate, relationship, relationship_filter)
+    end)
   end
 
   defp add_records_to_relationship_filter(filter, [], records) do
@@ -302,28 +291,54 @@ defmodule Ash.Filter do
 
   defp known_value_filter?(_), do: false
 
-  # defp contains_relationship?(filter, relationship, candidate_relationship_filter) do
-  #   case filt do
-  #   end
-  # end
   defp contains_relationship?(filter, relationship, candidate_relationship_filter) do
-    contains_as_relationship? =
-      case filter.relationships do
-        %{^relationship => relationship_filter} ->
-          strict_subset_of?(relationship_filter, candidate_relationship_filter)
-
-        _ ->
-          false
-      end
-
-    contains_as_field? =
+    filter_with_only_relationship_filters =
       case Ash.relationship(filter.resource, relationship) do
         %{type: :many_to_many} ->
-          false
+          filter
 
-        %{source_field: source_field, destination_field: destination_field} ->
-          nil
+        %{
+          source_field: source_field,
+          destination_field: destination_field,
+          destination: destination
+        } ->
+          case filter.attributes do
+            %{^source_field => attribute_filter_struct} ->
+              filter
+              |> Map.update!(:attributes, &Map.delete(&1, source_field))
+              |> Map.update!(:relationships, fn relationships ->
+                Map.update(
+                  relationships,
+                  relationship,
+                  %__MODULE__{
+                    resource: destination,
+                    api: filter.api,
+                    attributes: %{
+                      destination_field => attribute_filter_struct
+                    }
+                  },
+                  fn existing_attribute_filter ->
+                    Ash.Filter.And.new(
+                      destination,
+                      existing_attribute_filter,
+                      attribute_filter_struct
+                    )
+                  end
+                )
+              end)
+
+            _ ->
+              filter
+          end
       end
+
+    case filter_with_only_relationship_filters.relationships do
+      %{^relationship => relationship_filter} ->
+        strict_subset_of?(relationship_filter, candidate_relationship_filter)
+
+      _ ->
+        false
+    end
   end
 
   defp contains_attribute?(filter, attr, candidate_predicate) do

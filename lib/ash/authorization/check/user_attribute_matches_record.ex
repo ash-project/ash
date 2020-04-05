@@ -1,5 +1,6 @@
 defmodule Ash.Authorization.Check.UserAttributeMatchesRecord do
   use Ash.Authorization.Check, action_types: [:read, :update, :delete]
+  alias Ash.Engine2.Request
 
   @impl true
   def describe(opts) do
@@ -7,6 +8,8 @@ defmodule Ash.Authorization.Check.UserAttributeMatchesRecord do
   end
 
   @impl true
+  def strict_check(nil, _, _), do: {:ok, false}
+
   def strict_check(user, request, options) do
     user_field = options[:user_field]
     record_field = options[:record_field]

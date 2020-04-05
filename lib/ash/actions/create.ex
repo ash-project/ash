@@ -19,6 +19,7 @@ defmodule Ash.Actions.Create do
   defp do_run(api, resource, action, params) do
     attributes = Keyword.get(params, :attributes, %{})
     side_loads = Keyword.get(params, :side_load, [])
+    side_load_filter = Keyword.get(params, :side_load_filter)
     relationships = Keyword.get(params, :relationships, %{})
 
     with {:ok, relationships} <-
@@ -35,7 +36,8 @@ defmodule Ash.Actions.Create do
            ),
          params <- Keyword.merge(params, attributes: attributes, relationships: relationships),
          %{valid?: true} = changeset <- changeset(api, resource, params),
-         {:ok, side_load_requests} <- SideLoad.requests(api, resource, side_loads),
+         {:ok, side_load_requests} <-
+           SideLoad.requests(api, resource, side_loads, side_load_filter),
          {:ok, %{data: created} = state} <-
            do_authorized(changeset, params, action, resource, api, side_load_requests) do
       {:ok, SideLoad.attach_side_loads(created, state)}
