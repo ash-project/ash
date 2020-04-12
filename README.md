@@ -167,3 +167,4 @@ end
 - Figure out how to handle cross data layer filters for boolean.
 - Is it possible/reasonable to do join tables that aren't unique on source_id/destination_id? Probably, but metadata would need to be organized differently.
 - relationship changes are an artifact of the old way of doing things and are very ugly right now
+- check if preparations have been done on a superset filter of a request and, if so, use it

@@ -1,20 +1,39 @@
 defmodule Ash.Actions.SideLoad do
-  def requests(api, resource, side_load, side_load_filters, root_filter, path \\ [])
-  def requests(_, _, [], _, _, _), do: {:ok, []}
+  def requests(
+        api,
+        resource,
+        side_load,
+        side_load_filters,
+        root_filter,
+        path \\ [],
+        seed_data \\ nil
+      )
 
-  def requests(api, resource, side_load, side_load_filters, root_filter, path) do
+  def requests(_, _, [], _, _, _, _), do: {:ok, []}
+
+  def requests(api, resource, side_load, side_load_filters, root_filter, path, seed_data) do
     Enum.reduce(side_load, {:ok, []}, fn
       _, {:error, error} ->
         {:error, error}
 
       {key, true}, {:ok, acc} ->
-        do_requests(api, resource, side_load_filters, key, [], root_filter, path, acc)
+        do_requests(api, resource, side_load_filters, key, [], root_filter, path, acc, seed_data)
 
       {key, further}, {:ok, acc} ->
-        do_requests(api, resource, side_load_filters, key, further, root_filter, path, acc)
+        do_requests(
+          api,
+          resource,
+          side_load_filters,
+          key,
+          further,
+          root_filter,
+          path,
+          acc,
+          seed_data
+        )
 
       key, {:ok, acc} ->
-        do_requests(api, resource, side_load_filters, key, [], root_filter, path, acc)
+        do_requests(api, resource, side_load_filters, key, [], root_filter, path, acc, seed_data)
     end)
   end
 
@@ -35,10 +54,10 @@ defmodule Ash.Actions.SideLoad do
   end
 
   def side_load(api, resource, data, side_load, root_filter, side_load_filters \\ %{}) do
-    case requests(api, resource, side_load, side_load_filters, root_filter) do
-      {:ok, requests} when is_list(requests) ->
-        case Ash.Engine.run(nil, requests, state: %{data: data}) do
-          {:ok, state} ->
+    case requests(api, resource, side_load, side_load_filters, root_filter, [], data) do
+      {:ok, [_req | _] = requests} ->
+        case Ash.Engine.run(requests, api) do
+          %{data: %{data: %{data: data} = state}, errors: errors} when errors == %{} ->
             case data do
               nil ->
                 {:ok, nil}
@@ -53,9 +72,12 @@ defmodule Ash.Actions.SideLoad do
                 {:ok, List.first(attach_side_loads([data], state))}
             end
 
-          {:error, error} ->
-            {:error, error}
+          %{errors: errors} ->
+            {:error, errors}
         end
+
+      {:ok, []} ->
+        {:ok, data}
 
       {:error, error} ->
         {:error, error}
@@ -66,13 +88,13 @@ defmodule Ash.Actions.SideLoad do
     %{paginator | results: attach_side_loads(results, state)}
   end
 
-  def attach_side_loads([%resource{} | _] = data, %{root: %{include: includes}})
+  def attach_side_loads([%resource{} | _] = data, %{include: includes})
       when is_list(data) do
     includes
     |> Enum.sort_by(fn {key, _value} ->
       length(key)
     end)
-    |> Enum.reduce(data, fn {key, value}, data ->
+    |> Enum.reduce(data, fn {key, %{data: value}}, data ->
       last_relationship = last_relationship!(resource, key)
 
       case last_relationship do
@@ -157,7 +179,7 @@ defmodule Ash.Actions.SideLoad do
     last_relationship!(relationship.destination, rest)
   end
 
-  defp do_requests(api, resource, filters, key, further, root_filter, path, acc) do
+  defp do_requests(api, resource, filters, key, further, root_filter, path, acc, seed_data) do
     with {:rel, relationship} when not is_nil(relationship) <-
            {:rel, Ash.relationship(resource, key)},
          nested_path <- path ++ [relationship],
@@ -167,11 +189,18 @@ defmodule Ash.Actions.SideLoad do
         Ash.primary_action(relationship.destination, :read) ||
           raise "Must set default read for #{inspect(resource)}"
 
+      data_dependency =
+        if seed_data do
+          [[:data]]
+        else
+          []
+        end
+
       dependencies =
         if path == [] do
-          [:data]
+          data_dependency
         else
-          [:data, [:include, Enum.map(path, &Map.get(&1, :name))]]
+          data_dependency ++ [[:include, Enum.map(path, &Map.get(&1, :name)), :data]]
         end
 
       source =
@@ -180,7 +209,7 @@ defmodule Ash.Actions.SideLoad do
         |> Enum.map_join(".", &Map.get(&1, :name))
 
       request =
-        Ash.Engine2.Request.new(
+        Ash.Engine.Request.new(
           action_type: :read,
           resource: relationship.destination,
           rules: default_read.rules,
@@ -193,11 +222,22 @@ defmodule Ash.Actions.SideLoad do
               relationship,
               Map.get(filters || %{}, source, []),
               nested_path,
-              root_filter
+              root_filter,
+              data_dependency,
+              seed_data
             ),
           strict_access?: true,
           data:
-            Ash.Engine2.Request.UnresolvedField.data(dependencies, fn _request, data ->
+            Ash.Engine.Request.UnresolvedField.data(dependencies, fn data ->
+              data =
+                if seed_data do
+                  Map.update(data, :data, %{data: seed_data}, fn data_request ->
+                    Map.put(data_request, :data, seed_data)
+                  end)
+                else
+                  data
+                end
+
               # Because we have the records, we can optimize the filter by nillifying the reverse relationship,
               # and regenerating.
               # The reverse relationship is useful if you don't have the relationship keys for the related items (only pkeys)
@@ -232,7 +272,7 @@ defmodule Ash.Actions.SideLoad do
             Enum.reverse(Enum.map(path, & &1.name)) ++ [join_relationship.name]
 
           side_load_request =
-            Ash.Engine2.Request.new(
+            Ash.Engine.Request.new(
               action_type: :read,
               resource: relationship.through,
               rules: default_read.rules,
@@ -246,11 +286,21 @@ defmodule Ash.Actions.SideLoad do
                   Ash.relationship(resource, join_relationship.name),
                   [],
                   nested_path,
-                  root_filter
+                  root_filter,
+                  data_dependency,
+                  seed_data
                 ),
               strict_access?: true,
               data:
-                Ash.Engine2.Request.UnresolvedField.data(dependencies, fn _request, data ->
+                Ash.Engine.Request.UnresolvedField.data(dependencies, fn data ->
+                  if seed_data do
+                    Map.update(data, :data, %{data: seed_data}, fn data_request ->
+                      Map.put(data_request, :data, seed_data)
+                    end)
+                  else
+                    data
+                  end
+
                   with {:ok, filter} <-
                          true_side_load_filter(
                            join_relationship,
@@ -286,16 +336,33 @@ defmodule Ash.Actions.SideLoad do
          %{reverse_relationship: nil, type: :many_to_many} = relationship,
          _request_filter,
          _prior_path,
-         _root_filter
+         _root_filter,
+         _,
+         _
        ) do
-    Ash.Engine2.Request.UnresolvedField.field([], fn _, _, _ ->
+    Ash.Engine.Request.UnresolvedField.field([], fn _ ->
       {:error, "Required reverse relationship for #{inspect(relationship)}"}
     end)
   end
 
-  defp side_load_filter2(relationship, request_filter, prior_path, root_filter)
+  defp side_load_filter2(
+         relationship,
+         request_filter,
+         prior_path,
+         root_filter,
+         data_dependency,
+         seed_data
+       )
        when root_filter in [:update, :create] do
-    Ash.Engine2.Request.UnresolvedField.field([:data], fn _, _, %{root: %{data: data}} ->
+    Ash.Engine.Request.UnresolvedField.field(data_dependency, fn data ->
+      data =
+        if seed_data do
+          seed_data
+        else
+          # I'm a failure
+          data.data.data
+        end
+
       root_filter =
         case data do
           [%resource{} = item] ->
@@ -318,12 +385,19 @@ defmodule Ash.Actions.SideLoad do
     end)
   end
 
-  defp side_load_filter2(relationship, request_filter, prior_path, root_filter) do
+  defp side_load_filter2(
+         relationship,
+         request_filter,
+         prior_path,
+         root_filter,
+         _data_dependency,
+         _seed_data
+       ) do
     # TODO: If the root request is non `strict_access?`, then we could actually
     # do something like this, using the full path. For now, we'll just authorize
     # with the filter that is provided, since adding id filters to that
     # (if reverse relationship is nil)
-    # Ash.Engine2.Request.UnresolvedField.field(dependencies, fn
+    # Ash.Engine.Request.UnresolvedField.field(dependencies, fn
     #   %{path: [:include, [_]]}, _, %{data: data} ->
     #     new_values = Enum.map(data, &Map.get(&1, relationship.source_field))
 
@@ -380,20 +454,20 @@ defmodule Ash.Actions.SideLoad do
     source_data =
       case path do
         [] ->
-          Map.get(data.root, :data)
+          Map.get(data, :data)
 
         path ->
           Map.get(data, [:include, Enum.reverse(path)])
       end
 
-    values = get_fields(source_data, pkey)
+    values = get_fields(source_data.data, pkey)
 
     cond do
       reverse_relationship ->
         {:ok, put_nested_relationship(filter, [reverse_relationship], values)}
 
       true ->
-        ids = Enum.map(source_data, &Map.get(&1, relationship.source_field))
+        ids = Enum.map(source_data.data, &Map.get(&1, relationship.source_field))
 
         filter_value =
           case ids do

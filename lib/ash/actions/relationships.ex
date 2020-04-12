@@ -58,7 +58,7 @@ defmodule Ash.Actions.Relationships do
         relationship ->
           case validate_relationship_change(relationship, data, action_type) do
             {:ok, input} ->
-              add_relationship_read_requests(changeset, api, relationship, input)
+              add_relationship_read_requests(changeset, api, relationship, input, action_type)
 
             {:error, error} ->
               {:error, error}
@@ -74,22 +74,23 @@ defmodule Ash.Actions.Relationships do
           []
 
         relationship ->
-          dependencies = [:data | Map.get(changeset, :__changes_depend_on__, [])]
+          dependencies = [[:data, :data] | Map.get(changeset, :__changes_depend_on__, [])]
 
           request =
-            Ash.Engine2.Request.new(
+            Ash.Engine.Request.new(
               api: api,
               rules: relationship.write_rules,
               resource: resource,
               changeset: changeset(changeset, api, relationships),
               action_type: action.type,
               data:
-                Ash.Engine2.Request.UnresolvedField.data(dependencies, fn _request,
-                                                                          %{root: %{data: data}} ->
-                  {:ok, data}
+                Ash.Engine.Request.UnresolvedField.data(dependencies, fn
+                  %{data: %{data: data}} ->
+                    {:ok, data}
                 end),
               path: :data,
-              name: "#{relationship_name} edit"
+              name: "#{relationship_name} edit",
+              strict_access?: false
             )
 
           [request]
@@ -97,11 +98,24 @@ defmodule Ash.Actions.Relationships do
     end)
   end
 
-  defp add_relationship_read_requests(changeset, api, relationship, input) do
+  defp add_relationship_read_requests(changeset, api, relationship, input, :update) do
     changeset
     |> add_replace_requests(api, relationship, input)
     |> add_remove_requests(api, relationship, input)
     |> add_add_requests(api, relationship, input)
+  end
+
+  defp add_relationship_read_requests(changeset, api, relationship, input, :create) do
+    input =
+      case Map.fetch(input, :replace) do
+        {:ok, replacing} ->
+          Map.update(input, :add, replacing, &Kernel.++(&1, replacing))
+
+        _ ->
+          input
+      end
+
+    add_add_requests(changeset, api, relationship, input)
   end
 
   defp add_add_requests(changeset, api, relationship, input) do
@@ -203,7 +217,7 @@ defmodule Ash.Actions.Relationships do
       end
 
     request =
-      Ash.Engine2.Request.new(
+      Ash.Engine.Request.new(
         api: api,
         rules: default_read.rules,
         resource: relationship.destination,
@@ -212,7 +226,7 @@ defmodule Ash.Actions.Relationships do
         resolve_when_fetch_only?: true,
         path: [:relationships, relationship_name, type],
         data:
-          Ash.Engine2.Request.UnresolvedField.data([], fn _, _ ->
+          Ash.Engine.Request.UnresolvedField.data([], fn _data ->
             case api.read(destination, filter: filter, paginate: false) do
               {:ok, %{results: results}} -> {:ok, results}
               {:error, error} -> {:error, error}
@@ -223,7 +237,7 @@ defmodule Ash.Actions.Relationships do
 
     changeset
     |> add_requests(request)
-    |> changes_depend_on([:relationships, relationship_name, type])
+    |> changes_depend_on([:relationships, relationship_name, type, :data])
   end
 
   defp validate_relationship_change(relationship, data, action_type) do
@@ -345,14 +359,22 @@ defmodule Ash.Actions.Relationships do
     else
       dependencies = Map.get(changeset, :__changes_depend_on__, [])
 
-      Ash.Engine2.Request.UnresolvedField.field(dependencies, fn _request, _, %{root: data} ->
-        data
-        |> Map.get(:relationships, %{})
-        |> Enum.reduce(changeset, fn {relationship, relationship_data}, changeset ->
-          relationship = Ash.relationship(changeset.data.__struct__, relationship)
+      Ash.Engine.Request.UnresolvedField.field(dependencies, fn data ->
+        new_changeset =
+          data
+          |> Map.get(:relationships, %{})
+          |> Enum.reduce(changeset, fn {relationship, relationship_data}, changeset ->
+            relationship_data =
+              Enum.into(relationship_data, %{}, fn {key, value} ->
+                {key, value.data}
+              end)
 
-          add_relationship_to_changeset(changeset, api, relationship, relationship_data)
-        end)
+            relationship = Ash.relationship(changeset.data.__struct__, relationship)
+
+            add_relationship_to_changeset(changeset, api, relationship, relationship_data)
+          end)
+
+        {:ok, new_changeset}
       end)
     end
   end
@@ -425,8 +447,15 @@ defmodule Ash.Actions.Relationships do
        ) do
     pkey = Ash.primary_key(destination)
 
+    relationship_data = Map.put_new(relationship_data, :current, [])
+
     case relationship_data do
       %{current: [], replace: [new]} ->
+        changeset
+        |> relate_belongs_to(relationship, new)
+        |> add_relationship_change_metadata(relationship.name, %{add: [new]})
+
+      %{current: [], add: [new]} ->
         changeset
         |> relate_belongs_to(relationship, new)
         |> add_relationship_change_metadata(relationship.name, %{add: [new]})
@@ -824,7 +853,7 @@ defmodule Ash.Actions.Relationships do
 
     changeset
     |> add_requests(requests)
-    |> changes_depend_on([:relationships, relationship.name, :current])
+    |> changes_depend_on([:relationships, relationship.name, :current, :data])
   end
 
   defp add_relationship_currently_related_request(
@@ -841,7 +870,7 @@ defmodule Ash.Actions.Relationships do
     filter = Ash.Filter.parse(destination, filter_statement)
 
     request =
-      Ash.Engine2.Request.new(
+      Ash.Engine.Request.new(
         api: api,
         rules: default_read.rules,
         resource: destination,
@@ -850,8 +879,8 @@ defmodule Ash.Actions.Relationships do
         resolve_when_fetch_only?: true,
         filter: filter,
         data:
-          Ash.Engine2.Request.UnresolvedField.data([], fn _, _ ->
-            case api.read(destination, filter: filter_statement, paginate: false) do
+          Ash.Engine.Request.UnresolvedField.data([], fn _data ->
+            case api.read(destination, filter: filter, paginate: false) do
               {:ok, %{results: results}} -> {:ok, results}
               {:error, error} -> {:error, error}
             end
@@ -863,7 +892,7 @@ defmodule Ash.Actions.Relationships do
 
     changeset
     |> add_requests(request)
-    |> changes_depend_on([:relationships, relationship.name, :current])
+    |> changes_depend_on([:relationships, relationship.name, :current, :data])
   end
 
   defp many_to_many_join_resource_request(
@@ -878,7 +907,7 @@ defmodule Ash.Actions.Relationships do
     filter_statement = [{relationship.source_field_on_join_table, value}]
     filter = Ash.Filter.parse(through, filter_statement)
 
-    Ash.Engine2.Request.new(
+    Ash.Engine.Request.new(
       api: api,
       rules: default_read.rules,
       resource: through,
@@ -887,7 +916,7 @@ defmodule Ash.Actions.Relationships do
       filter: filter,
       resolve_when_fetch_only?: true,
       data:
-        Ash.Engine2.Request.UnresolvedField.data([], fn _, _ ->
+        Ash.Engine.Request.UnresolvedField.data([], fn _data ->
           case api.read(through, filter: filter_statement) do
             {:ok, %{results: results}} -> {:ok, results}
             {:error, error} -> {:error, error}
@@ -906,7 +935,7 @@ defmodule Ash.Actions.Relationships do
       Ash.primary_action(destination, :read) ||
         raise "Must have default read for #{inspect(destination)}"
 
-    Ash.Engine2.Request.new(
+    Ash.Engine.Request.new(
       api: api,
       rules: default_read.rules,
       resource: destination,
@@ -914,9 +943,9 @@ defmodule Ash.Actions.Relationships do
       resolve_when_fetch_only?: true,
       path: [:relationships, name, :current],
       filter:
-        Ash.Engine2.Request.UnresolvedField.field(
-          [[:relationships, name, :current_join]],
-          fn _, _, %{root: %{relationships: %{^name => %{current_join: current_join}}}} ->
+        Ash.Engine.Request.UnresolvedField.field(
+          [[:relationships, name, :current_join, :data]],
+          fn %{relationships: %{^name => %{current_join: %{data: current_join}}}} ->
             field_values =
               Enum.map(current_join, &Map.get(&1, relationship.destination_field_on_join_table))
 
@@ -926,9 +955,9 @@ defmodule Ash.Actions.Relationships do
           end
         ),
       data:
-        Ash.Engine2.Request.UnresolvedField.field(
-          [[:relationships, name, :current_join]],
-          fn _, _, %{root: %{relationships: %{^name => %{current_join: current_join}}}} ->
+        Ash.Engine.Request.UnresolvedField.field(
+          [[:relationships, name, :current_join, :data]],
+          fn %{relationships: %{^name => %{current_join: %{data: current_join}}}} ->
             field_values =
               Enum.map(current_join, &Map.get(&1, relationship.destination_field_on_join_table))
 

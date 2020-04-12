@@ -8,4 +8,6 @@ defmodule Ash.Authorization.Check.RelationshipBuiltInChecks do
   def relationship_set() do
     {Ash.Authorization.Check.RelationshipSet, []}
   end
+
+  def logged_in(), do: {Ash.Authorization.Check.LoggedIn, []}
 end

@@ -1,120 +1,204 @@
 defmodule Ash.Engine.Request do
-  require Logger
+  alias Ash.Authorization.{Check, Clause}
 
-  @fields_that_change_sometimes [
-    :changeset,
-    :is_fetched,
-    :strict_check_completed?
-  ]
+  defmodule UnresolvedField do
+    defstruct [:resolver, depends_on: [], can_use: [], data?: false]
 
-  defstruct [
-    :resource,
-    :rules,
-    :filter,
-    :action_type,
-    :dependencies,
-    :bypass_strict_access?,
-    :relationship,
-    :fetcher,
-    :source,
-    :optional_state,
-    :must_fetch?,
-    :is_fetched,
-    :state_key,
-    :strict_check_completed?,
-    :api,
-    :changeset
-  ]
+    def data(dependencies, can_use \\ [], func) do
+      %__MODULE__{
+        resolver: func,
+        depends_on: deps(dependencies),
+        can_use: deps(can_use),
+        data?: true
+      }
+    end
 
-  @type t :: %__MODULE__{
-          action_type: atom,
-          resource: Ash.resource(),
-          rules: list(term),
-          filter: Ash.Filter.t(),
-          changeset: Ecto.Changeset.t(),
-          dependencies: list(term),
-          optional_state: list(term),
-          is_fetched: (term -> boolean),
-          fetcher: term,
-          relationship: list(atom),
-          bypass_strict_access?: boolean,
-          strict_check_completed?: boolean,
-          source: String.t(),
-          must_fetch?: boolean,
-          state_key: term,
-          api: Ash.api()
-        }
+    def field(dependencies, can_use \\ [], func) do
+      %__MODULE__{
+        resolver: func,
+        depends_on: deps(dependencies),
+        can_use: deps(can_use),
+        data?: false
+      }
+    end
 
-  def new(opts) do
-    opts =
-      opts
-      |> Keyword.put_new(:relationship, [])
-      |> Keyword.put_new(:rules, [])
-      |> Keyword.put_new(:bypass_strict_access?, false)
-      |> Keyword.update(:dependencies, [], &List.wrap/1)
-      |> Keyword.update(:optional_state, [], &List.wrap/1)
-      |> Keyword.put_new(:strict_check_completed?, false)
-      |> Keyword.put_new(:is_fetched, fn _ -> true end)
-      |> Keyword.put_new(:must_fetch?, false)
-      |> Keyword.delete(:clause_source)
-      |> Keyword.update!(:rules, fn steps ->
-        Enum.map(steps, fn {step, fact} ->
-          {step,
-           Ash.Authorization.Clause.new(
-             opts[:relationship] || [],
-             opts[:resource],
-             fact,
-             opts[:clause_source] || :root
-           )}
-        end)
-      end)
-
-    struct!(__MODULE__, opts)
+    defp deps(deps) do
+      deps
+      |> List.wrap()
+      |> Enum.map(fn dep -> List.wrap(dep) end)
+    end
   end
 
-  def authorize_always(request) do
-    %{
-      request
-      | rules: [
-          authorize_if:
-            Ash.Authorization.Clause.new(
-              request.relationship,
-              request.resource,
-              {Ash.Authorization.Check.Static, result: true},
-              :root
-            )
-        ]
+  defimpl Inspect, for: UnresolvedField do
+    import Inspect.Algebra
+
+    def inspect(field, opts) do
+      data =
+        if field.data? do
+          "data! "
+        else
+          ""
+        end
+
+      concat([
+        "#UnresolvedField<",
+        data,
+        "needs: ",
+        to_doc(field.depends_on, opts),
+        ", can_use: ",
+        to_doc(field.can_use, opts),
+        ">"
+      ])
+    end
+  end
+
+  defmodule ResolveError do
+    defstruct [:error]
+  end
+
+  defstruct [
+    :id,
+    :error?,
+    :rules,
+    :strict_check_complete?,
+    :strict_access?,
+    :resource,
+    :changeset,
+    :path,
+    :action_type,
+    :data,
+    :resolve_when_fetch_only?,
+    :name,
+    :filter,
+    :context
+  ]
+
+  def new(opts) do
+    filter =
+      case opts[:filter] do
+        %UnresolvedField{} ->
+          nil
+
+        %Ash.Filter{} = filter ->
+          filter
+
+        nil ->
+          nil
+
+        other ->
+          Ash.Filter.parse(opts[:resource], other)
+      end
+
+    rules =
+      Enum.map(opts[:rules] || [], fn {rule, fact} ->
+        {rule,
+         Ash.Authorization.Clause.new(
+           opts[:resource],
+           fact,
+           filter
+         )}
+      end)
+
+    %__MODULE__{
+      id: Ecto.UUID.generate(),
+      rules: rules,
+      strict_access?: Keyword.get(opts, :strict_access?, true),
+      resource: opts[:resource],
+      changeset: opts[:changeset],
+      path: List.wrap(opts[:path]),
+      action_type: opts[:action_type],
+      data: opts[:data],
+      resolve_when_fetch_only?: opts[:resolve_when_fetch_only?],
+      filter: filter,
+      name: opts[:name],
+      context: opts[:context] || %{}
     }
   end
 
-  def can_strict_check?(%{changeset: changeset}) when is_function(changeset), do: false
-  def can_strict_check?(%{filter: filter}) when is_function(filter), do: false
-  def can_strict_check?(%{strict_check_completed?: false}), do: true
-  def can_strict_check?(_), do: false
+  def can_strict_check?(%__MODULE__{strict_check_complete?: true}), do: false
 
-  def dependencies_met?(_state, %{dependencies: []}), do: true
-  def dependencies_met?(_state, %{dependencies: nil}), do: true
-
-  def dependencies_met?(state, %{dependencies: dependencies}) do
-    Enum.all?(dependencies, fn dependency ->
-      case fetch_nested_value(state, dependency) do
-        {:ok, _} -> true
-        _ -> false
-      end
+  def can_strict_check?(request) do
+    request
+    |> Map.from_struct()
+    |> Enum.all?(fn {_key, value} ->
+      !match?(%UnresolvedField{data?: false}, value)
     end)
   end
 
-  def unmet_dependencies(_state, %{dependencies: []}), do: []
-  def unmet_dependencies(_state, %{dependencies: nil}), do: []
+  def authorize_always(request) do
+    clause = Clause.new(request.resource, {Check.Static, result: true})
 
-  def unmet_dependencies(state, %{dependencies: dependencies}) do
-    Enum.reject(dependencies, fn dependency ->
-      case fetch_nested_value(state, dependency) do
-        {:ok, _} -> true
-        _ -> false
-      end
-    end)
+    %{request | rules: [authorize_if: clause]}
   end
+
+  def errors(request) do
+    request
+    |> Map.from_struct()
+    |> Enum.filter(fn {_key, value} ->
+      match?(%ResolveError{}, value)
+    end)
+    |> Enum.into(%{})
+  end
+
+  # def resolve_fields(
+  #       request,
+  #       data,
+  #       include_data? \\ false
+  #     ) do
+  #   request
+  #   |> Map.from_struct()
+  #   |> Enum.reduce(request, fn {key, value}, request ->
+  #     case value do
+  #       %UnresolvedField{depends_on: dependencies, data?: data?}
+  #       when include_data? or data? == false ->
+  #         if dependencies_met?(data, dependencies) do
+  #           case resolve_field(data, value) do
+  #             {:ok, new_value} ->
+  #               Map.put(request, key, new_value)
+
+  #             %UnresolvedField{} = new_field ->
+  #               Map.put(request, key, new_field)
+
+  #             {:error, error} ->
+  #               Map.put(request, key, %ResolveError{error: error})
+  #           end
+  #         else
+  #           request
+  #         end
+
+  #       _ ->
+  #         request
+  #     end
+  #   end)
+  # end
+
+  def data_resolved?(%__MODULE__{data: %UnresolvedField{}}), do: false
+  def data_resolved?(_), do: true
+
+  def resolve_field(data, %UnresolvedField{resolver: resolver} = unresolved) do
+    context = resolver_context(data, unresolved)
+
+    resolver.(context)
+  end
+
+  def resolve_data(data, %{data: %UnresolvedField{resolver: resolver} = unresolved} = request) do
+    # {new_data = resolve_
+    context = resolver_context(data, unresolved)
+
+    case resolver.(context) do
+      {:ok, resolved} -> {:ok, Map.put(request, :data, resolved)}
+      {:error, error} -> {:error, error}
+    end
+  rescue
+    e ->
+      if is_map(e) do
+        {:error, Map.put(e, :__stacktrace__, __STACKTRACE__)}
+      else
+        {:error, e}
+      end
+  end
+
+  def resolve_data(_, request), do: {:ok, request}
 
   def contains_clause?(request, clause) do
     Enum.any?(request.rules, fn {_step, request_clause} ->
@@ -122,84 +206,81 @@ defmodule Ash.Engine.Request do
     end)
   end
 
-  def fetched?(_, %{is_fetched: boolean}) when is_boolean(boolean) do
-    boolean
-  end
-
-  def fetched?(state, request) do
-    case fetch_request_state(state, request) do
-      {:ok, value} ->
-        request.is_fetched.(value)
-
-      :error ->
-        false
-    end
-  end
-
-  def depends_on?(request, other_request) do
-    state_key(request) in other_request.dependencies
-  end
-
-  def state_key(%{state_key: state_key} = request) do
-    List.wrap(state_key || Map.drop(request, @fields_that_change_sometimes))
-  end
-
-  def put_request_state(state, request, value) do
-    key = state_key(request)
-
-    put_nested_key(state, key, value)
+  def put_request(state, request) do
+    put_nested_key(state, request.path, request)
   end
 
   def fetch_request_state(state, request) do
-    key = state_key(request)
-
-    fetch_nested_value(state, key)
+    fetch_nested_value(state, request.path)
   end
 
-  def fetch(
-        state,
-        %{fetcher: fetcher, changeset: changeset} = request
-      ) do
-    fetcher_state =
-      %{}
-      |> add_dependent_state(state, request)
-      |> add_optional_state(state, request)
+  defp resolver_context(state, %{depends_on: depends_on, can_use: can_use}) do
+    with_dependencies =
+      Enum.reduce(depends_on, %{}, fn dependency, acc ->
+        {:ok, value} = fetch_nested_value(state, dependency)
+        put_nested_key(acc, dependency, value)
+      end)
 
-    Logger.debug("Fetching: #{request.source}")
-
-    case fetcher.(changeset, fetcher_state) do
-      {:ok, value} ->
-        {:ok, put_request_state(state, request, value)}
-
-      {:error, error} ->
-        {:error, error}
-    end
+    Enum.reduce(can_use, with_dependencies, fn can_use, acc ->
+      case fetch_nested_value(state, can_use) do
+        {:ok, value} -> put_nested_key(acc, can_use, value)
+        _ -> acc
+      end
+    end)
   end
 
-  def dependent_fields_fetched?(%{changeset: changeset}) when is_function(changeset), do: false
-  def dependent_fields_fetched?(%{filter: filter}) when is_function(filter), do: false
-  def dependent_fields_fetched?(%{changeset: _}), do: true
+  def all_dependencies_met?(request, state) do
+    dependencies_met?(state, get_dependencies(request))
+  end
 
-  def fetch_dependent_fields(state, request) do
-    fetcher_state =
-      %{}
-      |> add_dependent_state(state, request)
-      |> add_optional_state(state, request)
+  def dependencies_met?(state, dependencies, sources \\ [])
+  def dependencies_met?(_state, [], _sources), do: {true, []}
+  def dependencies_met?(_state, nil, _sources), do: {true, []}
 
-    Logger.debug("Fetching changeset for #{request.source}")
+  def dependencies_met?(state, dependencies, sources) do
+    Enum.reduce(dependencies, {true, []}, fn
+      _, false ->
+        false
 
-    case fetch_changeset(fetcher_state, request) do
-      {:ok, request} ->
-        fetch_filter(fetcher_state, request)
+      dependency, {true, if_resolved} ->
+        if dependency in sources do
+          # Prevent infinite loop on co-dependent requests
+          # Does it make sense to have to do this?
+          false
+        else
+          case fetch_nested_value(state, dependency) do
+            {:ok, %UnresolvedField{depends_on: nested_dependencies}} ->
+              case dependencies_met?(state, nested_dependencies, [dependency | sources]) do
+                {true, nested_if_resolved} ->
+                  {true, [dependency | if_resolved] ++ nested_if_resolved}
 
-      {:error, error} ->
-        {:error, error}
-    end
+                false ->
+                  false
+              end
+
+            {:ok, _} ->
+              {true, if_resolved}
+
+            _ ->
+              false
+          end
+        end
+    end)
+  end
+
+  def depends_on?(request, other_request) do
+    dependencies = get_dependencies(request)
+
+    Enum.any?(dependencies, fn dep ->
+      List.starts_with?(dep, other_request.path)
+    end)
   end
 
   def fetch_nested_value(state, [key]) when is_map(state) do
     Map.fetch(state, key)
   end
+
+  def fetch_nested_value(%UnresolvedField{}, _), do: :error
 
   def fetch_nested_value(state, [key | rest]) when is_map(state) do
     case Map.fetch(state, key) do
@@ -212,67 +293,20 @@ defmodule Ash.Engine.Request do
     Map.fetch(state, key)
   end
 
-  defp add_dependent_state(arg, state, %{dependencies: dependencies}) do
-    Enum.reduce(dependencies, arg, fn dependency, acc ->
-      {:ok, value} = fetch_nested_value(state, dependency)
-      put_nested_key(acc, dependency, value)
-    end)
-  end
+  defp get_dependencies(request) do
+    request
+    |> Map.from_struct()
+    |> Enum.flat_map(fn {_key, value} ->
+      case value do
+        %UnresolvedField{depends_on: values} ->
+          values
 
-  defp add_optional_state(arg, state, %{optional_state: optional_state}) do
-    Enum.reduce(optional_state, arg, fn optional, arg ->
-      case fetch_nested_value(state, optional) do
-        {:ok, value} -> put_nested_key(arg, optional, value)
-        :error -> arg
+        _ ->
+          []
       end
     end)
+    |> Enum.uniq()
   end
-
-  defp fetch_changeset(state, %{dependencies: dependencies, changeset: changeset} = request)
-       when is_function(changeset) do
-    arg =
-      Enum.reduce(dependencies, %{}, fn dependency, acc ->
-        {:ok, value} = fetch_nested_value(state, dependency)
-        put_nested_key(acc, dependency, value)
-      end)
-
-    case changeset.(arg) do
-      %Ecto.Changeset{} = new_changeset ->
-        {:ok, %{request | changeset: new_changeset}}
-
-      {:ok, new_changeset} ->
-        {:ok, %{request | changeset: new_changeset}}
-
-      {:error, error} ->
-        {:error, error}
-    end
-  end
-
-  defp fetch_changeset(_state, request), do: {:ok, request}
-
-  defp fetch_filter(state, %{dependencies: dependencies, filter: filter} = request)
-       when is_function(filter) do
-    arg =
-      Enum.reduce(dependencies, %{}, fn dependency, acc ->
-        {:ok, value} = fetch_nested_value(state, dependency)
-        put_nested_key(acc, dependency, value)
-      end)
-
-    Logger.debug("Fetching filter: #{request.source}")
-
-    case filter.(arg) do
-      %Ash.Filter{} = new_filter ->
-        {:ok, %{request | filter: new_filter}}
-
-      {:ok, new_filter} ->
-        {:ok, %{request | filter: new_filter}}
-
-      {:error, error} ->
-        {:error, error}
-    end
-  end
-
-  defp fetch_filter(_state, request), do: {:ok, request}
 
   defp put_nested_key(state, [key], value) do
     Map.put(state, key, value)

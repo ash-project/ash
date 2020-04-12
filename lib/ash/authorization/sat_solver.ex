@@ -3,30 +3,7 @@ defmodule Ash.Authorization.SatSolver do
 
   @dialyzer {:no_return, :"picosat_solve/1"}
 
-  def solve(requests, facts, negations, ids) when is_nil(ids) do
-    requests
-    |> Enum.map(&Map.get(&1, :rules))
-    |> build_requirements_expression(facts, nil)
-    |> add_negations_and_solve(negations)
-  end
-
-  def solve(requests, facts, negations, ids) do
-    sets_of_rules = Enum.map(requests, &Map.get(&1, :rules))
-
-    ids
-    |> Enum.reduce(nil, fn id, expr ->
-      requirements_expression = build_requirements_expression(sets_of_rules, facts, id)
-
-      if expr do
-        {:and, expr, requirements_expression}
-      else
-        requirements_expression
-      end
-    end)
-    |> add_negations_and_solve(negations)
-  end
-
-  def solve2(rules_with_filters, facts) do
+  def solve(rules_with_filters, facts) do
     expression =
       Enum.reduce(rules_with_filters, nil, fn rules_with_filter, expr ->
         {rules, filter} =
@@ -67,8 +44,8 @@ defmodule Ash.Authorization.SatSolver do
 
   defp get_all_scenarios({:ok, scenario}, expression, scenarios) do
     expression
-    |> add_negations_and_solve([scenario | scenarios])
-    |> get_all_scenarios(expression, [scenario | scenarios])
+    |> add_negations_and_solve([Map.drop(scenario, [true, false]) | scenarios])
+    |> get_all_scenarios(expression, [Map.drop(scenario, [true, false]) | scenarios])
   end
 
   defp remove_irrelevant_clauses(scenarios) do
@@ -136,18 +113,20 @@ defmodule Ash.Authorization.SatSolver do
         requirements_expression
       end
 
-    {bindings, expression} = extract_bindings(full_expression)
+    expression_with_constants = {:and, true, {:and, {:not, false}, full_expression}}
+
+    {bindings, expression} = extract_bindings(expression_with_constants)
 
     expression
     |> to_conjunctive_normal_form()
     |> lift_clauses()
     |> negations_to_negative_numbers()
-    |> picosat_solve()
+    |> satsolver_solve()
     |> solutions_to_predicate_values(bindings)
   end
 
-  defp picosat_solve(equation) do
-    Picosat.solve(equation)
+  def satsolver_solve(input) do
+    Picosat.solve(input)
   end
 
   defp facts_to_statement(facts) do
@@ -188,7 +167,7 @@ defmodule Ash.Authorization.SatSolver do
         end
       end)
 
-    facts_expression = facts_to_statement(facts)
+    facts_expression = facts_to_statement(Map.drop(facts, [true, false]))
 
     if facts_expression do
       {:and, facts_expression, rules_expression}

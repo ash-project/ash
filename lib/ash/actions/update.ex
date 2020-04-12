@@ -1,6 +1,7 @@
 defmodule Ash.Actions.Update do
   alias Ash.Engine
   alias Ash.Actions.{Attributes, Relationships, SideLoad}
+  require Logger
 
   @spec run(Ash.api(), Ash.record(), Ash.action(), Ash.params()) ::
           {:ok, Ash.record()} | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
@@ -39,14 +40,35 @@ defmodule Ash.Actions.Update do
          %{valid?: true} = changeset <- changeset(record, api, params),
          {:ok, side_load_requests} <-
            SideLoad.requests(api, resource, side_loads, :update, side_load_filter),
-         {:ok, %{data: updated}} = state <-
+         %{data: %{data: %{data: updated}}} = state <-
            do_authorized(changeset, params, action, resource, api, side_load_requests) do
       {:ok, SideLoad.attach_side_loads(updated, state)}
     else
       %Ecto.Changeset{} = changeset ->
         {:error, changeset}
 
+      %{errors: errors} ->
+        if params[:authorization][:log_final_report?] do
+          case errors do
+            %{__engine__: errors} ->
+              for %Ash.Error.Forbidden{} = forbidden <- List.wrap(errors) do
+                Logger.info(Ash.Error.Forbidden.report_text(forbidden))
+              end
+
+            _ ->
+              :ok
+          end
+        end
+
+        {:error, errors}
+
       {:error, error} ->
+        if params[:authorization][:log_final_report?] do
+          for %Ash.Error.Forbidden{} = forbidden <- List.wrap(error) do
+            Logger.info(Ash.Error.Forbidden.report_text(forbidden))
+          end
+        end
+
         {:error, error}
     end
   end
@@ -64,7 +86,7 @@ defmodule Ash.Actions.Update do
     relationships = Keyword.get(params, :relationships)
 
     update_request =
-      Ash.Engine2.Request.new(
+      Ash.Engine.Request.new(
         api: api,
         rules: action.rules,
         changeset:
@@ -75,21 +97,24 @@ defmodule Ash.Actions.Update do
           ),
         action_type: action.type,
         data:
-          Ash.Engine2.Request.UnresolvedField.data([], fn request, _data ->
-            resource
-            |> Ash.DataLayer.update(request.changeset)
-            |> case do
-              {:ok, result} ->
-                request.changeset
-                |> Map.get(:__after_changes__, [])
-                |> Enum.reduce_while({:ok, result}, fn func, {:ok, result} ->
-                  case func.(request.changeset, result) do
-                    {:ok, result} -> {:cont, {:ok, result}}
-                    {:error, error} -> {:halt, {:error, error}}
-                  end
-                end)
+          Ash.Engine.Request.UnresolvedField.data(
+            [[:data, :changeset]],
+            fn %{data: %{changeset: changeset}} ->
+              resource
+              |> Ash.DataLayer.update(changeset)
+              |> case do
+                {:ok, result} ->
+                  changeset
+                  |> Map.get(:__after_changes__, [])
+                  |> Enum.reduce_while({:ok, result}, fn func, {:ok, result} ->
+                    case func.(changeset, result) do
+                      {:ok, result} -> {:cont, {:ok, result}}
+                      {:error, error} -> {:halt, {:error, error}}
+                    end
+                  end)
+              end
             end
-          end),
+          ),
         path: :data,
         resolve_when_fetch_only?: true,
         name: "#{action.type} - `#{action.name}`"
@@ -107,17 +132,16 @@ defmodule Ash.Actions.Update do
         end
 
       Engine.run(
-        params[:authorization][:user],
         [update_request | attribute_requests] ++ relationship_requests ++ side_load_requests,
+        api,
         strict_access?: strict_access?,
+        user: params[:authorization][:user],
         log_final_report?: params[:authorization][:log_final_report?] || false
       )
     else
-      authorization = params[:authorization] || []
-
       Engine.run(
-        authorization[:user],
         [update_request | attribute_requests] ++ relationship_requests ++ side_load_requests,
+        api,
         fetch_only?: true
       )
     end

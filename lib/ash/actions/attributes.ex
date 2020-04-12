@@ -15,11 +15,16 @@ defmodule Ash.Actions.Attributes do
         resource: resource,
         changeset: changeset,
         action_type: action.type,
-        dependencies: [[:data]],
-        fetcher: fn _, %{data: data} -> {:ok, data} end,
-        state_key: :data,
-        relationship: [],
-        source: "change on `#{attribute.name}`"
+        data:
+          Ash.Engine.Request.UnresolvedField.data(
+            [[:data, :data]],
+            fn %{data: %{data: data}} ->
+              {:ok, data}
+            end
+          ),
+        path: :data,
+        name: "change on `#{attribute.name}`",
+        strict_access?: false
       )
     end)
   end

@@ -47,4 +47,6 @@ defmodule Ash.Authorization.Check.BuiltInChecks do
   def relationship_set(relationship_name) do
     {Ash.Authorization.Check.RelationshipSet, [relationship_name: relationship_name]}
   end
+
+  def logged_in(), do: {Ash.Authorization.Check.LoggedIn, []}
 end

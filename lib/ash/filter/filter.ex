@@ -62,24 +62,27 @@ defmodule Ash.Filter do
       parsed_filter
     else
       request =
-        Ash.Engine2.Request.new(
+        Ash.Engine.Request.new(
           resource: resource,
           api: api,
           rules: Ash.primary_action(resource, :read).rules,
           filter: parsed_filter,
           path: [:filter, path],
           data:
-            Ash.Engine2.Request.UnresolvedField.data([], fn request, _data ->
-              query = Ash.DataLayer.resource_to_query(resource)
+            Ash.Engine.Request.UnresolvedField.data(
+              [:filter, path, :filter],
+              fn %{filter: %{^path => %{filter: filter}}} ->
+                query = Ash.DataLayer.resource_to_query(resource)
 
-              case Ash.DataLayer.filter(query, request.filter, resource) do
-                {:ok, filtered_query} ->
-                  Ash.DataLayer.run_query(filtered_query, resource)
+                case Ash.DataLayer.filter(query, filter, resource) do
+                  {:ok, filtered_query} ->
+                    Ash.DataLayer.run_query(filtered_query, resource)
 
-                {:error, error} ->
-                  {:error, error}
+                  {:error, error} ->
+                    {:error, error}
+                end
               end
-            end),
+            ),
           action_type: :read,
           # TODO: replace `bypass_strict_access?/1` with `strict_access?/1`
           strict_access?: not bypass_strict_access?(parsed_filter),
@@ -126,7 +129,7 @@ defmodule Ash.Filter do
     |> paths_and_data(data)
     |> most_specific_paths()
     |> Enum.reduce(filter, fn {path, related_data}, filter ->
-      [:root, :filter, relationship_path] = path
+      [:filter, relationship_path] = path
 
       filter
       |> add_records_to_relationship_filter(
@@ -168,6 +171,10 @@ defmodule Ash.Filter do
   def strict_subset_of?(nil, nil), do: true
 
   def strict_subset_of?(_, nil), do: false
+
+  def strict_subset_of?(%{resource: resource}, %{resource: other_resource})
+      when resource != other_resource,
+      do: false
 
   def strict_subset_of?(filter, candidate) do
     # TODO: Finish this!

@@ -1,24 +1,13 @@
 defmodule Ash.Authorization.Clause do
-  defstruct [:path, :resource, :source, :check_module, :check_opts, :filter]
+  defstruct [:path, :resource, :check_module, :check_opts, :filter]
 
-  def new(_path, resource, {mod, opts}, source, filter \\ nil) do
+  def new(resource, {mod, opts}, filter \\ nil) do
     %__MODULE__{
-      # path: path,
-      source: source,
       resource: resource,
       check_module: mod,
       check_opts: opts,
       filter: filter
     }
-  end
-
-  # TODO: Should we for sure special case this? I see no reason not to.
-  def put_new_fact(facts, _path, _resource, {Ash.Authorization.Clause.Static, _}, _) do
-    facts
-  end
-
-  def put_new_fact(facts, path, resource, {mod, opts}, value, filter \\ nil) do
-    Map.put(facts, new(path, resource, {mod, opts}, filter), value)
   end
 
   def find(_clauses, %{check_module: Ash.Authorization.Check.Static, check_opts: check_opts}) do
@@ -41,18 +30,47 @@ defmodule Ash.Authorization.Clause do
     {:or, clause, %{clause | filter: nil}}
   end
 
+  def prune_facts(facts) do
+    new_facts = do_prune_facts(facts)
+
+    if new_facts == facts do
+      new_facts
+    else
+      do_prune_facts(new_facts)
+    end
+  end
+
+  defp do_prune_facts(facts) do
+    Enum.reduce(facts, facts, fn {clause, _value}, facts ->
+      without_clause = Map.delete(facts, clause)
+
+      case find(without_clause, clause) do
+        nil ->
+          without_clause
+
+        _ ->
+          facts
+      end
+    end)
+  end
+
   defp is_matching_clause?(clause, clause), do: true
 
   defp is_matching_clause?(clause, other_clause)
        when is_boolean(clause) or is_boolean(other_clause),
        do: false
 
-  defp is_matching_clause?(_, %__MODULE__{filter: nil}), do: true
+  defp is_matching_clause?(clause, %__MODULE__{filter: nil} = potential_matching) do
+    Map.take(clause, [:resource, :check_module, :check_opts]) ==
+      Map.take(potential_matching, [:resource, :check_module, :check_opts])
+  end
+
   defp is_matching_clause?(%__MODULE__{filter: nil}, _), do: false
 
   defp is_matching_clause?(clause, potential_matching) do
-    Map.put(clause, :filter, nil) == Map.put(potential_matching, :filter, nil) &&
-      Ash.Filter.strict_subset_of?(potential_matching.filter, clause.filter)
+    Ash.Filter.strict_subset_of?(potential_matching.filter, clause.filter) &&
+      Map.take(clause, [:resource, :check_module, :check_opts]) ==
+        Map.take(potential_matching, [:resource, :check_module, :check_opts])
   end
 end
 
@@ -67,17 +85,8 @@ defimpl Inspect, for: Ash.Authorization.Clause do
         ""
       end
 
-    source =
-      case clause.source do
-        :root ->
-          ""
-
-        source ->
-          to_string(source)
-      end
-
     terminator =
-      if filter != "" || source != "" do
+      if filter != "" do
         ": "
       else
         ""
@@ -85,7 +94,6 @@ defimpl Inspect, for: Ash.Authorization.Clause do
 
     concat([
       "#Clause<",
-      source,
       filter,
       terminator,
       to_doc(clause.check_module.describe(clause.check_opts), opts),

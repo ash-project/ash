@@ -1,6 +1,7 @@
 defmodule Ash.Actions.Create do
   alias Ash.Engine
   alias Ash.Actions.{Attributes, Relationships, SideLoad}
+  require Logger
 
   @spec run(Ash.api(), Ash.resource(), Ash.action(), Ash.params()) ::
           {:ok, Ash.record()} | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
@@ -37,15 +38,36 @@ defmodule Ash.Actions.Create do
          params <- Keyword.merge(params, attributes: attributes, relationships: relationships),
          %{valid?: true} = changeset <- changeset(api, resource, params),
          {:ok, side_load_requests} <-
-           SideLoad.requests(api, resource, side_loads, :create, side_load_filter),
-         {:ok, %{data: created} = state} <-
+           SideLoad.requests(api, resource, side_loads, side_load_filter, :create),
+         %{data: %{data: %{data: %^resource{} = created}}} = state <-
            do_authorized(changeset, params, action, resource, api, side_load_requests) do
       {:ok, SideLoad.attach_side_loads(created, state)}
     else
       %Ecto.Changeset{} = changeset ->
         {:error, changeset}
 
+      %{errors: errors} when errors != %{} ->
+        if params[:authorization][:log_final_report?] do
+          case errors do
+            %{__engine__: errors} ->
+              for %Ash.Error.Forbidden{} = forbidden <- List.wrap(errors) do
+                Logger.info(Ash.Error.Forbidden.report_text(forbidden))
+              end
+
+            _ ->
+              :ok
+          end
+        end
+
+        {:error, errors}
+
       {:error, error} ->
+        if params[:authorization][:log_final_report?] do
+          for %Ash.Error.Forbidden{} = forbidden <- List.wrap(error) do
+            Logger.info(Ash.Error.Forbidden.report_text(forbidden))
+          end
+        end
+
         {:error, error}
     end
   end
@@ -63,7 +85,7 @@ defmodule Ash.Actions.Create do
     relationships = Keyword.get(params, :relationships, %{})
 
     create_request =
-      Ash.Engine2.Request.new(
+      Ash.Engine.Request.new(
         api: api,
         rules: action.rules,
         resource: resource,
@@ -74,22 +96,29 @@ defmodule Ash.Actions.Create do
             relationships
           ),
         action_type: action.type,
+        strict_access?: false,
         data:
-          Ash.Engine2.Request.UnresolvedField.data([], fn request, _data ->
-            resource
-            |> Ash.DataLayer.create(request.changeset)
-            |> case do
-              {:ok, result} ->
-                request.changeset
-                |> Map.get(:__after_changes__, [])
-                |> Enum.reduce_while({:ok, result}, fn func, {:ok, result} ->
-                  case func.(request.changeset, result) do
-                    {:ok, result} -> {:cont, {:ok, result}}
-                    {:error, error} -> {:halt, {:error, error}}
-                  end
-                end)
+          Ash.Engine.Request.UnresolvedField.data(
+            [[:data, :changeset]],
+            fn %{data: %{changeset: changeset}} ->
+              resource
+              |> Ash.DataLayer.create(changeset)
+              |> case do
+                {:ok, result} ->
+                  changeset
+                  |> Map.get(:__after_changes__, [])
+                  |> Enum.reduce_while({:ok, result}, fn func, {:ok, result} ->
+                    case func.(changeset, result) do
+                      {:ok, result} -> {:cont, {:ok, result}}
+                      {:error, error} -> {:halt, {:error, error}}
+                    end
+                  end)
+
+                {:error, error} ->
+                  {:error, error}
+              end
             end
-          end),
+          ),
         resolve_when_fetch_only?: true,
         path: [:data],
         name: "#{action.type} - `#{action.name}`"
@@ -109,26 +138,18 @@ defmodule Ash.Actions.Create do
       )
 
     if params[:authorization] do
-      strict_access? =
-        case Keyword.fetch(params[:authorization], :strict_access?) do
-          {:ok, value} -> value
-          :error -> false
-        end
-
       Engine.run(
-        params[:authorization][:user],
         [create_request | attribute_requests] ++
           relationship_read_requests ++ relationship_change_requests ++ side_load_requests,
-        strict_access?: strict_access?,
+        api,
+        user: params[:authorization][:user],
         log_final_report?: params[:authorization][:log_final_report?] || false
       )
     else
-      authorization = params[:authorization] || []
-
       Engine.run(
-        authorization[:user],
         [create_request | attribute_requests] ++
           relationship_read_requests ++ relationship_change_requests ++ side_load_requests,
+        api,
         fetch_only?: true
       )
     end

@@ -1,7 +1,8 @@
 defmodule Ash.Actions.Read do
-  alias Ash.Engine2
-  alias Ash.Engine2.Request
+  alias Ash.Engine
+  alias Ash.Engine.Request
   alias Ash.Actions.SideLoad
+  require Logger
 
   def run(api, resource, action, params) do
     transaction_result =
@@ -39,7 +40,7 @@ defmodule Ash.Actions.Read do
            SideLoad.requests(api, resource, side_loads, filter, side_load_filter),
          {:ok, paginator} <-
            Ash.Actions.Paginator.paginate(api, resource, action, sorted_query, page_params),
-         %{data: %{root: %{data: data}}, errors: errors} = engine when errors == %{} <-
+         %{data: %{data: %{data: data}}, errors: errors} = engine when errors == %{} <-
            do_authorized(
              paginator.query,
              params,
@@ -52,9 +53,29 @@ defmodule Ash.Actions.Read do
          paginator <- %{paginator | results: data} do
       {:ok, SideLoad.attach_side_loads(paginator, engine.data)}
     else
-      %{errors: errors} -> {:error, errors}
-      %Ash.Filter{errors: errors} -> {:error, errors}
-      {:error, error} -> {:error, error}
+      %{errors: errors} ->
+        if params[:authorization][:log_final_report?] do
+          case errors do
+            %{__engine__: errors} ->
+              for %Ash.Error.Forbidden{} = forbidden <- List.wrap(errors) do
+                Logger.info(Ash.Error.Forbidden.report_text(forbidden))
+              end
+
+            _ ->
+              :ok
+          end
+        end
+
+        {:error, errors}
+
+      {:error, error} ->
+        if params[:authorization][:log_final_report?] do
+          for %Ash.Error.Forbidden{} = forbidden <- List.wrap(error) do
+            Logger.info(Ash.Error.Forbidden.report_text(forbidden))
+          end
+        end
+
+        {:error, error}
     end
   end
 
@@ -66,31 +87,34 @@ defmodule Ash.Actions.Read do
         filter: filter,
         action_type: action.type,
         data:
-          Request.UnresolvedField.data([], Ash.Filter.optional_paths(filter), fn request, data ->
-            fetch_filter = Ash.Filter.request_filter_for_fetch(request.filter, data)
+          Request.UnresolvedField.data(
+            [[:data, :filter]],
+            Ash.Filter.optional_paths(filter),
+            fn %{data: %{filter: filter}} = data ->
+              fetch_filter = Ash.Filter.request_filter_for_fetch(filter, data)
 
-            case Ash.DataLayer.filter(query, fetch_filter, resource) do
-              {:ok, final_query} ->
-                Ash.DataLayer.run_query(final_query, resource)
+              case Ash.DataLayer.filter(query, fetch_filter, resource) do
+                {:ok, final_query} ->
+                  Ash.DataLayer.run_query(final_query, resource)
 
-              {:error, error} ->
-                {:error, error}
+                {:error, error} ->
+                  {:error, error}
+              end
             end
-          end),
+          ),
         resolve_when_fetch_only?: true,
         path: [:data],
         name: "#{action.type} - `#{action.name}`"
       )
 
     if params[:authorization] do
-      Engine2.run(
+      Engine.run(
         [request | requests],
         api,
-        user: params[:authorization][:user],
-        log_final_report?: params[:authorization][:log_final_report?] || false
+        user: params[:authorization][:user]
       )
     else
-      Engine2.run([request | requests], api, fetch_only?: true)
+      Engine.run([request | requests], api, fetch_only?: true)
     end
   end
 end

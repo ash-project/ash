@@ -477,6 +477,11 @@ defmodule Ash.Api.Interface do
     raise(Ash.Error.FrameworkError, message: "invalid changes #{inspect(changeset)}")
   end
 
+  defp unwrap_or_raise!({:error, error}) when is_map(error) do
+    # TODO: format this better!
+    raise Ash.Error.FrameworkError, message: "Engine errors: #{inspect(error)}"
+  end
+
   defp unwrap_or_raise!({:error, error}) when not is_list(error) do
     raise error
   end

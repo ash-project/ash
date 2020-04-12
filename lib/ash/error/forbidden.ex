@@ -7,7 +7,6 @@ defmodule Ash.Error.Forbidden do
     :scenarios,
     :requests,
     :facts,
-    :strict_check_facts,
     :state,
     :strict_access?,
     :reason,
@@ -20,9 +19,7 @@ defmodule Ash.Error.Forbidden do
       scenarios: error.scenarios,
       requests: error.requests,
       facts: error.facts,
-      strict_check_facts: error.strict_check_facts,
       state: error.state,
-      strict_access?: error.strict_access?,
       no_steps_configured: error.no_steps_configured,
       header: "forbidden:",
       authorized?: false
@@ -37,9 +34,7 @@ defmodule Ash.Error.Forbidden do
       scenarios: error.scenarios,
       requests: error.requests,
       facts: error.facts,
-      strict_check_facts: error.strict_check_facts,
       state: error.state,
-      strict_access?: error.strict_access?,
       no_steps_configured: error.no_steps_configured,
       header: header,
       authorized?: false
