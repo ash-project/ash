@@ -24,6 +24,7 @@ defmodule Ash.Actions.Attributes do
           ),
         path: :data,
         name: "change on `#{attribute.name}`",
+        write_to_data?: false,
         strict_access?: false
       )
     end)

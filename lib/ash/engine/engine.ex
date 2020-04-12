@@ -187,7 +187,7 @@ defmodule Ash.Engine do
         end
       end)
 
-    if replace_data? do
+    if replace_data? && new_request.write_to_data? do
       new_engine_data = Request.put_request(engine.data, new_request)
       %{engine | data: new_engine_data, requests: new_requests}
     else

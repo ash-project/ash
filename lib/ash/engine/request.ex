@@ -70,7 +70,8 @@ defmodule Ash.Engine.Request do
     :resolve_when_fetch_only?,
     :name,
     :filter,
-    :context
+    :context,
+    :write_to_data?
   ]
 
   def new(opts) do
@@ -111,7 +112,8 @@ defmodule Ash.Engine.Request do
       resolve_when_fetch_only?: opts[:resolve_when_fetch_only?],
       filter: filter,
       name: opts[:name],
-      context: opts[:context] || %{}
+      context: opts[:context] || %{},
+      write_to_data?: opts[:write_to_data?] || true
     }
   end
 

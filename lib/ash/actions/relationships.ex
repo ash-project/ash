@@ -90,7 +90,8 @@ defmodule Ash.Actions.Relationships do
                 end),
               path: :data,
               name: "#{relationship_name} edit",
-              strict_access?: false
+              strict_access?: false,
+              write_to_data?: false
             )
 
           [request]
@@ -244,7 +245,7 @@ defmodule Ash.Actions.Relationships do
     keyword? = Keyword.keyword?(data)
 
     cond do
-      relationship.cardinality == :many && keyword? ->
+      relationship.cardinality == :many && keyword? && data != [] ->
         {:error, "Relationship change invalid for #{relationship.name} 1"}
 
       keyword? ->

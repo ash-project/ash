@@ -40,7 +40,7 @@ defmodule Ash.Actions.Update do
          %{valid?: true} = changeset <- changeset(record, api, params),
          {:ok, side_load_requests} <-
            SideLoad.requests(api, resource, side_loads, :update, side_load_filter),
-         %{data: %{data: %{data: updated}}} = state <-
+         %{data: %{data: %{data: updated}}, errors: errors} = state when errors == %{} <-
            do_authorized(changeset, params, action, resource, api, side_load_requests) do
       {:ok, SideLoad.attach_side_loads(updated, state)}
     else
@@ -145,6 +145,7 @@ defmodule Ash.Actions.Update do
         fetch_only?: true
       )
     end
+    |> IO.inspect()
   end
 
   defp prepare_update_attributes(%resource{} = record, attributes) do
