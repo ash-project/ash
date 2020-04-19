@@ -86,6 +86,7 @@ defmodule Ash.Actions.Read do
         rules: action.rules,
         filter: filter,
         action_type: action.type,
+        strict_access?: !Ash.Filter.primary_key_filter?(filter),
         data:
           Request.UnresolvedField.data(
             [[:data, :filter]],

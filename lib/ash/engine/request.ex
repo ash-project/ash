@@ -60,7 +60,6 @@ defmodule Ash.Engine.Request do
     :id,
     :error?,
     :rules,
-    :strict_check_complete?,
     :strict_access?,
     :resource,
     :changeset,
@@ -71,7 +70,10 @@ defmodule Ash.Engine.Request do
     :name,
     :filter,
     :context,
-    :write_to_data?
+    :write_to_data?,
+    strict_check_complete?: false,
+    check_complete?: false,
+    prepared?: false
   ]
 
   def new(opts) do
@@ -141,38 +143,6 @@ defmodule Ash.Engine.Request do
     end)
     |> Enum.into(%{})
   end
-
-  # def resolve_fields(
-  #       request,
-  #       data,
-  #       include_data? \\ false
-  #     ) do
-  #   request
-  #   |> Map.from_struct()
-  #   |> Enum.reduce(request, fn {key, value}, request ->
-  #     case value do
-  #       %UnresolvedField{depends_on: dependencies, data?: data?}
-  #       when include_data? or data? == false ->
-  #         if dependencies_met?(data, dependencies) do
-  #           case resolve_field(data, value) do
-  #             {:ok, new_value} ->
-  #               Map.put(request, key, new_value)
-
-  #             %UnresolvedField{} = new_field ->
-  #               Map.put(request, key, new_field)
-
-  #             {:error, error} ->
-  #               Map.put(request, key, %ResolveError{error: error})
-  #           end
-  #         else
-  #           request
-  #         end
-
-  #       _ ->
-  #         request
-  #     end
-  #   end)
-  # end
 
   def data_resolved?(%__MODULE__{data: %UnresolvedField{}}), do: false
   def data_resolved?(_), do: true

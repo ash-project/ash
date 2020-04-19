@@ -84,8 +84,7 @@ defmodule Ash.Filter do
               end
             ),
           action_type: :read,
-          # TODO: replace `bypass_strict_access?/1` with `strict_access?/1`
-          strict_access?: not bypass_strict_access?(parsed_filter),
+          strict_access?: primary_key_filter?(parsed_filter),
           relationship: path,
           name: source
         )
@@ -96,6 +95,46 @@ defmodule Ash.Filter do
       )
     end
   end
+
+  def primary_key_filter?(nil), do: false
+
+  def primary_key_filter?(%{relationships: relationships}) when relationships not in [%{}, nil] do
+    false
+  end
+
+  def primary_key_filter?(%{attributes: attributes, not: not_filter, ors: ors, resource: resource}) do
+    not_filter_is_primary_key_filter? =
+      if not_filter do
+        primary_key_filter?(not_filter)
+      else
+        true
+      end
+
+    attributes_primary_key_filter?(attributes, resource) && Enum.all?(ors, &primary_key_filter?/1) &&
+      not_filter_is_primary_key_filter?
+  end
+
+  defp attributes_primary_key_filter?(attributes, resource) do
+    pkey = Ash.primary_key(resource)
+
+    Enum.all?(attributes, fn {key, value} ->
+      key in pkey && exact_match_filter?(value)
+    end)
+  end
+
+  defp exact_match_filter?(%Ash.Filter.Eq{}), do: true
+
+  defp exact_match_filter?(%Ash.Filter.And{left: left, right: right}) do
+    exact_match_filter?(left) && exact_match_filter?(right)
+  end
+
+  defp exact_match_filter?(%Ash.Filter.Or{left: left, right: right}) do
+    exact_match_filter?(left) && exact_match_filter?(right)
+  end
+
+  defp exact_match_filter?(%Ash.Filter.In{}), do: true
+
+  defp exact_match_filter?(_), do: false
 
   def optional_paths(filter) do
     filter
@@ -258,45 +297,6 @@ defmodule Ash.Filter do
       Enum.reject(ors, &Map.get(&1, :impossible))
     end)
   end
-
-  defp bypass_strict_access?(%{ors: ors, not: not_filter} = filter) when is_nil(not_filter) do
-    pkey_fields = Ash.primary_key(filter.resource)
-
-    Enum.all?(pkey_fields, &is_filtering_on_known_value_for_attribute(filter, &1)) &&
-      Enum.all?(ors || [], fn filter ->
-        Enum.all?(pkey_fields, &is_filtering_on_known_value_for_attribute(filter, &1))
-      end)
-  end
-
-  defp bypass_strict_access?(_), do: false
-
-  defp is_filtering_on_known_value_for_attribute(filter, field) do
-    case Map.fetch(filter.attributes, field) do
-      {:ok, attribute_filter} ->
-        known_value_filter?(attribute_filter)
-
-      :error ->
-        false
-    end
-  end
-
-  defp known_value_filter?(%Ash.Filter.And{left: left, right: right}) do
-    known_value_filter?(left) or known_value_filter?(right)
-  end
-
-  defp known_value_filter?(%Ash.Filter.Or{left: left, right: right}) do
-    known_value_filter?(left) and known_value_filter?(right)
-  end
-
-  defp known_value_filter?(%Ash.Filter.In{values: values}) when values != [] do
-    true
-  end
-
-  defp known_value_filter?(%Ash.Filter.Eq{value: value}) when not is_nil(value) do
-    true
-  end
-
-  defp known_value_filter?(_), do: false
 
   defp contains_relationship?(filter, relationship, candidate_relationship_filter) do
     filter_with_only_relationship_filters =

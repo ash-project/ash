@@ -145,7 +145,6 @@ defmodule Ash.Actions.Update do
         fetch_only?: true
       )
     end
-    |> IO.inspect()
   end
 
   defp prepare_update_attributes(%resource{} = record, attributes) do

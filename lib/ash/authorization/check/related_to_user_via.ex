@@ -42,7 +42,7 @@ defmodule Ash.Authorization.Check.RelatedToUserVia do
   end
 
   @impl true
-  def check(user, records, _state, options) do
+  def check(user, records, _request, options) do
     matches =
       Enum.filter(records, fn record ->
         related_records = get_related(record, options[:relationship])

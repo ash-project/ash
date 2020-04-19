@@ -169,3 +169,4 @@ end
 - relationship changes are an artifact of the old way of doing things and are very ugly right now
 - check if preparations have been done on a superset filter of a request and, if so, use it
 - without transactions, we can't ensure that all changes are rolled back in the case that relationship updates are included. Don't think there is really anything to do about that, but something worth considering.
+- perhaps have auth steps express which fields need to be present, so we can avoid loading things unnecessarily

@@ -53,24 +53,19 @@ defmodule Ash.Actions.SideLoad do
     end)
   end
 
-  def side_load(api, resource, data, side_load, root_filter, side_load_filters \\ %{}) do
+  def side_load(api, resource, data, side_load, root_filter, side_load_filters \\ %{})
+
+  def side_load(_api, _resource, nil, _side_load, _root_filter, _side_load_filters),
+    do: {:ok, nil}
+
+  def side_load(_api, _resource, [], _side_load, _root_filter, _side_load_filters), do: {:ok, []}
+
+  def side_load(api, resource, data, side_load, root_filter, side_load_filters) do
     case requests(api, resource, side_load, side_load_filters, root_filter, [], data) do
       {:ok, [_req | _] = requests} ->
-        case Ash.Engine.run(requests, api) do
-          %{data: %{data: %{data: data} = state}, errors: errors} when errors == %{} ->
-            case data do
-              nil ->
-                {:ok, nil}
-
-              [] ->
-                {:ok, []}
-
-              data when is_list(data) ->
-                {:ok, attach_side_loads(data, state)}
-
-              data ->
-                {:ok, List.first(attach_side_loads([data], state))}
-            end
+        case Ash.Engine.run(requests, api, fetch_only?: true) do
+          %{data: %{include: _} = state, errors: errors} when errors == %{} ->
+            {:ok, attach_side_loads(data, state)}
 
           %{errors: errors} ->
             {:error, errors}
@@ -147,8 +142,6 @@ defmodule Ash.Actions.SideLoad do
             related_record = Map.get(values, source_key)
             Map.put(record, last_relationship.name, related_record)
           end)
-
-          {values, nil}
       end
     end)
   end
@@ -191,9 +184,9 @@ defmodule Ash.Actions.SideLoad do
 
       data_dependency =
         if seed_data do
-          [[:data]]
-        else
           []
+        else
+          [[:data]]
         end
 
       dependencies =
