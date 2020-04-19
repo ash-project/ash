@@ -256,8 +256,8 @@ defmodule Ash.Actions.Relationships do
                relationship.destination,
                data
              ) do
-          {:ok, identifier} ->
-            {:ok, %{replace: identifier}}
+          {:ok, identifiers} ->
+            {:ok, %{replace: identifiers}}
 
           {:error, _} ->
             {:error, "Relationship change invalid for #{relationship.name} 2"}
@@ -365,12 +365,14 @@ defmodule Ash.Actions.Relationships do
           data
           |> Map.get(:relationships, %{})
           |> Enum.reduce(changeset, fn {relationship, relationship_data}, changeset ->
+            relationship = Ash.relationship(changeset.data.__struct__, relationship)
+
             relationship_data =
-              Enum.into(relationship_data, %{}, fn {key, value} ->
+              relationship_data
+              |> Enum.into(%{}, fn {key, value} ->
                 {key, value.data}
               end)
-
-            relationship = Ash.relationship(changeset.data.__struct__, relationship)
+              |> Map.put_new(:current, [])
 
             add_relationship_to_changeset(changeset, api, relationship, relationship_data)
           end)
@@ -437,6 +439,11 @@ defmodule Ash.Actions.Relationships do
             "Can't remove a has_one related value if a different record is related"
           )
         end
+
+      %{add: [new]} ->
+        changeset
+        |> relate_has_one(api, relationship, new)
+        |> add_relationship_change_metadata(relationship.name, %{add: [new]})
     end
   end
 

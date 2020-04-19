@@ -125,16 +125,10 @@ defmodule Ash.Actions.Update do
     relationship_requests = Map.get(changeset, :__requests__, [])
 
     if params[:authorization] do
-      strict_access? =
-        case Keyword.fetch(params[:authorization], :strict_access?) do
-          {:ok, value} -> value
-          :error -> false
-        end
-
       Engine.run(
         [update_request | attribute_requests] ++ relationship_requests ++ side_load_requests,
         api,
-        strict_access?: strict_access?,
+        strict_access?: false,
         user: params[:authorization][:user],
         log_final_report?: params[:authorization][:log_final_report?] || false
       )

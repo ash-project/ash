@@ -115,10 +115,16 @@ defmodule Ash.Filter do
   end
 
   defp attributes_primary_key_filter?(attributes, resource) do
-    pkey = Ash.primary_key(resource)
+    resource
+    |> Ash.primary_key()
+    |> Enum.all?(fn pkey_field ->
+      case Map.fetch(attributes, pkey_field) do
+        {:ok, value} ->
+          exact_match_filter?(value)
 
-    Enum.all?(attributes, fn {key, value} ->
-      key in pkey && exact_match_filter?(value)
+        :error ->
+          false
+      end
     end)
   end
 
@@ -167,7 +173,7 @@ defmodule Ash.Filter do
     |> optional_paths()
     |> paths_and_data(data)
     |> most_specific_paths()
-    |> Enum.reduce(filter, fn {path, related_data}, filter ->
+    |> Enum.reduce(filter, fn {path, %{data: related_data}}, filter ->
       [:filter, relationship_path] = path
 
       filter

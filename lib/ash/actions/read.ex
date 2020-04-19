@@ -54,7 +54,7 @@ defmodule Ash.Actions.Read do
       {:ok, SideLoad.attach_side_loads(paginator, engine.data)}
     else
       %{errors: errors} ->
-        if params[:authorization][:log_final_report?] do
+        if (params[:authorization] || [])[:log_final_report?] do
           case errors do
             %{__engine__: errors} ->
               for %Ash.Error.Forbidden{} = forbidden <- List.wrap(errors) do

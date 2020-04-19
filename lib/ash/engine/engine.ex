@@ -46,7 +46,7 @@ defmodule Ash.Engine do
         if all_resolved_or_unnecessary?(new_engine.requests) do
           new_engine
         else
-          add_error(engine, [:__engine__], "Completed without all data resolved.")
+          add_error(new_engine, [:__engine__], "Completed without all data resolved.")
         end
 
       new_engine when new_engine == engine ->

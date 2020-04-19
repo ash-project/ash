@@ -478,8 +478,14 @@ defmodule Ash.Api.Interface do
   end
 
   defp unwrap_or_raise!({:error, error}) when is_map(error) do
-    # TODO: format this better!
-    raise Ash.Error.FrameworkError, message: "Engine errors: #{inspect(error)}"
+    # TODO: handle these better
+    case deep_find_forbidden(error) do
+      nil ->
+        raise Ash.Error.FrameworkError, message: "Engine errors: #{inspect(error)}"
+
+      forbidden ->
+        raise forbidden
+    end
   end
 
   defp unwrap_or_raise!({:error, error}) when not is_list(error) do
@@ -511,6 +517,44 @@ defmodule Ash.Api.Interface do
       |> Enum.map_join("\n", &Exception.message/1)
 
     raise Ash.Error.FrameworkError, message: combo_message
+  end
+
+  defp deep_find_forbidden(errors, path \\ [])
+
+  defp deep_find_forbidden(errors, path) when is_list(errors) do
+    errors
+    |> Enum.with_index()
+    |> Enum.find_value(fn {error, index} ->
+      case deep_find_forbidden(error, [index | path]) do
+        nil ->
+          nil
+
+        error ->
+          error
+      end
+    end)
+  end
+
+  defp deep_find_forbidden(%Ash.Error.Forbidden{} = forbidden, path) do
+    Map.put(forbidden, :path, Enum.reverse(path))
+  end
+
+  defp deep_find_forbidden(%_{}, _), do: nil
+
+  defp deep_find_forbidden(errors, path) when is_map(errors) do
+    Enum.find_value(errors, fn {key, value} ->
+      case deep_find_forbidden(value, [key | path]) do
+        nil ->
+          nil
+
+        error ->
+          error
+      end
+    end)
+  end
+
+  defp deep_find_forbidden(_, _) do
+    nil
   end
 
   defp add_default_page_size(api, params) do

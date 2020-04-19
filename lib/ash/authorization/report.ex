@@ -9,6 +9,7 @@ defmodule Ash.Authorization.Report do
     :header,
     :authorized?,
     :reason,
+    path: [],
     no_steps_configured: false
   ]
 
@@ -20,6 +21,13 @@ defmodule Ash.Authorization.Report do
   # We know that each group of authorization steps shares the same relationship
   def report(report) do
     header = (report.header || "Authorization Report") <> "\n"
+
+    header =
+      if report.path do
+        Enum.join(report.path, ".") <> " " <> header
+      else
+        header
+      end
 
     facts = Ash.Authorization.Clause.prune_facts(report.facts)
 

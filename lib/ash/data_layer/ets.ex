@@ -122,12 +122,13 @@ defmodule Ash.DataLayer.Ets do
   defp do_matches_filter(record, filter = %{resource: resource, not: nil}) do
     case relationships_to_attribute_filters(resource, filter) do
       %{errors: [], attributes: attributes} ->
-        Enum.reduce_while(attributes, {:ok, true}, fn {key, predicate}, {:ok, true} ->
-          case matches_predicate?(Map.get(record, key), predicate) do
-            {:ok, true} -> {:cont, {:ok, true}}
-            {:ok, false} -> {:halt, {:ok, false}}
-            {:error, error} -> {:error, error}
-          end
+        Enum.reduce_while(attributes, {:ok, true}, fn
+          {key, predicate}, {:ok, true} ->
+            case matches_predicate?(Map.get(record, key), predicate) do
+              {:ok, true} -> {:cont, {:ok, true}}
+              {:ok, false} -> {:halt, {:ok, false}}
+              {:error, error} -> {:error, error}
+            end
         end)
 
       %{errors: errors} ->
@@ -164,6 +165,7 @@ defmodule Ash.DataLayer.Ets do
   defp matches_predicate?(value, %And{left: left, right: right}) do
     case matches_predicate?(value, left) do
       {:ok, true} -> matches_predicate?(value, right)
+      {:ok, false} -> {:ok, false}
       {:error, error} -> {:error, error}
     end
   end
