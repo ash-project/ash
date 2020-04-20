@@ -9,7 +9,7 @@ defmodule Ash.Filter do
     requests: [],
     path: [],
     errors: [],
-    impossible: false
+    impossible?: false
   ]
 
   alias Ash.Engine.Request
@@ -23,7 +23,7 @@ defmodule Ash.Filter do
           attributes: Keyword.t(),
           relationships: Map.t(),
           path: list(atom),
-          impossible: boolean,
+          impossible?: boolean,
           errors: list(String.t()),
           requests: list(Ash.Engine.Request.t())
         }
@@ -258,7 +258,7 @@ defmodule Ash.Filter do
           # TODO: We should probably include some kind of filter that *makes* it immediately impossible
           # that way, if the data layer doesn't check impossibility they will run the simpler query,
           # like for each pkey field say `[field: [in: []]]`
-          %{filter | impossible: true}
+          %{filter | impossible?: true}
         else
           filter
         end
@@ -293,14 +293,14 @@ defmodule Ash.Filter do
 
   defp lift_impossibility(filter) do
     with_related_impossibility =
-      if Enum.any?(filter.relationships || %{}, fn {_, val} -> Map.get(val, :impossible) end) do
-        Map.put(filter, :impossible, true)
+      if Enum.any?(filter.relationships || %{}, fn {_, val} -> Map.get(val, :impossible?) end) do
+        Map.put(filter, :impossible?, true)
       else
         filter
       end
 
     Map.update!(with_related_impossibility, :ors, fn ors ->
-      Enum.reject(ors, &Map.get(&1, :impossible))
+      Enum.reject(ors, &Map.get(&1, :impossible?))
     end)
   end
 
@@ -407,6 +407,9 @@ defmodule Ash.Filter do
     Enum.reduce(filter_statement, filter, fn
       {key, value}, filter ->
         cond do
+          key == :__impossible__ && value == true ->
+            %{filter | impossible?: true}
+
           key in [:or, :and, :not] ->
             new_filter = add_expression_level_boolean_filter(filter, resource, key, value)
 

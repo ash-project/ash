@@ -12,7 +12,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
   end
 
   describe "representation" do
-    test "it creates a relationship" do
+    test "it creates a relationship and a join relationship" do
       defposts do
         relationships do
           many_to_many :foobars, Foobar, through: SomeResource
@@ -20,16 +20,28 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
       end
 
       assert [
+               %Ash.Resource.Relationships.HasMany{
+                 cardinality: :many,
+                 destination: SomeResource,
+                 destination_field: :posts_id,
+                 name: :foobars_join_assoc,
+                 source: Ash.Test.Resource.Relationships.ManyToManyTest.Post,
+                 source_field: :id,
+                 type: :has_many,
+                 write_rules: []
+               },
                %Ash.Resource.Relationships.ManyToMany{
                  cardinality: :many,
                  destination: Foobar,
                  destination_field: :id,
                  destination_field_on_join_table: :foobars_id,
                  name: :foobars,
+                 source: Ash.Test.Resource.Relationships.ManyToManyTest.Post,
                  source_field: :id,
                  source_field_on_join_table: :posts_id,
                  through: SomeResource,
-                 type: :many_to_many
+                 type: :many_to_many,
+                 write_rules: []
                }
              ] = Ash.relationships(Post)
     end

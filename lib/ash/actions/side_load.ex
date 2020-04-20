@@ -91,16 +91,18 @@ defmodule Ash.Actions.SideLoad do
     end)
     |> Enum.reduce(data, fn {key, %{data: value}}, data ->
       last_relationship = last_relationship!(resource, key)
+      lead_path = :lists.droplast(key)
 
       case last_relationship do
         %{type: :many_to_many, name: name} ->
           # TODO: If we sort the relationships as we do them (doing the join assoc first)
           # then we can just use those linked assocs (maybe)
           join_association = String.to_existing_atom(to_string(name) <> "_join_assoc")
-          join_path = :lists.droplast(key) ++ [join_association]
+
+          join_path = lead_path ++ [join_association]
           join_data = Map.get(includes, join_path, [])
 
-          map_or_update(data, fn record ->
+          map_or_update(data, lead_path, fn record ->
             source_value = Map.get(record, last_relationship.source_field)
 
             join_values =
@@ -125,7 +127,7 @@ defmodule Ash.Actions.SideLoad do
         %{cardinality: :many} ->
           values = Enum.group_by(value, &Map.get(&1, last_relationship.destination_field))
 
-          map_or_update(data, fn record ->
+          map_or_update(data, lead_path, fn record ->
             source_key = Map.get(record, last_relationship.source_field)
             related_records = Map.get(values, source_key, [])
             Map.put(record, last_relationship.name, related_records)
@@ -137,7 +139,7 @@ defmodule Ash.Actions.SideLoad do
               {Map.get(item, last_relationship.destination_field), item}
             end)
 
-          map_or_update(data, fn record ->
+          map_or_update(data, lead_path, fn record ->
             source_key = Map.get(record, last_relationship.source_field)
             related_record = Map.get(values, source_key)
             Map.put(record, last_relationship.name, related_record)
@@ -156,10 +158,16 @@ defmodule Ash.Actions.SideLoad do
     data
   end
 
-  defp map_or_update(record, func) when not is_list(record), do: func.(record)
+  defp map_or_update(record, [], func) when not is_list(record), do: func.(record)
 
-  defp map_or_update(records, func) do
+  defp map_or_update(records, [], func) do
     Enum.map(records, func)
+  end
+
+  defp map_or_update(records, [path | tail], func) do
+    map_or_update(records, [], fn record ->
+      Map.update!(record, path, &map_or_update(&1, tail, func))
+    end)
   end
 
   defp last_relationship!(resource, [last]) do
@@ -177,7 +185,7 @@ defmodule Ash.Actions.SideLoad do
            {:rel, Ash.relationship(resource, key)},
          nested_path <- path ++ [relationship],
          {:ok, requests} <-
-           requests(api, relationship.destination, further, filters, nested_path) do
+           requests(api, relationship.destination, further, filters, root_filter, nested_path) do
       default_read =
         Ash.primary_action(relationship.destination, :read) ||
           raise "Must set default read for #{inspect(resource)}"
@@ -211,7 +219,7 @@ defmodule Ash.Actions.SideLoad do
           path: [:include, Enum.map(nested_path, &Map.get(&1, :name))],
           resolve_when_fetch_only?: true,
           filter:
-            side_load_filter2(
+            side_load_filter(
               relationship,
               Map.get(filters || %{}, source, []),
               nested_path,
@@ -237,6 +245,7 @@ defmodule Ash.Actions.SideLoad do
               # or for doing many to many joins, but can be slower.
               # If the relationship is already loaded, we should consider doing an in-memory filtering
               # Right now, we just use the original query
+
               with {:ok, filter} <-
                      true_side_load_filter(
                        relationship,
@@ -275,7 +284,7 @@ defmodule Ash.Actions.SideLoad do
               strict_access?: root_filter not in [:create, :update],
               resolve_when_fetch_only?: true,
               filter:
-                side_load_filter2(
+                side_load_filter(
                   Ash.relationship(resource, join_relationship.name),
                   [],
                   nested_path,
@@ -325,7 +334,7 @@ defmodule Ash.Actions.SideLoad do
     end
   end
 
-  defp side_load_filter2(
+  defp side_load_filter(
          %{reverse_relationship: nil, type: :many_to_many} = relationship,
          _request_filter,
          _prior_path,
@@ -338,7 +347,7 @@ defmodule Ash.Actions.SideLoad do
     end)
   end
 
-  defp side_load_filter2(
+  defp side_load_filter(
          relationship,
          request_filter,
          prior_path,
@@ -372,13 +381,13 @@ defmodule Ash.Actions.SideLoad do
         {:ok, reverse_path} ->
           Ash.Filter.parse(
             relationship.destination,
-            put_nested_relationship(request_filter, reverse_path, root_filter)
+            put_nested_relationship(request_filter, reverse_path, root_filter, false)
           )
       end
     end)
   end
 
-  defp side_load_filter2(
+  defp side_load_filter(
          relationship,
          request_filter,
          prior_path,
@@ -416,7 +425,7 @@ defmodule Ash.Actions.SideLoad do
       {:ok, reverse_path} ->
         Ash.Filter.parse(
           relationship.destination,
-          put_nested_relationship(request_filter, reverse_path, root_filter)
+          put_nested_relationship(request_filter, reverse_path, root_filter, false)
         )
 
       :error ->
@@ -450,17 +459,22 @@ defmodule Ash.Actions.SideLoad do
           Map.get(data, :data)
 
         path ->
-          Map.get(data, [:include, Enum.reverse(path)])
+          path_names = path |> Enum.reverse() |> Enum.map(& &1.name)
+
+          data
+          |> Map.get(:include, %{})
+          |> Map.get(path_names, %{})
       end
 
-    values = get_fields(source_data.data, pkey)
+    related_data = Map.get(source_data || %{}, :data, [])
 
     cond do
       reverse_relationship ->
+        values = get_fields(related_data, pkey)
         {:ok, put_nested_relationship(filter, [reverse_relationship], values)}
 
       true ->
-        ids = Enum.map(source_data.data, &Map.get(&1, relationship.source_field))
+        ids = Enum.map(related_data, &Map.get(&1, relationship.source_field))
 
         filter_value =
           case ids do
@@ -588,30 +602,33 @@ defmodule Ash.Actions.SideLoad do
   #   |> get_field(name, rest)
   # end
 
-  defp put_nested_relationship(_, _, []), do: [__impossible__: true]
-  defp put_nested_relationship(_, _, nil), do: [__impossible__: true]
+  defp put_nested_relationship(request_filter, path, value, records? \\ true)
+  defp put_nested_relationship(_, _, [], true), do: [__impossible__: true]
+  defp put_nested_relationship(_, _, nil, true), do: [__impossible__: true]
+  defp put_nested_relationship(_, _, [], false), do: []
+  defp put_nested_relationship(_, _, nil, false), do: []
 
-  defp put_nested_relationship(request_filter, path, value) when not is_list(value) do
-    put_nested_relationship(request_filter, path, [value])
+  defp put_nested_relationship(request_filter, path, value, records?) when not is_list(value) do
+    put_nested_relationship(request_filter, path, [value], records?)
   end
 
-  defp put_nested_relationship(request_filter, [rel | rest], values) do
+  defp put_nested_relationship(request_filter, [rel | rest], values, records?) do
     [
-      {rel, put_nested_relationship(request_filter, rest, values)}
+      {rel, put_nested_relationship(request_filter, rest, values, records?)}
     ]
   end
 
-  defp put_nested_relationship(request_filter, [], [[{field, _}] | _] = keys) do
+  defp put_nested_relationship(request_filter, [], [[{field, _}] | _] = keys, _) do
     add_relationship_id_filter(request_filter, field, Enum.map(keys, &elem(&1, 1)))
   end
 
-  defp put_nested_relationship(request_filter, [], [values]) do
+  defp put_nested_relationship(request_filter, [], [values], _) do
     Enum.reduce(values, request_filter, fn {field, value}, filter ->
       add_relationship_id_filter(filter, field, [value])
     end)
   end
 
-  defp put_nested_relationship(request_filter, [], values) do
+  defp put_nested_relationship(request_filter, [], values, _) do
     Keyword.update(request_filter, :or, values, &Kernel.++(&1, values))
   end
 

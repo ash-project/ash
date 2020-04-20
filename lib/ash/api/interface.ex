@@ -467,6 +467,7 @@ defmodule Ash.Api.Interface do
     end
   end
 
+  defp unwrap_or_raise!(:ok), do: :ok
   defp unwrap_or_raise!({:ok, result}), do: result
 
   defp unwrap_or_raise!({:error, error}) when is_bitstring(error) do

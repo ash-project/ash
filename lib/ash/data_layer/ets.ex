@@ -70,6 +70,9 @@ defmodule Ash.DataLayer.Ets do
   end
 
   @impl true
+  def run_query(%Query{filter: %Ash.Filter{impossible?: true}}, _), do: {:ok, []}
+
+  @impl true
   def run_query(
         %Query{resource: resource, filter: filter, offset: offset, limit: limit, sort: sort},
         _resource

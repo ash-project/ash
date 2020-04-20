@@ -82,7 +82,7 @@ defmodule Ash.Test.Actions.DestroyTest do
     test "allows destroying a record" do
       post = Api.create!(Post, attributes: %{title: "foo", contents: "bar"})
 
-      assert Api.destroy!(post) == post
+      assert Api.destroy!(post) == :ok
 
       refute Api.get!(Post, post.id)
     end

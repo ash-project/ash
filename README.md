@@ -170,3 +170,4 @@ end
 - check if preparations have been done on a superset filter of a request and, if so, use it
 - without transactions, we can't ensure that all changes are rolled back in the case that relationship updates are included. Don't think there is really anything to do about that, but something worth considering.
 - perhaps have auth steps express which fields need to be present, so we can avoid loading things unnecessarily
+- lift `or` filters over the same field equaling a value into a single `in` filter, for performance (potentially)

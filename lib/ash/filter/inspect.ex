@@ -70,7 +70,7 @@ defimpl Inspect, for: Ash.Filter do
           ors: ors,
           relationships: relationships,
           attributes: attributes,
-          impossible: impossible
+          impossible?: impossible
         },
         opts
       )
@@ -89,7 +89,7 @@ defimpl Inspect, for: Ash.Filter do
     end
   end
 
-  def inspect(%{impossible: impossible} = filter, opts) do
+  def inspect(%{impossible?: impossible} = filter, opts) do
     rels =
       filter
       |> Map.get(:relationships)

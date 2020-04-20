@@ -243,7 +243,7 @@ defmodule Ash.Resource.Relationships do
           has_many_name,
           unquote(config)[:through],
           destination_field: unquote(config)[:source_field_on_join_table],
-          source_field: unquote(config)[:source_field]
+          source_field: unquote(config)[:source_field] || :id
         )
 
       with {:many_to_many, {:ok, many_to_many}} <- {:many_to_many, many_to_many},
