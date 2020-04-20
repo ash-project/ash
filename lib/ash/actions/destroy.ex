@@ -28,7 +28,7 @@ defmodule Ash.Actions.Destroy do
           [auth_request],
           api,
           user: params[:authorization][:user],
-          log_final_report?: params[:authorization][:log_final_report?]
+          bypass_strict_access?: params[:bypass_strict_access?]
         )
       else
         Engine.run([auth_request], api, fetch_only?: true)

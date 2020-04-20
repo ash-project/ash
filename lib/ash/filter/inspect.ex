@@ -46,10 +46,18 @@ defimpl Inspect, for: Ash.Filter do
   import Inspect.Algebra
   import Ash.Filter.InspectHelpers
 
-  def inspect(%Ash.Filter{not: not_filter} = filter, opts) when not is_nil(not_filter) do
+  def inspect(%Ash.Filter{impossible?: impossible, not: not_filter} = filter, opts)
+      when not is_nil(not_filter) do
+    impossible =
+      if impossible do
+        "X"
+      else
+        ""
+      end
+
     if root?(opts) do
       concat([
-        "#Filter<not (",
+        "#Filter<#{impossible} not (",
         to_doc(not_filter, make_non_root(opts)),
         ") and ",
         to_doc(%{filter | not: nil}, make_non_root(opts)),

@@ -55,13 +55,64 @@ defmodule Ash.Authorization.Checker do
     end
   end
 
+  def run_checks(engine, %{data: []}, _clause) do
+    {:ok, engine}
+  end
+
   def run_checks(engine, request, clause) do
     case clause.check_module.check(engine.user, request.data, %{}, clause.check_opts) do
       {:error, error} ->
         {:error, error}
 
       {:ok, check_result} ->
-        {:ok, %{engine | facts: Map.put(engine.facts, clause, check_result)}}
+        pkey = Ash.primary_key(request.resource)
+
+        {authorized, unauthorized} =
+          Enum.split_with(request.data, fn data ->
+            data_pkey = Map.take(data, pkey)
+
+            Enum.find(check_result, fn authorized ->
+              Map.take(authorized, pkey) == data_pkey
+            end)
+          end)
+
+        case {authorized, unauthorized} do
+          {_, []} ->
+            {:ok, %{engine | facts: Map.put(engine.facts, clause, true)}}
+
+          {[], _} ->
+            {:ok, %{engine | facts: Map.put(engine.facts, clause, false)}}
+
+          {authorized, unauthorized} ->
+            authorized_values =
+              Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
+                request.resource,
+                authorized
+              )
+
+            authorized_filter =
+              Ash.Filter.parse(request.resource, [or: authorized_values], engine.api)
+
+            unauthorized_values =
+              Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
+                request.resource,
+                unauthorized
+              )
+
+            unauthorized_filter =
+              Ash.Filter.parse(request.resource, [or: unauthorized_values], engine.api)
+
+            authorized_clause = %{clause | filter: authorized_filter}
+            unauthorized_clause = %{clause | filter: unauthorized_filter}
+
+            new_facts =
+              engine.facts
+              |> Map.delete(clause)
+              |> Map.put(authorized_clause, true)
+              |> Map.put(unauthorized_clause, false)
+
+            {:ok, %{engine | facts: new_facts}}
+        end
     end
   end
 

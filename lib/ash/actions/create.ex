@@ -33,27 +33,9 @@ defmodule Ash.Actions.Create do
         {:error, changeset}
 
       %{errors: errors} when errors != %{} ->
-        if params[:authorization][:log_final_report?] do
-          case errors do
-            %{__engine__: errors} ->
-              for %Ash.Error.Forbidden{} = forbidden <- List.wrap(errors) do
-                Logger.info(Ash.Error.Forbidden.report_text(forbidden))
-              end
-
-            _ ->
-              :ok
-          end
-        end
-
         {:error, errors}
 
       {:error, error} ->
-        if params[:authorization][:log_final_report?] do
-          for %Ash.Error.Forbidden{} = forbidden <- List.wrap(error) do
-            Logger.info(Ash.Error.Forbidden.report_text(forbidden))
-          end
-        end
-
         {:error, error}
     end
   end
@@ -129,7 +111,7 @@ defmodule Ash.Actions.Create do
           relationship_read_requests ++ relationship_change_requests ++ side_load_requests,
         api,
         user: params[:authorization][:user],
-        log_final_report?: params[:authorization][:log_final_report?] || false
+        bypass_strict_access?: params[:bypass_strict_access?]
       )
     else
       Engine.run(

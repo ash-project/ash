@@ -46,7 +46,15 @@ defmodule Ash.Engine do
         if all_resolved_or_unnecessary?(new_engine.requests) do
           new_engine
         else
-          add_error(new_engine, [:__engine__], "Completed without all data resolved.")
+          exception =
+            Ash.Error.Forbidden.exception(
+              requests: new_engine.requests,
+              facts: new_engine.facts,
+              state: new_engine.data,
+              reason: "Couldn't continue processing"
+            )
+
+          add_error(new_engine, [:__engine__], exception)
         end
 
       new_engine when new_engine == engine ->
@@ -84,12 +92,10 @@ defmodule Ash.Engine do
 
   defp next(%{state: :check} = engine) do
     new_engine =
-      case strict_check(engine) do
-        ^engine ->
-          check(engine)
-
-        new_engine ->
-          new_engine
+      if Enum.all?(engine.requests, & &1.strict_check_complete?) do
+        check(engine)
+      else
+        strict_check(engine)
       end
 
     transition(new_engine, :generate_scenarios)
@@ -484,7 +490,7 @@ defmodule Ash.Engine do
 
   defp run_checks(engine, request) do
     request.rules
-    |> Enum.filter(fn {_kind, clause}, engine ->
+    |> Enum.filter(fn {_kind, clause} ->
       case Clause.find(engine.facts, clause) do
         {:ok, :unknown} -> true
         {:ok, :unknowable} -> true
@@ -513,9 +519,9 @@ defmodule Ash.Engine do
 
   defp checkable_request(engine) do
     engine.requests
-    |> Enum.filter(& &1.strict_check_completed?)
+    |> Enum.filter(& &1.strict_check_complete?)
     |> Enum.filter(&Request.data_resolved?/1)
-    |> Enum.reject(& &1.check_complete?/1)
+    |> Enum.reject(& &1.check_complete?)
     |> Enum.reject(& &1.error?)
     |> case do
       [request | _] ->
@@ -548,6 +554,13 @@ defmodule Ash.Engine do
         requests
       end
 
+    requests =
+      if opts[:bypass_strict_access?] do
+        Enum.map(requests, &Map.put(&1, :strict_access?, false))
+      else
+        requests
+      end
+
     engine = %__MODULE__{
       requests: requests,
       user: opts[:user],
@@ -566,14 +579,11 @@ defmodule Ash.Engine do
 
     case Enum.find(requests, &Enum.empty?(&1.rules)) do
       nil ->
+        # IO.inspect(engine.requests)
         engine
 
       request ->
         exception = Ash.Error.Forbidden.exception(no_steps_configured: request)
-
-        if opts[:log_final_report?] do
-          Logger.info(Ash.Error.Forbidden.report_text(exception))
-        end
 
         transition(engine, :complete, %{errors: {:__engine__, exception}})
     end

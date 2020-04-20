@@ -48,27 +48,9 @@ defmodule Ash.Actions.Update do
         {:error, changeset}
 
       %{errors: errors} ->
-        if params[:authorization][:log_final_report?] do
-          case errors do
-            %{__engine__: errors} ->
-              for %Ash.Error.Forbidden{} = forbidden <- List.wrap(errors) do
-                Logger.info(Ash.Error.Forbidden.report_text(forbidden))
-              end
-
-            _ ->
-              :ok
-          end
-        end
-
         {:error, errors}
 
       {:error, error} ->
-        if params[:authorization][:log_final_report?] do
-          for %Ash.Error.Forbidden{} = forbidden <- List.wrap(error) do
-            Logger.info(Ash.Error.Forbidden.report_text(forbidden))
-          end
-        end
-
         {:error, error}
     end
   end
@@ -130,7 +112,7 @@ defmodule Ash.Actions.Update do
         api,
         strict_access?: false,
         user: params[:authorization][:user],
-        log_final_report?: params[:authorization][:log_final_report?] || false
+        bypass_strict_access?: params[:bypass_strict_access?]
       )
     else
       Engine.run(

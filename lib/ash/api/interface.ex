@@ -8,14 +8,11 @@ defmodule Ash.Api.Interface do
   @authorization_schema Ashton.schema(
                           opts: [
                             user: :any,
-                            strict_access?: :boolean,
-                            log_final_report?: :boolean
+                            strict_access?: :boolean
                           ],
-                          defaults: [strict_access?: true, log_final_report?: false],
+                          defaults: [strict_access?: true],
                           describe: [
                             user: "# TODO describe",
-                            log_final_report?:
-                              "If true, an info log with an auth report is emitted on successful authorization",
                             strict_access?:
                               "only applies to `read` actions, so maybe belongs somewhere else"
                           ]

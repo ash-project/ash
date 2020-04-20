@@ -68,9 +68,10 @@ defmodule Ash.Filter do
           rules: Ash.primary_action(resource, :read).rules,
           filter: parsed_filter,
           path: [:filter, path],
+          resolve_when_fetch_only?: false,
           data:
             Ash.Engine.Request.UnresolvedField.data(
-              [:filter, path, :filter],
+              [[:filter, path, :filter]],
               fn %{filter: %{^path => %{filter: filter}}} ->
                 query = Ash.DataLayer.resource_to_query(resource)
 
@@ -84,7 +85,7 @@ defmodule Ash.Filter do
               end
             ),
           action_type: :read,
-          strict_access?: primary_key_filter?(parsed_filter),
+          strict_access?: !primary_key_filter?(parsed_filter),
           relationship: path,
           name: source
         )

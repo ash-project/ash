@@ -227,16 +227,37 @@ defmodule Ash.Authorization.Report do
     |> Enum.map(fn {%{filter: filter} = key, value} ->
       {key, value, count_of_clauses(filter)}
     end)
-    |> Enum.sort_by(fn {_, _, count_of_clauses} ->
-      count_of_clauses
-    end)
     # TODO: nest child filters under parent filters?
-    |> Enum.map_join("\n", fn {clause, value, count_of_clauses} ->
-      if count_of_clauses == 0 do
-        clause.check_module.describe(clause.check_opts) <> " " <> status_to_mark(value)
+    |> Enum.group_by(fn {clause, _value, _count_of_clauses} ->
+      if clause.filter do
+        clause.filter.resource
       else
-        inspect(clause.filter) <>
-          ": " <> clause.check_module.describe(clause.check_opts) <> " " <> status_to_mark(value)
+        nil
+      end
+
+      # clause.filter.resource
+    end)
+    |> Enum.map_join("\n", fn {resource, clauses} ->
+      clauses =
+        Enum.sort_by(clauses, fn {_, _, count_of_clauses} ->
+          count_of_clauses
+        end)
+
+      explained =
+        Enum.map_join(clauses, "\n", fn {clause, value, count_of_clauses} ->
+          if count_of_clauses == 0 do
+            clause.check_module.describe(clause.check_opts) <> " " <> status_to_mark(value)
+          else
+            inspect(clause.filter) <>
+              ": " <>
+              clause.check_module.describe(clause.check_opts) <> " " <> status_to_mark(value)
+          end
+        end)
+
+      if resource do
+        "#{inspect(resource)}: \n" <> indent(explained) <> "\n"
+      else
+        explained <> "\n"
       end
     end)
 
