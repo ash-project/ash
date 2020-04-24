@@ -211,42 +211,302 @@ defmodule Ash.Filter do
     end)
   end
 
+  # Cosimplification reduces the rates of false negatives
+  # and false positives by ensuring filters are stated in the same
+  # way
+  def cosimplify(left, right, state \\ %{}, first? \\ true) do
+    {new_left, state} = do_cosimplify(left, state, first?)
+
+    {new_right, state} = do_cosimplify(right, state, first?)
+
+    if new_left == left && new_right == right do
+      {new_left, new_right}
+    else
+      cosimplify(new_left, new_right, state, false)
+    end
+  end
+
+  defp do_cosimplify(filter, state, first?) do
+    state =
+      if first? do
+        Enum.reduce(filter.attributes, state, fn {field, value}, state ->
+          state
+          |> Map.put_new(filter.path, %{})
+          |> Map.update!(filter.path, fn paths ->
+            paths
+            |> Map.put_new(field, [])
+            |> Map.update!(field, fn values ->
+              [value | values]
+            end)
+          end)
+        end)
+      else
+        state
+      end
+
+    {new_attrs, state} =
+      Enum.reduce(filter.attributes, {%{}, state}, fn {field, value}, {attributes, state} ->
+        {new_value, state} = cosimplify_value(value, state, filter.path, field)
+
+        {Map.put(attributes, field, new_value), state}
+      end)
+
+    {new_relationships, state} =
+      Enum.reduce(filter.relationships, {%{}, state}, fn {relationship, related_filter},
+                                                         {relationships, state} ->
+        {new_relationship_filter, state} = do_cosimplify(related_filter, state, first?)
+
+        {Map.put(relationships, relationship, new_relationship_filter), state}
+      end)
+
+    {new_not, state} =
+      if filter.not do
+        do_cosimplify(filter.not, state, first?)
+      else
+        {filter.not, state}
+      end
+
+    {new_ors, state} =
+      Enum.reduce(filter.ors, {[], state}, fn or_filter, {ors, state} ->
+        {new_or, state} = do_cosimplify(or_filter, state, first?)
+
+        {[new_or | ors], state}
+      end)
+
+    {%{
+       filter
+       | attributes: new_attrs,
+         relationships: new_relationships,
+         not: new_not,
+         ors: Enum.reverse(new_ors)
+     }, state}
+  end
+
+  defp cosimplify_value(value, state, path, field) do
+    other_values = get_in(state, [path, field])
+
+    {new_other_values, new_value, _found?} =
+      Enum.reduce(other_values, {other_values, value, false}, fn
+        other_value, {other_values, value, true} ->
+          {[other_value | other_values], value, true}
+
+        other_value, {other_values, value, false} ->
+          case do_cosimplify_value(value, other_value) do
+            {:ok, cosimplified, cosimplified_other} ->
+              {[cosimplified_other | other_values], cosimplified, true}
+
+            :error ->
+              {[other_value | other_values], value, false}
+          end
+      end)
+
+    {new_value, put_in(state, [path, field], Enum.reverse(new_other_values))}
+  end
+
+  defp do_cosimplify_value(value, value), do: :error
+
+  defp do_cosimplify_value(%struct{left: left, right: right} = compound, other_value)
+       when struct in [Ash.Filter.And, Ash.Filter.Or] do
+    case do_cosimplify_value(left, other_value) do
+      {:ok, cosimplified, cosimplified_other} ->
+        {:ok, %{compound | left: cosimplified, right: right}, cosimplified_other}
+
+      :error ->
+        case do_cosimplify_value(right, other_value) do
+          {:ok, cosimplified, cosimplified_other} ->
+            {:ok, %{compound | left: left, right: cosimplified}, cosimplified_other}
+
+          :error ->
+            :error
+        end
+    end
+  end
+
+  defp do_cosimplify_value(value, %struct{left: left, right: right} = other_compound)
+       when struct in [Ash.Filter.And, Ash.Filter.Or] do
+    case do_cosimplify_value(value, left) do
+      {:ok, cosimplified, cosimplified_other} ->
+        {:ok, cosimplified, %{other_compound | left: cosimplified_other, right: right}}
+
+      :error ->
+        case do_cosimplify_value(value, right) do
+          {:ok, cosimplified, cosimplified_other} ->
+            {:ok, cosimplified, %{other_compound | left: left, right: cosimplified_other}}
+
+          :error ->
+            :error
+        end
+    end
+  end
+
+  defp do_cosimplify_value(
+         %eq_struct{value: value} = eq,
+         %in_struct{values: values} = in_clause
+       )
+       when eq_struct in [Ash.Filter.Eq, Ash.Filter.NotEq] and
+              in_struct in [Ash.Filer.In, Ash.Filter.NotIn] do
+    if value in values do
+      new_in = %{in_clause | values: Enum.reject(values, &(&1 == value))}
+      {:ok, eq, Ash.Filter.Or.prebuilt_new(eq, new_in)}
+    else
+      :error
+    end
+  end
+
+  defp do_cosimplify_value(
+         %left_struct{values: left_values} = left,
+         %right_struct{
+           values: right_values
+         } = right
+       )
+       when left_struct in [Ash.Filter.In, Ash.Filter.NotIn] and
+              right_struct in [Ash.Filter.In, Ash.Filter.NotIn] do
+    left_mapset = MapSet.new(left_values)
+    right_mapset = MapSet.new(right_values)
+
+    commonalities =
+      left_mapset
+      |> MapSet.intersection(right_mapset)
+
+    cond do
+      MapSet.equal?(left_mapset, right_mapset) ->
+        {:ok, %{left | values: Enum.sort(left_values)}, %{right | right: Enum.sort(right_values)}}
+
+      MapSet.size(commonalities) > 0 ->
+        common_in = %{left | values: MapSet.to_list(commonalities)}
+
+        left_exclusive_in = %{
+          left
+          | values: MapSet.to_list(MapSet.difference(left_mapset, right_mapset))
+        }
+
+        new_left =
+          if Enum.empty?(left_exclusive_in.values) do
+            common_in
+          else
+            Ash.Filter.Or.prebuilt_new(left_exclusive_in, common_in)
+          end
+
+        right_exclusive_in = %{
+          right
+          | values: MapSet.to_list(MapSet.difference(right_mapset, left_mapset))
+        }
+
+        new_right =
+          if Enum.empty?(right_exclusive_in.values) do
+            common_in
+          else
+            Ash.Filter.Or.prebuilt_new(right_exclusive_in, common_in)
+          end
+
+        {:ok, new_left, new_right}
+
+      true ->
+        :error
+    end
+  end
+
+  defp do_cosimplify_value(_, _), do: :error
+
+  # @predicates %{
+  #   not_eq: Ash.Filter.NotEq,
+  #   not_in: Ash.Filter.NotIn,
+  #   eq: Ash.Filter.Eq,
+  #   in: Ash.Filter.In,
+  # and
+  # or
+  # }
+
+  # defp do_cosimplify(left, right) do
+  #   Enum.reduce(left.attributes, fn {attr_name, clause} ->
+  #     clause.__module__.cosimplify(right)
+  #   end)
+  # end
+
   @doc """
   Returns true if the second argument is a strict subset (always returns the same or less data) of the first
   """
-  def strict_subset_of?(nil, nil), do: true
+  def strict_subset_of(nil, nil), do: true
 
-  def strict_subset_of?(_, nil), do: false
+  def strict_subset_of(_, nil), do: false
 
-  def strict_subset_of?(%{resource: resource}, %{resource: other_resource})
+  def strict_subset_of(%{resource: resource}, %{resource: other_resource})
       when resource != other_resource,
       do: false
 
-  def strict_subset_of?(filter, candidate) do
-    # TODO: Finish this!
-    unless filter.ors in [[], nil], do: raise("Can't do ors contains yet")
-    unless filter.not in [[], nil], do: raise("Can't do not contains yet")
-    unless candidate.ors in [[], nil], do: raise("Can't do ors contains yet")
-    unless candidate.not in [[], nil], do: raise("Can't do not contains yet")
-
-    attributes_contained?(filter, candidate) || relationships_contained?(filter, candidate)
+  def strict_subset_of(filter, candidate) do
+    {filter, candidate} = cosimplify(filter, candidate)
+    Ash.Authorization.SatSolver.strict_filter_subset(filter, candidate)
   end
+
+  def strict_subset_of?(filter, candidate) do
+    strict_subset_of(filter, candidate) == true
+  end
+
+  # This is insufficient and will yield false negatives
+  # defp ors_contained?(filter, candidate) do
+  # end
 
   # defp not_doesnt_contain?(filter, candidate) do
 
   # end
 
-  defp attributes_contained?(filter, candidate) do
-    Enum.any?(filter.attributes, fn {attr, predicate} ->
-      contains_attribute?(candidate, attr, predicate)
-    end)
-  end
+  # left:
+  # a in [1, 2, 3, 5] or a = 4
+  # right:
+  # a in [1, 2] and not(a = 4 or a = 5)
+  #
+  #
 
-  defp relationships_contained?(filter, candidate) do
-    Enum.any?(filter.relationships, fn {relationship, relationship_filter} ->
-      contains_relationship?(candidate, relationship, relationship_filter)
-    end)
-  end
+  # (a = 1 or a = 2) and not(a = 1 and b = 2)
+  # (a = 2) and (b = 2)
+  # remaining_not_negated SHOULD BE: (a = 1)
+
+  # defp do_strict_subset_of?(filter, candidate) do
+  #   # TODO: Finish this!
+  #   unless filter.ors in [[], nil], do: raise("Can't do ors contains yet")
+  #   unless candidate.ors in [[], nil], do: raise("Can't do ors contains yet")
+  #   unless candidate.not in [[], nil], do: raise("Can't do not contains yet")
+
+  #   {negated?, new_not_filter} =
+  #     if filter.not do
+  #       do_strict_subset_of?(filter.not, candidate)
+  #     else
+  #       {false, nil}
+  #     end
+
+  #   filter = %{filter | not: new_not_filter}
+
+  #   if negated? do
+  #     {false, candidate}
+  #   else
+  #     remaining_attributes = uncontained_attributes(filter, candidate)
+  #     remaining_relationships = uncontained_relationships(filter, candidate)
+
+  #     if remaining_attributes == %{} and remaining_relationships == %{} do
+  #       {true, %{candidate | attributes: %{}, relationships: %{}}}
+  #     else
+  #       {false,
+  #        %{candidate | attributes: remaining_attributes, relationships: remaining_relationships}}
+  #     end
+  #   end
+  # end
+
+  # defp uncontained_attributes(filter, candidate) do
+  #   candidate.attributes
+  #   |> Enum.reject(fn {attr, predicate} ->
+  #     contains_attribute?(filter, attr, predicate)
+  #   end)
+  #   |> Enum.into(%{})
+  # end
+
+  # defp uncontained_relationships(filter, candidate) do
+  #   candidate.relationships
+  #   |> Enum.reject(fn {relationship, relationship_filter} ->
+  #     contains_relationship?(filter, relationship, relationship_filter)
+  #   end)
+  #   |> Enum.into(%{})
+  # end
 
   defp add_records_to_relationship_filter(filter, [], records) do
     case Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(filter.resource, records) do
@@ -305,67 +565,78 @@ defmodule Ash.Filter do
     end)
   end
 
-  defp contains_relationship?(filter, relationship, candidate_relationship_filter) do
-    filter_with_only_relationship_filters =
-      case Ash.relationship(filter.resource, relationship) do
-        %{type: :many_to_many} ->
-          filter
+  # defp contains_relationship?(filter, relationship, candidate_relationship_filter) do
+  #   filter_with_only_relationship_filters =
+  #     case Ash.relationship(filter.resource, relationship) do
+  #       %{type: :many_to_many} ->
+  #         filter
 
-        %{
-          source_field: source_field,
-          destination_field: destination_field,
-          destination: destination
-        } ->
-          case filter.attributes do
-            %{^source_field => attribute_filter_struct} ->
-              filter
-              |> Map.update!(:attributes, &Map.delete(&1, source_field))
-              |> Map.update!(:relationships, fn relationships ->
-                Map.update(
-                  relationships,
-                  relationship,
-                  %__MODULE__{
-                    resource: destination,
-                    api: filter.api,
-                    attributes: %{
-                      destination_field => attribute_filter_struct
-                    }
-                  },
-                  fn existing_attribute_filter ->
-                    Ash.Filter.And.new(
-                      destination,
-                      existing_attribute_filter,
-                      attribute_filter_struct
-                    )
-                  end
-                )
-              end)
+  #       %{
+  #         source_field: source_field,
+  #         destination_field: destination_field,
+  #         destination: destination
+  #       } ->
+  #         case filter.attributes do
+  #           %{^source_field => attribute_filter_struct} ->
+  #             filter
+  #             |> Map.update!(:attributes, &Map.delete(&1, source_field))
+  #             |> Map.update!(:relationships, fn relationships ->
+  #               Map.update(
+  #                 relationships,
+  #                 relationship,
+  #                 %__MODULE__{
+  #                   resource: destination,
+  #                   api: filter.api,
+  #                   attributes: %{
+  #                     destination_field => attribute_filter_struct
+  #                   }
+  #                 },
+  #                 fn existing_attribute_filter ->
+  #                   Ash.Filter.And.new(
+  #                     destination,
+  #                     existing_attribute_filter,
+  #                     attribute_filter_struct
+  #                   )
+  #                 end
+  #               )
+  #             end)
 
-            _ ->
-              filter
-          end
-      end
+  #           _ ->
+  #             filter
+  #         end
+  #     end
 
-    case filter_with_only_relationship_filters.relationships do
-      %{^relationship => relationship_filter} ->
-        strict_subset_of?(relationship_filter, candidate_relationship_filter)
+  #   this_filter_contains? =
+  #     case filter_with_only_relationship_filters.relationships do
+  #       %{^relationship => relationship_filter} ->
+  #         strict_subset_of?(relationship_filter, candidate_relationship_filter)
 
-      _ ->
-        false
-    end
-  end
+  #       _ ->
+  #         false
+  #     end
 
-  defp contains_attribute?(filter, attr, candidate_predicate) do
-    case filter.attributes do
-      %{^attr => predicate} ->
-        attribute = Ash.attribute(filter.resource, attr)
+  #   this_filter_contains? ||
+  #     Enum.any?(
+  #       filter.ors,
+  #       &contains_relationship?(&1, relationship, candidate_relationship_filter)
+  #     )
+  # end
 
-        predicate_strict_subset_of?(attribute, predicate, candidate_predicate)
+  # defp contains_attribute?(filter, attr, candidate_predicate) do
+  #   this_filter_contains? =
+  #     case filter.attributes do
+  #       %{^attr => predicate} ->
+  #         attribute = Ash.attribute(filter.resource, attr)
 
-      _ ->
-        false
-    end
-  end
+  #         predicate_strict_subset_of?(attribute, predicate, candidate_predicate)
+
+  #       _ ->
+  #         false
+  #     end
+
+  #   this_filter_contains? ||
+  #     Enum.any?(filter.ors, &contains_attribute?(&1, attr, candidate_predicate))
+  # end
 
   defp add_not_filter_info(filter) do
     case filter.not do

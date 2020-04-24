@@ -115,7 +115,7 @@ defmodule Ash.Engine.Request do
       filter: filter,
       name: opts[:name],
       context: opts[:context] || %{},
-      write_to_data?: opts[:write_to_data?] || true
+      write_to_data?: Keyword.get(opts, :write_to_data?, true)
     }
   end
 

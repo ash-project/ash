@@ -76,34 +76,37 @@ defmodule Ash.Authorization.Checker do
             end)
           end)
 
+        # TODO: Handle the possibility of error here
+        {:ok, authorized_values} =
+          Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
+            request.resource,
+            authorized
+          )
+
+        authorized_filter =
+          Ash.Filter.parse(request.resource, [or: authorized_values], engine.api)
+
+        {:ok, unauthorized_values} =
+          Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
+            request.resource,
+            unauthorized
+          )
+
+        unauthorized_filter =
+          Ash.Filter.parse(request.resource, [or: unauthorized_values], engine.api)
+
+        authorized_clause = %{clause | filter: authorized_filter}
+        unauthorized_clause = %{clause | filter: unauthorized_filter}
+
         case {authorized, unauthorized} do
           {_, []} ->
-            {:ok, %{engine | facts: Map.put(engine.facts, clause, true)}}
+            {:ok, %{engine | facts: Map.put(engine.facts, authorized_clause, true)}}
 
           {[], _} ->
-            {:ok, %{engine | facts: Map.put(engine.facts, clause, false)}}
+            {:ok, %{engine | facts: Map.put(engine.facts, unauthorized_clause, false)}}
 
-          {authorized, unauthorized} ->
-            authorized_values =
-              Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
-                request.resource,
-                authorized
-              )
-
-            authorized_filter =
-              Ash.Filter.parse(request.resource, [or: authorized_values], engine.api)
-
-            unauthorized_values =
-              Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
-                request.resource,
-                unauthorized
-              )
-
-            unauthorized_filter =
-              Ash.Filter.parse(request.resource, [or: unauthorized_values], engine.api)
-
-            authorized_clause = %{clause | filter: authorized_filter}
-            unauthorized_clause = %{clause | filter: unauthorized_filter}
+          {_authorized, _unauthorized} ->
+            # TODO: Handle the possibility of error here
 
             new_facts =
               engine.facts

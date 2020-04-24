@@ -39,6 +39,69 @@ defmodule Ash.Authorization.SatSolver do
     end
   end
 
+  def strict_filter_subset(filter, candidate) do
+    filter_expr = filter_to_expr(filter)
+    candidate_expr = filter_to_expr(candidate)
+
+    case solve_expression(join_expr(filter_expr, candidate_expr, :and)) do
+      {:error, :unsatisfiable} ->
+        false
+
+      _ ->
+        case solve_expression(join_expr(negate(filter_expr), candidate_expr, :and)) do
+          {:error, :unsatisfiable} ->
+            true
+
+          _ ->
+            :maybe
+        end
+    end
+  end
+
+  defp negate(nil), do: nil
+  defp negate(expr), do: {:not, expr}
+
+  defp filter_to_expr(nil), do: nil
+  defp filter_to_expr(%{impossible?: true}), do: false
+
+  defp filter_to_expr(%{
+         attributes: attributes,
+         relationships: relationships,
+         not: not_filter,
+         ors: ors,
+         path: path
+       }) do
+    expr =
+      Enum.reduce(attributes, nil, fn {attr, statement}, expr ->
+        join_expr(expr, statement_to_expr(statement, %{path: path, attr: attr}), :and)
+      end)
+
+    expr =
+      Enum.reduce(relationships, expr, fn {relationship, relationship_filter}, expr ->
+        join_expr(expr, {relationship, filter_to_expr(relationship_filter)}, :and)
+      end)
+
+    expr = join_expr(negate(filter_to_expr(not_filter)), expr, :and)
+
+    Enum.reduce(ors, expr, fn or_filter, expr ->
+      join_expr(filter_to_expr(or_filter), expr, :or)
+    end)
+  end
+
+  defp statement_to_expr(%Ash.Filter.NotIn{values: values}, extra) do
+    {:not, {%Ash.Filter.In{values: values}, extra}}
+  end
+
+  defp statement_to_expr(%Ash.Filter.NotEq{value: value}, extra) do
+    {:not, {%Ash.Filter.Eq{value: value}, extra}}
+  end
+
+  defp statement_to_expr(statement, extra), do: {statement, extra}
+
+  defp join_expr(nil, right, _joiner), do: right
+  defp join_expr(left, nil, _joiner), do: left
+  defp join_expr(left, right, joiner), do: {joiner, left, right}
+
   defp get_all_scenarios(scenario_result, expression, scenarios \\ [])
   defp get_all_scenarios({:error, :unsatisfiable}, _, scenarios), do: scenarios
 
@@ -113,7 +176,15 @@ defmodule Ash.Authorization.SatSolver do
         requirements_expression
       end
 
-    expression_with_constants = {:and, true, {:and, {:not, false}, full_expression}}
+    solve_expression(full_expression)
+  end
+
+  def satsolver_solve(input) do
+    Picosat.solve(input)
+  end
+
+  defp solve_expression(expression) do
+    expression_with_constants = {:and, true, {:and, {:not, false}, expression}}
 
     {bindings, expression} = extract_bindings(expression_with_constants)
 
@@ -123,10 +194,6 @@ defmodule Ash.Authorization.SatSolver do
     |> negations_to_negative_numbers()
     |> satsolver_solve()
     |> solutions_to_predicate_values(bindings)
-  end
-
-  def satsolver_solve(input) do
-    Picosat.solve(input)
   end
 
   defp facts_to_statement(facts) do
@@ -188,6 +255,10 @@ defmodule Ash.Authorization.SatSolver do
   end
 
   defp solutions_to_predicate_values({:error, error}, _), do: {:error, error}
+
+  defp compile_rules_expression([], _facts, _filter) do
+    true
+  end
 
   defp compile_rules_expression([{:authorize_if, clause}], facts, filter) do
     clause = %{clause | filter: filter}

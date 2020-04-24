@@ -15,7 +15,7 @@ defmodule Ash.Authorization.Check.RelationshipSet do
 
   @impl true
   def prepare(opts) do
-    [side_load: opts[:relationship_name]]                                                       
+    [side_load: opts[:relationship_name]]
   end
 
   @impl true

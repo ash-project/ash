@@ -28,7 +28,8 @@ defmodule Ash.Actions.Read do
            SideLoad.requests(api, resource, side_loads, filter, side_load_filter),
          {:ok, paginator} <-
            Ash.Actions.Paginator.paginate(api, resource, action, sorted_query, page_params),
-         %{data: %{data: %{data: data}}, errors: errors} = engine when errors == %{} <-
+         %{data: %{data: %{data: data}}, errors: errors, authorized?: true} = engine
+         when errors == %{} <-
            do_authorized(
              paginator.query,
              params,

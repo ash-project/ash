@@ -15,7 +15,7 @@ defmodule Ash.Authorization.Report do
 
   def report(%{no_steps_configured: %Ash.Engine.Request{} = request}) do
     "forbidden:\n" <>
-      request.source <> ": no authorization steps configured. Resource: #{request.resource}"
+      request.name <> ": no authorization steps configured. Resource: #{request.resource}"
   end
 
   # We know that each group of authorization steps shares the same relationship

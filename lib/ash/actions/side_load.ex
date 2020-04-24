@@ -383,6 +383,12 @@ defmodule Ash.Actions.SideLoad do
             relationship.destination,
             put_nested_relationship(request_filter, reverse_path, root_filter, false)
           )
+
+        _ ->
+          Ash.Filter.parse(
+            relationship.destination,
+            request_filter
+          )
       end
     end)
   end
@@ -395,32 +401,6 @@ defmodule Ash.Actions.SideLoad do
          _data_dependency,
          _seed_data
        ) do
-    # TODO: If the root request is non `strict_access?`, then we could actually
-    # do something like this, using the full path. For now, we'll just authorize
-    # with the filter that is provided, since adding id filters to that
-    # (if reverse relationship is nil)
-    # Ash.Engine.Request.UnresolvedField.field(dependencies, fn
-    #   %{path: [:include, [_]]}, _, %{data: data} ->
-    #     new_values = Enum.map(data, &Map.get(&1, relationship.source_field))
-
-    #     filter =
-    #       add_relationship_id_filter(request_filter, relationship.destination_field, new_values)
-
-    #     Ash.Filter.parse(relationship.destination, filter, api)
-
-    #   %{path: [:include, include_path]}, _, data ->
-    #     prior_path = include_path |> Enum.reverse() |> tl()
-    #     source_data = Map.get(data, [:include, prior_path])
-    #     new_values = Enum.map(source_data, &Map.get(&1, relationship.source_field))
-
-    #     filter =
-    #       add_relationship_id_filter(request_filter, relationship.destination_field, new_values)
-
-    #     Ash.Filter.parse(relationship.destination, filter, api)
-    # end)
-    # prior_path = include_path |> Enum.reverse() |> tl()
-    # TODO: clean up return of this function
-    # {:ok, path, values} = reverse_relationship_path_and_values(relationship, data, prior_path)
     case reverse_relationship_path(relationship, prior_path) do
       {:ok, reverse_path} ->
         Ash.Filter.parse(

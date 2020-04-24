@@ -25,7 +25,11 @@ defmodule Ash.Actions.Create do
          %{valid?: true} = changeset <- changeset(api, resource, params),
          {:ok, side_load_requests} <-
            SideLoad.requests(api, resource, side_loads, side_load_filter, :create),
-         %{data: %{data: %{data: %^resource{} = created}}} = state <-
+         %{
+           data: %{data: %{data: %^resource{} = created}} = state,
+           errors: errors
+         }
+         when errors == %{} <-
            do_authorized(changeset, params, action, resource, api, side_load_requests) do
       {:ok, SideLoad.attach_side_loads(created, state)}
     else

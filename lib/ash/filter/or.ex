@@ -22,6 +22,16 @@ defmodule Ash.Filter.Or do
     new(resource, attr_type, [left, right])
   end
 
+  def prebuilt_new(left, right) do
+    # TODO: This should probably get richer. For instance, if right is a strict subset of left,
+    # maybe we should strip it?
+    if left == right do
+      left
+    else
+      %__MODULE__{left: left, right: right}
+    end
+  end
+
   def strict_subset_of?(attr, %{left: left, right: right}, predicate) do
     Ash.Filter.predicate_strict_subset_of?(attr, left, predicate) and
       Ash.Filter.predicate_strict_subset_of?(attr, right, predicate)

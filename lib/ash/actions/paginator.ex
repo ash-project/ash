@@ -1,5 +1,6 @@
 defmodule Ash.Actions.Paginator do
   defstruct [:limit, :offset, :total, :query, :results]
+
   # TODO: Support more pagination strategies
 
   @type t :: %__MODULE__{

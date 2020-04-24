@@ -196,7 +196,7 @@ defmodule Ash.Test.Authorization.ReadAuthorizationTest do
     Api.create!(Author, attributes: %{name: "foo", fired: false, self_manager: false})
     user = Api.create!(User, attributes: %{manager: true, id: author.id})
 
-    Api.read!(Author, authorization: [user: user, bypass_strict_access?: true])
+    Api.read!(Author, authorization: [user: user], bypass_strict_access?: true)
   end
 
   test "it fails properly on conflicting results" do

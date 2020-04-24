@@ -1,6 +1,7 @@
 defmodule Ash.Engine do
   require Logger
   alias Ash.Engine.Request
+
   # TODO: Add ability to configure "resolver error behavior"
   # graphql will want to continue on failures, but the
   # code interface/JSON API will want to bail on the first error
@@ -17,6 +18,7 @@ defmodule Ash.Engine do
     completed_preparations: %{},
     data: %{},
     state: :init,
+    authorized?: false,
     facts: %{
       true: true,
       false: false
@@ -43,7 +45,7 @@ defmodule Ash.Engine do
   defp loop_until_complete(engine) do
     case next(engine) do
       %{state: :complete} = new_engine ->
-        if all_resolved_or_unnecessary?(new_engine.requests) do
+        if new_engine.authorized? do
           new_engine
         else
           exception =
@@ -51,7 +53,7 @@ defmodule Ash.Engine do
               requests: new_engine.requests,
               facts: new_engine.facts,
               state: new_engine.data,
-              reason: "Couldn't continue processing"
+              reason: "Request could not be authorized"
             )
 
           add_error(new_engine, [:__engine__], exception)
@@ -65,12 +67,6 @@ defmodule Ash.Engine do
       new_engine ->
         loop_until_complete(new_engine)
     end
-  end
-
-  defp all_resolved_or_unnecessary?(requests) do
-    requests
-    |> Enum.filter(& &1.resolve_when_fetch_only?)
-    |> Enum.all?(&Request.data_resolved?/1)
   end
 
   defp next(%{failure_mode: :complete, errors: errors} = engine) when errors != %{} do
@@ -388,6 +384,10 @@ defmodule Ash.Engine do
      "Invalid data while resolving path."}
   end
 
+  defp reality_check(%{authorized?: true} = engine) do
+    transition(engine, :resolve_complete)
+  end
+
   defp reality_check(engine) do
     case find_real_scenario(engine.scenarios, engine.facts) do
       nil ->
@@ -396,7 +396,9 @@ defmodule Ash.Engine do
       scenario ->
         scenario = Map.drop(scenario, [true, false])
 
-        transition(engine, :resolve_complete, %{
+        engine
+        |> Map.put(:authorized?, true)
+        |> transition(:resolve_complete, %{
           message: "Scenario was reality: #{inspect(scenario)}"
         })
     end
@@ -465,7 +467,9 @@ defmodule Ash.Engine do
             reason: "No scenario leads to authorization"
           )
 
-        transition(engine, :complete, %{errors: {:__engine__, error}})
+        engine
+        |> Map.put(:authorized?, false)
+        |> transition(:complete, %{errors: {:__engine__, error}})
     end
   end
 
@@ -476,6 +480,10 @@ defmodule Ash.Engine do
       |> Map.to_list()
 
     Ash.Filter.parse(resource, pkey_filter, api)
+  end
+
+  defp check(%{authorized?: true} = engine) do
+    transition(engine, :resolve_complete)
   end
 
   defp check(engine) do
@@ -532,6 +540,10 @@ defmodule Ash.Engine do
     end
   end
 
+  defp strict_check(%{authorized?: true} = engine) do
+    transition(engine, :generate_scenarios)
+  end
+
   defp strict_check(engine) do
     {requests, facts} =
       Enum.reduce(engine.requests, {[], engine.facts}, fn request, {requests, facts} ->
@@ -546,14 +558,6 @@ defmodule Ash.Engine do
   defp new(request, api, opts) when not is_list(request), do: new([request], api, opts)
 
   defp new(requests, api, opts) do
-    # TODO: We should put any pre-resolved data into state
-    requests =
-      if opts[:fetch_only?] do
-        Enum.map(requests, &Request.authorize_always/1)
-      else
-        requests
-      end
-
     requests =
       if opts[:bypass_strict_access?] do
         Enum.map(requests, &Map.put(&1, :strict_access?, false))
@@ -565,6 +569,7 @@ defmodule Ash.Engine do
       requests: requests,
       user: opts[:user],
       api: api,
+      authorized?: opts[:fetch_only?],
       failure_mode: opts[:failure_mode] || :complete,
       log_transitions?: Keyword.get(opts, :log_transitions, true)
     }
@@ -577,15 +582,18 @@ defmodule Ash.Engine do
       )
     end
 
-    case Enum.find(requests, &Enum.empty?(&1.rules)) do
+    case Enum.find(engine.requests, &Enum.empty?(&1.rules)) do
       nil ->
-        # IO.inspect(engine.requests)
         engine
 
       request ->
-        exception = Ash.Error.Forbidden.exception(no_steps_configured: request)
+        if opts[:fetch_only?] do
+          engine
+        else
+          exception = Ash.Error.Forbidden.exception(no_steps_configured: request)
 
-        transition(engine, :complete, %{errors: {:__engine__, exception}})
+          transition(engine, :complete, %{errors: {:__engine__, exception}})
+        end
     end
   end
 
