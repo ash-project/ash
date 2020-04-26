@@ -13,46 +13,39 @@ defmodule Ash.Authorization.Checker do
 
   If you need to write your own checks see #TODO: Link to a guide about writing checks here.
   """
-  require Logger
 
   alias Ash.Authorization.Clause
 
   def strict_check(user, request, facts) do
-    if Ash.Engine.Request.can_strict_check?(request) do
-      new_facts =
-        request.rules
-        |> Enum.reduce(facts, fn {_step, clause}, facts ->
-          case Clause.find(facts, clause) do
-            {:ok, _boolean_result} ->
-              facts
+    new_facts =
+      request.rules
+      |> Enum.reduce(facts, fn {_step, clause}, facts ->
+        case Clause.find(facts, clause) do
+          {:ok, _boolean_result} ->
+            facts
 
-            :error ->
-              case do_strict_check(clause, user, request) do
-                {:error, _error} ->
-                  # TODO: Surface this error
-                  facts
+          :error ->
+            case do_strict_check(clause, user, request) do
+              {:error, _error} ->
+                # TODO: Surface this error
+                facts
 
-                :unknown ->
-                  facts
+              :unknown ->
+                facts
 
-                :unknowable ->
-                  Map.put(facts, clause, :unknowable)
+              :unknowable ->
+                Map.put(facts, clause, :unknowable)
 
-                :irrelevant ->
-                  Map.put(facts, clause, :irrelevant)
+              :irrelevant ->
+                Map.put(facts, clause, :irrelevant)
 
-                boolean ->
-                  Map.put(facts, clause, boolean)
-              end
-          end
-        end)
+              boolean ->
+                Map.put(facts, clause, boolean)
+            end
+        end
+      end)
 
-      Logger.debug("Completed strict_check for #{request.name}")
-
-      {Map.put(request, :strict_check_complete?, true), new_facts}
-    else
-      {request, facts}
-    end
+    {Map.put(request, :strict_check_complete?, true), new_facts}
   end
 
   def run_checks(engine, %{data: []}, _clause) do
@@ -76,41 +69,38 @@ defmodule Ash.Authorization.Checker do
             end)
           end)
 
-        # TODO: Handle the possibility of error here
-        {:ok, authorized_values} =
-          Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
-            request.resource,
-            authorized
-          )
-
-        authorized_filter =
-          Ash.Filter.parse(request.resource, [or: authorized_values], engine.api)
-
-        {:ok, unauthorized_values} =
-          Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
-            request.resource,
-            unauthorized
-          )
-
-        unauthorized_filter =
-          Ash.Filter.parse(request.resource, [or: unauthorized_values], engine.api)
-
-        authorized_clause = %{clause | filter: authorized_filter}
-        unauthorized_clause = %{clause | filter: unauthorized_filter}
-
         case {authorized, unauthorized} do
           {_, []} ->
-            {:ok, %{engine | facts: Map.put(engine.facts, authorized_clause, true)}}
+            {:ok, %{engine | facts: Map.put(engine.facts, clause, true)}}
 
           {[], _} ->
-            {:ok, %{engine | facts: Map.put(engine.facts, unauthorized_clause, false)}}
+            {:ok, %{engine | facts: Map.put(engine.facts, clause, false)}}
 
-          {_authorized, _unauthorized} ->
-            # TODO: Handle the possibility of error here
+          {authorized, unauthorized} ->
+            # TODO: Handle this error
+            {:ok, authorized_values} =
+              Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
+                request.resource,
+                authorized
+              )
+
+            authorized_filter =
+              Ash.Filter.parse(request.resource, [or: authorized_values], engine.api)
+
+            {:ok, unauthorized_values} =
+              Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
+                request.resource,
+                unauthorized
+              )
+
+            unauthorized_filter =
+              Ash.Filter.parse(request.resource, [or: unauthorized_values], engine.api)
+
+            authorized_clause = %{clause | filter: authorized_filter}
+            unauthorized_clause = %{clause | filter: unauthorized_filter}
 
             new_facts =
               engine.facts
-              |> Map.delete(clause)
               |> Map.put(authorized_clause, true)
               |> Map.put(unauthorized_clause, false)
 
@@ -141,7 +131,7 @@ defmodule Ash.Authorization.Checker do
             :unknown
 
           true ->
-            :unknowable
+            :unknowabl
         end
     end
   end

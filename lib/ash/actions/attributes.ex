@@ -16,7 +16,7 @@ defmodule Ash.Actions.Attributes do
         changeset: changeset,
         action_type: action.type,
         data:
-          Ash.Engine.Request.UnresolvedField.data(
+          Ash.Engine.Request.resolve(
             [[:data, :data]],
             fn %{data: %{data: data}} ->
               {:ok, data}

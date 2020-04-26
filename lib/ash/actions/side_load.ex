@@ -194,7 +194,7 @@ defmodule Ash.Actions.SideLoad do
         if seed_data do
           []
         else
-          [[:data]]
+          [[:data, :data]]
         end
 
       dependencies =
@@ -229,7 +229,7 @@ defmodule Ash.Actions.SideLoad do
             ),
           strict_access?: true,
           data:
-            Ash.Engine.Request.UnresolvedField.data(dependencies, fn data ->
+            Ash.Engine.Request.resolve(dependencies, fn data ->
               data =
                 if seed_data do
                   Map.update(data, :data, %{data: seed_data}, fn data_request ->
@@ -294,7 +294,7 @@ defmodule Ash.Actions.SideLoad do
                 ),
               strict_access?: true,
               data:
-                Ash.Engine.Request.UnresolvedField.data(dependencies, fn data ->
+                Ash.Engine.Request.resolve(dependencies, fn data ->
                   if seed_data do
                     Map.update(data, :data, %{data: seed_data}, fn data_request ->
                       Map.put(data_request, :data, seed_data)
@@ -342,7 +342,7 @@ defmodule Ash.Actions.SideLoad do
          _,
          _
        ) do
-    Ash.Engine.Request.UnresolvedField.field([], fn _ ->
+    Ash.Engine.Request.resolve(fn _ ->
       {:error, "Required reverse relationship for #{inspect(relationship)}"}
     end)
   end
@@ -356,7 +356,7 @@ defmodule Ash.Actions.SideLoad do
          seed_data
        )
        when root_filter in [:update, :create] do
-    Ash.Engine.Request.UnresolvedField.field(data_dependency, fn data ->
+    Ash.Engine.Request.resolve(data_dependency, fn data ->
       data =
         if seed_data do
           seed_data

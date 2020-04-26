@@ -84,7 +84,7 @@ defmodule Ash.Actions.Relationships do
               changeset: changeset(changeset, api, relationships),
               action_type: action.type,
               data:
-                Ash.Engine.Request.UnresolvedField.data(dependencies, fn
+                Ash.Engine.Request.resolve(dependencies, fn
                   %{data: %{data: data}} ->
                     {:ok, data}
                 end),
@@ -227,7 +227,7 @@ defmodule Ash.Actions.Relationships do
         resolve_when_fetch_only?: true,
         path: [:relationships, relationship_name, type],
         data:
-          Ash.Engine.Request.UnresolvedField.data([], fn _data ->
+          Ash.Engine.Request.resolve(fn _data ->
             case api.read(destination, filter: filter, paginate: false) do
               {:ok, %{results: results}} -> {:ok, results}
               {:error, error} -> {:error, error}
@@ -360,7 +360,7 @@ defmodule Ash.Actions.Relationships do
     else
       dependencies = Map.get(changeset, :__changes_depend_on__, [])
 
-      Ash.Engine.Request.UnresolvedField.field(dependencies, fn data ->
+      Ash.Engine.Request.resolve(dependencies, fn data ->
         new_changeset =
           data
           |> Map.get(:relationships, %{})
@@ -887,7 +887,7 @@ defmodule Ash.Actions.Relationships do
         resolve_when_fetch_only?: true,
         filter: filter,
         data:
-          Ash.Engine.Request.UnresolvedField.data([], fn _data ->
+          Ash.Engine.Request.resolve(fn _data ->
             case api.read(destination, filter: filter, paginate: false) do
               {:ok, %{results: results}} -> {:ok, results}
               {:error, error} -> {:error, error}
@@ -924,7 +924,7 @@ defmodule Ash.Actions.Relationships do
       filter: filter,
       resolve_when_fetch_only?: true,
       data:
-        Ash.Engine.Request.UnresolvedField.data([], fn _data ->
+        Ash.Engine.Request.resolve(fn _data ->
           case api.read(through, filter: filter_statement) do
             {:ok, %{results: results}} -> {:ok, results}
             {:error, error} -> {:error, error}
@@ -951,7 +951,7 @@ defmodule Ash.Actions.Relationships do
       resolve_when_fetch_only?: true,
       path: [:relationships, name, :current],
       filter:
-        Ash.Engine.Request.UnresolvedField.field(
+        Ash.Engine.Request.resolve(
           [[:relationships, name, :current_join, :data]],
           fn %{relationships: %{^name => %{current_join: %{data: current_join}}}} ->
             field_values =
@@ -963,7 +963,7 @@ defmodule Ash.Actions.Relationships do
           end
         ),
       data:
-        Ash.Engine.Request.UnresolvedField.field(
+        Ash.Engine.Request.resolve(
           [[:relationships, name, :current_join, :data]],
           fn %{relationships: %{^name => %{current_join: %{data: current_join}}}} ->
             field_values =

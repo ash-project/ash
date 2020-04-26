@@ -2,23 +2,14 @@ defmodule Ash.Engine.Request do
   alias Ash.Authorization.{Check, Clause}
 
   defmodule UnresolvedField do
-    defstruct [:resolver, depends_on: [], can_use: [], data?: false]
+    # TODO: Add some kind of optional dependency?
+    defstruct [:resolver, deps: [], optional_deps: [], data?: false]
 
-    def data(dependencies, can_use \\ [], func) do
+    def new(dependencies, optional_deps, func) do
       %__MODULE__{
         resolver: func,
-        depends_on: deps(dependencies),
-        can_use: deps(can_use),
-        data?: true
-      }
-    end
-
-    def field(dependencies, can_use \\ [], func) do
-      %__MODULE__{
-        resolver: func,
-        depends_on: deps(dependencies),
-        can_use: deps(can_use),
-        data?: false
+        deps: deps(dependencies),
+        optional_deps: deps(optional_deps)
       }
     end
 
@@ -33,20 +24,9 @@ defmodule Ash.Engine.Request do
     import Inspect.Algebra
 
     def inspect(field, opts) do
-      data =
-        if field.data? do
-          "data! "
-        else
-          ""
-        end
-
       concat([
         "#UnresolvedField<",
-        data,
-        "needs: ",
-        to_doc(field.depends_on, opts),
-        ", can_use: ",
-        to_doc(field.can_use, opts),
+        to_doc(field.deps, opts),
         ">"
       ])
     end
@@ -76,6 +56,10 @@ defmodule Ash.Engine.Request do
     prepared?: false
   ]
 
+  def resolve(dependencies \\ [], optional_dependencies \\ [], func) do
+    UnresolvedField.new(dependencies, optional_dependencies, func)
+  end
+
   def new(opts) do
     filter =
       case opts[:filter] do
@@ -102,6 +86,15 @@ defmodule Ash.Engine.Request do
          )}
       end)
 
+    data =
+      case opts[:data] do
+        %UnresolvedField{} = unresolved ->
+          %{unresolved | data?: true}
+
+        other ->
+          other
+      end
+
     %__MODULE__{
       id: Ecto.UUID.generate(),
       rules: rules,
@@ -110,7 +103,7 @@ defmodule Ash.Engine.Request do
       changeset: opts[:changeset],
       path: List.wrap(opts[:path]),
       action_type: opts[:action_type],
-      data: opts[:data],
+      data: data,
       resolve_when_fetch_only?: opts[:resolve_when_fetch_only?],
       filter: filter,
       name: opts[:name],
@@ -119,14 +112,10 @@ defmodule Ash.Engine.Request do
     }
   end
 
-  def can_strict_check?(%__MODULE__{strict_check_complete?: true}), do: false
+  def can_strict_check(%__MODULE__{strict_check_complete?: true}, _state), do: false
 
-  def can_strict_check?(request) do
-    request
-    |> Map.from_struct()
-    |> Enum.all?(fn {_key, value} ->
-      !match?(%UnresolvedField{data?: false}, value)
-    end)
+  def can_strict_check(request, state) do
+    all_dependencies_met?(request, state, false)
   end
 
   def authorize_always(request) do
@@ -154,7 +143,6 @@ defmodule Ash.Engine.Request do
   end
 
   def resolve_data(data, %{data: %UnresolvedField{resolver: resolver} = unresolved} = request) do
-    # {new_data = resolve_
     context = resolver_context(data, unresolved)
 
     case resolver.(context) do
@@ -186,57 +174,46 @@ defmodule Ash.Engine.Request do
     fetch_nested_value(state, request.path)
   end
 
-  defp resolver_context(state, %{depends_on: depends_on, can_use: can_use}) do
+  defp resolver_context(state, %{deps: depends_on, optional_deps: optional_deps}) do
     with_dependencies =
       Enum.reduce(depends_on, %{}, fn dependency, acc ->
         {:ok, value} = fetch_nested_value(state, dependency)
+
         put_nested_key(acc, dependency, value)
       end)
 
-    Enum.reduce(can_use, with_dependencies, fn can_use, acc ->
-      case fetch_nested_value(state, can_use) do
-        {:ok, value} -> put_nested_key(acc, can_use, value)
+    Enum.reduce(optional_deps, with_dependencies, fn optional_dep, acc ->
+      case fetch_nested_value(state, optional_dep) do
+        {:ok, value} -> put_nested_key(acc, optional_dep, value)
         _ -> acc
       end
     end)
   end
 
-  def all_dependencies_met?(request, state) do
-    dependencies_met?(state, get_dependencies(request))
+  def all_dependencies_met?(request, state, data? \\ true) do
+    dependencies_met?(state, get_dependencies(request, data?), data?)
   end
 
-  def dependencies_met?(state, dependencies, sources \\ [])
-  def dependencies_met?(_state, [], _sources), do: {true, []}
-  def dependencies_met?(_state, nil, _sources), do: {true, []}
+  def dependencies_met?(state, deps, data? \\ true)
+  def dependencies_met?(_state, [], _), do: true
+  def dependencies_met?(_state, nil, _), do: true
 
-  def dependencies_met?(state, dependencies, sources) do
-    Enum.reduce(dependencies, {true, []}, fn
-      _, false ->
-        false
-
-      dependency, {true, if_resolved} ->
-        if dependency in sources do
-          # Prevent infinite loop on co-dependent requests
-          # Does it make sense to have to do this?
-          false
-        else
-          case fetch_nested_value(state, dependency) do
-            {:ok, %UnresolvedField{depends_on: nested_dependencies}} ->
-              case dependencies_met?(state, nested_dependencies, [dependency | sources]) do
-                {true, nested_if_resolved} ->
-                  {true, [dependency | if_resolved] ++ nested_if_resolved}
-
-                false ->
-                  false
-              end
-
-            {:ok, _} ->
-              {true, if_resolved}
-
-            _ ->
-              false
+  def dependencies_met?(state, dependencies, data?) do
+    Enum.all?(dependencies, fn dependency ->
+      case fetch_nested_value(state, dependency) do
+        {:ok, %UnresolvedField{deps: nested_dependencies, data?: dep_is_data?}} ->
+          if dep_is_data? and not data? do
+            false
+          else
+            dependencies_met?(state, nested_dependencies, data?)
           end
-        end
+
+        {:ok, _} ->
+          true
+
+        _ ->
+          false
+      end
     end)
   end
 
@@ -265,17 +242,127 @@ defmodule Ash.Engine.Request do
     Map.fetch(state, key)
   end
 
-  defp get_dependencies(request) do
+  # Debugging utility
+  def deps_report(requests) when is_list(requests) do
+    Enum.map_join(requests, &deps_report/1)
+  end
+
+  def deps_report(request) do
+    header = "#{request.name}: \n"
+
+    body =
+      request
+      |> Map.from_struct()
+      |> Enum.filter(&match?({_, %UnresolvedField{}}, &1))
+      |> Enum.map_join("\n", fn {key, value} ->
+        "  #{key}: #{inspect(value)}"
+      end)
+
+    header <> body <> "\n"
+  end
+
+  def validate_unique_paths(requests) do
+    requests
+    |> Enum.group_by(& &1.path)
+    |> Enum.filter(fn {_path, value} ->
+      Enum.count(value, & &1.write_to_data?) > 1
+    end)
+    |> case do
+      [] ->
+        :ok
+
+      invalid_paths ->
+        invalid_paths = Enum.map(invalid_paths, &elem(&1, 0))
+
+        {:error, invalid_paths}
+    end
+  end
+
+  def build_dependencies(requests) do
+    result =
+      Enum.reduce_while(requests, {:ok, []}, fn request, {:ok, new_requests} ->
+        case do_build_dependencies(request, requests) do
+          {:ok, new_request} -> {:cont, {:ok, [new_request | new_requests]}}
+          {:error, error} -> {:halt, {:error, request.path, error}}
+        end
+      end)
+
+    case result do
+      {:ok, requests} -> {:ok, Enum.reverse(requests)}
+      other -> other
+    end
+  end
+
+  defp do_build_dependencies(request, requests, trail \\ []) do
     request
     |> Map.from_struct()
-    |> Enum.flat_map(fn {_key, value} ->
-      case value do
-        %UnresolvedField{depends_on: values} ->
-          values
+    |> Enum.reduce_while({:ok, request}, fn
+      {key, %UnresolvedField{deps: deps} = unresolved}, {:ok, request} ->
+        case expand_deps(deps, requests, trail) do
+          {:error, error} ->
+            {:halt, {:error, error}}
+
+          {:ok, new_deps} ->
+            {:cont, {:ok, Map.put(request, key, %{unresolved | deps: Enum.uniq(new_deps)})}}
+        end
+
+      _, {:ok, request} ->
+        {:cont, {:ok, request}}
+    end)
+  end
+
+  defp expand_deps([], _, _), do: {:ok, []}
+
+  defp expand_deps(deps, requests, trail) do
+    Enum.reduce_while(deps, {:ok, []}, fn dep, {:ok, all_new_deps} ->
+      case do_expand_dep(dep, requests, trail) do
+        {:ok, new_deps} -> {:cont, {:ok, all_new_deps ++ new_deps}}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
+  end
+
+  defp do_expand_dep(dep, requests, trail) do
+    if dep in trail do
+      {:error, {:circular, dep}}
+    else
+      # TODO: this is inneficient
+      request_path = :lists.droplast(dep)
+      request_key = List.last(dep)
+
+      case Enum.find(requests, &(&1.path == request_path)) do
+        nil ->
+          {:error, {:impossible, dep}}
+
+        %{^request_key => %UnresolvedField{deps: nested_deps}} ->
+          case expand_deps(nested_deps, requests, [dep | trail]) do
+            {:ok, new_deps} -> {:ok, [dep | new_deps]}
+            other -> other
+          end
 
         _ ->
-          []
+          {:ok, [dep]}
       end
+    end
+  end
+
+  defp get_dependencies(request, data? \\ true) do
+    keys_to_drop =
+      if data? do
+        []
+      else
+        [:data]
+      end
+
+    request
+    |> Map.from_struct()
+    |> Map.drop(keys_to_drop)
+    |> Enum.flat_map(fn
+      {_key, %UnresolvedField{deps: values}} ->
+        values
+
+      _ ->
+        []
     end)
     |> Enum.uniq()
   end

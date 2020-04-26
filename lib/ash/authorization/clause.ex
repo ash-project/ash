@@ -94,6 +94,8 @@ defimpl Inspect, for: Ash.Authorization.Clause do
 
     concat([
       "#Clause<",
+      inspect(clause.resource),
+      ": ",
       filter,
       terminator,
       to_doc(clause.check_module.describe(clause.check_opts), opts),

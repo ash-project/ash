@@ -105,7 +105,8 @@ defmodule Ash.Test.Authorization.ReadAuthorizationTest do
 
     Api.read!(Post,
       authorization: [user: user],
-      filter: [authors: [id: author.id]]
+      filter: [authors: [id: author.id]],
+      verbose?: true
     )
   end
 

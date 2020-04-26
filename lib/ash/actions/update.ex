@@ -80,7 +80,7 @@ defmodule Ash.Actions.Update do
           ),
         action_type: action.type,
         data:
-          Ash.Engine.Request.UnresolvedField.data(
+          Ash.Engine.Request.resolve(
             [[:data, :changeset]],
             fn %{data: %{changeset: changeset}} ->
               resource
@@ -113,13 +113,15 @@ defmodule Ash.Actions.Update do
         api,
         strict_access?: false,
         user: params[:authorization][:user],
-        bypass_strict_access?: params[:bypass_strict_access?]
+        bypass_strict_access?: params[:bypass_strict_access?],
+        verbose?: params[:verbose?]
       )
     else
       Engine.run(
         [update_request | attribute_requests] ++ relationship_requests ++ side_load_requests,
         api,
-        fetch_only?: true
+        fetch_only?: true,
+        verbose?: params[:verbose?]
       )
     end
   end

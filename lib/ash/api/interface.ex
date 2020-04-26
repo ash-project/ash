@@ -20,13 +20,16 @@ defmodule Ash.Api.Interface do
 
   @global_opts Ashton.schema(
                  opts: [
-                   authorization: [{:const, false}, @authorization_schema]
+                   authorization: [{:const, false}, @authorization_schema],
+                   verbose?: :boolean
                  ],
                  defaults: [
-                   authorization: false
+                   authorization: false,
+                   verbose?: false
                  ],
                  describe: [
-                   authorization: "# TODO describe"
+                   authorization: "# TODO describe",
+                   verbose?: "Debug log engine operation"
                  ]
                )
 

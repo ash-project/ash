@@ -12,7 +12,7 @@ defmodule Ash.Actions.Destroy do
         strict_access: false,
         path: [:data],
         data:
-          Ash.Engine.Request.UnresolvedField.data([], fn _ ->
+          Ash.Engine.Request.resolve(fn _ ->
             case Ash.data_layer(resource).destroy(record) do
               :ok -> {:ok, record}
               {:error, error} -> {:error, error}
@@ -28,10 +28,11 @@ defmodule Ash.Actions.Destroy do
           [auth_request],
           api,
           user: params[:authorization][:user],
-          bypass_strict_access?: params[:bypass_strict_access?]
+          bypass_strict_access?: params[:bypass_strict_access?],
+          verbose?: params[:verbose?]
         )
       else
-        Engine.run([auth_request], api, fetch_only?: true)
+        Engine.run([auth_request], api, fetch_only?: true, verbose?: params[:verbose?])
       end
 
     case result do

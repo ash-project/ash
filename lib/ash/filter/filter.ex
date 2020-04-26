@@ -70,7 +70,7 @@ defmodule Ash.Filter do
           path: [:filter, path],
           resolve_when_fetch_only?: false,
           data:
-            Ash.Engine.Request.UnresolvedField.data(
+            Ash.Engine.Request.resolve(
               [[:filter, path, :filter]],
               fn %{filter: %{^path => %{filter: filter}}} ->
                 query = Ash.DataLayer.resource_to_query(resource)
@@ -435,7 +435,11 @@ defmodule Ash.Filter do
       do: false
 
   def strict_subset_of(filter, candidate) do
+    # IO.inspect(filter, label: "filter")
+    # IO.inspect(candidate, label: "candidate")
     {filter, candidate} = cosimplify(filter, candidate)
+    # IO.inspect(filter, label: "cosimplified")
+    # IO.inspect(candidate, label: "cosimplified")
     Ash.Authorization.SatSolver.strict_filter_subset(filter, candidate)
   end
 

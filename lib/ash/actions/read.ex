@@ -59,7 +59,7 @@ defmodule Ash.Actions.Read do
         action_type: action.type,
         strict_access?: !Ash.Filter.primary_key_filter?(filter),
         data:
-          Request.UnresolvedField.data(
+          Request.resolve(
             [[:data, :filter]],
             Ash.Filter.optional_paths(filter),
             fn %{data: %{filter: filter}} = data ->
@@ -84,10 +84,11 @@ defmodule Ash.Actions.Read do
         [request | requests],
         api,
         user: params[:authorization][:user],
-        bypass_strict_access?: params[:bypass_strict_access?]
+        bypass_strict_access?: params[:bypass_strict_access?],
+        verbose?: params[:verbose?]
       )
     else
-      Engine.run([request | requests], api, fetch_only?: true)
+      Engine.run([request | requests], api, fetch_only?: true, verbose?: params[:verbose?])
     end
   end
 end

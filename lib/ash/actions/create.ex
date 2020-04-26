@@ -70,7 +70,7 @@ defmodule Ash.Actions.Create do
         action_type: action.type,
         strict_access?: false,
         data:
-          Ash.Engine.Request.UnresolvedField.data(
+          Ash.Engine.Request.resolve(
             [[:data, :changeset]],
             fn %{data: %{changeset: changeset}} ->
               resource
@@ -115,14 +115,16 @@ defmodule Ash.Actions.Create do
           relationship_read_requests ++ relationship_change_requests ++ side_load_requests,
         api,
         user: params[:authorization][:user],
-        bypass_strict_access?: params[:bypass_strict_access?]
+        bypass_strict_access?: params[:bypass_strict_access?],
+        verbose?: params[:verbose?]
       )
     else
       Engine.run(
         [create_request | attribute_requests] ++
           relationship_read_requests ++ relationship_change_requests ++ side_load_requests,
         api,
-        fetch_only?: true
+        fetch_only?: true,
+        verbose?: params[:verbose?]
       )
     end
   end
