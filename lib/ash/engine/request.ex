@@ -76,13 +76,24 @@ defmodule Ash.Engine.Request do
           Ash.Filter.parse(opts[:resource], other)
       end
 
+    id = Ecto.UUID.generate()
+
+    clause_id =
+      if opts[:action_type] == :read do
+        nil
+      else
+        id
+      end
+
     rules =
       Enum.map(opts[:rules] || [], fn {rule, fact} ->
         {rule,
          Ash.Authorization.Clause.new(
            opts[:resource],
            fact,
-           filter
+           opts[:action],
+           filter,
+           clause_id
          )}
       end)
 
@@ -96,7 +107,7 @@ defmodule Ash.Engine.Request do
       end
 
     %__MODULE__{
-      id: Ecto.UUID.generate(),
+      id: id,
       rules: rules,
       strict_access?: Keyword.get(opts, :strict_access?, true),
       resource: opts[:resource],
@@ -119,7 +130,19 @@ defmodule Ash.Engine.Request do
   end
 
   def authorize_always(request) do
-    clause = Clause.new(request.resource, {Check.Static, result: true})
+    filter =
+      case request.filter do
+        %UnresolvedField{} ->
+          nil
+
+        %Ash.Filter{} = filter ->
+          filter
+
+        nil ->
+          nil
+      end
+
+    clause = Clause.new(request.resource, {Check.Static, result: true}, request.action, filter)
 
     %{request | rules: [authorize_if: clause]}
   end

@@ -23,6 +23,7 @@ defmodule Ash.Engine do
       true: true,
       false: false
     },
+    no_resolvable_requests?: false,
     scenarios: []
   ]
 
@@ -53,6 +54,7 @@ defmodule Ash.Engine do
               requests: new_engine.requests,
               facts: new_engine.facts,
               state: new_engine.data,
+              api: engine.api,
               reason: "Request could not be authorized"
             )
 
@@ -114,18 +116,18 @@ defmodule Ash.Engine do
         # we don't run them again.
 
         engine
+        |> Map.put(:no_resolvable_requests?, false)
         |> resolve_data(request)
         |> transition(:check)
 
       [] ->
-        # engine.requests
-        # |> Enum.reject(&Request.data_resolved?/1)
-        # |> Enum.map(& &1.name)
-        # |> IO.inspect(label: "unresolved")
-
-        # IO.inspect(engine.requests)
-
-        transition(engine, :complete, %{message: "No requests to resolve"})
+        if engine.no_resolvable_requests? do
+          transition(engine, :complete, %{message: "No requests to resolve"})
+        else
+          engine
+          |> Map.put(:no_resolvable_requests?, true)
+          |> transition(:check)
+        end
     end
   end
 
@@ -212,43 +214,38 @@ defmodule Ash.Engine do
     # TODO: Sort these by whether or not their optional deps have been met
     # perhaps by the count of unmet optional deps?
     # Also, sort them by whether or not they *should* be fetched
-    Enum.filter(engine.requests, fn
-      %{data: %Request.UnresolvedField{}} = request ->
-        !request.error? && Request.all_dependencies_met?(request, engine.data, true) &&
-          allowed_access?(engine, request)
-
-      _request ->
-        false
-    end)
+    engine.requests
+    |> Enum.reject(& &1.error?)
+    |> Enum.reject(& &1.strict_access?)
+    |> Enum.filter(&Request.all_dependencies_met?(&1, engine.data, true))
+    |> Enum.filter(&allowed_access?(engine, &1))
   end
 
   defp allowed_access?(engine, request) do
     if request.strict_access? do
-      passes_strict_check_in_isolation?(request, engine, :definitely)
+      passes_strict_check_in_isolation?(request, engine)
     else
-      passes_strict_check_in_isolation?(request, engine, :maybe)
+      false
     end
   end
 
-  defp passes_strict_check_in_isolation?(request, engine, condition) do
-    rules_with_data =
-      if Request.data_resolved?(request) do
-        request.data
-        |> List.wrap()
-        |> Enum.map(fn item ->
-          {request.rules, get_pkeys(item, engine.api)}
-        end)
-      else
-        [request.rules]
-      end
-
-    case SatSolver.solve(rules_with_data, engine.facts) do
-      {:ok, scenarios} ->
-        if condition == :definitely do
-          find_real_scenario(scenarios, engine.facts) != nil
+  defp passes_strict_check_in_isolation?(request, engine) do
+    requests_with_data_filter =
+      Enum.flat_map([request], fn request ->
+        if Request.data_resolved?(request) && request.data not in [nil, []] do
+          request.data
+          |> List.wrap()
+          |> Enum.map(fn item ->
+            %{request | filter: get_pkeys(request, engine.api, item)}
+          end)
         else
-          true
+          [request]
         end
+      end)
+
+    case SatSolver.solve(requests_with_data_filter, engine.facts) do
+      {:ok, scenarios} ->
+        find_real_scenario(scenarios, engine.facts) != nil
 
       {:error, :unsatisfiable} ->
         false
@@ -256,15 +253,30 @@ defmodule Ash.Engine do
   end
 
   defp resolve_data(engine, request) do
+    if engine.verbose? do
+      Logger.debug("Resolving data #{request.name}")
+    end
+
     with {:ok, engine, request} <- resolve_dependencies(request, engine, true),
+         engine <- replace_request(engine, request),
          {:ok, resolved_request} <- Request.resolve_data(engine.data, request),
+         engine <- replace_request(engine, resolved_request),
          {:ok, prepared_request} <- prepare(engine, resolved_request) do
-      replace_request(engine, prepared_request)
+      filter =
+        if prepared_request.action_type == :create do
+          get_pkeys(prepared_request, engine.api, prepared_request.data)
+        else
+          prepared_request.filter
+        end
+
+      replace_request(engine, %{prepared_request | filter: filter})
     else
       {:error, %__MODULE__{} = engine} ->
-        engine
+        request = Enum.find(engine.requests, &(&1.id == request.id))
+        replace_request(engine, %{request | error?: true})
 
       {:error, error} ->
+        request = Enum.find(engine.requests, &(&1.id == request.id))
         new_request = %{request | error?: true}
 
         engine
@@ -533,20 +545,20 @@ defmodule Ash.Engine do
   end
 
   defp generate_scenarios(engine) do
-    rules_with_data =
+    requests_with_data_filter =
       Enum.flat_map(engine.requests, fn request ->
-        if Request.data_resolved?(request) do
+        if Request.data_resolved?(request) && request.data not in [nil, []] do
           request.data
           |> List.wrap()
           |> Enum.map(fn item ->
-            {request.rules, get_pkeys(item, engine.api)}
+            %{request | filter: get_pkeys(request, engine.api, item)}
           end)
         else
-          [request.rules]
+          [request]
         end
       end)
 
-    case SatSolver.solve(rules_with_data, engine.facts) do
+    case SatSolver.solve(requests_with_data_filter, engine.facts) do
       {:ok, scenarios} ->
         transition(engine, :reality_check, %{scenarios: scenarios})
 
@@ -555,6 +567,7 @@ defmodule Ash.Engine do
           Ash.Error.Forbidden.exception(
             requests: engine.requests,
             facts: engine.facts,
+            api: engine.api,
             state: engine.data,
             reason: "No scenario leads to authorization"
           )
@@ -565,7 +578,7 @@ defmodule Ash.Engine do
     end
   end
 
-  defp get_pkeys(%resource{} = item, api) do
+  def get_pkeys(%{filter: nil, resource: resource}, api, %_{} = item) do
     pkey_filter =
       item
       |> Map.take(Ash.primary_key(resource))
@@ -574,19 +587,50 @@ defmodule Ash.Engine do
     Ash.Filter.parse(resource, pkey_filter, api)
   end
 
+  def get_pkeys(request, _, %resource{} = item) do
+    pkey_filter =
+      item
+      |> Map.take(Ash.primary_key(resource))
+      |> Map.to_list()
+
+    Ash.Filter.add_to_filter(request.filter, pkey_filter)
+  end
+
   defp check(engine) do
-    case checkable_request(engine) do
-      {:ok, request} ->
-        case resolve_dependencies(request, engine, true) do
-          {:ok, engine, request} ->
-            run_checks(engine, request)
+    case do_check(engine) do
+      {:cont, engine} -> check(engine)
+      {:halt, engine} -> engine
+    end
+  end
 
-          {:error, engine} ->
-            {:error, engine}
+  defp do_check(engine) do
+    case checkable_requests(engine) do
+      [] ->
+        {:halt, engine}
+
+      requests ->
+        {new_requests, new_engine} =
+          Enum.reduce(requests, {[], engine}, fn request, {new_requests, engine} ->
+            case resolve_dependencies(request, engine, true) do
+              {:ok, new_engine, new_request} ->
+                {[new_request | new_requests], new_engine}
+
+              {:error, new_engine} ->
+                {new_requests, new_engine}
+            end
+          end)
+
+        case new_requests do
+          [new_request | _others] ->
+            if engine.verbose? do
+              Logger.debug("Checking #{new_request.name}")
+            end
+
+            {:cont, run_checks(new_engine, new_request)}
+
+          [] ->
+            {:halt, new_engine}
         end
-
-      _ ->
-        engine
     end
   end
 
@@ -600,48 +644,72 @@ defmodule Ash.Engine do
         :error -> true
       end
     end)
-    |> Enum.reduce_while(engine, fn {_kind, clause}, engine ->
+    |> Enum.reduce_while({:ok, engine}, fn {_kind, clause}, {:ok, engine} ->
       # TODO: remove the third argument below/just pass in the request
       case Checker.run_checks(engine, request, clause) do
         {:error, error} ->
-          engine =
-            engine
-            |> add_error(request.path, error)
-            |> replace_request(engine, %{request | error?: true, check_complete?: true})
+          engine = add_error(engine, request.path, error)
 
-          {:halt, engine}
+          {:halt, {:error, engine}}
 
         {:ok, new_engine} ->
-          engine = replace_request(new_engine, %{request | check_complete?: true})
-
-          {:cont, engine}
+          {:cont, {:ok, new_engine}}
       end
     end)
+    |> case do
+      {:error, engine} ->
+        replace_request(engine, %{request | error?: true, check_complete?: true})
+
+      {:ok, new_engine} ->
+        replace_request(new_engine, %{request | check_complete?: true})
+    end
   end
 
-  defp checkable_request(engine) do
+  defp checkable_requests(engine) do
     engine.requests
     |> Enum.filter(& &1.strict_check_complete?)
     |> Enum.filter(&Request.data_resolved?/1)
     |> Enum.reject(& &1.check_complete?)
     |> Enum.reject(& &1.error?)
-    |> case do
-      [request | _] ->
-        {:ok, request}
-
-      _ ->
-        :error
-    end
   end
 
   defp strict_check(engine) do
+    case do_strict_check(engine) do
+      {:cont, engine} -> strict_check(engine)
+      {:halt, engine} -> engine
+    end
+  end
+
+  defp do_strict_check(engine) do
     engine.requests
     |> Enum.filter(&Request.can_strict_check(&1, engine.data))
-    |> Enum.reduce_while(engine, fn request, engine ->
-      case resolve_dependencies(request, engine, false) do
-        {:ok, new_engine, new_request} ->
-          {new_request, new_facts} =
-            Checker.strict_check(new_engine.user, new_request, new_engine.facts)
+    |> case do
+      [] ->
+        {:halt, engine}
+
+      requests ->
+        {new_requests, new_engine} =
+          Enum.reduce(requests, {[], engine}, fn request, {requests, engine} ->
+            case resolve_dependencies(request, engine, false) do
+              {:ok, new_engine, new_request} ->
+                {[new_request | requests], new_engine}
+
+              {:error, engine} ->
+                {requests,
+                 replace_request(engine, %{
+                   request
+                   | strict_check_complete?: true,
+                     error?: true
+                 })}
+            end
+          end)
+
+        Enum.reduce(new_requests, {:cont, new_engine}, fn request, {:cont, engine} ->
+          if engine.verbose? do
+            Logger.debug("Strict checking #{request.name}")
+          end
+
+          {new_request, new_facts} = Checker.strict_check(engine.user, request, engine.facts)
 
           new_engine =
             new_engine
@@ -649,17 +717,22 @@ defmodule Ash.Engine do
             |> Map.put(:facts, new_facts)
 
           {:cont, new_engine}
-
-        {:error, engine} ->
-          {:halt, engine}
-      end
-    end)
+        end)
+    end
   end
 
   defp resolve_dependencies(request, engine, data?) do
     case do_resolve_dependencies(request, engine, data?) do
       :done ->
-        {:ok, engine, request}
+        new_request = %{
+          request
+          | rules:
+              Enum.map(request.rules, fn {kind, clause} ->
+                {kind, Map.put(clause, :filter, request.filter)}
+              end)
+        }
+
+        {:ok, engine, new_request}
 
       {:ok, engine, request} ->
         resolve_dependencies(request, engine, data?)
@@ -711,8 +784,7 @@ defmodule Ash.Engine do
                   {:cont, {:ok, replace_request(new_engine, new_request)}}
 
                 {:error, engine, dep, error} ->
-                  new_engine = replace_request(engine, %{other_request | error?: true})
-                  {:halt, {:error, new_engine, dep, error}}
+                  {:halt, {:error, engine, dep, error}}
               end
             end
 

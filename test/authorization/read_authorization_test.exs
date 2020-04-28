@@ -105,8 +105,7 @@ defmodule Ash.Test.Authorization.ReadAuthorizationTest do
 
     Api.read!(Post,
       authorization: [user: user],
-      filter: [authors: [id: author.id]],
-      verbose?: true
+      filter: [authors: [id: author.id]]
     )
   end
 
@@ -144,9 +143,7 @@ defmodule Ash.Test.Authorization.ReadAuthorizationTest do
     user = Api.create!(User)
 
     assert_raise Ash.Error.Forbidden, ~r/forbidden/, fn ->
-      Api.read!(Post,
-        authorization: [user: user]
-      )
+      Api.read!(Post, authorization: [user: user])
     end
   end
 
@@ -194,7 +191,9 @@ defmodule Ash.Test.Authorization.ReadAuthorizationTest do
 
   test "it can handle conflicting results" do
     author = Api.create!(Author, attributes: %{name: "foo", fired: false, self_manager: true})
+
     Api.create!(Author, attributes: %{name: "foo", fired: false, self_manager: false})
+
     user = Api.create!(User, attributes: %{manager: true, id: author.id})
 
     Api.read!(Author, authorization: [user: user], bypass_strict_access?: true)

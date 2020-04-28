@@ -1,11 +1,15 @@
 defmodule Ash.Authorization.Clause do
-  defstruct [:path, :resource, :check_module, :check_opts, :filter]
+  defstruct [:path, :resource, :request_id, :check_module, :check_opts, :action, :filter]
 
-  def new(resource, {mod, opts}, filter \\ nil) do
+  def new(resource, {mod, opts}, action, filter, request_id \\ nil) do
+    # Read actions should pass in `read` here,
+    # once we have custom actions
     %__MODULE__{
       resource: resource,
       check_module: mod,
       check_opts: opts,
+      action: action,
+      request_id: request_id,
       filter: filter
     }
   end
@@ -20,14 +24,6 @@ defmodule Ash.Authorization.Clause do
         {:ok, value}
       end
     end) || :error
-  end
-
-  def expression(clause = %{filter: nil}) do
-    clause
-  end
-
-  def expression(clause) do
-    {:or, clause, %{clause | filter: nil}}
   end
 
   def prune_facts(facts) do
@@ -60,17 +56,28 @@ defmodule Ash.Authorization.Clause do
        when is_boolean(clause) or is_boolean(other_clause),
        do: false
 
-  defp is_matching_clause?(clause, %__MODULE__{filter: nil} = potential_matching) do
-    Map.take(clause, [:resource, :check_module, :check_opts]) ==
-      Map.take(potential_matching, [:resource, :check_module, :check_opts])
-  end
-
-  defp is_matching_clause?(%__MODULE__{filter: nil}, _), do: false
-
   defp is_matching_clause?(clause, potential_matching) do
-    Ash.Filter.strict_subset_of?(potential_matching.filter, clause.filter) &&
-      Map.take(clause, [:resource, :check_module, :check_opts]) ==
-        Map.take(potential_matching, [:resource, :check_module, :check_opts])
+    cond do
+      clause.check_module.pure? ->
+        match_keys = [:check_module, :check_opts]
+
+        Map.take(clause, match_keys) ==
+          Map.take(potential_matching, match_keys)
+
+      clause.request_id ->
+        match_keys = [:resource, :check_module, :check_opts, :request_id]
+
+        Map.take(clause, match_keys) == Map.take(potential_matching, match_keys)
+
+      potential_matching.request_id ->
+        false
+
+      true ->
+        match_keys = [:resource, :check_module, :check_opts]
+
+        Map.take(clause, match_keys) == Map.take(potential_matching, match_keys) and
+          Ash.Filter.strict_subset_of?(clause.filter, potential_matching.filter)
+    end
   end
 end
 

@@ -103,7 +103,9 @@ defmodule Ash.Filter do
     false
   end
 
-  def primary_key_filter?(%{attributes: attributes, not: not_filter, ors: ors, resource: resource}) do
+  def primary_key_filter?(
+        %{attributes: attributes, not: not_filter, ors: ors, resource: resource} = filter
+      ) do
     not_filter_is_primary_key_filter? =
       if not_filter do
         primary_key_filter?(not_filter)
@@ -214,61 +216,94 @@ defmodule Ash.Filter do
   # Cosimplification reduces the rates of false negatives
   # and false positives by ensuring filters are stated in the same
   # way
-  def cosimplify(left, right, state \\ %{}, first? \\ true) do
-    {new_left, state} = do_cosimplify(left, state, first?)
+  def cosimplify(left, right, state \\ nil) do
+    state = state || get_all_values(left, get_all_values(right, %{}))
+    {new_left, state} = do_cosimplify(left, state)
 
-    {new_right, state} = do_cosimplify(right, state, first?)
+    {new_right, state} = do_cosimplify(right, state)
 
     if new_left == left && new_right == right do
       {new_left, new_right}
     else
-      cosimplify(new_left, new_right, state, false)
+      cosimplify(new_left, new_right, state)
     end
   end
 
-  defp do_cosimplify(filter, state, first?) do
+  defp get_all_values(filter, state) do
     state =
-      if first? do
-        Enum.reduce(filter.attributes, state, fn {field, value}, state ->
-          state
-          |> Map.put_new(filter.path, %{})
-          |> Map.update!(filter.path, fn paths ->
-            paths
-            |> Map.put_new(field, [])
-            |> Map.update!(field, fn values ->
-              [value | values]
+      Enum.reduce(filter.attributes, state, fn {field, value}, state ->
+        state
+        |> Map.put_new(filter.path, %{})
+        |> Map.update!(filter.path, fn paths ->
+          paths
+          |> Map.put_new(field, %{})
+          |> Map.update!(field, fn field_config ->
+            field_config
+            |> Map.put_new(:substitutions, %{})
+            |> Map.put_new(:values, [])
+            |> Map.update!(:values, fn values ->
+              if value in values do
+                values
+              else
+                [value | values]
+              end
             end)
           end)
         end)
+      end)
+
+    state =
+      Enum.reduce(filter.relationships, state, fn {_, relationship_filter}, new_state ->
+        get_all_values(relationship_filter, new_state)
+      end)
+
+    state =
+      if filter.not do
+        get_all_values(filter, state)
       else
         state
       end
 
+    Enum.reduce(filter.ors, state, fn {_, relationship_filter}, new_state ->
+      get_all_values(relationship_filter, new_state)
+    end)
+  end
+
+  # This is a stupid way to do this
+  defp do_cosimplify(filter, state) do
     {new_attrs, state} =
       Enum.reduce(filter.attributes, {%{}, state}, fn {field, value}, {attributes, state} ->
-        {new_value, state} = cosimplify_value(value, state, filter.path, field)
+        substitutions = get_in(state, [filter.path, field, :substitutions]) || %{}
 
-        {Map.put(attributes, field, new_value), state}
+        case Map.fetch(substitutions, value) do
+          {:ok, new_value} ->
+            {Map.put(attributes, field, new_value), state}
+
+          :error ->
+            {new_value, state} = cosimplify_value(value, state, filter.path, field)
+
+            {Map.put(attributes, field, new_value), state}
+        end
       end)
 
     {new_relationships, state} =
       Enum.reduce(filter.relationships, {%{}, state}, fn {relationship, related_filter},
                                                          {relationships, state} ->
-        {new_relationship_filter, state} = do_cosimplify(related_filter, state, first?)
+        {new_relationship_filter, state} = do_cosimplify(related_filter, state)
 
         {Map.put(relationships, relationship, new_relationship_filter), state}
       end)
 
     {new_not, state} =
       if filter.not do
-        do_cosimplify(filter.not, state, first?)
+        do_cosimplify(filter.not, state)
       else
         {filter.not, state}
       end
 
     {new_ors, state} =
       Enum.reduce(filter.ors, {[], state}, fn or_filter, {ors, state} ->
-        {new_or, state} = do_cosimplify(or_filter, state, first?)
+        {new_or, state} = do_cosimplify(or_filter, state)
 
         {[new_or | ors], state}
       end)
@@ -283,24 +318,35 @@ defmodule Ash.Filter do
   end
 
   defp cosimplify_value(value, state, path, field) do
-    other_values = get_in(state, [path, field])
+    other_values = get_in(state, [path, field, :values]) || []
 
-    {new_other_values, new_value, _found?} =
-      Enum.reduce(other_values, {other_values, value, false}, fn
-        other_value, {other_values, value, true} ->
-          {[other_value | other_values], value, true}
+    {state, new_value, _found?} =
+      Enum.reduce(other_values, {state, value, false}, fn
+        _, {state, value, true} ->
+          {state, value, true}
 
-        other_value, {other_values, value, false} ->
+        other_value, {state, value, false} ->
           case do_cosimplify_value(value, other_value) do
             {:ok, cosimplified, cosimplified_other} ->
-              {[cosimplified_other | other_values], cosimplified, true}
+              new_state =
+                if cosimplified_other == other_value do
+                  state
+                else
+                  update_in(
+                    state,
+                    [path, field, :substitutions],
+                    &Map.put(&1, other_value, cosimplified_other)
+                  )
+                end
+
+              {new_state, cosimplified, true}
 
             :error ->
-              {[other_value | other_values], value, false}
+              {state, value, false}
           end
       end)
 
-    {new_value, put_in(state, [path, field], Enum.reverse(new_other_values))}
+    {new_value, state}
   end
 
   defp do_cosimplify_value(value, value), do: :error
@@ -351,6 +397,14 @@ defmodule Ash.Filter do
     else
       :error
     end
+  end
+
+  defp do_cosimplify_value(
+         %Ash.Filter.Eq{value: left_value} = left_eq,
+         %Ash.Filter.Eq{value: right_value} = right_eq
+       )
+       when left_value != right_value do
+    {:ok, {:and, left_eq, {:not, right_eq}}, {:and, right_eq, {:not, left_eq}}}
   end
 
   defp do_cosimplify_value(
@@ -426,7 +480,7 @@ defmodule Ash.Filter do
   @doc """
   Returns true if the second argument is a strict subset (always returns the same or less data) of the first
   """
-  def strict_subset_of(nil, nil), do: true
+  def strict_subset_of(nil, _), do: true
 
   def strict_subset_of(_, nil), do: false
 
@@ -435,82 +489,30 @@ defmodule Ash.Filter do
       do: false
 
   def strict_subset_of(filter, candidate) do
-    # IO.inspect(filter, label: "filter")
-    # IO.inspect(candidate, label: "candidate")
-    {filter, candidate} = cosimplify(filter, candidate)
-    # IO.inspect(filter, label: "cosimplified")
-    # IO.inspect(candidate, label: "cosimplified")
-    Ash.Authorization.SatSolver.strict_filter_subset(filter, candidate)
+    if empty_filter?(filter) do
+      true
+    else
+      if empty_filter?(candidate) do
+        false
+      else
+        # IO.inspect(filter, label: "filter")
+        # IO.inspect(candidate, label: "candidate")
+        {filter, candidate} = cosimplify(filter, candidate)
+        # IO.inspect(filter, label: "cosimplified")
+        # IO.inspect(candidate, label: "cosimplified")
+        Ash.Authorization.SatSolver.strict_filter_subset(filter, candidate)
+      end
+    end
   end
 
   def strict_subset_of?(filter, candidate) do
     strict_subset_of(filter, candidate) == true
   end
 
-  # This is insufficient and will yield false negatives
-  # defp ors_contained?(filter, candidate) do
-  # end
-
-  # defp not_doesnt_contain?(filter, candidate) do
-
-  # end
-
-  # left:
-  # a in [1, 2, 3, 5] or a = 4
-  # right:
-  # a in [1, 2] and not(a = 4 or a = 5)
-  #
-  #
-
-  # (a = 1 or a = 2) and not(a = 1 and b = 2)
-  # (a = 2) and (b = 2)
-  # remaining_not_negated SHOULD BE: (a = 1)
-
-  # defp do_strict_subset_of?(filter, candidate) do
-  #   # TODO: Finish this!
-  #   unless filter.ors in [[], nil], do: raise("Can't do ors contains yet")
-  #   unless candidate.ors in [[], nil], do: raise("Can't do ors contains yet")
-  #   unless candidate.not in [[], nil], do: raise("Can't do not contains yet")
-
-  #   {negated?, new_not_filter} =
-  #     if filter.not do
-  #       do_strict_subset_of?(filter.not, candidate)
-  #     else
-  #       {false, nil}
-  #     end
-
-  #   filter = %{filter | not: new_not_filter}
-
-  #   if negated? do
-  #     {false, candidate}
-  #   else
-  #     remaining_attributes = uncontained_attributes(filter, candidate)
-  #     remaining_relationships = uncontained_relationships(filter, candidate)
-
-  #     if remaining_attributes == %{} and remaining_relationships == %{} do
-  #       {true, %{candidate | attributes: %{}, relationships: %{}}}
-  #     else
-  #       {false,
-  #        %{candidate | attributes: remaining_attributes, relationships: remaining_relationships}}
-  #     end
-  #   end
-  # end
-
-  # defp uncontained_attributes(filter, candidate) do
-  #   candidate.attributes
-  #   |> Enum.reject(fn {attr, predicate} ->
-  #     contains_attribute?(filter, attr, predicate)
-  #   end)
-  #   |> Enum.into(%{})
-  # end
-
-  # defp uncontained_relationships(filter, candidate) do
-  #   candidate.relationships
-  #   |> Enum.reject(fn {relationship, relationship_filter} ->
-  #     contains_relationship?(filter, relationship, relationship_filter)
-  #   end)
-  #   |> Enum.into(%{})
-  # end
+  defp empty_filter?(filter) do
+    filter.attributes == %{} and filter.relationships == %{} and filter.not == nil and
+      filter.ors in [[], nil]
+  end
 
   defp add_records_to_relationship_filter(filter, [], records) do
     case Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(filter.resource, records) do

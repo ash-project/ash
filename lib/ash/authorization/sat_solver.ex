@@ -3,19 +3,11 @@ defmodule Ash.Authorization.SatSolver do
 
   @dialyzer {:no_return, :"picosat_solve/1"}
 
-  def solve(rules_with_filters, facts) do
+  def solve(requests, facts) do
     expression =
-      Enum.reduce(rules_with_filters, nil, fn rules_with_filter, expr ->
-        {rules, filter} =
-          case rules_with_filter do
-            {rules, filter} ->
-              {rules, filter}
-
-            rules ->
-              {rules, nil}
-          end
-
-        requirements_expression = build_requirements_expression([rules], facts, filter)
+      Enum.reduce(requests, nil, fn request, expr ->
+        requirements_expression =
+          build_requirements_expression([request.rules], facts, request.filter)
 
         if expr do
           {:and, expr, requirements_expression}
@@ -43,12 +35,16 @@ defmodule Ash.Authorization.SatSolver do
     filter_expr = filter_to_expr(filter)
     candidate_expr = filter_to_expr(candidate)
 
-    case solve_expression(join_expr(filter_expr, candidate_expr, :and)) do
+    together = join_expr(filter_expr, candidate_expr, :and)
+
+    separate = join_expr(negate(filter_expr), candidate_expr, :and)
+
+    case solve_expression(together) do
       {:error, :unsatisfiable} ->
         false
 
-      _ ->
-        case solve_expression(join_expr(negate(filter_expr), candidate_expr, :and)) do
+      {:ok, _} ->
+        case solve_expression(separate) do
           {:error, :unsatisfiable} ->
             true
 
@@ -73,7 +69,11 @@ defmodule Ash.Authorization.SatSolver do
        }) do
     expr =
       Enum.reduce(attributes, nil, fn {attr, statement}, expr ->
-        join_expr(expr, statement_to_expr(statement, %{path: path, attr: attr}), :and)
+        join_expr(
+          expr,
+          tag_statement(statement_to_expr(statement), %{path: path, attr: attr}),
+          :and
+        )
       end)
 
     expr =
@@ -88,15 +88,22 @@ defmodule Ash.Authorization.SatSolver do
     end)
   end
 
-  defp statement_to_expr(%Ash.Filter.NotIn{values: values}, extra) do
-    {:not, {%Ash.Filter.In{values: values}, extra}}
+  defp statement_to_expr(%Ash.Filter.NotIn{values: values}) do
+    {:not, %Ash.Filter.In{values: values}}
   end
 
-  defp statement_to_expr(%Ash.Filter.NotEq{value: value}, extra) do
-    {:not, {%Ash.Filter.Eq{value: value}, extra}}
+  defp statement_to_expr(%Ash.Filter.NotEq{value: value}) do
+    {:not, %Ash.Filter.Eq{value: value}}
   end
 
-  defp statement_to_expr(statement, extra), do: {statement, extra}
+  defp statement_to_expr(statement), do: statement
+
+  defp tag_statement({:not, value}, tag), do: {:not, tag_statement(value, tag)}
+
+  defp tag_statement({joiner, left_value, right_value}, tag) when joiner in [:and, :or],
+    do: {joiner, tag_statement(left_value, tag), tag_statement(right_value, tag)}
+
+  defp tag_statement(statement, tag), do: {statement, tag}
 
   defp join_expr(nil, right, _joiner), do: right
   defp join_expr(left, nil, _joiner), do: left
@@ -110,6 +117,8 @@ defmodule Ash.Authorization.SatSolver do
     |> add_negations_and_solve([Map.drop(scenario, [true, false]) | scenarios])
     |> get_all_scenarios(expression, [Map.drop(scenario, [true, false]) | scenarios])
   end
+
+  defp remove_irrelevant_clauses([scenario]), do: [scenario]
 
   defp remove_irrelevant_clauses(scenarios) do
     new_scenarios =
@@ -268,7 +277,7 @@ defmodule Ash.Authorization.SatSolver do
       {:ok, false} -> false
       {:ok, :unknowable} -> false
       {:ok, :irrelevant} -> true
-      :error -> Clause.expression(clause)
+      :error -> clause
     end
   end
 
@@ -289,7 +298,7 @@ defmodule Ash.Authorization.SatSolver do
         compile_rules_expression(rest, facts, filter)
 
       :error ->
-        {:or, Clause.expression(clause), compile_rules_expression(rest, facts, filter)}
+        {:or, clause, compile_rules_expression(rest, facts, filter)}
     end
   end
 
@@ -310,7 +319,7 @@ defmodule Ash.Authorization.SatSolver do
         false
 
       :error ->
-        {:not, Clause.expression(clause)}
+        {:not, clause}
     end
   end
 
@@ -331,7 +340,7 @@ defmodule Ash.Authorization.SatSolver do
         compile_rules_expression(rest, facts, filter)
 
       :error ->
-        {:or, {:not, Clause.expression(clause)}, compile_rules_expression(rest, facts, filter)}
+        {:or, {:not, clause}, compile_rules_expression(rest, facts, filter)}
     end
   end
 
@@ -356,7 +365,7 @@ defmodule Ash.Authorization.SatSolver do
         compile_rules_expression(rest, facts, filter)
 
       :error ->
-        {:and, {:not, Clause.expression(clause)}, compile_rules_expression(rest, facts, filter)}
+        {:and, {:not, clause}, compile_rules_expression(rest, facts, filter)}
     end
   end
 
@@ -381,7 +390,7 @@ defmodule Ash.Authorization.SatSolver do
         false
 
       :error ->
-        {:and, Clause.expression(clause), compile_rules_expression(rest, facts, filter)}
+        {:and, clause, compile_rules_expression(rest, facts, filter)}
     end
   end
 

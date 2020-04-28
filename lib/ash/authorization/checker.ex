@@ -53,7 +53,7 @@ defmodule Ash.Authorization.Checker do
   end
 
   def run_checks(engine, request, clause) do
-    case clause.check_module.check(engine.user, request.data, %{}, clause.check_opts) do
+    case clause.check_module().check(engine.user, request.data, %{}, clause.check_opts) do
       {:error, error} ->
         {:error, error}
 
@@ -101,6 +101,7 @@ defmodule Ash.Authorization.Checker do
 
             new_facts =
               engine.facts
+              |> Map.delete(clause)
               |> Map.put(authorized_clause, true)
               |> Map.put(unauthorized_clause, false)
 
@@ -131,7 +132,7 @@ defmodule Ash.Authorization.Checker do
             :unknown
 
           true ->
-            :unknowabl
+            :unknowable
         end
     end
   end

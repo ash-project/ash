@@ -1,5 +1,5 @@
 defmodule Ash.Authorization.Check.Static do
-  use Ash.Authorization.Check
+  use Ash.Authorization.Check, pure?: true
 
   @impl true
   def describe(options) do

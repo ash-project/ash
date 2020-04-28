@@ -13,6 +13,7 @@ defmodule Ash.Authorization.Check do
               {:ok, list(Ash.record()) | boolean} | {:error, Ash.error()}
   @callback describe(options()) :: String.t()
   @callback action_types() :: list(Ash.action_type())
+  @callback pure?() :: boolean
 
   @optional_callbacks check: 4, prepare: 1
 
@@ -29,6 +30,9 @@ defmodule Ash.Authorization.Check do
 
       @impl true
       def action_types(), do: unquote(opts[:action_types])
+
+      @impl true
+      def pure?(), do: unquote(opts[:pure?] || false)
 
       defoverridable prepare: 1, action_types: 0
     end

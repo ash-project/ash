@@ -10,6 +10,7 @@ defmodule Ash.Error.Forbidden do
     :state,
     :strict_access?,
     :reason,
+    :api,
     path: [],
     no_steps_configured: false
   ]
@@ -18,6 +19,7 @@ defmodule Ash.Error.Forbidden do
     report = %Report{
       path: error.path,
       reason: error.reason,
+      api: error.api,
       scenarios: error.scenarios,
       requests: error.requests,
       facts: error.facts,
