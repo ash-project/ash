@@ -111,24 +111,19 @@ defmodule Ash.Engine do
   defp next(%{state: :resolve_some} = engine) do
     # TODO: We should probably find requests that can be fetched in parallel
     # and fetch them asynchronously (if their data layer allows it)
+    engine
+
     case resolvable_requests(engine) do
       [request | _rest] ->
         # TODO: run any preparations on the data here, and then store what preparations have been run on what data so
         # we don't run them again.
 
         engine
-        |> Map.put(:no_resolvable_requests?, false)
         |> resolve_data(request)
         |> transition(:check)
 
       [] ->
-        if engine.no_resolvable_requests? do
-          transition(engine, :complete, %{message: "No requests to resolve"})
-        else
-          engine
-          |> Map.put(:no_resolvable_requests?, true)
-          |> transition(:check)
-        end
+        transition(engine, :complete, %{message: "No requests to resolve"})
     end
   end
 
@@ -217,20 +212,19 @@ defmodule Ash.Engine do
     # Also, sort them by whether or not they *should* be fetched
     engine.requests
     |> Enum.reject(& &1.error?)
-    |> Enum.reject(& &1.strict_access?)
     |> Enum.filter(&Request.all_dependencies_met?(&1, engine.data, true))
     |> Enum.filter(&allowed_access?(engine, &1))
   end
 
   defp allowed_access?(engine, request) do
     if request.strict_access? do
-      passes_strict_check_in_isolation?(request, engine)
-    else
       false
+    else
+      could_pass_strict_check_in_isolation?(request, engine)
     end
   end
 
-  defp passes_strict_check_in_isolation?(request, engine) do
+  defp could_pass_strict_check_in_isolation?(request, engine) do
     requests_with_data_filter =
       Enum.flat_map([request], fn request ->
         if Request.data_resolved?(request) && request.data not in [nil, []] do
@@ -245,8 +239,8 @@ defmodule Ash.Engine do
       end)
 
     case SatSolver.solve(requests_with_data_filter, engine.facts) do
-      {:ok, scenarios} ->
-        find_real_scenario(scenarios, engine.facts) != nil
+      {:ok, _scenarios} ->
+        true
 
       {:error, :unsatisfiable} ->
         false
