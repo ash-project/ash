@@ -437,7 +437,7 @@ defmodule Ash.Engine do
     |> Enum.filter(fn {_kind, clause} ->
       case Clause.find(engine.facts, clause) do
         {:ok, :unknown} -> true
-        {:ok, :unknowable} -> true
+        {:ok, :unknowable} -> false
         {:ok, _} -> false
         :error -> true
       end
@@ -522,15 +522,7 @@ defmodule Ash.Engine do
   defp resolve_dependencies(request, engine, data?) do
     case do_resolve_dependencies(request, engine, data?) do
       :done ->
-        new_request = %{
-          request
-          | rules:
-              Enum.map(request.rules, fn {kind, clause} ->
-                {kind, Map.put(clause, :filter, request.filter)}
-              end)
-        }
-
-        {:ok, engine, new_request}
+        {:ok, engine, request}
 
       {:ok, engine, request} ->
         resolve_dependencies(request, engine, data?)
@@ -543,7 +535,15 @@ defmodule Ash.Engine do
   defp do_resolve_dependencies(request, engine, data?) do
     request
     |> Map.from_struct()
-    |> Enum.find(&match?({_, %Request.UnresolvedField{}}, &1))
+    |> Enum.filter(&match?({_, %Request.UnresolvedField{}}, &1))
+    |> Enum.find(fn {_, unresolved} ->
+      if unresolved.data? and not data? and
+           Request.all_dependencies_met?(request, engine.data, false) do
+        false
+      else
+        true
+      end
+    end)
     |> case do
       nil ->
         :done
@@ -593,12 +593,16 @@ defmodule Ash.Engine do
 
     case result do
       {:ok, new_engine} ->
-        case Request.resolve_field(new_engine.data, unresolved) do
-          {:ok, value} ->
-            {:ok, new_engine, value}
+        if unresolved.data? and not data? do
+          {:ok, new_engine, unresolved}
+        else
+          case Request.resolve_field(new_engine.data, unresolved) do
+            {:ok, value} ->
+              {:ok, new_engine, value}
 
-          {:error, error} ->
-            {:error, engine, dep, error}
+            {:error, error} ->
+              {:error, engine, dep, error}
+          end
         end
 
       {:error, engine, dep, error} ->
