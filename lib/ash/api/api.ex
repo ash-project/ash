@@ -4,6 +4,7 @@ defmodule Ash.Api do
                     interface?: :boolean,
                     max_page_size: :integer,
                     default_page_size: :integer,
+                    pubsub_adapter: :atom,
                     # TODO: Support configuring this from env variables
                     authorization_explanations: [:boolean]
                   ],
@@ -72,6 +73,7 @@ defmodule Ash.Api do
       @interface? opts[:interface?]
       @side_load_type :simple
       @authorization_explanations opts[:authorization_explanations] || false
+      @pubsub_adapter opts[:pubsub_adapter]
 
       Module.register_attribute(__MODULE__, :mix_ins, accumulate: true)
       Module.register_attribute(__MODULE__, :resources, accumulate: true)

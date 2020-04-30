@@ -96,6 +96,14 @@ defmodule Ash.Authorization.SatSolver do
     {:not, %Ash.Filter.Eq{value: value}}
   end
 
+  defp statement_to_expr(%Ash.Filter.And{left: left, right: right}) do
+    {:and, statement_to_expr(left), statement_to_expr(right)}
+  end
+
+  defp statement_to_expr(%Ash.Filter.Or{left: left, right: right}) do
+    {:or, statement_to_expr(left), statement_to_expr(right)}
+  end
+
   defp statement_to_expr(statement), do: statement
 
   defp tag_statement({:not, value}, tag), do: {:not, tag_statement(value, tag)}

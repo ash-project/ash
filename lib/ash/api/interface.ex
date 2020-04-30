@@ -63,17 +63,20 @@ defmodule Ash.Api.Interface do
                       opts: [
                         filter: :keyword,
                         sort: {:list, {:tuple, {[{:enum, [:asc, :desc]}], :atom}}},
-                        page: [@pagination_schema]
+                        page: [@pagination_schema],
+                        subscribe?: :boolean
                       ],
                       defaults: [
                         filter: [],
                         sort: [],
-                        page: []
+                        page: [],
+                        subscribe?: false
                       ],
                       describe: [
                         filter: "# TODO describe",
                         sort: "# TODO describe",
-                        page: "# TODO describe"
+                        page: "# TODO describe",
+                        subscribe?: "# TODO describe"
                       ]
                     ]
                     |> Ashton.schema()

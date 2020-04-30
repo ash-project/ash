@@ -171,3 +171,5 @@ end
 - without transactions, we can't ensure that all changes are rolled back in the case that relationship updates are included. Don't think there is really anything to do about that, but something worth considering.
 - perhaps have auth steps express which fields need to be present, so we can avoid loading things unnecessarily
 - lift `or` filters over the same field equaling a value into a single `in` filter, for performance (potentially)
+- just had a cool thought: we can actually run the satsolver _before_ fetching the user. The satsolver could warn us early that _no user_ could make the request in question!
+- implement transactions in the engine. Perhaps by assigning requests transaction ids or something along those lines.
