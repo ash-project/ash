@@ -70,4 +70,60 @@ defmodule Ash.Resource.Attributes do
       end
     end
   end
+
+  @timestamp_schema Ashton.schema(
+                      opts: [
+                        inserted_at_field: :atom,
+                        updated_at_field: :atom
+                      ],
+                      defaults: [
+                        inserted_at_field: :inserted_at,
+                        updated_at_field: :updated_at
+                      ],
+                      describe: [
+                        inserted_at_field: "Changes the name of the inserted_at field",
+                        updated_at_field: "Changes the name of the updated_at field"
+                      ]
+                    )
+
+  @doc """
+  Adds auto updating timestamp fields
+
+  The field names default to `:inserted_at` and `:updated_at`, but can be overwritten via
+  passing overrides in the opts, e.g `timestamps(inserted_at: :created_at, updated_at: :last_touched)
+
+  #{Ashton.document(@timestamp_schema, header_depth: 2)}
+
+  ## Examples
+  ```elixir
+  attribute :first_name, :string, primary_key?: true
+  ```
+  """
+  defmacro timestamps(opts \\ []) do
+    opts =
+      case Ashton.validate(opts, @timestamp_schema) do
+        {:ok, opts} ->
+          opts
+
+        {:error, [{key, message} | _]} ->
+          raise Ash.Error.ApiDslError,
+            message: message,
+            path: [:attributes, :timestamps],
+            option: key,
+            message: message
+      end
+
+    quote bind_quoted: [opts: opts] do
+      inserted_at_name = opts[:inserted_at_field]
+      updated_at_name = opts[:updated_at_field]
+
+      attribute(inserted_at_name, :utc_datetime, generated?: true, default: &DateTime.utc_now/0)
+
+      attribute(updated_at_name, :utc_datetime,
+        generated?: true,
+        default: &DateTime.utc_now/0,
+        update_default: &DateTime.utc_now/0
+      )
+    end
+  end
 end

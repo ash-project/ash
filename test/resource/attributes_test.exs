@@ -67,4 +67,76 @@ defmodule Ash.Test.Resource.AttributesTest do
       )
     end
   end
+
+  describe "timestamps" do
+    test "it adds utc_datetime attributes" do
+      defposts do
+        attributes do
+          timestamps()
+        end
+      end
+
+      default = &DateTime.utc_now/0
+
+      assert [
+               %Ash.Resource.Attributes.Attribute{
+                 allow_nil?: true,
+                 default: ^default,
+                 generated?: true,
+                 name: :updated_at,
+                 primary_key?: false,
+                 type: :utc_datetime,
+                 update_default: ^default,
+                 writable?: true,
+                 write_rules: []
+               },
+               %Ash.Resource.Attributes.Attribute{
+                 allow_nil?: true,
+                 default: ^default,
+                 generated?: true,
+                 name: :inserted_at,
+                 primary_key?: false,
+                 type: :utc_datetime,
+                 update_default: nil,
+                 writable?: true,
+                 write_rules: []
+               }
+             ] = Ash.attributes(Post)
+    end
+
+    test "it allows overwriting the field names" do
+      defposts do
+        attributes do
+          timestamps(inserted_at_field: :created_at, updated_at_field: :last_visited)
+        end
+      end
+
+      default = &DateTime.utc_now/0
+
+      assert [
+               %Ash.Resource.Attributes.Attribute{
+                 allow_nil?: true,
+                 default: ^default,
+                 generated?: true,
+                 name: :last_visited,
+                 primary_key?: false,
+                 type: :utc_datetime,
+                 update_default: ^default,
+                 writable?: true,
+                 write_rules: []
+               },
+               %Ash.Resource.Attributes.Attribute{
+                 allow_nil?: true,
+                 default: ^default,
+                 generated?: true,
+                 name: :created_at,
+                 primary_key?: false,
+                 type: :utc_datetime,
+                 update_default: nil,
+                 writable?: true,
+                 write_rules: []
+               }
+             ] = Ash.attributes(Post)
+    end
+  end
 end

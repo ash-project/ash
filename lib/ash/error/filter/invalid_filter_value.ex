@@ -1,7 +1,7 @@
 defmodule Ash.Error.Filter.InvalidFilterValue do
   use Ash.Error
 
-  def_ash_error([:field, :filter, :value])
+  def_ash_error([:field, :filter, :value], class: :invalid)
 
   defimpl Ash.ErrorKind do
     def id(_), do: Ecto.UUID.generate()
@@ -11,11 +11,11 @@ defmodule Ash.Error.Filter.InvalidFilterValue do
     def class(_), do: :invalid
 
     def message(%{field: field, value: value, filter: filter}) do
-      "Invalid filter value #{inspect(value)} supplied for #{inspect(field)} #{inspect(filter)}"
+      "Invalid filter value #{inspect(value)} supplied for #{inspect(field)}#{inspect(filter)}"
     end
 
     def description(%{field: field, filter: filter, value: value}) do
-      "Invalid filter value #{inspect(value)} supplied for #{inspect(field)} #{inspect(filter)}"
+      "Invalid filter value #{inspect(value)} supplied for #{inspect(field)}#{inspect(filter)}"
     end
 
     def stacktrace(_), do: nil
