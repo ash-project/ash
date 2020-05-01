@@ -13,8 +13,11 @@ defmodule Ash.Schema do
 
       schema unquote(name) do
         for attribute <- @attributes do
+          read_after_writes? = attribute.generated? and is_nil(attribute.default)
+
           field(attribute.name, Ash.Type.ecto_type(attribute.type),
-            primary_key: attribute.primary_key?
+            primary_key: attribute.primary_key?,
+            read_after_writes: read_after_writes?
           )
         end
 
