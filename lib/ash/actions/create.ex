@@ -157,6 +157,8 @@ defmodule Ash.Actions.Create do
     resource
     |> Ash.attributes()
     |> Enum.reject(&Map.get(&1, :allow_nil?))
+    |> Enum.reject(&Map.get(&1, :generated?))
+    |> Enum.reject(&Map.get(&1, :default))
     |> Enum.reduce(changeset, fn attr, changeset ->
       case Ecto.Changeset.get_field(changeset, attr.name) do
         nil -> Ecto.Changeset.add_error(changeset, attr.name, "must not be nil")

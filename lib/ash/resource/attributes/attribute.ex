@@ -1,7 +1,7 @@
 defmodule Ash.Resource.Attributes.Attribute do
   @doc false
 
-  defstruct [:name, :type, :allow_nil?, :primary_key?, :default, :write_rules]
+  defstruct [:name, :type, :allow_nil?, :generated?, :primary_key?, :default, :write_rules]
 
   @type t :: %__MODULE__{
           name: atom(),
@@ -16,6 +16,7 @@ defmodule Ash.Resource.Attributes.Attribute do
               primary_key?: :boolean,
               allow_nil?: :boolean,
               write_rules: [{:const, false}, :keyword],
+              generated?: :boolean,
               default: [
                 {:function, 0},
                 {:tuple, {:module, :atom}},
@@ -24,6 +25,7 @@ defmodule Ash.Resource.Attributes.Attribute do
             ],
             defaults: [
               primary_key?: false,
+              generated?: false,
               allow_nil?: true,
               write_rules: []
             ],
@@ -32,6 +34,7 @@ defmodule Ash.Resource.Attributes.Attribute do
               Whether or not to allow `null` values. Ash can perform optimizations with this information, so if you do not
               expect any null values, make sure to set this switch.
               """,
+              generated?: "Whether or not the value should be treated as required input",
               primary_key?:
                 "Whether this field is, or is part of, the primary key of a resource.",
               default:
@@ -72,6 +75,7 @@ defmodule Ash.Resource.Attributes.Attribute do
        %__MODULE__{
          name: name,
          type: type,
+         generated?: opts[:generated?],
          write_rules: write_rules,
          allow_nil?: opts[:allow_nil?],
          primary_key?: opts[:primary_key?],

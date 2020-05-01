@@ -1,10 +1,11 @@
 defmodule Ash.Resource do
   @primary_key_schema Ashton.schema(
-                        opts: [field: :atom, type: :atom],
-                        defaults: [field: :id, type: :uuid],
+                        opts: [field: :atom, type: :atom, generated?: :boolean],
+                        defaults: [field: :id, type: :uuid, generated?: true],
                         describe: [
                           field: "The field name of the primary key of the resource.",
-                          type: "The data type of the primary key of the resource."
+                          type: "The data type of the primary key of the resource.",
+                          generated?: "Whether or not the primary key is auto generated."
                         ]
                       )
 
@@ -134,6 +135,7 @@ defmodule Ash.Resource do
           Ash.Resource.Attributes.Attribute.new(mod, :id, :uuid,
             primary_key?: true,
             default: &Ecto.UUID.generate/0,
+            generated?: true,
             write_rules: false
           )
 
@@ -146,6 +148,7 @@ defmodule Ash.Resource do
         {:ok, attribute} =
           Ash.Resource.Attributes.Attribute.new(mod, opts[:field], opts[:type],
             primary_key?: true,
+            generated?: opts[:generated?] || true,
             write_rules: false
           )
 
