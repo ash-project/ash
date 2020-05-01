@@ -130,6 +130,7 @@ defmodule Ash.Actions.Update do
     allowed_keys =
       resource
       |> Ash.attributes()
+      |> Enum.filter(& &1.writeable?)
       |> Enum.map(& &1.name)
 
     changeset =

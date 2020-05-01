@@ -133,6 +133,7 @@ defmodule Ash.Actions.Create do
     allowed_keys =
       resource
       |> Ash.attributes()
+      |> Enum.filter(& &1.writeable?)
       |> Enum.map(& &1.name)
 
     attributes_with_defaults =
