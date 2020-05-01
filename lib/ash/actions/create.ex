@@ -139,7 +139,7 @@ defmodule Ash.Actions.Create do
       resource
       |> Ash.attributes()
       |> Enum.reduce({%{}, []}, fn attribute, {new_attributes, unwritable_attributes} ->
-        provided_value = fetch_attr(attributes, attribute)
+        provided_value = fetch_attr(attributes, attribute.name)
         provided? = match?({:ok, _}, provided_value)
 
         cond do
