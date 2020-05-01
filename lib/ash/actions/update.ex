@@ -184,7 +184,7 @@ defmodule Ash.Actions.Update do
   defp fetch_attr(map, name) do
     case Map.fetch(map, name) do
       {:ok, value} ->
-        value
+        {:ok, value}
 
       :error ->
         Map.fetch(map, to_string(name))
