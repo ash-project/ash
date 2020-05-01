@@ -7,7 +7,7 @@ defmodule Ash.Resource.Attributes.Attribute do
     :allow_nil?,
     :generated?,
     :primary_key?,
-    :writeable?,
+    :writable?,
     :default,
     :write_rules
   ]
@@ -18,7 +18,7 @@ defmodule Ash.Resource.Attributes.Attribute do
           primary_key?: boolean(),
           default: (() -> term),
           write_rules: Keyword.t(),
-          writeable?: boolean
+          writable?: boolean
         }
 
   @schema Ashton.schema(
@@ -27,7 +27,7 @@ defmodule Ash.Resource.Attributes.Attribute do
               allow_nil?: :boolean,
               write_rules: [{:const, false}, :keyword],
               generated?: :boolean,
-              writeable?: :boolean,
+              writable?: :boolean,
               default: [
                 {:function, 0},
                 {:tuple, {:module, :atom}},
@@ -38,7 +38,7 @@ defmodule Ash.Resource.Attributes.Attribute do
               primary_key?: false,
               generated?: false,
               allow_nil?: true,
-              writeable?: true,
+              writable?: true,
               write_rules: []
             ],
             describe: [
@@ -49,7 +49,7 @@ defmodule Ash.Resource.Attributes.Attribute do
               generated?: "Whether or not the value should be treated as required input",
               primary_key?:
                 "Whether this field is, or is part of, the primary key of a resource.",
-              writeable?: "Whether or not this field can be written to",
+              writable?: "Whether or not this field can be written to",
               default:
                 "A one argument function that returns a default value, an mfa that does the same, or a raw value via specifying `{:constant, value}`.",
               write_rules: """
@@ -90,7 +90,7 @@ defmodule Ash.Resource.Attributes.Attribute do
          type: type,
          generated?: opts[:generated?],
          write_rules: write_rules,
-         writeable?: opts[:writeable?],
+         writable?: opts[:writable?],
          allow_nil?: opts[:allow_nil?],
          primary_key?: opts[:primary_key?],
          default: default

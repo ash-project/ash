@@ -135,28 +135,28 @@ defmodule Ash.Actions.Create do
       |> Ash.attributes()
       |> Enum.map(& &1.name)
 
-    {attributes_with_defaults, unwriteable_attributes} =
+    {attributes_with_defaults, unwritable_attributes} =
       resource
       |> Ash.attributes()
-      |> Enum.reduce({%{}, []}, fn attribute, {new_attributes, unwriteable_attributes} ->
+      |> Enum.reduce({%{}, []}, fn attribute, {new_attributes, unwritable_attributes} ->
         cond do
-          !attribute.writeable? && is_nil(attribute.default) ->
-            {new_attributes, unwriteable_attributes}
+          !attribute.writable? && is_nil(attribute.default) ->
+            {new_attributes, unwritable_attributes}
 
-          !attribute.writeable? ->
-            {new_attributes, [attribute | unwriteable_attributes]}
+          !attribute.writable? ->
+            {new_attributes, [attribute | unwritable_attributes]}
 
           is_nil(attribute.default) ->
             case fetch_attr(attributes, attribute.name) do
               {:ok, value} ->
-                {Map.put(new_attributes, attribute.name, value), unwriteable_attributes}
+                {Map.put(new_attributes, attribute.name, value), unwritable_attributes}
 
               :error ->
-                {new_attributes, unwriteable_attributes}
+                {new_attributes, unwritable_attributes}
             end
 
           true ->
-            {Map.put(attributes, attribute.name, default(attribute)), unwriteable_attributes}
+            {Map.put(attributes, attribute.name, default(attribute)), unwritable_attributes}
         end
       end)
 
@@ -169,9 +169,9 @@ defmodule Ash.Actions.Create do
 
     changeset =
       Enum.reduce(
-        unwriteable_attributes,
+        unwritable_attributes,
         changeset,
-        &Ecto.Changeset.add_error(&2, &1, "attribute is not writeable")
+        &Ecto.Changeset.add_error(&2, &1, "attribute is not writable")
       )
 
     resource
