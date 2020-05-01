@@ -1,11 +1,11 @@
 defmodule Ash.Filter.NotIn do
   defstruct [:values]
 
-  def new(resource, attr_type, [value]) do
-    Ash.Filter.NotEq.new(resource, attr_type, value)
+  def new(resource, attr_name, attr_type, [value]) do
+    Ash.Filter.NotEq.new(resource, attr_name, attr_type, value)
   end
 
-  def new(_resource, attr_type, values) do
+  def new(_resource, attr_name, attr_type, values) do
     casted =
       values
       |> List.wrap()
@@ -16,7 +16,12 @@ defmodule Ash.Filter.NotIn do
               {:ok, [value | casted]}
 
             :error ->
-              {:error, "Invalid value #{inspect(value)} for type `not in #{inspect(attr_type)}}`"}
+              {:error,
+               Ash.Error.Filter.InvalidFilterValue.exception(
+                 filter: %__MODULE__{values: values},
+                 value: value,
+                 field: attr_name
+               )}
           end
 
         _, {:error, error} ->
@@ -31,23 +36,4 @@ defmodule Ash.Filter.NotIn do
         {:ok, %__MODULE__{values: values}}
     end
   end
-
-  def strict_subset_of?(_attr, %__MODULE__{values: values}, %__MODULE__{values: candidate_values}) do
-    Enum.all?(candidate_values, fn candidate -> candidate not in values end)
-  end
-
-  def strict_subset_of?(_attr, %__MODULE__{values: values}, %Ash.Filter.Eq{value: candidate}) do
-    candidate not in values
-  end
-
-  # TODO: Something like `foo != 1 and foo != 2` should be considered as contained in the
-  # filter `not in [1, 2]`. This will only ever work if we simplify "and" filters wherever
-  # possible.
-  def strict_subset_of?(_attr, %__MODULE__{values: [single_value]}, %Ash.Filter.NotEq{
-        value: candidate
-      }) do
-    single_value == candidate
-  end
-
-  def strict_subset_of?(_, _, _), do: false
 end

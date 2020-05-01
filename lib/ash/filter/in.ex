@@ -1,11 +1,11 @@
 defmodule Ash.Filter.In do
   defstruct [:values]
 
-  def new(resource, attr_type, [value]) do
-    Ash.Filter.Eq.new(resource, attr_type, value)
+  def new(resource, attr_name, attr_type, [value]) do
+    Ash.Filter.Eq.new(resource, attr_name, attr_type, value)
   end
 
-  def new(_resource, attr_type, values) do
+  def new(_resource, attr_name, attr_type, values) do
     casted =
       values
       |> List.wrap()
@@ -16,7 +16,12 @@ defmodule Ash.Filter.In do
               {:ok, [value | casted]}
 
             :error ->
-              {:error, "Invalid value #{inspect(value)} for type `in #{inspect(attr_type)}`"}
+              {:error,
+               Ash.Error.Filter.InvalidFilterValue.exception(
+                 filter: %__MODULE__{values: values},
+                 value: value,
+                 field: attr_name
+               )}
           end
 
         _, {:error, error} ->
@@ -31,14 +36,4 @@ defmodule Ash.Filter.In do
         {:ok, %__MODULE__{values: values}}
     end
   end
-
-  def strict_subset_of?(_attr, %__MODULE__{values: values}, %__MODULE__{values: candidate_values}) do
-    Enum.all?(candidate_values, fn candidate -> candidate in values end)
-  end
-
-  def strict_subset_of?(_attr, %__MODULE__{values: values}, %Ash.Filter.Eq{value: candidate}) do
-    candidate in values
-  end
-
-  def strict_subset_of?(_attr, _, _), do: false
 end

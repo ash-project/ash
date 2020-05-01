@@ -59,7 +59,7 @@ defmodule Ash.Test.Type.TypeTest do
   test "it rejects invalid data" do
     # As we add informative errors, this test will fail and we will know to test those
     # more informative errors.
-    assert_raise(Ash.Error.FrameworkError, ~r/invalid changes/, fn ->
+    assert_raise(Ash.Error.Invalid, ~r/Invalid value provided for title/, fn ->
       Api.create!(Post, attributes: %{title: "foobarbazbuzbiz"})
     end)
   end
@@ -68,7 +68,7 @@ defmodule Ash.Test.Type.TypeTest do
     # As we add more filter types, we may want to test their multiplicity here
     post = Api.create!(Post, attributes: %{title: "foobar"})
 
-    assert_raise(Ash.Error.FrameworkError, fn ->
+    assert_raise(Ash.Error.Invalid, fn ->
       Api.read!(Post, filter: [title: post.title])
     end)
   end
@@ -77,7 +77,7 @@ defmodule Ash.Test.Type.TypeTest do
     Api.create!(Post, attributes: %{title: "foobar1"})
     Api.create!(Post, attributes: %{title: "foobar2"})
 
-    assert_raise(Ash.Error.FrameworkError, "Cannot sort on :title", fn ->
+    assert_raise(Ash.Error.Invalid, ~r/\* Cannot sort on :title/, fn ->
       Api.read!(Post, sort: [asc: :title])
     end)
   end

@@ -36,8 +36,16 @@ defmodule Ash.Actions.Destroy do
       end
 
     case result do
-      %{errors: errors} when errors == %{} -> :ok
-      %{errors: errors} -> {:error, errors}
+      %{errors: errors} when errors == %{} ->
+        :ok
+
+      %Ash.Engine{errors: errors} ->
+        errors =
+          Enum.flat_map(errors, fn {path, errors} ->
+            Enum.map(errors, &Map.put(&1, :path, path))
+          end)
+
+        {:error, Ash.to_ash_error(errors)}
     end
   end
 end

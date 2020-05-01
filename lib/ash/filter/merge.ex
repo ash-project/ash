@@ -8,45 +8,8 @@ defmodule Ash.Filter.Merge do
     do_merge(left, right)
   end
 
-  ## Because we don't support any kind of "or" filter, right now, all combinations
-  ## are "and" which means an impossible + anything = impossible
-  # defp do_merge(%Impossible{} = left, _), do: left
-  # defp do_merge(_, %Impossible{} = right), do: right
-
-  ## Equals + Equals
-  # defp do_merge(%Eq{value: left_value} = left, %Eq{values: right_value}) do
-  #   if left_value == right_value do
-  #     left
-  #   else
-  #     %Impossible{cause: :duplicate_equal}
-  #   end
-  # end
-
-  ## Equals + In filters
-
-  # defp do_merge(%Eq{value: value} = left, %In{values: values}) do
-  #   if value in values do
-  #     left
-  #   else
-  #     %Impossible{cause: :equal_in_list}
-  #   end
-  # end
-
-  ## In + In filters
-
-  # defp do_merge(%In{values: left}, %In{values: right}) do
-  #   values =
-  #     left
-  #     |> MapSet.new()
-  #     |> MapSet.intersection(MapSet.new(right))
-  #     |> MapSet.to_list()
-
-  #   %In{values: values}
-  # end
-
+  # TODO: We can support filter simplification as we build by making this merge function smarter
   defp do_merge(left, right) do
     And.prebuilt_new(left, right)
   end
-
-  ## Equals + In filters
 end

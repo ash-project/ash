@@ -30,6 +30,27 @@ defmodule Ash do
   @type attribute :: Ash.Attributes.Attribute.t()
   @type action :: Create.t() | Read.t() | Update.t() | Destroy.t()
 
+  def ash_error?(value) do
+    !!Ash.Error.impl_for(value)
+  end
+
+  def to_ash_error(values) when is_list(values) do
+    values =
+      Enum.map(values, fn value ->
+        if ash_error?(value) do
+          value
+        else
+          Ash.Error.Unknown.exception(error: values)
+        end
+      end)
+
+    Ash.Error.choose_error(values)
+  end
+
+  def to_ash_error(value) do
+    to_ash_error([value])
+  end
+
   @spec resource_module?(module) :: boolean
   def resource_module?(module) do
     :attributes

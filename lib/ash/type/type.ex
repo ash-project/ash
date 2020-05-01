@@ -95,7 +95,10 @@ defmodule Ash.Type do
   def ash_type?(atom) when atom in @builtin_names, do: true
 
   def ash_type?(module) when is_atom(module) do
-    Code.ensure_compiled?(module) and ash_type_module?(module)
+    case Code.ensure_compiled(module) do
+      {:module, _} -> ash_type_module?(module)
+      _ -> false
+    end
   end
 
   def ash_type?(_), do: false

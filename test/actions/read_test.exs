@@ -73,7 +73,7 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     test "it raises on an error", %{post: post} do
-      assert_raise(Ash.Error.FrameworkError, "no such resource Elixir.Something", fn ->
+      assert_raise(Ash.Error.Invalid, ~r/\* No such resource Something/, fn ->
         Api.get!(Something, post.id)
       end)
     end
@@ -125,7 +125,7 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     test "it raises on an error" do
-      assert_raise(Ash.Error.FrameworkError, "Invalid value 10 for type `== :string`", fn ->
+      assert_raise(Ash.Error.Invalid, "Invalid value 10 for type `== :string`", fn ->
         Api.read!(Post, filter: [title: 10])
       end)
     end

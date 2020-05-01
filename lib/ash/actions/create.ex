@@ -34,10 +34,15 @@ defmodule Ash.Actions.Create do
       {:ok, SideLoad.attach_side_loads(created, state)}
     else
       %Ecto.Changeset{} = changeset ->
-        {:error, changeset}
+        {:error, Ash.Error.Changeset.changeset_to_errors(resource, changeset)}
 
-      %{errors: errors} when errors != %{} ->
-        {:error, errors}
+      %Ash.Engine{errors: errors} ->
+        errors =
+          Enum.flat_map(errors, fn {path, errors} ->
+            Enum.map(errors, &Map.put(&1, :path, path))
+          end)
+
+        {:error, Ash.to_ash_error(errors)}
 
       {:error, error} ->
         {:error, error}

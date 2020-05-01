@@ -5,6 +5,8 @@ defmodule Ash.Api.Interface do
   #TODO describe - Big picture description here
   """
 
+  alias Ash.Error.Interface.NoSuchResource
+
   @authorization_schema Ashton.schema(
                           opts: [
                             user: :any,
@@ -355,7 +357,7 @@ defmodule Ash.Api.Interface do
       end
     else
       {:resource, :error} ->
-        {:error, "no such resource #{resource}"}
+        {:error, NoSuchResource.exception(resource: resource)}
     end
   end
 
@@ -384,7 +386,7 @@ defmodule Ash.Api.Interface do
         end
 
       :error ->
-        {:error, "no such resource #{resource}"}
+        {:error, NoSuchResource.exception(resource: resource)}
     end
   end
 
@@ -412,7 +414,7 @@ defmodule Ash.Api.Interface do
         end
 
       :error ->
-        {:error, "no such resource #{resource}"}
+        {:error, NoSuchResource.exception(resource: resource)}
     end
   end
 
@@ -439,7 +441,7 @@ defmodule Ash.Api.Interface do
         end
 
       :error ->
-        {:error, "no such resource #{resource}"}
+        {:error, NoSuchResource.exception(resource: resource)}
     end
   end
 
@@ -466,100 +468,13 @@ defmodule Ash.Api.Interface do
         end
 
       :error ->
-        {:error, "no such resource #{resource}"}
+        {:error, NoSuchResource.exception(resource: resource)}
     end
   end
 
   defp unwrap_or_raise!(:ok), do: :ok
   defp unwrap_or_raise!({:ok, result}), do: result
-
-  defp unwrap_or_raise!({:error, error}) when is_bitstring(error) do
-    raise Ash.Error.FrameworkError.exception(message: error)
-  end
-
-  defp unwrap_or_raise!({:error, %Ecto.Changeset{} = changeset}) do
-    raise(Ash.Error.FrameworkError, message: "invalid changes #{inspect(changeset)}")
-  end
-
-  defp unwrap_or_raise!({:error, error}) when is_map(error) do
-    # TODO: handle these better
-    case deep_find_forbidden(error) do
-      nil ->
-        raise Ash.Error.FrameworkError, message: "Engine errors: #{inspect(error)}"
-
-      forbidden ->
-        raise forbidden
-    end
-  end
-
-  defp unwrap_or_raise!({:error, error}) when not is_list(error) do
-    raise error
-  end
-
-  defp unwrap_or_raise!({:error, error}) do
-    combo_message =
-      error
-      |> List.wrap()
-      |> Enum.map(fn error ->
-        case error do
-          string when is_bitstring(string) ->
-            Ash.Error.FrameworkError.exception(message: string)
-
-          _ = %Ecto.Changeset{} = changeset ->
-            # TODO: format these
-            "invalid changes #{inspect(changeset)}"
-
-          error ->
-            error
-        end
-      end)
-      |> Enum.reject(fn error ->
-        # A lot of the error logic here, including this annoying scrubbing code
-        # is temporary.
-        error == []
-      end)
-      |> Enum.map_join("\n", &Exception.message/1)
-
-    raise Ash.Error.FrameworkError, message: combo_message
-  end
-
-  defp deep_find_forbidden(errors, path \\ [])
-
-  defp deep_find_forbidden(errors, path) when is_list(errors) do
-    errors
-    |> Enum.with_index()
-    |> Enum.find_value(fn {error, index} ->
-      case deep_find_forbidden(error, [index | path]) do
-        nil ->
-          nil
-
-        error ->
-          error
-      end
-    end)
-  end
-
-  defp deep_find_forbidden(%Ash.Error.Forbidden{} = forbidden, path) do
-    Map.put(forbidden, :path, Enum.reverse(path))
-  end
-
-  defp deep_find_forbidden(%_{}, _), do: nil
-
-  defp deep_find_forbidden(errors, path) when is_map(errors) do
-    Enum.find_value(errors, fn {key, value} ->
-      case deep_find_forbidden(value, [key | path]) do
-        nil ->
-          nil
-
-        error ->
-          error
-      end
-    end)
-  end
-
-  defp deep_find_forbidden(_, _) do
-    nil
-  end
+  defp unwrap_or_raise!({:error, error}), do: raise(Ash.to_ash_error(error))
 
   defp add_default_page_size(api, params) do
     case api.default_page_size() do

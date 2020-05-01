@@ -443,11 +443,7 @@ defmodule Ash.Filter do
       if empty_filter?(candidate) do
         false
       else
-        # IO.inspect(filter, label: "filter")
-        # IO.inspect(candidate, label: "candidate")
         {filter, candidate} = cosimplify(filter, candidate)
-        # IO.inspect(filter, label: "cosimplified")
-        # IO.inspect(candidate, label: "cosimplified")
         Ash.Authorization.SatSolver.strict_filter_subset(filter, candidate)
       end
     end
@@ -710,7 +706,7 @@ defmodule Ash.Filter do
          predicate_name,
          value
        ) do
-    case parse_predicate(resource, predicate_name, attr_type, value) do
+    case parse_predicate(resource, predicate_name, attr_name, attr_type, value) do
       {:ok, predicate} ->
         new_attributes =
           Map.update(
@@ -727,9 +723,9 @@ defmodule Ash.Filter do
     end
   end
 
-  def parse_predicates(resource, keyword, attr_type) do
+  def parse_predicates(resource, keyword, attr_name, attr_type) do
     Enum.reduce(keyword, {:ok, nil}, fn {predicate_name, value}, {:ok, existing_predicate} ->
-      case parse_predicate(resource, predicate_name, attr_type, value) do
+      case parse_predicate(resource, predicate_name, attr_name, attr_type, value) do
         {:ok, predicate} ->
           if existing_predicate do
             {:ok, Merge.merge(existing_predicate, predicate)}
@@ -743,7 +739,7 @@ defmodule Ash.Filter do
     end)
   end
 
-  defp parse_predicate(resource, predicate_name, attr_type, value) do
+  defp parse_predicate(resource, predicate_name, attr_name, attr_type, value) do
     data_layer = Ash.data_layer(resource)
 
     with {:predicate_type, {:ok, predicate_type}} <-
@@ -753,15 +749,15 @@ defmodule Ash.Filter do
             Ash.Type.supports_filter?(attr_type, predicate_name, data_layer)},
          {:data_layer_can?, _, true} <-
            {:data_layer_can?, predicate_name, data_layer.can?({:filter, predicate_name})},
-         {:predicate, {:ok, predicate}} <-
-           {:predicate, predicate_type.new(resource, attr_type, value)} do
+         {:predicate, _, {:ok, predicate}} <-
+           {:predicate, attr_name, predicate_type.new(resource, attr_name, attr_type, value)} do
       {:ok, predicate}
     else
       {:predicate_type, :error} ->
         {:error, "No such filter type #{predicate_name}"}
 
-      {:predicate, {:error, error}} ->
-        {:error, error}
+      {:predicate, attr_name, {:error, error}} ->
+        {:error, Map.put(error, :field, attr_name)}
 
       {:type_can?, predicate_name, false} ->
         {:error,

@@ -4,7 +4,7 @@ defmodule Ash.Test.Resource.Relationshihps.HasManyTest do
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
-        use Ash.Resource, name: "posts", type: "post", primary_key: false
+        use Ash.Resource, name: "posts", type: "post"
 
         unquote(body)
       end

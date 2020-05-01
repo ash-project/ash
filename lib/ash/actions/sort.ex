@@ -1,4 +1,6 @@
 defmodule Ash.Actions.Sort do
+  alias Ash.Error.Sort.{InvalidSortOrder, NoSuchField, UnsortableField}
+
   def process(_resource, empty) when empty in [nil, []], do: {:ok, []}
 
   def process(resource, sort) when is_list(sort) do
@@ -9,23 +11,25 @@ defmodule Ash.Actions.Sort do
 
         cond do
           !attribute ->
-            {sorts, ["no such attribute: #{field}" | errors]}
+            {sorts, [NoSuchField.exception(field: field) | errors]}
 
           !Ash.Type.sortable?(attribute.type, Ash.data_layer(resource)) ->
-            {sorts, ["Cannot sort on #{inspect(field)}"]}
+            {sorts,
+             [
+               UnsortableField.exception(field: field)
+               | errors
+             ]}
 
           true ->
             {sorts ++ [{order, field}], errors}
         end
 
-      sort, {sorts, errors} ->
-        {sorts, ["invalid sort: #{inspect(sort)}" | errors]}
+      {order, _}, {sorts, errors} ->
+        {sorts, [InvalidSortOrder.exception(order: order) | errors]}
     end)
     |> case do
       {sorts, []} -> {:ok, sorts}
       {_, errors} -> {:error, errors}
     end
   end
-
-  def process(_resource, _), do: {:error, "invalid sort"}
 end

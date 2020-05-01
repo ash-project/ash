@@ -4,7 +4,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
-        use Ash.Resource, name: "posts", type: "post", primary_key: false
+        use Ash.Resource, name: "posts", type: "post"
 
         unquote(body)
       end
@@ -15,7 +15,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "it creates a relationship and a join relationship" do
       defposts do
         relationships do
-          many_to_many :foobars, Foobar, through: SomeResource
+          many_to_many :related_posts, Post, through: SomeResource
         end
       end
 
@@ -24,24 +24,26 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                  cardinality: :many,
                  destination: SomeResource,
                  destination_field: :posts_id,
-                 name: :foobars_join_assoc,
+                 name: :related_posts_join_assoc,
                  source: Ash.Test.Resource.Relationships.ManyToManyTest.Post,
                  source_field: :id,
                  type: :has_many,
-                 write_rules: []
+                 write_rules: '',
+                 reverse_relationship: nil
                },
                %Ash.Resource.Relationships.ManyToMany{
                  cardinality: :many,
-                 destination: Foobar,
+                 destination: Ash.Test.Resource.Relationships.ManyToManyTest.Post,
                  destination_field: :id,
-                 destination_field_on_join_table: :foobars_id,
-                 name: :foobars,
+                 destination_field_on_join_table: :related_posts_id,
+                 name: :related_posts,
                  source: Ash.Test.Resource.Relationships.ManyToManyTest.Post,
                  source_field: :id,
                  source_field_on_join_table: :posts_id,
                  through: SomeResource,
                  type: :many_to_many,
-                 write_rules: []
+                 write_rules: '',
+                 reverse_relationship: nil
                }
              ] = Ash.relationships(Post)
     end

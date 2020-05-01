@@ -46,21 +46,19 @@ defmodule Ash.Engine do
 
   defp loop_until_complete(engine) do
     case next(engine) do
-      %{state: :complete} = new_engine ->
-        if new_engine.authorized? do
-          new_engine
-        else
-          exception =
-            Ash.Error.Forbidden.exception(
-              requests: new_engine.requests,
-              facts: new_engine.facts,
-              state: new_engine.data,
-              api: engine.api,
-              reason: "Request could not be authorized"
-            )
+      %{state: :complete, authorized?: false} = new_engine ->
+        error =
+          Ash.Error.Forbidden.exception(
+            requests: engine.requests,
+            facts: engine.facts,
+            state: engine.data,
+            api: engine.api
+          )
 
-          add_error(new_engine, [:__engine__], exception)
-        end
+        add_error(new_engine, :__engine__, error)
+
+      %{state: :complete} = new_engine ->
+        new_engine
 
       new_engine when new_engine == engine ->
         transition(new_engine, :complete, %{
@@ -111,7 +109,6 @@ defmodule Ash.Engine do
   defp next(%{state: :resolve_some} = engine) do
     # TODO: We should probably find requests that can be fetched in parallel
     # and fetch them asynchronously (if their data layer allows it)
-    engine
 
     case resolvable_requests(engine) do
       [request | _rest] ->
@@ -355,18 +352,9 @@ defmodule Ash.Engine do
         transition(engine, :reality_check, %{scenarios: scenarios})
 
       {:error, :unsatisfiable} ->
-        error =
-          Ash.Error.Forbidden.exception(
-            requests: engine.requests,
-            facts: engine.facts,
-            api: engine.api,
-            state: engine.data,
-            reason: "No scenario leads to authorization"
-          )
-
         engine
         |> Map.put(:authorized?, false)
-        |> transition(:complete, %{errors: {:__engine__, error}})
+        |> transition(:complete)
     end
   end
 
@@ -782,29 +770,27 @@ defmodule Ash.Engine do
 
   defp handle_errors(engine, _), do: engine
 
-  defp put_nested_error(map, [key], error) do
-    case map do
-      value when is_map(value) ->
-        Map.update(value, key, %{errors: [error]}, fn nested_value ->
-          if is_map(nested_value) do
-            Map.update(nested_value, :errors, [error], fn errors -> [error | errors] end)
-          else
-            %{errors: [value] ++ List.wrap(error)}
-          end
-        end)
-
-      value ->
-        %{key => %{errors: [value] ++ List.wrap(error)}}
-    end
-  end
-
-  defp put_nested_error(map, [key | rest], error) do
-    map
-    |> Map.put_new(key, %{})
-    |> Map.update!(key, &put_nested_error(&1, rest, error))
-  end
-
   defp add_error(engine, path, error) do
-    %{engine | errors: put_nested_error(engine.errors, List.wrap(path), error)}
+    path = List.wrap(path)
+    error = to_ash_error(error)
+
+    new_errors =
+      Map.update(engine.errors, path, [error], fn existing_errors ->
+        if is_list(error) do
+          error ++ existing_errors
+        else
+          [error | existing_errors]
+        end
+      end)
+
+    %{engine | errors: new_errors}
+  end
+
+  def to_ash_error(error) do
+    if Ash.ash_error?(error) do
+      error
+    else
+      Ash.Error.Unknown.exception(error: error)
+    end
   end
 end

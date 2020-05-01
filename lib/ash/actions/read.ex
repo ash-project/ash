@@ -42,11 +42,19 @@ defmodule Ash.Actions.Read do
          paginator <- %{paginator | results: data} do
       {:ok, SideLoad.attach_side_loads(paginator, engine.data)}
     else
-      %{errors: errors} ->
-        {:error, errors}
+      %Ash.Filter{errors: errors} ->
+        {:error, Ash.to_ash_error(errors)}
+
+      %Ash.Engine{errors: errors} ->
+        errors =
+          Enum.flat_map(errors, fn {path, errors} ->
+            Enum.map(errors, &Map.put(&1, :path, path))
+          end)
+
+        {:error, Ash.to_ash_error(errors)}
 
       {:error, error} ->
-        {:error, error}
+        {:error, Ash.to_ash_error(error)}
     end
   end
 
