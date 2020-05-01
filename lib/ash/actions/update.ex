@@ -133,26 +133,23 @@ defmodule Ash.Actions.Update do
       |> Enum.filter(& &1.writable?)
       |> Enum.map(& &1.name)
 
-    {attributes, unwritable_attributes} =
+    {attributes_with_defaults, unwritable_attributes} =
       resource
       |> Ash.attributes()
       |> Enum.reduce({%{}, []}, fn attribute, {new_attributes, unwritable_attributes} ->
-        cond do
-          !attribute.writable? && not is_nil(attribute.update_default) ->
-            {Map.put(new_attributes, attribute.name, update_default(attribute, record)),
-             unwritable_attributes}
+        provided_value = fetch_attr(attributes, attribute)
+        provided? = match?({:ok, _}, provided_value)
 
-          !attribute.writable? ->
+        cond do
+          provided? && !attribute.writable? ->
             {new_attributes, [attribute | unwritable_attributes]}
 
-          is_nil(attribute.update_default) ->
-            case fetch_attr(attributes, attribute.name) do
-              {:ok, value} ->
-                {Map.put(new_attributes, attribute.name, value), unwritable_attributes}
+          provided? ->
+            {:ok, value} = provided_value
+            {Map.put(new_attributes, attribute.name, value), unwritable_attributes}
 
-              :error ->
-                {new_attributes, unwritable_attributes}
-            end
+          is_nil(attribute.update_default) ->
+            new_attributes
 
           true ->
             {Map.put(new_attributes, attribute.name, update_default(attribute, record)),
