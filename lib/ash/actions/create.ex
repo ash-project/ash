@@ -151,7 +151,7 @@ defmodule Ash.Actions.Create do
             {Map.put(new_attributes, attribute.name, value), unwritable_attributes}
 
           is_nil(attribute.default) ->
-            new_attributes
+            {new_attributes, unwritable_attributes}
 
           true ->
             {Map.put(new_attributes, attribute.name, default(attribute)), unwritable_attributes}

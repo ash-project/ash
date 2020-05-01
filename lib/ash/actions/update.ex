@@ -133,7 +133,7 @@ defmodule Ash.Actions.Update do
       |> Enum.filter(& &1.writable?)
       |> Enum.map(& &1.name)
 
-    {attributes_with_defaults, unwritable_attributes} =
+    {attributes, unwritable_attributes} =
       resource
       |> Ash.attributes()
       |> Enum.reduce({%{}, []}, fn attribute, {new_attributes, unwritable_attributes} ->
@@ -149,7 +149,7 @@ defmodule Ash.Actions.Update do
             {Map.put(new_attributes, attribute.name, value), unwritable_attributes}
 
           is_nil(attribute.update_default) ->
-            new_attributes
+            {new_attributes, unwritable_attributes}
 
           true ->
             {Map.put(new_attributes, attribute.name, update_default(attribute, record)),
