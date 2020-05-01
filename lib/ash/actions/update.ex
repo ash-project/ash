@@ -133,10 +133,39 @@ defmodule Ash.Actions.Update do
       |> Enum.filter(& &1.writeable?)
       |> Enum.map(& &1.name)
 
+    {attributes, unwriteable_attributes} =
+      resource
+      |> Ash.attributes()
+      |> Enum.reduce({%{}, []}, fn attribute, {new_attributes, unwriteable_attributes} ->
+        cond do
+          !attribute.writeable? && is_nil(attribute.default) ->
+            {new_attributes, unwriteable_attributes}
+
+          !attribute.writeable? ->
+            {new_attributes, [attribute | unwriteable_attributes]}
+
+          true ->
+            case fetch_attr(attributes, attribute.name) do
+              {:ok, value} ->
+                {Map.put(new_attributes, attribute.name, value), unwriteable_attributes}
+
+              :error ->
+                {new_attributes, unwriteable_attributes}
+            end
+        end
+      end)
+
     changeset =
       record
       |> Ecto.Changeset.cast(attributes, allowed_keys)
       |> Map.put(:action, :update)
+
+    changeset =
+      Enum.reduce(
+        unwriteable_attributes,
+        changeset,
+        &Ecto.Changeset.add_error(&2, &1, "attribute is not writeable")
+      )
 
     resource
     |> Ash.attributes()
@@ -150,5 +179,15 @@ defmodule Ash.Actions.Update do
           changeset
       end
     end)
+  end
+
+  defp fetch_attr(map, name) do
+    case Map.fetch(map, name) do
+      {:ok, value} ->
+        value
+
+      :error ->
+        Map.fetch(map, to_string(name))
+    end
   end
 end

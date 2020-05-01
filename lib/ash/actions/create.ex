@@ -133,18 +133,30 @@ defmodule Ash.Actions.Create do
     allowed_keys =
       resource
       |> Ash.attributes()
-      |> Enum.filter(& &1.writeable?)
       |> Enum.map(& &1.name)
 
-    attributes_with_defaults =
+    {attributes_with_defaults, unwriteable_attributes} =
       resource
       |> Ash.attributes()
-      |> Enum.filter(&(not is_nil(&1.default)))
-      |> Enum.reduce(attributes, fn attr, attributes ->
-        if has_attr?(attributes, attr.name) do
-          attributes
-        else
-          Map.put(attributes, attr.name, default(attr))
+      |> Enum.reduce({%{}, []}, fn attribute, {new_attributes, unwriteable_attributes} ->
+        cond do
+          !attribute.writeable? && is_nil(attribute.default) ->
+            {new_attributes, unwriteable_attributes}
+
+          !attribute.writeable? ->
+            {new_attributes, [attribute | unwriteable_attributes]}
+
+          is_nil(attribute.default) ->
+            case fetch_attr(attributes, attribute.name) do
+              {:ok, value} ->
+                {Map.put(new_attributes, attribute.name, value), unwriteable_attributes}
+
+              :error ->
+                {new_attributes, unwriteable_attributes}
+            end
+
+          true ->
+            {Map.put(attributes, attribute.name, default(attribute)), unwriteable_attributes}
         end
       end)
 
@@ -154,6 +166,13 @@ defmodule Ash.Actions.Create do
       |> Ecto.Changeset.cast(attributes_with_defaults, allowed_keys)
       |> Map.put(:action, :create)
       |> Map.put(:__ash_relationships__, %{})
+
+    changeset =
+      Enum.reduce(
+        unwriteable_attributes,
+        changeset,
+        &Ecto.Changeset.add_error(&2, &1, "attribute is not writeable")
+      )
 
     resource
     |> Ash.attributes()
@@ -172,7 +191,13 @@ defmodule Ash.Actions.Create do
   defp default(%{default: {mod, func}}), do: apply(mod, func, [])
   defp default(%{default: function}), do: function.()
 
-  defp has_attr?(map, name) do
-    Map.has_key?(map, name) || Map.has_key?(map, to_string(name))
+  defp fetch_attr(map, name) do
+    case Map.fetch(map, name) do
+      {:ok, value} ->
+        value
+
+      :error ->
+        Map.fetch(map, to_string(name))
+    end
   end
 end
