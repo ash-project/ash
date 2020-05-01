@@ -164,7 +164,7 @@ defmodule Ash.Actions.Update do
       Enum.reduce(
         unwritable_attributes,
         changeset,
-        &Ecto.Changeset.add_error(&2, &1, "attribute is not writable")
+        &Ecto.Changeset.add_error(&2, &1.name, "attribute is not writable")
       )
 
     resource
