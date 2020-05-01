@@ -138,13 +138,14 @@ defmodule Ash.Actions.Update do
       |> Ash.attributes()
       |> Enum.reduce({%{}, []}, fn attribute, {new_attributes, unwritable_attributes} ->
         cond do
-          !attribute.writable? && is_nil(attribute.default) ->
-            {new_attributes, unwritable_attributes}
+          !attribute.writable? && not is_nil(attribute.update_default) ->
+            {Map.put(new_attributes, attribute.name, update_default(attribute, record)),
+             unwritable_attributes}
 
           !attribute.writable? ->
             {new_attributes, [attribute | unwritable_attributes]}
 
-          true ->
+          is_nil(attribute.update_default) ->
             case fetch_attr(attributes, attribute.name) do
               {:ok, value} ->
                 {Map.put(new_attributes, attribute.name, value), unwritable_attributes}
@@ -152,6 +153,10 @@ defmodule Ash.Actions.Update do
               :error ->
                 {new_attributes, unwritable_attributes}
             end
+
+          true ->
+            {Map.put(new_attributes, attribute.name, update_default(attribute, record)),
+             unwritable_attributes}
         end
       end)
 
@@ -190,4 +195,13 @@ defmodule Ash.Actions.Update do
         Map.fetch(map, to_string(name))
     end
   end
+
+  defp update_default(%{default: {:constant, value}}, _record), do: value
+  defp update_default(%{default: {mod, func}}, record), do: apply(mod, func, [record])
+
+  defp update_default(%{default: function}, _record) when is_function(function, 0),
+    do: function.()
+
+  defp update_default(%{default: function}, record) when is_function(function, 1),
+    do: function.(record)
 end

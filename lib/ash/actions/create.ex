@@ -140,8 +140,8 @@ defmodule Ash.Actions.Create do
       |> Ash.attributes()
       |> Enum.reduce({%{}, []}, fn attribute, {new_attributes, unwritable_attributes} ->
         cond do
-          !attribute.writable? && is_nil(attribute.default) ->
-            {new_attributes, unwritable_attributes}
+          !attribute.writable? && not is_nil(attribute.default) ->
+            {Map.put(new_attributes, attribute.name, default(attribute)), unwritable_attributes}
 
           !attribute.writable? ->
             {new_attributes, [attribute | unwritable_attributes]}
@@ -156,7 +156,7 @@ defmodule Ash.Actions.Create do
             end
 
           true ->
-            {Map.put(attributes, attribute.name, default(attribute)), unwritable_attributes}
+            {Map.put(new_attributes, attribute.name, default(attribute)), unwritable_attributes}
         end
       end)
 

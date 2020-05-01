@@ -9,6 +9,7 @@ defmodule Ash.Resource.Attributes.Attribute do
     :primary_key?,
     :writable?,
     :default,
+    :update_default,
     :write_rules
   ]
 
@@ -17,6 +18,7 @@ defmodule Ash.Resource.Attributes.Attribute do
           type: Ash.type(),
           primary_key?: boolean(),
           default: (() -> term),
+          update_default: (() -> term) | (Ash.record() -> term),
           write_rules: Keyword.t(),
           writable?: boolean
         }
@@ -28,6 +30,12 @@ defmodule Ash.Resource.Attributes.Attribute do
               write_rules: [{:const, false}, :keyword],
               generated?: :boolean,
               writable?: :boolean,
+              update_default: [
+                {:function, 0},
+                {:function, 1},
+                {:tuple, {:module, :atom}},
+                {:tuple, {{:const, :constant}, :any}}
+              ],
               default: [
                 {:function, 0},
                 {:tuple, {:module, :atom}},
@@ -52,6 +60,8 @@ defmodule Ash.Resource.Attributes.Attribute do
               writable?: "Whether or not this field can be written to",
               default:
                 "A one argument function that returns a default value, an mfa that does the same, or a raw value via specifying `{:constant, value}`.",
+              default:
+                "A one argument function that returns a default value to be applied on updates, an mfa that does the same, or a raw value via specifying `{:constant, value}`.",
               write_rules: """
               Write_Rules applied on an attribute during create or update. If no write_rules are defined, authorization to change will fail.
               If set to false, no write_rules are applied and any changes are allowed (assuming the action was authorized as a whole)
@@ -93,6 +103,7 @@ defmodule Ash.Resource.Attributes.Attribute do
          writable?: opts[:writable?],
          allow_nil?: opts[:allow_nil?],
          primary_key?: opts[:primary_key?],
+         update_default: opts[:update_default],
          default: default
        }}
     else
