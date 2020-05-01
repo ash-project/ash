@@ -9,14 +9,13 @@ defmodule Ash.Schema do
   defmacro define_schema(name) do
     quote do
       use Ecto.Schema
-      @primary_key {:id, :binary_id, autogenerate: true}
-      @foreign_key_type :binary_id
+      @primary_key false
 
       schema unquote(name) do
         for attribute <- @attributes do
-          unless attribute.name == :id do
-            field(attribute.name, Ash.Type.ecto_type(attribute.type))
-          end
+          field(attribute.name, Ash.Type.ecto_type(attribute.type),
+            primary_key: attribute.primary_key?
+          )
         end
 
         for relationship <- Enum.filter(@relationships, &(&1.type == :belongs_to)) do
