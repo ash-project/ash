@@ -4,6 +4,13 @@ defmodule Ash.Actions.Destroy do
   @spec run(Ash.api(), Ash.record(), Ash.action(), Ash.params()) ::
           {:ok, Ash.record()} | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
   def run(api, %resource{} = record, action, params) do
+    action =
+      if is_atom(action) and not is_nil(action) do
+        Ash.action(resource, action, :read)
+      else
+        action
+      end
+
     auth_request =
       Ash.Engine.Request.new(
         resource: resource,

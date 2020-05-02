@@ -37,6 +37,12 @@ defmodule Ash.Resource.DSL do
       import Ash.Resource.Actions, only: [actions: 1]
       import Ash.Resource.Attributes, only: [attributes: 1]
       import Ash.Resource.Relationships, only: [relationships: 1]
+
+      defmacro describe(description) do
+        quote do
+          @description unquote(description)
+        end
+      end
     end
   end
 end

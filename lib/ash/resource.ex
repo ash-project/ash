@@ -125,6 +125,7 @@ defmodule Ash.Resource do
     Module.put_attribute(mod, :max_page_size, opts[:max_page_size])
     Module.put_attribute(mod, :default_page_size, opts[:default_page_size])
     Module.put_attribute(mod, :data_layer, nil)
+    Module.put_attribute(mod, :description, nil)
   end
 
   @doc false
@@ -224,6 +225,10 @@ defmodule Ash.Resource do
 
       def data_layer() do
         @data_layer
+      end
+
+      def describe() do
+        @description
       end
 
       Enum.map(@mix_ins || [], fn hook_module ->

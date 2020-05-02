@@ -11,6 +11,13 @@ defmodule Ash.Actions.Read do
     side_load_filter = Keyword.get(params, :side_load_filter)
     page_params = Keyword.get(params, :page, [])
 
+    action =
+      if is_atom(action) and not is_nil(action) do
+        Ash.action(resource, action, :read)
+      else
+        action
+      end
+
     filter =
       case filter do
         %Ash.Filter{} -> filter

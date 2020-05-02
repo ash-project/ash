@@ -9,6 +9,13 @@ defmodule Ash.Actions.Create do
     side_load_filter = Keyword.get(params, :side_load_filter)
     relationships = Keyword.get(params, :relationships, %{})
 
+    action =
+      if is_atom(action) and not is_nil(action) do
+        Ash.action(resource, action, :read)
+      else
+        action
+      end
+
     with {:ok, relationships} <-
            Relationships.validate_not_changing_relationship_and_source_field(
              relationships,

@@ -51,6 +51,10 @@ defmodule Ash do
     to_ash_error([value])
   end
 
+  def describe(resource) do
+    resource.describe()
+  end
+
   @spec resource_module?(module) :: boolean
   def resource_module?(module) do
     :attributes
