@@ -23,6 +23,13 @@ defmodule Ash.Resource.Relationships do
     end
   end
 
+  defmodule HasOneDsl do
+    require Ash.DslBuilder
+    keys = Ash.Resource.Relationships.HasOne.opt_schema().opts -- [:name, :destination]
+
+    Ash.DslBuilder.build_dsl(keys)
+  end
+
   @doc """
   Declares a has_one relationship. In a relationsal database, the foreign key would be on the *other* table.
 
@@ -42,11 +49,11 @@ defmodule Ash.Resource.Relationships do
 
   """
   defmacro has_one(relationship_name, destination, opts \\ []) do
-    quote bind_quoted: [
-            relationship_name: relationship_name,
-            destination: destination,
-            opts: opts
-          ] do
+    quote do
+      relationship_name = unquote(relationship_name)
+      destination = unquote(destination)
+      opts = unquote(Keyword.delete(opts, :do))
+
       unless is_atom(relationship_name) do
         raise Ash.Error.ResourceDslError,
           message: "relationship_name must be an atom",
@@ -58,6 +65,15 @@ defmodule Ash.Resource.Relationships do
           message: "related resource must be a module representing a resource",
           path: [:relationships, :has_one, relationship_name]
       end
+
+      Module.register_attribute(__MODULE__, :dsl_opts, accumulate: true)
+      import unquote(__MODULE__).HasOneDsl
+      unquote(opts[:do])
+      import unquote(__MODULE__).HasOneDsl, only: []
+
+      opts = Keyword.merge(opts, @dsl_opts)
+
+      Module.delete_attribute(__MODULE__, :dsl_opts)
 
       relationship =
         Ash.Resource.Relationships.HasOne.new(
@@ -81,6 +97,13 @@ defmodule Ash.Resource.Relationships do
     end
   end
 
+  defmodule BelongsToDsl do
+    require Ash.DslBuilder
+    keys = Ash.Resource.Relationships.BelongsTo.opt_schema().opts -- [:name, :destination]
+
+    Ash.DslBuilder.build_dsl(keys)
+  end
+
   @doc """
   Declares a belongs_to relationship. In a relational database, the foreign key would be on the *source* table.
 
@@ -99,12 +122,12 @@ defmodule Ash.Resource.Relationships do
   ```
 
   """
-  defmacro belongs_to(relationship_name, destination, config \\ []) do
-    quote bind_quoted: [
-            relationship_name: relationship_name,
-            destination: destination,
-            config: config
-          ] do
+  defmacro belongs_to(relationship_name, destination, opts \\ []) do
+    quote do
+      relationship_name = unquote(relationship_name)
+      destination = unquote(destination)
+      opts = unquote(Keyword.delete(opts, :do))
+
       unless is_atom(relationship_name) do
         raise Ash.Error.ResourceDslError,
           message: "relationship_name must be an atom",
@@ -117,12 +140,21 @@ defmodule Ash.Resource.Relationships do
           path: [:relationships, :belongs_to, relationship_name]
       end
 
+      Module.register_attribute(__MODULE__, :dsl_opts, accumulate: true)
+      import unquote(__MODULE__).BelongsTo
+      unquote(opts[:do])
+      import unquote(__MODULE__).BelongsTo, only: []
+
+      opts = Keyword.merge(opts, @dsl_opts)
+
+      Module.delete_attribute(__MODULE__, :dsl_opts)
+
       relationship =
         Ash.Resource.Relationships.BelongsTo.new(
           __MODULE__,
           relationship_name,
           destination,
-          config
+          opts
         )
 
       case relationship do
@@ -150,6 +182,13 @@ defmodule Ash.Resource.Relationships do
     end
   end
 
+  defmodule HasManyDsl do
+    require Ash.DslBuilder
+    keys = Ash.Resource.Relationships.HasMany.opt_schema().opts -- [:name, :destination]
+
+    Ash.DslBuilder.build_dsl(keys)
+  end
+
   @doc """
   Declares a has_many relationship. There can be any number of related entities.
 
@@ -164,11 +203,11 @@ defmodule Ash.Resource.Relationships do
   ```
   """
   defmacro has_many(relationship_name, destination, opts \\ []) do
-    quote bind_quoted: [
-            relationship_name: relationship_name,
-            destination: destination,
-            opts: opts
-          ] do
+    quote do
+      relationship_name = unquote(relationship_name)
+      destination = unquote(destination)
+      opts = unquote(Keyword.delete(opts, :do))
+
       unless is_atom(relationship_name) do
         raise Ash.Error.ResourceDslError,
           message: "relationship_name must be an atom",
@@ -180,6 +219,15 @@ defmodule Ash.Resource.Relationships do
           message: "related resource must be a module representing a resource",
           path: [:relationships, :has_many, relationship_name]
       end
+
+      Module.register_attribute(__MODULE__, :dsl_opts, accumulate: true)
+      import unquote(__MODULE__).HasManyDsl
+      unquote(opts[:do])
+      import unquote(__MODULE__).HasManyDsl, only: []
+
+      opts = Keyword.merge(opts, @dsl_opts)
+
+      Module.delete_attribute(__MODULE__, :dsl_opts)
 
       relationship =
         Ash.Resource.Relationships.HasMany.new(
@@ -203,6 +251,14 @@ defmodule Ash.Resource.Relationships do
     end
   end
 
+  defmodule ManyToManyDsl do
+    require Ash.DslBuilder
+
+    keys = Ash.Resource.Relationships.ManyToMany.opt_schema().opts -- [:name, :destination]
+
+    Ash.DslBuilder.build_dsl(keys)
+  end
+
   @doc """
   Declares a many_to_many relationship. Many to many relationships require a join table.
 
@@ -223,27 +279,40 @@ defmodule Ash.Resource.Relationships do
     destination_field_on_join_table: :book_id
   ```
   """
-  defmacro many_to_many(relationship_name, resource, config \\ []) do
+  defmacro many_to_many(relationship_name, destination, opts \\ []) do
     quote do
+      relationship_name = unquote(relationship_name)
+      destination = unquote(destination)
+      opts = unquote(Keyword.delete(opts, :do))
+
+      Module.register_attribute(__MODULE__, :dsl_opts, accumulate: true)
+      import unquote(__MODULE__).ManyToManyDsl
+      unquote(opts[:do])
+      import unquote(__MODULE__).ManyToManyDsl, only: []
+
+      opts = Keyword.merge(opts, @dsl_opts)
+
+      Module.delete_attribute(__MODULE__, :dsl_opts)
+
       many_to_many =
         Ash.Resource.Relationships.ManyToMany.new(
           __MODULE__,
           @name,
-          unquote(relationship_name),
-          unquote(resource),
-          unquote(config)
+          relationship_name,
+          destination,
+          opts
         )
 
-      has_many_name = String.to_atom(to_string(unquote(relationship_name)) <> "_join_assoc")
+      has_many_name = String.to_atom(to_string(relationship_name) <> "_join_assoc")
 
       has_many =
         Ash.Resource.Relationships.HasMany.new(
           __MODULE__,
           @name,
           has_many_name,
-          unquote(config)[:through],
-          destination_field: unquote(config)[:source_field_on_join_table],
-          source_field: unquote(config)[:source_field] || :id
+          opts[:through],
+          destination_field: opts[:source_field_on_join_table],
+          source_field: opts[:source_field] || :id
         )
 
       with {:many_to_many, {:ok, many_to_many}} <- {:many_to_many, many_to_many},
@@ -255,7 +324,7 @@ defmodule Ash.Resource.Relationships do
           raise Ash.Error.ResourceDslError,
             message: message,
             option: key,
-            path: [:relationships, :many_to_many, unquote(relationship_name)]
+            path: [:relationships, :many_to_many, relationship_name]
 
         {:has_many, {:error, [{key, message}]}} ->
           raise Ash.Error.ResourceDslError,

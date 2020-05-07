@@ -37,8 +37,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
                   destination_field: :atom,
                   write_rules: :keyword,
                   through: :atom,
-                  reverse_relationship: :atom,
-                  write_rules: :keyword
+                  reverse_relationship: :atom
                 ],
                 defaults: [
                   source_field: :id,

@@ -21,6 +21,13 @@ defmodule Ash.Resource.Attributes do
     end
   end
 
+  defmodule AttributeDsl do
+    require Ash.DslBuilder
+    keys = Ash.Resource.Attributes.Attribute.attribute_schema().opts -- [:name, :type]
+
+    Ash.DslBuilder.build_dsl(keys)
+  end
+
   @doc """
   Declares an attribute on the resource
 
@@ -35,7 +42,11 @@ defmodule Ash.Resource.Attributes do
   ```
   """
   defmacro attribute(name, type, opts \\ []) do
-    quote bind_quoted: [type: type, name: name, opts: opts] do
+    quote do
+      name = unquote(name)
+      type = unquote(type)
+      opts = unquote(Keyword.delete(opts, :do))
+
       unless is_atom(name) do
         raise Ash.Error.ResourceDslError,
           message: "Attribute name must be an atom, got: #{inspect(name)}",
@@ -57,6 +68,15 @@ defmodule Ash.Resource.Attributes do
             "Attribute type must be a built in type or a type module, got: #{inspect(type)}",
           path: [:attributes, :attribute, name]
       end
+
+      Module.register_attribute(__MODULE__, :dsl_opts, accumulate: true)
+      import unquote(__MODULE__).AttributeDsl
+      unquote(opts[:do])
+      import unquote(__MODULE__).AttributeDsl, only: []
+
+      opts = Keyword.merge(opts, @dsl_opts)
+
+      Module.delete_attribute(__MODULE__, :dsl_opts)
 
       case Ash.Resource.Attributes.Attribute.new(__MODULE__, name, type, opts) do
         {:ok, attribute} ->
@@ -86,6 +106,15 @@ defmodule Ash.Resource.Attributes do
                       ]
                     )
 
+  timestamp_schema = @timestamp_schema
+
+  defmodule TimestampDsl do
+    require Ash.DslBuilder
+    keys = timestamp_schema.opts
+
+    Ash.DslBuilder.build_dsl(keys)
+  end
+
   @doc """
   Adds auto updating timestamp fields
 
@@ -113,7 +142,18 @@ defmodule Ash.Resource.Attributes do
             message: message
       end
 
-    quote bind_quoted: [opts: opts] do
+    quote do
+      opts = unquote(Keyword.delete(opts, :do))
+
+      Module.register_attribute(__MODULE__, :dsl_opts, accumulate: true)
+      import unquote(__MODULE__).TimestampDsl
+      unquote(opts[:do])
+      import unquote(__MODULE__).TimestampDsl, only: []
+
+      opts = Keyword.merge(opts, @dsl_opts)
+
+      Module.delete_attribute(__MODULE__, :dsl_opts)
+
       inserted_at_name = opts[:inserted_at_field]
       updated_at_name = opts[:updated_at_field]
 

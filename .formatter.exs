@@ -21,7 +21,8 @@ locals_without_parens = [
   many_to_many: 3,
   resources: 1,
   max_page_size: 1,
-  default_page_size: 1
+  default_page_size: 1,
+  destination_field: 1
 ]
 
 [
