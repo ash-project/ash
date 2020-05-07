@@ -10,6 +10,7 @@ defmodule Ash.Actions.Read do
     side_loads = Keyword.get(params, :side_load, [])
     side_load_filter = Keyword.get(params, :side_load_filter)
     page_params = Keyword.get(params, :page, [])
+    initial_data = Keyword.get(params, :initial_data)
 
     action =
       if is_atom(action) and not is_nil(action) do
@@ -73,22 +74,7 @@ defmodule Ash.Actions.Read do
         filter: filter,
         action_type: action.type,
         strict_access?: !Ash.Filter.primary_key_filter?(filter),
-        data:
-          Request.resolve(
-            [[:data, :filter]],
-            Ash.Filter.optional_paths(filter),
-            fn %{data: %{filter: filter}} = data ->
-              fetch_filter = Ash.Filter.request_filter_for_fetch(filter, data)
-
-              case Ash.DataLayer.filter(query, fetch_filter, resource) do
-                {:ok, final_query} ->
-                  Ash.DataLayer.run_query(final_query, resource)
-
-                {:error, error} ->
-                  {:error, error}
-              end
-            end
-          ),
+        data: data_field(params, filter, resource, query),
         resolve_when_fetch_only?: true,
         path: [:data],
         name: "#{action.type} - `#{action.name}`"
@@ -104,6 +90,28 @@ defmodule Ash.Actions.Read do
       )
     else
       Engine.run([request | requests], api, fetch_only?: true, verbose?: params[:verbose?])
+    end
+  end
+
+  defp data_field(params, filter, resource, query) do
+    if params[:initial_data] do
+      List.wrap(params[:initial_data])
+    else
+      Request.resolve(
+        [[:data, :filter]],
+        Ash.Filter.optional_paths(filter),
+        fn %{data: %{filter: filter}} = data ->
+          fetch_filter = Ash.Filter.request_filter_for_fetch(filter, data)
+
+          case Ash.DataLayer.filter(query, fetch_filter, resource) do
+            {:ok, final_query} ->
+              Ash.DataLayer.run_query(final_query, resource)
+
+            {:error, error} ->
+              {:error, error}
+          end
+        end
+      )
     end
   end
 end

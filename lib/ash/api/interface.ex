@@ -65,25 +65,42 @@ defmodule Ash.Api.Interface do
                       opts: [
                         filter: :keyword,
                         sort: {:list, {:tuple, {[{:enum, [:asc, :desc]}], :atom}}},
-                        page: [@pagination_schema],
-                        subscribe?: :boolean
+                        page: [@pagination_schema]
                       ],
                       defaults: [
                         filter: [],
                         sort: [],
-                        page: [],
-                        subscribe?: false
+                        page: []
                       ],
                       describe: [
                         filter: "# TODO describe",
                         sort: "# TODO describe",
-                        page: "# TODO describe",
-                        subscribe?: "# TODO describe"
+                        page: "# TODO describe"
                       ]
                     ]
                     |> Ashton.schema()
                     |> Ashton.merge(@shared_read_get_opts_schema, annotate: "Shared Read Opts")
                     |> Ashton.merge(@global_opts, annotate: "Global Opts")
+
+  @side_load_opts_schema [
+                           opts: [
+                             side_load_filter: :map
+                           ],
+                           defaults: [
+                             filter: [],
+                             sort: [],
+                             page: [],
+                             side_load_filter: %{}
+                           ],
+                           describe: [
+                             filter: "# TODO describe",
+                             sort: "# TODO describe",
+                             page: "# TODO describe",
+                             side_load_filter: "# TODO describe"
+                           ]
+                         ]
+                         |> Ashton.schema()
+                         |> Ashton.merge(@global_opts, annotate: "Global Opts")
 
   @get_opts_schema []
                    |> Ashton.schema()
@@ -141,6 +158,22 @@ defmodule Ash.Api.Interface do
   """
   @callback read(resource :: Ash.resource(), params :: Ash.params()) ::
               {:ok, Ash.page()} | {:error, Ash.error()}
+
+  @doc """
+  #TODO describe
+
+  #{Ashton.document(@side_load_opts_schema)}
+  """
+  @callback side_load!(record :: Ash.record(), Ash.side_loads(), params :: Ash.params()) ::
+              Ash.record()
+
+  @doc """
+  #TODO describe
+
+  #{Ashton.document(@side_load_opts_schema)}
+  """
+  @callback side_load(resource :: Ash.resource(), Ash.side_loads(), params :: Ash.params()) ::
+              {:ok, Ash.record()} | {:error, Ash.error()}
 
   @doc """
   #TODO describe
@@ -234,6 +267,19 @@ defmodule Ash.Api.Interface do
       def read(resource, params \\ []) do
         case Ash.Api.Interface.read(__MODULE__, resource, params) do
           {:ok, paginator} -> {:ok, paginator}
+          {:error, error} -> {:error, List.wrap(error)}
+        end
+      end
+
+      @impl true
+      def side_load!(record, side_load, params \\ []) do
+        Ash.Api.Interface.side_load!(__MODULE__, record, side_load, params)
+      end
+
+      @impl true
+      def side_load(record, side_load, params \\ []) do
+        case Ash.Api.Interface.side_load(__MODULE__, record, side_load, params) do
+          {:ok, result} -> {:ok, result}
           {:error, error} -> {:error, List.wrap(error)}
         end
       end
@@ -363,7 +409,7 @@ defmodule Ash.Api.Interface do
 
   @doc false
   @spec read!(Ash.api(), Ash.resource(), Ash.params()) :: Ash.page() | no_return
-  def(read!(api, resource, params \\ [])) do
+  def read!(api, resource, params \\ []) do
     api
     |> read(resource, params)
     |> unwrap_or_raise!()
@@ -387,6 +433,49 @@ defmodule Ash.Api.Interface do
 
       :error ->
         {:error, NoSuchResource.exception(resource: resource)}
+    end
+  end
+
+  @doc false
+  @spec side_load!(Ash.api(), Ash.record(), Ash.side_loads(), Ash.params()) ::
+          Ash.record() | no_return
+  def side_load!(api, record, side_loads, params \\ []) do
+    api
+    |> side_load(record, side_loads, params)
+    |> unwrap_or_raise!()
+  end
+
+  @doc false
+  @spec side_load(Ash.api(), Ash.record(), Ash.side_loads(), Ash.params()) ::
+          {:ok, Ash.record()} | {:error, Ash.error()}
+  def side_load(api, record, side_loads, params \\ [])
+  def side_load(_, nil, _, _), do: {:ok, nil}
+
+  def side_load(api, %resource{} = record, side_loads, params) do
+    params = add_default_page_size(api, params)
+
+    case Keyword.get(params, :action) || Ash.primary_action(resource, :read) do
+      nil ->
+        {:error, "no action provided, and no primary action found for read"}
+
+      action ->
+        new_params = [
+          side_load: side_loads,
+          initial_data: record
+        ]
+
+        params = Keyword.merge(params, new_params)
+
+        case Ash.Actions.Read.run(api, resource, action, params) do
+          {:ok, %{results: [result]}} ->
+            {:ok, result}
+
+          {:ok, _} ->
+            {:error, "Framework error"}
+
+          {:error, error} ->
+            {:error, error}
+        end
     end
   end
 
