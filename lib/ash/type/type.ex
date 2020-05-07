@@ -30,7 +30,10 @@ defmodule Ash.Type do
     ]
   ]
 
-  @short_names []
+  @short_names [
+    atom: Ash.Type.Atom,
+    term: Ash.Type.Term
+  ]
 
   @builtin_names Keyword.keys(@builtins)
 
@@ -80,6 +83,10 @@ defmodule Ash.Type do
   @spec ecto_type(t) :: Ecto.Type.t()
   for {name, builtin} <- @builtins do
     def ecto_type(unquote(name)), do: unquote(builtin[:ecto_type])
+  end
+
+  for {name, mod} <- @short_names do
+    def ecto_type(unquote(name)), do: ecto_type(unquote(mod))
   end
 
   def ecto_type(type) do
@@ -162,7 +169,7 @@ defmodule Ash.Type do
   # @callback equal?(term, term) :: boolean
 
   defmacro __using__(_) do
-    quote do
+    quote location: :keep do
       @behaviour Ash.Type
 
       parent = __MODULE__
