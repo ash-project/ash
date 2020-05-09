@@ -10,7 +10,7 @@ defmodule Ash.Actions.Read do
     side_loads = Keyword.get(params, :side_load, [])
     side_load_filter = Keyword.get(params, :side_load_filter)
     page_params = Keyword.get(params, :page, [])
-    initial_data = Keyword.get(params, :initial_data)
+    _initial_data = Keyword.get(params, :initial_data)
 
     action =
       if is_atom(action) and not is_nil(action) do
