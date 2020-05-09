@@ -857,7 +857,8 @@ defimpl Inspect, for: Ash.Filter do
   import Inspect.Algebra
   import Ash.Filter.InspectHelpers
 
-  defguardp is_empty(val) when is_nil(val) or length(val) == 0
+  defguardp is_empty(val)
+            when is_nil(val) or (is_map(val) and map_size(val) == 0) or length(val) == 0
 
   def inspect(%Ash.Filter{not: not_filter} = filter, opts) when not is_nil(not_filter) do
     impossible = if Map.fetch!(filter, :impossible?), do: "X", else: ""
