@@ -857,14 +857,10 @@ defimpl Inspect, for: Ash.Filter do
   import Inspect.Algebra
   import Ash.Filter.InspectHelpers
 
-  def inspect(%Ash.Filter{impossible?: impossible, not: not_filter} = filter, opts)
-      when not is_nil(not_filter) do
-    impossible =
-      if impossible do
-        "X"
-      else
-        ""
-      end
+  defguardp is_empty(val) when is_nil(val) or val == [] or val == %{}
+
+  def inspect(%Ash.Filter{not: not_filter} = filter, opts) when not is_nil(not_filter) do
+    impossible = if Map.fetch!(filter, :impossible?), do: "X", else: ""
 
     if root?(opts) do
       concat([
@@ -885,21 +881,11 @@ defimpl Inspect, for: Ash.Filter do
   end
 
   def inspect(
-        %Ash.Filter{
-          ors: ors,
-          relationships: relationships,
-          attributes: attributes,
-          impossible?: impossible
-        },
+        %Ash.Filter{ors: ors, relationships: relationships, attributes: attributes} = filter,
         opts
       )
-      when ors in [nil, []] and relationships in [nil, %{}] and attributes in [nil, %{}] do
-    impossible =
-      if impossible do
-        "X"
-      else
-        ""
-      end
+      when is_empty(ors) and is_empty(relationships) and is_empty(attributes) do
+    impossible = if Map.fetch!(filter, :impossible?), do: "X", else: ""
 
     if root?(opts) do
       concat(["#Filter<#{impossible}", to_doc(nil, opts), ">"])
@@ -908,32 +894,11 @@ defimpl Inspect, for: Ash.Filter do
     end
   end
 
-  def inspect(%{impossible?: impossible} = filter, opts) do
-    rels =
-      filter
-      |> Map.get(:relationships)
-      |> case do
-        rels when rels == %{} ->
-          []
+  def inspect(filter, opts) do
+    impossible = if Map.fetch!(filter, :impossible?), do: "X", else: ""
 
-        rels ->
-          Enum.map(rels, fn {key, value} ->
-            to_doc(value, add_to_path(opts, key))
-          end)
-      end
-
-    attrs =
-      filter
-      |> Map.get(:attributes)
-      |> case do
-        attrs when attrs == %{} ->
-          []
-
-        attrs ->
-          Enum.map(attrs, fn {key, value} ->
-            to_doc(value, put_attr(opts, key))
-          end)
-      end
+    rels = parse_relationships(filter, opts)
+    attrs = parse_attributes(filter, opts)
 
     and_container =
       case attrs ++ rels do
@@ -969,17 +934,26 @@ defimpl Inspect, for: Ash.Filter do
           )
       end
 
-    impossible =
-      if impossible do
-        "X"
-      else
-        ""
-      end
-
     if root?(opts) do
       concat(["#Filter<#{impossible}", all_container, ">"])
     else
       concat([impossible, all_container])
     end
+  end
+
+  defp parse_relationships(%Ash.Filter{relationships: %{}}, _opts), do: []
+
+  defp parse_relationships(filter, opts) do
+    filter
+    |> Map.fetch!(:relationships)
+    |> Enum.map(fn {key, value} -> to_doc(value, add_to_path(opts, key)) end)
+  end
+
+  defp parse_attributes(%Ash.Filter{attributes: %{}}, _opts), do: []
+
+  defp parse_attributes(filter, opts) do
+    filter
+    |> Map.fetch!(:attributes)
+    |> Enum.map(fn {key, value} -> to_doc(value, put_attr(opts, key)) end)
   end
 end
