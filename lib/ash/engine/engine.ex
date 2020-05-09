@@ -55,9 +55,19 @@ defmodule Ash.Engine do
             api: engine.api
           )
 
+        if engine.verbose? do
+          report = Ash.Authorization.Report.report_from_engine(new_engine)
+          Logger.info(report)
+        end
+
         add_error(new_engine, :__engine__, error)
 
       %{state: :complete} = new_engine ->
+        if engine.verbose? do
+          report = Ash.Authorization.Report.report_from_engine(new_engine)
+          Logger.info(report)
+        end
+
         new_engine
 
       new_engine when new_engine == engine ->
