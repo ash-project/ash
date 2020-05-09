@@ -37,3 +37,12 @@ defmodule Ash.Filter.NotIn do
     end
   end
 end
+
+defimpl Inspect, for: Ash.Filter.NotIn do
+  import Inspect.Algebra
+  import Ash.Filter.InspectHelpers
+
+  def inspect(%{values: values}, opts) do
+    concat([attr(opts), " not in ", to_doc(values, opts)])
+  end
+end

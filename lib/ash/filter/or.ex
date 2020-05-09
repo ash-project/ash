@@ -32,3 +32,11 @@ defmodule Ash.Filter.Or do
     end
   end
 end
+
+defimpl Inspect, for: Ash.Filter.Or do
+  import Inspect.Algebra
+
+  def inspect(%{left: left, right: right}, opts) do
+    concat([to_doc(left, opts), " or ", to_doc(right, opts)])
+  end
+end

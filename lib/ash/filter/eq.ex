@@ -16,3 +16,12 @@ defmodule Ash.Filter.Eq do
     end
   end
 end
+
+defimpl Inspect, for: Ash.Filter.Eq do
+  import Inspect.Algebra
+  import Ash.Filter.InspectHelpers
+
+  def inspect(%{value: value}, opts) do
+    concat([attr(opts), " == ", to_doc(value, opts)])
+  end
+end
