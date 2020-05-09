@@ -64,6 +64,7 @@ defmodule Ash.Test.Type.TypeTest do
     end)
   end
 
+  @tag :skip
   test "it rejects filtering on the field if the filter type is not supported" do
     # As we add more filter types, we may want to test their multiplicity here
     post = Api.create!(Post, attributes: %{title: "foobar"})
