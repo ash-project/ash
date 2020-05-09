@@ -37,3 +37,12 @@ defmodule Ash.Filter.In do
     end
   end
 end
+
+defimpl Inspect, for: Ash.Filter.In do
+  import Inspect.Algebra
+  import Ash.Filter.InspectHelpers
+
+  def inspect(%{values: values}, opts) do
+    concat([attr(opts), " in ", to_doc(values, opts)])
+  end
+end

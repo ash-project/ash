@@ -45,3 +45,11 @@ defmodule Ash.Filter.And do
     end
   end
 end
+
+defimpl Inspect, for: Ash.Filter.And do
+  import Inspect.Algebra
+
+  def inspect(%{left: left, right: right}, opts) do
+    concat([to_doc(left, opts), " and ", to_doc(right, opts)])
+  end
+end
