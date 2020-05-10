@@ -860,43 +860,37 @@ defimpl Inspect, for: Ash.Filter do
   defguardp is_empty(val) when is_nil(val) or val == [] or val == %{}
 
   def inspect(%Ash.Filter{not: not_filter} = filter, opts) when not is_nil(not_filter) do
-    impossible = if Map.fetch!(filter, :impossible?), do: "X", else: ""
-
     if root?(opts) do
       concat([
-        "#Filter<#{impossible} not (",
+        "#Filter<not ",
         to_doc(not_filter, make_non_root(opts)),
-        ") and ",
+        " and ",
         to_doc(%{filter | not: nil}, make_non_root(opts)),
         ">"
       ])
     else
       concat([
-        "not (",
+        "not ",
         to_doc(not_filter, make_non_root(opts)),
-        ") and ",
+        " and ",
         to_doc(%{filter | not: nil}, make_non_root(opts))
       ])
     end
   end
 
   def inspect(
-        %Ash.Filter{ors: ors, relationships: relationships, attributes: attributes} = filter,
+        %Ash.Filter{ors: ors, relationships: relationships, attributes: attributes},
         opts
       )
       when is_empty(ors) and is_empty(relationships) and is_empty(attributes) do
-    impossible = if Map.fetch!(filter, :impossible?), do: "X", else: ""
-
     if root?(opts) do
-      concat(["#Filter<#{impossible}", to_doc(nil, opts), ">"])
+      concat(["#Filter<", to_doc(nil, opts), ">"])
     else
-      concat([impossible])
+      to_doc(nil, opts)
     end
   end
 
   def inspect(filter, opts) do
-    impossible = if Map.fetch!(filter, :impossible?), do: "X", else: ""
-
     rels = parse_relationships(filter, opts)
     attrs = parse_attributes(filter, opts)
 
@@ -904,6 +898,9 @@ defimpl Inspect, for: Ash.Filter do
       case attrs ++ rels do
         [] ->
           empty()
+
+        [and_clause] ->
+          and_clause
 
         and_clauses ->
           Inspect.Algebra.container_doc("(", and_clauses, ")", opts, fn term, _ -> term end,
@@ -923,25 +920,34 @@ defimpl Inspect, for: Ash.Filter do
         ors ->
           inspected_ors = Enum.map(ors, fn filter -> to_doc(filter, make_non_root(opts)) end)
 
-          Inspect.Algebra.container_doc(
-            "",
-            [and_container | inspected_ors],
-            "",
-            opts,
-            fn term, _ -> term end,
-            break: :strict,
-            separator: " or "
-          )
+          or_container =
+            Inspect.Algebra.container_doc(
+              "(",
+              inspected_ors,
+              ")",
+              opts,
+              fn term, _ -> term end,
+              break: :strict,
+              separator: " or "
+            )
+
+          if Enum.empty?(attrs) && Enum.empty?(rels) do
+            or_container
+          else
+            concat(["(", and_container, " or ", or_container, ")"])
+          end
       end
 
     if root?(opts) do
-      concat(["#Filter<#{impossible}", all_container, ">"])
+      concat(["#Filter<", all_container, ">"])
     else
-      concat([impossible, all_container])
+      all_container
     end
   end
 
-  defp parse_relationships(%Ash.Filter{relationships: %{}}, _opts), do: []
+  defp parse_relationships(%Ash.Filter{relationships: relationships}, _opts)
+       when relationships == %{},
+       do: []
 
   defp parse_relationships(filter, opts) do
     filter
@@ -949,7 +955,7 @@ defimpl Inspect, for: Ash.Filter do
     |> Enum.map(fn {key, value} -> to_doc(value, add_to_path(opts, key)) end)
   end
 
-  defp parse_attributes(%Ash.Filter{attributes: %{}}, _opts), do: []
+  defp parse_attributes(%Ash.Filter{attributes: attributes}, _opts) when attributes == %{}, do: []
 
   defp parse_attributes(filter, opts) do
     filter
