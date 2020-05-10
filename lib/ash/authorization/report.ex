@@ -91,28 +91,6 @@ defmodule Ash.Authorization.Report do
     """
   end
 
-  defp count_of_clauses(nil), do: 0
-
-  defp count_of_clauses(filter) do
-    relationship_clauses =
-      filter.relationships
-      |> Map.values()
-      |> Enum.map(fn related_filter ->
-        1 + count_of_clauses(related_filter)
-      end)
-      |> Enum.sum()
-
-    or_clauses =
-      filter.ors
-      |> Kernel.||([])
-      |> Enum.map(&count_of_clauses/1)
-      |> Enum.sum()
-
-    not_clauses = count_of_clauses(filter.not)
-
-    Enum.count(filter.attributes) + relationship_clauses + or_clauses + not_clauses
-  end
-
   defp explain_facts(facts) when facts == %{true => true, false => false},
     do: "No facts gathered."
 
@@ -120,7 +98,7 @@ defmodule Ash.Authorization.Report do
     facts
     |> Map.drop([true, false])
     |> Enum.map(fn {%{filter: filter} = key, value} ->
-      {key, value, count_of_clauses(filter)}
+      {key, value, Ash.Filter.count_of_clauses(filter)}
     end)
     # TODO: nest child filters under parent filters?
     |> Enum.group_by(fn {clause, _value, _count_of_clauses} ->

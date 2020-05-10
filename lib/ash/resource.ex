@@ -13,8 +13,6 @@ defmodule Ash.Resource do
                           opts: [
                             name: :string,
                             type: :string,
-                            max_page_size: :integer,
-                            default_page_size: :integer,
                             primary_key: [
                               :boolean,
                               @primary_key_schema
@@ -25,22 +23,12 @@ defmodule Ash.Resource do
                               "The name of the resource. This will typically be the pluralized form of the type",
                             type:
                               "The type of the resource, e.g `post` or `author`. This is used throughout the system.",
-                            max_page_size:
-                              "The maximum page size for any read action. Any request for a higher page size will simply use this number.",
-                            default_page_size:
-                              "The default page size for any read action. If no page size is specified, this value is used.",
                             primary_key:
                               "If true, a default `id` uuid primary key that autogenerates is used. If false, none is created. See the primary_key opts for info on specifying primary key options."
                           ],
                           required: [:name, :type],
                           defaults: [
                             primary_key: true
-                          ],
-                          constraints: [
-                            max_page_size:
-                              {&Ash.Constraints.greater_than_zero?/1, "must be greater than zero"},
-                            default_page_size:
-                              {&Ash.Constraints.greater_than_zero?/1, "must be greater than zero"}
                           ]
                         )
 
@@ -122,8 +110,6 @@ defmodule Ash.Resource do
 
     Module.put_attribute(mod, :name, opts[:name])
     Module.put_attribute(mod, :resource_type, opts[:type])
-    Module.put_attribute(mod, :max_page_size, opts[:max_page_size])
-    Module.put_attribute(mod, :default_page_size, opts[:default_page_size])
     Module.put_attribute(mod, :data_layer, nil)
     Module.put_attribute(mod, :description, nil)
   end
@@ -213,14 +199,6 @@ defmodule Ash.Resource do
 
       def mix_ins() do
         @mix_ins
-      end
-
-      def max_page_size() do
-        @max_page_size
-      end
-
-      def default_page_size() do
-        @default_page_size
       end
 
       def data_layer() do

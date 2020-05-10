@@ -6,7 +6,7 @@ defmodule Ash.Actions.Sort do
   def process(resource, sort) when is_list(sort) do
     sort
     |> Enum.reduce({[], []}, fn
-      {order, field}, {sorts, errors} when order in [:asc, :desc] ->
+      {field, order}, {sorts, errors} when order in [:asc, :desc] ->
         attribute = Ash.attribute(resource, field)
 
         cond do
@@ -21,10 +21,10 @@ defmodule Ash.Actions.Sort do
              ]}
 
           true ->
-            {sorts ++ [{order, field}], errors}
+            {sorts ++ [{field, order}], errors}
         end
 
-      {order, _}, {sorts, errors} ->
+      {_, order}, {sorts, errors} ->
         {sorts, [InvalidSortOrder.exception(order: order) | errors]}
     end)
     |> case do

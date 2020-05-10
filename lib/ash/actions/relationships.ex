@@ -228,8 +228,8 @@ defmodule Ash.Actions.Relationships do
         path: [:relationships, relationship_name, type],
         data:
           Ash.Engine.Request.resolve(fn _data ->
-            case api.read(destination, filter: filter, paginate: false) do
-              {:ok, %{results: results}} -> {:ok, results}
+            case api.read(destination, filter: filter) do
+              {:ok, results} -> {:ok, results}
               {:error, error} -> {:error, error}
             end
           end),
@@ -888,8 +888,8 @@ defmodule Ash.Actions.Relationships do
         filter: filter,
         data:
           Ash.Engine.Request.resolve(fn _data ->
-            case api.read(destination, filter: filter, paginate: false) do
-              {:ok, %{results: results}} -> {:ok, results}
+            case api.read(destination, filter: filter) do
+              {:ok, results} -> {:ok, results}
               {:error, error} -> {:error, error}
             end
           end),
@@ -926,7 +926,7 @@ defmodule Ash.Actions.Relationships do
       data:
         Ash.Engine.Request.resolve(fn _data ->
           case api.read(through, filter: filter_statement) do
-            {:ok, %{results: results}} -> {:ok, results}
+            {:ok, results} -> {:ok, results}
             {:error, error} -> {:error, error}
           end
         end),
@@ -971,8 +971,8 @@ defmodule Ash.Actions.Relationships do
 
             filter_statement = [{relationship.destination_field, in: field_values}]
 
-            case api.read(destination, filter: filter_statement, paginate: false) do
-              {:ok, %{results: results}} -> {:ok, results}
+            case api.read(destination, filter: filter_statement) do
+              {:ok, results} -> {:ok, results}
               {:error, error} -> {:error, error}
             end
           end

@@ -50,32 +50,18 @@ defmodule Ash.Api.Interface do
                                  ]
                                )
 
-  @pagination_schema Ashton.schema(
-                       opts: [
-                         limit: :integer,
-                         offset: :integer
-                       ],
-                       constraints: [
-                         limit: {&Ash.Constraints.positive?/1, "must be positive"},
-                         offset: {&Ash.Constraints.positive?/1, "must be positive"}
-                       ]
-                     )
-
   @read_opts_schema [
                       opts: [
                         filter: :keyword,
-                        sort: {:list, {:tuple, {[{:enum, [:asc, :desc]}], :atom}}},
-                        page: [@pagination_schema]
+                        sort: {:list, {:tuple, {[{:enum, [:asc, :desc]}], :atom}}}
                       ],
                       defaults: [
                         filter: [],
-                        sort: [],
-                        page: []
+                        sort: []
                       ],
                       describe: [
                         filter: "# TODO describe",
-                        sort: "# TODO describe",
-                        page: "# TODO describe"
+                        sort: "# TODO describe"
                       ]
                     ]
                     |> Ashton.schema()
@@ -89,13 +75,11 @@ defmodule Ash.Api.Interface do
                            defaults: [
                              filter: [],
                              sort: [],
-                             page: [],
                              side_load_filter: %{}
                            ],
                            describe: [
                              filter: "# TODO describe",
                              sort: "# TODO describe",
-                             page: "# TODO describe",
                              side_load_filter: "# TODO describe"
                            ]
                          ]
@@ -149,7 +133,8 @@ defmodule Ash.Api.Interface do
 
   #{Ashton.document(@read_opts_schema)}
   """
-  @callback read!(resource :: Ash.resource(), params :: Ash.params()) :: Ash.page() | no_return
+  @callback read!(resource :: Ash.resource(), params :: Ash.params()) ::
+              list(Ash.resource()) | no_return
 
   @doc """
   #TODO describe
@@ -157,7 +142,7 @@ defmodule Ash.Api.Interface do
   #{Ashton.document(@read_opts_schema)}
   """
   @callback read(resource :: Ash.resource(), params :: Ash.params()) ::
-              {:ok, Ash.page()} | {:error, Ash.error()}
+              {:ok, list(Ash.resource())} | {:error, Ash.error()}
 
   @doc """
   #TODO describe
@@ -266,7 +251,7 @@ defmodule Ash.Api.Interface do
       @impl true
       def read(resource, params \\ []) do
         case Ash.Api.Interface.read(__MODULE__, resource, params) do
-          {:ok, paginator} -> {:ok, paginator}
+          {:ok, results} -> {:ok, results}
           {:error, error} -> {:error, List.wrap(error)}
         end
       end
@@ -334,6 +319,10 @@ defmodule Ash.Api.Interface do
         id = record |> Map.take(Ash.primary_key(resource)) |> Enum.to_list()
         get(resource, id, params)
       end
+
+      def query(resource) do
+        Ash.Query.new(__MODULE__, resource)
+      end
     end
   end
 
@@ -381,20 +370,19 @@ defmodule Ash.Api.Interface do
           params_with_filter =
             params
             |> Keyword.update(:filter, adjusted_filter, &Kernel.++(&1, adjusted_filter))
-            |> Keyword.put(:page, %{limit: 2})
-            |> Keyword.put(:enforce_filter_access, false)
+            |> Keyword.put(:limit, 2)
 
           case read(api, resource, params_with_filter) do
-            {:ok, %{results: [single_result]}} ->
+            {:ok, [single_result]} ->
               {:ok, single_result}
 
-            {:ok, %{results: []}} ->
+            {:ok, []} ->
               {:ok, nil}
 
             {:error, error} ->
               {:error, error}
 
-            {:ok, %{results: results}} when is_list(results) ->
+            {:ok, results} when is_list(results) ->
               {:error, :too_many_results}
           end
 
@@ -408,7 +396,7 @@ defmodule Ash.Api.Interface do
   end
 
   @doc false
-  @spec read!(Ash.api(), Ash.resource(), Ash.params()) :: Ash.page() | no_return
+  @spec read!(Ash.api(), Ash.resource(), Ash.params()) :: list(Ash.resource()) | no_return
   def read!(api, resource, params \\ []) do
     api
     |> read(resource, params)
@@ -417,10 +405,8 @@ defmodule Ash.Api.Interface do
 
   @doc false
   @spec read(Ash.api(), Ash.resource(), Ash.params()) ::
-          {:ok, Ash.page()} | {:error, Ash.error()}
+          {:ok, list(Ash.resource())} | {:error, Ash.error()}
   def read(api, resource, params \\ []) do
-    params = add_default_page_size(api, params)
-
     case api.get_resource(resource) do
       {:ok, resource} ->
         case Keyword.get(params, :action) || Ash.primary_action(resource, :read) do
@@ -452,8 +438,6 @@ defmodule Ash.Api.Interface do
   def side_load(_, nil, _, _), do: {:ok, nil}
 
   def side_load(api, %resource{} = record, side_loads, params) do
-    params = add_default_page_size(api, params)
-
     case Keyword.get(params, :action) || Ash.primary_action(resource, :read) do
       nil ->
         {:error, "no action provided, and no primary action found for read"}
@@ -467,7 +451,7 @@ defmodule Ash.Api.Interface do
         params = Keyword.merge(params, new_params)
 
         case Ash.Actions.Read.run(api, resource, action, params) do
-          {:ok, %{results: [result]}} ->
+          {:ok, [result]} ->
             {:ok, result}
 
           {:ok, _} ->
@@ -564,20 +548,4 @@ defmodule Ash.Api.Interface do
   defp unwrap_or_raise!(:ok), do: :ok
   defp unwrap_or_raise!({:ok, result}), do: result
   defp unwrap_or_raise!({:error, error}), do: raise(Ash.to_ash_error(error))
-
-  defp add_default_page_size(api, params) do
-    case api.default_page_size() do
-      nil ->
-        params
-
-      default ->
-        with {:ok, page} <- Keyword.fetch(params, :page),
-             {:ok, size} when is_integer(size) <- Keyword.fetch(page, :size) do
-          params
-        else
-          _ ->
-            Keyword.update(params, :page, [limit: default], &Keyword.put(&1, :limit, default))
-        end
-    end
-  end
 end

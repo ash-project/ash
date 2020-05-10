@@ -739,6 +739,28 @@ defmodule Ash.Filter do
     end)
   end
 
+  def count_of_clauses(nil), do: 0
+
+  def count_of_clauses(filter) do
+    relationship_clauses =
+      filter.relationships
+      |> Map.values()
+      |> Enum.map(fn related_filter ->
+        1 + count_of_clauses(related_filter)
+      end)
+      |> Enum.sum()
+
+    or_clauses =
+      filter.ors
+      |> Kernel.||([])
+      |> Enum.map(&count_of_clauses/1)
+      |> Enum.sum()
+
+    not_clauses = count_of_clauses(filter.not)
+
+    Enum.count(filter.attributes) + relationship_clauses + or_clauses + not_clauses
+  end
+
   defp parse_predicate(resource, predicate_name, attr_name, attr_type, value) do
     data_layer = Ash.data_layer(resource)
 

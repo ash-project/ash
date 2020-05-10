@@ -8,7 +8,7 @@
 
 ## Introduction
 
-Traditional MVC Frameworks (Rails, Django, .Net, Phoenix, etc) leave it up to the user to build the glue between requests for data (HTTP requests in various forms as well as server-side domain logic) and their respective ORMs. In that space, there is an incredible amount of boilerplate code that must get written from scratch for each application (authentication, authorization, sorting, filtering, pagination, sideloading relationships, serialization, etc).
+Traditional MVC Frameworks (Rails, Django, .Net, Phoenix, etc) leave it up to the user to build the glue between requests for data (HTTP requests in various forms as well as server-side domain logic) and their respective ORMs. In that space, there is an incredible amount of boilerplate code that must get written from scratch for each application (authentication, authorization, sorting, filtering, sideloading relationships, serialization, etc).
 
 Ash is an opinionated yet configurable framework designed to reduce boilerplate in Elixir application. Don't worry Phoenix developers - Ash is designed to play well with Phoenix too :). Ash does this by providing a layer of abstraction over your system's data layer(s) with `Resources`.
 
@@ -85,7 +85,6 @@ end
 - Flesh out relationship options
 - Flesh out field options (sortable, filterable, other behavior?)
 - Unit test the Ets data layer
-- Improve pagination in the ETS data layer
 - Rearchitect relationship updates so that they can be sensible authorized. As in, which resource is responsible for authorizing updates to a relationship? Should there be some unified way to describe it? Or is updating a user's posts an entirely separate operation from updating a post's user?
 - Test authorization
 - Validate that all relationships on all resources in the API have destinations _in_ that API, or don't and add in logic to pretend those don't exist through the API.
@@ -110,6 +109,7 @@ end
 - certain attribute names are not going to be allowed, like `or`, `and`, `in`, things like that.
 - consider, just for the sake of good old fashion fun/cool factor, a parser that can parse a string into a query at compile time, so that queries can look nice in code.
 - validate reverse relationships!!
+- document reverse relationships, or perhaps consider that we need a `from_relationship` filter instead?
 - Factor out shared relationship options into its own schema, and merge them, for clearer docs.
 - Consider making a "params builder" so you can say things like `Ash.Params.add_side_load(params, [:foo, :bar, :baz])` and build params up over time.
 - validate using composite primary keys using the `data_layer.can?(:composite_primary_key)`
@@ -173,3 +173,4 @@ end
 - lift `or` filters over the same field equaling a value into a single `in` filter, for performance (potentially)
 - just had a cool thought: we can actually run the satsolver _before_ fetching the user. The satsolver could warn us early that _no user_ could make the request in question!
 - implement transactions in the engine. Perhaps by assigning requests transaction ids or something along those lines.
+- support accepting a _resource and a filter_ in `api.update` and `api.destroy`, and doing those as bulk actions

@@ -43,6 +43,8 @@ defmodule Ash.DataLayer do
 
   @spec filter(Ash.query(), Ash.filter(), Ash.resource()) ::
           {:ok, Ash.query()} | {:error, Ash.error()}
+  def filter(query, nil, _), do: {:ok, query}
+
   def filter(query, filter, resource) do
     data_layer = Ash.data_layer(resource)
     data_layer.filter(query, filter, resource)
@@ -57,6 +59,8 @@ defmodule Ash.DataLayer do
 
   @spec limit(Ash.query(), limit :: non_neg_integer, Ash.resource()) ::
           {:ok, Ash.query()} | {:error, Ash.error()}
+  def limit(query, nil, _resource), do: {:ok, query}
+
   def limit(query, limit, resource) do
     data_layer = Ash.data_layer(resource)
     data_layer.limit(query, limit, resource)
@@ -64,6 +68,8 @@ defmodule Ash.DataLayer do
 
   @spec offset(Ash.query(), offset :: non_neg_integer, Ash.resource()) ::
           {:ok, Ash.query()} | {:error, Ash.error()}
+  def offset(query, nil, _resource), do: {:ok, query}
+
   def offset(query, offset, resource) do
     data_layer = Ash.data_layer(resource)
     data_layer.offset(query, offset, resource)

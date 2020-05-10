@@ -37,8 +37,24 @@ defmodule Ash.Actions.SideLoad do
     end)
   end
 
-  def merge([], right), do: right
-  def merge(left, []), do: left
+  def merge([], right), do: sanitize_side_loads(right)
+  def merge(left, []), do: sanitize_side_loads(left)
+
+  def merge(
+        %Ash.Query{side_load: left_side_loads},
+        %Ash.Query{side_load: right_side_loads} = query
+      ) do
+    %{query | side_load: merge(left_side_loads, right_side_loads)}
+  end
+
+  def merge(%Ash.Query{} = query, right) when is_list(right) do
+    Ash.Query.side_load(query, right)
+  end
+
+  def merge(left, %Ash.Query{} = query) when is_list(left) do
+    Ash.Query.side_load(query, left)
+  end
+
   def merge(left, right) when is_atom(left), do: merge([{left, []}], right)
   def merge(left, right) when is_atom(right), do: merge(left, [{right, []}])
 
@@ -46,9 +62,48 @@ defmodule Ash.Actions.SideLoad do
     right
     |> sanitize_side_loads()
     |> Enum.reduce(sanitize_side_loads(left), fn {rel, rest}, acc ->
-      case Keyword.fetch(acc, rel) do
-        {:ok, value} -> merge(value, rest)
-        :error -> Keyword.put(acc, rel, rest)
+      Keyword.update(acc, rel, rest, &merge(&1, rest))
+    end)
+  end
+
+  def validate(resource, side_loads, path \\ []) do
+    case do_validate(resource, side_loads, path) do
+      [] -> :ok
+      errors -> {:error, errors}
+    end
+  end
+
+  def do_validate(_resource, %Ash.Query{} = query, path) do
+    case query.errors do
+      [] ->
+        []
+
+      _errors ->
+        [
+          {:error,
+           Ash.Error.SideLoad.InvalidQuery.exception(
+             query: query,
+             side_load_path: Enum.reverse(path)
+           )}
+        ]
+    end
+  end
+
+  def do_validate(resource, side_loads, path) when is_list(side_loads) do
+    Enum.flat_map(side_loads, fn {key, value} ->
+      case Ash.relationship(resource, key) do
+        nil ->
+          [
+            {:error,
+             Ash.Error.SideLoad.NoSuchRelationship.exception(
+               resource: resource,
+               relationship: key,
+               side_load_path: Enum.reverse(path)
+             )}
+          ]
+
+        relationship ->
+          do_validate(relationship.destination, value, [key | path])
       end
     end)
   end
@@ -77,10 +132,6 @@ defmodule Ash.Actions.SideLoad do
       {:error, error} ->
         {:error, error}
     end
-  end
-
-  def attach_side_loads(%Ash.Actions.Paginator{results: results} = paginator, state) do
-    %{paginator | results: attach_side_loads(results, state)}
   end
 
   def attach_side_loads([%resource{} | _] = data, %{include: includes})
@@ -253,8 +304,8 @@ defmodule Ash.Actions.SideLoad do
                        data,
                        path
                      ),
-                   {:ok, %{results: results}} <-
-                     api.read(relationship.destination, filter: filter, paginate: false) do
+                   {:ok, results} <-
+                     api.read(relationship.destination, filter: filter) do
                 {:ok, results}
               else
                 {:error, error} -> {:error, error}
@@ -310,11 +361,8 @@ defmodule Ash.Actions.SideLoad do
                            data,
                            path
                          ),
-                       {:ok, %{results: results}} <-
-                         api.read(join_relationship.destination,
-                           filter: filter,
-                           paginate: false
-                         ) do
+                       {:ok, results} <-
+                         api.read(join_relationship.destination, filter: filter) do
                     {:ok, results}
                   else
                     {:error, error} -> {:error, error}
@@ -612,13 +660,23 @@ defmodule Ash.Actions.SideLoad do
     Keyword.update(request_filter, :or, values, &Kernel.++(&1, values))
   end
 
+  defp sanitize_side_loads(side_load) when is_atom(side_load), do: {side_load, []}
+
+  defp sanitize_side_loads(%Ash.Query{} = query) do
+    Map.update!(query, :side_load, &sanitize_side_loads/1)
+  end
+
   defp sanitize_side_loads(side_loads) do
-    Enum.map(side_loads, fn side_load_part ->
-      if is_atom(side_load_part) do
-        {side_load_part, []}
-      else
-        side_load_part
-      end
+    Enum.map(side_loads, fn
+      {key, value} ->
+        {key, sanitize_side_loads(value)}
+
+      side_load_part ->
+        cond do
+          is_atom(side_load_part) -> {side_load_part, []}
+          is_list(side_load_part) -> sanitize_side_loads(side_load_part)
+          true -> side_load_part
+        end
     end)
   end
 end

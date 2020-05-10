@@ -115,7 +115,7 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     test "single filter field", %{post1: post1} do
-      assert %{results: [^post1]} =
+      assert [^post1] =
                Api.read!(Post,
                  filter: [
                    title: post1.title
@@ -124,7 +124,7 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     test "multiple filter field matches", %{post1: post1} do
-      assert %{results: [^post1]} =
+      assert [^post1] =
                Api.read!(Post,
                  filter: [
                    title: post1.title,
@@ -134,7 +134,7 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     test "no field matches" do
-      assert %{results: []} =
+      assert [] =
                Api.read!(Post,
                  filter: [
                    title: "no match"
@@ -146,7 +146,7 @@ defmodule Ash.Test.Filter.FilterTest do
       post1: post1,
       post2: post2
     } do
-      assert %{results: []} =
+      assert [] =
                Api.read!(Post,
                  filter: [
                    title: post1.title,
@@ -198,19 +198,19 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     test "filtering on a has_one relationship", %{profile2: profile2, user2: user2} do
-      assert %{results: [^user2]} = Api.read!(User, filter: [profile: profile2.id])
+      assert [^user2] = Api.read!(User, filter: [profile: profile2.id])
     end
 
     test "filtering on a belongs_to relationship", %{profile1: profile1, user1: user1} do
-      assert %{results: [^profile1]} = Api.read!(Profile, filter: [user: user1.id])
+      assert [^profile1] = Api.read!(Profile, filter: [user: user1.id])
     end
 
     test "filtering on a has_many relationship", %{user2: user2, post2: post2} do
-      assert %{results: [^user2]} = Api.read!(User, filter: [posts: post2.id])
+      assert [^user2] = Api.read!(User, filter: [posts: post2.id])
     end
 
     test "filtering on a many_to_many relationship", %{post4: post4, post3: post3} do
-      assert %{results: [^post4]} = Api.read!(Post, filter: [related_posts: post3.id])
+      assert [^post4] = Api.read!(Post, filter: [related_posts: post3.id])
     end
   end
 end
