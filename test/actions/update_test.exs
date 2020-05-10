@@ -115,7 +115,7 @@ defmodule Ash.Test.Actions.UpdateTest do
 
       Api.update!(post, relationships: %{related_posts: [post2.id, post3.id]})
 
-      assert %{results: [_, _]} = Api.read!(PostLink, filter: [])
+      assert [_, _] = Api.read!(PostLink, filter: [])
     end
 
     test "it responds with the relationship filled in" do

@@ -1,32 +1,27 @@
 defmodule Ash.Resource.Actions.Read do
   @moduledoc "The representation of a `read` action"
 
-  defstruct [:type, :name, :primary?, :rules, :paginate?]
+  defstruct [:type, :name, :primary?, :rules]
 
   @type t :: %__MODULE__{
           type: :read,
           name: atom,
           primary?: boolean,
-          paginate?: boolean,
           rules: Authorization.steps()
         }
 
   @opt_schema Ashton.schema(
                 opts: [
                   primary?: :boolean,
-                  paginate?: :boolean,
                   rules: :keyword
                 ],
                 defaults: [
                   primary?: false,
-                  paginate?: true,
                   rules: []
                 ],
                 describe: [
                   primary?:
                     "Whether or not this action should be used when no action is specified by the caller.",
-                  paginate?:
-                    "If false, a page is still returned from a read action, but no limit or offset is performed.",
                   # TODO: doc better
                   rules: "A list of authorization steps"
                 ]
@@ -60,8 +55,7 @@ defmodule Ash.Resource.Actions.Read do
            name: name,
            type: :read,
            primary?: opts[:primary?],
-           rules: rules,
-           paginate?: opts[:paginate?]
+           rules: rules
          }}
 
       {:error, error} ->

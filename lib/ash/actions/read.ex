@@ -9,7 +9,6 @@ defmodule Ash.Actions.Read do
     sort = Keyword.get(params, :sort, [])
     side_loads = Keyword.get(params, :side_load, [])
     side_load_filter = Keyword.get(params, :side_load_filter)
-    page_params = Keyword.get(params, :page, [])
     _initial_data = Keyword.get(params, :initial_data)
 
     action =
@@ -34,21 +33,20 @@ defmodule Ash.Actions.Read do
          {:ok, _filtered_query} <- Ash.DataLayer.filter(sorted_query, filter, resource),
          {:ok, side_load_requests} <-
            SideLoad.requests(api, resource, side_loads, filter, side_load_filter),
-         {:ok, paginator} <-
-           Ash.Actions.Paginator.paginate(api, resource, action, sorted_query, page_params),
+         {:ok, query} <- Ash.DataLayer.limit(sorted_query, params[:limit], resource),
+         {:ok, query} <- Ash.DataLayer.offset(query, params[:offset], resource),
          %{data: %{data: %{data: data}}, errors: errors, authorized?: true} = engine
          when errors == %{} <-
            do_authorized(
-             paginator.query,
+             query,
              params,
              filter,
              resource,
              api,
              action,
              side_load_requests ++ filter_requests
-           ),
-         paginator <- %{paginator | results: data} do
-      {:ok, SideLoad.attach_side_loads(paginator, engine.data)}
+           ) do
+      {:ok, SideLoad.attach_side_loads(data, engine.data)}
     else
       %Ash.Filter{errors: errors} ->
         {:error, Ash.to_ash_error(errors)}

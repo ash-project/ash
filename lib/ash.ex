@@ -20,7 +20,6 @@ defmodule Ash do
   @type api :: module
   @type error :: struct
   @type filter :: map()
-  @type page :: Ash.Actions.Paginator.t()
   @type params :: Keyword.t()
   @type create_params :: Keyword.t()
   @type update_params :: Keyword.t()
@@ -137,16 +136,6 @@ defmodule Ash do
   @spec type(resource()) :: String.t()
   def type(resource) do
     resource.type()
-  end
-
-  @spec max_page_size(api(), resource()) :: non_neg_integer() | nil
-  def max_page_size(api, resource) do
-    min(api.max_page_size(), resource.max_page_size())
-  end
-
-  @spec default_page_size(api(), resource()) :: non_neg_integer() | nil
-  def default_page_size(api, resource) do
-    min(api.default_page_size(), resource.default_page_size())
   end
 
   @spec data_layer(resource()) :: data_layer()

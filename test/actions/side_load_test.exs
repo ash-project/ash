@@ -58,8 +58,7 @@ defmodule Ash.Test.Actions.SideLoadTest do
     end
 
     test "it allows sideloading related data", %{post1: post1, post2: post2} do
-      %{results: [author]} =
-        Api.read!(Author, side_load: [posts: [:author]], filter: [posts: [id: post1.id]])
+      [author] = Api.read!(Author, side_load: [posts: [:author]], filter: [posts: [id: post1.id]])
 
       assert Enum.sort(Enum.map(author.posts, &Map.get(&1, :id))) ==
                Enum.sort([post1.id, post2.id])

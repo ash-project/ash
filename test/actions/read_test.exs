@@ -81,13 +81,13 @@ defmodule Ash.Test.Actions.ReadTest do
 
   describe "api.read/2 with no records" do
     test "returns an empty result" do
-      assert {:ok, %{results: []}} = Api.read(Post)
+      assert {:ok, []} = Api.read(Post)
     end
   end
 
   describe "Ash.read!/2 with no records" do
     test "returns an empty result" do
-      assert %{results: []} = Api.read!(Post)
+      assert [] = Api.read!(Post)
     end
   end
 
@@ -99,16 +99,16 @@ defmodule Ash.Test.Actions.ReadTest do
       %{post1: post1, post2: post2}
     end
 
-    test "with page size of 1, returns only 1 record" do
-      assert {:ok, %{results: [_post]}} = Api.read(Post, page: %{limit: 1})
+    test "with a limit of 1, returns only 1 record" do
+      assert {:ok, [_post]} = Api.read(Post, limit: 1)
     end
 
-    test "with page size of 2, returns 2 records" do
-      assert {:ok, %{results: [_, _]}} = Api.read(Post, page: %{limit: 2})
+    test "with a limit size of 2, returns 2 records" do
+      assert {:ok, [_, _]} = Api.read(Post, limit: 2)
     end
 
-    test "with page size of 1 and an offset of 1, it returns 1 record" do
-      assert {:ok, %{results: [_]}} = Api.read(Post, page: %{limit: 1, offset: 1})
+    test "with a limit of 1 and an offset of 1, it returns 1 record" do
+      assert {:ok, [_]} = Api.read(Post, limit: 1, offset: 1)
     end
   end
 
@@ -121,7 +121,7 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     test "it returns the records not in a tuple" do
-      assert %{results: [_, _]} = Api.read!(Post)
+      assert [_, _] = Api.read!(Post)
     end
 
     test "it raises on an error" do
@@ -140,15 +140,15 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     test "a filter that matches nothing returns no results" do
-      assert {:ok, %{results: []}} = Api.read(Post, filter: [contents: "not_yeet"])
+      assert {:ok, []} = Api.read(Post, filter: [contents: "not_yeet"])
     end
 
     test "a filter returns only matching records", %{post1: post1} do
-      assert {:ok, %{results: [^post1]}} = Api.read(Post, filter: [title: post1.title])
+      assert {:ok, [^post1]} = Api.read(Post, filter: [title: post1.title])
     end
 
     test "a filter returns multiple records if they match", %{post1: post1, post2: post2} do
-      assert {:ok, %{results: [_, _] = results}} = Api.read(Post, filter: [contents: "yeet"])
+      assert {:ok, [_, _] = results} = Api.read(Post, filter: [contents: "yeet"])
 
       assert post1 in results
       assert post2 in results
@@ -170,12 +170,11 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     test "you can filter on a related value", %{author1: author1} do
-      assert %{results: [_] = results} = Api.read!(Post, filter: [author1: author1.id])
+      assert [_] = Api.read!(Post, filter: [author1: author1.id])
     end
 
     test "you can filter on multiple related values", %{author1: author1, author2: author2} do
-      assert %{results: [_] = results} =
-               Api.read!(Post, filter: [author1: author1.id, author2: author2.id])
+      assert [_] = Api.read!(Post, filter: [author1: author1.id, author2: author2.id])
     end
   end
 
@@ -191,21 +190,21 @@ defmodule Ash.Test.Actions.ReadTest do
       post1: post1,
       post2: post2
     } do
-      assert {:ok, %{results: [^post1, ^post2]}} = Api.read(Post, sort: [asc: :title])
+      assert {:ok, [^post1, ^post2]} = Api.read(Post, sort: [title: :asc])
     end
 
     test "a sort will sor rows accordingly when descending", %{
       post1: post1,
       post2: post2
     } do
-      assert {:ok, %{results: [^post2, ^post1]}} = Api.read(Post, sort: [desc: :title])
+      assert {:ok, [^post2, ^post1]} = Api.read(Post, sort: [title: :desc])
     end
 
     test "a nested sort sorts accordingly", %{post1: post1, post2: post2} do
       {:ok, middle_post} = Api.create(Post, attributes: %{title: "abc", contents: "xyz"})
 
-      assert {:ok, %{results: [^post1, ^middle_post, ^post2]}} =
-               Api.read(Post, sort: [asc: :title, asc: :contents])
+      assert {:ok, [^post1, ^middle_post, ^post2]} =
+               Api.read(Post, sort: [title: :asc, contents: :asc])
     end
   end
 end

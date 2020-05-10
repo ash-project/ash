@@ -25,10 +25,6 @@ defmodule Ash.Error do
 
     parent_error_module = @error_modules[error.class]
 
-    unless parent_error_module do
-      IO.inspect(error)
-    end
-
     parent_error_module.exception(errors: errors)
   end
 

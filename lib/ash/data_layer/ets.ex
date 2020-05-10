@@ -235,28 +235,14 @@ defmodule Ash.DataLayer.Ets do
 
   defp do_sort(results, empty) when empty in [nil, []], do: results
 
-  defp do_sort(results, [{:asc, field}]) do
-    Enum.sort_by(results, &Map.get(&1, field))
+  defp do_sort(results, [{field, direction}]) do
+    Enum.sort_by(results, &Map.get(&1, field), direction)
   end
 
-  defp do_sort(results, [{:desc, field}]) do
-    results |> Enum.sort_by(&Map.get(&1, field)) |> Enum.reverse()
-  end
-
-  defp do_sort(results, [{:asc, field} | rest]) do
+  defp do_sort(results, [{field, direction} | rest]) do
     results
     |> Enum.group_by(&Map.get(&1, field))
-    |> Enum.sort_by(fn {key, _value} -> key end)
-    |> Enum.flat_map(fn {_, records} ->
-      do_sort(records, rest)
-    end)
-  end
-
-  defp do_sort(results, [{:desc, field} | rest]) do
-    results
-    |> Enum.group_by(&Map.get(&1, field))
-    |> Enum.sort_by(fn {key, _value} -> key end)
-    |> Enum.reverse()
+    |> Enum.sort_by(fn {key, _value} -> key end, direction)
     |> Enum.flat_map(fn {_, records} ->
       do_sort(records, rest)
     end)

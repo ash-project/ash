@@ -79,7 +79,7 @@ defmodule Ash.Test.Type.TypeTest do
     Api.create!(Post, attributes: %{title: "foobar2"})
 
     assert_raise(Ash.Error.Invalid, ~r/\* Cannot sort on :title/, fn ->
-      Api.read!(Post, sort: [asc: :title])
+      Api.read!(Post, sort: [title: :asc])
     end)
   end
 end
