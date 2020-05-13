@@ -39,6 +39,10 @@ defmodule Ash.Api.Interface do
                     |> Ashton.schema()
                     |> Ashton.merge(@global_opts, annotate: "Global Opts")
 
+  @side_load_opts_schema []
+                         |> Ashton.schema()
+                         |> Ashton.merge(@global_opts, annotate: "Global opts")
+
   @get_opts_schema []
                    |> Ashton.schema()
                    |> Ashton.merge(@global_opts, annotate: "Global Opts")
@@ -94,6 +98,22 @@ defmodule Ash.Api.Interface do
   #{Ashton.document(@read_opts_schema)}
   """
   @callback read(resource :: Ash.resource(), params :: Ash.params()) ::
+              {:ok, list(Ash.resource())} | {:error, Ash.error()}
+
+  @doc """
+  #TODO describe
+
+  #{Ashton.document(@side_load_opts_schema)}
+  """
+  @callback side_load!(resource :: Ash.resource(), params :: Ash.params()) ::
+              list(Ash.resource()) | no_return
+
+  @doc """
+  #TODO describe
+
+  #{Ashton.document(@side_load_opts_schema)}
+  """
+  @callback side_load(resource :: Ash.resource(), params :: Ash.params()) ::
               {:ok, list(Ash.resource())} | {:error, Ash.error()}
 
   @doc """
@@ -199,6 +219,19 @@ defmodule Ash.Api.Interface do
 
       def read(query, opts) do
         case Ash.Api.Interface.read(__MODULE__, query, opts) do
+          {:ok, results} -> {:ok, results}
+          {:error, error} -> {:error, List.wrap(error)}
+        end
+      end
+
+      @impl true
+      def side_load!(data, query, opts \\ []) do
+        Ash.Api.Interface.side_load!(__MODULE__, data, query, opts)
+      end
+
+      @impl true
+      def side_load(data, query, opts \\ []) do
+        case Ash.Api.Interface.side_load(__MODULE__, data, query, opts) do
           {:ok, results} -> {:ok, results}
           {:error, error} -> {:error, List.wrap(error)}
         end
@@ -322,8 +355,59 @@ defmodule Ash.Api.Interface do
   end
 
   @doc false
+  @spec side_load!(
+          Ash.api(),
+          Ash.record() | list(Ash.record()),
+          Ash.query() | list(atom | {atom, list()}),
+          Keyword.t()
+        ) ::
+          list(Ash.record()) | Ash.record() | no_return
+  def side_load!(api, data, query, opts \\ []) do
+    api
+    |> side_load(data, query, opts)
+    |> unwrap_or_raise!()
+  end
+
+  @doc false
+  @spec side_load(Ash.api(), Ash.query(), Keyword.t()) ::
+          {:ok, list(Ash.resource())} | {:error, Ash.error()}
+  def side_load(api, data, query, opts \\ [])
+  def side_load(_, [], _, _), do: {:ok, []}
+  def side_load(_, nil, _, _), do: {:ok, nil}
+
+  def side_load(api, data, query, opts) when not is_list(data) do
+    api
+    |> side_load(List.wrap(data), query, opts)
+    |> case do
+      {:ok, [data]} -> {:ok, data}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  def side_load(api, [%resource{} | _] = data, query, opts) do
+    query =
+      case query do
+        %Ash.Query{} = query ->
+          query
+
+        keyword ->
+          resource
+          |> api.query()
+          |> Ash.Query.side_load(keyword)
+      end
+
+    case query do
+      %{valid?: true} ->
+        Ash.Actions.SideLoad.side_load(data, query, opts)
+
+      %{errors: errors} ->
+        {:error, errors}
+    end
+  end
+
+  @doc false
   @spec read!(Ash.api(), Ash.query(), Keyword.t()) ::
-          list(Ash.resource()) | no_return
+          list(Ash.record()) | no_return
   def read!(api, query, opts \\ []) do
     api
     |> read(query, opts)

@@ -66,7 +66,7 @@ defmodule Ash.Actions.SideLoad do
     new_query = Ash.Query.filter(side_load_query, or: pkey_filters)
 
     case requests(new_query, false) do
-      {:ok, [_req | requests]} ->
+      {:ok, requests} ->
         result =
           if opts[:authorization] do
             Ash.Engine.run(
@@ -81,7 +81,7 @@ defmodule Ash.Actions.SideLoad do
           end
 
         case result do
-          %{data: %{include: _} = state, errors: errors} when errors == %{} ->
+          %{data: %{include: _} = state, errors: errors} when errors == [] ->
             {:ok, attach_side_loads(data, state)}
 
           %{errors: errors} ->

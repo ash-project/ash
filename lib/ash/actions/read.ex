@@ -6,7 +6,7 @@ defmodule Ash.Actions.Read do
 
   def run(query, opts \\ []) do
     with %{errors: []} <- query,
-         action when not is_nil(action) <- action(query, opts),
+         {:action, action} when not is_nil(action) <- {:action, action(query, opts)},
          requests <- requests(query, action, opts),
          {:ok, side_load_requests} <- Ash.Actions.SideLoad.requests(query),
          %{data: %{data: %{data: data}} = all_data, errors: [], authorized?: true} <-
@@ -14,6 +14,9 @@ defmodule Ash.Actions.Read do
          data_with_side_loads <- SideLoad.attach_side_loads(data, all_data) do
       {:ok, data_with_side_loads}
     else
+      {:action, nil} ->
+        {:error, "No such action defined, or no default action defined"}
+
       %{errors: errors} ->
         {:error, Ash.to_ash_error(errors)}
 
@@ -24,6 +27,9 @@ defmodule Ash.Actions.Read do
 
   defp action(query, opts) do
     case opts[:action] do
+      %Ash.Resource.Actions.Read{name: name} ->
+        Ash.action(query.resource, name, :read)
+
       nil ->
         Ash.primary_action(query.resource, :read)
 

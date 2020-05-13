@@ -9,7 +9,7 @@ defmodule Ash.Query do
     limit: nil,
     offset: 0,
     errors: [],
-    invalid?: false
+    valid?: true
   ]
 
   @type t :: %__MODULE__{}
@@ -58,17 +58,25 @@ defmodule Ash.Query do
         %__MODULE__{
           api: api,
           filter: Ash.Filter.parse(resource, [], api),
-          resource: resource,
-          errors: [resource: "does not exist"]
+          resource: resource
         }
+        |> add_error(:resource, "does not exist")
     end
   end
+
+  def limit(query, nil), do: query
 
   def limit(query, limit) when is_integer(limit) do
     query
     |> Map.put(:limit, max(0, limit))
     |> set_data_layer_query()
   end
+
+  def limit(query, limit) do
+    add_error(query, :offset, Ash.Error.InvalidLimit.exception(limit: limit))
+  end
+
+  def offset(query, nil), do: query
 
   def offset(query, offset) when is_integer(offset) do
     query
@@ -118,6 +126,9 @@ defmodule Ash.Query do
     side_loads
     |> List.wrap()
     |> Enum.flat_map(fn
+      {_key, %Ash.Query{}} ->
+        []
+
       {key, value} ->
         case Ash.relationship(resource, key) do
           nil ->
@@ -295,7 +306,7 @@ defmodule Ash.Query do
     %{
       query
       | errors: [Map.put(Ash.to_ash_error(message), :path, key) | query.errors],
-        invalid?: true
+        valid?: false
     }
   end
 
