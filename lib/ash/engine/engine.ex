@@ -15,7 +15,7 @@ defmodule Ash.Engine do
     :verbose?,
     :failure_mode,
     :pubsub_adapter,
-    errors: %{},
+    errors: [],
     completed_preparations: %{},
     data: %{},
     state: :init,
@@ -80,7 +80,7 @@ defmodule Ash.Engine do
     end
   end
 
-  defp next(%{failure_mode: :complete, errors: errors} = engine) when errors != %{} do
+  defp next(%{failure_mode: :complete, errors: errors} = engine) when errors != [] do
     transition(
       engine,
       :complete,
@@ -170,21 +170,20 @@ defmodule Ash.Engine do
 
   defp prepare(engine, request) do
     # Right now the only preparation is a side_load
-    side_loads =
-      Enum.reduce(request.rules, [], fn {_, clause}, preloads ->
+    empty_query = Ash.Query.new(engine.api, request.resource)
+
+    side_load_query =
+      Enum.reduce(request.rules, empty_query, fn {_, clause}, query ->
         clause.check_opts
         |> clause.check_module.prepare()
-        |> Enum.reduce(preloads, fn {:side_load, path}, preloads ->
-          Ash.Actions.SideLoad.merge(preloads, path)
+        |> Enum.reduce(query, fn {:side_load, path}, query ->
+          Ash.Query.side_load(query, path)
         end)
       end)
 
     case Ash.Actions.SideLoad.side_load(
-           engine.api,
-           request.resource,
            request.data,
-           side_loads,
-           request.filter
+           side_load_query
          ) do
       {:ok, new_request_data} ->
         new_request = %{request | data: new_request_data, prepared?: true}
@@ -238,7 +237,7 @@ defmodule Ash.Engine do
           request.data
           |> List.wrap()
           |> Enum.map(fn item ->
-            %{request | filter: get_pkeys(request, engine.api, item)}
+            %{request | query: get_pkeys(request, engine.api, item)}
           end)
         else
           [request]
@@ -264,14 +263,14 @@ defmodule Ash.Engine do
          {:ok, resolved_request} <- Request.resolve_data(engine.data, request),
          engine <- replace_request(engine, resolved_request),
          {:ok, prepared_request} <- prepare(engine, resolved_request) do
-      filter =
+      query =
         if prepared_request.action_type == :create do
           get_pkeys(prepared_request, engine.api, prepared_request.data)
         else
-          prepared_request.filter
+          prepared_request.query
         end
 
-      replace_request(engine, %{prepared_request | filter: filter})
+      replace_request(engine, %{prepared_request | query: query})
     else
       {:error, %__MODULE__{} = engine} ->
         request = Enum.find(engine.requests, &(&1.id == request.id))
@@ -350,7 +349,7 @@ defmodule Ash.Engine do
           request.data
           |> List.wrap()
           |> Enum.map(fn item ->
-            %{request | filter: get_pkeys(request, engine.api, item)}
+            %{request | query: get_pkeys(request, engine.api, item)}
           end)
         else
           [request]
@@ -368,22 +367,24 @@ defmodule Ash.Engine do
     end
   end
 
-  def get_pkeys(%{filter: nil, resource: resource}, api, %_{} = item) do
+  def get_pkeys(%{query: nil, resource: resource}, api, %_{} = item) do
     pkey_filter =
       item
       |> Map.take(Ash.primary_key(resource))
       |> Map.to_list()
 
-    Ash.Filter.parse(resource, pkey_filter, api)
+    api
+    |> Ash.Query.new(resource)
+    |> Ash.Query.filter(pkey_filter)
   end
 
-  def get_pkeys(request, _, %resource{} = item) do
+  def get_pkeys(%{query: query}, _, %resource{} = item) do
     pkey_filter =
       item
       |> Map.take(Ash.primary_key(resource))
       |> Map.to_list()
 
-    Ash.Filter.add_to_filter(request.filter, pkey_filter)
+    Ash.Query.filter(query, pkey_filter)
   end
 
   defp check(engine) do
@@ -607,11 +608,22 @@ defmodule Ash.Engine do
   defp new(requests, api, opts) do
     requests
     |> new_engine(api, opts)
+    |> add_default_queries()
     |> validate_unique_paths()
     |> bypass_strict_access(opts)
     |> validate_dependencies()
     |> validate_has_rules()
     |> log_init()
+  end
+
+  defp add_default_queries(engine) do
+    %{
+      engine
+      | requests:
+          Enum.map(engine.requests, fn request ->
+            %{request | query: request.query || Ash.Query.new(engine.api, request.resource)}
+          end)
+    }
   end
 
   defp validate_dependencies(engine) do
@@ -784,16 +796,7 @@ defmodule Ash.Engine do
     path = List.wrap(path)
     error = to_ash_error(error)
 
-    new_errors =
-      Map.update(engine.errors, path, [error], fn existing_errors ->
-        if is_list(error) do
-          error ++ existing_errors
-        else
-          [error | existing_errors]
-        end
-      end)
-
-    %{engine | errors: new_errors}
+    %{engine | errors: [Map.put(error, :path, path) | engine.errors]}
   end
 
   def to_ash_error(error) do

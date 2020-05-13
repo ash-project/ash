@@ -217,21 +217,24 @@ defmodule Ash.Actions.Relationships do
           [or: many]
       end
 
+    query =
+      api
+      |> Ash.Query.new(destination)
+      |> Ash.Query.filter(filter)
+
     request =
       Ash.Engine.Request.new(
         api: api,
         rules: default_read.rules,
         resource: relationship.destination,
         action_type: :read,
-        filter: filter,
+        query: query,
         resolve_when_fetch_only?: true,
         path: [:relationships, relationship_name, type],
         data:
           Ash.Engine.Request.resolve(fn _data ->
-            case api.read(destination, filter: filter) do
-              {:ok, results} -> {:ok, results}
-              {:error, error} -> {:error, error}
-            end
+            query
+            |> api.read()
           end),
         name: "read prior to write related #{relationship.name}"
       )
@@ -630,7 +633,7 @@ defmodule Ash.Actions.Relationships do
               }
             ]
 
-            case api.get(relationship.destination, filter: filter) do
+            case api.get(relationship.destination, filter) do
               {:ok, nil} ->
                 changeset
 
@@ -875,7 +878,11 @@ defmodule Ash.Actions.Relationships do
 
     value = Ecto.Changeset.get_field(changeset, relationship.source_field)
     filter_statement = [{relationship.destination_field, value}]
-    filter = Ash.Filter.parse(destination, filter_statement)
+
+    query =
+      api
+      |> Ash.Query.new(destination)
+      |> Ash.Query.filter(filter_statement)
 
     request =
       Ash.Engine.Request.new(
@@ -885,13 +892,10 @@ defmodule Ash.Actions.Relationships do
         action_type: :read,
         path: [:relationships, relationship.name, :current],
         resolve_when_fetch_only?: true,
-        filter: filter,
+        query: query,
         data:
           Ash.Engine.Request.resolve(fn _data ->
-            case api.read(destination, filter: filter) do
-              {:ok, results} -> {:ok, results}
-              {:error, error} -> {:error, error}
-            end
+            api.read(query)
           end),
         # TODO: Is this right?
         strict_access?: false,
@@ -913,7 +917,11 @@ defmodule Ash.Actions.Relationships do
 
     value = Ecto.Changeset.get_field(changeset, relationship.source_field)
     filter_statement = [{relationship.source_field_on_join_table, value}]
-    filter = Ash.Filter.parse(through, filter_statement)
+
+    query =
+      api
+      |> Ash.Query.new(through)
+      |> Ash.Query.filter(filter_statement)
 
     Ash.Engine.Request.new(
       api: api,
@@ -921,14 +929,11 @@ defmodule Ash.Actions.Relationships do
       resource: through,
       action_type: :read,
       path: [:relationships, relationship.name, :current_join],
-      filter: filter,
+      query: query,
       resolve_when_fetch_only?: true,
       data:
         Ash.Engine.Request.resolve(fn _data ->
-          case api.read(through, filter: filter_statement) do
-            {:ok, results} -> {:ok, results}
-            {:error, error} -> {:error, error}
-          end
+          api.read(query)
         end),
       strict_access?: false,
       name: "Read related join for #{relationship.name} before replace"
@@ -950,7 +955,7 @@ defmodule Ash.Actions.Relationships do
       action_type: :read,
       resolve_when_fetch_only?: true,
       path: [:relationships, name, :current],
-      filter:
+      query:
         Ash.Engine.Request.resolve(
           [[:relationships, name, :current_join, :data]],
           fn %{relationships: %{^name => %{current_join: %{data: current_join}}}} ->
@@ -959,22 +964,21 @@ defmodule Ash.Actions.Relationships do
 
             filter_statement = [{relationship.destination_field, in: field_values}]
 
-            Ash.Filter.parse(relationship.through, filter_statement)
+            {:ok,
+             relationship.destination
+             |> api.query()
+             |> Ash.Query.filter(filter_statement)}
           end
         ),
       data:
         Ash.Engine.Request.resolve(
-          [[:relationships, name, :current_join, :data]],
-          fn %{relationships: %{^name => %{current_join: %{data: current_join}}}} ->
-            field_values =
-              Enum.map(current_join, &Map.get(&1, relationship.destination_field_on_join_table))
-
-            filter_statement = [{relationship.destination_field, in: field_values}]
-
-            case api.read(destination, filter: filter_statement) do
-              {:ok, results} -> {:ok, results}
-              {:error, error} -> {:error, error}
-            end
+          [[:relationships, name, :current, :query]],
+          fn %{
+               relationships: %{
+                 ^name => %{current: %{query: query}}
+               }
+             } ->
+            api.read(query)
           end
         ),
       strict_access?: false,

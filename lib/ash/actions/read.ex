@@ -4,59 +4,17 @@ defmodule Ash.Actions.Read do
   alias Ash.Actions.SideLoad
   require Logger
 
-  def run(api, resource, action, params) do
-    filter = Keyword.get(params, :filter, [])
-    sort = Keyword.get(params, :sort, [])
-    side_loads = Keyword.get(params, :side_load, [])
-    side_load_filter = Keyword.get(params, :side_load_filter)
-    _initial_data = Keyword.get(params, :initial_data)
-
-    action =
-      if is_atom(action) and not is_nil(action) do
-        Ash.action(resource, action, :read)
-      else
-        action
-      end
-
-    filter =
-      case filter do
-        %Ash.Filter{} -> filter
-        filter -> Ash.Filter.parse(resource, filter, api)
-      end
-
-    with %Ash.Filter{errors: [], requests: filter_requests} = filter <-
-           filter,
-         query <- Ash.DataLayer.resource_to_query(resource),
-         {:ok, sort} <- Ash.Actions.Sort.process(resource, sort),
-         {:ok, sorted_query} <- Ash.DataLayer.sort(query, sort, resource),
-         # We parse the query for validation/side_load auth, but don't use it for querying.
-         {:ok, _filtered_query} <- Ash.DataLayer.filter(sorted_query, filter, resource),
-         {:ok, side_load_requests} <-
-           SideLoad.requests(api, resource, side_loads, filter, side_load_filter),
-         {:ok, query} <- Ash.DataLayer.limit(sorted_query, params[:limit], resource),
-         {:ok, query} <- Ash.DataLayer.offset(query, params[:offset], resource),
-         %{data: %{data: %{data: data}}, errors: errors, authorized?: true} = engine
-         when errors == %{} <-
-           do_authorized(
-             query,
-             params,
-             filter,
-             resource,
-             api,
-             action,
-             side_load_requests ++ filter_requests
-           ) do
-      {:ok, SideLoad.attach_side_loads(data, engine.data)}
+  def run(query, opts \\ []) do
+    with %{errors: []} <- query,
+         action when not is_nil(action) <- action(query, opts),
+         requests <- requests(query, action, opts),
+         {:ok, side_load_requests} <- Ash.Actions.SideLoad.requests(query),
+         %{data: %{data: %{data: data}} = all_data, errors: [], authorized?: true} <-
+           run_requests(requests ++ side_load_requests, query.api, opts),
+         data_with_side_loads <- SideLoad.attach_side_loads(data, all_data) do
+      {:ok, data_with_side_loads}
     else
-      %Ash.Filter{errors: errors} ->
-        {:error, Ash.to_ash_error(errors)}
-
-      %Ash.Engine{errors: errors} ->
-        errors =
-          Enum.flat_map(errors, fn {path, errors} ->
-            Enum.map(errors, &Map.put(&1, :path, path))
-          end)
-
+      %{errors: errors} ->
         {:error, Ash.to_ash_error(errors)}
 
       {:error, error} ->
@@ -64,31 +22,45 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp do_authorized(query, params, filter, resource, api, action, requests) do
+  defp action(query, opts) do
+    case opts[:action] do
+      nil ->
+        Ash.primary_action(query.resource, :read)
+
+      action ->
+        Ash.action(query.resource, action, :read)
+    end
+  end
+
+  def run_requests(requests, api, opts) do
+    if opts[:authorization] do
+      Engine.run(
+        requests,
+        api,
+        user: opts[:authorization][:user],
+        bypass_strict_access?: opts[:authorization][:bypass_strict_access?],
+        verbose?: opts[:verbose?]
+      )
+    else
+      Engine.run(requests, api, fetch_only?: true, verbose?: opts[:verbose?])
+    end
+  end
+
+  defp requests(query, action, opts) do
     request =
       Request.new(
-        resource: resource,
+        resource: query.resource,
         rules: action.rules,
-        filter: filter,
+        query: query,
         action_type: action.type,
-        strict_access?: !Ash.Filter.primary_key_filter?(filter),
-        data: data_field(params, filter, resource, query),
+        strict_access?: !Ash.Filter.primary_key_filter?(query.filter),
+        data: data_field(opts, query.filter, query.resource, query.data_layer_query),
         resolve_when_fetch_only?: true,
         path: [:data],
         name: "#{action.type} - `#{action.name}`"
       )
 
-    if params[:authorization] do
-      Engine.run(
-        [request | requests],
-        api,
-        user: params[:authorization][:user],
-        bypass_strict_access?: params[:bypass_strict_access?],
-        verbose?: params[:verbose?]
-      )
-    else
-      Engine.run([request | requests], api, fetch_only?: true, verbose?: params[:verbose?])
-    end
+    [request | Map.get(query.filter || %{}, :requests, [])]
   end
 
   defp data_field(params, filter, resource, query) do
@@ -96,17 +68,15 @@ defmodule Ash.Actions.Read do
       List.wrap(params[:initial_data])
     else
       Request.resolve(
-        [[:data, :filter]],
+        [[:data, :query]],
         Ash.Filter.optional_paths(filter),
-        fn %{data: %{filter: filter}} = data ->
-          fetch_filter = Ash.Filter.request_filter_for_fetch(filter, data)
+        fn %{data: %{query: ash_query}} = data ->
+          fetch_filter = Ash.Filter.request_filter_for_fetch(ash_query.filter, data)
 
-          case Ash.DataLayer.filter(query, fetch_filter, resource) do
-            {:ok, final_query} ->
-              Ash.DataLayer.run_query(final_query, resource)
-
-            {:error, error} ->
-              {:error, error}
+          with {:ok, query} <- Ash.DataLayer.filter(query, fetch_filter, resource),
+               {:ok, query} <- Ash.DataLayer.limit(query, ash_query.limit, resource),
+               {:ok, query} <- Ash.DataLayer.offset(query, ash_query.offset, resource) do
+            Ash.DataLayer.run_query(query, resource)
           end
         end
       )

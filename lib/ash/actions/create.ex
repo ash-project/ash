@@ -5,8 +5,6 @@ defmodule Ash.Actions.Create do
 
   def run(api, resource, action, params) do
     attributes = Keyword.get(params, :attributes, %{})
-    side_loads = Keyword.get(params, :side_load, [])
-    side_load_filter = Keyword.get(params, :side_load_filter)
     relationships = Keyword.get(params, :relationships, %{})
 
     action =
@@ -16,7 +14,8 @@ defmodule Ash.Actions.Create do
         action
       end
 
-    with {:ok, relationships} <-
+    with {:ok, side_load_query} <- side_loads_as_query(api, resource, params[:side_load]),
+         {:ok, relationships} <-
            Relationships.validate_not_changing_relationship_and_source_field(
              relationships,
              attributes,
@@ -29,14 +28,14 @@ defmodule Ash.Actions.Create do
              resource
            ),
          params <- Keyword.merge(params, attributes: attributes, relationships: relationships),
-         %{valid?: true} = changeset <- changeset(api, resource, params),
+         %{valid?: true} = changeset <-
+           changeset(api, resource, params),
          {:ok, side_load_requests} <-
-           SideLoad.requests(api, resource, side_loads, side_load_filter, :create),
+           SideLoad.requests(side_load_query, api.query(resource)),
          %{
            data: %{data: %{data: %^resource{} = created}} = state,
-           errors: errors
-         }
-         when errors == %{} <-
+           errors: []
+         } <-
            do_authorized(changeset, params, action, resource, api, side_load_requests) do
       {:ok, SideLoad.attach_side_loads(created, state)}
     else
@@ -44,11 +43,6 @@ defmodule Ash.Actions.Create do
         {:error, Ash.Error.Changeset.changeset_to_errors(resource, changeset)}
 
       %Ash.Engine{errors: errors} ->
-        errors =
-          Enum.flat_map(errors, fn {path, errors} ->
-            Enum.map(errors, &Map.put(&1, :path, path))
-          end)
-
         {:error, Ash.to_ash_error(errors)}
 
       {:error, error} ->
@@ -127,7 +121,7 @@ defmodule Ash.Actions.Create do
           relationship_read_requests ++ relationship_change_requests ++ side_load_requests,
         api,
         user: params[:authorization][:user],
-        bypass_strict_access?: params[:bypass_strict_access?],
+        bypass_strict_access?: params[:authorization][:bypass_strict_access?],
         verbose?: params[:verbose?]
       )
     else
@@ -138,6 +132,20 @@ defmodule Ash.Actions.Create do
         fetch_only?: true,
         verbose?: params[:verbose?]
       )
+    end
+  end
+
+  defp side_loads_as_query(_api, _resource, nil), do: {:ok, nil}
+  defp side_loads_as_query(_api, _resource, %Ash.Query{errors: []} = query), do: {:ok, query}
+  defp side_loads_as_query(_api, _resource, %Ash.Query{errors: errors}), do: {:error, errors}
+
+  defp side_loads_as_query(api, resource, side_loads) when is_list(side_loads) do
+    resource
+    |> api.query()
+    |> Ash.Query.side_load(side_loads)
+    |> case do
+      %{errors: []} = query -> {:ok, query}
+      %{errors: errors} -> {:error, errors}
     end
   end
 

@@ -31,7 +31,7 @@ defmodule Ash.Api do
 
   Then you can interact through that Api with the actions that those resources expose.
   For example: `MyApp.Api.create(OneResource, %{attributes: %{name: "thing"}})`, or
-  `MyApp.Api.read(OneResource, filter: [name: "thing"])`. Corresponding actions must
+  `MyApp.Api.read(query)`. Corresponding actions must
   be defined in your resources in order to call them through the Api.
   """
   defmacro __using__(opts) do

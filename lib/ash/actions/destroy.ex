@@ -35,7 +35,7 @@ defmodule Ash.Actions.Destroy do
           [auth_request],
           api,
           user: params[:authorization][:user],
-          bypass_strict_access?: params[:bypass_strict_access?],
+          bypass_strict_access?: params[:authorization][:bypass_strict_access?],
           verbose?: params[:verbose?]
         )
       else
@@ -43,15 +43,10 @@ defmodule Ash.Actions.Destroy do
       end
 
     case result do
-      %{errors: errors} when errors == %{} ->
+      %{errors: []} ->
         :ok
 
       %Ash.Engine{errors: errors} ->
-        errors =
-          Enum.flat_map(errors, fn {path, errors} ->
-            Enum.map(errors, &Map.put(&1, :path, path))
-          end)
-
         {:error, Ash.to_ash_error(errors)}
     end
   end

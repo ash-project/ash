@@ -131,7 +131,10 @@ defmodule Ash.Test.Actions.CreateTest do
 
       Api.create!(Post, relationships: %{related_posts: [post2.id, post3.id]})
 
-      assert [_, _] = Api.read!(PostLink, filter: [])
+      assert [_, _] =
+               PostLink
+               |> Api.query()
+               |> Api.read!()
     end
 
     test "it responds with the relationship filled in" do

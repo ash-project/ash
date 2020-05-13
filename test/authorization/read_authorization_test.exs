@@ -103,39 +103,39 @@ defmodule Ash.Test.Authorization.ReadAuthorizationTest do
     author = Api.create!(Author, attributes: %{name: "foo"})
     user = Api.create!(User, attributes: %{id: author.id})
 
-    Api.read!(Post,
-      authorization: [user: user],
-      filter: [authors: [id: author.id]]
-    )
+    Post
+    |> Api.query()
+    |> Ash.Query.filter(authors: [id: author.id])
+    |> Api.read!(authorization: [user: user])
   end
 
   test "it succeeds if you match the second rule" do
     user = Api.create!(User)
 
-    Api.read!(Post,
-      authorization: [user: user],
-      filter: [published: true]
-    )
+    Post
+    |> Api.query()
+    |> Ash.Query.filter(published: true)
+    |> Api.read!(authorization: [user: user])
   end
 
   test "it succeeds if you match both rules" do
     author = Api.create!(Author, attributes: %{name: "foo"})
     user = Api.create!(User, attributes: %{id: author.id})
 
-    Api.read!(Post,
-      authorization: [user: user],
-      filter: [published: true, authors: [id: author.id]]
-    )
+    Post
+    |> Api.query()
+    |> Ash.Query.filter(published: true, authors: [id: author.id])
+    |> Api.read!(authorization: [user: user])
   end
 
   test "it fails if you don't match either" do
     user = Api.create!(User)
 
     assert_raise Ash.Error.Forbidden, ~r/forbidden/, fn ->
-      Api.read!(Post,
-        authorization: [user: user],
-        filter: [published: false]
-      )
+      Post
+      |> Api.query()
+      |> Ash.Query.filter(published: false)
+      |> Api.read!(authorization: [user: user])
     end
   end
 
@@ -150,20 +150,20 @@ defmodule Ash.Test.Authorization.ReadAuthorizationTest do
   test "authorize_if falls through properly" do
     user = Api.create!(User, attributes: %{manager: true})
 
-    Api.read!(Author,
-      filter: [fired: [not_eq: true], self_manager: [not_eq: true]],
-      authorization: [user: user]
-    )
+    Author
+    |> Api.query()
+    |> Ash.Query.filter(fired: [not_eq: true], self_manager: [not_eq: true])
+    |> Api.read!(authorization: [user: user])
   end
 
   test "authorize_unless doesn't trigger if its check is not true" do
     user = Api.create!(User, attributes: %{manager: true})
 
     assert_raise Ash.Error.Forbidden, ~r/forbidden/, fn ->
-      Api.read!(Author,
-        filter: [fired: false, self_manager: true],
-        authorization: [user: user]
-      )
+      Author
+      |> Api.query()
+      |> Ash.Query.filter(fired: false, self_manager: true)
+      |> Api.read!(authorization: [user: user])
     end
   end
 
@@ -171,10 +171,10 @@ defmodule Ash.Test.Authorization.ReadAuthorizationTest do
     user = Api.create!(User, attributes: %{manager: true})
 
     assert_raise Ash.Error.Forbidden, ~r/forbidden/, fn ->
-      Api.read!(Author,
-        filter: [fired: true, self_manager: false],
-        authorization: [user: user]
-      )
+      Author
+      |> Api.query()
+      |> Ash.Query.filter(fired: true, self_manager: false)
+      |> Api.read!(authorization: [user: user])
     end
   end
 
@@ -182,10 +182,10 @@ defmodule Ash.Test.Authorization.ReadAuthorizationTest do
     user = Api.create!(User, attributes: %{manager: false})
 
     assert_raise Ash.Error.Forbidden, ~r/forbidden/, fn ->
-      Api.read!(Author,
-        filter: [fired: false, self_manager: false],
-        authorization: [user: user]
-      )
+      Author
+      |> Api.query()
+      |> Ash.Query.filter(fired: false, self_manager: false)
+      |> Api.read!(authorization: [user: user])
     end
   end
 
@@ -196,7 +196,10 @@ defmodule Ash.Test.Authorization.ReadAuthorizationTest do
 
     user = Api.create!(User, attributes: %{manager: true, id: author.id})
 
-    Api.read!(Author, authorization: [user: user], bypass_strict_access?: true)
+    Author
+    |> Api.query()
+    |> Ash.Query.filter(fired: false, self_manager: false)
+    |> Api.read!(authorization: [user: user, bypass_strict_access?: true])
   end
 
   test "it fails properly on conflicting results" do
@@ -215,9 +218,9 @@ defmodule Ash.Test.Authorization.ReadAuthorizationTest do
     author = Api.create!(Author, attributes: %{name: "foo"})
     user = Api.create!(User, attributes: %{manager: true})
 
-    Api.read!(Post,
-      authorization: [user: user],
-      filter: [published: true, authors: [id: author.id]]
-    )
+    Post
+    |> Api.query()
+    |> Ash.Query.filter(published: true, authors: [id: author.id])
+    |> Api.read!(authorization: [user: user])
   end
 end

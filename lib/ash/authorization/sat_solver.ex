@@ -7,7 +7,7 @@ defmodule Ash.Authorization.SatSolver do
     expression =
       Enum.reduce(requests, nil, fn request, expr ->
         requirements_expression =
-          build_requirements_expression([request.rules], facts, request.filter)
+          build_requirements_expression([request.rules], facts, request.query.filter)
 
         if expr do
           {:and, expr, requirements_expression}
@@ -65,6 +65,7 @@ defmodule Ash.Authorization.SatSolver do
          relationships: relationships,
          not: not_filter,
          ors: ors,
+         ands: ands,
          path: path
        }) do
     expr =
@@ -83,8 +84,13 @@ defmodule Ash.Authorization.SatSolver do
 
     expr = join_expr(negate(filter_to_expr(not_filter)), expr, :and)
 
-    Enum.reduce(ors, expr, fn or_filter, expr ->
-      join_expr(filter_to_expr(or_filter), expr, :or)
+    expr =
+      Enum.reduce(ors, expr, fn or_filter, expr ->
+        join_expr(filter_to_expr(or_filter), expr, :or)
+      end)
+
+    Enum.reduce(ands, expr, fn and_filter, expr ->
+      join_expr(filter_to_expr(and_filter), expr, :and)
     end)
   end
 

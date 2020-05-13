@@ -14,9 +14,9 @@ defmodule Ash do
   @type cardinality_one_relationship() :: HasOne.t() | BelongsTo.t()
   @type cardinality_many_relationship() :: HasMany.t() | ManyToMany.t()
   @type relationship :: cardinality_one_relationship() | cardinality_many_relationship()
-  @type query :: struct
   @type resource :: module
   @type data_layer :: module
+  @type data_layer_query :: struct
   @type api :: module
   @type error :: struct
   @type filter :: map()
@@ -28,6 +28,7 @@ defmodule Ash do
   @type side_loads :: Keyword.t()
   @type attribute :: Ash.Attributes.Attribute.t()
   @type action :: Create.t() | Read.t() | Update.t() | Destroy.t()
+  @type query :: Ash.Query.t()
 
   def ash_error?(value) do
     !!Ash.Error.impl_for(value)

@@ -21,9 +21,9 @@ defmodule Ash.Authorization.Check.RelatedToUserVia do
 
     candidate_filter = put_into_relationship_path(full_relationship_path, pkey_filter)
 
-    case Ash.Filter.parse(request.resource, candidate_filter) do
+    case Ash.Filter.parse(request.resource, candidate_filter, request.query.api) do
       %{errors: []} = parsed ->
-        if Ash.Filter.strict_subset_of?(parsed, request.filter) do
+        if Ash.Filter.strict_subset_of?(parsed, request.query.filter) do
           {:ok, true}
         else
           {:ok, :unknown}

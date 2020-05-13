@@ -100,15 +100,28 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     test "with a limit of 1, returns only 1 record" do
-      assert {:ok, [_post]} = Api.read(Post, limit: 1)
+      assert {:ok, [_post]} =
+               Post
+               |> Api.query()
+               |> Ash.Query.limit(1)
+               |> Api.read()
     end
 
     test "with a limit size of 2, returns 2 records" do
-      assert {:ok, [_, _]} = Api.read(Post, limit: 2)
+      assert {:ok, [_, _]} =
+               Post
+               |> Api.query()
+               |> Ash.Query.limit(2)
+               |> Api.read()
     end
 
     test "with a limit of 1 and an offset of 1, it returns 1 record" do
-      assert {:ok, [_]} = Api.read(Post, limit: 1, offset: 1)
+      assert {:ok, [_]} =
+               Post
+               |> Api.query()
+               |> Ash.Query.limit(1)
+               |> Ash.Query.offset(1)
+               |> Api.read()
     end
   end
 
@@ -126,7 +139,10 @@ defmodule Ash.Test.Actions.ReadTest do
 
     test "it raises on an error" do
       assert_raise(Ash.Error.Invalid, ~r/Invalid filter value 10 supplied for :title == 10/, fn ->
-        Api.read!(Post, filter: [title: 10])
+        Post
+        |> Api.query()
+        |> Ash.Query.filter(title: 10)
+        |> Api.read!()
       end)
     end
   end
@@ -140,15 +156,27 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     test "a filter that matches nothing returns no results" do
-      assert {:ok, []} = Api.read(Post, filter: [contents: "not_yeet"])
+      assert {:ok, []} =
+               Post
+               |> Api.query()
+               |> Ash.Query.filter(contents: "not_yeet")
+               |> Api.read()
     end
 
     test "a filter returns only matching records", %{post1: post1} do
-      assert {:ok, [^post1]} = Api.read(Post, filter: [title: post1.title])
+      assert {:ok, [^post1]} =
+               Post
+               |> Api.query()
+               |> Ash.Query.filter(title: post1.title)
+               |> Api.read()
     end
 
     test "a filter returns multiple records if they match", %{post1: post1, post2: post2} do
-      assert {:ok, [_, _] = results} = Api.read(Post, filter: [contents: "yeet"])
+      assert {:ok, [_, _] = results} =
+               Post
+               |> Api.query()
+               |> Ash.Query.filter(contents: "yeet")
+               |> Api.read()
 
       assert post1 in results
       assert post2 in results
@@ -170,11 +198,19 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     test "you can filter on a related value", %{author1: author1} do
-      assert [_] = Api.read!(Post, filter: [author1: author1.id])
+      assert [_] =
+               Post
+               |> Api.query()
+               |> Ash.Query.filter(author1: author1.id)
+               |> Api.read!()
     end
 
     test "you can filter on multiple related values", %{author1: author1, author2: author2} do
-      assert [_] = Api.read!(Post, filter: [author1: author1.id, author2: author2.id])
+      assert [_] =
+               Post
+               |> Api.query()
+               |> Ash.Query.filter(author1: author1.id, author2: author2.id)
+               |> Api.read!()
     end
   end
 
@@ -190,21 +226,32 @@ defmodule Ash.Test.Actions.ReadTest do
       post1: post1,
       post2: post2
     } do
-      assert {:ok, [^post1, ^post2]} = Api.read(Post, sort: [title: :asc])
+      assert {:ok, [^post1, ^post2]} =
+               Post
+               |> Api.query()
+               |> Ash.Query.sort(title: :asc)
+               |> Api.read()
     end
 
     test "a sort will sor rows accordingly when descending", %{
       post1: post1,
       post2: post2
     } do
-      assert {:ok, [^post2, ^post1]} = Api.read(Post, sort: [title: :desc])
+      assert {:ok, [^post2, ^post1]} =
+               Post
+               |> Api.query()
+               |> Ash.Query.sort(title: :desc)
+               |> Api.read()
     end
 
     test "a nested sort sorts accordingly", %{post1: post1, post2: post2} do
       {:ok, middle_post} = Api.create(Post, attributes: %{title: "abc", contents: "xyz"})
 
       assert {:ok, [^post1, ^middle_post, ^post2]} =
-               Api.read(Post, sort: [title: :asc, contents: :asc])
+               Post
+               |> Api.query()
+               |> Ash.Query.sort(title: :asc, contents: :asc)
+               |> Api.read()
     end
   end
 end
