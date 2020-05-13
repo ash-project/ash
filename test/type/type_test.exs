@@ -70,7 +70,10 @@ defmodule Ash.Test.Type.TypeTest do
     post = Api.create!(Post, attributes: %{title: "foobar"})
 
     assert_raise(Ash.Error.Invalid, fn ->
-      Api.read!(Post, filter: [title: post.title])
+      Post
+      |> Api.query()
+      |> Ash.Query.filter(title: post.title)
+      |> Api.read!()
     end)
   end
 
@@ -79,7 +82,10 @@ defmodule Ash.Test.Type.TypeTest do
     Api.create!(Post, attributes: %{title: "foobar2"})
 
     assert_raise(Ash.Error.Invalid, ~r/\* Cannot sort on :title/, fn ->
-      Api.read!(Post, sort: [title: :asc])
+      Post
+      |> Api.query()
+      |> Ash.Query.sort(title: :asc)
+      |> Api.read!()
     end)
   end
 end

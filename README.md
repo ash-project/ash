@@ -60,7 +60,7 @@ end
 - break up the `Ash` module
 - Wire up/formalize the error handling (this is high priority)
 - Ensure that errors are properly propagated up from the data_layer behaviour, and every operation is allowed to fail
-- figure out the ecto schema warning
+- Make sure to segment filters based on the involved data layers, so we can support cross data-layer filtering
 - all actions need to be performed in a transaction
 - document authorization thoroughly. _batch_ (default) checks need to return a list of `ids` for which the check passed.
 - So many parts of the system are reliant on things having an `id` key explicitly. THis will need to be addressed some day, and will be a huge pain in the ass
@@ -160,7 +160,7 @@ end
   get that fetched value into the final query.
 - Consider supporting one resource being a "more specific" version of another resource at
   the _resource_ level, not the data layer level.
-- Add `filter: [relationship_name: [all: [...filter...]]]` so you can assert that _all_ related items match a filter (for to many relationships)
+- Add `filter: [relationship_name: [all: [...filter...]]]` so you can assert that _all_ related items match a filter (for to many relationships, may perform poorly)
 - Right now, includes will be generating their authorization facts independently. This is no great loss because anything that isn't data dependent should be a strict check anyway. However, we may at some point want to check to see if any filter exactly matches a side load filter, and authorize them together/have them share.
 - Write the engine as a state machine, not the recursive monster that it currently is
 - Add the ability to configure what fields can identify a user (for instance email) and use those in checks.
@@ -174,3 +174,8 @@ end
 - just had a cool thought: we can actually run the satsolver _before_ fetching the user. The satsolver could warn us early that _no user_ could make the request in question!
 - implement transactions in the engine. Perhaps by assigning requests transaction ids or something along those lines.
 - support accepting a _resource and a filter_ in `api.update` and `api.destroy`, and doing those as bulk actions
+- really need to figure out the distinction between filter impossibility for things like authorization plays into filter impossibility
+  as an optimization. I think they are actually two different things. The fact that you consider nothing to be a subset of an impossible filter may not be correct.
+- support something similar to the older interface we had with ash, like `Api.read(resource, filter: [...], sort: [...])`, as the `Ash.Query` method
+  is a bit long form in some cases
+- need to make sure that all of the dsl components are in the `.formatter.exs`. I made it so all of the options can be specified as a nested DSL, but haven't gone through and added them to the formatter file

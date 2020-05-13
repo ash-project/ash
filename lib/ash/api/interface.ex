@@ -35,60 +35,12 @@ defmodule Ash.Api.Interface do
                  ]
                )
 
-  @shared_read_get_opts_schema Ashton.schema(
-                                 opts: [
-                                   side_load: :keyword,
-                                   side_load_filter: :map
-                                 ],
-                                 defaults: [
-                                   side_load: [],
-                                   side_load_filter: %{}
-                                 ],
-                                 describe: [
-                                   side_load: "# TODO describe",
-                                   side_load_filter: "# TODO describe"
-                                 ]
-                               )
-
-  @read_opts_schema [
-                      opts: [
-                        filter: :keyword,
-                        sort: {:list, {:tuple, {[{:enum, [:asc, :desc]}], :atom}}}
-                      ],
-                      defaults: [
-                        filter: [],
-                        sort: []
-                      ],
-                      describe: [
-                        filter: "# TODO describe",
-                        sort: "# TODO describe"
-                      ]
-                    ]
+  @read_opts_schema []
                     |> Ashton.schema()
-                    |> Ashton.merge(@shared_read_get_opts_schema, annotate: "Shared Read Opts")
                     |> Ashton.merge(@global_opts, annotate: "Global Opts")
-
-  @side_load_opts_schema [
-                           opts: [
-                             side_load_filter: :map
-                           ],
-                           defaults: [
-                             filter: [],
-                             sort: [],
-                             side_load_filter: %{}
-                           ],
-                           describe: [
-                             filter: "# TODO describe",
-                             sort: "# TODO describe",
-                             side_load_filter: "# TODO describe"
-                           ]
-                         ]
-                         |> Ashton.schema()
-                         |> Ashton.merge(@global_opts, annotate: "Global Opts")
 
   @get_opts_schema []
                    |> Ashton.schema()
-                   |> Ashton.merge(@shared_read_get_opts_schema, annotate: "Shared Read Opts")
                    |> Ashton.merge(@global_opts, annotate: "Global Opts")
 
   @create_and_update_opts_schema [
@@ -143,22 +95,6 @@ defmodule Ash.Api.Interface do
   """
   @callback read(resource :: Ash.resource(), params :: Ash.params()) ::
               {:ok, list(Ash.resource())} | {:error, Ash.error()}
-
-  @doc """
-  #TODO describe
-
-  #{Ashton.document(@side_load_opts_schema)}
-  """
-  @callback side_load!(record :: Ash.record(), Ash.side_loads(), params :: Ash.params()) ::
-              Ash.record()
-
-  @doc """
-  #TODO describe
-
-  #{Ashton.document(@side_load_opts_schema)}
-  """
-  @callback side_load(resource :: Ash.resource(), Ash.side_loads(), params :: Ash.params()) ::
-              {:ok, Ash.record()} | {:error, Ash.error()}
 
   @doc """
   #TODO describe
@@ -244,27 +180,26 @@ defmodule Ash.Api.Interface do
       end
 
       @impl true
-      def read!(resource, params \\ []) do
-        Ash.Api.Interface.read!(__MODULE__, resource, params)
+      def read!(query, opts \\ [])
+
+      def read!(resource, opts) when is_atom(resource) do
+        read!(query(resource), opts)
+      end
+
+      def read!(query, opts) do
+        Ash.Api.Interface.read!(__MODULE__, query, opts)
       end
 
       @impl true
-      def read(resource, params \\ []) do
-        case Ash.Api.Interface.read(__MODULE__, resource, params) do
+      def read(query, opts \\ [])
+
+      def read(resource, opts) when is_atom(resource) do
+        read(query(resource), opts)
+      end
+
+      def read(query, opts) do
+        case Ash.Api.Interface.read(__MODULE__, query, opts) do
           {:ok, results} -> {:ok, results}
-          {:error, error} -> {:error, List.wrap(error)}
-        end
-      end
-
-      @impl true
-      def side_load!(record, side_load, params \\ []) do
-        Ash.Api.Interface.side_load!(__MODULE__, record, side_load, params)
-      end
-
-      @impl true
-      def side_load(record, side_load, params \\ []) do
-        case Ash.Api.Interface.side_load(__MODULE__, record, side_load, params) do
-          {:ok, result} -> {:ok, result}
           {:error, error} -> {:error, List.wrap(error)}
         end
       end
@@ -335,22 +270,13 @@ defmodule Ash.Api.Interface do
   end
 
   @doc false
-  @spec get(Ash.api(), Ash.resource(), term(), Ash.params()) ::
+  @spec get(Ash.api(), Ash.resource(), term(), Keyword.t()) ::
           {:ok, Ash.record()} | {:error, Ash.error()}
-  def get(api, resource, filter, params) do
+  def get(api, resource, id, opts) do
     with {:resource, {:ok, resource}} <- {:resource, api.get_resource(resource)},
          {:pkey, primary_key} when primary_key != [] <- {:pkey, Ash.primary_key(resource)} do
-      params =
-        Keyword.update(params, :authorization, false, fn authorization ->
-          if authorization do
-            Keyword.put(authorization, :strict_access?, false)
-          else
-            authorization
-          end
-        end)
-
-      adjusted_filter =
-        case {primary_key, filter} do
+      filter =
+        case {primary_key, id} do
           {[field], [{field, value}]} ->
             {:ok, [{field, value}]}
 
@@ -365,14 +291,14 @@ defmodule Ash.Api.Interface do
             end
         end
 
-      case adjusted_filter do
-        {:ok, adjusted_filter} ->
-          params_with_filter =
-            params
-            |> Keyword.update(:filter, adjusted_filter, &Kernel.++(&1, adjusted_filter))
-            |> Keyword.put(:limit, 2)
-
-          case read(api, resource, params_with_filter) do
+      case filter do
+        {:ok, filter} ->
+          resource
+          |> api.query()
+          |> Ash.Query.filter(filter)
+          |> Ash.Query.side_load(opts[:side_load] || [])
+          |> api.read(opts)
+          |> case do
             {:ok, [single_result]} ->
               {:ok, single_result}
 
@@ -396,71 +322,19 @@ defmodule Ash.Api.Interface do
   end
 
   @doc false
-  @spec read!(Ash.api(), Ash.resource(), Ash.params()) :: list(Ash.resource()) | no_return
-  def read!(api, resource, params \\ []) do
+  @spec read!(Ash.api(), Ash.query(), Keyword.t()) ::
+          list(Ash.resource()) | no_return
+  def read!(api, query, opts \\ []) do
     api
-    |> read(resource, params)
+    |> read(query, opts)
     |> unwrap_or_raise!()
   end
 
   @doc false
-  @spec read(Ash.api(), Ash.resource(), Ash.params()) ::
+  @spec read(Ash.api(), Ash.query(), Keyword.t()) ::
           {:ok, list(Ash.resource())} | {:error, Ash.error()}
-  def read(api, resource, params \\ []) do
-    case api.get_resource(resource) do
-      {:ok, resource} ->
-        case Keyword.get(params, :action) || Ash.primary_action(resource, :read) do
-          nil ->
-            {:error, "no action provided, and no primary action found for read"}
-
-          action ->
-            Ash.Actions.Read.run(api, resource, action, params)
-        end
-
-      :error ->
-        {:error, NoSuchResource.exception(resource: resource)}
-    end
-  end
-
-  @doc false
-  @spec side_load!(Ash.api(), Ash.record(), Ash.side_loads(), Ash.params()) ::
-          Ash.record() | no_return
-  def side_load!(api, record, side_loads, params \\ []) do
-    api
-    |> side_load(record, side_loads, params)
-    |> unwrap_or_raise!()
-  end
-
-  @doc false
-  @spec side_load(Ash.api(), Ash.record(), Ash.side_loads(), Ash.params()) ::
-          {:ok, Ash.record()} | {:error, Ash.error()}
-  def side_load(api, record, side_loads, params \\ [])
-  def side_load(_, nil, _, _), do: {:ok, nil}
-
-  def side_load(api, %resource{} = record, side_loads, params) do
-    case Keyword.get(params, :action) || Ash.primary_action(resource, :read) do
-      nil ->
-        {:error, "no action provided, and no primary action found for read"}
-
-      action ->
-        new_params = [
-          side_load: side_loads,
-          initial_data: record
-        ]
-
-        params = Keyword.merge(params, new_params)
-
-        case Ash.Actions.Read.run(api, resource, action, params) do
-          {:ok, [result]} ->
-            {:ok, result}
-
-          {:ok, _} ->
-            {:error, "Framework error"}
-
-          {:error, error} ->
-            {:error, error}
-        end
-    end
+  def read(_api, query, opts \\ []) do
+    Ash.Actions.Read.run(query, opts)
   end
 
   @doc false

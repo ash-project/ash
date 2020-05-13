@@ -160,7 +160,7 @@ defmodule Ash.Authorization.Report do
           request.data
           |> List.wrap()
           |> Enum.map(fn item ->
-            %{request | filter: Ash.Engine.get_pkeys(request, api, item)}
+            %{request | query: Ash.Engine.get_pkeys(request, api, item)}
           end)
         else
           [request]
@@ -175,7 +175,7 @@ defmodule Ash.Authorization.Report do
           request.rules
           |> Enum.map(fn {step, clause} ->
             status =
-              case Clause.find(facts, Map.put(clause, :filter, request.filter)) do
+              case Clause.find(facts, Map.put(clause, :filter, request.query.filter)) do
                 {:ok, value} ->
                   value
 
@@ -204,7 +204,7 @@ defmodule Ash.Authorization.Report do
           |> Enum.join("\n")
 
         if request.action_type == :read do
-          inspect(request.filter) <> "\n\n" <> contents
+          inspect(request.query.filter) <> "\n\n" <> contents
         else
           inspect(request.id) <> "\n\n" <> contents
         end

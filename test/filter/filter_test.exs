@@ -116,30 +116,26 @@ defmodule Ash.Test.Filter.FilterTest do
 
     test "single filter field", %{post1: post1} do
       assert [^post1] =
-               Api.read!(Post,
-                 filter: [
-                   title: post1.title
-                 ]
-               )
+               Post
+               |> Api.query()
+               |> Ash.Query.filter(title: post1.title)
+               |> Api.read!()
     end
 
     test "multiple filter field matches", %{post1: post1} do
       assert [^post1] =
-               Api.read!(Post,
-                 filter: [
-                   title: post1.title,
-                   contents: post1.contents
-                 ]
-               )
+               Post
+               |> Api.query()
+               |> Ash.Query.filter(title: post1.title, contents: post1.contents)
+               |> Api.read!()
     end
 
     test "no field matches" do
       assert [] =
-               Api.read!(Post,
-                 filter: [
-                   title: "no match"
-                 ]
-               )
+               Post
+               |> Api.query()
+               |> Ash.Query.filter(title: "no match")
+               |> Api.read!()
     end
 
     test "no field matches single record, but each matches one record", %{
@@ -147,12 +143,10 @@ defmodule Ash.Test.Filter.FilterTest do
       post2: post2
     } do
       assert [] =
-               Api.read!(Post,
-                 filter: [
-                   title: post1.title,
-                   contents: post2.contents
-                 ]
-               )
+               Post
+               |> Api.query()
+               |> Ash.Query.filter(title: post1.title, contents: post2.contents)
+               |> Api.read!()
     end
   end
 
@@ -198,19 +192,35 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     test "filtering on a has_one relationship", %{profile2: profile2, user2: user2} do
-      assert [^user2] = Api.read!(User, filter: [profile: profile2.id])
+      assert [^user2] =
+               User
+               |> Api.query()
+               |> Ash.Query.filter(profile: profile2.id)
+               |> Api.read!()
     end
 
     test "filtering on a belongs_to relationship", %{profile1: profile1, user1: user1} do
-      assert [^profile1] = Api.read!(Profile, filter: [user: user1.id])
+      assert [^profile1] =
+               Profile
+               |> Api.query()
+               |> Ash.Query.filter(user: user1.id)
+               |> Api.read!()
     end
 
     test "filtering on a has_many relationship", %{user2: user2, post2: post2} do
-      assert [^user2] = Api.read!(User, filter: [posts: post2.id])
+      assert [^user2] =
+               User
+               |> Api.query()
+               |> Ash.Query.filter(posts: post2.id)
+               |> Api.read!()
     end
 
     test "filtering on a many_to_many relationship", %{post4: post4, post3: post3} do
-      assert [^post4] = Api.read!(Post, filter: [related_posts: post3.id])
+      assert [^post4] =
+               Post
+               |> Api.query()
+               |> Ash.Query.filter(related_posts: post3.id)
+               |> Api.read!()
     end
   end
 end

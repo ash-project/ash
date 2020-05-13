@@ -48,7 +48,7 @@ defmodule Ash.Engine.Request do
     :data,
     :resolve_when_fetch_only?,
     :name,
-    :filter,
+    :query,
     :context,
     :write_to_data?,
     strict_check_complete?: false,
@@ -61,19 +61,19 @@ defmodule Ash.Engine.Request do
   end
 
   def new(opts) do
-    filter =
-      case opts[:filter] do
-        %UnresolvedField{} ->
-          nil
+    query =
+      case opts[:query] do
+        %UnresolvedField{} = query ->
+          query
 
-        %Ash.Filter{} = filter ->
-          filter
+        %Ash.Query{} = query ->
+          query
 
         nil ->
           nil
 
         other ->
-          Ash.Filter.parse(opts[:resource], other)
+          raise "Got a weird thing #{inspect(other)}"
       end
 
     id = Ecto.UUID.generate()
@@ -92,7 +92,7 @@ defmodule Ash.Engine.Request do
            opts[:resource],
            fact,
            opts[:action],
-           filter,
+           Map.get(query || %{}, :filter),
            clause_id
          )}
       end)
@@ -116,7 +116,7 @@ defmodule Ash.Engine.Request do
       action_type: opts[:action_type],
       data: data,
       resolve_when_fetch_only?: opts[:resolve_when_fetch_only?],
-      filter: filter,
+      query: query,
       name: opts[:name],
       context: opts[:context] || %{},
       write_to_data?: Keyword.get(opts, :write_to_data?, true)
@@ -131,11 +131,11 @@ defmodule Ash.Engine.Request do
 
   def authorize_always(request) do
     filter =
-      case request.filter do
+      case request.query do
         %UnresolvedField{} ->
           nil
 
-        %Ash.Filter{} = filter ->
+        %Ash.Query{filter: filter} ->
           filter
 
         nil ->

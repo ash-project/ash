@@ -11,14 +11,14 @@ defmodule Ash.Authorization.Check.AttributeEquals do
     field = options[:field]
     value = options[:value]
 
-    case Ash.Filter.parse(request.resource, [{field, eq: value}]) do
+    case Ash.Filter.parse(request.resource, [{field, eq: value}], request.query.api) do
       %{errors: []} = parsed ->
-        if Ash.Filter.strict_subset_of?(parsed, request.filter) do
+        if Ash.Filter.strict_subset_of?(parsed, request.query.filter) do
           {:ok, true}
         else
-          case Ash.Filter.parse(request.resource, [{field, not_eq: value}]) do
+          case Ash.Filter.parse(request.resource, [{field, not_eq: value}], request.query.api) do
             %{errors: []} = parsed ->
-              if Ash.Filter.strict_subset_of?(parsed, request.filter) do
+              if Ash.Filter.strict_subset_of?(parsed, request.query.filter) do
                 {:ok, false}
               else
                 {:ok, :unknown}

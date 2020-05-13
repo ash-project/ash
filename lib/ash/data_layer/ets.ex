@@ -103,26 +103,43 @@ defmodule Ash.DataLayer.Ets do
   defp filter_matches(records, filter) do
     Enum.reduce_while(records, {:ok, []}, fn record, {:ok, acc} ->
       case matches_filter(record, filter) do
-        {:ok, true} -> {:cont, {:ok, [record | acc]}}
-        {:ok, false} -> {:cont, {:ok, acc}}
-        {:error, error} -> {:error, error}
+        {:ok, true} ->
+          {:cont, {:ok, [record | acc]}}
+
+        {:ok, false} ->
+          {:cont, {:ok, acc}}
+
+        {:error, error} ->
+          {:error, error}
       end
     end)
   end
 
-  defp matches_filter(record, %{ors: empty} = filter) when empty in [nil, []] do
-    do_matches_filter(record, filter)
+  defp matches_filter(record, %{ands: [first | rest]} = filter) do
+    case matches_filter(record, first) do
+      {:ok, true} -> matches_filter(record, %{filter | ands: rest})
+      {:ok, false} -> {:ok, false}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp matches_filter(record, %{not: not_filter} = filter) when not is_nil(not_filter) do
+    case matches_filter(record, not_filter) do
+      {:ok, true} -> {:ok, false}
+      {:ok, false} -> matches_filter(record, %{filter | not: nil})
+      {:error, error} -> {:error, error}
+    end
   end
 
   defp matches_filter(record, %{ors: [first | rest]} = filter) do
-    case do_matches_filter(record, first) do
+    case matches_filter(record, first) do
       {:ok, true} -> {:ok, true}
       {:ok, false} -> matches_filter(record, %{filter | ors: rest})
       {:error, error} -> {:error, error}
     end
   end
 
-  defp do_matches_filter(record, filter = %{resource: resource, not: nil}) do
+  defp matches_filter(record, %{resource: resource} = filter) do
     case relationships_to_attribute_filters(resource, filter) do
       %{errors: [], attributes: attributes} ->
         Enum.reduce_while(attributes, {:ok, true}, fn
@@ -136,14 +153,6 @@ defmodule Ash.DataLayer.Ets do
 
       %{errors: errors} ->
         {:error, errors}
-    end
-  end
-
-  defp do_matches_filter(record, filter = %{not: not_filter}) do
-    case do_matches_filter(record, not_filter) do
-      {:ok, true} -> {:ok, false}
-      {:ok, false} -> do_matches_filter(record, %{filter | not: nil})
-      {:error, error} -> {:error, error}
     end
   end
 
@@ -205,9 +214,13 @@ defmodule Ash.DataLayer.Ets do
     with {:ok, results} <- run_query(destination_query, rel.destination),
          destination_values <- Enum.map(results, &Map.get(&1, rel.destination_field)),
          %{errors: []} = through_filter <-
-           Ash.Filter.parse(rel.through, [
-             {rel.destination_field_on_join_table, [in: destination_values]}
-           ]),
+           Ash.Filter.parse(
+             rel.through,
+             [
+               {rel.destination_field_on_join_table, [in: destination_values]}
+             ],
+             filter.api
+           ),
          {:ok, join_results} <-
            run_query(%Query{resource: rel.through, filter: through_filter}, rel.through) do
       {rel.source_field,

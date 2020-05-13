@@ -28,10 +28,9 @@ defmodule Ash.Actions.Update do
   defp do_run(api, %resource{} = record, action, params) do
     attributes = Keyword.get(params, :attributes, %{})
     relationships = Keyword.get(params, :relationships, %{})
-    side_loads = Keyword.get(params, :side_load, [])
-    side_load_filter = Keyword.get(params, :side_load_filter)
 
-    with {:ok, relationships} <-
+    with {:ok, side_load_query} <- side_loads_as_query(api, resource, params[:side_load]),
+         {:ok, relationships} <-
            Relationships.validate_not_changing_relationship_and_source_field(
              relationships,
              attributes,
@@ -46,9 +45,8 @@ defmodule Ash.Actions.Update do
          params <- Keyword.merge(params, attributes: attributes, relationships: relationships),
          %{valid?: true} = changeset <- changeset(record, api, params),
          {:ok, side_load_requests} <-
-           SideLoad.requests(api, resource, side_loads, :update, side_load_filter),
-         %{data: %{data: %{data: updated}}, errors: errors} = state
-         when errors == %{} <-
+           SideLoad.requests(side_load_query, api.query(resource)),
+         %{data: %{data: %{data: updated}}, errors: []} = state <-
            do_authorized(changeset, params, action, resource, api, side_load_requests) do
       {:ok, SideLoad.attach_side_loads(updated, state)}
     else
@@ -56,11 +54,6 @@ defmodule Ash.Actions.Update do
         {:error, Ash.Error.Changeset.changeset_to_errors(resource, changeset)}
 
       %Ash.Engine{errors: errors} ->
-        errors =
-          Enum.flat_map(errors, fn {path, errors} ->
-            Enum.map(errors, &Map.put(&1, :path, path))
-          end)
-
         {:error, Ash.to_ash_error(errors)}
 
       {:error, error} ->
@@ -125,7 +118,7 @@ defmodule Ash.Actions.Update do
         api,
         strict_access?: false,
         user: params[:authorization][:user],
-        bypass_strict_access?: params[:bypass_strict_access?],
+        bypass_strict_access?: params[:authorization][:bypass_strict_access?],
         verbose?: params[:verbose?]
       )
     else
@@ -135,6 +128,20 @@ defmodule Ash.Actions.Update do
         fetch_only?: true,
         verbose?: params[:verbose?]
       )
+    end
+  end
+
+  defp side_loads_as_query(_api, _resource, nil), do: {:ok, nil}
+  defp side_loads_as_query(_api, _resource, %Ash.Query{errors: []} = query), do: {:ok, query}
+  defp side_loads_as_query(_api, _resource, %Ash.Query{errors: errors}), do: {:error, errors}
+
+  defp side_loads_as_query(api, resource, side_loads) when is_list(side_loads) do
+    resource
+    |> api.query()
+    |> Ash.Query.side_load(side_loads)
+    |> case do
+      %{errors: []} = query -> {:ok, query}
+      %{errors: errors} -> {:error, errors}
     end
   end
 

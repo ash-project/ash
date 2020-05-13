@@ -12,8 +12,8 @@ defmodule Ash.Error.Unknown do
       Ash.Error.error_messages(errors)
     end
 
-    def message(_) do
-      "Something went wrong"
+    def message(error) do
+      "Something went wrong: #{inspect(error)}"
     end
 
     def description(%{errors: errors}) when not is_nil(errors) do
