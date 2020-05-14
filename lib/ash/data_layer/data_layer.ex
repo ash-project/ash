@@ -19,6 +19,8 @@ defmodule Ash.DataLayer do
               {:ok, list(Ash.resource())} | {:error, Ash.error()}
   @callback create(Ash.resource(), changeset :: Ecto.Changeset.t()) ::
               {:ok, Ash.resource()} | {:error, Ash.error()}
+  @callback upsert(Ash.resource(), changeset :: Ecto.Changeset.t()) ::
+              {:ok, Ash.resource()} | {:error, Ash.error()}
   @callback update(Ash.resource(), changeset :: Ecto.Changeset.t()) ::
               {:ok, Ash.resource()} | {:error, Ash.error()}
   @callback destroy(record :: Ash.record()) :: :ok | {:error, Ash.error()}
@@ -26,6 +28,7 @@ defmodule Ash.DataLayer do
   @callback can?(feature()) :: boolean
 
   @optional_callbacks transaction: 2
+  @optional_callbacks upsert: 2
 
   @spec resource_to_query(Ash.resource()) :: Ash.data_layer_query()
   def resource_to_query(resource) do
@@ -42,6 +45,12 @@ defmodule Ash.DataLayer do
           {:ok, Ash.record()} | {:error, Ash.error()}
   def create(resource, changeset) do
     Ash.data_layer(resource).create(resource, changeset)
+  end
+
+  @spec upsert(Ash.resource(), Ecto.Changeset.t()) ::
+          {:ok, Ash.record()} | {:error, Ash.error()}
+  def upsert(resource, changeset) do
+    Ash.data_layer(resource).upsert(resource, changeset)
   end
 
   @spec filter(Ash.data_layer_query(), Ash.filter(), Ash.resource()) ::

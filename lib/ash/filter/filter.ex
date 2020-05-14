@@ -81,6 +81,12 @@ defmodule Ash.Filter do
   end
 
   def parse(resource, filter, api, path) do
+    if Keyword.keyword?(filter) do
+      if Keyword.get(filter, :__struct__) == __MODULE__ do
+        raise "WHAT THE FUCK"
+      end
+    end
+
     parsed_filter = do_parse(filter, %Ash.Filter{resource: resource, api: api, path: path})
 
     source =
@@ -893,6 +899,9 @@ defmodule Ash.Filter do
 
   defp parse_relationship_filter(value, %{destination: destination} = relationship) do
     cond do
+      match?(%__MODULE__{}, value) ->
+        {:ok, value}
+
       match?(%^destination{}, value) ->
         Ash.Actions.PrimaryKeyHelpers.value_to_primary_key_filter(destination, value)
 

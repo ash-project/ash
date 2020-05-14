@@ -47,22 +47,45 @@ defmodule Ash.Api.Interface do
                    |> Ashton.schema()
                    |> Ashton.merge(@global_opts, annotate: "Global Opts")
 
-  @create_and_update_opts_schema [
-                                   opts: [
-                                     attributes: :map,
-                                     relationships: :map
-                                   ],
-                                   defaults: [
-                                     attributes: %{},
-                                     relationships: %{}
-                                   ],
-                                   describe: [
-                                     attributes: "#TODO describe",
-                                     relationships: "#TODO describe"
-                                   ]
-                                 ]
-                                 |> Ashton.schema()
-                                 |> Ashton.merge(@global_opts, annotate: "Global Opts")
+  @shared_create_and_update_opts_schema [
+                                          opts: [
+                                            attributes: :map,
+                                            relationships: :map
+                                          ],
+                                          defaults: [
+                                            attributes: %{},
+                                            relationships: %{}
+                                          ],
+                                          describe: [
+                                            attributes: "#TODO describe",
+                                            relationships: "#TODO describe"
+                                          ]
+                                        ]
+                                        |> Ashton.schema()
+                                        |> Ashton.merge(@global_opts, annotate: "Global Opts")
+
+  @create_opts_schema [
+                        opts: [
+                          upsert?: :boolean
+                        ],
+                        defaults: [
+                          upsert?: false
+                        ],
+                        describe: [
+                          upsert?: "#TODO describe"
+                        ]
+                      ]
+                      |> Ashton.schema()
+                      |> Ashton.merge(@global_opts, annotate: "Global Opts")
+                      |> Ashton.merge(@shared_create_and_update_opts_schema,
+                        annotate: "Shared Create/Edit Opts"
+                      )
+
+  @update_opts_schema []
+                      |> Ashton.schema()
+                      |> Ashton.merge(@shared_create_and_update_opts_schema,
+                        annotate: "Shared Create/Edit Opts"
+                      )
 
   @delete_opts_schema []
                       |> Ashton.schema()
@@ -119,7 +142,7 @@ defmodule Ash.Api.Interface do
   @doc """
   #TODO describe
 
-  #{Ashton.document(@create_and_update_opts_schema)}
+  #{Ashton.document(@create_opts_schema)}
   """
   @callback create!(resource :: Ash.resource(), params :: Ash.create_params()) ::
               Ash.record() | no_return
@@ -127,7 +150,7 @@ defmodule Ash.Api.Interface do
   @doc """
   #TODO describe
 
-  #{Ashton.document(@create_and_update_opts_schema)}
+  #{Ashton.document(@create_opts_schema)}
   """
   @callback create(resource :: Ash.resource(), params :: Ash.create_params()) ::
               {:ok, Ash.record()} | {:error, Ash.error()}
@@ -135,7 +158,7 @@ defmodule Ash.Api.Interface do
   @doc """
   #TODO describe
 
-  #{Ashton.document(@create_and_update_opts_schema)}
+  #{Ashton.document(@update_opts_schema)}
   """
   @callback update!(record :: Ash.record(), params :: Ash.update_params()) ::
               Ash.record() | no_return
@@ -143,7 +166,7 @@ defmodule Ash.Api.Interface do
   @doc """
   #TODO describe
 
-  #{Ashton.document(@create_and_update_opts_schema)}
+  #{Ashton.document(@update_opts_schema)}
   """
   @callback update(record :: Ash.record(), params :: Ash.update_params()) ::
               {:ok, Ash.record()} | {:error, Ash.error()}
@@ -153,8 +176,7 @@ defmodule Ash.Api.Interface do
 
   #{Ashton.document(@delete_opts_schema)}
   """
-  @callback destroy!(record :: Ash.record(), params :: Ash.update_params()) ::
-              Ash.record() | no_return
+  @callback destroy!(record :: Ash.record(), params :: Ash.update_params()) :: :ok | no_return
 
   @doc """
   #TODO describe
@@ -162,7 +184,7 @@ defmodule Ash.Api.Interface do
   #{Ashton.document(@delete_opts_schema)}
   """
   @callback destroy(record :: Ash.record(), params :: Ash.update_params()) ::
-              {:ok, Ash.record()} | {:error, Ash.error()}
+              :ok | {:error, Ash.error()}
 
   @doc """
   Refetches a record from the database
@@ -183,7 +205,7 @@ defmodule Ash.Api.Interface do
   @callback reload(record :: Ash.record()) :: {:ok, Ash.record()} | {:error, Ash.error()}
 
   defmacro __using__(_) do
-    quote do
+    quote location: :keep do
       @behaviour Ash.Api.Interface
 
       @impl true
@@ -271,7 +293,7 @@ defmodule Ash.Api.Interface do
       @impl true
       def destroy(record, params \\ []) do
         case Ash.Api.Interface.destroy(__MODULE__, record, params) do
-          {:ok, instance} -> {:ok, instance}
+          :ok -> :ok
           {:error, error} -> {:error, List.wrap(error)}
         end
       end
@@ -326,6 +348,7 @@ defmodule Ash.Api.Interface do
 
       case filter do
         {:ok, filter} ->
+
           resource
           |> api.query()
           |> Ash.Query.filter(filter)

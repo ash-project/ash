@@ -156,7 +156,8 @@ defmodule Ash.Authorization.Report do
   defp explain_steps(requests, api, facts) do
     requests_with_data_filter =
       Enum.flat_map(requests, fn request ->
-        if Request.data_resolved?(request) && request.data not in [nil, []] do
+        if Request.data_resolved?(request) && request.data not in [nil, []] &&
+             match?(%Ash.Query{}, request.query) do
           request.data
           |> List.wrap()
           |> Enum.map(fn item ->
@@ -175,10 +176,10 @@ defmodule Ash.Authorization.Report do
           request.rules
           |> Enum.map(fn {step, clause} ->
             status =
-              case Clause.find(facts, Map.put(clause, :filter, request.query.filter)) do
-                {:ok, value} ->
-                  value
-
+              with %Ash.Query{filter: filter} <- request.query,
+                   {:ok, value} <- Clause.find(facts, Map.put(clause, :filter, filter)) do
+                value
+              else
                 _ ->
                   nil
               end
@@ -203,7 +204,7 @@ defmodule Ash.Authorization.Report do
           end)
           |> Enum.join("\n")
 
-        if request.action_type == :read do
+        if request.action_type == :read && match?(%Ash.Query{}, request.query) do
           inspect(request.query.filter) <> "\n\n" <> contents
         else
           inspect(request.id) <> "\n\n" <> contents

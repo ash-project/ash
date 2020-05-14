@@ -33,6 +33,7 @@ defmodule Ash.DataLayer.Ets do
   def can?(:query_async), do: false
   def can?(:transact), do: false
   def can?(:composite_primary_key), do: true
+  def can?(:upsert), do: true
   def can?({:filter, :in}), do: true
   def can?({:filter, :not_in}), do: true
   def can?({:filter, :not_eq}), do: true
@@ -262,6 +263,10 @@ defmodule Ash.DataLayer.Ets do
   end
 
   @impl true
+  def upsert(resource, changeset) do
+    create(resource, changeset)
+  end
+
   def create(resource, changeset) do
     pkey =
       resource

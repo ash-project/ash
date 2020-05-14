@@ -4,6 +4,15 @@ defmodule Ash.Actions.Destroy do
   @spec run(Ash.api(), Ash.record(), Ash.action(), Ash.params()) ::
           {:ok, Ash.record()} | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
   def run(api, %resource{} = record, action, params) do
+    if params[:authorization][:bypass_strict_access?] do
+      # This one is a bit weird. Essentially, we can't *fetch* the data without *deleting*
+      # it, as there is only one data resolution step. Specifically to support deletes,
+      # we may need to add a final step, like a "commit" or "operation" that happens
+      # after data is fetched and authorization is complete. That would let us support
+      # bypassing strict access while deleting
+      raise "bypassing strict access while deleting is not currently supported"
+    end
+
     action =
       if is_atom(action) and not is_nil(action) do
         Ash.action(resource, action, :read)
@@ -16,7 +25,7 @@ defmodule Ash.Actions.Destroy do
         resource: resource,
         rules: action.rules,
         api: api,
-        strict_access: false,
+        strict_access: true,
         path: [:data],
         data:
           Ash.Engine.Request.resolve(fn _ ->

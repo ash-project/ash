@@ -60,78 +60,113 @@ defmodule Ash.Actions.Create do
   end
 
   defp do_authorized(changeset, params, action, resource, api, side_load_requests) do
-    relationships = Keyword.get(params, :relationships, %{})
+    case resolve_data(resource, params) do
+      {:error, error} ->
+        {:error, error}
 
-    create_request =
-      Ash.Engine.Request.new(
-        api: api,
-        rules: action.rules,
-        resource: resource,
-        changeset:
-          Relationships.changeset(
+      {:ok, data_resolver} ->
+        relationships = Keyword.get(params, :relationships, %{})
+
+        create_request =
+          Ash.Engine.Request.new(
+            api: api,
+            rules: action.rules,
+            resource: resource,
+            changeset:
+              Relationships.changeset(
+                changeset,
+                api,
+                relationships
+              ),
+            action_type: action.type,
+            strict_access?: false,
+            data: data_resolver,
+            resolve_when_fetch_only?: true,
+            path: [:data],
+            name: "#{action.type} - `#{action.name}`"
+          )
+
+        attribute_requests =
+          Attributes.attribute_change_requests(changeset, api, resource, action)
+
+        relationship_read_requests = Map.get(changeset, :__requests__, [])
+
+        relationship_change_requests =
+          Relationships.relationship_change_requests(
             changeset,
             api,
+            resource,
+            action,
             relationships
-          ),
-        action_type: action.type,
-        strict_access?: false,
-        data:
-          Ash.Engine.Request.resolve(
-            [[:data, :changeset]],
-            fn %{data: %{changeset: changeset}} ->
-              resource
-              |> Ash.DataLayer.create(changeset)
-              |> case do
-                {:ok, result} ->
-                  changeset
-                  |> Map.get(:__after_changes__, [])
-                  |> Enum.reduce_while({:ok, result}, fn func, {:ok, result} ->
-                    case func.(changeset, result) do
-                      {:ok, result} -> {:cont, {:ok, result}}
-                      {:error, error} -> {:halt, {:error, error}}
-                    end
-                  end)
+          )
 
-                {:error, error} ->
-                  {:error, error}
-              end
-            end
-          ),
-        resolve_when_fetch_only?: true,
-        path: [:data],
-        name: "#{action.type} - `#{action.name}`"
-      )
+        if params[:authorization] do
+          Engine.run(
+            [create_request | attribute_requests] ++
+              relationship_read_requests ++ relationship_change_requests ++ side_load_requests,
+            api,
+            user: params[:authorization][:user],
+            bypass_strict_access?: params[:authorization][:bypass_strict_access?],
+            verbose?: params[:verbose?]
+          )
+        else
+          Engine.run(
+            [create_request | attribute_requests] ++
+              relationship_read_requests ++ relationship_change_requests ++ side_load_requests,
+            api,
+            fetch_only?: true,
+            verbose?: params[:verbose?]
+          )
+        end
+    end
+  end
 
-    attribute_requests = Attributes.attribute_change_requests(changeset, api, resource, action)
+  defp resolve_data(resource, params) do
+    case check_upsert_support(resource, params) do
+      :ok ->
+        {:ok,
+         Ash.Engine.Request.resolve(
+           [[:data, :changeset]],
+           fn %{data: %{changeset: changeset}} ->
+             result =
+               if params[:upsert?] do
+                 Ash.DataLayer.upsert(resource, changeset)
+               else
+                 Ash.DataLayer.create(resource, changeset)
+               end
 
-    relationship_read_requests = Map.get(changeset, :__requests__, [])
+             case result do
+               {:ok, result} ->
+                 changeset
+                 |> Map.get(:__after_changes__, [])
+                 |> Enum.reduce_while({:ok, result}, fn func, {:ok, result} ->
+                   case func.(changeset, result) do
+                     {:ok, result} -> {:cont, {:ok, result}}
+                     {:error, error} -> {:halt, {:error, error}}
+                   end
+                 end)
 
-    relationship_change_requests =
-      Relationships.relationship_change_requests(
-        changeset,
-        api,
-        resource,
-        action,
-        relationships
-      )
+               {:error, error} ->
+                 {:error, error}
+             end
+           end
+         )}
 
-    if params[:authorization] do
-      Engine.run(
-        [create_request | attribute_requests] ++
-          relationship_read_requests ++ relationship_change_requests ++ side_load_requests,
-        api,
-        user: params[:authorization][:user],
-        bypass_strict_access?: params[:authorization][:bypass_strict_access?],
-        verbose?: params[:verbose?]
-      )
-    else
-      Engine.run(
-        [create_request | attribute_requests] ++
-          relationship_read_requests ++ relationship_change_requests ++ side_load_requests,
-        api,
-        fetch_only?: true,
-        verbose?: params[:verbose?]
-      )
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp check_upsert_support(resource, params) do
+    cond do
+      !params[:upsert?] ->
+        :ok
+
+      Ash.data_layer_can?(resource, :upsert) ->
+        :ok
+
+      true ->
+        {:error, {:unsupported, :upsert}}
     end
   end
 

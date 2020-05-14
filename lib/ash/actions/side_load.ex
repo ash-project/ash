@@ -113,7 +113,11 @@ defmodule Ash.Actions.SideLoad do
           join_association = String.to_existing_atom(to_string(name) <> "_join_assoc")
 
           join_path = lead_path ++ [join_association]
-          join_data = Map.get(includes, join_path, [])
+
+          join_data =
+            includes
+            |> Map.get(join_path, %{})
+            |> Map.get(:data, [])
 
           map_or_update(data, lead_path, fn record ->
             source_value = Map.get(record, last_relationship.source_field)
@@ -197,7 +201,7 @@ defmodule Ash.Actions.SideLoad do
     side_load_request =
       side_load_request(relationship, related_query, root_query, path, use_data_for_filter?)
 
-    case relationship.cardinality do
+    case relationship.type do
       :many_to_many ->
         case join_assoc_request(
                relationship,
@@ -225,10 +229,6 @@ defmodule Ash.Actions.SideLoad do
 
     dependencies =
       cond do
-        relationship.type == :many_to_many ->
-          join_relationship = join_relationship(relationship)
-          [join_relationship_path(path, join_relationship)]
-
         path == [] ->
           []
 
@@ -239,6 +239,14 @@ defmodule Ash.Actions.SideLoad do
     dependencies =
       if use_data_for_filter? do
         [[:data, :data] | dependencies]
+      else
+        dependencies
+      end
+
+    dependencies =
+      if relationship.type == :many_to_many do
+        join_relationship = join_relationship(relationship)
+        [[:include, join_relationship_path(path, join_relationship), :data] | dependencies]
       else
         dependencies
       end
@@ -312,19 +320,14 @@ defmodule Ash.Actions.SideLoad do
         nil
 
       path ->
-        join_relationship = join_relationship(relationship)
-        join_relationship_path = join_relationship_path(path, relationship)
+        join_relationship_path = join_relationship_path(path, join_relationship)
 
         default_read =
-          Ash.primary_action(relationship.destination, :read) ||
+          Ash.primary_action(join_relationship.source, :read) ||
             raise "Must set default read for #{inspect(relationship.destination)}"
 
         dependencies =
           cond do
-            relationship.type == :many_to_many ->
-              join_relationship = join_relationship(relationship)
-              [join_relationship_path(path, join_relationship)]
-
             path == [] ->
               []
 
@@ -343,11 +346,11 @@ defmodule Ash.Actions.SideLoad do
           path: [:include, join_relationship_path],
           strict_access?: true,
           resolve_when_fetch_only?: true,
-          filter:
+          query:
             side_load_query(
-              relationship,
+              join_relationship,
               related_query,
-              path,
+              join_relationship_path,
               root_query,
               use_data_for_filter?
             ),

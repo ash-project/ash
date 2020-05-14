@@ -233,7 +233,8 @@ defmodule Ash.Engine do
   defp could_pass_strict_check_in_isolation?(request, engine) do
     requests_with_data_filter =
       Enum.flat_map([request], fn request ->
-        if Request.data_resolved?(request) && request.data not in [nil, []] do
+        if Request.data_resolved?(request) && request.data not in [nil, []] &&
+             match?(%Ash.Query{}, request.query) do
           request.data
           |> List.wrap()
           |> Enum.map(fn item ->
@@ -345,7 +346,8 @@ defmodule Ash.Engine do
   defp generate_scenarios(engine) do
     requests_with_data_filter =
       Enum.flat_map(engine.requests, fn request ->
-        if Request.data_resolved?(request) && request.data not in [nil, []] do
+        if Request.data_resolved?(request) && request.data not in [nil, []] &&
+             match?(%Ash.Query{}, request.query) do
           request.data
           |> List.wrap()
           |> Enum.map(fn item ->
@@ -628,8 +630,9 @@ defmodule Ash.Engine do
 
   defp validate_dependencies(engine) do
     case Request.build_dependencies(engine.requests) do
-      :impossible ->
-        add_error(engine, [:__engine__], "Request dependencies are not possible")
+      # TODO: Have `build_dependencies/1` return an ash error
+      {:error, {:impossible, path}} ->
+        add_error(engine, path, "Impossible path: #{inspect(path)} required by request.")
 
       {:ok, _requests} ->
         # TODO: no need to aggregate the full dependencies of

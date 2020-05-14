@@ -306,7 +306,7 @@ defmodule Ash.Engine.Request do
       Enum.reduce_while(requests, {:ok, []}, fn request, {:ok, new_requests} ->
         case do_build_dependencies(request, requests) do
           {:ok, new_request} -> {:cont, {:ok, [new_request | new_requests]}}
-          {:error, error} -> {:halt, {:error, request.path, error}}
+          {:error, error} -> {:halt, {:error, error}}
         end
       end)
 

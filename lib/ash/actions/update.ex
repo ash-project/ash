@@ -84,6 +84,7 @@ defmodule Ash.Actions.Update do
             relationships
           ),
         action_type: action.type,
+        resource: resource,
         data:
           Ash.Engine.Request.resolve(
             [[:data, :changeset]],

@@ -179,3 +179,7 @@ end
 - support something similar to the older interface we had with ash, like `Api.read(resource, filter: [...], sort: [...])`, as the `Ash.Query` method
   is a bit long form in some cases
 - need to make sure that all of the dsl components are in the `.formatter.exs`. I made it so all of the options can be specified as a nested DSL, but haven't gone through and added them to the formatter file
+- Important: We need a framework level solution for runtime configuration, _or at minimum_ a recommended way to do it. Things like configuring the host/port of your API, or disabling features
+- right now we don't support having duplicates in `many_to_many` relationships, so we'll need to document the limits around that: the primary key of the join resource must be (at least as it is in ash) the join keys. If they don't want to do that, then they should at a minimum define a unique constraint on the two join keys.
+- right now, we require the datalayer to support upserts in order to do relationship additions, but we could set it up such that if the datalayer doesn't support upserts, we first read the relationship. Its not airtight against race conditions (unless the datalayer supports transactions, also unimplemented) but its better than nothing.
+- fix the comment noted in the destroy action: the delete needs to happen _outside_ of the data fetching step, so the engine needs some kind of "after data resolved" capability

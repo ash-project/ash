@@ -213,6 +213,9 @@ defmodule Ash.Actions.Relationships do
             [single_identifier]
           end
 
+        [] ->
+          [__impossible__: true]
+
         many ->
           [or: many]
       end
@@ -570,6 +573,14 @@ defmodule Ash.Actions.Relationships do
 
   defp relate_many_to_many(changeset, api, relationship, %{add: add, current: current}, pkey)
        when is_list(add) do
+    # TODO: Consider finding a way to create these in bulk
+    # It will perform better
+    # For creation like this its a bit harder, the whole point of Ash
+    # is to act as an abstraction layer, but bulk inserts would probably
+    # be a pretty data-layer heavy concept. The answer is probably
+    # for the data layers to support a `bulk_create` option and then
+    # attempt to abstract it. Worst case scenario the data layer will
+    # iterate and insert.
     Enum.reduce(add, changeset, fn to_relate_record, changeset ->
       case find_pkey_match(current, to_relate_record, pkey) do
         nil ->
@@ -585,7 +596,7 @@ defmodule Ash.Actions.Relationships do
             }
 
             relationship.through
-            |> api.create(attributes: join_attrs)
+            |> api.create(attributes: join_attrs, upsert?: true)
             |> case do
               {:ok, _join_row} ->
                 {:ok,
@@ -617,6 +628,8 @@ defmodule Ash.Actions.Relationships do
          %{current: current, remove: remove},
          pkey
        ) do
+    # TODO: When deleting with a query is supported, do that here.
+    # It will perform better
     Enum.reduce(remove, changeset, fn to_remove_record, changeset ->
       case find_pkey_match(current, to_remove_record, pkey) do
         nil ->
@@ -633,7 +646,7 @@ defmodule Ash.Actions.Relationships do
               }
             ]
 
-            case api.get(relationship.destination, filter) do
+            case api.get(relationship.through, filter) do
               {:ok, nil} ->
                 changeset
 
@@ -642,12 +655,12 @@ defmodule Ash.Actions.Relationships do
 
               {:ok, found} ->
                 case api.destroy(found) do
-                  {:ok, destroyed} ->
+                  :ok ->
                     {:ok,
                      remove_from_set_relationship(
                        record,
                        relationship.name,
-                       destroyed,
+                       found,
                        pkey
                      )}
 
@@ -897,8 +910,6 @@ defmodule Ash.Actions.Relationships do
           Ash.Engine.Request.resolve(fn _data ->
             api.read(query)
           end),
-        # TODO: Is this right?
-        strict_access?: false,
         name: "Read related #{relationship.name} before replace"
       )
 
