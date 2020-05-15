@@ -232,11 +232,14 @@ defmodule Ash.Actions.SideLoad do
         [] ->
           []
 
-        [_ | dependent_path] ->
+        dependent_path ->
           [[:include, Enum.reverse(Enum.map(dependent_path, &Map.get(&1, :name))), :data]]
       end
 
-    request_path = [:include, Enum.reverse(Enum.map(path, &Map.get(&1, :name)))]
+    request_path = [
+      :include,
+      Enum.reverse(Enum.map([relationship.name | path], &Map.get(&1, :name)))
+    ]
 
     dependencies =
       if use_data_for_filter? do
