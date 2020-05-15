@@ -285,13 +285,25 @@ defmodule Ash.Actions.SideLoad do
           # If the relationship is already loaded, we should consider doing an in-memory filtering
           # Right now, we just use the original query
 
-          with {:ok, query} <-
-                 true_side_load_query(
-                   relationship,
-                   related_query,
-                   data,
-                   path
-                 ),
+          new_query =
+            if use_data_for_filter? do
+              true_side_load_query(
+                relationship,
+                related_query,
+                data,
+                path
+              )
+            else
+              side_load_query(
+                relationship,
+                related_query,
+                path,
+                root_query,
+                use_data_for_filter?
+              )
+            end
+
+          with {:ok, query} <- new_query,
                {:ok, results} <- related_query.api.read(query) do
             {:ok, results}
           else
@@ -358,13 +370,25 @@ defmodule Ash.Actions.SideLoad do
           strict_access?: true,
           data:
             Ash.Engine.Request.resolve(dependencies, fn data ->
-              with {:ok, query} <-
-                     true_side_load_query(
-                       join_relationship,
-                       related_query,
-                       data,
-                       path
-                     ),
+              new_query =
+                if use_data_for_filter? do
+                  true_side_load_query(
+                    join_relationship,
+                    related_query,
+                    data,
+                    path
+                  )
+                else
+                  side_load_query(
+                    join_relationship,
+                    related_query,
+                    join_relationship_path,
+                    root_query,
+                    use_data_for_filter?
+                  )
+                end
+
+              with {:ok, query} <- new_query,
                    {:ok, results} <- related_query.api.read(query) do
                 {:ok, results}
               else
