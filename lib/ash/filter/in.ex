@@ -35,6 +35,10 @@ defmodule Ash.Filter.In do
       {:ok, values} ->
         {:ok, %__MODULE__{values: values}}
     end
+    |> case do
+      {:ok, %{values: values}} = in_operator -> {:ok, %{in_operator | values: Enum.uniq(values)}}
+      {:error, error} -> {:error, error}
+    end
   end
 end
 
