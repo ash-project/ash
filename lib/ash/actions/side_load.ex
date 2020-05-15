@@ -1,9 +1,22 @@
 defmodule Ash.Actions.SideLoad do
-  def requests(query, use_data_for_filter? \\ true, root_query \\ nil, path \\ [])
-  def requests(nil, _, _, _), do: {:ok, []}
-  def requests(%{side_load: []}, _, _root_query, _), do: {:ok, []}
+  def requests(
+        query,
+        use_data_for_filter? \\ true,
+        root_data \\ [],
+        root_query \\ nil,
+        path \\ []
+      )
 
-  def requests(%{side_load: side_loads} = query, use_data_for_filter?, root_query, path) do
+  def requests(nil, _, _, _, _), do: {:ok, []}
+  def requests(%{side_load: []}, _, _, _root_query, _), do: {:ok, []}
+
+  def requests(
+        %{side_load: side_loads} = query,
+        use_data_for_filter?,
+        root_data,
+        root_query,
+        path
+      ) do
     root_query = root_query || query
 
     requests =
@@ -25,10 +38,17 @@ defmodule Ash.Actions.SideLoad do
 
         new_path = [relationship | path]
 
-        case requests(related_query, use_data_for_filter?, root_query, new_path) do
+        case requests(related_query, use_data_for_filter?, root_data, root_query, new_path) do
           {:ok, further_requests} ->
             further_requests ++
-              do_requests(relationship, related_query, path, root_query, use_data_for_filter?)
+              do_requests(
+                relationship,
+                related_query,
+                path,
+                root_query,
+                root_data,
+                use_data_for_filter?
+              )
 
           {:error, error} ->
             # TODO: This case isn't actually reachable because the only errors that can occur
@@ -65,7 +85,7 @@ defmodule Ash.Actions.SideLoad do
 
     new_query = Ash.Query.filter(side_load_query, or: pkey_filters)
 
-    case requests(new_query, false) do
+    case requests(new_query, false, data) do
       {:ok, requests} ->
         result =
           if opts[:authorization] do
@@ -197,9 +217,16 @@ defmodule Ash.Actions.SideLoad do
     last_relationship!(relationship.destination, rest)
   end
 
-  defp do_requests(relationship, related_query, path, root_query, use_data_for_filter?) do
+  defp do_requests(relationship, related_query, path, root_query, root_data, use_data_for_filter?) do
     side_load_request =
-      side_load_request(relationship, related_query, root_query, path, use_data_for_filter?)
+      side_load_request(
+        relationship,
+        related_query,
+        root_query,
+        path,
+        root_data,
+        use_data_for_filter?
+      )
 
     case relationship.type do
       :many_to_many ->
@@ -208,6 +235,7 @@ defmodule Ash.Actions.SideLoad do
                related_query,
                root_query,
                path,
+               root_data,
                use_data_for_filter?
              ) do
           nil ->
@@ -222,7 +250,14 @@ defmodule Ash.Actions.SideLoad do
     end
   end
 
-  defp side_load_request(relationship, related_query, root_query, path, use_data_for_filter?) do
+  defp side_load_request(
+         relationship,
+         related_query,
+         root_query,
+         path,
+         root_data,
+         use_data_for_filter?
+       ) do
     default_read =
       Ash.primary_action(relationship.destination, :read) ||
         raise "Must set default read for #{inspect(relationship.destination)}"
@@ -288,19 +323,14 @@ defmodule Ash.Actions.SideLoad do
           # Right now, we just use the original query
 
           new_query =
-            if use_data_for_filter? do
-              true_side_load_query(
-                relationship,
-                related_query,
-                data,
-                path
-              )
-            else
-              {:ok,
-               Enum.reduce(request_path ++ [:query], data, fn path_part, data ->
-                 Map.get(data, path_part)
-               end)}
-            end
+            true_side_load_query(
+              relationship,
+              related_query,
+              data,
+              path,
+              root_data,
+              use_data_for_filter?
+            )
 
           with {:ok, query} <- new_query,
                {:ok, results} <- related_query.api.read(query) do
@@ -323,7 +353,14 @@ defmodule Ash.Actions.SideLoad do
     Enum.reverse(Enum.map([join_relationship | path], & &1.name))
   end
 
-  defp join_assoc_request(relationship, related_query, root_query, path, use_data_for_filter?) do
+  defp join_assoc_request(
+         relationship,
+         related_query,
+         root_query,
+         path,
+         root_data,
+         use_data_for_filter?
+       ) do
     join_relationship = join_relationship(relationship)
     join_relationship_name = join_relationship.name
 
@@ -377,20 +414,14 @@ defmodule Ash.Actions.SideLoad do
           data:
             Ash.Engine.Request.resolve(dependencies, fn data ->
               new_query =
-                if use_data_for_filter? do
-                  true_side_load_query(
-                    join_relationship,
-                    related_query,
-                    data,
-                    path
-                  )
-                else
-                  {:ok,
-                   Enum.reduce([:include, join_relationship_path] ++ [:query], data, fn path_part,
-                                                                                        data ->
-                     Map.get(data, path_part)
-                   end)}
-                end
+                true_side_load_query(
+                  join_relationship,
+                  related_query,
+                  data,
+                  path,
+                  root_data,
+                  use_data_for_filter?
+                )
 
               with {:ok, query} <- new_query,
                    {:ok, results} <- related_query.api.read(query) do
@@ -484,7 +515,9 @@ defmodule Ash.Actions.SideLoad do
          %{type: :many_to_many, reverse_relationship: nil} = relationship,
          _filter,
          _data,
-         _path
+         _path,
+         _root_data,
+         _use_data?
        ) do
     {:error, "Required reverse relationship for #{inspect(relationship)}"}
   end
@@ -493,14 +526,19 @@ defmodule Ash.Actions.SideLoad do
          %{reverse_relationship: reverse_relationship, source: source} = relationship,
          query,
          data,
-         path
+         path,
+         root_data,
+         use_data?
        ) do
     pkey = Ash.primary_key(source)
 
     source_data =
       case path do
-        [] ->
+        [] when use_data? ->
           Map.get(data, :data)
+
+        [] ->
+          root_data
 
         path ->
           path_names = path |> Enum.reverse() |> Enum.map(& &1.name)
