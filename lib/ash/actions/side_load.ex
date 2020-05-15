@@ -237,11 +237,13 @@ defmodule Ash.Actions.SideLoad do
           [[:include, Enum.map(path, &Map.get(&1, :name)), :data]]
       end
 
+    request_path = [:include, Enum.reverse(Enum.map([relationship | path], &Map.get(&1, :name)))]
+
     dependencies =
       if use_data_for_filter? do
         [[:data, :data] | dependencies]
       else
-        dependencies
+        [request_path ++ [:query] | dependencies]
       end
 
     dependencies =
@@ -256,8 +258,6 @@ defmodule Ash.Actions.SideLoad do
       [relationship | path]
       |> Enum.reverse()
       |> Enum.map_join(".", &Map.get(&1, :name))
-
-    request_path = [:include, Enum.reverse(Enum.map([relationship | path], &Map.get(&1, :name)))]
 
     Ash.Engine.Request.new(
       action_type: :read,
@@ -294,13 +294,7 @@ defmodule Ash.Actions.SideLoad do
                 path
               )
             else
-              side_load_query(
-                relationship,
-                related_query,
-                path,
-                root_query,
-                use_data_for_filter?
-              )
+              Map.get(data, request_path).query
             end
 
           with {:ok, query} <- new_query,
@@ -348,6 +342,13 @@ defmodule Ash.Actions.SideLoad do
               [[:include, Enum.map(path, &Map.get(&1, :name)), :data]]
           end
 
+        dependencies =
+          if use_data_for_filter? do
+            [[:data, :data] | dependencies]
+          else
+            [[:include, join_relationship_path, :query] | dependencies]
+          end
+
         related_query = related_query.api.query(join_relationship.destination)
 
         Ash.Engine.Request.new(
@@ -379,13 +380,7 @@ defmodule Ash.Actions.SideLoad do
                     path
                   )
                 else
-                  side_load_query(
-                    join_relationship,
-                    related_query,
-                    join_relationship_path,
-                    root_query,
-                    use_data_for_filter?
-                  )
+                  Map.get(data, [:include, join_relationship_path]).query
                 end
 
               with {:ok, query} <- new_query,
