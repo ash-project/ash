@@ -294,7 +294,9 @@ defmodule Ash.Actions.SideLoad do
                 path
               )
             else
-              Map.get(data, request_path).query
+              Enum.reduce(request_path ++ [:query], data, fn path_part, data ->
+                Map.get(data, path_part)
+              end)
             end
 
           with {:ok, query} <- new_query,
@@ -380,7 +382,10 @@ defmodule Ash.Actions.SideLoad do
                     path
                   )
                 else
-                  Map.get(data, [:include, join_relationship_path]).query
+                  Enum.reduce([:include, join_relationship_path] ++ [:query], data, fn path_part,
+                                                                                       data ->
+                    Map.get(data, path_part)
+                  end)
                 end
 
               with {:ok, query} <- new_query,
