@@ -538,7 +538,7 @@ defmodule Ash.Actions.SideLoad do
           Map.get(data, :data)
 
         [] ->
-          root_data
+          %{data: root_data}
 
         path ->
           path_names = path |> Enum.reverse() |> Enum.map(& &1.name)
