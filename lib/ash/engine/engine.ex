@@ -545,7 +545,7 @@ defmodule Ash.Engine do
 
       {key, unresolved} ->
         case resolve_field(engine, unresolved, data?) do
-          {:ok, new_engine, resolved} ->
+          {:ok, new_engine, resolved, _} ->
             new_request = Map.put(request, key, resolved)
             new_engine = replace_request(new_engine, new_request)
             {:ok, new_engine, new_request}
@@ -557,51 +557,56 @@ defmodule Ash.Engine do
     end
   end
 
-  defp resolve_field(engine, %{deps: deps} = unresolved, data?, dep \\ nil) do
-    result =
-      Enum.reduce_while(deps, {:ok, engine}, fn dep, {:ok, engine} ->
-        # TODO: this is inneficient
-        path = :lists.droplast(dep)
-        key = List.last(dep)
+  defp resolve_field(engine, %{deps: deps} = unresolved, data?, dep \\ nil, resolved_deps \\ []) do
+    if dep in resolved_deps do
+      {:ok, engine, unresolved, resolved_deps}
+    else
+      result =
+        Enum.reduce_while(deps, {:ok, engine, resolved_deps}, fn dep,
+                                                                 {:ok, engine, resolved_deps} ->
+          # TODO: this is inneficient
+          path = :lists.droplast(dep)
+          key = List.last(dep)
 
-        other_request = Enum.find(engine.requests, &(&1.path == path))
+          other_request = Enum.find(engine.requests, &(&1.path == path))
 
-        case Map.get(other_request, key) do
-          %Request.UnresolvedField{data?: field_is_data?} = other_value ->
-            if field_is_data? and not data? do
-              {:cont, {:ok, engine}}
-            else
-              case resolve_field(engine, other_value, data?, dep) do
-                {:ok, new_engine, resolved} ->
-                  new_request = Map.put(other_request, key, resolved)
-                  {:cont, {:ok, replace_request(new_engine, new_request)}}
+          case Map.get(other_request, key) do
+            %Request.UnresolvedField{data?: field_is_data?} = other_value ->
+              if field_is_data? and not data? do
+                {:cont, {:ok, engine, resolved_deps}}
+              else
+                case resolve_field(engine, other_value, data?, dep, resolved_deps) do
+                  {:ok, new_engine, resolved, new_resolved_deps} ->
+                    new_request = Map.put(other_request, key, resolved)
+                    {:cont, {:ok, replace_request(new_engine, new_request), new_resolved_deps}}
 
-                {:error, engine, dep, error} ->
-                  {:halt, {:error, engine, dep, error}}
+                  {:error, engine, dep, error} ->
+                    {:halt, {:error, engine, dep, error}}
+                end
               end
-            end
 
-          _ ->
-            {:cont, {:ok, engine}}
-        end
-      end)
-
-    case result do
-      {:ok, new_engine} ->
-        if unresolved.data? and not data? do
-          {:ok, new_engine, unresolved}
-        else
-          case Request.resolve_field(new_engine.data, unresolved) do
-            {:ok, value} ->
-              {:ok, new_engine, value}
-
-            {:error, error} ->
-              {:error, engine, dep, error}
+            _ ->
+              {:cont, {:ok, engine, resolved_deps}}
           end
-        end
+        end)
 
-      {:error, engine, dep, error} ->
-        {:error, engine, dep, error}
+      case result do
+        {:ok, new_engine, resolved_deps} ->
+          if unresolved.data? and not data? do
+            {:ok, new_engine, unresolved, [dep | resolved_deps]}
+          else
+            case Request.resolve_field(new_engine.data, unresolved) do
+              {:ok, value} ->
+                {:ok, new_engine, value, [dep | resolved_deps]}
+
+              {:error, error} ->
+                {:error, engine, dep, error}
+            end
+          end
+
+        {:error, engine, dep, error} ->
+          {:error, engine, dep, error}
+      end
     end
   end
 
