@@ -232,7 +232,7 @@ defmodule Ash.Actions.SideLoad do
         [] ->
           []
 
-        dependent_path ->
+        [_ | dependent_path] ->
           [[:include, Enum.reverse(Enum.map(dependent_path, &Map.get(&1, :name))), :data]]
       end
 
