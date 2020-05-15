@@ -228,15 +228,15 @@ defmodule Ash.Actions.SideLoad do
         raise "Must set default read for #{inspect(relationship.destination)}"
 
     dependencies =
-      cond do
-        path == [] ->
+      case path do
+        [] ->
           []
 
-        true ->
-          [[:include, Enum.map(:lists.droplast(path), &Map.get(&1, :name)), :data]]
+        [_ | dependent_path] ->
+          [[:include, Enum.reverse(Enum.map(dependent_path, &Map.get(&1, :name))), :data]]
       end
 
-    request_path = [:include, Enum.reverse(Enum.map([relationship | path], &Map.get(&1, :name)))]
+    request_path = [:include, Enum.reverse(Enum.map(path, &Map.get(&1, :name)))]
 
     dependencies =
       if use_data_for_filter? do
