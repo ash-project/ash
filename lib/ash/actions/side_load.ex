@@ -238,7 +238,7 @@ defmodule Ash.Actions.SideLoad do
 
     request_path = [
       :include,
-      Enum.reverse(Enum.map([relationship.name | path], &Map.get(&1, :name)))
+      Enum.reverse(Enum.map([relationship | path], &Map.get(&1, :name)))
     ]
 
     dependencies =
