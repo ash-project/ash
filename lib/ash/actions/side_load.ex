@@ -28,7 +28,7 @@ defmodule Ash.Actions.SideLoad do
         case requests(related_query, use_data_for_filter?, root_query, new_path) do
           {:ok, further_requests} ->
             further_requests ++
-              do_requests(relationship, related_query, path, root_query, use_data_for_filter?)
+              do_requests(relationship, related_query, new_path, root_query, use_data_for_filter?)
 
           {:error, error} ->
             # TODO: This case isn't actually reachable because the only errors that can occur
