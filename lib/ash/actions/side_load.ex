@@ -175,6 +175,7 @@ defmodule Ash.Actions.SideLoad do
     data
   end
 
+  defp map_or_update(nil, _, _), do: nil
   defp map_or_update(record, [], func) when not is_list(record), do: func.(record)
 
   defp map_or_update(records, [], func) do
