@@ -175,7 +175,6 @@ defmodule Ash.Actions.SideLoad do
     data
   end
 
-  defp map_or_update(nil, _, _), do: nil
   defp map_or_update(record, [], func) when not is_list(record), do: func.(record)
 
   defp map_or_update(records, [], func) do
@@ -234,7 +233,7 @@ defmodule Ash.Actions.SideLoad do
           []
 
         true ->
-          [[:include, Enum.map(path, &Map.get(&1, :name)), :data]]
+          [[:include, Enum.map(:lists.droplast(path), &Map.get(&1, :name)), :data]]
       end
 
     request_path = [:include, Enum.reverse(Enum.map([relationship | path], &Map.get(&1, :name)))]
