@@ -397,6 +397,9 @@ defmodule Ash.Actions.SideLoad do
     Ash.Engine.Request.resolve([[:data, :data]], fn %{data: %{data: data}} ->
       root_filter =
         case data do
+          [] ->
+            [__impossible__: true]
+
           [%resource{} = item] ->
             item
             |> Map.take(Ash.primary_key(resource))
