@@ -50,22 +50,12 @@ defmodule Ash.Resource.Attributes.Attribute do
               write_rules: []
             ],
             describe: [
-              allow_nil?: """
-              Whether or not to allow `null` values. Ash can perform optimizations with this information, so if you do not
-              expect any null values, make sure to set this switch.
-              """,
-              generated?: "Whether or not the value should be treated as required input",
-              primary_key?:
-                "Whether this field is, or is part of, the primary key of a resource.",
-              writable?: "Whether or not this field can be written to",
-              default:
-                "A one argument function that returns a default value, an mfa that does the same, or a raw value via specifying `{:constant, value}`.",
-              default:
-                "A one argument function that returns a default value to be applied on updates, an mfa that does the same, or a raw value via specifying `{:constant, value}`.",
-              write_rules: """
-              Write_Rules applied on an attribute during create or update. If no write_rules are defined, authorization to change will fail.
-              If set to false, no write_rules are applied and any changes are allowed (assuming the action was authorized as a whole)
-              """
+              allow_nil?: "#TODO: doc this",
+              generated?: "#TODO: doc this",
+              primary_key?: "#TODO: doc this",
+              writable?: "#TODO: doc this",
+              default: "#TODO: doc this",
+              write_rules: "#TODO: doc this"
             ]
           )
 

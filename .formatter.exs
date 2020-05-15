@@ -20,7 +20,8 @@ locals_without_parens = [
   many_to_many: 2,
   many_to_many: 3,
   resources: 1,
-  destination_field: 1
+  destination_field: 1,
+  allow_nil?: 1
 ]
 
 [

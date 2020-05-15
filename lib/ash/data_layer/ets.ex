@@ -267,6 +267,7 @@ defmodule Ash.DataLayer.Ets do
     create(resource, changeset)
   end
 
+  @impl true
   def create(resource, changeset) do
     pkey =
       resource
