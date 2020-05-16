@@ -22,6 +22,10 @@ defmodule Ash.Actions.Read do
 
       {:error, error} ->
         {:error, Ash.to_ash_error(error)}
+
+      other ->
+        # TODO: REMOVE THIS TESTING CODE
+        {:ok, other}
     end
   end
 
@@ -40,7 +44,7 @@ defmodule Ash.Actions.Read do
 
   def run_requests(requests, api, opts) do
     if opts[:authorization] do
-      Engine.run(
+      Ash.Engine.Engine2.run(
         requests,
         api,
         user: opts[:authorization][:user],
@@ -48,7 +52,7 @@ defmodule Ash.Actions.Read do
         verbose?: opts[:verbose?]
       )
     else
-      Engine.run(requests, api, fetch_only?: true, verbose?: opts[:verbose?])
+      Ash.Engine.Engine2.run(requests, api, fetch_only?: true, verbose?: opts[:verbose?])
     end
   end
 

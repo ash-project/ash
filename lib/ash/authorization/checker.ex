@@ -17,35 +17,32 @@ defmodule Ash.Authorization.Checker do
   alias Ash.Authorization.Clause
 
   def strict_check(user, request, facts) do
-    new_facts =
-      request.rules
-      |> Enum.reduce(facts, fn {_step, clause}, facts ->
-        case Clause.find(facts, clause) do
-          {:ok, _boolean_result} ->
-            facts
+    request.rules
+    |> Enum.reduce(facts, fn {_step, clause}, facts ->
+      case Clause.find(facts, clause) do
+        {:ok, _boolean_result} ->
+          facts
 
-          :error ->
-            case do_strict_check(clause, user, request) do
-              {:error, _error} ->
-                # TODO: Surface this error
-                facts
+        :error ->
+          case do_strict_check(clause, user, request) do
+            {:error, _error} ->
+              # TODO: Surface this error
+              facts
 
-              :unknown ->
-                facts
+            :unknown ->
+              facts
 
-              :unknowable ->
-                Map.put(facts, clause, :unknowable)
+            :unknowable ->
+              Map.put(facts, clause, :unknowable)
 
-              :irrelevant ->
-                Map.put(facts, clause, :irrelevant)
+            :irrelevant ->
+              Map.put(facts, clause, :irrelevant)
 
-              boolean ->
-                Map.put(facts, clause, boolean)
-            end
-        end
-      end)
-
-    {Map.put(request, :strict_check_complete?, true), new_facts}
+            boolean ->
+              Map.put(facts, clause, boolean)
+          end
+      end
+    end)
   end
 
   def run_checks(engine, %{data: []}, _clause) do
