@@ -54,12 +54,15 @@ end
 ## TODO LIST (in no order)
 
 Routing
+
 - Make our router cabaple of describing its routes in `mix phx.routes` Chris McCord says that we could probably power that, seeing as phoenix controls both APIs, and that capability could be added to `Plug.Router`
 
 Serializing
+
 - Finish the serializer
 
 Validations
+
 - DSL level validations! Things like includes validating that their chain exists. All DSL structs should be strictly validated when they are created.
 - Especially at compile time, we should _never_ ignore or skip invalid options. If an option is present and invalid, an error is raised.
 - Validate that the user resource has a get action
@@ -71,16 +74,19 @@ Validations
 - Use ashton to validate interface opts, not just document them: Easy and important
 
 Code Organization
+
 - break up the `Ash` module
 - consider moving `type` and `name` for resources out into json api (or perhaps just `name`) since only json api uses that
 - Consider allowing declaring a data layer at the _api_ level, or overriding the resource's data layer at the _api_ level
 
 Errors
+
 - Wire up/formalize the error handling (this is high priority)
 - Ensure that errors are properly propagated up from the data_layer behaviour, and every operation is allowed to fail
 - includer errors are super obscure because you can't tell what action they are about
 
 Filters
+
 - Make sure to segment filters based on the involved data layers, so we can support cross data-layer filtering
 - Add impossibility checking for filters to avoid running queries that will never be possible.
 - Validate filters, now that there can be duplicates. Doesn't make sense to provide two "exact equals" filters
@@ -95,6 +101,7 @@ Filters
 - Big optimization: If the filter _did_ need to fetch anything, find a way to get that fetched value into the final query.
 
 Actions
+
 - all actions need to be performed in a transaction
 - Since actions contain rules now, consider making it possible to list each action as its own `do` block, with an internal DSL for configuring the action. (overkill?)
 - Since actions can return multiple errors, we need a testing utility to unwrap/assert on them
@@ -102,6 +109,7 @@ Actions
 - Handle related values on delete
 
 Authorization
+
 - document authorization thoroughly. _batch_ (default) checks need to return a list of `ids` for which the check passed.
 - Do branch analysis of each record after authorizing it, in authorizer
 - Make authorization spit out informative errors (at least for developers)
@@ -120,9 +128,12 @@ Authorization
 - Use the sat solver at compile time to tell people when requests they've configured (and maybe all combinations of includes they've allowed?) couldn't possibly be allowed together.
 
 Community
+
 - Contributor guideline and code of conduct
+- https://github.com/keathley/twirp
 
 Relationships
+
 - Flesh out relationship options
 - most relationship stuff can't be done w/o primary keys
 - Don't let users declare `has_one` relationships without claiming that there is a unique constraint on the destination field.
@@ -139,25 +150,31 @@ Relationships
 - Perhaps, reverse relationships should eliminate the need to set destination field.
 
 Primary Key
+
 - So many parts of the system are reliant on things having an `id` key explicitly. THis will need to be addressed some day, and will be a huge pain in the ass
 - Raise on composite primary key if data layer can't do it
 
 Params
+
 - `params` should be solidified. Perhaps as a struct. Or perhaps just renamed to `action_params` where it is used.
 - Consider making a "params builder" so you can say things like `Ash.Params.add_side_load(params, [:foo, :bar, :baz])` and build params up over time.
 - Validate that params on the way in are either all strings or all atoms
 
 Ecto
+
 - The ecto internals that live on structs are going to cause problems w/ pluggability of backends, like the `%Ecto.Association.NotLoaded{}`. That backend may need to scrub the ecto specifics off of those structs.
 
 ETS
+
 - make ets dep optional
 - Unit test the Ets data layer
 
 Observability
+
 - Use telemetry and/or some kind of hook system to add metrics
 
 Data Layer
+
 - Allow encoding database-level constraints into the resource, like "nullable: false" or something. This will let us validate things like not leaving orphans when bulk updating a many to many
 - Eventually data_layers should state what raw types they support, and the filters they support on those raw types
 - Think hard about the data_layer.can? pattern to make sure we're giving enough info, but not too much.
@@ -170,25 +187,30 @@ Data Layer
 - without transactions, we can't ensure that all changes are rolled back in the case that relationship updates are included. Don't think there is really anything to do about that, but something worth considering.
 
 DSL
+
 - use a process to hold constructed DSL state, and then coalesce it all at the end. This can clean things up, and also allow us to potentially eliminate the registry. This will probably go hand in hand w/ the "capabilities" layer, where the DSL confirms that your data layer is capable of performing everything that your DSL declares
 - Bake in descriptions to the DSL
 - need to make sure that all of the dsl components are in the `.formatter.exs`. I made it so all of the options can be specified as a nested DSL, but haven't gone through and added them to the formatter file
 - add `init` to checks, and error check their construction when building the DSL
 
 Code Quality
+
 - Replace all my ugly `reduce` with tuples with `reduce_while`
 
 Runtime
+
 - Add a runtime-intialization to checks that can return data loading instructions to be executed prior to pre-check
 - Important: We need a framework level solution for runtime configuration, _or at minimum_ a recommended way to do it. Things like configuring the host/port of your API, or disabling features
 
 Engine
+
 - Engine parallelization!
 - Write the engine as a state machine, not the recursive monster that it currently is
 - implement transactions in the engine. Perhaps by assigning requests transaction ids or something along those lines.
 - fix the comment noted in the destroy action: the delete needs to happen _outside_ of the data fetching step, so the engine needs some kind of "after data resolved" capability
 
 Fields/Attributes
+
 - Flesh out field options (sortable, filterable, other behavior?)
 - Booleans need to not support `nil` values. That has to be a different type. boolean filter/authorization logic is greatly enhanced if that is the case.
 - Add the ability to configure what fields can identify a user (for instance email) and use those in checks.
@@ -196,6 +218,7 @@ Fields/Attributes
 - Make sure updating foreign key attributes behaves the same as setting a relationship, or just disallow having editable attributes for relationship fkeys
 
 Framework
+
 - Framework internals need to stop using `api.foo`, because the code interface is supposed to be optional
 - support accepting a _resource and a filter_ in `api.update` and `api.destroy`, and doing those as bulk actions
 - support something similar to the older interface we had with ash, like `Api.read(resource, filter: [...], sort: [...])`, as the `Ash.Query` method is a bit long form in some cases
