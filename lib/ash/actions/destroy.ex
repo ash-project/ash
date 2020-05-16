@@ -35,7 +35,7 @@ defmodule Ash.Actions.Destroy do
             end
           end),
         name: "destroy request",
-        resolve_when_fetch_only?: true
+        resolve_when_skip_authorization?: true
       )
 
     result =
@@ -48,7 +48,7 @@ defmodule Ash.Actions.Destroy do
           verbose?: params[:verbose?]
         )
       else
-        Engine.run([auth_request], api, fetch_only?: true, verbose?: params[:verbose?])
+        Engine.run([auth_request], api, skip_authorization?: true, verbose?: params[:verbose?])
       end
 
     case result do

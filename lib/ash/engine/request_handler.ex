@@ -1,5 +1,5 @@
 defmodule Ash.Engine.RequestHandler do
-  defstruct [:request, :engine_pid, :verbose?, :fetch_only?]
+  defstruct [:request, :engine_pid, :verbose?, :skip_authorization?]
   use GenServer
   require Logger
 
@@ -14,7 +14,7 @@ defmodule Ash.Engine.RequestHandler do
       engine_pid: opts[:engine_pid],
       request: opts[:request],
       verbose?: opts[:verbose?] || false,
-      fetch_only?: opts[:fetch_only?] || false
+      skip_authorization?: opts[:skip_authorization?] || false
     }
 
     log(state, "Starting request")
@@ -22,8 +22,8 @@ defmodule Ash.Engine.RequestHandler do
     {:ok, state, {:continue, :strict_check}}
   end
 
-  def handle_continue(:strict_check, %{fetch_only?: false} = state) do
-    log(state, "Skipping strict check due to `fetch_only?` flag")
+  def handle_continue(:strict_check, %{skip_authorization?: false} = state) do
+    log(state, "Skipping strict check due to `skip_authorization?` flag")
     {:stop, {:shutdown, state}, state}
   end
 
@@ -35,7 +35,7 @@ defmodule Ash.Engine.RequestHandler do
         :ok ->
           log(state, "strict_check succeeded")
           new_request = Map.put(state.request, :strict_check_complete?, true)
-          GenServer.cast(state.engine_pid, {:new_request, new_request})
+          GenServer.cast(state.engine_pid, {:update_request, new_request})
           new_state = Map.put(state, :request, new_request)
           {:stop, {:shutdown, new_state}, new_state}
 

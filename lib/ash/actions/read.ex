@@ -52,7 +52,7 @@ defmodule Ash.Actions.Read do
         verbose?: opts[:verbose?]
       )
     else
-      Ash.Engine.Engine2.run(requests, api, fetch_only?: true, verbose?: opts[:verbose?])
+      Ash.Engine.Engine2.run(requests, api, skip_authorization?: true, verbose?: opts[:verbose?])
     end
   end
 
@@ -61,11 +61,12 @@ defmodule Ash.Actions.Read do
       Request.new(
         resource: query.resource,
         rules: action.rules,
+        api: query.api,
         query: query,
         action_type: action.type,
         strict_access?: !Ash.Filter.primary_key_filter?(query.filter),
         data: data_field(opts, query.filter, query.resource, query.data_layer_query),
-        resolve_when_fetch_only?: true,
+        resolve_when_skip_authorization?: true,
         path: [:data],
         name: "#{action.type} - `#{action.name}`"
       )

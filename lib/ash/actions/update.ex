@@ -105,7 +105,7 @@ defmodule Ash.Actions.Update do
             end
           ),
         path: :data,
-        resolve_when_fetch_only?: true,
+        resolve_when_skip_authorization?: true,
         name: "#{action.type} - `#{action.name}`"
       )
 
@@ -126,7 +126,7 @@ defmodule Ash.Actions.Update do
       Engine.run(
         [update_request | attribute_requests] ++ relationship_requests ++ side_load_requests,
         api,
-        fetch_only?: true,
+        skip_authorization?: true,
         verbose?: params[:verbose?]
       )
     end

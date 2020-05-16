@@ -4,11 +4,12 @@ defmodule Ash.Engine.Engine2 do
     :user,
     :requests,
     :verbose?,
-    :fetch_only?,
+    :skip_authorization?,
     :bypass_strict_access?,
     request_handlers: %{},
     errored_requests: [],
     data: %{},
+    errors: [],
     facts: %{true => true, false => false}
   ]
 
@@ -57,14 +58,20 @@ defmodule Ash.Engine.Engine2 do
       requests: opts[:requests] || [],
       verbose?: opts[:verbose?] || false,
       api: opts[:api],
-      fetch_only?: opts[:fetch_only?] || false,
+      skip_authorization?: opts[:skip_authorization?] || false,
       user: opts[:user],
       bypass_strict_access?: opts[:bypass_strict_access] || false
     }
 
-    log_engine_init(state)
+    new_state =
+      state
+      |> log_engine_init()
+      |> validate_unique_paths()
+      |> bypass_strict_access(opts)
+      |> validate_dependencies()
+      |> validate_has_rules()
 
-    {:ok, state, {:continue, :spawn_requests}}
+    {:ok, new_state, {:continue, :spawn_requests}}
   end
 
   def handle_continue(:spawn_requests, state) do
@@ -88,7 +95,7 @@ defmodule Ash.Engine.Engine2 do
   end
 
   # Change this to `update_request`
-  def handle_cast({:new_request, new_request}, state) do
+  def handle_cast({:update_request, new_request}, state) do
     new_request_handlers =
       Enum.reduce(state.request_handlers, state.request_handlers, fn {pid, request},
                                                                      request_handlers ->
@@ -171,5 +178,62 @@ defmodule Ash.Engine.Engine2 do
 
   defp log(state, _, _) do
     state
+  end
+
+  defp bypass_strict_access(engine, opts) do
+    if opts[:bypass_strict_access?] do
+      %{engine | requests: Enum.map(engine.requests, &Map.put(&1, :strict_access?, false))}
+    else
+      engine
+    end
+  end
+
+  defp validate_dependencies(state) do
+    case Request.build_dependencies(state.requests) do
+      # TODO: Have `build_dependencies/1` return an ash error
+      {:error, {:impossible, path}} ->
+        add_error(state, path, "Impossible path: #{inspect(path)} required by request.")
+
+      {:ok, _requests} ->
+        # TODO: no need to aggregate the full dependencies of
+        state
+    end
+  end
+
+  defp validate_has_rules(%{skip_authorization?: true} = state), do: state
+
+  defp validate_has_rules(state) do
+    case Enum.find(state.requests, &Enum.empty?(&1.rules)) do
+      nil ->
+        state
+
+      request ->
+        add_error(state, request.path, "No authorization steps configured")
+    end
+  end
+
+  defp validate_unique_paths(state) do
+    case Request.validate_unique_paths(state.requests) do
+      :ok ->
+        state
+
+      {:error, paths} ->
+        Enum.reduce(paths, state, &add_error(&2, &1, "Duplicate requests at path"))
+    end
+  end
+
+  defp add_error(state, path, error) do
+    path = List.wrap(path)
+    error = to_ash_error(error)
+
+    %{state | errors: [Map.put(error, :path, path) | state.errors]}
+  end
+
+  defp to_ash_error(error) do
+    if Ash.ash_error?(error) do
+      error
+    else
+      Ash.Error.Unknown.exception(error: error)
+    end
   end
 end

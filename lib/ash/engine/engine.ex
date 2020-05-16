@@ -152,7 +152,8 @@ defmodule Ash.Engine do
       false
     else
       Request.all_dependencies_met?(request, engine.data, true) &&
-        (request.resolve_when_fetch_only? || is_hard_depended_on?(request, engine.requests))
+        (request.resolve_when_skip_authorization? ||
+           is_hard_depended_on?(request, engine.requests))
     end
   end
 
@@ -162,7 +163,7 @@ defmodule Ash.Engine do
     |> Enum.reject(&Request.data_resolved?/1)
     |> Enum.filter(&Request.depends_on?(&1, request))
     |> Enum.any?(fn other_request ->
-      other_request.resolve_when_fetch_only?
+      other_request.resolve_when_skip_authorization?
     end)
   end
 
@@ -672,7 +673,7 @@ defmodule Ash.Engine do
       requests: requests,
       user: opts[:user],
       api: api,
-      authorized?: !!opts[:fetch_only?],
+      authorized?: !!opts[:skip_authorization?],
       failure_mode: opts[:failure_mode] || :complete,
       verbose?: Keyword.get(opts, :verbose?, false)
     }

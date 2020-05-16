@@ -232,7 +232,7 @@ defmodule Ash.Actions.Relationships do
         resource: relationship.destination,
         action_type: :read,
         query: query,
-        resolve_when_fetch_only?: true,
+        resolve_when_skip_authorization?: true,
         path: [:relationships, relationship_name, type],
         data:
           Ash.Engine.Request.resolve(fn _data ->
@@ -904,7 +904,7 @@ defmodule Ash.Actions.Relationships do
         resource: destination,
         action_type: :read,
         path: [:relationships, relationship.name, :current],
-        resolve_when_fetch_only?: true,
+        resolve_when_skip_authorization?: true,
         query: query,
         data:
           Ash.Engine.Request.resolve(fn _data ->
@@ -941,7 +941,7 @@ defmodule Ash.Actions.Relationships do
       action_type: :read,
       path: [:relationships, relationship.name, :current_join],
       query: query,
-      resolve_when_fetch_only?: true,
+      resolve_when_skip_authorization?: true,
       data:
         Ash.Engine.Request.resolve(fn _data ->
           api.read(query)
@@ -964,7 +964,7 @@ defmodule Ash.Actions.Relationships do
       rules: default_read.rules,
       resource: destination,
       action_type: :read,
-      resolve_when_fetch_only?: true,
+      resolve_when_skip_authorization?: true,
       path: [:relationships, name, :current],
       query:
         Ash.Engine.Request.resolve(

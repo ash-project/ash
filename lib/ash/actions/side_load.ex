@@ -97,7 +97,7 @@ defmodule Ash.Actions.SideLoad do
               verbose?: opts[:verbose?]
             )
           else
-            Ash.Engine.run(requests, api, fetch_only?: true, verbose?: opts[:verbose?])
+            Ash.Engine.run(requests, api, skip_authorization?: true, verbose?: opts[:verbose?])
           end
 
         case result do
@@ -303,7 +303,7 @@ defmodule Ash.Actions.SideLoad do
       name: "side_load #{source}",
       api: related_query.api,
       path: request_path,
-      resolve_when_fetch_only?: true,
+      resolve_when_skip_authorization?: true,
       query:
         side_load_query(
           relationship,
@@ -401,7 +401,7 @@ defmodule Ash.Actions.SideLoad do
           api: related_query.api,
           path: [:include, join_relationship_path],
           strict_access?: true,
-          resolve_when_fetch_only?: true,
+          resolve_when_skip_authorization?: true,
           query:
             side_load_query(
               join_relationship,

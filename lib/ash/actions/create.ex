@@ -81,7 +81,7 @@ defmodule Ash.Actions.Create do
             action_type: action.type,
             strict_access?: false,
             data: data_resolver,
-            resolve_when_fetch_only?: true,
+            resolve_when_skip_authorization?: true,
             path: [:data],
             name: "#{action.type} - `#{action.name}`"
           )
@@ -114,7 +114,7 @@ defmodule Ash.Actions.Create do
             [create_request | attribute_requests] ++
               relationship_read_requests ++ relationship_change_requests ++ side_load_requests,
             api,
-            fetch_only?: true,
+            skip_authorization?: true,
             verbose?: params[:verbose?]
           )
         end

@@ -110,7 +110,7 @@ defmodule Ash.Filter do
           rules: Ash.primary_action(resource, :read).rules,
           query: query,
           path: [:filter, path],
-          resolve_when_fetch_only?: false,
+          resolve_when_skip_authorization?: false,
           data:
             Ash.Engine.Request.resolve(
               [[:filter, path, :query]],
