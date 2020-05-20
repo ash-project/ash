@@ -29,16 +29,9 @@ defmodule Post do
   use Ash.DataLayer.Postgres
 
   actions do
-    read :default,
-      rules: [
-        authorize_if: user_is(:admin)
-      ]
+    read :default
 
-    create :default,
-      rules: [
-        authorize_if: user_is(:admin)
-      ]
-
+    create :default
   end
 
   attributes do
@@ -66,7 +59,6 @@ Validations
 - DSL level validations! Things like includes validating that their chain exists. All DSL structs should be strictly validated when they are created.
 - Especially at compile time, we should _never_ ignore or skip invalid options. If an option is present and invalid, an error is raised.
 - Validate that the user resource has a get action
-- Validate rules at creation
 - Maybe fix the crappy parts of optimal and bring it in for opts validation?
 - We need to validate incoming attributes/relationships better.
 - Validate `dependencies` and `must_fetch` (all `must_fetch` with dependencies must have those dependencies as `must_fetch` also)
@@ -92,7 +84,6 @@ Filters
 - Validate filters, now that there can be duplicates. Doesn't make sense to provide two "exact equals" filters
 - Clean up and test filter inspecting code.
 - When checking for filter inclusion, we should allow for `and` filters to each contain _part_ of the filter, requiring that the whole thing is covered by all of the `and`s at least
-- Support filtering side loads. Especially useful in authorization code?
 - Add `filter: [relationship_name: [all: [...filter...]]]` so you can assert that _all_ related items match a filter (for to many relationships, may perform poorly)
 - really need to figure out the distinction between filter impossibility for things like authorization plays into filter impossibility as an optimization. I think they are actually two different things. The fact that you consider nothing to be a subset of an impossible filter may not be correct.
 - Figure out how to handle cross data layer filters for boolean.
@@ -103,7 +94,6 @@ Filters
 Actions
 
 - all actions need to be performed in a transaction
-- Since actions contain rules now, consider making it possible to list each action as its own `do` block, with an internal DSL for configuring the action. (overkill?)
 - Since actions can return multiple errors, we need a testing utility to unwrap/assert on them
 - Validate that checks have the correct action type when compiling an action
 - Handle related values on delete
@@ -222,10 +212,8 @@ Framework
 - Framework internals need to stop using `api.foo`, because the code interface is supposed to be optional
 - support accepting a _resource and a filter_ in `api.update` and `api.destroy`, and doing those as bulk actions
 - support something similar to the older interface we had with ash, like `Api.read(resource, filter: [...], sort: [...])`, as the `Ash.Query` method is a bit long form in some cases
-- Add a mixin compatibility checker framework, to allow for mix_ins to declare what features they do/don't support.
+- Add a mixin compatibility checker framework, to allow for extensions to declare what features they do/don't support.
   - Have ecto types ask the data layer about the kinds of filtering they can do, and that kind of thing.
-- Make it `rules: :none` (or something better) than `rules: false`
-- Support `read_rules`, `create_rules`, `update_rules` for attributes/relationships
 - Make an `Ash.Changeset` that is a superset of an ecto changeset
 - consider, just for the sake of good old fashion fun/cool factor, a parser that can parse a string into a query at compile time, so that queries can look nice in code.
 - Make `Ash.Type` that is a superset of things like `Ecto.Type`. If we bring in ecto database-less(looking like more and more of a good idea to me) that kind of thing gets easier and we can potentially lean on ecto for type validations well.

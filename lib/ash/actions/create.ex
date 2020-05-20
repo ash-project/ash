@@ -1,6 +1,6 @@
 defmodule Ash.Actions.Create do
   alias Ash.Engine
-  alias Ash.Actions.{Attributes, Relationships, SideLoad}
+  alias Ash.Actions.{Relationships, SideLoad}
   require Logger
 
   def run(api, resource, action, params) do
@@ -33,10 +33,10 @@ defmodule Ash.Actions.Create do
          {:ok, side_load_requests} <-
            SideLoad.requests(side_load_query, api.query(resource)),
          %{
-           data: %{data: %{data: %^resource{} = created}} = state,
+           data: %{data: %^resource{} = created} = state,
            errors: []
          } <-
-           do_authorized(changeset, params, action, resource, api, side_load_requests) do
+           do_run_requests(changeset, params, action, resource, api, side_load_requests) do
       {:ok, SideLoad.attach_side_loads(created, state)}
     else
       %Ecto.Changeset{} = changeset ->
@@ -59,7 +59,7 @@ defmodule Ash.Actions.Create do
     |> Relationships.handle_relationship_changes(api, relationships, :create)
   end
 
-  defp do_authorized(changeset, params, action, resource, api, side_load_requests) do
+  defp do_run_requests(changeset, params, action, resource, api, side_load_requests) do
     case resolve_data(resource, params) do
       {:error, error} ->
         {:error, error}
@@ -70,7 +70,6 @@ defmodule Ash.Actions.Create do
         create_request =
           Ash.Engine.Request.new(
             api: api,
-            rules: action.rules,
             resource: resource,
             changeset:
               Relationships.changeset(
@@ -78,46 +77,20 @@ defmodule Ash.Actions.Create do
                 api,
                 relationships
               ),
-            action_type: action.type,
-            strict_access?: false,
+            action: action,
             data: data_resolver,
-            resolve_when_skip_authorization?: true,
+            request_id: :change,
             path: [:data],
             name: "#{action.type} - `#{action.name}`"
           )
 
-        attribute_requests =
-          Attributes.attribute_change_requests(changeset, api, resource, action)
-
         relationship_read_requests = Map.get(changeset, :__requests__, [])
 
-        relationship_change_requests =
-          Relationships.relationship_change_requests(
-            changeset,
-            api,
-            resource,
-            action,
-            relationships
-          )
-
-        if params[:authorization] do
-          Engine.run(
-            [create_request | attribute_requests] ++
-              relationship_read_requests ++ relationship_change_requests ++ side_load_requests,
-            api,
-            user: params[:authorization][:user],
-            bypass_strict_access?: params[:authorization][:bypass_strict_access?],
-            verbose?: params[:verbose?]
-          )
-        else
-          Engine.run(
-            [create_request | attribute_requests] ++
-              relationship_read_requests ++ relationship_change_requests ++ side_load_requests,
-            api,
-            skip_authorization?: true,
-            verbose?: params[:verbose?]
-          )
-        end
+        Engine.run(
+          [create_request | relationship_read_requests] ++ side_load_requests,
+          api,
+          verbose?: params[:verbose?]
+        )
     end
   end
 

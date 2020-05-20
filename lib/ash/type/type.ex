@@ -47,13 +47,14 @@ defmodule Ash.Type do
     end
   end
 
-  @spec supports_filter?(t(), Ash.DataLayer.filter_type(), Ash.data_layer()) :: boolean
-  def supports_filter?(type, filter_type, data_layer) when type in @builtin_names do
-    data_layer.can?({:filter, filter_type}) and filter_type in @builtins[type][:filters]
+  @spec supports_filter?(Ash.resource(), t(), Ash.DataLayer.filter_type(), Ash.data_layer()) ::
+          boolean
+  def supports_filter?(resource, type, filter_type, data_layer) when type in @builtin_names do
+    data_layer.can?(resource, {:filter, filter_type}) and filter_type in @builtins[type][:filters]
   end
 
-  def supports_filter?(type, filter_type, data_layer) do
-    data_layer.can?({:filter, filter_type}) and
+  def supports_filter?(resource, type, filter_type, data_layer) do
+    data_layer.can?(resource, {:filter, filter_type}) and
       filter_type in type.supported_filter_types(data_layer)
   end
 

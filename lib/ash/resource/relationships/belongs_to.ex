@@ -11,8 +11,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :destination_field,
     :source_field,
     :source,
-    :reverse_relationship,
-    :write_rules
+    :reverse_relationship
   ]
 
   @type t :: %__MODULE__{
@@ -25,8 +24,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           define_field?: boolean,
           field_type: Ash.Type.t(),
           destination_field: atom,
-          source_field: atom | nil,
-          write_rules: Keyword.t()
+          source_field: atom | nil
         }
 
   @opt_schema Ashton.schema(
@@ -36,15 +34,13 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                   primary_key?: :boolean,
                   define_field?: :boolean,
                   field_type: :atom,
-                  reverse_relationship: :atom,
-                  write_rules: :keyword
+                  reverse_relationship: :atom
                 ],
                 defaults: [
                   destination_field: :id,
                   primary_key?: false,
                   define_field?: true,
-                  field_type: :uuid,
-                  write_rules: []
+                  field_type: :uuid
                 ],
                 describe: [
                   reverse_relationship:
@@ -57,12 +53,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                   source_field:
                     "The field on this resource that should match the `destination_field` on the related resource.  Default: [relationship_name]_id",
                   primary_key?:
-                    "Whether this field is, or is part of, the primary key of a resource.",
-                  write_rules: """
-                  Steps applied on an relationship during create or update. If no steps are defined, authorization to change will fail.
-                  If set to false, no steps are applied and any changes are allowed (assuming the action was authorized as a whole)
-                  Remember that any changes against the destination records *will* still be authorized regardless of this setting.
-                  """
+                    "Whether this field is, or is part of, the primary key of a resource."
                 ]
               )
 
@@ -79,27 +70,9 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     # Don't call functions on the resource! We don't want it to compile here
     case Ashton.validate(opts, @opt_schema) do
       {:ok, opts} ->
-        write_rules =
-          case opts[:write_rules] do
-            false ->
-              false
-
-            steps ->
-              base_attribute_opts = [
-                relationship_name: name,
-                destination: related_resource,
-                resource: resource
-              ]
-
-              Enum.map(steps, fn {step, {mod, opts}} ->
-                {step, {mod, Keyword.merge(base_attribute_opts, opts)}}
-              end)
-          end
-
         {:ok,
          %__MODULE__{
            name: name,
-           write_rules: write_rules,
            source: resource,
            type: :belongs_to,
            cardinality: :one,

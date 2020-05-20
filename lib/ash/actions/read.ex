@@ -9,8 +9,8 @@ defmodule Ash.Actions.Read do
          {:action, action} when not is_nil(action) <- {:action, action(query, opts)},
          requests <- requests(query, action, opts),
          {:ok, side_load_requests} <- Ash.Actions.SideLoad.requests(query),
-         %{data: %{data: %{data: data}} = all_data, errors: [], authorized?: true} <-
-           run_requests(requests ++ side_load_requests, query.api, opts),
+         %{data: %{data: data} = all_data, errors: []} <-
+           Engine.run(requests ++ side_load_requests, query.api, opts),
          data_with_side_loads <- SideLoad.attach_side_loads(data, all_data) do
       {:ok, data_with_side_loads}
     else
@@ -42,31 +42,14 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  def run_requests(requests, api, opts) do
-    if opts[:authorization] do
-      Ash.Engine.Engine2.run(
-        requests,
-        api,
-        user: opts[:authorization][:user],
-        bypass_strict_access?: opts[:authorization][:bypass_strict_access?],
-        verbose?: opts[:verbose?]
-      )
-    else
-      Ash.Engine.Engine2.run(requests, api, skip_authorization?: true, verbose?: opts[:verbose?])
-    end
-  end
-
   defp requests(query, action, opts) do
     request =
       Request.new(
         resource: query.resource,
-        rules: action.rules,
         api: query.api,
         query: query,
-        action_type: action.type,
-        strict_access?: !Ash.Filter.primary_key_filter?(query.filter),
+        action: action,
         data: data_field(opts, query.filter, query.resource, query.data_layer_query),
-        resolve_when_skip_authorization?: true,
         path: [:data],
         name: "#{action.type} - `#{action.name}`"
       )

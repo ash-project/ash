@@ -23,7 +23,6 @@ defmodule Ash.Test.Dsl.Resource.Actions.ReadTest do
                %Ash.Resource.Actions.Read{
                  name: :default,
                  primary?: true,
-                 rules: [],
                  type: :read
                }
              ] = Ash.actions(Post)
@@ -53,20 +52,6 @@ defmodule Ash.Test.Dsl.Resource.Actions.ReadTest do
           defposts do
             actions do
               read :default, primary?: 10
-            end
-          end
-        end
-      )
-    end
-
-    test "it fails if `rules` is not a list" do
-      assert_raise(
-        Ash.Error.ResourceDslError,
-        "option rules at actions -> read -> default must be keyword",
-        fn ->
-          defposts do
-            actions do
-              read :default, rules: 10
             end
           end
         end

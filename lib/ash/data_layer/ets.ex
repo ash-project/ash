@@ -30,19 +30,24 @@ defmodule Ash.DataLayer.Ets do
   end
 
   @impl true
-  def can?(:query_async), do: false
-  def can?(:transact), do: false
-  def can?(:composite_primary_key), do: true
-  def can?(:upsert), do: true
-  def can?({:filter, :in}), do: true
-  def can?({:filter, :not_in}), do: true
-  def can?({:filter, :not_eq}), do: true
-  def can?({:filter, :eq}), do: true
-  def can?({:filter, :and}), do: true
-  def can?({:filter, :or}), do: true
-  def can?({:filter, :not}), do: true
-  def can?({:filter_related, _}), do: true
-  def can?(_), do: false
+
+  def can?(resource, :query_async) do
+    !Ash.DataLayer.Ets.private?(resource)
+  end
+
+  def can?(_, :transact), do: false
+
+  def can?(_, :composite_primary_key), do: true
+  def can?(_, :upsert), do: true
+  def can?(_, {:filter, :in}), do: true
+  def can?(_, {:filter, :not_in}), do: true
+  def can?(_, {:filter, :not_eq}), do: true
+  def can?(_, {:filter, :eq}), do: true
+  def can?(_, {:filter, :and}), do: true
+  def can?(_, {:filter, :or}), do: true
+  def can?(_, {:filter, :not}), do: true
+  def can?(_, {:filter_related, _}), do: true
+  def can?(_, _), do: false
 
   @impl true
   def resource_to_query(resource) do

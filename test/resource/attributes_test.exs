@@ -87,8 +87,7 @@ defmodule Ash.Test.Resource.AttributesTest do
                  primary_key?: false,
                  type: :utc_datetime,
                  update_default: ^default,
-                 writable?: true,
-                 write_rules: []
+                 writable?: true
                },
                %Ash.Resource.Attributes.Attribute{
                  allow_nil?: true,
@@ -98,8 +97,7 @@ defmodule Ash.Test.Resource.AttributesTest do
                  primary_key?: false,
                  type: :utc_datetime,
                  update_default: nil,
-                 writable?: true,
-                 write_rules: []
+                 writable?: true
                }
              ] = Ash.attributes(Post)
     end
@@ -122,8 +120,7 @@ defmodule Ash.Test.Resource.AttributesTest do
                  primary_key?: false,
                  type: :utc_datetime,
                  update_default: ^default,
-                 writable?: true,
-                 write_rules: []
+                 writable?: true
                },
                %Ash.Resource.Attributes.Attribute{
                  allow_nil?: true,
@@ -133,8 +130,7 @@ defmodule Ash.Test.Resource.AttributesTest do
                  primary_key?: false,
                  type: :utc_datetime,
                  update_default: nil,
-                 writable?: true,
-                 write_rules: []
+                 writable?: true
                }
              ] = Ash.attributes(Post)
     end

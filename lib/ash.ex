@@ -9,7 +9,6 @@ defmodule Ash do
   alias Ash.Resource.Relationships.{BelongsTo, HasOne, HasMany, ManyToMany}
   alias Ash.Resource.Actions.{Create, Read, Update, Destroy}
 
-  @type authorization :: Keyword.t()
   @type record :: struct
   @type cardinality_one_relationship() :: HasOne.t() | BelongsTo.t()
   @type cardinality_many_relationship() :: HasMany.t() | ManyToMany.t()
@@ -29,6 +28,19 @@ defmodule Ash do
   @type attribute :: Ash.Attributes.Attribute.t()
   @type action :: Create.t() | Read.t() | Update.t() | Destroy.t()
   @type query :: Ash.Query.t()
+  @type actor :: Ash.record()
+
+  defmacro partial_resource(do: body) do
+    quote do
+      defmacro __using__(_) do
+        body = unquote(body)
+
+        quote do
+          unquote(body)
+        end
+      end
+    end
+  end
 
   def ash_error?(value) do
     !!Ash.Error.impl_for(value)
@@ -55,6 +67,10 @@ defmodule Ash do
     resource.describe()
   end
 
+  def authorizers(resource) do
+    resource.authorizers()
+  end
+
   @spec resource_module?(module) :: boolean
   def resource_module?(module) do
     :attributes
@@ -67,7 +83,7 @@ defmodule Ash do
   def data_layer_can?(resource, feature) do
     data_layer = data_layer(resource)
 
-    data_layer && data_layer.can?(feature)
+    data_layer && data_layer.can?(resource, feature)
   end
 
   @spec resources(api) :: list(resource())
@@ -92,6 +108,13 @@ defmodule Ash do
   @spec relationships(resource()) :: list(relationship())
   def relationships(resource) do
     resource.relationships()
+  end
+
+  def primary_action!(resource, type) do
+    case primary_action(resource, type) do
+      nil -> raise "Required primary #{type} action for #{inspect(resource)}"
+      action -> action
+    end
   end
 
   @spec primary_action(resource(), atom()) :: action() | nil

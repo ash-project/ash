@@ -9,8 +9,7 @@ defmodule Ash.Resource.Attributes.Attribute do
     :primary_key?,
     :writable?,
     :default,
-    :update_default,
-    :write_rules
+    :update_default
   ]
 
   @type t :: %__MODULE__{
@@ -19,7 +18,6 @@ defmodule Ash.Resource.Attributes.Attribute do
           primary_key?: boolean(),
           default: (() -> term),
           update_default: (() -> term) | (Ash.record() -> term),
-          write_rules: Keyword.t(),
           writable?: boolean
         }
 
@@ -27,7 +25,6 @@ defmodule Ash.Resource.Attributes.Attribute do
             opts: [
               primary_key?: :boolean,
               allow_nil?: :boolean,
-              write_rules: [{:const, false}, :keyword],
               generated?: :boolean,
               writable?: :boolean,
               update_default: [
@@ -46,16 +43,14 @@ defmodule Ash.Resource.Attributes.Attribute do
               primary_key?: false,
               generated?: false,
               allow_nil?: true,
-              writable?: true,
-              write_rules: []
+              writable?: true
             ],
             describe: [
               allow_nil?: "#TODO: doc this",
               generated?: "#TODO: doc this",
               primary_key?: "#TODO: doc this",
               writable?: "#TODO: doc this",
-              default: "#TODO: doc this",
-              write_rules: "#TODO: doc this"
+              default: "#TODO: doc this"
             ]
           )
 
@@ -63,33 +58,15 @@ defmodule Ash.Resource.Attributes.Attribute do
   def attribute_schema(), do: @schema
 
   @spec new(Ash.resource(), atom, Ash.Type.t(), Keyword.t()) :: {:ok, t()} | {:error, term}
-  def new(resource, name, type, opts) do
+  def new(_resource, name, type, opts) do
     # Don't call functions on the resource! We don't want it to compile here
     with {:ok, opts} <- Ashton.validate(opts, @schema),
          {:default, {:ok, default}} <- {:default, cast_default(type, opts)} do
-      write_rules =
-        case opts[:write_rules] do
-          false ->
-            false
-
-          steps ->
-            base_attribute_opts = [
-              attribute_name: name,
-              attribute_type: type,
-              resource: resource
-            ]
-
-            Enum.map(steps, fn {step, {mod, opts}} ->
-              {step, {mod, Keyword.merge(base_attribute_opts, opts)}}
-            end)
-        end
-
       {:ok,
        %__MODULE__{
          name: name,
          type: type,
          generated?: opts[:generated?],
-         write_rules: write_rules,
          writable?: opts[:writable?],
          allow_nil?: opts[:allow_nil?],
          primary_key?: opts[:primary_key?],

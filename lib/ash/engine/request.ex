@@ -1,6 +1,4 @@
 defmodule Ash.Engine.Request do
-  alias Ash.Authorization.{Check, Clause}
-
   defmodule UnresolvedField do
     # TODO: Add some kind of optional dependency?
     defstruct [:resolver, deps: [], optional_deps: [], data?: false]
@@ -39,23 +37,24 @@ defmodule Ash.Engine.Request do
   defstruct [
     :id,
     :error?,
-    :rules,
-    :strict_access?,
     :resource,
     :changeset,
     :path,
     :action_type,
+    :action,
     :data,
-    :resolve_when_skip_authorization?,
     :name,
     :api,
     :query,
-    :context,
     :write_to_data?,
-    strict_check_complete?: false,
-    check_complete?: false,
-    prepared?: false
+    :verbose?,
+    :state,
+    authorizer_state: %{},
+    dependencies_request: [],
+    dependencies_to_send: %{}
   ]
+
+  require Logger
 
   def resolve(dependencies \\ [], optional_dependencies \\ [], func) do
     UnresolvedField.new(dependencies, optional_dependencies, func)
@@ -79,25 +78,6 @@ defmodule Ash.Engine.Request do
 
     id = Ecto.UUID.generate()
 
-    clause_id =
-      if opts[:action_type] == :read do
-        nil
-      else
-        id
-      end
-
-    rules =
-      Enum.map(opts[:rules] || [], fn {rule, fact} ->
-        {rule,
-         Ash.Authorization.Clause.new(
-           opts[:resource],
-           fact,
-           opts[:action],
-           Map.get(query || %{}, :filter),
-           clause_id
-         )}
-      end)
-
     data =
       case opts[:data] do
         %UnresolvedField{} = unresolved ->
@@ -109,181 +89,162 @@ defmodule Ash.Engine.Request do
 
     %__MODULE__{
       id: id,
-      rules: rules,
-      strict_access?: Keyword.get(opts, :strict_access?, true),
       resource: opts[:resource],
       changeset: opts[:changeset],
       path: List.wrap(opts[:path]),
       action_type: opts[:action_type],
+      action: opts[:action],
       data: data,
-      resolve_when_skip_authorization?: opts[:resolve_when_skip_authorization?],
       query: query,
       api: opts[:api],
       name: opts[:name],
-      context: opts[:context] || %{},
+      state: :strict_check,
+      verbose?: opts[:verbose?] || false,
       write_to_data?: Keyword.get(opts, :write_to_data?, true)
     }
   end
 
-  def can_strict_check(%__MODULE__{strict_check_complete?: true}, _state), do: false
+  def next(%{state: :strict_check} = request) do
+    case Ash.authorizers(request.resource) do
+      [] ->
+        log(request, "No authorizers found, skipping strict check")
+        {:continue, %{request | state: :fetch_data}}
 
-  def can_strict_check(request, state) do
-    all_dependencies_met?(request, state, false)
-  end
+      authorizers ->
+        case strict_check(authorizers, request) do
+          {:ok, new_request, []} ->
+            log(new_request, "Strict check complete")
+            {:continue, %{new_request | state: :fetch_data}}
 
-  def authorize_always(request) do
-    filter =
-      case request.query do
-        %UnresolvedField{} ->
-          nil
+          {:ok, new_request, dependencies} ->
+            log(new_request, "Strict check incomplete, waiting on dependencies")
+            {:waiting, new_request, dependencies}
 
-        %Ash.Query{filter: filter} ->
-          filter
-
-        nil ->
-          nil
-      end
-
-    clause = Clause.new(request.resource, {Check.Static, result: true}, request.action, filter)
-
-    %{request | rules: [authorize_if: clause]}
-  end
-
-  def errors(request) do
-    request
-    |> Map.from_struct()
-    |> Enum.filter(fn {_key, value} ->
-      match?(%ResolveError{}, value)
-    end)
-    |> Enum.into(%{})
-  end
-
-  def data_resolved?(%__MODULE__{data: %UnresolvedField{}}), do: false
-  def data_resolved?(_), do: true
-
-  def resolve_field(data, %UnresolvedField{resolver: resolver} = unresolved) do
-    context = resolver_context(data, unresolved)
-
-    resolver.(context)
-  end
-
-  def resolve_data(data, %{data: %UnresolvedField{resolver: resolver} = unresolved} = request) do
-    context = resolver_context(data, unresolved)
-
-    case resolver.(context) do
-      {:ok, resolved} -> {:ok, Map.put(request, :data, resolved)}
-      {:error, error} -> {:error, error}
-    end
-  rescue
-    e ->
-      if is_map(e) do
-        {:error, Map.put(e, :__stacktrace__, __STACKTRACE__)}
-      else
-        {:error, e}
-      end
-  end
-
-  def resolve_data(_, request), do: {:ok, request}
-
-  def contains_clause?(request, clause) do
-    Enum.any?(request.rules, fn {_step, request_clause} ->
-      clause == request_clause
-    end)
-  end
-
-  def put_request(state, request) do
-    put_nested_key(state, request.path, request)
-  end
-
-  def fetch_request_state(state, request) do
-    fetch_nested_value(state, request.path)
-  end
-
-  defp resolver_context(state, %{deps: depends_on, optional_deps: optional_deps}) do
-    with_dependencies =
-      Enum.reduce(depends_on, %{}, fn dependency, acc ->
-        {:ok, value} = fetch_nested_value(state, dependency)
-
-        put_nested_key(acc, dependency, value)
-      end)
-
-    Enum.reduce(optional_deps, with_dependencies, fn optional_dep, acc ->
-      case fetch_nested_value(state, optional_dep) do
-        {:ok, value} -> put_nested_key(acc, optional_dep, value)
-        _ -> acc
-      end
-    end)
-  end
-
-  def all_dependencies_met?(request, state, data? \\ true) do
-    dependencies_met?(state, get_dependencies(request, data?), data?)
-  end
-
-  def dependencies_met?(state, deps, data? \\ true)
-  def dependencies_met?(_state, [], _), do: true
-  def dependencies_met?(_state, nil, _), do: true
-
-  def dependencies_met?(state, dependencies, data?) do
-    Enum.all?(dependencies, fn dependency ->
-      case fetch_nested_value(state, dependency) do
-        {:ok, %UnresolvedField{deps: nested_dependencies, data?: dep_is_data?}} ->
-          if dep_is_data? and not data? do
-            false
-          else
-            dependencies_met?(state, nested_dependencies, data?)
-          end
-
-        {:ok, _} ->
-          true
-
-        _ ->
-          false
-      end
-    end)
-  end
-
-  def depends_on?(request, other_request) do
-    dependencies = get_dependencies(request)
-
-    Enum.any?(dependencies, fn dep ->
-      List.starts_with?(dep, other_request.path)
-    end)
-  end
-
-  def fetch_nested_value(state, [key]) when is_map(state) do
-    Map.fetch(state, key)
-  end
-
-  def fetch_nested_value(%UnresolvedField{}, _), do: :error
-
-  def fetch_nested_value(state, [key | rest]) when is_map(state) do
-    case Map.fetch(state, key) do
-      {:ok, value} -> fetch_nested_value(value, rest)
-      :error -> :error
+          {:error, error} ->
+            log(request, "Strict checking failed")
+            {:error, error, request}
+        end
     end
   end
 
-  def fetch_nested_value(state, key) when is_map(state) do
-    Map.fetch(state, key)
+  def next(%{state: :strict_check} = request) do
+    case try_resolve_local(request, [:data], false) do
+      {:skipped, _, _} ->
+        raise "unreachable!"
+
+      {:ok, state, []} ->
+        {:continue, %{request | state: :check}}
+
+      {:ok, state, _} ->
+        {:noreply, state}
+
+      {:error, error} ->
+        {:stop, {:error, error, state.request}, state}
+    end
   end
 
-  # Debugging utility
-  def deps_report(requests) when is_list(requests) do
-    Enum.map_join(requests, &deps_report/1)
+  defp strict_check(authorizers, request) do
+    Enum.reduce_while(authorizers, {:ok, request, true}, fn authorizer,
+                                                            {:ok, request, waiting_for} ->
+      case do_strict_check(authorizer, request) do
+        {:ok, new_request} ->
+          log(new_request, "strict check succeeded for #{inspect(authorizer)}")
+          {:cont, {:ok, new_request, waiting_for}}
+
+        {:waiting, new_request, new_deps} ->
+          log(
+            new_request,
+            "waiting on dependencies: #{inspect(new_deps)} for #{inspect(authorizer)}"
+          )
+
+          {:cont, {:ok, new_request, new_deps ++ waiting_for}}
+
+        {:error, error} ->
+          log(request, "strict check failed for #{inspect(authorizer)}: #{inspect(error)}")
+
+          {:halt, {:error, error}}
+      end
+    end)
   end
 
-  def deps_report(request) do
-    header = "#{request.name}: \n"
+  defp do_strict_check(authorizer, request) do
+    case missing_strict_check_dependencies?(authorizer, request) do
+      [] ->
+        case strict_check_authorizer(authorizer, request) do
+          :authorized ->
+            {:ok, set_authorizer_state(request, authorizer, :authorized)}
 
-    body =
-      request
-      |> Map.from_struct()
-      |> Enum.filter(&match?({_, %UnresolvedField{}}, &1))
-      |> Enum.map_join("\n", fn {key, value} ->
-        "  #{key}: #{inspect(value)}"
-      end)
+          {:continue, authorizer_state} ->
+            {:ok, set_authorizer_state(request, authorizer, authorizer_state)}
 
-    header <> body <> "\n"
+          {:error, error} ->
+            {:error, error}
+        end
+
+      deps ->
+        deps =
+          Enum.map(deps, fn dep ->
+            request.path ++ [dep]
+          end)
+
+        case try_resolve(request, deps) do
+          {:ok, new_request, []} ->
+            do_strict_check(authorizer, new_request)
+
+          {:ok, new_request, waiting_for} ->
+            {:waiting, new_request, waiting_for}
+
+          {:error, error} ->
+            {:error, error}
+        end
+    end
+  end
+
+  defp missing_strict_check_dependencies?(authorizer, request) do
+    authorizer
+    |> Authorizer.strict_check_context(authorizer_state(request, authorizer))
+    |> Enum.filter(fn dependency ->
+      match?(%UnresolvedField{}, Map.get(request, dependency))
+    end)
+  end
+
+  defp missing_check_dependencies(authorizer, request) do
+    authorizer
+    |> Authorizer.check_context(authorizer_state(request, authorizer))
+    |> Enum.filter(fn dependency ->
+      match?(%UnresolvedField{}, Map.get(request, dependency))
+    end)
+  end
+
+  defp strict_check_authorizer(authorizer, state) do
+    log(state, "strict checking for #{inspect(authorizer)}")
+
+    authorizer_state = authorizer_state(state, authorizer)
+
+    keys = Authorizer.strict_check_context(authorizer, authorizer_state)
+
+    Authorizer.strict_check(authorizer, authorizer_state, Map.take(state.request, keys))
+  end
+
+  defp check_authorizer(authorizer, state) do
+    log(state, "checking for #{inspect(authorizer)}")
+
+    authorizer_state = authorizer_state(state, authorizer)
+
+    keys = Authorizer.check_context(authorizer, authorizer_state)
+
+    Authorizer.check(authorizer, authorizer_state, Map.take(state.request, keys))
+  end
+
+  defp set_authorizer_state(state, authorizer, authorizer_state) do
+    %{
+      state
+      | authorizer_state: Map.put(state.authorizer_state, authorizer, authorizer_state)
+    }
+  end
+
+  defp authorizer_state(state, authorizer) do
+    Map.get(state.authorizer_state, authorizer) || %{}
   end
 
   def validate_unique_paths(requests) do
@@ -371,42 +332,13 @@ defmodule Ash.Engine.Request do
     end
   end
 
-  defp get_dependencies(request, data? \\ true) do
-    keys_to_drop =
-      if data? do
-        []
-      else
-        [:data]
-      end
+  defp log(state, message, level \\ :debug)
 
-    request
-    |> Map.from_struct()
-    |> Map.drop(keys_to_drop)
-    |> Enum.flat_map(fn
-      {_key, %UnresolvedField{deps: values}} ->
-        values
-
-      _ ->
-        []
-    end)
-    |> Enum.uniq()
+  defp log(%{verbose?: true, name: name}, message, level) do
+    Logger.log(level, "#{name}: #{message}")
   end
 
-  defp put_nested_key(state, [key], value) do
-    Map.put(state, key, value)
-  end
-
-  defp put_nested_key(state, [key | rest], value) do
-    case Map.fetch(state, key) do
-      {:ok, nested_state} when is_map(nested_state) ->
-        Map.put(state, key, put_nested_key(nested_state, rest, value))
-
-      :error ->
-        Map.put(state, key, put_nested_key(%{}, rest, value))
-    end
-  end
-
-  defp put_nested_key(state, key, value) do
-    Map.put(state, key, value)
+  defp log(_, _, _) do
+    false
   end
 end

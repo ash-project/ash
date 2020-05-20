@@ -1,6 +1,6 @@
 defmodule Ash.Actions.Update do
   alias Ash.Engine
-  alias Ash.Actions.{Attributes, Relationships, SideLoad}
+  alias Ash.Actions.{Relationships, SideLoad}
   require Logger
 
   @spec run(Ash.api(), Ash.record(), Ash.action(), Ash.params()) ::
@@ -47,7 +47,7 @@ defmodule Ash.Actions.Update do
          {:ok, side_load_requests} <-
            SideLoad.requests(side_load_query, api.query(resource)),
          %{data: %{data: %{data: updated}}, errors: []} = state <-
-           do_authorized(changeset, params, action, resource, api, side_load_requests) do
+           do_run_requests(changeset, params, action, resource, api, side_load_requests) do
       {:ok, SideLoad.attach_side_loads(updated, state)}
     else
       %Ecto.Changeset{} = changeset ->
@@ -70,20 +70,19 @@ defmodule Ash.Actions.Update do
     |> Relationships.handle_relationship_changes(api, relationships, :update)
   end
 
-  defp do_authorized(changeset, params, action, resource, api, side_load_requests) do
+  defp do_run_requests(changeset, params, action, resource, api, side_load_requests) do
     relationships = Keyword.get(params, :relationships)
 
     update_request =
       Ash.Engine.Request.new(
         api: api,
-        rules: action.rules,
         changeset:
           Ash.Actions.Relationships.changeset(
             changeset,
             api,
             relationships
           ),
-        action_type: action.type,
+        action: Ash.primary_action!(resource, :read),
         resource: resource,
         data:
           Ash.Engine.Request.resolve(
@@ -105,31 +104,16 @@ defmodule Ash.Actions.Update do
             end
           ),
         path: :data,
-        resolve_when_skip_authorization?: true,
         name: "#{action.type} - `#{action.name}`"
       )
 
-    attribute_requests = Attributes.attribute_change_requests(changeset, api, resource, action)
-
     relationship_requests = Map.get(changeset, :__requests__, [])
 
-    if params[:authorization] do
-      Engine.run(
-        [update_request | attribute_requests] ++ relationship_requests ++ side_load_requests,
-        api,
-        strict_access?: false,
-        user: params[:authorization][:user],
-        bypass_strict_access?: params[:authorization][:bypass_strict_access?],
-        verbose?: params[:verbose?]
-      )
-    else
-      Engine.run(
-        [update_request | attribute_requests] ++ relationship_requests ++ side_load_requests,
-        api,
-        skip_authorization?: true,
-        verbose?: params[:verbose?]
-      )
-    end
+    Engine.run(
+      [update_request | relationship_requests] ++ side_load_requests,
+      api,
+      verbose?: params[:verbose?]
+    )
   end
 
   defp side_loads_as_query(_api, _resource, nil), do: {:ok, nil}

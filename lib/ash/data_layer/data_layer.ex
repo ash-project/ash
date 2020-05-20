@@ -1,6 +1,6 @@
 defmodule Ash.DataLayer do
   @type filter_type :: :eq | :in
-  @type feature() :: :transact | :query_async | {:filter, filter_type}
+  @type feature() :: :transact | :query_async | {:filter, filter_type} | :upsert
 
   @callback filter(Ash.data_layer_query(), Ash.filter(), resource :: Ash.resource()) ::
               {:ok, Ash.data_layer_query()} | {:error, Ash.error()}
@@ -25,7 +25,7 @@ defmodule Ash.DataLayer do
               {:ok, Ash.resource()} | {:error, Ash.error()}
   @callback destroy(record :: Ash.record()) :: :ok | {:error, Ash.error()}
   @callback transaction(Ash.resource(), (() -> term)) :: {:ok, term} | {:error, Ash.error()}
-  @callback can?(feature()) :: boolean
+  @callback can?(Ash.resource(), feature()) :: boolean
 
   @optional_callbacks transaction: 2
   @optional_callbacks upsert: 2
@@ -90,7 +90,7 @@ defmodule Ash.DataLayer do
   @spec can?(feature, Ash.resource()) :: boolean
   def can?(feature, resource) do
     data_layer = Ash.data_layer(resource)
-    data_layer.can?(feature)
+    data_layer.can?(resource, feature)
   end
 
   @spec run_query(Ash.data_layer_query(), central_resource :: Ash.resource()) ::

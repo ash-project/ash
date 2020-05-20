@@ -7,30 +7,14 @@ defmodule Ash.Api.Interface do
 
   alias Ash.Error.Interface.NoSuchResource
 
-  @authorization_schema Ashton.schema(
-                          opts: [
-                            user: :any,
-                            strict_access?: :boolean
-                          ],
-                          defaults: [strict_access?: true],
-                          describe: [
-                            user: "# TODO describe",
-                            strict_access?:
-                              "only applies to `read` actions, so maybe belongs somewhere else"
-                          ]
-                        )
-
   @global_opts Ashton.schema(
                  opts: [
-                   authorization: [{:const, false}, @authorization_schema],
                    verbose?: :boolean
                  ],
                  defaults: [
-                   authorization: false,
                    verbose?: false
                  ],
                  describe: [
-                   authorization: "# TODO describe",
                    verbose?: "Debug log engine operation"
                  ]
                )
@@ -348,7 +332,6 @@ defmodule Ash.Api.Interface do
 
       case filter do
         {:ok, filter} ->
-
           resource
           |> api.query()
           |> Ash.Query.filter(filter)

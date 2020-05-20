@@ -106,7 +106,8 @@ defmodule Ash.Resource do
     Module.register_attribute(mod, :actions, accumulate: true)
     Module.register_attribute(mod, :attributes, accumulate: true)
     Module.register_attribute(mod, :relationships, accumulate: true)
-    Module.register_attribute(mod, :mix_ins, accumulate: true)
+    Module.register_attribute(mod, :extensions, accumulate: true)
+    Module.register_attribute(mod, :authorizers, accumulate: true)
 
     Module.put_attribute(mod, :name, opts[:name])
     Module.put_attribute(mod, :resource_type, opts[:type])
@@ -122,8 +123,7 @@ defmodule Ash.Resource do
           Ash.Resource.Attributes.Attribute.new(mod, :id, :uuid,
             primary_key?: true,
             default: &Ecto.UUID.generate/0,
-            generated?: true,
-            write_rules: false
+            generated?: true
           )
 
         Module.put_attribute(mod, :attributes, attribute)
@@ -135,8 +135,7 @@ defmodule Ash.Resource do
         {:ok, attribute} =
           Ash.Resource.Attributes.Attribute.new(mod, opts[:field], opts[:type],
             primary_key?: true,
-            generated?: opts[:generated?] || true,
-            write_rules: false
+            generated?: opts[:generated?] || true
           )
 
         Module.put_attribute(mod, :attributes, attribute)
@@ -197,8 +196,8 @@ defmodule Ash.Resource do
         @name
       end
 
-      def mix_ins() do
-        @mix_ins
+      def extensions() do
+        @extensions
       end
 
       def data_layer() do
@@ -209,7 +208,11 @@ defmodule Ash.Resource do
         @description
       end
 
-      Enum.map(@mix_ins || [], fn hook_module ->
+      def authorizers() do
+        @authorizers
+      end
+
+      Enum.map(@extensions || [], fn hook_module ->
         code = hook_module.before_compile_hook(unquote(Macro.escape(env)))
         Module.eval_quoted(__MODULE__, code)
       end)

@@ -49,9 +49,7 @@ defmodule Ash.MixProject do
       {:ecto, "~> 3.0"},
       {:ets, "~> 0.8.0"},
       {:ex_doc, "~> 0.21", only: :dev, runtime: false},
-      {:ashton, "~> 0.4.1"},
-      {:picosat_elixir, "~> 0.1.1"},
-      {:machinery, "~> 1.0.0"}
+      {:ashton, "~> 0.4.1"}
     ]
   end
 end

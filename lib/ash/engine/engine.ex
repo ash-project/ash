@@ -1,814 +1,302 @@
 defmodule Ash.Engine do
-  require Logger
-  alias Ash.Engine.Request
-
-  # TODO: Add ability to configure "resolver error behavior"
-  # graphql will want to continue on failures, but the
-  # code interface/JSON API will want to bail on the first error
-
-  alias Ash.Authorization.{Checker, Clause, SatSolver}
-
   defstruct [
     :api,
     :requests,
-    :user,
     :verbose?,
-    :failure_mode,
-    :pubsub_adapter,
-    errors: [],
-    completed_preparations: %{},
+    :actor,
+    :authorize?,
+    request_handlers: %{},
+    completed_requests: %{},
+    errored_requests: [],
     data: %{},
-    state: :init,
-    authorized?: false,
-    facts: %{
-      true: true,
-      false: false
-    },
-    no_resolvable_requests?: false,
-    scenarios: []
+    errors: []
   ]
 
-  @states [
-    :init,
-    :check,
-    :generate_scenarios,
-    :reality_check,
-    :resolve_some,
-    :resolve_complete,
-    :complete
-  ]
+  alias Ash.Engine.{Request}
 
-  def run(requests, api, opts \\ []) do
-    requests
-    |> new(api, opts)
-    |> loop_until_complete()
-  end
+  use GenServer
 
-  defp loop_until_complete(engine) do
-    case next(engine) do
-      %{state: :complete, authorized?: false} = new_engine ->
-        error =
-          Ash.Error.Forbidden.exception(
-            requests: engine.requests,
-            facts: engine.facts,
-            state: engine.data,
-            api: engine.api
-          )
+  require Logger
 
-        if engine.verbose? do
-          report = Ash.Authorization.Report.report_from_engine(new_engine)
-          Logger.info(report)
-        end
+  def run(request, api, opts \\ [])
+  def run([], _api, _opts), do: {:error, :no_requests_provided}
 
-        add_error(new_engine, :__engine__, error)
+  def run(requests, api, opts) do
+    opts =
+      opts
+      |> Keyword.put(:requests, requests)
+      |> Keyword.put(:api, api)
 
-      %{state: :complete} = new_engine ->
-        if engine.verbose? do
-          report = Ash.Authorization.Report.report_from_engine(new_engine)
-          Logger.info(report)
-        end
+    Process.flag(:trap_exit, true)
+    {:ok, pid} = GenServer.start(__MODULE__, opts)
+    ref = Process.monitor(pid)
 
-        new_engine
+    receive do
+      {:DOWN, ^ref, _, _, {:shutdown, %{errored_requests: []} = state}} ->
+        log(state, "Engine complete, graceful shutdown")
 
-      new_engine when new_engine == engine ->
-        transition(new_engine, :complete, %{
-          errors: {:__engine__, "State machine stuck in infinite loop"}
-        })
+        state
 
-      new_engine ->
-        loop_until_complete(new_engine)
+      {:DOWN, ^ref, _, _, {:shutdown, state}} ->
+        log(state, "Engine error, graceful shutdown")
+
+        state
     end
   end
 
-  defp next(%{failure_mode: :complete, errors: errors} = engine) when errors != [] do
-    transition(
-      engine,
-      :complete,
-      %{
-        errors:
-          {:__engine__, "Got an error, failure mode set to complete, failing entire request."}
+  def init(opts) do
+    state =
+      %__MODULE__{
+        requests: opts[:requests] || [],
+        verbose?: opts[:verbose?] || false,
+        api: opts[:api],
+        actor: opts[:actor],
+        authorize?: opts[:authorize?] || false
       }
-    )
+      |> log_engine_init()
+      |> validate_unique_paths()
+      |> validate_dependencies()
+
+    {:ok, state, {:continue, :spawn_requests}}
   end
 
-  defp next(%{state: :init} = engine) do
-    engine.requests
-    |> Enum.reduce(engine, &replace_request(&2, &1))
-    |> transition(:check)
-  end
+  def handle_continue(:spawn_requests, state) do
+    log(state, "Spawning request processes", :debug)
 
-  defp next(%{state: :check, authorized?: true} = engine) do
-    transition(engine, :resolve_complete, %{message: "Request is already authorized"})
-  end
+    Enum.reduce(state.requests, state, fn request, state ->
+      {:ok, pid} =
+        GenServer.start(Ash.Engine.RequestHandler,
+          request: request,
+          verbose?: state.verbose?,
+          actor?: state.actor,
+          authorize?: state.authorize?,
+          engine_pid: self()
+        )
 
-  defp next(%{state: :check} = engine) do
-    engine
-    |> strict_check()
-    |> check()
-    |> transition(:generate_scenarios)
-  end
+      Process.monitor(pid)
 
-  defp next(%{state: :generate_scenarios} = engine) do
-    generate_scenarios(engine)
-  end
-
-  defp next(%{state: :reality_check} = engine) do
-    reality_check(engine)
-  end
-
-  defp next(%{state: :resolve_some} = engine) do
-    # TODO: We should probably find requests that can be fetched in parallel
-    # and fetch them asynchronously (if their data layer allows it)
-
-    case resolvable_requests(engine) do
-      [request | _rest] ->
-        # TODO: run any preparations on the data here, and then store what preparations have been run on what data so
-        # we don't run them again.
-
-        engine
-        |> resolve_data(request)
-        |> transition(:check)
-
-      [] ->
-        transition(engine, :complete, %{message: "No requests to resolve"})
-    end
-  end
-
-  defp next(%{state: :resolve_complete} = engine) do
-    case Enum.find(engine.requests, &resolve_for_resolve_complete?(&1, engine)) do
-      nil ->
-        # case Enum.find(engine.requests, &)
-        transition(engine, :complete, %{message: "No remaining requests that must be resolved"})
-
-      request ->
-        engine
-        |> resolve_data(request)
-        |> remain(%{message: "Resolved #{request.name}"})
-    end
-  end
-
-  defp resolve_for_resolve_complete?(request, engine) do
-    if Request.data_resolved?(request) do
-      false
-    else
-      Request.all_dependencies_met?(request, engine.data, true) &&
-        (request.resolve_when_skip_authorization? ||
-           is_hard_depended_on?(request, engine.requests))
-    end
-  end
-
-  defp is_hard_depended_on?(request, requests) do
-    requests
-    |> Enum.reject(& &1.error?)
-    |> Enum.reject(&Request.data_resolved?/1)
-    |> Enum.filter(&Request.depends_on?(&1, request))
-    |> Enum.any?(fn other_request ->
-      other_request.resolve_when_skip_authorization?
+      %{state | request_handlers: Map.put(state.request_handlers, pid, request)}
     end)
+
+    {:noreply, state}
   end
 
-  defp prepare(_, %{prepared?: true} = request), do: {:ok, request}
+  def handle_cast({:register_dependency, request_handler_pid, dependency, optional?}, state) do
+    path = :lists.droplast(dependency)
+    field = List.last(dependency)
 
-  defp prepare(engine, request) do
-    # Right now the only preparation is a side_load
-    empty_query = Ash.Query.new(engine.api, request.resource)
+    case find_request(state, path) do
+      {:active, pid, _request} ->
+        GenServer.cast(pid, {:send_field, pid, field})
 
-    side_load_query =
-      Enum.reduce(request.rules, empty_query, fn {_, clause}, query ->
-        clause.check_opts
-        |> clause.check_module.prepare()
-        |> Enum.reduce(query, fn {:side_load, path}, query ->
-          Ash.Query.side_load(query, path)
-        end)
-      end)
+        {:noreply, state}
 
-    case Ash.Actions.SideLoad.side_load(
-           request.data,
-           side_load_query
-         ) do
-      {:ok, new_request_data} ->
-        new_request = %{request | data: new_request_data, prepared?: true}
-        {:ok, new_request}
+      {:complete, pid} ->
+        GenServer.cast(pid, {:send_field, pid, field})
 
-      {:error, error} ->
-        {:error, request.path ++ [:__prepare__], error, engine}
-    end
-  end
+        {:noreply, state}
 
-  defp replace_request(engine, new_request, replace_data? \\ true) do
-    new_requests =
-      Enum.map(engine.requests, fn request ->
-        if request.id == new_request.id do
-          new_request
-        else
-          request
-        end
-      end)
-
-    if replace_data? && new_request.write_to_data? do
-      new_engine_data = Request.put_request(engine.data, new_request)
-      %{engine | data: new_engine_data, requests: new_requests}
-    else
-      %{engine | requests: new_requests}
-    end
-  end
-
-  defp resolvable_requests(engine) do
-    # TODO: Sort these by whether or not their optional deps have been met
-    # perhaps by the count of unmet optional deps?
-    # Also, sort them by whether or not they *should* be fetched
-    engine.requests
-    |> Enum.reject(& &1.error?)
-    |> Enum.filter(&Request.all_dependencies_met?(&1, engine.data, true))
-    |> Enum.filter(&allowed_access?(engine, &1))
-  end
-
-  defp allowed_access?(engine, request) do
-    if request.strict_access? do
-      false
-    else
-      could_pass_strict_check_in_isolation?(request, engine)
-    end
-  end
-
-  defp could_pass_strict_check_in_isolation?(request, engine) do
-    requests_with_data_filter =
-      Enum.flat_map([request], fn request ->
-        if Request.data_resolved?(request) && request.data not in [nil, []] &&
-             match?(%Ash.Query{}, request.query) do
-          request.data
-          |> List.wrap()
-          |> Enum.map(fn item ->
-            %{request | query: get_pkeys(request, engine.api, item)}
-          end)
-        else
-          [request]
-        end
-      end)
-
-    case SatSolver.solve(requests_with_data_filter, engine.facts) do
-      {:ok, _scenarios} ->
-        true
-
-      {:error, :unsatisfiable} ->
-        false
-    end
-  end
-
-  defp resolve_data(engine, request) do
-    if engine.verbose? do
-      Logger.debug("Resolving data #{request.name}")
-    end
-
-    with {:ok, engine, request} <- resolve_dependencies(request, engine, true),
-         engine <- replace_request(engine, request),
-         {:ok, resolved_request} <- Request.resolve_data(engine.data, request),
-         engine <- replace_request(engine, resolved_request),
-         {:ok, prepared_request} <- prepare(engine, resolved_request) do
-      query =
-        if prepared_request.action_type == :create do
-          get_pkeys(prepared_request, engine.api, prepared_request.data)
-        else
-          prepared_request.query
-        end
-
-      replace_request(engine, %{prepared_request | query: query})
-    else
-      {:error, %__MODULE__{} = engine} ->
-        request = Enum.find(engine.requests, &(&1.id == request.id))
-        replace_request(engine, %{request | error?: true})
-
-      {:error, error} ->
-        request = Enum.find(engine.requests, &(&1.id == request.id))
-        new_request = %{request | error?: true}
-
-        engine
-        |> replace_request(new_request)
-        |> add_error(request.path ++ [:data], error)
-    end
-  end
-
-  defp reality_check(%{authorized?: true} = engine) do
-    transition(engine, :resolve_complete)
-  end
-
-  defp reality_check(engine) do
-    case find_real_scenario(engine.scenarios, engine.facts) do
-      nil ->
-        transition(engine, :resolve_some, %{message: "No scenario was reality"})
-
-      scenario ->
-        scenario = Map.drop(scenario, [true, false])
-
-        engine
-        |> Map.put(:authorized?, true)
-        |> transition(:resolve_complete, %{
-          message: "Scenario was reality: #{inspect(scenario)}"
-        })
-    end
-  end
-
-  defp find_real_scenario(scenarios, facts) do
-    Enum.find_value(scenarios, fn scenario ->
-      if scenario_is_reality(scenario, facts) == :reality do
-        scenario
-      else
-        false
-      end
-    end)
-  end
-
-  defp scenario_is_reality(scenario, facts) do
-    scenario
-    |> Map.drop([true, false])
-    |> Enum.reduce_while(:reality, fn {fact, requirement}, status ->
-      case Map.fetch(facts, fact) do
-        {:ok, value} ->
-          cond do
-            value == requirement ->
-              {:cont, status}
-
-            value == :irrelevant ->
-              {:cont, status}
-
-            value == :unknowable ->
-              {:halt, :not_reality}
-
-            true ->
-              {:halt, :not_reality}
-          end
-
-        :error ->
-          {:cont, :maybe}
-      end
-    end)
-  end
-
-  defp generate_scenarios(engine) do
-    requests_with_data_filter =
-      Enum.flat_map(engine.requests, fn request ->
-        if Request.data_resolved?(request) && request.data not in [nil, []] &&
-             match?(%Ash.Query{}, request.query) do
-          request.data
-          |> List.wrap()
-          |> Enum.map(fn item ->
-            %{request | query: get_pkeys(request, engine.api, item)}
-          end)
-        else
-          [request]
-        end
-      end)
-
-    case SatSolver.solve(requests_with_data_filter, engine.facts) do
-      {:ok, scenarios} ->
-        transition(engine, :reality_check, %{scenarios: scenarios})
-
-      {:error, :unsatisfiable} ->
-        engine
-        |> Map.put(:authorized?, false)
-        |> transition(:complete)
-    end
-  end
-
-  def get_pkeys(%{query: nil, resource: resource}, api, %_{} = item) do
-    pkey_filter =
-      item
-      |> Map.take(Ash.primary_key(resource))
-      |> Map.to_list()
-
-    api
-    |> Ash.Query.new(resource)
-    |> Ash.Query.filter(pkey_filter)
-  end
-
-  def get_pkeys(%{query: query}, _, %resource{} = item) do
-    pkey_filter =
-      item
-      |> Map.take(Ash.primary_key(resource))
-      |> Map.to_list()
-
-    Ash.Query.filter(query, pkey_filter)
-  end
-
-  defp check(engine) do
-    case do_check(engine) do
-      {:cont, engine} -> check(engine)
-      {:halt, engine} -> engine
-    end
-  end
-
-  defp do_check(engine) do
-    case checkable_requests(engine) do
-      [] ->
-        {:halt, engine}
-
-      requests ->
-        {new_requests, new_engine} =
-          Enum.reduce(requests, {[], engine}, fn request, {new_requests, engine} ->
-            case resolve_dependencies(request, engine, true) do
-              {:ok, new_engine, new_request} ->
-                {[new_request | new_requests], new_engine}
-
-              {:error, new_engine} ->
-                {new_requests, new_engine}
-            end
-          end)
-
-        case new_requests do
-          [new_request | _others] ->
-            if engine.verbose? do
-              Logger.debug("Checking #{new_request.name}")
+      {:error, request} ->
+        case Map.get(request, field) do
+          %Request.UnresolvedField{} ->
+            unless optional? do
+              GenServer.cast(request_handler_pid, {:wont_receive, request.path, field})
             end
 
-            {:cont, run_checks(new_engine, new_request)}
-
-          [] ->
-            {:halt, new_engine}
+          value ->
+            GenServer.cast(request_handler_pid, {:field_value, request.path, field, value})
         end
+
+        {:noreply, state}
     end
   end
 
-  defp run_checks(engine, request) do
-    request.rules
-    |> Enum.filter(fn {_kind, clause} ->
-      case Clause.find(engine.facts, clause) do
-        {:ok, :unknown} -> true
-        {:ok, :unknowable} -> false
-        {:ok, _} -> false
-        :error -> true
-      end
-    end)
-    |> Enum.reduce_while({:ok, engine}, fn {_kind, clause}, {:ok, engine} ->
-      # TODO: remove the third argument below/just pass in the request
-      case Checker.run_checks(engine, request, clause) do
-        {:error, error} ->
-          engine = add_error(engine, request.path, error)
+  def handle_cast({:complete, pid, request_handler_state}, state) do
+    state
+    |> add_completed_request_handler(pid, request_handler_state)
+    |> remove_request_handler(pid)
+    |> add_data(request_handler_state)
+    |> maybe_shutdown()
+  end
 
-          {:halt, {:error, engine}}
+  def handle_info({:EXIT, pid, {:shutdown, {:error, error, request_handler_state}}}, state) do
+    state
+    |> log("Error received from request_handler #{inspect(error)}")
+    |> add_errored_request(request_handler_state.request)
+    |> add_error(request_handler_state.request, error)
+    |> remove_request_handler(pid)
+    |> maybe_shutdown()
+  end
 
-        {:ok, new_engine} ->
-          {:cont, {:ok, new_engine}}
-      end
-    end)
-    |> case do
-      {:error, engine} ->
-        replace_request(engine, %{request | error?: true, check_complete?: true})
+  def handle_info({:DOWN, _, _, pid, {:error, error, %Request{} = request}}, state) do
+    state
+    |> log("Request exited in failure #{request.name}: #{inspect(error)}")
+    |> add_errored_request(request)
+    |> add_error(request, error)
+    |> remove_request_handler(pid)
+    |> maybe_shutdown()
+  end
 
-      {:ok, new_engine} ->
-        replace_request(new_engine, %{request | check_complete?: true})
+  def handle_info({:DOWN, _, _, pid, reason}, state) do
+    request =
+      Map.get(state.request_handlers, pid) || Map.get(state.completed_requests, pid).request
+
+    state
+    |> log("Request exited in failure #{request.name}: #{inspect(reason)}")
+    |> add_errored_request(request)
+    |> add_error(request, reason)
+    |> remove_request_handler(pid)
+    |> maybe_shutdown()
+  end
+
+  def put_nested_key(state, [key], value) do
+    Map.put(state, key, value)
+  end
+
+  def put_nested_key(state, [key | rest], value) do
+    case Map.fetch(state, key) do
+      {:ok, nested_state} when is_map(nested_state) ->
+        Map.put(state, key, put_nested_key(nested_state, rest, value))
+
+      :error ->
+        Map.put(state, key, put_nested_key(%{}, rest, value))
     end
   end
 
-  defp checkable_requests(engine) do
-    engine.requests
-    |> Enum.filter(& &1.strict_check_complete?)
-    |> Enum.filter(&Request.data_resolved?/1)
-    |> Enum.reject(& &1.check_complete?)
-    |> Enum.reject(& &1.error?)
+  def put_nested_key(state, key, value) do
+    Map.put(state, key, value)
   end
 
-  defp strict_check(engine) do
-    case do_strict_check(engine) do
-      {:cont, engine} -> strict_check(engine)
-      {:halt, engine} -> engine
+  def fetch_nested_value(state, [key]) when is_map(state) do
+    Map.fetch(state, key)
+  end
+
+  def fetch_nested_value(%Request.UnresolvedField{}, _), do: :error
+
+  def fetch_nested_value(state, [key | rest]) when is_map(state) do
+    case Map.fetch(state, key) do
+      {:ok, value} -> fetch_nested_value(value, rest)
+      :error -> :error
     end
   end
 
-  defp do_strict_check(engine) do
-    engine.requests
-    |> Enum.filter(&Request.can_strict_check(&1, engine.data))
-    |> case do
-      [] ->
-        {:halt, engine}
-
-      requests ->
-        {new_requests, new_engine} =
-          Enum.reduce(requests, {[], engine}, fn request, {requests, engine} ->
-            case resolve_dependencies(request, engine, false) do
-              {:ok, new_engine, new_request} ->
-                {[new_request | requests], new_engine}
-
-              {:error, engine} ->
-                {requests,
-                 replace_request(engine, %{
-                   request
-                   | strict_check_complete?: true,
-                     error?: true
-                 })}
-            end
-          end)
-
-        Enum.reduce(new_requests, {:cont, new_engine}, fn request, {:cont, engine} ->
-          if engine.verbose? do
-            Logger.debug("Strict checking #{request.name}")
-          end
-
-          {new_request, new_facts} = Checker.strict_check(engine.user, request, engine.facts)
-
-          new_engine =
-            new_engine
-            |> replace_request(new_request)
-            |> Map.put(:facts, new_facts)
-
-          {:cont, new_engine}
-        end)
-    end
+  def fetch_nested_value(state, key) when is_map(state) do
+    Map.fetch(state, key)
   end
 
-  defp resolve_dependencies(request, engine, data?) do
-    case do_resolve_dependencies(request, engine, data?) do
-      :done ->
-        {:ok, engine, request}
-
-      {:ok, engine, request} ->
-        resolve_dependencies(request, engine, data?)
-
-      {:error, engine, dep, error} ->
-        {:error, add_error(engine, dep, error)}
-    end
-  end
-
-  defp do_resolve_dependencies(request, engine, data?) do
-    request
-    |> Map.from_struct()
-    |> Enum.filter(&match?({_, %Request.UnresolvedField{}}, &1))
-    |> Enum.find(fn {_, unresolved} ->
-      if unresolved.data? and not data? and
-           Request.all_dependencies_met?(request, engine.data, false) do
-        false
-      else
-        true
-      end
-    end)
-    |> case do
-      nil ->
-        :done
-
-      {key, unresolved} ->
-        case resolve_field(engine, unresolved, data?) do
-          {:ok, new_engine, resolved, _} ->
-            new_request = Map.put(request, key, resolved)
-            new_engine = replace_request(new_engine, new_request)
-            {:ok, new_engine, new_request}
-
-          {:error, new_engine, dep, error} ->
-            new_engine = replace_request(new_engine, %{request | error?: true})
-            {:error, new_engine, dep || request.path ++ [key], error}
-        end
-    end
-  end
-
-  defp resolve_field(engine, %{deps: deps} = unresolved, data?, dep \\ nil, resolved_deps \\ []) do
-    if dep in resolved_deps do
-      {:ok, engine, unresolved, resolved_deps}
+  defp add_data(state, request_handler_state) do
+    if request_handler_state.request.write_to_data? do
+      %{
+        state
+        | data:
+            put_nested_key(
+              state.data,
+              request_handler_state.request.path,
+              request_handler_state.request.data
+            )
+      }
     else
-      result =
-        Enum.reduce_while(deps, {:ok, engine, resolved_deps}, fn dep,
-                                                                 {:ok, engine, resolved_deps} ->
-          # TODO: this is inneficient
-          path = :lists.droplast(dep)
-          key = List.last(dep)
-
-          other_request = Enum.find(engine.requests, &(&1.path == path))
-
-          case Map.get(other_request, key) do
-            %Request.UnresolvedField{data?: field_is_data?} = other_value ->
-              if field_is_data? and not data? do
-                {:cont, {:ok, engine, resolved_deps}}
-              else
-                case resolve_field(engine, other_value, data?, dep, resolved_deps) do
-                  {:ok, new_engine, resolved, new_resolved_deps} ->
-                    new_request = Map.put(other_request, key, resolved)
-                    {:cont, {:ok, replace_request(new_engine, new_request), new_resolved_deps}}
-
-                  {:error, engine, dep, error} ->
-                    {:halt, {:error, engine, dep, error}}
-                end
-              end
-
-            _ ->
-              {:cont, {:ok, engine, resolved_deps}}
-          end
-        end)
-
-      case result do
-        {:ok, new_engine, resolved_deps} ->
-          if unresolved.data? and not data? do
-            {:ok, new_engine, unresolved, [dep | resolved_deps]}
-          else
-            case Request.resolve_field(new_engine.data, unresolved) do
-              {:ok, value} ->
-                {:ok, new_engine, value, [dep | resolved_deps]}
-
-              {:error, error} ->
-                {:error, engine, dep, error}
-            end
-          end
-
-        {:error, engine, dep, error} ->
-          {:error, engine, dep, error}
-      end
+      state
     end
   end
 
-  defp new(request, api, opts) when not is_list(request), do: new([request], api, opts)
-
-  defp new(requests, api, opts) do
-    requests
-    |> new_engine(api, opts)
-    |> add_default_queries()
-    |> validate_unique_paths()
-    |> bypass_strict_access(opts)
-    |> validate_dependencies()
-    |> validate_has_rules()
-    |> log_init()
+  defp find_request(state, path) do
+    with {:active, nil} <- {:active, do_find_request(state.request_handlers, path)},
+         {:complete, nil} <- {:complete, do_find_request(state.completed_requests, path)},
+         {:error, nil} <- {:error, do_find_request(state.errored_requests, path)} do
+      raise "Unreachable!"
+    else
+      {:active, {pid, request}} -> {:active, pid, request}
+      {:complete, request} -> {:complete, request}
+      {:error, request} -> {:error, request}
+    end
   end
 
-  defp add_default_queries(engine) do
+  defp do_find_request(request_handlers, path) do
+    if is_map(request_handlers) do
+      Enum.find(request_handlers, fn {_pid, request} ->
+        request.path == path
+      end)
+    else
+      Enum.find(request_handlers, fn request ->
+        request.path == path
+      end)
+    end
+  end
+
+  defp maybe_shutdown(%{request_handlers: request_handlers} = state)
+       when request_handlers == %{} do
+    {:stop, {:shutdown, state}, state}
+  end
+
+  defp maybe_shutdown(state) do
+    {:noreply, state}
+  end
+
+  defp add_completed_request_handler(state, pid, request_handler_state) do
     %{
-      engine
-      | requests:
-          Enum.map(engine.requests, fn request ->
-            %{request | query: request.query || Ash.Query.new(engine.api, request.resource)}
-          end)
+      state
+      | completed_requests: Map.put(state.completed_requests, pid, request_handler_state)
     }
   end
 
-  defp validate_dependencies(engine) do
-    case Request.build_dependencies(engine.requests) do
+  defp remove_request_handler(state, pid) do
+    Map.update!(state, :request_handlers, &Map.delete(&1, pid))
+  end
+
+  defp add_errored_request(state, request) do
+    Map.update!(state, :errored_requests, fn errored_requests ->
+      [request | errored_requests]
+    end)
+  end
+
+  defp log_engine_init(state) do
+    log(state, "Initializing Engine with #{Enum.count(state.requests)} requests.")
+    log(state, "Initial engine state: #{inspect(Map.delete(state, :request))}", :debug)
+  end
+
+  defp log(state, message, level \\ :info)
+
+  defp log(%{verbose?: true} = state, message, level) do
+    Logger.log(level, message)
+
+    state
+  end
+
+  defp log(state, _, _) do
+    state
+  end
+
+  defp validate_dependencies(state) do
+    case Request.build_dependencies(state.requests) do
       # TODO: Have `build_dependencies/1` return an ash error
       {:error, {:impossible, path}} ->
-        add_error(engine, path, "Impossible path: #{inspect(path)} required by request.")
+        add_error(state, path, "Impossible path: #{inspect(path)} required by request.")
 
       {:ok, _requests} ->
         # TODO: no need to aggregate the full dependencies of
-        engine
+        state
     end
   end
 
-  defp validate_has_rules(%{authorized?: true} = engine), do: engine
-
-  defp validate_has_rules(engine) do
-    case Enum.find(engine.requests, &Enum.empty?(&1.rules)) do
-      nil ->
-        engine
-
-      request ->
-        add_error(engine, request.path, "No authorization steps configured")
-    end
-  end
-
-  defp validate_unique_paths(engine) do
-    case Request.validate_unique_paths(engine.requests) do
+  defp validate_unique_paths(state) do
+    case Request.validate_unique_paths(state.requests) do
       :ok ->
-        engine
+        state
 
       {:error, paths} ->
-        Enum.reduce(paths, engine, &add_error(&2, &1, "Duplicate requests at path"))
+        Enum.reduce(paths, state, &add_error(&2, &1, "Duplicate requests at path"))
     end
   end
 
-  defp new_engine(requests, api, opts) do
-    %__MODULE__{
-      requests: requests,
-      user: opts[:user],
-      api: api,
-      authorized?: !!opts[:skip_authorization?],
-      failure_mode: opts[:failure_mode] || :complete,
-      verbose?: Keyword.get(opts, :verbose?, false)
-    }
-  end
-
-  defp log_init(engine) do
-    if engine.verbose? do
-      Logger.debug(
-        "Initializing engine with requests: #{
-          Enum.map_join(engine.requests, ", ", &(to_string(&1.resource) <> ": " <> &1.name))
-        }"
-      )
-    end
-
-    engine
-  end
-
-  defp bypass_strict_access(engine, opts) do
-    if opts[:bypass_strict_access?] do
-      %{engine | requests: Enum.map(engine.requests, &Map.put(&1, :strict_access?, false))}
-    else
-      engine
-    end
-  end
-
-  defp format_args(%{message: message} = args) do
-    case clean_args(args) do
-      "" ->
-        " | #{message}"
-
-      output ->
-        " | #{message}#{output}"
-    end
-  end
-
-  defp format_args(args) do
-    clean_args(args)
-  end
-
-  defp clean_args(args) do
-    args
-    |> case do
-      %{scenarios: scenarios} = args ->
-        Map.put(args, :scenarios, "...#{Enum.count(scenarios)} scenarios")
-
-      other ->
-        other
-    end
-    |> Map.delete(:message)
-    |> case do
-      args when args == %{} ->
-        ""
-
-      args ->
-        " | " <> inspect(args)
-    end
-  end
-
-  defp remain(engine, args) do
-    if engine.verbose? do
-      Logger.debug("Remaining in #{engine.state}#{format_args(args)}")
-    end
-
-    engine
-    |> handle_args(args)
-  end
-
-  defp transition(engine, state, args \\ %{}) do
-    if engine.verbose? do
-      Logger.debug("Moving from #{engine.state} to #{state}#{format_args(args)}")
-    end
-
-    engine
-    |> handle_args(args)
-    |> do_transition(state, args)
-  end
-
-  defp do_transition(engine, state, _args) when state not in @states do
-    do_transition(engine, :complete, %{errors: {:__engine__, "No such state #{state}"}})
-  end
-
-  defp do_transition(engine, state, _args) do
-    %{engine | state: state}
-  end
-
-  defp handle_args(engine, args) do
-    engine
-    |> handle_request_updates(args)
-    |> handle_scenarios_updates(args)
-    |> handle_facts_updates(args)
-    |> handle_errors(args)
-  end
-
-  defp handle_scenarios_updates(engine, %{scenarios: scenarios}) do
-    %{engine | scenarios: scenarios}
-  end
-
-  defp handle_scenarios_updates(engine, _), do: engine
-
-  defp handle_facts_updates(engine, %{facts: facts}) do
-    %{engine | facts: facts}
-  end
-
-  defp handle_facts_updates(engine, _), do: engine
-
-  defp handle_request_updates(engine, %{requests: requests}) do
-    %{engine | requests: requests}
-  end
-
-  defp handle_request_updates(engine, _), do: engine
-
-  defp handle_errors(engine, %{errors: errors}) when is_map(errors) do
-    handle_errors(engine, %{errors: Map.to_list(errors)})
-  end
-
-  defp handle_errors(engine, %{errors: error}) when not is_list(error) do
-    handle_errors(engine, %{errors: List.wrap(error)})
-  end
-
-  defp handle_errors(engine, %{errors: errors}) when errors != [] do
-    Enum.reduce(errors, engine, fn {path, error}, engine ->
-      add_error(engine, path, error)
-    end)
-  end
-
-  defp handle_errors(engine, _), do: engine
-
-  defp add_error(engine, path, error) do
+  defp add_error(state, path, error) do
     path = List.wrap(path)
     error = to_ash_error(error)
 
-    %{engine | errors: [Map.put(error, :path, path) | engine.errors]}
+    %{state | errors: [Map.put(error, :path, path) | state.errors]}
   end
 
-  def to_ash_error(error) do
+  defp to_ash_error(error) do
     if Ash.ash_error?(error) do
       error
     else

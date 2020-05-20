@@ -28,7 +28,6 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                  source: Ash.Test.Resource.Relationships.ManyToManyTest.Post,
                  source_field: :id,
                  type: :has_many,
-                 write_rules: '',
                  reverse_relationship: nil
                },
                %Ash.Resource.Relationships.ManyToMany{
@@ -42,7 +41,6 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                  source_field_on_join_table: :posts_id,
                  through: SomeResource,
                  type: :many_to_many,
-                 write_rules: '',
                  reverse_relationship: nil
                }
              ] = Ash.relationships(Post)

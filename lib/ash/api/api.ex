@@ -1,17 +1,8 @@
 defmodule Ash.Api do
   @using_schema Ashton.schema(
-                  opts: [
-                    pubsub_adapter: :atom,
-                    # TODO: Support configuring this from env variables
-                    authorization_explanations: [:boolean]
-                  ],
-                  defaults: [
-                    authorization_explanations: false
-                  ],
-                  describe: [
-                    authorization_explanations:
-                      "A setting that determines whether or not verbose authorization errors should be returned."
-                  ]
+                  opts: [],
+                  defaults: [],
+                  describe: []
                 )
 
   @moduledoc """
@@ -51,10 +42,8 @@ defmodule Ash.Api do
         end
 
       @side_load_type :simple
-      @authorization_explanations opts[:authorization_explanations] || false
-      @pubsub_adapter opts[:pubsub_adapter]
 
-      Module.register_attribute(__MODULE__, :mix_ins, accumulate: true)
+      Module.register_attribute(__MODULE__, :extensions, accumulate: true)
       Module.register_attribute(__MODULE__, :resources, accumulate: true)
       Module.register_attribute(__MODULE__, :named_resources, accumulate: true)
 
@@ -85,9 +74,8 @@ defmodule Ash.Api do
 
   defmacro __before_compile__(env) do
     quote generated: true do
-      def mix_ins(), do: @mix_ins
+      def extensions(), do: @extensions
       def resources(), do: @resources
-      def authorization_explanations(), do: @authorization_explanations
 
       def get_resource(mod) when mod in @resources, do: {:ok, mod}
 
@@ -97,7 +85,7 @@ defmodule Ash.Api do
 
       use Ash.Api.Interface
 
-      Enum.map(@mix_ins, fn hook_module ->
+      Enum.map(@extensions, fn hook_module ->
         code = hook_module.before_compile_hook(unquote(Macro.escape(env)))
         Module.eval_quoted(__MODULE__, code)
       end)

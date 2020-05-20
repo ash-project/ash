@@ -12,22 +12,15 @@ defmodule Ash.Resource.Actions do
   If you have multiple actions of the same type, one of them must be designated as the
   primary action for that type, via: `primary?: true`. This tells the ash what to do
   if an action of that type is requested, but no specific action name is given.
-
-  Authorization in ash is done via supplying a list of rules to actions in the
-  `rules` option. To understand rules and authorization, see the documentation in `Ash.Authorization`
   """
 
   @doc false
   defmacro actions(do: block) do
     quote do
       import Ash.Resource.Actions
-      require Ash.Authorization.Check
-
-      import Ash.Authorization.Check.BuiltInChecks
 
       unquote(block)
       import Ash.Resource.Actions, only: [actions: 1]
-      import Ash.Authorization.Check.BuiltInChecks, only: []
     end
   end
 

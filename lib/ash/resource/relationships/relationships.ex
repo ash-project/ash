@@ -4,21 +4,16 @@ defmodule Ash.Resource.Relationships do
 
   Relationships are a core component of resource oriented design. Many components of Ash
   will use these relationships. A simple use case is side_loading (done via the `side_load`
-  option, given to an api action). A more complex use case might be building authorization
-  rules that grant access to a resource based on how the user is related to it.
+  option, given to an api action).
   """
 
   @doc false
   defmacro relationships(do: block) do
     quote do
       import Ash.Resource.Relationships
-      import Ash.Authorization.Check.BuiltInChecks
-      import Ash.Authorization.Check.RelationshipBuiltInChecks
 
       unquote(block)
 
-      import Ash.Authorization.Check.BuiltInChecks, only: []
-      import Ash.Authorization.Check.RelationshipBuiltInChecks, only: []
       import Ash.Resource.Relationships, only: [relationships: 1]
     end
   end

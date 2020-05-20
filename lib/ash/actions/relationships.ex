@@ -67,38 +67,6 @@ defmodule Ash.Actions.Relationships do
     end)
   end
 
-  def relationship_change_requests(changeset, api, resource, action, relationships) do
-    Enum.flat_map(relationships, fn {relationship_name, _data} ->
-      case Ash.relationship(resource, relationship_name) do
-        nil ->
-          []
-
-        relationship ->
-          dependencies = [[:data, :data] | Map.get(changeset, :__changes_depend_on__, [])]
-
-          request =
-            Ash.Engine.Request.new(
-              api: api,
-              rules: relationship.write_rules,
-              resource: resource,
-              changeset: changeset(changeset, api, relationships),
-              action_type: action.type,
-              data:
-                Ash.Engine.Request.resolve(dependencies, fn
-                  %{data: %{data: data}} ->
-                    {:ok, data}
-                end),
-              path: :data,
-              name: "#{relationship_name} edit",
-              strict_access?: false,
-              write_to_data?: false
-            )
-
-          [request]
-      end
-    end)
-  end
-
   defp add_relationship_read_requests(changeset, api, relationship, input, :update) do
     changeset
     |> add_replace_requests(api, relationship, input)
@@ -127,12 +95,7 @@ defmodule Ash.Actions.Relationships do
             %{type: :belongs_to, source_field: source_field, destination_field: destination_field} ->
               case Keyword.fetch(identifiers, destination_field) do
                 {:ok, field_value} ->
-                  changeset
-                  |> Ecto.Changeset.put_change(source_field, field_value)
-                  |> Map.put_new(:__ash_skip_authorization_fields__, [])
-                  |> Map.update!(:__ash_skip_authorization_fields__, fn fields ->
-                    [source_field | fields]
-                  end)
+                  Ecto.Changeset.put_change(changeset, source_field, field_value)
 
                 _ ->
                   changeset
@@ -167,12 +130,7 @@ defmodule Ash.Actions.Relationships do
         changeset =
           case relationship do
             %{type: :belongs_to, source_field: source_field} ->
-              changeset
-              |> Ecto.Changeset.put_change(source_field, nil)
-              |> Map.put_new(:__ash_skip_authorization_fields__, [])
-              |> Map.update!(:__ash_skip_authorization_fields__, fn fields ->
-                [source_field | fields]
-              end)
+              Ecto.Changeset.put_change(changeset, source_field, nil)
 
             _ ->
               changeset
@@ -198,10 +156,6 @@ defmodule Ash.Actions.Relationships do
          identifiers,
          type
        ) do
-    default_read =
-      Ash.primary_action(destination, :read) ||
-        raise "Need a default read action for #{destination}"
-
     relationship_name = relationship.name
 
     filter =
@@ -228,11 +182,9 @@ defmodule Ash.Actions.Relationships do
     request =
       Ash.Engine.Request.new(
         api: api,
-        rules: default_read.rules,
         resource: relationship.destination,
-        action_type: :read,
+        action: Ash.primary_action!(relationship.destination, :read),
         query: query,
-        resolve_when_skip_authorization?: true,
         path: [:relationships, relationship_name, type],
         data:
           Ash.Engine.Request.resolve(fn _data ->
@@ -584,9 +536,6 @@ defmodule Ash.Actions.Relationships do
     Enum.reduce(add, changeset, fn to_relate_record, changeset ->
       case find_pkey_match(current, to_relate_record, pkey) do
         nil ->
-          # If they want to change fields here, I think we could support it by authorizing
-          # a *create* and *update* with those attributes, and then, if it already exists we don't
-          # fail, we just feed that into the authorizer.
           add_after_changes(changeset, fn _changeset, record ->
             join_attrs = %{
               relationship.source_field_on_join_table() =>
@@ -885,10 +834,6 @@ defmodule Ash.Actions.Relationships do
          api,
          %{destination: destination} = relationship
        ) do
-    default_read =
-      Ash.primary_action(destination, :read) ||
-        raise "Must have a default read for #{destination}"
-
     value = Ecto.Changeset.get_field(changeset, relationship.source_field)
     filter_statement = [{relationship.destination_field, value}]
 
@@ -900,11 +845,9 @@ defmodule Ash.Actions.Relationships do
     request =
       Ash.Engine.Request.new(
         api: api,
-        rules: default_read.rules,
         resource: destination,
-        action_type: :read,
+        action: Ash.primary_action!(relationship.destination, :read),
         path: [:relationships, relationship.name, :current],
-        resolve_when_skip_authorization?: true,
         query: query,
         data:
           Ash.Engine.Request.resolve(fn _data ->
@@ -923,9 +866,6 @@ defmodule Ash.Actions.Relationships do
          changeset,
          %{through: through} = relationship
        ) do
-    default_read =
-      Ash.primary_action(through, :read) || raise "Must have default read for #{inspect(through)}"
-
     value = Ecto.Changeset.get_field(changeset, relationship.source_field)
     filter_statement = [{relationship.source_field_on_join_table, value}]
 
@@ -936,17 +876,14 @@ defmodule Ash.Actions.Relationships do
 
     Ash.Engine.Request.new(
       api: api,
-      rules: default_read.rules,
       resource: through,
-      action_type: :read,
+      action: Ash.primary_action!(relationship.destination, :read),
       path: [:relationships, relationship.name, :current_join],
       query: query,
-      resolve_when_skip_authorization?: true,
       data:
         Ash.Engine.Request.resolve(fn _data ->
           api.read(query)
         end),
-      strict_access?: false,
       name: "Read related join for #{relationship.name} before replace"
     )
   end
@@ -955,16 +892,10 @@ defmodule Ash.Actions.Relationships do
          api,
          %{destination: destination, name: name} = relationship
        ) do
-    default_read =
-      Ash.primary_action(destination, :read) ||
-        raise "Must have default read for #{inspect(destination)}"
-
     Ash.Engine.Request.new(
       api: api,
-      rules: default_read.rules,
       resource: destination,
-      action_type: :read,
-      resolve_when_skip_authorization?: true,
+      action: Ash.primary_action!(relationship.destination, :read),
       path: [:relationships, name, :current],
       query:
         Ash.Engine.Request.resolve(
@@ -992,7 +923,6 @@ defmodule Ash.Actions.Relationships do
             api.read(query)
           end
         ),
-      strict_access?: false,
       name: "Read related join for #{name} before replace"
     )
   end

@@ -1,28 +1,23 @@
 defmodule Ash.Resource.Actions.Create do
   @moduledoc "The representation of a `create` action."
-  defstruct [:type, :name, :primary?, :rules]
+  defstruct [:type, :name, :primary?]
 
   @type t :: %__MODULE__{
           type: :create,
           name: atom,
-          primary?: boolean,
-          rules: Engine.steps()
+          primary?: boolean
         }
 
   @opt_schema Ashton.schema(
                 opts: [
-                  primary?: :boolean,
-                  rules: :keyword
+                  primary?: :boolean
                 ],
                 defaults: [
-                  primary?: false,
-                  rules: []
+                  primary?: false
                 ],
                 describe: [
                   primary?:
-                    "Whether or not this action should be used when no action is specified by the caller.",
-                  # TODO: doc better
-                  rules: "A list of authorization steps"
+                    "Whether or not this action should be used when no action is specified by the caller."
                 ]
               )
 
@@ -30,30 +25,14 @@ defmodule Ash.Resource.Actions.Create do
   def opt_schema(), do: @opt_schema
 
   @spec new(Ash.resource(), atom, Keyword.t()) :: {:ok, t()} | {:error, term}
-  def new(resource, name, opts \\ []) do
+  def new(_resource, name, opts \\ []) do
     case Ashton.validate(opts, @opt_schema) do
       {:ok, opts} ->
-        rules =
-          case opts[:rules] do
-            false ->
-              false
-
-            steps ->
-              base_attribute_opts = [
-                resource: resource
-              ]
-
-              Enum.map(steps, fn {step, {mod, opts}} ->
-                {step, {mod, Keyword.merge(base_attribute_opts, opts)}}
-              end)
-          end
-
         {:ok,
          %__MODULE__{
            name: name,
            type: :create,
-           primary?: opts[:primary?],
-           rules: rules
+           primary?: opts[:primary?]
          }}
 
       {:error, error} ->

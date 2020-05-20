@@ -23,7 +23,6 @@ defmodule Ash.Test.Dsl.Resource.Actions.UpdateTest do
                %Ash.Resource.Actions.Update{
                  name: :default,
                  primary?: true,
-                 rules: [],
                  type: :update
                }
              ] = Ash.actions(Post)
@@ -53,20 +52,6 @@ defmodule Ash.Test.Dsl.Resource.Actions.UpdateTest do
           defposts do
             actions do
               update :default, primary?: 10
-            end
-          end
-        end
-      )
-    end
-
-    test "it fails if `rules` is not a list" do
-      assert_raise(
-        Ash.Error.ResourceDslError,
-        "option rules at actions -> update -> default must be keyword",
-        fn ->
-          defposts do
-            actions do
-              update :default, rules: 10
             end
           end
         end

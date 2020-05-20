@@ -87,18 +87,7 @@ defmodule Ash.Actions.SideLoad do
 
     case requests(new_query, false, data) do
       {:ok, requests} ->
-        result =
-          if opts[:authorization] do
-            Ash.Engine.run(
-              requests,
-              api,
-              user: opts[:authorization][:user],
-              bypass_strict_access?: opts[:authorization][:bypass_strict_access?],
-              verbose?: opts[:verbose?]
-            )
-          else
-            Ash.Engine.run(requests, api, skip_authorization?: true, verbose?: opts[:verbose?])
-          end
+        result = Ash.Engine.run(requests, api, opts)
 
         case result do
           %{data: %{include: _} = state, errors: errors} when errors == [] ->
@@ -258,10 +247,6 @@ defmodule Ash.Actions.SideLoad do
          root_data,
          use_data_for_filter?
        ) do
-    default_read =
-      Ash.primary_action(relationship.destination, :read) ||
-        raise "Must set default read for #{inspect(relationship.destination)}"
-
     dependencies =
       case path do
         [] ->
@@ -297,13 +282,11 @@ defmodule Ash.Actions.SideLoad do
       |> Enum.map_join(".", &Map.get(&1, :name))
 
     Ash.Engine.Request.new(
-      action_type: :read,
+      action: Ash.primary_action!(relationship.destination, :read),
       resource: relationship.destination,
-      rules: default_read.rules,
       name: "side_load #{source}",
       api: related_query.api,
       path: request_path,
-      resolve_when_skip_authorization?: true,
       query:
         side_load_query(
           relationship,
@@ -312,7 +295,6 @@ defmodule Ash.Actions.SideLoad do
           root_query,
           use_data_for_filter?
         ),
-      strict_access?: true,
       data:
         Ash.Engine.Request.resolve(dependencies, fn data ->
           # Because we have the records, we can optimize the filter by nillifying the reverse relationship,
@@ -371,10 +353,6 @@ defmodule Ash.Actions.SideLoad do
       path ->
         join_relationship_path = join_relationship_path(path, join_relationship)
 
-        default_read =
-          Ash.primary_action(join_relationship.source, :read) ||
-            raise "Must set default read for #{inspect(relationship.destination)}"
-
         dependencies =
           cond do
             path == [] ->
@@ -394,14 +372,11 @@ defmodule Ash.Actions.SideLoad do
         related_query = related_query.api.query(join_relationship.destination)
 
         Ash.Engine.Request.new(
-          action_type: :read,
+          action: Ash.primary_action!(relationship.destination, :read),
           resource: relationship.through,
-          rules: default_read.rules,
           name: "side_load join #{join_relationship.name}",
           api: related_query.api,
           path: [:include, join_relationship_path],
-          strict_access?: true,
-          resolve_when_skip_authorization?: true,
           query:
             side_load_query(
               join_relationship,
@@ -410,7 +385,6 @@ defmodule Ash.Actions.SideLoad do
               root_query,
               use_data_for_filter?
             ),
-          strict_access?: true,
           data:
             Ash.Engine.Request.resolve(dependencies, fn data ->
               new_query =

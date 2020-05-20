@@ -7,15 +7,13 @@ defmodule Ash.Resource.Relationships.HasMany do
     :destination_field,
     :source_field,
     :source,
-    :reverse_relationship,
-    :write_rules
+    :reverse_relationship
   ]
 
   @type t :: %__MODULE__{
           type: :has_many,
           cardinality: :many,
           source: Ash.resource(),
-          write_rules: Keyword.t(),
           name: atom,
           type: Ash.Type.t(),
           destination: Ash.resource(),
@@ -28,12 +26,10 @@ defmodule Ash.Resource.Relationships.HasMany do
                 opts: [
                   destination_field: :atom,
                   source_field: :atom,
-                  write_rules: :keyword,
                   reverse_relationship: :atom
                 ],
                 defaults: [
-                  source_field: :id,
-                  write_rules: []
+                  source_field: :id
                 ],
                 describe: [
                   reverse_relationship:
@@ -41,12 +37,7 @@ defmodule Ash.Resource.Relationships.HasMany do
                   destination_field:
                     "The field on the related resource that should match the `source_field` on this resource. Default: [resource.name]_id",
                   source_field:
-                    "The field on this resource that should match the `destination_field` on the related resource.",
-                  write_rules: """
-                  Steps applied on an relationship during create or update. If no steps are defined, authorization to change will fail.
-                  If set to false, no steps are applied and any changes are allowed (assuming the action was authorized as a whole)
-                  Remember that any changes against the destination records *will* still be authorized regardless of this setting.
-                  """
+                    "The field on this resource that should match the `destination_field` on the related resource."
                 ]
               )
 
@@ -63,27 +54,9 @@ defmodule Ash.Resource.Relationships.HasMany do
     # Don't call functions on the resource! We don't want it to compile here
     case Ashton.validate(opts, @opt_schema) do
       {:ok, opts} ->
-        write_rules =
-          case opts[:write_rules] do
-            false ->
-              false
-
-            steps ->
-              base_attribute_opts = [
-                relationship_name: name,
-                destination: related_resource,
-                resource: resource
-              ]
-
-              Enum.map(steps, fn {step, {mod, opts}} ->
-                {step, {mod, Keyword.merge(base_attribute_opts, opts)}}
-              end)
-          end
-
         {:ok,
          %__MODULE__{
            name: name,
-           write_rules: write_rules,
            source: resource,
            type: :has_many,
            cardinality: :many,
