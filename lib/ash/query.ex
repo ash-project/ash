@@ -89,7 +89,7 @@ defmodule Ash.Query do
   end
 
   def side_load(query, statement) do
-    with sanitized_statement <- sanitize_side_loads(statement),
+    with sanitized_statement <- List.wrap(sanitize_side_loads(statement)),
          :ok <- validate_side_load(query.resource, sanitized_statement),
          new_side_loads <- merge_side_load(query.side_load, sanitized_statement) do
       %{query | side_load: new_side_loads}

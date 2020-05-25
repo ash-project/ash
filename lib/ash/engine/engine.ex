@@ -5,14 +5,17 @@ defmodule Ash.Engine do
     :verbose?,
     :actor,
     :authorize?,
+    :runner_pid,
+    :local_requests?,
     request_handlers: %{},
-    completed_requests: %{},
+    active_requests: [],
+    completed_requests: [],
     errored_requests: [],
     data: %{},
     errors: []
   ]
 
-  alias Ash.Engine.{Request}
+  alias Ash.Engine.{Request, RequestHandler, Runner}
 
   use GenServer
 
@@ -22,40 +25,58 @@ defmodule Ash.Engine do
   def run([], _api, _opts), do: {:error, :no_requests_provided}
 
   def run(requests, api, opts) do
-    opts =
-      opts
-      |> Keyword.put(:requests, requests)
-      |> Keyword.put(:api, api)
+    authorize? = opts[:authorize?] || Keyword.has_key?(opts, :actor)
+    actor = opts[:actor]
 
-    Process.flag(:trap_exit, true)
-    {:ok, pid} = GenServer.start(__MODULE__, opts)
-    ref = Process.monitor(pid)
+    case Request.validate_requests(requests) do
+      :ok ->
+        requests =
+          Enum.map(requests, fn request ->
+            %{
+              request
+              | authorize?: authorize?,
+                actor: actor,
+                verbose?: opts[:verbose?]
+            }
+          end)
 
-    receive do
-      {:DOWN, ^ref, _, _, {:shutdown, %{errored_requests: []} = state}} ->
-        log(state, "Engine complete, graceful shutdown")
+        {local_requests, async_requests} = split_local_async_requests(requests)
 
-        state
+        opts =
+          opts
+          |> Keyword.put(:requests, async_requests)
+          |> Keyword.put(:local_requests?, !Enum.empty?(local_requests))
+          |> Keyword.put(:runner_pid, self())
+          |> Keyword.put(:api, api)
 
-      {:DOWN, ^ref, _, _, {:shutdown, state}} ->
-        log(state, "Engine error, graceful shutdown")
+        if async_requests == [] do
+          Runner.run(local_requests, nil, opts[:verbose?])
+        else
+          Process.flag(:trap_exit, true)
+          {:ok, pid} = GenServer.start(__MODULE__, opts)
+          _ = Process.monitor(pid)
 
-        state
+          receive do
+            {:pid_info, pid_info} ->
+              Runner.run(local_requests, opts[:verbose?], pid, pid_info)
+          end
+        end
     end
   end
 
   def init(opts) do
     state =
       %__MODULE__{
-        requests: opts[:requests] || [],
+        requests: opts[:requests],
+        active_requests: Enum.map(opts[:requests], & &1.path),
+        runner_pid: opts[:runner_pid],
+        local_requests?: opts[:local_requests?],
         verbose?: opts[:verbose?] || false,
         api: opts[:api],
         actor: opts[:actor],
         authorize?: opts[:authorize?] || false
       }
       |> log_engine_init()
-      |> validate_unique_paths()
-      |> validate_dependencies()
 
     {:ok, state, {:continue, :spawn_requests}}
   end
@@ -63,90 +84,146 @@ defmodule Ash.Engine do
   def handle_continue(:spawn_requests, state) do
     log(state, "Spawning request processes", :debug)
 
-    Enum.reduce(state.requests, state, fn request, state ->
-      {:ok, pid} =
-        GenServer.start(Ash.Engine.RequestHandler,
-          request: request,
-          verbose?: state.verbose?,
-          actor?: state.actor,
-          authorize?: state.authorize?,
-          engine_pid: self()
-        )
+    new_state =
+      Enum.reduce(state.requests, state, fn request, state ->
+        {:ok, pid} =
+          GenServer.start(Ash.Engine.RequestHandler,
+            request: request,
+            verbose?: state.verbose?,
+            actor?: state.actor,
+            authorize?: state.authorize?,
+            engine_pid: self(),
+            runner_pid: state.runner_pid
+          )
 
-      Process.monitor(pid)
+        Process.monitor(pid)
 
-      %{state | request_handlers: Map.put(state.request_handlers, pid, request)}
+        %{
+          state
+          | request_handlers: Map.put(state.request_handlers, pid, request.path)
+        }
+      end)
+
+    pid_info =
+      Enum.into(new_state.request_handlers, %{}, fn {pid, path} ->
+        {path, pid}
+      end)
+
+    if new_state.local_requests? do
+      send(new_state.runner_pid, {:pid_info, pid_info})
+    end
+
+    Enum.each(new_state.request_handlers, fn {pid, _} ->
+      send(pid, {:pid_info, pid_info})
     end)
 
-    {:noreply, state}
+    {:noreply, new_state}
   end
 
-  def handle_cast({:register_dependency, request_handler_pid, dependency, optional?}, state) do
+  def handle_cast(
+        {:register_dependency, receiver_path, request_handler_pid, dependency, optional?},
+        state
+      ) do
     path = :lists.droplast(dependency)
     field = List.last(dependency)
 
-    case find_request(state, path) do
-      {:active, pid, _request} ->
-        GenServer.cast(pid, {:send_field, pid, field})
-
+    case get_request(state, path) do
+      {:active, _pid, _request} ->
         {:noreply, state}
 
-      {:complete, pid} ->
-        GenServer.cast(pid, {:send_field, pid, field})
-
+      {:complete, _pid, _request} ->
         {:noreply, state}
 
-      {:error, request} ->
+      {:error, _pid, request} ->
         case Map.get(request, field) do
           %Request.UnresolvedField{} ->
-            unless optional? do
-              GenServer.cast(request_handler_pid, {:wont_receive, request.path, field})
-            end
+            send_wont_receive(request_handler_pid, receiver_path, request.path, field, optional?)
 
           value ->
-            GenServer.cast(request_handler_pid, {:field_value, request.path, field, value})
+            RequestHandler.send_field_value(
+              request_handler_pid,
+              receiver_path,
+              request.path,
+              field,
+              value
+            )
         end
 
         {:noreply, state}
     end
   end
 
-  def handle_cast({:complete, pid, request_handler_state}, state) do
+  def handle_cast({:complete, path}, state) do
     state
-    |> add_completed_request_handler(pid, request_handler_state)
-    |> remove_request_handler(pid)
-    |> add_data(request_handler_state)
+    |> move_to_complete(path)
     |> maybe_shutdown()
   end
 
-  def handle_info({:EXIT, pid, {:shutdown, {:error, error, request_handler_state}}}, state) do
+  def handle_cast(:local_requests_complete, state) do
+    %{state | local_requests?: false}
+    |> maybe_shutdown()
+  end
+
+  def send_wont_receive(pid, caller_path, request_path, field, true) do
+    GenServer.cast(pid, {:wont_receive, caller_path, request_path, field})
+  end
+
+  def send_wont_receive(_pid, _caller_path, _request_path, _field, false) do
+    :ok
+  end
+
+  def handle_info({:EXIT, _pid, {:shutdown, {:error, error, request_handler_state}}}, state) do
     state
     |> log("Error received from request_handler #{inspect(error)}")
-    |> add_errored_request(request_handler_state.request)
+    |> move_to_error(request_handler_state.request.path)
     |> add_error(request_handler_state.request, error)
-    |> remove_request_handler(pid)
     |> maybe_shutdown()
   end
 
-  def handle_info({:DOWN, _, _, pid, {:error, error, %Request{} = request}}, state) do
+  def handle_info({:DOWN, _, _, _pid, {:error, error, %Request{} = request}}, state) do
     state
     |> log("Request exited in failure #{request.name}: #{inspect(error)}")
-    |> add_errored_request(request)
+    |> move_to_error(request.path)
     |> add_error(request, error)
-    |> remove_request_handler(pid)
     |> maybe_shutdown()
   end
 
   def handle_info({:DOWN, _, _, pid, reason}, state) do
-    request =
-      Map.get(state.request_handlers, pid) || Map.get(state.completed_requests, pid).request
+    {_state, _pid, request} = get_request(state, pid)
 
     state
     |> log("Request exited in failure #{request.name}: #{inspect(reason)}")
-    |> add_errored_request(request)
+    |> move_to_error(request.path)
     |> add_error(request, reason)
-    |> remove_request_handler(pid)
     |> maybe_shutdown()
+  end
+
+  defp get_request(state, pid) when is_pid(pid) do
+    path = Map.get(state.request_handlers, pid)
+
+    get_request(state, path, pid)
+  end
+
+  defp get_request(state, path, pid \\ nil) do
+    status = get_status(state, path)
+    pid = pid || get_pid(state, path)
+    {status, pid, Enum.find(state.requests, &(&1.path == path))}
+  end
+
+  defp get_status(state, path) do
+    cond do
+      path in state.active_requests -> :active
+      path in state.completed_requests -> :complete
+      path in state.errored_requests -> :error
+    end
+  end
+
+  defp get_pid(state, path) do
+    Enum.find_value(state.request_handlers, fn {pid, request_path} ->
+      if request_path == path do
+        pid
+      end
+    end) || state.runner_pid
   end
 
   def put_nested_key(state, [key], value) do
@@ -184,48 +261,15 @@ defmodule Ash.Engine do
     Map.fetch(state, key)
   end
 
-  defp add_data(state, request_handler_state) do
-    if request_handler_state.request.write_to_data? do
-      %{
-        state
-        | data:
-            put_nested_key(
-              state.data,
-              request_handler_state.request.path,
-              request_handler_state.request.data
-            )
-      }
-    else
-      state
+  defp split_local_async_requests(requests) do
+    # TODO: check for transactions, run anything in a transaction synchronously
+    case requests do
+      [request] -> {[request], []}
+      [request | rest] -> {[request], rest}
     end
   end
 
-  defp find_request(state, path) do
-    with {:active, nil} <- {:active, do_find_request(state.request_handlers, path)},
-         {:complete, nil} <- {:complete, do_find_request(state.completed_requests, path)},
-         {:error, nil} <- {:error, do_find_request(state.errored_requests, path)} do
-      raise "Unreachable!"
-    else
-      {:active, {pid, request}} -> {:active, pid, request}
-      {:complete, request} -> {:complete, request}
-      {:error, request} -> {:error, request}
-    end
-  end
-
-  defp do_find_request(request_handlers, path) do
-    if is_map(request_handlers) do
-      Enum.find(request_handlers, fn {_pid, request} ->
-        request.path == path
-      end)
-    else
-      Enum.find(request_handlers, fn request ->
-        request.path == path
-      end)
-    end
-  end
-
-  defp maybe_shutdown(%{request_handlers: request_handlers} = state)
-       when request_handlers == %{} do
+  defp maybe_shutdown(%{active_requests: [], local_requests?: false} = state) do
     {:stop, {:shutdown, state}, state}
   end
 
@@ -233,26 +277,24 @@ defmodule Ash.Engine do
     {:noreply, state}
   end
 
-  defp add_completed_request_handler(state, pid, request_handler_state) do
+  defp move_to_complete(state, path) do
     %{
       state
-      | completed_requests: Map.put(state.completed_requests, pid, request_handler_state)
+      | completed_requests: [path | state.completed_requests],
+        active_requests: state.active_requests -- [path]
     }
   end
 
-  defp remove_request_handler(state, pid) do
-    Map.update!(state, :request_handlers, &Map.delete(&1, pid))
-  end
-
-  defp add_errored_request(state, request) do
-    Map.update!(state, :errored_requests, fn errored_requests ->
-      [request | errored_requests]
-    end)
+  defp move_to_error(state, path) do
+    %{
+      state
+      | errored_requests: [path | state.completed_requests],
+        active_requests: state.active_requests -- [path]
+    }
   end
 
   defp log_engine_init(state) do
     log(state, "Initializing Engine with #{Enum.count(state.requests)} requests.")
-    log(state, "Initial engine state: #{inspect(Map.delete(state, :request))}", :debug)
   end
 
   defp log(state, message, level \\ :info)
@@ -265,28 +307,6 @@ defmodule Ash.Engine do
 
   defp log(state, _, _) do
     state
-  end
-
-  defp validate_dependencies(state) do
-    case Request.build_dependencies(state.requests) do
-      # TODO: Have `build_dependencies/1` return an ash error
-      {:error, {:impossible, path}} ->
-        add_error(state, path, "Impossible path: #{inspect(path)} required by request.")
-
-      {:ok, _requests} ->
-        # TODO: no need to aggregate the full dependencies of
-        state
-    end
-  end
-
-  defp validate_unique_paths(state) do
-    case Request.validate_unique_paths(state.requests) do
-      :ok ->
-        state
-
-      {:error, paths} ->
-        Enum.reduce(paths, state, &add_error(&2, &1, "Duplicate requests at path"))
-    end
   end
 
   defp add_error(state, path, error) do

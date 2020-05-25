@@ -44,9 +44,9 @@ defmodule Ash.Actions.Update do
            ),
          params <- Keyword.merge(params, attributes: attributes, relationships: relationships),
          %{valid?: true} = changeset <- changeset(record, api, params),
-         {:ok, side_load_requests} <-
+         side_load_requests <-
            SideLoad.requests(side_load_query, api.query(resource)),
-         %{data: %{data: %{data: updated}}, errors: []} = state <-
+         %{data: %{data: updated}, errors: []} = state <-
            do_run_requests(changeset, params, action, resource, api, side_load_requests) do
       {:ok, SideLoad.attach_side_loads(updated, state)}
     else

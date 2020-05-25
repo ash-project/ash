@@ -7,8 +7,8 @@ defmodule Ash.Actions.SideLoad do
         path \\ []
       )
 
-  def requests(nil, _, _, _, _), do: {:ok, []}
-  def requests(%{side_load: []}, _, _, _root_query, _), do: {:ok, []}
+  def requests(nil, _, _, _, _), do: []
+  def requests(%{side_load: []}, _, _, _root_query, _), do: []
 
   def requests(
         %{side_load: side_loads} = query,
@@ -19,46 +19,34 @@ defmodule Ash.Actions.SideLoad do
       ) do
     root_query = root_query || query
 
-    requests =
-      side_loads
-      |> List.wrap()
-      |> Enum.flat_map(fn {relationship, further} ->
-        relationship = Ash.relationship(query.resource, relationship)
+    side_loads
+    |> List.wrap()
+    |> Enum.flat_map(fn {relationship, further} ->
+      relationship = Ash.relationship(query.resource, relationship)
 
-        related_query =
-          case further do
-            %Ash.Query{} = query ->
-              query
+      related_query =
+        case further do
+          %Ash.Query{} = query ->
+            query
 
-            further ->
-              root_query.api
-              |> Ash.Query.new(relationship.destination)
-              |> Ash.Query.side_load(further)
-          end
-
-        new_path = [relationship | path]
-
-        case requests(related_query, use_data_for_filter?, root_data, root_query, new_path) do
-          {:ok, further_requests} ->
-            further_requests ++
-              do_requests(
-                relationship,
-                related_query,
-                path,
-                root_query,
-                root_data,
-                use_data_for_filter?
-              )
-
-          {:error, error} ->
-            # TODO: This case isn't actually reachable because the only errors that can occur
-            # currently happen as the requests are resolved. Either 1.) update this interface
-            # to just return a list or 2.) surface those errors sooner
-            {:error, error}
+          further ->
+            root_query.api
+            |> Ash.Query.new(relationship.destination)
+            |> Ash.Query.side_load(further)
         end
-      end)
 
-    {:ok, requests}
+      new_path = [relationship | path]
+
+      requests(related_query, use_data_for_filter?, root_data, root_query, new_path) ++
+        do_requests(
+          relationship,
+          related_query,
+          path,
+          root_query,
+          root_data,
+          use_data_for_filter?
+        )
+    end)
   end
 
   def side_load(data, query, opts \\ [])
@@ -85,33 +73,27 @@ defmodule Ash.Actions.SideLoad do
 
     new_query = Ash.Query.filter(side_load_query, or: pkey_filters)
 
-    case requests(new_query, false, data) do
-      {:ok, requests} ->
-        result = Ash.Engine.run(requests, api, opts)
+    requests = requests(new_query, false, data)
 
-        case result do
-          %{data: %{include: _} = state, errors: errors} when errors == [] ->
-            {:ok, attach_side_loads(data, state)}
+    case Ash.Engine.run(requests, api, opts) do
+      %{data: %{side_load: _} = state, errors: errors} when errors == [] ->
+        {:ok, attach_side_loads(data, state)}
 
-          %{errors: errors} ->
-            {:error, errors}
-        end
-
-      {:error, errors} ->
+      %{errors: errors} ->
         {:error, errors}
     end
   end
 
-  def attach_side_loads([%resource{} | _] = data, %{include: includes})
+  def attach_side_loads([%resource{} | _] = data, %{side_load: side_loads})
       when is_list(data) do
-    includes
+    side_loads
     |> Enum.sort_by(fn {key, _value} ->
       last_relationship = last_relationship!(resource, key)
       # We want to do `many_to_many` last, so we know we've
       # done their join assocs first. Pretty hacky
       {length(key), last_relationship.type == :many_to_many}
     end)
-    |> Enum.reduce(data, fn {key, %{data: value}}, data ->
+    |> Enum.reduce(data, fn {key, value}, data ->
       last_relationship = last_relationship!(resource, key)
       lead_path = :lists.droplast(key)
 
@@ -124,9 +106,8 @@ defmodule Ash.Actions.SideLoad do
           join_path = lead_path ++ [join_association]
 
           join_data =
-            includes
-            |> Map.get(join_path, %{})
-            |> Map.get(:data, [])
+            side_loads
+            |> Map.get(join_path, [])
 
           map_or_update(data, lead_path, fn record ->
             source_value = Map.get(record, last_relationship.source_field)
@@ -253,11 +234,11 @@ defmodule Ash.Actions.SideLoad do
           []
 
         dependent_path ->
-          [[:include, Enum.reverse(Enum.map(dependent_path, &Map.get(&1, :name))), :data]]
+          [[:side_load, Enum.reverse(Enum.map(dependent_path, &Map.get(&1, :name))), :data]]
       end
 
     request_path = [
-      :include,
+      :side_load,
       Enum.reverse(Enum.map([relationship | path], &Map.get(&1, :name)))
     ]
 
@@ -271,7 +252,7 @@ defmodule Ash.Actions.SideLoad do
     dependencies =
       if relationship.type == :many_to_many do
         join_relationship = join_relationship(relationship)
-        [[:include, join_relationship_path(path, join_relationship), :data] | dependencies]
+        [[:side_load, join_relationship_path(path, join_relationship), :data] | dependencies]
       else
         dependencies
       end
@@ -359,14 +340,14 @@ defmodule Ash.Actions.SideLoad do
               []
 
             true ->
-              [[:include, Enum.map(path, &Map.get(&1, :name)), :data]]
+              [[:side_load, Enum.map(path, &Map.get(&1, :name)), :data]]
           end
 
         dependencies =
           if use_data_for_filter? do
             [[:data, :data] | dependencies]
           else
-            [[:include, join_relationship_path, :query] | dependencies]
+            [[:side_load, join_relationship_path, :query] | dependencies]
           end
 
         related_query = related_query.api.query(join_relationship.destination)
@@ -376,7 +357,7 @@ defmodule Ash.Actions.SideLoad do
           resource: relationship.through,
           name: "side_load join #{join_relationship.name}",
           api: related_query.api,
-          path: [:include, join_relationship_path],
+          path: [:side_load, join_relationship_path],
           query:
             side_load_query(
               join_relationship,
@@ -518,7 +499,7 @@ defmodule Ash.Actions.SideLoad do
           path_names = path |> Enum.reverse() |> Enum.map(& &1.name)
 
           data
-          |> Map.get(:include, %{})
+          |> Map.get(:side_load, %{})
           |> Map.get(path_names, %{})
       end
 

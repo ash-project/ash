@@ -8,7 +8,7 @@ defmodule Ash.Actions.Read do
     with %{errors: []} <- query,
          {:action, action} when not is_nil(action) <- {:action, action(query, opts)},
          requests <- requests(query, action, opts),
-         {:ok, side_load_requests} <- Ash.Actions.SideLoad.requests(query),
+         side_load_requests <- Ash.Actions.SideLoad.requests(query),
          %{data: %{data: data} = all_data, errors: []} <-
            Engine.run(requests ++ side_load_requests, query.api, opts),
          data_with_side_loads <- SideLoad.attach_side_loads(data, all_data) do

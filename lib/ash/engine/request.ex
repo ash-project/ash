@@ -49,12 +49,18 @@ defmodule Ash.Engine.Request do
     :write_to_data?,
     :verbose?,
     :state,
+    :actor,
+    :authorize?,
+    :engine_pid,
     authorizer_state: %{},
-    dependencies_request: [],
-    dependencies_to_send: %{}
+    dependencies_to_send: %{},
+    dependency_data: %{},
+    dependencies_requested: []
   ]
 
   require Logger
+
+  alias Ash.Engine.Authorizer
 
   def resolve(dependencies \\ [], optional_dependencies \\ [], func) do
     UnresolvedField.new(dependencies, optional_dependencies, func)
@@ -87,7 +93,7 @@ defmodule Ash.Engine.Request do
           other
       end
 
-    %__MODULE__{
+    request = %__MODULE__{
       id: id,
       resource: opts[:resource],
       changeset: opts[:changeset],
@@ -99,26 +105,52 @@ defmodule Ash.Engine.Request do
       api: opts[:api],
       name: opts[:name],
       state: :strict_check,
+      actor: opts[:actor],
       verbose?: opts[:verbose?] || false,
+      authorize?: opts[:authorize?] || false,
       write_to_data?: Keyword.get(opts, :write_to_data?, true)
     }
+
+    add_initial_authorizer_state(request)
   end
 
-  def next(%{state: :strict_check} = request) do
+  def next(request) do
+    case do_next(request) do
+      {:complete, new_request, notifications} ->
+        if request.state != :complete do
+          {:complete, new_request, notifications}
+        else
+          {:already_complete, new_request, notifications}
+        end
+
+      {:waiting, new_request, notifications, dependencies} ->
+        {new_request, dependencies} = new_dependencies(new_request, dependencies)
+
+        {:wait, new_request, notifications, dependencies}
+
+      {:continue, new_request, notifications} ->
+        {:continue, new_request, notifications}
+
+      {:error, error, request} ->
+        {:error, error, request}
+    end
+  end
+
+  def do_next(%{state: :strict_check} = request) do
     case Ash.authorizers(request.resource) do
       [] ->
         log(request, "No authorizers found, skipping strict check")
-        {:continue, %{request | state: :fetch_data}}
+        {:continue, %{request | state: :fetch_data}, []}
 
       authorizers ->
         case strict_check(authorizers, request) do
-          {:ok, new_request, []} ->
+          {:ok, new_request, notifications, []} ->
             log(new_request, "Strict check complete")
-            {:continue, %{new_request | state: :fetch_data}}
+            {:continue, %{new_request | state: :fetch_data}, notifications}
 
-          {:ok, new_request, dependencies} ->
+          {:ok, new_request, notifications, dependencies} ->
             log(new_request, "Strict check incomplete, waiting on dependencies")
-            {:waiting, new_request, dependencies}
+            {:waiting, new_request, notifications, dependencies}
 
           {:error, error} ->
             log(request, "Strict checking failed")
@@ -127,37 +159,247 @@ defmodule Ash.Engine.Request do
     end
   end
 
-  def next(%{state: :strict_check} = request) do
-    case try_resolve_local(request, [:data], false) do
-      {:skipped, _, _} ->
-        raise "unreachable!"
+  def do_next(%{state: :fetch_data} = request) do
+    case try_resolve_local(request, :data, false) do
+      {:skipped, _, _, _} ->
+        {:error, "unreachable case", request}
 
-      {:ok, state, []} ->
-        {:continue, %{request | state: :check}}
+      {:ok, request, notifications, []} ->
+        log(request, "data fetched")
+        {:continue, %{request | state: :check}, notifications}
 
-      {:ok, state, _} ->
-        {:noreply, state}
+      {:ok, new_request, notifications, waiting_for} ->
+        log(request, "data waiting on dependencies")
+        {:waiting, new_request, notifications, waiting_for}
 
       {:error, error} ->
-        {:stop, {:error, error, state.request}, state}
+        log(request, "error fetching data: #{inspect(error)}")
+        {:error, error, request}
     end
   end
 
+  def do_next(%{state: :check, authorize?: false} = request) do
+    log(request, "Skipping check due to `authorize?: false`")
+    {:complete, %{request | state: :complete}, []}
+  end
+
+  def do_next(%{state: :check} = request) do
+    case Ash.authorizers(request.resource) do
+      [] ->
+        log(request, "No authorizers found, skipping check")
+        {:complete, %{request | state: :complete}, []}
+
+      authorizers ->
+        case check(authorizers, request) do
+          {:ok, new_request, notifications, []} ->
+            log(new_request, "Check complete")
+
+            {:complete, %{request | state: :complete}, notifications}
+
+          {:ok, new_request, notifications, waiting} ->
+            log(request, "Check incomplete, waiting on dependencies")
+            {:waiting, new_request, notifications, waiting}
+
+          {:error, error} ->
+            log(request, "Check failed")
+            {:error, error, request}
+        end
+    end
+  end
+
+  def do_next(%{state: :complete} = request) do
+    if request.dependencies_to_send == %{} do
+      {:complete, request, []}
+    else
+      Enum.reduce_while(request.dependencies_to_send, {:complete, request, [], []}, fn
+        {field, _paths}, {:complete, request, notifications, deps} ->
+          case try_resolve_local(request, field, true) do
+            {:skipped, new_request, new_notifications, other_deps} ->
+              {:cont,
+               {:complete, new_request, new_notifications ++ notifications, other_deps ++ deps}}
+
+            {:ok, new_request, new_notifications, other_deps} ->
+              {:cont,
+               {:complete, new_request, new_notifications ++ notifications, other_deps ++ deps}}
+
+            {:error, error} ->
+              {:halt, {:error, error, request}}
+          end
+      end)
+    end
+  end
+
+  def wont_receive(request, path, field) do
+    log(request, "Request failed due to failed dependency #{inspect(path ++ [field])}")
+
+    {:stop, :dependency_failed, request}
+  end
+
+  @spec send_field(atom | map, any, any, any) ::
+          {:error, atom | map, any} | {:ok, map, any} | {:waiting, any, any, any}
+  def send_field(request, receiver_path, field, optional?) do
+    log(request, "Providing #{inspect(field)} for #{inspect(receiver_path)}")
+
+    case store_dependency(request, receiver_path, field, optional?) do
+      {:value, value, new_request} ->
+        {:ok, new_request, [{receiver_path, request.path, field, value}]}
+
+      {:ok, new_request} ->
+        {:ok, new_request, []}
+
+      {:waiting, new_request, notifications, []} ->
+        {:ok, new_request, notifications}
+
+      {:waiting, new_request, notifications, waiting_for} ->
+        {new_request, dependency_requests} = new_dependencies(new_request, waiting_for)
+
+        {:waiting, new_request, notifications, dependency_requests}
+
+      {:error, error, new_request} ->
+        log(request, "Error resolving #{field}: #{inspect(error)}")
+
+        {:error, error, new_request}
+    end
+  end
+
+  def receive_field(request, path, field, value) do
+    log(request, "Receiving field #{field} from #{inspect(path)}")
+    new_request = put_dependency_data(request, path ++ [field], value)
+
+    {:continue, new_request}
+  end
+
+  defp new_dependencies(request, waiting_for) do
+    {non_optional, optional} = Enum.split_with(waiting_for, &is_list/1)
+
+    {new_request, deps} =
+      Enum.reduce(non_optional, {request, []}, fn dep, {request, deps} ->
+        {new_request, new_dep} = new_dependency(request, dep, false)
+
+        if new_dep do
+          {new_request, [new_dep | deps]}
+        else
+          {new_request, deps}
+        end
+      end)
+
+    Enum.reduce(optional, {new_request, deps}, fn dep, {request, deps} ->
+      {new_request, new_dep} = new_dependency(request, dep, true)
+
+      if new_dep do
+        {new_request, [new_dep | deps]}
+      else
+        {new_request, deps}
+      end
+    end)
+  end
+
+  defp new_dependency(request, dep, optional?) do
+    if Enum.any?(request.dependencies_requested, fn {dep_requested, _} -> dep_requested == dep end) do
+      new_request = %{
+        request
+        | dependencies_requested:
+            Enum.map(request.dependencies_requested, fn {dep_requested, requested_optional?} ->
+              if dep_requested == dep do
+                {dep_requested, optional? || requested_optional?}
+              else
+                {dep_requested, requested_optional?}
+              end
+            end)
+      }
+
+      {new_request, nil}
+    else
+      dependency_request = {dep, optional?}
+
+      {%{request | dependencies_requested: [dependency_request | request.dependencies_requested]},
+       dependency_request}
+    end
+  end
+
+  def put_dependency_data(request, dep, value) do
+    %{request | dependency_data: Map.put(request.dependency_data, dep, value)}
+  end
+
+  def store_dependency(request, receiver_path, field, optional?) do
+    case try
+          ipped, new_r
+         og(  new_request,
+
+          "Field #{field} was skipped, registering dependencies: #{inspect(waiting)}"
+        )
+
+        {:waiting, do_store_dependency(new_request, field, receiver_path, optional?),
+         notifications, waiting}
+
+      {:ok, new_request, _, _} ->
+        case Map.get(new_request, field) do
+          %UnresolvedField{} ->
+            log(request, "Field could not be resolved #{field}, registering dependency")
+            {:ok, do_store_dependency(new_request, field, receiver_path, optional?)}
+
+          value ->
+            log(request, "Field #{field}, was resolved and provided")
+            {:value, value, new_request}
+        end
+
+      {:error, error} ->
+        {:error, request, error}
+    end
+  end
+
+  defp do_store_dependency(request, field, receiver_path, optional?) do
+    tagged_path =
+      if optional? do
+        {:optional, receiver_path}
+      else
+        {:required, receiver_path}
+      end
+
+    optional_str =
+      if optional? do
+        " optional "
+      else
+        " "
+      end
+
+    log(request, "storing#{optional_str}dependency #{inspect(receiver_path)} #{field}")
+
+    new_deps_to_send =
+      Map.update(request.dependencies_to_send, field, [tagged_path], fn paths ->
+        if optional? do
+          if Enum.any?(paths, fn {_, path} -> path == receiver_path end) do
+            paths
+          else
+            [tagged_path | paths]
+          end
+        else
+          paths = Enum.reject(paths, fn {_, path} -> path == receiver_path end)
+          [tagged_path | paths]
+        end
+      end)
+
+    %{request | dependencies_to_send: new_deps_to_send}
+  end
+
   defp strict_check(authorizers, request) do
-    Enum.reduce_while(authorizers, {:ok, request, true}, fn authorizer,
-                                                            {:ok, request, waiting_for} ->
+    Enum.reduce_while(authorizers, {:ok, request, [], []}, fn authorizer,
+                                                              {:ok, request, notifications,
+                                                               waiting_for} ->
+      log(request, "strict checking")
+
       case do_strict_check(authorizer, request) do
         {:ok, new_request} ->
           log(new_request, "strict check succeeded for #{inspect(authorizer)}")
-          {:cont, {:ok, new_request, waiting_for}}
+          {:cont, {:ok, new_request, notifications, waiting_for}}
 
-        {:waiting, new_request, new_deps} ->
+        {:waiting, new_request, new_notifications, new_deps} ->
           log(
             new_request,
             "waiting on dependencies: #{inspect(new_deps)} for #{inspect(authorizer)}"
           )
 
-          {:cont, {:ok, new_request, new_deps ++ waiting_for}}
+          {:cont, {:ok, new_request, notifications ++ new_notifications, new_deps ++ waiting_for}}
 
         {:error, error} ->
           log(request, "strict check failed for #{inspect(authorizer)}: #{inspect(error)}")
@@ -167,7 +409,7 @@ defmodule Ash.Engine.Request do
     end)
   end
 
-  defp do_strict_check(authorizer, request) do
+  defp do_strict_check(authorizer, request, notifications \\ []) do
     case missing_strict_check_dependencies?(authorizer, request) do
       [] ->
         case strict_check_authorizer(authorizer, request) do
@@ -188,16 +430,228 @@ defmodule Ash.Engine.Request do
           end)
 
         case try_resolve(request, deps) do
-          {:ok, new_request, []} ->
-            do_strict_check(authorizer, new_request)
+          {:ok, new_request, new_notifications, []} ->
+            do_strict_check(authorizer, new_request, notifications ++ new_notifications)
 
-          {:ok, new_request, waiting_for} ->
-            {:waiting, new_request, waiting_for}
+          {:ok, new_request, new_notifications, waiting_for} ->
+            {:waiting, new_request, notifications ++ new_notifications, waiting_for}
 
           {:error, error} ->
             {:error, error}
         end
     end
+  end
+
+  defp check(authorizers, request) do
+    Enum.reduce_while(authorizers, {:ok, request, [], []}, fn authorizer,
+                                                              {:ok, request, notifications,
+                                                               waiting_for} ->
+      case do_check(authorizer, request) do
+        {:ok, new_request} ->
+          log(request, "check succeeded for #{inspect(authorizer)}")
+          {:cont, {:ok, new_request, notifications, waiting_for}}
+
+        {:waiting, new_request, new_notifications, new_deps} ->
+          log(
+            request,
+            "waiting on dependencies: #{inspect(new_deps)} for #{inspect(authorizer)}"
+          )
+
+          {:cont, {:ok, new_request, new_notifications ++ notifications, new_deps ++ waiting_for}}
+
+        {:error, error} ->
+          log(request, "check failed for #{inspect(authorizer)}: #{inspect(error)}")
+
+          {:halt, {:error, error}}
+      end
+    end)
+  end
+
+  defp do_check(authorizer, request, notifications \\ []) do
+    case authorizer_state(request, authorizer) do
+      :authorized ->
+        {:ok, request}
+
+      authorizer_state ->
+        request = set_authorizer_state(request, authorizer, authorizer_state)
+
+        case missing_check_dependencies(authorizer, request) do
+          [] ->
+            case check_authorizer(authorizer, request) do
+              :authorized ->
+                {:ok, set_authorizer_state(request, authorizer, :authorized)}
+
+              {:error, error} ->
+                {:error, error}
+            end
+
+          deps ->
+            deps =
+              Enum.map(deps, fn dep ->
+                request.path ++ [dep]
+              end)
+
+            case try_resolve(request, deps) do
+              {:ok, new_request, new_notifications, []} ->
+                do_check(authorizer, new_request, notifications ++ new_notifications)
+
+              {:ok, new_request, new_notifications, waiting_for} ->
+                {:waiting, new_request, new_notifications ++ notifications, waiting_for}
+
+              {:error, error} ->
+                {:error, error}
+            end
+        end
+    end
+  end
+
+  defp try_resolve(request, deps, optional? \\ false) do
+    Enum.reduce_while(deps, {:ok, request, [], []}, fn dep,
+                                                       {:ok, request, notifications, skipped} ->
+      if local_dep?(request, dep) do
+        case try_resolve_local(request, List.last(dep), optional?) do
+          {:skipped, request, new_notifications, other_deps} ->
+            {:cont, {:ok, request, new_notifications ++ notifications, skipped ++ other_deps}}
+
+          {:ok, request, new_notifications, other_deps} ->
+            {:cont, {:ok, request, new_notifications ++ notifications, skipped ++ other_deps}}
+
+          {:error, error} ->
+            log(request, "Error resolving optional dependency #{inspect(dep)}: #{error}")
+
+            if optional? do
+              {:cont, {:ok, request, notifications, skipped}}
+            else
+              {:halt, {:error, error}}
+            end
+        end
+      else
+        case get_dependency_data(request, dep) do
+          {:ok, _value} ->
+            {:cont, {:ok, request, notifications, skipped}}
+
+          :error ->
+            {:cont, {:ok, request, notifications, [dep | skipped]}}
+        end
+      end
+    end)
+  end
+
+  defp try_resolve_local(request, field, optional?) do
+    # Don't fetch request data if strict_check is not complete
+    if field == :data && request.state == :strict_check do
+      case request.data do
+        %UnresolvedField{deps: deps, optional_deps: optional_deps} ->
+          with {:ok, new_request, optional_notifications, remaining_optional} <-
+                 try_resolve(request, optional_deps, true),
+               {:ok, new_request, required_notifications, remaining_deps} <-
+                 try_resolve(new_request, deps, optional?) do
+            {:skipped, new_request, optional_notifications ++ required_notifications,
+             remaining_deps ++ remaining_optional}
+          else
+            error ->
+              error
+          end
+
+        _ ->
+          {:skipped, request, [], []}
+      end
+    else
+      case request do
+        %{^field => %UnresolvedField{} = unresolved} ->
+          %{deps: deps, optional_deps: optional_deps, resolver: resolver} = unresolved
+
+          with {:ok, new_request, optional_notifications, _remaining_optional} <-
+                 try_resolve(request, optional_deps, true),
+               {:ok, new_request, required_notifications, []} <-
+                 try_resolve(new_request, deps, optional?) do
+            resolver_context = resolver_context(new_request, deps ++ optional_deps)
+
+            case resolver.(resolver_context) do
+              {:ok, value} ->
+                {new_request, new_notifications} = notifications(new_request, field, value)
+
+                notifications =
+                  Enum.concat([
+                    optional_notifications,
+                    required_notifications,
+                    new_notifications
+                  ])
+
+                new_request = Map.put(new_request, field, value)
+
+                new_request = put_dependency_data(new_request, new_request.path ++ [field], value)
+
+                {:ok, new_request, notifications, []}
+
+              {:error, error} ->
+                {:error, error}
+            end
+          end
+
+        %{^field => value} = request ->
+          {new_request, notifications} = notifications(request, field, value)
+
+          {:ok, new_request, notifications, []}
+      end
+    end
+  end
+
+  defp get_dependency_data(request, dep) do
+    if local_dep?(request, dep) do
+      Map.fetch(request, List.last(dep))
+    else
+      Map.fetch(request.dependency_data, dep)
+    end
+  end
+
+  defp notifications(request, field, value) do
+    case Map.fetch(request.dependencies_to_send, field) do
+      {:ok, paths} ->
+        new_request = %{
+          request
+          | dependencies_to_send: Map.delete(request.dependencies_to_send, field)
+        }
+
+        notifications = Enum.map(paths, fn path -> {path, request.path, field, value} end)
+        {new_request, notifications}
+
+      :error ->
+        {request, []}
+    end
+  end
+
+  defp resolver_context(request, deps) do
+    Enum.reduce(deps, %{}, fn dep, resolver_context ->
+      case get_dependency_data(request, dep) do
+        {:ok, value} ->
+          Ash.Engine.put_nested_key(resolver_context, dep, value)
+
+        :error ->
+          resolver_context
+      end
+    end)
+  end
+
+  defp local_dep?(request, dep) do
+    :lists.droplast(dep) == request.path
+  end
+
+  defp add_initial_authorizer_state(request) do
+    request.resource
+    |> Ash.authorizers()
+    |> Enum.reduce(request, fn authorizer, request ->
+      initial_state =
+        Ash.Engine.Authorizer.initial_state(
+          authorizer,
+          request.actor,
+          request.resource,
+          request.action,
+          request.verbose?
+        )
+
+      set_authorizer_state(request, authorizer, initial_state)
+    end)
   end
 
   defp missing_strict_check_dependencies?(authorizer, request) do
@@ -216,38 +670,51 @@ defmodule Ash.Engine.Request do
     end)
   end
 
-  defp strict_check_authorizer(authorizer, state) do
-    log(state, "strict checking for #{inspect(authorizer)}")
+  defp strict_check_authorizer(authorizer, request) do
+    log(request, "strict checking for #{inspect(authorizer)}")
 
-    authorizer_state = authorizer_state(state, authorizer)
+    authorizer_state = authorizer_state(request, authorizer)
 
     keys = Authorizer.strict_check_context(authorizer, authorizer_state)
 
-    Authorizer.strict_check(authorizer, authorizer_state, Map.take(state.request, keys))
+    Authorizer.strict_check(authorizer, authorizer_state, Map.take(request, keys))
   end
 
-  defp check_authorizer(authorizer, state) do
-    log(state, "checking for #{inspect(authorizer)}")
+  defp check_authorizer(authorizer, request) do
+    log(request, "checking for #{inspect(authorizer)}")
 
-    authorizer_state = authorizer_state(state, authorizer)
+    authorizer_state = authorizer_state(request, authorizer)
 
     keys = Authorizer.check_context(authorizer, authorizer_state)
 
-    Authorizer.check(authorizer, authorizer_state, Map.take(state.request, keys))
+    Authorizer.check(authorizer, authorizer_state, Map.take(request, keys))
   end
 
-  defp set_authorizer_state(state, authorizer, authorizer_state) do
+  defp set_authorizer_state(request, authorizer, authorizer_state) do
     %{
-      state
-      | authorizer_state: Map.put(state.authorizer_state, authorizer, authorizer_state)
+      request
+      | authorizer_state: Map.put(request.authorizer_state, authorizer, authorizer_state)
     }
   end
 
-  defp authorizer_state(state, authorizer) do
-    Map.get(state.authorizer_state, authorizer) || %{}
+  defp authorizer_state(request, authorizer) do
+    Map.get(request.authorizer_state, authorizer) || %{}
   end
 
-  def validate_unique_paths(requests) do
+  def validate_requests(requests) do
+    with :ok <- validate_unique_paths(requests),
+         :ok <- validate_dependencies(requests) do
+      :ok
+    else
+      {:error, {:impossible, path}} ->
+        {:error, "Impossible path: #{inspect(path)} required by request."}
+
+      {:error, paths} ->
+        {:error, "Duplicate requests at paths: #{inspect(paths)}"}
+    end
+  end
+
+  defp validate_unique_paths(requests) do
     requests
     |> Enum.group_by(& &1.path)
     |> Enum.filter(fn {_path, value} ->
@@ -264,11 +731,11 @@ defmodule Ash.Engine.Request do
     end
   end
 
-  def build_dependencies(requests) do
+  defp validate_dependencies(requests) do
     result =
-      Enum.reduce_while(requests, {:ok, []}, fn request, {:ok, new_requests} ->
+      Enum.reduce_while(requests, :ok, fn request, :ok ->
         case do_build_dependencies(request, requests) do
-          {:ok, new_request} -> {:cont, {:ok, [new_request | new_requests]}}
+          :ok -> {:cont, :ok}
           {:error, error} -> {:halt, {:error, error}}
         end
       end)
@@ -282,27 +749,27 @@ defmodule Ash.Engine.Request do
   defp do_build_dependencies(request, requests, trail \\ []) do
     request
     |> Map.from_struct()
-    |> Enum.reduce_while({:ok, request}, fn
-      {key, %UnresolvedField{deps: deps} = unresolved}, {:ok, request} ->
+    |> Enum.reduce_while(:ok, fn
+      {_key, %UnresolvedField{deps: deps}}, :ok ->
         case expand_deps(deps, requests, trail) do
           {:error, error} ->
             {:halt, {:error, error}}
 
-          {:ok, new_deps} ->
-            {:cont, {:ok, Map.put(request, key, %{unresolved | deps: Enum.uniq(new_deps)})}}
+          :ok ->
+            {:cont, :ok}
         end
 
-      _, {:ok, request} ->
-        {:cont, {:ok, request}}
+      _, :ok ->
+        {:cont, :ok}
     end)
   end
 
   defp expand_deps([], _, _), do: {:ok, []}
 
   defp expand_deps(deps, requests, trail) do
-    Enum.reduce_while(deps, {:ok, []}, fn dep, {:ok, all_new_deps} ->
+    Enum.reduce_while(deps, :ok, fn dep, :ok ->
       case do_expand_dep(dep, requests, trail) do
-        {:ok, new_deps} -> {:cont, {:ok, all_new_deps ++ new_deps}}
+        :ok -> {:cont, :ok}
         {:error, error} -> {:halt, {:error, error}}
       end
     end)
@@ -322,20 +789,20 @@ defmodule Ash.Engine.Request do
 
         %{^request_key => %UnresolvedField{deps: nested_deps}} ->
           case expand_deps(nested_deps, requests, [dep | trail]) do
-            {:ok, new_deps} -> {:ok, [dep | new_deps]}
+            :ok -> :ok
             other -> other
           end
 
         _ ->
-          {:ok, [dep]}
+          :ok
       end
     end
   end
 
-  defp log(state, message, level \\ :debug)
+  defp log(request, message, level \\ :debug)
 
-  defp log(%{verbose?: true, name: name}, message, level) do
-    Logger.log(level, "#{name}: #{message}")
+  defp log(%{verbose?: true, name: name, id: id}, message, level) do
+    Logger.log(level, "#{id}|#{name}: #{message}")
   end
 
   defp log(_, _, _) do

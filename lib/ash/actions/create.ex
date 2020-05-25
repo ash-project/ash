@@ -30,7 +30,7 @@ defmodule Ash.Actions.Create do
          params <- Keyword.merge(params, attributes: attributes, relationships: relationships),
          %{valid?: true} = changeset <-
            changeset(api, resource, params),
-         {:ok, side_load_requests} <-
+         side_load_requests <-
            SideLoad.requests(side_load_query, api.query(resource)),
          %{
            data: %{data: %^resource{} = created} = state,
