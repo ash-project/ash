@@ -1,6 +1,7 @@
 defmodule Ash.Engine.Runner do
   defstruct [
     :engine_pid,
+    notified_of_complete?: false,
     requests: [],
     errors: [],
     data: %{},
@@ -22,7 +23,7 @@ defmodule Ash.Engine.Runner do
       pid_info: pid_info
     }
 
-    log(state, "Synchronous engine starting")
+    log(state, "Synchronous engine starting - #{Enum.map_join(requests, ", ", & &1.name)}")
 
     run_to_completion(state)
   end
@@ -31,10 +32,18 @@ defmodule Ash.Engine.Runner do
     if Enum.all?(state.requests, &(&1.state in [:complete, :error])) do
       # This allows for publishing any dependencies
       new_state = run_iteration(state)
-      new_state = Enum.reduce(new_state.requests, state, &add_data(&2, &1.path, &1.data))
+      new_state = Enum.reduce(new_state.requests, new_state, &add_data(&2, &1.path, &1.data))
 
       if new_state.engine_pid do
-        GenServer.cast(new_state.engine_pid, :local_requests_complete)
+        new_state =
+          if new_state.notified_of_complete? do
+            new_state
+          else
+            log(new_state, "notifying engine of local request completion")
+            GenServer.cast(new_state.engine_pid, :local_requests_complete)
+            %{new_state | notified_of_complete?: true}
+          end
+
         wait_for_engine(new_state, true)
       else
         log(state, "Synchronous engine complete.")
@@ -62,12 +71,23 @@ defmodule Ash.Engine.Runner do
 
     receive do
       {:"$gen_cast", message} ->
-        fake_handle_cast(message, state)
+        log(state, "Received #{inspect(message)}")
+
+        message
+        |> fake_handle_cast(state)
+        |> run_to_completion()
+
+      {:data, path, data} ->
+        state
+        |> add_data(path, data)
+        |> wait_for_engine(complete?)
 
       {:DOWN, _, _, ^engine_pid, {:shutdown, %{errored_requests: []} = engine_state}} ->
+        log(state, "Engine complete")
         handle_completion(state, engine_state, complete?, false)
 
       {:DOWN, _, _, ^engine_pid, {:shutdown, engine_state}} ->
+        log(state, "Engine complete")
         handle_completion(state, engine_state, complete?, true)
     end
   end
@@ -102,6 +122,7 @@ defmodule Ash.Engine.Runner do
   defp add_engine_state(state, engine_state) do
     new_state = %{state | errors: engine_state.errors ++ state.errors}
 
+    log(state, "waiting for engine data")
     receive_data(new_state)
   end
 
@@ -127,6 +148,7 @@ defmodule Ash.Engine.Runner do
   end
 
   defp fake_handle_cast({:send_field, receiver_path, pid, dep, optional?}, state) do
+    log(state, "notifying #{inspect(receiver_path)} of #{inspect(dep)}")
     path = :lists.droplast(dep)
     field = List.last(dep)
     request = Enum.find(state.requests, &(&1.path == path))
@@ -135,8 +157,8 @@ defmodule Ash.Engine.Runner do
       {:waiting, new_request, notifications, dependencies} ->
         state
         |> replace_request(new_request)
-        |> store_dependencies(new_request, dependencies)
         |> notify(notifications)
+        |> store_dependencies(new_request.path, dependencies)
 
       {:ok, new_request, notifications} ->
         state
@@ -144,7 +166,9 @@ defmodule Ash.Engine.Runner do
         |> notify(notifications)
 
       {:error, error, new_request} ->
-        Engine.send_wont_receive(pid, receiver_path, new_request.path, field, optional?)
+        unless optional? do
+          Engine.send_wont_receive(pid, receiver_path, new_request.path, field)
+        end
 
         state
         |> add_error(new_request.path, error)
@@ -152,65 +176,76 @@ defmodule Ash.Engine.Runner do
     end
   end
 
-  defp fake_handle_cast({:field_value, receiver_path, field, value}, state) do
+  defp fake_handle_cast({:field_value, receiver_path, request_path, field, value}, state) do
     request = Enum.find(state.requests, &(&1.path == receiver_path))
 
-    case Request.receive_field(request, receiver_path, field, value) do
+    case Request.receive_field(request, request_path, field, value) do
       {:continue, new_request} ->
-        state
-        |> replace_request(new_request)
-        |> run_to_completion()
+        replace_request(state, new_request)
     end
   end
 
   defp run_iteration(state) do
-    Enum.reduce(state.requests, state, fn request, state ->
-      fully_advance_request(state, request)
-    end)
+    {new_state, notifications} =
+      Enum.reduce(state.requests, {state, []}, fn request, {state, notifications} ->
+        {new_state, new_notifications} = fully_advance_request(state, request)
+
+        {new_state, notifications ++ new_notifications}
+      end)
+
+    notify(new_state, notifications)
   end
 
-  defp store_dependencies(state, request, dependencies) do
-    Enum.reduce(dependencies, state, fn {dep, optional?}, state ->
-      field = List.last(dep)
-      path = :lists.droplast(dep)
+  defp store_dependencies(state, request_path, dependencies) do
+    request = Enum.find(state.requests, &(&1.path == request_path))
 
-      case Enum.find(state.requests, &(&1.path == path)) do
-        nil ->
-          pid = Map.get(state.pid_info, path)
+    {new_state, notifications} =
+      Enum.reduce(dependencies, {state, []}, fn {dep, optional?}, {state, notifications} ->
+        path = :lists.droplast(dep)
+        field = List.last(dep)
 
-          GenServer.cast(pid, {:send_field, request.path, self(), field, optional?})
+        case Enum.find(state.requests, &(&1.path == path)) do
+          nil ->
+            pid = Map.get(state.pid_info, path)
 
-          state
+            GenServer.cast(pid, {:send_field, path, self(), dep, optional?})
 
-        depended_on_request ->
-          case Request.send_field(depended_on_request, request.path, field, optional?) do
-            {:ok, new_request, notifications} ->
-              state
-              |> replace_request(new_request)
-              |> notify(notifications)
+            {state, notifications}
 
-            {:waiting, new_request, notifications, waiting_for} ->
-              state
-              |> replace_request(new_request)
-              |> store_dependencies(new_request, waiting_for)
-              |> notify(notifications)
+          depended_on_request ->
+            case Request.send_field(depended_on_request, request.path, field, optional?) do
+              {:ok, new_request, new_notifications} ->
+                {replace_request(state, new_request), notifications ++ new_notifications}
 
-            {:error, error, new_request} ->
-              new_state =
-                state
-                |> replace_request(%{new_request | state: :error})
-                |> add_error(new_request.path, error)
+              {:waiting, new_request, new_notifications, waiting_for} ->
+                new_state =
+                  state
+                  |> replace_request(new_request)
+                  |> store_dependencies(new_request.path, waiting_for)
 
-              if optional? do
-                new_state
-              else
-                new_state
-                |> add_error(request.path, "dependency failed")
-                |> replace_request(%{request | error: error})
-              end
-          end
-      end
-    end)
+                {new_state, new_notifications ++ notifications}
+
+              {:error, error, new_request} ->
+                new_state =
+                  state
+                  |> replace_request(%{new_request | state: :error})
+                  |> add_error(new_request.path, error)
+
+                new_state =
+                  if optional? do
+                    new_state
+                  else
+                    new_state
+                    |> add_error(request.path, "dependency failed")
+                    |> replace_request(%{new_request | error: error})
+                  end
+
+                {new_state, notifications}
+            end
+        end
+      end)
+
+    notify(new_state, notifications)
   end
 
   defp notify(state, notifications) do
@@ -228,12 +263,12 @@ defmodule Ash.Engine.Runner do
             value
           )
 
+          state
+
         receiver_request ->
           case Request.receive_field(receiver_request, request_path, field, value) do
             {:continue, new_request} ->
-              state
-              |> replace_request(new_request)
-              |> fully_advance_request(new_request)
+              replace_request(state, new_request)
           end
       end
     end)
@@ -254,28 +289,33 @@ defmodule Ash.Engine.Runner do
   end
 
   defp fully_advance_request(state, request) do
-    case advance_request(state, request) do
+    case advance_request(request) do
       {:ok, new_request, notifications, dependencies} ->
-        state
-        |> replace_request(new_request)
-        |> store_dependencies(new_request, dependencies)
-        |> notify(notifications)
+        new_state =
+          state
+          |> replace_request(new_request)
+          |> store_dependencies(new_request.path, dependencies)
+
+        {new_state, notifications}
 
       {:error, error, new_request} ->
-        state
-        |> add_error(new_request.path, error)
-        |> replace_request(%{new_request | state: :error})
+        new_state =
+          state
+          |> add_error(new_request.path, error)
+          |> replace_request(%{new_request | state: :error})
+
+        {new_state, []}
     end
   end
 
-  defp advance_request(state, request, notifications \\ [], dependencies \\ []) do
+  defp advance_request(request, notifications \\ [], dependencies \\ []) do
     case Request.next(request) do
       {complete, new_request, new_notifications}
       when complete in [:complete, :already_complete] ->
         {:ok, new_request, new_notifications ++ notifications, dependencies}
 
       {:continue, new_request, new_notifications} ->
-        advance_request(state, new_request, notifications ++ new_notifications, dependencies)
+        {:ok, new_request, new_notifications ++ notifications, []}
 
       {:error, error, new_request} ->
         {:error, error, new_request}
@@ -310,7 +350,7 @@ defmodule Ash.Engine.Runner do
   defp log(request, message, level \\ :debug)
 
   defp log(%{verbose?: true}, message, level) do
-    Logger.log(level, "#{message}")
+    Logger.log(level, "Runner: " <> message)
   end
 
   defp log(_, _, _) do

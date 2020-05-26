@@ -50,7 +50,7 @@ defmodule Ash.Engine do
           |> Keyword.put(:api, api)
 
         if async_requests == [] do
-          Runner.run(local_requests, nil, opts[:verbose?])
+          Runner.run(local_requests, opts[:verbose?])
         else
           Process.flag(:trap_exit, true)
           {:ok, pid} = GenServer.start(__MODULE__, opts)
@@ -121,23 +121,17 @@ defmodule Ash.Engine do
   end
 
   def handle_cast(
-        {:register_dependency, receiver_path, request_handler_pid, dependency, optional?},
+        {:register_dependency, receiver_path, request_handler_pid, dependency},
         state
       ) do
     path = :lists.droplast(dependency)
     field = List.last(dependency)
 
     case get_request(state, path) do
-      {:active, _pid, _request} ->
-        {:noreply, state}
-
-      {:complete, _pid, _request} ->
-        {:noreply, state}
-
       {:error, _pid, request} ->
         case Map.get(request, field) do
           %Request.UnresolvedField{} ->
-            send_wont_receive(request_handler_pid, receiver_path, request.path, field, optional?)
+            send_wont_receive(request_handler_pid, receiver_path, request.path, field)
 
           value ->
             RequestHandler.send_field_value(
@@ -149,6 +143,9 @@ defmodule Ash.Engine do
             )
         end
 
+        {:noreply, state}
+
+      _ ->
         {:noreply, state}
     end
   end
@@ -164,12 +161,8 @@ defmodule Ash.Engine do
     |> maybe_shutdown()
   end
 
-  def send_wont_receive(pid, caller_path, request_path, field, true) do
+  def send_wont_receive(pid, caller_path, request_path, field) do
     GenServer.cast(pid, {:wont_receive, caller_path, request_path, field})
-  end
-
-  def send_wont_receive(_pid, _caller_path, _request_path, _field, false) do
-    :ok
   end
 
   def handle_info({:EXIT, _pid, {:shutdown, {:error, error, request_handler_state}}}, state) do
@@ -205,9 +198,14 @@ defmodule Ash.Engine do
   end
 
   defp get_request(state, path, pid \\ nil) do
-    status = get_status(state, path)
-    pid = pid || get_pid(state, path)
-    {status, pid, Enum.find(state.requests, &(&1.path == path))}
+    case get_status(state, path) do
+      nil ->
+        nil
+
+      status ->
+        pid = pid || get_pid(state, path)
+        {status, pid, Enum.find(state.requests, &(&1.path == path))}
+    end
   end
 
   defp get_status(state, path) do
@@ -215,6 +213,7 @@ defmodule Ash.Engine do
       path in state.active_requests -> :active
       path in state.completed_requests -> :complete
       path in state.errored_requests -> :error
+      true -> nil
     end
   end
 
@@ -262,14 +261,23 @@ defmodule Ash.Engine do
   end
 
   defp split_local_async_requests(requests) do
-    # TODO: check for transactions, run anything in a transaction synchronously
-    case requests do
-      [request] -> {[request], []}
-      [request | rest] -> {[request], rest}
+    {local, async} = Enum.split_with(requests, &must_be_local?/1)
+
+    case {local, async} do
+      {[], [first_async | rest]} ->
+        {[first_async], rest}
+
+      {local, async} ->
+        {local, async}
     end
   end
 
+  defp must_be_local?(request) do
+    not Ash.data_layer_can?(request.resource, :async_engine)
+  end
+
   defp maybe_shutdown(%{active_requests: [], local_requests?: false} = state) do
+    log(state, "shutting down, completion criteria reached")
     {:stop, {:shutdown, state}, state}
   end
 
@@ -300,7 +308,7 @@ defmodule Ash.Engine do
   defp log(state, message, level \\ :info)
 
   defp log(%{verbose?: true} = state, message, level) do
-    Logger.log(level, message)
+    Logger.log(level, "Engine: " <> message)
 
     state
   end

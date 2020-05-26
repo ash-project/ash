@@ -10,6 +10,7 @@ defmodule Ash do
   alias Ash.Resource.Actions.{Create, Read, Update, Destroy}
 
   @type record :: struct
+  @type relationship_cardinality :: :many | :one
   @type cardinality_one_relationship() :: HasOne.t() | BelongsTo.t()
   @type cardinality_many_relationship() :: HasMany.t() | ManyToMany.t()
   @type relationship :: cardinality_one_relationship() | cardinality_many_relationship()

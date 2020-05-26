@@ -31,8 +31,8 @@ defmodule Ash.DataLayer.Ets do
 
   @impl true
 
-  def can?(resource, :query_async) do
-    !Ash.DataLayer.Ets.private?(resource)
+  def can?(resource, :async_engine) do
+    not Ash.DataLayer.Ets.private?(resource)
   end
 
   def can?(_, :transact), do: false

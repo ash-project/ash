@@ -1,6 +1,11 @@
 defmodule Ash.DataLayer do
   @type filter_type :: :eq | :in
-  @type feature() :: :transact | :query_async | {:filter, filter_type} | :upsert
+  @type feature() ::
+          :transact
+          | :async_engine
+          | {:filter, filter_type}
+          | {:filter_related, Ash.relationship_cardinality()}
+          | :upsert
 
   @callback filter(Ash.data_layer_query(), Ash.filter(), resource :: Ash.resource()) ::
               {:ok, Ash.data_layer_query()} | {:error, Ash.error()}

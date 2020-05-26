@@ -595,16 +595,14 @@ defmodule Ash.Filter do
          destination: destination,
          name: name
        }) do
-    data_layer = Ash.data_layer(resource)
-
     cond do
-      not data_layer.can?({:filter_related, cardinality}) ->
+      not Ash.data_layer_can?(resource, {:filter_related, cardinality}) ->
         add_error(
           filter,
-          "Cannot filter on relationship #{name}: #{inspect(data_layer)} does not support it."
+          "Cannot filter on relationship #{name}: #{inspect(Ash.data_layer(resource))} does not support it."
         )
 
-      not (Ash.data_layer(destination) == data_layer) ->
+      not (Ash.data_layer(destination) == Ash.data_layer(resource)) ->
         add_error(
           filter,
           "Cannot filter on related entites unless they share a data layer, for now."

@@ -4,11 +4,10 @@ defmodule Ash.Engine.RequestHandler do
   use GenServer
   require Logger
 
-  # TODO: as an optimization, make the authorizer_state global
+  # TODO: as an optimization, maybe make the authorizer_state global
   # to all request_handlers (using an agent or something)
 
   alias Ash.Engine.Request
-  alias Ash.Engine
 
   ## If not bypass strict check, then the engine needs to ensure
   # that a scenario is reality *at strict check time*
@@ -18,7 +17,8 @@ defmodule Ash.Engine.RequestHandler do
     state = %__MODULE__{
       request: opts[:request],
       verbose?: opts[:verbose?] || false,
-      runner_pid: opts[:runner_pid]
+      runner_pid: opts[:runner_pid],
+      engine_pid: opts[:engine_pid]
     }
 
     log(state, "Starting request")
@@ -42,7 +42,7 @@ defmodule Ash.Engine.RequestHandler do
         {:noreply, new_state, {:continue, :next}}
 
       {:error, error, new_request} ->
-        {:stop, {:error, error, new_request}, state}
+        {:stop, {:error, error, %{new_request | state: :error}}, state}
 
       {:already_complete, new_request, notifications} ->
         new_state = %{state | request: new_request}
@@ -54,13 +54,13 @@ defmodule Ash.Engine.RequestHandler do
       {:complete, new_request, notifications} ->
         new_state = %{state | request: new_request}
         notify(new_state, notifications)
-        complete(new_state, new_request)
+        complete(new_state)
         {:noreply, new_state}
 
       {:wait, new_request, notifications, dependencies} ->
         new_state = %{state | request: new_request}
         notify(new_state, notifications)
-        Enum.each(dependencies, &register_dependency(new_state, new_request.path, &1))
+        Enum.each(dependencies, &register_dependency(new_state, &1))
 
         {:noreply, new_state}
     end
@@ -73,7 +73,9 @@ defmodule Ash.Engine.RequestHandler do
     end
   end
 
-  def handle_cast({:send_field, receiver_path, pid, field, optional?}, state) do
+  def handle_cast({:send_field, receiver_path, _pid, dep, optional?}, state) do
+    field = List.last(dep)
+
     case Request.send_field(
            state.request,
            receiver_path,
@@ -83,7 +85,7 @@ defmodule Ash.Engine.RequestHandler do
       {:waiting, new_request, notifications, dependency_requests} ->
         new_state = %{state | request: new_request}
         notify(new_state, notifications)
-        Enum.each(dependency_requests, &register_dependency(new_state, new_request.path, &1))
+        Enum.each(dependency_requests, &register_dependency(new_state, &1))
 
         {:noreply, new_state}
 
@@ -94,14 +96,12 @@ defmodule Ash.Engine.RequestHandler do
         {:noreply, new_state}
 
       {:error, error, new_request} ->
-        Engine.send_wont_receive(pid, receiver_path, new_request.path, field, optional?)
-
-        {:stop, {:error, error}, new_request}
+        {:stop, {:error, error}, %{new_request | state: :error}}
     end
   end
 
-  def handle_cast({:field_value, receiver_path, field, value}, state) do
-    case Request.receive_field(state.request, receiver_path, field, value) do
+  def handle_cast({:field_value, _receiver_path, request_path, field, value}, state) do
+    case Request.receive_field(state.request, request_path, field, value) do
       {:continue, new_request} ->
         {:noreply, %{state | request: new_request}, {:continue, :next}}
     end
@@ -117,8 +117,10 @@ defmodule Ash.Engine.RequestHandler do
     end)
   end
 
-  def register_dependency(state, receiver_path, {dep, optional?}) do
-    destination_pid = Map.get(state.pid_info, receiver_path) || state.runner_pid
+  def register_dependency(state, {dep, optional?}) do
+    path = :lists.droplast(dep)
+
+    destination_pid = Map.get(state.pid_info, path) || state.runner_pid
 
     log(state, "registering dependency: #{inspect(dep)}")
 
@@ -128,29 +130,33 @@ defmodule Ash.Engine.RequestHandler do
 
     field = List.last(dep)
 
-    log(state, "Asking #{inspect(receiver_path)} for #{field}")
+    log(state, "Asking #{inspect(path)} for #{field}")
 
     GenServer.cast(
       destination_pid,
-      {:send_field, receiver_path, self(), field, optional?}
+      {:send_field, state.request.path, self(), dep, optional?}
     )
 
-    log(state, "Registering dependency on #{inspect(receiver_path)} - #{field}")
+    unless optional? do
+      log(state, "Registering hard dependency on #{inspect(path)} - #{field}")
 
-    GenServer.cast(
-      state.engine_pid,
-      {:register_dependency, receiver_path, self(), dep, optional?}
-    )
+      GenServer.cast(
+        state.engine_pid,
+        {:register_dependency, state.request.path, self(), dep}
+      )
+    end
+
+    :ok
   end
 
   def send_field_value(pid, receiver_path, request_path, field, value) do
     GenServer.cast(pid, {:field_value, receiver_path, request_path, field, value})
   end
 
-  defp complete(state, request) do
-    log(state, "Request complete")
-    send(state.runner_pid, {:data, request.path, request.data})
-    GenServer.cast(state.engine_pid, {:complete, request.path})
+  defp complete(state) do
+    log(state, "Request complete, sending data")
+    GenServer.cast(state.engine_pid, {:complete, state.request.path})
+    send(state.runner_pid, {:data, state.request.path, state.request.data})
   end
 
   defp log(state, message, level \\ :debug)

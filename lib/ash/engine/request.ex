@@ -114,6 +114,12 @@ defmodule Ash.Engine.Request do
     add_initial_authorizer_state(request)
   end
 
+  @spec next(%{state: :check | :complete | :fetch_data | :strict_check}) ::
+          {:already_complete, any, any}
+          | {:complete, any, any}
+          | {:continue, any, any}
+          | {:error, any, any}
+          | {:wait, any, any, any}
   def next(request) do
     case do_next(request) do
       {:complete, new_request, notifications} ->
@@ -165,11 +171,11 @@ defmodule Ash.Engine.Request do
         {:error, "unreachable case", request}
 
       {:ok, request, notifications, []} ->
-        log(request, "data fetched")
+        log(request, "data fetched: #{inspect(notifications)}")
         {:continue, %{request | state: :check}, notifications}
 
       {:ok, new_request, notifications, waiting_for} ->
-        log(request, "data waiting on dependencies")
+        log(request, "data waiting on dependencies: #{inspect(waiting_for)}")
         {:waiting, new_request, notifications, waiting_for}
 
       {:error, error} ->
@@ -235,17 +241,15 @@ defmodule Ash.Engine.Request do
     {:stop, :dependency_failed, request}
   end
 
-  @spec send_field(atom | map, any, any, any) ::
-          {:error, atom | map, any} | {:ok, map, any} | {:waiting, any, any, any}
   def send_field(request, receiver_path, field, optional?) do
-    log(request, "Providing #{inspect(field)} for #{inspect(receiver_path)}")
+    log(request, "Attempting to provide #{inspect(field)} for #{inspect(receiver_path)}")
 
     case store_dependency(request, receiver_path, field, optional?) do
       {:value, value, new_request} ->
         {:ok, new_request, [{receiver_path, request.path, field, value}]}
 
-      {:ok, new_request} ->
-        {:ok, new_request, []}
+      {:ok, new_request, notifications} ->
+        {:ok, new_request, notifications}
 
       {:waiting, new_request, notifications, []} ->
         {:ok, new_request, notifications}
@@ -322,21 +326,23 @@ defmodule Ash.Engine.Request do
   end
 
   def store_dependency(request, receiver_path, field, optional?) do
-    case try
-          ipped, new_r
-         og(  new_request,
+    request = do_store_dependency(request, field, receiver_path, optional?)
 
-          "Field #{field} was skipped, registering dependencies: #{inspect(waiting)}"
-        )
+    case try_resolve_local(request, field, optional?) do
+      {:skipped, new_request, notifications, []} ->
+        log(request, "Field #{field} was skipped, no additional dependencies")
+        {:ok, new_request, notifications}
 
-        {:waiting, do_store_dependency(new_request, field, receiver_path, optional?),
-         notifications, waiting}
+      {:skipped, new_request, notifications, waiting} ->
+        log(request, "Field #{field} was skipped, registering dependencies: #{inspect(waiting)}")
+
+        {:waiting, new_request, notifications, waiting}
 
       {:ok, new_request, _, _} ->
         case Map.get(new_request, field) do
           %UnresolvedField{} ->
             log(request, "Field could not be resolved #{field}, registering dependency")
-            {:ok, do_store_dependency(new_request, field, receiver_path, optional?)}
+            {:ok, new_request, []}
 
           value ->
             log(request, "Field #{field}, was resolved and provided")
@@ -363,7 +369,7 @@ defmodule Ash.Engine.Request do
         " "
       end
 
-    log(request, "storing#{optional_str}dependency #{inspect(receiver_path)} #{field}")
+    log(request, "storing#{optional_str}dependency on #{field} from #{inspect(receiver_path)}")
 
     new_deps_to_send =
       Map.update(request.dependencies_to_send, field, [tagged_path], fn paths ->
@@ -508,31 +514,31 @@ defmodule Ash.Engine.Request do
   defp try_resolve(request, deps, optional? \\ false) do
     Enum.reduce_while(deps, {:ok, request, [], []}, fn dep,
                                                        {:ok, request, notifications, skipped} ->
-      if local_dep?(request, dep) do
-        case try_resolve_local(request, List.last(dep), optional?) do
-          {:skipped, request, new_notifications, other_deps} ->
-            {:cont, {:ok, request, new_notifications ++ notifications, skipped ++ other_deps}}
+      case get_dependency_data(request, dep) do
+        {:ok, _value} ->
+          {:cont, {:ok, request, notifications, skipped}}
 
-          {:ok, request, new_notifications, other_deps} ->
-            {:cont, {:ok, request, new_notifications ++ notifications, skipped ++ other_deps}}
+        :error ->
+          if local_dep?(request, dep) do
+            case try_resolve_local(request, List.last(dep), optional?) do
+              {:skipped, request, new_notifications, other_deps} ->
+                {:cont, {:ok, request, new_notifications ++ notifications, skipped ++ other_deps}}
 
-          {:error, error} ->
-            log(request, "Error resolving optional dependency #{inspect(dep)}: #{error}")
+              {:ok, request, new_notifications, other_deps} ->
+                {:cont, {:ok, request, new_notifications ++ notifications, skipped ++ other_deps}}
 
-            if optional? do
-              {:cont, {:ok, request, notifications, skipped}}
-            else
-              {:halt, {:error, error}}
+              {:error, error} ->
+                log(request, "Error resolving optional dependency #{inspect(dep)}: #{error}")
+
+                if optional? do
+                  {:cont, {:ok, request, notifications, skipped}}
+                else
+                  {:halt, {:error, error}}
+                end
             end
-        end
-      else
-        case get_dependency_data(request, dep) do
-          {:ok, _value} ->
-            {:cont, {:ok, request, notifications, skipped}}
-
-          :error ->
+          else
             {:cont, {:ok, request, notifications, [dep | skipped]}}
-        end
+          end
       end
     end)
   end
@@ -557,8 +563,8 @@ defmodule Ash.Engine.Request do
           {:skipped, request, [], []}
       end
     else
-      case request do
-        %{^field => %UnresolvedField{} = unresolved} ->
+      case Map.fetch(request, field) do
+        {:ok, %UnresolvedField{} = unresolved} ->
           %{deps: deps, optional_deps: optional_deps, resolver: resolver} = unresolved
 
           with {:ok, new_request, optional_notifications, _remaining_optional} <-
@@ -582,24 +588,41 @@ defmodule Ash.Engine.Request do
 
                 new_request = put_dependency_data(new_request, new_request.path ++ [field], value)
 
-                {:ok, new_request, notifications, []}
+                if field == :data do
+                  {:ok, new_request, notifications, []}
+                else
+                  {:ok, new_request, notifications, []}
+                end
 
               {:error, error} ->
                 {:error, error}
             end
           end
 
-        %{^field => value} = request ->
+        {:ok, value} ->
           {new_request, notifications} = notifications(request, field, value)
 
-          {:ok, new_request, notifications, []}
+          if field == :data do
+            {:ok, new_request, notifications, []}
+          else
+            {:ok, new_request, notifications, []}
+          end
       end
     end
   end
 
   defp get_dependency_data(request, dep) do
     if local_dep?(request, dep) do
-      Map.fetch(request, List.last(dep))
+      case Map.fetch(request, List.last(dep)) do
+        {:ok, %UnresolvedField{}} ->
+          :error
+
+        {:ok, value} ->
+          {:ok, value}
+
+        :error ->
+          :error
+      end
     else
       Map.fetch(request.dependency_data, dep)
     end
@@ -764,7 +787,7 @@ defmodule Ash.Engine.Request do
     end)
   end
 
-  defp expand_deps([], _, _), do: {:ok, []}
+  defp expand_deps([], _, _), do: :ok
 
   defp expand_deps(deps, requests, trail) do
     Enum.reduce_while(deps, :ok, fn dep, :ok ->
@@ -801,8 +824,8 @@ defmodule Ash.Engine.Request do
 
   defp log(request, message, level \\ :debug)
 
-  defp log(%{verbose?: true, name: name, id: id}, message, level) do
-    Logger.log(level, "#{id}|#{name}: #{message}")
+  defp log(%{verbose?: true, name: name}, message, level) do
+    Logger.log(level, "#{name}: #{message}")
   end
 
   defp log(_, _, _) do

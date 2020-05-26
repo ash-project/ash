@@ -515,7 +515,12 @@ defmodule Ash.Actions.SideLoad do
         {:ok, new_query}
 
       true ->
-        ids = Enum.map(related_data, &Map.get(&1, relationship.source_field))
+        ids =
+          Enum.flat_map(related_data, fn data ->
+            data
+            |> Map.get(relationship.source_field)
+            |> List.wrap()
+          end)
 
         filter_value =
           case ids do
