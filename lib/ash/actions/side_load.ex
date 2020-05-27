@@ -165,10 +165,17 @@ defmodule Ash.Actions.SideLoad do
     data
   end
 
+  defp map_or_update(nil, _, _), do: nil
   defp map_or_update(record, [], func) when not is_list(record), do: func.(record)
 
   defp map_or_update(records, [], func) do
-    Enum.map(records, func)
+    Enum.map(records, fn record ->
+      if record do
+        func.(record)
+      else
+        nil
+      end
+    end)
   end
 
   defp map_or_update(records, [path | tail], func) do
@@ -340,7 +347,7 @@ defmodule Ash.Actions.SideLoad do
               []
 
             true ->
-              [[:side_load, Enum.map(path, &Map.get(&1, :name)), :data]]
+              [[:side_load, Enum.reverse(Enum.map(path, &Map.get(&1, :name))), :data]]
           end
 
         dependencies =
