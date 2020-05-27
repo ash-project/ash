@@ -44,16 +44,19 @@ defmodule Ash.Engine.RequestHandler do
       {:error, error, new_request} ->
         {:stop, {:error, error, %{new_request | state: :error}}, state}
 
-      {:already_complete, new_request, notifications} ->
+      {:already_complete, new_request, notifications, dependencies} ->
         new_state = %{state | request: new_request}
+        Enum.each(dependencies, &register_dependency(new_state, &1))
 
         notify(new_state, notifications)
 
         {:noreply, new_state}
 
-      {:complete, new_request, notifications} ->
+      {:complete, new_request, notifications, dependencies} ->
         new_state = %{state | request: new_request}
         notify(new_state, notifications)
+        Enum.each(dependencies, &register_dependency(new_state, &1))
+
         complete(new_state)
         {:noreply, new_state}
 

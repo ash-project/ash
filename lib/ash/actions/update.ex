@@ -53,7 +53,7 @@ defmodule Ash.Actions.Update do
       %Ecto.Changeset{} = changeset ->
         {:error, Ash.Error.Changeset.changeset_to_errors(resource, changeset)}
 
-      %Ash.Engine{errors: errors} ->
+      %{errors: errors} ->
         {:error, Ash.to_ash_error(errors)}
 
       {:error, error} ->

@@ -114,23 +114,19 @@ defmodule Ash.Engine.Request do
     add_initial_authorizer_state(request)
   end
 
-  @spec next(%{state: :check | :complete | :fetch_data | :strict_check}) ::
-          {:already_complete, any, any}
-          | {:complete, any, any}
-          | {:continue, any, any}
-          | {:error, any, any}
-          | {:wait, any, any, any}
   def next(request) do
     case do_next(request) do
-      {:complete, new_request, notifications} ->
+      {:complete, new_request, notifications, dependencies} ->
+        dependencies = new_dependencies(dependencies)
+
         if request.state != :complete do
-          {:complete, new_request, notifications}
+          {:complete, new_request, notifications, dependencies}
         else
-          {:already_complete, new_request, notifications}
+          {:already_complete, new_request, notifications, dependencies}
         end
 
       {:waiting, new_request, notifications, dependencies} ->
-        {new_request, dependencies} = new_dependencies(new_request, dependencies)
+        dependencies = new_dependencies(dependencies)
 
         {:wait, new_request, notifications, dependencies}
 
@@ -186,21 +182,21 @@ defmodule Ash.Engine.Request do
 
   def do_next(%{state: :check, authorize?: false} = request) do
     log(request, "Skipping check due to `authorize?: false`")
-    {:complete, %{request | state: :complete}, []}
+    {:complete, %{request | state: :complete}, [], []}
   end
 
   def do_next(%{state: :check} = request) do
     case Ash.authorizers(request.resource) do
       [] ->
         log(request, "No authorizers found, skipping check")
-        {:complete, %{request | state: :complete}, []}
+        {:complete, %{request | state: :complete}, [], []}
 
       authorizers ->
         case check(authorizers, request) do
           {:ok, new_request, notifications, []} ->
             log(new_request, "Check complete")
 
-            {:complete, %{request | state: :complete}, notifications}
+            {:complete, %{request | state: :complete}, notifications, []}
 
           {:ok, new_request, notifications, waiting} ->
             log(request, "Check incomplete, waiting on dependencies")
@@ -215,7 +211,7 @@ defmodule Ash.Engine.Request do
 
   def do_next(%{state: :complete} = request) do
     if request.dependencies_to_send == %{} do
-      {:complete, request, []}
+      {:complete, request, [], []}
     else
       Enum.reduce_while(request.dependencies_to_send, {:complete, request, [], []}, fn
         {field, _paths}, {:complete, request, notifications, deps} ->
@@ -255,7 +251,7 @@ defmodule Ash.Engine.Request do
         {:ok, new_request, notifications}
 
       {:waiting, new_request, notifications, waiting_for} ->
-        {new_request, dependency_requests} = new_dependencies(new_request, waiting_for)
+        dependency_requests = new_dependencies(waiting_for)
 
         {:waiting, new_request, notifications, dependency_requests}
 
@@ -273,52 +269,20 @@ defmodule Ash.Engine.Request do
     {:continue, new_request}
   end
 
-  defp new_dependencies(request, waiting_for) do
-    {non_optional, optional} = Enum.split_with(waiting_for, &is_list/1)
+  defp new_dependencies(waiting_for) do
+    Enum.map(
+      waiting_for,
+      fn
+        {:optional, dep} ->
+          {dep, false}
 
-    {new_request, deps} =
-      Enum.reduce(non_optional, {request, []}, fn dep, {request, deps} ->
-        {new_request, new_dep} = new_dependency(request, dep, false)
+        {:required, dep} ->
+          {dep, true}
 
-        if new_dep do
-          {new_request, [new_dep | deps]}
-        else
-          {new_request, deps}
-        end
-      end)
-
-    Enum.reduce(optional, {new_request, deps}, fn dep, {request, deps} ->
-      {new_request, new_dep} = new_dependency(request, dep, true)
-
-      if new_dep do
-        {new_request, [new_dep | deps]}
-      else
-        {new_request, deps}
+        other ->
+          {other, true}
       end
-    end)
-  end
-
-  defp new_dependency(request, dep, optional?) do
-    if Enum.any?(request.dependencies_requested, fn {dep_requested, _} -> dep_requested == dep end) do
-      new_request = %{
-        request
-        | dependencies_requested:
-            Enum.map(request.dependencies_requested, fn {dep_requested, requested_optional?} ->
-              if dep_requested == dep do
-                {dep_requested, optional? || requested_optional?}
-              else
-                {dep_requested, requested_optional?}
-              end
-            end)
-      }
-
-      {new_request, nil}
-    else
-      dependency_request = {dep, optional?}
-
-      {%{request | dependencies_requested: [dependency_request | request.dependencies_requested]},
-       dependency_request}
-    end
+    )
   end
 
   def put_dependency_data(request, dep, value) do
@@ -630,6 +594,7 @@ defmodule Ash.Engine.Request do
 
   defp notifications(request, field, value) do
     case Map.fetch(request.dependencies_to_send, field) do
+      # TODO: This logic could technically cause double sends?
       {:ok, paths} ->
         new_request = %{
           request

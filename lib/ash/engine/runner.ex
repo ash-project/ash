@@ -55,7 +55,7 @@ defmodule Ash.Engine.Runner do
           if new_state.engine_pid do
             wait_for_engine(new_state, false)
           else
-            log(state, "Synchronous engine stuck.")
+            log(state, "Synchronous engine stuck:\n\n#{stuck_report(state)}")
             add_error(state, :__engine__, "Synchronous engine stuck")
           end
 
@@ -63,6 +63,36 @@ defmodule Ash.Engine.Runner do
           run_to_completion(new_state)
       end
     end
+  end
+
+  defp stuck_report(state) do
+    Enum.map_join(state.requests, "\n", fn request ->
+      if request.state in [:complete, :error] do
+        request.name <> ": " <> "#{request.state}"
+      else
+        case Request.next(request) do
+          {:wait, _, _, []} ->
+            request.name <> ": Waiting on nothing in state #{inspect(request.state)}"
+
+          {:wait, _, _, dependencies} ->
+            request.name <> ": Waiting on #{dependency_names(dependencies, state)}"
+
+          _other ->
+            request.name <> ": Not waiting, not complete"
+        end
+      end
+    end)
+  end
+
+  defp dependency_names(dependencies, state) do
+    Enum.map_join(dependencies, ", ", fn dependency ->
+      path = :lists.droplast(dependency)
+      field = List.last(dependency)
+
+      request = Enum.find(state.requests, &(&1.path == path))
+
+      request.name <> ": " <> to_string(field)
+    end)
   end
 
   defp wait_for_engine(state, complete?) do
@@ -310,9 +340,9 @@ defmodule Ash.Engine.Runner do
 
   defp advance_request(request, notifications \\ [], dependencies \\ []) do
     case Request.next(request) do
-      {complete, new_request, new_notifications}
+      {complete, new_request, new_notifications, new_dependencies}
       when complete in [:complete, :already_complete] ->
-        {:ok, new_request, new_notifications ++ notifications, dependencies}
+        {:ok, new_request, new_notifications ++ notifications, new_dependencies ++ dependencies}
 
       {:continue, new_request, new_notifications} ->
         {:ok, new_request, new_notifications ++ notifications, []}
