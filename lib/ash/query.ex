@@ -294,6 +294,10 @@ defmodule Ash.Query do
     end
   end
 
+  def unset(query, keys) when is_list(keys) do
+    Enum.reduce(keys, query, &unset(&2, &1))
+  end
+
   def unset(query, key) when key in [:api, :resource] do
     add_error(query, key, "Cannot be unset")
   end

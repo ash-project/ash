@@ -47,6 +47,7 @@ defmodule Ash.Engine.Request do
     :api,
     :query,
     :write_to_data?,
+    :skip_unless_authorize?,
     :verbose?,
     :state,
     :actor,
@@ -104,6 +105,7 @@ defmodule Ash.Engine.Request do
       query: query,
       api: opts[:api],
       name: opts[:name],
+      skip_unless_authorize?: opts[:skip_unless_authorize?],
       state: :strict_check,
       actor: opts[:actor],
       verbose?: opts[:verbose?] || false,
@@ -264,6 +266,7 @@ defmodule Ash.Engine.Request do
 
   def receive_field(request, path, field, value) do
     log(request, "Receiving field #{field} from #{inspect(path)}")
+
     new_request = put_dependency_data(request, path ++ [field], value)
 
     {:continue, new_request}
@@ -527,7 +530,7 @@ defmodule Ash.Engine.Request do
           {:skipped, request, [], []}
       end
     else
-      case Map.fetch(request, field) do
+      case get_dependency_data(request, request.path ++ [field], true) do
         {:ok, %UnresolvedField{} = unresolved} ->
           %{deps: deps, optional_deps: optional_deps, resolver: resolver} = unresolved
 
@@ -536,6 +539,8 @@ defmodule Ash.Engine.Request do
                {:ok, new_request, required_notifications, []} <-
                  try_resolve(new_request, deps, optional?) do
             resolver_context = resolver_context(new_request, deps ++ optional_deps)
+
+            log(request, "resolving #{field}")
 
             case resolver.(resolver_context) do
               {:ok, value} ->
@@ -550,13 +555,7 @@ defmodule Ash.Engine.Request do
 
                 new_request = Map.put(new_request, field, value)
 
-                new_request = put_dependency_data(new_request, new_request.path ++ [field], value)
-
-                if field == :data do
-                  {:ok, new_request, notifications, []}
-                else
-                  {:ok, new_request, notifications, []}
-                end
+                {:ok, new_request, notifications, []}
 
               {:error, error} ->
                 {:error, error}
@@ -566,20 +565,20 @@ defmodule Ash.Engine.Request do
         {:ok, value} ->
           {new_request, notifications} = notifications(request, field, value)
 
-          if field == :data do
-            {:ok, new_request, notifications, []}
-          else
-            {:ok, new_request, notifications, []}
-          end
+          {:ok, new_request, notifications, []}
       end
     end
   end
 
-  defp get_dependency_data(request, dep) do
+  defp get_dependency_data(request, dep, unresolved? \\ false) do
     if local_dep?(request, dep) do
       case Map.fetch(request, List.last(dep)) do
-        {:ok, %UnresolvedField{}} ->
-          :error
+        {:ok, %UnresolvedField{} = unresolved} ->
+          if unresolved? do
+            {:ok, unresolved}
+          else
+            :error
+          end
 
         {:ok, value} ->
           {:ok, value}

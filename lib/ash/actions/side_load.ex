@@ -435,6 +435,7 @@ defmodule Ash.Actions.SideLoad do
       case reverse_relationship_path(relationship, path) do
         {:ok, reverse_path} ->
           related_query
+          |> Ash.Query.unset(:side_load)
           |> Ash.Query.filter(
             put_nested_relationship(root_filter, reverse_path, root_filter, false)
           )
@@ -442,10 +443,8 @@ defmodule Ash.Actions.SideLoad do
 
         _ ->
           relationship.destination
-          |> Ash.Filter.parse(
-            related_query.filter,
-            related_query.api
-          )
+          |> related_query.api.query()
+          |> Ash.Query.filter(related_query.filter)
           |> extract_errors()
       end
     end)
@@ -460,13 +459,13 @@ defmodule Ash.Actions.SideLoad do
        ) do
     case reverse_relationship_path(relationship, path) do
       {:ok, reverse_path} ->
-        Ash.Query.filter(
-          related_query,
-          put_nested_relationship([], reverse_path, root_query.filter, false)
-        )
+        related_query
+        |> Ash.Query.filter(put_nested_relationship([], reverse_path, root_query.filter, false))
+        |> Ash.Query.unset(:side_load)
 
       :error ->
         related_query
+        |> Ash.Query.unset(:side_load)
     end
   end
 
@@ -519,7 +518,7 @@ defmodule Ash.Actions.SideLoad do
         new_query =
           Ash.Query.filter(query, put_nested_relationship([], [reverse_relationship], values))
 
-        {:ok, new_query}
+        {:ok, Ash.Query.unset(new_query, :side_load)}
 
       true ->
         ids =
@@ -538,7 +537,10 @@ defmodule Ash.Actions.SideLoad do
               [in: ids]
           end
 
-        new_query = Ash.Query.filter(query, [{relationship.destination_field, filter_value}])
+        new_query =
+          query
+          |> Ash.Query.filter([{relationship.destination_field, filter_value}])
+          |> Ash.Query.unset(:side_load)
 
         {:ok, new_query}
     end

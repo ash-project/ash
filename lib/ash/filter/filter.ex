@@ -110,6 +110,7 @@ defmodule Ash.Filter do
           api: api,
           query: query,
           path: [:filter, path],
+          skip_unless_authorize?: true,
           data:
             Request.resolve(
               [[:filter, path, :query]],

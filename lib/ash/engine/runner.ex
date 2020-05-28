@@ -185,10 +185,14 @@ defmodule Ash.Engine.Runner do
 
     case Request.send_field(request, receiver_path, field, optional?) do
       {:waiting, new_request, notifications, dependencies} ->
-        state
-        |> replace_request(new_request)
-        |> notify(notifications)
-        |> store_dependencies(new_request.path, dependencies)
+        new_dependencies = build_dependencies(new_request, dependencies)
+
+        {new_state, new_notifications} =
+          state
+          |> replace_request(new_request)
+          |> store_dependencies(new_dependencies)
+
+        notify(new_state, notifications ++ new_notifications)
 
       {:ok, new_request, notifications} ->
         state
@@ -215,22 +219,33 @@ defmodule Ash.Engine.Runner do
     end
   end
 
-  defp run_iteration(state) do
-    {new_state, notifications} =
-      Enum.reduce(state.requests, {state, []}, fn request, {state, notifications} ->
-        {new_state, new_notifications} = fully_advance_request(state, request)
-
-        {new_state, notifications ++ new_notifications}
-      end)
-
-    notify(new_state, notifications)
+  defp build_dependencies(request, dependencies) do
+    Enum.map(dependencies, fn {dep, optional?} ->
+      {request.path, dep, optional?}
+    end)
   end
 
-  defp store_dependencies(state, request_path, dependencies) do
-    request = Enum.find(state.requests, &(&1.path == request_path))
+  defp run_iteration(state) do
+    {new_state, notifications, dependencies} =
+      Enum.reduce(state.requests, {state, [], []}, fn request,
+                                                      {state, notifications, dependencies} ->
+        {new_state, new_notifications, new_dependencies} = fully_advance_request(state, request)
 
-    {new_state, notifications} =
-      Enum.reduce(dependencies, {state, []}, fn {dep, optional?}, {state, notifications} ->
+        {new_state, notifications ++ new_notifications, new_dependencies ++ dependencies}
+      end)
+
+    store_dependencies(new_state, dependencies, notifications)
+  end
+
+  defp store_dependencies(state, dependencies, notifications \\ []) do
+    log(state, "Storing generated dependencies")
+
+    {state, notifications, more_dependencies} =
+      dependencies
+      |> Enum.uniq()
+      |> Enum.reduce({state, notifications, []}, fn {request_path, dep, optional?},
+                                                    {state, notifications, dependencies} ->
+        request = Enum.find(state.requests, &(&1.path == request_path))
         path = :lists.droplast(dep)
         field = List.last(dep)
 
@@ -240,20 +255,20 @@ defmodule Ash.Engine.Runner do
 
             GenServer.cast(pid, {:send_field, path, self(), dep, optional?})
 
-            {state, notifications}
+            {state, notifications, dependencies}
 
           depended_on_request ->
             case Request.send_field(depended_on_request, request.path, field, optional?) do
               {:ok, new_request, new_notifications} ->
-                {replace_request(state, new_request), notifications ++ new_notifications}
+                {replace_request(state, new_request), notifications ++ new_notifications,
+                 dependencies}
 
-              {:waiting, new_request, new_notifications, waiting_for} ->
-                new_state =
-                  state
-                  |> replace_request(new_request)
-                  |> store_dependencies(new_request.path, waiting_for)
+              {:waiting, new_request, new_notifications, new_dependencies} ->
+                new_dependencies = build_dependencies(new_request, new_dependencies)
 
-                {new_state, new_notifications ++ notifications}
+                new_state = replace_request(state, new_request)
+
+                {new_state, notifications ++ new_notifications, new_dependencies ++ dependencies}
 
               {:error, error, new_request} ->
                 new_state =
@@ -267,20 +282,30 @@ defmodule Ash.Engine.Runner do
                   else
                     new_state
                     |> add_error(request.path, "dependency failed")
-                    |> replace_request(%{new_request | error: error})
+                    |> replace_request(%{new_request | state: :error, error: error})
                   end
 
-                {new_state, notifications}
+                {new_state, notifications, dependencies}
             end
         end
       end)
 
-    notify(new_state, notifications)
+    case more_dependencies do
+      [] ->
+        notify(state, notifications)
+
+      more_dependencies ->
+        store_dependencies(state, more_dependencies, notifications)
+    end
   end
 
   defp notify(state, notifications) do
-    Enum.reduce(List.wrap(notifications), state, fn {receiver_path, request_path, field, value},
-                                                    state ->
+    log(state, "sending/updating requests with notifications")
+
+    notifications
+    |> List.wrap()
+    |> Enum.uniq()
+    |> Enum.reduce(state, fn {receiver_path, request_path, field, value}, state ->
       case Enum.find(state.requests, &(&1.path == receiver_path)) do
         nil ->
           pid = Map.get(state.pid_info, receiver_path)
@@ -321,12 +346,11 @@ defmodule Ash.Engine.Runner do
   defp fully_advance_request(state, request) do
     case advance_request(request) do
       {:ok, new_request, notifications, dependencies} ->
-        new_state =
-          state
-          |> replace_request(new_request)
-          |> store_dependencies(new_request.path, dependencies)
+        new_state = replace_request(state, new_request)
 
-        {new_state, notifications}
+        new_dependencies = build_dependencies(new_request, dependencies)
+
+        {new_state, notifications, new_dependencies}
 
       {:error, error, new_request} ->
         new_state =
@@ -334,7 +358,7 @@ defmodule Ash.Engine.Runner do
           |> add_error(new_request.path, error)
           |> replace_request(%{new_request | state: :error})
 
-        {new_state, []}
+        {new_state, [], []}
     end
   end
 
