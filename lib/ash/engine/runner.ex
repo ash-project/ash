@@ -362,6 +362,10 @@ defmodule Ash.Engine.Runner do
     end
   end
 
+  defp advance_request(%{state: :error} = request) do
+    {:ok, request, [], []}
+  end
+
   defp advance_request(request, notifications \\ [], dependencies \\ []) do
     case Request.next(request) do
       {complete, new_request, new_notifications, new_dependencies}

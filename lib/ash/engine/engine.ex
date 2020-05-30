@@ -39,12 +39,14 @@ defmodule Ash.Engine do
       :ok ->
         requests =
           Enum.map(requests, fn request ->
-            %{
+            request = %{
               request
               | authorize?: authorize?,
                 actor: actor,
                 verbose?: opts[:verbose?]
             }
+
+            Request.add_initial_authorizer_state(request)
           end)
 
         {local_requests, async_requests} = split_local_async_requests(requests)

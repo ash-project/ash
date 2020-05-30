@@ -3,7 +3,7 @@ defmodule Ash.Error.Forbidden do
 
   use Ash.Error
 
-  def_ash_error([], class: :forbidden)
+  def_ash_error([:errors], class: :forbidden)
 
   defimpl Ash.ErrorKind do
     def id(_), do: Ecto.UUID.generate()
