@@ -201,7 +201,7 @@ defmodule Ash.Engine.Request do
           {:ok, new_request, notifications, []} ->
             log(new_request, "Check complete")
 
-            {:complete, %{request | state: :complete}, notifications, []}
+            {:complete, %{new_request | state: :complete}, notifications, []}
 
           {:ok, new_request, notifications, waiting} ->
             log(request, "Check incomplete, waiting on dependencies")
@@ -627,8 +627,8 @@ defmodule Ash.Engine.Request do
         end
 
       true ->
-        case get_dependency_data(request, request.path ++ [field], true) do
-          {:ok, %UnresolvedField{} = unresolved} ->
+        case Map.get(request, field) do
+          %UnresolvedField{} = unresolved ->
             %{deps: deps, optional_deps: optional_deps, resolver: resolver} = unresolved
 
             with {:ok, new_request, optional_notifications, _remaining_optional} <-
@@ -665,7 +665,7 @@ defmodule Ash.Engine.Request do
               end
             end
 
-          {:ok, value} ->
+          value ->
             if internal? do
               {new_request, notifications} = notifications(request, field, value)
 
@@ -677,22 +677,9 @@ defmodule Ash.Engine.Request do
     end
   end
 
-  defp get_dependency_data(request, dep, unresolved? \\ false) do
+  defp get_dependency_data(request, dep) do
     if local_dep?(request, dep) do
-      case Map.fetch(request, List.last(dep)) do
-        {:ok, %UnresolvedField{} = unresolved} ->
-          if unresolved? do
-            {:ok, unresolved}
-          else
-            :error
-          end
-
-        {:ok, value} ->
-          {:ok, value}
-
-        :error ->
-          :error
-      end
+      Map.fetch(request, List.last(dep))
     else
       Map.fetch(request.dependency_data, dep)
     end
@@ -899,8 +886,12 @@ defmodule Ash.Engine.Request do
 
   defp log(request, message, level \\ :debug)
 
-  defp log(%{verbose?: true, name: name}, message, level) do
-    Logger.log(level, "#{name}: #{message}")
+  defp log(%{verbose?: true, name: name} = request, message, level) do
+    if is_list(request.data) do
+      Logger.log(level, "#{name}: #{Enum.count(request.data)} #{message}")
+    else
+      Logger.log(level, "#{name}: #{message}")
+    end
   end
 
   defp log(_, _, _) do
