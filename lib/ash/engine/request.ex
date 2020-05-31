@@ -359,15 +359,20 @@ defmodule Ash.Engine.Request do
   end
 
   defp strict_check(authorizers, request) do
-    Enum.reduce_while(authorizers, {:ok, request, [], []}, fn authorizer,
-                                                              {:ok, request, notifications,
-                                                               waiting_for} ->
+    authorizers
+    |> Enum.reject(&(authorizer_state(request, &1) == :authorized))
+    |> Enum.reduce_while({:ok, request, [], []}, fn authorizer,
+                                                    {:ok, request, notifications, waiting_for} ->
       log(request, "strict checking")
 
       case do_strict_check(authorizer, request) do
         {:ok, new_request} ->
           log(new_request, "strict check succeeded for #{inspect(authorizer)}")
           {:cont, {:ok, new_request, notifications, waiting_for}}
+
+        {:ok, new_request, new_notifications, new_deps} ->
+          log(new_request, "strict check succeeded for #{inspect(authorizer)}")
+          {:cont, {:ok, new_request, new_notifications ++ notifications, waiting_for ++ new_deps}}
 
         {:waiting, new_request, new_notifications, new_deps} ->
           log(
@@ -393,15 +398,20 @@ defmodule Ash.Engine.Request do
             {:ok, set_authorizer_state(request, authorizer, :authorized)}
 
           {:filter, filter} ->
+            request
+            |> Map.update!(:query, &Ash.Query.filter(&1, filter))
+            |> set_authorizer_state(authorizer, :authorized)
+            |> try_resolve([request.path ++ [:query]], false, false)
+
+          {:filter_and_continue, filter, new_authorizer_state} ->
             new_request =
               request
               |> Map.update!(:query, &Ash.Query.filter(&1, filter))
-              |> set_authorizer_state(authorizer, :authorized)
+              |> set_authorizer_state(authorizer, new_authorizer_state)
 
             {:ok, new_request}
 
           {:continue, authorizer_state} ->
-            authorizer_state.scenarios
             {:ok, set_authorizer_state(request, authorizer, authorizer_state)}
 
           {:error, error} ->
@@ -428,13 +438,18 @@ defmodule Ash.Engine.Request do
   end
 
   defp check(authorizers, request) do
-    Enum.reduce_while(authorizers, {:ok, request, [], []}, fn authorizer,
-                                                              {:ok, request, notifications,
-                                                               waiting_for} ->
+    authorizers
+    |> Enum.reject(&(authorizer_state(request, &1) == :authorized))
+    |> Enum.reduce_while({:ok, request, [], []}, fn authorizer,
+                                                    {:ok, request, notifications, waiting_for} ->
       case do_check(authorizer, request) do
         {:ok, new_request} ->
           log(request, "check succeeded for #{inspect(authorizer)}")
           {:cont, {:ok, new_request, notifications, waiting_for}}
+
+        {:ok, new_request, new_notifications, new_deps} ->
+          log(request, "check succeeded for #{inspect(authorizer)}")
+          {:cont, {:ok, new_request, new_notifications ++ notifications, new_deps ++ waiting_for}}
 
         {:waiting, new_request, new_notifications, new_deps} ->
           log(
@@ -453,43 +468,87 @@ defmodule Ash.Engine.Request do
   end
 
   defp do_check(authorizer, request, notifications \\ []) do
-    case authorizer_state(request, authorizer) do
-      :authorized ->
-        {:ok, set_authorizer_state(request, authorizer, :authorized)}
+    case missing_check_dependencies(authorizer, request) do
+      [] ->
+        case check_authorizer(authorizer, request) do
+          :authorized ->
+            {:ok, set_authorizer_state(request, authorizer, :authorized)}
 
-      {:data, data} ->
-        {:ok, set_authorizer_state(%{authorizer | data: data}, authorizer, :authorized)}
+          {:filter, filter} ->
+            case do_runtime_filter(request, filter) do
+              {:ok, request} ->
+                request
+                |> set_authorizer_state(authorizer, :authorized)
+                |> try_resolve(
+                  [request.path ++ [:data], request.path ++ [:query]],
+                  false,
+                  false
+                )
 
-      authorizer_state ->
-        request = set_authorizer_state(request, authorizer, authorizer_state)
-
-        case missing_check_dependencies(authorizer, request) do
-          [] ->
-            case check_authorizer(authorizer, request) do
-              :authorized ->
-                {:ok, set_authorizer_state(request, authorizer, :authorized)}
-
-              {:error, error} ->
-                {:error, error}
+              {:error, _error} ->
+                # TODO: Handle this
+                {:error, "Error while authorizing"}
             end
 
-          deps ->
-            deps =
-              Enum.map(deps, fn dep ->
-                request.path ++ [dep]
+          {:error, error} ->
+            {:error, error}
+        end
+
+      deps ->
+        deps =
+          Enum.map(deps, fn dep ->
+            request.path ++ [dep]
+          end)
+
+        case try_resolve(request, deps, false, true) do
+          {:ok, new_request, new_notifications, []} ->
+            do_check(authorizer, new_request, notifications ++ new_notifications)
+
+          {:ok, new_request, new_notifications, waiting_for} ->
+            {:waiting, new_request, new_notifications ++ notifications, waiting_for}
+
+          {:error, error} ->
+            {:error, error}
+        end
+    end
+  end
+
+  defp do_runtime_filter(request, filter) do
+    case Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
+           request.resource,
+           request.data
+         ) do
+      {:ok, pkey_filter} ->
+        primary_key_filter =
+          case pkey_filter do
+            [single] -> single
+            filters -> [or: filters]
+          end
+
+        new_query =
+          request.query
+          |> Ash.Query.filter(primary_key_filter)
+          |> Ash.Query.filter(filter)
+
+        request.api.read(new_query)
+        |> case do
+          {:ok, results} ->
+            pkey = Ash.primary_key(request.resource)
+            pkeys = Enum.map(results, &Map.take(&1, pkey))
+
+            new_data =
+              Enum.filter(request.data, fn record ->
+                Map.take(record, pkey) in pkeys
               end)
 
-            case try_resolve(request, deps, false, true) do
-              {:ok, new_request, new_notifications, []} ->
-                do_check(authorizer, new_request, notifications ++ new_notifications)
+            {:ok, %{request | data: new_data, query: new_query}}
 
-              {:ok, new_request, new_notifications, waiting_for} ->
-                {:waiting, new_request, new_notifications ++ notifications, waiting_for}
-
-              {:error, error} ->
-                {:error, error}
-            end
+          {:error, error} ->
+            {:error, error}
         end
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 
@@ -526,9 +585,11 @@ defmodule Ash.Engine.Request do
   end
 
   defp try_resolve_local(request, field, optional?, internal?) do
-    # Don't fetch request data if strict_check is not complete
+    authorized? = Enum.all?(Map.values(request.authorizer_state), &(&1 == :authorized))
+
     cond do
-      field == :data && request.state == :strict_check ->
+      # Don't fetch honor requests for dat until the request is authorized
+      field == :data and not authorized? and not internal? ->
         case request.data do
           %UnresolvedField{deps: deps, optional_deps: optional_deps} ->
             with {:ok, new_request, optional_notifications, remaining_optional} <-
@@ -546,8 +607,8 @@ defmodule Ash.Engine.Request do
             {:skipped, request, [], []}
         end
 
-      field == :query && not Enum.all?(Map.values(request.authorizer_state), &(&1 == :authorized)) and
-          not internal? ->
+      # Only fetch query
+      field == :query and not authorized? and not internal? ->
         case request.query do
           %UnresolvedField{deps: deps, optional_deps: optional_deps} ->
             with {:ok, new_request, optional_notifications, remaining_optional} <-
@@ -580,17 +641,23 @@ defmodule Ash.Engine.Request do
 
               case resolver.(resolver_context) do
                 {:ok, value} ->
-                  {new_request, new_notifications} = notifications(new_request, field, value)
+                  {new_request, notifications} =
+                    if internal? do
+                      {new_request, new_notifications} = notifications(new_request, field, value)
 
-                  notifications =
-                    Enum.concat([
-                      optional_notifications,
-                      required_notifications,
-                      new_notifications
-                    ])
+                      notifications =
+                        Enum.concat([
+                          optional_notifications,
+                          required_notifications,
+                          new_notifications
+                        ])
+
+                      {new_request, notifications}
+                    else
+                      {request, []}
+                    end
 
                   new_request = Map.put(new_request, field, value)
-
                   {:ok, new_request, notifications, []}
 
                 {:error, error} ->
@@ -599,9 +666,13 @@ defmodule Ash.Engine.Request do
             end
 
           {:ok, value} ->
-            {new_request, notifications} = notifications(request, field, value)
+            if internal? do
+              {new_request, notifications} = notifications(request, field, value)
 
-            {:ok, new_request, notifications, []}
+              {:ok, new_request, notifications, []}
+            else
+              {:ok, request, [], []}
+            end
         end
     end
   end
@@ -664,16 +735,20 @@ defmodule Ash.Engine.Request do
     request.resource
     |> Ash.authorizers()
     |> Enum.reduce(request, fn authorizer, request ->
-      initial_state =
-        Ash.Engine.Authorizer.initial_state(
-          authorizer,
-          request.actor,
-          request.resource,
-          request.action,
-          request.verbose?
-        )
+      if request.authorize? do
+        initial_state =
+          Ash.Engine.Authorizer.initial_state(
+            authorizer,
+            request.actor,
+            request.resource,
+            request.action,
+            request.verbose?
+          )
 
-      set_authorizer_state(request, authorizer, initial_state)
+        set_authorizer_state(request, authorizer, initial_state)
+      else
+        set_authorizer_state(request, authorizer, :authorized)
+      end
     end)
   end
 
@@ -710,7 +785,7 @@ defmodule Ash.Engine.Request do
 
     keys = Authorizer.check_context(authorizer, authorizer_state)
 
-    Authorizer.check(authorizer, authorizer_state, request.data, Map.take(request, keys))
+    Authorizer.check(authorizer, authorizer_state, Map.take(request, keys))
   end
 
   defp set_authorizer_state(request, authorizer, authorizer_state) do

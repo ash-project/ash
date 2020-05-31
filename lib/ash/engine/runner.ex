@@ -25,14 +25,15 @@ defmodule Ash.Engine.Runner do
 
     log(state, "Synchronous engine starting - #{Enum.map_join(requests, ", ", & &1.name)}")
 
-    run_to_completion(state)
+    new_state = run_to_completion(state)
+
+    Enum.reduce(new_state.requests, new_state, &add_data(&2, &1.path, &1.data))
   end
 
   def run_to_completion(state) do
     if Enum.all?(state.requests, &(&1.state in [:complete, :error])) do
       # This allows for publishing any dependencies
       new_state = run_iteration(state)
-      new_state = Enum.reduce(new_state.requests, new_state, &add_data(&2, &1.path, &1.data))
 
       if new_state.engine_pid do
         new_state =
@@ -56,7 +57,7 @@ defmodule Ash.Engine.Runner do
             wait_for_engine(new_state, false)
           else
             log(state, "Synchronous engine stuck:\n\n#{stuck_report(state)}")
-            add_error(state, :__engine__, "Synchronous engine stuck")
+            add_error(new_state, :__engine__, "Synchronous engine stuck")
           end
 
         new_state ->
@@ -344,6 +345,8 @@ defmodule Ash.Engine.Runner do
   end
 
   defp fully_advance_request(state, request) do
+    IO.inspect("advancing request")
+
     case advance_request(request) do
       {:ok, new_request, notifications, dependencies} ->
         new_state = replace_request(state, new_request)
@@ -366,20 +369,60 @@ defmodule Ash.Engine.Runner do
     {:ok, request, [], []}
   end
 
-  defp advance_request(request, notifications \\ [], dependencies \\ []) do
+  defp advance_request(request) do
+    IO.inspect("GOING IN")
+
+    try do
+      raise "What"
+    rescue
+      _ ->
+        IO.inspect(__STACKTRACE__)
+
+        :ok
+    end
+
     case Request.next(request) do
-      {complete, new_request, new_notifications, new_dependencies}
-      when complete in [:complete, :already_complete] ->
-        {:ok, new_request, new_notifications ++ notifications, new_dependencies ++ dependencies}
+      {:already_complete, new_request, new_notifications, new_dependencies} ->
+        # when complete in [:complete, :already_complete] ->
+
+        try do
+          raise "What"
+        rescue
+          _ ->
+            IO.inspect(__STACKTRACE__)
+
+            :ok
+        end
+
+        IO.inspect(new_request.data, label: "after 1.5")
+        {:ok, new_request, new_notifications, new_dependencies}
+
+      {:complete, new_request, new_notifications, new_dependencies} ->
+        # when complete in [:complete, :already_complete] ->
+
+        try do
+          raise "What"
+        rescue
+          _ ->
+            IO.inspect(__STACKTRACE__)
+
+            :ok
+        end
+
+        IO.inspect(new_request.data, label: "after 1")
+        {:ok, new_request, new_notifications, new_dependencies}
 
       {:continue, new_request, new_notifications} ->
-        {:ok, new_request, new_notifications ++ notifications, []}
+        IO.inspect(new_request.data, label: "after2")
+        {:ok, new_request, new_notifications, []}
 
       {:error, error, new_request} ->
+        IO.inspect(new_request.data, label: "after3")
         {:error, error, new_request}
 
       {:wait, new_request, new_notifications, new_dependencies} ->
-        {:ok, new_request, new_notifications ++ notifications, new_dependencies ++ dependencies}
+        IO.inspect(new_request.data, label: "after4")
+        {:ok, new_request, new_notifications, new_dependencies}
     end
   end
 

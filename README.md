@@ -88,8 +88,7 @@ Filters
 - really need to figure out the distinction between filter impossibility for things like authorization plays into filter impossibility as an optimization. I think they are actually two different things. The fact that you consider nothing to be a subset of an impossible filter may not be correct.
 - Figure out how to handle cross data layer filters for boolean.
 - lift `or` filters over the same field equaling a value into a single `in` filter, for performance (potentially)
-- As soon as we add array types, the filter logic is going to break because we use "is a list" as a criterion for "has not been passed a raw value to match". This may not be too big of a problem if we just don't support a list. But using some sort of actual struct to represent "this is constructed filter" may be the real answer.
-- Big optimization: If the filter _did_ need to fetch anything, find a way to get that fetched value into the final query.
+- make runtime filtering of a list of records + an ash filter a public interface. At first, we can just run a query with that filter, and filter for matches. Eventually it can be optimized.
 
 Actions
 
@@ -192,12 +191,15 @@ Runtime
 - Add a runtime-intialization to checks that can return data loading instructions to be executed prior to pre-check
 - Important: We need a framework level solution for runtime configuration, _or at minimum_ a recommended way to do it. Things like configuring the host/port of your API, or disabling features
 
+Testing
+
+- talk about building factory/mocking utilities. I suspect mocking will not be necessary due to eventually being able to toggle resources to use the ETS datalayer.
+
 Engine
 
-- Engine parallelization!
-- Write the engine as a state machine, not the recursive monster that it currently is
 - implement transactions in the engine. Perhaps by assigning requests transaction ids or something along those lines.
-- fix the comment noted in the destroy action: the delete needs to happen _outside_ of the data fetching step, so the engine needs some kind of "after data resolved" capability
+- fix the comment noted in the destroy action: ~the delete needs to happen _outside_ of the data fetching step, so the engine needs some kind of "after data resolved" capability~
+- add a total failure mode (since JSON API just fails entirely) that will cause the engine to stop on the first error
 
 Fields/Attributes
 

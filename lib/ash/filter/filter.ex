@@ -650,39 +650,44 @@ defmodule Ash.Filter do
   end
 
   def add_to_filter(filter, %__MODULE__{} = addition) do
-    if addition.ors == [] do
-      filter_with_attributes =
-        Enum.reduce(addition.attributes, filter, fn {attribute, predicate}, filter ->
-          Map.update!(filter, :attributes, fn attributes ->
-            Map.update(attributes, attribute, predicate, &Merge.merge(&1, predicate))
-          end)
-        end)
+    # TODO: optimize filter combining
+    # if addition.ors == [] do
+    #   filter_with_attributes =
+    #     Enum.reduce(addition.attributes, filter, fn {attribute, predicate}, filter ->
+    #       Map.update!(filter, :attributes, fn attributes ->
+    #         Map.update(attributes, attribute, predicate, &Merge.merge(&1, predicate))
+    #       end)
+    #     end)
 
-      filter_with_relationships =
-        Enum.reduce(addition.relationships, filter_with_attributes, fn {relationship,
-                                                                        relationship_filter},
-                                                                       filter ->
-          Map.update!(filter, :relationships, fn relationships ->
-            Map.update(
-              relationships,
-              relationship,
-              relationship_filter,
-              &add_to_filter(&1, relationship_filter)
-            )
-          end)
-        end)
+    #   filter_with_relationships =
+    #     Enum.reduce(addition.relationships, filter_with_attributes, fn {relationship,
+    #                                                                     relationship_filter},
+    #                                                                    filter ->
+    #       Map.update!(filter, :relationships, fn relationships ->
+    #         Map.update(
+    #           relationships,
+    #           relationship,
+    #           relationship_filter,
+    #           &add_to_filter(&1, relationship_filter)
+    #         )
+    #       end)
+    #     end)
 
-      %{filter_with_relationships | ands: addition.ands ++ filter.ands}
-    else
-      %{filter | ands: [addition | filter.ands]}
-    end
+    #   %{filter_with_relationships | ands: addition.ands ++ filter.ands}
+    # else
+    new_filter = parse(filter.resource, [], filter.api)
+
+    %{new_filter | ands: [filter, addition]}
+    # end
     |> lift_impossibility()
     |> lift_if_empty()
     |> add_not_filter_info()
   end
 
   def add_to_filter(filter, additions) do
-    do_parse(additions, filter)
+    parsed = parse(filter.resource, additions, filter.api)
+
+    add_to_filter(filter, parsed)
   end
 
   defp do_parse(filter_statement, %{resource: resource} = filter) do
