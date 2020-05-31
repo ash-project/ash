@@ -868,11 +868,20 @@ defmodule Ash.Filter do
   defp parse_predicate(resource, predicate_name, attr_name, attr_type, value) do
     data_layer = Ash.data_layer(resource)
 
+    data_layer_predicates =
+      Map.get(Ash.data_layer_filters(resource), Ash.Type.storage_type(attr_type), [])
+
+    all_predicates =
+      Enum.reduce(data_layer_predicates, @predicates, fn {name, module}, all_predicates ->
+        Map.put(all_predicates, name, module)
+      end)
+
     with {:predicate_type, {:ok, predicate_type}} <-
-           {:predicate_type, Map.fetch(@predicates, predicate_name)},
+           {:predicate_type, Map.fetch(all_predicates, predicate_name)},
          {:type_can?, _, true} <-
            {:type_can?, predicate_name,
-            Ash.Type.supports_filter?(resource, attr_type, predicate_name, data_layer)},
+            Keyword.has_key?(data_layer_predicates, predicate_name) or
+              Ash.Type.supports_filter?(resource, attr_type, predicate_name, data_layer)},
          {:data_layer_can?, _, true} <-
            {:data_layer_can?, predicate_name,
             Ash.data_layer_can?(resource, {:filter, predicate_name})},
@@ -881,7 +890,7 @@ defmodule Ash.Filter do
       {:ok, predicate}
     else
       {:predicate_type, :error} ->
-        {:error, "No such filter type #{predicate_name}"}
+        {:error, :predicate_type, "No such filter type #{predicate_name}"}
 
       {:predicate, attr_name, {:error, error}} ->
         {:error, Map.put(error, :field, attr_name)}

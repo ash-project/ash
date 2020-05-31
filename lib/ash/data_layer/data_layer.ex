@@ -7,6 +7,7 @@ defmodule Ash.DataLayer do
           | {:filter_related, Ash.relationship_cardinality()}
           | :upsert
 
+  @callback custom_filters(Ash.resource()) :: map()
   @callback filter(Ash.data_layer_query(), Ash.filter(), resource :: Ash.resource()) ::
               {:ok, Ash.data_layer_query()} | {:error, Ash.error()}
   @callback sort(Ash.data_layer_query(), Ash.sort(), resource :: Ash.resource()) ::
@@ -34,6 +35,7 @@ defmodule Ash.DataLayer do
 
   @optional_callbacks transaction: 2
   @optional_callbacks upsert: 2
+  @optional_callbacks custom_filters: 1
 
   @spec resource_to_query(Ash.resource()) :: Ash.data_layer_query()
   def resource_to_query(resource) do
@@ -110,6 +112,16 @@ defmodule Ash.DataLayer do
       data_layer.transaction(resource, func)
     else
       {:ok, func.()}
+    end
+  end
+
+  def custom_filters(resource) do
+    data_layer = Ash.data_layer(resource)
+
+    if :erlang.function_exported(data_layer, :custom_filters, 1) do
+      data_layer.custom_filters(resource)
+    else
+      %{}
     end
   end
 end

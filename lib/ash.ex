@@ -87,6 +87,11 @@ defmodule Ash do
     data_layer && data_layer.can?(resource, feature)
   end
 
+  @spec data_layer_filters(resource) :: map
+  def data_layer_filters(resource) do
+    Ash.DataLayer.custom_filters(resource)
+  end
+
   @spec resources(api) :: list(resource())
   def resources(api) do
     api.resources()
