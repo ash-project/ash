@@ -345,8 +345,6 @@ defmodule Ash.Engine.Runner do
   end
 
   defp fully_advance_request(state, request) do
-    IO.inspect("advancing request")
-
     case advance_request(request) do
       {:ok, new_request, notifications, dependencies} ->
         new_state = replace_request(state, new_request)
@@ -370,58 +368,20 @@ defmodule Ash.Engine.Runner do
   end
 
   defp advance_request(request) do
-    IO.inspect("GOING IN")
-
-    try do
-      raise "What"
-    rescue
-      _ ->
-        IO.inspect(__STACKTRACE__)
-
-        :ok
-    end
-
     case Request.next(request) do
       {:already_complete, new_request, new_notifications, new_dependencies} ->
-        # when complete in [:complete, :already_complete] ->
-
-        try do
-          raise "What"
-        rescue
-          _ ->
-            IO.inspect(__STACKTRACE__)
-
-            :ok
-        end
-
-        IO.inspect(new_request.data, label: "after 1.5")
         {:ok, new_request, new_notifications, new_dependencies}
 
       {:complete, new_request, new_notifications, new_dependencies} ->
-        # when complete in [:complete, :already_complete] ->
-
-        try do
-          raise "What"
-        rescue
-          _ ->
-            IO.inspect(__STACKTRACE__)
-
-            :ok
-        end
-
-        IO.inspect(new_request.data, label: "after 1")
         {:ok, new_request, new_notifications, new_dependencies}
 
       {:continue, new_request, new_notifications} ->
-        IO.inspect(new_request.data, label: "after2")
         {:ok, new_request, new_notifications, []}
 
       {:error, error, new_request} ->
-        IO.inspect(new_request.data, label: "after3")
         {:error, error, new_request}
 
       {:wait, new_request, new_notifications, new_dependencies} ->
-        IO.inspect(new_request.data, label: "after4")
         {:ok, new_request, new_notifications, new_dependencies}
     end
   end
