@@ -6,10 +6,12 @@ defmodule Ash.MixProject do
   designed to be used by multiple front ends.
   """
 
+  @version "0.1.2"
+
   def project do
     [
       app: :ash,
-      version: "0.1.1",
+      version: @version,
       elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
