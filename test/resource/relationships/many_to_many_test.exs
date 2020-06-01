@@ -6,6 +6,10 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
       defmodule Post do
         use Ash.Resource, name: "posts", type: "post"
 
+        attributes do
+          attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+        end
+
         unquote(body)
       end
     end
@@ -51,7 +55,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "it fails if you pass a string to `through`" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option through at relationships -> many_to_many -> foobars must be atom",
+        "relationships -> many_to_many -> foobars:\n  expected :through to be an atom, got: \"some_table\"",
         fn ->
           defposts do
             relationships do
@@ -73,7 +77,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "it fails if you dont pass an atom for `source_field_on_join_table`" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option source_field_on_join_table at relationships -> many_to_many -> foobars must be atom",
+        "relationships -> many_to_many -> foobars:\n  expected :source_field_on_join_table to be an atom, got: \"what\"",
         fn ->
           defposts do
             relationships do
@@ -87,7 +91,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "it fails if you dont pass an atom for `destination_field_on_join_table`" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option destination_field_on_join_table at relationships -> many_to_many -> foobars must be atom",
+        "relationships -> many_to_many -> foobars:\n  expected :destination_field_on_join_table to be an atom, got: \"what\"",
         fn ->
           defposts do
             relationships do
@@ -103,7 +107,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "it fails if you dont pass an atom for `source_field`" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option source_field at relationships -> many_to_many -> foobars must be atom",
+        "relationships -> many_to_many -> foobars:\n  expected :source_field to be an atom, got: \"what\"",
         fn ->
           defposts do
             relationships do
@@ -119,7 +123,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "it fails if you dont pass an atom for `destination_field`" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option destination_field at relationships -> many_to_many -> foobars must be atom",
+        "relationships -> many_to_many -> foobars:\n  expected :destination_field to be an atom, got: \"what\"",
         fn ->
           defposts do
             relationships do

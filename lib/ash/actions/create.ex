@@ -203,7 +203,6 @@ defmodule Ash.Actions.Create do
     resource
     |> Ash.attributes()
     |> Enum.reject(&Map.get(&1, :allow_nil?))
-    |> Enum.reject(&Map.get(&1, :generated?))
     |> Enum.reject(&Map.get(&1, :default))
     |> Enum.reduce(changeset, fn attr, changeset ->
       case Ecto.Changeset.get_field(changeset, attr.name) do
@@ -214,7 +213,7 @@ defmodule Ash.Actions.Create do
   end
 
   defp default(%{default: {:constant, value}}), do: value
-  defp default(%{default: {mod, func}}), do: apply(mod, func, [])
+  defp default(%{default: {mod, func, args}}), do: apply(mod, func, args)
   defp default(%{default: function}), do: function.()
 
   defp fetch_attr(map, name) do

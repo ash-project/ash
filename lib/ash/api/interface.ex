@@ -5,80 +5,65 @@ defmodule Ash.Api.Interface do
   #TODO describe - Big picture description here
   """
 
+  import Ash.OptionsHelpers, only: [merge_schemas: 3]
+
   alias Ash.Error.Interface.NoSuchResource
 
-  @global_opts Ashton.schema(
-                 opts: [
-                   verbose?: :boolean
-                 ],
-                 defaults: [
-                   verbose?: false
-                 ],
-                 describe: [
-                   verbose?: "Debug log engine operation"
-                 ]
-               )
+  @global_opts [
+    verbose?: [
+      type: :boolean,
+      default: false,
+      doc: "Log engine operations (very verbose?)"
+    ]
+  ]
 
-  @read_opts_schema []
-                    |> Ashton.schema()
-                    |> Ashton.merge(@global_opts, annotate: "Global Opts")
+  @read_opts_schema merge_schemas([], @global_opts, "Global Options")
 
-  @side_load_opts_schema []
-                         |> Ashton.schema()
-                         |> Ashton.merge(@global_opts, annotate: "Global opts")
+  @side_load_opts_schema merge_schemas([], @global_opts, "Global Options")
 
-  @get_opts_schema []
-                   |> Ashton.schema()
-                   |> Ashton.merge(@global_opts, annotate: "Global Opts")
+  @get_opts_schema merge_schemas([], @global_opts, "Global Options")
 
   @shared_create_and_update_opts_schema [
-                                          opts: [
-                                            attributes: :map,
-                                            relationships: :map
+                                          attributes: [
+                                            type: :map,
+                                            default: %{},
+                                            doc: "Changes to be applied to attribute values"
                                           ],
-                                          defaults: [
-                                            attributes: %{},
-                                            relationships: %{}
-                                          ],
-                                          describe: [
-                                            attributes: "#TODO describe",
-                                            relationships: "#TODO describe"
+                                          relationships: [
+                                            type: :map,
+                                            default: %{},
+                                            doc: "Changes to be applied to relationship values"
                                           ]
                                         ]
-                                        |> Ashton.schema()
-                                        |> Ashton.merge(@global_opts, annotate: "Global Opts")
+                                        |> merge_schemas(@global_opts, annotate: "Global Options")
 
   @create_opts_schema [
-                        opts: [
-                          upsert?: :boolean
-                        ],
-                        defaults: [
-                          upsert?: false
-                        ],
-                        describe: [
-                          upsert?: "#TODO describe"
+                        upsert?: [
+                          type: :boolean,
+                          default: false,
+                          doc:
+                            "If a conflict is found based on the primary key, the record is updated in the database (requires upsert support)"
                         ]
                       ]
-                      |> Ashton.schema()
-                      |> Ashton.merge(@global_opts, annotate: "Global Opts")
-                      |> Ashton.merge(@shared_create_and_update_opts_schema,
-                        annotate: "Shared Create/Edit Opts"
+                      |> merge_schemas(@global_opts, annotate: "Global Options")
+                      |> merge_schemas(
+                        @shared_create_and_update_opts_schema,
+                        "Shared Create/Edit Options"
                       )
 
   @update_opts_schema []
-                      |> Ashton.schema()
-                      |> Ashton.merge(@shared_create_and_update_opts_schema,
-                        annotate: "Shared Create/Edit Opts"
+                      |> merge_schemas(@global_opts, annotate: "Global Options")
+                      |> merge_schemas(
+                        @shared_create_and_update_opts_schema,
+                        "Shared Create/Edit Options"
                       )
 
-  @delete_opts_schema []
-                      |> Ashton.schema()
-                      |> Ashton.merge(@global_opts, annotate: "Global Opts")
+  @delete_opts_schema merge_schemas([], @global_opts, annotate: "Global Opts")
 
   @doc """
   #TODO describe
 
-  #{Ashton.document(@get_opts_schema)}
+  #{NimbleOptions.docs(@get_opts_schema)}
   """
   @callback get!(resource :: Ash.resource(), id_or_filter :: term(), params :: Ash.params()) ::
               Ash.record() | no_return
@@ -86,7 +71,7 @@ defmodule Ash.Api.Interface do
   @doc """
   #TODO describe
 
-  #{Ashton.document(@get_opts_schema)}
+  #{NimbleOptions.docs(@get_opts_schema)}
   """
   @callback get(resource :: Ash.resource(), id_or_filter :: term(), params :: Ash.params()) ::
               {:ok, Ash.record()} | {:error, Ash.error()}
@@ -94,7 +79,7 @@ defmodule Ash.Api.Interface do
   @doc """
   #TODO describe
 
-  #{Ashton.document(@read_opts_schema)}
+  #{NimbleOptions.docs(@read_opts_schema)}
   """
   @callback read!(resource :: Ash.resource(), params :: Ash.params()) ::
               list(Ash.resource()) | no_return
@@ -102,7 +87,7 @@ defmodule Ash.Api.Interface do
   @doc """
   #TODO describe
 
-  #{Ashton.document(@read_opts_schema)}
+  #{NimbleOptions.docs(@read_opts_schema)}
   """
   @callback read(resource :: Ash.resource(), params :: Ash.params()) ::
               {:ok, list(Ash.resource())} | {:error, Ash.error()}
@@ -110,7 +95,7 @@ defmodule Ash.Api.Interface do
   @doc """
   #TODO describe
 
-  #{Ashton.document(@side_load_opts_schema)}
+  #{NimbleOptions.docs(@side_load_opts_schema)}
   """
   @callback side_load!(resource :: Ash.resource(), params :: Ash.params()) ::
               list(Ash.resource()) | no_return
@@ -118,7 +103,7 @@ defmodule Ash.Api.Interface do
   @doc """
   #TODO describe
 
-  #{Ashton.document(@side_load_opts_schema)}
+  #{NimbleOptions.docs(@side_load_opts_schema)}
   """
   @callback side_load(resource :: Ash.resource(), params :: Ash.params()) ::
               {:ok, list(Ash.resource())} | {:error, Ash.error()}
@@ -126,7 +111,7 @@ defmodule Ash.Api.Interface do
   @doc """
   #TODO describe
 
-  #{Ashton.document(@create_opts_schema)}
+  #{NimbleOptions.docs(@create_opts_schema)}
   """
   @callback create!(resource :: Ash.resource(), params :: Ash.create_params()) ::
               Ash.record() | no_return
@@ -134,7 +119,7 @@ defmodule Ash.Api.Interface do
   @doc """
   #TODO describe
 
-  #{Ashton.document(@create_opts_schema)}
+  #{NimbleOptions.docs(@create_opts_schema)}
   """
   @callback create(resource :: Ash.resource(), params :: Ash.create_params()) ::
               {:ok, Ash.record()} | {:error, Ash.error()}
@@ -142,7 +127,7 @@ defmodule Ash.Api.Interface do
   @doc """
   #TODO describe
 
-  #{Ashton.document(@update_opts_schema)}
+  #{NimbleOptions.docs(@update_opts_schema)}
   """
   @callback update!(record :: Ash.record(), params :: Ash.update_params()) ::
               Ash.record() | no_return
@@ -150,7 +135,7 @@ defmodule Ash.Api.Interface do
   @doc """
   #TODO describe
 
-  #{Ashton.document(@update_opts_schema)}
+  #{NimbleOptions.docs(@update_opts_schema)}
   """
   @callback update(record :: Ash.record(), params :: Ash.update_params()) ::
               {:ok, Ash.record()} | {:error, Ash.error()}
@@ -158,14 +143,14 @@ defmodule Ash.Api.Interface do
   @doc """
   #TODO describe
 
-  #{Ashton.document(@delete_opts_schema)}
+  #{NimbleOptions.docs(@delete_opts_schema)}
   """
   @callback destroy!(record :: Ash.record(), params :: Ash.update_params()) :: :ok | no_return
 
   @doc """
   #TODO describe
 
-  #{Ashton.document(@delete_opts_schema)}
+  #{NimbleOptions.docs(@delete_opts_schema)}
   """
   @callback destroy(record :: Ash.record(), params :: Ash.update_params()) ::
               :ok | {:error, Ash.error()}

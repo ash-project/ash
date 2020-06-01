@@ -19,7 +19,7 @@ defmodule Ash.Resource.Attributes do
 
   defmodule AttributeDsl do
     require Ash.DslBuilder
-    keys = Ash.Resource.Attributes.Attribute.attribute_schema().opts -- [:name, :type]
+    keys = Keyword.keys(Ash.Resource.Attributes.Attribute.attribute_schema()) -- [:name, :type]
 
     Ash.DslBuilder.build_dsl(keys)
   end
@@ -30,7 +30,7 @@ defmodule Ash.Resource.Attributes do
   Type can be either a built in type (see `Ash.Type`) for more, or a module
   implementing the `Ash.Type` behaviour.
 
-  #{Ashton.document(Ash.Resource.Attributes.Attribute.attribute_schema(), header_depth: 2)}
+  #{NimbleOptions.docs(Ash.Resource.Attributes.Attribute.attribute_schema())}
 
   ## Examples
   ```elixir
@@ -78,35 +78,32 @@ defmodule Ash.Resource.Attributes do
         {:ok, attribute} ->
           @attributes attribute
 
-        {:error, [{key, message} | _]} ->
+        {:error, message} ->
           raise Ash.Error.ResourceDslError,
             message: message,
-            path: [:attributes, :attribute],
-            option: key
+            path: [:attributes, :attribute]
       end
     end
   end
 
-  @timestamp_schema Ashton.schema(
-                      opts: [
-                        inserted_at_field: :atom,
-                        updated_at_field: :atom
-                      ],
-                      defaults: [
-                        inserted_at_field: :inserted_at,
-                        updated_at_field: :updated_at
-                      ],
-                      describe: [
-                        inserted_at_field: "Changes the name of the inserted_at field",
-                        updated_at_field: "Changes the name of the updated_at field"
-                      ]
-                    )
+  @timestamp_schema [
+    inserted_at_field: [
+      type: :atom,
+      default: :inserted_at,
+      doc: "The name to use for the inserted at field"
+    ],
+    updated_at_field: [
+      type: :atom,
+      default: :updated_at,
+      doc: "The name to use for the updated at field"
+    ]
+  ]
 
   timestamp_schema = @timestamp_schema
 
   defmodule TimestampDsl do
     require Ash.DslBuilder
-    keys = timestamp_schema.opts
+    keys = Keyword.keys(timestamp_schema)
 
     Ash.DslBuilder.build_dsl(keys)
   end
@@ -117,7 +114,7 @@ defmodule Ash.Resource.Attributes do
   The field names default to `:inserted_at` and `:updated_at`, but can be overwritten via
   passing overrides in the opts, e.g `timestamps(inserted_at: :created_at, updated_at: :last_touched)
 
-  #{Ashton.document(@timestamp_schema, header_depth: 2)}
+  #{NimbleOptions.docs(@timestamp_schema)}
 
   ## Examples
   ```elixir
@@ -126,15 +123,14 @@ defmodule Ash.Resource.Attributes do
   """
   defmacro timestamps(opts \\ []) do
     opts =
-      case Ashton.validate(opts, @timestamp_schema) do
+      case NimbleOptions.validate(opts, @timestamp_schema) do
         {:ok, opts} ->
           opts
 
-        {:error, [{key, message} | _]} ->
+        {:error, message} ->
           raise Ash.Error.ApiDslError,
             message: message,
             path: [:attributes, :timestamps],
-            option: key,
             message: message
       end
 
@@ -153,10 +149,10 @@ defmodule Ash.Resource.Attributes do
       inserted_at_name = opts[:inserted_at_field]
       updated_at_name = opts[:updated_at_field]
 
-      attribute(inserted_at_name, :utc_datetime, generated?: true, default: &DateTime.utc_now/0)
+      attribute(inserted_at_name, :utc_datetime, writable?: false, default: &DateTime.utc_now/0)
 
       attribute(updated_at_name, :utc_datetime,
-        generated?: true,
+        writable?: false,
         default: &DateTime.utc_now/0,
         update_default: &DateTime.utc_now/0
       )

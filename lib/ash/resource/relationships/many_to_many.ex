@@ -27,36 +27,41 @@ defmodule Ash.Resource.Relationships.ManyToMany do
           reverse_relationship: atom
         }
 
-  @opt_schema Ashton.schema(
-                opts: [
-                  source_field_on_join_table: :atom,
-                  destination_field_on_join_table: :atom,
-                  source_field: :atom,
-                  destination_field: :atom,
-                  through: :atom,
-                  reverse_relationship: :atom
-                ],
-                defaults: [
-                  source_field: :id,
-                  destination_field: :id
-                ],
-                required: [
-                  :through
-                ],
-                describe: [
-                  through: "The resource to use as the join table.",
-                  reverse_relationship:
-                    "A requirement for side loading data. Must be the name of an inverse relationship on the destination resource.",
-                  source_field_on_join_table:
-                    "The field on the join table that should line up with `source_field` on this resource. Default: [resource_name]_id",
-                  destination_field_on_join_table:
-                    "The field on the join table that should line up with `destination_field` on the related resource. Default: [relationshihp_name]_id",
-                  source_field:
-                    "The field on this resource that should line up with `source_field_on_join_table` on the join table.",
-                  destination_field:
-                    "The field on the related resource that should line up with `destination_field_on_join_table` on the join table."
-                ]
-              )
+  # TODO: Describe dynamic defaults in all nimble options schemas
+  @opt_schema [
+    source_field_on_join_table: [
+      type: :atom,
+      doc:
+        "The field on the join table that should line up with `source_field` on this resource. Default: [resource_name]_id"
+    ],
+    destination_field_on_join_table: [
+      type: :atom,
+      doc:
+        "The field on the join table that should line up with `destination_field` on the related resource. Default: [relationshihp_name]_id"
+    ],
+    source_field: [
+      type: :atom,
+      default: :id,
+      doc:
+        "The field on this resource that should line up with `source_field_on_join_table` on the join table."
+    ],
+    destination_field: [
+      type: :atom,
+      default: :id,
+      doc:
+        "The field on the related resource that should line up with `destination_field_on_join_table` on the join table."
+    ],
+    through: [
+      type: :atom,
+      required: true,
+      doc: "The resource to use as the join resource."
+    ],
+    reverse_relationship: [
+      type: :atom,
+      doc:
+        "A requirement for side loading data. Must be the name of an inverse relationship on the destination resource."
+    ]
+  ]
 
   @doc false
   def opt_schema(), do: @opt_schema
@@ -70,7 +75,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
         ) :: {:ok, t()} | {:error, term}
   def new(resource, resource_name, name, related_resource, opts \\ []) do
     # Don't call functions on the resource! We don't want it to compile here
-    case Ashton.validate(opts, @opt_schema) do
+    case NimbleOptions.validate(opts, @opt_schema) do
       {:ok, opts} ->
         {:ok,
          %__MODULE__{

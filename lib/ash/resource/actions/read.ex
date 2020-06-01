@@ -9,18 +9,13 @@ defmodule Ash.Resource.Actions.Read do
           primary?: boolean
         }
 
-  @opt_schema Ashton.schema(
-                opts: [
-                  primary?: :boolean
-                ],
-                defaults: [
-                  primary?: false
-                ],
-                describe: [
-                  primary?:
-                    "Whether or not this action should be used when no action is specified by the caller."
-                ]
-              )
+  @opt_schema [
+    primary?: [
+      type: :boolean,
+      default: false,
+      doc: "Whether or not this action should be used when no action is specified by the caller."
+    ]
+  ]
 
   @doc false
   def opt_schema(), do: @opt_schema
@@ -28,7 +23,7 @@ defmodule Ash.Resource.Actions.Read do
   @spec new(Ash.resource(), atom, Keyword.t()) :: {:ok, t()} | {:error, term}
   def new(_resource, name, opts \\ []) do
     # Don't call functions on the resource! We don't want it to compile here
-    case Ashton.validate(opts, @opt_schema) do
+    case NimbleOptions.validate(opts, @opt_schema) do
       {:ok, opts} ->
         {:ok,
          %__MODULE__{

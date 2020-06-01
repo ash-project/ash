@@ -4,7 +4,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.DestroyTest do
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
-        use Ash.Resource, name: "posts", type: "post", primary_key: false
+        use Ash.Resource, name: "posts", type: "post"
 
         unquote(body)
       end
@@ -33,7 +33,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.DestroyTest do
     test "it fails if `name` is not an atom" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "action name must be an atom at actions -> destroy",
+        "actions -> destroy:\n  action name must be an atom",
         fn ->
           defposts do
             actions do
@@ -47,7 +47,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.DestroyTest do
     test "it fails if `primary?` is not a boolean" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option primary? at actions -> destroy -> default must be boolean",
+        "actions -> destroy -> default:\n  expected :primary? to be an boolean, got: 10",
         fn ->
           defposts do
             actions do

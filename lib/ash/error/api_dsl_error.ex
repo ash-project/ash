@@ -1,23 +1,17 @@
 defmodule Ash.Error.ApiDslError do
   @moduledoc "Raised when an api's DSL is incorrectly configured."
-  defexception [:message, :path, :option, :using]
+  defexception [:message, :path, :using]
 
-  def message(%{message: message, path: nil, option: option, using: using}) do
-    "`use #{inspect(using)}, ...` #{option} #{message}"
+  def message(%{message: message, path: nil, using: using}) do
+    "`use #{inspect(using)}, ...` #{message}"
   end
 
-  def message(%{message: message, path: nil, option: option}) do
-    "#{option} #{message}"
+  def message(%{message: message, path: nil}) do
+    message
   end
 
-  def message(%{message: message, path: dsl_path, option: nil}) do
+  def message(%{message: message, path: dsl_path}) do
     dsl_path = Enum.join(dsl_path, " -> ")
-    "#{message} at #{dsl_path}"
-  end
-
-  def message(%{message: message, path: dsl_path, option: option}) do
-    dsl_path = Enum.join(dsl_path, " -> ")
-
-    "option #{option} at #{dsl_path} #{message}"
+    "#{dsl_path}:\n  #{message}"
   end
 end

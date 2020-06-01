@@ -20,7 +20,7 @@ defmodule Ash.Resource.Relationships do
 
   defmodule HasOneDsl do
     require Ash.DslBuilder
-    keys = Ash.Resource.Relationships.HasOne.opt_schema().opts -- [:name, :destination]
+    keys = Keyword.keys(Ash.Resource.Relationships.HasOne.opt_schema()) -- [:name, :destination]
 
     Ash.DslBuilder.build_dsl(keys)
   end
@@ -32,7 +32,7 @@ defmodule Ash.Resource.Relationships do
 
   Practically speaking, a has_one and a belongs_to are interchangable in every way.
 
-  #{Ashton.document(Ash.Resource.Relationships.HasOne.opt_schema(), header_depth: 2)}
+  #{NimbleOptions.docs(Ash.Resource.Relationships.HasOne.opt_schema())}
 
   ## Examples
   ```elixir
@@ -83,10 +83,9 @@ defmodule Ash.Resource.Relationships do
         {:ok, relationship} ->
           @relationships relationship
 
-        {:error, [{key, message} | _]} ->
+        {:error, message} ->
           raise Ash.Error.ResourceDslError,
             message: message,
-            option: key,
             path: [:relationships, :has_one, relationship_name]
       end
     end
@@ -94,7 +93,9 @@ defmodule Ash.Resource.Relationships do
 
   defmodule BelongsToDsl do
     require Ash.DslBuilder
-    keys = Ash.Resource.Relationships.BelongsTo.opt_schema().opts -- [:name, :destination]
+
+    keys =
+      Keyword.keys(Ash.Resource.Relationships.BelongsTo.opt_schema()) -- [:name, :destination]
 
     Ash.DslBuilder.build_dsl(keys)
   end
@@ -106,7 +107,7 @@ defmodule Ash.Resource.Relationships do
 
   Practically speaking, a belongs_to and a has_one are interchangable in every way.
 
-  #{Ashton.document(Ash.Resource.Relationships.BelongsTo.opt_schema(), header_depth: 2)}
+  #{NimbleOptions.docs(Ash.Resource.Relationships.BelongsTo.opt_schema())}
 
   ## Examples
   ```elixir
@@ -155,23 +156,27 @@ defmodule Ash.Resource.Relationships do
       case relationship do
         {:ok, relationship} ->
           if relationship.define_field? do
-            {:ok, attribute} =
-              Ash.Resource.Attributes.Attribute.new(
-                __MODULE__,
-                relationship.source_field,
-                relationship.field_type,
-                primary_key?: relationship.primary_key?
-              )
+            case Ash.Resource.Attributes.Attribute.new(
+                   __MODULE__,
+                   relationship.source_field,
+                   relationship.field_type,
+                   primary_key?: relationship.primary_key?
+                 ) do
+              {:ok, attribute} ->
+                @attributes attribute
 
-            @attributes attribute
+              {:error, message} ->
+                raise Ash.Error.ResourceDslError,
+                  message: message,
+                  path: [:relationships, :belongs_to, relationship_name]
+            end
           end
 
           @relationships relationship
 
-        {:error, [{key, message} | _]} ->
+        {:error, message} ->
           raise Ash.Error.ResourceDslError,
             message: message,
-            option: key,
             path: [:relationships, :belongs_to, relationship_name]
       end
     end
@@ -179,7 +184,7 @@ defmodule Ash.Resource.Relationships do
 
   defmodule HasManyDsl do
     require Ash.DslBuilder
-    keys = Ash.Resource.Relationships.HasMany.opt_schema().opts -- [:name, :destination]
+    keys = Keyword.keys(Ash.Resource.Relationships.HasMany.opt_schema()) -- [:name, :destination]
 
     Ash.DslBuilder.build_dsl(keys)
   end
@@ -187,7 +192,7 @@ defmodule Ash.Resource.Relationships do
   @doc """
   Declares a has_many relationship. There can be any number of related entities.
 
-  #{Ashton.document(Ash.Resource.Relationships.HasMany.opt_schema(), header_depth: 2)}
+  #{NimbleOptions.docs(Ash.Resource.Relationships.HasMany.opt_schema())}
 
   ## Examples
   ```elixir
@@ -237,10 +242,9 @@ defmodule Ash.Resource.Relationships do
         {:ok, relationship} ->
           @relationships relationship
 
-        {:error, [{key, message} | _]} ->
+        {:error, message} ->
           raise Ash.Error.ResourceDslError,
             message: message,
-            option: key,
             path: [:relationships, :has_many, relationship_name]
       end
     end
@@ -249,7 +253,8 @@ defmodule Ash.Resource.Relationships do
   defmodule ManyToManyDsl do
     require Ash.DslBuilder
 
-    keys = Ash.Resource.Relationships.ManyToMany.opt_schema().opts -- [:name, :destination]
+    keys =
+      Keyword.keys(Ash.Resource.Relationships.ManyToMany.opt_schema()) -- [:name, :destination]
 
     Ash.DslBuilder.build_dsl(keys)
   end
@@ -261,7 +266,7 @@ defmodule Ash.Resource.Relationships do
 
   You can specify a join table as a string or as another resource.
 
-  #{Ashton.document(Ash.Resource.Relationships.ManyToMany.opt_schema(), header_depth: 2)}
+  #{NimbleOptions.docs(Ash.Resource.Relationships.ManyToMany.opt_schema())}
 
   ## Examples
   ```elixir
@@ -317,16 +322,14 @@ defmodule Ash.Resource.Relationships do
         @relationships many_to_many
         @relationships has_many
       else
-        {:many_to_many, {:error, [{key, message} | _]}} ->
+        {:many_to_many, {:error, message}} ->
           raise Ash.Error.ResourceDslError,
             message: message,
-            option: key,
             path: [:relationships, :many_to_many, relationship_name]
 
-        {:has_many, {:error, [{key, message}]}} ->
+        {:has_many, {:error, message}} ->
           raise Ash.Error.ResourceDslError,
             message: message,
-            option: key,
             path: [:relationships, :many_to_many, has_many_name]
       end
     end

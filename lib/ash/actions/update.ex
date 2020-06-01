@@ -156,7 +156,7 @@ defmodule Ash.Actions.Update do
             {new_attributes, unwritable_attributes}
 
           true ->
-            {Map.put(new_attributes, attribute.name, update_default(attribute, record)),
+            {Map.put(new_attributes, attribute.name, update_default(attribute)),
              unwritable_attributes}
         end
       end)
@@ -197,12 +197,9 @@ defmodule Ash.Actions.Update do
     end
   end
 
-  defp update_default(%{default: {:constant, value}}, _record), do: value
-  defp update_default(%{default: {mod, func}}, record), do: apply(mod, func, [record])
+  defp update_default(%{default: {:constant, value}}), do: value
+  defp update_default(%{default: {mod, func, args}}), do: apply(mod, func, args)
 
-  defp update_default(%{default: function}, _record) when is_function(function, 0),
+  defp update_default(%{default: function}) when is_function(function, 0),
     do: function.()
-
-  defp update_default(%{default: function}, record) when is_function(function, 1),
-    do: function.(record)
 end

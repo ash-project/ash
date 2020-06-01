@@ -4,7 +4,7 @@ defmodule Ash.Test.Resource.AttributesTest do
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
-        use Ash.Resource, name: "posts", type: "post", primary_key: false
+        use Ash.Resource, name: "posts", type: "post"
 
         unquote(body)
       end
@@ -28,7 +28,7 @@ defmodule Ash.Test.Resource.AttributesTest do
     test "raises if the attribute name is not an atom" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "Attribute name must be an atom, got: 10 at attributes -> attribute",
+        "attributes -> attribute:\n  Attribute name must be an atom, got: 10",
         fn ->
           defposts do
             attributes do
@@ -42,7 +42,7 @@ defmodule Ash.Test.Resource.AttributesTest do
     test "raises if the type is not a known type" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "Attribute type must be a built in type or a type module, got: 10 at attributes -> attribute -> foo",
+        "attributes -> attribute -> foo:\n  Attribute type must be a built in type or a type module, got: 10",
         fn ->
           defposts do
             attributes do
@@ -56,7 +56,7 @@ defmodule Ash.Test.Resource.AttributesTest do
     test "raises if you pass an invalid value for `primary_key?`" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option primary_key? at attributes -> attribute must be boolean",
+        "attributes -> attribute:\n  expected :primary_key? to be an boolean, got: 10",
         fn ->
           defposts do
             attributes do
@@ -82,22 +82,22 @@ defmodule Ash.Test.Resource.AttributesTest do
                %Ash.Resource.Attributes.Attribute{
                  allow_nil?: true,
                  default: ^default,
-                 generated?: true,
+                 generated?: false,
                  name: :updated_at,
                  primary_key?: false,
                  type: :utc_datetime,
                  update_default: ^default,
-                 writable?: true
+                 writable?: false
                },
                %Ash.Resource.Attributes.Attribute{
                  allow_nil?: true,
                  default: ^default,
-                 generated?: true,
+                 generated?: false,
                  name: :inserted_at,
                  primary_key?: false,
                  type: :utc_datetime,
                  update_default: nil,
-                 writable?: true
+                 writable?: false
                }
              ] = Ash.attributes(Post)
     end
@@ -115,22 +115,20 @@ defmodule Ash.Test.Resource.AttributesTest do
                %Ash.Resource.Attributes.Attribute{
                  allow_nil?: true,
                  default: ^default,
-                 generated?: true,
                  name: :last_visited,
                  primary_key?: false,
                  type: :utc_datetime,
                  update_default: ^default,
-                 writable?: true
+                 writable?: false
                },
                %Ash.Resource.Attributes.Attribute{
                  allow_nil?: true,
                  default: ^default,
-                 generated?: true,
                  name: :created_at,
                  primary_key?: false,
                  type: :utc_datetime,
                  update_default: nil,
-                 writable?: true
+                 writable?: false
                }
              ] = Ash.attributes(Post)
     end

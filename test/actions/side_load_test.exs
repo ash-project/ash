@@ -11,6 +11,7 @@ defmodule Ash.Test.Actions.SideLoadTest do
     end
 
     attributes do
+      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
       attribute :name, :string
     end
 
@@ -29,6 +30,7 @@ defmodule Ash.Test.Actions.SideLoadTest do
     end
 
     attributes do
+      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
       attribute :title, :string
       attribute :contents, :string
     end

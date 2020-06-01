@@ -22,24 +22,24 @@ defmodule Ash.Resource.Relationships.HasMany do
           reverse_relationship: atom() | nil
         }
 
-  @opt_schema Ashton.schema(
-                opts: [
-                  destination_field: :atom,
-                  source_field: :atom,
-                  reverse_relationship: :atom
-                ],
-                defaults: [
-                  source_field: :id
-                ],
-                describe: [
-                  reverse_relationship:
-                    "A requirement for side loading data. Must be the name of an inverse relationship on the destination resource.",
-                  destination_field:
-                    "The field on the related resource that should match the `source_field` on this resource. Default: [resource.name]_id",
-                  source_field:
-                    "The field on this resource that should match the `destination_field` on the related resource."
-                ]
-              )
+  @opt_schema [
+    destination_field: [
+      type: :atom,
+      doc:
+        "The field on the related resource that should match the `source_field` on this resource. Default: [resource.name]_id"
+    ],
+    source_field: [
+      type: :atom,
+      default: :id,
+      doc:
+        "The field on this resource that should match the `destination_field` on the related resource."
+    ],
+    reverse_relationship: [
+      type: :atom,
+      doc:
+        "A requirement for side loading data. Must be the name of an inverse relationship on the destination resource."
+    ]
+  ]
 
   @doc false
   def opt_schema(), do: @opt_schema
@@ -52,7 +52,7 @@ defmodule Ash.Resource.Relationships.HasMany do
         ) :: {:ok, t()} | {:error, term}
   def new(resource, resource_type, name, related_resource, opts \\ []) do
     # Don't call functions on the resource! We don't want it to compile here
-    case Ashton.validate(opts, @opt_schema) do
+    case NimbleOptions.validate(opts, @opt_schema) do
       {:ok, opts} ->
         {:ok,
          %__MODULE__{

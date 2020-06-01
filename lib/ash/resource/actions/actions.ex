@@ -26,7 +26,7 @@ defmodule Ash.Resource.Actions do
 
   defmodule CreateDsl do
     require Ash.DslBuilder
-    keys = Ash.Resource.Actions.Create.opt_schema().opts -- [:name]
+    keys = Keyword.keys(Ash.Resource.Actions.Create.opt_schema()) -- [:name]
 
     Ash.DslBuilder.build_dsl(keys)
   end
@@ -34,7 +34,7 @@ defmodule Ash.Resource.Actions do
   @doc """
   Declares a `create` action. For calling this action, see the `Ash.Api` documentation.
 
-  #{Ashton.document(Ash.Resource.Actions.Create.opt_schema(), header_depth: 2)}
+  #{NimbleOptions.docs(Ash.Resource.Actions.Create.opt_schema())}
 
   ## Examples
   ```elixir
@@ -65,10 +65,9 @@ defmodule Ash.Resource.Actions do
         {:ok, action} ->
           @actions action
 
-        {:error, [{key, message} | _]} ->
+        {:error, message} ->
           raise Ash.Error.ResourceDslError,
             message: message,
-            option: key,
             path: [:actions, :create, name]
       end
     end
@@ -76,7 +75,7 @@ defmodule Ash.Resource.Actions do
 
   defmodule ReadDsl do
     require Ash.DslBuilder
-    keys = Ash.Resource.Actions.Read.opt_schema().opts -- [:name]
+    keys = Keyword.keys(Ash.Resource.Actions.Read.opt_schema()) -- [:name]
 
     Ash.DslBuilder.build_dsl(keys)
   end
@@ -84,7 +83,7 @@ defmodule Ash.Resource.Actions do
   @doc """
   Declares a `read` action. For calling this action, see the `Ash.Api` documentation.
 
-  #{Ashton.document(Ash.Resource.Actions.Read.opt_schema(), header_depth: 2)}
+  #{NimbleOptions.docs(Ash.Resource.Actions.Read.opt_schema())}
 
   ## Examples
   ```elixir
@@ -115,10 +114,9 @@ defmodule Ash.Resource.Actions do
         {:ok, action} ->
           @actions action
 
-        {:error, [{key, message} | _]} ->
+        {:error, message} ->
           raise Ash.Error.ResourceDslError,
             message: message,
-            option: key,
             path: [:actions, :read, name]
       end
     end
@@ -126,7 +124,7 @@ defmodule Ash.Resource.Actions do
 
   defmodule UpdateDsl do
     require Ash.DslBuilder
-    keys = Ash.Resource.Actions.Update.opt_schema().opts -- [:name]
+    keys = Keyword.keys(Ash.Resource.Actions.Update.opt_schema()) -- [:name]
 
     Ash.DslBuilder.build_dsl(keys)
   end
@@ -134,7 +132,7 @@ defmodule Ash.Resource.Actions do
   @doc """
   Declares an `update` action. For calling this action, see the `Ash.Api` documentation.
 
-  #{Ashton.document(Ash.Resource.Actions.Update.opt_schema(), header_depth: 2)}
+  #{NimbleOptions.docs(Ash.Resource.Actions.Update.opt_schema())}
 
   ## Examples
   ```elixir
@@ -165,10 +163,9 @@ defmodule Ash.Resource.Actions do
         {:ok, action} ->
           @actions action
 
-        {:error, [{key, message} | _]} ->
+        {:error, message} ->
           raise Ash.Error.ResourceDslError,
             message: message,
-            option: key,
             path: [:actions, :update, name]
       end
     end
@@ -176,7 +173,7 @@ defmodule Ash.Resource.Actions do
 
   defmodule DestroyDsl do
     require Ash.DslBuilder
-    keys = Ash.Resource.Actions.Destroy.opt_schema().opts -- [:name]
+    keys = Keyword.keys(Ash.Resource.Actions.Destroy.opt_schema()) -- [:name]
 
     Ash.DslBuilder.build_dsl(keys)
   end
@@ -184,7 +181,7 @@ defmodule Ash.Resource.Actions do
   @doc """
   Declares an `destroy` action. For calling this action, see the `Ash.Api` documentation.
 
-  #{Ashton.document(Ash.Resource.Actions.Destroy.opt_schema(), header_depth: 2)}
+  #{NimbleOptions.docs(Ash.Resource.Actions.Destroy.opt_schema())}
 
   ## Examples
   ```elixir
@@ -215,10 +212,9 @@ defmodule Ash.Resource.Actions do
         {:ok, action} ->
           @actions action
 
-        {:error, [{key, message} | _]} ->
+        {:error, message} ->
           raise Ash.Error.ResourceDslError,
             message: message,
-            option: key,
             path: [:actions, :destroy, name]
       end
     end

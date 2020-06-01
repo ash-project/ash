@@ -8,25 +8,20 @@ defmodule Ash.Resource.Actions.Create do
           primary?: boolean
         }
 
-  @opt_schema Ashton.schema(
-                opts: [
-                  primary?: :boolean
-                ],
-                defaults: [
-                  primary?: false
-                ],
-                describe: [
-                  primary?:
-                    "Whether or not this action should be used when no action is specified by the caller."
-                ]
-              )
+  @opt_schema [
+    primary?: [
+      type: :boolean,
+      default: false,
+      doc: "Whether or not this action should be used when no action is specified by the caller."
+    ]
+  ]
 
   @doc false
   def opt_schema(), do: @opt_schema
 
   @spec new(Ash.resource(), atom, Keyword.t()) :: {:ok, t()} | {:error, term}
   def new(_resource, name, opts \\ []) do
-    case Ashton.validate(opts, @opt_schema) do
+    case NimbleOptions.validate(opts, @opt_schema) do
       {:ok, opts} ->
         {:ok,
          %__MODULE__{

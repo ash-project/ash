@@ -1,10 +1,4 @@
 defmodule Ash.Api do
-  @using_schema Ashton.schema(
-                  opts: [],
-                  defaults: [],
-                  describe: []
-                )
-
   @moduledoc """
   An Api allows you to interact with your resources, anc holds non-resource-specific configuration.
 
@@ -25,21 +19,9 @@ defmodule Ash.Api do
   `MyApp.Api.read(query)`. Corresponding actions must
   be defined in your resources in order to call them through the Api.
   """
-  defmacro __using__(opts) do
-    quote bind_quoted: [opts: opts] do
+  defmacro __using__(_) do
+    quote do
       @before_compile Ash.Api
-
-      opts =
-        case Ashton.validate(opts, Ash.Api.using_schema()) do
-          {:ok, opts} ->
-            opts
-
-          {:error, [{key, message} | _]} ->
-            raise Ash.Error.ApiDslError,
-              using: __MODULE__,
-              option: key,
-              message: message
-        end
 
       @side_load_type :simple
 
@@ -53,9 +35,6 @@ defmodule Ash.Api do
         ]
     end
   end
-
-  @doc false
-  def using_schema(), do: @using_schema
 
   defmacro resources(resources) do
     quote do

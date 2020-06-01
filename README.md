@@ -63,7 +63,6 @@ Validations
 - We need to validate incoming attributes/relationships better.
 - Validate `dependencies` and `must_fetch` (all `must_fetch` with dependencies must have those dependencies as `must_fetch` also)
 - validate using composite primary keys using the `data_layer.can?(:composite_primary_key)`
-- Use ashton to validate interface opts, not just document them: Easy and important
 
 Code Organization
 

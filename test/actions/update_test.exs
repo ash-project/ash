@@ -12,6 +12,7 @@ defmodule Ash.Test.Actions.UpdateTest do
     end
 
     attributes do
+      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
       attribute :bio, :string
     end
 
@@ -31,6 +32,7 @@ defmodule Ash.Test.Actions.UpdateTest do
     end
 
     attributes do
+      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
       attribute :name, :string
     end
 
@@ -42,7 +44,7 @@ defmodule Ash.Test.Actions.UpdateTest do
   end
 
   defmodule PostLink do
-    use Ash.Resource, name: "post_links", type: "post_link", primary_key: false
+    use Ash.Resource, name: "post_links", type: "post_link"
     use Ash.DataLayer.Ets, private?: true
 
     actions do
@@ -69,6 +71,7 @@ defmodule Ash.Test.Actions.UpdateTest do
     end
 
     attributes do
+      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
       attribute :title, :string
       attribute :contents, :string
     end

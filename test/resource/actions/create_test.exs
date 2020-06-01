@@ -33,7 +33,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.CreateTest do
     test "it fails if `name` is not an atom" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "action name must be an atom at actions -> create",
+        "actions -> create:\n  action name must be an atom",
         fn ->
           defposts do
             actions do
@@ -47,7 +47,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.CreateTest do
     test "it fails if `primary?` is not a boolean" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "option primary? at actions -> create -> default must be boolean",
+        "actions -> create -> default:\n  expected :primary? to be an boolean, got: 10",
         fn ->
           defposts do
             actions do
