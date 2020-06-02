@@ -37,7 +37,7 @@ jobs:
           restore-keys: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}
       - run: mix deps.get
       - run: mix check
-      - run: mix hex.publish
+      - run: mix hex.publish --yes
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
