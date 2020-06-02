@@ -203,7 +203,6 @@ defmodule Ash.SatSolver do
     end)
   end
 
-  # TODO: Is this so simple?
   defp lift_clauses({:and, left, right}) do
     lift_clauses(left) ++ lift_clauses(right)
   end

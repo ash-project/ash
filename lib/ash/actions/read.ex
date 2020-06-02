@@ -22,10 +22,6 @@ defmodule Ash.Actions.Read do
 
       {:error, error} ->
         {:error, Ash.to_ash_error(error)}
-
-      other ->
-        # TODO: REMOVE THIS TESTING CODE
-        {:ok, other}
     end
   end
 

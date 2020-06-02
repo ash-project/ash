@@ -151,8 +151,6 @@ defmodule Ash.Actions.SideLoad do
   end
 
   defp attach_many_to_many_side_loads(data, lead_path, last_relationship, name, side_loads, value) do
-    # TODO: If we sort the relationships as we do them (doing the join assoc first)
-    # then we can just use those linked assocs (maybe)
     join_association = String.to_existing_atom(to_string(name) <> "_join_assoc")
 
     join_path = lead_path ++ [join_association]
@@ -421,8 +419,7 @@ defmodule Ash.Actions.SideLoad do
          _use_data_for_filter?
        ) do
     Ash.Engine.Request.resolve(fn _ ->
-      {:error,
-       "Required reverse relationship for #{inspect(relationship)} TODO: this can be resolved"}
+      {:error, "Required reverse relationship for #{inspect(relationship)}"}
     end)
   end
 
@@ -593,7 +590,6 @@ defmodule Ash.Actions.SideLoad do
   end
 
   defp put_nested_relationship(request_filter, path, value, records? \\ true)
-  # TODO: The assumption this is making really needs to be checked!
   defp put_nested_relationship(_, _, [], true), do: [__impossible__: true]
   defp put_nested_relationship(_, _, nil, true), do: [__impossible__: true]
   defp put_nested_relationship(_, _, [], false), do: []

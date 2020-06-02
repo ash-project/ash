@@ -66,12 +66,14 @@ Validations
 - We need to validate incoming attributes/relationships better.
 - Validate `dependencies` and `must_fetch` (all `must_fetch` with dependencies must have those dependencies as `must_fetch` also)
 - validate using composite primary keys using the `data_layer.can?(:composite_primary_key)`
+- use schemas to validate the options in the interface
 
 Code Organization
 
 - break up the `Ash` module
 - consider moving `type` and `name` for resources out into json api (or perhaps just `name`) since only json api uses that
 - Consider allowing declaring a data layer at the _api_ level, or overriding the resource's data layer at the _api_ level
+- document the interface
 
 Errors
 
@@ -91,6 +93,7 @@ Filters
 - Figure out how to handle cross data layer filters for boolean.
 - lift `or` filters over the same field equaling a value into a single `in` filter, for performance (potentially)
 - make runtime filtering of a list of records + an ash filter a public interface. At first, we can just run a query with that filter, and filter for matches. Eventually it can be optimized.
+- When combining filters, we can prune branches that are strict subset of eachother potentially. Depends on the performance of the sat solver. Perhaps the best choice there would be to traverse on each filter addition, perhaps using the existing Merge entrypoint ?
 
 This is from a conversation about how we might support on-demand calculated attributes
 that would allow doing something like getting the trigram similarity to a piece of text
@@ -120,6 +123,11 @@ Actions
 - Since actions can return multiple errors, we need a testing utility to unwrap/assert on them
 - Validate that checks have the correct action type when compiling an action
 - Handle related values on delete
+- If structs/a struct is passed into a relationship change like `api.update(:author, relationships: %{posts: %Post{}})` we shouldn't have to read it back
+- Support bulk creation - use this when managing to many relationships if available
+- support deleting w/ a query - use this when managing to many relationships
+- Support fields on join tables if they are a resource
+- dont require a join table for many_to_many relationships
 
 Authorization
 
@@ -139,10 +147,11 @@ Authorization
 - check if preparations have been done on a superset filter of a request and, if so, use it
 - just had a cool thought: we can actually run the satsolver _before_ fetching the user. The satsolver could warn us early that _no user_ could make the request in question!
 - Use the sat solver at compile time to tell people when requests they've configured (and maybe all combinations of includes they've allowed?) couldn't possibly be allowed together.
+- optimize authorization by allowing facts to be shared amongst requests?
+- handle errors from runtime filtering based on authorizer responses
 
 Community
 
-- Contributor guideline and code of conduct
 - https://github.com/keathley/twirp
 
 Relationships
@@ -161,6 +170,8 @@ Relationships
 - relationship changes are an artifact of the old way of doing things and are very ugly right now
 - Figure out under what circumstances we can bulk fetch when reading before updating many_to_many and to_many relationships, and do so.
 - Perhaps, reverse relationships should eliminate the need to set destination field.
+- also, perhaps, reverse relationships suck and should not be necessary. The alternative is a `from_related` filter, that lets you use an association in reverse
+- allow configuring the name of the join relationship name for many to many relationships
 
 Primary Key
 
@@ -207,6 +218,7 @@ DSL
 - Bake in descriptions to the DSL
 - need to make sure that all of the dsl components are in the `.formatter.exs`. I made it so all of the options can be specified as a nested DSL, but haven't gone through and added them to the formatter file
 - add `init` to checks, and error check their construction when building the DSL
+- allow for resources to be created _without_ the dsl
 
 Code Quality
 
@@ -226,6 +238,7 @@ Engine
 - implement transactions in the engine. Perhaps by assigning requests transaction ids or something along those lines.
 - fix the comment noted in the destroy action: ~the delete needs to happen _outside_ of the data fetching step, so the engine needs some kind of "after data resolved" capability~
 - add a total failure mode (since JSON API just fails entirely) that will cause the engine to stop on the first error
+- Get rid of all of the :lists.droplast and List.first stuff by making a `%Ash.Engine.Dependecy{path: path, field: field}`
 
 Fields/Attributes
 
@@ -237,7 +250,6 @@ Fields/Attributes
 
 Framework
 
-- Framework internals need to stop using `api.foo`, because the code interface is supposed to be optional
 - support accepting a _resource and a filter_ in `api.update` and `api.destroy`, and doing those as bulk actions
 - support something similar to the older interface we had with ash, like `Api.read(resource, filter: [...], sort: [...])`, as the `Ash.Query` method is a bit long form in some cases
 - Add a mixin compatibility checker framework, to allow for extensions to declare what features they do/don't support.

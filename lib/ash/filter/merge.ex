@@ -8,7 +8,6 @@ defmodule Ash.Filter.Merge do
     do_merge(left, right)
   end
 
-  # TODO: We can support filter simplification as we build by making this merge function smarter
   defp do_merge(left, right) do
     And.prebuilt_new(left, right)
   end

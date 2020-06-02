@@ -4,9 +4,6 @@ defmodule Ash.Engine.RequestHandler do
   use GenServer
   require Logger
 
-  # TODO: as an optimization, maybe make the authorizer_state global
-  # to all request_handlers (using an agent or something)
-
   alias Ash.Engine.Request
 
   ## If not bypass strict check, then the engine needs to ensure

@@ -27,7 +27,6 @@ defmodule Ash.Resource.Relationships.ManyToMany do
           reverse_relationship: atom
         }
 
-  # TODO: Describe dynamic defaults in all nimble options schemas
   @opt_schema [
     source_field_on_join_table: [
       type: :atom,

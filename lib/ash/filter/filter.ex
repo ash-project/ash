@@ -331,7 +331,6 @@ defmodule Ash.Filter do
   defp get_all_values(filter, state) do
     state =
       filter.attributes
-      # TODO
       |> Enum.reduce(state, fn {field, value}, state ->
         state
         |> Map.put_new([filter.path, field], [])
@@ -565,15 +564,11 @@ defmodule Ash.Filter do
 
   defp add_records_to_relationship_filter(filter, [], records) do
     case Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(filter.resource, records) do
-      {:error, _error} ->
-        # TODO: We should get this error out somehow?
-        filter
+      {:error, error} ->
+        add_error(filter, error)
 
       {:ok, []} ->
         if filter.ors in [[], nil] do
-          # TODO: We should probably include some kind of filter that *makes* it immediately impossible
-          # that way, if the data layer doesn't check impossibility they will run the simpler query,
-          # like for each pkey field say `[field: [in: []]]`
           %{filter | impossible?: true}
         else
           filter
@@ -653,7 +648,6 @@ defmodule Ash.Filter do
   end
 
   def add_to_filter(filter, %__MODULE__{} = addition) do
-    # TODO: get smart when combining filters
     %{addition | ands: [filter | addition.ands]}
     |> lift_impossibility()
     |> lift_if_empty()

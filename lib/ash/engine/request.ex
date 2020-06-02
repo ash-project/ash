@@ -513,7 +513,6 @@ defmodule Ash.Engine.Request do
         )
 
       {:error, _error} ->
-        # TODO: Handle this
         {:error, "Error while authorizing"}
     end
   end
@@ -688,7 +687,6 @@ defmodule Ash.Engine.Request do
 
   defp notifications(request, field, value) do
     case Map.fetch(request.dependencies_to_send, field) do
-      # TODO: This logic could technically cause double sends?
       {:ok, paths} ->
         new_request = %{
           request
@@ -865,7 +863,6 @@ defmodule Ash.Engine.Request do
     if dep in trail do
       {:error, {:circular, dep}}
     else
-      # TODO: this is inneficient
       request_path = :lists.droplast(dep)
       request_key = List.last(dep)
 

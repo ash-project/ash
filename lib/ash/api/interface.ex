@@ -1,11 +1,7 @@
 defmodule Ash.Api.Interface do
   @moduledoc """
   The primary entry point for interacting with resources and their data.
-
-  #TODO describe - Big picture description here
   """
-
-  # TODO: use the schemas to validate the opts
 
   import Ash.OptionsHelpers, only: [merge_schemas: 3]
 
@@ -63,95 +59,71 @@ defmodule Ash.Api.Interface do
   @delete_opts_schema merge_schemas([], @global_opts, annotate: "Global Opts")
 
   @doc """
-  #TODO describe
-
   #{NimbleOptions.docs(@get_opts_schema)}
   """
   @callback get!(resource :: Ash.resource(), id_or_filter :: term(), params :: Ash.params()) ::
               Ash.record() | no_return
 
   @doc """
-  #TODO describe
-
   #{NimbleOptions.docs(@get_opts_schema)}
   """
   @callback get(resource :: Ash.resource(), id_or_filter :: term(), params :: Ash.params()) ::
               {:ok, Ash.record()} | {:error, Ash.error()}
 
   @doc """
-  #TODO describe
-
   #{NimbleOptions.docs(@read_opts_schema)}
   """
   @callback read!(resource :: Ash.resource(), params :: Ash.params()) ::
               list(Ash.resource()) | no_return
 
   @doc """
-  #TODO describe
-
   #{NimbleOptions.docs(@read_opts_schema)}
   """
   @callback read(resource :: Ash.resource(), params :: Ash.params()) ::
               {:ok, list(Ash.resource())} | {:error, Ash.error()}
 
   @doc """
-  #TODO describe
-
   #{NimbleOptions.docs(@side_load_opts_schema)}
   """
   @callback side_load!(resource :: Ash.resource(), params :: Ash.params()) ::
               list(Ash.resource()) | no_return
 
   @doc """
-  #TODO describe
-
   #{NimbleOptions.docs(@side_load_opts_schema)}
   """
   @callback side_load(resource :: Ash.resource(), params :: Ash.params()) ::
               {:ok, list(Ash.resource())} | {:error, Ash.error()}
 
   @doc """
-  #TODO describe
-
   #{NimbleOptions.docs(@create_opts_schema)}
   """
   @callback create!(resource :: Ash.resource(), params :: Ash.create_params()) ::
               Ash.record() | no_return
 
   @doc """
-  #TODO describe
-
   #{NimbleOptions.docs(@create_opts_schema)}
   """
   @callback create(resource :: Ash.resource(), params :: Ash.create_params()) ::
               {:ok, Ash.record()} | {:error, Ash.error()}
 
   @doc """
-  #TODO describe
-
   #{NimbleOptions.docs(@update_opts_schema)}
   """
   @callback update!(record :: Ash.record(), params :: Ash.update_params()) ::
               Ash.record() | no_return
 
   @doc """
-  #TODO describe
-
   #{NimbleOptions.docs(@update_opts_schema)}
   """
   @callback update(record :: Ash.record(), params :: Ash.update_params()) ::
               {:ok, Ash.record()} | {:error, Ash.error()}
 
   @doc """
-  #TODO describe
-
   #{NimbleOptions.docs(@delete_opts_schema)}
   """
   @callback destroy!(record :: Ash.record(), params :: Ash.update_params()) :: :ok | no_return
 
   @doc """
-  #TODO describe
-
   #{NimbleOptions.docs(@delete_opts_schema)}
   """
   @callback destroy(record :: Ash.record(), params :: Ash.update_params()) ::

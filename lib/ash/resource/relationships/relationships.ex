@@ -309,8 +309,6 @@ defmodule Ash.Resource.Relationships do
           opts
         )
 
-      # TODO: allow them to configure a join_relationship name
-      # Update side loading logic to account for it.
       has_many_name = String.to_atom(to_string(relationship_name) <> "_join_assoc")
 
       has_many =

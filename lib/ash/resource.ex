@@ -25,9 +25,6 @@ defmodule Ash.Resource do
   API and can change at any time. Instead, use the `Ash` module, for example: `Ash.type(MyResource)`
   """
 
-  # TODO: Flesh out the resource callbacks, to allow for functionally derived resources. Maybe
-  # This one is just here so I can make this a behaviour, so that we can check if a module
-  # is a resource or not.
   @callback primary_key() :: [atom]
 
   defmacro __using__(opts) do

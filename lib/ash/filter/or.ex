@@ -23,8 +23,6 @@ defmodule Ash.Filter.Or do
   end
 
   def prebuilt_new(left, right) do
-    # TODO: This should probably get richer. For instance, if right is a strict subset of left,
-    # maybe we should strip it?
     if left == right do
       left
     else

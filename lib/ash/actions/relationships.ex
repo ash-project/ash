@@ -249,7 +249,6 @@ defmodule Ash.Actions.Relationships do
   end
 
   defp validate_struct_replace(relationship, data, action_type) do
-    # TODO: If they pass structs, we can avoid reading in the future
     new_data =
       data
       |> Map.take(Ash.primary_key(data.__struct__))
@@ -552,14 +551,6 @@ defmodule Ash.Actions.Relationships do
 
   defp relate_many_to_many(changeset, api, relationship, %{add: add, current: current}, pkey)
        when is_list(add) do
-    # TODO: Consider finding a way to create these in bulk
-    # It will perform better
-    # For creation like this its a bit harder, the whole point of Ash
-    # is to act as an abstraction layer, but bulk inserts would probably
-    # be a pretty data-layer heavy concept. The answer is probably
-    # for the data layers to support a `bulk_create` option and then
-    # attempt to abstract it. Worst case scenario the data layer will
-    # iterate and insert.
     Enum.reduce(add, changeset, fn to_relate_record, changeset ->
       case find_pkey_match(current, to_relate_record, pkey) do
         nil ->
@@ -607,8 +598,6 @@ defmodule Ash.Actions.Relationships do
          %{current: current, remove: remove},
          pkey
        ) do
-    # TODO: When deleting with a query is supported, do that here.
-    # It will perform better
     Enum.reduce(remove, changeset, fn to_remove_record, changeset ->
       case find_pkey_match(current, to_remove_record, pkey) do
         nil ->
@@ -853,8 +842,6 @@ defmodule Ash.Actions.Relationships do
          api,
          %{type: :many_to_many} = relationship
        ) do
-    # TODO: Support field updates here
-    # TODO: When we support joins, send this request to the data layer as a join (if the datalayer supports it)
     join_through_request = many_to_many_join_resource_request(api, changeset, relationship)
 
     destination_request = many_to_many_destination_request(api, relationship)
@@ -973,7 +960,6 @@ defmodule Ash.Actions.Relationships do
     Map.update(changeset, :__requests__, requests, &Kernel.++(&1, requests))
   end
 
-  # TODO: This is the only way to ensure that we aren't showing stale relationships after updating
   defp clear_relationships(%resource{} = record) do
     resource
     |> Ash.relationships()

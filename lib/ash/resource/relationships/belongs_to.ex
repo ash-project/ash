@@ -52,13 +52,9 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     ],
     field_type: [
       type: :any,
-      # TODO: This should actually default to the value of the key on the
-      # other resource
       default: :uuid,
       doc: "The field type of the automatically created field."
     ],
-    # TODO: Revisit reverse relationships, determine if they really are necessary
-    # If they are, they could represent a relatively serious drawback of our filter syntax
     reverse_relationship: [
       type: :atom,
       doc:
