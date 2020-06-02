@@ -1,7 +1,5 @@
 name: Elixir CI
 
-env:
-
 on:
   push:
     branches: [master]
