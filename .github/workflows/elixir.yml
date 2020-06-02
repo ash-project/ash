@@ -33,8 +33,8 @@ jobs:
           path: |
             deps
             _build
-          key: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-lock-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
-          restore-keys: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}
+          key: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+          restore-keys: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-
       - run: mix deps.get
       - run: mix check
       - run: mix hex.publish --yes
