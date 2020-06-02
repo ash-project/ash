@@ -1,5 +1,6 @@
 # Ash
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![Elixir CI](https://github.com/ash-project/ash/workflows/Elixir%20CI/badge.svg)
 
 ## Quick Links
 
