@@ -232,7 +232,7 @@ defmodule Ash.Filter do
 
     substitutions =
       Enum.reduce(values, %{}, fn {key, values}, substitutions ->
-        value_substitutions = simplify_list_subtitutions(values)
+        value_substitutions = simplify_list_substitutions(values)
 
         Map.put(substitutions, key, value_substitutions)
       end)
