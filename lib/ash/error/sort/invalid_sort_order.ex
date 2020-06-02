@@ -1,4 +1,5 @@
 defmodule Ash.Error.Sort.InvalidSortOrder do
+  @moduledoc "Used when an invalid sort order is provided"
   use Ash.Error
 
   def_ash_error([:order], class: :invalid)

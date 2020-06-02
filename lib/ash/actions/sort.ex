@@ -1,4 +1,5 @@
 defmodule Ash.Actions.Sort do
+  @moduledoc false
   alias Ash.Error.Sort.{InvalidSortOrder, NoSuchField, UnsortableField}
 
   def process(_resource, empty) when empty in [nil, []], do: {:ok, []}

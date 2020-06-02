@@ -1,4 +1,5 @@
 defmodule Ash.Resource.Relationships.ManyToMany do
+  @moduledoc false
   defstruct [
     :name,
     :type,
@@ -63,7 +64,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
   ]
 
   @doc false
-  def opt_schema(), do: @opt_schema
+  def opt_schema, do: @opt_schema
 
   @spec new(
           resource :: Ash.resource(),

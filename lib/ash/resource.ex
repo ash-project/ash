@@ -65,7 +65,7 @@ defmodule Ash.Resource do
   end
 
   @doc false
-  def resource_opts_schema() do
+  def resource_opts_schema do
     @resource_opts_schema
   end
 
@@ -95,43 +95,43 @@ defmodule Ash.Resource do
 
       Ash.Schema.define_schema(@name)
 
-      def type() do
+      def type do
         @resource_type
       end
 
-      def relationships() do
+      def relationships do
         @relationships
       end
 
-      def actions() do
+      def actions do
         @sanitized_actions
       end
 
-      def attributes() do
+      def attributes do
         @attributes
       end
 
-      def primary_key() do
+      def primary_key do
         @ash_primary_key
       end
 
-      def name() do
+      def name do
         @name
       end
 
-      def extensions() do
+      def extensions do
         @extensions
       end
 
-      def data_layer() do
+      def data_layer do
         @data_layer
       end
 
-      def describe() do
+      def describe do
         @description
       end
 
-      def authorizers() do
+      def authorizers do
         @authorizers
       end
 

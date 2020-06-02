@@ -18,8 +18,10 @@ defmodule Ash.Resource.Attributes do
   end
 
   defmodule AttributeDsl do
+    @moduledoc false
+    alias Ash.Resource.Attributes.Attribute
     require Ash.DslBuilder
-    keys = Keyword.keys(Ash.Resource.Attributes.Attribute.attribute_schema()) -- [:name, :type]
+    keys = Keyword.keys(Attribute.attribute_schema()) -- [:name, :type]
 
     Ash.DslBuilder.build_dsl(keys)
   end
@@ -42,6 +44,8 @@ defmodule Ash.Resource.Attributes do
       name = unquote(name)
       type = unquote(type)
       opts = unquote(Keyword.delete(opts, :do))
+
+      alias Ash.Resource.Attributes.Attribute
 
       unless is_atom(name) do
         raise Ash.Error.ResourceDslError,
@@ -74,7 +78,7 @@ defmodule Ash.Resource.Attributes do
 
       Module.delete_attribute(__MODULE__, :dsl_opts)
 
-      case Ash.Resource.Attributes.Attribute.new(__MODULE__, name, type, opts) do
+      case Attribute.new(__MODULE__, name, type, opts) do
         {:ok, attribute} ->
           @attributes attribute
 
@@ -102,6 +106,7 @@ defmodule Ash.Resource.Attributes do
   timestamp_schema = @timestamp_schema
 
   defmodule TimestampDsl do
+    @moduledoc false
     require Ash.DslBuilder
     keys = Keyword.keys(timestamp_schema)
 

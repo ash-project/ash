@@ -94,6 +94,22 @@ Filters
 - lift `or` filters over the same field equaling a value into a single `in` filter, for performance (potentially)
 - make runtime filtering of a list of records + an ash filter a public interface. At first, we can just run a query with that filter, and filter for matches. Eventually it can be optimized.
 - When combining filters, we can prune branches that are strict subset of eachother potentially. Depends on the performance of the sat solver. Perhaps the best choice there would be to traverse on each filter addition, perhaps using the existing Merge entrypoint ?
+- document the concepts behind filter simplification. The following is an old comment I wrote talking about it
+
+```elixir
+  # The story here:
+  # we don't really need to fully simplify every value statement, e.g `in: [1, 2, 3]` -> `== 1 or == 2 or == 3`
+  # We could instead just simplify *only as much as we need to*, for instance if the filter contains
+  # `in: [1, 2, 3]` and `in: [2, 3, 4]`, we could translate the first to `in: [2, 3] or == 1` and the
+  # second one to `in: [2, 3] or == 4`. We should then be able to go about expressing the fact that none
+  # of `== 1` and `== 2` are mutually exclusive terms by exchanging them for `== 1 and != 2` and `== 2 and != 1`
+  # respectively. This is the methodology behind translating a *value* based filter into a boolean expression.
+  #
+  # However for now for simplicity's sake, I'm turning all `in: [1, 2]` into `== 1 or == 2` and all `not_in: [1, 2]`
+  # into `!= 1 and !=2` for the sole reason that its not worth figuring it out right now. Cosimplification is, at the
+  # and of the day, really just an optimization to keep the expression simple. Its not so important with lists and equality
+  # but when we add substring filters/greater than filters, we're going to need to improve this logic
+```
 
 This is from a conversation about how we might support on-demand calculated attributes
 that would allow doing something like getting the trigram similarity to a piece of text
@@ -152,7 +168,7 @@ Authorization
 
 Community
 
-- https://github.com/keathley/twirp
+- [twirp](https://github.com/keathley/twirp)
 
 Relationships
 
@@ -239,6 +255,7 @@ Engine
 - fix the comment noted in the destroy action: ~the delete needs to happen _outside_ of the data fetching step, so the engine needs some kind of "after data resolved" capability~
 - add a total failure mode (since JSON API just fails entirely) that will cause the engine to stop on the first error
 - Get rid of all of the :lists.droplast and List.first stuff by making a `%Ash.Engine.Dependecy{path: path, field: field}`
+- consider (some day) opening up the engine/request as a public API
 
 Fields/Attributes
 

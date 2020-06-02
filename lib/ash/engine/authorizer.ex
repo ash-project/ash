@@ -1,4 +1,11 @@
 defmodule Ash.Engine.Authorizer do
+  @moduledoc """
+  The interface for an ash authorizer
+
+  These will typically be implemented by an extension, but a custom
+  one can be implemented by defining a module that adopts this behaviour
+  and using `@authorizers YourAuthorizer` to your resource.
+  """
   @type state :: map
   @type context :: map
   @callback initial_state(Ash.resource(), Ash.actor(), Ash.action(), boolean) :: state

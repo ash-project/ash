@@ -19,8 +19,10 @@ defmodule Ash.Resource.Relationships do
   end
 
   defmodule HasOneDsl do
+    @moduledoc false
+    alias Ash.Resource.Relationships.HasOne
     require Ash.DslBuilder
-    keys = Keyword.keys(Ash.Resource.Relationships.HasOne.opt_schema()) -- [:name, :destination]
+    keys = Keyword.keys(HasOne.opt_schema()) -- [:name, :destination]
 
     Ash.DslBuilder.build_dsl(keys)
   end
@@ -49,6 +51,8 @@ defmodule Ash.Resource.Relationships do
       destination = unquote(destination)
       opts = unquote(Keyword.delete(opts, :do))
 
+      alias Ash.Resource.Relationships.HasOne
+
       unless is_atom(relationship_name) do
         raise Ash.Error.ResourceDslError,
           message: "relationship_name must be an atom",
@@ -71,7 +75,7 @@ defmodule Ash.Resource.Relationships do
       Module.delete_attribute(__MODULE__, :dsl_opts)
 
       relationship =
-        Ash.Resource.Relationships.HasOne.new(
+        HasOne.new(
           __MODULE__,
           @resource_type,
           relationship_name,
@@ -92,10 +96,12 @@ defmodule Ash.Resource.Relationships do
   end
 
   defmodule BelongsToDsl do
+    @moduledoc false
     require Ash.DslBuilder
 
-    keys =
-      Keyword.keys(Ash.Resource.Relationships.BelongsTo.opt_schema()) -- [:name, :destination]
+    alias Ash.Resource.Relationships.BelongsTo
+
+    keys = Keyword.keys(BelongsTo.opt_schema()) -- [:name, :destination]
 
     Ash.DslBuilder.build_dsl(keys)
   end
@@ -124,6 +130,8 @@ defmodule Ash.Resource.Relationships do
       destination = unquote(destination)
       opts = unquote(Keyword.delete(opts, :do))
 
+      alias Ash.Resource.Relationships
+
       unless is_atom(relationship_name) do
         raise Ash.Error.ResourceDslError,
           message: "relationship_name must be an atom",
@@ -146,7 +154,7 @@ defmodule Ash.Resource.Relationships do
       Module.delete_attribute(__MODULE__, :dsl_opts)
 
       relationship =
-        Ash.Resource.Relationships.BelongsTo.new(
+        Relationships.BelongsTo.new(
           __MODULE__,
           relationship_name,
           destination,
@@ -155,7 +163,7 @@ defmodule Ash.Resource.Relationships do
 
       case relationship do
         {:ok, relationship} ->
-          Ash.Resource.Relationships.maybe_define_attribute(relationship)
+          Relationships.maybe_define_attribute(relationship, relationship_name)
 
           @relationships relationship
 
@@ -167,10 +175,12 @@ defmodule Ash.Resource.Relationships do
     end
   end
 
-  defmacro maybe_define_attribute(relationship) do
-    quote bind_quoted: [relationship: relationship] do
+  defmacro maybe_define_attribute(relationship, relationship_name) do
+    quote bind_quoted: [relationship: relationship, relationship_name: relationship_name] do
+      alias Ash.Resource.Attributes.Attribute
+
       if relationship.define_field? do
-        case Ash.Resource.Attributes.Attribute.new(
+        case Attribute.new(
                __MODULE__,
                relationship.source_field,
                relationship.field_type,
@@ -189,8 +199,10 @@ defmodule Ash.Resource.Relationships do
   end
 
   defmodule HasManyDsl do
+    @moduledoc false
     require Ash.DslBuilder
-    keys = Keyword.keys(Ash.Resource.Relationships.HasMany.opt_schema()) -- [:name, :destination]
+    alias Ash.Resource.Relationships.HasMany
+    keys = Keyword.keys(HasMany.opt_schema()) -- [:name, :destination]
 
     Ash.DslBuilder.build_dsl(keys)
   end
@@ -213,6 +225,7 @@ defmodule Ash.Resource.Relationships do
       relationship_name = unquote(relationship_name)
       destination = unquote(destination)
       opts = unquote(Keyword.delete(opts, :do))
+      alias Ash.Resource.Relationships
 
       unless is_atom(relationship_name) do
         raise Ash.Error.ResourceDslError,
@@ -236,7 +249,7 @@ defmodule Ash.Resource.Relationships do
       Module.delete_attribute(__MODULE__, :dsl_opts)
 
       relationship =
-        Ash.Resource.Relationships.HasMany.new(
+        Relationships.HasMany.new(
           __MODULE__,
           @resource_type,
           relationship_name,
@@ -257,10 +270,11 @@ defmodule Ash.Resource.Relationships do
   end
 
   defmodule ManyToManyDsl do
+    @moduledoc false
     require Ash.DslBuilder
+    alias Ash.Resource.Relationships.ManyToMany
 
-    keys =
-      Keyword.keys(Ash.Resource.Relationships.ManyToMany.opt_schema()) -- [:name, :destination]
+    keys = Keyword.keys(ManyToMany.opt_schema()) -- [:name, :destination]
 
     Ash.DslBuilder.build_dsl(keys)
   end
@@ -291,6 +305,8 @@ defmodule Ash.Resource.Relationships do
       destination = unquote(destination)
       opts = unquote(Keyword.delete(opts, :do))
 
+      alias Ash.Resource.Relationships
+
       Module.register_attribute(__MODULE__, :dsl_opts, accumulate: true)
       import unquote(__MODULE__).ManyToManyDsl
       unquote(opts[:do])
@@ -301,7 +317,7 @@ defmodule Ash.Resource.Relationships do
       Module.delete_attribute(__MODULE__, :dsl_opts)
 
       many_to_many =
-        Ash.Resource.Relationships.ManyToMany.new(
+        Relationships.ManyToMany.new(
           __MODULE__,
           @name,
           relationship_name,
@@ -312,7 +328,7 @@ defmodule Ash.Resource.Relationships do
       has_many_name = String.to_atom(to_string(relationship_name) <> "_join_assoc")
 
       has_many =
-        Ash.Resource.Relationships.HasMany.new(
+        Relationships.HasMany.new(
           __MODULE__,
           @name,
           has_many_name,

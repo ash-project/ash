@@ -5,6 +5,7 @@ defmodule Ash.Api.Interface do
 
   import Ash.OptionsHelpers, only: [merge_schemas: 3]
 
+  alias Ash.Actions.{Create, Destroy, Read, SideLoad, Update}
   alias Ash.Error.Interface.NoSuchResource
 
   @global_opts [
@@ -151,14 +152,16 @@ defmodule Ash.Api.Interface do
     quote location: :keep do
       @behaviour Ash.Api.Interface
 
+      alias Ash.Api.Interface
+
       @impl true
       def get!(resource, id, params \\ []) do
-        Ash.Api.Interface.get!(__MODULE__, resource, id, params)
+        Interface.get!(__MODULE__, resource, id, params)
       end
 
       @impl true
       def get(resource, id, params \\ []) do
-        case Ash.Api.Interface.get(__MODULE__, resource, id, params) do
+        case Interface.get(__MODULE__, resource, id, params) do
           {:ok, instance} -> {:ok, instance}
           {:error, error} -> {:error, List.wrap(error)}
         end
@@ -173,7 +176,7 @@ defmodule Ash.Api.Interface do
       end
 
       def read!(query, opts) do
-        Ash.Api.Interface.read!(__MODULE__, query, opts)
+        Interface.read!(__MODULE__, query, opts)
       end
 
       @impl true
@@ -185,7 +188,7 @@ defmodule Ash.Api.Interface do
       end
 
       def read(query, opts) do
-        case Ash.Api.Interface.read(__MODULE__, query, opts) do
+        case Interface.read(__MODULE__, query, opts) do
           {:ok, results} -> {:ok, results}
           {:error, error} -> {:error, List.wrap(error)}
         end
@@ -193,12 +196,12 @@ defmodule Ash.Api.Interface do
 
       @impl true
       def side_load!(data, query, opts \\ []) do
-        Ash.Api.Interface.side_load!(__MODULE__, data, query, opts)
+        Interface.side_load!(__MODULE__, data, query, opts)
       end
 
       @impl true
       def side_load(data, query, opts \\ []) do
-        case Ash.Api.Interface.side_load(__MODULE__, data, query, opts) do
+        case Interface.side_load(__MODULE__, data, query, opts) do
           {:ok, results} -> {:ok, results}
           {:error, error} -> {:error, List.wrap(error)}
         end
@@ -206,12 +209,12 @@ defmodule Ash.Api.Interface do
 
       @impl true
       def create!(resource, params \\ []) do
-        Ash.Api.Interface.create!(__MODULE__, resource, params)
+        Interface.create!(__MODULE__, resource, params)
       end
 
       @impl true
       def create(resource, params \\ []) do
-        case Ash.Api.Interface.create(__MODULE__, resource, params) do
+        case Interface.create(__MODULE__, resource, params) do
           {:ok, instance} -> {:ok, instance}
           {:error, error} -> {:error, List.wrap(error)}
         end
@@ -219,12 +222,12 @@ defmodule Ash.Api.Interface do
 
       @impl true
       def update!(record, params \\ []) do
-        Ash.Api.Interface.update!(__MODULE__, record, params)
+        Interface.update!(__MODULE__, record, params)
       end
 
       @impl true
       def update(record, params \\ []) do
-        case Ash.Api.Interface.update(__MODULE__, record, params) do
+        case Interface.update(__MODULE__, record, params) do
           {:ok, instance} -> {:ok, instance}
           {:error, error} -> {:error, List.wrap(error)}
         end
@@ -232,12 +235,12 @@ defmodule Ash.Api.Interface do
 
       @impl true
       def destroy!(record, params \\ []) do
-        Ash.Api.Interface.destroy!(__MODULE__, record, params)
+        Interface.destroy!(__MODULE__, record, params)
       end
 
       @impl true
       def destroy(record, params \\ []) do
-        case Ash.Api.Interface.destroy(__MODULE__, record, params) do
+        case Interface.destroy(__MODULE__, record, params) do
           :ok -> :ok
           {:error, error} -> {:error, List.wrap(error)}
         end
@@ -371,7 +374,7 @@ defmodule Ash.Api.Interface do
 
     case query do
       %{valid?: true} ->
-        Ash.Actions.SideLoad.side_load(data, query, opts)
+        SideLoad.side_load(data, query, opts)
 
       %{errors: errors} ->
         {:error, errors}
@@ -393,7 +396,7 @@ defmodule Ash.Api.Interface do
   def read(_api, query, opts \\ []) do
     case get_action(query.resource, opts, :read) do
       {:ok, action} ->
-        Ash.Actions.Read.run(query, action, opts)
+        Read.run(query, action, opts)
 
       {:error, error} ->
         {:error, error}
@@ -415,7 +418,7 @@ defmodule Ash.Api.Interface do
   def create(api, resource, params) do
     with {:ok, resource} <- api.get_resource(resource),
          {:ok, action} <- get_action(resource, params, :create) do
-      Ash.Actions.Create.run(api, resource, action, params)
+      Create.run(api, resource, action, params)
     end
   end
 
@@ -433,7 +436,7 @@ defmodule Ash.Api.Interface do
   def update(api, %resource{} = record, params) do
     with {:ok, resource} <- api.get_resource(resource),
          {:ok, action} <- get_action(resource, params, :update) do
-      Ash.Actions.Update.run(api, record, action, params)
+      Update.run(api, record, action, params)
     end
   end
 
@@ -450,7 +453,7 @@ defmodule Ash.Api.Interface do
   def destroy(api, %resource{} = record, params) do
     with {:ok, resource} <- api.get_resource(resource),
          {:ok, action} <- get_action(resource, params, :destroy) do
-      Ash.Actions.Destroy.run(api, record, action, params)
+      Destroy.run(api, record, action, params)
     end
   end
 

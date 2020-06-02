@@ -17,6 +17,12 @@ defmodule Ash.Filter do
   like a series of nested boolean expression structs w/ a reference to the attribute/relationship
   it references. Maybe. This would be similar to Ecto's `BooleanExpr` structs.
   """
+
+  alias Ash.Actions.PrimaryKeyHelpers
+  alias Ash.Engine
+  alias Ash.Engine.Request
+  alias Ash.Filter.{And, Eq, In, Merge, NotEq, NotIn, Or}
+
   defstruct [
     :api,
     :resource,
@@ -30,10 +36,6 @@ defmodule Ash.Filter do
     errors: [],
     impossible?: false
   ]
-
-  alias Ash.Engine
-  alias Ash.Engine.Request
-  alias Ash.Filter.Merge
 
   @type t :: %__MODULE__{
           api: Ash.api(),
@@ -49,12 +51,12 @@ defmodule Ash.Filter do
         }
 
   @predicates %{
-    not_eq: Ash.Filter.NotEq,
-    not_in: Ash.Filter.NotIn,
-    eq: Ash.Filter.Eq,
-    in: Ash.Filter.In,
-    and: Ash.Filter.And,
-    or: Ash.Filter.Or
+    not_eq: NotEq,
+    not_in: NotIn,
+    eq: Eq,
+    in: In,
+    and: And,
+    or: Or
   }
 
   @spec parse(
@@ -150,10 +152,10 @@ defmodule Ash.Filter do
       do: false
 
   def strict_subset_of(filter, candidate) do
-    if Ash.Filter.empty_filter?(filter) do
+    if empty_filter?(filter) do
       true
     else
-      if Ash.Filter.empty_filter?(candidate) do
+      if empty_filter?(candidate) do
         false
       else
         {filter, candidate} = cosimplify(filter, candidate)
@@ -180,8 +182,7 @@ defmodule Ash.Filter do
         false
 
       cleared_pkey_filter ->
-        parsed_cleared_pkey_filter =
-          Ash.Filter.parse(filter.resource, cleared_pkey_filter, filter.api)
+        parsed_cleared_pkey_filter = parse(filter.resource, cleared_pkey_filter, filter.api)
 
         cleared_candidate_filter = clear_equality_values(filter)
 
@@ -209,18 +210,6 @@ defmodule Ash.Filter do
     Ash.Query.filter(query, pkey_filter)
   end
 
-  # The story here:
-  # we don't really need to fully simplify every value statement, e.g `in: [1, 2, 3]` -> `== 1 or == 2 or == 3`
-  # We could instead just simplify *only as much as we need to*, for instance if the filter contains
-  # `in: [1, 2, 3]` and `in: [2, 3, 4]`, we could translate the first to `in: [2, 3] or == 1` and the
-  # second one to `in: [2, 3] or == 4`. We should then be able to go about expressing the fact that none
-  # of `== 1` and `== 2` are mutually exclusive terms by exchanging them for `== 1 and != 2` and `== 2 and != 1`
-  # respectively. This is the methodology behind translating a *value* based filter into a boolean expression.
-  #
-  # However for now for simplicity's sake, I'm turning all `in: [1, 2]` into `== 1 or == 2` and all `not_in: [1, 2]`
-  # into `!= 1 and !=2` for the sole reason that its not worth figuring it out right now. Cosimplification is, at the
-  # and of the day, really just an optimization to keep the expression simple. Its not so important with lists and equality
-  # but when we add substring filters/greater than filters, we're going to need to improve this logic
   def cosimplify(left, right) do
     {new_left, new_right} = simplify_lists(left, right)
 
@@ -252,29 +241,29 @@ defmodule Ash.Filter do
     end)
   end
 
-  defp do_simplify_list(%Ash.Filter.In{values: []}), do: :error
+  defp do_simplify_list(%In{values: []}), do: :error
 
-  defp do_simplify_list(%Ash.Filter.In{values: [value]}) do
-    {:ok, %Ash.Filter.Eq{value: value}}
+  defp do_simplify_list(%In{values: [value]}) do
+    {:ok, %Eq{value: value}}
   end
 
-  defp do_simplify_list(%Ash.Filter.In{values: [value | rest]}) do
+  defp do_simplify_list(%In{values: [value | rest]}) do
     {:ok,
-     Enum.reduce(rest, %Ash.Filter.Eq{value: value}, fn value, other_values ->
-       Ash.Filter.Or.prebuilt_new(%Ash.Filter.Eq{value: value}, other_values)
+     Enum.reduce(rest, %Eq{value: value}, fn value, other_values ->
+       Or.prebuilt_new(%Eq{value: value}, other_values)
      end)}
   end
 
-  defp do_simplify_list(%Ash.Filter.NotIn{values: []}), do: :error
+  defp do_simplify_list(%NotIn{values: []}), do: :error
 
-  defp do_simplify_list(%Ash.Filter.NotIn{values: [value]}) do
-    {:ok, %Ash.Filter.NotEq{value: value}}
+  defp do_simplify_list(%NotIn{values: [value]}) do
+    {:ok, %NotEq{value: value}}
   end
 
-  defp do_simplify_list(%Ash.Filter.NotIn{values: [value | rest]}) do
+  defp do_simplify_list(%NotIn{values: [value | rest]}) do
     {:ok,
-     Enum.reduce(rest, %Ash.Filter.Eq{value: value}, fn value, other_values ->
-       Ash.Filter.And.prebuilt_new(%Ash.Filter.NotEq{value: value}, other_values)
+     Enum.reduce(rest, %Eq{value: value}, fn value, other_values ->
+       And.prebuilt_new(%NotEq{value: value}, other_values)
      end)}
   end
 
@@ -305,10 +294,10 @@ defmodule Ash.Filter do
     end)
   end
 
-  defp do_express_mutual_exclusion(%Ash.Filter.Eq{value: value} = eq_filter, values) do
+  defp do_express_mutual_exclusion(%Eq{value: value} = eq_filter, values) do
     values
     |> Enum.filter(fn
-      %Ash.Filter.Eq{value: other_value} -> value != other_value
+      %Eq{value: other_value} -> value != other_value
       _ -> false
     end)
     |> case do
@@ -316,12 +305,12 @@ defmodule Ash.Filter do
         :error
 
       [%{value: other_value}] ->
-        {:ok, Ash.Filter.And.prebuilt_new(eq_filter, %Ash.Filter.NotEq{value: other_value})}
+        {:ok, And.prebuilt_new(eq_filter, %NotEq{value: other_value})}
 
       values ->
         {:ok,
          Enum.reduce(values, eq_filter, fn %{value: other_value}, expr ->
-           Ash.Filter.And.prebuilt_new(expr, %Ash.Filter.NotEq{value: other_value})
+           And.prebuilt_new(expr, %NotEq{value: other_value})
          end)}
     end
   end
@@ -367,7 +356,7 @@ defmodule Ash.Filter do
   end
 
   defp do_get_values(%struct{left: left, right: right})
-       when struct in [Ash.Filter.And, Ash.Filter.Or] do
+       when struct in [And, Or] do
     do_get_values(left) ++ do_get_values(right)
   end
 
@@ -420,7 +409,7 @@ defmodule Ash.Filter do
   end
 
   defp do_replace_value(%struct{left: left, right: right} = compound, substitutions)
-       when struct in [Ash.Filter.And, Ash.Filter.Or] do
+       when struct in [And, Or] do
     %{
       compound
       | left: do_replace_value(left, substitutions),
@@ -483,7 +472,7 @@ defmodule Ash.Filter do
   end
 
   defp do_clear_equality_value(%struct{left: left, right: right} = compound)
-       when struct in [Ash.Filter.And, Ash.Filter.Or] do
+       when struct in [And, Or] do
     %{
       compound
       | left: do_clear_equality_value(left),
@@ -491,8 +480,8 @@ defmodule Ash.Filter do
     }
   end
 
-  defp do_clear_equality_value(%Ash.Filter.Eq{value: _} = filter), do: %{filter | value: nil}
-  defp do_clear_equality_value(%Ash.Filter.In{values: _}), do: %Ash.Filter.Eq{value: nil}
+  defp do_clear_equality_value(%Eq{value: _} = filter), do: %{filter | value: nil}
+  defp do_clear_equality_value(%In{values: _}), do: %Eq{value: nil}
   defp do_clear_equality_value(other), do: other
 
   defp do_optional_paths(%{relationships: relationships, requests: requests, ors: ors})
@@ -563,7 +552,7 @@ defmodule Ash.Filter do
   end
 
   defp add_records_to_relationship_filter(filter, [], records) do
-    case Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(filter.resource, records) do
+    case PrimaryKeyHelpers.values_to_primary_key_filters(filter.resource, records) do
       {:error, error} ->
         add_error(filter, error)
 
@@ -914,7 +903,7 @@ defmodule Ash.Filter do
         {:ok, value}
 
       match?(%^destination{}, value) ->
-        Ash.Actions.PrimaryKeyHelpers.value_to_primary_key_filter(destination, value)
+        PrimaryKeyHelpers.value_to_primary_key_filter(destination, value)
 
       is_map(value) ->
         {:ok, Map.to_list(value)}
@@ -926,7 +915,7 @@ defmodule Ash.Filter do
         parse_relationship_list_filter(value, relationship)
 
       true ->
-        Ash.Actions.PrimaryKeyHelpers.value_to_primary_key_filter(destination, value)
+        PrimaryKeyHelpers.value_to_primary_key_filter(destination, value)
     end
   end
 

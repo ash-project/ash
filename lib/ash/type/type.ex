@@ -95,8 +95,8 @@ defmodule Ash.Type do
   end
 
   @doc "A list of the built in type names"
-  @spec builtins() :: list(atom)
-  def builtins(), do: @builtin_names
+  @spec builtins :: list(atom)
+  def builtins, do: @builtin_names
 
   @spec ash_type?(term) :: boolean
   @doc "Returns true if the value is a builtin type or adopts the `Ash.Type` behaviour"
@@ -176,6 +176,7 @@ defmodule Ash.Type do
       parent = __MODULE__
 
       defmodule EctoType do
+        @moduledoc false
         @behaviour Ecto.Type
 
         @parent parent
@@ -210,7 +211,7 @@ defmodule Ash.Type do
       end
 
       @impl true
-      def ecto_type(), do: EctoType
+      def ecto_type, do: EctoType
 
       @impl true
       def supported_filter_types(_data_layer), do: [:equal, :in]

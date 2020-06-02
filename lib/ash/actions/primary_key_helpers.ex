@@ -1,4 +1,5 @@
 defmodule Ash.Actions.PrimaryKeyHelpers do
+  @moduledoc false
   def values_to_primary_key_filters(destination, identifiers) do
     Enum.reduce(identifiers, {:ok, []}, fn
       identifier, {:ok, filters} ->

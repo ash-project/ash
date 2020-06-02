@@ -1,9 +1,11 @@
 defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
+  @moduledoc false
   use ExUnit.Case, async: true
 
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
+        @moduledoc false
         use Ash.Resource, name: "posts", type: "post"
 
         unquote(body)

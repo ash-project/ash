@@ -1,4 +1,5 @@
 defmodule Ash.Error.Unknown do
+  @moduledoc "The top level unknown error container"
   use Ash.Error
 
   def_ash_error([:errors, :error], class: :unknown)

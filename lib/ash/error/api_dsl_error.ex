@@ -1,5 +1,5 @@
 defmodule Ash.Error.ApiDslError do
-  @moduledoc "Raised when an api's DSL is incorrectly configured."
+  @moduledoc "Used when api's DSL is incorrectly configured."
   defexception [:message, :path, :using]
 
   def message(%{message: message, path: nil, using: using}) do

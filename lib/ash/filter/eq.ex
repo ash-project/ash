@@ -1,5 +1,8 @@
 defmodule Ash.Filter.Eq do
+  @moduledoc false
   defstruct [:value]
+
+  alias Ash.Error.Filter.InvalidFilterValue
 
   def new(_resource, attr_name, attr_type, value) do
     case Ash.Type.cast_input(attr_type, value) do
@@ -8,7 +11,7 @@ defmodule Ash.Filter.Eq do
 
       :error ->
         {:error,
-         Ash.Error.Filter.InvalidFilterValue.exception(
+         InvalidFilterValue.exception(
            filter: %__MODULE__{value: value},
            value: value,
            field: attr_name

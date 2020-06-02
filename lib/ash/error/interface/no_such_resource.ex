@@ -1,4 +1,5 @@
 defmodule Ash.Error.Interface.NoSuchResource do
+  @moduledoc "Used when a resource or alias is provided that doesn't exist"
   use Ash.Error
 
   def_ash_error([:resource], class: :invalid)

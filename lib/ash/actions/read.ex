@@ -1,14 +1,15 @@
 defmodule Ash.Actions.Read do
+  @moduledoc false
+  alias Ash.Actions.SideLoad
   alias Ash.Engine
   alias Ash.Engine.Request
-  alias Ash.Actions.SideLoad
   require Logger
 
   def run(query, _action, opts \\ []) do
     with %{errors: []} <- query,
          {:action, action} when not is_nil(action) <- {:action, action(query, opts)},
          requests <- requests(query, action, opts),
-         side_load_requests <- Ash.Actions.SideLoad.requests(query),
+         side_load_requests <- SideLoad.requests(query),
          %{data: %{data: data} = all_data, errors: []} <-
            Engine.run(requests ++ side_load_requests, query.api, opts),
          data_with_side_loads <- SideLoad.attach_side_loads(data, all_data) do

@@ -1,4 +1,5 @@
 defmodule Ash.Error.Invalid do
+  @moduledoc "The top level invalid error"
   use Ash.Error
 
   def_ash_error([:errors], class: :invalid)

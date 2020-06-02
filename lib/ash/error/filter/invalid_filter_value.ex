@@ -1,4 +1,5 @@
 defmodule Ash.Error.Filter.InvalidFilterValue do
+  @moduledoc "Used when an invalid value is provided for a filter"
   use Ash.Error
 
   def_ash_error([:field, :filter, :value], class: :invalid)

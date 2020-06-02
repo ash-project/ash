@@ -1,14 +1,16 @@
 defmodule Ash.Test.Type.TypeTest do
+  @moduledoc false
   use ExUnit.Case, async: true
 
   defmodule PostTitle do
+    @moduledoc false
     use Ash.Type
 
-    def describe() do
+    def describe do
       "A post title is less than 10 characters long and is only alphabetic characters and whitespace"
     end
 
-    def storage_type(), do: :string
+    def storage_type, do: :string
 
     def cast_input(value) when is_bitstring(value) do
       if String.length(value) <= 10 && String.match?(value, ~r/[a-zA-Z\w]*/) do
@@ -31,6 +33,7 @@ defmodule Ash.Test.Type.TypeTest do
   end
 
   defmodule Post do
+    @moduledoc false
     use Ash.Resource, name: "posts", type: "post"
     use Ash.DataLayer.Ets, private?: true
 
@@ -45,6 +48,7 @@ defmodule Ash.Test.Type.TypeTest do
   end
 
   defmodule Api do
+    @moduledoc false
     use Ash.Api
 
     resources [Post]

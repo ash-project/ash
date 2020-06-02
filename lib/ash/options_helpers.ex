@@ -1,4 +1,5 @@
 defmodule Ash.OptionsHelpers do
+  @moduledoc false
   def merge_schemas(left, right, section \\ nil) do
     new_right =
       Enum.map(right, fn {key, value} ->

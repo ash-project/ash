@@ -1,4 +1,10 @@
 defmodule Ash.Actions.SideLoad do
+  @moduledoc false
+
+  alias Ash.Actions.PrimaryKeyHelpers
+  alias Ash.Engine
+  alias Ash.Engine.Request
+
   def requests(
         query,
         use_data_for_filter? \\ true,
@@ -68,14 +74,13 @@ defmodule Ash.Actions.SideLoad do
   def side_load([%resource{} | _] = data, side_load_query, opts) do
     api = side_load_query.api
 
-    {:ok, pkey_filters} =
-      Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(resource, data)
+    {:ok, pkey_filters} = PrimaryKeyHelpers.values_to_primary_key_filters(resource, data)
 
     new_query = Ash.Query.filter(side_load_query, or: pkey_filters)
 
     requests = requests(new_query, false, data)
 
-    case Ash.Engine.run(requests, api, opts) do
+    case Engine.run(requests, api, opts) do
       %{data: %{side_load: _} = state, errors: errors} when errors == [] ->
         {:ok, attach_side_loads(data, state)}
 
@@ -286,7 +291,7 @@ defmodule Ash.Actions.SideLoad do
       |> Enum.reverse()
       |> Enum.map_join(".", &Map.get(&1, :name))
 
-    Ash.Engine.Request.new(
+    Engine.Request.new(
       action: Ash.primary_action!(relationship.destination, :read),
       resource: relationship.destination,
       name: "side_load #{source}",
@@ -301,14 +306,7 @@ defmodule Ash.Actions.SideLoad do
           use_data_for_filter?
         ),
       data:
-        Ash.Engine.Request.resolve(dependencies, fn data ->
-          # Because we have the records, we can optimize the filter by nillifying the reverse relationship,
-          # and regenerating.
-          # The reverse relationship is useful if you don't have the relationship keys for the related items (only pkeys)
-          # or for doing many to many joins, but can be slower.
-          # If the relationship is already loaded, we should consider doing an in-memory filtering
-          # Right now, we just use the original query
-
+        Request.resolve(dependencies, fn data ->
           new_query =
             true_side_load_query(
               relationship,
@@ -374,7 +372,7 @@ defmodule Ash.Actions.SideLoad do
 
         related_query = related_query.api.query(join_relationship.destination)
 
-        Ash.Engine.Request.new(
+        Request.new(
           action: Ash.primary_action!(relationship.destination, :read),
           resource: relationship.through,
           name: "side_load join #{join_relationship.name}",
@@ -389,7 +387,7 @@ defmodule Ash.Actions.SideLoad do
               use_data_for_filter?
             ),
           data:
-            Ash.Engine.Request.resolve(dependencies, fn data ->
+            Request.resolve(dependencies, fn data ->
               new_query =
                 true_side_load_query(
                   join_relationship,
@@ -418,7 +416,7 @@ defmodule Ash.Actions.SideLoad do
          _root_query,
          _use_data_for_filter?
        ) do
-    Ash.Engine.Request.resolve(fn _ ->
+    Request.resolve(fn _ ->
       {:error, "Required reverse relationship for #{inspect(relationship)}"}
     end)
   end
@@ -430,7 +428,7 @@ defmodule Ash.Actions.SideLoad do
          _root_query,
          true
        ) do
-    Ash.Engine.Request.resolve([[:data, :data]], fn %{data: %{data: data}} ->
+    Request.resolve([[:data, :data]], fn %{data: %{data: data}} ->
       root_filter =
         case data do
           [] ->

@@ -1,5 +1,7 @@
 defmodule Ash.Actions.Create do
+  @moduledoc false
   alias Ash.Engine
+  alias Ash.Engine.Request
   alias Ash.Actions.{Relationships, SideLoad}
   require Logger
 
@@ -68,7 +70,7 @@ defmodule Ash.Actions.Create do
         relationships = Keyword.get(params, :relationships, %{})
 
         create_request =
-          Ash.Engine.Request.new(
+          Request.new(
             api: api,
             resource: resource,
             changeset:
@@ -98,7 +100,7 @@ defmodule Ash.Actions.Create do
     case check_upsert_support(resource, params) do
       :ok ->
         {:ok,
-         Ash.Engine.Request.resolve(
+         Request.resolve(
            [[:data, :changeset]],
            fn %{data: %{changeset: changeset}} ->
              result =

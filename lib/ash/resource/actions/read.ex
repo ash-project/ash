@@ -18,7 +18,7 @@ defmodule Ash.Resource.Actions.Read do
   ]
 
   @doc false
-  def opt_schema(), do: @opt_schema
+  def opt_schema, do: @opt_schema
 
   @spec new(Ash.resource(), atom, Keyword.t()) :: {:ok, t()} | {:error, term}
   def new(_resource, name, opts \\ []) do

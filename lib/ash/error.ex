@@ -1,4 +1,5 @@
 defmodule Ash.Error do
+  @moduledoc false
   @type error_class() :: :invalid | :authorization | :framework | :unknown
 
   # We use these error classes also to choose a single error

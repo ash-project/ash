@@ -6,8 +6,9 @@ defmodule Ash do
   on an `Api` module that contains those resources. This is for retrieving
   resource/api configurations.
   """
-  alias Ash.Resource.Relationships.{BelongsTo, HasOne, HasMany, ManyToMany}
-  alias Ash.Resource.Actions.{Create, Read, Update, Destroy}
+  alias Ash.Error
+  alias Ash.Resource.Actions.{Create, Destroy, Read, Update}
+  alias Ash.Resource.Relationships.{BelongsTo, HasMany, HasOne, ManyToMany}
 
   @type record :: struct
   @type relationship_cardinality :: :many | :one
@@ -53,11 +54,11 @@ defmodule Ash do
         if ash_error?(value) do
           value
         else
-          Ash.Error.Unknown.exception(error: values)
+          Error.Unknown.exception(error: values)
         end
       end)
 
-    Ash.Error.choose_error(values)
+    Error.choose_error(values)
   end
 
   def to_ash_error(value) do

@@ -1,5 +1,5 @@
 defmodule Ash.Error.Forbidden do
-  @moduledoc "Raised when authorization for an action fails"
+  @moduledoc "Used when authorization for an action fails"
 
   use Ash.Error
 

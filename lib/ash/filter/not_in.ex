@@ -1,8 +1,12 @@
 defmodule Ash.Filter.NotIn do
+  @moduledoc false
   defstruct [:values]
 
+  alias Ash.Error.Filter.InvalidFilterValue
+  alias Ash.Filter.NotEq
+
   def new(resource, attr_name, attr_type, [value]) do
-    Ash.Filter.NotEq.new(resource, attr_name, attr_type, value)
+    NotEq.new(resource, attr_name, attr_type, value)
   end
 
   def new(_resource, attr_name, attr_type, values) do
@@ -17,7 +21,7 @@ defmodule Ash.Filter.NotIn do
 
             :error ->
               {:error,
-               Ash.Error.Filter.InvalidFilterValue.exception(
+               InvalidFilterValue.exception(
                  filter: %__MODULE__{values: values},
                  value: value,
                  field: attr_name

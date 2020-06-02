@@ -1,4 +1,5 @@
 defmodule Ash.Error.SideLoad.NoSuchRelationship do
+  @moduledoc "Used when attempting to side load a relationship that does not exist"
   use Ash.Error
 
   def_ash_error([:resource, :relationship, :side_load_path], class: :invalid)

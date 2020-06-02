@@ -1,5 +1,7 @@
 defmodule Ash.Actions.Destroy do
+  @moduledoc false
   alias Ash.Engine
+  alias Ash.Engine.Request
 
   @spec run(Ash.api(), Ash.record(), Ash.action(), Ash.params()) ::
           :ok | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
@@ -12,14 +14,14 @@ defmodule Ash.Actions.Destroy do
       end
 
     request =
-      Ash.Engine.Request.new(
+      Request.new(
         resource: resource,
         api: api,
         path: [:data],
         action: action,
         request_id: :change,
         data:
-          Ash.Engine.Request.resolve(fn _ ->
+          Request.resolve(fn _ ->
             case Ash.data_layer(resource).destroy(record) do
               :ok -> {:ok, record}
               {:error, error} -> {:error, error}
@@ -32,7 +34,7 @@ defmodule Ash.Actions.Destroy do
       %{errors: []} ->
         :ok
 
-      %Ash.Engine{errors: errors} ->
+      %Engine{errors: errors} ->
         {:error, Ash.to_ash_error(errors)}
     end
   end

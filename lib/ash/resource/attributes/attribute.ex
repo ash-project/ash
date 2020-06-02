@@ -1,5 +1,5 @@
 defmodule Ash.Resource.Attributes.Attribute do
-  @doc false
+  @moduledoc false
 
   defstruct [
     :name,
@@ -63,7 +63,7 @@ defmodule Ash.Resource.Attributes.Attribute do
       do: {:ok, {module, function, args}}
 
   @doc false
-  def attribute_schema(), do: @schema
+  def attribute_schema, do: @schema
 
   @spec new(Ash.resource(), atom, Ash.Type.t(), Keyword.t()) :: {:ok, t()} | {:error, term}
   def new(_resource, name, type, opts) do

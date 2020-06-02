@@ -53,8 +53,8 @@ defmodule Ash.Api do
 
   defmacro __before_compile__(env) do
     quote generated: true do
-      def extensions(), do: @extensions
-      def resources(), do: @resources
+      def extensions, do: @extensions
+      def resources, do: @resources
 
       def get_resource(mod) when mod in @resources, do: {:ok, mod}
 

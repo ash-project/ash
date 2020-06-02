@@ -1,5 +1,5 @@
 defmodule Ash.Filter.Merge do
-  # alias Ash.Filter.{In, Eq, And, Impossible}
+  @moduledoc false
   alias Ash.Filter.And
 
   def merge(left, right) do

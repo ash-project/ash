@@ -1,4 +1,5 @@
 defmodule Ash.Error.InvalidOffset do
+  @moduledoc "Used when an invalid offset is provided"
   use Ash.Error
 
   def_ash_error([:offset], class: :invalid)

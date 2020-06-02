@@ -1,14 +1,11 @@
 defmodule Ash.Engine.RequestHandler do
+  @moduledoc false
   defstruct [:request, :verbose?, :engine_pid, :pid_info, :runner_pid, dependencies_requested: []]
 
   use GenServer
   require Logger
 
   alias Ash.Engine.Request
-
-  ## If not bypass strict check, then the engine needs to ensure
-  # that a scenario is reality *at strict check time*
-  # next step after strict checking
 
   def init(opts) do
     state = %__MODULE__{

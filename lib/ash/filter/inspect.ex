@@ -1,5 +1,5 @@
-# Feel free to improve this!
 defmodule Ash.Filter.InspectHelpers do
+  @moduledoc false
   def attr(opts) do
     case path(opts) do
       path when path in [nil, []] ->

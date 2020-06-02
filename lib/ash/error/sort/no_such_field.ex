@@ -1,4 +1,5 @@
 defmodule Ash.Error.Sort.NoSuchField do
+  @moduledoc "Used when attempting to sort on a field that does not exist"
   use Ash.Error
 
   def_ash_error([:field], class: :invalid)

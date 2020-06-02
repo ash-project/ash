@@ -1,7 +1,9 @@
 defmodule Ash.Test.Actions.ReadTest do
+  @moduledoc false
   use ExUnit.Case, async: true
 
   defmodule Author do
+    @moduledoc false
     use Ash.Resource, name: "posts", type: "post"
     use Ash.DataLayer.Ets, private?: true
 
@@ -21,6 +23,7 @@ defmodule Ash.Test.Actions.ReadTest do
   end
 
   defmodule Post do
+    @moduledoc false
     use Ash.Resource, name: "posts", type: "post"
     use Ash.DataLayer.Ets, private?: true
 
@@ -42,6 +45,7 @@ defmodule Ash.Test.Actions.ReadTest do
   end
 
   defmodule Api do
+    @moduledoc false
     use Ash.Api
 
     resources [Post, Author]

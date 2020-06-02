@@ -1,4 +1,5 @@
 defmodule Ash.Error.Changes.InvalidValue do
+  @moduledoc "Used when an invalid value is provided for a change"
   use Ash.Error
 
   def_ash_error([:field, :type], class: :invalid)

@@ -1,4 +1,5 @@
 defmodule Ash.Resource.Relationships.HasOne do
+  @moduledoc false
   @doc false
   defstruct [
     :name,
@@ -45,7 +46,7 @@ defmodule Ash.Resource.Relationships.HasOne do
   ]
 
   @doc false
-  def opt_schema(), do: @opt_schema
+  def opt_schema, do: @opt_schema
 
   @spec new(
           resource :: Ash.resource(),

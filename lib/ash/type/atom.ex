@@ -1,11 +1,18 @@
 defmodule Ash.Type.Atom do
+  @moduledoc """
+  A type used for storing atoms.
+
+  For safety reasons, it uses `String.to_existing_atom/1`, which means
+  that the atom should exist in your application before reading a record
+  with that atom.
+  """
   use Ash.Type
 
   @impl true
-  def storage_type(), do: :string
+  def storage_type, do: :string
 
   @impl true
-  def describe(), do: "A standard elixir atom, stored as a string."
+  def describe, do: "A standard elixir atom, stored as a string."
 
   @impl true
   def cast_input(value) when is_atom(value), do: {:ok, value}

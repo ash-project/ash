@@ -1,5 +1,7 @@
 defmodule Ash.Actions.Update do
+  @moduledoc false
   alias Ash.Engine
+  alias Ash.Engine.Request
   alias Ash.Actions.{Relationships, SideLoad}
   require Logger
 
@@ -61,10 +63,10 @@ defmodule Ash.Actions.Update do
     relationships = Keyword.get(params, :relationships)
 
     update_request =
-      Ash.Engine.Request.new(
+      Request.new(
         api: api,
         changeset:
-          Ash.Actions.Relationships.changeset(
+          Relationships.changeset(
             changeset,
             api,
             relationships
@@ -72,7 +74,7 @@ defmodule Ash.Actions.Update do
         action: Ash.primary_action!(resource, :read),
         resource: resource,
         data:
-          Ash.Engine.Request.resolve(
+          Request.resolve(
             [[:data, :changeset]],
             fn %{data: %{changeset: changeset}} ->
               resource

@@ -1,4 +1,7 @@
 defmodule Ash.Error.Changeset do
+  @moduledoc false
+  alias Ash.Error.Changes.{InvalidValue, UnknownError}
+
   def changeset_to_errors(resource, changeset) do
     errors = Ecto.Changeset.traverse_errors(changeset, & &1)
 
@@ -8,11 +11,11 @@ defmodule Ash.Error.Changeset do
   end
 
   defp to_error(_resource, field, {"is invalid", [type: type, validation: :cast]}) do
-    Ash.Error.Changes.InvalidValue.exception(field: field, type: type)
+    InvalidValue.exception(field: field, type: type)
   end
 
   defp to_error(_resource, field, error) do
-    Ash.Error.Changes.UnknownError.exception(field: field, error: error)
+    UnknownError.exception(field: field, error: error)
   end
 
   def traverse_errors(changeset) do

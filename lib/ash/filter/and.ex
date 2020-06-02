@@ -1,4 +1,5 @@
 defmodule Ash.Filter.And do
+  @moduledoc false
   defstruct [:left, :right]
 
   def new(resource, attr_name, attr_type, [first | [last | []]]) do

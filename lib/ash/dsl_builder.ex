@@ -1,4 +1,5 @@
 defmodule Ash.DslBuilder do
+  @moduledoc false
   defmacro build_dsl(keys) do
     quote bind_quoted: [keys: keys] do
       for key <- keys do

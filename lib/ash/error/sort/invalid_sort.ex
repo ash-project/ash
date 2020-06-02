@@ -1,4 +1,5 @@
 defmodule Ash.Error.Sort.UnsortableField do
+  @moduledoc "Used when attempting to sort on a field that cannot be used for sorting"
   use Ash.Error
 
   def_ash_error([:field], class: :invalid)

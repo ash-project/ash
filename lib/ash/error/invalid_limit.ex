@@ -1,4 +1,5 @@
 defmodule Ash.Error.InvalidLimit do
+  @moduledoc "Used when an invalid limit is provided"
   use Ash.Error
 
   def_ash_error([:limit], class: :invalid)

@@ -1,11 +1,12 @@
 defmodule Ash.Type.Term do
+  @moduledoc "Stores a raw elixir term in the database"
   use Ash.Type
 
   @impl true
-  def storage_type(), do: :string
+  def storage_type, do: :string
 
   @impl true
-  def describe(), do: "An Elixir value stored as a string"
+  def describe, do: "An Elixir value stored as a string"
 
   @impl true
   def cast_input(value), do: {:ok, value}

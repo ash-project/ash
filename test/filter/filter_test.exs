@@ -1,7 +1,9 @@
 defmodule Ash.Test.Filter.FilterTest do
+  @moduledoc false
   use ExUnit.Case, async: true
 
   defmodule Profile do
+    @moduledoc false
     use Ash.Resource, name: "profiles", type: "profile"
     use Ash.DataLayer.Ets, private?: true
 
@@ -22,6 +24,7 @@ defmodule Ash.Test.Filter.FilterTest do
   end
 
   defmodule User do
+    @moduledoc false
     use Ash.Resource, name: "users", type: "user"
     use Ash.DataLayer.Ets, private?: true
 
@@ -51,6 +54,7 @@ defmodule Ash.Test.Filter.FilterTest do
   end
 
   defmodule PostLink do
+    @moduledoc false
     use Ash.Resource, name: "post_links", type: "post_link"
     use Ash.DataLayer.Ets, private?: true
 
@@ -68,6 +72,7 @@ defmodule Ash.Test.Filter.FilterTest do
   end
 
   defmodule Post do
+    @moduledoc false
     use Ash.Resource, name: "posts", type: "post"
     use Ash.DataLayer.Ets, private?: true
 
@@ -104,6 +109,7 @@ defmodule Ash.Test.Filter.FilterTest do
   end
 
   defmodule Api do
+    @moduledoc false
     use Ash.Api
 
     resources [Post, User, Profile, PostLink]

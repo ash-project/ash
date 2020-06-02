@@ -1,4 +1,5 @@
 defmodule Ash.Engine.Runner do
+  @moduledoc false
   defstruct [
     :engine_pid,
     notified_of_complete?: false,
@@ -10,8 +11,9 @@ defmodule Ash.Engine.Runner do
     verbose?: false
   ]
 
-  alias Ash.Engine.{Request, RequestHandler}
   alias Ash.Engine
+  alias Ash.Engine.{Request, RequestHandler}
+  alias Ash.Error.Unknown
 
   require Logger
 
@@ -423,7 +425,7 @@ defmodule Ash.Engine.Runner do
     if Ash.ash_error?(error) do
       error
     else
-      Ash.Error.Unknown.exception(error: error)
+      Unknown.exception(error: error)
     end
   end
 

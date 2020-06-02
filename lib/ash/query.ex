@@ -1,4 +1,10 @@
 defmodule Ash.Query do
+  @moduledoc """
+  Utilties around constructing/manipulating ash queries.
+
+  Ash queries are used for read actions and side loads, and ultimately
+  map to queries to a resource's data layer.
+  """
   defstruct [
     :api,
     :resource,
@@ -43,6 +49,10 @@ defmodule Ash.Query do
     end
   end
 
+  alias Ash.Actions.Sort
+  alias Ash.Error.{InvalidLimit, InvalidOffset}
+  alias Ash.Error.SideLoad.{InvalidQuery, NoSuchRelationship}
+
   @doc false
   def new(api, resource) when is_atom(api) and is_atom(resource) do
     case api.get_resource(resource) do
@@ -73,7 +83,7 @@ defmodule Ash.Query do
   end
 
   def limit(query, limit) do
-    add_error(query, :offset, Ash.Error.InvalidLimit.exception(limit: limit))
+    add_error(query, :offset, InvalidLimit.exception(limit: limit))
   end
 
   def offset(query, nil), do: query
@@ -85,7 +95,7 @@ defmodule Ash.Query do
   end
 
   def offset(query, offset) do
-    add_error(query, :offset, Ash.Error.InvalidOffset.exception(offset: offset))
+    add_error(query, :offset, InvalidOffset.exception(offset: offset))
   end
 
   def side_load(query, statement) do
@@ -114,7 +124,7 @@ defmodule Ash.Query do
       _errors ->
         [
           {:error,
-           Ash.Error.SideLoad.InvalidQuery.exception(
+           InvalidQuery.exception(
              query: query,
              side_load_path: Enum.reverse(path)
            )}
@@ -134,7 +144,7 @@ defmodule Ash.Query do
           nil ->
             [
               {:error,
-               Ash.Error.SideLoad.NoSuchRelationship.exception(
+               NoSuchRelationship.exception(
                  resource: resource,
                  relationship: key,
                  side_load_path: Enum.reverse(path)
@@ -154,7 +164,7 @@ defmodule Ash.Query do
       %__MODULE__{resource: query_resource} = destination_query
       when query_resource != relationship_resource ->
         [
-          Ash.Error.SideLoad.InvalidQuery.exception(
+          InvalidQuery.exception(
             resource: resource,
             relationship: key,
             query: destination_query,
@@ -294,7 +304,7 @@ defmodule Ash.Query do
   end
 
   defp validate_sort(%{resource: resource, sort: sort} = query) do
-    case Ash.Actions.Sort.process(resource, sort) do
+    case Sort.process(resource, sort) do
       {:ok, new_sort} -> %{query | sort: new_sort}
       {:error, error} -> add_error(query, :sort, error)
     end

@@ -1,7 +1,9 @@
 defmodule Ash.Test.Actions.DestroyTest do
+  @moduledoc false
   use ExUnit.Case, async: true
 
   defmodule Profile do
+    @moduledoc false
     use Ash.Resource, name: "authors", type: "author"
     use Ash.DataLayer.Ets, private?: true
 
@@ -23,6 +25,7 @@ defmodule Ash.Test.Actions.DestroyTest do
   end
 
   defmodule Author do
+    @moduledoc false
     use Ash.Resource, name: "authors", type: "author"
     use Ash.DataLayer.Ets, private?: true
 
@@ -46,11 +49,13 @@ defmodule Ash.Test.Actions.DestroyTest do
   end
 
   defmodule PostDefaults do
-    def garbage2(), do: "garbage2"
-    def garbage3(), do: "garbage3"
+    @moduledoc false
+    def garbage2, do: "garbage2"
+    def garbage3, do: "garbage3"
   end
 
   defmodule Post do
+    @moduledoc false
     use Ash.Resource, name: "posts", type: "post"
     use Ash.DataLayer.Ets, private?: true
 
@@ -76,6 +81,7 @@ defmodule Ash.Test.Actions.DestroyTest do
   end
 
   defmodule Api do
+    @moduledoc false
     use Ash.Api
 
     resources [Author, Post, Profile]

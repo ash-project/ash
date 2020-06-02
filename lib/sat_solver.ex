@@ -1,4 +1,5 @@
 defmodule Ash.SatSolver do
+  @moduledoc false
   @dialyzer {:nowarn_function, strict_filter_subset: 2}
   @dialyzer {:nowarn_function, solve_expression: 1}
   @dialyzer {:nowarn_function, solutions_to_predicate_values: 2}

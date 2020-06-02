@@ -25,8 +25,10 @@ defmodule Ash.Resource.Actions do
   end
 
   defmodule CreateDsl do
+    @moduledoc false
+    alias Ash.Resource.Actions.Create
     require Ash.DslBuilder
-    keys = Keyword.keys(Ash.Resource.Actions.Create.opt_schema()) -- [:name]
+    keys = Keyword.keys(Create.opt_schema()) -- [:name]
 
     Ash.DslBuilder.build_dsl(keys)
   end
@@ -45,6 +47,7 @@ defmodule Ash.Resource.Actions do
     quote do
       name = unquote(name)
       opts = unquote(Keyword.delete(opts, :do))
+      alias Ash.Resource.Actions.Create
 
       unless is_atom(name) do
         raise Ash.Error.ResourceDslError,
@@ -61,7 +64,7 @@ defmodule Ash.Resource.Actions do
 
       Module.delete_attribute(__MODULE__, :dsl_opts)
 
-      case Ash.Resource.Actions.Create.new(__MODULE__, name, opts) do
+      case Create.new(__MODULE__, name, opts) do
         {:ok, action} ->
           @actions action
 
@@ -74,8 +77,10 @@ defmodule Ash.Resource.Actions do
   end
 
   defmodule ReadDsl do
+    @moduledoc false
+    alias Ash.Resource.Actions.Read
     require Ash.DslBuilder
-    keys = Keyword.keys(Ash.Resource.Actions.Read.opt_schema()) -- [:name]
+    keys = Keyword.keys(Read.opt_schema()) -- [:name]
 
     Ash.DslBuilder.build_dsl(keys)
   end
@@ -94,6 +99,7 @@ defmodule Ash.Resource.Actions do
     quote do
       name = unquote(name)
       opts = unquote(Keyword.delete(opts, :do))
+      alias Ash.Resource.Actions.Read
 
       unless is_atom(name) do
         raise Ash.Error.ResourceDslError,
@@ -110,7 +116,7 @@ defmodule Ash.Resource.Actions do
 
       Module.delete_attribute(__MODULE__, :dsl_opts)
 
-      case Ash.Resource.Actions.Read.new(__MODULE__, name, opts) do
+      case Read.new(__MODULE__, name, opts) do
         {:ok, action} ->
           @actions action
 
@@ -123,8 +129,10 @@ defmodule Ash.Resource.Actions do
   end
 
   defmodule UpdateDsl do
+    @moduledoc false
+    alias Ash.Resource.Actions.Update
     require Ash.DslBuilder
-    keys = Keyword.keys(Ash.Resource.Actions.Update.opt_schema()) -- [:name]
+    keys = Keyword.keys(Update.opt_schema()) -- [:name]
 
     Ash.DslBuilder.build_dsl(keys)
   end
@@ -143,6 +151,7 @@ defmodule Ash.Resource.Actions do
     quote do
       name = unquote(name)
       opts = unquote(Keyword.delete(opts, :do))
+      alias Ash.Resource.Actions.Update
 
       unless is_atom(name) do
         raise Ash.Error.ResourceDslError,
@@ -159,7 +168,7 @@ defmodule Ash.Resource.Actions do
 
       Module.delete_attribute(__MODULE__, :dsl_opts)
 
-      case Ash.Resource.Actions.Update.new(__MODULE__, name, opts) do
+      case Update.new(__MODULE__, name, opts) do
         {:ok, action} ->
           @actions action
 
@@ -172,8 +181,11 @@ defmodule Ash.Resource.Actions do
   end
 
   defmodule DestroyDsl do
+    @moduledoc false
+
+    alias Ash.Resource.Actions.Destroy
     require Ash.DslBuilder
-    keys = Keyword.keys(Ash.Resource.Actions.Destroy.opt_schema()) -- [:name]
+    keys = Keyword.keys(Destroy.opt_schema()) -- [:name]
 
     Ash.DslBuilder.build_dsl(keys)
   end
@@ -193,6 +205,8 @@ defmodule Ash.Resource.Actions do
       name = unquote(name)
       opts = unquote(Keyword.delete(opts, :do))
 
+      alias Ash.Resource.Actions.Destroy
+
       unless is_atom(name) do
         raise Ash.Error.ResourceDslError,
           message: "action name must be an atom",
@@ -208,7 +222,7 @@ defmodule Ash.Resource.Actions do
 
       Module.delete_attribute(__MODULE__, :dsl_opts)
 
-      case Ash.Resource.Actions.Destroy.new(__MODULE__, name, opts) do
+      case Destroy.new(__MODULE__, name, opts) do
         {:ok, action} ->
           @actions action
 

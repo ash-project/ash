@@ -1,5 +1,8 @@
 defmodule Ash.Engine.Request do
+  @moduledoc false
+
   defmodule UnresolvedField do
+    @moduledoc false
     defstruct [:resolver, deps: [], optional_deps: [], data?: false]
 
     def new(dependencies, optional_deps, func) do
@@ -27,10 +30,6 @@ defmodule Ash.Engine.Request do
         ">"
       ])
     end
-  end
-
-  defmodule ResolveError do
-    defstruct [:error]
   end
 
   defstruct [
@@ -62,6 +61,7 @@ defmodule Ash.Engine.Request do
 
   require Logger
 
+  alias Ash.Actions.PrimaryKeyHelpers
   alias Ash.Engine.Authorizer
 
   def resolve(dependencies \\ [], optional_dependencies \\ [], func) do
@@ -518,7 +518,7 @@ defmodule Ash.Engine.Request do
   end
 
   defp do_runtime_filter(request, filter) do
-    case Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
+    case PrimaryKeyHelpers.values_to_primary_key_filters(
            request.resource,
            request.data
          ) do
@@ -723,7 +723,7 @@ defmodule Ash.Engine.Request do
     |> Enum.reduce(request, fn authorizer, request ->
       if request.authorize? do
         initial_state =
-          Ash.Engine.Authorizer.initial_state(
+          Authorizer.initial_state(
             authorizer,
             request.actor,
             request.resource,

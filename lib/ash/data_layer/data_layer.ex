@@ -1,4 +1,15 @@
 defmodule Ash.DataLayer do
+  @moduledoc """
+  The interface for being an ash data layer.
+
+  Typically this will be provided by an extension, but you could implement
+  one yourself and add it to your resource with @data_layer YourDataLayer
+
+  This is a large behaviour, and this capability is not complete, but the idea
+  is to have a large amount of optional callbacks, and use the `can?/2` callback
+  to ensure that the engine only ever tries to interact with the data layer in ways
+  that it supports.
+  """
   @type filter_type :: :eq | :in
   @type feature() ::
           :transact

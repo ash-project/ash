@@ -1,4 +1,8 @@
 defmodule Ash.Actions.Relationships do
+  @moduledoc false
+  alias Ash.Actions.PrimaryKeyHelpers
+  alias Ash.Engine.Request
+
   def validate_not_changing_relationship_and_source_field(relationships, attributes, resource) do
     resource
     |> Ash.relationships()
@@ -188,14 +192,14 @@ defmodule Ash.Actions.Relationships do
       |> Ash.Query.filter(filter)
 
     request =
-      Ash.Engine.Request.new(
+      Request.new(
         api: api,
         resource: relationship.destination,
         action: Ash.primary_action!(relationship.destination, :read),
         query: query,
         path: [:relationships, relationship_name, type],
         data:
-          Ash.Engine.Request.resolve(fn _data ->
+          Request.resolve(fn _data ->
             query
             |> api.read()
           end),
@@ -258,7 +262,7 @@ defmodule Ash.Actions.Relationships do
   end
 
   defp validate_map_replace(relationship, data) do
-    case Ash.Actions.PrimaryKeyHelpers.value_to_primary_key_filter(
+    case PrimaryKeyHelpers.value_to_primary_key_filter(
            relationship.destination,
            data
          ) do
@@ -271,7 +275,7 @@ defmodule Ash.Actions.Relationships do
   end
 
   defp validate_list_replace(relationship, data) do
-    case Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
+    case PrimaryKeyHelpers.values_to_primary_key_filters(
            relationship.destination,
            data
          ) do
@@ -289,14 +293,14 @@ defmodule Ash.Actions.Relationships do
     case keys do
       [:add, :remove] ->
         with {:ok, add} <-
-               Ash.Actions.PrimaryKeyHelpers.value_to_primary_key_filter(destination, data.add),
+               PrimaryKeyHelpers.value_to_primary_key_filter(destination, data.add),
              {:remove, remove} <-
-               Ash.Actions.PrimaryKeyHelpers.value_to_primary_key_filter(destination, data.remove) do
+               PrimaryKeyHelpers.value_to_primary_key_filter(destination, data.remove) do
           {:ok, %{add: add, remove: remove}}
         end
 
       [key] when key in [:add, :replace] ->
-        case Ash.Actions.PrimaryKeyHelpers.value_to_primary_key_filter(
+        case PrimaryKeyHelpers.value_to_primary_key_filter(
                destination,
                Map.get(data, key)
              ) do
@@ -305,7 +309,7 @@ defmodule Ash.Actions.Relationships do
         end
 
       [:remove] ->
-        case Ash.Actions.PrimaryKeyHelpers.value_to_primary_key_filter(destination, data.remove) do
+        case PrimaryKeyHelpers.value_to_primary_key_filter(destination, data.remove) do
           {:ok, remove} -> {:ok, %{remove: remove}}
           {:error, error} -> {:error, error}
         end
@@ -318,9 +322,9 @@ defmodule Ash.Actions.Relationships do
     case keys do
       [:add, :remove] ->
         with {:ok, add} <-
-               Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(destination, data.add),
+               PrimaryKeyHelpers.values_to_primary_key_filters(destination, data.add),
              {:remove, remove} <-
-               Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
+               PrimaryKeyHelpers.values_to_primary_key_filters(
                  destination,
                  data.remove
                ) do
@@ -328,7 +332,7 @@ defmodule Ash.Actions.Relationships do
         end
 
       [key] when key in [:add, :replace, :remove] ->
-        case Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
+        case PrimaryKeyHelpers.values_to_primary_key_filters(
                destination,
                Map.get(data, key)
              ) do
@@ -344,7 +348,7 @@ defmodule Ash.Actions.Relationships do
     else
       dependencies = Map.get(changeset, :__changes_depend_on__, [])
 
-      Ash.Engine.Request.resolve(dependencies, fn data ->
+      Request.resolve(dependencies, fn data ->
         new_changeset =
           data
           |> Map.get(:relationships, %{})
@@ -867,14 +871,14 @@ defmodule Ash.Actions.Relationships do
       |> Ash.Query.filter(filter_statement)
 
     request =
-      Ash.Engine.Request.new(
+      Request.new(
         api: api,
         resource: destination,
         action: Ash.primary_action!(relationship.destination, :read),
         path: [:relationships, relationship.name, :current],
         query: query,
         data:
-          Ash.Engine.Request.resolve(fn _data ->
+          Request.resolve(fn _data ->
             api.read(query)
           end),
         name: "Read related #{relationship.name} before replace"
@@ -898,14 +902,14 @@ defmodule Ash.Actions.Relationships do
       |> Ash.Query.new(through)
       |> Ash.Query.filter(filter_statement)
 
-    Ash.Engine.Request.new(
+    Request.new(
       api: api,
       resource: through,
       action: Ash.primary_action!(relationship.destination, :read),
       path: [:relationships, relationship.name, :current_join],
       query: query,
       data:
-        Ash.Engine.Request.resolve(fn _data ->
+        Request.resolve(fn _data ->
           api.read(query)
         end),
       name: "Read related join for #{relationship.name} before replace"
@@ -916,13 +920,13 @@ defmodule Ash.Actions.Relationships do
          api,
          %{destination: destination, name: name} = relationship
        ) do
-    Ash.Engine.Request.new(
+    Request.new(
       api: api,
       resource: destination,
       action: Ash.primary_action!(relationship.destination, :read),
       path: [:relationships, name, :current],
       query:
-        Ash.Engine.Request.resolve(
+        Request.resolve(
           [[:relationships, name, :current_join, :data]],
           fn %{relationships: %{^name => %{current_join: %{data: current_join}}}} ->
             field_values =
@@ -937,7 +941,7 @@ defmodule Ash.Actions.Relationships do
           end
         ),
       data:
-        Ash.Engine.Request.resolve(
+        Request.resolve(
           [[:relationships, name, :current, :query]],
           fn %{
                relationships: %{

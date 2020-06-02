@@ -1,4 +1,5 @@
 defmodule Ash.Engine do
+  @moduledoc false
   defstruct [
     :api,
     :requests,
@@ -16,6 +17,7 @@ defmodule Ash.Engine do
   ]
 
   alias Ash.Engine.{Request, RequestHandler, Runner}
+  alias Ash.Error.Unknown
 
   use GenServer
 
@@ -337,7 +339,7 @@ defmodule Ash.Engine do
     if Ash.ash_error?(error) do
       error
     else
-      Ash.Error.Unknown.exception(error: error)
+      Unknown.exception(error: error)
     end
   end
 end

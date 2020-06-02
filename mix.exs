@@ -62,7 +62,10 @@ defmodule Ash.MixProject do
     ]
   end
 
-  defp aliases() do
-    [sobelow: "sobelow --skip"]
+  defp aliases do
+    [
+      sobelow: "sobelow --skip",
+      credo: "credo --strict"
+    ]
   end
 end

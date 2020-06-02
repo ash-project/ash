@@ -7,7 +7,7 @@ defmodule Ash.DataLayer.Ets do
 
   @behaviour Ash.DataLayer
 
-  alias Ash.Filter.{Eq, In, And, Or, NotEq, NotIn}
+  alias Ash.Filter.{And, Eq, In, NotEq, NotIn, Or}
 
   defmacro __using__(opts) do
     quote bind_quoted: [opts: opts] do
@@ -15,7 +15,7 @@ defmodule Ash.DataLayer.Ets do
 
       @ets_private? Keyword.get(opts, :private?, false)
 
-      def ets_private?() do
+      def ets_private? do
         @ets_private?
       end
     end
@@ -26,13 +26,14 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defmodule Query do
+    @moduledoc false
     defstruct [:resource, :filter, :limit, :sort, relationships: %{}, offset: 0]
   end
 
   @impl true
 
   def can?(resource, :async_engine) do
-    not Ash.DataLayer.Ets.private?(resource)
+    not private?(resource)
   end
 
   def can?(_, :transact), do: false
