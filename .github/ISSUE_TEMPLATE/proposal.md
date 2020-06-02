@@ -16,7 +16,7 @@ A clear and concise description of what you want to happen.
 **Describe alternatives you've considered**
 A clear and concise description of any alternative solutions or features you've considered.
 
-**Express the feature either with a change to resource syntax, or with a change to the resource interface
+**Express the feature either with a change to resource syntax, or with a change to the resource interface**
 
 For example
 
