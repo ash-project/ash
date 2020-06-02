@@ -170,6 +170,10 @@ Community
 
 - [twirp](https://github.com/keathley/twirp)
 
+CI
+
+- Add support for more elixir/erlang versions, add them to the CI matrix
+
 Relationships
 
 - Flesh out relationship options
