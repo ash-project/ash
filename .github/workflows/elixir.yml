@@ -34,7 +34,8 @@ jobs:
           restore-keys: ${{matrix.otp}}-${{matrix.elixir}}-
       - run: mix deps.get
       - run: mix check
-      - run: mix hex.user auth ash-project --key $HEX_API_KEY
+      - run: mix hex.user auth ash-project
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+      - run: mix publish
