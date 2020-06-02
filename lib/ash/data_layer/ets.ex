@@ -84,10 +84,12 @@ defmodule Ash.DataLayer.Ets do
         _resource
       ) do
     with {:ok, table} <- wrap_or_create_table(resource),
-         {:ok, records} <- ETS.Set.to_list(table),
-         records <- Enum.map(records, &elem(&1, 1)),
-         {:ok, filtered_records} <-
-           filter_matches(records, filter) do
+         {:ok, records} <- ETS.Set.to_list(table) do
+      filtered_records =
+        records
+        |> Enum.map(&elem(&1, 1))
+        |> filter_matches(filter)
+
       offset_records =
         filtered_records
         |> do_sort(sort)
@@ -107,93 +109,54 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defp filter_matches(records, filter) do
-    Enum.reduce_while(records, {:ok, []}, fn record, {:ok, acc} ->
-      case matches_filter(record, filter) do
-        {:ok, true} ->
-          {:cont, {:ok, [record | acc]}}
+    Enum.filter(records, &matches_filter?(&1, filter))
+  end
 
-        {:ok, false} ->
-          {:cont, {:ok, acc}}
+  defp matches_filter?(record, %{ands: [first | rest]} = filter) do
+    matches_filter?(record, first) and matches_filter?(record, %{filter | ands: rest})
+  end
 
-        {:error, error} ->
-          {:error, error}
-      end
+  defp matches_filter?(record, %{not: not_filter} = filter) when not is_nil(not_filter) do
+    not matches_filter?(record, not_filter) and matches_filter?(record, %{filter | not: nil})
+  end
+
+  defp matches_filter?(record, %{ors: [first | rest]} = filter) do
+    matches_filter?(record, first) or matches_filter?(record, %{filter | ors: rest})
+  end
+
+  defp matches_filter?(record, %{resource: resource} = filter) do
+    resource
+    |> relationships_to_attribute_filters(filter)
+    |> Map.get(:attributes)
+    |> Enum.all?(fn {key, predicate} ->
+      matches_predicate?(Map.get(record, key), predicate)
     end)
-  end
-
-  defp matches_filter(record, %{ands: [first | rest]} = filter) do
-    case matches_filter(record, first) do
-      {:ok, true} -> matches_filter(record, %{filter | ands: rest})
-      {:ok, false} -> {:ok, false}
-      {:error, error} -> {:error, error}
-    end
-  end
-
-  defp matches_filter(record, %{not: not_filter} = filter) when not is_nil(not_filter) do
-    case matches_filter(record, not_filter) do
-      {:ok, true} -> {:ok, false}
-      {:ok, false} -> matches_filter(record, %{filter | not: nil})
-      {:error, error} -> {:error, error}
-    end
-  end
-
-  defp matches_filter(record, %{ors: [first | rest]} = filter) do
-    case matches_filter(record, first) do
-      {:ok, true} -> {:ok, true}
-      {:ok, false} -> matches_filter(record, %{filter | ors: rest})
-      {:error, error} -> {:error, error}
-    end
-  end
-
-  defp matches_filter(record, %{resource: resource} = filter) do
-    case relationships_to_attribute_filters(resource, filter) do
-      %{errors: [], attributes: attributes} ->
-        Enum.reduce_while(attributes, {:ok, true}, fn
-          {key, predicate}, {:ok, true} ->
-            case matches_predicate?(Map.get(record, key), predicate) do
-              {:ok, true} -> {:cont, {:ok, true}}
-              {:ok, false} -> {:halt, {:ok, false}}
-              {:error, error} -> {:error, error}
-            end
-        end)
-
-      %{errors: errors} ->
-        {:error, errors}
-    end
   end
 
   # alias Ash.Filter.{In, NotIn}
 
   defp matches_predicate?(value, %Eq{value: predicate_value}) do
-    {:ok, value == predicate_value}
+    value == predicate_value
   end
 
   defp matches_predicate?(value, %NotEq{value: predicate_value}) do
-    {:ok, value != predicate_value}
+    value != predicate_value
   end
 
   defp matches_predicate?(value, %In{values: predicate_value}) do
-    {:ok, value in predicate_value}
+    value in predicate_value
   end
 
   defp matches_predicate?(value, %NotIn{values: predicate_value}) do
-    {:ok, value not in predicate_value}
+    value not in predicate_value
   end
 
   defp matches_predicate?(value, %And{left: left, right: right}) do
-    case matches_predicate?(value, left) do
-      {:ok, true} -> matches_predicate?(value, right)
-      {:ok, false} -> {:ok, false}
-      {:error, error} -> {:error, error}
-    end
+    matches_predicate?(value, left) and matches_predicate?(value, right)
   end
 
   defp matches_predicate?(value, %Or{left: left, right: right}) do
-    case matches_predicate?(value, left) do
-      {:ok, true} -> {:ok, true}
-      {:ok, false} -> matches_predicate?(value, right)
-      {:error, error} -> {:error, error}
-    end
+    matches_predicate?(value, left) or matches_predicate?(value, right)
   end
 
   defp relationships_to_attribute_filters(_, %{relationships: relationships} = filter)

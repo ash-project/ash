@@ -30,7 +30,4 @@ jobs:
           key: ${{matrix.otp}}-${{matrix.elixir}}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
           restore-keys: ${{matrix.otp}}-${{matrix.elixir}}-
       - run: mix deps.get
-      - run: |
-          mix compile --warnings-as-errors
-          MIX_ENV=test mix compile --warnings-as-errors
       - run: mix check

@@ -4,7 +4,7 @@ defmodule Ash.Actions.Read do
   alias Ash.Actions.SideLoad
   require Logger
 
-  def run(query, opts \\ []) do
+  def run(query, _action, opts \\ []) do
     with %{errors: []} <- query,
          {:action, action} when not is_nil(action) <- {:action, action(query, opts)},
          requests <- requests(query, action, opts),

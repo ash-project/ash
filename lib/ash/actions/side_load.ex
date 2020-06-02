@@ -511,38 +511,36 @@ defmodule Ash.Actions.SideLoad do
 
     related_data = Map.get(source_data || %{}, :data, [])
 
-    cond do
-      reverse_relationship ->
-        values = get_fields(related_data, pkey)
+    if reverse_relationship do
+      values = get_fields(related_data, pkey)
 
-        new_query =
-          Ash.Query.filter(query, put_nested_relationship([], [reverse_relationship], values))
+      new_query =
+        Ash.Query.filter(query, put_nested_relationship([], [reverse_relationship], values))
 
-        {:ok, Ash.Query.unset(new_query, :side_load)}
+      {:ok, Ash.Query.unset(new_query, :side_load)}
+    else
+      ids =
+        Enum.flat_map(related_data, fn data ->
+          data
+          |> Map.get(relationship.source_field)
+          |> List.wrap()
+        end)
 
-      true ->
-        ids =
-          Enum.flat_map(related_data, fn data ->
-            data
-            |> Map.get(relationship.source_field)
-            |> List.wrap()
-          end)
+      filter_value =
+        case ids do
+          [id] ->
+            id
 
-        filter_value =
-          case ids do
-            [id] ->
-              id
+          ids ->
+            [in: ids]
+        end
 
-            ids ->
-              [in: ids]
-          end
+      new_query =
+        query
+        |> Ash.Query.filter([{relationship.destination_field, filter_value}])
+        |> Ash.Query.unset(:side_load)
 
-        new_query =
-          query
-          |> Ash.Query.filter([{relationship.destination_field, filter_value}])
-          |> Ash.Query.unset(:side_load)
-
-        {:ok, new_query}
+      {:ok, new_query}
     end
   end
 
@@ -568,24 +566,13 @@ defmodule Ash.Actions.SideLoad do
     end
   end
 
-  defp get_fields(data, fields, path \\ [])
+  defp get_fields(data, fields)
 
-  defp get_fields(data, fields, []) do
+  defp get_fields(data, fields) do
     data
     |> List.wrap()
     |> Enum.map(&Map.take(&1, fields))
     |> Enum.uniq()
-  end
-
-  defp get_fields(data, fields, [first | rest]) do
-    data
-    |> List.wrap()
-    |> Enum.flat_map(fn item ->
-      item
-      |> Map.get(first)
-      |> List.wrap()
-    end)
-    |> get_fields(fields, rest)
   end
 
   defp put_nested_relationship(request_filter, path, value, records? \\ true)

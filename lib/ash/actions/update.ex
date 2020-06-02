@@ -5,7 +5,6 @@ defmodule Ash.Actions.Update do
 
   @spec run(Ash.api(), Ash.record(), Ash.action(), Ash.params()) ::
           {:ok, Ash.record()} | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
-  # TODO: To support an upsert/ "find and update" pattern, we would support taking a filter instead of a record here.
   def run(api, %resource{} = record, action, params) do
     action =
       if is_atom(action) and not is_nil(action) do
@@ -14,18 +13,6 @@ defmodule Ash.Actions.Update do
         action
       end
 
-    transaction_result =
-      Ash.DataLayer.transact(resource, fn ->
-        do_run(api, record, action, params)
-      end)
-
-    case transaction_result do
-      {:ok, value} -> value
-      {:error, error} -> {:error, error}
-    end
-  end
-
-  defp do_run(api, %resource{} = record, action, params) do
     attributes = Keyword.get(params, :attributes, %{})
     relationships = Keyword.get(params, :relationships, %{})
 

@@ -1,4 +1,5 @@
 # Ash
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 ![Elixir CI](https://github.com/ash-project/ash/workflows/Elixir%20CI/badge.svg)
 
@@ -187,6 +188,8 @@ Observability
 
 Data Layer
 
+- BIG: support transactions, both detecting that we are in a transaction
+  and specifying a cross data-layer transaction
 - Allow encoding database-level constraints into the resource, like "nullable: false" or something. This will let us validate things like not leaving orphans when bulk updating a many to many
 - Eventually data_layers should state what raw types they support, and the filters they support on those raw types
 - Think hard about the data_layer.can? pattern to make sure we're giving enough info, but not too much.

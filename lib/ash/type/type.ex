@@ -7,7 +7,7 @@ defmodule Ash.Type do
   Much better to `use Ash.Type` than to say `@behaviour Ash.Type` and define
   everything yourself.
   """
-  @callback supported_filter_types(Ash.data_layer()) :: list(Ash.Actions.Filter.filter_type())
+  @callback supported_filter_types(Ash.data_layer()) :: list(atom)
   @callback sortable?(Ash.data_layer()) :: boolean
   @callback storage_type() :: Ecto.Type.t()
   @callback ecto_type() :: Ecto.Type.t()

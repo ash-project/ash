@@ -41,7 +41,7 @@ defmodule Ash.Filter do
           ors: list(%__MODULE__{} | nil),
           not: %__MODULE__{} | nil,
           attributes: Keyword.t(),
-          relationships: Map.t(),
+          relationships: map(),
           path: list(atom),
           impossible?: boolean,
           errors: list(String.t()),

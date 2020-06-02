@@ -14,7 +14,7 @@ defmodule Ash.Resource.Attributes.Attribute do
 
   @type t :: %__MODULE__{
           name: atom(),
-          type: Ash.type(),
+          type: Ash.Type.t(),
           primary_key?: boolean(),
           default: (() -> term),
           update_default: (() -> term) | (Ash.record() -> term),

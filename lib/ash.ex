@@ -26,7 +26,7 @@ defmodule Ash do
   @type delete_params :: Keyword.t()
   @type sort :: Keyword.t()
   @type side_loads :: Keyword.t()
-  @type attribute :: Ash.Attributes.Attribute.t()
+  @type attribute :: Ash.Resource.Attributes.Attribute.t()
   @type action :: Create.t() | Read.t() | Update.t() | Destroy.t()
   @type query :: Ash.Query.t()
   @type actor :: Ash.record()
@@ -97,7 +97,7 @@ defmodule Ash do
     api.resources()
   end
 
-  @spec primary_key(resource()) :: list(attribute)
+  @spec primary_key(resource()) :: list(atom)
   def primary_key(resource) do
     resource.primary_key()
   end

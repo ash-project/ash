@@ -1,5 +1,7 @@
 defmodule Ash.SatSolver do
-  @dialyzer {:no_return, :"picosat_solve/1"}
+  @dialyzer {:nowarn_function, strict_filter_subset: 2}
+  @dialyzer {:nowarn_function, solve_expression: 1}
+  @dialyzer {:nowarn_function, solutions_to_predicate_values: 2}
 
   def strict_filter_subset(filter, candidate) do
     filter_expr = filter_to_expr(filter)
@@ -93,11 +95,7 @@ defmodule Ash.SatSolver do
   defp join_expr(left, nil, _joiner), do: left
   defp join_expr(left, right, joiner), do: {joiner, left, right}
 
-  def satsolver_solve(input) do
-    Picosat.solve(input)
-  end
-
-  def solve_expression(expression) do
+  defp solve_expression(expression) do
     expression_with_constants = {:and, true, {:and, {:not, false}, expression}}
 
     {bindings, expression} = extract_bindings(expression_with_constants)
@@ -106,7 +104,7 @@ defmodule Ash.SatSolver do
     |> to_conjunctive_normal_form()
     |> lift_clauses()
     |> negations_to_negative_numbers()
-    |> satsolver_solve()
+    |> Picosat.solve()
     |> solutions_to_predicate_values(bindings)
   end
 
@@ -204,10 +202,6 @@ defmodule Ash.SatSolver do
       var -> "#{var}"
     end)
   end
-
-  # {:and, {:or, 1, 2}, {:and, {:or, 3, 4}, {:or, 5, 6}}}
-
-  # [[1, 2], [3]]
 
   # TODO: Is this so simple?
   defp lift_clauses({:and, left, right}) do

@@ -5,6 +5,8 @@ defmodule Ash.Api.Interface do
   #TODO describe - Big picture description here
   """
 
+  # TODO: use the schemas to validate the opts
+
   import Ash.OptionsHelpers, only: [merge_schemas: 3]
 
   alias Ash.Error.Interface.NoSuchResource
@@ -342,6 +344,9 @@ defmodule Ash.Api.Interface do
     else
       {:resource, :error} ->
         {:error, NoSuchResource.exception(resource: resource)}
+
+      {:pkey, _} ->
+        {:error, "Resource has no primary key"}
     end
   end
 
@@ -409,7 +414,13 @@ defmodule Ash.Api.Interface do
   @spec read(Ash.api(), Ash.query(), Keyword.t()) ::
           {:ok, list(Ash.resource())} | {:error, Ash.error()}
   def read(_api, query, opts \\ []) do
-    Ash.Actions.Read.run(query, opts)
+    case get_action(query.resource, opts, :read) do
+      {:ok, action} ->
+        Ash.Actions.Read.run(query, action, opts)
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   @doc false
@@ -425,23 +436,14 @@ defmodule Ash.Api.Interface do
   @spec create(Ash.api(), Ash.resource(), Ash.create_params()) ::
           {:ok, Ash.resource()} | {:error, Ash.error()}
   def create(api, resource, params) do
-    case api.get_resource(resource) do
-      {:ok, resource} ->
-        case Keyword.get(params, :action) || Ash.primary_action(resource, :create) do
-          nil ->
-            {:error, "no action provided, and no primary action found for create"}
-
-          action ->
-            Ash.Actions.Create.run(api, resource, action, params)
-        end
-
-      :error ->
-        {:error, NoSuchResource.exception(resource: resource)}
+    with {:ok, resource} <- api.get_resource(resource),
+         {:ok, action} <- get_action(resource, params, :create) do
+      Ash.Actions.Create.run(api, resource, action, params)
     end
   end
 
   @doc false
-  @spec update!(Ash.api(), Ash.record(), Ash.update_params()) :: Ash.resource() | no_return
+  @spec update!(Ash.api(), Ash.record(), Ash.update_params()) :: Ash.resource() | no_return()
   def update!(api, record, params) do
     api
     |> update(record, params)
@@ -452,23 +454,14 @@ defmodule Ash.Api.Interface do
   @spec update(Ash.api(), Ash.record(), Ash.update_params()) ::
           {:ok, Ash.resource()} | {:error, Ash.error()}
   def update(api, %resource{} = record, params) do
-    case api.get_resource(resource) do
-      {:ok, resource} ->
-        case Keyword.get(params, :action) || Ash.primary_action(resource, :update) do
-          nil ->
-            {:error, "no action provided, and no primary action found for update"}
-
-          action ->
-            Ash.Actions.Update.run(api, record, action, params)
-        end
-
-      :error ->
-        {:error, NoSuchResource.exception(resource: resource)}
+    with {:ok, resource} <- api.get_resource(resource),
+         {:ok, action} <- get_action(resource, params, :update) do
+      Ash.Actions.Update.run(api, record, action, params)
     end
   end
 
   @doc false
-  @spec destroy!(Ash.api(), Ash.record(), Ash.delete_params()) :: Ash.resource() | no_return
+  @spec destroy!(Ash.api(), Ash.record(), Ash.delete_params()) :: :ok | no_return
   def destroy!(api, record, params) do
     api
     |> destroy(record, params)
@@ -476,25 +469,35 @@ defmodule Ash.Api.Interface do
   end
 
   @doc false
-  @spec destroy(Ash.api(), Ash.record(), Ash.delete_params()) ::
-          {:ok, Ash.resource()} | {:error, Ash.error()}
+  @spec destroy(Ash.api(), Ash.record(), Ash.delete_params()) :: :ok | {:error, Ash.error()}
   def destroy(api, %resource{} = record, params) do
-    case api.get_resource(resource) do
-      {:ok, resource} ->
-        case Keyword.get(params, :action) || Ash.primary_action(resource, :destroy) do
-          nil ->
-            {:error, "no action provided, and no primary action found for destroy"}
-
-          action ->
-            Ash.Actions.Destroy.run(api, record, action, params)
-        end
-
-      :error ->
-        {:error, NoSuchResource.exception(resource: resource)}
+    with {:ok, resource} <- api.get_resource(resource),
+         {:ok, action} <- get_action(resource, params, :destroy) do
+      Ash.Actions.Destroy.run(api, record, action, params)
     end
   end
 
-  defp unwrap_or_raise!(:ok), do: :ok
-  defp unwrap_or_raise!({:ok, result}), do: result
-  defp unwrap_or_raise!({:error, error}), do: raise(Ash.to_ash_error(error))
+  defp get_action(resource, params, type) do
+    case params[:action] || Ash.primary_action(resource, type) do
+      nil ->
+        {:error, "no action provided, and no primary action found for #{to_string(type)}"}
+
+      action ->
+        {:ok, action}
+    end
+  end
+
+  defp unwrap_or_raise!(value) do
+    case value do
+      :ok ->
+        :ok
+
+      {:ok, result} ->
+        result
+
+      {:error, error} ->
+        exception = Ash.to_ash_error(error)
+        raise exception
+    end
+  end
 end

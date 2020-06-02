@@ -1,6 +1,5 @@
 defmodule Ash.Engine.Request do
   defmodule UnresolvedField do
-    # TODO: Add some kind of optional dependency?
     defstruct [:resolver, deps: [], optional_deps: [], data?: false]
 
     def new(dependencies, optional_deps, func) do
@@ -58,6 +57,8 @@ defmodule Ash.Engine.Request do
     dependency_data: %{},
     dependencies_requested: []
   ]
+
+  @type t :: %__MODULE__{}
 
   require Logger
 
