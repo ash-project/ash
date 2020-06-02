@@ -1,0 +1,41 @@
+name: Elixir CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
+    strategy:
+      matrix:
+        otp: ['20.3', '21.3', '22.2']
+        elixir: ['1.8.2', '1.9.4', '1.10.0']
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-elixir@v1
+        with:
+          otp-version: ${{matrix.otp}}
+          elixir-version: ${{matrix.elixir}}
+      - run: mix deps.get
+      - uses: actions/cache@v1
+        id: cache-deps
+        with:
+          path: deps
+          key: ${{matrix.otp}}-${{matrix.elixir}}-mix-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+          restore-keys: ${{matrix.otp}}-${{matrix.elixir}}-mix-
+      - uses: actions/cache@v1
+        id: cache-build
+        with:
+          path: _build
+          # We may need to include elixir/OTP version in this cache key
+          key: ${{matrix.otp}}-${{matrix.elixir}}-build-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            ${{matrix.otp}}-${{matrix.elixir}}-build-
+      - run: mix deps.get
+      - run: |
+          mix compile --warnings-as-errors
+          MIX_ENV=test mix compile --warnings-as-errors
+      - run: mix check
