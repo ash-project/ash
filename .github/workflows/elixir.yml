@@ -30,8 +30,8 @@ jobs:
           path: |
             deps
             _build
-          key: ${{matrix.otp}}-${{matrix.elixir}}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
-          restore-keys: ${{matrix.otp}}-${{matrix.elixir}}-
+          key: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-lock-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+          restore-keys: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}
       - run: mix deps.get
       - run: mix check
       - run: mix hex.user auth ash-project
@@ -39,3 +39,6 @@ jobs:
         env:
           HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
       - run: mix publish
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
