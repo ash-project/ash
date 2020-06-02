@@ -51,6 +51,10 @@ defmodule Ash.MixProject do
       {:ecto, "~> 3.0"},
       {:ets, "~> 0.8.0"},
       {:ex_doc, "~> 0.21", only: :dev, runtime: false},
+      {:ex_check, "~> 0.11.0", only: :dev},
+      {:credo, ">= 0.0.0", only: :dev, runtime: false},
+      {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
+      {:sobelow, ">= 0.0.0", only: :dev, runtime: false},
       {:git_ops, "~> 2.0.0", only: :dev},
       {:picosat_elixir, "~> 0.1.3"},
       {:nimble_options, "~> 0.2.1"}
