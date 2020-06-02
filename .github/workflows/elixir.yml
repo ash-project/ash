@@ -26,15 +26,18 @@ jobs:
         with:
           otp-version: ${{matrix.otp}}
           elixir-version: ${{matrix.elixir}}
-      - run: mix deps.get
       - uses: actions/cache@v1
         id: cache-deps
         with:
-          path: |
-            deps
-            _build
-          key: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
-          restore-keys: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-
+          path: deps
+          key: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-deps-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+          restore-keys: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-deps-
+      - uses: actions/cache@v1
+        id: cache-build
+        with:
+          path: _build
+          key: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-build-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+          restore-keys: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-build-
       - run: mix deps.get
       - run: mix check
       - run: mix hex.publish --yes
