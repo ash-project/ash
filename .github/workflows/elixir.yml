@@ -11,8 +11,8 @@ jobs:
     name: OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
     strategy:
       matrix:
-        otp: [21.3', "22.2"]
-        elixir: [1.9.4', "1.10.0"]
+        otp: ["22.2", "23"]
+        elixir: ["1.9.4", "1.10.0"]
     steps:
       - run: sudo apt-get install --yes erlang-dev
       - uses: actions/checkout@v2
