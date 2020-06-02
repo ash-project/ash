@@ -67,7 +67,7 @@ defmodule Ash.MixProject do
       {:git_ops, "~> 2.0.0", only: :dev},
       {:picosat_elixir, "~> 0.1.3"},
       {:nimble_options, "~> 0.2.1"},
-      {:excoveralls, "~> 0.13.0", only: :test}
+      {:excoveralls, "~> 0.13.0", only: [:dev, :test]}
     ]
   end
 
