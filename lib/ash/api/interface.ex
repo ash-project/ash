@@ -195,6 +195,7 @@ defmodule Ash.Api.Interface do
       @impl true
       def read!(query, opts \\ [])
 
+      # sobelow_skip ["SQL.Query"]
       def read!(resource, opts) when is_atom(resource) do
         read!(query(resource), opts)
       end
@@ -206,6 +207,7 @@ defmodule Ash.Api.Interface do
       @impl true
       def read(query, opts \\ [])
 
+      # sobelow_skip ["SQL.Query"]
       def read(resource, opts) when is_atom(resource) do
         read(query(resource), opts)
       end

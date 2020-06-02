@@ -54,7 +54,7 @@ defmodule Ash.Resource.Relationships.HasOne do
           related_resource :: Ash.resource(),
           opts :: Keyword.t()
         ) :: {:ok, t()} | {:error, term}
-  @doc false
+  # sobelow_skip ["DOS.BinToAtom"]
   def new(resource, resource_type, name, related_resource, opts \\ []) do
     # Don't call functions on the resource! We don't want it to compile here
     case NimbleOptions.validate(opts, @opt_schema) do

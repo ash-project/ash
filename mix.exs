@@ -18,6 +18,7 @@ defmodule Ash.MixProject do
       package: package(),
       deps: deps(),
       docs: docs(),
+      aliases: aliases(),
       description: @description,
       source_url: "https://github.com/ash-project/ash",
       homepage_url: "https://github.com/ash-project/ash"
@@ -59,5 +60,9 @@ defmodule Ash.MixProject do
       {:picosat_elixir, "~> 0.1.3"},
       {:nimble_options, "~> 0.2.1"}
     ]
+  end
+
+  defp aliases() do
+    [sobelow: "sobelow --skip"]
   end
 end
