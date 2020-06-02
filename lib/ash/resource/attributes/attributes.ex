@@ -117,7 +117,7 @@ defmodule Ash.Resource.Attributes do
   Adds auto updating timestamp fields
 
   The field names default to `:inserted_at` and `:updated_at`, but can be overwritten via
-  passing overrides in the opts, e.g `timestamps(inserted_at: :created_at, updated_at: :last_touched)
+  passing overrides in the opts, e.g `timestamps(inserted_at: :created_at, updated_at: :last_touched)`
 
   #{NimbleOptions.docs(@timestamp_schema)}
 

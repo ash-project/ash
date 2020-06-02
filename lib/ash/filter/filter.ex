@@ -11,7 +11,7 @@ defmodule Ash.Filter do
 
   The filters `attributes` and `relationships`, *are* subject to the `ors` of that filter.
 
-  `<and_statements> AND NOT <not_statement> AND (<one_of_or_statements> OR <attributes + relationships>)
+  `<and_statements> AND NOT <not_statement> AND (<one_of_or_statements> OR <attributes + relationships>)`
 
   This probably needs to be refactored into something more representative of its behavior,
   like a series of nested boolean expression structs w/ a reference to the attribute/relationship
