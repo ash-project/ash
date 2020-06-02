@@ -23,13 +23,6 @@ To start using Ash, first declare your `Resources` using the Ash `Resource` DSL.
 
 Ash is an open-source project and draws inspiration from similar ideas in other frameworks and concepts. The goal of Ash is to lower the barrier to adopting and using Elixir and Phoenix, and in doing so help these amazing communities attract new developers, projects, and companies.
 
-## Creating a new release of Ash
-
-- check out the repository locally
-- run `mix git_ops.release` (see git_ops documentation for more information)
-- check the changelog/new release number
-- push (with tags) and CI will automatically deploy the hex package
-
 ## Example Resource
 
 ```elixir
@@ -287,3 +280,10 @@ Framework
 - Make `Ash.Type` that is a superset of things like `Ecto.Type`. If we bring in ecto database-less(looking like more and more of a good idea to me) that kind of thing gets easier and we can potentially lean on ecto for type validations well.
 - When we support embedding, figure out `embed_as` on `Ash.Type`
 - Consider supporting one resource being a "more specific" version of another resource at the _resource_ level, not the data layer level.
+
+## Creating a new release of Ash
+
+- check out the repository locally
+- run `mix git_ops.release` (see git_ops documentation for more information)
+- check the changelog/new release number
+- push (with tags) and CI will automatically deploy the hex package
