@@ -5,6 +5,10 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v0.1.7](https://github.com/ash-project/ash/compare/0.1.6...v0.1.7) (2020-06-02)
+
+This release is a test of our automatic hex.pm package publishing
+
 ## [v0.1.6](https://github.com/ash-project/ash/compare/0.1.5...v0.1.6) (2020-06-02)
 
 This release is a test of our automatic hex.pm package publishing
