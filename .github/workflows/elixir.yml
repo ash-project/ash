@@ -17,8 +17,8 @@ jobs:
         otp: ["23"]
         elixir: ["1.10.0"]
     env:
-      MIX_ENV: test
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      ASH_CI: true
     steps:
       - run: sudo apt-get install --yes erlang-dev
       - uses: actions/checkout@v2
@@ -37,7 +37,6 @@ jobs:
           restore-keys: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}
       - run: mix deps.get
       - run: mix check --except ex_unit
-      - run: mix coveralls.github
       - run: mix publish
         if: startsWith(github.ref, 'refs/tags/v')
         env:
