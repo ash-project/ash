@@ -1,4 +1,5 @@
 defmodule Ash.MixProject do
+  @moduledoc false
   use Mix.Project
 
   @description """
@@ -25,7 +26,7 @@ defmodule Ash.MixProject do
     ]
   end
 
-  defp docs() do
+  defp docs do
     # The main page in the docs
     [main: "readme", extras: ["README.md"]]
   end
