@@ -232,21 +232,24 @@ defmodule Ash.Filter do
 
     substitutions =
       Enum.reduce(values, %{}, fn {key, values}, substitutions ->
-        value_substitutions =
-          Enum.reduce(values, %{}, fn value, substitutions ->
-            case do_simplify_list(value) do
-              {:ok, substitution} ->
-                Map.put(substitutions, value, substitution)
-
-              :error ->
-                substitutions
-            end
-          end)
+        value_substitutions = simplify_list_subtitutions(values)
 
         Map.put(substitutions, key, value_substitutions)
       end)
 
     {replace_values(left, substitutions), replace_values(right, substitutions)}
+  end
+
+  defp simplify_list_substitutions(values) do
+    Enum.reduce(values, %{}, fn value, substitutions ->
+      case do_simplify_list(value) do
+        {:ok, substitution} ->
+          Map.put(substitutions, value, substitution)
+
+        :error ->
+          substitutions
+      end
+    end)
   end
 
   defp do_simplify_list(%Ash.Filter.In{values: []}), do: :error
@@ -282,21 +285,24 @@ defmodule Ash.Filter do
 
     substitutions =
       Enum.reduce(values, %{}, fn {key, values}, substitutions ->
-        value_substitutions =
-          Enum.reduce(values, %{}, fn value, substitutions ->
-            case do_express_mutual_exclusion(value, values) do
-              {:ok, substitution} ->
-                Map.put(substitutions, value, substitution)
-
-              :error ->
-                substitutions
-            end
-          end)
+        value_substitutions = express_mutual_exclusion_substitutions(values)
 
         Map.put(substitutions, key, value_substitutions)
       end)
 
     {replace_values(left, substitutions), replace_values(right, substitutions)}
+  end
+
+  defp express_mutual_exclusion_substitutions(values) do
+    Enum.reduce(values, %{}, fn value, substitutions ->
+      case do_express_mutual_exclusion(value, values) do
+        {:ok, substitution} ->
+          Map.put(substitutions, value, substitution)
+
+        :error ->
+          substitutions
+      end
+    end)
   end
 
   defp do_express_mutual_exclusion(%Ash.Filter.Eq{value: value} = eq_filter, values) do
@@ -333,12 +339,9 @@ defmodule Ash.Filter do
           value
           |> do_get_values()
           |> Enum.reduce(values, fn value, values ->
-            if value in values do
-              values
-            else
-              [value | values]
-            end
+            [value | values]
           end)
+          |> Enum.uniq()
         end)
       end)
 
@@ -671,41 +674,13 @@ defmodule Ash.Filter do
             %{filter | impossible?: true}
 
           key == :and ->
-            if Keyword.keyword?(value) do
-              %{filter | ands: [parse(filter.resource, value, filter.api) | filter.ands]}
-            else
-              empty_filter = parse(filter.resource, [], filter.api)
-
-              filter_with_ands = %{
-                empty_filter
-                | ands: Enum.map(value, &parse(filter.resource, &1, filter.api))
-              }
-
-              %{filter | ands: [filter_with_ands | filter.ands]}
-            end
+            add_and_to_filter(filter, value)
 
           key == :or ->
-            if Keyword.keyword?(value) do
-              %{filter | ors: [parse(filter.resource, value, filter.api) | filter.ors]}
-            else
-              [first_or | rest_ors] = Enum.map(value, &parse(filter.resource, &1, filter.api))
-
-              or_filter =
-                filter.resource
-                |> parse(first_or, filter.api)
-                |> Map.update!(:ors, &Kernel.++(&1, rest_ors))
-
-              %{filter | ands: [or_filter | filter.ands]}
-            end
+            add_or_to_filter(filter, value)
 
           key == :not ->
-            Map.update!(filter, :not, fn not_filter ->
-              if not_filter do
-                add_to_filter(not_filter, value)
-              else
-                parse(filter.resource, value, filter.api)
-              end
-            end)
+            add_to_not_filter(filter, value)
 
           attr = Ash.attribute(resource, key) ->
             add_attribute_filter(filter, attr, value)
@@ -725,6 +700,46 @@ defmodule Ash.Filter do
     |> lift_impossibility()
     |> lift_if_empty()
     |> add_not_filter_info()
+  end
+
+  defp add_and_to_filter(filter, value) do
+    if Keyword.keyword?(value) do
+      %{filter | ands: [parse(filter.resource, value, filter.api) | filter.ands]}
+    else
+      empty_filter = parse(filter.resource, [], filter.api)
+
+      filter_with_ands = %{
+        empty_filter
+        | ands: Enum.map(value, &parse(filter.resource, &1, filter.api))
+      }
+
+      %{filter | ands: [filter_with_ands | filter.ands]}
+    end
+  end
+
+  defp add_or_to_filter(filter, value) do
+    if Keyword.keyword?(value) do
+      %{filter | ors: [parse(filter.resource, value, filter.api) | filter.ors]}
+    else
+      [first_or | rest_ors] = Enum.map(value, &parse(filter.resource, &1, filter.api))
+
+      or_filter =
+        filter.resource
+        |> parse(first_or, filter.api)
+        |> Map.update!(:ors, &Kernel.++(&1, rest_ors))
+
+      %{filter | ands: [or_filter | filter.ands]}
+    end
+  end
+
+  defp add_to_not_filter(filter, value) do
+    Map.update!(filter, :not, fn not_filter ->
+      if not_filter do
+        add_to_filter(not_filter, value)
+      else
+        parse(filter.resource, value, filter.api)
+      end
+    end)
   end
 
   defp lift_if_empty(%{
@@ -798,12 +813,11 @@ defmodule Ash.Filter do
   def parse_predicates(resource, keyword, attr_name, attr_type) do
     Enum.reduce(keyword, {:ok, nil}, fn {predicate_name, value}, {:ok, existing_predicate} ->
       case parse_predicate(resource, predicate_name, attr_name, attr_type, value) do
+        {:ok, predicate} when is_nil(existing_predicate) ->
+          {:ok, predicate}
+
         {:ok, predicate} ->
-          if existing_predicate do
-            {:ok, Merge.merge(existing_predicate, predicate)}
-          else
-            {:ok, predicate}
-          end
+          {:ok, Merge.merge(existing_predicate, predicate)}
 
         {:error, error} ->
           {:error, error}
@@ -915,16 +929,20 @@ defmodule Ash.Filter do
         {:ok, value}
 
       is_list(value) ->
-        Enum.reduce_while(value, {:ok, []}, fn item, items ->
-          case parse_relationship_filter(item, relationship) do
-            {:ok, item_filter} -> {:cont, {:ok, [item_filter | items]}}
-            {:error, error} -> {:halt, {:error, error}}
-          end
-        end)
+        parse_relationship_list_filter(value, relationship)
 
       true ->
         Ash.Actions.PrimaryKeyHelpers.value_to_primary_key_filter(destination, value)
     end
+  end
+
+  defp parse_relationship_list_filter(value, relationship) do
+    Enum.reduce_while(value, {:ok, []}, fn item, items ->
+      case parse_relationship_filter(item, relationship) do
+        {:ok, item_filter} -> {:cont, {:ok, [item_filter | items]}}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
   end
 
   defp add_relationship_compatibility_error(%{resource: resource} = filter, %{

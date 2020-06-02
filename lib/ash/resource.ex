@@ -72,6 +72,7 @@ defmodule Ash.Resource do
     @resource_opts_schema
   end
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defmacro __before_compile__(env) do
     quote do
       case Ash.Resource.mark_primaries(@actions) do
@@ -162,19 +163,23 @@ defmodule Ash.Resource do
             [%{action | primary?: true}]
 
           actions ->
-            case Enum.count(actions, & &1.primary?) do
-              0 ->
-                [{:error, {:no_primary, type}}]
-
-              1 ->
-                actions
-
-              _ ->
-                [{:error, {:duplicate_primaries, type}}]
-            end
+            check_primaries(actions, type)
         end
       end)
 
     Enum.find(actions, fn action -> match?({:error, _}, action) end) || {:ok, actions}
+  end
+
+  defp check_primaries(actions, type) do
+    case Enum.count(actions, & &1.primary?) do
+      0 ->
+        [{:error, {:no_primary, type}}]
+
+      1 ->
+        actions
+
+      _ ->
+        [{:error, {:duplicate_primaries, type}}]
+    end
   end
 end

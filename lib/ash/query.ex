@@ -141,24 +141,30 @@ defmodule Ash.Query do
                )}
             ]
 
-          %{destination: relationship_resource} = relationship ->
-            case value do
-              %__MODULE__{resource: query_resource} = destination_query
-              when query_resource != relationship_resource ->
-                [
-                  Ash.Error.SideLoad.InvalidQuery.exception(
-                    resource: resource,
-                    relationship: key,
-                    query: destination_query,
-                    side_load_path: Enum.reverse(path)
-                  )
-                ]
-
-              other ->
-                do_validate_side_load(relationship.destination, other, [key | path])
-            end
+          relationship ->
+            validate_matching_query_and_continue(value, resource, key, path, relationship)
         end
     end)
+  end
+
+  defp validate_matching_query_and_continue(value, resource, key, path, relationship) do
+    %{destination: relationship_resource} = relationship
+
+    case value do
+      %__MODULE__{resource: query_resource} = destination_query
+      when query_resource != relationship_resource ->
+        [
+          Ash.Error.SideLoad.InvalidQuery.exception(
+            resource: resource,
+            relationship: key,
+            query: destination_query,
+            side_load_path: Enum.reverse(path)
+          )
+        ]
+
+      other ->
+        do_validate_side_load(relationship.destination, other, [key | path])
+    end
   end
 
   def merge_side_load([], right), do: sanitize_side_loads(right)

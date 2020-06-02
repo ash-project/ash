@@ -476,20 +476,7 @@ defmodule Ash.Engine.Request do
             {:ok, set_authorizer_state(request, authorizer, :authorized)}
 
           {:filter, filter} ->
-            case do_runtime_filter(request, filter) do
-              {:ok, request} ->
-                request
-                |> set_authorizer_state(authorizer, :authorized)
-                |> try_resolve(
-                  [request.path ++ [:data], request.path ++ [:query]],
-                  false,
-                  false
-                )
-
-              {:error, _error} ->
-                # TODO: Handle this
-                {:error, "Error while authorizing"}
-            end
+            runtime_filter(request, authorizer, filter)
 
           {:error, error} ->
             {:error, error}
@@ -511,6 +498,23 @@ defmodule Ash.Engine.Request do
           {:error, error} ->
             {:error, error}
         end
+    end
+  end
+
+  defp runtime_filter(request, authorizer, filter) do
+    case do_runtime_filter(request, filter) do
+      {:ok, request} ->
+        request
+        |> set_authorizer_state(authorizer, :authorized)
+        |> try_resolve(
+          [request.path ++ [:data], request.path ++ [:query]],
+          false,
+          false
+        )
+
+      {:error, _error} ->
+        # TODO: Handle this
+        {:error, "Error while authorizing"}
     end
   end
 
@@ -537,10 +541,7 @@ defmodule Ash.Engine.Request do
             pkey = Ash.primary_key(request.resource)
             pkeys = Enum.map(results, &Map.take(&1, pkey))
 
-            new_data =
-              Enum.filter(request.data, fn record ->
-                Map.take(record, pkey) in pkeys
-              end)
+            new_data = Enum.filter(request.data, &(Map.take(&1, pkey) in pkeys))
 
             {:ok, %{request | data: new_data, query: new_query}}
 
@@ -561,120 +562,115 @@ defmodule Ash.Engine.Request do
           {:cont, {:ok, request, notifications, skipped}}
 
         :error ->
-          if local_dep?(request, dep) do
-            case try_resolve_local(request, List.last(dep), optional?, internal?) do
-              {:skipped, request, new_notifications, other_deps} ->
-                {:cont, {:ok, request, new_notifications ++ notifications, skipped ++ other_deps}}
-
-              {:ok, request, new_notifications, other_deps} ->
-                {:cont, {:ok, request, new_notifications ++ notifications, skipped ++ other_deps}}
-
-              {:error, error} ->
-                log(request, "Error resolving optional dependency #{inspect(dep)}: #{error}")
-
-                if optional? do
-                  {:cont, {:ok, request, notifications, skipped}}
-                else
-                  {:halt, {:error, error}}
-                end
-            end
-          else
-            {:cont, {:ok, request, notifications, [dep | skipped]}}
-          end
+          do_try_resolve(request, notifications, skipped, dep, optional?, internal?)
       end
     end)
+  end
+
+  defp do_try_resolve(request, notifications, skipped, dep, optional?, internal?) do
+    if local_dep?(request, dep) do
+      case try_resolve_local(request, List.last(dep), optional?, internal?) do
+        {:skipped, request, new_notifications, other_deps} ->
+          {:cont, {:ok, request, new_notifications ++ notifications, skipped ++ other_deps}}
+
+        {:ok, request, new_notifications, other_deps} ->
+          {:cont, {:ok, request, new_notifications ++ notifications, skipped ++ other_deps}}
+
+        {:error, error} ->
+          log(request, "Error resolving optional dependency #{inspect(dep)}: #{error}")
+
+          if optional? do
+            {:cont, {:ok, request, notifications, skipped}}
+          else
+            {:halt, {:error, error}}
+          end
+      end
+    else
+      {:cont, {:ok, request, notifications, [dep | skipped]}}
+    end
   end
 
   defp try_resolve_local(request, field, optional?, internal?) do
     authorized? = Enum.all?(Map.values(request.authorizer_state), &(&1 == :authorized))
 
-    cond do
-      # Don't fetch honor requests for dat until the request is authorized
-      field == :data and not authorized? and not internal? ->
-        case request.data do
-          %UnresolvedField{deps: deps, optional_deps: optional_deps} ->
-            with {:ok, new_request, optional_notifications, remaining_optional} <-
-                   try_resolve(request, optional_deps, true, internal?),
-                 {:ok, new_request, required_notifications, remaining_deps} <-
-                   try_resolve(new_request, deps, optional?, internal?) do
-              {:skipped, new_request, optional_notifications ++ required_notifications,
-               remaining_deps ++ remaining_optional}
-            else
-              error ->
-                error
-            end
+    # Don't fetch honor requests for dat until the request is authorized
+    if field in [:data, :query] and not authorized? and not internal? do
+      try_resolve_dependencies_of(request, field, internal?, optional?)
+    else
+      case Map.get(request, field) do
+        %UnresolvedField{} = unresolved ->
+          do_try_resolve_local(request, field, unresolved, optional?, internal?)
 
-          _ ->
-            {:skipped, request, [], []}
+        value ->
+          notify_existing_value(request, field, value, internal?)
+      end
+    end
+  end
+
+  defp try_resolve_dependencies_of(request, field, internal?, optional?) do
+    case Map.get(request, field) do
+      %UnresolvedField{deps: deps, optional_deps: optional_deps} ->
+        with {:ok, new_request, optional_notifications, remaining_optional} <-
+               try_resolve(request, optional_deps, true, internal?),
+             {:ok, new_request, required_notifications, remaining_deps} <-
+               try_resolve(new_request, deps, optional?, internal?) do
+          {:skipped, new_request, optional_notifications ++ required_notifications,
+           remaining_deps ++ remaining_optional}
+        else
+          error ->
+            error
         end
 
-      # Only fetch query
-      field == :query and not authorized? and not internal? ->
-        case request.query do
-          %UnresolvedField{deps: deps, optional_deps: optional_deps} ->
-            with {:ok, new_request, optional_notifications, remaining_optional} <-
-                   try_resolve(request, optional_deps, true, internal?),
-                 {:ok, new_request, required_notifications, remaining_deps} <-
-                   try_resolve(new_request, deps, optional?, internal?) do
-              {:skipped, new_request, optional_notifications ++ required_notifications,
-               remaining_deps ++ remaining_optional}
-            else
-              error ->
-                error
-            end
+      _ ->
+        {:skipped, request, [], []}
+    end
+  end
 
-          _ ->
-            {:skipped, request, [], []}
-        end
+  defp notify_existing_value(request, field, value, internal?) do
+    if internal? do
+      {new_request, notifications} = notifications(request, field, value)
 
-      true ->
-        case Map.get(request, field) do
-          %UnresolvedField{} = unresolved ->
-            %{deps: deps, optional_deps: optional_deps, resolver: resolver} = unresolved
+      {:ok, new_request, notifications, []}
+    else
+      {:ok, request, [], []}
+    end
+  end
 
-            with {:ok, new_request, optional_notifications, _remaining_optional} <-
-                   try_resolve(request, optional_deps, true, internal?),
-                 {:ok, new_request, required_notifications, []} <-
-                   try_resolve(new_request, deps, optional?, internal?) do
-              resolver_context = resolver_context(new_request, deps ++ optional_deps)
+  defp do_try_resolve_local(request, field, unresolved, optional?, internal?) do
+    %{deps: deps, optional_deps: optional_deps, resolver: resolver} = unresolved
 
-              log(request, "resolving #{field}")
+    with {:ok, new_request, optional_notifications, _remaining_optional} <-
+           try_resolve(request, optional_deps, true, internal?),
+         {:ok, new_request, required_notifications, []} <-
+           try_resolve(new_request, deps, optional?, internal?) do
+      resolver_context = resolver_context(new_request, deps ++ optional_deps)
 
-              case resolver.(resolver_context) do
-                {:ok, value} ->
-                  {new_request, notifications} =
-                    if internal? do
-                      {new_request, new_notifications} = notifications(new_request, field, value)
+      log(request, "resolving #{field}")
 
-                      notifications =
-                        Enum.concat([
-                          optional_notifications,
-                          required_notifications,
-                          new_notifications
-                        ])
-
-                      {new_request, notifications}
-                    else
-                      {request, []}
-                    end
-
-                  new_request = Map.put(new_request, field, value)
-                  {:ok, new_request, notifications, []}
-
-                {:error, error} ->
-                  {:error, error}
-              end
-            end
-
-          value ->
+      case resolver.(resolver_context) do
+        {:ok, value} ->
+          {new_request, notifications} =
             if internal? do
-              {new_request, notifications} = notifications(request, field, value)
+              {new_request, new_notifications} = notifications(new_request, field, value)
 
-              {:ok, new_request, notifications, []}
+              notifications =
+                Enum.concat([
+                  optional_notifications,
+                  required_notifications,
+                  new_notifications
+                ])
+
+              {new_request, notifications}
             else
-              {:ok, request, [], []}
+              {request, []}
             end
-        end
+
+          new_request = Map.put(new_request, field, value)
+          {:ok, new_request, notifications, []}
+
+        {:error, error} ->
+          {:error, error}
+      end
     end
   end
 

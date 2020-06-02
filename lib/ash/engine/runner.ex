@@ -137,12 +137,12 @@ defmodule Ash.Engine.Runner do
         new_state = run_to_completion(state)
 
         Enum.reduce(new_state.requests, new_state, fn request, state ->
-          if request.state not in [:complete, :error] do
+          if request.state in [:complete, :error] do
+            state
+          else
             state
             |> add_error(request.path, "Dependencies not met before shutdown")
             |> replace_request(%{request | state: :error})
-          else
-            state
           end
         end)
       end
@@ -259,35 +259,15 @@ defmodule Ash.Engine.Runner do
             {state, notifications, dependencies}
 
           depended_on_request ->
-            case Request.send_field(depended_on_request, request.path, field, optional?) do
-              {:ok, new_request, new_notifications} ->
-                {replace_request(state, new_request), notifications ++ new_notifications,
-                 dependencies}
-
-              {:waiting, new_request, new_notifications, new_dependencies} ->
-                new_dependencies = build_dependencies(new_request, new_dependencies)
-
-                new_state = replace_request(state, new_request)
-
-                {new_state, notifications ++ new_notifications, new_dependencies ++ dependencies}
-
-              {:error, error, new_request} ->
-                new_state =
-                  state
-                  |> replace_request(%{new_request | state: :error})
-                  |> add_error(new_request.path, error)
-
-                new_state =
-                  if optional? do
-                    new_state
-                  else
-                    new_state
-                    |> add_error(request.path, "dependency failed")
-                    |> replace_request(%{new_request | state: :error, error: error})
-                  end
-
-                {new_state, notifications, dependencies}
-            end
+            notify_local_request(
+              state,
+              notifications,
+              dependencies,
+              depended_on_request,
+              request,
+              field,
+              optional?
+            )
         end
       end)
 
@@ -297,6 +277,45 @@ defmodule Ash.Engine.Runner do
 
       more_dependencies ->
         store_dependencies(state, more_dependencies, notifications)
+    end
+  end
+
+  defp notify_local_request(
+         state,
+         notifications,
+         dependencies,
+         depended_on_request,
+         request,
+         field,
+         optional?
+       ) do
+    case Request.send_field(depended_on_request, request.path, field, optional?) do
+      {:ok, new_request, new_notifications} ->
+        {replace_request(state, new_request), notifications ++ new_notifications, dependencies}
+
+      {:waiting, new_request, new_notifications, new_dependencies} ->
+        new_dependencies = build_dependencies(new_request, new_dependencies)
+
+        new_state = replace_request(state, new_request)
+
+        {new_state, notifications ++ new_notifications, new_dependencies ++ dependencies}
+
+      {:error, error, new_request} ->
+        new_state =
+          state
+          |> replace_request(%{new_request | state: :error})
+          |> add_error(new_request.path, error)
+
+        new_state =
+          if optional? do
+            new_state
+          else
+            new_state
+            |> add_error(request.path, "dependency failed")
+            |> replace_request(%{new_request | state: :error, error: error})
+          end
+
+        {new_state, notifications, dependencies}
     end
   end
 
@@ -322,10 +341,10 @@ defmodule Ash.Engine.Runner do
           state
 
         receiver_request ->
-          case Request.receive_field(receiver_request, request_path, field, value) do
-            {:continue, new_request} ->
-              replace_request(state, new_request)
-          end
+          {:continue, new_request} =
+            Request.receive_field(receiver_request, request_path, field, value)
+
+          replace_request(state, new_request)
       end
     end)
   end

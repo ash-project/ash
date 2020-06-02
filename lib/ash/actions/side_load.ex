@@ -99,58 +99,20 @@ defmodule Ash.Actions.SideLoad do
 
       case last_relationship do
         %{type: :many_to_many, name: name} ->
-          # TODO: If we sort the relationships as we do them (doing the join assoc first)
-          # then we can just use those linked assocs (maybe)
-          join_association = String.to_existing_atom(to_string(name) <> "_join_assoc")
-
-          join_path = lead_path ++ [join_association]
-
-          join_data =
-            side_loads
-            |> Map.get(join_path, [])
-
-          map_or_update(data, lead_path, fn record ->
-            source_value = Map.get(record, last_relationship.source_field)
-
-            join_values =
-              join_data
-              |> Enum.filter(fn join_row ->
-                Map.get(join_row, last_relationship.source_field_on_join_table) ==
-                  source_value
-              end)
-              |> Enum.map(&Map.get(&1, last_relationship.destination_field_on_join_table))
-
-            related_records =
-              value
-              |> Enum.filter(fn value ->
-                destination_value = Map.get(value, last_relationship.destination_field)
-
-                destination_value in join_values
-              end)
-
-            Map.put(record, last_relationship.name, related_records)
-          end)
+          attach_many_to_many_side_loads(
+            data,
+            lead_path,
+            last_relationship,
+            name,
+            side_loads,
+            value
+          )
 
         %{cardinality: :many} ->
-          values = Enum.group_by(value, &Map.get(&1, last_relationship.destination_field))
-
-          map_or_update(data, lead_path, fn record ->
-            source_key = Map.get(record, last_relationship.source_field)
-            related_records = Map.get(values, source_key, [])
-            Map.put(record, last_relationship.name, related_records)
-          end)
+          attach_to_many_side_loads(value, last_relationship, data, lead_path)
 
         %{cardinality: :one} ->
-          values =
-            Enum.into(value, %{}, fn item ->
-              {Map.get(item, last_relationship.destination_field), item}
-            end)
-
-          map_or_update(data, lead_path, fn record ->
-            source_key = Map.get(record, last_relationship.source_field)
-            related_record = Map.get(values, source_key)
-            Map.put(record, last_relationship.name, related_record)
-          end)
+          attach_to_one_side_loads(value, last_relationship, data, lead_path)
       end
     end)
   end
@@ -163,6 +125,63 @@ defmodule Ash.Actions.SideLoad do
 
   def attach_side_loads(data, _) do
     data
+  end
+
+  defp attach_to_many_side_loads(value, last_relationship, data, lead_path) do
+    values = Enum.group_by(value, &Map.get(&1, last_relationship.destination_field))
+
+    map_or_update(data, lead_path, fn record ->
+      source_key = Map.get(record, last_relationship.source_field)
+      related_records = Map.get(values, source_key, [])
+      Map.put(record, last_relationship.name, related_records)
+    end)
+  end
+
+  defp attach_to_one_side_loads(value, last_relationship, data, lead_path) do
+    values =
+      Enum.into(value, %{}, fn item ->
+        {Map.get(item, last_relationship.destination_field), item}
+      end)
+
+    map_or_update(data, lead_path, fn record ->
+      source_key = Map.get(record, last_relationship.source_field)
+      related_record = Map.get(values, source_key)
+      Map.put(record, last_relationship.name, related_record)
+    end)
+  end
+
+  defp attach_many_to_many_side_loads(data, lead_path, last_relationship, name, side_loads, value) do
+    # TODO: If we sort the relationships as we do them (doing the join assoc first)
+    # then we can just use those linked assocs (maybe)
+    join_association = String.to_existing_atom(to_string(name) <> "_join_assoc")
+
+    join_path = lead_path ++ [join_association]
+
+    join_data =
+      side_loads
+      |> Map.get(join_path, [])
+
+    map_or_update(data, lead_path, fn record ->
+      source_value = Map.get(record, last_relationship.source_field)
+
+      join_values =
+        join_data
+        |> Enum.filter(fn join_row ->
+          Map.get(join_row, last_relationship.source_field_on_join_table) ==
+            source_value
+        end)
+        |> Enum.map(&Map.get(&1, last_relationship.destination_field_on_join_table))
+
+      related_records =
+        value
+        |> Enum.filter(fn value ->
+          destination_value = Map.get(value, last_relationship.destination_field)
+
+          destination_value in join_values
+        end)
+
+      Map.put(record, last_relationship.name, related_records)
+    end)
   end
 
   defp map_or_update(nil, _, _), do: nil
@@ -342,12 +361,10 @@ defmodule Ash.Actions.SideLoad do
         join_relationship_path = join_relationship_path(path, join_relationship)
 
         dependencies =
-          cond do
-            path == [] ->
-              []
-
-            true ->
-              [[:side_load, Enum.reverse(Enum.map(path, &Map.get(&1, :name))), :data]]
+          if path == [] do
+            []
+          else
+            [[:side_load, Enum.reverse(Enum.map(path, &Map.get(&1, :name))), :data]]
           end
 
         dependencies =

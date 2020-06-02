@@ -303,21 +303,7 @@ defmodule Ash.Api.Interface do
   def get(api, resource, id, opts) do
     with {:resource, {:ok, resource}} <- {:resource, api.get_resource(resource)},
          {:pkey, primary_key} when primary_key != [] <- {:pkey, Ash.primary_key(resource)} do
-      filter =
-        case {primary_key, id} do
-          {[field], [{field, value}]} ->
-            {:ok, [{field, value}]}
-
-          {[field], value} ->
-            {:ok, [{field, value}]}
-
-          {fields, value} ->
-            if Keyword.keyword?(value) and Enum.sort(Keyword.keys(value)) == Enum.sort(fields) do
-              {:ok, value}
-            else
-              {:error, "invalid primary key provided to `get/3`"}
-            end
-        end
+      filter = get_filter(primary_key, id)
 
       case filter do
         {:ok, filter} ->
@@ -349,6 +335,23 @@ defmodule Ash.Api.Interface do
 
       {:pkey, _} ->
         {:error, "Resource has no primary key"}
+    end
+  end
+
+  defp get_filter(primary_key, id) do
+    case {primary_key, id} do
+      {[field], [{field, value}]} ->
+        {:ok, [{field, value}]}
+
+      {[field], value} ->
+        {:ok, [{field, value}]}
+
+      {fields, value} ->
+        if Keyword.keyword?(value) and Enum.sort(Keyword.keys(value)) == Enum.sort(fields) do
+          {:ok, value}
+        else
+          {:error, "invalid primary key provided to `get/3`"}
+        end
     end
   end
 

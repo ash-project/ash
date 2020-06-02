@@ -155,22 +155,7 @@ defmodule Ash.Resource.Relationships do
 
       case relationship do
         {:ok, relationship} ->
-          if relationship.define_field? do
-            case Ash.Resource.Attributes.Attribute.new(
-                   __MODULE__,
-                   relationship.source_field,
-                   relationship.field_type,
-                   primary_key?: relationship.primary_key?
-                 ) do
-              {:ok, attribute} ->
-                @attributes attribute
-
-              {:error, message} ->
-                raise Ash.Error.ResourceDslError,
-                  message: message,
-                  path: [:relationships, :belongs_to, relationship_name]
-            end
-          end
+          Ash.Resource.Relationships.maybe_define_attribute(relationship)
 
           @relationships relationship
 
@@ -178,6 +163,27 @@ defmodule Ash.Resource.Relationships do
           raise Ash.Error.ResourceDslError,
             message: message,
             path: [:relationships, :belongs_to, relationship_name]
+      end
+    end
+  end
+
+  defmacro maybe_define_attribute(relationship) do
+    quote bind_quoted: [relationship: relationship] do
+      if relationship.define_field? do
+        case Ash.Resource.Attributes.Attribute.new(
+               __MODULE__,
+               relationship.source_field,
+               relationship.field_type,
+               primary_key?: relationship.primary_key?
+             ) do
+          {:ok, attribute} ->
+            @attributes attribute
+
+          {:error, message} ->
+            raise Ash.Error.ResourceDslError,
+              message: message,
+              path: [:relationships, :belongs_to, relationship_name]
+        end
       end
     end
   end

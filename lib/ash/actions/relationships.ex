@@ -56,15 +56,19 @@ defmodule Ash.Actions.Relationships do
           Ecto.Changeset.add_error(changeset, name, "Invalid relationship")
 
         relationship ->
-          case validate_relationship_change(relationship, data, action_type) do
-            {:ok, input} ->
-              add_relationship_read_requests(changeset, api, relationship, input, action_type)
-
-            {:error, error} ->
-              {:error, error}
-          end
+          do_handle_relationship_changes(api, changeset, relationship, data, action_type)
       end
     end)
+  end
+
+  defp do_handle_relationship_changes(api, changeset, relationship, data, action_type) do
+    case validate_relationship_change(relationship, data, action_type) do
+      {:ok, input} ->
+        add_relationship_read_requests(changeset, api, relationship, input, action_type)
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   defp add_relationship_read_requests(changeset, api, relationship, input, :update) do
@@ -93,13 +97,7 @@ defmodule Ash.Actions.Relationships do
         changeset =
           case relationship do
             %{type: :belongs_to, source_field: source_field, destination_field: destination_field} ->
-              case Keyword.fetch(identifiers, destination_field) do
-                {:ok, field_value} ->
-                  Ecto.Changeset.put_change(changeset, source_field, field_value)
-
-                _ ->
-                  changeset
-              end
+              add_belongs_to_change(changeset, identifiers, source_field, destination_field)
 
             _ ->
               changeset
@@ -108,6 +106,16 @@ defmodule Ash.Actions.Relationships do
         do_add_relationship_read_requests(changeset, api, relationship, identifiers, :add)
 
       :error ->
+        changeset
+    end
+  end
+
+  defp add_belongs_to_change(changeset, identifiers, source_field, destination_field) do
+    case Keyword.fetch(identifiers, destination_field) do
+      {:ok, field_value} ->
+        Ecto.Changeset.put_change(changeset, source_field, field_value)
+
+      _ ->
         changeset
     end
   end
@@ -210,38 +218,21 @@ defmodule Ash.Actions.Relationships do
         {:ok, %{replace: [data]}}
 
       is_list(data) ->
-        case Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
-               relationship.destination,
-               data
-             ) do
-          {:ok, identifiers} ->
-            {:ok, %{replace: identifiers}}
-
-          {:error, _} ->
-            {:error, "Relationship change invalid for #{relationship.name} 2"}
-        end
+        validate_list_replace(relationship, data)
 
       !is_map(data) ->
-        case Ash.Actions.PrimaryKeyHelpers.value_to_primary_key_filter(
-               relationship.destination,
-               data
-             ) do
-          {:ok, identifier} ->
-            {:ok, %{replace: identifier}}
-
-          {:error, _} ->
-            {:error, "Relationship change invalid for #{relationship.name} 2"}
-        end
+        validate_map_replace(relationship, data)
 
       Map.get(data, :__struct__) && Ash.resource_module?(data.__struct__) ->
-        # TODO: If they pass structs, we can avoid reading in the future
-        new_data =
-          data
-          |> Map.take(Ash.primary_key(data.__struct__))
-          |> Map.to_list()
+        validate_struct_replace(relationship, data, action_type)
 
-        validate_relationship_change(relationship, new_data, action_type)
+      true ->
+        validate_specified_replace(relationship, data, action_type)
+    end
+  end
 
+  defp validate_specified_replace(relationship, data, action_type) do
+    cond do
       Map.has_key?(data, :remove) and action_type == :create ->
         {:error, "Cannot remove from a relationship on create."}
 
@@ -254,6 +245,42 @@ defmodule Ash.Actions.Relationships do
 
       relationship.cardinality == :many ->
         validate_to_many_relationship_data(relationship, data)
+    end
+  end
+
+  defp validate_struct_replace(relationship, data, action_type) do
+    # TODO: If they pass structs, we can avoid reading in the future
+    new_data =
+      data
+      |> Map.take(Ash.primary_key(data.__struct__))
+      |> Map.to_list()
+
+    validate_relationship_change(relationship, new_data, action_type)
+  end
+
+  defp validate_map_replace(relationship, data) do
+    case Ash.Actions.PrimaryKeyHelpers.value_to_primary_key_filter(
+           relationship.destination,
+           data
+         ) do
+      {:ok, identifier} ->
+        {:ok, %{replace: identifier}}
+
+      {:error, _} ->
+        {:error, "Relationship change invalid for #{relationship.name} 2"}
+    end
+  end
+
+  defp validate_list_replace(relationship, data) do
+    case Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
+           relationship.destination,
+           data
+         ) do
+      {:ok, identifiers} ->
+        {:ok, %{replace: identifiers}}
+
+      {:error, _} ->
+        {:error, "Relationship change invalid for #{relationship.name} 2"}
     end
   end
 
@@ -536,29 +563,7 @@ defmodule Ash.Actions.Relationships do
     Enum.reduce(add, changeset, fn to_relate_record, changeset ->
       case find_pkey_match(current, to_relate_record, pkey) do
         nil ->
-          add_after_changes(changeset, fn _changeset, record ->
-            join_attrs = %{
-              relationship.source_field_on_join_table() =>
-                Map.get(record, relationship.source_field),
-              relationship.destination_field_on_join_table() =>
-                Map.get(to_relate_record, relationship.destination_field)
-            }
-
-            relationship.through
-            |> api.create(attributes: join_attrs, upsert?: true)
-            |> case do
-              {:ok, _join_row} ->
-                {:ok,
-                 add_to_set_relationship(
-                   record,
-                   relationship.name,
-                   to_relate_record
-                 )}
-
-              {:error, error} ->
-                {:error, error}
-            end
-          end)
+          do_relate_many_to_many(api, changeset, relationship, to_relate_record)
 
         _record ->
           changeset
@@ -568,6 +573,31 @@ defmodule Ash.Actions.Relationships do
 
   defp relate_many_to_many(changeset, _, _, _, _) do
     changeset
+  end
+
+  defp do_relate_many_to_many(api, changeset, relationship, to_relate_record) do
+    add_after_changes(changeset, fn _changeset, record ->
+      join_attrs = %{
+        relationship.source_field_on_join_table() => Map.get(record, relationship.source_field),
+        relationship.destination_field_on_join_table() =>
+          Map.get(to_relate_record, relationship.destination_field)
+      }
+
+      relationship.through
+      |> api.create(attributes: join_attrs, upsert?: true)
+      |> case do
+        {:ok, _join_row} ->
+          {:ok,
+           add_to_set_relationship(
+             record,
+             relationship.name,
+             to_relate_record
+           )}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    end)
   end
 
   defp remove_many_to_many(
@@ -585,45 +615,52 @@ defmodule Ash.Actions.Relationships do
           changeset
 
         to_remove_record ->
-          add_after_changes(changeset, fn _changeset, record ->
-            filter = [
-              {relationship.source_field_on_join_table,
-               Map.get(record, relationship.source_field)},
-              {
-                relationship.destination_field_on_join_table,
-                Map.get(to_remove_record, relationship.destination_field)
-              }
-            ]
-
-            case api.get(relationship.through, filter) do
-              {:ok, nil} ->
-                changeset
-
-              {:error, error} ->
-                {:error, error}
-
-              {:ok, found} ->
-                case api.destroy(found) do
-                  :ok ->
-                    {:ok,
-                     remove_from_set_relationship(
-                       record,
-                       relationship.name,
-                       found,
-                       pkey
-                     )}
-
-                  {:error, error} ->
-                    {:error, error}
-                end
-            end
-          end)
+          do_remove_many_to_many(api, changeset, relationship, to_remove_record, pkey)
       end
     end)
   end
 
   defp remove_many_to_many(changeset, _, _, _, _) do
     changeset
+  end
+
+  defp do_remove_many_to_many(api, changeset, relationship, to_remove_record, pkey) do
+    add_after_changes(changeset, fn _changeset, record ->
+      filter = [
+        {relationship.source_field_on_join_table, Map.get(record, relationship.source_field)},
+        {
+          relationship.destination_field_on_join_table,
+          Map.get(to_remove_record, relationship.destination_field)
+        }
+      ]
+
+      case api.get(relationship.through, filter) do
+        {:ok, nil} ->
+          changeset
+
+        {:error, error} ->
+          {:error, error}
+
+        {:ok, found} ->
+          destroy_and_remove(api, found, record, relationship, pkey)
+      end
+    end)
+  end
+
+  defp destroy_and_remove(api, found, record, relationship, pkey) do
+    case api.destroy(found) do
+      :ok ->
+        {:ok,
+         remove_from_set_relationship(
+           record,
+           relationship.name,
+           found,
+           pkey
+         )}
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   defp relate_has_many(changeset, api, relationship, %{add: add, current: current}, pkey)
