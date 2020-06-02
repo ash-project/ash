@@ -16,6 +16,9 @@ jobs:
       matrix:
         otp: ["23"]
         elixir: ["1.10.0"]
+    env:
+      MIX_ENV: test
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - run: sudo apt-get install --yes erlang-dev
       - uses: actions/checkout@v2
@@ -33,11 +36,8 @@ jobs:
           key: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-lock-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
           restore-keys: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}
       - run: mix deps.get
-      - run: mix check
-      - run: mix hex.user auth ash-project
-        if: startsWith(github.ref, 'refs/tags/v')
-        env:
-          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+      - run: mix check --except ex_unit
+      - run: mix coveralls.github
       - run: mix publish
         if: startsWith(github.ref, 'refs/tags/v')
         env:

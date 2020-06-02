@@ -18,6 +18,13 @@ defmodule Ash.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       package: package(),
       deps: deps(),
+      test_coverage: [tool: ExCoveralls],
+      preferred_cli_env: [
+        coveralls: :test,
+        "coveralls.detail": :test,
+        "coveralls.post": :test,
+        "coveralls.html": :test
+      ],
       docs: docs(),
       aliases: aliases(),
       description: @description,
@@ -59,7 +66,8 @@ defmodule Ash.MixProject do
       {:sobelow, ">= 0.0.0", only: :dev, runtime: false},
       {:git_ops, "~> 2.0.0", only: :dev},
       {:picosat_elixir, "~> 0.1.3"},
-      {:nimble_options, "~> 0.2.1"}
+      {:nimble_options, "~> 0.2.1"},
+      {:excoveralls, "~> 0.13.0", only: :test}
     ]
   end
 
