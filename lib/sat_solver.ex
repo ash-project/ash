@@ -96,7 +96,7 @@ defmodule Ash.SatSolver do
   defp join_expr(left, nil, _joiner), do: left
   defp join_expr(left, right, joiner), do: {joiner, left, right}
 
-  defp solve_expression(expression) do
+  def solve_expression(expression) do
     expression_with_constants = {:and, true, {:and, {:not, false}, expression}}
 
     {bindings, expression} = extract_bindings(expression_with_constants)

@@ -548,7 +548,7 @@ defmodule Ash.Filter do
 
   def empty_filter?(filter) do
     filter.attributes == %{} and filter.relationships == %{} and filter.not == nil and
-      filter.ors in [[], nil] and filter.ands in [[], nil]
+      filter.ors in [[], nil] and filter.ands in [[], nil] and filter.impossible? == false
   end
 
   defp add_records_to_relationship_filter(filter, [], records) do
@@ -637,10 +637,19 @@ defmodule Ash.Filter do
   end
 
   def add_to_filter(filter, %__MODULE__{} = addition) do
-    %{addition | ands: [filter | addition.ands]}
-    |> lift_impossibility()
-    |> lift_if_empty()
-    |> add_not_filter_info()
+    cond do
+      empty_filter?(filter) ->
+        addition
+
+      empty_filter?(addition) ->
+        filter
+
+      true ->
+        %{addition | ands: [filter | addition.ands]}
+        |> lift_impossibility()
+        |> lift_if_empty()
+        |> add_not_filter_info()
+    end
   end
 
   def add_to_filter(filter, additions) do
