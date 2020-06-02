@@ -24,17 +24,11 @@ jobs:
       - uses: actions/cache@v1
         id: cache-deps
         with:
-          path: deps
-          key: ${{matrix.otp}}-${{matrix.elixir}}-mix-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
-          restore-keys: ${{matrix.otp}}-${{matrix.elixir}}-mix-
-      - uses: actions/cache@v1
-        id: cache-build
-        with:
-          path: _build
-          # We may need to include elixir/OTP version in this cache key
-          key: ${{matrix.otp}}-${{matrix.elixir}}-build-${{ hashFiles('mix.lock') }}
-          restore-keys: |
-            ${{matrix.otp}}-${{matrix.elixir}}-build-
+          path: |
+            deps
+            _build
+          key: ${{matrix.otp}}-${{matrix.elixir}}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+          restore-keys: ${{matrix.otp}}-${{matrix.elixir}}-
       - run: mix deps.get
       - run: |
           mix compile --warnings-as-errors
