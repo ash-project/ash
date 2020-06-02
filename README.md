@@ -13,15 +13,20 @@
 
 Traditional MVC Frameworks (Rails, Django, .Net, Phoenix, etc) leave it up to the user to build the glue between requests for data (HTTP requests in various forms as well as server-side domain logic) and their respective ORMs. In that space, there is an incredible amount of boilerplate code that must get written from scratch for each application (authentication, authorization, sorting, filtering, sideloading relationships, serialization, etc).
 
-Ash is an opinionated yet configurable framework designed to reduce boilerplate in Elixir application. Don't worry Phoenix developers - Ash is designed to play well with Phoenix too :). Ash does this by providing a layer of abstraction over your system's data layer(s) with `Resources`.
+Ash is an opinionated yet configurable framework designed to reduce boilerplate in Elixir application. Ash does this by providing a layer of abstraction over your system's data layer(s) with `Resources`. It is designed to be used in conjunction with a phoenix application, or on its own.
 
 To riff on a famous JRR Tolkien quote, a `Resource`is "One Interface to rule them all, One Interface to find them" and will become an indispensable place to define contracts for interacting with data throughout your application.
 
-To start using Ash, first declare your `Resources` using the Ash `Resource` DSL. You could technically stop there, and just leverage the Ash Elixir API to avoid writing boilerplate. More likely, you would use libraries like Ash.JsonApi or Ash.GraphQL(someday) with Phoenix to add external interfaces to those resources without having to write any extra code at all.
-
-Developers should be focusing on their core business logic - not boilerplate code. Ash builds upon the incredible productivity of Phoenix and empowers developers to get up and running with a fully functional app in substantially less time, while still being flexible enough to allow customization when the need inevitably arises.
+To start using Ash, first declare your `Resources` using the Ash `Resource` DSL. You could technically stop there, and just leverage the Ash Elixir API to avoid writing boilerplate. More likely, you would use extensions like Ash.JsonApi or Ash.GraphQL with Phoenix to add external interfaces to those resources without having to write any extra code at all. Extensions a
 
 Ash is an open-source project and draws inspiration from similar ideas in other frameworks and concepts. The goal of Ash is to lower the barrier to adopting and using Elixir and Phoenix, and in doing so help these amazing communities attract new developers, projects, and companies.
+
+## Creating a new release of Ash
+
+- check out the repository locally
+- run `mix git_ops.release` (see git_ops documentation for more information)
+- check the changelog/new release number
+- push (with tags) and CI will automatically deploy the hex package
 
 ## Example Resource
 
