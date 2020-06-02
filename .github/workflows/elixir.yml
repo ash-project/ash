@@ -1,10 +1,15 @@
 name: Elixir CI
 
+env:
+
 on:
   push:
     branches: [master]
+    tags-ignore: ["v*"]
   pull_request:
     branches: [master]
+  create:
+    tags: ["v*"]
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -31,3 +36,5 @@ jobs:
           restore-keys: ${{matrix.otp}}-${{matrix.elixir}}-
       - run: mix deps.get
       - run: mix check
+      - run: mix hex.user auth ash-project --key $HEX_API_KEY
+        if: startsWith(github.ref, 'refs/tags/v')
