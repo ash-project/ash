@@ -1,22 +1,22 @@
 defmodule Ash.Filter do
-  @moduledoc """
-  A filter expression in Ash.
+  @moduledoc false
 
-  The way we represent filters may be strange, but its important to have it structured,
-  as merging and checking filter subsets are used all through ash for things like
-  authorization. The `ands` of a filter are not subject to its `ors`. The `not` of a filter
-  is also *not* subject to its `ors`.
-  For instance, if a filter `A` has two `ands`, `B` and `C` and two `ors`, `D` and `E`, and
-  a `not` of F, the expression as can be represented as `(A or D or E) and NOT F and B and C`.
+  # A filter expression in Ash.
 
-  The filters `attributes` and `relationships`, *are* subject to the `ors` of that filter.
+  # The way we represent filters may be strange, but its important to have it structured,
+  # as merging and checking filter subsets are used all through ash for things like
+  # authorization. The `ands` of a filter are not subject to its `ors`. The `not` of a filter
+  # is also *not* subject to its `ors`.
+  # For instance, if a filter `A` has two `ands`, `B` and `C` and two `ors`, `D` and `E`, and
+  # a `not` of F, the expression as can be represented as `(A or D or E) and NOT F and B and C`.
 
-  `<and_statements> AND NOT <not_statement> AND (<one_of_or_statements> OR <attributes + relationships>)`
+  # The filters `attributes` and `relationships`, *are* subject to the `ors` of that filter.
 
-  This probably needs to be refactored into something more representative of its behavior,
-  like a series of nested boolean expression structs w/ a reference to the attribute/relationship
-  it references. Maybe. This would be similar to Ecto's `BooleanExpr` structs.
-  """
+  # `<and_statements> AND NOT <not_statement> AND (<one_of_or_statements> OR <attributes + relationships>)`
+
+  # This probably needs to be refactored into something more representative of its behavior,
+  # like a series of nested boolean expression structs w/ a reference to the attribute/relationship
+  # it references. Maybe. This would be similar to Ecto's `BooleanExpr` structs.
 
   alias Ash.Actions.PrimaryKeyHelpers
   alias Ash.Engine

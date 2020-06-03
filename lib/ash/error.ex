@@ -96,6 +96,8 @@ defmodule Ash.Error do
 end
 
 defprotocol Ash.ErrorKind do
+  @moduledoc false
+
   @spec id(t()) :: String.t()
   def id(error)
 

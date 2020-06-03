@@ -1,5 +1,5 @@
 defmodule Ash.Resource.Relationships.BelongsTo do
-  @moduledoc "The representation of a `belongs_to` relationship"
+  @moduledoc false
   defstruct [
     :name,
     :cardinality,

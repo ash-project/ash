@@ -1,5 +1,5 @@
 defmodule Ash.Resource.Actions.Destroy do
-  @moduledoc "The representation of a `destroy` action"
+  @moduledoc false
 
   defstruct [:type, :name, :primary?]
 

@@ -1,10 +1,10 @@
 defmodule Ash.Schema do
-  @moduledoc """
-  Defines an ecto schema for a resource.
+  @moduledoc false
 
-  This defines struct representation of a resource. Data layers can rely on this
-  schema for persistence.
-  """
+  # Defines an ecto schema for a resource.
+
+  # This defines struct representation of a resource. Data layers can rely on this
+  # schema for persistence.
 
   defmacro define_schema(name) do
     quote do

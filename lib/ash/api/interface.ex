@@ -1,7 +1,5 @@
 defmodule Ash.Api.Interface do
-  @moduledoc """
-  The primary entry point for interacting with resources and their data.
-  """
+  @moduledoc false
 
   import Ash.OptionsHelpers, only: [merge_schemas: 3]
 
