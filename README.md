@@ -1,4 +1,6 @@
-# Ash
+
+
+![Test Image 6](https://github.com/ash-project/ash/blob/master/logos/cropped-for-header.png)
 
 ![Elixir CI](https://github.com/ash-project/ash/workflows/Elixir%20CI/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
