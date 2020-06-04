@@ -21,6 +21,27 @@ defmodule Ash.Error do
 
   @error_class_indices @error_classes |> Enum.with_index() |> Enum.into(%{})
 
+  def ash_error?(value) do
+    !!impl_for(value)
+  end
+
+  def to_ash_error(values) when is_list(values) do
+    values =
+      Enum.map(values, fn value ->
+        if ash_error?(value) do
+          value
+        else
+          Error.Unknown.exception(error: values)
+        end
+      end)
+
+    Error.choose_error(values)
+  end
+
+  def to_ash_error(value) do
+    to_ash_error([value])
+  end
+
   def choose_error(errors) do
     [error | _other_errors] = Enum.sort_by(errors, &Map.get(@error_class_indices, &1.class))
 

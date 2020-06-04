@@ -227,7 +227,7 @@ defmodule Ash.Actions.Relationships do
       !is_map(data) ->
         validate_map_replace(relationship, data)
 
-      Map.get(data, :__struct__) && Ash.resource_module?(data.__struct__) ->
+      Map.get(data, :__struct__) ->
         validate_struct_replace(relationship, data, action_type)
 
       true ->

@@ -18,14 +18,36 @@ defmodule Ash.Resource do
 
   Resource DSL documentation: `Ash.Resource.DSL`
 
+  The following options apply to `use Ash.Resource, [...]`
   #{NimbleOptions.docs(@resource_opts_schema)}
+
+  For more information on the resource DSL, see `Ash.Resource.DSL`
 
   Note:
   *Do not* call the functions on a resource, as in `MyResource.type()` as this is a *private*
   API and can change at any time. Instead, use the `Ash` module, for example: `Ash.type(MyResource)`
   """
 
+  @doc "The name of the resource, e.g 'posts'"
+  @callback name() :: String.t()
+  @doc "The type of the resource, e.g 'post'"
+  @callback type() :: String.t()
+  @doc "A list of attribute names that make up the primary key, e.g [:class, :group]"
   @callback primary_key() :: [atom]
+  @doc "A list of relationships to other resources"
+  @callback relationships() :: [Ash.relationship()]
+  @doc "A list of actions available for the resource"
+  @callback actions() :: [Ash.action()]
+  @doc "A list of attributes on the resource"
+  @callback attributes() :: [Ash.attribute()]
+  @doc "A list of extensions implemented by the resource"
+  @callback extensions() :: [module]
+  @doc "The data_layer in use by the resource, or nil if there is not one"
+  @callback data_layer() :: module | nil
+  @doc "A description of the resource, to be showed in generated documentation"
+  @callback describe() :: String.t()
+  @doc "A list of authorizers to be used when accessing the resource"
+  @callback authorizers() :: [module]
 
   defmacro __using__(opts) do
     quote do

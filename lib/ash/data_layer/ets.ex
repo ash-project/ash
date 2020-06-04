@@ -9,9 +9,12 @@ defmodule Ash.DataLayer.Ets do
 
   alias Ash.Filter.{And, Eq, In, NotEq, NotIn, Or}
 
+  @callback ets_private?() :: boolean
+
   defmacro __using__(opts) do
     quote bind_quoted: [opts: opts] do
       @data_layer Ash.DataLayer.Ets
+      @behaviour Ash.DataLayer.Ets
 
       @ets_private? Keyword.get(opts, :private?, false)
 
@@ -21,6 +24,7 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
+  @spec private?(Ash.resource()) :: boolean
   def private?(resource) do
     resource.ets_private?()
   end
@@ -31,7 +35,6 @@ defmodule Ash.DataLayer.Ets do
   end
 
   @impl true
-
   def can?(resource, :async_engine) do
     not private?(resource)
   end

@@ -336,7 +336,7 @@ defmodule Ash.Engine do
   end
 
   defp to_ash_error(error) do
-    if Ash.ash_error?(error) do
+    if Ash.Error.ash_error?(error) do
       error
     else
       Unknown.exception(error: error)
