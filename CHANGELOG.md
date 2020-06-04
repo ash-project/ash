@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v0.1.9](https://github.com/ash-project/ash/compare/0.1.8...v0.1.9) (2020-06-04)
+
+
+
+
+### Bug Fixes:
+
+* references to error handling code
+
+* fix empty filter checks
+
 ## [v0.1.8](https://github.com/ash-project/ash/compare/0.1.7...v0.1.8) (2020-06-02)
 
 This release is a test of our automatic hex.pm package publishing
