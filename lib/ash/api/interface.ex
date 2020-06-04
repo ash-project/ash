@@ -474,7 +474,7 @@ defmodule Ash.Api.Interface do
         result
 
       {:error, error} ->
-        exception = Ash.to_ash_error(error)
+        exception = Ash.Error.to_ash_error(error)
         raise exception
     end
   end

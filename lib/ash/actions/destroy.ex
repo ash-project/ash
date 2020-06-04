@@ -35,7 +35,7 @@ defmodule Ash.Actions.Destroy do
         :ok
 
       %Engine{errors: errors} ->
-        {:error, Ash.to_ash_error(errors)}
+        {:error, Ash.Error.to_ash_error(errors)}
     end
   end
 end

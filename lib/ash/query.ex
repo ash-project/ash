@@ -325,7 +325,7 @@ defmodule Ash.Query do
   defp add_error(query, key, message) do
     %{
       query
-      | errors: [Map.put(Ash.to_ash_error(message), :path, key) | query.errors],
+      | errors: [Map.put(Ash.Error.to_ash_error(message), :path, key) | query.errors],
         valid?: false
     }
   end

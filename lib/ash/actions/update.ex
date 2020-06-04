@@ -43,7 +43,7 @@ defmodule Ash.Actions.Update do
         {:error, Ash.Error.Changeset.changeset_to_errors(resource, changeset)}
 
       %{errors: errors} ->
-        {:error, Ash.to_ash_error(errors)}
+        {:error, Ash.Error.to_ash_error(errors)}
 
       {:error, error} ->
         {:error, error}

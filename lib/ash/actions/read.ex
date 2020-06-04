@@ -19,10 +19,10 @@ defmodule Ash.Actions.Read do
         {:error, "No such action defined, or no default action defined"}
 
       %{errors: errors} ->
-        {:error, Ash.to_ash_error(errors)}
+        {:error, Ash.Error.to_ash_error(errors)}
 
       {:error, error} ->
-        {:error, Ash.to_ash_error(error)}
+        {:error, Ash.Error.to_ash_error(error)}
     end
   end
 

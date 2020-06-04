@@ -12,11 +12,13 @@ defmodule Ash.Error do
     :unknown
   ]
 
+  alias Ash.Error.{Forbidden, Framework, Invalid, Unknown}
+
   @error_modules [
-    forbidden: Ash.Error.Forbidden,
-    invalid: Ash.Error.Invalid,
-    framework: Ash.Error.Framework,
-    unknown: Ash.Error.Unknown
+    forbidden: Forbidden,
+    invalid: Invalid,
+    framework: Framework,
+    unknown: Unknown
   ]
 
   @error_class_indices @error_classes |> Enum.with_index() |> Enum.into(%{})
@@ -31,11 +33,11 @@ defmodule Ash.Error do
         if ash_error?(value) do
           value
         else
-          Error.Unknown.exception(error: values)
+          Unknown.exception(error: values)
         end
       end)
 
-    Error.choose_error(values)
+    choose_error(values)
   end
 
   def to_ash_error(value) do
