@@ -20,9 +20,6 @@ defmodule Ash do
   @type error :: struct
   @type filter :: map()
   @type params :: Keyword.t()
-  @type create_params :: Keyword.t()
-  @type update_params :: Keyword.t()
-  @type delete_params :: Keyword.t()
   @type sort :: Keyword.t()
   @type side_loads :: Keyword.t()
   @type attribute :: Ash.Resource.Attributes.Attribute.t()

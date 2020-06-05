@@ -5,7 +5,7 @@ defmodule Ash.Actions.Update do
   alias Ash.Actions.{Relationships, SideLoad}
   require Logger
 
-  @spec run(Ash.api(), Ash.record(), Ash.action(), Ash.params()) ::
+  @spec run(Ash.api(), Ash.record(), Ash.action(), Keyword.t()) ::
           {:ok, Ash.record()} | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
   def run(api, %resource{} = record, action, params) do
     action =
