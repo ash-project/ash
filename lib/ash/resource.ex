@@ -1,25 +1,8 @@
 defmodule Ash.Resource do
-  @resource_opts_schema [
-    name: [
-      type: :string,
-      required: true,
-      doc:
-        "The name of the resource, e.g `posts` or `authors`. This will typically be the pluralized form of the type"
-    ],
-    type: [
-      type: :string,
-      required: true,
-      doc: "The type of the resource, e.g `post` or `author`. This is used throughout the system."
-    ]
-  ]
-
   @moduledoc """
   A resource is a static definition of an entity in your system.
 
   Resource DSL documentation: `Ash.Resource.DSL`
-
-  The following options apply to `use Ash.Resource, [...]`
-  #{NimbleOptions.docs(@resource_opts_schema)}
 
   For more information on the resource DSL, see `Ash.Resource.DSL`
 
@@ -28,10 +11,6 @@ defmodule Ash.Resource do
   API and can change at any time. Instead, use the `Ash` module, for example: `Ash.type(MyResource)`
   """
 
-  @doc "The name of the resource, e.g 'posts'"
-  @callback name() :: String.t()
-  @doc "The type of the resource, e.g 'post'"
-  @callback type() :: String.t()
   @doc "A list of attribute names that make up the primary key, e.g [:class, :group]"
   @callback primary_key() :: [atom]
   @doc "A list of relationships to other resources"
@@ -49,30 +28,19 @@ defmodule Ash.Resource do
   @doc "A list of authorizers to be used when accessing the resource"
   @callback authorizers() :: [module]
 
-  defmacro __using__(opts) do
+  defmacro __using__(_opts) do
     quote do
       @before_compile Ash.Resource
       @behaviour Ash.Resource
 
-      opts =
-        case NimbleOptions.validate(unquote(opts), Ash.Resource.resource_opts_schema()) do
-          {:error, message} ->
-            raise Ash.Error.ResourceDslError,
-              using: __MODULE__,
-              message: message
-
-          {:ok, opts} ->
-            opts
-        end
-
-      Ash.Resource.define_resource_module_attributes(__MODULE__, opts)
+      Ash.Resource.define_resource_module_attributes(__MODULE__)
 
       use Ash.Resource.DSL
     end
   end
 
   @doc false
-  def define_resource_module_attributes(mod, opts) do
+  def define_resource_module_attributes(mod) do
     Module.register_attribute(mod, :before_compile_hooks, accumulate: true)
     Module.register_attribute(mod, :actions, accumulate: true)
     Module.register_attribute(mod, :attributes, accumulate: true)
@@ -80,15 +48,8 @@ defmodule Ash.Resource do
     Module.register_attribute(mod, :extensions, accumulate: true)
     Module.register_attribute(mod, :authorizers, accumulate: true)
 
-    Module.put_attribute(mod, :name, opts[:name])
-    Module.put_attribute(mod, :resource_type, opts[:type])
     Module.put_attribute(mod, :data_layer, nil)
     Module.put_attribute(mod, :description, nil)
-  end
-
-  @doc false
-  def resource_opts_schema do
-    @resource_opts_schema
   end
 
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
@@ -115,11 +76,7 @@ defmodule Ash.Resource do
 
       require Ash.Schema
 
-      Ash.Schema.define_schema(@name)
-
-      def type do
-        @resource_type
-      end
+      Ash.Schema.define_schema()
 
       def relationships do
         @relationships
@@ -135,10 +92,6 @@ defmodule Ash.Resource do
 
       def primary_key do
         @ash_primary_key
-      end
-
-      def name do
-        @name
       end
 
       def extensions do

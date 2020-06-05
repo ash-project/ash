@@ -26,6 +26,7 @@ defmodule Ash.Resource.Relationships.HasMany do
   @opt_schema [
     destination_field: [
       type: :atom,
+      required: true,
       doc:
         "The field on the related resource that should match the `source_field` on this resource. Default: [resource.name]_id"
     ],
@@ -52,7 +53,7 @@ defmodule Ash.Resource.Relationships.HasMany do
           opts :: Keyword.t()
         ) :: {:ok, t()} | {:error, term}
   # sobelow_skip ["DOS.BinToAtom"]
-  def new(resource, resource_type, name, related_resource, opts \\ []) do
+  def new(resource, name, related_resource, opts \\ []) do
     # Don't call functions on the resource! We don't want it to compile here
     case NimbleOptions.validate(opts, @opt_schema) do
       {:ok, opts} ->
@@ -63,7 +64,7 @@ defmodule Ash.Resource.Relationships.HasMany do
            type: :has_many,
            cardinality: :many,
            destination: related_resource,
-           destination_field: opts[:destination_field] || :"#{resource_type}_id",
+           destination_field: opts[:destination_field],
            source_field: opts[:source_field],
            reverse_relationship: opts[:reverse_relationship]
          }}

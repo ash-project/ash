@@ -31,6 +31,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
   @opt_schema [
     source_field_on_join_table: [
       type: :atom,
+      required: true,
       doc:
         "The field on the join table that should line up with `source_field` on this resource. Default: [resource_name]_id"
     ],
@@ -68,13 +69,12 @@ defmodule Ash.Resource.Relationships.ManyToMany do
 
   @spec new(
           resource :: Ash.resource(),
-          resource_name :: String.t(),
           name :: atom,
           related_resource :: Ash.resource(),
           opts :: Keyword.t()
         ) :: {:ok, t()} | {:error, term}
   # sobelow_skip ["DOS.BinToAtom"]
-  def new(resource, resource_name, name, related_resource, opts \\ []) do
+  def new(resource, name, related_resource, opts \\ []) do
     # Don't call functions on the resource! We don't want it to compile here
     case NimbleOptions.validate(opts, @opt_schema) do
       {:ok, opts} ->
@@ -89,8 +89,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
            reverse_relationship: opts[:reverse_relationship],
            source_field: opts[:source_field],
            destination_field: opts[:destination_field],
-           source_field_on_join_table:
-             opts[:source_field_on_join_table] || :"#{resource_name}_id",
+           source_field_on_join_table: opts[:source_field_on_join_table],
            destination_field_on_join_table:
              opts[:destination_field_on_join_table] || :"#{name}_id"
          }}

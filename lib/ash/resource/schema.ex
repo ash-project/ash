@@ -6,12 +6,12 @@ defmodule Ash.Schema do
   # This defines struct representation of a resource. Data layers can rely on this
   # schema for persistence.
 
-  defmacro define_schema(name) do
+  defmacro define_schema do
     quote do
       use Ecto.Schema
       @primary_key false
 
-      schema unquote(name) do
+      schema "" do
         for attribute <- @attributes do
           read_after_writes? = attribute.generated? and is_nil(attribute.default)
 

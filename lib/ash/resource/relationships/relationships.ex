@@ -77,7 +77,6 @@ defmodule Ash.Resource.Relationships do
       relationship =
         HasOne.new(
           __MODULE__,
-          @resource_type,
           relationship_name,
           destination,
           opts
@@ -251,7 +250,6 @@ defmodule Ash.Resource.Relationships do
       relationship =
         Relationships.HasMany.new(
           __MODULE__,
-          @resource_type,
           relationship_name,
           destination,
           opts
@@ -319,7 +317,6 @@ defmodule Ash.Resource.Relationships do
       many_to_many =
         Relationships.ManyToMany.new(
           __MODULE__,
-          @name,
           relationship_name,
           destination,
           opts
@@ -330,7 +327,6 @@ defmodule Ash.Resource.Relationships do
       has_many =
         Relationships.HasMany.new(
           __MODULE__,
-          @name,
           has_many_name,
           opts[:through],
           destination_field: opts[:source_field_on_join_table],
