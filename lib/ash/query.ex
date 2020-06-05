@@ -34,7 +34,7 @@ defmodule Ash.Query do
       container_doc(
         "#Ash.Query<",
         [
-          concat("resource: ", Ash.name(query.resource)),
+          concat("resource: ", inspect(query.resource)),
           concat("filter: ", to_doc(query.filter, opts)),
           concat("sort: ", to_doc(query.sort, opts)),
           concat("limit: ", to_doc(query.limit, opts)),

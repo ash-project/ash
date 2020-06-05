@@ -115,18 +115,6 @@ defmodule Ash do
     resource.attributes()
   end
 
-  @doc "The name of the resource, e.g 'posts'"
-  @spec name(resource()) :: String.t()
-  def name(resource) do
-    resource.name()
-  end
-
-  @doc "The type of the resource, e.g 'post'"
-  @spec type(resource()) :: String.t()
-  def type(resource) do
-    resource.type()
-  end
-
   @doc "The data layer of the resource, or nil if it does not have one"
   @spec data_layer(resource()) :: data_layer()
   def data_layer(resource) do

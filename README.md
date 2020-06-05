@@ -27,7 +27,7 @@ Ash is an open-source project and draws inspiration from similar ideas in other 
 
 ```elixir
 defmodule Post do
-  use Ash.Resource, name: "posts", type: "post"
+  use Ash.Resource
   use AshJsonApi.JsonApiResource
   use Ash.DataLayer.Postgres
 
@@ -51,7 +51,6 @@ end
 
 Code Organization
 
-- break up the `Ash` module
 - consider moving `type` and `name` for resources out into json api (or perhaps just `name`) since only json api uses that
 - Consider allowing declaring a data layer at the _api_ level, or overriding the resource's data layer at the _api_ level
 - document the interface
