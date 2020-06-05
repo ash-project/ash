@@ -1,5 +1,3 @@
-
-
 ![Test Image 6](https://github.com/ash-project/ash/blob/master/logos/cropped-for-header.png)
 
 ![Elixir CI](https://github.com/ash-project/ash/workflows/Elixir%20CI/badge.svg)
@@ -50,25 +48,6 @@ end
 ```
 
 ## TODO LIST (in no order)
-
-Routing
-
-- Make our router cabaple of describing its routes in `mix phx.routes` Chris McCord says that we could probably power that, seeing as phoenix controls both APIs, and that capability could be added to `Plug.Router`
-
-Serializing
-
-- Finish the serializer
-
-Validations
-
-- DSL level validations! Things like includes validating that their chain exists. All DSL structs should be strictly validated when they are created.
-- Especially at compile time, we should _never_ ignore or skip invalid options. If an option is present and invalid, an error is raised.
-- Validate that the user resource has a get action
-- Maybe fix the crappy parts of optimal and bring it in for opts validation?
-- We need to validate incoming attributes/relationships better.
-- Validate `dependencies` and `must_fetch` (all `must_fetch` with dependencies must have those dependencies as `must_fetch` also)
-- validate using composite primary keys using the `data_layer.can?(:composite_primary_key)`
-- use schemas to validate the options in the interface
 
 Code Organization
 
