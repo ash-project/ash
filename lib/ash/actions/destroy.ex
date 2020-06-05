@@ -3,7 +3,7 @@ defmodule Ash.Actions.Destroy do
   alias Ash.Engine
   alias Ash.Engine.Request
 
-  @spec run(Ash.api(), Ash.record(), Ash.action(), Ash.params()) ::
+  @spec run(Ash.api(), Ash.record(), Ash.action(), Keyword.t()) ::
           :ok | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
   def run(api, %resource{} = record, action, _params) do
     action =

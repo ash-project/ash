@@ -8,4 +8,7 @@ defmodule Ash.OptionsHelpers do
 
     Keyword.merge(left, new_right)
   end
+
+  def map(value) when is_map(value), do: {:ok, value}
+  def map(_), do: {:error, "must be a map"}
 end
