@@ -11,6 +11,15 @@ defmodule Ash.Api.Interface do
       type: :boolean,
       default: false,
       doc: "Log engine operations (very verbose?)"
+    ],
+    action: [
+      type: :any,
+      doc: "The action to use, either an Action struct or the name of the action"
+    ],
+    actor: [
+      type: :any,
+      doc:
+        "If an actor is provided, it will be used in conjunction with the authorizers of a resource to authorize access"
     ]
   ]
 
