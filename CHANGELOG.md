@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v0.3.0](https://github.com/ash-project/ash/compare/0.2.0...v0.3.0) (2020-06-05)
+
+
+
+
+### Features:
+
+* remove name/type from ash core
+
+### Bug Fixes:
+
+* account for action/actor args to interface
+
+* remove the rest of the deps on name/type
+
+* add `resource_module?/1` back to `Ash`
+
 ## [v0.2.0](https://github.com/ash-project/ash/compare/0.1.9...v0.2.0) (2020-06-05)
 
 
