@@ -67,6 +67,14 @@ defmodule Ash do
     resource.relationships()
   end
 
+  @spec resource_module?(module) :: boolean
+  def resource_module?(module) do
+    :attributes
+    |> module.module_info()
+    |> Keyword.get(:behaviour, [])
+    |> Enum.any?(&(&1 == Ash.Resource))
+  end
+
   @doc false
   def primary_action!(resource, type) do
     case primary_action(resource, type) do
