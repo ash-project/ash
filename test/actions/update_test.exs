@@ -40,9 +40,11 @@ defmodule Ash.Test.Actions.UpdateTest do
     end
 
     relationships do
-      has_one :profile, Profile
+      has_one :profile, Profile, destination_field: :author_id
 
-      has_many :posts, Ash.Test.Actions.UpdateTest.Post, reverse_relationship: :author
+      has_many :posts, Ash.Test.Actions.UpdateTest.Post,
+        reverse_relationship: :author,
+        destination_field: :author_id
     end
   end
 

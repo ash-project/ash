@@ -42,9 +42,9 @@ defmodule Ash.Test.Actions.DestroyTest do
     end
 
     relationships do
-      has_one :profile, Profile
+      has_one :profile, Profile, destination_field: :author_id
 
-      has_many :posts, Ash.Test.Actions.CreateTest.Post
+      has_many :posts, Ash.Test.Actions.CreateTest.Post, destination_field: :author_id
     end
   end
 

@@ -49,7 +49,7 @@ defmodule Ash.Test.Filter.FilterTest do
         reverse_relationship: :author2,
         destination_field: :author1_id
 
-      has_one :profile, Profile
+      has_one :profile, Profile, destination_field: :user_id
     end
   end
 

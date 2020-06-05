@@ -37,6 +37,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
     ],
     destination_field_on_join_table: [
       type: :atom,
+      required: true,
       doc:
         "The field on the join table that should line up with `destination_field` on the related resource. Default: [relationshihp_name]_id"
     ],
@@ -90,8 +91,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
            source_field: opts[:source_field],
            destination_field: opts[:destination_field],
            source_field_on_join_table: opts[:source_field_on_join_table],
-           destination_field_on_join_table:
-             opts[:destination_field_on_join_table] || :"#{name}_id"
+           destination_field_on_join_table: opts[:destination_field_on_join_table]
          }}
 
       {:error, errors} ->

@@ -21,7 +21,10 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "it creates a relationship and a join relationship" do
       defposts do
         relationships do
-          many_to_many :related_posts, Post, through: SomeResource
+          many_to_many :related_posts, Post,
+            through: SomeResource,
+            source_field_on_join_table: :post_id,
+            destination_field_on_join_table: :related_post_id
         end
       end
 
@@ -29,7 +32,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                %Ash.Resource.Relationships.HasMany{
                  cardinality: :many,
                  destination: SomeResource,
-                 destination_field: :posts_id,
+                 destination_field: :post_id,
                  name: :related_posts_join_assoc,
                  source: Ash.Test.Resource.Relationships.ManyToManyTest.Post,
                  source_field: :id,
@@ -40,11 +43,11 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                  cardinality: :many,
                  destination: Ash.Test.Resource.Relationships.ManyToManyTest.Post,
                  destination_field: :id,
-                 destination_field_on_join_table: :related_posts_id,
+                 destination_field_on_join_table: :related_post_id,
                  name: :related_posts,
                  source: Ash.Test.Resource.Relationships.ManyToManyTest.Post,
                  source_field: :id,
-                 source_field_on_join_table: :posts_id,
+                 source_field_on_join_table: :post_id,
                  through: SomeResource,
                  type: :many_to_many,
                  reverse_relationship: nil
@@ -61,7 +64,10 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
         fn ->
           defposts do
             relationships do
-              many_to_many :foobars, Foobar, through: "some_table"
+              many_to_many :foobars, Foobar,
+                through: "some_table",
+                source_field_on_join_table: :source_post_id,
+                destination_field_on_join_table: :destination_post_id
             end
           end
         end
@@ -71,7 +77,10 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "you can pass a module to `through`" do
       defposts do
         relationships do
-          many_to_many :foobars, Foobar, through: FooBars
+          many_to_many :foobars, Foobar,
+            through: FooBars,
+            source_field_on_join_table: :source_post_id,
+            destination_field_on_join_table: :destination_post_id
         end
       end
     end
@@ -83,7 +92,10 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
         fn ->
           defposts do
             relationships do
-              many_to_many :foobars, Foobar, through: FooBars, source_field_on_join_table: "what"
+              many_to_many :foobars, Foobar,
+                through: FooBars,
+                source_field_on_join_table: "what",
+                destination_field_on_join_table: :destination_post_id
             end
           end
         end
@@ -99,7 +111,8 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
             relationships do
               many_to_many :foobars, Foobar,
                 through: FooBar,
-                destination_field_on_join_table: "what"
+                destination_field_on_join_table: "what",
+                source_field_on_join_table: :source_post_id
             end
           end
         end
@@ -115,7 +128,9 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
             relationships do
               many_to_many :foobars, Foobar,
                 through: FooBar,
-                source_field: "what"
+                source_field: "what",
+                source_field_on_join_table: :source_post_id,
+                destination_field_on_join_table: :destination_post_id
             end
           end
         end
@@ -131,7 +146,9 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
             relationships do
               many_to_many :foobars, Foobar,
                 through: FooBars,
-                destination_field: "what"
+                destination_field: "what",
+                source_field_on_join_table: :source_post_id,
+                destination_field_on_join_table: :destination_post_id
             end
           end
         end

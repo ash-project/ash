@@ -18,7 +18,9 @@ defmodule Ash.Test.Actions.SideLoadTest do
     end
 
     relationships do
-      has_many :posts, Ash.Test.Actions.SideLoadTest.Post, reverse_relationship: :author
+      has_many :posts, Ash.Test.Actions.SideLoadTest.Post,
+        reverse_relationship: :author,
+        destination_field: :author_id
     end
   end
 

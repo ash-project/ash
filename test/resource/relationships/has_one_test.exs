@@ -21,7 +21,7 @@ defmodule Ash.Test.Resource.Relationshihps.HasOneTest do
     test "it creates a relationship" do
       defposts do
         relationships do
-          has_one :foobar, FooBar
+          has_one :foobar, FooBar, destination_field: :post_id
         end
       end
 
@@ -60,7 +60,7 @@ defmodule Ash.Test.Resource.Relationshihps.HasOneTest do
         fn ->
           defposts do
             relationships do
-              has_one :foobar, FooBar, source_field: "foo"
+              has_one :foobar, FooBar, source_field: "foo", destination_field: :post_id
             end
           end
         end
