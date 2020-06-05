@@ -16,6 +16,12 @@ defmodule Ash.Api.Interface do
       type: :any,
       doc: "The action to use, either an Action struct or the name of the action"
     ],
+    authorize?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "If an actor is provided, authorization happens automatically. If not, this flag can be used to authorize with no user."
+    ],
     actor: [
       type: :any,
       doc:
