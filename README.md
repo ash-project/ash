@@ -49,47 +49,7 @@ end
 
 ## TODO LIST (in no order)
 
-Code Organization
-
-- consider moving `type` and `name` for resources out into json api (or perhaps just `name`) since only json api uses that
-- Consider allowing declaring a data layer at the _api_ level, or overriding the resource's data layer at the _api_ level
-- document the interface
-
-Errors
-
-- Wire up/formalize the error handling (this is high priority)
-- Ensure that errors are properly propagated up from the data_layer behaviour, and every operation is allowed to fail
-- includer errors are super obscure because you can't tell what action they are about
-
 Filters
-
-- Make sure to segment filters based on the involved data layers, so we can support cross data-layer filtering
-- Add impossibility checking for filters to avoid running queries that will never be possible.
-- Validate filters, now that there can be duplicates. Doesn't make sense to provide two "exact equals" filters
-- Clean up and test filter inspecting code.
-- When checking for filter inclusion, we should allow for `and` filters to each contain _part_ of the filter, requiring that the whole thing is covered by all of the `and`s at least
-- Add `filter: [relationship_name: [all: [...filter...]]]` so you can assert that _all_ related items match a filter (for to many relationships, may perform poorly)
-- really need to figure out the distinction between filter impossibility for things like authorization plays into filter impossibility as an optimization. I think they are actually two different things. The fact that you consider nothing to be a subset of an impossible filter may not be correct.
-- Figure out how to handle cross data layer filters for boolean.
-- lift `or` filters over the same field equaling a value into a single `in` filter, for performance (potentially)
-- make runtime filtering of a list of records + an ash filter a public interface. At first, we can just run a query with that filter, and filter for matches. Eventually it can be optimized.
-- When combining filters, we can prune branches that are strict subset of eachother potentially. Depends on the performance of the sat solver. Perhaps the best choice there would be to traverse on each filter addition, perhaps using the existing Merge entrypoint ?
-- document the concepts behind filter simplification. The following is an old comment I wrote talking about it
-
-```elixir
-  # The story here:
-  # we don't really need to fully simplify every value statement, e.g `in: [1, 2, 3]` -> `== 1 or == 2 or == 3`
-  # We could instead just simplify *only as much as we need to*, for instance if the filter contains
-  # `in: [1, 2, 3]` and `in: [2, 3, 4]`, we could translate the first to `in: [2, 3] or == 1` and the
-  # second one to `in: [2, 3] or == 4`. We should then be able to go about expressing the fact that none
-  # of `== 1` and `== 2` are mutually exclusive terms by exchanging them for `== 1 and != 2` and `== 2 and != 1`
-  # respectively. This is the methodology behind translating a *value* based filter into a boolean expression.
-  #
-  # However for now for simplicity's sake, I'm turning all `in: [1, 2]` into `== 1 or == 2` and all `not_in: [1, 2]`
-  # into `!= 1 and !=2` for the sole reason that its not worth figuring it out right now. Cosimplification is, at the
-  # and of the day, really just an optimization to keep the expression simple. Its not so important with lists and equality
-  # but when we add substring filters/greater than filters, we're going to need to improve this logic
-```
 
 This is from a conversation about how we might support on-demand calculated attributes
 that would allow doing something like getting the trigram similarity to a piece of text
@@ -156,16 +116,12 @@ CI
 
 Relationships
 
-- Flesh out relationship options
-- most relationship stuff can't be done w/o primary keys
-- Don't let users declare `has_one` relationships without claiming that there is a unique constraint on the destination field.
 - Validate that all relationships on all resources in the API have destinations _in_ that API, or don't and add in logic to pretend those don't exist through the API.
 - validate reverse relationships!!
 - document reverse relationships, or perhaps consider that we need a `from_relationship` filter instead?
 - Factor out shared relationship options into its own schema, and merge them, for clearer docs.
 - Naturally, only inner joins are allowed now. I think only inner joins will be necessary, as the pattern in ash would be to side load related data.
 - Support arbitrary "through" relationships
-- relationships updates are _extremely_ unoptimized
 - right now we don't support having duplicates in `many_to_many` relationships, so we'll need to document the limits around that: the primary key of the join resource must be (at least as it is in ash) the join keys. If they don't want to do that, then they should at a minimum define a unique constraint on the two join keys.
 - relationship changes are an artifact of the old way of doing things and are very ugly right now
 - Figure out under what circumstances we can bulk fetch when reading before updating many_to_many and to_many relationships, and do so.
