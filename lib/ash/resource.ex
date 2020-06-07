@@ -31,6 +31,7 @@ defmodule Ash.Resource do
   defmacro __using__(_opts) do
     quote do
       @before_compile Ash.Resource
+      @after_compile Ash.Resource
       @behaviour Ash.Resource
 
       Ash.Resource.define_resource_module_attributes(__MODULE__)
@@ -50,6 +51,36 @@ defmodule Ash.Resource do
 
     Module.put_attribute(mod, :data_layer, nil)
     Module.put_attribute(mod, :description, nil)
+  end
+
+  defmacro __after_compile__(env, bytecode) do
+    quote do
+      case @ash_primary_key do
+        [] ->
+          :ok
+
+        [_] ->
+          :ok
+
+        primary_key ->
+          if @data_layer && not @data_layer.can?(unquote(env.module), :composite_primary_key) do
+            raise """
+            Resource #{inspect(__MODULE__)} has a composite primary key: #{
+              Enum.join(primary_key, ", ")
+            },
+            but its data layer doesnt support composite primary keys
+            """
+          end
+      end
+
+      @extensions
+      |> List.wrap()
+      |> Enum.filter(&:erlang.function_exported(&1, :after_compile_hook, 1))
+      |> Enum.each(fn extension ->
+        code = extension.after_compile_hook(unquote(Macro.escape(env)), unquote(bytecode))
+        Module.eval_quoted(__MODULE__, code)
+      end)
+    end
   end
 
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
@@ -110,8 +141,11 @@ defmodule Ash.Resource do
         @authorizers
       end
 
-      Enum.map(@extensions || [], fn hook_module ->
-        code = hook_module.before_compile_hook(unquote(Macro.escape(env)))
+      @extensions
+      |> List.wrap()
+      |> Enum.filter(&:erlang.function_exported(&1, :before_compile_hook, 1))
+      |> Enum.each(fn extension ->
+        code = extension.before_compile_hook(unquote(Macro.escape(env)))
         Module.eval_quoted(__MODULE__, code)
       end)
     end
