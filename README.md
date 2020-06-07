@@ -49,30 +49,6 @@ end
 
 ## TODO LIST (in no order)
 
-Filters
-
-This is from a conversation about how we might support on-demand calculated attributes
-that would allow doing something like getting the trigram similarity to a piece of text
-and filtering on it in the same request
-
-```elixir
-  :representatives
-  |> Api.query()
-  |> Ash.Query.filter(first_name: [trigram: [text: "Geoff", similarity: [greater_than: 0.1]]])
-  |> Api.read!()
-
-  calculated_attributes do
-    on_demand :trigram, [:first_name, :last_name]
-    # calculated(:name_similarity, :float, calculate: [trigram_similarity: {:input, :text}])
-  end
-
-  :representatives
-  |> Api.query()
-  |> Ash.Query.calculate(first_name_similarity: [first_name: [trigram: [text: "Geoff"]]])
-  |> Ash.Query.filter(first_name_similarity: [greater_than: 0.1])
-  |> Api.read!()
-```
-
 Actions
 
 - all actions need to be performed in a transaction
