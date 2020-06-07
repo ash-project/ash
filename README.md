@@ -49,20 +49,6 @@ end
 
 ## TODO LIST (in no order)
 
-Relationships
-
-- right now we don't support having duplicates in `many_to_many` relationships, so we'll need to document the limits around that: the primary key of the join resource must be (at least as it is in ash) the join keys. If they don't want to do that, then they should at a minimum define a unique constraint on the two join keys.
-- relationship changes are an artifact of the old way of doing things and are very ugly right now
-- Figure out under what circumstances we can bulk fetch when reading before updating many_to_many and to_many relationships, and do so.
-- Perhaps, reverse relationships should eliminate the need to set destination field.
-- also, perhaps, reverse relationships suck and should not be necessary. The alternative is a `from_related` filter, that lets you use an association in reverse
-- allow configuring the name of the join relationship name for many to many relationships
-
-Primary Key
-
-- So many parts of the system are reliant on things having an `id` key explicitly. THis will need to be addressed some day, and will be a huge pain in the ass
-- Raise on composite primary key if data layer can't do it
-
 Params
 
 - `params` should be solidified. Perhaps as a struct. Or perhaps just renamed to `action_params` where it is used.
@@ -109,7 +95,6 @@ Testing
 
 Engine
 
-- implement transactions in the engine. Perhaps by assigning requests transaction ids or something along those lines.
 - fix the comment noted in the destroy action: ~the delete needs to happen _outside_ of the data fetching step, so the engine needs some kind of "after data resolved" capability~
 - add a total failure mode (since JSON API just fails entirely) that will cause the engine to stop on the first error
 - Get rid of all of the :lists.droplast and List.first stuff by making a `%Ash.Engine.Dependecy{path: path, field: field}`
