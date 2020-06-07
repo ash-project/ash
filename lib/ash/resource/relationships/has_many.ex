@@ -23,25 +23,17 @@ defmodule Ash.Resource.Relationships.HasMany do
           reverse_relationship: atom() | nil
         }
 
-  @opt_schema [
-    destination_field: [
-      type: :atom,
-      required: true,
-      doc:
-        "The field on the related resource that should match the `source_field` on this resource. Default: [resource.name]_id"
-    ],
-    source_field: [
-      type: :atom,
-      default: :id,
-      doc:
-        "The field on this resource that should match the `destination_field` on the related resource."
-    ],
-    reverse_relationship: [
-      type: :atom,
-      doc:
-        "A requirement for side loading data. Must be the name of an inverse relationship on the destination resource."
-    ]
-  ]
+  import Ash.Resource.Relationships.SharedOptions
+
+  @global_opts shared_options()
+               |> make_required!(:destination_field)
+               |> set_default!(:source_field, :id)
+
+  @opt_schema Ash.OptionsHelpers.merge_schemas(
+                [],
+                @global_opts,
+                "Relationship Options"
+              )
 
   @doc false
   def opt_schema, do: @opt_schema

@@ -49,55 +49,8 @@ end
 
 ## TODO LIST (in no order)
 
-Actions
-
-- all actions need to be performed in a transaction
-- Since actions can return multiple errors, we need a testing utility to unwrap/assert on them
-- Validate that checks have the correct action type when compiling an action
-- Handle related values on delete
-- If structs/a struct is passed into a relationship change like `api.update(:author, relationships: %{posts: %Post{}})` we shouldn't have to read it back
-- Support bulk creation - use this when managing to many relationships if available
-- support deleting w/ a query - use this when managing to many relationships
-- Support fields on join tables if they are a resource
-- dont require a join table for many_to_many relationships
-
-Authorization
-
-- document authorization thoroughly. _batch_ (default) checks need to return a list of `ids` for which the check passed.
-- Do branch analysis of each record after authorizing it, in authorizer
-- Make authorization spit out informative errors (at least for developers)
-- Rearchitect relationship updates so that they can be sensible authorized. As in, which resource is responsible for authorizing updates to a relationship? Should there be some unified way to describe it? Or is updating a user's posts an entirely separate operation from updating a post's user?
-- Test authorization
-- Support branching/more complicated control flow in authorization steps
-- The Authorization flow for creates/updates may be insufficient. Instead of adding requests if relationships/attributes are changing, we may instead want to embed that knowledge inside the sat solver itself. Basically a `relationship_foo_is_changing` fact, *and*ed with the resulting conditions. I'm not even sure if thats possible though.
-- Consider that authorization steps may eventually need to be able to branch. This may or may not be difficult :)
-- Allow a feature called `verify_after_write` that fetches the final attribute variable from data somehow. Authorization fetchers will need to take state as an argument or something like that, and maybe need to specify dependencies?.
-- Side load authorization testing
-- Right now, includes will be generating their authorization facts independently. This is no great loss because anything that isn't data dependent should be a strict check anyway. However, we may at some point want to check to see if any filter exactly matches a side load filter, and authorize them together/have them share.
-- Forbid impossible auth/creation situations (e.g "the id field is not exposed on a create action, and doesn't have a default, therefore writes will always fail.)
-- perhaps have auth steps express which fields need to be present, so we can avoid loading things unnecessarily
-- check if preparations have been done on a superset filter of a request and, if so, use it
-- just had a cool thought: we can actually run the satsolver _before_ fetching the user. The satsolver could warn us early that _no user_ could make the request in question!
-- Use the sat solver at compile time to tell people when requests they've configured (and maybe all combinations of includes they've allowed?) couldn't possibly be allowed together.
-- optimize authorization by allowing facts to be shared amongst requests?
-- handle errors from runtime filtering based on authorizer responses
-
-Community
-
-- [twirp](https://github.com/keathley/twirp)
-
-CI
-
-- Add support for more elixir/erlang versions, add them to the CI matrix
-
 Relationships
 
-- Validate that all relationships on all resources in the API have destinations _in_ that API, or don't and add in logic to pretend those don't exist through the API.
-- validate reverse relationships!!
-- document reverse relationships, or perhaps consider that we need a `from_relationship` filter instead?
-- Factor out shared relationship options into its own schema, and merge them, for clearer docs.
-- Naturally, only inner joins are allowed now. I think only inner joins will be necessary, as the pattern in ash would be to side load related data.
-- Support arbitrary "through" relationships
 - right now we don't support having duplicates in `many_to_many` relationships, so we'll need to document the limits around that: the primary key of the join resource must be (at least as it is in ash) the join keys. If they don't want to do that, then they should at a minimum define a unique constraint on the two join keys.
 - relationship changes are an artifact of the old way of doing things and are very ugly right now
 - Figure out under what circumstances we can bulk fetch when reading before updating many_to_many and to_many relationships, and do so.
@@ -120,19 +73,8 @@ Ecto
 
 - The ecto internals that live on structs are going to cause problems w/ pluggability of backends, like the `%Ecto.Association.NotLoaded{}`. That backend may need to scrub the ecto specifics off of those structs.
 
-ETS
-
-- make ets dep optional
-- Unit test the Ets data layer
-
-Observability
-
-- Use telemetry and/or some kind of hook system to add metrics
-
 Data Layer
 
-- BIG: support transactions, both detecting that we are in a transaction
-  and specifying a cross data-layer transaction
 - Allow encoding database-level constraints into the resource, like "nullable: false" or something. This will let us validate things like not leaving orphans when bulk updating a many to many
 - Eventually data_layers should state what raw types they support, and the filters they support on those raw types
 - Think hard about the data_layer.can? pattern to make sure we're giving enough info, but not too much.

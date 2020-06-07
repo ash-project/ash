@@ -28,42 +28,35 @@ defmodule Ash.Resource.Relationships.ManyToMany do
           reverse_relationship: atom
         }
 
-  @opt_schema [
-    source_field_on_join_table: [
-      type: :atom,
-      required: true,
-      doc:
-        "The field on the join table that should line up with `source_field` on this resource. Default: [resource_name]_id"
-    ],
-    destination_field_on_join_table: [
-      type: :atom,
-      required: true,
-      doc:
-        "The field on the join table that should line up with `destination_field` on the related resource. Default: [relationshihp_name]_id"
-    ],
-    source_field: [
-      type: :atom,
-      default: :id,
-      doc:
-        "The field on this resource that should line up with `source_field_on_join_table` on the join table."
-    ],
-    destination_field: [
-      type: :atom,
-      default: :id,
-      doc:
-        "The field on the related resource that should line up with `destination_field_on_join_table` on the join table."
-    ],
-    through: [
-      type: :atom,
-      required: true,
-      doc: "The resource to use as the join resource."
-    ],
-    reverse_relationship: [
-      type: :atom,
-      doc:
-        "A requirement for side loading data. Must be the name of an inverse relationship on the destination resource."
-    ]
-  ]
+  import Ash.Resource.Relationships.SharedOptions
+
+  @global_opts shared_options()
+               |> set_default!(:destination_field, :id)
+               |> set_default!(:source_field, :id)
+
+  @opt_schema Ash.OptionsHelpers.merge_schemas(
+                [
+                  source_field_on_join_table: [
+                    type: :atom,
+                    required: true,
+                    doc:
+                      "The field on the join table that should line up with `source_field` on this resource. Default: [resource_name]_id"
+                  ],
+                  destination_field_on_join_table: [
+                    type: :atom,
+                    required: true,
+                    doc:
+                      "The field on the join table that should line up with `destination_field` on the related resource. Default: [relationshihp_name]_id"
+                  ],
+                  through: [
+                    type: :atom,
+                    required: true,
+                    doc: "The resource to use as the join resource."
+                  ]
+                ],
+                @global_opts,
+                "Relationship Options"
+              )
 
   @doc false
   def opt_schema, do: @opt_schema

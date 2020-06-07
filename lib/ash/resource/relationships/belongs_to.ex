@@ -27,40 +27,33 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           source_field: atom | nil
         }
 
-  @opt_schema [
-    destination_field: [
-      type: :atom,
-      default: :id,
-      doc:
-        "The field on the related resource that should match the `source_field` on this resource."
-    ],
-    source_field: [
-      type: :atom,
-      doc:
-        "The field on this resource that should match the `destination_field` on the related resource.  Default: [relationship_name]_id"
-    ],
-    primary_key?: [
-      type: :boolean,
-      default: false,
-      doc: "Whether this field is, or is part of, the primary key of a resource."
-    ],
-    define_field?: [
-      type: :boolean,
-      default: true,
-      doc:
-        "If set to `false` a field is not created on the resource for this relationship, and one must be manually added in `attributes`."
-    ],
-    field_type: [
-      type: :any,
-      default: :uuid,
-      doc: "The field type of the automatically created field."
-    ],
-    reverse_relationship: [
-      type: :atom,
-      doc:
-        "A requirement for side loading data. Must be the name of an inverse relationship on the destination resource."
-    ]
-  ]
+  import Ash.Resource.Relationships.SharedOptions
+
+  @global_opts shared_options()
+               |> set_default!(:destination_field, :id)
+
+  @opt_schema Ash.OptionsHelpers.merge_schemas(
+                [
+                  primary_key?: [
+                    type: :boolean,
+                    default: false,
+                    doc: "Whether this field is, or is part of, the primary key of a resource."
+                  ],
+                  define_field?: [
+                    type: :boolean,
+                    default: true,
+                    doc:
+                      "If set to `false` a field is not created on the resource for this relationship, and one must be manually added in `attributes`."
+                  ],
+                  field_type: [
+                    type: :any,
+                    default: :uuid,
+                    doc: "The field type of the automatically created field."
+                  ]
+                ],
+                @global_opts,
+                "Relationship Options"
+              )
 
   @doc false
   def opt_schema, do: @opt_schema
