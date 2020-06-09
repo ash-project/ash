@@ -63,7 +63,7 @@ defmodule Ash.MixProject do
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
       {:sobelow, ">= 0.0.0", only: :dev, runtime: false},
       {:git_ops, "~> 2.0.0", only: :dev},
-      {:picosat_elixir, "~> 0.1.3"},
+      {:picosat_elixir, github: "zachdaniel/picosat_elixir", ref: "patch-1"},
       {:nimble_options, "~> 0.2.1"},
       {:excoveralls, "~> 0.13.0", only: [:dev, :test]}
     ]
