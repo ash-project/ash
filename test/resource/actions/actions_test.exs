@@ -4,9 +4,11 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
 
   defmacrop defposts(do: body) do
     quote do
+      # Process.flag(:trap_exit, true)
+
       defmodule Post do
         @moduledoc false
-        use Ash.Resource, name: "posts", type: "post"
+        use Ash.Resource
 
         unquote(body)
       end

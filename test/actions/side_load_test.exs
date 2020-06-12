@@ -4,8 +4,11 @@ defmodule Ash.Test.Actions.SideLoadTest do
 
   defmodule Author do
     @moduledoc false
-    use Ash.Resource, name: "authors", type: "author"
-    use Ash.DataLayer.Ets, private?: true
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
 
     actions do
       read :default
@@ -26,8 +29,11 @@ defmodule Ash.Test.Actions.SideLoadTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, name: "posts", type: "post"
-    use Ash.DataLayer.Ets, private?: true
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
 
     actions do
       read :default
@@ -49,7 +55,10 @@ defmodule Ash.Test.Actions.SideLoadTest do
     @moduledoc false
     use Ash.Api
 
-    resources [Author, Post]
+    resources do
+      resource(Author)
+      resource(Post)
+    end
   end
 
   describe "side_loads" do

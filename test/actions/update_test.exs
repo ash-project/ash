@@ -4,8 +4,11 @@ defmodule Ash.Test.Actions.UpdateTest do
 
   defmodule Profile do
     @moduledoc false
-    use Ash.Resource, name: "authors", type: "author"
-    use Ash.DataLayer.Ets, private?: true
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
 
     actions do
       read :default
@@ -25,8 +28,11 @@ defmodule Ash.Test.Actions.UpdateTest do
 
   defmodule Author do
     @moduledoc false
-    use Ash.Resource, name: "authors", type: "author"
-    use Ash.DataLayer.Ets, private?: true
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
 
     actions do
       read :default
@@ -50,8 +56,11 @@ defmodule Ash.Test.Actions.UpdateTest do
 
   defmodule PostLink do
     @moduledoc false
-    use Ash.Resource, name: "post_links", type: "post_link"
-    use Ash.DataLayer.Ets, private?: true
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
 
     actions do
       read :default
@@ -68,8 +77,11 @@ defmodule Ash.Test.Actions.UpdateTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, name: "posts", type: "post"
-    use Ash.DataLayer.Ets, private?: true
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
 
     actions do
       read :default
@@ -98,7 +110,12 @@ defmodule Ash.Test.Actions.UpdateTest do
     @moduledoc false
     use Ash.Api
 
-    resources [Author, Post, Profile, PostLink]
+    resources do
+      resource(Author)
+      resource(Post)
+      resource(Profile)
+      resource(PostLink)
+    end
   end
 
   describe "simple updates" do
@@ -285,7 +302,7 @@ defmodule Ash.Test.Actions.UpdateTest do
       assert Api.get!(Author, author2.id, side_load: [:posts]).posts == [Api.get!(Post, post.id)]
     end
 
-    test "it respons with the relationship field filled in" do
+    test "it responds with the relationship field filled in" do
       author = Api.create!(Author, attributes: %{bio: "best dude"})
       author2 = Api.create!(Author, attributes: %{bio: "best dude"})
 

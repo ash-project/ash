@@ -5,28 +5,29 @@ defmodule Ash.DataLayer.Ets do
   This is used for testing. *Do not use this data layer in production*
   """
 
-  @behaviour Ash.DataLayer
-
   alias Ash.Filter.{And, Eq, In, NotEq, NotIn, Or}
 
-  @callback ets_private?() :: boolean
+  @behaviour Ash.DataLayer
 
-  defmacro __using__(opts) do
-    quote bind_quoted: [opts: opts] do
-      @data_layer Ash.DataLayer.Ets
-      @behaviour Ash.DataLayer.Ets
+  @ets %Ash.Dsl.Section{
+    name: :ets,
+    describe: """
+    A section for configuring the ets data layer
+    """,
+    schema: [
+      private?: [
+        type: :boolean,
+        default: false
+      ]
+    ]
+  }
 
-      @ets_private? Keyword.get(opts, :private?, false)
-
-      def ets_private? do
-        @ets_private?
-      end
-    end
-  end
+  use Ash.Dsl.Extension, sections: [@ets]
+  alias Ash.Dsl.Extension
 
   @spec private?(Ash.resource()) :: boolean
   def private?(resource) do
-    resource.ets_private?()
+    Extension.get_opt(resource, [:ets], :private?)
   end
 
   defmodule Query do

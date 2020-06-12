@@ -33,7 +33,32 @@ defmodule Ash.MixProject do
 
   defp docs do
     # The main page in the docs
-    [main: "readme", extras: ["README.md"]]
+    [
+      main: "Ash",
+      source_ref: "v#{@version}",
+      extras: ["documentation/Getting Started.md"],
+      logo: "logos/small-logo.png",
+      groups_for_modules: [
+        entrypoint: [
+          Ash,
+          Ash.Api,
+          Ash.Resource,
+          Ash.Dsl,
+          Ash.Query
+        ],
+        type: ~r/Ash.Type/,
+        data_layer: ~r/Ash.DataLayer/,
+        authorizer: ~r/Ash.Authorizer/,
+        extension: [
+          Ash.Dsl.Entity,
+          Ash.Dsl.Extension,
+          Ash.Dsl.Section
+        ],
+        "resource dsl transformers": ~r/Ash.Resource.Transformers/,
+        "resource dsl": ~r/Ash.Dsl/,
+        "api dsl": ~r/Ash.Api.Dsl/
+      ]
+    ]
   end
 
   defp package do
@@ -55,17 +80,18 @@ defmodule Ash.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:ecto, "~> 3.0"},
+      {:ecto, "~> 3.4"},
       {:ets, "~> 0.8.0"},
-      {:ex_doc, "~> 0.21", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.22", only: :dev, runtime: false},
       {:ex_check, "~> 0.11.0", only: :dev},
       {:credo, ">= 0.0.0", only: :dev, runtime: false},
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
       {:sobelow, ">= 0.0.0", only: :dev, runtime: false},
       {:git_ops, "~> 2.0.0", only: :dev},
-      {:picosat_elixir, github: "zachdaniel/picosat_elixir", ref: "patch-1"},
+      {:picosat_elixir, "~> 0.1.4"},
       {:nimble_options, "~> 0.2.1"},
-      {:excoveralls, "~> 0.13.0", only: [:dev, :test]}
+      {:excoveralls, "~> 0.13.0", only: [:dev, :test]},
+      {:benchee, "~> 1.0.1", only: [:dev]}
     ]
   end
 

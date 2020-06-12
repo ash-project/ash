@@ -1,7 +1,7 @@
 defmodule Ash.Resource.Actions.Read do
-  @moduledoc "The representation of a `read` action"
+  @moduledoc false
 
-  defstruct [:type, :name, :primary?]
+  defstruct [:name, :primary?, type: :read]
 
   @type t :: %__MODULE__{
           type: :read,
@@ -10,6 +10,10 @@ defmodule Ash.Resource.Actions.Read do
         }
 
   @opt_schema [
+    name: [
+      type: :atom,
+      doc: "The name of the action"
+    ],
     primary?: [
       type: :boolean,
       default: false,
@@ -19,21 +23,4 @@ defmodule Ash.Resource.Actions.Read do
 
   @doc false
   def opt_schema, do: @opt_schema
-
-  @spec new(Ash.resource(), atom, Keyword.t()) :: {:ok, t()} | {:error, term}
-  def new(_resource, name, opts \\ []) do
-    # Don't call functions on the resource! We don't want it to compile here
-    case NimbleOptions.validate(opts, @opt_schema) do
-      {:ok, opts} ->
-        {:ok,
-         %__MODULE__{
-           name: name,
-           type: :read,
-           primary?: opts[:primary?]
-         }}
-
-      {:error, error} ->
-        {:error, error}
-    end
-  end
 end

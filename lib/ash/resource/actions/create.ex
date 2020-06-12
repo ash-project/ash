@@ -1,6 +1,6 @@
 defmodule Ash.Resource.Actions.Create do
   @moduledoc false
-  defstruct [:type, :name, :primary?]
+  defstruct [:name, :primary?, type: :create]
 
   @type t :: %__MODULE__{
           type: :create,
@@ -9,6 +9,11 @@ defmodule Ash.Resource.Actions.Create do
         }
 
   @opt_schema [
+    name: [
+      type: :atom,
+      required: true,
+      doc: "The name of the action"
+    ],
     primary?: [
       type: :boolean,
       default: false,
@@ -18,20 +23,4 @@ defmodule Ash.Resource.Actions.Create do
 
   @doc false
   def opt_schema, do: @opt_schema
-
-  @spec new(Ash.resource(), atom, Keyword.t()) :: {:ok, t()} | {:error, term}
-  def new(_resource, name, opts \\ []) do
-    case NimbleOptions.validate(opts, @opt_schema) do
-      {:ok, opts} ->
-        {:ok,
-         %__MODULE__{
-           name: name,
-           type: :create,
-           primary?: opts[:primary?]
-         }}
-
-      {:error, error} ->
-        {:error, error}
-    end
-  end
 end

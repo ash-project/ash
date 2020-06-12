@@ -6,7 +6,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.DestroyTest do
     quote do
       defmodule Post do
         @moduledoc false
-        use Ash.Resource, name: "posts", type: "post"
+        use Ash.Resource
 
         unquote(body)
       end
@@ -35,7 +35,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.DestroyTest do
     test "it fails if `name` is not an atom" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "actions -> destroy:\n  action name must be an atom",
+        "actions -> destroy -> default:\n  expected :name to be an atom, got: \"default\"",
         fn ->
           defposts do
             actions do

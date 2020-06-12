@@ -41,11 +41,15 @@ defmodule Ash.Type do
   @type t :: module | atom
 
   @spec get_type(atom | module) :: atom | module
-  def get_type(value) do
+  def get_type(value) when is_atom(value) do
     case Keyword.fetch(@short_names, value) do
       {:ok, mod} -> mod
       :error -> value
     end
+  end
+
+  def get_type(value) do
+    value
   end
 
   @spec supports_filter?(Ash.resource(), t(), Ash.DataLayer.filter_type(), Ash.data_layer()) ::

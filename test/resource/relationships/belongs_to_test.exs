@@ -6,7 +6,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     quote do
       defmodule Post do
         @moduledoc false
-        use Ash.Resource, name: "posts", type: "post"
+        use Ash.Resource
 
         unquote(body)
       end
@@ -22,7 +22,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
       end
 
       assert [
-               %Ash.Resource.Attributes.Attribute{
+               %Ash.Resource.Attribute{
                  name: :foobar_id,
                  primary_key?: false,
                  type: :uuid
@@ -85,7 +85,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if the destination is not an atom" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "relationships -> belongs_to -> foobar:\n  related resource must be a module representing a resource",
+        "relationships -> belongs_to -> foobar:\n  expected :destination to be an atom, got: \"foobar\"",
         fn ->
           defposts do
             relationships do
@@ -99,7 +99,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if the relationship name is not an atom" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "relationships -> belongs_to:\n  relationship_name must be an atom",
+        "relationships -> belongs_to -> foobar:\n  expected :name to be an atom, got: \"foobar\"",
         fn ->
           defposts do
             relationships do
@@ -142,7 +142,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
   test "fails if `field_type` is not an atom" do
     assert_raise(
       Ash.Error.ResourceDslError,
-      "relationships -> belongs_to -> foobar:\n  \"foo\" is not a valid type",
+      "relationships -> belongs_to -> foobar:\n  Attribute type must be a built in type or a type module, got: \"foo\"",
       fn ->
         defposts do
           relationships do

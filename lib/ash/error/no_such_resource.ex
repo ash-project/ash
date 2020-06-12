@@ -1,4 +1,4 @@
-defmodule Ash.Error.Interface.NoSuchResource do
+defmodule Ash.Error.NoSuchResource do
   @moduledoc "Used when a resource or alias is provided that doesn't exist"
   use Ash.Error
 
@@ -7,7 +7,7 @@ defmodule Ash.Error.Interface.NoSuchResource do
   defimpl Ash.ErrorKind do
     def id(_), do: Ecto.UUID.generate()
 
-    def code(_), do: "interface_no_such_resource"
+    def code(_), do: "no_such_resource"
 
     def message(%{resource: resource}) do
       "No such resource #{inspect(resource)}"

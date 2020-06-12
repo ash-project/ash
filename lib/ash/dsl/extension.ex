@@ -1,0 +1,676 @@
+defmodule Ash.Dsl.Extension do
+  @moduledoc """
+  An extension to the Ash DSL.
+
+  This allows configuring custom DSL components, whos configurations
+  can then be read back.
+
+  The example at the bottom shows how you might build a (not very contextually
+  relevant) DSL extension that would be used like so:
+
+      defmodule MyApp.MyResource do
+        use Ash.Resource,
+          extensions: [MyApp.CarExtension]
+
+        cars do
+          car :mazda, "6", trim: :touring
+          car :toyota, "corolla"
+        end
+      end
+
+  For (a not very contextually relevant) example:
+
+      defmodule MyApp.CarExtension do
+        @car_schema [
+          make: [
+            type: :atom,
+            required: true,
+            doc: "The make of the car"
+          ],
+          model: [
+            type: :atom,
+            required: true,
+            doc: "The model of the car"
+          ],
+          type: [
+            type: :atom,
+            required: true,
+            doc: "The type of the car",
+            default: :sedan
+          ]
+        ]
+
+        @car %Ash.Dsl.Entity{
+          name: :car,
+          describe: "Adds a car",
+          examples: [
+            "car :mazda, \"6\""
+          ],
+          target: MyApp.Car,
+          args: [:make, :model],
+          schema: @car_schema
+        }
+
+        @cars %Ash.Dsl.Section{
+          name: :cars, # The DSL constructor will be `cars`
+          describe: \"\"\"
+          Configure what cars are available.
+
+          More, deeper explanation. Always have a short one liner explanation,
+          an empty line, and then a longer explanation.
+          \"\"\",
+          entities: [
+            @car # See `Ash.Dsl.Entity` docs
+          ],
+          schema: [
+            default_manufacturer: [
+              type: :atom,
+              doc: "The default manufacturer"
+            ]
+          ]
+        }
+
+        use Ash.Dsl.Extension, sections: [@cars]
+      end
+
+
+  Often, we will need to do complex validation/validate based on the configuration
+  of other resources. Due to the nature of building compile time DSLs, there are
+  many restrictions around that process. To support these complex use cases, extensions
+  can include `transformers` which can validate/transform the DSL state after all basic
+  sections/entities have been created. See `Ash.Dsl.Transformer` for more information.
+  Transformers are provided as an option to `use`, like so:
+
+      use Ash.Dsl.Extension, sections: [@cars], transformers: [
+        MyApp.Transformers.ValidateNoOverlappingMakesAndModels
+      ]
+
+  To expose the configuration of your DSL, define functions that use the
+  helpers like `get_entities/2` and `get_opt/3`. For example:
+
+      defmodule MyApp.Cars do
+        def cars(resource) do
+          Ash.Dsl.Extension.get_entities(resource, [:cars])
+        end
+      end
+
+      MyApp.Cars.cars(MyResource)
+      # [%MyApp.Car{...}, %MyApp.Car{...}]
+  """
+
+  @callback sections() :: [Ash.Dsl.Section.t()]
+  @callback transformers() :: [module]
+
+  @doc "Get the entities configured for a given section"
+  def get_entities(resource, path) do
+    :persistent_term.get({resource, :ash, path}, %{entities: []}).entities
+  end
+
+  @doc "Get an option value for a section at a given path"
+  def get_opt(resource, path, value) do
+    :persistent_term.get({resource, :ash, path}, %{opts: []}).opts[value]
+  end
+
+  @doc false
+  defmacro __using__(opts) do
+    quote bind_quoted: [
+            sections: opts[:sections] || [],
+            transformers: opts[:transformers] || []
+          ] do
+      alias Ash.Dsl.Extension
+
+      @behaviour Extension
+      Extension.build(__MODULE__, sections)
+      @_sections sections
+      @_transformers transformers
+
+      @doc false
+      def sections, do: @_sections
+
+      @doc false
+      def transformers, do: @_transformers
+    end
+  end
+
+  @doc false
+  def prepare(extensions) do
+    body =
+      quote location: :keep do
+        @extensions unquote(extensions)
+        # Due to a few strange stateful bugs I've seen,
+        # we clear the process of any potentially related state
+        Process.get()
+        |> Enum.filter(fn key ->
+          is_tuple(key) and elem(key, 0) == __MODULE__
+        end)
+        |> Enum.each(&Process.delete/1)
+
+        :persistent_term.get()
+        |> Enum.filter(fn key ->
+          is_tuple(key) and elem(key, 0) == __MODULE__
+        end)
+        |> Enum.each(&Process.delete/1)
+      end
+
+    imports =
+      for extension <- extensions || [] do
+        extension = Macro.expand_once(extension, __ENV__)
+
+        quote location: :keep do
+          require Ash.Dsl.Extension
+          alias Ash.Dsl.Extension
+          Extension.import_extension(unquote(extension))
+        end
+      end
+
+    [body | imports]
+  end
+
+  @doc false
+  defmacro set_state(runtime? \\ false) do
+    quote bind_quoted: [runtime?: runtime?], location: :keep do
+      alias Ash.Dsl.Transformer
+
+      ash_dsl_config =
+        if runtime? do
+          @ash_dsl_config
+        else
+          {__MODULE__, :ash_sections}
+          |> Process.get([])
+          |> Enum.map(fn {extension, section_path} ->
+            {{section_path, extension},
+             Process.get(
+               {__MODULE__, :ash, section_path},
+               []
+             )}
+          end)
+          |> Enum.into(%{})
+        end
+
+      :persistent_term.put({__MODULE__, :extensions}, @extensions)
+
+      new_dsl_config =
+        if runtime? do
+          Enum.each(ash_dsl_config, fn {{section_path, _extension}, value} ->
+            :persistent_term.put({__MODULE__, :ash, section_path}, value)
+          end)
+
+          :persistent_term.put({__MODULE__, :ash, :complete?}, true)
+
+          ash_dsl_config
+        else
+          Module.register_attribute(__MODULE__, :transformers, accumulate: true)
+
+          transformed =
+            @extensions
+            |> Enum.flat_map(& &1.transformers())
+            |> Transformer.sort()
+            |> Enum.reduce(ash_dsl_config, fn transformer, dsl ->
+              transformers_run = :persistent_term.get({__MODULE__, :ash, :transformers}, [])
+
+              result =
+                try do
+                  transformer.transform(__MODULE__, dsl)
+                rescue
+                  e ->
+                    reraise "Raised exception while running transformer #{inspect(transformer)}: #{
+                              Exception.message(e)
+                            }",
+                            __STACKTRACE__
+                end
+
+              case result do
+                {:ok, new_dsl} ->
+                  new_dsl
+                  |> Enum.each(fn {{section_path, _extension}, value} ->
+                    :persistent_term.put({__MODULE__, :ash, section_path}, value)
+                  end)
+
+                  unless runtime? do
+                    Module.put_attribute(__MODULE__, :transformers, transformer)
+                  end
+
+                  :persistent_term.put({__MODULE__, :ash, :transformers}, [
+                    transformer | transformers_run
+                  ])
+
+                  new_dsl
+
+                {:error, error} ->
+                  :persistent_term.put({__MODULE__, :ash, :transformers}, [
+                    transformer | transformers_run
+                  ])
+
+                  unless runtime? do
+                    Module.put_attribute(__MODULE__, :transformers, transformer)
+                  end
+
+                  if Exception.exception?(error) do
+                    raise error
+                  else
+                    raise "Error while running transformer #{inspect(transformer)}: #{
+                            inspect(error)
+                          }"
+                  end
+              end
+            end)
+
+          :persistent_term.put({__MODULE__, :ash, :complete?}, true)
+
+          transformed
+        end
+
+      if runtime? do
+        @persist_to_runtime
+        |> Enum.each(fn {key, value} ->
+          :persistent_term.put(key, value)
+        end)
+      else
+        to_persist =
+          {__MODULE__, :persist_to_runtime}
+          |> :persistent_term.get([])
+          |> Enum.map(fn key ->
+            {key, :persistent_term.get(key, nil)}
+          end)
+
+        Module.put_attribute(__MODULE__, :persist_to_runtime, to_persist)
+      end
+
+      unless runtime? do
+        Module.put_attribute(__MODULE__, :ash_dsl_config, new_dsl_config)
+      end
+    end
+  end
+
+  @doc false
+  def all_section_paths(path, prior \\ [])
+  def all_section_paths(nil, _), do: []
+  def all_section_paths([], _), do: []
+
+  def all_section_paths(sections, prior) do
+    Enum.flat_map(sections, fn section ->
+      nested = all_section_paths(section.sections(), [section.name, prior])
+
+      [Enum.reverse(prior) ++ [section.name] | nested]
+    end)
+    |> Enum.uniq()
+  end
+
+  @doc false
+  def all_section_config_paths(path, prior \\ [])
+  def all_section_config_paths(nil, _), do: []
+  def all_section_config_paths([], _), do: []
+
+  def all_section_config_paths(sections, prior) do
+    Enum.flat_map(sections, fn section ->
+      nested = all_section_config_paths(section.sections(), [section.name, prior])
+
+      fields =
+        Enum.map(section.schema, fn {key, _} ->
+          {Enum.reverse(prior) ++ [section.name], key}
+        end)
+
+      fields ++ nested
+    end)
+    |> Enum.uniq()
+  end
+
+  @doc false
+  defmacro import_extension(extension) do
+    quote do
+      import unquote(extension), only: :macros
+    end
+  end
+
+  @doc false
+  defmacro build(extension, sections) do
+    quote bind_quoted: [sections: sections, extension: extension] do
+      alias Ash.Dsl.Extension
+
+      for section <- sections do
+        Extension.build_section(extension, section)
+      end
+    end
+  end
+
+  @doc false
+  defmacro build_section(extension, section, path \\ []) do
+    quote bind_quoted: [section: section, path: path, extension: extension] do
+      alias Ash.Dsl
+
+      {section_modules, entity_modules, opts_module} =
+        Dsl.Extension.do_build_section(__MODULE__, extension, section, path)
+
+      @doc Dsl.Section.describe(__MODULE__, section)
+
+      # This macro argument is only called `body` so that it looks nicer
+      # in the DSL docs
+
+      defmacro unquote(section.name)(body) do
+        opts_module = unquote(opts_module)
+        section_path = unquote(path ++ [section.name])
+        section = unquote(Macro.escape(section))
+
+        entity_imports =
+          for module <- unquote(entity_modules) do
+            quote do
+              import unquote(module)
+            end
+          end
+
+        section_imports =
+          for module <- unquote(section_modules) do
+            quote do
+              import unquote(module)
+            end
+          end
+
+        opts_import =
+          if Map.get(unquote(Macro.escape(section)), :schema, []) == [] do
+            []
+          else
+            [
+              quote do
+                import unquote(opts_module)
+              end
+            ]
+          end
+
+        entity_unimports =
+          for module <- unquote(entity_modules) do
+            quote do
+              import unquote(module), only: []
+            end
+          end
+
+        section_unimports =
+          for module <- unquote(section_modules) do
+            quote do
+              import unquote(module), only: []
+            end
+          end
+
+        opts_unimport =
+          if Map.get(unquote(Macro.escape(section)), :schema, []) == [] do
+            []
+          else
+            [
+              quote do
+                import unquote(opts_module), only: []
+              end
+            ]
+          end
+
+        entity_imports ++
+          section_imports ++
+          opts_import ++
+          [
+            quote do
+              unquote(body[:do])
+
+              current_config =
+                Process.get(
+                  {__MODULE__, :ash, unquote(section_path)},
+                  %{entities: [], opts: []}
+                )
+
+              opts =
+                case NimbleOptions.validate(
+                       current_config.opts,
+                       Map.get(unquote(Macro.escape(section)), :schema, [])
+                     ) do
+                  {:ok, opts} ->
+                    opts
+
+                  {:error, error} ->
+                    raise Ash.Error.ResourceDslError,
+                      message: error,
+                      path: unquote(section_path)
+                end
+
+              Process.put({__MODULE__, :ash, unquote(section_path)}, %{
+                entities: current_config.entities,
+                opts: opts
+              })
+            end
+          ] ++ opts_unimport ++ entity_unimports ++ section_unimports
+      end
+    end
+  end
+
+  @doc false
+  def do_build_section(mod, extension, section, path) do
+    entity_modules =
+      Enum.map(section.entities, fn entity ->
+        build_entity(mod, extension, path ++ [section.name], entity)
+      end)
+
+    section_modules =
+      Enum.map(section.sections, fn nested_section ->
+        nested_mod_name =
+          path
+          |> Enum.drop(1)
+          |> Enum.map(fn nested_section_name ->
+            Macro.camelize(to_string(nested_section_name))
+          end)
+
+        mod_name =
+          Module.concat(
+            [mod | nested_mod_name] ++ [Macro.camelize(to_string(nested_section.name))]
+          )
+
+        {:module, module, _, _} =
+          defmodule mod_name do
+            alias Ash.Dsl
+            @moduledoc Dsl.Section.describe(__MODULE__, nested_section)
+
+            require Dsl.Extension
+
+            Dsl.Extension.build_section(
+              extension,
+              nested_section,
+              path ++ [section.name]
+            )
+          end
+
+        module
+      end)
+
+    opts_mod_name =
+      if section.schema == [] do
+        nil
+      else
+        opts_mod_name = Module.concat([mod, Macro.camelize(to_string(section.name)), Options])
+
+        Module.create(
+          opts_mod_name,
+          quote bind_quoted: [
+                  section: Macro.escape(section),
+                  section_path: path ++ [section.name],
+                  extension: extension
+                ] do
+            @moduledoc false
+
+            for {field, _opts} <- section.schema do
+              defmacro unquote(field)(value) do
+                section_path = unquote(Macro.escape(section_path))
+                field = unquote(Macro.escape(field))
+                extension = unquote(extension)
+
+                quote do
+                  current_sections = Process.get({__MODULE__, :ash_sections}, [])
+
+                  unless {unquote(extension), unquote(section_path)} in current_sections do
+                    Process.put({__MODULE__, :ash_sections}, [
+                      {unquote(extension), unquote(section_path)} | current_sections
+                    ])
+                  end
+
+                  current_config =
+                    Process.get(
+                      {__MODULE__, :ash, unquote(section_path)},
+                      %{entities: [], opts: []}
+                    )
+
+                  Process.put(
+                    {__MODULE__, :ash, unquote(section_path)},
+                    %{
+                      entities: current_config.entities,
+                      opts: Keyword.put(current_config.opts, unquote(field), unquote(value))
+                    }
+                  )
+                end
+              end
+            end
+          end,
+          Macro.Env.location(__ENV__)
+        )
+
+        opts_mod_name
+      end
+
+    {section_modules, entity_modules, opts_mod_name}
+  end
+
+  @doc false
+  def build_entity(mod, extension, section_path, entity) do
+    mod_name = Module.concat(mod, Macro.camelize(to_string(entity.name)))
+
+    options_mod_name = Module.concat([mod, Macro.camelize(to_string(entity.name)), "Options"])
+
+    Ash.Dsl.Extension.build_entity_options(options_mod_name, entity.schema)
+
+    args = Enum.map(entity.args, &Macro.var(&1, mod_name))
+
+    Module.create(
+      mod_name,
+      quote bind_quoted: [
+              extension: extension,
+              entity: Macro.escape(entity),
+              args: Macro.escape(args),
+              section_path: Macro.escape(section_path),
+              options_mod_name: Macro.escape(options_mod_name)
+            ] do
+        @doc Ash.Dsl.Entity.describe(entity)
+        defmacro unquote(entity.name)(unquote_splicing(args), opts \\ []) do
+          section_path = unquote(section_path)
+          entity_schema = unquote(Macro.escape(entity.schema))
+          entity = unquote(Macro.escape(entity))
+          entity_name = unquote(entity.name)
+          entity_args = unquote(entity.args)
+          options_mod_name = unquote(options_mod_name)
+          source = unquote(__MODULE__)
+          extension = unquote(extension)
+
+          arg_values = unquote(args)
+
+          quote do
+            alias Ash.Dsl.Entity
+            section_path = unquote(section_path)
+            entity_name = unquote(entity_name)
+            extension = unquote(extension)
+
+            current_config =
+              Process.get(
+                {__MODULE__, :ash, section_path},
+                %{entities: [], opts: []}
+              )
+
+            current_sections = Process.get({__MODULE__, :ash_sections}, [])
+
+            opts_without_do =
+              Keyword.merge(
+                unquote(Keyword.delete(opts, :do)),
+                Enum.zip(unquote(entity_args), unquote(arg_values))
+              )
+
+            import unquote(options_mod_name)
+
+            unquote(opts[:do])
+
+            import unquote(options_mod_name), only: []
+
+            all_opts =
+              case Process.delete(:builder_opts) do
+                nil ->
+                  opts_without_do
+
+                opts ->
+                  Keyword.merge(opts, opts_without_do)
+              end
+
+            built =
+              case Entity.build(unquote(Macro.escape(entity)), all_opts) do
+                {:ok, built} ->
+                  Map.put(built, :__entity_name__, unquote(entity_name))
+
+                {:error, error} ->
+                  additional_path =
+                    if all_opts[:name] do
+                      [unquote(entity.name), all_opts[:name]]
+                    else
+                      [unquote(entity.name)]
+                    end
+
+                  message =
+                    cond do
+                      Exception.exception?(error) ->
+                        Exception.message(error)
+
+                      is_binary(error) ->
+                        error
+
+                      true ->
+                        inspect(error)
+                    end
+
+                  raise Ash.Error.ResourceDslError,
+                    message: message,
+                    path: section_path ++ additional_path
+              end
+
+            new_config = %{opts: current_config.opts, entities: [built | current_config.entities]}
+
+            unless {extension, section_path} in current_sections do
+              Process.put({__MODULE__, :ash_sections}, [
+                {extension, section_path} | current_sections
+              ])
+            end
+
+            Process.put(
+              {__MODULE__, :ash, section_path},
+              new_config
+            )
+          end
+        end
+      end,
+      Macro.Env.location(__ENV__)
+    )
+
+    mod_name
+  end
+
+  @doc false
+  def build_entity_options(module_name, schema) do
+    Module.create(
+      module_name,
+      quote bind_quoted: [schema: Macro.escape(schema)] do
+        @moduledoc false
+        for {key, value} <- schema do
+          defmacro unquote(key)(value) do
+            key = unquote(key)
+
+            quote do
+              current_opts = Process.get(:builder_opts, [])
+
+              Process.put(:builder_opts, Keyword.put(current_opts, unquote(key), unquote(value)))
+            end
+          end
+        end
+      end,
+      file: __ENV__.file
+    )
+
+    module_name
+  end
+end

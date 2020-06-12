@@ -55,7 +55,7 @@ defmodule Ash.Query do
 
   @doc false
   def new(api, resource) when is_atom(api) and is_atom(resource) do
-    case api.get_resource(resource) do
+    case Ash.Api.resource(api, resource) do
       {:ok, resource} ->
         %__MODULE__{
           api: api,

@@ -2,16 +2,16 @@ defmodule Ash.Resource.Relationships.ManyToMany do
   @moduledoc false
   defstruct [
     :name,
-    :type,
     :source,
     :through,
-    :cardinality,
     :destination,
     :source_field,
     :destination_field,
     :source_field_on_join_table,
     :destination_field_on_join_table,
-    :reverse_relationship
+    :reverse_relationship,
+    cardinality: :many,
+    type: :many_to_many
   ]
 
   @type t :: %__MODULE__{
@@ -29,10 +29,11 @@ defmodule Ash.Resource.Relationships.ManyToMany do
         }
 
   import Ash.Resource.Relationships.SharedOptions
+  alias Ash.OptionsHelpers
 
   @global_opts shared_options()
-               |> set_default!(:destination_field, :id)
-               |> set_default!(:source_field, :id)
+               |> OptionsHelpers.set_default!(:destination_field, :id)
+               |> OptionsHelpers.set_default!(:source_field, :id)
 
   @opt_schema Ash.OptionsHelpers.merge_schemas(
                 [
@@ -60,35 +61,4 @@ defmodule Ash.Resource.Relationships.ManyToMany do
 
   @doc false
   def opt_schema, do: @opt_schema
-
-  @spec new(
-          resource :: Ash.resource(),
-          name :: atom,
-          related_resource :: Ash.resource(),
-          opts :: Keyword.t()
-        ) :: {:ok, t()} | {:error, term}
-  # sobelow_skip ["DOS.BinToAtom"]
-  def new(resource, name, related_resource, opts \\ []) do
-    # Don't call functions on the resource! We don't want it to compile here
-    case NimbleOptions.validate(opts, @opt_schema) do
-      {:ok, opts} ->
-        {:ok,
-         %__MODULE__{
-           name: name,
-           type: :many_to_many,
-           source: resource,
-           cardinality: :many,
-           through: opts[:through],
-           destination: related_resource,
-           reverse_relationship: opts[:reverse_relationship],
-           source_field: opts[:source_field],
-           destination_field: opts[:destination_field],
-           source_field_on_join_table: opts[:source_field_on_join_table],
-           destination_field_on_join_table: opts[:destination_field_on_join_table]
-         }}
-
-      {:error, errors} ->
-        {:error, errors}
-    end
-  end
 end

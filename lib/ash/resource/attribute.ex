@@ -1,4 +1,4 @@
-defmodule Ash.Resource.Attributes.Attribute do
+defmodule Ash.Resource.Attribute do
   @moduledoc false
 
   defstruct [
@@ -21,7 +21,17 @@ defmodule Ash.Resource.Attributes.Attribute do
           writable?: boolean
         }
 
+  alias Ash.OptionsHelpers
+
   @schema [
+    name: [
+      type: :atom,
+      doc: "The name of the attribute."
+    ],
+    type: [
+      type: {:custom, OptionsHelpers, :ash_type, []},
+      doc: "The type of the attribute."
+    ],
     primary_key?: [
       type: :boolean,
       default: false,
@@ -55,6 +65,17 @@ defmodule Ash.Resource.Attributes.Attribute do
     ]
   ]
 
+  @create_timestamp_schema @schema
+                           |> OptionsHelpers.set_default!(:writable?, false)
+                           |> OptionsHelpers.set_default!(:default, &DateTime.utc_now/0)
+                           |> OptionsHelpers.set_default!(:type, :utc_datetime)
+
+  @update_timestamp_schema @schema
+                           |> OptionsHelpers.set_default!(:writable?, false)
+                           |> OptionsHelpers.set_default!(:default, &DateTime.utc_now/0)
+                           |> OptionsHelpers.set_default!(:update_default, &DateTime.utc_now/0)
+                           |> OptionsHelpers.set_default!(:type, :utc_datetime)
+
   def validate_default(value, _) when is_function(value, 0), do: {:ok, value}
   def validate_default({:constant, value}, _), do: {:ok, {:constant, value}}
 
@@ -62,56 +83,17 @@ defmodule Ash.Resource.Attributes.Attribute do
       when is_atom(module) and is_atom(function) and is_list(args),
       do: {:ok, {module, function, args}}
 
+  def validate_default(nil, _), do: {:ok, nil}
+
+  def validate_default(other, _) do
+    {:error,
+     "#{inspect(other)} is not a valid default. To provide a constant value, use `{:constant, #{
+       inspect(other)
+     }}`"}
+  end
+
   @doc false
   def attribute_schema, do: @schema
-
-  @spec new(Ash.resource(), atom, Ash.Type.t(), Keyword.t()) :: {:ok, t()} | {:error, term}
-  def new(_resource, name, type, opts) do
-    # Don't call functions on the resource! We don't want it to compile here
-    with :ok <- validate_type(type),
-         {:ok, opts} <- NimbleOptions.validate(opts, @schema),
-         {:default, {:ok, default}} <- {:default, cast_default(type, opts)} do
-      {:ok,
-       %__MODULE__{
-         name: name,
-         type: type,
-         generated?: opts[:generated?],
-         writable?: opts[:writable?],
-         allow_nil?: opts[:allow_nil?],
-         primary_key?: opts[:primary_key?],
-         update_default: opts[:update_default],
-         default: default
-       }}
-    else
-      {:error, error} -> {:error, error}
-      {:default, _} -> {:error, [{:default, "is not a valid default for type #{inspect(type)}"}]}
-    end
-  end
-
-  defp validate_type(type) do
-    if Ash.Type.ash_type?(type) do
-      :ok
-    else
-      {:error, "#{inspect(type)} is not a valid type"}
-    end
-  end
-
-  defp cast_default(type, opts) do
-    case Keyword.fetch(opts, :default) do
-      {:ok, default} when is_function(default, 0) ->
-        {:ok, default}
-
-      {:ok, {mod, func, args}} when is_atom(mod) and is_atom(func) ->
-        {:ok, {mod, func, args}}
-
-      {:ok, {:constant, default}} ->
-        case Ash.Type.cast_input(type, default) do
-          {:ok, value} -> {:ok, {:constant, value}}
-          :error -> :error
-        end
-
-      :error ->
-        {:ok, nil}
-    end
-  end
+  def create_timestamp_schema, do: @create_timestamp_schema
+  def update_timestamp_schema, do: @update_timestamp_schema
 end

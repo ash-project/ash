@@ -1,4 +1,4 @@
-defmodule Ash.Engine.Authorizer do
+defmodule Ash.Authorizer do
   @moduledoc """
   The interface for an ash authorizer
 

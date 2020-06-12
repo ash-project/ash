@@ -62,7 +62,7 @@ defmodule Ash.Engine.Request do
   require Logger
 
   alias Ash.Actions.PrimaryKeyHelpers
-  alias Ash.Engine.Authorizer
+  alias Ash.Authorizer
 
   def resolve(dependencies \\ [], optional_dependencies \\ [], func) do
     UnresolvedField.new(dependencies, optional_dependencies, func)

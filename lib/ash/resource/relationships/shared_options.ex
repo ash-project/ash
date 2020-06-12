@@ -2,6 +2,14 @@ defmodule Ash.Resource.Relationships.SharedOptions do
   @moduledoc false
 
   @shared_options [
+    name: [
+      type: :atom,
+      doc: "The name of the relationship"
+    ],
+    destination: [
+      type: :atom,
+      doc: "The destination resource"
+    ],
     destination_field: [
       type: :atom,
       doc:
@@ -21,13 +29,5 @@ defmodule Ash.Resource.Relationships.SharedOptions do
 
   def shared_options do
     @shared_options
-  end
-
-  def make_required!(options, field) do
-    Keyword.update!(options, field, &Keyword.put(&1, :required, true))
-  end
-
-  def set_default!(options, field, value) do
-    Keyword.update!(options, field, &Keyword.put(&1, :default, value))
   end
 end

@@ -6,7 +6,7 @@ defmodule Ash.Test.Resource.Relationshihps.HasOneTest do
     quote do
       defmodule Post do
         @moduledoc false
-        use Ash.Resource, name: "posts", type: "post"
+        use Ash.Resource
 
         attributes do
           attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
@@ -70,7 +70,7 @@ defmodule Ash.Test.Resource.Relationshihps.HasOneTest do
     test "fails if the destination is not an atom" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "relationships -> has_one -> foobar:\n  related resource must be a module representing a resource",
+        "relationships -> has_one -> foobar:\n  expected :destination to be an atom, got: \"foobar\"",
         fn ->
           defposts do
             relationships do
@@ -84,7 +84,7 @@ defmodule Ash.Test.Resource.Relationshihps.HasOneTest do
     test "fails if the relationship name is not an atom" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "relationships -> has_one:\n  relationship_name must be an atom",
+        "relationships -> has_one -> foobar:\n  expected :name to be an atom, got: \"foobar\"",
         fn ->
           defposts do
             relationships do
