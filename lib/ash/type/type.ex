@@ -23,6 +23,7 @@ defmodule Ash.Type do
     boolean: [ecto_type: :boolean, filters: [:eq, :not_eq], sortable?: true],
     int: [ecto_type: :integer, filters: [:eq, :in, :not_eq, :not_in], sortable?: true],
     uuid: [ecto_type: :binary_id, filters: [:eq, :in, :not_eq, :not_in], sortable?: true],
+    date: [ecto_type: :date, filters: [:eq, :in, :not_eq, :not_in], sortable?: true],
     utc_datetime: [
       ecto_type: :utc_datetime,
       filters: [:eq, :in, :not_eq, :not_in],
