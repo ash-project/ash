@@ -16,6 +16,7 @@ defmodule Ash.Test.Actions.CreateTest do
     attributes do
       attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
       attribute :bio, :string
+      attribute :date, :date
     end
 
     relationships do
@@ -113,7 +114,9 @@ defmodule Ash.Test.Actions.CreateTest do
   describe "simple creates" do
     test "allows creating a record with valid attributes" do
       assert %Post{title: "foo", contents: "bar"} =
-               Api.create!(Post, attributes: %{title: "foo", contents: "bar"})
+               Api.create!(Post,
+                 attributes: %{title: "foo", contents: "bar", date: Date.utc_today()}
+               )
     end
 
     test "constant default values are set properly" do
