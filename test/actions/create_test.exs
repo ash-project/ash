@@ -4,8 +4,12 @@ defmodule Ash.Test.Actions.CreateTest do
 
   defmodule Profile do
     @moduledoc false
-    use Ash.Resource, name: "authors", type: "author"
-    use Ash.DataLayer.Ets, private?: true
+    use Ash.Resource,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
 
     actions do
       read :default
@@ -26,8 +30,11 @@ defmodule Ash.Test.Actions.CreateTest do
 
   defmodule Author do
     @moduledoc false
-    use Ash.Resource, name: "authors", type: "author"
-    use Ash.DataLayer.Ets, private?: true
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
 
     actions do
       read :default
@@ -57,8 +64,12 @@ defmodule Ash.Test.Actions.CreateTest do
 
   defmodule PostLink do
     @moduledoc false
-    use Ash.Resource, name: "post_links", type: "post_link"
-    use Ash.DataLayer.Ets, private?: true
+    use Ash.Resource,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
 
     actions do
       read :default
@@ -75,8 +86,11 @@ defmodule Ash.Test.Actions.CreateTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, name: "posts", type: "post"
-    use Ash.DataLayer.Ets, private?: true
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
 
     actions do
       read :default
@@ -108,7 +122,12 @@ defmodule Ash.Test.Actions.CreateTest do
     @moduledoc false
     use Ash.Api
 
-    resources [Author, Post, Profile, PostLink]
+    resources do
+      resource(Author)
+      resource(Post)
+      resource(Profile)
+      resource(PostLink)
+    end
   end
 
   describe "simple creates" do

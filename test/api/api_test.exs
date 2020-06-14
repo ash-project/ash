@@ -6,7 +6,7 @@ defmodule Ash.Test.Resource.ApiTest do
     quote do
       defmodule Post do
         @moduledoc false
-        use Ash.Resource, name: "posts", type: "post"
+        use Ash.Resource
 
         unquote(body)
       end

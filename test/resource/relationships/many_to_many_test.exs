@@ -6,7 +6,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     quote do
       defmodule Post do
         @moduledoc false
-        use Ash.Resource, name: "posts", type: "post"
+        use Ash.Resource
 
         attributes do
           attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0

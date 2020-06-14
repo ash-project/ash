@@ -2,8 +2,6 @@ defmodule Ash.Resource.Relationships.BelongsTo do
   @moduledoc false
   defstruct [
     :name,
-    :cardinality,
-    :type,
     :destination,
     :primary_key?,
     :define_field?,
@@ -11,7 +9,9 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :destination_field,
     :source_field,
     :source,
-    :reverse_relationship
+    :reverse_relationship,
+    cardinality: :one,
+    type: :belongs_to
   ]
 
   @type t :: %__MODULE__{
@@ -27,10 +27,13 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           source_field: atom | nil
         }
 
-  import Ash.Resource.Relationships.SharedOptions
+  import Ash.Resource.Relationships.SharedOptions, only: [shared_options: 0]
+
+  alias Ash.OptionsHelpers
 
   @global_opts shared_options()
-               |> set_default!(:destination_field, :id)
+               |> OptionsHelpers.set_default!(:destination_field, :id)
+               |> OptionsHelpers.append_doc!(:source_field, "Defaults to <name>_id")
 
   @opt_schema Ash.OptionsHelpers.merge_schemas(
                 [
@@ -46,7 +49,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                       "If set to `false` a field is not created on the resource for this relationship, and one must be manually added in `attributes`."
                   ],
                   field_type: [
-                    type: :any,
+                    type: {:custom, OptionsHelpers, :ash_type, []},
                     default: :uuid,
                     doc: "The field type of the automatically created field."
                   ]
@@ -57,37 +60,4 @@ defmodule Ash.Resource.Relationships.BelongsTo do
 
   @doc false
   def opt_schema, do: @opt_schema
-
-  @spec new(
-          resource :: Ash.resource(),
-          name :: atom,
-          related_resource :: Ash.resource(),
-          opts :: Keyword.t()
-        ) :: {:ok, t()} | {:error, term}
-
-  # sobelow_skip ["DOS.BinToAtom"]
-  def new(resource, name, related_resource, opts \\ []) do
-    # Don't call functions on the resource! We don't want it to compile here
-
-    case NimbleOptions.validate(opts, @opt_schema) do
-      {:ok, opts} ->
-        {:ok,
-         %__MODULE__{
-           name: name,
-           source: resource,
-           type: :belongs_to,
-           cardinality: :one,
-           field_type: opts[:field_type],
-           define_field?: opts[:define_field?],
-           primary_key?: opts[:primary_key?],
-           destination: related_resource,
-           destination_field: opts[:destination_field],
-           source_field: opts[:source_field] || :"#{name}_id",
-           reverse_relationship: opts[:reverse_relationship]
-         }}
-
-      {:error, error} ->
-        {:error, error}
-    end
-  end
 end

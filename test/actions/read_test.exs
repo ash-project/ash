@@ -4,8 +4,11 @@ defmodule Ash.Test.Actions.ReadTest do
 
   defmodule Author do
     @moduledoc false
-    use Ash.Resource, name: "posts", type: "post"
-    use Ash.DataLayer.Ets, private?: true
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
 
     actions do
       read :default
@@ -24,8 +27,11 @@ defmodule Ash.Test.Actions.ReadTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, name: "posts", type: "post"
-    use Ash.DataLayer.Ets, private?: true
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
 
     actions do
       read :default
@@ -48,7 +54,10 @@ defmodule Ash.Test.Actions.ReadTest do
     @moduledoc false
     use Ash.Api
 
-    resources [Post, Author]
+    resources do
+      resource(Post)
+      resource(Author)
+    end
   end
 
   describe "api.get/3" do

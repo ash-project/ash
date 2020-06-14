@@ -4,7 +4,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.ReadTest do
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
-        use Ash.Resource, name: "posts", type: "post"
+        use Ash.Resource
 
         unquote(body)
       end
@@ -33,7 +33,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.ReadTest do
     test "it fails if `name` is not an atom" do
       assert_raise(
         Ash.Error.ResourceDslError,
-        "actions -> read:\n  action name must be an atom",
+        "actions -> read -> default:\n  expected :name to be an atom, got: \"default\"",
         fn ->
           defposts do
             actions do

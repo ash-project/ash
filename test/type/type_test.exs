@@ -34,8 +34,11 @@ defmodule Ash.Test.Type.TypeTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, name: "posts", type: "post"
-    use Ash.DataLayer.Ets, private?: true
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
 
     attributes do
       attribute :title, PostTitle
@@ -51,7 +54,9 @@ defmodule Ash.Test.Type.TypeTest do
     @moduledoc false
     use Ash.Api
 
-    resources [Post]
+    resources do
+      resource(Post)
+    end
   end
 
   test "it accepts valid data" do

@@ -17,6 +17,7 @@ defmodule Ash.DataLayer do
           | {:filter, filter_type}
           | {:filter_related, Ash.relationship_cardinality()}
           | :upsert
+          | :composite_primary_key
 
   @callback custom_filters(Ash.resource()) :: map()
   @callback filter(Ash.data_layer_query(), Ash.filter(), resource :: Ash.resource()) ::

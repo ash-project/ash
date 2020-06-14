@@ -7,12 +7,12 @@ defmodule Ash.Schema do
   # schema for persistence.
 
   defmacro define_schema do
-    quote do
+    quote unquote: false do
       use Ecto.Schema
       @primary_key false
 
       schema "" do
-        for attribute <- @attributes do
+        for attribute <- Ash.attributes(__MODULE__) do
           read_after_writes? = attribute.generated? and is_nil(attribute.default)
 
           field(attribute.name, Ash.Type.ecto_type(attribute.type),
@@ -21,7 +21,9 @@ defmodule Ash.Schema do
           )
         end
 
-        for relationship <- Enum.filter(@relationships, &(&1.type == :belongs_to)) do
+        relationships = Ash.relationships(__MODULE__)
+
+        for relationship <- Enum.filter(relationships, &(&1.type == :belongs_to)) do
           belongs_to(relationship.name, relationship.destination,
             define_field: false,
             foreign_key: relationship.source_field,
@@ -29,21 +31,21 @@ defmodule Ash.Schema do
           )
         end
 
-        for relationship <- Enum.filter(@relationships, &(&1.type == :has_one)) do
+        for relationship <- Enum.filter(relationships, &(&1.type == :has_one)) do
           has_one(relationship.name, relationship.destination,
             foreign_key: relationship.destination_field,
             references: relationship.source_field
           )
         end
 
-        for relationship <- Enum.filter(@relationships, &(&1.type == :has_many)) do
+        for relationship <- Enum.filter(relationships, &(&1.type == :has_many)) do
           has_many(relationship.name, relationship.destination,
             foreign_key: relationship.destination_field,
             references: relationship.source_field
           )
         end
 
-        for relationship <- Enum.filter(@relationships, &(&1.type == :many_to_many)) do
+        for relationship <- Enum.filter(relationships, &(&1.type == :many_to_many)) do
           many_to_many(relationship.name, relationship.destination,
             join_through: relationship.through,
             join_keys: [
