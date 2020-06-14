@@ -106,12 +106,19 @@ defmodule Ash do
     |> Enum.find(&(&1.name == relationship_name))
   end
 
-  @spec resource_module?(module) :: boolean
-  def resource_module?(module) do
+  def implements_behaviour?(module, behaviour) do
     :attributes
     |> module.module_info()
-    |> Keyword.get(:behaviour, [])
-    |> Enum.any?(&(&1 == Ash.Resource))
+    |> Enum.flat_map(fn
+      {:behaviour, value} -> List.wrap(value)
+      _ -> []
+    end)
+    |> Enum.any?(&(&1 == behaviour))
+  end
+
+  @spec resource_module?(module) :: boolean
+  def resource_module?(module) do
+    implements_behaviour?(module, Ash.Resource)
   end
 
   @doc false

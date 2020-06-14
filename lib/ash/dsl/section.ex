@@ -20,7 +20,7 @@ defmodule Ash.Dsl.Section do
 
   For a full example, see `Ash.Dsl.Extension`.
   """
-  defstruct [:name, schema: [], describe: "", entities: [], sections: []]
+  defstruct [:name, imports: [], schema: [], describe: "", entities: [], sections: []]
 
   @type t :: %__MODULE__{
           name: atom,

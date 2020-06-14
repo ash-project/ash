@@ -27,13 +27,17 @@ defmodule Ash.Dsl.Entity do
   other values in that struct. If you need things that aren't contained in that struct, use an
   `Ash.Dsl.Transformer`.
 
+  `entities` allows you to specify a keyword list of nested entities. Nested entities are stored
+  on the struct in the corresponding key, and are used in the same way entities are otherwise.
+
   For a full example, see `Ash.Dsl.Extension`.
   """
   defstruct [
     :name,
-    :examples,
     :target,
     :transform,
+    examples: [],
+    entities: [],
     describe: "",
     args: [],
     schema: [],
@@ -47,17 +51,20 @@ defmodule Ash.Dsl.Entity do
           examples: [String.t()],
           transform: mfa | nil,
           args: [atom],
+          entities: Keyword.t(),
           auto_set_fields: Keyword.t(),
           schema: NimbleOptions.schema()
         }
 
   def build(
         %{target: target, schema: schema, auto_set_fields: auto_set_fields, transform: transform},
-        opts
+        opts,
+        nested_entities
       ) do
     with {:ok, opts} <- NimbleOptions.validate(opts, schema),
          opts <- Keyword.merge(opts, auto_set_fields || []),
          built <- struct(target, opts),
+         built <- struct(built, nested_entities),
          {:ok, built} <-
            transform(transform, built) do
       {:ok, built}

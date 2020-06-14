@@ -1,4 +1,4 @@
-name: Elixir CI
+name: Ash CI
 
 on:
   push:
