@@ -43,10 +43,12 @@ defmodule Ash do
   end
   ```
 
-  For those looking to add ash extensions, see `Ash.Dsl.Extension` for adding configuration.
-  If you are looking to write a new data source, also see the `Ash.DataLayer` documentation.
-  If you are looking to write a new authorizer, see `Ash.Authorizer`
-  If you are looking to write a "front end", something powered by Ash resources, a guide on
+  For those looking to add ash extensions:
+
+  * see `Ash.Dsl.Extension` for adding configuration.
+  * If you are looking to write a new data source, also see the `Ash.DataLayer` documentation.
+  * If you are looking to write a new authorizer, see `Ash.Authorizer`
+  * If you are looking to write a "front end", something powered by Ash resources, a guide on
   building those kinds of tools is in the works.
   """
   alias Ash.Resource.Actions.{Create, Destroy, Read, Update}

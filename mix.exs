@@ -7,7 +7,7 @@ defmodule Ash.MixProject do
   designed to be used by multiple front ends.
   """
 
-  @version "0.3.0"
+  @version "0.4.0"
 
   def project do
     [
@@ -36,7 +36,6 @@ defmodule Ash.MixProject do
     [
       main: "Ash",
       source_ref: "v#{@version}",
-      extras: ["documentation/Getting Started.md"],
       logo: "logos/small-logo.png",
       groups_for_modules: [
         entrypoint: [

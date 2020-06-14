@@ -5,6 +5,27 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v0.4.0](https://github.com/ash-project/ash/compare/0.3.0...v0.4.0) (2020-06-14)
+
+
+
+
+### Features:
+
+* rebuild DSL inner workings for extensibility (#70)
+
+* add `after_compile` and validate primary key
+
+### Bug Fixes:
+
+* dialyzer warnings
+
+* honor the `authorize?` flag
+
+### Improvements:
+
+* add `date` support (#68)
+
 ## [v0.3.0](https://github.com/ash-project/ash/compare/0.2.0...v0.3.0) (2020-06-05)
 
 
