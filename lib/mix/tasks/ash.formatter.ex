@@ -19,6 +19,7 @@ defmodule Mix.Tasks.Ash.Formatter do
 
   @shortdoc @moduledoc
   def run(opts) do
+    Mix.Task.run("compile")
     {opts, []} = OptionParser.parse!(opts, strict: [check: :boolean, extensions: :string])
 
     unless opts[:extensions] do
