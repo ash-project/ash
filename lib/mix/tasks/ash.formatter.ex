@@ -66,33 +66,54 @@ defmodule Mix.Tasks.Ash.Formatter do
   defp all_entity_builders(sections) do
     Enum.flat_map(sections, fn section ->
       Enum.concat([
-        entity_option_builders(section),
+        all_entity_option_builders(section),
         section_option_builders(section),
-        entity_builders(section)
+        section_entity_builders(section)
       ])
     end)
   end
 
-  defp entity_builders(section) do
+  defp section_entity_builders(section) do
     Enum.flat_map(section.entities, fn entity ->
-      arg_count = Enum.count(entity.args)
-      [{entity.name, arg_count}, {entity.name, arg_count + 1}]
+      entity_builders(entity)
     end) ++ all_entity_builders(section.sections())
   end
 
-  defp entity_option_builders(section) do
+  defp entity_builders(entity) do
+    arg_count = Enum.count(entity.args)
+
+    [{entity.name, arg_count}, {entity.name, arg_count + 1}] ++
+      flat_map_nested_entities(entity, &entity_builders/1)
+  end
+
+  defp all_entity_option_builders(section) do
     Enum.flat_map(section.entities, fn entity ->
-      entity.schema
-      |> Keyword.drop(entity.args)
-      |> Enum.map(fn {key, _schema} ->
-        {key, 1}
-      end)
+      entity_option_builders(entity)
     end)
+  end
+
+  defp entity_option_builders(entity) do
+    entity.schema
+    |> Keyword.drop(entity.args)
+    |> Enum.map(fn {key, _schema} ->
+      {key, 1}
+    end)
+    |> Kernel.++(flat_map_nested_entities(entity, &entity_option_builders/1))
   end
 
   defp section_option_builders(section) do
     Enum.map(section.schema, fn {key, _} ->
       {key, 1}
+    end)
+  end
+
+  defp flat_map_nested_entities(entity, mapper) do
+    Enum.flat_map(entity.entities, fn {_, nested_entities} ->
+      nested_entities
+      |> List.wrap()
+      |> Enum.flat_map(fn nested_entity ->
+        mapper.(nested_entity)
+      end)
     end)
   end
 end
