@@ -41,7 +41,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
                     type: :atom,
                     required: true,
                     doc:
-                      "The field on the join table that should line up with `source_field` on this resource. Default: [resource_name]_id"
+                      "The field on the join table that should line up with `source_field` on this resource."
                   ],
                   destination_field_on_join_table: [
                     type: :atom,

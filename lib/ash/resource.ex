@@ -40,7 +40,7 @@ defmodule Ash.Resource do
       alias Ash.Dsl.Extension
 
       :persistent_term.put({__MODULE__, :data_layer}, @data_layer)
-      :persistent_term.put({__MODULE__, :ash, :authorizers}, @authorizers)
+      :persistent_term.put({__MODULE__, :authorizers}, @authorizers)
 
       Extension.set_state(false)
 
@@ -51,7 +51,7 @@ defmodule Ash.Resource do
       @doc false
       def build_dsl do
         :persistent_term.put({__MODULE__, :data_layer}, @data_layer)
-        :persistent_term.put({__MODULE__, :ash, :authorizers}, @authorizers)
+        :persistent_term.put({__MODULE__, :authorizers}, @authorizers)
         Extension.set_state(true)
 
         :ok

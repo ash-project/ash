@@ -149,7 +149,7 @@ defmodule Ash.Dsl.Extension do
         |> Enum.filter(fn key ->
           is_tuple(key) and elem(key, 0) == __MODULE__
         end)
-        |> Enum.each(&Process.delete/1)
+        |> Enum.each(&:persistent_term.delete/1)
       end
 
     imports =
@@ -351,6 +351,13 @@ defmodule Ash.Dsl.Extension do
         section_path = unquote(path ++ [section.name])
         section = unquote(Macro.escape(section))
 
+        configured_imports =
+          for module <- unquote(section.imports) do
+            quote do
+              import unquote(module)
+            end
+          end
+
         entity_imports =
           for module <- unquote(entity_modules) do
             quote do
@@ -374,6 +381,13 @@ defmodule Ash.Dsl.Extension do
                 import unquote(opts_module)
               end
             ]
+          end
+
+        configured_unimports =
+          for module <- unquote(section.imports) do
+            quote do
+              import unquote(module), only: []
+            end
           end
 
         entity_unimports =
@@ -404,6 +418,7 @@ defmodule Ash.Dsl.Extension do
         entity_imports ++
           section_imports ++
           opts_import ++
+          configured_imports ++
           [
             quote do
               unquote(body[:do])
@@ -428,12 +443,15 @@ defmodule Ash.Dsl.Extension do
                       path: unquote(section_path)
                 end
 
-              Process.put({__MODULE__, :ash, unquote(section_path)}, %{
-                entities: current_config.entities,
-                opts: opts
-              })
+              Process.put(
+                {__MODULE__, :ash, unquote(section_path)},
+                %{
+                  entities: current_config.entities,
+                  opts: opts
+                }
+              )
             end
-          ] ++ opts_unimport ++ entity_unimports ++ section_unimports
+          ] ++ configured_unimports ++ opts_unimport ++ entity_unimports ++ section_unimports
       end
     end
   end
@@ -496,6 +514,7 @@ defmodule Ash.Dsl.Extension do
                 section_path = unquote(Macro.escape(section_path))
                 field = unquote(Macro.escape(field))
                 extension = unquote(extension)
+                section = unquote(Macro.escape(section))
 
                 quote do
                   current_sections = Process.get({__MODULE__, :ash_sections}, [])
@@ -515,8 +534,8 @@ defmodule Ash.Dsl.Extension do
                   Process.put(
                     {__MODULE__, :ash, unquote(section_path)},
                     %{
-                      entities: current_config.entities,
-                      opts: Keyword.put(current_config.opts, unquote(field), unquote(value))
+                      current_config
+                      | opts: Keyword.put(current_config.opts, unquote(field), unquote(value))
                     }
                   )
                 end
@@ -533,12 +552,32 @@ defmodule Ash.Dsl.Extension do
   end
 
   @doc false
-  def build_entity(mod, extension, section_path, entity) do
-    mod_name = Module.concat(mod, Macro.camelize(to_string(entity.name)))
+  def build_entity(mod, extension, section_path, entity, nested_entity_path \\ []) do
+    nested_entity_parts = Enum.map(nested_entity_path, &Macro.camelize(to_string(&1)))
 
-    options_mod_name = Module.concat([mod, Macro.camelize(to_string(entity.name)), "Options"])
+    mod_parts =
+      Enum.concat([[mod], nested_entity_parts, [Macro.camelize(to_string(entity.name))]])
 
-    Ash.Dsl.Extension.build_entity_options(options_mod_name, entity.schema)
+    mod_name = Module.concat(mod_parts)
+
+    options_mod_name = Module.concat(mod_name, "Options")
+
+    nested_entity_mods =
+      Enum.flat_map(entity.entities, fn {key, entities} ->
+        entities
+        |> List.wrap()
+        |> Enum.map(fn entity ->
+          build_entity(
+            mod_name,
+            extension,
+            section_path,
+            entity,
+            nested_entity_path ++ [key]
+          )
+        end)
+      end)
+
+    Ash.Dsl.Extension.build_entity_options(options_mod_name, entity.schema, nested_entity_path)
 
     args = Enum.map(entity.args, &Macro.var(&1, mod_name))
 
@@ -549,65 +588,87 @@ defmodule Ash.Dsl.Extension do
               entity: Macro.escape(entity),
               args: Macro.escape(args),
               section_path: Macro.escape(section_path),
-              options_mod_name: Macro.escape(options_mod_name)
+              options_mod_name: Macro.escape(options_mod_name),
+              nested_entity_mods: Macro.escape(nested_entity_mods),
+              nested_entity_path: Macro.escape(nested_entity_path)
             ] do
         @doc Ash.Dsl.Entity.describe(entity)
         defmacro unquote(entity.name)(unquote_splicing(args), opts \\ []) do
-          section_path = unquote(section_path)
+          section_path = unquote(Macro.escape(section_path))
           entity_schema = unquote(Macro.escape(entity.schema))
           entity = unquote(Macro.escape(entity))
-          entity_name = unquote(entity.name)
-          entity_args = unquote(entity.args)
-          options_mod_name = unquote(options_mod_name)
+          entity_name = unquote(Macro.escape(entity.name))
+          entity_args = unquote(Macro.escape(entity.args))
+          options_mod_name = unquote(Macro.escape(options_mod_name))
           source = unquote(__MODULE__)
-          extension = unquote(extension)
+          extension = unquote(Macro.escape(extension))
+          nested_entity_mods = unquote(Macro.escape(nested_entity_mods))
+          nested_entity_path = unquote(Macro.escape(nested_entity_path))
 
           arg_values = unquote(args)
 
           quote do
-            alias Ash.Dsl.Entity
             section_path = unquote(section_path)
             entity_name = unquote(entity_name)
             extension = unquote(extension)
 
-            current_config =
-              Process.get(
-                {__MODULE__, :ash, section_path},
-                %{entities: [], opts: []}
-              )
-
             current_sections = Process.get({__MODULE__, :ash_sections}, [])
 
-            opts_without_do =
+            Process.put(
+              {:builder_opts, unquote(nested_entity_path)},
               Keyword.merge(
                 unquote(Keyword.delete(opts, :do)),
                 Enum.zip(unquote(entity_args), unquote(arg_values))
               )
+            )
 
             import unquote(options_mod_name)
 
+            Ash.Dsl.Extension.import_mods(unquote(nested_entity_mods))
+
             unquote(opts[:do])
+
+            current_config =
+              Process.get(
+                {__MODULE__, :ash, section_path ++ unquote(nested_entity_path)},
+                %{entities: [], opts: []}
+              )
 
             import unquote(options_mod_name), only: []
 
-            all_opts =
-              case Process.delete(:builder_opts) do
-                nil ->
-                  opts_without_do
+            Ash.Dsl.Extension.unimport_mods(unquote(nested_entity_mods))
 
-                opts ->
-                  Keyword.merge(opts, opts_without_do)
-              end
+            opts = Process.delete({:builder_opts, unquote(nested_entity_path)})
+
+            alias Ash.Dsl.Entity
+
+            nested_entities =
+              unquote(Macro.escape(entity.entities))
+              |> Enum.map(&elem(&1, 0))
+              |> Enum.uniq()
+              |> Enum.reduce(%{}, fn key, acc ->
+                nested_path = section_path ++ unquote(nested_entity_path) ++ [key]
+
+                entities =
+                  {__MODULE__, :ash, nested_path}
+                  |> Process.get(%{entities: []})
+                  |> Map.get(:entities, [])
+                  |> Enum.reverse()
+
+                Map.update(acc, key, entities, fn current_nested_entities ->
+                  (current_nested_entities || []) ++ entities
+                end)
+              end)
 
             built =
-              case Entity.build(unquote(Macro.escape(entity)), all_opts) do
+              case Entity.build(unquote(Macro.escape(entity)), opts, nested_entities) do
                 {:ok, built} ->
-                  Map.put(built, :__entity_name__, unquote(entity_name))
+                  built
 
                 {:error, error} ->
                   additional_path =
-                    if all_opts[:name] do
-                      [unquote(entity.name), all_opts[:name]]
+                    if opts[:name] do
+                      [unquote(entity.name), opts[:name]]
                     else
                       [unquote(entity.name)]
                     end
@@ -629,7 +690,7 @@ defmodule Ash.Dsl.Extension do
                     path: section_path ++ additional_path
               end
 
-            new_config = %{opts: current_config.opts, entities: [built | current_config.entities]}
+            new_config = %{current_config | entities: current_config.entities ++ [built]}
 
             unless {extension, section_path} in current_sections do
               Process.put({__MODULE__, :ash_sections}, [
@@ -638,7 +699,7 @@ defmodule Ash.Dsl.Extension do
             end
 
             Process.put(
-              {__MODULE__, :ash, section_path},
+              {__MODULE__, :ash, section_path ++ unquote(nested_entity_path)},
               new_config
             )
           end
@@ -650,20 +711,41 @@ defmodule Ash.Dsl.Extension do
     mod_name
   end
 
+  defmacro import_mods(mods) do
+    for mod <- mods do
+      quote do
+        import unquote(mod)
+      end
+    end
+  end
+
+  defmacro unimport_mods(mods) do
+    for mod <- mods do
+      quote do
+        import unquote(mod), only: []
+      end
+    end
+  end
+
   @doc false
-  def build_entity_options(module_name, schema) do
+  def build_entity_options(module_name, schema, nested_entity_path) do
     Module.create(
       module_name,
-      quote bind_quoted: [schema: Macro.escape(schema)] do
+      quote bind_quoted: [schema: Macro.escape(schema), nested_entity_path: nested_entity_path] do
         @moduledoc false
-        for {key, value} <- schema do
+
+        for {key, _value} <- schema do
           defmacro unquote(key)(value) do
             key = unquote(key)
+            nested_entity_path = unquote(nested_entity_path)
 
             quote do
-              current_opts = Process.get(:builder_opts, [])
+              current_opts = Process.get({:builder_opts, unquote(nested_entity_path)}, [])
 
-              Process.put(:builder_opts, Keyword.put(current_opts, unquote(key), unquote(value)))
+              Process.put(
+                {:builder_opts, unquote(nested_entity_path)},
+                Keyword.put(current_opts, unquote(key), unquote(value))
+              )
             end
           end
         end

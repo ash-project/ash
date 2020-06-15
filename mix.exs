@@ -18,6 +18,7 @@ defmodule Ash.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       package: package(),
       deps: deps(),
+      dialyzer: [plt_add_apps: [:mix]],
       test_coverage: [tool: ExCoveralls],
       preferred_cli_env: [
         coveralls: :test,
@@ -97,7 +98,8 @@ defmodule Ash.MixProject do
   defp aliases do
     [
       sobelow: "sobelow --skip",
-      credo: "credo --strict"
+      credo: "credo --strict",
+      "ash.formatter": "ash.formatter --extensions Ash.Dsl,Ash.Api.Dsl"
     ]
   end
 end

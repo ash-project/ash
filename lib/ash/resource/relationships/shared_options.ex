@@ -13,7 +13,7 @@ defmodule Ash.Resource.Relationships.SharedOptions do
     destination_field: [
       type: :atom,
       doc:
-        "The field on the related resource that should match the `source_field` on this resource. Default: [resource.name]_id"
+        "The field on the related resource that should match the `source_field` on this resource."
     ],
     source_field: [
       type: :atom,

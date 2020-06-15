@@ -233,9 +233,6 @@ defmodule Ash.Type do
   end
 
   defp ash_type_module?(module) do
-    :attributes
-    |> module.module_info()
-    |> Keyword.get(:behaviour, [])
-    |> Enum.any?(&(&1 == __MODULE__))
+    Ash.implements_behaviour?(module, __MODULE__)
   end
 end
