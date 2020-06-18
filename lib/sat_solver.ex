@@ -5,32 +5,33 @@ defmodule Ash.SatSolver do
   alias Ash.Filter.{Expression, Not, Predicate}
 
   def strict_filter_subset(filter, candidate) do
-    filter_expr = filter_to_expr(filter)
-    candidate_expr = filter_to_expr(candidate)
-
-    case {filter_expr, candidate_expr} do
-      {nil, nil} ->
+    case {filter, candidate} do
+      {%{expression: nil}, %{expression: nil}} ->
         true
 
-      {nil, _candidate_expr} ->
+      {%{expression: nil}, _candidate_expr} ->
         true
 
-      {_filter_expr, nil} ->
+      {_filter_expr, %{expression: nil}} ->
         # TODO: truesim check `filter_expr`
         false
 
-      {filter_expr, candidate_expr} ->
-        case solve_expression({:and, filter_expr, candidate_expr}) do
+      {filter, candidate} ->
+        case add_comparisons_and_solve_expression(
+               Expression.new(:and, filter.expression, candidate.expression)
+             ) do
           {:error, :unsatisfiable} ->
             false
 
           {:ok, _} ->
-            case solve_expression({:and, {:not, filter_expr}, candidate_expr}) do
+            case add_comparisons_and_solve_expression(
+                   Expression.new(:and, Not.new(filter.expression), candidate.expression)
+                 ) do
               {:error, :unsatisfiable} ->
                 true
 
               _ ->
-                :maby
+                :maybe
             end
         end
     end
@@ -43,6 +44,81 @@ defmodule Ash.SatSolver do
 
   defp filter_to_expr(%Expression{op: op, left: left, right: right}) do
     {op, filter_to_expr(left), filter_to_expr(right)}
+  end
+
+  def add_comparisons_and_solve_expression(expression) do
+    # TODO: Make a ticket to optimize/think more about this
+    all_predicates =
+      Filter.reduce(expression, [], fn
+        %Predicate{} = predicate, predicates ->
+          [predicate | predicates]
+
+        _, predicates ->
+          predicates
+      end)
+
+    simplified =
+      Filter.map(expression, fn
+        %Predicate{} = predicate ->
+          all_predicates
+          |> Enum.find_value(fn other_predicate ->
+            case Predicate.compare(predicate, other_predicate) do
+              {:simplify, simplification} -> {:simplify, simplification}
+              _ -> false
+            end
+          end)
+          |> case do
+            nil ->
+              predicate
+
+            {:simplify, simplification} ->
+              simplification
+          end
+
+        other ->
+          other
+      end)
+
+    if simplified == expression do
+      comparison_expressions =
+        all_predicates
+        |> Enum.reduce([], fn predicate, new_expressions ->
+          all_predicates
+          |> Enum.filter(fn other_predicate ->
+            other_predicate != predicate &&
+              other_predicate.relationship_path == predicate.relationship_path &&
+              other_predicate.attribute.name == predicate.attribute.name
+          end)
+          |> Enum.reduce(new_expressions, fn other_predicate, new_expressions ->
+            case Predicate.compare(predicate, other_predicate) do
+              inclusive when inclusive in [:right_includes_left, :mutually_inclusive] ->
+                [{:not, {:and, {:not, other_predicate}, predicate}} | new_expressions]
+
+              exclusive when exclusive in [:right_excludes_left, :mutually_exclusive] ->
+                [{:not, {:and, other_predicate, predicate}} | new_expressions]
+
+              {:simplify, _} ->
+                new_expressions
+
+              _ ->
+                # If we can't tell, we assume they are exclusive statements
+                [{:not, {:and, other_predicate, predicate}} | new_expressions]
+            end
+          end)
+        end)
+        |> Enum.uniq()
+
+      expression = filter_to_expr(expression)
+
+      expression =
+        Enum.reduce(comparison_expressions, expression, fn comparison_expression, expression ->
+          {:and, comparison_expression, expression}
+        end)
+
+      solve_expression(expression)
+    else
+      add_comparisons_and_solve_expression(simplified)
+    end
   end
 
   def solve_expression(expression) do

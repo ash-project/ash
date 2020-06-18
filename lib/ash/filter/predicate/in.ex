@@ -3,6 +3,7 @@ defmodule Ash.Filter.Predicate.In do
   defstruct [:field, :values]
 
   alias Ash.Error.Filter.InvalidFilterValue
+  alias Ash.Filter.Expression
   alias Ash.Filter.Predicate.Eq
 
   use Ash.Filter.Predicate
@@ -39,13 +40,43 @@ defmodule Ash.Filter.Predicate.In do
      )}
   end
 
-  # def compare(%__MODULE__{values: values}, %__MODULE__{values: values}), do: :equal
-  # def compare(%__MODULE__{values: values}, %__MODULE__{values: other_values}) when
-  #   # MapSet.new(values)
-  # end
+  def compare(%__MODULE__{field: field, values: values}, %__MODULE__{values: other_values}) do
+    left = MapSet.new(values)
+    right = MapSet.new(other_values)
 
-  # def compare(%__MODULE__{value: value}, %NotEq{value: other_value}) when value != other_value,
-  #   do: :inclusive
+    common_members = MapSet.intersection(left, right)
+
+    if Enum.empty?(common_members) do
+      :exclusive
+    else
+      different_members = MapSet.difference(left, right)
+
+      if Enum.empty?(different_members) do
+        :mutually_inclusive
+      else
+        {:simplify,
+         Expression.new(
+           :or,
+           %__MODULE__{field: field, values: MapSet.to_list(different_members)},
+           %__MODULE__{field: field, values: MapSet.to_list(common_members)}
+         )}
+      end
+    end
+  end
+
+  def compare(
+        %__MODULE__{values: values} = in_predicate,
+        %Eq{value: value} = equals
+      ) do
+    if value in values do
+      {:simplify, Expression.new(:or, equals, %{in_predicate | values: values -- [value]})}
+    else
+      :mutually_exclusive
+    end
+  end
+
+  def compare(_, _), do: :unknown
+
   defimpl Inspect do
     import Inspect.Algebra
 
@@ -58,60 +89,3 @@ defmodule Ash.Filter.Predicate.In do
     end
   end
 end
-
-# defmodule Ash.Filter.In do
-#   @moduledoc false
-#   defstruct [:values]
-
-#   alias Ash.Error.Filter.InvalidFilterValue
-#   alias Ash.Filter.Eq
-
-#   def new(resource, attr_name, attr_type, [value]) do
-#     Eq.new(resource, attr_name, attr_type, value)
-#   end
-
-#   def new(_resource, attr_name, attr_type, values) do
-#     casted =
-#       values
-#       |> List.wrap()
-#       |> Enum.reduce({:ok, []}, fn
-#         value, {:ok, casted} ->
-#           case Ash.Type.cast_input(attr_type, value) do
-#             {:ok, value} ->
-#               {:ok, [value | casted]}
-
-#             :error ->
-#               {:error,
-#                InvalidFilterValue.exception(
-#                  filter: %__MODULE__{values: values},
-#                  value: value,
-#                  field: attr_name
-#                )}
-#           end
-
-#         _, {:error, error} ->
-#           {:error, error}
-#       end)
-
-#     case casted do
-#       {:error, error} ->
-#         {:error, error}
-
-#       {:ok, values} ->
-#         {:ok, %__MODULE__{values: values}}
-#     end
-#     |> case do
-#       {:ok, %{values: values} = in_operator} -> {:ok, %{in_operator | values: Enum.uniq(values)}}
-#       {:error, error} -> {:error, error}
-#     end
-#   end
-# end
-
-# defimpl Inspect, for: Ash.Filter.In do
-#   import Inspect.Algebra
-#   import Ash.Filter.InspectHelpers
-
-#   def inspect(%{values: values}, opts) do
-#     concat([attr(opts), " in ", to_doc(values, opts)])
-#   end
-# end

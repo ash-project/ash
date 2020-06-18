@@ -6,11 +6,15 @@ defmodule Ash.Filter.Predicate do
   @type predicate :: struct
 
   @type comparison ::
-          :exclusive
-          | :inclusive
-          | :equal
-          | {:simplify, Predicate.predicate()}
-          | {:simplify, Predicate.predicate(), Predicate.predicate()}
+          :unknown
+          | :right_excludes_left
+          | :left_excludes_right
+          | :right_includes_left
+          | :left_includes_right
+          | :mutually_inclusive
+          # A simplification value for the right term
+          | {:simplify, term}
+          | {:simplify, term, term}
 
   @type t :: %__MODULE__{
           attribute: Ash.attribute(),
@@ -33,12 +37,59 @@ defmodule Ash.Filter.Predicate do
     end
   end
 
-  @spec compare(predicate(), predicate()) :: comparison()
+  @spec compare(predicate(), predicate()) :: comparison
+  def compare(%__MODULE__{predicate: left}, right), do: compare(left, right)
+  def compare(left, %__MODULE__{predicate: right}), do: compare(left, right)
+
   def compare(left, right) do
-    with :unknown <- left.__struct__.compare(right),
-         :unknown <- right.__struct__.compare(left) do
-      :exclusive
+    if left.__struct__ == right.__struct__ do
+      with {:right_to_left, :unknown} <- {:right_to_left, left.__struct__.compare(left, right)},
+           {:left_to_right, :unknown} <- {:left_to_right, right.__struct__.compare(left, right)} do
+        :mutually_exclusive
+      else
+        {:right_to_left, {:simplify, left, _}} -> {:simplify, left}
+        {:left_to_right, {:simplify, _, right}} -> {:simplify, right}
+        {_, other} -> other
+      end
+    else
+      with {:right_to_left, :unknown} <- {:right_to_left, left.__struct__.compare(left, right)},
+           {:right_to_left, :unknown} <- {:right_to_left, right.__struct__.compare(left, right)},
+           {:left_to_right, :unknown} <- {:left_to_right, right.__struct__.compare(left, right)},
+           {:left_to_right, :unknown} <- {:left_to_right, left.__struct__.compare(left, right)} do
+        :mutually_exclusive
+      else
+        {:right_to_left, {:simplify, left, _}} -> {:simplify, left}
+        {:left_to_right, {:simplify, _, right}} -> {:simplify, right}
+        {_, other} -> other
+      end
     end
+
+    # right_compared_to_left =
+    #   case left.__struct__.compare(right) do
+    #     :unkown ->
+    #       right.__struct__.compare(left)
+    #   end
+    # left_compared_to_right = right.__struct__.compare(left)
+
+    # # This is not very performant, and will result in many unnecassary cycles
+    # # simplifying values. This will work in the short term though. It can be
+    # # optimized later
+    # case {right_compared_to_left, left_compared_to_right} do
+    #   {:unknown, :unknown} -> :unknown
+    #   {:exclusive, :unknown} -> :right_excludes_left
+    #   {:unknown, :exclusive} -> :left_excludes_right
+    #   {:inclusive, :unknown} -> :right_includes_left
+    #   {:unknown, :inclusive} -> :left_includes_right
+    #   {:inclusive, :inclusive} -> :mutually_inclusive
+    #   {:exclusive, :exclusive} -> :mutually_exclusive
+    #   {_, :exclusive} -> :left_excludes_right
+    #   {:exclusive, _} -> :right_excludes_left
+    #   {_, :inclusive} -> :left_includes_right
+    #   {:inclusive, _} -> :right_includes_left
+    #   {{:simplify, new_left, _}, _} -> {:simplify, new_left}
+    #   {_, {:simplify, _, new_left}} -> {:simplify, new_left}
+    #   {_, _} -> :unknown
+    # end
   end
 
   def new(resource, attribute, predicate, value, relationship_path) do

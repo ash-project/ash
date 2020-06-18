@@ -74,6 +74,64 @@ defmodule Ash.Filter do
     end
   end
 
+  @doc """
+  Returns true if the second argument is a strict subset (always returns the same or less data) of the first
+  """
+  def strict_subset_of(nil, _), do: true
+
+  def strict_subset_of(_, nil), do: false
+
+  def strict_subset_of(%{resource: resource}, %{resource: other_resource})
+      when resource != other_resource,
+      do: false
+
+  def strict_subset_of(filter, candidate) do
+    Ash.SatSolver.strict_filter_subset(filter, candidate)
+  end
+
+  def strict_subset_of?(filter, candidate) do
+    strict_subset_of(filter, candidate) == true
+  end
+
+  def primary_key_filter?(nil), do: false
+
+  def primary_key_filter?(filter) do
+    pkey = Ash.primary_key(filter.resource)
+    cleared_pkey_filter = Enum.map(pkey, fn key -> {key, nil} end)
+
+    case cleared_pkey_filter do
+      [] ->
+        false
+
+      cleared_pkey_filter ->
+        case parse(filter.api, filter.resource, cleared_pkey_filter) do
+          {:ok, parsed_cleared_pkey_filter} ->
+            cleared_candidate_filter =
+              map(filter, fn
+                %Predicate{attribute: %{name: name}, predicate: %mod{}} = predicate
+                when mod in [Eq, In] ->
+                  if name in pkey do
+                    %{
+                      predicate
+                      | predicate: %Predicate{
+                          attribute: Ash.attribute(filter.resource, name),
+                          predicate: %Eq{field: name, value: nil}
+                        }
+                    }
+                  end
+
+                other ->
+                  other
+              end)
+
+            strict_subset_of?(parsed_cleared_pkey_filter, cleared_candidate_filter)
+
+          _ ->
+            false
+        end
+    end
+  end
+
   def relationship_filter_request_paths(filter) do
     filter
     |> relationship_paths()
@@ -111,6 +169,60 @@ defmodule Ash.Filter do
         {:action, nil} -> {:halt, {:error, "Default read action required"}}
       end
     end)
+  end
+
+  def map(%__MODULE__{expression: nil} = filter, _) do
+    filter
+  end
+
+  def map(%__MODULE__{expression: expression} = filter, func) do
+    %{filter | expression: do_map(func.(expression), func)}
+  end
+
+  def map(expression, func) do
+    do_map(func.(expression), func)
+  end
+
+  def do_map(expression, func) do
+    case expression do
+      {:halt, expr} ->
+        expr
+
+      %Expression{left: left, right: right} = expr ->
+        %{expr | left: do_map(left, func), right: do_map(right, func)}
+
+      %Not{expression: not_expr} = expr ->
+        %{expr | expression: do_map(not_expr, func)}
+
+      other ->
+        func.(other)
+    end
+  end
+
+  def reduce(filter, acc \\ nil, func)
+  def reduce(%__MODULE__{expression: nil}, acc, _), do: acc
+
+  def reduce(%__MODULE__{expression: expression}, acc, func) do
+    acc = func.(expression, acc)
+    do_reduce(expression, acc, func)
+  end
+
+  def reduce(expression, acc, func) do
+    acc = func.(expression, acc)
+    do_reduce(expression, acc, func)
+  end
+
+  def do_reduce(expression, acc, func) do
+    case expression do
+      %Expression{left: left, right: right} ->
+        do_reduce(right, do_reduce(left, acc, func), func)
+
+      %Not{expression: not_expr} ->
+        do_reduce(not_expr, acc, func)
+
+      other ->
+        func.(other, acc)
+    end
   end
 
   defp filter_expression_by_relationship_path(filter, path) do
