@@ -45,11 +45,20 @@ defmodule Ash.Error do
   end
 
   def choose_error(errors) do
-    [error | _other_errors] = Enum.sort_by(errors, &Map.get(@error_class_indices, &1.class))
+    [error | other_errors] =
+      Enum.sort_by(errors, fn error ->
+        # the second element here sorts errors that are already parent errors
+        {Map.get(@error_class_indices, error.class),
+         @error_modules[error.class] != error.__struct__}
+      end)
 
     parent_error_module = @error_modules[error.class]
 
-    parent_error_module.exception(errors: errors)
+    if parent_error_module == error.__struct__ do
+      parent_error_module.exception(errors: (error.errors || []) ++ other_errors)
+    else
+      parent_error_module.exception(errors: errors)
+    end
   end
 
   def error_messages(errors) do

@@ -1,6 +1,7 @@
-defmodule Ash.Filter2.Expression do
+defmodule Ash.Filter.Expression do
   defstruct [:op, :left, :right]
 
+  def new(_, nil, nil), do: nil
   def new(_, nil, right), do: right
   def new(_, left, nil), do: left
 
@@ -13,7 +14,7 @@ defmodule Ash.Filter2.Expression do
   end
 end
 
-defimpl Inspect, for: Ash.Filter2.Expression do
+defimpl Inspect, for: Ash.Filter.Expression do
   import Inspect.Algebra
 
   def inspect(

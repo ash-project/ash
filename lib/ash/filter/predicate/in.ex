@@ -1,29 +1,42 @@
-defmodule Ash.Filter2.Predicate.In do
+defmodule Ash.Filter.Predicate.In do
   @moduledoc false
-  defstruct [:values]
+  defstruct [:field, :values]
 
-  alias Ash.Filter2.Predicate.Eq
+  alias Ash.Error.Filter.InvalidFilterValue
+  alias Ash.Filter.Predicate.Eq
 
-  # alias Ash.Filter2.Predicate.NotEq
-  # alias Ash.Filter2.Predicate.NotIn
+  use Ash.Filter.Predicate
 
-  use Ash.Filter2.Predicate
+  def new(_resource, attribute, []),
+    do: {:ok, %__MODULE__{field: attribute.name, values: MapSet.new([])}}
 
-  def new(_type, []), do: {:ok, %__MODULE__{values: MapSet.new([])}}
+  def new(resource, attribute, [value]), do: {:ok, Eq.new(resource, attribute, value)}
 
-  def new(type, [value]), do: {:ok, Eq.new(type, value)}
+  def new(_resource, attribute, values) when is_list(values) do
+    Enum.reduce_while(values, {:ok, %__MODULE__{field: attribute.name, values: []}}, fn value,
+                                                                                        predicate ->
+      case Ash.Type.cast_input(attribute.type, value) do
+        {:ok, casted} ->
+          {:cont, {:ok, %{predicate | values: [casted | predicate.values]}}}
 
-  def new(type, values) when is_list(values) do
-    values = MapSet.new(values)
-
-    case MapSet.size(values) do
-      1 -> {:ok, Eq.new(type, Enum.at(values, 0))}
-      _ -> {:ok, %__MODULE__{values: values}}
-    end
+        :error ->
+          {:error,
+           InvalidFilterValue.exception(
+             filter: %__MODULE__{field: attribute.name, values: values},
+             value: value,
+             field: attribute.name
+           )}
+      end
+    end)
   end
 
-  def new(_type, values) do
-    {:error, "Invalid filter value provided for `in`: #{inspect(values)}"}
+  def new(_resource, attribute, values) do
+    {:error,
+     InvalidFilterValue.exception(
+       filter: %__MODULE__{field: attribute.name, values: values},
+       value: values,
+       field: attribute.name
+     )}
   end
 
   # def compare(%__MODULE__{values: values}, %__MODULE__{values: values}), do: :equal
@@ -33,11 +46,16 @@ defmodule Ash.Filter2.Predicate.In do
 
   # def compare(%__MODULE__{value: value}, %NotEq{value: other_value}) when value != other_value,
   #   do: :inclusive
-
-  def inspect(field, %{values: values}, opts) do
+  defimpl Inspect do
     import Inspect.Algebra
 
-    concat([field, " in ", to_doc(Enum.to_list(values), opts)])
+    def inspect(predicate, opts) do
+      concat([
+        Ash.Filter.Predicate.add_inspect_path(opts, predicate.field),
+        " in ",
+        to_doc(predicate.values, opts)
+      ])
+    end
   end
 end
 

@@ -11,12 +11,12 @@ defmodule Ash.Error.Filter.InvalidFilterValue do
 
     def class(_), do: :invalid
 
-    def message(%{field: field, value: value, filter: filter}) do
-      "Invalid filter value #{inspect(value)} supplied for #{inspect(field)}#{inspect(filter)}"
+    def message(%{value: value, filter: filter}) do
+      "Invalid filter value `#{inspect(value)}` supplied in: `#{inspect(filter)}`"
     end
 
-    def description(%{field: field, filter: filter, value: value}) do
-      "Invalid filter value #{inspect(value)} supplied for #{inspect(field)}#{inspect(filter)}"
+    def description(%{filter: filter, value: value}) do
+      "Invalid filter value `#{inspect(value)}` supplied in: `#{inspect(filter)}`"
     end
 
     def stacktrace(_), do: nil

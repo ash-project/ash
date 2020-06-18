@@ -1,97 +1,49 @@
 defmodule Ash.SatSolver do
   @moduledoc false
 
+  alias Ash.Filter
+  alias Ash.Filter.{Expression, Not, Predicate}
+
   def strict_filter_subset(filter, candidate) do
     filter_expr = filter_to_expr(filter)
     candidate_expr = filter_to_expr(candidate)
 
-    together = join_expr(filter_expr, candidate_expr, :and)
+    case {filter_expr, candidate_expr} do
+      {nil, nil} ->
+        true
 
-    separate = join_expr(negate(filter_expr), candidate_expr, :and)
+      {nil, _candidate_expr} ->
+        true
 
-    case solve_expression(together) do
-      {:error, :unsatisfiable} ->
+      {_filter_expr, nil} ->
+        # TODO: truesim check `filter_expr`
         false
 
-      {:ok, _} ->
-        case solve_expression(separate) do
+      {filter_expr, candidate_expr} ->
+        case solve_expression({:and, filter_expr, candidate_expr}) do
           {:error, :unsatisfiable} ->
-            true
+            false
 
-          _ ->
-            :maybe
+          {:ok, _} ->
+            case solve_expression({:and, {:not, filter_expr}, candidate_expr}) do
+              {:error, :unsatisfiable} ->
+                true
+
+              _ ->
+                :maby
+            end
         end
     end
   end
 
-  defp negate(nil), do: nil
-  defp negate(expr), do: {:not, expr}
-
   defp filter_to_expr(nil), do: nil
-  defp filter_to_expr(%{impossible?: true}), do: false
+  defp filter_to_expr(%Filter{expression: expression}), do: filter_to_expr(expression)
+  defp filter_to_expr(%Predicate{} = predicate), do: predicate
+  defp filter_to_expr(%Not{expression: expression}), do: {:not, expression}
 
-  defp filter_to_expr(%{
-         attributes: attributes,
-         relationships: relationships,
-         not: not_filter,
-         ors: ors,
-         ands: ands,
-         path: path
-       }) do
-    expr =
-      Enum.reduce(attributes, nil, fn {attr, statement}, expr ->
-        join_expr(
-          expr,
-          tag_statement(statement_to_expr(statement), %{path: path, attr: attr}),
-          :and
-        )
-      end)
-
-    expr =
-      Enum.reduce(relationships, expr, fn {relationship, relationship_filter}, expr ->
-        join_expr(expr, {relationship, filter_to_expr(relationship_filter)}, :and)
-      end)
-
-    expr = join_expr(negate(filter_to_expr(not_filter)), expr, :and)
-
-    expr =
-      Enum.reduce(ors, expr, fn or_filter, expr ->
-        join_expr(filter_to_expr(or_filter), expr, :or)
-      end)
-
-    Enum.reduce(ands, expr, fn and_filter, expr ->
-      join_expr(filter_to_expr(and_filter), expr, :and)
-    end)
+  defp filter_to_expr(%Expression{op: op, left: left, right: right}) do
+    {op, filter_to_expr(left), filter_to_expr(right)}
   end
-
-  defp statement_to_expr(%Ash.Filter.NotIn{values: values}) do
-    {:not, %Ash.Filter.In{values: values}}
-  end
-
-  defp statement_to_expr(%Ash.Filter.NotEq{value: value}) do
-    {:not, %Ash.Filter.Eq{value: value}}
-  end
-
-  defp statement_to_expr(%Ash.Filter.And{left: left, right: right}) do
-    {:and, statement_to_expr(left), statement_to_expr(right)}
-  end
-
-  defp statement_to_expr(%Ash.Filter.Or{left: left, right: right}) do
-    {:or, statement_to_expr(left), statement_to_expr(right)}
-  end
-
-  defp statement_to_expr(statement), do: statement
-
-  defp tag_statement({:not, value}, tag), do: {:not, tag_statement(value, tag)}
-
-  defp tag_statement({joiner, left_value, right_value}, tag) when joiner in [:and, :or],
-    do: {joiner, tag_statement(left_value, tag), tag_statement(right_value, tag)}
-
-  defp tag_statement(statement, tag), do: {statement, tag}
-
-  defp join_expr(nil, right, _joiner), do: right
-  defp join_expr(left, nil, _joiner), do: left
-  defp join_expr(left, right, joiner), do: {joiner, left, right}
 
   def solve_expression(expression) do
     expression_with_constants = {:and, true, {:and, {:not, false}, expression}}

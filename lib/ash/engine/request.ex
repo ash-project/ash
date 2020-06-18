@@ -43,9 +43,10 @@ defmodule Ash.Engine.Request do
     :data,
     :name,
     :api,
+    :authorization_filter,
     :query,
     :write_to_data?,
-    :skip_unless_authorize?,
+    :strict_check_only?,
     :verbose?,
     :state,
     :actor,
@@ -106,7 +107,7 @@ defmodule Ash.Engine.Request do
       query: query,
       api: opts[:api],
       name: opts[:name],
-      skip_unless_authorize?: opts[:skip_unless_authorize?],
+      strict_check_only?: opts[:strict_check_only?],
       state: :strict_check,
       actor: opts[:actor],
       verbose?: opts[:verbose?] || false,
@@ -401,19 +402,41 @@ defmodule Ash.Engine.Request do
           {:filter, filter} ->
             request
             |> Map.update!(:query, &Ash.Query.filter(&1, filter))
+            |> Map.update(:authorization_filter, filter, fn authorization_filter ->
+              if authorization_filter do
+                Ash.Filter.add_to_filter(authorization_filter, filter)
+              else
+                filter
+              end
+            end)
             |> set_authorizer_state(authorizer, :authorized)
             |> try_resolve([request.path ++ [:query]], false, false)
 
           {:filter_and_continue, filter, new_authorizer_state} ->
-            new_request =
-              request
-              |> Map.update!(:query, &Ash.Query.filter(&1, filter))
-              |> set_authorizer_state(authorizer, new_authorizer_state)
+            if request.strict_check_only? do
+              {:error, "Request must pass strict check"}
+            else
+              new_request =
+                request
+                |> Map.update(:authorization_filter, filter, fn authorization_filter ->
+                  if authorization_filter do
+                    Ash.Filter.add_to_filter(authorization_filter, filter)
+                  else
+                    filter
+                  end
+                end)
+                |> Map.update!(:query, &Ash.Query.filter(&1, filter))
+                |> set_authorizer_state(authorizer, new_authorizer_state)
 
-            {:ok, new_request}
+              {:ok, new_request}
+            end
 
           {:continue, authorizer_state} ->
-            {:ok, set_authorizer_state(request, authorizer, authorizer_state)}
+            if request.strict_check_only? do
+              {:error, "Request must pass strict check"}
+            else
+              {:ok, set_authorizer_state(request, authorizer, authorizer_state)}
+            end
 
           {:error, error} ->
             {:error, error}
@@ -476,7 +499,15 @@ defmodule Ash.Engine.Request do
             {:ok, set_authorizer_state(request, authorizer, :authorized)}
 
           {:filter, filter} ->
-            runtime_filter(request, authorizer, filter)
+            request
+            |> Map.update(:authorization_filter, filter, fn authorization_filter ->
+              if authorization_filter do
+                Ash.Filter.add_to_filter(authorization_filter, filter)
+              else
+                filter
+              end
+            end)
+            |> runtime_filter(authorizer, filter)
 
           {:error, error} ->
             {:error, error}
@@ -593,7 +624,7 @@ defmodule Ash.Engine.Request do
     authorized? = Enum.all?(Map.values(request.authorizer_state), &(&1 == :authorized))
 
     # Don't fetch honor requests for dat until the request is authorized
-    if field in [:data, :query] and not authorized? and not internal? do
+    if field in [:data, :query, :authorization_filter] and not authorized? and not internal? do
       try_resolve_dependencies_of(request, field, internal?, optional?)
     else
       case Map.get(request, field) do

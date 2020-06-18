@@ -30,13 +30,6 @@ defmodule Ash.Engine do
     authorize? = opts[:authorize?] || Keyword.has_key?(opts, :actor)
     actor = opts[:actor]
 
-    requests =
-      if authorize? do
-        requests
-      else
-        Enum.reject(requests, & &1.skip_unless_authorize?)
-      end
-
     case Request.validate_requests(requests) do
       :ok ->
         requests =

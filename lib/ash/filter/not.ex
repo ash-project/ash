@@ -1,7 +1,9 @@
-defmodule Ash.Filter2.Not do
+defmodule Ash.Filter.Not do
   defstruct [:expression]
 
-  alias Ash.Filter2.Expression
+  alias Ash.Filter.Expression
+
+  def new(nil), do: nil
 
   def new(expression) do
     %__MODULE__{expression: expression}

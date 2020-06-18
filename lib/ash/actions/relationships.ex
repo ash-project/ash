@@ -270,7 +270,7 @@ defmodule Ash.Actions.Relationships do
         {:ok, %{replace: identifier}}
 
       {:error, _} ->
-        {:error, "Relationship change invalid for #{relationship.name} 2"}
+        {:error, "Relationship change invalid map for #{relationship.name}"}
     end
   end
 
@@ -283,7 +283,7 @@ defmodule Ash.Actions.Relationships do
         {:ok, %{replace: identifiers}}
 
       {:error, _} ->
-        {:error, "Relationship change invalid for #{relationship.name} 2"}
+        {:error, "Relationship change invalid list for #{relationship.name}"}
     end
   end
 
