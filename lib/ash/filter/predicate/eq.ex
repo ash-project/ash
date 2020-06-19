@@ -2,9 +2,10 @@ defmodule Ash.Filter.Predicate.Eq do
   @moduledoc false
   defstruct [:field, :value]
 
-  alias Ash.Error.Filter.InvalidFilterValue
-
   use Ash.Filter.Predicate
+
+  alias Ash.Error.Filter.InvalidFilterValue
+  alias Ash.Filter.Predicate
 
   def new(_resource, attribute, value) do
     case Ash.Type.cast_input(attribute.type, value) do
@@ -31,7 +32,7 @@ defmodule Ash.Filter.Predicate.Eq do
 
     def inspect(predicate, opts) do
       concat([
-        Ash.Filter.Predicate.add_inspect_path(opts, predicate.field),
+        Predicate.add_inspect_path(opts, predicate.field),
         " == ",
         to_doc(predicate.value, opts)
       ])

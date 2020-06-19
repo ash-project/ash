@@ -1,4 +1,5 @@
 defmodule Ash.Filter.Not do
+  @moduledoc "Represents the negation of the contained expression"
   defstruct [:expression]
 
   alias Ash.Filter.Expression

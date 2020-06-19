@@ -1,4 +1,6 @@
 defmodule Ash.Filter.Expression do
+  @moduledoc "Represents a boolean expression"
+
   defstruct [:op, :left, :right]
 
   def new(_, nil, nil), do: nil

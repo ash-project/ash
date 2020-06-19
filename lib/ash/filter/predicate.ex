@@ -1,7 +1,10 @@
 defmodule Ash.Filter.Predicate do
+  @moduledoc "Represents a filter predicate"
+
   defstruct [:attribute, :relationship_path, :predicate]
 
-  alias Ash.Filter.Predicate.Comparison
+  alias Ash.Filter
+  alias Ash.Filter.{Expression, Not}
 
   @type predicate :: struct
 
@@ -23,7 +26,7 @@ defmodule Ash.Filter.Predicate do
         }
 
   @callback new(Ash.resource(), Ash.attribute(), term) :: {:ok, struct} | {:error, term}
-  @callback compare(predicate(), predicate()) :: Comparison.comparison()
+  @callback compare(predicate(), predicate()) :: comparison()
 
   defmacro __using__(_opts) do
     quote do
@@ -38,7 +41,25 @@ defmodule Ash.Filter.Predicate do
   end
 
   @spec compare(predicate(), predicate()) :: comparison
-  def compare(%__MODULE__{predicate: left}, right), do: compare(left, right)
+  def compare(%__MODULE__{predicate: left} = pred, right) do
+    case compare(left, right) do
+      {:simplify, simplification} ->
+        simplification =
+          Filter.map(simplification, fn
+            %struct{} = expr when struct in [__MODULE__, Not, Expression] ->
+              expr
+
+            other ->
+              wrap_in_predicate(pred, other)
+          end)
+
+        {:simplify, simplification}
+
+      other ->
+        other
+    end
+  end
+
   def compare(left, %__MODULE__{predicate: right}), do: compare(left, right)
 
   def compare(left, right) do
@@ -63,44 +84,29 @@ defmodule Ash.Filter.Predicate do
         {_, other} -> other
       end
     end
+  end
 
-    # right_compared_to_left =
-    #   case left.__struct__.compare(right) do
-    #     :unkown ->
-    #       right.__struct__.compare(left)
-    #   end
-    # left_compared_to_right = right.__struct__.compare(left)
-
-    # # This is not very performant, and will result in many unnecassary cycles
-    # # simplifying values. This will work in the short term though. It can be
-    # # optimized later
-    # case {right_compared_to_left, left_compared_to_right} do
-    #   {:unknown, :unknown} -> :unknown
-    #   {:exclusive, :unknown} -> :right_excludes_left
-    #   {:unknown, :exclusive} -> :left_excludes_right
-    #   {:inclusive, :unknown} -> :right_includes_left
-    #   {:unknown, :inclusive} -> :left_includes_right
-    #   {:inclusive, :inclusive} -> :mutually_inclusive
-    #   {:exclusive, :exclusive} -> :mutually_exclusive
-    #   {_, :exclusive} -> :left_excludes_right
-    #   {:exclusive, _} -> :right_excludes_left
-    #   {_, :inclusive} -> :left_includes_right
-    #   {:inclusive, _} -> :right_includes_left
-    #   {{:simplify, new_left, _}, _} -> {:simplify, new_left}
-    #   {_, {:simplify, _, new_left}} -> {:simplify, new_left}
-    #   {_, _} -> :unknown
-    # end
+  defp wrap_in_predicate(predicate, %struct{} = other) do
+    if Ash.implements_behaviour?(struct, Ash.Filter.Predicate) do
+      %{predicate | predicate: other}
+    else
+      other
+    end
   end
 
   def new(resource, attribute, predicate, value, relationship_path) do
     case predicate.new(resource, attribute, value) do
       {:ok, predicate} ->
-        {:ok,
-         %__MODULE__{
-           attribute: attribute,
-           predicate: predicate,
-           relationship_path: relationship_path
-         }}
+        if Ash.data_layer_can?(resource, {:filter_predicate, predicate}) do
+          {:ok,
+           %__MODULE__{
+             attribute: attribute,
+             predicate: predicate,
+             relationship_path: relationship_path
+           }}
+        else
+          {:error, "Data layer does not support filtering with #{inspect(predicate)}"}
+        end
 
       {:error, error} ->
         {:error, error}
@@ -127,7 +133,7 @@ defmodule Ash.Filter.Predicate do
             atom: :yellow,
             binary: :green,
             boolean: :pink,
-            list: :orange,
+            list: :cyan,
             map: :magenta,
             number: :red,
             regex: :violet,

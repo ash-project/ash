@@ -1,7 +1,14 @@
 defmodule Ash.Filter do
+  @moduledoc """
+  The representation of a filter in Ash.
+
+  Ash filters are stored as nested `Ash.Filter.Expression{}` and `%Ash.Filter.Not{}` structs,
+  terminating in a `%Ash.Filter.Predicate{}` struct. An expression is simply a boolean operator
+  and the left and right hand side of that operator.
+  """
+  alias Ash.Engine.Request
   alias Ash.Filter.Predicate.{Eq, In}
   alias Ash.Filter.{Expression, Not, Predicate}
-  alias Ash.Engine.Request
 
   @built_in_predicates [
     eq: Eq,
@@ -45,14 +52,27 @@ defmodule Ash.Filter do
     |> Enum.map(fn {path} -> path end)
   end
 
-  def add_to_filter(
-        %__MODULE__{resource: resource, api: api} = base,
-        %__MODULE__{resource: resource, api: api} = addition
-      ) do
-    {:ok, Expression.new(:and, base.expression, addition.expression)}
+  def add_to_filter!(base, op \\ :and, addition) do
+    case add_to_filter(base, op, addition) do
+      {:ok, value} ->
+        value
+
+      {:error, error} ->
+        raise Ash.Error.to_ash_error(error)
+    end
   end
 
-  def add_to_filter(%__MODULE__{api: api} = base, %__MODULE__{api: api} = addition) do
+  def add_to_filter(base, op \\ :and, addition)
+
+  def add_to_filter(
+        %__MODULE__{resource: resource, api: api} = base,
+        op,
+        %__MODULE__{resource: resource, api: api} = addition
+      ) do
+    {:ok, %{base | expression: Expression.new(op, base.expression, addition.expression)}}
+  end
+
+  def add_to_filter(%__MODULE__{api: api} = base, _, %__MODULE__{api: api} = addition) do
     {:error,
      "Cannot add filter for resource #{inspect(addition.resource)} to filter with resource #{
        inspect(base.resource)
@@ -61,15 +81,16 @@ defmodule Ash.Filter do
 
   def add_to_filter(
         %__MODULE__{resource: resource} = base,
+        _,
         %__MODULE__{resource: resource} = addition
       ) do
     {:error,
      "Cannot add filter for api #{inspect(addition.api)} to filter with api #{inspect(base.api)}"}
   end
 
-  def add_to_filter(%__MODULE__{} = base, statement) do
+  def add_to_filter(%__MODULE__{} = base, op, statement) do
     case parse(base.api, base.resource, statement) do
-      {:ok, filter} -> add_to_filter(base, filter)
+      {:ok, filter} -> add_to_filter(base, op, filter)
       {:error, error} -> {:error, error}
     end
   end
@@ -93,50 +114,57 @@ defmodule Ash.Filter do
     strict_subset_of(filter, candidate) == true
   end
 
-  def primary_key_filter?(nil), do: false
+  # def primary_key_filter?(nil), do: false
 
-  def primary_key_filter?(filter) do
-    pkey = Ash.primary_key(filter.resource)
-    cleared_pkey_filter = Enum.map(pkey, fn key -> {key, nil} end)
+  # def primary_key_filter?(filter) do
+  #   pkey = Ash.primary_key(filter.resource)
+  #   cleared_pkey_filter = Enum.map(pkey, fn key -> {key, nil} end)
 
-    case cleared_pkey_filter do
-      [] ->
-        false
+  #   case cleared_pkey_filter do
+  #     [] ->
+  #       false
 
-      cleared_pkey_filter ->
-        case parse(filter.api, filter.resource, cleared_pkey_filter) do
-          {:ok, parsed_cleared_pkey_filter} ->
-            cleared_candidate_filter =
-              map(filter, fn
-                %Predicate{attribute: %{name: name}, predicate: %mod{}} = predicate
-                when mod in [Eq, In] ->
-                  if name in pkey do
-                    %{
-                      predicate
-                      | predicate: %Predicate{
-                          attribute: Ash.attribute(filter.resource, name),
-                          predicate: %Eq{field: name, value: nil}
-                        }
-                    }
-                  end
+  #     cleared_pkey_filter ->
+  #       case parse(filter.api, filter.resource, cleared_pkey_filter) do
+  #         {:ok, parsed_cleared_pkey_filter} ->
+  #           cleared_candidate_filter = clear_primary_key(filter, pkey)
 
-                other ->
-                  other
-              end)
+  #           strict_subset_of?(parsed_cleared_pkey_filter, cleared_candidate_filter)
 
-            strict_subset_of?(parsed_cleared_pkey_filter, cleared_candidate_filter)
+  #         _ ->
+  #           false
+  #       end
+  #   end
+  # end
 
-          _ ->
-            false
-        end
-    end
-  end
+  # defp clear_primary_key(filter, pkey) do
+  #   map(filter, fn
+  #     %Predicate{attribute: %{name: name}, predicate: %mod{}} = predicate
+  #     when mod in [Eq, In] ->
+  #       if name in pkey do
+  #         %{
+  #           predicate
+  #           | predicate: %Predicate{
+  #               attribute: Ash.attribute(filter.resource, name),
+  #               predicate: %Eq{field: name, value: nil}
+  #             }
+  #         }
+  #       else
+  #         predicate
+  #       end
+
+  #     other ->
+  #       other
+  #   end)
+  # end
 
   def relationship_filter_request_paths(filter) do
     filter
     |> relationship_paths()
     |> Enum.map(&[:filter, &1])
   end
+
+  def read_requests(nil), do: []
 
   def read_requests(filter) do
     filter
@@ -215,9 +243,13 @@ defmodule Ash.Filter do
   def do_reduce(expression, acc, func) do
     case expression do
       %Expression{left: left, right: right} ->
+        acc = func.(right, acc)
+        acc = func.(left, acc)
         do_reduce(right, do_reduce(left, acc, func), func)
 
       %Not{expression: not_expr} ->
+        acc = func.(not_expr, acc)
+
         do_reduce(not_expr, acc, func)
 
       other ->

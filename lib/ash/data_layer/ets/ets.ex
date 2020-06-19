@@ -5,7 +5,7 @@ defmodule Ash.DataLayer.Ets do
   This is used for testing. *Do not use this data layer in production*
   """
 
-  alias Ash.Filter.{Predicate, Expression, Not}
+  alias Ash.Filter.{Expression, Not, Predicate}
   alias Ash.Filter.Predicate.{Eq, In}
 
   @behaviour Ash.DataLayer
@@ -41,18 +41,10 @@ defmodule Ash.DataLayer.Ets do
     not private?(resource)
   end
 
-  def can?(_, :transact), do: false
-
   def can?(_, :composite_primary_key), do: true
   def can?(_, :upsert), do: true
-  def can?(_, {:filter, :in}), do: true
-  def can?(_, {:filter, :not_in}), do: true
-  def can?(_, {:filter, :not_eq}), do: true
-  def can?(_, {:filter, :eq}), do: true
-  def can?(_, {:filter, :and}), do: true
-  def can?(_, {:filter, :or}), do: true
-  def can?(_, {:filter, :not}), do: true
-  def can?(_, {:filter_related, _}), do: true
+  def can?(_, {:filter_predicate, %In{}}), do: true
+  def can?(_, {:filter_predicate, %Eq{}}), do: true
   def can?(_, _), do: false
 
   @impl true

@@ -10,12 +10,10 @@ defmodule Ash.DataLayer do
   to ensure that the engine only ever tries to interact with the data layer in ways
   that it supports.
   """
-  @type filter_type :: :eq | :in
   @type feature() ::
           :transact
           | :async_engine
-          | {:filter, filter_type}
-          | {:filter_related, Ash.relationship_cardinality()}
+          | {:filter_predicate, struct}
           | :upsert
           | :composite_primary_key
 

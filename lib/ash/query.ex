@@ -24,6 +24,20 @@ defmodule Ash.Query do
     import Inspect.Algebra
 
     def inspect(query, opts) do
+      opts = %{
+        opts
+        | syntax_colors: [
+            atom: :yellow,
+            binary: :green,
+            boolean: :pink,
+            list: :cyan,
+            map: :magenta,
+            number: :red,
+            regex: :violet,
+            tuple: :white
+          ]
+      }
+
       error_doc =
         if Enum.empty?(query.errors) do
           empty()

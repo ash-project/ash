@@ -22,7 +22,7 @@ defmodule Ash.Type do
     integer: [ecto_type: :integer, filters: [:eq, :in, :not_eq, :not_in], sortable?: true],
     boolean: [ecto_type: :boolean, filters: [:eq, :not_eq], sortable?: true],
     int: [ecto_type: :integer, filters: [:eq, :in, :not_eq, :not_in], sortable?: true],
-    uuid: [ecto_type: Ecto.UUID, filters: [:eq, :in, :not_eq, :not_in], sortable?: true],
+    uuid: [ecto_type: :binary_id, filters: [:eq, :in, :not_eq, :not_in], sortable?: true],
     date: [ecto_type: :date, filters: [:eq, :in, :not_eq, :not_in], sortable?: true],
     utc_datetime: [
       ecto_type: :utc_datetime,
@@ -50,18 +50,6 @@ defmodule Ash.Type do
 
   def get_type(value) do
     value
-  end
-
-  @spec supports_filter?(Ash.resource(), t(), Ash.DataLayer.filter_type(), Ash.data_layer()) ::
-          boolean
-  def supports_filter?(resource, type, filter_type, _data_layer) when type in @builtin_names do
-    Ash.data_layer_can?(resource, {:filter, filter_type}) and
-      filter_type in @builtins[type][:filters]
-  end
-
-  def supports_filter?(resource, type, filter_type, data_layer) do
-    Ash.data_layer_can?(resource, {:filter, filter_type}) and
-      filter_type in type.supported_filter_types(data_layer)
   end
 
   @doc """

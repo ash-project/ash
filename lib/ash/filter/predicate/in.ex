@@ -2,11 +2,12 @@ defmodule Ash.Filter.Predicate.In do
   @moduledoc false
   defstruct [:field, :values]
 
+  use Ash.Filter.Predicate
+
   alias Ash.Error.Filter.InvalidFilterValue
   alias Ash.Filter.Expression
+  alias Ash.Filter.Predicate
   alias Ash.Filter.Predicate.Eq
-
-  use Ash.Filter.Predicate
 
   def new(_resource, attribute, []),
     do: {:ok, %__MODULE__{field: attribute.name, values: MapSet.new([])}}
@@ -15,7 +16,8 @@ defmodule Ash.Filter.Predicate.In do
 
   def new(_resource, attribute, values) when is_list(values) do
     Enum.reduce_while(values, {:ok, %__MODULE__{field: attribute.name, values: []}}, fn value,
-                                                                                        predicate ->
+                                                                                        {:ok,
+                                                                                         predicate} ->
       case Ash.Type.cast_input(attribute.type, value) do
         {:ok, casted} ->
           {:cont, {:ok, %{predicate | values: [casted | predicate.values]}}}
@@ -40,49 +42,28 @@ defmodule Ash.Filter.Predicate.In do
      )}
   end
 
-  def compare(%__MODULE__{field: field, values: values}, %__MODULE__{values: other_values}) do
-    left = MapSet.new(values)
-    right = MapSet.new(other_values)
-
-    common_members = MapSet.intersection(left, right)
-
-    if Enum.empty?(common_members) do
-      :exclusive
-    else
-      different_members = MapSet.difference(left, right)
-
-      if Enum.empty?(different_members) do
-        :mutually_inclusive
-      else
-        {:simplify,
-         Expression.new(
-           :or,
-           %__MODULE__{field: field, values: MapSet.to_list(different_members)},
-           %__MODULE__{field: field, values: MapSet.to_list(common_members)}
-         )}
-      end
-    end
+  def compare(%__MODULE__{} = left, %__MODULE__{} = right) do
+    {:simplify, in_to_or_equals(left), in_to_or_equals(right)}
   end
 
-  def compare(
-        %__MODULE__{values: values} = in_predicate,
-        %Eq{value: value} = equals
-      ) do
-    if value in values do
-      {:simplify, Expression.new(:or, equals, %{in_predicate | values: values -- [value]})}
-    else
-      :mutually_exclusive
-    end
+  def compare(%__MODULE__{} = in_expr, _) do
+    {:simplify, in_to_or_equals(in_expr)}
   end
 
   def compare(_, _), do: :unknown
+
+  defp in_to_or_equals(%{field: field, values: values}) do
+    Enum.reduce(values, nil, fn value, expression ->
+      Expression.new(:or, expression, %Eq{field: field, value: value})
+    end)
+  end
 
   defimpl Inspect do
     import Inspect.Algebra
 
     def inspect(predicate, opts) do
       concat([
-        Ash.Filter.Predicate.add_inspect_path(opts, predicate.field),
+        Predicate.add_inspect_path(opts, predicate.field),
         " in ",
         to_doc(predicate.values, opts)
       ])

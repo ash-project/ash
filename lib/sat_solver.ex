@@ -13,41 +13,45 @@ defmodule Ash.SatSolver do
         true
 
       {_filter_expr, %{expression: nil}} ->
-        # TODO: truesim check `filter_expr`
         false
 
       {filter, candidate} ->
+        do_strict_filter_subset(filter, candidate)
+    end
+  end
+
+  defp do_strict_filter_subset(filter, candidate) do
+    case add_comparisons_and_solve_expression(
+           Expression.new(:and, filter.expression, candidate.expression)
+         ) do
+      {:error, :unsatisfiable} ->
+        false
+
+      {:ok, _} ->
         case add_comparisons_and_solve_expression(
-               Expression.new(:and, filter.expression, candidate.expression)
+               Expression.new(:and, Not.new(filter.expression), candidate.expression)
              ) do
           {:error, :unsatisfiable} ->
-            false
+            true
 
-          {:ok, _} ->
-            case add_comparisons_and_solve_expression(
-                   Expression.new(:and, Not.new(filter.expression), candidate.expression)
-                 ) do
-              {:error, :unsatisfiable} ->
-                true
-
-              _ ->
-                :maybe
-            end
+          _ ->
+            :maybe
         end
     end
   end
 
   defp filter_to_expr(nil), do: nil
+  defp filter_to_expr(false), do: false
+  defp filter_to_expr(true), do: true
   defp filter_to_expr(%Filter{expression: expression}), do: filter_to_expr(expression)
   defp filter_to_expr(%Predicate{} = predicate), do: predicate
-  defp filter_to_expr(%Not{expression: expression}), do: {:not, expression}
+  defp filter_to_expr(%Not{expression: expression}), do: {:not, filter_to_expr(expression)}
 
   defp filter_to_expr(%Expression{op: op, left: left, right: right}) do
     {op, filter_to_expr(left), filter_to_expr(right)}
   end
 
   def add_comparisons_and_solve_expression(expression) do
-    # TODO: Make a ticket to optimize/think more about this
     all_predicates =
       Filter.reduce(expression, [], fn
         %Predicate{} = predicate, predicates ->
@@ -60,13 +64,8 @@ defmodule Ash.SatSolver do
     simplified =
       Filter.map(expression, fn
         %Predicate{} = predicate ->
-          all_predicates
-          |> Enum.find_value(fn other_predicate ->
-            case Predicate.compare(predicate, other_predicate) do
-              {:simplify, simplification} -> {:simplify, simplification}
-              _ -> false
-            end
-          end)
+          predicate
+          |> find_simplification(all_predicates)
           |> case do
             nil ->
               predicate
@@ -80,6 +79,16 @@ defmodule Ash.SatSolver do
       end)
 
     if simplified == expression do
+      all_predicates =
+        Filter.reduce(expression, [], fn
+          %Predicate{} = predicate, predicates ->
+            [predicate | predicates]
+
+          _, predicates ->
+            predicates
+        end)
+        |> Enum.uniq()
+
       comparison_expressions =
         all_predicates
         |> Enum.reduce([], fn predicate, new_expressions ->
@@ -98,9 +107,10 @@ defmodule Ash.SatSolver do
                 [{:not, {:and, other_predicate, predicate}} | new_expressions]
 
               {:simplify, _} ->
-                new_expressions
+                # Filter should be fully simplified here
+                raise "What"
 
-              _ ->
+              _other ->
                 # If we can't tell, we assume they are exclusive statements
                 [{:not, {:and, other_predicate, predicate}} | new_expressions]
             end
@@ -119,6 +129,16 @@ defmodule Ash.SatSolver do
     else
       add_comparisons_and_solve_expression(simplified)
     end
+  end
+
+  defp find_simplification(predicate, predicates) do
+    predicates
+    |> Enum.find_value(fn other_predicate ->
+      case Predicate.compare(predicate, other_predicate) do
+        {:simplify, simplification} -> {:simplify, simplification}
+        _ -> false
+      end
+    end)
   end
 
   def solve_expression(expression) do

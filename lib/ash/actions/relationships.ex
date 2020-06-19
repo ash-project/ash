@@ -170,20 +170,20 @@ defmodule Ash.Actions.Relationships do
        ) do
     relationship_name = relationship.name
 
-    filter =
+    {possible?, filter} =
       case identifiers do
         [single_identifier] ->
           if Keyword.keyword?(single_identifier) do
-            single_identifier
+            {true, single_identifier}
           else
-            [single_identifier]
+            {true, [single_identifier]}
           end
 
         [] ->
-          [__impossible__: true]
+          {false, []}
 
         many ->
-          [or: many]
+          {true, [or: many]}
       end
 
     query =
@@ -198,10 +198,15 @@ defmodule Ash.Actions.Relationships do
         action: Ash.primary_action!(relationship.destination, :read),
         query: query,
         path: [:relationships, relationship_name, type],
+        authorize?: possible?,
         data:
           Request.resolve(fn _data ->
-            query
-            |> api.read()
+            if possible? do
+              query
+              |> api.read()
+            else
+              []
+            end
           end),
         name: "read prior to write related #{relationship.name}"
       )
