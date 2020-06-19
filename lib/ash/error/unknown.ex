@@ -9,8 +9,9 @@ defmodule Ash.Error.Unknown do
 
     def code(_), do: "unknown"
 
-    def message(%{errors: errors}) when not is_nil(errors) do
-      Ash.Error.error_messages(errors)
+    def message(%{errors: errors, error: error}) when not is_nil(errors) do
+      custom_message = error |> List.wrap() |> Enum.map(&inspect/1)
+      Ash.Error.error_messages(errors, custom_message)
     end
 
     def message(error) do

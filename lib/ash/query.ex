@@ -311,6 +311,13 @@ defmodule Ash.Query do
   end
 
   defp add_error(query, key, message) do
+    message =
+      if is_binary(message) do
+        "#{key}: #{message}"
+      else
+        message
+      end
+
     %{
       query
       | errors: [Map.put(Ash.Error.to_ash_error(message), :path, key) | query.errors],

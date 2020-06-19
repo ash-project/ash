@@ -61,15 +61,27 @@ defmodule Ash.Error do
     end
   end
 
-  def error_messages(errors) do
-    errors
-    |> Enum.group_by(& &1.class)
-    |> Enum.sort_by(fn {group, _} -> Map.get(@error_class_indices, group) end)
-    |> Enum.map_join("\n\n", fn {class, class_errors} ->
-      header = header(class) <> "\n\n"
+  def error_messages(errors, custom_message \\ nil) do
+    generic_message =
+      errors
+      |> Enum.group_by(& &1.class)
+      |> Enum.sort_by(fn {group, _} -> Map.get(@error_class_indices, group) end)
+      |> Enum.map_join("\n\n", fn {class, class_errors} ->
+        header = header(class) <> "\n\n"
 
-      header <> Enum.map_join(class_errors, "\n", &"* #{Exception.message(&1)}")
-    end)
+        header <> Enum.map_join(class_errors, "\n", &"* #{Exception.message(&1)}")
+      end)
+
+    if custom_message do
+      custom =
+        custom_message
+        |> List.wrap()
+        |> Enum.map_join("\n", &"* #{&1}")
+
+      "\n\n" <> custom <> generic_message
+    else
+      generic_message
+    end
   end
 
   def error_descriptions(errors) do
