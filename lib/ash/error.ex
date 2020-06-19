@@ -55,7 +55,7 @@ defmodule Ash.Error do
     parent_error_module = @error_modules[error.class]
 
     if parent_error_module == error.__struct__ do
-      parent_error_module.exception(errors: (error.errors || []) ++ other_errors)
+      %{error | errors: (error.errors || []) ++ other_errors}
     else
       parent_error_module.exception(errors: errors)
     end
