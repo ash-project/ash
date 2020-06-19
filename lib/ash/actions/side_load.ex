@@ -432,7 +432,7 @@ defmodule Ash.Actions.SideLoad do
       root_filter =
         case data do
           [] ->
-            [__impossible__: true]
+            false
 
           [%resource{} = item] ->
             item
@@ -588,8 +588,8 @@ defmodule Ash.Actions.SideLoad do
   end
 
   defp put_nested_relationship(request_filter, path, value, records? \\ true)
-  defp put_nested_relationship(_, _, [], true), do: [__impossible__: true]
-  defp put_nested_relationship(_, _, nil, true), do: [__impossible__: true]
+  defp put_nested_relationship(_, _, [], true), do: false
+  defp put_nested_relationship(_, _, nil, true), do: false
   defp put_nested_relationship(_, _, [], false), do: []
   defp put_nested_relationship(_, _, nil, false), do: []
 

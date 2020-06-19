@@ -45,7 +45,7 @@ defmodule Ash.Engine.Request do
     :api,
     :query,
     :write_to_data?,
-    :skip_unless_authorize?,
+    :strict_check_only?,
     :verbose?,
     :state,
     :actor,
@@ -106,7 +106,7 @@ defmodule Ash.Engine.Request do
       query: query,
       api: opts[:api],
       name: opts[:name],
-      skip_unless_authorize?: opts[:skip_unless_authorize?],
+      strict_check_only?: opts[:strict_check_only?],
       state: :strict_check,
       actor: opts[:actor],
       verbose?: opts[:verbose?] || false,
@@ -392,6 +392,8 @@ defmodule Ash.Engine.Request do
   end
 
   defp do_strict_check(authorizer, request, notifications \\ []) do
+    strict_check_only? = request.strict_check_only?
+
     case missing_strict_check_dependencies?(authorizer, request) do
       [] ->
         case strict_check_authorizer(authorizer, request) do
@@ -404,6 +406,9 @@ defmodule Ash.Engine.Request do
             |> set_authorizer_state(authorizer, :authorized)
             |> try_resolve([request.path ++ [:query]], false, false)
 
+          {:filter_and_continue, _, _} when strict_check_only? ->
+            {:error, "Request must pass strict check"}
+
           {:filter_and_continue, filter, new_authorizer_state} ->
             new_request =
               request
@@ -411,6 +416,9 @@ defmodule Ash.Engine.Request do
               |> set_authorizer_state(authorizer, new_authorizer_state)
 
             {:ok, new_request}
+
+          {:continue, _} when strict_check_only? ->
+            {:error, "Request must pass strict check"}
 
           {:continue, authorizer_state} ->
             {:ok, set_authorizer_state(request, authorizer, authorizer_state)}

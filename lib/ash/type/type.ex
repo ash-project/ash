@@ -52,18 +52,6 @@ defmodule Ash.Type do
     value
   end
 
-  @spec supports_filter?(Ash.resource(), t(), Ash.DataLayer.filter_type(), Ash.data_layer()) ::
-          boolean
-  def supports_filter?(resource, type, filter_type, _data_layer) when type in @builtin_names do
-    Ash.data_layer_can?(resource, {:filter, filter_type}) and
-      filter_type in @builtins[type][:filters]
-  end
-
-  def supports_filter?(resource, type, filter_type, data_layer) do
-    Ash.data_layer_can?(resource, {:filter, filter_type}) and
-      filter_type in type.supported_filter_types(data_layer)
-  end
-
   @doc """
   Determines whether or not this value can be sorted.
   """

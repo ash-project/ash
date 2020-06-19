@@ -3,6 +3,7 @@ defmodule Ash.Actions.Read do
   alias Ash.Actions.SideLoad
   alias Ash.Engine
   alias Ash.Engine.Request
+  alias Ash.Filter
   require Logger
 
   def run(query, _action, opts \\ []) do
@@ -40,31 +41,37 @@ defmodule Ash.Actions.Read do
   end
 
   defp requests(query, action, opts) do
+    filter_requests =
+      if Keyword.has_key?(opts, :actor) || opts[:authorize?] do
+        Filter.read_requests(query.filter)
+      else
+        []
+      end
+
     request =
       Request.new(
         resource: query.resource,
         api: query.api,
         query: query,
         action: action,
-        data: data_field(opts, query.filter, query.resource, query.data_layer_query),
+        data: data_field(opts, filter_requests, query.resource, query.data_layer_query),
         path: [:data],
         name: "#{action.type} - `#{action.name}`"
       )
 
-    [request | Map.get(query.filter || %{}, :requests, [])]
+    [request | filter_requests]
   end
 
-  defp data_field(params, filter, resource, query) do
+  defp data_field(params, filter_requests, resource, query) do
     if params[:initial_data] do
       List.wrap(params[:initial_data])
     else
-      Request.resolve(
-        [[:data, :query]],
-        Ash.Filter.optional_paths(filter),
-        fn %{data: %{query: ash_query}} = data ->
-          fetch_filter = Ash.Filter.request_filter_for_fetch(ash_query.filter, data)
+      relationship_filter_paths = Enum.map(filter_requests, &[&1.path, :authorization_filter])
 
-          with {:ok, query} <- Ash.DataLayer.filter(query, fetch_filter, resource),
+      Request.resolve(
+        [[:data, :query] | relationship_filter_paths],
+        fn %{data: %{query: ash_query}} ->
+          with {:ok, query} <- Ash.DataLayer.filter(query, ash_query.filter, resource),
                {:ok, query} <- Ash.DataLayer.limit(query, ash_query.limit, resource),
                {:ok, query} <- Ash.DataLayer.offset(query, ash_query.offset, resource) do
             Ash.DataLayer.run_query(query, resource)

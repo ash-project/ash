@@ -24,6 +24,20 @@ defmodule Ash.Query do
     import Inspect.Algebra
 
     def inspect(query, opts) do
+      opts = %{
+        opts
+        | syntax_colors: [
+            atom: :yellow,
+            binary: :green,
+            boolean: :pink,
+            list: :cyan,
+            map: :magenta,
+            number: :red,
+            regex: :violet,
+            tuple: :white
+          ]
+      }
+
       error_doc =
         if Enum.empty?(query.errors) do
           empty()
@@ -59,7 +73,7 @@ defmodule Ash.Query do
       {:ok, resource} ->
         %__MODULE__{
           api: api,
-          filter: Ash.Filter.parse(resource, [], api),
+          filter: nil,
           resource: resource
         }
         |> set_data_layer_query()
@@ -67,7 +81,7 @@ defmodule Ash.Query do
       :error ->
         %__MODULE__{
           api: api,
-          filter: Ash.Filter.parse(resource, [], api),
+          filter: nil,
           resource: resource
         }
         |> add_error(:resource, "does not exist")
@@ -230,16 +244,19 @@ defmodule Ash.Query do
     new_filter =
       case query.filter do
         nil ->
-          filter
+          {:ok, filter}
 
         existing_filter ->
           Ash.Filter.add_to_filter(existing_filter, filter)
       end
 
-    new_filter.errors
-    |> Enum.reduce(query, &add_error(&2, :filter, &1))
-    |> Map.put(:filter, new_filter)
-    |> set_data_layer_query()
+    case new_filter do
+      {:ok, filter} ->
+        set_data_layer_query(%{query | filter: filter})
+
+      {:error, error} ->
+        add_error(query, :filter, error)
+    end
   end
 
   def filter(query, statement) do
@@ -247,46 +264,17 @@ defmodule Ash.Query do
       if query.filter do
         Ash.Filter.add_to_filter(query.filter, statement)
       else
-        Ash.Filter.parse(query.resource, statement, query.api)
+        Ash.Filter.parse(query.api, query.resource, statement)
       end
 
-    filter.errors
-    |> Enum.reduce(query, &add_error(&2, :filter, &1))
-    |> Map.put(:filter, filter)
-    |> set_data_layer_query()
-  end
-
-  def reject(query, statement) when is_list(statement) do
-    filter(query, not: statement)
-  end
-
-  def reject(query, %Ash.Filter{} = filter) do
-    case query.filter do
-      nil ->
-        new_filter =
-          query.resource
-          |> Ash.Filter.parse([], query.api)
-          |> Map.put(:not, filter)
-
+    case filter do
+      {:ok, filter} ->
         query
-        |> Map.put(:filter, new_filter)
+        |> Map.put(:filter, filter)
         |> set_data_layer_query()
 
-      existing_filter ->
-        new_filter_not =
-          case existing_filter.not do
-            nil ->
-              filter
-
-            existing_not_filter ->
-              %{existing_not_filter | ands: [filter | existing_not_filter.ands]}
-          end
-
-        new_filter = %{existing_filter | not: new_filter_not}
-
-        query
-        |> Map.put(:filter, new_filter)
-        |> set_data_layer_query()
+      {:error, error} ->
+        add_error(query, :filter, error)
     end
   end
 
@@ -347,6 +335,10 @@ defmodule Ash.Query do
     else
       {:error, error} -> {:error, error}
     end
+  end
+
+  defp maybe_filter(query, %{filter: nil}, _) do
+    {:ok, query}
   end
 
   defp maybe_filter(query, ash_query, opts) do

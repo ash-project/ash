@@ -175,6 +175,15 @@ defmodule Ash do
     |> Enum.find(&(&1.name == name))
   end
 
+  def related(resource, []), do: resource
+
+  def related(resource, [path | rest]) do
+    case relationship(resource, path) do
+      %{destination: destination} -> related(destination, rest)
+      nil -> nil
+    end
+  end
+
   @doc "The data layer of the resource, or nil if it does not have one"
   @spec data_layer(resource()) :: data_layer()
   def data_layer(resource) do

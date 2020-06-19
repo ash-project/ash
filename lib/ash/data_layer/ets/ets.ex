@@ -5,7 +5,8 @@ defmodule Ash.DataLayer.Ets do
   This is used for testing. *Do not use this data layer in production*
   """
 
-  alias Ash.Filter.{And, Eq, In, NotEq, NotIn, Or}
+  alias Ash.Filter.{Expression, Not, Predicate}
+  alias Ash.Filter.Predicate.{Eq, In}
 
   @behaviour Ash.DataLayer
 
@@ -40,18 +41,10 @@ defmodule Ash.DataLayer.Ets do
     not private?(resource)
   end
 
-  def can?(_, :transact), do: false
-
   def can?(_, :composite_primary_key), do: true
   def can?(_, :upsert), do: true
-  def can?(_, {:filter, :in}), do: true
-  def can?(_, {:filter, :not_in}), do: true
-  def can?(_, {:filter, :not_eq}), do: true
-  def can?(_, {:filter, :eq}), do: true
-  def can?(_, {:filter, :and}), do: true
-  def can?(_, {:filter, :or}), do: true
-  def can?(_, {:filter, :not}), do: true
-  def can?(_, {:filter_related, _}), do: true
+  def can?(_, {:filter_predicate, %In{}}), do: true
+  def can?(_, {:filter_predicate, %Eq{}}), do: true
   def can?(_, _), do: false
 
   @impl true
@@ -81,20 +74,12 @@ defmodule Ash.DataLayer.Ets do
   end
 
   @impl true
-  def run_query(%Query{filter: %Ash.Filter{impossible?: true}}, _), do: {:ok, []}
-
-  @impl true
   def run_query(
         %Query{resource: resource, filter: filter, offset: offset, limit: limit, sort: sort},
         _resource
       ) do
-    with {:ok, table} <- wrap_or_create_table(resource),
-         {:ok, records} <- ETS.Set.to_list(table) do
-      filtered_records =
-        records
-        |> Enum.map(&elem(&1, 1))
-        |> filter_matches(filter)
-
+    with {:ok, records} <- get_records(resource),
+         filtered_records <- filter_matches(records, filter) do
       offset_records =
         filtered_records
         |> do_sort(sort)
@@ -113,110 +98,106 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  defp filter_matches(records, filter) do
-    Enum.filter(records, &matches_filter?(&1, filter))
-  end
-
-  defp matches_filter?(record, %{ands: [first | rest]} = filter) do
-    matches_filter?(record, first) and matches_filter?(record, %{filter | ands: rest})
-  end
-
-  defp matches_filter?(record, %{not: not_filter} = filter) when not is_nil(not_filter) do
-    not matches_filter?(record, not_filter) and matches_filter?(record, %{filter | not: nil})
-  end
-
-  defp matches_filter?(record, %{ors: [first | rest]} = filter) do
-    matches_filter?(record, first) or matches_filter?(record, %{filter | ors: rest})
-  end
-
-  defp matches_filter?(record, %{resource: resource} = filter) do
-    resource
-    |> relationships_to_attribute_filters(filter)
-    |> Map.get(:attributes)
-    |> Enum.all?(fn {key, predicate} ->
-      matches_predicate?(Map.get(record, key), predicate)
-    end)
-  end
-
-  # alias Ash.Filter.{In, NotIn}
-
-  defp matches_predicate?(value, %Eq{value: predicate_value}) do
-    value == predicate_value
-  end
-
-  defp matches_predicate?(value, %NotEq{value: predicate_value}) do
-    value != predicate_value
-  end
-
-  defp matches_predicate?(value, %In{values: predicate_value}) do
-    value in predicate_value
-  end
-
-  defp matches_predicate?(value, %NotIn{values: predicate_value}) do
-    value not in predicate_value
-  end
-
-  defp matches_predicate?(value, %And{left: left, right: right}) do
-    matches_predicate?(value, left) and matches_predicate?(value, right)
-  end
-
-  defp matches_predicate?(value, %Or{left: left, right: right}) do
-    matches_predicate?(value, left) or matches_predicate?(value, right)
-  end
-
-  defp relationships_to_attribute_filters(_, %{relationships: relationships} = filter)
-       when relationships in [nil, %{}] do
-    filter
-  end
-
-  defp relationships_to_attribute_filters(resource, %{relationships: relationships} = filter) do
-    Enum.reduce(relationships, filter, fn {rel, related_filter}, filter ->
-      relationship = Ash.relationship(resource, rel)
-
-      {field, parsed_related_filter} = related_ids_filter(relationship, related_filter)
-
-      Ash.Filter.add_to_filter(filter, [{field, parsed_related_filter}])
-    end)
-  end
-
-  defp related_ids_filter(%{type: :many_to_many} = rel, filter) do
-    destination_query = %Query{
-      resource: rel.destination,
-      filter: filter
-    }
-
-    with {:ok, results} <- run_query(destination_query, rel.destination),
-         destination_values <- Enum.map(results, &Map.get(&1, rel.destination_field)),
-         %{errors: []} = through_filter <-
-           Ash.Filter.parse(
-             rel.through,
-             [
-               {rel.destination_field_on_join_table, [in: destination_values]}
-             ],
-             filter.api
-           ),
-         {:ok, join_results} <-
-           run_query(%Query{resource: rel.through, filter: through_filter}, rel.through) do
-      {rel.source_field,
-       [in: Enum.map(join_results, &Map.get(&1, rel.source_field_on_join_table))]}
-    else
-      %{errors: errors} -> {:error, errors}
-      {:error, error} -> {:error, error}
+  defp get_records(resource) do
+    with {:ok, table} <- wrap_or_create_table(resource),
+         {:ok, record_tuples} <- ETS.Set.to_list(table) do
+      {:ok, Enum.map(record_tuples, &elem(&1, 1))}
     end
   end
 
-  defp related_ids_filter(rel, filter) do
-    query = %Query{
-      resource: rel.destination,
-      filter: filter
-    }
+  defp filter_matches(records, nil), do: records
 
-    case run_query(query, rel.destination) do
-      {:ok, results} ->
-        {rel.source_field, [in: Enum.map(results, &Map.get(&1, rel.destination_field))]}
+  defp filter_matches(records, filter) do
+    Enum.filter(records, &matches_filter?(&1, filter.expression))
+  end
 
-      {:error, error} ->
-        {:error, error}
+  defp matches_filter?(
+         record,
+         %Predicate{
+           predicate: predicate,
+           attribute: %{name: name},
+           relationship_path: []
+         }
+       ) do
+    matches_predicate?(record, name, predicate)
+  end
+
+  defp matches_filter?(
+         record,
+         %Predicate{
+           predicate: predicate,
+           attribute: %{name: name},
+           relationship_path: path
+         }
+       ) do
+    record
+    |> get_related(path)
+    |> Enum.any?(&matches_predicate?(&1, name, predicate))
+  end
+
+  defp matches_filter?(record, %Expression{op: :and, left: left, right: right}) do
+    matches_filter?(record, left) && matches_filter?(record, right)
+  end
+
+  defp matches_filter?(record, %Expression{op: :or, left: left, right: right}) do
+    matches_filter?(record, left) || matches_filter?(record, right)
+  end
+
+  defp matches_filter?(record, %Not{expression: expression}) do
+    not matches_filter?(record, expression)
+  end
+
+  defp get_related(record_or_records, []), do: List.wrap(record_or_records)
+
+  defp get_related(%resource{} = record, [first | rest]) do
+    relationship = Ash.relationship(resource, first)
+    source_value = Map.get(record, relationship.source_field)
+
+    related =
+      if is_nil(Map.get(record, relationship.source_field)) do
+        []
+      else
+        case Ash.relationship(resource, first) do
+          %{type: :many_to_many} = relationship ->
+            {:ok, through_records} = get_records(relationship.through)
+            {:ok, destination_records} = get_records(relationship.destination)
+
+            through_records
+            |> Enum.reject(&is_nil(Map.get(&1, relationship.destination_field_on_join_table)))
+            |> Enum.flat_map(fn through_record ->
+              if Map.get(through_record, relationship.source_field_on_join_table) ==
+                   source_value do
+                Enum.filter(destination_records, fn destination_record ->
+                  Map.get(through_record, relationship.destination_field_on_join_table) ==
+                    Map.get(destination_record, relationship.destination_field)
+                end)
+              else
+                []
+              end
+            end)
+
+          relationship ->
+            {:ok, destination_records} = get_records(relationship.destination)
+
+            Enum.filter(destination_records, fn destination_record ->
+              Map.get(destination_record, relationship.destination_field) == source_value
+            end)
+        end
+      end
+
+    related
+    |> List.wrap()
+    |> Enum.flat_map(&get_related(&1, rest))
+  end
+
+  defp matches_predicate?(record, field, %Eq{value: predicate_value}) do
+    Map.fetch(record, field) == {:ok, predicate_value}
+  end
+
+  defp matches_predicate?(record, field, %In{values: predicate_values}) do
+    case Map.fetch(record, field) do
+      {:ok, value} -> value in predicate_values
+      :error -> false
     end
   end
 

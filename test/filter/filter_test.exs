@@ -2,6 +2,8 @@ defmodule Ash.Test.Filter.FilterTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Filter
+
   defmodule Profile do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -247,6 +249,63 @@ defmodule Ash.Test.Filter.FilterTest do
                |> Api.query()
                |> Ash.Query.filter(related_posts: post3.id)
                |> Api.read!()
+    end
+  end
+
+  describe "filter subset logic" do
+    test "can detect a filter is a subset of itself" do
+      filter = Filter.parse!(Api, Post, %{points: 1})
+
+      assert Filter.strict_subset_of?(filter, filter)
+    end
+
+    test "can detect a filter is a subset of itself *and* something else" do
+      filter = Filter.parse!(Api, Post, points: 1)
+
+      candidate = Filter.add_to_filter!(filter, title: "Title")
+
+      assert Filter.strict_subset_of?(filter, candidate)
+    end
+
+    test "can detect a filter is not a subset of itself *or* something else" do
+      filter = Filter.parse!(Api, Post, points: 1)
+
+      candidate = Filter.add_to_filter!(filter, :or, title: "Title")
+
+      refute Filter.strict_subset_of?(filter, candidate)
+    end
+
+    test "can detect a filter is a subset based on a simplification" do
+      filter = Filter.parse!(Api, Post, points: [in: [1, 2]])
+
+      candidate = Filter.parse!(Api, Post, points: 1)
+
+      assert Filter.strict_subset_of?(filter, candidate)
+    end
+
+    test "can detect a filter is not a subset based on a simplification" do
+      filter = Filter.parse!(Api, Post, points: [in: [1, 2]])
+
+      candidate = Filter.parse!(Api, Post, points: 3)
+
+      refute Filter.strict_subset_of?(filter, candidate)
+    end
+
+    test "can detect a more complicated scenario" do
+      filter = Filter.parse!(Api, Post, or: [points: [in: [1, 2, 3]], points: 4, points: 5])
+
+      candidate = Filter.parse!(Api, Post, or: [points: 1, points: 3, points: 5])
+
+      assert Filter.strict_subset_of?(filter, candidate)
+    end
+
+    test "understands unrelated negations" do
+      filter = Filter.parse!(Api, Post, or: [points: [in: [1, 2, 3]], points: 4, points: 5])
+
+      candidate =
+        Filter.parse!(Api, Post, or: [points: 1, points: 3, points: 5], not: [points: 7])
+
+      assert Filter.strict_subset_of?(filter, candidate)
     end
   end
 end

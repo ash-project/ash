@@ -153,12 +153,16 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     test "it raises on an error" do
-      assert_raise(Ash.Error.Invalid, ~r/Invalid filter value 10 supplied for :title == 10/, fn ->
-        Post
-        |> Api.query()
-        |> Ash.Query.filter(title: 10)
-        |> Api.read!()
-      end)
+      assert_raise(
+        Ash.Error.Invalid,
+        ~r/Invalid filter value `10` supplied in: `title == 10`/,
+        fn ->
+          Post
+          |> Api.query()
+          |> Ash.Query.filter(title: 10)
+          |> Api.read!()
+        end
+      )
     end
   end
 
