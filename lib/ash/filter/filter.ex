@@ -43,6 +43,9 @@ defmodule Ash.Filter do
     end
   end
 
+  def relationship_paths(nil), do: []
+  def relationship_paths(%{expression: nil}), do: []
+
   def relationship_paths(filter) do
     filter.expression
     |> do_relationship_paths()
