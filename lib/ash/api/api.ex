@@ -76,6 +76,11 @@ defmodule Ash.Api do
                                             type: {:custom, Ash.OptionsHelpers, :map, []},
                                             default: %{},
                                             doc: "Changes to be applied to relationship values"
+                                          ],
+                                          side_load: [
+                                            type: :any,
+                                            doc:
+                                              "Side loads to include in the query, same as you would pass to `Ash.Query.side_load/2`"
                                           ]
                                         ]
                                         |> merge_schemas(@global_opts, "Global Options")
