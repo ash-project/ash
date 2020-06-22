@@ -6,7 +6,6 @@ defmodule Ash.Resource.Relationships.HasOne do
     :destination,
     :destination_field,
     :source_field,
-    :reverse_relationship,
     :allow_orphans?,
     cardinality: :one,
     type: :has_one
@@ -21,8 +20,7 @@ defmodule Ash.Resource.Relationships.HasOne do
           destination: Ash.resource(),
           destination_field: atom,
           source_field: atom,
-          allow_orphans?: boolean,
-          reverse_relationship: atom | nil
+          allow_orphans?: boolean
         }
 
   import Ash.Resource.Relationships.SharedOptions

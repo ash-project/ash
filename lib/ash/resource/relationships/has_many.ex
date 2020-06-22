@@ -6,7 +6,6 @@ defmodule Ash.Resource.Relationships.HasMany do
     :destination_field,
     :source_field,
     :source,
-    :reverse_relationship,
     cardinality: :many,
     type: :has_many
   ]
@@ -19,8 +18,7 @@ defmodule Ash.Resource.Relationships.HasMany do
           type: Ash.Type.t(),
           destination: Ash.resource(),
           destination_field: atom,
-          source_field: atom,
-          reverse_relationship: atom() | nil
+          source_field: atom
         }
 
   import Ash.Resource.Relationships.SharedOptions

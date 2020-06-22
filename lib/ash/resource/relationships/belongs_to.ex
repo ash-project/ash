@@ -9,7 +9,6 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :destination_field,
     :source_field,
     :source,
-    :reverse_relationship,
     cardinality: :one,
     type: :belongs_to
   ]

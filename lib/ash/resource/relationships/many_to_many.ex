@@ -9,7 +9,6 @@ defmodule Ash.Resource.Relationships.ManyToMany do
     :destination_field,
     :source_field_on_join_table,
     :destination_field_on_join_table,
-    :reverse_relationship,
     cardinality: :many,
     type: :many_to_many
   ]
@@ -24,8 +23,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
           source_field: atom,
           destination_field: atom,
           source_field_on_join_table: atom,
-          destination_field_on_join_table: atom,
-          reverse_relationship: atom
+          destination_field_on_join_table: atom
         }
 
   import Ash.Resource.Relationships.SharedOptions

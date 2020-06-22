@@ -36,8 +36,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                  name: :related_posts_join_assoc,
                  source: Ash.Test.Resource.Relationships.ManyToManyTest.Post,
                  source_field: :id,
-                 type: :has_many,
-                 reverse_relationship: nil
+                 type: :has_many
                },
                %Ash.Resource.Relationships.ManyToMany{
                  cardinality: :many,
@@ -49,8 +48,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                  source_field: :id,
                  source_field_on_join_table: :post_id,
                  through: SomeResource,
-                 type: :many_to_many,
-                 reverse_relationship: nil
+                 type: :many_to_many
                }
              ] = Ash.relationships(Post)
     end

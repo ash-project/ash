@@ -70,9 +70,7 @@ defmodule Ash.Test.Actions.CreateTest do
     relationships do
       has_one :profile, Profile, destination_field: :author_id
 
-      has_many :posts, Ash.Test.Actions.CreateTest.Post,
-        reverse_relationship: :author,
-        destination_field: :author
+      has_many :posts, Ash.Test.Actions.CreateTest.Post, destination_field: :author
     end
   end
 
@@ -133,8 +131,7 @@ defmodule Ash.Test.Actions.CreateTest do
       many_to_many :related_posts, __MODULE__,
         through: PostLink,
         source_field_on_join_table: :source_post_id,
-        destination_field_on_join_table: :destination_post_id,
-        reverse_relationship: :related_posts
+        destination_field_on_join_table: :destination_post_id
     end
   end
 

@@ -25,9 +25,7 @@ defmodule Ash.Test.Actions.SideLoadTest do
     end
 
     relationships do
-      has_many :posts, Ash.Test.Actions.SideLoadTest.Post,
-        reverse_relationship: :author,
-        destination_field: :author_id
+      has_many :posts, Ash.Test.Actions.SideLoadTest.Post, destination_field: :author_id
     end
   end
 
@@ -53,7 +51,7 @@ defmodule Ash.Test.Actions.SideLoadTest do
     end
 
     relationships do
-      belongs_to :author, Author, reverse_relationship: :posts
+      belongs_to :author, Author
 
       many_to_many :categories, Module.concat(outer_mod, Category),
         through: Module.concat(outer_mod, PostCategory),

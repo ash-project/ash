@@ -19,11 +19,6 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       type: :atom,
       doc:
         "The field on this resource that should match the `destination_field` on the related resource."
-    ],
-    reverse_relationship: [
-      type: :atom,
-      doc:
-        "A requirement for side loading data. Must be the name of an inverse relationship on the destination resource."
     ]
   ]
 

@@ -31,7 +31,6 @@ locals_without_parens = [
   read: 2,
   resource: 1,
   resource: 2,
-  reverse_relationship: 1,
   source_field: 1,
   source_field_on_join_table: 1,
   through: 1,
