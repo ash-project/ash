@@ -7,12 +7,14 @@ defmodule Ash.Actions.Read do
   require Logger
 
   def run(query, _action, opts \\ []) do
+    engine_opts = Keyword.take(opts, [:verbose?, :actor, :authorize?])
+
     with %{errors: []} <- query,
          {:action, action} when not is_nil(action) <- {:action, action(query, opts)},
-         requests <- requests(query, action, opts),
+         {:ok, requests} <- requests(query, action, opts),
          side_load_requests <- SideLoad.requests(query),
          %{data: %{data: data} = all_data, errors: []} <-
-           Engine.run(requests ++ side_load_requests, query.api, opts),
+           Engine.run(requests ++ side_load_requests, query.api, engine_opts),
          data_with_side_loads <- SideLoad.attach_side_loads(data, all_data) do
       {:ok, data_with_side_loads}
     else
@@ -45,33 +47,61 @@ defmodule Ash.Actions.Read do
       if Keyword.has_key?(opts, :actor) || opts[:authorize?] do
         Filter.read_requests(query.filter)
       else
-        []
+        {:ok, []}
       end
 
-    request =
-      Request.new(
-        resource: query.resource,
-        api: query.api,
-        query: query,
-        action: action,
-        data: data_field(opts, filter_requests, query.resource, query.data_layer_query),
-        path: [:data],
-        name: "#{action.type} - `#{action.name}`"
-      )
+    case filter_requests do
+      {:ok, filter_requests} ->
+        request =
+          Request.new(
+            resource: query.resource,
+            api: query.api,
+            query: query,
+            action: action,
+            data: data_field(opts, filter_requests, query.resource, query.data_layer_query),
+            path: [:data],
+            name: "#{action.type} - `#{action.name}`"
+          )
 
-    [request | filter_requests]
+        {:ok, [request | filter_requests]}
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   defp data_field(params, filter_requests, resource, query) do
     if params[:initial_data] do
       List.wrap(params[:initial_data])
     else
-      relationship_filter_paths = Enum.map(filter_requests, &[&1.path, :authorization_filter])
+      relationship_filter_paths =
+        Enum.flat_map(filter_requests, fn request ->
+          [request.path ++ [:data], request.path ++ [:authorization_filter]]
+        end)
 
       Request.resolve(
         [[:data, :query] | relationship_filter_paths],
-        fn %{data: %{query: ash_query}} ->
-          with {:ok, query} <- Ash.DataLayer.filter(query, ash_query.filter, resource),
+        fn %{data: %{query: ash_query}} = data ->
+          filter_with_related =
+            Enum.reduce_while(relationship_filter_paths, {:ok, ash_query.filter}, fn path,
+                                                                                     {:ok, filter} ->
+              case get_in(data, path) do
+                nil ->
+                  {:cont, {:ok, filter}}
+
+                authorization_filter ->
+                  case Ash.Filter.add_to_filter(filter, authorization_filter) do
+                    {:ok, new_filter} ->
+                      {:cont, {:ok, new_filter}}
+
+                    {:error, error} ->
+                      {:halt, {:error, error}}
+                  end
+              end
+            end)
+
+          with {:ok, filter} <- filter_with_related,
+               {:ok, query} <- Ash.DataLayer.filter(query, filter, resource),
                {:ok, query} <- Ash.DataLayer.limit(query, ash_query.limit, resource),
                {:ok, query} <- Ash.DataLayer.offset(query, ash_query.offset, resource) do
             Ash.DataLayer.run_query(query, resource)

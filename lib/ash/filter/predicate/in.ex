@@ -23,12 +23,13 @@ defmodule Ash.Filter.Predicate.In do
           {:cont, {:ok, %{predicate | values: [casted | predicate.values]}}}
 
         :error ->
-          {:error,
-           InvalidFilterValue.exception(
-             filter: %__MODULE__{field: attribute.name, values: values},
-             value: value,
-             field: attribute.name
-           )}
+          {:halt,
+           {:error,
+            InvalidFilterValue.exception(
+              filter: %__MODULE__{field: attribute.name, values: values},
+              value: value,
+              field: attribute.name
+            )}}
       end
     end)
   end

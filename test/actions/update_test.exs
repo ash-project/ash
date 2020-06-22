@@ -2,6 +2,27 @@ defmodule Ash.Test.Actions.UpdateTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  defmodule Authorized do
+    use Ash.Resource,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Test.Authorizer]
+
+    ets do
+      private?(true)
+    end
+
+    attributes do
+      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      attribute :name, :string
+    end
+
+    actions do
+      read :default
+      create :default
+      update :default
+    end
+  end
+
   defmodule Profile do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -115,6 +136,7 @@ defmodule Ash.Test.Actions.UpdateTest do
       resource(Post)
       resource(Profile)
       resource(PostLink)
+      resource(Authorized)
     end
   end
 
@@ -316,6 +338,18 @@ defmodule Ash.Test.Actions.UpdateTest do
 
       assert Api.update!(post, relationships: %{author: author2.id}).author ==
                Api.get!(Author, author2.id)
+    end
+  end
+
+  describe "unauthorized update" do
+    test "it does not update the record" do
+      record = Api.create!(Authorized, attributes: %{name: "bar"})
+
+      assert_raise(Ash.Error.Forbidden, fn ->
+        Api.update!(record, attributes: %{name: "foo"}, authorize?: true)
+      end)
+
+      assert Api.get!(Authorized, record.id).name == "bar"
     end
   end
 end

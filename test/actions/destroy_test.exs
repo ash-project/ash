@@ -29,7 +29,7 @@ defmodule Ash.Test.Actions.DestroyTest do
 
   defmodule Author do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets, authorizers: [Ash.Test.Authorizer]
 
     ets do
       private?(true)
@@ -107,6 +107,16 @@ defmodule Ash.Test.Actions.DestroyTest do
       assert Api.destroy!(post) == :ok
 
       refute Api.get!(Post, post.id)
+    end
+
+    test "the destroy does not happen if it is unauthorized" do
+      author = Api.create!(Author, attributes: %{name: "foobar"})
+
+      assert_raise(Ash.Error.Forbidden, fn ->
+        Api.destroy!(author, authorize?: true)
+      end)
+
+      assert Api.get!(Author, author.id)
     end
   end
 end

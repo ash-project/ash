@@ -36,7 +36,7 @@ defmodule Ash.Engine do
           Enum.map(requests, fn request ->
             request = %{
               request
-              | authorize?: authorize?,
+              | authorize?: request.authorize? and authorize?,
                 actor: actor,
                 verbose?: opts[:verbose?]
             }
@@ -65,6 +65,9 @@ defmodule Ash.Engine do
               Runner.run(local_requests, opts[:verbose?], pid, pid_info)
           end
         end
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 

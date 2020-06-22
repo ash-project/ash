@@ -9,8 +9,21 @@ defmodule Ash.Error.Unknown do
 
     def code(_), do: "unknown"
 
-    def message(%{errors: errors, error: error}) when not is_nil(errors) do
-      custom_message = error |> List.wrap() |> Enum.map(&inspect/1)
+    def message(%{errors: errors, error: error, path: path}) when not is_nil(errors) do
+      custom_prefix =
+        if path && path != [] do
+          inspect(path) <> " - "
+        else
+          ""
+        end
+
+      custom_message =
+        error
+        |> List.wrap()
+        |> Enum.map(fn message ->
+          custom_prefix <> inspect(message)
+        end)
+
       Ash.Error.error_messages(errors, custom_message)
     end
 

@@ -44,6 +44,7 @@ defmodule Ash.Engine.Request do
     :name,
     :api,
     :query,
+    :authorization_filter,
     :write_to_data?,
     :strict_check_only?,
     :verbose?,
@@ -51,6 +52,7 @@ defmodule Ash.Engine.Request do
     :actor,
     :authorize?,
     :engine_pid,
+    authorized?: false,
     authorizer_state: %{},
     dependencies_to_send: %{},
     dependency_data: %{},
@@ -109,8 +111,9 @@ defmodule Ash.Engine.Request do
       strict_check_only?: opts[:strict_check_only?],
       state: :strict_check,
       actor: opts[:actor],
+      authorized?: opts[:authorize?] == false,
       verbose?: opts[:verbose?] || false,
-      authorize?: opts[:authorize?] || false,
+      authorize?: opts[:authorize?] || true,
       write_to_data?: Keyword.get(opts, :write_to_data?, true)
     }
   end
@@ -153,6 +156,7 @@ defmodule Ash.Engine.Request do
       authorizers ->
         case strict_check(authorizers, request) do
           {:ok, new_request, notifications, []} ->
+            new_request = set_authorized(new_request)
             log(new_request, "Strict check complete")
             {:continue, %{new_request | state: :fetch_data}, notifications}
 
@@ -201,6 +205,7 @@ defmodule Ash.Engine.Request do
         case check(authorizers, request) do
           {:ok, new_request, notifications, []} ->
             log(new_request, "Check complete")
+            new_request = set_authorized(new_request)
 
             {:complete, %{new_request | state: :complete}, notifications, []}
 
@@ -291,6 +296,19 @@ defmodule Ash.Engine.Request do
       end
     )
   end
+
+  defp set_authorized(%{authorized?: false, resource: resource} = request) do
+    authorized? =
+      resource
+      |> Ash.authorizers()
+      |> Enum.all?(fn authorizer ->
+        authorizer_state(request, authorizer) == :authorizer
+      end)
+
+    %{request | authorized?: authorized?}
+  end
+
+  defp set_authorized(request), do: request
 
   def put_dependency_data(request, dep, value) do
     %{request | dependency_data: Map.put(request.dependency_data, dep, value)}
@@ -403,6 +421,7 @@ defmodule Ash.Engine.Request do
           {:filter, filter} ->
             request
             |> Map.update!(:query, &Ash.Query.filter(&1, filter))
+            |> Map.update(:authorization_filter, filter, &Ash.Filter.add_to_filter(&1, filter))
             |> set_authorizer_state(authorizer, :authorized)
             |> try_resolve([request.path ++ [:query]], false, false)
 
@@ -413,6 +432,7 @@ defmodule Ash.Engine.Request do
             new_request =
               request
               |> Map.update!(:query, &Ash.Query.filter(&1, filter))
+              |> Map.update(:authorization_filter, filter, &Ash.Filter.add_to_filter(&1, filter))
               |> set_authorizer_state(authorizer, new_authorizer_state)
 
             {:ok, new_request}
@@ -484,7 +504,10 @@ defmodule Ash.Engine.Request do
             {:ok, set_authorizer_state(request, authorizer, :authorized)}
 
           {:filter, filter} ->
-            runtime_filter(request, authorizer, filter)
+            request
+            |> set_authorizer_state(authorizer, :authorized)
+            |> Map.update(:authorization_filter, filter, &Ash.Filter.add_to_filter(&1, filter))
+            |> runtime_filter(authorizer, filter)
 
           {:error, error} ->
             {:error, error}
@@ -584,7 +607,7 @@ defmodule Ash.Engine.Request do
           {:cont, {:ok, request, new_notifications ++ notifications, skipped ++ other_deps}}
 
         {:error, error} ->
-          log(request, "Error resolving optional dependency #{inspect(dep)}: #{error}")
+          log(request, "Error resolving optional dependency #{inspect(dep)}: #{inspect(error)}")
 
           if optional? do
             {:cont, {:ok, request, notifications, skipped}}

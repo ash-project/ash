@@ -7,7 +7,12 @@ defmodule Ash.Actions.Update do
 
   @spec run(Ash.api(), Ash.record(), Ash.action(), Keyword.t()) ::
           {:ok, Ash.record()} | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
-  def run(api, %resource{} = record, action, params) do
+  def run(api, %resource{} = record, action, opts) do
+    attributes = Keyword.get(opts, :attributes, %{})
+    relationships = Keyword.get(opts, :relationships, %{})
+    side_load = opts[:side_load] || []
+    engine_opts = Keyword.take(opts, [:verbose?, :actor, :authorize?])
+
     action =
       if is_atom(action) and not is_nil(action) do
         Ash.action(resource, action, :read)
@@ -15,10 +20,7 @@ defmodule Ash.Actions.Update do
         action
       end
 
-    attributes = Keyword.get(params, :attributes, %{})
-    relationships = Keyword.get(params, :relationships, %{})
-
-    with {:ok, side_load_query} <- side_loads_as_query(api, resource, params[:side_load]),
+    with {:ok, side_load_query} <- side_loads_as_query(api, resource, side_load),
          {:ok, relationships} <-
            Relationships.validate_not_changing_relationship_and_source_field(
              relationships,
@@ -31,12 +33,19 @@ defmodule Ash.Actions.Update do
              attributes,
              resource
            ),
-         params <- Keyword.merge(params, attributes: attributes, relationships: relationships),
-         %{valid?: true} = changeset <- changeset(record, api, params),
+         %{valid?: true} = changeset <- changeset(record, api, attributes, relationships),
          side_load_requests <-
-           SideLoad.requests(side_load_query, api.query(resource)),
-         %{data: %{data: updated}, errors: []} = state <-
-           do_run_requests(changeset, params, action, resource, api, side_load_requests) do
+           SideLoad.requests(side_load_query),
+         %{data: %{commit: updated}, errors: []} = state <-
+           do_run_requests(
+             changeset,
+             relationships,
+             engine_opts,
+             action,
+             resource,
+             api,
+             side_load_requests
+           ) do
       {:ok, SideLoad.attach_side_loads(updated, state)}
     else
       %Ecto.Changeset{} = changeset ->
@@ -50,19 +59,22 @@ defmodule Ash.Actions.Update do
     end
   end
 
-  def changeset(record, api, params) do
-    attributes = Keyword.get(params, :attributes, %{})
-    relationships = Keyword.get(params, :relationships, %{})
-
+  def changeset(record, api, attributes, relationships) do
     record
     |> prepare_update_attributes(attributes)
     |> Relationships.handle_relationship_changes(api, relationships, :update)
   end
 
-  defp do_run_requests(changeset, params, action, resource, api, side_load_requests) do
-    relationships = Keyword.get(params, :relationships)
-
-    update_request =
+  defp do_run_requests(
+         changeset,
+         relationships,
+         engine_opts,
+         action,
+         resource,
+         api,
+         side_load_requests
+       ) do
+    authorization_request =
       Request.new(
         api: api,
         changeset:
@@ -71,7 +83,21 @@ defmodule Ash.Actions.Update do
             api,
             relationships
           ),
-        action: Ash.primary_action!(resource, :read),
+        action: action,
+        resource: resource,
+        data: changeset.data,
+        path: :data,
+        name: "#{action.type} - `#{action.name}`: prepare"
+      )
+
+    commit_request =
+      Request.new(
+        api: api,
+        changeset:
+          Request.resolve([[:data, :changeset]], fn %{data: %{changeset: changeset}} ->
+            {:ok, changeset}
+          end),
+        action: action,
         resource: resource,
         data:
           Request.resolve(
@@ -92,16 +118,16 @@ defmodule Ash.Actions.Update do
               end
             end
           ),
-        path: :data,
-        name: "#{action.type} - `#{action.name}`"
+        path: [:commit],
+        name: "#{action.type} - `#{action.name}` commit"
       )
 
     relationship_requests = Map.get(changeset, :__requests__, [])
 
     Engine.run(
-      [update_request | relationship_requests] ++ side_load_requests,
+      [authorization_request | [commit_request | relationship_requests]] ++ side_load_requests,
       api,
-      verbose?: params[:verbose?]
+      engine_opts
     )
   end
 

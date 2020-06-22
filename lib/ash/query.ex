@@ -78,13 +78,13 @@ defmodule Ash.Query do
         }
         |> set_data_layer_query()
 
-      :error ->
+      {:error, error} ->
         %__MODULE__{
           api: api,
           filter: nil,
           resource: resource
         }
-        |> add_error(:resource, "does not exist")
+        |> add_error(:resource, error)
     end
   end
 
@@ -144,6 +144,10 @@ defmodule Ash.Query do
            )}
         ]
     end
+  end
+
+  def do_validate_side_load(resource, {atom, _} = tuple, path) when is_atom(atom) do
+    do_validate_side_load(resource, [tuple], path)
   end
 
   def do_validate_side_load(resource, side_loads, path) when is_list(side_loads) do
@@ -227,7 +231,9 @@ defmodule Ash.Query do
   end
 
   defp sanitize_side_loads(side_loads) do
-    Enum.map(side_loads, fn
+    side_loads
+    |> List.wrap()
+    |> Enum.map(fn
       {key, value} ->
         {key, sanitize_side_loads(value)}
 
@@ -239,6 +245,8 @@ defmodule Ash.Query do
         end
     end)
   end
+
+  def filter(query, nil), do: query
 
   def filter(query, %Ash.Filter{} = filter) do
     new_filter =

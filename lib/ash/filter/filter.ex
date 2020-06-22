@@ -46,8 +46,10 @@ defmodule Ash.Filter do
   def relationship_paths(nil), do: []
   def relationship_paths(%{expression: nil}), do: []
 
-  def relationship_paths(filter) do
-    filter.expression
+  def relationship_paths(%__MODULE__{expression: expression}), do: relationship_paths(expression)
+
+  def relationship_paths(expression) do
+    expression
     |> do_relationship_paths()
     |> List.wrap()
     |> List.flatten()
@@ -167,7 +169,7 @@ defmodule Ash.Filter do
     |> Enum.map(&[:filter, &1])
   end
 
-  def read_requests(nil), do: []
+  def read_requests(nil), do: {:ok, []}
 
   def read_requests(filter) do
     filter
@@ -304,6 +306,10 @@ defmodule Ash.Filter do
 
   defp do_relationship_paths(%Expression{left: left, right: right}) do
     [do_relationship_paths(left), do_relationship_paths(right)]
+  end
+
+  defp do_relationship_paths(%Not{expression: expression}) do
+    do_relationship_paths(expression)
   end
 
   defp parse_expression(%__MODULE__{expression: expression}, context),

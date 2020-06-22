@@ -2,6 +2,26 @@ defmodule Ash.Test.Actions.CreateTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  defmodule Authorized do
+    use Ash.Resource,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Test.Authorizer]
+
+    ets do
+      private?(true)
+    end
+
+    attributes do
+      attribute :name, :string
+    end
+
+    actions do
+      read :default
+      create :default
+      update :default
+    end
+  end
+
   defmodule Profile do
     @moduledoc false
     use Ash.Resource,
@@ -127,6 +147,7 @@ defmodule Ash.Test.Actions.CreateTest do
       resource(Post)
       resource(Profile)
       resource(PostLink)
+      resource(Authorized)
     end
   end
 
@@ -279,6 +300,16 @@ defmodule Ash.Test.Actions.CreateTest do
                  author: author.id
                }
              ).author == author
+    end
+  end
+
+  describe "unauthorized create" do
+    test "it does not create the record" do
+      assert_raise(Ash.Error.Forbidden, fn ->
+        Api.create!(Authorized, attributes: %{name: "foo"}, authorize?: true)
+      end)
+
+      assert [] = Api.read!(Authorized)
     end
   end
 end

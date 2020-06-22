@@ -64,6 +64,7 @@ defmodule Ash.Error do
   def error_messages(errors, custom_message \\ nil) do
     generic_message =
       errors
+      |> List.wrap()
       |> Enum.group_by(& &1.class)
       |> Enum.sort_by(fn {group, _} -> Map.get(@error_class_indices, group) end)
       |> Enum.map_join("\n\n", fn {class, class_errors} ->
@@ -108,27 +109,10 @@ defmodule Ash.Error do
 
   defmacro def_ash_error(fields, opts \\ []) do
     quote do
-      defexception unquote(fields) ++ [:other_errors, path: [], class: unquote(opts)[:class]]
+      defexception unquote(fields) ++ [path: [], class: unquote(opts)[:class]]
 
       @impl Exception
       defdelegate message(error), to: Ash.Error
-
-      def exception(opts) do
-        case opts[:stacktrace] do
-          true ->
-            case Process.info(self(), :current_stacktrace) do
-              {:current_stacktrace, stacktrace} ->
-                stacktrace = Enum.drop(stacktrace, 2)
-
-                opts
-                |> Keyword.put(:stacktrace, stacktrace)
-                |> super()
-            end
-
-          _ ->
-            super(opts)
-        end
-      end
     end
   end
 

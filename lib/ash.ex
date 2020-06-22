@@ -79,7 +79,9 @@ defmodule Ash do
   @doc "A list of authorizers to be used when accessing the resource"
   @spec authorizers(resource()) :: [module]
   def authorizers(resource) do
-    :persistent_term.get({resource, :authorizers}, [])
+    {resource, :authorizers}
+    |> :persistent_term.get([])
+    |> List.wrap()
   end
 
   @doc "A list of field names corresponding to the primary key of a resource"
@@ -92,8 +94,22 @@ defmodule Ash do
     Extension.get_entities(resource, [:relationships])
   end
 
+  @spec relationship(any, any) :: any
   @doc "Gets a relationship by name from the resource"
-  @spec relationship(resource(), atom() | String.t()) :: relationship() | nil
+  def relationship(resource, [name]) do
+    relationship(resource, name)
+  end
+
+  def relationship(resource, [name | rest]) do
+    case relationship(resource, name) do
+      nil ->
+        nil
+
+      relationship ->
+        relationship(relationship.destination, rest)
+    end
+  end
+
   def relationship(resource, relationship_name) when is_bitstring(relationship_name) do
     resource
     |> relationships()

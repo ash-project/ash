@@ -28,7 +28,7 @@ defmodule Ash.DataLayer.Ets do
 
   @spec private?(Ash.resource()) :: boolean
   def private?(resource) do
-    Extension.get_opt(resource, [:ets], :private?)
+    Extension.get_opt(resource, [:ets], :private?) || false
   end
 
   defmodule Query do

@@ -410,18 +410,6 @@ defmodule Ash.Actions.SideLoad do
   end
 
   defp side_load_query(
-         %{reverse_relationship: nil, type: :many_to_many} = relationship,
-         _related_query,
-         _path,
-         _root_query,
-         _use_data_for_filter?
-       ) do
-    Request.resolve(fn _ ->
-      {:error, "Required reverse relationship for #{inspect(relationship)}"}
-    end)
-  end
-
-  defp side_load_query(
          relationship,
          related_query,
          path,
@@ -451,6 +439,7 @@ defmodule Ash.Actions.SideLoad do
           |> Ash.Query.filter(
             put_nested_relationship(root_filter, reverse_path, root_filter, false)
           )
+          |> Ash.Query.filter(related_query.filter)
           |> extract_errors()
 
         _ ->
@@ -484,26 +473,16 @@ defmodule Ash.Actions.SideLoad do
   defp extract_errors(%{errors: []} = item), do: {:ok, item}
   defp extract_errors(%{errors: errors}), do: {:error, errors}
 
-  defp true_side_load_query(
-         %{type: :many_to_many, reverse_relationship: nil} = relationship,
-         _filter,
-         _data,
-         _path,
-         _root_data,
-         _use_data?
-       ) do
-    {:error, "Required reverse relationship for #{inspect(relationship)}"}
-  end
+  defp true_side_load_query(relationship, query, data, path, root_data, use_data?) do
+    {source_field, path} =
+      if relationship.type == :many_to_many do
+        join_relationship = join_relationship(relationship)
 
-  defp true_side_load_query(
-         %{reverse_relationship: reverse_relationship, source: source} = relationship,
-         query,
-         data,
-         path,
-         root_data,
-         use_data?
-       ) do
-    pkey = Ash.primary_key(source)
+        {relationship.destination_field_on_join_table,
+         join_relationship_path(path, join_relationship)}
+      else
+        {relationship.source_field, path |> Enum.reverse() |> Enum.map(& &1.name)}
+      end
 
     source_data =
       case path do
@@ -514,84 +493,78 @@ defmodule Ash.Actions.SideLoad do
           %{data: root_data}
 
         path ->
-          path_names = path |> Enum.reverse() |> Enum.map(& &1.name)
-
           data
           |> Map.get(:side_load, %{})
-          |> Map.get(path_names, %{})
+          |> Map.get(path, %{})
       end
 
     related_data = Map.get(source_data || %{}, :data, [])
 
-    if reverse_relationship do
-      values = get_fields(related_data, pkey)
+    ids =
+      Enum.flat_map(related_data, fn data ->
+        data
+        |> Map.get(source_field)
+        |> List.wrap()
+      end)
 
-      new_query =
-        Ash.Query.filter(query, put_nested_relationship([], [reverse_relationship], values))
+    filter_value =
+      case ids do
+        [id] ->
+          id
 
-      {:ok, Ash.Query.unset(new_query, :side_load)}
-    else
-      ids =
-        Enum.flat_map(related_data, fn data ->
-          data
-          |> Map.get(relationship.source_field)
-          |> List.wrap()
-        end)
+        ids ->
+          [in: ids]
+      end
 
-      filter_value =
-        case ids do
-          [id] ->
-            id
+    new_query =
+      query
+      |> Ash.Query.filter([{relationship.destination_field, filter_value}])
+      |> Ash.Query.unset(:side_load)
 
-          ids ->
-            [in: ids]
-        end
-
-      new_query =
-        query
-        |> Ash.Query.filter([{relationship.destination_field, filter_value}])
-        |> Ash.Query.unset(:side_load)
-
-      {:ok, new_query}
-    end
+    {:ok, new_query}
   end
 
   defp reverse_relationship_path(relationship, prior_path, acc \\ [])
 
   defp reverse_relationship_path(relationship, [], acc) do
-    case relationship.reverse_relationship do
+    relationship.destination
+    |> Ash.relationships()
+    |> Enum.find(fn destination_relationship ->
+      reverse_relationship?(relationship, destination_relationship)
+    end)
+    |> case do
       nil ->
         :error
 
       reverse ->
-        {:ok, Enum.reverse([reverse | acc])}
+        {:ok, Enum.reverse([reverse.name | acc])}
     end
   end
 
   defp reverse_relationship_path(relationship, [next_relationship | rest], acc) do
-    case relationship.reverse_relationship do
+    relationship.destination
+    |> Ash.relationships()
+    |> Enum.find(fn destination_relationship ->
+      reverse_relationship?(relationship, destination_relationship)
+    end)
+    |> case do
       nil ->
         :error
 
       reverse ->
-        reverse_relationship_path(next_relationship, rest, [reverse | acc])
+        reverse_relationship_path(next_relationship, rest, [reverse.name | acc])
     end
   end
 
-  defp get_fields(data, fields)
-
-  defp get_fields(data, fields) do
-    data
-    |> List.wrap()
-    |> Enum.map(&Map.take(&1, fields))
-    |> Enum.uniq()
+  defp reverse_relationship?(rel, destination_rel) do
+    rel.source == destination_rel.destination &&
+      rel.source_field == destination_rel.destination_field &&
+      rel.destination_field == destination_rel.source_field &&
+      Map.fetch(rel, :source_field_on_join_table) ==
+        Map.fetch(destination_rel, :destination_field_on_join_table) &&
+      Map.fetch(rel, :destination_field_on_join_table) ==
+        Map.fetch(destination_rel, :source_field_on_join_table)
   end
-
-  defp put_nested_relationship(request_filter, path, value, records? \\ true)
-  defp put_nested_relationship(_, _, [], true), do: false
-  defp put_nested_relationship(_, _, nil, true), do: false
-  defp put_nested_relationship(_, _, [], false), do: []
-  defp put_nested_relationship(_, _, nil, false), do: []
 
   defp put_nested_relationship(request_filter, path, value, records?) when not is_list(value) do
     put_nested_relationship(request_filter, path, [value], records?)

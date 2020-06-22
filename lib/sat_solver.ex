@@ -21,14 +21,16 @@ defmodule Ash.SatSolver do
   end
 
   defp do_strict_filter_subset(filter, candidate) do
-    case add_comparisons_and_solve_expression(
+    case transform_and_solve(
+           filter.resource,
            Expression.new(:and, filter.expression, candidate.expression)
          ) do
       {:error, :unsatisfiable} ->
         false
 
       {:ok, _} ->
-        case add_comparisons_and_solve_expression(
+        case transform_and_solve(
+               filter.resource,
                Expression.new(:and, Not.new(filter.expression), candidate.expression)
              ) do
           {:error, :unsatisfiable} ->
@@ -51,7 +53,110 @@ defmodule Ash.SatSolver do
     {op, filter_to_expr(left), filter_to_expr(right)}
   end
 
-  def add_comparisons_and_solve_expression(expression) do
+  def transform_and_solve(resource, expression) do
+    expression
+    |> consolidate_relationships(resource)
+    |> upgrade_related_filters_to_join_keys(resource)
+    |> build_expr_with_predicate_information()
+    |> solve_expression()
+  end
+
+  defp upgrade_related_filters_to_join_keys(expression, resource) do
+    Filter.map(expression, &upgrade_predicate(&1, resource))
+  end
+
+  defp upgrade_predicate(%Predicate{relationship_path: path} = predicate, resource)
+       when path != [] do
+    with relationship when not is_nil(relationship) <- Ash.relationship(resource, path),
+         true <- predicate.attribute.name == relationship.destination_field,
+         new_attribute when not is_nil(new_attribute) <-
+           Ash.attribute(relationship.source, relationship.source_field),
+         {:ok, new_predicate} <-
+           Predicate.new(
+             resource,
+             new_attribute,
+             predicate.predicate.__struct__,
+             predicate.value,
+             :lists.droplast(path)
+           ) do
+      upgrade_predicate(new_predicate, resource)
+    else
+      _ ->
+        predicate
+    end
+  end
+
+  defp upgrade_predicate(other, _), do: other
+
+  defp consolidate_relationships(expression, resource) do
+    {replacements, _all_relationship_paths} =
+      expression
+      |> Filter.relationship_paths()
+      |> Enum.reduce({%{}, []}, fn path, {replacements, kept_paths} ->
+        case find_synonymous_relationship_path(resource, kept_paths, path) do
+          nil ->
+            {replacements, [path | kept_paths]}
+
+          synonymous_path ->
+            Map.put(replacements, path, synonymous_path)
+        end
+      end)
+
+    Filter.map(expression, fn
+      %Predicate{relationship_path: path} = predicate when path != [] ->
+        case Map.fetch(replacements, path) do
+          :error -> predicate
+          {:ok, replacement} -> %{predicate | relationship_path: replacement}
+        end
+
+      other ->
+        other
+    end)
+  end
+
+  defp find_synonymous_relationship_path(resource, paths, path) do
+    Enum.find_value(paths, fn candidate_path ->
+      if synonymous_relationship_paths?(resource, candidate_path, path) do
+        candidate_path
+      else
+        false
+      end
+    end)
+  end
+
+  defp synonymous_relationship_paths?(_, [], []), do: true
+
+  defp synonymous_relationship_paths?(_resource, candidate_path, path)
+       when length(candidate_path) != length(path),
+       do: false
+
+  defp synonymous_relationship_paths?(resource, [candidate_first | candidate_rest], [first | rest])
+       when first == candidate_first do
+    synonymous_relationship_paths?(
+      Ash.relationship(resource, candidate_first).destination,
+      candidate_rest,
+      rest
+    )
+  end
+
+  defp synonymous_relationship_paths?(resource, [candidate_first | candidate_rest], [first | rest]) do
+    relationship = Ash.relationship(resource, first)
+    candidate_relationship = Ash.relationship(resource, candidate_first)
+
+    comparison_keys = [
+      :source_field,
+      :destination_field,
+      :source_field_on_join_table,
+      :destination_field_on_join_table,
+      :destination_field,
+      :destination
+    ]
+
+    Map.take(relationship, comparison_keys) == Map.take(candidate_relationship, comparison_keys) and
+      synonymous_relationship_paths?(relationship.destination, candidate_rest, rest)
+  end
+
+  defp build_expr_with_predicate_information(expression) do
     all_predicates =
       Filter.reduce(expression, [], fn
         %Predicate{} = predicate, predicates ->
@@ -120,14 +225,11 @@ defmodule Ash.SatSolver do
 
       expression = filter_to_expr(expression)
 
-      expression =
-        Enum.reduce(comparison_expressions, expression, fn comparison_expression, expression ->
-          {:and, comparison_expression, expression}
-        end)
-
-      solve_expression(expression)
+      Enum.reduce(comparison_expressions, expression, fn comparison_expression, expression ->
+        {:and, comparison_expression, expression}
+      end)
     else
-      add_comparisons_and_solve_expression(simplified)
+      build_expr_with_predicate_information(simplified)
     end
   end
 

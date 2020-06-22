@@ -254,13 +254,12 @@ defmodule Ash.Api do
 
   alias Ash.Dsl.Extension
 
-  @spec resource(Ash.api(), Ash.resource()) :: {:ok, Ash.resource()} | :error
   def resource(api, resource) do
     api
     |> resources()
     |> Enum.find(&(&1 == resource))
     |> case do
-      nil -> :error
+      nil -> {:error, NoSuchResource.exception(resource: resource)}
       resource -> {:ok, resource}
     end
   end
@@ -287,7 +286,7 @@ defmodule Ash.Api do
           {:ok, Ash.record()} | {:error, Ash.error()}
   def get(api, resource, id, opts) do
     with {:ok, opts} <- NimbleOptions.validate(opts, @get_opts_schema),
-         {:resource, {:ok, resource}} <- {:resource, Ash.Api.resource(api, resource)},
+         {:ok, resource} <- Ash.Api.resource(api, resource),
          {:pkey, primary_key} when primary_key != [] <- {:pkey, Ash.primary_key(resource)},
          {:ok, filter} <- get_filter(primary_key, id) do
       resource
@@ -311,9 +310,6 @@ defmodule Ash.Api do
     else
       {:error, error} ->
         {:error, error}
-
-      {:resource, :error} ->
-        {:error, NoSuchResource.exception(resource: resource)}
 
       {:pkey, _} ->
         {:error, "Resource has no primary key"}

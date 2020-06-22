@@ -1,7 +1,7 @@
 defmodule Ash.Filter.Predicate do
   @moduledoc "Represents a filter predicate"
 
-  defstruct [:attribute, :relationship_path, :predicate]
+  defstruct [:attribute, :relationship_path, :predicate, :value]
 
   alias Ash.Filter
   alias Ash.Filter.{Expression, Not}
@@ -102,6 +102,7 @@ defmodule Ash.Filter.Predicate do
            %__MODULE__{
              attribute: attribute,
              predicate: predicate,
+             value: value,
              relationship_path: relationship_path
            }}
         else

@@ -10,14 +10,24 @@ defmodule Ash.Resource do
   alias Ash.Dsl.Extension
 
   defmacro __using__(opts) do
+    data_layer = Macro.expand(opts[:data_layer], __CALLER__)
+
+    authorizers =
+      opts[:authorizers]
+      |> List.wrap()
+      |> Enum.map(&Macro.expand(&1, __CALLER__))
+
     extensions =
-      if opts[:data_layer] do
-        [opts[:data_layer], Ash.Dsl]
+      if data_layer && Ash.implements_behaviour?(data_layer, Ash.Dsl.Extension) do
+        [data_layer, Ash.Dsl]
       else
         [Ash.Dsl]
       end
 
-    extensions = Enum.concat([extensions, opts[:extensions] || [], opts[:authorizers] || []])
+    authorizer_extensions =
+      Enum.filter(authorizers, &Ash.implements_behaviour?(&1, Ash.Dsl.Extension))
+
+    extensions = Enum.concat([extensions, opts[:extensions] || [], authorizer_extensions])
 
     body =
       quote bind_quoted: [opts: opts] do

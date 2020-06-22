@@ -307,5 +307,25 @@ defmodule Ash.Test.Filter.FilterTest do
 
       assert Filter.strict_subset_of?(filter, candidate)
     end
+
+    test "understands relationship filter subsets" do
+      id1 = Ecto.UUID.generate()
+      id2 = Ecto.UUID.generate()
+      filter = Filter.parse!(Api, Post, author1: [id: [in: [id1, id2]]])
+
+      candidate = Filter.parse!(Api, Post, author1: id1)
+
+      assert Filter.strict_subset_of?(filter, candidate)
+    end
+
+    test "understands relationship filter subsets when a value coincides with the join field" do
+      id1 = Ecto.UUID.generate()
+      id2 = Ecto.UUID.generate()
+      filter = Filter.parse!(Api, Post, author1: [id: [in: [id1, id2]]])
+
+      candidate = Filter.parse!(Api, Post, author1_id: id1)
+
+      assert Filter.strict_subset_of?(filter, candidate)
+    end
   end
 end

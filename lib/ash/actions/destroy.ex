@@ -5,7 +5,9 @@ defmodule Ash.Actions.Destroy do
 
   @spec run(Ash.api(), Ash.record(), Ash.action(), Keyword.t()) ::
           :ok | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
-  def run(api, %resource{} = record, action, _params) do
+  def run(api, %resource{} = record, action, opts) do
+    engine_opts = Keyword.take(opts, [:verbose?, :actor, :authorize?])
+
     action =
       if is_atom(action) and not is_nil(action) do
         Ash.action(resource, action, :read)
@@ -13,28 +15,37 @@ defmodule Ash.Actions.Destroy do
         action
       end
 
-    request =
+    authorization_request =
       Request.new(
         resource: resource,
         api: api,
         path: [:data],
         action: action,
-        request_id: :change,
+        data: [record],
+        name: "destroy request"
+      )
+
+    destroy_request =
+      Request.new(
+        resource: resource,
+        api: api,
+        path: [:destroy],
+        action: action,
+        authorize?: false,
         data:
-          Request.resolve(fn _ ->
+          Request.resolve([[:data, :data]], fn _ ->
             case Ash.data_layer(resource).destroy(record) do
               :ok -> {:ok, record}
               {:error, error} -> {:error, error}
             end
-          end),
-        name: "destroy request"
+          end)
       )
 
-    case Engine.run([request], api) do
+    case Engine.run([authorization_request, destroy_request], api, engine_opts) do
       %{errors: []} ->
         :ok
 
-      %Engine{errors: errors} ->
+      %{errors: errors} ->
         {:error, Ash.Error.to_ash_error(errors)}
     end
   end
