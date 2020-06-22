@@ -257,31 +257,42 @@ defmodule Ash.Actions.SideLoad do
          root_data,
          use_data_for_filter?
        ) do
-    dependencies =
-      case path do
-        [] ->
-          []
-
-        dependent_path ->
-          [[:side_load, Enum.reverse(Enum.map(dependent_path, &Map.get(&1, :name))), :data]]
-      end
-
     request_path = [
       :side_load,
       Enum.reverse(Enum.map([relationship | path], &Map.get(&1, :name)))
     ]
 
     dependencies =
+      case path do
+        [] ->
+          [request_path ++ [:authorization_filter]]
+
+        dependent_path ->
+          [
+            request_path ++ [:authorization_filter],
+            [:side_load, Enum.reverse(Enum.map(dependent_path, &Map.get(&1, :name))), :data]
+          ]
+      end
+
+    dependencies =
       if use_data_for_filter? do
         [[:data, :data] | dependencies]
       else
-        [request_path ++ [:query] | dependencies]
+        dependencies
       end
 
     dependencies =
       if relationship.type == :many_to_many do
         join_relationship = join_relationship(relationship)
-        [[:side_load, join_relationship_path(path, join_relationship), :data] | dependencies]
+
+        [
+          [
+            :side_load,
+            Enum.map(join_relationship_path(path, join_relationship), & &1.name),
+            :data
+          ]
+          | dependencies
+        ]
       else
         dependencies
       end
@@ -307,17 +318,26 @@ defmodule Ash.Actions.SideLoad do
         ),
       data:
         Request.resolve(dependencies, fn data ->
-          new_query =
-            true_side_load_query(
-              relationship,
-              related_query,
-              data,
-              path,
-              root_data,
-              use_data_for_filter?
-            )
+          base_query =
+            case get_in(data, request_path ++ [:authorization_filter]) do
+              nil ->
+                {:ok, related_query}
 
-          with {:ok, query} <- new_query,
+              authorization_filter ->
+                Ash.Query.filter(related_query, authorization_filter)
+            end
+
+          with {:ok, base_query} <- base_query,
+               new_query <-
+                 true_side_load_query(
+                   relationship,
+                   base_query,
+                   data,
+                   path,
+                   root_data,
+                   use_data_for_filter?
+                 ),
+               {:ok, query} <- new_query,
                {:ok, results} <- related_query.api.read(query) do
             {:ok, results}
           else
@@ -335,7 +355,7 @@ defmodule Ash.Actions.SideLoad do
   end
 
   defp join_relationship_path(path, join_relationship) do
-    Enum.reverse(Enum.map([join_relationship | path], & &1.name))
+    Enum.reverse([join_relationship | path])
   end
 
   defp join_assoc_request(
@@ -355,19 +375,23 @@ defmodule Ash.Actions.SideLoad do
 
       path ->
         join_relationship_path = join_relationship_path(path, join_relationship)
+        join_relationship_path_names = Enum.map(join_relationship_path, & &1.name)
 
         dependencies =
           if path == [] do
-            []
+            [[:side_load, join_relationship_path_names, :authorization_filter]]
           else
-            [[:side_load, Enum.reverse(Enum.map(path, &Map.get(&1, :name))), :data]]
+            [
+              [:side_load, join_relationship_path_names, :authorization_filter],
+              [:side_load, Enum.reverse(Enum.map(path, &Map.get(&1, :name))), :data]
+            ]
           end
 
         dependencies =
           if use_data_for_filter? do
             [[:data, :data] | dependencies]
           else
-            [[:side_load, join_relationship_path, :query] | dependencies]
+            dependencies
           end
 
         related_query = related_query.api.query(join_relationship.destination)
@@ -377,7 +401,7 @@ defmodule Ash.Actions.SideLoad do
           resource: relationship.through,
           name: "side_load join #{join_relationship.name}",
           api: related_query.api,
-          path: [:side_load, join_relationship_path],
+          path: [:side_load, join_relationship_path_names],
           query:
             side_load_query(
               join_relationship,
@@ -388,17 +412,30 @@ defmodule Ash.Actions.SideLoad do
             ),
           data:
             Request.resolve(dependencies, fn data ->
-              new_query =
-                true_side_load_query(
-                  join_relationship,
-                  related_query,
-                  data,
-                  path,
-                  root_data,
-                  use_data_for_filter?
-                )
+              base_query =
+                case get_in(data, [
+                       :side_load,
+                       join_relationship_path_names,
+                       :authorization_filter
+                     ]) do
+                  nil ->
+                    {:ok, related_query}
 
-              with {:ok, query} <- new_query,
+                  authorization_filter ->
+                    Ash.Query.filter(related_query, authorization_filter)
+                end
+
+              with {:ok, base_query} <- base_query,
+                   new_query <-
+                     true_side_load_query(
+                       join_relationship,
+                       base_query,
+                       data,
+                       path,
+                       root_data,
+                       use_data_for_filter?
+                     ),
+                   {:ok, query} <- new_query,
                    {:ok, results} <- related_query.api.read(query) do
                 {:ok, results}
               else
@@ -432,7 +469,7 @@ defmodule Ash.Actions.SideLoad do
             [or: Enum.map(items, fn item -> item |> Map.take(pkey) |> Enum.to_list() end)]
         end
 
-      case reverse_relationship_path(relationship, path) do
+      case reverse_relationship_path(relationship, Enum.drop(path, 1)) do
         {:ok, reverse_path} ->
           related_query
           |> Ash.Query.unset(:side_load)
@@ -479,7 +516,7 @@ defmodule Ash.Actions.SideLoad do
         join_relationship = join_relationship(relationship)
 
         {relationship.destination_field_on_join_table,
-         join_relationship_path(path, join_relationship)}
+         join_relationship_path(path, join_relationship) |> Enum.map(& &1.name)}
       else
         {relationship.source_field, path |> Enum.reverse() |> Enum.map(& &1.name)}
       end

@@ -132,11 +132,6 @@ defmodule Ash do
     |> Enum.any?(&(&1 == behaviour))
   end
 
-  @spec resource_module?(module) :: boolean
-  def resource_module?(module) do
-    implements_behaviour?(module, Ash.Resource)
-  end
-
   @doc false
   def primary_action!(resource, type) do
     case primary_action(resource, type) do
