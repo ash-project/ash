@@ -52,8 +52,6 @@ defmodule Ash.Resource do
       :persistent_term.put({__MODULE__, :authorizers}, @authorizers)
 
       Extension.set_state(false)
-      :persistent_term.put({__MODULE__, :data_layer}, @data_layer)
-      :persistent_term.put({__MODULE__, :authorizers}, @authorizers)
       Extension.set_state(true)
 
       def raw_dsl do
