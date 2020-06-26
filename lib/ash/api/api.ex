@@ -224,7 +224,6 @@ defmodule Ash.Api do
       quote do
         @before_compile Ash.Api
         @behaviour Ash.Api
-        @on_load :build_dsl
       end
 
     preparations = Extension.prepare(extensions)
@@ -237,15 +236,22 @@ defmodule Ash.Api do
       alias Ash.Dsl.Extension
 
       Extension.set_state(false)
+      Extension.set_state(true)
 
       def raw_dsl do
         @ash_dsl_config
       end
 
-      def build_dsl do
+      use Supervisor
+
+      def start_link(args) do
+        Supervisor.start_link(__MODULE__, args, name: __MODULE__)
+      end
+
+      def init(_init_arg) do
         Extension.set_state(true)
 
-        :ok
+        Supervisor.init(Ash.Api.resources(__MODULE__), strategy: :one_for_one)
       end
 
       use Ash.Api.Interface

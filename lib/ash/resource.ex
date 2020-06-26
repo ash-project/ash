@@ -32,7 +32,6 @@ defmodule Ash.Resource do
     body =
       quote bind_quoted: [opts: opts] do
         @before_compile Ash.Resource
-        @on_load :build_dsl
 
         @authorizers opts[:authorizers] || []
         @data_layer opts[:data_layer]
@@ -53,18 +52,26 @@ defmodule Ash.Resource do
       :persistent_term.put({__MODULE__, :authorizers}, @authorizers)
 
       Extension.set_state(false)
+      :persistent_term.put({__MODULE__, :data_layer}, @data_layer)
+      :persistent_term.put({__MODULE__, :authorizers}, @authorizers)
+      Extension.set_state(true)
 
       def raw_dsl do
         @ash_dsl_config
       end
 
-      @doc false
-      def build_dsl do
+      use Supervisor
+
+      def start_link(args) do
+        Supervisor.start_link(__MODULE__, args, name: __MODULE__)
+      end
+
+      def init(_init_arg) do
         :persistent_term.put({__MODULE__, :data_layer}, @data_layer)
         :persistent_term.put({__MODULE__, :authorizers}, @authorizers)
         Extension.set_state(true)
 
-        :ok
+        Supervisor.init([], strategy: :one_for_one)
       end
 
       require Ash.Schema

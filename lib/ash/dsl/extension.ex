@@ -168,7 +168,7 @@ defmodule Ash.Dsl.Extension do
 
   @doc false
   defmacro set_state(runtime? \\ false) do
-    quote bind_quoted: [runtime?: runtime?], location: :keep do
+    quote generated: true, bind_quoted: [runtime?: runtime?], location: :keep do
       alias Ash.Dsl.Transformer
 
       ash_dsl_config =
@@ -201,10 +201,24 @@ defmodule Ash.Dsl.Extension do
         else
           Module.register_attribute(__MODULE__, :transformers, accumulate: true)
 
-          transformed =
+          {transformers_to_skip, transformers_to_run} =
             @extensions
             |> Enum.flat_map(& &1.transformers())
             |> Transformer.sort()
+            |> Enum.split_with(fn transformer ->
+              transformer.compile_time_only? && runtime?
+            end)
+
+          Enum.each(transformers_to_skip, fn transformer ->
+            transformers_run = :persistent_term.get({__MODULE__, :ash, :transformers}, [])
+
+            :persistent_term.put({__MODULE__, :ash, :transformers}, [
+              transformer | transformers_run
+            ])
+          end)
+
+          transformed =
+            transformers_to_run
             |> Enum.reduce(ash_dsl_config, fn transformer, dsl ->
               transformers_run = :persistent_term.get({__MODULE__, :ash, :transformers}, [])
 

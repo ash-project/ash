@@ -18,6 +18,7 @@ defmodule Ash.Dsl.Transformer do
   @callback transform(Ash.resource(), map) :: {:ok, map} | {:error, term}
   @callback before?(module) :: boolean
   @callback after?(module) :: boolean
+  @callback compile_time_only? :: boolean
 
   defmacro __using__(_) do
     quote do
@@ -25,8 +26,9 @@ defmodule Ash.Dsl.Transformer do
 
       def before?(_), do: false
       def after?(_), do: false
+      def compile_time_only?, do: false
 
-      defoverridable before?: 1, after?: 1
+      defoverridable before?: 1, after?: 1, compile_time_only?: 0
     end
   end
 
