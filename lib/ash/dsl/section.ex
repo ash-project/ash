@@ -20,13 +20,22 @@ defmodule Ash.Dsl.Section do
 
   For a full example, see `Ash.Dsl.Extension`.
   """
-  defstruct [:name, imports: [], schema: [], describe: "", entities: [], sections: []]
+  defstruct [
+    :name,
+    imports: [],
+    schema: [],
+    configurable: [],
+    describe: "",
+    entities: [],
+    sections: []
+  ]
 
   @type t :: %__MODULE__{
           name: atom,
           describe: String.t(),
           entities: [Ash.Dsl.Entity.t()],
           sections: [%__MODULE__{}],
+          configurable: [atom],
           schema: NimbleOptions.schema()
         }
 

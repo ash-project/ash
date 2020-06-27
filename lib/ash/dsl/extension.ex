@@ -106,9 +106,51 @@ defmodule Ash.Dsl.Extension do
     :persistent_term.get({resource, :ash, path}, %{entities: []}).entities
   end
 
-  @doc "Get an option value for a section at a given path"
-  def get_opt(resource, path, value) do
-    :persistent_term.get({resource, :ash, path}, %{opts: []}).opts[value]
+  @doc """
+  Get an option value for a section at a given path.
+
+  Checks to see if it has been overridden via configuration.
+  """
+  def get_opt(resource, path, value, default, configurable? \\ false) do
+    if configurable? do
+      case get_opt_config(resource, path, value) do
+        {:ok, value} ->
+          value
+
+        _ ->
+          Keyword.get(
+            :persistent_term.get({resource, :ash, path}, %{opts: []}).opts,
+            value,
+            default
+          )
+      end
+    else
+      Keyword.get(
+        :persistent_term.get({resource, :ash, path}, %{opts: []}).opts,
+        value,
+        default
+      )
+    end
+  end
+
+  def get_opt_config(resource, path, value) do
+    with {:ok, config} <- Application.fetch_env(:ash, resource),
+         {:ok, value} <-
+           path
+           |> List.wrap()
+           |> Kernel.++([value])
+           |> Enum.reduce_while({:ok, config}, fn key, {:ok, config} ->
+             if Keyword.keyword?(config) do
+               case Keyword.fetch(config, key) do
+                 {:ok, value} -> {:cont, {:ok, value}}
+                 :error -> {:halt, :error}
+               end
+             else
+               {:halt, :error}
+             end
+           end) do
+      {:ok, value}
+    end
   end
 
   @doc false
