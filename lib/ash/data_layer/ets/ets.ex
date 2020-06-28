@@ -43,6 +43,7 @@ defmodule Ash.DataLayer.Ets do
 
   def can?(_, :composite_primary_key), do: true
   def can?(_, :upsert), do: true
+  def can?(_, :boolean_filter), do: true
   def can?(_, {:filter_predicate, %In{}}), do: true
   def can?(_, {:filter_predicate, %Eq{}}), do: true
   def can?(_, _), do: false

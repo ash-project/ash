@@ -1,7 +1,7 @@
 defmodule Ash.Filter.Predicate do
   @moduledoc "Represents a filter predicate"
 
-  defstruct [:attribute, :relationship_path, :predicate, :value]
+  defstruct [:resource, :attribute, :relationship_path, :predicate, :value]
 
   alias Ash.Filter
   alias Ash.Filter.{Expression, Not}
@@ -100,6 +100,7 @@ defmodule Ash.Filter.Predicate do
         if Ash.data_layer_can?(resource, {:filter_predicate, predicate}) do
           {:ok,
            %__MODULE__{
+             resource: resource,
              attribute: attribute,
              predicate: predicate,
              value: value,

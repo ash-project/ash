@@ -82,25 +82,13 @@ defmodule Ash.Actions.Read do
       Request.resolve(
         [[:data, :query] | relationship_filter_paths],
         fn %{data: %{query: ash_query}} = data ->
-          filter_with_related =
-            Enum.reduce_while(relationship_filter_paths, {:ok, ash_query.filter}, fn path,
-                                                                                     {:ok, filter} ->
-              case get_in(data, path) do
-                nil ->
-                  {:cont, {:ok, filter}}
-
-                authorization_filter ->
-                  case Ash.Filter.add_to_filter(filter, authorization_filter) do
-                    {:ok, new_filter} ->
-                      {:cont, {:ok, new_filter}}
-
-                    {:error, error} ->
-                      {:halt, {:error, error}}
-                  end
-              end
-            end)
-
-          with {:ok, filter} <- filter_with_related,
+          with {:ok, filter} <- filter_with_related(relationship_filter_paths, ash_query, data),
+               {:ok, filter} <-
+                 Filter.run_other_data_layer_filters(
+                   ash_query.resource,
+                   ash_query.api,
+                   filter
+                 ),
                {:ok, query} <- Ash.DataLayer.filter(query, filter, resource),
                {:ok, query} <- Ash.DataLayer.limit(query, ash_query.limit, resource),
                {:ok, query} <- Ash.DataLayer.offset(query, ash_query.offset, resource) do
@@ -108,6 +96,29 @@ defmodule Ash.Actions.Read do
           end
         end
       )
+    end
+  end
+
+  defp filter_with_related(relationship_filter_paths, ash_query, data) do
+    Enum.reduce_while(relationship_filter_paths, {:ok, ash_query.filter}, fn path,
+                                                                             {:ok, filter} ->
+      case get_in(data, path) do
+        nil ->
+          {:cont, {:ok, filter}}
+
+        authorization_filter ->
+          add_authorization_filter(filter, authorization_filter)
+      end
+    end)
+  end
+
+  defp add_authorization_filter(filter, authorization_filter) do
+    case Ash.Filter.add_to_filter(filter, authorization_filter) do
+      {:ok, new_filter} ->
+        {:cont, {:ok, new_filter}}
+
+      {:error, error} ->
+        {:halt, {:error, error}}
     end
   end
 end

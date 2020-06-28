@@ -43,14 +43,109 @@ defmodule Ash.Filter do
     end
   end
 
-  def relationship_paths(nil), do: []
-  def relationship_paths(%{expression: nil}), do: []
+  def run_other_data_layer_filters(resource, api, filter) do
+    reduce(filter, {:ok, filter}, fn
+      %Expression{op: :or}, {:ok, filter} ->
+        {:halt, {:ok, filter}}
 
-  def relationship_paths(%__MODULE__{expression: expression}), do: relationship_paths(expression)
+      %Expression{op: :and} = expression, {:ok, filter} ->
+        expression
+        |> relationship_paths(:ands_only)
+        |> filter_paths_that_change_data_layers(resource)
+        |> Enum.reduce_while({:ok, filter}, fn path, {:ok, filter} ->
+          {for_path, without_path} =
+            split_expression_by_relationship_path(filter.expression, path)
 
-  def relationship_paths(expression) do
+          relationship = Ash.relationship(resource, path)
+
+          query =
+            resource
+            |> api.query()
+            |> Ash.Query.filter(for_path)
+
+          add_other_datalayer_read_results(query, relationship, path, %{
+            filter
+            | expression: without_path
+          })
+        end)
+
+      _, {:ok, filter} ->
+        {:ok, filter}
+    end)
+  end
+
+  defp add_other_datalayer_read_results(query, relationship, path, filter_without_path) do
+    case query.api.read(query) do
+      {:ok, results} ->
+        new_filter =
+          results
+          |> Enum.map(&Map.get(&1, :destination_field))
+          |> Enum.reject(&is_nil/1)
+          |> case do
+            [] ->
+              false
+
+            [value] ->
+              [{relationship.source_field, value}]
+
+            values ->
+              [{relationship.source_field, [in: values]}]
+          end
+          |> put_at_path(:lists.droplast(path))
+
+        case add_to_filter(filter_without_path, new_filter) do
+          {:ok, filter} -> {:cont, {:halt, {:ok, filter}}}
+          {:error, error} -> {:halt, {:return, {:error, error}}}
+        end
+
+      {:error, error} ->
+        {:halt, {:return, {:error, error}}}
+    end
+  end
+
+  defp filter_paths_that_change_data_layers(paths, resource, acc \\ [])
+  defp filter_paths_that_change_data_layers([], _resource, acc), do: acc
+
+  defp filter_paths_that_change_data_layers([path | rest], resource, acc) do
+    case shortest_path_to_changed_data_layer(resource, path) do
+      {:ok, path} ->
+        new_rest = Enum.reject(rest, &List.starts_with?(&1, path))
+        filter_paths_that_change_data_layers(new_rest, resource, acc)
+
+      :error ->
+        filter_paths_that_change_data_layers(rest, resource, acc)
+    end
+  end
+
+  defp shortest_path_to_changed_data_layer(resource, path, acc \\ [])
+  defp shortest_path_to_changed_data_layer(_resource, [], _acc), do: :error
+
+  defp shortest_path_to_changed_data_layer(resource, [relationship | rest], acc) do
+    relationship = Ash.relationship(resource, relationship)
+    data_layer = Ash.data_layer(relationship.destination)
+
+    if data_layer == Ash.data_layer(resource) && Ash.data_layer_can?(resource, :join) do
+      shortest_path_to_changed_data_layer(relationship.destination, rest, [
+        relationship.name | acc
+      ])
+    else
+      {:ok, Enum.reverse([relationship.name | acc])}
+    end
+  end
+
+  defp put_at_path(value, []), do: value
+  defp put_at_path(value, [key | rest]), do: [{key, put_at_path(value, rest)}]
+
+  def relationship_paths(filter_or_expression, kind \\ :all)
+  def relationship_paths(nil, _), do: []
+  def relationship_paths(%{expression: nil}, _), do: []
+
+  def relationship_paths(%__MODULE__{expression: expression}, kind),
+    do: relationship_paths(expression, kind)
+
+  def relationship_paths(expression, kind) do
     expression
-    |> do_relationship_paths()
+    |> do_relationship_paths(kind)
     |> List.wrap()
     |> List.flatten()
     |> Enum.uniq()
@@ -118,50 +213,6 @@ defmodule Ash.Filter do
   def strict_subset_of?(filter, candidate) do
     strict_subset_of(filter, candidate) == true
   end
-
-  # def primary_key_filter?(nil), do: false
-
-  # def primary_key_filter?(filter) do
-  #   pkey = Ash.primary_key(filter.resource)
-  #   cleared_pkey_filter = Enum.map(pkey, fn key -> {key, nil} end)
-
-  #   case cleared_pkey_filter do
-  #     [] ->
-  #       false
-
-  #     cleared_pkey_filter ->
-  #       case parse(filter.api, filter.resource, cleared_pkey_filter) do
-  #         {:ok, parsed_cleared_pkey_filter} ->
-  #           cleared_candidate_filter = clear_primary_key(filter, pkey)
-
-  #           strict_subset_of?(parsed_cleared_pkey_filter, cleared_candidate_filter)
-
-  #         _ ->
-  #           false
-  #       end
-  #   end
-  # end
-
-  # defp clear_primary_key(filter, pkey) do
-  #   map(filter, fn
-  #     %Predicate{attribute: %{name: name}, predicate: %mod{}} = predicate
-  #     when mod in [Eq, In] ->
-  #       if name in pkey do
-  #         %{
-  #           predicate
-  #           | predicate: %Predicate{
-  #               attribute: Ash.attribute(filter.resource, name),
-  #               predicate: %Eq{field: name, value: nil}
-  #             }
-  #         }
-  #       else
-  #         predicate
-  #       end
-
-  #     other ->
-  #       other
-  #   end)
-  # end
 
   def relationship_filter_request_paths(filter) do
     filter
@@ -236,30 +287,100 @@ defmodule Ash.Filter do
   def reduce(%__MODULE__{expression: nil}, acc, _), do: acc
 
   def reduce(%__MODULE__{expression: expression}, acc, func) do
-    acc = func.(expression, acc)
-    do_reduce(expression, acc, func)
+    case func.(expression, acc) do
+      {:halt, acc} ->
+        acc
+
+      {:return, value} ->
+        value
+
+      acc ->
+        do_reduce(expression, acc, func)
+    end
   end
 
   def reduce(expression, acc, func) do
-    acc = func.(expression, acc)
-    do_reduce(expression, acc, func)
+    case func.(expression, acc) do
+      {:halt, acc} ->
+        acc
+
+      {:return, value} ->
+        value
+
+      acc ->
+        do_reduce(expression, acc, func)
+    end
   end
 
   def do_reduce(expression, acc, func) do
     case expression do
-      %Expression{left: left, right: right} ->
-        acc = func.(right, acc)
-        acc = func.(left, acc)
-        do_reduce(right, do_reduce(left, acc, func), func)
+      %Expression{} = expression ->
+        do_reduce_expression(expression, acc, func)
 
       %Not{expression: not_expr} ->
-        acc = func.(not_expr, acc)
+        case func.(not_expr, acc) do
+          {:halt, acc} ->
+            acc
 
-        do_reduce(not_expr, acc, func)
+          {:return, value} ->
+            {:return, value}
+
+          acc ->
+            do_reduce(not_expr, acc, func)
+        end
+
+      {:return, value} ->
+        {:return, value}
 
       other ->
         func.(other, acc)
     end
+  end
+
+  defp do_reduce_expression(%Expression{left: left, right: right}, acc, func) do
+    case func.(right, acc) do
+      {:halt, acc} ->
+        case func.(left, acc) do
+          {:return, value} ->
+            {:return, value}
+
+          {:halt, acc} ->
+            acc
+
+          acc ->
+            do_reduce(left, acc, func)
+        end
+
+      {:return, value} ->
+        {:return, value}
+
+      acc ->
+        case func.(left, acc) do
+          {:halt, acc} ->
+            do_reduce(right, acc, func)
+
+          {:return, value} ->
+            {:return, value}
+
+          acc ->
+            do_reduce(right, do_reduce(left, acc, func), func)
+        end
+    end
+  end
+
+  defp split_expression_by_relationship_path(filter, path) do
+    {for_path, without_path} = do_split_expression_by_relationship_path(filter.expression, path)
+
+    {%__MODULE__{
+       api: filter.api,
+       resource: Ash.related(filter.resource, path),
+       expression: for_path
+     },
+     %__MODULE__{
+       api: filter.api,
+       resource: filter.resource,
+       expression: without_path
+     }}
   end
 
   defp filter_expression_by_relationship_path(filter, path) do
@@ -268,6 +389,36 @@ defmodule Ash.Filter do
       resource: Ash.related(filter.resource, path),
       expression: do_filter_expression_by_relationship_path(filter.expression, path)
     }
+  end
+
+  defp do_split_expression_by_relationship_path(
+         %Expression{op: op, left: left, right: right},
+         path
+       ) do
+    {new_for_path_left, new_without_path_left} =
+      do_split_expression_by_relationship_path(left, path)
+
+    {new_for_path_right, new_without_path_right} =
+      do_split_expression_by_relationship_path(right, path)
+
+    {Expression.new(op, new_for_path_left, new_for_path_right),
+     Expression.new(op, new_without_path_left, new_without_path_right)}
+  end
+
+  defp do_split_expression_by_relationship_path(%Not{expression: expression}, path) do
+    {new_for_path, new_without_path} = do_split_expression_by_relationship_path(expression, path)
+    {Not.new(new_for_path), Not.new(new_without_path)}
+  end
+
+  defp do_split_expression_by_relationship_path(
+         %Predicate{relationship_path: predicate_path} = predicate,
+         path
+       ) do
+    if List.starts_with?(predicate_path, path) do
+      {%{predicate | relationship_path: Enum.drop(predicate_path, length(path))}, nil}
+    else
+      {nil, predicate}
+    end
   end
 
   defp do_filter_expression_by_relationship_path(
@@ -280,9 +431,9 @@ defmodule Ash.Filter do
     Expression.new(op, new_left, new_right)
   end
 
-  defp do_filter_expression_by_relationship_path(%Not{expression: expression} = not_expr, path) do
+  defp do_filter_expression_by_relationship_path(%Not{expression: expression}, path) do
     new_expression = do_filter_expression_by_relationship_path(expression, path)
-    %{not_expr | expression: new_expression}
+    Not.new(new_expression)
   end
 
   defp do_filter_expression_by_relationship_path(
@@ -296,20 +447,24 @@ defmodule Ash.Filter do
     end
   end
 
-  defp do_relationship_paths(%Predicate{relationship_path: []}) do
+  defp do_relationship_paths(%Predicate{relationship_path: []}, _) do
     []
   end
 
-  defp do_relationship_paths(%Predicate{relationship_path: path}) do
+  defp do_relationship_paths(%Predicate{relationship_path: path}, _) do
     {path}
   end
 
-  defp do_relationship_paths(%Expression{left: left, right: right}) do
-    [do_relationship_paths(left), do_relationship_paths(right)]
+  defp do_relationship_paths(%Expression{op: :or}, :ands_only) do
+    []
   end
 
-  defp do_relationship_paths(%Not{expression: expression}) do
-    do_relationship_paths(expression)
+  defp do_relationship_paths(%Expression{left: left, right: right}, kind) do
+    [do_relationship_paths(left, kind), do_relationship_paths(right, kind)]
+  end
+
+  defp do_relationship_paths(%Not{expression: expression}, kind) do
+    do_relationship_paths(expression, kind)
   end
 
   defp parse_expression(%__MODULE__{expression: expression}, context),
@@ -354,8 +509,15 @@ defmodule Ash.Filter do
     end
   end
 
-  defp add_expression_part({op, nested_statements}, context, expression) when op in [:or, :and] do
-    case parse_and_join(nested_statements, op, context) do
+  defp add_expression_part({:or, nested_statements}, context, expression) do
+    with {:ok, nested_expression} <- parse_and_join(nested_statements, :or, context),
+         :ok <- validate_datalayers_support_boolean_filters(nested_expression) do
+      {:ok, Expression.new(:and, expression, nested_expression)}
+    end
+  end
+
+  defp add_expression_part({:and, nested_statements}, context, expression) do
+    case parse_and_join(nested_statements, :and, context) do
       {:ok, nested_expression} ->
         {:ok, Expression.new(:and, expression, nested_expression)}
 
@@ -428,6 +590,100 @@ defmodule Ash.Filter do
 
   defp add_expression_part(value, _, _) do
     {:error, "Invalid filter value provided: #{inspect(value)}"}
+  end
+
+  defp validate_datalayers_support_boolean_filters(%Expression{op: :or, left: left, right: right}) do
+    left_predicates =
+      left
+      |> reduce([], fn
+        %Predicate{} = pred, acc ->
+          [{pred.relationship_path, pred.resource} | acc]
+
+        _, acc ->
+          acc
+      end)
+      |> Enum.uniq()
+
+    right_predicates =
+      right
+      |> reduce([], fn
+        %Predicate{} = pred, acc ->
+          [{pred.relationship_path, pred.resource} | acc]
+
+        _, acc ->
+          acc
+      end)
+      |> Enum.uniq()
+
+    Enum.reduce_while(left_predicates, :ok, fn {path, resource}, :ok ->
+      check_predicate_compatibility(resource, path, right_predicates)
+    end)
+  end
+
+  defp check_predicate_compatibility(resource, path, right_predicates) do
+    can_join? = Ash.data_layer_can?(resource, :join)
+    can_boolean_filter? = Ash.data_layer_can?(resource, :boolean_filter)
+
+    cond do
+      can_join? and can_boolean_filter? ->
+        {:cont, :ok}
+
+      can_join? ->
+        check_when_cant_boolean_filter(right_predicates, resource, path)
+
+      can_boolean_filter? ->
+        check_when_cant_join(right_predicates, resource, path)
+
+      true ->
+        check_when_cant_join_or_boolean_filter(right_predicates, resource)
+    end
+  end
+
+  defp check_when_cant_join_or_boolean_filter(right_predicates, resource) do
+    data_layer = Ash.data_layer(resource)
+
+    if Enum.any?(right_predicates, fn {_, right_resource} ->
+         Ash.data_layer(right_resource) == data_layer
+       end) do
+      {:halt,
+       {:error,
+        "Data layer #{inspect(Ash.data_layer(resource))} does not support joins or boolean filters, which are necessary for this query"}}
+    else
+      {:cont, :ok}
+    end
+  end
+
+  defp check_when_cant_join(right_predicates, resource, path) do
+    data_layer = Ash.data_layer(resource)
+
+    right_predicates
+    |> Enum.filter(fn {_right_path, right_resource} ->
+      Ash.data_layer(right_resource) == data_layer
+    end)
+    |> Enum.all?(fn {right_path, _} ->
+      right_path == path
+    end)
+    |> case do
+      true ->
+        {:cont, :ok}
+
+      false ->
+        {:halt,
+         {:error,
+          "Data layer #{inspect(Ash.data_layer(resource))} does not support joins, which are necessary for this query"}}
+    end
+  end
+
+  defp check_when_cant_boolean_filter(right_predicates, resource, path) do
+    if Enum.any?(right_predicates, fn {right_path, right_resource} ->
+         right_resource == resource && right_path == path
+       end) do
+      {:halt,
+       {:error,
+        "Data layer #{inspect(Ash.data_layer(resource))} does not support boolean filters"}}
+    else
+      {:cont, :ok}
+    end
   end
 
   defp add_to_predicate_path(expression, context) do
