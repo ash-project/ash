@@ -7,12 +7,17 @@ defmodule Ash.Filter do
   and the left and right hand side of that operator.
   """
   alias Ash.Engine.Request
-  alias Ash.Filter.Predicate.{Eq, In}
+  alias Ash.Filter.Predicate.{Eq, GreaterThan, In, LessThan}
   alias Ash.Filter.{Expression, Not, Predicate}
 
   @built_in_predicates [
     eq: Eq,
-    in: In
+    equals: Eq,
+    in: In,
+    lt: LessThan,
+    gt: GreaterThan,
+    less_than: LessThan,
+    greater_than: GreaterThan
   ]
 
   defstruct [:resource, :api, :expression]
