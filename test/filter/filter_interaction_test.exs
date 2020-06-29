@@ -1,6 +1,8 @@
 defmodule Ash.Test.Filter.FilterInteractionTest do
   use ExUnit.Case, async: false
 
+  alias Ash.DataLayer.Mnesia
+
   defmodule Profile do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -118,7 +120,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
   end
 
   setup do
-    Ash.DataLayer.Mnesia.start(Api)
+    Mnesia.start(Api)
 
     on_exit(fn ->
       :mnesia.stop()
@@ -171,14 +173,15 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
       post1 =
         Api.create!(Post,
           attributes: %{title: "one"},
-          relationships: %{related_posts: [post2]},
-          verbose?: true
+          relationships: %{related_posts: [post2]}
         )
 
       query =
         Post
         |> Api.query()
         |> Ash.Query.filter(related_posts: [title: "two"])
+
+      post1 = Api.reload!(post1)
 
       assert [^post1] = Api.read!(query)
     end

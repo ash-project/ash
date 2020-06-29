@@ -11,7 +11,10 @@ defmodule Ash.Actions.Create do
     side_load = opts[:side_load] || []
     upsert? = opts[:upsert?] || false
 
-    engine_opts = Keyword.take(opts, [:verbose?, :actor, :authorize?])
+    engine_opts =
+      opts
+      |> Keyword.take([:verbose?, :actor, :authorize?])
+      |> Keyword.put(:transaction?, true)
 
     action =
       if is_atom(action) and not is_nil(action) do
@@ -143,7 +146,7 @@ defmodule Ash.Actions.Create do
       [authorization_request | [commit_request | relationship_read_requests]] ++
         side_load_requests,
       api,
-      Keyword.put(engine_opts, :transaction?, true)
+      engine_opts
     )
   end
 

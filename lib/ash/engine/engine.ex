@@ -45,7 +45,7 @@ defmodule Ash.Engine do
           end)
 
         transaction_result =
-          maybe_transact(opts, requests, fn innermost_resource ->
+          maybe_transact(opts, api, fn innermost_resource ->
             {local_requests, async_requests} = split_local_async_requests(requests)
 
             opts =
@@ -55,38 +55,7 @@ defmodule Ash.Engine do
               |> Keyword.put(:runner_pid, self())
               |> Keyword.put(:api, api)
 
-            if async_requests == [] do
-              case Runner.run(local_requests, opts[:verbose?]) do
-                %{errors: errors} = runner when errors == [] ->
-                  runner
-
-                %{errors: errors} ->
-                  if innermost_resource do
-                    Ash.rollback(innermost_resource, errors)
-                  else
-                    {:error, errors}
-                  end
-              end
-            else
-              Process.flag(:trap_exit, true)
-              {:ok, pid} = GenServer.start(__MODULE__, opts)
-              _ = Process.monitor(pid)
-
-              receive do
-                {:pid_info, pid_info} ->
-                  case Runner.run(local_requests, opts[:verbose?], pid, pid_info) do
-                    %{errors: errors} = runner when errors == [] ->
-                      runner
-
-                    %{errors: errors} ->
-                      if innermost_resource do
-                        Ash.rollback(innermost_resource, errors)
-                      else
-                        {:error, errors}
-                      end
-                  end
-              end
-            end
+            run_requests(async_requests, local_requests, opts, innermost_resource)
           end)
 
         case transaction_result do
@@ -99,13 +68,57 @@ defmodule Ash.Engine do
     end
   end
 
-  defp maybe_transact(opts, requests, func) do
+  defp run_requests(async_requests, local_requests, opts, innermost_resource) do
+    if async_requests == [] do
+      run_and_return_or_rollback(local_requests, opts, innermost_resource)
+    else
+      Process.flag(:trap_exit, true)
+      {:ok, pid} = GenServer.start(__MODULE__, opts)
+      _ = Process.monitor(pid)
+
+      receive do
+        {:pid_info, pid_info} ->
+          run_and_return_or_rollback(
+            local_requests,
+            opts,
+            innermost_resource,
+            pid,
+            pid_info
+          )
+      end
+    end
+  end
+
+  defp run_and_return_or_rollback(
+         local_requests,
+         opts,
+         innermost_resource,
+         pid \\ nil,
+         pid_info \\ %{}
+       ) do
+    case Runner.run(local_requests, opts[:verbose?], pid, pid_info) do
+      %{errors: errors} = runner when errors == [] ->
+        runner
+
+      %{errors: errors} ->
+        rollback_or_return(innermost_resource, errors)
+    end
+  end
+
+  defp rollback_or_return(innermost_resource, errors) do
+    if innermost_resource do
+      Ash.rollback(innermost_resource, errors)
+    else
+      {:error, errors}
+    end
+  end
+
+  defp maybe_transact(opts, api, func) do
     if opts[:transaction?] do
       resources =
-        requests
-        |> Enum.map(& &1.resource)
+        api
+        |> Ash.Api.resources()
         |> Enum.filter(&Ash.data_layer_can?(&1, :transact))
-        |> Enum.uniq()
 
       do_in_transaction(resources, func)
     else

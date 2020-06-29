@@ -18,7 +18,7 @@ defmodule Ash.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       package: package(),
       deps: deps(),
-      dialyzer: [plt_add_apps: [:mix]],
+      dialyzer: [plt_add_apps: [:mix, :mnesia]],
       test_coverage: [tool: ExCoveralls],
       preferred_cli_env: [
         coveralls: :test,
