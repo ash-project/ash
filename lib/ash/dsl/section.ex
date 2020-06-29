@@ -9,14 +9,14 @@ defmodule Ash.Dsl.Section do
   A section may have nested sections, which will be configured the same as other sections.
   Getting the options/entities of a section is done by providing a path, so you would
   use the nested path to retrieve that configuration. See `Ash.Dsl.Extension.get_entities/2`
-  and `Ash.Dsl.Extension.get_opt/3`.
+  and `Ash.Dsl.Extension.get_opt/4`.
 
   A section may have entities, which are constructors that produce instances of structs.
   For more on entities, see `Ash.Dsl.Entity`.
 
   A section may also have a `schema`, which is a `NimbleOptions` schema. Ash will produce
   builders for those options, so that they may be configured. They are retrived with
-  `Ash.Dsl.Extension.get_opt/3`.
+  `Ash.Dsl.Extension.get_opt/4`.
 
   For a full example, see `Ash.Dsl.Extension`.
   """

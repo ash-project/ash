@@ -4,6 +4,10 @@ defmodule Ash.Filter.Expression do
   defstruct [:op, :left, :right]
 
   def new(_, nil, nil), do: nil
+  def new(:and, false, _), do: false
+  def new(:and, _, false), do: false
+  def new(:or, true, _), do: true
+  def new(:or, _, true), do: true
   def new(_, nil, right), do: right
   def new(_, left, nil), do: left
 

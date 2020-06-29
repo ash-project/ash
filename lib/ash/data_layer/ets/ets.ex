@@ -112,6 +112,8 @@ defmodule Ash.DataLayer.Ets do
     Enum.filter(records, &matches_filter?(&1, filter.expression))
   end
 
+  defp matches_filter?(_record, boolean) when is_boolean(boolean), do: boolean
+
   defp matches_filter?(
          record,
          %Predicate{
@@ -121,19 +123,6 @@ defmodule Ash.DataLayer.Ets do
          }
        ) do
     matches_predicate?(record, name, predicate)
-  end
-
-  defp matches_filter?(
-         record,
-         %Predicate{
-           predicate: predicate,
-           attribute: %{name: name},
-           relationship_path: path
-         }
-       ) do
-    record
-    |> get_related(path)
-    |> Enum.any?(&matches_predicate?(&1, name, predicate))
   end
 
   defp matches_filter?(record, %Expression{op: :and, left: left, right: right}) do
@@ -146,49 +135,6 @@ defmodule Ash.DataLayer.Ets do
 
   defp matches_filter?(record, %Not{expression: expression}) do
     not matches_filter?(record, expression)
-  end
-
-  defp get_related(record_or_records, []), do: List.wrap(record_or_records)
-
-  defp get_related(%resource{} = record, [first | rest]) do
-    relationship = Ash.relationship(resource, first)
-    source_value = Map.get(record, relationship.source_field)
-
-    related =
-      if is_nil(Map.get(record, relationship.source_field)) do
-        []
-      else
-        case Ash.relationship(resource, first) do
-          %{type: :many_to_many} = relationship ->
-            {:ok, through_records} = get_records(relationship.through)
-            {:ok, destination_records} = get_records(relationship.destination)
-
-            through_records
-            |> Enum.reject(&is_nil(Map.get(&1, relationship.destination_field_on_join_table)))
-            |> Enum.flat_map(fn through_record ->
-              if Map.get(through_record, relationship.source_field_on_join_table) ==
-                   source_value do
-                Enum.filter(destination_records, fn destination_record ->
-                  Map.get(through_record, relationship.destination_field_on_join_table) ==
-                    Map.get(destination_record, relationship.destination_field)
-                end)
-              else
-                []
-              end
-            end)
-
-          relationship ->
-            {:ok, destination_records} = get_records(relationship.destination)
-
-            Enum.filter(destination_records, fn destination_record ->
-              Map.get(destination_record, relationship.destination_field) == source_value
-            end)
-        end
-      end
-
-    related
-    |> List.wrap()
-    |> Enum.flat_map(&get_related(&1, rest))
   end
 
   defp matches_predicate?(record, field, %Eq{value: predicate_value}) do

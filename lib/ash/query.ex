@@ -29,7 +29,7 @@ defmodule Ash.Query do
         | syntax_colors: [
             atom: :yellow,
             binary: :green,
-            boolean: :pink,
+            boolean: :magenta,
             list: :cyan,
             map: :magenta,
             number: :red,

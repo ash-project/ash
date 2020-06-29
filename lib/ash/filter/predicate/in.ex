@@ -12,7 +12,7 @@ defmodule Ash.Filter.Predicate.In do
   def new(_resource, attribute, []),
     do: {:ok, %__MODULE__{field: attribute.name, values: MapSet.new([])}}
 
-  def new(resource, attribute, [value]), do: {:ok, Eq.new(resource, attribute, value)}
+  def new(resource, attribute, [value]), do: Eq.new(resource, attribute, value)
 
   def new(_resource, attribute, values) when is_list(values) do
     Enum.reduce_while(values, {:ok, %__MODULE__{field: attribute.name, values: []}}, fn value,
