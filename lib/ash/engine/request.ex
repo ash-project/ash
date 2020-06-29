@@ -286,13 +286,13 @@ defmodule Ash.Engine.Request do
       waiting_for,
       fn
         {:optional, dep} ->
-          {dep, false}
-
-        {:required, dep} ->
           {dep, true}
 
+        {:required, dep} ->
+          {dep, false}
+
         other ->
-          {other, true}
+          {other, false}
       end
     )
   end

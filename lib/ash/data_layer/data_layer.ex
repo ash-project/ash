@@ -12,6 +12,7 @@ defmodule Ash.DataLayer do
           | :boolean_filter
           | :async_engine
           | :join
+          | :transact
           | {:filter_predicate, Ash.Type.t(), struct}
           | :upsert
           | :composite_primary_key
@@ -29,7 +30,6 @@ defmodule Ash.DataLayer do
               resource :: Ash.resource()
             ) :: {:ok, Ash.data_layer_query()} | {:error, term}
   @callback resource_to_query(Ash.resource()) :: Ash.data_layer_query()
-  @callback can_query_async?(Ash.resource()) :: boolean
   @callback run_query(Ash.data_layer_query(), Ash.resource()) ::
               {:ok, list(Ash.resource())} | {:error, term}
   @callback create(Ash.resource(), changeset :: Ecto.Changeset.t()) ::
@@ -40,11 +40,15 @@ defmodule Ash.DataLayer do
               {:ok, Ash.resource()} | {:error, term}
   @callback destroy(record :: Ash.record()) :: :ok | {:error, term}
   @callback transaction(Ash.resource(), (() -> term)) :: {:ok, term} | {:error, term}
+  @callback in_transaction?(Ash.resource()) :: boolean
+  @callback rollback(Ash.resource(), term) :: no_return
   @callback can?(Ash.resource(), feature()) :: boolean
 
   @optional_callbacks transaction: 2
+  @optional_callbacks rollback: 2
   @optional_callbacks upsert: 2
   @optional_callbacks custom_filters: 1
+  @optional_callbacks in_transaction?: 1
 
   @spec resource_to_query(Ash.resource()) :: Ash.data_layer_query()
   def resource_to_query(resource) do

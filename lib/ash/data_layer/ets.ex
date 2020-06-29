@@ -44,6 +44,7 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, :composite_primary_key), do: true
   def can?(_, :upsert), do: true
   def can?(_, :boolean_filter), do: true
+  def can?(_, :transact), do: false
   def can?(_, {:filter_predicate, _, %In{}}), do: true
   def can?(_, {:filter_predicate, _, %Eq{}}), do: true
   def can?(_, {:filter_predicate, _, %LessThan{}}), do: true
@@ -62,9 +63,6 @@ defmodule Ash.DataLayer.Ets do
 
   @impl true
   def offset(query, offset, _), do: {:ok, %{query | offset: offset}}
-
-  @impl true
-  def can_query_async?(_), do: false
 
   @impl true
   def filter(query, filter, _resource) do
@@ -108,12 +106,13 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  defp filter_matches(records, nil), do: records
+  def filter_matches(records, nil), do: records
 
-  defp filter_matches(records, filter) do
+  def filter_matches(records, filter) do
     Enum.filter(records, &matches_filter?(&1, filter.expression))
   end
 
+  defp matches_filter?(_record, nil), do: true
   defp matches_filter?(_record, boolean) when is_boolean(boolean), do: boolean
 
   defp matches_filter?(
@@ -164,13 +163,13 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  defp do_sort(results, empty) when empty in [nil, []], do: results
+  def do_sort(results, empty) when empty in [nil, []], do: results
 
-  defp do_sort(results, [{field, direction}]) do
+  def do_sort(results, [{field, direction}]) do
     Enum.sort_by(results, &Map.get(&1, field), direction)
   end
 
-  defp do_sort(results, [{field, direction} | rest]) do
+  def do_sort(results, [{field, direction} | rest]) do
     results
     |> Enum.group_by(&Map.get(&1, field))
     |> Enum.sort_by(fn {key, _value} -> key end, direction)

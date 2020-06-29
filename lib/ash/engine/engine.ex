@@ -44,31 +44,91 @@ defmodule Ash.Engine do
             Request.add_initial_authorizer_state(request)
           end)
 
-        {local_requests, async_requests} = split_local_async_requests(requests)
+        transaction_result =
+          maybe_transact(opts, requests, fn innermost_resource ->
+            {local_requests, async_requests} = split_local_async_requests(requests)
 
-        opts =
-          opts
-          |> Keyword.put(:requests, async_requests)
-          |> Keyword.put(:local_requests?, !Enum.empty?(local_requests))
-          |> Keyword.put(:runner_pid, self())
-          |> Keyword.put(:api, api)
+            opts =
+              opts
+              |> Keyword.put(:requests, async_requests)
+              |> Keyword.put(:local_requests?, !Enum.empty?(local_requests))
+              |> Keyword.put(:runner_pid, self())
+              |> Keyword.put(:api, api)
 
-        if async_requests == [] do
-          Runner.run(local_requests, opts[:verbose?])
-        else
-          Process.flag(:trap_exit, true)
-          {:ok, pid} = GenServer.start(__MODULE__, opts)
-          _ = Process.monitor(pid)
+            if async_requests == [] do
+              case Runner.run(local_requests, opts[:verbose?]) do
+                %{errors: errors} = runner when errors == [] ->
+                  runner
 
-          receive do
-            {:pid_info, pid_info} ->
-              Runner.run(local_requests, opts[:verbose?], pid, pid_info)
-          end
+                %{errors: errors} ->
+                  if innermost_resource do
+                    Ash.rollback(innermost_resource, errors)
+                  else
+                    {:error, errors}
+                  end
+              end
+            else
+              Process.flag(:trap_exit, true)
+              {:ok, pid} = GenServer.start(__MODULE__, opts)
+              _ = Process.monitor(pid)
+
+              receive do
+                {:pid_info, pid_info} ->
+                  case Runner.run(local_requests, opts[:verbose?], pid, pid_info) do
+                    %{errors: errors} = runner when errors == [] ->
+                      runner
+
+                    %{errors: errors} ->
+                      if innermost_resource do
+                        Ash.rollback(innermost_resource, errors)
+                      else
+                        {:error, errors}
+                      end
+                  end
+              end
+            end
+          end)
+
+        case transaction_result do
+          {:ok, value} -> value
+          {:error, %Runner{} = runner} -> {:error, runner.errors}
         end
 
       {:error, error} ->
         {:error, error}
     end
+  end
+
+  defp maybe_transact(opts, requests, func) do
+    if opts[:transaction?] do
+      resources =
+        requests
+        |> Enum.map(& &1.resource)
+        |> Enum.filter(&Ash.data_layer_can?(&1, :transact))
+        |> Enum.uniq()
+
+      do_in_transaction(resources, func)
+    else
+      {:ok, func.(nil)}
+    end
+  end
+
+  defp do_in_transaction(resources, func, innnermost \\ nil)
+
+  defp do_in_transaction([], func, innermost_resource) do
+    {:ok, func.(innermost_resource)}
+  end
+
+  defp do_in_transaction([resource | rest], func, _innermost) do
+    Ash.transaction(resource, fn ->
+      case do_in_transaction(rest, func, resource) do
+        {:ok, value} ->
+          value
+
+        {:error, error} ->
+          Ash.rollback(resource, error)
+      end
+    end)
   end
 
   def init(opts) do
@@ -268,14 +328,21 @@ defmodule Ash.Engine do
   end
 
   defp split_local_async_requests(requests) do
-    {local, async} = Enum.split_with(requests, &must_be_local?/1)
+    if Enum.any?(requests, fn request ->
+         Ash.data_layer_can?(request.resource, :transact) &&
+           Ash.in_transaction?(request.resource)
+       end) do
+      {requests, []}
+    else
+      {local, async} = Enum.split_with(requests, &must_be_local?/1)
 
-    case {local, async} do
-      {[], [first_async | rest]} ->
-        {[first_async], rest}
+      case {local, async} do
+        {[], [first_async | rest]} ->
+          {[first_async], rest}
 
-      {local, async} ->
-        {local, async}
+        {local, async} ->
+          {local, async}
+      end
     end
   end
 

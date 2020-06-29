@@ -102,7 +102,8 @@ defmodule Ash.MixProject do
     [
       sobelow: "sobelow --skip",
       credo: "credo --strict",
-      "ash.formatter": "ash.formatter --extensions Ash.Dsl,Ash.Api.Dsl"
+      "ash.formatter":
+        "ash.formatter --extensions Ash.Dsl,Ash.Api.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia"
     ]
   end
 end

@@ -214,4 +214,23 @@ defmodule Ash do
   def data_layer_filters(resource) do
     Ash.DataLayer.custom_filters(resource)
   end
+
+  @spec in_transaction?(resource) :: boolean
+  def in_transaction?(resource) do
+    data_layer(resource).in_transaction?(resource)
+  end
+
+  @spec transaction(resource, (() -> term)) :: term
+  def transaction(resource, func) do
+    if data_layer_can?(resource, :transact) do
+      data_layer(resource).transaction(resource, func)
+    else
+      func.()
+    end
+  end
+
+  @spec rollback(resource, term) :: no_return
+  def rollback(resource, term) do
+    data_layer(resource).rollback(resource, term)
+  end
 end
