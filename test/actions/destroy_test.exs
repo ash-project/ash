@@ -23,7 +23,7 @@ defmodule Ash.Test.Actions.DestroyTest do
     end
 
     relationships do
-      belongs_to :author, Ash.Test.Actions.CreateTest.Author
+      belongs_to :author, Ash.Test.Actions.DestroyTest.Author
     end
   end
 
@@ -50,7 +50,7 @@ defmodule Ash.Test.Actions.DestroyTest do
     relationships do
       has_one :profile, Profile, destination_field: :author_id
 
-      has_many :posts, Ash.Test.Actions.CreateTest.Post, destination_field: :author_id
+      has_many :posts, Ash.Test.Actions.DestroyTest.Post, destination_field: :author_id
     end
   end
 

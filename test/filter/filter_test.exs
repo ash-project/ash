@@ -171,6 +171,42 @@ defmodule Ash.Test.Filter.FilterTest do
                |> Ash.Query.filter(title: post1.title, contents: post2.contents)
                |> Api.read!()
     end
+
+    test "less than works", %{
+      post1: post1,
+      post2: post2
+    } do
+      assert [^post1] =
+               Post
+               |> Api.query()
+               |> Ash.Query.filter(points: [lt: 2])
+               |> Api.read!()
+
+      assert [^post1, ^post2] =
+               Post
+               |> Api.query()
+               |> Ash.Query.filter(points: [lt: 3])
+               |> Ash.Query.sort(points: :asc)
+               |> Api.read!()
+    end
+
+    test "greater than works", %{
+      post1: post1,
+      post2: post2
+    } do
+      assert [^post2] =
+               Post
+               |> Api.query()
+               |> Ash.Query.filter(points: [gt: 1])
+               |> Api.read!()
+
+      assert [^post1, ^post2] =
+               Post
+               |> Api.query()
+               |> Ash.Query.filter(points: [gt: 0])
+               |> Ash.Query.sort(points: :asc)
+               |> Api.read!()
+    end
   end
 
   describe "relationship filters" do
