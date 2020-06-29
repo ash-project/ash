@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v0.9.0](https://github.com/ash-project/ash/compare/0.8.0...v0.9.0) (2020-06-29)
+
+
+
+
+### Features:
+
+* add less_than and greater_than filter support
+
+* validate all related resources in API
+
+### Bug Fixes:
+
+* fix tests/credo
+
+* fix tests, add tests for gt/lt filters
+
 ## [v0.8.0](https://github.com/ash-project/ash/compare/0.7.0...v0.8.0) (2020-06-29)
 
 
