@@ -1,5 +1,5 @@
 defmodule Ash.Filter.Predicate.In do
-  @moduledoc false
+  @moduledoc "A predicate for a value being in a list of provided values"
   defstruct [:field, :values]
 
   use Ash.Filter.Predicate

@@ -1,5 +1,5 @@
 defmodule Ash.Filter.Predicate.Eq do
-  @moduledoc false
+  @moduledoc "A predicate for strict value equality"
   defstruct [:field, :value]
 
   use Ash.Filter.Predicate

@@ -1,5 +1,5 @@
 defmodule Ash.Filter.Predicate.GreaterThan do
-  @moduledoc false
+  @moduledoc "A predicate for a value being greater than the provided value"
   defstruct [:field, :value, :type]
 
   alias Ash.Filter.Predicate.Eq
@@ -47,10 +47,11 @@ defmodule Ash.Filter.Predicate.GreaterThan do
 
   defimpl Inspect do
     import Inspect.Algebra
+    alias Ash.Filter.Predicate
 
     def inspect(predicate, opts) do
       concat([
-        Ash.Filter.Predicate.add_inspect_path(opts, predicate.field),
+        Predicate.add_inspect_path(opts, predicate.field),
         " > ",
         to_doc(predicate.value, opts)
       ])

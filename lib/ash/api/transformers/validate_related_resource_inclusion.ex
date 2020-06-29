@@ -1,4 +1,7 @@
 defmodule Ash.Api.Transformers.ValidateRelatedResourceInclusion do
+  @moduledoc """
+  Ensures that all related resources are included in an API.
+  """
   use Ash.Dsl.Transformer
 
   alias Ash.Dsl.Transformer

@@ -12,7 +12,7 @@ defmodule Ash.DataLayer do
           | :boolean_filter
           | :async_engine
           | :join
-          | {:filter_predicate, struct}
+          | {:filter_predicate, Ash.Type.t(), struct}
           | :upsert
           | :composite_primary_key
 

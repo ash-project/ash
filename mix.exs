@@ -56,7 +56,10 @@ defmodule Ash.MixProject do
         ],
         "resource dsl transformers": ~r/Ash.Resource.Transformers/,
         "resource dsl": ~r/Ash.Dsl/,
-        "api dsl": ~r/Ash.Api.Dsl/
+        "api dsl transformers": ~r/Ash.Api.Transformers/,
+        "api dsl": ~r/Ash.Api.Dsl/,
+        "filter predicates": ~r/Ash.Filter.Predicate/,
+        filter: ~r/Ash.Filter/
       ]
     ]
   end
