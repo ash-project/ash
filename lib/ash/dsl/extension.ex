@@ -269,7 +269,7 @@ defmodule Ash.Dsl.Extension do
                   transformer.transform(__MODULE__, dsl)
                 rescue
                   e ->
-                    reraise "Raised exception while running transformer #{inspect(transformer)}: #{
+                    reraise "Exception in transformer #{inspect(transformer)}: \n\n#{
                               Exception.message(e)
                             }",
                             __STACKTRACE__

@@ -31,5 +31,10 @@ defmodule Ash.Api.Dsl do
     ]
   }
 
-  use Ash.Dsl.Extension, sections: [@resources]
+  @transformers [
+    Ash.Api.Transformers.EnsureResourcesCompiled,
+    Ash.Api.Transformers.ValidateRelatedResourceInclusion
+  ]
+
+  use Ash.Dsl.Extension, sections: [@resources], transformers: @transformers
 end
