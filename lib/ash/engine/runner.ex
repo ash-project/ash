@@ -214,6 +214,12 @@ defmodule Ash.Engine.Runner do
   end
 
   defp fake_handle_cast({:field_value, receiver_path, request_path, field, value}, state) do
+    receiver_path =
+      case receiver_path do
+        {_, path} -> path
+        path -> path
+      end
+
     request = Enum.find(state.requests, &(&1.path == receiver_path))
 
     case Request.receive_field(request, request_path, field, value) do

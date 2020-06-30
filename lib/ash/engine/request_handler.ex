@@ -106,11 +106,17 @@ defmodule Ash.Engine.RequestHandler do
 
   defp notify(state, notifications) do
     Enum.each(notifications, fn {receiver_path, request_path, field, value} ->
+      receiver_path =
+        case receiver_path do
+          {_, path} -> path
+          path -> path
+        end
+
       destination_pid = Map.get(state.pid_info, receiver_path) || state.runner_pid
 
       log(state, "notifying #{inspect(receiver_path)} of #{inspect(field)}")
 
-      GenServer.cast(destination_pid, {:field_value, request_path, receiver_path, field, value})
+      GenServer.cast(destination_pid, {:field_value, receiver_path, request_path, field, value})
     end)
   end
 

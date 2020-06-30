@@ -185,5 +185,33 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
       assert [^post1] = Api.read!(query)
     end
+
+    test "parallelizable filter with filtered side loads" do
+      post2 = Api.create!(Post, attributes: %{title: "two"})
+      post3 = Api.create!(Post, attributes: %{title: "three"})
+
+      post1 =
+        Api.create!(Post,
+          attributes: %{title: "one"},
+          relationships: %{related_posts: [post2, post3]}
+        )
+
+      posts_query =
+        Post
+        |> Api.query()
+        |> Ash.Query.filter(title: "three")
+
+      query =
+        Post
+        |> Api.query()
+        |> Ash.Query.filter(related_posts: [title: "two"])
+        |> Ash.Query.side_load(related_posts: posts_query)
+
+      post1_id = post1.id
+
+      post3_id = post3.id
+
+      assert [%{id: ^post1_id, related_posts: [%{id: ^post3_id}]}] = Api.read!(query)
+    end
   end
 end
