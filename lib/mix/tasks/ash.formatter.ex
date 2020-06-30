@@ -32,6 +32,11 @@ defmodule Mix.Tasks.Ash.Formatter do
       |> Enum.flat_map(fn extension ->
         extension_mod = Module.concat([extension])
 
+        case Code.ensure_compiled(extension_mod) do
+          {:module, _module} -> :ok
+          other -> raise "Error ensuring extension compiled #{inspect(other)}"
+        end
+
         all_entity_builders(extension_mod.sections())
       end)
       |> Enum.uniq()
@@ -41,8 +46,6 @@ defmodule Mix.Tasks.Ash.Formatter do
       @formatter_exs_template
       |> String.replace("__replace_me__", inspect(locals_without_parens))
       |> Code.format_string!()
-
-    # |> IO.puts()
 
     contents_with_newline = [contents, "\n"]
 
