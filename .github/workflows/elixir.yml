@@ -30,14 +30,14 @@ jobs:
         id: cache-deps
         with:
           path: deps
-          key: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-deps-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
-          restore-keys: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-deps-
+          key: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-deps-2-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+          restore-keys: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-deps-2-
       - uses: actions/cache@v1
         id: cache-build
         with:
           path: _build
-          key: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-build-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
-          restore-keys: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-build-
+          key: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-build-2-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+          restore-keys: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-build-2-
       - run: mix deps.get
       - run: mix check
       - run: mix hex.publish --yes
