@@ -8,6 +8,10 @@ defmodule Ash.Test.Resource.AttributesTest do
         @moduledoc false
         use Ash.Resource
 
+        attributes do
+          attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+        end
+
         unquote(body)
       end
     end
@@ -21,7 +25,7 @@ defmodule Ash.Test.Resource.AttributesTest do
         end
       end
 
-      assert [%Ash.Resource.Attribute{name: :foo, type: :string, primary_key?: false}] =
+      assert [_, %Ash.Resource.Attribute{name: :foo, type: :string, primary_key?: false}] =
                Ash.attributes(Post)
     end
   end

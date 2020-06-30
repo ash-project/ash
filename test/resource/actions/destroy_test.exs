@@ -8,6 +8,10 @@ defmodule Ash.Test.Dsl.Resource.Actions.DestroyTest do
         @moduledoc false
         use Ash.Resource
 
+        attributes do
+          attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+        end
+
         unquote(body)
       end
     end

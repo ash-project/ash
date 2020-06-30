@@ -41,6 +41,7 @@ defmodule Ash.Test.Type.TypeTest do
     end
 
     attributes do
+      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
       attribute :title, PostTitle
     end
 

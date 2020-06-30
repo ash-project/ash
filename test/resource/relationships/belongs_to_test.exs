@@ -8,6 +8,10 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
         @moduledoc false
         use Ash.Resource
 
+        attributes do
+          attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+        end
+
         unquote(body)
       end
     end
@@ -26,7 +30,8 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
                  name: :foobar_id,
                  primary_key?: false,
                  type: :uuid
-               }
+               },
+               _
              ] = Ash.attributes(Post)
     end
 

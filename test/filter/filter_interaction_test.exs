@@ -168,7 +168,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
     test "parallelizable filtering of related resources with a data layer that cannot join" do
       post2 = Api.create!(Post, attributes: %{title: "two"})
-      post3 = Api.create!(Post, attributes: %{title: "three"})
+      Api.create!(Post, attributes: %{title: "three"})
 
       post1 =
         Api.create!(Post,

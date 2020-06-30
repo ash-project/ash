@@ -15,7 +15,7 @@ defmodule Ash.Resource.Transformers.CachePrimaryKey do
 
     case primary_key do
       [] ->
-        {:ok, dsl_state}
+        {:error, "Resources without a primary key are not yet supported"}
 
       [field] ->
         Transformer.persist_to_runtime(resource, {resource, :primary_key}, [field])
