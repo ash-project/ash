@@ -113,42 +113,49 @@ defmodule Ash.DataLayer.Mnesia do
         _resource
       ) do
     records =
-      if Mnesia.is_transaction() do
+      Mnesia.transaction(fn ->
         Mnesia.select(table(resource), [{:_, [], [:"$_"]}])
-      else
-        Mnesia.dirty_select(table(resource), [{:_, [], [:"$_"]}])
-      end
-
-    attributes = resource |> Ash.attributes() |> Enum.map(& &1.name) |> Enum.sort()
-
-    elements_to_drop =
-      case Ash.primary_key(resource) do
-        [] ->
-          1
-
-        _ ->
-          2
-      end
-
-    structified_records =
-      Enum.map(records, fn record ->
-        struct(resource, Enum.zip(attributes, Enum.drop(Tuple.to_list(record), elements_to_drop)))
       end)
 
-    offset_records =
-      structified_records
-      |> Ets.filter_matches(filter)
-      |> Ets.do_sort(sort)
-      |> Enum.drop(offset || 0)
+    case records do
+      {:aborted, reason} ->
+        {:error, reason}
 
-    limited_records =
-      if limit do
-        Enum.take(offset_records, limit)
-      else
-        offset_records
-      end
+      {:atomic, records} ->
+        attributes = resource |> Ash.attributes() |> Enum.map(& &1.name) |> Enum.sort()
 
-    {:ok, limited_records}
+        elements_to_drop =
+          case Ash.primary_key(resource) do
+            [] ->
+              1
+
+            _ ->
+              2
+          end
+
+        structified_records =
+          Enum.map(records, fn record ->
+            struct(
+              resource,
+              Enum.zip(attributes, Enum.drop(Tuple.to_list(record), elements_to_drop))
+            )
+          end)
+
+        offset_records =
+          structified_records
+          |> Ets.filter_matches(filter)
+          |> Ets.do_sort(sort)
+          |> Enum.drop(offset || 0)
+
+        limited_records =
+          if limit do
+            Enum.take(offset_records, limit)
+          else
+            offset_records
+          end
+
+        {:ok, limited_records}
+    end
   rescue
     error ->
       {:error, error}
@@ -180,13 +187,15 @@ defmodule Ash.DataLayer.Mnesia do
           List.to_tuple([table(resource) | [pkey_values | values]])
       end
 
-    if Mnesia.is_transaction() do
-      Mnesia.write(values_with_primary_key)
-    else
-      Mnesia.dirty_write(values_with_primary_key)
-    end
+    result =
+      Mnesia.transaction(fn ->
+        Mnesia.write(values_with_primary_key)
+      end)
 
-    {:ok, record}
+    case result do
+      {:atomic, _} -> {:ok, record}
+      {:aborted, error} -> {:error, error}
+    end
   rescue
     error ->
       {:error, error}
@@ -199,10 +208,14 @@ defmodule Ash.DataLayer.Mnesia do
       |> Ash.primary_key()
       |> Enum.map(&Map.get(record, &1))
 
-    if Mnesia.is_transaction() do
-      Mnesia.delete({table(resource), pkey})
-    else
-      Mnesia.dirty_delete({table(resource), pkey})
+    result =
+      Mnesia.transaction(fn ->
+        Mnesia.delete({table(resource), pkey})
+      end)
+
+    case result do
+      {:atomic, _} -> :ok
+      {:aborted, error} -> {:error, error}
     end
   rescue
     error ->
