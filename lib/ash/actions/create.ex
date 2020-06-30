@@ -206,7 +206,7 @@ defmodule Ash.Actions.Create do
     changeset =
       resource
       |> struct()
-      |> Ecto.Changeset.cast(attributes_with_defaults, allowed_keys)
+      |> Ecto.Changeset.cast(attributes_with_defaults, allowed_keys, empty_values: [])
       |> Map.put(:action, :create)
       |> Map.put(:__ash_relationships__, %{})
 
@@ -225,6 +225,26 @@ defmodule Ash.Actions.Create do
       case Ecto.Changeset.get_field(changeset, attr.name) do
         nil -> Ecto.Changeset.add_error(changeset, attr.name, "must not be nil")
         _value -> changeset
+      end
+    end)
+    |> validate_constraints(resource)
+  end
+
+  defp validate_constraints(changeset, resource) do
+    resource
+    |> Ash.attributes()
+    |> Enum.reduce(changeset, fn attribute, changeset ->
+      with {:ok, value} <- Map.fetch(changeset.changes, attribute.name),
+           {:error, error} <-
+             Ash.Type.apply_constraints(attribute.type, value, attribute.constraints) do
+        error
+        |> List.wrap()
+        |> Enum.reduce(changeset, fn error, changeset ->
+          Ecto.Changeset.add_error(changeset, attribute.name, error)
+        end)
+      else
+        _ ->
+          changeset
       end
     end)
   end

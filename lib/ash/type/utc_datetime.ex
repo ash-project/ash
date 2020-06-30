@@ -1,0 +1,22 @@
+defmodule Ash.Type.UtcDatetime do
+  @moduledoc "Stores a utc datetime in the database"
+  use Ash.Type
+
+  @impl true
+  def storage_type, do: :utc_datetime
+
+  @impl true
+  def cast_input(value) do
+    Ecto.Type.cast(:utc_datetime, value)
+  end
+
+  @impl true
+  def cast_stored(value) do
+    Ecto.Type.load(:utc_datetime, value)
+  end
+
+  @impl true
+  def dump_to_native(value) do
+    Ecto.Type.dump(:utc_datetime, value)
+  end
+end

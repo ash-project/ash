@@ -9,11 +9,13 @@ defmodule Ash.Resource.Attribute do
     :primary_key?,
     :writable?,
     :default,
-    :update_default
+    :update_default,
+    constraints: []
   ]
 
   @type t :: %__MODULE__{
           name: atom(),
+          constraints: Keyword.t(),
           type: Ash.Type.t(),
           primary_key?: boolean(),
           default: (() -> term),
@@ -31,6 +33,11 @@ defmodule Ash.Resource.Attribute do
     type: [
       type: {:custom, OptionsHelpers, :ash_type, []},
       doc: "The type of the attribute."
+    ],
+    constraints: [
+      type: :keyword_list,
+      doc:
+        "Constraints to provide to the type when casting the value. See the type's documentation for more information."
     ],
     primary_key?: [
       type: :boolean,
@@ -75,6 +82,20 @@ defmodule Ash.Resource.Attribute do
                            |> OptionsHelpers.set_default!(:default, &DateTime.utc_now/0)
                            |> OptionsHelpers.set_default!(:update_default, &DateTime.utc_now/0)
                            |> OptionsHelpers.set_default!(:type, :utc_datetime)
+
+  def transform(%{constraints: []} = attribute), do: {:ok, attribute}
+
+  def transform(%{constraints: constraints, type: type} = attribute) do
+    schema = Ash.Type.constraints(type)
+
+    case NimbleOptions.validate(constraints, schema) do
+      {:ok, constraints} ->
+        {:ok, %{attribute | constraints: constraints}}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
 
   def validate_default(value, _) when is_function(value, 0), do: {:ok, value}
   def validate_default({:constant, value}, _), do: {:ok, {:constant, value}}

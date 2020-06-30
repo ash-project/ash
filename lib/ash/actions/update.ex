@@ -63,10 +63,26 @@ defmodule Ash.Actions.Update do
     end
   end
 
-  def changeset(record, api, attributes, relationships) do
+  def changeset(%resource{} = record, api, attributes, relationships) do
     record
     |> prepare_update_attributes(attributes)
     |> Relationships.handle_relationship_changes(api, relationships, :update)
+    |> validate_constraints(resource)
+  end
+
+  defp validate_constraints(changeset, resource) do
+    resource
+    |> Ash.attributes()
+    |> Enum.reduce(changeset, fn attribute, changeset ->
+      with {:ok, value} <- Map.fetch(changeset.changes, attribute.name),
+           {:error, error} <-
+             Ash.Type.apply_constraints(attribute.type, value, attribute.constraints) do
+        Ecto.Changeset.add_error(changeset, attribute.name, error)
+      else
+        _ ->
+          changeset
+      end
+    end)
   end
 
   defp do_run_requests(
@@ -182,7 +198,7 @@ defmodule Ash.Actions.Update do
 
     changeset =
       record
-      |> Ecto.Changeset.cast(attributes, allowed_keys)
+      |> Ecto.Changeset.cast(attributes, allowed_keys, empty_values: [])
       |> Map.put(:action, :update)
 
     changeset =

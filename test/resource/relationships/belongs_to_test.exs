@@ -29,7 +29,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
                %Ash.Resource.Attribute{
                  name: :foobar_id,
                  primary_key?: false,
-                 type: :uuid
+                 type: Ash.Type.UUID
                },
                _
              ] = Ash.attributes(Post)

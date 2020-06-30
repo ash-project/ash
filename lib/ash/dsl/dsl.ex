@@ -18,6 +18,7 @@ defmodule Ash.Dsl do
     examples: [
       "attribute :first_name, :string, primary_key?: true"
     ],
+    transform: {Ash.Resource.Attribute, :transform, []},
     target: Ash.Resource.Attribute,
     args: [:name, :type],
     schema: Ash.Resource.Attribute.attribute_schema()
@@ -31,6 +32,7 @@ defmodule Ash.Dsl do
     examples: [
       "create_timestamp :inserted_at"
     ],
+    transform: {Ash.Resource.Attribute, :transform, []},
     target: Ash.Resource.Attribute,
     args: [:name],
     schema: Ash.Resource.Attribute.create_timestamp_schema()
@@ -44,6 +46,7 @@ defmodule Ash.Dsl do
     examples: [
       "update_timestamp :inserted_at"
     ],
+    transform: {Ash.Resource.Attribute, :transform, []},
     target: Ash.Resource.Attribute,
     schema: Ash.Resource.Attribute.update_timestamp_schema(),
     args: [:name]

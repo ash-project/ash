@@ -6,24 +6,32 @@ defmodule Ash.Test.Type.TypeTest do
     @moduledoc false
     use Ash.Type
 
-    def describe do
-      "A post title is less than 10 characters long and is only alphabetic characters and whitespace"
-    end
-
     def storage_type, do: :string
 
-    def cast_input(value) when is_bitstring(value) do
-      if String.length(value) <= 10 && String.match?(value, ~r/[a-zA-Z\w]*/) do
-        {:ok, value}
+    def constraints do
+      [
+        max_length: [
+          type: :pos_integer,
+          doc: "The maximum length of the title"
+        ]
+      ]
+    end
+
+    def apply_constraints(value, constraints) do
+      if constraints[:max_length] && String.length(value) >= constraints[:max_length] do
+        {:error, "is too long, max_length is #{inspect(constraints[:max_length])}"}
       else
-        :error
+        :ok
+      end
+    end
+
+    def cast_input(value) when is_bitstring(value) do
+      if String.match?(value, ~r/[a-zA-Z\w]*/) do
+        {:ok, value}
       end
     end
 
     def cast_input(_), do: :error
-
-    def supported_filter_types(_data_layer), do: []
-    def sortable?(_data_layer), do: false
 
     def cast_stored(value) when is_bitstring(value), do: value
     def cast_stored(_), do: :error
@@ -42,7 +50,7 @@ defmodule Ash.Test.Type.TypeTest do
 
     attributes do
       attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
-      attribute :title, PostTitle
+      attribute :title, PostTitle, constraints: [max_length: 10]
     end
 
     actions do
@@ -69,33 +77,8 @@ defmodule Ash.Test.Type.TypeTest do
   test "it rejects invalid data" do
     # As we add informative errors, this test will fail and we will know to test those
     # more informative errors.
-    assert_raise(Ash.Error.Invalid, ~r/Invalid value provided for title/, fn ->
+    assert_raise(Ash.Error.Invalid, ~r/is too long, max_length is 10/, fn ->
       Api.create!(Post, attributes: %{title: "foobarbazbuzbiz"})
-    end)
-  end
-
-  @tag :skip
-  test "it rejects filtering on the field if the filter type is not supported" do
-    # As we add more filter types, we may want to test their multiplicity here
-    post = Api.create!(Post, attributes: %{title: "foobar"})
-
-    assert_raise(Ash.Error.Invalid, fn ->
-      Post
-      |> Api.query()
-      |> Ash.Query.filter(title: post.title)
-      |> Api.read!()
-    end)
-  end
-
-  test "it rejects sorting on the field if sorting is not supported" do
-    Api.create!(Post, attributes: %{title: "foobar1"})
-    Api.create!(Post, attributes: %{title: "foobar2"})
-
-    assert_raise(Ash.Error.Invalid, ~r/\* Cannot sort on :title/, fn ->
-      Post
-      |> Api.query()
-      |> Ash.Query.sort(title: :asc)
-      |> Api.read!()
     end)
   end
 end

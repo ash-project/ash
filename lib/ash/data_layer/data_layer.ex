@@ -14,6 +14,7 @@ defmodule Ash.DataLayer do
           | :join
           | :transact
           | {:filter_predicate, Ash.Type.t(), struct}
+          | {:sort, Ash.Type.t()}
           | :upsert
           | :composite_primary_key
 

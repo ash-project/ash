@@ -25,7 +25,7 @@ defmodule Ash.Test.Resource.AttributesTest do
         end
       end
 
-      assert [_, %Ash.Resource.Attribute{name: :foo, type: :string, primary_key?: false}] =
+      assert [_, %Ash.Resource.Attribute{name: :foo, type: Ash.Type.String, primary_key?: false}] =
                Ash.attributes(Post)
     end
   end

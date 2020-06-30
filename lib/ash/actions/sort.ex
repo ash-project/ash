@@ -14,7 +14,7 @@ defmodule Ash.Actions.Sort do
           !attribute ->
             {sorts, [NoSuchField.exception(field: field) | errors]}
 
-          !Ash.Type.sortable?(attribute.type, Ash.data_layer(resource)) ->
+          !Ash.data_layer_can?(resource, {:sort, Ash.Type.storage_type(attribute.type)}) ->
             {sorts,
              [
                UnsortableField.exception(field: field)

@@ -92,7 +92,7 @@ defmodule Ash.MixProject do
       {:sobelow, ">= 0.0.0", only: :dev, runtime: false},
       {:git_ops, "~> 2.0.0", only: :dev},
       {:picosat_elixir, "~> 0.1.4"},
-      {:nimble_options, "~> 0.2.1"},
+      {:nimble_options, "~> 0.3.0"},
       {:excoveralls, "~> 0.13.0", only: [:dev, :test]}
     ]
   end

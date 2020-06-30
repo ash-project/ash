@@ -12,9 +12,6 @@ defmodule Ash.Type.Atom do
   def storage_type, do: :string
 
   @impl true
-  def describe, do: "A standard elixir atom, stored as a string."
-
-  @impl true
   def cast_input(value) when is_atom(value), do: {:ok, value}
   def cast_input(_), do: :error
 

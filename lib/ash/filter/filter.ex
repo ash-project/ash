@@ -662,7 +662,8 @@ defmodule Ash.Filter do
         else
           with [field] <- Ash.primary_key(context.resource),
                attribute <- Ash.attribute(context.resource, field),
-               {:ok, casted} <- Ash.Type.cast_input(attribute.type, nested_statement) do
+               {:ok, casted} <-
+                 Ash.Type.cast_input(attribute.type, nested_statement) do
             add_expression_part({field, casted}, context, expression)
           else
             _other ->

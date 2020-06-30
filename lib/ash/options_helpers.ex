@@ -15,7 +15,7 @@ defmodule Ash.OptionsHelpers do
   def ash_type(type) do
     type = Ash.Type.get_type(type)
 
-    if type in Ash.Type.builtins() or Ash.Type.ash_type?(type) do
+    if Ash.Type.ash_type?(type) do
       {:ok, type}
     else
       {:error, "Attribute type must be a built in type or a type module, got: #{inspect(type)}"}

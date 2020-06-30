@@ -14,8 +14,16 @@ defmodule Ash.Error.Changeset do
     InvalidValue.exception(field: field, type: type)
   end
 
+  defp to_error(_resource, field, {error, _}) when is_bitstring(error) do
+    InvalidValue.exception(field: field, message: error)
+  end
+
   defp to_error(_resource, field, error) do
-    UnknownError.exception(field: field, error: error)
+    if Exception.exception?(error) do
+      error.exception(field: field)
+    else
+      UnknownError.exception(field: field, error: error)
+    end
   end
 
   def traverse_errors(changeset) do

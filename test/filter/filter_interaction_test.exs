@@ -1,6 +1,8 @@
 defmodule Ash.Test.Filter.FilterInteractionTest do
   use ExUnit.Case, async: false
 
+  import ExUnit.CaptureLog
+
   alias Ash.DataLayer.Mnesia
 
   defmodule Profile do
@@ -120,11 +122,15 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
   end
 
   setup do
-    Mnesia.start(Api)
+    capture_log(fn ->
+      Mnesia.start(Api)
+    end)
 
     on_exit(fn ->
-      :mnesia.stop()
-      :mnesia.delete_schema([node()])
+      capture_log(fn ->
+        :mnesia.stop()
+        :mnesia.delete_schema([node()])
+      end)
     end)
   end
 

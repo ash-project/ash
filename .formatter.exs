@@ -6,6 +6,7 @@ locals_without_parens = [
   attribute: 3,
   belongs_to: 2,
   belongs_to: 3,
+  constraints: 1,
   create: 1,
   create: 2,
   create_timestamp: 1,

@@ -79,6 +79,7 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, {:filter_predicate, _, %Eq{}}), do: true
   def can?(_, {:filter_predicate, _, %LessThan{}}), do: true
   def can?(_, {:filter_predicate, _, %GreaterThan{}}), do: true
+  def can?(_, {:sort, _}), do: true
   def can?(_, _), do: false
 
   @impl true

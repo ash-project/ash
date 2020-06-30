@@ -7,36 +7,26 @@ defmodule Ash.Type do
   Much better to `use Ash.Type` than to say `@behaviour Ash.Type` and define
   everything yourself.
   """
-  @callback supported_filter_types(Ash.data_layer()) :: list(atom)
-  @callback sortable?(Ash.data_layer()) :: boolean
+  @type constraints :: Keyword.t()
   @callback storage_type() :: Ecto.Type.t()
   @callback ecto_type() :: Ecto.Type.t()
   @callback cast_input(term) :: {:ok, term} | {:error, keyword()} | :error
   @callback cast_stored(term) :: {:ok, term} | :error
   @callback dump_to_native(term) :: {:ok, term} | :error
+  @callback constraints() :: constraints()
+  @callback apply_constraints(term, constraints()) :: :ok | {:error, String.t() | [String.t()]}
   @callback equal?(term, term) :: boolean
-  @callback describe() :: String.t()
-
-  @builtins [
-    string: [ecto_type: :string, filters: [:eq, :in, :not_eq, :not_in], sortable?: true],
-    integer: [ecto_type: :integer, filters: [:eq, :in, :not_eq, :not_in], sortable?: true],
-    boolean: [ecto_type: :boolean, filters: [:eq, :not_eq], sortable?: true],
-    int: [ecto_type: :integer, filters: [:eq, :in, :not_eq, :not_in], sortable?: true],
-    uuid: [ecto_type: :binary_id, filters: [:eq, :in, :not_eq, :not_in], sortable?: true],
-    date: [ecto_type: :date, filters: [:eq, :in, :not_eq, :not_in], sortable?: true],
-    utc_datetime: [
-      ecto_type: :utc_datetime,
-      filters: [:eq, :in, :not_eq, :not_in],
-      sortable?: true
-    ]
-  ]
 
   @short_names [
     atom: Ash.Type.Atom,
-    term: Ash.Type.Term
+    term: Ash.Type.Term,
+    string: Ash.Type.String,
+    integer: Ash.Type.Integer,
+    boolean: Ash.Type.Boolean,
+    uuid: Ash.Type.UUID,
+    date: Ash.Type.Date,
+    utc_datetime: Ash.Type.UtcDatetime
   ]
-
-  @builtin_names Keyword.keys(@builtins)
 
   @type t :: module | atom
 
@@ -53,20 +43,9 @@ defmodule Ash.Type do
   end
 
   @doc """
-  Determines whether or not this value can be sorted.
-  """
-  @spec sortable?(t, Ash.data_layer()) :: boolean
-  def sortable?(type, _data_layer) when type in @builtin_names do
-    @builtins[type][:sortable?]
-  end
-
-  def sortable?(type, data_layer), do: type.sortable?(data_layer)
-
-  @doc """
   Returns the *underlying* storage type (the underlying type of the *ecto type* of the *ash type*)
   """
   @spec storage_type(t()) :: Ecto.Type.t()
-  def storage_type(type) when type in @builtin_names, do: type
   def storage_type(type), do: type.storage_type()
 
   @doc """
@@ -76,10 +55,6 @@ defmodule Ash.Type do
   this may return a corresponding ecto builtin type (atom)
   """
   @spec ecto_type(t) :: Ecto.Type.t()
-  for {name, builtin} <- @builtins do
-    def ecto_type(unquote(name)), do: unquote(builtin[:ecto_type])
-  end
-
   for {name, mod} <- @short_names do
     def ecto_type(unquote(name)), do: ecto_type(unquote(mod))
   end
@@ -88,14 +63,8 @@ defmodule Ash.Type do
     type.ecto_type()
   end
 
-  @doc "A list of the built in type names"
-  @spec builtins :: list(atom)
-  def builtins, do: @builtin_names
-
   @spec ash_type?(term) :: boolean
   @doc "Returns true if the value is a builtin type or adopts the `Ash.Type` behaviour"
-  def ash_type?(atom) when atom in @builtin_names, do: true
-
   def ash_type?(module) when is_atom(module) do
     case Code.ensure_compiled(module) do
       {:module, _} -> ash_type_module?(module)
@@ -111,10 +80,6 @@ defmodule Ash.Type do
   Maps to `Ecto.Type.cast/2`
   """
   @spec cast_input(t(), term) :: {:ok, term} | {:error, keyword()} | :error
-  def cast_input(type, term) when type in @builtin_names do
-    Ecto.Type.cast(@builtins[type][:ecto_type], term)
-  end
-
   def cast_input(type, term) do
     type.cast_input(term)
   end
@@ -125,12 +90,21 @@ defmodule Ash.Type do
   Maps to `Ecto.Type.load/2`
   """
   @spec cast_stored(t(), term) :: {:ok, term} | {:error, keyword()} | :error
-  def cast_stored(type, term) when type in @builtin_names do
-    Ecto.Type.load(@builtins[type][:ecto_type], term)
-  end
-
   def cast_stored(type, term) do
     type.cast_stored(term)
+  end
+
+  @doc """
+  Confirms if a casted value matches the provided constraints.
+  """
+  @spec apply_constraints(t(), term, constraints()) :: :ok | {:error, String.t()}
+  def apply_constraints(type, term, constraints) do
+    type.apply_constraints(term, constraints)
+  end
+
+  @spec constraints(t()) :: constraints()
+  def constraints(type) do
+    type.constraints()
   end
 
   @doc """
@@ -139,10 +113,6 @@ defmodule Ash.Type do
   Maps to `Ecto.Type.dump/2`
   """
   @spec dump_to_native(t(), term) :: {:ok, term} | {:error, keyword()} | :error
-  def dump_to_native(type, term) when type in @builtin_names do
-    Ecto.Type.dump(@builtins[type][:ecto_type], term)
-  end
-
   def dump_to_native(type, term) do
     type.dump_to_native(term)
   end
@@ -153,10 +123,6 @@ defmodule Ash.Type do
   Maps to `Ecto.Type.equal?/3`
   """
   @spec equal?(t(), term, term) :: boolean
-  def equal?(type, left, right) when type in @builtin_names do
-    Ecto.Type.equal?(@builtins[type][:ecto_type], left, right)
-  end
-
   def equal?(type, left, right) do
     type.equal?(left, right)
   end
@@ -208,15 +174,15 @@ defmodule Ash.Type do
       def ecto_type, do: EctoType
 
       @impl true
-      def supported_filter_types(_data_layer), do: [:equal, :in]
-
-      @impl true
-      def sortable?(_data_layer), do: true
-
-      @impl true
       def equal?(left, right), do: left == right
 
-      defoverridable supported_filter_types: 1, equal?: 2, sortable?: 1
+      @impl true
+      def constraints, do: []
+
+      @impl true
+      def apply_constraints(_, _), do: :ok
+
+      defoverridable equal?: 2, constraints: 0, apply_constraints: 2
     end
   end
 
