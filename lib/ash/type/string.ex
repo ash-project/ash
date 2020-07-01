@@ -1,27 +1,35 @@
 defmodule Ash.Type.String do
-  @moduledoc "Stores a string in the database"
+  @constraints [
+    max_length: [
+      type: :non_neg_integer,
+      doc: "Enforces a maximum length on the value"
+    ],
+    min_length: [
+      type: :non_neg_integer,
+      doc: "Enforces a minimum length on the value"
+    ],
+    match: [
+      type: {:custom, __MODULE__, :match, []},
+      doc: "Enforces that the string matches a passed in regex"
+    ]
+  ]
+
+  @moduledoc """
+  Stores a string in the database
+
+  A builtin type that can be referenced via `:string`
+
+  ### Constraints
+
+  #{NimbleOptions.docs(@constraints)}
+  """
   use Ash.Type
 
   @impl true
   def storage_type, do: :string
 
   @impl true
-  def constraints do
-    [
-      max_length: [
-        type: :non_neg_integer,
-        doc: "Enforces a maximum length on the value"
-      ],
-      min_length: [
-        type: :non_neg_integer,
-        doc: "Enforces a minimum length on the value"
-      ],
-      match: [
-        type: {:custom, __MODULE__, :match, []},
-        doc: "Enforces that the string matches a passed in regex"
-      ]
-    ]
-  end
+  def constraints, do: @constraints
 
   def apply_constraints(value, constraints) do
     errors =

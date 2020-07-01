@@ -1,5 +1,9 @@
 defmodule Ash.Type.Boolean do
-  @moduledoc "Stores a boolean in the database"
+  @moduledoc """
+  Represents a boolean.
+
+  A builtin type that can be referenced via `:boolean`
+  """
   use Ash.Type
 
   @impl true

@@ -1,35 +1,4 @@
 defmodule Ash.Type do
-  @moduledoc """
-  This behaviour is a superset of the Ecto.Type behavior, that also contains
-  api level information, like what kinds of filters are allowed. Eventually,
-  this may be used for composite types or serialization.
-
-  Much better to `use Ash.Type` than to say `@behaviour Ash.Type` and define
-  everything yourself.
-  """
-  @type constraints :: Keyword.t()
-  @callback storage_type() :: Ecto.Type.t()
-  @callback ecto_type() :: Ecto.Type.t()
-  @callback cast_input(term) :: {:ok, term} | {:error, Keyword.t()} | :error
-  @callback cast_stored(term) :: {:ok, term} | :error
-  @callback dump_to_native(term) :: {:ok, term} | :error
-  @callback constraints() :: constraints()
-  @callback apply_constraints(term, constraints()) :: :ok | {:error, String.t() | [String.t()]}
-  @callback equal?(term, term) :: boolean
-
-  @short_names [
-    atom: Ash.Type.Atom,
-    term: Ash.Type.Term,
-    string: Ash.Type.String,
-    integer: Ash.Type.Integer,
-    boolean: Ash.Type.Boolean,
-    uuid: Ash.Type.UUID,
-    date: Ash.Type.Date,
-    utc_datetime: Ash.Type.UtcDatetime
-  ]
-
-  @type t :: atom | {:array, atom}
-
   @list_constraints [
     min_length: [
       type: :non_neg_integer,
@@ -45,6 +14,48 @@ defmodule Ash.Type do
       default: true
     ]
   ]
+
+  @doc_list_constraints Keyword.put(@list_constraints, :items,
+                          type: :any,
+                          doc:
+                            "Constraints for the elements of the list. See the contained type's docs for more."
+                        )
+  @moduledoc """
+  This behaviour is a superset of the Ecto.Type behavior, that also contains
+  api level information, like what kinds of filters are allowed. Eventually,
+  this may be used for composite types or serialization.
+
+  Much better to `use Ash.Type` than to say `@behaviour Ash.Type` and define
+  everything yourself.
+
+  ### Composite Types
+
+  Currently, the only composite type supported is a list type, specified via:
+  `{:array, Type}`. The constraints available are:
+
+  #{NimbleOptions.docs(@doc_list_constraints)}
+  """
+  @type constraints :: Keyword.t()
+  @callback storage_type() :: Ecto.Type.t()
+  @callback ecto_type() :: Ecto.Type.t()
+  @callback cast_input(term) :: {:ok, term} | {:error, Keyword.t()} | :error
+  @callback cast_stored(term) :: {:ok, term} | :error
+  @callback dump_to_native(term) :: {:ok, term} | :error
+  @callback constraints() :: constraints()
+  @callback apply_constraints(term, constraints()) :: :ok | {:error, String.t() | [String.t()]}
+  @callback equal?(term, term) :: boolean
+
+  @short_names [
+    term: Ash.Type.Term,
+    string: Ash.Type.String,
+    integer: Ash.Type.Integer,
+    boolean: Ash.Type.Boolean,
+    uuid: Ash.Type.UUID,
+    date: Ash.Type.Date,
+    utc_datetime: Ash.Type.UtcDatetime
+  ]
+
+  @type t :: atom | {:array, atom}
 
   @doc false
   def list_constraints, do: @list_constraints

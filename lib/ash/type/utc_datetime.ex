@@ -1,5 +1,9 @@
 defmodule Ash.Type.UtcDatetime do
-  @moduledoc "Stores a utc datetime in the database"
+  @moduledoc """
+  Represents a utc datetime
+
+  A builtin type that can be referenced via `:utc_datetime`
+  """
   use Ash.Type
 
   @impl true

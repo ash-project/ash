@@ -1,5 +1,9 @@
 defmodule Ash.Type.Term do
-  @moduledoc "Stores a raw elixir term in the database"
+  @moduledoc """
+  Represents a raw elixir term in the database
+
+  A builtin type that can be referenced via `:string`
+  """
   use Ash.Type
 
   @impl true

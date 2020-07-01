@@ -1,5 +1,9 @@
 defmodule Ash.Type.Date do
-  @moduledoc "Stores a date in the database"
+  @moduledoc """
+  Represents a date in the database
+
+  A builtin type that can be referenced via `:date`
+  """
   use Ash.Type
 
   @impl true

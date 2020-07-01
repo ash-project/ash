@@ -1,5 +1,9 @@
 defmodule Ash.Type.UUID do
-  @moduledoc "Stores a UUID in the database"
+  @moduledoc """
+  Represents a UUID.
+
+  A builtin type that can be referenced via `:utc_datetime`
+  """
 
   use Ash.Type
 

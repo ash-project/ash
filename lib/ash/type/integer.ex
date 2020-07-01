@@ -1,23 +1,30 @@
 defmodule Ash.Type.Integer do
-  @moduledoc "Stores an integer in the database"
+  @constraints [
+    max: [
+      type: {:custom, __MODULE__, :integer, []},
+      doc: "Enforces a maximum on the value"
+    ],
+    min: [
+      type: {:custom, __MODULE__, :integer, []},
+      doc: "Enforces a minimum on the value"
+    ]
+  ]
+  @moduledoc """
+  Represents a simple integer
+
+  A builtin type that can be referenced via `:integer`
+
+  ### Constraints
+
+  #{NimbleOptions.docs(@constraints)}
+  """
   use Ash.Type
 
   @impl true
   def storage_type, do: :integer
 
   @impl true
-  def constraints do
-    [
-      max: [
-        type: {:custom, __MODULE__, :integer, []},
-        doc: "Enforces a maximum on the value"
-      ],
-      min: [
-        type: {:custom, __MODULE__, :integer, []},
-        doc: "Enforces a minimum on the value"
-      ]
-    ]
-  end
+  def constraints, do: @constraints
 
   @doc false
   def integer(value) when is_integer(value), do: {:ok, value}
