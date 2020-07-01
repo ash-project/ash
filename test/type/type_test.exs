@@ -28,6 +28,8 @@ defmodule Ash.Test.Type.TypeTest do
     def cast_input(value) when is_bitstring(value) do
       if String.match?(value, ~r/[a-zA-Z\w]*/) do
         {:ok, value}
+      else
+        {:error, "must match ~r/[a-zA-Z\w]*/"}
       end
     end
 

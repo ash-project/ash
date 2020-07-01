@@ -86,14 +86,44 @@ defmodule Ash.Resource.Attribute do
   def transform(%{constraints: []} = attribute), do: {:ok, attribute}
 
   def transform(%{constraints: constraints, type: type} = attribute) do
-    schema = Ash.Type.constraints(type)
+    case type do
+      {:array, type} ->
+        with {:ok, new_constraints} <-
+               NimbleOptions.validate(
+                 Keyword.delete(constraints, :items),
+                 Ash.Type.list_constraints()
+               ),
+             {:ok, item_constraints} <- validate_item_constraints(type, constraints) do
+          {:ok,
+           %{attribute | constraints: Keyword.put(new_constraints, :items, item_constraints)}}
+        end
 
-    case NimbleOptions.validate(constraints, schema) do
-      {:ok, constraints} ->
-        {:ok, %{attribute | constraints: constraints}}
+      type ->
+        schema = Ash.Type.constraints(type)
 
-      {:error, error} ->
-        {:error, error}
+        case NimbleOptions.validate(constraints, schema) do
+          {:ok, constraints} ->
+            {:ok, %{attribute | constraints: constraints}}
+
+          {:error, error} ->
+            {:error, error}
+        end
+    end
+  end
+
+  defp validate_item_constraints(type, constraints) do
+    if Keyword.has_key?(constraints, :items) do
+      schema = Ash.Type.constraints(type)
+
+      case NimbleOptions.validate(constraints[:items], schema) do
+        {:ok, item_constraints} ->
+          {:ok, item_constraints}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    else
+      {:ok, constraints}
     end
   end
 

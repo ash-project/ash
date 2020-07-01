@@ -12,7 +12,7 @@ defmodule Ash.Filter.Predicate.Eq do
       {:ok, value} ->
         {:ok, %__MODULE__{field: attribute.name, value: value}}
 
-      :error ->
+      _ ->
         {:error,
          InvalidFilterValue.exception(
            filter: %__MODULE__{field: attribute.name, value: value},

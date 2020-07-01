@@ -22,7 +22,7 @@ defmodule Ash.Filter.Predicate.In do
         {:ok, casted} ->
           {:cont, {:ok, %{predicate | values: [casted | predicate.values]}}}
 
-        :error ->
+        _ ->
           {:halt,
            {:error,
             InvalidFilterValue.exception(

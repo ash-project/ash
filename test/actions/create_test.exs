@@ -124,6 +124,14 @@ defmodule Ash.Test.Actions.CreateTest do
       attribute :tag, :string, default: {:constant, "garbage"}
       attribute :tag2, :string, default: &PostDefaults.garbage2/0
       attribute :tag3, :string, default: {PostDefaults, :garbage3, []}
+      attribute :list_attribute, {:array, :integer}
+
+      attribute :list_attribute_with_constraints, {:array, :integer},
+        constraints: [
+          min_length: 2,
+          max_length: 10,
+          items: [min: -10, max: 10]
+        ]
     end
 
     relationships do
@@ -298,6 +306,44 @@ defmodule Ash.Test.Actions.CreateTest do
                  author: author.id
                }
              ).author == author
+    end
+  end
+
+  describe "list type" do
+    test "it can store a list" do
+      assert Api.create!(Post,
+               attributes: %{list_attribute: [1, 2, 3, 4]}
+             )
+    end
+  end
+
+  describe "list type constraints" do
+    test "it honors min_length" do
+      assert_raise Ash.Error.Invalid, ~r/must have more than 2 items/, fn ->
+        Api.create!(Post,
+          attributes: %{list_attribute_with_constraints: []}
+        )
+      end
+    end
+
+    test "it honors max_length" do
+      assert_raise Ash.Error.Invalid, ~r/must have fewer than 10 items/, fn ->
+        Api.create!(Post,
+          attributes: %{
+            list_attribute_with_constraints: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+          }
+        )
+      end
+    end
+
+    test "it honors item constraints" do
+      assert_raise Ash.Error.Invalid, ~r/must be less than `10` at index 0/, fn ->
+        Api.create!(Post,
+          attributes: %{
+            list_attribute_with_constraints: [28, 2, 4]
+          }
+        )
+      end
     end
   end
 

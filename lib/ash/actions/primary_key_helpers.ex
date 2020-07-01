@@ -42,7 +42,7 @@ defmodule Ash.Actions.PrimaryKeyHelpers do
             {:ok, casted} ->
               {:ok, Keyword.put(filter, attr.name, casted)}
 
-            :error ->
+            _ ->
               {:error, "#{key} is invalid"}
           end
 

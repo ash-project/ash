@@ -9,15 +9,19 @@ defmodule Ash.Type.Integer do
   def constraints do
     [
       max: [
-        type: :non_neg_integer,
+        type: {:custom, __MODULE__, :integer, []},
         doc: "Enforces a maximum on the value"
       ],
       min: [
-        type: :non_neg_integer,
+        type: {:custom, __MODULE__, :integer, []},
         doc: "Enforces a minimum on the value"
       ]
     ]
   end
+
+  @doc false
+  def integer(value) when is_integer(value), do: {:ok, value}
+  def integer(_), do: {:error, "must be an integer"}
 
   def apply_constraints(value, constraints) do
     errors =

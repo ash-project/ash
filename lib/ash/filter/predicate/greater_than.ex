@@ -13,7 +13,7 @@ defmodule Ash.Filter.Predicate.GreaterThan do
       {:ok, value} ->
         {:ok, %__MODULE__{field: attribute.name, value: value}}
 
-      :error ->
+      _ ->
         {:error,
          InvalidFilterValue.exception(
            filter: %__MODULE__{field: attribute.name, value: value},
