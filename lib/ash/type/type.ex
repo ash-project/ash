@@ -15,6 +15,16 @@ defmodule Ash.Type do
     ]
   ]
 
+  @short_names [
+    term: Ash.Type.Term,
+    string: Ash.Type.String,
+    integer: Ash.Type.Integer,
+    boolean: Ash.Type.Boolean,
+    uuid: Ash.Type.UUID,
+    date: Ash.Type.Date,
+    utc_datetime: Ash.Type.UtcDatetime
+  ]
+
   @doc_list_constraints Keyword.put(@list_constraints, :items,
                           type: :any,
                           doc:
@@ -27,6 +37,14 @@ defmodule Ash.Type do
 
   Much better to `use Ash.Type` than to say `@behaviour Ash.Type` and define
   everything yourself.
+
+  ## Built in types
+
+  #{
+    Enum.map_join(@short_names, fn {key, module} ->
+      "* `#{inspect(key)}` - `#{inspect(module)}`\n"
+    end)
+  }
 
   ### Composite Types
 
@@ -44,16 +62,6 @@ defmodule Ash.Type do
   @callback constraints() :: constraints()
   @callback apply_constraints(term, constraints()) :: :ok | {:error, String.t() | [String.t()]}
   @callback equal?(term, term) :: boolean
-
-  @short_names [
-    term: Ash.Type.Term,
-    string: Ash.Type.String,
-    integer: Ash.Type.Integer,
-    boolean: Ash.Type.Boolean,
-    uuid: Ash.Type.UUID,
-    date: Ash.Type.Date,
-    utc_datetime: Ash.Type.UtcDatetime
-  ]
 
   @type t :: atom | {:array, atom}
 
