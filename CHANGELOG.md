@@ -5,6 +5,33 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v0.10.0](https://github.com/ash-project/ash/compare/0.9.1...v0.10.0) (2020-07-02)
+### Breaking Changes:
+
+* remove atom type, add docs
+
+
+
+### Features:
+
+* list types
+
+* refactor ash types to modules, add constraints
+
+### Bug Fixes:
+
+* remove benchee, ensure mnesia always uses transactions
+
+* try clearing cache to fix CI
+
+* stop gitignoring the mnesia data layer
+
+* try to fix ash.formatter task
+
+* test/improve parallelizable requests
+
+* require that resources have primary keys
+
 ## [v0.9.1](https://github.com/ash-project/ash/compare/0.9.0...v0.9.1) (2020-06-30)
 
 
