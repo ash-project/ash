@@ -61,6 +61,7 @@ defmodule Ash.Engine do
         case transaction_result do
           {:ok, value} -> value
           {:error, %Runner{} = runner} -> {:error, runner.errors}
+          {:error, errors} -> {:error, errors}
         end
 
       {:error, error} ->

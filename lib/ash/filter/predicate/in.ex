@@ -10,7 +10,7 @@ defmodule Ash.Filter.Predicate.In do
   alias Ash.Filter.Predicate.Eq
 
   def new(_resource, attribute, []),
-    do: {:ok, %__MODULE__{field: attribute.name, values: MapSet.new([])}}
+    do: {:ok, %__MODULE__{field: attribute.name, values: []}}
 
   def new(resource, attribute, [value]), do: Eq.new(resource, attribute, value)
 
