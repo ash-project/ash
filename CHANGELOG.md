@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.0.0](https://github.com/ash-project/ash/compare/0.10.0...v1.0.0) (2020-07-07)
+### Breaking Changes:
+
+* remove initial subscriptions pass
+
+
+
+### Features:
+
+* general improvements
+
+### Bug Fixes:
+
+* in predicate + engine errors
+
 ## [v0.10.0](https://github.com/ash-project/ash/compare/0.9.1...v0.10.0) (2020-07-02)
 ### Breaking Changes:
 
