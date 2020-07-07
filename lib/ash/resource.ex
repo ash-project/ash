@@ -3,8 +3,6 @@ defmodule Ash.Resource do
   A resource is a static definition of an entity in your system.
 
   Resource DSL documentation: `Ash.Dsl`
-
-  For more information on the resource DSL, see `Ash.Dsl`
   """
 
   alias Ash.Dsl.Extension

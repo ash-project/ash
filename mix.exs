@@ -38,6 +38,7 @@ defmodule Ash.MixProject do
       main: "Ash",
       source_ref: "v#{@version}",
       logo: "logos/small-logo.png",
+      extras: ["documentation/getting_started.md"],
       groups_for_modules: [
         entrypoint: [
           Ash,

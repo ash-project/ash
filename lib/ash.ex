@@ -1,5 +1,6 @@
 defmodule Ash do
   @moduledoc """
+  Ash Framework
 
   ![Logo](https://github.com/ash-project/ash/blob/master/logos/cropped-for-header.png?raw=true)
 
