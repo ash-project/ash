@@ -33,4 +33,19 @@ defmodule Ash.Actions.Sort do
       {_, errors} -> {:error, errors}
     end
   end
+
+  def runtime_sort(results, empty) when empty in [nil, []], do: results
+
+  def runtime_sort(results, [{field, direction}]) do
+    Enum.sort_by(results, &Map.get(&1, field), direction)
+  end
+
+  def runtime_sort(results, [{field, direction} | rest]) do
+    results
+    |> Enum.group_by(&Map.get(&1, field))
+    |> Enum.sort_by(fn {key, _value} -> key end, direction)
+    |> Enum.flat_map(fn {_, records} ->
+      runtime_sort(records, rest)
+    end)
+  end
 end

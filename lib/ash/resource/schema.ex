@@ -11,7 +11,7 @@ defmodule Ash.Schema do
       use Ecto.Schema
       @primary_key false
 
-      schema "" do
+      schema Ash.DataLayer.source(__MODULE__) do
         for attribute <- Ash.attributes(__MODULE__) do
           read_after_writes? = attribute.generated? and is_nil(attribute.default)
 

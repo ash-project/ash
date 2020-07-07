@@ -487,11 +487,11 @@ defmodule Ash.Filter do
      }}
   end
 
-  defp filter_expression_by_relationship_path(filter, path) do
+  def filter_expression_by_relationship_path(filter, path, scope? \\ false) do
     %__MODULE__{
       api: filter.api,
       resource: Ash.related(filter.resource, path),
-      expression: do_filter_expression_by_relationship_path(filter.expression, path)
+      expression: do_filter_expression_by_relationship_path(filter.expression, path, scope?)
     }
   end
 
@@ -527,25 +527,31 @@ defmodule Ash.Filter do
 
   defp do_filter_expression_by_relationship_path(
          %Expression{op: op, left: left, right: right},
-         path
+         path,
+         scope?
        ) do
-    new_left = do_filter_expression_by_relationship_path(left, path)
-    new_right = do_filter_expression_by_relationship_path(right, path)
+    new_left = do_filter_expression_by_relationship_path(left, path, scope?)
+    new_right = do_filter_expression_by_relationship_path(right, path, scope?)
 
     Expression.new(op, new_left, new_right)
   end
 
-  defp do_filter_expression_by_relationship_path(%Not{expression: expression}, path) do
-    new_expression = do_filter_expression_by_relationship_path(expression, path)
+  defp do_filter_expression_by_relationship_path(%Not{expression: expression}, path, scope?) do
+    new_expression = do_filter_expression_by_relationship_path(expression, path, scope?)
     Not.new(new_expression)
   end
 
   defp do_filter_expression_by_relationship_path(
          %Predicate{relationship_path: predicate_path} = predicate,
-         path
+         path,
+         scope?
        ) do
     if List.starts_with?(predicate_path, path) do
-      predicate
+      if scope? do
+        %{predicate | relationship_path: Enum.drop(predicate_path, Enum.count(path))}
+      else
+        predicate
+      end
     else
       nil
     end

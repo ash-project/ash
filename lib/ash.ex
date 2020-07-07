@@ -186,6 +186,10 @@ defmodule Ash do
     |> Enum.find(&(&1.name == name))
   end
 
+  def related(resource, relationship) when not is_list(relationship) do
+    related(resource, [relationship])
+  end
+
   def related(resource, []), do: resource
 
   def related(resource, [path | rest]) do

@@ -145,7 +145,7 @@ defmodule Ash.DataLayer.Mnesia do
         offset_records =
           structified_records
           |> Ets.filter_matches(filter)
-          |> Ets.do_sort(sort)
+          |> Ash.Actions.Sort.runtime_sort(sort)
           |> Enum.drop(offset || 0)
 
         limited_records =

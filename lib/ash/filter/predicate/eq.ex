@@ -22,6 +22,10 @@ defmodule Ash.Filter.Predicate.Eq do
     end
   end
 
+  def match?(%{value: predicate_value}, value, type) do
+    type.equal?(value, predicate_value)
+  end
+
   def compare(%__MODULE__{value: value}, %__MODULE__{value: value}), do: :mutually_inclusive
   def compare(%__MODULE__{value: _}, %__MODULE__{value: _}), do: :mutually_exclusive
 

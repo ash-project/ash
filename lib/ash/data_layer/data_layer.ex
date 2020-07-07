@@ -42,9 +42,11 @@ defmodule Ash.DataLayer do
   @callback destroy(record :: Ash.record()) :: :ok | {:error, term}
   @callback transaction(Ash.resource(), (() -> term)) :: {:ok, term} | {:error, term}
   @callback in_transaction?(Ash.resource()) :: boolean
+  @callback source(Ash.resource()) :: String.t()
   @callback rollback(Ash.resource(), term) :: no_return
   @callback can?(Ash.resource(), feature()) :: boolean
 
+  @optional_callbacks source: 1
   @optional_callbacks transaction: 2
   @optional_callbacks rollback: 2
   @optional_callbacks upsert: 2
@@ -66,6 +68,15 @@ defmodule Ash.DataLayer do
           {:ok, Ash.record()} | {:error, term}
   def create(resource, changeset) do
     Ash.data_layer(resource).create(resource, changeset)
+  end
+
+  @spec source(Ash.resource()) :: String.t()
+  def source(resource) do
+    if :erlang.function_exported(Ash.data_layer(resource), :source, 1) do
+      Ash.data_layer(resource).source(resource)
+    else
+      ""
+    end
   end
 
   @spec upsert(Ash.resource(), Ecto.Changeset.t()) ::

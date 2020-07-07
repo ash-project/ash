@@ -43,6 +43,12 @@ defmodule Ash.Filter.Predicate.In do
      )}
   end
 
+  def match?(%{values: predicate_values}, value, type) do
+    Enum.any?(predicate_values, fn predicate_value ->
+      type.equal?(predicate_value, value)
+    end)
+  end
+
   def compare(%__MODULE__{} = left, %__MODULE__{} = right) do
     {:simplify, in_to_or_equals(left), in_to_or_equals(right)}
   end

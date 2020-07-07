@@ -84,7 +84,7 @@ defmodule Ash.DataLayer.Ets do
          filtered_records <- filter_matches(records, filter) do
       offset_records =
         filtered_records
-        |> do_sort(sort)
+        |> Ash.Actions.Sort.runtime_sort(sort)
         |> Enum.drop(offset || 0)
 
       limited_records =
@@ -162,21 +162,6 @@ defmodule Ash.DataLayer.Ets do
       {:ok, value} -> value in predicate_values
       :error -> false
     end
-  end
-
-  def do_sort(results, empty) when empty in [nil, []], do: results
-
-  def do_sort(results, [{field, direction}]) do
-    Enum.sort_by(results, &Map.get(&1, field), direction)
-  end
-
-  def do_sort(results, [{field, direction} | rest]) do
-    results
-    |> Enum.group_by(&Map.get(&1, field))
-    |> Enum.sort_by(fn {key, _value} -> key end, direction)
-    |> Enum.flat_map(fn {_, records} ->
-      do_sort(records, rest)
-    end)
   end
 
   @impl true

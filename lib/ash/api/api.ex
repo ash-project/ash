@@ -52,6 +52,21 @@ defmodule Ash.Api do
 
   @read_opts_schema merge_schemas([], @global_opts, "Global Options")
 
+  @subscribe_opts_schema [
+                           message: [
+                             type: :any,
+                             doc: "The first element of the subscription reconciliation message",
+                             default: :subscription_update
+                           ],
+                           run?: [
+                             type: :boolean,
+                             doc:
+                               "Whether or not to set the `results` field by running the query initially",
+                             default: true
+                           ]
+                         ]
+                         |> merge_schemas(@global_opts, "Global Options")
+
   @doc false
   def read_opts_schema, do: @read_opts_schema
 
@@ -215,6 +230,12 @@ defmodule Ash.Api do
   """
   @callback reload(record :: Ash.record()) :: {:ok, Ash.record()} | {:error, Ash.error()}
 
+  @callback subscribe(Ash.query(), opts :: Keyword.t()) ::
+              {:ok, Ash.subscription()} | {:error, Ash.error()}
+
+  @callback subscribe!(Ash.query(), opts :: Keyword.t()) ::
+              Ash.subscription() | no_return
+
   alias Ash.Dsl.Extension
 
   defmacro __using__(opts) do
@@ -251,7 +272,14 @@ defmodule Ash.Api do
       def init(_init_arg) do
         Extension.set_state(true)
 
-        Supervisor.init(Ash.Api.resources(__MODULE__), strategy: :one_for_one)
+        children =
+          __MODULE__
+          |> Ash.Api.resources()
+          |> Enum.map(fn resource ->
+            {resource, [api: __MODULE__]}
+          end)
+
+        Supervisor.init(children, strategy: :one_for_one)
       end
 
       use Ash.Api.Interface
@@ -413,6 +441,87 @@ defmodule Ash.Api do
     with {:ok, opts} <- NimbleOptions.validate(opts, @read_opts_schema),
          {:ok, action} <- get_action(query.resource, opts, :read) do
       Read.run(query, action, opts)
+    else
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  @doc false
+  @spec subscribe!(Ash.api(), Ash.query(), Keyword.t()) :: Ash.Subscription.t() | no_return
+  def subscribe!(api, query, opts \\ []) do
+    opts = NimbleOptions.validate!(opts, @subscribe_opts_schema)
+
+    results =
+      if opts[:run?] do
+        api
+        |> read(query, Keyword.drop(opts, [:run?, :message]))
+        |> unwrap_or_raise!()
+      else
+        nil
+      end
+
+    authorize? = opts[:authorize?] || Keyword.has_key?(opts, :actor)
+
+    subscription = %Ash.Subscription{
+      query: query,
+      results: results,
+      actor: opts[:actor],
+      verbose?: opts[:verbose],
+      authorize?: authorize?,
+      action: opts[:action],
+      message: opts[:message] || :subscription
+    }
+
+    Ash.Subscription.Monitor.subscribe(subscription)
+
+    subscription
+  end
+
+  @doc false
+  @spec subscribe(Ash.api(), Ash.query(), Keyword.t()) ::
+          {:ok, list(Ash.resource())} | {:error, Ash.error()}
+  def subscribe(_api, query, opts \\ []) do
+    with {:ok, opts} <- NimbleOptions.validate(opts, @subscribe_opts_schema),
+         {:ok, action} <- get_action(query.resource, opts, :read) do
+      if opts[:run?] do
+        case Read.run(query, action, opts) do
+          {:ok, results} ->
+            authorize? = opts[:authorize?] || Keyword.has_key?(opts, :actor)
+
+            subscription = %Ash.Subscription{
+              query: query,
+              results: results,
+              actor: opts[:actor],
+              verbose?: opts[:verbose],
+              authorize?: authorize?,
+              action: opts[:action],
+              message: opts[:message] || :subscription
+            }
+
+            Ash.Subscription.Monitor.subscribe(subscription)
+
+            {:ok, subscription}
+
+          {:error, error} ->
+            {:error, error}
+        end
+      else
+        authorize? = opts[:authorize?] || Keyword.has_key?(opts, :actor)
+
+        subscription = %Ash.Subscription{
+          query: query,
+          actor: opts[:actor],
+          verbose?: opts[:verbose],
+          authorize?: authorize?,
+          action: opts[:action],
+          message: opts[:message] || :subscription
+        }
+
+        Ash.Subscription.Monitor.subscribe(subscription)
+
+        {:ok, subscription}
+      end
     else
       {:error, error} ->
         {:error, error}

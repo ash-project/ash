@@ -27,17 +27,24 @@ defmodule Ash.Filter.Predicate do
 
   @callback new(Ash.resource(), Ash.attribute(), term) :: {:ok, struct} | {:error, term}
   @callback compare(predicate(), predicate()) :: comparison()
+  @callback match?(predicate(), term, Ash.Type.t()) :: boolean | :unknown
 
   defmacro __using__(_opts) do
     quote do
       @behaviour Ash.Filter.Predicate
 
-      @spec compare(Ash.Filter.Predicate.predicate(), Ash.Filter.Predicate.predicate()) ::
-              Ash.Filter.Predicate.comparison() | :unknown
+      @impl true
       def compare(_, _), do: :unknown
 
-      defoverridable compare: 2
+      @impl true
+      def match?(_, _, _), do: :unknown
+
+      defoverridable compare: 2, match?: 3
     end
+  end
+
+  def match?(predicate, value, type) do
+    predicate.__struct__.match?(predicate, value, type)
   end
 
   @spec compare(predicate(), predicate()) :: comparison

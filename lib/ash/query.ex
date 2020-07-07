@@ -131,18 +131,22 @@ defmodule Ash.Query do
   end
 
   def do_validate_side_load(_resource, %Ash.Query{} = query, path) do
-    case query.errors do
-      [] ->
-        []
+    if query.limit || (query.offset && query.offset != 0) do
+      [{:error, InvalidQuery.exception(query: query, side_load_path: Enum.reverse(path))}]
+    else
+      case query.errors do
+        [] ->
+          []
 
-      _errors ->
-        [
-          {:error,
-           InvalidQuery.exception(
-             query: query,
-             side_load_path: Enum.reverse(path)
-           )}
-        ]
+        _errors ->
+          [
+            {:error,
+             InvalidQuery.exception(
+               query: query,
+               side_load_path: Enum.reverse(path)
+             )}
+          ]
+      end
     end
   end
 
