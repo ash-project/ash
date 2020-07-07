@@ -5,6 +5,7 @@ defmodule Ash.DataLayer.Ets do
   This is used for testing. *Do not use this data layer in production*
   """
 
+  alias Ash.Actions.Sort
   alias Ash.Filter.{Expression, Not, Predicate}
   alias Ash.Filter.Predicate.{Eq, GreaterThan, In, LessThan}
 
@@ -84,7 +85,7 @@ defmodule Ash.DataLayer.Ets do
          filtered_records <- filter_matches(records, filter) do
       offset_records =
         filtered_records
-        |> Ash.Actions.Sort.runtime_sort(sort)
+        |> Sort.runtime_sort(sort)
         |> Enum.drop(offset || 0)
 
       limited_records =

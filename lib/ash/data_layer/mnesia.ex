@@ -11,6 +11,7 @@ defmodule Ash.DataLayer.Mnesia do
   it could be a viable data layer.
   """
 
+  alias Ash.Actions.Sort
   alias Ash.DataLayer.Ets
   alias :mnesia, as: Mnesia
 
@@ -145,7 +146,7 @@ defmodule Ash.DataLayer.Mnesia do
         offset_records =
           structified_records
           |> Ets.filter_matches(filter)
-          |> Ash.Actions.Sort.runtime_sort(sort)
+          |> Sort.runtime_sort(sort)
           |> Enum.drop(offset || 0)
 
         limited_records =

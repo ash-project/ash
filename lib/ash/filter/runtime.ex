@@ -1,15 +1,12 @@
 defmodule Ash.Filter.Runtime do
+  @moduledoc """
+  Checks a record to see if it matches a filter statement.
+
+  We can't always tell if a record matches a filter statement, and as such
+  this function may return `:unknown`
+  """
   alias Ash.Filter.{Expression, Not, Predicate}
 
-  @spec matches?(
-          any,
-          any,
-          atom
-          | %{
-              expression:
-                nil | %{__struct__: Ash.Filter.Expression | Ash.Filter.Not | Ash.Filter.Predicate}
-            }
-        ) :: any
   def matches?(api, record, filter, dirty_fields \\ []) do
     case do_matches?(record, filter, dirty_fields) do
       {:ok, boolean} ->
@@ -36,28 +33,7 @@ defmodule Ash.Filter.Runtime do
         end
 
       %Predicate{predicate: predicate, attribute: attribute, relationship_path: relationship_path} ->
-        if loaded?(record, relationship_path) do
-          records = get_related(record, relationship_path)
-
-          Enum.reduce_while(records, {:ok, false}, fn record, {:ok, status} ->
-            case Predicate.match?(predicate, Map.get(record, attribute.name), attribute.type) do
-              :unknown ->
-                if status == false do
-                  {:ok, :unknown}
-                else
-                  {:ok, status}
-                end
-
-              true ->
-                {:halt, {:ok, true}}
-
-              false ->
-                {:ok, false}
-            end
-          end)
-        else
-          {:side_load, [relationship_path | side_loads]}
-        end
+        side_load_predicate_matches(record, relationship_path, predicate, attribute, side_loads)
 
       %Not{expression: expression} ->
         case do_matches?(record, expression, dirty_fields, side_loads) do
@@ -71,38 +47,68 @@ defmodule Ash.Filter.Runtime do
             {:side_load, side_loads}
         end
 
-      %Expression{op: :and, left: left, right: right} ->
-        case do_matches?(record, left, dirty_fields, side_loads) do
-          {:ok, true} ->
-            do_matches?(record, right, dirty_fields, side_loads)
+      %Expression{op: op, left: left, right: right} ->
+        expression_matches(op, left, right, record, dirty_fields, side_loads)
+    end
+  end
 
-          {:ok, :unknown} ->
-            {:ok, :unknown}
+  defp side_load_predicate_matches(record, relationship_path, predicate, attribute, side_loads) do
+    if loaded?(record, relationship_path) do
+      records = get_related(record, relationship_path)
 
-          {:ok, false} ->
-            {:ok, false}
-
-          {:side_load, side_loads} ->
-            do_matches?(record, right, dirty_fields, side_loads)
-        end
-
-      %Expression{op: :or, left: left, right: right} ->
-        case do_matches?(record, left, dirty_fields, side_loads) do
-          {:ok, true} ->
-            {:ok, true}
-
-          {:ok, :unknown} ->
-            case do_matches?(record, right, dirty_fields, side_loads) do
-              {:ok, false} -> {:ok, :unknown}
-              other -> other
+      Enum.reduce_while(records, {:ok, false}, fn record, {:ok, status} ->
+        case Predicate.match?(predicate, Map.get(record, attribute.name), attribute.type) do
+          :unknown ->
+            if status == false do
+              {:ok, :unknown}
+            else
+              {:ok, status}
             end
 
-          {:ok, false} ->
-            do_matches?(record, right, dirty_fields, side_loads)
+          true ->
+            {:halt, {:ok, true}}
 
-          {:side_load, side_loads} ->
-            do_matches?(record, right, dirty_fields, side_loads)
+          false ->
+            {:ok, false}
         end
+      end)
+    else
+      {:side_load, [relationship_path | side_loads]}
+    end
+  end
+
+  defp expression_matches(:and, left, right, record, dirty_fields, side_loads) do
+    case do_matches?(record, left, dirty_fields, side_loads) do
+      {:ok, true} ->
+        do_matches?(record, right, dirty_fields, side_loads)
+
+      {:ok, :unknown} ->
+        {:ok, :unknown}
+
+      {:ok, false} ->
+        {:ok, false}
+
+      {:side_load, side_loads} ->
+        do_matches?(record, right, dirty_fields, side_loads)
+    end
+  end
+
+  defp expression_matches(:or, left, right, record, dirty_fields, side_loads) do
+    case do_matches?(record, left, dirty_fields, side_loads) do
+      {:ok, true} ->
+        {:ok, true}
+
+      {:ok, :unknown} ->
+        case do_matches?(record, right, dirty_fields, side_loads) do
+          {:ok, false} -> {:ok, :unknown}
+          other -> other
+        end
+
+      {:ok, false} ->
+        do_matches?(record, right, dirty_fields, side_loads)
+
+      {:side_load, side_loads} ->
+        do_matches?(record, right, dirty_fields, side_loads)
     end
   end
 
