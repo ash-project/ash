@@ -42,9 +42,10 @@ end
 
 ## Create a resource
 
-A resource is the primary entity in Ash. Your Api module ties your resources together and gives them an interface, but the vast majority if your configuration will live in a resource. In your typical setup, you might have a resource per database table. For those already familiar with ecto, a resource and an ecto schema are very similar. In fact, all resources define an ecto schema under the hood. This can be leveraged when you need to do things that are not yet implemented or fall outside of the scope of Ash. Here are a few examples:
+A resource is the primary entity in Ash. Your Api module ties your resources together and gives them an interface, but the vast majority if your configuration will live in a resource. In your typical setup, you might have a resource per database table. For those already familiar with ecto, a resource and an ecto schema are very similar. In fact, all resources define an ecto schema under the hood. This can be leveraged when you need to do things that are not yet implemented or fall outside of the scope of Ash. The current reccomendation for where to put your resources is in `lib/<resource_name>.ex`. Here are a few examples:
 
 ```elixir
+# in lib/resources/tweet.ex
 defmodule MyApp.Tweet do
   use Ash.Resource
 
@@ -82,6 +83,7 @@ defmodule MyApp.Tweet do
   end
 end
 
+# in lib/resources/user.ex
 defmodule MyApp.User do
   use Ash.Resource
 
