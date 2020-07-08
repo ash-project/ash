@@ -136,6 +136,10 @@ actions do
 end
 ```
 
+## Add front end extensions
+
+- `AshJsonApi` - can be used to build a spec compliant JSON:API
+
 ## See Ash documentation for the rest
 
 - `Ash.Api` for what you can do with your resources.

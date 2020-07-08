@@ -44,6 +44,8 @@ defmodule Ash do
   end
   ```
 
+  See the [getting started guide](getting_started.html) for more information.
+
   For those looking to add ash extensions:
 
   * see `Ash.Dsl.Extension` for adding configuration.
