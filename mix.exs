@@ -38,7 +38,11 @@ defmodule Ash.MixProject do
       main: "Ash",
       source_ref: "v#{@version}",
       logo: "logos/small-logo.png",
-      extras: ["documentation/getting_started.md"],
+      extra_section: "GUIDES",
+      extras: ["documentation/introduction/getting_started.md"],
+      groups_for_extras: [
+        Introduction: Path.wildcard("documentation/introduction/*.md")
+      ],
       groups_for_modules: [
         entrypoint: [
           Ash,
