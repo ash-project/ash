@@ -421,13 +421,11 @@ defmodule Ash.Engine.Request do
           {:filter, filter} ->
             request
             |> Map.update!(:query, &Ash.Query.filter(&1, filter))
-            |> Map.update(:authorization_filter, filter, fn existing_authorization_filter ->
-              if existing_authorization_filter do
-                Ash.Filter.add_to_filter(existing_authorization_filter, filter)
-              else
-                Ash.Filter.parse!(request.resource, filter)
-              end
-            end)
+            |> Map.update(
+              :authorization_filter,
+              filter,
+              &add_to_or_parse(&1, filter, request.resource)
+            )
             |> set_authorizer_state(authorizer, :authorized)
             |> try_resolve([request.path ++ [:query]], false, false)
 
@@ -469,6 +467,14 @@ defmodule Ash.Engine.Request do
           {:error, error} ->
             {:error, error}
         end
+    end
+  end
+
+  defp add_to_or_parse(existing_authorization_filter, filter, resource) do
+    if existing_authorization_filter do
+      Ash.Filter.add_to_filter(existing_authorization_filter, filter)
+    else
+      Ash.Filter.parse!(resource, filter)
     end
   end
 
