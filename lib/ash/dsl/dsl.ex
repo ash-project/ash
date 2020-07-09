@@ -260,7 +260,8 @@ defmodule Ash.Dsl do
     Ash.Resource.Transformers.BelongsToSourceField,
     Ash.Resource.Transformers.CreateJoinRelationship,
     Ash.Resource.Transformers.CachePrimaryKey,
-    Ash.Resource.Transformers.SetPrimaryActions
+    Ash.Resource.Transformers.SetPrimaryActions,
+    Ash.Resource.Transformers.ValidateRelationshipAttributes
   ]
 
   use Ash.Dsl.Extension,

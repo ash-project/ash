@@ -18,13 +18,13 @@ defmodule Ash.Resource.Transformers.CachePrimaryKey do
         {:error, "Resources without a primary key are not yet supported"}
 
       [field] ->
-        Transformer.persist_to_runtime(resource, {resource, :primary_key}, [field])
+        :persistent_term.put({resource, :primary_key}, [field])
 
         {:ok, dsl_state}
 
       fields ->
         if Ash.data_layer(resource) && Ash.data_layer_can?(resource, :composite_primary_key) do
-          Transformer.persist_to_runtime(resource, {resource, :primary_key}, fields)
+          :persistent_term.put({resource, :primary_key}, fields)
 
           {:ok, dsl_state}
         else

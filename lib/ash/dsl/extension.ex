@@ -213,6 +213,10 @@ defmodule Ash.Dsl.Extension do
     quote generated: true, bind_quoted: [runtime?: runtime?], location: :keep do
       alias Ash.Dsl.Transformer
 
+      unless runtime? do
+        Module.put_attribute(__MODULE__, :after_compile, Ash.Dsl.Extension)
+      end
+
       ash_dsl_config =
         if runtime? do
           @ash_dsl_config
@@ -233,16 +237,10 @@ defmodule Ash.Dsl.Extension do
 
       new_dsl_config =
         if runtime? do
-          Enum.each(ash_dsl_config, fn {{section_path, _extension}, value} ->
-            :persistent_term.put({__MODULE__, :ash, section_path}, value)
-          end)
-
-          :persistent_term.put({__MODULE__, :ash, :complete?}, true)
+          Ash.Dsl.Extension.write_dsl_to_persistent_term(__MODULE__, ash_dsl_config)
 
           ash_dsl_config
         else
-          Module.register_attribute(__MODULE__, :transformers, accumulate: true)
-
           {transformers_to_skip, transformers_to_run} =
             @extensions
             |> Enum.flat_map(& &1.transformers())
@@ -251,90 +249,79 @@ defmodule Ash.Dsl.Extension do
               transformer.compile_time_only? && runtime?
             end)
 
-          Enum.each(transformers_to_skip, fn transformer ->
-            transformers_run = :persistent_term.get({__MODULE__, :ash, :transformers}, [])
+          {after_compile_transformers, transformers_to_run} =
+            Enum.split_with(transformers_to_run, &(&1.after_compile? || runtime?))
 
-            :persistent_term.put({__MODULE__, :ash, :transformers}, [
-              transformer | transformers_run
-            ])
-          end)
+          unless runtime? do
+            Module.put_attribute(
+              __MODULE__,
+              :after_compile_transformers,
+              after_compile_transformers
+            )
+          end
 
-          transformed =
-            transformers_to_run
-            |> Enum.reduce(ash_dsl_config, fn transformer, dsl ->
-              transformers_run = :persistent_term.get({__MODULE__, :ash, :transformers}, [])
-
-              result =
-                try do
-                  transformer.transform(__MODULE__, dsl)
-                rescue
-                  e ->
-                    reraise "Exception in transformer #{inspect(transformer)}: \n\n#{
-                              Exception.message(e)
-                            }",
-                            __STACKTRACE__
-                end
-
-              case result do
-                {:ok, new_dsl} ->
-                  new_dsl
-                  |> Enum.each(fn {{section_path, _extension}, value} ->
-                    :persistent_term.put({__MODULE__, :ash, section_path}, value)
-                  end)
-
-                  unless runtime? do
-                    Module.put_attribute(__MODULE__, :transformers, transformer)
-                  end
-
-                  :persistent_term.put({__MODULE__, :ash, :transformers}, [
-                    transformer | transformers_run
-                  ])
-
-                  new_dsl
-
-                {:error, error} ->
-                  :persistent_term.put({__MODULE__, :ash, :transformers}, [
-                    transformer | transformers_run
-                  ])
-
-                  unless runtime? do
-                    Module.put_attribute(__MODULE__, :transformers, transformer)
-                  end
-
-                  if Exception.exception?(error) do
-                    raise error
-                  else
-                    raise "Error while running transformer #{inspect(transformer)}: #{
-                            inspect(error)
-                          }"
-                  end
-              end
-            end)
-
-          :persistent_term.put({__MODULE__, :ash, :complete?}, true)
-
-          transformed
+          Ash.Dsl.Extension.run_transformers(
+            __MODULE__,
+            transformers_to_run,
+            ash_dsl_config
+          )
         end
-
-      if runtime? do
-        @persist_to_runtime
-        |> Enum.each(fn {key, value} ->
-          :persistent_term.put(key, value)
-        end)
-      else
-        to_persist =
-          {__MODULE__, :persist_to_runtime}
-          |> :persistent_term.get([])
-          |> Enum.map(fn key ->
-            {key, :persistent_term.get(key, nil)}
-          end)
-
-        Module.put_attribute(__MODULE__, :persist_to_runtime, to_persist)
-      end
 
       unless runtime? do
         Module.put_attribute(__MODULE__, :ash_dsl_config, new_dsl_config)
       end
+    end
+  end
+
+  def __after_compile__(env, _bytecode) do
+    Ash.Dsl.Extension.run_transformers(
+      env.module,
+      Enum.reverse(Module.get_attribute(env.module, :after_compile_transformers, [])),
+      Module.get_attribute(env.module, :ash_dsl_config, %{})
+    )
+  end
+
+  def run_transformers(mod, transformers, ash_dsl_config) do
+    Enum.reduce(transformers, ash_dsl_config, fn transformer, dsl ->
+      result =
+        try do
+          transformer.transform(mod, dsl)
+        rescue
+          e ->
+            if Exception.exception?(e) do
+              reraise e, __STACKTRACE__
+            else
+              reraise "Exception in transformer #{inspect(transformer)}: \n\n#{
+                        Exception.message(e)
+                      }",
+                      __STACKTRACE__
+            end
+        end
+
+      case result do
+        {:ok, new_dsl} ->
+          write_dsl_to_persistent_term(mod, new_dsl)
+
+        {:error, error} ->
+          raise_transformer_error(transformer, error)
+      end
+    end)
+  end
+
+  @doc false
+  def write_dsl_to_persistent_term(mod, dsl) do
+    Enum.each(dsl, fn {{section_path, _extension}, value} ->
+      :persistent_term.put({mod, :ash, section_path}, value)
+    end)
+
+    dsl
+  end
+
+  defp raise_transformer_error(transformer, error) do
+    if Exception.exception?(error) do
+      raise error
+    else
+      raise "Error while running transformer #{inspect(transformer)}: #{inspect(error)}"
     end
   end
 
