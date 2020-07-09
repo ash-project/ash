@@ -166,7 +166,6 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
       query =
         Post
-        |> Api.query()
         |> Ash.Query.filter(author: [name: "best author"])
 
       assert [^post1] = Api.read!(query)
@@ -184,7 +183,6 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
       query =
         Post
-        |> Api.query()
         |> Ash.Query.filter(related_posts: [title: "two"])
 
       post1 = Api.reload!(post1)
@@ -204,12 +202,10 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
       posts_query =
         Post
-        |> Api.query()
         |> Ash.Query.filter(title: "three")
 
       query =
         Post
-        |> Api.query()
         |> Ash.Query.filter(related_posts: [title: "two"])
         |> Ash.Query.side_load(related_posts: posts_query)
 

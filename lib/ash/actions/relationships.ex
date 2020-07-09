@@ -187,8 +187,8 @@ defmodule Ash.Actions.Relationships do
       end
 
     query =
-      api
-      |> Ash.Query.new(destination)
+      destination
+      |> Ash.Query.new(api)
       |> Ash.Query.filter(filter)
 
     request =
@@ -871,8 +871,8 @@ defmodule Ash.Actions.Relationships do
     filter_statement = [{relationship.destination_field, value}]
 
     query =
-      api
-      |> Ash.Query.new(destination)
+      destination
+      |> Ash.Query.new(api)
       |> Ash.Query.filter(filter_statement)
 
     request =
@@ -903,8 +903,8 @@ defmodule Ash.Actions.Relationships do
     filter_statement = [{relationship.source_field_on_join_table, value}]
 
     query =
-      api
-      |> Ash.Query.new(through)
+      through
+      |> Ash.Query.new(api)
       |> Ash.Query.filter(filter_statement)
 
     Request.new(
@@ -941,7 +941,7 @@ defmodule Ash.Actions.Relationships do
 
             {:ok,
              relationship.destination
-             |> api.query()
+             |> Ash.Query.new(api)
              |> Ash.Query.filter(filter_statement)}
           end
         ),

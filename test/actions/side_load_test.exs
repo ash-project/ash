@@ -135,7 +135,6 @@ defmodule Ash.Test.Actions.SideLoadTest do
 
       [author] =
         Author
-        |> Api.query()
         |> Ash.Query.side_load(posts: [:author])
         |> Ash.Query.filter(posts: [id: post1.id])
         |> Api.read!(authorize?: true)
@@ -160,7 +159,6 @@ defmodule Ash.Test.Actions.SideLoadTest do
 
       [post] =
         Post
-        |> Api.query()
         |> Ash.Query.side_load(:categories)
         |> Ash.Query.filter(id: post.id)
         |> Api.read!(authorize?: true)
@@ -182,7 +180,6 @@ defmodule Ash.Test.Actions.SideLoadTest do
 
       [post] =
         Post
-        |> Api.query()
         |> Ash.Query.side_load(categories: :posts)
         |> Ash.Query.filter(id: post.id)
         |> Api.read!(authorize?: true)

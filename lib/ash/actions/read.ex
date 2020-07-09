@@ -45,7 +45,7 @@ defmodule Ash.Actions.Read do
   defp requests(query, action, opts) do
     filter_requests =
       if Keyword.has_key?(opts, :actor) || opts[:authorize?] do
-        Filter.read_requests(query.filter)
+        Filter.read_requests(query.api, query.filter)
       else
         {:ok, []}
       end
@@ -85,8 +85,8 @@ defmodule Ash.Actions.Read do
           with {:ok, filter} <- filter_with_related(relationship_filter_paths, ash_query, data),
                {:ok, filter} <-
                  Filter.run_other_data_layer_filters(
-                   ash_query.resource,
                    ash_query.api,
+                   ash_query.resource,
                    filter
                  ),
                {:ok, query} <- Ash.DataLayer.filter(query, filter, resource),

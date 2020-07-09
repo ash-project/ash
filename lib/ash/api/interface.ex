@@ -21,22 +21,12 @@ defmodule Ash.Api.Interface do
       @impl true
       def read!(query, opts \\ [])
 
-      # sobelow_skip ["SQL.Query"]
-      def read!(resource, opts) when is_atom(resource) do
-        read!(query(resource), opts)
-      end
-
       def read!(query, opts) do
         Api.read!(__MODULE__, query, opts)
       end
 
       @impl true
       def read(query, opts \\ [])
-
-      # sobelow_skip ["SQL.Query"]
-      def read(resource, opts) when is_atom(resource) do
-        read(query(resource), opts)
-      end
 
       def read(query, opts) do
         case Api.read(__MODULE__, query, opts) do
@@ -107,10 +97,6 @@ defmodule Ash.Api.Interface do
       def reload(%resource{} = record, params \\ []) do
         id = record |> Map.take(Ash.primary_key(resource)) |> Enum.to_list()
         get(resource, id, params)
-      end
-
-      def query(resource) do
-        Ash.Query.new(__MODULE__, resource)
       end
     end
   end

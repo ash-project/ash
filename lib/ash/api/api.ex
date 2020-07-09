@@ -109,7 +109,7 @@ defmodule Ash.Api do
   @destroy_opts_schema merge_schemas([], @global_opts, "Global Opts")
 
   @doc """
-  Get a record by a primary key
+  Get a record by a primary key. See `c:get/3` for more.
 
   #{NimbleOptions.docs(@get_opts_schema)}
   """
@@ -117,7 +117,10 @@ defmodule Ash.Api do
               Ash.record() | no_return
 
   @doc """
-  Get a record by a primary key
+  Get a record by a primary key.
+
+  For a resource with a composite primary key, pass a keyword list, e.g
+  `MyApi.get(MyResource, first_key: 1, second_key: 2)`
 
   #{NimbleOptions.docs(@get_opts_schema)}
   """
@@ -125,7 +128,7 @@ defmodule Ash.Api do
               {:ok, Ash.record()} | {:error, Ash.error()}
 
   @doc """
-  Run a query on a resource
+  Run an ash query. See `c:read/2` for more.
 
   #{NimbleOptions.docs(@read_opts_schema)}
   """
@@ -133,7 +136,9 @@ defmodule Ash.Api do
               list(Ash.resource()) | no_return
 
   @doc """
-  Run a query on a resource
+  Run a query on a resource.
+
+  For more information, on building a query, see `Ash.Query`.
 
   #{NimbleOptions.docs(@read_opts_schema)}
   """
@@ -141,23 +146,26 @@ defmodule Ash.Api do
               {:ok, list(Ash.resource())} | {:error, Ash.error()}
 
   @doc """
-  Side load on already fetched records
+  Side load on already fetched records. See `c:side_load/2` for more information.
 
   #{NimbleOptions.docs(@side_load_opts_schema)}
   """
-  @callback side_load!(resource :: Ash.resource(), params :: Keyword.t()) ::
+  @callback side_load!(resource :: Ash.resource(), params :: Keyword.t() | Ash.query()) ::
               list(Ash.resource()) | no_return
 
   @doc """
-  Side load on already fetched records
+  Side load on already fetched records.
+
+  Accepts a keyword list of side loads as they would be passed into `Ash.Query.side_load/2`
+  or an `%Ash.Query{}`, in which case that query's side loads are used.
 
   #{NimbleOptions.docs(@side_load_opts_schema)}
   """
-  @callback side_load(resource :: Ash.resource(), params :: Keyword.t()) ::
+  @callback side_load(resource :: Ash.resource(), params :: Keyword.t() | Ash.query()) ::
               {:ok, list(Ash.resource())} | {:error, Ash.error()}
 
   @doc """
-  Create a record
+  Create a record. See `c:create/2` for more information.
 
   #{NimbleOptions.docs(@create_opts_schema)}
   """
@@ -165,7 +173,7 @@ defmodule Ash.Api do
               Ash.record() | no_return
 
   @doc """
-  Create a record
+  Create a record.
 
   #{NimbleOptions.docs(@create_opts_schema)}
   """
@@ -173,7 +181,7 @@ defmodule Ash.Api do
               {:ok, Ash.record()} | {:error, Ash.error()}
 
   @doc """
-  Update a record
+  Update a record. See `c:update/2` for more information.
 
   #{NimbleOptions.docs(@update_opts_schema)}
   """
@@ -181,7 +189,7 @@ defmodule Ash.Api do
               Ash.record() | no_return
 
   @doc """
-  Update a record
+  Update a record.
 
   #{NimbleOptions.docs(@update_opts_schema)}
   """
@@ -189,14 +197,14 @@ defmodule Ash.Api do
               {:ok, Ash.record()} | {:error, Ash.error()}
 
   @doc """
-  Destroy a record
+  Destroy a record. See `c:destroy/2` for more information.
 
   #{NimbleOptions.docs(@destroy_opts_schema)}
   """
   @callback destroy!(record :: Ash.record(), params :: Keyword.t()) :: :ok | no_return
 
   @doc """
-  Destroy a record
+  Destroy a record.
 
   #{NimbleOptions.docs(@destroy_opts_schema)}
   """
@@ -204,14 +212,12 @@ defmodule Ash.Api do
               :ok | {:error, Ash.error()}
 
   @doc """
-  Refetches a record from the database, raising on error.
-
-  See `reload/1`.
+  Refetches a record by primary key. See `c:reload/1` for more.
   """
   @callback reload!(record :: Ash.record(), params :: Keyword.t()) :: Ash.record() | no_return
 
   @doc """
-  Refetches a record from the database
+  Refetches a record by primary key.
   """
   @callback reload(record :: Ash.record()) :: {:ok, Ash.record()} | {:error, Ash.error()}
 
@@ -296,14 +302,14 @@ defmodule Ash.Api do
 
   @doc false
   @spec get(Ash.api(), Ash.resource(), term(), Keyword.t()) ::
-          {:ok, Ash.record()} | {:error, Ash.error()}
+          {:ok, Ash.record() | nil} | {:error, Ash.error()}
   def get(api, resource, id, opts) do
     with {:ok, opts} <- NimbleOptions.validate(opts, @get_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, resource),
          {:pkey, primary_key} when primary_key != [] <- {:pkey, Ash.primary_key(resource)},
          {:ok, filter} <- get_filter(primary_key, id) do
       resource
-      |> api.query()
+      |> Ash.Query.new(api)
       |> Ash.Query.filter(filter)
       |> Ash.Query.side_load(opts[:side_load] || [])
       |> api.read(Keyword.delete(opts, :side_load))
@@ -386,7 +392,7 @@ defmodule Ash.Api do
 
         keyword ->
           resource
-          |> api.query()
+          |> Ash.Query.new(api)
           |> Ash.Query.side_load(keyword)
       end
 
@@ -416,7 +422,9 @@ defmodule Ash.Api do
   @doc false
   @spec read(Ash.api(), Ash.query(), Keyword.t()) ::
           {:ok, list(Ash.resource())} | {:error, Ash.error()}
-  def read(_api, query, opts \\ []) do
+  def read(api, query, opts \\ []) do
+    query = Ash.Query.set_api(query, api)
+
     with {:ok, opts} <- NimbleOptions.validate(opts, @read_opts_schema),
          {:ok, action} <- get_action(query.resource, opts, :read) do
       Read.run(query, action, opts)

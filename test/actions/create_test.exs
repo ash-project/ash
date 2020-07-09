@@ -194,7 +194,7 @@ defmodule Ash.Test.Actions.CreateTest do
 
       assert [_, _] =
                PostLink
-               |> Api.query()
+               |> Ash.Query.new()
                |> Api.read!()
     end
 

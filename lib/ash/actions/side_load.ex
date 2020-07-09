@@ -33,11 +33,11 @@ defmodule Ash.Actions.SideLoad do
       related_query =
         case further do
           %Ash.Query{} = query ->
-            query
+            Ash.Query.set_api(query, root_query.api)
 
           further ->
-            root_query.api
-            |> Ash.Query.new(relationship.destination)
+            relationship.destination
+            |> Ash.Query.new(root_query.api)
             |> Ash.Query.side_load(further)
         end
 
@@ -394,7 +394,7 @@ defmodule Ash.Actions.SideLoad do
             dependencies
           end
 
-        related_query = related_query.api.query(join_relationship.destination)
+        related_query = Ash.Query.new(join_relationship.destination, related_query.api)
 
         Request.new(
           action: Ash.primary_action!(relationship.destination, :read),
@@ -481,7 +481,7 @@ defmodule Ash.Actions.SideLoad do
 
         _ ->
           relationship.destination
-          |> related_query.api.query()
+          |> Ash.Query.new(related_query.api)
           |> Ash.Query.filter(related_query.filter)
           |> extract_errors()
       end

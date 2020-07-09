@@ -166,7 +166,7 @@ defmodule Ash.Actions.Create do
 
   defp side_loads_as_query(api, resource, side_loads) when is_list(side_loads) do
     resource
-    |> api.query()
+    |> Ash.Query.new(api)
     |> Ash.Query.side_load(side_loads)
     |> case do
       %{errors: []} = query -> {:ok, query}

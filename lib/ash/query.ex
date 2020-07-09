@@ -67,31 +67,28 @@ defmodule Ash.Query do
   alias Ash.Error.{InvalidLimit, InvalidOffset}
   alias Ash.Error.SideLoad.{InvalidQuery, NoSuchRelationship}
 
-  @doc false
-  def new(api, resource) when is_atom(api) and is_atom(resource) do
-    case Ash.Api.resource(api, resource) do
-      {:ok, resource} ->
-        %__MODULE__{
-          api: api,
-          filter: nil,
-          resource: resource
-        }
-        |> set_data_layer_query()
-
-      {:error, error} ->
-        %__MODULE__{
-          api: api,
-          filter: nil,
-          resource: resource
-        }
-        |> add_error(:resource, error)
-    end
+  @doc "Create a new query."
+  def new(resource, api \\ nil) when is_atom(resource) do
+    %__MODULE__{
+      api: api,
+      filter: nil,
+      resource: resource
+    }
+    |> set_data_layer_query()
   end
 
+  @doc "Set the query's api, and any side loaded query's api"
+  def set_api(query, api) do
+    query = to_query(query)
+    %{query | api: api, side_load: set_side_load_api(query.side_load, api)}
+  end
+
+  @doc "Limit the results returned from the query"
   def limit(query, nil), do: query
 
   def limit(query, limit) when is_integer(limit) do
     query
+    |> to_query()
     |> Map.put(:limit, max(0, limit))
     |> set_data_layer_query()
   end
@@ -100,19 +97,26 @@ defmodule Ash.Query do
     add_error(query, :offset, InvalidLimit.exception(limit: limit))
   end
 
+  @doc "Skip the first n records"
   def offset(query, nil), do: query
 
   def offset(query, offset) when is_integer(offset) do
     query
+    |> to_query()
     |> Map.put(:offset, max(0, offset))
     |> set_data_layer_query()
   end
 
   def offset(query, offset) do
-    add_error(query, :offset, InvalidOffset.exception(offset: offset))
+    query
+    |> to_query()
+    |> add_error(:offset, InvalidOffset.exception(offset: offset))
   end
 
+  @doc "Side loads related entities"
   def side_load(query, statement) do
+    query = to_query(query)
+
     with sanitized_statement <- List.wrap(sanitize_side_loads(statement)),
          :ok <- validate_side_load(query.resource, sanitized_statement),
          new_side_loads <- merge_side_load(query.side_load, sanitized_statement) do
@@ -179,6 +183,122 @@ defmodule Ash.Query do
     end)
   end
 
+  def filter(query, nil), do: query
+
+  def filter(query, %Ash.Filter{} = filter) do
+    query = to_query(query)
+
+    new_filter =
+      case query.filter do
+        nil ->
+          {:ok, filter}
+
+        existing_filter ->
+          Ash.Filter.add_to_filter(existing_filter, filter)
+      end
+
+    case new_filter do
+      {:ok, filter} ->
+        set_data_layer_query(%{query | filter: filter})
+
+      {:error, error} ->
+        add_error(query, :filter, error)
+    end
+  end
+
+  def filter(query, statement) do
+    query = to_query(query)
+
+    filter =
+      if query.filter do
+        Ash.Filter.add_to_filter(query.filter, statement)
+      else
+        Ash.Filter.parse(query.resource, statement)
+      end
+
+    case filter do
+      {:ok, filter} ->
+        query
+        |> Map.put(:filter, filter)
+        |> set_data_layer_query()
+
+      {:error, error} ->
+        add_error(query, :filter, error)
+    end
+  end
+
+  def sort(query, sorts) when is_list(sorts) do
+    query = to_query(query)
+
+    sorts
+    |> Enum.reduce(query, fn
+      {sort, direction}, query ->
+        %{query | sort: query.sort ++ [{sort, direction}]}
+
+      sort, query ->
+        %{query | sort: query.sort ++ [{sort, :asc}]}
+    end)
+    |> validate_sort()
+    |> set_data_layer_query()
+  end
+
+  def unset(query, keys) when is_list(keys) do
+    Enum.reduce(keys, query, &unset(&2, &1))
+  end
+
+  def unset(query, key) when key in [:api, :resource] do
+    add_error(query, key, "Cannot be unset")
+  end
+
+  def unset(query, key) do
+    query
+    |> to_query()
+    |> struct([{key, Map.get(%__MODULE__{}, key)}])
+  end
+
+  @doc false
+  def data_layer_query(%{resource: resource} = ash_query, opts \\ []) do
+    query = Ash.DataLayer.resource_to_query(resource)
+
+    with {:ok, query} <- Ash.DataLayer.sort(query, ash_query.sort, resource),
+         {:ok, query} <- maybe_filter(query, ash_query, opts) do
+      {:ok, query}
+    else
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp validate_sort(%{resource: resource, sort: sort} = query) do
+    case Sort.process(resource, sort) do
+      {:ok, new_sort} -> %{query | sort: new_sort}
+      {:error, error} -> add_error(query, :sort, error)
+    end
+  end
+
+  defp add_error(query, key, message) do
+    query = to_query(query)
+
+    message =
+      if is_binary(message) do
+        "#{key}: #{message}"
+      else
+        message
+      end
+
+    %{
+      query
+      | errors: [Map.put(Ash.Error.to_ash_error(message), :path, key) | query.errors],
+        valid?: false
+    }
+  end
+
+  defp set_data_layer_query(query) do
+    case data_layer_query(query) do
+      {:ok, data_layer_query} -> %{query | data_layer_query: data_layer_query}
+      {:error, error} -> add_error(query, :data_layer_query, error)
+    end
+  end
+
   defp validate_matching_query_and_continue(value, resource, key, path, relationship) do
     %{destination: relationship_resource} = relationship
 
@@ -199,28 +319,62 @@ defmodule Ash.Query do
     end
   end
 
-  def merge_side_load([], right), do: sanitize_side_loads(right)
-  def merge_side_load(left, []), do: sanitize_side_loads(left)
+  defp maybe_filter(query, %{filter: nil}, _) do
+    {:ok, query}
+  end
 
-  def merge_side_load(
-        %__MODULE__{side_load: left_side_loads},
-        %__MODULE__{side_load: right_side_loads} = query
-      ) do
+  defp maybe_filter(query, ash_query, opts) do
+    case Ash.DataLayer.filter(query, ash_query.filter, ash_query.resource) do
+      {:ok, filtered} ->
+        if Keyword.get(opts, :only_validate_filter?, true) do
+          {:ok, query}
+        else
+          {:ok, filtered}
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp set_side_load_api(nil, _), do: nil
+  defp set_side_load_api([], _), do: []
+
+  defp set_side_load_api(%__MODULE__{} = query, api) do
+    set_api(query, api)
+  end
+
+  defp set_side_load_api(side_loads, api) do
+    Enum.map(side_loads, fn {key, further} ->
+      {key, set_side_load_api(further, api)}
+    end)
+  end
+
+  defp to_query(%__MODULE__{} = query), do: query
+  defp to_query(resource), do: new(resource)
+
+  defp merge_side_load([], right), do: sanitize_side_loads(right)
+  defp merge_side_load(left, []), do: sanitize_side_loads(left)
+
+  defp merge_side_load(
+         %__MODULE__{side_load: left_side_loads},
+         %__MODULE__{side_load: right_side_loads} = query
+       ) do
     %{query | side_load: merge_side_load(left_side_loads, right_side_loads)}
   end
 
-  def merge_side_load(%__MODULE__{} = query, right) when is_list(right) do
+  defp merge_side_load(%__MODULE__{} = query, right) when is_list(right) do
     Ash.Query.side_load(query, right)
   end
 
-  def merge_side_load(left, %Ash.Query{} = query) when is_list(left) do
+  defp merge_side_load(left, %Ash.Query{} = query) when is_list(left) do
     Ash.Query.side_load(query, left)
   end
 
-  def merge_side_load(left, right) when is_atom(left), do: merge_side_load([{left, []}], right)
-  def merge_side_load(left, right) when is_atom(right), do: merge_side_load(left, [{right, []}])
+  defp merge_side_load(left, right) when is_atom(left), do: merge_side_load([{left, []}], right)
+  defp merge_side_load(left, right) when is_atom(right), do: merge_side_load(left, [{right, []}])
 
-  def merge_side_load(left, right) when is_list(left) and is_list(right) do
+  defp merge_side_load(left, right) when is_list(left) and is_list(right) do
     right
     |> sanitize_side_loads()
     |> Enum.reduce(sanitize_side_loads(left), fn {rel, rest}, acc ->
@@ -248,129 +402,5 @@ defmodule Ash.Query do
           true -> side_load_part
         end
     end)
-  end
-
-  def filter(query, nil), do: query
-
-  def filter(query, %Ash.Filter{} = filter) do
-    new_filter =
-      case query.filter do
-        nil ->
-          {:ok, filter}
-
-        existing_filter ->
-          Ash.Filter.add_to_filter(existing_filter, filter)
-      end
-
-    case new_filter do
-      {:ok, filter} ->
-        set_data_layer_query(%{query | filter: filter})
-
-      {:error, error} ->
-        add_error(query, :filter, error)
-    end
-  end
-
-  def filter(query, statement) do
-    filter =
-      if query.filter do
-        Ash.Filter.add_to_filter(query.filter, statement)
-      else
-        Ash.Filter.parse(query.api, query.resource, statement)
-      end
-
-    case filter do
-      {:ok, filter} ->
-        query
-        |> Map.put(:filter, filter)
-        |> set_data_layer_query()
-
-      {:error, error} ->
-        add_error(query, :filter, error)
-    end
-  end
-
-  def sort(query, sorts) when is_list(sorts) do
-    sorts
-    |> Enum.reduce(query, fn
-      {sort, direction}, query ->
-        %{query | sort: query.sort ++ [{sort, direction}]}
-
-      sort, query ->
-        %{query | sort: query.sort ++ [{sort, :asc}]}
-    end)
-    |> validate_sort()
-    |> set_data_layer_query()
-  end
-
-  defp validate_sort(%{resource: resource, sort: sort} = query) do
-    case Sort.process(resource, sort) do
-      {:ok, new_sort} -> %{query | sort: new_sort}
-      {:error, error} -> add_error(query, :sort, error)
-    end
-  end
-
-  def unset(query, keys) when is_list(keys) do
-    Enum.reduce(keys, query, &unset(&2, &1))
-  end
-
-  def unset(query, key) when key in [:api, :resource] do
-    add_error(query, key, "Cannot be unset")
-  end
-
-  def unset(query, key) do
-    struct(query, [{key, Map.get(%__MODULE__{}, key)}])
-  end
-
-  defp add_error(query, key, message) do
-    message =
-      if is_binary(message) do
-        "#{key}: #{message}"
-      else
-        message
-      end
-
-    %{
-      query
-      | errors: [Map.put(Ash.Error.to_ash_error(message), :path, key) | query.errors],
-        valid?: false
-    }
-  end
-
-  defp set_data_layer_query(query) do
-    case data_layer_query(query) do
-      {:ok, data_layer_query} -> %{query | data_layer_query: data_layer_query}
-      {:error, error} -> add_error(query, :data_layer_query, error)
-    end
-  end
-
-  @doc false
-  def data_layer_query(%{resource: resource} = ash_query, opts \\ []) do
-    query = Ash.DataLayer.resource_to_query(resource)
-
-    with {:ok, query} <- Ash.DataLayer.sort(query, ash_query.sort, resource),
-         {:ok, query} <- maybe_filter(query, ash_query, opts) do
-      {:ok, query}
-    else
-      {:error, error} -> {:error, error}
-    end
-  end
-
-  defp maybe_filter(query, %{filter: nil}, _) do
-    {:ok, query}
-  end
-
-  defp maybe_filter(query, ash_query, opts) do
-    case Ash.DataLayer.filter(query, ash_query.filter, ash_query.resource) do
-      {:ok, filtered} ->
-        if Keyword.get(opts, :only_validate_filter?, true) do
-          {:ok, query}
-        else
-          {:ok, filtered}
-        end
-
-      {:error, error} ->
-        {:error, error}
-    end
   end
 end

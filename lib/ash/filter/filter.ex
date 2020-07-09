@@ -20,10 +20,10 @@ defmodule Ash.Filter do
     greater_than: GreaterThan
   ]
 
-  defstruct [:resource, :api, :expression]
+  defstruct [:resource, :expression]
 
-  def parse!(api, resource, statement) do
-    case parse(api, resource, statement) do
+  def parse!(resource, statement) do
+    case parse(resource, statement) do
       {:ok, filter} ->
         filter
 
@@ -32,23 +32,22 @@ defmodule Ash.Filter do
     end
   end
 
-  def parse(api, resource, statement) do
+  def parse(resource, statement) do
     context = %{
       resource: resource,
-      api: api,
       relationship_path: []
     }
 
     case parse_expression(statement, context) do
       {:ok, expression} ->
-        {:ok, %__MODULE__{expression: expression, resource: resource, api: api}}
+        {:ok, %__MODULE__{expression: expression, resource: resource}}
 
       {:error, error} ->
         {:error, error}
     end
   end
 
-  def run_other_data_layer_filters(resource, api, filter) do
+  def run_other_data_layer_filters(api, resource, filter) do
     reduce(filter, {:ok, filter}, fn
       %Expression{op: :or}, {:ok, filter} ->
         {:halt, {:ok, filter}}
@@ -64,7 +63,7 @@ defmodule Ash.Filter do
 
           query =
             relationship.destination
-            |> api.query()
+            |> Ash.Query.new(api)
             |> Map.put(:filter, for_path)
 
           add_other_datalayer_read_results(query, relationship, path, without_path)
@@ -81,7 +80,7 @@ defmodule Ash.Filter do
 
           query =
             relationship.destination
-            |> api.query()
+            |> Ash.Query.new(api)
             |> Map.put(:filter, for_path)
 
           add_other_datalayer_read_results(query, relationship, path, without_path)
@@ -139,7 +138,7 @@ defmodule Ash.Filter do
 
     join_query =
       relationship.through
-      |> query.api.query()
+      |> Ash.Query.new(query.api)
       |> Ash.Query.filter([
         {relationship.destination_field_on_join_table, [in: destination_values]}
       ])
@@ -240,31 +239,22 @@ defmodule Ash.Filter do
   def add_to_filter(base, op \\ :and, addition)
 
   def add_to_filter(
-        %__MODULE__{resource: resource, api: api} = base,
+        %__MODULE__{resource: resource} = base,
         op,
-        %__MODULE__{resource: resource, api: api} = addition
+        %__MODULE__{resource: resource} = addition
       ) do
     {:ok, %{base | expression: Expression.new(op, base.expression, addition.expression)}}
   end
 
-  def add_to_filter(%__MODULE__{api: api} = base, _, %__MODULE__{api: api} = addition) do
+  def add_to_filter(%__MODULE__{} = base, _, %__MODULE__{} = addition) do
     {:error,
      "Cannot add filter for resource #{inspect(addition.resource)} to filter with resource #{
        inspect(base.resource)
      }"}
   end
 
-  def add_to_filter(
-        %__MODULE__{resource: resource} = base,
-        _,
-        %__MODULE__{resource: resource} = addition
-      ) do
-    {:error,
-     "Cannot add filter for api #{inspect(addition.api)} to filter with api #{inspect(base.api)}"}
-  end
-
   def add_to_filter(%__MODULE__{} = base, op, statement) do
-    case parse(base.api, base.resource, statement) do
+    case parse(base.resource, statement) do
       {:ok, filter} -> add_to_filter(base, op, filter)
       {:error, error} -> {:error, error}
     end
@@ -295,18 +285,18 @@ defmodule Ash.Filter do
     |> Enum.map(&[:filter, &1])
   end
 
-  def read_requests(nil), do: {:ok, []}
+  def read_requests(_, nil), do: {:ok, []}
 
-  def read_requests(filter) do
+  def read_requests(api, filter) do
     filter
     |> Ash.Filter.relationship_paths()
     |> Enum.map(fn path ->
       {path, filter_expression_by_relationship_path(filter, path)}
     end)
     |> Enum.reduce_while({:ok, []}, fn {path, scoped_filter}, {:ok, requests} ->
-      %{api: api, resource: resource} = scoped_filter
+      %{resource: resource} = scoped_filter
 
-      with %{errors: []} = query <- Ash.Query.new(api, resource),
+      with %{errors: []} = query <- Ash.Query.new(resource, api),
            %{errors: []} = query <- Ash.Query.filter(query, scoped_filter),
            {:action, action} when not is_nil(action) <-
              {:action, Ash.primary_action(resource, :read)} do
@@ -476,12 +466,10 @@ defmodule Ash.Filter do
     {for_path, without_path} = do_split_expression_by_relationship_path(filter.expression, path)
 
     {%__MODULE__{
-       api: filter.api,
        resource: Ash.related(filter.resource, path),
        expression: for_path
      },
      %__MODULE__{
-       api: filter.api,
        resource: filter.resource,
        expression: without_path
      }}
@@ -489,7 +477,6 @@ defmodule Ash.Filter do
 
   def filter_expression_by_relationship_path(filter, path, scope? \\ false) do
     %__MODULE__{
-      api: filter.api,
       resource: Ash.related(filter.resource, path),
       expression: do_filter_expression_by_relationship_path(filter.expression, path, scope?)
     }
