@@ -238,6 +238,8 @@ defmodule Ash.Filter do
 
   def add_to_filter(base, op \\ :and, addition)
 
+  def add_to_filter(nil, _, %__MODULE__{} = addition), do: addition
+
   def add_to_filter(
         %__MODULE__{resource: resource} = base,
         op,
