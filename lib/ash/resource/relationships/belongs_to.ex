@@ -1,5 +1,6 @@
 defmodule Ash.Resource.Relationships.BelongsTo do
-  @moduledoc false
+  @moduledoc "Represents a belongs_to relationship on a resource"
+
   defstruct [
     :name,
     :destination,
@@ -9,6 +10,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :destination_field,
     :source_field,
     :source,
+    :writable?,
     cardinality: :one,
     type: :belongs_to
   ]
@@ -16,6 +18,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
   @type t :: %__MODULE__{
           type: :belongs_to,
           cardinality: :one,
+          writable?: boolean,
           name: atom,
           source: Ash.resource(),
           destination: Ash.resource(),

@@ -1,5 +1,6 @@
 defmodule Ash.Resource.Relationships.HasOne do
-  @moduledoc false
+  @moduledoc "Represents a has_one relationship on a resource"
+
   defstruct [
     :name,
     :source,
@@ -7,6 +8,7 @@ defmodule Ash.Resource.Relationships.HasOne do
     :destination_field,
     :source_field,
     :allow_orphans?,
+    :writable?,
     cardinality: :one,
     type: :has_one
   ]
@@ -15,6 +17,7 @@ defmodule Ash.Resource.Relationships.HasOne do
           type: :has_one,
           cardinality: :one,
           source: Ash.resource(),
+          writable?: boolean,
           name: atom,
           type: Ash.Type.t(),
           destination: Ash.resource(),
@@ -23,8 +26,8 @@ defmodule Ash.Resource.Relationships.HasOne do
           allow_orphans?: boolean
         }
 
-  import Ash.Resource.Relationships.SharedOptions
   alias Ash.OptionsHelpers
+  import Ash.Resource.Relationships.SharedOptions
 
   @global_opts shared_options()
                |> OptionsHelpers.make_required!(:destination_field)

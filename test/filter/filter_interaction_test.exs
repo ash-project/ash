@@ -134,12 +134,17 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     end)
   end
 
+  import Ash.Changeset
+
   test "mnesia data layer sanity test" do
-    post = Api.create!(Post, attributes: %{title: "best"})
+    post =
+      Post
+      |> create(%{title: "best"})
+      |> Api.create!()
 
     assert [^post] = Api.read!(Post)
 
-    Api.update!(post, attributes: %{title: "worst"})
+    post |> update(%{title: "worst"}) |> Api.update!()
 
     new_post = %{post | title: "worst"}
 
@@ -152,15 +157,20 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
   describe "cross data layer filtering" do
     test "it properly filters with a simple filter" do
-      author = Api.create!(User, attributes: %{name: "best author"})
+      author =
+        User
+        |> create(%{name: "best author"})
+        |> Api.create!()
 
       post1 =
-        Api.create!(Post,
-          attributes: %{title: "best"},
-          relationships: %{author: author}
-        )
+        Post
+        |> create(%{title: "best"})
+        |> replace_relationship(:author, author)
+        |> Api.create!()
 
-      Api.create!(Post, attributes: %{title: "worst"})
+      Post
+      |> create(%{title: "worst"})
+      |> Api.create!()
 
       post1 = Api.reload!(post1)
 
@@ -172,14 +182,20 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     end
 
     test "parallelizable filtering of related resources with a data layer that cannot join" do
-      post2 = Api.create!(Post, attributes: %{title: "two"})
-      Api.create!(Post, attributes: %{title: "three"})
+      post2 =
+        Post
+        |> create(%{title: "two"})
+        |> Api.create!()
+
+      Post
+      |> create(%{title: "three"})
+      |> Api.create!()
 
       post1 =
-        Api.create!(Post,
-          attributes: %{title: "one"},
-          relationships: %{related_posts: [post2]}
-        )
+        Post
+        |> create(%{title: "one"})
+        |> replace_relationship(:related_posts, [post2])
+        |> Api.create!()
 
       query =
         Post
@@ -191,14 +207,21 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     end
 
     test "parallelizable filter with filtered side loads" do
-      post2 = Api.create!(Post, attributes: %{title: "two"})
-      post3 = Api.create!(Post, attributes: %{title: "three"})
+      post2 =
+        Post
+        |> create(%{title: "two"})
+        |> Api.create!()
+
+      post3 =
+        Post
+        |> create(%{title: "three"})
+        |> Api.create!()
 
       post1 =
-        Api.create!(Post,
-          attributes: %{title: "one"},
-          relationships: %{related_posts: [post2, post3]}
-        )
+        Post
+        |> create(%{title: "one"})
+        |> replace_relationship(:related_posts, [post2, post3])
+        |> Api.create!()
 
       posts_query =
         Post

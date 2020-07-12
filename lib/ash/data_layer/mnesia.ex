@@ -76,6 +76,7 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, :upsert), do: true
   def can?(_, :boolean_filter), do: true
   def can?(_, :transact), do: true
+  def can?(_, :delete_with_query), do: false
   def can?(_, {:filter_predicate, _, %In{}}), do: true
   def can?(_, {:filter_predicate, _, %Eq{}}), do: true
   def can?(_, {:filter_predicate, _, %LessThan{}}), do: true
@@ -165,7 +166,7 @@ defmodule Ash.DataLayer.Mnesia do
 
   @impl true
   def create(resource, changeset) do
-    record = Ecto.Changeset.apply_changes(changeset)
+    record = Ash.Changeset.apply_attributes(changeset)
 
     pkey =
       resource

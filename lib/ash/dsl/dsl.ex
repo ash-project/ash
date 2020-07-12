@@ -125,6 +125,7 @@ defmodule Ash.Dsl do
     ],
     target: Ash.Resource.Relationships.ManyToMany,
     schema: Ash.Resource.Relationships.ManyToMany.opt_schema(),
+    transform: {Ash.Resource.Relationships.ManyToMany, :transform, []},
     args: [:name, :destination]
   }
 
@@ -260,8 +261,7 @@ defmodule Ash.Dsl do
     Ash.Resource.Transformers.BelongsToSourceField,
     Ash.Resource.Transformers.CreateJoinRelationship,
     Ash.Resource.Transformers.CachePrimaryKey,
-    Ash.Resource.Transformers.SetPrimaryActions,
-    Ash.Resource.Transformers.ValidateRelationshipAttributes
+    Ash.Resource.Transformers.SetPrimaryActions
   ]
 
   use Ash.Dsl.Extension,

@@ -17,14 +17,14 @@ defmodule Ash.Api do
   ```
 
   Then you can interact through that Api with the actions that those resources expose.
-  For example: `MyApp.Api.create(OneResource, %{attributes: %{name: "thing"}})`, or
-  `MyApp.Api.read(query)`. Corresponding actions must
-  be defined in your resources in order to call them through the Api.
+  For example: `MyApp.Api.create(changeset)`, or `MyApp.Api.read(query)`. Corresponding
+  actions must be defined in your resources in order to call them through the Api.
   """
 
   import Ash.OptionsHelpers, only: [merge_schemas: 3]
 
   alias Ash.Actions.{Create, Destroy, Read, SideLoad, Update}
+  alias Ash.Dsl.Transformer
   alias Ash.Error.NoSuchResource
 
   @global_opts [
@@ -67,16 +67,6 @@ defmodule Ash.Api do
                    |> merge_schemas(@global_opts, "Global Options")
 
   @shared_create_and_update_opts_schema [
-                                          attributes: [
-                                            type: {:custom, Ash.OptionsHelpers, :map, []},
-                                            default: %{},
-                                            doc: "Changes to be applied to attribute values"
-                                          ],
-                                          relationships: [
-                                            type: {:custom, Ash.OptionsHelpers, :map, []},
-                                            default: %{},
-                                            doc: "Changes to be applied to relationship values"
-                                          ],
                                           side_load: [
                                             type: :any,
                                             doc:
@@ -250,21 +240,35 @@ defmodule Ash.Api do
 
       use Supervisor
 
+      def start_link(:set_state) do
+        # This exists to ensure we call `set_state` *after* resources have been built
+        Supervisor.start_link(__MODULE__, :set_state, name: __MODULE__.SetState)
+      end
+
       def start_link(args) do
+        # This exists to ensure we call `set_state` *after* resources have been built
         Supervisor.start_link(__MODULE__, args, name: __MODULE__)
       end
 
-      def init(_init_arg) do
+      def init(:set_state) do
+        # This exists to ensure we call `set_state` *after* resources have been built
         Extension.set_state(true)
 
-        children =
-          __MODULE__
-          |> Ash.Api.resources()
-          |> Enum.map(fn resource ->
-            {resource, [api: __MODULE__]}
-          end)
+        :ignore
+      end
 
-        Supervisor.init(children, strategy: :one_for_one)
+      def init(_init_arg) do
+        children =
+          raw_dsl()
+          |> Transformer.get_entities([:resources], Ash.Api.Dsl)
+          |> Enum.map(fn resource_reference ->
+            {resource_reference.resource, [api: __MODULE__]}
+          end)
+          # This exists to ensure we call `set_state` *after* resources have been built
+          |> Kernel.++([{__MODULE__, :set_state}])
+
+        children
+        |> Supervisor.init(strategy: :one_for_one)
       end
 
       use Ash.Api.Interface
@@ -435,45 +439,45 @@ defmodule Ash.Api do
   end
 
   @doc false
-  @spec create!(Ash.api(), Ash.resource(), Keyword.t()) ::
+  @spec create!(Ash.api(), Ash.changeset(), Keyword.t()) ::
           Ash.record() | {:error, Ash.error()}
-  def create!(api, resource, opts) do
+  def create!(api, changeset, opts) do
     opts = NimbleOptions.validate!(opts, @create_opts_schema)
 
     api
-    |> create(resource, opts)
+    |> create(changeset, opts)
     |> unwrap_or_raise!()
   end
 
   @doc false
-  @spec create(Ash.api(), Ash.resource(), Keyword.t()) ::
+  @spec create(Ash.api(), Ash.changeset(), Keyword.t()) ::
           {:ok, Ash.resource()} | {:error, Ash.error()}
-  def create(api, resource, opts) do
+  def create(api, changeset, opts) do
     with {:ok, opts} <- NimbleOptions.validate(opts, @create_opts_schema),
-         {:ok, resource} <- Ash.Api.resource(api, resource),
-         {:ok, action} <- get_action(resource, opts, :create) do
-      Create.run(api, resource, action, opts)
+         {:ok, _resource} <- Ash.Api.resource(api, changeset.resource),
+         {:ok, action} <- get_action(changeset.resource, opts, :create) do
+      Create.run(api, changeset, action, opts)
     end
   end
 
   @doc false
-  @spec update!(Ash.api(), Ash.record(), Keyword.t()) :: Ash.resource() | no_return()
-  def update!(api, record, opts) do
+  @spec update!(Ash.api(), Ash.changeset(), Keyword.t()) :: Ash.resource() | no_return()
+  def update!(api, changeset, opts) do
     opts = NimbleOptions.validate!(opts, @update_opts_schema)
 
     api
-    |> update(record, opts)
+    |> update(changeset, opts)
     |> unwrap_or_raise!()
   end
 
   @doc false
   @spec update(Ash.api(), Ash.record(), Keyword.t()) ::
           {:ok, Ash.record()} | {:error, Ash.error()}
-  def update(api, %resource{} = record, opts) do
+  def update(api, changeset, opts) do
     with {:ok, opts} <- NimbleOptions.validate(opts, @update_opts_schema),
-         {:ok, resource} <- Ash.Api.resource(api, resource),
-         {:ok, action} <- get_action(resource, opts, :update) do
-      Update.run(api, record, action, opts)
+         {:ok, _resource} <- Ash.Api.resource(api, changeset.resource),
+         {:ok, action} <- get_action(changeset.resource, opts, :update) do
+      Update.run(api, changeset, action, opts)
     end
   end
 
@@ -498,12 +502,27 @@ defmodule Ash.Api do
   end
 
   defp get_action(resource, params, type) do
-    case params[:action] || Ash.primary_action(resource, type) do
-      nil ->
-        {:error, "no action provided, and no primary action found for #{to_string(type)}"}
-
-      action ->
+    case Keyword.fetch(params, :action) do
+      {:ok, %_{} = action} ->
         {:ok, action}
+
+      {:ok, action} ->
+        case Ash.action(resource, action, type) do
+          nil -> {:error, "no such action #{inspect(params[:action])}"}
+          action -> {:ok, action}
+        end
+
+      :error ->
+        case Ash.primary_action(resource, type) do
+          nil ->
+            {:error,
+             "no action provided, and no primary #{to_string(type)} action found for resource #{
+               inspect(resource)
+             }"}
+
+          action ->
+            {:ok, action}
+        end
     end
   end
 

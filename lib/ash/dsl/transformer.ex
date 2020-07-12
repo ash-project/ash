@@ -19,7 +19,6 @@ defmodule Ash.Dsl.Transformer do
   @callback before?(module) :: boolean
   @callback after?(module) :: boolean
   @callback compile_time_only? :: boolean
-  @callback after_compile? :: boolean
 
   defmacro __using__(_) do
     quote do
@@ -28,9 +27,8 @@ defmodule Ash.Dsl.Transformer do
       def before?(_), do: false
       def after?(_), do: false
       def compile_time_only?, do: false
-      def after_compile?, do: false
 
-      defoverridable before?: 1, after?: 1, compile_time_only?: 0, after_compile?: 0
+      defoverridable before?: 1, after?: 1, compile_time_only?: 0
     end
   end
 

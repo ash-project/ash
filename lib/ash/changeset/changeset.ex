@@ -1,0 +1,617 @@
+defmodule Ash.Changeset do
+  @moduledoc """
+  Changesets are used to create and update data in Ash.
+
+  Create a changeset with `create/2` or `update/2`, and alter the attributes
+  and relationships using the functions provided in this module.  Nothing in this module
+  actually incurs changes in a data layer. To commit a changeset, see `c:Ash.Api.create/2`
+  and `c:Ash.Api.update/2`.
+  """
+  defstruct [
+    :data,
+    :action_type,
+    :resource,
+    :api,
+    after_action: [],
+    before_action: [],
+    errors: [],
+    valid?: true,
+    attributes: %{},
+    relationships: %{},
+    change_dependencies: [],
+    requests: []
+  ]
+
+  @type t :: %__MODULE__{}
+
+  alias Ash.Error.{
+    Changes.InvalidAttribute,
+    Changes.InvalidRelationship,
+    Changes.NoSuchAttribute,
+    Changes.NoSuchRelationship,
+    NoSuchResource
+  }
+
+  @doc "Return a changeset meant for creating an instance of a resource"
+  @spec create(Ash.resource(), map) :: t
+  def create(resource, initial_attributes \\ %{}) do
+    if Ash.Resource.resource?(resource) do
+      %__MODULE__{resource: resource, action_type: :create, data: struct(resource)}
+      |> before_action(&set_create_defaults/1)
+      |> change_attributes(initial_attributes)
+    else
+      %__MODULE__{resource: resource, action_type: :create, data: struct(resource)}
+      |> add_error(NoSuchResource.exception(resource: resource))
+    end
+  end
+
+  @doc "Return a changeset meant for updating an instance of a resource"
+  @spec update(Ash.record(), map) :: t
+  def update(%resource{} = record, initial_attributes \\ %{}) do
+    if Ash.Resource.resource?(resource) do
+      %__MODULE__{resource: resource, data: record, action_type: :update}
+      |> before_action(&set_update_defaults/1)
+      |> change_attributes(initial_attributes)
+    else
+      %__MODULE__{resource: resource, action_type: :create, data: struct(resource)}
+      |> add_error(NoSuchResource.exception(resource: resource))
+    end
+  end
+
+  @doc """
+  Wraps a function in the before/after action hooks of a changeset.
+
+  The function takes a changeset and if it returns
+  `{:ok, result}`, the result will be passed through the after
+  action hooks.
+  """
+  @spec with_hooks(t(), (t() -> {:ok, Ash.record()} | {:error, term})) ::
+          {:ok, term} | {:error, term}
+  def with_hooks(changeset, func) do
+    changeset =
+      Enum.reduce_while(changeset.before_action, changeset, fn before_action, changeset ->
+        case before_action.(changeset) do
+          %{valid?: true} = changeset -> {:cont, changeset}
+          changeset -> {:halt, changeset}
+        end
+      end)
+
+    if changeset.valid? do
+      case func.(changeset) do
+        {:ok, result} ->
+          Enum.reduce_while(
+            changeset.after_action,
+            {:ok, result},
+            fn after_action, {:ok, result} ->
+              case after_action.(changeset, result) do
+                {:ok, new_result} -> {:cont, {:ok, new_result}}
+                {:error, error} -> {:halt, {:error, error}}
+              end
+            end
+          )
+
+        {:error, error} ->
+          {:error, error}
+      end
+    else
+      {:error, changeset.errors}
+    end
+  end
+
+  @doc "Gets the changing value or the original value of an attribute"
+  @spec get_attribute(t, atom) :: term
+  def get_attribute(changeset, attribute) do
+    case fetch_change(changeset, attribute) do
+      {:ok, value} ->
+        value
+
+      :error ->
+        get_data(changeset, attribute)
+    end
+  end
+
+  @doc "Gets the new value for an attribute, or `:error` if it is not being changed"
+  @spec fetch_change(t, atom) :: {:ok, any} | :error
+  def fetch_change(changeset, attribute) do
+    Map.fetch(changeset.attributes, attribute)
+  end
+
+  @doc "Gets the original value for an attribute"
+  @spec get_data(t, atom) :: {:ok, any} | :error
+  def get_data(changeset, attribute) do
+    Map.get(changeset.data, attribute)
+  end
+
+  @doc """
+  Appends a record of list of records to a relationship. Stacks with previous removals/additions.
+
+  Cannot be used with `belongs_to` or `has_one` relationships.
+  See `replace_relationship/3` for manipulating those relationships.
+  """
+  @spec append_to_relationship(t, atom, list(Ash.record()) | Ash.record()) :: t()
+  def append_to_relationship(changeset, relationship, record_or_records) do
+    case Ash.relationship(changeset.resource, relationship) do
+      nil ->
+        error =
+          NoSuchRelationship.exception(
+            resource: changeset.resource,
+            name: relationship
+          )
+
+        add_error(changeset, error)
+
+      %{cardinality: :one, type: type} = relationship ->
+        error =
+          InvalidRelationship.exception(
+            relationship: relationship.name,
+            message: "Cannot append to a #{type} relationship"
+          )
+
+        add_error(changeset, error)
+
+      %{writable?: false} = relationship ->
+        error =
+          InvalidRelationship.exception(
+            relationship: relationship.name,
+            message: "Relationship is not editable"
+          )
+
+        {:error, error}
+
+      relationship ->
+        case primary_key(relationship, List.wrap(record_or_records)) do
+          {:ok, primary_keys} ->
+            relationships =
+              changeset.relationships
+              |> Map.put_new(relationship.name, %{})
+              |> add_to_relationship_key_and_reconcile(relationship, :add, primary_keys)
+
+            %{changeset | relationships: relationships}
+
+          {:error, error} ->
+            add_error(changeset, error)
+        end
+    end
+  end
+
+  @doc """
+  Removes a record of list of records to a relationship. Stacks with previous removals/additions.
+
+  Cannot be used with `belongs_to` or `has_one` relationships.
+  See `replace_relationship/3` for manipulating those relationships.
+  """
+  @spec remove_from_relationship(t, atom, list(Ash.record()) | Ash.record()) :: t()
+  def remove_from_relationship(changeset, relationship, record_or_records) do
+    case Ash.relationship(changeset.resource, relationship) do
+      nil ->
+        error =
+          NoSuchRelationship.exception(
+            resource: changeset.resource,
+            name: relationship
+          )
+
+        add_error(changeset, error)
+
+      %{cardinality: :one, type: type} = relationship ->
+        error =
+          InvalidRelationship.exception(
+            relationship: relationship.name,
+            message: "Cannot remove from a #{type} relationship"
+          )
+
+        add_error(changeset, error)
+
+      %{writable?: false} = relationship ->
+        error =
+          InvalidRelationship.exception(
+            relationship: relationship.name,
+            message: "Relationship is not editable"
+          )
+
+        {:error, error}
+
+      relationship ->
+        case primary_key(relationship, List.wrap(record_or_records)) do
+          {:ok, primary_keys} ->
+            relationships =
+              changeset.relationships
+              |> Map.put_new(relationship.name, %{})
+              |> add_to_relationship_key_and_reconcile(relationship, :remove, primary_keys)
+
+            %{changeset | relationships: relationships}
+
+          {:error, error} ->
+            add_error(changeset, error)
+            nil
+        end
+    end
+  end
+
+  defp add_to_relationship_key_and_reconcile(relationships, relationship, key, to_add) do
+    Map.update!(relationships, relationship.name, fn relationship_changes ->
+      relationship_changes
+      |> Map.put_new(key, [])
+      |> Map.update!(key, &Kernel.++(to_add, &1))
+      |> reconcile_relationship_changes()
+    end)
+  end
+
+  @doc """
+  Replaces the value of a relationship. Any previous additions/removals are cleared.
+
+  For a `has_many` or `many_to_many` relationship, this means removing any currently related
+  records that are not present in the replacement list, and creating any that do not exist
+  in the data layer.
+
+  For a `belongs_to` or `has_one`, replace with a `nil` value to unset a relationship.
+  """
+  @spec replace_relationship(t(), atom(), Ash.record() | list(Ash.record())) :: t()
+  def replace_relationship(changeset, relationship, record_or_records) do
+    case Ash.relationship(changeset.resource, relationship) do
+      nil ->
+        error =
+          NoSuchRelationship.exception(
+            resource: changeset.resource,
+            name: relationship
+          )
+
+        add_error(changeset, error)
+
+      %{writable?: false} = relationship ->
+        error =
+          InvalidRelationship.exception(
+            relationship: relationship.name,
+            message: "Relationship is not editable"
+          )
+
+        {:error, error}
+
+      %{cardinality: :one, type: type}
+      when is_list(record_or_records) and length(record_or_records) > 1 ->
+        error =
+          InvalidRelationship.exception(
+            relationship: relationship.name,
+            message: "Cannot replace a #{type} relationship with multiple records"
+          )
+
+        add_error(changeset, error)
+
+      relationship ->
+        record =
+          if relationship.cardinality == :one do
+            if is_list(record_or_records) do
+              List.first(record_or_records)
+            else
+              record_or_records
+            end
+          else
+            List.wrap(record_or_records)
+          end
+
+        case primary_key(relationship, record) do
+          {:ok, primary_key} ->
+            relationships =
+              Map.put(changeset.relationships, relationship.name, %{replace: primary_key})
+
+            %{changeset | relationships: relationships}
+
+          {:error, error} ->
+            add_error(changeset, error)
+        end
+    end
+  end
+
+  @doc "Returns true if an attribute exists in the changes"
+  @spec changing_attribute?(t(), atom) :: boolean
+  def changing_attribute?(changeset, attribute) do
+    Map.has_key?(changeset.attributes, attribute)
+  end
+
+  @doc "Change an attribute only if is not currently being changed"
+  @spec change_new_attribute(t(), atom, term) :: t()
+  def change_new_attribute(changeset, attribute, value) do
+    if changing_attribute?(changeset, attribute) do
+      changeset
+    else
+      change_attribute(changeset, attribute, value)
+    end
+  end
+
+  @doc """
+  Change an attribute if is not currently being changed, by calling the provided function
+
+  Use this if you want to only perform some expensive calculation for an attribute value
+  only if there isn't already a change for that attribute
+  """
+  @spec change_new_attribute_lazy(t(), atom, (() -> any)) :: t()
+  def change_new_attribute_lazy(changeset, attribute, func) do
+    if changing_attribute?(changeset, attribute) do
+      changeset
+    else
+      change_attribute(changeset, attribute, func.())
+    end
+  end
+
+  @doc "Calls `change_attribute/3` for each key/value pair provided"
+  @spec change_attributes(t(), map | Keyword.t()) :: t()
+  def change_attributes(changeset, changes) do
+    Enum.reduce(changes, changeset, fn {key, value}, changeset ->
+      change_attribute(changeset, key, value)
+    end)
+  end
+
+  @doc "Adds a change to the changeset, unless the value matches the existing value"
+  def change_attribute(changeset, attribute, value) do
+    case Ash.attribute(changeset.resource, attribute) do
+      nil ->
+        error =
+          NoSuchAttribute.exception(
+            resource: changeset.resource,
+            name: attribute
+          )
+
+        add_error(changeset, error)
+
+      %{writable?: false} = attribute ->
+        add_attribute_invalid_error(changeset, attribute, "Attribute is not writable")
+
+      attribute ->
+        with {:ok, casted} <- Ash.Type.cast_input(attribute.type, value),
+             :ok <- validate_allow_nil(attribute, casted),
+             :ok <- Ash.Type.apply_constraints(attribute.type, casted, attribute.constraints) do
+          data_value = Map.get(changeset.data, attribute.name)
+
+          cond do
+            is_nil(data_value) and is_nil(casted) ->
+              changeset
+
+            Ash.Type.equal?(attribute.type, casted, data_value) ->
+              changeset
+
+            true ->
+              %{changeset | attributes: Map.put(changeset.attributes, attribute.name, casted)}
+          end
+        else
+          :error ->
+            add_attribute_invalid_error(changeset, attribute)
+
+          {:error, error_or_errors} ->
+            error_or_errors
+            |> List.wrap()
+            |> Enum.reduce(changeset, &add_attribute_invalid_error(&2, attribute, &1))
+        end
+    end
+  end
+
+  @doc "Calls `force_change_attributes/2` for each key/value pair provided"
+  @spec force_change_attributes(t(), map) :: t()
+  def force_change_attributes(changeset, changes) do
+    Enum.reduce(changes, changeset, fn {key, value}, changeset ->
+      force_change_attribute(changeset, key, value)
+    end)
+  end
+
+  @doc "Changes an attribute even if it isn't writable"
+  @spec force_change_attribute(t(), atom, any) :: t()
+  def force_change_attribute(changeset, attribute, value) do
+    case Ash.attribute(changeset.resource, attribute) do
+      nil ->
+        error =
+          NoSuchAttribute.exception(
+            resource: changeset.resource,
+            name: attribute
+          )
+
+        add_error(changeset, error)
+
+      attribute ->
+        with {:ok, casted} <- Ash.Type.cast_input(attribute.type, value),
+             :ok <- Ash.Type.apply_constraints(attribute.type, casted, attribute.constraints) do
+          data_value = Map.get(changeset.data, attribute.name)
+
+          cond do
+            is_nil(data_value) and is_nil(casted) ->
+              changeset
+
+            Ash.Type.equal?(attribute.type, casted, data_value) ->
+              changeset
+
+            true ->
+              %{changeset | attributes: Map.put(changeset.attributes, attribute.name, casted)}
+          end
+        else
+          :error ->
+            add_attribute_invalid_error(changeset, attribute)
+
+          {:error, error_or_errors} ->
+            error_or_errors
+            |> List.wrap()
+            |> Enum.reduce(changeset, &add_attribute_invalid_error(&2, attribute, &1))
+        end
+    end
+  end
+
+  @doc "Adds a before_action hook to the changeset."
+  @spec before_action(t(), (t() -> t())) :: t()
+  def before_action(changeset, func) do
+    %{changeset | before_action: [func | changeset.before_action]}
+  end
+
+  @doc "Adds an after_action hook to the changeset."
+  @spec after_action(t(), (t(), Ash.record() -> {:ok, Ash.record()} | {:error, term})) :: t()
+  def after_action(changeset, func) do
+    %{changeset | after_action: [func | changeset.after_action]}
+  end
+
+  @doc "Returns the original data with attribute changes merged."
+  @spec apply_attributes(t()) :: Ash.record()
+  def apply_attributes(changeset) do
+    Enum.reduce(changeset.attributes, changeset.data, fn {attribute, value}, data ->
+      Map.put(data, attribute, value)
+    end)
+  end
+
+  @doc "Adds an error to the changesets errors list, and marks the change as `valid?: false`"
+  @spec add_error(t(), Ash.error()) :: t()
+  def add_error(changeset, error) do
+    %{changeset | errors: [error | changeset.errors], valid?: false}
+  end
+
+  defp reconcile_relationship_changes(%{replace: _, add: add} = changes) do
+    changes
+    |> Map.delete(:add)
+    |> Map.update!(:replace, fn replace ->
+      replace ++ add
+    end)
+    |> reconcile_relationship_changes()
+  end
+
+  defp reconcile_relationship_changes(%{replace: _, remove: remove} = changes) do
+    changes
+    |> Map.delete(:remove)
+    |> Map.update!(:replace, fn replace ->
+      Enum.reject(replace, &(&1 in remove))
+    end)
+    |> reconcile_relationship_changes()
+  end
+
+  defp reconcile_relationship_changes(changes) do
+    changes
+    |> update_if_present(:replace, &uniq_if_list/1)
+    |> update_if_present(:remove, &uniq_if_list/1)
+    |> update_if_present(:add, &uniq_if_list/1)
+  end
+
+  defp uniq_if_list(list) when is_list(list), do: Enum.uniq(list)
+  defp uniq_if_list(other), do: other
+
+  defp update_if_present(map, key, func) do
+    if Map.has_key?(map, key) do
+      Map.update!(map, key, func)
+    else
+      map
+    end
+  end
+
+  defp primary_key(_, nil), do: {:ok, nil}
+
+  defp primary_key(relationship, records) when is_list(records) do
+    case Ash.primary_key(relationship.destination) do
+      [_field] ->
+        multiple_primary_keys(relationship, records)
+
+      _ ->
+        case single_primary_key(relationship, records) do
+          {:ok, keys} ->
+            {:ok, keys}
+
+          {:error, _} ->
+            do_primary_key(relationship, records)
+        end
+    end
+  end
+
+  defp primary_key(relationship, record) do
+    do_primary_key(relationship, record)
+  end
+
+  defp do_primary_key(relationship, record) when is_map(record) do
+    primary_key = Ash.primary_key(relationship.destination)
+
+    if Enum.all?(primary_key, &Map.has_key?(record, &1)) do
+      pkey = Map.take(record, Ash.primary_key(relationship.destination))
+
+      {:ok, pkey}
+    else
+      error =
+        InvalidRelationship.exception(
+          relationship: relationship.name,
+          message: "Invalid identifier #{inspect(record)}"
+        )
+
+      {:error, error}
+    end
+  end
+
+  defp do_primary_key(relationship, record) do
+    single_primary_key(relationship, record)
+  end
+
+  defp multiple_primary_keys(relationship, values) do
+    Enum.reduce_while(values, {:ok, []}, fn record, {:ok, primary_keys} ->
+      case do_primary_key(relationship, record) do
+        {:ok, pkey} -> {:cont, {:ok, [pkey | primary_keys]}}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
+  end
+
+  defp single_primary_key(relationship, value) do
+    with [field] <- Ash.primary_key(relationship.destination),
+         attribute <- Ash.attribute(relationship.destination, field),
+         {:ok, casted} <- Ash.Type.cast_input(attribute.type, value) do
+      {:ok, %{field => casted}}
+    else
+      _ ->
+        error =
+          InvalidRelationship.exception(
+            relationship: relationship.name,
+            message: "Invalid identifier #{inspect(value)}"
+          )
+
+        {:error, error}
+    end
+  end
+
+  @doc false
+  def changes_depend_on(changeset, dependency) do
+    %{changeset | change_dependencies: [dependency | changeset.change_dependencies]}
+  end
+
+  @doc false
+  def add_requests(changeset, requests) when is_list(requests) do
+    Enum.reduce(requests, changeset, &add_requests(&2, &1))
+  end
+
+  def add_requests(changeset, request) do
+    %{changeset | requests: [request | changeset.requests]}
+  end
+
+  defp set_create_defaults(changeset) do
+    changeset.resource
+    |> Ash.attributes()
+    |> Enum.filter(& &1.default)
+    |> Enum.reduce(changeset, fn attribute, changeset ->
+      change_new_attribute_lazy(changeset, attribute.name, fn -> default(attribute.default) end)
+    end)
+  end
+
+  defp set_update_defaults(changeset) do
+    changeset.resource
+    |> Ash.attributes()
+    |> Enum.filter(& &1.update_default)
+    |> Enum.reduce(changeset, fn attribute, changeset ->
+      change_new_attribute_lazy(changeset, attribute.name, fn ->
+        default(attribute.update_default)
+      end)
+    end)
+  end
+
+  defp validate_allow_nil(%{allow_nil?: false}, nil), do: {:error, "must not be nil"}
+  defp validate_allow_nil(_, _), do: :ok
+
+  defp add_attribute_invalid_error(changeset, attribute, message \\ nil) do
+    error =
+      InvalidAttribute.exception(
+        field: attribute.name,
+        type: attribute.type,
+        message: message
+      )
+
+    add_error(changeset, error)
+  end
+
+  defp default({:constant, value}), do: value
+  defp default({mod, func, args}), do: apply(mod, func, args)
+  defp default(function) when is_function(function, 0), do: function.()
+end

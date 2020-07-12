@@ -137,42 +137,87 @@ defmodule Ash.Test.Actions.UpdateTest do
     end
   end
 
+  import Ash.Changeset
+
   describe "simple updates" do
     test "allows updating a record with valid attributes" do
-      post = Api.create!(Post, attributes: %{title: "foo", contents: "bar"})
+      post =
+        Post
+        |> create(%{title: "foo", contents: "bar"})
+        |> Api.create!()
 
       assert %Post{title: "bar", contents: "foo"} =
-               Api.update!(post, attributes: %{title: "bar", contents: "foo"})
+               post |> update(%{title: "bar", contents: "foo"}) |> Api.update!()
     end
   end
 
   describe "updating many to many relationships" do
     test "allows updating with a many_to_many relationship" do
-      post = Api.create!(Post, attributes: %{title: "title"})
-      post2 = Api.create!(Post, attributes: %{title: "title2"})
-      post3 = Api.create!(Post, attributes: %{title: "title3"})
+      post =
+        Post
+        |> create(%{title: "title"})
+        |> Api.create!()
 
-      Api.update!(post, relationships: %{related_posts: [post2.id, post3.id]})
+      post2 =
+        Post
+        |> create(%{title: "title2"})
+        |> Api.create!()
+
+      post3 =
+        Post
+        |> create(%{title: "title3"})
+        |> Api.create!()
+
+      post
+      |> update()
+      |> replace_relationship(:related_posts, [post2, post3])
+      |> Api.update!()
     end
 
     test "it updates the join table properly" do
-      post = Api.create!(Post, attributes: %{title: "title"})
-      post2 = Api.create!(Post, attributes: %{title: "title2"})
-      post3 = Api.create!(Post, attributes: %{title: "title3"})
+      post =
+        Post
+        |> create(%{title: "title"})
+        |> Api.create!()
 
-      Api.update!(post, relationships: %{related_posts: [post2.id, post3.id]})
+      post2 =
+        Post
+        |> create(%{title: "title2"})
+        |> Api.create!()
+
+      post3 =
+        Post
+        |> create(%{title: "title3"})
+        |> Api.create!()
+
+      post
+      |> update()
+      |> replace_relationship(:related_posts, [post2, post3])
+      |> Api.update!()
 
       assert [_, _] = Api.read!(PostLink)
     end
 
     test "it responds with the relationship filled in" do
-      post = Api.create!(Post, attributes: %{title: "title"})
-      post2 = Api.create!(Post, attributes: %{title: "title2"})
-      post3 = Api.create!(Post, attributes: %{title: "title3"})
+      post =
+        Post
+        |> create(%{title: "title"})
+        |> Api.create!()
 
-      assert Enum.sort(
-               Api.update!(post, relationships: %{related_posts: [post2.id, post3.id]}).related_posts
-             ) ==
+      post2 =
+        Post
+        |> create(%{title: "title2"})
+        |> Api.create!()
+
+      post3 =
+        Post
+        |> create(%{title: "title3"})
+        |> Api.create!()
+
+      new_post =
+        post |> update() |> replace_relationship(:related_posts, [post2, post3]) |> Api.update!()
+
+      assert Enum.sort(new_post.related_posts) ==
                Enum.sort([
                  Api.get!(Post, post2.id),
                  Api.get!(Post, post3.id)
@@ -182,168 +227,243 @@ defmodule Ash.Test.Actions.UpdateTest do
 
   describe "updating with has_one relationships" do
     test "allows updating with has_one relationship" do
-      profile = Api.create!(Profile, attributes: %{bio: "best dude"})
-      profile2 = Api.create!(Profile, attributes: %{bio: "second best dude"})
+      profile =
+        Profile
+        |> create(%{bio: "best dude"})
+        |> Api.create!()
+
+      profile2 =
+        Profile
+        |> create(%{bio: "second best dude"})
+        |> Api.create!()
 
       author =
-        Api.create!(Author,
-          attributes: %{name: "fred"},
-          relationships: %{profile: profile.id}
-        )
+        Author
+        |> create(%{name: "fred"})
+        |> replace_relationship(:profile, profile)
+        |> Api.create!()
 
-      Api.update!(author, relationships: %{profile: profile2.id})
+      author
+      |> update()
+      |> replace_relationship(:profile, profile2)
+      |> Api.update!()
     end
 
     test "it sets the relationship on the destination record accordingly" do
-      profile = Api.create!(Profile, attributes: %{bio: "best dude"})
-      profile2 = Api.create!(Profile, attributes: %{bio: "second best dude"})
+      profile =
+        Profile
+        |> create(%{bio: "best dude"})
+        |> Api.create!()
+
+      profile2 =
+        Profile
+        |> create(%{bio: "second best dude"})
+        |> Api.create!()
 
       author =
-        Api.create!(Author,
-          attributes: %{name: "fred"},
-          relationships: %{profile: profile.id}
-        )
+        Author
+        |> create(%{name: "fred"})
+        |> replace_relationship(:profile, profile)
+        |> Api.create!()
 
-      Api.update!(author, relationships: %{profile: profile2.id})
+      author
+      |> update()
+      |> replace_relationship(:profile, profile2)
+      |> Api.update!()
 
       assert Api.get!(Profile, profile.id).author_id == nil
       assert Api.get!(Profile, profile2.id).author_id == author.id
     end
 
     test "it responds with the relationship filled in" do
-      profile = Api.create!(Profile, attributes: %{bio: "best dude"})
-      profile2 = Api.create!(Profile, attributes: %{bio: "second best dude"})
+      profile =
+        Profile
+        |> create(%{bio: "best dude"})
+        |> Api.create!()
+
+      profile2 =
+        Profile
+        |> create(%{bio: "second best dude"})
+        |> Api.create!()
 
       author =
-        Api.create!(Author,
-          attributes: %{name: "fred"},
-          relationships: %{profile: profile.id}
-        )
+        Author
+        |> create(%{name: "fred"})
+        |> replace_relationship(:profile, profile)
+        |> Api.create!()
 
-      updated_author = Api.update!(author, relationships: %{profile: profile2.id})
+      updated_author =
+        author
+        |> update()
+        |> replace_relationship(:profile, profile2)
+        |> Api.update!()
+
       assert updated_author.profile == %{profile2 | author_id: author.id}
     end
   end
 
   describe "updating with a has_many relationship" do
     test "allows updating with a has_many relationship" do
-      post = Api.create!(Post, attributes: %{title: "sup"})
-      post2 = Api.create!(Post, attributes: %{title: "sup2"})
+      post =
+        Post
+        |> create(%{title: "sup"})
+        |> Api.create!()
+
+      post2 =
+        Post
+        |> create(%{title: "sup2"})
+        |> Api.create!()
 
       author =
-        Api.create!(Author,
-          attributes: %{title: "foobar"},
-          relationships: %{
-            posts: [post.id]
-          }
-        )
+        Author
+        |> create(%{name: "foobar"})
+        |> replace_relationship(:posts, [post])
+        |> Api.create!()
 
-      Api.update!(author,
-        relationships: %{
-          posts: [post.id, post2.id]
-        }
-      )
+      author
+      |> update()
+      |> replace_relationship(:posts, [post, post2])
+      |> Api.update!()
     end
 
     test "it sets the relationship on the destination records accordingly" do
-      post = Api.create!(Post, attributes: %{title: "sup"})
-      post2 = Api.create!(Post, attributes: %{title: "sup2"})
+      post =
+        Post
+        |> create(%{title: "sup"})
+        |> Api.create!()
+
+      post2 =
+        Post
+        |> create(%{title: "sup2"})
+        |> Api.create!()
 
       author =
-        Api.create!(Author,
-          attributes: %{title: "foobar"},
-          relationships: %{
-            posts: [post.id]
-          }
-        )
+        Author
+        |> create(%{name: "foobar"})
+        |> replace_relationship(:posts, [post])
+        |> Api.create!()
 
       author =
-        Api.update!(author,
-          relationships: %{
-            posts: [post2.id]
-          }
-        )
+        author
+        |> update()
+        |> replace_relationship(:posts, [post2.id])
+        |> Api.update!()
 
       assert Api.get!(Post, post.id).author_id == nil
       assert Api.get!(Post, post2.id).author_id == author.id
     end
 
     test "it responds with the relationship field filled in" do
-      post = Api.create!(Post, attributes: %{title: "sup"})
-      post2 = Api.create!(Post, attributes: %{title: "sup2"})
+      post =
+        Post
+        |> create(%{title: "sup"})
+        |> Api.create!()
+
+      post2 =
+        Post
+        |> create(%{title: "sup2"})
+        |> Api.create!()
 
       author =
-        Api.create!(Author,
-          attributes: %{title: "foobar"},
-          relationships: %{
-            posts: [post.id]
-          }
-        )
+        Author
+        |> create(%{name: "foobar"})
+        |> replace_relationship(:posts, [post])
+        |> Api.create!()
 
-      assert Api.update!(author,
-               relationships: %{
-                 posts: [post2.id]
-               }
-             ).posts == [Api.get!(Post, post2.id)]
+      updated_author =
+        author
+        |> update()
+        |> replace_relationship(:posts, [post2])
+        |> Api.update!()
+
+      assert updated_author.posts == [Api.get!(Post, post2.id)]
     end
   end
 
   describe "updating with belongs_to relationships" do
     test "allows updating with belongs_to relationship" do
-      author = Api.create!(Author, attributes: %{bio: "best dude"})
-      author2 = Api.create!(Author, attributes: %{bio: "best dude"})
+      author =
+        Author
+        |> create(%{name: "best dude"})
+        |> Api.create!()
+
+      author2 =
+        Author
+        |> create(%{name: "best dude2"})
+        |> Api.create!()
 
       post =
-        Api.create!(Post,
-          attributes: %{title: "foobar"},
-          relationships: %{
-            author: author.id
-          }
-        )
+        Post
+        |> create(%{title: "foobar"})
+        |> replace_relationship(:author, author)
+        |> Api.create!()
 
-      Api.update!(post, relationships: %{author: author2.id})
+      post
+      |> update()
+      |> replace_relationship(:author, author2)
+      |> Api.update!()
     end
 
     test "sets the relationship on the destination records accordingly" do
-      author = Api.create!(Author, attributes: %{bio: "best dude"})
-      author2 = Api.create!(Author, attributes: %{bio: "best dude"})
+      author =
+        Author
+        |> create(%{name: "best dude"})
+        |> Api.create!()
+
+      author2 =
+        Author
+        |> create(%{name: "best dude2"})
+        |> Api.create!()
 
       post =
-        Api.create!(Post,
-          attributes: %{title: "foobar"},
-          relationships: %{
-            author: author.id
-          }
-        )
+        Post
+        |> create(%{title: "foobar"})
+        |> replace_relationship(:author, author)
+        |> Api.create!()
 
-      Api.update!(post, relationships: %{author: author2.id})
+      post
+      |> update()
+      |> replace_relationship(:author, author2)
+      |> Api.update!()
 
       assert Api.get!(Author, author2.id, side_load: [:posts]).posts == [Api.get!(Post, post.id)]
     end
 
     test "it responds with the relationship field filled in" do
-      author = Api.create!(Author, attributes: %{bio: "best dude"})
-      author2 = Api.create!(Author, attributes: %{bio: "best dude"})
+      author =
+        Author
+        |> create(%{name: "best dude"})
+        |> Api.create!()
+
+      author2 =
+        Author
+        |> create(%{name: "best dude2"})
+        |> Api.create!()
 
       post =
-        Api.create!(Post,
-          attributes: %{title: "foobar"},
-          relationships: %{
-            author: author.id
-          }
-        )
+        Post
+        |> create(%{title: "foobar"})
+        |> replace_relationship(:author, author)
+        |> Api.create!()
 
-      assert Api.update!(post, relationships: %{author: author2.id}).author ==
+      updated_post = post |> update() |> replace_relationship(:author, author2) |> Api.update!()
+
+      assert updated_post.author ==
                Api.get!(Author, author2.id)
     end
   end
 
   describe "unauthorized update" do
     test "it does not update the record" do
-      record = Api.create!(Authorized, attributes: %{name: "bar"})
+      record =
+        Authorized
+        |> create(%{name: "bar"})
+        |> Api.create!()
 
       assert_raise(Ash.Error.Forbidden, fn ->
-        Api.update!(record, attributes: %{name: "foo"}, authorize?: true)
+        record
+        |> update(%{name: "foo"})
+        |> Api.update!(authorize?: true)
       end)
 
       assert Api.get!(Authorized, record.id).name == "bar"

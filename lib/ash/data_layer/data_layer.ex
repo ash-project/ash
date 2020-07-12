@@ -16,6 +16,7 @@ defmodule Ash.DataLayer do
           | {:filter_predicate, Ash.Type.t(), struct}
           | {:sort, Ash.Type.t()}
           | :upsert
+          | :delete_with_query
           | :composite_primary_key
 
   @callback custom_filters(Ash.resource()) :: map()
@@ -33,11 +34,11 @@ defmodule Ash.DataLayer do
   @callback resource_to_query(Ash.resource()) :: Ash.data_layer_query()
   @callback run_query(Ash.data_layer_query(), Ash.resource()) ::
               {:ok, list(Ash.resource())} | {:error, term}
-  @callback create(Ash.resource(), changeset :: Ecto.Changeset.t()) ::
+  @callback create(Ash.resource(), Ash.changeset()) ::
               {:ok, Ash.resource()} | {:error, term}
-  @callback upsert(Ash.resource(), changeset :: Ecto.Changeset.t()) ::
+  @callback upsert(Ash.resource(), Ash.changeset()) ::
               {:ok, Ash.resource()} | {:error, term}
-  @callback update(Ash.resource(), changeset :: Ecto.Changeset.t()) ::
+  @callback update(Ash.resource(), Ash.changeset()) ::
               {:ok, Ash.resource()} | {:error, term}
   @callback destroy(record :: Ash.record()) :: :ok | {:error, term}
   @callback transaction(Ash.resource(), (() -> term)) :: {:ok, term} | {:error, term}
@@ -58,13 +59,13 @@ defmodule Ash.DataLayer do
     Ash.data_layer(resource).resource_to_query(resource)
   end
 
-  @spec update(Ash.resource(), Ecto.Changeset.t()) ::
+  @spec update(Ash.resource(), Ash.changeset()) ::
           {:ok, Ash.record()} | {:error, term}
   def update(resource, changeset) do
     Ash.data_layer(resource).update(resource, changeset)
   end
 
-  @spec create(Ash.resource(), Ecto.Changeset.t()) ::
+  @spec create(Ash.resource(), Ash.changeset()) ::
           {:ok, Ash.record()} | {:error, term}
   def create(resource, changeset) do
     Ash.data_layer(resource).create(resource, changeset)
@@ -79,7 +80,7 @@ defmodule Ash.DataLayer do
     end
   end
 
-  @spec upsert(Ash.resource(), Ecto.Changeset.t()) ::
+  @spec upsert(Ash.resource(), Ash.changeset()) ::
           {:ok, Ash.record()} | {:error, term}
   def upsert(resource, changeset) do
     Ash.data_layer(resource).upsert(resource, changeset)

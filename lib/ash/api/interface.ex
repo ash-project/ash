@@ -49,26 +49,26 @@ defmodule Ash.Api.Interface do
       end
 
       @impl true
-      def create!(resource, params \\ []) do
-        Api.create!(__MODULE__, resource, params)
+      def create!(changeset, params \\ []) do
+        Api.create!(__MODULE__, changeset, params)
       end
 
       @impl true
-      def create(resource, params \\ []) do
-        case Api.create(__MODULE__, resource, params) do
+      def create(changeset, params \\ []) do
+        case Api.create(__MODULE__, changeset, params) do
           {:ok, instance} -> {:ok, instance}
           {:error, error} -> {:error, List.wrap(error)}
         end
       end
 
       @impl true
-      def update!(record, params \\ []) do
-        Api.update!(__MODULE__, record, params)
+      def update!(changeset, params \\ []) do
+        Api.update!(__MODULE__, changeset, params)
       end
 
       @impl true
-      def update(record, params \\ []) do
-        case Api.update(__MODULE__, record, params) do
+      def update(changeset, params \\ []) do
+        case Api.update(__MODULE__, changeset, params) do
           {:ok, instance} -> {:ok, instance}
           {:error, error} -> {:error, List.wrap(error)}
         end

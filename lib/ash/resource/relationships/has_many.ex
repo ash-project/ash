@@ -1,11 +1,12 @@
 defmodule Ash.Resource.Relationships.HasMany do
-  @moduledoc false
+  @moduledoc "Represents a has_many relationship on a resource"
   defstruct [
     :name,
     :destination,
     :destination_field,
     :source_field,
     :source,
+    :writable?,
     cardinality: :many,
     type: :has_many
   ]
@@ -14,6 +15,7 @@ defmodule Ash.Resource.Relationships.HasMany do
           type: :has_many,
           cardinality: :many,
           source: Ash.resource(),
+          writable?: boolean,
           name: atom,
           type: Ash.Type.t(),
           destination: Ash.resource(),

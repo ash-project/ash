@@ -1,4 +1,4 @@
 defmodule Ash.Api.ResourceReference do
-  @moduledoc false
+  @moduledoc "Represents a resource in an API"
   defstruct [:resource]
 end

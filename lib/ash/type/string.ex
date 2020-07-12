@@ -31,6 +31,8 @@ defmodule Ash.Type.String do
   @impl true
   def constraints, do: @constraints
 
+  def apply_constraints(nil, _), do: :ok
+
   def apply_constraints(value, constraints) do
     errors =
       Enum.reduce(constraints, [], fn

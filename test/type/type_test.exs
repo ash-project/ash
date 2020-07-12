@@ -70,17 +70,22 @@ defmodule Ash.Test.Type.TypeTest do
     end
   end
 
+  import Ash.Changeset
+
   test "it accepts valid data" do
-    post = Api.create!(Post, attributes: %{title: "foobar"})
+    post =
+      Post
+      |> create(%{title: "foobar"})
+      |> Api.create!()
 
     assert post.title == "foobar"
   end
 
   test "it rejects invalid data" do
-    # As we add informative errors, this test will fail and we will know to test those
-    # more informative errors.
     assert_raise(Ash.Error.Invalid, ~r/is too long, max_length is 10/, fn ->
-      Api.create!(Post, attributes: %{title: "foobarbazbuzbiz"})
+      Post
+      |> create(%{title: "foobarbazbuzbiz"})
+      |> Api.create!()
     end)
   end
 end

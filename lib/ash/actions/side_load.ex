@@ -1,7 +1,6 @@
 defmodule Ash.Actions.SideLoad do
   @moduledoc false
 
-  alias Ash.Actions.PrimaryKeyHelpers
   alias Ash.Engine
   alias Ash.Engine.Request
 
@@ -73,8 +72,9 @@ defmodule Ash.Actions.SideLoad do
 
   def side_load([%resource{} | _] = data, side_load_query, opts) do
     api = side_load_query.api
+    pkey = Ash.primary_key(resource)
 
-    {:ok, pkey_filters} = PrimaryKeyHelpers.values_to_primary_key_filters(resource, data)
+    pkey_filters = Enum.map(data, &Map.take(&1, pkey))
 
     new_query = Ash.Query.filter(side_load_query, or: pkey_filters)
 
@@ -103,12 +103,11 @@ defmodule Ash.Actions.SideLoad do
       lead_path = :lists.droplast(key)
 
       case last_relationship do
-        %{type: :many_to_many, name: name} ->
+        %{type: :many_to_many} ->
           attach_many_to_many_side_loads(
             data,
             lead_path,
             last_relationship,
-            name,
             side_loads,
             value
           )
@@ -155,10 +154,8 @@ defmodule Ash.Actions.SideLoad do
     end)
   end
 
-  defp attach_many_to_many_side_loads(data, lead_path, last_relationship, name, side_loads, value) do
-    join_association = String.to_existing_atom(to_string(name) <> "_join_assoc")
-
-    join_path = lead_path ++ [join_association]
+  defp attach_many_to_many_side_loads(data, lead_path, last_relationship, side_loads, value) do
+    join_path = lead_path ++ [last_relationship.join_relationship]
 
     join_data =
       side_loads
@@ -348,10 +345,7 @@ defmodule Ash.Actions.SideLoad do
   end
 
   defp join_relationship(relationship) do
-    Ash.relationship(
-      relationship.source,
-      String.to_existing_atom(to_string(relationship.name) <> "_join_assoc")
-    )
+    Ash.relationship(relationship.source, relationship.join_relationship)
   end
 
   defp join_relationship_path(path, join_relationship) do

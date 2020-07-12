@@ -47,9 +47,8 @@ defmodule Ash.MixProject do
         entrypoint: [
           Ash,
           Ash.Api,
-          Ash.Resource,
-          Ash.Dsl,
-          Ash.Query
+          Ash.Query,
+          Ash.Changeset
         ],
         type: ~r/Ash.Type/,
         data_layer: ~r/Ash.DataLayer/,
@@ -64,7 +63,9 @@ defmodule Ash.MixProject do
         "api dsl transformers": ~r/Ash.Api.Transformers/,
         "api dsl": ~r/Ash.Api.Dsl/,
         "filter predicates": ~r/Ash.Filter.Predicate/,
-        filter: ~r/Ash.Filter/
+        filter: ~r/Ash.Filter/,
+        "resource introspection": ~r/Ash.Resource/,
+        "api introspection": ~r/Ash.Api/
       ]
     ]
   end

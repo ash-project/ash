@@ -66,12 +66,13 @@ defmodule Ash.Test.Actions.CreateTest do
     attributes do
       attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
       attribute :name, :string
+      attribute :bio, :string
     end
 
     relationships do
       has_one :profile, Profile, destination_field: :author_id
 
-      has_many :posts, Ash.Test.Actions.CreateTest.Post, destination_field: :author
+      has_many :posts, Ash.Test.Actions.CreateTest.Post, destination_field: :author_id
     end
   end
 
@@ -125,6 +126,7 @@ defmodule Ash.Test.Actions.CreateTest do
       attribute :tag2, :string, default: &PostDefaults.garbage2/0
       attribute :tag3, :string, default: {PostDefaults, :garbage3, []}
       attribute :list_attribute, {:array, :integer}
+      attribute :date, :date
 
       attribute :list_attribute_with_constraints, {:array, :integer},
         constraints: [
@@ -157,40 +159,83 @@ defmodule Ash.Test.Actions.CreateTest do
     end
   end
 
+  import Ash.Changeset
+
   describe "simple creates" do
     test "allows creating a record with valid attributes" do
       assert %Post{title: "foo", contents: "bar"} =
-               Api.create!(Post,
-                 attributes: %{title: "foo", contents: "bar", date: Date.utc_today()}
-               )
+               Post
+               |> create()
+               |> change_attributes(%{
+                 title: "foo",
+                 contents: "bar",
+                 date: Date.utc_today()
+               })
+               |> Api.create!()
     end
 
     test "constant default values are set properly" do
-      assert %Post{tag: "garbage"} = Api.create!(Post, attributes: %{title: "foo"})
+      assert %Post{tag: "garbage"} =
+               Post
+               |> create()
+               |> change_attribute(:title, "foo")
+               |> Api.create!()
     end
 
     test "constant functions values are set properly" do
-      assert %Post{tag2: "garbage2"} = Api.create!(Post, attributes: %{title: "foo"})
+      assert %Post{tag2: "garbage2"} =
+               Post
+               |> create()
+               |> change_attribute(:title, "foo")
+               |> Api.create!()
     end
 
     test "constant module/function values are set properly" do
-      assert %Post{tag3: "garbage3"} = Api.create!(Post, attributes: %{title: "foo"})
+      assert %Post{tag3: "garbage3"} =
+               Post
+               |> create()
+               |> change_attribute(:title, "foo")
+               |> Api.create!()
     end
   end
 
   describe "creating many to many relationships" do
     test "allows creating with a many_to_many relationship" do
-      post2 = Api.create!(Post, attributes: %{title: "title2"})
-      post3 = Api.create!(Post, attributes: %{title: "title3"})
+      post2 =
+        Post
+        |> create()
+        |> change_attribute(:title, "title2")
+        |> Api.create!()
 
-      Api.create!(Post, relationships: %{related_posts: [post2.id, post3.id]})
+      post3 =
+        Post
+        |> create()
+        |> change_attribute(:title, "title3")
+        |> Api.create!()
+
+      Post
+      |> create()
+      |> replace_relationship(:related_posts, [post2, post3])
+      |> Api.create!()
     end
 
     test "it updates the join table properly" do
-      post2 = Api.create!(Post, attributes: %{title: "title2"})
-      post3 = Api.create!(Post, attributes: %{title: "title3"})
+      post2 =
+        Post
+        |> create()
+        |> change_attribute(:title, "title2")
+        |> Api.create!()
 
-      Api.create!(Post, relationships: %{related_posts: [post2.id, post3.id]})
+      post3 =
+        Post
+        |> create()
+        |> change_attribute(:title, "title3")
+        |> Api.create!()
+
+      Post
+      |> create()
+      |> replace_relationship(:related_posts, [post2, post3])
+      |> Api.create!()
 
       assert [_, _] =
                PostLink
@@ -199,12 +244,25 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     test "it responds with the relationship filled in" do
-      post2 = Api.create!(Post, attributes: %{title: "title2"})
-      post3 = Api.create!(Post, attributes: %{title: "title3"})
+      post2 =
+        Post
+        |> create()
+        |> change_attribute(:title, "title2")
+        |> Api.create!()
 
-      assert Enum.sort(
-               Api.create!(Post, relationships: %{related_posts: [post2.id, post3.id]}).related_posts
-             ) ==
+      post3 =
+        Post
+        |> create()
+        |> change_attribute(:title, "title3")
+        |> Api.create!()
+
+      post =
+        Post
+        |> create()
+        |> replace_relationship(:related_posts, [post2, post3])
+        |> Api.create!()
+
+      assert Enum.sort(post.related_posts) ==
                Enum.sort([
                  Api.get!(Post, post2.id),
                  Api.get!(Post, post3.id)
@@ -214,34 +272,48 @@ defmodule Ash.Test.Actions.CreateTest do
 
   describe "creating with has_one relationships" do
     test "allows creating with has_one relationship" do
-      profile = Api.create!(Profile, attributes: %{bio: "best dude"})
+      profile =
+        Profile
+        |> create()
+        |> change_attribute(:bio, "best dude")
+        |> Api.create!()
 
-      Api.create!(Author,
-        attributes: %{name: "fred"},
-        relationships: %{profile: profile.id}
-      )
+      Author
+      |> create()
+      |> change_attribute(:name, "fred")
+      |> replace_relationship(:profile, profile)
     end
 
     test "it sets the relationship on the destination record accordingly" do
-      profile = Api.create!(Profile, attributes: %{bio: "best dude"})
+      profile =
+        Profile
+        |> create()
+        |> change_attribute(:bio, "best dude")
+        |> Api.create!()
 
       author =
-        Api.create!(Author,
-          attributes: %{name: "fred"},
-          relationships: %{profile: profile.id}
-        )
+        Author
+        |> create()
+        |> change_attribute(:name, "fred")
+        |> replace_relationship(:profile, profile)
+        |> Api.create!()
 
       assert Api.get!(Profile, profile.id).author_id == author.id
     end
 
     test "it responds with the relationshi filled in" do
-      profile = Api.create!(Profile, attributes: %{bio: "best dude"})
+      profile =
+        Profile
+        |> create()
+        |> change_attribute(:bio, "best dude")
+        |> Api.create!()
 
       author =
-        Api.create!(Author,
-          attributes: %{name: "fred"},
-          relationships: %{profile: profile.id}
-        )
+        Author
+        |> create()
+        |> change_attribute(:name, "fred")
+        |> replace_relationship(:profile, profile)
+        |> Api.create!()
 
       assert author.profile.author_id == author.id
     end
@@ -249,100 +321,125 @@ defmodule Ash.Test.Actions.CreateTest do
 
   describe "creating with a has_many relationship" do
     test "allows creating with a has_many relationship" do
-      post = Api.create!(Post, attributes: %{title: "sup"})
+      post =
+        Post
+        |> create()
+        |> change_attribute(:title, "sup")
+        |> Api.create!()
 
-      Api.create!(Author,
-        attributes: %{title: "foobar"},
-        relationships: %{
-          posts: [post.id]
-        }
-      )
+      Author
+      |> create()
+      |> change_attribute(:name, "foobar")
+      |> replace_relationship(:posts, [post])
+      |> Api.create!()
     end
   end
 
   describe "creating with belongs_to relationships" do
     test "allows creating with belongs_to relationship" do
-      author = Api.create!(Author, attributes: %{bio: "best dude"})
+      author =
+        Author
+        |> create()
+        |> change_attribute(:bio, "best dude")
+        |> Api.create!()
 
-      Api.create!(Post,
-        attributes: %{title: "foobar"},
-        relationships: %{
-          author: author.id
-        }
-      )
+      Post
+      |> create()
+      |> change_attribute(:title, "foobar")
+      |> replace_relationship(:author, author)
+      |> Api.create!()
     end
 
     test "it sets the relationship on the destination record accordingly" do
-      author = Api.create!(Author, attributes: %{bio: "best dude"})
+      author =
+        Author
+        |> create()
+        |> change_attribute(:bio, "best dude")
+        |> Api.create!()
 
       post =
-        Api.create!(Post,
-          attributes: %{title: "foobar"},
-          relationships: %{
-            author: author.id
-          }
-        )
+        Post
+        |> create()
+        |> change_attribute(:title, "foobar")
+        |> replace_relationship(:author, author)
+        |> Api.create!()
 
       assert Api.get!(Post, post.id).author_id == author.id
     end
 
     test "it responds with the relationship field filled in" do
-      author = Api.create!(Author, attributes: %{bio: "best dude"})
+      author =
+        Author
+        |> create()
+        |> change_attribute(:bio, "best dude")
+        |> Api.create!()
 
-      assert Api.create!(Post,
-               attributes: %{title: "foobar"},
-               relationships: %{
-                 author: author.id
-               }
-             ).author_id == author.id
+      post =
+        Post
+        |> create()
+        |> change_attribute(:title, "foobar")
+        |> replace_relationship(:author, author)
+        |> Api.create!()
+
+      assert post.author_id == author.id
     end
 
     test "it responds with the relationship filled in" do
-      author = Api.create!(Author, attributes: %{bio: "best dude"})
+      author =
+        Author
+        |> create()
+        |> change_attribute(:bio, "best dude")
+        |> Api.create!()
 
-      assert Api.create!(Post,
-               attributes: %{title: "foobar"},
-               relationships: %{
-                 author: author.id
-               }
-             ).author == author
+      post =
+        Post
+        |> create()
+        |> change_attribute(:title, "foobar")
+        |> replace_relationship(:author, author)
+        |> Api.create!()
+
+      assert post.author == author
     end
   end
 
   describe "list type" do
     test "it can store a list" do
-      assert Api.create!(Post,
-               attributes: %{list_attribute: [1, 2, 3, 4]}
-             )
+      assert Post
+             |> create()
+             |> change_attribute(:list_attribute, [1, 2, 3, 4])
+             |> Api.create!()
     end
   end
 
   describe "list type constraints" do
     test "it honors min_length" do
       assert_raise Ash.Error.Invalid, ~r/must have more than 2 items/, fn ->
-        Api.create!(Post,
-          attributes: %{list_attribute_with_constraints: []}
-        )
+        Post
+        |> create()
+        |> change_attribute(:list_attribute_with_constraints, [])
+        |> Api.create!()
       end
     end
 
     test "it honors max_length" do
       assert_raise Ash.Error.Invalid, ~r/must have fewer than 10 items/, fn ->
-        Api.create!(Post,
-          attributes: %{
-            list_attribute_with_constraints: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-          }
-        )
+        list = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+
+        Post
+        |> create()
+        |> change_attribute(:list_attribute_with_constraints, list)
+        |> Api.create!()
       end
     end
 
     test "it honors item constraints" do
       assert_raise Ash.Error.Invalid, ~r/must be less than `10` at index 0/, fn ->
-        Api.create!(Post,
-          attributes: %{
-            list_attribute_with_constraints: [28, 2, 4]
-          }
-        )
+        list = [28, 2, 4]
+
+        Post
+        |> create()
+        |> change_attribute(:list_attribute_with_constraints, list)
+        |> Api.create!()
       end
     end
   end
@@ -350,7 +447,10 @@ defmodule Ash.Test.Actions.CreateTest do
   describe "unauthorized create" do
     test "it does not create the record" do
       assert_raise(Ash.Error.Forbidden, fn ->
-        Api.create!(Authorized, attributes: %{name: "foo"}, authorize?: true)
+        Authorized
+        |> create()
+        |> change_attribute(:name, "foo")
+        |> Api.create!(authorize?: true)
       end)
 
       assert [] = Api.read!(Authorized)

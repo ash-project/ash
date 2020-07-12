@@ -155,10 +155,7 @@ defmodule Ash.Type do
         {:ok, value}
 
       :error ->
-        {:error, %{message: "is invalid"}}
-
-      {:error, message} when is_bitstring(message) ->
-        {:error, %{message: message}}
+        {:error, "is invalid"}
 
       {:error, other} ->
         {:error, other}

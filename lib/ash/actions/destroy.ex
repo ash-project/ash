@@ -11,13 +11,6 @@ defmodule Ash.Actions.Destroy do
       |> Keyword.take([:verbose?, :actor, :authorize?])
       |> Keyword.put(:transaction?, true)
 
-    action =
-      if is_atom(action) and not is_nil(action) do
-        Ash.action(resource, action, :read)
-      else
-        action
-      end
-
     authorization_request =
       Request.new(
         resource: resource,

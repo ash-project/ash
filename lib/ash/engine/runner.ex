@@ -180,13 +180,13 @@ defmodule Ash.Engine.Runner do
     end
   end
 
-  defp fake_handle_cast({:send_field, receiver_path, pid, dep, optional?}, state) do
+  defp fake_handle_cast({:send_field, receiver_path, pid, dep}, state) do
     log(state, "notifying #{inspect(receiver_path)} of #{inspect(dep)}")
     path = :lists.droplast(dep)
     field = List.last(dep)
     request = Enum.find(state.requests, &(&1.path == path))
 
-    case Request.send_field(request, receiver_path, field, optional?) do
+    case Request.send_field(request, receiver_path, field) do
       {:waiting, new_request, notifications, dependencies} ->
         new_dependencies = build_dependencies(new_request, dependencies)
 
@@ -203,9 +203,7 @@ defmodule Ash.Engine.Runner do
         |> notify(notifications)
 
       {:error, error, new_request} ->
-        unless optional? do
-          Engine.send_wont_receive(pid, receiver_path, new_request.path, field)
-        end
+        Engine.send_wont_receive(pid, receiver_path, new_request.path, field)
 
         state
         |> add_error(new_request.path, error)
@@ -229,8 +227,8 @@ defmodule Ash.Engine.Runner do
   end
 
   defp build_dependencies(request, dependencies) do
-    Enum.map(dependencies, fn {dep, optional?} ->
-      {request.path, dep, optional?}
+    Enum.map(dependencies, fn dep ->
+      {request.path, dep}
     end)
   end
 
@@ -252,7 +250,7 @@ defmodule Ash.Engine.Runner do
     {state, notifications, more_dependencies} =
       dependencies
       |> Enum.uniq()
-      |> Enum.reduce({state, notifications, []}, fn {request_path, dep, optional?},
+      |> Enum.reduce({state, notifications, []}, fn {request_path, dep},
                                                     {state, notifications, dependencies} ->
         request = Enum.find(state.requests, &(&1.path == request_path))
         path = :lists.droplast(dep)
@@ -262,7 +260,7 @@ defmodule Ash.Engine.Runner do
           nil ->
             pid = Map.get(state.pid_info, path)
 
-            GenServer.cast(pid, {:send_field, path, self(), dep, optional?})
+            GenServer.cast(pid, {:send_field, path, self(), dep})
 
             {state, notifications, dependencies}
 
@@ -273,8 +271,7 @@ defmodule Ash.Engine.Runner do
               dependencies,
               depended_on_request,
               request,
-              field,
-              optional?
+              field
             )
         end
       end)
@@ -294,10 +291,9 @@ defmodule Ash.Engine.Runner do
          dependencies,
          depended_on_request,
          request,
-         field,
-         optional?
+         field
        ) do
-    case Request.send_field(depended_on_request, request.path, field, optional?) do
+    case Request.send_field(depended_on_request, request.path, field) do
       {:ok, new_request, new_notifications} ->
         {replace_request(state, new_request), notifications ++ new_notifications, dependencies}
 
@@ -313,15 +309,8 @@ defmodule Ash.Engine.Runner do
           state
           |> replace_request(%{new_request | state: :error})
           |> add_error(new_request.path, error)
-
-        new_state =
-          if optional? do
-            new_state
-          else
-            new_state
-            |> add_error(request.path, "dependency failed")
-            |> replace_request(%{new_request | state: :error, error: error})
-          end
+          |> add_error(request.path, "dependency failed")
+          |> replace_request(%{new_request | state: :error, error: error})
 
         {new_state, notifications, dependencies}
     end

@@ -1,5 +1,5 @@
 defmodule Ash.Resource.Actions.Update do
-  @moduledoc false
+  @moduledoc "Represents a update action on a resource."
 
   defstruct [:name, :primary?, type: :update]
 

@@ -1,5 +1,5 @@
-defmodule Ash.Error.Changes.InvalidValue do
-  @moduledoc "Used when an invalid value is provided for a change"
+defmodule Ash.Error.Changes.InvalidAttribute do
+  @moduledoc "Used when an invalid value is provided for an attribute change"
   use Ash.Error
 
   def_ash_error([:field, :type, :message], class: :invalid)
@@ -7,7 +7,7 @@ defmodule Ash.Error.Changes.InvalidValue do
   defimpl Ash.ErrorKind do
     def id(_), do: Ecto.UUID.generate()
 
-    def code(_), do: "invalid_change_value"
+    def code(_), do: "invalid_attribute"
 
     def message(error) do
       "Invalid value#{for_type(error)}provided#{for_field(error)}#{do_message(error)}"

@@ -21,7 +21,7 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     relationships do
-      has_many :posts, Ash.Test.Actions.ReadTest.Post, destination_field: :author
+      has_many :posts, Ash.Test.Actions.ReadTest.Post, destination_field: :author1_id
     end
   end
 
@@ -60,9 +60,15 @@ defmodule Ash.Test.Actions.ReadTest do
     end
   end
 
+  import Ash.Changeset
+
   describe "api.get/3" do
     setup do
-      {:ok, post} = Api.create(Post, attributes: %{title: "test", contents: "yeet"})
+      post =
+        Post
+        |> create(%{title: "test", contents: "yeet"})
+        |> Api.create!()
+
       %{post: post}
     end
 
@@ -79,7 +85,11 @@ defmodule Ash.Test.Actions.ReadTest do
 
   describe "api.get!/3" do
     setup do
-      {:ok, post} = Api.create(Post, attributes: %{title: "test", contents: "yeet"})
+      post =
+        Post
+        |> create(%{title: "test", contents: "yeet"})
+        |> Api.create!()
+
       %{post: post}
     end
 
@@ -108,8 +118,15 @@ defmodule Ash.Test.Actions.ReadTest do
 
   describe "api.read/2" do
     setup do
-      {:ok, post1} = Api.create(Post, attributes: %{title: "test", contents: "yeet"})
-      {:ok, post2} = Api.create(Post, attributes: %{title: "test1", contents: "yeet2"})
+      post1 =
+        Post
+        |> create(%{title: "test", contents: "yeet"})
+        |> Api.create!()
+
+      post2 =
+        Post
+        |> create(%{title: "test1", contents: "yeet2"})
+        |> Api.create!()
 
       %{post1: post1, post2: post2}
     end
@@ -139,8 +156,15 @@ defmodule Ash.Test.Actions.ReadTest do
 
   describe "api.read!/2" do
     setup do
-      {:ok, post1} = Api.create(Post, attributes: %{title: "test", contents: "yeet"})
-      {:ok, post2} = Api.create(Post, attributes: %{title: "test1", contents: "yeet2"})
+      post1 =
+        Post
+        |> create(%{title: "test", contents: "yeet"})
+        |> Api.create!()
+
+      post2 =
+        Post
+        |> create(%{title: "test1", contents: "yeet2"})
+        |> Api.create!()
 
       %{post1: post1, post2: post2}
     end
@@ -164,8 +188,15 @@ defmodule Ash.Test.Actions.ReadTest do
 
   describe "filters" do
     setup do
-      {:ok, post1} = Api.create(Post, attributes: %{title: "test", contents: "yeet"})
-      {:ok, post2} = Api.create(Post, attributes: %{title: "test1", contents: "yeet"})
+      post1 =
+        Post
+        |> create(%{title: "test", contents: "yeet"})
+        |> Api.create!()
+
+      post2 =
+        Post
+        |> create(%{title: "test1", contents: "yeet"})
+        |> Api.create!()
 
       %{post1: post1, post2: post2}
     end
@@ -197,14 +228,22 @@ defmodule Ash.Test.Actions.ReadTest do
 
   describe "relationship filters" do
     setup do
-      author1 = Api.create!(Author, attributes: %{name: "bruh"})
-      author2 = Api.create!(Author, attributes: %{name: "bruh"})
+      author1 =
+        Author
+        |> create(%{name: "bruh"})
+        |> Api.create!()
 
-      {:ok, post} =
-        Api.create(Post,
-          attributes: %{title: "test", contents: "yeet"},
-          relationships: %{author1: author1.id, author2: author2.id}
-        )
+      author2 =
+        Author
+        |> create(%{name: "bruh"})
+        |> Api.create!()
+
+      post =
+        Post
+        |> create(%{title: "test", contents: "yeet"})
+        |> replace_relationship(:author1, author1)
+        |> replace_relationship(:author2, author2)
+        |> Api.create!()
 
       %{post: post, author1: author1, author2: author2}
     end
@@ -226,8 +265,15 @@ defmodule Ash.Test.Actions.ReadTest do
 
   describe "sort" do
     setup do
-      {:ok, post1} = Api.create(Post, attributes: %{title: "abc", contents: "abc"})
-      {:ok, post2} = Api.create(Post, attributes: %{title: "xyz", contents: "abc"})
+      post1 =
+        Post
+        |> create(%{title: "abc", contents: "abc"})
+        |> Api.create!()
+
+      post2 =
+        Post
+        |> create(%{title: "xyz", contents: "abc"})
+        |> Api.create!()
 
       %{post1: post1, post2: post2}
     end
@@ -253,7 +299,10 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     test "a nested sort sorts accordingly", %{post1: post1, post2: post2} do
-      {:ok, middle_post} = Api.create(Post, attributes: %{title: "abc", contents: "xyz"})
+      middle_post =
+        Post
+        |> create(%{title: "abc", contents: "xyz"})
+        |> Api.create!()
 
       assert {:ok, [^post1, ^middle_post, ^post2]} =
                Post

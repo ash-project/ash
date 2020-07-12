@@ -1,5 +1,5 @@
 defmodule Ash.Resource.Actions.Read do
-  @moduledoc false
+  @moduledoc "Represents a read action on a resource."
 
   defstruct [:name, :primary?, type: :read]
 

@@ -123,15 +123,26 @@ defmodule Ash.Test.Actions.SideLoadTest do
     :ok
   end
 
+  import Ash.Changeset
+
   describe "side_loads" do
     test "it allows sideloading related data" do
-      author = Api.create!(Author, attributes: %{name: "zerg"})
+      author =
+        Author
+        |> create(%{name: "zerg"})
+        |> Api.create!()
 
       post1 =
-        Api.create!(Post, attributes: %{title: "post1"}, relationships: %{author: author.id})
+        Post
+        |> create(%{title: "post1"})
+        |> replace_relationship(:author, author)
+        |> Api.create!()
 
       post2 =
-        Api.create!(Post, attributes: %{title: "post2"}, relationships: %{author: author.id})
+        Post
+        |> create(%{title: "post2"})
+        |> replace_relationship(:author, author)
+        |> Api.create!()
 
       [author] =
         Author
@@ -148,14 +159,21 @@ defmodule Ash.Test.Actions.SideLoadTest do
     end
 
     test "it allows sideloading many to many relationships" do
-      category1 = Api.create!(Category, attributes: %{name: "lame"})
-      category2 = Api.create!(Category, attributes: %{name: "cool"})
+      category1 =
+        Category
+        |> create(%{name: "lame"})
+        |> Api.create!()
+
+      category2 =
+        Category
+        |> create(%{name: "cool"})
+        |> Api.create!()
 
       post =
-        Api.create!(Post,
-          attributes: %{title: "post1"},
-          relationships: %{categories: [category1, category2]}
-        )
+        Post
+        |> create(%{title: "post1"})
+        |> replace_relationship(:categories, [category1, category2])
+        |> Api.create!()
 
       [post] =
         Post
@@ -169,14 +187,21 @@ defmodule Ash.Test.Actions.SideLoadTest do
     end
 
     test "it allows sideloading nested many to many relationships" do
-      category1 = Api.create!(Category, attributes: %{name: "lame"})
-      category2 = Api.create!(Category, attributes: %{name: "cool"})
+      category1 =
+        Category
+        |> create(%{name: "lame"})
+        |> Api.create!()
+
+      category2 =
+        Category
+        |> create(%{name: "cool"})
+        |> Api.create!()
 
       post =
-        Api.create!(Post,
-          attributes: %{title: "post1"},
-          relationships: %{categories: [category1, category2]}
-        )
+        Post
+        |> create(%{title: "post1"})
+        |> replace_relationship(:categories, [category1, category2])
+        |> Api.create!()
 
       [post] =
         Post

@@ -158,7 +158,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     )
   end
 
-  test "fails if the destination resource doesn't have the correct field" do
+  test "fails in api initialization if the destination resource doesn't have the correct field" do
     assert_raise(
       Ash.Error.ResourceDslError,
       ~r/Relationship `post` expects source field `post_id` to be defined/,
@@ -166,6 +166,14 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
         defposts do
           relationships do
             belongs_to :post, __MODULE__, define_field?: false
+          end
+        end
+
+        defmodule Api do
+          use Ash.Api
+
+          resources do
+            resource Post
           end
         end
       end

@@ -9,6 +9,7 @@ defmodule Ash do
   - [Resource Documentation](Ash.Resource.html)
   - [DSL Documentation](Ash.Dsl.html)
   - [Code API documentation](Ash.Api.Interface.html)
+  - [Getting Started Guide](getting_started.html)
 
   ## Introduction
 
@@ -75,6 +76,7 @@ defmodule Ash do
   @type action :: Create.t() | Read.t() | Update.t() | Destroy.t()
   @type query :: Ash.Query.t()
   @type actor :: Ash.record()
+  @type changeset :: Ash.Changeset.t()
 
   require Ash.Dsl.Extension
   alias Ash.Dsl.Extension

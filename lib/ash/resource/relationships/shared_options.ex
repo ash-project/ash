@@ -19,6 +19,11 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       type: :atom,
       doc:
         "The field on this resource that should match the `destination_field` on the related resource."
+    ],
+    writable?: [
+      type: :boolean,
+      doc: "Whether or not the relationship may be edited.",
+      default: true
     ]
   ]
 

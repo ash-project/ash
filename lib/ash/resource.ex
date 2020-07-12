@@ -46,6 +46,9 @@ defmodule Ash.Resource do
       @doc false
       alias Ash.Dsl.Extension
 
+      Module.register_attribute(__MODULE__, :is_ash_resource, persist: true, accumulate: false)
+      @is_ash_resource true
+
       :persistent_term.put({__MODULE__, :data_layer}, @data_layer)
       :persistent_term.put({__MODULE__, :authorizers}, @authorizers)
 
@@ -75,4 +78,10 @@ defmodule Ash.Resource do
       Ash.Schema.define_schema()
     end
   end
+
+  def resource?(module) when is_atom(module) do
+    module.module_info(:attributes)[:is_ash_resource] == [true]
+  end
+
+  def resource?(_), do: false
 end

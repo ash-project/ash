@@ -213,10 +213,6 @@ defmodule Ash.Dsl.Extension do
     quote generated: true, bind_quoted: [runtime?: runtime?], location: :keep do
       alias Ash.Dsl.Transformer
 
-      unless runtime? do
-        Module.put_attribute(__MODULE__, :after_compile, Ash.Dsl.Extension)
-      end
-
       ash_dsl_config =
         if runtime? do
           @ash_dsl_config
@@ -235,50 +231,25 @@ defmodule Ash.Dsl.Extension do
 
       :persistent_term.put({__MODULE__, :extensions}, @extensions)
 
+      transformers_to_run =
+        @extensions
+        |> Enum.flat_map(& &1.transformers())
+        |> Transformer.sort()
+        |> Enum.reject(fn transformer ->
+          transformer.compile_time_only? && runtime?
+        end)
+
       new_dsl_config =
-        if runtime? do
-          Ash.Dsl.Extension.write_dsl_to_persistent_term(__MODULE__, ash_dsl_config)
-
+        Ash.Dsl.Extension.run_transformers(
+          __MODULE__,
+          transformers_to_run,
           ash_dsl_config
-        else
-          {transformers_to_skip, transformers_to_run} =
-            @extensions
-            |> Enum.flat_map(& &1.transformers())
-            |> Transformer.sort()
-            |> Enum.split_with(fn transformer ->
-              transformer.compile_time_only? && runtime?
-            end)
-
-          {after_compile_transformers, transformers_to_run} =
-            Enum.split_with(transformers_to_run, &(&1.after_compile? || runtime?))
-
-          unless runtime? do
-            Module.put_attribute(
-              __MODULE__,
-              :after_compile_transformers,
-              after_compile_transformers
-            )
-          end
-
-          Ash.Dsl.Extension.run_transformers(
-            __MODULE__,
-            transformers_to_run,
-            ash_dsl_config
-          )
-        end
+        )
 
       unless runtime? do
         Module.put_attribute(__MODULE__, :ash_dsl_config, new_dsl_config)
       end
     end
-  end
-
-  def __after_compile__(env, _bytecode) do
-    Ash.Dsl.Extension.run_transformers(
-      env.module,
-      Enum.reverse(Module.get_attribute(env.module, :after_compile_transformers, [])),
-      Module.get_attribute(env.module, :ash_dsl_config, %{})
-    )
   end
 
   def run_transformers(mod, transformers, ash_dsl_config) do

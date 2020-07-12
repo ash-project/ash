@@ -46,6 +46,7 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, :upsert), do: true
   def can?(_, :boolean_filter), do: true
   def can?(_, :transact), do: false
+  def can?(_, :delete_with_query), do: false
   def can?(_, {:filter_predicate, _, %In{}}), do: true
   def can?(_, {:filter_predicate, _, %Eq{}}), do: true
   def can?(_, {:filter_predicate, _, %LessThan{}}), do: true
@@ -176,11 +177,11 @@ defmodule Ash.DataLayer.Ets do
       resource
       |> Ash.primary_key()
       |> Enum.into(%{}, fn attr ->
-        {attr, Ecto.Changeset.get_field(changeset, attr)}
+        {attr, Ash.Changeset.get_attribute(changeset, attr)}
       end)
 
     with {:ok, table} <- wrap_or_create_table(resource),
-         record <- Ecto.Changeset.apply_changes(changeset),
+         record <- Ash.Changeset.apply_attributes(changeset),
          {:ok, _} <- ETS.Set.put(table, {pkey, record}) do
       {:ok, record}
     else

@@ -70,14 +70,13 @@ defmodule Ash.Engine.RequestHandler do
     end
   end
 
-  def handle_cast({:send_field, receiver_path, _pid, dep, optional?}, state) do
+  def handle_cast({:send_field, receiver_path, _pid, dep}, state) do
     field = List.last(dep)
 
     case Request.send_field(
            state.request,
            receiver_path,
-           field,
-           optional?
+           field
          ) do
       {:waiting, new_request, notifications, dependency_requests} ->
         new_state = %{state | request: new_request}
@@ -120,14 +119,14 @@ defmodule Ash.Engine.RequestHandler do
     end)
   end
 
-  def register_dependency(state, {dep, optional?}) do
+  def register_dependency(state, dep) do
     path = :lists.droplast(dep)
 
     destination_pid = Map.get(state.pid_info, path) || state.runner_pid
 
     log(state, "registering dependency: #{inspect(dep)}")
 
-    if not optional? and destination_pid != state.runner_pid do
+    if destination_pid != state.runner_pid do
       Process.link(destination_pid)
     end
 
@@ -137,17 +136,15 @@ defmodule Ash.Engine.RequestHandler do
 
     GenServer.cast(
       destination_pid,
-      {:send_field, state.request.path, self(), dep, optional?}
+      {:send_field, state.request.path, self(), dep}
     )
 
-    unless optional? do
-      log(state, "Registering hard dependency on #{inspect(path)} - #{field}")
+    log(state, "Registering dependency on #{inspect(path)} - #{field}")
 
-      GenServer.cast(
-        state.engine_pid,
-        {:register_dependency, state.request.path, self(), dep}
-      )
-    end
+    GenServer.cast(
+      state.engine_pid,
+      {:register_dependency, state.request.path, self(), dep}
+    )
 
     :ok
   end

@@ -1,5 +1,5 @@
 defmodule Ash.Resource.Actions.Create do
-  @moduledoc false
+  @moduledoc "Represents a create action on a resource."
   defstruct [:name, :primary?, type: :create]
 
   @type t :: %__MODULE__{

@@ -3,13 +3,12 @@ defmodule Ash.Engine.Request do
 
   defmodule UnresolvedField do
     @moduledoc false
-    defstruct [:resolver, deps: [], optional_deps: [], data?: false]
+    defstruct [:resolver, deps: [], data?: false]
 
-    def new(dependencies, optional_deps, func) do
+    def new(dependencies, func) do
       %__MODULE__{
         resolver: func,
-        deps: deps(dependencies),
-        optional_deps: deps(optional_deps)
+        deps: deps(dependencies)
       }
     end
 
@@ -66,8 +65,8 @@ defmodule Ash.Engine.Request do
   alias Ash.Actions.PrimaryKeyHelpers
   alias Ash.Authorizer
 
-  def resolve(dependencies \\ [], optional_dependencies \\ [], func) do
-    UnresolvedField.new(dependencies, optional_dependencies, func)
+  def resolve(dependencies \\ [], func) do
+    UnresolvedField.new(dependencies, func)
   end
 
   def new(opts) do
@@ -121,8 +120,6 @@ defmodule Ash.Engine.Request do
   def next(request) do
     case do_next(request) do
       {:complete, new_request, notifications, dependencies} ->
-        dependencies = new_dependencies(dependencies)
-
         if request.state != :complete do
           {:complete, new_request, notifications, dependencies}
         else
@@ -130,8 +127,6 @@ defmodule Ash.Engine.Request do
         end
 
       {:waiting, new_request, notifications, dependencies} ->
-        dependencies = new_dependencies(dependencies)
-
         {:wait, new_request, notifications, dependencies}
 
       {:continue, new_request, notifications} ->
@@ -172,7 +167,7 @@ defmodule Ash.Engine.Request do
   end
 
   def do_next(%{state: :fetch_data} = request) do
-    case try_resolve_local(request, :data, false, true) do
+    case try_resolve_local(request, :data, true) do
       {:skipped, _, _, _} ->
         {:error, "unreachable case", request}
 
@@ -226,7 +221,7 @@ defmodule Ash.Engine.Request do
     else
       Enum.reduce_while(request.dependencies_to_send, {:complete, request, [], []}, fn
         {field, _paths}, {:complete, request, notifications, deps} ->
-          case try_resolve_local(request, field, true, false) do
+          case try_resolve_local(request, field, false) do
             {:skipped, new_request, new_notifications, other_deps} ->
               {:cont,
                {:complete, new_request, new_notifications ++ notifications, other_deps ++ deps}}
@@ -248,10 +243,10 @@ defmodule Ash.Engine.Request do
     {:stop, :dependency_failed, request}
   end
 
-  def send_field(request, receiver_path, field, optional?) do
+  def send_field(request, receiver_path, field) do
     log(request, "Attempting to provide #{inspect(field)} for #{inspect(receiver_path)}")
 
-    case store_dependency(request, receiver_path, field, optional?) do
+    case store_dependency(request, receiver_path, field) do
       {:value, value, new_request} ->
         {:ok, new_request, [{receiver_path, request.path, field, value}]}
 
@@ -262,9 +257,7 @@ defmodule Ash.Engine.Request do
         {:ok, new_request, notifications}
 
       {:waiting, new_request, notifications, waiting_for} ->
-        dependency_requests = new_dependencies(waiting_for)
-
-        {:waiting, new_request, notifications, dependency_requests}
+        {:waiting, new_request, notifications, waiting_for}
 
       {:error, error, new_request} ->
         log(request, "Error resolving #{field}: #{inspect(error)}")
@@ -279,22 +272,6 @@ defmodule Ash.Engine.Request do
     new_request = put_dependency_data(request, path ++ [field], value)
 
     {:continue, new_request}
-  end
-
-  defp new_dependencies(waiting_for) do
-    Enum.map(
-      waiting_for,
-      fn
-        {:optional, dep} ->
-          {dep, true}
-
-        {:required, dep} ->
-          {dep, false}
-
-        other ->
-          {other, false}
-      end
-    )
   end
 
   defp set_authorized(%{authorized?: false, resource: resource} = request) do
@@ -314,10 +291,10 @@ defmodule Ash.Engine.Request do
     %{request | dependency_data: Map.put(request.dependency_data, dep, value)}
   end
 
-  def store_dependency(request, receiver_path, field, optional?, internal? \\ false) do
-    request = do_store_dependency(request, field, receiver_path, optional?)
+  def store_dependency(request, receiver_path, field, internal? \\ false) do
+    request = do_store_dependency(request, field, receiver_path)
 
-    case try_resolve_local(request, field, optional?, internal?) do
+    case try_resolve_local(request, field, internal?) do
       {:skipped, new_request, notifications, []} ->
         log(request, "Field #{field} was skipped, no additional dependencies")
         {:ok, new_request, notifications}
@@ -343,35 +320,13 @@ defmodule Ash.Engine.Request do
     end
   end
 
-  defp do_store_dependency(request, field, receiver_path, optional?) do
-    tagged_path =
-      if optional? do
-        {:optional, receiver_path}
-      else
-        {:required, receiver_path}
-      end
-
-    optional_str =
-      if optional? do
-        " optional "
-      else
-        " "
-      end
-
-    log(request, "storing#{optional_str}dependency on #{field} from #{inspect(receiver_path)}")
+  defp do_store_dependency(request, field, receiver_path) do
+    log(request, "storing dependency on #{field} from #{inspect(receiver_path)}")
 
     new_deps_to_send =
-      Map.update(request.dependencies_to_send, field, [tagged_path], fn paths ->
-        if optional? do
-          if Enum.any?(paths, fn {_, path} -> path == receiver_path end) do
-            paths
-          else
-            [tagged_path | paths]
-          end
-        else
-          paths = Enum.reject(paths, fn {_, path} -> path == receiver_path end)
-          [tagged_path | paths]
-        end
+      Map.update(request.dependencies_to_send, field, [receiver_path], fn paths ->
+        paths = Enum.reject(paths, &Kernel.==(&1, receiver_path))
+        [receiver_path | paths]
       end)
 
     %{request | dependencies_to_send: new_deps_to_send}
@@ -427,7 +382,7 @@ defmodule Ash.Engine.Request do
               &add_to_or_parse(&1, filter, request.resource)
             )
             |> set_authorizer_state(authorizer, :authorized)
-            |> try_resolve([request.path ++ [:query]], false, false)
+            |> try_resolve([request.path ++ [:query]], false)
 
           {:filter_and_continue, _, _} when strict_check_only? ->
             {:error, "Request must pass strict check"}
@@ -457,7 +412,7 @@ defmodule Ash.Engine.Request do
             request.path ++ [dep]
           end)
 
-        case try_resolve(request, deps, false, true) do
+        case try_resolve(request, deps, true) do
           {:ok, new_request, new_notifications, []} ->
             do_strict_check(authorizer, new_request, notifications ++ new_notifications)
 
@@ -518,7 +473,11 @@ defmodule Ash.Engine.Request do
           {:filter, filter} ->
             request
             |> set_authorizer_state(authorizer, :authorized)
-            |> Map.update(:authorization_filter, filter, &Ash.Filter.add_to_filter(&1, filter))
+            |> Map.update(
+              :authorization_filter,
+              filter,
+              &Ash.Filter.add_to_filter(&1, filter)
+            )
             |> runtime_filter(authorizer, filter)
 
           {:error, error} ->
@@ -531,7 +490,7 @@ defmodule Ash.Engine.Request do
             request.path ++ [dep]
           end)
 
-        case try_resolve(request, deps, false, true) do
+        case try_resolve(request, deps, true) do
           {:ok, new_request, new_notifications, []} ->
             do_check(authorizer, new_request, notifications ++ new_notifications)
 
@@ -549,11 +508,7 @@ defmodule Ash.Engine.Request do
       {:ok, request} ->
         request
         |> set_authorizer_state(authorizer, :authorized)
-        |> try_resolve(
-          [request.path ++ [:data], request.path ++ [:query]],
-          false,
-          false
-        )
+        |> try_resolve([request.path ++ [:data], request.path ++ [:query]], false)
 
       {:error, _error} ->
         {:error, "Error while authorizing"}
@@ -596,7 +551,7 @@ defmodule Ash.Engine.Request do
     end
   end
 
-  defp try_resolve(request, deps, optional?, internal?) do
+  defp try_resolve(request, deps, internal?) do
     Enum.reduce_while(deps, {:ok, request, [], []}, fn dep,
                                                        {:ok, request, notifications, skipped} ->
       case get_dependency_data(request, dep) do
@@ -604,14 +559,14 @@ defmodule Ash.Engine.Request do
           {:cont, {:ok, request, notifications, skipped}}
 
         :error ->
-          do_try_resolve(request, notifications, skipped, dep, optional?, internal?)
+          do_try_resolve(request, notifications, skipped, dep, internal?)
       end
     end)
   end
 
-  defp do_try_resolve(request, notifications, skipped, dep, optional?, internal?) do
+  defp do_try_resolve(request, notifications, skipped, dep, internal?) do
     if local_dep?(request, dep) do
-      case try_resolve_local(request, List.last(dep), optional?, internal?) do
+      case try_resolve_local(request, List.last(dep), internal?) do
         {:skipped, request, new_notifications, other_deps} ->
           {:cont, {:ok, request, new_notifications ++ notifications, skipped ++ other_deps}}
 
@@ -619,29 +574,23 @@ defmodule Ash.Engine.Request do
           {:cont, {:ok, request, new_notifications ++ notifications, skipped ++ other_deps}}
 
         {:error, error} ->
-          log(request, "Error resolving optional dependency #{inspect(dep)}: #{inspect(error)}")
-
-          if optional? do
-            {:cont, {:ok, request, notifications, skipped}}
-          else
-            {:halt, {:error, error}}
-          end
+          {:halt, {:error, error}}
       end
     else
       {:cont, {:ok, request, notifications, [dep | skipped]}}
     end
   end
 
-  defp try_resolve_local(request, field, optional?, internal?) do
+  defp try_resolve_local(request, field, internal?) do
     authorized? = Enum.all?(Map.values(request.authorizer_state), &(&1 == :authorized))
 
     # Don't fetch honor requests for dat until the request is authorized
     if field in [:data, :query] and not authorized? and not internal? do
-      try_resolve_dependencies_of(request, field, internal?, optional?)
+      try_resolve_dependencies_of(request, field, internal?)
     else
       case Map.get(request, field) do
         %UnresolvedField{} = unresolved ->
-          do_try_resolve_local(request, field, unresolved, optional?, internal?)
+          do_try_resolve_local(request, field, unresolved, internal?)
 
         value ->
           notify_existing_value(request, field, value, internal?)
@@ -649,16 +598,13 @@ defmodule Ash.Engine.Request do
     end
   end
 
-  defp try_resolve_dependencies_of(request, field, internal?, optional?) do
+  defp try_resolve_dependencies_of(request, field, internal?) do
     case Map.get(request, field) do
-      %UnresolvedField{deps: deps, optional_deps: optional_deps} ->
-        with {:ok, new_request, optional_notifications, remaining_optional} <-
-               try_resolve(request, optional_deps, true, internal?),
-             {:ok, new_request, required_notifications, remaining_deps} <-
-               try_resolve(new_request, deps, optional?, internal?) do
-          {:skipped, new_request, optional_notifications ++ required_notifications,
-           remaining_deps ++ remaining_optional}
-        else
+      %UnresolvedField{deps: deps} ->
+        case try_resolve(request, deps, internal?) do
+          {:ok, new_request, notifications, remaining_deps} ->
+            {:skipped, new_request, notifications, remaining_deps}
+
           error ->
             error
         end
@@ -678,14 +624,12 @@ defmodule Ash.Engine.Request do
     end
   end
 
-  defp do_try_resolve_local(request, field, unresolved, optional?, internal?) do
-    %{deps: deps, optional_deps: optional_deps, resolver: resolver} = unresolved
+  defp do_try_resolve_local(request, field, unresolved, internal?) do
+    %{deps: deps, resolver: resolver} = unresolved
 
-    with {:ok, new_request, optional_notifications, _remaining_optional} <-
-           try_resolve(request, optional_deps, true, internal?),
-         {:ok, new_request, required_notifications, []} <-
-           try_resolve(new_request, deps, optional?, internal?) do
-      resolver_context = resolver_context(new_request, deps ++ optional_deps)
+    with {:ok, new_request, notifications, []} <-
+           try_resolve(request, deps, internal?) do
+      resolver_context = resolver_context(new_request, deps)
 
       log(request, "resolving #{field}")
 
@@ -697,8 +641,7 @@ defmodule Ash.Engine.Request do
 
               notifications =
                 Enum.concat([
-                  optional_notifications,
-                  required_notifications,
+                  notifications,
                   new_notifications
                 ])
 
@@ -736,7 +679,11 @@ defmodule Ash.Engine.Request do
           | dependencies_to_send: Map.delete(request.dependencies_to_send, field)
         }
 
-        notifications = Enum.map(paths, fn path -> {path, request.path, field, value} end)
+        notifications =
+          Enum.map(paths, fn path ->
+            {path, request.path, field, value}
+          end)
+
         {new_request, notifications}
 
       :error ->
