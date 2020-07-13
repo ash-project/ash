@@ -217,16 +217,21 @@ defmodule Ash.Dsl.Extension do
         if runtime? do
           @ash_dsl_config
         else
-          {__MODULE__, :ash_sections}
-          |> Process.get([])
-          |> Enum.map(fn {extension, section_path} ->
-            {{section_path, extension},
-             Process.get(
-               {__MODULE__, :ash, section_path},
-               []
-             )}
-          end)
-          |> Enum.into(%{})
+          config =
+            {__MODULE__, :ash_sections}
+            |> Process.get([])
+            |> Enum.map(fn {extension, section_path} ->
+              {{section_path, extension},
+               Process.get(
+                 {__MODULE__, :ash, section_path},
+                 []
+               )}
+            end)
+            |> Enum.into(%{})
+
+          Module.put_attribute(__MODULE__, :ash_dsl_config, config)
+
+          config
         end
 
       :persistent_term.put({__MODULE__, :extensions}, @extensions)
@@ -245,10 +250,6 @@ defmodule Ash.Dsl.Extension do
           transformers_to_run,
           ash_dsl_config
         )
-
-      unless runtime? do
-        Module.put_attribute(__MODULE__, :ash_dsl_config, new_dsl_config)
-      end
     end
   end
 

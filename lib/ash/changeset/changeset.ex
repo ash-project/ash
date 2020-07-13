@@ -518,8 +518,19 @@ defmodule Ash.Changeset do
   defp do_primary_key(relationship, record) when is_map(record) do
     primary_key = Ash.primary_key(relationship.destination)
 
-    if Enum.all?(primary_key, &Map.has_key?(record, &1)) do
-      pkey = Map.take(record, Ash.primary_key(relationship.destination))
+    is_pkey_map? =
+      Enum.all?(primary_key, fn key ->
+        Map.has_key?(record, key) || Map.has_key?(record, to_string(key))
+      end)
+
+    if is_pkey_map? do
+      pkey =
+        Enum.reduce(primary_key, %{}, fn key, acc ->
+          case Map.fetch(record, key) do
+            {:ok, value} -> Map.put(acc, key, value)
+            :error -> Map.put(acc, key, Map.get(record, to_string(key)))
+          end
+        end)
 
       {:ok, pkey}
     else

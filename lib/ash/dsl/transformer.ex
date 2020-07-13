@@ -86,6 +86,14 @@ defmodule Ash.Dsl.Transformer do
     |> Map.get(:entities, [])
   end
 
+  def get_option(dsl_state, path, option, extension) do
+    dsl_state
+    |> Map.get({path, extension}, %{opts: []})
+    |> Map.get(:opts)
+    |> Kernel.||([])
+    |> Keyword.get(option)
+  end
+
   @doc """
   Store a value in a special persistent term key, that will be copied to the runtime
   """
