@@ -36,7 +36,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.ReadTest do
   describe "validation" do
     test "it fails if `name` is not an atom" do
       assert_raise(
-        Ash.Error.ResourceDslError,
+        Ash.Error.Dsl.DslError,
         "actions -> read -> default:\n  expected :name to be an atom, got: \"default\"",
         fn ->
           defposts do
@@ -50,7 +50,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.ReadTest do
 
     test "it fails if `primary?` is not a boolean" do
       assert_raise(
-        Ash.Error.ResourceDslError,
+        Ash.Error.Dsl.DslError,
         "actions -> read -> default:\n  expected :primary? to be an boolean, got: 10",
         fn ->
           defposts do

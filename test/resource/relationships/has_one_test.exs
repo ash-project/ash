@@ -41,7 +41,7 @@ defmodule Ash.Test.Resource.Relationshihps.HasOneTest do
   describe "validations" do
     test "fails if destination_field is not an atom" do
       assert_raise(
-        Ash.Error.ResourceDslError,
+        Ash.Error.Dsl.DslError,
         "relationships -> has_one -> foobar:\n  expected :destination_field to be an atom, got: \"foo\"",
         fn ->
           defposts do
@@ -55,7 +55,7 @@ defmodule Ash.Test.Resource.Relationshihps.HasOneTest do
 
     test "fails if source_field is not an atom" do
       assert_raise(
-        Ash.Error.ResourceDslError,
+        Ash.Error.Dsl.DslError,
         "relationships -> has_one -> foobar:\n  expected :source_field to be an atom, got: \"foo\"",
         fn ->
           defposts do
@@ -69,7 +69,7 @@ defmodule Ash.Test.Resource.Relationshihps.HasOneTest do
 
     test "fails if the destination is not an atom" do
       assert_raise(
-        Ash.Error.ResourceDslError,
+        Ash.Error.Dsl.DslError,
         "relationships -> has_one -> foobar:\n  expected :destination to be an atom, got: \"foobar\"",
         fn ->
           defposts do
@@ -83,7 +83,7 @@ defmodule Ash.Test.Resource.Relationshihps.HasOneTest do
 
     test "fails if the relationship name is not an atom" do
       assert_raise(
-        Ash.Error.ResourceDslError,
+        Ash.Error.Dsl.DslError,
         "relationships -> has_one -> foobar:\n  expected :name to be an atom, got: \"foobar\"",
         fn ->
           defposts do

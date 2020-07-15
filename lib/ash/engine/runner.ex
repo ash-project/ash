@@ -13,6 +13,7 @@ defmodule Ash.Engine.Runner do
 
   alias Ash.Engine
   alias Ash.Engine.{Request, RequestHandler}
+  alias Ash.Error.Framework.SynchronousEngineStuck
 
   require Logger
 
@@ -58,7 +59,7 @@ defmodule Ash.Engine.Runner do
             wait_for_engine(new_state, false)
           else
             log(state, "Synchronous engine stuck:\n\n#{stuck_report(state)}")
-            add_error(new_state, :__engine__, "Synchronous engine stuck")
+            add_error(new_state, :__engine__, SynchronousEngineStuck.exception([]))
           end
 
         new_state ->
@@ -135,17 +136,7 @@ defmodule Ash.Engine.Runner do
 
         state
       else
-        new_state = run_to_completion(state)
-
-        Enum.reduce(new_state.requests, new_state, fn request, state ->
-          if request.state in [:complete, :error] do
-            state
-          else
-            state
-            |> add_error(request.path, "Dependencies not met before shutdown")
-            |> replace_request(%{request | state: :error})
-          end
-        end)
+        run_to_completion(state)
       end
 
     add_engine_state(new_state, engine_state)

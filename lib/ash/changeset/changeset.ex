@@ -29,7 +29,7 @@ defmodule Ash.Changeset do
     Changes.InvalidRelationship,
     Changes.NoSuchAttribute,
     Changes.NoSuchRelationship,
-    NoSuchResource
+    Invalid.NoSuchResource
   }
 
   @doc "Return a changeset over a resource or a record"

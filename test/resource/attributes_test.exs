@@ -33,7 +33,7 @@ defmodule Ash.Test.Resource.AttributesTest do
   describe "validation" do
     test "raises if the attribute name is not an atom" do
       assert_raise(
-        Ash.Error.ResourceDslError,
+        Ash.Error.Dsl.DslError,
         "attributes -> attribute -> 10:\n  expected :name to be an atom, got: 10",
         fn ->
           defposts do
@@ -47,7 +47,7 @@ defmodule Ash.Test.Resource.AttributesTest do
 
     test "raises if the type is not a known type" do
       assert_raise(
-        Ash.Error.ResourceDslError,
+        Ash.Error.Dsl.DslError,
         "attributes -> attribute -> foo:\n  Attribute type must be a built in type or a type module, got: 10",
         fn ->
           defposts do
@@ -61,7 +61,7 @@ defmodule Ash.Test.Resource.AttributesTest do
 
     test "raises if you pass an invalid value for `primary_key?`" do
       assert_raise(
-        Ash.Error.ResourceDslError,
+        Ash.Error.Dsl.DslError,
         "attributes -> attribute -> foo:\n  expected :primary_key? to be an boolean, got: 10",
         fn ->
           defposts do

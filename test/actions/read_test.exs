@@ -176,7 +176,7 @@ defmodule Ash.Test.Actions.ReadTest do
     test "it raises on an error" do
       assert_raise(
         Ash.Error.Invalid,
-        ~r/Invalid filter value `10` supplied in: `title == 10`/,
+        ~r/Invalid filter value `10` supplied in `title == 10`: Could not be casted to type Ash.Type.String/,
         fn ->
           Post
           |> Ash.Query.filter(title: 10)

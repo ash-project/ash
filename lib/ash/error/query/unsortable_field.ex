@@ -1,4 +1,4 @@
-defmodule Ash.Error.Sort.UnsortableField do
+defmodule Ash.Error.Query.UnsortableAttribute do
   @moduledoc "Used when attempting to sort on a field that cannot be used for sorting"
   use Ash.Error
 

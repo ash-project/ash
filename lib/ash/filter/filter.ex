@@ -7,6 +7,14 @@ defmodule Ash.Filter do
   and the left and right hand side of that operator.
   """
   alias Ash.Engine.Request
+
+  alias Ash.Error.Filter.{
+    InvalidFilterValue,
+    NoSuchAttributeOrRelationship,
+    NoSuchFilterPredicate,
+    ReadActionRequired
+  }
+
   alias Ash.Filter.Predicate.{Eq, GreaterThan, In, LessThan}
   alias Ash.Filter.{Expression, Not, Predicate}
 
@@ -318,7 +326,7 @@ defmodule Ash.Filter do
       else
         {:error, error} -> {:halt, {:error, error}}
         %{errors: errors} -> {:halt, {:error, errors}}
-        {:action, nil} -> {:halt, {:error, "Default read action required"}}
+        {:action, nil} -> {:halt, {:error, ReadActionRequired.exception(resource: resource)}}
       end
     end)
   end
@@ -598,7 +606,11 @@ defmodule Ash.Filter do
       pkey_filter = record |> Map.take(Ash.Resource.primary_key(resource)) |> Map.to_list()
       add_expression_part(pkey_filter, context, expression)
     else
-      {:error, "Invalid filter value provided: #{inspect(record)}"}
+      {:error,
+       InvalidFilterValue.exception(
+         value: record,
+         message: "Records must match the resource being filtered"
+       )}
     end
   end
 
@@ -663,12 +675,20 @@ defmodule Ash.Filter do
             add_expression_part({field, casted}, context, expression)
           else
             _other ->
-              {:error, "Invalid filter value provided: #{inspect(nested_statement)}"}
+              {:error,
+               InvalidFilterValue.exception(
+                 value: inspect(nested_statement),
+                 message:
+                   "A single value must be castable to the primary key of the resource: #{
+                     inspect(context.resource)
+                   }"
+               )}
           end
         end
 
       true ->
-        {:error, "No such attribute or relationship #{field} on #{inspect(context.resource)}"}
+        {:error,
+         NoSuchAttributeOrRelationship.exception(field: field, resource: context.resource)}
     end
   end
 
@@ -693,7 +713,7 @@ defmodule Ash.Filter do
   end
 
   defp add_expression_part(value, _, _) do
-    {:error, "Invalid filter value provided: #{inspect(value)}"}
+    {:error, InvalidFilterValue.exception(value: value)}
   end
 
   defp validate_datalayers_support_boolean_filters(%Expression{op: :or, left: left, right: right}) do
@@ -835,7 +855,8 @@ defmodule Ash.Filter do
       Enum.reduce_while(values, {:ok, nil}, fn {key, value}, {:ok, expression} ->
         case @built_in_predicates[key] || data_layer_predicates[key] do
           value when value in [nil, []] ->
-            {:halt, {:error, "No such filter predicate: #{inspect(key)}"}}
+            error = NoSuchFilterPredicate.exception(key: key, resource: context.resource)
+            {:halt, {:error, error}}
 
           predicate_module ->
             case Predicate.new(
@@ -854,7 +875,8 @@ defmodule Ash.Filter do
         end
       end)
     else
-      {:halt, {:error, "Invalid filter expression: #{inspect(values)}"}}
+      error = InvalidFilterValue.exception(value: values)
+      {:halt, error}
     end
   end
 

@@ -458,7 +458,7 @@ defmodule Ash.Dsl.Extension do
                     opts
 
                   {:error, error} ->
-                    raise Ash.Error.ResourceDslError,
+                    raise Ash.Error.Dsl.DslError,
                       message: error,
                       path: unquote(section_path)
                 end
@@ -705,7 +705,7 @@ defmodule Ash.Dsl.Extension do
                         inspect(error)
                     end
 
-                  raise Ash.Error.ResourceDslError,
+                  raise Ash.Error.Dsl.DslError,
                     message: message,
                     path: section_path ++ additional_path
               end

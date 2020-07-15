@@ -1,6 +1,6 @@
 defmodule Ash.Actions.Sort do
   @moduledoc false
-  alias Ash.Error.Sort.{InvalidSortOrder, NoSuchField, UnsortableField}
+  alias Ash.Error.Query.{InvalidSortOrder, NoSuchAttribute, UnsortableAttribute}
 
   def process(_resource, empty) when empty in [nil, []], do: {:ok, []}
 
@@ -12,12 +12,12 @@ defmodule Ash.Actions.Sort do
 
         cond do
           !attribute ->
-            {sorts, [NoSuchField.exception(field: field) | errors]}
+            {sorts, [NoSuchAttribute.exception(attribute: field) | errors]}
 
           !Ash.Resource.data_layer_can?(resource, {:sort, Ash.Type.storage_type(attribute.type)}) ->
             {sorts,
              [
-               UnsortableField.exception(field: field)
+               UnsortableAttribute.exception(field: field)
                | errors
              ]}
 

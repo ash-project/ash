@@ -28,7 +28,7 @@ defmodule Ash.Api.Transformers.ValidateRelationshipAttributes do
 
   defp validate_relationship(relationship, attribute_names) do
     unless relationship.source_field in attribute_names do
-      raise Ash.Error.ResourceDslError,
+      raise Ash.Error.Dsl.DslError,
         path: [:relationships, relationship.name],
         message:
           "Relationship `#{relationship.name}` expects source field `#{relationship.source_field}` to be defined"
@@ -40,7 +40,7 @@ defmodule Ash.Api.Transformers.ValidateRelationshipAttributes do
       |> Enum.map(& &1.name)
 
     unless relationship.destination_field in destination_attributes do
-      raise Ash.Error.ResourceDslError,
+      raise Ash.Error.Dsl.DslError,
         path: [:relationships, relationship.name],
         message:
           "Relationship `#{relationship.name}` expects destination field `#{

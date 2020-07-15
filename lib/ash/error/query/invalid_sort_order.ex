@@ -1,4 +1,4 @@
-defmodule Ash.Error.Sort.InvalidSortOrder do
+defmodule Ash.Error.Query.InvalidSortOrder do
   @moduledoc "Used when an invalid sort order is provided"
   use Ash.Error
 

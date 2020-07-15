@@ -16,9 +16,9 @@ defmodule Ash.Filter.Predicate.LessThan do
       _ ->
         {:error,
          InvalidFilterValue.exception(
-           filter: %__MODULE__{field: attribute.name, value: value},
            value: value,
-           field: attribute.name
+           context: %__MODULE__{field: attribute.name, value: value},
+           message: "Could not be casted type type #{inspect(attribute.type)}"
          )}
     end
   end

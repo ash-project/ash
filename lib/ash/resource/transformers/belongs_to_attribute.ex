@@ -5,7 +5,7 @@ defmodule Ash.Resource.Transformers.BelongsToAttribute do
   use Ash.Dsl.Transformer
 
   alias Ash.Dsl.Transformer
-  alias Ash.Error.ResourceDslError
+  alias Ash.Error.Dsl.DslError
 
   @extension Ash.Dsl
 
@@ -32,7 +32,7 @@ defmodule Ash.Resource.Transformers.BelongsToAttribute do
         {:error, error} ->
           {:halt,
            {:error,
-            ResourceDslError.exception(
+            DslError.exception(
               message:
                 "Could not create attribute for belongs_to #{relationship.name}: #{inspect(error)}",
               path: [:relationships, relationship.name]

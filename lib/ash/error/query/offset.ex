@@ -1,4 +1,4 @@
-defmodule Ash.Error.InvalidOffset do
+defmodule Ash.Error.Query.InvalidOffset do
   @moduledoc "Used when an invalid offset is provided"
   use Ash.Error
 

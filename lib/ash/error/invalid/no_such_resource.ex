@@ -1,4 +1,4 @@
-defmodule Ash.Error.NoSuchResource do
+defmodule Ash.Error.Invalid.NoSuchResource do
   @moduledoc "Used when a resource or alias is provided that doesn't exist"
   use Ash.Error
 

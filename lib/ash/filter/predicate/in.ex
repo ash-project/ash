@@ -26,9 +26,9 @@ defmodule Ash.Filter.Predicate.In do
           {:halt,
            {:error,
             InvalidFilterValue.exception(
-              filter: %__MODULE__{field: attribute.name, values: values},
               value: value,
-              field: attribute.name
+              context: %__MODULE__{field: attribute.name, values: values},
+              message: "Could not be casted to type #{inspect(attribute.type)}"
             )}}
       end
     end)
@@ -37,9 +37,9 @@ defmodule Ash.Filter.Predicate.In do
   def new(_resource, attribute, values) do
     {:error,
      InvalidFilterValue.exception(
-       filter: %__MODULE__{field: attribute.name, values: values},
        value: values,
-       field: attribute.name
+       context: %__MODULE__{field: attribute.name, values: values},
+       message: "Expected a list"
      )}
   end
 

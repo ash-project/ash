@@ -64,7 +64,7 @@ defmodule Ash.Query do
   end
 
   alias Ash.Actions.Sort
-  alias Ash.Error.{InvalidLimit, InvalidOffset}
+  alias Ash.Error.Query.{InvalidLimit, InvalidOffset}
   alias Ash.Error.SideLoad.{InvalidQuery, NoSuchRelationship}
 
   @doc "Create a new query."
@@ -246,14 +246,14 @@ defmodule Ash.Query do
     Enum.reduce(keys, query, &unset(&2, &1))
   end
 
-  def unset(query, key) when key in [:api, :resource] do
-    add_error(query, key, "Cannot be unset")
-  end
-
   def unset(query, key) do
-    query
-    |> to_query()
-    |> struct([{key, Map.get(%__MODULE__{}, key)}])
+    if key in [:api, :resource] do
+      query
+    else
+      query
+      |> to_query()
+      |> struct([{key, Map.get(%__MODULE__{}, key)}])
+    end
   end
 
   @doc false

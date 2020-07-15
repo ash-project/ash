@@ -9,7 +9,7 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
   use Ash.Dsl.Transformer
 
   alias Ash.Dsl.Transformer
-  alias Ash.Error.ResourceDslError
+  alias Ash.Error.Dsl.DslError
 
   @extension Ash.Dsl
 
@@ -36,7 +36,7 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
           0 ->
             {:halt,
              {:error,
-              ResourceDslError.exception(
+              DslError.exception(
                 message:
                   "Multiple actions of type create defined, one must be designated as `primary?: true`",
                 path: [:actions, type]
@@ -48,7 +48,7 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
           2 ->
             {:halt,
              {:error,
-              ResourceDslError.exception(
+              DslError.exception(
                 message:
                   "Multiple actions of type #{type} configured as `primary?: true`, but only one action per type can be the primary",
                 path: [:actions, type]

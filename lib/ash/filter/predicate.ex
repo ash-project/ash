@@ -3,6 +3,7 @@ defmodule Ash.Filter.Predicate do
 
   defstruct [:resource, :attribute, :relationship_path, :predicate, :value]
 
+  alias Ash.Error.Filter.UnsupportedPredicate
   alias Ash.Filter
   alias Ash.Filter.{Expression, Not}
 
@@ -117,7 +118,12 @@ defmodule Ash.Filter.Predicate do
              relationship_path: relationship_path
            }}
         else
-          {:error, "Data layer does not support filtering with #{inspect(predicate)}"}
+          {:error,
+           UnsupportedPredicate.exception(
+             resource: resource,
+             predicate: predicate,
+             type: Ash.Type.storage_type(attribute.type)
+           )}
         end
 
       {:error, error} ->

@@ -1,6 +1,10 @@
 defmodule Ash.Engine.Request do
   @moduledoc false
 
+  alias Ash.Error.Forbidden.MustPassStrictCheck
+  alias Ash.Error.Framework.AssumptionFailed
+  alias Ash.Error.Invalid.{DuplicatedPath, ImpossiblePath}
+
   defmodule UnresolvedField do
     @moduledoc false
     defstruct [:resolver, deps: [], data?: false]
@@ -62,7 +66,6 @@ defmodule Ash.Engine.Request do
 
   require Logger
 
-  alias Ash.Actions.PrimaryKeyHelpers
   alias Ash.Authorizer
 
   def resolve(dependencies \\ [], func) do
@@ -169,7 +172,7 @@ defmodule Ash.Engine.Request do
   def do_next(%{state: :fetch_data} = request) do
     case try_resolve_local(request, :data, true) do
       {:skipped, _, _, _} ->
-        {:error, "unreachable case", request}
+        {:error, AssumptionFailed.exception(message: "Skipped fetching data"), request}
 
       {:ok, request, notifications, []} ->
         log(request, "data fetched: #{inspect(notifications)}")
@@ -385,7 +388,7 @@ defmodule Ash.Engine.Request do
             |> try_resolve([request.path ++ [:query]], false)
 
           {:filter_and_continue, _, _} when strict_check_only? ->
-            {:error, "Request must pass strict check"}
+            {:error, MustPassStrictCheck.exception(resource: request.resource)}
 
           {:filter_and_continue, filter, new_authorizer_state} ->
             new_request =
@@ -397,7 +400,7 @@ defmodule Ash.Engine.Request do
             {:ok, new_request}
 
           {:continue, _} when strict_check_only? ->
-            {:error, "Request must pass strict check"}
+            {:error, MustPassStrictCheck.exception(resource: request.resource)}
 
           {:continue, authorizer_state} ->
             {:ok, set_authorizer_state(request, authorizer, authorizer_state)}
@@ -510,41 +513,44 @@ defmodule Ash.Engine.Request do
         |> set_authorizer_state(authorizer, :authorized)
         |> try_resolve([request.path ++ [:data], request.path ++ [:query]], false)
 
-      {:error, _error} ->
-        {:error, "Error while authorizing"}
+      {:error, error} ->
+        {:error, error}
     end
   end
 
+  defp do_runtime_filter(%{data: empty} = request, _filter) when empty in [nil, []],
+    do: {:ok, request}
+
   defp do_runtime_filter(request, filter) do
-    case PrimaryKeyHelpers.values_to_primary_key_filters(
-           request.resource,
-           request.data
-         ) do
-      {:ok, pkey_filter} ->
-        primary_key_filter =
-          case pkey_filter do
-            [single] -> single
-            filters -> [or: filters]
-          end
+    pkey = Ash.Resource.primary_key(request.resource)
 
-        new_query =
-          request.query
-          |> Ash.Query.filter(primary_key_filter)
-          |> Ash.Query.filter(filter)
+    pkeys =
+      request.data
+      |> List.wrap()
+      |> Enum.map(fn record ->
+        record |> Map.take(pkey) |> Map.to_list()
+      end)
 
-        request.api.read(new_query)
-        |> case do
-          {:ok, results} ->
-            pkey = Ash.Resource.primary_key(request.resource)
-            pkeys = Enum.map(results, &Map.take(&1, pkey))
+    primary_key_filter =
+      case pkeys do
+        [pkey] -> [pkey]
+        pkeys -> [or: pkeys]
+      end
 
-            new_data = Enum.filter(request.data, &(Map.take(&1, pkey) in pkeys))
+    new_query =
+      request.query
+      |> Ash.Query.filter(primary_key_filter)
+      |> Ash.Query.filter(filter)
 
-            {:ok, %{request | data: new_data, query: new_query}}
+    request.api.read(new_query)
+    |> case do
+      {:ok, results} ->
+        pkey = Ash.Resource.primary_key(request.resource)
+        pkeys = Enum.map(results, &Map.take(&1, pkey))
 
-          {:error, error} ->
-            {:error, error}
-        end
+        new_data = Enum.filter(request.data, &(Map.take(&1, pkey) in pkeys))
+
+        {:ok, %{request | data: new_data, query: new_query}}
 
       {:error, error} ->
         {:error, error}
@@ -781,10 +787,10 @@ defmodule Ash.Engine.Request do
       :ok
     else
       {:error, {:impossible, path}} ->
-        {:error, "Impossible path: #{inspect(path)} required by request."}
+        {:error, ImpossiblePath.exception(impossible_path: path)}
 
       {:error, paths} ->
-        {:error, "Duplicate requests at paths: #{inspect(paths)}"}
+        {:error, DuplicatedPath.exception(paths: paths)}
     end
   end
 

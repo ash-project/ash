@@ -25,7 +25,7 @@ defmodule Ash.Api do
 
   alias Ash.Actions.{Create, Destroy, Read, SideLoad, Update}
   alias Ash.Dsl.Transformer
-  alias Ash.Error.NoSuchResource
+  alias Ash.Error.Invalid.{InvalidPrimaryKey, NoSuchAction, NoSuchResource}
 
   @global_opts [
     verbose?: [
@@ -310,9 +310,8 @@ defmodule Ash.Api do
   def get(api, resource, id, opts) do
     with {:ok, opts} <- NimbleOptions.validate(opts, @get_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, resource),
-         {:pkey, primary_key} when primary_key != [] <-
-           {:pkey, Ash.Resource.primary_key(resource)},
-         {:ok, filter} <- get_filter(primary_key, id) do
+         primary_key <- Ash.Resource.primary_key(resource),
+         {:ok, filter} <- get_filter(resource, primary_key, id) do
       resource
       |> Ash.Query.new(api)
       |> Ash.Query.filter(filter)
@@ -334,13 +333,10 @@ defmodule Ash.Api do
     else
       {:error, error} ->
         {:error, error}
-
-      {:pkey, _} ->
-        {:error, "Resource has no primary key"}
     end
   end
 
-  defp get_filter(primary_key, id) do
+  defp get_filter(resource, primary_key, id) do
     case {primary_key, id} do
       {[field], [{field, value}]} ->
         {:ok, [{field, value}]}
@@ -352,7 +348,7 @@ defmodule Ash.Api do
         if Keyword.keyword?(value) and Enum.sort(Keyword.keys(value)) == Enum.sort(fields) do
           {:ok, value}
         else
-          {:error, "invalid primary key provided to `get/3`"}
+          {:error, InvalidPrimaryKey.exception(resource: resource, value: id)}
         end
     end
   end
@@ -509,8 +505,11 @@ defmodule Ash.Api do
 
       {:ok, action} ->
         case Ash.Resource.action(resource, action, type) do
-          nil -> {:error, "no such action #{inspect(params[:action])}"}
-          action -> {:ok, action}
+          nil ->
+            {:error, NoSuchAction.exception(resource: resource, action: action, type: type)}
+
+          action ->
+            {:ok, action}
         end
 
       :error ->
