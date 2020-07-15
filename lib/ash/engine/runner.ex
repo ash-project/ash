@@ -13,7 +13,6 @@ defmodule Ash.Engine.Runner do
 
   alias Ash.Engine
   alias Ash.Engine.{Request, RequestHandler}
-  alias Ash.Error.Unknown
 
   require Logger
 
@@ -411,17 +410,9 @@ defmodule Ash.Engine.Runner do
 
   defp add_error(state, path, error) do
     path = List.wrap(path)
-    error = to_ash_error(error)
+    error = Ash.Error.to_ash_error(error)
 
     %{state | errors: [Map.put(error, :path, path) | state.errors]}
-  end
-
-  defp to_ash_error(error) do
-    if Ash.Error.ash_error?(error) do
-      error
-    else
-      Unknown.exception(error: error)
-    end
   end
 
   defp log(request, message, level \\ :debug)

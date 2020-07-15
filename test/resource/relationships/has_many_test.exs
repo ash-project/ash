@@ -34,7 +34,7 @@ defmodule Ash.Test.Resource.Relationshihps.HasManyTest do
                  source_field: :id,
                  type: :has_many
                }
-             ] = Ash.relationships(Post)
+             ] = Ash.Resource.relationships(Post)
     end
   end
 

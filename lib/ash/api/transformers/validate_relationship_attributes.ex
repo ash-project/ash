@@ -15,11 +15,11 @@ defmodule Ash.Api.Transformers.ValidateRelationshipAttributes do
     |> Enum.each(fn resource ->
       attribute_names =
         resource
-        |> Ash.attributes()
+        |> Ash.Resource.attributes()
         |> Enum.map(& &1.name)
 
       resource
-      |> Ash.relationships()
+      |> Ash.Resource.relationships()
       |> Enum.each(&validate_relationship(&1, attribute_names))
     end)
 
@@ -36,7 +36,7 @@ defmodule Ash.Api.Transformers.ValidateRelationshipAttributes do
 
     destination_attributes =
       relationship.destination
-      |> Ash.attributes()
+      |> Ash.Resource.attributes()
       |> Enum.map(& &1.name)
 
     unless relationship.destination_field in destination_attributes do

@@ -166,7 +166,7 @@ defmodule Ash.Query do
         []
 
       {key, value} ->
-        case Ash.relationship(resource, key) do
+        case Ash.Resource.relationship(resource, key) do
           nil ->
             [
               {:error,

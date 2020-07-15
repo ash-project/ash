@@ -12,18 +12,10 @@ defmodule Ash.Error.Forbidden do
       Ash.Error.error_messages(errors)
     end
 
-    def message(_error) do
-      "forbidden"
-    end
-
-    def code(_), do: "Forbidden"
-
-    def description(%{errors: errors}) when not is_nil(errors) do
+    def message(%{errors: errors}) do
       Ash.Error.error_descriptions(errors)
     end
 
-    def description(_error) do
-      "Forbidden"
-    end
+    def code(_), do: "Forbidden"
   end
 end

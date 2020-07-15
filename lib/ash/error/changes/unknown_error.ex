@@ -12,9 +12,5 @@ defmodule Ash.Error.Changes.UnknownError do
     def message(%{field: field, error: error}) do
       "Unknown error for change on field #{field}: #{inspect(error)}"
     end
-
-    def description(%{field: field, error: error}) do
-      "Unknown error for change on field #{field}: #{inspect(error)}"
-    end
   end
 end

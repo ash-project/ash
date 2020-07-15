@@ -106,7 +106,7 @@ defmodule Ash.Test.Actions.DestroyTest do
     test "allows destroying a record" do
       post =
         Post
-        |> create(%{title: "foo", contents: "bar"})
+        |> new(%{title: "foo", contents: "bar"})
         |> Api.create!()
 
       assert Api.destroy!(post) == :ok
@@ -117,7 +117,7 @@ defmodule Ash.Test.Actions.DestroyTest do
     test "the destroy does not happen if it is unauthorized" do
       author =
         Author
-        |> create(%{name: "foobar"})
+        |> new(%{name: "foobar"})
         |> Api.create!()
 
       assert_raise(Ash.Error.Forbidden, fn ->

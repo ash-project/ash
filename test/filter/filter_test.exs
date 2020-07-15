@@ -135,12 +135,12 @@ defmodule Ash.Test.Filter.FilterTest do
     setup do
       post1 =
         Post
-        |> create(%{title: "title1", contents: "contents1", points: 1})
+        |> new(%{title: "title1", contents: "contents1", points: 1})
         |> Api.create!()
 
       post2 =
         Post
-        |> create(%{title: "title2", contents: "contents2", points: 2})
+        |> new(%{title: "title2", contents: "contents2", points: 2})
         |> Api.create!()
 
       %{post1: post1, post2: post2}
@@ -214,47 +214,47 @@ defmodule Ash.Test.Filter.FilterTest do
     setup do
       post1 =
         Post
-        |> create(%{title: "title1", contents: "contents1", points: 1})
+        |> new(%{title: "title1", contents: "contents1", points: 1})
         |> Api.create!()
 
       post2 =
         Post
-        |> create(%{title: "title2", contents: "contents2", points: 2})
+        |> new(%{title: "title2", contents: "contents2", points: 2})
         |> Api.create!()
 
       post3 =
         Post
-        |> create(%{title: "title3", contents: "contents3", points: 3})
+        |> new(%{title: "title3", contents: "contents3", points: 3})
         |> replace_relationship(:related_posts, [post1, post2])
         |> Api.create!()
 
       post4 =
         Post
-        |> create(%{title: "title4", contents: "contents4", points: 4})
+        |> new(%{title: "title4", contents: "contents4", points: 4})
         |> replace_relationship(:related_posts, [post3])
         |> Api.create!()
 
       profile1 =
         Profile
-        |> create(%{bio: "dope"})
+        |> new(%{bio: "dope"})
         |> Api.create!()
 
       user1 =
         User
-        |> create(%{name: "broseph"})
+        |> new(%{name: "broseph"})
         |> replace_relationship(:posts, [post1, post2])
         |> replace_relationship(:profile, profile1)
         |> Api.create!()
 
       user2 =
         User
-        |> create(%{name: "broseph"})
+        |> new(%{name: "broseph"})
         |> replace_relationship(:posts, [post2])
         |> Api.create!()
 
       profile2 =
         Profile
-        |> create(%{bio: "dope2"})
+        |> new(%{bio: "dope2"})
         |> replace_relationship(:user, user2)
         |> Api.create!()
 

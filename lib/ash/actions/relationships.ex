@@ -5,7 +5,7 @@ defmodule Ash.Actions.Relationships do
 
   def handle_relationship_changes(changeset) do
     Enum.reduce(changeset.relationships, changeset, fn {name, data}, changeset ->
-      relationship = Ash.relationship(changeset.resource, name)
+      relationship = Ash.Resource.relationship(changeset.resource, name)
       add_relationship_read_requests(changeset, relationship, data)
     end)
   end
@@ -123,7 +123,7 @@ defmodule Ash.Actions.Relationships do
           {true, Map.to_list(single)}
 
         many ->
-          case Ash.primary_key(relationship.destination) do
+          case Ash.Resource.primary_key(relationship.destination) do
             [field] ->
               {true, [{field, in: Enum.map(many, &Map.get(&1, field))}]}
 
@@ -145,7 +145,7 @@ defmodule Ash.Actions.Relationships do
       Request.new(
         api: changeset.api,
         resource: relationship.destination,
-        action: Ash.primary_action!(relationship.destination, :read),
+        action: Ash.Resource.primary_action!(relationship.destination, :read),
         query: query,
         path: [:relationships, relationship_name, type],
         authorize?: possible?,
@@ -175,7 +175,7 @@ defmodule Ash.Actions.Relationships do
           data
           |> Map.get(:relationships, %{})
           |> Enum.reduce(changeset, fn {relationship, relationship_data}, changeset ->
-            relationship = Ash.relationship(changeset.resource, relationship)
+            relationship = Ash.Resource.relationship(changeset.resource, relationship)
 
             relationship_data =
               relationship_data
@@ -250,7 +250,7 @@ defmodule Ash.Actions.Relationships do
          %{type: :has_many, destination: destination} = relationship,
          relationship_data
        ) do
-    pkey = Ash.primary_key(destination)
+    pkey = Ash.Resource.primary_key(destination)
 
     relationship_data =
       case relationship_data do
@@ -273,8 +273,8 @@ defmodule Ash.Actions.Relationships do
          %{type: :many_to_many, destination: destination} = relationship,
          relationship_data
        ) do
-    pkey = Ash.primary_key(destination)
-    join_pkey = Ash.primary_key(relationship.through)
+    pkey = Ash.Resource.primary_key(destination)
+    join_pkey = Ash.Resource.primary_key(relationship.through)
 
     relationship_data =
       case relationship_data do
@@ -331,7 +331,7 @@ defmodule Ash.Actions.Relationships do
       }
 
       relationship.through
-      |> Ash.Changeset.create()
+      |> Ash.Changeset.new()
       |> Ash.Changeset.force_change_attributes(join_attrs)
       |> changeset.api.create(upsert?: true)
       |> case do
@@ -421,7 +421,7 @@ defmodule Ash.Actions.Relationships do
       else
         Changeset.after_action(changeset, fn changeset, record ->
           to_relate_record
-          |> Ash.Changeset.update()
+          |> Ash.Changeset.new()
           |> Ash.Changeset.force_change_attribute(
             relationship.destination_field,
             Map.get(record, relationship.source_field)
@@ -448,7 +448,7 @@ defmodule Ash.Actions.Relationships do
       if any_pkey_matches?(current, to_relate_record, pkey) do
         Changeset.after_action(changeset, fn changeset, record ->
           to_relate_record
-          |> Ash.Changeset.update()
+          |> Ash.Changeset.new()
           |> Ash.Changeset.force_change_attribute(relationship.destination_field, nil)
           |> changeset.api.update()
           |> case do
@@ -537,7 +537,7 @@ defmodule Ash.Actions.Relationships do
     Changeset.after_action(changeset, fn _changeset, record ->
       if to_relate_record do
         to_relate_record
-        |> Ash.Changeset.update()
+        |> Ash.Changeset.new()
         |> Ash.Changeset.force_change_attribute(
           relationship.destination_field,
           Map.get(record, relationship.source_field)
@@ -559,7 +559,7 @@ defmodule Ash.Actions.Relationships do
   defp unrelate_has_one(changeset, relationship, to_relate_record) do
     Changeset.after_action(changeset, fn changeset, record ->
       to_relate_record
-      |> Changeset.update()
+      |> Changeset.new()
       |> Changeset.force_change_attribute(relationship.destination_field, nil)
       |> changeset.api.update()
       |> case do
@@ -607,7 +607,7 @@ defmodule Ash.Actions.Relationships do
       Request.new(
         api: changeset.api,
         resource: destination,
-        action: Ash.primary_action!(relationship.destination, :read),
+        action: Ash.Resource.primary_action!(relationship.destination, :read),
         path: [:relationships, relationship.name, :current],
         query: Ash.Query.filter(destination, filter_statement),
         data:
@@ -633,7 +633,7 @@ defmodule Ash.Actions.Relationships do
     Request.new(
       api: changeset.api,
       resource: through,
-      action: Ash.primary_action!(relationship.destination, :read),
+      action: Ash.Resource.primary_action!(relationship.destination, :read),
       path: [:relationships, relationship.name, :current_join],
       query: Ash.Query.filter(through, filter_statement),
       data:
@@ -652,7 +652,7 @@ defmodule Ash.Actions.Relationships do
     Request.new(
       api: api,
       resource: destination,
-      action: Ash.primary_action!(relationship.destination, :read),
+      action: Ash.Resource.primary_action!(relationship.destination, :read),
       path: [:relationships, name, :current],
       query:
         Request.resolve(
@@ -686,7 +686,7 @@ defmodule Ash.Actions.Relationships do
 
   defp clear_relationships(%resource{} = record) do
     resource
-    |> Ash.relationships()
+    |> Ash.Resource.relationships()
     |> Enum.reduce(record, fn relationship, record ->
       not_loaded = %Ecto.Association.NotLoaded{
         __cardinality__: relationship.cardinality,

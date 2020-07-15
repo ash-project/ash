@@ -66,7 +66,7 @@ defmodule Ash.Test.Actions.ReadTest do
     setup do
       post =
         Post
-        |> create(%{title: "test", contents: "yeet"})
+        |> new(%{title: "test", contents: "yeet"})
         |> Api.create!()
 
       %{post: post}
@@ -87,7 +87,7 @@ defmodule Ash.Test.Actions.ReadTest do
     setup do
       post =
         Post
-        |> create(%{title: "test", contents: "yeet"})
+        |> new(%{title: "test", contents: "yeet"})
         |> Api.create!()
 
       %{post: post}
@@ -120,12 +120,12 @@ defmodule Ash.Test.Actions.ReadTest do
     setup do
       post1 =
         Post
-        |> create(%{title: "test", contents: "yeet"})
+        |> new(%{title: "test", contents: "yeet"})
         |> Api.create!()
 
       post2 =
         Post
-        |> create(%{title: "test1", contents: "yeet2"})
+        |> new(%{title: "test1", contents: "yeet2"})
         |> Api.create!()
 
       %{post1: post1, post2: post2}
@@ -158,12 +158,12 @@ defmodule Ash.Test.Actions.ReadTest do
     setup do
       post1 =
         Post
-        |> create(%{title: "test", contents: "yeet"})
+        |> new(%{title: "test", contents: "yeet"})
         |> Api.create!()
 
       post2 =
         Post
-        |> create(%{title: "test1", contents: "yeet2"})
+        |> new(%{title: "test1", contents: "yeet2"})
         |> Api.create!()
 
       %{post1: post1, post2: post2}
@@ -190,12 +190,12 @@ defmodule Ash.Test.Actions.ReadTest do
     setup do
       post1 =
         Post
-        |> create(%{title: "test", contents: "yeet"})
+        |> new(%{title: "test", contents: "yeet"})
         |> Api.create!()
 
       post2 =
         Post
-        |> create(%{title: "test1", contents: "yeet"})
+        |> new(%{title: "test1", contents: "yeet"})
         |> Api.create!()
 
       %{post1: post1, post2: post2}
@@ -230,17 +230,17 @@ defmodule Ash.Test.Actions.ReadTest do
     setup do
       author1 =
         Author
-        |> create(%{name: "bruh"})
+        |> new(%{name: "bruh"})
         |> Api.create!()
 
       author2 =
         Author
-        |> create(%{name: "bruh"})
+        |> new(%{name: "bruh"})
         |> Api.create!()
 
       post =
         Post
-        |> create(%{title: "test", contents: "yeet"})
+        |> new(%{title: "test", contents: "yeet"})
         |> replace_relationship(:author1, author1)
         |> replace_relationship(:author2, author2)
         |> Api.create!()
@@ -267,12 +267,12 @@ defmodule Ash.Test.Actions.ReadTest do
     setup do
       post1 =
         Post
-        |> create(%{title: "abc", contents: "abc"})
+        |> new(%{title: "abc", contents: "abc"})
         |> Api.create!()
 
       post2 =
         Post
-        |> create(%{title: "xyz", contents: "abc"})
+        |> new(%{title: "xyz", contents: "abc"})
         |> Api.create!()
 
       %{post1: post1, post2: post2}
@@ -301,7 +301,7 @@ defmodule Ash.Test.Actions.ReadTest do
     test "a nested sort sorts accordingly", %{post1: post1, post2: post2} do
       middle_post =
         Post
-        |> create(%{title: "abc", contents: "xyz"})
+        |> new(%{title: "abc", contents: "xyz"})
         |> Api.create!()
 
       assert {:ok, [^post1, ^middle_post, ^post2]} =

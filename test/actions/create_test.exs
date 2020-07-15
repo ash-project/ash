@@ -12,14 +12,14 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
-      attribute :name, :string
+      attribute(:id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0)
+      attribute(:name, :string)
     end
 
     actions do
-      read :default
-      create :default
-      update :default
+      read(:default)
+      create(:default)
+      update(:default)
     end
   end
 
@@ -33,19 +33,19 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
-      read :default
-      create :default
-      update :default
+      read(:default)
+      create(:default)
+      update(:default)
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
-      attribute :bio, :string
-      attribute :date, :date
+      attribute(:id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0)
+      attribute(:bio, :string)
+      attribute(:date, :date)
     end
 
     relationships do
-      belongs_to :author, Ash.Test.Actions.CreateTest.Author
+      belongs_to(:author, Ash.Test.Actions.CreateTest.Author)
     end
   end
 
@@ -58,21 +58,21 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
-      read :default
-      create :default
-      update :default
+      read(:default)
+      create(:default)
+      update(:default)
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
-      attribute :name, :string
-      attribute :bio, :string
+      attribute(:id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0)
+      attribute(:name, :string)
+      attribute(:bio, :string)
     end
 
     relationships do
-      has_one :profile, Profile, destination_field: :author_id
+      has_one(:profile, Profile, destination_field: :author_id)
 
-      has_many :posts, Ash.Test.Actions.CreateTest.Post, destination_field: :author_id
+      has_many(:posts, Ash.Test.Actions.CreateTest.Post, destination_field: :author_id)
     end
   end
 
@@ -92,15 +92,15 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
-      read :default
+      read(:default)
 
-      create :default
-      update :default
+      create(:default)
+      update(:default)
     end
 
     relationships do
-      belongs_to :source_post, Ash.Test.Actions.CreateTest.Post, primary_key?: true
-      belongs_to :destination_post, Ash.Test.Actions.CreateTest.Post, primary_key?: true
+      belongs_to(:source_post, Ash.Test.Actions.CreateTest.Post, primary_key?: true)
+      belongs_to(:destination_post, Ash.Test.Actions.CreateTest.Post, primary_key?: true)
     end
   end
 
@@ -113,36 +113,38 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
-      read :default
-      create :default
-      update :default
+      read(:default)
+      create(:default)
+      update(:default)
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
-      attribute :title, :string
-      attribute :contents, :string
-      attribute :tag, :string, default: {:constant, "garbage"}
-      attribute :tag2, :string, default: &PostDefaults.garbage2/0
-      attribute :tag3, :string, default: {PostDefaults, :garbage3, []}
-      attribute :list_attribute, {:array, :integer}
-      attribute :date, :date
+      attribute(:id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0)
+      attribute(:title, :string)
+      attribute(:contents, :string)
+      attribute(:tag, :string, default: {:constant, "garbage"})
+      attribute(:tag2, :string, default: &PostDefaults.garbage2/0)
+      attribute(:tag3, :string, default: {PostDefaults, :garbage3, []})
+      attribute(:list_attribute, {:array, :integer})
+      attribute(:date, :date)
 
-      attribute :list_attribute_with_constraints, {:array, :integer},
+      attribute(:list_attribute_with_constraints, {:array, :integer},
         constraints: [
           min_length: 2,
           max_length: 10,
           items: [min: -10, max: 10]
         ]
+      )
     end
 
     relationships do
-      belongs_to :author, Author
+      belongs_to(:author, Author)
 
-      many_to_many :related_posts, __MODULE__,
+      many_to_many(:related_posts, __MODULE__,
         through: PostLink,
         source_field_on_join_table: :source_post_id,
         destination_field_on_join_table: :destination_post_id
+      )
     end
   end
 
@@ -165,7 +167,7 @@ defmodule Ash.Test.Actions.CreateTest do
     test "allows creating a record with valid attributes" do
       assert %Post{title: "foo", contents: "bar"} =
                Post
-               |> create()
+               |> new()
                |> change_attributes(%{
                  title: "foo",
                  contents: "bar",
@@ -177,7 +179,7 @@ defmodule Ash.Test.Actions.CreateTest do
     test "constant default values are set properly" do
       assert %Post{tag: "garbage"} =
                Post
-               |> create()
+               |> new()
                |> change_attribute(:title, "foo")
                |> Api.create!()
     end
@@ -185,7 +187,7 @@ defmodule Ash.Test.Actions.CreateTest do
     test "constant functions values are set properly" do
       assert %Post{tag2: "garbage2"} =
                Post
-               |> create()
+               |> new()
                |> change_attribute(:title, "foo")
                |> Api.create!()
     end
@@ -193,7 +195,7 @@ defmodule Ash.Test.Actions.CreateTest do
     test "constant module/function values are set properly" do
       assert %Post{tag3: "garbage3"} =
                Post
-               |> create()
+               |> new()
                |> change_attribute(:title, "foo")
                |> Api.create!()
     end
@@ -203,18 +205,18 @@ defmodule Ash.Test.Actions.CreateTest do
     test "allows creating with a many_to_many relationship" do
       post2 =
         Post
-        |> create()
+        |> new()
         |> change_attribute(:title, "title2")
         |> Api.create!()
 
       post3 =
         Post
-        |> create()
+        |> new()
         |> change_attribute(:title, "title3")
         |> Api.create!()
 
       Post
-      |> create()
+      |> new()
       |> replace_relationship(:related_posts, [post2, post3])
       |> Api.create!()
     end
@@ -222,18 +224,18 @@ defmodule Ash.Test.Actions.CreateTest do
     test "it updates the join table properly" do
       post2 =
         Post
-        |> create()
+        |> new()
         |> change_attribute(:title, "title2")
         |> Api.create!()
 
       post3 =
         Post
-        |> create()
+        |> new()
         |> change_attribute(:title, "title3")
         |> Api.create!()
 
       Post
-      |> create()
+      |> new()
       |> replace_relationship(:related_posts, [post2, post3])
       |> Api.create!()
 
@@ -246,19 +248,19 @@ defmodule Ash.Test.Actions.CreateTest do
     test "it responds with the relationship filled in" do
       post2 =
         Post
-        |> create()
+        |> new()
         |> change_attribute(:title, "title2")
         |> Api.create!()
 
       post3 =
         Post
-        |> create()
+        |> new()
         |> change_attribute(:title, "title3")
         |> Api.create!()
 
       post =
         Post
-        |> create()
+        |> new()
         |> replace_relationship(:related_posts, [post2, post3])
         |> Api.create!()
 
@@ -274,12 +276,12 @@ defmodule Ash.Test.Actions.CreateTest do
     test "allows creating with has_one relationship" do
       profile =
         Profile
-        |> create()
+        |> new()
         |> change_attribute(:bio, "best dude")
         |> Api.create!()
 
       Author
-      |> create()
+      |> new()
       |> change_attribute(:name, "fred")
       |> replace_relationship(:profile, profile)
     end
@@ -287,13 +289,13 @@ defmodule Ash.Test.Actions.CreateTest do
     test "it sets the relationship on the destination record accordingly" do
       profile =
         Profile
-        |> create()
+        |> new()
         |> change_attribute(:bio, "best dude")
         |> Api.create!()
 
       author =
         Author
-        |> create()
+        |> new()
         |> change_attribute(:name, "fred")
         |> replace_relationship(:profile, profile)
         |> Api.create!()
@@ -304,13 +306,13 @@ defmodule Ash.Test.Actions.CreateTest do
     test "it responds with the relationshi filled in" do
       profile =
         Profile
-        |> create()
+        |> new()
         |> change_attribute(:bio, "best dude")
         |> Api.create!()
 
       author =
         Author
-        |> create()
+        |> new()
         |> change_attribute(:name, "fred")
         |> replace_relationship(:profile, profile)
         |> Api.create!()
@@ -323,12 +325,12 @@ defmodule Ash.Test.Actions.CreateTest do
     test "allows creating with a has_many relationship" do
       post =
         Post
-        |> create()
+        |> new()
         |> change_attribute(:title, "sup")
         |> Api.create!()
 
       Author
-      |> create()
+      |> new()
       |> change_attribute(:name, "foobar")
       |> replace_relationship(:posts, [post])
       |> Api.create!()
@@ -339,12 +341,12 @@ defmodule Ash.Test.Actions.CreateTest do
     test "allows creating with belongs_to relationship" do
       author =
         Author
-        |> create()
+        |> new()
         |> change_attribute(:bio, "best dude")
         |> Api.create!()
 
       Post
-      |> create()
+      |> new()
       |> change_attribute(:title, "foobar")
       |> replace_relationship(:author, author)
       |> Api.create!()
@@ -353,13 +355,13 @@ defmodule Ash.Test.Actions.CreateTest do
     test "it sets the relationship on the destination record accordingly" do
       author =
         Author
-        |> create()
+        |> new()
         |> change_attribute(:bio, "best dude")
         |> Api.create!()
 
       post =
         Post
-        |> create()
+        |> new()
         |> change_attribute(:title, "foobar")
         |> replace_relationship(:author, author)
         |> Api.create!()
@@ -370,13 +372,13 @@ defmodule Ash.Test.Actions.CreateTest do
     test "it responds with the relationship field filled in" do
       author =
         Author
-        |> create()
+        |> new()
         |> change_attribute(:bio, "best dude")
         |> Api.create!()
 
       post =
         Post
-        |> create()
+        |> new()
         |> change_attribute(:title, "foobar")
         |> replace_relationship(:author, author)
         |> Api.create!()
@@ -387,13 +389,13 @@ defmodule Ash.Test.Actions.CreateTest do
     test "it responds with the relationship filled in" do
       author =
         Author
-        |> create()
+        |> new()
         |> change_attribute(:bio, "best dude")
         |> Api.create!()
 
       post =
         Post
-        |> create()
+        |> new()
         |> change_attribute(:title, "foobar")
         |> replace_relationship(:author, author)
         |> Api.create!()
@@ -405,7 +407,7 @@ defmodule Ash.Test.Actions.CreateTest do
   describe "list type" do
     test "it can store a list" do
       assert Post
-             |> create()
+             |> new()
              |> change_attribute(:list_attribute, [1, 2, 3, 4])
              |> Api.create!()
     end
@@ -415,7 +417,7 @@ defmodule Ash.Test.Actions.CreateTest do
     test "it honors min_length" do
       assert_raise Ash.Error.Invalid, ~r/must have more than 2 items/, fn ->
         Post
-        |> create()
+        |> new()
         |> change_attribute(:list_attribute_with_constraints, [])
         |> Api.create!()
       end
@@ -426,7 +428,7 @@ defmodule Ash.Test.Actions.CreateTest do
         list = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 
         Post
-        |> create()
+        |> new()
         |> change_attribute(:list_attribute_with_constraints, list)
         |> Api.create!()
       end
@@ -437,7 +439,7 @@ defmodule Ash.Test.Actions.CreateTest do
         list = [28, 2, 4]
 
         Post
-        |> create()
+        |> new()
         |> change_attribute(:list_attribute_with_constraints, list)
         |> Api.create!()
       end
@@ -448,7 +450,7 @@ defmodule Ash.Test.Actions.CreateTest do
     test "it does not create the record" do
       assert_raise(Ash.Error.Forbidden, fn ->
         Authorized
-        |> create()
+        |> new()
         |> change_attribute(:name, "foo")
         |> Api.create!(authorize?: true)
       end)

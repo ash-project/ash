@@ -29,7 +29,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.UpdateTest do
                  primary?: true,
                  type: :update
                }
-             ] = Ash.actions(Post)
+             ] = Ash.Resource.actions(Post)
     end
   end
 

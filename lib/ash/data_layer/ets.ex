@@ -175,7 +175,7 @@ defmodule Ash.DataLayer.Ets do
   def create(resource, changeset) do
     pkey =
       resource
-      |> Ash.primary_key()
+      |> Ash.Resource.primary_key()
       |> Enum.into(%{}, fn attr ->
         {attr, Ash.Changeset.get_attribute(changeset, attr)}
       end)
@@ -191,7 +191,7 @@ defmodule Ash.DataLayer.Ets do
 
   @impl true
   def destroy(%resource{} = record) do
-    pkey = Map.take(record, Ash.primary_key(resource))
+    pkey = Map.take(record, Ash.Resource.primary_key(resource))
 
     with {:ok, table} <- wrap_or_create_table(resource),
          {:ok, _} <- ETS.Set.delete(table, pkey) do

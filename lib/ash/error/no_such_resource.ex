@@ -12,9 +12,5 @@ defmodule Ash.Error.NoSuchResource do
     def message(%{resource: resource}) do
       "No such resource #{inspect(resource)}"
     end
-
-    def description(%{resource: resource}) do
-      "Attempted to use a non-existing resource: #{inspect(resource)}"
-    end
   end
 end

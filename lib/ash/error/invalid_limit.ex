@@ -12,9 +12,5 @@ defmodule Ash.Error.InvalidLimit do
     def message(%{limit: limit}) do
       "#{inspect(limit)} is not a valid limit"
     end
-
-    def description(%{limit: limit}) do
-      "#{inspect(limit)} is not a valid limit"
-    end
   end
 end

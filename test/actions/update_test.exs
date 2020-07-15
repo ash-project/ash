@@ -143,11 +143,11 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "allows updating a record with valid attributes" do
       post =
         Post
-        |> create(%{title: "foo", contents: "bar"})
+        |> new(%{title: "foo", contents: "bar"})
         |> Api.create!()
 
       assert %Post{title: "bar", contents: "foo"} =
-               post |> update(%{title: "bar", contents: "foo"}) |> Api.update!()
+               post |> new(%{title: "bar", contents: "foo"}) |> Api.update!()
     end
   end
 
@@ -155,21 +155,21 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "allows updating with a many_to_many relationship" do
       post =
         Post
-        |> create(%{title: "title"})
+        |> new(%{title: "title"})
         |> Api.create!()
 
       post2 =
         Post
-        |> create(%{title: "title2"})
+        |> new(%{title: "title2"})
         |> Api.create!()
 
       post3 =
         Post
-        |> create(%{title: "title3"})
+        |> new(%{title: "title3"})
         |> Api.create!()
 
       post
-      |> update()
+      |> new()
       |> replace_relationship(:related_posts, [post2, post3])
       |> Api.update!()
     end
@@ -177,21 +177,21 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it updates the join table properly" do
       post =
         Post
-        |> create(%{title: "title"})
+        |> new(%{title: "title"})
         |> Api.create!()
 
       post2 =
         Post
-        |> create(%{title: "title2"})
+        |> new(%{title: "title2"})
         |> Api.create!()
 
       post3 =
         Post
-        |> create(%{title: "title3"})
+        |> new(%{title: "title3"})
         |> Api.create!()
 
       post
-      |> update()
+      |> new()
       |> replace_relationship(:related_posts, [post2, post3])
       |> Api.update!()
 
@@ -201,21 +201,21 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it responds with the relationship filled in" do
       post =
         Post
-        |> create(%{title: "title"})
+        |> new(%{title: "title"})
         |> Api.create!()
 
       post2 =
         Post
-        |> create(%{title: "title2"})
+        |> new(%{title: "title2"})
         |> Api.create!()
 
       post3 =
         Post
-        |> create(%{title: "title3"})
+        |> new(%{title: "title3"})
         |> Api.create!()
 
       new_post =
-        post |> update() |> replace_relationship(:related_posts, [post2, post3]) |> Api.update!()
+        post |> new() |> replace_relationship(:related_posts, [post2, post3]) |> Api.update!()
 
       assert Enum.sort(new_post.related_posts) ==
                Enum.sort([
@@ -229,22 +229,22 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "allows updating with has_one relationship" do
       profile =
         Profile
-        |> create(%{bio: "best dude"})
+        |> new(%{bio: "best dude"})
         |> Api.create!()
 
       profile2 =
         Profile
-        |> create(%{bio: "second best dude"})
+        |> new(%{bio: "second best dude"})
         |> Api.create!()
 
       author =
         Author
-        |> create(%{name: "fred"})
+        |> new(%{name: "fred"})
         |> replace_relationship(:profile, profile)
         |> Api.create!()
 
       author
-      |> update()
+      |> new()
       |> replace_relationship(:profile, profile2)
       |> Api.update!()
     end
@@ -252,22 +252,22 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it sets the relationship on the destination record accordingly" do
       profile =
         Profile
-        |> create(%{bio: "best dude"})
+        |> new(%{bio: "best dude"})
         |> Api.create!()
 
       profile2 =
         Profile
-        |> create(%{bio: "second best dude"})
+        |> new(%{bio: "second best dude"})
         |> Api.create!()
 
       author =
         Author
-        |> create(%{name: "fred"})
+        |> new(%{name: "fred"})
         |> replace_relationship(:profile, profile)
         |> Api.create!()
 
       author
-      |> update()
+      |> new()
       |> replace_relationship(:profile, profile2)
       |> Api.update!()
 
@@ -278,23 +278,23 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it responds with the relationship filled in" do
       profile =
         Profile
-        |> create(%{bio: "best dude"})
+        |> new(%{bio: "best dude"})
         |> Api.create!()
 
       profile2 =
         Profile
-        |> create(%{bio: "second best dude"})
+        |> new(%{bio: "second best dude"})
         |> Api.create!()
 
       author =
         Author
-        |> create(%{name: "fred"})
+        |> new(%{name: "fred"})
         |> replace_relationship(:profile, profile)
         |> Api.create!()
 
       updated_author =
         author
-        |> update()
+        |> new()
         |> replace_relationship(:profile, profile2)
         |> Api.update!()
 
@@ -306,22 +306,22 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "allows updating with a has_many relationship" do
       post =
         Post
-        |> create(%{title: "sup"})
+        |> new(%{title: "sup"})
         |> Api.create!()
 
       post2 =
         Post
-        |> create(%{title: "sup2"})
+        |> new(%{title: "sup2"})
         |> Api.create!()
 
       author =
         Author
-        |> create(%{name: "foobar"})
+        |> new(%{name: "foobar"})
         |> replace_relationship(:posts, [post])
         |> Api.create!()
 
       author
-      |> update()
+      |> new()
       |> replace_relationship(:posts, [post, post2])
       |> Api.update!()
     end
@@ -329,23 +329,23 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it sets the relationship on the destination records accordingly" do
       post =
         Post
-        |> create(%{title: "sup"})
+        |> new(%{title: "sup"})
         |> Api.create!()
 
       post2 =
         Post
-        |> create(%{title: "sup2"})
+        |> new(%{title: "sup2"})
         |> Api.create!()
 
       author =
         Author
-        |> create(%{name: "foobar"})
+        |> new(%{name: "foobar"})
         |> replace_relationship(:posts, [post])
         |> Api.create!()
 
       author =
         author
-        |> update()
+        |> new()
         |> replace_relationship(:posts, [post2.id])
         |> Api.update!()
 
@@ -356,23 +356,23 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it responds with the relationship field filled in" do
       post =
         Post
-        |> create(%{title: "sup"})
+        |> new(%{title: "sup"})
         |> Api.create!()
 
       post2 =
         Post
-        |> create(%{title: "sup2"})
+        |> new(%{title: "sup2"})
         |> Api.create!()
 
       author =
         Author
-        |> create(%{name: "foobar"})
+        |> new(%{name: "foobar"})
         |> replace_relationship(:posts, [post])
         |> Api.create!()
 
       updated_author =
         author
-        |> update()
+        |> new()
         |> replace_relationship(:posts, [post2])
         |> Api.update!()
 
@@ -384,22 +384,22 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "allows updating with belongs_to relationship" do
       author =
         Author
-        |> create(%{name: "best dude"})
+        |> new(%{name: "best dude"})
         |> Api.create!()
 
       author2 =
         Author
-        |> create(%{name: "best dude2"})
+        |> new(%{name: "best dude2"})
         |> Api.create!()
 
       post =
         Post
-        |> create(%{title: "foobar"})
+        |> new(%{title: "foobar"})
         |> replace_relationship(:author, author)
         |> Api.create!()
 
       post
-      |> update()
+      |> new()
       |> replace_relationship(:author, author2)
       |> Api.update!()
     end
@@ -407,22 +407,22 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "sets the relationship on the destination records accordingly" do
       author =
         Author
-        |> create(%{name: "best dude"})
+        |> new(%{name: "best dude"})
         |> Api.create!()
 
       author2 =
         Author
-        |> create(%{name: "best dude2"})
+        |> new(%{name: "best dude2"})
         |> Api.create!()
 
       post =
         Post
-        |> create(%{title: "foobar"})
+        |> new(%{title: "foobar"})
         |> replace_relationship(:author, author)
         |> Api.create!()
 
       post
-      |> update()
+      |> new()
       |> replace_relationship(:author, author2)
       |> Api.update!()
 
@@ -432,21 +432,21 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it responds with the relationship field filled in" do
       author =
         Author
-        |> create(%{name: "best dude"})
+        |> new(%{name: "best dude"})
         |> Api.create!()
 
       author2 =
         Author
-        |> create(%{name: "best dude2"})
+        |> new(%{name: "best dude2"})
         |> Api.create!()
 
       post =
         Post
-        |> create(%{title: "foobar"})
+        |> new(%{title: "foobar"})
         |> replace_relationship(:author, author)
         |> Api.create!()
 
-      updated_post = post |> update() |> replace_relationship(:author, author2) |> Api.update!()
+      updated_post = post |> new() |> replace_relationship(:author, author2) |> Api.update!()
 
       assert updated_post.author ==
                Api.get!(Author, author2.id)
@@ -457,12 +457,12 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it does not update the record" do
       record =
         Authorized
-        |> create(%{name: "bar"})
+        |> new(%{name: "bar"})
         |> Api.create!()
 
       assert_raise(Ash.Error.Forbidden, fn ->
         record
-        |> update(%{name: "foo"})
+        |> new(%{name: "foo"})
         |> Api.update!(authorize?: true)
       end)
 

@@ -12,9 +12,5 @@ defmodule Ash.Error.InvalidOffset do
     def message(%{offset: offset}) do
       "#{inspect(offset)} is not a valid offset"
     end
-
-    def description(%{offset: offset}) do
-      "#{inspect(offset)} is not a valid offset"
-    end
   end
 end

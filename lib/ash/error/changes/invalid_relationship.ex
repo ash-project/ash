@@ -13,10 +13,6 @@ defmodule Ash.Error.Changes.InvalidRelationship do
       "Invalid value provided#{for_relationship(error)}#{do_message(error)}"
     end
 
-    def description(error) do
-      "Invalid value provided#{for_relationship(error)}#{do_message(error)}"
-    end
-
     defp for_relationship(%{relationship: relationship}) when not is_nil(relationship),
       do: " for #{relationship}"
 

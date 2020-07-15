@@ -17,7 +17,7 @@ defmodule Ash.Actions.PrimaryKeyHelpers do
   end
 
   def value_to_primary_key_filter(resource, value) do
-    do_value_to_primary_key_filter(resource, Ash.primary_key(resource), value)
+    do_value_to_primary_key_filter(resource, Ash.Resource.primary_key(resource), value)
   end
 
   defp do_value_to_primary_key_filter(_resource, [], _value), do: {:error, :no_primary_key}
@@ -36,7 +36,7 @@ defmodule Ash.Actions.PrimaryKeyHelpers do
       |> Map.take(primary_key)
       |> Enum.reduce({:ok, []}, fn
         {key, val}, {:ok, filter} ->
-          attr = Ash.attribute(resource, key)
+          attr = Ash.Resource.attribute(resource, key)
 
           case Ash.Type.cast_input(attr.type, val) do
             {:ok, casted} ->

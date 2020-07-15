@@ -15,8 +15,7 @@ defmodule Ash.Actions.Create do
       |> Keyword.take([:verbose?, :actor, :authorize?])
       |> Keyword.put(:transaction?, true)
 
-    with %{valid?: true} = changeset <-
-           Relationships.handle_relationship_changes(%{changeset | api: api}),
+    with %{valid?: true} = changeset <- changeset(changeset, api),
          :ok <- check_upsert_support(changeset.resource, upsert?),
          {:ok, side_load_query} <-
            side_loads_as_query(changeset.api, changeset.resource, side_load),
@@ -44,8 +43,47 @@ defmodule Ash.Actions.Create do
         {:error, Ash.Error.to_ash_error(errors)}
 
       {:error, error} ->
-        {:error, error}
+        {:error, Ash.Error.to_ash_error(error)}
     end
+  end
+
+  defp changeset(changeset, api) do
+    %{changeset | api: api}
+    |> Relationships.handle_relationship_changes()
+    |> set_defaults()
+    |> add_validations()
+  end
+
+  defp add_validations(changeset) do
+    Ash.Changeset.before_action(changeset, fn changeset ->
+      changeset.resource
+      |> Ash.Resource.validations(:create)
+      |> Enum.reduce(changeset, fn validation, changeset ->
+        if validation.expensive? and not changeset.valid? do
+          changeset
+        else
+          do_validation(changeset, validation)
+        end
+      end)
+    end)
+  end
+
+  defp do_validation(changeset, validation) do
+    case validation.module.validate(changeset, validation.opts) do
+      :ok -> changeset
+      {:error, error} -> Ash.Changeset.add_error(changeset, error)
+    end
+  end
+
+  defp set_defaults(changeset) do
+    changeset.resource
+    |> Ash.Resource.attributes()
+    |> Enum.filter(& &1.default)
+    |> Enum.reduce(changeset, fn attribute, changeset ->
+      Ash.Changeset.change_new_attribute_lazy(changeset, attribute.name, fn ->
+        default(attribute.default)
+      end)
+    end)
   end
 
   defp do_run_requests(
@@ -107,7 +145,7 @@ defmodule Ash.Actions.Create do
   defp check_upsert_support(_resource, false), do: :ok
 
   defp check_upsert_support(resource, true) do
-    if Ash.data_layer_can?(resource, :upsert) do
+    if Ash.Resource.data_layer_can?(resource, :upsert) do
       :ok
     else
       {:error, {:unsupported, :upsert}}
@@ -127,4 +165,8 @@ defmodule Ash.Actions.Create do
       %{errors: errors} -> {:error, errors}
     end
   end
+
+  defp default({:constant, value}), do: value
+  defp default({mod, func, args}), do: apply(mod, func, args)
+  defp default(function) when is_function(function, 0), do: function.()
 end

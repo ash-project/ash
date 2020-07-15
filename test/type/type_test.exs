@@ -75,7 +75,7 @@ defmodule Ash.Test.Type.TypeTest do
   test "it accepts valid data" do
     post =
       Post
-      |> create(%{title: "foobar"})
+      |> new(%{title: "foobar"})
       |> Api.create!()
 
     assert post.title == "foobar"
@@ -84,7 +84,7 @@ defmodule Ash.Test.Type.TypeTest do
   test "it rejects invalid data" do
     assert_raise(Ash.Error.Invalid, ~r/is too long, max_length is 10/, fn ->
       Post
-      |> create(%{title: "foobarbazbuzbiz"})
+      |> new(%{title: "foobarbazbuzbiz"})
       |> Api.create!()
     end)
   end

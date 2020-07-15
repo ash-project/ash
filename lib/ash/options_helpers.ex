@@ -27,7 +27,7 @@ defmodule Ash.OptionsHelpers do
   end
 
   def make_optional!(options, field) do
-    Keyword.update!(options, field, &Keyword.put(&1, :required, false))
+    Keyword.update!(options, field, &Keyword.delete(&1, :required))
   end
 
   def set_type!(options, field, type) do
@@ -38,7 +38,7 @@ defmodule Ash.OptionsHelpers do
     Keyword.update!(options, field, fn config ->
       config
       |> Keyword.put(:default, value)
-      |> Keyword.put(:required, false)
+      |> Keyword.delete(:required)
     end)
   end
 

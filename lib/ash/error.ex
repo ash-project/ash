@@ -92,7 +92,7 @@ defmodule Ash.Error do
     |> Enum.map_join("\n\n", fn {class, class_errors} ->
       header = header(class) <> "\n\n"
 
-      header <> Enum.map_join(class_errors, "\n", &"* #{Ash.Error.description(&1)}")
+      header <> Enum.map_join(class_errors, "\n", &"* #{Ash.Error.message(&1)}")
     end)
   end
 
@@ -119,7 +119,6 @@ defmodule Ash.Error do
   defdelegate id(error), to: Ash.ErrorKind
   defdelegate code(error), to: Ash.ErrorKind
   defdelegate message(error), to: Ash.ErrorKind
-  defdelegate description(error), to: Ash.ErrorKind
   defdelegate impl_for(error), to: Ash.ErrorKind
 end
 
@@ -134,7 +133,4 @@ defprotocol Ash.ErrorKind do
 
   @spec message(t()) :: String.t()
   def message(error)
-
-  @spec description(t()) :: String.t()
-  def description(error)
 end

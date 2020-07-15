@@ -15,10 +15,6 @@ defmodule Ash.Error.Filter.InvalidFilterValue do
       "Invalid filter value `#{inspect(value)}` supplied in: `#{inspect(filter)}`"
     end
 
-    def description(%{filter: filter, value: value}) do
-      "Invalid filter value `#{inspect(value)}` supplied in: `#{inspect(filter)}`"
-    end
-
     def stacktrace(_), do: nil
   end
 end

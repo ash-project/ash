@@ -32,7 +32,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
                  type: Ash.Type.UUID
                },
                _
-             ] = Ash.attributes(Post)
+             ] = Ash.Resource.attributes(Post)
     end
 
     test "it creates a relationship" do
@@ -54,7 +54,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
                  source_field: :foobar_id,
                  type: :belongs_to
                }
-             ] = Ash.relationships(Post)
+             ] = Ash.Resource.relationships(Post)
     end
   end
 

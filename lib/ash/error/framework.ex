@@ -12,9 +12,5 @@ defmodule Ash.Error.Framework do
     def message(error) do
       Ash.Error.error_messages(error.errors)
     end
-
-    def description(error) do
-      Ash.Error.error_descriptions(error.errors)
-    end
   end
 end

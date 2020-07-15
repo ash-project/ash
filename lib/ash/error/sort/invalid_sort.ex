@@ -12,9 +12,5 @@ defmodule Ash.Error.Sort.UnsortableField do
     def message(%{field: field}) do
       "Cannot sort on #{inspect(field)}"
     end
-
-    def description(%{field: field}) do
-      "Attempted to sort on a field that cannot be used for sorts: #{field}"
-    end
   end
 end

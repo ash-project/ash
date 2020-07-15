@@ -129,18 +129,18 @@ defmodule Ash.Test.Actions.SideLoadTest do
     test "it allows sideloading related data" do
       author =
         Author
-        |> create(%{name: "zerg"})
+        |> new(%{name: "zerg"})
         |> Api.create!()
 
       post1 =
         Post
-        |> create(%{title: "post1"})
+        |> new(%{title: "post1"})
         |> replace_relationship(:author, author)
         |> Api.create!()
 
       post2 =
         Post
-        |> create(%{title: "post2"})
+        |> new(%{title: "post2"})
         |> replace_relationship(:author, author)
         |> Api.create!()
 
@@ -161,17 +161,17 @@ defmodule Ash.Test.Actions.SideLoadTest do
     test "it allows sideloading many to many relationships" do
       category1 =
         Category
-        |> create(%{name: "lame"})
+        |> new(%{name: "lame"})
         |> Api.create!()
 
       category2 =
         Category
-        |> create(%{name: "cool"})
+        |> new(%{name: "cool"})
         |> Api.create!()
 
       post =
         Post
-        |> create(%{title: "post1"})
+        |> new(%{title: "post1"})
         |> replace_relationship(:categories, [category1, category2])
         |> Api.create!()
 
@@ -189,17 +189,17 @@ defmodule Ash.Test.Actions.SideLoadTest do
     test "it allows sideloading nested many to many relationships" do
       category1 =
         Category
-        |> create(%{name: "lame"})
+        |> new(%{name: "lame"})
         |> Api.create!()
 
       category2 =
         Category
-        |> create(%{name: "cool"})
+        |> new(%{name: "cool"})
         |> Api.create!()
 
       post =
         Post
-        |> create(%{title: "post1"})
+        |> new(%{title: "post1"})
         |> replace_relationship(:categories, [category1, category2])
         |> Api.create!()
 

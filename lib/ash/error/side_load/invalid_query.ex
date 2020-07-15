@@ -15,13 +15,6 @@ defmodule Ash.Error.SideLoad.InvalidQuery do
       "Invalid query: #{inspect(query)} at #{Enum.join(side_load_path, ".")}"
     end
 
-    def description(%{
-          query: query,
-          side_load_path: side_load_path
-        }) do
-      "Invalid query: #{inspect(query)} at #{Enum.join(side_load_path, ".")}"
-    end
-
     def stacktrace(_), do: nil
   end
 end

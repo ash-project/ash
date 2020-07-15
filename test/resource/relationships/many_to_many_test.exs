@@ -50,7 +50,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                  through: SomeResource,
                  type: :many_to_many
                }
-             ] = Ash.relationships(Post)
+             ] = Ash.Resource.relationships(Post)
     end
   end
 

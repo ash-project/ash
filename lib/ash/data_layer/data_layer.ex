@@ -56,25 +56,25 @@ defmodule Ash.DataLayer do
 
   @spec resource_to_query(Ash.resource()) :: Ash.data_layer_query()
   def resource_to_query(resource) do
-    Ash.data_layer(resource).resource_to_query(resource)
+    Ash.Resource.data_layer(resource).resource_to_query(resource)
   end
 
   @spec update(Ash.resource(), Ash.changeset()) ::
           {:ok, Ash.record()} | {:error, term}
   def update(resource, changeset) do
-    Ash.data_layer(resource).update(resource, changeset)
+    Ash.Resource.data_layer(resource).update(resource, changeset)
   end
 
   @spec create(Ash.resource(), Ash.changeset()) ::
           {:ok, Ash.record()} | {:error, term}
   def create(resource, changeset) do
-    Ash.data_layer(resource).create(resource, changeset)
+    Ash.Resource.data_layer(resource).create(resource, changeset)
   end
 
   @spec source(Ash.resource()) :: String.t()
   def source(resource) do
-    if :erlang.function_exported(Ash.data_layer(resource), :source, 1) do
-      Ash.data_layer(resource).source(resource)
+    if :erlang.function_exported(Ash.Resource.data_layer(resource), :source, 1) do
+      Ash.Resource.data_layer(resource).source(resource)
     else
       ""
     end
@@ -83,7 +83,7 @@ defmodule Ash.DataLayer do
   @spec upsert(Ash.resource(), Ash.changeset()) ::
           {:ok, Ash.record()} | {:error, term}
   def upsert(resource, changeset) do
-    Ash.data_layer(resource).upsert(resource, changeset)
+    Ash.Resource.data_layer(resource).upsert(resource, changeset)
   end
 
   @spec filter(Ash.data_layer_query(), Ash.filter(), Ash.resource()) ::
@@ -91,14 +91,14 @@ defmodule Ash.DataLayer do
   def filter(query, nil, _), do: {:ok, query}
 
   def filter(query, filter, resource) do
-    data_layer = Ash.data_layer(resource)
+    data_layer = Ash.Resource.data_layer(resource)
     data_layer.filter(query, filter, resource)
   end
 
   @spec sort(Ash.data_layer_query(), Ash.sort(), Ash.resource()) ::
           {:ok, Ash.data_layer_query()} | {:error, term}
   def sort(query, sort, resource) do
-    data_layer = Ash.data_layer(resource)
+    data_layer = Ash.Resource.data_layer(resource)
     data_layer.sort(query, sort, resource)
   end
 
@@ -107,7 +107,7 @@ defmodule Ash.DataLayer do
   def limit(query, nil, _resource), do: {:ok, query}
 
   def limit(query, limit, resource) do
-    data_layer = Ash.data_layer(resource)
+    data_layer = Ash.Resource.data_layer(resource)
     data_layer.limit(query, limit, resource)
   end
 
@@ -116,25 +116,25 @@ defmodule Ash.DataLayer do
   def offset(query, nil, _resource), do: {:ok, query}
 
   def offset(query, offset, resource) do
-    data_layer = Ash.data_layer(resource)
+    data_layer = Ash.Resource.data_layer(resource)
     data_layer.offset(query, offset, resource)
   end
 
   @spec can?(feature, Ash.resource()) :: boolean
   def can?(feature, resource) do
-    data_layer = Ash.data_layer(resource)
+    data_layer = Ash.Resource.data_layer(resource)
     data_layer.can?(resource, feature)
   end
 
   @spec run_query(Ash.data_layer_query(), central_resource :: Ash.resource()) ::
           {:ok, list(Ash.record())} | {:error, term}
   def run_query(query, central_resource) do
-    Ash.data_layer(central_resource).run_query(query, central_resource)
+    Ash.Resource.data_layer(central_resource).run_query(query, central_resource)
   end
 
   def transact(resource, func) do
     if can?(:transact, resource) do
-      data_layer = Ash.data_layer(resource)
+      data_layer = Ash.Resource.data_layer(resource)
       data_layer.transaction(resource, func)
     else
       {:ok, func.()}
@@ -142,7 +142,7 @@ defmodule Ash.DataLayer do
   end
 
   def custom_filters(resource) do
-    data_layer = Ash.data_layer(resource)
+    data_layer = Ash.Resource.data_layer(resource)
 
     if :erlang.function_exported(data_layer, :custom_filters, 1) do
       data_layer.custom_filters(resource)

@@ -6,11 +6,10 @@ defmodule Ash.Actions.Read do
   alias Ash.Filter
   require Logger
 
-  def run(query, _action, opts \\ []) do
+  def run(query, action, opts \\ []) do
     engine_opts = Keyword.take(opts, [:verbose?, :actor, :authorize?])
 
     with %{errors: []} <- query,
-         {:action, action} when not is_nil(action) <- {:action, action(query, opts)},
          {:ok, requests} <- requests(query, action, opts),
          side_load_requests <- SideLoad.requests(query),
          %{data: %{data: data} = all_data, errors: []} <-
@@ -18,27 +17,11 @@ defmodule Ash.Actions.Read do
          data_with_side_loads <- SideLoad.attach_side_loads(data, all_data) do
       {:ok, data_with_side_loads}
     else
-      {:action, nil} ->
-        {:error, "No such action defined, or no default action defined"}
-
       %{errors: errors} ->
         {:error, Ash.Error.to_ash_error(errors)}
 
       {:error, error} ->
         {:error, Ash.Error.to_ash_error(error)}
-    end
-  end
-
-  defp action(query, opts) do
-    case opts[:action] do
-      %Ash.Resource.Actions.Read{name: name} ->
-        Ash.action(query.resource, name, :read)
-
-      nil ->
-        Ash.primary_action(query.resource, :read)
-
-      action ->
-        Ash.action(query.resource, action, :read)
     end
   end
 

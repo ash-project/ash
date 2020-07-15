@@ -30,8 +30,15 @@ defmodule Ash.Actions.Destroy do
         authorize?: false,
         data:
           Request.resolve([[:data, :data]], fn _ ->
-            case Ash.data_layer(resource).destroy(record) do
-              :ok -> {:ok, record}
+            changeset =
+              record
+              |> Ash.Changeset.new()
+              |> Map.put(:api, api)
+
+            with :ok <- validate(changeset),
+                 :ok <- Ash.Resource.data_layer(resource).destroy(record) do
+              {:ok, record}
+            else
               {:error, error} -> {:error, error}
             end
           end)
@@ -46,6 +53,31 @@ defmodule Ash.Actions.Destroy do
 
       %{errors: errors} ->
         {:error, Ash.Error.to_ash_error(errors)}
+    end
+  end
+
+  defp validate(changeset) do
+    changeset.resource
+    |> Ash.Resource.validations(:destroy)
+    |> Enum.reduce(:ok, fn validation, acc ->
+      if validation.expensive? and not changeset.valid? do
+        acc
+      else
+        do_validation(changeset, validation, acc)
+      end
+    end)
+  end
+
+  defp do_validation(changeset, validation, acc) do
+    case validation.module.validate(changeset, validation.opts) do
+      :ok ->
+        acc
+
+      {:error, error} ->
+        case acc do
+          :ok -> {:error, [error]}
+          {:error, errors} -> {:error, [error | errors]}
+        end
     end
   end
 end

@@ -32,12 +32,13 @@ defmodule Ash.Changeset do
     NoSuchResource
   }
 
-  @doc "Return a changeset meant for creating an instance of a resource"
-  @spec create(Ash.resource(), map) :: t
-  def create(resource, initial_attributes \\ %{}) do
+  @doc "Return a changeset over a resource or a record"
+  @spec new(Ash.resource() | Ash.record(), map) :: t
+  def new(resource, initial_attributes \\ %{})
+
+  def new(%resource{} = record, initial_attributes) do
     if Ash.Resource.resource?(resource) do
-      %__MODULE__{resource: resource, action_type: :create, data: struct(resource)}
-      |> before_action(&set_create_defaults/1)
+      %__MODULE__{resource: resource, data: record, action_type: :update}
       |> change_attributes(initial_attributes)
     else
       %__MODULE__{resource: resource, action_type: :create, data: struct(resource)}
@@ -45,12 +46,9 @@ defmodule Ash.Changeset do
     end
   end
 
-  @doc "Return a changeset meant for updating an instance of a resource"
-  @spec update(Ash.record(), map) :: t
-  def update(%resource{} = record, initial_attributes \\ %{}) do
+  def new(resource, initial_attributes) do
     if Ash.Resource.resource?(resource) do
-      %__MODULE__{resource: resource, data: record, action_type: :update}
-      |> before_action(&set_update_defaults/1)
+      %__MODULE__{resource: resource, action_type: :create, data: struct(resource)}
       |> change_attributes(initial_attributes)
     else
       %__MODULE__{resource: resource, action_type: :create, data: struct(resource)}
@@ -130,7 +128,7 @@ defmodule Ash.Changeset do
   """
   @spec append_to_relationship(t, atom, list(Ash.record()) | Ash.record()) :: t()
   def append_to_relationship(changeset, relationship, record_or_records) do
-    case Ash.relationship(changeset.resource, relationship) do
+    case Ash.Resource.relationship(changeset.resource, relationship) do
       nil ->
         error =
           NoSuchRelationship.exception(
@@ -182,7 +180,7 @@ defmodule Ash.Changeset do
   """
   @spec remove_from_relationship(t, atom, list(Ash.record()) | Ash.record()) :: t()
   def remove_from_relationship(changeset, relationship, record_or_records) do
-    case Ash.relationship(changeset.resource, relationship) do
+    case Ash.Resource.relationship(changeset.resource, relationship) do
       nil ->
         error =
           NoSuchRelationship.exception(
@@ -247,7 +245,7 @@ defmodule Ash.Changeset do
   """
   @spec replace_relationship(t(), atom(), Ash.record() | list(Ash.record())) :: t()
   def replace_relationship(changeset, relationship, record_or_records) do
-    case Ash.relationship(changeset.resource, relationship) do
+    case Ash.Resource.relationship(changeset.resource, relationship) do
       nil ->
         error =
           NoSuchRelationship.exception(
@@ -342,7 +340,7 @@ defmodule Ash.Changeset do
 
   @doc "Adds a change to the changeset, unless the value matches the existing value"
   def change_attribute(changeset, attribute, value) do
-    case Ash.attribute(changeset.resource, attribute) do
+    case Ash.Resource.attribute(changeset.resource, attribute) do
       nil ->
         error =
           NoSuchAttribute.exception(
@@ -394,7 +392,7 @@ defmodule Ash.Changeset do
   @doc "Changes an attribute even if it isn't writable"
   @spec force_change_attribute(t(), atom, any) :: t()
   def force_change_attribute(changeset, attribute, value) do
-    case Ash.attribute(changeset.resource, attribute) do
+    case Ash.Resource.attribute(changeset.resource, attribute) do
       nil ->
         error =
           NoSuchAttribute.exception(
@@ -496,7 +494,7 @@ defmodule Ash.Changeset do
   defp primary_key(_, nil), do: {:ok, nil}
 
   defp primary_key(relationship, records) when is_list(records) do
-    case Ash.primary_key(relationship.destination) do
+    case Ash.Resource.primary_key(relationship.destination) do
       [_field] ->
         multiple_primary_keys(relationship, records)
 
@@ -516,7 +514,7 @@ defmodule Ash.Changeset do
   end
 
   defp do_primary_key(relationship, record) when is_map(record) do
-    primary_key = Ash.primary_key(relationship.destination)
+    primary_key = Ash.Resource.primary_key(relationship.destination)
 
     is_pkey_map? =
       Enum.all?(primary_key, fn key ->
@@ -558,8 +556,8 @@ defmodule Ash.Changeset do
   end
 
   defp single_primary_key(relationship, value) do
-    with [field] <- Ash.primary_key(relationship.destination),
-         attribute <- Ash.attribute(relationship.destination, field),
+    with [field] <- Ash.Resource.primary_key(relationship.destination),
+         attribute <- Ash.Resource.attribute(relationship.destination, field),
          {:ok, casted} <- Ash.Type.cast_input(attribute.type, value) do
       {:ok, %{field => casted}}
     else
@@ -588,27 +586,15 @@ defmodule Ash.Changeset do
     %{changeset | requests: [request | changeset.requests]}
   end
 
-  defp set_create_defaults(changeset) do
-    changeset.resource
-    |> Ash.attributes()
-    |> Enum.filter(& &1.default)
-    |> Enum.reduce(changeset, fn attribute, changeset ->
-      change_new_attribute_lazy(changeset, attribute.name, fn -> default(attribute.default) end)
-    end)
+  defp validate_allow_nil(%{allow_nil?: false} = attribute, nil) do
+    {:error,
+     InvalidAttribute.exception(
+       field: attribute.name,
+       message: "must be present",
+       validation: {:present, 1, 1}
+     )}
   end
 
-  defp set_update_defaults(changeset) do
-    changeset.resource
-    |> Ash.attributes()
-    |> Enum.filter(& &1.update_default)
-    |> Enum.reduce(changeset, fn attribute, changeset ->
-      change_new_attribute_lazy(changeset, attribute.name, fn ->
-        default(attribute.update_default)
-      end)
-    end)
-  end
-
-  defp validate_allow_nil(%{allow_nil?: false}, nil), do: {:error, "must not be nil"}
   defp validate_allow_nil(_, _), do: :ok
 
   defp add_attribute_invalid_error(changeset, attribute, message \\ nil) do
@@ -616,13 +602,10 @@ defmodule Ash.Changeset do
       InvalidAttribute.exception(
         field: attribute.name,
         type: attribute.type,
+        validation: {:cast, attribute.type},
         message: message
       )
 
     add_error(changeset, error)
   end
-
-  defp default({:constant, value}), do: value
-  defp default({mod, func, args}), do: apply(mod, func, args)
-  defp default(function) when is_function(function, 0), do: function.()
 end

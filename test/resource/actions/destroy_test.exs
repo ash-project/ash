@@ -31,7 +31,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.DestroyTest do
                  primary?: true,
                  type: :destroy
                }
-             ] = Ash.actions(Post)
+             ] = Ash.Resource.actions(Post)
     end
   end
 

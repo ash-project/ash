@@ -104,7 +104,7 @@ defmodule Ash.Filter.Predicate do
   def new(resource, attribute, predicate, value, relationship_path) do
     case predicate.new(resource, attribute, value) do
       {:ok, predicate} ->
-        if Ash.data_layer_can?(
+        if Ash.Resource.data_layer_can?(
              resource,
              {:filter_predicate, Ash.Type.storage_type(attribute.type), predicate}
            ) do

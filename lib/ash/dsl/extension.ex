@@ -254,7 +254,7 @@ defmodule Ash.Dsl.Extension do
   end
 
   def run_transformers(mod, transformers, ash_dsl_config) do
-    Enum.reduce(transformers, ash_dsl_config, fn transformer, dsl ->
+    Enum.reduce_while(transformers, ash_dsl_config, fn transformer, dsl ->
       result =
         try do
           transformer.transform(mod, dsl)
@@ -271,8 +271,13 @@ defmodule Ash.Dsl.Extension do
         end
 
       case result do
+        :halt ->
+          {:halt, dsl}
+
         {:ok, new_dsl} ->
           write_dsl_to_persistent_term(mod, new_dsl)
+
+          {:cont, new_dsl}
 
         {:error, error} ->
           raise_transformer_error(transformer, error)

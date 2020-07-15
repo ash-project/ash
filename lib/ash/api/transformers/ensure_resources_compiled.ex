@@ -14,8 +14,21 @@ defmodule Ash.Api.Transformers.EnsureResourcesCompiled do
     dsl
     |> Transformer.get_entities([:resources], @extension)
     |> Enum.map(& &1.resource)
-    |> Enum.each(&Code.ensure_compiled/1)
+    |> Enum.filter(fn resource ->
+      case Code.ensure_compiled(resource) do
+        {:module, _module} ->
+          false
 
-    {:ok, dsl}
+        _ ->
+          true
+      end
+    end)
+    |> case do
+      [] ->
+        {:ok, dsl}
+
+      _ ->
+        :halt
+    end
   end
 end

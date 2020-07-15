@@ -17,8 +17,7 @@ defmodule Ash.Actions.Update do
 
     resource = changeset.resource
 
-    with %{valid?: true} = changeset <-
-           Relationships.handle_relationship_changes(%{changeset | api: api}),
+    with %{valid?: true} = changeset <- changeset(changeset, api),
          {:ok, side_load_query} <-
            side_loads_as_query(changeset.api, changeset.resource, side_load),
          side_load_requests <-
@@ -41,8 +40,41 @@ defmodule Ash.Actions.Update do
         {:error, Ash.Error.to_ash_error(errors)}
 
       {:error, error} ->
-        {:error, error}
+        {:error, Ash.Error.to_ash_error(error)}
     end
+  end
+
+  defp changeset(changeset, api) do
+    %{changeset | api: api}
+    |> Relationships.handle_relationship_changes()
+    |> set_defaults()
+    |> add_validations()
+  end
+
+  defp add_validations(changeset) do
+    changeset.resource()
+    |> Ash.Resource.validations(:update)
+    |> Enum.reduce(changeset, fn validation, changeset ->
+      Ash.Changeset.before_action(changeset, &do_validation(&1, validation))
+    end)
+  end
+
+  defp do_validation(changeset, validation) do
+    case validation.module.validate(changeset, validation.opts) do
+      :ok -> changeset
+      {:error, error} -> Ash.Changeset.add_error(changeset, error)
+    end
+  end
+
+  defp set_defaults(changeset) do
+    changeset.resource
+    |> Ash.Resource.attributes()
+    |> Enum.filter(& &1.update_default)
+    |> Enum.reduce(changeset, fn attribute, changeset ->
+      Ash.Changeset.change_new_attribute_lazy(changeset, attribute.name, fn ->
+        default(attribute.update_default)
+      end)
+    end)
   end
 
   defp do_run_requests(
@@ -108,4 +140,8 @@ defmodule Ash.Actions.Update do
       %{errors: errors} -> {:error, errors}
     end
   end
+
+  defp default({:constant, value}), do: value
+  defp default({mod, func, args}), do: apply(mod, func, args)
+  defp default(function) when is_function(function, 0), do: function.()
 end

@@ -24,9 +24,9 @@ defmodule Ash.DataLayer.Mnesia do
     api
     |> Ash.Api.resources()
     |> Enum.each(fn resource ->
-      attributes = resource |> Ash.attributes() |> Enum.map(& &1.name) |> Enum.sort()
+      attributes = resource |> Ash.Resource.attributes() |> Enum.map(& &1.name) |> Enum.sort()
 
-      case Ash.primary_key(resource) do
+      case Ash.Resource.primary_key(resource) do
         [] ->
           resource
           |> table()
@@ -125,10 +125,10 @@ defmodule Ash.DataLayer.Mnesia do
         {:error, reason}
 
       {:atomic, records} ->
-        attributes = resource |> Ash.attributes() |> Enum.map(& &1.name) |> Enum.sort()
+        attributes = resource |> Ash.Resource.attributes() |> Enum.map(& &1.name) |> Enum.sort()
 
         elements_to_drop =
-          case Ash.primary_key(resource) do
+          case Ash.Resource.primary_key(resource) do
             [] ->
               1
 
@@ -170,14 +170,14 @@ defmodule Ash.DataLayer.Mnesia do
 
     pkey =
       resource
-      |> Ash.primary_key()
+      |> Ash.Resource.primary_key()
       |> Enum.map(fn attr ->
         Map.get(record, attr)
       end)
 
     values =
       resource
-      |> Ash.attributes()
+      |> Ash.Resource.attributes()
       |> Enum.sort_by(& &1.name)
       |> Enum.map(&Map.get(record, &1.name))
 
@@ -208,7 +208,7 @@ defmodule Ash.DataLayer.Mnesia do
   def destroy(%resource{} = record) do
     pkey =
       resource
-      |> Ash.primary_key()
+      |> Ash.Resource.primary_key()
       |> Enum.map(&Map.get(record, &1))
 
     result =

@@ -14,18 +14,18 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     end
 
     actions do
-      read :default
-      create :default
-      update :default
+      read(:default)
+      create(:default)
+      update(:default)
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
-      attribute :bio, :string
+      attribute(:id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0)
+      attribute(:bio, :string)
     end
 
     relationships do
-      belongs_to :user, Ash.Test.Filter.FilterInteractionTest.User
+      belongs_to(:user, Ash.Test.Filter.FilterInteractionTest.User)
     end
   end
 
@@ -38,24 +38,25 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     end
 
     actions do
-      read :default
-      create :default
-      update :default
+      read(:default)
+      create(:default)
+      update(:default)
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
-      attribute :name, :string
-      attribute :allow_second_author, :boolean
+      attribute(:id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0)
+      attribute(:name, :string)
+      attribute(:allow_second_author, :boolean)
     end
 
     relationships do
-      has_many :posts, Ash.Test.Filter.FilterInteractionTest.Post, destination_field: :author_id
+      has_many(:posts, Ash.Test.Filter.FilterInteractionTest.Post, destination_field: :author_id)
 
-      has_many :second_posts, Ash.Test.Filter.FilterInteractionTest.Post,
+      has_many(:second_posts, Ash.Test.Filter.FilterInteractionTest.Post,
         destination_field: :author_id
+      )
 
-      has_one :profile, Profile, destination_field: :user_id
+      has_one(:profile, Profile, destination_field: :user_id)
     end
   end
 
@@ -64,15 +65,16 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
 
     actions do
-      read :default
+      read(:default)
 
-      create :default
-      update :default
+      create(:default)
+      update(:default)
     end
 
     relationships do
-      belongs_to :source_post, Ash.Test.Filter.FilterInteractionTest.Post, primary_key?: true
-      belongs_to :destination_post, Ash.Test.Filter.FilterInteractionTest.Post, primary_key?: true
+      belongs_to(:source_post, Ash.Test.Filter.FilterInteractionTest.Post, primary_key?: true)
+
+      belongs_to(:destination_post, Ash.Test.Filter.FilterInteractionTest.Post, primary_key?: true)
     end
   end
 
@@ -81,31 +83,33 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
 
     actions do
-      read :default
+      read(:default)
 
-      create :default
+      create(:default)
 
-      update :default
+      update(:default)
 
-      destroy :default
+      destroy(:default)
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
-      attribute :title, :string
-      attribute :contents, :string
-      attribute :points, :integer
+      attribute(:id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0)
+      attribute(:title, :string)
+      attribute(:contents, :string)
+      attribute(:points, :integer)
     end
 
     relationships do
-      belongs_to :author, User,
+      belongs_to(:author, User,
         destination_field: :id,
         source_field: :author_id
+      )
 
-      many_to_many :related_posts, __MODULE__,
+      many_to_many(:related_posts, __MODULE__,
         through: PostLink,
         source_field_on_join_table: :source_post_id,
         destination_field_on_join_table: :destination_post_id
+      )
     end
   end
 
@@ -139,12 +143,12 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
   test "mnesia data layer sanity test" do
     post =
       Post
-      |> create(%{title: "best"})
+      |> new(%{title: "best"})
       |> Api.create!()
 
     assert [^post] = Api.read!(Post)
 
-    post |> update(%{title: "worst"}) |> Api.update!()
+    post |> new(%{title: "worst"}) |> Api.update!()
 
     new_post = %{post | title: "worst"}
 
@@ -159,17 +163,17 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     test "it properly filters with a simple filter" do
       author =
         User
-        |> create(%{name: "best author"})
+        |> new(%{name: "best author"})
         |> Api.create!()
 
       post1 =
         Post
-        |> create(%{title: "best"})
+        |> new(%{title: "best"})
         |> replace_relationship(:author, author)
         |> Api.create!()
 
       Post
-      |> create(%{title: "worst"})
+      |> new(%{title: "worst"})
       |> Api.create!()
 
       post1 = Api.reload!(post1)
@@ -184,16 +188,16 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     test "parallelizable filtering of related resources with a data layer that cannot join" do
       post2 =
         Post
-        |> create(%{title: "two"})
+        |> new(%{title: "two"})
         |> Api.create!()
 
       Post
-      |> create(%{title: "three"})
+      |> new(%{title: "three"})
       |> Api.create!()
 
       post1 =
         Post
-        |> create(%{title: "one"})
+        |> new(%{title: "one"})
         |> replace_relationship(:related_posts, [post2])
         |> Api.create!()
 
@@ -209,17 +213,17 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     test "parallelizable filter with filtered side loads" do
       post2 =
         Post
-        |> create(%{title: "two"})
+        |> new(%{title: "two"})
         |> Api.create!()
 
       post3 =
         Post
-        |> create(%{title: "three"})
+        |> new(%{title: "three"})
         |> Api.create!()
 
       post1 =
         Post
-        |> create(%{title: "one"})
+        |> new(%{title: "one"})
         |> replace_relationship(:related_posts, [post2, post3])
         |> Api.create!()
 

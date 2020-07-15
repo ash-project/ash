@@ -310,7 +310,8 @@ defmodule Ash.Api do
   def get(api, resource, id, opts) do
     with {:ok, opts} <- NimbleOptions.validate(opts, @get_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, resource),
-         {:pkey, primary_key} when primary_key != [] <- {:pkey, Ash.primary_key(resource)},
+         {:pkey, primary_key} when primary_key != [] <-
+           {:pkey, Ash.Resource.primary_key(resource)},
          {:ok, filter} <- get_filter(primary_key, id) do
       resource
       |> Ash.Query.new(api)
@@ -507,13 +508,13 @@ defmodule Ash.Api do
         {:ok, action}
 
       {:ok, action} ->
-        case Ash.action(resource, action, type) do
+        case Ash.Resource.action(resource, action, type) do
           nil -> {:error, "no such action #{inspect(params[:action])}"}
           action -> {:ok, action}
         end
 
       :error ->
-        case Ash.primary_action(resource, type) do
+        case Ash.Resource.primary_action(resource, type) do
           nil ->
             {:error,
              "no action provided, and no primary #{to_string(type)} action found for resource #{

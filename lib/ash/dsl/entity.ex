@@ -77,10 +77,6 @@ defmodule Ash.Dsl.Entity do
     apply(module, function, [built | args])
   end
 
-  def validate(%{target: target}, built) do
-    target.validate(built)
-  end
-
   def describe(entity, depth \\ 2) do
     args_description =
       case Keyword.take(entity.schema, entity.args) do

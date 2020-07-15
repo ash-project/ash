@@ -17,7 +17,6 @@ defmodule Ash.Engine do
   ]
 
   alias Ash.Engine.{Request, RequestHandler, Runner}
-  alias Ash.Error.Unknown
 
   use GenServer
 
@@ -108,7 +107,7 @@ defmodule Ash.Engine do
 
   defp rollback_or_return(innermost_resource, errors) do
     if innermost_resource do
-      Ash.rollback(innermost_resource, errors)
+      Ash.Resource.rollback(innermost_resource, errors)
     else
       {:error, errors}
     end
@@ -119,7 +118,7 @@ defmodule Ash.Engine do
       resources =
         api
         |> Ash.Api.resources()
-        |> Enum.filter(&Ash.data_layer_can?(&1, :transact))
+        |> Enum.filter(&Ash.Resource.data_layer_can?(&1, :transact))
 
       do_in_transaction(resources, func)
     else
@@ -134,13 +133,13 @@ defmodule Ash.Engine do
   end
 
   defp do_in_transaction([resource | rest], func, _innermost) do
-    Ash.transaction(resource, fn ->
+    Ash.Resource.transaction(resource, fn ->
       case do_in_transaction(rest, func, resource) do
         {:ok, value} ->
           value
 
         {:error, error} ->
-          Ash.rollback(resource, error)
+          Ash.Resource.rollback(resource, error)
       end
     end)
   end
@@ -343,8 +342,8 @@ defmodule Ash.Engine do
 
   defp split_local_async_requests(requests) do
     if Enum.any?(requests, fn request ->
-         Ash.data_layer_can?(request.resource, :transact) &&
-           Ash.in_transaction?(request.resource)
+         Ash.Resource.data_layer_can?(request.resource, :transact) &&
+           Ash.Resource.in_transaction?(request.resource)
        end) do
       {requests, []}
     else
@@ -361,7 +360,7 @@ defmodule Ash.Engine do
   end
 
   defp must_be_local?(request) do
-    not Ash.data_layer_can?(request.resource, :async_engine)
+    not Ash.Resource.data_layer_can?(request.resource, :async_engine)
   end
 
   defp maybe_shutdown(%{active_requests: [], local_requests?: false} = state) do
@@ -407,16 +406,8 @@ defmodule Ash.Engine do
 
   defp add_error(state, path, error) do
     path = List.wrap(path)
-    error = to_ash_error(error)
+    error = Ash.Error.to_ash_error(error)
 
     %{state | errors: [Map.put(error, :path, path) | state.errors]}
-  end
-
-  defp to_ash_error(error) do
-    if Ash.Error.ash_error?(error) do
-      error
-    else
-      Unknown.exception(error: error)
-    end
   end
 end

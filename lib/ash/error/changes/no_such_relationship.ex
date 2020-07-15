@@ -12,9 +12,5 @@ defmodule Ash.Error.Changes.NoSuchRelationship do
     def message(error) do
       "No such relationship #{error.name} for resource #{inspect(error.resource)}"
     end
-
-    def description(error) do
-      "No such relationship #{error.name} for resource #{inspect(error.resource)}"
-    end
   end
 end

@@ -12,7 +12,7 @@ defmodule Ash.Schema do
       @primary_key false
 
       schema Ash.DataLayer.source(__MODULE__) do
-        for attribute <- Ash.attributes(__MODULE__) do
+        for attribute <- Ash.Resource.attributes(__MODULE__) do
           read_after_writes? = attribute.generated? and is_nil(attribute.default)
 
           field(attribute.name, Ash.Type.ecto_type(attribute.type),
@@ -21,7 +21,7 @@ defmodule Ash.Schema do
           )
         end
 
-        relationships = Ash.relationships(__MODULE__)
+        relationships = Ash.Resource.relationships(__MODULE__)
 
         for relationship <- Enum.filter(relationships, &(&1.type == :belongs_to)) do
           belongs_to(relationship.name, relationship.destination,

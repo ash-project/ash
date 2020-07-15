@@ -6,10 +6,12 @@ defmodule Ash do
 
   ## Quick Links
 
-  - [Resource Documentation](Ash.Resource.html)
-  - [DSL Documentation](Ash.Dsl.html)
-  - [Code API documentation](Ash.Api.Interface.html)
-  - [Getting Started Guide](getting_started.html)
+  - [Resource DSL Documentation](Ash.Dsl.html)
+  - [Api DSL Documentation](Ash.Api.Dsl.html)
+  - [Api interface documentation](Ash.Api.html)
+  - [Query Documentation](Ash.Query.html)
+  - [Changeset Documentation](Ash.Changeset.html)
+  - [Guides](getting_started.html)
 
   ## Introduction
 
@@ -58,74 +60,29 @@ defmodule Ash do
   alias Ash.Resource.Actions.{Create, Destroy, Read, Update}
   alias Ash.Resource.Relationships.{BelongsTo, HasMany, HasOne, ManyToMany}
 
-  @type record :: struct
-  @type relationship_cardinality :: :many | :one
-  @type cardinality_one_relationship() :: HasOne.t() | BelongsTo.t()
+  @type action :: Create.t() | Read.t() | Update.t() | Destroy.t()
+  @type action_type :: :read | :create | :update | :destroy
+  @type actor :: Ash.record()
+  @type api :: module
+  @type attribute :: Ash.Resource.Attribute.t()
   @type cardinality_many_relationship() :: HasMany.t() | ManyToMany.t()
-  @type relationship :: cardinality_one_relationship() | cardinality_many_relationship()
-  @type resource :: module
+  @type cardinality_one_relationship() :: HasOne.t() | BelongsTo.t()
+  @type changeset :: Ash.Changeset.t()
   @type data_layer :: module
   @type data_layer_query :: struct
-  @type api :: module
   @type error :: struct
   @type filter :: map()
   @type params :: Keyword.t()
-  @type sort :: Keyword.t()
-  @type side_loads :: Keyword.t()
-  @type attribute :: Ash.Resource.Attribute.t()
-  @type action :: Create.t() | Read.t() | Update.t() | Destroy.t()
   @type query :: Ash.Query.t()
-  @type actor :: Ash.record()
-  @type changeset :: Ash.Changeset.t()
+  @type record :: struct
+  @type relationship :: cardinality_one_relationship() | cardinality_many_relationship()
+  @type relationship_cardinality :: :many | :one
+  @type resource :: module
+  @type side_loads :: Keyword.t()
+  @type sort :: Keyword.t()
+  @type validation :: Ash.Resource.Validation.t()
 
   require Ash.Dsl.Extension
-  alias Ash.Dsl.Extension
-
-  @doc "A list of authorizers to be used when accessing the resource"
-  @spec authorizers(resource()) :: [module]
-  def authorizers(resource) do
-    {resource, :authorizers}
-    |> :persistent_term.get([])
-    |> List.wrap()
-  end
-
-  @doc "A list of field names corresponding to the primary key of a resource"
-  @spec primary_key(resource()) :: list(atom)
-  def primary_key(resource) do
-    :persistent_term.get({resource, :primary_key}, [])
-  end
-
-  def relationships(resource) do
-    Extension.get_entities(resource, [:relationships])
-  end
-
-  @spec relationship(any, any) :: any
-  @doc "Gets a relationship by name from the resource"
-  def relationship(resource, [name]) do
-    relationship(resource, name)
-  end
-
-  def relationship(resource, [name | rest]) do
-    case relationship(resource, name) do
-      nil ->
-        nil
-
-      relationship ->
-        relationship(relationship.destination, rest)
-    end
-  end
-
-  def relationship(resource, relationship_name) when is_bitstring(relationship_name) do
-    resource
-    |> relationships()
-    |> Enum.find(&(to_string(&1.name) == relationship_name))
-  end
-
-  def relationship(resource, relationship_name) do
-    resource
-    |> relationships()
-    |> Enum.find(&(&1.name == relationship_name))
-  end
 
   def implements_behaviour?(module, behaviour) do
     :attributes
@@ -137,109 +94,9 @@ defmodule Ash do
     |> Enum.any?(&(&1 == behaviour))
   end
 
-  @doc false
-  def primary_action!(resource, type) do
-    case primary_action(resource, type) do
-      nil -> raise "Required primary #{type} action for #{inspect(resource)}"
-      action -> action
-    end
-  end
-
-  @doc "Returns the primary action of a given type for a resource"
-  @spec primary_action(resource(), atom()) :: action() | nil
-  def primary_action(resource, type) do
-    resource
-    |> actions()
-    |> Enum.filter(&(&1.type == type))
-    |> case do
-      [action] -> action
-      actions -> Enum.find(actions, & &1.primary?)
-    end
-  end
-
-  def actions(resource) do
-    Extension.get_entities(resource, [:actions])
-  end
-
-  @doc "Returns the action with the matching name and type on the resource"
-  @spec action(resource(), atom(), atom()) :: action() | nil
-  def action(resource, name, type) do
-    resource
-    |> actions()
-    |> Enum.find(&(&1.name == name && &1.type == type))
-  end
-
-  def attributes(resource) do
-    Extension.get_entities(resource, [:attributes])
-  end
-
+  @doc "Returns all extensions of a resource or api"
+  @spec extensions(resource() | api()) :: [module]
   def extensions(resource) do
     :persistent_term.get({resource, :extensions}, [])
-  end
-
-  @doc "Get an attribute name from the resource"
-  @spec attribute(resource(), String.t() | atom) :: attribute() | nil
-  def attribute(resource, name) when is_bitstring(name) do
-    resource
-    |> attributes()
-    |> Enum.find(&(to_string(&1.name) == name))
-  end
-
-  def attribute(resource, name) do
-    resource
-    |> attributes()
-    |> Enum.find(&(&1.name == name))
-  end
-
-  def related(resource, relationship) when not is_list(relationship) do
-    related(resource, [relationship])
-  end
-
-  def related(resource, []), do: resource
-
-  def related(resource, [path | rest]) do
-    case relationship(resource, path) do
-      %{destination: destination} -> related(destination, rest)
-      nil -> nil
-    end
-  end
-
-  @doc "The data layer of the resource, or nil if it does not have one"
-  @spec data_layer(resource()) :: data_layer()
-  def data_layer(resource) do
-    :persistent_term.get({resource, :data_layer})
-  end
-
-  @doc false
-  @spec data_layer_can?(resource(), Ash.DataLayer.feature()) :: boolean
-  def data_layer_can?(resource, feature) do
-    data_layer = data_layer(resource)
-
-    data_layer && Ash.DataLayer.can?(feature, resource)
-  end
-
-  @doc false
-  @spec data_layer_filters(resource) :: map
-  def data_layer_filters(resource) do
-    Ash.DataLayer.custom_filters(resource)
-  end
-
-  @spec in_transaction?(resource) :: boolean
-  def in_transaction?(resource) do
-    data_layer(resource).in_transaction?(resource)
-  end
-
-  @spec transaction(resource, (() -> term)) :: term
-  def transaction(resource, func) do
-    if data_layer_can?(resource, :transact) do
-      data_layer(resource).transaction(resource, func)
-    else
-      func.()
-    end
-  end
-
-  @spec rollback(resource, term) :: no_return
-  def rollback(resource, term) do
-    data_layer(resource).rollback(resource, term)
   end
 end

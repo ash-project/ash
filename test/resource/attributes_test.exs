@@ -26,7 +26,7 @@ defmodule Ash.Test.Resource.AttributesTest do
       end
 
       assert [_, %Ash.Resource.Attribute{name: :foo, type: Ash.Type.String, primary_key?: false}] =
-               Ash.attributes(Post)
+               Ash.Resource.attributes(Post)
     end
   end
 

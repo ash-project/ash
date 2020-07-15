@@ -15,7 +15,7 @@ defmodule Ash.Dsl.Transformer do
   completed or reached a certain point in its transformers. These utilities have not
   yet been written.
   """
-  @callback transform(module, map) :: {:ok, map} | {:error, term}
+  @callback transform(module, map) :: {:ok, map} | {:error, term} | :halt
   @callback before?(module) :: boolean
   @callback after?(module) :: boolean
   @callback compile_time_only? :: boolean

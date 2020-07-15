@@ -67,10 +67,10 @@ defmodule Ash.SatSolver do
 
   defp upgrade_predicate(%Predicate{relationship_path: path} = predicate, resource)
        when path != [] do
-    with relationship when not is_nil(relationship) <- Ash.relationship(resource, path),
+    with relationship when not is_nil(relationship) <- Ash.Resource.relationship(resource, path),
          true <- predicate.attribute.name == relationship.destination_field,
          new_attribute when not is_nil(new_attribute) <-
-           Ash.attribute(relationship.source, relationship.source_field),
+           Ash.Resource.attribute(relationship.source, relationship.source_field),
          {:ok, new_predicate} <-
            Predicate.new(
              resource,
@@ -133,15 +133,15 @@ defmodule Ash.SatSolver do
   defp synonymous_relationship_paths?(resource, [candidate_first | candidate_rest], [first | rest])
        when first == candidate_first do
     synonymous_relationship_paths?(
-      Ash.relationship(resource, candidate_first).destination,
+      Ash.Resource.relationship(resource, candidate_first).destination,
       candidate_rest,
       rest
     )
   end
 
   defp synonymous_relationship_paths?(resource, [candidate_first | candidate_rest], [first | rest]) do
-    relationship = Ash.relationship(resource, first)
-    candidate_relationship = Ash.relationship(resource, candidate_first)
+    relationship = Ash.Resource.relationship(resource, first)
+    candidate_relationship = Ash.Resource.relationship(resource, candidate_first)
 
     comparison_keys = [
       :source_field,

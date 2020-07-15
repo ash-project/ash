@@ -12,9 +12,5 @@ defmodule Ash.Error.Sort.InvalidSortOrder do
     def message(%{order: order}) do
       "No such sort order #{inspect(order)}"
     end
-
-    def description(%{order: order}) do
-      "Attempted to use a sort order does not exist: #{order}"
-    end
   end
 end

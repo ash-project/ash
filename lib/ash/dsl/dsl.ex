@@ -1,10 +1,11 @@
 defmodule Ash.Dsl do
   @moduledoc """
-  The built in resource DSL. The three core DSL components of a resource are:
+  The built in resource DSL. The four core DSL components of a resource are:
 
   * attributes - `attributes/1`
   * relationships - `relationships/1`
   * actions - `actions/1`
+  * validations - `validations/1`
   """
 
   @attribute %Ash.Dsl.Entity{
@@ -253,7 +254,35 @@ defmodule Ash.Dsl do
     ]
   }
 
-  @sections [@attributes, @relationships, @actions, @resource]
+  @validate %Ash.Dsl.Entity{
+    name: :validate,
+    describe: """
+    Declares a validation for creates and updates.
+    """,
+    examples: [
+      "validate {Mod, [foo: :bar]}",
+      "validate at_least_one_of_present([:first_name, :last_name])"
+    ],
+    target: Ash.Resource.Validation,
+    schema: Ash.Resource.Validation.opt_schema(),
+    transform: {Ash.Resource.Validation, :transform, []},
+    args: [:validation]
+  }
+
+  @validations %Ash.Dsl.Section{
+    name: :validations,
+    describe: """
+    Declare validations prior to performing actions against the resource
+    """,
+    imports: [
+      Ash.Resource.Validation.Builtins
+    ],
+    entities: [
+      @validate
+    ]
+  }
+
+  @sections [@attributes, @relationships, @actions, @resource, @validations]
 
   @transformers [
     Ash.Resource.Transformers.SetRelationshipSource,

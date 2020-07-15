@@ -8,13 +8,13 @@ defmodule Ash.Actions.Sort do
     sort
     |> Enum.reduce({[], []}, fn
       {field, order}, {sorts, errors} when order in [:asc, :desc] ->
-        attribute = Ash.attribute(resource, field)
+        attribute = Ash.Resource.attribute(resource, field)
 
         cond do
           !attribute ->
             {sorts, [NoSuchField.exception(field: field) | errors]}
 
-          !Ash.data_layer_can?(resource, {:sort, Ash.Type.storage_type(attribute.type)}) ->
+          !Ash.Resource.data_layer_can?(resource, {:sort, Ash.Type.storage_type(attribute.type)}) ->
             {sorts,
              [
                UnsortableField.exception(field: field)

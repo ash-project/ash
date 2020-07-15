@@ -58,7 +58,6 @@ defmodule Ash.Resource.Relationships.ManyToMany do
                   ],
                   join_relationship: [
                     type: :atom,
-                    required: false,
                     doc:
                       "The has_many relationship to the join table. Defaults to <relationship_name>_join_assoc"
                   ]
