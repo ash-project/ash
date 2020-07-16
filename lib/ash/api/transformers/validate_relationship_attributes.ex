@@ -1,6 +1,6 @@
 defmodule Ash.Api.Transformers.ValidateRelationshipAttributes do
   @moduledoc """
-  Validates the all relationships point to valid fields
+  Validates that all relationships point to valid fields
   """
   use Ash.Dsl.Transformer
 
@@ -32,6 +32,31 @@ defmodule Ash.Api.Transformers.ValidateRelationshipAttributes do
         path: [:relationships, relationship.name],
         message:
           "Relationship `#{relationship.name}` expects source field `#{relationship.source_field}` to be defined"
+    end
+
+    if relationship.type == :many_to_many do
+      through_attributes =
+        relationship.through
+        |> Ash.Resource.attributes()
+        |> Enum.map(& &1.name)
+
+      unless relationship.source_field_on_join_table in through_attributes do
+        raise Ash.Error.Dsl.DslError,
+          path: [:relationships, relationship.name],
+          message:
+            "Relationship `#{relationship.name}` expects source field on join table `#{
+              relationship.source_field_on_join_table
+            }` to be defined on #{inspect(relationship.through)}"
+      end
+
+      unless relationship.destination_field_on_join_table in through_attributes do
+        raise Ash.Error.Dsl.DslError,
+          path: [:relationships, relationship.name],
+          message:
+            "Relationship `#{relationship.name}` expects destination field on join table `#{
+              relationship.destination_field_on_join_table
+            }` to be defined on #{inspect(relationship.through)}"
+      end
     end
 
     destination_attributes =

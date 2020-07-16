@@ -319,7 +319,7 @@ defmodule Ash.Engine.Request do
         end
 
       {:error, error} ->
-        {:error, request, error}
+        {:error, error, request}
     end
   end
 

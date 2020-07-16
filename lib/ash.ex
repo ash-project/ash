@@ -73,6 +73,7 @@ defmodule Ash do
   @type error :: struct
   @type filter :: map()
   @type params :: Keyword.t()
+  @type primary_key :: record() | map | term
   @type query :: Ash.Query.t()
   @type record :: struct
   @type relationship :: cardinality_one_relationship() | cardinality_many_relationship()

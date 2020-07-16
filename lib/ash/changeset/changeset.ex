@@ -6,6 +6,34 @@ defmodule Ash.Changeset do
   and relationships using the functions provided in this module.  Nothing in this module
   actually incurs changes in a data layer. To commit a changeset, see `c:Ash.Api.create/2`
   and `c:Ash.Api.update/2`.
+
+  ## Primary Keys
+
+  For relationship manipulation using `append_to_relationship/3`, `remove_from_relationship/3`
+  and `replace_relationship/3` there are three types that can be used for primary keys:
+
+
+  1.) An instance of the resource in question.
+
+  2.) If the primary key is just a single field, i.e `:id`, then a single value, i.e `1`
+
+  3.) A map of keys to values representing the primary key, i.e `%{id: 1}` or `%{id: 1, org_id: 2}`
+
+  ## Join Attributes
+
+  For many to many relationships, the attributes on a join relationship may be set while relating items
+  by passing a tuple of the primary key and the changes to be applied. This is done via upserts, so
+  update validations on the join resource are *not* applied, but create validations are.
+
+  For example:
+
+  ```elixir
+  Ash.Changeset.replace_relationship(changeset, :linked_tickets, [
+    {1, %{link_type: "blocking"}},
+    {a_ticket, %{link_type: "caused_by"}},
+    {%{id: 2}, %{link_type: "related_to"}}
+  ])
+  ```
   """
   defstruct [
     :data,
@@ -21,6 +49,27 @@ defmodule Ash.Changeset do
     change_dependencies: [],
     requests: []
   ]
+
+  defimpl Inspect do
+    import Inspect.Algebra
+
+    def inspect(changeset, opts) do
+      container_doc(
+        "#Ash.Changeset<",
+        [
+          concat("action_type: ", inspect(changeset.action_type)),
+          concat("attributes: ", to_doc(changeset.attributes, opts)),
+          concat("relationships: ", to_doc(changeset.relationships, opts)),
+          concat("errors: ", to_doc(changeset.errors, opts)),
+          concat("data: ", to_doc(changeset.data, opts)),
+          concat("valid?: ", to_doc(changeset.valid?, opts))
+        ],
+        ">",
+        opts,
+        fn str, _ -> str end
+      )
+    end
+  end
 
   @type t :: %__MODULE__{}
 
@@ -123,10 +172,16 @@ defmodule Ash.Changeset do
   @doc """
   Appends a record of list of records to a relationship. Stacks with previous removals/additions.
 
+  Accepts a primary key or a list of primary keys. See the section on "Primary Keys" in the
+  module documentation for more.
+
+  For many to many relationships, accepts changes for any `join_attributes` configured on
+  the resource. See the section on "Join Attributes" in the module documentation for more.
+
   Cannot be used with `belongs_to` or `has_one` relationships.
-  See `replace_relationship/3` for manipulating those relationships.
+  See `replace_relationship/3` for manipulating `belongs_to` and `has_one` relationships.
   """
-  @spec append_to_relationship(t, atom, list(Ash.record()) | Ash.record()) :: t()
+  @spec append_to_relationship(t, atom, Ash.primary_key() | [Ash.primary_key()]) :: t()
   def append_to_relationship(changeset, relationship, record_or_records) do
     case Ash.Resource.relationship(changeset.resource, relationship) do
       nil ->
@@ -156,6 +211,20 @@ defmodule Ash.Changeset do
 
         {:error, error}
 
+      %{type: :many_to_many} = relationship ->
+        case primary_keys_with_changes(relationship, List.wrap(record_or_records)) do
+          {:ok, primary_keys} ->
+            relationships =
+              changeset.relationships
+              |> Map.put_new(relationship.name, %{})
+              |> add_to_relationship_key_and_reconcile(relationship, :add, primary_keys)
+
+            %{changeset | relationships: relationships}
+
+          {:error, error} ->
+            add_error(changeset, error)
+        end
+
       relationship ->
         case primary_key(relationship, List.wrap(record_or_records)) do
           {:ok, primary_keys} ->
@@ -175,10 +244,13 @@ defmodule Ash.Changeset do
   @doc """
   Removes a record of list of records to a relationship. Stacks with previous removals/additions.
 
+  Accepts a primary key or a list of primary keys. See the section on "Primary Keys" in the
+  module documentation for more.
+
   Cannot be used with `belongs_to` or `has_one` relationships.
   See `replace_relationship/3` for manipulating those relationships.
   """
-  @spec remove_from_relationship(t, atom, list(Ash.record()) | Ash.record()) :: t()
+  @spec remove_from_relationship(t, atom, Ash.primary_key() | [Ash.primary_key()]) :: t()
   def remove_from_relationship(changeset, relationship, record_or_records) do
     case Ash.Resource.relationship(changeset.resource, relationship) do
       nil ->
@@ -237,13 +309,23 @@ defmodule Ash.Changeset do
   @doc """
   Replaces the value of a relationship. Any previous additions/removals are cleared.
 
+  Accepts a primary key or a list of primary keys. See the section on "Primary Keys" in the
+  module documentation for more.
+
+  For many to many relationships, accepts changes for any `join_attributes` configured on
+  the resource. See the section on "Join Attributes" in the module documentation for more.
+
   For a `has_many` or `many_to_many` relationship, this means removing any currently related
   records that are not present in the replacement list, and creating any that do not exist
   in the data layer.
 
   For a `belongs_to` or `has_one`, replace with a `nil` value to unset a relationship.
   """
-  @spec replace_relationship(t(), atom(), Ash.record() | list(Ash.record())) :: t()
+  @spec replace_relationship(
+          t(),
+          atom(),
+          Ash.primary_key() | [Ash.primary_key()]
+        ) :: t()
   def replace_relationship(changeset, relationship, record_or_records) do
     case Ash.Resource.relationship(changeset.resource, relationship) do
       nil ->
@@ -273,6 +355,18 @@ defmodule Ash.Changeset do
           )
 
         add_error(changeset, error)
+
+      %{type: :many_to_many} = relationship ->
+        case primary_keys_with_changes(relationship, List.wrap(record_or_records)) do
+          {:ok, primary_key} ->
+            relationships =
+              Map.put(changeset.relationships, relationship.name, %{replace: primary_key})
+
+            %{changeset | relationships: relationships}
+
+          {:error, error} ->
+            add_error(changeset, error)
+        end
 
       relationship ->
         record =
@@ -381,7 +475,7 @@ defmodule Ash.Changeset do
     end
   end
 
-  @doc "Calls `force_change_attributes/2` for each key/value pair provided"
+  @doc "Calls `force_change_attribute/3` for each key/value pair provided"
   @spec force_change_attributes(t(), map) :: t()
   def force_change_attributes(changeset, changes) do
     Enum.reduce(changes, changeset, fn {key, value}, changeset ->
@@ -489,6 +583,31 @@ defmodule Ash.Changeset do
     else
       map
     end
+  end
+
+  defp through_changeset(relationship, changes) do
+    new(relationship.through, changes)
+  end
+
+  defp primary_keys_with_changes(_, []), do: {:ok, []}
+
+  defp primary_keys_with_changes(relationship, records) do
+    Enum.reduce_while(records, {:ok, []}, fn
+      {record, changes}, {:ok, acc} ->
+        with {:ok, primary_key} <- primary_key(relationship, record),
+             %{valid?: true} = changeset <- through_changeset(relationship, changes) do
+          {:cont, {:ok, [{primary_key, changeset} | acc]}}
+        else
+          %{valid?: false, errors: errors} -> {:halt, {:error, errors}}
+          {:error, error} -> {:halt, {:error, error}}
+        end
+
+      record, {:ok, acc} ->
+        case primary_key(relationship, record) do
+          {:ok, primary_key} -> {:cont, {:ok, [primary_key | acc]}}
+          {:error, error} -> {:halt, {:error, error}}
+        end
+    end)
   end
 
   defp primary_key(_, nil), do: {:ok, nil}

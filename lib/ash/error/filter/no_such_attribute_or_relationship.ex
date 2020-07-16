@@ -2,7 +2,7 @@ defmodule Ash.Error.Filter.NoSuchAttributeOrRelationship do
   @moduledoc "Used when a key in a filter contains something that is neither an attribute or a relationship"
   use Ash.Error
 
-  def_ash_error([:message, :value], class: :invalid)
+  def_ash_error([:attribute_or_relationship, :resource], class: :invalid)
 
   defimpl Ash.ErrorKind do
     def id(_), do: Ecto.UUID.generate()
@@ -11,8 +11,10 @@ defmodule Ash.Error.Filter.NoSuchAttributeOrRelationship do
 
     def class(_), do: :invalid
 
-    def message(%{value: value, message: message}) do
-      "Invalid filter value `#{inspect(value)}`. " <> message
+    def message(%{attribute_or_relationship: attribute_or_relationship, resource: resource}) do
+      "No such attribute or relationship #{inspect(attribute_or_relationship)} for #{
+        inspect(resource)
+      }"
     end
 
     def stacktrace(_), do: nil

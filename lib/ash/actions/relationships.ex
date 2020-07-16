@@ -113,6 +113,9 @@ defmodule Ash.Actions.Relationships do
 
     {possible?, filter} =
       case identifiers do
+        [{single_identifier, _changeset}] ->
+          {true, single_identifier}
+
         [single_identifier] ->
           {true, single_identifier}
 
@@ -125,10 +128,10 @@ defmodule Ash.Actions.Relationships do
         many ->
           case Ash.Resource.primary_key(relationship.destination) do
             [field] ->
-              {true, [{field, in: Enum.map(many, &Map.get(&1, field))}]}
+              {true, [{field, in: get_many_field(many, field)}]}
 
             _ ->
-              {true, [or: many]}
+              {true, [or: get_many_records(many)]}
           end
       end
 
@@ -153,7 +156,14 @@ defmodule Ash.Actions.Relationships do
           Request.resolve(dependencies, fn data ->
             if possible? do
               query = get_in(data, [:relationships, relationship_name, type, :query])
-              changeset.api.read(query)
+
+              case changeset.api.read(query) do
+                {:ok, results} ->
+                  {:ok, add_changes_to_results(changeset.resource, results, identifiers)}
+
+                {:error, error} ->
+                  {:error, error}
+              end
             else
               {:ok, []}
             end
@@ -164,6 +174,59 @@ defmodule Ash.Actions.Relationships do
     changeset
     |> Changeset.add_requests(request)
     |> Changeset.changes_depend_on([:relationships, relationship_name, type, :data])
+  end
+
+  defp add_changes_to_results(resource, results, identifiers) do
+    pkey = Ash.Resource.primary_key(resource)
+
+    Enum.map(results, fn result ->
+      case find_changes(identifiers, result, pkey) do
+        nil ->
+          result
+
+        changes ->
+          {result, changes}
+      end
+    end)
+  end
+
+  defp find_changes(identifiers, result, pkey) do
+    Enum.find_value(identifiers, fn
+      {identifier, changes} ->
+        cond do
+          is_map(identifier) && Map.take(identifier, pkey) == Map.take(result, pkey) ->
+            changes
+
+          match?([_], pkey) && identifier == Map.get(result, List.first(pkey)) ->
+            changes
+
+          true ->
+            nil
+        end
+
+      _ ->
+        nil
+    end)
+  end
+
+  defp get_many_field(records, field) do
+    Enum.map(records, fn
+      {record, _changes} ->
+        Map.get(record, field)
+
+      record ->
+        Map.get(record, field)
+    end)
+  end
+
+  defp get_many_records(records) do
+    Enum.map(records, fn
+      {record, _changes} ->
+        record
+
+      record ->
+        record
+    end)
   end
 
   def changeset(changeset) do
@@ -293,7 +356,14 @@ defmodule Ash.Actions.Relationships do
   end
 
   defp split_relationship_data(current, replace, pkey) do
-    adding = Enum.reject(replace, &any_pkey_matches?(current, &1, pkey))
+    adding =
+      Enum.reject(replace, fn
+        {_, _} ->
+          false
+
+        replacing ->
+          any_pkey_matches?(current, replacing, pkey)
+      end)
 
     removing = Enum.reject(current, &any_pkey_matches?(replace, &1, pkey))
 
@@ -307,14 +377,18 @@ defmodule Ash.Actions.Relationships do
          pkey
        )
        when is_list(add) do
-    Enum.reduce(add, changeset, fn to_relate_record, changeset ->
-      case find_pkey_match(current, to_relate_record, pkey) do
-        nil ->
-          do_relate_many_to_many(changeset, relationship, to_relate_record)
+    Enum.reduce(add, changeset, fn
+      {to_relate_record, join_changeset}, changeset ->
+        do_relate_many_to_many(changeset, relationship, to_relate_record, join_changeset)
 
-        _record ->
-          changeset
-      end
+      to_relate_record, changeset ->
+        case find_pkey_match(current, to_relate_record, pkey) do
+          nil ->
+            do_relate_many_to_many(changeset, relationship, to_relate_record)
+
+          _record ->
+            changeset
+        end
     end)
   end
 
@@ -322,7 +396,7 @@ defmodule Ash.Actions.Relationships do
     changeset
   end
 
-  defp do_relate_many_to_many(changeset, relationship, to_relate_record) do
+  defp do_relate_many_to_many(changeset, relationship, to_relate_record, join_changeset \\ nil) do
     Changeset.after_action(changeset, fn changeset, record ->
       join_attrs = %{
         relationship.source_field_on_join_table() => Map.get(record, relationship.source_field),
@@ -330,15 +404,25 @@ defmodule Ash.Actions.Relationships do
           Map.get(to_relate_record, relationship.destination_field)
       }
 
-      relationship.through
-      |> Ash.Changeset.new()
+      join_changeset
+      |> Kernel.||(Ash.Changeset.new(relationship.through))
       |> Ash.Changeset.force_change_attributes(join_attrs)
       |> changeset.api.create(upsert?: true)
       |> case do
         {:ok, join_row} ->
           {:ok,
            record
+           |> remove_from_set_relationship(
+             relationship.name,
+             to_relate_record,
+             Ash.Resource.primary_key(relationship.destination)
+           )
            |> add_to_set_relationship(relationship.name, to_relate_record)
+           |> remove_from_set_relationship(
+             relationship.join_relationship,
+             join_row,
+             Ash.Resource.primary_key(relationship.through)
+           )
            |> add_to_set_relationship(relationship.join_relationship, join_row)}
 
         {:error, error} ->
@@ -472,8 +556,12 @@ defmodule Ash.Actions.Relationships do
   defp find_pkey_match(records, to_relate_record, pkey) do
     search_pkey = Map.take(to_relate_record, pkey)
 
-    Enum.find(records, fn record ->
-      Map.take(record, pkey) == search_pkey
+    Enum.find(records, fn
+      {record, _changes} ->
+        Map.take(record, pkey) == search_pkey
+
+      record ->
+        Map.take(record, pkey) == search_pkey
     end)
   end
 

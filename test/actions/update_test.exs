@@ -81,6 +81,10 @@ defmodule Ash.Test.Actions.UpdateTest do
       private?(true)
     end
 
+    attributes do
+      attribute :type, :string
+    end
+
     actions do
       read :default
 
@@ -120,7 +124,8 @@ defmodule Ash.Test.Actions.UpdateTest do
       many_to_many :related_posts, __MODULE__,
         through: PostLink,
         source_field_on_join_table: :source_post_id,
-        destination_field_on_join_table: :destination_post_id
+        destination_field_on_join_table: :destination_post_id,
+        join_attributes: [:type]
     end
   end
 
@@ -222,6 +227,43 @@ defmodule Ash.Test.Actions.UpdateTest do
                  Api.get!(Post, post2.id),
                  Api.get!(Post, post3.id)
                ])
+    end
+
+    test "it updates any join fields" do
+      post =
+        Post
+        |> new(%{title: "title"})
+        |> Api.create!()
+
+      post2 =
+        Post
+        |> new(%{title: "title2"})
+        |> Api.create!()
+
+      post3 =
+        Post
+        |> new(%{title: "title3"})
+        |> Api.create!()
+
+      new_post =
+        post
+        |> new()
+        |> replace_relationship(:related_posts, [{post2, %{type: "a"}}, {post3, %{type: "b"}}])
+        |> Api.update!()
+
+      types = Enum.sort(Enum.map(new_post.related_posts_join_assoc, &Map.get(&1, :type)))
+
+      assert types == ["a", "b"]
+
+      new_post =
+        new_post
+        |> new()
+        |> replace_relationship(:related_posts, [{post2, %{type: "c"}}, {post3, %{type: "d"}}])
+        |> Api.update!()
+
+      types = Enum.sort(Enum.map(new_post.related_posts_join_assoc, &Map.get(&1, :type)))
+
+      assert types == ["c", "d"]
     end
   end
 

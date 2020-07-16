@@ -5,6 +5,10 @@
 [![Coverage Status](https://coveralls.io/repos/github/ash-project/ash/badge.svg?branch=master)](https://coveralls.io/github/ash-project/ash?branch=master)
 [![Hex version badge](https://img.shields.io/hexpm/v/ash.svg)](https://hex.pm/packages/ash)
 
+## Alpha
+
+Despite the package being versioned > 1.0.0, Ash is still very much in its alpha phase, and will be in its alpha for a while.
+
 ## Documentation
 
 All documentation is contained in the generated hex documentation located [here](https://hexdocs.pm/ash). Head there for installation and usage information. What follows is only a brief introduction to Ash.

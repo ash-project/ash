@@ -245,6 +245,14 @@ defmodule Ash.Engine do
     GenServer.cast(pid, {:wont_receive, caller_path, request_path, field})
   end
 
+  def handle_info({:error, error, request_handler_state}, state) do
+    state
+    |> log("Error received from request_handler #{inspect(error)}")
+    |> move_to_error(request_handler_state.request.path)
+    |> add_error(request_handler_state.request, error)
+    |> maybe_shutdown()
+  end
+
   def handle_info({:EXIT, _pid, {:shutdown, {:error, error, request_handler_state}}}, state) do
     state
     |> log("Error received from request_handler #{inspect(error)}")

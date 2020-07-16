@@ -688,7 +688,10 @@ defmodule Ash.Filter do
 
       true ->
         {:error,
-         NoSuchAttributeOrRelationship.exception(field: field, resource: context.resource)}
+         NoSuchAttributeOrRelationship.exception(
+           attribute_or_relationship: field,
+           resource: context.resource
+         )}
     end
   end
 
@@ -743,6 +746,8 @@ defmodule Ash.Filter do
       check_predicate_compatibility(resource, path, right_predicates)
     end)
   end
+
+  defp validate_datalayers_support_boolean_filters(_), do: :ok
 
   defp check_predicate_compatibility(resource, path, right_predicates) do
     can_join? = Ash.Resource.data_layer_can?(resource, :join)

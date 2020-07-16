@@ -346,7 +346,13 @@ defmodule Ash.Type do
 
         @impl true
         def type do
-          @parent.storage_type()
+          storage_type = @parent.storage_type()
+
+          if Ash.Type.ash_type?(storage_type) do
+            Ash.Type.storage_type(@parent.storage_type())
+          else
+            storage_type
+          end
         end
 
         @impl true

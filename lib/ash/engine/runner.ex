@@ -250,19 +250,23 @@ defmodule Ash.Engine.Runner do
           nil ->
             pid = Map.get(state.pid_info, path)
 
-            GenServer.cast(pid, {:send_field, path, self(), dep})
+            GenServer.cast(pid, {:send_field, request_path, self(), dep})
 
             {state, notifications, dependencies}
 
           depended_on_request ->
-            notify_local_request(
-              state,
-              notifications,
-              dependencies,
-              depended_on_request,
-              request,
-              field
-            )
+            if request.error? || depended_on_request.error? do
+              {state, notifications, dependencies}
+            else
+              notify_local_request(
+                state,
+                notifications,
+                dependencies,
+                depended_on_request,
+                request,
+                field
+              )
+            end
         end
       end)
 
@@ -297,10 +301,9 @@ defmodule Ash.Engine.Runner do
       {:error, error, new_request} ->
         new_state =
           state
-          |> replace_request(%{new_request | state: :error})
+          |> replace_request(%{new_request | state: :error, error?: true})
           |> add_error(new_request.path, error)
-          |> add_error(request.path, "dependency failed")
-          |> replace_request(%{new_request | state: :error, error: error})
+          |> replace_request(%{new_request | state: :error, error?: true})
 
         {new_state, notifications, dependencies}
     end
@@ -401,9 +404,13 @@ defmodule Ash.Engine.Runner do
 
   defp add_error(state, path, error) do
     path = List.wrap(path)
-    error = Ash.Error.to_ash_error(error)
+    error = Map.put(Ash.Error.to_ash_error(error), :path, path)
 
-    %{state | errors: [Map.put(error, :path, path) | state.errors]}
+    if error in state.errors do
+      state
+    else
+      %{state | errors: [Map.put(error, :path, path) | state.errors]}
+    end
   end
 
   defp log(request, message, level \\ :debug)
