@@ -41,11 +41,12 @@ defmodule Ash.MixProject do
       extra_section: "GUIDES",
       extras: [
         "documentation/introduction/getting_started.md",
-        "documentation/topics/validation.md"
+        "documentation/topics/validation.md",
+        "documentation/topics/error_handling.md"
       ],
       groups_for_extras: [
         Introduction: Path.wildcard("documentation/introduction/*.md"),
-        Topics: Path.wildcard("documentation/topics/*.md")
+        Topics: Path.wildcard("documentation/topics/*")
       ],
       groups_for_modules: [
         entrypoint: [
