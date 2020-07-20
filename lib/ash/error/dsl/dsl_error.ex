@@ -1,10 +1,6 @@
 defmodule Ash.Error.Dsl.DslError do
   @moduledoc "Used when a DSL is incorrectly configured."
-  defexception [:message, :path, :using]
-
-  def message(%{message: message, path: nil, using: using}) do
-    "`use #{inspect(using)}, ...` #{message} "
-  end
+  defexception [:message, :path]
 
   def message(%{message: message, path: nil}) do
     message

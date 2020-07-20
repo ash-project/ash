@@ -4,11 +4,9 @@ defmodule Ash.Resource.Transformers.SetRelationshipSource do
 
   alias Ash.Dsl.Transformer
 
-  @extension Ash.Dsl
-
   def transform(resource, dsl_state) do
     dsl_state
-    |> Transformer.get_entities([:relationships], @extension)
+    |> Transformer.get_entities([:relationships])
     |> Enum.reduce({:ok, dsl_state}, fn relationship, {:ok, dsl_state} ->
       new_relationship = %{relationship | source: resource}
 
@@ -16,7 +14,6 @@ defmodule Ash.Resource.Transformers.SetRelationshipSource do
         Transformer.replace_entity(
           dsl_state,
           [:relationships],
-          @extension,
           new_relationship,
           fn replacing ->
             replacing.name == relationship.name

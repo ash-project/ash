@@ -6,11 +6,9 @@ defmodule Ash.Api.Transformers.ValidateManyToManyJoinAttributes do
 
   alias Ash.Dsl.Transformer
 
-  @extension Ash.Api.Dsl
-
   def transform(_api, dsl) do
     dsl
-    |> Transformer.get_entities([:resources], @extension)
+    |> Transformer.get_entities([:resources])
     |> Enum.map(& &1.resource)
     |> Enum.each(fn resource ->
       resource

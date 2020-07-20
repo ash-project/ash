@@ -49,28 +49,18 @@ defmodule Ash.Resource do
       Module.register_attribute(__MODULE__, :is_ash_resource, persist: true, accumulate: false)
       @is_ash_resource true
 
+      @on_load :on_load
+
       :persistent_term.put({__MODULE__, :data_layer}, @data_layer)
       :persistent_term.put({__MODULE__, :authorizers}, @authorizers)
 
-      Extension.set_state(false)
-      Extension.set_state(true)
+      @ash_dsl_config Extension.set_state()
 
-      def raw_dsl do
-        @ash_dsl_config
-      end
-
-      use Supervisor
-
-      def start_link(args) do
-        Supervisor.start_link(__MODULE__, args, name: __MODULE__)
-      end
-
-      def init(_init_arg) do
+      def on_load do
         :persistent_term.put({__MODULE__, :data_layer}, @data_layer)
         :persistent_term.put({__MODULE__, :authorizers}, @authorizers)
-        Extension.set_state(true)
 
-        Supervisor.init([], strategy: :one_for_one)
+        Extension.load()
       end
 
       require Ash.Schema

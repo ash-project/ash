@@ -24,7 +24,6 @@ defmodule Ash.Api do
   import Ash.OptionsHelpers, only: [merge_schemas: 3]
 
   alias Ash.Actions.{Create, Destroy, Read, SideLoad, Update}
-  alias Ash.Dsl.Transformer
   alias Ash.Error.Invalid.{InvalidPrimaryKey, NoSuchAction, NoSuchResource}
 
   @global_opts [
@@ -231,44 +230,12 @@ defmodule Ash.Api do
     quote generated: true do
       alias Ash.Dsl.Extension
 
-      Extension.set_state(false)
-      Extension.set_state(true)
+      @on_load :on_load
 
-      def raw_dsl do
-        @ash_dsl_config
-      end
+      @ash_dsl_config Extension.set_state()
 
-      use Supervisor
-
-      def start_link(:set_state) do
-        # This exists to ensure we call `set_state` *after* resources have been built
-        Supervisor.start_link(__MODULE__, :set_state, name: __MODULE__.SetState)
-      end
-
-      def start_link(args) do
-        # This exists to ensure we call `set_state` *after* resources have been built
-        Supervisor.start_link(__MODULE__, args, name: __MODULE__)
-      end
-
-      def init(:set_state) do
-        # This exists to ensure we call `set_state` *after* resources have been built
-        Extension.set_state(true)
-
-        :ignore
-      end
-
-      def init(_init_arg) do
-        children =
-          raw_dsl()
-          |> Transformer.get_entities([:resources], Ash.Api.Dsl)
-          |> Enum.map(fn resource_reference ->
-            {resource_reference.resource, [api: __MODULE__]}
-          end)
-          # This exists to ensure we call `set_state` *after* resources have been built
-          |> Kernel.++([{__MODULE__, :set_state}])
-
-        children
-        |> Supervisor.init(strategy: :one_for_one)
+      def on_load do
+        Extension.load()
       end
 
       use Ash.Api.Interface
@@ -451,8 +418,8 @@ defmodule Ash.Api do
           {:ok, Ash.resource()} | {:error, Ash.error()}
   def create(api, changeset, opts) do
     with {:ok, opts} <- NimbleOptions.validate(opts, @create_opts_schema),
-         {:ok, _resource} <- Ash.Api.resource(api, changeset.resource),
-         {:ok, action} <- get_action(changeset.resource, opts, :create) do
+         {:ok, resource} <- Ash.Api.resource(api, changeset.resource),
+         {:ok, action} <- get_action(resource, opts, :create) do
       Create.run(api, changeset, action, opts)
     end
   end
@@ -472,8 +439,8 @@ defmodule Ash.Api do
           {:ok, Ash.record()} | {:error, Ash.error()}
   def update(api, changeset, opts) do
     with {:ok, opts} <- NimbleOptions.validate(opts, @update_opts_schema),
-         {:ok, _resource} <- Ash.Api.resource(api, changeset.resource),
-         {:ok, action} <- get_action(changeset.resource, opts, :update) do
+         {:ok, resource} <- Ash.Api.resource(api, changeset.resource),
+         {:ok, action} <- get_action(resource, opts, :update) do
       Update.run(api, changeset, action, opts)
     end
   end

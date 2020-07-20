@@ -11,12 +11,12 @@ defmodule Ash.Resource.Transformers.BelongsToAttribute do
 
   def transform(_resource, dsl_state) do
     dsl_state
-    |> Transformer.get_entities([:relationships], @extension)
+    |> Transformer.get_entities([:relationships])
     |> Enum.filter(&(&1.type == :belongs_to))
     |> Enum.filter(& &1.define_field?)
     |> Enum.reject(fn relationship ->
       dsl_state
-      |> Transformer.get_entities([:attributes], @extension)
+      |> Transformer.get_entities([:attributes])
       |> Enum.find(&(Map.get(&1, :name) == relationship.source_field))
     end)
     |> Enum.reduce_while({:ok, dsl_state}, fn relationship, {:ok, dsl_state} ->
@@ -27,7 +27,7 @@ defmodule Ash.Resource.Transformers.BelongsToAttribute do
              primary_key?: relationship.primary_key?
            ) do
         {:ok, attribute} ->
-          {:cont, {:ok, Transformer.add_entity(dsl_state, [:attributes], @extension, attribute)}}
+          {:cont, {:ok, Transformer.add_entity(dsl_state, [:attributes], attribute)}}
 
         {:error, error} ->
           {:halt,

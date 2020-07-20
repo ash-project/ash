@@ -13,11 +13,11 @@ defmodule Ash.Resource.Transformers.CreateJoinRelationship do
 
   def transform(_resource, dsl_state) do
     dsl_state
-    |> Transformer.get_entities([:relationships], @extension)
+    |> Transformer.get_entities([:relationships])
     |> Enum.filter(&(&1.type == :many_to_many))
     |> Enum.reject(fn relationship ->
       dsl_state
-      |> Transformer.get_entities([:relationships], @extension)
+      |> Transformer.get_entities([:relationships])
       |> Enum.find(&(&1.name == relationship.join_relationship))
     end)
     |> Enum.reduce({:ok, dsl_state}, fn relationship, {:ok, dsl_state} ->
@@ -29,7 +29,7 @@ defmodule Ash.Resource.Transformers.CreateJoinRelationship do
           source_field: relationship.source_field
         )
 
-      {:ok, Transformer.add_entity(dsl_state, [:relationships], @extension, relationship)}
+      {:ok, Transformer.add_entity(dsl_state, [:relationships], relationship)}
     end)
   end
 

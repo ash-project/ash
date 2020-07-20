@@ -6,8 +6,6 @@ defmodule Ash.Api.Transformers.ValidateRelatedResourceInclusion do
 
   alias Ash.Dsl.Transformer
 
-  @extension Ash.Api.Dsl
-
   @impl true
   def after?(Ash.Api.Transformers.EnsureResourcesCompiled), do: true
   def after?(_), do: false
@@ -16,7 +14,7 @@ defmodule Ash.Api.Transformers.ValidateRelatedResourceInclusion do
   def transform(module, dsl) do
     resources =
       dsl
-      |> Transformer.get_entities([:resources], @extension)
+      |> Transformer.get_entities([:resources])
       |> Enum.map(& &1.resource)
 
     resources

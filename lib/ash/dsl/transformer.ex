@@ -52,6 +52,10 @@ defmodule Ash.Dsl.Transformer do
     end
   end
 
+  def persist(dsl, key, value) do
+    Map.update(dsl, :persist, %{key => value}, &Map.put(&1, key, value))
+  end
+
   def build_entity(extension, path, name, opts) do
     do_build_entity(extension.sections(), path, name, opts)
   end
@@ -72,44 +76,30 @@ defmodule Ash.Dsl.Transformer do
     do_build_entity(section.sections, rest, name, opts)
   end
 
-  def add_entity(dsl_state, path, extension, entity) do
-    Map.update(dsl_state, {path, extension}, %{entities: [entity], opts: []}, fn config ->
+  def add_entity(dsl_state, path, entity) do
+    Map.update(dsl_state, path, %{entities: [entity], opts: []}, fn config ->
       Map.update(config, :entities, [entity], fn entities ->
         [entity | entities]
       end)
     end)
   end
 
-  def get_entities(dsl_state, path, extension) do
+  def get_entities(dsl_state, path) do
     dsl_state
-    |> Map.get({path, extension}, %{entities: []})
+    |> Map.get(path, %{entities: []})
     |> Map.get(:entities, [])
   end
 
-  def get_option(dsl_state, path, option, extension) do
+  def get_option(dsl_state, path, option) do
     dsl_state
-    |> Map.get({path, extension}, %{opts: []})
+    |> Map.get(path, %{opts: []})
     |> Map.get(:opts)
     |> Kernel.||([])
     |> Keyword.get(option)
   end
 
-  @doc """
-  Store a value in a special persistent term key, that will be copied to the runtime
-  """
-  def persist_to_runtime(module, key, value) do
-    :persistent_term.put(key, value)
-    current_persisted = :persistent_term.get({module, :persist_to_runtime}, [])
-
-    unless key in current_persisted do
-      :persistent_term.put({module, :persist_to_runtime}, [key | current_persisted])
-    end
-
-    :ok
-  end
-
-  def replace_entity(dsl_state, path, extension, replacement, matcher) do
-    Map.update(dsl_state, {path, extension}, %{entities: [replacement], opts: []}, fn config ->
+  def replace_entity(dsl_state, path, replacement, matcher) do
+    Map.update(dsl_state, path, %{entities: [replacement], opts: []}, fn config ->
       Map.update(config, :entities, [replacement], fn entities ->
         replace_match(entities, replacement, matcher)
       end)
