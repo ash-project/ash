@@ -12,7 +12,7 @@ Ash is in a very early alpha. There are versions 1.0.0+ published, but they have
 ```
 def deps do
   [
-    {:ash_core, "~> 0.11.0"}
+    {:ash_core, "~> 0.12.0"}
   ]
 end
 ```

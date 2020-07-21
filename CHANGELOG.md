@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v0.12.0](https://github.com/ash-project/ash/compare/0.11.0...v0.12.0) (2020-07-21)
+
+
+
+
+### Features:
+
+* rename package back to `ash`
+
 ## [v0.11.0](https://github.com/ash-project/ash/compare/0.11.0...v0.11.0) (2020-07-21)
 ### Breaking Changes:
 
