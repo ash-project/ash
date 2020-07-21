@@ -7,7 +7,7 @@ defmodule Ash.MixProject do
   designed to be used by multiple front ends.
   """
 
-  @version "1.4.1"
+  @version "0.11.0"
 
   def project do
     [
@@ -77,7 +77,7 @@ defmodule Ash.MixProject do
 
   defp package do
     [
-      name: :ash,
+      name: :ash_core,
       licenses: ["MIT"],
       links: %{
         GitHub: "https://github.com/ash-project/ash"

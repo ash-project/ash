@@ -6,7 +6,7 @@ For information on creating a new Elixir application, see [this guide](https://e
 
 ## Add Ash
 
-Add `ash` to your dependencies in `mix.exs`. The latest version can be found by running `mix hex.info ash`.
+Add `ash` to your dependencies in `mix.exs`. The latest version can be found by running `mix hex.info ash_core`.
 
 ## Create an Ash API
 

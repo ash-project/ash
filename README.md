@@ -7,7 +7,15 @@
 
 ## Alpha
 
-Despite the package being versioned > 1.0.0, Ash is still very much in its alpha phase, and will be in its alpha for a while.
+Ash is in a very early alpha. There are versions 1.0.0+ published, but they have been deprecated. I'm trying to get them taken down, but until then this notice will have to suffice.
+
+```
+def deps do
+  [
+    {:ash_core, "~> 0.11.0"}
+  ]
+end
+```
 
 ## Documentation
 
