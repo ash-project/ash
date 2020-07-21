@@ -77,7 +77,7 @@ defmodule Ash.MixProject do
 
   defp package do
     [
-      name: :ash_core,
+      name: :ash,
       licenses: ["MIT"],
       links: %{
         GitHub: "https://github.com/ash-project/ash"
