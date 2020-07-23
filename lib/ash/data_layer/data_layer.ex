@@ -42,7 +42,7 @@ defmodule Ash.DataLayer do
               {:ok, Ash.resource()} | {:error, term}
   @callback update(Ash.resource(), Ash.changeset()) ::
               {:ok, Ash.resource()} | {:error, term}
-  @callback add_aggregate(Ash.resource(), Ash.aggregate(), Ash.data_layer_query()) ::
+  @callback add_aggregate(Ash.data_layer_query(), Ash.aggregate(), Ash.resource()) ::
               {:ok, Ash.data_layer_query()} | {:error, term}
   @callback destroy(record :: Ash.record()) :: :ok | {:error, term}
   @callback transaction(Ash.resource(), (() -> term)) :: {:ok, term} | {:error, term}
