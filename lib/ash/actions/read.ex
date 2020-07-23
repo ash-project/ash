@@ -103,20 +103,21 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp add_aggregates(data_layer_query, query, aggregate_filters) do
+  defp add_aggregates(data_layer_query, query, _aggregate_filters) do
     query.aggregates
-    |> Enum.reduce({query.aggregates, aggregate_filters}, fn {name, aggregate},
-                                                             {aggregates, aggregate_filters} ->
-      case Map.fetch(aggregate_filters, aggregate.relationship_path) do
-        {:ok, %{authorization_filter: filter}} ->
-          {Map.put(aggregates, name, %{aggregate | authorization_filter: filter}),
-           Map.delete(aggregates, aggregate.relationship_path)}
+    # For now, we embed all of these in the query
+    # |> Enum.reduce({query.aggregates, aggregate_filters}, fn {name, aggregate},
+    #                                                          {aggregates, aggregate_filters} ->
+    #   case Map.fetch(aggregate_filters, aggregate.relationship_path) do
+    #     {:ok, %{authorization_filter: filter}} ->
+    #       {Map.put(aggregates, name, %{aggregate | authorization_filter: filter}),
+    #        Map.delete(aggregates, aggregate.relationship_path)}
 
-        :error ->
-          {aggregates, aggregate_filters}
-      end
-    end)
-    |> elem(0)
+    #     :error ->
+    #       {aggregates, aggregate_filters}
+    #   end
+    # end)
+    # |> elem(0)
     |> Enum.reduce_while({:ok, data_layer_query}, fn {_name, aggregate},
                                                      {:ok, data_layer_query} ->
       case Ash.DataLayer.add_aggregate(data_layer_query, aggregate, query.resource) do
