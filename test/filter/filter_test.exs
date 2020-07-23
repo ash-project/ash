@@ -317,7 +317,7 @@ defmodule Ash.Test.Filter.FilterTest do
     test "can detect a filter is not a subset of itself *or* something else" do
       filter = Filter.parse!(Post, points: 1)
 
-      candidate = Filter.add_to_filter!(filter, :or, title: "Title")
+      candidate = Filter.add_to_filter!(filter, [title: "Title"], :or)
 
       refute Filter.strict_subset_of?(filter, candidate)
     end

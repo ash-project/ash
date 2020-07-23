@@ -1,4 +1,4 @@
-defmodule Ash.Error.Filter.InvalidFilterValue do
+defmodule Ash.Error.Query.InvalidFilterValue do
   @moduledoc "Used when an invalid value is provided for a filter"
   use Ash.Error
 

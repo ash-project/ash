@@ -1,4 +1,4 @@
-defmodule Ash.Error.Filter.NoSuchAttributeOrRelationship do
+defmodule Ash.Error.Query.NoSuchAttributeOrRelationship do
   @moduledoc "Used when a key in a filter contains something that is neither an attribute or a relationship"
   use Ash.Error
 

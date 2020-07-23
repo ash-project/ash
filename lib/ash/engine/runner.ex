@@ -71,17 +71,17 @@ defmodule Ash.Engine.Runner do
   defp stuck_report(state) do
     Enum.map_join(state.requests, "\n", fn request ->
       if request.state in [:complete, :error] do
-        request.name <> ": " <> "#{request.state}"
+        to_string(request.name) <> ": " <> "#{inspect(request.state)}"
       else
         case Request.next(request) do
           {:wait, _, _, []} ->
-            request.name <> ": Waiting on nothing in state #{inspect(request.state)}"
+            to_string(request.name) <> ": Waiting on nothing in state #{inspect(request.state)}"
 
           {:wait, _, _, dependencies} ->
-            request.name <> ": Waiting on #{dependency_names(dependencies, state)}"
+            to_string(request.name) <> ": Waiting on #{dependency_names(dependencies, state)}"
 
           _other ->
-            request.name <> ": Not waiting, not complete"
+            to_string(request.name) <> ": Not waiting, not complete"
         end
       end
     end)

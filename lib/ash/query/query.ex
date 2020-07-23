@@ -10,6 +10,7 @@ defmodule Ash.Query do
     :resource,
     :filter,
     :data_layer_query,
+    aggregates: %{},
     side_load: [],
     sort: [],
     limit: nil,
@@ -24,48 +25,40 @@ defmodule Ash.Query do
     import Inspect.Algebra
 
     def inspect(query, opts) do
-      opts = %{
-        opts
-        | syntax_colors: [
-            atom: :yellow,
-            binary: :green,
-            boolean: :magenta,
-            list: :cyan,
-            map: :magenta,
-            number: :red,
-            regex: :violet,
-            tuple: :white
-          ]
-      }
-
-      error_doc =
-        if Enum.empty?(query.errors) do
-          empty()
-        else
-          concat("errors: ", to_doc(query.errors, opts))
-        end
+      sort? = query.sort != []
+      side_load? = query.side_load != []
+      aggregates? = query.aggregates != %{}
+      limit? = not is_nil(query.limit)
+      offset? = not (is_nil(query.offset) || query.offset == 0)
+      filter? = not is_nil(query.filter)
+      errors? = not Enum.empty?(query.errors)
 
       container_doc(
         "#Ash.Query<",
         [
           concat("resource: ", inspect(query.resource)),
-          concat("filter: ", to_doc(query.filter, opts)),
-          concat("sort: ", to_doc(query.sort, opts)),
-          concat("limit: ", to_doc(query.limit, opts)),
-          concat("offset: ", to_doc(query.offset, opts)),
-          concat("side_load: ", to_doc(query.side_load, opts)),
-          error_doc
+          or_empty(concat("filter: ", to_doc(query.filter, opts)), filter?),
+          or_empty(concat("sort: ", to_doc(query.sort, opts)), sort?),
+          or_empty(concat("limit: ", to_doc(query.limit, opts)), limit?),
+          or_empty(concat("offset: ", to_doc(query.offset, opts)), offset?),
+          or_empty(concat("side_load: ", to_doc(query.side_load, opts)), side_load?),
+          or_empty(concat("aggregates: ", to_doc(query.aggregates, opts)), aggregates?),
+          or_empty(concat("errors: ", to_doc(query.errors, opts)), errors?)
         ],
         ">",
         opts,
         fn str, _ -> str end
       )
     end
+
+    defp or_empty(value, true), do: value
+    defp or_empty(_, false), do: empty()
   end
 
   alias Ash.Actions.Sort
   alias Ash.Error.Query.{InvalidLimit, InvalidOffset}
   alias Ash.Error.SideLoad.{InvalidQuery, NoSuchRelationship}
+  alias Ash.Query.Aggregate
 
   @doc "Create a new query."
   def new(resource, api \\ nil) when is_atom(resource) do
@@ -77,10 +70,72 @@ defmodule Ash.Query do
     |> set_data_layer_query()
   end
 
+  @spec build(Ash.resource(), Ash.api() | nil, Keyword.t()) :: t()
+  def build(resource, api \\ nil, keyword) do
+    Enum.reduce(keyword, new(resource, api), fn
+      {:filter, value}, query ->
+        filter(query, value)
+
+      {:sort, value}, query ->
+        sort(query, value)
+
+      {:limit, value}, query ->
+        limit(query, value)
+
+      {:offset, value}, query ->
+        offset(query, value)
+
+      {:side_load, value}, query ->
+        side_load(query, value)
+
+      {:aggregate, {name, type, relationship}}, query ->
+        aggregate(query, name, type, relationship)
+
+      {:aggregate, {name, type, relationship, agg_query}}, query ->
+        aggregate(query, name, type, relationship, agg_query)
+    end)
+  end
+
   @doc "Set the query's api, and any side loaded query's api"
   def set_api(query, api) do
     query = to_query(query)
     %{query | api: api, side_load: set_side_load_api(query.side_load, api)}
+  end
+
+  @doc "Adds an aggregation to the query. Aggregations are made available on the `meta` field of a record"
+  def aggregate(query, name, type, relationship, agg_query \\ nil) do
+    query = to_query(query)
+
+    agg_query =
+      case agg_query do
+        nil ->
+          nil
+
+        %__MODULE__{} = agg_query ->
+          agg_query
+
+        options when is_list(options) ->
+          build(Ash.Resource.related(query.resource, relationship), options)
+      end
+
+    case Aggregate.new(query.resource, name, type, relationship, agg_query) do
+      {:ok, aggregate} ->
+        new_aggregates = Map.put(query.aggregates, aggregate.name, aggregate)
+
+        new_filter =
+          case query.filter do
+            nil ->
+              nil
+
+            filter ->
+              %{filter | aggregates: new_aggregates}
+          end
+
+        set_data_layer_query(%{query | aggregates: new_aggregates, filter: new_filter})
+
+      {:error, error} ->
+        add_error(query, :aggregate, error)
+    end
   end
 
   @doc "Limit the results returned from the query"
@@ -183,7 +238,7 @@ defmodule Ash.Query do
     end)
   end
 
-  def filter(query, nil), do: query
+  def filter(query, nil), do: to_query(query)
 
   def filter(query, %Ash.Filter{} = filter) do
     query = to_query(query)
@@ -194,7 +249,7 @@ defmodule Ash.Query do
           {:ok, filter}
 
         existing_filter ->
-          Ash.Filter.add_to_filter(existing_filter, filter)
+          Ash.Filter.add_to_filter(existing_filter, filter, :and, query.aggregates)
       end
 
     case new_filter do
@@ -211,9 +266,9 @@ defmodule Ash.Query do
 
     filter =
       if query.filter do
-        Ash.Filter.add_to_filter(query.filter, statement)
+        Ash.Filter.add_to_filter(query.filter, statement, :and, query.aggregates)
       else
-        Ash.Filter.parse(query.resource, statement)
+        Ash.Filter.parse(query.resource, statement, query.aggregates)
       end
 
     case filter do
@@ -227,10 +282,11 @@ defmodule Ash.Query do
     end
   end
 
-  def sort(query, sorts) when is_list(sorts) do
+  def sort(query, sorts) do
     query = to_query(query)
 
     sorts
+    |> List.wrap()
     |> Enum.reduce(query, fn
       {sort, direction}, query ->
         %{query | sort: query.sort ++ [{sort, direction}]}
@@ -243,7 +299,17 @@ defmodule Ash.Query do
   end
 
   def unset(query, keys) when is_list(keys) do
-    Enum.reduce(keys, query, &unset(&2, &1))
+    keys
+    |> Enum.reduce(query, fn key, query ->
+      if key in [:api, :resource] do
+        query
+      else
+        query
+        |> to_query()
+        |> struct([{key, Map.get(%__MODULE__{}, key)}])
+      end
+    end)
+    |> set_data_layer_query()
   end
 
   def unset(query, key) do
@@ -253,6 +319,7 @@ defmodule Ash.Query do
       query
       |> to_query()
       |> struct([{key, Map.get(%__MODULE__{}, key)}])
+      |> set_data_layer_query()
     end
   end
 
@@ -260,16 +327,48 @@ defmodule Ash.Query do
   def data_layer_query(%{resource: resource} = ash_query, opts \\ []) do
     query = Ash.DataLayer.resource_to_query(resource)
 
-    with {:ok, query} <- Ash.DataLayer.sort(query, ash_query.sort, resource),
-         {:ok, query} <- maybe_filter(query, ash_query, opts) do
+    filter_aggregates =
+      if ash_query.filter do
+        Ash.Filter.used_aggregates(ash_query.filter)
+      else
+        []
+      end
+
+    sort_aggregates =
+      Enum.flat_map(ash_query.sort, fn {field, _} ->
+        case Map.fetch(ash_query.aggregates, field) do
+          :error ->
+            []
+
+          {:ok, agg} ->
+            [agg]
+        end
+      end)
+
+    aggregates = Enum.uniq_by(filter_aggregates ++ sort_aggregates, & &1.name)
+
+    with {:ok, query} <- add_aggregates(query, ash_query.resource, aggregates),
+         {:ok, query} <- Ash.DataLayer.sort(query, ash_query.sort, resource),
+         {:ok, query} <- maybe_filter(query, ash_query, opts),
+         {:ok, query} <- Ash.DataLayer.limit(query, ash_query.limit, resource),
+         {:ok, query} <- Ash.DataLayer.offset(query, ash_query.offset, resource) do
       {:ok, query}
     else
       {:error, error} -> {:error, error}
     end
   end
 
+  defp add_aggregates(query, resource, aggregates) do
+    Enum.reduce_while(aggregates, {:ok, query}, fn aggregate, {:ok, query} ->
+      case Ash.DataLayer.add_aggregate(query, aggregate, resource) do
+        {:ok, query} -> {:cont, {:ok, query}}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
+  end
+
   defp validate_sort(%{resource: resource, sort: sort} = query) do
-    case Sort.process(resource, sort) do
+    case Sort.process(resource, sort, query.aggregates) do
       {:ok, new_sort} -> %{query | sort: new_sort}
       {:error, error} -> add_error(query, :sort, error)
     end

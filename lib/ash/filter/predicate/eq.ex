@@ -4,7 +4,7 @@ defmodule Ash.Filter.Predicate.Eq do
 
   use Ash.Filter.Predicate
 
-  alias Ash.Error.Filter.InvalidFilterValue
+  alias Ash.Error.Query.InvalidFilterValue
   alias Ash.Filter.Predicate
 
   def new(_resource, attribute, value) do

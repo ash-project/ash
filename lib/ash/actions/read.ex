@@ -4,6 +4,7 @@ defmodule Ash.Actions.Read do
   alias Ash.Engine
   alias Ash.Engine.Request
   alias Ash.Filter
+  alias Ash.Query.Aggregate
   require Logger
 
   def run(query, action, opts \\ []) do
@@ -33,6 +34,13 @@ defmodule Ash.Actions.Read do
         {:ok, []}
       end
 
+    aggregate_requests =
+      if Keyword.has_key?(opts, :actor) || opts[:authorize?] do
+        Aggregate.requests(query)
+      else
+        []
+      end
+
     case filter_requests do
       {:ok, filter_requests} ->
         request =
@@ -41,30 +49,43 @@ defmodule Ash.Actions.Read do
             api: query.api,
             query: query,
             action: action,
-            data: data_field(opts, filter_requests, query.resource, query.data_layer_query),
+            data:
+              data_field(
+                opts,
+                filter_requests,
+                aggregate_requests,
+                query
+              ),
             path: [:data],
             name: "#{action.type} - `#{action.name}`"
           )
 
-        {:ok, [request | filter_requests]}
+        {:ok, [request | filter_requests] ++ aggregate_requests}
 
       {:error, error} ->
         {:error, error}
     end
   end
 
-  defp data_field(params, filter_requests, resource, query) do
+  defp data_field(params, filter_requests, aggregate_requests, initial_query) do
     if params[:initial_data] do
       List.wrap(params[:initial_data])
     else
       relationship_filter_paths =
-        Enum.flat_map(filter_requests, fn request ->
-          [request.path ++ [:data], request.path ++ [:authorization_filter]]
+        Enum.map(filter_requests, fn request ->
+          request.path ++ [:authorization_filter]
+        end)
+
+      aggregate_paths =
+        Enum.map(aggregate_requests, fn request ->
+          request.path ++ [:authorization_filter]
         end)
 
       Request.resolve(
-        [[:data, :query] | relationship_filter_paths],
+        [[:data, :query] | relationship_filter_paths ++ aggregate_paths],
         fn %{data: %{query: ash_query}} = data ->
+          query = Ash.Query.unset(initial_query, [:filter, :aggregates, :sort]).data_layer_query
+
           with {:ok, filter} <- filter_with_related(relationship_filter_paths, ash_query, data),
                {:ok, filter} <-
                  Filter.run_other_data_layer_filters(
@@ -72,14 +93,37 @@ defmodule Ash.Actions.Read do
                    ash_query.resource,
                    filter
                  ),
-               {:ok, query} <- Ash.DataLayer.filter(query, filter, resource),
-               {:ok, query} <- Ash.DataLayer.limit(query, ash_query.limit, resource),
-               {:ok, query} <- Ash.DataLayer.offset(query, ash_query.offset, resource) do
-            Ash.DataLayer.run_query(query, resource)
+               {:ok, query} <- add_aggregates(query, ash_query, Map.get(data, :aggregate, [])),
+               {:ok, query} <- Ash.DataLayer.filter(query, filter, ash_query.resource),
+               {:ok, query} <- Ash.DataLayer.sort(query, ash_query.sort, ash_query.resource) do
+            Ash.DataLayer.run_query(query, ash_query.resource)
           end
         end
       )
     end
+  end
+
+  defp add_aggregates(data_layer_query, query, aggregate_filters) do
+    query.aggregates
+    |> Enum.reduce({query.aggregates, aggregate_filters}, fn {name, aggregate},
+                                                             {aggregates, aggregate_filters} ->
+      case Map.fetch(aggregate_filters, aggregate.relationship_path) do
+        {:ok, %{authorization_filter: filter}} ->
+          {Map.put(aggregates, name, %{aggregate | authorization_filter: filter}),
+           Map.delete(aggregates, aggregate.relationship_path)}
+
+        :error ->
+          {aggregates, aggregate_filters}
+      end
+    end)
+    |> elem(0)
+    |> Enum.reduce_while({:ok, data_layer_query}, fn {_name, aggregate},
+                                                     {:ok, data_layer_query} ->
+      case Ash.DataLayer.add_aggregate(data_layer_query, aggregate, query.resource) do
+        {:ok, new_query} -> {:cont, {:ok, new_query}}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
   end
 
   defp filter_with_related(relationship_filter_paths, ash_query, data) do

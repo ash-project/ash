@@ -3,7 +3,7 @@ defmodule Ash.Filter.Predicate do
 
   defstruct [:resource, :attribute, :relationship_path, :predicate, :value]
 
-  alias Ash.Error.Filter.UnsupportedPredicate
+  alias Ash.Error.Query.UnsupportedPredicate
   alias Ash.Filter
   alias Ash.Filter.{Expression, Not}
 

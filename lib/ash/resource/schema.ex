@@ -21,6 +21,7 @@ defmodule Ash.Schema do
           )
         end
 
+        field(:aggregates, :map, virtual: true)
         relationships = Ash.Resource.relationships(__MODULE__)
 
         for relationship <- Enum.filter(relationships, &(&1.type == :belongs_to)) do

@@ -124,14 +124,14 @@ defmodule Ash.SatSolver do
     end)
   end
 
-  defp synonymous_relationship_paths?(_, [], []), do: true
+  def synonymous_relationship_paths?(_, [], []), do: true
 
-  defp synonymous_relationship_paths?(_resource, candidate_path, path)
-       when length(candidate_path) != length(path),
-       do: false
+  def synonymous_relationship_paths?(_resource, candidate_path, path)
+      when length(candidate_path) != length(path),
+      do: false
 
-  defp synonymous_relationship_paths?(resource, [candidate_first | candidate_rest], [first | rest])
-       when first == candidate_first do
+  def synonymous_relationship_paths?(resource, [candidate_first | candidate_rest], [first | rest])
+      when first == candidate_first do
     synonymous_relationship_paths?(
       Ash.Resource.relationship(resource, candidate_first).destination,
       candidate_rest,
@@ -139,21 +139,43 @@ defmodule Ash.SatSolver do
     )
   end
 
-  defp synonymous_relationship_paths?(resource, [candidate_first | candidate_rest], [first | rest]) do
+  def synonymous_relationship_paths?(
+        resource,
+        [candidate_first | candidate_rest] = candidate,
+        [first | rest] = search
+      ) do
     relationship = Ash.Resource.relationship(resource, first)
     candidate_relationship = Ash.Resource.relationship(resource, candidate_first)
 
-    comparison_keys = [
-      :source_field,
-      :destination_field,
-      :source_field_on_join_table,
-      :destination_field_on_join_table,
-      :destination_field,
-      :destination
-    ]
+    cond do
+      relationship.type == :many_to_many && candidate_relationship.type == :has_many ->
+        synonymous_relationship_paths?(
+          resource,
+          [relationship.join_relationship | candidate],
+          search
+        )
 
-    Map.take(relationship, comparison_keys) == Map.take(candidate_relationship, comparison_keys) and
-      synonymous_relationship_paths?(relationship.destination, candidate_rest, rest)
+      relationship.type == :has_many && candidate_relationship.type == :many_to_many ->
+        synonymous_relationship_paths?(
+          resource,
+          candidate,
+          [candidate_relationship.join_relationship | search]
+        )
+
+      true ->
+        comparison_keys = [
+          :source_field,
+          :destination_field,
+          :source_field_on_join_table,
+          :destination_field_on_join_table,
+          :destination_field,
+          :destination
+        ]
+
+        Map.take(relationship, comparison_keys) ==
+          Map.take(candidate_relationship, comparison_keys) and
+          synonymous_relationship_paths?(relationship.destination, candidate_rest, rest)
+    end
   end
 
   defp build_expr_with_predicate_information(expression) do

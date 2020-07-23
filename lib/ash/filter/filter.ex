@@ -8,7 +8,8 @@ defmodule Ash.Filter do
   """
   alias Ash.Engine.Request
 
-  alias Ash.Error.Filter.{
+  alias Ash.Error.Query.{
+    AggregatesNotSupported,
     InvalidFilterValue,
     NoSuchAttributeOrRelationship,
     NoSuchFilterPredicate,
@@ -17,6 +18,7 @@ defmodule Ash.Filter do
 
   alias Ash.Filter.Predicate.{Eq, GreaterThan, In, LessThan}
   alias Ash.Filter.{Expression, Not, Predicate}
+  alias Ash.Query.Aggregate
 
   @built_in_predicates [
     eq: Eq,
@@ -30,8 +32,8 @@ defmodule Ash.Filter do
 
   defstruct [:resource, :expression]
 
-  def parse!(resource, statement) do
-    case parse(resource, statement) do
+  def parse!(resource, statement, aggregates \\ %{}) do
+    case parse(resource, statement, aggregates) do
       {:ok, filter} ->
         filter
 
@@ -40,10 +42,11 @@ defmodule Ash.Filter do
     end
   end
 
-  def parse(resource, statement) do
+  def parse(resource, statement, aggregates \\ %{}) do
     context = %{
       resource: resource,
-      relationship_path: []
+      relationship_path: [],
+      aggregates: aggregates
     }
 
     case parse_expression(statement, context) do
@@ -53,6 +56,16 @@ defmodule Ash.Filter do
       {:error, error} ->
         {:error, error}
     end
+  end
+
+  def used_aggregates(filter) do
+    reduce(filter, [], fn
+      %Predicate{attribute: %Aggregate{} = aggregate}, acc ->
+        [aggregate | acc]
+
+      _, acc ->
+        acc
+    end)
   end
 
   def run_other_data_layer_filters(api, resource, filter) do
@@ -216,8 +229,8 @@ defmodule Ash.Filter do
     end
   end
 
-  defp put_at_path(value, []), do: value
-  defp put_at_path(value, [key | rest]), do: [{key, put_at_path(value, rest)}]
+  def put_at_path(value, []), do: value
+  def put_at_path(value, [key | rest]), do: [{key, put_at_path(value, rest)}]
 
   def relationship_paths(filter_or_expression, kind \\ :all)
   def relationship_paths(nil, _), do: []
@@ -235,8 +248,8 @@ defmodule Ash.Filter do
     |> Enum.map(fn {path} -> path end)
   end
 
-  def add_to_filter!(base, op \\ :and, addition) do
-    case add_to_filter(base, op, addition) do
+  def add_to_filter!(base, addition, op \\ :and, aggregates \\ %{}) do
+    case add_to_filter(base, addition, op, aggregates) do
       {:ok, value} ->
         value
 
@@ -245,28 +258,29 @@ defmodule Ash.Filter do
     end
   end
 
-  def add_to_filter(base, op \\ :and, addition)
+  def add_to_filter(base, addition, op \\ :and, aggregates \\ %{})
 
-  def add_to_filter(nil, _, %__MODULE__{} = addition), do: addition
+  def add_to_filter(nil, %__MODULE__{} = addition, _, _), do: {:ok, addition}
 
   def add_to_filter(
         %__MODULE__{resource: resource} = base,
+        %__MODULE__{resource: resource} = addition,
         op,
-        %__MODULE__{resource: resource} = addition
+        _
       ) do
     {:ok, %{base | expression: Expression.new(op, base.expression, addition.expression)}}
   end
 
-  def add_to_filter(%__MODULE__{} = base, _, %__MODULE__{} = addition) do
+  def add_to_filter(%__MODULE__{} = base, %__MODULE__{} = addition, _, _) do
     {:error,
      "Cannot add filter for resource #{inspect(addition.resource)} to filter with resource #{
        inspect(base.resource)
      }"}
   end
 
-  def add_to_filter(%__MODULE__{} = base, op, statement) do
-    case parse(base.resource, statement) do
-      {:ok, filter} -> add_to_filter(base, op, filter)
+  def add_to_filter(%__MODULE__{} = base, statement, op, aggregates) do
+    case parse(base.resource, statement, aggregates) do
+      {:ok, filter} -> add_to_filter(base, filter, op, aggregates)
       {:error, error} -> {:error, error}
     end
   end
@@ -686,6 +700,9 @@ defmodule Ash.Filter do
           end
         end
 
+      Map.has_key?(context.aggregates, field) ->
+        add_aggregate_expression(context, nested_statement, field, expression)
+
       true ->
         {:error,
          NoSuchAttributeOrRelationship.exception(
@@ -717,6 +734,21 @@ defmodule Ash.Filter do
 
   defp add_expression_part(value, _, _) do
     {:error, InvalidFilterValue.exception(value: value)}
+  end
+
+  defp add_aggregate_expression(context, nested_statement, field, expression) do
+    if Ash.Resource.data_layer_can?(context.resource, :join) &&
+         Ash.Resource.data_layer_can?(context.resource, :aggregate_filter) do
+      case parse_predicates(nested_statement, Map.get(context.aggregates, field), context) do
+        {:ok, nested_statement} ->
+          {:ok, Expression.new(:and, expression, nested_statement)}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    else
+      {:error, AggregatesNotSupported.exception(resource: context.resource)}
+    end
   end
 
   defp validate_datalayers_support_boolean_filters(%Expression{op: :or, left: left, right: right}) do

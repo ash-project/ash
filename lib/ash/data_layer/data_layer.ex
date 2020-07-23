@@ -9,11 +9,13 @@ defmodule Ash.DataLayer do
   """
   @type feature() ::
           :transact
+          | :aggregate_filter
           | :boolean_filter
           | :async_engine
           | :join
           | :transact
           | {:filter_predicate, Ash.Type.t(), struct}
+          | :aggregate_sort
           | {:sort, Ash.Type.t()}
           | :upsert
           | :delete_with_query
@@ -40,6 +42,8 @@ defmodule Ash.DataLayer do
               {:ok, Ash.resource()} | {:error, term}
   @callback update(Ash.resource(), Ash.changeset()) ::
               {:ok, Ash.resource()} | {:error, term}
+  @callback add_aggregate(Ash.resource(), Ash.aggregate(), Ash.data_layer_query()) ::
+              {:ok, Ash.data_layer_query()} | {:error, term}
   @callback destroy(record :: Ash.record()) :: :ok | {:error, term}
   @callback transaction(Ash.resource(), (() -> term)) :: {:ok, term} | {:error, term}
   @callback in_transaction?(Ash.resource()) :: boolean
@@ -47,12 +51,17 @@ defmodule Ash.DataLayer do
   @callback rollback(Ash.resource(), term) :: no_return
   @callback can?(Ash.resource(), feature()) :: boolean
 
-  @optional_callbacks source: 1
-  @optional_callbacks transaction: 2
-  @optional_callbacks rollback: 2
-  @optional_callbacks upsert: 2
-  @optional_callbacks custom_filters: 1
-  @optional_callbacks in_transaction?: 1
+  @optional_callbacks source: 1,
+                      filter: 3,
+                      sort: 3,
+                      limit: 3,
+                      offset: 3,
+                      transaction: 2,
+                      rollback: 2,
+                      upsert: 2,
+                      custom_filters: 1,
+                      in_transaction?: 1,
+                      add_aggregate: 3
 
   @spec resource_to_query(Ash.resource()) :: Ash.data_layer_query()
   def resource_to_query(resource) do
@@ -118,6 +127,13 @@ defmodule Ash.DataLayer do
   def offset(query, offset, resource) do
     data_layer = Ash.Resource.data_layer(resource)
     data_layer.offset(query, offset, resource)
+  end
+
+  @spec add_aggregate(Ash.data_layer_query(), Ash.aggregate(), Ash.resource()) ::
+          {:ok, Ash.data_layer_query()} | {:error, term}
+  def add_aggregate(query, aggregate, resource) do
+    data_layer = Ash.Resource.data_layer(resource)
+    data_layer.add_aggregate(query, aggregate, resource)
   end
 
   @spec can?(feature, Ash.resource()) :: boolean

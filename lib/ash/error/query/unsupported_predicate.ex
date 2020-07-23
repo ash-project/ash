@@ -1,4 +1,4 @@
-defmodule Ash.Error.Filter.UnsupportedPredicate do
+defmodule Ash.Error.Query.UnsupportedPredicate do
   @moduledoc "Used when the datalayer does not support a provided predicate"
   use Ash.Error
 

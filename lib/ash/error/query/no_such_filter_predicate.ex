@@ -1,4 +1,4 @@
-defmodule Ash.Error.Filter.NoSuchFilterPredicate do
+defmodule Ash.Error.Query.NoSuchFilterPredicate do
   @moduledoc "Used when a filter predicate that does not exist is referenced"
   use Ash.Error
 

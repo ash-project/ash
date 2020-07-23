@@ -4,7 +4,7 @@ defmodule Ash.Filter.Predicate.In do
 
   use Ash.Filter.Predicate
 
-  alias Ash.Error.Filter.InvalidFilterValue
+  alias Ash.Error.Query.InvalidFilterValue
   alias Ash.Filter.Expression
   alias Ash.Filter.Predicate
   alias Ash.Filter.Predicate.Eq

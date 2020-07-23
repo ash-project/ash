@@ -318,14 +318,13 @@ defmodule Ash.Actions.SideLoad do
           base_query =
             case get_in(data, request_path ++ [:authorization_filter]) do
               nil ->
-                {:ok, related_query}
+                related_query
 
               authorization_filter ->
                 Ash.Query.filter(related_query, authorization_filter)
             end
 
-          with {:ok, base_query} <- base_query,
-               new_query <-
+          with new_query <-
                  true_side_load_query(
                    relationship,
                    base_query,
@@ -413,14 +412,13 @@ defmodule Ash.Actions.SideLoad do
                        :authorization_filter
                      ]) do
                   nil ->
-                    {:ok, related_query}
+                    related_query
 
                   authorization_filter ->
                     Ash.Query.filter(related_query, authorization_filter)
                 end
 
-              with {:ok, base_query} <- base_query,
-                   new_query <-
+              with new_query <-
                      true_side_load_query(
                        join_relationship,
                        base_query,
@@ -555,9 +553,9 @@ defmodule Ash.Actions.SideLoad do
     {:ok, new_query}
   end
 
-  defp reverse_relationship_path(relationship, prior_path, acc \\ [])
+  def reverse_relationship_path(relationship, prior_path, acc \\ [])
 
-  defp reverse_relationship_path(relationship, [], acc) do
+  def reverse_relationship_path(relationship, [], acc) do
     relationship.destination
     |> Ash.Resource.relationships()
     |> Enum.find(fn destination_relationship ->
@@ -572,7 +570,7 @@ defmodule Ash.Actions.SideLoad do
     end
   end
 
-  defp reverse_relationship_path(relationship, [next_relationship | rest], acc) do
+  def reverse_relationship_path(relationship, [next_relationship | rest], acc) do
     relationship.destination
     |> Ash.Resource.relationships()
     |> Enum.find(fn destination_relationship ->
