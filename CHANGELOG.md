@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v0.13.1](https://github.com/ash-project/ash/compare/0.13.0...v0.13.1) (2020-07-23)
+
+
+
+
+### Features:
+
+* aggregations!
+
+* rename package back to `ash`
+
+### Bug Fixes:
+
+* incorrect callback
+
+* comment out aggregate splitting code for now
+
 ## [v0.13.0](https://github.com/ash-project/ash/compare/0.12.0...v0.13.0) (2020-07-23)
 
 
