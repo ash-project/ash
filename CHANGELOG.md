@@ -5,44 +5,7 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
-## [v0.13.1](https://github.com/ash-project/ash/compare/0.13.0...v0.13.1) (2020-07-23)
-
-
-
-
-### Features:
-
-* aggregations!
-
-* rename package back to `ash`
-
-### Bug Fixes:
-
-* incorrect callback
-
-* comment out aggregate splitting code for now
-
-## [v0.13.0](https://github.com/ash-project/ash/compare/0.12.0...v0.13.0) (2020-07-23)
-
-
-
-
-### Features:
-
-* aggregations!
-
-* rename package back to `ash`
-
-## [v0.12.0](https://github.com/ash-project/ash/compare/0.11.0...v0.12.0) (2020-07-21)
-
-
-
-
-### Features:
-
-* rename package back to `ash`
-
-## [v0.11.0](https://github.com/ash-project/ash/compare/0.11.0...v0.11.0) (2020-07-21)
+## [v1.5.0](https://github.com/ash-project/ash/compare/1.5.0...v1.5.0) (2020-07-24)
 ### Breaking Changes:
 
 * remove initial subscriptions pass
@@ -52,6 +15,14 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 
 ### Features:
+
+* group metadata by path and async?: false
+
+* run aggregates async if not in query
+
+* aggregations!
+
+* rename package back to `ash`
 
 * allow editing join association attributes
 
@@ -104,6 +75,10 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 * support writeable?: false attributes
 
 ### Bug Fixes:
+
+* incorrect callback
+
+* comment out aggregate splitting code for now
 
 * simplify dsl building using `on_load`
 
