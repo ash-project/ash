@@ -101,7 +101,7 @@ defmodule Ash.MixProject do
       {:credo, ">= 0.0.0", only: :dev, runtime: false},
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
       {:sobelow, ">= 0.0.0", only: :dev, runtime: false},
-      {:git_ops, "~> 2.0.0", only: :dev},
+      {:git_ops, "~> 2.0.1", only: :dev},
       {:picosat_elixir, "~> 0.1.4"},
       {:nimble_options, "~> 0.3.0"},
       {:excoveralls, "~> 0.13.0", only: [:dev, :test]}
