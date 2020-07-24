@@ -104,9 +104,9 @@ defmodule Ash.Query do
 
   @doc "Adds an aggregation to the query. Aggregations are made available on the `meta` field of a record"
   def aggregate(query, name, type, relationship, agg_query \\ nil) do
-    if Ash.Resource.data_layer_can?(query.resource, :aggregate) do
-      query = to_query(query)
+    query = to_query(query)
 
+    if Ash.Resource.data_layer_can?(query.resource, :aggregate) do
       agg_query =
         case agg_query do
           nil ->

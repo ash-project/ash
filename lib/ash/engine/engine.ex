@@ -368,7 +368,8 @@ defmodule Ash.Engine do
   end
 
   defp must_be_local?(request) do
-    not Ash.Resource.data_layer_can?(request.resource, :async_engine)
+    not request.async? ||
+      not Ash.Resource.data_layer_can?(request.resource, :async_engine)
   end
 
   defp maybe_shutdown(%{active_requests: [], local_requests?: false} = state) do

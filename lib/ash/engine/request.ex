@@ -37,6 +37,7 @@ defmodule Ash.Engine.Request do
 
   defstruct [
     :id,
+    :async?,
     :error?,
     :resource,
     :changeset,
@@ -106,6 +107,7 @@ defmodule Ash.Engine.Request do
       path: List.wrap(opts[:path]),
       action_type: opts[:action_type],
       action: opts[:action],
+      async?: Keyword.get(opts, :async?, true),
       data: data,
       query: query,
       api: opts[:api],

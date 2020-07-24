@@ -130,9 +130,9 @@ defmodule Ash.Actions.Read do
 
   defp add_aggregate_values(results, resource, aggregate_values) do
     keys_to_aggregates =
-      Enum.reduce(aggregate_values, %{}, fn {name, keys_to_values}, acc ->
-        Enum.reduce(keys_to_values, acc, fn {pkey, value}, acc ->
-          Map.update(acc, pkey, %{name => value}, &Map.put(&1, name, value))
+      Enum.reduce(aggregate_values, %{}, fn {_name, keys_to_values}, acc ->
+        Enum.reduce(keys_to_values, acc, fn {pkey, values}, acc ->
+          Map.update(acc, pkey, values, &Map.merge(&1, values))
         end)
       end)
 

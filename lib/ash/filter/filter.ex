@@ -330,9 +330,11 @@ defmodule Ash.Filter do
             resource: resource,
             api: api,
             query: query,
+            async?: false,
             path: [:filter, path],
             strict_check_only?: true,
             action: action,
+            name: "authorize filter #{Enum.join(path, ".")}",
             data: []
           )
 

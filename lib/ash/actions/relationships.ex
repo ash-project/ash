@@ -151,6 +151,7 @@ defmodule Ash.Actions.Relationships do
         action: Ash.Resource.primary_action!(relationship.destination, :read),
         query: query,
         path: [:relationships, relationship_name, type],
+        async?: not possible?,
         authorize?: possible?,
         data:
           Request.resolve(dependencies, fn data ->
