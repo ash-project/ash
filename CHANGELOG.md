@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.5.1](https://github.com/ash-project/ash/compare/v1.5.0...v1.5.1) (2020-07-24)
+
+
+
+
+### Bug Fixes:
+
+* scope data layer feature to aggregate kind
+
 ## v1.5.0 (2020-07-24)
 
 ### Features:
