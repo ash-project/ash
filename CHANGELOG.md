@@ -5,205 +5,280 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
-## [v1.5.0](https://github.com/ash-project/ash/compare/1.5.0...v1.5.0) (2020-07-24)
-### Breaking Changes:
-
-* remove initial subscriptions pass
-
-* remove atom type, add docs
-
-
+## v1.5.0 (2020-07-24)
 
 ### Features:
 
-* group metadata by path and async?: false
+- group metadata by path and async?: false
 
-* run aggregates async if not in query
+- run aggregates async if not in query
 
-* aggregations!
+- aggregations!
 
-* rename package back to `ash`
-
-* allow editing join association attributes
-
-* various small refactors + validations
-
-* refactor changes into changesets
-
-* lots of docs, simplify query generation
-
-* validate relationship keys
-
-* general improvements
-
-* list types
-
-* refactor ash types to modules, add constraints
-
-* add less_than and greater_than filter support
-
-* validate all related resources in API
-
-* cross data layer filters
-
-* cross data layer filtering
-
-* section option configuration
-
-* boolean filter refactor (#78)
-
-* predicate behaviour
-
-* extension section module imports, generated .formatter.exs (#71)
-
-* rebuild DSL inner workings for extensibility (#70)
-
-* add `after_compile` and validate primary key
-
-* remove name/type from ash core
-
-* use option schemas in the interface (#30)
-
-* add data layer custom filters
-
-* various fixes, upsert, relationship changes
-
-* add side_load
-
-* add `timestamps/0` to attributes
-
-* support writeable?: false attributes
+## [v1.4.1](https://github.com/ash-project/ash/compare/1.4.0...v1.4.1) (2020-07-20)
 
 ### Bug Fixes:
 
-* incorrect callback
+- simplify dsl building using `on_load`
 
-* comment out aggregate splitting code for now
+## [v1.4.0](https://github.com/ash-project/ash/compare/1.3.1...v1.4.0) (2020-07-16)
 
-* simplify dsl building using `on_load`
+### Features:
 
-* use proper errors everywhere
+- allow editing join association attributes
 
-* changeset + set_state issues
+## [v1.3.1](https://github.com/ash-project/ash/compare/1.3.0...v1.3.1) (2020-07-16)
 
-* small fixes
+### Bug Fixes:
 
-* in predicate + engine errors
+- use proper errors everywhere
 
-* remove benchee, ensure mnesia always uses transactions
+## [v1.3.0](https://github.com/ash-project/ash/compare/1.2.1...v1.3.0) (2020-07-15)
 
-* try clearing cache to fix CI
+### Features:
 
-* stop gitignoring the mnesia data layer
+- various small refactors + validations
 
-* try to fix ash.formatter task
+## [v1.2.1](https://github.com/ash-project/ash/compare/1.2.0...v1.2.1) (2020-07-13)
 
-* test/improve parallelizable requests
+### Bug Fixes:
 
-* require that resources have primary keys
+- changeset + set_state issues
 
-* move to simpler transaction logic
+## [v1.2.0](https://github.com/ash-project/ash/compare/1.1.3...v1.2.0) (2020-07-13)
 
-* fix tests/credo
+### Features:
 
-* fix tests, add tests for gt/lt filters
+- refactor changes into changesets
 
-* set persistent_term properly
+## [v1.1.3](https://github.com/ash-project/ash/compare/1.1.2...v1.1.3) (2020-07-09)
 
-* use authorization filters in side loads
+## [v1.1.2](https://github.com/ash-project/ash/compare/1.1.1...v1.1.2) (2020-07-09)
 
-* remove reverse relationships
+## [v1.1.1](https://github.com/ash-project/ash/compare/1.1.0...v1.1.1) (2020-07-09)
 
-* many filter/side load fixes/improvements
+### Bug Fixes:
 
-* allow side_load option on create/update
+- small fixes
 
-* raised error message contents
+## [v1.1.0](https://github.com/ash-project/ash/compare/1.0.3...v1.1.0) (2020-07-09)
 
-* parent error messages
+### Features:
 
-* relationship path clause
+- lots of docs, simplify query generation
 
-* consider nested entities in ash.formatter
+- validate relationship keys
 
-* compile application in ash.formatter task
+## [v1.0.3](https://github.com/ash-project/ash/compare/1.0.2...v1.0.3) (2020-07-08)
 
-* dialyzer warnings
+## [v1.0.2](https://github.com/ash-project/ash/compare/1.0.1...v1.0.2) (2020-07-07)
 
-* honor the `authorize?` flag
+## [v1.0.1](https://github.com/ash-project/ash/compare/1.0.0...v1.0.1) (2020-07-07)
 
-* account for action/actor args to interface
+## [v1.0.0](https://github.com/ash-project/ash/compare/0.10.0...v1.0.0) (2020-07-07)
 
-* remove the rest of the deps on name/type
+### Breaking Changes:
 
-* add `resource_module?/1` back to `Ash`
+- remove initial subscriptions pass
 
-* references to error handling code
+### Features:
 
-* fix empty filter checks
+- general improvements
 
-* typo in workflow
+### Bug Fixes:
 
-* set HEX_API_KEY environment from secret
+- in predicate + engine errors
 
-* typo in version name
+## [v0.10.0](https://github.com/ash-project/ash/compare/0.9.1...v0.10.0) (2020-07-02)
 
-* remove broken CI key
+### Breaking Changes:
 
-* typo in function name
+- remove atom type, add docs
 
-* remove test warning from git_ops
+### Features:
 
-* combine filters properly
+- list types
 
-* dependencies
+- refactor ash types to modules, add constraints
 
-* honor returned check filters
+### Bug Fixes:
 
-* side_load queries
+- remove benchee, ensure mnesia always uses transactions
 
-* many to many relationship side loads
+- try clearing cache to fix CI
 
-* protect against double data resolution
+- stop gitignoring the mnesia data layer
 
-* various small improvements
+- try to fix ash.formatter task
 
-* various bugs
+- test/improve parallelizable requests
 
-* `verbose?` now prints auth log
+- require that resources have primary keys
 
-* read generated fields after writes
+## [v0.9.1](https://github.com/ash-project/ash/compare/0.9.0...v0.9.1) (2020-06-30)
 
-* more fixes
+### Bug Fixes:
 
-* fetch_attr right
+- move to simpler transaction logic
 
-* attribute defaults
+## [v0.9.0](https://github.com/ash-project/ash/compare/0.8.0...v0.9.0) (2020-06-29)
 
-* use attribute name in error
+### Features:
 
-* fetch_attr return value
+- add less_than and greater_than filter support
 
-* writeable is not a word
+- validate all related resources in API
 
-* correct writeable attribute logic
+### Bug Fixes:
 
-* required attribute validations
+- fix tests/credo
 
-* use resource's primary key config
+- fix tests, add tests for gt/lt filters
 
-* fix resolvable requests logic
+## [v0.8.0](https://github.com/ash-project/ash/compare/0.7.0...v0.8.0) (2020-06-29)
+
+### Features:
+
+- cross data layer filters
+
+- cross data layer filtering
+
+## [v0.7.0](https://github.com/ash-project/ash/compare/0.6.5...v0.7.0) (2020-06-27)
+
+### Features:
+
+- section option configuration
+
+### Bug Fixes:
+
+- set persistent_term properly
+
+## [v0.6.5](https://github.com/ash-project/ash/compare/0.6.4...v0.6.5) (2020-06-22)
+
+### Bug Fixes:
+
+- use authorization filters in side loads
+
+## [v0.6.4](https://github.com/ash-project/ash/compare/0.6.3...v0.6.4) (2020-06-22)
+
+### Bug Fixes:
+
+- remove reverse relationships
+
+## [v0.6.3](https://github.com/ash-project/ash/compare/0.6.2...v0.6.3) (2020-06-22)
+
+### Bug Fixes:
+
+- many filter/side load fixes/improvements
+
+## [v0.6.2](https://github.com/ash-project/ash/compare/0.6.1...v0.6.2) (2020-06-20)
+
+### Bug Fixes:
+
+- allow side_load option on create/update
+
+## [v0.6.1](https://github.com/ash-project/ash/compare/0.6.0...v0.6.1) (2020-06-20)
+
+### Bug Fixes:
+
+- raised error message contents
+
+- parent error messages
+
+- relationship path clause
+
+## [v0.6.0](https://github.com/ash-project/ash/compare/0.5.2...v0.6.0) (2020-06-19)
+
+### Features:
+
+- boolean filter refactor (#78)
+
+- predicate behaviour
+
+## [v0.5.2](https://github.com/ash-project/ash/compare/0.5.1...v0.5.2) (2020-06-15)
+
+### Bug Fixes:
+
+- consider nested entities in ash.formatter
+
+## [v0.5.1](https://github.com/ash-project/ash/compare/0.5.0...v0.5.1) (2020-06-15)
+
+### Bug Fixes:
+
+- compile application in ash.formatter task
+
+## [v0.5.0](https://github.com/ash-project/ash/compare/0.4.0...v0.5.0) (2020-06-15)
+
+### Features:
+
+- extension section module imports, generated .formatter.exs (#71)
+
+## [v0.4.0](https://github.com/ash-project/ash/compare/0.3.0...v0.4.0) (2020-06-14)
+
+### Features:
+
+- rebuild DSL inner workings for extensibility (#70)
+
+- add `after_compile` and validate primary key
+
+### Bug Fixes:
+
+- dialyzer warnings
+
+- honor the `authorize?` flag
 
 ### Improvements:
 
-* add `date` support (#68)
+- add `date` support (#68)
 
-* huge query/filter overhaul
+## [v0.3.0](https://github.com/ash-project/ash/compare/0.2.0...v0.3.0) (2020-06-05)
 
-* remove pagination, add query struct (unused)
+### Features:
 
-* filters: simplify/improve inspect logic
+- remove name/type from ash core
 
-* add DslBuilder pattern for deriving dsl blocks
+### Bug Fixes:
 
-* add new types
+- account for action/actor args to interface
+
+- remove the rest of the deps on name/type
+
+- add `resource_module?/1` back to `Ash`
+
+## [v0.2.0](https://github.com/ash-project/ash/compare/0.1.9...v0.2.0) (2020-06-05)
+
+### Features:
+
+- use option schemas in the interface (#30)
+
+## [v0.1.9](https://github.com/ash-project/ash/compare/0.1.8...v0.1.9) (2020-06-04)
+
+### Bug Fixes:
+
+- references to error handling code
+
+- fix empty filter checks
+
+## [v0.1.8](https://github.com/ash-project/ash/compare/0.1.7...v0.1.8) (2020-06-02)
+
+This release is a test of our automatic hex.pm package publishing
+
+## [v0.1.7](https://github.com/ash-project/ash/compare/0.1.6...v0.1.7) (2020-06-02)
+
+This release is a test of our automatic hex.pm package publishing
+
+## [v0.1.6](https://github.com/ash-project/ash/compare/0.1.5...v0.1.6) (2020-06-02)
+
+This release is a test of our automatic hex.pm package publishing
+
+## [v0.1.5](https://github.com/ash-project/ash/compare/0.1.4...v0.1.5) (2020-06-02)
+
+This release is a test of our automatic hex.pm package publishing
+
+## [v0.1.4](https://github.com/ash-project/ash/compare/0.1.3...v0.1.4) (2020-06-02)
+
+This release covers the initial linting/dialyzing improvements
+
+## (2020-06-01)
+
+### Changelog Begins

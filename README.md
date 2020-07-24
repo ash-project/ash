@@ -5,9 +5,9 @@
 [![Coverage Status](https://coveralls.io/repos/github/ash-project/ash/badge.svg?branch=master)](https://coveralls.io/github/ash-project/ash?branch=master)
 [![Hex version badge](https://img.shields.io/hexpm/v/ash.svg)](https://hex.pm/packages/ash)
 
-## Alpha
+## ALPHA NOTICE
 
-Ash is in a very early alpha. There are versions 1.0.0+ published, but they have been deprecated. I'm trying to get them taken down, but until then this notice will have to suffice.
+Ash is in alpha. The package version is 1.0.0+, and most of the time that means stable, but in this case it _does not_. The 2.0 release will be the stable release.
 
 ```
 def deps do
