@@ -102,11 +102,22 @@ defmodule Ash.Query do
     %{query | api: api, side_load: set_side_load_api(query.side_load, api)}
   end
 
-  @doc "Adds an aggregation to the query. Aggregations are made available on the `meta` field of a record"
+  @doc """
+  Adds an aggregation to the query.
+
+  Aggregations are made available on the `aggregates` field of the records returned
+
+  The only aggregate available currently is a `count` aggregate. They filter option accepts
+  either a filter or a keyword list of options to supply to build a limiting query for that aggregate.
+  However, currently only filters are accepted.
+  """
+  @spec aggregate(Ash.query(), atom(), Ash.aggregate_type(), atom | list(atom), Ash.query() | nil) ::
+          Ash.Query.t()
   def aggregate(query, name, type, relationship, agg_query \\ nil) do
     query = to_query(query)
+    relationship = List.wrap(relationship)
 
-    if Ash.Resource.data_layer_can?(query.resource, :aggregate) do
+    if Ash.Resource.data_layer_can?(query.resource, {:aggregate, type}) do
       agg_query =
         case agg_query do
           nil ->

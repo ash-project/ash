@@ -11,6 +11,7 @@ defmodule Ash.Query.Aggregate do
   ]
 
   @type t :: %__MODULE__{}
+  @type type :: :count
 
   alias Ash.Actions.SideLoad
   alias Ash.Engine.Request

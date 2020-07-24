@@ -34,7 +34,7 @@ defmodule Ash.DataLayer.Ets do
 
   defmodule Query do
     @moduledoc false
-    defstruct [:resource, :filter, :limit, :sort, relationships: %{}, offset: 0]
+    defstruct [:resource, :filter, :limit, :sort, relationships: %{}, offset: 0, aggregates: []]
   end
 
   @impl true
@@ -75,6 +75,11 @@ defmodule Ash.DataLayer.Ets do
   @impl true
   def sort(query, sort, _resource) do
     {:ok, %{query | sort: sort}}
+  end
+
+  @impl true
+  def add_aggregate(query, aggregate, _) do
+    {:ok, %{query | aggregates: [aggregate | query.aggregates]}}
   end
 
   @impl true

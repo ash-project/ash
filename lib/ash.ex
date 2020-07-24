@@ -68,6 +68,7 @@ defmodule Ash do
   @type action_type :: :read | :create | :update | :destroy
   @type actor :: Ash.record()
   @type aggregate :: Ash.Query.Aggregate.t()
+  @type aggregate_type :: Ash.Query.Aggregate.type()
   @type api :: module
   @type attribute :: Ash.Resource.Attribute.t()
   @type cardinality_many_relationship() :: HasMany.t() | ManyToMany.t()
