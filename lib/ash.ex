@@ -4,6 +4,10 @@ defmodule Ash do
 
   ![Logo](https://github.com/ash-project/ash/blob/master/logos/cropped-for-header.png?raw=true)
 
+  ## ALPHA NOTICE
+
+  Ash is in alpha. The package version is 1.0.0+, and most of the time that means stable, but in this case it _does not_. The 2.0 release will be the stable release.
+
   ## Quick Links
 
   - [Resource DSL Documentation](Ash.Dsl.html)
