@@ -52,7 +52,7 @@ defmodule Ash.Actions.Sort do
          ) do
       {sorts ++ [{field, order}], errors}
     else
-      {sorts, AggregatesNotSupported.exception(resource: resource)}
+      {sorts, AggregatesNotSupported.exception(resource: resource, feature: "sorting")}
     end
   end
 

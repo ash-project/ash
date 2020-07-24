@@ -747,7 +747,7 @@ defmodule Ash.Filter do
           {:error, error}
       end
     else
-      {:error, AggregatesNotSupported.exception(resource: context.resource)}
+      {:error, AggregatesNotSupported.exception(resource: context.resource, feature: "filtering")}
     end
   end
 

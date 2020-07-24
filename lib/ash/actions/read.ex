@@ -15,8 +15,14 @@ defmodule Ash.Actions.Read do
          side_load_requests <- SideLoad.requests(query),
          %{data: %{data: data} = all_data, errors: []} <-
            Engine.run(requests ++ side_load_requests, query.api, engine_opts),
-         data_with_side_loads <- SideLoad.attach_side_loads(data, all_data) do
-      {:ok, data_with_side_loads}
+         data_with_side_loads <- SideLoad.attach_side_loads(data, all_data),
+         data_with_aggregates <-
+           add_aggregate_values(
+             data_with_side_loads,
+             query.resource,
+             Map.get(all_data, :aggregate_values, %{})
+           ) do
+      {:ok, data_with_aggregates}
     else
       %{errors: errors} ->
         {:error, Ash.Error.to_ash_error(errors)}
@@ -34,12 +40,10 @@ defmodule Ash.Actions.Read do
         {:ok, []}
       end
 
-    aggregate_requests =
-      if Keyword.has_key?(opts, :actor) || opts[:authorize?] do
-        Aggregate.requests(query)
-      else
-        []
-      end
+    authorizing? = Keyword.has_key?(opts, :actor) || opts[:authorize?]
+
+    {aggregate_auth_requests, aggregate_value_requests, aggregates_in_query} =
+      Aggregate.requests(query, authorizing?)
 
     case filter_requests do
       {:ok, filter_requests} ->
@@ -53,21 +57,28 @@ defmodule Ash.Actions.Read do
               data_field(
                 opts,
                 filter_requests,
-                aggregate_requests,
+                aggregate_auth_requests,
+                aggregates_in_query,
                 query
               ),
             path: [:data],
             name: "#{action.type} - `#{action.name}`"
           )
 
-        {:ok, [request | filter_requests] ++ aggregate_requests}
+        {:ok, [request | filter_requests] ++ aggregate_auth_requests ++ aggregate_value_requests}
 
       {:error, error} ->
         {:error, error}
     end
   end
 
-  defp data_field(params, filter_requests, aggregate_requests, initial_query) do
+  defp data_field(
+         params,
+         filter_requests,
+         aggregate_auth_requests,
+         aggregates_in_query,
+         initial_query
+       ) do
     if params[:initial_data] do
       List.wrap(params[:initial_data])
     else
@@ -76,13 +87,18 @@ defmodule Ash.Actions.Read do
           request.path ++ [:authorization_filter]
         end)
 
-      aggregate_paths =
-        Enum.map(aggregate_requests, fn request ->
+      aggregate_auth_paths =
+        Enum.map(aggregate_auth_requests, fn request ->
           request.path ++ [:authorization_filter]
         end)
 
+      deps = [
+        [:data, :query]
+        | relationship_filter_paths ++ aggregate_auth_paths
+      ]
+
       Request.resolve(
-        [[:data, :query] | relationship_filter_paths ++ aggregate_paths],
+        deps,
         fn %{data: %{query: ash_query}} = data ->
           query = Ash.Query.unset(initial_query, [:filter, :aggregates, :sort]).data_layer_query
 
@@ -93,7 +109,13 @@ defmodule Ash.Actions.Read do
                    ash_query.resource,
                    filter
                  ),
-               {:ok, query} <- add_aggregates(query, ash_query, Map.get(data, :aggregate, [])),
+               {:ok, query} <-
+                 add_aggregates(
+                   query,
+                   ash_query,
+                   aggregates_in_query,
+                   Map.get(data, :aggregate, %{})
+                 ),
                {:ok, query} <- Ash.DataLayer.filter(query, filter, ash_query.resource),
                {:ok, query} <- Ash.DataLayer.sort(query, ash_query.sort, ash_query.resource) do
             Ash.DataLayer.run_query(query, ash_query.resource)
@@ -103,21 +125,44 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp add_aggregates(data_layer_query, query, _aggregate_filters) do
-    query.aggregates
-    # For now, we embed all of these in the query
-    # |> Enum.reduce({query.aggregates, aggregate_filters}, fn {name, aggregate},
-    #                                                          {aggregates, aggregate_filters} ->
-    #   case Map.fetch(aggregate_filters, aggregate.relationship_path) do
-    #     {:ok, %{authorization_filter: filter}} ->
-    #       {Map.put(aggregates, name, %{aggregate | authorization_filter: filter}),
-    #        Map.delete(aggregates, aggregate.relationship_path)}
+  defp add_aggregate_values(results, _resource, aggregate_values) when aggregate_values == %{},
+    do: Enum.map(results, &Map.update!(&1, :aggregates, fn agg -> agg || %{} end))
 
-    #     :error ->
-    #       {aggregates, aggregate_filters}
-    #   end
-    # end)
-    # |> elem(0)
+  defp add_aggregate_values(results, resource, aggregate_values) do
+    keys_to_aggregates =
+      Enum.reduce(aggregate_values, %{}, fn {name, keys_to_values}, acc ->
+        Enum.reduce(keys_to_values, acc, fn {pkey, value}, acc ->
+          Map.update(acc, pkey, %{name => value}, &Map.put(&1, name, value))
+        end)
+      end)
+
+    pkey = Ash.Resource.primary_key(resource)
+
+    Enum.map(results, fn result ->
+      aggregate_values = Map.get(keys_to_aggregates, Map.take(result, pkey), %{})
+      %{result | aggregates: Map.merge(result.aggregates || %{}, aggregate_values)}
+    end)
+  end
+
+  defp add_aggregates(data_layer_query, query, aggregates_to_add, aggregate_filters) do
+    aggregates_to_add =
+      Enum.into(aggregates_to_add, %{}, fn aggregate ->
+        {aggregate.name, aggregate}
+      end)
+
+    aggregates_to_add
+    |> Enum.reduce({aggregates_to_add, aggregate_filters}, fn {name, aggregate},
+                                                              {aggregates, aggregate_filters} ->
+      case Map.fetch(aggregate_filters, aggregate.relationship_path) do
+        {:ok, %{authorization_filter: filter}} ->
+          {Map.put(aggregates, name, %{aggregate | authorization_filter: filter}),
+           Map.delete(aggregates, aggregate.relationship_path)}
+
+        :error ->
+          {aggregates, aggregate_filters}
+      end
+    end)
+    |> elem(0)
     |> Enum.reduce_while({:ok, data_layer_query}, fn {_name, aggregate},
                                                      {:ok, data_layer_query} ->
       case Ash.DataLayer.add_aggregate(data_layer_query, aggregate, query.resource) do

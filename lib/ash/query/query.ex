@@ -56,7 +56,7 @@ defmodule Ash.Query do
   end
 
   alias Ash.Actions.Sort
-  alias Ash.Error.Query.{InvalidLimit, InvalidOffset}
+  alias Ash.Error.Query.{AggregatesNotSupported, InvalidLimit, InvalidOffset}
   alias Ash.Error.SideLoad.{InvalidQuery, NoSuchRelationship}
   alias Ash.Query.Aggregate
 
@@ -104,37 +104,36 @@ defmodule Ash.Query do
 
   @doc "Adds an aggregation to the query. Aggregations are made available on the `meta` field of a record"
   def aggregate(query, name, type, relationship, agg_query \\ nil) do
-    query = to_query(query)
+    if Ash.Resource.data_layer_can?(query.resource, :aggregate) do
+      query = to_query(query)
 
-    agg_query =
-      case agg_query do
-        nil ->
-          nil
+      agg_query =
+        case agg_query do
+          nil ->
+            nil
 
-        %__MODULE__{} = agg_query ->
-          agg_query
+          %__MODULE__{} = agg_query ->
+            agg_query
 
-        options when is_list(options) ->
-          build(Ash.Resource.related(query.resource, relationship), options)
+          options when is_list(options) ->
+            build(Ash.Resource.related(query.resource, relationship), options)
+        end
+
+      case Aggregate.new(query.resource, name, type, relationship, agg_query) do
+        {:ok, aggregate} ->
+          new_aggregates = Map.put(query.aggregates, aggregate.name, aggregate)
+
+          set_data_layer_query(%{query | aggregates: new_aggregates})
+
+        {:error, error} ->
+          add_error(query, :aggregate, error)
       end
-
-    case Aggregate.new(query.resource, name, type, relationship, agg_query) do
-      {:ok, aggregate} ->
-        new_aggregates = Map.put(query.aggregates, aggregate.name, aggregate)
-
-        new_filter =
-          case query.filter do
-            nil ->
-              nil
-
-            filter ->
-              %{filter | aggregates: new_aggregates}
-          end
-
-        set_data_layer_query(%{query | aggregates: new_aggregates, filter: new_filter})
-
-      {:error, error} ->
-        add_error(query, :aggregate, error)
+    else
+      add_error(
+        query,
+        :aggregate,
+        AggregatesNotSupported.exception(resource: query.resource, feature: "using")
+      )
     end
   end
 

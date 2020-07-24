@@ -9,13 +9,14 @@ defmodule Ash.DataLayer do
   """
   @type feature() ::
           :transact
+          | :aggregate
           | :aggregate_filter
+          | :aggregate_sort
           | :boolean_filter
           | :async_engine
           | :join
           | :transact
           | {:filter_predicate, Ash.Type.t(), struct}
-          | :aggregate_sort
           | {:sort, Ash.Type.t()}
           | :upsert
           | :delete_with_query

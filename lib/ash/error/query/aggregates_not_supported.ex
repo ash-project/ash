@@ -1,8 +1,8 @@
 defmodule Ash.Error.Query.AggregatesNotSupported do
-  @moduledoc "Used when the datalayer does not support filtering of aggregates"
+  @moduledoc "Used when the datalayer does not support aggregates, or filtering/sorting them"
   use Ash.Error
 
-  def_ash_error([:resource, :predicate, :type], class: :invalid)
+  def_ash_error([:resource, :feature], class: :invalid)
 
   defimpl Ash.ErrorKind do
     def id(_), do: Ecto.UUID.generate()
@@ -11,8 +11,8 @@ defmodule Ash.Error.Query.AggregatesNotSupported do
 
     def class(_), do: :invalid
 
-    def message(%{resource: resource}) do
-      "Data layer for #{inspect(resource)} does not support filtering aggregates"
+    def message(%{resource: resource, feature: feature}) do
+      "Data layer for #{inspect(resource)} does not support #{feature} aggregates"
     end
 
     def stacktrace(_), do: nil
