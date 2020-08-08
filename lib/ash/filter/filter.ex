@@ -32,6 +32,8 @@ defmodule Ash.Filter do
 
   defstruct [:resource, :expression]
 
+  @type t :: %__MODULE__{}
+
   def parse!(resource, statement, aggregates \\ %{}) do
     case parse(resource, statement, aggregates) do
       {:ok, filter} ->

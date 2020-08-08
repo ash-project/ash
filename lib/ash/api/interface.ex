@@ -36,13 +36,13 @@ defmodule Ash.Api.Interface do
       end
 
       @impl true
-      def side_load!(data, query, opts \\ []) do
-        Api.side_load!(__MODULE__, data, query, opts)
+      def load!(data, query, opts \\ []) do
+        Api.load!(__MODULE__, data, query, opts)
       end
 
       @impl true
-      def side_load(data, query, opts \\ []) do
-        case Api.side_load(__MODULE__, data, query, opts) do
+      def load(data, query, opts \\ []) do
+        case Api.load(__MODULE__, data, query, opts) do
           {:ok, results} -> {:ok, results}
           {:error, error} -> {:error, List.wrap(error)}
         end

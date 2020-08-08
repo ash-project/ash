@@ -70,6 +70,120 @@ defmodule Ash.Query do
     |> set_data_layer_query()
   end
 
+  @spec load(t(), atom | list(atom)) :: t()
+  def load(query, fields) when not is_list(fields) do
+    load(query, List.wrap(fields))
+  end
+
+  def load(query, fields) do
+    query = to_query(query)
+
+    Enum.reduce(fields, query, fn
+      {field, rest}, query ->
+        side_load(query, [{field, rest}])
+
+      field, query ->
+        do_load(query, field)
+    end)
+  end
+
+  defp do_load(query, field) do
+    cond do
+      Ash.Resource.attribute(query.resource, field) ->
+        query
+
+      Ash.Resource.relationship(query.resource, field) ->
+        side_load(query, field)
+
+      aggregate = Ash.Resource.aggregate(query.resource, field) ->
+        with %{valid?: true} = aggregate_query <-
+               build(query.resource, filter: aggregate.filter),
+             {:ok, query_aggregate} <-
+               Aggregate.new(
+                 query.resource,
+                 aggregate.name,
+                 aggregate.kind,
+                 aggregate.relationship_path,
+                 aggregate_query
+               ) do
+          query_aggregate = %{query_aggregate | load: field}
+          new_aggregates = Map.put(query.aggregates, aggregate.name, query_aggregate)
+
+          %{query | aggregates: new_aggregates}
+        else
+          %{errors: errors} ->
+            add_error(query, :aggregates, Ash.Error.to_ash_error(errors))
+
+          {:error, error} ->
+            add_error(query, :aggregates, Ash.Error.to_ash_error(error))
+        end
+    end
+  end
+
+  def unload(query, fields) do
+    query = to_query(query)
+
+    Enum.reduce(fields, query, fn field, query ->
+      case field do
+        {field, rest} ->
+          new_side_loads = do_unload_side_load(query.side_load, {field, rest})
+          %{query | side_load: new_side_loads}
+
+        field ->
+          do_unload(query, field)
+      end
+    end)
+  end
+
+  defp do_unload(query, field) do
+    cond do
+      Ash.Resource.attribute(query.resource, field) ->
+        query
+
+      Ash.Resource.relationship(query.resource, field) ->
+        %{query | side_load: Keyword.delete(query.side_load, field)}
+
+      Ash.Resource.aggregate(query.resource, field) ->
+        new_aggregates =
+          Enum.reduce(query.aggregates, %{}, fn
+            {_field, %{load: ^field}}, acc ->
+              acc
+
+            {field, aggregate}, acc ->
+              Map.put(acc, field, aggregate)
+          end)
+
+        %{query | aggregates: new_aggregates}
+    end
+  end
+
+  defp do_unload_side_load(%__MODULE__{} = query, unload) do
+    %{query | side_load: do_unload_side_load(query.side_load, unload)}
+  end
+
+  defp do_unload_side_load(side_loads, {field, rest}) do
+    Enum.reduce(side_loads, [], fn
+      ^field, acc ->
+        acc
+
+      {^field, value}, acc ->
+        new_value =
+          rest
+          |> List.wrap()
+          |> Enum.reduce(value, &do_unload_side_load(&2, &1))
+
+        [{field, new_value} | acc]
+
+      value, acc ->
+        [value | acc]
+    end)
+    |> Enum.reverse()
+  end
+
+  defp do_unload_side_load(side_loads, field) do
+    do_unload_side_load(side_loads, {field, []})
+  end
+
   @spec build(Ash.resource(), Ash.api() | nil, Keyword.t()) :: t()
   def build(resource, api \\ nil, keyword) do
     Enum.reduce(keyword, new(resource, api), fn
@@ -111,8 +225,13 @@ defmodule Ash.Query do
   either a filter or a keyword list of options to supply to build a limiting query for that aggregate.
   However, currently only filters are accepted.
   """
-  @spec aggregate(Ash.query(), atom(), Ash.aggregate_type(), atom | list(atom), Ash.query() | nil) ::
-          Ash.Query.t()
+  @spec aggregate(
+          t() | Ash.resource(),
+          atom(),
+          Ash.aggregate_kind(),
+          atom | list(atom),
+          Ash.query() | nil
+        ) :: t()
   def aggregate(query, name, type, relationship, agg_query \\ nil) do
     query = to_query(query)
     relationship = List.wrap(relationship)
@@ -149,7 +268,8 @@ defmodule Ash.Query do
   end
 
   @doc "Limit the results returned from the query"
-  def limit(query, nil), do: query
+  @spec limit(t() | Ash.resource(), nil | integer()) :: t()
+  def limit(query, nil), do: to_query(query)
 
   def limit(query, limit) when is_integer(limit) do
     query
@@ -163,7 +283,8 @@ defmodule Ash.Query do
   end
 
   @doc "Skip the first n records"
-  def offset(query, nil), do: query
+  @spec offset(t() | Ash.resource(), nil | integer()) :: t()
+  def offset(query, nil), do: to_query(query)
 
   def offset(query, offset) when is_integer(offset) do
     query
@@ -179,6 +300,7 @@ defmodule Ash.Query do
   end
 
   @doc "Side loads related entities"
+  @spec side_load(t() | Ash.resource(), Ash.side_loads()) :: t()
   def side_load(query, statement) do
     query = to_query(query)
 
@@ -248,6 +370,7 @@ defmodule Ash.Query do
     end)
   end
 
+  @spec filter(t() | Ash.resource(), nil | false | Ash.filter() | Keyword.t()) :: t()
   def filter(query, nil), do: to_query(query)
 
   def filter(query, %Ash.Filter{} = filter) do
@@ -292,6 +415,7 @@ defmodule Ash.Query do
     end
   end
 
+  @spec sort(t() | Ash.resource(), Ash.sort()) :: t()
   def sort(query, sorts) do
     query = to_query(query)
 
@@ -308,11 +432,12 @@ defmodule Ash.Query do
     |> set_data_layer_query()
   end
 
+  @spec unset(Ash.resource() | t(), atom | [atom]) :: t()
   def unset(query, keys) when is_list(keys) do
     keys
     |> Enum.reduce(query, fn key, query ->
       if key in [:api, :resource] do
-        query
+        to_query(query)
       else
         query
         |> to_query()
@@ -324,7 +449,7 @@ defmodule Ash.Query do
 
   def unset(query, key) do
     if key in [:api, :resource] do
-      query
+      to_query(query)
     else
       query
       |> to_query()

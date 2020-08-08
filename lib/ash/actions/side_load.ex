@@ -54,41 +54,6 @@ defmodule Ash.Actions.SideLoad do
     end)
   end
 
-  def side_load(data, query, opts \\ [])
-  def side_load([], _query, _opts), do: {:ok, []}
-  def side_load(nil, _query, _opts), do: {:ok, nil}
-
-  def side_load(data, %{side_load: []}, _opts), do: {:ok, data}
-
-  def side_load(data, query, opts) when not is_list(data) do
-    data
-    |> List.wrap()
-    |> side_load(query, opts)
-    |> case do
-      {:ok, [record]} -> {:ok, record}
-      {:error, error} -> {:error, error}
-    end
-  end
-
-  def side_load([%resource{} | _] = data, side_load_query, opts) do
-    api = side_load_query.api
-    pkey = Ash.Resource.primary_key(resource)
-
-    pkey_filters = Enum.map(data, &Map.take(&1, pkey))
-
-    new_query = Ash.Query.filter(side_load_query, or: pkey_filters)
-
-    requests = requests(new_query, false, data)
-
-    case Engine.run(requests, api, opts) do
-      %{data: %{side_load: _} = state, errors: errors} when errors == [] ->
-        {:ok, attach_side_loads(data, state)}
-
-      %{errors: errors} ->
-        {:error, errors}
-    end
-  end
-
   def attach_side_loads([%resource{} | _] = data, %{side_load: side_loads})
       when is_list(data) do
     side_loads

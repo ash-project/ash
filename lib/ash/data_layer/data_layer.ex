@@ -9,7 +9,7 @@ defmodule Ash.DataLayer do
   """
   @type feature() ::
           :transact
-          | {:aggregate, Ash.aggregate_type()}
+          | {:aggregate, Ash.aggregate_kind()}
           | :aggregate_filter
           | :aggregate_sort
           | :boolean_filter

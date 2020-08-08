@@ -2,7 +2,7 @@ defmodule Ash.Resource do
   @moduledoc """
   A resource is a static definition of an entity in your system.
 
-  Resource DSL documentation: `Ash.Dsl`
+  Resource DSL documentation: `Ash.Resource.Dsl`
   """
 
   alias Ash.Dsl.Extension
@@ -17,9 +17,9 @@ defmodule Ash.Resource do
 
     extensions =
       if data_layer && Ash.implements_behaviour?(data_layer, Ash.Dsl.Extension) do
-        [data_layer, Ash.Dsl]
+        [data_layer, Ash.Resource.Dsl]
       else
-        [Ash.Dsl]
+        [Ash.Resource.Dsl]
       end
 
     authorizer_extensions =
@@ -135,6 +135,17 @@ defmodule Ash.Resource do
     resource
     |> relationships()
     |> Enum.find(&(&1.name == relationship_name))
+  end
+
+  @spec aggregates(Ash.resource()) :: list(Ash.relationship())
+  def aggregates(resource) do
+    Extension.get_entities(resource, [:aggregates])
+  end
+
+  def aggregate(resource, name) do
+    resource
+    |> aggregates()
+    |> Enum.find(&(&1.name == name))
   end
 
   @doc "Returns the primary action of the given type"

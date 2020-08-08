@@ -1,5 +1,5 @@
 defmodule Ash.Resource.Attribute do
-  @moduledoc false
+  @moduledoc "Represents an attribute on a resource"
 
   defstruct [
     :name,

@@ -8,6 +8,7 @@ defmodule Ash.Schema do
 
   defmacro define_schema do
     quote unquote: false do
+      alias Ash.Query.Aggregate
       use Ecto.Schema
       @primary_key false
 
@@ -22,6 +23,13 @@ defmodule Ash.Schema do
         end
 
         field(:aggregates, :map, virtual: true, default: %{})
+
+        for aggregate <- Ash.Resource.aggregates(__MODULE__) do
+          {:ok, type} = Aggregate.kind_to_type(aggregate.kind)
+
+          field(aggregate.name, Ash.Type.ecto_type(type), virtual: true)
+        end
+
         relationships = Ash.Resource.relationships(__MODULE__)
 
         for relationship <- Enum.filter(relationships, &(&1.type == :belongs_to)) do
@@ -53,6 +61,21 @@ defmodule Ash.Schema do
               {relationship.source_field_on_join_table, relationship.source_field},
               {relationship.destination_field_on_join_table, relationship.destination_field}
             ]
+          )
+        end
+
+        for relationship <- relationships do
+          new_struct_fields =
+            Enum.reject(@struct_fields, fn {name, _} -> name == relationship.name end) ++
+              [{relationship.name, %Ash.NotLoaded{field: relationship.name, type: :relationship}}]
+
+          Module.delete_attribute(__MODULE__, :struct_fields)
+
+          Module.register_attribute(__MODULE__, :struct_fields, accumulate: true)
+
+          Enum.each(
+            Enum.reverse(new_struct_fields),
+            &Module.put_attribute(__MODULE__, :struct_fields, &1)
           )
         end
       end

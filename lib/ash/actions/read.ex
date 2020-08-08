@@ -10,6 +10,8 @@ defmodule Ash.Actions.Read do
   def run(query, action, opts \\ []) do
     engine_opts = Keyword.take(opts, [:verbose?, :actor, :authorize?])
 
+    query = query_with_initial_data(query, opts)
+
     with %{errors: []} <- query,
          {:ok, requests} <- requests(query, action, opts),
          side_load_requests <- SideLoad.requests(query),
@@ -19,6 +21,7 @@ defmodule Ash.Actions.Read do
          data_with_aggregates <-
            add_aggregate_values(
              data_with_side_loads,
+             query.aggregates,
              query.resource,
              Map.get(all_data, :aggregate_values, %{})
            ) do
@@ -32,18 +35,49 @@ defmodule Ash.Actions.Read do
     end
   end
 
+  defp query_with_initial_data(query, opts) do
+    case Keyword.fetch(opts, :initial_data) do
+      :error ->
+        query
+
+      {:ok, nil} ->
+        Ash.Query.filter(query, false)
+
+      {:ok, []} ->
+        Ash.Query.filter(query, false)
+
+      {:ok, [record]} ->
+        pkey_value = record |> Map.take(Ash.Resource.primary_key(query.resource)) |> Map.to_list()
+
+        Ash.Query.filter(query, pkey_value)
+
+      {:ok, %{} = record} ->
+        pkey_value = record |> Map.take(Ash.Resource.primary_key(query.resource)) |> Map.to_list()
+
+        Ash.Query.filter(query, pkey_value)
+
+      {:ok, records} when is_list(records) ->
+        pkey = Ash.Resource.primary_key(query.resource)
+        pkey_value = Enum.map(records, fn record -> record |> Map.take(pkey) |> Map.to_list() end)
+
+        Ash.Query.filter(query, or: pkey_value)
+    end
+  end
+
   defp requests(query, action, opts) do
     filter_requests =
-      if Keyword.has_key?(opts, :actor) || opts[:authorize?] do
+      if not Keyword.has_key?(opts, :initial_data) &&
+           (Keyword.has_key?(opts, :actor) || opts[:authorize?]) do
         Filter.read_requests(query.api, query.filter)
       else
         {:ok, []}
       end
 
     authorizing? = Keyword.has_key?(opts, :actor) || opts[:authorize?]
+    can_be_in_query? = not Keyword.has_key?(opts, :initial_data)
 
     {aggregate_auth_requests, aggregate_value_requests, aggregates_in_query} =
-      Aggregate.requests(query, authorizing?)
+      Aggregate.requests(query, can_be_in_query?, authorizing?)
 
     case filter_requests do
       {:ok, filter_requests} ->
@@ -53,6 +87,7 @@ defmodule Ash.Actions.Read do
             api: query.api,
             query: query,
             action: action,
+            authorize?: not Keyword.has_key?(opts, :initial_data),
             data:
               data_field(
                 opts,
@@ -125,10 +160,11 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp add_aggregate_values(results, _resource, aggregate_values) when aggregate_values == %{},
-    do: Enum.map(results, &Map.update!(&1, :aggregates, fn agg -> agg || %{} end))
+  defp add_aggregate_values(results, _aggregates, _resource, aggregate_values)
+       when aggregate_values == %{},
+       do: Enum.map(results, &Map.update!(&1, :aggregates, fn agg -> agg || %{} end))
 
-  defp add_aggregate_values(results, resource, aggregate_values) do
+  defp add_aggregate_values(results, aggregates, resource, aggregate_values) do
     keys_to_aggregates =
       Enum.reduce(aggregate_values, %{}, fn {_name, keys_to_values}, acc ->
         Enum.reduce(keys_to_values, acc, fn {pkey, values}, acc ->
@@ -138,9 +174,17 @@ defmodule Ash.Actions.Read do
 
     pkey = Ash.Resource.primary_key(resource)
 
+    loaded =
+      aggregates
+      |> Enum.map(fn {_, aggregate} -> aggregate.load end)
+      |> Enum.reject(&is_nil/1)
+
     Enum.map(results, fn result ->
       aggregate_values = Map.get(keys_to_aggregates, Map.take(result, pkey), %{})
-      %{result | aggregates: Map.merge(result.aggregates || %{}, aggregate_values)}
+
+      {top_level, nested} = Map.split(aggregate_values || %{}, loaded)
+
+      Map.merge(%{result | aggregates: Map.merge(result.aggregates, nested)}, top_level)
     end)
   end
 

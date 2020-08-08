@@ -10,7 +10,7 @@ defmodule Ash do
 
   ## Quick Links
 
-  - [Resource DSL Documentation](Ash.Dsl.html)
+  - [Resource DSL Documentation](Ash.Resource.Dsl.html)
   - [Api DSL Documentation](Ash.Api.Dsl.html)
   - [Api interface documentation](Ash.Api.html)
   - [Query Documentation](Ash.Query.html)
@@ -68,7 +68,7 @@ defmodule Ash do
   @type action_type :: :read | :create | :update | :destroy
   @type actor :: Ash.record()
   @type aggregate :: Ash.Query.Aggregate.t()
-  @type aggregate_type :: Ash.Query.Aggregate.type()
+  @type aggregate_kind :: Ash.Query.Aggregate.kind()
   @type api :: module
   @type attribute :: Ash.Resource.Attribute.t()
   @type cardinality_many_relationship() :: HasMany.t() | ManyToMany.t()
@@ -77,7 +77,7 @@ defmodule Ash do
   @type data_layer :: module
   @type data_layer_query :: struct
   @type error :: struct
-  @type filter :: map()
+  @type filter :: Ash.Filter.t()
   @type params :: Keyword.t()
   @type primary_key :: record() | map | term
   @type query :: Ash.Query.t()
@@ -85,7 +85,7 @@ defmodule Ash do
   @type relationship :: cardinality_one_relationship() | cardinality_many_relationship()
   @type relationship_cardinality :: :many | :one
   @type resource :: module
-  @type side_loads :: Keyword.t()
+  @type side_loads :: [{atom, [atom | query()]} | atom] | atom
   @type sort :: Keyword.t()
   @type validation :: Ash.Resource.Validation.t()
 

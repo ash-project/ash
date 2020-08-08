@@ -1,15 +1,13 @@
 defmodule Ash.Actions.Update do
   @moduledoc false
+  alias Ash.Actions.Relationships
   alias Ash.Engine
   alias Ash.Engine.Request
-  alias Ash.Actions.{Relationships, SideLoad}
   require Logger
 
   @spec run(Ash.api(), Ash.record(), Ash.action(), Keyword.t()) ::
           {:ok, Ash.record()} | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
   def run(api, changeset, action, opts) do
-    side_load = opts[:side_load] || []
-
     engine_opts =
       opts
       |> Keyword.take([:verbose?, :actor, :authorize?])
@@ -18,20 +16,15 @@ defmodule Ash.Actions.Update do
     resource = changeset.resource
 
     with %{valid?: true} = changeset <- changeset(changeset, api),
-         {:ok, side_load_query} <-
-           side_loads_as_query(changeset.api, changeset.resource, side_load),
-         side_load_requests <-
-           SideLoad.requests(side_load_query),
-         %{data: %{commit: %^resource{} = updated}, errors: []} = state <-
+         %{data: %{commit: %^resource{} = updated}, errors: []} <-
            do_run_requests(
              changeset,
              engine_opts,
              action,
              resource,
-             api,
-             side_load_requests
+             api
            ) do
-      {:ok, SideLoad.attach_side_loads(updated, state)}
+      {:ok, updated}
     else
       %Ash.Changeset{errors: errors} ->
         {:error, Ash.Error.to_ash_error(errors)}
@@ -82,8 +75,7 @@ defmodule Ash.Actions.Update do
          engine_opts,
          action,
          resource,
-         api,
-         side_load_requests
+         api
        ) do
     authorization_request =
       Request.new(
@@ -121,24 +113,10 @@ defmodule Ash.Actions.Update do
     relationship_requests = changeset.requests
 
     Engine.run(
-      [authorization_request | [commit_request | relationship_requests]] ++ side_load_requests,
+      [authorization_request | [commit_request | relationship_requests]],
       api,
       engine_opts
     )
-  end
-
-  defp side_loads_as_query(_api, _resource, nil), do: {:ok, nil}
-  defp side_loads_as_query(_api, _resource, %Ash.Query{errors: []} = query), do: {:ok, query}
-  defp side_loads_as_query(_api, _resource, %Ash.Query{errors: errors}), do: {:error, errors}
-
-  defp side_loads_as_query(api, resource, side_loads) when is_list(side_loads) do
-    resource
-    |> Ash.Query.new(api)
-    |> Ash.Query.side_load(side_loads)
-    |> case do
-      %{errors: []} = query -> {:ok, query}
-      %{errors: errors} -> {:error, errors}
-    end
   end
 
   defp default({:constant, value}), do: value

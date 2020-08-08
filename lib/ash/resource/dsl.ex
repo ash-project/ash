@@ -1,4 +1,4 @@
-defmodule Ash.Dsl do
+defmodule Ash.Resource.Dsl do
   @moduledoc """
   The built in resource DSL. The four core DSL components of a resource are:
 
@@ -282,7 +282,34 @@ defmodule Ash.Dsl do
     ]
   }
 
-  @sections [@attributes, @relationships, @actions, @resource, @validations]
+  @count %Ash.Dsl.Entity{
+    name: :count,
+    describe: """
+    Declares a named aggregate on the resource
+    """,
+    examples: [
+      "count :assigned_ticket_count, :reported_tickets, filter: [active: true]"
+    ],
+    target: Ash.Resource.Aggregate,
+    args: [:name, :relationship_path],
+    schema: Ash.Resource.Aggregate.schema(),
+    auto_set_fields: [kind: :count]
+  }
+
+  @aggregates %Ash.Dsl.Section{
+    name: :aggregates,
+    describe: """
+    Declare named aggregates on the resource.
+
+    These are aggregates that can be fetched only by name using `Ash.Query.fetch/2`.
+    They are also available as top level fields on the resource.
+    """,
+    entities: [
+      @count
+    ]
+  }
+
+  @sections [@attributes, @relationships, @actions, @resource, @validations, @aggregates]
 
   @transformers [
     Ash.Resource.Transformers.SetRelationshipSource,
@@ -291,6 +318,7 @@ defmodule Ash.Dsl do
     Ash.Resource.Transformers.CreateJoinRelationship,
     Ash.Resource.Transformers.CachePrimaryKey,
     Ash.Resource.Transformers.SetPrimaryActions
+    # Ash.Resource.Transformers.SetAggregateQueries
   ]
 
   use Ash.Dsl.Extension,

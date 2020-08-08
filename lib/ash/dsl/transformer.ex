@@ -18,7 +18,6 @@ defmodule Ash.Dsl.Transformer do
   @callback transform(module, map) :: {:ok, map} | {:error, term} | :halt
   @callback before?(module) :: boolean
   @callback after?(module) :: boolean
-  @callback compile_time_only? :: boolean
 
   defmacro __using__(_) do
     quote do
@@ -26,29 +25,8 @@ defmodule Ash.Dsl.Transformer do
 
       def before?(_), do: false
       def after?(_), do: false
-      def compile_time_only?, do: false
 
-      defoverridable before?: 1, after?: 1, compile_time_only?: 0
-    end
-  end
-
-  def wait_for_transformer(resource, transformers, timeout \\ :timer.seconds(15), wait \\ 50)
-
-  def wait_for_transformer(resource, transformers, 0, _) do
-    raise "Timed out waiting for #{inspect(transformers)} for #{inspect(resource)}"
-  end
-
-  def wait_for_transformer(resource, transformers, timeout, wait) do
-    transformers_run = :persistent_term.get({resource, :ash, :transformers}, [])
-
-    transformers = List.wrap(transformers)
-
-    if Enum.all?(transformers, &(&1 in transformers_run)) do
-      :ok
-    else
-      wait = min(timeout, wait)
-      :timer.sleep(wait)
-      wait_for_transformer(resource, transformers, timeout - wait, wait + 50)
+      defoverridable before?: 1, after?: 1
     end
   end
 

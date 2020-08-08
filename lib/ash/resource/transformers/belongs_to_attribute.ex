@@ -7,7 +7,7 @@ defmodule Ash.Resource.Transformers.BelongsToAttribute do
   alias Ash.Dsl.Transformer
   alias Ash.Error.Dsl.DslError
 
-  @extension Ash.Dsl
+  @extension Ash.Resource.Dsl
 
   def transform(_resource, dsl_state) do
     dsl_state

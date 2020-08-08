@@ -63,8 +63,8 @@ defmodule Ash.MixProject do
           Ash.Dsl.Extension,
           Ash.Dsl.Section
         ],
+        "resource dsl": ~r/Ash.Resource.Dsl/,
         "resource dsl transformers": ~r/Ash.Resource.Transformers/,
-        "resource dsl": ~r/Ash.Dsl/,
         "api dsl transformers": ~r/Ash.Api.Transformers/,
         "api dsl": ~r/Ash.Api.Dsl/,
         "filter predicates": ~r/Ash.Filter.Predicate/,
@@ -113,7 +113,7 @@ defmodule Ash.MixProject do
       sobelow: "sobelow --skip",
       credo: "credo --strict",
       "ash.formatter":
-        "ash.formatter --extensions Ash.Dsl,Ash.Api.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia"
+        "ash.formatter --extensions Ash.Resource.Dsl,Ash.Api.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia"
     ]
   end
 end

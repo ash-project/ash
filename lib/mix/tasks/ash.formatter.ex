@@ -44,7 +44,7 @@ defmodule Mix.Tasks.Ash.Formatter do
 
     contents =
       @formatter_exs_template
-      |> String.replace("__replace_me__", inspect(locals_without_parens))
+      |> String.replace("__replace_me__", inspect(locals_without_parens, limit: :infinity))
       |> Code.format_string!()
 
     contents_with_newline = [contents, "\n"]

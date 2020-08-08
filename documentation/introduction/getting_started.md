@@ -21,25 +21,6 @@ defmodule MyApp.Api do
 end
 ```
 
-Then, add `MyApp.Api` to your `application.ex`'s start function, which should look something like this:
-
-```elixir
-def start(_type, _args) do
-  children = [
-    # Start the Ecto repository
-    MyApp.Repo,
-    # Start the Telemetry supervisor
-    MyApp.Telemetry,
-    # Start the PubSub system
-    {Phoenix.PubSub, name: MyApp.PubSub},
-    # Start the Endpoint (http/https)
-    MyApp.Endpoint,
-    MyApp.Api # <- Add your API here
-  ]
-   ...
-end
-```
-
 ## Create a resource
 
 A resource is the primary entity in Ash. Your Api module ties your resources together and gives them an interface, but the vast majority if your configuration will live in a resource. In your typical setup, you might have a resource per database table. For those already familiar with ecto, a resource and an ecto schema are very similar. In fact, all resources define an ecto schema under the hood. This can be leveraged when you need to do things that are not yet implemented or fall outside of the scope of Ash. The current reccomendation for where to put your resources is in `lib/resources/<resource_name>.ex`. Here are a few examples:
@@ -146,5 +127,5 @@ end
 
 - `Ash.Api` for what you can do with your resources.
 - `Ash.Query` for the kinds of queries you can make.
-- `Ash.Dsl` for the resource DSL documentation.
+- `Ash.Resource.Dsl` for the resource DSL documentation.
 - `Ash.Api.Dsl` for the API DSL documentation.

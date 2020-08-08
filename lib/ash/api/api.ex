@@ -23,7 +23,7 @@ defmodule Ash.Api do
 
   import Ash.OptionsHelpers, only: [merge_schemas: 3]
 
-  alias Ash.Actions.{Create, Destroy, Read, SideLoad, Update}
+  alias Ash.Actions.{Create, Destroy, Read, Update}
   alias Ash.Error.Invalid.{InvalidPrimaryKey, NoSuchAction, NoSuchResource}
 
   @global_opts [
@@ -54,24 +54,17 @@ defmodule Ash.Api do
   @doc false
   def read_opts_schema, do: @read_opts_schema
 
-  @side_load_opts_schema merge_schemas([], @global_opts, "Global Options")
+  @load_opts_schema merge_schemas([], @global_opts, "Global Options")
 
   @get_opts_schema [
-                     side_load: [
+                     load: [
                        type: :any,
-                       doc:
-                         "Side loads to include in the query, same as you would pass to `Ash.Query.side_load/2`"
+                       doc: "Fields or relationships to load in the query. See `Ash.Query.load/2`"
                      ]
                    ]
                    |> merge_schemas(@global_opts, "Global Options")
 
-  @shared_create_and_update_opts_schema [
-                                          side_load: [
-                                            type: :any,
-                                            doc:
-                                              "Side loads to include in the query, same as you would pass to `Ash.Query.side_load/2`"
-                                          ]
-                                        ]
+  @shared_create_and_update_opts_schema []
                                         |> merge_schemas(@global_opts, "Global Options")
 
   @create_opts_schema [
@@ -135,23 +128,31 @@ defmodule Ash.Api do
               {:ok, list(Ash.resource())} | {:error, Ash.error()}
 
   @doc """
-  Side load on already fetched records. See `c:side_load/2` for more information.
+  Load fields or relationships on already fetched records. See `c:load/2` for more information.
 
-  #{NimbleOptions.docs(@side_load_opts_schema)}
+  #{NimbleOptions.docs(@load_opts_schema)}
   """
-  @callback side_load!(resource :: Ash.resource(), params :: Keyword.t() | Ash.query()) ::
-              list(Ash.resource()) | no_return
+  @callback load!(
+              record_or_records :: Ash.record() | [Ash.record()],
+              params :: Keyword.t() | Ash.query()
+            ) ::
+              Ash.record() | [Ash.record()] | no_return
 
   @doc """
-  Side load on already fetched records.
+  Load fields or relationships on already fetched records.
 
-  Accepts a keyword list of side loads as they would be passed into `Ash.Query.side_load/2`
-  or an `%Ash.Query{}`, in which case that query's side loads are used.
+  Accepts a list of non-loaded fields and loads them on the provided records or a query, in
+  which case the loaded fields of the query are used. Relationship loads can be nested, for
+  example: `MyApi.load(record, [posts: [:comments]])`. See `Ash.Query.side_load/2` for more
+  information on specifically loading relationships.
 
-  #{NimbleOptions.docs(@side_load_opts_schema)}
+  #{NimbleOptions.docs(@load_opts_schema)}
   """
-  @callback side_load(resource :: Ash.resource(), params :: Keyword.t() | Ash.query()) ::
-              {:ok, list(Ash.resource())} | {:error, Ash.error()}
+  @callback load(
+              record_or_records :: Ash.record() | [Ash.record()],
+              params :: Keyword.t() | Ash.query()
+            ) ::
+              {:ok, Ash.record() | [Ash.record()]} | {:error, Ash.error()}
 
   @doc """
   Create a record. See `c:create/2` for more information.
@@ -282,8 +283,8 @@ defmodule Ash.Api do
       resource
       |> Ash.Query.new(api)
       |> Ash.Query.filter(filter)
-      |> Ash.Query.side_load(opts[:side_load] || [])
-      |> api.read(Keyword.delete(opts, :side_load))
+      |> Ash.Query.load(opts[:load] || [])
+      |> api.read(Keyword.delete(opts, :load))
       |> case do
         {:ok, [single_result]} ->
           {:ok, single_result}
@@ -321,38 +322,38 @@ defmodule Ash.Api do
   end
 
   @doc false
-  @spec side_load!(
+  @spec load!(
           Ash.api(),
           Ash.record() | list(Ash.record()),
           Ash.query() | list(atom | {atom, list()}),
           Keyword.t()
         ) ::
           list(Ash.record()) | Ash.record() | no_return
-  def side_load!(api, data, query, opts \\ []) do
-    opts = NimbleOptions.validate!(opts, @side_load_opts_schema)
+  def load!(api, data, query, opts \\ []) do
+    opts = NimbleOptions.validate!(opts, @load_opts_schema)
 
     api
-    |> side_load(data, query, opts)
+    |> load(data, query, opts)
     |> unwrap_or_raise!()
   end
 
   @doc false
-  @spec side_load(Ash.api(), Ash.query(), Keyword.t()) ::
+  @spec load(Ash.api(), Ash.query(), Keyword.t()) ::
           {:ok, list(Ash.resource())} | {:error, Ash.error()}
-  def side_load(api, data, query, opts \\ [])
-  def side_load(_, [], _, _), do: {:ok, []}
-  def side_load(_, nil, _, _), do: {:ok, nil}
+  def load(api, data, query, opts \\ [])
+  def load(_, [], _, _), do: {:ok, []}
+  def load(_, nil, _, _), do: {:ok, nil}
 
-  def side_load(api, data, query, opts) when not is_list(data) do
+  def load(api, data, query, opts) when not is_list(data) do
     api
-    |> side_load(List.wrap(data), query, opts)
+    |> load(List.wrap(data), query, opts)
     |> case do
       {:ok, [data]} -> {:ok, data}
       {:error, error} -> {:error, error}
     end
   end
 
-  def side_load(api, [%resource{} | _] = data, query, opts) do
+  def load(api, [%resource{} | _] = data, query, opts) do
     query =
       case query do
         %Ash.Query{} = query ->
@@ -361,12 +362,13 @@ defmodule Ash.Api do
         keyword ->
           resource
           |> Ash.Query.new(api)
-          |> Ash.Query.side_load(keyword)
+          |> Ash.Query.load(keyword)
       end
 
     with %{valid?: true} <- query,
-         {:ok, opts} <- NimbleOptions.validate(opts, @side_load_opts_schema) do
-      SideLoad.side_load(data, query, opts)
+         {:ok, action} <- get_action(query.resource, opts, :read),
+         {:ok, opts} <- NimbleOptions.validate(opts, @load_opts_schema) do
+      Read.run(query, action, Keyword.put(opts, :initial_data, data))
     else
       {:error, error} ->
         {:error, error}
@@ -404,7 +406,7 @@ defmodule Ash.Api do
 
   @doc false
   @spec create!(Ash.api(), Ash.changeset(), Keyword.t()) ::
-          Ash.record() | {:error, Ash.error()}
+          Ash.record() | no_return
   def create!(api, changeset, opts) do
     opts = NimbleOptions.validate!(opts, @create_opts_schema)
 
@@ -415,7 +417,7 @@ defmodule Ash.Api do
 
   @doc false
   @spec create(Ash.api(), Ash.changeset(), Keyword.t()) ::
-          {:ok, Ash.resource()} | {:error, Ash.error()}
+          {:ok, Ash.record()} | {:error, Ash.error()}
   def create(api, changeset, opts) do
     with {:ok, opts} <- NimbleOptions.validate(opts, @create_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, changeset.resource),

@@ -468,7 +468,7 @@ defmodule Ash.Test.Actions.UpdateTest do
       |> replace_relationship(:author, author2)
       |> Api.update!()
 
-      assert Api.get!(Author, author2.id, side_load: [:posts]).posts == [Api.get!(Post, post.id)]
+      assert Api.get!(Author, author2.id, load: [:posts]).posts == [Api.get!(Post, post.id)]
     end
 
     test "it responds with the relationship field filled in" do
