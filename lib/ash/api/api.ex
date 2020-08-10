@@ -338,8 +338,13 @@ defmodule Ash.Api do
   end
 
   @doc false
-  @spec load(Ash.api(), Ash.query(), Keyword.t()) ::
-          {:ok, list(Ash.resource())} | {:error, Ash.error()}
+  @spec load!(
+          Ash.api(),
+          Ash.record() | list(Ash.record()),
+          Ash.query() | list(atom | {atom, list()}),
+          Keyword.t()
+        ) ::
+          list(Ash.record()) | Ash.record() | no_return
   def load(api, data, query, opts \\ [])
   def load(_, [], _, _), do: {:ok, []}
   def load(_, nil, _, _), do: {:ok, nil}

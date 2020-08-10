@@ -70,7 +70,7 @@ defmodule Ash.Query do
     |> set_data_layer_query()
   end
 
-  @spec load(t(), atom | list(atom)) :: t()
+  @spec load(t(), atom | list(atom) | Keyword.t()) :: t()
   def load(query, fields) when not is_list(fields) do
     load(query, List.wrap(fields))
   end
