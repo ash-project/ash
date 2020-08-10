@@ -301,7 +301,7 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declare named aggregates on the resource.
 
-    These are aggregates that can be fetched only by name using `Ash.Query.fetch/2`.
+    These are aggregates that can be loaded only by name using `Ash.Query.load/2`.
     They are also available as top level fields on the resource.
     """,
     entities: [

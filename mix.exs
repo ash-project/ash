@@ -42,7 +42,8 @@ defmodule Ash.MixProject do
       extras: [
         "documentation/introduction/getting_started.md",
         "documentation/topics/validation.md",
-        "documentation/topics/error_handling.md"
+        "documentation/topics/error_handling.md",
+        "documentation/topics/aggregates.md"
       ],
       groups_for_extras: [
         Introduction: Path.wildcard("documentation/introduction/*.md"),
@@ -61,7 +62,8 @@ defmodule Ash.MixProject do
         extension: [
           Ash.Dsl.Entity,
           Ash.Dsl.Extension,
-          Ash.Dsl.Section
+          Ash.Dsl.Section,
+          Ash.Dsl.Transformer
         ],
         "resource dsl": ~r/Ash.Resource.Dsl/,
         "resource dsl transformers": ~r/Ash.Resource.Transformers/,
@@ -70,7 +72,11 @@ defmodule Ash.MixProject do
         "filter predicates": ~r/Ash.Filter.Predicate/,
         filter: ~r/Ash.Filter/,
         "resource introspection": ~r/Ash.Resource/,
-        "api introspection": ~r/Ash.Api/
+        "api introspection": ~r/Ash.Api/,
+        miscellaneous: [
+          Ash.NotLoaded,
+          Ash.Query.Aggregate
+        ]
       ]
     ]
   end
