@@ -117,6 +117,9 @@ defmodule Ash.Query do
           {:error, error} ->
             add_error(query, :aggregates, Ash.Error.to_ash_error(error))
         end
+
+      true ->
+        add_error(query, :load, "Could not load #{inspect(field)}")
     end
   end
 

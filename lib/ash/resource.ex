@@ -142,6 +142,12 @@ defmodule Ash.Resource do
     Extension.get_entities(resource, [:aggregates])
   end
 
+  def aggregate(resource, name) when is_bitstring(name) do
+    resource
+    |> aggregates()
+    |> Enum.find(&(to_string(&1.name) == name))
+  end
+
   def aggregate(resource, name) do
     resource
     |> aggregates()

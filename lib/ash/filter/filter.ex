@@ -6,6 +6,7 @@ defmodule Ash.Filter do
   terminating in a `%Ash.Filter.Predicate{}` struct. An expression is simply a boolean operator
   and the left and right hand side of that operator.
   """
+  alias Ash.Actions.SideLoad
   alias Ash.Engine.Request
 
   alias Ash.Error.Query.{
@@ -29,6 +30,10 @@ defmodule Ash.Filter do
     less_than: LessThan,
     greater_than: GreaterThan
   ]
+
+  @string_builtin_predicates Enum.into(@built_in_predicates, %{}, fn {key, value} ->
+                               {to_string(key), value}
+                             end)
 
   defstruct [:resource, :expression]
 
@@ -318,7 +323,7 @@ defmodule Ash.Filter do
     filter
     |> Ash.Filter.relationship_paths()
     |> Enum.map(fn path ->
-      {path, filter_expression_by_relationship_path(filter, path)}
+      {path, filter_expression_by_relationship_path(filter, path, true)}
     end)
     |> Enum.reduce_while({:ok, []}, fn {path, scoped_filter}, {:ok, requests} ->
       %{resource: resource} = scoped_filter
@@ -331,7 +336,37 @@ defmodule Ash.Filter do
           Request.new(
             resource: resource,
             api: api,
-            query: query,
+            query:
+              Request.resolve(
+                [[:data, :authorization_filter]],
+                fn %{
+                     data: %{
+                       authorization_filter: authorization_filter
+                     }
+                   } ->
+                  if authorization_filter do
+                    relationship =
+                      Ash.Resource.relationship(
+                        resource,
+                        List.first(path)
+                      )
+
+                    case SideLoad.reverse_relationship_path(
+                           relationship,
+                           tl(path)
+                         ) do
+                      :error ->
+                        {:ok, query}
+
+                      {:ok, reverse_relationship} ->
+                        filter = put_at_path(authorization_filter, reverse_relationship)
+                        {:ok, Ash.Query.filter(query, filter)}
+                    end
+                  else
+                    {:ok, query}
+                  end
+                end
+              ),
             async?: false,
             path: [:filter, path],
             strict_check_only?: true,
@@ -880,7 +915,7 @@ defmodule Ash.Filter do
     end)
   end
 
-  defp parse_predicates(value, field, context) when not is_list(value) do
+  defp parse_predicates(value, field, context) when not is_list(value) and not is_map(value) do
     parse_predicates([eq: value], field, context)
   end
 
@@ -892,9 +927,9 @@ defmodule Ash.Filter do
         []
       )
 
-    if Keyword.keyword?(values) do
+    if is_map(values) || Keyword.keyword?(values) do
       Enum.reduce_while(values, {:ok, nil}, fn {key, value}, {:ok, expression} ->
-        case @built_in_predicates[key] || data_layer_predicates[key] do
+        case get_predicate(key, data_layer_predicates) do
           value when value in [nil, []] ->
             error = NoSuchFilterPredicate.exception(key: key, resource: context.resource)
             {:halt, {:error, error}}
@@ -920,6 +955,23 @@ defmodule Ash.Filter do
       {:halt, error}
     end
   end
+
+  defp get_predicate(key, data_layer_predicates) when is_atom(key) do
+    @built_in_predicates[key] || data_layer_predicates[key]
+  end
+
+  defp get_predicate(key, data_layer_predicates) when is_binary(key) do
+    Map.get(@string_builtin_predicates, key) ||
+      Enum.find_value(data_layer_predicates, fn {pred, value} ->
+        if to_string(pred) == key do
+          value
+        else
+          false
+        end
+      end)
+  end
+
+  defp get_predicate(_, _), do: nil
 
   defimpl Inspect do
     import Inspect.Algebra

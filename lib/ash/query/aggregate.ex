@@ -39,6 +39,8 @@ defmodule Ash.Query.Aggregate do
 
   defp default_value(:count), do: 0
 
+  defp validate_query(nil), do: {:ok, nil}
+
   defp validate_query(query) do
     cond do
       query.side_load != [] ->
@@ -65,63 +67,6 @@ defmodule Ash.Query.Aggregate do
   def kind_to_type(:count), do: {:ok, Ash.Type.Integer}
   def kind_to_type(kind), do: {:error, "Invalid aggregate kind: #{kind}"}
 
-  # def requests_with_initial_data(query, authorizing?) do
-  #   query.aggregates
-  #   |> Map.values()
-  #   |> Enum.group_by(& &1.relationship_path)
-  #   |> Enum.reduce({[], []}, fn {relationship_path, aggregates},
-  #                               {auth_requests, value_requests} ->
-  #     related = Ash.Resource.related(initial_query.resource, relationship_path)
-
-  #     relationship =
-  #       Ash.Resource.relationship(
-  #         initial_query.resource,
-  #         List.first(relationship_path)
-  #       )
-
-  #     remaining_path = List.delete_at(relationship_path, 0)
-
-  #     reverse_relationship =
-  #       case SideLoad.reverse_relationship_path(relationship, remaining_path) do
-  #         :error ->
-  #           nil
-
-  #         {:ok, reverse_relationship} ->
-  #           reverse_relationship
-  #       end
-
-  #     auth_request =
-  #       if authorizing? do
-  #         auth_request(related, initial_query, reverse_relationship, relationship_path)
-  #       else
-  #         nil
-  #       end
-
-  #     new_auth_requests =
-  #       if auth_request do
-  #         [auth_request | auth_requests]
-  #       else
-  #         auth_requests
-  #       end
-
-  #     if reverse_relationship do
-  #       request =
-  #         value_request(
-  #           initial_query,
-  #           related,
-  #           reverse_relationship,
-  #           relationship_path,
-  #           aggregates,
-  #           auth_request
-  #         )
-
-  #       {new_auth_requests, [request | value_requests]}
-  #     else
-  #       raise "Unimplemented"
-  #     end
-  #   end)
-  # end
-
   def requests(initial_query, can_be_in_query?, authorizing?) do
     initial_query.aggregates
     |> Map.values()
@@ -136,10 +81,8 @@ defmodule Ash.Query.Aggregate do
           List.first(relationship_path)
         )
 
-      remaining_path = List.delete_at(relationship_path, 0)
-
       {in_query?, reverse_relationship} =
-        case SideLoad.reverse_relationship_path(relationship, remaining_path) do
+        case SideLoad.reverse_relationship_path(relationship, tl(relationship_path)) do
           :error ->
             {can_be_in_query?, nil}
 

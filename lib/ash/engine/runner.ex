@@ -162,7 +162,7 @@ defmodule Ash.Engine.Runner do
   end
 
   defp fake_handle_cast({:wont_receive, receiver_path, path, field}, state) do
-    request = Map.get(state.requests, receiver_path)
+    request = Enum.find(state.requests, &(&1.path == receiver_path))
 
     case Request.wont_receive(request, path, field) do
       {:stop, :dependency_failed, new_request} ->

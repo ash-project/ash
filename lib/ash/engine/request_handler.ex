@@ -5,6 +5,7 @@ defmodule Ash.Engine.RequestHandler do
   use GenServer
   require Logger
 
+  alias Ash.Engine
   alias Ash.Engine.Request
 
   def init(opts) do
@@ -36,7 +37,11 @@ defmodule Ash.Engine.RequestHandler do
         {:noreply, new_state, {:continue, :next}}
 
       {:error, error, new_request} ->
-        {:stop, {:error, error, %{new_request | state: :error}}, state}
+        new_request = %{new_request | state: :error}
+        new_state = %{state | request: new_request}
+        notify_error(new_state, error)
+
+        {:noreply, new_state}
 
       {:already_complete, new_request, notifications, dependencies} ->
         new_state = %{state | request: new_request}
@@ -66,8 +71,19 @@ defmodule Ash.Engine.RequestHandler do
   def handle_cast({:wont_receive, _receiver_path, path, field}, state) do
     case Request.wont_receive(state.request, path, field) do
       {:stop, :dependency_failed, request} ->
-        {:stop, :shutdown, request}
+        new_state = %{state | request: %{request | state: :error}}
+        notify_error(new_state, :dependency_failed)
+        {:noreply, new_state}
     end
+  end
+
+  def handle_cast(
+        {:send_field, receiver_path, pid, dep},
+        %{request: %{path: path, state: :error}} = state
+      ) do
+    Engine.send_wont_receive(pid, receiver_path, path, List.last(dep))
+
+    {:noreply, state}
   end
 
   def handle_cast({:send_field, receiver_path, _pid, dep}, state) do
@@ -92,7 +108,10 @@ defmodule Ash.Engine.RequestHandler do
         {:noreply, new_state}
 
       {:error, error, new_request} ->
-        {:stop, {:error, error}, %{new_request | state: :error}}
+        new_request = %{new_request | state: :error}
+        new_state = %{state | request: new_request}
+        notify_error(new_state, error)
+        {:noreply, new_state}
     end
   end
 
@@ -101,6 +120,11 @@ defmodule Ash.Engine.RequestHandler do
       {:continue, new_request} ->
         {:noreply, %{state | request: new_request}, {:continue, :next}}
     end
+  end
+
+  defp notify_error(state, error) do
+    log(state, "Request error, notifying engine")
+    GenServer.cast(state.engine_pid, {:error, error, state})
   end
 
   defp notify(state, notifications) do

@@ -161,6 +161,10 @@ defmodule Ash.Engine do
     {:ok, state, {:continue, :spawn_requests}}
   end
 
+  def send_wont_receive(pid, caller_path, request_path, field) do
+    GenServer.cast(pid, {:wont_receive, caller_path, request_path, field})
+  end
+
   def handle_continue(:spawn_requests, state) do
     log(state, "Spawning request processes", :debug)
 
@@ -241,11 +245,7 @@ defmodule Ash.Engine do
     |> maybe_shutdown()
   end
 
-  def send_wont_receive(pid, caller_path, request_path, field) do
-    GenServer.cast(pid, {:wont_receive, caller_path, request_path, field})
-  end
-
-  def handle_info({:error, error, request_handler_state}, state) do
+  def handle_cast({:error, error, request_handler_state}, state) do
     state
     |> log("Error received from request_handler #{inspect(error)}")
     |> move_to_error(request_handler_state.request.path)
