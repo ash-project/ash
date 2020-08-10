@@ -6,6 +6,7 @@ defmodule Ash.Resource.Dsl do
   * relationships - `relationships/1`
   * actions - `actions/1`
   * validations - `validations/1`
+  * aggregates - `aggregates/1`
   """
 
   @attribute %Ash.Dsl.Entity{
