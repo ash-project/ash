@@ -85,7 +85,7 @@ defmodule Ash do
   @type relationship :: cardinality_one_relationship() | cardinality_many_relationship()
   @type relationship_cardinality :: :many | :one
   @type resource :: module
-  @type side_loads :: [{atom, [atom | query()]} | atom] | atom
+  @type side_loads :: term
   @type sort :: Keyword.t()
   @type validation :: Ash.Resource.Validation.t()
 

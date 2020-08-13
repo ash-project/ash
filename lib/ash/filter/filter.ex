@@ -608,6 +608,21 @@ defmodule Ash.Filter do
     end
   end
 
+  def remove_aggregates(%__MODULE__{expression: expression} = filter) do
+    %{filter | expression: remove_aggregates(expression)}
+  end
+
+  def remove_aggregates(%Expression{op: op, left: left, right: right}) do
+    Expression.new(op, remove_aggregates(left), remove_aggregates(right))
+  end
+
+  def remove_aggregates(%Not{expression: expression}) do
+    Not.new(remove_aggregates(expression))
+  end
+
+  def remove_aggregates(%Predicate{attribute: %Ash.Query.Aggregate{}}), do: nil
+  def remove_aggregates(other), do: other
+
   defp do_relationship_paths(%Predicate{relationship_path: []}, _) do
     []
   end
@@ -627,6 +642,8 @@ defmodule Ash.Filter do
   defp do_relationship_paths(%Not{expression: expression}, kind) do
     do_relationship_paths(expression, kind)
   end
+
+  defp do_relationship_paths(_, _), do: []
 
   defp parse_expression(%__MODULE__{expression: expression}, context),
     do: {:ok, add_to_predicate_path(expression, context)}
@@ -696,6 +713,11 @@ defmodule Ash.Filter do
 
   defp add_expression_part({field, nested_statement}, context, expression)
        when is_atom(field) or is_binary(field) do
+    aggregates =
+      Enum.flat_map(context.aggregates, fn {key, _} ->
+        [key, to_string(key)]
+      end)
+
     cond do
       attr = Ash.Resource.attribute(context.resource, field) ->
         case parse_predicates(nested_statement, attr, context) do
@@ -739,7 +761,14 @@ defmodule Ash.Filter do
           end
         end
 
-      Map.has_key?(context.aggregates, field) ->
+      field in aggregates ->
+        field =
+          if is_binary(field) do
+            String.to_existing_atom(field)
+          else
+            field
+          end
+
         add_aggregate_expression(context, nested_statement, field, expression)
 
       true ->
@@ -900,6 +929,9 @@ defmodule Ash.Filter do
 
       %Predicate{relationship_path: relationship_path} = pred ->
         %{pred | relationship_path: context.relationship_path ++ relationship_path}
+
+      other ->
+        other
     end
   end
 

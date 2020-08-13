@@ -79,8 +79,19 @@ defmodule Ash.Query do
     query = to_query(query)
 
     Enum.reduce(fields, query, fn
+      {field, %__MODULE__{} = nested}, query ->
+        side_load(query, [{field, nested}])
+
       {field, rest}, query ->
-        side_load(query, [{field, rest}])
+        rel = Ash.Resource.relationship(query.resource, field)
+
+        if rel do
+          nested_query = load(rel.destination, rest)
+
+          side_load(query, [{field, nested_query}])
+        else
+          add_error(query, :load, "Invalid load #{inspect(field)}")
+        end
 
       field, query ->
         do_load(query, field)

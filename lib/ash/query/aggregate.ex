@@ -203,7 +203,11 @@ defmodule Ash.Query.Aggregate do
                 end
 
               with {:ok, data_layer_query} <-
-                     add_datalayer_aggregates(query.data_layer_query, aggregates, query.resource),
+                     add_datalayer_aggregates(
+                       query.data_layer_query,
+                       aggregates,
+                       initial_query.resource
+                     ),
                    {:ok, results} <-
                      Ash.DataLayer.run_query(
                        data_layer_query,
@@ -265,7 +269,11 @@ defmodule Ash.Query.Aggregate do
         data_query = data.data.query
 
         if reverse_relationship do
-          filter = Ash.Filter.put_at_path(data_query.filter, reverse_relationship)
+          filter =
+            Ash.Filter.put_at_path(
+              Ash.Filter.remove_aggregates(data_query.filter),
+              reverse_relationship
+            )
 
           {:ok, Ash.Query.filter(resource, filter)}
         else

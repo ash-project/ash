@@ -33,6 +33,8 @@ defmodule Ash.Resource do
 
         @authorizers opts[:authorizers] || []
         @data_layer opts[:data_layer]
+        @extensions (opts[:extensions] || []) ++
+                      List.wrap(opts[:data_layer]) ++ (opts[:authorizers] || [])
       end
 
     preparations = Extension.prepare(extensions)
@@ -53,12 +55,14 @@ defmodule Ash.Resource do
 
       :persistent_term.put({__MODULE__, :data_layer}, @data_layer)
       :persistent_term.put({__MODULE__, :authorizers}, @authorizers)
+      :persistent_term.put({__MODULE__, :extensions}, @extensions)
 
       @ash_dsl_config Extension.set_state()
 
       def on_load do
         :persistent_term.put({__MODULE__, :data_layer}, @data_layer)
         :persistent_term.put({__MODULE__, :authorizers}, @authorizers)
+        :persistent_term.put({__MODULE__, :extensions}, @extensions)
 
         Extension.load()
       end
@@ -67,6 +71,15 @@ defmodule Ash.Resource do
 
       Ash.Schema.define_schema()
     end
+  end
+
+  def extensions(resource) do
+    :persistent_term.get({resource, :extensions})
+  end
+
+  @spec description(Ash.resource()) :: String.t() | nil
+  def description(resource) do
+    Extension.get_opt(resource, [:resource], :description, "no description")
   end
 
   @doc "A list of authorizers to be used when accessing"

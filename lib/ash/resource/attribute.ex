@@ -10,6 +10,7 @@ defmodule Ash.Resource.Attribute do
     :writable?,
     :default,
     :update_default,
+    :description,
     constraints: []
   ]
 
@@ -70,6 +71,10 @@ defmodule Ash.Resource.Attribute do
       type: {:custom, __MODULE__, :validate_default, [:create]},
       doc:
         "A zero argument function, an {mod, fun, args} triple or `{:constant, value}`. If no value is provided for the attribute on create, this value is used."
+    ],
+    description: [
+      type: :string,
+      doc: "An optional description for the attribute"
     ]
   ]
 
