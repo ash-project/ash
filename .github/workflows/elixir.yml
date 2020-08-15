@@ -44,3 +44,18 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+      - id: log
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: echo "::set-output name=version::$(git describe --tags)"
+      - uses: ethomson/send-tweet-action@v1
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          status: |
+            Version "${{ steps.log.output.version }}" of Ash released!
+
+            See the changelog for more info:
+            https://github.com/ash-project/ash/blob/master/CHANGELOG.md
+          consumer-key: ${{ secrets.TWITTER_CONSUMER_API_KEY }}
+          consumer-secret: ${{ secrets.TWITTER_CONSUMER_API_SECRET }}
+          access-token: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+          access-token-secret: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
