@@ -47,11 +47,13 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+      - uses: olegtarasov/get-tag@v2
+        id: tagName
       - uses: ethomson/send-tweet-action@v1
         if: startsWith(github.ref, 'refs/tags/v')
         with:
           status: |
-            Version "${{ github.event.release.tag_name }}" of Ash released!
+            Version "${{ steps.tagName.outputs.tag }}" of Ash released!
 
             See the changelog for more info:
             https://github.com/ash-project/ash/blob/master/CHANGELOG.md
