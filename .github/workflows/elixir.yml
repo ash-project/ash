@@ -47,9 +47,6 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
-      - name: Get the version
-        id: get_version
-        run: echo ::set-output name=version::${GITHUB_REF#refs/tags/}
       - uses: ethomson/send-tweet-action@v1
         if: startsWith(github.ref, 'refs/tags/v')
         with:
