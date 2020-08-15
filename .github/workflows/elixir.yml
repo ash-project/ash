@@ -51,7 +51,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         with:
           status: |
-            Version "${{ steps.get_version.output.version }}" of Ash released!
+            Version "${{ github.event.release.tag_name }}" of Ash released!
 
             See the changelog for more info:
             https://github.com/ash-project/ash/blob/master/CHANGELOG.md
