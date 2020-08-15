@@ -39,7 +39,10 @@ jobs:
           key: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-build-2-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
           restore-keys: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-build-2-
       - run: mix deps.get
+      - run: mix check --except dialyzer
+        if: startsWith(github.ref, 'refs/tags/v')
       - run: mix check
+        if: "!startsWith(github.ref, 'refs/tags/v')"
       - run: mix hex.publish --yes
         if: startsWith(github.ref, 'refs/tags/v')
         env:
