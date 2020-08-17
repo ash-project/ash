@@ -17,7 +17,7 @@ defmodule Ash.Filter do
     ReadActionRequired
   }
 
-  alias Ash.Filter.Predicate.{Eq, GreaterThan, In, LessThan}
+  alias Ash.Filter.Predicate.{Eq, GreaterThan, In, LessThan, IsNil}
   alias Ash.Filter.{Expression, Not, Predicate}
   alias Ash.Query.Aggregate
 
@@ -28,7 +28,8 @@ defmodule Ash.Filter do
     lt: LessThan,
     gt: GreaterThan,
     less_than: LessThan,
-    greater_than: GreaterThan
+    greater_than: GreaterThan,
+    is_nil: IsNil
   ]
 
   @string_builtin_predicates Enum.into(@built_in_predicates, %{}, fn {key, value} ->
