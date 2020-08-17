@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.7.0](https://github.com/ash-project/ash/compare/v1.6.8...v1.7.0) (2020-08-17)
+
+
+
+
+### Features:
+
+* add `is_nil` predicate
+
+### Bug Fixes:
+
+* add lexical scope to DSL for imports
+
+* crash on entity w/ no options specified
+
+* convert `eq: nil` into is_nil, fix credo
+
 ## [v1.6.8](https://github.com/ash-project/ash/compare/v1.6.7...v1.6.8) (2020-08-15)
 
 
