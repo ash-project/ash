@@ -53,7 +53,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         with:
           status: |
-            Version "${{ steps.tagName.outputs.tag }}" of Ash released!
+            Alpha version "${{ steps.tagName.outputs.tag }}" of Ash released!
 
             See the changelog for more info:
             https://github.com/ash-project/ash/blob/master/CHANGELOG.md
