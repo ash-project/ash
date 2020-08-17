@@ -7,6 +7,10 @@ defmodule Ash.Filter.Predicate.Eq do
   alias Ash.Error.Query.InvalidFilterValue
   alias Ash.Filter.Predicate
 
+  def new(resource, attribute, nil) do
+    Predicate.IsNil.new(resource, attribute, true)
+  end
+
   def new(_resource, attribute, value) do
     case Ash.Type.cast_input(attribute.type, value) do
       {:ok, value} ->
