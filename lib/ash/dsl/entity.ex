@@ -65,7 +65,7 @@ defmodule Ash.Dsl.Entity do
       Keyword.split(auto_set_fields || [], Keyword.keys(schema))
 
     with {:ok, opts} <-
-           NimbleOptions.validate(Keyword.merge(opts, before_validate_auto), schema),
+           NimbleOptions.validate(Keyword.merge(opts || [], before_validate_auto), schema),
          opts <- Keyword.merge(opts, after_validate_auto),
          built <- struct(target, opts),
          built <- struct(built, nested_entities),
