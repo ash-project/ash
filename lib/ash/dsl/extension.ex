@@ -632,100 +632,105 @@ defmodule Ash.Dsl.Extension do
           arg_values = unquote(args)
 
           quote do
-            section_path = unquote(section_path)
-            entity_name = unquote(entity_name)
-            extension = unquote(extension)
+            # This `try do` block scopes the imports/unimports properly
+            try do
+              section_path = unquote(section_path)
+              entity_name = unquote(entity_name)
+              extension = unquote(extension)
 
-            current_sections = Process.get({__MODULE__, :ash_sections}, [])
+              current_sections = Process.get({__MODULE__, :ash_sections}, [])
 
-            Process.put(
-              {:builder_opts, unquote(nested_entity_path)},
-              Keyword.merge(
-                unquote(Keyword.delete(opts, :do)),
-                Enum.zip(unquote(entity_args), unquote(arg_values))
-              )
-            )
-
-            import unquote(options_mod_name)
-
-            Ash.Dsl.Extension.import_mods(unquote(nested_entity_mods))
-
-            unquote(opts[:do])
-
-            current_config =
-              Process.get(
-                {__MODULE__, :ash, section_path ++ unquote(nested_entity_path)},
-                %{entities: [], opts: []}
+              Process.put(
+                {:builder_opts, unquote(nested_entity_path)},
+                Keyword.merge(
+                  unquote(Keyword.delete(opts, :do)),
+                  Enum.zip(unquote(entity_args), unquote(arg_values))
+                )
               )
 
-            import unquote(options_mod_name), only: []
+              import unquote(options_mod_name)
 
-            Ash.Dsl.Extension.unimport_mods(unquote(nested_entity_mods))
+              Ash.Dsl.Extension.import_mods(unquote(nested_entity_mods))
 
-            opts = Process.delete({:builder_opts, unquote(nested_entity_path)})
+              unquote(opts[:do])
 
-            alias Ash.Dsl.Entity
+              current_config =
+                Process.get(
+                  {__MODULE__, :ash, section_path ++ unquote(nested_entity_path)},
+                  %{entities: [], opts: []}
+                )
 
-            nested_entities =
-              unquote(Macro.escape(entity.entities))
-              |> Enum.map(&elem(&1, 0))
-              |> Enum.uniq()
-              |> Enum.reduce(%{}, fn key, acc ->
-                nested_path = section_path ++ unquote(nested_entity_path) ++ [key]
+              import unquote(options_mod_name), only: []
 
-                entities =
-                  {__MODULE__, :ash, nested_path}
-                  |> Process.get(%{entities: []})
-                  |> Map.get(:entities, [])
-                  |> Enum.reverse()
+              Ash.Dsl.Extension.unimport_mods(unquote(nested_entity_mods))
 
-                Map.update(acc, key, entities, fn current_nested_entities ->
-                  (current_nested_entities || []) ++ entities
+              opts = Process.delete({:builder_opts, unquote(nested_entity_path)})
+
+              alias Ash.Dsl.Entity
+
+              nested_entities =
+                unquote(Macro.escape(entity.entities))
+                |> Enum.map(&elem(&1, 0))
+                |> Enum.uniq()
+                |> Enum.reduce(%{}, fn key, acc ->
+                  nested_path = section_path ++ unquote(nested_entity_path) ++ [key]
+
+                  entities =
+                    {__MODULE__, :ash, nested_path}
+                    |> Process.get(%{entities: []})
+                    |> Map.get(:entities, [])
+                    |> Enum.reverse()
+
+                  Map.update(acc, key, entities, fn current_nested_entities ->
+                    (current_nested_entities || []) ++ entities
+                  end)
                 end)
-              end)
 
-            built =
-              case Entity.build(unquote(Macro.escape(entity)), opts, nested_entities) do
-                {:ok, built} ->
-                  built
+              built =
+                case Entity.build(unquote(Macro.escape(entity)), opts, nested_entities) do
+                  {:ok, built} ->
+                    built
 
-                {:error, error} ->
-                  additional_path =
-                    if opts[:name] do
-                      [unquote(entity.name), opts[:name]]
-                    else
-                      [unquote(entity.name)]
-                    end
+                  {:error, error} ->
+                    additional_path =
+                      if opts[:name] do
+                        [unquote(entity.name), opts[:name]]
+                      else
+                        [unquote(entity.name)]
+                      end
 
-                  message =
-                    cond do
-                      Exception.exception?(error) ->
-                        Exception.message(error)
+                    message =
+                      cond do
+                        Exception.exception?(error) ->
+                          Exception.message(error)
 
-                      is_binary(error) ->
-                        error
+                        is_binary(error) ->
+                          error
 
-                      true ->
-                        inspect(error)
-                    end
+                        true ->
+                          inspect(error)
+                      end
 
-                  raise Ash.Error.Dsl.DslError,
-                    message: message,
-                    path: section_path ++ additional_path
+                    raise Ash.Error.Dsl.DslError,
+                      message: message,
+                      path: section_path ++ additional_path
+                end
+
+              new_config = %{current_config | entities: current_config.entities ++ [built]}
+
+              unless {extension, section_path} in current_sections do
+                Process.put({__MODULE__, :ash_sections}, [
+                  {extension, section_path} | current_sections
+                ])
               end
 
-            new_config = %{current_config | entities: current_config.entities ++ [built]}
-
-            unless {extension, section_path} in current_sections do
-              Process.put({__MODULE__, :ash_sections}, [
-                {extension, section_path} | current_sections
-              ])
+              Process.put(
+                {__MODULE__, :ash, section_path ++ unquote(nested_entity_path)},
+                new_config
+              )
+            rescue
+              e -> reraise e, __STACKTRACE__
             end
-
-            Process.put(
-              {__MODULE__, :ash, section_path ++ unquote(nested_entity_path)},
-              new_config
-            )
           end
         end
       end,
