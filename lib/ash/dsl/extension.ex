@@ -681,6 +681,8 @@ defmodule Ash.Dsl.Extension do
                     |> Map.get(:entities, [])
                     |> Enum.reverse()
 
+                  Process.delete({__MODULE__, :ash, nested_path})
+
                   Map.update(acc, key, entities, fn current_nested_entities ->
                     (current_nested_entities || []) ++ entities
                   end)
