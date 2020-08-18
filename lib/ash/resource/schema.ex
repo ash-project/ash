@@ -63,21 +63,6 @@ defmodule Ash.Schema do
             ]
           )
         end
-
-        for relationship <- relationships do
-          new_struct_fields =
-            Enum.reject(@struct_fields, fn {name, _} -> name == relationship.name end) ++
-              [{relationship.name, %Ash.NotLoaded{field: relationship.name, type: :relationship}}]
-
-          Module.delete_attribute(__MODULE__, :struct_fields)
-
-          Module.register_attribute(__MODULE__, :struct_fields, accumulate: true)
-
-          Enum.each(
-            Enum.reverse(new_struct_fields),
-            &Module.put_attribute(__MODULE__, :struct_fields, &1)
-          )
-        end
       end
     end
   end

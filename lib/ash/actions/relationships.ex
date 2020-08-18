@@ -584,14 +584,14 @@ defmodule Ash.Actions.Relationships do
 
   defp add_to_set_relationship(record, relationship_name, to_relate) do
     Map.update!(record, relationship_name, fn
-      %Ash.NotLoaded{type: :relationship} -> [clear_relationships(to_relate)]
+      %Ecto.Association.NotLoaded{} -> [clear_relationships(to_relate)]
       set_relationship -> [clear_relationships(to_relate) | set_relationship]
     end)
   end
 
   defp remove_from_set_relationship(record, relationship_name, to_remove, pkey) do
     Map.update!(record, relationship_name, fn
-      %Ash.NotLoaded{type: :relationship} ->
+      %Ecto.Association.NotLoaded{} ->
         []
 
       set_relationship ->
@@ -777,9 +777,10 @@ defmodule Ash.Actions.Relationships do
     resource
     |> Ash.Resource.relationships()
     |> Enum.reduce(record, fn relationship, record ->
-      not_loaded = %Ash.NotLoaded{
-        type: :relationship,
-        field: relationship.name
+      not_loaded = %Ecto.Association.NotLoaded{
+        __field__: relationship.name,
+        __owner__: relationship.source,
+        __cardinality__: relationship.cardinality
       }
 
       Map.put(record, relationship.name, not_loaded)
