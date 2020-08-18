@@ -4,7 +4,7 @@ defmodule Ash.Actions.Destroy do
   alias Ash.Engine.Request
 
   @spec run(Ash.api(), Ash.record(), Ash.action(), Keyword.t()) ::
-          :ok | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
+          :ok | {:error, Ash.Changeset.t()} | {:error, Ash.error()}
   def run(api, %resource{} = record, action, opts) do
     engine_opts =
       opts

@@ -6,7 +6,7 @@ defmodule Ash.Actions.Update do
   require Logger
 
   @spec run(Ash.api(), Ash.record(), Ash.action(), Keyword.t()) ::
-          {:ok, Ash.record()} | {:error, Ecto.Changeset.t()} | {:error, Ash.error()}
+          {:ok, Ash.record()} | {:error, Ash.Changeset.t()} | {:error, Ash.error()}
   def run(api, changeset, action, opts) do
     engine_opts =
       opts
