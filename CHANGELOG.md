@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.8.0](https://github.com/ash-project/ash/compare/v1.7.0...v1.8.0) (2020-08-18)
+
+
+
+
+### Features:
+
+* streamline `load` by accepting ok/error
+
+### Bug Fixes:
+
+* extensions: resolve duplicate nested entities
+
+* use Ecto's NotLoaded for assocs for now
+
+* create/update typespecs were wrong
+
 ## [v1.7.0](https://github.com/ash-project/ash/compare/v1.6.8...v1.7.0) (2020-08-17)
 
 
