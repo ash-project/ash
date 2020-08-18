@@ -348,6 +348,11 @@ defmodule Ash.Api do
   def load(api, data, query, opts \\ [])
   def load(_, [], _, _), do: {:ok, []}
   def load(_, nil, _, _), do: {:ok, nil}
+  def load(_, {:error, error}, _, _), do: {:error, error}
+
+  def load(api, {:ok, values}, query, opts) do
+    load(api, values, query, opts)
+  end
 
   def load(api, data, query, opts) when not is_list(data) do
     api
