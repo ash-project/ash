@@ -74,6 +74,14 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, :async_engine), do: true
   def can?(_, :composite_primary_key), do: true
   def can?(_, :upsert), do: true
+  def can?(_, :create), do: true
+  def can?(_, :read), do: true
+  def can?(_, :update), do: true
+  def can?(_, :destroy), do: true
+  def can?(_, :sort), do: true
+  def can?(_, :filter), do: true
+  def can?(_, :limit), do: true
+  def can?(_, :offset), do: true
   def can?(_, :boolean_filter), do: true
   def can?(_, :transact), do: true
   def can?(_, :delete_with_query), do: false

@@ -40,6 +40,16 @@ defmodule Ash.Filter do
 
   @type t :: %__MODULE__{}
 
+  defmodule Simple do
+    @moduledoc "Represents a simplified filter, with a simple list of predicates"
+    defstruct [:resource, :predicates]
+
+    defmodule Not do
+      @moduledoc "A negated predicate"
+      defstruct [:predicate]
+    end
+  end
+
   def parse!(resource, statement, aggregates \\ %{}) do
     case parse(resource, statement, aggregates) do
       {:ok, filter} ->
@@ -65,6 +75,33 @@ defmodule Ash.Filter do
         {:error, error}
     end
   end
+
+  def to_simple_filter(%{resource: resource, expression: expression}) do
+    predicates = get_predicates(expression)
+
+    %Simple{resource: resource, predicates: predicates}
+  end
+
+  defp get_predicates(expr, acc \\ [])
+
+  defp get_predicates(true, acc), do: acc
+  defp get_predicates(false, _), do: false
+  defp get_predicates(_, false), do: false
+
+  defp get_predicates(%Expression{op: :and, left: left, right: right}, acc) do
+    acc = get_predicates(left, acc)
+    get_predicates(right, acc)
+  end
+
+  defp get_predicates(%Not{expression: expression}, acc) do
+    expression
+    |> get_predicates()
+    |> Enum.reduce(acc, fn predicate, acc ->
+      [%Simple.Not{predicate: predicate} | acc]
+    end)
+  end
+
+  defp get_predicates(%Predicate{} = predicate, acc), do: [predicate | acc]
 
   def used_aggregates(filter) do
     reduce(filter, [], fn

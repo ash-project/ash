@@ -137,7 +137,8 @@ defmodule Ash.Actions.Read do
         fn %{data: %{query: ash_query}} = data ->
           query = Ash.Query.unset(initial_query, [:filter, :aggregates, :sort]).data_layer_query
 
-          with {:ok, filter} <- filter_with_related(relationship_filter_paths, ash_query, data),
+          with {:ok, filter} <-
+                 filter_with_related(relationship_filter_paths, ash_query, data),
                {:ok, filter} <-
                  Filter.run_other_data_layer_filters(
                    ash_query.api,
@@ -151,8 +152,10 @@ defmodule Ash.Actions.Read do
                    aggregates_in_query,
                    Map.get(data, :aggregate, %{})
                  ),
-               {:ok, query} <- Ash.DataLayer.filter(query, filter, ash_query.resource),
-               {:ok, query} <- Ash.DataLayer.sort(query, ash_query.sort, ash_query.resource) do
+               {:ok, query} <-
+                 Ash.DataLayer.filter(query, filter, ash_query.resource),
+               {:ok, query} <-
+                 Ash.DataLayer.sort(query, ash_query.sort, ash_query.resource) do
             Ash.DataLayer.run_query(query, ash_query.resource)
           end
         end

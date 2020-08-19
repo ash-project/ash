@@ -286,10 +286,15 @@ defmodule Ash.Query do
   def limit(query, nil), do: to_query(query)
 
   def limit(query, limit) when is_integer(limit) do
-    query
-    |> to_query()
-    |> Map.put(:limit, max(0, limit))
-    |> set_data_layer_query()
+    query = to_query(query)
+
+    if Ash.Resource.data_layer_can?(query.resource, :limit) do
+      query
+      |> Map.put(:limit, max(0, limit))
+      |> set_data_layer_query()
+    else
+      add_error(query, :limit, "Data layer does not support limits")
+    end
   end
 
   def limit(query, limit) do
@@ -301,10 +306,15 @@ defmodule Ash.Query do
   def offset(query, nil), do: to_query(query)
 
   def offset(query, offset) when is_integer(offset) do
-    query
-    |> to_query()
-    |> Map.put(:offset, max(0, offset))
-    |> set_data_layer_query()
+    query = to_query(query)
+
+    if Ash.Resource.data_layer_can?(query.resource, :offset) do
+      query
+      |> Map.put(:offset, max(0, offset))
+      |> set_data_layer_query()
+    else
+      add_error(query, :offset, "Data layer does not support offset")
+    end
   end
 
   def offset(query, offset) do
@@ -390,42 +400,50 @@ defmodule Ash.Query do
   def filter(query, %Ash.Filter{} = filter) do
     query = to_query(query)
 
-    new_filter =
-      case query.filter do
-        nil ->
-          {:ok, filter}
+    if Ash.Resource.data_layer_can?(query.resource, :filter) do
+      new_filter =
+        case query.filter do
+          nil ->
+            {:ok, filter}
 
-        existing_filter ->
-          Ash.Filter.add_to_filter(existing_filter, filter, :and, query.aggregates)
+          existing_filter ->
+            Ash.Filter.add_to_filter(existing_filter, filter, :and, query.aggregates)
+        end
+
+      case new_filter do
+        {:ok, filter} ->
+          set_data_layer_query(%{query | filter: filter})
+
+        {:error, error} ->
+          add_error(query, :filter, error)
       end
-
-    case new_filter do
-      {:ok, filter} ->
-        set_data_layer_query(%{query | filter: filter})
-
-      {:error, error} ->
-        add_error(query, :filter, error)
+    else
+      add_error(query, :filter, "Data layer does not support filtering")
     end
   end
 
   def filter(query, statement) do
     query = to_query(query)
 
-    filter =
-      if query.filter do
-        Ash.Filter.add_to_filter(query.filter, statement, :and, query.aggregates)
-      else
-        Ash.Filter.parse(query.resource, statement, query.aggregates)
+    if Ash.Resource.data_layer_can?(query.resource, :filter) do
+      filter =
+        if query.filter do
+          Ash.Filter.add_to_filter(query.filter, statement, :and, query.aggregates)
+        else
+          Ash.Filter.parse(query.resource, statement, query.aggregates)
+        end
+
+      case filter do
+        {:ok, filter} ->
+          query
+          |> Map.put(:filter, filter)
+          |> set_data_layer_query()
+
+        {:error, error} ->
+          add_error(query, :filter, error)
       end
-
-    case filter do
-      {:ok, filter} ->
-        query
-        |> Map.put(:filter, filter)
-        |> set_data_layer_query()
-
-      {:error, error} ->
-        add_error(query, :filter, error)
+    else
+      add_error(query, :filter, "Data layer does not support filtering")
     end
   end
 
@@ -433,29 +451,33 @@ defmodule Ash.Query do
   def sort(query, sorts) do
     query = to_query(query)
 
-    sorts
-    |> List.wrap()
-    |> Enum.reduce(query, fn
-      {sort, direction}, query ->
-        %{query | sort: query.sort ++ [{sort, direction}]}
+    if Ash.Resource.data_layer_can?(query.resource, :sort) do
+      sorts
+      |> List.wrap()
+      |> Enum.reduce(query, fn
+        {sort, direction}, query ->
+          %{query | sort: query.sort ++ [{sort, direction}]}
 
-      sort, query ->
-        %{query | sort: query.sort ++ [{sort, :asc}]}
-    end)
-    |> validate_sort()
-    |> set_data_layer_query()
+        sort, query ->
+          %{query | sort: query.sort ++ [{sort, :asc}]}
+      end)
+      |> validate_sort()
+      |> set_data_layer_query()
+    else
+      add_error(query, :sort, "Data layer does not support sorting")
+    end
   end
 
   @spec unset(Ash.resource() | t(), atom | [atom]) :: t()
   def unset(query, keys) when is_list(keys) do
+    query = to_query(query)
+
     keys
     |> Enum.reduce(query, fn key, query ->
       if key in [:api, :resource] do
-        to_query(query)
-      else
         query
-        |> to_query()
-        |> struct([{key, Map.get(%__MODULE__{}, key)}])
+      else
+        struct(query, [{key, Map.get(%__MODULE__{}, key)}])
       end
     end)
     |> set_data_layer_query()
@@ -474,36 +496,44 @@ defmodule Ash.Query do
 
   @doc false
   def data_layer_query(%{resource: resource} = ash_query, opts \\ []) do
-    query = Ash.DataLayer.resource_to_query(resource)
+    if Ash.Resource.data_layer_can?(resource, :read) do
+      query = Ash.DataLayer.resource_to_query(resource)
 
-    filter_aggregates =
-      if ash_query.filter do
-        Ash.Filter.used_aggregates(ash_query.filter)
-      else
-        []
-      end
-
-    sort_aggregates =
-      Enum.flat_map(ash_query.sort, fn {field, _} ->
-        case Map.fetch(ash_query.aggregates, field) do
-          :error ->
-            []
-
-          {:ok, agg} ->
-            [agg]
+      filter_aggregates =
+        if ash_query.filter do
+          Ash.Filter.used_aggregates(ash_query.filter)
+        else
+          []
         end
-      end)
 
-    aggregates = Enum.uniq_by(filter_aggregates ++ sort_aggregates, & &1.name)
+      sort_aggregates =
+        Enum.flat_map(ash_query.sort, fn {field, _} ->
+          case Map.fetch(ash_query.aggregates, field) do
+            :error ->
+              []
 
-    with {:ok, query} <- add_aggregates(query, ash_query.resource, aggregates),
-         {:ok, query} <- Ash.DataLayer.sort(query, ash_query.sort, resource),
-         {:ok, query} <- maybe_filter(query, ash_query, opts),
-         {:ok, query} <- Ash.DataLayer.limit(query, ash_query.limit, resource),
-         {:ok, query} <- Ash.DataLayer.offset(query, ash_query.offset, resource) do
-      {:ok, query}
+            {:ok, agg} ->
+              [agg]
+          end
+        end)
+
+      aggregates = Enum.uniq_by(filter_aggregates ++ sort_aggregates, & &1.name)
+
+      with {:ok, query} <-
+             add_aggregates(query, ash_query.resource, aggregates),
+           {:ok, query} <-
+             Ash.DataLayer.sort(query, ash_query.sort, resource),
+           {:ok, query} <- maybe_filter(query, ash_query, opts),
+           {:ok, query} <-
+             Ash.DataLayer.limit(query, ash_query.limit, resource),
+           {:ok, query} <-
+             Ash.DataLayer.offset(query, ash_query.offset, resource) do
+        {:ok, query}
+      else
+        {:error, error} -> {:error, error}
+      end
     else
-      {:error, error} -> {:error, error}
+      {:error, "Resource does not support reading"}
     end
   end
 
@@ -599,7 +629,12 @@ defmodule Ash.Query do
   end
 
   defp to_query(%__MODULE__{} = query), do: query
-  defp to_query(resource), do: new(resource)
+
+  defp to_query(resource) do
+    resource
+    |> new()
+    |> Ash.DataLayer.transform_query()
+  end
 
   defp merge_side_load([], right), do: sanitize_side_loads(right)
   defp merge_side_load(left, []), do: sanitize_side_loads(left)

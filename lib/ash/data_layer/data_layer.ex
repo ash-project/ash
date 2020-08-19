@@ -14,9 +14,17 @@ defmodule Ash.DataLayer do
           | :aggregate_sort
           | :boolean_filter
           | :async_engine
+          | :create
+          | :read
+          | :update
+          | :destroy
           | :join
+          | :limit
+          | :offset
           | :transact
+          | :filter
           | {:filter_predicate, Ash.Type.t(), struct}
+          | :sort
           | {:sort, Ash.Type.t()}
           | :upsert
           | :delete_with_query
@@ -35,6 +43,7 @@ defmodule Ash.DataLayer do
               resource :: Ash.resource()
             ) :: {:ok, Ash.data_layer_query()} | {:error, term}
   @callback resource_to_query(Ash.resource()) :: Ash.data_layer_query()
+  @callback transform_query(Ash.query()) :: Ash.query()
   @callback run_query(Ash.data_layer_query(), Ash.resource()) ::
               {:ok, list(Ash.resource())} | {:error, term}
   @callback create(Ash.resource(), Ash.changeset()) ::
@@ -53,6 +62,10 @@ defmodule Ash.DataLayer do
   @callback can?(Ash.resource(), feature()) :: boolean
 
   @optional_callbacks source: 1,
+                      run_query: 2,
+                      create: 2,
+                      update: 2,
+                      destroy: 1,
                       filter: 3,
                       sort: 3,
                       limit: 3,
@@ -62,7 +75,9 @@ defmodule Ash.DataLayer do
                       upsert: 2,
                       custom_filters: 1,
                       in_transaction?: 1,
-                      add_aggregate: 3
+                      add_aggregate: 3,
+                      transform_query: 1,
+                      resource_to_query: 1
 
   @spec resource_to_query(Ash.resource()) :: Ash.data_layer_query()
   def resource_to_query(resource) do
@@ -102,14 +117,28 @@ defmodule Ash.DataLayer do
 
   def filter(query, filter, resource) do
     data_layer = Ash.Resource.data_layer(resource)
-    data_layer.filter(query, filter, resource)
+
+    if data_layer.can?(resource, :filter) do
+      if data_layer.can?(resource, :boolean_filter) do
+        data_layer.filter(query, filter, resource)
+      else
+        simple_filter = Ash.Filter.to_simple_filter(filter)
+        data_layer.filter(query, simple_filter, resource)
+      end
+    else
+      {:error, "Data layer does not support filtering"}
+    end
   end
 
   @spec sort(Ash.data_layer_query(), Ash.sort(), Ash.resource()) ::
           {:ok, Ash.data_layer_query()} | {:error, term}
   def sort(query, sort, resource) do
-    data_layer = Ash.Resource.data_layer(resource)
-    data_layer.sort(query, sort, resource)
+    if can?(:sort, resource) do
+      data_layer = Ash.Resource.data_layer(resource)
+      data_layer.sort(query, sort, resource)
+    else
+      {:ok, query}
+    end
   end
 
   @spec limit(Ash.data_layer_query(), limit :: non_neg_integer, Ash.resource()) ::
@@ -117,8 +146,12 @@ defmodule Ash.DataLayer do
   def limit(query, nil, _resource), do: {:ok, query}
 
   def limit(query, limit, resource) do
-    data_layer = Ash.Resource.data_layer(resource)
-    data_layer.limit(query, limit, resource)
+    if can?(:limit, resource) do
+      data_layer = Ash.Resource.data_layer(resource)
+      data_layer.limit(query, limit, resource)
+    else
+      {:ok, query}
+    end
   end
 
   @spec offset(Ash.data_layer_query(), offset :: non_neg_integer, Ash.resource()) ::
@@ -126,8 +159,12 @@ defmodule Ash.DataLayer do
   def offset(query, nil, _resource), do: {:ok, query}
 
   def offset(query, offset, resource) do
-    data_layer = Ash.Resource.data_layer(resource)
-    data_layer.offset(query, offset, resource)
+    if can?(:offset, resource) do
+      data_layer = Ash.Resource.data_layer(resource)
+      data_layer.offset(query, offset, resource)
+    else
+      {:ok, query}
+    end
   end
 
   @spec add_aggregate(Ash.data_layer_query(), Ash.aggregate(), Ash.resource()) ::
@@ -165,6 +202,16 @@ defmodule Ash.DataLayer do
       data_layer.custom_filters(resource)
     else
       %{}
+    end
+  end
+
+  def transform_query(query) do
+    data_layer = Ash.Resource.data_layer(query.resource)
+
+    if :erlang.function_exported(data_layer, :transform_query, 1) do
+      data_layer.transform_query(query)
+    else
+      query
     end
   end
 end

@@ -50,6 +50,14 @@ defmodule Ash.DataLayer.EtsTest do
     assert EtsDataLayer.can?(EtsTestUser, :boolean_filter) == true
     assert EtsDataLayer.can?(EtsTestUser, :transact) == false
     assert EtsDataLayer.can?(EtsTestUser, :delete_with_query) == false
+    assert EtsDataLayer.can?(EtsTestUser, :create) == true
+    assert EtsDataLayer.can?(EtsTestUser, :read) == true
+    assert EtsDataLayer.can?(EtsTestUser, :update) == true
+    assert EtsDataLayer.can?(EtsTestUser, :destroy) == true
+    assert EtsDataLayer.can?(EtsTestUser, :sort) == true
+    assert EtsDataLayer.can?(EtsTestUser, :filter) == true
+    assert EtsDataLayer.can?(EtsTestUser, :limit) == true
+    assert EtsDataLayer.can?(EtsTestUser, :offset) == true
     assert EtsDataLayer.can?(EtsTestUser, {:filter_predicate, :foo, %In{}}) == true
     assert EtsDataLayer.can?(EtsTestUser, {:filter_predicate, :foo, %Eq{}}) == true
     assert EtsDataLayer.can?(EtsTestUser, {:filter_predicate, :foo, %LessThan{}}) == true

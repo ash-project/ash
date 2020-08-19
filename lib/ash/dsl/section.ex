@@ -24,7 +24,6 @@ defmodule Ash.Dsl.Section do
     :name,
     imports: [],
     schema: [],
-    configurable: [],
     describe: "",
     entities: [],
     sections: []
@@ -35,7 +34,6 @@ defmodule Ash.Dsl.Section do
           describe: String.t(),
           entities: [Ash.Dsl.Entity.t()],
           sections: [%__MODULE__{}],
-          configurable: [atom],
           schema: NimbleOptions.schema()
         }
 
