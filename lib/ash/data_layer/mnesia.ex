@@ -40,7 +40,7 @@ defmodule Ash.DataLayer.Mnesia do
     end)
   end
 
-  alias Ash.Filter.Predicate.{Eq, GreaterThan, In, LessThan}
+  alias Ash.Filter.Predicate.{Eq, GreaterThan, In, IsNil, LessThan}
 
   @behaviour Ash.DataLayer
 
@@ -87,6 +87,7 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, :delete_with_query), do: false
   def can?(_, {:filter_predicate, _, %In{}}), do: true
   def can?(_, {:filter_predicate, _, %Eq{}}), do: true
+  def can?(_, {:filter_predicate, _, %IsNil{}}), do: true
   def can?(_, {:filter_predicate, _, %LessThan{}}), do: true
   def can?(_, {:filter_predicate, _, %GreaterThan{}}), do: true
   def can?(_, {:sort, _}), do: true

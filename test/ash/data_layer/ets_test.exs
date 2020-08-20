@@ -32,6 +32,7 @@ defmodule Ash.DataLayer.EtsTest do
       attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
       attribute :name, :string
       attribute :age, :integer
+      attribute :title, :string
     end
   end
 
@@ -173,7 +174,7 @@ defmodule Ash.DataLayer.EtsTest do
 
   describe "filter" do
     setup do
-      mike = create_user(%{name: "Mike", age: 37})
+      mike = create_user(%{name: "Mike", age: 37, title: "Dad"})
       joe = create_user(%{name: "Joe", age: 11})
       matthew = create_user(%{name: "Matthew", age: 9})
       zachary = create_user(%{name: "Zachary", age: 6})
@@ -226,6 +227,11 @@ defmodule Ash.DataLayer.EtsTest do
 
     test "boolean", %{zachary: zachary, matthew: matthew} do
       assert [^matthew, ^zachary] = filter_users(and: [true, age: [lt: 10]])
+    end
+
+    test "is_nil", %{zachary: zachary, matthew: matthew, joe: joe} do
+      assert [^joe, ^matthew, ^zachary] = filter_users(is_nil: :title)
+      assert [^joe, ^matthew, ^zachary] = filter_users(title: [is_nil: true])
     end
   end
 
