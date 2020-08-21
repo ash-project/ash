@@ -54,7 +54,6 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, :offset), do: true
   def can?(_, :boolean_filter), do: true
   def can?(_, :transact), do: false
-  def can?(_, :delete_with_query), do: false
   def can?(_, {:filter_predicate, _, %In{}}), do: true
   def can?(_, {:filter_predicate, _, %Eq{}}), do: true
   def can?(_, {:filter_predicate, _, %LessThan{}}), do: true
@@ -220,7 +219,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   @impl true
-  def destroy(%resource{} = record) do
+  def destroy(resource, %{data: record}) do
     pkey = Map.take(record, Ash.Resource.primary_key(resource))
 
     with {:ok, table} <- wrap_or_create_table(resource),

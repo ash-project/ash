@@ -486,7 +486,7 @@ defmodule Ash.Actions.Relationships do
   end
 
   defp destroy_and_remove(api, join_row, to_remove_record, record, relationship, join_pkey, pkey) do
-    case api.destroy(join_row) do
+    case api.destroy(Ash.Changeset.new(join_row)) do
       :ok ->
         {:ok,
          record
@@ -779,7 +779,7 @@ defmodule Ash.Actions.Relationships do
     |> Enum.reduce(record, fn relationship, record ->
       not_loaded = %Ecto.Association.NotLoaded{
         __field__: relationship.name,
-        __owner__: relationship.source,
+        __owner__: resource,
         __cardinality__: relationship.cardinality
       }
 

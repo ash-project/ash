@@ -40,6 +40,7 @@ defmodule Ash.Changeset do
     :action_type,
     :resource,
     :api,
+    data_layer_context: %{},
     after_action: [],
     before_action: [],
     errors: [],
@@ -169,6 +170,16 @@ defmodule Ash.Changeset do
     Map.get(changeset.data, attribute)
   end
 
+  @spec put_datalayer_context(t(), atom, term) :: t()
+  def put_datalayer_context(changeset, key, value) do
+    %{changeset | data_layer_context: Map.put(changeset.data_layer_context, key, value)}
+  end
+
+  @spec set_datalayer_context(t(), map) :: t()
+  def set_datalayer_context(changeset, map) do
+    %{changeset | data_layer_context: Map.merge(changeset.data_layer_context, map)}
+  end
+
   @doc """
   Appends a record of list of records to a relationship. Stacks with previous removals/additions.
 
@@ -209,7 +220,7 @@ defmodule Ash.Changeset do
             message: "Relationship is not editable"
           )
 
-        {:error, error}
+        add_error(changeset, error)
 
       %{type: :many_to_many} = relationship ->
         case primary_keys_with_changes(relationship, List.wrap(record_or_records)) do
@@ -278,7 +289,7 @@ defmodule Ash.Changeset do
             message: "Relationship is not editable"
           )
 
-        {:error, error}
+        add_error(changeset, error)
 
       relationship ->
         case primary_key(relationship, List.wrap(record_or_records)) do
@@ -324,7 +335,7 @@ defmodule Ash.Changeset do
   @spec replace_relationship(
           t(),
           atom(),
-          Ash.primary_key() | [Ash.primary_key()]
+          Ash.primary_key() | [Ash.primary_key()] | nil
         ) :: t()
   def replace_relationship(changeset, relationship, record_or_records) do
     case Ash.Resource.relationship(changeset.resource, relationship) do
@@ -344,7 +355,7 @@ defmodule Ash.Changeset do
             message: "Relationship is not editable"
           )
 
-        {:error, error}
+        add_error(changeset, error)
 
       %{cardinality: :one, type: type}
       when is_list(record_or_records) and length(record_or_records) > 1 ->

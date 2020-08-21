@@ -50,7 +50,6 @@ defmodule Ash.DataLayer.EtsTest do
     assert EtsDataLayer.can?(EtsTestUser, :upsert) == true
     assert EtsDataLayer.can?(EtsTestUser, :boolean_filter) == true
     assert EtsDataLayer.can?(EtsTestUser, :transact) == false
-    assert EtsDataLayer.can?(EtsTestUser, :delete_with_query) == false
     assert EtsDataLayer.can?(EtsTestUser, :create) == true
     assert EtsDataLayer.can?(EtsTestUser, :read) == true
     assert EtsDataLayer.can?(EtsTestUser, :update) == true

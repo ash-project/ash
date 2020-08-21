@@ -95,59 +95,18 @@ defmodule Ash.Dsl.Transformer do
   end
 
   def sort(transformers) do
-    transformers
-    |> Enum.map(&build_before_after_list(&1, transformers))
-    |> Enum.sort_by(& &1, __MODULE__)
-    |> Enum.map(&elem(&1, 0))
-  end
-
-  def build_before_after_list(transformer, transformers, already_touched \\ []) do
-    transformers
-    |> Enum.reject(&(&1 in already_touched))
-    |> Enum.reject(&(&1 == transformer))
-    |> Enum.reduce({transformer, [], []}, fn other_transformer,
-                                             {transformer, before_list, after_list} ->
-      {_, other_befores, other_afters} =
-        build_before_after_list(other_transformer, transformers, [transformer | already_touched])
-
-      cond do
-        transformer.before?(other_transformer) ->
-          {transformer, [other_transformer | before_list ++ other_befores], after_list}
-
-        transformer.after?(other_transformer) ->
-          {transformer, before_list, [other_transformer | after_list ++ other_afters]}
-
-        true ->
-          {transformer, before_list, after_list}
-      end
+    Enum.reduce(transformers, [], fn transformer, list ->
+      put_transformer_in(list, transformer)
     end)
   end
 
-  def compare({left, after_left, before_left}, {right, after_right, before_right}) do
-    cond do
-      right in after_left ->
-        :lt
+  defp put_transformer_in([], transformer), do: [transformer]
 
-      right in before_left ->
-        :gt
-
-      left in after_right ->
-        :gt
-
-      left in before_right ->
-        :lt
-
-      true ->
-        cond do
-          left == right ->
-            :eq
-
-          inspect(left) < inspect(right) ->
-            :lt
-
-          true ->
-            :gt
-        end
+  defp put_transformer_in([first | rest] = remaining, transformer) do
+    if transformer.before?(first) or first.after?(transformer) do
+      [transformer | remaining]
+    else
+      [first | put_transformer_in(rest, transformer)]
     end
   end
 end

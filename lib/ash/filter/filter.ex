@@ -308,19 +308,12 @@ defmodule Ash.Filter do
   def add_to_filter(nil, %__MODULE__{} = addition, _, _), do: {:ok, addition}
 
   def add_to_filter(
-        %__MODULE__{resource: resource} = base,
-        %__MODULE__{resource: resource} = addition,
+        %__MODULE__{} = base,
+        %__MODULE__{} = addition,
         op,
         _
       ) do
     {:ok, %{base | expression: Expression.new(op, base.expression, addition.expression)}}
-  end
-
-  def add_to_filter(%__MODULE__{} = base, %__MODULE__{} = addition, _, _) do
-    {:error,
-     "Cannot add filter for resource #{inspect(addition.resource)} to filter with resource #{
-       inspect(base.resource)
-     }"}
   end
 
   def add_to_filter(%__MODULE__{} = base, statement, op, aggregates) do

@@ -12,6 +12,7 @@ defmodule Ash.Query do
     :data_layer_query,
     aggregates: %{},
     side_load: [],
+    data_layer_context: %{},
     sort: [],
     limit: nil,
     offset: 0,
@@ -132,6 +133,16 @@ defmodule Ash.Query do
       true ->
         add_error(query, :load, "Could not load #{inspect(field)}")
     end
+  end
+
+  @spec put_datalayer_context(t(), atom, term) :: t()
+  def put_datalayer_context(query, key, value) do
+    %{query | data_layer_context: Map.put(query.data_layer_context, key, value)}
+  end
+
+  @spec set_datalayer_context(t(), map) :: t()
+  def set_datalayer_context(query, map) do
+    %{query | data_layer_context: Map.merge(query.data_layer_context, map)}
   end
 
   def unload(query, fields) do
@@ -528,7 +539,7 @@ defmodule Ash.Query do
              Ash.DataLayer.limit(query, ash_query.limit, resource),
            {:ok, query} <-
              Ash.DataLayer.offset(query, ash_query.offset, resource) do
-        {:ok, query}
+        {:ok, Ash.DataLayer.set_context(resource, query, ash_query.data_layer_context)}
       else
         {:error, error} -> {:error, error}
       end

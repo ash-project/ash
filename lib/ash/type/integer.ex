@@ -62,6 +62,16 @@ defmodule Ash.Type.Integer do
   end
 
   @impl true
+  def cast_stored(string) when is_binary(string) do
+    case Integer.parse(string) do
+      {integer, ""} ->
+        cast_stored(integer)
+
+      _ ->
+        :error
+    end
+  end
+
   def cast_stored(value) do
     Ecto.Type.load(:integer, value)
   end

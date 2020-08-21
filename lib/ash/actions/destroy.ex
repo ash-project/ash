@@ -3,9 +3,9 @@ defmodule Ash.Actions.Destroy do
   alias Ash.Engine
   alias Ash.Engine.Request
 
-  @spec run(Ash.api(), Ash.record(), Ash.action(), Keyword.t()) ::
+  @spec run(Ash.api(), Ash.Changeset.t(), Ash.action(), Keyword.t()) ::
           :ok | {:error, Ash.Changeset.t()} | {:error, Ash.error()}
-  def run(api, %resource{} = record, action, opts) do
+  def run(api, %{data: record, resource: resource} = changeset, action, opts) do
     engine_opts =
       opts
       |> Keyword.take([:verbose?, :actor, :authorize?])
@@ -28,20 +28,19 @@ defmodule Ash.Actions.Destroy do
         path: [:destroy],
         action: action,
         authorize?: false,
+        changeset: %{changeset | action_type: :destroy, api: api},
         data:
-          Request.resolve([[:data, :data]], fn _ ->
-            changeset =
-              record
-              |> Ash.Changeset.new()
-              |> Map.put(:api, api)
-
-            with :ok <- validate(changeset),
-                 :ok <- Ash.Resource.data_layer(resource).destroy(record) do
-              {:ok, record}
-            else
-              {:error, error} -> {:error, error}
+          Request.resolve(
+            [[:data, :data], [:destroy, :changeset]],
+            fn %{destroy: %{changeset: changeset}} ->
+              with :ok <- validate(changeset),
+                   :ok <- Ash.DataLayer.destroy(resource, changeset) do
+                {:ok, record}
+              else
+                {:error, error} -> {:error, error}
+              end
             end
-          end)
+          )
       )
 
     case Engine.run([authorization_request, destroy_request], api, engine_opts) do

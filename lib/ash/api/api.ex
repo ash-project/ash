@@ -159,7 +159,7 @@ defmodule Ash.Api do
 
   #{NimbleOptions.docs(@create_opts_schema)}
   """
-  @callback create!(resource :: Ash.resource(), params :: Keyword.t()) ::
+  @callback create!(Ash.changeset(), params :: Keyword.t()) ::
               Ash.record() | no_return
 
   @doc """
@@ -167,7 +167,7 @@ defmodule Ash.Api do
 
   #{NimbleOptions.docs(@create_opts_schema)}
   """
-  @callback create(resource :: Ash.resource(), params :: Keyword.t()) ::
+  @callback create(Ash.changeset(), params :: Keyword.t()) ::
               {:ok, Ash.record()} | {:error, Ash.error()}
 
   @doc """
@@ -175,7 +175,7 @@ defmodule Ash.Api do
 
   #{NimbleOptions.docs(@update_opts_schema)}
   """
-  @callback update!(record :: Ash.record(), params :: Keyword.t()) ::
+  @callback update!(Ash.changeset(), params :: Keyword.t()) ::
               Ash.record() | no_return
 
   @doc """
@@ -183,7 +183,7 @@ defmodule Ash.Api do
 
   #{NimbleOptions.docs(@update_opts_schema)}
   """
-  @callback update(record :: Ash.record(), params :: Keyword.t()) ::
+  @callback update(Ash.changeset(), params :: Keyword.t()) ::
               {:ok, Ash.record()} | {:error, Ash.error()}
 
   @doc """
@@ -191,14 +191,14 @@ defmodule Ash.Api do
 
   #{NimbleOptions.docs(@destroy_opts_schema)}
   """
-  @callback destroy!(record :: Ash.record(), params :: Keyword.t()) :: :ok | no_return
+  @callback destroy!(Ash.changeset() | Ash.record(), params :: Keyword.t()) :: :ok | no_return
 
   @doc """
   Destroy a record.
 
   #{NimbleOptions.docs(@destroy_opts_schema)}
   """
-  @callback destroy(record :: Ash.record(), params :: Keyword.t()) ::
+  @callback destroy(Ash.changeset() | Ash.record(), params :: Keyword.t()) ::
               :ok | {:error, Ash.error()}
 
   @doc """
@@ -458,23 +458,28 @@ defmodule Ash.Api do
   end
 
   @doc false
-  @spec destroy!(Ash.api(), Ash.record(), Keyword.t()) :: :ok | no_return
-  def destroy!(api, record, opts) do
+  @spec destroy!(Ash.api(), Ash.changeset() | Ash.record(), Keyword.t()) :: :ok | no_return
+  def destroy!(api, changeset, opts) do
     opts = NimbleOptions.validate!(opts, @destroy_opts_schema)
 
     api
-    |> destroy(record, opts)
+    |> destroy(changeset, opts)
     |> unwrap_or_raise!()
   end
 
   @doc false
-  @spec destroy(Ash.api(), Ash.record(), Keyword.t()) :: :ok | {:error, Ash.error()}
-  def destroy(api, %resource{} = record, opts) do
+  @spec destroy(Ash.api(), Ash.changeset() | Ash.record(), Keyword.t()) ::
+          :ok | {:error, Ash.error()}
+  def destroy(api, %Ash.Changeset{resource: resource} = changeset, opts) do
     with {:ok, opts} <- NimbleOptions.validate(opts, @destroy_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, resource),
          {:ok, action} <- get_action(resource, opts, :destroy) do
-      Destroy.run(api, record, action, opts)
+      Destroy.run(api, changeset, action, opts)
     end
+  end
+
+  def destroy(api, record, opts) do
+    destroy(api, Ash.Changeset.new(record), opts)
   end
 
   defp get_action(resource, params, type) do

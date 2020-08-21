@@ -27,7 +27,6 @@ defmodule Ash.DataLayer do
           | :sort
           | {:sort, Ash.Type.t()}
           | :upsert
-          | :delete_with_query
           | :composite_primary_key
 
   @callback custom_filters(Ash.resource()) :: map()
@@ -54,18 +53,20 @@ defmodule Ash.DataLayer do
               {:ok, Ash.resource()} | {:error, term}
   @callback add_aggregate(Ash.data_layer_query(), Ash.aggregate(), Ash.resource()) ::
               {:ok, Ash.data_layer_query()} | {:error, term}
-  @callback destroy(record :: Ash.record()) :: :ok | {:error, term}
+  @callback destroy(Ash.resource(), Ash.changeset()) :: :ok | {:error, term}
   @callback transaction(Ash.resource(), (() -> term)) :: {:ok, term} | {:error, term}
   @callback in_transaction?(Ash.resource()) :: boolean
   @callback source(Ash.resource()) :: String.t()
   @callback rollback(Ash.resource(), term) :: no_return
   @callback can?(Ash.resource(), feature()) :: boolean
+  @callback set_context(Ash.resource(), Ash.data_layer_query(), map) :: Ash.data_layer_query()
 
   @optional_callbacks source: 1,
                       run_query: 2,
                       create: 2,
                       update: 2,
-                      destroy: 1,
+                      set_context: 3,
+                      destroy: 2,
                       filter: 3,
                       sort: 3,
                       limit: 3,
@@ -96,10 +97,17 @@ defmodule Ash.DataLayer do
     Ash.Resource.data_layer(resource).create(resource, changeset)
   end
 
+  @spec destroy(Ash.resource(), Ash.changeset()) :: :ok | {:error, term}
+  def destroy(resource, changeset) do
+    Ash.Resource.data_layer(resource).destroy(resource, changeset)
+  end
+
   @spec source(Ash.resource()) :: String.t()
   def source(resource) do
-    if :erlang.function_exported(Ash.Resource.data_layer(resource), :source, 1) do
-      Ash.Resource.data_layer(resource).source(resource)
+    data_layer = Ash.Resource.data_layer(resource)
+
+    if :erlang.function_exported(data_layer, :source, 1) do
+      data_layer.source(resource)
     else
       ""
     end
@@ -109,6 +117,17 @@ defmodule Ash.DataLayer do
           {:ok, Ash.record()} | {:error, term}
   def upsert(resource, changeset) do
     Ash.Resource.data_layer(resource).upsert(resource, changeset)
+  end
+
+  @spec set_context(Ash.resource(), Ash.data_layer_query(), map) :: Ash.data_layer_query()
+  def set_context(resource, query, map) do
+    data_layer = Ash.Resource.data_layer(resource)
+
+    if :erlang.function_exported(data_layer, :set_context, 2) do
+      data_layer.set_context(query, map)
+    else
+      query
+    end
   end
 
   @spec filter(Ash.data_layer_query(), Ash.filter(), Ash.resource()) ::

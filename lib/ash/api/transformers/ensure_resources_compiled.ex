@@ -7,6 +7,7 @@ defmodule Ash.Api.Transformers.EnsureResourcesCompiled do
   use Ash.Dsl.Transformer
 
   alias Ash.Dsl.Transformer
+  require Logger
 
   def transform(_module, dsl) do
     dsl
@@ -25,7 +26,9 @@ defmodule Ash.Api.Transformers.EnsureResourcesCompiled do
       [] ->
         {:ok, dsl}
 
-      _ ->
+      resources ->
+        Logger.error("Could not ensure that resources #{inspect(resources)} were compiled")
+
         :halt
     end
   end
