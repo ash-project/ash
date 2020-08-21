@@ -103,7 +103,7 @@ defmodule Ash.MixProject do
       {:ecto, "~> 3.4"},
       {:ets, "~> 0.8.0"},
       {:ex_doc, "~> 0.22", only: :dev, runtime: false},
-      {:ex_check, "~> 0.11.0", only: :dev},
+      {:ex_check, "~> 0.12.0", only: :dev},
       {:credo, ">= 0.0.0", only: :dev, runtime: false},
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
       {:sobelow, ">= 0.0.0", only: :dev, runtime: false},
