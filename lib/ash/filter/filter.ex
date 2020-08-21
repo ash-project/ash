@@ -732,6 +732,13 @@ defmodule Ash.Filter do
     end
   end
 
+  defp add_expression_part({:is_nil, field}, context, expression) do
+    case IsNil.new(context.resource, %{name: field}, true) do
+      {:ok, is_nil} -> {:ok, Expression.new(:is_nil, expression, is_nil)}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
   defp add_expression_part({:or, nested_statements}, context, expression) do
     with {:ok, nested_expression} <- parse_and_join(nested_statements, :or, context),
          :ok <- validate_datalayers_support_boolean_filters(nested_expression) do

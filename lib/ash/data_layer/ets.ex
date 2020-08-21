@@ -7,7 +7,7 @@ defmodule Ash.DataLayer.Ets do
 
   alias Ash.Actions.Sort
   alias Ash.Filter.{Expression, Not, Predicate}
-  alias Ash.Filter.Predicate.{Eq, GreaterThan, In, LessThan}
+  alias Ash.Filter.Predicate.{Eq, GreaterThan, In, IsNil, LessThan}
 
   @behaviour Ash.DataLayer
 
@@ -59,6 +59,7 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, {:filter_predicate, _, %Eq{}}), do: true
   def can?(_, {:filter_predicate, _, %LessThan{}}), do: true
   def can?(_, {:filter_predicate, _, %GreaterThan{}}), do: true
+  def can?(_, {:filter_predicate, _, %IsNil{}}), do: true
   def can?(_, {:sort, _}), do: true
   def can?(_, _), do: false
 
@@ -154,6 +155,14 @@ defmodule Ash.DataLayer.Ets do
     not matches_filter?(record, expression)
   end
 
+  defp matches_filter?(record, %IsNil{field: field, nil?: true}) do
+    Map.fetch(record, field) == {:ok, nil}
+  end
+
+  defp matches_filter?(record, %IsNil{field: field, nil?: false}) do
+    Map.fetch(record, field) != {:ok, nil}
+  end
+
   defp matches_predicate?(record, field, %Eq{value: predicate_value}) do
     Map.fetch(record, field) == {:ok, predicate_value}
   end
@@ -176,6 +185,14 @@ defmodule Ash.DataLayer.Ets do
     case Map.fetch(record, field) do
       {:ok, value} -> value in predicate_values
       :error -> false
+    end
+  end
+
+  defp matches_predicate?(record, field, %IsNil{field: field, nil?: nil?}) do
+    case Map.fetch(record, field) do
+      {:ok, nil} -> nil?
+      {:ok, _} -> !nil?
+      :error -> nil?
     end
   end
 
