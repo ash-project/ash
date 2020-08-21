@@ -13,9 +13,17 @@ jobs:
     runs-on: ubuntu-latest
     name: OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
     strategy:
+      fail-fast: false
       matrix:
-        otp: ["23"]
-        elixir: ["1.10.0"]
+        include:
+          - elixir: 1.8.2
+            otp: 22.3.4.8
+          - elixir: 1.9.4
+            otp: 22.3.4.8
+          - elixir: 1.10.4
+            otp: 22.3.4.8
+          - elixir: 1.10.4
+            otp: 23.0.3
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       ASH_CI: true

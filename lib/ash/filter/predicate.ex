@@ -131,10 +131,14 @@ defmodule Ash.Filter.Predicate do
     end
   end
 
+  # custom_options not available in Elixir before 1.9
   def add_inspect_path(inspect_opts, field) do
-    case inspect_opts.custom_options[:relationship_path] do
-      empty when empty in [nil, []] -> to_string(field)
-      path -> Enum.join(path, ".") <> "." <> to_string(field)
+    case inspect_opts do
+      %{custom_options: %{relationship_path: path}} ->
+        Enum.join(path, ".") <> "." <> to_string(field)
+
+      _ ->
+        to_string(field)
     end
   end
 
@@ -156,10 +160,17 @@ defmodule Ash.Filter.Predicate do
             number: :red,
             regex: :violet,
             tuple: :white
-          ],
-          custom_options: Keyword.put(opts.custom_options, :relationship_path, relationship_path)
+          ]
       }
 
+      opts =
+        apply(Map, :put, [
+          opts,
+          :custom_options,
+          Keyword.put(opts.custom_options || [], :relationship_path, relationship_path)
+        ])
+
+      # Above indirection required to avoid dialyzer warning in pre-1.9 Elixir
       to_doc(predicate, opts)
     end
   end
