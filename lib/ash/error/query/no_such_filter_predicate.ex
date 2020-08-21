@@ -2,7 +2,7 @@ defmodule Ash.Error.Query.NoSuchFilterPredicate do
   @moduledoc "Used when a filter predicate that does not exist is referenced"
   use Ash.Error
 
-  def_ash_error([:message, :value], class: :invalid)
+  def_ash_error([:message, :value, :key, :resource], class: :invalid)
 
   defimpl Ash.ErrorKind do
     def id(_), do: Ecto.UUID.generate()

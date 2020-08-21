@@ -191,9 +191,9 @@ defmodule Ash.DataLayer.Delegate do
     changeset = translate_changeset(destination_resource.__struct__, source_changeset)
 
     if authorize?(resource) && changeset_authorize?(changeset) do
-      api(resource).upsert(changeset, actor: actor(changeset), authorize?: true)
+      api(resource).create(changeset, upsert?: true, actor: actor(changeset), authorize?: true)
     else
-      api(resource).upsert(changeset)
+      api(resource).create(changeset, upsert?: true)
     end
     |> case do
       {:ok, upserted} ->
@@ -235,14 +235,9 @@ defmodule Ash.DataLayer.Delegate do
   def destroy(resource, %{data: %resource{} = record} = changeset) do
     destination_api = api(resource)
     pkey = Ash.Resource.primary_key(resource)
+    pkey_value = Map.to_list(Map.take(record, pkey))
 
-    if authorize?(resource) && changeset_authorize?(changeset) do
-      api(resource).create(changeset, actor: actor(changeset), authorize?: true)
-    else
-      api(resource).create(changeset)
-    end
-
-    case destination_api.get(resource, Map.take(record, pkey)) do
+    case destination_api.get(resource(resource), pkey_value) do
       {:ok, nil} ->
         {:error, "Delegated resource not found"}
 
@@ -250,7 +245,14 @@ defmodule Ash.DataLayer.Delegate do
         {:error, error}
 
       {:ok, to_destroy} ->
-        api(resource).destroy(to_destroy)
+        if authorize?(resource) && changeset_authorize?(changeset) do
+          api(resource).destroy(Ash.Changeset.new(to_destroy),
+            actor: actor(changeset),
+            authorize?: true
+          )
+        else
+          api(resource).destroy(Ash.Changeset.new(to_destroy))
+        end
     end
   end
 
@@ -258,8 +260,9 @@ defmodule Ash.DataLayer.Delegate do
   def update(resource, source_changeset) do
     destination_api = api(resource)
     pkey = Ash.Resource.primary_key(resource)
+    pkey_value = Map.to_list(Map.take(source_changeset.data, pkey))
 
-    case destination_api.get(resource, Map.take(source_changeset.data, pkey)) do
+    case destination_api.get(resource(resource), pkey_value) do
       {:ok, nil} ->
         {:error, "Delegated resource not found"}
 
