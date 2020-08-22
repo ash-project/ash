@@ -1,24 +1,54 @@
-defmodule Ash.DataLayer.EtsTest do
+defmodule Ash.DataLayer.DelegateTest do
   use ExUnit.Case, async: false
 
-  alias Ash.DataLayer.Ets, as: EtsDataLayer
-  alias Ash.DataLayer.Ets.Query
+  alias Ash.DataLayer.Delegate, as: DelegateDataLayer
+  alias Ash.DataLayer.Delegate.Query
   alias Ash.Filter.Predicate.{Eq, GreaterThan, In, LessThan}
+
+  defmodule DelegateResource do
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      read(:default)
+      create(:default)
+      update(:default)
+      destroy(:default)
+    end
+
+    attributes do
+      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      attribute :name, :string
+      attribute :age, :integer
+      attribute :title, :string
+    end
+  end
 
   setup do
     on_exit(fn ->
-      case ETS.Set.wrap_existing(EtsTestUser) do
+      case ETS.Set.wrap_existing(DelegateResource) do
         {:error, :table_not_found} -> :ok
         {:ok, set} -> ETS.Set.delete_all!(set)
       end
     end)
   end
 
-  defmodule EtsTestUser do
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+  defmodule DelegateApi do
+    use Ash.Api
 
-    ets do
-      private?(true)
+    resources do
+      resource DelegateResource
+    end
+  end
+
+  defmodule EtsTestUser do
+    use Ash.Resource, data_layer: Ash.DataLayer.Delegate
+
+    delegate do
+      to {DelegateApi, DelegateResource}
     end
 
     actions do
@@ -45,77 +75,88 @@ defmodule Ash.DataLayer.EtsTest do
   end
 
   test "can?" do
-    assert EtsDataLayer.can?(EtsTestUser, :async_engine) == false
-    assert EtsDataLayer.can?(EtsTestUser, :composite_primary_key) == true
-    assert EtsDataLayer.can?(EtsTestUser, :upsert) == true
-    assert EtsDataLayer.can?(EtsTestUser, :boolean_filter) == true
-    assert EtsDataLayer.can?(EtsTestUser, :transact) == false
-    assert EtsDataLayer.can?(EtsTestUser, :create) == true
-    assert EtsDataLayer.can?(EtsTestUser, :read) == true
-    assert EtsDataLayer.can?(EtsTestUser, :update) == true
-    assert EtsDataLayer.can?(EtsTestUser, :destroy) == true
-    assert EtsDataLayer.can?(EtsTestUser, :sort) == true
-    assert EtsDataLayer.can?(EtsTestUser, :filter) == true
-    assert EtsDataLayer.can?(EtsTestUser, :limit) == true
-    assert EtsDataLayer.can?(EtsTestUser, :offset) == true
-    assert EtsDataLayer.can?(EtsTestUser, {:filter_predicate, :foo, %In{}}) == true
-    assert EtsDataLayer.can?(EtsTestUser, {:filter_predicate, :foo, %Eq{}}) == true
-    assert EtsDataLayer.can?(EtsTestUser, {:filter_predicate, :foo, %LessThan{}}) == true
-    assert EtsDataLayer.can?(EtsTestUser, {:filter_predicate, :foo, %GreaterThan{}}) == true
-    assert EtsDataLayer.can?(EtsTestUser, {:sort, :foo}) == true
-    assert EtsDataLayer.can?(EtsTestUser, :foo) == false
+    assert DelegateDataLayer.can?(EtsTestUser, :async_engine) == false
+    assert DelegateDataLayer.can?(EtsTestUser, :composite_primary_key) == true
+    assert DelegateDataLayer.can?(EtsTestUser, :upsert) == true
+    assert DelegateDataLayer.can?(EtsTestUser, :boolean_filter) == true
+    assert DelegateDataLayer.can?(EtsTestUser, :transact) == false
+    assert DelegateDataLayer.can?(EtsTestUser, :create) == true
+    assert DelegateDataLayer.can?(EtsTestUser, :read) == true
+    assert DelegateDataLayer.can?(EtsTestUser, :update) == true
+    assert DelegateDataLayer.can?(EtsTestUser, :destroy) == true
+    assert DelegateDataLayer.can?(EtsTestUser, :sort) == true
+    assert DelegateDataLayer.can?(EtsTestUser, :filter) == true
+    assert DelegateDataLayer.can?(EtsTestUser, :limit) == true
+    assert DelegateDataLayer.can?(EtsTestUser, :offset) == true
+    assert DelegateDataLayer.can?(EtsTestUser, {:filter_predicate, :foo, %In{}}) == true
+    assert DelegateDataLayer.can?(EtsTestUser, {:filter_predicate, :foo, %Eq{}}) == true
+    assert DelegateDataLayer.can?(EtsTestUser, {:filter_predicate, :foo, %LessThan{}}) == true
+    assert DelegateDataLayer.can?(EtsTestUser, {:filter_predicate, :foo, %GreaterThan{}}) == true
+    assert DelegateDataLayer.can?(EtsTestUser, {:sort, :foo}) == true
+    assert DelegateDataLayer.can?(EtsTestUser, :foo) == false
   end
 
   test "resource_to_query" do
-    assert %Query{resource: EtsTestUser} = EtsDataLayer.resource_to_query(EtsTestUser)
+    assert %Query{resource: EtsTestUser} = DelegateDataLayer.resource_to_query(EtsTestUser)
   end
 
   test "limit, offset, filter, sortm, aggregate" do
-    query = EtsDataLayer.resource_to_query(EtsTestUser)
-    assert {:ok, %Query{limit: 3}} = EtsDataLayer.limit(query, 3, :foo)
-    assert {:ok, %Query{offset: 10}} = EtsDataLayer.offset(query, 10, :foo)
-    assert {:ok, %Query{filter: :all}} = EtsDataLayer.filter(query, :all, :foo)
-    assert {:ok, %Query{sort: :asc}} = EtsDataLayer.sort(query, :asc, :foo)
-    assert {:ok, %Query{aggregates: [:foo]}} = EtsDataLayer.add_aggregate(query, :foo, :bar)
+    query = DelegateDataLayer.resource_to_query(EtsTestUser)
+    assert {:ok, %Query{query: %{limit: 3}}} = DelegateDataLayer.limit(query, 3, :foo)
+    assert {:ok, %Query{query: %{offset: 10}}} = DelegateDataLayer.offset(query, 10, :foo)
+    {:ok, parsed_filter} = Ash.Filter.parse(DelegateResource, true)
+
+    assert {:ok, %Query{query: %{filter: ^parsed_filter}}} =
+             DelegateDataLayer.filter(query, true, :foo)
+
+    assert {:ok, %Query{query: %{sort: [name: :asc]}}} =
+             DelegateDataLayer.sort(query, :name, :foo)
+
+    # Can't test delegating to aggregates
+    # {:ok, aggregate} = Ash.Query.Aggregate.new(DelegateDataLayer, :foo, :count, :foobars, nil)
+
+    # assert {:ok, %Query{query: %{aggregates: [^aggregate]}}} =
+    #          DelegateDataLayer.add_aggregate(query, aggregate, :bar)
   end
 
   test "create" do
     assert %EtsTestUser{id: id, name: "Mike"} = create_user(%{name: "Mike"})
 
-    assert [{%{id: ^id}, %EtsTestUser{name: "Mike", id: ^id}}] = user_table()
+    assert [{%{id: ^id}, %DelegateResource{name: "Mike", id: ^id}}] = user_table()
   end
 
   test "update" do
     %EtsTestUser{id: id} = user = create_user(%{name: "Mike"})
 
-    assert [{%{id: ^id}, %EtsTestUser{id: ^id, name: "Mike"}}] = user_table()
+    assert [{%{id: ^id}, %DelegateResource{id: ^id, name: "Mike"}}] = user_table()
 
     user
     |> Ash.Changeset.new(name: "Joe")
     |> EtsApiTest.update!()
 
-    assert [{%{id: ^id}, %EtsTestUser{name: "Joe", id: ^id}}] = user_table()
+    assert [{%{id: ^id}, %DelegateResource{name: "Joe", id: ^id}}] = user_table()
   end
 
   test "upsert" do
     %EtsTestUser{id: id} = create_user(%{name: "Mike"}, upsert?: true)
 
-    assert [{%{id: ^id}, %EtsTestUser{id: ^id, name: "Mike"}}] = user_table()
+    assert [{%{id: ^id}, %DelegateResource{id: ^id, name: "Mike"}}] = user_table()
 
     create_user(%{name: "Joe", id: id}, upsert?: true)
 
-    assert [{%{id: ^id}, %EtsTestUser{name: "Joe", id: ^id}}] = user_table()
+    assert [{%{id: ^id}, %DelegateResource{name: "Joe", id: ^id}}] = user_table()
   end
 
   test "destroy" do
     mike = create_user(%{name: "Mike"})
-    %EtsTestUser{id: joes_id} = joe = create_user(%{name: "Joe"})
+    %EtsTestUser{id: joes_id} = create_user(%{name: "Joe"})
+    stored = DelegateApi.get!(DelegateResource, id: joes_id)
 
     assert length(user_table()) == 2
 
     EtsApiTest.destroy!(mike)
 
-    assert [{%{id: ^joes_id}, ^joe}] = user_table()
+    assert [{%{id: ^joes_id}, ^stored}] = user_table()
   end
 
   test "get" do
@@ -249,7 +290,7 @@ defmodule Ash.DataLayer.EtsTest do
   end
 
   defp user_table do
-    EtsTestUser
+    DelegateResource
     |> ETS.Set.wrap_existing!()
     |> ETS.Set.to_list!()
   end

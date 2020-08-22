@@ -44,7 +44,7 @@ defmodule Ash.Engine do
           end)
 
         transaction_result =
-          maybe_transact(opts, api, fn innermost_resource ->
+          maybe_transact(opts, requests, fn innermost_resource ->
             {local_requests, async_requests} = split_local_async_requests(requests)
 
             opts =
@@ -113,14 +113,13 @@ defmodule Ash.Engine do
     end
   end
 
-  defp maybe_transact(opts, api, func) do
+  defp maybe_transact(opts, requests, func) do
     if opts[:transaction?] do
-      resources =
-        api
-        |> Ash.Api.resources()
-        |> Enum.filter(&Ash.Resource.data_layer_can?(&1, :transact))
-
-      do_in_transaction(resources, func)
+      requests
+      |> Enum.map(& &1.resource)
+      |> Enum.uniq()
+      |> Enum.filter(&Ash.Resource.data_layer_can?(&1, :transact))
+      |> do_in_transaction(func)
     else
       {:ok, func.(nil)}
     end

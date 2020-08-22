@@ -10,7 +10,7 @@ Add `ash` to your dependencies in `mix.exs`. The latest version can be found by 
 
 ## Create an Ash API
 
-Create an API module. This will be your primary way to interact with your Ash resources. We recommend `lib/my_app/api.ex` for simple setups.
+Create an API module. This will be your primary way to interact with your Ash resources. We recommend `lib/my_app/api.ex` for simple setups. For more information on organizing resources into contexts/domains, see the "Contexts and Domains" guide.
 
 ```elixir
 defmodule MyApp.Api do

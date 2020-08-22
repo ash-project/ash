@@ -643,6 +643,8 @@ defmodule Ash.Engine.Request do
 
       case resolver.(resolver_context) do
         {:ok, value} ->
+          value = process_resolved_field(field, value, request)
+
           {new_request, notifications} =
             if internal? do
               {new_request, new_notifications} = notifications(new_request, field, value)
@@ -666,6 +668,22 @@ defmodule Ash.Engine.Request do
       end
     end
   end
+
+  defp process_resolved_field(:query, %Ash.Query{} = query, request) do
+    Ash.Query.set_datalayer_context(query, %{
+      authorize?: request.authorize?,
+      actor: request.actor
+    })
+  end
+
+  defp process_resolved_field(:changeset, %Ash.Changeset{} = changeset, request) do
+    Ash.Changeset.set_datalayer_context(changeset, %{
+      authorize?: request.authorize?,
+      actor: request.actor
+    })
+  end
+
+  defp process_resolved_field(_, value, _), do: value
 
   defp get_dependency_data(request, dep) do
     if local_dep?(request, dep) do

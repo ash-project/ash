@@ -84,7 +84,6 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, :offset), do: true
   def can?(_, :boolean_filter), do: true
   def can?(_, :transact), do: true
-  def can?(_, :delete_with_query), do: false
   def can?(_, {:filter_predicate, _, %In{}}), do: true
   def can?(_, {:filter_predicate, _, %Eq{}}), do: true
   def can?(_, {:filter_predicate, _, %IsNil{}}), do: true
@@ -214,7 +213,7 @@ defmodule Ash.DataLayer.Mnesia do
   end
 
   @impl true
-  def destroy(%resource{} = record) do
+  def destroy(resource, %{data: record}) do
     pkey =
       resource
       |> Ash.Resource.primary_key()
