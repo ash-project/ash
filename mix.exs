@@ -43,7 +43,8 @@ defmodule Ash.MixProject do
         "documentation/introduction/getting_started.md",
         "documentation/topics/validation.md",
         "documentation/topics/error_handling.md",
-        "documentation/topics/aggregates.md"
+        "documentation/topics/aggregates.md",
+        "documentation/topics/contexts_and_domains.md"
       ],
       groups_for_extras: [
         Introduction: Path.wildcard("documentation/introduction/*.md"),
