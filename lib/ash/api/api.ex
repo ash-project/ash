@@ -438,7 +438,6 @@ defmodule Ash.Api do
   end
 
   @doc false
-  @spec update!(Ash.api(), Ash.changeset(), Keyword.t()) :: Ash.resource() | no_return()
   def update!(api, changeset, opts) do
     opts = NimbleOptions.validate!(opts, @update_opts_schema)
 

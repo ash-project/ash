@@ -48,6 +48,8 @@ defmodule Ash.Resource do
       @doc false
       alias Ash.Dsl.Extension
 
+      @type t :: %__MODULE__{}
+
       Module.register_attribute(__MODULE__, :is_ash_resource, persist: true, accumulate: false)
       @is_ash_resource true
 
