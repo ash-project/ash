@@ -84,6 +84,13 @@ defmodule Ash.Resource do
     Extension.get_opt(resource, [:resource], :description, "no description")
   end
 
+  @doc "A list of identities for the resource"
+  @spec identities(Ash.resource()) :: [Ash.Resource.Identity.t()]
+  def identities(resource) do
+    resource
+    |> Extension.get_entities([:resource, :identities])
+  end
+
   @doc "A list of authorizers to be used when accessing"
   @spec authorizers(Ash.resource()) :: [module]
   def authorizers(resource) do

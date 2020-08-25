@@ -29,8 +29,14 @@ defmodule Ash.Test.Actions.ReadTest do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
 
+    resource do
+      identities do
+        identity :backup_id, [:uuid]
+      end
+    end
+
     ets do
-      private?(true)
+      private? true
     end
 
     actions do
@@ -40,6 +46,7 @@ defmodule Ash.Test.Actions.ReadTest do
 
     attributes do
       attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      attribute :uuid, :uuid, default: &Ecto.UUID.generate/0
       attribute :title, :string
       attribute :contents, :string
     end
@@ -55,8 +62,8 @@ defmodule Ash.Test.Actions.ReadTest do
     use Ash.Api
 
     resources do
-      resource(Post)
-      resource(Author)
+      resource Post
+      resource Author
     end
   end
 
@@ -80,6 +87,12 @@ defmodule Ash.Test.Actions.ReadTest do
 
     test "it returns nil when there is no matching record" do
       assert {:ok, nil} = Api.get(Post, Ecto.UUID.generate())
+    end
+
+    test "it uses identities if they exist", %{post: post} do
+      assert {:ok, fetched_post} = Api.get(Post, uuid: post.uuid)
+
+      assert fetched_post == post
     end
   end
 

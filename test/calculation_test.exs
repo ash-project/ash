@@ -103,6 +103,6 @@ defmodule Ash.Test.CalculationTest do
       |> Enum.map(& &1.calculations.full_name)
       |> Enum.sort()
 
-    assert full_names = ["brian \o.o/ cranston", "zach \o.o/ daniel"]
+    assert full_names == ["brian \o.o/ cranston", "zach \o.o/ daniel"]
   end
 end
