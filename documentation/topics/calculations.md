@@ -46,14 +46,14 @@ See the documentation for the calculations section in `Ash.Resource.Dsl.calculat
 The calculations declared on a resource allow for declaring a set of named calculations that can be used by extensions.
 They can also be loaded in the query using `Ash.Query.load/2`, or after the fact using `c:Ash.Api.load/2`. Calculations declared on the resource will be keys in the resource's struct.
 
-## Custom aggregates in the query
+## Custom calculations in the query
 
 Example:
 
 ```elixir
 User
 |> Ash.Query.new()
-|> Ash.Query.aggregate(:count_of_posts, :count, :posts, filter: [published: true])
+|> Ash.Query.calculate(:full_name, {Concat, keys: [:first_name, :last_name]}, %{separator: ","})
 ```
 
-See the documentation for `Ash.Query.aggregate/4` for more information.
+See the documentation for `Ash.Query.calculate/4` for more information.

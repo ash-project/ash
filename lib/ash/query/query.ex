@@ -364,6 +364,16 @@ defmodule Ash.Query do
     end
   end
 
+  @doc """
+  Adds a calculation to the query.
+
+  Calculations are made available on the `calculations` field of the records returned
+
+  The `module_and_opts` argument accepts either a `module` or a `{module, opts}`. For more information
+  on what that module should look like, see `Ash.Calculation`.
+
+  More features for calculations, like passing anonymous functions, will be supported in the future.
+  """
   def calculate(query, name, module_and_opts, context \\ %{}) do
     query = to_query(query)
 
