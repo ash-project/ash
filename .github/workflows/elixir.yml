@@ -43,6 +43,33 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
       - run: mix check
         if: "!startsWith(github.ref, 'refs/tags/v')"
+  release:
+    needs: [build]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    name: Release
+    strategy:
+      matrix:
+        otp: ["23"]
+        elixir: ["1.10.0"]
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      ASH_CI: true
+    steps:
+      - run: sudo apt-get install --yes erlang-dev
+      - uses: actions/checkout@v2
+      - uses: actions/setup-elixir@v1
+        with:
+          otp-version: ${{matrix.otp}}
+          elixir-version: ${{matrix.elixir}}
+      - uses: actions/cache@v1
+        id: cache-deps
+        with:
+          path: deps
+          key: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-deps-2-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+          restore-keys: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-deps-2-
+      - run: mix deps.get
+      - run: mix compile
       - run: mix hex.publish --yes
         if: startsWith(github.ref, 'refs/tags/v')
         env:

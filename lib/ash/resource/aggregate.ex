@@ -25,6 +25,8 @@ defmodule Ash.Resource.Aggregate do
     ]
   ]
 
+  @type t :: %__MODULE__{}
+
   @doc false
   def schema, do: @schema
 

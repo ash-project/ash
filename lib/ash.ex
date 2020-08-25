@@ -67,10 +67,11 @@ defmodule Ash do
   @type action :: Create.t() | Read.t() | Update.t() | Destroy.t()
   @type action_type :: :read | :create | :update | :destroy
   @type actor :: Ash.record()
-  @type aggregate :: Ash.Query.Aggregate.t()
+  @type aggregate :: Ash.Query.Aggregate.t() | Ash.Resource.Aggregate.t()
   @type aggregate_kind :: Ash.Query.Aggregate.kind()
   @type api :: module
   @type attribute :: Ash.Resource.Attribute.t()
+  @type calculation :: Ash.Resource.Calculation.t()
   @type cardinality_many_relationship() :: HasMany.t() | ManyToMany.t()
   @type cardinality_one_relationship() :: HasOne.t() | BelongsTo.t()
   @type changeset :: Ash.Changeset.t()

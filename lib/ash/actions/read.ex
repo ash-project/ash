@@ -155,11 +155,54 @@ defmodule Ash.Actions.Read do
                {:ok, query} <-
                  Ash.DataLayer.filter(query, filter, ash_query.resource),
                {:ok, query} <-
-                 Ash.DataLayer.sort(query, ash_query.sort, ash_query.resource) do
-            Ash.DataLayer.run_query(query, ash_query.resource)
+                 Ash.DataLayer.sort(query, ash_query.sort, ash_query.resource),
+               {:ok, results} <- Ash.DataLayer.run_query(query, ash_query.resource) do
+            add_calculation_values(ash_query, results, ash_query.calculations)
           end
         end
       )
+    end
+  end
+
+  defp add_calculation_values(query, results, calculations) do
+    calculations
+    |> Enum.reduce_while({:ok, %{}}, fn {_name, calculation}, {:ok, calculation_results} ->
+      context = Map.put(calculation.context, :data_layer_context, query.data_layer_context)
+
+      case calculation.module.calculate(results, calculation.opts, context) do
+        results when is_list(results) ->
+          {:cont, {:ok, Map.put(calculation_results, calculation, results)}}
+
+        {:ok, results} ->
+          {:cont, {:ok, Map.put(calculation_results, calculation, results)}}
+
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
+    end)
+    |> case do
+      {:ok, calculation_results} ->
+        {:ok,
+         Enum.reduce(calculation_results, results, fn {calculation, values}, records ->
+           if calculation.load do
+             :lists.zipwith(
+               fn record, value -> Map.put(record, calculation.name, value) end,
+               records,
+               values
+             )
+           else
+             :lists.zipwith(
+               fn record, value ->
+                 %{record | calculations: Map.put(record.calculations, calculation.name, value)}
+               end,
+               records,
+               values
+             )
+           end
+         end)}
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 

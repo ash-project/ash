@@ -12,6 +12,7 @@ defmodule Ash.Query do
     :data_layer_query,
     aggregates: %{},
     side_load: [],
+    calculations: %{},
     data_layer_context: %{},
     sort: [],
     limit: nil,
@@ -29,6 +30,7 @@ defmodule Ash.Query do
       sort? = query.sort != []
       side_load? = query.side_load != []
       aggregates? = query.aggregates != %{}
+      calculations? = query.calculations != %{}
       limit? = not is_nil(query.limit)
       offset? = not (is_nil(query.offset) || query.offset == 0)
       filter? = not is_nil(query.filter)
@@ -44,6 +46,7 @@ defmodule Ash.Query do
           or_empty(concat("offset: ", to_doc(query.offset, opts)), offset?),
           or_empty(concat("side_load: ", to_doc(query.side_load, opts)), side_load?),
           or_empty(concat("aggregates: ", to_doc(query.aggregates, opts)), aggregates?),
+          or_empty(concat("calculations: ", to_doc(query.calculations, opts)), calculations?),
           or_empty(concat("errors: ", to_doc(query.errors, opts)), errors?)
         ],
         ">",
@@ -59,7 +62,7 @@ defmodule Ash.Query do
   alias Ash.Actions.Sort
   alias Ash.Error.Query.{AggregatesNotSupported, InvalidLimit, InvalidOffset}
   alias Ash.Error.SideLoad.{InvalidQuery, NoSuchRelationship}
-  alias Ash.Query.Aggregate
+  alias Ash.Query.{Aggregate, Calculation}
 
   @doc "Create a new query."
   def new(resource, api \\ nil) when is_atom(resource) do
@@ -84,20 +87,38 @@ defmodule Ash.Query do
         side_load(query, [{field, nested}])
 
       {field, rest}, query ->
-        rel = Ash.Resource.relationship(query.resource, field)
+        cond do
+          rel = Ash.Resource.relationship(query.resource, field) ->
+            nested_query = load(rel.destination, rest)
 
-        if rel do
-          nested_query = load(rel.destination, rest)
+            side_load(query, [{field, nested_query}])
 
-          side_load(query, [{field, nested_query}])
-        else
-          add_error(query, :load, "Invalid load #{inspect(field)}")
+          calculation = Ash.Resource.calculation(query.resource, field) ->
+            {module, opts} = module_and_opts(calculation.calculation)
+
+            with {:ok, args} <- validate_arguments(calculation, rest),
+                 {:ok, calculation} <-
+                   Calculation.new(
+                     calculation.name,
+                     module,
+                     opts,
+                     args
+                   ) do
+              calculation = %{calculation | load: field}
+              %{query | calculations: Map.put(query.calculations, field, calculation)}
+            end
+
+          true ->
+            add_error(query, :load, "Invalid load #{inspect(field)}")
         end
 
       field, query ->
         do_load(query, field)
     end)
   end
+
+  defp module_and_opts({module, opts}), do: {module, opts}
+  defp module_and_opts(module), do: {module, []}
 
   defp do_load(query, field) do
     cond do
@@ -130,10 +151,55 @@ defmodule Ash.Query do
             add_error(query, :aggregates, Ash.Error.to_ash_error(error))
         end
 
+      calculation = Ash.Resource.calculation(query.resource, field) ->
+        {module, opts} =
+          case calculation.calculation do
+            {module, opts} -> {module, opts}
+            module -> {module, []}
+          end
+
+        with {:ok, args} <- validate_arguments(calculation, %{}),
+             {:ok, calculation} <-
+               Calculation.new(calculation.name, module, opts, args) do
+          calculation = %{calculation | load: field}
+          %{query | calculations: Map.put(query.calculations, field, calculation)}
+        else
+          {:error, error} ->
+            add_error(query, :load, error)
+        end
+
       true ->
         add_error(query, :load, "Could not load #{inspect(field)}")
     end
   end
+
+  defp validate_arguments(calculation, args) do
+    Enum.reduce_while(calculation.arguments, {:ok, %{}}, fn argument, {:ok, arg_values} ->
+      value = default(Map.get(args, argument.name), argument.default)
+
+      if is_nil(value) do
+        if argument.allow_nil? do
+          {:cont, {:ok, Map.put(arg_values, argument.name, nil)}}
+        else
+          {:halt, {:error, "Argument #{argument.name} is required"}}
+        end
+      else
+        with {:ok, casted} <- Ash.Type.cast_input(argument.type, value),
+             :ok <-
+               Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
+          {:cont, {:ok, Map.put(arg_values, argument.name, casted)}}
+        else
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+      end
+    end)
+  end
+
+  defp default(nil, {:constant, value}), do: value
+  defp default(nil, {module, function, args}), do: apply(module, function, args)
+  defp default(nil, value) when is_function(value, 0), do: value.()
+  defp default(other, _), do: other
 
   @spec put_datalayer_context(t(), atom, term) :: t()
   def put_datalayer_context(query, key, value) do
@@ -232,6 +298,12 @@ defmodule Ash.Query do
 
       {:aggregate, {name, type, relationship, agg_query}}, query ->
         aggregate(query, name, type, relationship, agg_query)
+
+      {:calculate, {name, module_and_opts}}, query ->
+        calculate(query, name, module_and_opts)
+
+      {:calculate, {name, module_and_opts, context}}, query ->
+        calculate(query, name, module_and_opts, context)
     end)
   end
 
@@ -289,6 +361,24 @@ defmodule Ash.Query do
         :aggregate,
         AggregatesNotSupported.exception(resource: query.resource, feature: "using")
       )
+    end
+  end
+
+  def calculate(query, name, module_and_opts, context \\ %{}) do
+    query = to_query(query)
+
+    {module, opts} =
+      case module_and_opts do
+        {module, opts} -> {module, opts}
+        module -> {module, []}
+      end
+
+    case Calculation.new(name, module, opts, context) do
+      {:ok, calculation} ->
+        %{query | calculations: Map.put(query.calculations, name, calculation)}
+
+      {:error, error} ->
+        add_error(query, :calculations, error)
     end
   end
 

@@ -150,7 +150,24 @@ defmodule Ash.Resource do
     |> Enum.find(&(&1.name == relationship_name))
   end
 
-  @spec aggregates(Ash.resource()) :: list(Ash.relationship())
+  @spec calculations(Ash.resource()) :: list(Ash.calculation())
+  def calculations(resource) do
+    Extension.get_entities(resource, [:calculations])
+  end
+
+  def calculation(resource, name) when is_bitstring(name) do
+    resource
+    |> calculations()
+    |> Enum.find(&(to_string(&1.name) == name))
+  end
+
+  def calculation(resource, name) do
+    resource
+    |> calculations()
+    |> Enum.find(&(&1.name == name))
+  end
+
+  @spec aggregates(Ash.resource()) :: list(Ash.aggregate())
   def aggregates(resource) do
     Extension.get_entities(resource, [:aggregates])
   end
