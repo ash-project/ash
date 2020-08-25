@@ -1,5 +1,5 @@
 defmodule Ash.Resource.Transformers.CachePrimaryKey do
-  @moduledoc "Validates the primary key of a resource"
+  @moduledoc "Validates and caches the primary key of a resource"
   use Ash.Dsl.Transformer
 
   alias Ash.Dsl.Transformer

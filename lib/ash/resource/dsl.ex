@@ -244,11 +244,44 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
+  @identity %Ash.Dsl.Entity{
+    name: :identity,
+    describe: """
+    Represents a unique constraint on the resource.
+
+    Used for indicating that some set of attributes, calculations or aggregates uniquely identify a resource.
+
+    This will allow these fields to be passed to `c:Ash.Api.get/3`, e.g `get(Resource, [some_field: 10])`,
+    if all of the keys are filterable. Otherwise they are purely descriptive at the moment.
+    The primary key of the resource does not need to be listed as an identity.
+    """,
+    examples: [
+      "identity :name, [:name]",
+      "identity :full_name, [:first_name, :last_name]"
+    ],
+    target: Ash.Resource.Identity,
+    schema: Ash.Resource.Identity.schema(),
+    args: [:name, :keys]
+  }
+
+  @identities %Ash.Dsl.Section{
+    name: :identities,
+    describe: """
+    Unique identifiers for the resource
+    """,
+    entities: [
+      @identity
+    ]
+  }
+
   @resource %Ash.Dsl.Section{
     name: :resource,
     describe: """
     Resource-wide configuration
     """,
+    sections: [
+      @identities
+    ],
     schema: [
       description: [
         type: :string

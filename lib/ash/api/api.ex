@@ -279,8 +279,7 @@ defmodule Ash.Api do
   def get(api, resource, id, opts) do
     with {:ok, opts} <- NimbleOptions.validate(opts, @get_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, resource),
-         primary_key <- Ash.Resource.primary_key(resource),
-         {:ok, filter} <- get_filter(resource, primary_key, id) do
+         {:ok, filter} <- get_filter(resource, id) do
       resource
       |> Ash.Query.new(api)
       |> Ash.Query.filter(filter)
@@ -305,21 +304,46 @@ defmodule Ash.Api do
     end
   end
 
-  defp get_filter(resource, primary_key, id) do
+  defp get_filter(resource, id) do
+    primary_key = Ash.Resource.primary_key(resource)
+    keyword? = Keyword.keyword?(id)
+
     case {primary_key, id} do
       {[field], [{field, value}]} ->
         {:ok, [{field, value}]}
 
-      {[field], value} ->
+      {[field], value} when not keyword? ->
         {:ok, [{field, value}]}
 
       {fields, value} ->
-        if Keyword.keyword?(value) and Enum.sort(Keyword.keys(value)) == Enum.sort(fields) do
-          {:ok, value}
-        else
-          {:error, InvalidPrimaryKey.exception(resource: resource, value: id)}
+        cond do
+          not keyword? ->
+            {:error, InvalidPrimaryKey.exception(resource: resource, value: id)}
+
+          Enum.sort(Keyword.keys(value)) == Enum.sort(fields) ->
+            {:ok, value}
+
+          true ->
+            get_identity_filter(resource, id)
         end
     end
+  end
+
+  defp get_identity_filter(resource, id) do
+    sorted_keys = Enum.sort(Keyword.keys(id))
+
+    resource
+    |> Ash.Resource.identities()
+    |> Enum.find_value(
+      {:error, InvalidPrimaryKey.exception(resource: resource, value: id)},
+      fn identity ->
+        if sorted_keys == Enum.sort(identity.keys) do
+          {:ok, id}
+        else
+          false
+        end
+      end
+    )
   end
 
   @doc false
