@@ -1,12 +1,13 @@
 defmodule Ash.Resource.Dsl do
   @moduledoc """
-  The built in resource DSL. The four core DSL components of a resource are:
+  The built in resource DSL. The core DSL components of a resource are:
 
   * attributes - `attributes/1`
   * relationships - `relationships/1`
   * actions - `actions/1`
   * validations - `validations/1`
   * aggregates - `aggregates/1`
+  * calculations - `calculations/1`
   """
 
   @attribute %Ash.Dsl.Entity{
@@ -310,7 +311,64 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
-  @sections [@attributes, @relationships, @actions, @resource, @validations, @aggregates]
+  @argument %Ash.Dsl.Entity{
+    name: :argument,
+    describe: """
+    An argument to be passed into the calculation's arguments map
+    """,
+    examples: [
+      "argument :params, :map, default: {:constant, %{}}",
+      "argument :retries, :integer, allow_nil?: false"
+    ],
+    target: Ash.Resource.Calculation.Argument,
+    args: [:name, :type],
+    schema: Ash.Resource.Calculation.Argument.schema(),
+    transform: {Ash.Resource.Calculation.Argument, :transform, []}
+  }
+
+  @calculation %Ash.Dsl.Entity{
+    name: :calculate,
+    describe: """
+    Declares a named calculation on the resource.
+
+    Takes a module that must adopt the `Ash.Calculation` behaviour. See that module
+    for more information.
+    """,
+    examples: [
+      "calculation :full_name, MyApp.MyResource.FullName",
+      "calculation :full_name, {MyApp.FullName, keys: [:first_name, :last_name]}",
+      "calculation :full_name, full_name([:first_name, :last_name])"
+    ],
+    target: Ash.Resource.Calculation,
+    args: [:name, :calculation],
+    entities: [
+      arguments: [@argument]
+    ],
+    schema: Ash.Resource.Calculation.schema()
+  }
+
+  @calculations %Ash.Dsl.Section{
+    name: :calculations,
+    describe: """
+    Declare named calculations on the resource.
+
+    These are calculations that can be loaded only by name using `Ash.Query.load/2`.
+    They are also available as top level fields on the resource.
+    """,
+    entities: [
+      @calculation
+    ]
+  }
+
+  @sections [
+    @attributes,
+    @relationships,
+    @actions,
+    @resource,
+    @validations,
+    @aggregates,
+    @calculations
+  ]
 
   @transformers [
     Ash.Resource.Transformers.SetRelationshipSource,

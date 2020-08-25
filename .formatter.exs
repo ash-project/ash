@@ -2,12 +2,16 @@
 # DONT MODIFY IT BY HAND
 locals_without_parens = [
   allow_nil?: 1,
+  argument: 2,
+  argument: 3,
   attribute: 2,
   attribute: 3,
   authorize?: 1,
   base_filter: 1,
   belongs_to: 2,
   belongs_to: 3,
+  calculate: 2,
+  calculate: 3,
   constraints: 1,
   count: 2,
   count: 3,

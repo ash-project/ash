@@ -63,12 +63,12 @@ defmodule Ash.Resource.Attribute do
       doc: "Whether or not the value can be written to"
     ],
     update_default: [
-      type: {:custom, __MODULE__, :validate_default, [:update]},
+      type: {:custom, Ash.OptionsHelpers, :default, []},
       doc:
         "A zero argument function, an {mod, fun, args} triple or `{:constant, value}`. If no value is provided for the attribute on update, this value is used."
     ],
     default: [
-      type: {:custom, __MODULE__, :validate_default, [:create]},
+      type: {:custom, Ash.OptionsHelpers, :default, []},
       doc:
         "A zero argument function, an {mod, fun, args} triple or `{:constant, value}`. If no value is provided for the attribute on create, this value is used."
     ],
@@ -131,22 +131,6 @@ defmodule Ash.Resource.Attribute do
     else
       {:ok, constraints}
     end
-  end
-
-  def validate_default(value, _) when is_function(value, 0), do: {:ok, value}
-  def validate_default({:constant, value}, _), do: {:ok, {:constant, value}}
-
-  def validate_default({module, function, args}, _)
-      when is_atom(module) and is_atom(function) and is_list(args),
-      do: {:ok, {module, function, args}}
-
-  def validate_default(nil, _), do: {:ok, nil}
-
-  def validate_default(other, _) do
-    {:error,
-     "#{inspect(other)} is not a valid default. To provide a constant value, use `{:constant, #{
-       inspect(other)
-     }}`"}
   end
 
   @doc false

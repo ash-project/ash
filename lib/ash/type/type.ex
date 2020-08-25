@@ -16,7 +16,9 @@ defmodule Ash.Type do
   ]
 
   @short_names [
+    map: Ash.Type.Map,
     term: Ash.Type.Term,
+    atom: Ash.Type.Atom,
     string: Ash.Type.String,
     integer: Ash.Type.Integer,
     boolean: Ash.Type.Boolean,
