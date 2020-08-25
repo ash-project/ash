@@ -62,7 +62,7 @@ defmodule Ash.Query do
   alias Ash.Actions.Sort
   alias Ash.Error.Query.{AggregatesNotSupported, InvalidLimit, InvalidOffset}
   alias Ash.Error.SideLoad.{InvalidQuery, NoSuchRelationship}
-  alias Ash.Query.Aggregate
+  alias Ash.Query.{Aggregate, Calculation}
 
   @doc "Create a new query."
   def new(resource, api \\ nil) when is_atom(resource) do
@@ -94,15 +94,11 @@ defmodule Ash.Query do
             side_load(query, [{field, nested_query}])
 
           calculation = Ash.Resource.calculation(query.resource, field) ->
-            {module, opts} =
-              case calculation.calculation do
-                {module, opts} -> {module, opts}
-                module -> {module, []}
-              end
+            {module, opts} = module_and_opts(calculation.calculation)
 
             with {:ok, args} <- validate_arguments(calculation, rest),
                  {:ok, calculation} <-
-                   Ash.Query.Calculation.new(
+                   Calculation.new(
                      calculation.name,
                      module,
                      opts,
@@ -120,6 +116,9 @@ defmodule Ash.Query do
         do_load(query, field)
     end)
   end
+
+  defp module_and_opts({module, opts}), do: {module, opts}
+  defp module_and_opts(module), do: {module, []}
 
   defp do_load(query, field) do
     cond do
@@ -161,7 +160,7 @@ defmodule Ash.Query do
 
         with {:ok, args} <- validate_arguments(calculation, %{}),
              {:ok, calculation} <-
-               Ash.Query.Calculation.new(calculation.name, module, opts, args) do
+               Calculation.new(calculation.name, module, opts, args) do
           calculation = %{calculation | load: field}
           %{query | calculations: Map.put(query.calculations, field, calculation)}
         else
@@ -374,7 +373,7 @@ defmodule Ash.Query do
         module -> {module, []}
       end
 
-    case Ash.Query.Calculation.new(name, module, opts, context) do
+    case Calculation.new(name, module, opts, context) do
       {:ok, calculation} ->
         %{query | calculations: Map.put(query.calculations, name, calculation)}
 

@@ -1,4 +1,5 @@
 defmodule Ash.Calculation do
+  @moduledoc "The behaviour for a calculation module"
   defmacro __using__(opts) do
     type =
       opts[:type] ||

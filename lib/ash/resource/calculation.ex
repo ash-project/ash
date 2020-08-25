@@ -18,6 +18,7 @@ defmodule Ash.Resource.Calculation do
   @type t :: %__MODULE__{}
 
   defmodule Argument do
+    @moduledoc "An argument to a calculation"
     defstruct [:name, :type, :default, :allow_nil?, :constraints]
 
     @schema [

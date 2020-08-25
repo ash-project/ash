@@ -92,4 +92,17 @@ defmodule Ash.Test.CalculationTest do
 
     assert full_names == ["brian - cranston", "zach - daniel"]
   end
+
+  test "custom calculations can be added to a query" do
+    full_names =
+      User
+      |> Ash.Query.calculate(:full_name, {Concat, keys: [:first_name, :last_name]}, %{
+        separator: " \o.o/ "
+      })
+      |> Api.read!()
+      |> Enum.map(& &1.calculations.full_name)
+      |> Enum.sort()
+
+    assert full_names = ["brian \o.o/ cranston", "zach \o.o/ daniel"]
+  end
 end
