@@ -18,6 +18,7 @@ defmodule Mix.Tasks.Ash.Formatter do
   """
 
   @shortdoc @moduledoc
+  @spec run(term) :: no_return
   def run(opts) do
     Mix.Task.run("compile")
     {opts, []} = OptionParser.parse!(opts, strict: [check: :boolean, extensions: :string])
