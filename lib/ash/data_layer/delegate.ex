@@ -107,8 +107,21 @@ defmodule Ash.DataLayer.Delegate do
 
   @impl true
   def filter(%{query: query} = source_query, filter, resource) do
-    {:ok,
-     %{source_query | query: Ash.Query.filter(query, %{filter | resource: resource(resource)})}}
+    case filter do
+      %Ash.Filter{} ->
+        {:ok,
+         %{
+           source_query
+           | query: Ash.Query.filter(query, %{filter | resource: resource(resource)})
+         }}
+
+      filter ->
+        {:ok,
+         %{
+           source_query
+           | query: Ash.Query.filter(query, filter)
+         }}
+    end
   end
 
   @impl true
