@@ -228,12 +228,16 @@ defmodule Ash.Api do
   end
 
   defmacro __before_compile__(_env) do
-    quote generated: true do
+    quote generated: true, unquote: false do
       alias Ash.Dsl.Extension
 
       @on_load :on_load
 
-      @ash_dsl_config Extension.set_state()
+      ash_dsl_config = Macro.escape(Extension.set_state())
+      @doc false
+      def ash_dsl_config do
+        unquote(ash_dsl_config)
+      end
 
       def on_load do
         Extension.load()

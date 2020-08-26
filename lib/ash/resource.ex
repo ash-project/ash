@@ -44,7 +44,7 @@ defmodule Ash.Resource do
 
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defmacro __before_compile__(_env) do
-    quote do
+    quote unquote: false do
       @doc false
       alias Ash.Dsl.Extension
 
@@ -59,7 +59,11 @@ defmodule Ash.Resource do
       :persistent_term.put({__MODULE__, :authorizers}, @authorizers)
       :persistent_term.put({__MODULE__, :extensions}, @extensions)
 
-      @ash_dsl_config Extension.set_state()
+      ash_dsl_config = Macro.escape(Extension.set_state())
+      @doc false
+      def ash_dsl_config do
+        unquote(ash_dsl_config)
+      end
 
       def on_load do
         :persistent_term.put({__MODULE__, :data_layer}, @data_layer)

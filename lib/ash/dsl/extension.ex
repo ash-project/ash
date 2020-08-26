@@ -246,7 +246,11 @@ defmodule Ash.Dsl.Extension do
   defmacro load do
     quote do
       :persistent_term.put({__MODULE__, :extensions}, @extensions)
-      Ash.Dsl.Extension.write_dsl_to_persistent_term(__MODULE__, @ash_dsl_config)
+
+      Ash.Dsl.Extension.write_dsl_to_persistent_term(
+        __MODULE__,
+        ash_dsl_config()
+      )
 
       :ok
     end
