@@ -37,7 +37,7 @@ defmodule Ash.Actions.SideLoad do
           further ->
             relationship.destination
             |> Ash.Query.new(root_query.api)
-            |> Ash.Query.side_load(further)
+            |> Ash.Query.load(further)
         end
 
       new_path = [relationship | path]
@@ -289,7 +289,7 @@ defmodule Ash.Actions.SideLoad do
                 Ash.Query.filter(related_query, authorization_filter)
             end
 
-          with new_query <-
+          with {:ok, new_query} <-
                  true_side_load_query(
                    relationship,
                    base_query,
@@ -298,8 +298,15 @@ defmodule Ash.Actions.SideLoad do
                    root_data,
                    use_data_for_filter?
                  ),
-               {:ok, query} <- new_query,
-               {:ok, results} <- related_query.api.read(query) do
+               {:ok, results} <-
+                 run_actual_query(
+                   root_data,
+                   new_query,
+                   data,
+                   path,
+                   use_data_for_filter?,
+                   relationship
+                 ) do
             {:ok, results}
           else
             {:error, error} -> {:error, error}
@@ -383,7 +390,7 @@ defmodule Ash.Actions.SideLoad do
                     Ash.Query.filter(related_query, authorization_filter)
                 end
 
-              with new_query <-
+              with {:ok, new_query} <-
                      true_side_load_query(
                        join_relationship,
                        base_query,
@@ -392,14 +399,87 @@ defmodule Ash.Actions.SideLoad do
                        root_data,
                        use_data_for_filter?
                      ),
-                   {:ok, query} <- new_query,
-                   {:ok, results} <- related_query.api.read(query) do
+                   {:ok, results} <-
+                     run_actual_query(
+                       root_data,
+                       new_query,
+                       data,
+                       path,
+                       use_data_for_filter?,
+                       relationship
+                     ) do
                 {:ok, results}
               else
                 {:error, error} -> {:error, error}
               end
             end)
         )
+    end
+  end
+
+  defp run_actual_query(root_data, query, data, path, use_data?, relationship) do
+    offset? = is_nil(query.offset) || query.offset != 0
+
+    source_data =
+      case path do
+        [] when use_data? ->
+          get_in(data, [:data, :data])
+
+        [] ->
+          root_data
+
+        path ->
+          data
+          |> Map.get(:side_load, %{})
+          |> Map.get(path, %{})
+          |> Map.get(:data, [])
+      end
+
+    cond do
+      (query.limit ||
+         offset?) && relationship.type != :many_to_many &&
+          Ash.Resource.data_layer_can?(
+            relationship.source,
+            {:lateral_join, relationship.destination}
+          ) ->
+        query
+        |> Ash.Query.set_datalayer_context(%{
+          lateral_join_source:
+            {source_data, relationship.source, relationship.source_field,
+             relationship.destination_field}
+        })
+        |> query.api.read()
+
+      (query.limit || offset?) && relationship.type != :many_to_many ->
+        artificial_limit_and_offset(query, relationship)
+
+      true ->
+        query.api.read(query)
+    end
+  end
+
+  defp artificial_limit_and_offset(query, relationship) do
+    case query.api.read(query) do
+      {:ok, results} ->
+        new_results =
+          results
+          |> Enum.group_by(fn record ->
+            Map.get(record, relationship.destination_key)
+          end)
+          |> Enum.flat_map(fn {_, group} ->
+            offset_records = Enum.drop(group, query.offset || 0)
+
+            if query.limit do
+              Enum.take(offset_records, query.limit)
+            else
+              offset_records
+            end
+          end)
+
+        {:ok, new_results}
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 
@@ -535,30 +615,49 @@ defmodule Ash.Actions.SideLoad do
           |> Map.get(path, %{})
       end
 
-    related_data = Map.get(source_data || %{}, :data, [])
+    get_query(query, relationship, source_data, source_field)
+  end
 
-    ids =
-      Enum.flat_map(related_data, fn data ->
-        data
-        |> Map.get(source_field)
-        |> List.wrap()
-      end)
+  defp get_query(query, relationship, source_data, source_field) do
+    offset? = is_nil(query.offset) || query.offset != 0
 
-    filter_value =
-      case ids do
-        [id] ->
-          id
+    cond do
+      (query.limit ||
+         offset?) && relationship.type != :many_to_many &&
+          Ash.Resource.data_layer_can?(
+            relationship.source,
+            {:lateral_join, relationship.destination}
+          ) ->
+        {:ok, Ash.Query.unset(query, :side_load)}
 
-        ids ->
-          [in: ids]
-      end
+      (query.limit || offset?) && relationship.type != :many_to_many ->
+        {:ok, Ash.Query.unset(query, [:side_load, :limit, :offset])}
 
-    new_query =
-      query
-      |> Ash.Query.filter([{relationship.destination_field, filter_value}])
-      |> Ash.Query.unset(:side_load)
+      true ->
+        related_data = Map.get(source_data || %{}, :data, [])
 
-    {:ok, new_query}
+        ids =
+          Enum.flat_map(related_data, fn data ->
+            data
+            |> Map.get(source_field)
+            |> List.wrap()
+          end)
+
+        filter_value =
+          case ids do
+            [id] ->
+              id
+
+            ids ->
+              [in: ids]
+          end
+
+        new_query =
+          query
+          |> Ash.Query.filter([{relationship.destination_field, filter_value}])
+
+        {:ok, new_query}
+    end
   end
 
   def reverse_relationship_path(relationship, prior_path, acc \\ [])

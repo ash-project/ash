@@ -234,7 +234,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
       query =
         Post
         |> Ash.Query.filter(related_posts: [title: "two"])
-        |> Ash.Query.side_load(related_posts: posts_query)
+        |> Ash.Query.load(related_posts: posts_query)
 
       post1_id = post1.id
 

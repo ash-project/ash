@@ -158,7 +158,7 @@ defmodule Ash.Resource.Dsl do
     A section for declaring relationships on the resource.
 
     Relationships are a core component of resource oriented design. Many components of Ash
-    will use these relationships. A simple use case is side_loading (done via the `Ash.Query.side_load/2`).
+    will use these relationships. A simple use case is side_loading (done via the `Ash.Query.load/2`).
     """,
     entities: [
       @has_one,

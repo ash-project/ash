@@ -396,7 +396,11 @@ defmodule Ash.Engine.Request do
             new_request =
               request
               |> Map.update!(:query, &Ash.Query.filter(&1, filter))
-              |> Map.update(:authorization_filter, filter, &Ash.Filter.add_to_filter(&1, filter))
+              |> Map.update(
+                :authorization_filter,
+                filter,
+                &add_to_or_parse(&1, filter, request.resource)
+              )
               |> set_authorizer_state(authorizer, new_authorizer_state)
 
             {:ok, new_request}

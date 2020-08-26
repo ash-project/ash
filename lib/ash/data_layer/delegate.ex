@@ -30,6 +30,14 @@ defmodule Ash.DataLayer.Delegate do
     ]
   }
 
+  def get_delegated(resource) do
+    if Ash.Resource.data_layer(resource) == __MODULE__ do
+      get_delegated(resource(resource))
+    else
+      resource
+    end
+  end
+
   @doc false
   def to_option({api, resource}) when is_atom(api) and is_atom(resource) do
     {:ok, {api, resource}}
@@ -81,23 +89,9 @@ defmodule Ash.DataLayer.Delegate do
 
   @impl true
   def resource_to_query(resource) do
-    query =
-      case base_filter(resource) do
-        nil ->
-          resource
-          |> resource()
-          |> Ash.Query.new()
-
-        filter ->
-          resource
-          |> resource()
-          |> Ash.Query.new()
-          |> Ash.Query.filter(filter)
-      end
-
     %Query{
       resource: resource,
-      query: query
+      query: %Ash.Query{resource: resource(resource)}
     }
   end
 
@@ -164,10 +158,21 @@ defmodule Ash.DataLayer.Delegate do
       ) do
     api = api(resource)
 
-    if authorize?(api) && authorize? do
-      api.read(query, actor: actor, authorize?: true)
+    query =
+      if base_filter(resource) do
+        Ash.Query.filter(query, base_filter(resource))
+      else
+        query
+      end
+
+    if authorize?(resource) && authorize? do
+      query
+      |> Ash.Query.unset([:calculations, :aggregates, :side_load])
+      |> api.read(actor: actor, authorize?: true)
     else
-      api.read(query)
+      query
+      |> Ash.Query.unset([:calculations, :aggregates, :side_load])
+      |> api.read()
     end
     |> case do
       {:ok, results} ->
@@ -183,6 +188,25 @@ defmodule Ash.DataLayer.Delegate do
       {:error, error} ->
         {:error, error}
     end
+  end
+
+  @impl true
+  def run_query_with_lateral_join(
+        query,
+        root_data,
+        source_resource,
+        destination_resource,
+        source,
+        destination
+      ) do
+    Ash.DataLayer.run_query_with_lateral_join(
+      query,
+      root_data,
+      resource(source_resource),
+      destination_resource,
+      source,
+      destination
+    )
   end
 
   @impl true

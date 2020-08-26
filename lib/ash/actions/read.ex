@@ -156,12 +156,35 @@ defmodule Ash.Actions.Read do
                  Ash.DataLayer.filter(query, filter, ash_query.resource),
                {:ok, query} <-
                  Ash.DataLayer.sort(query, ash_query.sort, ash_query.resource),
-               {:ok, results} <- Ash.DataLayer.run_query(query, ash_query.resource) do
+               {:ok, results} <- run_query(ash_query, query) do
             add_calculation_values(ash_query, results, ash_query.calculations)
           end
         end
       )
     end
+  end
+
+  defp run_query(
+         %{
+           resource: destination_resource,
+           data_layer_context: %{
+             lateral_join_source: {root_data, resource, source, destination}
+           }
+         },
+         query
+       ) do
+    Ash.DataLayer.run_query_with_lateral_join(
+      query,
+      root_data,
+      resource,
+      destination_resource,
+      source,
+      destination
+    )
+  end
+
+  defp run_query(%{resource: resource}, query) do
+    Ash.DataLayer.run_query(query, resource)
   end
 
   defp add_calculation_values(query, results, calculations) do

@@ -9,6 +9,8 @@ defmodule Ash.DataLayer do
   """
   @type feature() ::
           :transact
+          | {:lateral_join, Ash.resource()}
+          | {:join, Ash.resource()}
           | {:aggregate, Ash.aggregate_kind()}
           | :aggregate_filter
           | :aggregate_sort
@@ -18,7 +20,6 @@ defmodule Ash.DataLayer do
           | :read
           | :update
           | :destroy
-          | :join
           | :limit
           | :offset
           | :transact
@@ -45,6 +46,16 @@ defmodule Ash.DataLayer do
   @callback transform_query(Ash.query()) :: Ash.query()
   @callback run_query(Ash.data_layer_query(), Ash.resource()) ::
               {:ok, list(Ash.resource())} | {:error, term}
+  @callback equal?(Ash.data_layer()) :: boolean
+  @callback run_query_with_lateral_join(
+              Ash.data_layer_query(),
+              [Ash.record()],
+              source_resource :: Ash.resource(),
+              destination_resource :: Ash.resource(),
+              source :: atom,
+              destination :: atom
+            ) ::
+              {:ok, list(Ash.resource())} | {:error, term}
   @callback create(Ash.resource(), Ash.changeset()) ::
               {:ok, Ash.resource()} | {:error, term}
   @callback upsert(Ash.resource(), Ash.changeset()) ::
@@ -62,7 +73,9 @@ defmodule Ash.DataLayer do
   @callback set_context(Ash.resource(), Ash.data_layer_query(), map) :: Ash.data_layer_query()
 
   @optional_callbacks source: 1,
+                      equal?: 1,
                       run_query: 2,
+                      run_query_with_lateral_join: 6,
                       create: 2,
                       update: 2,
                       set_context: 3,
@@ -203,6 +216,24 @@ defmodule Ash.DataLayer do
           {:ok, list(Ash.record())} | {:error, term}
   def run_query(query, central_resource) do
     Ash.Resource.data_layer(central_resource).run_query(query, central_resource)
+  end
+
+  def run_query_with_lateral_join(
+        query,
+        root_data,
+        source_resource,
+        destination_resource,
+        source,
+        destination
+      ) do
+    Ash.Resource.data_layer(source_resource).run_query_with_lateral_join(
+      query,
+      root_data,
+      source_resource,
+      destination_resource,
+      source,
+      destination
+    )
   end
 
   def transact(resource, func) do

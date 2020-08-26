@@ -434,9 +434,7 @@ defmodule Ash.Query do
     |> add_error(:offset, InvalidOffset.exception(offset: offset))
   end
 
-  @doc "Side loads related entities"
-  @spec side_load(t() | Ash.resource(), Ash.side_loads()) :: t()
-  def side_load(query, statement) do
+  defp side_load(query, statement) do
     query = to_query(query)
 
     with sanitized_statement <- List.wrap(sanitize_side_loads(statement)),
@@ -758,11 +756,11 @@ defmodule Ash.Query do
   end
 
   defp merge_side_load(%__MODULE__{} = query, right) when is_list(right) do
-    Ash.Query.side_load(query, right)
+    side_load(query, right)
   end
 
   defp merge_side_load(left, %Ash.Query{} = query) when is_list(left) do
-    Ash.Query.side_load(query, left)
+    side_load(query, left)
   end
 
   defp merge_side_load(left, right) when is_atom(left), do: merge_side_load([{left, []}], right)

@@ -250,12 +250,9 @@ defmodule Ash.Filter do
 
   defp shortest_path_to_changed_data_layer(resource, [relationship | rest], acc) do
     relationship = Ash.Resource.relationship(resource, relationship)
-    data_layer = Ash.Resource.data_layer(relationship.destination)
 
     if relationship.type == :many_to_many do
-      if data_layer == Ash.Resource.data_layer(resource) &&
-           data_layer == Ash.Resource.data_layer(relationship.through) &&
-           Ash.Resource.data_layer_can?(resource, :join) do
+      if Ash.Resource.data_layer_can?(resource, {:join, relationship.through}) do
         shortest_path_to_changed_data_layer(relationship.destination, rest, [
           relationship.name | acc
         ])
@@ -263,8 +260,7 @@ defmodule Ash.Filter do
         {:ok, Enum.reverse([relationship.name | acc])}
       end
     else
-      if data_layer == Ash.Resource.data_layer(resource) &&
-           Ash.Resource.data_layer_can?(resource, :join) do
+      if Ash.Resource.data_layer_can?(resource, {:join, relationship.destination}) do
         shortest_path_to_changed_data_layer(relationship.destination, rest, [
           relationship.name | acc
         ])
@@ -843,8 +839,7 @@ defmodule Ash.Filter do
   end
 
   defp add_aggregate_expression(context, nested_statement, field, expression) do
-    if Ash.Resource.data_layer_can?(context.resource, :join) &&
-         Ash.Resource.data_layer_can?(context.resource, :aggregate_filter) do
+    if Ash.Resource.data_layer_can?(context.resource, :aggregate_filter) do
       case parse_predicates(nested_statement, Map.get(context.aggregates, field), context) do
         {:ok, nested_statement} ->
           {:ok, Expression.new(:and, expression, nested_statement)}
@@ -858,100 +853,40 @@ defmodule Ash.Filter do
   end
 
   defp validate_datalayers_support_boolean_filters(%Expression{op: :or, left: left, right: right}) do
-    left_predicates =
+    left_resources =
       left
       |> reduce([], fn
         %Predicate{} = pred, acc ->
-          [{pred.relationship_path, pred.resource} | acc]
+          [pred.resource | acc]
 
         _, acc ->
           acc
       end)
       |> Enum.uniq()
 
-    right_predicates =
+    right_resources =
       right
       |> reduce([], fn
         %Predicate{} = pred, acc ->
-          [{pred.relationship_path, pred.resource} | acc]
+          [pred.resource | acc]
 
         _, acc ->
           acc
       end)
       |> Enum.uniq()
 
-    Enum.reduce_while(left_predicates, :ok, fn {path, resource}, :ok ->
-      check_predicate_compatibility(resource, path, right_predicates)
+    left_resources
+    |> Enum.filter(&(&1 in right_resources))
+    |> Enum.reduce_while(:ok, fn resource, :ok ->
+      if Ash.Resource.data_layer_can?(resource, :boolean_filter) do
+        {:cont, :ok}
+      else
+        {:halt, {:error, "Data layer for #{resource} does not support boolean filters"}}
+      end
     end)
   end
 
   defp validate_datalayers_support_boolean_filters(_), do: :ok
-
-  defp check_predicate_compatibility(resource, path, right_predicates) do
-    can_join? = Ash.Resource.data_layer_can?(resource, :join)
-    can_boolean_filter? = Ash.Resource.data_layer_can?(resource, :boolean_filter)
-
-    cond do
-      can_join? and can_boolean_filter? ->
-        {:cont, :ok}
-
-      can_join? ->
-        check_when_cant_boolean_filter(right_predicates, resource, path)
-
-      can_boolean_filter? ->
-        check_when_cant_join(right_predicates, resource, path)
-
-      true ->
-        check_when_cant_join_or_boolean_filter(right_predicates, resource)
-    end
-  end
-
-  defp check_when_cant_join_or_boolean_filter(right_predicates, resource) do
-    data_layer = Ash.Resource.data_layer(resource)
-
-    if Enum.any?(right_predicates, fn {_, right_resource} ->
-         Ash.Resource.data_layer(right_resource) == data_layer
-       end) do
-      {:halt,
-       {:error,
-        "Data layer #{inspect(Ash.Resource.data_layer(resource))} does not support joins or boolean filters, which are necessary for this query"}}
-    else
-      {:cont, :ok}
-    end
-  end
-
-  defp check_when_cant_join(right_predicates, resource, path) do
-    data_layer = Ash.Resource.data_layer(resource)
-
-    right_predicates
-    |> Enum.filter(fn {_right_path, right_resource} ->
-      Ash.Resource.data_layer(right_resource) == data_layer
-    end)
-    |> Enum.all?(fn {right_path, _} ->
-      right_path == path
-    end)
-    |> case do
-      true ->
-        {:cont, :ok}
-
-      false ->
-        {:halt,
-         {:error,
-          "Data layer #{inspect(Ash.Resource.data_layer(resource))} does not support joins, which are necessary for this query"}}
-    end
-  end
-
-  defp check_when_cant_boolean_filter(right_predicates, resource, path) do
-    if Enum.any?(right_predicates, fn {right_path, right_resource} ->
-         right_resource == resource && right_path == path
-       end) do
-      {:halt,
-       {:error,
-        "Data layer #{inspect(Ash.Resource.data_layer(resource))} does not support boolean filters"}}
-    else
-      {:cont, :ok}
-    end
-  end
 
   defp add_to_predicate_path(expression, context) do
     case expression do
