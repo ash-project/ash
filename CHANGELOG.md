@@ -5,6 +5,27 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.11.0](https://github.com/ash-project/ash/compare/v1.10.0...v1.11.0) (2020-08-26)
+
+
+
+
+### Features:
+
+* support inner lateral joins (#100)
+
+* add identities, to enhance `get` calls (#99)
+
+* initial calculation support (#98)
+
+* initial calculation support
+
+### Bug Fixes:
+
+* spec + dialyzer fixes
+
+* spec mix task run as no_return
+
 ## [v1.10.0](https://github.com/ash-project/ash/compare/v1.9.0...v1.10.0) (2020-08-22)
 
 
