@@ -144,8 +144,7 @@ defmodule Ash.Api do
 
   Accepts a list of non-loaded fields and loads them on the provided records or a query, in
   which case the loaded fields of the query are used. Relationship loads can be nested, for
-  example: `MyApi.load(record, [posts: [:comments]])`. See `Ash.Query.side_load/2` for more
-  information on specifically loading relationships.
+  example: `MyApi.load(record, [posts: [:comments]])`.
 
   #{NimbleOptions.docs(@load_opts_schema)}
   """
