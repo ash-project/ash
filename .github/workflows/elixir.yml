@@ -98,3 +98,61 @@ jobs:
           consumer-secret: ${{ secrets.TWITTER_CONSUMER_API_SECRET }}
           access-token: ${{ secrets.TWITTER_ACCESS_TOKEN }}
           access-token-secret: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
+  test-subprojects:
+    runs-on: ubuntu-latest
+    name: Subproject-${{matrix.project}} - OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          [
+            "ash_postgres",
+            "ash_csv",
+            "ash_graphql",
+            "ash_json_api",
+            "ash_policy_authorizer",
+          ]
+        otp: ["23"]
+        elixir: ["1.10.4"]
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      ASH_CI: true
+      ASH_VERSION: local
+    steps:
+      - run: sudo apt-get install --yes erlang-dev
+      - uses: actions/checkout@v2
+        with:
+          repository: ash-project/ash
+          path: ash
+      - uses: actions/checkout@v2
+        with:
+          repository: ash-project/${{matrix.project}}
+          path: ${{matrix.project}}
+          ref: master
+      - uses: actions/setup-elixir@v1
+        with:
+          otp-version: ${{matrix.otp}}
+          elixir-version: ${{matrix.elixir}}
+      - uses: actions/cache@v1
+        id: cache-deps
+        with:
+          path: ${{matrix.project}}/deps
+          key: ${{matrix.project}}-otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-deps-2-${{ hashFiles(format('{0}{1}', github.workspace, '/ash/mix.lock')) }}
+          restore-keys: ${{matrix.project}}-otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-deps-2-
+      - uses: actions/cache@v1
+        id: cache-build
+        with:
+          path: ${{matrix.project}}/_build
+          key: ${{matrix.project}}-otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-build-2-${{ hashFiles(format('{0}{1}', github.workspace, '/ash/mix.lock')) }}
+          restore-keys: ${{matrix.project}}-otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-build-2-
+      - name: mix deps.get inside ./${{matrix.project}}
+        run: mix deps.get
+        working-directory: ./${{matrix.project}}
+      - name: mix compile --force --warnings-as-errors inside ./${{matrix.project}}
+        run: mix compile --force --warnings-as-errors
+        env:
+          MIX_ENV: test
+        working-directory: ./${{matrix.project}}
+      - name: mix test inside ./${{matrix.project}}
+        run: mix test
+        working-directory: ./${{matrix.project}}
