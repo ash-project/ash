@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.12.0](https://github.com/ash-project/ash/compare/v1.11.1...v1.12.0) (2020-08-27)
+
+
+
+
+### Features:
+
+* add `one_of` validation
+
+* add `simple` data layer, and make it default
+
+### Bug Fixes:
+
+* allow anonymous functions in the dsl
+
 ## [v1.11.1](https://github.com/ash-project/ash/compare/v1.11.0...v1.11.1) (2020-08-26)
 
 
