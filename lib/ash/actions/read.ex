@@ -8,30 +8,34 @@ defmodule Ash.Actions.Read do
   require Logger
 
   def run(query, action, opts \\ []) do
-    engine_opts = Keyword.take(opts, [:verbose?, :actor, :authorize?])
+    if Ash.Resource.data_layer_can?(query.resource, :read) do
+      engine_opts = Keyword.take(opts, [:verbose?, :actor, :authorize?])
 
-    query = query_with_initial_data(query, opts)
+      query = query_with_initial_data(query, opts)
 
-    with %{errors: []} <- query,
-         {:ok, requests} <- requests(query, action, opts),
-         side_load_requests <- SideLoad.requests(query),
-         %{data: %{data: data} = all_data, errors: []} <-
-           Engine.run(requests ++ side_load_requests, query.api, engine_opts),
-         data_with_side_loads <- SideLoad.attach_side_loads(data, all_data),
-         data_with_aggregates <-
-           add_aggregate_values(
-             data_with_side_loads,
-             query.aggregates,
-             query.resource,
-             Map.get(all_data, :aggregate_values, %{})
-           ) do
-      {:ok, data_with_aggregates}
+      with %{errors: []} <- query,
+           {:ok, requests} <- requests(query, action, opts),
+           side_load_requests <- SideLoad.requests(query),
+           %{data: %{data: data} = all_data, errors: []} <-
+             Engine.run(requests ++ side_load_requests, query.api, engine_opts),
+           data_with_side_loads <- SideLoad.attach_side_loads(data, all_data),
+           data_with_aggregates <-
+             add_aggregate_values(
+               data_with_side_loads,
+               query.aggregates,
+               query.resource,
+               Map.get(all_data, :aggregate_values, %{})
+             ) do
+        {:ok, data_with_aggregates}
+      else
+        %{errors: errors} ->
+          {:error, Ash.Error.to_ash_error(errors)}
+
+        {:error, error} ->
+          {:error, Ash.Error.to_ash_error(error)}
+      end
     else
-      %{errors: errors} ->
-        {:error, Ash.Error.to_ash_error(errors)}
-
-      {:error, error} ->
-        {:error, Ash.Error.to_ash_error(error)}
+      {:error, "Datalayer does not support reads"}
     end
   end
 

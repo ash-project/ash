@@ -14,7 +14,9 @@ defmodule Ash.Resource.Transformers.ValidateActionTypesSupported do
       unless Ash.Resource.data_layer_can?(resource, action.type) do
         raise DslError,
           message:
-            "Data layer #{Ash.Resource.data_layer(resource)} does not support #{action.type} actions",
+            "Data layer #{Ash.Resource.data_layer(resource)} for #{inspect(resource)} does not support #{
+              action.type
+            } actions",
           path: [:actions, action.type, action.name]
       end
     end)

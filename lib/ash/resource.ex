@@ -8,7 +8,7 @@ defmodule Ash.Resource do
   alias Ash.Dsl.Extension
 
   defmacro __using__(opts) do
-    data_layer = Macro.expand(opts[:data_layer], __CALLER__)
+    data_layer = Macro.expand(opts[:data_layer], __CALLER__) || Ash.DataLayer.Simple
 
     authorizers =
       opts[:authorizers]
@@ -16,7 +16,7 @@ defmodule Ash.Resource do
       |> Enum.map(&Macro.expand(&1, __CALLER__))
 
     extensions =
-      if data_layer && Ash.implements_behaviour?(data_layer, Ash.Dsl.Extension) do
+      if Ash.implements_behaviour?(data_layer, Ash.Dsl.Extension) do
         [data_layer, Ash.Resource.Dsl]
       else
         [Ash.Resource.Dsl]
@@ -32,9 +32,10 @@ defmodule Ash.Resource do
         @before_compile Ash.Resource
 
         @authorizers opts[:authorizers] || []
-        @data_layer opts[:data_layer]
+        @data_layer opts[:data_layer] || Ash.DataLayer.Simple
         @extensions (opts[:extensions] || []) ++
-                      List.wrap(opts[:data_layer]) ++ (opts[:authorizers] || [])
+                      List.wrap(opts[:data_layer] || Ash.DataLayer.Simple) ++
+                      (opts[:authorizers] || [])
       end
 
     preparations = Extension.prepare(extensions)
