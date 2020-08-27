@@ -1,5 +1,5 @@
 defmodule Ash.Resource.Validation.Present do
-  @moduledoc "Validates that the provided attribute is non-nil"
+  @moduledoc "Validates the presence of a list of attributes"
   alias Ash.Error.Changes.{InvalidAttribute, InvalidChanges}
 
   @behaviour Ash.Resource.Validation
@@ -23,6 +23,9 @@ defmodule Ash.Resource.Validation.Present do
       doc: "The attributes that the configured amount of must be present"
     ]
   ]
+
+  @doc false
+  def schema, do: @opt_schema
 
   @impl true
   def init(opts) do

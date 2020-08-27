@@ -7,6 +7,20 @@ defmodule Ash.Resource.Validation.Builtins do
 
   alias Ash.Resource.Validation
 
+  @doc """
+  Validates that an attribute's value is in a given list
+  """
+  def one_of(attribute, values) do
+    {Validation.OneOf, attribute: attribute, values: values}
+  end
+
+  @doc """
+  Validates the presence of a list of attributes
+
+  If no options are provided, validates that they are all present.
+
+  #{NimbleOptions.docs(Keyword.delete(Validation.Present.schema(), :attributes))}
+  """
   def present(attributes, opts \\ []) do
     if opts == [] do
       attributes = List.wrap(attributes)
@@ -17,6 +31,13 @@ defmodule Ash.Resource.Validation.Builtins do
     end
   end
 
+  @doc """
+  Validates the absence of a list of attributes
+
+  If no options are provided, validates that they are all absent.
+
+  The docs behave the same as `present/2`, except they validate absence.
+  """
   def absent(attributes, opts \\ []) do
     if opts == [] do
       {Validation.Present, attributes: List.wrap(attributes), exactly: 0}
