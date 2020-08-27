@@ -711,7 +711,8 @@ defmodule Ash.Filter do
     end
   end
 
-  defp add_expression_part({:not, nested_statement}, context, expression) do
+  defp add_expression_part({not_key, nested_statement}, context, expression)
+       when not_key in [:not, "not"] do
     case parse_expression(nested_statement, context) do
       {:ok, nested_expression} ->
         {:ok, Expression.new(:and, expression, Not.new(nested_expression))}
@@ -721,21 +722,24 @@ defmodule Ash.Filter do
     end
   end
 
-  defp add_expression_part({:is_nil, field}, context, expression) do
+  defp add_expression_part({is_nil_key, field}, context, expression)
+       when is_nil_key in ["is_nil", :is_nil] do
     case IsNil.new(context.resource, %{name: field}, true) do
       {:ok, is_nil} -> {:ok, Expression.new(:is_nil, expression, is_nil)}
       {:error, reason} -> {:error, reason}
     end
   end
 
-  defp add_expression_part({:or, nested_statements}, context, expression) do
+  defp add_expression_part({or_key, nested_statements}, context, expression)
+       when or_key in [:or, "or"] do
     with {:ok, nested_expression} <- parse_and_join(nested_statements, :or, context),
          :ok <- validate_datalayers_support_boolean_filters(nested_expression) do
       {:ok, Expression.new(:and, expression, nested_expression)}
     end
   end
 
-  defp add_expression_part({:and, nested_statements}, context, expression) do
+  defp add_expression_part({and_key, nested_statements}, context, expression)
+       when and_key in [:and, "and"] do
     case parse_and_join(nested_statements, :and, context) do
       {:ok, nested_expression} ->
         {:ok, Expression.new(:and, expression, nested_expression)}

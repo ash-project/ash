@@ -731,7 +731,6 @@ defmodule Ash.Changeset do
     error =
       InvalidAttribute.exception(
         field: attribute.name,
-        type: attribute.type,
         validation: {:cast, attribute.type},
         message: message
       )

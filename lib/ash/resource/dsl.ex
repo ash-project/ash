@@ -350,7 +350,7 @@ defmodule Ash.Resource.Dsl do
     An argument to be passed into the calculation's arguments map
     """,
     examples: [
-      "argument :params, :map, default: {:constant, %{}}",
+      "argument :params, :map, default: %{}",
       "argument :retries, :integer, allow_nil?: false"
     ],
     target: Ash.Resource.Calculation.Argument,

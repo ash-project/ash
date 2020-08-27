@@ -23,20 +23,12 @@ defmodule Ash.OptionsHelpers do
   end
 
   def default(value) when is_function(value, 0), do: {:ok, value}
-  def default({:constant, value}), do: {:ok, {:constant, value}}
 
   def default({module, function, args})
       when is_atom(module) and is_atom(function) and is_list(args),
       do: {:ok, {module, function, args}}
 
-  def default(nil), do: {:ok, nil}
-
-  def default(other) do
-    {:error,
-     "#{inspect(other)} is not a valid default. To provide a constant value, use `{:constant, #{
-       inspect(other)
-     }}`"}
-  end
+  def default(value), do: {:ok, value}
 
   def make_required!(options, field) do
     Keyword.update!(options, field, &Keyword.put(&1, :required, true))

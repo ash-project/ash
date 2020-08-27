@@ -65,7 +65,7 @@ defmodule Ash.Resource.Validation do
       type: :boolean,
       default: false,
       doc:
-        "If a validation is expensive, it won't be run on invalid changes. All inexpensive validations are always run, to provide informative validations."
+        "If a validation is expensive, it won't be run on invalid changes. All inexpensive validations are always run, to provide informative errors."
     ]
   ]
 

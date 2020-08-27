@@ -74,7 +74,7 @@ defmodule Ash.Actions.Create do
   defp set_defaults(changeset) do
     changeset.resource
     |> Ash.Resource.attributes()
-    |> Enum.filter(& &1.default)
+    |> Enum.filter(&(not is_nil(&1.default)))
     |> Enum.reduce(changeset, fn attribute, changeset ->
       Ash.Changeset.change_new_attribute_lazy(changeset, attribute.name, fn ->
         default(attribute.default)
@@ -146,7 +146,7 @@ defmodule Ash.Actions.Create do
     end
   end
 
-  defp default({:constant, value}), do: value
   defp default({mod, func, args}), do: apply(mod, func, args)
   defp default(function) when is_function(function, 0), do: function.()
+  defp default(value), do: value
 end

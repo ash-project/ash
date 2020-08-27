@@ -13,6 +13,11 @@ defmodule Ash.Schema do
       @primary_key false
 
       schema Ash.DataLayer.source(__MODULE__) do
+        for relationship <- Ash.Resource.relationships(__MODULE__) do
+          @struct_fields {relationship.name,
+                          %Ash.NotLoaded{type: :relationship, field: relationship.name}}
+        end
+
         for attribute <- Ash.Resource.attributes(__MODULE__) do
           read_after_writes? = attribute.generated? and is_nil(attribute.default)
 
@@ -29,40 +34,6 @@ defmodule Ash.Schema do
           {:ok, type} = Aggregate.kind_to_type(aggregate.kind)
 
           field(aggregate.name, Ash.Type.ecto_type(type), virtual: true)
-        end
-
-        relationships = Ash.Resource.relationships(__MODULE__)
-
-        for relationship <- Enum.filter(relationships, &(&1.type == :belongs_to)) do
-          belongs_to(relationship.name, relationship.destination,
-            define_field: false,
-            foreign_key: relationship.source_field,
-            references: relationship.destination_field
-          )
-        end
-
-        for relationship <- Enum.filter(relationships, &(&1.type == :has_one)) do
-          has_one(relationship.name, relationship.destination,
-            foreign_key: relationship.destination_field,
-            references: relationship.source_field
-          )
-        end
-
-        for relationship <- Enum.filter(relationships, &(&1.type == :has_many)) do
-          has_many(relationship.name, relationship.destination,
-            foreign_key: relationship.destination_field,
-            references: relationship.source_field
-          )
-        end
-
-        for relationship <- Enum.filter(relationships, &(&1.type == :many_to_many)) do
-          many_to_many(relationship.name, relationship.destination,
-            join_through: relationship.through,
-            join_keys: [
-              {relationship.source_field_on_join_table, relationship.source_field},
-              {relationship.destination_field_on_join_table, relationship.destination_field}
-            ]
-          )
         end
       end
     end

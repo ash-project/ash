@@ -47,10 +47,9 @@ defmodule MyApp.Tweet do
     end
 
     # Alternatively, you can use the keyword list syntax
-    # `{:constant, <value>}` is how you set a default
     # You can also set functional defaults, via passing in a zero
     # argument function or an MFA
-    attribute :public, :boolean, allow_nil?: false, default: {:constant, false}
+    attribute :public, :boolean, allow_nil?: false, default: false
 
     create_timestamp :created_at #This is set on create
     update_timestamp :updated_at #This is updated on all updates

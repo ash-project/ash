@@ -38,14 +38,14 @@ defmodule Ash.Type.String do
       Enum.reduce(constraints, [], fn
         {:max_length, max_length}, errors ->
           if String.length(value) > max_length do
-            ["length must be less than `#{max_length}`" | errors]
+            ["length must be less than or equal to `#{max_length}`" | errors]
           else
             errors
           end
 
         {:min_length, min_length}, errors ->
           if String.length(value) < min_length do
-            ["length must be less than `#{min_length}`" | errors]
+            ["length must be greater than or equal to `#{min_length}`" | errors]
           else
             errors
           end

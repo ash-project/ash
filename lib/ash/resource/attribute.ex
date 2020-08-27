@@ -65,12 +65,12 @@ defmodule Ash.Resource.Attribute do
     update_default: [
       type: {:custom, Ash.OptionsHelpers, :default, []},
       doc:
-        "A zero argument function, an {mod, fun, args} triple or `{:constant, value}`. If no value is provided for the attribute on update, this value is used."
+        "A zero argument function, an {mod, fun, args} triple or a value. If no value is provided for the attribute on update, this value is used."
     ],
     default: [
       type: {:custom, Ash.OptionsHelpers, :default, []},
       doc:
-        "A zero argument function, an {mod, fun, args} triple or `{:constant, value}`. If no value is provided for the attribute on create, this value is used."
+        "A zero argument function, an {mod, fun, args} triple or a value. If no value is provided for the attribute on create, this value is used."
     ],
     description: [
       type: :string,

@@ -123,7 +123,7 @@ defmodule Ash.Filter.Runtime do
   defp get_related(records, [key | rest]) when is_list(records) do
     Enum.flat_map(records, fn record ->
       case Map.get(record, key) do
-        %Ecto.Association.NotLoaded{} ->
+        %Ash.NotLoaded{type: :relationship} ->
           []
 
         value ->

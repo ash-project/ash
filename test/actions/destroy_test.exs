@@ -79,7 +79,7 @@ defmodule Ash.Test.Actions.DestroyTest do
       attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
       attribute :title, :string
       attribute :contents, :string
-      attribute :tag, :string, default: {:constant, "garbage"}
+      attribute :tag, :string, default: "garbage"
       attribute :tag2, :string, default: &PostDefaults.garbage2/0
       attribute :tag3, :string, default: {PostDefaults, :garbage3, []}
     end
