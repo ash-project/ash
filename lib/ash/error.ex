@@ -23,6 +23,16 @@ defmodule Ash.Error do
 
   @error_class_indices @error_classes |> Enum.with_index() |> Enum.into(%{})
 
+  defmodule Stacktrace do
+    defstruct [:stacktrace]
+
+    defimpl Inspect do
+      def inspect(_, _) do
+        "#Stacktrace<>"
+      end
+    end
+  end
+
   def ash_error?(value) do
     !!impl_for(value)
   end
@@ -61,7 +71,7 @@ defmodule Ash.Error do
     end
   end
 
-  def error_messages(errors, custom_message \\ nil) do
+  def error_messages(errors, custom_message \\ nil, stacktraces? \\ false) do
     generic_message =
       errors
       |> List.wrap()
@@ -70,7 +80,21 @@ defmodule Ash.Error do
       |> Enum.map_join("\n\n", fn {class, class_errors} ->
         header = header(class) <> "\n\n"
 
-        header <> Enum.map_join(class_errors, "\n", &"* #{Exception.message(&1)}")
+        if stacktraces? do
+          header <>
+            Enum.map_join(class_errors, "\n", fn
+              %{stacktrace: %Stacktrace{stacktrace: stacktrace}} = class_error ->
+                "* #{Exception.message(class_error)}\n" <>
+                  Enum.map_join(stacktrace, "\n", fn stack_item ->
+                    "  " <> Exception.format_stacktrace_entry(stack_item)
+                  end)
+            end)
+        else
+          header <>
+            Enum.map_join(class_errors, "\n", fn class_error ->
+              "* #{Exception.message(class_error)}"
+            end)
+        end
       end)
 
     if custom_message do
@@ -109,10 +133,22 @@ defmodule Ash.Error do
 
   defmacro def_ash_error(fields, opts \\ []) do
     quote do
-      defexception unquote(fields) ++ [path: [], class: unquote(opts)[:class]]
+      defexception unquote(fields) ++ [path: [], stacktrace: [], class: unquote(opts)[:class]]
 
       @impl Exception
       defdelegate message(error), to: Ash.Error
+
+      def exception(opts) do
+        case Process.info(self(), :current_stacktrace) do
+          {:current_stacktrace, [_, _ | stacktrace]} ->
+            super(
+              Keyword.put_new(opts, :stacktrace, %Ash.Error.Stacktrace{stacktrace: stacktrace})
+            )
+
+          _ ->
+            super(opts)
+        end
+      end
     end
   end
 

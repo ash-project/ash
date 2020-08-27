@@ -10,13 +10,11 @@ defmodule Ash.Error.Changes.InvalidAttribute do
     def code(_), do: "invalid_attribute"
 
     def message(error) do
-      "Invalid value#{for_type(error)}provided#{for_field(error)}#{do_message(error)}"
+      "Invalid value provided#{for_field(error)}#{do_message(error)}"
     end
 
     defp for_field(%{field: field}) when not is_nil(field), do: " for #{field}"
     defp for_field(_), do: ""
-    defp for_type(%{type: type}) when not is_nil(type), do: " for #{type} "
-    defp for_type(_), do: " "
 
     defp do_message(%{message: message}) when not is_nil(message) do
       ": #{message}."

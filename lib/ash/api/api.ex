@@ -25,7 +25,7 @@ defmodule Ash.Api do
   import Ash.OptionsHelpers, only: [merge_schemas: 3]
 
   alias Ash.Actions.{Create, Destroy, Read, Update}
-  alias Ash.Error.Invalid.{InvalidPrimaryKey, NoSuchAction, NoSuchResource}
+  alias Ash.Error.Invalid.{InvalidPrimaryKey, NoPrimaryAction, NoSuchAction, NoSuchResource}
 
   @global_opts [
     verbose?: [
@@ -526,10 +526,7 @@ defmodule Ash.Api do
       :error ->
         case Ash.Resource.primary_action(resource, type) do
           nil ->
-            {:error,
-             "no action provided, and no primary #{to_string(type)} action found for resource #{
-               inspect(resource)
-             }"}
+            {:error, NoPrimaryAction.exception(resource: resource, type: type)}
 
           action ->
             {:ok, action}
@@ -542,6 +539,13 @@ defmodule Ash.Api do
 
   defp unwrap_or_raise!({:error, error}) do
     exception = Ash.Error.to_ash_error(error)
-    raise exception
+
+    case exception do
+      %{stacktraces?: _} ->
+        raise %{exception | stacktraces?: true}
+
+      _ ->
+        raise exception
+    end
   end
 end
