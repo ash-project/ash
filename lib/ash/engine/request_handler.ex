@@ -57,7 +57,7 @@ defmodule Ash.Engine.RequestHandler do
         Enum.each(dependencies, &register_dependency(new_state, &1))
 
         complete(new_state)
-        {:noreply, new_state}
+        {:noreply, new_state, {:continue, :next}}
 
       {:wait, new_request, notifications, dependencies} ->
         new_state = %{state | request: new_request}

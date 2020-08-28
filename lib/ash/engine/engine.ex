@@ -233,6 +233,10 @@ defmodule Ash.Engine do
     end
   end
 
+  def handle_cast({:local_requests_failed, _error}, state) do
+    {:stop, {:shutdown, state}, state}
+  end
+
   def handle_cast({:complete, path}, state) do
     state
     |> move_to_complete(path)
@@ -248,7 +252,7 @@ defmodule Ash.Engine do
     state
     |> log("Error received from request_handler #{inspect(error)}")
     |> move_to_error(request_handler_state.request.path)
-    |> add_error(request_handler_state.request, error)
+    |> add_error(request_handler_state.request.path, error)
     |> maybe_shutdown()
   end
 
@@ -256,7 +260,7 @@ defmodule Ash.Engine do
     state
     |> log("Error received from request_handler #{inspect(error)}")
     |> move_to_error(request_handler_state.request.path)
-    |> add_error(request_handler_state.request, error)
+    |> add_error(request_handler_state.request.path, error)
     |> maybe_shutdown()
   end
 
@@ -264,7 +268,7 @@ defmodule Ash.Engine do
     state
     |> log("Request exited in failure #{request.name}: #{inspect(error)}")
     |> move_to_error(request.path)
-    |> add_error(request, error)
+    |> add_error(request.path, error)
     |> maybe_shutdown()
   end
 
@@ -274,7 +278,7 @@ defmodule Ash.Engine do
     state
     |> log("Request exited in failure #{request.name}: #{inspect(reason)}")
     |> move_to_error(request.path)
-    |> add_error(request, reason)
+    |> add_error(request.path, reason)
     |> maybe_shutdown()
   end
 

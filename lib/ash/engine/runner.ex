@@ -29,7 +29,8 @@ defmodule Ash.Engine.Runner do
 
     new_state = run_to_completion(state)
 
-    Enum.reduce(new_state.requests, new_state, &add_data(&2, &1.path, &1.data))
+    new_state.requests
+    |> Enum.reduce(new_state, &add_data(&2, &1.path, &1.data))
   end
 
   def run_to_completion(state) do
@@ -166,6 +167,7 @@ defmodule Ash.Engine.Runner do
 
     case Request.wont_receive(request, path, field) do
       {:stop, :dependency_failed, new_request} ->
+        notify_error(:dependency_failed, state)
         replace_request(state, %{new_request | state: :error})
     end
   end
@@ -299,6 +301,8 @@ defmodule Ash.Engine.Runner do
         {new_state, notifications ++ new_notifications, new_dependencies ++ dependencies}
 
       {:error, error, new_request} ->
+        notify_error(error, state)
+
         new_state =
           state
           |> replace_request(%{new_request | state: :error, error?: true})
@@ -307,6 +311,10 @@ defmodule Ash.Engine.Runner do
 
         {new_state, notifications, dependencies}
     end
+  end
+
+  defp notify_error(error, state) do
+    GenServer.cast(state.engine_pid, {:local_requests_failed, error})
   end
 
   defp notify(state, notifications) do
@@ -363,6 +371,8 @@ defmodule Ash.Engine.Runner do
         {new_state, notifications, new_dependencies}
 
       {:error, error, new_request} ->
+        notify_error(error, state)
+
         new_state =
           state
           |> add_error(new_request.path, error)

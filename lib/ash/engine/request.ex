@@ -628,11 +628,11 @@ defmodule Ash.Engine.Request do
 
   defp notify_existing_value(request, field, value, internal?) do
     if internal? do
+      {:ok, request, [], []}
+    else
       {new_request, notifications} = notifications(request, field, value)
 
       {:ok, new_request, notifications, []}
-    else
-      {:ok, request, [], []}
     end
   end
 
