@@ -1,11 +1,12 @@
 defmodule Ash.Resource.Actions.Update do
   @moduledoc "Represents a update action on a resource."
 
-  defstruct [:name, :primary?, type: :update]
+  defstruct [:name, :primary?, :accept, type: :update]
 
   @type t :: %__MODULE__{
           type: :update,
           name: atom,
+          accept: [atom],
           primary?: boolean
         }
 
@@ -13,6 +14,11 @@ defmodule Ash.Resource.Actions.Update do
     name: [
       type: :atom,
       doc: "The name of the action"
+    ],
+    accept: [
+      type: {:custom, Ash.OptionsHelpers, :list_of_atoms, []},
+      doc:
+        "The list of attributes and relationships to accept. Defaults to all attributes on the resource"
     ],
     primary?: [
       type: :boolean,

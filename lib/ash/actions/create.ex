@@ -5,6 +5,8 @@ defmodule Ash.Actions.Create do
   alias Ash.Engine.Request
   require Logger
 
+  alias Ash.Error.Changes.{InvalidAttribute, InvalidRelationship}
+
   @spec run(Ash.api(), Ash.changeset(), Ash.action(), Keyword.t()) ::
           {:ok, Ash.record()} | {:error, Ash.error()}
   def run(api, changeset, action, opts) do
@@ -16,7 +18,7 @@ defmodule Ash.Actions.Create do
       |> Keyword.take([:verbose?, :actor, :authorize?])
       |> Keyword.put(:transaction?, true)
 
-    with %{valid?: true} = changeset <- changeset(changeset, api),
+    with %{valid?: true} = changeset <- changeset(changeset, api, action),
          :ok <- check_upsert_support(changeset.resource, upsert?),
          %{
            data: %{commit: %^resource{} = created},
@@ -43,11 +45,46 @@ defmodule Ash.Actions.Create do
     end
   end
 
-  defp changeset(changeset, api) do
+  defp changeset(changeset, api, action) do
     %{changeset | api: api}
     |> Relationships.handle_relationship_changes()
+    |> validate_attributes_accepted(action)
+    |> validate_relationships_accepted(action)
     |> set_defaults()
     |> add_validations()
+  end
+
+  defp validate_attributes_accepted(changeset, %{accept: nil}), do: changeset
+
+  defp validate_attributes_accepted(changeset, %{accept: accepted_attributes}) do
+    changeset.attributes
+    |> Enum.reject(fn {key, _value} ->
+      key in accepted_attributes
+    end)
+    |> Enum.reduce(changeset, fn {key, _}, changeset ->
+      Ash.Changeset.add_error(
+        changeset,
+        InvalidAttribute.exception(field: key, message: "Cannot be changed")
+      )
+    end)
+  end
+
+  defp validate_relationships_accepted(changeset, %{accept: nil}), do: changeset
+
+  defp validate_relationships_accepted(changeset, %{accept: accepted_relationships}) do
+    changeset.relationships
+    |> Enum.reject(fn {key, _value} ->
+      key in accepted_relationships
+    end)
+    |> Enum.reduce(changeset, fn {key, _}, changeset ->
+      Ash.Changeset.add_error(
+        changeset,
+        InvalidRelationship.exception(
+          relationship: key,
+          message: "Cannot be changed"
+        )
+      )
+    end)
   end
 
   defp add_validations(changeset) do

@@ -22,6 +22,14 @@ defmodule Ash.OptionsHelpers do
     end
   end
 
+  def list_of_atoms(value) do
+    if is_list(value) and Enum.all?(value, &is_atom/1) do
+      {:ok, value}
+    else
+      {:error, "Expected a list of atoms"}
+    end
+  end
+
   def default(value) when is_function(value, 0), do: {:ok, value}
 
   def default({module, function, args})

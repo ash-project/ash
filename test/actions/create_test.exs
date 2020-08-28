@@ -58,9 +58,14 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
-      read(:default)
-      create(:default)
-      update(:default)
+      read :default
+      create :default, primary?: true
+
+      create :only_allow_name do
+        accept([:name])
+      end
+
+      update :default
     end
 
     attributes do
@@ -198,6 +203,24 @@ defmodule Ash.Test.Actions.CreateTest do
                |> new()
                |> change_attribute(:title, "foo")
                |> Api.create!()
+    end
+  end
+
+  describe "accept" do
+    test "allows using attributes in the list" do
+      Author
+      |> new()
+      |> change_attribute(:name, "fred")
+      |> Api.create!(action: :only_allow_name)
+    end
+
+    test "it prevents using attributes not in the list" do
+      assert_raise Ash.Error.Invalid, ~r/Invalid value provided for bio: Cannot be changed/, fn ->
+        Author
+        |> new()
+        |> change_attribute(:bio, "foo")
+        |> Api.create!(action: :only_allow_name)
+      end
     end
   end
 

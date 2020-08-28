@@ -58,12 +58,17 @@ defmodule Ash.Test.Actions.UpdateTest do
     actions do
       read :default
       create :default
-      update :default
+      update :default, primary?: true
+
+      update :only_allow_name do
+        accept([:name])
+      end
     end
 
     attributes do
       attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
       attribute :name, :string
+      attribute :bio, :string
     end
 
     relationships do
@@ -153,6 +158,32 @@ defmodule Ash.Test.Actions.UpdateTest do
 
       assert %Post{title: "bar", contents: "foo"} =
                post |> new(%{title: "bar", contents: "foo"}) |> Api.update!()
+    end
+  end
+
+  describe "allow" do
+    test "allows attributes in the list" do
+      author =
+        Author
+        |> new(%{name: "fred"})
+        |> Api.create!()
+
+      author
+      |> new(%{name: "joe"})
+      |> Api.update!(action: :only_allow_name)
+    end
+
+    test "does not allow attributes in the list" do
+      author =
+        Author
+        |> new(%{name: "fred"})
+        |> Api.create!()
+
+      assert_raise Ash.Error.Invalid, ~r/Invalid value provided for bio: Cannot be changed/, fn ->
+        author
+        |> new(%{bio: "bio"})
+        |> Api.update!(action: :only_allow_name)
+      end
     end
   end
 
