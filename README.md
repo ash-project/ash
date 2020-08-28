@@ -9,7 +9,7 @@
 
 Ash is in alpha. The package version is 1.0.0+, and most of the time that means stable, but in this case it _does not_. The 2.0 release will be the stable release.
 
-```
+```elixir
 def deps do
   [
     {:ash, "~> 1.12.0"}
