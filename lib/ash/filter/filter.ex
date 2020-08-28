@@ -838,6 +838,15 @@ defmodule Ash.Filter do
     end
   end
 
+  defp add_expression_part(value, context, expression) when is_list(value) do
+    Enum.reduce_while(value, {:ok, expression}, fn value, {:ok, expression} ->
+      case add_expression_part(value, context, expression) do
+        {:ok, expression} -> {:cont, {:ok, expression}}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
+  end
+
   defp add_expression_part(value, _, _) do
     {:error, InvalidFilterValue.exception(value: value)}
   end
