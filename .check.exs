@@ -11,13 +11,6 @@
     ## ...or adjusted (e.g. use one-line formatter for more compact credo output)
     # {:credo, "mix credo --format oneline"},
 
-    {:ex_unit,
-     command:
-       if System.get_env("ASH_CI") == "true" do
-         "mix coveralls.github"
-       else
-         "mix test"
-       end},
     {:check_formatter, command: "mix ash.formatter --check"}
 
     ## custom new tools may be added (mix tasks or arbitrary commands)
