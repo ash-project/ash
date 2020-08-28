@@ -199,6 +199,7 @@ defmodule Ash.Query do
   defp default(nil, {module, function, args}), do: apply(module, function, args)
   defp default(nil, value) when is_function(value, 0), do: value.()
   defp default(nil, value), do: value
+  defp default(value, _), do: value
 
   @spec put_datalayer_context(t(), atom, term) :: t()
   def put_datalayer_context(query, key, value) do

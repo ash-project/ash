@@ -24,6 +24,7 @@ defmodule Ash.Error do
   @error_class_indices @error_classes |> Enum.with_index() |> Enum.into(%{})
 
   defmodule Stacktrace do
+    @moduledoc "A placeholder for a stacktrace so that we can avoid printing it everywhere"
     defstruct [:stacktrace]
 
     defimpl Inspect do
