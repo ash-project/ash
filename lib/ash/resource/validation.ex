@@ -98,7 +98,7 @@ defmodule Ash.Resource.Validation do
           {:error, error}
       end
     else
-      {:error, "Validation must be a `{module, opts}` tuple"}
+      {:error, "Validation must be a `{module, opts}` tuple, got: #{inspect({module, opts})}"}
     end
   end
 
@@ -106,7 +106,7 @@ defmodule Ash.Resource.Validation do
     validation({module, []})
   end
 
-  def validation(_) do
-    {:error, "Validation must be a `{module, opts}` tuple"}
+  def validation(other) do
+    {:error, "Validation must be a `{module, opts}` tuple, got: #{inspect(other)}"}
   end
 end

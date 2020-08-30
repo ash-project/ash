@@ -203,7 +203,7 @@ defmodule Ash.Query.Aggregate do
                 end
 
               with {:ok, data_layer_query} <-
-                     add_datalayer_aggregates(
+                     add_data_layer_aggregates(
                        query.data_layer_query,
                        aggregates,
                        initial_query.resource
@@ -248,7 +248,7 @@ defmodule Ash.Query.Aggregate do
     )
   end
 
-  defp add_datalayer_aggregates(data_layer_query, aggregates, resource) do
+  defp add_data_layer_aggregates(data_layer_query, aggregates, resource) do
     Enum.reduce_while(aggregates, {:ok, data_layer_query}, fn aggregate,
                                                               {:ok, data_layer_query} ->
       case Ash.DataLayer.add_aggregate(

@@ -49,6 +49,17 @@ defmodule Ash.Test.Actions.CreateTest do
     end
   end
 
+  defmodule DuplicateName do
+    use Ash.Resource.Change
+
+    def change(changeset, _, _) do
+      case Ash.Changeset.fetch_change(changeset, :name) do
+        :error -> changeset
+        {:ok, name} -> Ash.Changeset.change_attribute(changeset, :name, name <> name)
+      end
+    end
+  end
+
   defmodule Author do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -63,6 +74,10 @@ defmodule Ash.Test.Actions.CreateTest do
 
       create :only_allow_name do
         accept([:name])
+      end
+
+      create :duplicate_name do
+        change {DuplicateName, []}
       end
 
       update :default
@@ -221,6 +236,17 @@ defmodule Ash.Test.Actions.CreateTest do
         |> change_attribute(:bio, "foo")
         |> Api.create!(action: :only_allow_name)
       end
+    end
+  end
+
+  describe "changeset" do
+    test "changes are run properly" do
+      author =
+        Author
+        |> new(%{name: "fred"})
+        |> Api.create!(action: :duplicate_name)
+
+      assert author.name == "fredfred"
     end
   end
 

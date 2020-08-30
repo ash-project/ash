@@ -7,196 +7,145 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 ## [v1.12.0](https://github.com/ash-project/ash/compare/v1.11.1...v1.12.0) (2020-08-27)
 
-
-
-
 ### Features:
 
-* add `one_of` validation
+- add `one_of` validation
 
-* add `simple` data layer, and make it default
+- add `simple` data layer, and make it default
 
 ### Bug Fixes:
 
-* allow anonymous functions in the dsl
+- allow anonymous functions in the dsl
 
 ## [v1.11.1](https://github.com/ash-project/ash/compare/v1.11.0...v1.11.1) (2020-08-26)
 
-
-
-
 ### Bug Fixes:
 
-* only update filter when its a filter
+- only update filter when its a filter
 
-* set resource in delegation query
+- set resource in delegation query
 
 ## [v1.11.0](https://github.com/ash-project/ash/compare/v1.10.0...v1.11.0) (2020-08-26)
 
-
-
-
 ### Features:
 
-* support inner lateral joins (#100)
+- support inner lateral joins (#100)
 
-* add identities, to enhance `get` calls (#99)
+- add identities, to enhance `get` calls (#99)
 
-* initial calculation support (#98)
+- initial calculation support (#98)
 
-* initial calculation support
+- initial calculation support
 
 ### Bug Fixes:
 
-* spec + dialyzer fixes
+- spec + dialyzer fixes
 
-* spec mix task run as no_return
+- spec mix task run as no_return
 
 ## [v1.10.0](https://github.com/ash-project/ash/compare/v1.9.0...v1.10.0) (2020-08-22)
 
-
-
-
 ### Features:
 
-* Add delegate datalayer (#97)
+- Add delegate data_layer (#97)
 
 ## [v1.9.0](https://github.com/ash-project/ash/compare/v1.8.0...v1.9.0) (2020-08-19)
 
-
-
-
 ### Features:
 
-* various custom datalayer features
+- various custom data_layer features
 
 ## [v1.8.0](https://github.com/ash-project/ash/compare/v1.7.0...v1.8.0) (2020-08-18)
 
-
-
-
 ### Features:
 
-* streamline `load` by accepting ok/error
+- streamline `load` by accepting ok/error
 
 ### Bug Fixes:
 
-* extensions: resolve duplicate nested entities
+- extensions: resolve duplicate nested entities
 
-* use Ecto's NotLoaded for assocs for now
+- use Ecto's NotLoaded for assocs for now
 
-* create/update typespecs were wrong
+- create/update typespecs were wrong
 
 ## [v1.7.0](https://github.com/ash-project/ash/compare/v1.6.8...v1.7.0) (2020-08-17)
 
-
-
-
 ### Features:
 
-* add `is_nil` predicate
+- add `is_nil` predicate
 
 ### Bug Fixes:
 
-* add lexical scope to DSL for imports
+- add lexical scope to DSL for imports
 
-* crash on entity w/ no options specified
+- crash on entity w/ no options specified
 
-* convert `eq: nil` into is_nil, fix credo
+- convert `eq: nil` into is_nil, fix credo
 
 ## [v1.6.8](https://github.com/ash-project/ash/compare/v1.6.7...v1.6.8) (2020-08-15)
 
-
-
-
 ### Bug Fixes:
 
-* some day tag names will work
+- some day tag names will work
 
 ## [v1.6.7](https://github.com/ash-project/ash/compare/v1.6.6...v1.6.7) (2020-08-15)
 
-
-
-
 ### Bug Fixes:
 
-* get the tag name for real this time
+- get the tag name for real this time
 
 ## [v1.6.6](https://github.com/ash-project/ash/compare/v1.6.5...v1.6.6) (2020-08-15)
 
-
-
-
 ### Bug Fixes:
 
-* try again to get the version name in tweets
+- try again to get the version name in tweets
 
 ## [v1.6.5](https://github.com/ash-project/ash/compare/v1.6.4...v1.6.5) (2020-08-15)
 
-
-
-
 ### Bug Fixes:
 
-* get the version property
+- get the version property
 
 ## [v1.6.4](https://github.com/ash-project/ash/compare/v1.6.3...v1.6.4) (2020-08-15)
 
-
-
-
 ### Bug Fixes:
 
-* test out automatic tweeting
+- test out automatic tweeting
 
 ## [v1.6.3](https://github.com/ash-project/ash/compare/v1.6.2...v1.6.3) (2020-08-15)
 
-
-
-
 ### Bug Fixes:
 
-* remove bad package reference from the docs
+- remove bad package reference from the docs
 
 ## [v1.6.2](https://github.com/ash-project/ash/compare/v1.6.1...v1.6.2) (2020-08-13)
 
-
-
-
 ### Bug Fixes:
 
-* various fixes for graphql extension
+- various fixes for graphql extension
 
 ## [v1.6.1](https://github.com/ash-project/ash/compare/v1.6.0...v1.6.1) (2020-08-10)
 
-
-
-
 ### Bug Fixes:
 
-* `load` typespecs
+- `load` typespecs
 
 ## [v1.6.0](https://github.com/ash-project/ash/compare/v1.5.1...v1.6.0) (2020-08-10)
 
-
-
-
 ### Features:
 
-* add named aggregates
+- add named aggregates
 
 ### Bug Fixes:
 
-* various fixes from json:api integration
+- various fixes from json:api integration
 
 ## [v1.5.1](https://github.com/ash-project/ash/compare/v1.5.0...v1.5.1) (2020-07-24)
 
-
-
-
 ### Bug Fixes:
 
-* scope data layer feature to aggregate kind
+- scope data layer feature to aggregate kind
 
 ## v1.5.0 (2020-07-24)
 

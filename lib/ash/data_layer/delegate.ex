@@ -1,6 +1,6 @@
 defmodule Ash.DataLayer.Delegate do
   @moduledoc """
-  A datalayer for adding a resource to one API that simply delegates
+  A data_layer for adding a resource to one API that simply delegates
   to a resource in a different (or the same) API
   """
 
@@ -324,10 +324,10 @@ defmodule Ash.DataLayer.Delegate do
     end
   end
 
-  defp changeset_authorize?(%{data_layer_context: %{authorize?: true}}), do: true
+  defp changeset_authorize?(%{context: %{authorize?: true}}), do: true
   defp changeset_authorize?(_), do: false
 
-  defp actor(%{data_layer_context: %{actor: actor}}), do: actor
+  defp actor(%{context: %{actor: actor}}), do: actor
   defp actor(_), do: nil
 
   defp translate_changeset(data, source_changeset) do

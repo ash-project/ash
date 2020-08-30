@@ -674,14 +674,14 @@ defmodule Ash.Engine.Request do
   end
 
   defp process_resolved_field(:query, %Ash.Query{} = query, request) do
-    Ash.Query.set_datalayer_context(query, %{
+    Ash.Query.set_context(query, %{
       authorize?: request.authorize?,
       actor: request.actor
     })
   end
 
   defp process_resolved_field(:changeset, %Ash.Changeset{} = changeset, request) do
-    Ash.Changeset.set_datalayer_context(changeset, %{
+    Ash.Changeset.set_context(changeset, %{
       authorize?: request.authorize?,
       actor: request.actor
     })

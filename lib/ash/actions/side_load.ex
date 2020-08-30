@@ -443,10 +443,12 @@ defmodule Ash.Actions.SideLoad do
             {:lateral_join, relationship.destination}
           ) ->
         query
-        |> Ash.Query.set_datalayer_context(%{
-          lateral_join_source:
-            {source_data, relationship.source, relationship.source_field,
-             relationship.destination_field}
+        |> Ash.Query.set_context(%{
+          data_layer: %{
+            lateral_join_source:
+              {source_data, relationship.source, relationship.source_field,
+               relationship.destination_field}
+          }
         })
         |> query.api.read()
 

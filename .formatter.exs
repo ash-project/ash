@@ -13,6 +13,8 @@ locals_without_parens = [
   belongs_to: 3,
   calculate: 2,
   calculate: 3,
+  change: 1,
+  change: 2,
   constraints: 1,
   count: 2,
   count: 3,

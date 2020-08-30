@@ -13,7 +13,7 @@ defmodule Ash.Query do
     aggregates: %{},
     side_load: [],
     calculations: %{},
-    data_layer_context: %{},
+    context: %{},
     sort: [],
     limit: nil,
     offset: 0,
@@ -201,14 +201,24 @@ defmodule Ash.Query do
   defp default(nil, value), do: value
   defp default(value, _), do: value
 
-  @spec put_datalayer_context(t(), atom, term) :: t()
-  def put_datalayer_context(query, key, value) do
-    %{query | data_layer_context: Map.put(query.data_layer_context, key, value)}
+  @spec put_context(t(), atom, term) :: t()
+  def put_context(query, key, value) do
+    %{query | context: Map.put(query.context, key, value)}
   end
 
-  @spec set_datalayer_context(t(), map) :: t()
-  def set_datalayer_context(query, map) do
-    %{query | data_layer_context: Map.merge(query.data_layer_context, map)}
+  @spec set_context(t(), map) :: t()
+  def set_context(query, map) do
+    %{
+      query
+      | context:
+          Map.merge(query.context, map, fn _k, v1, v2 ->
+            if is_map(v1) and is_map(v2) do
+              Map.merge(v1, v2)
+            else
+              v2
+            end
+          end)
+    }
   end
 
   def unload(query, fields) do
@@ -637,7 +647,7 @@ defmodule Ash.Query do
              Ash.DataLayer.limit(query, ash_query.limit, resource),
            {:ok, query} <-
              Ash.DataLayer.offset(query, ash_query.offset, resource) do
-        {:ok, Ash.DataLayer.set_context(resource, query, ash_query.data_layer_context)}
+        {:ok, Ash.DataLayer.set_context(resource, query, ash_query.context)}
       else
         {:error, error} -> {:error, error}
       end

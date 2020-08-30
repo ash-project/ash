@@ -90,15 +90,15 @@ resources do
 end
 ```
 
-## Add your datalayer
+## Add your data_layer
 
-Choose a datalayer, and see its documentation for configuring it:
+Choose a data_layer, and see its documentation for configuring it:
 
-- `Ash.DataLayer.Ets` - an [ets](https://erlang.org/doc/man/ets.html) datalayer only recommended for testing
-- `Ash.DataLayer.Mnesia` - an [mnesia](https://erlang.org/doc/man/mnesia.html) datalayer, not optimized, but is backed by a file and works with distributed applications
-- `AshPostgres.DataLayer` - a Postgres datalayer, currently the primary supported data layer
+- `Ash.DataLayer.Ets` - an [ets](https://erlang.org/doc/man/ets.html) data_layer only recommended for testing
+- `Ash.DataLayer.Mnesia` - an [mnesia](https://erlang.org/doc/man/mnesia.html) data_layer, not optimized, but is backed by a file and works with distributed applications
+- `AshPostgres.DataLayer` - a Postgres data_layer, currently the primary supported data layer
 
-To add a datalayer, add it to the `use Ash.Resource` statement:
+To add a data_layer, add it to the `use Ash.Resource` statement:
 
 ```elixir
 use Ash.Resource,

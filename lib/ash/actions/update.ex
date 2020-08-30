@@ -17,7 +17,7 @@ defmodule Ash.Actions.Update do
 
     resource = changeset.resource
 
-    with %{valid?: true} = changeset <- changeset(changeset, api, action),
+    with %{valid?: true} = changeset <- changeset(changeset, api, action, opts[:actor]),
          %{data: %{commit: %^resource{} = updated}, errors: []} <-
            do_run_requests(
              changeset,
@@ -39,13 +39,20 @@ defmodule Ash.Actions.Update do
     end
   end
 
-  defp changeset(changeset, api, action) do
+  defp changeset(changeset, api, action, actor) do
     %{changeset | api: api}
-    |> Relationships.handle_relationship_changes()
     |> validate_attributes_accepted(action)
     |> validate_relationships_accepted(action)
+    |> run_action_changes(action, actor)
+    |> Relationships.handle_relationship_changes()
     |> set_defaults()
     |> add_validations()
+  end
+
+  defp run_action_changes(changeset, %{changes: changes}, actor) do
+    Enum.reduce(changes, changeset, fn %{change: {module, opts}}, changeset ->
+      module.change(changeset, opts, %{actor: actor})
+    end)
   end
 
   defp validate_attributes_accepted(changeset, %{accept: nil}), do: changeset

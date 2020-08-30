@@ -132,7 +132,7 @@ defmodule Ash.Filter do
             |> Ash.Query.new(api)
             |> Map.put(:filter, for_path)
 
-          add_other_datalayer_read_results(query, relationship, path, without_path)
+          add_other_data_layer_read_results(query, relationship, path, without_path)
         end)
 
       %Expression{op: :and} = expression, {:ok, filter} ->
@@ -149,7 +149,7 @@ defmodule Ash.Filter do
             |> Ash.Query.new(api)
             |> Map.put(:filter, for_path)
 
-          add_other_datalayer_read_results(query, relationship, path, without_path)
+          add_other_data_layer_read_results(query, relationship, path, without_path)
         end)
 
       _, {:ok, filter} ->
@@ -157,7 +157,7 @@ defmodule Ash.Filter do
     end)
   end
 
-  defp add_other_datalayer_read_results(query, relationship, path, filter_without_path) do
+  defp add_other_data_layer_read_results(query, relationship, path, filter_without_path) do
     case query.api.read(query) do
       {:ok, results} ->
         new_filter =
@@ -733,7 +733,7 @@ defmodule Ash.Filter do
   defp add_expression_part({or_key, nested_statements}, context, expression)
        when or_key in [:or, "or"] do
     with {:ok, nested_expression} <- parse_and_join(nested_statements, :or, context),
-         :ok <- validate_datalayers_support_boolean_filters(nested_expression) do
+         :ok <- validate_data_layers_support_boolean_filters(nested_expression) do
       {:ok, Expression.new(:and, expression, nested_expression)}
     end
   end
@@ -865,7 +865,7 @@ defmodule Ash.Filter do
     end
   end
 
-  defp validate_datalayers_support_boolean_filters(%Expression{op: :or, left: left, right: right}) do
+  defp validate_data_layers_support_boolean_filters(%Expression{op: :or, left: left, right: right}) do
     left_resources =
       left
       |> reduce([], fn
@@ -899,7 +899,7 @@ defmodule Ash.Filter do
     end)
   end
 
-  defp validate_datalayers_support_boolean_filters(_), do: :ok
+  defp validate_data_layers_support_boolean_filters(_), do: :ok
 
   defp add_to_predicate_path(expression, context) do
     case expression do
