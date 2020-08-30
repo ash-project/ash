@@ -30,6 +30,22 @@ defmodule Ash.OptionsHelpers do
     end
   end
 
+  def module_and_opts({module, opts}) when is_atom(module) do
+    if Keyword.keyword?(opts) do
+      {:ok, {module, opts}}
+    else
+      {:error, "Expected the second element to be a keyword list, got: #{inspect(opts)}"}
+    end
+  end
+
+  def module_and_opts({other, _}) do
+    {:error, "Expected the first element to be a module, got: #{inspect(other)}"}
+  end
+
+  def module_and_opts(module) do
+    module_and_opts({module, []})
+  end
+
   def default(value) when is_function(value, 0), do: {:ok, value}
 
   def default({module, function, args})

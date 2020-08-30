@@ -40,7 +40,7 @@ defmodule Ash.Changeset do
     :action_type,
     :resource,
     :api,
-    data_layer_context: %{},
+    context: %{},
     after_action: [],
     before_action: [],
     errors: [],
@@ -170,14 +170,14 @@ defmodule Ash.Changeset do
     Map.get(changeset.data, attribute)
   end
 
-  @spec put_datalayer_context(t(), atom, term) :: t()
-  def put_datalayer_context(changeset, key, value) do
-    %{changeset | data_layer_context: Map.put(changeset.data_layer_context, key, value)}
+  @spec put_context(t(), atom, term) :: t()
+  def put_context(changeset, key, value) do
+    %{changeset | context: Map.put(changeset.context, key, value)}
   end
 
-  @spec set_datalayer_context(t(), map) :: t()
-  def set_datalayer_context(changeset, map) do
-    %{changeset | data_layer_context: Map.merge(changeset.data_layer_context, map)}
+  @spec set_context(t(), map) :: t()
+  def set_context(changeset, map) do
+    %{changeset | context: Map.merge(changeset.context, map)}
   end
 
   @doc """

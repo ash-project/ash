@@ -29,8 +29,6 @@ defmodule Ash.Test.Actions.SideLoadTest do
     end
   end
 
-  outer_mod = __MODULE__
-
   defmodule Post do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -53,8 +51,8 @@ defmodule Ash.Test.Actions.SideLoadTest do
     relationships do
       belongs_to :author, Author
 
-      many_to_many :categories, Module.concat(outer_mod, Category),
-        through: Module.concat(outer_mod, PostCategory),
+      many_to_many :categories, Ash.Test.Actions.SideLoadTest.Category,
+        through: Ash.Test.Actions.SideLoadTest.PostCategory,
         destination_field_on_join_table: :category_id,
         source_field_on_join_table: :post_id
     end
@@ -75,7 +73,7 @@ defmodule Ash.Test.Actions.SideLoadTest do
 
     relationships do
       belongs_to :post, Post, primary_key?: true
-      belongs_to :category, Module.concat(outer_mod, Category), primary_key?: true
+      belongs_to :category, Ash.Test.Actions.SideLoadTest.Category, primary_key?: true
     end
   end
 

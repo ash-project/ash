@@ -294,7 +294,7 @@ defmodule Ash.Resource do
     data_layer(resource).in_transaction?(resource)
   end
 
-  @doc "Wraps the execution of the function in a transaction with the resource's datalayer"
+  @doc "Wraps the execution of the function in a transaction with the resource's data_layer"
   @spec transaction(Ash.resource(), (() -> term)) :: term
   def transaction(resource, func) do
     if data_layer_can?(resource, :transact) do

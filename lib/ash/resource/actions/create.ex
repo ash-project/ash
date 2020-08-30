@@ -1,6 +1,6 @@
 defmodule Ash.Resource.Actions.Create do
   @moduledoc "Represents a create action on a resource."
-  defstruct [:name, :primary?, :accept, type: :create]
+  defstruct [:name, :primary?, :accept, :changes, type: :create]
 
   @type t :: %__MODULE__{
           type: :create,

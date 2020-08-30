@@ -18,7 +18,7 @@ defmodule Ash.Actions.Create do
       |> Keyword.take([:verbose?, :actor, :authorize?])
       |> Keyword.put(:transaction?, true)
 
-    with %{valid?: true} = changeset <- changeset(changeset, api, action),
+    with %{valid?: true} = changeset <- changeset(changeset, api, action, opts[:actor]),
          :ok <- check_upsert_support(changeset.resource, upsert?),
          %{
            data: %{commit: %^resource{} = created},
@@ -45,13 +45,20 @@ defmodule Ash.Actions.Create do
     end
   end
 
-  defp changeset(changeset, api, action) do
+  defp changeset(changeset, api, action, actor) do
     %{changeset | api: api}
-    |> Relationships.handle_relationship_changes()
     |> validate_attributes_accepted(action)
     |> validate_relationships_accepted(action)
+    |> run_action_changes(action, actor)
+    |> Relationships.handle_relationship_changes()
     |> set_defaults()
     |> add_validations()
+  end
+
+  defp run_action_changes(changeset, %{changes: changes}, actor) do
+    Enum.reduce(changes, changeset, fn %{change: {module, opts}}, changeset ->
+      module.change(changeset, opts, %{actor: actor})
+    end)
   end
 
   defp validate_attributes_accepted(changeset, %{accept: nil}), do: changeset

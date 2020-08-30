@@ -1,5 +1,5 @@
 defmodule Ash.Error.Query.UnsupportedPredicate do
-  @moduledoc "Used when the datalayer does not support a provided predicate"
+  @moduledoc "Used when the data_layer does not support a provided predicate"
   use Ash.Error
 
   def_ash_error([:resource, :predicate, :type], class: :invalid)

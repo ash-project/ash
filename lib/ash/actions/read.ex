@@ -171,8 +171,10 @@ defmodule Ash.Actions.Read do
   defp run_query(
          %{
            resource: destination_resource,
-           data_layer_context: %{
-             lateral_join_source: {root_data, resource, source, destination}
+           context: %{
+             data_layer: %{
+               lateral_join_source: {root_data, resource, source, destination}
+             }
            }
          },
          query
@@ -194,7 +196,7 @@ defmodule Ash.Actions.Read do
   defp add_calculation_values(query, results, calculations) do
     calculations
     |> Enum.reduce_while({:ok, %{}}, fn {_name, calculation}, {:ok, calculation_results} ->
-      context = Map.put(calculation.context, :data_layer_context, query.data_layer_context)
+      context = Map.put(calculation.context, :context, query.context)
 
       case calculation.module.calculate(results, calculation.opts, context) do
         results when is_list(results) ->

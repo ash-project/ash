@@ -168,6 +168,31 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
+  @change %Ash.Dsl.Entity{
+    name: :change,
+    describe: """
+    A change to be applied to the changeset after it is generated. They are run in order, from top to bottom.
+
+    To implement your own, see `Ash.Resource.Change`.
+    To use it, you can simply refer to the module and its options, like so:
+
+    `change {MyChange, foo: 1}`
+
+    But for readability, you may want to define a function elsewhere and import it,
+    so you can say something like:
+
+    `change my_change(1)`
+    """,
+    examples: [
+      "change relate_actor(:reporter)",
+      "change {MyCustomChange, :foo}"
+    ],
+    target: Ash.Resource.Change,
+    transform: {Ash.Resource.Change, :transform, []},
+    schema: Ash.Resource.Change.schema(),
+    args: [:change]
+  }
+
   @create %Ash.Dsl.Entity{
     name: :create,
     describe: """
@@ -178,6 +203,11 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Actions.Create,
     schema: Ash.Resource.Actions.Create.opt_schema(),
+    entities: [
+      changes: [
+        @change
+      ]
+    ],
     args: [:name]
   }
 
@@ -201,6 +231,11 @@ defmodule Ash.Resource.Dsl do
     """,
     examples: [
       "update :flag_for_review, primary?: true"
+    ],
+    entities: [
+      changes: [
+        @change
+      ]
     ],
     target: Ash.Resource.Actions.Update,
     schema: Ash.Resource.Actions.Update.opt_schema(),
@@ -236,6 +271,9 @@ defmodule Ash.Resource.Dsl do
     primary action for that type, via: `primary?: true`. This tells the ash what to do
     if an action of that type is requested, but no specific action name is given.
     """,
+    imports: [
+      Ash.Resource.Change.Builtins
+    ],
     entities: [
       @create,
       @read,
