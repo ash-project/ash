@@ -1,5 +1,5 @@
 defmodule Ash.Resource.Change do
-  @Moduledoc """
+  @moduledoc """
   The behaviour for an action-specific resource change.
 
   To implement one, simply implement the behaviour. `c:init/1` is defined automatically
