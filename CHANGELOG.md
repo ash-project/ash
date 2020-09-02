@@ -5,6 +5,37 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.13.0](https://github.com/ash-project/ash/compare/v1.12.0...v1.13.0) (2020-09-02)
+
+
+
+
+### Features:
+
+* required belongs_to relationships (#107)
+
+* support filter templates on read actions
+
+* builtin concat calculation
+
+* add changes to actions (#106)
+
+* add `accept` option to create/update actions (#105)
+
+* add `Ash.NotLoaded` back, simpler defaults
+
+* improve errors (add stacktraces)
+
+### Bug Fixes:
+
+* various delegate data layer improvements
+
+* engine halting issues
+
+* resolve engine deadlocks
+
+* support nested lists of filters
+
 ## [v1.12.0](https://github.com/ash-project/ash/compare/v1.11.1...v1.12.0) (2020-08-27)
 
 ### Features:
