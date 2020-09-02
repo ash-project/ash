@@ -50,6 +50,7 @@ locals_without_parens = [
   private?: 1,
   read: 1,
   read: 2,
+  required?: 1,
   resource: 1,
   resource: 2,
   source_field: 1,

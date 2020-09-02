@@ -10,6 +10,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :destination_field,
     :source_field,
     :source,
+    :required?,
     :writable?,
     cardinality: :one,
     type: :belongs_to
@@ -22,6 +23,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           name: atom,
           source: Ash.resource(),
           destination: Ash.resource(),
+          required?: boolean,
           primary_key?: boolean,
           define_field?: boolean,
           field_type: Ash.Type.t(),
@@ -43,6 +45,12 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                     type: :boolean,
                     default: false,
                     doc: "Whether this field is, or is part of, the primary key of a resource."
+                  ],
+                  required?: [
+                    type: :boolean,
+                    default: false,
+                    doc:
+                      "Whether this relationship must always be present, e.g: must be included on creation, and never removed (it can still be changed)"
                   ],
                   define_field?: [
                     type: :boolean,

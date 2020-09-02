@@ -597,7 +597,7 @@ defmodule Ash.Engine.Request do
     authorized? = Enum.all?(Map.values(request.authorizer_state), &(&1 == :authorized))
 
     # Don't fetch honor requests for dat until the request is authorized
-    if field in [:data, :query] and not authorized? and not internal? do
+    if field in [:data, :query, :changeset] and not authorized? and not internal? do
       try_resolve_dependencies_of(request, field, internal?)
     else
       case Map.get(request, field) do

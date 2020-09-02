@@ -150,10 +150,6 @@ defmodule Ash.Engine.RequestHandler do
 
     log(state, "registering dependency: #{inspect(dep)}")
 
-    if destination_pid != state.runner_pid do
-      Process.link(destination_pid)
-    end
-
     field = List.last(dep)
 
     log(state, "Asking #{inspect(path)} for #{field}")

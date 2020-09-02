@@ -33,7 +33,19 @@ defmodule Ash.Schema do
         for aggregate <- Ash.Resource.aggregates(__MODULE__) do
           {:ok, type} = Aggregate.kind_to_type(aggregate.kind)
 
-          field(aggregate.name, Ash.Type.ecto_type(type), virtual: true)
+          field(aggregate.name, Ash.Type.ecto_type(type),
+            virtual: true,
+            default: %Ash.NotLoaded{type: :aggregate, field: aggregate.name}
+          )
+        end
+
+        for calculation <- Ash.Resource.calculations(__MODULE__) do
+          {mod, _} = calculation.calculation
+
+          field(calculation.name, Ash.Type.ecto_type(mod.type()),
+            virtual: true,
+            default: %Ash.NotLoaded{type: :calculation, field: calculation.name}
+          )
         end
       end
     end

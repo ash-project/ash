@@ -59,8 +59,12 @@ defmodule Ash.Engine.Runner do
           if new_state.engine_pid do
             wait_for_engine(new_state, false)
           else
-            log(state, "Synchronous engine stuck:\n\n#{stuck_report(state)}")
-            add_error(new_state, :__engine__, SynchronousEngineStuck.exception([]))
+            if new_state.errors == [] do
+              log(state, "Synchronous engine stuck:\n\n#{stuck_report(state)}")
+              add_error(new_state, :__engine__, SynchronousEngineStuck.exception([]))
+            else
+              new_state
+            end
           end
 
         new_state ->
@@ -212,9 +216,21 @@ defmodule Ash.Engine.Runner do
 
     request = Enum.find(state.requests, &(&1.path == receiver_path))
 
-    case Request.receive_field(request, request_path, field, value) do
-      {:continue, new_request} ->
-        replace_request(state, new_request)
+    if request do
+      case Request.receive_field(request, request_path, field, value) do
+        {:continue, new_request} ->
+          replace_request(state, new_request)
+      end
+    else
+      # THIS IS A HUGE HACK
+      # I didn't have time to figure out why the local runner was getting this message
+      # instead of the appropriate request handler, so instead I just forward it
+      # when we get a bad message
+      pid = Map.get(state.pid_info, receiver_path)
+
+      GenServer.cast(pid, {:field_value, receiver_path, request_path, field, value})
+
+      state
     end
   end
 
@@ -419,7 +435,7 @@ defmodule Ash.Engine.Runner do
     if error in state.errors do
       state
     else
-      %{state | errors: [Map.put(error, :path, path) | state.errors]}
+      %{state | errors: [error | state.errors]}
     end
   end
 

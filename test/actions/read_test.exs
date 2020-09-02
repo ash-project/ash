@@ -111,7 +111,7 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     test "it raises on an error", %{post: post} do
-      assert_raise(Ash.Error.Invalid, ~r/\* No such resource Something/, fn ->
+      assert_raise(Ash.Error.Invalid.NoSuchResource, ~r/\No such resource Something/, fn ->
         Api.get!(Something, post.id)
       end)
     end

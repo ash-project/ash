@@ -5,7 +5,7 @@ defmodule Ash.Actions.Create do
   alias Ash.Engine.Request
   require Logger
 
-  alias Ash.Error.Changes.{InvalidAttribute, InvalidRelationship}
+  alias Ash.Error.Changes.{InvalidAttribute, InvalidRelationship, Required}
 
   @spec run(Ash.api(), Ash.changeset(), Ash.action(), Keyword.t()) ::
           {:ok, Ash.record()} | {:error, Ash.error()}
@@ -52,7 +52,50 @@ defmodule Ash.Actions.Create do
     |> run_action_changes(action, actor)
     |> Relationships.handle_relationship_changes()
     |> set_defaults()
+    |> validate_required_belongs_to()
     |> add_validations()
+    |> require_values()
+  end
+
+  defp require_values(changeset) do
+    changeset.resource
+    |> Ash.Resource.attributes()
+    |> Enum.reject(& &1.allow_nil?)
+    |> Enum.reduce(changeset, fn required_attribute, changeset ->
+      if Ash.Changeset.changing_attribute?(changeset, required_attribute.name) do
+        changeset
+      else
+        Ash.Changeset.add_error(
+          changeset,
+          Required.exception(field: required_attribute.name, type: :attribute)
+        )
+      end
+    end)
+  end
+
+  defp validate_required_belongs_to(changeset) do
+    changeset.resource
+    |> Ash.Resource.relationships()
+    |> Enum.filter(&(&1.type == :belongs_to))
+    |> Enum.filter(& &1.required?)
+    |> Enum.reduce(changeset, fn required_relationship, changeset ->
+      case Map.fetch(changeset.relationships, required_relationship.name) do
+        {:ok, %{add: adding}} when adding != nil and adding != [] ->
+          changeset
+
+        {:ok, %{replace: replacing}} when replacing != nil and replacing != [] ->
+          changeset
+
+        _ ->
+          Ash.Changeset.add_error(
+            changeset,
+            Required.exception(
+              field: required_relationship.name,
+              type: :relationship
+            )
+          )
+      end
+    end)
   end
 
   defp run_action_changes(changeset, %{changes: changes}, actor) do

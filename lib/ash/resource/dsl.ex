@@ -406,9 +406,9 @@ defmodule Ash.Resource.Dsl do
     for more information.
     """,
     examples: [
-      "calculation :full_name, MyApp.MyResource.FullName",
-      "calculation :full_name, {MyApp.FullName, keys: [:first_name, :last_name]}",
-      "calculation :full_name, full_name([:first_name, :last_name])"
+      "calculate :full_name, MyApp.MyResource.FullName",
+      "calculate :full_name, {MyApp.FullName, keys: [:first_name, :last_name]}",
+      "calculate :full_name, full_name([:first_name, :last_name])"
     ],
     target: Ash.Resource.Calculation,
     args: [:name, :calculation],
@@ -426,6 +426,9 @@ defmodule Ash.Resource.Dsl do
     These are calculations that can be loaded only by name using `Ash.Query.load/2`.
     They are also available as top level fields on the resource.
     """,
+    imports: [
+      Ash.Resource.Calculation.Builtins
+    ],
     entities: [
       @calculation
     ]

@@ -133,10 +133,10 @@ defmodule Ash.Filter.Predicate do
 
   # custom_options not available in Elixir before 1.9
   def add_inspect_path(inspect_opts, field) do
-    case inspect_opts do
-      %{custom_options: %{relationship_path: path}} ->
-        Enum.join(path, ".") <> "." <> to_string(field)
-
+    with {:ok, opts} <- Map.fetch(inspect_opts, :custom_options),
+         {:ok, path} when path != [] <- Keyword.fetch(opts, :relationship_path) do
+      Enum.join(path, ".") <> "." <> to_string(field)
+    else
       _ ->
         to_string(field)
     end

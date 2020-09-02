@@ -5,6 +5,15 @@ defmodule Ash.Filter do
   Ash filters are stored as nested `Ash.Filter.Expression{}` and `%Ash.Filter.Not{}` structs,
   terminating in a `%Ash.Filter.Predicate{}` struct. An expression is simply a boolean operator
   and the left and right hand side of that operator.
+
+  ## Filter Templates
+
+  Filter templates are simplified fielter statements (they only support atom keys), that have substitutions in them.
+  Currently, the substitutions are `{:_actor, :field}` and `{:_actor, :_primary_key}`
+
+  You can pass a filter template to `build_filter_from_template/2` with an actor, and it will return the new result
+
+  Additionally, you can ask if the filter template contains an actor reference via `template_references_actor?/1`
   """
   alias Ash.Actions.SideLoad
   alias Ash.Engine.Request
@@ -76,11 +85,84 @@ defmodule Ash.Filter do
     end
   end
 
+  @doc "transform an expression based filter to a simple filter, which is just a list of predicates"
   def to_simple_filter(%{resource: resource, expression: expression}) do
     predicates = get_predicates(expression)
 
     %Simple{resource: resource, predicates: predicates}
   end
+
+  @doc "Replace any actor value references in a template with the values from a given actor"
+  def build_filter_from_template(template, actor) do
+    walk_filter_template(template, fn
+      {:_actor, :_primary_key} ->
+        if actor do
+          Map.take(actor, Ash.Resource.primary_key(actor.__struct__))
+        else
+          false
+        end
+
+      {:_actor, field} ->
+        Map.get(actor || %{}, field)
+
+      other ->
+        other
+    end)
+  end
+
+  @doc "Whether or not a given template contains an actor reference"
+  def template_references_actor?({:_actor, _}), do: true
+
+  def template_references_actor?(filter) when is_list(filter) do
+    Enum.any?(filter, &template_references_actor?/1)
+  end
+
+  def template_references_actor?(filter) when is_map(filter) do
+    Enum.any?(fn {key, value} ->
+      template_references_actor?(key) || template_references_actor?(value)
+    end)
+  end
+
+  def template_references_actor?(tuple) when is_tuple(tuple) do
+    Enum.any?(Tuple.to_list(tuple), &template_references_actor?/1)
+  end
+
+  def template_references_actor?(_), do: false
+
+  defp walk_filter_template(filter, mapper) when is_list(filter) do
+    case mapper.(filter) do
+      ^filter ->
+        Enum.map(filter, &walk_filter_template(&1, mapper))
+
+      other ->
+        walk_filter_template(other, mapper)
+    end
+  end
+
+  defp walk_filter_template(filter, mapper) when is_map(filter) do
+    case mapper.(filter) do
+      ^filter ->
+        Enum.into(filter, %{}, &walk_filter_template(&1, mapper))
+
+      other ->
+        walk_filter_template(other, mapper)
+    end
+  end
+
+  defp walk_filter_template(tuple, mapper) when is_tuple(tuple) do
+    case mapper.(tuple) do
+      ^tuple ->
+        tuple
+        |> Tuple.to_list()
+        |> Enum.map(&walk_filter_template(&1, mapper))
+        |> List.to_tuple()
+
+      other ->
+        walk_filter_template(other, mapper)
+    end
+  end
+
+  defp walk_filter_template(value, mapper), do: mapper.(value)
 
   defp get_predicates(expr, acc \\ [])
 
@@ -113,7 +195,7 @@ defmodule Ash.Filter do
     end)
   end
 
-  def run_other_data_layer_filters(api, resource, filter) do
+  def run_other_data_layer_filters(api, _resource, filter) do
     reduce(filter, {:ok, filter}, fn
       %Expression{op: :or}, {:ok, filter} ->
         {:halt, {:ok, filter}}
@@ -121,11 +203,11 @@ defmodule Ash.Filter do
       %Predicate{} = expression, {:ok, filter} ->
         expression
         |> relationship_paths(:ands_only)
-        |> filter_paths_that_change_data_layers(resource)
+        |> filter_paths_that_change_data_layers(filter.resource)
         |> Enum.reduce_while({:halt, {:ok, filter}}, fn path, {:halt, {:ok, filter}} ->
           {for_path, without_path} = split_expression_by_relationship_path(filter, path)
 
-          relationship = Ash.Resource.relationship(resource, path)
+          relationship = Ash.Resource.relationship(filter.resource, path)
 
           query =
             relationship.destination
@@ -138,11 +220,11 @@ defmodule Ash.Filter do
       %Expression{op: :and} = expression, {:ok, filter} ->
         expression
         |> relationship_paths(:ands_only)
-        |> filter_paths_that_change_data_layers(resource)
+        |> filter_paths_that_change_data_layers(filter.resource)
         |> Enum.reduce_while({:halt, {:ok, filter}}, fn path, {:halt, {:ok, filter}} ->
           {for_path, without_path} = split_expression_by_relationship_path(filter, path)
 
-          relationship = Ash.Resource.relationship(resource, path)
+          relationship = Ash.Resource.relationship(filter.resource, path)
 
           query =
             relationship.destination
