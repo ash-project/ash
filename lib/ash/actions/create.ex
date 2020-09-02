@@ -89,7 +89,7 @@ defmodule Ash.Actions.Create do
         _ ->
           Ash.Changeset.add_error(
             changeset,
-            Ash.Error.Changes.Required.exception(
+            Required.exception(
               field: required_relationship.name,
               type: :relationship
             )

@@ -2,11 +2,12 @@ defmodule Ash.DataLayer.Delegate.Transformers.EnsureApiCompiled do
   @moduledoc "Validates and caches the primary key of a resource"
   use Ash.Dsl.Transformer
 
+  alias Ash.DataLayer.Delegate
   alias Ash.Resouce.Transformers
 
   def transform(resource, dsl_state) do
     resource
-    |> Ash.DataLayer.Delegate.api()
+    |> Delegate.api()
     |> Code.ensure_compiled()
 
     {:ok, dsl_state}
