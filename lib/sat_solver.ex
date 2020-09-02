@@ -140,26 +140,44 @@ defmodule Ash.SatSolver do
   end
 
   def synonymous_relationship_paths?(
-        resource,
+        left_resource,
+        candidate,
+        search,
+        right_resource \\ nil
+      )
+
+  def synonymous_relationship_paths?(_, [], [], _), do: true
+  def synonymous_relationship_paths?(_, [], _, _), do: false
+  def synonymous_relationship_paths?(_, _, [], _), do: false
+
+  def synonymous_relationship_paths?(
+        left_resource,
         [candidate_first | candidate_rest] = candidate,
-        [first | rest] = search
+        [first | rest] = search,
+        right_resource
       ) do
-    relationship = Ash.Resource.relationship(resource, first)
-    candidate_relationship = Ash.Resource.relationship(resource, candidate_first)
+    right_resource = right_resource || left_resource
+    relationship = Ash.Resource.relationship(left_resource, first)
+    candidate_relationship = Ash.Resource.relationship(right_resource, candidate_first)
 
     cond do
+      !relationship || !candidate_relationship ->
+        false
+
       relationship.type == :many_to_many && candidate_relationship.type == :has_many ->
         synonymous_relationship_paths?(
-          resource,
+          left_resource,
           [relationship.join_relationship | candidate],
-          search
+          search,
+          right_resource
         )
 
       relationship.type == :has_many && candidate_relationship.type == :many_to_many ->
         synonymous_relationship_paths?(
-          resource,
+          left_resource,
           candidate,
-          [candidate_relationship.join_relationship | search]
+          [candidate_relationship.join_relationship | search],
+          right_resource
         )
 
       true ->

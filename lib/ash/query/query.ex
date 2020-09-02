@@ -129,8 +129,10 @@ defmodule Ash.Query do
         side_load(query, field)
 
       aggregate = Ash.Resource.aggregate(query.resource, field) ->
+        related = Ash.Resource.related(query.resource, aggregate.relationship_path)
+
         with %{valid?: true} = aggregate_query <-
-               build(query.resource, filter: aggregate.filter),
+               build(related, filter: aggregate.filter),
              {:ok, query_aggregate} <-
                Aggregate.new(
                  query.resource,

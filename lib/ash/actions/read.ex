@@ -11,9 +11,8 @@ defmodule Ash.Actions.Read do
     if Ash.Resource.data_layer_can?(query.resource, :read) do
       engine_opts = Keyword.take(opts, [:verbose?, :actor, :authorize?])
 
-      query = query_with_initial_data(query, opts)
-
-      with %{errors: []} <- query,
+      with %{errors: []} = query <- query_with_initial_data(query, opts),
+           %{errors: []} = query <- add_action_filters(query, action, engine_opts[:actor]),
            {:ok, requests} <- requests(query, action, opts),
            side_load_requests <- SideLoad.requests(query),
            %{data: %{data: data} = all_data, errors: []} <-
@@ -36,6 +35,18 @@ defmodule Ash.Actions.Read do
       end
     else
       {:error, "Datalayer does not support reads"}
+    end
+  end
+
+  defp add_action_filters(query, %{filter: nil}, _actor), do: query
+
+  defp add_action_filters(query, action, actor) do
+    if Ash.Filter.template_references_actor?(action.filter) and is_nil(actor) do
+      {:error, "Read action requires actor"}
+    else
+      built_filter = Ash.Filter.build_filter_from_template(action.filter, actor)
+
+      Ash.Query.filter(query, built_filter)
     end
   end
 

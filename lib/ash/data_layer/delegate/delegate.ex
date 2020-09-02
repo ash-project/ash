@@ -30,6 +30,9 @@ defmodule Ash.DataLayer.Delegate do
     ]
   }
 
+  @transformers [Ash.DataLayer.Delegate.Transformers.EnsureApiCompiled]
+  use Ash.Dsl.Extension, sections: [@delegate], transformers: @transformers
+
   def get_delegated(resource) do
     if Ash.Resource.data_layer(resource) == __MODULE__ do
       get_delegated(resource(resource))
@@ -56,7 +59,6 @@ defmodule Ash.DataLayer.Delegate do
     end
   end
 
-  use Ash.Dsl.Extension, sections: [@delegate]
   alias Ash.Dsl.Extension
 
   def resource(resource) do
@@ -106,13 +108,13 @@ defmodule Ash.DataLayer.Delegate do
   end
 
   @impl true
-  def filter(%{query: query} = source_query, filter, resource) do
+  def filter(%{query: query} = source_query, filter, _resource) do
     case filter do
       %Ash.Filter{} ->
         {:ok,
          %{
            source_query
-           | query: Ash.Query.filter(query, %{filter | resource: resource(resource)})
+           | query: Ash.Query.filter(query, filter)
          }}
 
       filter ->
@@ -146,17 +148,15 @@ defmodule Ash.DataLayer.Delegate do
 
   @impl true
   def add_aggregate(%{query: query} = source_query, aggregate, _) do
+    new_query = %{
+      query
+      | aggregates: Map.put(query.aggregates, aggregate.name, Map.put(aggregate, :load, nil))
+    }
+
     {:ok,
      %{
        source_query
-       | query:
-           Ash.Query.aggregate(
-             query,
-             aggregate.name,
-             aggregate.kind,
-             aggregate.relationship_path,
-             aggregate.query
-           )
+       | query: new_query
      }}
   end
 
@@ -174,34 +174,22 @@ defmodule Ash.DataLayer.Delegate do
 
     query =
       if base_filter(resource) do
-        Ash.Query.filter(query, base_filter(resource))
+        filter = Ash.Filter.parse!(resource(resource), base_filter(resource))
+        Ash.Query.filter(query, filter)
       else
         query
       end
 
     if authorize?(resource) && authorize? do
       query
-      |> Ash.Query.unset([:calculations, :aggregates, :side_load])
+      |> Ash.Query.unset([:side_load])
       |> api.read(actor: actor, authorize?: true)
     else
       query
-      |> Ash.Query.unset([:calculations, :aggregates, :side_load])
+      |> Ash.Query.unset([:side_load])
       |> api.read()
     end
-    |> case do
-      {:ok, results} ->
-        keys =
-          Enum.map(Ash.Resource.attributes(resource), & &1.name) ++
-            Enum.map(Ash.Resource.relationships(resource), & &1.name)
-
-        {:ok,
-         Enum.map(results, fn result ->
-           struct(resource, Map.take(result, keys))
-         end)}
-
-      {:error, error} ->
-        {:error, error}
-    end
+    |> transform_results(resource)
   end
 
   @impl true
@@ -221,6 +209,31 @@ defmodule Ash.DataLayer.Delegate do
       source,
       destination
     )
+  end
+
+  defp transform_results({:ok, results}, resource) do
+    keys =
+      Enum.map(Ash.Resource.attributes(resource), & &1.name) ++
+        Enum.map(Ash.Resource.relationships(resource), & &1.name) ++
+        [:aggregates]
+
+    with_attrs_and_rels =
+      Enum.map(results, fn result ->
+        struct(resource, Map.take(result, keys))
+      end)
+
+    aggregate_names = Enum.map(Ash.Resource.aggregates(resource), & &1.name)
+
+    with_lifted_aggregates =
+      Enum.map(with_attrs_and_rels, fn record ->
+        Map.merge(record, Map.take(record.aggregates, aggregate_names))
+      end)
+
+    {:ok, with_lifted_aggregates}
+  end
+
+  defp transform_results({:error, error}, _) do
+    {:error, error}
   end
 
   @impl true

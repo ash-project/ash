@@ -83,7 +83,7 @@ defmodule Ash.Changeset do
   }
 
   @doc "Return a changeset over a resource or a record"
-  @spec new(Ash.resource() | Ash.record(), map) :: t
+  @spec new(Ash.resource() | Ash.record(), initial_attributes :: map) :: t
   def new(resource, initial_attributes \\ %{})
 
   def new(%resource{} = record, initial_attributes) do
@@ -408,6 +408,12 @@ defmodule Ash.Changeset do
   @spec changing_attribute?(t(), atom) :: boolean
   def changing_attribute?(changeset, attribute) do
     Map.has_key?(changeset.attributes, attribute)
+  end
+
+  @doc "Returns true if a relationship exists in the changes"
+  @spec changing_relationship?(t(), atom) :: boolean
+  def changing_relationship?(changeset, relationship) do
+    Map.has_key?(changeset.relationships, relationship)
   end
 
   @doc "Change an attribute only if is not currently being changed"

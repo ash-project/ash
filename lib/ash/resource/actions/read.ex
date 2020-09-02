@@ -1,7 +1,7 @@
 defmodule Ash.Resource.Actions.Read do
   @moduledoc "Represents a read action on a resource."
 
-  defstruct [:name, :primary?, type: :read]
+  defstruct [:name, :primary?, :filter, type: :read]
 
   @type t :: %__MODULE__{
           type: :read,
@@ -13,6 +13,11 @@ defmodule Ash.Resource.Actions.Read do
     name: [
       type: :atom,
       doc: "The name of the action"
+    ],
+    filter: [
+      type: :any,
+      doc:
+        "A filter template, that may contain actor references. See `Ash.Filter` for more on templates"
     ],
     primary?: [
       type: :boolean,

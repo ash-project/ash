@@ -4,6 +4,7 @@ defmodule Ash.Query.Aggregate do
     :name,
     :relationship_path,
     :default_value,
+    :resource,
     :query,
     :kind,
     :type,
@@ -22,12 +23,13 @@ defmodule Ash.Query.Aggregate do
   alias Ash.Actions.SideLoad
   alias Ash.Engine.Request
 
-  def new(_resource, name, kind, relationship, query) do
+  def new(resource, name, kind, relationship, query) do
     with {:ok, type} <- kind_to_type(kind),
          {:ok, query} <- validate_query(query) do
       {:ok,
        %__MODULE__{
          name: name,
+         resource: resource,
          default_value: default_value(kind),
          relationship_path: List.wrap(relationship),
          kind: kind,
@@ -70,14 +72,14 @@ defmodule Ash.Query.Aggregate do
   def requests(initial_query, can_be_in_query?, authorizing?) do
     initial_query.aggregates
     |> Map.values()
-    |> Enum.group_by(& &1.relationship_path)
-    |> Enum.reduce({[], [], []}, fn {relationship_path, aggregates},
+    |> Enum.group_by(&{&1.resource, &1.relationship_path})
+    |> Enum.reduce({[], [], []}, fn {{aggregate_resource, relationship_path}, aggregates},
                                     {auth_requests, value_requests, aggregates_in_query} ->
-      related = Ash.Resource.related(initial_query.resource, relationship_path)
+      related = Ash.Resource.related(aggregate_resource, relationship_path)
 
       relationship =
         Ash.Resource.relationship(
-          initial_query.resource,
+          aggregate_resource,
           List.first(relationship_path)
         )
 
@@ -116,7 +118,8 @@ defmodule Ash.Query.Aggregate do
             reverse_relationship,
             relationship_path,
             aggregates,
-            auth_request
+            auth_request,
+            aggregate_resource
           )
 
         {new_auth_requests, [request | value_requests], aggregates_in_query}
@@ -144,9 +147,10 @@ defmodule Ash.Query.Aggregate do
          reverse_relationship,
          relationship_path,
          aggregates,
-         auth_request
+         auth_request,
+         aggregate_resource
        ) do
-    pkey = Ash.Resource.primary_key(initial_query.resource)
+    pkey = Ash.Resource.primary_key(aggregate_resource)
 
     deps =
       if auth_request do
@@ -156,11 +160,11 @@ defmodule Ash.Query.Aggregate do
       end
 
     Request.new(
-      resource: initial_query.resource,
+      resource: aggregate_resource,
       api: initial_query.api,
       query: aggregate_query(related, reverse_relationship),
       path: [:aggregate_values, relationship_path],
-      action: Ash.Resource.primary_action!(initial_query.resource, :read),
+      action: Ash.Resource.primary_action!(aggregate_resource, :read),
       name: "fetch aggregate: #{Enum.join(relationship_path, ".")}",
       data:
         Request.resolve(
@@ -248,13 +252,13 @@ defmodule Ash.Query.Aggregate do
     )
   end
 
-  defp add_data_layer_aggregates(data_layer_query, aggregates, resource) do
+  defp add_data_layer_aggregates(data_layer_query, aggregates, aggregate_resource) do
     Enum.reduce_while(aggregates, {:ok, data_layer_query}, fn aggregate,
                                                               {:ok, data_layer_query} ->
       case Ash.DataLayer.add_aggregate(
              data_layer_query,
              aggregate,
-             resource
+             aggregate_resource
            ) do
         {:ok, data_layer_query} -> {:cont, {:ok, data_layer_query}}
         {:error, error} -> {:halt, {:error, error}}

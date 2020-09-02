@@ -52,7 +52,11 @@ defmodule Ash.Error do
   end
 
   def to_ash_error(value) do
-    to_ash_error([value])
+    if ash_error?(value) do
+      value
+    else
+      to_ash_error([value])
+    end
   end
 
   def choose_error(errors) do
