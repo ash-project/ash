@@ -102,6 +102,10 @@ defmodule Ash do
     |> Enum.any?(&(&1 == behaviour))
   end
 
+  def uuid do
+    Ecto.UUID.generate()
+  end
+
   @doc "Returns all extensions of a resource or api"
   @spec extensions(resource() | api()) :: [module]
   def extensions(resource) do
