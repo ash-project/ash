@@ -127,9 +127,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project:
-          [
-            "ash_postgres",
+        project: [
+            # We can't reasonably test ash_postgres without including database configuration here, which is a bit much at the moment
+            # "ash_postgres",
             "ash_csv",
             "ash_graphql",
             "ash_json_api",
