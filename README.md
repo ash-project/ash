@@ -12,7 +12,7 @@ Ash is in alpha. The package version is 1.0.0+, and most of the time that means 
 ```elixir
 def deps do
   [
-    {:ash, "~> 1.13.0"}
+    {:ash, "~> 1.13.1"}
   ]
 end
 ```
