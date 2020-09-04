@@ -4,7 +4,7 @@ defmodule Ash.Resource.Identity do
 
   @schema [
     name: [
-      type: {:custom, __MODULE__, :keys, []},
+      type: :atom,
       required: true,
       doc:
         "The name of the identity. Used by extensions to target specific identities for fetching single instances of a resource"
