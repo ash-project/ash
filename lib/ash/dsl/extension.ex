@@ -181,17 +181,17 @@ defmodule Ash.Dsl.Extension do
         @extensions unquote(extensions)
         # Due to a few strange stateful bugs I've seen,
         # we clear the process of any potentially related state
-        Process.get()
-        |> Enum.filter(fn key ->
-          is_tuple(key) and elem(key, 0) == __MODULE__
-        end)
-        |> Enum.each(&Process.delete/1)
+        for {key, _value} <- Process.get() do
+          if is_tuple(key) and elem(key, 0) == __MODULE__ do
+            Process.delete(key)
+          end
+        end
 
-        :persistent_term.get()
-        |> Enum.filter(fn key ->
-          is_tuple(key) and elem(key, 0) == __MODULE__
-        end)
-        |> Enum.each(&:persistent_term.delete/1)
+        for {key, _value} <- :persistent_term.get() do
+          if is_tuple(key) and elem(key, 0) == __MODULE__ do
+            :persistent_term.erase(key)
+          end
+        end
       end
 
     imports =
