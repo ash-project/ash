@@ -26,7 +26,16 @@ defmodule Ash.Filter do
     ReadActionRequired
   }
 
-  alias Ash.Filter.Predicate.{Eq, GreaterThan, In, IsNil, LessThan}
+  alias Ash.Filter.Predicate.{
+    Eq,
+    GreaterThan,
+    GreaterThanOrEqual,
+    In,
+    IsNil,
+    LessThan,
+    LessThanOrEqual
+  }
+
   alias Ash.Filter.{Expression, Not, Predicate}
   alias Ash.Query.Aggregate
 
@@ -36,8 +45,12 @@ defmodule Ash.Filter do
     in: In,
     lt: LessThan,
     gt: GreaterThan,
+    lte: LessThanOrEqual,
+    gte: GreaterThanOrEqual,
     less_than: LessThan,
     greater_than: GreaterThan,
+    less_than_or_equal: LessThanOrEqual,
+    greater_than_or_equal: GreaterThanOrEqual,
     is_nil: IsNil
   ]
 

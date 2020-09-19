@@ -7,7 +7,16 @@ defmodule Ash.DataLayer.Ets do
 
   alias Ash.Actions.Sort
   alias Ash.Filter.{Expression, Not, Predicate}
-  alias Ash.Filter.Predicate.{Eq, GreaterThan, In, IsNil, LessThan}
+
+  alias Ash.Filter.Predicate.{
+    Eq,
+    GreaterThan,
+    GreaterThanOrEqual,
+    In,
+    IsNil,
+    LessThan,
+    LessThanOrEqual
+  }
 
   @behaviour Ash.DataLayer
 
@@ -58,6 +67,8 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, {:filter_predicate, _, %Eq{}}), do: true
   def can?(_, {:filter_predicate, _, %LessThan{}}), do: true
   def can?(_, {:filter_predicate, _, %GreaterThan{}}), do: true
+  def can?(_, {:filter_predicate, _, %LessThanOrEqual{}}), do: true
+  def can?(_, {:filter_predicate, _, %GreaterThanOrEqual{}}), do: true
   def can?(_, {:filter_predicate, _, %IsNil{}}), do: true
   def can?(_, {:sort, _}), do: true
   def can?(_, _), do: false
@@ -180,6 +191,20 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
+  defp matches_predicate?(record, field, %LessThanOrEqual{value: predicate_value}) do
+    case Map.fetch(record, field) do
+      {:ok, value} -> value <= predicate_value
+      :error -> false
+    end
+  end
+
+  defp matches_predicate?(record, field, %GreaterThanOrEqual{value: predicate_value}) do
+    case Map.fetch(record, field) do
+      {:ok, value} -> value >= predicate_value
+      :error -> false
+    end
+  end
+
   defp matches_predicate?(record, field, %In{values: predicate_values}) do
     case Map.fetch(record, field) do
       {:ok, value} -> value in predicate_values
@@ -197,7 +222,7 @@ defmodule Ash.DataLayer.Ets do
 
   @impl true
   def upsert(resource, changeset) do
-    create(resource, changeset)
+    update(resource, changeset)
   end
 
   @impl true
