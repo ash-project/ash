@@ -117,12 +117,42 @@ defmodule Ash.Test.Filter.FilterTest do
     end
   end
 
+  defmodule SoftDeletePost do
+    @moduledoc false
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    resource do
+      base_filter is_nil: :deleted_at
+    end
+
+    actions do
+      read :default
+      create :default
+
+      destroy :default do
+        soft? true
+
+        change set_attribute(:deleted_at, &DateTime.utc_now/0)
+      end
+    end
+
+    attributes do
+      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      attribute :deleted_at, :utc_datetime
+    end
+  end
+
   defmodule Api do
     @moduledoc false
     use Ash.Api
 
     resources do
       resource(Post)
+      resource(SoftDeletePost)
       resource(User)
       resource(Profile)
       resource(PostLink)
@@ -372,6 +402,26 @@ defmodule Ash.Test.Filter.FilterTest do
       candidate = Filter.parse!(Post, author1_id: id1)
 
       assert Filter.strict_subset_of?(filter, candidate)
+    end
+  end
+
+  describe "base_filter" do
+    test "resources that apply to the base filter are returned" do
+      %{id: id} =
+        SoftDeletePost
+        |> new(%{})
+        |> Api.create!()
+
+      assert [%{id: ^id}] = Api.read!(SoftDeletePost)
+    end
+
+    test "resources that don't apply to the base filter are not returned" do
+      SoftDeletePost
+      |> new(%{})
+      |> Api.create!()
+      |> Api.destroy()
+
+      assert [] = Api.read!(SoftDeletePost)
     end
   end
 end
