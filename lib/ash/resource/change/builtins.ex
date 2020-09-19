@@ -8,5 +8,9 @@ defmodule Ash.Resource.Change.Builtins do
     {Ash.Resource.Change.RelateActor, relationship: relationship}
   end
 
+  def set_attribute(attribute, value) do
+    {Ash.Resource.Change.SetAttribute, attribute: attribute, value: value}
+  end
+
   def actor(value), do: {:_actor, value}
 end
