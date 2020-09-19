@@ -50,16 +50,16 @@ defmodule Ash.Filter.Predicate.In do
   end
 
   def compare(%__MODULE__{} = left, %__MODULE__{} = right) do
-    {:simplify, in_to_or_equals(left), in_to_or_equals(right)}
+    {:simplify, into_or_equals(left), into_or_equals(right)}
   end
 
   def compare(%__MODULE__{} = in_expr, _) do
-    {:simplify, in_to_or_equals(in_expr)}
+    {:simplify, into_or_equals(in_expr)}
   end
 
   def compare(_, _), do: :unknown
 
-  defp in_to_or_equals(%{field: field, values: values}) do
+  defp into_or_equals(%{field: field, values: values}) do
     Enum.reduce(values, nil, fn value, expression ->
       Expression.new(:or, expression, %Eq{field: field, value: value})
     end)
