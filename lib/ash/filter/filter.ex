@@ -14,6 +14,51 @@ defmodule Ash.Filter do
   You can pass a filter template to `build_filter_from_template/2` with an actor, and it will return the new result
 
   Additionally, you can ask if the filter template contains an actor reference via `template_references_actor?/1`
+
+  ## Writing a filter:
+
+  A filter is a nested keyword list (with some exceptions, like `true` for everything and `false` for nothing).
+
+  The key is the "predicate" (A.K.A condition) and the value is the parameter. You can use `and` and `or` to create
+  nested filters. Datalayers can expose custom predicates. Eventually, you will be able to define your own custom
+  predicates, which will be a mechanism for you to attach complex filters supported by the data layer to your queries.
+
+  ** Important **
+  In a given keyword list, all predicates are considered to be "ands". So `[or: [first_name: "Tom", last_name: "Bombadil"]]` doesn't
+  mean 'First name == "tom" or last_name == "bombadil"'. To say that, you want to provide a list of filters,
+  like so: `[or: [[first_name: "Tom"], [last_name: "Bombadil"]]]`
+
+  The builtin predicates are:
+
+    * eq - shorthand for equals
+    * equals
+    * in
+    * lt - shorthand for less_than
+    * gt - shorthand for greater_than
+    * lte - shorthand for less_than_or_equal
+    * gte - shorthand for greater_than_or_equal
+    * less_than
+    * greater_than
+    * less_than_or_equal
+    * greater_than_or_equal
+    * is_nil
+
+  Some example filters:
+
+  ```elixir
+  [name: "Zardoz"]
+  [first_name: "Zar", last_name: "Doz"]
+  [first_name: "Zar", last_name: [in: ["Doz", "Daz"]], high_score: [greater_than: 10]]
+  [first_name: "Zar", last_name: [in: ["Doz", "Daz"]], high_score: [greater_than: 10]]
+  [or: [
+    [first_name: "Zar"],
+    [last_name: "Doz"],
+    [or: [
+      [high_score: [greater_than: 10]]],
+      [high_score: [less_than: -10]]
+    ]
+  ]]
+  ```
   """
   alias Ash.Actions.SideLoad
   alias Ash.Engine.Request
