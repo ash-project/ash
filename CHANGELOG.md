@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.13.3](https://github.com/ash-project/ash/compare/v1.13.2...v1.13.3) (2020-09-19)
+
+
+
+### Features:
+
+* set_attribute builtin change
+
+* (greater_than/less_than)_or_equal predicates
+
+* support deletes as updates via "soft"
+
+* support base_filters
+
+### Bug Fixes:
+
+* less_than predicate was flipped for runtime
+
+
 ## [v1.13.2](https://github.com/ash-project/ash/compare/v1.13.1...v1.13.2) (2020-09-07)
 
 
