@@ -182,6 +182,8 @@ defmodule Ash.Resource.Dsl do
     so you can say something like:
 
     `change my_change(1)`
+
+    For destroys, `changes` are not applied unless `soft?` is set to true.
     """,
     examples: [
       "change relate_actor(:reporter)",
@@ -249,6 +251,11 @@ defmodule Ash.Resource.Dsl do
     """,
     examples: [
       "destroy :soft_delete, primary?: true"
+    ],
+    entities: [
+      changes: [
+        @change
+      ]
     ],
     target: Ash.Resource.Actions.Destroy,
     schema: Ash.Resource.Actions.Destroy.opt_schema(),
@@ -322,7 +329,12 @@ defmodule Ash.Resource.Dsl do
     ],
     schema: [
       description: [
-        type: :string
+        type: :string,
+        doc: "A human readable description of the resource, to be used in generated documentation"
+      ],
+      base_filter: [
+        type: :any,
+        doc: "A filter statement to be applied to any queries on the resource"
       ]
     ]
   }

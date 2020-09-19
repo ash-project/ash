@@ -66,12 +66,32 @@ defmodule Ash.Query do
 
   @doc "Create a new query."
   def new(resource, api \\ nil) when is_atom(resource) do
-    %__MODULE__{
-      api: api,
-      filter: nil,
-      resource: resource
-    }
-    |> set_data_layer_query()
+    query =
+      %__MODULE__{
+        api: api,
+        filter: nil,
+        resource: resource
+      }
+      |> set_data_layer_query()
+
+    case Ash.Resource.base_filter(resource) do
+      nil ->
+        query
+
+      filter ->
+        filter = Ash.Filter.parse!(resource, filter)
+
+        filter =
+          Ash.Filter.map(filter, fn
+            %Ash.Filter.Predicate{} = pred ->
+              %{pred | embedded: true}
+
+            other ->
+              other
+          end)
+
+        filter(query, filter)
+    end
   end
 
   @spec load(t(), atom | list(atom) | Keyword.t()) :: t()
@@ -515,6 +535,12 @@ defmodule Ash.Query do
     end)
   end
 
+  @doc """
+  Attach a filter statement to the query.
+
+  The filter is applied as an "and" to any filters currently on the query.
+  For more information on writing filters, see: `Ash.Filter`.
+  """
   @spec filter(t() | Ash.resource(), nil | false | Ash.filter() | Keyword.t()) :: t()
   def filter(query, nil), do: to_query(query)
 

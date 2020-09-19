@@ -1,4 +1,4 @@
-defmodule Ash.Filter.Predicate.LessThan do
+defmodule Ash.Filter.Predicate.LessThanOrEqual do
   @moduledoc "A predicate for a value being greater than the provided value"
   defstruct [:field, :value, :type]
 
@@ -24,7 +24,7 @@ defmodule Ash.Filter.Predicate.LessThan do
   end
 
   def match?(%{value: predicate_value}, value, _) do
-    value < predicate_value
+    value <= predicate_value
   end
 
   def compare(%__MODULE__{value: value}, %__MODULE__{value: value}), do: :mutually_inclusive
@@ -39,7 +39,7 @@ defmodule Ash.Filter.Predicate.LessThan do
     :left_includes_right
   end
 
-  def compare(%__MODULE__{value: value}, %Eq{value: eq_value}) when eq_value < value do
+  def compare(%__MODULE__{value: value}, %Eq{value: eq_value}) when eq_value <= value do
     :left_includes_right
   end
 
@@ -56,7 +56,7 @@ defmodule Ash.Filter.Predicate.LessThan do
     def inspect(predicate, opts) do
       concat([
         Predicate.add_inspect_path(opts, predicate.field),
-        " < ",
+        " <= ",
         to_doc(predicate.value, opts)
       ])
     end

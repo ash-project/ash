@@ -1,4 +1,4 @@
-defmodule Ash.Filter.Predicate.LessThan do
+defmodule Ash.Filter.Predicate.GreaterThanOrEqual do
   @moduledoc "A predicate for a value being greater than the provided value"
   defstruct [:field, :value, :type]
 
@@ -18,28 +18,28 @@ defmodule Ash.Filter.Predicate.LessThan do
          InvalidFilterValue.exception(
            value: value,
            context: %__MODULE__{field: attribute.name, value: value},
-           message: "Could not be casted type type #{inspect(attribute.type)}"
+           message: "Could not be casted to type #{inspect(attribute.type)}"
          )}
     end
   end
 
   def match?(%{value: predicate_value}, value, _) do
-    value < predicate_value
+    value >= predicate_value
   end
 
   def compare(%__MODULE__{value: value}, %__MODULE__{value: value}), do: :mutually_inclusive
 
   def compare(%__MODULE__{value: value}, %__MODULE__{value: other_value})
-      when value < other_value do
+      when value > other_value do
     :right_includes_left
   end
 
   def compare(%__MODULE__{value: value}, %__MODULE__{value: other_value})
-      when value > other_value do
+      when value < other_value do
     :left_includes_right
   end
 
-  def compare(%__MODULE__{value: value}, %Eq{value: eq_value}) when eq_value < value do
+  def compare(%__MODULE__{value: value}, %Eq{value: eq_value}) when eq_value >= value do
     :left_includes_right
   end
 
@@ -56,7 +56,7 @@ defmodule Ash.Filter.Predicate.LessThan do
     def inspect(predicate, opts) do
       concat([
         Predicate.add_inspect_path(opts, predicate.field),
-        " < ",
+        " >= ",
         to_doc(predicate.value, opts)
       ])
     end

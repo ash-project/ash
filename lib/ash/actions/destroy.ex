@@ -5,6 +5,13 @@ defmodule Ash.Actions.Destroy do
 
   @spec run(Ash.api(), Ash.Changeset.t(), Ash.action(), Keyword.t()) ::
           :ok | {:error, Ash.Changeset.t()} | {:error, Ash.error()}
+  def run(api, changeset, %{soft?: true} = action, opts) do
+    case Ash.Actions.Update.run(api, %{changeset | action_type: :destroy}, action, opts) do
+      {:ok, _} -> :ok
+      other -> other
+    end
+  end
+
   def run(api, %{data: record, resource: resource} = changeset, action, opts) do
     engine_opts =
       opts

@@ -1,7 +1,12 @@
 defmodule Ash.Filter.Predicate do
-  @moduledoc "Represents a filter predicate"
+  @moduledoc """
+  Represents a filter predicate
 
-  defstruct [:resource, :attribute, :relationship_path, :predicate, :value]
+  The `embedded` flag is set to true for predicates that are present in the `base_filter`.
+  Datalayers may optionally use this information.
+  """
+
+  defstruct [:resource, :attribute, :relationship_path, :predicate, :value, embedded: false]
 
   alias Ash.Error.Query.UnsupportedPredicate
   alias Ash.Filter
