@@ -89,6 +89,11 @@ defmodule Ash.Resource do
     Extension.get_opt(resource, [:resource], :description, "no description")
   end
 
+  @spec base_filter(Ash.resource()) :: term
+  def base_filter(resource) do
+    Extension.get_opt(resource, [:resource], :base_filter, nil)
+  end
+
   @doc "A list of identities for the resource"
   @spec identities(Ash.resource()) :: [Ash.Resource.Identity.t()]
   def identities(resource) do

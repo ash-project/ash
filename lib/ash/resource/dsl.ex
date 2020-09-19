@@ -329,7 +329,12 @@ defmodule Ash.Resource.Dsl do
     ],
     schema: [
       description: [
-        type: :string
+        type: :string,
+        doc: "A human readable description of the resource, to be used in generated documentation"
+      ],
+      base_filter: [
+        type: :any,
+        doc: "A filter statement to be applied to any queries on the resource"
       ]
     ]
   }
