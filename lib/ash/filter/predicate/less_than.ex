@@ -24,7 +24,7 @@ defmodule Ash.Filter.Predicate.LessThan do
   end
 
   def match?(%{value: predicate_value}, value, _) do
-    value > predicate_value
+    value < predicate_value
   end
 
   def compare(%__MODULE__{value: value}, %__MODULE__{value: value}), do: :mutually_inclusive
