@@ -16,6 +16,7 @@ defmodule Ash do
   - [Query Documentation](Ash.Query.html)
   - [Changeset Documentation](Ash.Changeset.html)
   - [Guides](getting_started.html)
+  - [Example Application](https://github.com/ash-project/ash_example)
 
   ## Introduction
 
