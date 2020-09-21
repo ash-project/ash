@@ -18,6 +18,26 @@ defmodule Ash do
   - [Guides](getting_started.html)
   - [Example Application](https://github.com/ash-project/ash_example)
 
+  ## Extensions
+
+  Extensions are a way to use existing implementations of certain resource behaviors, like authorization and data layers. Some extensions simply
+  add configuration to your resource, and then use that configuration to do things like build APIs.
+
+  ### APIs
+  - [AshJsonApi](https://hexdocs.pm/ash_json_api)
+  - [AshGraphql(beta)](https://hexdocs.pm/ash_json_api)
+
+  ### Authorizers
+
+  - [AshPolicyAuthorizer](https://hexdocs.pm/ash_policy_authorizer)
+
+  ### Datalayers
+
+  - [AshPostgres](https://hexdocs.pm/ash_postgres)
+  - [AshCsv](https://hexdocs.pm/ash_csv)
+  - [Ets(built-in)](https://hexdocs.pm/ash/Ash.DataLayer.Ets.html)
+  - [Mnesia(built-in)](https://hexdocs.pm/ash/Ash.DataLayer.Mnesia.html)
+
   ## Introduction
 
   Traditional MVC Frameworks (Rails, Django, .Net, Phoenix, etc) leave it up to the user to build the glue between requests for data (HTTP requests in various forms as well as server-side domain logic) and their respective ORMs. In that space, there is an incredible amount of boilerplate code that must get written from scratch for each application (authentication, authorization, sorting, filtering, sideloading relationships, serialization, etc).
