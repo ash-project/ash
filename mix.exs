@@ -110,7 +110,7 @@ defmodule Ash.MixProject do
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
       {:sobelow, ">= 0.0.0", only: :dev, runtime: false},
       {:git_ops, "~> 2.0.1", only: :dev},
-      {:picosat_elixir, "~> 0.1.4"},
+      {:picosat_elixir, "~> 0.1.5"},
       {:nimble_options, "~> 0.3.0"},
       {:excoveralls, "~> 0.13.0", only: [:dev, :test]},
       {:mix_test_watch, "~> 1.0", only: :dev, runtime: false}
