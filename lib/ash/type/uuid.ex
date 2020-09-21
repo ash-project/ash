@@ -2,7 +2,7 @@ defmodule Ash.Type.UUID do
   @moduledoc """
   Represents a UUID.
 
-  A builtin type that can be referenced via `:utc_datetime`
+  A builtin type that can be referenced via `:uuid`
   """
 
   use Ash.Type
