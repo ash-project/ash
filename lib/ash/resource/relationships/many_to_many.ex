@@ -12,6 +12,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
     :join_relationship,
     :join_attributes,
     :writable?,
+    :description,
     cardinality: :many,
     type: :many_to_many
   ]
@@ -29,7 +30,8 @@ defmodule Ash.Resource.Relationships.ManyToMany do
           source_field: atom,
           destination_field: atom,
           source_field_on_join_table: atom,
-          destination_field_on_join_table: atom
+          destination_field_on_join_table: atom,
+          description: String.t()
         }
 
   import Ash.Resource.Relationships.SharedOptions
@@ -74,6 +76,10 @@ defmodule Ash.Resource.Relationships.ManyToMany do
                     See `Ash.Changeset.append_to_relationship/3` and `Ash.Changeset.replace_relationship/3` for
                     how to edit these fields.
                     """
+                  ],
+                  description: [
+                    type: :string,
+                    doc: "An optional description for the many_to_many relationship"
                   ]
                 ],
                 @global_opts,

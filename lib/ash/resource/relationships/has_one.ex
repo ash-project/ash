@@ -9,6 +9,7 @@ defmodule Ash.Resource.Relationships.HasOne do
     :source_field,
     :allow_orphans?,
     :writable?,
+    :description,
     cardinality: :one,
     type: :has_one
   ]
@@ -23,7 +24,8 @@ defmodule Ash.Resource.Relationships.HasOne do
           destination: Ash.resource(),
           destination_field: atom,
           source_field: atom,
-          allow_orphans?: boolean
+          allow_orphans?: boolean,
+          description: String.t()
         }
 
   alias Ash.OptionsHelpers
@@ -34,7 +36,12 @@ defmodule Ash.Resource.Relationships.HasOne do
                |> OptionsHelpers.set_default!(:source_field, :id)
 
   @opt_schema Ash.OptionsHelpers.merge_schemas(
-                [],
+                [
+                  description: [
+                    type: :string,
+                    doc: "An optional description for the has_one relationship"
+                  ]
+                ],
                 @global_opts,
                 "Relationship Options"
               )

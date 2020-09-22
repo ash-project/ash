@@ -1,12 +1,13 @@
 defmodule Ash.Resource.Actions.Destroy do
   @moduledoc "Represents a destroy action on a resource."
 
-  defstruct [:name, :primary?, :changes, :accept, :soft?, type: :destroy]
+  defstruct [:name, :primary?, :changes, :accept, :soft?, :description, type: :destroy]
 
   @type t :: %__MODULE__{
           type: :destroy,
           name: atom,
-          primary?: boolean
+          primary?: boolean,
+          description: String.t()
         }
 
   @opt_schema [
@@ -28,6 +29,10 @@ defmodule Ash.Resource.Actions.Destroy do
       type: :atom,
       doc:
         "If specified, the destroy action calls the datalayer's update function with any specified changes."
+    ],
+    description: [
+      type: :string,
+      doc: "An optional description for the destroy action"
     ]
   ]
 

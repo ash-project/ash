@@ -12,6 +12,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :source,
     :required?,
     :writable?,
+    :description,
     cardinality: :one,
     type: :belongs_to
   ]
@@ -28,7 +29,8 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           define_field?: boolean,
           field_type: Ash.Type.t(),
           destination_field: atom,
-          source_field: atom | nil
+          source_field: atom | nil,
+          description: String.t()
         }
 
   import Ash.Resource.Relationships.SharedOptions, only: [shared_options: 0]
@@ -62,6 +64,10 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                     type: {:custom, OptionsHelpers, :ash_type, []},
                     default: :uuid,
                     doc: "The field type of the automatically created field."
+                  ],
+                  description: [
+                    type: :string,
+                    doc: "An optional description for the belongs_to relationship"
                   ]
                 ],
                 @global_opts,

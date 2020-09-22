@@ -1,12 +1,13 @@
 defmodule Ash.Resource.Actions.Create do
   @moduledoc "Represents a create action on a resource."
-  defstruct [:name, :primary?, :accept, :changes, type: :create]
+  defstruct [:name, :primary?, :accept, :changes, :description, type: :create]
 
   @type t :: %__MODULE__{
           type: :create,
           name: atom,
           accept: [atom],
-          primary?: boolean
+          primary?: boolean,
+          description: String.t()
         }
 
   @opt_schema [
@@ -24,6 +25,10 @@ defmodule Ash.Resource.Actions.Create do
       type: :boolean,
       default: false,
       doc: "Whether or not this action should be used when no action is specified by the caller."
+    ],
+    description: [
+      type: :string,
+      doc: "An optional description for the create action"
     ]
   ]
 
