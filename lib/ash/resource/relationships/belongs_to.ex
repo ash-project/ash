@@ -33,7 +33,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           description: String.t()
         }
 
-  import Ash.Resource.Relationships.SharedOptions, only: [shared_options: 0]
+  import Ash.Resource.Relationships.SharedOptions
 
   alias Ash.OptionsHelpers
 
@@ -64,10 +64,6 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                     type: {:custom, OptionsHelpers, :ash_type, []},
                     default: :uuid,
                     doc: "The field type of the automatically created field."
-                  ],
-                  description: [
-                    type: :string,
-                    doc: "An optional description for the belongs_to relationship"
                   ]
                 ],
                 @global_opts,

@@ -76,10 +76,6 @@ defmodule Ash.Resource.Relationships.ManyToMany do
                     See `Ash.Changeset.append_to_relationship/3` and `Ash.Changeset.replace_relationship/3` for
                     how to edit these fields.
                     """
-                  ],
-                  description: [
-                    type: :string,
-                    doc: "An optional description for the many_to_many relationship"
                   ]
                 ],
                 @global_opts,

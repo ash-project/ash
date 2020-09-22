@@ -36,12 +36,7 @@ defmodule Ash.Resource.Relationships.HasOne do
                |> OptionsHelpers.set_default!(:source_field, :id)
 
   @opt_schema Ash.OptionsHelpers.merge_schemas(
-                [
-                  description: [
-                    type: :string,
-                    doc: "An optional description for the has_one relationship"
-                  ]
-                ],
+                [],
                 @global_opts,
                 "Relationship Options"
               )
