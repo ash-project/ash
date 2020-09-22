@@ -1,5 +1,5 @@
 defmodule Ash.Resource.Validation.Present do
-  @moduledoc "Validates the presence of a list of attributes"
+  @moduledoc false
   alias Ash.Error.Changes.{InvalidAttribute, InvalidChanges}
 
   @behaviour Ash.Resource.Validation

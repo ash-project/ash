@@ -59,6 +59,13 @@ defmodule Ash.MixProject do
           Ash.Query,
           Ash.Changeset
         ],
+        validations: ~r/Ash.Resource.Validation/,
+        changes: ~r/Ash.Resource.Change/,
+        calculations: [
+          ~r/Ash.Resource.Calculation/,
+          Ash.Query.Calculation,
+          Ash.Calculation
+        ],
         type: ~r/Ash.Type/,
         data_layer: ~r/Ash.DataLayer/,
         authorizer: ~r/Ash.Authorizer/,
@@ -78,6 +85,7 @@ defmodule Ash.MixProject do
         "api introspection": ~r/Ash.Api/,
         miscellaneous: [
           Ash.NotLoaded,
+          Ash.Error.Stacktrace,
           Ash.Query.Aggregate
         ]
       ]

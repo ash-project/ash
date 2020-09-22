@@ -1,5 +1,5 @@
 defmodule Ash.Resource.Calculation.Concat do
-  @moduledoc "An example concatenation calculation, that accepts the delimeter as an argument"
+  @moduledoc false
   use Ash.Calculation, type: :string
 
   def init(opts) do

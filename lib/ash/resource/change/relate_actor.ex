@@ -1,7 +1,5 @@
 defmodule Ash.Resource.Change.RelateActor do
-  @moduledoc """
-  Relates the actor to the data being changed, as the provided relationship.
-  """
+  @moduledoc false
   use Ash.Resource.Change
   alias Ash.Changeset
   alias Ash.Error.Changes.InvalidRelationship

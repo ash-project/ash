@@ -4,13 +4,19 @@ defmodule Ash.Resource.Change.Builtins do
 
   The functions in this module are imported by default in the actions section.
   """
+
+  @doc "Relates the actor to the data being changed, as the provided relationship."
   def relate_actor(relationship) do
     {Ash.Resource.Change.RelateActor, relationship: relationship}
   end
 
+  @doc """
+  Sets the attribute to the value provided. If a zero argument function is provided, it is called to determine the value.
+  """
   def set_attribute(attribute, value) do
     {Ash.Resource.Change.SetAttribute, attribute: attribute, value: value}
   end
 
+  @doc "A helper for builting filter templates"
   def actor(value), do: {:_actor, value}
 end

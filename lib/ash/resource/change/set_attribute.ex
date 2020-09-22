@@ -1,7 +1,5 @@
 defmodule Ash.Resource.Change.SetAttribute do
-  @moduledoc """
-  Sets the attribute to the value provided. If a zero argument function is provided, it is called to determine the value.
-  """
+  @moduledoc false
   use Ash.Resource.Change
   alias Ash.Changeset
 

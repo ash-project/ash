@@ -1,5 +1,5 @@
 defmodule Ash.Resource.Validation.OneOf do
-  @moduledoc "Validates that the provided attribute is in a list of values"
+  @moduledoc false
   alias Ash.Error.Changes.InvalidAttribute
 
   @behaviour Ash.Resource.Validation
