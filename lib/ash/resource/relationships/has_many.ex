@@ -7,6 +7,7 @@ defmodule Ash.Resource.Relationships.HasMany do
     :source_field,
     :source,
     :writable?,
+    :description,
     cardinality: :many,
     type: :has_many
   ]
@@ -20,7 +21,8 @@ defmodule Ash.Resource.Relationships.HasMany do
           type: Ash.Type.t(),
           destination: Ash.resource(),
           destination_field: atom,
-          source_field: atom
+          source_field: atom,
+          description: String.t()
         }
 
   import Ash.Resource.Relationships.SharedOptions

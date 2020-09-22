@@ -12,6 +12,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :source,
     :required?,
     :writable?,
+    :description,
     cardinality: :one,
     type: :belongs_to
   ]
@@ -28,10 +29,11 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           define_field?: boolean,
           field_type: Ash.Type.t(),
           destination_field: atom,
-          source_field: atom | nil
+          source_field: atom | nil,
+          description: String.t()
         }
 
-  import Ash.Resource.Relationships.SharedOptions, only: [shared_options: 0]
+  import Ash.Resource.Relationships.SharedOptions
 
   alias Ash.OptionsHelpers
 

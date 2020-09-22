@@ -24,6 +24,10 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       type: :boolean,
       doc: "Whether or not the relationship may be edited.",
       default: true
+    ],
+    description: [
+      type: :string,
+      doc: "An optional description for the relationship"
     ]
   ]
 

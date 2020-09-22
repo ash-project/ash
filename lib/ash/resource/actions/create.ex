@@ -1,31 +1,30 @@
 defmodule Ash.Resource.Actions.Create do
   @moduledoc "Represents a create action on a resource."
-  defstruct [:name, :primary?, :accept, :changes, type: :create]
+  defstruct [:name, :primary?, :accept, :changes, :description, type: :create]
 
   @type t :: %__MODULE__{
           type: :create,
           name: atom,
           accept: [atom],
-          primary?: boolean
+          primary?: boolean,
+          description: String.t()
         }
 
-  @opt_schema [
-    name: [
-      type: :atom,
-      required: true,
-      doc: "The name of the action"
-    ],
-    accept: [
-      type: {:custom, Ash.OptionsHelpers, :list_of_atoms, []},
-      doc:
-        "The list of attributes and relationships to accept. Defaults to all attributes on the resource"
-    ],
-    primary?: [
-      type: :boolean,
-      default: false,
-      doc: "Whether or not this action should be used when no action is specified by the caller."
-    ]
-  ]
+  import Ash.Resource.Actions.SharedOptions
+
+  @global_opts shared_options()
+
+  @opt_schema Ash.OptionsHelpers.merge_schemas(
+                [
+                  accept: [
+                    type: {:custom, Ash.OptionsHelpers, :list_of_atoms, []},
+                    doc:
+                      "The list of attributes and relationships to accept. Defaults to all attributes on the resource"
+                  ]
+                ],
+                @global_opts,
+                "Action Options"
+              )
 
   @doc false
   def opt_schema, do: @opt_schema
