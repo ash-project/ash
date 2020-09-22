@@ -25,7 +25,7 @@ defmodule Ash do
 
   ### APIs
   - [AshJsonApi](https://hexdocs.pm/ash_json_api)
-  - [AshGraphql(beta)](https://hexdocs.pm/ash_json_api)
+  - [AshGraphql(beta)](https://hexdocs.pm/ash_graphql)
 
   ### Authorizers
 
