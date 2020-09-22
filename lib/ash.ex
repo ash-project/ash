@@ -108,7 +108,7 @@ defmodule Ash do
   @type relationship_cardinality :: :many | :one
   @type resource :: module
   @type side_loads :: term
-  @type sort :: Keyword.t()
+  @type sort :: list(atom | {atom, :asc} | {atom, :desc})
   @type validation :: Ash.Resource.Validation.t()
 
   require Ash.Dsl.Extension

@@ -4,6 +4,28 @@ defmodule Ash.Query do
 
   Ash queries are used for read actions and side loads, and ultimately
   map to queries to a resource's data layer.
+
+  Queries are run by calling `read` on an API that contains the resource in question
+
+  Examples:
+
+  ```elixir
+  MyApp.Post
+  |> Query.filter(likes: [gt: 10])
+  |> Query.sort([:title])
+  |> MyApp.Api.read!()
+
+  MyApp.Author
+  |> Query.aggregate(:published_post_count, :posts, filter: [published: true])
+  |> Query.sort(published_post_count: :desc)
+  |> Query.limit(10)
+  |> MyApp.Api.read!()
+
+  MyApp.Author
+  |> Query.load([:post_count, :comment_count])
+  |> Query.load(posts: [:comments])
+  |> MyApp.Api.read!()
+  ```
   """
   defstruct [
     :api,
@@ -64,7 +86,7 @@ defmodule Ash.Query do
   alias Ash.Error.SideLoad.{InvalidQuery, NoSuchRelationship}
   alias Ash.Query.{Aggregate, Calculation}
 
-  @doc "Create a new query."
+  @doc "Create a new query"
   def new(resource, api \\ nil) when is_atom(resource) do
     query =
       %__MODULE__{
@@ -94,6 +116,14 @@ defmodule Ash.Query do
     end
   end
 
+  @doc """
+  Loads named calculations or aggregates on the resource.
+
+  Currently, loading attributes has no effects, as all attributes are returned.
+  Before long, we will have the default list to load as the attributes, but if you say
+  `load(query, [:attribute1])`, that will be the only field filled in. This will let
+  data layers make more intelligent "select" statements as well.
+  """
   @spec load(t(), atom | list(atom) | Keyword.t()) :: t()
   def load(query, fields) when not is_list(fields) do
     load(query, List.wrap(fields))
@@ -223,11 +253,21 @@ defmodule Ash.Query do
   defp default(nil, value), do: value
   defp default(value, _), do: value
 
+  @doc """
+  Sets a specific context key to a specific value
+
+  See `set_context/2` for more information.
+  """
   @spec put_context(t(), atom, term) :: t()
   def put_context(query, key, value) do
     %{query | context: Map.put(query.context, key, value)}
   end
 
+  @doc """
+  Merge a map of values into the query context
+
+  Not much uses this currently.
+  """
   @spec set_context(t(), map) :: t()
   def set_context(query, map) do
     %{
@@ -243,6 +283,8 @@ defmodule Ash.Query do
     }
   end
 
+  @doc "Removes a field from the list of fields to load"
+  @spec unload(t(), list(atom)) :: t()
   def unload(query, fields) do
     query = to_query(query)
 
@@ -307,6 +349,18 @@ defmodule Ash.Query do
     do_unload_side_load(side_loads, {field, []})
   end
 
+  @doc """
+  Builds a query from a keyword list.
+
+  This is used by certain query constructs like aggregates. It can also be used to manipulate a data structure
+  before passing it to an ash query.
+
+  For example:
+
+  ```elixir
+  Ash.Query.build(MyResource, filter: [name: "fred"], sort: [name: :asc], offset: 10)
+  ```
+  """
   @spec build(Ash.resource(), Ash.api() | nil, Keyword.t()) :: t()
   def build(resource, api \\ nil, keyword) do
     Enum.reduce(keyword, new(resource, api), fn
@@ -479,6 +533,7 @@ defmodule Ash.Query do
     end
   end
 
+  @doc false
   def validate_side_load(resource, side_loads, path \\ []) do
     case do_validate_side_load(resource, side_loads, path) do
       [] -> :ok
@@ -486,7 +541,7 @@ defmodule Ash.Query do
     end
   end
 
-  def do_validate_side_load(_resource, %Ash.Query{} = query, path) do
+  defp do_validate_side_load(_resource, %Ash.Query{} = query, path) do
     if query.limit || (query.offset && query.offset != 0) do
       [{:error, InvalidQuery.exception(query: query, side_load_path: Enum.reverse(path))}]
     else
@@ -506,11 +561,11 @@ defmodule Ash.Query do
     end
   end
 
-  def do_validate_side_load(resource, {atom, _} = tuple, path) when is_atom(atom) do
+  defp do_validate_side_load(resource, {atom, _} = tuple, path) when is_atom(atom) do
     do_validate_side_load(resource, [tuple], path)
   end
 
-  def do_validate_side_load(resource, side_loads, path) when is_list(side_loads) do
+  defp do_validate_side_load(resource, side_loads, path) when is_list(side_loads) do
     side_loads
     |> List.wrap()
     |> Enum.flat_map(fn
@@ -594,6 +649,22 @@ defmodule Ash.Query do
     end
   end
 
+  @doc """
+  Sort the results based on attributes or aggregates (calculations are not yet supported)
+
+  Takes a list of fields to sort on, or a keyword list/mixed keyword list of fields and sort directions.
+  The default sort direction is `:asc`.
+
+  Examples:
+
+  ```
+  Ash.Query.sort(query, [:foo, :bar])
+
+  Ash.Query.sort(query, [:foo, bar: :desc])
+
+  Ash.Query.sort(query, [foo: :desc, bar: :asc])
+  ```
+  """
   @spec sort(t() | Ash.resource(), Ash.sort()) :: t()
   def sort(query, sorts) do
     query = to_query(query)

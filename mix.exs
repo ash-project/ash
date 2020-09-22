@@ -41,6 +41,7 @@ defmodule Ash.MixProject do
       extra_section: "GUIDES",
       extras: [
         "documentation/introduction/getting_started.md",
+        "documentation/topics/authorization.md",
         "documentation/topics/validation.md",
         "documentation/topics/error_handling.md",
         "documentation/topics/aggregates.md",
