@@ -1,6 +1,6 @@
 defmodule Ash.Resource.Aggregate do
   @moduledoc "Represents a named aggregate on the resource that can be loaded"
-  defstruct [:name, :relationship_path, :filter, :kind, :query]
+  defstruct [:name, :relationship_path, :filter, :kind, :query, :description]
 
   @schema [
     name: [
@@ -22,6 +22,10 @@ defmodule Ash.Resource.Aggregate do
       type: :keyword_list,
       doc: "A filter to apply to the aggregate",
       default: []
+    ],
+    description: [
+      type: :string,
+      doc: "An optional description for the aggregate"
     ]
   ]
 

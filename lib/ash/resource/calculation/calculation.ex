@@ -1,6 +1,6 @@
 defmodule Ash.Resource.Calculation do
   @moduledoc "Represents a named calculation on a resource"
-  defstruct [:name, :type, :calculation, :arguments]
+  defstruct [:name, :type, :calculation, :arguments, :description]
 
   @schema [
     name: [
@@ -12,6 +12,10 @@ defmodule Ash.Resource.Calculation do
       type: {:custom, __MODULE__, :calculation, []},
       required: true,
       doc: "The module or {module, opts} to use for the calculation"
+    ],
+    description: [
+      type: :string,
+      doc: "An optional description for the calculation"
     ]
   ]
 

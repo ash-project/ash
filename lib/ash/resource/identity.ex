@@ -1,6 +1,6 @@
 defmodule Ash.Resource.Identity do
   @moduledoc "Represents a unique constraint on a resource"
-  defstruct [:name, :keys]
+  defstruct [:name, :keys, :description]
 
   @schema [
     name: [
@@ -14,12 +14,20 @@ defmodule Ash.Resource.Identity do
       required: true,
       doc:
         "The names of attributes, aggregates or calculations that uniquely identify this resource."
+    ],
+    description: [
+      type: :string,
+      doc: "An optional description for the identity"
     ]
   ]
 
   def schema, do: @schema
 
-  @type t :: %__MODULE__{}
+  @type t :: %__MODULE__{
+          name: atom(),
+          keys: list(atom()),
+          description: String.t()
+        }
 
   def keys(keys) do
     keys = List.wrap(keys)
