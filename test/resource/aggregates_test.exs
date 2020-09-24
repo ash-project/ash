@@ -46,5 +46,21 @@ defmodule Ash.Test.Resource.AggregatesTest do
                }
              ] = Ash.Resource.aggregates(Post)
     end
+
+    test "Aggregate descriptions are allowed" do
+      defposts do
+        aggregates do
+          count :count_of_comments, :comments, description: "require one of name/contents"
+        end
+
+        relationships do
+          has_many :comments, Comment, destination_field: :post_id
+        end
+      end
+
+      assert [
+               %Ash.Resource.Aggregate{description: "require one of name/contents"}
+             ] = Ash.Resource.aggregates(Post)
+    end
   end
 end

@@ -36,5 +36,18 @@ defmodule Ash.Test.Resource.ValidationsTest do
                }
              ] = Ash.Resource.validations(Post)
     end
+
+    test "Validation descriptions are allowed" do
+      defposts do
+        validations do
+          validate present([:name, :contents], at_least: 1),
+            description: "require one of name/contents"
+        end
+      end
+
+      assert [
+               %Ash.Resource.Validation{description: "require one of name/contents"}
+             ] = Ash.Resource.validations(Post)
+    end
   end
 end
