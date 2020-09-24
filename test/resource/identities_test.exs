@@ -1,0 +1,37 @@
+defmodule Ash.Test.Resource.IdentitiesTest do
+  @moduledoc false
+  use ExUnit.Case, async: true
+
+  defmacrop defposts(do: body) do
+    quote do
+      defmodule Post do
+        @moduledoc false
+        use Ash.Resource
+
+        attributes do
+          attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+
+          attribute :name, :string
+          attribute :contents, :string
+        end
+
+        unquote(body)
+      end
+    end
+  end
+
+  describe "representation" do
+    test "identities are persisted on the resource properly" do
+      defposts do
+        resource do
+          identities do
+            identity :foobar, [:name, :contents]
+          end
+        end
+      end
+
+      assert [%Ash.Resource.Identity{name: :foobar, keys: [:name, :contents]}] =
+               Ash.Resource.identities(Post)
+    end
+  end
+end
