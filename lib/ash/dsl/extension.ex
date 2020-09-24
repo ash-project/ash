@@ -112,6 +112,8 @@ defmodule Ash.Dsl.Extension do
   Checks to see if it has been overridden via configuration.
   """
   def get_opt(resource, path, value, default, configurable? \\ false) do
+    path = List.wrap(path)
+
     if configurable? do
       case get_opt_config(resource, path, value) do
         {:ok, value} ->

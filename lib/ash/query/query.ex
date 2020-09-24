@@ -87,7 +87,10 @@ defmodule Ash.Query do
   alias Ash.Query.{Aggregate, Calculation}
 
   @doc "Create a new query"
-  def new(resource, api \\ nil) when is_atom(resource) do
+  def new(resource, api \\ nil)
+  def new(%__MODULE__{} = query, _), do: query
+
+  def new(resource, api) when is_atom(resource) do
     query =
       %__MODULE__{
         api: api,

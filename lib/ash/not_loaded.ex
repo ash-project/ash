@@ -2,6 +2,11 @@ defmodule Ash.NotLoaded do
   @moduledoc "Used when an aggregate or relationship hasn't been loaded."
   defstruct [:field, :type]
 
+  @type t :: %__MODULE__{
+          field: atom,
+          type: :relationship | :calculation | :aggregate
+        }
+
   defimpl Inspect do
     import Inspect.Algebra
 

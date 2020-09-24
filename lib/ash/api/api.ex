@@ -135,7 +135,8 @@ defmodule Ash.Api do
   """
   @callback load!(
               record_or_records :: Ash.record() | [Ash.record()],
-              params :: Keyword.t() | Ash.query()
+              query :: Ash.query(),
+              opts :: Keyword.t()
             ) ::
               Ash.record() | [Ash.record()] | no_return
 
@@ -150,7 +151,8 @@ defmodule Ash.Api do
   """
   @callback load(
               record_or_records :: Ash.record() | [Ash.record()],
-              params :: Keyword.t() | Ash.query()
+              query :: Ash.query(),
+              opts :: Keyword.t()
             ) ::
               {:ok, Ash.record() | [Ash.record()]} | {:error, Ash.error()}
 
@@ -283,10 +285,13 @@ defmodule Ash.Api do
     with {:ok, opts} <- NimbleOptions.validate(opts, @get_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, resource),
          {:ok, filter} <- get_filter(resource, id) do
-      resource
-      |> Ash.Query.new(api)
-      |> Ash.Query.filter(filter)
-      |> Ash.Query.load(opts[:load] || [])
+      query =
+        resource
+        |> Ash.Query.new(api)
+        |> Ash.Query.filter(filter)
+        |> Ash.Query.load(opts[:load] || [])
+
+      query
       |> api.read(Keyword.delete(opts, :load))
       |> case do
         {:ok, [single_result]} ->
@@ -299,7 +304,8 @@ defmodule Ash.Api do
           {:error, error}
 
         {:ok, results} when is_list(results) ->
-          {:error, :too_many_results}
+          {:error,
+           Ash.Error.Invalid.MultipleResults.exception(count: Enum.count(results), query: query)}
       end
     else
       {:error, error} ->
