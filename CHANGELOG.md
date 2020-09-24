@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.14.0](https://github.com/ash-project/ash/compare/v1.13.4...v1.14.0) (2020-09-24)
+
+
+
+
+### Features:
+
+* descriptions for actions and relationships (#116)
+
+### Bug Fixes:
+
+* typespec/error message improvements
+
 ## [v1.13.4](https://github.com/ash-project/ash/compare/v1.13.3...v1.13.4) (2020-09-21)
 
 
