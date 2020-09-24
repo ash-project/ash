@@ -1,6 +1,6 @@
 defmodule Ash.Resource.Aggregate do
   @moduledoc "Represents a named aggregate on the resource that can be loaded"
-  defstruct [:name, :relationship_path, :filter, :kind, :query, :description]
+  defstruct [:name, :relationship_path, :filter, :kind, :description]
 
   @schema [
     name: [
@@ -29,7 +29,13 @@ defmodule Ash.Resource.Aggregate do
     ]
   ]
 
-  @type t :: %__MODULE__{}
+  @type t :: %__MODULE__{
+          name: atom(),
+          relationship_path: {:ok, list(atom())} | {:error, String.t()},
+          filter: Keyword.t(),
+          kind: [:count],
+          description: String.t()
+        }
 
   @doc false
   def schema, do: @schema
