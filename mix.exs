@@ -83,6 +83,9 @@ defmodule Ash.MixProject do
         filter: ~r/Ash.Filter/,
         "resource introspection": ~r/Ash.Resource/,
         "api introspection": ~r/Ash.Api/,
+        engine: [
+          ~r/Ash.Engine/
+        ],
         miscellaneous: [
           Ash.NotLoaded,
           Ash.Error.Stacktrace,

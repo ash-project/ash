@@ -1,5 +1,38 @@
 defmodule Ash.Engine do
-  @moduledoc false
+  @moduledoc """
+  The Ash engine handles the parallelization/running of requests to Ash.
+
+  Much of the complexity of this doesn't come into play for simple requests.
+  The way it works is that it accepts a list of `Ash.Engine.Request` structs.
+  Some of values on those structs will be instances of `Ash.Engine.Request.UnresolvedField`.
+  These unresolved fields can express a dependence on the field values from other requests.
+  This allows the engine to wait on executing some code until it has its required inputs,
+  or if all of its dependencies are met, it can execute it immediately. The engine's job is
+  to resolve its unresolved fields in the proper order, potentially in parallel.
+  It also has knowledge baked in about certain special fields, like `data` which is the
+  field we are ultimately trying to resolve, and `query` which is the field that drives authorization
+  for read requests. Authorization is done on a *per engine request* basis.
+
+  As the complexity of a system grows, it becomes very difficult to write code that
+  is both imperative and performant. This is especially true of a framework that is
+  designed to be configurable. What exactly is done, as well as the order it is done in,
+  and wether or not is can be parallelized, varies wildly based on factors like how
+  the resources are configured and what capabilities the datalayer has. By implementing
+  a generic "parallel engine", we can let the engine solve for the optimization. We simply
+  have to express the various operations that must happen, and what other pieces of data
+  they need in order to happen, and the engine handles the rest.
+
+  Eventually, this module may (potentially) be used more explicitly, as a way to construct
+  "sagas" or "multis" which represent a series of resource actions with linked up inputs.
+  If each of those resource actions can be broken into its component requests, and the full
+  set of requests can be processed, we can compose large series' of resource actions without
+  having to figure out the most optimal way to do it. They will be done as fast as possible.
+  But we have a long way to go before we get there.
+
+  Check out the docs for `Ash.Engine.Request` for some more information. This is a private
+  interface at the moment, though, so this documentation is just here to explain how it works
+  it is not intended to give you enough information to use the engine directly.
+  """
   defstruct [
     :api,
     :requests,

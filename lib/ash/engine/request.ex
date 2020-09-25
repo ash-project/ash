@@ -1,13 +1,21 @@
 defmodule Ash.Engine.Request do
-  @moduledoc false
+  @moduledoc """
+  Represents an individual request to be processed by the engine.
+
+  See `new/1` for more information
+  """
 
   alias Ash.Error.Forbidden.MustPassStrictCheck
   alias Ash.Error.Framework.AssumptionFailed
   alias Ash.Error.Invalid.{DuplicatedPath, ImpossiblePath}
 
   defmodule UnresolvedField do
-    @moduledoc false
+    @moduledoc """
+    Represents an unresolved field to be resolved by the engine
+    """
     defstruct [:resolver, deps: [], data?: false]
+
+    @type t :: %__MODULE__{}
 
     def new(dependencies, func) do
       %__MODULE__{
@@ -69,10 +77,63 @@ defmodule Ash.Engine.Request do
 
   alias Ash.Authorizer
 
+  @doc """
+  Create an unresolved field.
+
+  Can have dependencies, which is a list of atoms. All elements
+  before the last comprise the path of a request that is also
+  being processed, like `[:data]`, and the last element is the
+  key of that request that is required. Make sure to pass a
+  list of lists of atoms. The second argument is a map, which
+  contains all the values you requested, at the same path
+  that they were requested.
+
+  For example:
+
+      resolve([[:data, :query], [:data, :data]], fn %{data: %{query: query, data: data}} ->
+        data # This is the data field of the [:data] request
+        query # This is the query field of the [:data] request
+      end)
+  """
+  @spec resolve([[atom]], (map -> {:ok, term} | {:error, term})) :: UnresolvedField.t()
   def resolve(dependencies \\ [], func) do
     UnresolvedField.new(dependencies, func)
   end
 
+  @doc """
+  Creates a new request.
+
+  The field values may be explicit values, or they may be
+  instances of `UnresolvedField`.
+
+  When other requests depend on a value from this request, they will
+  not be sent unless this request has completed its authorization (or this
+  request has been configured not to do authorization). This allows requests
+  to depend on eachother without those requests happening just before a request
+  fails with a forbidden error. These fields are `data`, `query`, `changeset`
+  and `authorized?`.
+
+  A field may not be resolved  if the data of a request has been resolved and
+  no other requests depend on that field.
+
+  Options:
+
+    * query - The query to be used to fetch data. Used to authorize reads.
+    * data - The ultimate goal of a request is to compute the data
+    * resource - The primary resource of the request. Used for openeing transactions on creates/updates/destroys
+    * changeset - Any changes to be made to the resource. Used to authorize writes.
+    * path - The path of the request. This serves as a unique id, and is the way that other requests can refer to this one
+    * action_type - The action_type of the request
+    * action - The action being performed on the data
+    * async? - Whether or not the request *can* be asynchronous, defaults to `true`.
+    * api - The api module being called
+    * name - A human readable name for the request, used when logging/in errors
+    * strict_check_only? - If true, authorization will not be allowed to proceed to a runtime check (so it cannot run db queries unless authorization is assured)
+    * actor - The actor performing the action, used for authorization
+    * authorize? - Wether or not to perform authorization (defaults to true)
+    * verbose? - print informational logs (warning, this will be a whole lot of logs)
+    * write_to_data? - If set to false, this value is not returned from the initial call to the engine
+  """
   def new(opts) do
     query =
       case opts[:query] do
@@ -596,8 +657,8 @@ defmodule Ash.Engine.Request do
   defp try_resolve_local(request, field, internal?) do
     authorized? = Enum.all?(Map.values(request.authorizer_state), &(&1 == :authorized))
 
-    # Don't fetch honor requests for dat until the request is authorized
-    if field in [:data, :query, :changeset] and not authorized? and not internal? do
+    # Don't fetch honor requests for data until the request is authorized
+    if field in [:data, :query, :changeset, :authorized?] and not authorized? and not internal? do
       try_resolve_dependencies_of(request, field, internal?)
     else
       case Map.get(request, field) do
