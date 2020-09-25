@@ -39,9 +39,17 @@ defmodule Ash.Resource.Validation do
   end
   ```
   """
-  defstruct [:validation, :module, :opts, :expensive?, on: []]
+  defstruct [:validation, :module, :opts, :expensive?, :description, on: []]
 
-  @type t :: %__MODULE__{}
+  @type t :: %__MODULE__{
+          validation: {atom(), list(atom())},
+          module: atom(),
+          opts: list(atom()),
+          expensive?: boolean(),
+          description: String.t() | nil,
+          on: list(atom())
+        }
+
   @type path :: [atom | integer]
   @callback init(Keyword.t()) :: {:ok, Keyword.t()} | {:error, String.t()}
   @callback validate(Ash.changeset(), Keyword.t()) :: :ok | {:error, Ash.error()}
@@ -66,6 +74,10 @@ defmodule Ash.Resource.Validation do
       default: false,
       doc:
         "If a validation is expensive, it won't be run on invalid changes. All inexpensive validations are always run, to provide informative errors."
+    ],
+    description: [
+      type: :string,
+      doc: "An optional description for the validation"
     ]
   ]
 

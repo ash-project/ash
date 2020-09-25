@@ -36,5 +36,18 @@ defmodule Ash.Test.Resource.CalculationsTest do
                }
              ] = Ash.Resource.calculations(Post)
     end
+
+    test "Calculation descriptions are allowed" do
+      defposts do
+        calculations do
+          calculate :name_and_contents, concat([:name, :context]),
+            description: "require one of name/contents"
+        end
+      end
+
+      assert [
+               %Ash.Resource.Calculation{description: "require one of name/contents"}
+             ] = Ash.Resource.calculations(Post)
+    end
   end
 end

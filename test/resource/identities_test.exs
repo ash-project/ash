@@ -33,5 +33,19 @@ defmodule Ash.Test.Resource.IdentitiesTest do
       assert [%Ash.Resource.Identity{name: :foobar, keys: [:name, :contents]}] =
                Ash.Resource.identities(Post)
     end
+
+    test "Identity descriptions are allowed" do
+      defposts do
+        resource do
+          identities do
+            identity :foobar, [:name, :contents], description: "require one of name/contents"
+          end
+        end
+      end
+
+      assert [
+               %Ash.Resource.Identity{description: "require one of name/contents"}
+             ] = Ash.Resource.identities(Post)
+    end
   end
 end
