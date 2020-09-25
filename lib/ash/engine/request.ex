@@ -93,9 +93,15 @@ defmodule Ash.Engine.Request do
       resolve([[:data, :query], [:data, :data]], fn %{data: %{query: query, data: data}} ->
         data # This is the data field of the [:data] request
         query # This is the query field of the [:data] request
+
+        {:ok, result}
+        # or
+        {:error, error}
+        # or
+        result
       end)
   """
-  @spec resolve([[atom]], (map -> {:ok, term} | {:error, term})) :: UnresolvedField.t()
+  @spec resolve([[atom]], (map -> {:ok, term} | {:error, term} | term)) :: UnresolvedField.t()
   def resolve(dependencies \\ [], func) do
     UnresolvedField.new(dependencies, func)
   end
