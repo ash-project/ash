@@ -26,7 +26,7 @@ defmodule Ash.Resource.Identity do
   @type t :: %__MODULE__{
           name: atom(),
           keys: list(atom()),
-          description: String.t()
+          description: String.t() | nil
         }
 
   def keys(keys) do

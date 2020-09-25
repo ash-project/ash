@@ -23,7 +23,7 @@ defmodule Ash.Resource.Calculation do
           name: atom(),
           calculation: {:ok, {atom(), any()}} | {:error, String.t()},
           arguments: list(any()),
-          description: String.t()
+          description: String.t() | nil
         }
 
   defmodule Argument do

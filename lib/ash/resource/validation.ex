@@ -46,7 +46,7 @@ defmodule Ash.Resource.Validation do
           module: atom(),
           opts: list(atom()),
           expensive?: boolean(),
-          description: String.t(),
+          description: String.t() | nil,
           on: list(atom())
         }
 

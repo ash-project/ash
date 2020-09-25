@@ -33,8 +33,8 @@ defmodule Ash.Resource.Aggregate do
           name: atom(),
           relationship_path: {:ok, list(atom())} | {:error, String.t()},
           filter: Keyword.t(),
-          kind: [:count],
-          description: String.t()
+          kind: :count,
+          description: String.t() | nil
         }
 
   @doc false
