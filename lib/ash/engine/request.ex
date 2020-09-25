@@ -101,7 +101,6 @@ defmodule Ash.Engine.Request do
         result
       end)
   """
-  @spec resolve([[atom]], (map -> {:ok, term} | {:error, term} | term)) :: UnresolvedField.t()
   def resolve(dependencies \\ [], func) do
     UnresolvedField.new(dependencies, func)
   end
