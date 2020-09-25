@@ -3,7 +3,9 @@ defmodule Ash.Dsl.Extension do
   An extension to the Ash DSL.
 
   This allows configuring custom DSL components, whos configurations
-  can then be read back.
+  can then be read back. This guide is still a work in progress, but should
+  serve as a decent example of what is possible. Open issues on Github if you
+  have any issues/something is unclear.
 
   The example at the bottom shows how you might build a (not very contextually
   relevant) DSL extension that would be used like so:
@@ -18,7 +20,7 @@ defmodule Ash.Dsl.Extension do
         end
       end
 
-  For (a not very contextually relevant) example:
+  The extension:
 
       defmodule MyApp.CarExtension do
         @car_schema [
@@ -96,6 +98,8 @@ defmodule Ash.Dsl.Extension do
 
       MyApp.Cars.cars(MyResource)
       # [%MyApp.Car{...}, %MyApp.Car{...}]
+
+  See the documentation for `Ash.Dsl.Section` and `Ash.Dsl.Entity` for more information
   """
 
   @callback sections() :: [Ash.Dsl.Section.t()]
