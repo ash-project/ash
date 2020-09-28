@@ -11,52 +11,15 @@ defmodule Ash.Filter.Expression do
   def new(_, nil, right), do: right
   def new(_, left, nil), do: left
 
-  def new(op, %__MODULE__{op: left_op} = left, %__MODULE__{op: op} = right) when left_op != op do
-    [left, right] = Enum.sort([left, right])
-    optimize(%__MODULE__{op: op, left: right, right: left})
-  end
-
   def new(op, left, right) do
-    [left, right] = Enum.sort([left, right])
-    optimize(%__MODULE__{op: op, left: left, right: right})
-  end
-
-  defp optimize(%__MODULE__{op: op, left: left, right: right}) do
-    Ash.Filter.reduce(right, left, fn expression, other_expr ->
-      case do_optimize(expression, other_expr) do
-        nil ->
-          right
-
-        true ->
-          if op == :or do
-            true
-          else
-            right
-          end
-
-        false ->
-          if op == :and do
-            false
-          else
-            right
-          end
-
-        new_left ->
-          Ash.Filter.reduce()
-      end
-    end)
-  end
-
-  defp do_optimize(expr, %__MODULE__{op: :or, left: left, right: right}) do
-    if has_expression?(left, expr) && has_expression?(right, expr) do
-      nil
+    # TODO: more optimization passes!
+    # Remove predicates that are on both sides of an `and`
+    # if a predicate is on both sides of an `or`, lift it to an `and`
+    if left == right do
+      left
     else
-      expr
+      %__MODULE__{op: op, left: left, right: right}
     end
-  end
-
-  defp has_expression?(expr, candidate) do
-    false
   end
 end
 

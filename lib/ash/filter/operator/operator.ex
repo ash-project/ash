@@ -15,7 +15,7 @@ defmodule Ash.Filter.Operator do
     end
 
     quote do
-      defstruct [:left, :right]
+      defstruct [:left, :right, embedded?: false] ++ unquote(opts[:fields] || [])
 
       alias Ash.Filter.Ref
 

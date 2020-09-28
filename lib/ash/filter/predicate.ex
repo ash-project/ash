@@ -54,6 +54,7 @@ defmodule Ash.Filter.Predicate do
   end
 
   @spec compare(predicate(), predicate()) :: comparison
+
   def compare(%__MODULE__{predicate: left} = pred, right) do
     case compare(left, right) do
       {:simplify, simplification} ->
@@ -74,6 +75,8 @@ defmodule Ash.Filter.Predicate do
   end
 
   def compare(left, %__MODULE__{predicate: right}), do: compare(left, right)
+
+  def compare(same, same), do: :mutually_inclusive
 
   def compare(left, right) do
     if left.__struct__ == right.__struct__ do

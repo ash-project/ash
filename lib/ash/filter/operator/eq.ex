@@ -24,7 +24,7 @@ defmodule Ash.Filter.Operator.Eq do
   end
 
   def compare(%__MODULE__{left: %Ref{} = same_ref}, %__MODULE__{left: %Ref{} = same_ref}) do
-    :left_excludes_right
+    :mutually_exclusive
   end
 
   def compare(_, _), do: :unknown
