@@ -72,7 +72,6 @@ defmodule Ash.Filter do
   }
 
   alias Ash.Filter.Predicate.{
-    Eq,
     GreaterThan,
     GreaterThanOrEqual,
     In,
@@ -81,12 +80,11 @@ defmodule Ash.Filter do
     LessThanOrEqual
   }
 
-  alias Ash.Filter.{Expression, Not, Predicate}
+  alias Ash.Filter.Operator.Eq
+  alias Ash.Filter.{Expression, Not, Operator, Predicate, Ref}
   alias Ash.Query.Aggregate
 
   @built_in_predicates [
-    eq: Eq,
-    equals: Eq,
     in: In,
     lt: LessThan,
     gt: GreaterThan,
@@ -99,9 +97,19 @@ defmodule Ash.Filter do
     is_nil: IsNil
   ]
 
+  @builtin_operators [
+    eq: Eq,
+    equals: Eq,
+    ==: Eq
+  ]
+
   @string_builtin_predicates Enum.into(@built_in_predicates, %{}, fn {key, value} ->
                                {to_string(key), value}
                              end)
+
+  @string_builtin_operators Enum.into(@builtin_operators, %{}, fn {key, value} ->
+                              {to_string(key), value}
+                            end)
 
   defstruct [:resource, :expression]
 
@@ -599,6 +607,8 @@ defmodule Ash.Filter do
     end
   end
 
+  def reduce(nil, acc, _func), do: acc
+
   def reduce(expression, acc, func) do
     case func.(expression, acc) do
       {:halt, acc} ->
@@ -1087,12 +1097,12 @@ defmodule Ash.Filter do
 
     if is_map(values) || Keyword.keyword?(values) do
       Enum.reduce_while(values, {:ok, nil}, fn {key, value}, {:ok, expression} ->
-        case get_predicate(key, data_layer_predicates) do
-          value when value in [nil, []] ->
-            error = NoSuchFilterPredicate.exception(key: key, resource: context.resource)
-            {:halt, {:error, error}}
-
-          predicate_module ->
+        with {:pred, nil} <- {:pred, get_predicate(key, data_layer_predicates)},
+             {:op, nil} <- {:op, get_operator(key, %{})} do
+          error = NoSuchFilterPredicate.exception(key: key, resource: context.resource)
+          {:halt, {:error, error}}
+        else
+          {:pred, predicate_module} ->
             case Predicate.new(
                    context.resource,
                    attr,
@@ -1102,6 +1112,29 @@ defmodule Ash.Filter do
                  ) do
               {:ok, predicate} ->
                 {:cont, {:ok, Expression.new(:and, expression, predicate)}}
+
+              {:error, error} ->
+                {:halt, {:error, error}}
+            end
+
+          {:op, operator_module} ->
+            left = %Ref{
+              attribute: attr,
+              relationship_path: context.relationship_path,
+              resource: context.relationship_path
+            }
+
+            case Operator.new(operator_module, left, value) do
+              {:ok, boolean} when is_boolean(boolean) ->
+                {:cont, {:ok, boolean}}
+
+              {:ok, operator} ->
+                if Ash.Resource.data_layer_can?(context.resource, {:filter_operator, operator}) do
+                  {:cont, {:ok, operator}}
+                else
+                  {:halt,
+                   {:error, "data layer does not support the operator #{inspect(operator)}"}}
+                end
 
               {:error, error} ->
                 {:halt, {:error, error}}
@@ -1130,6 +1163,23 @@ defmodule Ash.Filter do
   end
 
   defp get_predicate(_, _), do: nil
+
+  defp get_operator(key, data_layer_operators) when is_atom(key) do
+    @builtin_operators[key] || data_layer_operators[key]
+  end
+
+  defp get_operator(key, data_layer_operators) when is_binary(key) do
+    Map.get(@string_builtin_operators, key) ||
+      Enum.find_value(data_layer_operators, fn {pred, value} ->
+        if to_string(pred) == key do
+          value
+        else
+          false
+        end
+      end)
+  end
+
+  defp get_operator(_, _), do: nil
 
   defimpl Inspect do
     import Inspect.Algebra

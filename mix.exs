@@ -125,7 +125,8 @@ defmodule Ash.MixProject do
       {:picosat_elixir, "~> 0.1.5"},
       {:nimble_options, "~> 0.3.0"},
       {:excoveralls, "~> 0.13.0", only: [:dev, :test]},
-      {:mix_test_watch, "~> 1.0", only: :dev, runtime: false}
+      {:mix_test_watch, "~> 1.0", only: :dev, runtime: false},
+      {:parse_trans, "3.3.0", only: [:dev, :test], override: true}
     ]
   end
 

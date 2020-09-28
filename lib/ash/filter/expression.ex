@@ -12,11 +12,51 @@ defmodule Ash.Filter.Expression do
   def new(_, left, nil), do: left
 
   def new(op, %__MODULE__{op: left_op} = left, %__MODULE__{op: op} = right) when left_op != op do
-    %__MODULE__{op: op, left: right, right: left}
+    [left, right] = Enum.sort([left, right])
+    optimize(%__MODULE__{op: op, left: right, right: left})
   end
 
   def new(op, left, right) do
-    %__MODULE__{op: op, left: left, right: right}
+    [left, right] = Enum.sort([left, right])
+    optimize(%__MODULE__{op: op, left: left, right: right})
+  end
+
+  defp optimize(%__MODULE__{op: op, left: left, right: right}) do
+    Ash.Filter.reduce(right, left, fn expression, other_expr ->
+      case do_optimize(expression, other_expr) do
+        nil ->
+          right
+
+        true ->
+          if op == :or do
+            true
+          else
+            right
+          end
+
+        false ->
+          if op == :and do
+            false
+          else
+            right
+          end
+
+        new_left ->
+          Ash.Filter.reduce()
+      end
+    end)
+  end
+
+  defp do_optimize(expr, %__MODULE__{op: :or, left: left, right: right}) do
+    if has_expression?(left, expr) && has_expression?(right, expr) do
+      nil
+    else
+      expr
+    end
+  end
+
+  defp has_expression?(expr, candidate) do
+    false
   end
 end
 

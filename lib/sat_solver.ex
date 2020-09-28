@@ -253,7 +253,7 @@ defmodule Ash.SatSolver do
 
               {:simplify, _} ->
                 # Filter should be fully simplified here
-                raise "What"
+                raise "Unreachable"
 
               _other ->
                 # If we can't tell, we assume they are exclusive statements
