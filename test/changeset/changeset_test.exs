@@ -124,7 +124,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
   describe "new" do
     test "it wraps a new resource in a `create` changeset" do
-      assert %changeset{
+      assert %Changeset{
                action_type: :create,
                attributes: %{},
                data: %Category{},
@@ -141,7 +141,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         |> Changeset.new(%{name: "foo"})
         |> Api.create!()
 
-      assert %changeset{
+      assert %Changeset{
                action_type: :update,
                attributes: %{},
                data: %Category{name: "foo"},
@@ -153,7 +153,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     test "it returns an error for a non-resource record" do
-      assert %changeset{
+      assert %Changeset{
                action_type: :create,
                attributes: %{},
                data: %NonResource{},
