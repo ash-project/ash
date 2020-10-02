@@ -447,9 +447,10 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     test "it accepts a map %{id: value} representing primary key as a second param only if primary key is a single attribute" do
-      post1 = Post
-              |> Changeset.new(%{title: "foo"})
-              |> Api.create!()
+      post1 =
+        Post
+        |> Changeset.new(%{title: "foo"})
+        |> Api.create!()
 
       changeset =
         Author
@@ -479,9 +480,10 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     #    end
 
     test "it accepts many-to-many relationship" do
-      post1 = Post
-              |> Changeset.new(%{title: "foo"})
-              |> Api.create!()
+      post1 =
+        Post
+        |> Changeset.new(%{title: "foo"})
+        |> Api.create!()
 
       changeset =
         Category
