@@ -53,6 +53,9 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
     relationships do
       has_many :posts, Ash.Test.Changeset.ChangesetTest.Post, destination_field: :author_id
+
+      has_many :composite_key_posts, Ash.Test.Changeset.ChangesetTest.CompositeKeyPost,
+        destination_field: :author_id
     end
   end
 
@@ -105,6 +108,36 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
   end
 
+  defmodule CompositeKeyPost do
+    @moduledoc false
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      read :default
+      create :default
+      update :default
+    end
+
+    attributes do
+      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      attribute :title, :string, primary_key?: true
+      attribute :contents, :string
+    end
+
+    relationships do
+      belongs_to :author, Author
+
+      many_to_many :categories, Ash.Test.Changeset.ChangesetTest.Category,
+        through: Ash.Test.Changeset.ChangesetTest.PostCategory,
+        destination_field_on_join_table: :category_id,
+        source_field_on_join_table: :post_id
+    end
+  end
+
   defmodule Api do
     @moduledoc false
     use Ash.Api
@@ -114,6 +147,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       resource Author
       resource PostCategory
       resource Post
+      resource CompositeKeyPost
     end
   end
 
@@ -421,6 +455,25 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         |> Changeset.replace_relationship(:posts, %{id: post1.id})
 
       assert %{replace: [%{id: post1.id}]} == changeset.relationships.posts
+    end
+
+    test "it accepts a map %{att1: value1, att2: value2} representing primary key as a second param if a resource has a composite key of [:att1, att2]" do
+      post1 = CompositeKeyPost |> Changeset.new(%{title: "foo"}) |> Api.create!()
+
+      assert [:id, :title] == Ash.Resource.primary_key(CompositeKeyPost)
+
+      changeset =
+        Author
+        |> Changeset.new()
+        |> Changeset.replace_relationship(:composite_key_posts, %{
+          id: post1.id,
+          title: "some title"
+        })
+
+      refute [%Ash.Error.Changes.InvalidRelationship{}] = changeset.errors
+
+      assert %{replace: [%{id: post1.id, title: post1.title}]} ==
+               changeset.relationships.composite_key_posts
     end
 
     test "it accepts many-to-many relationship" do
