@@ -181,7 +181,7 @@ defmodule Ash.Changeset do
   end
 
   @doc """
-  Appends a record of list of records to a relationship. Stacks with previous removals/additions.
+  Appends a record or a list of records to a relationship. Stacks with previous removals/additions.
 
   Accepts a primary key or a list of primary keys. See the section on "Primary Keys" in the
   module documentation for more.
@@ -253,7 +253,7 @@ defmodule Ash.Changeset do
   end
 
   @doc """
-  Removes a record of list of records to a relationship. Stacks with previous removals/additions.
+  Removes a record or a list of records to a relationship. Stacks with previous removals/additions.
 
   Accepts a primary key or a list of primary keys. See the section on "Primary Keys" in the
   module documentation for more.

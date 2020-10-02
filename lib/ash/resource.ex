@@ -279,7 +279,7 @@ defmodule Ash.Resource do
     :persistent_term.get({resource, :data_layer})
   end
 
-  @doc "Whether ornot the data layer supports a specific feature"
+  @doc "Whether or not the data layer supports a specific feature"
   @spec data_layer_can?(Ash.resource(), Ash.DataLayer.feature()) :: boolean
   def data_layer_can?(resource, feature) do
     data_layer = data_layer(resource)
@@ -287,7 +287,7 @@ defmodule Ash.Resource do
     data_layer && Ash.DataLayer.can?(feature, resource)
   end
 
-  @doc "Custom filters suppoted by the data layer of the resource"
+  @doc "Custom filters supported by the data layer of the resource"
   @spec data_layer_filters(Ash.resource()) :: map
   def data_layer_filters(resource) do
     Ash.DataLayer.custom_filters(resource)
