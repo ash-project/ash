@@ -359,7 +359,6 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       assert Enum.sort([%{id: post1.id}, %{id: post2.id}]) ==
                Enum.sort(changeset.relationships.posts.add)
-
     end
   end
 
@@ -480,7 +479,6 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
   end
 
-
   describe "changing_relationship?/2" do
     test "it returns true if the attribute is being changed by the current changeset" do
       post = Post |> Changeset.new(%{title: "title2"}) |> Api.create!()
@@ -489,6 +487,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         Author
         |> Changeset.new()
         |> Changeset.replace_relationship(:posts, [post])
+
       assert Changeset.changing_relationship?(changeset, :posts)
     end
 
@@ -500,17 +499,21 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
   describe "change_new_attribute/3" do
     test "it changes attribute if it's not currently being changed" do
-      changeset = Post |> Changeset.new(%{title: "title1"})
-      |> Changeset.change_new_attribute(:contents, "some content")
-      assert %Changeset{attributes: %{title: "title1", contents: "some content" }} = changeset
+      changeset =
+        Post
+        |> Changeset.new(%{title: "title1"})
+        |> Changeset.change_new_attribute(:contents, "some content")
 
+      assert %Changeset{attributes: %{title: "title1", contents: "some content"}} = changeset
     end
 
     test "it keeps the current value of atrribute if it's currenlty being changed" do
-      changeset = Post |> Changeset.new(%{title: "title1"})
-      |> Changeset.change_new_attribute( :title, "another title")
-      assert %Changeset{attributes: %{title: "title1"}} = changeset
+      changeset =
+        Post
+        |> Changeset.new(%{title: "title1"})
+        |> Changeset.change_new_attribute(:title, "another title")
 
+      assert %Changeset{attributes: %{title: "title1"}} = changeset
     end
   end
 end
