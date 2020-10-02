@@ -199,7 +199,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
   end
 
-  describe "with_hook/2" do
+  describe "with_hooks/2" do
     test "it applies a before_action function on a changeset" do
       capitalize_name = fn changeset = %Changeset{attributes: %{name: name}} ->
         %{
