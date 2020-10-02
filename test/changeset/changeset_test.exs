@@ -459,7 +459,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       assert %{replace: [%{id: post1.id}]} == changeset.relationships.posts
     end
 
-    #    test "it accepts a map %{att1: value1, att2: value2} representing primary key as a second param if a resource has a composite key of [:att1, att2]" do
+    #    test "it accepts a map %{att1: value1, att2: value2} representing primary key as a second param" do
     #      post1 = CompositeKeyPost |> Changeset.new(%{title: "foo"}) |> Api.create!()
     #
     #      assert [:id, :title] == Ash.Resource.primary_key(CompositeKeyPost)
