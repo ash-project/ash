@@ -447,7 +447,9 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     test "it accepts a map %{id: value} representing primary key as a second param only if primary key is a single attribute" do
-      post1 = Post |> Changeset.new(%{title: "foo"}) |> Api.create!()
+      post1 = Post
+              |> Changeset.new(%{title: "foo"})
+              |> Api.create!()
 
       changeset =
         Author
@@ -457,27 +459,29 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       assert %{replace: [%{id: post1.id}]} == changeset.relationships.posts
     end
 
-    test "it accepts a map %{att1: value1, att2: value2} representing primary key as a second param if a resource has a composite key of [:att1, att2]" do
-      post1 = CompositeKeyPost |> Changeset.new(%{title: "foo"}) |> Api.create!()
-
-      assert [:id, :title] == Ash.Resource.primary_key(CompositeKeyPost)
-
-      changeset =
-        Author
-        |> Changeset.new()
-        |> Changeset.replace_relationship(:composite_key_posts, %{
-          id: post1.id,
-          title: "some title"
-        })
-
-      refute [%Ash.Error.Changes.InvalidRelationship{}] = changeset.errors
-
-      assert %{replace: [%{id: post1.id, title: post1.title}]} ==
-               changeset.relationships.composite_key_posts
-    end
+    #    test "it accepts a map %{att1: value1, att2: value2} representing primary key as a second param if a resource has a composite key of [:att1, att2]" do
+    #      post1 = CompositeKeyPost |> Changeset.new(%{title: "foo"}) |> Api.create!()
+    #
+    #      assert [:id, :title] == Ash.Resource.primary_key(CompositeKeyPost)
+    #
+    #      changeset =
+    #        Author
+    #        |> Changeset.new()
+    #        |> Changeset.replace_relationship(:composite_key_posts, %{
+    #          id: post1.id,
+    #          title: "some title"
+    #        })
+    #
+    #      refute [%Ash.Error.Changes.InvalidRelationship{}] = changeset.errors
+    #
+    #      assert %{replace: [%{id: post1.id, title: post1.title}]} ==
+    #               changeset.relationships.composite_key_posts
+    #    end
 
     test "it accepts many-to-many relationship" do
-      post1 = Post |> Changeset.new(%{title: "foo"}) |> Api.create!()
+      post1 = Post
+              |> Changeset.new(%{title: "foo"})
+              |> Api.create!()
 
       changeset =
         Category
