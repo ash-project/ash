@@ -664,8 +664,9 @@ defmodule Ash.Changeset do
       Enum.all?(
         primary_key,
         fn key ->
-        Map.has_key?(record, key) || Map.has_key?(record, to_string(key))
-      end)
+          Map.has_key?(record, key) || Map.has_key?(record, to_string(key))
+        end
+      )
 
     if is_pkey_map? do
       pkey =

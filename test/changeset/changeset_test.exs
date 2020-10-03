@@ -462,9 +462,10 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     test "it accepts a map %{att1: value1, att2: value2} representing primary key as a second param" do
-      post1 = CompositeKeyPost
-              |> Changeset.new(%{serial: 1})
-              |> Api.create!()
+      post1 =
+        CompositeKeyPost
+        |> Changeset.new(%{serial: 1})
+        |> Api.create!()
 
       changeset =
         Author
@@ -493,12 +494,15 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     test "it accepts a list of maps representing primary_keys as a second param" do
-      post1 = CompositeKeyPost
-              |> Changeset.new(%{serial: 1})
-              |> Api.create!()
-      post2 = CompositeKeyPost
-              |> Changeset.new(%{serial: 2})
-              |> Api.create!()
+      post1 =
+        CompositeKeyPost
+        |> Changeset.new(%{serial: 1})
+        |> Api.create!()
+
+      post2 =
+        CompositeKeyPost
+        |> Changeset.new(%{serial: 2})
+        |> Api.create!()
 
       changeset =
         Author
@@ -535,12 +539,15 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     test "it accepts mix of entities and maps representing primary_keys as a second param" do
-      post1 = CompositeKeyPost
-              |> Changeset.new(%{serial: 1})
-              |> Api.create!()
-      post2 = CompositeKeyPost
-              |> Changeset.new(%{serial: 2})
-              |> Api.create!()
+      post1 =
+        CompositeKeyPost
+        |> Changeset.new(%{serial: 1})
+        |> Api.create!()
+
+      post2 =
+        CompositeKeyPost
+        |> Changeset.new(%{serial: 2})
+        |> Api.create!()
 
       changeset =
         Author
@@ -577,16 +584,20 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     test "it returns error if one of relationship entities is invalid" do
-      post1 = CompositeKeyPost
-              |> Changeset.new(%{serial: 1})
-              |> Api.create!()
-      post2 = CompositeKeyPost
-              |> Changeset.new(%{serial: 2})
-              |> Api.create!()
+      post1 =
+        CompositeKeyPost
+        |> Changeset.new(%{serial: 1})
+        |> Api.create!()
 
-      invalid_post = Post
-                     |> Changeset.new(%{title: "a title"})
-                     |> Api.create!()
+      post2 =
+        CompositeKeyPost
+        |> Changeset.new(%{serial: 2})
+        |> Api.create!()
+
+      invalid_post =
+        Post
+        |> Changeset.new(%{title: "a title"})
+        |> Api.create!()
 
       changeset =
         Author
