@@ -635,14 +635,22 @@ defmodule Ash.Changeset do
         multiple_primary_keys(relationship, records)
 
       _ ->
-        case single_primary_key(relationship, records) do
-          {:ok, keys} ->
-            {:ok, keys}
-
-          {:error, _} ->
-            do_primary_key(relationship, records)
-        end
+        pluck_pk_fields(relationship, records)
     end
+  end
+
+  defp pluck_pk_fields(relationship, records) do
+    Enum.reduce_while(
+      records,
+      {:ok, []},
+      fn
+        record, {:ok, acc} ->
+          case do_primary_key(relationship, record) do
+            {:ok, pk} -> {:cont, {:ok, [pk | acc]}}
+            {:error, error} -> {:halt, {:error, error}}
+          end
+      end
+    )
   end
 
   defp primary_key(relationship, record) do
@@ -653,7 +661,9 @@ defmodule Ash.Changeset do
     primary_key = Ash.Resource.primary_key(relationship.destination)
 
     is_pkey_map? =
-      Enum.all?(primary_key, fn key ->
+      Enum.all?(
+        primary_key,
+        fn key ->
         Map.has_key?(record, key) || Map.has_key?(record, to_string(key))
       end)
 
