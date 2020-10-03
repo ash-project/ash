@@ -123,8 +123,9 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     attributes do
+      attribute :serial, :integer, primary_key?: true
       attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
-      attribute :title, :string, primary_key?: true
+      attribute :title, :string
       attribute :contents, :string
     end
 
@@ -446,7 +447,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       assert %{replace: [%{id: post1.id}]} == changeset.relationships.posts
     end
 
-    test "it accepts a map %{id: value} representing primary key as a second param only if primary key is a single attribute" do
+    test "it accepts a map %{id: value} representing primary key as a second param" do
       post1 =
         Post
         |> Changeset.new(%{title: "foo"})
@@ -460,24 +461,157 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       assert %{replace: [%{id: post1.id}]} == changeset.relationships.posts
     end
 
-    #    test "it accepts a map %{att1: value1, att2: value2} representing primary key as a second param" do
-    #      post1 = CompositeKeyPost |> Changeset.new(%{title: "foo"}) |> Api.create!()
-    #
-    #      assert [:id, :title] == Ash.Resource.primary_key(CompositeKeyPost)
-    #
-    #      changeset =
-    #        Author
-    #        |> Changeset.new()
-    #        |> Changeset.replace_relationship(:composite_key_posts, %{
-    #          id: post1.id,
-    #          title: "some title"
-    #        })
-    #
-    #      refute [%Ash.Error.Changes.InvalidRelationship{}] = changeset.errors
-    #
-    #      assert %{replace: [%{id: post1.id, title: post1.title}]} ==
-    #               changeset.relationships.composite_key_posts
-    #    end
+    test "it accepts a map %{att1: value1, att2: value2} representing primary key as a second param" do
+      post1 =
+        CompositeKeyPost
+        |> Changeset.new(%{serial: 1})
+        |> Api.create!()
+
+      changeset =
+        Author
+        |> Changeset.new()
+        |> Changeset.replace_relationship(
+          :composite_key_posts,
+          %{id: post1.id, serial: post1.serial}
+        )
+
+      assert %{replace: [%{id: post1.id, serial: post1.serial}]} ==
+               changeset.relationships.composite_key_posts
+
+      assert [] == changeset.errors
+
+      author =
+        changeset
+        |> Api.create!()
+
+      [fetched_post] =
+        CompositeKeyPost
+        |> Ash.Query.load(author: :composite_key_posts)
+        |> Ash.Query.filter(id: post1.id, serial: post1.serial)
+        |> Api.read!()
+
+      assert author == fetched_post.author
+    end
+
+    test "it accepts a list of maps representing primary_keys as a second param" do
+      post1 =
+        CompositeKeyPost
+        |> Changeset.new(%{serial: 1})
+        |> Api.create!()
+
+      post2 =
+        CompositeKeyPost
+        |> Changeset.new(%{serial: 2})
+        |> Api.create!()
+
+      changeset =
+        Author
+        |> Changeset.new()
+        |> Changeset.replace_relationship(
+          :composite_key_posts,
+          [
+            %{id: post1.id, serial: post1.serial},
+            %{id: post2.id, serial: post2.serial}
+          ]
+        )
+
+      assert Enum.sort([
+               %{id: post1.id, serial: post1.serial},
+               %{id: post2.id, serial: post2.serial}
+             ]) ==
+               Enum.sort(changeset.relationships.composite_key_posts.replace)
+
+      assert [] == changeset.errors
+
+      author =
+        changeset
+        |> Api.create!()
+
+      [fetched_post] =
+        CompositeKeyPost
+        |> Ash.Query.load(author: :composite_key_posts)
+        |> Ash.Query.filter(id: post1.id, serial: post1.serial)
+        |> Api.read!()
+
+      assert author == fetched_post.author
+    end
+
+    test "it accepts mix of entities and maps representing primary_keys as a second param" do
+      post1 =
+        CompositeKeyPost
+        |> Changeset.new(%{serial: 1})
+        |> Api.create!()
+
+      post2 =
+        CompositeKeyPost
+        |> Changeset.new(%{serial: 2})
+        |> Api.create!()
+
+      changeset =
+        Author
+        |> Changeset.new()
+        |> Changeset.replace_relationship(
+          :composite_key_posts,
+          [
+            %{id: post1.id, serial: post1.serial},
+            post2
+          ]
+        )
+
+      assert Enum.sort([
+               %{id: post1.id, serial: post1.serial},
+               %{id: post2.id, serial: post2.serial}
+             ]) ==
+               Enum.sort(changeset.relationships.composite_key_posts.replace)
+
+      assert [] == changeset.errors
+
+      author =
+        changeset
+        |> Api.create!()
+
+      [fetched_author] =
+        Author
+        |> Ash.Query.load(:composite_key_posts)
+        |> Ash.Query.filter(id: author.id)
+        |> Api.read!()
+
+      assert [post2, post1] = fetched_author.composite_key_posts
+    end
+
+    test "it returns error if one of relationship entities is invalid" do
+      post1 =
+        CompositeKeyPost
+        |> Changeset.new(%{serial: 1})
+        |> Api.create!()
+
+      post2 =
+        CompositeKeyPost
+        |> Changeset.new(%{serial: 2})
+        |> Api.create!()
+
+      invalid_post =
+        Post
+        |> Changeset.new(%{title: "a title"})
+        |> Api.create!()
+
+      changeset =
+        Author
+        |> Changeset.new()
+        |> Changeset.replace_relationship(
+          :composite_key_posts,
+          [
+            %{id: post1.id, serial: post1.serial},
+            post2,
+            invalid_post
+          ]
+        )
+
+      assert Enum.empty?(changeset.relationships)
+
+      assert [%Ash.Error.Changes.InvalidRelationship{} = relation_error] = changeset.errors
+      assert relation_error.message =~ "Invalid identifier"
+    end
 
     test "it accepts many-to-many relationship" do
       post1 =
