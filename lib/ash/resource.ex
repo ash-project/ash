@@ -287,10 +287,16 @@ defmodule Ash.Resource do
     data_layer && Ash.DataLayer.can?(feature, resource)
   end
 
-  @doc "Custom filters supported by the data layer of the resource"
-  @spec data_layer_filters(Ash.resource()) :: map
-  def data_layer_filters(resource) do
-    Ash.DataLayer.custom_filters(resource)
+  @doc "Custom operators supported by the data layer of the resource"
+  @spec data_layer_operators(Ash.resource()) :: map
+  def data_layer_operators(resource) do
+    Ash.DataLayer.operators(resource)
+  end
+
+  @doc "Custom functions supported by the data layer of the resource"
+  @spec data_layer_functions(Ash.resource()) :: map
+  def data_layer_functions(resource) do
+    Ash.DataLayer.functions(resource)
   end
 
   @doc "Whether or not the data layer for the resource is currently in a transaction"

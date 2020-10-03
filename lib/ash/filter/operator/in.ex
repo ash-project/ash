@@ -8,13 +8,16 @@ defmodule Ash.Filter.Operator.In do
     end
   end
 
-  def new(left, right) do
+  def new(left, right) when is_list(right) do
     {:known, left in right}
   end
 
   def match?(left, right) do
     left in right
   end
+
+  def prepare_for_inspect(left, %MapSet{} = mapset), do: {left, MapSet.to_list(mapset)}
+  def prepare_for_inspect(left, right), do: {left, right}
 
   def compare(%__MODULE__{left: %Ref{} = same_ref, right: same_value}, %__MODULE__{
         left: %Ref{} = same_ref,
@@ -60,7 +63,7 @@ defmodule Ash.Filter.Operator.In do
         left: %Ref{} = same_ref,
         right: right_value
       }) do
-    if MapSet.member?(right_value, left_values) do
+    if MapSet.member?(left_values, right_value) do
       :right_includes_left
     else
       :mutually_exclusive

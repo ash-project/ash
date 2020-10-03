@@ -275,7 +275,7 @@ defmodule Ash.Query.Aggregate do
         if reverse_relationship do
           filter =
             Ash.Filter.put_at_path(
-              Ash.Filter.remove_aggregates(data_query.filter),
+              data_query.filter,
               reverse_relationship
             )
 

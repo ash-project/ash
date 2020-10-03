@@ -3,8 +3,15 @@ defmodule Ash.Filter.Operator.Eq do
 
   def new(%Ref{attribute: %{type: type}} = left, right) do
     case Ash.Type.cast_input(type, right) do
-      {:ok, casted} -> {:ok, left, casted}
-      :error -> {:ok, left, right}
+      {:ok, casted} ->
+        {:ok, left, casted}
+
+      _ ->
+        {:error,
+         Ash.Error.Query.InvalidFilterValue.exception(
+           value: right,
+           context: %__MODULE__{left: left, right: right}
+         )}
     end
   end
 

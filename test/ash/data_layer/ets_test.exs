@@ -3,7 +3,7 @@ defmodule Ash.DataLayer.EtsTest do
 
   alias Ash.DataLayer.Ets, as: EtsDataLayer
   alias Ash.DataLayer.Ets.Query
-  alias Ash.Filter.Predicate.{Eq, GreaterThan, In, LessThan}
+  alias Ash.Filter.Operator.{GreaterThan, LessThan, Eq, In}
 
   setup do
     on_exit(fn ->
@@ -58,10 +58,10 @@ defmodule Ash.DataLayer.EtsTest do
     assert EtsDataLayer.can?(EtsTestUser, :filter) == true
     assert EtsDataLayer.can?(EtsTestUser, :limit) == true
     assert EtsDataLayer.can?(EtsTestUser, :offset) == true
-    assert EtsDataLayer.can?(EtsTestUser, {:filter_predicate, :foo, %In{}}) == true
-    assert EtsDataLayer.can?(EtsTestUser, {:filter_predicate, :foo, %Eq{}}) == true
-    assert EtsDataLayer.can?(EtsTestUser, {:filter_predicate, :foo, %LessThan{}}) == true
-    assert EtsDataLayer.can?(EtsTestUser, {:filter_predicate, :foo, %GreaterThan{}}) == true
+    assert EtsDataLayer.can?(EtsTestUser, {:filter_operator, %In{}}) == true
+    assert EtsDataLayer.can?(EtsTestUser, {:filter_operator, %Eq{}}) == true
+    assert EtsDataLayer.can?(EtsTestUser, {:filter_operator, %LessThan{}}) == true
+    assert EtsDataLayer.can?(EtsTestUser, {:filter_operator, %GreaterThan{}}) == true
     assert EtsDataLayer.can?(EtsTestUser, {:sort, :foo}) == true
     assert EtsDataLayer.can?(EtsTestUser, :foo) == false
   end

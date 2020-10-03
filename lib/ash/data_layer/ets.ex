@@ -6,13 +6,12 @@ defmodule Ash.DataLayer.Ets do
   """
 
   alias Ash.Actions.Sort
-  alias Ash.Filter.{Expression, Not, Predicate}
 
-  alias Ash.Filter.Predicate.{
+  alias Ash.Filter.Operator.{
     Eq,
+    In,
     GreaterThan,
     GreaterThanOrEqual,
-    In,
     IsNil,
     LessThan,
     LessThanOrEqual
@@ -63,13 +62,13 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, :offset), do: true
   def can?(_, :boolean_filter), do: true
   def can?(_, :transact), do: false
-  def can?(_, {:filter_predicate, _, %In{}}), do: true
-  def can?(_, {:filter_predicate, _, %Eq{}}), do: true
-  def can?(_, {:filter_predicate, _, %LessThan{}}), do: true
-  def can?(_, {:filter_predicate, _, %GreaterThan{}}), do: true
-  def can?(_, {:filter_predicate, _, %LessThanOrEqual{}}), do: true
-  def can?(_, {:filter_predicate, _, %GreaterThanOrEqual{}}), do: true
-  def can?(_, {:filter_predicate, _, %IsNil{}}), do: true
+  def can?(_, {:filter_operator, %In{}}), do: true
+  def can?(_, {:filter_operator, %Eq{}}), do: true
+  def can?(_, {:filter_operator, %LessThan{}}), do: true
+  def can?(_, {:filter_operator, %GreaterThan{}}), do: true
+  def can?(_, {:filter_operator, %LessThanOrEqual{}}), do: true
+  def can?(_, {:filter_operator, %GreaterThanOrEqual{}}), do: true
+  def can?(_, {:filter_operator, %IsNil{}}), do: true
   def can?(_, {:sort, _}), do: true
   def can?(_, _), do: false
 
@@ -133,91 +132,10 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  def filter_matches(records, nil), do: records
+  defp filter_matches(records, nil), do: records
 
-  def filter_matches(records, filter) do
-    Enum.filter(records, &matches_filter?(&1, filter.expression))
-  end
-
-  defp matches_filter?(_record, nil), do: true
-  defp matches_filter?(_record, boolean) when is_boolean(boolean), do: boolean
-
-  defp matches_filter?(
-         record,
-         %Predicate{
-           predicate: predicate,
-           attribute: %{name: name},
-           relationship_path: []
-         }
-       ) do
-    matches_predicate?(record, name, predicate)
-  end
-
-  defp matches_filter?(record, %Expression{op: :and, left: left, right: right}) do
-    matches_filter?(record, left) && matches_filter?(record, right)
-  end
-
-  defp matches_filter?(record, %Expression{op: :or, left: left, right: right}) do
-    matches_filter?(record, left) || matches_filter?(record, right)
-  end
-
-  defp matches_filter?(record, %Not{expression: expression}) do
-    not matches_filter?(record, expression)
-  end
-
-  defp matches_filter?(record, %IsNil{field: field, nil?: true}) do
-    Map.fetch(record, field) == {:ok, nil}
-  end
-
-  defp matches_filter?(record, %IsNil{field: field, nil?: false}) do
-    Map.fetch(record, field) != {:ok, nil}
-  end
-
-  defp matches_predicate?(record, field, %Eq{value: predicate_value}) do
-    Map.fetch(record, field) == {:ok, predicate_value}
-  end
-
-  defp matches_predicate?(record, field, %LessThan{value: predicate_value}) do
-    case Map.fetch(record, field) do
-      {:ok, value} -> value < predicate_value
-      :error -> false
-    end
-  end
-
-  defp matches_predicate?(record, field, %GreaterThan{value: predicate_value}) do
-    case Map.fetch(record, field) do
-      {:ok, value} -> value > predicate_value
-      :error -> false
-    end
-  end
-
-  defp matches_predicate?(record, field, %LessThanOrEqual{value: predicate_value}) do
-    case Map.fetch(record, field) do
-      {:ok, value} -> value <= predicate_value
-      :error -> false
-    end
-  end
-
-  defp matches_predicate?(record, field, %GreaterThanOrEqual{value: predicate_value}) do
-    case Map.fetch(record, field) do
-      {:ok, value} -> value >= predicate_value
-      :error -> false
-    end
-  end
-
-  defp matches_predicate?(record, field, %In{values: predicate_values}) do
-    case Map.fetch(record, field) do
-      {:ok, value} -> value in predicate_values
-      :error -> false
-    end
-  end
-
-  defp matches_predicate?(record, field, %IsNil{field: field, nil?: nil?}) do
-    case Map.fetch(record, field) do
-      {:ok, nil} -> nil?
-      {:ok, _} -> !nil?
-      :error -> nil?
-    end
+  defp filter_matches(records, filter) do
+    Enum.filter(records, &Ash.Filter.Runtime.matches?(nil, &1, filter))
   end
 
   @impl true

@@ -2,7 +2,7 @@ defmodule Ash.SatSolver do
   @moduledoc false
 
   alias Ash.Filter
-  alias Ash.Filter.{Expression, Not, Predicate}
+  alias Ash.Filter.{Expression, Not}
 
   def strict_filter_subset(filter, candidate) do
     case {filter, candidate} do
@@ -46,7 +46,7 @@ defmodule Ash.SatSolver do
   defp filter_to_expr(false), do: false
   defp filter_to_expr(true), do: true
   defp filter_to_expr(%Filter{expression: expression}), do: filter_to_expr(expression)
-  defp filter_to_expr(%Predicate{} = predicate), do: predicate
+  defp filter_to_expr(%{__predicate__?: true} = predicate), do: predicate
   defp filter_to_expr(%Not{expression: expression}), do: {:not, filter_to_expr(expression)}
 
   defp filter_to_expr(%Expression{op: op, left: left, right: right}) do
@@ -65,24 +65,19 @@ defmodule Ash.SatSolver do
     Filter.map(expression, &upgrade_predicate(&1, resource))
   end
 
-  defp upgrade_predicate(%Predicate{relationship_path: path} = predicate, resource)
+  defp upgrade_predicate(
+         %Ash.Filter.Ref{attribute: attribute, relationship_path: path} = ref,
+         resource
+       )
        when path != [] do
     with relationship when not is_nil(relationship) <- Ash.Resource.relationship(resource, path),
-         true <- predicate.attribute.name == relationship.destination_field,
+         true <- attribute.name == relationship.destination_field,
          new_attribute when not is_nil(new_attribute) <-
-           Ash.Resource.attribute(relationship.source, relationship.source_field),
-         {:ok, new_predicate} <-
-           Predicate.new(
-             resource,
-             new_attribute,
-             predicate.predicate.__struct__,
-             predicate.value,
-             :lists.droplast(path)
-           ) do
-      upgrade_predicate(new_predicate, resource)
+           Ash.Resource.attribute(relationship.source, relationship.source_field) do
+      %{ref | relationship_path: :lists.droplast(path), attribute: new_attribute}
     else
       _ ->
-        predicate
+        ref
     end
   end
 
@@ -102,17 +97,45 @@ defmodule Ash.SatSolver do
         end
       end)
 
-    Filter.map(expression, fn
-      %Predicate{relationship_path: path} = predicate when path != [] ->
-        case Map.fetch(replacements, path) do
-          :error -> predicate
-          {:ok, replacement} -> %{predicate | relationship_path: replacement}
-        end
-
-      other ->
-        other
-    end)
+    do_consolidate_relationships(expression, replacements)
   end
+
+  defp do_consolidate_relationships(%Expression{op: op, left: left, right: right}, replacements) do
+    Expression.new(
+      op,
+      do_consolidate_relationships(left, replacements),
+      do_consolidate_relationships(right, replacements)
+    )
+  end
+
+  defp do_consolidate_relationships(%Not{expression: expression}, replacements) do
+    Not.new(do_consolidate_relationships(expression, replacements))
+  end
+
+  defp do_consolidate_relationships(%Ash.Filter.Ref{relationship_path: path} = ref, replacements)
+       when path != [] do
+    case Map.fetch(replacements, path) do
+      :error -> ref
+      {:ok, replacement} -> %{ref | relationship_path: replacement}
+    end
+  end
+
+  defp do_consolidate_relationships(%{__function__?: true, arguments: args} = func, replacements) do
+    %{func | arguments: Enum.map(args, &do_consolidate_relationships(&1, replacements))}
+  end
+
+  defp do_consolidate_relationships(
+         %{__operator__?: true, left: left, right: right} = op,
+         replacements
+       ) do
+    %{
+      op
+      | left: do_consolidate_relationships(left, replacements),
+        right: do_consolidate_relationships(right, replacements)
+    }
+  end
+
+  defp do_consolidate_relationships(other, _), do: other
 
   defp find_synonymous_relationship_path(resource, paths, path) do
     Enum.find_value(paths, fn candidate_path ->
@@ -198,17 +221,13 @@ defmodule Ash.SatSolver do
 
   defp build_expr_with_predicate_information(expression) do
     all_predicates =
-      Filter.reduce(expression, [], fn
-        %Predicate{} = predicate, predicates ->
-          [predicate | predicates]
-
-        _, predicates ->
-          predicates
-      end)
+      expression
+      |> Filter.list_predicates()
+      |> Enum.uniq()
 
     simplified =
       Filter.map(expression, fn
-        %Predicate{} = predicate ->
+        %{__predicate__?: true} = predicate ->
           predicate
           |> find_simplification(all_predicates)
           |> case do
@@ -225,26 +244,15 @@ defmodule Ash.SatSolver do
 
     if simplified == expression do
       all_predicates =
-        Filter.reduce(expression, [], fn
-          %Predicate{} = predicate, predicates ->
-            [predicate | predicates]
-
-          _, predicates ->
-            predicates
-        end)
+        expression
+        |> Filter.list_predicates()
         |> Enum.uniq()
 
       comparison_expressions =
         all_predicates
         |> Enum.reduce([], fn predicate, new_expressions ->
-          all_predicates
-          |> Enum.filter(fn other_predicate ->
-            other_predicate != predicate &&
-              other_predicate.relationship_path == predicate.relationship_path &&
-              other_predicate.attribute.name == predicate.attribute.name
-          end)
-          |> Enum.reduce(new_expressions, fn other_predicate, new_expressions ->
-            case Predicate.compare(predicate, other_predicate) do
+          Enum.reduce(all_predicates, new_expressions, fn other_predicate, new_expressions ->
+            case Ash.Filter.Predicate.compare(predicate, other_predicate) do
               inclusive when inclusive in [:right_includes_left, :mutually_inclusive] ->
                 [{:not, {:and, {:not, other_predicate}, predicate}} | new_expressions]
 
@@ -276,7 +284,7 @@ defmodule Ash.SatSolver do
   defp find_simplification(predicate, predicates) do
     predicates
     |> Enum.find_value(fn other_predicate ->
-      case Predicate.compare(predicate, other_predicate) do
+      case Ash.Filter.Predicate.compare(predicate, other_predicate) do
         {:simplify, simplification} -> {:simplify, simplification}
         _ -> false
       end

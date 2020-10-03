@@ -493,8 +493,6 @@ defmodule Ash.Actions.SideLoad do
        ) do
     case Ash.Filter.parse(root_query.resource, root_query.filter) do
       {:ok, parsed} ->
-        root_filter = Ash.Filter.remove_aggregates(parsed)
-
         related_query
         |> Ash.Query.unset(:side_load)
         |> Ash.Query.filter(
@@ -505,7 +503,7 @@ defmodule Ash.Actions.SideLoad do
             false
           )
         )
-        |> Ash.Query.filter(put_nested_relationship([], reverse_path, root_filter, false))
+        |> Ash.Query.filter(put_nested_relationship([], reverse_path, parsed, false))
         |> Ash.Query.filter(related_query.filter)
         |> extract_errors()
 
@@ -566,14 +564,12 @@ defmodule Ash.Actions.SideLoad do
       {:ok, reverse_path} ->
         case Ash.Filter.parse(root_query.resource, root_query.filter) do
           {:ok, parsed} ->
-            root_filter = Ash.Filter.remove_aggregates(parsed)
-
             related_query
             |> Ash.Query.filter(
               put_nested_relationship(
                 [],
                 reverse_path,
-                root_filter,
+                parsed,
                 false
               )
             )
