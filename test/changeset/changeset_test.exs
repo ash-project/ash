@@ -471,9 +471,9 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         Author
         |> Changeset.new()
         |> Changeset.replace_relationship(
-             :composite_key_posts,
-             %{id: post1.id, serial: post1.serial}
-           )
+          :composite_key_posts,
+          %{id: post1.id, serial: post1.serial}
+        )
 
       assert %{replace: [%{id: post1.id, serial: post1.serial}]} ==
                changeset.relationships.composite_key_posts
@@ -508,19 +508,17 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         Author
         |> Changeset.new()
         |> Changeset.replace_relationship(
-             :composite_key_posts,
-             [
+          :composite_key_posts,
+          [
+            %{id: post1.id, serial: post1.serial},
+            %{id: post2.id, serial: post2.serial}
+          ]
+        )
+
+      assert Enum.sort([
                %{id: post1.id, serial: post1.serial},
                %{id: post2.id, serial: post2.serial}
-             ]
-           )
-
-      assert Enum.sort(
-               [
-                 %{id: post1.id, serial: post1.serial},
-                 %{id: post2.id, serial: post2.serial}
-               ]
-             ) ==
+             ]) ==
                Enum.sort(changeset.relationships.composite_key_posts.replace)
 
       assert [] == changeset.errors
@@ -553,19 +551,17 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         Author
         |> Changeset.new()
         |> Changeset.replace_relationship(
-             :composite_key_posts,
-             [
-               %{id: post1.id, serial: post1.serial},
-               post2
-             ]
-           )
+          :composite_key_posts,
+          [
+            %{id: post1.id, serial: post1.serial},
+            post2
+          ]
+        )
 
-      assert Enum.sort(
-               [
-                 %{id: post1.id, serial: post1.serial},
-                 %{id: post2.id, serial: post2.serial}
-               ]
-             ) ==
+      assert Enum.sort([
+               %{id: post1.id, serial: post1.serial},
+               %{id: post2.id, serial: post2.serial}
+             ]) ==
                Enum.sort(changeset.relationships.composite_key_posts.replace)
 
       assert [] == changeset.errors
@@ -603,13 +599,13 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         Author
         |> Changeset.new()
         |> Changeset.replace_relationship(
-             :composite_key_posts,
-             [
-               %{id: post1.id, serial: post1.serial},
-               post2,
-               invalid_post
-             ]
-           )
+          :composite_key_posts,
+          [
+            %{id: post1.id, serial: post1.serial},
+            post2,
+            invalid_post
+          ]
+        )
 
       assert Enum.empty?(changeset.relationships)
 

@@ -639,6 +639,10 @@ defmodule Ash.Changeset do
     end
   end
 
+  defp primary_key(relationship, record) do
+    do_primary_key(relationship, record)
+  end
+
   defp pluck_pk_fields(relationship, records) do
     Enum.reduce_while(
       records,
@@ -651,10 +655,6 @@ defmodule Ash.Changeset do
           end
       end
     )
-  end
-
-  defp primary_key(relationship, record) do
-    do_primary_key(relationship, record)
   end
 
   defp do_primary_key(relationship, record) when is_map(record) do
