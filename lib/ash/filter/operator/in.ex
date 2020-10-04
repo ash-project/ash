@@ -1,6 +1,10 @@
 defmodule Ash.Filter.Operator.In do
   use Ash.Filter.Operator, operator: :in
 
+  @inspect_items_limit 10
+
+  def new(_, []), do: {:known, false}
+
   def new(%Ref{attribute: %{type: type}} = left, right) do
     case Ash.Type.cast_input({:array, type}, right) do
       {:ok, casted} -> {:ok, left, MapSet.new(casted)}
@@ -16,59 +20,84 @@ defmodule Ash.Filter.Operator.In do
     left in right
   end
 
-  def prepare_for_inspect(left, %MapSet{} = mapset), do: {left, MapSet.to_list(mapset)}
-  def prepare_for_inspect(left, right), do: {left, right}
+  def to_string(%{right: %Ref{}} = op, opts), do: super(op, opts)
 
-  def compare(%__MODULE__{left: %Ref{} = same_ref, right: same_value}, %__MODULE__{
-        left: %Ref{} = same_ref,
-        right: same_value
-      }) do
-    :mutually_inclusive
+  def to_string(%{left: left, right: mapset}, opts) do
+    import Inspect.Algebra
+
+    list_doc =
+      case Enum.split(mapset, @inspect_items_limit) do
+        {left, []} -> to_doc(left, opts)
+        {left, _} -> concat(to_doc(left, opts), "...")
+      end
+
+    concat([
+      to_doc(left, opts),
+      " in ",
+      list_doc
+    ])
   end
 
-  def compare(%__MODULE__{left: %Ref{} = same_ref, right: left_values}, %__MODULE__{
-        left: %Ref{} = same_ref,
-        right: right_values
-      }) do
-    intersection = MapSet.intersection(left_values, right_values)
-    count = MapSet.size(intersection)
-
-    if count == 0 do
-      :mutually_exclusive
-    else
-      intersection_pred =
-        if count == 1 do
-          Ash.Filter.Operator.new(Ash.Filter.Operator.Eq, same_ref, Enum.at(intersection, 0))
-        else
-          %__MODULE__{left: same_ref, right: intersection}
-        end
-
-      new_left = %__MODULE__{
-        left: same_ref,
-        right: MapSet.difference(left_values, intersection)
-      }
-
-      left_expr =
-        Ash.Filter.Expression.new(
-          :or,
-          %__MODULE__{left: same_ref, right: new_left},
-          intersection_pred
-        )
-
-      {:simplify, left_expr}
-    end
-  end
-
-  def compare(%__MODULE__{left: %Ref{} = same_ref, right: left_values}, %Ash.Filter.Operator.Eq{
-        left: %Ref{} = same_ref,
-        right: right_value
-      }) do
-    if MapSet.member?(left_values, right_value) do
-      :right_includes_left
-    else
-      :mutually_exclusive
-    end
+  def compare(%__MODULE__{left: left, right: right}, _) do
+    {:simplify,
+     Enum.reduce(right, nil, fn item, expr ->
+       {:ok, eq} = Ash.Filter.Operator.new(Ash.Filter.Operator.Eq, left, item)
+       Ash.Filter.Expression.new(:or, expr, eq)
+     end)}
   end
 
   def compare(_, _), do: :unknown
+
+  # def compare(%__MODULE__{left: %Ref{} = same_ref, right: same_value}, %__MODULE__{
+  #       left: %Ref{} = same_ref,
+  #       right: same_value
+  #     }) do
+  #   :mutually_inclusive
+  # end
+
+  # def compare(%__MODULE__{left: %Ref{} = same_ref, right: left_values}, %__MODULE__{
+  #       left: %Ref{} = same_ref,
+  #       right: right_values
+  #     }) do
+  #   intersection = MapSet.intersection(left_values, right_values)
+  #   count = MapSet.size(intersection)
+
+  #   if count == 0 do
+  #     :mutually_exclusive
+  #   else
+  #     intersection_pred =
+  #       if count == 1 do
+  #         Ash.Filter.Operator.new(Ash.Filter.Operator.Eq, same_ref, Enum.at(intersection, 0))
+  #       else
+  #         %__MODULE__{left: same_ref, right: intersection}
+  #       end
+
+  #     new_left = %__MODULE__{
+  #       left: same_ref,
+  #       right: MapSet.difference(left_values, intersection)
+  #     }
+
+  #     left_expr =
+  #       Ash.Filter.Expression.new(
+  #         :or,
+  #         %__MODULE__{left: same_ref, right: new_left},
+  #         intersection_pred
+  #       )
+
+  #     {:simplify, left_expr}
+  #   end
+  # end
+
+  # def compare(%__MODULE__{left: %Ref{} = same_ref, right: left_values}, %Ash.Filter.Operator.Eq{
+  #       left: %Ref{} = same_ref,
+  #       right: right_value
+  #     }) do
+  #   if MapSet.member?(left_values, right_value) do
+  #     :right_includes_left
+  #   else
+  #     :mutually_exclusive
+  #   end
+  # end
+
+  # def compare(_, _), do: :unknown
 end

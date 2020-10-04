@@ -1,10 +1,11 @@
 defmodule Ash.Filter.Operator do
   @callback new(term, term) :: {:ok, term, term} | {:known, boolean} | {:error, Ash.error()}
-  @callback prepare_for_inspect(term, term) :: {term, term}
+  @callback to_string(struct, Inspect.Opts.t()) :: term
 
   def new(mod, left, right) do
     case mod.new(left, right) do
       {:ok, left, right} -> {:ok, struct(mod, left: left, right: right)}
+      {:ok, %_{} = op} -> {:ok, op}
       {:known, result} -> {:ok, result}
       {:error, error} -> {:error, error}
     end
@@ -35,23 +36,23 @@ defmodule Ash.Filter.Operator do
 
       def operator, do: unquote(opts[:operator])
 
-      def prepare_for_inspect(left, right), do: {left, right}
+      import Inspect.Algebra
 
-      defoverridable prepare_for_inspect: 2
+      def to_string(%{left: left, right: right, operator: operator}, opts) do
+        concat([
+          to_doc(left, opts),
+          " ",
+          to_string(operator),
+          " ",
+          to_doc(right, opts)
+        ])
+      end
+
+      defoverridable to_string: 2
 
       defimpl Inspect do
-        import Inspect.Algebra
-
-        def inspect(%mod{left: left, right: right, operator: operator}, opts) do
-          {left, right} = mod.prepare_for_inspect(left, right)
-
-          concat([
-            to_doc(left, opts),
-            " ",
-            to_string(unquote(opts[:operator])),
-            " ",
-            to_doc(right, opts)
-          ])
+        def inspect(%mod{} = op, opts) do
+          mod.to_string(op, opts)
         end
       end
     end

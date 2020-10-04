@@ -18,10 +18,7 @@ defmodule Ash.Filter.Runtime do
         boolean
 
       {:side_load, side_loads} when not is_nil(api) ->
-        case matches(api.side_load!(record, side_loads), filter, dirty_fields) do
-          {:ok, boolean} -> boolean
-          _ -> false
-        end
+        matches?(api, api.side_load!(record, side_loads), filter, dirty_fields)
 
       {:side_load, _} ->
         false
@@ -35,7 +32,7 @@ defmodule Ash.Filter.Runtime do
 
   def matches(record, expression, dirty_fields, side_loads) do
     case expression do
-      %{expression: expression} ->
+      %Ash.Filter{expression: expression} ->
         matches(record, expression, dirty_fields, side_loads)
 
       nil ->
@@ -145,8 +142,8 @@ defmodule Ash.Filter.Runtime do
       {:ok, true} ->
         matches(record, right, dirty_fields, side_loads)
 
-      {:ok, :unknown} ->
-        {:ok, :unknown}
+      :unknown ->
+        :unknown
 
       {:ok, false} ->
         {:ok, false}
@@ -161,7 +158,7 @@ defmodule Ash.Filter.Runtime do
       {:ok, true} ->
         {:ok, true}
 
-      {:ok, :unknown} ->
+      :unknown ->
         case matches(record, right, dirty_fields, side_loads) do
           {:ok, false} -> {:ok, :unknown}
           other -> other

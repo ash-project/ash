@@ -15,6 +15,22 @@ defmodule Ash.Filter.Operator.IsNil do
     is_nil(left) == is_nil?
   end
 
+  def to_string(%{left: left, right: right}, opts) do
+    import Inspect.Algebra
+
+    text =
+      if right do
+        " is nil"
+      else
+        " is not nil"
+      end
+
+    concat([
+      to_doc(left, opts),
+      text
+    ])
+  end
+
   def compare(%__MODULE__{left: %Ref{} = same_ref, right: true}, %Ash.Filter.Operator.Eq{
         left: %Ref{} = same_ref,
         right: nil

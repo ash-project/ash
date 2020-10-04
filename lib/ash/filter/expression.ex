@@ -42,7 +42,7 @@ defimpl Inspect, for: Ash.Filter.Expression do
   end
 
   # custom options not available before Elixir 1.9
-  defp container_type(%{custom_options: %{container_type: container_type}}), do: container_type
+  defp container_type(%{custom_options: options}), do: options[:container_type]
   defp container_type(_), do: nil
 
   defp put_container_type(opts, container_type) do

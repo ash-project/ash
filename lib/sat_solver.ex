@@ -2,7 +2,7 @@ defmodule Ash.SatSolver do
   @moduledoc false
 
   alias Ash.Filter
-  alias Ash.Filter.{Expression, Not}
+  alias Ash.Filter.{Expression, Not, Ref}
 
   def strict_filter_subset(filter, candidate) do
     case {filter, candidate} do
@@ -61,11 +61,38 @@ defmodule Ash.SatSolver do
     |> solve_expression()
   end
 
-  defp upgrade_related_filters_to_join_keys(expression, resource) do
-    Filter.map(expression, &upgrade_predicate(&1, resource))
+  defp upgrade_related_filters_to_join_keys(
+         %Expression{op: op, left: left, right: right},
+         resource
+       ) do
+    Expression.new(
+      op,
+      upgrade_related_filters_to_join_keys(left, resource),
+      upgrade_related_filters_to_join_keys(right, resource)
+    )
   end
 
-  defp upgrade_predicate(
+  defp upgrade_related_filters_to_join_keys(%Not{expression: expression}, resource) do
+    Not.new(upgrade_related_filters_to_join_keys(expression, resource))
+  end
+
+  defp upgrade_related_filters_to_join_keys(
+         %{__operator__?: true, left: left, right: right} = op,
+         resource
+       ) do
+    %{op | left: upgrade_ref(left, resource), right: upgrade_ref(right, resource)}
+  end
+
+  defp upgrade_related_filters_to_join_keys(
+         %{__function__?: true, arguments: arguments} = function,
+         resource
+       ) do
+    %{function | arguments: Enum.map(arguments, &upgrade_ref(&1, resource))}
+  end
+
+  defp upgrade_related_filters_to_join_keys(expr, _), do: expr
+
+  defp upgrade_ref(
          %Ash.Filter.Ref{attribute: attribute, relationship_path: path} = ref,
          resource
        )
@@ -74,14 +101,19 @@ defmodule Ash.SatSolver do
          true <- attribute.name == relationship.destination_field,
          new_attribute when not is_nil(new_attribute) <-
            Ash.Resource.attribute(relationship.source, relationship.source_field) do
-      %{ref | relationship_path: :lists.droplast(path), attribute: new_attribute}
+      %{
+        ref
+        | relationship_path: :lists.droplast(path),
+          attribute: new_attribute,
+          resource: resource
+      }
     else
       _ ->
         ref
     end
   end
 
-  defp upgrade_predicate(other, _), do: other
+  defp upgrade_ref(other, _), do: other
 
   defp consolidate_relationships(expression, resource) do
     {replacements, _all_relationship_paths} =
@@ -225,22 +257,7 @@ defmodule Ash.SatSolver do
       |> Filter.list_predicates()
       |> Enum.uniq()
 
-    simplified =
-      Filter.map(expression, fn
-        %{__predicate__?: true} = predicate ->
-          predicate
-          |> find_simplification(all_predicates)
-          |> case do
-            nil ->
-              predicate
-
-            {:simplify, simplification} ->
-              simplification
-          end
-
-        other ->
-          other
-      end)
+    simplified = simplify(expression, all_predicates)
 
     if simplified == expression do
       all_predicates =
@@ -251,7 +268,10 @@ defmodule Ash.SatSolver do
       comparison_expressions =
         all_predicates
         |> Enum.reduce([], fn predicate, new_expressions ->
-          Enum.reduce(all_predicates, new_expressions, fn other_predicate, new_expressions ->
+          all_predicates
+          |> Enum.reject(&Kernel.==(&1, predicate))
+          |> Enum.filter(&shares_ref?(&1, predicate))
+          |> Enum.reduce(new_expressions, fn other_predicate, new_expressions ->
             case Ash.Filter.Predicate.compare(predicate, other_predicate) do
               inclusive when inclusive in [:right_includes_left, :mutually_inclusive] ->
                 [{:not, {:and, {:not, other_predicate}, predicate}} | new_expressions]
@@ -280,6 +300,46 @@ defmodule Ash.SatSolver do
       build_expr_with_predicate_information(simplified)
     end
   end
+
+  defp shares_ref?(left, right) do
+    any_refs_in_common?(refs(left), refs(right))
+  end
+
+  defp any_refs_in_common?(left_refs, right_refs) do
+    Enum.any?(left_refs, &(&1 in right_refs))
+  end
+
+  defp refs(%{__operator__?: true, left: left, right: right}) do
+    Enum.filter([left, right], &match?(%Ref{}, &1))
+  end
+
+  defp refs(%{__function__?: true, arguments: arguments}) do
+    Enum.filter(arguments, &match?(%Ref{}, &1))
+  end
+
+  defp refs(_), do: []
+
+  defp simplify(%Expression{op: op, left: left, right: right}, all_predicates) do
+    Expression.new(op, simplify(left, all_predicates), simplify(right, all_predicates))
+  end
+
+  defp simplify(%Not{expression: expression}, all_predicates) do
+    Not.new(simplify(expression, all_predicates))
+  end
+
+  defp simplify(%{__predicate__?: true} = predicate, all_predicates) do
+    predicate
+    |> find_simplification(all_predicates)
+    |> case do
+      nil ->
+        predicate
+
+      {:simplify, simplification} ->
+        simplification
+    end
+  end
+
+  defp simplify(other, _), do: other
 
   defp find_simplification(predicate, predicates) do
     predicates

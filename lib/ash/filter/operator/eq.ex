@@ -1,6 +1,10 @@
 defmodule Ash.Filter.Operator.Eq do
   use Ash.Filter.Operator, operator: :==
 
+  def new(%Ref{} = ref, nil) do
+    Ash.Filter.Operator.new(Ash.Filter.Operator.IsNil, ref, true)
+  end
+
   def new(%Ref{attribute: %{type: type}} = left, right) do
     case Ash.Type.cast_input(type, right) do
       {:ok, casted} ->
@@ -10,6 +14,7 @@ defmodule Ash.Filter.Operator.Eq do
         {:error,
          Ash.Error.Query.InvalidFilterValue.exception(
            value: right,
+           message: "Could not be casted to type #{inspect(type)}",
            context: %__MODULE__{left: left, right: right}
          )}
     end
