@@ -473,6 +473,7 @@ defmodule Ash.Dsl.Extension do
 
                   {:error, error} ->
                     raise Ash.Error.Dsl.DslError,
+                      module: unquote(__MODULE__),
                       message: error,
                       path: unquote(section_path)
                 end
@@ -724,6 +725,7 @@ defmodule Ash.Dsl.Extension do
                       end
 
                     raise Ash.Error.Dsl.DslError,
+                      module: unquote(__MODULE__),
                       message: message,
                       path: section_path ++ additional_path
                 end

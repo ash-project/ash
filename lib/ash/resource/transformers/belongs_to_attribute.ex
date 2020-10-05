@@ -33,6 +33,7 @@ defmodule Ash.Resource.Transformers.BelongsToAttribute do
           {:halt,
            {:error,
             DslError.exception(
+              module: __MODULE__,
               message:
                 "Could not create attribute for belongs_to #{relationship.name}: #{inspect(error)}",
               path: [:relationships, relationship.name]

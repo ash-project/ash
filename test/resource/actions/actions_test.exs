@@ -23,7 +23,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
     test "raises if you have multiple primary actions for a type" do
       assert_raise(
         Ash.Error.Dsl.DslError,
-        "actions -> create:\n  Multiple actions of type create configured as `primary?: true`, but only one action per type can be the primary",
+        "[Ash.Resource.Transformers.SetPrimaryActions]\n actions -> create:\n  Multiple actions of type create configured as `primary?: true`, but only one action per type can be the primary",
         fn ->
           defposts do
             actions do
@@ -38,7 +38,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
     test "raises if you have multiple actions for a type, but none are primary" do
       assert_raise(
         Ash.Error.Dsl.DslError,
-        "actions -> create:\n  Multiple actions of type create defined, one must be designated as `primary?: true`",
+        "[Ash.Resource.Transformers.SetPrimaryActions]\n actions -> create:\n  Multiple actions of type create defined, one must be designated as `primary?: true`",
         fn ->
           defposts do
             actions do
