@@ -26,13 +26,6 @@ defmodule Ash.Api.Transformers.ValidateRelationshipAttributes do
 
   defp validate_relationship(relationship, attribute_names) do
     unless relationship.source_field in attribute_names do
-      IO.inspect(__MODULE__)
-      IO.inspect(relationship)
-
-      IO.inspect(
-        "Relationship `#{relationship.name}` expects source field `#{relationship.source_field}` to be defined"
-      )
-
       raise Ash.Error.Dsl.DslError,
         module: __MODULE__,
         path: [:relationships, relationship.name],
