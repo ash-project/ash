@@ -15,7 +15,10 @@ defmodule Ash.Resource.Transformers.CachePrimaryKey do
     case primary_key do
       [] ->
         {:error,
-         DslError.exception(message: "Resources without a primary key are not yet supported")}
+         DslError.exception(
+           module: __MODULE__,
+           message: "Resources without a primary key are not yet supported"
+         )}
 
       [field] ->
         dsl_state = Transformer.persist(dsl_state, {resource, :primary_key}, [field])
@@ -29,7 +32,10 @@ defmodule Ash.Resource.Transformers.CachePrimaryKey do
           {:ok, dsl_state}
         else
           {:error,
-           DslError.exception(message: "Data layer does not support composite primary keys")}
+           DslError.exception(
+             module: __MODULE__,
+             message: "Data layer does not support composite primary keys"
+           )}
         end
     end
   end

@@ -62,7 +62,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if destination_field is not an atom" do
       assert_raise(
         Ash.Error.Dsl.DslError,
-        "relationships -> belongs_to -> foobar:\n  expected :destination_field to be an atom, got: \"foo\"",
+        "[Ash.Resource.Dsl.BelongsTo]\n relationships -> belongs_to -> foobar:\n  expected :destination_field to be an atom, got: \"foo\"",
         fn ->
           defposts do
             relationships do
@@ -76,7 +76,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if source_field is not an atom" do
       assert_raise(
         Ash.Error.Dsl.DslError,
-        "relationships -> belongs_to -> foobar:\n  expected :source_field to be an atom, got: \"foo\"",
+        "[Ash.Resource.Dsl.BelongsTo]\n relationships -> belongs_to -> foobar:\n  expected :source_field to be an atom, got: \"foo\"",
         fn ->
           defposts do
             relationships do
@@ -90,7 +90,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if the destination is not an atom" do
       assert_raise(
         Ash.Error.Dsl.DslError,
-        "relationships -> belongs_to -> foobar:\n  expected :destination to be an atom, got: \"foobar\"",
+        "[Ash.Resource.Dsl.BelongsTo]\n relationships -> belongs_to -> foobar:\n  expected :destination to be an atom, got: \"foobar\"",
         fn ->
           defposts do
             relationships do
@@ -104,7 +104,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if the relationship name is not an atom" do
       assert_raise(
         Ash.Error.Dsl.DslError,
-        "relationships -> belongs_to -> foobar:\n  expected :name to be an atom, got: \"foobar\"",
+        "[Ash.Resource.Dsl.BelongsTo]\n relationships -> belongs_to -> foobar:\n  expected :name to be an atom, got: \"foobar\"",
         fn ->
           defposts do
             relationships do
@@ -118,7 +118,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if `primary_key?` is not a boolean" do
       assert_raise(
         Ash.Error.Dsl.DslError,
-        "relationships -> belongs_to -> foobar:\n  expected :primary_key? to be an boolean, got: \"blah\"",
+        "[Ash.Resource.Dsl.BelongsTo]\n relationships -> belongs_to -> foobar:\n  expected :primary_key? to be an boolean, got: \"blah\"",
         fn ->
           defposts do
             relationships do
@@ -133,7 +133,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
   test "fails if `define_field?` is not a boolean" do
     assert_raise(
       Ash.Error.Dsl.DslError,
-      "relationships -> belongs_to -> foobar:\n  expected :define_field? to be an boolean, got: \"blah\"",
+      "[Ash.Resource.Dsl.BelongsTo]\n relationships -> belongs_to -> foobar:\n  expected :define_field? to be an boolean, got: \"blah\"",
       fn ->
         defposts do
           relationships do
@@ -147,7 +147,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
   test "fails if `field_type` is not an atom" do
     assert_raise(
       Ash.Error.Dsl.DslError,
-      "relationships -> belongs_to -> foobar:\n  Attribute type must be a built in type or a type module, got: \"foo\"",
+      "[Ash.Resource.Dsl.BelongsTo]\n relationships -> belongs_to -> foobar:\n  Attribute type must be a built in type or a type module, got: \"foo\"",
       fn ->
         defposts do
           relationships do

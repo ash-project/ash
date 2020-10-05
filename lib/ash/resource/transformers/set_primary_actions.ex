@@ -34,6 +34,7 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
             {:halt,
              {:error,
               DslError.exception(
+                module: __MODULE__,
                 message:
                   "Multiple actions of type create defined, one must be designated as `primary?: true`",
                 path: [:actions, type]
@@ -46,6 +47,7 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
             {:halt,
              {:error,
               DslError.exception(
+                module: __MODULE__,
                 message:
                   "Multiple actions of type #{type} configured as `primary?: true`, but only one action per type can be the primary",
                 path: [:actions, type]

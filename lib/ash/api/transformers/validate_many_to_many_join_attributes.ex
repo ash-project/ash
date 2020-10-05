@@ -29,6 +29,7 @@ defmodule Ash.Api.Transformers.ValidateManyToManyJoinAttributes do
     for join_attribute <- relationship.join_attributes do
       unless join_attribute in through_attributes do
         raise Ash.Error.Dsl.DslError,
+          module: __MODULE__,
           path: [:relationships, relationship.name],
           message:
             "Relationship `#{relationship.name}` expects join_attribute `#{join_attribute}` to be defined on the `through` resource #{

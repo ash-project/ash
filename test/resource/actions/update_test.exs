@@ -38,7 +38,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.UpdateTest do
     test "it fails if `name` is not an atom" do
       assert_raise(
         Ash.Error.Dsl.DslError,
-        "actions -> update -> default:\n  expected :name to be an atom, got: \"default\"",
+        "[Ash.Resource.Dsl.Update]\n actions -> update -> default:\n  expected :name to be an atom, got: \"default\"",
         fn ->
           defposts do
             actions do
@@ -52,7 +52,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.UpdateTest do
     test "it fails if `primary?` is not a boolean" do
       assert_raise(
         Ash.Error.Dsl.DslError,
-        "actions -> update -> default:\n  expected :primary? to be an boolean, got: 10",
+        "[Ash.Resource.Dsl.Update]\n actions -> update -> default:\n  expected :primary? to be an boolean, got: 10",
         fn ->
           defposts do
             actions do

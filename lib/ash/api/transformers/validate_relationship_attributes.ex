@@ -26,7 +26,15 @@ defmodule Ash.Api.Transformers.ValidateRelationshipAttributes do
 
   defp validate_relationship(relationship, attribute_names) do
     unless relationship.source_field in attribute_names do
+      IO.inspect(__MODULE__)
+      IO.inspect(relationship)
+
+      IO.inspect(
+        "Relationship `#{relationship.name}` expects source field `#{relationship.source_field}` to be defined"
+      )
+
       raise Ash.Error.Dsl.DslError,
+        module: __MODULE__,
         path: [:relationships, relationship.name],
         message:
           "Relationship `#{relationship.name}` expects source field `#{relationship.source_field}` to be defined"
@@ -40,6 +48,7 @@ defmodule Ash.Api.Transformers.ValidateRelationshipAttributes do
 
       unless relationship.source_field_on_join_table in through_attributes do
         raise Ash.Error.Dsl.DslError,
+          module: __MODULE__,
           path: [:relationships, relationship.name],
           message:
             "Relationship `#{relationship.name}` expects source field on join table `#{
@@ -49,6 +58,7 @@ defmodule Ash.Api.Transformers.ValidateRelationshipAttributes do
 
       unless relationship.destination_field_on_join_table in through_attributes do
         raise Ash.Error.Dsl.DslError,
+          module: __MODULE__,
           path: [:relationships, relationship.name],
           message:
             "Relationship `#{relationship.name}` expects destination field on join table `#{
@@ -64,6 +74,7 @@ defmodule Ash.Api.Transformers.ValidateRelationshipAttributes do
 
     unless relationship.destination_field in destination_attributes do
       raise Ash.Error.Dsl.DslError,
+        module: __MODULE__,
         path: [:relationships, relationship.name],
         message:
           "Relationship `#{relationship.name}` expects destination field `#{

@@ -13,6 +13,7 @@ defmodule Ash.Resource.Transformers.ValidateActionTypesSupported do
     |> Enum.each(fn action ->
       unless Ash.Resource.data_layer_can?(resource, action.type) do
         raise DslError,
+          module: __MODULE__,
           message:
             "Data layer #{Ash.Resource.data_layer(resource)} for #{inspect(resource)} does not support #{
               action.type
