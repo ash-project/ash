@@ -1,5 +1,21 @@
 defmodule Ash.Filter.Operator.LessThan do
+  @moduledoc """
+  left < right
+
+  Does not simplify, but is used as the simplification value for
+  `Ash.Filter.Operator.LessThanOrEqual`, `Ash.Filter.Operator.GreaterThan` and
+  `Ash.Filter.Operator.GreaterThanOrEqual`.
+
+  When comparing predicates, it is mutually exclusive with `Ash.Filter.Operator.IsNil`.
+  Additionally, it compares as mutually inclusive with any `Ash.Filter.Operator.Eq` and
+  any `Ash.Filter.Operator.LessThan` who's right sides are less than it, and mutually
+  exclusive with any `Ash.Filter.Operator.Eq` or `Ash.Filter.Operator.GreaterThan` who's
+  right side's are greater than or equal to it.
+  """
+
   use Ash.Filter.Operator, operator: :<
+
+  alias Ash.Filter.Operator.{Eq, IsNil}
 
   def new(%Ref{attribute: %{type: type}} = left, right) do
     case Ash.Type.cast_input(type, right) do
@@ -12,32 +28,99 @@ defmodule Ash.Filter.Operator.LessThan do
     {:known, left < right}
   end
 
-  def match?(left, right) do
+  def match?(%{left: left, right: right}) do
     left < right
   end
 
-  def compare(%__MODULE__{left: %Ref{} = same_ref, right: same_value}, %__MODULE__{
-        left: %Ref{} = same_ref,
-        right: same_value
-      }) do
-    :mutually_inclusive
+  def bulk_compare(all_predicates) do
+    all_predicates
+    |> Enum.group_by(& &1.left)
+    |> Enum.flat_map(fn {_, all_predicates} ->
+      predicates =
+        all_predicates
+        |> Enum.filter(&(&1.__struct__ in [__MODULE__, Eq]))
+        |> Enum.sort_by(& &1.right)
+
+      nil_exclusive(all_predicates) ++
+        inclusive_values(predicates) ++ exclusive_values(predicates)
+    end)
   end
 
-  def compare(%__MODULE__{left: %Ref{} = same_ref, right: left_value}, %__MODULE__{
-        left: %Ref{} = same_ref,
-        right: right_value
-      })
-      when left_value > right_value do
-    :right_includes_left
+  defp inclusive_values(sorted_predicates, acc \\ [])
+
+  defp inclusive_values([], acc), do: acc
+
+  defp inclusive_values([%Eq{} = first | rest], acc) do
+    rest
+    |> Enum.reject(&(&1.right == first.right))
+    |> Enum.filter(&(&1.__struct__ == __MODULE__))
+    |> case do
+      [] ->
+        inclusive_values(rest, acc)
+
+      other ->
+        new_acc =
+          other
+          |> Enum.map(&Ash.SatSolver.left_implies_right(first, &1))
+          |> Kernel.++(acc)
+
+        inclusive_values(rest, new_acc)
+    end
   end
 
-  def compare(%__MODULE__{left: %Ref{} = same_ref, right: left_value}, %__MODULE__{
-        left: %Ref{} = same_ref,
-        right: right_value
-      })
-      when left_value < right_value do
-    :mutually_exclusive
+  defp inclusive_values([%__MODULE__{} = first | rest], acc) do
+    rest
+    |> Enum.reject(&(&1.right == first.right))
+    |> Enum.filter(&(&1.__struct__ == Eq))
+    |> case do
+      [] ->
+        inclusive_values(rest, acc)
+
+      other ->
+        new_acc =
+          other
+          |> Enum.map(&Ash.SatSolver.right_implies_left(first, &1))
+          |> Kernel.++(acc)
+
+        inclusive_values(rest, new_acc)
+    end
   end
 
-  def compare(_, _), do: :unknown
+  defp exclusive_values(sorted_predicates, acc \\ [])
+  defp exclusive_values([], acc), do: acc
+
+  defp exclusive_values([%__MODULE__{} = first | rest], acc) do
+    case Enum.filter(rest, &(&1.__struct__ == Eq)) do
+      [] ->
+        exclusive_values(rest, acc)
+
+      other ->
+        new_acc =
+          other
+          |> Enum.map(&Ash.SatSolver.left_excludes_right(first, &1))
+          |> Kernel.++(acc)
+
+        exclusive_values(rest, new_acc)
+    end
+  end
+
+  defp exclusive_values([_ | rest], acc) do
+    exclusive_values(rest, acc)
+  end
+
+  defp nil_exclusive(predicates) do
+    is_nils = Enum.filter(predicates, &(&1.__struct__ == IsNil))
+
+    case is_nils do
+      [] ->
+        []
+
+      is_nils ->
+        predicates
+        |> Enum.filter(&(&1.__struct__ == __MODULE__))
+        |> Enum.flat_map(fn lt ->
+          Ash.SatSolver.mutually_exclusive([lt | is_nils])
+        end)
+    end
+  end
 end

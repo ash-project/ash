@@ -157,7 +157,7 @@ defmodule Ash.Resource do
     end
   end
 
-  def relationship(resource, relationship_name) when is_bitstring(relationship_name) do
+  def relationship(resource, relationship_name) when is_binary(relationship_name) do
     resource
     |> relationships()
     |> Enum.find(&(to_string(&1.name) == relationship_name))
@@ -174,7 +174,7 @@ defmodule Ash.Resource do
     Extension.get_entities(resource, [:calculations])
   end
 
-  def calculation(resource, name) when is_bitstring(name) do
+  def calculation(resource, name) when is_binary(name) do
     resource
     |> calculations()
     |> Enum.find(&(to_string(&1.name) == name))
@@ -191,7 +191,7 @@ defmodule Ash.Resource do
     Extension.get_entities(resource, [:aggregates])
   end
 
-  def aggregate(resource, name) when is_bitstring(name) do
+  def aggregate(resource, name) when is_binary(name) do
     resource
     |> aggregates()
     |> Enum.find(&(to_string(&1.name) == name))
@@ -246,7 +246,7 @@ defmodule Ash.Resource do
 
   @doc "Get an attribute name from the resource"
   @spec attribute(Ash.resource(), String.t() | atom) :: Ash.attribute() | nil
-  def attribute(resource, name) when is_bitstring(name) do
+  def attribute(resource, name) when is_binary(name) do
     resource
     |> attributes()
     |> Enum.find(&(to_string(&1.name) == name))

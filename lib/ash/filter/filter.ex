@@ -71,9 +71,7 @@ defmodule Ash.Filter do
     ReadActionRequired
   }
 
-  alias Ash.Filter.Function.{
-    IsNil
-  }
+  alias Ash.Filter.Function.IsNil
 
   alias Ash.Filter.Operator.{
     Eq,
@@ -100,6 +98,8 @@ defmodule Ash.Filter do
     LessThanOrEqual,
     GreaterThanOrEqual
   ]
+
+  @builtins @functions ++ @operators
 
   @operator_aliases [
     eq: Eq,
@@ -128,6 +128,8 @@ defmodule Ash.Filter do
   defstruct [:resource, :expression]
 
   @type t :: %__MODULE__{}
+
+  def builtins, do: @builtins
 
   defmodule Simple do
     @moduledoc "Represents a simplified filter, with a simple list of predicates"
@@ -323,30 +325,9 @@ defmodule Ash.Filter do
         {:ok, expression}
 
       paths ->
-        result =
-          Enum.reduce_while(paths, {:ok, expression}, fn path, {:ok, expression} ->
-            {for_path, without_path} = split_expression_by_relationship_path(expression, path)
-
-            relationship = Ash.Resource.relationship(resource, path)
-
-            query =
-              relationship.destination
-              |> Ash.Query.new(api)
-              |> Map.put(:filter, %__MODULE__{
-                expression: for_path,
-                resource: relationship.destination
-              })
-
-            case filter_related_in(query, relationship, :lists.droplast(path)) do
-              {:ok, new_predicate} ->
-                {:cont, {:ok, Expression.new(:and, without_path, new_predicate)}}
-
-              {:error, error} ->
-                {:halt, {:error, error}}
-            end
-          end)
-
-        case result do
+        paths
+        |> do_run_other_data_layer_filter_paths(expression, resource, api)
+        |> case do
           {:ok, result} -> do_run_other_data_layer_filters(result, api, resource)
           {:error, error} -> {:error, error}
         end
@@ -387,66 +368,104 @@ defmodule Ash.Filter do
       {path, new_predicate} ->
         relationship = Ash.Resource.relationship(resource, path)
 
-        case relationship do
-          %{type: :many_to_many, join_relationship: join_relationship, through: through} =
-              relationship ->
-            if Ash.Resource.data_layer(through) == Ash.Resource.data_layer(resource) &&
-                 Ash.Resource.data_layer_can?(resource, {:join, through}) do
-              filter = %__MODULE__{
-                resource: relationship.destination,
-                expression: new_predicate
-              }
-
-              relationship.destination
-              |> Ash.Query.new(api)
-              |> Ash.Query.filter(filter)
-              |> filter_related_in(
-                relationship,
-                :lists.droplast(path) ++ [join_relationship]
-              )
-            else
-              filter = %__MODULE__{
-                resource: through,
-                expression: new_predicate
-              }
-
-              relationship.destination
-              |> Ash.Query.new(api)
-              |> Ash.Query.filter(filter)
-              |> api.read()
-              |> case do
-                {:ok, results} ->
-                  relationship.through
-                  |> Ash.Query.new(api)
-                  |> Ash.Query.filter([
-                    {relationship.destination_field_on_join_table,
-                     in: Enum.map(results, &Map.get(&1, relationship.destination_field))}
-                  ])
-                  |> filter_related_in(
-                    Ash.Resource.relationship(resource, join_relationship),
-                    :lists.droplast(path)
-                  )
-
-                {:error, error} ->
-                  {:error, error}
-              end
-            end
-
-          relationship ->
-            filter = %__MODULE__{
-              resource: relationship.destination,
-              expression: new_predicate
-            }
-
-            relationship.destination
-            |> Ash.Query.new(api)
-            |> Ash.Query.filter(filter)
-            |> filter_related_in(relationship, :lists.droplast(path))
-        end
+        fetch_related_data(resource, path, new_predicate, api, relationship)
     end
   end
 
   defp do_run_other_data_layer_filters(other, _api, _resource), do: {:ok, other}
+
+  defp do_run_other_data_layer_filter_paths(paths, expression, resource, api) do
+    Enum.reduce_while(paths, {:ok, expression}, fn path, {:ok, expression} ->
+      {for_path, without_path} = split_expression_by_relationship_path(expression, path)
+
+      relationship = Ash.Resource.relationship(resource, path)
+
+      query =
+        relationship.destination
+        |> Ash.Query.new(api)
+        |> Map.put(:filter, %__MODULE__{
+          expression: for_path,
+          resource: relationship.destination
+        })
+
+      case filter_related_in(query, relationship, :lists.droplast(path)) do
+        {:ok, new_predicate} ->
+          {:cont, {:ok, Expression.new(:and, without_path, new_predicate)}}
+
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
+    end)
+  end
+
+  defp fetch_related_data(
+         resource,
+         path,
+         new_predicate,
+         api,
+         %{type: :many_to_many, join_relationship: join_relationship, through: through} =
+           relationship
+       ) do
+    if Ash.Resource.data_layer(through) == Ash.Resource.data_layer(resource) &&
+         Ash.Resource.data_layer_can?(resource, {:join, through}) do
+      filter = %__MODULE__{
+        resource: relationship.destination,
+        expression: new_predicate
+      }
+
+      relationship.destination
+      |> Ash.Query.new(api)
+      |> Ash.Query.filter(filter)
+      |> filter_related_in(
+        relationship,
+        :lists.droplast(path) ++ [join_relationship]
+      )
+    else
+      filter = %__MODULE__{
+        resource: through,
+        expression: new_predicate
+      }
+
+      relationship.destination
+      |> Ash.Query.new(api)
+      |> Ash.Query.filter(filter)
+      |> api.read()
+      |> case do
+        {:ok, results} ->
+          relationship.through
+          |> Ash.Query.new(api)
+          |> Ash.Query.filter([
+            {relationship.destination_field_on_join_table,
+             in: Enum.map(results, &Map.get(&1, relationship.destination_field))}
+          ])
+          |> filter_related_in(
+            Ash.Resource.relationship(resource, join_relationship),
+            :lists.droplast(path)
+          )
+
+        {:error, error} ->
+          {:error, error}
+      end
+    end
+  end
+
+  defp fetch_related_data(
+         _resource,
+         path,
+         new_predicate,
+         api,
+         relationship
+       ) do
+    filter = %__MODULE__{
+      resource: relationship.destination,
+      expression: new_predicate
+    }
+
+    relationship.destination
+    |> Ash.Query.new(api)
+    |> Ash.Query.filter(filter)
+    |> filter_related_in(relationship, :lists.droplast(path))
+  end
 
   defp filter_related_in(query, relationship, path) do
     case query.api.read(query) do
@@ -1004,6 +1023,18 @@ defmodule Ash.Filter do
       end)
 
     cond do
+      function_module = get_function(field, Ash.Resource.data_layer_functions(context.resource)) ->
+        case Function.new(function_module, List.wrap(nested_statement), %Ref{
+               relationship_path: context.relationship_path,
+               resource: context.resource
+             }) do
+          {:ok, function} ->
+            {:ok, Expression.new(:and, expression, function)}
+
+          {:error, error} ->
+            {:error, error}
+        end
+
       attr = Ash.Resource.attribute(context.resource, field) ->
         case parse_predicates(nested_statement, attr, context) do
           {:ok, nested_statement} ->
@@ -1055,18 +1086,6 @@ defmodule Ash.Filter do
           end
 
         add_aggregate_expression(context, nested_statement, field, expression)
-
-      function_module = get_function(field, Ash.Resource.data_layer_functions(context.resource)) ->
-        case Function.new(function_module, List.wrap(nested_statement), %Ref{
-               relationship_path: context.relationship_path,
-               resource: context.resource
-             }) do
-          {:ok, function} ->
-            {:ok, Expression.new(:and, expression, function)}
-
-          {:error, error} ->
-            {:error, error}
-        end
 
       true ->
         {:error,
@@ -1261,8 +1280,6 @@ defmodule Ash.Filter do
         end
       end)
   end
-
-  defp get_function(_, _), do: nil
 
   defp get_operator(key, data_layer_operators) when is_atom(key) do
     @builtin_operators[key] || data_layer_operators[key]

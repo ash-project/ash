@@ -109,7 +109,7 @@ defmodule Ash.Query do
         filter =
           Ash.Filter.map(filter, fn
             %{__predicate__?: true} = pred ->
-              %{pred | embedded: true}
+              %{pred | embedded?: true}
 
             other ->
               other

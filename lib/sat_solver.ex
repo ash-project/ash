@@ -4,6 +4,55 @@ defmodule Ash.SatSolver do
   alias Ash.Filter
   alias Ash.Filter.{Expression, Not, Ref}
 
+  defmacro b(statement) do
+    value =
+      Macro.prewalk(
+        statement,
+        fn
+          {:and, _, [left, right]} ->
+            quote do
+              {:and, unquote(left), unquote(right)}
+            end
+
+          {:or, _, [left, right]} ->
+            quote do
+              {:or, unquote(left), unquote(right)}
+            end
+
+          {:not, _, [value]} ->
+            quote do
+              {:not, unquote(value)}
+            end
+
+          other ->
+            other
+        end
+      )
+
+    quote do
+      unquote(value)
+      |> Ash.SatSolver.balance()
+    end
+  end
+
+  def balance({op, left, right}) do
+    left = balance(left)
+    right = balance(right)
+    [left, right] = Enum.sort([left, right])
+
+    {op, left, right}
+  end
+
+  def balance({:not, {:not, right}}) do
+    balance(right)
+  end
+
+  def balance({:not, statement}) do
+    {:not, balance(statement)}
+  end
+
+  def balance(other), do: other
+
   def strict_filter_subset(filter, candidate) do
     case {filter, candidate} do
       {%{expression: nil}, %{expression: nil}} ->
@@ -47,7 +96,7 @@ defmodule Ash.SatSolver do
   defp filter_to_expr(true), do: true
   defp filter_to_expr(%Filter{expression: expression}), do: filter_to_expr(expression)
   defp filter_to_expr(%{__predicate__?: true} = predicate), do: predicate
-  defp filter_to_expr(%Not{expression: expression}), do: {:not, filter_to_expr(expression)}
+  defp filter_to_expr(%Not{expression: expression}), do: b(not filter_to_expr(expression))
 
   defp filter_to_expr(%Expression{op: op, left: left, right: right}) do
     {op, filter_to_expr(left), filter_to_expr(right)}
@@ -147,8 +196,8 @@ defmodule Ash.SatSolver do
   defp do_consolidate_relationships(%Ash.Filter.Ref{relationship_path: path} = ref, replacements)
        when path != [] do
     case Map.fetch(replacements, path) do
+      {:ok, replacement} when not is_nil(replacement) -> %{ref | relationship_path: replacement}
       :error -> ref
-      {:ok, replacement} -> %{ref | relationship_path: replacement}
     end
   end
 
@@ -252,12 +301,7 @@ defmodule Ash.SatSolver do
   end
 
   defp build_expr_with_predicate_information(expression) do
-    all_predicates =
-      expression
-      |> Filter.list_predicates()
-      |> Enum.uniq()
-
-    simplified = simplify(expression, all_predicates)
+    simplified = simplify(expression)
 
     if simplified == expression do
       all_predicates =
@@ -267,25 +311,38 @@ defmodule Ash.SatSolver do
 
       comparison_expressions =
         all_predicates
+        |> Enum.filter(fn %module{} ->
+          :erlang.function_exported(module, :compare, 2)
+        end)
         |> Enum.reduce([], fn predicate, new_expressions ->
           all_predicates
           |> Enum.reject(&Kernel.==(&1, predicate))
           |> Enum.filter(&shares_ref?(&1, predicate))
           |> Enum.reduce(new_expressions, fn other_predicate, new_expressions ->
+            # With predicate as a and other_predicate as b
             case Ash.Filter.Predicate.compare(predicate, other_predicate) do
-              inclusive when inclusive in [:right_includes_left, :mutually_inclusive] ->
-                [{:not, {:and, {:not, other_predicate}, predicate}} | new_expressions]
+              :right_includes_left ->
+                # b || !a
 
-              exclusive when exclusive in [:right_excludes_left, :mutually_exclusive] ->
-                [{:not, {:and, other_predicate, predicate}} | new_expressions]
+                [b(other_predicate or not predicate) | new_expressions]
 
-              {:simplify, _} ->
-                # Filter should be fully simplified here
-                raise "Unreachable"
+              :left_includes_right ->
+                # a || ! b
+                [b(predicate or not other_predicate) | new_expressions]
+
+              :mutually_inclusive ->
+                # (a && b) || (! a && ! b)
+                [
+                  b((predicate and other_predicate) or (not predicate and not other_predicate))
+                  | new_expressions
+                ]
+
+              :mutually_exclusive ->
+                [b(not (other_predicate and predicate)) | new_expressions]
 
               _other ->
-                # If we can't tell, we assume they are exclusive statements
-                [{:not, {:and, other_predicate, predicate}} | new_expressions]
+                # If we can't tell, we assume that both could be true
+                new_expressions
             end
           end)
         end)
@@ -293,12 +350,67 @@ defmodule Ash.SatSolver do
 
       expression = filter_to_expr(expression)
 
-      Enum.reduce(comparison_expressions, expression, fn comparison_expression, expression ->
-        {:and, comparison_expression, expression}
+      expression_with_comparisons =
+        Enum.reduce(comparison_expressions, expression, fn comparison_expression, expression ->
+          b(comparison_expression and expression)
+        end)
+
+      all_predicates
+      |> Enum.map(& &1.__struct__)
+      |> Enum.uniq()
+      |> Enum.flat_map(fn struct ->
+        if :erlang.function_exported(struct, :bulk_compare, 1) do
+          struct.bulk_compare(all_predicates)
+        else
+          []
+        end
+      end)
+      |> Enum.reduce(expression_with_comparisons, fn comparison_expression, expression ->
+        b(comparison_expression and expression)
       end)
     else
       build_expr_with_predicate_information(simplified)
     end
+  end
+
+  def mutually_exclusive(predicates, acc \\ [])
+  def mutually_exclusive([], acc), do: acc
+
+  def mutually_exclusive([predicate | rest], acc) do
+    new_acc =
+      Enum.reduce(rest, acc, fn other_predicate, acc ->
+        [b(not (predicate and other_predicate)) | acc]
+      end)
+
+    mutually_exclusive(rest, new_acc)
+  end
+
+  def left_excludes_right(left, right) do
+    b(not (left and right))
+  end
+
+  def right_excludes_left(left, right) do
+    b(not (right and left))
+  end
+
+  def mutually_inclusive(predicates, acc \\ [])
+  def mutually_inclusive([], acc), do: acc
+
+  def mutually_inclusive([predicate | rest], acc) do
+    new_acc =
+      Enum.reduce(rest, acc, fn other_predicate, acc ->
+        [b((predicate and other_predicate) or (not predicate and not other_predicate)) | acc]
+      end)
+
+    mutually_exclusive(rest, new_acc)
+  end
+
+  def right_implies_left(left, right) do
+    b(not (right and not left))
+  end
+
+  def left_implies_right(left, right) do
+    b(not (left and not right))
   end
 
   defp shares_ref?(left, right) do
@@ -319,40 +431,28 @@ defmodule Ash.SatSolver do
 
   defp refs(_), do: []
 
-  defp simplify(%Expression{op: op, left: left, right: right}, all_predicates) do
-    Expression.new(op, simplify(left, all_predicates), simplify(right, all_predicates))
+  defp simplify(%Expression{op: op, left: left, right: right}) do
+    Expression.new(op, simplify(left), simplify(right))
   end
 
-  defp simplify(%Not{expression: expression}, all_predicates) do
-    Not.new(simplify(expression, all_predicates))
+  defp simplify(%Not{expression: expression}) do
+    Not.new(simplify(expression))
   end
 
-  defp simplify(%{__predicate__?: true} = predicate, all_predicates) do
-    predicate
-    |> find_simplification(all_predicates)
-    |> case do
-      nil ->
-        predicate
-
-      {:simplify, simplification} ->
-        simplification
+  defp simplify(%mod{__predicate__?: true} = predicate) do
+    if :erlang.function_exported(mod, :simplify, 1) do
+      predicate
+      |> mod.simplify()
+      |> Kernel.||(predicate)
+    else
+      predicate
     end
   end
 
-  defp simplify(other, _), do: other
-
-  defp find_simplification(predicate, predicates) do
-    predicates
-    |> Enum.find_value(fn other_predicate ->
-      case Ash.Filter.Predicate.compare(predicate, other_predicate) do
-        {:simplify, simplification} -> {:simplify, simplification}
-        _ -> false
-      end
-    end)
-  end
+  defp simplify(other), do: other
 
   def solve_expression(expression) do
-    expression_with_constants = {:and, true, {:and, {:not, false}, expression}}
+    expression_with_constants = b(true and not false and expression)
 
     {bindings, expression} = extract_bindings(expression_with_constants)
 
@@ -360,6 +460,7 @@ defmodule Ash.SatSolver do
     |> to_conjunctive_normal_form()
     |> lift_clauses()
     |> negations_to_negative_numbers()
+    |> Enum.uniq()
     |> Picosat.solve()
     |> solutions_to_predicate_values(bindings)
   end
@@ -389,7 +490,7 @@ defmodule Ash.SatSolver do
   defp extract_bindings({:not, value}, bindings) do
     {bindings, extracted} = extract_bindings(value, bindings)
 
-    {bindings, {:not, extracted}}
+    {bindings, b(not extracted)}
   end
 
   defp extract_bindings(value, %{current: current} = bindings) do

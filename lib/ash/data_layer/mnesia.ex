@@ -41,9 +41,9 @@ defmodule Ash.DataLayer.Mnesia do
 
   alias Ash.Filter.Operator.{
     Eq,
-    In,
     GreaterThan,
     GreaterThanOrEqual,
+    In,
     IsNil,
     LessThan,
     LessThanOrEqual

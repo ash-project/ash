@@ -1,4 +1,10 @@
 defmodule Ash.Filter.Operator.IsNil do
+  @moduledoc """
+  left is_nil true/false
+
+  This predicate matches if the left is nil when the right is `true` or if the
+  left is not nil when the right is `false`
+  """
   use Ash.Filter.Operator, operator: :is_nil
 
   def new(%Ref{} = left, right) when is_boolean(right) do
@@ -11,7 +17,7 @@ defmodule Ash.Filter.Operator.IsNil do
 
   def new(value, nil?), do: {:known, is_nil(value) == nil?}
 
-  def match?(left, is_nil?) do
+  def match?(%{left: left, right: is_nil?}) do
     is_nil(left) == is_nil?
   end
 

@@ -1,4 +1,9 @@
 defmodule Ash.Filter.Operator.GreaterThanOrEqual do
+  @moduledoc """
+  left >= right
+
+  In comparison, simplifies to `not(left < right)`, so it will never need to be compared against.
+  """
   use Ash.Filter.Operator, operator: :>=
 
   def new(%Ref{attribute: %{type: type}} = left, right) do
@@ -12,32 +17,15 @@ defmodule Ash.Filter.Operator.GreaterThanOrEqual do
     {:known, left >= right}
   end
 
-  def match?(left, right) do
+  def match?(%{left: left, right: right}) do
     left >= right
   end
 
-  def compare(%__MODULE__{left: %Ref{} = same_ref, right: same_value}, %__MODULE__{
-        left: %Ref{} = same_ref,
-        right: same_value
-      }) do
-    :mutually_inclusive
+  def simplify(%__MODULE__{left: %Ref{} = ref, right: value}) do
+    {:ok, op} = Ash.Filter.Operator.new(Ash.Filter.Operator.LessThan, ref, value)
+
+    Ash.Filter.Not.new(op)
   end
 
-  def compare(%__MODULE__{left: %Ref{} = same_ref, right: left_value}, %__MODULE__{
-        left: %Ref{} = same_ref,
-        right: right_value
-      })
-      when left_value < right_value do
-    :right_includes_left
-  end
-
-  def compare(%__MODULE__{left: %Ref{} = same_ref, right: left_value}, %__MODULE__{
-        left: %Ref{} = same_ref,
-        right: right_value
-      })
-      when left_value > right_value do
-    :mutually_exclusive
-  end
-
-  def compare(_, _), do: :unknown
+  def simplify(_), do: nil
 end

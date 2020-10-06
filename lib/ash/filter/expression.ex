@@ -1,6 +1,8 @@
 defmodule Ash.Filter.Expression do
   @moduledoc "Represents a boolean expression"
 
+  alias Ash.Filter.Operator.{Eq, In}
+
   defstruct [:op, :left, :right]
 
   def new(_, nil, nil), do: nil
@@ -11,10 +13,34 @@ defmodule Ash.Filter.Expression do
   def new(_, nil, right), do: right
   def new(_, left, nil), do: left
 
+  def new(op, left, right) when left > right do
+    new(op, right, left)
+  end
+
+  def new(op, %In{} = left, %Eq{} = right) do
+    new(op, left, right)
+  end
+
+  def new(:or, %Eq{left: left, right: value}, %In{left: left, right: mapset} = right) do
+    %{right | right: MapSet.put(mapset, value)}
+  end
+
+  def new(:or, %Eq{left: left, right: left_value}, %Eq{left: left, right: right_value}) do
+    %In{left: left, right: MapSet.new([left_value, right_value])}
+  end
+
+  def new(:or, %In{left: left, right: left_values}, %In{left: left, right: right_values} = right) do
+    %{right | right: MapSet.union(left_values, right_values)}
+  end
+
   def new(op, left, right) do
     # TODO: more optimization passes!
     # Remove predicates that are on both sides of an `and`
     # if a predicate is on both sides of an `or`, lift it to an `and`
+    do_new(op, left, right)
+  end
+
+  defp do_new(op, left, right) do
     if left == right do
       left
     else

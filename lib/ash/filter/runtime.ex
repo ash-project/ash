@@ -41,8 +41,9 @@ defmodule Ash.Filter.Runtime do
       boolean when is_boolean(boolean) ->
         {:ok, boolean}
 
-      %op{__operator__?: true, left: left, right: right} ->
-        with {:dirty?, false} <- {:dirty?, dirty?([left, right], dirty_fields)},
+      %op{__operator__?: true, left: left, right: right} = operator ->
+        with true <- :erlang.function_exported(op, :match?, 2),
+             {:dirty?, false} <- {:dirty?, dirty?([left, right], dirty_fields)},
              {:side_load, []} <- {:side_load, need_to_load([left, right], record)} do
           right_resolved = resolve_ref(right, record)
 
@@ -50,9 +51,12 @@ defmodule Ash.Filter.Runtime do
            left
            |> resolve_ref(record)
            |> Enum.any?(fn left_resolved ->
-             op.match?(left_resolved, right_resolved)
+             op.match?(%{operator | left: left_resolved, right: right_resolved})
            end)}
         else
+          false ->
+            :unknown
+
           {:side_load, paths} ->
             {:side_load, paths}
 
@@ -61,7 +65,8 @@ defmodule Ash.Filter.Runtime do
         end
 
       %func{__function__?: true, arguments: arguments} = function ->
-        with {:dirty?, false} <- {:dirty?, dirty?(arguments, dirty_fields)},
+        with true <- :erlang.function_exported(func, :match?, 2),
+             {:dirty?, false} <- {:dirty?, dirty?(arguments, dirty_fields)},
              {:side_load, []} <- {:side_load, need_to_load(arguments, record)} do
           {:ok,
            arguments
@@ -71,6 +76,9 @@ defmodule Ash.Filter.Runtime do
              func.match?(%{function | arguments: args})
            end)}
         else
+          false ->
+            :unknown
+
           {:side_load, paths} ->
             {:side_load, paths}
 

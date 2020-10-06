@@ -9,9 +9,9 @@ defmodule Ash.DataLayer.Ets do
 
   alias Ash.Filter.Operator.{
     Eq,
-    In,
     GreaterThan,
     GreaterThanOrEqual,
+    In,
     IsNil,
     LessThan,
     LessThanOrEqual

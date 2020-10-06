@@ -1,72 +1,71 @@
 defmodule Ash.Filter.Predicate do
   @moduledoc """
-  Represents a filter predicate
+  Represents a predicate which can be simplified and/or compared with other predicates
 
-  The `embedded` flag is set to true for predicates that are present in the `base_filter`.
-  Datalayers may optionally use this information.
+  Simplification and comparison will need more documentation, but ultimately it
+  is the logic that allows us to have a flexible and powerful authorization
+  system.
   """
-
-  defstruct [:resource, :attribute, :relationship_path, :predicate, :value, embedded: false]
 
   @type predicate :: struct
 
   @type comparison ::
           :unknown
-          | :right_excludes_left
-          | :left_excludes_right
           | :right_includes_left
           | :left_includes_right
           | :mutually_inclusive
-          # A simplification value for the right term
-          | {:simplify, term}
-          | {:simplify, term, term}
+          | :mutually_exclusive
 
-  @type t :: %__MODULE__{
-          attribute: Ash.attribute(),
-          relationship_path: list(atom),
-          predicate: predicate
-        }
-
+  @doc "Compare two predicates. If possible, use `c:bulk_compare/1` instead"
   @callback compare(predicate(), predicate()) :: comparison()
 
-  defmacro __using__(_opts) do
-    quote do
-      @behaviour Ash.Filter.Predicate
+  @doc """
+  As long as at least one predicate of the type defined in your module,
+  (and this callback is implemented), it will be called with all of the
+  other predicates present in a filter. The return value is relatively
+  complex, but it should be a list of boolean statements. E.g.
+  `{op, left, right}` and `{:not, predicate}` (nested as deep as necessary).
 
-      @impl true
-      def compare(_, _), do: :unknown
+  The best way to do it is to find lists of predicates that are mutually
+  exclusive or mutually inclusive, and pass those lists into
+  `Ash.SatSolver.mutually_exclusive/1` and `Ash.SatSolver.mutually_inclusive/1`
+  """
+  @callback bulk_compare([predicate()]) :: term
 
-      defoverridable compare: 2
-    end
-  end
+  @doc """
+  Simplify to a more primitive statement.
 
-  def match?(predicate, value, type) do
-    predicate.__struct__.match?(predicate, value, type)
-  end
+  For example, `x in [1, 2]` simplifies to `x == 1 or x == 2`.
+  Simplifying to filter expressions that already have comparisons
+  lets you avoid writing that logic for a given predicate.
+  """
+  @callback simplify(predicate()) :: term
 
+  @optional_callbacks compare: 2, bulk_compare: 1, simplify: 1
+
+  @doc """
+  Checks with each predicate module to see if it has a comparison
+  with
+  """
   def compare(same, same), do: :mutually_inclusive
 
   def compare(left, right) do
-    if left.__struct__ == right.__struct__ do
-      with {:right_to_left, :unknown} <- {:right_to_left, left.__struct__.compare(left, right)},
-           {:left_to_right, :unknown} <- {:left_to_right, right.__struct__.compare(left, right)} do
-        :mutually_exclusive
+    if :erlang.function_exported(right.__struct__, :compare, 2) do
+      if left.__struct__ == right.__struct__ do
+        with :unknown <- left.__struct__.compare(left, right),
+             :unknown <- right.__struct__.compare(left, right) do
+          :unknown
+        end
       else
-        {:right_to_left, {:simplify, left, _}} -> {:simplify, left}
-        {:left_to_right, {:simplify, _, right}} -> {:simplify, right}
-        {_, other} -> other
+        with :unknown <- left.__struct__.compare(left, right),
+             :unknown <- right.__struct__.compare(right, left),
+             :unknown <- right.__struct__.compare(left, right),
+             :unknown <- left.__struct__.compare(right, left) do
+          :unknown
+        end
       end
     else
-      with {:right_to_left, :unknown} <- {:right_to_left, left.__struct__.compare(left, right)},
-           {:right_to_left, :unknown} <- {:right_to_left, right.__struct__.compare(left, right)},
-           {:left_to_right, :unknown} <- {:left_to_right, right.__struct__.compare(left, right)},
-           {:left_to_right, :unknown} <- {:left_to_right, left.__struct__.compare(left, right)} do
-        :mutually_exclusive
-      else
-        {:right_to_left, {:simplify, left, _}} -> {:simplify, left}
-        {:left_to_right, {:simplify, _, right}} -> {:simplify, right}
-        {_, other} -> other
-      end
+      left.__struct__.compare(left, right)
     end
   end
 end

@@ -1,4 +1,12 @@
 defmodule Ash.Filter.Operator.In do
+  @moduledoc """
+  left in [1, 2, 3]
+
+  this predicate matches if the left is in the list on the right
+
+  For comparison, this simplifies to a set of "or equals", e.g
+  `{:or, {:or, {:or, left == 1}, left == 2}, left == 3}`
+  """
   use Ash.Filter.Operator, operator: :in
 
   @inspect_items_limit 10
@@ -16,7 +24,7 @@ defmodule Ash.Filter.Operator.In do
     {:known, left in right}
   end
 
-  def match?(left, right) do
+  def match?(%{left: left, right: right}) do
     left in right
   end
 
@@ -38,66 +46,10 @@ defmodule Ash.Filter.Operator.In do
     ])
   end
 
-  def compare(%__MODULE__{left: left, right: right}, _) do
-    {:simplify,
-     Enum.reduce(right, nil, fn item, expr ->
-       {:ok, eq} = Ash.Filter.Operator.new(Ash.Filter.Operator.Eq, left, item)
-       Ash.Filter.Expression.new(:or, expr, eq)
-     end)}
+  def simplify(%__MODULE__{left: left, right: right}) do
+    Enum.reduce(right, nil, fn item, expr ->
+      {:ok, eq} = Ash.Filter.Operator.new(Ash.Filter.Operator.Eq, left, item)
+      Ash.Filter.Expression.new(:or, expr, eq)
+    end)
   end
-
-  def compare(_, _), do: :unknown
-
-  # def compare(%__MODULE__{left: %Ref{} = same_ref, right: same_value}, %__MODULE__{
-  #       left: %Ref{} = same_ref,
-  #       right: same_value
-  #     }) do
-  #   :mutually_inclusive
-  # end
-
-  # def compare(%__MODULE__{left: %Ref{} = same_ref, right: left_values}, %__MODULE__{
-  #       left: %Ref{} = same_ref,
-  #       right: right_values
-  #     }) do
-  #   intersection = MapSet.intersection(left_values, right_values)
-  #   count = MapSet.size(intersection)
-
-  #   if count == 0 do
-  #     :mutually_exclusive
-  #   else
-  #     intersection_pred =
-  #       if count == 1 do
-  #         Ash.Filter.Operator.new(Ash.Filter.Operator.Eq, same_ref, Enum.at(intersection, 0))
-  #       else
-  #         %__MODULE__{left: same_ref, right: intersection}
-  #       end
-
-  #     new_left = %__MODULE__{
-  #       left: same_ref,
-  #       right: MapSet.difference(left_values, intersection)
-  #     }
-
-  #     left_expr =
-  #       Ash.Filter.Expression.new(
-  #         :or,
-  #         %__MODULE__{left: same_ref, right: new_left},
-  #         intersection_pred
-  #       )
-
-  #     {:simplify, left_expr}
-  #   end
-  # end
-
-  # def compare(%__MODULE__{left: %Ref{} = same_ref, right: left_values}, %Ash.Filter.Operator.Eq{
-  #       left: %Ref{} = same_ref,
-  #       right: right_value
-  #     }) do
-  #   if MapSet.member?(left_values, right_value) do
-  #     :right_includes_left
-  #   else
-  #     :mutually_exclusive
-  #   end
-  # end
-
-  # def compare(_, _), do: :unknown
 end
