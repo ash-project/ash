@@ -1,4 +1,4 @@
-defmodule Ash.Filter.Operator.In do
+defmodule Ash.Query.Operator.In do
   @moduledoc """
   left in [1, 2, 3]
 
@@ -7,7 +7,7 @@ defmodule Ash.Filter.Operator.In do
   For comparison, this simplifies to a set of "or equals", e.g
   `{:or, {:or, {:or, left == 1}, left == 2}, left == 3}`
   """
-  use Ash.Filter.Operator, operator: :in
+  use Ash.Query.Operator, operator: :in
 
   @inspect_items_limit 10
 
@@ -48,7 +48,7 @@ defmodule Ash.Filter.Operator.In do
 
   def simplify(%__MODULE__{left: left, right: right}) do
     Enum.reduce(right, nil, fn item, expr ->
-      {:ok, eq} = Ash.Filter.Operator.new(Ash.Filter.Operator.Eq, left, item)
+      {:ok, eq} = Ash.Query.Operator.new(Ash.Query.Operator.Eq, left, item)
       Ash.Filter.Expression.new(:or, expr, eq)
     end)
   end

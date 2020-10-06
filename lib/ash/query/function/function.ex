@@ -1,4 +1,4 @@
-defmodule Ash.Filter.Function do
+defmodule Ash.Query.Function do
   @moduledoc """
   A function is a predicate with an arguments list.
 
@@ -16,7 +16,7 @@ defmodule Ash.Filter.Function do
 
   * `:ref` - a column/relationship path reference. Will be an instance of `Ash.Filter.Ref`
   * `:term` - any value. No type validation is currently supported except for what is listed here, so it must be done in the `c:new/1` function
-  * `{:options, schema}` - Only the last arg may be options, and the keyword list of options are validated using the `NimbleOptions` schema passed in.
+  * `{:options, keys}` - Only the last arg may be options, and `keys` is a list of atoms for which options are accepted
   """
   @callback args() :: [arg]
 
@@ -43,7 +43,8 @@ defmodule Ash.Filter.Function do
         {{arg, :ref}, i}, {:ok, args} when is_atom(arg) ->
           case Ash.Resource.attribute(ref.resource, arg) do
             nil ->
-              {:halt, {:error, "invalid reference in #{ordinal(i)} argument to #{mod.name()}"}}
+              {:halt,
+               {:error, "invalid reference in #{ordinal(i + 1)} argument to #{mod.name()}"}}
 
             attribute ->
               {:cont, {:ok, [%{ref | attribute: attribute} | args]}}
@@ -52,18 +53,19 @@ defmodule Ash.Filter.Function do
         {{arg, :term}, _}, {:ok, args} ->
           {:cont, {:ok, [arg | args]}}
 
-        {{arg, {:options, schema}}, i}, {:ok, args} ->
-          with {:ok, opts} <- to_nimble_options(arg, schema),
-               {:ok, value} <- NimbleOptions.validate(opts, schema) do
-            {:cont, {:ok, [value | args]}}
-          else
+        {{arg, {:options, keys}}, i}, {:ok, args} ->
+          case to_keys(arg, keys) do
+            {:ok, opts} ->
+              {:cont, {:ok, [opts | args]}}
+
             {:error, message} when is_binary(message) ->
-              {:halt, {:error, "#{ordinal(i)} argument to #{mod.name()} is invalid: #{message}"}}
+              {:halt,
+               {:error, "#{ordinal(i + 1)} argument to #{mod.name()} is invalid: #{message}"}}
 
             {:error, exception} ->
               {:halt,
                {:error,
-                "#{ordinal(i)} argument to #{mod.name()} is invalid: #{
+                "#{ordinal(i + 1)} argument to #{mod.name()} is invalid: #{
                   Exception.message(exception)
                 }"}}
           end
@@ -83,9 +85,10 @@ defmodule Ash.Filter.Function do
     end
   end
 
-  defp to_nimble_options(opts, schema) do
+  defp to_keys(nil, _), do: {:ok, nil}
+
+  defp to_keys(opts, keys) do
     if is_map(opts) || Keyword.keyword?(opts) do
-      keys = Keyword.keys(schema)
       string_keys = Enum.map(keys, &to_string/1)
 
       Enum.reduce_while(opts, {:ok, []}, fn
@@ -107,7 +110,7 @@ defmodule Ash.Filter.Function do
           {:halt, {:error, "No such option #{key}"}}
       end)
     else
-      {:error, "Invalid optiosn"}
+      {:error, "Invalid options #{inspect(opts)}"}
     end
   end
 
@@ -118,19 +121,19 @@ defmodule Ash.Filter.Function do
   def ordinal(num) do
     cond do
       Enum.any?([11, 12, 13], &(&1 == Integer.mod(num, 100))) ->
-        "th"
+        "#{num}th"
 
       Integer.mod(num, 10) == 1 ->
-        "st"
+        "#{num}st"
 
       Integer.mod(num, 10) == 2 ->
-        "nd"
+        "#{num}nd"
 
       Integer.mod(num, 10) == 3 ->
-        "rd"
+        "#{num}rd"
 
       true ->
-        "th"
+        "#{num}th"
     end
   end
 

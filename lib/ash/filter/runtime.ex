@@ -42,7 +42,7 @@ defmodule Ash.Filter.Runtime do
         {:ok, boolean}
 
       %op{__operator__?: true, left: left, right: right} = operator ->
-        with true <- :erlang.function_exported(op, :match?, 2),
+        with true <- :erlang.function_exported(op, :match?, 1),
              {:dirty?, false} <- {:dirty?, dirty?([left, right], dirty_fields)},
              {:side_load, []} <- {:side_load, need_to_load([left, right], record)} do
           right_resolved = resolve_ref(right, record)
@@ -65,7 +65,7 @@ defmodule Ash.Filter.Runtime do
         end
 
       %func{__function__?: true, arguments: arguments} = function ->
-        with true <- :erlang.function_exported(func, :match?, 2),
+        with true <- :erlang.function_exported(func, :match?, 1),
              {:dirty?, false} <- {:dirty?, dirty?(arguments, dirty_fields)},
              {:side_load, []} <- {:side_load, need_to_load(arguments, record)} do
           {:ok,

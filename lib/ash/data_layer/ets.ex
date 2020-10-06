@@ -7,7 +7,7 @@ defmodule Ash.DataLayer.Ets do
 
   alias Ash.Actions.Sort
 
-  alias Ash.Filter.Operator.{
+  alias Ash.Query.Operator.{
     Eq,
     GreaterThan,
     GreaterThanOrEqual,

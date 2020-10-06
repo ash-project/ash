@@ -3,7 +3,7 @@ defmodule Ash.Filter do
   The representation of a filter in Ash.
 
   Ash filters are stored as nested `Ash.Filter.Expression{}` and `%Ash.Filter.Not{}` structs,
-  terminating in a `%Ash.Filter.Operator{}` or `%Ash.Filter.Function{}` struct. An expression is simply a boolean operator
+  terminating in a `%Ash.Query.Operator{}` or `%Ash.Query.Function{}` struct. An expression is simply a boolean operator
   and the left and right hand side of that operator.
 
   ## Filter Templates
@@ -71,9 +71,9 @@ defmodule Ash.Filter do
     ReadActionRequired
   }
 
-  alias Ash.Filter.Function.IsNil
+  alias Ash.Query.Function.IsNil
 
-  alias Ash.Filter.Operator.{
+  alias Ash.Query.Operator.{
     Eq,
     GreaterThan,
     GreaterThanOrEqual,
@@ -82,15 +82,15 @@ defmodule Ash.Filter do
     LessThanOrEqual
   }
 
-  alias Ash.Filter.{Expression, Function, Not, Operator, Ref}
-  alias Ash.Query.Aggregate
+  alias Ash.Filter.{Expression, Not, Ref}
+  alias Ash.Query.{Aggregate, Function, Operator}
 
   @functions [
     IsNil
   ]
 
   @operators [
-    Ash.Filter.Operator.IsNil,
+    Ash.Query.Operator.IsNil,
     Eq,
     In,
     LessThan,
@@ -312,7 +312,7 @@ defmodule Ash.Filter do
        ) do
     with {:ok, left} <- do_run_other_data_layer_filters(left, api, resource),
          {:ok, right} <- do_run_other_data_layer_filters(right, api, resource) do
-      {:ok, Expression.new(:or, left, right)}
+      {:ok, Expression.optimized_new(:or, left, right)}
     end
   end
 
@@ -336,7 +336,7 @@ defmodule Ash.Filter do
       {:ok, %Expression{op: :and, left: left, right: right}} ->
         with {:ok, new_left} <- do_run_other_data_layer_filters(left, api, resource),
              {:ok, new_right} <- do_run_other_data_layer_filters(right, api, resource) do
-          {:ok, Expression.new(:and, new_left, new_right)}
+          {:ok, Expression.optimized_new(:and, new_left, new_right)}
         end
     end
   end
@@ -390,7 +390,7 @@ defmodule Ash.Filter do
 
       case filter_related_in(query, relationship, :lists.droplast(path)) do
         {:ok, new_predicate} ->
-          {:cont, {:ok, Expression.new(:and, without_path, new_predicate)}}
+          {:cont, {:ok, Expression.optimized_new(:and, without_path, new_predicate)}}
 
         {:error, error} ->
           {:halt, {:error, error}}
@@ -481,10 +481,10 @@ defmodule Ash.Filter do
     end
   end
 
-  defp records_to_expression([], _, _), do: false
+  defp records_to_expression([], _, _), do: {:ok, false}
 
   defp records_to_expression([single_record], relationship, path) do
-    Ash.Filter.Operator.new(
+    Ash.Query.Operator.new(
       Eq,
       %Ref{
         relationship_path: path,
@@ -499,7 +499,7 @@ defmodule Ash.Filter do
     Enum.reduce_while(records, {:ok, nil}, fn record, {:ok, expression} ->
       case records_to_expression([record], relationship, path) do
         {:ok, operator} ->
-          {:cont, {:ok, Expression.new(:and, expression, operator)}}
+          {:cont, {:ok, Expression.optimized_new(:and, expression, operator)}}
 
         {:error, error} ->
           {:halt, {:error, error}}
@@ -585,7 +585,8 @@ defmodule Ash.Filter do
         op,
         _
       ) do
-    {:ok, %{base | expression: Expression.new(op, base.expression, addition.expression)}}
+    {:ok,
+     %{base | expression: Expression.optimized_new(op, base.expression, addition.expression)}}
   end
 
   def add_to_filter(%__MODULE__{} = base, statement, op, aggregates) do
@@ -761,8 +762,8 @@ defmodule Ash.Filter do
     {new_for_path_right, new_without_path_right} =
       split_expression_by_relationship_path(right, path)
 
-    {Expression.new(op, new_for_path_left, new_for_path_right),
-     Expression.new(op, new_without_path_left, new_without_path_right)}
+    {Expression.optimized_new(op, new_for_path_left, new_for_path_right),
+     Expression.optimized_new(op, new_without_path_left, new_without_path_right)}
   end
 
   defp split_expression_by_relationship_path(%Not{expression: expression}, path) do
@@ -856,7 +857,7 @@ defmodule Ash.Filter do
     new_left = do_filter_expression_by_relationship_path(left, path, scope?)
     new_right = do_filter_expression_by_relationship_path(right, path, scope?)
 
-    Expression.new(op, new_left, new_right)
+    Expression.optimized_new(op, new_left, new_right)
   end
 
   defp do_filter_expression_by_relationship_path(%Not{expression: expression}, path, scope?) do
@@ -966,10 +967,11 @@ defmodule Ash.Filter do
   end
 
   defp add_expression_part(boolean, _context, expression) when is_boolean(boolean),
-    do: {:ok, Expression.new(:and, expression, boolean)}
+    do: {:ok, Expression.optimized_new(:and, expression, boolean)}
 
   defp add_expression_part(%__MODULE__{expression: adding_expression}, context, expression) do
-    {:ok, Expression.new(:and, expression, add_to_predicate_path(adding_expression, context))}
+    {:ok,
+     Expression.optimized_new(:and, expression, add_to_predicate_path(adding_expression, context))}
   end
 
   defp add_expression_part(%resource{} = record, context, expression) do
@@ -989,7 +991,7 @@ defmodule Ash.Filter do
        when not_key in [:not, "not"] do
     case parse_expression(nested_statement, context) do
       {:ok, nested_expression} ->
-        {:ok, Expression.new(:and, expression, Not.new(nested_expression))}
+        {:ok, Expression.optimized_new(:and, expression, Not.new(nested_expression))}
 
       {:error, error} ->
         {:error, error}
@@ -1000,7 +1002,7 @@ defmodule Ash.Filter do
        when or_key in [:or, "or"] do
     with {:ok, nested_expression} <- parse_and_join(nested_statements, :or, context),
          :ok <- validate_data_layers_support_boolean_filters(nested_expression) do
-      {:ok, Expression.new(:and, expression, nested_expression)}
+      {:ok, Expression.optimized_new(:and, expression, nested_expression)}
     end
   end
 
@@ -1008,7 +1010,7 @@ defmodule Ash.Filter do
        when and_key in [:and, "and"] do
     case parse_and_join(nested_statements, :and, context) do
       {:ok, nested_expression} ->
-        {:ok, Expression.new(:and, expression, nested_expression)}
+        {:ok, Expression.optimized_new(:and, expression, nested_expression)}
 
       {:error, error} ->
         {:error, error}
@@ -1029,7 +1031,7 @@ defmodule Ash.Filter do
                resource: context.resource
              }) do
           {:ok, function} ->
-            {:ok, Expression.new(:and, expression, function)}
+            {:ok, Expression.optimized_new(:and, expression, function)}
 
           {:error, error} ->
             {:error, error}
@@ -1038,7 +1040,7 @@ defmodule Ash.Filter do
       attr = Ash.Resource.attribute(context.resource, field) ->
         case parse_predicates(nested_statement, attr, context) do
           {:ok, nested_statement} ->
-            {:ok, Expression.new(:and, expression, nested_statement)}
+            {:ok, Expression.optimized_new(:and, expression, nested_statement)}
 
           {:error, error} ->
             {:error, error}
@@ -1053,7 +1055,7 @@ defmodule Ash.Filter do
         if is_list(nested_statement) || is_map(nested_statement) do
           case parse_expression(nested_statement, context) do
             {:ok, nested_expression} ->
-              {:ok, Expression.new(:and, expression, nested_expression)}
+              {:ok, Expression.optimized_new(:and, expression, nested_expression)}
 
             {:error, error} ->
               {:error, error}
@@ -1111,7 +1113,7 @@ defmodule Ash.Filter do
       end
     end)
     |> case do
-      {:ok, new_expression} -> {:ok, Expression.new(:and, expression, new_expression)}
+      {:ok, new_expression} -> {:ok, Expression.optimized_new(:and, expression, new_expression)}
       {:error, error} -> {:error, error}
     end
   end
@@ -1133,7 +1135,7 @@ defmodule Ash.Filter do
     if Ash.Resource.data_layer_can?(context.resource, :aggregate_filter) do
       case parse_predicates(nested_statement, Map.get(context.aggregates, field), context) do
         {:ok, nested_statement} ->
-          {:ok, Expression.new(:and, expression, nested_statement)}
+          {:ok, Expression.optimized_new(:and, expression, nested_statement)}
 
         {:error, error} ->
           {:error, error}
@@ -1216,7 +1218,7 @@ defmodule Ash.Filter do
     Enum.reduce_while(statements, {:ok, nil}, fn statement, {:ok, expression} ->
       case parse_expression(statement, context) do
         {:ok, nested_expression} ->
-          {:cont, {:ok, Expression.new(op, expression, nested_expression)}}
+          {:cont, {:ok, Expression.optimized_new(op, expression, nested_expression)}}
 
         {:error, error} ->
           {:halt, {:error, error}}
@@ -1249,7 +1251,7 @@ defmodule Ash.Filter do
 
               {:ok, operator} ->
                 if Ash.Resource.data_layer_can?(context.resource, {:filter_operator, operator}) do
-                  {:cont, {:ok, Expression.new(:and, expression, operator)}}
+                  {:cont, {:ok, Expression.optimized_new(:and, expression, operator)}}
                 else
                   {:halt,
                    {:error, "data layer does not support the operator #{inspect(operator)}"}}
@@ -1267,33 +1269,21 @@ defmodule Ash.Filter do
   end
 
   defp get_function(key, data_layer_functions) when is_atom(key) do
-    @builtin_functions[key] || data_layer_functions[key]
+    @builtin_functions[key] || Enum.find(data_layer_functions, &(&1.name() == key))
   end
 
   defp get_function(key, data_layer_functions) when is_binary(key) do
     Map.get(@string_builtin_functions, key) ||
-      Enum.find_value(data_layer_functions, fn {pred, value} ->
-        if to_string(pred) == key do
-          value
-        else
-          false
-        end
-      end)
+      Enum.find(data_layer_functions, &(&1.name() == key))
   end
 
   defp get_operator(key, data_layer_operators) when is_atom(key) do
-    @builtin_operators[key] || data_layer_operators[key]
+    @builtin_operators[key] || Enum.find(data_layer_operators, &(&1.operator() == key))
   end
 
   defp get_operator(key, data_layer_operators) when is_binary(key) do
     Map.get(@string_builtin_operators, key) ||
-      Enum.find_value(data_layer_operators, fn {pred, value} ->
-        if to_string(pred) == key do
-          value
-        else
-          false
-        end
-      end)
+      Enum.find(data_layer_operators, &(&1.name() == key))
   end
 
   defp get_operator(_, _), do: nil

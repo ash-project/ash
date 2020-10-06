@@ -1,21 +1,21 @@
-defmodule Ash.Filter.Operator.LessThan do
+defmodule Ash.Query.Operator.LessThan do
   @moduledoc """
   left < right
 
   Does not simplify, but is used as the simplification value for
-  `Ash.Filter.Operator.LessThanOrEqual`, `Ash.Filter.Operator.GreaterThan` and
-  `Ash.Filter.Operator.GreaterThanOrEqual`.
+  `Ash.Query.Operator.LessThanOrEqual`, `Ash.Query.Operator.GreaterThan` and
+  `Ash.Query.Operator.GreaterThanOrEqual`.
 
-  When comparing predicates, it is mutually exclusive with `Ash.Filter.Operator.IsNil`.
-  Additionally, it compares as mutually inclusive with any `Ash.Filter.Operator.Eq` and
-  any `Ash.Filter.Operator.LessThan` who's right sides are less than it, and mutually
-  exclusive with any `Ash.Filter.Operator.Eq` or `Ash.Filter.Operator.GreaterThan` who's
+  When comparing predicates, it is mutually exclusive with `Ash.Query.Operator.IsNil`.
+  Additionally, it compares as mutually inclusive with any `Ash.Query.Operator.Eq` and
+  any `Ash.Query.Operator.LessThan` who's right sides are less than it, and mutually
+  exclusive with any `Ash.Query.Operator.Eq` or `Ash.Query.Operator.GreaterThan` who's
   right side's are greater than or equal to it.
   """
 
-  use Ash.Filter.Operator, operator: :<
+  use Ash.Query.Operator, operator: :<
 
-  alias Ash.Filter.Operator.{Eq, IsNil}
+  alias Ash.Query.Operator.{Eq, IsNil}
 
   def new(%Ref{attribute: %{type: type}} = left, right) do
     case Ash.Type.cast_input(type, right) do

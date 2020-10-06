@@ -1,10 +1,10 @@
-defmodule Ash.Filter.Operator.LessThanOrEqual do
+defmodule Ash.Query.Operator.LessThanOrEqual do
   @moduledoc """
   left <= right
 
   In comparison, simplifies to `left < right + 1`, so it will never need to be compared against.
   """
-  use Ash.Filter.Operator, operator: :<=
+  use Ash.Query.Operator, operator: :<=
 
   def new(%Ref{attribute: %{type: type}} = left, right) do
     case Ash.Type.cast_input(type, right) do
@@ -22,7 +22,7 @@ defmodule Ash.Filter.Operator.LessThanOrEqual do
   end
 
   def simplify(%__MODULE__{left: %Ref{} = same_ref, right: value}) do
-    {:ok, op} = Ash.Filter.Operator.new(Ash.Filter.Operator.LessThan, same_ref, value + 1)
+    {:ok, op} = Ash.Query.Operator.new(Ash.Query.Operator.LessThan, same_ref, value + 1)
 
     op
   end

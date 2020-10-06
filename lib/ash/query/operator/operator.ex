@@ -1,4 +1,4 @@
-defmodule Ash.Filter.Operator do
+defmodule Ash.Query.Operator do
   @moduledoc """
   An operator is a predicate with a `left` and a `right`
 

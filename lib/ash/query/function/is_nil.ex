@@ -1,13 +1,13 @@
-defmodule Ash.Filter.Function.IsNil do
+defmodule Ash.Query.Function.IsNil do
   @moduledoc """
   true if the provided field is nil
   """
-  use Ash.Filter.Function, name: :is_nil
+  use Ash.Query.Function, name: :is_nil
 
   def args, do: [:ref]
 
   def new([%Ref{} = ref]) do
-    Ash.Filter.Operator.new(Ash.Filter.Operator.IsNil, ref, true)
+    Ash.Query.Operator.new(Ash.Query.Operator.IsNil, ref, true)
   end
 
   def new(args) do

@@ -3,7 +3,7 @@ defmodule Ash.DataLayer.EtsTest do
 
   alias Ash.DataLayer.Ets, as: EtsDataLayer
   alias Ash.DataLayer.Ets.Query
-  alias Ash.Filter.Operator.{Eq, GreaterThan, In, LessThan}
+  alias Ash.Query.Operator.{Eq, GreaterThan, In, LessThan}
 
   setup do
     on_exit(fn ->

@@ -1,11 +1,11 @@
-defmodule Ash.Filter.Operator.IsNil do
+defmodule Ash.Query.Operator.IsNil do
   @moduledoc """
   left is_nil true/false
 
   This predicate matches if the left is nil when the right is `true` or if the
   left is not nil when the right is `false`
   """
-  use Ash.Filter.Operator, operator: :is_nil
+  use Ash.Query.Operator, operator: :is_nil
 
   def new(%Ref{} = left, right) when is_boolean(right) do
     {:ok, left, right}
@@ -37,21 +37,21 @@ defmodule Ash.Filter.Operator.IsNil do
     ])
   end
 
-  def compare(%__MODULE__{left: %Ref{} = same_ref, right: true}, %Ash.Filter.Operator.Eq{
+  def compare(%__MODULE__{left: %Ref{} = same_ref, right: true}, %Ash.Query.Operator.Eq{
         left: %Ref{} = same_ref,
         right: nil
       }) do
     :mutually_inclusive
   end
 
-  def compare(%__MODULE__{left: %Ref{} = same_ref, right: false}, %Ash.Filter.Operator.Eq{
+  def compare(%__MODULE__{left: %Ref{} = same_ref, right: false}, %Ash.Query.Operator.Eq{
         left: %Ref{} = same_ref,
         right: nil
       }) do
     :mutually_exclusive
   end
 
-  def compare(%__MODULE__{left: %Ref{} = same_ref, right: false}, %Ash.Filter.Operator.Eq{
+  def compare(%__MODULE__{left: %Ref{} = same_ref, right: false}, %Ash.Query.Operator.Eq{
         left: %Ref{} = same_ref
       }) do
     :right_includes_left

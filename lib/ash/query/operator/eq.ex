@@ -1,4 +1,4 @@
-defmodule Ash.Filter.Operator.Eq do
+defmodule Ash.Query.Operator.Eq do
   @moduledoc """
   left == right
 
@@ -7,10 +7,10 @@ defmodule Ash.Filter.Operator.Eq do
   For comparison, this compares as mutually exclusive with other equality
   and `is_nil` checks that have the same reference on the left side
   """
-  use Ash.Filter.Operator, operator: :==
+  use Ash.Query.Operator, operator: :==
 
   def new(%Ref{} = ref, nil) do
-    Ash.Filter.Operator.new(Ash.Filter.Operator.IsNil, ref, true)
+    Ash.Query.Operator.new(Ash.Query.Operator.IsNil, ref, true)
   end
 
   def new(%Ref{attribute: %{type: type}} = left, right) do
@@ -39,8 +39,8 @@ defmodule Ash.Filter.Operator.Eq do
   def bulk_compare(predicates) do
     predicates
     |> Enum.filter(&Kernel.match?(%struct{} when struct in [__MODULE__, IsNil], &1))
-    |> Enum.group_by(& &1.left)
     |> Enum.uniq()
+    |> Enum.group_by(& &1.left)
     |> Enum.flat_map(fn {_, predicates} ->
       Ash.SatSolver.mutually_exclusive(predicates)
     end)
