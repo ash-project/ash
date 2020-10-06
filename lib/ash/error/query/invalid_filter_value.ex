@@ -15,7 +15,7 @@ defmodule Ash.Error.Query.InvalidFilterValue do
       if message do
         "Invalid filter value `#{inspect(value)}` supplied in `#{inspect(context)}`: " <> message
       else
-        "Invalid filter value `#{inspect(value)}` suppled in `#{inspect(context)}`."
+        "Invalid filter value `#{inspect(value)}` supplied in `#{inspect(context)}`."
       end
     end
 
