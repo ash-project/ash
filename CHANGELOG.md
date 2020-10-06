@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.15.0](https://github.com/ash-project/ash/compare/v1.14.0...v1.15.0) (2020-10-06)
+
+
+
+
+### Features:
+
+* filter rewrite to op/function/ref based structure
+
+* added description for missing resources (#117)
+
+### Bug Fixes:
+
+* add module name to errors (#127)
+
+* Fix composite key in changeset functions (#125)
+
 ## [v1.14.0](https://github.com/ash-project/ash/compare/v1.13.4...v1.14.0) (2020-09-24)
 
 
