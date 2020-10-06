@@ -12,7 +12,6 @@ defmodule Ash.DataLayer.Mnesia do
   """
 
   alias Ash.Actions.Sort
-  alias Ash.DataLayer.Ets
   alias :mnesia, as: Mnesia
 
   def start(api) do
@@ -40,7 +39,15 @@ defmodule Ash.DataLayer.Mnesia do
     end)
   end
 
-  alias Ash.Filter.Predicate.{Eq, GreaterThan, In, IsNil, LessThan}
+  alias Ash.Query.Operator.{
+    Eq,
+    GreaterThan,
+    GreaterThanOrEqual,
+    In,
+    IsNil,
+    LessThan,
+    LessThanOrEqual
+  }
 
   @behaviour Ash.DataLayer
 
@@ -84,11 +91,13 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, :offset), do: true
   def can?(_, :boolean_filter), do: true
   def can?(_, :transact), do: true
-  def can?(_, {:filter_predicate, _, %In{}}), do: true
-  def can?(_, {:filter_predicate, _, %Eq{}}), do: true
-  def can?(_, {:filter_predicate, _, %IsNil{}}), do: true
-  def can?(_, {:filter_predicate, _, %LessThan{}}), do: true
-  def can?(_, {:filter_predicate, _, %GreaterThan{}}), do: true
+  def can?(_, {:filter_operator, %In{}}), do: true
+  def can?(_, {:filter_operator, %Eq{}}), do: true
+  def can?(_, {:filter_operator, %LessThan{}}), do: true
+  def can?(_, {:filter_operator, %GreaterThan{}}), do: true
+  def can?(_, {:filter_operator, %LessThanOrEqual{}}), do: true
+  def can?(_, {:filter_operator, %GreaterThanOrEqual{}}), do: true
+  def can?(_, {:filter_operator, %IsNil{}}), do: true
   def can?(_, {:sort, _}), do: true
   def can?(_, _), do: false
 
@@ -154,7 +163,7 @@ defmodule Ash.DataLayer.Mnesia do
 
         offset_records =
           structified_records
-          |> Ets.filter_matches(filter)
+          |> Enum.filter(&Ash.Filter.Runtime.matches?(nil, &1, filter))
           |> Sort.runtime_sort(sort)
           |> Enum.drop(offset || 0)
 

@@ -24,13 +24,15 @@ defmodule Ash.DataLayer do
           | :offset
           | :transact
           | :filter
+          | {:filter_operator, struct}
           | {:filter_predicate, Ash.Type.t(), struct}
           | :sort
           | {:sort, Ash.Type.t()}
           | :upsert
           | :composite_primary_key
 
-  @callback custom_filters(Ash.resource()) :: map()
+  @callback functions(Ash.resource()) :: [module]
+  @callback operators(Ash.resource()) :: [module]
   @callback filter(Ash.data_layer_query(), Ash.filter(), resource :: Ash.resource()) ::
               {:ok, Ash.data_layer_query()} | {:error, term}
   @callback sort(Ash.data_layer_query(), Ash.sort(), resource :: Ash.resource()) ::
@@ -87,7 +89,8 @@ defmodule Ash.DataLayer do
                       transaction: 2,
                       rollback: 2,
                       upsert: 2,
-                      custom_filters: 1,
+                      operators: 1,
+                      functions: 1,
                       in_transaction?: 1,
                       add_aggregate: 3,
                       transform_query: 1,
@@ -245,11 +248,21 @@ defmodule Ash.DataLayer do
     end
   end
 
-  def custom_filters(resource) do
+  def operators(resource) do
     data_layer = Ash.Resource.data_layer(resource)
 
-    if :erlang.function_exported(data_layer, :custom_filters, 1) do
-      data_layer.custom_filters(resource)
+    if :erlang.function_exported(data_layer, :operators, 1) do
+      data_layer.operators(resource)
+    else
+      %{}
+    end
+  end
+
+  def functions(resource) do
+    data_layer = Ash.Resource.data_layer(resource)
+
+    if :erlang.function_exported(data_layer, :functions, 1) do
+      data_layer.functions(resource)
     else
       %{}
     end

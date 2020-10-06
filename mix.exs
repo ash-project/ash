@@ -79,7 +79,8 @@ defmodule Ash.MixProject do
         "resource dsl transformers": ~r/Ash.Resource.Transformers/,
         "api dsl transformers": ~r/Ash.Api.Transformers/,
         "api dsl": ~r/Ash.Api.Dsl/,
-        "filter predicates": ~r/Ash.Filter.Predicate/,
+        "filter operators": ~r/Ash.Query.Operator/,
+        "filter functions": ~r/Ash.Query.Function/,
         filter: ~r/Ash.Filter/,
         "resource introspection": ~r/Ash.Resource/,
         "api introspection": ~r/Ash.Api/,
@@ -125,7 +126,8 @@ defmodule Ash.MixProject do
       {:picosat_elixir, "~> 0.1.5"},
       {:nimble_options, "~> 0.3.0"},
       {:excoveralls, "~> 0.13.0", only: [:dev, :test]},
-      {:mix_test_watch, "~> 1.0", only: :dev, runtime: false}
+      {:mix_test_watch, "~> 1.0", only: :dev, runtime: false},
+      {:parse_trans, "3.3.0", only: [:dev, :test], override: true}
     ]
   end
 

@@ -369,17 +369,34 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     test "can detect a more complicated scenario" do
-      filter = Filter.parse!(Post, or: [points: [in: [1, 2, 3]], points: 4, points: 5])
+      filter = Filter.parse!(Post, or: [[points: [in: [1, 2, 3]]], [points: 4], [points: 5]])
 
-      candidate = Filter.parse!(Post, or: [points: 1, points: 3, points: 5])
+      candidate = Filter.parse!(Post, or: [[points: 1], [points: 3], [points: 5]])
 
       assert Filter.strict_subset_of?(filter, candidate)
     end
 
-    test "understands unrelated negations" do
-      filter = Filter.parse!(Post, or: [points: [in: [1, 2, 3]], points: 4, points: 5])
+    test "can detect less than and greater than closing in on a single value" do
+      filter = Filter.parse!(Post, points: [greater_than: 1, less_than: 3])
 
-      candidate = Filter.parse!(Post, or: [points: 1, points: 3, points: 5], not: [points: 7])
+      candidate = Filter.parse!(Post, points: 2)
+
+      assert Filter.strict_subset_of?(filter, candidate)
+    end
+
+    test "doesnt have false positives on less than and greater than closing in on a single value" do
+      filter = Filter.parse!(Post, points: [greater_than: 1, less_than: 3])
+
+      candidate = Filter.parse!(Post, points: 4)
+
+      refute Filter.strict_subset_of?(filter, candidate)
+    end
+
+    test "understands unrelated negations" do
+      filter = Filter.parse!(Post, or: [[points: [in: [1, 2, 3]]], [points: 4], [points: 5]])
+
+      candidate =
+        Filter.parse!(Post, or: [[points: 1], [points: 3], [points: 5]], not: [points: 7])
 
       assert Filter.strict_subset_of?(filter, candidate)
     end

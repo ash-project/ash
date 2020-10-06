@@ -1,182 +1,71 @@
 defmodule Ash.Filter.Predicate do
   @moduledoc """
-  Represents a filter predicate
+  Represents a predicate which can be simplified and/or compared with other predicates
 
-  The `embedded` flag is set to true for predicates that are present in the `base_filter`.
-  Datalayers may optionally use this information.
+  Simplification and comparison will need more documentation, but ultimately it
+  is the logic that allows us to have a flexible and powerful authorization
+  system.
   """
-
-  defstruct [:resource, :attribute, :relationship_path, :predicate, :value, embedded: false]
-
-  alias Ash.Error.Query.UnsupportedPredicate
-  alias Ash.Filter
-  alias Ash.Filter.{Expression, Not}
 
   @type predicate :: struct
 
   @type comparison ::
           :unknown
-          | :right_excludes_left
-          | :left_excludes_right
           | :right_includes_left
           | :left_includes_right
           | :mutually_inclusive
-          # A simplification value for the right term
-          | {:simplify, term}
-          | {:simplify, term, term}
+          | :mutually_exclusive
 
-  @type t :: %__MODULE__{
-          attribute: Ash.attribute(),
-          relationship_path: list(atom),
-          predicate: predicate
-        }
-
-  @callback new(Ash.resource(), Ash.attribute(), term) :: {:ok, struct} | {:error, term}
+  @doc "Compare two predicates. If possible, use `c:bulk_compare/1` instead"
   @callback compare(predicate(), predicate()) :: comparison()
-  @callback match?(predicate(), term, Ash.Type.t()) :: boolean | :unknown
 
-  defmacro __using__(_opts) do
-    quote do
-      @behaviour Ash.Filter.Predicate
+  @doc """
+  As long as at least one predicate of the type defined in your module,
+  (and this callback is implemented), it will be called with all of the
+  other predicates present in a filter. The return value is relatively
+  complex, but it should be a list of boolean statements. E.g.
+  `{op, left, right}` and `{:not, predicate}` (nested as deep as necessary).
 
-      @impl true
-      def compare(_, _), do: :unknown
+  The best way to do it is to find lists of predicates that are mutually
+  exclusive or mutually inclusive, and pass those lists into
+  `Ash.SatSolver.mutually_exclusive/1` and `Ash.SatSolver.mutually_inclusive/1`
+  """
+  @callback bulk_compare([predicate()]) :: term
 
-      @impl true
-      def match?(_, _, _), do: :unknown
+  @doc """
+  Simplify to a more primitive statement.
 
-      defoverridable compare: 2, match?: 3
-    end
-  end
+  For example, `x in [1, 2]` simplifies to `x == 1 or x == 2`.
+  Simplifying to filter expressions that already have comparisons
+  lets you avoid writing that logic for a given predicate.
+  """
+  @callback simplify(predicate()) :: term
 
-  def match?(predicate, value, type) do
-    predicate.__struct__.match?(predicate, value, type)
-  end
+  @optional_callbacks compare: 2, bulk_compare: 1, simplify: 1
 
-  @spec compare(predicate(), predicate()) :: comparison
-  def compare(%__MODULE__{predicate: left} = pred, right) do
-    case compare(left, right) do
-      {:simplify, simplification} ->
-        simplification =
-          Filter.map(simplification, fn
-            %struct{} = expr when struct in [__MODULE__, Not, Expression] ->
-              expr
-
-            other ->
-              wrap_in_predicate(pred, other)
-          end)
-
-        {:simplify, simplification}
-
-      other ->
-        other
-    end
-  end
-
-  def compare(left, %__MODULE__{predicate: right}), do: compare(left, right)
+  @doc """
+  Checks with each predicate module to see if it has a comparison
+  with
+  """
+  def compare(same, same), do: :mutually_inclusive
 
   def compare(left, right) do
-    if left.__struct__ == right.__struct__ do
-      with {:right_to_left, :unknown} <- {:right_to_left, left.__struct__.compare(left, right)},
-           {:left_to_right, :unknown} <- {:left_to_right, right.__struct__.compare(left, right)} do
-        :mutually_exclusive
-      else
-        {:right_to_left, {:simplify, left, _}} -> {:simplify, left}
-        {:left_to_right, {:simplify, _, right}} -> {:simplify, right}
-        {_, other} -> other
-      end
-    else
-      with {:right_to_left, :unknown} <- {:right_to_left, left.__struct__.compare(left, right)},
-           {:right_to_left, :unknown} <- {:right_to_left, right.__struct__.compare(left, right)},
-           {:left_to_right, :unknown} <- {:left_to_right, right.__struct__.compare(left, right)},
-           {:left_to_right, :unknown} <- {:left_to_right, left.__struct__.compare(left, right)} do
-        :mutually_exclusive
-      else
-        {:right_to_left, {:simplify, left, _}} -> {:simplify, left}
-        {:left_to_right, {:simplify, _, right}} -> {:simplify, right}
-        {_, other} -> other
-      end
-    end
-  end
-
-  defp wrap_in_predicate(predicate, %struct{} = other) do
-    if Ash.implements_behaviour?(struct, Ash.Filter.Predicate) do
-      %{predicate | predicate: other}
-    else
-      other
-    end
-  end
-
-  def new(resource, attribute, predicate, value, relationship_path) do
-    case predicate.new(resource, attribute, value) do
-      {:ok, predicate} ->
-        if Ash.Resource.data_layer_can?(
-             resource,
-             {:filter_predicate, Ash.Type.storage_type(attribute.type), predicate}
-           ) do
-          {:ok,
-           %__MODULE__{
-             resource: resource,
-             attribute: attribute,
-             predicate: predicate,
-             value: value,
-             relationship_path: relationship_path
-           }}
-        else
-          {:error,
-           UnsupportedPredicate.exception(
-             resource: resource,
-             predicate: predicate,
-             type: Ash.Type.storage_type(attribute.type)
-           )}
+    if :erlang.function_exported(right.__struct__, :compare, 2) do
+      if left.__struct__ == right.__struct__ do
+        with :unknown <- left.__struct__.compare(left, right),
+             :unknown <- right.__struct__.compare(left, right) do
+          :unknown
         end
-
-      {:error, error} ->
-        {:error, error}
-    end
-  end
-
-  # custom_options not available in Elixir before 1.9
-  def add_inspect_path(inspect_opts, field) do
-    with {:ok, opts} <- Map.fetch(inspect_opts, :custom_options),
-         {:ok, path} when path != [] <- Keyword.fetch(opts, :relationship_path) do
-      Enum.join(path, ".") <> "." <> to_string(field)
+      else
+        with :unknown <- left.__struct__.compare(left, right),
+             :unknown <- right.__struct__.compare(right, left),
+             :unknown <- right.__struct__.compare(left, right),
+             :unknown <- left.__struct__.compare(right, left) do
+          :unknown
+        end
+      end
     else
-      _ ->
-        to_string(field)
-    end
-  end
-
-  defimpl Inspect do
-    import Inspect.Algebra
-
-    def inspect(
-          %{relationship_path: relationship_path, predicate: predicate},
-          opts
-        ) do
-      opts = %{
-        opts
-        | syntax_colors: [
-            atom: :yellow,
-            binary: :green,
-            boolean: :magenta,
-            list: :cyan,
-            map: :magenta,
-            number: :red,
-            regex: :violet,
-            tuple: :white
-          ]
-      }
-
-      opts =
-        apply(Map, :put, [
-          opts,
-          :custom_options,
-          Keyword.put(opts.custom_options || [], :relationship_path, relationship_path)
-        ])
-
-      # Above indirection required to avoid dialyzer warning in pre-1.9 Elixir
-      to_doc(predicate, opts)
+      left.__struct__.compare(left, right)
     end
   end
 end
