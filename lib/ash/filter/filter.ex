@@ -780,7 +780,7 @@ defmodule Ash.Filter do
          %{
            __operator__?: true,
            left: %Ref{relationship_path: predicate_path} = left,
-           right: %Ref{relationship_path: predicate_path} = right
+           right: %Ref{relationship_path: predicate_path}
          } = predicate,
          path
        ) do
@@ -788,13 +788,11 @@ defmodule Ash.Filter do
       new_path = Enum.drop(predicate_path, length(path))
 
       {%{
-         __operator__?: true,
-         left: %{
-           left
-           | relationship_path: new_path,
-             left: %{left | relationship_path: new_path},
-             right: %{right | relationship_path: new_path}
-         }
+         predicate
+         | left: %{
+             left
+             | relationship_path: new_path
+           }
        }, nil}
     else
       {nil, predicate}

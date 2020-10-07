@@ -78,7 +78,7 @@ defmodule Mix.Tasks.Ash.Formatter do
   end
 
   defp section_entity_builders(section) do
-    Enum.flat_map(section.entities, fn entity ->
+    Enum.flat_map(section.entities(), fn entity ->
       entity_builders(entity)
     end) ++ all_entity_builders(section.sections())
   end

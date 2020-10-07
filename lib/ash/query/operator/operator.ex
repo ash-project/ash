@@ -58,6 +58,7 @@ defmodule Ash.Query.Operator do
       def operator, do: unquote(opts[:operator])
 
       if unquote(opts[:predicate?]) do
+        @dialyzer {:nowarn_function, match?: 1}
         def match?(struct) do
           evaluate(struct) not in [nil, false]
         end
