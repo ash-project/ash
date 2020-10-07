@@ -82,6 +82,11 @@ defmodule Ash.MixProject do
         "api dsl": ~r/Ash.Api.Dsl/,
         "filter operators": ~r/Ash.Query.Operator/,
         "filter functions": ~r/Ash.Query.Function/,
+        "query expressions": [
+          Ash.Query.Expression,
+          Ash.Query.Not,
+          Ash.Query.Ref
+        ],
         filter: ~r/Ash.Filter/,
         "resource introspection": ~r/Ash.Resource/,
         "api introspection": ~r/Ash.Api/,
