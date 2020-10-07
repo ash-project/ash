@@ -24,6 +24,7 @@ defmodule Ash.MixProject do
         coveralls: :test,
         "coveralls.github": :test
       ],
+      xref: [exclude: [:mnesia]],
       docs: docs(),
       aliases: aliases(),
       description: @description,

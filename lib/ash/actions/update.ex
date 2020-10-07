@@ -89,7 +89,7 @@ defmodule Ash.Actions.Update do
   end
 
   defp add_validations(changeset) do
-    changeset.resource()
+    changeset.resource
     |> Ash.Resource.validations(changeset.action_type)
     |> Enum.reduce(changeset, fn validation, changeset ->
       Ash.Changeset.before_action(changeset, &do_validation(&1, validation))

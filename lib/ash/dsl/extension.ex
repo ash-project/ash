@@ -323,7 +323,7 @@ defmodule Ash.Dsl.Extension do
 
   def all_section_paths(sections, prior) do
     Enum.flat_map(sections, fn section ->
-      nested = all_section_paths(section.sections(), [section.name, prior])
+      nested = all_section_paths(section.sections, [section.name, prior])
 
       [Enum.reverse(prior) ++ [section.name] | nested]
     end)
@@ -337,7 +337,7 @@ defmodule Ash.Dsl.Extension do
 
   def all_section_config_paths(sections, prior) do
     Enum.flat_map(sections, fn section ->
-      nested = all_section_config_paths(section.sections(), [section.name, prior])
+      nested = all_section_config_paths(section.sections, [section.name, prior])
 
       fields =
         Enum.map(section.schema, fn {key, _} ->

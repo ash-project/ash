@@ -400,8 +400,8 @@ defmodule Ash.Actions.Relationships do
   defp do_relate_many_to_many(changeset, relationship, to_relate_record, join_changeset \\ nil) do
     Changeset.after_action(changeset, fn changeset, record ->
       join_attrs = %{
-        relationship.source_field_on_join_table() => Map.get(record, relationship.source_field),
-        relationship.destination_field_on_join_table() =>
+        relationship.source_field_on_join_table => Map.get(record, relationship.source_field),
+        relationship.destination_field_on_join_table =>
           Map.get(to_relate_record, relationship.destination_field)
       }
 

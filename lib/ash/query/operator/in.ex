@@ -7,7 +7,7 @@ defmodule Ash.Query.Operator.In do
   For comparison, this simplifies to a set of "or equals", e.g
   `{:or, {:or, {:or, left == 1}, left == 2}, left == 3}`
   """
-  use Ash.Query.Operator, operator: :in
+  use Ash.Query.Operator, operator: :in, predicate?: true
 
   @inspect_items_limit 10
 
@@ -24,7 +24,7 @@ defmodule Ash.Query.Operator.In do
     {:known, left in right}
   end
 
-  def match?(%{left: left, right: right}) do
+  def evaluate(%{left: left, right: right}) do
     left in right
   end
 
@@ -49,7 +49,7 @@ defmodule Ash.Query.Operator.In do
   def simplify(%__MODULE__{left: left, right: right}) do
     Enum.reduce(right, nil, fn item, expr ->
       {:ok, eq} = Ash.Query.Operator.new(Ash.Query.Operator.Eq, left, item)
-      Ash.Filter.Expression.new(:or, expr, eq)
+      Ash.Query.Expression.new(:or, expr, eq)
     end)
   end
 end

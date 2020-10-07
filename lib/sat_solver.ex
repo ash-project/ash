@@ -2,7 +2,7 @@ defmodule Ash.SatSolver do
   @moduledoc false
 
   alias Ash.Filter
-  alias Ash.Filter.{Expression, Not, Ref}
+  alias Ash.Query.{Expression, Not, Ref}
 
   defmacro b(statement) do
     value =
@@ -142,7 +142,7 @@ defmodule Ash.SatSolver do
   defp upgrade_related_filters_to_join_keys(expr, _), do: expr
 
   defp upgrade_ref(
-         %Ash.Filter.Ref{attribute: attribute, relationship_path: path} = ref,
+         %Ash.Query.Ref{attribute: attribute, relationship_path: path} = ref,
          resource
        )
        when path != [] do
@@ -181,7 +181,10 @@ defmodule Ash.SatSolver do
     do_consolidate_relationships(expression, replacements)
   end
 
-  defp do_consolidate_relationships(%Expression{op: op, left: left, right: right}, replacements) do
+  defp do_consolidate_relationships(
+         %Expression{op: op, left: left, right: right},
+         replacements
+       ) do
     Expression.new(
       op,
       do_consolidate_relationships(left, replacements),
@@ -193,7 +196,7 @@ defmodule Ash.SatSolver do
     Not.new(do_consolidate_relationships(expression, replacements))
   end
 
-  defp do_consolidate_relationships(%Ash.Filter.Ref{relationship_path: path} = ref, replacements)
+  defp do_consolidate_relationships(%Ash.Query.Ref{relationship_path: path} = ref, replacements)
        when path != [] do
     case Map.fetch(replacements, path) do
       {:ok, replacement} when not is_nil(replacement) -> %{ref | relationship_path: replacement}

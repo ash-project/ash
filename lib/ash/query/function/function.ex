@@ -14,20 +14,11 @@ defmodule Ash.Query.Function do
 
   Currently supports three values: `:ref`, `:term`, and `{:options, schema}`.
 
-  * `:ref` - a column/relationship path reference. Will be an instance of `Ash.Filter.Ref`
+  * `:ref` - a column/relationship path reference. Will be an instance of `Ash.Query.Ref`
   * `:term` - any value. No type validation is currently supported except for what is listed here, so it must be done in the `c:new/1` function
   * `{:options, keys}` - Only the last arg may be options, and `keys` is a list of atoms for which options are accepted
   """
   @callback args() :: [arg]
-
-  @doc """
-  Return true or false if the left and right match the operator.
-
-  Any references are resolved before being passed in.
-
-  If this is not defined, it will be assumed that data does not match.
-  """
-  @callback match?(term) :: boolean
 
   def new(mod, args, ref) do
     args = List.wrap(args)
@@ -141,17 +132,23 @@ defmodule Ash.Query.Function do
     quote do
       @behaviour Ash.Filter.Predicate
 
-      alias Ash.Filter.Ref
+      alias Ash.Query.Ref
 
       defstruct [
         :arguments,
         name: unquote(opts[:name]),
         embedded?: false,
         __function__?: true,
-        __predicate__?: true
+        __predicate__?: unquote(opts[:predicate?] || false)
       ]
 
       def name, do: unquote(opts[:name])
+
+      if unquote(opts[:predicate?]) do
+        def match?(struct) do
+          evaluate(struct) not in [nil, false]
+        end
+      end
 
       defimpl Inspect do
         import Inspect.Algebra
