@@ -2,7 +2,7 @@ defmodule Ash.Filter do
   @moduledoc """
   The representation of a filter in Ash.
 
-  Ash filters are stored as nested `Ash.Filter.Expression{}` and `%Ash.Filter.Not{}` structs,
+  Ash filters are stored as nested `Ash.Query.Expression{}` and `%Ash.Query.Not{}` structs,
   terminating in an operator or a function struct. An expression is simply a boolean operator
   and the left and right hand side of that operator.
 
@@ -82,7 +82,7 @@ defmodule Ash.Filter do
     LessThanOrEqual
   }
 
-  alias Ash.Filter.{Expression, Not, Ref}
+  alias Ash.Query.{Expression, Not, Ref}
   alias Ash.Query.{Aggregate, Function, Operator}
 
   @functions [
@@ -287,7 +287,7 @@ defmodule Ash.Filter do
       %{__function__?: true, arguments: arguments} ->
         arguments
         |> Enum.filter(fn
-          %Ash.Filter.Ref{attribute: %Aggregate{}} ->
+          %Ash.Query.Ref{attribute: %Aggregate{}} ->
             true
 
           _ ->
@@ -588,7 +588,10 @@ defmodule Ash.Filter do
         _
       ) do
     {:ok,
-     %{base | expression: Expression.optimized_new(op, base.expression, addition.expression)}}
+     %{
+       base
+       | expression: Expression.optimized_new(op, base.expression, addition.expression)
+     }}
   end
 
   def add_to_filter(%__MODULE__{} = base, statement, op, aggregates) do
@@ -973,7 +976,11 @@ defmodule Ash.Filter do
 
   defp add_expression_part(%__MODULE__{expression: adding_expression}, context, expression) do
     {:ok,
-     Expression.optimized_new(:and, expression, add_to_predicate_path(adding_expression, context))}
+     Expression.optimized_new(
+       :and,
+       expression,
+       add_to_predicate_path(adding_expression, context)
+     )}
   end
 
   defp add_expression_part(%resource{} = record, context, expression) do
@@ -1017,6 +1024,16 @@ defmodule Ash.Filter do
       {:error, error} ->
         {:error, error}
     end
+  end
+
+  defp add_expression_part({%Ref{} = ref, nested_statement}, context, expression) do
+    new_context = %{
+      relationship_path: ref.relationship_path,
+      resource: Ash.Resource.related(context.resource, ref.relationship_path),
+      aggregates: context.aggregates
+    }
+
+    add_expression_part({ref.attribute.name, nested_statement}, new_context, expression)
   end
 
   defp add_expression_part({field, nested_statement}, context, expression)
@@ -1115,8 +1132,11 @@ defmodule Ash.Filter do
       end
     end)
     |> case do
-      {:ok, new_expression} -> {:ok, Expression.optimized_new(:and, expression, new_expression)}
-      {:error, error} -> {:error, error}
+      {:ok, new_expression} ->
+        {:ok, Expression.optimized_new(:and, expression, new_expression)}
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 
@@ -1147,7 +1167,11 @@ defmodule Ash.Filter do
     end
   end
 
-  defp validate_data_layers_support_boolean_filters(%Expression{op: :or, left: left, right: right}) do
+  defp validate_data_layers_support_boolean_filters(%Expression{
+         op: :or,
+         left: left,
+         right: right
+       }) do
     left_resources =
       left
       |> map(fn

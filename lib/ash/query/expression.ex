@@ -1,4 +1,4 @@
-defmodule Ash.Filter.Expression do
+defmodule Ash.Query.Expression do
   @moduledoc "Represents a boolean expression"
 
   alias Ash.Query.Operator.{Eq, In}
@@ -61,7 +61,7 @@ defmodule Ash.Filter.Expression do
   end
 end
 
-defimpl Inspect, for: Ash.Filter.Expression do
+defimpl Inspect, for: Ash.Query.Expression do
   import Inspect.Algebra
 
   def inspect(

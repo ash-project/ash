@@ -5,7 +5,7 @@ defmodule Ash.Filter.Runtime do
   We can't always tell if a record matches a filter statement, and as such
   this function may return `:unknown`
   """
-  alias Ash.Filter.{Expression, Not, Ref}
+  alias Ash.Query.{Expression, Not, Ref}
 
   @doc """
   Checks if a record matches a filter, side loading any necessary relationships"
@@ -51,7 +51,7 @@ defmodule Ash.Filter.Runtime do
            left
            |> resolve_ref(record)
            |> Enum.any?(fn left_resolved ->
-             op.match?(%{operator | left: left_resolved, right: right_resolved})
+             op.evaluate(%{operator | left: left_resolved, right: right_resolved})
            end)}
         else
           false ->
@@ -73,7 +73,7 @@ defmodule Ash.Filter.Runtime do
            |> Enum.map(&resolve_ref(&1, record))
            |> unique_calls()
            |> Enum.any?(fn args ->
-             func.match?(%{function | arguments: args})
+             func.evaluate(%{function | arguments: args})
            end)}
         else
           false ->
@@ -142,7 +142,7 @@ defmodule Ash.Filter.Runtime do
     |> Enum.map(& &1.relationship_path)
   end
 
-  defp ref?(%Ash.Filter.Ref{}), do: true
+  defp ref?(%Ash.Query.Ref{}), do: true
   defp ref?(_), do: false
 
   defp expression_matches(:and, left, right, record, dirty_fields, side_loads) do

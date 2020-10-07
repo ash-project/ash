@@ -4,7 +4,7 @@ defmodule Ash.Query.Operator.LessThanOrEqual do
 
   In comparison, simplifies to `left < right + 1`, so it will never need to be compared against.
   """
-  use Ash.Query.Operator, operator: :<=
+  use Ash.Query.Operator, operator: :<=, predicate?: true
 
   def new(%Ref{attribute: %{type: type}} = left, right) do
     case Ash.Type.cast_input(type, right) do
@@ -17,7 +17,7 @@ defmodule Ash.Query.Operator.LessThanOrEqual do
     {:known, left <= right}
   end
 
-  def match?(%{left: left, right: right}) do
+  def evaluate(%{left: left, right: right}) do
     left <= right
   end
 

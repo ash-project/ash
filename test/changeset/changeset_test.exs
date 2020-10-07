@@ -414,7 +414,9 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         |> Ash.Query.filter(id: author.id)
         |> Api.read!()
 
-      assert [post1] = author.posts
+      assert [author_post] = author.posts
+
+      assert author_post.id == post1.id
 
       changeset =
         author
@@ -433,7 +435,9 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         |> Ash.Query.filter(id: author.id)
         |> Api.read!()
 
-      assert [post1] = author.posts
+      assert [author_post] = author.posts
+
+      assert author_post.id == post2.id
     end
 
     test "it accepts value of single attribute primary_key as a second param" do
@@ -576,7 +580,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         |> Ash.Query.filter(id: author.id)
         |> Api.read!()
 
-      assert [post2, post1] = fetched_author.composite_key_posts
+      assert Enum.sort(Enum.map(fetched_author.composite_key_posts, & &1.id)) ==
+               Enum.sort([post1.id, post2.id])
     end
 
     test "it returns error if one of relationship entities is invalid" do

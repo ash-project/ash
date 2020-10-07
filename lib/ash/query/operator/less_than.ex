@@ -13,7 +13,7 @@ defmodule Ash.Query.Operator.LessThan do
   right side's are greater than or equal to it.
   """
 
-  use Ash.Query.Operator, operator: :<
+  use Ash.Query.Operator, operator: :<, predicate?: true
 
   alias Ash.Query.Operator.{Eq, IsNil}
 
@@ -28,7 +28,7 @@ defmodule Ash.Query.Operator.LessThan do
     {:known, left < right}
   end
 
-  def match?(%{left: left, right: right}) do
+  def evaluate(%{left: left, right: right}) do
     left < right
   end
 

@@ -24,17 +24,6 @@ defmodule Ash.Query.Operator do
   """
   @callback to_string(struct, Inspect.Opts.t()) :: term
 
-  @doc """
-  Return true or false if the left and right match the operator.
-
-  Any references are resolved before being passed in.
-
-  If this is not defined, it will be assumed that data does not match.
-  """
-  @callback match?(term, term) :: boolean
-
-  @optional_callbacks match?: 2
-
   @doc "Create a new operator. Pass the module and the left and right values"
   def new(mod, left, right) do
     case mod.new(left, right) do
@@ -57,14 +46,22 @@ defmodule Ash.Query.Operator do
         operator: unquote(opts[:operator]),
         embedded?: false,
         __operator__?: true,
-        __predicate__?: true
+        __predicate__?: unquote(opts[:predicate?] || false)
       ]
 
-      @behaviour Ash.Filter.Predicate
+      if unquote(opts[:predicate?]) do
+        @behaviour Ash.Filter.Predicate
+      end
 
-      alias Ash.Filter.Ref
+      alias Ash.Query.Ref
 
       def operator, do: unquote(opts[:operator])
+
+      if unquote(opts[:predicate?]) do
+        def match?(struct) do
+          evaluate(struct) not in [nil, false]
+        end
+      end
 
       import Inspect.Algebra
 

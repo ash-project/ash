@@ -1,4 +1,4 @@
-defmodule Ash.Filter.Not do
+defmodule Ash.Query.Not do
   @moduledoc "Represents the negation of the contained expression"
   defstruct [:expression]
 
