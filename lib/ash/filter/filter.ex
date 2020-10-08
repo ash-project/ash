@@ -1171,31 +1171,7 @@ defmodule Ash.Filter do
             {:halt, {:error, "Invalid reference #{inspect(ref)}"}}
 
           related ->
-            cond do
-              Map.has_key?(aggregates, attribute) ->
-                {:cont, {:ok, [%{ref | attribute: Map.get(aggregates, attribute)} | acc]}}
-
-              attribute = Ash.Resource.attribute(related, attribute) ->
-                {:cont, {:ok, [%{ref | attribute: attribute} | acc]}}
-
-              relationship = Ash.Resource.relationship(related, attribute) ->
-                case Ash.Resource.primary_key(relationship.destination) do
-                  [key] ->
-                    new_ref = %{
-                      ref
-                      | relationship_path: ref.relationship_path ++ [relationship.name],
-                        attribute: Ash.Resource.attribute(relationship.destination, key)
-                    }
-
-                    {:cont, {:ok, [new_ref | acc]}}
-
-                  _ ->
-                    {:halt, {:error, "Invalid reference #{inspect(ref)}"}}
-                end
-
-              true ->
-                {:halt, {:error, "Invalid reference #{inspect(ref)}"}}
-            end
+            do_hydrate_ref(ref, attribute, related, aggregates, acc)
         end
 
       other, {:ok, acc} ->
@@ -1204,6 +1180,34 @@ defmodule Ash.Filter do
     |> case do
       {:ok, refs} -> {:ok, Enum.reverse(refs)}
       {:error, error} -> {:error, error}
+    end
+  end
+
+  defp do_hydrate_ref(ref, attribute, related, aggregates, acc) do
+    cond do
+      Map.has_key?(aggregates, attribute) ->
+        {:cont, {:ok, [%{ref | attribute: Map.get(aggregates, attribute)} | acc]}}
+
+      attribute = Ash.Resource.attribute(related, attribute) ->
+        {:cont, {:ok, [%{ref | attribute: attribute} | acc]}}
+
+      relationship = Ash.Resource.relationship(related, attribute) ->
+        case Ash.Resource.primary_key(relationship.destination) do
+          [key] ->
+            new_ref = %{
+              ref
+              | relationship_path: ref.relationship_path ++ [relationship.name],
+                attribute: Ash.Resource.attribute(relationship.destination, key)
+            }
+
+            {:cont, {:ok, [new_ref | acc]}}
+
+          _ ->
+            {:halt, {:error, "Invalid reference #{inspect(ref)}"}}
+        end
+
+      true ->
+        {:halt, {:error, "Invalid reference #{inspect(ref)}"}}
     end
   end
 
