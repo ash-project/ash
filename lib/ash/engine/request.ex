@@ -9,6 +9,8 @@ defmodule Ash.Engine.Request do
   alias Ash.Error.Framework.AssumptionFailed
   alias Ash.Error.Invalid.{DuplicatedPath, ImpossiblePath}
 
+  require Ash.Query
+
   defmodule UnresolvedField do
     @moduledoc """
     Represents an unresolved field to be resolved by the engine
@@ -611,8 +613,8 @@ defmodule Ash.Engine.Request do
 
     new_query =
       request.query
-      |> Ash.Query.filter(primary_key_filter)
-      |> Ash.Query.filter(filter)
+      |> Ash.Query.filter(^primary_key_filter)
+      |> Ash.Query.filter(^filter)
 
     request.api.read(new_query)
     |> case do

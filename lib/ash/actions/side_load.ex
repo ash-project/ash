@@ -4,6 +4,8 @@ defmodule Ash.Actions.SideLoad do
   alias Ash.Engine
   alias Ash.Engine.Request
 
+  require Ash.Query
+
   def requests(
         query,
         use_data_for_filter? \\ true,
@@ -286,7 +288,7 @@ defmodule Ash.Actions.SideLoad do
                 related_query
 
               authorization_filter ->
-                Ash.Query.filter(related_query, authorization_filter)
+                Ash.Query.filter(related_query, ^authorization_filter)
             end
 
           with {:ok, new_query} <-
@@ -387,7 +389,7 @@ defmodule Ash.Actions.SideLoad do
                     related_query
 
                   authorization_filter ->
-                    Ash.Query.filter(related_query, authorization_filter)
+                    Ash.Query.filter(related_query, ^authorization_filter)
                 end
 
               with {:ok, new_query} <-
@@ -496,15 +498,15 @@ defmodule Ash.Actions.SideLoad do
         related_query
         |> Ash.Query.unset(:side_load)
         |> Ash.Query.filter(
-          put_nested_relationship(
+          ^put_nested_relationship(
             [],
             reverse_path,
             root_data_filter,
             false
           )
         )
-        |> Ash.Query.filter(put_nested_relationship([], reverse_path, parsed, false))
-        |> Ash.Query.filter(related_query.filter)
+        |> Ash.Query.filter(^put_nested_relationship([], reverse_path, parsed, false))
+        |> Ash.Query.filter(^related_query.filter)
         |> extract_errors()
 
       {:error, error} ->
@@ -547,7 +549,7 @@ defmodule Ash.Actions.SideLoad do
         _ ->
           relationship.destination
           |> Ash.Query.new(related_query.api)
-          |> Ash.Query.filter(related_query.filter)
+          |> Ash.Query.filter(^related_query.filter)
           |> extract_errors()
       end
     end)
@@ -566,7 +568,7 @@ defmodule Ash.Actions.SideLoad do
           {:ok, parsed} ->
             related_query
             |> Ash.Query.filter(
-              put_nested_relationship(
+              ^put_nested_relationship(
                 [],
                 reverse_path,
                 parsed,
@@ -652,7 +654,7 @@ defmodule Ash.Actions.SideLoad do
 
         new_query =
           query
-          |> Ash.Query.filter([{relationship.destination_field, filter_value}])
+          |> Ash.Query.filter(^[{relationship.destination_field, filter_value}])
 
         {:ok, new_query}
     end

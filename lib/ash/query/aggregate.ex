@@ -17,6 +17,8 @@ defmodule Ash.Query.Aggregate do
   @type t :: %__MODULE__{}
   @type kind :: unquote(Enum.reduce(@kinds, &{:|, [], [&1, &2]}))
 
+  require Ash.Query
+
   @doc false
   def kinds, do: @kinds
 
@@ -180,14 +182,19 @@ defmodule Ash.Query.Aggregate do
               query =
                 case records do
                   [record] ->
+                    filter = record |> Map.take(pkey) |> Enum.to_list()
+
                     Ash.Query.filter(
                       initial_query,
-                      record |> Map.take(pkey) |> Enum.to_list()
+                      ^filter
                     )
 
                   records ->
-                    Ash.Query.filter(initial_query,
-                      or: [Enum.map(records, &Map.take(&1, pkey))]
+                    filter = [or: [Enum.map(records, &Map.take(&1, pkey))]]
+
+                    Ash.Query.filter(
+                      initial_query,
+                      ^filter
                     )
                 end
 
@@ -199,7 +206,7 @@ defmodule Ash.Query.Aggregate do
 
                     filter ->
                       Enum.map(aggregates, fn aggregate ->
-                        %{aggregate | query: Ash.Query.filter(aggregate.query, filter)}
+                        %{aggregate | query: Ash.Query.filter(aggregate.query, ^filter)}
                       end)
                   end
                 else
@@ -279,7 +286,7 @@ defmodule Ash.Query.Aggregate do
               reverse_relationship
             )
 
-          {:ok, Ash.Query.filter(resource, filter)}
+          {:ok, Ash.Query.filter(resource, ^filter)}
         else
           {:ok, data_query}
         end

@@ -4,9 +4,15 @@ defmodule Ash.Query.Ref do
 
   defimpl Inspect do
     def inspect(ref, _opts) do
+      name =
+        case ref.attribute do
+          %{name: name} -> name
+          name -> name
+        end
+
       case ref.relationship_path do
-        [] -> "#{ref.attribute.name}"
-        path -> Enum.join(path, ".") <> "." <> "#{ref.attribute.name}"
+        [] -> "#{name}"
+        path -> Enum.join(path, ".") <> "." <> "#{name}"
       end
     end
   end

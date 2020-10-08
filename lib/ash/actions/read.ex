@@ -7,6 +7,8 @@ defmodule Ash.Actions.Read do
   alias Ash.Query.Aggregate
   require Logger
 
+  require Ash.Query
+
   def run(query, action, opts \\ []) do
     if Ash.Resource.data_layer_can?(query.resource, :read) do
       engine_opts = Keyword.take(opts, [:verbose?, :actor, :authorize?])
@@ -46,7 +48,7 @@ defmodule Ash.Actions.Read do
     else
       built_filter = Ash.Filter.build_filter_from_template(action.filter, actor)
 
-      Ash.Query.filter(query, built_filter)
+      Ash.Query.filter(query, ^built_filter)
     end
   end
 
@@ -64,18 +66,19 @@ defmodule Ash.Actions.Read do
       {:ok, [record]} ->
         pkey_value = record |> Map.take(Ash.Resource.primary_key(query.resource)) |> Map.to_list()
 
-        Ash.Query.filter(query, pkey_value)
+        Ash.Query.filter(query, ^pkey_value)
 
       {:ok, %{} = record} ->
         pkey_value = record |> Map.take(Ash.Resource.primary_key(query.resource)) |> Map.to_list()
 
-        Ash.Query.filter(query, pkey_value)
+        Ash.Query.filter(query, ^pkey_value)
 
       {:ok, records} when is_list(records) ->
         pkey = Ash.Resource.primary_key(query.resource)
         pkey_value = Enum.map(records, fn record -> record |> Map.take(pkey) |> Map.to_list() end)
 
-        Ash.Query.filter(query, or: pkey_value)
+        filter = [or: pkey_value]
+        Ash.Query.filter(query, ^filter)
     end
   end
 

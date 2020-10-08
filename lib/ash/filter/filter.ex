@@ -417,7 +417,7 @@ defmodule Ash.Filter do
 
       relationship.destination
       |> Ash.Query.new(api)
-      |> Ash.Query.filter(filter)
+      |> Ash.Query.do_filter(filter)
       |> filter_related_in(
         relationship,
         :lists.droplast(path) ++ [join_relationship]
@@ -430,13 +430,13 @@ defmodule Ash.Filter do
 
       relationship.destination
       |> Ash.Query.new(api)
-      |> Ash.Query.filter(filter)
+      |> Ash.Query.do_filter(filter)
       |> api.read()
       |> case do
         {:ok, results} ->
           relationship.through
           |> Ash.Query.new(api)
-          |> Ash.Query.filter([
+          |> Ash.Query.do_filter([
             {relationship.destination_field_on_join_table,
              in: Enum.map(results, &Map.get(&1, relationship.destination_field))}
           ])
@@ -465,7 +465,7 @@ defmodule Ash.Filter do
 
     relationship.destination
     |> Ash.Query.new(api)
-    |> Ash.Query.filter(filter)
+    |> Ash.Query.do_filter(filter)
     |> filter_related_in(relationship, :lists.droplast(path))
   end
 
@@ -638,7 +638,7 @@ defmodule Ash.Filter do
       %{resource: resource} = scoped_filter
 
       with %{errors: []} = query <- Ash.Query.new(resource, api),
-           %{errors: []} = query <- Ash.Query.filter(query, scoped_filter),
+           %{errors: []} = query <- Ash.Query.do_filter(query, scoped_filter),
            {:action, action} when not is_nil(action) <-
              {:action, Ash.Resource.primary_action(resource, :read)} do
         request =
@@ -669,7 +669,7 @@ defmodule Ash.Filter do
 
                       {:ok, reverse_relationship} ->
                         filter = put_at_path(authorization_filter, reverse_relationship)
-                        {:ok, Ash.Query.filter(query, filter)}
+                        {:ok, Ash.Query.do_filter(query, filter)}
                     end
                   else
                     {:ok, query}
@@ -1043,15 +1043,26 @@ defmodule Ash.Filter do
 
     cond do
       function_module = get_function(field, Ash.Resource.data_layer_functions(context.resource)) ->
-        case Function.new(function_module, List.wrap(nested_statement), %Ref{
-               relationship_path: context.relationship_path,
-               resource: context.resource
-             }) do
-          {:ok, function} ->
-            {:ok, Expression.optimized_new(:and, expression, function)}
+        with {:ok, args} <-
+               hydrate_refs(List.wrap(nested_statement), context.resource, context.aggregates),
+             {:ok, function} <-
+               Function.new(
+                 function_module,
+                 args,
+                 %Ref{
+                   relationship_path: context.relationship_path,
+                   resource: context.resource
+                 }
+               ) do
+          {:ok, Expression.optimized_new(:and, expression, function)}
+        end
 
-          {:error, error} ->
-            {:error, error}
+      (op_module = get_operator(field, Ash.Resource.data_layer_operators(context.resource))) &&
+          match?([_, _ | _], nested_statement) ->
+        with {:ok, [left, right]} <-
+               hydrate_refs(nested_statement, context.resource, context.aggregates),
+             {:ok, operator} <- Operator.new(op_module, left, right) do
+          {:ok, Expression.optimized_new(:and, expression, operator)}
         end
 
       attr = Ash.Resource.attribute(context.resource, field) ->
@@ -1149,6 +1160,51 @@ defmodule Ash.Filter do
 
   defp add_expression_part(value, _, _) do
     {:error, InvalidFilterValue.exception(value: value)}
+  end
+
+  defp hydrate_refs(list, resource, aggregates) do
+    list
+    |> Enum.reduce_while({:ok, []}, fn
+      %Ref{attribute: attribute} = ref, {:ok, acc} when is_atom(attribute) ->
+        case Ash.Resource.related(resource, ref.relationship_path) do
+          nil ->
+            {:halt, {:error, "Invalid reference #{inspect(ref)}"}}
+
+          related ->
+            cond do
+              Map.has_key?(aggregates, attribute) ->
+                {:cont, {:ok, [%{ref | attribute: Map.get(aggregates, attribute)} | acc]}}
+
+              attribute = Ash.Resource.attribute(related, attribute) ->
+                {:cont, {:ok, [%{ref | attribute: attribute} | acc]}}
+
+              relationship = Ash.Resource.relationship(related, attribute) ->
+                case Ash.Resource.primary_key(relationship.destination) do
+                  [key] ->
+                    new_ref = %{
+                      ref
+                      | relationship_path: ref.relationship_path ++ [relationship.name],
+                        attribute: Ash.Resource.attribute(relationship.destination, key)
+                    }
+
+                    {:cont, {:ok, [new_ref | acc]}}
+
+                  _ ->
+                    {:halt, {:error, "Invalid reference #{inspect(ref)}"}}
+                end
+
+              true ->
+                {:halt, {:error, "Invalid reference #{inspect(ref)}"}}
+            end
+        end
+
+      other, {:ok, acc} ->
+        {:cont, {:ok, [other | acc]}}
+    end)
+    |> case do
+      {:ok, refs} -> {:ok, Enum.reverse(refs)}
+      {:error, error} -> {:error, error}
+    end
   end
 
   defp add_aggregate_expression(context, nested_statement, field, expression) do
@@ -1269,26 +1325,27 @@ defmodule Ash.Filter do
               resource: context.resource
             }
 
-            case Operator.new(operator_module, left, value) do
-              {:ok, boolean} when is_boolean(boolean) ->
-                {:cont, {:ok, boolean}}
-
-              {:ok, operator} ->
+            with {:ok, [left, right]} <-
+                   hydrate_refs([left, value], context.resource, context.aggregates),
+                 {:ok, operator} <- Operator.new(operator_module, left, right) do
+              if is_boolean(operator) do
+                {:cont, {:ok, operator}}
+              else
                 if Ash.Resource.data_layer_can?(context.resource, {:filter_operator, operator}) do
                   {:cont, {:ok, Expression.optimized_new(:and, expression, operator)}}
                 else
                   {:halt,
                    {:error, "data layer does not support the operator #{inspect(operator)}"}}
                 end
-
-              {:error, error} ->
-                {:halt, {:error, error}}
+              end
+            else
+              {:error, error} -> {:halt, {:error, error}}
             end
         end
       end)
     else
       error = InvalidFilterValue.exception(value: values)
-      {:halt, error}
+      {:error, error}
     end
   end
 

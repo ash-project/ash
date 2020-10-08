@@ -4,6 +4,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
   alias Ash.Changeset
 
+  require Ash.Query
+
   defmodule Category do
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
 
@@ -411,7 +413,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       [author] =
         Author
         |> Ash.Query.load(posts: [:author])
-        |> Ash.Query.filter(id: author.id)
+        |> Ash.Query.filter(id == ^author.id)
         |> Api.read!()
 
       assert [author_post] = author.posts
@@ -432,7 +434,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       [author] =
         Author
         |> Ash.Query.load(posts: [:author])
-        |> Ash.Query.filter(id: author.id)
+        |> Ash.Query.filter(id == ^author.id)
         |> Api.read!()
 
       assert [author_post] = author.posts
@@ -491,7 +493,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       [fetched_post] =
         CompositeKeyPost
         |> Ash.Query.load(author: :composite_key_posts)
-        |> Ash.Query.filter(id: post1.id, serial: post1.serial)
+        |> Ash.Query.filter(id == ^post1.id and serial == ^post1.serial)
         |> Api.read!()
 
       assert author == fetched_post.author
@@ -534,7 +536,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       [fetched_post] =
         CompositeKeyPost
         |> Ash.Query.load(author: :composite_key_posts)
-        |> Ash.Query.filter(id: post1.id, serial: post1.serial)
+        |> Ash.Query.filter(id == ^post1.id and serial == ^post1.serial)
         |> Api.read!()
 
       assert author == fetched_post.author
@@ -577,7 +579,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       [fetched_author] =
         Author
         |> Ash.Query.load(:composite_key_posts)
-        |> Ash.Query.filter(id: author.id)
+        |> Ash.Query.filter(id == ^author.id)
         |> Api.read!()
 
       assert Enum.sort(Enum.map(fetched_author.composite_key_posts, & &1.id)) ==

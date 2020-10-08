@@ -4,6 +4,8 @@ defmodule Ash.Test.Filter.FilterTest do
 
   alias Ash.Filter
 
+  require Ash.Query
+
   defmodule Profile do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -179,21 +181,21 @@ defmodule Ash.Test.Filter.FilterTest do
     test "single filter field", %{post1: post1} do
       assert [^post1] =
                Post
-               |> Ash.Query.filter(title: post1.title)
+               |> Ash.Query.filter(title == ^post1.title)
                |> Api.read!()
     end
 
     test "multiple filter field matches", %{post1: post1} do
       assert [^post1] =
                Post
-               |> Ash.Query.filter(title: post1.title, contents: post1.contents)
+               |> Ash.Query.filter(title == ^post1.title and contents == ^post1.contents)
                |> Api.read!()
     end
 
     test "no field matches" do
       assert [] =
                Post
-               |> Ash.Query.filter(title: "no match")
+               |> Ash.Query.filter(title == "no match")
                |> Api.read!()
     end
 
@@ -203,7 +205,7 @@ defmodule Ash.Test.Filter.FilterTest do
     } do
       assert [] =
                Post
-               |> Ash.Query.filter(title: post1.title, contents: post2.contents)
+               |> Ash.Query.filter(title == ^post1.title and contents == ^post2.contents)
                |> Api.read!()
     end
 
@@ -213,12 +215,12 @@ defmodule Ash.Test.Filter.FilterTest do
     } do
       assert [^post1] =
                Post
-               |> Ash.Query.filter(points: [lt: 2])
+               |> Ash.Query.filter(points < 2)
                |> Api.read!()
 
       assert [^post1, ^post2] =
                Post
-               |> Ash.Query.filter(points: [lt: 3])
+               |> Ash.Query.filter(points < 3)
                |> Ash.Query.sort(points: :asc)
                |> Api.read!()
     end
@@ -229,12 +231,12 @@ defmodule Ash.Test.Filter.FilterTest do
     } do
       assert [^post2] =
                Post
-               |> Ash.Query.filter(points: [gt: 1])
+               |> Ash.Query.filter(points > 1)
                |> Api.read!()
 
       assert [^post1, ^post2] =
                Post
-               |> Ash.Query.filter(points: [gt: 0])
+               |> Ash.Query.filter(points > 0)
                |> Ash.Query.sort(points: :asc)
                |> Api.read!()
     end
@@ -303,28 +305,28 @@ defmodule Ash.Test.Filter.FilterTest do
     test "filtering on a has_one relationship", %{profile2: profile2, user2: user2} do
       assert [^user2] =
                User
-               |> Ash.Query.filter(profile: profile2.id)
+               |> Ash.Query.filter(profile == ^profile2.id)
                |> Api.read!()
     end
 
     test "filtering on a belongs_to relationship", %{profile1: profile1, user1: user1} do
       assert [^profile1] =
                Profile
-               |> Ash.Query.filter(user: user1.id)
+               |> Ash.Query.filter(user == ^user1.id)
                |> Api.read!()
     end
 
     test "filtering on a has_many relationship", %{user2: user2, post2: post2} do
       assert [^user2] =
                User
-               |> Ash.Query.filter(posts: post2.id)
+               |> Ash.Query.filter(posts == ^post2.id)
                |> Api.read!()
     end
 
     test "filtering on a many_to_many relationship", %{post4: post4, post3: post3} do
       assert [^post4] =
                Post
-               |> Ash.Query.filter(related_posts: post3.id)
+               |> Ash.Query.filter(related_posts == ^post3.id)
                |> Api.read!()
     end
   end

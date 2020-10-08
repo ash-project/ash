@@ -27,6 +27,8 @@ defmodule Ash.Api do
   alias Ash.Actions.{Create, Destroy, Read, Update}
   alias Ash.Error.Invalid.{InvalidPrimaryKey, NoPrimaryAction, NoSuchAction, NoSuchResource}
 
+  require Ash.Query
+
   @global_opts [
     verbose?: [
       type: :boolean,
@@ -288,7 +290,7 @@ defmodule Ash.Api do
       query =
         resource
         |> Ash.Query.new(api)
-        |> Ash.Query.filter(filter)
+        |> Ash.Query.filter(^filter)
         |> Ash.Query.load(opts[:load] || [])
 
       query

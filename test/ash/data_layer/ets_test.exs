@@ -5,6 +5,8 @@ defmodule Ash.DataLayer.EtsTest do
   alias Ash.DataLayer.Ets.Query
   alias Ash.Query.Operator.{Eq, GreaterThan, In, LessThan}
 
+  require Ash.Query
+
   setup do
     on_exit(fn ->
       case ETS.Set.wrap_existing(EtsTestUser) do
@@ -238,7 +240,7 @@ defmodule Ash.DataLayer.EtsTest do
     EtsTestUser
     |> Ash.Query.new()
     |> Ash.Query.sort(:name)
-    |> Ash.Query.filter(filter)
+    |> Ash.Query.filter(^filter)
     |> EtsApiTest.read!()
   end
 

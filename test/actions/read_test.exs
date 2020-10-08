@@ -2,6 +2,8 @@ defmodule Ash.Test.Actions.ReadTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  require Ash.Query
+
   defmodule Author do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -192,7 +194,7 @@ defmodule Ash.Test.Actions.ReadTest do
         ~r/Invalid filter value `10` supplied in `title == 10`: Could not be casted to type Ash.Type.String/,
         fn ->
           Post
-          |> Ash.Query.filter(title: 10)
+          |> Ash.Query.filter(title == 10)
           |> Api.read!()
         end
       )
@@ -217,21 +219,21 @@ defmodule Ash.Test.Actions.ReadTest do
     test "a filter that matches nothing returns no results" do
       assert {:ok, []} =
                Post
-               |> Ash.Query.filter(contents: "not_yeet")
+               |> Ash.Query.filter(contents == "not_yeet")
                |> Api.read()
     end
 
     test "a filter returns only matching records", %{post1: post1} do
       assert {:ok, [^post1]} =
                Post
-               |> Ash.Query.filter(title: post1.title)
+               |> Ash.Query.filter(title == ^post1.title)
                |> Api.read()
     end
 
     test "a filter returns multiple records if they match", %{post1: post1, post2: post2} do
       assert {:ok, [_, _] = results} =
                Post
-               |> Ash.Query.filter(contents: "yeet")
+               |> Ash.Query.filter(contents == "yeet")
                |> Api.read()
 
       assert post1 in results

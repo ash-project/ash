@@ -2,6 +2,7 @@ defmodule Ash.Actions.Relationships do
   @moduledoc false
   alias Ash.Changeset
   alias Ash.Engine.Request
+  require Ash.Query
 
   def handle_relationship_changes(changeset) do
     Enum.reduce(changeset.relationships, changeset, fn {name, data}, changeset ->
@@ -135,7 +136,7 @@ defmodule Ash.Actions.Relationships do
           end
       end
 
-    query = Ash.Query.filter(destination, filter)
+    query = Ash.Query.filter(destination, ^filter)
 
     dependencies =
       if possible? do
@@ -698,7 +699,7 @@ defmodule Ash.Actions.Relationships do
         resource: destination,
         action: Ash.Resource.primary_action!(relationship.destination, :read),
         path: [:relationships, relationship.name, :current],
-        query: Ash.Query.filter(destination, filter_statement),
+        query: Ash.Query.filter(destination, ^filter_statement),
         data:
           Request.resolve([[:relationships, relationship.name, :current, :query]], fn data ->
             query = get_in(data, [:relationships, relationship.name, :current, :query])
@@ -724,7 +725,7 @@ defmodule Ash.Actions.Relationships do
       resource: through,
       action: Ash.Resource.primary_action!(relationship.destination, :read),
       path: [:relationships, relationship.name, :current_join],
-      query: Ash.Query.filter(through, filter_statement),
+      query: Ash.Query.filter(through, ^filter_statement),
       data:
         Request.resolve([[:relationships, relationship.name, :current_join, :query]], fn data ->
           query = get_in(data, [:relationships, relationship.name, :current_join, :query])
@@ -755,7 +756,7 @@ defmodule Ash.Actions.Relationships do
             {:ok,
              relationship.destination
              |> Ash.Query.new(api)
-             |> Ash.Query.filter(filter_statement)}
+             |> Ash.Query.filter(^filter_statement)}
           end
         ),
       data:

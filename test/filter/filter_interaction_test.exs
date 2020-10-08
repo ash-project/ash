@@ -5,6 +5,8 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
   alias Ash.DataLayer.Mnesia
 
+  require Ash.Query
+
   defmodule Profile do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -180,7 +182,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
       query =
         Post
-        |> Ash.Query.filter(author: [name: "best author"])
+        |> Ash.Query.filter(author.name == "best author")
 
       assert [^post1] = Api.read!(query)
     end
@@ -203,7 +205,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
       query =
         Post
-        |> Ash.Query.filter(related_posts: [title: "two"])
+        |> Ash.Query.filter(related_posts.title == "two")
 
       post1 = Api.reload!(post1)
 
@@ -229,11 +231,11 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
       posts_query =
         Post
-        |> Ash.Query.filter(title: "three")
+        |> Ash.Query.filter(title == "three")
 
       query =
         Post
-        |> Ash.Query.filter(related_posts: [title: "two"])
+        |> Ash.Query.filter(related_posts.title == "two")
         |> Ash.Query.load(related_posts: posts_query)
 
       post1_id = post1.id

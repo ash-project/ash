@@ -2,6 +2,8 @@ defmodule Ash.Test.Actions.SideLoadTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  require Ash.Query
+
   defmodule Author do
     @moduledoc false
     use Ash.Resource,
@@ -145,7 +147,7 @@ defmodule Ash.Test.Actions.SideLoadTest do
       [author] =
         Author
         |> Ash.Query.load(posts: [:author])
-        |> Ash.Query.filter(posts: [id: post1.id])
+        |> Ash.Query.filter(posts.id == ^post1.id)
         |> Api.read!(authorize?: true)
 
       assert Enum.sort(Enum.map(author.posts, &Map.get(&1, :id))) ==
@@ -176,7 +178,7 @@ defmodule Ash.Test.Actions.SideLoadTest do
       [post] =
         Post
         |> Ash.Query.load(:categories)
-        |> Ash.Query.filter(id: post.id)
+        |> Ash.Query.filter(id == ^post.id)
         |> Api.read!(authorize?: true)
 
       assert [%{id: id1}, %{id: id2}] = post.categories
@@ -204,7 +206,7 @@ defmodule Ash.Test.Actions.SideLoadTest do
       [post] =
         Post
         |> Ash.Query.load(categories: :posts)
-        |> Ash.Query.filter(id: post.id)
+        |> Ash.Query.filter(id == ^post.id)
         |> Api.read!(authorize?: true)
 
       post_id = post.id

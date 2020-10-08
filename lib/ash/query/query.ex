@@ -86,6 +86,47 @@ defmodule Ash.Query do
   alias Ash.Error.SideLoad.{InvalidQuery, NoSuchRelationship}
   alias Ash.Query.{Aggregate, Calculation}
 
+  @doc """
+  Attach a filter statement to the query.
+
+  The filter is applied as an "and" to any filters currently on the query.
+  For more information on writing filters, see: `Ash.Filter`.
+  """
+  defmacro filter(query, %Ash.Filter{} = filter) do
+    quote do
+      Ash.Query.do_filter(unquote(query), unquote(filter))
+    end
+  end
+
+  defmacro filter(query, nil), do: query
+  defmacro filter(query, true), do: query
+
+  defmacro filter(query, false) do
+    quote do
+      Ash.Query.do_filter(unquote(query), false)
+    end
+  end
+
+  defmacro filter(query, do: body) do
+    quote do
+      Ash.Query.do_filter(unquote(query), unquote(body))
+    end
+  end
+
+  defmacro filter(query, expression) do
+    if Keyword.keyword?(expression) do
+      quote do
+        Ash.Query.do_filter(unquote(query), unquote(expression))
+      end
+    else
+      expr = do_expr(expression)
+
+      quote do
+        Ash.Query.do_filter(unquote(query), List.wrap(unquote(expr)))
+      end
+    end
+  end
+
   @doc "Create a new query"
   def new(resource, api \\ nil)
   def new(%__MODULE__{} = query, _), do: query
@@ -115,9 +156,77 @@ defmodule Ash.Query do
               other
           end)
 
-        filter(query, filter)
+        do_filter(query, filter)
     end
   end
+
+  defmacro expr(do: body) do
+    quote do
+      Ash.Query.expr(unquote(body))
+    end
+  end
+
+  defmacro expr({var, _, context} = binding) when is_atom(var) and is_atom(context) do
+    quote do
+      unquote(binding)
+    end
+  end
+
+  defmacro expr(body) do
+    if Keyword.keyword?(body) do
+      quote do
+        unquote(body)
+      end
+    else
+      quote do
+        List.wrap(unquote(do_expr(body)))
+      end
+    end
+  end
+
+  defp do_expr({:^, _, [var]}), do: var
+
+  defp do_expr({:., _, [left, right]} = ref) when is_atom(right) do
+    case do_ref(left, right) do
+      %Ash.Query.Ref{} = ref ->
+        Macro.escape(ref)
+
+      :error ->
+        raise "Invalid reference! #{Macro.to_string(ref)}"
+    end
+  end
+
+  defp do_expr({op, _, nil}) when is_atom(op) do
+    Macro.escape(%Ash.Query.Ref{relationship_path: [], attribute: op})
+  end
+
+  defp do_expr({op, _, args}) when is_atom(op) and is_list(args) do
+    {op, Enum.map(args, &do_expr(&1))}
+  end
+
+  defp do_expr({left, _, _}) when is_tuple(left), do: do_expr(left)
+
+  defp do_expr(other), do: other
+
+  defp do_ref({_, _, list}, _right) when is_list(list) do
+    :error
+  end
+
+  defp do_ref({left, _, _}, right) when is_atom(left) and is_atom(right) do
+    %Ash.Query.Ref{relationship_path: [left], attribute: right}
+  end
+
+  defp do_ref({:., _, [left, right]}, far_right) do
+    case do_ref(left, right) do
+      %Ash.Query.Ref{relationship_path: path, attribute: attribute} = ref ->
+        %{ref | relationship_path: path ++ [attribute], attribute: far_right}
+
+      :error ->
+        :error
+    end
+  end
+
+  defp do_ref(_left, _right), do: :error
 
   @doc """
   Loads named calculations or aggregates on the resource.
@@ -368,7 +477,7 @@ defmodule Ash.Query do
   def build(resource, api \\ nil, keyword) do
     Enum.reduce(keyword, new(resource, api), fn
       {:filter, value}, query ->
-        filter(query, value)
+        do_filter(query, value)
 
       {:sort, value}, query ->
         sort(query, value)
@@ -593,16 +702,8 @@ defmodule Ash.Query do
     end)
   end
 
-  @doc """
-  Attach a filter statement to the query.
-
-  The filter is applied as an "and" to any filters currently on the query.
-  For more information on writing filters, see: `Ash.Filter`.
-  """
-  @spec filter(t() | Ash.resource(), nil | false | Ash.filter() | Keyword.t()) :: t()
-  def filter(query, nil), do: to_query(query)
-
-  def filter(query, %Ash.Filter{} = filter) do
+  @doc false
+  def do_filter(query, %Ash.Filter{} = filter) do
     query = to_query(query)
 
     if Ash.Resource.data_layer_can?(query.resource, :filter) do
@@ -627,7 +728,7 @@ defmodule Ash.Query do
     end
   end
 
-  def filter(query, statement) do
+  def do_filter(query, statement) do
     query = to_query(query)
 
     if Ash.Resource.data_layer_can?(query.resource, :filter) do
