@@ -17,13 +17,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - elixir: 1.8.2
-            otp: 22.3.4.8
           - elixir: 1.9.4
             otp: 22.3.4.8
           - elixir: 1.10.4
             otp: 22.3.4.8
           - elixir: 1.10.4
+            otp: 23.0.3
+          - elixir: 1.11.0
             otp: 23.0.3
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

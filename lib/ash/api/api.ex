@@ -238,6 +238,7 @@ defmodule Ash.Api do
       @on_load :on_load
 
       ash_dsl_config = Macro.escape(Extension.set_state())
+
       @doc false
       def ash_dsl_config do
         unquote(ash_dsl_config)

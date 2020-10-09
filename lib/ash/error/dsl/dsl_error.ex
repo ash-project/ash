@@ -12,8 +12,6 @@ defmodule Ash.Error.Dsl.DslError do
   end
 
   defp normalize_module_name(module) do
-    module
-    |> to_string()
-    |> String.replace("Elixir.", "")
+    inspect(module)
   end
 end

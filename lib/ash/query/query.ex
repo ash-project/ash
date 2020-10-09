@@ -11,7 +11,7 @@ defmodule Ash.Query do
 
   ```elixir
   MyApp.Post
-  |> Query.filter(likes: [gt: 10])
+  |> Query.filter(likes > 10)
   |> Query.sort([:title])
   |> MyApp.Api.read!()
 

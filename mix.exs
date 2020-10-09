@@ -13,7 +13,7 @@ defmodule Ash.MixProject do
     [
       app: :ash,
       version: @version,
-      elixir: "~> 1.8",
+      elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       package: package(),
@@ -36,11 +36,12 @@ defmodule Ash.MixProject do
   defp docs do
     # The main page in the docs
     [
-      main: "Ash",
+      main: "readme",
       source_ref: "v#{@version}",
       logo: "logos/small-logo.png",
       extra_section: "GUIDES",
       extras: [
+        "README.md",
         "documentation/introduction/getting_started.md",
         "documentation/topics/authorization.md",
         "documentation/topics/validation.md",
