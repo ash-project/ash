@@ -27,12 +27,12 @@ end
 
 ## Guides
 
-- [Resource DSL Documentation](Ash.Resource.Dsl.html)
-- [Api DSL Documentation](Ash.Api.Dsl.html)
-- [Api interface documentation](Ash.Api.html)
-- [Query Documentation](Ash.Query.html)
-- [Changeset Documentation](Ash.Changeset.html)
-- [Guides](getting_started.html)
+- [Resource DSL Documentation](https://hexdocs.pm/ash/Ash.Resource.Dsl.html)
+- [Api DSL Documentation](https://hexdocs.pm/ash/Ash.Api.Dsl.html)
+- [Api interface documentation](https://hexdocs.pm/ash/Ash.Api.html)
+- [Query Documentation](https://hexdocs.pm/ash/Ash.Query.html)
+- [Changeset Documentation](https://hexdocs.pm/ash/Ash.Changeset.html)
+- [Guides](https://hexdocs.pm/ash/getting_started.html)
 - [Example Application](https://github.com/ash-project/ash_example)
 
 ## Extensions
