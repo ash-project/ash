@@ -1052,6 +1052,21 @@ defmodule Ash.Filter do
       end)
 
     cond do
+      function_module = get_function(field, Ash.Resource.data_layer_functions(context.resource)) ->
+        with {:ok, args} <-
+               hydrate_refs(List.wrap(nested_statement), context.resource, context.aggregates),
+             {:ok, function} <-
+               Function.new(
+                 function_module,
+                 args,
+                 %Ref{
+                   relationship_path: context.relationship_path,
+                   resource: context.resource
+                 }
+               ) do
+          {:ok, Expression.optimized_new(:and, expression, function)}
+        end
+
       rel = Ash.Resource.relationship(context.resource, field) ->
         context =
           context
