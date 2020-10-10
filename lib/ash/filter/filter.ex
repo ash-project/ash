@@ -1052,38 +1052,6 @@ defmodule Ash.Filter do
       end)
 
     cond do
-      function_module = get_function(field, Ash.Resource.data_layer_functions(context.resource)) ->
-        with {:ok, args} <-
-               hydrate_refs(List.wrap(nested_statement), context.resource, context.aggregates),
-             {:ok, function} <-
-               Function.new(
-                 function_module,
-                 args,
-                 %Ref{
-                   relationship_path: context.relationship_path,
-                   resource: context.resource
-                 }
-               ) do
-          {:ok, Expression.optimized_new(:and, expression, function)}
-        end
-
-      (op_module = get_operator(field, Ash.Resource.data_layer_operators(context.resource))) &&
-          match?([_, _ | _], nested_statement) ->
-        with {:ok, [left, right]} <-
-               hydrate_refs(nested_statement, context.resource, context.aggregates),
-             {:ok, operator} <- Operator.new(op_module, left, right) do
-          {:ok, Expression.optimized_new(:and, expression, operator)}
-        end
-
-      attr = Ash.Resource.attribute(context.resource, field) ->
-        case parse_predicates(nested_statement, attr, context) do
-          {:ok, nested_statement} ->
-            {:ok, Expression.optimized_new(:and, expression, nested_statement)}
-
-          {:error, error} ->
-            {:error, error}
-        end
-
       rel = Ash.Resource.relationship(context.resource, field) ->
         context =
           context
@@ -1117,6 +1085,15 @@ defmodule Ash.Filter do
           end
         end
 
+      attr = Ash.Resource.attribute(context.resource, field) ->
+        case parse_predicates(nested_statement, attr, context) do
+          {:ok, nested_statement} ->
+            {:ok, Expression.optimized_new(:and, expression, nested_statement)}
+
+          {:error, error} ->
+            {:error, error}
+        end
+
       field in aggregates ->
         field =
           if is_binary(field) do
@@ -1126,6 +1103,29 @@ defmodule Ash.Filter do
           end
 
         add_aggregate_expression(context, nested_statement, field, expression)
+
+      function_module = get_function(field, Ash.Resource.data_layer_functions(context.resource)) ->
+        with {:ok, args} <-
+               hydrate_refs(List.wrap(nested_statement), context.resource, context.aggregates),
+             {:ok, function} <-
+               Function.new(
+                 function_module,
+                 args,
+                 %Ref{
+                   relationship_path: context.relationship_path,
+                   resource: context.resource
+                 }
+               ) do
+          {:ok, Expression.optimized_new(:and, expression, function)}
+        end
+
+      (op_module = get_operator(field, Ash.Resource.data_layer_operators(context.resource))) &&
+          match?([_, _ | _], nested_statement) ->
+        with {:ok, [left, right]} <-
+               hydrate_refs(nested_statement, context.resource, context.aggregates),
+             {:ok, operator} <- Operator.new(op_module, left, right) do
+          {:ok, Expression.optimized_new(:and, expression, operator)}
+        end
 
       true ->
         {:error,
@@ -1193,15 +1193,15 @@ defmodule Ash.Filter do
     end
   end
 
-  defp do_hydrate_ref(ref, attribute, related, aggregates, acc) do
+  defp do_hydrate_ref(ref, field, related, aggregates, acc) do
     cond do
-      Map.has_key?(aggregates, attribute) ->
-        {:cont, {:ok, [%{ref | attribute: Map.get(aggregates, attribute)} | acc]}}
+      Map.has_key?(aggregates, field) ->
+        {:cont, {:ok, [%{ref | attribute: Map.get(aggregates, field)} | acc]}}
 
-      attribute = Ash.Resource.attribute(related, attribute) ->
+      attribute = Ash.Resource.attribute(related, field) ->
         {:cont, {:ok, [%{ref | attribute: attribute} | acc]}}
 
-      relationship = Ash.Resource.relationship(related, attribute) ->
+      relationship = Ash.Resource.relationship(related, field) ->
         case Ash.Resource.primary_key(relationship.destination) do
           [key] ->
             new_ref = %{

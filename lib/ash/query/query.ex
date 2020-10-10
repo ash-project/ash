@@ -226,7 +226,9 @@ defmodule Ash.Query do
     end
   end
 
-  defp do_ref(_left, _right), do: :error
+  defp do_ref(_left, _right) do
+    :error
+  end
 
   @doc """
   Loads named calculations or aggregates on the resource.

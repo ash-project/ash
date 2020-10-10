@@ -82,7 +82,7 @@ defmodule Ash.Resource do
   end
 
   def extensions(resource) do
-    :persistent_term.get({resource, :extensions})
+    :persistent_term.get({resource, :extensions}, [])
   end
 
   @spec description(Ash.resource()) :: String.t() | nil
@@ -277,7 +277,7 @@ defmodule Ash.Resource do
   @doc "The data layer of the resource, or nil if it does not have one"
   @spec data_layer(Ash.resource()) :: Ash.data_layer()
   def data_layer(resource) do
-    :persistent_term.get({resource, :data_layer})
+    :persistent_term.get({resource, :data_layer}, [])
   end
 
   @doc "Whether or not the data layer supports a specific feature"
