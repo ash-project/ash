@@ -143,7 +143,8 @@ defmodule Ash.Resource do
   end
 
   @doc "Get a relationship by name or path"
-  @spec relationship(Ash.resource(), atom | [atom]) :: Ash.relationship() | nil
+  @spec relationship(Ash.resource(), atom | String.t() | [atom | String.t()]) ::
+          Ash.relationship() | nil
   def relationship(resource, [name]) do
     relationship(resource, name)
   end

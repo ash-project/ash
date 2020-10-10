@@ -1104,21 +1104,6 @@ defmodule Ash.Filter do
 
         add_aggregate_expression(context, nested_statement, field, expression)
 
-      function_module = get_function(field, Ash.Resource.data_layer_functions(context.resource)) ->
-        with {:ok, args} <-
-               hydrate_refs(List.wrap(nested_statement), context.resource, context.aggregates),
-             {:ok, function} <-
-               Function.new(
-                 function_module,
-                 args,
-                 %Ref{
-                   relationship_path: context.relationship_path,
-                   resource: context.resource
-                 }
-               ) do
-          {:ok, Expression.optimized_new(:and, expression, function)}
-        end
-
       (op_module = get_operator(field, Ash.Resource.data_layer_operators(context.resource))) &&
           match?([_, _ | _], nested_statement) ->
         with {:ok, [left, right]} <-
