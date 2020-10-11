@@ -53,6 +53,7 @@ defmodule Ash.Test.Type.TypeTest do
     attributes do
       attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
       attribute :title, PostTitle, constraints: [max_length: 10]
+      attribute :post_type, :atom, allow_nil?: false, constraints: [one_of: [:text, :video]]
     end
 
     actions do
@@ -75,16 +76,24 @@ defmodule Ash.Test.Type.TypeTest do
   test "it accepts valid data" do
     post =
       Post
-      |> new(%{title: "foobar"})
+      |> new(%{title: "foobar", post_type: :text})
       |> Api.create!()
 
     assert post.title == "foobar"
   end
 
-  test "it rejects invalid data" do
+  test "it rejects invalid title data" do
     assert_raise(Ash.Error.Invalid, ~r/is too long, max_length is 10/, fn ->
       Post
-      |> new(%{title: "foobarbazbuzbiz"})
+      |> new(%{title: "foobarbazbuzbiz", post_type: :text})
+      |> Api.create!()
+    end)
+  end
+
+  test "it rejects invalid atom data" do
+    assert_raise(Ash.Error.Invalid, ~r/atom must be one of/, fn ->
+      Post
+      |> new(%{title: "foobar", post_type: :something_else})
       |> Api.create!()
     end)
   end
