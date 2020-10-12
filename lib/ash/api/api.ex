@@ -198,10 +198,10 @@ defmodule Ash.Api do
 
   ## Pagination
 
-  #### keyset pagination
+  #### Limit/offset pagination
   #{NimbleOptions.docs(@offset_page_opts)}
 
-  #### Limit/offset pagination
+  #### Keyset pagination
   #{NimbleOptions.docs(@keyset_page_opts)}
   """
   @callback read(Ash.query(), params :: Keyword.t()) ::
