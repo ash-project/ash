@@ -59,3 +59,7 @@ next_page = Api.read(Resource, page: [limit: 10, after: last_record.metadata.key
 - A bit more complex
 - Can't go to a specific page number
 - Going to the last page requires
+
+For more information on keyset vs offset based pagination, see:
+
+- [Offset vs Seek Pagination](https://taylorbrazelton.com/posts/2019/03/offset-vs-seek-pagination/)
