@@ -60,7 +60,8 @@ defmodule Ash.Resource.Actions.Read do
     ],
     required?: [
       type: :boolean,
-      doc: "Whether or not pagination can be disabled.",
+      doc:
+        "Whether or not pagination can be disabled. Only relevant if some pagination configuration is supplied.",
       default: true
     ]
   ]
