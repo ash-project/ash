@@ -467,7 +467,8 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.CreateJoinRelationship,
     Ash.Resource.Transformers.CachePrimaryKey,
     Ash.Resource.Transformers.SetPrimaryActions,
-    Ash.Resource.Transformers.ValidateActionTypesSupported
+    Ash.Resource.Transformers.ValidateActionTypesSupported,
+    Ash.Resource.Transformers.CountableActions
   ]
 
   use Ash.Dsl.Extension,

@@ -18,7 +18,7 @@ defmodule Ash.Resource.Transformers.CountableActions do
         {:ok, dsl_state}
 
       [action | _] ->
-        if Ash.Resource.data_layer_can?({:aggregate_query, :count}) do
+        if Ash.Resource.data_layer_can?(resource, {:query_aggregate, :count}) do
           {:ok, dsl_state}
         else
           {:error,
