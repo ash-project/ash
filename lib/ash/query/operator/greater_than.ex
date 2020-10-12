@@ -17,11 +17,17 @@ defmodule Ash.Query.Operator.GreaterThan do
     {:known, left > right}
   end
 
-  def evaluate(%{left: left, right: right}) do
+  def evaluate(%{left: left, right: right}) when is_number(left) and is_number(right) do
     left > right
   end
 
-  def simplify(%__MODULE__{left: %Ref{} = ref, right: value}) do
+  def evaluate(%{left: left, right: right}) when is_binary(left) and is_binary(right) do
+    left > right
+  end
+
+  def evaluate(_), do: :unknown
+
+  def simplify(%__MODULE__{left: %Ref{} = ref, right: value}) when is_integer(value) do
     {:ok, op} = Ash.Query.Operator.new(Ash.Query.Operator.LessThan, ref, value + 1)
 
     Ash.Query.Not.new(op)

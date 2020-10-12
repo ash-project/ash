@@ -55,6 +55,7 @@ defmodule Ash.Page.Keyset do
   defp decode_values(values) do
     {:ok,
      values
+     |> URI.decode_www_form()
      |> Base.decode64!()
      |> non_executable_binary_to_term([:safe])}
   rescue
@@ -62,21 +63,24 @@ defmodule Ash.Page.Keyset do
       {:error, e}
   end
 
-  defp filters([{field, direction, value} | rest], after_or_before) do
+  defp filters(keyset, after_or_before) do
+    [or: do_filters(keyset, after_or_before)]
+  end
+
+  defp do_filters([], _), do: []
+
+  defp do_filters([{field, direction, value} | rest], after_or_before) do
     operator = operator(after_or_before, direction)
 
-    case rest do
-      [] ->
-        [{field, [{operator, value}]}]
+    # keyset pagination is done like so
+    # (x > a) OR
+    # (x = a AND y > b) OR
+    # (x = a AND y = b AND z > c) OR
 
-      rest ->
-        [
-          and: [
-            [{field, [{operator, value}]}],
-            [or: [[{field, [{operator, value}]}], filters(rest, after_or_before)]]
-          ]
-        ]
-    end
+    [[{field, [{operator, value}]}]] ++
+      Enum.map(do_filters(rest, after_or_before), fn nested ->
+        [[{field, [eq: value]}]] ++ nested
+      end)
   end
 
   defp operator(:after, :asc), do: :gt
@@ -98,6 +102,7 @@ defmodule Ash.Page.Keyset do
     |> field_values(fields)
     |> :erlang.term_to_binary()
     |> Base.encode64()
+    |> URI.encode_www_form()
   end
 
   defp field_values(record, fields) do

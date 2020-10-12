@@ -770,6 +770,9 @@ defmodule Ash.Api do
       {:ok, %_{} = action} ->
         {:ok, action}
 
+      {:ok, nil} ->
+        get_action(resource, Keyword.delete(params, :action), type)
+
       {:ok, action} ->
         case Ash.Resource.action(resource, action, type) do
           nil ->

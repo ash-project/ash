@@ -22,6 +22,8 @@ defmodule Ash.Actions.Read do
   end
 
   def run(query, action, opts \\ []) do
+    opts = Keyword.merge(opts, Map.get(query.context, :override_api_params) || [])
+
     if Ash.Resource.data_layer_can?(query.resource, :read) do
       engine_opts = Keyword.take(opts, [:verbose?, :actor, :authorize?])
       original_query = query
