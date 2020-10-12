@@ -42,6 +42,33 @@ defmodule Ash.Actions.Sort do
     end
   end
 
+  def sorting_on_identity?(%{sort: nil}), do: false
+
+  def sorting_on_identity?(query) do
+    identity_keys =
+      query.resource
+      |> Ash.Resource.identities()
+      |> Enum.map(& &1.keys)
+
+    sort_fields = Keyword.keys(query.sort)
+
+    Enum.any?([Ash.Resource.primary_key(query.resource) | identity_keys], fn keyset ->
+      Enum.all?(keyset, &(&1 in sort_fields))
+    end)
+  end
+
+  def reverse(sort) do
+    Enum.map(sort, fn {field, direction} ->
+      case direction do
+        :asc ->
+          {field, :desc}
+
+        :desc ->
+          {field, :asc}
+      end
+    end)
+  end
+
   defp aggregate_sort(aggregates, field, order, resource, sorts, errors) do
     aggregate = Map.get(aggregates, field)
 

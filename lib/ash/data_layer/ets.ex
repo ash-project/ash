@@ -42,7 +42,7 @@ defmodule Ash.DataLayer.Ets do
 
   defmodule Query do
     @moduledoc false
-    defstruct [:resource, :filter, :limit, :sort, relationships: %{}, offset: 0, aggregates: []]
+    defstruct [:resource, :filter, :limit, :sort, relationships: %{}, offset: 0]
   end
 
   @impl true
@@ -69,6 +69,7 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, {:filter_operator, %LessThanOrEqual{}}), do: true
   def can?(_, {:filter_operator, %GreaterThanOrEqual{}}), do: true
   def can?(_, {:filter_operator, %IsNil{}}), do: true
+  def can?(_, {:query_aggregate, :count}), do: true
   def can?(_, {:sort, _}), do: true
   def can?(_, _), do: false
 
@@ -96,8 +97,22 @@ defmodule Ash.DataLayer.Ets do
   end
 
   @impl true
-  def add_aggregate(query, aggregate, _) do
-    {:ok, %{query | aggregates: [aggregate | query.aggregates]}}
+  def run_aggregate_query(query, aggregates, resource) do
+    case run_query(query, resource) do
+      {:ok, results} ->
+        Enum.reduce_while(aggregates, {:ok, %{}}, fn
+          %{kind: :count, name: name, query: query}, {:ok, acc} ->
+            value =
+              results
+              |> filter_matches(Map.get(query || %{}, :filter))
+              |> Enum.count()
+
+            {:cont, {:ok, Map.put(acc, name, value)}}
+
+          _, _ ->
+            {:halt, {:error, "unsupported aggregate"}}
+        end)
+    end
   end
 
   @impl true

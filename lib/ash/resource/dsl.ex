@@ -217,6 +217,10 @@ defmodule Ash.Resource.Dsl do
     name: :read,
     describe: """
     Declares a `read` action. For calling this action, see the `Ash.Api` documentation.
+
+    ## Pagination
+
+    #{NimbleOptions.docs(Ash.Resource.Actions.Read.pagination_schema())}
     """,
     examples: [
       "read :read_all, primary?: true"
@@ -463,7 +467,8 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.CreateJoinRelationship,
     Ash.Resource.Transformers.CachePrimaryKey,
     Ash.Resource.Transformers.SetPrimaryActions,
-    Ash.Resource.Transformers.ValidateActionTypesSupported
+    Ash.Resource.Transformers.ValidateActionTypesSupported,
+    Ash.Resource.Transformers.CountableActions
   ]
 
   use Ash.Dsl.Extension,

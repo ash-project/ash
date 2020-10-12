@@ -159,7 +159,7 @@ defmodule Ash.Actions.Relationships do
             if possible? do
               query = get_in(data, [:relationships, relationship_name, type, :query])
 
-              case changeset.api.read(query) do
+              case Ash.Actions.Read.unpaginated_read(query) do
                 {:ok, results} ->
                   {:ok, add_changes_to_results(changeset.resource, results, identifiers)}
 
@@ -703,7 +703,8 @@ defmodule Ash.Actions.Relationships do
         data:
           Request.resolve([[:relationships, relationship.name, :current, :query]], fn data ->
             query = get_in(data, [:relationships, relationship.name, :current, :query])
-            changeset.api.read(query)
+
+            Ash.Actions.Read.unpaginated_read(query)
           end),
         name: "Read related #{relationship.name} before replace"
       )
@@ -729,7 +730,7 @@ defmodule Ash.Actions.Relationships do
       data:
         Request.resolve([[:relationships, relationship.name, :current_join, :query]], fn data ->
           query = get_in(data, [:relationships, relationship.name, :current_join, :query])
-          changeset.api.read(query)
+          Ash.Actions.Read.unpaginated_read(query)
         end),
       name: "Read related join for #{relationship.name} before replace"
     )
@@ -767,7 +768,7 @@ defmodule Ash.Actions.Relationships do
                  ^name => %{current: %{query: query}}
                }
              } ->
-            api.read(query)
+            Ash.Actions.Read.unpaginated_read(query)
           end
         ),
       name: "Read related join for #{name} before replace"

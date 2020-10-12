@@ -616,7 +616,8 @@ defmodule Ash.Engine.Request do
       |> Ash.Query.filter(^primary_key_filter)
       |> Ash.Query.filter(^filter)
 
-    request.api.read(new_query)
+    new_query
+    |> Ash.Actions.Read.unpaginated_read()
     |> case do
       {:ok, results} ->
         pkey = Ash.Resource.primary_key(request.resource)

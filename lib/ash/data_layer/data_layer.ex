@@ -12,6 +12,7 @@ defmodule Ash.DataLayer do
           | {:lateral_join, Ash.resource()}
           | {:join, Ash.resource()}
           | {:aggregate, Ash.aggregate_kind()}
+          | {:query_aggregate, Ash.aggregate_kind()}
           | :aggregate_filter
           | :aggregate_sort
           | :boolean_filter
@@ -49,6 +50,18 @@ defmodule Ash.DataLayer do
   @callback run_query(Ash.data_layer_query(), Ash.resource()) ::
               {:ok, list(Ash.resource())} | {:error, term}
   @callback equal?(Ash.data_layer()) :: boolean
+  @callback run_aggregate_query(Ash.data_layer_query(), list(Ash.aggregate()), Ash.resource()) ::
+              {:ok, map} | {:error, term}
+  @callback run_aggregate_query_with_lateral_join(
+              Ash.data_layer_query(),
+              list(Ash.aggregate()),
+              [Ash.record()],
+              source_resource :: Ash.resource(),
+              destination_resource :: Ash.resource(),
+              source :: atom,
+              destination :: atom
+            ) ::
+              {:ok, list(Ash.resource())} | {:error, term}
   @callback run_query_with_lateral_join(
               Ash.data_layer_query(),
               [Ash.record()],
@@ -93,6 +106,8 @@ defmodule Ash.DataLayer do
                       functions: 1,
                       in_transaction?: 1,
                       add_aggregate: 3,
+                      run_aggregate_query: 3,
+                      run_aggregate_query_with_lateral_join: 7,
                       transform_query: 1,
                       resource_to_query: 1
 
@@ -215,10 +230,42 @@ defmodule Ash.DataLayer do
     data_layer.can?(resource, feature)
   end
 
+  @spec run_aggregate_query(Ash.data_layer_query(), list(Ash.aggregate()), Ash.resource()) ::
+          {:ok, map} | {:error, term}
+  def run_aggregate_query(query, aggregates, resource) do
+    data_layer = Ash.Resource.data_layer(resource)
+
+    if :erlang.function_exported(data_layer, :run_aggregate_query, 3) do
+      data_layer.run_aggregate_query(query, aggregates, resource)
+    else
+      {:error, "Aggregate queries not supported"}
+    end
+  end
+
   @spec run_query(Ash.data_layer_query(), central_resource :: Ash.resource()) ::
           {:ok, list(Ash.record())} | {:error, term}
   def run_query(query, central_resource) do
     Ash.Resource.data_layer(central_resource).run_query(query, central_resource)
+  end
+
+  def run_aggregate_query_with_lateral_join(
+        query,
+        aggregates,
+        root_data,
+        source_resource,
+        destination_resource,
+        source,
+        destination
+      ) do
+    Ash.Resource.data_layer(source_resource).run_query_with_lateral_join(
+      query,
+      aggregates,
+      root_data,
+      source_resource,
+      destination_resource,
+      source,
+      destination
+    )
   end
 
   def run_query_with_lateral_join(

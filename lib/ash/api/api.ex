@@ -25,9 +25,17 @@ defmodule Ash.Api do
   import Ash.OptionsHelpers, only: [merge_schemas: 3]
 
   alias Ash.Actions.{Create, Destroy, Read, Update}
-  alias Ash.Error.Invalid.{InvalidPrimaryKey, NoPrimaryAction, NoSuchAction, NoSuchResource}
+
+  alias Ash.Error.Invalid.{
+    InvalidPrimaryKey,
+    NoPrimaryAction,
+    NoSuchAction,
+    NoSuchResource
+  }
 
   require Ash.Query
+
+  @type page_request :: :next | :prev | :first | :last | integer
 
   @global_opts [
     verbose?: [
@@ -52,10 +60,75 @@ defmodule Ash.Api do
     ]
   ]
 
-  @read_opts_schema merge_schemas([], @global_opts, "Global Options")
+  @read_opts_schema merge_schemas(
+                      [
+                        page: [
+                          doc:
+                            "Nested pagination options, see the section on pagination for more",
+                          type: {:custom, __MODULE__, :page_opts, []}
+                        ]
+                      ],
+                      @global_opts,
+                      "Global Options"
+                    )
+
+  @offset_page_opts [
+    offset: [
+      type: :non_neg_integer,
+      doc: "The number of records to skip from the beginning of the query"
+    ],
+    limit: [
+      type: :pos_integer,
+      doc: "The number of records to include in the page"
+    ],
+    count: [
+      type: :boolean,
+      doc: "Whether or not to return the page with a full count of all records"
+    ]
+  ]
+
+  @keyset_page_opts [
+    before: [
+      type: :string,
+      doc: "Get records that appear before the provided keyset (mutually exclusive with `after`)"
+    ],
+    after: [
+      type: :string,
+      doc: "Get records that appear after the provided keyset (mutually exclusive with `before`)"
+    ],
+    limit: [
+      type: :pos_integer,
+      doc: "How many records to include in the page"
+    ],
+    count: [
+      type: :boolean,
+      doc: "Whether or not to return the page with a full count of all records"
+    ]
+  ]
 
   @doc false
-  def read_opts_schema, do: @read_opts_schema
+  def page_opts(page_opts) do
+    if page_opts == false do
+      {:ok, false}
+    else
+      if page_opts[:after] || page_opts[:before] do
+        validate_or_error(page_opts, @keyset_page_opts)
+      else
+        if page_opts[:offset] do
+          validate_or_error(page_opts, @offset_page_opts)
+        else
+          validate_or_error(page_opts, @keyset_page_opts)
+        end
+      end
+    end
+  end
+
+  defp validate_or_error(opts, schema) do
+    case NimbleOptions.validate(opts, schema) do
+      {:ok, value} -> {:ok, value}
+      {:error, error} -> {:error, Exception.message(error)}
+    end
+  end
 
   @load_opts_schema merge_schemas([], @global_opts, "Global Options")
 
@@ -95,8 +168,6 @@ defmodule Ash.Api do
 
   @doc """
   Get a record by a primary key. See `c:get/3` for more.
-
-  #{NimbleOptions.docs(@get_opts_schema)}
   """
   @callback get!(resource :: Ash.resource(), id_or_filter :: term(), params :: Keyword.t()) ::
               Ash.record() | no_return
@@ -114,8 +185,6 @@ defmodule Ash.Api do
 
   @doc """
   Run an ash query. See `c:read/2` for more.
-
-  #{NimbleOptions.docs(@read_opts_schema)}
   """
   @callback read!(Ash.query(), params :: Keyword.t()) ::
               list(Ash.resource()) | no_return
@@ -126,14 +195,34 @@ defmodule Ash.Api do
   For more information, on building a query, see `Ash.Query`.
 
   #{NimbleOptions.docs(@read_opts_schema)}
+
+  ## Pagination
+
+  #### keyset pagination
+  #{NimbleOptions.docs(@offset_page_opts)}
+
+  #### Limit/offset pagination
+  #{NimbleOptions.docs(@keyset_page_opts)}
   """
   @callback read(Ash.query(), params :: Keyword.t()) ::
               {:ok, list(Ash.resource())} | {:error, Ash.error()}
 
   @doc """
-  Load fields or relationships on already fetched records. See `c:load/2` for more information.
+  Fetch a page relative to the provided page.
+  """
+  @callback page!(Ash.page(), page_request) ::
+              Ash.page() | no_return
 
-  #{NimbleOptions.docs(@load_opts_schema)}
+  @doc """
+  Fetch a page relative to the provided page.
+
+  A page is the return value of a paginated action called via `c:read/2`.
+  """
+  @callback page(Ash.page(), page_request) ::
+              {:ok, Ash.page()} | {:error, Ash.error()}
+
+  @doc """
+  Load fields or relationships on already fetched records. See `c:load/2` for more information.
   """
   @callback load!(
               record_or_records :: Ash.record() | [Ash.record()],
@@ -160,8 +249,6 @@ defmodule Ash.Api do
 
   @doc """
   Create a record. See `c:create/2` for more information.
-
-  #{NimbleOptions.docs(@create_opts_schema)}
   """
   @callback create!(Ash.changeset(), params :: Keyword.t()) ::
               Ash.record() | no_return
@@ -176,8 +263,6 @@ defmodule Ash.Api do
 
   @doc """
   Update a record. See `c:update/2` for more information.
-
-  #{NimbleOptions.docs(@update_opts_schema)}
   """
   @callback update!(Ash.changeset(), params :: Keyword.t()) ::
               Ash.record() | no_return
@@ -192,8 +277,6 @@ defmodule Ash.Api do
 
   @doc """
   Destroy a record. See `c:destroy/2` for more information.
-
-  #{NimbleOptions.docs(@destroy_opts_schema)}
   """
   @callback destroy!(Ash.changeset() | Ash.record(), params :: Keyword.t()) :: :ok | no_return
 
@@ -297,6 +380,20 @@ defmodule Ash.Api do
       query
       |> api.read(Keyword.delete(opts, :load))
       |> case do
+        {:ok, %{results: [single_result]}} ->
+          {:ok, single_result}
+
+        {:ok, %{results: []}} ->
+          {:ok, nil}
+
+        {:ok, %{results: results}} ->
+          {:error,
+           Ash.Error.Invalid.MultipleResults.exception(
+             count: Enum.count(results),
+             query: query,
+             at_least?: true
+           )}
+
         {:ok, [single_result]} ->
           {:ok, single_result}
 
@@ -313,6 +410,156 @@ defmodule Ash.Api do
     else
       {:error, error} ->
         {:error, error}
+    end
+  end
+
+  def page!(api, keyset, request) do
+    api
+    |> page(keyset, request)
+    |> unwrap_or_raise!()
+  end
+
+  def page(_, %Ash.Page.Keyset{results: []} = page, :next) do
+    {:ok, page}
+  end
+
+  def page(_, %Ash.Page.Keyset{results: []} = page, :prev) do
+    {:ok, page}
+  end
+
+  def page(_, %Ash.Page.Keyset{}, n) when is_integer(n) do
+    {:error, "Cannot seek to a specific page with keyset based pagination"}
+  end
+
+  def page(
+        api,
+        %Ash.Page.Keyset{results: results, rerun: {query, opts}},
+        :next
+      ) do
+    last_keyset =
+      results
+      |> :lists.last()
+      |> Map.get(:metadata)
+      |> Map.get(:keyset)
+
+    new_page_opts =
+      opts[:page]
+      |> Keyword.delete(:before)
+      |> Keyword.put(:after, last_keyset)
+
+    read(api, query, Keyword.put(opts, :page, new_page_opts))
+  end
+
+  def page(api, %Ash.Page.Keyset{results: results, rerun: {query, opts}}, :prev) do
+    first_keyset =
+      results
+      |> List.first()
+      |> Map.get(:metadata)
+      |> Map.get(:keyset)
+
+    new_page_opts =
+      opts[:page]
+      |> Keyword.put(:before, first_keyset)
+      |> Keyword.delete(:after)
+
+    read(api, query, Keyword.put(opts, :page, new_page_opts))
+  end
+
+  def page(api, %Ash.Page.Keyset{rerun: {query, opts}}, :first) do
+    page_opts =
+      if opts[:page][:count] do
+        [count: true]
+      else
+        []
+      end
+
+    read(api, query, Keyword.put(opts, :page, page_opts))
+  end
+
+  def page(api, %Ash.Page.Keyset{rerun: {query, opts}}, :last) do
+    query_reverse_sorted =
+      case query.sort do
+        nil ->
+          sort =
+            query.resource
+            |> Ash.Resource.primary_key()
+            |> Enum.map(&{&1, :desc})
+
+          Ash.Query.sort(query, sort)
+
+        sort ->
+          new_sorted =
+            query
+            |> Ash.Query.unset(:sort)
+            |> Ash.Query.sort(Ash.Actions.Sort.reverse(sort))
+
+          if Ash.Actions.Sort.sorting_on_identity?(new_sorted) do
+            new_sorted
+          else
+            sort =
+              query.resource
+              |> Ash.Resource.primary_key()
+              |> Enum.map(&{&1, :desc})
+
+            Ash.Query.sort(new_sorted, sort)
+          end
+      end
+
+    new_page_params = Keyword.drop(opts[:page] || [], [:before, :after])
+
+    case read(api, query_reverse_sorted, Keyword.put(opts, :page, new_page_params)) do
+      {:ok, page} ->
+        {:ok, Map.update!(page, :results, &Enum.reverse/1)}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  def page(
+        api,
+        %Ash.Page.Offset{count: count, limit: limit, offset: offset, rerun: {query, opts}},
+        request
+      ) do
+    page_opts =
+      case request do
+        :next ->
+          [offset: offset + limit, limit: limit]
+
+        :prev ->
+          [offset: min(offset - limit, 0), limit: limit]
+
+        :first ->
+          [offset: 0, limit: limit]
+
+        :last ->
+          if count do
+            [offset: count - limit, limit: limit]
+          else
+            [offset: 0, limit: limit]
+          end
+
+        page_num when is_integer(page_num) ->
+          [offset: page_num * limit, limit: limit]
+      end
+
+    page_opts =
+      if opts[:page][:count] do
+        Keyword.put(page_opts, :count, true)
+      else
+        page_opts
+      end
+
+    if request == :last && !count do
+      case read(api, Ash.Query.reverse(query), Keyword.put(opts, :page, page_opts)) do
+        {:ok, page} ->
+          {:ok, Map.update!(page, :results, &Enum.reverse/1)}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    else
+      read(api, query, Keyword.put(opts, :page, page_opts))
     end
   end
 
@@ -438,7 +685,7 @@ defmodule Ash.Api do
 
   @doc false
   @spec read(Ash.api(), Ash.query(), Keyword.t()) ::
-          {:ok, list(Ash.resource())} | {:error, Ash.error()}
+          {:ok, list(Ash.resource()) | Ash.page()} | {:error, Ash.error()}
   def read(api, query, opts \\ []) do
     query = Ash.Query.set_api(query, api)
 

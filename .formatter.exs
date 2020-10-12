@@ -44,6 +44,7 @@ locals_without_parens = [
   many_to_many: 2,
   many_to_many: 3,
   on: 1,
+  pagination: 1,
   primary?: 1,
   primary_key?: 1,
   private?: 1,

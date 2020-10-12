@@ -26,6 +26,7 @@ defmodule Ash do
   @type relationship_cardinality :: :many | :one
   @type resource :: module
   @type side_loads :: term
+  @type page :: Ash.Page.Keyset.t() | Ash.Page.Offset.t()
   @type sort :: list(atom | {atom, :asc} | {atom, :desc})
   @type validation :: Ash.Resource.Validation.t()
 
