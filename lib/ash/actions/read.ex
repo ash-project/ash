@@ -260,43 +260,14 @@ defmodule Ash.Actions.Read do
 
         nil ->
           if action.pagination.default_limit do
-            case action.pagination.default_method do
-              nil ->
-                paginate(
-                  starting_query,
-                  action,
-                  filter_requests,
-                  initial_offset,
-                  initial_limit,
-                  Keyword.put(opts, :page, limit: action.pagination.default_limit)
-                )
-
-              :keyset ->
-                paginate(
-                  starting_query,
-                  action,
-                  filter_requests,
-                  initial_offset,
-                  initial_limit,
-                  Keyword.put(opts, :page,
-                    keyset: nil,
-                    limit: action.pagination.default_limit
-                  )
-                )
-
-              :offset ->
-                paginate(
-                  starting_query,
-                  action,
-                  filter_requests,
-                  initial_offset,
-                  initial_limit,
-                  Keyword.put(opts, :page,
-                    offset: 0,
-                    limit: action.pagination.default_limit
-                  )
-                )
-            end
+            paginate(
+              starting_query,
+              action,
+              filter_requests,
+              initial_offset,
+              initial_limit,
+              Keyword.put(opts, :page, limit: action.pagination.default_limit)
+            )
           else
             {:error, LimitRequired.exception([])}
           end

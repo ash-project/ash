@@ -44,6 +44,7 @@ defmodule Ash.MixProject do
         "README.md",
         "documentation/introduction/getting_started.md",
         "documentation/topics/authorization.md",
+        "documentation/topics/pagination.md",
         "documentation/topics/validation.md",
         "documentation/topics/error_handling.md",
         "documentation/topics/aggregates.md",
@@ -59,7 +60,9 @@ defmodule Ash.MixProject do
           Ash,
           Ash.Api,
           Ash.Query,
-          Ash.Changeset
+          Ash.Changeset,
+          Ash.Resource.Dsl,
+          Ash.Api.Dsl
         ],
         validations: ~r/Ash.Resource.Validation/,
         changes: ~r/Ash.Resource.Change/,

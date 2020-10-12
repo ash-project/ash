@@ -23,7 +23,8 @@ defmodule Ash.Resource.Actions.Read do
                   ],
                   pagination: [
                     type: {:custom, __MODULE__, :pagination, []},
-                    doc: "Options for how the action should support pagination",
+                    doc:
+                      "Options for how the action should support pagination. See the pagination section for more information.",
                     default: false
                   ]
                 ],
@@ -57,11 +58,6 @@ defmodule Ash.Resource.Actions.Read do
       doc: "The maximum amount of records that can be requested in a single page",
       default: 250
     ],
-    default_method: [
-      type: {:one_of, [:keyset, :count]},
-      doc:
-        "In cases where pagination is ambiguous, use this pagination method e.g `read(resource, page: [limit: 1])`. Only necessary if both are supported."
-    ],
     required?: [
       type: :boolean,
       doc: "Whether or not pagination can be disabled.",
@@ -73,7 +69,6 @@ defmodule Ash.Resource.Actions.Read do
     @moduledoc "Represents the pagination configuration of a read action"
     defstruct [
       :default_limit,
-      :default_method,
       :max_page_size,
       countable: false,
       required?: false,
