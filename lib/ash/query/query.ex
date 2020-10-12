@@ -792,6 +792,22 @@ defmodule Ash.Query do
     end
   end
 
+  @doc """
+  Reverse the sort order of a query.
+
+  If the query has no sort, an error is added indicating that.
+  """
+  @spec reverse(t()) :: t()
+  def reverse(%{sort: nil} = query) do
+    add_error(query, :sort, "Unreversable sort")
+  end
+
+  def reverse(query) do
+    query
+    |> Ash.Query.unset(:sort)
+    |> Ash.Query.sort(Ash.Actions.Sort.reverse(query.sort))
+  end
+
   @spec unset(Ash.resource() | t(), atom | [atom]) :: t()
   def unset(query, keys) when is_list(keys) do
     query = to_query(query)

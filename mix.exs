@@ -71,6 +71,7 @@ defmodule Ash.MixProject do
         type: ~r/Ash.Type/,
         data_layer: ~r/Ash.DataLayer/,
         authorizer: ~r/Ash.Authorizer/,
+        pagination: ~r/Ash.Page/,
         extension: [
           Ash.Dsl.Entity,
           Ash.Dsl.Extension,

@@ -18,7 +18,8 @@ defmodule Ash.Filter do
     GreaterThanOrEqual,
     In,
     LessThan,
-    LessThanOrEqual
+    LessThanOrEqual,
+    NotEq
   }
 
   alias Ash.Query.{Expression, Not, Ref}
@@ -31,6 +32,7 @@ defmodule Ash.Filter do
   @operators [
     Ash.Query.Operator.IsNil,
     Eq,
+    NotEq,
     In,
     LessThan,
     GreaterThan,
@@ -43,6 +45,8 @@ defmodule Ash.Filter do
   @operator_aliases [
     eq: Eq,
     equals: Eq,
+    not_eq: NotEq,
+    not_equals: NotEq,
     gt: GreaterThan,
     greater_than: GreaterThan,
     lt: LessThan,
@@ -441,7 +445,7 @@ defmodule Ash.Filter do
       relationship.destination
       |> Ash.Query.new(api)
       |> Ash.Query.do_filter(filter)
-      |> api.read()
+      |> Ash.Actions.Read.unpaginated_read()
       |> case do
         {:ok, results} ->
           relationship.through
@@ -480,7 +484,7 @@ defmodule Ash.Filter do
   end
 
   defp filter_related_in(query, relationship, path) do
-    case query.api.read(query) do
+    case Ash.Actions.Read.unpaginated_read(query) do
       {:error, error} ->
         {:error, error}
 

@@ -3,22 +3,45 @@ defmodule Ash.Actions.Read do
   alias Ash.Actions.SideLoad
   alias Ash.Engine
   alias Ash.Engine.Request
+  alias Ash.Error.Invalid.{LimitRequired, PaginationRequired}
   alias Ash.Filter
   alias Ash.Query.Aggregate
   require Logger
 
   require Ash.Query
 
+  def unpaginated_read(query, action \\ nil, opts \\ []) do
+    action = action || Ash.Resource.primary_action!(query.resource, :read)
+
+    if action.pagination do
+      opts = Keyword.put(opts, :page, false)
+      run(query, %{action | pagination: %{action.pagination | required?: false}}, opts)
+    else
+      run(query, action, opts)
+    end
+  end
+
   def run(query, action, opts \\ []) do
     if Ash.Resource.data_layer_can?(query.resource, :read) do
       engine_opts = Keyword.take(opts, [:verbose?, :actor, :authorize?])
+      original_query = query
+
+      initial_offset = query.offset
+      initial_limit = query.limit
 
       with %{errors: []} = query <- query_with_initial_data(query, opts),
            %{errors: []} = query <- add_action_filters(query, action, engine_opts[:actor]),
-           {:ok, requests} <- requests(query, action, opts),
+           {:ok, filter_requests} <- filter_requests(query, opts),
+           {:ok, query, page_opts, count_request} <-
+             paginate(query, action, filter_requests, initial_offset, initial_limit, opts),
+           {:ok, requests} <- requests(query, action, filter_requests, opts),
            side_load_requests <- SideLoad.requests(query),
            %{data: %{data: data} = all_data, errors: []} <-
-             Engine.run(requests ++ side_load_requests, query.api, engine_opts),
+             Engine.run(
+               requests ++ side_load_requests ++ List.wrap(count_request),
+               query.api,
+               engine_opts
+             ),
            data_with_side_loads <- SideLoad.attach_side_loads(data, all_data),
            data_with_aggregates <-
              add_aggregate_values(
@@ -27,7 +50,19 @@ defmodule Ash.Actions.Read do
                query.resource,
                Map.get(all_data, :aggregate_values, %{})
              ) do
-        {:ok, data_with_aggregates}
+        if opts[:page] do
+          {:ok,
+           to_page(
+             data_with_aggregates,
+             action,
+             Map.get(all_data, :count),
+             query.sort,
+             original_query,
+             Keyword.put(opts, :page, page_opts)
+           )}
+        else
+          {:ok, data_with_aggregates}
+        end
       else
         %{errors: errors} ->
           {:error, Ash.Error.to_ash_error(errors)}
@@ -37,6 +72,42 @@ defmodule Ash.Actions.Read do
       end
     else
       {:error, "Datalayer does not support reads"}
+    end
+  end
+
+  defp to_page(data, action, count, sort, original_query, opts) do
+    page_opts = opts[:page]
+
+    if page_opts[:offset] do
+      if action.pagination.keyset? do
+        data
+        |> Ash.Page.Keyset.data_with_keyset(sort)
+        |> Ash.Page.Offset.new(count, original_query, opts)
+      else
+        Ash.Page.Offset.new(data, count, original_query, opts)
+      end
+    else
+      cond do
+        action.pagination.offset? && action.pagination.keyset? ->
+          data
+          |> Ash.Page.Keyset.data_with_keyset(sort)
+          |> Ash.Page.Offset.new(count, original_query, opts)
+
+        action.pagination.offset? ->
+          Ash.Page.Offset.new(data, count, original_query, opts)
+
+        true ->
+          Ash.Page.Keyset.new(data, count, sort, original_query, opts)
+      end
+    end
+  end
+
+  defp filter_requests(query, opts) do
+    if not Keyword.has_key?(opts, :initial_data) &&
+         (Keyword.has_key?(opts, :actor) || opts[:authorize?]) do
+      Filter.read_requests(query.api, query.filter)
+    else
+      {:ok, []}
     end
   end
 
@@ -82,47 +153,46 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp requests(query, action, opts) do
-    filter_requests =
-      if not Keyword.has_key?(opts, :initial_data) &&
-           (Keyword.has_key?(opts, :actor) || opts[:authorize?]) do
-        Filter.read_requests(query.api, query.filter)
-      else
-        {:ok, []}
-      end
-
+  defp requests(query, action, filter_requests, opts) do
     authorizing? = Keyword.has_key?(opts, :actor) || opts[:authorize?]
     can_be_in_query? = not Keyword.has_key?(opts, :initial_data)
 
     {aggregate_auth_requests, aggregate_value_requests, aggregates_in_query} =
       Aggregate.requests(query, can_be_in_query?, authorizing?)
 
-    case filter_requests do
-      {:ok, filter_requests} ->
-        request =
-          Request.new(
-            resource: query.resource,
-            api: query.api,
-            query: query,
-            action: action,
-            authorize?: not Keyword.has_key?(opts, :initial_data),
-            data:
-              data_field(
-                opts,
-                filter_requests,
-                aggregate_auth_requests,
-                aggregates_in_query,
-                query
-              ),
-            path: [:data],
-            name: "#{action.type} - `#{action.name}`"
-          )
+    request =
+      Request.new(
+        resource: query.resource,
+        api: query.api,
+        query:
+          Request.resolve([], fn _ ->
+            case Filter.run_other_data_layer_filters(
+                   query.api,
+                   query.resource,
+                   query.filter
+                 ) do
+              {:ok, filter} ->
+                {:ok, %{query | filter: filter}}
 
-        {:ok, [request | filter_requests] ++ aggregate_auth_requests ++ aggregate_value_requests}
+              {:error, error} ->
+                {:error, error}
+            end
+          end),
+        action: action,
+        authorize?: not Keyword.has_key?(opts, :initial_data),
+        data:
+          data_field(
+            opts,
+            filter_requests,
+            aggregate_auth_requests,
+            aggregates_in_query,
+            query
+          ),
+        path: [:data],
+        name: "#{action.type} - `#{action.name}`"
+      )
 
-      {:error, error} ->
-        {:error, error}
-    end
+    {:ok, [request | filter_requests] ++ aggregate_auth_requests ++ aggregate_value_requests}
   end
 
   defp data_field(
@@ -157,12 +227,6 @@ defmodule Ash.Actions.Read do
 
           with {:ok, filter} <-
                  filter_with_related(relationship_filter_paths, ash_query, data),
-               {:ok, filter} <-
-                 Filter.run_other_data_layer_filters(
-                   ash_query.api,
-                   ash_query.resource,
-                   filter
-                 ),
                {:ok, query} <-
                  add_aggregates(
                    query,
@@ -178,6 +242,223 @@ defmodule Ash.Actions.Read do
             add_calculation_values(ash_query, results, ash_query.calculations)
           end
         end
+      )
+    end
+  end
+
+  defp paginate(starting_query, action, filter_requests, initial_offset, initial_limit, opts) do
+    if action.pagination == false do
+      {:ok, starting_query, opts[:page], nil}
+    else
+      case opts[:page] do
+        false ->
+          if action.pagination.required? do
+            {:error, PaginationRequired.exception([])}
+          else
+            {:ok, starting_query, false, nil}
+          end
+
+        nil ->
+          if action.pagination.default_limit do
+            case action.pagination.default_method do
+              nil ->
+                paginate(
+                  starting_query,
+                  action,
+                  filter_requests,
+                  initial_offset,
+                  initial_limit,
+                  Keyword.put(opts, :page, limit: action.pagination.default_limit)
+                )
+
+              :keyset ->
+                paginate(
+                  starting_query,
+                  action,
+                  filter_requests,
+                  initial_offset,
+                  initial_limit,
+                  Keyword.put(opts, :page,
+                    keyset: nil,
+                    limit: action.pagination.default_limit
+                  )
+                )
+
+              :offset ->
+                paginate(
+                  starting_query,
+                  action,
+                  filter_requests,
+                  initial_offset,
+                  initial_limit,
+                  Keyword.put(opts, :page,
+                    offset: 0,
+                    limit: action.pagination.default_limit
+                  )
+                )
+            end
+          else
+            {:error, LimitRequired.exception([])}
+          end
+
+        page_params ->
+          case do_paginate(starting_query, action.pagination, opts) do
+            {:ok, query} ->
+              count_request =
+                count_request(
+                  starting_query,
+                  action,
+                  filter_requests,
+                  initial_offset,
+                  initial_limit,
+                  opts
+                )
+
+              {:ok, query, page_params, count_request}
+
+            {:error, error} ->
+              {:error, error}
+          end
+      end
+    end
+  end
+
+  defp do_paginate(query, pagination, opts) do
+    cond do
+      opts[:page][:before] || opts[:page][:after] ->
+        keyset_pagination(query, opts[:page])
+
+      opts[:page][:offset] ->
+        limit_offset_pagination(query, opts[:page])
+
+      pagination.offset? && pagination.keyset? ->
+        keyset_pagination(query, opts[:page])
+
+      pagination.offset? ->
+        limit_offset_pagination(query, opts[:page])
+
+      true ->
+        keyset_pagination(query, opts[:page])
+    end
+  end
+
+  defp keyset_pagination(query, opts) do
+    sorted =
+      if Ash.Actions.Sort.sorting_on_identity?(query) do
+        query
+      else
+        Ash.Query.sort(query, Ash.Resource.primary_key(query.resource))
+      end
+
+    limited =
+      cond do
+        opts[:limit] && sorted.limit ->
+          Ash.Query.limit(sorted, min(opts[:limit], sorted.limit))
+
+        opts[:limit] ->
+          Ash.Query.limit(sorted, opts[:limit])
+
+        true ->
+          sorted
+      end
+
+    if opts[:before] || opts[:after] do
+      after_or_before =
+        if opts[:before] do
+          :before
+        else
+          :after
+        end
+
+      case Ash.Page.Keyset.filter(
+             opts[:before] || opts[:after],
+             sorted.sort,
+             after_or_before
+           ) do
+        {:ok, filter} ->
+          {:ok, Ash.Query.filter(limited, ^filter)}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    else
+      {:ok, limited}
+    end
+  end
+
+  defp limit_offset_pagination(query, opts) do
+    limited =
+      cond do
+        opts[:limit] && query.limit ->
+          Ash.Query.limit(query, min(opts[:limit], query.limit))
+
+        opts[:limit] ->
+          Ash.Query.limit(query, opts[:limit])
+
+        true ->
+          query
+      end
+
+    with_offset =
+      cond do
+        opts[:offset] && query.offset ->
+          Ash.Query.offset(limited, max(opts[:offset], query.offset))
+
+        opts[:offset] ->
+          Ash.Query.offset(limited, opts[:offset])
+
+        true ->
+          limited
+      end
+
+    {:ok, with_offset}
+  end
+
+  defp count_request(_, %{pagination: %{countable: false}}, _, _, _, _), do: nil
+
+  defp count_request(initial_query, action, filter_requests, initial_offset, initial_limit, opts) do
+    if opts[:page][:count] == true ||
+         (opts[:page][:count] != false and action.pagination.countable == :by_default) do
+      relationship_filter_paths =
+        Enum.map(filter_requests, fn request ->
+          request.path ++ [:authorization_filter]
+        end)
+
+      Request.new(
+        resource: initial_query.resource,
+        api: initial_query.api,
+        query: initial_query,
+        action: action,
+        authorize?: false,
+        data:
+          Request.resolve(
+            [[:data, :authorization_filter]] ++ relationship_filter_paths,
+            fn %{
+                 data: %{
+                   authorization_filter: auth_filter
+                 }
+               } = data ->
+              query =
+                initial_query
+                |> Ash.Query.unset([:filter, :aggregates, :sort, :limit, :offset])
+                |> Ash.Query.limit(initial_limit)
+                |> Ash.Query.offset(initial_offset)
+                |> Ash.Query.filter(^auth_filter)
+                |> Map.get(:data_layer_query)
+
+              with {:ok, filter} <-
+                     filter_with_related(relationship_filter_paths, initial_query, data),
+                   {:ok, query} <-
+                     Ash.DataLayer.filter(query, filter, initial_query.resource),
+                   {:ok, query} <-
+                     Ash.DataLayer.sort(query, initial_query.sort, initial_query.resource),
+                   {:ok, %{count: count}} <- run_count_query(initial_query, query) do
+                {:ok, count}
+              end
+            end
+          ),
+        path: [:count],
+        name: "#{action.type} - `#{action.name}`"
       )
     end
   end
@@ -205,6 +486,42 @@ defmodule Ash.Actions.Read do
 
   defp run_query(%{resource: resource}, query) do
     Ash.DataLayer.run_query(query, resource)
+  end
+
+  defp run_count_query(
+         %{
+           resource: destination_resource,
+           context: %{
+             data_layer: %{lateral_join_source: {root_data, resource, source, destination}}
+           }
+         },
+         query
+       ) do
+    case Ash.Query.Aggregate.new(destination_resource, :count, :count, [], nil) do
+      {:ok, aggregate} ->
+        Ash.DataLayer.run_aggregate_query_with_lateral_join(
+          query,
+          [aggregate],
+          root_data,
+          resource,
+          destination_resource,
+          source,
+          destination
+        )
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp run_count_query(ash_query, query) do
+    case Ash.Query.Aggregate.new(ash_query.resource, :count, :count, [], nil) do
+      {:ok, aggregate} ->
+        Ash.DataLayer.run_aggregate_query(query, [aggregate], ash_query.resource)
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   defp add_calculation_values(query, results, calculations) do
