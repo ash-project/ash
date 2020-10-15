@@ -29,6 +29,7 @@ defmodule Ash do
   @type page :: Ash.Page.Keyset.t() | Ash.Page.Offset.t()
   @type sort :: list(atom | {atom, :asc} | {atom, :desc})
   @type validation :: Ash.Resource.Validation.t()
+  @type notification :: Ash.Notifier.Notification.t()
 
   require Ash.Dsl.Extension
 

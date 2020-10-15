@@ -15,6 +15,11 @@ defmodule Ash.Resource do
       |> List.wrap()
       |> Enum.map(&Macro.expand(&1, __CALLER__))
 
+    notifiers =
+      opts[:notifiers]
+      |> List.wrap()
+      |> Enum.map(&Macro.expand(&1, __CALLER__))
+
     extensions =
       if Ash.implements_behaviour?(data_layer, Ash.Dsl.Extension) do
         [data_layer, Ash.Resource.Dsl]
@@ -25,13 +30,23 @@ defmodule Ash.Resource do
     authorizer_extensions =
       Enum.filter(authorizers, &Ash.implements_behaviour?(&1, Ash.Dsl.Extension))
 
-    extensions = Enum.concat([extensions, opts[:extensions] || [], authorizer_extensions])
+    notifier_extensions =
+      Enum.filter(notifiers, &Ash.implements_behaviour?(&1, Ash.Dsl.Extension))
+
+    extensions =
+      Enum.concat([
+        extensions,
+        opts[:extensions] || [],
+        authorizer_extensions,
+        notifier_extensions
+      ])
 
     body =
       quote bind_quoted: [opts: opts] do
         @before_compile Ash.Resource
 
         @authorizers opts[:authorizers] || []
+        @notifiers opts[:notifiers] || []
         @data_layer opts[:data_layer] || Ash.DataLayer.Simple
         @extensions (opts[:extensions] || []) ++
                       List.wrap(opts[:data_layer] || Ash.DataLayer.Simple) ++
@@ -58,6 +73,7 @@ defmodule Ash.Resource do
 
       :persistent_term.put({__MODULE__, :data_layer}, @data_layer)
       :persistent_term.put({__MODULE__, :authorizers}, @authorizers)
+      :persistent_term.put({__MODULE__, :notifiers}, @notifiers)
       :persistent_term.put({__MODULE__, :extensions}, @extensions)
 
       ash_dsl_config = Macro.escape(Extension.set_state())
@@ -70,6 +86,7 @@ defmodule Ash.Resource do
       def on_load do
         :persistent_term.put({__MODULE__, :data_layer}, @data_layer)
         :persistent_term.put({__MODULE__, :authorizers}, @authorizers)
+        :persistent_term.put({__MODULE__, :notifiers}, @notifiers)
         :persistent_term.put({__MODULE__, :extensions}, @extensions)
 
         Extension.load()
@@ -106,6 +123,14 @@ defmodule Ash.Resource do
   @spec authorizers(Ash.resource()) :: [module]
   def authorizers(resource) do
     {resource, :authorizers}
+    |> :persistent_term.get([])
+    |> List.wrap()
+  end
+
+  @doc "A list of notifiers to be used when accessing"
+  @spec notifiers(Ash.resource()) :: [module]
+  def notifiers(resource) do
+    {resource, :notifiers}
     |> :persistent_term.get([])
     |> List.wrap()
   end

@@ -287,11 +287,20 @@ defmodule Ash.DataLayer do
   end
 
   def transact(resource, func) do
-    if can?(:transact, resource) do
+    if can?(:transact, resource) && not in_transaction?(resource) do
       data_layer = Ash.Resource.data_layer(resource)
       data_layer.transaction(resource, func)
     else
       {:ok, func.()}
+    end
+  end
+
+  def in_transaction?(resource) do
+    if can?(:transact, resource) do
+      data_layer = Ash.Resource.data_layer(resource)
+      data_layer.in_transaction?(resource)
+    else
+      false
     end
   end
 

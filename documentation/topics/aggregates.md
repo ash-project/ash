@@ -7,7 +7,7 @@ Aggregates in Ash allow for retrieving summary information over groups of relate
 Example:
 
 ```elixir
-aggreates do
+aggregates do
   count :count_of_posts, :posts, filter: [published: true]
 end
 ```

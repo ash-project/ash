@@ -5,7 +5,6 @@ defmodule Ash.Engine.RequestHandler do
   use GenServer
   require Logger
 
-  alias Ash.Engine
   alias Ash.Engine.Request
 
   def init(opts) do
@@ -56,7 +55,13 @@ defmodule Ash.Engine.RequestHandler do
         notify(new_state, notifications)
         Enum.each(dependencies, &register_dependency(new_state, &1))
 
+        if new_request.notify? do
+          resource_notification = Request.resource_notification(request)
+          send(new_state.runner_pid, {:runner, :notification, resource_notification})
+        end
+
         complete(new_state)
+
         {:noreply, new_state, {:continue, :next}}
 
       {:wait, new_request, notifications, dependencies} ->
@@ -81,7 +86,14 @@ defmodule Ash.Engine.RequestHandler do
         {:send_field, receiver_path, pid, dep},
         %{request: %{path: path, state: :error}} = state
       ) do
-    Engine.send_wont_receive(pid, receiver_path, path, List.last(dep))
+    if pid == state.runner_pid do
+      send(pid, {:wont_receive, receiver_path, path, List.last(dep)})
+    else
+      GenServer.cast(
+        pid,
+        {:wont_receive, receiver_path, path, List.last(dep)}
+      )
+    end
 
     {:noreply, state}
   end
@@ -128,18 +140,29 @@ defmodule Ash.Engine.RequestHandler do
   end
 
   defp notify(state, notifications) do
-    Enum.each(notifications, fn {receiver_path, request_path, field, value} ->
-      receiver_path =
-        case receiver_path do
-          {_, path} -> path
-          path -> path
+    Enum.each(notifications, fn
+      %Ash.Notifier.Notification{} = resource_notification ->
+        send(state.runner_pid, {:runner, :notification, resource_notification})
+
+      {receiver_path, request_path, field, value} ->
+        receiver_path =
+          case receiver_path do
+            {_, path} -> path
+            path -> path
+          end
+
+        destination_pid = Map.get(state.pid_info, receiver_path) || state.runner_pid
+
+        log(state, "notifying #{inspect(receiver_path)} of #{inspect(field)}")
+
+        if destination_pid == state.runner_pid do
+          send(destination_pid, {:field_value, receiver_path, request_path, field, value})
+        else
+          GenServer.cast(
+            destination_pid,
+            {:field_value, receiver_path, request_path, field, value}
+          )
         end
-
-      destination_pid = Map.get(state.pid_info, receiver_path) || state.runner_pid
-
-      log(state, "notifying #{inspect(receiver_path)} of #{inspect(field)}")
-
-      GenServer.cast(destination_pid, {:field_value, receiver_path, request_path, field, value})
     end)
   end
 
@@ -154,10 +177,17 @@ defmodule Ash.Engine.RequestHandler do
 
     log(state, "Asking #{inspect(path)} for #{field}")
 
-    GenServer.cast(
-      destination_pid,
-      {:send_field, state.request.path, self(), dep}
-    )
+    if destination_pid == state.runner_pid do
+      send(
+        destination_pid,
+        {:send_field, state.request.path, self(), dep}
+      )
+    else
+      GenServer.cast(
+        destination_pid,
+        {:send_field, state.request.path, self(), dep}
+      )
+    end
 
     log(state, "Registering dependency on #{inspect(path)} - #{field}")
 
@@ -169,13 +199,8 @@ defmodule Ash.Engine.RequestHandler do
     :ok
   end
 
-  def send_field_value(pid, receiver_path, request_path, field, value) do
-    GenServer.cast(pid, {:field_value, receiver_path, request_path, field, value})
-  end
-
   defp complete(state) do
     log(state, "Request complete, sending data")
-    GenServer.cast(state.engine_pid, {:complete, state.request.path})
     send(state.runner_pid, {:data, state.request.path, state.request.data})
   end
 

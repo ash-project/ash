@@ -352,7 +352,7 @@ defmodule Ash.Test.Actions.CreateTest do
       assert Api.get!(Profile, profile.id).author_id == author.id
     end
 
-    test "it responds with the relationshi filled in" do
+    test "it responds with the relationship filled in" do
       profile =
         Profile
         |> new()

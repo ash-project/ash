@@ -66,6 +66,7 @@ defmodule Ash.Engine.Request do
     :actor,
     :authorize?,
     :engine_pid,
+    notify?: false,
     authorized?: false,
     authorizer_state: %{},
     dependencies_to_send: %{},
@@ -183,10 +184,22 @@ defmodule Ash.Engine.Request do
       strict_check_only?: opts[:strict_check_only?],
       state: :strict_check,
       actor: opts[:actor],
+      notify?: opts[:notify?] == true,
       authorized?: opts[:authorize?] == false,
       verbose?: opts[:verbose?] || false,
       authorize?: opts[:authorize?] || true,
       write_to_data?: Keyword.get(opts, :write_to_data?, true)
+    }
+  end
+
+  def resource_notification(request) do
+    %Ash.Notifier.Notification{
+      resource: request.resource,
+      actor: request.actor,
+      action: request.action,
+      data: request.data,
+      query: request.query,
+      changeset: request.changeset
     }
   end
 
@@ -715,31 +728,45 @@ defmodule Ash.Engine.Request do
       log(request, "resolving #{field}")
 
       case resolver.(resolver_context) do
+        {:ok, value, resource_notifications} ->
+          handle_successful_resolve(
+            field,
+            value,
+            request,
+            new_request,
+            notifications ++ resource_notifications,
+            internal?
+          )
+
         {:ok, value} ->
-          value = process_resolved_field(field, value, request)
-
-          {new_request, notifications} =
-            if internal? do
-              {new_request, new_notifications} = notifications(new_request, field, value)
-
-              notifications =
-                Enum.concat([
-                  notifications,
-                  new_notifications
-                ])
-
-              {new_request, notifications}
-            else
-              {request, []}
-            end
-
-          new_request = Map.put(new_request, field, value)
-          {:ok, new_request, notifications, []}
+          handle_successful_resolve(field, value, request, new_request, notifications, internal?)
 
         {:error, error} ->
           {:error, error}
       end
     end
+  end
+
+  defp handle_successful_resolve(field, value, request, new_request, notifications, internal?) do
+    value = process_resolved_field(field, value, request)
+
+    {new_request, notifications} =
+      if internal? do
+        {new_request, new_notifications} = notifications(new_request, field, value)
+
+        notifications =
+          Enum.concat([
+            notifications,
+            new_notifications
+          ])
+
+        {new_request, notifications}
+      else
+        {request, []}
+      end
+
+    new_request = Map.put(new_request, field, value)
+    {:ok, new_request, notifications, []}
   end
 
   defp process_resolved_field(:query, %Ash.Query{} = query, request) do

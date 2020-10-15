@@ -46,6 +46,7 @@ defmodule Ash.MixProject do
         "documentation/topics/authorization.md",
         "documentation/topics/pagination.md",
         "documentation/topics/validation.md",
+        "documentation/topics/notifiers.md",
         "documentation/topics/error_handling.md",
         "documentation/topics/aggregates.md",
         "documentation/topics/calculations.md",
@@ -75,6 +76,7 @@ defmodule Ash.MixProject do
         data_layer: ~r/Ash.DataLayer/,
         authorizer: ~r/Ash.Authorizer/,
         pagination: ~r/Ash.Page/,
+        notifications: ~r/Ash.Notifier/,
         extension: [
           Ash.Dsl.Entity,
           Ash.Dsl.Extension,
