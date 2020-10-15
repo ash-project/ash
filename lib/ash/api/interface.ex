@@ -70,6 +70,7 @@ defmodule Ash.Api.Interface do
       def create(changeset, params \\ []) do
         case Api.create(__MODULE__, changeset, params) do
           {:ok, instance} -> {:ok, instance}
+          {:ok, instance, notifications} -> {:ok, instance, notifications}
           {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
         end
       end
@@ -83,6 +84,7 @@ defmodule Ash.Api.Interface do
       def update(changeset, params \\ []) do
         case Api.update(__MODULE__, changeset, params) do
           {:ok, instance} -> {:ok, instance}
+          {:ok, instance, notifications} -> {:ok, instance, notifications}
           {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
         end
       end
@@ -96,6 +98,7 @@ defmodule Ash.Api.Interface do
       def destroy(record, params \\ []) do
         case Api.destroy(__MODULE__, record, params) do
           :ok -> :ok
+          {:ok, notifications} -> {:ok, notifications}
           {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
         end
       end

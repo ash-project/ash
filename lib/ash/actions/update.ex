@@ -18,7 +18,7 @@ defmodule Ash.Actions.Update do
     resource = changeset.resource
 
     with %{valid?: true} = changeset <- changeset(changeset, api, action, opts[:actor]),
-         %{data: %{commit: %^resource{} = updated}, errors: []} <-
+         %{data: %{commit: %^resource{} = updated}, errors: []} = engine_result <-
            do_run_requests(
              changeset,
              engine_opts,
@@ -26,7 +26,7 @@ defmodule Ash.Actions.Update do
              resource,
              api
            ) do
-      {:ok, updated}
+      add_notifications(updated, engine_result, opts)
     else
       %Ash.Changeset{errors: errors} ->
         {:error, Ash.Error.to_ash_error(errors)}
@@ -36,6 +36,14 @@ defmodule Ash.Actions.Update do
 
       {:error, error} ->
         {:error, Ash.Error.to_ash_error(error)}
+    end
+  end
+
+  defp add_notifications(result, engine_result, opts) do
+    if opts[:return_notifications?] do
+      {:ok, result, Map.get(engine_result, :resource_notifications, [])}
+    else
+      {:ok, result}
     end
   end
 
@@ -141,6 +149,7 @@ defmodule Ash.Actions.Update do
           end),
         action: action,
         resource: resource,
+        notify?: true,
         data:
           Request.resolve(
             [[:data, :changeset]],

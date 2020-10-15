@@ -140,8 +140,21 @@ defmodule Ash.Api do
                    ]
                    |> merge_schemas(@global_opts, "Global Options")
 
-  @shared_create_and_update_opts_schema []
-                                        |> merge_schemas(@global_opts, "Global Options")
+  @shared_created_update_and_destroy_opts_schema [
+    return_notifications?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      Use this if you're running ash actions in your own transaction and you want notifications to happen still.
+
+      If a transaction is ongoing, and this is false, notifications will be discarded, otherwise
+      the return value is `{:ok, result, notifications}` (or `{:ok, notifications}`)
+
+      To send notifications later, use `Ash.Notifier.notify(notifications)`. It sends any notifications
+      that can be sent, and returns the rest.
+      """
+    ]
+  ]
 
   @create_opts_schema [
                         upsert?: [
@@ -153,18 +166,23 @@ defmodule Ash.Api do
                       ]
                       |> merge_schemas(@global_opts, "Global Options")
                       |> merge_schemas(
-                        @shared_create_and_update_opts_schema,
-                        "Shared Create/Edit Options"
+                        @shared_created_update_and_destroy_opts_schema,
+                        "Shared create/update/destroy Options"
                       )
 
   @update_opts_schema []
                       |> merge_schemas(@global_opts, "Global Options")
                       |> merge_schemas(
-                        @shared_create_and_update_opts_schema,
-                        "Shared Create/Edit Options"
+                        @shared_created_update_and_destroy_opts_schema,
+                        "Shared create/update/destroy Options"
                       )
 
-  @destroy_opts_schema merge_schemas([], @global_opts, "Global Opts")
+  @destroy_opts_schema []
+                       |> merge_schemas(@global_opts, "Global Opts")
+                       |> merge_schemas(
+                         @shared_created_update_and_destroy_opts_schema,
+                         "Shared create/update/destroy Options"
+                       )
 
   @doc """
   Get a record by a primary key. See `c:get/3` for more.

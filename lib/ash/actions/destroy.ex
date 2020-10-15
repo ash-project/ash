@@ -28,37 +28,57 @@ defmodule Ash.Actions.Destroy do
         name: "destroy request"
       )
 
-    destroy_request =
-      Request.new(
-        resource: resource,
-        api: api,
-        path: [:destroy],
-        action: action,
-        authorize?: false,
-        changeset: %{changeset | action_type: :destroy, api: api},
-        data:
-          Request.resolve(
-            [[:data, :data], [:destroy, :changeset]],
-            fn %{destroy: %{changeset: changeset}} ->
-              with :ok <- validate(changeset),
-                   :ok <- Ash.DataLayer.destroy(resource, changeset) do
-                {:ok, record}
-              else
-                {:error, error} -> {:error, error}
-              end
-            end
+    changeset = %{changeset | action_type: :destroy, api: api}
+
+    case validate(changeset) do
+      :ok ->
+        destroy_request =
+          Request.new(
+            resource: resource,
+            api: api,
+            path: [:destroy],
+            action: action,
+            authorize?: false,
+            changeset: changeset,
+            notify?: true,
+            data:
+              Request.resolve(
+                [[:data, :data], [:destroy, :changeset]],
+                fn %{destroy: %{changeset: changeset}} ->
+                  Ash.Changeset.with_hooks(changeset, fn changeset ->
+                    case Ash.DataLayer.destroy(resource, changeset) do
+                      :ok ->
+                        {:ok, record}
+
+                      {:error, error} ->
+                        {:error, error}
+                    end
+                  end)
+                end
+              )
           )
-      )
 
-    case Engine.run([authorization_request, destroy_request], api, engine_opts) do
-      %{errors: []} ->
-        :ok
+        case Engine.run([authorization_request, destroy_request], api, engine_opts) do
+          %{errors: []} = engine_result ->
+            add_notifications(engine_result, opts)
 
-      {:error, errors} ->
-        {:error, Ash.Error.to_ash_error(errors)}
+          {:error, errors} ->
+            {:error, Ash.Error.to_ash_error(errors)}
 
-      %{errors: errors} ->
-        {:error, Ash.Error.to_ash_error(errors)}
+          %{errors: errors} ->
+            {:error, Ash.Error.to_ash_error(errors)}
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp add_notifications(engine_result, opts) do
+    if opts[:return_notifications?] do
+      {:ok, Map.get(engine_result, :resource_notifications, [])}
+    else
+      :ok
     end
   end
 

@@ -49,7 +49,7 @@ defmodule Ash.Engine do
     errors: []
   ]
 
-  alias Ash.Engine.{Request, RequestHandler, Runner}
+  alias Ash.Engine.{Request, Runner}
 
   use GenServer
 
@@ -91,9 +91,19 @@ defmodule Ash.Engine do
           end)
 
         case transaction_result do
-          {:ok, value} -> value
-          {:error, %Runner{} = runner} -> {:error, runner.errors}
-          {:error, errors} -> {:error, errors}
+          {:ok, %{resource_notifications: resource_notifications} = result} ->
+            unsent = Ash.Notifier.notify(resource_notifications)
+
+            %{result | resource_notifications: unsent}
+
+          {:ok, value} ->
+            value
+
+          {:error, %Runner{} = runner} ->
+            {:error, runner.errors}
+
+          {:error, errors} ->
+            {:error, errors}
         end
 
       {:error, error} ->
@@ -193,10 +203,6 @@ defmodule Ash.Engine do
     {:ok, state, {:continue, :spawn_requests}}
   end
 
-  def send_wont_receive(pid, caller_path, request_path, field) do
-    GenServer.cast(pid, {:wont_receive, caller_path, request_path, field})
-  end
-
   def handle_continue(:spawn_requests, state) do
     log(state, "Spawning request processes", :debug)
 
@@ -247,15 +253,17 @@ defmodule Ash.Engine do
       {:error, _pid, request} ->
         case Map.get(request, field) do
           %Request.UnresolvedField{} ->
-            send_wont_receive(request_handler_pid, receiver_path, request.path, field)
+            send_or_cast(
+              request_handler_pid,
+              state.runner_pid,
+              {:wont_receive, receiver_path, request.path, field}
+            )
 
           value ->
-            RequestHandler.send_field_value(
+            send_or_cast(
               request_handler_pid,
-              receiver_path,
-              request.path,
-              field,
-              value
+              state.runner_pid,
+              {:field_value, receiver_path, request.path, field, value}
             )
         end
 
@@ -313,6 +321,14 @@ defmodule Ash.Engine do
     |> move_to_error(request.path)
     |> add_error(request.path, reason)
     |> maybe_shutdown()
+  end
+
+  defp send_or_cast(request_handler_pid, runner_pid, message) do
+    if request_handler_pid == runner_pid do
+      send(request_handler_pid, message)
+    else
+      GenServer.cast(request_handler_pid, message)
+    end
   end
 
   defp get_request(state, pid) when is_pid(pid) do

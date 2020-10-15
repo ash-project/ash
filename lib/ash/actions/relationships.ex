@@ -409,9 +409,9 @@ defmodule Ash.Actions.Relationships do
       join_changeset
       |> Kernel.||(Ash.Changeset.new(relationship.through))
       |> Ash.Changeset.force_change_attributes(join_attrs)
-      |> changeset.api.create(upsert?: true)
+      |> changeset.api.create(upsert?: true, return_notifications?: true)
       |> case do
-        {:ok, join_row} ->
+        {:ok, join_row, notifications} ->
           {:ok,
            record
            |> remove_from_set_relationship(
@@ -425,7 +425,7 @@ defmodule Ash.Actions.Relationships do
              join_row,
              Ash.Resource.primary_key(relationship.through)
            )
-           |> add_to_set_relationship(relationship.join_relationship, join_row)}
+           |> add_to_set_relationship(relationship.join_relationship, join_row), notifications}
 
         {:error, error} ->
           {:error, error}
@@ -487,12 +487,13 @@ defmodule Ash.Actions.Relationships do
   end
 
   defp destroy_and_remove(api, join_row, to_remove_record, record, relationship, join_pkey, pkey) do
-    case api.destroy(Ash.Changeset.new(join_row)) do
-      :ok ->
+    case api.destroy(Ash.Changeset.new(join_row), return_notifications?: true) do
+      {:ok, notifications} ->
         {:ok,
          record
          |> remove_from_set_relationship(relationship.join_relationship, join_row, join_pkey)
-         |> remove_from_set_relationship(relationship.name, to_remove_record, pkey)}
+         |> remove_from_set_relationship(relationship.name, to_remove_record, pkey),
+         notifications}
 
       {:error, error} ->
         {:error, error}
@@ -512,10 +513,10 @@ defmodule Ash.Actions.Relationships do
             relationship.destination_field,
             Map.get(record, relationship.source_field)
           )
-          |> changeset.api.update()
+          |> changeset.api.update(return_notifications?: true)
           |> case do
-            {:ok, related} ->
-              {:ok, add_to_set_relationship(record, relationship.name, related)}
+            {:ok, related, notifications} ->
+              {:ok, add_to_set_relationship(record, relationship.name, related), notifications}
 
             {:error, error} ->
               {:error, error}
@@ -536,10 +537,11 @@ defmodule Ash.Actions.Relationships do
           to_relate_record
           |> Ash.Changeset.new()
           |> Ash.Changeset.force_change_attribute(relationship.destination_field, nil)
-          |> changeset.api.update()
+          |> changeset.api.update(return_notifications?: true)
           |> case do
-            {:ok, related} ->
-              {:ok, remove_from_set_relationship(record, relationship.name, related, pkey)}
+            {:ok, related, notifications} ->
+              {:ok, remove_from_set_relationship(record, relationship.name, related, pkey),
+               notifications}
 
             {:error, error} ->
               {:error, error}
@@ -632,10 +634,10 @@ defmodule Ash.Actions.Relationships do
           relationship.destination_field,
           Map.get(record, relationship.source_field)
         )
-        |> changeset.api.update()
+        |> changeset.api.update(return_notifications?: true)
         |> case do
-          {:ok, related} ->
-            {:ok, Map.put(record, relationship.name, clear_relationships(related))}
+          {:ok, related, notifications} ->
+            {:ok, Map.put(record, relationship.name, clear_relationships(related)), notifications}
 
           {:error, error} ->
             {:error, error}
@@ -651,10 +653,10 @@ defmodule Ash.Actions.Relationships do
       to_relate_record
       |> Changeset.new()
       |> Changeset.force_change_attribute(relationship.destination_field, nil)
-      |> changeset.api.update()
+      |> changeset.api.update(return_notifications?: true)
       |> case do
-        {:ok, _related} ->
-          {:ok, record}
+        {:ok, _related, notifications} ->
+          {:ok, record, notifications}
 
         {:error, error} ->
           {:error, error}
