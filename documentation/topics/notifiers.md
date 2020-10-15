@@ -21,6 +21,15 @@ defmodule ExampleNotifier do
 end
 ```
 
+### Including a notifier in a resource
+
+```elixir
+defmodule MyResource do
+  use Ash.Resource,
+    notifiers: [ExampleNotifier]
+end
+```
+
 ## Transactions
 
 Api calls involving resources who's datalayer supports transactions (like Postgres), notifications are saved up and sent after the transaction is closed. For example, the api call below ultimately results in many many database calls.
@@ -67,5 +76,4 @@ case result do
   {:error, error} ->
     handle_error(error)
 end
-
 ```
