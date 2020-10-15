@@ -5,6 +5,8 @@
 A notifier is a simple extension that must implement a single callback `notify/1`. Notifiers do not have to implement an Ash DSL extension, but they may in order to configure how that notifier should behave. See `Ash.Notifier.Notification` for the currently available fields. Notifiers should not do anything intensive synchronously. If any heavy work needs to be done, they should delegate to something else to handle the notification, like sending it to a GenServer or GenStage.
 Eventually, there will likely be built in notifiers that will make setting up an GenStage that reacts to your resource changes easy. Until then, you'll have to write your own.
 
+For more information on creating a DSL extension to configure your notifier, see the docs for `Ash.Dsl.Extension`.
+
 ### Example notifier
 
 ```elixir
