@@ -202,6 +202,7 @@ defmodule Ash.Engine.RequestHandler do
   defp complete(state) do
     log(state, "Request complete, sending data")
     send(state.runner_pid, {:data, state.request.path, state.request.data})
+    GenServer.cast(state.engine_pid, {:complete, state.request.path})
   end
 
   defp log(state, message, level \\ :debug)

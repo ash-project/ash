@@ -121,7 +121,7 @@ defmodule Ash.Engine.Runner do
               replace_request(state, %{new_request | state: :error})
           end
 
-        wait_for_engine(new_state, complete?)
+        run_to_completion(new_state)
 
       {:send_field, receiver_path, pid, dep} ->
         log(state, "notifying #{inspect(receiver_path)} of #{inspect(dep)}")
@@ -147,8 +147,8 @@ defmodule Ash.Engine.Runner do
               |> notify(notifications)
 
             {:error, error, new_request} ->
-              if pid == state.runner_pid do
-                send(pid, {:wont_receive, receiver_path, new_request.path, field})
+              if pid == self() do
+                send(self(), {:wont_receive, receiver_path, new_request.path, field})
               else
                 GenServer.cast(pid, {:wont_receive, receiver_path, new_request.path, field})
               end
@@ -158,7 +158,7 @@ defmodule Ash.Engine.Runner do
               |> replace_request(%{new_request | state: :error})
           end
 
-        wait_for_engine(new_state, complete?)
+        run_to_completion(new_state)
 
       {:field_value, receiver_path, request_path, field, value} ->
         receiver_path =
@@ -173,19 +173,18 @@ defmodule Ash.Engine.Runner do
           {:continue, new_request} ->
             state
             |> replace_request(new_request)
-            |> wait_for_engine(complete?)
+            |> run_to_completion()
         end
 
       {:runner, :notification, resource_notification} ->
         state
         |> add_resource_notification(resource_notification)
-        |> wait_for_engine(complete?)
+        |> run_to_completion()
 
       {:data, path, data} ->
         state
         |> add_data(path, data)
-        |> send_complete(path)
-        |> wait_for_engine(complete?)
+        |> run_to_completion()
 
       {:DOWN, _, _, ^engine_pid, {:shutdown, %{errored_requests: []} = engine_state}} ->
         log(state, "Engine complete")
@@ -195,11 +194,6 @@ defmodule Ash.Engine.Runner do
         log(state, "Engine complete")
         handle_completion(state, engine_state, complete?, true)
     end
-  end
-
-  defp send_complete(state, path) do
-    GenServer.cast(state.engine_pid, {:complete, path})
-    state
   end
 
   defp handle_completion(state, engine_state, complete?, engine_error?) do
