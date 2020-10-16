@@ -253,16 +253,29 @@ defmodule Ash.Engine.Request do
   end
 
   def do_next(%{state: :fetch_data} = request) do
-    case try_resolve_local(request, :data, true) do
+    key =
+      case request.changeset do
+        %UnresolvedField{} ->
+          :changeset
+
+        _ ->
+          :data
+      end
+
+    case try_resolve_local(request, key, true) do
       {:skipped, _, _, _} ->
         {:error, AssumptionFailed.exception(message: "Skipped fetching data"), request}
 
       {:ok, request, notifications, []} ->
-        log(request, "data fetched: #{inspect(notifications)}")
-        {:continue, %{request | state: :check}, notifications}
+        if key == :changeset do
+          {:continue, request, notifications}
+        else
+          log(request, "data fetched: #{inspect(notifications)}")
+          {:continue, %{request | state: :check}, notifications}
+        end
 
       {:ok, new_request, notifications, waiting_for} ->
-        log(request, "data waiting on dependencies: #{inspect(waiting_for)}")
+        log(request, "#{key} waiting on dependencies: #{inspect(waiting_for)}")
         {:waiting, new_request, notifications, waiting_for}
 
       {:error, error} ->
@@ -728,18 +741,32 @@ defmodule Ash.Engine.Request do
       log(request, "resolving #{field}")
 
       case resolver.(resolver_context) do
-        {:ok, value, resource_notifications} ->
+        {:ok, value, instructions} ->
+          set_data_notifications =
+            Enum.map(Map.get(instructions, :extra_data, %{}), fn {key, value} ->
+              {:set_extra_data, key, value}
+            end)
+
+          resource_notifications = Map.get(instructions, :notifications, [])
+
           handle_successful_resolve(
             field,
             value,
             request,
             new_request,
-            notifications ++ resource_notifications,
+            notifications ++ resource_notifications ++ set_data_notifications,
             internal?
           )
 
         {:ok, value} ->
-          handle_successful_resolve(field, value, request, new_request, notifications, internal?)
+          handle_successful_resolve(
+            field,
+            value,
+            request,
+            new_request,
+            notifications,
+            internal?
+          )
 
         {:error, error} ->
           {:error, error}

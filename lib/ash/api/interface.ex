@@ -30,7 +30,26 @@ defmodule Ash.Api.Interface do
 
       def read(query, opts) do
         case Api.read(__MODULE__, query, opts) do
+          {:ok, results, query} -> {:ok, results, query}
           {:ok, results} -> {:ok, results}
+          {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
+        end
+      end
+
+      @impl Ash.Api
+      def read_one!(query, opts \\ [])
+
+      def read_one!(query, opts) do
+        Api.read_one!(__MODULE__, query, opts)
+      end
+
+      @impl Ash.Api
+      def read_one(query, opts \\ [])
+
+      def read_one(query, opts) do
+        case Api.read_one(__MODULE__, query, opts) do
+          {:ok, result} -> {:ok, result}
+          {:ok, result, query} -> {:ok, result, query}
           {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
         end
       end

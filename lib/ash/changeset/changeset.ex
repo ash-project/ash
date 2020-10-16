@@ -113,7 +113,11 @@ defmodule Ash.Changeset do
   `{:ok, result}`, the result will be passed through the after
   action hooks.
   """
-  @spec with_hooks(t(), (t() -> {:ok, Ash.record(), list(Ash.notification())} | {:error, term})) ::
+  @spec with_hooks(
+          t(),
+          (t() ->
+             {:ok, Ash.record(), %{notifications: list(Ash.notification())}} | {:error, term})
+        ) ::
           {:ok, term} | {:error, term}
   def with_hooks(changeset, func) do
     changeset =
@@ -129,14 +133,15 @@ defmodule Ash.Changeset do
         {:ok, result} ->
           Enum.reduce_while(
             changeset.after_action,
-            {:ok, result, []},
-            fn after_action, {:ok, result, notifications} ->
+            {:ok, result, %{notifications: []}},
+            fn after_action, {:ok, result, %{notifications: notifications} = acc} ->
               case after_action.(changeset, result) do
                 {:ok, new_result, new_notifications} ->
-                  {:cont, {:ok, new_result, new_notifications ++ notifications}}
+                  {:cont,
+                   {:ok, new_result, %{acc | notifications: notifications ++ new_notifications}}}
 
                 {:ok, new_result} ->
-                  {:cont, {:ok, new_result, notifications}}
+                  {:cont, {:ok, new_result, acc}}
 
                 {:error, error} ->
                   {:halt, {:error, error}}

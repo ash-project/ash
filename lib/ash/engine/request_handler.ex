@@ -56,7 +56,7 @@ defmodule Ash.Engine.RequestHandler do
         Enum.each(dependencies, &register_dependency(new_state, &1))
 
         if new_request.notify? do
-          resource_notification = Request.resource_notification(request)
+          resource_notification = Request.resource_notification(new_request)
           send(new_state.runner_pid, {:runner, :notification, resource_notification})
         end
 
@@ -141,6 +141,9 @@ defmodule Ash.Engine.RequestHandler do
 
   defp notify(state, notifications) do
     Enum.each(notifications, fn
+      {:set_extra_data, key, value} ->
+        send(state.runner_pid, {:data, [key], value})
+
       %Ash.Notifier.Notification{} = resource_notification ->
         send(state.runner_pid, {:runner, :notification, resource_notification})
 
