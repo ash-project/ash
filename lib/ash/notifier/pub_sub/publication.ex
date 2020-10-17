@@ -4,7 +4,8 @@ defmodule Ash.Notifier.PubSub.Publication do
   defstruct [
     :action,
     :topic,
-    :event
+    :event,
+    :type
   ]
 
   @schema [
@@ -14,14 +15,18 @@ defmodule Ash.Notifier.PubSub.Publication do
       required: true
     ],
     topic: [
-      type: :any,
-      # type: {:custom, __MODULE__, :topic, []},
+      type: {:custom, __MODULE__, :topic, []},
       doc: "The topic to publish",
       required: true
     ],
     event: [
       type: :string,
       doc: "The name of the event to publish. Defaults to the action name"
+    ],
+    type: [
+      type: {:one_of, [:create, :update, :destroy]},
+      doc:
+        "In the case of multiple actions with the same name, you may need to provide the action type as well."
     ]
   ]
 

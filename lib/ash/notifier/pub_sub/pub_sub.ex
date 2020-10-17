@@ -7,6 +7,10 @@ defmodule Ash.Notifier.PubSub do
     describe: """
     Configure a given action to publish its results over a given topic.
 
+    If you have multiple actions with the same name (only possible if they have different types),
+    use the `type` option, to specify which type you are referring to. Otherwise the message will
+    be broadcast for all actions with that name.
+
     To include attribute values of the resource in the message, pass a list
     of strings and attribute names. They will ultimately be joined with `:`.
     For example:
@@ -28,7 +32,7 @@ defmodule Ash.Notifier.PubSub do
     """,
     examples: [
       "publish :create, \"created\"",
-      "publish :assign, \"assigned\""
+      "publish :assign, \"assigned\", type: :create"
     ],
     schema: Ash.Notifier.PubSub.Publication.schema(),
     args: [:action, :topic]
@@ -118,42 +122,28 @@ defmodule Ash.Notifier.PubSub do
     |> Enum.map(&Enum.join(&1, ":"))
   end
 
-  defp all_combinations_of_values(items, notification) do
-    expanded =
-      for item <- items do
-        possible_values(item, notification)
-      end
+  defp all_combinations_of_values(items, notification, trail \\ [])
 
-    all_combinations(expanded)
+  defp all_combinations_of_values([], _, trail), do: [Enum.reverse(trail)]
+
+  defp all_combinations_of_values([item | rest], notification, trail) when is_binary(item) do
+    all_combinations_of_values(rest, notification, [item | trail])
   end
 
-  defp possible_values(item, _) when is_binary(item), do: [item]
-
-  defp possible_values(item, notification) do
+  defp all_combinations_of_values([item | rest], notification, trail) when is_atom(item) do
     value_before_change = Map.get(notification.changeset.data, item)
     value_after_change = Map.get(notification.data, item)
 
     [value_before_change, value_after_change]
     |> Enum.reject(&is_nil/1)
     |> Enum.uniq()
-    |> Enum.map(&[&1])
-  end
-
-  defp all_combinations([last]) do
-    Enum.map(last, &[&1])
-  end
-
-  defp all_combinations([first | rest]) do
-    Enum.map(first, fn first ->
-      rest
-      |> all_combinations()
-      |> Enum.map(fn combination ->
-        [first | combination]
-      end)
+    |> Enum.flat_map(fn possible_value ->
+      all_combinations_of_values(rest, notification, [possible_value | trail])
     end)
   end
 
-  defp matches?(%{action: action}, %{action: %{name: action}}), do: true
+  defp matches?(%{action: action, type: nil}, %{action: %{name: action}}), do: true
+  defp matches?(%{action: action, type: type}, %{action: %{name: action, type: type}}), do: true
 
   defp matches?(_, _), do: false
 end
