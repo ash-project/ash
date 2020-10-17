@@ -18,7 +18,7 @@ Ash is in alpha. The package version is 1.0.0+, and most of the time that means 
 ```elixir
 def deps do
   [
-    {:ash, "~> 1.18.1"}
+    {:ash, "~> 1.19.0"}
   ]
 end
 ```
