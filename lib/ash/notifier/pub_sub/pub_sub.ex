@@ -81,7 +81,7 @@ defmodule Ash.Notifier.PubSub do
     |> Enum.each(&publish_notification(&1, notification))
   end
 
-  def publish_notification(publish, notification) do
+  defp publish_notification(publish, notification) do
     publish.topic
     |> fill_template(notification)
     |> Enum.each(fn topic ->

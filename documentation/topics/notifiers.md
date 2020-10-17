@@ -1,5 +1,9 @@
 # Notifiers
 
+## Built-in Notifiers
+
+- PubSub: `Ash.Notifier.PubSub`
+
 ## Creating a notifier
 
 A notifier is a simple extension that must implement a single callback `notify/1`. Notifiers do not have to implement an Ash DSL extension, but they may in order to configure how that notifier should behave. See `Ash.Notifier.Notification` for the currently available fields. Notifiers should not do anything intensive synchronously. If any heavy work needs to be done, they should delegate to something else to handle the notification, like sending it to a GenServer or GenStage.
