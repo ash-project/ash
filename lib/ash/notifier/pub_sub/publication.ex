@@ -1,5 +1,6 @@
 defmodule Ash.Notifier.PubSub.Publication do
   @moduledoc "Represents an individual publication setup"
+
   defstruct [
     :action,
     :topic,
