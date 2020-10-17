@@ -24,7 +24,7 @@ defmodule Ash.MixProject do
         coveralls: :test,
         "coveralls.github": :test
       ],
-      xref: [exclude: [:mnesia]],
+      xref: [exclude: [:mnesia, Phoenix.LiveView]],
       docs: docs(),
       aliases: aliases(),
       description: @description,
@@ -149,7 +149,7 @@ defmodule Ash.MixProject do
       sobelow: "sobelow --skip",
       credo: "credo --strict",
       "ash.formatter":
-        "ash.formatter --extensions Ash.Resource.Dsl,Ash.Api.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia"
+        "ash.formatter --extensions Ash.Resource.Dsl,Ash.Api.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub"
     ]
   end
 end

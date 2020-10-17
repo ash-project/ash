@@ -338,6 +338,9 @@ defmodule Ash.Engine.Runner do
     |> List.wrap()
     |> Enum.uniq()
     |> Enum.reduce(state, fn
+      {:set_extra_data, key, value}, state ->
+        %{state | data: Map.put(state.data, key, value)}
+
       %Ash.Notifier.Notification{} = resource_notification, state ->
         add_resource_notification(state, resource_notification)
 
@@ -424,7 +427,7 @@ defmodule Ash.Engine.Runner do
 
       {:complete, new_request, new_notifications, new_dependencies} ->
         if new_request.notify? do
-          resource_notification = Request.resource_notification(request)
+          resource_notification = Request.resource_notification(new_request)
 
           {:ok, new_request, new_notifications, new_dependencies, resource_notification}
         else

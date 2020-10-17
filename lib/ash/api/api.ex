@@ -66,6 +66,18 @@ defmodule Ash.Api do
                           doc:
                             "Nested pagination options, see the section on pagination for more",
                           type: {:custom, __MODULE__, :page_opts, []}
+                        ],
+                        return_query?: [
+                          type: :boolean,
+                          doc: """
+                          If `true`, the query that was ultimately used is returned as a third tuple element.
+
+                          The query goes through many potential changes during a request, potentially adding
+                          authorization filters, or replacing relationships for other data layers with their
+                          corresponding ids. This option can be used to get the true query that was sent to
+                          the data layer.
+                          """,
+                          default: false
                         ]
                       ],
                       @global_opts,
@@ -202,10 +214,24 @@ defmodule Ash.Api do
               {:ok, Ash.record()} | {:error, Ash.error()}
 
   @doc """
+  Run an ash query, raising on more than one result. See `c:read_one/2` for more.
+  """
+  @callback read_one!(Ash.query(), params :: Keyword.t()) ::
+              Ash.record() | {Ash.record(), Ash.query()} | no_return
+
+  @doc """
+  Run a query on a resource, but fail on more than one result
+
+  This is useful if you have a query that doesn't include a primary key
+  but you know that it will only ever return a single result
+  """
+  @callback read_one(Ash.query(), params :: Keyword.t()) ::
+              {:ok, Ash.record()} | {:ok, Ash.record(), Ash.query()} | {:error, Ash.error()}
+  @doc """
   Run an ash query. See `c:read/2` for more.
   """
   @callback read!(Ash.query(), params :: Keyword.t()) ::
-              list(Ash.resource()) | no_return
+              list(Ash.record()) | {list(Ash.record()), Ash.Query.t()} | no_return
 
   @doc """
   Run a query on a resource.
@@ -223,7 +249,9 @@ defmodule Ash.Api do
   #{NimbleOptions.docs(@keyset_page_opts)}
   """
   @callback read(Ash.query(), params :: Keyword.t()) ::
-              {:ok, list(Ash.resource())} | {:error, Ash.error()}
+              {:ok, list(Ash.record())}
+              | {:ok, list(Ash.record()), Ash.query()}
+              | {:error, Ash.error()}
 
   @doc """
   Fetch a page relative to the provided page.
@@ -717,6 +745,64 @@ defmodule Ash.Api do
   end
 
   @doc false
+  def read_one!(api, query, opts) do
+    api
+    |> read_one(query, opts)
+    |> unwrap_or_raise!()
+  end
+
+  @doc false
+  def read_one(api, query, opts) do
+    api
+    |> read(query, opts)
+    |> unwrap_one()
+  end
+
+  defp unwrap_one({:error, error}) do
+    {:error, Ash.Error.to_ash_error(error)}
+  end
+
+  defp unwrap_one({:ok, result, query}) do
+    case unwrap_one({:ok, result}) do
+      {:ok, result} ->
+        {:ok, result, query}
+
+      {:error, %Ash.Error.Invalid.MultipleResults{} = error} ->
+        {:error, %{error | query: query}}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp unwrap_one({:ok, result}) do
+    case unwrap_one(result) do
+      {:ok, result} ->
+        {:ok, result}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp unwrap_one(%{results: results}) do
+    unwrap_one(results)
+  end
+
+  defp unwrap_one([]), do: {:ok, nil}
+  defp unwrap_one([result]), do: {:ok, result}
+
+  defp unwrap_one([_ | _] = results) do
+    error =
+      Ash.Error.Invalid.MultipleResults.exception(
+        count: Enum.count(results),
+        at_least?: true
+      )
+
+    {:error, error}
+  end
+
+  @doc false
   @spec create!(Ash.api(), Ash.changeset(), Keyword.t()) ::
           Ash.record() | no_return
   def create!(api, changeset, opts) do
@@ -813,6 +899,7 @@ defmodule Ash.Api do
 
   defp unwrap_or_raise!(:ok), do: :ok
   defp unwrap_or_raise!({:ok, result}), do: result
+  defp unwrap_or_raise!({:ok, result, other}), do: {result, other}
 
   defp unwrap_or_raise!({:error, error}) do
     exception = Ash.Error.to_ash_error(error)

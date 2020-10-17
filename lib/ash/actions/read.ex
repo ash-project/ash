@@ -21,6 +21,10 @@ defmodule Ash.Actions.Read do
     end
   end
 
+  @spec run(Ash.query(), Ash.action(), Keyword.t()) ::
+          {:ok, Ash.page() | list(Ash.record())}
+          | {:ok, Ash.page() | list(Ash.record()), Ash.query()}
+          | {:error, Ash.error()}
   def run(query, action, opts \\ []) do
     opts = Keyword.merge(opts, Map.get(query.context, :override_api_params) || [])
 
@@ -52,19 +56,15 @@ defmodule Ash.Actions.Read do
                query.resource,
                Map.get(all_data, :aggregate_values, %{})
              ) do
-        if opts[:page] do
-          {:ok,
-           to_page(
-             data_with_aggregates,
-             action,
-             Map.get(all_data, :count),
-             query.sort,
-             original_query,
-             Keyword.put(opts, :page, page_opts)
-           )}
-        else
-          {:ok, data_with_aggregates}
-        end
+        data_with_aggregates
+        |> add_page(
+          action,
+          Map.get(all_data, :count),
+          query.sort,
+          original_query,
+          Keyword.put(opts, :page, page_opts)
+        )
+        |> add_query(Map.get(all_data, :ultimate_query), opts)
       else
         %{errors: errors} ->
           {:error, Ash.Error.to_ash_error(errors)}
@@ -74,6 +74,22 @@ defmodule Ash.Actions.Read do
       end
     else
       {:error, "Datalayer does not support reads"}
+    end
+  end
+
+  defp add_query(result, query, opts) do
+    if opts[:return_query?] do
+      {:ok, result, query}
+    else
+      {:ok, result}
+    end
+  end
+
+  defp add_page(data, action, count, sort, original_query, opts) do
+    if opts[:page] do
+      to_page(data, action, count, sort, original_query, opts)
+    else
+      data
     end
   end
 
@@ -240,8 +256,19 @@ defmodule Ash.Actions.Read do
                  Ash.DataLayer.filter(query, filter, ash_query.resource),
                {:ok, query} <-
                  Ash.DataLayer.sort(query, ash_query.sort, ash_query.resource),
-               {:ok, results} <- run_query(ash_query, query) do
-            add_calculation_values(ash_query, results, ash_query.calculations)
+               {:ok, results} <- run_query(ash_query, query),
+               {:ok, with_calculations} <-
+                 add_calculation_values(ash_query, results, ash_query.calculations) do
+            if params[:return_query?] do
+              ultimate_query =
+                ash_query
+                |> Ash.Query.unset(:filter)
+                |> Ash.Query.filter(filter)
+
+              {:ok, with_calculations, %{extra_data: %{ultimate_query: ultimate_query}}}
+            else
+              {:ok, with_calculations}
+            end
           end
         end
       )

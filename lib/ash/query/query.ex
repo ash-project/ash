@@ -238,7 +238,7 @@ defmodule Ash.Query do
   `load(query, [:attribute1])`, that will be the only field filled in. This will let
   data layers make more intelligent "select" statements as well.
   """
-  @spec load(t(), atom | list(atom) | Keyword.t()) :: t()
+  @spec load(t() | Ash.resource(), atom | list(atom) | Keyword.t()) :: t()
   def load(query, fields) when not is_list(fields) do
     load(query, List.wrap(fields))
   end
