@@ -31,6 +31,9 @@ defmodule Ash.Query.Function do
       |> Enum.zip(configured_args)
       |> Enum.with_index()
       |> Enum.reduce_while({:ok, []}, fn
+        {{%Ash.Query.Ref{} = ref, :ref}, _i}, {:ok, args} ->
+          {:cont, {:ok, [ref | args]}}
+
         {{arg, :ref}, i}, {:ok, args} when is_atom(arg) ->
           case Ash.Resource.attribute(ref.resource, arg) do
             nil ->
