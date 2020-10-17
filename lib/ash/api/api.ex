@@ -753,42 +753,53 @@ defmodule Ash.Api do
 
   @doc false
   def read_one(api, query, opts) do
-    case read(api, query, opts) do
-      {:ok, [result], query} ->
+    api
+    |> read(query, opts)
+    |> unwrap_one()
+  end
+
+  defp unwrap_one({:error, error}) do
+    {:error, Ash.Error.to_ash_error(error)}
+  end
+
+  defp unwrap_one({:ok, result, query}) do
+    case unwrap_one({:ok, result}) do
+      {:ok, result} ->
         {:ok, result, query}
 
-      {:ok, [], query} ->
-        {:ok, nil, query}
-
-      {:ok, [_ | _] = results, query} ->
-        error =
-          Ash.Error.Invalid.MultipleResults.exception(
-            count: Enum.count(results),
-            query: query,
-            at_least?: true
-          )
-
-        {:error, error}
-
-      {:ok, [result]} ->
-        {:ok, result}
-
-      {:ok, []} ->
-        {:ok, nil}
-
-      {:ok, [_ | _] = results} ->
-        error =
-          Ash.Error.Invalid.MultipleResults.exception(
-            count: Enum.count(results),
-            query: query,
-            at_least?: true
-          )
-
-        {:error, error}
+      {:error, %Ash.Error.Invalid.MultipleResults{} = error} ->
+        {:error, %{error | query: query}}
 
       {:error, error} ->
-        {:error, Ash.Error.to_ash_error(error)}
+        {:error, error}
     end
+  end
+
+  defp unwrap_one({:ok, result}) do
+    case unwrap_one(result) do
+      {:ok, result} ->
+        {:ok, result}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp unwrap_one(%{results: results}) do
+    unwrap_one(results)
+  end
+
+  defp unwrap_one([]), do: {:ok, nil}
+  defp unwrap_one([result]), do: {:ok, result}
+
+  defp unwrap_one([_ | _] = results) do
+    error =
+      Ash.Error.Invalid.MultipleResults.exception(
+        count: Enum.count(results),
+        at_least?: true
+      )
+
+    {:error, error}
   end
 
   @doc false
