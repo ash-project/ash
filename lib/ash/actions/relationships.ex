@@ -155,21 +155,26 @@ defmodule Ash.Actions.Relationships do
         async?: not possible?,
         authorize?: possible?,
         data:
-          Request.resolve(dependencies, fn data ->
-            if possible? do
-              query = get_in(data, [:relationships, relationship_name, type, :query])
+          get_in(changeset.context, [
+            :destination_entities,
+            relationship.name,
+            relationship.destination
+          ]) ||
+            Request.resolve(dependencies, fn data ->
+              if possible? do
+                query = get_in(data, [:relationships, relationship_name, type, :query])
 
-              case Ash.Actions.Read.unpaginated_read(query) do
-                {:ok, results} ->
-                  {:ok, add_changes_to_results(changeset.resource, results, identifiers)}
+                case Ash.Actions.Read.unpaginated_read(query) do
+                  {:ok, results} ->
+                    {:ok, add_changes_to_results(changeset.resource, results, identifiers)}
 
-                {:error, error} ->
-                  {:error, error}
+                  {:error, error} ->
+                    {:error, error}
+                end
+              else
+                {:ok, []}
               end
-            else
-              {:ok, []}
-            end
-          end),
+            end),
         name: "read prior to write related #{relationship.name}"
       )
 

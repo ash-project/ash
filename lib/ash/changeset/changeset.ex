@@ -391,7 +391,7 @@ defmodule Ash.Changeset do
         end
 
       relationship ->
-        record =
+        records =
           if relationship.cardinality == :one do
             if is_list(record_or_records) do
               List.first(record_or_records)
@@ -402,17 +402,39 @@ defmodule Ash.Changeset do
             List.wrap(record_or_records)
           end
 
-        case primary_key(relationship, record) do
+        case primary_key(relationship, records) do
           {:ok, primary_key} ->
             relationships =
               Map.put(changeset.relationships, relationship.name, %{replace: primary_key})
 
-            %{changeset | relationships: relationships}
+            changeset
+            |> check_entities_for_direct_write(relationship.name, List.wrap(records))
+            |> Map.put(:relationships, relationships)
 
           {:error, error} ->
             add_error(changeset, error)
         end
     end
+  end
+
+  defp check_entities_for_direct_write(changeset, relationship_name, records) do
+    if Enum.all?(records, &is_resource?/1) do
+      relation_entities =
+        Map.merge(Map.get(changeset.context, :destination_entities, %{}), %{
+          relationship_name => Enum.group_by(records, & &1.__struct__)
+        })
+
+      put_context(changeset, :destination_entities, relation_entities)
+    else
+      changeset
+    end
+  end
+
+  defp is_resource?(record) do
+    Ash.Resource.resource?(record.__struct__)
+  rescue
+    _error ->
+      false
   end
 
   @doc "Returns true if an attribute exists in the changes"
