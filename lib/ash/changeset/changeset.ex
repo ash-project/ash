@@ -391,7 +391,7 @@ defmodule Ash.Changeset do
         end
 
       relationship ->
-        record =
+        records =
           if relationship.cardinality == :one do
             if is_list(record_or_records) do
               List.first(record_or_records)
@@ -402,10 +402,17 @@ defmodule Ash.Changeset do
             List.wrap(record_or_records)
           end
 
-        case primary_key(relationship, record) do
+        case primary_key(relationship, records) do
           {:ok, primary_key} ->
             relationships =
               Map.put(changeset.relationships, relationship.name, %{replace: primary_key})
+
+            entities =
+              Enum.filter(records, fn record ->
+                Ash.Resource.resource?(record.__struct__)
+              end)
+
+            changeset = put_context(changeset, :entities_to_replace, entities)
 
             %{changeset | relationships: relationships}
 
