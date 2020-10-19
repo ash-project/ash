@@ -433,12 +433,10 @@ defmodule Ash.Changeset do
   end
 
   defp is_resource?(record) do
-    try do
-      Ash.Resource.resource?(record.__struct__)
-    rescue
-      _error ->
-        false
-    end
+    Ash.Resource.resource?(record.__struct__)
+  rescue
+    _error ->
+      false
   end
 
   @doc "Returns true if an attribute exists in the changes"
