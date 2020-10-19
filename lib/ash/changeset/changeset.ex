@@ -418,9 +418,7 @@ defmodule Ash.Changeset do
   end
 
   defp check_entities_for_direct_write(changeset, relationship_name, records) do
-    records
-    |> Enum.all?(&is_resource?/1)
-    |> if do
+    if Enum.all?(records, &is_resource?/1) do
       relation_entities =
         Map.merge(Map.get(changeset.context, :destination_entities, %{}), %{
           relationship_name => Enum.group_by(records, & &1.__struct__)
