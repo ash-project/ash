@@ -110,10 +110,6 @@ defmodule Ash.Actions.Relationships do
          identifiers,
          type
        ) do
-    IO.inspect(changeset, label: "\n\n changeset \n -------------------------------\n")
-    IO.inspect(relationship, label: "\n\n relationship \n -------------------------------\n")
-    IO.inspect(identifiers, label: "\n\n identifiers \n -------------------------------\n")
-    IO.inspect(type, label: "\n\n type \n -------------------------------\n")
     relationship_name = relationship.name
 
     {possible?, filter} =
@@ -159,7 +155,7 @@ defmodule Ash.Actions.Relationships do
         async?: not possible?,
         authorize?: possible?,
         data:
-          changeset.context.entities_to_replace ||
+          get_in(changeset.context, [:destination_entities, relationship.destination]) ||
             Request.resolve(dependencies, fn data ->
               if possible? do
                 query = get_in(data, [:relationships, relationship_name, type, :query])

@@ -407,18 +407,30 @@ defmodule Ash.Changeset do
             relationships =
               Map.put(changeset.relationships, relationship.name, %{replace: primary_key})
 
-            entities =
-              Enum.filter(records, fn record ->
-                Ash.Resource.resource?(record.__struct__)
-              end)
-
-            changeset = put_context(changeset, :entities_to_replace, entities)
-
-            %{changeset | relationships: relationships}
+            changeset
+            |> check_entities_for_direct_write(List.wrap(records))
+            |> Map.put(:relationships, relationships)
 
           {:error, error} ->
             add_error(changeset, error)
         end
+    end
+  end
+
+    |> Enum.all?(&is_resource?/1)
+    |> if do
+      put_context(changeset, :destination_entities, Enum.group_by(records, & &1.__struct__))
+    else
+      changeset
+    end
+  end
+
+  defp is_resource?(record) do
+    try do
+      Ash.Resource.resource?(record.__struct__)
+    rescue
+      _error ->
+        false
     end
   end
 

@@ -442,6 +442,25 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       assert author_post.id == post2.id
     end
 
+    test "it puts relationship destination entities into changeset's context iff all entities are valid Ash resources" do
+      post1 = Post |> Changeset.new(%{title: "title1"}) |> Api.create!()
+      post2 = Post |> Changeset.new(%{title: "title2"}) |> Api.create!()
+
+      changeset =
+        Author
+        |> Changeset.new()
+        |> Changeset.replace_relationship(:posts, [post1, post2.id])
+
+      refute Map.get(changeset.context, :destination_entities)
+
+      changeset =
+        Author
+        |> Changeset.new()
+        |> Changeset.replace_relationship(:posts, [post1, post2])
+
+      assert get_in(changeset.context, [:destination_entities, Post]) == [post1, post2]
+    end
+
     test "it accepts value of single attribute primary_key as a second param" do
       post1 = Post |> Changeset.new(%{title: "title1"}) |> Api.create!()
 
