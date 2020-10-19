@@ -59,12 +59,6 @@ defmodule Ash.Changeset do
         "#Ash.Changeset<",
         [
           concat("action_type: ", inspect(changeset.action_type)),
-          concat("resource: ", inspect(changeset.resource)),
-          concat("context: ", inspect(changeset.context)),
-          concat("after_action: ", inspect(changeset.after_action)),
-          concat("before_action: ", inspect(changeset.before_action)),
-          concat("change_dependencies: ", inspect(changeset.change_dependencies)),
-          concat("requests: ", inspect(changeset.requests)),
           concat("attributes: ", to_doc(changeset.attributes, opts)),
           concat("relationships: ", to_doc(changeset.relationships, opts)),
           concat("errors: ", to_doc(changeset.errors, opts)),
