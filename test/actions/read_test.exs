@@ -119,19 +119,19 @@ defmodule Ash.Test.Actions.ReadTest do
     end
   end
 
-  describe "api.read/2 with no records" do
+  describe "Api.read/2 with no records" do
     test "returns an empty result" do
       assert {:ok, []} = Api.read(Post)
     end
   end
 
-  describe "Ash.read!/2 with no records" do
+  describe "Api.read!/2 with no records" do
     test "returns an empty result" do
       assert [] = Api.read!(Post)
     end
   end
 
-  describe "api.read/2" do
+  describe "Api.read/2" do
     setup do
       post1 =
         Post
@@ -169,7 +169,7 @@ defmodule Ash.Test.Actions.ReadTest do
     end
   end
 
-  describe "api.read!/2" do
+  describe "Api.read!/2" do
     setup do
       post1 =
         Post
@@ -275,6 +275,44 @@ defmodule Ash.Test.Actions.ReadTest do
                Post
                |> Ash.Query.filter(author1: author1.id, author2: author2.id)
                |> Api.read!()
+    end
+
+    test "for `read prior to write related relationship` request, it uses `context.destination_entities` as request data and applies filter",
+         %{author1: author1, author2: author2} do
+      changeset =
+        Post
+        |> new(%{title: "test", contents: "yeet"})
+        |> replace_relationship(:author1, author1)
+        |> replace_relationship(:author2, author2)
+        |> Ash.Actions.Relationships.handle_relationship_changes()
+
+      id1 = author1.id
+      id2 = author2.id
+
+      assert match?(
+               %Ash.Changeset{
+                 #
+                 requests: [
+                   %Ash.Engine.Request{
+                     data: [%Author{id: ^id2}],
+                     name: "read prior to write related author2",
+                     path: [:relationships, :author2, :replace]
+                   },
+                   %Ash.Engine.Request{
+                     data: [%Author{id: ^id1}],
+                     name: "read prior to write related author1",
+                     path: [:relationships, :author1, :replace]
+                   }
+                 ],
+                 context: %{
+                   destination_entities: %{
+                     author1: %{Author => [%Author{id: ^id1}]},
+                     author2: %{Author => [%Author{id: ^id2}]}
+                   }
+                 }
+               },
+               changeset
+             )
     end
   end
 

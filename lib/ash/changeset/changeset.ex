@@ -59,6 +59,12 @@ defmodule Ash.Changeset do
         "#Ash.Changeset<",
         [
           concat("action_type: ", inspect(changeset.action_type)),
+          concat("resource: ", inspect(changeset.resource)),
+          concat("context: ", inspect(changeset.context)),
+          concat("after_action: ", inspect(changeset.after_action)),
+          concat("before_action: ", inspect(changeset.before_action)),
+          concat("change_dependencies: ", inspect(changeset.change_dependencies)),
+          concat("requests: ", inspect(changeset.requests)),
           concat("attributes: ", to_doc(changeset.attributes, opts)),
           concat("relationships: ", to_doc(changeset.relationships, opts)),
           concat("errors: ", to_doc(changeset.errors, opts)),
@@ -417,11 +423,15 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp check_entities_for_direct_write(changeset, relationship_name,  records) do
+  defp check_entities_for_direct_write(changeset, relationship_name, records) do
     records
     |> Enum.all?(&is_resource?/1)
     |> if do
-      relation_entities = Map.merge(Map.get(changeset.context, :destination_entities, %{}), %{relationship_name => Enum.group_by(records, &(&1.__struct__) )})
+      relation_entities =
+        Map.merge(Map.get(changeset.context, :destination_entities, %{}), %{
+          relationship_name => Enum.group_by(records, & &1.__struct__)
+        })
+
       put_context(changeset, :destination_entities, relation_entities)
     else
       changeset
