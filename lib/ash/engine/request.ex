@@ -815,14 +815,9 @@ defmodule Ash.Engine.Request do
   defp get_dependency_data(request, dep) do
     if local_dep?(request, dep) do
       case Map.fetch(request, List.last(dep)) do
-        {:ok, %UnresolvedField{}} ->
-          :error
-
-        {:ok, value} ->
-          {:ok, value}
-
-        :error ->
-          :error
+        {:ok, %UnresolvedField{}} -> :error
+        {:ok, value} -> {:ok, value}
+        :error -> :error
       end
     else
       Map.fetch(request.dependency_data, dep)
