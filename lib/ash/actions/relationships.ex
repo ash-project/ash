@@ -155,7 +155,7 @@ defmodule Ash.Actions.Relationships do
         async?: not possible?,
         authorize?: possible?,
         data:
-          get_in(changeset.context, [:destination_entities, relationship.destination]) ||
+          get_in(changeset.context, [:destination_entities, relationship.name, relationship.destination]) ||
             Request.resolve(dependencies, fn data ->
               if possible? do
                 query = get_in(data, [:relationships, relationship_name, type, :query])

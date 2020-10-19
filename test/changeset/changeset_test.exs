@@ -458,7 +458,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         |> Changeset.new()
         |> Changeset.replace_relationship(:posts, [post1, post2])
 
-      assert get_in(changeset.context, [:destination_entities, Post]) == [post1, post2]
+      assert get_in(changeset.context, [:destination_entities, :posts, Post]) == [post1, post2]
     end
 
     test "it accepts value of single attribute primary_key as a second param" do

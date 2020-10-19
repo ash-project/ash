@@ -408,7 +408,7 @@ defmodule Ash.Changeset do
               Map.put(changeset.relationships, relationship.name, %{replace: primary_key})
 
             changeset
-            |> check_entities_for_direct_write(List.wrap(records))
+            |> check_entities_for_direct_write(relationship.name, List.wrap(records))
             |> Map.put(:relationships, relationships)
 
           {:error, error} ->
@@ -417,9 +417,12 @@ defmodule Ash.Changeset do
     end
   end
 
+  defp check_entities_for_direct_write(changeset, relationship_name,  records) do
+    records
     |> Enum.all?(&is_resource?/1)
     |> if do
-      put_context(changeset, :destination_entities, Enum.group_by(records, & &1.__struct__))
+      relation_entities = Map.merge(Map.get(changeset.context, :destination_entities, %{}), %{relationship_name => Enum.group_by(records, &(&1.__struct__) )})
+      put_context(changeset, :destination_entities, relation_entities)
     else
       changeset
     end
