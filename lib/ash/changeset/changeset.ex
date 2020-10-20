@@ -37,7 +37,6 @@ defmodule Ash.Changeset do
   """
   defstruct [
     :data,
-    :action,
     :action_type,
     :resource,
     :api,
@@ -105,10 +104,6 @@ defmodule Ash.Changeset do
       %__MODULE__{resource: resource, action_type: :create, data: struct(resource)}
       |> add_error(NoSuchResource.exception(resource: resource))
     end
-  end
-
-  def set_action(changeset, action) when is_struct(action) do
-    %{changeset | action: action}
   end
 
   @doc """
