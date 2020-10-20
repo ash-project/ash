@@ -12,7 +12,8 @@
     # {:credo, "mix credo --format oneline"},
 
     {:check_formatter, command: "mix ash.formatter --check"},
-    {:unused_deps, command: "mix deps.unlock --check-unused"}
+    # TODO: upgrade to the new version of ex_check that should do this on the right elixir version
+    # {:unused_deps, command: "mix deps.unlock --check-unused"}
 
     ## custom new tools may be added (mix tasks or arbitrary commands)
     # {:my_mix_task, command: "mix release", env: %{"MIX_ENV" => "prod"}},
