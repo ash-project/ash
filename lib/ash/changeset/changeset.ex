@@ -37,6 +37,7 @@ defmodule Ash.Changeset do
   """
   defstruct [
     :data,
+    :action,
     :action_type,
     :resource,
     :api,
@@ -104,6 +105,10 @@ defmodule Ash.Changeset do
       %__MODULE__{resource: resource, action_type: :create, data: struct(resource)}
       |> add_error(NoSuchResource.exception(resource: resource))
     end
+  end
+
+  def set_action(changeset, action) when is_struct(action) do
+    %{changeset | action: action}
   end
 
   @doc """
@@ -774,8 +779,7 @@ defmodule Ash.Changeset do
     {:error,
      InvalidAttribute.exception(
        field: attribute.name,
-       message: "must be present",
-       validation: {:present, 1, 1}
+       message: "must be present"
      )}
   end
 
@@ -785,7 +789,6 @@ defmodule Ash.Changeset do
     error =
       InvalidAttribute.exception(
         field: attribute.name,
-        validation: {:cast, attribute.type},
         message: message
       )
 

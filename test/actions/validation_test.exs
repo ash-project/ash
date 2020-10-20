@@ -78,7 +78,7 @@ defmodule Ash.Test.Actions.ValidationTest do
     end
 
     test "it fails if the value is not in the list" do
-      assert_raise(Ash.Error.Invalid, ~r/Expected value to be one of \["foo", "bar"\]/, fn ->
+      assert_raise(Ash.Error.Invalid, ~r/expected one of foo, bar/, fn ->
         Profile
         |> Ash.Changeset.new(%{status: "blart"})
         |> Api.create!()

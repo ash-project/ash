@@ -30,7 +30,10 @@ defmodule Ash.Notifier.PubSub.Publication do
     ]
   ]
 
+  @publish_all_schema Keyword.update!(@schema, :action, &Keyword.delete(&1, :required))
+
   def schema, do: @schema
+  def publish_all_schema, do: @publish_all_schema
 
   @doc false
   def topic(topic) when is_binary(topic) do

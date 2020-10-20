@@ -1,6 +1,14 @@
 defmodule Ash.Engine.RequestHandler do
   @moduledoc false
-  defstruct [:request, :verbose?, :engine_pid, :pid_info, :runner_pid, dependencies_requested: []]
+  defstruct [
+    :request,
+    :verbose?,
+    :engine_pid,
+    :pid_info,
+    :runner_pid,
+    dependencies_requested: [],
+    notifications_sent: MapSet.new()
+  ]
 
   use GenServer
   require Logger
@@ -30,8 +38,9 @@ defmodule Ash.Engine.RequestHandler do
   def handle_continue(:next, %{request: request} = state) do
     case Request.next(request) do
       {:continue, new_request, notifications} ->
-        new_state = %{state | request: new_request}
-        notify(new_state, notifications)
+        new_state =
+          %{state | request: new_request}
+          |> notify(notifications)
 
         {:noreply, new_state, {:continue, :next}}
 
@@ -43,16 +52,19 @@ defmodule Ash.Engine.RequestHandler do
         {:noreply, new_state}
 
       {:already_complete, new_request, notifications, dependencies} ->
-        new_state = %{state | request: new_request}
-        Enum.each(dependencies, &register_dependency(new_state, &1))
+        new_state =
+          %{state | request: new_request}
+          |> notify(notifications)
 
-        notify(new_state, notifications)
+        Enum.each(dependencies, &register_dependency(new_state, &1))
 
         {:noreply, new_state}
 
       {:complete, new_request, notifications, dependencies} ->
-        new_state = %{state | request: new_request}
-        notify(new_state, notifications)
+        new_state =
+          %{state | request: new_request}
+          |> notify(notifications)
+
         Enum.each(dependencies, &register_dependency(new_state, &1))
 
         if new_request.notify? do
@@ -65,8 +77,10 @@ defmodule Ash.Engine.RequestHandler do
         {:noreply, new_state, {:continue, :next}}
 
       {:wait, new_request, notifications, dependencies} ->
-        new_state = %{state | request: new_request}
-        notify(new_state, notifications)
+        new_state =
+          %{state | request: new_request}
+          |> notify(notifications)
+
         Enum.each(dependencies, &register_dependency(new_state, &1))
 
         {:noreply, new_state}
@@ -107,16 +121,20 @@ defmodule Ash.Engine.RequestHandler do
            field
          ) do
       {:waiting, new_request, notifications, dependency_requests} ->
-        new_state = %{state | request: new_request}
-        notify(new_state, notifications)
+        new_state =
+          state
+          |> Map.put(:request, new_request)
+          |> notify(notifications)
+
         Enum.each(dependency_requests, &register_dependency(new_state, &1))
 
         {:noreply, new_state}
 
       {:ok, new_request, notifications} ->
-        new_state = %{state | request: new_request}
+        new_state =
+          %{state | request: new_request}
+          |> notify(notifications)
 
-        notify(new_state, notifications)
         {:noreply, new_state}
 
       {:error, error, new_request} ->
@@ -140,30 +158,42 @@ defmodule Ash.Engine.RequestHandler do
   end
 
   defp notify(state, notifications) do
-    Enum.each(notifications, fn
-      {:set_extra_data, key, value} ->
+    Enum.reduce(notifications, state, fn
+      {:set_extra_data, key, value}, state ->
         send(state.runner_pid, {:data, [key], value})
+        state
 
-      %Ash.Notifier.Notification{} = resource_notification ->
+      %Ash.Notifier.Notification{} = resource_notification, state ->
         send(state.runner_pid, {:runner, :notification, resource_notification})
+        state
 
-      {receiver_path, request_path, field, value} ->
-        receiver_path =
-          case receiver_path do
-            {_, path} -> path
-            path -> path
+      {receiver_path, request_path, field, value}, state ->
+        if MapSet.member?(state.notifications_sent, {receiver_path, request_path, field}) do
+          state
+        else
+          receiver_path =
+            case receiver_path do
+              {_, path} -> path
+              path -> path
+            end
+
+          destination_pid = Map.get(state.pid_info, receiver_path) || state.runner_pid
+
+          log(state, "notifying #{inspect(receiver_path)} of #{inspect(field)}")
+
+          if destination_pid == state.runner_pid do
+            send(destination_pid, {:field_value, receiver_path, request_path, field, value})
+          else
+            GenServer.cast(
+              destination_pid,
+              {:field_value, receiver_path, request_path, field, value}
+            )
           end
 
-        destination_pid = Map.get(state.pid_info, receiver_path) || state.runner_pid
-
-        log(state, "notifying #{inspect(receiver_path)} of #{inspect(field)}")
-
-        if destination_pid == state.runner_pid do
-          send(destination_pid, {:field_value, receiver_path, request_path, field, value})
-        else
-          GenServer.cast(
-            destination_pid,
-            {:field_value, receiver_path, request_path, field, value}
+          Map.update!(
+            state,
+            :notifications_sent,
+            &MapSet.put(&1, {receiver_path, request_path, field})
           )
         end
     end)

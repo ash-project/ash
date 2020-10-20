@@ -38,13 +38,28 @@ defmodule Ash.Notifier.PubSub do
     args: [:action, :topic]
   }
 
+  @publish_all %Ash.Dsl.Entity{
+    name: :publish_all,
+    target: Ash.Notifier.PubSub.Publication,
+    describe: """
+    Works just like `publish`, except that it takes a type
+    and publishes all actions of that type
+    """,
+    examples: [
+      "publish_all :create, \"created\""
+    ],
+    schema: Ash.Notifier.PubSub.Publication.publish_all_schema(),
+    args: [:type, :topic]
+  }
+
   @pub_sub %Ash.Dsl.Section{
     name: :pub_sub,
     describe: """
     A section for configuring how resource actions are published over pubsub
     """,
     entities: [
-      @publish
+      @publish,
+      @publish_all
     ],
     schema: [
       module: [
@@ -143,6 +158,7 @@ defmodule Ash.Notifier.PubSub do
   end
 
   defp matches?(%{action: action, type: nil}, %{action: %{name: action}}), do: true
+  defp matches?(%{action: nil, type: type}, %{action: %{type: type}}), do: true
   defp matches?(%{action: action, type: type}, %{action: %{name: action, type: type}}), do: true
 
   defp matches?(_, _), do: false

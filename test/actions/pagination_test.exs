@@ -79,7 +79,7 @@ defmodule Ash.Actions.PaginationTest do
 
   test "a default limit allows not specifying page parameters" do
     assert_raise Ash.Error.Invalid.LimitRequired, fn ->
-      Api.read!(User)
+      Api.read!(User, page: [offset: 1])
     end
 
     Api.read!(User, action: :required_offset_with_default)
@@ -101,7 +101,10 @@ defmodule Ash.Actions.PaginationTest do
 
     test "can be offset" do
       assert Enum.count(Api.read!(User, action: :optional_offset, page: false)) == 10
-      assert Enum.count(Api.read!(User, action: :optional_offset, page: [offset: 5]).results) == 5
+
+      assert Enum.count(
+               Api.read!(User, action: :optional_offset, page: [offset: 5, limit: 5]).results
+             ) == 5
     end
 
     test "can include a full count" do
@@ -129,7 +132,7 @@ defmodule Ash.Actions.PaginationTest do
       names =
         User
         |> Ash.Query.sort(:name)
-        |> Api.read!(page: [offset: 5])
+        |> Api.read!(page: [offset: 5, limit: 5])
         |> Map.get(:results)
         |> Enum.map(& &1.name)
 
@@ -140,7 +143,7 @@ defmodule Ash.Actions.PaginationTest do
       names =
         User
         |> Ash.Query.sort(name: :desc)
-        |> Api.read!(page: [offset: 5])
+        |> Api.read!(page: [offset: 5, limit: 5])
         |> Map.get(:results)
         |> Enum.map(& &1.name)
 
@@ -152,7 +155,7 @@ defmodule Ash.Actions.PaginationTest do
         User
         |> Ash.Query.sort(name: :desc)
         |> Ash.Query.filter(name in ["4", "3", "2", "1", "0"])
-        |> Api.read!(page: [offset: 1])
+        |> Api.read!(page: [offset: 1, limit: 5])
         |> Map.get(:results)
         |> Enum.map(& &1.name)
 

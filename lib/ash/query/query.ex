@@ -467,12 +467,23 @@ defmodule Ash.Query do
   Builds a query from a keyword list.
 
   This is used by certain query constructs like aggregates. It can also be used to manipulate a data structure
-  before passing it to an ash query.
+  before passing it to an ash query. It allows for building an entire query struct using only a keyword list.
 
   For example:
 
   ```elixir
-  Ash.Query.build(MyResource, filter: [name: "fred"], sort: [name: :asc], offset: 10)
+  Ash.Query.build(MyResource, filter: [name: "fred"], sort: [name: :asc], load: [:foo, :bar], offset: 10)
+  ```
+
+  If you want to use the expression style filters, you can use `expr/1`. Be sure to `require Ash.Query` first,
+  or import it. Consider importing only the `expr/1` macro if you do that
+
+  For example:
+
+  ```elixir
+  import Ash.Query, only: [expr: 1]
+
+  Ash.Query.build(Myresource, filter: expr(name == "marge"))
   ```
   """
   @spec build(Ash.resource(), Ash.api() | nil, Keyword.t()) :: t()
@@ -490,8 +501,8 @@ defmodule Ash.Query do
       {:offset, value}, query ->
         offset(query, value)
 
-      {:side_load, value}, query ->
-        side_load(query, value)
+      {:load, value}, query ->
+        load(query, value)
 
       {:aggregate, {name, type, relationship}}, query ->
         aggregate(query, name, type, relationship)

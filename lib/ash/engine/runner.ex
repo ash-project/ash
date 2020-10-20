@@ -216,16 +216,27 @@ defmodule Ash.Engine.Runner do
   defp add_engine_state(state, engine_state) do
     new_state = %{state | errors: engine_state.errors ++ state.errors}
 
-    log(state, "waiting for engine data")
-    receive_data(new_state)
+    flush(new_state)
   end
 
-  defp receive_data(state) do
+  defp flush(state) do
     receive do
       {:data, path, data} ->
         state
         |> add_data(path, data)
-        |> receive_data()
+        |> flush()
+
+      {:wont_receive, _, _, _} ->
+        flush(state)
+
+      {:send_field, _, _, _} ->
+        flush(state)
+
+      {:field_value, _, _, _, _} ->
+        flush(state)
+
+      {:runner, _, _} ->
+        flush(state)
     after
       0 ->
         state

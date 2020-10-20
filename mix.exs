@@ -24,7 +24,7 @@ defmodule Ash.MixProject do
         coveralls: :test,
         "coveralls.github": :test
       ],
-      xref: [exclude: [:mnesia, Phoenix.LiveView]],
+      xref: [exclude: [:mnesia]],
       docs: docs(),
       aliases: aliases(),
       description: @description,

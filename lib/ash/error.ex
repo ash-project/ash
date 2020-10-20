@@ -141,7 +141,16 @@ defmodule Ash.Error do
       defexception unquote(fields) ++ [path: [], stacktrace: [], class: unquote(opts)[:class]]
 
       @impl Exception
-      defdelegate message(error), to: Ash.Error
+      def message(%{message: {string, replacements}} = exception) do
+        string =
+          Enum.reduce(replacements, string, fn {key, value}, acc ->
+            String.replace(acc, "%{#{key}}", to_string(value))
+          end)
+
+        Ash.Error.message(%{exception | message: string})
+      end
+
+      def message(exception), do: Ash.Error.message(exception)
 
       def exception(opts) do
         case Process.info(self(), :current_stacktrace) do

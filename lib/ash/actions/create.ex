@@ -122,7 +122,7 @@ defmodule Ash.Actions.Create do
     |> Enum.reduce(changeset, fn {key, _}, changeset ->
       Ash.Changeset.add_error(
         changeset,
-        InvalidAttribute.exception(field: key, message: "Cannot be changed")
+        InvalidAttribute.exception(field: key, message: "cannot be changed")
       )
     end)
   end

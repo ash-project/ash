@@ -194,7 +194,7 @@ defmodule Ash.Test.Actions.UpdateTest do
         |> new(%{name: "fred"})
         |> Api.create!()
 
-      assert_raise Ash.Error.Invalid, ~r/Invalid value provided for bio: Cannot be changed/, fn ->
+      assert_raise Ash.Error.Invalid, ~r/Invalid value provided for bio: cannot be changed/, fn ->
         author
         |> new(%{bio: "bio"})
         |> Api.update!(action: :only_allow_name)

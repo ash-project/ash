@@ -57,7 +57,7 @@ defmodule Ash.Resource.Validation.Present do
           if count == 1 do
             attribute_error(opts, count, "must be present")
           else
-            attribute_error(opts, count, "exactly #{opts[:exactly]} must be present")
+            attribute_error(opts, count, {"exactly %{exactly} must be present", opts})
           end
         end
 
@@ -65,14 +65,14 @@ defmodule Ash.Resource.Validation.Present do
         if count == 1 do
           attribute_error(opts, count, "must be present")
         else
-          changes_error(opts, count, "at least #{opts[:at_least]} must be present")
+          changes_error(opts, count, {"at least %{at_least} must be present", opts})
         end
 
       opts[:at_most] && present > opts[:at_most] ->
         if count == 1 do
           attribute_error(opts, count, "must not be present")
         else
-          changes_error(opts, count, "at least #{opts[:at_least]} must be present")
+          changes_error(opts, count, {"at least %{at_most} must be present", opts})
         end
 
       true ->
@@ -80,20 +80,18 @@ defmodule Ash.Resource.Validation.Present do
     end
   end
 
-  defp changes_error(opts, count, message) do
+  defp changes_error(opts, _count, message) do
     {:error,
      InvalidChanges.exception(
        fields: opts[:attributes],
-       validation: {:present, opts[:at_least] || count, opts[:at_most] || count},
        message: message
      )}
   end
 
-  defp attribute_error(opts, count, message) do
+  defp attribute_error(opts, _count, message) do
     {:error,
      InvalidAttribute.exception(
        field: List.first(opts[:attributes]),
-       validation: {:present, opts[:at_least] || count, opts[:at_most] || count},
        message: message
      )}
   end

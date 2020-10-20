@@ -198,7 +198,6 @@ defmodule Ash.Engine.Request do
       actor: request.actor,
       action: request.action,
       data: request.data,
-      query: request.query,
       changeset: request.changeset
     }
   end

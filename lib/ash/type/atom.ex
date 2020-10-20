@@ -27,7 +27,10 @@ defmodule Ash.Type.Atom do
           if Enum.member?(atom_list, value) do
             errors
           else
-            ["atom must be one of `#{inspect(atom_list)}`" | errors]
+            [
+              {"atom must be one of %{atom_list}", atom_list: Enum.join(atom_list, ", ")}
+              | errors
+            ]
           end
       end)
 

@@ -62,9 +62,11 @@ defmodule Ash.Type do
   @callback cast_stored(term) :: {:ok, term} | :error
   @callback dump_to_native(term) :: {:ok, term} | :error
   @callback constraints() :: constraints()
-  @callback apply_constraints(term, constraints()) :: :ok | {:error, String.t() | [String.t()]}
+  @callback apply_constraints(term, constraints()) ::
+              :ok | {:error, constraint_error() | list(constraint_error)}
   @callback equal?(term, term) :: boolean
 
+  @type constraint_error :: String.t() | {String.t(), Keyword.t()}
   @type t :: atom | {:array, atom}
 
   @doc false
@@ -211,7 +213,7 @@ defmodule Ash.Type do
             |> Enum.reduce([], fn {item, index}, errors ->
               errors =
                 if is_nil(item) && not nil_items? do
-                  ["cannot be nil at index #{index}" | errors]
+                  [{"no nil/null values at index %{index}", index: index} | errors]
                 else
                   errors
                 end
@@ -224,7 +226,14 @@ defmodule Ash.Type do
                   new_errors =
                     new_errors
                     |> List.wrap()
-                    |> Enum.map(&Kernel.<>(&1, " at index #{index}"))
+                    |> Enum.map(fn
+                      {template, replacements} ->
+                        {template <> " at index %{index}",
+                         Keyword.put(replacements, :index, index)}
+
+                      string ->
+                        {string <> " at index %{index}", index: index}
+                    end)
 
                   List.wrap(new_errors) ++ errors
               end
@@ -264,14 +273,14 @@ defmodule Ash.Type do
     |> Enum.reduce([], fn
       {:min_length, min_length}, errors ->
         if length < min_length do
-          ["must have more than #{min_length} items" | errors]
+          [{"must have more than %{min} items", min: min_length} | errors]
         else
           errors
         end
 
       {:max_length, max_length}, errors ->
         if length > max_length do
-          ["must have fewer than #{max_length} items" | errors]
+          [{"must have fewer than %{max} items", max: max_length} | errors]
         else
           errors
         end

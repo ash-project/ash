@@ -2,6 +2,7 @@
 # DONT MODIFY IT BY HAND
 locals_without_parens = [
   accept: 1,
+  action: 1,
   allow_nil?: 1,
   argument: 2,
   argument: 3,
@@ -53,6 +54,8 @@ locals_without_parens = [
   private?: 1,
   publish: 2,
   publish: 3,
+  publish_all: 2,
+  publish_all: 3,
   read: 1,
   read: 2,
   required?: 1,

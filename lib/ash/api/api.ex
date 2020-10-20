@@ -35,7 +35,8 @@ defmodule Ash.Api do
 
   require Ash.Query
 
-  @type page_request :: :next | :prev | :first | :last | integer
+  @type page_request ::
+          :next | :prev | :first | :last | integer
 
   @global_opts [
     verbose?: [
@@ -93,6 +94,15 @@ defmodule Ash.Api do
       type: :pos_integer,
       doc: "The number of records to include in the page"
     ],
+    filter: [
+      type: :any,
+      doc: """
+      A filter to apply for pagination purposes, that should not be considered in the full count.
+
+      This is used by the liveview paginator to only fetch the records that were *already* on the
+      page when refreshing data, to avoid pages jittering.
+      """
+    ],
     count: [
       type: :boolean,
       doc: "Whether or not to return the page with a full count of all records"
@@ -111,6 +121,10 @@ defmodule Ash.Api do
     limit: [
       type: :pos_integer,
       doc: "How many records to include in the page"
+    ],
+    filter: [
+      type: :any,
+      doc: "See the `filter` option for offset pagination, this behaves the same."
     ],
     count: [
       type: :boolean,
@@ -216,7 +230,7 @@ defmodule Ash.Api do
   @doc """
   Run an ash query, raising on more than one result. See `c:read_one/2` for more.
   """
-  @callback read_one!(Ash.query(), params :: Keyword.t()) ::
+  @callback read_one!(Ash.query() | Ash.resource(), params :: Keyword.t()) ::
               Ash.record() | {Ash.record(), Ash.query()} | no_return
 
   @doc """
@@ -225,12 +239,12 @@ defmodule Ash.Api do
   This is useful if you have a query that doesn't include a primary key
   but you know that it will only ever return a single result
   """
-  @callback read_one(Ash.query(), params :: Keyword.t()) ::
+  @callback read_one(Ash.query() | Ash.resource(), params :: Keyword.t()) ::
               {:ok, Ash.record()} | {:ok, Ash.record(), Ash.query()} | {:error, Ash.error()}
   @doc """
   Run an ash query. See `c:read/2` for more.
   """
-  @callback read!(Ash.query(), params :: Keyword.t()) ::
+  @callback read!(Ash.query() | Ash.resource(), params :: Keyword.t()) ::
               list(Ash.record()) | {list(Ash.record()), Ash.Query.t()} | no_return
 
   @doc """
@@ -573,7 +587,7 @@ defmodule Ash.Api do
           [offset: offset + limit, limit: limit]
 
         :prev ->
-          [offset: min(offset - limit, 0), limit: limit]
+          [offset: max(offset - limit, 0), limit: limit]
 
         :first ->
           [offset: 0, limit: limit]
@@ -586,7 +600,7 @@ defmodule Ash.Api do
           end
 
         page_num when is_integer(page_num) ->
-          [offset: page_num * limit, limit: limit]
+          [offset: (page_num - 1) * limit, limit: limit]
       end
 
     page_opts =
@@ -719,7 +733,7 @@ defmodule Ash.Api do
   end
 
   @doc false
-  @spec read!(Ash.api(), Ash.query(), Keyword.t()) ::
+  @spec read!(Ash.api(), Ash.query() | Ash.resource(), Keyword.t()) ::
           list(Ash.record()) | no_return
   def read!(api, query, opts \\ []) do
     opts = NimbleOptions.validate!(opts, @read_opts_schema)
@@ -730,9 +744,15 @@ defmodule Ash.Api do
   end
 
   @doc false
-  @spec read(Ash.api(), Ash.query(), Keyword.t()) ::
-          {:ok, list(Ash.resource()) | Ash.page()} | {:error, Ash.error()}
-  def read(api, query, opts \\ []) do
+  @spec read(Ash.api(), Ash.query() | Ash.resource(), Keyword.t()) ::
+          {:ok, list(Ash.record()) | Ash.page()} | {:error, Ash.error()}
+  def read(api, query, opts \\ [])
+
+  def read(api, resource, opts) when is_atom(resource) do
+    read(api, Ash.Query.new(resource, api), opts)
+  end
+
+  def read(api, query, opts) do
     query = Ash.Query.set_api(query, api)
 
     with {:ok, opts} <- NimbleOptions.validate(opts, @read_opts_schema),
