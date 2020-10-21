@@ -216,8 +216,12 @@ defmodule Ash.Actions.Relationships do
       end
 
     search_keys
-    |> Enum.map(fn pkey ->
-      Map.take(pkey, primary_key)
+    |> Enum.map(fn
+      {pkey, %Ash.Changeset{}} ->
+        Map.take(pkey, primary_key)
+
+      pkey ->
+        Map.take(pkey, primary_key)
     end)
     |> Enum.reject(fn pkey ->
       Enum.any?(results, fn result ->

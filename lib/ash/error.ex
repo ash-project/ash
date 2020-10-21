@@ -54,16 +54,6 @@ defmodule Ash.Error do
     choose_error(values)
   end
 
-  defp clear_stacktraces(%{stacktrace: stacktrace} = error) when not is_nil(stacktrace) do
-    clear_stacktraces(%{error | stacktrace: nil})
-  end
-
-  defp clear_stacktraces(%{errors: errors}) do
-    Enum.map(errors, &clear_stacktraces/1)
-  end
-
-  defp clear_stacktraces(error), do: error
-
   def to_ash_error(value) do
     if ash_error?(value) do
       value
@@ -71,6 +61,16 @@ defmodule Ash.Error do
       to_ash_error([value])
     end
   end
+
+  defp clear_stacktraces(%{stacktrace: stacktrace} = error) when not is_nil(stacktrace) do
+    clear_stacktraces(%{error | stacktrace: nil})
+  end
+
+  defp clear_stacktraces(%{errors: errors}) when is_list(errors) do
+    Enum.map(errors, &clear_stacktraces/1)
+  end
+
+  defp clear_stacktraces(error), do: error
 
   def choose_error(errors) do
     [error | other_errors] =
