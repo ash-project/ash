@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.20.0](https://github.com/ash-project/ash/compare/v1.19.1...v1.20.0) (2020-10-21)
+
+
+
+
+### Features:
+
+* Optimize relashionship records replacement (#135)
+
+### Bug Fixes:
+
+* remove unused code
+
+* various fixes and improvements
+
 ## [v1.19.1](https://github.com/ash-project/ash/compare/v1.19.0...v1.19.1) (2020-10-17)
 
 
