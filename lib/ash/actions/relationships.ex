@@ -120,6 +120,9 @@ defmodule Ash.Actions.Relationships do
         [single_identifier] ->
           {true, single_identifier}
 
+        nil ->
+          {false, []}
+
         [] ->
           {false, []}
 
@@ -163,13 +166,20 @@ defmodule Ash.Actions.Relationships do
             Request.resolve(dependencies, fn data ->
               if possible? do
                 query = get_in(data, [:relationships, relationship_name, type, :query])
+                primary_key = Ash.Resource.primary_key(query.resource)
 
-                case Ash.Actions.Read.unpaginated_read(query) do
-                  {:ok, results} ->
-                    {:ok, add_changes_to_results(changeset.resource, results, identifiers)}
-
-                  {:error, error} ->
-                    {:error, error}
+                with {:ok, results} <- Ash.Actions.Read.unpaginated_read(query),
+                     :ok <-
+                       ensure_all_found(
+                         changeset,
+                         relationship_name,
+                         type,
+                         relationship.cardinality,
+                         destination,
+                         primary_key,
+                         results
+                       ) do
+                  {:ok, add_changes_to_results(changeset.resource, results, identifiers)}
                 end
               else
                 {:ok, []}
@@ -181,6 +191,51 @@ defmodule Ash.Actions.Relationships do
     changeset
     |> Changeset.add_requests(request)
     |> Changeset.changes_depend_on([:relationships, relationship_name, type, :data])
+  end
+
+  defp ensure_all_found(
+         changeset,
+         relationship_name,
+         type,
+         cardinality,
+         destination,
+         primary_key,
+         results
+       ) do
+    search_keys =
+      case cardinality do
+        :one ->
+          changeset.relationships
+          |> get_in([relationship_name, type])
+          |> List.wrap()
+
+        :many ->
+          changeset.relationships
+          |> get_in([relationship_name, type])
+          |> Kernel.||([])
+      end
+
+    search_keys
+    |> Enum.map(fn pkey ->
+      Map.take(pkey, primary_key)
+    end)
+    |> Enum.reject(fn pkey ->
+      Enum.any?(results, fn result ->
+        result
+        |> Map.take(primary_key)
+        |> Kernel.==(pkey)
+      end)
+    end)
+    |> case do
+      [] ->
+        :ok
+
+      not_found ->
+        {:error,
+         Enum.map(not_found, fn key ->
+           Ash.Error.Query.NotFound.exception(resource: destination, primary_key: key)
+         end)}
+    end
   end
 
   defp add_changes_to_results(resource, results, identifiers) do

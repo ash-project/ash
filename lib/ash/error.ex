@@ -40,16 +40,29 @@ defmodule Ash.Error do
 
   def to_ash_error(values) when is_list(values) do
     values =
-      Enum.map(values, fn value ->
+      values
+      |> Enum.uniq_by(&clear_stacktraces/1)
+      |> Enum.map(fn value ->
         if ash_error?(value) do
           value
         else
           Unknown.exception(error: values)
         end
       end)
+      |> Enum.uniq()
 
     choose_error(values)
   end
+
+  defp clear_stacktraces(%{stacktrace: stacktrace} = error) when not is_nil(stacktrace) do
+    clear_stacktraces(%{error | stacktrace: nil})
+  end
+
+  defp clear_stacktraces(%{errors: errors}) do
+    Enum.map(errors, &clear_stacktraces/1)
+  end
+
+  defp clear_stacktraces(error), do: error
 
   def to_ash_error(value) do
     if ash_error?(value) do
