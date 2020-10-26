@@ -213,9 +213,12 @@ defmodule Ash.Resource do
       resource,
       [:multitenancy],
       :parse_attribute,
-      {Function, :identity, []}
+      {__MODULE__, :identity, []}
     )
   end
+
+  @doc false
+  def identity(x), do: x
 
   @spec multitenancy_global?(Ash.resource()) :: atom | nil
   def multitenancy_global?(resource) do

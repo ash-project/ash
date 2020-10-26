@@ -491,10 +491,13 @@ defmodule Ash.Resource.Dsl do
         type: :mfa,
         doc:
           "An mfa ({module, function, args}) pointing to a function that takes a tenant and returns the attribute value",
-        default: {Function, :identity, []}
+        default: {__MODULE__, :identity, []}
       ]
     ]
   }
+
+  @doc false
+  def identity(x), do: x
 
   @sections [
     @attributes,
