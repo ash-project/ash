@@ -450,6 +450,52 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
+  @multitenancy %Ash.Dsl.Section{
+    name: :multitenancy,
+    describe: """
+    Options for configuring the multitenancy behavior of a resource.
+
+    To specify a tenant, use `Ash.Query.set_tenant/2` or
+    `Ash.Changeset.set_tenant/2` before passing it to an operation.
+    """,
+    schema: [
+      strategy: [
+        type: {:one_of, [:context, :attribute]},
+        default: :context,
+        doc: """
+        Determine how to perform multitenancy. `:attribute` will expect that an
+        attribute matches the given `tenant`, e.g `org_id`. `context` (the default)
+        implies that the tenant will be passed to the datalayer as context. How a
+        given data layer handles multitenancy will differ depending on the implementation.
+        See the datalayer documentation for more.
+        """
+      ],
+      attribute: [
+        type: :atom,
+        doc: """
+        If using the `attribute` strategy, the attribute to use, e.g `org_id`
+        """
+      ],
+      global?: [
+        type: :boolean,
+        doc: """
+        Whether or not the data also exists outside of each tenant. This allows running queries
+        and making changes without setting a tenant. This may eventually be extended to support
+        describing the relationship to global data. For example, perhaps the global data is
+        shared among all tenants (requiring "union" support in data layers), or perhaps global
+        data is "merged" using some strategy (also requiring "union" support).
+        """,
+        default: false
+      ],
+      parse_attribute: [
+        type: :mfa,
+        doc:
+          "An mfa ({module, function, args}) pointing to a function that takes a tenant and returns the attribute value",
+        default: {Function, :identity, []}
+      ]
+    ]
+  }
+
   @sections [
     @attributes,
     @relationships,
@@ -457,7 +503,8 @@ defmodule Ash.Resource.Dsl do
     @resource,
     @validations,
     @aggregates,
-    @calculations
+    @calculations,
+    @multitenancy
   ]
 
   @transformers [
@@ -468,7 +515,8 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.CachePrimaryKey,
     Ash.Resource.Transformers.SetPrimaryActions,
     Ash.Resource.Transformers.ValidateActionTypesSupported,
-    Ash.Resource.Transformers.CountableActions
+    Ash.Resource.Transformers.CountableActions,
+    Ash.Resource.Transformers.ValidateMultitenancy
   ]
 
   use Ash.Dsl.Extension,

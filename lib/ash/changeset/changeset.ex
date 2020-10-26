@@ -12,7 +12,6 @@ defmodule Ash.Changeset do
   For relationship manipulation using `append_to_relationship/3`, `remove_from_relationship/3`
   and `replace_relationship/3` there are three types that can be used for primary keys:
 
-
   1.) An instance of the resource in question.
 
   2.) If the primary key is just a single field, i.e `:id`, then a single value, i.e `1`
@@ -40,6 +39,7 @@ defmodule Ash.Changeset do
     :action_type,
     :resource,
     :api,
+    :tenant,
     context: %{},
     after_action: [],
     before_action: [],
@@ -87,12 +87,19 @@ defmodule Ash.Changeset do
   def new(resource, initial_attributes \\ %{})
 
   def new(%resource{} = record, initial_attributes) do
+    tenant =
+      record
+      |> Map.get(:__metadata__, %{})
+      |> Map.get(:tenant, nil)
+
     if Ash.Resource.resource?(resource) do
       %__MODULE__{resource: resource, data: record, action_type: :update}
       |> change_attributes(initial_attributes)
+      |> set_tenant(tenant)
     else
       %__MODULE__{resource: resource, action_type: :create, data: struct(resource)}
       |> add_error(NoSuchResource.exception(resource: resource))
+      |> set_tenant(tenant)
     end
   end
 
@@ -184,6 +191,11 @@ defmodule Ash.Changeset do
   @spec put_context(t(), atom, term) :: t()
   def put_context(changeset, key, value) do
     %{changeset | context: Map.put(changeset.context, key, value)}
+  end
+
+  @spec set_tenant(t(), String.t()) :: t()
+  def set_tenant(changeset, tenant) do
+    %{changeset | tenant: tenant}
   end
 
   @spec set_context(t(), map) :: t()
@@ -474,6 +486,20 @@ defmodule Ash.Changeset do
     end
   end
 
+  @doc """
+  Force change an attribute if is not currently being changed, by calling the provided function
+
+  See `change_new_attribute_lazy/3` for more.
+  """
+  @spec force_change_new_attribute_lazy(t(), atom, (() -> any)) :: t()
+  def force_change_new_attribute_lazy(changeset, attribute, func) do
+    if changing_attribute?(changeset, attribute) do
+      changeset
+    else
+      force_change_attribute(changeset, attribute, func.())
+    end
+  end
+
   @doc "Calls `change_attribute/3` for each key/value pair provided"
   @spec change_attributes(t(), map | Keyword.t()) :: t()
   def change_attributes(changeset, changes) do
@@ -658,8 +684,14 @@ defmodule Ash.Changeset do
 
       record, {:ok, acc} ->
         case primary_key(relationship, record) do
-          {:ok, primary_key} -> {:cont, {:ok, [primary_key | acc]}}
-          {:error, error} -> {:halt, {:error, error}}
+          {:ok, primary_keys} when is_list(primary_keys) ->
+            {:cont, {:ok, primary_keys ++ acc}}
+
+          {:ok, primary_key} ->
+            {:cont, {:ok, [primary_key | acc]}}
+
+          {:error, error} ->
+            {:halt, {:error, error}}
         end
     end)
   end

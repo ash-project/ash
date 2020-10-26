@@ -35,7 +35,8 @@ defmodule Ash.Actions.Read do
       initial_offset = query.offset
       initial_limit = query.limit
 
-      with %{errors: []} = query <- query_with_initial_data(query, opts),
+      with :ok <- validate_multitenancy(query, opts),
+           %{errors: []} = query <- query_with_initial_data(query, opts),
            %{errors: []} = query <- add_action_filters(query, action, engine_opts[:actor]),
            {:ok, filter_requests} <- filter_requests(query, opts),
            {:ok, query, page_opts, count_request} <-
@@ -58,6 +59,7 @@ defmodule Ash.Actions.Read do
                Map.get(all_data, :aggregate_values, %{})
              ) do
         data_with_aggregates
+        |> add_tenant(query)
         |> add_page(
           action,
           Map.get(all_data, :count),
@@ -75,6 +77,26 @@ defmodule Ash.Actions.Read do
       end
     else
       {:error, "Datalayer does not support reads"}
+    end
+  end
+
+  defp validate_multitenancy(query, opts) do
+    if is_nil(Ash.Resource.multitenancy_strategy(query.resource)) ||
+         Ash.Resource.multitenancy_global?(query.resource) || query.tenant || opts[:initial_data] do
+      :ok
+    else
+      {:error,
+       "Queries against the #{inspect(query.resource)} resource require a tenant to be specified"}
+    end
+  end
+
+  defp add_tenant(data, query) do
+    if Ash.Resource.multitenancy_strategy(query.resource) do
+      Enum.map(data, fn item ->
+        %{item | __metadata__: Map.put(item.__metadata__, :tenant, query.tenant)}
+      end)
+    else
+      data
     end
   end
 
@@ -246,9 +268,24 @@ defmodule Ash.Actions.Read do
       Request.resolve(
         deps,
         fn %{data: %{query: ash_query}} = data ->
-          query = Ash.Query.unset(initial_query, [:filter, :aggregates, :sort]).data_layer_query
+          multitenancy_attribute = Ash.Resource.multitenancy_attribute(ash_query.resource)
 
-          with {:ok, filter} <-
+          ash_query =
+            if multitenancy_attribute && ash_query.tenant do
+              {m, f, a} = Ash.Resource.multitenancy_parse_attribute(ash_query.resource)
+              attribute_value = apply(m, f, [ash_query.tenant | a])
+              Ash.Query.filter(ash_query, [{multitenancy_attribute, attribute_value}])
+            else
+              ash_query
+            end
+
+          query =
+            initial_query
+            |> Ash.Query.unset([:filter, :aggregates, :sort])
+            |> Ash.Query.data_layer_query()
+
+          with {:ok, query} <- query,
+               {:ok, filter} <-
                  filter_with_related(relationship_filter_paths, ash_query, data),
                {:ok, query} <-
                  add_aggregates(
@@ -261,6 +298,8 @@ defmodule Ash.Actions.Read do
                  Ash.DataLayer.filter(query, filter, ash_query.resource),
                {:ok, query} <-
                  Ash.DataLayer.sort(query, ash_query.sort, ash_query.resource),
+               query <- Ash.DataLayer.set_context(ash_query.resource, query, ash_query.context),
+               {:ok, query} <- set_tenant(query, ash_query),
                {:ok, results} <- run_query(ash_query, query),
                {:ok, with_calculations} <-
                  add_calculation_values(ash_query, results, ash_query.calculations) do
@@ -277,6 +316,14 @@ defmodule Ash.Actions.Read do
           end
         end
       )
+    end
+  end
+
+  defp set_tenant(query, ash_query) do
+    if Ash.Resource.multitenancy_strategy(ash_query.resource) == :context && ash_query.tenant do
+      Ash.DataLayer.set_tenant(ash_query.resource, query, ash_query.tenant)
+    else
+      {:ok, query}
     end
   end
 
@@ -470,9 +517,10 @@ defmodule Ash.Actions.Read do
                 |> Ash.Query.limit(initial_limit)
                 |> Ash.Query.offset(initial_offset)
                 |> Ash.Query.filter(^auth_filter)
-                |> Map.get(:data_layer_query)
+                |> Ash.Query.data_layer_query()
 
-              with {:ok, filter} <-
+              with {:ok, query} <- query,
+                   {:ok, filter} <-
                      filter_with_related(relationship_filter_paths, initial_query, data),
                    {:ok, query} <-
                      Ash.DataLayer.filter(query, filter, initial_query.resource),

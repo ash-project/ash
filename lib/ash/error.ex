@@ -62,15 +62,15 @@ defmodule Ash.Error do
     end
   end
 
-  defp clear_stacktraces(%{stacktrace: stacktrace} = error) when not is_nil(stacktrace) do
+  def clear_stacktraces(%{stacktrace: stacktrace} = error) when not is_nil(stacktrace) do
     clear_stacktraces(%{error | stacktrace: nil})
   end
 
-  defp clear_stacktraces(%{errors: errors}) when is_list(errors) do
-    Enum.map(errors, &clear_stacktraces/1)
+  def clear_stacktraces(%{errors: errors} = exception) when is_list(errors) do
+    %{exception | errors: Enum.map(errors, &clear_stacktraces/1)}
   end
 
-  defp clear_stacktraces(error), do: error
+  def clear_stacktraces(error), do: error
 
   def choose_error(errors) do
     [error | other_errors] =

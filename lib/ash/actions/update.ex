@@ -17,7 +17,8 @@ defmodule Ash.Actions.Update do
 
     resource = changeset.resource
 
-    with %{valid?: true} = changeset <- changeset(changeset, api, action, opts[:actor]),
+    with :ok <- validate_multitenancy(changeset),
+         %{valid?: true} = changeset <- changeset(changeset, api, action, opts[:actor]),
          %{data: %{commit: %^resource{} = updated}, errors: []} = engine_result <-
            do_run_requests(
              changeset,
@@ -26,7 +27,9 @@ defmodule Ash.Actions.Update do
              resource,
              api
            ) do
-      add_notifications(updated, engine_result, opts)
+      updated
+      |> add_tenant(changeset)
+      |> add_notifications(engine_result, opts)
     else
       %Ash.Changeset{errors: errors} ->
         {:error, Ash.Error.to_ash_error(errors)}
@@ -36,6 +39,14 @@ defmodule Ash.Actions.Update do
 
       {:error, error} ->
         {:error, Ash.Error.to_ash_error(error)}
+    end
+  end
+
+  defp add_tenant(data, changeset) do
+    if Ash.Resource.multitenancy_strategy(changeset.resource) do
+      %{data | __metadata__: Map.put(data.__metadata__, :tenant, changeset.tenant)}
+    else
+      data
     end
   end
 
@@ -61,6 +72,15 @@ defmodule Ash.Actions.Update do
     Enum.reduce(changes, changeset, fn %{change: {module, opts}}, changeset ->
       module.change(changeset, opts, %{actor: actor})
     end)
+  end
+
+  defp validate_multitenancy(changeset) do
+    if Ash.Resource.multitenancy_strategy(changeset.resource) &&
+         not Ash.Resource.multitenancy_global?(changeset.resource) && is_nil(changeset.tenant) do
+      {:error, "#{inspect(changeset.resource)} changesets require a tenant to be specified"}
+    else
+      :ok
+    end
   end
 
   defp validate_attributes_accepted(changeset, %{accept: nil}), do: changeset
@@ -116,7 +136,7 @@ defmodule Ash.Actions.Update do
     |> Ash.Resource.attributes()
     |> Enum.filter(&(not is_nil(&1.update_default)))
     |> Enum.reduce(changeset, fn attribute, changeset ->
-      Ash.Changeset.change_new_attribute_lazy(changeset, attribute.name, fn ->
+      Ash.Changeset.force_change_new_attribute_lazy(changeset, attribute.name, fn ->
         default(attribute.update_default)
       end)
     end)
@@ -155,6 +175,8 @@ defmodule Ash.Actions.Update do
             [[:data, :changeset]],
             fn %{data: %{changeset: changeset}} ->
               Ash.Changeset.with_hooks(changeset, fn changeset ->
+                changeset = set_tenant(changeset)
+
                 Ash.DataLayer.update(resource, changeset)
               end)
             end
@@ -170,6 +192,21 @@ defmodule Ash.Actions.Update do
       api,
       engine_opts
     )
+  end
+
+  defp set_tenant(changeset) do
+    if changeset.tenant && Ash.Resource.multitenancy_strategy(changeset.resource) == :attribute do
+      attribute = Ash.Resource.multitenancy_attribute(changeset.resource)
+
+      {m, f, a} = Ash.Resource.multitenancy_parse_attribute(changeset.resource)
+      attribute_value = apply(m, f, [changeset.tenant | a])
+
+      changeset
+      |> Ash.Changeset.force_change_attribute(attribute, attribute_value)
+      |> Map.put(:tenant, nil)
+    else
+      changeset
+    end
   end
 
   defp default({mod, func, args}), do: apply(mod, func, args)

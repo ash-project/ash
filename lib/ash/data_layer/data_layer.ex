@@ -9,6 +9,7 @@ defmodule Ash.DataLayer do
   """
   @type feature() ::
           :transact
+          | :multitenant
           | {:lateral_join, Ash.resource()}
           | {:join, Ash.resource()}
           | {:aggregate, Ash.aggregate_kind()}
@@ -45,6 +46,8 @@ defmodule Ash.DataLayer do
               offset :: non_neg_integer(),
               resource :: Ash.resource()
             ) :: {:ok, Ash.data_layer_query()} | {:error, term}
+  @callback set_tenant(Ash.resource(), Ash.data_layer_query(), term) ::
+              {:ok, Ash.data_layer_query()} | {:error, term}
   @callback resource_to_query(Ash.resource()) :: Ash.data_layer_query()
   @callback transform_query(Ash.query()) :: Ash.query()
   @callback run_query(Ash.data_layer_query(), Ash.resource()) ::
@@ -109,6 +112,7 @@ defmodule Ash.DataLayer do
                       run_aggregate_query: 3,
                       run_aggregate_query_with_lateral_join: 7,
                       transform_query: 1,
+                      set_tenant: 3,
                       resource_to_query: 1
 
   @spec resource_to_query(Ash.resource()) :: Ash.data_layer_query()
@@ -144,6 +148,12 @@ defmodule Ash.DataLayer do
     end
   end
 
+  @spec set_tenant(Ash.resource(), Ash.data_layer_query(), term) ::
+          {:ok, Ash.data_layer_query()} | {:error, Ash.error()}
+  def set_tenant(resource, query, term) do
+    Ash.Resource.data_layer(resource).set_tenant(resource, query, term)
+  end
+
   @spec upsert(Ash.resource(), Ash.changeset()) ::
           {:ok, Ash.record()} | {:error, term}
   def upsert(resource, changeset) do
@@ -154,8 +164,8 @@ defmodule Ash.DataLayer do
   def set_context(resource, query, map) do
     data_layer = Ash.Resource.data_layer(resource)
 
-    if :erlang.function_exported(data_layer, :set_context, 2) do
-      data_layer.set_context(query, map)
+    if :erlang.function_exported(data_layer, :set_context, 3) do
+      data_layer.set_context(resource, query, map)
     else
       query
     end

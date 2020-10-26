@@ -42,7 +42,7 @@ defmodule Ash.DataLayer.Ets do
 
   defmodule Query do
     @moduledoc false
-    defstruct [:resource, :filter, :limit, :sort, relationships: %{}, offset: 0]
+    defstruct [:resource, :filter, :limit, :sort, :tenant, relationships: %{}, offset: 0]
   end
 
   @impl true
@@ -51,6 +51,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   def can?(_, :composite_primary_key), do: true
+  def can?(_, :multitenancy), do: true
   def can?(_, :upsert), do: true
   def can?(_, :create), do: true
   def can?(_, :read), do: true
@@ -87,6 +88,11 @@ defmodule Ash.DataLayer.Ets do
   def offset(query, offset, _), do: {:ok, %{query | offset: offset}}
 
   @impl true
+  def set_tenant(_resource, query, tenant) do
+    {:ok, %{query | tenant: tenant}}
+  end
+
+  @impl true
   def filter(query, filter, _resource) do
     {:ok, %{query | filter: filter}}
   end
@@ -117,10 +123,17 @@ defmodule Ash.DataLayer.Ets do
 
   @impl true
   def run_query(
-        %Query{resource: resource, filter: filter, offset: offset, limit: limit, sort: sort},
+        %Query{
+          resource: resource,
+          filter: filter,
+          offset: offset,
+          limit: limit,
+          sort: sort,
+          tenant: tenant
+        },
         _resource
       ) do
-    with {:ok, records} <- get_records(resource),
+    with {:ok, records} <- get_records(resource, tenant),
          filtered_records <- filter_matches(records, filter) do
       offset_records =
         filtered_records
@@ -140,8 +153,8 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  defp get_records(resource) do
-    with {:ok, table} <- wrap_or_create_table(resource),
+  defp get_records(resource, tenant) do
+    with {:ok, table} <- wrap_or_create_table(resource, tenant),
          {:ok, record_tuples} <- ETS.Set.to_list(table) do
       {:ok, Enum.map(record_tuples, &elem(&1, 1))}
     end
@@ -167,7 +180,7 @@ defmodule Ash.DataLayer.Ets do
         {attr, Ash.Changeset.get_attribute(changeset, attr)}
       end)
 
-    with {:ok, table} <- wrap_or_create_table(resource),
+    with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
          record <- Ash.Changeset.apply_attributes(changeset),
          {:ok, _} <- ETS.Set.put(table, {pkey, record}) do
       {:ok, record}
@@ -177,10 +190,10 @@ defmodule Ash.DataLayer.Ets do
   end
 
   @impl true
-  def destroy(resource, %{data: record}) do
+  def destroy(resource, %{data: record} = changeset) do
     pkey = Map.take(record, Ash.Resource.primary_key(resource))
 
-    with {:ok, table} <- wrap_or_create_table(resource),
+    with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
          {:ok, _} <- ETS.Set.delete(table, pkey) do
       :ok
     else
@@ -193,8 +206,16 @@ defmodule Ash.DataLayer.Ets do
     create(resource, changeset)
   end
 
-  defp wrap_or_create_table(resource) do
-    case ETS.Set.wrap_existing(resource) do
+  # sobelow_skip ["DOS.StringToAtom"]
+  defp wrap_or_create_table(resource, tenant) do
+    table =
+      if tenant do
+        String.to_atom(to_string(tenant) <> to_string(resource))
+      else
+        resource
+      end
+
+    case ETS.Set.wrap_existing(table) do
       {:error, :table_not_found} ->
         protection =
           if private?(resource) do
@@ -203,12 +224,21 @@ defmodule Ash.DataLayer.Ets do
             :public
           end
 
-        ETS.Set.new(
-          name: resource,
-          protection: protection,
-          ordered: true,
-          read_concurrency: true
-        )
+        case ETS.Set.new(
+               name: table,
+               protection: protection,
+               ordered: true,
+               read_concurrency: true
+             ) do
+          {:ok, tab} ->
+            {:ok, tab}
+
+          {:error, :table_already_exists} ->
+            ETS.Set.wrap_existing(table)
+
+          other ->
+            other
+        end
 
       {:ok, table} ->
         {:ok, table}

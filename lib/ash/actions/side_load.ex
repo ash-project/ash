@@ -11,20 +11,23 @@ defmodule Ash.Actions.SideLoad do
         use_data_for_filter? \\ true,
         root_data \\ [],
         root_query \\ nil,
-        path \\ []
+        path \\ [],
+        tenant \\ nil
       )
 
-  def requests(nil, _, _, _, _), do: []
-  def requests(%{side_load: []}, _, _, _root_query, _), do: []
+  def requests(nil, _, _, _, _, _), do: []
+  def requests(%{side_load: []}, _, _, _root_query, _, _), do: []
 
   def requests(
         %{side_load: side_loads} = query,
         use_data_for_filter?,
         root_data,
         root_query,
-        path
+        path,
+        tenant
       ) do
     root_query = root_query || query
+    tenant = tenant || query.tenant || root_query.tenant || tenant_from_data(root_data)
 
     side_loads
     |> List.wrap()
@@ -42,9 +45,23 @@ defmodule Ash.Actions.SideLoad do
             |> Ash.Query.load(further)
         end
 
+      related_query =
+        if tenant && !related_query.tenant do
+          Ash.Query.set_tenant(related_query, tenant)
+        else
+          related_query
+        end
+
       new_path = [relationship | path]
 
-      requests(related_query, use_data_for_filter?, root_data, root_query, new_path) ++
+      requests(
+        related_query,
+        use_data_for_filter?,
+        root_data,
+        root_query,
+        new_path,
+        related_query.tenant
+      ) ++
         do_requests(
           relationship,
           related_query,
@@ -55,6 +72,9 @@ defmodule Ash.Actions.SideLoad do
         )
     end)
   end
+
+  defp tenant_from_data([%{__metadata__: %{tenant: tenant}} | _]), do: tenant
+  defp tenant_from_data(_), do: nil
 
   def attach_side_loads([%resource{} | _] = data, %{side_load: side_loads})
       when is_list(data) do
@@ -361,7 +381,14 @@ defmodule Ash.Actions.SideLoad do
             dependencies
           end
 
-        related_query = Ash.Query.new(join_relationship.destination, related_query.api)
+        related_query =
+          if related_query.tenant do
+            join_relationship.destination
+            |> Ash.Query.new(related_query.api)
+            |> Ash.Query.set_tenant(related_query.tenant)
+          else
+            Ash.Query.new(join_relationship.destination, related_query.api)
+          end
 
         Request.new(
           action: Ash.Resource.primary_action!(relationship.destination, :read),
@@ -390,6 +417,13 @@ defmodule Ash.Actions.SideLoad do
 
                   authorization_filter ->
                     Ash.Query.filter(related_query, ^authorization_filter)
+                end
+
+              base_query =
+                if related_query.tenant do
+                  Ash.Query.set_tenant(base_query, related_query.tenant)
+                else
+                  base_query
                 end
 
               with {:ok, new_query} <-

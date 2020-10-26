@@ -31,7 +31,7 @@ defmodule Ash.Query do
     :api,
     :resource,
     :filter,
-    :data_layer_query,
+    :tenant,
     aggregates: %{},
     side_load: [],
     calculations: %{},
@@ -57,11 +57,13 @@ defmodule Ash.Query do
       offset? = not (is_nil(query.offset) || query.offset == 0)
       filter? = not is_nil(query.filter)
       errors? = not Enum.empty?(query.errors)
+      tenant? = not is_nil(query.tenant)
 
       container_doc(
         "#Ash.Query<",
         [
           concat("resource: ", inspect(query.resource)),
+          or_empty(concat("tenant: ", to_doc(query.tenant, opts)), tenant?),
           or_empty(concat("filter: ", to_doc(query.filter, opts)), filter?),
           or_empty(concat("sort: ", to_doc(query.sort, opts)), sort?),
           or_empty(concat("limit: ", to_doc(query.limit, opts)), limit?),
@@ -132,13 +134,11 @@ defmodule Ash.Query do
   def new(%__MODULE__{} = query, _), do: query
 
   def new(resource, api) when is_atom(resource) do
-    query =
-      %__MODULE__{
-        api: api,
-        filter: nil,
-        resource: resource
-      }
-      |> set_data_layer_query()
+    query = %__MODULE__{
+      api: api,
+      filter: nil,
+      resource: resource
+    }
 
     case Ash.Resource.base_filter(resource) do
       nil ->
@@ -397,6 +397,12 @@ defmodule Ash.Query do
     }
   end
 
+  @spec set_tenant(t() | Ash.resource(), String.t()) :: t()
+  def set_tenant(query, tenant) do
+    query = to_query(query)
+    %{query | tenant: tenant}
+  end
+
   @doc "Removes a field from the list of fields to load"
   @spec unload(t(), list(atom)) :: t()
   def unload(query, fields) do
@@ -561,7 +567,7 @@ defmodule Ash.Query do
         {:ok, aggregate} ->
           new_aggregates = Map.put(query.aggregates, aggregate.name, aggregate)
 
-          set_data_layer_query(%{query | aggregates: new_aggregates})
+          %{query | aggregates: new_aggregates}
 
         {:error, error} ->
           add_error(query, :aggregate, error)
@@ -613,7 +619,6 @@ defmodule Ash.Query do
     if Ash.Resource.data_layer_can?(query.resource, :limit) do
       query
       |> Map.put(:limit, max(0, limit))
-      |> set_data_layer_query()
     else
       add_error(query, :limit, "Data layer does not support limits")
     end
@@ -633,7 +638,6 @@ defmodule Ash.Query do
     if Ash.Resource.data_layer_can?(query.resource, :offset) do
       query
       |> Map.put(:offset, max(0, offset))
-      |> set_data_layer_query()
     else
       add_error(query, :offset, "Data layer does not support offset")
     end
@@ -731,7 +735,7 @@ defmodule Ash.Query do
 
       case new_filter do
         {:ok, filter} ->
-          set_data_layer_query(%{query | filter: filter})
+          %{query | filter: filter}
 
         {:error, error} ->
           add_error(query, :filter, error)
@@ -756,7 +760,6 @@ defmodule Ash.Query do
         {:ok, filter} ->
           query
           |> Map.put(:filter, filter)
-          |> set_data_layer_query()
 
         {:error, error} ->
           add_error(query, :filter, error)
@@ -797,7 +800,6 @@ defmodule Ash.Query do
           %{query | sort: query.sort ++ [{sort, :asc}]}
       end)
       |> validate_sort()
-      |> set_data_layer_query()
     else
       add_error(query, :sort, "Data layer does not support sorting")
     end
@@ -831,7 +833,6 @@ defmodule Ash.Query do
         struct(query, [{key, Map.get(%__MODULE__{}, key)}])
       end
     end)
-    |> set_data_layer_query()
   end
 
   def unset(query, key) do
@@ -841,11 +842,10 @@ defmodule Ash.Query do
       query
       |> to_query()
       |> struct([{key, Map.get(%__MODULE__{}, key)}])
-      |> set_data_layer_query()
     end
   end
 
-  @doc false
+  @doc "Return the underlying data layer query for an ash query"
   def data_layer_query(%{resource: resource} = ash_query, opts \\ []) do
     if Ash.Resource.data_layer_can?(resource, :read) do
       query = Ash.DataLayer.resource_to_query(resource)
@@ -871,10 +871,11 @@ defmodule Ash.Query do
       aggregates = Enum.uniq_by(filter_aggregates ++ sort_aggregates, & &1.name)
 
       with {:ok, query} <-
-             add_aggregates(query, ash_query.resource, aggregates),
+             add_aggregates(query, ash_query, aggregates),
            {:ok, query} <-
              Ash.DataLayer.sort(query, ash_query.sort, resource),
            {:ok, query} <- maybe_filter(query, ash_query, opts),
+           {:ok, query} <- add_tenant(query, ash_query),
            {:ok, query} <-
              Ash.DataLayer.limit(query, ash_query.limit, resource),
            {:ok, query} <-
@@ -888,13 +889,51 @@ defmodule Ash.Query do
     end
   end
 
-  defp add_aggregates(query, resource, aggregates) do
-    Enum.reduce_while(aggregates, {:ok, query}, fn aggregate, {:ok, query} ->
+  defp add_tenant(query, ash_query) do
+    with :context <- Ash.Resource.multitenancy_strategy(ash_query.resource),
+         tenant when not is_nil(tenant) <- ash_query.tenant,
+         {:ok, query} <- Ash.DataLayer.set_tenant(ash_query.resource, query, tenant) do
+      {:ok, query}
+    else
+      {:error, error} -> {:error, error}
+      _ -> {:ok, query}
+    end
+  end
+
+  defp add_aggregates(query, ash_query, aggregates) do
+    resource = ash_query.resource
+
+    aggregates
+    |> Enum.map(&add_tenant_to_aggregate_query(&1, ash_query))
+    |> Enum.reduce_while({:ok, query}, fn aggregate, {:ok, query} ->
       case Ash.DataLayer.add_aggregate(query, aggregate, resource) do
         {:ok, query} -> {:cont, {:ok, query}}
         {:error, error} -> {:halt, {:error, error}}
       end
     end)
+  end
+
+  defp add_tenant_to_aggregate_query(aggregate, %{tenant: nil}), do: aggregate
+
+  defp add_tenant_to_aggregate_query(%{query: nil} = aggregate, ash_query) do
+    aggregate_with_query = %{aggregate | query: Ash.Query.new(aggregate.resource)}
+    add_tenant_to_aggregate_query(aggregate_with_query, ash_query)
+  end
+
+  defp add_tenant_to_aggregate_query(aggregate, ash_query) do
+    case Ash.Resource.multitenancy_strategy(aggregate.resource) do
+      nil ->
+        aggregate
+
+      :attribute ->
+        attribute = Ash.Resource.multitenancy_attribute(aggregate.resource)
+        {m, f, a} = Ash.Resource.multitenancy_parse_attribute(ash_query.resource)
+        attribute_value = apply(m, f, [ash_query.tenant | a])
+        %{aggregate | query: filter(aggregate.query, ^[{attribute, attribute_value}])}
+
+      :context ->
+        %{aggregate | query: set_tenant(aggregate.query, ash_query.tenant)}
+    end
   end
 
   defp validate_sort(%{resource: resource, sort: sort} = query) do
@@ -919,13 +958,6 @@ defmodule Ash.Query do
       | errors: [Map.put(Ash.Error.to_ash_error(message), :path, key) | query.errors],
         valid?: false
     }
-  end
-
-  defp set_data_layer_query(query) do
-    case data_layer_query(query) do
-      {:ok, data_layer_query} -> %{query | data_layer_query: data_layer_query}
-      {:error, error} -> add_error(query, :data_layer_query, error)
-    end
   end
 
   defp validate_matching_query_and_continue(value, resource, key, path, relationship) do
@@ -991,10 +1023,11 @@ defmodule Ash.Query do
   defp merge_side_load(left, []), do: sanitize_side_loads(left)
 
   defp merge_side_load(
-         %__MODULE__{side_load: left_side_loads},
+         %__MODULE__{side_load: left_side_loads, tenant: left_tenant},
          %__MODULE__{side_load: right_side_loads} = query
        ) do
     %{query | side_load: merge_side_load(left_side_loads, right_side_loads)}
+    |> set_tenant(query.tenant || left_tenant)
   end
 
   defp merge_side_load(%__MODULE__{} = query, right) when is_list(right) do

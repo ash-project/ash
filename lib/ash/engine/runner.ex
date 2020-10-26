@@ -27,7 +27,9 @@ defmodule Ash.Engine.Runner do
       resource_notifications: []
     }
 
-    log(state, "Synchronous engine starting - #{Enum.map_join(requests, ", ", & &1.name)}")
+    log(state, fn ->
+      "Synchronous engine starting - #{Enum.map_join(requests, ", ", & &1.name)}"
+    end)
 
     new_state = run_to_completion(state)
 
@@ -46,14 +48,14 @@ defmodule Ash.Engine.Runner do
           if new_state.notified_of_complete? do
             new_state
           else
-            log(new_state, "notifying engine of local request completion")
+            log(new_state, fn -> "notifying engine of local request completion" end)
             GenServer.cast(new_state.engine_pid, :local_requests_complete)
             %{new_state | notified_of_complete?: true}
           end
 
         wait_for_engine(new_state, true)
       else
-        log(state, "Synchronous engine complete.")
+        log(state, fn -> "Synchronous engine complete." end)
         new_state
       end
     else
@@ -63,7 +65,7 @@ defmodule Ash.Engine.Runner do
             wait_for_engine(new_state, false)
           else
             if new_state.errors == [] do
-              log(state, "Synchronous engine stuck:\n\n#{stuck_report(state)}")
+              log(state, fn -> "Synchronous engine stuck:\n\n#{stuck_report(state)}" end)
               add_error(new_state, :__engine__, SynchronousEngineStuck.exception([]))
             else
               new_state
@@ -108,7 +110,7 @@ defmodule Ash.Engine.Runner do
 
   defp wait_for_engine(state, complete?) do
     engine_pid = state.engine_pid
-    log(state, "waiting for engine")
+    log(state, fn -> "waiting for engine" end)
 
     receive do
       {:wont_receive, receiver_path, path, field} ->
@@ -124,7 +126,7 @@ defmodule Ash.Engine.Runner do
         run_to_completion(new_state)
 
       {:send_field, receiver_path, pid, dep} ->
-        log(state, "notifying #{inspect(receiver_path)} of #{inspect(dep)}")
+        log(state, fn -> "notifying #{inspect(receiver_path)} of #{inspect(dep)}" end)
         path = :lists.droplast(dep)
         field = List.last(dep)
         request = Enum.find(state.requests, &(&1.path == path))
@@ -187,11 +189,11 @@ defmodule Ash.Engine.Runner do
         |> run_to_completion()
 
       {:DOWN, _, _, ^engine_pid, {:shutdown, %{errored_requests: []} = engine_state}} ->
-        log(state, "Engine complete")
+        log(state, fn -> "Engine complete" end)
         handle_completion(state, engine_state, complete?, false)
 
       {:DOWN, _, _, ^engine_pid, {:shutdown, engine_state}} ->
-        log(state, "Engine complete")
+        log(state, fn -> "Engine complete" end)
         handle_completion(state, engine_state, complete?, true)
     end
   end
@@ -200,9 +202,9 @@ defmodule Ash.Engine.Runner do
     new_state =
       if complete? do
         if engine_error? do
-          log(engine_state, "Engine shutdown error")
+          log(engine_state, fn -> "Engine shutdown error" end)
         else
-          log(engine_state, "Engine complete, graceful shutdown")
+          log(engine_state, fn -> "Engine complete, graceful shutdown" end)
         end
 
         state
@@ -262,7 +264,7 @@ defmodule Ash.Engine.Runner do
   end
 
   defp store_dependencies(state, dependencies, notifications \\ []) do
-    log(state, "Storing generated dependencies")
+    log(state, fn -> "Storing generated dependencies" end)
 
     {state, notifications, more_dependencies} =
       dependencies
@@ -343,7 +345,7 @@ defmodule Ash.Engine.Runner do
   end
 
   defp notify(state, notifications) do
-    log(state, "sending/updating requests with notifications")
+    log(state, fn -> "sending/updating requests with notifications" end)
 
     notifications
     |> List.wrap()
@@ -477,7 +479,7 @@ defmodule Ash.Engine.Runner do
   defp log(request, message, level \\ :debug)
 
   defp log(%{verbose?: true}, message, level) do
-    Logger.log(level, "Runner: " <> message)
+    Logger.log(level, fn -> ["Runner: ", message.()] end)
   end
 
   defp log(_, _, _) do
