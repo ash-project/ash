@@ -16,6 +16,8 @@ defmodule Ash.Engine.RequestHandler do
   alias Ash.Engine.Request
 
   def init(opts) do
+    Process.put(:"$callers", opts[:callers])
+
     state = %__MODULE__{
       request: opts[:request],
       verbose?: opts[:verbose?] || false,

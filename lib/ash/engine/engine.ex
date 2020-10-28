@@ -62,6 +62,8 @@ defmodule Ash.Engine do
     authorize? = opts[:authorize?] || Keyword.has_key?(opts, :actor)
     actor = opts[:actor]
 
+    opts = Keyword.put(opts, :callers, [self() | Process.get(:"$callers", [])])
+
     case Request.validate_requests(requests) do
       :ok ->
         requests =
@@ -116,6 +118,7 @@ defmodule Ash.Engine do
       run_and_return_or_rollback(local_requests, opts, innermost_resource)
     else
       Process.flag(:trap_exit, true)
+
       {:ok, pid} = GenServer.start(__MODULE__, opts)
       _ = Process.monitor(pid)
 
@@ -187,6 +190,8 @@ defmodule Ash.Engine do
   end
 
   def init(opts) do
+    Process.put(:"$callers", opts[:callers])
+
     state =
       %__MODULE__{
         requests: opts[:requests],
@@ -210,6 +215,7 @@ defmodule Ash.Engine do
       Enum.reduce(state.requests, state, fn request, state ->
         {:ok, pid} =
           GenServer.start(Ash.Engine.RequestHandler,
+            callers: [self() | Process.get("$callers", [])],
             request: request,
             verbose?: state.verbose?,
             actor?: state.actor,
