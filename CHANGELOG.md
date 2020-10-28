@@ -18,11 +18,6 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 
 
-
-### Features:
-
-* multitenancy! and tons of various fixes
-
 ### Improvements:
 
 * trace $callers through engine genservers
