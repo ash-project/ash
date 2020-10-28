@@ -16,6 +16,8 @@ defmodule Ash.Engine.RequestHandler do
   alias Ash.Engine.Request
 
   def init(opts) do
+    Process.put(:"$callers", opts[:callers])
+
     state = %__MODULE__{
       request: opts[:request],
       verbose?: opts[:verbose?] || false,
@@ -23,7 +25,7 @@ defmodule Ash.Engine.RequestHandler do
       engine_pid: opts[:engine_pid]
     }
 
-    log(state, "Starting request")
+    log(state, fn -> "Starting request" end)
 
     {:ok, state, {:continue, :next}}
   end
@@ -153,7 +155,7 @@ defmodule Ash.Engine.RequestHandler do
   end
 
   defp notify_error(state, error) do
-    log(state, "Request error, notifying engine")
+    log(state, fn -> "Request error, notifying engine" end)
     GenServer.cast(state.engine_pid, {:error, error, state})
   end
 
@@ -179,7 +181,7 @@ defmodule Ash.Engine.RequestHandler do
 
           destination_pid = Map.get(state.pid_info, receiver_path) || state.runner_pid
 
-          log(state, "notifying #{inspect(receiver_path)} of #{inspect(field)}")
+          log(state, fn -> "notifying #{inspect(receiver_path)} of #{inspect(field)}" end)
 
           if destination_pid == state.runner_pid do
             send(destination_pid, {:field_value, receiver_path, request_path, field, value})
@@ -204,11 +206,11 @@ defmodule Ash.Engine.RequestHandler do
 
     destination_pid = Map.get(state.pid_info, path) || state.runner_pid
 
-    log(state, "registering dependency: #{inspect(dep)}")
+    log(state, fn -> "registering dependency: #{inspect(dep)}" end)
 
     field = List.last(dep)
 
-    log(state, "Asking #{inspect(path)} for #{field}")
+    log(state, fn -> "Asking #{inspect(path)} for #{field}" end)
 
     if destination_pid == state.runner_pid do
       send(
@@ -222,7 +224,7 @@ defmodule Ash.Engine.RequestHandler do
       )
     end
 
-    log(state, "Registering dependency on #{inspect(path)} - #{field}")
+    log(state, fn -> "Registering dependency on #{inspect(path)} - #{field}" end)
 
     GenServer.cast(
       state.engine_pid,
@@ -233,7 +235,7 @@ defmodule Ash.Engine.RequestHandler do
   end
 
   defp complete(state) do
-    log(state, "Request complete, sending data")
+    log(state, fn -> "Request complete, sending data" end)
     send(state.runner_pid, {:data, state.request.path, state.request.data})
     GenServer.cast(state.engine_pid, {:complete, state.request.path})
   end
@@ -241,7 +243,7 @@ defmodule Ash.Engine.RequestHandler do
   defp log(state, message, level \\ :debug)
 
   defp log(%{verbose?: true, request: request}, message, level) do
-    Logger.log(level, "#{request.name}: #{message}")
+    Logger.log(level, fn -> [request.name, message.()] end)
   end
 
   defp log(_, _, _) do

@@ -254,7 +254,7 @@ defmodule Ash.Actions.PaginationTest do
     end
 
     test "can ask for records after a specific keyset" do
-      %{results: [%{id: id, metadata: %{keyset: keyset}}]} =
+      %{results: [%{id: id, __metadata__: %{keyset: keyset}}]} =
         Api.read!(User, action: :keyset, page: [limit: 1])
 
       %{results: [%{id: next_id}]} =
@@ -264,10 +264,10 @@ defmodule Ash.Actions.PaginationTest do
     end
 
     test "can ask for records before a specific keyset" do
-      %{results: [%{id: id, metadata: %{keyset: keyset}}]} =
+      %{results: [%{id: id, __metadata__: %{keyset: keyset}}]} =
         Api.read!(User, action: :keyset, page: [limit: 1])
 
-      %{results: [%{id: next_id, metadata: %{keyset: keyset2}}]} =
+      %{results: [%{id: next_id, __metadata__: %{keyset: keyset2}}]} =
         Api.read!(User, action: :keyset, page: [limit: 1, after: keyset])
 
       refute id == next_id
@@ -285,7 +285,7 @@ defmodule Ash.Actions.PaginationTest do
         |> Ash.Query.sort(:name)
         |> Api.read!(page: [limit: 1])
 
-      keyset = Enum.at(page.results, 0).metadata.keyset
+      keyset = Enum.at(page.results, 0).__metadata__.keyset
 
       names =
         User
@@ -304,7 +304,7 @@ defmodule Ash.Actions.PaginationTest do
         |> Ash.Query.sort(name: :desc)
         |> Api.read!(page: [limit: 1])
 
-      keyset = Enum.at(page.results, 0).metadata.keyset
+      keyset = Enum.at(page.results, 0).__metadata__.keyset
 
       names =
         User
@@ -323,7 +323,7 @@ defmodule Ash.Actions.PaginationTest do
         |> Ash.Query.sort(name: :desc)
         |> Api.read!(page: [limit: 1])
 
-      keyset = Enum.at(page.results, 0).metadata.keyset
+      keyset = Enum.at(page.results, 0).__metadata__.keyset
 
       names =
         User
@@ -398,7 +398,7 @@ defmodule Ash.Actions.PaginationTest do
 
     test "it adds a keyset to the records, even though it returns an offset page" do
       for result <- Api.read!(User, action: :both_optional, page: [limit: 10]).results do
-        refute is_nil(result.metadata.keyset)
+        refute is_nil(result.__metadata__.keyset)
       end
     end
   end

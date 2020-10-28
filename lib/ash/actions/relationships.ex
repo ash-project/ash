@@ -168,6 +168,13 @@ defmodule Ash.Actions.Relationships do
                 query = get_in(data, [:relationships, relationship_name, type, :query])
                 primary_key = Ash.Resource.primary_key(query.resource)
 
+                query =
+                  if changeset.tenant do
+                    Ash.Query.set_tenant(query, changeset.tenant)
+                  else
+                    query
+                  end
+
                 with {:ok, results} <- Ash.Actions.Read.unpaginated_read(query),
                      :ok <-
                        ensure_all_found(
@@ -473,6 +480,7 @@ defmodule Ash.Actions.Relationships do
       join_changeset
       |> Kernel.||(Ash.Changeset.new(relationship.through))
       |> Ash.Changeset.force_change_attributes(join_attrs)
+      |> Ash.Changeset.set_tenant(changeset.tenant)
       |> changeset.api.create(upsert?: true, return_notifications?: true)
       |> case do
         {:ok, join_row, notifications} ->
@@ -529,7 +537,11 @@ defmodule Ash.Actions.Relationships do
         }
       ]
 
-      case changeset.api.get(relationship.through, filter) do
+      relationship.through
+      |> Ash.Query.set_tenant(changeset.tenant)
+      |> Ash.Query.filter(^filter)
+      |> changeset.api.read_one()
+      |> case do
         {:ok, nil} ->
           changeset
 
@@ -544,14 +556,28 @@ defmodule Ash.Actions.Relationships do
             record,
             relationship,
             join_pkey,
-            pkey
+            pkey,
+            changeset.tenant
           )
       end
     end)
   end
 
-  defp destroy_and_remove(api, join_row, to_remove_record, record, relationship, join_pkey, pkey) do
-    case api.destroy(Ash.Changeset.new(join_row), return_notifications?: true) do
+  defp destroy_and_remove(
+         api,
+         join_row,
+         to_remove_record,
+         record,
+         relationship,
+         join_pkey,
+         pkey,
+         tenant
+       ) do
+    join_row
+    |> Ash.Changeset.new()
+    |> Ash.Changeset.set_tenant(tenant)
+    |> api.destroy(return_notifications?: true)
+    |> case do
       {:ok, notifications} ->
         {:ok,
          record
@@ -577,6 +603,7 @@ defmodule Ash.Actions.Relationships do
             relationship.destination_field,
             Map.get(record, relationship.source_field)
           )
+          |> Ash.Changeset.set_tenant(changeset.tenant)
           |> changeset.api.update(return_notifications?: true)
           |> case do
             {:ok, related, notifications} ->
@@ -601,6 +628,7 @@ defmodule Ash.Actions.Relationships do
           to_relate_record
           |> Ash.Changeset.new()
           |> Ash.Changeset.force_change_attribute(relationship.destination_field, nil)
+          |> Ash.Changeset.set_tenant(changeset.tenant)
           |> changeset.api.update(return_notifications?: true)
           |> case do
             {:ok, related, notifications} ->
@@ -698,6 +726,7 @@ defmodule Ash.Actions.Relationships do
           relationship.destination_field,
           Map.get(record, relationship.source_field)
         )
+        |> Ash.Changeset.set_tenant(changeset.tenant)
         |> changeset.api.update(return_notifications?: true)
         |> case do
           {:ok, related, notifications} ->
@@ -717,6 +746,7 @@ defmodule Ash.Actions.Relationships do
       to_relate_record
       |> Changeset.new()
       |> Changeset.force_change_attribute(relationship.destination_field, nil)
+      |> Ash.Changeset.set_tenant(changeset.tenant)
       |> changeset.api.update(return_notifications?: true)
       |> case do
         {:ok, _related, notifications} ->
@@ -743,7 +773,7 @@ defmodule Ash.Actions.Relationships do
        ) do
     join_through_request = many_to_many_join_resource_request(changeset, relationship)
 
-    destination_request = many_to_many_destination_request(changeset.api, relationship)
+    destination_request = many_to_many_destination_request(changeset, relationship)
 
     requests = [join_through_request, destination_request]
 
@@ -769,6 +799,13 @@ defmodule Ash.Actions.Relationships do
         data:
           Request.resolve([[:relationships, relationship.name, :current, :query]], fn data ->
             query = get_in(data, [:relationships, relationship.name, :current, :query])
+
+            query =
+              if changeset.tenant do
+                Ash.Query.set_tenant(query, changeset.tenant)
+              else
+                query
+              end
 
             Ash.Actions.Read.unpaginated_read(query)
           end),
@@ -796,6 +833,14 @@ defmodule Ash.Actions.Relationships do
       data:
         Request.resolve([[:relationships, relationship.name, :current_join, :query]], fn data ->
           query = get_in(data, [:relationships, relationship.name, :current_join, :query])
+
+          query =
+            if changeset.tenant do
+              Ash.Query.set_tenant(query, changeset.tenant)
+            else
+              query
+            end
+
           Ash.Actions.Read.unpaginated_read(query)
         end),
       name: "Read related join for #{relationship.name} before replace"
@@ -803,11 +848,11 @@ defmodule Ash.Actions.Relationships do
   end
 
   defp many_to_many_destination_request(
-         api,
+         changeset,
          %{destination: destination, name: name} = relationship
        ) do
     Request.new(
-      api: api,
+      api: changeset.api,
       resource: destination,
       action: Ash.Resource.primary_action!(relationship.destination, :read),
       path: [:relationships, name, :current],
@@ -822,7 +867,7 @@ defmodule Ash.Actions.Relationships do
 
             {:ok,
              relationship.destination
-             |> Ash.Query.new(api)
+             |> Ash.Query.new(changeset.api)
              |> Ash.Query.filter(^filter_statement)}
           end
         ),
@@ -834,6 +879,13 @@ defmodule Ash.Actions.Relationships do
                  ^name => %{current: %{query: query}}
                }
              } ->
+            query =
+              if changeset.tenant do
+                Ash.Query.set_tenant(query, changeset.tenant)
+              else
+                query
+              end
+
             Ash.Actions.Read.unpaginated_read(query)
           end
         ),

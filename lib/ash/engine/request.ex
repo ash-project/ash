@@ -223,29 +223,29 @@ defmodule Ash.Engine.Request do
   end
 
   def do_next(%{state: :strict_check, authorize?: false} = request) do
-    log(request, "Skipping strict check due to authorize?: false")
+    log(request, fn -> "Skipping strict check due to authorize?: false" end)
     {:continue, %{request | state: :fetch_data}, []}
   end
 
   def do_next(%{state: :strict_check} = request) do
     case Ash.Resource.authorizers(request.resource) do
       [] ->
-        log(request, "No authorizers found, skipping strict check")
+        log(request, fn -> "No authorizers found, skipping strict check" end)
         {:continue, %{request | state: :fetch_data}, []}
 
       authorizers ->
         case strict_check(authorizers, request) do
           {:ok, new_request, notifications, []} ->
             new_request = set_authorized(new_request)
-            log(new_request, "Strict check complete")
+            log(new_request, fn -> "Strict check complete" end)
             {:continue, %{new_request | state: :fetch_data}, notifications}
 
           {:ok, new_request, notifications, dependencies} ->
-            log(new_request, "Strict check incomplete, waiting on dependencies")
+            log(new_request, fn -> "Strict check incomplete, waiting on dependencies" end)
             {:waiting, new_request, notifications, dependencies}
 
           {:error, error} ->
-            log(request, "Strict checking failed")
+            log(request, fn -> "Strict checking failed" end)
             {:error, error, request}
         end
     end
@@ -269,45 +269,45 @@ defmodule Ash.Engine.Request do
         if key == :changeset do
           {:continue, request, notifications}
         else
-          log(request, "data fetched: #{inspect(notifications)}")
+          log(request, fn -> "data fetched: #{inspect(notifications)}" end)
           {:continue, %{request | state: :check}, notifications}
         end
 
       {:ok, new_request, notifications, waiting_for} ->
-        log(request, "#{key} waiting on dependencies: #{inspect(waiting_for)}")
+        log(request, fn -> "#{key} waiting on dependencies: #{inspect(waiting_for)}" end)
         {:waiting, new_request, notifications, waiting_for}
 
       {:error, error} ->
-        log(request, "error fetching data: #{inspect(error)}")
+        log(request, fn -> "error fetching data: #{inspect(error)}" end)
         {:error, error, request}
     end
   end
 
   def do_next(%{state: :check, authorize?: false} = request) do
-    log(request, "Skipping check due to `authorize?: false`")
+    log(request, fn -> "Skipping check due to `authorize?: false`" end)
     {:complete, %{request | state: :complete}, [], []}
   end
 
   def do_next(%{state: :check} = request) do
     case Ash.Resource.authorizers(request.resource) do
       [] ->
-        log(request, "No authorizers found, skipping check")
+        log(request, fn -> "No authorizers found, skipping check" end)
         {:complete, %{request | state: :complete}, [], []}
 
       authorizers ->
         case check(authorizers, request) do
           {:ok, new_request, notifications, []} ->
-            log(new_request, "Check complete")
+            log(new_request, fn -> "Check complete" end)
             new_request = set_authorized(new_request)
 
             {:complete, %{new_request | state: :complete}, notifications, []}
 
           {:ok, new_request, notifications, waiting} ->
-            log(request, "Check incomplete, waiting on dependencies")
+            log(request, fn -> "Check incomplete, waiting on dependencies" end)
             {:waiting, new_request, notifications, waiting}
 
           {:error, error} ->
-            log(request, "Check failed")
+            log(request, fn -> "Check failed" end)
             {:error, error, request}
         end
     end
@@ -336,13 +336,13 @@ defmodule Ash.Engine.Request do
   end
 
   def wont_receive(request, path, field) do
-    log(request, "Request failed due to failed dependency #{inspect(path ++ [field])}")
+    log(request, fn -> "Request failed due to failed dependency #{inspect(path ++ [field])}" end)
 
     {:stop, :dependency_failed, request}
   end
 
   def send_field(request, receiver_path, field) do
-    log(request, "Attempting to provide #{inspect(field)} for #{inspect(receiver_path)}")
+    log(request, fn -> "Attempting to provide #{inspect(field)} for #{inspect(receiver_path)}" end)
 
     case store_dependency(request, receiver_path, field) do
       {:value, value, new_request} ->
@@ -358,14 +358,14 @@ defmodule Ash.Engine.Request do
         {:waiting, new_request, notifications, waiting_for}
 
       {:error, error, new_request} ->
-        log(request, "Error resolving #{field}: #{inspect(error)}")
+        log(request, fn -> "Error resolving #{field}: #{inspect(error)}" end)
 
         {:error, error, new_request}
     end
   end
 
   def receive_field(request, path, field, value) do
-    log(request, "Receiving field #{field} from #{inspect(path)}")
+    log(request, fn -> "Receiving field #{field} from #{inspect(path)}" end)
 
     new_request = put_dependency_data(request, path ++ [field], value)
 
@@ -394,22 +394,24 @@ defmodule Ash.Engine.Request do
 
     case try_resolve_local(request, field, internal?) do
       {:skipped, new_request, notifications, []} ->
-        log(request, "Field #{field} was skipped, no additional dependencies")
+        log(request, fn -> "Field #{field} was skipped, no additional dependencies" end)
         {:ok, new_request, notifications}
 
       {:skipped, new_request, notifications, waiting} ->
-        log(request, "Field #{field} was skipped, registering dependencies: #{inspect(waiting)}")
+        log(request, fn ->
+          "Field #{field} was skipped, registering dependencies: #{inspect(waiting)}"
+        end)
 
         {:waiting, new_request, notifications, waiting}
 
       {:ok, new_request, _, _} ->
         case Map.get(new_request, field) do
           %UnresolvedField{} ->
-            log(request, "Field could not be resolved #{field}, registering dependency")
+            log(request, fn -> "Field could not be resolved #{field}, registering dependency" end)
             {:ok, new_request, []}
 
           value ->
-            log(request, "Field #{field}, was resolved and provided")
+            log(request, fn -> "Field #{field}, was resolved and provided" end)
             {:value, value, new_request}
         end
 
@@ -419,7 +421,7 @@ defmodule Ash.Engine.Request do
   end
 
   defp do_store_dependency(request, field, receiver_path) do
-    log(request, "storing dependency on #{field} from #{inspect(receiver_path)}")
+    log(request, fn -> "storing dependency on #{field} from #{inspect(receiver_path)}" end)
 
     new_deps_to_send =
       Map.update(request.dependencies_to_send, field, [receiver_path], fn paths ->
@@ -435,27 +437,29 @@ defmodule Ash.Engine.Request do
     |> Enum.reject(&(authorizer_state(request, &1) == :authorized))
     |> Enum.reduce_while({:ok, request, [], []}, fn authorizer,
                                                     {:ok, request, notifications, waiting_for} ->
-      log(request, "strict checking")
+      log(request, fn -> "strict checking" end)
 
       case do_strict_check(authorizer, request) do
         {:ok, new_request} ->
-          log(new_request, "strict check succeeded for #{inspect(authorizer)}")
+          log(new_request, fn -> "strict check succeeded for #{inspect(authorizer)}" end)
           {:cont, {:ok, new_request, notifications, waiting_for}}
 
         {:ok, new_request, new_notifications, new_deps} ->
-          log(new_request, "strict check succeeded for #{inspect(authorizer)}")
+          log(new_request, fn -> "strict check succeeded for #{inspect(authorizer)}" end)
           {:cont, {:ok, new_request, new_notifications ++ notifications, waiting_for ++ new_deps}}
 
         {:waiting, new_request, new_notifications, new_deps} ->
           log(
             new_request,
-            "waiting on dependencies: #{inspect(new_deps)} for #{inspect(authorizer)}"
+            fn -> "waiting on dependencies: #{inspect(new_deps)} for #{inspect(authorizer)}" end
           )
 
           {:cont, {:ok, new_request, notifications ++ new_notifications, new_deps ++ waiting_for}}
 
         {:error, error} ->
-          log(request, "strict check failed for #{inspect(authorizer)}: #{inspect(error)}")
+          log(request, fn ->
+            "strict check failed for #{inspect(authorizer)}: #{inspect(error)}"
+          end)
 
           {:halt, {:error, error}}
       end
@@ -542,23 +546,23 @@ defmodule Ash.Engine.Request do
                                                     {:ok, request, notifications, waiting_for} ->
       case do_check(authorizer, request) do
         {:ok, new_request} ->
-          log(request, "check succeeded for #{inspect(authorizer)}")
+          log(request, fn -> "check succeeded for #{inspect(authorizer)}" end)
           {:cont, {:ok, new_request, notifications, waiting_for}}
 
         {:ok, new_request, new_notifications, new_deps} ->
-          log(request, "check succeeded for #{inspect(authorizer)}")
+          log(request, fn -> "check succeeded for #{inspect(authorizer)}" end)
           {:cont, {:ok, new_request, new_notifications ++ notifications, new_deps ++ waiting_for}}
 
         {:waiting, new_request, new_notifications, new_deps} ->
           log(
             request,
-            "waiting on dependencies: #{inspect(new_deps)} for #{inspect(authorizer)}"
+            fn -> "waiting on dependencies: #{inspect(new_deps)} for #{inspect(authorizer)}" end
           )
 
           {:cont, {:ok, new_request, new_notifications ++ notifications, new_deps ++ waiting_for}}
 
         {:error, error} ->
-          log(request, "check failed for #{inspect(authorizer)}: #{inspect(error)}")
+          log(request, fn -> "check failed for #{inspect(authorizer)}: #{inspect(error)}" end)
 
           {:halt, {:error, error}}
       end
@@ -737,7 +741,7 @@ defmodule Ash.Engine.Request do
            try_resolve(request, deps, internal?) do
       resolver_context = resolver_context(new_request, deps)
 
-      log(request, "resolving #{field}")
+      log(request, fn -> "resolving #{field}" end)
 
       case resolver.(resolver_context) do
         {:ok, value, instructions} ->
@@ -897,7 +901,7 @@ defmodule Ash.Engine.Request do
   end
 
   defp strict_check_authorizer(authorizer, request) do
-    log(request, "strict checking for #{inspect(authorizer)}")
+    log(request, fn -> "strict checking for #{inspect(authorizer)}" end)
 
     authorizer_state = authorizer_state(request, authorizer)
 
@@ -907,7 +911,7 @@ defmodule Ash.Engine.Request do
   end
 
   defp check_authorizer(authorizer, request) do
-    log(request, "checking for #{inspect(authorizer)}")
+    log(request, fn -> "checking for #{inspect(authorizer)}" end)
 
     authorizer_state = authorizer_state(request, authorizer)
 

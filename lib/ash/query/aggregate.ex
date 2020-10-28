@@ -213,9 +213,10 @@ defmodule Ash.Query.Aggregate do
                   aggregates
                 end
 
-              with {:ok, data_layer_query} <-
+              with {:ok, data_layer_query} <- Ash.Query.data_layer_query(query),
+                   {:ok, data_layer_query} <-
                      add_data_layer_aggregates(
-                       query.data_layer_query,
+                       data_layer_query,
                        aggregates,
                        initial_query.resource
                      ),

@@ -18,7 +18,8 @@ defmodule Ash.Actions.Create do
       |> Keyword.take([:verbose?, :actor, :authorize?])
       |> Keyword.put(:transaction?, true)
 
-    with %{valid?: true} = changeset <- changeset(changeset, api, action, opts[:actor]),
+    with :ok <- validate_multitenancy(changeset),
+         %{valid?: true} = changeset <- changeset(changeset, api, action, opts[:actor]),
          :ok <- check_upsert_support(changeset.resource, upsert?),
          %{
            data: %{commit: %^resource{} = created},
@@ -32,7 +33,9 @@ defmodule Ash.Actions.Create do
              resource,
              api
            ) do
-      add_notifications(created, engine_result, opts)
+      created
+      |> add_tenant(changeset)
+      |> add_notifications(engine_result, opts)
     else
       %Ash.Changeset{errors: errors} ->
         {:error, Ash.Error.to_ash_error(errors)}
@@ -42,6 +45,14 @@ defmodule Ash.Actions.Create do
 
       {:error, error} ->
         {:error, Ash.Error.to_ash_error(error)}
+    end
+  end
+
+  defp add_tenant(data, changeset) do
+    if Ash.Resource.multitenancy_strategy(changeset.resource) do
+      %{data | __metadata__: Map.put(data.__metadata__, :tenant, changeset.tenant)}
+    else
+      data
     end
   end
 
@@ -171,7 +182,7 @@ defmodule Ash.Actions.Create do
     |> Ash.Resource.attributes()
     |> Enum.filter(&(not is_nil(&1.default)))
     |> Enum.reduce(changeset, fn attribute, changeset ->
-      Ash.Changeset.change_new_attribute_lazy(changeset, attribute.name, fn ->
+      Ash.Changeset.force_change_new_attribute_lazy(changeset, attribute.name, fn ->
         default(attribute.default)
       end)
     end)
@@ -208,11 +219,12 @@ defmodule Ash.Actions.Create do
           end),
         action: action,
         notify?: true,
-        metadata: %{upsert?: upsert?},
         data:
           Request.resolve(
             [[:commit, :changeset]],
             fn %{commit: %{changeset: changeset}} ->
+              changeset = set_tenant(changeset)
+
               Ash.Changeset.with_hooks(changeset, fn changeset ->
                 if upsert? do
                   Ash.DataLayer.upsert(resource, changeset)
@@ -231,6 +243,29 @@ defmodule Ash.Actions.Create do
       api,
       engine_opts
     )
+  end
+
+  defp validate_multitenancy(changeset) do
+    if Ash.Resource.multitenancy_strategy(changeset.resource) &&
+         not Ash.Resource.multitenancy_global?(changeset.resource) && is_nil(changeset.tenant) do
+      {:error, "#{inspect(changeset.resource)} changesets require a tenant to be specified"}
+    else
+      :ok
+    end
+  end
+
+  defp set_tenant(changeset) do
+    if changeset.tenant && Ash.Resource.multitenancy_strategy(changeset.resource) == :attribute do
+      attribute = Ash.Resource.multitenancy_attribute(changeset.resource)
+      {m, f, a} = Ash.Resource.multitenancy_parse_attribute(changeset.resource)
+      attribute_value = apply(m, f, [changeset.tenant | a])
+
+      changeset
+      |> Ash.Changeset.force_change_attribute(attribute, attribute_value)
+      |> Map.put(:tenant, nil)
+    else
+      changeset
+    end
   end
 
   defp check_upsert_support(_resource, false), do: :ok

@@ -62,6 +62,8 @@ defmodule Ash.Engine do
     authorize? = opts[:authorize?] || Keyword.has_key?(opts, :actor)
     actor = opts[:actor]
 
+    opts = Keyword.put(opts, :callers, [self() | Process.get(:"$callers", [])])
+
     case Request.validate_requests(requests) do
       :ok ->
         requests =
@@ -116,6 +118,7 @@ defmodule Ash.Engine do
       run_and_return_or_rollback(local_requests, opts, innermost_resource)
     else
       Process.flag(:trap_exit, true)
+
       {:ok, pid} = GenServer.start(__MODULE__, opts)
       _ = Process.monitor(pid)
 
@@ -187,6 +190,8 @@ defmodule Ash.Engine do
   end
 
   def init(opts) do
+    Process.put(:"$callers", opts[:callers])
+
     state =
       %__MODULE__{
         requests: opts[:requests],
@@ -204,12 +209,13 @@ defmodule Ash.Engine do
   end
 
   def handle_continue(:spawn_requests, state) do
-    log(state, "Spawning request processes", :debug)
+    log(state, fn -> "Spawning request processes" end, :debug)
 
     new_state =
       Enum.reduce(state.requests, state, fn request, state ->
         {:ok, pid} =
           GenServer.start(Ash.Engine.RequestHandler,
+            callers: [self() | Process.get("$callers", [])],
             request: request,
             verbose?: state.verbose?,
             actor?: state.actor,
@@ -291,7 +297,7 @@ defmodule Ash.Engine do
 
   def handle_cast({:error, error, request_handler_state}, state) do
     state
-    |> log("Error received from request_handler #{inspect(error)}")
+    |> log(fn -> "Error received from request_handler #{inspect(error)}" end)
     |> move_to_error(request_handler_state.request.path)
     |> add_error(request_handler_state.request.path, error)
     |> maybe_shutdown()
@@ -299,7 +305,7 @@ defmodule Ash.Engine do
 
   def handle_info({:EXIT, _pid, {:shutdown, {:error, error, request_handler_state}}}, state) do
     state
-    |> log("Error received from request_handler #{inspect(error)}")
+    |> log(fn -> "Error received from request_handler #{inspect(error)}" end)
     |> move_to_error(request_handler_state.request.path)
     |> add_error(request_handler_state.request.path, error)
     |> maybe_shutdown()
@@ -307,7 +313,7 @@ defmodule Ash.Engine do
 
   def handle_info({:DOWN, _, _, _pid, {:error, error, %Request{} = request}}, state) do
     state
-    |> log("Request exited in failure #{request.name}: #{inspect(error)}")
+    |> log(fn -> "Request exited in failure #{request.name}: #{inspect(error)}" end)
     |> move_to_error(request.path)
     |> add_error(request.path, error)
     |> maybe_shutdown()
@@ -317,7 +323,7 @@ defmodule Ash.Engine do
     {_state, _pid, request} = get_request(state, pid)
 
     state
-    |> log("Request exited in failure #{request.name}: #{inspect(reason)}")
+    |> log(fn -> "Request exited in failure #{request.name}: #{inspect(reason)}" end)
     |> move_to_error(request.path)
     |> add_error(request.path, reason)
     |> maybe_shutdown()
@@ -425,7 +431,7 @@ defmodule Ash.Engine do
   end
 
   defp maybe_shutdown(%{active_requests: [], local_requests?: false} = state) do
-    log(state, "shutting down, completion criteria reached")
+    log(state, fn -> "shutting down, completion criteria reached" end)
     {:stop, {:shutdown, state}, state}
   end
 
@@ -450,13 +456,13 @@ defmodule Ash.Engine do
   end
 
   defp log_engine_init(state) do
-    log(state, "Initializing Engine with #{Enum.count(state.requests)} requests.")
+    log(state, fn -> "Initializing Engine with #{Enum.count(state.requests)} requests." end)
   end
 
   defp log(state, message, level \\ :info)
 
   defp log(%{verbose?: true} = state, message, level) do
-    Logger.log(level, "Engine: " <> message)
+    Logger.log(level, fn -> ["Engine: ", message.()] end)
 
     state
   end

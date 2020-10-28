@@ -196,6 +196,45 @@ defmodule Ash.Resource do
     |> Enum.find(&(&1.name == relationship_name))
   end
 
+  @doc "Get the multitenancy strategy for a resource"
+  @spec multitenancy_strategy(Ash.resource()) :: :context | :attribute | nil
+  def multitenancy_strategy(resource) do
+    Ash.Dsl.Extension.get_opt(resource, [:multitenancy], :strategy, nil)
+  end
+
+  @spec multitenancy_attribute(Ash.resource()) :: atom | nil
+  def multitenancy_attribute(resource) do
+    Ash.Dsl.Extension.get_opt(resource, [:multitenancy], :attribute, nil)
+  end
+
+  @spec multitenancy_parse_attribute(Ash.resource()) :: {atom, atom, list(any)}
+  def multitenancy_parse_attribute(resource) do
+    Ash.Dsl.Extension.get_opt(
+      resource,
+      [:multitenancy],
+      :parse_attribute,
+      {__MODULE__, :identity, []}
+    )
+  end
+
+  @doc false
+  def identity(x), do: x
+
+  @spec multitenancy_global?(Ash.resource()) :: atom | nil
+  def multitenancy_global?(resource) do
+    Ash.Dsl.Extension.get_opt(resource, [:multitenancy], :global?, nil)
+  end
+
+  @spec multitenancy_source(Ash.resource()) :: atom | nil
+  def multitenancy_source(resource) do
+    Ash.Dsl.Extension.get_opt(resource, [:multitenancy], :source, nil)
+  end
+
+  @spec multitenancy_template(Ash.resource()) :: atom | nil
+  def multitenancy_template(resource) do
+    Ash.Dsl.Extension.get_opt(resource, [:multitenancy], :template, nil)
+  end
+
   @spec calculations(Ash.resource()) :: list(Ash.calculation())
   def calculations(resource) do
     Extension.get_entities(resource, [:calculations])

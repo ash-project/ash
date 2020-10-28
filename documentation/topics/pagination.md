@@ -35,7 +35,7 @@ Api.read(Resource, page: [limit: 10, offset: 10])
 
 Keyset pagination is done via providing an `after` or `before` option, as well as a `limit`. The value of this option should be
 a `keyset` that has been returned from a previous request. Keysets are returned when a request is made with a `limit` to an action
-that supports `keyset` pagination, and they are stored in the `metadata` key of each record. The `keyset` is a special value that
+that supports `keyset` pagination, and they are stored in the `__metadata__` key of each record. The `keyset` is a special value that
 can be passed into the `after` or `before` options, to get records that occur after or before.
 
 For example:
@@ -46,7 +46,7 @@ page = Api.read(Resource, page: [limit: 10])
 last_record = List.last(page.results)
 
 # No need to do this in practice, see `c:Ash.Api.page/2`
-next_page = Api.read(Resource, page: [limit: 10, after: last_record.metadata.keyset])
+next_page = Api.read(Resource, page: [limit: 10, after: last_record.__metadata__.keyset])
 ```
 
 ### Keyset Pros

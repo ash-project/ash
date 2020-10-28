@@ -54,6 +54,12 @@ defmodule Ash.Api do
       doc:
         "If an actor is provided, authorization happens automatically. If not, this flag can be used to authorize with no user."
     ],
+    stacktraces?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "For Ash errors, can be set to true to get a stacktrace for each error that occured. See the error_handling guide for more."
+    ],
     actor: [
       type: :any,
       doc:
@@ -421,7 +427,7 @@ defmodule Ash.Api do
 
     api
     |> get(resource, id, opts)
-    |> unwrap_or_raise!()
+    |> unwrap_or_raise!(opts[:stacktraces?])
   end
 
   @doc false
@@ -474,9 +480,11 @@ defmodule Ash.Api do
   end
 
   def page!(api, keyset, request) do
+    {_, opts} = keyset.rerun
+
     api
     |> page(keyset, request)
-    |> unwrap_or_raise!()
+    |> unwrap_or_raise!(opts[:stacktraces?])
   end
 
   def page(_, %Ash.Page.Keyset{results: []} = page, :next) do
@@ -499,7 +507,7 @@ defmodule Ash.Api do
     last_keyset =
       results
       |> :lists.last()
-      |> Map.get(:metadata)
+      |> Map.get(:__metadata__)
       |> Map.get(:keyset)
 
     new_page_opts =
@@ -514,7 +522,7 @@ defmodule Ash.Api do
     first_keyset =
       results
       |> List.first()
-      |> Map.get(:metadata)
+      |> Map.get(:__metadata__)
       |> Map.get(:keyset)
 
     new_page_opts =
@@ -678,7 +686,7 @@ defmodule Ash.Api do
 
     api
     |> load(data, query, opts)
-    |> unwrap_or_raise!()
+    |> unwrap_or_raise!(opts[:stacktraces?])
   end
 
   @doc false
@@ -740,7 +748,7 @@ defmodule Ash.Api do
 
     api
     |> read(query, opts)
-    |> unwrap_or_raise!()
+    |> unwrap_or_raise!(opts[:stacktraces?])
   end
 
   @doc false
@@ -768,7 +776,7 @@ defmodule Ash.Api do
   def read_one!(api, query, opts) do
     api
     |> read_one(query, opts)
-    |> unwrap_or_raise!()
+    |> unwrap_or_raise!(opts[:stacktraces?])
   end
 
   @doc false
@@ -830,7 +838,7 @@ defmodule Ash.Api do
 
     api
     |> create(changeset, opts)
-    |> unwrap_or_raise!()
+    |> unwrap_or_raise!(opts[:stacktraces?])
   end
 
   @doc false
@@ -850,7 +858,7 @@ defmodule Ash.Api do
 
     api
     |> update(changeset, opts)
-    |> unwrap_or_raise!()
+    |> unwrap_or_raise!(opts[:stacktraces?])
   end
 
   @doc false
@@ -871,7 +879,7 @@ defmodule Ash.Api do
 
     api
     |> destroy(changeset, opts)
-    |> unwrap_or_raise!()
+    |> unwrap_or_raise!(opts[:stacktraces?])
   end
 
   @doc false
@@ -917,16 +925,23 @@ defmodule Ash.Api do
     end
   end
 
-  defp unwrap_or_raise!(:ok), do: :ok
-  defp unwrap_or_raise!({:ok, result}), do: result
-  defp unwrap_or_raise!({:ok, result, other}), do: {result, other}
+  defp unwrap_or_raise!(:ok, _), do: :ok
+  defp unwrap_or_raise!({:ok, result}, _), do: result
+  defp unwrap_or_raise!({:ok, result, other}, _), do: {result, other}
 
-  defp unwrap_or_raise!({:error, error}) do
+  defp unwrap_or_raise!({:error, error}, stacktraces?) do
     exception = Ash.Error.to_ash_error(error)
+
+    exception =
+      if stacktraces? do
+        exception
+      else
+        Ash.Error.clear_stacktraces(exception)
+      end
 
     case exception do
       %{stacktraces?: _} ->
-        raise %{exception | stacktraces?: true}
+        raise %{exception | stacktraces?: stacktraces?}
 
       _ ->
         raise exception

@@ -30,7 +30,7 @@ defmodule Ash.Page.Keyset do
     Enum.map(results, fn result ->
       Map.update!(
         result,
-        :metadata,
+        :__metadata__,
         &Map.put(&1, :keyset, keyset(result, fields_in_keyset))
       )
     end)
