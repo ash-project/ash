@@ -24,7 +24,8 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
           many_to_many :related_posts, Post,
             through: SomeResource,
             source_field_on_join_table: :post_id,
-            destination_field_on_join_table: :related_post_id
+            destination_field_on_join_table: :related_post_id,
+            private?: true
         end
       end
 
@@ -36,7 +37,8 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                  name: :related_posts_join_assoc,
                  source: Ash.Test.Resource.Relationships.ManyToManyTest.Post,
                  source_field: :id,
-                 type: :has_many
+                 type: :has_many,
+                 private?: true
                },
                %Ash.Resource.Relationships.ManyToMany{
                  cardinality: :many,
@@ -48,7 +50,8 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                  source_field: :id,
                  source_field_on_join_table: :post_id,
                  through: SomeResource,
-                 type: :many_to_many
+                 type: :many_to_many,
+                 private?: true
                }
              ] = Ash.Resource.relationships(Post)
     end
@@ -147,6 +150,24 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                 destination_field: "what",
                 source_field_on_join_table: :source_post_id,
                 destination_field_on_join_table: :destination_post_id
+            end
+          end
+        end
+      )
+    end
+
+    test "fails if private? is not an boolean" do
+      assert_raise(
+        Ash.Error.Dsl.DslError,
+        "[Ash.Resource.Dsl.ManyToMany]\n relationships -> many_to_many -> foobars:\n  expected :private? to be an boolean, got: \"an_invalid_field\"",
+        fn ->
+          defposts do
+            relationships do
+              many_to_many :foobars, Foobar,
+                through: FooBars,
+                source_field_on_join_table: :source_post_id,
+                destination_field_on_join_table: :destination_post_id,
+                private?: "an_invalid_field"
             end
           end
         end

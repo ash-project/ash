@@ -28,6 +28,11 @@ defmodule Ash.Resource.Relationships.SharedOptions do
     description: [
       type: :string,
       doc: "An optional description for the relationship"
+    ],
+    private?: [
+      type: :boolean,
+      default: false,
+      doc: "Whether or not the value can be accessed by extensions"
     ]
   ]
 

@@ -12,6 +12,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
     :join_relationship,
     :join_attributes,
     :writable?,
+    :private?,
     :description,
     cardinality: :many,
     type: :many_to_many
@@ -22,6 +23,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
           cardinality: :many,
           source: Ash.resource(),
           writable?: boolean,
+          private?: boolean,
           name: atom,
           through: Ash.resource(),
           destination: Ash.resource(),

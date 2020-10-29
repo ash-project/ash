@@ -21,7 +21,7 @@ defmodule Ash.Test.Resource.Relationshihps.HasManyTest do
     test "it creates a relationship" do
       defposts do
         relationships do
-          has_many :foobar, FooBar, destination_field: :post_id
+          has_many :foobar, FooBar, destination_field: :post_id, private?: true
         end
       end
 
@@ -32,7 +32,8 @@ defmodule Ash.Test.Resource.Relationshihps.HasManyTest do
                  destination_field: :post_id,
                  name: :foobar,
                  source_field: :id,
-                 type: :has_many
+                 type: :has_many,
+                 private?: true
                }
              ] = Ash.Resource.relationships(Post)
     end
@@ -89,6 +90,20 @@ defmodule Ash.Test.Resource.Relationshihps.HasManyTest do
           defposts do
             relationships do
               has_many "foobar", Foobar
+            end
+          end
+        end
+      )
+    end
+
+    test "fails if private? is not an boolean" do
+      assert_raise(
+        Ash.Error.Dsl.DslError,
+        "[Ash.Resource.Dsl.HasMany]\n relationships -> has_many -> foobar:\n  expected :private? to be an boolean, got: \"foo\"",
+        fn ->
+          defposts do
+            relationships do
+              has_many :foobar, FooBar, private?: "foo", destination_field: :post_id
             end
           end
         end

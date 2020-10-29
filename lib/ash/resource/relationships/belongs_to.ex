@@ -8,6 +8,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :define_field?,
     :field_type,
     :destination_field,
+    :private?,
     :source_field,
     :source,
     :required?,
@@ -29,6 +30,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           define_field?: boolean,
           field_type: Ash.Type.t(),
           destination_field: atom,
+          private?: boolean,
           source_field: atom | nil,
           description: String.t()
         }

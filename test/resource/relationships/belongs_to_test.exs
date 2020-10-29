@@ -29,7 +29,26 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
                %Ash.Resource.Attribute{
                  name: :foobar_id,
                  primary_key?: false,
-                 type: Ash.Type.UUID
+                 type: Ash.Type.UUID,
+                 private?: false
+               },
+               _
+             ] = Ash.Resource.attributes(Post)
+    end
+
+    test "it creates an attribute that honors private?" do
+      defposts do
+        relationships do
+          belongs_to(:foobar, FooBar, private?: true)
+        end
+      end
+
+      assert [
+               %Ash.Resource.Attribute{
+                 name: :foobar_id,
+                 primary_key?: false,
+                 type: Ash.Type.UUID,
+                 private?: true
                },
                _
              ] = Ash.Resource.attributes(Post)
@@ -52,7 +71,8 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
                  name: :foobar,
                  primary_key?: false,
                  source_field: :foobar_id,
-                 type: :belongs_to
+                 type: :belongs_to,
+                 private?: false
                }
              ] = Ash.Resource.relationships(Post)
     end
@@ -123,6 +143,20 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
           defposts do
             relationships do
               belongs_to(:foobar, Foobar, primary_key?: "blah")
+            end
+          end
+        end
+      )
+    end
+
+    test "fails if `private?` is not a boolean" do
+      assert_raise(
+        Ash.Error.Dsl.DslError,
+        "[Ash.Resource.Dsl.BelongsTo]\n relationships -> belongs_to -> foobar:\n  expected :private? to be an boolean, got: \"blah\"",
+        fn ->
+          defposts do
+            relationships do
+              belongs_to(:foobar, Foobar, private?: "blah")
             end
           end
         end

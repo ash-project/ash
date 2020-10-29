@@ -26,7 +26,8 @@ defmodule Ash.Resource.Transformers.CreateJoinRelationship do
           name: relationship.join_relationship,
           destination: relationship.through,
           destination_field: relationship.source_field_on_join_table,
-          source_field: relationship.source_field
+          source_field: relationship.source_field,
+          private?: relationship.private?
         )
 
       {:ok, Transformer.add_entity(dsl_state, [:relationships], relationship)}

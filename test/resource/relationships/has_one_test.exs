@@ -32,7 +32,8 @@ defmodule Ash.Test.Resource.Relationshihps.HasOneTest do
                  destination_field: :post_id,
                  name: :foobar,
                  source_field: :id,
-                 type: :has_one
+                 type: :has_one,
+                 private?: false
                }
              ] = Ash.Resource.relationships(Post)
     end
@@ -89,6 +90,20 @@ defmodule Ash.Test.Resource.Relationshihps.HasOneTest do
           defposts do
             relationships do
               has_one "foobar", Foobar
+            end
+          end
+        end
+      )
+    end
+
+    test "fails if private? is not an boolean" do
+      assert_raise(
+        Ash.Error.Dsl.DslError,
+        "[Ash.Resource.Dsl.HasOne]\n relationships -> has_one -> foobar:\n  expected :private? to be an boolean, got: \"foo\"",
+        fn ->
+          defposts do
+            relationships do
+              has_one :foobar, FooBar, private?: "foo", destination_field: :post_id
             end
           end
         end

@@ -72,5 +72,19 @@ defmodule Ash.Test.Resource.AttributesTest do
         end
       )
     end
+
+    test "raises if you pass an invalid value for `private?`" do
+      assert_raise(
+        Ash.Error.Dsl.DslError,
+        "[Ash.Resource.Dsl.Attribute]\n attributes -> attribute -> foo:\n  expected :private? to be an boolean, got: \"an_invalid_value\"",
+        fn ->
+          defposts do
+            attributes do
+              attribute :foo, :string, private?: "an_invalid_value"
+            end
+          end
+        end
+      )
+    end
   end
 end
