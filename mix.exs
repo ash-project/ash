@@ -50,7 +50,8 @@ defmodule Ash.MixProject do
         "documentation/topics/error_handling.md",
         "documentation/topics/aggregates.md",
         "documentation/topics/calculations.md",
-        "documentation/topics/contexts_and_domains.md"
+        "documentation/topics/contexts_and_domains.md",
+        "documentation/topics/multitenancy.md"
       ],
       groups_for_extras: [
         Introduction: Path.wildcard("documentation/introduction/*.md"),
