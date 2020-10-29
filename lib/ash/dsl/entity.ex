@@ -40,6 +40,7 @@ defmodule Ash.Dsl.Entity do
     entities: [],
     describe: "",
     args: [],
+    modules: [],
     schema: [],
     auto_set_fields: []
   ]

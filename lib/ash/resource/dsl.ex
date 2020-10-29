@@ -85,6 +85,7 @@ defmodule Ash.Resource.Dsl do
         destination_field: :word_text
       """
     ],
+    modules: [:destination],
     target: Ash.Resource.Relationships.HasOne,
     schema: Ash.Resource.Relationships.HasOne.opt_schema(),
     args: [:name, :destination]
@@ -104,6 +105,7 @@ defmodule Ash.Resource.Dsl do
       """
     ],
     target: Ash.Resource.Relationships.HasMany,
+    modules: [:destination],
     schema: Ash.Resource.Relationships.HasMany.opt_schema(),
     args: [:name, :destination]
   }
@@ -126,6 +128,7 @@ defmodule Ash.Resource.Dsl do
         destination_field_on_join_table: :book_id
       """
     ],
+    modules: [:destination, :through],
     target: Ash.Resource.Relationships.ManyToMany,
     schema: Ash.Resource.Relationships.ManyToMany.opt_schema(),
     transform: {Ash.Resource.Relationships.ManyToMany, :transform, []},
@@ -147,6 +150,7 @@ defmodule Ash.Resource.Dsl do
         destination_field: :word_text
       """
     ],
+    modules: [:destination],
     target: Ash.Resource.Relationships.BelongsTo,
     schema: Ash.Resource.Relationships.BelongsTo.opt_schema(),
     args: [:name, :destination]

@@ -61,6 +61,7 @@ defmodule Ash.Notifier.PubSub do
       @publish,
       @publish_all
     ],
+    modules: [:module],
     schema: [
       module: [
         type: :atom,

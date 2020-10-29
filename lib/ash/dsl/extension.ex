@@ -551,6 +551,13 @@ defmodule Ash.Dsl.Extension do
                 extension = unquote(extension)
                 section = unquote(Macro.escape(section))
 
+                value =
+                  if field in section.modules do
+                    Ash.Dsl.Extension.expand_alias(value, __CALLER__)
+                  else
+                    value
+                  end
+
                 quote do
                   current_sections = Process.get({__MODULE__, :ash_sections}, [])
 
@@ -612,7 +619,12 @@ defmodule Ash.Dsl.Extension do
         end)
       end)
 
-    Ash.Dsl.Extension.build_entity_options(options_mod_name, entity.schema, nested_entity_path)
+    Ash.Dsl.Extension.build_entity_options(
+      options_mod_name,
+      entity.schema,
+      entity.modules,
+      nested_entity_path
+    )
 
     args = Enum.map(entity.args, &Macro.var(&1, mod_name))
 
@@ -640,7 +652,25 @@ defmodule Ash.Dsl.Extension do
           nested_entity_mods = unquote(Macro.escape(nested_entity_mods))
           nested_entity_path = unquote(Macro.escape(nested_entity_path))
 
-          arg_values = unquote(args)
+          arg_values =
+            entity_args
+            |> Enum.zip(unquote(args))
+            |> Enum.map(fn {key, value} ->
+              if key in entity.modules do
+                Ash.Dsl.Extension.expand_alias(value, __CALLER__)
+              else
+                value
+              end
+            end)
+
+          opts =
+            Enum.map(opts, fn {key, value} ->
+              if key in entity.modules do
+                {Ash.Dsl.Extension.expand_alias(key, __CALLER__), value}
+              else
+                {key, value}
+              end
+            end)
 
           quote do
             # This `try do` block scopes the imports/unimports properly
@@ -771,16 +801,28 @@ defmodule Ash.Dsl.Extension do
   end
 
   @doc false
-  def build_entity_options(module_name, schema, nested_entity_path) do
+  def build_entity_options(module_name, schema, modules, nested_entity_path) do
     Module.create(
       module_name,
-      quote bind_quoted: [schema: Macro.escape(schema), nested_entity_path: nested_entity_path] do
+      quote bind_quoted: [
+              schema: Macro.escape(schema),
+              nested_entity_path: nested_entity_path,
+              modules: modules
+            ] do
         @moduledoc false
 
         for {key, _value} <- schema do
           defmacro unquote(key)(value) do
             key = unquote(key)
             nested_entity_path = unquote(nested_entity_path)
+            modules = unquote(modules)
+
+            value =
+              if key in modules do
+                Ash.Dsl.Extension.expand_alias(value, __CALLER__)
+              else
+                value
+              end
 
             quote do
               current_opts = Process.get({:builder_opts, unquote(nested_entity_path)}, [])
@@ -798,4 +840,10 @@ defmodule Ash.Dsl.Extension do
 
     module_name
   end
+
+  def expand_alias({:__aliases__, _, _} = ast, env),
+    do: Macro.expand(ast, %{env | lexical_tracker: nil})
+
+  def expand_alias(ast, _env),
+    do: ast
 end
