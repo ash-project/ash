@@ -24,8 +24,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
           many_to_many :related_posts, Post,
             through: SomeResource,
             source_field_on_join_table: :post_id,
-            destination_field_on_join_table: :related_post_id,
-            private?: true
+            destination_field_on_join_table: :related_post_id
         end
       end
 
@@ -51,7 +50,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                  source_field_on_join_table: :post_id,
                  through: SomeResource,
                  type: :many_to_many,
-                 private?: true
+                 private?: false
                }
              ] = Ash.Resource.relationships(Post)
     end
