@@ -162,6 +162,7 @@ defmodule Ash.Resource do
     :persistent_term.get({resource, :primary_key}, [])
   end
 
+  @doc "Returns all relationships of a resource"
   @spec relationships(Ash.resource()) :: list(Ash.relationship())
   def relationships(resource) do
     Extension.get_entities(resource, [:relationships])
@@ -193,6 +194,37 @@ defmodule Ash.Resource do
   def relationship(resource, relationship_name) do
     resource
     |> relationships()
+    |> Enum.find(&(&1.name == relationship_name))
+  end
+
+  @doc "Returns all public relationships of a resource"
+  @spec public_relationships(Ash.resource()) :: list(Ash.relationship())
+  def public_relationships(resource) do
+    resource
+    |> relationships()
+    |> Enum.reject(& &1.private?)
+  end
+
+  @doc "Get a public relationship by name or path"
+  def public_relationship(resource, [name | rest]) do
+    case public_relationship(resource, name) do
+      nil ->
+        nil
+
+      relationship ->
+        public_relationship(relationship.destination, rest)
+    end
+  end
+
+  def public_relationship(resource, relationship_name) when is_binary(relationship_name) do
+    resource
+    |> public_relationships()
+    |> Enum.find(&(to_string(&1.name) == relationship_name))
+  end
+
+  def public_relationship(resource, relationship_name) do
+    resource
+    |> public_relationships()
     |> Enum.find(&(&1.name == relationship_name))
   end
 
@@ -321,6 +353,28 @@ defmodule Ash.Resource do
   def attribute(resource, name) do
     resource
     |> attributes()
+    |> Enum.find(&(&1.name == name))
+  end
+
+  @doc "Returns all public attributes of a resource"
+  @spec public_attributes(Ash.resource()) :: [Ash.attribute()]
+  def public_attributes(resource) do
+    resource
+    |> attributes()
+    |> Enum.reject(& &1.private?)
+  end
+
+  @doc "Get an attribute name from the resource"
+  @spec public_attribute(Ash.resource(), String.t() | atom) :: Ash.attribute() | nil
+  def public_attribute(resource, name) when is_binary(name) do
+    resource
+    |> public_attributes()
+    |> Enum.find(&(to_string(&1.name) == name))
+  end
+
+  def public_attribute(resource, name) do
+    resource
+    |> public_attributes()
     |> Enum.find(&(&1.name == name))
   end
 

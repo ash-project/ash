@@ -24,7 +24,7 @@ defmodule Ash.Resource.Transformers.BelongsToAttribute do
              name: relationship.source_field,
              type: relationship.field_type,
              writable?: false,
-             private?: relationship.private?,
+             private?: true,
              primary_key?: relationship.primary_key?
            ) do
         {:ok, attribute} ->

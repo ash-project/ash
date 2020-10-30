@@ -2,6 +2,10 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias __MODULE__
+  alias Ash.Resource.Relationships.HasMany
+  alias Ash.Resource.Relationships.ManyToMany
+
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
@@ -25,34 +29,72 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
             through: SomeResource,
             source_field_on_join_table: :post_id,
             destination_field_on_join_table: :related_post_id
+
+          many_to_many :unrelated_posts, Post,
+            through: Tabloid,
+            source_field_on_join_table: :post_id,
+            destination_field_on_join_table: :unrelated_post_id,
+            private?: true
         end
       end
 
       assert [
-               %Ash.Resource.Relationships.HasMany{
+               %HasMany{
                  cardinality: :many,
-                 destination: SomeResource,
+                 destination: Tabloid,
                  destination_field: :post_id,
-                 name: :related_posts_join_assoc,
-                 source: Ash.Test.Resource.Relationships.ManyToManyTest.Post,
+                 name: :unrelated_posts_join_assoc,
+                 source: ManyToManyTest.Post,
                  source_field: :id,
                  type: :has_many,
                  private?: true
                },
-               %Ash.Resource.Relationships.ManyToMany{
+               %HasMany{
                  cardinality: :many,
-                 destination: Ash.Test.Resource.Relationships.ManyToManyTest.Post,
+                 destination: SomeResource,
+                 destination_field: :post_id,
+                 name: :related_posts_join_assoc,
+                 source: ManyToManyTest.Post,
+                 source_field: :id,
+                 type: :has_many,
+                 private?: true
+               },
+               %ManyToMany{
+                 cardinality: :many,
+                 destination: ManyToManyTest.Post,
                  destination_field: :id,
                  destination_field_on_join_table: :related_post_id,
                  name: :related_posts,
-                 source: Ash.Test.Resource.Relationships.ManyToManyTest.Post,
+                 source: ManyToManyTest.Post,
                  source_field: :id,
                  source_field_on_join_table: :post_id,
                  through: SomeResource,
                  type: :many_to_many,
                  private?: false
+               },
+               %ManyToMany{
+                 cardinality: :many,
+                 destination: ManyToManyTest.Post,
+                 destination_field: :id,
+                 destination_field_on_join_table: :unrelated_post_id,
+                 name: :unrelated_posts,
+                 source: ManyToManyTest.Post,
+                 source_field: :id,
+                 source_field_on_join_table: :post_id,
+                 through: Tabloid,
+                 type: :many_to_many,
+                 private?: true
                }
              ] = Ash.Resource.relationships(Post)
+
+      assert [%ManyToMany{name: :related_posts}] = Ash.Resource.public_relationships(Post)
+
+      assert %ManyToMany{name: :related_posts} =
+               Ash.Resource.public_relationship(Post, :related_posts)
+
+      assert nil == Ash.Resource.relationship(Post, :definitely_legit_relationship)
+
+      assert nil == Ash.Resource.public_relationship(Post, :unrelated_posts)
     end
   end
 

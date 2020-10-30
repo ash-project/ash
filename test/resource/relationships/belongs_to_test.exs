@@ -2,6 +2,8 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Resource.Relationships.BelongsTo
+
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
@@ -30,7 +32,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
                  name: :foobar_id,
                  primary_key?: false,
                  type: Ash.Type.UUID,
-                 private?: false
+                 private?: true
                },
                _
              ] = Ash.Resource.attributes(Post)
@@ -57,24 +59,45 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "it creates a relationship" do
       defposts do
         relationships do
-          belongs_to(:foobar, FooBar)
+          belongs_to(:foo, Foo)
+          belongs_to(:bar, Bar, source_field: :bazz, private?: true)
         end
       end
 
       assert [
-               %Ash.Resource.Relationships.BelongsTo{
+               %BelongsTo{
                  cardinality: :one,
                  define_field?: true,
-                 destination: FooBar,
+                 destination: Foo,
                  destination_field: :id,
                  field_type: :uuid,
-                 name: :foobar,
+                 name: :foo,
                  primary_key?: false,
-                 source_field: :foobar_id,
+                 source_field: :foo_id,
                  type: :belongs_to,
                  private?: false
+               },
+               %BelongsTo{
+                 cardinality: :one,
+                 define_field?: true,
+                 destination: Bar,
+                 destination_field: :id,
+                 field_type: :uuid,
+                 name: :bar,
+                 primary_key?: false,
+                 source_field: :bazz,
+                 type: :belongs_to,
+                 private?: true
                }
              ] = Ash.Resource.relationships(Post)
+
+      assert [%BelongsTo{name: :foo}] = Ash.Resource.public_relationships(Post)
+
+      assert %BelongsTo{name: :foo} = Ash.Resource.public_relationship(Post, :foo)
+
+      assert nil == Ash.Resource.relationship(Post, :definitely_legit_relationship)
+
+      assert nil == Ash.Resource.public_relationship(Post, :bar)
     end
   end
 
