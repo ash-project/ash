@@ -364,7 +364,7 @@ defmodule Ash.Resource do
     |> Enum.reject(& &1.private?)
   end
 
-  @doc "Get an attribute name from the resource"
+  @doc "Get a public attribute name from the resource"
   @spec public_attribute(Ash.resource(), String.t() | atom) :: Ash.attribute() | nil
   def public_attribute(resource, name) when is_binary(name) do
     resource
