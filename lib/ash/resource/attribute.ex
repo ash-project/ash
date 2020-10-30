@@ -67,7 +67,8 @@ defmodule Ash.Resource.Attribute do
     private?: [
       type: :boolean,
       default: false,
-      doc: "Whether or not the attribute will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql"
+      doc:
+        "Whether or not the attribute will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql"
     ],
     update_default: [
       type: {:custom, Ash.OptionsHelpers, :default, []},
