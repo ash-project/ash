@@ -218,14 +218,14 @@ defmodule Ash.Resource do
 
   def public_relationship(resource, relationship_name) when is_binary(relationship_name) do
     resource
-    |> public_relationships()
-    |> Enum.find(&(to_string(&1.name) == relationship_name))
+    |> relationships()
+    |> Enum.find(&(to_string(&1.name) == relationship_name && !&1.private?))
   end
 
   def public_relationship(resource, relationship_name) do
     resource
-    |> public_relationships()
-    |> Enum.find(&(&1.name == relationship_name))
+    |> relationships()
+    |> Enum.find(&(&1.name == relationship_name && !&1.private?))
   end
 
   @doc "Get the multitenancy strategy for a resource"
@@ -267,11 +267,14 @@ defmodule Ash.Resource do
     Ash.Dsl.Extension.get_opt(resource, [:multitenancy], :template, nil)
   end
 
+  @doc "Returns all calculations of a resource"
   @spec calculations(Ash.resource()) :: list(Ash.calculation())
   def calculations(resource) do
     Extension.get_entities(resource, [:calculations])
   end
 
+  @doc "Get a calculation by name"
+  @spec calculation(Ash.resource(), atom | String.t()) :: Ash.calculation() | nil
   def calculation(resource, name) when is_binary(name) do
     resource
     |> calculations()
@@ -284,11 +287,36 @@ defmodule Ash.Resource do
     |> Enum.find(&(&1.name == name))
   end
 
+  @doc "Returns all public calculations of a resource"
+  @spec public_calculations(Ash.resource()) :: list(Ash.calculation())
+  def public_calculations(resource) do
+    resource
+    |> Extension.get_entities([:calculations])
+    |> Enum.reject(& &1.private?)
+  end
+
+  @doc "Get a public calculation by name"
+  @spec public_calculation(Ash.resource(), atom | String.t()) :: Ash.calculation() | nil
+  def public_calculation(resource, name) when is_binary(name) do
+    resource
+    |> calculations()
+    |> Enum.find(&(to_string(&1.name) == name && !&1.private?))
+  end
+
+  def public_calculation(resource, name) do
+    resource
+    |> calculations()
+    |> Enum.find(&(&1.name == name && !&1.private?))
+  end
+
+  @doc "Returns all aggregates of a resource"
   @spec aggregates(Ash.resource()) :: list(Ash.aggregate())
   def aggregates(resource) do
     Extension.get_entities(resource, [:aggregates])
   end
 
+  @doc "Get an aggregate by name"
+  @spec aggregate(Ash.resource(), atom | String.t()) :: Ash.aggregate() | nil
   def aggregate(resource, name) when is_binary(name) do
     resource
     |> aggregates()
@@ -299,6 +327,28 @@ defmodule Ash.Resource do
     resource
     |> aggregates()
     |> Enum.find(&(&1.name == name))
+  end
+
+  @doc "Returns all public aggregates of a resource"
+  @spec public_aggregates(Ash.resource()) :: list(Ash.aggregate())
+  def public_aggregates(resource) do
+    resource
+    |> Extension.get_entities([:aggregates])
+    |> Enum.reject(& &1.private?)
+  end
+
+  @doc "Get an aggregate by name"
+  @spec public_aggregate(Ash.resource(), atom | String.t()) :: Ash.aggregate() | nil
+  def public_aggregate(resource, name) when is_binary(name) do
+    resource
+    |> aggregates()
+    |> Enum.find(&(to_string(&1.name) == name && !&1.private?))
+  end
+
+  def public_aggregate(resource, name) do
+    resource
+    |> aggregates()
+    |> Enum.find(&(&1.name == name && !&1.private?))
   end
 
   @doc "Returns the primary action of the given type"
@@ -368,14 +418,14 @@ defmodule Ash.Resource do
   @spec public_attribute(Ash.resource(), String.t() | atom) :: Ash.attribute() | nil
   def public_attribute(resource, name) when is_binary(name) do
     resource
-    |> public_attributes()
-    |> Enum.find(&(to_string(&1.name) == name))
+    |> attributes()
+    |> Enum.find(&(to_string(&1.name) == name && !&1.private?))
   end
 
   def public_attribute(resource, name) do
     resource
-    |> public_attributes()
-    |> Enum.find(&(&1.name == name))
+    |> attributes()
+    |> Enum.find(&(&1.name == name && !&1.private?))
   end
 
   @spec related(Ash.resource(), atom() | String.t() | [atom() | String.t()]) ::
