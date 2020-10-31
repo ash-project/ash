@@ -32,7 +32,8 @@ defmodule Ash.Resource.Relationships.SharedOptions do
     private?: [
       type: :boolean,
       default: false,
-      doc: "Whether or not the value can be accessed by extensions"
+      doc:
+        "Whether or not the relationship will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql"
     ]
   ]
 

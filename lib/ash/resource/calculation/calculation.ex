@@ -21,7 +21,7 @@ defmodule Ash.Resource.Calculation do
       type: :boolean,
       default: false,
       doc:
-        "Whether or not the aggregate will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql"
+        "Whether or not the calculation will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql"
     ]
   ]
 
