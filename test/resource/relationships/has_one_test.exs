@@ -2,6 +2,8 @@ defmodule Ash.Test.Resource.Relationshihps.HasOneTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Resource.Relationships.HasOne
+
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
@@ -21,20 +23,39 @@ defmodule Ash.Test.Resource.Relationshihps.HasOneTest do
     test "it creates a relationship" do
       defposts do
         relationships do
-          has_one :foobar, FooBar, destination_field: :post_id
+          has_one :foo, Foo, destination_field: :post_id
+          has_one :bar, Bar, destination_field: :post_id, private?: true
         end
       end
 
       assert [
-               %Ash.Resource.Relationships.HasOne{
+               %HasOne{
                  cardinality: :one,
-                 destination: FooBar,
+                 destination: Foo,
                  destination_field: :post_id,
-                 name: :foobar,
+                 name: :foo,
                  source_field: :id,
-                 type: :has_one
+                 type: :has_one,
+                 private?: false
+               },
+               %HasOne{
+                 cardinality: :one,
+                 destination: Bar,
+                 destination_field: :post_id,
+                 name: :bar,
+                 source_field: :id,
+                 type: :has_one,
+                 private?: true
                }
              ] = Ash.Resource.relationships(Post)
+
+      assert [%HasOne{name: :foo}] = Ash.Resource.public_relationships(Post)
+
+      assert %HasOne{name: :foo} = Ash.Resource.public_relationship(Post, :foo)
+
+      assert nil == Ash.Resource.relationship(Post, :definitely_legit_relationship)
+
+      assert nil == Ash.Resource.public_relationship(Post, :bar)
     end
   end
 
@@ -89,6 +110,20 @@ defmodule Ash.Test.Resource.Relationshihps.HasOneTest do
           defposts do
             relationships do
               has_one "foobar", Foobar
+            end
+          end
+        end
+      )
+    end
+
+    test "fails if private? is not an boolean" do
+      assert_raise(
+        Ash.Error.Dsl.DslError,
+        "[Ash.Resource.Dsl.HasOne]\n relationships -> has_one -> foobar:\n  expected :private? to be an boolean, got: \"foo\"",
+        fn ->
+          defposts do
+            relationships do
+              has_one :foobar, FooBar, private?: "foo", destination_field: :post_id
             end
           end
         end

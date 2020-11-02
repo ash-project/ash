@@ -2,6 +2,8 @@ defmodule Ash.Test.Resource.AttributesTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Resource.Attribute
+
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
@@ -22,11 +24,28 @@ defmodule Ash.Test.Resource.AttributesTest do
       defposts do
         attributes do
           attribute :foo, :string
+          attribute :bar, :boolean, private?: true
         end
       end
 
-      assert [_, %Ash.Resource.Attribute{name: :foo, type: Ash.Type.String, primary_key?: false}] =
-               Ash.Resource.attributes(Post)
+      assert [
+               _,
+               %Attribute{name: :foo, type: Ash.Type.String, primary_key?: false},
+               %Attribute{
+                 name: :bar,
+                 type: Ash.Type.Boolean,
+                 primary_key?: false,
+                 private?: true
+               }
+             ] = Ash.Resource.attributes(Post)
+
+      assert [_, %Attribute{name: :foo}] = Ash.Resource.public_attributes(Post)
+
+      assert %Attribute{name: :bar} = Ash.Resource.attribute(Post, :bar)
+
+      assert nil == Ash.Resource.attribute(Post, :totally_valid_attributes)
+
+      assert nil == Ash.Resource.public_attribute(Post, :bar)
     end
   end
 
@@ -67,6 +86,20 @@ defmodule Ash.Test.Resource.AttributesTest do
           defposts do
             attributes do
               attribute :foo, :string, primary_key?: 10
+            end
+          end
+        end
+      )
+    end
+
+    test "raises if you pass an invalid value for `private?`" do
+      assert_raise(
+        Ash.Error.Dsl.DslError,
+        "[Ash.Resource.Dsl.Attribute]\n attributes -> attribute -> foo:\n  expected :private? to be an boolean, got: \"an_invalid_value\"",
+        fn ->
+          defposts do
+            attributes do
+              attribute :foo, :string, private?: "an_invalid_value"
             end
           end
         end

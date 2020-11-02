@@ -7,6 +7,7 @@ defmodule Ash.Resource.Attribute do
     :allow_nil?,
     :generated?,
     :primary_key?,
+    :private?,
     :writable?,
     :default,
     :update_default,
@@ -19,9 +20,10 @@ defmodule Ash.Resource.Attribute do
           constraints: Keyword.t(),
           type: Ash.Type.t(),
           primary_key?: boolean(),
+          private?: boolean(),
           default: (() -> term),
           update_default: (() -> term) | (Ash.record() -> term),
-          writable?: boolean
+          writable?: boolean()
         }
 
   alias Ash.OptionsHelpers
@@ -61,6 +63,12 @@ defmodule Ash.Resource.Attribute do
       type: :boolean,
       default: true,
       doc: "Whether or not the value can be written to"
+    ],
+    private?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "Whether or not the attribute will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql"
     ],
     update_default: [
       type: {:custom, Ash.OptionsHelpers, :default, []},

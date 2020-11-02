@@ -2,6 +2,10 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias __MODULE__
+  alias Ash.Resource.Relationships.HasMany
+  alias Ash.Resource.Relationships.ManyToMany
+
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
@@ -25,32 +29,72 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
             through: SomeResource,
             source_field_on_join_table: :post_id,
             destination_field_on_join_table: :related_post_id
+
+          many_to_many :unrelated_posts, Post,
+            through: Tabloid,
+            source_field_on_join_table: :post_id,
+            destination_field_on_join_table: :unrelated_post_id,
+            private?: true
         end
       end
 
       assert [
-               %Ash.Resource.Relationships.HasMany{
+               %HasMany{
+                 cardinality: :many,
+                 destination: Tabloid,
+                 destination_field: :post_id,
+                 name: :unrelated_posts_join_assoc,
+                 source: ManyToManyTest.Post,
+                 source_field: :id,
+                 type: :has_many,
+                 private?: true
+               },
+               %HasMany{
                  cardinality: :many,
                  destination: SomeResource,
                  destination_field: :post_id,
                  name: :related_posts_join_assoc,
-                 source: Ash.Test.Resource.Relationships.ManyToManyTest.Post,
+                 source: ManyToManyTest.Post,
                  source_field: :id,
-                 type: :has_many
+                 type: :has_many,
+                 private?: true
                },
-               %Ash.Resource.Relationships.ManyToMany{
+               %ManyToMany{
                  cardinality: :many,
-                 destination: Ash.Test.Resource.Relationships.ManyToManyTest.Post,
+                 destination: ManyToManyTest.Post,
                  destination_field: :id,
                  destination_field_on_join_table: :related_post_id,
                  name: :related_posts,
-                 source: Ash.Test.Resource.Relationships.ManyToManyTest.Post,
+                 source: ManyToManyTest.Post,
                  source_field: :id,
                  source_field_on_join_table: :post_id,
                  through: SomeResource,
-                 type: :many_to_many
+                 type: :many_to_many,
+                 private?: false
+               },
+               %ManyToMany{
+                 cardinality: :many,
+                 destination: ManyToManyTest.Post,
+                 destination_field: :id,
+                 destination_field_on_join_table: :unrelated_post_id,
+                 name: :unrelated_posts,
+                 source: ManyToManyTest.Post,
+                 source_field: :id,
+                 source_field_on_join_table: :post_id,
+                 through: Tabloid,
+                 type: :many_to_many,
+                 private?: true
                }
              ] = Ash.Resource.relationships(Post)
+
+      assert [%ManyToMany{name: :related_posts}] = Ash.Resource.public_relationships(Post)
+
+      assert %ManyToMany{name: :related_posts} =
+               Ash.Resource.public_relationship(Post, :related_posts)
+
+      assert nil == Ash.Resource.relationship(Post, :definitely_legit_relationship)
+
+      assert nil == Ash.Resource.public_relationship(Post, :unrelated_posts)
     end
   end
 
@@ -147,6 +191,24 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                 destination_field: "what",
                 source_field_on_join_table: :source_post_id,
                 destination_field_on_join_table: :destination_post_id
+            end
+          end
+        end
+      )
+    end
+
+    test "fails if private? is not an boolean" do
+      assert_raise(
+        Ash.Error.Dsl.DslError,
+        "[Ash.Resource.Dsl.ManyToMany]\n relationships -> many_to_many -> foobars:\n  expected :private? to be an boolean, got: \"an_invalid_field\"",
+        fn ->
+          defposts do
+            relationships do
+              many_to_many :foobars, Foobar,
+                through: FooBars,
+                source_field_on_join_table: :source_post_id,
+                destination_field_on_join_table: :destination_post_id,
+                private?: "an_invalid_field"
             end
           end
         end

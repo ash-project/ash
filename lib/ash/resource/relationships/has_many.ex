@@ -4,6 +4,7 @@ defmodule Ash.Resource.Relationships.HasMany do
     :name,
     :destination,
     :destination_field,
+    :private?,
     :source_field,
     :source,
     :writable?,
@@ -21,6 +22,7 @@ defmodule Ash.Resource.Relationships.HasMany do
           type: Ash.Type.t(),
           destination: Ash.resource(),
           destination_field: atom,
+          private?: boolean,
           source_field: atom,
           description: String.t()
         }

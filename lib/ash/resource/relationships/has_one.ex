@@ -6,6 +6,7 @@ defmodule Ash.Resource.Relationships.HasOne do
     :source,
     :destination,
     :destination_field,
+    :private?,
     :source_field,
     :allow_orphans?,
     :writable?,
@@ -23,6 +24,7 @@ defmodule Ash.Resource.Relationships.HasOne do
           type: Ash.Type.t(),
           destination: Ash.resource(),
           destination_field: atom,
+          private?: boolean,
           source_field: atom,
           allow_orphans?: boolean,
           description: String.t()

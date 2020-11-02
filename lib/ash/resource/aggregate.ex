@@ -1,6 +1,6 @@
 defmodule Ash.Resource.Aggregate do
   @moduledoc "Represents a named aggregate on the resource that can be loaded"
-  defstruct [:name, :relationship_path, :filter, :kind, :description]
+  defstruct [:name, :relationship_path, :filter, :kind, :description, :private?]
 
   @schema [
     name: [
@@ -26,6 +26,12 @@ defmodule Ash.Resource.Aggregate do
     description: [
       type: :string,
       doc: "An optional description for the aggregate"
+    ],
+    private?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "Whether or not the aggregate will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql"
     ]
   ]
 
@@ -34,7 +40,8 @@ defmodule Ash.Resource.Aggregate do
           relationship_path: {:ok, list(atom())} | {:error, String.t()},
           filter: Keyword.t(),
           kind: :count,
-          description: String.t() | nil
+          description: String.t() | nil,
+          private?: boolean
         }
 
   @doc false
