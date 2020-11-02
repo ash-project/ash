@@ -87,7 +87,7 @@ defmodule Post do
 end
 ```
 
-See the [getting started guide](getting_started.html) for more information.
+See the [getting started guide](https://github.com/ash-project/ash/blob/master/documentation/introduction/getting_started.md) for more information.
 
 For those looking to add ash extensions:
 
