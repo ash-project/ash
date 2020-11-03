@@ -2,7 +2,7 @@ defmodule Ash.Changeset do
   @moduledoc """
   Changesets are used to create and update data in Ash.
 
-  Create a changeset with `create/2` or `update/2`, and alter the attributes
+  Create a changeset with `new/1` or `new/2`, and alter the attributes
   and relationships using the functions provided in this module.  Nothing in this module
   actually incurs changes in a data layer. To commit a changeset, see `c:Ash.Api.create/2`
   and `c:Ash.Api.update/2`.
