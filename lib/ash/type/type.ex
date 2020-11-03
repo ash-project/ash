@@ -27,6 +27,11 @@ defmodule Ash.Type do
     utc_datetime: Ash.Type.UtcDatetime
   ]
 
+  @builtin_types Keyword.values(@short_names)
+
+  def builtin?(type) when type in @builtin_types, do: true
+  def builtin?(_), do: false
+
   @doc_list_constraints Keyword.put(@list_constraints, :items,
                           type: :any,
                           doc:
