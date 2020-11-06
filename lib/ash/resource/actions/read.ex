@@ -79,7 +79,7 @@ defmodule Ash.Resource.Actions.Read do
   end
 
   def pagination(false) do
-    {:ok, %Pagination{}}
+    {:ok, false}
   end
 
   def pagination(opts) do
