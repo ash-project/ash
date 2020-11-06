@@ -88,11 +88,13 @@ defmodule Ash.Resource.Attribute do
 
   @create_timestamp_schema @schema
                            |> OptionsHelpers.set_default!(:writable?, false)
+                           |> OptionsHelpers.set_default!(:private?, true)
                            |> OptionsHelpers.set_default!(:default, &DateTime.utc_now/0)
                            |> OptionsHelpers.set_default!(:type, Ash.Type.UtcDatetime)
 
   @update_timestamp_schema @schema
                            |> OptionsHelpers.set_default!(:writable?, false)
+                           |> OptionsHelpers.set_default!(:private?, true)
                            |> OptionsHelpers.set_default!(:default, &DateTime.utc_now/0)
                            |> OptionsHelpers.set_default!(:update_default, &DateTime.utc_now/0)
                            |> OptionsHelpers.set_default!(:type, Ash.Type.UtcDatetime)
