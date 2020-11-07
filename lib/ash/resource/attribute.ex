@@ -99,6 +99,20 @@ defmodule Ash.Resource.Attribute do
                            |> OptionsHelpers.set_default!(:update_default, &DateTime.utc_now/0)
                            |> OptionsHelpers.set_default!(:type, Ash.Type.UtcDatetime)
 
+  @uuid_primary_key_schema @schema
+                           |> OptionsHelpers.set_default!(:writable?, false)
+                           |> OptionsHelpers.set_default!(:default, &Ash.uuid/0)
+                           |> OptionsHelpers.set_default!(:primary_key?, true)
+                           |> OptionsHelpers.set_default!(:type, Ash.Type.UUID)
+                           |> OptionsHelpers.set_default!(:allow_nil?, false)
+
+  @integer_primary_key_schema @schema
+                              |> OptionsHelpers.set_default!(:writable?, false)
+                              |> OptionsHelpers.set_default!(:primary_key?, true)
+                              |> OptionsHelpers.set_default!(:generated?, true)
+                              |> OptionsHelpers.set_default!(:type, Ash.Type.Integer)
+                              |> OptionsHelpers.set_default!(:allow_nil?, false)
+
   def transform(%{constraints: []} = attribute), do: {:ok, attribute}
 
   def transform(%{constraints: constraints, type: type} = attribute) do
@@ -147,4 +161,6 @@ defmodule Ash.Resource.Attribute do
   def attribute_schema, do: @schema
   def create_timestamp_schema, do: @create_timestamp_schema
   def update_timestamp_schema, do: @update_timestamp_schema
+  def uuid_primary_key_schema, do: @uuid_primary_key_schema
+  def integer_primary_key_schema, do: @integer_primary_key_schema
 end

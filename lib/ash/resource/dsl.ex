@@ -55,6 +55,34 @@ defmodule Ash.Resource.Dsl do
     args: [:name]
   }
 
+  @integer_primary_key %Ash.Dsl.Entity{
+    name: :integer_primary_key,
+    describe: """
+    Declares a generated (set by the data layer), non writable, non nil, primary key column of type integer
+    """,
+    examples: [
+      "integer_primary_key :id"
+    ],
+    args: [:name],
+    transform: {Ash.Resource.Attribute, :transform, []},
+    target: Ash.Resource.Attribute,
+    schema: Ash.Resource.Attribute.integer_primary_key_schema()
+  }
+
+  @uuid_primary_key %Ash.Dsl.Entity{
+    name: :uuid_primary_key,
+    describe: """
+    Declares a non writable, non nil, primary key column of type uuid, which defaults to `Ash.uuid/0`
+    """,
+    examples: [
+      "uuid_primary_key :id"
+    ],
+    args: [:name],
+    transform: {Ash.Resource.Attribute, :transform, []},
+    target: Ash.Resource.Attribute,
+    schema: Ash.Resource.Attribute.uuid_primary_key_schema()
+  }
+
   @attributes %Ash.Dsl.Section{
     name: :attributes,
     describe: """
@@ -66,7 +94,9 @@ defmodule Ash.Resource.Dsl do
     entities: [
       @attribute,
       @create_timestamp,
-      @update_timestamp
+      @update_timestamp,
+      @integer_primary_key,
+      @uuid_primary_key
     ]
   }
 

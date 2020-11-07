@@ -42,6 +42,8 @@ locals_without_parens = [
   has_one: 3,
   identity: 2,
   identity: 3,
+  integer_primary_key: 1,
+  integer_primary_key: 2,
   join_attributes: 1,
   join_relationship: 1,
   kind: 1,
@@ -76,6 +78,8 @@ locals_without_parens = [
   update_default: 1,
   update_timestamp: 1,
   update_timestamp: 2,
+  uuid_primary_key: 1,
+  uuid_primary_key: 2,
   validate: 1,
   validate: 2,
   writable?: 1
