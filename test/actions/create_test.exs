@@ -140,13 +140,14 @@ defmodule Ash.Test.Actions.CreateTest do
 
     attributes do
       attribute(:id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0)
-      attribute(:title, :string)
+      attribute(:title, :string, allow_nil?: false)
       attribute(:contents, :string)
       attribute(:tag, :string, default: "garbage")
       attribute(:tag2, :string, default: &PostDefaults.garbage2/0)
       attribute(:tag3, :string, default: {PostDefaults, :garbage3, []})
       attribute(:list_attribute, {:array, :integer})
       attribute(:date, :date)
+      attribute(:private_content, :string, private?: true, allow_nil?: false)
 
       attribute(:list_attribute_with_constraints, {:array, :integer},
         constraints: [
@@ -194,6 +195,27 @@ defmodule Ash.Test.Actions.CreateTest do
                  date: Date.utc_today()
                })
                |> Api.create!()
+    end
+
+    test "return missing required attribute" do
+      {:error, err} =
+        Post
+        |> new()
+        |> change_attributes(%{
+          contents: "bar",
+          date: Date.utc_today()
+        })
+        |> Api.create()
+
+      assert %Ash.Error.Invalid{
+               class: :invalid,
+               errors: [
+                 %Ash.Error.Changes.Required{
+                   class: :invalid,
+                   field: :title
+                 }
+               ]
+             } = err
     end
 
     test "constant default values are set properly" do
@@ -265,7 +287,7 @@ defmodule Ash.Test.Actions.CreateTest do
         |> Api.create!()
 
       Post
-      |> new()
+      |> new(%{title: "cannot_be_missing"})
       |> replace_relationship(:related_posts, [post2, post3])
       |> Api.create!()
     end
@@ -284,7 +306,7 @@ defmodule Ash.Test.Actions.CreateTest do
         |> Api.create!()
 
       Post
-      |> new()
+      |> new(%{title: "title4"})
       |> replace_relationship(:related_posts, [post2, post3])
       |> Api.create!()
 
@@ -309,7 +331,7 @@ defmodule Ash.Test.Actions.CreateTest do
 
       post =
         Post
-        |> new()
+        |> new(%{title: "cannot_be_missing"})
         |> replace_relationship(:related_posts, [post2, post3])
         |> Api.create!()
 
@@ -456,7 +478,7 @@ defmodule Ash.Test.Actions.CreateTest do
   describe "list type" do
     test "it can store a list" do
       assert Post
-             |> new()
+             |> new(%{title: "cannot_be_missing"})
              |> change_attribute(:list_attribute, [1, 2, 3, 4])
              |> Api.create!()
     end
