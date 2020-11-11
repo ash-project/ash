@@ -4,15 +4,20 @@
 
 For information on creating a new Elixir application, see [this guide](https://elixir-lang.org/getting-started/mix-otp/introduction-to-mix.html)
 
+```shell
+mix new my_app
+```
+
 ## Add Ash
 
-Add `ash` to your dependencies in `mix.exs`. The latest version can be found by running `mix hex.info ash`.
+Add `ash` and `ecto_sql` to your dependencies in `mix.exs`. The latest version can be found by running `mix hex.info ash` and `mix hex.info ecto_sql`.
 
 ```elixir
 # in mix.exs
 def deps() do
   [
-    {:ash, "~> x.x.x"}
+    {:ash, "~> x.x.x"},
+    {:ecto_sql, "~> x.x"}
   ]
 end
 ```
@@ -22,6 +27,7 @@ end
 Create an API module. This will be your primary way to interact with your Ash resources. We recommend `lib/my_app/api.ex` for simple setups. For more information on organizing resources into contexts/domains, see the "Contexts and Domains" guide.
 
 ```elixir
+# lib/my_app/api.ex
 defmodule MyApp.Api do
   use Ash.Api
 
@@ -44,32 +50,31 @@ defmodule MyApp.Tweet do
       # All ash resources currently require a primary key
       # Eventually, we will add good defaults and/or allow
       # for a global configuration of your default primary key
-      primary_key? true
-      allow_nil? false
-      writable? false
-      default &Ecto.UUID.generate/0
+      primary_key?(true)
+      allow_nil?(false)
+      writable?(false)
+      default(&Ecto.UUID.generate/0)
     end
 
     attribute :body, :string do
-      allow_nil? false
-      constraints [max_length: 255]
+      allow_nil?(false)
+      constraints(max_length: 255)
     end
 
     # Alternatively, you can use the keyword list syntax
     # You can also set functional defaults, via passing in a zero
     # argument function or an MFA
-    attribute :public, :boolean, allow_nil?: false, default: false
+    attribute(:public, :boolean, allow_nil?: false, default: false)
 
-    create_timestamp :created_at #This is set on create
-    update_timestamp :updated_at #This is updated on all updates
+    # This is set on create
+    create_timestamp(:created_at)
+    # This is updated on all updates
+    update_timestamp(:updated_at)
 
     # `create_timestamp` above is just shorthand for:
-    attribute :created_at, :utc_datetime, writable?: false, default: &DateTime.utc_now/0
+    # attribute(:created_at, :utc_datetime, writable?: false, default: &DateTime.utc_now/0)
   end
 
-  relationships do
-    belongs_to :user, MyApp.User
-  end
 end
 
 # in lib/my_app/resources/user.ex
@@ -77,13 +82,13 @@ defmodule MyApp.User do
   use Ash.Resource
 
   attributes do
-    attribute :email, :string, allow_nil?: false, constraints: [
-      match: ~r/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/
-    ]
-  end
-
-  relationships do
-    has_many :tweets, MyApp.Tweet, destination_field: :user_id
+    attribute(:email, :string,
+      allow_nil?: false,
+      constraints: [
+        match: ~r/^[\w.!#$%&’*+\-\/=?\^`{|}~]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*$/i
+      ],
+      primary_key?: true
+    )
   end
 end
 ```
@@ -98,20 +103,85 @@ resources do
   resource MyApp.Tweet
 end
 ```
+### Test the resources
+
+Now you should be able to create changesets for the resources
+
+```elixir
+iex(7)> change = Ash.Changeset.new(MyApp.User, %{email: "ash.man@enguento.com"})
+#Ash.Changeset<
+  action_type: :create,
+  attributes: %{email: "ash.man@enguento.com"},
+  relationships: %{},
+  errors: [],
+  data: %MyApp.User{
+    __meta__: #Ecto.Schema.Metadata<:built, "">,
+    __metadata__: %{},
+    aggregates: %{},
+    calculations: %{},
+    email: nil
+  },
+  valid?: true
+>
+```
+
+If you try to use a invalid email(The email regex is for demostration purposes only)
+an error will be displayed as shown
+
+```elixir
+iex(6)> change = Ash.Changeset.new(MyApp.User, %{email: "@eng.com"})
+#Ash.Changeset<
+  action_type: :create,
+  attributes: %{},
+  relationships: %{},
+  errors: [
+    %Ash.Error.Changes.InvalidAttribute{
+      class: :invalid,
+      field: :email,
+      message: {"must match the pattern %{regex}",
+       [
+         regex: "~r/^[\\w.!#$%&‚Äö√Ñ√¥*+\\-\\/=?\\^`{|}~]+@[a-zA-Z0-9-]+(\\.[a-zA-Z0-9-]+)
+*$/i"
+       ]},
+      path: [],
+      stacktrace: #Stacktrace<>
+    }
+  ],
+  data: %MyApp.User{
+    __meta__: #Ecto.Schema.Metadata<:built, "">,
+    __metadata__: %{},
+    aggregates: %{},
+    calculations: %{},
+    email: nil
+  },
+  valid?: false
+>
+```
 
 ## Add your data_layer
 
-Choose a data_layer, and see its documentation for configuring it:
+To be able to store and later on read those resources a _data layer_ is
+needed you can choose a `data_layer`, and see its documentation for configuring it:
 
 - `Ash.DataLayer.Ets` - an [ets](https://erlang.org/doc/man/ets.html) data_layer only recommended for testing
 - `Ash.DataLayer.Mnesia` - an [mnesia](https://erlang.org/doc/man/mnesia.html) data_layer, not optimized, but is backed by a file and works with distributed applications
 - `AshPostgres.DataLayer` - a Postgres data_layer, currently the primary supported data layer
 
-To add a data_layer, add it to the `use Ash.Resource` statement:
+To add a `data_layer`, add it to the `use Ash.Resource` statement. In this
+case we are going to use `ETS` which is a in memory data layer good enough
+for testing purposes. Also we will make the ETS private so Read/Write limited
+to owner process.
 
 ```elixir
-use Ash.Resource,
-  data_layer: AshPostgres.DataLayer
+  # in both lib/my_app/resources/user.ex
+  # and lib/my_app/resources/tweet.ex
+
+  use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+  ets do
+    private?(true)
+  end
+
 ```
 
 ## Add actions to enable functionality
@@ -119,14 +189,79 @@ use Ash.Resource,
 Currently, actions do not offer any customization, but eventually they will be the primary driver for adding specific interactions to your resource. For now, to enable all of them, add the following to your resource:
 
 ```elixir
-actions do
-  create :default
-  read :default
-  update :default
-  destroy :default
-end
+  # in both lib/my_app/resources/user.ex
+  # and lib/my_app/resources/tweet.ex
+
+  actions do
+    create :default
+    read :default
+    update :default
+    destroy :default
+  end
 ```
 
+### Test functionality
+
+Now you should be able to use you API to do CRUD operations in your resources
+
+#### Create resource
+
+```elixir
+iex(1)> user_changeset = Ash.Changeset.new(MyApp.User, %{email: "ash.man@enguento.co
+m"})
+#Ash.Changeset<
+  action_type: :create,
+  attributes: %{email: "ash.man@enguento.com"},
+  relationships: %{},
+  errors: [],
+  data: %MyApp.User{
+    __meta__: #Ecto.Schema.Metadata<:built, "">,
+    __metadata__: %{},
+    aggregates: %{},
+    calculations: %{},
+    email: nil
+  },
+  valid?: true
+>
+iex(2)> MyApp.Api.create(user_changeset)
+{:ok,
+ %MyApp.User{
+   __meta__: #Ecto.Schema.Metadata<:built, "">,
+   __metadata__: %{},
+   aggregates: %{},
+   calculations: %{},
+   email: "ash.man@enguento.com"
+ }}
+ ```
+
+##### List and Read a resouce
+
+```elixir
+iex(3)> MyApp.Api.read MyApp.User
+{:ok,
+ [
+   %MyApp.User{
+     __meta__: #Ecto.Schema.Metadata<:built, "">,
+     __metadata__: %{},
+     aggregates: %{},
+     calculations: %{},
+     email: "ash.man@enguento.com"
+   }
+ ]}
+iex(4)> MyApp.Api.get(MyApp.User, "ash.man@enguento.com")
+{:ok,
+ %MyApp.User{
+   __meta__: #Ecto.Schema.Metadata<:built, "">,
+   __metadata__: %{},
+   aggregates: %{},
+   calculations: %{},
+   email: "ash.man@enguento.com"
+ }}
+
+```
+## Add relationships
+
+### Test relationships
 ## Add front end extensions
 
 - `AshJsonApi` - can be used to build a spec compliant JSON:API
