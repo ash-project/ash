@@ -10,16 +10,37 @@ mix new my_app
 
 ## Add Ash
 
-Add `ash` and `ecto_sql` to your dependencies in `mix.exs`. The latest version can be found by running `mix hex.info ash` and `mix hex.info ecto_sql`.
+Add `ash` to your dependencies in `mix.exs`. The latest version can be found by running `mix hex.info ash`.
 
 ```elixir
 # in mix.exs
 def deps() do
   [
     {:ash, "~> x.x.x"},
-    {:ecto_sql, "~> x.x"}
   ]
 end
+```
+
+If you want to have a more idiomating formating (the one used in this documentation) of you code files
+you need to add to your `.formatter.exs` otherwise the default elixir formater with include `(` and `)`
+acording to default `mix format` rules.
+
+```elixir
+ import_deps: [
+    :ash
+  ],
+```
+
+
+## Phoenix
+
+If you intend to use `ash_json_api` or `ash_graphql`, you will likely want to create a new phoenix application.
+Phoenix provides a lot of extra capabilities at very little cost, and can be a very useful escape hatch if you need to
+add something to your application that isn't supported by Ash yet. See the [phoenix](https://www.phoenixframework.org/) documentation for creating
+a new phoenix application. Ultimately, instead of `mix new my_application`, you would use:
+
+```shell
+mix phx.new my_application
 ```
 
 ## Create an Ash API
@@ -46,30 +67,22 @@ defmodule MyApp.Tweet do
   use Ash.Resource
 
   attributes do
-    attribute :id, :uuid do
-      # All ash resources currently require a primary key
-      # Eventually, we will add good defaults and/or allow
-      # for a global configuration of your default primary key
-      primary_key?(true)
-      allow_nil?(false)
-      writable?(false)
-      default(&Ecto.UUID.generate/0)
-    end
+    uuid_primary_key :id
 
     attribute :body, :string do
-      allow_nil?(false)
-      constraints(max_length: 255)
+      allow_nil? false
+      constraints max_length: 255
     end
 
     # Alternatively, you can use the keyword list syntax
     # You can also set functional defaults, via passing in a zero
     # argument function or an MFA
-    attribute(:public, :boolean, allow_nil?: false, default: false)
+    attribute :public, :boolean, allow_nil?: false, default: false
 
     # This is set on create
-    create_timestamp(:created_at)
+    create_timestamp :created_at
     # This is updated on all updates
-    update_timestamp(:updated_at)
+    update_timestamp :updated_at
 
     # `create_timestamp` above is just shorthand for:
     # attribute(:created_at, :utc_datetime, writable?: false, default: &DateTime.utc_now/0)
@@ -82,13 +95,13 @@ defmodule MyApp.User do
   use Ash.Resource
 
   attributes do
-    attribute(:email, :string,
+    attribute :email, :string,
       allow_nil?: false,
       constraints: [
         match: ~r/^[\w.!#$%&’*+\-\/=?\^`{|}~]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*$/i
       ],
       primary_key?: true
-    )
+    attribute :id, :uuid, default: &Ecto.UUID.generate/0
   end
 end
 ```
@@ -103,6 +116,7 @@ resources do
   resource MyApp.Tweet
 end
 ```
+
 ### Test the resources
 
 Now you should be able to create changesets for the resources
@@ -186,8 +200,11 @@ to owner process.
 
 ## Add actions to enable functionality
 
-Currently, actions do not offer any customization, but eventually they will be the primary driver for adding specific interactions to your resource. For now, to enable all of them, add the following to your resource:
-
+Actions are the primary driver for adding specific interactions to your resource.
+You can read the [actions](https://hexdocs.pm/ash/Ash.Resource.Dsl.html#actions/1
+) section to learn to to customze the functionality
+for now we will enable all of them with a default implementations by adding
+following to your resource:
 ```elixir
   # in both lib/my_app/resources/user.ex
   # and lib/my_app/resources/tweet.ex
@@ -259,7 +276,25 @@ iex(4)> MyApp.Api.get(MyApp.User, "ash.man@enguento.com")
  }}
 
 ```
+
 ## Add relationships
+
+Now with our resouces stored in a data layer we can move on
+to credate a relationship between them. In this case we will
+specify that a `User` can have many `Tweet` this implies that
+a twee belongs to a specific user.
+
+```elixir
+# in lib/my_app/resources/user.ex
+  relationships do
+    has_many :tweets, MyApp.Tweet, destination_field: :user_id
+  end
+
+# in lib/my_app/resources/tweet.ex
+  relationships do
+    belongs_to :user, MyApp.User
+  end
+```
 
 ### Test relationships
 ## Add front end extensions
