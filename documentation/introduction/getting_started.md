@@ -7,7 +7,7 @@ For information on creating a new Elixir application, see [this guide](https://e
 ```shell
 mix new my_app
 ```
-
+For the finished exmple please check [my_app](https://github.com/mario-mazo/my_app) 
 ## Add Ash
 
 Add `ash` to your dependencies in `mix.exs`. The latest version can be found by running `mix hex.info ash`.
@@ -108,7 +108,7 @@ end
 
 ## Add resources to your API
 
-Alter your API like so:
+Alter your API in `api.ex` like so:
 
 ```elixir
 resources do
@@ -133,7 +133,8 @@ iex(7)> change = Ash.Changeset.new(MyApp.User, %{email: "ash.man@enguento.com"})
     __metadata__: %{},
     aggregates: %{},
     calculations: %{},
-    email: nil
+    email: nil,
+    id: nil
   },
   valid?: true
 >
@@ -154,8 +155,7 @@ iex(6)> change = Ash.Changeset.new(MyApp.User, %{email: "@eng.com"})
       field: :email,
       message: {"must match the pattern %{regex}",
        [
-         regex: "~r/^[\\w.!#$%&‚Äö√Ñ√¥*+\\-\\/=?\\^`{|}~]+@[a-zA-Z0-9-]+(\\.[a-zA-Z0-9-]+)
-*$/i"
+         regex: "~r/^[\\w.!#$%&‚Äô*+\\-\\/=?\\^`{|}~]+@[a-zA-Z0-9-]+(\\.[a-zA-Z0-9-]+)*$/i"
        ]},
       path: [],
       stacktrace: #Stacktrace<>
@@ -166,7 +166,8 @@ iex(6)> change = Ash.Changeset.new(MyApp.User, %{email: "@eng.com"})
     __metadata__: %{},
     aggregates: %{},
     calculations: %{},
-    email: nil
+    email: nil,
+    id: nil
   },
   valid?: false
 >
@@ -193,7 +194,7 @@ to owner process.
   use Ash.Resource, data_layer: Ash.DataLayer.Ets
 
   ets do
-    private?(true)
+    private? true
   end
 
 ```
@@ -205,6 +206,7 @@ You can read the [actions](https://hexdocs.pm/ash/Ash.Resource.Dsl.html#actions/
 ) section to learn to to customze the functionality
 for now we will enable all of them with a default implementations by adding
 following to your resource:
+
 ```elixir
   # in both lib/my_app/resources/user.ex
   # and lib/my_app/resources/tweet.ex
@@ -236,7 +238,8 @@ m"})
     __metadata__: %{},
     aggregates: %{},
     calculations: %{},
-    email: nil
+    email: nil,
+    id: nil
   },
   valid?: true
 >
@@ -247,9 +250,10 @@ iex(2)> MyApp.Api.create(user_changeset)
    __metadata__: %{},
    aggregates: %{},
    calculations: %{},
-   email: "ash.man@enguento.com"
+   email: "ash.man@enguento.com",
+   id: "2642ca11-330b-4a07-83c7-b0e9ef391df6"
  }}
- ```
+```
 
 ##### List and Read a resouce
 
@@ -262,7 +266,8 @@ iex(3)> MyApp.Api.read MyApp.User
      __metadata__: %{},
      aggregates: %{},
      calculations: %{},
-     email: "ash.man@enguento.com"
+     email: "ash.man@enguento.com",
+     id: "2642ca11-330b-4a07-83c7-b0e9ef391df6"
    }
  ]}
 iex(4)> MyApp.Api.get(MyApp.User, "ash.man@enguento.com")
@@ -272,9 +277,9 @@ iex(4)> MyApp.Api.get(MyApp.User, "ash.man@enguento.com")
    __metadata__: %{},
    aggregates: %{},
    calculations: %{},
-   email: "ash.man@enguento.com"
+   email: "ash.man@enguento.com",
+   id: "2642ca11-330b-4a07-83c7-b0e9ef391df6"
  }}
-
 ```
 
 ## Add relationships
@@ -297,6 +302,47 @@ a twee belongs to a specific user.
 ```
 
 ### Test relationships
+
+Now we can use the new relationships to create a tweet that belongs to a 
+specific user:
+
+```elixir
+iex(8)> {:ok, user} = Ash.Changeset.new(MyApp.User, %{email: "ash.man@enguento.com"}) |> MyApp.Api.create()
+{:ok,
+ %MyApp.User{
+   __meta__: #Ecto.Schema.Metadata<:built, "">,
+   __metadata__: %{},
+   aggregates: %{},
+   calculations: %{},
+   email: "ash.man@enguento.com",
+   id: "0d7063f8-b07c-4d02-88b2-b671f1aa0ad9",
+   tweets: #Ash.NotLoaded<:relationship>
+ }}
+iex(9)> MyApp.Tweet |> Ash.Changeset.new(%{body: "ashy slashy"}) |> Ash.Changeset.replace_relationship(:user, user) |> MyApp.Api.create()
+{:ok,
+ %MyApp.Tweet{
+   __meta__: #Ecto.Schema.Metadata<:built, "">,
+   __metadata__: %{},
+   aggregates: %{},
+   body: "ashy slashy",
+   calculations: %{},
+   created_at: ~U[2020-11-14 12:54:06Z],
+   id: "f0b0b9d5-832c-45c9-9313-5e3fb9f1af24",
+   public: false,
+   updated_at: ~U[2020-11-14 12:54:06Z],
+   user: %MyApp.User{
+     __meta__: #Ecto.Schema.Metadata<:built, "">,
+     __metadata__: %{},
+     aggregates: %{},
+     calculations: %{},
+     email: "ash.man@enguento.com",
+     id: "0d7063f8-b07c-4d02-88b2-b671f1aa0ad9",
+     tweets: #Ash.NotLoaded<:relationship>
+   },
+   user_id: "0d7063f8-b07c-4d02-88b2-b671f1aa0ad9"
+ }}
+```
+
 ## Add front end extensions
 
 - `AshJsonApi` - can be used to build a spec compliant JSON:API
