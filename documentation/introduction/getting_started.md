@@ -28,7 +28,7 @@ Add `ash` to your dependencies in `mix.exs`. The latest version can be found by 
 # in mix.exs
 def deps() do
   [
-    {:ash, "~> x.x.x"},
+    {:ash, "~> x.x.x"}
   ]
 end
 ```
@@ -96,8 +96,8 @@ defmodule MyApp.Tweet do
     update_timestamp :updated_at
 
     # `create_timestamp` above is just shorthand for:
-    # attribute :created_at, :utc_datetime, 
-    #   writable?: false, 
+    # attribute :created_at, :utc_datetime,
+    #   writable?: false,
     #   default: &DateTime.utc_now/0
   end
 
