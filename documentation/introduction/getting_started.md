@@ -193,7 +193,6 @@ To be able to store and later on read your resources, a _data layer_ is required
 You can choose a `data_layer`, and see its documentation for configuring it:
 
 | Storage | Datalayer | Documentation | Storage Documentation |
-|---|---| --- | --- |
 | postgres | AshPostgres.DataLayer | [Documentation](https://hexdocs.pm/ash_postgres) | [Storage Documentation](https://www.postgresql.org/docs/)
 | ets | Ash.DataLayer.Ets | [Documentation](https://hexdocs.pm/ash/Ash.DataLayer.Ets.html) | [Storage Documentation](https://erlang.org/doc/man/ets.html) |
 | mnesia | Ash.DataLayer.Mnesia | [Documentation](https://hexdocs.pm/ash/Ash.DataLayer.Mnesia.html) | [Storage Documentation](https://erlang.org/doc/man/mnesia.html) |
