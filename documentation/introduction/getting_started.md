@@ -193,10 +193,11 @@ To be able to store and later on read your resources, a _data layer_ is required
 You can choose a `data_layer`, and see its documentation for configuring it:
 
 | Storage | Datalayer | Documentation | Storage Documentation |
-| postgres | AshPostgres.DataLayer | [Documentation](https://hexdocs.pm/ash_postgres) | [Storage Documentation](https://www.postgresql.org/docs/)
+|---|---|---| --- |
+| postgres | AshPostgres.DataLayer | [Documentation](https://hexdocs.pm/ash_postgres) | [Storage Documentation](https://www.postgresql.org/docs/) |
 | ets | Ash.DataLayer.Ets | [Documentation](https://hexdocs.pm/ash/Ash.DataLayer.Ets.html) | [Storage Documentation](https://erlang.org/doc/man/ets.html) |
 | mnesia | Ash.DataLayer.Mnesia | [Documentation](https://hexdocs.pm/ash/Ash.DataLayer.Mnesia.html) | [Storage Documentation](https://erlang.org/doc/man/mnesia.html) |
-| csv | AshCsv.DataLayer | [Documentation](https://hexdocs.pm/ash_csv) | [Storage Documentation](https://en.wikipedia.org/wiki/Comma-separated_values)
+| csv | AshCsv.DataLayer | [Documentation](https://hexdocs.pm/ash_csv) | [Storage Documentation](https://en.wikipedia.org/wiki/Comma-separated_values) |
 
 To add a `data_layer`, add it to the `use Ash.Resource` statement. In this case we are going to use `ETS` which is a in memory data layer good enough for testing purposes. Also we will make the ETS private so Read/Write limited
 to owner process.
