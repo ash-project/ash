@@ -1,5 +1,4 @@
 ![Logo](https://github.com/ash-project/ash/blob/master/logos/cropped-for-header.png?raw=true)
-
 ![Elixir CI](https://github.com/ash-project/ash/workflows/Ash%20CI/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Coverage Status](https://coveralls.io/repos/github/ash-project/ash/badge.svg?branch=master)](https://coveralls.io/github/ash-project/ash?branch=master)
@@ -27,6 +26,7 @@ end
 
 ## Guides
 
+- [Getting Started Guide](https://hexdocs.pm/ash/getting_started.html)
 - [Resource DSL Documentation](https://hexdocs.pm/ash/Ash.Resource.Dsl.html)
 - [Api DSL Documentation](https://hexdocs.pm/ash/Ash.Api.Dsl.html)
 - [Api interface documentation](https://hexdocs.pm/ash/Ash.Api.html)
@@ -87,7 +87,7 @@ defmodule Post do
 end
 ```
 
-See the [getting started guide](https://github.com/ash-project/ash/blob/master/documentation/introduction/getting_started.md) for more information.
+See the [getting started guide](https://hexdocs.pm/ash/getting_started.html) for more information.
 
 For those looking to add ash extensions:
 
