@@ -44,6 +44,7 @@ defmodule Ash.MixProject do
         "README.md",
         "documentation/introduction/getting_started.md",
         "documentation/topics/authorization.md",
+        "documentation/topics/identities.md",
         "documentation/topics/pagination.md",
         "documentation/topics/validation.md",
         "documentation/topics/notifiers.md",
