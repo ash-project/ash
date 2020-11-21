@@ -353,7 +353,11 @@ iex(9)> MyApp.Tweet |> Ash.Changeset.new(%{body: "ashy slashy"}) |> Ash.Changese
 
 ## Add front end extensions
 
+Now that the elixir api is complete you can change the data_layer to
+postgresql and expost via json api in the [next section](./getting_started_phx.md) 
+
 - `AshJsonApi` - can be used to build a spec compliant JSON:API
+- `AshPostgres.DataLayer` - can be used to persist your resources to PostgreSQL
 
 ## See Ash documentation for the rest
 
