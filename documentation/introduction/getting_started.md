@@ -112,10 +112,9 @@ defmodule MyApp.User do
       allow_nil?: false,
       constraints: [
         match: ~r/^[\w.!#$%&’*+\-\/=?\^`{|}~]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*$/i
-      ],
-      primary_key?: true
+      ]
 
-    attribute :id, :uuid, default: &Ecto.UUID.generate/0
+    uuid_primary_key :id
   end
 end
 ```
