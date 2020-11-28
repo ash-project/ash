@@ -14,8 +14,8 @@ You can check the completed application in this [repo](https://github.com/mario-
 
 ## Create phoenix app
 
-We create a simple phoenix application and we remove some unnecesary parts,
-also we are using `--app` to rename the application so it maches the name from
+We create a simple phoenix application and we remove some unnecessary parts,
+also we are using `--app` to rename the application so it matches the name from
 the getting started guide
 
 ```shell
@@ -24,8 +24,7 @@ mix phx.new my_app_phx --app my_app --no-html --no-webpack --no-gettext
 
 ## Add dependencies and formatter
 
-Now we need to add the dependencies, `ash` and [ash_postgres](https://hexdocs.pm/ash_postgres/readme.html). To find out
-what is the latest available verion you can use `mix hex.info`
+Now we need to add the dependencies, `ash` and [ash_postgres](https://hexdocs.pm/ash_postgres/readme.html). To find out what the latest available version is you can use `mix hex.info`
 
 ```shell
 mix hex.info ash_postgres
@@ -40,12 +39,7 @@ then modify the the files `.formatter` and `mix.exs`
 @@ -1,4 +1,13 @@
  [
 +  import_deps: [
-+    :ecto,
-+    :phoenix,
-+    :ash,
 +    :ash_json_api,
-+    :ash_graphql,
-+    :ash_policy_authorizer,
 +    :ash_postgres
 +  ],
 
@@ -56,15 +50,18 @@ then modify the the files `.formatter` and `mix.exs`
    defp deps do
      [
 +      {:ash_postgres, "~> 0.25.5"},
-+      {:ash, "~> 1.24"},
++      {:ash, "~> 1.24"}
 
 ```
 
-Make sure you can connect to postgres verify in the file `config/dev.exs`
-that credentials are correct and create the database by running:
+Make sure you can connect to postgres by verifying that the credentials in `config/dev.exs` are correct and create the database by running:
 
-Also since Ash uses [jsonapi](https://jsonapi.org/) for the api spec it is necesary to add
-the correspoinding mime type in `config/config.exs`
+```shell
+mix ecto.create
+* The database for MyApp.Repo has been created
+```
+
+To configure phoenix to support the [jsonapi](https://jsonapi.org/) content type, add the following configuration to `config/config.exs`
 
 ```diff
 --- a/config/config.exs
@@ -79,11 +76,6 @@ the correspoinding mime type in `config/config.exs`
 +
 ```
 
-```shell
-mix ecto.create
-* The database for MyApp.Repo has been created
-```
-
 ### Reuse the files from the getting started guide
 
 Copy the `lib/my_app/api.ex`, `lib/my_app/resources/tweet.ex`
@@ -92,11 +84,20 @@ sample app into this project in the same path.
 
 ## Switch data layer to postgres
 
+First, we will update our repo to use `AshPostgres.Repo` instead of `Ecto.Repo`.
+
+```elixir
+defmodule MyApp.Repo do
+  use AshPostgres.Repo,
+    otp_app: :my_app
+end
+```
+
 We can now proceed to switch the data layer from `ETS`
 to `PostgreSQL` simply by changing the `data_layer` to
 `AshPostgres.DataLayer` in our resources
-and adding the table name and the Ecto
-repo. In this case we will use the default repo created by phoenix.
+and adding the table name and our repo. In this case we will 
+use the default repo created by phoenix.
 
 ```diff
 --- a/my_app_phx/lib/my_app/resources/tweet.ex
@@ -112,7 +113,6 @@ repo. In this case we will use the default repo created by phoenix.
 +    repo MyApp.Repo
 +  end
 
-
 --- a/my_app_phx/lib/my_app/resources/user.ex
 +++ b/my_app_phx/lib/my_app/resources/user.ex
 @@ -1,6 +1,11 @@
@@ -127,7 +127,7 @@ repo. In this case we will use the default repo created by phoenix.
 +  end
 ```
 
-Now you can tell ash to generate the migrations from you API
+Now you can tell ash to generate the migrations from your API
 
 ```shell
 mix ash_postgres.generate_migrations --apis MyApp.Api
@@ -137,7 +137,6 @@ mix ash_postgres.generate_migrations --apis MyApp.Api
 and run the ecto migration to generate the tables
 
 ```shell
-
 run mix ecto.migrate
 
 23:23:46.067 [info]  == Running 20201120222312 MyApp.Repo.Migrations.MigrateResources1.up/0 forward
@@ -221,7 +220,7 @@ We need to add the extension dependency for [ash_json_api](https://hexdocs.pm/as
 mix hex.info ash_json_api
 ```
 
-add it to your dependencies and dont forget to run `mix deps.get`
+add it to your dependencies and don't forget to run `mix deps.get`
 
 ```diff
 --- a/mix.exs
@@ -252,7 +251,7 @@ API in `MyApp.Api`
 +    ]
 ```
 
-We can proceed to add a route in the Phoneix router to forward request
+We can proceed to add a route in the Phoenix router to forward requests
 to our Ash API. To do so we use `AshJsonApi.forward/3` as shown in
 `lib/my_app_web/router.ex`
 
@@ -276,12 +275,10 @@ to our Ash API. To do so we use `AshJsonApi.forward/3` as shown in
    end
 ```
 
-After that all we have to do is tell the our resources that are now
-going to be part of an Json API. In this guide we will only expose an
-API for the `user` resource, exposing the tweet as is left as an exersice
-for the reader.
+After that all we have to do is configure our resources for the JSON:API.
+In this guide we will only expose an API for the `user` resource, exposing the tweet as is left as an exercise for the reader.
 
-We need to add an extension to our resouce and define a mapping between
+We need to add the extension to our resource and define a mapping between
 the REST verbs and our internal api actions.
 
 ```diff
@@ -359,5 +356,4 @@ curl -s --request GET --url 'http://localhost:4000/api/users' | jq
     "self": "http://localhost:4000/api/users"
   }
 }
-
 ```
