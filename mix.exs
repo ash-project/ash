@@ -41,18 +41,23 @@ defmodule Ash.MixProject do
       logo: "logos/small-logo.png",
       extra_section: "GUIDES",
       extras: [
-        "README.md",
-        "documentation/introduction/getting_started.md",
-        "documentation/topics/authorization.md",
-        "documentation/topics/identities.md",
-        "documentation/topics/pagination.md",
-        "documentation/topics/validation.md",
-        "documentation/topics/notifiers.md",
-        "documentation/topics/error_handling.md",
-        "documentation/topics/aggregates.md",
-        "documentation/topics/calculations.md",
-        "documentation/topics/contexts_and_domains.md",
-        "documentation/topics/multitenancy.md"
+        "README.md": [],
+        "documentation/introduction/getting_started.md": [
+          title: "Getting Started"
+        ],
+        "documentation/introduction/getting_started_phx.md": [
+          title: "Getting Started with Phoenix"
+        ],
+        "documentation/topics/authorization.md": [],
+        "documentation/topics/identities.md": [],
+        "documentation/topics/pagination.md": [],
+        "documentation/topics/validation.md": [],
+        "documentation/topics/notifiers.md": [],
+        "documentation/topics/error_handling.md": [],
+        "documentation/topics/aggregates.md": [],
+        "documentation/topics/calculations.md": [],
+        "documentation/topics/contexts_and_domains.md": [],
+        "documentation/topics/multitenancy.md": []
       ],
       groups_for_extras: [
         Introduction: Path.wildcard("documentation/introduction/*.md"),
