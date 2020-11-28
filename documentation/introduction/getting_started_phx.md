@@ -19,7 +19,7 @@ also we are using `--app` to rename the application so it matches the name from
 the getting started guide
 
 ```shell
-mix phx.new my_app_phx --app my_app --no-html --no-webpack --no-gettext
+mix phx.new my_app --no-html --no-webpack --no-gettext
 ```
 
 ## Add dependencies and formatter

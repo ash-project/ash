@@ -12,12 +12,10 @@ For the finished example, see [this example](https://github.com/mario-mazo/my_ap
 
 ### With Phoenix
 
-If you intend to use AshJsonApi or AshGraphql, you will likely want to create a new phoenix application, as opposed to just an Elixir application. A Phoenix application is just an Elixir application with all of the dependencies and set up of Phoenix. Phoenix provides a lot of extra capabilities at very little cost, and can be a very useful escape hatch if you need to
-add something to your application that isn't supported by Ash yet. See the [Phoenix documentation](https://hexdocs.pm/phoenix/installation.html) for creating
-a new Phoenix application. Ultimately, instead of mix new my_application, you would use:
+The next guide will show you how to create a new phoenix application and copy your resources/apis over. However, if you know that you will be building a web application and would like to start with phoenix, you can replace the above command with:
 
 ```shell
-mix phx.new my_application
+mix phx.new my_app --no-html --no-webpack --no-gettext
 ```
 
 ## Add Ash
