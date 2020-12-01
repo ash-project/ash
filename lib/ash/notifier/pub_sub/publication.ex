@@ -24,7 +24,7 @@ defmodule Ash.Notifier.PubSub.Publication do
       doc: "The name of the event to publish. Defaults to the action name"
     ],
     type: [
-      type: {:one_of, [:create, :update, :destroy]},
+      type: {:in, [:create, :update, :destroy]},
       doc:
         "In the case of multiple actions with the same name, you may need to provide the action type as well."
     ]

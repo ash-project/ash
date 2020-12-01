@@ -81,7 +81,7 @@ defmodule Ash.Test.Resource.AttributesTest do
     test "raises if you pass an invalid value for `primary_key?`" do
       assert_raise(
         Ash.Error.Dsl.DslError,
-        "[Ash.Resource.Dsl.Attribute]\n attributes -> attribute -> foo:\n  expected :primary_key? to be an boolean, got: 10",
+        "[Ash.Resource.Dsl.Attribute]\n attributes -> attribute -> foo:\n  expected :primary_key? to be a boolean, got: 10",
         fn ->
           defposts do
             attributes do
@@ -95,7 +95,7 @@ defmodule Ash.Test.Resource.AttributesTest do
     test "raises if you pass an invalid value for `private?`" do
       assert_raise(
         Ash.Error.Dsl.DslError,
-        "[Ash.Resource.Dsl.Attribute]\n attributes -> attribute -> foo:\n  expected :private? to be an boolean, got: \"an_invalid_value\"",
+        "[Ash.Resource.Dsl.Attribute]\n attributes -> attribute -> foo:\n  expected :private? to be a boolean, got: \"an_invalid_value\"",
         fn ->
           defposts do
             attributes do

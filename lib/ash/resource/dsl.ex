@@ -494,7 +494,7 @@ defmodule Ash.Resource.Dsl do
     """,
     schema: [
       strategy: [
-        type: {:one_of, [:context, :attribute]},
+        type: {:in, [:context, :attribute]},
         default: :context,
         doc: """
         Determine how to perform multitenancy. `:attribute` will expect that an

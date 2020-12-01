@@ -1,4 +1,6 @@
 defmodule Ash.OptionsHelpers do
+  @type schema :: NimbleOptions.schema()
+
   @moduledoc false
   def merge_schemas(left, right, section \\ nil) do
     new_right =

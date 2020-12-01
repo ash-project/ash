@@ -54,7 +54,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.CreateTest do
     test "it fails if `primary?` is not a boolean" do
       assert_raise(
         Ash.Error.Dsl.DslError,
-        "[Ash.Resource.Dsl.Create]\n actions -> create -> default:\n  expected :primary? to be an boolean, got: 10",
+        "[Ash.Resource.Dsl.Create]\n actions -> create -> default:\n  expected :primary? to be a boolean, got: 10",
         fn ->
           defposts do
             actions do

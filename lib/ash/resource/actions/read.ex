@@ -48,7 +48,7 @@ defmodule Ash.Resource.Actions.Read do
       doc: "The default page size to apply, if one is not supplied"
     ],
     countable: [
-      type: {:one_of, [true, false, :by_default]},
+      type: {:in, [true, false, :by_default]},
       doc:
         "Whether not a returned page will have a full count of all records. Use `:by_default` to do it automatically.",
       default: false

@@ -14,7 +14,7 @@ defmodule Ash.Resource.Aggregate do
       required: true
     ],
     kind: [
-      type: {:one_of, Ash.Query.Aggregate.kinds()},
+      type: {:in, Ash.Query.Aggregate.kinds()},
       doc: "The kind of the aggregate",
       required: true
     ],

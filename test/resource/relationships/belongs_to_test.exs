@@ -70,7 +70,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
                  define_field?: true,
                  destination: Foo,
                  destination_field: :id,
-                 field_type: :uuid,
+                 field_type: Ash.Type.UUID,
                  name: :foo,
                  primary_key?: false,
                  source_field: :foo_id,
@@ -82,7 +82,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
                  define_field?: true,
                  destination: Bar,
                  destination_field: :id,
-                 field_type: :uuid,
+                 field_type: Ash.Type.UUID,
                  name: :bar,
                  primary_key?: false,
                  source_field: :bazz,
@@ -161,7 +161,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if `primary_key?` is not a boolean" do
       assert_raise(
         Ash.Error.Dsl.DslError,
-        "[Ash.Resource.Dsl.BelongsTo]\n relationships -> belongs_to -> foobar:\n  expected :primary_key? to be an boolean, got: \"blah\"",
+        "[Ash.Resource.Dsl.BelongsTo]\n relationships -> belongs_to -> foobar:\n  expected :primary_key? to be a boolean, got: \"blah\"",
         fn ->
           defposts do
             relationships do
@@ -175,7 +175,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if `private?` is not a boolean" do
       assert_raise(
         Ash.Error.Dsl.DslError,
-        "[Ash.Resource.Dsl.BelongsTo]\n relationships -> belongs_to -> foobar:\n  expected :private? to be an boolean, got: \"blah\"",
+        "[Ash.Resource.Dsl.BelongsTo]\n relationships -> belongs_to -> foobar:\n  expected :private? to be a boolean, got: \"blah\"",
         fn ->
           defposts do
             relationships do
@@ -190,7 +190,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
   test "fails if `define_field?` is not a boolean" do
     assert_raise(
       Ash.Error.Dsl.DslError,
-      "[Ash.Resource.Dsl.BelongsTo]\n relationships -> belongs_to -> foobar:\n  expected :define_field? to be an boolean, got: \"blah\"",
+      "[Ash.Resource.Dsl.BelongsTo]\n relationships -> belongs_to -> foobar:\n  expected :define_field? to be a boolean, got: \"blah\"",
       fn ->
         defposts do
           relationships do

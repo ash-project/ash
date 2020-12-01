@@ -119,7 +119,7 @@ defmodule Ash.Test.Resource.Relationshihps.HasOneTest do
     test "fails if private? is not an boolean" do
       assert_raise(
         Ash.Error.Dsl.DslError,
-        "[Ash.Resource.Dsl.HasOne]\n relationships -> has_one -> foobar:\n  expected :private? to be an boolean, got: \"foo\"",
+        "[Ash.Resource.Dsl.HasOne]\n relationships -> has_one -> foobar:\n  expected :private? to be a boolean, got: \"foo\"",
         fn ->
           defposts do
             relationships do

@@ -200,7 +200,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "fails if private? is not an boolean" do
       assert_raise(
         Ash.Error.Dsl.DslError,
-        "[Ash.Resource.Dsl.ManyToMany]\n relationships -> many_to_many -> foobars:\n  expected :private? to be an boolean, got: \"an_invalid_field\"",
+        "[Ash.Resource.Dsl.ManyToMany]\n relationships -> many_to_many -> foobars:\n  expected :private? to be a boolean, got: \"an_invalid_field\"",
         fn ->
           defposts do
             relationships do
