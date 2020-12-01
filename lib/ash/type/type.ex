@@ -58,7 +58,7 @@ defmodule Ash.Type do
   Currently, the only composite type supported is a list type, specified via:
   `{:array, Type}`. The constraints available are:
 
-  #{NimbleOptions.docs(@doc_list_constraints)}
+  #{Ash.OptionsHelpers.docs(@doc_list_constraints)}
   """
   @type constraints :: Keyword.t()
   @callback storage_type() :: Ecto.Type.t()
@@ -69,15 +69,26 @@ defmodule Ash.Type do
   @callback constraints() :: constraints()
   @callback apply_constraints(term, constraints()) ::
               :ok | {:error, constraint_error() | list(constraint_error)}
+  @callback describe(constraints()) :: String.t() | nil
   @callback equal?(term, term) :: boolean
 
   @type constraint_error :: String.t() | {String.t(), Keyword.t()}
   @type t :: atom | {:array, atom}
 
+  def describe(type, constraints) do
+    case get_type(type) do
+      {:array, type} ->
+        type.describe(constraints)
+
+      type ->
+        type.describe(constraints)
+    end
+  end
+
   @doc false
   def list_constraints, do: @list_constraints
 
-  @spec get_type(atom | module) :: atom | module
+  @spec get_type(atom | module) :: atom | module | {:array, atom | module}
   def get_type({:array, value}) do
     {:array, get_type(value)}
   end
@@ -403,6 +414,13 @@ defmodule Ash.Type do
 
       @impl true
       def constraints, do: []
+
+      @impl true
+      def describe([]), do: String.trim_leading(inspect(__MODULE__), "Ash.Type.")
+
+      def describe(constraints) do
+        "#{String.trim_leading(inspect(__MODULE__), "Ash.Type.")} | #{inspect(constraints)}"
+      end
 
       @impl true
       def apply_constraints(_, _), do: :ok

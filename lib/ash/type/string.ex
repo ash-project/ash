@@ -21,7 +21,7 @@ defmodule Ash.Type.String do
 
   ### Constraints
 
-  #{NimbleOptions.docs(@constraints)}
+  #{Ash.OptionsHelpers.docs(@constraints)}
   """
   use Ash.Type
 

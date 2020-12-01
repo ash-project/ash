@@ -35,13 +35,13 @@ defmodule Ash.Dsl.Section do
           describe: String.t(),
           entities: [Ash.Dsl.Entity.t()],
           sections: [%__MODULE__{}],
-          schema: NimbleOptions.schema()
+          schema: Ash.OptionsHelpers.schema()
         }
 
   def describe(mod, section, depth \\ 2) do
     options_doc =
       if section.schema && section.schema != [] do
-        "\n" <> header("Options", depth) <> "\n" <> NimbleOptions.docs(section.schema)
+        "\n" <> header("Options", depth) <> "\n" <> Ash.OptionsHelpers.docs(section.schema)
       else
         ""
       end

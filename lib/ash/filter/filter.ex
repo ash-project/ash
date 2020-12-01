@@ -645,6 +645,7 @@ defmodule Ash.Filter do
   def read_requests(api, filter) do
     filter
     |> Ash.Filter.relationship_paths()
+    |> IO.inspect()
     |> Enum.map(fn path ->
       {path, filter_expression_by_relationship_path(filter, path, true)}
     end)
@@ -668,6 +669,8 @@ defmodule Ash.Filter do
                      }
                    } ->
                   if authorization_filter do
+                    IO.inspect(path)
+
                     relationship =
                       Ash.Resource.relationship(
                         resource,
@@ -938,7 +941,7 @@ defmodule Ash.Filter do
 
   defp scope_ref(other, _), do: other
 
-  defp do_relationship_paths(%Ref{relationship_path: path}, _) do
+  defp do_relationship_paths(%Ref{relationship_path: path}, _) when path != [] do
     {path}
   end
 
@@ -995,17 +998,13 @@ defmodule Ash.Filter do
      )}
   end
 
-  defp add_expression_part(%resource{} = record, context, expression) do
-    if resource == context.resource do
-      pkey_filter = record |> Map.take(Ash.Resource.primary_key(resource)) |> Map.to_list()
-      add_expression_part(pkey_filter, context, expression)
-    else
-      {:error,
-       InvalidFilterValue.exception(
-         value: record,
-         message: "Records must match the resource being filtered"
-       )}
-    end
+  defp add_expression_part(%_{} = record, context, expression) do
+    pkey_filter =
+      record
+      |> Map.take(Ash.Resource.primary_key(context.resource))
+      |> Map.to_list()
+
+    add_expression_part(pkey_filter, context, expression)
   end
 
   defp add_expression_part({not_key, nested_statement}, context, expression)
@@ -1330,36 +1329,47 @@ defmodule Ash.Filter do
 
   defp parse_predicates(values, attr, context) do
     if is_map(values) || Keyword.keyword?(values) do
-      Enum.reduce_while(values, {:ok, nil}, fn {key, value}, {:ok, expression} ->
-        case get_operator(key, Ash.Resource.data_layer_operators(context.resource)) do
-          nil ->
-            error = NoSuchFilterPredicate.exception(key: key, resource: context.resource)
-            {:halt, {:error, error}}
+      Enum.reduce_while(values, {:ok, nil}, fn
+        {:not, value}, {:ok, expression} ->
+          case parse_predicates(List.wrap(value), attr, context) do
+            {:ok, not_expression} ->
+              {:cont,
+               {:ok, Expression.optimized_new(:and, expression, %Not{expression: not_expression})}}
 
-          operator_module ->
-            left = %Ref{
-              attribute: attr,
-              relationship_path: context.relationship_path,
-              resource: context.resource
-            }
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
 
-            with {:ok, [left, right]} <-
-                   hydrate_refs([left, value], context.resource, context.aggregates),
-                 {:ok, operator} <- Operator.new(operator_module, left, right) do
-              if is_boolean(operator) do
-                {:cont, {:ok, operator}}
-              else
-                if Ash.Resource.data_layer_can?(context.resource, {:filter_operator, operator}) do
-                  {:cont, {:ok, Expression.optimized_new(:and, expression, operator)}}
+        {key, value}, {:ok, expression} ->
+          case get_operator(key, Ash.Resource.data_layer_operators(context.resource)) do
+            nil ->
+              error = NoSuchFilterPredicate.exception(key: key, resource: context.resource)
+              {:halt, {:error, error}}
+
+            operator_module ->
+              left = %Ref{
+                attribute: attr,
+                relationship_path: context.relationship_path,
+                resource: context.resource
+              }
+
+              with {:ok, [left, right]} <-
+                     hydrate_refs([left, value], context.resource, context.aggregates),
+                   {:ok, operator} <- Operator.new(operator_module, left, right) do
+                if is_boolean(operator) do
+                  {:cont, {:ok, operator}}
                 else
-                  {:halt,
-                   {:error, "data layer does not support the operator #{inspect(operator)}"}}
+                  if Ash.Resource.data_layer_can?(context.resource, {:filter_operator, operator}) do
+                    {:cont, {:ok, Expression.optimized_new(:and, expression, operator)}}
+                  else
+                    {:halt,
+                     {:error, "data layer does not support the operator #{inspect(operator)}"}}
+                  end
                 end
+              else
+                {:error, error} -> {:halt, {:error, error}}
               end
-            else
-              {:error, error} -> {:halt, {:error, error}}
-            end
-        end
+          end
       end)
     else
       error = InvalidFilterValue.exception(value: values)

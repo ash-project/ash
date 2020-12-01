@@ -42,7 +42,7 @@ defmodule Ash.Dsl.Transformer do
     section = Enum.find(sections, &(&1.name == section_name))
     entity = Enum.find(section.entities, &(&1.name == name))
 
-    case NimbleOptions.validate(opts, entity.schema) do
+    case Ash.OptionsHelpers.validate(opts, entity.schema) do
       {:ok, opts} -> {:ok, struct(entity.target, opts)}
       {:error, error} -> {:error, error}
     end

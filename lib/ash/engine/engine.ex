@@ -59,7 +59,13 @@ defmodule Ash.Engine do
   def run([], _api, _opts), do: {:error, :no_requests_provided}
 
   def run(requests, api, opts) do
-    authorize? = opts[:authorize?] || Keyword.has_key?(opts, :actor)
+    authorize? =
+      if opts[:authorize?] == false do
+        false
+      else
+        opts[:authorize?] || Keyword.has_key?(opts, :actor)
+      end
+
     actor = opts[:actor]
 
     opts = Keyword.put(opts, :callers, [self() | Process.get(:"$callers", [])])

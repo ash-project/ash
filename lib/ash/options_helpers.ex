@@ -9,6 +9,22 @@ defmodule Ash.OptionsHelpers do
     Keyword.merge(left, new_right)
   end
 
+  def validate(opts, schema) do
+    NimbleOptions.validate(opts, sanitize_schema(schema))
+  end
+
+  def validate!(opts, schema) do
+    NimbleOptions.validate!(opts, sanitize_schema(schema))
+  end
+
+  def docs(schema) do
+    NimbleOptions.docs(sanitize_schema(schema))
+  end
+
+  defp sanitize_schema(schema) do
+    schema
+  end
+
   def map(value) when is_map(value), do: {:ok, value}
   def map(_), do: {:error, "must be a map"}
 

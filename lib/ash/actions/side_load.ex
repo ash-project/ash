@@ -696,6 +696,10 @@ defmodule Ash.Actions.SideLoad do
 
   def reverse_relationship_path(relationship, prior_path, acc \\ [])
 
+  def reverse_relationship_path(nil, _, _) do
+    :error
+  end
+
   def reverse_relationship_path(relationship, [], acc) do
     relationship.destination
     |> Ash.Resource.relationships()

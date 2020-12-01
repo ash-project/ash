@@ -148,8 +148,15 @@ defmodule Ash.Actions.Read do
   end
 
   defp filter_requests(query, opts) do
+    authorizing? =
+      if opts[:authorize?] == false do
+        false
+      else
+        Keyword.has_key?(opts, :actor) || opts[:authorize?]
+      end
+
     if not Keyword.has_key?(opts, :initial_data) &&
-         (Keyword.has_key?(opts, :actor) || opts[:authorize?]) do
+         authorizing? do
       Filter.read_requests(query.api, query.filter)
     else
       {:ok, []}
@@ -199,7 +206,13 @@ defmodule Ash.Actions.Read do
   end
 
   defp requests(query, action, filter_requests, opts) do
-    authorizing? = Keyword.has_key?(opts, :actor) || opts[:authorize?]
+    authorizing? =
+      if opts[:authorize?] == false do
+        false
+      else
+        Keyword.has_key?(opts, :actor) || opts[:authorize?]
+      end
+
     can_be_in_query? = not Keyword.has_key?(opts, :initial_data)
 
     {aggregate_auth_requests, aggregate_value_requests, aggregates_in_query} =

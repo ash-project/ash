@@ -21,7 +21,7 @@ defmodule Ash.Resource.Validation.OneOf do
 
   @impl true
   def init(opts) do
-    case NimbleOptions.validate(opts, @opt_schema) do
+    case Ash.OptionsHelpers.validate(opts, @opt_schema) do
       {:ok, opts} ->
         {:ok, opts}
 

@@ -119,7 +119,7 @@ defmodule Ash.Resource.Attribute do
     case type do
       {:array, type} ->
         with {:ok, new_constraints} <-
-               NimbleOptions.validate(
+               Ash.OptionsHelpers.validate(
                  Keyword.delete(constraints, :items),
                  Ash.Type.list_constraints()
                ),
@@ -131,7 +131,7 @@ defmodule Ash.Resource.Attribute do
       type ->
         schema = Ash.Type.constraints(type)
 
-        case NimbleOptions.validate(constraints, schema) do
+        case Ash.OptionsHelpers.validate(constraints, schema) do
           {:ok, constraints} ->
             {:ok, %{attribute | constraints: constraints}}
 
@@ -145,7 +145,7 @@ defmodule Ash.Resource.Attribute do
     if Keyword.has_key?(constraints, :items) do
       schema = Ash.Type.constraints(type)
 
-      case NimbleOptions.validate(constraints[:items], schema) do
+      case Ash.OptionsHelpers.validate(constraints[:items], schema) do
         {:ok, item_constraints} ->
           {:ok, item_constraints}
 

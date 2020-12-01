@@ -254,7 +254,7 @@ defmodule Ash.Resource.Dsl do
 
     ## Pagination
 
-    #{NimbleOptions.docs(Ash.Resource.Actions.Read.pagination_schema())}
+    #{Ash.OptionsHelpers.docs(Ash.Resource.Actions.Read.pagination_schema())}
     """,
     examples: [
       "read :read_all, primary?: true"
@@ -456,12 +456,12 @@ defmodule Ash.Resource.Dsl do
     for more information.
     """,
     examples: [
-      "calculate :full_name, MyApp.MyResource.FullName",
-      "calculate :full_name, {MyApp.FullName, keys: [:first_name, :last_name]}",
-      "calculate :full_name, full_name([:first_name, :last_name])"
+      "calculate :full_name, :string, MyApp.MyResource.FullName",
+      "calculate :full_name, :string, {MyApp.FullName, keys: [:first_name, :last_name]}",
+      "calculate :full_name, :string, full_name([:first_name, :last_name])"
     ],
     target: Ash.Resource.Calculation,
-    args: [:name, :calculation],
+    args: [:name, :type, :calculation],
     entities: [
       arguments: [@argument]
     ],

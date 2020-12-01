@@ -477,7 +477,7 @@ defmodule Ash.Engine.Request do
 
           {:filter, filter} ->
             request
-            |> Map.update!(:query, &Ash.Query.filter(&1, filter))
+            |> Map.update!(:query, &Ash.Query.filter(&1, ^filter))
             |> Map.update(
               :authorization_filter,
               filter,
@@ -492,7 +492,7 @@ defmodule Ash.Engine.Request do
           {:filter_and_continue, filter, new_authorizer_state} ->
             new_request =
               request
-              |> Map.update!(:query, &Ash.Query.filter(&1, filter))
+              |> Map.update!(:query, &Ash.Query.filter(&1, ^filter))
               |> Map.update(
                 :authorization_filter,
                 filter,
@@ -1032,9 +1032,27 @@ defmodule Ash.Engine.Request do
 
   defp log(%{verbose?: true, name: name} = request, message, level) do
     if is_list(request.data) do
-      Logger.log(level, "#{name}: #{Enum.count(request.data)} #{message}")
+      Logger.log(level, fn ->
+        message =
+          if is_function(message) do
+            message.()
+          else
+            message
+          end
+
+        "#{name}: #{Enum.count(request.data)} #{message}"
+      end)
     else
-      Logger.log(level, "#{name}: #{message}")
+      Logger.log(level, fn ->
+        message =
+          if is_function(message) do
+            message.()
+          else
+            message
+          end
+
+        "#{name}: #{message}"
+      end)
     end
   end
 

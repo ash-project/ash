@@ -54,7 +54,7 @@ defmodule Ash.Dsl.Entity do
           args: [atom],
           entities: Keyword.t(),
           auto_set_fields: Keyword.t(),
-          schema: NimbleOptions.schema()
+          schema: Ash.OptionsHelpers.schema()
         }
 
   def build(
@@ -66,7 +66,7 @@ defmodule Ash.Dsl.Entity do
       Keyword.split(auto_set_fields || [], Keyword.keys(schema))
 
     with {:ok, opts} <-
-           NimbleOptions.validate(Keyword.merge(opts || [], before_validate_auto), schema),
+           Ash.OptionsHelpers.validate(Keyword.merge(opts || [], before_validate_auto), schema),
          opts <- Keyword.merge(opts, after_validate_auto),
          built <- struct(target, opts),
          built <- struct(built, nested_entities),
@@ -96,7 +96,7 @@ defmodule Ash.Dsl.Entity do
 
           "\n" <>
             header("Arguments", depth) <>
-            NimbleOptions.docs(args_schema)
+            Ash.OptionsHelpers.docs(args_schema)
       end
 
     opts_description =
@@ -107,7 +107,7 @@ defmodule Ash.Dsl.Entity do
         opts_schema ->
           "\n" <>
             header("Options", depth) <>
-            NimbleOptions.docs(opts_schema)
+            Ash.OptionsHelpers.docs(opts_schema)
       end
 
     example_docs =

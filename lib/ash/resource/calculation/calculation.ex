@@ -1,12 +1,16 @@
 defmodule Ash.Resource.Calculation do
   @moduledoc "Represents a named calculation on a resource"
-  defstruct [:name, :calculation, :arguments, :description, :private?]
+  defstruct [:name, :type, :calculation, :arguments, :description, :private?]
 
   @schema [
     name: [
       type: :atom,
       required: true,
       doc: "The field name to use for the calculation value"
+    ],
+    type: [
+      type: {:custom, Ash.OptionsHelpers, :ash_type, []},
+      required: true
     ],
     calculation: [
       type: {:custom, __MODULE__, :calculation, []},
@@ -74,7 +78,7 @@ defmodule Ash.Resource.Calculation do
       case type do
         {:array, type} ->
           with {:ok, new_constraints} <-
-                 NimbleOptions.validate(
+                 Ash.OptionsHelpers.validate(
                    Keyword.delete(constraints, :items),
                    Ash.Type.list_constraints()
                  ),
@@ -86,7 +90,7 @@ defmodule Ash.Resource.Calculation do
         type ->
           schema = Ash.Type.constraints(type)
 
-          case NimbleOptions.validate(constraints, schema) do
+          case Ash.OptionsHelpers.validate(constraints, schema) do
             {:ok, constraints} ->
               {:ok, %{argument | constraints: constraints}}
 
@@ -100,7 +104,7 @@ defmodule Ash.Resource.Calculation do
       if Keyword.has_key?(constraints, :items) do
         schema = Ash.Type.constraints(type)
 
-        case NimbleOptions.validate(constraints[:items], schema) do
+        case Ash.OptionsHelpers.validate(constraints[:items], schema) do
           {:ok, item_constraints} ->
             {:ok, item_constraints}
 

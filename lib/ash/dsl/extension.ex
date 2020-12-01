@@ -464,7 +464,7 @@ defmodule Ash.Dsl.Extension do
                 )
 
               opts =
-                case NimbleOptions.validate(
+                case Ash.OptionsHelpers.validate(
                        current_config.opts,
                        Map.get(unquote(Macro.escape(section)), :schema, [])
                      ) do

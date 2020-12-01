@@ -83,7 +83,7 @@ defmodule Ash.Resource.Actions.Read do
   end
 
   def pagination(opts) do
-    case NimbleOptions.validate(opts, @pagination_schema) do
+    case Ash.OptionsHelpers.validate(opts, @pagination_schema) do
       {:ok, result} ->
         pagination = struct(Pagination, result)
 

@@ -156,7 +156,7 @@ defmodule Ash.Api do
   end
 
   defp validate_or_error(opts, schema) do
-    case NimbleOptions.validate(opts, schema) do
+    case Ash.OptionsHelpers.validate(opts, schema) do
       {:ok, value} -> {:ok, value}
       {:error, error} -> {:error, Exception.message(error)}
     end
@@ -228,7 +228,7 @@ defmodule Ash.Api do
   For a resource with a composite primary key, pass a keyword list, e.g
   `MyApi.get(MyResource, first_key: 1, second_key: 2)`
 
-  #{NimbleOptions.docs(@get_opts_schema)}
+  #{Ash.OptionsHelpers.docs(@get_opts_schema)}
   """
   @callback get(resource :: Ash.resource(), id_or_filter :: term(), params :: Keyword.t()) ::
               {:ok, Ash.record()} | {:error, Ash.error()}
@@ -258,15 +258,15 @@ defmodule Ash.Api do
 
   For more information, on building a query, see `Ash.Query`.
 
-  #{NimbleOptions.docs(@read_opts_schema)}
+  #{Ash.OptionsHelpers.docs(@read_opts_schema)}
 
   ## Pagination
 
   #### Limit/offset pagination
-  #{NimbleOptions.docs(@offset_page_opts)}
+  #{Ash.OptionsHelpers.docs(@offset_page_opts)}
 
   #### Keyset pagination
-  #{NimbleOptions.docs(@keyset_page_opts)}
+  #{Ash.OptionsHelpers.docs(@keyset_page_opts)}
   """
   @callback read(Ash.query(), params :: Keyword.t()) ::
               {:ok, list(Ash.record())}
@@ -304,7 +304,7 @@ defmodule Ash.Api do
   which case the loaded fields of the query are used. Relationship loads can be nested, for
   example: `MyApi.load(record, [posts: [:comments]])`.
 
-  #{NimbleOptions.docs(@load_opts_schema)}
+  #{Ash.OptionsHelpers.docs(@load_opts_schema)}
   """
   @callback load(
               record_or_records :: Ash.record() | [Ash.record()],
@@ -322,7 +322,7 @@ defmodule Ash.Api do
   @doc """
   Create a record.
 
-  #{NimbleOptions.docs(@create_opts_schema)}
+  #{Ash.OptionsHelpers.docs(@create_opts_schema)}
   """
   @callback create(Ash.changeset(), params :: Keyword.t()) ::
               {:ok, Ash.record()} | {:error, Ash.error()}
@@ -336,7 +336,7 @@ defmodule Ash.Api do
   @doc """
   Update a record.
 
-  #{NimbleOptions.docs(@update_opts_schema)}
+  #{Ash.OptionsHelpers.docs(@update_opts_schema)}
   """
   @callback update(Ash.changeset(), params :: Keyword.t()) ::
               {:ok, Ash.record()} | {:error, Ash.error()}
@@ -349,7 +349,7 @@ defmodule Ash.Api do
   @doc """
   Destroy a record.
 
-  #{NimbleOptions.docs(@destroy_opts_schema)}
+  #{Ash.OptionsHelpers.docs(@destroy_opts_schema)}
   """
   @callback destroy(Ash.changeset() | Ash.record(), params :: Keyword.t()) ::
               :ok | {:error, Ash.error()}
@@ -423,7 +423,7 @@ defmodule Ash.Api do
   @doc false
   @spec get!(Ash.api(), Ash.resource(), term(), Keyword.t()) :: Ash.record() | no_return
   def get!(api, resource, id, opts \\ []) do
-    opts = NimbleOptions.validate!(opts, @get_opts_schema)
+    opts = Ash.OptionsHelpers.validate!(opts, @get_opts_schema)
 
     api
     |> get(resource, id, opts)
@@ -434,7 +434,7 @@ defmodule Ash.Api do
   @spec get(Ash.api(), Ash.resource(), term(), Keyword.t()) ::
           {:ok, Ash.record() | nil} | {:error, Ash.error()}
   def get(api, resource, id, opts) do
-    with {:ok, opts} <- NimbleOptions.validate(opts, @get_opts_schema),
+    with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @get_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, resource),
          {:ok, filter} <- get_filter(resource, id) do
       query =
@@ -682,7 +682,7 @@ defmodule Ash.Api do
         ) ::
           list(Ash.record()) | Ash.record() | no_return
   def load!(api, data, query, opts \\ []) do
-    opts = NimbleOptions.validate!(opts, @load_opts_schema)
+    opts = Ash.OptionsHelpers.validate!(opts, @load_opts_schema)
 
     api
     |> load(data, query, opts)
@@ -729,7 +729,7 @@ defmodule Ash.Api do
 
     with %{valid?: true} <- query,
          {:ok, action} <- get_action(query.resource, opts, :read),
-         {:ok, opts} <- NimbleOptions.validate(opts, @load_opts_schema) do
+         {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @load_opts_schema) do
       Read.run(query, action, Keyword.put(opts, :initial_data, data))
     else
       {:error, error} ->
@@ -744,7 +744,7 @@ defmodule Ash.Api do
   @spec read!(Ash.api(), Ash.query() | Ash.resource(), Keyword.t()) ::
           list(Ash.record()) | no_return
   def read!(api, query, opts \\ []) do
-    opts = NimbleOptions.validate!(opts, @read_opts_schema)
+    opts = Ash.OptionsHelpers.validate!(opts, @read_opts_schema)
 
     api
     |> read(query, opts)
@@ -763,7 +763,7 @@ defmodule Ash.Api do
   def read(api, query, opts) do
     query = Ash.Query.set_api(query, api)
 
-    with {:ok, opts} <- NimbleOptions.validate(opts, @read_opts_schema),
+    with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @read_opts_schema),
          {:ok, action} <- get_action(query.resource, opts, :read) do
       Read.run(query, action, opts)
     else
@@ -834,7 +834,7 @@ defmodule Ash.Api do
   @spec create!(Ash.api(), Ash.changeset(), Keyword.t()) ::
           Ash.record() | no_return
   def create!(api, changeset, opts) do
-    opts = NimbleOptions.validate!(opts, @create_opts_schema)
+    opts = Ash.OptionsHelpers.validate!(opts, @create_opts_schema)
 
     api
     |> create(changeset, opts)
@@ -845,7 +845,7 @@ defmodule Ash.Api do
   @spec create(Ash.api(), Ash.changeset(), Keyword.t()) ::
           {:ok, Ash.record()} | {:error, Ash.error()}
   def create(api, changeset, opts) do
-    with {:ok, opts} <- NimbleOptions.validate(opts, @create_opts_schema),
+    with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @create_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, changeset.resource),
          {:ok, action} <- get_action(resource, opts, :create) do
       Create.run(api, changeset, action, opts)
@@ -854,7 +854,7 @@ defmodule Ash.Api do
 
   @doc false
   def update!(api, changeset, opts) do
-    opts = NimbleOptions.validate!(opts, @update_opts_schema)
+    opts = Ash.OptionsHelpers.validate!(opts, @update_opts_schema)
 
     api
     |> update(changeset, opts)
@@ -865,7 +865,7 @@ defmodule Ash.Api do
   @spec update(Ash.api(), Ash.record(), Keyword.t()) ::
           {:ok, Ash.record()} | {:error, Ash.error()}
   def update(api, changeset, opts) do
-    with {:ok, opts} <- NimbleOptions.validate(opts, @update_opts_schema),
+    with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @update_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, changeset.resource),
          {:ok, action} <- get_action(resource, opts, :update) do
       Update.run(api, changeset, action, opts)
@@ -875,7 +875,7 @@ defmodule Ash.Api do
   @doc false
   @spec destroy!(Ash.api(), Ash.changeset() | Ash.record(), Keyword.t()) :: :ok | no_return
   def destroy!(api, changeset, opts) do
-    opts = NimbleOptions.validate!(opts, @destroy_opts_schema)
+    opts = Ash.OptionsHelpers.validate!(opts, @destroy_opts_schema)
 
     api
     |> destroy(changeset, opts)
@@ -886,7 +886,7 @@ defmodule Ash.Api do
   @spec destroy(Ash.api(), Ash.changeset() | Ash.record(), Keyword.t()) ::
           :ok | {:error, Ash.error()}
   def destroy(api, %Ash.Changeset{resource: resource} = changeset, opts) do
-    with {:ok, opts} <- NimbleOptions.validate(opts, @destroy_opts_schema),
+    with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @destroy_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, resource),
          {:ok, action} <- get_action(resource, opts, :destroy) do
       Destroy.run(api, changeset, action, opts)
