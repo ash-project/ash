@@ -57,8 +57,9 @@ defmodule Ash.Test.Resource.CalculationsTest do
     test "Calculation descriptions are allowed" do
       defposts do
         calculations do
-          calculate :name_and_contents, concat([:name, :context]),
+          calculate(:name_and_contents, :string, concat([:name, :context]),
             description: "require one of name/contents"
+          )
         end
       end
 

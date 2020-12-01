@@ -44,7 +44,7 @@ defmodule Ash.Test.CalculationTest do
     end
 
     calculations do
-      calculate :full_name, {Concat, keys: [:first_name, :last_name]} do
+      calculate :full_name, :string, {Concat, keys: [:first_name, :last_name]} do
         argument :separator, :string, default: " "
       end
     end
