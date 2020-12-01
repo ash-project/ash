@@ -1033,23 +1033,13 @@ defmodule Ash.Engine.Request do
   defp log(%{verbose?: true, name: name} = request, message, level) do
     if is_list(request.data) do
       Logger.log(level, fn ->
-        message =
-          if is_function(message) do
-            message.()
-          else
-            message
-          end
+        message = message.()
 
         "#{name}: #{Enum.count(request.data)} #{message}"
       end)
     else
       Logger.log(level, fn ->
-        message =
-          if is_function(message) do
-            message.()
-          else
-            message
-          end
+        message = message.()
 
         "#{name}: #{message}"
       end)

@@ -388,7 +388,7 @@ defmodule Ash.Query do
       query
       | context:
           Map.merge(query.context, map, fn _k, v1, v2 ->
-            if is_map(v1) and is_map(v2) and not (is_struct(v1) || is_struct(v2)) do
+            if is_map(v1) and is_map(v2) and not (struct?(v1) || struct?(v2)) do
               Map.merge(v1, v2)
             else
               v2
@@ -396,6 +396,9 @@ defmodule Ash.Query do
           end)
     }
   end
+
+  def struct?(%_{}), do: true
+  def struct?(_), do: false
 
   @spec set_tenant(t() | Ash.resource(), String.t()) :: t()
   def set_tenant(query, tenant) do
