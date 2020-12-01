@@ -26,8 +26,8 @@ defmodule Ash.Test.Resource.CalculationsTest do
     test "calculations are persisted on the resource properly" do
       defposts do
         calculations do
-          calculate :name_and_contents, concat([:name, :context])
-          calculate :another_cal_but_private, concat([:name, :context]), private?: true
+          calculate :name_and_contents, :string, concat([:name, :context])
+          calculate(:another_cal_but_private, :string, concat([:name, :context]), private?: true)
         end
       end
 
