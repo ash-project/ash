@@ -15,7 +15,12 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
     actions do
       read :default
-      create :default
+      create :default, primary?: true
+
+      create :create_with_confirmation do
+        argument :confirm_name, :string
+        change confirm(:name, :confirm_name)
+      end
     end
 
     attributes do
@@ -737,6 +742,24 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                  title: "title1"
                }
              } = changeset
+    end
+  end
+
+  describe "arguments" do
+    test "arguments can be used in valid changes" do
+      Category
+      |> Changeset.new(%{"name" => "foo"})
+      |> Changeset.set_argument(:confirm_name, "foo")
+      |> Api.create!(action: :create_with_confirmation)
+    end
+
+    test "arguments can be used in invalid changes" do
+      assert_raise Ash.Error.Invalid, ~r/Value did not match confirmation/, fn ->
+        Category
+        |> Changeset.new(%{"name" => "foo"})
+        |> Changeset.set_argument(:confirm_name, "bar")
+        |> Api.create!(action: :create_with_confirmation)
+      end
     end
   end
 end

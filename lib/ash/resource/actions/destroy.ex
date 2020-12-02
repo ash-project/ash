@@ -1,11 +1,21 @@
 defmodule Ash.Resource.Actions.Destroy do
   @moduledoc "Represents a destroy action on a resource."
 
-  defstruct [:name, :primary?, :changes, :accept, :soft?, :description, type: :destroy]
+  defstruct [
+    :name,
+    :primary?,
+    :arguments,
+    :changes,
+    :accept,
+    :soft?,
+    :description,
+    type: :destroy
+  ]
 
   @type t :: %__MODULE__{
           type: :destroy,
           name: atom,
+          arguments: [Ash.Resource.Actions.Argument.t()],
           primary?: boolean,
           description: String.t()
         }

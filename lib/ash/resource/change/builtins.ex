@@ -19,4 +19,9 @@ defmodule Ash.Resource.Change.Builtins do
 
   @doc "A helper for builting filter templates"
   def actor(value), do: {:_actor, value}
+
+  @doc "A helper to confirm the value of one field against another field, or an argument"
+  def confirm(field, confirmation) do
+    {Ash.Resource.Change.Confirm, [field: field, confirmation: confirmation]}
+  end
 end

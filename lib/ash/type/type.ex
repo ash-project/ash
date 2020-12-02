@@ -214,7 +214,7 @@ defmodule Ash.Type do
   Confirms if a casted value matches the provided constraints.
   """
   @spec apply_constraints(t(), term, constraints()) :: :ok | {:error, String.t()}
-  def apply_constraints({:array, type}, term, constraints) when is_list(constraints) do
+  def apply_constraints({:array, type}, term, constraints) when is_list(term) do
     list_constraint_errors = list_constraint_errors(term, constraints)
 
     case list_constraint_errors do

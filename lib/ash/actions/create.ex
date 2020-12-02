@@ -74,6 +74,7 @@ defmodule Ash.Actions.Create do
     |> validate_required_belongs_to()
     |> add_validations()
     |> require_values()
+    |> Ash.Changeset.cast_arguments(action)
   end
 
   defp require_values(changeset) do

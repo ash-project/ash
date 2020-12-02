@@ -30,7 +30,8 @@ defmodule Ash.Actions.Destroy do
 
     changeset = %{changeset | action_type: :destroy, api: api}
 
-    with :ok <- validate(changeset),
+    with %{valid?: true} <- Ash.Changeset.cast_arguments(changeset, action),
+         :ok <- validate(changeset),
          :ok <- validate_multitenancy(changeset) do
       destroy_request =
         Request.new(

@@ -229,6 +229,22 @@ defmodule Ash.Resource.Dsl do
     args: [:change]
   }
 
+  @action_argument %Ash.Dsl.Entity{
+    name: :argument,
+    describe: """
+    Declares an argument on the action
+
+    The type can be either a built in type (see `Ash.Type`) for more, or a module implementing
+    the `Ash.Type` behaviour.
+    """,
+    examples: [
+      "argument :password_confirmation, :string"
+    ],
+    target: Ash.Resource.Actions.Argument,
+    args: [:name, :type],
+    schema: Ash.Resource.Actions.Argument.schema()
+  }
+
   @create %Ash.Dsl.Entity{
     name: :create,
     describe: """
@@ -242,6 +258,9 @@ defmodule Ash.Resource.Dsl do
     entities: [
       changes: [
         @change
+      ],
+      arguments: [
+        @action_argument
       ]
     ],
     args: [:name]
@@ -275,6 +294,9 @@ defmodule Ash.Resource.Dsl do
     entities: [
       changes: [
         @change
+      ],
+      arguments: [
+        @action_argument
       ]
     ],
     target: Ash.Resource.Actions.Update,
@@ -293,6 +315,9 @@ defmodule Ash.Resource.Dsl do
     entities: [
       changes: [
         @change
+      ],
+      arguments: [
+        @action_argument
       ]
     ],
     target: Ash.Resource.Actions.Destroy,

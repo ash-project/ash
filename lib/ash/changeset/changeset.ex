@@ -40,6 +40,7 @@ defmodule Ash.Changeset do
     :resource,
     :api,
     :tenant,
+    arguments: %{},
     context: %{},
     after_action: [],
     before_action: [],
@@ -75,10 +76,12 @@ defmodule Ash.Changeset do
   @type t :: %__MODULE__{}
 
   alias Ash.Error.{
+    Changes.InvalidArgument,
     Changes.InvalidAttribute,
     Changes.InvalidRelationship,
     Changes.NoSuchAttribute,
     Changes.NoSuchRelationship,
+    Changes.Required,
     Invalid.NoSuchResource
   }
 
@@ -201,6 +204,31 @@ defmodule Ash.Changeset do
   @spec set_context(t(), map) :: t()
   def set_context(changeset, map) do
     %{changeset | context: Map.merge(changeset.context, map)}
+  end
+
+  @doc false
+  def cast_arguments(changeset, action) do
+    Enum.reduce(action.arguments, %{changeset | arguments: %{}}, fn argument, new_changeset ->
+      value = Map.get(changeset.arguments, argument.name)
+
+      if is_nil(value) && !argument.allow_nil? do
+        Ash.Changeset.add_error(
+          changeset,
+          Required.exception(field: argument.name, type: :argument)
+        )
+      else
+        with {:ok, casted} <- Ash.Type.cast_input(argument.type, value),
+             :ok <- Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
+          %{new_changeset | arguments: Map.put(new_changeset.arguments, argument.name, value)}
+        else
+          _ ->
+            Ash.Changeset.add_error(
+              changeset,
+              InvalidArgument.exception(field: argument.name)
+            )
+        end
+      end
+    end)
   end
 
   @doc """
@@ -484,6 +512,31 @@ defmodule Ash.Changeset do
     else
       change_attribute(changeset, attribute, func.())
     end
+  end
+
+  @doc """
+  Add an argument to the changeset, which will be provided to the action
+  """
+  def set_argument(changeset, argument, value) do
+    %{changeset | arguments: Map.put(changeset.arguments, argument, value)}
+  end
+
+  @doc """
+  Remove an argument from the changeset
+  """
+  def delete_argument(changeset, argument_or_arguments) do
+    argument_or_arguments
+    |> List.wrap()
+    |> Enum.reduce(changeset, fn argument, changeset ->
+      %{changeset | arguments: Map.delete(changeset.arguments, argument)}
+    end)
+  end
+
+  @doc """
+  Merge a map of arguments to the arguments list
+  """
+  def set_arguments(changeset, map) do
+    %{changeset | arguments: Map.merge(changeset.arguments, map)}
   end
 
   @doc """

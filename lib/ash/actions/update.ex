@@ -66,6 +66,7 @@ defmodule Ash.Actions.Update do
     |> Relationships.handle_relationship_changes()
     |> set_defaults()
     |> add_validations()
+    |> Ash.Changeset.cast_arguments(action)
   end
 
   defp run_action_changes(changeset, %{changes: changes}, actor) do

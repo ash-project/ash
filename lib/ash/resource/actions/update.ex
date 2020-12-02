@@ -1,12 +1,13 @@
 defmodule Ash.Resource.Actions.Update do
   @moduledoc "Represents a update action on a resource."
 
-  defstruct [:name, :primary?, :accept, :changes, :description, type: :update]
+  defstruct [:name, :primary?, :accept, :changes, :arguments, :description, type: :update]
 
   @type t :: %__MODULE__{
           type: :update,
           name: atom,
           accept: [atom],
+          arguments: [Ash.Resource.Actions.Argument.t()],
           primary?: boolean,
           description: String.t()
         }
