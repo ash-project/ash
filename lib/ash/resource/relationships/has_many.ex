@@ -9,6 +9,7 @@ defmodule Ash.Resource.Relationships.HasMany do
     :source,
     :writable?,
     :description,
+    :expected_cardinality,
     cardinality: :many,
     type: :has_many
   ]
@@ -16,6 +17,7 @@ defmodule Ash.Resource.Relationships.HasMany do
   @type t :: %__MODULE__{
           type: :has_many,
           cardinality: :many,
+          expected_cardinality: integer(),
           source: Ash.resource(),
           writable?: boolean,
           name: atom,

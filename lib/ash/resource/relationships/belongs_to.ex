@@ -15,12 +15,14 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :writable?,
     :description,
     cardinality: :one,
+    expected_cardinality: 1,
     type: :belongs_to
   ]
 
   @type t :: %__MODULE__{
           type: :belongs_to,
           cardinality: :one,
+          expected_cardinality: integer,
           writable?: boolean,
           name: atom,
           source: Ash.resource(),

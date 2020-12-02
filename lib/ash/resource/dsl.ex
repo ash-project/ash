@@ -555,6 +555,19 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
+  @complexity %Ash.Dsl.Section{
+    name: :complexity,
+    describe: """
+    Custom rules on the number of entries to be included for side loads, filters, or caching
+    """,
+    schema: [
+      max: [
+        type: :integer,
+        doc: "Maximum number of entries to be included for side loads, filters, or caching"
+      ]
+    ]
+  }
+
   @doc false
   def identity(x), do: x
 
@@ -566,7 +579,8 @@ defmodule Ash.Resource.Dsl do
     @validations,
     @aggregates,
     @calculations,
-    @multitenancy
+    @multitenancy,
+    @complexity
   ]
 
   @transformers [

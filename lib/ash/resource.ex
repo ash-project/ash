@@ -428,6 +428,12 @@ defmodule Ash.Resource do
     |> Enum.find(&(&1.name == name && !&1.private?))
   end
 
+   @doc "Returns the complexity rules of a resource"
+   @spec complexity(Ash.resource()) :: map
+   def complexity(resource) do
+     Extension.get_entities(resource, [:complexity])
+   end
+
   @spec related(Ash.resource(), atom() | String.t() | [atom() | String.t()]) ::
           Ash.resource() | nil
   def related(resource, relationship) when not is_list(relationship) do

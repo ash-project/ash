@@ -14,6 +14,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
     :writable?,
     :private?,
     :description,
+    :expected_cardinality,
     cardinality: :many,
     type: :many_to_many
   ]
@@ -21,6 +22,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
   @type t :: %__MODULE__{
           type: :many_to_many,
           cardinality: :many,
+          expected_cardinality: integer(),
           source: Ash.resource(),
           writable?: boolean,
           private?: boolean,

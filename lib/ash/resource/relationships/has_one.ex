@@ -12,12 +12,14 @@ defmodule Ash.Resource.Relationships.HasOne do
     :writable?,
     :description,
     cardinality: :one,
+    expected_cardinality: 1,
     type: :has_one
   ]
 
   @type t :: %__MODULE__{
           type: :has_one,
           cardinality: :one,
+          expected_cardinality: integer(),
           source: Ash.resource(),
           writable?: boolean,
           name: atom,
