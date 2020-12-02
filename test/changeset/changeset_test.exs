@@ -18,7 +18,10 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       create :default, primary?: true
 
       create :create_with_confirmation do
-        argument :confirm_name, :string
+        argument :confirm_name, :string do
+          allow_nil? false
+        end
+
         change confirm(:name, :confirm_name)
       end
     end
@@ -758,6 +761,14 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         Category
         |> Changeset.new(%{"name" => "foo"})
         |> Changeset.set_argument(:confirm_name, "bar")
+        |> Api.create!(action: :create_with_confirmation)
+      end
+    end
+
+    test "required arguments can't be nil" do
+      assert_raise Ash.Error.Invalid, ~r/argument confirm_name is required/, fn ->
+        Category
+        |> Changeset.new(%{"name" => "foo"})
         |> Api.create!(action: :create_with_confirmation)
       end
     end

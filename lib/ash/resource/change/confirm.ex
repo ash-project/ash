@@ -31,7 +31,11 @@ defmodule Ash.Resource.Change.Confirm do
       Map.get(changeset.arguments, opts[:confirmation]) ||
         Ash.Changeset.get_attribute(changeset, opts[:value])
 
-    if confirmation_value == Ash.Changeset.get_attribute(changeset, opts[:field]) do
+    value =
+      Map.get(changeset.arguments, opts[:field]) ||
+        Ash.Changeset.get_attribute(changeset, opts[:field])
+
+    if confirmation_value == value do
       changeset
     else
       Changeset.add_error(
