@@ -23,7 +23,7 @@ defmodule Ash.Test.Resource.Relationshihps.HasManyTest do
     test "it creates a relationship" do
       defposts do
         relationships do
-          has_many :foo, Foo, destination_field: :post_id
+          has_many :foo, Foo, destination_field: :post_id, expected_cardinality: 100
           has_many :bar, Bar, destination_field: :bazz, private?: true
         end
       end
@@ -36,7 +36,8 @@ defmodule Ash.Test.Resource.Relationshihps.HasManyTest do
                  name: :foo,
                  source_field: :id,
                  type: :has_many,
-                 private?: false
+                 private?: false,
+                 expected_cardinality: 100
                },
                %HasMany{
                  cardinality: :many,
@@ -45,7 +46,9 @@ defmodule Ash.Test.Resource.Relationshihps.HasManyTest do
                  name: :bar,
                  source_field: :id,
                  type: :has_many,
-                 private?: true
+                 private?: true,
+                 # default value is 5
+                 expected_cardinality: 5
                }
              ] = Ash.Resource.relationships(Post)
 

@@ -28,7 +28,8 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
           many_to_many :related_posts, Post,
             through: SomeResource,
             source_field_on_join_table: :post_id,
-            destination_field_on_join_table: :related_post_id
+            destination_field_on_join_table: :related_post_id,
+            expected_cardinality: 100
 
           many_to_many :unrelated_posts, Post,
             through: Tabloid,
@@ -47,6 +48,8 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                  source: ManyToManyTest.Post,
                  source_field: :id,
                  type: :has_many,
+                 # default value is 5
+                 expected_cardinality: 5,
                  private?: true
                },
                %HasMany{
@@ -57,6 +60,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                  source: ManyToManyTest.Post,
                  source_field: :id,
                  type: :has_many,
+                 expected_cardinality: 100,
                  private?: true
                },
                %ManyToMany{
@@ -70,6 +74,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                  source_field_on_join_table: :post_id,
                  through: SomeResource,
                  type: :many_to_many,
+                 expected_cardinality: 100,
                  private?: false
                },
                %ManyToMany{
@@ -83,6 +88,8 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                  source_field_on_join_table: :post_id,
                  through: Tabloid,
                  type: :many_to_many,
+                 # default value is 5
+                 expected_cardinality: 5,
                  private?: true
                }
              ] = Ash.Resource.relationships(Post)

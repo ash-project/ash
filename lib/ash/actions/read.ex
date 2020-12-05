@@ -1,5 +1,6 @@
 defmodule Ash.Actions.Read do
   @moduledoc false
+  alias Ash.Complexity
   alias Ash.Actions.SideLoad
   alias Ash.Engine
   alias Ash.Engine.Request
@@ -36,6 +37,7 @@ defmodule Ash.Actions.Read do
       initial_limit = query.limit
 
       with :ok <- validate_multitenancy(query, opts),
+           :ok <- Complexity.validate_side_load(query),
            %{errors: []} = query <- query_with_initial_data(query, opts),
            %{errors: []} = query <- add_action_filters(query, action, engine_opts[:actor]),
            {:ok, filter_requests} <- filter_requests(query, opts),

@@ -37,7 +37,13 @@ defmodule Ash.Resource.Relationships.HasMany do
                |> OptionsHelpers.set_default!(:source_field, :id)
 
   @opt_schema Ash.OptionsHelpers.merge_schemas(
-                [],
+                [
+                  expected_cardinality: [
+                    type: :integer,
+                    default: 5,
+                    doc: "The expected number of cardinality of the relationship"
+                  ]
+                ],
                 @global_opts,
                 "Relationship Options"
               )

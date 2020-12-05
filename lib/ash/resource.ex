@@ -428,11 +428,11 @@ defmodule Ash.Resource do
     |> Enum.find(&(&1.name == name && !&1.private?))
   end
 
-   @doc "Returns the complexity rules of a resource"
-   @spec complexity(Ash.resource()) :: map
-   def complexity(resource) do
-     Extension.get_entities(resource, [:complexity])
-   end
+  @doc "Returns the complexity rules of a resource"
+  @spec complexity_max(Ash.resource()) :: integer()
+  def complexity_max(resource) do
+    Extension.get_opt(resource, [:complexity], :max, nil)
+  end
 
   @spec related(Ash.resource(), atom() | String.t() | [atom() | String.t()]) ::
           Ash.resource() | nil

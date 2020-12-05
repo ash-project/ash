@@ -24,6 +24,14 @@ defmodule Ash.Test.Actions.ReadTest do
 
     relationships do
       has_many :posts, Ash.Test.Actions.ReadTest.Post, destination_field: :author1_id
+
+      has_many :drafts, Ash.Test.Actions.ReadTest.Post,
+        destination_field: :author2_id,
+        expected_cardinality: 100
+    end
+
+    complexity do
+      max(50)
     end
   end
 
@@ -143,7 +151,12 @@ defmodule Ash.Test.Actions.ReadTest do
         |> new(%{title: "test1", contents: "yeet2"})
         |> Api.create!()
 
-      %{post1: post1, post2: post2}
+      author =
+        Author
+        |> new(%{name: "J. R. R. Tolkien"})
+        |> Api.create!()
+
+      %{post1: post1, post2: post2, author: author}
     end
 
     test "with a limit of 1, returns only 1 record" do
@@ -167,6 +180,20 @@ defmodule Ash.Test.Actions.ReadTest do
                |> Ash.Query.offset(1)
                |> Api.read()
     end
+
+    test "with author's posts side loads" do
+      assert {:ok, [_]} =
+               Author
+               |> Ash.Query.load(:posts)
+               |> Api.read()
+    end
+
+    test "with author's drafts side loads returns errors" do
+      assert {:error, %Ash.Error.SideLoad.ViolatedComplexity{}} =
+               Author
+               |> Ash.Query.load(:drafts)
+               |> Api.read()
+    end
   end
 
   describe "Api.read!/2" do
@@ -181,7 +208,12 @@ defmodule Ash.Test.Actions.ReadTest do
         |> new(%{title: "test1", contents: "yeet2"})
         |> Api.create!()
 
-      %{post1: post1, post2: post2}
+      author =
+        Author
+        |> new(%{name: "J. R. R. Tolkien"})
+        |> Api.create!()
+
+      %{post1: post1, post2: post2, author: author}
     end
 
     test "it returns the records not in a tuple" do

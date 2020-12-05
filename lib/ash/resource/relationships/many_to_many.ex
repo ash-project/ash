@@ -80,6 +80,11 @@ defmodule Ash.Resource.Relationships.ManyToMany do
                     See `Ash.Changeset.append_to_relationship/3` and `Ash.Changeset.replace_relationship/3` for
                     how to edit these fields.
                     """
+                  ],
+                  expected_cardinality: [
+                    type: :integer,
+                    default: 5,
+                    doc: "The expected number of cardinality of the relationship"
                   ]
                 ],
                 @global_opts,
