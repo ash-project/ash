@@ -429,7 +429,7 @@ defmodule Ash.Resource do
   end
 
   @doc "Returns the complexity rules of a resource"
-  @spec complexity_max(Ash.resource()) :: integer()
+  @spec complexity_max(Ash.resource()) :: integer() | nil
   def complexity_max(resource) do
     Extension.get_opt(resource, [:complexity], :max, nil)
   end
