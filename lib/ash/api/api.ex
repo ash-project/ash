@@ -395,6 +395,10 @@ defmodule Ash.Api do
 
       def on_load do
         Extension.load()
+
+        __MODULE__
+        |> Ash.Api.resources()
+        |> Enum.each(&Code.ensure_loaded/1)
       end
 
       use Ash.Api.Interface
