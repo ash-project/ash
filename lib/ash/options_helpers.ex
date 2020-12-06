@@ -24,7 +24,18 @@ defmodule Ash.OptionsHelpers do
   end
 
   defp sanitize_schema(schema) do
-    schema
+    Enum.map(schema, fn {key, opts} ->
+      new_opts =
+        case opts[:type] do
+          {:one_of, values} ->
+            Keyword.put(opts, :type, {:in, values})
+
+          _ ->
+            opts
+        end
+
+      {key, new_opts}
+    end)
   end
 
   def map(value) when is_map(value), do: {:ok, value}
