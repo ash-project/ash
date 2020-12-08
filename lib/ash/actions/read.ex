@@ -341,7 +341,20 @@ defmodule Ash.Actions.Read do
   end
 
   defp paginate(starting_query, action, filter_requests, initial_offset, initial_limit, opts) do
-    page_opts = opts[:page]
+    page_opts =
+      cond do
+        !(action.pagination && action.pagination.default_limit) ->
+          opts[:page]
+
+        Keyword.keyword?(opts[:page]) && !Keyword.has_key?(opts[:page], :limit) ->
+          Keyword.put(opts[:page], :limit, action.pagination.default_limit)
+
+        is_nil(opts[:page]) ->
+          [limit: action.pagination.default_limit]
+
+        true ->
+          opts[:page]
+      end
 
     cond do
       action.pagination == false && page_opts ->
@@ -370,23 +383,11 @@ defmodule Ash.Actions.Read do
                 opts
               )
 
-            {:ok, query, opts[:page], count_request}
+            {:ok, query, page_opts, count_request}
 
           {:error, error} ->
             {:error, error}
         end
-
-      action.pagination.default_limit ->
-        page_opts = Keyword.put(page_opts || [], :limit, action.pagination.default_limit)
-
-        paginate(
-          starting_query,
-          action,
-          filter_requests,
-          initial_offset,
-          initial_limit,
-          Keyword.put(opts, :page, page_opts)
-        )
 
       action.pagination.required? ->
         {:error, LimitRequired.exception([])}
