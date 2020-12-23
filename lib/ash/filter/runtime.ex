@@ -18,7 +18,7 @@ defmodule Ash.Filter.Runtime do
         boolean
 
       {:side_load, side_loads} when not is_nil(api) ->
-        matches?(api, api.side_load!(record, side_loads), filter, dirty_fields)
+        matches?(api, api.load!(record, side_loads), filter, dirty_fields)
 
       {:side_load, _} ->
         false
@@ -45,14 +45,29 @@ defmodule Ash.Filter.Runtime do
         with true <- :erlang.function_exported(op, :match?, 1),
              {:dirty?, false} <- {:dirty?, dirty?([left, right], dirty_fields)},
              {:side_load, []} <- {:side_load, need_to_load([left, right], record)} do
-          right_resolved = resolve_ref(right, record)
+          case right do
+            %Ref{} ->
+              {:ok,
+               right
+               |> resolve_ref(record)
+               |> List.wrap()
+               |> Enum.any?(fn right_resolved ->
+                 left
+                 |> resolve_ref(record)
+                 |> List.wrap()
+                 |> Enum.any?(fn left_resolved ->
+                   op.evaluate(%{operator | left: left_resolved, right: right_resolved})
+                 end)
+               end)}
 
-          {:ok,
-           left
-           |> resolve_ref(record)
-           |> Enum.any?(fn left_resolved ->
-             op.evaluate(%{operator | left: left_resolved, right: right_resolved})
-           end)}
+            _ ->
+              {:ok,
+               left
+               |> resolve_ref(record)
+               |> Enum.any?(fn left_resolved ->
+                 op.evaluate(%{operator | left: left_resolved, right: right})
+               end)}
+          end
         else
           false ->
             :unknown
@@ -128,6 +143,8 @@ defmodule Ash.Filter.Runtime do
   defp resolve_ref(value, _record), do: value
 
   defp dirty?(fields, dirty) do
+    dirty = dirty || []
+
     fields
     |> Enum.filter(&ref?/1)
     |> Enum.filter(&(&1.relationship_path == []))
@@ -140,6 +157,15 @@ defmodule Ash.Filter.Runtime do
     |> Enum.filter(&(&1.relationship_path != []))
     |> Enum.reject(&loaded?(record, &1.relationship_path))
     |> Enum.map(& &1.relationship_path)
+    |> Enum.map(fn path ->
+      path_to_side_load(path)
+    end)
+  end
+
+  defp path_to_side_load([first]), do: first
+
+  defp path_to_side_load([first | rest]) do
+    {first, [path_to_side_load(rest)]}
   end
 
   defp ref?(%Ash.Query.Ref{}), do: true

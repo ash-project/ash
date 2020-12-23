@@ -74,7 +74,7 @@ defmodule Ash.DataLayer.Mnesia do
 
   defmodule Query do
     @moduledoc false
-    defstruct [:resource, :filter, :limit, :sort, relationships: %{}, offset: 0]
+    defstruct [:api, :resource, :filter, :limit, :sort, relationships: %{}, offset: 0]
   end
 
   @impl true
@@ -102,9 +102,10 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, _), do: false
 
   @impl true
-  def resource_to_query(resource) do
+  def resource_to_query(resource, api) do
     %Query{
-      resource: resource
+      resource: resource,
+      api: api
     }
   end
 
@@ -129,7 +130,14 @@ defmodule Ash.DataLayer.Mnesia do
 
   @impl true
   def run_query(
-        %Query{resource: resource, filter: filter, offset: offset, limit: limit, sort: sort},
+        %Query{
+          api: api,
+          resource: resource,
+          filter: filter,
+          offset: offset,
+          limit: limit,
+          sort: sort
+        },
         _resource
       ) do
     records =
@@ -163,7 +171,7 @@ defmodule Ash.DataLayer.Mnesia do
 
         offset_records =
           structified_records
-          |> Enum.filter(&Ash.Filter.Runtime.matches?(nil, &1, filter))
+          |> Enum.filter(&Ash.Filter.Runtime.matches?(api, &1, filter))
           |> Sort.runtime_sort(sort)
           |> Enum.drop(offset || 0)
 

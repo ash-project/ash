@@ -42,7 +42,7 @@ defmodule Ash.DataLayer.Ets do
 
   defmodule Query do
     @moduledoc false
-    defstruct [:resource, :filter, :limit, :sort, :tenant, relationships: %{}, offset: 0]
+    defstruct [:resource, :filter, :limit, :sort, :tenant, :api, relationships: %{}, offset: 0]
   end
 
   @impl true
@@ -75,9 +75,10 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, _), do: false
 
   @impl true
-  def resource_to_query(resource) do
+  def resource_to_query(resource, api) do
     %Query{
-      resource: resource
+      resource: resource,
+      api: api
     }
   end
 
@@ -103,14 +104,14 @@ defmodule Ash.DataLayer.Ets do
   end
 
   @impl true
-  def run_aggregate_query(query, aggregates, resource) do
+  def run_aggregate_query(%{api: api} = query, aggregates, resource) do
     case run_query(query, resource) do
       {:ok, results} ->
         Enum.reduce_while(aggregates, {:ok, %{}}, fn
           %{kind: :count, name: name, query: query}, {:ok, acc} ->
             value =
               results
-              |> filter_matches(Map.get(query || %{}, :filter))
+              |> filter_matches(Map.get(query || %{}, :filter), api)
               |> Enum.count()
 
             {:cont, {:ok, Map.put(acc, name, value)}}
@@ -129,12 +130,13 @@ defmodule Ash.DataLayer.Ets do
           offset: offset,
           limit: limit,
           sort: sort,
-          tenant: tenant
+          tenant: tenant,
+          api: api
         },
         _resource
       ) do
     with {:ok, records} <- get_records(resource, tenant),
-         filtered_records <- filter_matches(records, filter) do
+         filtered_records <- filter_matches(records, filter, api) do
       offset_records =
         filtered_records
         |> Sort.runtime_sort(sort)
@@ -160,10 +162,10 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  defp filter_matches(records, nil), do: records
+  defp filter_matches(records, nil, _api), do: records
 
-  defp filter_matches(records, filter) do
-    Enum.filter(records, &Ash.Filter.Runtime.matches?(nil, &1, filter))
+  defp filter_matches(records, filter, api) do
+    Enum.filter(records, &Ash.Filter.Runtime.matches?(api, &1, filter))
   end
 
   @impl true

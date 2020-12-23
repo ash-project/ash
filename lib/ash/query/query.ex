@@ -855,9 +855,9 @@ defmodule Ash.Query do
   end
 
   @doc "Return the underlying data layer query for an ash query"
-  def data_layer_query(%{resource: resource} = ash_query, opts \\ []) do
+  def data_layer_query(%{resource: resource, api: api} = ash_query, opts \\ []) do
     if Ash.Resource.data_layer_can?(resource, :read) do
-      query = Ash.DataLayer.resource_to_query(resource)
+      query = Ash.DataLayer.resource_to_query(resource, api)
 
       filter_aggregates =
         if ash_query.filter do

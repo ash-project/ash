@@ -69,11 +69,11 @@ defmodule Ash.DataLayer.EtsTest do
   end
 
   test "resource_to_query" do
-    assert %Query{resource: EtsTestUser} = EtsDataLayer.resource_to_query(EtsTestUser)
+    assert %Query{resource: EtsTestUser} = EtsDataLayer.resource_to_query(EtsTestUser, nil)
   end
 
   test "limit, offset, filter, sort" do
-    query = EtsDataLayer.resource_to_query(EtsTestUser)
+    query = EtsDataLayer.resource_to_query(EtsTestUser, nil)
     assert {:ok, %Query{limit: 3}} = EtsDataLayer.limit(query, 3, :foo)
     assert {:ok, %Query{offset: 10}} = EtsDataLayer.offset(query, 10, :foo)
     assert {:ok, %Query{filter: :all}} = EtsDataLayer.filter(query, :all, :foo)
