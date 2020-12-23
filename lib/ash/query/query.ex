@@ -208,12 +208,14 @@ defmodule Ash.Query do
 
   defp do_expr(other), do: other
 
-  defp do_ref({_, _, list}, _right) when is_list(list) do
-    :error
+  defp do_ref({left, _, nil}, right) do
+    %Ash.Query.Ref{relationship_path: [left], attribute: right}
   end
 
-  defp do_ref({left, _, _}, right) when is_atom(left) and is_atom(right) do
-    %Ash.Query.Ref{relationship_path: [left], attribute: right}
+  # {{:., [line: 2], [{:foo, [line: 2], nil}, :bar]}, [no_parens: true, line: 2], []}
+
+  defp do_ref({{:., _, [_, _]} = left, _, _}, right) do
+    do_ref(left, right)
   end
 
   defp do_ref({:., _, [left, right]}, far_right) do
@@ -224,6 +226,10 @@ defmodule Ash.Query do
       :error ->
         :error
     end
+  end
+
+  defp do_ref({left, _, _}, right) when is_atom(left) and is_atom(right) do
+    %Ash.Query.Ref{relationship_path: [left], attribute: right}
   end
 
   defp do_ref(_left, _right) do

@@ -590,30 +590,26 @@ defmodule Ash.Actions.Relationships do
     end
   end
 
-  defp relate_has_many(changeset, relationship, %{add: add, current: current}, pkey)
+  defp relate_has_many(changeset, relationship, %{add: add, current: _current}, _pkey)
        when is_list(add) do
     Enum.reduce(add, changeset, fn to_relate_record, changeset ->
-      if any_pkey_matches?(current, to_relate_record, pkey) do
-        changeset
-      else
-        Changeset.after_action(changeset, fn changeset, record ->
-          to_relate_record
-          |> Ash.Changeset.new()
-          |> Ash.Changeset.force_change_attribute(
-            relationship.destination_field,
-            Map.get(record, relationship.source_field)
-          )
-          |> Ash.Changeset.set_tenant(changeset.tenant)
-          |> changeset.api.update(return_notifications?: true)
-          |> case do
-            {:ok, related, notifications} ->
-              {:ok, add_to_set_relationship(record, relationship.name, related), notifications}
+      Changeset.after_action(changeset, fn changeset, record ->
+        to_relate_record
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.force_change_attribute(
+          relationship.destination_field,
+          Map.get(record, relationship.source_field)
+        )
+        |> Ash.Changeset.set_tenant(changeset.tenant)
+        |> changeset.api.update(return_notifications?: true)
+        |> case do
+          {:ok, related, notifications} ->
+            {:ok, add_to_set_relationship(record, relationship.name, related), notifications}
 
-            {:error, error} ->
-              {:error, error}
-          end
-        end)
-      end
+          {:error, error} ->
+            {:error, error}
+        end
+      end)
     end)
   end
 
@@ -621,27 +617,23 @@ defmodule Ash.Actions.Relationships do
     changeset
   end
 
-  defp remove_has_many(changeset, relationship, %{current: current, remove: remove}, pkey) do
+  defp remove_has_many(changeset, relationship, %{current: _current, remove: remove}, pkey) do
     Enum.reduce(remove, changeset, fn to_relate_record, changeset ->
-      if any_pkey_matches?(current, to_relate_record, pkey) do
-        Changeset.after_action(changeset, fn changeset, record ->
-          to_relate_record
-          |> Ash.Changeset.new()
-          |> Ash.Changeset.force_change_attribute(relationship.destination_field, nil)
-          |> Ash.Changeset.set_tenant(changeset.tenant)
-          |> changeset.api.update(return_notifications?: true)
-          |> case do
-            {:ok, related, notifications} ->
-              {:ok, remove_from_set_relationship(record, relationship.name, related, pkey),
-               notifications}
+      Changeset.after_action(changeset, fn changeset, record ->
+        to_relate_record
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.force_change_attribute(relationship.destination_field, nil)
+        |> Ash.Changeset.set_tenant(changeset.tenant)
+        |> changeset.api.update(return_notifications?: true)
+        |> case do
+          {:ok, related, notifications} ->
+            {:ok, remove_from_set_relationship(record, relationship.name, related, pkey),
+             notifications}
 
-            {:error, error} ->
-              {:error, error}
-          end
-        end)
-      else
-        changeset
-      end
+          {:error, error} ->
+            {:error, error}
+        end
+      end)
     end)
   end
 

@@ -354,7 +354,6 @@ defmodule Ash.Changeset do
 
           {:error, error} ->
             add_error(changeset, error)
-            nil
         end
     end
   end
@@ -624,6 +623,9 @@ defmodule Ash.Changeset do
           )
 
         add_error(changeset, error)
+
+      attribute when is_nil(value) ->
+        %{changeset | attributes: Map.put(changeset.attributes, attribute.name, nil)}
 
       attribute ->
         with {:ok, casted} <- Ash.Type.cast_input(attribute.type, value),

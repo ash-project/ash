@@ -119,7 +119,12 @@ defmodule Ash.Actions.Read do
   defp to_page(data, action, count, sort, original_query, opts) do
     page_opts = opts[:page]
 
-    {data, rest} = Enum.split(data, opts[:page][:limit])
+    {data, rest} =
+      if opts[:page][:limit] do
+        Enum.split(data, opts[:page][:limit])
+      else
+        {data, []}
+      end
 
     more? = not Enum.empty?(rest)
 
@@ -340,21 +345,24 @@ defmodule Ash.Actions.Read do
     end
   end
 
+  defp page_opts(action, opts) do
+    cond do
+      !(action.pagination && action.pagination.default_limit) ->
+        opts[:page]
+
+      Keyword.keyword?(opts[:page]) && !Keyword.has_key?(opts[:page], :limit) ->
+        Keyword.put(opts[:page], :limit, action.pagination.default_limit)
+
+      is_nil(opts[:page]) ->
+        [limit: action.pagination.default_limit]
+
+      true ->
+        opts[:page]
+    end
+  end
+
   defp paginate(starting_query, action, filter_requests, initial_offset, initial_limit, opts) do
-    page_opts =
-      cond do
-        !(action.pagination && action.pagination.default_limit) ->
-          opts[:page]
-
-        Keyword.keyword?(opts[:page]) && !Keyword.has_key?(opts[:page], :limit) ->
-          Keyword.put(opts[:page], :limit, action.pagination.default_limit)
-
-        is_nil(opts[:page]) ->
-          [limit: action.pagination.default_limit]
-
-        true ->
-          opts[:page]
-      end
+    page_opts = page_opts(action, opts)
 
     cond do
       action.pagination == false && page_opts ->

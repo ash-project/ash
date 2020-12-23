@@ -18,7 +18,8 @@ defmodule Ash.Actions.Update do
     resource = changeset.resource
 
     with :ok <- validate_multitenancy(changeset),
-         %{valid?: true} = changeset <- changeset(changeset, api, action, opts[:actor]),
+         %{valid?: true} = changeset <-
+           changeset(changeset, api, action, opts[:actor]),
          %{data: %{commit: %^resource{} = updated}, errors: []} = engine_result <-
            do_run_requests(
              changeset,
@@ -59,7 +60,7 @@ defmodule Ash.Actions.Update do
   end
 
   defp changeset(changeset, api, action, actor) do
-    %{changeset | api: api}
+    %{changeset | api: api, action_type: :update}
     |> validate_attributes_accepted(action)
     |> validate_relationships_accepted(action)
     |> run_action_changes(action, actor)

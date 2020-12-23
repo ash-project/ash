@@ -126,17 +126,21 @@ defmodule Ash.Engine do
       Process.flag(:trap_exit, true)
 
       {:ok, pid} = GenServer.start(__MODULE__, opts)
-      _ = Process.monitor(pid)
+      ref = Process.monitor(pid)
 
-      receive do
-        {:pid_info, pid_info} ->
-          run_and_return_or_rollback(
-            local_requests,
-            opts,
-            innermost_resource,
-            pid,
-            pid_info
-          )
+      try do
+        receive do
+          {:pid_info, pid_info} ->
+            run_and_return_or_rollback(
+              local_requests,
+              opts,
+              innermost_resource,
+              pid,
+              pid_info
+            )
+        end
+      after
+        Process.demonitor(ref, [:flush])
       end
     end
   end

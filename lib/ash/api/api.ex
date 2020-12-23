@@ -50,7 +50,6 @@ defmodule Ash.Api do
     ],
     authorize?: [
       type: :boolean,
-      default: false,
       doc:
         "If an actor is provided, authorization happens automatically. If not, this flag can be used to authorize with no user."
     ],
@@ -623,7 +622,11 @@ defmodule Ash.Api do
       end
 
     if request == :last && !count do
-      case read(api, Ash.Query.reverse(query), Keyword.put(opts, :page, page_opts)) do
+      case read(
+             api,
+             Ash.Query.reverse(query),
+             Keyword.put(opts, :page, page_opts)
+           ) do
         {:ok, page} ->
           {:ok, Map.update!(page, :results, &Enum.reverse/1)}
 
@@ -714,6 +717,7 @@ defmodule Ash.Api do
     api
     |> load(List.wrap(data), query, opts)
     |> case do
+      {:ok, %{results: [data]}} -> {:ok, data}
       {:ok, [data]} -> {:ok, data}
       {:error, error} -> {:error, error}
     end
