@@ -13,6 +13,10 @@ defmodule Ash.Query.Operator.NotEq do
     Ash.Query.Operator.new(Ash.Query.Operator.IsNil, ref, false)
   end
 
+  def new(%Ref{} = left, %Ref{} = right) do
+    {:ok, left, right}
+  end
+
   def new(%Ref{attribute: %{type: type}} = left, right) do
     case Ash.Type.cast_input(type, right) do
       {:ok, casted} ->
