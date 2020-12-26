@@ -169,6 +169,26 @@ defmodule Ash.Test.Actions.CreateTest do
     end
   end
 
+  defmodule GeneratedPkey do
+    use Ash.Resource,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      read(:default)
+
+      create(:default)
+      update(:default)
+    end
+
+    attributes do
+      integer_primary_key :id
+    end
+  end
+
   defmodule Api do
     @moduledoc false
     use Ash.Api
@@ -179,6 +199,7 @@ defmodule Ash.Test.Actions.CreateTest do
       resource(Profile)
       resource(PostLink)
       resource(Authorized)
+      resource(GeneratedPkey)
     end
   end
 
@@ -216,6 +237,13 @@ defmodule Ash.Test.Actions.CreateTest do
                  }
                ]
              } = err
+    end
+
+    test "generated fields are not required" do
+      assert %GeneratedPkey{} =
+               GeneratedPkey
+               |> new()
+               |> Api.create!()
     end
 
     test "constant default values are set properly" do

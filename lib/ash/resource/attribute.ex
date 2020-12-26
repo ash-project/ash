@@ -104,14 +104,14 @@ defmodule Ash.Resource.Attribute do
                            |> OptionsHelpers.set_default!(:default, &Ash.uuid/0)
                            |> OptionsHelpers.set_default!(:primary_key?, true)
                            |> OptionsHelpers.set_default!(:type, Ash.Type.UUID)
-                           |> OptionsHelpers.set_default!(:allow_nil?, false)
+                           |> OptionsHelpers.set_default!(:allow_nil?, true)
 
   @integer_primary_key_schema @schema
                               |> OptionsHelpers.set_default!(:writable?, false)
                               |> OptionsHelpers.set_default!(:primary_key?, true)
                               |> OptionsHelpers.set_default!(:generated?, true)
                               |> OptionsHelpers.set_default!(:type, Ash.Type.Integer)
-                              |> OptionsHelpers.set_default!(:allow_nil?, false)
+                              |> OptionsHelpers.set_default!(:allow_nil?, true)
 
   def transform(%{constraints: []} = attribute), do: {:ok, attribute}
 
