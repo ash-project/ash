@@ -1,15 +1,4 @@
 defmodule Ash.Resource.Dsl do
-  @moduledoc """
-  The built in resource DSL. The core DSL components of a resource are:
-
-  * attributes - `attributes/1`
-  * relationships - `relationships/1`
-  * actions - `actions/1`
-  * validations - `validations/1`
-  * aggregates - `aggregates/1`
-  * calculations - `calculations/1`
-  """
-
   @attribute %Ash.Dsl.Entity{
     name: :attribute,
     describe: """
@@ -580,6 +569,15 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.CountableActions,
     Ash.Resource.Transformers.ValidateMultitenancy
   ]
+
+  @moduledoc """
+  The built in resource DSL. The core DSL components of a resource are:
+
+  # Table of Contents
+  #{Ash.Dsl.Extension.doc_index(@sections)}
+
+  #{Ash.Dsl.Extension.doc(@sections)}
+  """
 
   use Ash.Dsl.Extension,
     sections: @sections,

@@ -90,10 +90,8 @@ defmodule Ash.MixProject do
           Ash.Dsl.Section,
           Ash.Dsl.Transformer
         ],
-        "resource dsl": ~r/Ash.Resource.Dsl/,
         "resource dsl transformers": ~r/Ash.Resource.Transformers/,
         "api dsl transformers": ~r/Ash.Api.Transformers/,
-        "api dsl": ~r/Ash.Api.Dsl/,
         "filter operators": ~r/Ash.Query.Operator/,
         "filter functions": ~r/Ash.Query.Function/,
         "query expressions": [

@@ -139,6 +139,178 @@ defmodule Ash.Dsl.Extension do
     end
   end
 
+  @doc """
+  Generate a table of contents for a list of sections
+  """
+  def doc_index(sections, depth \\ 0) do
+    sections
+    |> Enum.flat_map(fn
+      {_, entities} ->
+        entities
+
+      other ->
+        [other]
+    end)
+    |> Enum.map_join("\n", fn
+      section ->
+        docs =
+          if depth == 0 do
+            String.duplicate(" ", depth) <>
+              "* [#{section.name}](##{link_name(section.name)})"
+          else
+            String.duplicate(" ", depth) <> "* #{section.name}"
+          end
+
+        case List.wrap(section.entities) ++ List.wrap(Map.get(section, :sections)) do
+          [] ->
+            docs
+
+          sections_and_entities ->
+            docs <> "\n" <> doc_index(sections_and_entities, depth + 2)
+        end
+    end)
+  end
+
+  @doc """
+  Generate documentation for a list of sections
+  """
+  def doc(sections, depth \\ 1) do
+    Enum.map_join(sections, "\n\n", fn section ->
+      String.duplicate("#", depth) <>
+        " " <>
+        to_string(section.name) <> "\n\n" <> doc_section(section, depth)
+    end)
+  end
+
+  defp doc_section(section, depth) do
+    sections_and_entities = List.wrap(section.entities) ++ List.wrap(section.sections)
+
+    table_of_contents =
+      case sections_and_entities do
+        [] ->
+          ""
+
+        sections_and_entities ->
+          doc_index(sections_and_entities)
+      end
+
+    options = NimbleOptions.docs(section.schema)
+
+    entities =
+      Enum.map_join(section.entities, "\n\n", fn entity ->
+        String.duplicate("#", depth + 1) <>
+          " " <>
+          to_string(entity.name) <>
+          "\n\n" <>
+          doc_entity(entity, depth + 1)
+      end)
+
+    sections =
+      Enum.map_join(section.sections, "\n\n", fn section ->
+        String.duplicate("#", depth + 1) <>
+          " " <>
+          to_string(section.name) <>
+          "\n\n" <>
+          doc_section(section, depth + 1)
+      end)
+
+    imports =
+      case section.imports do
+        [] ->
+          ""
+
+        mods ->
+          "Imports:\n\n" <>
+            Enum.map_join(mods, "\n", fn mod ->
+              "* `#{inspect(mod)}`"
+            end)
+      end
+
+    """
+    #{section.describe}
+
+    #{table_of_contents}
+
+    #{imports}
+
+    #{options}
+
+    #{entities}
+
+    #{sections}
+    """
+  end
+
+  defp doc_entity(entity, depth) do
+    options = NimbleOptions.docs(entity.schema)
+
+    examples =
+      case entity.examples do
+        [] ->
+          ""
+
+        examples ->
+          "Examples:\n" <>
+            Enum.map_join(examples, fn example ->
+              """
+              ```
+              #{example}
+              ```
+              """
+            end)
+      end
+
+    entities =
+      Enum.flat_map(entity.entities, fn
+        {_, entities} ->
+          entities
+
+        other ->
+          [other]
+      end)
+
+    entities_doc =
+      Enum.map_join(entities, "\n\n", fn entity ->
+        String.duplicate("#", depth + 1) <>
+          " " <>
+          to_string(entity.name) <>
+          "\n\n" <>
+          doc_entity(entity, depth + 1)
+      end)
+
+    table_of_contents =
+      case entities do
+        [] ->
+          ""
+
+        entities ->
+          doc_index(entities)
+      end
+
+    """
+    #{entity.describe}
+
+    #{table_of_contents}
+
+    Introspection Target:
+
+    `#{inspect(entity.target)}`
+
+    #{examples}
+
+    #{options}
+
+    #{entities_doc}
+    """
+  end
+
+  defp link_name(name) do
+    name
+    |> to_string()
+    |> String.split("_")
+    |> Enum.join("-")
+  end
+
   def get_opt_config(resource, path, value) do
     with {:ok, config} <- Application.fetch_env(:ash, resource),
          {:ok, value} <-
@@ -362,24 +534,25 @@ defmodule Ash.Dsl.Extension do
       alias Ash.Dsl.Extension
 
       for section <- sections do
-        Extension.build_section(extension, section)
+        Extension.build_section(extension, section, true)
       end
     end
   end
 
   @doc false
-  defmacro build_section(extension, section, path \\ []) do
-    quote bind_quoted: [section: section, path: path, extension: extension] do
+  defmacro build_section(extension, section, doc?, path \\ []) do
+    quote bind_quoted: [section: section, path: path, extension: extension, doc?: doc?] do
       alias Ash.Dsl
 
       {section_modules, entity_modules, opts_module} =
         Dsl.Extension.do_build_section(__MODULE__, extension, section, path)
 
-      @doc Dsl.Section.describe(__MODULE__, section)
+      @doc false
 
       # This macro argument is only called `body` so that it looks nicer
       # in the DSL docs
 
+      @doc false
       defmacro unquote(section.name)(body) do
         opts_module = unquote(opts_module)
         section_path = unquote(path ++ [section.name])
@@ -515,13 +688,14 @@ defmodule Ash.Dsl.Extension do
         {:module, module, _, _} =
           defmodule mod_name do
             alias Ash.Dsl
-            @moduledoc Dsl.Section.describe(__MODULE__, nested_section)
+            @moduledoc false
 
             require Dsl.Extension
 
             Dsl.Extension.build_section(
               extension,
               nested_section,
+              false,
               path ++ [section.name]
             )
           end
@@ -639,7 +813,7 @@ defmodule Ash.Dsl.Extension do
               nested_entity_mods: Macro.escape(nested_entity_mods),
               nested_entity_path: Macro.escape(nested_entity_path)
             ] do
-        @doc Ash.Dsl.Entity.describe(entity)
+        @moduledoc false
         defmacro unquote(entity.name)(unquote_splicing(args), opts \\ []) do
           section_path = unquote(Macro.escape(section_path))
           entity_schema = unquote(Macro.escape(entity.schema))

@@ -1,11 +1,4 @@
 defmodule Ash.Api.Dsl do
-  @moduledoc """
-  A small DSL for declaring APIs
-
-  Apis are the entrypoints for working with your resources.
-
-  * resources - `resources/1`
-  """
   @resource %Ash.Dsl.Entity{
     name: :resource,
     describe: "A reference to a resource",
@@ -38,5 +31,18 @@ defmodule Ash.Api.Dsl do
     Ash.Api.Transformers.ValidateManyToManyJoinAttributes
   ]
 
-  use Ash.Dsl.Extension, sections: [@resources], transformers: @transformers
+  @sections [@resources]
+
+  @moduledoc """
+  A small DSL for declaring APIs
+
+  Apis are the entrypoints for working with your resources.
+
+  # Table of Contents
+  #{Ash.Dsl.Extension.doc_index(@sections)}
+
+  #{Ash.Dsl.Extension.doc(@sections)}
+  """
+
+  use Ash.Dsl.Extension, sections: @sections, transformers: @transformers
 end

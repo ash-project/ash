@@ -167,6 +167,12 @@ defmodule Ash.Changeset do
     end
   end
 
+  @doc "Gets the value of an argument provided to the changeset"
+  @spec get_argument(t, atom) :: term
+  def get_argument(changeset, argument) when is_atom(argument) do
+    Map.get(changeset.arguments, argument) || Map.get(changeset.arguments, to_string(argument))
+  end
+
   @doc "Gets the changing value or the original value of an attribute"
   @spec get_attribute(t, atom) :: term
   def get_attribute(changeset, attribute) do
@@ -209,9 +215,7 @@ defmodule Ash.Changeset do
   @doc false
   def cast_arguments(changeset, action) do
     Enum.reduce(action.arguments, %{changeset | arguments: %{}}, fn argument, new_changeset ->
-      value =
-        Map.get(changeset.arguments, argument.name) ||
-          Map.get(changeset.arguments, to_string(argument.name))
+      value = get_argument(changeset, argument.name)
 
       if is_nil(value) && !argument.allow_nil? do
         Ash.Changeset.add_error(

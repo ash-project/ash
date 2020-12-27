@@ -41,7 +41,7 @@ calculations do
 end
 ```
 
-See the documentation for the calculations section in `Ash.Resource.Dsl.calculations/1` for more information.
+See the documentation for the calculations section in `Ash.Resource.Dsl` for more information.
 
 The calculations declared on a resource allow for declaring a set of named calculations that can be used by extensions.
 They can also be loaded in the query using `Ash.Query.load/2`, or after the fact using `c:Ash.Api.load/3`. Calculations declared on the resource will be keys in the resource's struct.

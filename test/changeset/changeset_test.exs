@@ -756,6 +756,13 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       |> Api.create!(action: :create_with_confirmation)
     end
 
+    test "arguments can be provided as strings" do
+      Category
+      |> Changeset.new(%{"name" => "foo"})
+      |> Changeset.set_argument("confirm_name", "foo")
+      |> Api.create!(action: :create_with_confirmation)
+    end
+
     test "arguments can be used in invalid changes" do
       assert_raise Ash.Error.Invalid, ~r/Value did not match confirmation/, fn ->
         Category

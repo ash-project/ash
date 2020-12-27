@@ -28,11 +28,11 @@ defmodule Ash.Resource.Change.Confirm do
 
   def change(changeset, opts, _) do
     confirmation_value =
-      Map.get(changeset.arguments, opts[:confirmation]) ||
+      Ash.Changeset.get_argument(changeset, opts[:confirmation]) ||
         Ash.Changeset.get_attribute(changeset, opts[:value])
 
     value =
-      Map.get(changeset.arguments, opts[:field]) ||
+      Ash.Changeset.get_argument(changeset, opts[:field]) ||
         Ash.Changeset.get_attribute(changeset, opts[:field])
 
     if confirmation_value == value do
