@@ -751,8 +751,6 @@ defmodule Ash.Resource.Dsl do
   @moduledoc """
   The built in resource DSL. The core DSL components of a resource are:
 
-  ## Blocks vs. Keyword Lists
-
   # Table of Contents
   #{Ash.Dsl.Extension.doc_index(@sections)}
 
