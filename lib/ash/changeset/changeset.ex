@@ -209,7 +209,9 @@ defmodule Ash.Changeset do
   @doc false
   def cast_arguments(changeset, action) do
     Enum.reduce(action.arguments, %{changeset | arguments: %{}}, fn argument, new_changeset ->
-      value = Map.get(changeset.arguments, argument.name)
+      value =
+        Map.get(changeset.arguments, argument.name) ||
+          Map.get(changeset.arguments, to_string(argument.name))
 
       if is_nil(value) && !argument.allow_nil? do
         Ash.Changeset.add_error(
