@@ -24,6 +24,14 @@ defmodule Ash.DataLayer.Ets do
     describe: """
     A section for configuring the ets data layer
     """,
+    examples: [
+      """
+      ets do
+        # Used in testing
+        private? true
+      end
+      """
+    ],
     schema: [
       private?: [
         type: :boolean,

@@ -19,6 +19,15 @@ defmodule Ash.Api.Dsl do
   @resources %Ash.Dsl.Section{
     name: :resources,
     describe: "List the resources present in this API",
+    examples: [
+      """
+      resources do
+        resource MyApp.User
+        resource MyApp.Post
+        resource MyApp.Comment
+      end
+      """
+    ],
     entities: [
       @resource
     ]

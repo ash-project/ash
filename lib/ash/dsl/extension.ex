@@ -155,10 +155,10 @@ defmodule Ash.Dsl.Extension do
       section ->
         docs =
           if depth == 0 do
-            String.duplicate(" ", depth) <>
-              "* [#{section.name}](##{link_name(section.name)})"
+            String.duplicate(" ", depth + 1) <>
+              "* [#{section.name}](#module-#{link_name(section.name)})"
           else
-            String.duplicate(" ", depth) <> "* #{section.name}"
+            String.duplicate(" ", depth + 1) <> "* #{section.name}"
           end
 
         case List.wrap(section.entities) ++ List.wrap(Map.get(section, :sections)) do
@@ -176,7 +176,7 @@ defmodule Ash.Dsl.Extension do
   """
   def doc(sections, depth \\ 1) do
     Enum.map_join(sections, "\n\n", fn section ->
-      String.duplicate("#", depth) <>
+      String.duplicate("#", depth + 1) <>
         " " <>
         to_string(section.name) <> "\n\n" <> doc_section(section, depth)
     end)
@@ -196,18 +196,34 @@ defmodule Ash.Dsl.Extension do
 
     options = NimbleOptions.docs(section.schema)
 
+    examples =
+      case section.examples do
+        [] ->
+          ""
+
+        examples ->
+          "Examples:\n" <>
+            Enum.map_join(examples, fn example ->
+              """
+              ```
+              #{example}
+              ```
+              """
+            end)
+      end
+
     entities =
       Enum.map_join(section.entities, "\n\n", fn entity ->
-        String.duplicate("#", depth + 1) <>
+        String.duplicate("#", depth + 2) <>
           " " <>
           to_string(entity.name) <>
           "\n\n" <>
-          doc_entity(entity, depth + 1)
+          doc_entity(entity, depth + 2)
       end)
 
     sections =
       Enum.map_join(section.sections, "\n\n", fn section ->
-        String.duplicate("#", depth + 1) <>
+        String.duplicate("#", depth + 2) <>
           " " <>
           to_string(section.name) <>
           "\n\n" <>
@@ -230,6 +246,8 @@ defmodule Ash.Dsl.Extension do
     #{section.describe}
 
     #{table_of_contents}
+
+    #{examples}
 
     #{imports}
 
@@ -271,7 +289,7 @@ defmodule Ash.Dsl.Extension do
 
     entities_doc =
       Enum.map_join(entities, "\n\n", fn entity ->
-        String.duplicate("#", depth + 1) <>
+        String.duplicate("#", depth + 2) <>
           " " <>
           to_string(entity.name) <>
           "\n\n" <>

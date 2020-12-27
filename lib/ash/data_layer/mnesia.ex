@@ -56,6 +56,13 @@ defmodule Ash.DataLayer.Mnesia do
     describe: """
     A section for configuring the mnesia data layer
     """,
+    examples: [
+      """
+      mnesia do
+        table :custom_table
+      end
+      """
+    ],
     schema: [
       table: [
         type: :atom,

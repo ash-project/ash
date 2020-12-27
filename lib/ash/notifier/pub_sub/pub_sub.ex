@@ -32,7 +32,11 @@ defmodule Ash.Notifier.PubSub do
     """,
     examples: [
       "publish :create, \"created\"",
-      "publish :assign, \"assigned\", type: :create"
+      """
+      publish :assign, "assigned" do
+        type :create
+      end
+      """
     ],
     schema: Ash.Notifier.PubSub.Publication.schema(),
     args: [:action, :topic]
@@ -57,6 +61,18 @@ defmodule Ash.Notifier.PubSub do
     describe: """
     A section for configuring how resource actions are published over pubsub
     """,
+    examples: [
+      """
+      pub_sub do
+        module MyEndpoint
+        prefix "post"
+
+        publish :destroy, ["foo", :id]
+        publish :default, ["foo", :id], type: :update
+        publish :default, ["bar", :name], type: :update, event: "name_change"
+      end
+      """
+    ],
     entities: [
       @publish,
       @publish_all

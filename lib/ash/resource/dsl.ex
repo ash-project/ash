@@ -8,7 +8,11 @@ defmodule Ash.Resource.Dsl do
     implementing the `Ash.Type` behaviour.
     """,
     examples: [
-      "attribute :first_name, :string, primary_key?: true"
+      """
+      attribute :first_name, :string
+        primary_key? true
+      end
+      """
     ],
     transform: {Ash.Resource.Attribute, :transform, []},
     target: Ash.Resource.Attribute,
@@ -80,6 +84,38 @@ defmodule Ash.Resource.Dsl do
     Attributes are fields on an instance of a resource. The two required
     pieces of knowledge are the field name, and the type.
     """,
+    examples: [
+      """
+      attributes do
+        uuid_primary_key :id
+
+        attribute :first_name, :string do
+          allow_nil? false
+        end
+
+        attribute :last_name, :string do
+          allow_nil? false
+        end
+
+        attribute :email, :string do
+          allow_nil? false
+
+          constraints [
+            match: ~r/^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/
+          ]
+        end
+
+        attribute :type, :atom do
+          constraints [
+            one_of: [:admin, :teacher, :student]
+          ]
+        end
+
+        create_timestamp :created_at
+        update_timestamp :updated_at
+      end
+      """
+    ],
     entities: [
       @attribute,
       @create_timestamp,
@@ -99,9 +135,10 @@ defmodule Ash.Resource.Dsl do
     examples: [
       """
       # In a resource called `Word`
-      has_one :dictionary_entry, DictionaryEntry,
-        source_field: :text,
-        destination_field: :word_text
+      has_one :dictionary_entry, DictionaryEntry do
+        source_field :text
+        destination_field :word_text
+      end
       """
     ],
     modules: [:destination],
@@ -118,9 +155,10 @@ defmodule Ash.Resource.Dsl do
     examples: [
       """
       # In a resource called `Word`
-      has_many :definitions, DictionaryDefinition,
-        source_field: :text,
-        destination_field: :word_text
+      has_many :definitions, DictionaryDefinition do
+        source_field :text
+        destination_field :word_text
+      end
       """
     ],
     target: Ash.Resource.Relationships.HasMany,
@@ -139,12 +177,13 @@ defmodule Ash.Resource.Dsl do
     examples: [
       """
       # In a resource called `Word`
-      many_to_many :books, Book,
-        through: BookWord,
-        source_field: :text,
-        source_field_on_join_table: :word_text,
-        destination_field: :id,
+      many_to_many :books, Book do
+        through BookWord
+        source_field :text
+        source_field_on_join_table: :word_text
+        destination_field: :id
         destination_field_on_join_table: :book_id
+      end
       """
     ],
     modules: [:destination, :through],
@@ -164,9 +203,10 @@ defmodule Ash.Resource.Dsl do
     examples: [
       """
       # In a resource called `Word`
-      belongs_to :dictionary_entry, DictionaryEntry,
-        source_field: :text,
+      belongs_to :dictionary_entry, DictionaryEntry do
+        source_field :text,
         destination_field: :word_text
+      end
       """
     ],
     modules: [:destination],
@@ -183,6 +223,41 @@ defmodule Ash.Resource.Dsl do
     Relationships are a core component of resource oriented design. Many components of Ash
     will use these relationships. A simple use case is side_loading (done via the `Ash.Query.load/2`).
     """,
+    examples: [
+      """
+      relationships do
+        belongs_to :post, MyApp.Post do
+          primary_key? true
+        end
+
+        belongs_to :category, MyApp.Category do
+          primary_key? true
+        end
+      end
+      """,
+      """
+      relationships do
+        belongs_to :author, MyApp.Author
+
+        many_to_many :categories, MyApp.Category do
+          through MyApp.PostCategory
+          destination_field_on_join_table :category_id
+          source_field_on_join_table :post_id
+        end
+      end
+      """,
+      """
+      relationships do
+        has_many :posts, MyApp.Post do
+          destination_field: :author_id
+        end
+
+        has_many :composite_key_posts, MyApp.CompositeKeyPost do
+          destination_field :author_id
+        end
+      end
+      """
+    ],
     entities: [
       @has_one,
       @has_many,
@@ -240,7 +315,11 @@ defmodule Ash.Resource.Dsl do
     Declares a `create` action. For calling this action, see the `Ash.Api` documentation.
     """,
     examples: [
-      "create :register, primary?: true"
+      """
+      create :register do
+        primary? true
+      end
+      """
     ],
     target: Ash.Resource.Actions.Create,
     schema: Ash.Resource.Actions.Create.opt_schema(),
@@ -265,7 +344,11 @@ defmodule Ash.Resource.Dsl do
     #{Ash.OptionsHelpers.docs(Ash.Resource.Actions.Read.pagination_schema())}
     """,
     examples: [
-      "read :read_all, primary?: true"
+      """
+      read :read_all do
+        primary? true
+      end
+      """
     ],
     target: Ash.Resource.Actions.Read,
     schema: Ash.Resource.Actions.Read.opt_schema(),
@@ -299,7 +382,11 @@ defmodule Ash.Resource.Dsl do
     Declares a `destroy` action. For calling this action, see the `Ash.Api` documentation.
     """,
     examples: [
-      "destroy :soft_delete, primary?: true"
+      """
+      destroy :soft_delete do
+        primary? true
+      end
+      """
     ],
     entities: [
       changes: [
@@ -332,6 +419,36 @@ defmodule Ash.Resource.Dsl do
     """,
     imports: [
       Ash.Resource.Change.Builtins
+    ],
+    examples: [
+      """
+      actions do
+        create :signup do
+          argument :password, :string
+          argument :password_confirmation, :string
+          change confirm(:password, :password_confirmation)
+          change {MyApp.HashPassword, []} # A custom implemented Change
+        end
+
+        read :me do
+          # An action that auto filters to only return the user for the current user
+          filter [id: actor(:id)]
+        end
+
+        update :update do
+          accept [:first_name, :last_name]
+        end
+
+        destroy do
+          change set_attribute(:deleted_at, &DateTime.utc_now/0)
+          # This tells it that even though this is a delete action, it
+          # should be treated like an update because `deleted_at` is set.
+          # This should be coupled with a `base_filter` on the resource
+          # or with the read actions having a `filter` for `is_nil: :deleted_at`
+          soft? true
+        end
+      end
+      """
     ],
     entities: [
       @create,
@@ -366,6 +483,14 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Unique identifiers for the resource
     """,
+    examples: [
+      """
+      identities do
+        identity :full_name, [:first_name, :last_name]
+        identity :email, [:email]
+      end
+      """
+    ],
     entities: [
       @identity
     ]
@@ -378,6 +503,14 @@ defmodule Ash.Resource.Dsl do
     """,
     sections: [
       @identities
+    ],
+    examples: [
+      """
+      resource do
+        description "A description of this resource"
+        base_filter [is_nil: :deleted_at]
+      end
+      """
     ],
     schema: [
       description: [
@@ -414,6 +547,14 @@ defmodule Ash.Resource.Dsl do
     imports: [
       Ash.Resource.Validation.Builtins
     ],
+    examples: [
+      """
+      validations do
+        validate {Mod, [foo: :bar]}
+        validate at_least_one_of_present([:first_name, :last_name])
+      end
+      """
+    ],
     entities: [
       @validate
     ]
@@ -425,7 +566,11 @@ defmodule Ash.Resource.Dsl do
     Declares a named aggregate on the resource
     """,
     examples: [
-      "count :assigned_ticket_count, :reported_tickets, filter: [active: true]"
+      """
+      count :assigned_ticket_count, :reported_tickets do
+        filter [active: true]
+      end
+      """
     ],
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path],
@@ -441,6 +586,15 @@ defmodule Ash.Resource.Dsl do
     These are aggregates that can be loaded only by name using `Ash.Query.load/2`.
     They are also available as top level fields on the resource.
     """,
+    examples: [
+      """
+      aggregates do
+        count :assigned_ticket_count, :reported_tickets do
+          filter [active: true]
+        end
+      end
+      """
+    ],
     entities: [
       @count
     ]
@@ -452,8 +606,16 @@ defmodule Ash.Resource.Dsl do
     An argument to be passed into the calculation's arguments map
     """,
     examples: [
-      "argument :params, :map, default: %{}",
-      "argument :retries, :integer, allow_nil?: false"
+      """
+      argument :params, :map do
+        default %{}
+      end
+      """,
+      """
+      argument :retries, :integer do
+        allow_nil? false
+      end
+      """
     ],
     target: Ash.Resource.Calculation.Argument,
     args: [:name, :type],
@@ -490,6 +652,13 @@ defmodule Ash.Resource.Dsl do
     These are calculations that can be loaded only by name using `Ash.Query.load/2`.
     They are also available as top level fields on the resource.
     """,
+    examples: [
+      """
+      calculations do
+        calculate :full_name, :string, MyApp.MyResource.FullName
+      end
+      """
+    ],
     imports: [
       Ash.Resource.Calculation.Builtins
     ],
@@ -506,6 +675,15 @@ defmodule Ash.Resource.Dsl do
     To specify a tenant, use `Ash.Query.set_tenant/2` or
     `Ash.Changeset.set_tenant/2` before passing it to an operation.
     """,
+    examples: [
+      """
+      multitenancy do
+        strategy :attribute
+        attribute :organization_id
+        global? true
+      end
+      """
+    ],
     schema: [
       strategy: [
         type: {:in, [:context, :attribute]},
@@ -572,6 +750,8 @@ defmodule Ash.Resource.Dsl do
 
   @moduledoc """
   The built in resource DSL. The core DSL components of a resource are:
+
+  ## Blocks vs. Keyword Lists
 
   # Table of Contents
   #{Ash.Dsl.Extension.doc_index(@sections)}

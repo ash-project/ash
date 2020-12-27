@@ -25,6 +25,7 @@ defmodule Ash.Dsl.Section do
     imports: [],
     schema: [],
     describe: "",
+    examples: [],
     modules: [],
     entities: [],
     sections: []
@@ -33,6 +34,7 @@ defmodule Ash.Dsl.Section do
   @type t :: %__MODULE__{
           name: atom,
           describe: String.t(),
+          examples: [String.t()],
           entities: [Ash.Dsl.Entity.t()],
           sections: [%__MODULE__{}],
           schema: Ash.OptionsHelpers.schema()
