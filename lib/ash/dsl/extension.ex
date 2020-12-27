@@ -251,6 +251,8 @@ defmodule Ash.Dsl.Extension do
 
     #{imports}
 
+    ---
+
     #{options}
 
     #{entities}
