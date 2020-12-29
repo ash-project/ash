@@ -564,6 +564,8 @@ defmodule Ash.Resource.Dsl do
     name: :count,
     describe: """
     Declares a named count aggregate on the resource
+
+    Supports `filter`, but not `sort` (because that wouldn't affect the count)
     """,
     examples: [
       """
@@ -574,7 +576,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path],
-    schema: Ash.Resource.Aggregate.schema(),
+    schema: Keyword.delete(Ash.Resource.Aggregate.schema(), :sort),
     auto_set_fields: [kind: :count]
   }
 
@@ -584,7 +586,7 @@ defmodule Ash.Resource.Dsl do
     Declares a named `first` aggregate on the resource
 
     First aggregates return the first value of the related record
-    that matches. The relation can be filtered/sorted as well.
+    that matches. Supports both `filter` and `sort`.
     """,
     examples: [
       """

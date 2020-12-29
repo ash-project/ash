@@ -545,9 +545,8 @@ defmodule Ash.Query do
 
   Aggregations are made available on the `aggregates` field of the records returned
 
-  The only aggregate available currently is a `count` aggregate. They filter option accepts
-  either a filter or a keyword list of options to supply to build a limiting query for that aggregate.
-  However, currently only filters are accepted.
+  The filter option accepts either a filter or a keyword list of options to supply to build a limiting query for that aggregate.
+  See the DSL docs for each aggregate type in `Ash.Resource.Dsl` for more information.
   """
   @spec aggregate(
           t() | Ash.resource(),
@@ -556,7 +555,8 @@ defmodule Ash.Query do
           atom | list(atom),
           Ash.query() | nil
         ) :: t()
-  def aggregate(query, name, type, relationship, field \\ nil, agg_query \\ nil) do
+  def aggregate(query, name, type, relationship, agg_query \\ nil) do
+    {field, agg_query} = Keyword.pop(agg_query || [], :field)
     query = to_query(query)
     relationship = List.wrap(relationship)
 
