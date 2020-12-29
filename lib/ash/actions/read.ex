@@ -593,7 +593,7 @@ defmodule Ash.Actions.Read do
          },
          query
        ) do
-    case Ash.Query.Aggregate.new(destination_resource, :count, :count, [], nil) do
+    case Ash.Query.Aggregate.new(destination_resource, :count, :count, [], nil, nil) do
       {:ok, aggregate} ->
         Ash.DataLayer.run_aggregate_query_with_lateral_join(
           query,
@@ -611,7 +611,7 @@ defmodule Ash.Actions.Read do
   end
 
   defp run_count_query(ash_query, query) do
-    case Ash.Query.Aggregate.new(ash_query.resource, :count, :count, [], nil) do
+    case Ash.Query.Aggregate.new(ash_query.resource, :count, :count, [], nil, nil) do
       {:ok, aggregate} ->
         Ash.DataLayer.run_aggregate_query(query, [aggregate], ash_query.resource)
 

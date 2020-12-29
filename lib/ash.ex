@@ -27,7 +27,9 @@ defmodule Ash do
   @type resource :: module
   @type side_loads :: term
   @type page :: Ash.Page.Keyset.t() | Ash.Page.Offset.t()
-  @type sort :: list(atom | {atom, :asc} | {atom, :desc})
+  @type sort_order ::
+          :asc | :desc | :asc_nils_first | :asc_nils_last | :desc_nils_first | :desc_nils_last
+  @type sort :: list(atom | {atom, sort_order})
   @type validation :: Ash.Resource.Validation.t()
   @type notification :: Ash.Notifier.Notification.t()
 

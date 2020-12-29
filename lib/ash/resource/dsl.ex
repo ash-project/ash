@@ -563,7 +563,7 @@ defmodule Ash.Resource.Dsl do
   @count %Ash.Dsl.Entity{
     name: :count,
     describe: """
-    Declares a named aggregate on the resource
+    Declares a named count aggregate on the resource
     """,
     examples: [
       """
@@ -576,6 +576,24 @@ defmodule Ash.Resource.Dsl do
     args: [:name, :relationship_path],
     schema: Ash.Resource.Aggregate.schema(),
     auto_set_fields: [kind: :count]
+  }
+
+  @first %Ash.Dsl.Entity{
+    name: :first,
+    describe: """
+    Declares a named aggregate on the resource
+    """,
+    examples: [
+      """
+      count :assigned_ticket_count, :reported_tickets do
+        filter [active: true]
+      end
+      """
+    ],
+    target: Ash.Resource.Aggregate,
+    args: [:name, :relationship_path, :field],
+    schema: Ash.Resource.Aggregate.schema(),
+    auto_set_fields: [kind: :first]
   }
 
   @aggregates %Ash.Dsl.Section{
@@ -596,7 +614,8 @@ defmodule Ash.Resource.Dsl do
       """
     ],
     entities: [
-      @count
+      @count,
+      @first
     ]
   }
 

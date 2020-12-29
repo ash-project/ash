@@ -1,6 +1,6 @@
 defmodule Ash.Resource.Aggregate do
   @moduledoc "Represents a named aggregate on the resource that can be loaded"
-  defstruct [:name, :relationship_path, :filter, :kind, :description, :private?]
+  defstruct [:name, :relationship_path, :filter, :kind, :description, :private?, :field, :sort]
 
   @schema [
     name: [
@@ -18,10 +18,20 @@ defmodule Ash.Resource.Aggregate do
       doc: "The kind of the aggregate",
       required: true
     ],
+    field: [
+      type: :atom,
+      doc:
+        "The field to aggregate. Defaults to the first field in the primary key of the resource",
+      required: false
+    ],
     filter: [
       type: :keyword_list,
       doc: "A filter to apply to the aggregate",
       default: []
+    ],
+    sort: [
+      type: :any,
+      doc: "A sort to be applied to the aggregate"
     ],
     description: [
       type: :string,
@@ -39,7 +49,8 @@ defmodule Ash.Resource.Aggregate do
           name: atom(),
           relationship_path: {:ok, list(atom())} | {:error, String.t()},
           filter: Keyword.t(),
-          kind: :count,
+          field: atom,
+          kind: Ash.Query.Aggregate.kind(),
           description: String.t() | nil,
           private?: boolean
         }

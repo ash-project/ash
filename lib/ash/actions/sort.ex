@@ -7,12 +7,14 @@ defmodule Ash.Actions.Sort do
     UnsortableAttribute
   }
 
+  @sort_orders [:asc, :desc, :asc_nils_first, :asc_nils_last, :desc_nils_first, :desc_nils_last]
+
   def process(_resource, empty, _aggregates) when empty in [nil, []], do: {:ok, []}
 
   def process(resource, sort, aggregates) when is_list(sort) do
     sort
     |> Enum.reduce({[], []}, fn
-      {field, order}, {sorts, errors} when order in [:asc, :desc] ->
+      {field, order}, {sorts, errors} when order in @sort_orders ->
         attribute = Ash.Resource.attribute(resource, field)
 
         cond do
@@ -54,18 +56,6 @@ defmodule Ash.Actions.Sort do
 
     Enum.any?([Ash.Resource.primary_key(query.resource) | identity_keys], fn keyset ->
       Enum.all?(keyset, &(&1 in sort_fields))
-    end)
-  end
-
-  def reverse(sort) do
-    Enum.map(sort, fn {field, direction} ->
-      case direction do
-        :asc ->
-          {field, :desc}
-
-        :desc ->
-          {field, :asc}
-      end
     end)
   end
 
@@ -114,6 +104,46 @@ defmodule Ash.Actions.Sort do
 
   defp to_sort_by_fun(:desc),
     do: &(elem(&1, 1) >= elem(&2, 1))
+
+  defp to_sort_by_fun(:asc_nils_last) do
+    fn x, y ->
+      if is_nil(elem(x, 1)) && !is_nil(elem(y, 1)) do
+        false
+      else
+        elem(x, 1) <= elem(y, 1)
+      end
+    end
+  end
+
+  defp to_sort_by_fun(:asc_nils_first) do
+    fn x, y ->
+      if is_nil(elem(x, 1)) && !is_nil(elem(y, 1)) do
+        true
+      else
+        elem(x, 1) <= elem(y, 1)
+      end
+    end
+  end
+
+  defp to_sort_by_fun(:desc_nulls_first) do
+    fn x, y ->
+      if is_nil(elem(x, 1)) && !is_nil(elem(y, 1)) do
+        true
+      else
+        elem(x, 1) >= elem(y, 1)
+      end
+    end
+  end
+
+  defp to_sort_by_fun(:desc_nulls_last) do
+    fn x, y ->
+      if is_nil(elem(x, 1)) && !is_nil(elem(y, 1)) do
+        false
+      else
+        elem(x, 1) >= elem(y, 1)
+      end
+    end
+  end
 
   defp to_sort_by_fun(module) when is_atom(module),
     do: &(module.compare(elem(&1, 1), elem(&2, 1)) != :gt)

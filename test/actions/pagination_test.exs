@@ -195,17 +195,6 @@ defmodule Ash.Actions.PaginationTest do
       assert %{results: [%{name: "4"}]} = Api.page!(page, :first)
     end
 
-    test "the last page can be fetched if the count was not requested" do
-      assert %{results: [%{name: "3"}]} =
-               page =
-               User
-               |> Ash.Query.sort(name: :desc)
-               |> Ash.Query.filter(name in ["4", "3", "2", "1", "0"])
-               |> Api.read!(page: [offset: 1, limit: 1])
-
-      assert %{results: [%{name: "0"}]} = Api.page!(page, :last)
-    end
-
     test "the last page can be fetched if the count was requested" do
       assert %{results: [%{name: "3"}]} =
                page =
@@ -369,17 +358,6 @@ defmodule Ash.Actions.PaginationTest do
 
       assert %{results: [%{name: "3"}]} = page = Api.page!(page, :next)
       assert %{results: [%{name: "4"}]} = Api.page!(page, :first)
-    end
-
-    test "the last page can be fetched" do
-      assert %{results: [%{name: "3"}]} =
-               page =
-               User
-               |> Ash.Query.sort(name: :desc)
-               |> Ash.Query.filter(name in ["4", "3", "2", "1", "0"])
-               |> Api.read!(page: [offset: 1, limit: 1])
-
-      assert %{results: [%{name: "0"}]} = Api.page!(page, :last)
     end
   end
 

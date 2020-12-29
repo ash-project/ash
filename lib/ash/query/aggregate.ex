@@ -6,13 +6,14 @@ defmodule Ash.Query.Aggregate do
     :default_value,
     :resource,
     :query,
+    :field,
     :kind,
     :type,
     :authorization_filter,
     :load
   ]
 
-  @kinds [:count]
+  @kinds [:count, :first]
 
   @type t :: %__MODULE__{}
   @type kind :: unquote(Enum.reduce(@kinds, &{:|, [], [&1, &2]}))
@@ -25,8 +26,14 @@ defmodule Ash.Query.Aggregate do
   alias Ash.Actions.SideLoad
   alias Ash.Engine.Request
 
-  def new(resource, name, kind, relationship, query) do
-    with {:ok, type} <- kind_to_type(kind),
+  def new(resource, name, kind, relationship, query, field) do
+    field_type =
+      if field do
+        related = Ash.Resource.related(resource, relationship)
+        Ash.Resource.attribute(related, field).type
+      end
+
+    with {:ok, type} <- kind_to_type(kind, field_type),
          {:ok, query} <- validate_query(query) do
       {:ok,
        %__MODULE__{
@@ -34,6 +41,7 @@ defmodule Ash.Query.Aggregate do
          resource: resource,
          default_value: default_value(kind),
          relationship_path: List.wrap(relationship),
+         field: field,
          kind: kind,
          type: type,
          query: query
@@ -42,6 +50,7 @@ defmodule Ash.Query.Aggregate do
   end
 
   defp default_value(:count), do: 0
+  defp default_value(:first), do: nil
 
   defp validate_query(nil), do: {:ok, nil}
 
@@ -52,9 +61,6 @@ defmodule Ash.Query.Aggregate do
 
       query.aggregates != %{} ->
         {:error, "Cannot aggregate in an aggregate"}
-
-      query.sort != [] ->
-        {:error, "Cannot sort an aggregate (for now)"}
 
       not is_nil(query.limit) ->
         {:error, "Cannot limit an aggregate (for now)"}
@@ -68,8 +74,10 @@ defmodule Ash.Query.Aggregate do
   end
 
   @doc false
-  def kind_to_type(:count), do: {:ok, Ash.Type.Integer}
-  def kind_to_type(kind), do: {:error, "Invalid aggregate kind: #{kind}"}
+  def kind_to_type(:count, _field_type), do: {:ok, Ash.Type.Integer}
+  def kind_to_type(:first, nil), do: {:error, "Must provide field type for :first"}
+  def kind_to_type(:first, field_type), do: {:ok, field_type}
+  def kind_to_type(kind, _field_type), do: {:error, "Invalid aggregate kind: #{kind}"}
 
   def requests(initial_query, can_be_in_query?, authorizing?) do
     initial_query.aggregates
