@@ -547,46 +547,6 @@ defmodule Ash.Api do
     read(api, query, Keyword.put(opts, :page, page_opts))
   end
 
-  def page(api, %Ash.Page.Keyset{rerun: {query, opts}}, :last) do
-    query_reverse_sorted =
-      case query.sort do
-        nil ->
-          sort =
-            query.resource
-            |> Ash.Resource.primary_key()
-            |> Enum.map(&{&1, :desc})
-
-          Ash.Query.sort(query, sort)
-
-        sort ->
-          new_sorted =
-            query
-            |> Ash.Query.unset(:sort)
-            |> Ash.Query.sort(Ash.Actions.Sort.reverse(sort))
-
-          if Ash.Actions.Sort.sorting_on_identity?(new_sorted) do
-            new_sorted
-          else
-            sort =
-              query.resource
-              |> Ash.Resource.primary_key()
-              |> Enum.map(&{&1, :desc})
-
-            Ash.Query.sort(new_sorted, sort)
-          end
-      end
-
-    new_page_params = Keyword.drop(opts[:page] || [], [:before, :after])
-
-    case read(api, query_reverse_sorted, Keyword.put(opts, :page, new_page_params)) do
-      {:ok, page} ->
-        {:ok, Map.update!(page, :results, &Enum.reverse/1)}
-
-      {:error, error} ->
-        {:error, error}
-    end
-  end
-
   def page(
         api,
         %Ash.Page.Offset{count: count, limit: limit, offset: offset, rerun: {query, opts}},
@@ -622,17 +582,7 @@ defmodule Ash.Api do
       end
 
     if request == :last && !count do
-      case read(
-             api,
-             Ash.Query.reverse(query),
-             Keyword.put(opts, :page, page_opts)
-           ) do
-        {:ok, page} ->
-          {:ok, Map.update!(page, :results, &Enum.reverse/1)}
-
-        {:error, error} ->
-          {:error, error}
-      end
+      {:error, "Cannot fetch last page without counting"}
     else
       read(api, query, Keyword.put(opts, :page, page_opts))
     end

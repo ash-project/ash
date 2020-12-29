@@ -302,14 +302,15 @@ defmodule Ash.Query do
         related = Ash.Resource.related(query.resource, aggregate.relationship_path)
 
         with %{valid?: true} = aggregate_query <-
-               build(related, filter: aggregate.filter),
+               build(related, filter: aggregate.filter, sort: aggregate.sort),
              {:ok, query_aggregate} <-
                Aggregate.new(
                  query.resource,
                  aggregate.name,
                  aggregate.kind,
                  aggregate.relationship_path,
-                 aggregate_query
+                 aggregate_query,
+                 aggregate.field
                ) do
           query_aggregate = %{query_aggregate | load: field}
           new_aggregates = Map.put(query.aggregates, aggregate.name, query_aggregate)
@@ -555,7 +556,7 @@ defmodule Ash.Query do
           atom | list(atom),
           Ash.query() | nil
         ) :: t()
-  def aggregate(query, name, type, relationship, agg_query \\ nil) do
+  def aggregate(query, name, type, relationship, field \\ nil, agg_query \\ nil) do
     query = to_query(query)
     relationship = List.wrap(relationship)
 
@@ -572,7 +573,7 @@ defmodule Ash.Query do
             build(Ash.Resource.related(query.resource, relationship), options)
         end
 
-      case Aggregate.new(query.resource, name, type, relationship, agg_query) do
+      case Aggregate.new(query.resource, name, type, relationship, agg_query, field) do
         {:ok, aggregate} ->
           new_aggregates = Map.put(query.aggregates, aggregate.name, aggregate)
 
@@ -812,22 +813,6 @@ defmodule Ash.Query do
     else
       add_error(query, :sort, "Data layer does not support sorting")
     end
-  end
-
-  @doc """
-  Reverse the sort order of a query.
-
-  If the query has no sort, an error is added indicating that.
-  """
-  @spec reverse(t()) :: t()
-  def reverse(%{sort: nil} = query) do
-    add_error(query, :sort, "Unreversable sort")
-  end
-
-  def reverse(query) do
-    query
-    |> Ash.Query.unset(:sort)
-    |> Ash.Query.sort(Ash.Actions.Sort.reverse(query.sort))
   end
 
   @spec unset(Ash.resource() | t(), atom | [atom]) :: t()
