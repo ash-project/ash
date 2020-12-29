@@ -553,21 +553,19 @@ defmodule Ash.Query do
           atom(),
           Ash.aggregate_kind(),
           atom | list(atom),
-          Ash.query() | nil
+          Keyword.t() | nil
         ) :: t()
   def aggregate(query, name, type, relationship, agg_query \\ nil) do
     {field, agg_query} = Keyword.pop(agg_query || [], :field)
+
     query = to_query(query)
     relationship = List.wrap(relationship)
 
     if Ash.Resource.data_layer_can?(query.resource, {:aggregate, type}) do
       agg_query =
         case agg_query do
-          nil ->
+          [] ->
             nil
-
-          %__MODULE__{} = agg_query ->
-            agg_query
 
           options when is_list(options) ->
             build(Ash.Resource.related(query.resource, relationship), options)
