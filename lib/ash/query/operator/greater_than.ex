@@ -4,7 +4,11 @@ defmodule Ash.Query.Operator.GreaterThan do
 
   In comparison, simplifies to `not(left < right + 1)`, so it will never need to be compared against.
   """
-  use Ash.Query.Operator, operator: :>, predicate?: true
+  use Ash.Query.Operator,
+    operator: :>,
+    name: :greater_than,
+    predicate?: true,
+    types: [:any_same_or_ref]
 
   def new(%Ref{attribute: %{type: type}} = left, right) do
     case Ash.Type.cast_input(type, right) do

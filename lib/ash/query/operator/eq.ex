@@ -7,7 +7,11 @@ defmodule Ash.Query.Operator.Eq do
   For comparison, this compares as mutually exclusive with other equality
   and `is_nil` checks that have the same reference on the left side
   """
-  use Ash.Query.Operator, operator: :==, predicate?: true
+  use Ash.Query.Operator,
+    operator: :==,
+    name: :eq,
+    predicate?: true,
+    types: [:any_same_or_ref]
 
   def new(%Ref{} = ref, nil) do
     Ash.Query.Operator.new(Ash.Query.Operator.IsNil, ref, true)

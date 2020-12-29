@@ -5,7 +5,10 @@ defmodule Ash.Query.Operator.IsNil do
   This predicate matches if the left is nil when the right is `true` or if the
   left is not nil when the right is `false`
   """
-  use Ash.Query.Operator, operator: :is_nil, predicate?: true
+  use Ash.Query.Operator,
+    operator: :is_nil,
+    predicate?: true,
+    types: [[{:ref, :any}, :boolean], [:boolean, {:ref, :any}]]
 
   def new(%Ref{} = left, right) when is_boolean(right) do
     {:ok, left, right}

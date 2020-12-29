@@ -56,12 +56,17 @@ defmodule Ash.Query.Operator do
       alias Ash.Query.Ref
 
       def operator, do: unquote(opts[:operator])
+      def name, do: unquote(opts[:name] || opts[:operator])
 
       if unquote(opts[:predicate?]) do
         @dialyzer {:nowarn_function, match?: 1}
         def match?(struct) do
           evaluate(struct) not in [nil, false]
         end
+      end
+
+      def types do
+        unquote(opts[:types] || [:any_same_or_ref])
       end
 
       import Inspect.Algebra

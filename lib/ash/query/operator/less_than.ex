@@ -13,7 +13,11 @@ defmodule Ash.Query.Operator.LessThan do
   right side's are greater than or equal to it.
   """
 
-  use Ash.Query.Operator, operator: :<, predicate?: true
+  use Ash.Query.Operator,
+    operator: :<,
+    name: :less_than,
+    predicate?: true,
+    types: [:any_same_or_ref]
 
   alias Ash.Query.Operator.{Eq, IsNil}
 

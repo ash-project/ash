@@ -4,7 +4,11 @@ defmodule Ash.Query.Operator.NotEq do
 
   In comparison, simplifies to `not(left == right)`
   """
-  use Ash.Query.Operator, operator: :!=, predicate?: true
+  use Ash.Query.Operator,
+    operator: :!=,
+    name: :not_eq,
+    predicate?: true,
+    types: [:any_same_or_ref]
 
   alias Ash.Query.Not
   alias Ash.Query.Operator.Eq

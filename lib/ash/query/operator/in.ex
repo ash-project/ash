@@ -7,7 +7,10 @@ defmodule Ash.Query.Operator.In do
   For comparison, this simplifies to a set of "or equals", e.g
   `{:or, {:or, {:or, left == 1}, left == 2}, left == 3}`
   """
-  use Ash.Query.Operator, operator: :in, predicate?: true
+  use Ash.Query.Operator,
+    operator: :in,
+    predicate?: true,
+    types: [[{:ref, :any}, {:array, :same}], [{:array, :same}, {:ref, :any}]]
 
   @inspect_items_limit 10
 
