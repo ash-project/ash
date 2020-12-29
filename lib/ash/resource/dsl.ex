@@ -567,7 +567,7 @@ defmodule Ash.Resource.Dsl do
     """,
     examples: [
       """
-      count :assigned_ticket_count, :reported_tickets do
+      count :assigned_ticket_count, :assigned_tickets do
         filter [active: true]
       end
       """
@@ -581,12 +581,16 @@ defmodule Ash.Resource.Dsl do
   @first %Ash.Dsl.Entity{
     name: :first,
     describe: """
-    Declares a named aggregate on the resource
+    Declares a named `first` aggregate on the resource
+
+    First aggregates return the first value of the related record
+    that matches. The relation can be filtered/sorted as well.
     """,
     examples: [
       """
-      count :assigned_ticket_count, :reported_tickets do
+      first :first_assigned_ticket_subject, :assigned_tickets, :subject do
         filter [active: true]
+        sort [:subject]
       end
       """
     ],
