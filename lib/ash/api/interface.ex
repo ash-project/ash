@@ -5,12 +5,10 @@ defmodule Ash.Api.Interface do
     quote do
       alias Ash.Api
 
-      @impl Ash.Api
       def get!(resource, id, params \\ []) do
         Api.get!(__MODULE__, resource, id, params)
       end
 
-      @impl Ash.Api
       def get(resource, id, params \\ []) do
         case Api.get(__MODULE__, resource, id, params) do
           {:ok, instance} -> {:ok, instance}
@@ -18,14 +16,12 @@ defmodule Ash.Api.Interface do
         end
       end
 
-      @impl Ash.Api
       def read!(query, opts \\ [])
 
       def read!(query, opts) do
         Api.read!(__MODULE__, query, opts)
       end
 
-      @impl Ash.Api
       def read(query, opts \\ [])
 
       def read(query, opts) do
@@ -36,14 +32,12 @@ defmodule Ash.Api.Interface do
         end
       end
 
-      @impl Ash.Api
       def read_one!(query, opts \\ [])
 
       def read_one!(query, opts) do
         Api.read_one!(__MODULE__, query, opts)
       end
 
-      @impl Ash.Api
       def read_one(query, opts \\ [])
 
       def read_one(query, opts) do
@@ -54,12 +48,10 @@ defmodule Ash.Api.Interface do
         end
       end
 
-      @impl Ash.Api
       def page!(page, request) do
         Api.page!(__MODULE__, page, request)
       end
 
-      @impl Ash.Api
       def page(page, request) do
         case Api.page(__MODULE__, page, request) do
           {:ok, page} -> {:ok, page}
@@ -67,12 +59,10 @@ defmodule Ash.Api.Interface do
         end
       end
 
-      @impl Ash.Api
       def load!(data, query, opts \\ []) do
         Api.load!(__MODULE__, data, query, opts)
       end
 
-      @impl Ash.Api
       def load(data, query, opts \\ []) do
         case Api.load(__MODULE__, data, query, opts) do
           {:ok, results} -> {:ok, results}
@@ -80,12 +70,10 @@ defmodule Ash.Api.Interface do
         end
       end
 
-      @impl Ash.Api
       def create!(changeset, params \\ []) do
         Api.create!(__MODULE__, changeset, params)
       end
 
-      @impl Ash.Api
       def create(changeset, params \\ []) do
         case Api.create(__MODULE__, changeset, params) do
           {:ok, instance} -> {:ok, instance}
@@ -94,12 +82,10 @@ defmodule Ash.Api.Interface do
         end
       end
 
-      @impl Ash.Api
       def update!(changeset, params \\ []) do
         Api.update!(__MODULE__, changeset, params)
       end
 
-      @impl Ash.Api
       def update(changeset, params \\ []) do
         case Api.update(__MODULE__, changeset, params) do
           {:ok, instance} -> {:ok, instance}
@@ -108,12 +94,10 @@ defmodule Ash.Api.Interface do
         end
       end
 
-      @impl Ash.Api
       def destroy!(record, params \\ []) do
         Api.destroy!(__MODULE__, record, params)
       end
 
-      @impl Ash.Api
       def destroy(record, params \\ []) do
         case Api.destroy(__MODULE__, record, params) do
           :ok -> :ok
@@ -122,13 +106,11 @@ defmodule Ash.Api.Interface do
         end
       end
 
-      @impl Ash.Api
       def reload!(%resource{} = record, params \\ []) do
         id = record |> Map.take(Ash.Resource.primary_key(resource)) |> Enum.to_list()
         get!(resource, id, params)
       end
 
-      @impl Ash.Api
       def reload(%resource{} = record, params \\ []) do
         id = record |> Map.take(Ash.Resource.primary_key(resource)) |> Enum.to_list()
         get(resource, id, params)
