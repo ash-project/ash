@@ -157,8 +157,16 @@ defmodule Ash.Filter do
     end
   end
 
-  def parse!(resource, statement, aggregates \\ %{}) do
-    case parse(resource, statement, aggregates) do
+  def parse_input(resource, statement, aggregates \\ %{}) do
+    parse(resource, statement, aggregates, true)
+  end
+
+  def parse_input!(resource, statement, aggregates \\ %{}) do
+    parse!(resource, statement, aggregates, true)
+  end
+
+  def parse!(resource, statement, aggregates \\ %{}, public? \\ false) do
+    case parse(resource, statement, aggregates, public?) do
       {:ok, filter} ->
         filter
 
@@ -167,11 +175,12 @@ defmodule Ash.Filter do
     end
   end
 
-  def parse(resource, statement, aggregates \\ %{}) do
+  def parse(resource, statement, aggregates \\ %{}, public? \\ false) do
     context = %{
       resource: resource,
       relationship_path: [],
-      aggregates: aggregates
+      aggregates: aggregates,
+      public?: public?
     }
 
     case parse_expression(statement, context) do
@@ -964,6 +973,33 @@ defmodule Ash.Filter do
 
   defp do_relationship_paths(_, _), do: []
 
+  defp attribute(%{public?: true, resource: resource}, attribute),
+    do: Ash.Resource.public_attribute(resource, attribute)
+
+  defp attribute(%{public?: false, resource: resource}, attribute),
+    do: Ash.Resource.attribute(resource, attribute)
+
+  defp relationship(%{public?: true, resource: resource}, relationship) do
+    Ash.Resource.public_relationship(resource, relationship)
+  end
+
+  defp relationship(%{public?: false, resource: resource}, relationship) do
+    Ash.Resource.relationship(resource, relationship)
+  end
+
+  defp related(context, relationship) when not is_list(relationship) do
+    related(context, [relationship])
+  end
+
+  defp related(context, []), do: context.resource
+
+  defp related(context, [rel | rest]) do
+    case relationship(context, rel) do
+      %{destination: destination} -> related(%{context | resource: destination}, rest)
+      nil -> nil
+    end
+  end
+
   defp parse_expression(%__MODULE__{expression: expression}, context),
     do: {:ok, add_to_predicate_path(expression, context)}
 
@@ -1035,13 +1071,24 @@ defmodule Ash.Filter do
   end
 
   defp add_expression_part({%Ref{} = ref, nested_statement}, context, expression) do
-    new_context = %{
-      relationship_path: ref.relationship_path,
-      resource: Ash.Resource.related(context.resource, ref.relationship_path),
-      aggregates: context.aggregates
-    }
+    case related(context, ref.relationship_path) do
+      nil ->
+        {:error,
+         NoSuchAttributeOrRelationship.exception(
+           attribute_or_relationship: List.first(ref.relationship_path),
+           resource: context.resource
+         )}
 
-    add_expression_part({ref.attribute.name, nested_statement}, new_context, expression)
+      related ->
+        new_context = %{
+          relationship_path: ref.relationship_path,
+          resource: related,
+          aggregates: context.aggregates,
+          public?: context.public?
+        }
+
+        add_expression_part({ref.attribute.name, nested_statement}, new_context, expression)
+    end
   end
 
   defp add_expression_part({field, nested_statement}, context, expression)
@@ -1054,7 +1101,7 @@ defmodule Ash.Filter do
     cond do
       function_module = get_function(field, Ash.Resource.data_layer_functions(context.resource)) ->
         with {:ok, args} <-
-               hydrate_refs(List.wrap(nested_statement), context.resource, context.aggregates),
+               hydrate_refs(List.wrap(nested_statement), context),
              {:ok, function} <-
                Function.new(
                  function_module,
@@ -1067,7 +1114,7 @@ defmodule Ash.Filter do
           {:ok, Expression.optimized_new(:and, expression, function)}
         end
 
-      rel = Ash.Resource.relationship(context.resource, field) ->
+      rel = relationship(context, field) ->
         context =
           context
           |> Map.update!(:relationship_path, fn path -> path ++ [rel.name] end)
@@ -1083,7 +1130,7 @@ defmodule Ash.Filter do
           end
         else
           with [field] <- Ash.Resource.primary_key(context.resource),
-               attribute <- Ash.Resource.attribute(context.resource, field),
+               attribute <- attribute(context, field),
                {:ok, casted} <-
                  Ash.Type.cast_input(attribute.type, nested_statement) do
             add_expression_part({field, casted}, context, expression)
@@ -1100,7 +1147,7 @@ defmodule Ash.Filter do
           end
         end
 
-      attr = Ash.Resource.attribute(context.resource, field) ->
+      attr = attribute(context, field) ->
         case parse_predicates(nested_statement, attr, context) do
           {:ok, nested_statement} ->
             {:ok, Expression.optimized_new(:and, expression, nested_statement)}
@@ -1122,7 +1169,7 @@ defmodule Ash.Filter do
       (op_module = get_operator(field, Ash.Resource.data_layer_operators(context.resource))) &&
           match?([_, _ | _], nested_statement) ->
         with {:ok, [left, right]} <-
-               hydrate_refs(nested_statement, context.resource, context.aggregates),
+               hydrate_refs(nested_statement, context),
              {:ok, operator} <- Operator.new(op_module, left, right) do
           {:ok, Expression.optimized_new(:and, expression, operator)}
         end
@@ -1172,16 +1219,16 @@ defmodule Ash.Filter do
     {:error, InvalidFilterValue.exception(value: value)}
   end
 
-  defp hydrate_refs(list, resource, aggregates) do
+  defp hydrate_refs(list, context) do
     list
     |> Enum.reduce_while({:ok, []}, fn
       %Ref{attribute: attribute} = ref, {:ok, acc} when is_atom(attribute) ->
-        case Ash.Resource.related(resource, ref.relationship_path) do
+        case related(context, ref.relationship_path) do
           nil ->
             {:halt, {:error, "Invalid reference #{inspect(ref)}"}}
 
           related ->
-            do_hydrate_ref(ref, attribute, related, aggregates, acc)
+            do_hydrate_ref(ref, attribute, related, context, acc)
         end
 
       other, {:ok, acc} ->
@@ -1193,15 +1240,17 @@ defmodule Ash.Filter do
     end
   end
 
-  defp do_hydrate_ref(ref, field, related, aggregates, acc) do
+  defp do_hydrate_ref(ref, field, related, %{aggregates: aggregates} = context, acc) do
+    context = %{context | resource: related}
+
     cond do
       Map.has_key?(aggregates, field) ->
         {:cont, {:ok, [%{ref | attribute: Map.get(aggregates, field)} | acc]}}
 
-      attribute = Ash.Resource.attribute(related, field) ->
+      attribute = attribute(context, field) ->
         {:cont, {:ok, [%{ref | attribute: attribute} | acc]}}
 
-      relationship = Ash.Resource.relationship(related, field) ->
+      relationship = relationship(context, field) ->
         case Ash.Resource.primary_key(relationship.destination) do
           [key] ->
             new_ref = %{
@@ -1351,7 +1400,7 @@ defmodule Ash.Filter do
               }
 
               with {:ok, [left, right]} <-
-                     hydrate_refs([left, value], context.resource, context.aggregates),
+                     hydrate_refs([left, value], context),
                    {:ok, operator} <- Operator.new(operator_module, left, right) do
                 if is_boolean(operator) do
                   {:cont, {:ok, operator}}

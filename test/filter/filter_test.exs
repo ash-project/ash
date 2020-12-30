@@ -23,6 +23,7 @@ defmodule Ash.Test.Filter.FilterTest do
     attributes do
       attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
       attribute :bio, :string
+      attribute :private, :string, private?: true
     end
 
     relationships do
@@ -421,6 +422,20 @@ defmodule Ash.Test.Filter.FilterTest do
       candidate = Filter.parse!(Post, author1_id: id1)
 
       assert Filter.strict_subset_of?(filter, candidate)
+    end
+  end
+
+  describe "parse_input" do
+    test "parse_input works when no private attributes are used" do
+      Ash.Filter.parse_input!(Profile, bio: "foo")
+    end
+
+    test "parse_input fails when a private attribute is used" do
+      Ash.Filter.parse!(Profile, private: "private")
+
+      assert_raise(Ash.Error.Query.NoSuchAttributeOrRelationship, fn ->
+        Ash.Filter.parse_input!(Profile, private: "private")
+      end)
     end
   end
 
