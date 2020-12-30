@@ -42,7 +42,7 @@ defmodule Ash.Api do
     verbose?: [
       type: :boolean,
       default: false,
-      doc: "Log engine operations (very verbose?)"
+      doc: "Log engine operations (very verbose!)"
     ],
     action: [
       type: :any,

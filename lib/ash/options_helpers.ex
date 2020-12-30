@@ -20,7 +20,16 @@ defmodule Ash.OptionsHelpers do
   end
 
   def docs(schema) do
-    NimbleOptions.docs(sanitize_schema(schema))
+    schema
+    |> sanitize_schema()
+    |> Enum.map(fn {key, opts} ->
+      if opts[:doc] do
+        {key, Keyword.update!(opts, :doc, &String.replace(&1, "\n", "\n  "))}
+      else
+        {key, opts}
+      end
+    end)
+    |> NimbleOptions.docs()
   end
 
   defp sanitize_schema(schema) do
