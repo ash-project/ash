@@ -24,6 +24,7 @@ locals_without_parens = [
   create_timestamp: 1,
   create_timestamp: 2,
   default: 1,
+  defaults: 1,
   define_field?: 1,
   description: 1,
   destination_field: 1,
