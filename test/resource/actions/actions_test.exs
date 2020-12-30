@@ -19,6 +19,13 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
     end
   end
 
+  test "default actions are added" do
+    defposts do
+    end
+
+    assert Ash.Resource.primary_action!(Post, :read)
+  end
+
   describe "validations" do
     test "raises if you have multiple primary actions for a type" do
       assert_raise(

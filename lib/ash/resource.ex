@@ -372,6 +372,17 @@ defmodule Ash.Resource do
     end
   end
 
+  @doc "Returns the configured default actions"
+  @spec default_actions(Ash.resource()) :: [:create | :read | :update | :destroy]
+  def default_actions(resource) do
+    Extension.get_opt(
+      resource,
+      [:actions],
+      :defaults,
+      [:create, :read, :update, :destroy]
+    )
+  end
+
   @doc "Returns all actions of a resource"
   @spec actions(Ash.resource()) :: [Ash.action()]
   def actions(resource) do

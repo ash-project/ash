@@ -11,11 +11,30 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
   alias Ash.Dsl.Transformer
   alias Ash.Error.Dsl.DslError
 
-  def transform(_resource, dsl_state) do
+  @extension Ash.Resource.Dsl
+
+  def transform(resource, dsl_state) do
     dsl_state
     |> Transformer.get_entities([:actions])
     |> Enum.group_by(& &1.type)
+    |> Map.put_new(:read, [])
+    |> Map.put_new(:update, [])
+    |> Map.put_new(:create, [])
+    |> Map.put_new(:destroy, [])
     |> Enum.reduce_while({:ok, dsl_state}, fn
+      {type, []}, {:ok, dsl_state} ->
+        if type in Ash.Resource.default_actions(resource) do
+          {:ok, action} =
+            Transformer.build_entity(@extension, [:actions], type,
+              name: type,
+              primary?: true
+            )
+
+          {:cont, {:ok, Transformer.add_entity(dsl_state, [:actions], action)}}
+        else
+          {:cont, {:ok, dsl_state}}
+        end
+
       {type, [action]}, {:ok, dsl_state} ->
         {:cont,
          {:ok,
