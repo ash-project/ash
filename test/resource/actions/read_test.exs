@@ -22,7 +22,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.ReadTest do
     test "it creates an action" do
       defposts do
         actions do
-          defaults([])
+          defaults []
           read :default
         end
       end
