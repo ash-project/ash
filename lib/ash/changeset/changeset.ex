@@ -82,7 +82,8 @@ defmodule Ash.Changeset do
     Changes.NoSuchAttribute,
     Changes.NoSuchRelationship,
     Changes.Required,
-    Invalid.NoSuchResource
+    Invalid.NoSuchResource,
+    Query.NoReadAction
   }
 
   @doc "Return a changeset over a resource or a record"
@@ -424,37 +425,72 @@ defmodule Ash.Changeset do
         add_error(changeset, error)
 
       %{type: :many_to_many} = relationship ->
+        do_replace_many_to_many_relationship(changeset, relationship, record_or_records)
+
+      relationship ->
+        if Ash.Resource.primary_action(relationship.destination, :read) do
+          records =
+            if relationship.cardinality == :one do
+              if is_list(record_or_records) do
+                List.first(record_or_records)
+              else
+                record_or_records
+              end
+            else
+              List.wrap(record_or_records)
+            end
+
+          case primary_key(relationship, records) do
+            {:ok, primary_key} ->
+              relationships =
+                Map.put(changeset.relationships, relationship.name, %{replace: primary_key})
+
+              changeset
+              |> check_entities_for_direct_write(relationship.name, List.wrap(records))
+              |> Map.put(:relationships, relationships)
+
+            {:error, error} ->
+              add_error(changeset, error)
+          end
+        else
+          add_error(
+            changeset,
+            NoReadAction.exception(
+              resource: changeset.resource,
+              when: "replacing relationship #{relationship.name}"
+            )
+          )
+        end
+    end
+  end
+
+  defp do_replace_many_to_many_relationship(changeset, relationship, record_or_records) do
+    cond do
+      !Ash.Resource.primary_action(relationship.destination, :read) ->
+        add_error(
+          changeset,
+          NoReadAction.exception(
+            resource: changeset.resource,
+            when: "replacing relationship #{relationship.name}"
+          )
+        )
+
+      !Ash.Resource.primary_action(relationship.through, :read) ->
+        add_error(
+          changeset,
+          NoReadAction.exception(
+            resource: changeset.resource,
+            when: "replacing relationship #{relationship.name}"
+          )
+        )
+
+      true ->
         case primary_keys_with_changes(relationship, List.wrap(record_or_records)) do
           {:ok, primary_key} ->
             relationships =
               Map.put(changeset.relationships, relationship.name, %{replace: primary_key})
 
             %{changeset | relationships: relationships}
-
-          {:error, error} ->
-            add_error(changeset, error)
-        end
-
-      relationship ->
-        records =
-          if relationship.cardinality == :one do
-            if is_list(record_or_records) do
-              List.first(record_or_records)
-            else
-              record_or_records
-            end
-          else
-            List.wrap(record_or_records)
-          end
-
-        case primary_key(relationship, records) do
-          {:ok, primary_key} ->
-            relationships =
-              Map.put(changeset.relationships, relationship.name, %{replace: primary_key})
-
-            changeset
-            |> check_entities_for_direct_write(relationship.name, List.wrap(records))
-            |> Map.put(:relationships, relationships)
 
           {:error, error} ->
             add_error(changeset, error)
@@ -471,7 +507,20 @@ defmodule Ash.Changeset do
 
       put_context(changeset, :destination_entities, relation_entities)
     else
-      changeset
+      if Ash.Resource.primary_action(
+           Ash.Resource.related(changeset.resource, relationship_name),
+           :read
+         ) do
+        changeset
+      else
+        add_error(
+          changeset,
+          NoReadAction.exception(
+            resource: changeset.resource,
+            when: "editing relationship #{relationship_name} and not supplying full records"
+          )
+        )
+      end
     end
   end
 

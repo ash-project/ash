@@ -84,7 +84,7 @@ defmodule Ash.Query do
   end
 
   alias Ash.Actions.Sort
-  alias Ash.Error.Query.{AggregatesNotSupported, InvalidLimit, InvalidOffset}
+  alias Ash.Error.Query.{AggregatesNotSupported, InvalidLimit, InvalidOffset, NoReadAction}
   alias Ash.Error.SideLoad.{InvalidQuery, NoSuchRelationship}
   alias Ash.Query.{Aggregate, Calculation}
 
@@ -722,7 +722,25 @@ defmodule Ash.Query do
             ]
 
           relationship ->
-            validate_matching_query_and_continue(value, resource, key, path, relationship)
+            cond do
+              !Ash.Resource.primary_action(relationship.destination, :read) ->
+                {:error,
+                 NoReadAction.exception(
+                   resource: relationship.destination,
+                   when: "loading relationship #{relationship.name}"
+                 )}
+
+              relationship.type == :many_to_many &&
+                  !Ash.Resource.primary_action(relationship.through, :read) ->
+                {:error,
+                 NoReadAction.exception(
+                   resource: relationship.destination,
+                   when: "loading relationship #{relationship.name}"
+                 )}
+
+              true ->
+                validate_matching_query_and_continue(value, resource, key, path, relationship)
+            end
         end
     end)
   end

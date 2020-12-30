@@ -287,7 +287,7 @@ defmodule Ash.Actions.SideLoad do
       |> Enum.map_join(".", &Map.get(&1, :name))
 
     Engine.Request.new(
-      action: Ash.Resource.primary_action!(relationship.destination, :read),
+      action: Ash.Resource.primary_action(relationship.destination, :read),
       resource: relationship.destination,
       name: "side_load #{source}",
       api: related_query.api,
@@ -391,7 +391,7 @@ defmodule Ash.Actions.SideLoad do
           end
 
         Request.new(
-          action: Ash.Resource.primary_action!(relationship.destination, :read),
+          action: Ash.Resource.primary_action(relationship.destination, :read),
           resource: relationship.through,
           name: "side_load join #{join_relationship.name}",
           api: related_query.api,

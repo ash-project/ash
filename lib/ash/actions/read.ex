@@ -1,23 +1,30 @@
 defmodule Ash.Actions.Read do
   @moduledoc false
-  alias Ash.Actions.SideLoad
-  alias Ash.Engine
-  alias Ash.Engine.Request
-  alias Ash.Error.Invalid.{LimitRequired, PaginationRequired}
-  alias Ash.Filter
-  alias Ash.Query.Aggregate
   require Logger
 
   require Ash.Query
 
-  def unpaginated_read(query, action \\ nil, opts \\ []) do
-    action = action || Ash.Resource.primary_action!(query.resource, :read)
+  alias Ash.Actions.SideLoad
+  alias Ash.Engine
+  alias Ash.Engine.Request
+  alias Ash.Error.Invalid.{LimitRequired, PaginationRequired}
+  alias Ash.Error.Query.NoReadAction
+  alias Ash.Filter
+  alias Ash.Query.Aggregate
 
-    if action.pagination do
-      opts = Keyword.put(opts, :page, false)
-      run(query, %{action | pagination: %{action.pagination | required?: false}}, opts)
-    else
-      run(query, action, opts)
+  def unpaginated_read(query, action \\ nil, opts \\ []) do
+    action = action || Ash.Resource.primary_action(query.resource, :read)
+
+    cond do
+      !action ->
+        {:error, NoReadAction.exception(resource: query.resource, when: "reading")}
+
+      action.pagination ->
+        opts = Keyword.put(opts, :page, false)
+        run(query, %{action | pagination: %{action.pagination | required?: false}}, opts)
+
+      true ->
+        run(query, action, opts)
     end
   end
 

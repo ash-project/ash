@@ -152,7 +152,7 @@ defmodule Ash.Actions.Relationships do
       Request.new(
         api: changeset.api,
         resource: relationship.destination,
-        action: Ash.Resource.primary_action!(relationship.destination, :read),
+        action: Ash.Resource.primary_action(relationship.destination, :read),
         query: query,
         path: [:relationships, relationship_name, type],
         async?: not possible?,
@@ -175,7 +175,8 @@ defmodule Ash.Actions.Relationships do
                     query
                   end
 
-                with {:ok, results} <- Ash.Actions.Read.unpaginated_read(query),
+                with {:ok, results} <-
+                       Ash.Actions.Read.unpaginated_read(query),
                      :ok <-
                        ensure_all_found(
                          changeset,
@@ -778,35 +779,41 @@ defmodule Ash.Actions.Relationships do
          changeset,
          %{destination: destination} = relationship
        ) do
-    value = Changeset.get_attribute(changeset, relationship.source_field)
-    filter_statement = [{relationship.destination_field, value}]
+    case Ash.Resource.primary_action(relationship.destination, :read) do
+      nil ->
+        changeset
 
-    request =
-      Request.new(
-        api: changeset.api,
-        resource: destination,
-        action: Ash.Resource.primary_action!(relationship.destination, :read),
-        path: [:relationships, relationship.name, :current],
-        query: Ash.Query.filter(destination, ^filter_statement),
-        data:
-          Request.resolve([[:relationships, relationship.name, :current, :query]], fn data ->
-            query = get_in(data, [:relationships, relationship.name, :current, :query])
+      read_action ->
+        value = Changeset.get_attribute(changeset, relationship.source_field)
+        filter_statement = [{relationship.destination_field, value}]
 
-            query =
-              if changeset.tenant do
-                Ash.Query.set_tenant(query, changeset.tenant)
-              else
-                query
-              end
+        request =
+          Request.new(
+            api: changeset.api,
+            resource: destination,
+            action: read_action,
+            path: [:relationships, relationship.name, :current],
+            query: Ash.Query.filter(destination, ^filter_statement),
+            data:
+              Request.resolve([[:relationships, relationship.name, :current, :query]], fn data ->
+                query = get_in(data, [:relationships, relationship.name, :current, :query])
 
-            Ash.Actions.Read.unpaginated_read(query)
-          end),
-        name: "Read related #{relationship.name} before replace"
-      )
+                query =
+                  if changeset.tenant do
+                    Ash.Query.set_tenant(query, changeset.tenant)
+                  else
+                    query
+                  end
 
-    changeset
-    |> Changeset.add_requests(request)
-    |> Changeset.changes_depend_on([:relationships, relationship.name, :current, :data])
+                Ash.Actions.Read.unpaginated_read(query)
+              end),
+            name: "Read related #{relationship.name} before replace"
+          )
+
+        changeset
+        |> Changeset.add_requests(request)
+        |> Changeset.changes_depend_on([:relationships, relationship.name, :current, :data])
+    end
   end
 
   defp many_to_many_join_resource_request(
@@ -819,7 +826,7 @@ defmodule Ash.Actions.Relationships do
     Request.new(
       api: changeset.api,
       resource: through,
-      action: Ash.Resource.primary_action!(relationship.destination, :read),
+      action: Ash.Resource.primary_action(through, :read),
       path: [:relationships, relationship.name, :current_join],
       query: Ash.Query.filter(through, ^filter_statement),
       data:
@@ -846,7 +853,7 @@ defmodule Ash.Actions.Relationships do
     Request.new(
       api: changeset.api,
       resource: destination,
-      action: Ash.Resource.primary_action!(relationship.destination, :read),
+      action: Ash.Resource.primary_action(relationship.destination, :read),
       path: [:relationships, name, :current],
       query:
         Request.resolve(
