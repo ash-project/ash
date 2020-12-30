@@ -125,6 +125,14 @@ defmodule Ash.Filter do
       [high_score: [less_than: -10]]
     ]
   ]])
+
+  ### Other formats
+
+  Maps are also accepted, as are maps with string keys. Technically, a list of `[{"string_key", value}]` would also work.
+  If you are using a map with string keys, it is likely that you are parsing input. It is important to note that, before
+  passing a filter supplied from an external source directly to `Ash.Query.filter/2`, you should first call `Ash.Filter.parse_input/2`
+  (or `Ash.Filter.parse_input/3` if your query has aggregates in it). This ensures that the filter only uses public attributes,
+  relationships and aggregates.
   ```
   """
 
@@ -157,14 +165,29 @@ defmodule Ash.Filter do
     end
   end
 
+  @doc """
+  Parses a filter statement, accepting only public attributes/relationships
+
+  See `parse/2` for more
+  """
   def parse_input(resource, statement, aggregates \\ %{}) do
     parse(resource, statement, aggregates, true)
   end
 
+  @doc """
+  Parses a filter statement, accepting only public attributes/relationships, raising on errors.
+
+  See `parse_input/2` for more
+  """
   def parse_input!(resource, statement, aggregates \\ %{}) do
     parse!(resource, statement, aggregates, true)
   end
 
+  @doc """
+  Parses a filter statement
+
+  See `parse/2` for more
+  """
   def parse!(resource, statement, aggregates \\ %{}, public? \\ false) do
     case parse(resource, statement, aggregates, public?) do
       {:ok, filter} ->
@@ -175,6 +198,18 @@ defmodule Ash.Filter do
     end
   end
 
+  @doc """
+  Parses a filter statement
+
+  See the module documentation for more information on the supported formats for filter
+  statements.
+
+  ### Important
+
+  If you are trying to validate a filter supplied from an external/untrusted source,
+  be sure to use `parse_input/2` instead! The only difference is that it only accepts
+  filters over public attributes/relationships.
+  """
   def parse(resource, statement, aggregates \\ %{}, public? \\ false) do
     context = %{
       resource: resource,
@@ -1080,6 +1115,7 @@ defmodule Ash.Filter do
          )}
 
       related ->
+        end)
         new_context = %{
           relationship_path: ref.relationship_path,
           resource: related,
