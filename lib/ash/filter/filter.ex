@@ -171,7 +171,20 @@ defmodule Ash.Filter do
   See `parse/2` for more
   """
   def parse_input(resource, statement, aggregates \\ %{}) do
-    parse(resource, statement, aggregates, true)
+    context = %{
+      resource: resource,
+      relationship_path: [],
+      aggregates: aggregates,
+      public?: true
+    }
+
+    case parse_expression(statement, context) do
+      {:ok, expression} ->
+        {:ok, %__MODULE__{expression: expression, resource: resource}}
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   @doc """
@@ -180,7 +193,13 @@ defmodule Ash.Filter do
   See `parse_input/2` for more
   """
   def parse_input!(resource, statement, aggregates \\ %{}) do
-    parse!(resource, statement, aggregates, true)
+    case parse_input(resource, statement, aggregates) do
+      {:ok, filter} ->
+        filter
+
+      {:error, error} ->
+        raise error
+    end
   end
 
   @doc """
@@ -188,8 +207,8 @@ defmodule Ash.Filter do
 
   See `parse/2` for more
   """
-  def parse!(resource, statement, aggregates \\ %{}, public? \\ false) do
-    case parse(resource, statement, aggregates, public?) do
+  def parse!(resource, statement, aggregates \\ %{}) do
+    case parse(resource, statement, aggregates) do
       {:ok, filter} ->
         filter
 
@@ -209,13 +228,23 @@ defmodule Ash.Filter do
   If you are trying to validate a filter supplied from an external/untrusted source,
   be sure to use `parse_input/2` instead! The only difference is that it only accepts
   filters over public attributes/relationships.
+
+  ### Aggregates
+  Since custom aggregates can be added to a query, and aggregates must be explicitly loaded into
+  a query, the filter parser does not parse them by default. If you wish to support parsing filters
+  over aggregates, provide them as the third argument. The best way to do this is to build a query
+  with the aggregates added/loaded, and then use the `aggregates` key on the query, e.g
+
+  ```elixir
+  Ash.Filter.parse(MyResource, [id: 1], query.aggregates)
+  ```
   """
-  def parse(resource, statement, aggregates \\ %{}, public? \\ false) do
+  def parse(resource, statement, aggregates \\ %{}) do
     context = %{
       resource: resource,
       relationship_path: [],
       aggregates: aggregates,
-      public?: public?
+      public?: false
     }
 
     case parse_expression(statement, context) do
@@ -1115,7 +1144,6 @@ defmodule Ash.Filter do
          )}
 
       related ->
-        end)
         new_context = %{
           relationship_path: ref.relationship_path,
           resource: related,
