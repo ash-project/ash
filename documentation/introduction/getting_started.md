@@ -2,17 +2,17 @@
 
 ## Creating an application
 
-For information on creating a new Elixir application, see [this guide](https://elixir-lang.org/getting-started/mix-otp/introduction-to-mix.html)
+For information on creating a new Elixir application, see [this guide](https://elixir-lang.org/getting-started/mix-otp/introduction-to-mix.html).
 
 ```shell
 mix new my_app
 ```
 
-For the finished example, see [this example](https://github.com/mario-mazo/my_app)
+For the finished example, see [this example](https://github.com/mario-mazo/my_app).
 
 ### With Phoenix
 
-The next guide will show you how to create a new phoenix application and copy your resources/apis over. However, if you know that you will be building a web application and would like to start with phoenix, you can replace the above command with:
+The next guide will show you how to create a new Phoenix application and copy your resources and APIs over. However, if you know that you will be building a web application and would like to start with Phoenix, you can replace the above command with:
 
 ```shell
 mix phx.new my_app --no-html --no-webpack --no-gettext
@@ -32,7 +32,7 @@ end
 ```
 
 If you want to have a more idiomatic formatting (the one used in this documentation) of your Ash resource and APIs,
-you need to add ash (and any other extensions you use) to your `.formatter.exs` otherwise the default Elixir formatter will wrap portions of the DSL in parenthesis.
+you need to add Ash (and any other extensions you use) to your `.formatter.exs` otherwise the default Elixir formatter will wrap portions of the DSL in parenthesis.
 
 ```elixir
  import_deps: [
@@ -46,7 +46,7 @@ Without that, instead of:
 attribute :id, :integer, allow_nil?: true
 ```
 
-the Elixir formatter will change it to
+the Elixir formatter will change it to:
 
 ```elixir
 attribute(:id, :integer, allow_nil?: true)
@@ -151,8 +151,8 @@ iex(7)> change = Ash.Changeset.new(MyApp.User, %{email: "ash.man@enguento.com"})
 >
 ```
 
-If you try to use a invalid email (the email regex is for demonstration purposes only)
-an error will be displayed as shown
+If you try to use an invalid email (the email regex is for demonstration purposes only)
+an error will be displayed as shown:
 
 ```elixir
 iex(6)> change = Ash.Changeset.new(MyApp.User, %{email: "@eng.com"})
@@ -186,8 +186,7 @@ iex(6)> change = Ash.Changeset.new(MyApp.User, %{email: "@eng.com"})
 
 ## Add your data_layer
 
-To be able to store and later on read your resources, a _data layer_ is required. See the documentation for the one you'd like to useThe current supported data layers are
-You can choose a `data_layer`, and see its documentation for configuring it:
+To be able to store and later on read your resources, a _data layer_ is required. For more information, see the documentation for the data layer you would like to use. The currently supported data layers are listed below:
 
 | Storage | Datalayer | Documentation | Storage Documentation |
 |---|---|---| --- |
@@ -209,10 +208,10 @@ to owner process.
 ## Add actions to enable functionality
 
 Actions are the primary driver for adding specific interactions to your resource.
-You can read the [actions](https://hexdocs.pm/ash/Ash.Resource.Dsl.html#actions/1
-) section to learn to to customize the functionality
-for now we will enable all of them with a default implementations by adding
-following to your resource:
+You can read the [actions](https://hexdocs.pm/ash/Ash.Resource.Dsl.html#module-actions
+) section to learn how to customize the functionality.
+For now we will enable all of them with default implementations by adding the
+following block to your resources:
 
 ```elixir
   # in both lib/my_app/resources/user.ex
@@ -228,7 +227,7 @@ following to your resource:
 
 ### Test functionality
 
-Now you should be able to use you API to do CRUD operations in your resources
+Now you should be able to use your API to do CRUD operations on your resources.
 
 #### Create resource
 
@@ -291,10 +290,10 @@ iex(4)> MyApp.Api.get(MyApp.User, "ash.man@enguento.com")
 
 ## Add relationships
 
-Now with our resources stored in a data layer we can move on
-to create a relationship between them. In this case we will
-specify that a `User` can have many `Tweet` this implies that
-a tweet belongs to a specific user.
+With our resources stored in a data layer we can move on
+to create relationships between them. In this case we will
+specify that a `User` can have many `Tweets` - this implies that
+a `Tweet` belongs to a specific `User`.
 
 ```elixir
 # in lib/my_app/resources/user.ex
@@ -310,7 +309,7 @@ a tweet belongs to a specific user.
 
 ### Test relationships
 
-Now we can use the new relationships to create a tweet that belongs to a specific user:
+Now we can use the new relationship to create a `Tweet` that belongs to a specific `User`:
 
 ```elixir
 iex(8)> {:ok, user} = Ash.Changeset.new(MyApp.User, %{email: "ash.man@enguento.com"}) |> MyApp.Api.create()
@@ -351,11 +350,11 @@ iex(9)> MyApp.Tweet |> Ash.Changeset.new(%{body: "ashy slashy"}) |> Ash.Changese
 
 ## Add front end extensions
 
-Now that the elixir api is complete you can change the data_layer to
-postgresql and expost via json api in the [next section](./getting_started_phx.md) 
+Now that the Elixir API is complete, you can move on to the [next section](./getting_started_phx.md)
+to learn how to change the data_layer to PostgreSQL and expose it via a JSON API.
 
-- `AshJsonApi` - can be used to build a spec compliant JSON:API
-- `AshPostgres.DataLayer` - can be used to persist your resources to PostgreSQL
+- `AshJsonApi` - can be used to build a spec compliant JSON:API.
+- `AshPostgres.DataLayer` - can be used to persist your resources to PostgreSQL.
 
 ## See Ash documentation for the rest
 
