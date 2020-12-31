@@ -780,19 +780,19 @@ defmodule Ash.Filter do
     end)
   end
 
-  def map(%__MODULE__{expression: nil} = filter, _) do
+  defp map(%__MODULE__{expression: nil} = filter, _) do
     filter
   end
 
-  def map(%__MODULE__{expression: expression} = filter, func) do
+  defp map(%__MODULE__{expression: expression} = filter, func) do
     %{filter | expression: do_map(func.(expression), func)}
   end
 
-  def map(expression, func) do
+  defp map(expression, func) do
     do_map(func.(expression), func)
   end
 
-  def do_map(expression, func) do
+  defp do_map(expression, func) do
     case expression do
       {:halt, expr} ->
         expr
@@ -812,6 +812,45 @@ defmodule Ash.Filter do
       other ->
         func.(other)
     end
+  end
+
+  @doc false
+  def embed_predicates(nil), do: nil
+
+  def embed_predicates(%__MODULE__{expression: expression} = filter) do
+    %{filter | expression: embed_predicates(expression)}
+  end
+
+  def embed_predicates(%Not{expression: expression} = not_expr) do
+    %{not_expr | expression: embed_predicates(expression)}
+  end
+
+  def embed_predicates(%Expression{left: left, right: right} = expr) do
+    %{expr | left: embed_predicates(left), right: embed_predicates(right)}
+  end
+
+  def embed_predicates(%{__predicate__?: true} = pred) do
+    %{pred | embedded?: true}
+  end
+
+  def embed_predicates(other), do: other
+
+  def find(%__MODULE__{expression: nil}, _), do: nil
+
+  def find(%__MODULE__{expression: expression}, func) do
+    find(expression, func)
+  end
+
+  def find(%Expression{left: left, right: right}, func) do
+    find(left, func) || find(right, func)
+  end
+
+  def find(%Not{expression: not_expr}, func) do
+    find(not_expr, func)
+  end
+
+  def find(other, func) do
+    if func.(other), do: other
   end
 
   def list_predicates(%__MODULE__{expression: expression}) do

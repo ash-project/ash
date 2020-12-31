@@ -2,6 +2,7 @@ defmodule Ash.Query.Expression do
   @moduledoc "Represents a boolean expression"
 
   alias Ash.Query.Operator.{Eq, In}
+  alias Ash.Query.Ref
 
   defstruct [:op, :left, :right]
 
@@ -13,44 +14,169 @@ defmodule Ash.Query.Expression do
     %__MODULE__{op: op, left: left, right: right}
   end
 
-  def optimized_new(_, nil, nil), do: nil
-  def optimized_new(:and, false, _), do: false
-  def optimized_new(:and, _, false), do: false
-  def optimized_new(:or, true, _), do: true
-  def optimized_new(:or, _, true), do: true
-  def optimized_new(_, nil, right), do: right
-  def optimized_new(_, left, nil), do: left
+  def optimized_new(op, left, right, current_op \\ :and)
+  def optimized_new(_, nil, nil, _), do: nil
+  def optimized_new(:and, false, _, _), do: false
+  def optimized_new(:and, _, false, _), do: false
+  def optimized_new(:or, true, _, _), do: true
+  def optimized_new(:or, _, true, _), do: true
+  def optimized_new(_, nil, right, _), do: right
+  def optimized_new(_, left, nil, _), do: left
 
-  def optimized_new(op, left, right) when left > right do
-    optimized_new(op, right, left)
+  def optimized_new(
+        op,
+        %__MODULE__{op: op} = left_expr,
+        %__MODULE__{
+          op: op,
+          left: left,
+          right: right
+        },
+        op
+      ) do
+    optimized_new(op, optimized_new(op, left_expr, left, op), right, op)
   end
 
-  def optimized_new(op, %In{} = left, %Eq{} = right) do
-    optimized_new(op, left, right)
+  def optimized_new(op, %__MODULE__{} = left, %__MODULE__{} = right, _) do
+    do_new(op, left, right)
   end
 
-  def optimized_new(:or, %Eq{left: left, right: value}, %In{left: left, right: mapset} = right) do
+  def optimized_new(op, left, %__MODULE__{} = right, current_op) do
+    optimized_new(op, right, left, current_op)
+  end
+
+  def optimized_new(op, %In{} = left, %Eq{} = right, current_op) do
+    optimized_new(op, right, left, current_op)
+  end
+
+  def optimized_new(op, %Eq{right: %Ref{}} = left, right, _) do
+    do_new(op, left, right)
+  end
+
+  def optimized_new(op, left, %Eq{right: %Ref{}} = right, _) do
+    do_new(op, left, right)
+  end
+
+  def optimized_new(
+        :or,
+        %Eq{left: left, right: value},
+        %In{left: left, right: %{__struct__: MapSet} = mapset} = right,
+        _
+      ) do
     %{right | right: MapSet.put(mapset, value)}
   end
 
-  def optimized_new(:or, %Eq{left: left, right: left_value}, %Eq{left: left, right: right_value}) do
+  def optimized_new(
+        :and,
+        %Eq{left: left, right: value} = left_expr,
+        %In{left: left, right: %{__struct__: MapSet} = mapset},
+        _
+      ) do
+    if MapSet.member?(mapset, value) do
+      left_expr
+    else
+      false
+    end
+  end
+
+  def optimized_new(
+        :or,
+        %Eq{left: left, right: left_value},
+        %Eq{left: left, right: right_value},
+        _
+      ) do
     %In{left: left, right: MapSet.new([left_value, right_value])}
+  end
+
+  def optimized_new(
+        :and,
+        %Eq{left: left, right: left_value} = left_expr,
+        %Eq{left: left, right: right_value},
+        _
+      ) do
+    if left_value == right_value do
+      left_expr
+    else
+      false
+    end
   end
 
   def optimized_new(
         :or,
         %In{left: left, right: left_values},
-        %In{left: left, right: right_values} = right
+        %In{left: left, right: right_values} = right,
+        _
       ) do
     %{right | right: MapSet.union(left_values, right_values)}
   end
 
-  def optimized_new(op, left, right) do
+  def optimized_new(
+        :and,
+        %In{left: left, right: left_values},
+        %In{left: left, right: right_values} = right,
+        _
+      ) do
+    intersection = MapSet.intersection(left_values, right_values)
+
+    case MapSet.size(intersection) do
+      0 -> false
+      1 -> %Eq{left: left, right: Enum.at(intersection, 0)}
+      _ -> %{right | right: intersection}
+    end
+  end
+
+  def optimized_new(
+        op,
+        %__MODULE__{op: op, left: left, right: right} = left_expr,
+        right_expr,
+        op
+      ) do
+    case right_expr do
+      %In{} = in_op ->
+        with {:left, nil} <- {:left, Ash.Filter.find(left, &simplify?(&1, in_op))},
+             {:right, nil} <- {:right, Ash.Filter.find(right, &simplify?(&1, in_op))} do
+          do_new(:or, left_expr, in_op)
+        else
+          {:left, _} ->
+            %{left_expr | left: optimized_new(:or, left, in_op)}
+
+          {:right, _} ->
+            %{left_expr | right: optimized_new(:or, right, in_op)}
+        end
+
+      %Eq{} = eq_op ->
+        with {:left, nil} <- {:left, Ash.Filter.find(left, &simplify?(&1, eq_op))},
+             {:right, nil} <- {:right, Ash.Filter.find(right, &simplify?(&1, eq_op))} do
+          do_new(:or, left_expr, eq_op)
+        else
+          {:left, _} ->
+            %{left_expr | left: optimized_new(:or, left, eq_op)}
+
+          {:right, _} ->
+            %{left_expr | right: optimized_new(:or, right, eq_op)}
+        end
+    end
+  end
+
+  def optimized_new(op, left, right, _) do
     # TODO: more optimization passes!
     # Remove predicates that are on both sides of an `and`
     # if a predicate is on both sides of an `or`, lift it to an `and`
     do_new(op, left, right)
   end
+
+  defp simplify?(%Eq{} = left, %In{} = right), do: simplify?(right, left)
+
+  defp simplify?(%Eq{right: %Ref{}}, _), do: false
+  defp simplify?(_, %Eq{right: %Ref{}}), do: false
+  defp simplify?(%Eq{left: left}, %Eq{left: left}), do: true
+
+  defp simplify?(
+         %Eq{left: left},
+         %In{left: left, right: %MapSet{}}
+       ),
+       do: true
+
+  defp simplify?(_, _), do: false
 
   defp do_new(op, left, right) do
     if left == right do

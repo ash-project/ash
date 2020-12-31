@@ -304,76 +304,215 @@ defmodule Ash.SatSolver do
   end
 
   defp build_expr_with_predicate_information(expression) do
-    simplified = simplify(expression)
+    expression = fully_simplify(expression)
 
-    if simplified == expression do
-      all_predicates =
-        expression
-        |> Filter.list_predicates()
-        |> Enum.uniq()
-
-      comparison_expressions =
-        all_predicates
-        |> Enum.filter(fn %module{} ->
-          :erlang.function_exported(module, :compare, 2)
-        end)
-        |> Enum.reduce([], fn predicate, new_expressions ->
-          all_predicates
-          |> Enum.reject(&Kernel.==(&1, predicate))
-          |> Enum.filter(&shares_ref?(&1, predicate))
-          |> Enum.reduce(new_expressions, fn other_predicate, new_expressions ->
-            # With predicate as a and other_predicate as b
-            case Ash.Filter.Predicate.compare(predicate, other_predicate) do
-              :right_includes_left ->
-                # b || !a
-
-                [b(other_predicate or not predicate) | new_expressions]
-
-              :left_includes_right ->
-                # a || ! b
-                [b(predicate or not other_predicate) | new_expressions]
-
-              :mutually_inclusive ->
-                # (a && b) || (! a && ! b)
-                [
-                  b((predicate and other_predicate) or (not predicate and not other_predicate))
-                  | new_expressions
-                ]
-
-              :mutually_exclusive ->
-                [b(not (other_predicate and predicate)) | new_expressions]
-
-              _other ->
-                # If we can't tell, we assume that both could be true
-                new_expressions
-            end
-          end)
-        end)
-        |> Enum.uniq()
-
-      expression = filter_to_expr(expression)
-
-      expression_with_comparisons =
-        Enum.reduce(comparison_expressions, expression, fn comparison_expression, expression ->
-          b(comparison_expression and expression)
-        end)
-
-      all_predicates
-      |> Enum.map(& &1.__struct__)
+    all_predicates =
+      expression
+      |> Filter.list_predicates()
       |> Enum.uniq()
-      |> Enum.flat_map(fn struct ->
-        if :erlang.function_exported(struct, :bulk_compare, 1) do
-          struct.bulk_compare(all_predicates)
-        else
-          []
-        end
+
+    comparison_expressions =
+      all_predicates
+      |> Enum.filter(fn %module{} ->
+        :erlang.function_exported(module, :compare, 2)
       end)
-      |> Enum.reduce(expression_with_comparisons, fn comparison_expression, expression ->
+      |> Enum.reduce([], fn predicate, new_expressions ->
+        all_predicates
+        |> Enum.reject(&Kernel.==(&1, predicate))
+        |> Enum.filter(&shares_ref?(&1, predicate))
+        |> Enum.reduce(new_expressions, fn other_predicate, new_expressions ->
+          # With predicate as a and other_predicate as b
+          case Ash.Filter.Predicate.compare(predicate, other_predicate) do
+            :right_includes_left ->
+              # b || !a
+
+              [b(other_predicate or not predicate) | new_expressions]
+
+            :left_includes_right ->
+              # a || ! b
+              [b(predicate or not other_predicate) | new_expressions]
+
+            :mutually_inclusive ->
+              # (a && b) || (! a && ! b)
+              [
+                b((predicate and other_predicate) or (not predicate and not other_predicate))
+                | new_expressions
+              ]
+
+            :mutually_exclusive ->
+              [b(not (other_predicate and predicate)) | new_expressions]
+
+            _other ->
+              # If we can't tell, we assume that both could be true
+              new_expressions
+          end
+        end)
+      end)
+      |> Enum.uniq()
+
+    expression = filter_to_expr(expression)
+
+    expression_with_comparisons =
+      Enum.reduce(comparison_expressions, expression, fn comparison_expression, expression ->
         b(comparison_expression and expression)
       end)
-    else
-      build_expr_with_predicate_information(simplified)
+
+    all_predicates
+    |> Enum.map(& &1.__struct__)
+    |> Enum.uniq()
+    |> Enum.flat_map(fn struct ->
+      if :erlang.function_exported(struct, :bulk_compare, 1) do
+        struct.bulk_compare(all_predicates)
+      else
+        []
+      end
+    end)
+    |> Enum.reduce(expression_with_comparisons, fn comparison_expression, expression ->
+      b(comparison_expression and expression)
+    end)
+  end
+
+  def fully_simplify(expression) do
+    expression
+    |> lift_equals_out_of_in()
+    |> do_fully_simplify()
+  end
+
+  defp do_fully_simplify(expression) do
+    expression
+    |> simplify()
+    |> case do
+      ^expression ->
+        expression
+
+      simplified ->
+        fully_simplify(simplified)
     end
+  end
+
+  def lift_equals_out_of_in(expression) do
+    case find_non_equal_overlap(expression) do
+      nil ->
+        expression
+
+      non_equal_overlap ->
+        expression
+        |> split_in_expressions(non_equal_overlap)
+        |> lift_equals_out_of_in()
+    end
+  end
+
+  def find_non_equal_overlap(expression) do
+    Ash.Filter.find(expression, fn sub_expr ->
+      Ash.Filter.find(expression, fn sub_expr2 ->
+        overlap?(sub_expr, sub_expr2)
+      end)
+    end)
+  end
+
+  defp new_in(base, right) do
+    case MapSet.size(right) do
+      1 ->
+        %Ash.Query.Operator.Eq{left: base.left, right: Enum.at(right, 0)}
+
+      _ ->
+        %Ash.Query.Operator.In{left: base.left, right: right}
+    end
+  end
+
+  def split_in_expressions(
+        %Ash.Query.Operator.In{right: right} = sub_expr,
+        %Ash.Query.Operator.Eq{right: value} = non_equal_overlap
+      ) do
+    if overlap?(non_equal_overlap, sub_expr) do
+      Ash.Query.Expression.new(
+        :or,
+        new_in(sub_expr, MapSet.delete(right, value)),
+        non_equal_overlap
+      )
+    else
+      sub_expr
+    end
+  end
+
+  def split_in_expressions(
+        %Ash.Query.Operator.In{} = sub_expr,
+        %Ash.Query.Operator.In{right: right} = non_equal_overlap
+      ) do
+    if overlap?(sub_expr, non_equal_overlap) do
+      diff = MapSet.difference(sub_expr.right, right)
+
+      if MapSet.size(diff) == 0 do
+        Enum.reduce(sub_expr.right, nil, fn var, acc ->
+          Expression.new(:or, %Ash.Query.Operator.Eq{left: sub_expr.left, right: var}, acc)
+        end)
+      else
+        new_right = new_in(sub_expr, MapSet.intersection(sub_expr.right, right))
+
+        Ash.Query.Expression.new(
+          :or,
+          new_in(sub_expr, diff),
+          new_right
+        )
+      end
+    else
+      sub_expr
+    end
+  end
+
+  def split_in_expressions(nil, _), do: nil
+
+  def split_in_expressions(%Ash.Filter{expression: expression} = filter, non_equal_overlap),
+    do: %{filter | expression: split_in_expressions(expression, non_equal_overlap)}
+
+  def split_in_expressions(%Not{expression: expression} = not_expr, non_equal_overlap),
+    do: %{not_expr | expression: split_in_expressions(expression, non_equal_overlap)}
+
+  def split_in_expressions(%Expression{left: left, right: right} = expr, non_equal_overlap),
+    do: %{
+      expr
+      | left: split_in_expressions(left, non_equal_overlap),
+        right: split_in_expressions(right, non_equal_overlap)
+    }
+
+  def split_in_expressions(other, _), do: other
+
+  def overlap?(
+        %Ash.Query.Operator.In{left: left, right: %MapSet{} = left_right},
+        %Ash.Query.Operator.In{left: left, right: %MapSet{} = right_right}
+      ) do
+    if MapSet.equal?(left_right, right_right) do
+      false
+    else
+      overlap? =
+        left_right
+        |> MapSet.intersection(right_right)
+        |> MapSet.size()
+        |> Kernel.>(0)
+
+      if overlap? do
+        true
+      else
+        false
+      end
+    end
+  end
+
+  def overlap?(_, %Ash.Query.Operator.Eq{right: %Ref{}}),
+    do: false
+
+  def overlap?(%Ash.Query.Operator.Eq{right: %Ref{}}, _),
+    do: false
+
+  def overlap?(
+        %Ash.Query.Operator.Eq{left: left, right: left_right},
+        %Ash.Query.Operator.In{left: left, right: %MapSet{} = right_right}
+      ) do
+    MapSet.member?(right_right, left_right)
+  end
+
+  def overlap?(_left, _right) do
+    false
   end
 
   def mutually_exclusive(predicates, acc \\ [])

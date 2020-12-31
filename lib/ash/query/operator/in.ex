@@ -31,6 +31,37 @@ defmodule Ash.Query.Operator.In do
     left in right
   end
 
+  def compare(%__MODULE__{left: left, right: %MapSet{} = left_right}, %__MODULE__{
+        left: left,
+        right: %MapSet{} = right_right
+      }) do
+    if MapSet.equal?(left_right, right_right) do
+      :mutually_inclusive
+    else
+      if MapSet.disjoint?(left_right, right_right) do
+        :mutually_exclusive
+      else
+        :unknown
+      end
+    end
+  end
+
+  def compare(%__MODULE__{}, %Ash.Query.Operator.Eq{right: %Ref{}}),
+    do: false
+
+  def compare(%__MODULE__{left: left, right: %MapSet{} = left_right}, %Ash.Query.Operator.Eq{
+        left: left,
+        right: value
+      }) do
+    if MapSet.member?(left_right, value) do
+      :left_implies_right
+    else
+      :mutually_exclusive
+    end
+  end
+
+  def compare(_, _), do: :unknown
+
   def to_string(%{right: %Ref{}} = op, opts), do: super(op, opts)
 
   def to_string(%{left: left, right: mapset}, opts) do
@@ -47,12 +78,5 @@ defmodule Ash.Query.Operator.In do
       " in ",
       list_doc
     ])
-  end
-
-  def simplify(%__MODULE__{left: left, right: right}) do
-    Enum.reduce(right, nil, fn item, expr ->
-      {:ok, eq} = Ash.Query.Operator.new(Ash.Query.Operator.Eq, left, item)
-      Ash.Query.Expression.new(:or, expr, eq)
-    end)
   end
 end

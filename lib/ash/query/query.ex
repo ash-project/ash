@@ -145,16 +145,10 @@ defmodule Ash.Query do
         query
 
       filter ->
-        filter = Ash.Filter.parse!(resource, filter)
-
         filter =
-          Ash.Filter.map(filter, fn
-            %{__predicate__?: true} = pred ->
-              %{pred | embedded?: true}
-
-            other ->
-              other
-          end)
+          resource
+          |> Ash.Filter.parse!(filter)
+          |> Ash.Filter.embed_predicates()
 
         do_filter(query, filter)
     end
