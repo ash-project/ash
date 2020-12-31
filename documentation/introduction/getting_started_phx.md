@@ -2,21 +2,20 @@
 
 In this guide we will convert the sample app from the [getting
 stated guide](https://github.com/ash-project/ash/blob/master/documentation/introduction/getting_started.md) into
-a full blown service backed by PostgresSQL as a storage
-and a Json Web API.
+a full blown service backed by PostgreSQL as a storage and a Json Web API.
 
 For the web part of the application we will rely on the
 [Phoenix framework](https://www.phoenixframework.org/) as both frameworks are complementary.
-Keep in mind that Phoenix is not a requirement you could
-use [Plug](https://github.com/elixir-plug/plug)
+Keep in mind that using Phoenix is not a requirement, you could
+alternatively use [Plug](https://github.com/elixir-plug/plug).
 
-You can check the completed application in this [repo](https://github.com/mario-mazo/my_app_phx)
+You can check out the completed application and source code in this [repo](https://github.com/mario-mazo/my_app_phx).
 
-## Create phoenix app
+## Create Phoenix app
 
-We create a simple phoenix application and we remove some unnecessary parts,
+We create a simple Phoenix application and we remove some unnecessary parts,
 also we are using `--app` to rename the application so it matches the name from
-the getting started guide
+the getting started guide.
 
 ```shell
 mix phx.new my_app --no-html --no-webpack --no-gettext
@@ -24,14 +23,14 @@ mix phx.new my_app --no-html --no-webpack --no-gettext
 
 ## Add dependencies and formatter
 
-Now we need to add the dependencies, `ash` and [ash_postgres](https://hexdocs.pm/ash_postgres/readme.html). To find out what the latest available version is you can use `mix hex.info`
+Now we need to add the dependencies, `ash` and [ash_postgres](https://hexdocs.pm/ash_postgres/readme.html). To find out what the latest available version is you can use `mix hex.info`:
 
 ```shell
 mix hex.info ash_postgres
 mix hex.info ash
 ```
 
-then modify the the files `.formatter` and `mix.exs`
+Next modify the the `.formatter` and `mix.exs` files:
 
 ```diff
 --- a/.formatter.exs
@@ -54,14 +53,14 @@ then modify the the files `.formatter` and `mix.exs`
 
 ```
 
-Make sure you can connect to postgres by verifying that the credentials in `config/dev.exs` are correct and create the database by running:
+Make sure you can connect to Postgres by verifying that the credentials in `config/dev.exs` are correct and create the database by running:
 
 ```shell
 mix ecto.create
 * The database for MyApp.Repo has been created
 ```
 
-To configure phoenix to support the [jsonapi](https://jsonapi.org/) content type, add the following configuration to `config/config.exs`
+To configure Phoenix to support the [jsonapi](https://jsonapi.org/) content type, add the following configuration to `config/config.exs`:
 
 ```diff
 --- a/config/config.exs
@@ -76,13 +75,13 @@ To configure phoenix to support the [jsonapi](https://jsonapi.org/) content type
 +
 ```
 
-### Reuse the files from the getting started guide
+### Reuse the files from the Getting Started guide
 
 Copy the `lib/my_app/api.ex`, `lib/my_app/resources/tweet.ex`
-and `lib/my_app/resources/user.ex` from the getting started
+and `lib/my_app/resources/user.ex` from the Getting Started
 sample app into this project in the same path.
 
-## Switch data layer to postgres
+## Switch data layer to Postgres
 
 First, we will update our repo to use `AshPostgres.Repo` instead of `Ecto.Repo`.
 
@@ -97,7 +96,7 @@ We can now proceed to switch the data layer from `ETS`
 to `PostgreSQL` simply by changing the `data_layer` to
 `AshPostgres.DataLayer` in our resources
 and adding the table name and our repo. In this case we will 
-use the default repo created by phoenix.
+use the default repo created by Phoenix.
 
 ```diff
 --- a/my_app_phx/lib/my_app/resources/tweet.ex
@@ -127,14 +126,14 @@ use the default repo created by phoenix.
 +  end
 ```
 
-Now you can tell ash to generate the migrations from your API
+Now you can tell Ash to generate the migrations from your API:
 
 ```shell
 mix ash_postgres.generate_migrations --apis MyApp.Api
 * creating priv/repo/migrations/20201120214857_migrate_resources1.exs
 ```
 
-and run the ecto migration to generate the tables
+and run the ecto migration to generate the tables:
 
 ```shell
 run mix ecto.migrate
@@ -151,7 +150,7 @@ run mix ecto.migrate
 
 ### Test PostgreSQL integration
 
-Start iex with `iex -S mix phx.server` and lets run the same test
+Start IEx with `iex -S mix phx.server` and lets run the same test
 we ran in the initial `my_app`. You will now see that SQL statements
 are being executed and data is now stored in  your PostgreSQL database.
 
@@ -211,16 +210,16 @@ commit []
  }}
 ```
 
-### Exposing the API via WEB JSON API
+### Exposing the API with a JSON API
 
-We need to add the extension dependency for [ash_json_api](https://hexdocs.pm/ash_json_api/readme.html)
+First we need to add the extension dependency for [ash_json_api](https://hexdocs.pm/ash_json_api/readme.html).
 
 
 ```shell
 mix hex.info ash_json_api
 ```
 
-add it to your dependencies and don't forget to run `mix deps.get`
+Add it to your dependencies and don't forget to run `mix deps.get`:
 
 ```diff
 --- a/mix.exs
@@ -236,7 +235,7 @@ add it to your dependencies and don't forget to run `mix deps.get`
 ```
 
 With the dependencies in place the extension has to be added to your
-API in `MyApp.Api`
+API in `MyApp.Api`:
 
 ```diff
 --- a/lib/my_app/api.ex
@@ -253,7 +252,7 @@ API in `MyApp.Api`
 
 We can proceed to add a route in the Phoenix router to forward requests
 to our Ash API. To do so we use `AshJsonApi.forward/3` as shown in
-`lib/my_app_web/router.ex`
+`lib/my_app_web/router.ex`:
 
 ```diff
 --- a/lib/my_app_web/router.ex
@@ -275,11 +274,11 @@ to our Ash API. To do so we use `AshJsonApi.forward/3` as shown in
    end
 ```
 
-After that all we have to do is configure our resources for the JSON:API.
-In this guide we will only expose an API for the `user` resource, exposing the tweet as is left as an exercise for the reader.
+After that, all we have to do is configure our resources for the JSON:API.
+In this guide we will only expose an API for the `user` resource, exposing the `tweet` resource is left as an exercise for the reader.
 
 We need to add the extension to our resource and define a mapping between
-the REST verbs and our internal api actions.
+the REST verbs and our internal API actions.
 
 ```diff
 --- a/lib/my_app/resources/user.ex
@@ -311,7 +310,7 @@ the REST verbs and our internal api actions.
 
 ### Test Web Json API
 
-Fire up iex with `iex -S mix phx.server` and curl the api
+Fire up IEx with `iex -S mix phx.server` and curl the API:
 
 ```shell
 curl -s --request GET --url 'http://localhost:4000/api/users' | jq
