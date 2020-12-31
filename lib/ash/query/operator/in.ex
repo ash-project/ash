@@ -13,6 +13,7 @@ defmodule Ash.Query.Operator.In do
     types: [[{:ref, :any}, {:array, :same}], [{:array, :same}, {:ref, :any}]]
 
   @inspect_items_limit 10
+  @dialyzer {:nowarn_function, compare: 2}
 
   def new(_, []), do: {:known, false}
 
@@ -46,8 +47,10 @@ defmodule Ash.Query.Operator.In do
     end
   end
 
-  def compare(%__MODULE__{}, %Ash.Query.Operator.Eq{right: %Ref{}}),
-    do: false
+  def compare(%__MODULE__{}, %Ash.Query.Operator.Eq{
+        right: %Ref{}
+      }),
+      do: false
 
   def compare(%__MODULE__{left: left, right: %MapSet{} = left_right}, %Ash.Query.Operator.Eq{
         left: left,

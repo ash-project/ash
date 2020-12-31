@@ -1,7 +1,8 @@
 defmodule Ash.Query.Expression do
   @moduledoc "Represents a boolean expression"
+  @dialyzer {:nowarn_function, optimized_new: 4}
 
-  alias Ash.Query.Operator.{Eq, In}
+  alias Ash.Query.Operator.{Eq, In, NotEq}
   alias Ash.Query.Ref
 
   defstruct [:op, :left, :right]
@@ -44,6 +45,10 @@ defmodule Ash.Query.Expression do
     optimized_new(op, right, left, current_op)
   end
 
+  def optimized_new(op, %In{} = left, %NotEq{} = right, current_op) do
+    optimized_new(op, right, left, current_op)
+  end
+
   def optimized_new(op, %In{} = left, %Eq{} = right, current_op) do
     optimized_new(op, right, left, current_op)
   end
@@ -56,6 +61,14 @@ defmodule Ash.Query.Expression do
     do_new(op, left, right)
   end
 
+  def optimized_new(op, %NotEq{right: %Ref{}} = left, right, _) do
+    do_new(op, left, right)
+  end
+
+  def optimized_new(op, left, %NotEq{right: %Ref{}} = right, _) do
+    do_new(op, left, right)
+  end
+
   def optimized_new(
         :or,
         %Eq{left: left, right: value},
@@ -63,6 +76,21 @@ defmodule Ash.Query.Expression do
         _
       ) do
     %{right | right: MapSet.put(mapset, value)}
+  end
+
+  def optimized_new(
+        :or,
+        %NotEq{left: left, right: value},
+        %In{left: left, right: %{__struct__: MapSet} = mapset} = right,
+        _
+      ) do
+    without = MapSet.delete(mapset, value)
+
+    case MapSet.size(without) do
+      0 -> false
+      1 -> %Eq{left: left, right: Enum.at(without, 0)}
+      _ -> %{right | right: without}
+    end
   end
 
   def optimized_new(
@@ -79,12 +107,54 @@ defmodule Ash.Query.Expression do
   end
 
   def optimized_new(
+        :and,
+        %NotEq{left: left, right: value},
+        %In{left: left, right: %{__struct__: MapSet} = mapset} = right_expr,
+        _
+      ) do
+    if MapSet.member?(mapset, value) do
+      false
+    else
+      right_expr
+    end
+  end
+
+  def optimized_new(
+        op,
+        %NotEq{} = left,
+        %Eq{} = right,
+        current_op
+      ) do
+    optimized_new(op, right, left, current_op)
+  end
+
+  def optimized_new(
         :or,
         %Eq{left: left, right: left_value},
         %Eq{left: left, right: right_value},
         _
       ) do
     %In{left: left, right: MapSet.new([left_value, right_value])}
+  end
+
+  def optimized_new(
+        :or,
+        %NotEq{left: left, right: left_value},
+        %Eq{left: left, right: right_value} = right_expr,
+        _
+      )
+      when left_value != right_value do
+    right_expr
+  end
+
+  def optimized_new(
+        :or,
+        %NotEq{left: left, right: left_value},
+        %Eq{left: left, right: right_value},
+        _
+      )
+      when left_value == right_value do
+    true
   end
 
   def optimized_new(
@@ -98,6 +168,16 @@ defmodule Ash.Query.Expression do
     else
       false
     end
+  end
+
+  def optimized_new(
+        :and,
+        %NotEq{left: left, right: left_value} = left_expr,
+        %NotEq{left: left, right: right_value},
+        _
+      )
+      when left_value == right_value do
+    left_expr
   end
 
   def optimized_new(
@@ -164,15 +244,33 @@ defmodule Ash.Query.Expression do
     do_new(op, left, right)
   end
 
+  defp simplify?(%NotEq{} = left, %In{} = right), do: simplify?(right, left)
+  defp simplify?(%NotEq{} = left, %Eq{} = right), do: simplify?(right, left)
   defp simplify?(%Eq{} = left, %In{} = right), do: simplify?(right, left)
 
   defp simplify?(%Eq{right: %Ref{}}, _), do: false
   defp simplify?(_, %Eq{right: %Ref{}}), do: false
   defp simplify?(%Eq{left: left}, %Eq{left: left}), do: true
 
+  defp simplify?(%NotEq{right: %Ref{}}, _), do: false
+  defp simplify?(_, %NotEq{right: %Ref{}}), do: false
+  defp simplify?(%NotEq{left: left}, %NotEq{left: left}), do: true
+
   defp simplify?(
          %Eq{left: left},
          %In{left: left, right: %MapSet{}}
+       ),
+       do: true
+
+  defp simplify?(
+         %NotEq{left: left},
+         %In{left: left, right: %MapSet{}}
+       ),
+       do: true
+
+  defp simplify?(
+         %Eq{left: left},
+         %NotEq{left: left, right: %MapSet{}}
        ),
        do: true
 

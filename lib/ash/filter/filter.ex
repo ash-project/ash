@@ -1,4 +1,5 @@
 defmodule Ash.Filter do
+  @dialyzer {:nowarn_function, do_map: 2, map: 2}
   alias Ash.Actions.SideLoad
   alias Ash.Engine.Request
 
