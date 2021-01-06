@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.26.7](https://github.com/ash-project/ash/compare/v1.26.6...v1.26.7) (2021-01-06)
+
+
+
+
+### Bug Fixes:
+
+* lazy loaded module issues (e.g in iex)
+
+### Improvements:
+
+* optimize not-in and fix dialyzer
+
+* rework filter creation + subset checking
+
 ## [v1.26.6](https://github.com/ash-project/ash/compare/v1.26.5...v1.26.6) (2020-12-30)
 
 
