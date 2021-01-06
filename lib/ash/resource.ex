@@ -95,6 +95,11 @@ defmodule Ash.Resource do
     end
   end
 
+  @spec extensions(Ash.resource()) :: [module]
+  def extensions(resource) do
+    :persistent_term.get({resource, :extensions}, [])
+  end
+
   @spec description(Ash.resource()) :: String.t() | nil
   def description(resource) do
     Extension.get_opt(resource, [:resource], :description, "no description")
