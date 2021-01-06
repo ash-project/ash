@@ -11,6 +11,7 @@ defmodule Ash.Schema do
       alias Ash.Query.Aggregate
       use Ecto.Schema
       @primary_key false
+      @derive {Inspect, except: [:__resource__]}
 
       schema Ash.DataLayer.source(__MODULE__) do
         for relationship <- Ash.Resource.relationships(__MODULE__) do
@@ -30,6 +31,7 @@ defmodule Ash.Schema do
         field(:aggregates, :map, virtual: true, default: %{})
         field(:calculations, :map, virtual: true, default: %{})
         field(:__metadata__, :map, virtual: true, default: %{})
+        field(:__resource__, :string, virtual: true, default: __MODULE__, redact: true)
 
         for aggregate <- Ash.Resource.aggregates(__MODULE__) do
           {:ok, type} = Aggregate.kind_to_type(aggregate.kind, :string)

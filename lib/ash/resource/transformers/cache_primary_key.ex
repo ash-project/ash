@@ -21,13 +21,13 @@ defmodule Ash.Resource.Transformers.CachePrimaryKey do
          )}
 
       [field] ->
-        dsl_state = Transformer.persist(dsl_state, {resource, :primary_key}, [field])
+        dsl_state = Transformer.persist(dsl_state, :primary_key, [field])
         {:ok, dsl_state}
 
       fields ->
         if Ash.Resource.data_layer(resource) &&
              Ash.Resource.data_layer_can?(resource, :composite_primary_key) do
-          dsl_state = Transformer.persist(dsl_state, {resource, :primary_key}, fields)
+          dsl_state = Transformer.persist(dsl_state, :primary_key, fields)
 
           {:ok, dsl_state}
         else

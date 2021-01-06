@@ -107,7 +107,14 @@ defmodule Ash.Dsl.Extension do
 
   @doc "Get the entities configured for a given section"
   def get_entities(resource, path) do
+    Ash.try_compile(resource)
     :persistent_term.get({resource, :ash, path}, %{entities: []}).entities
+  end
+
+  @doc "Get a value that was persisted while transforming or compiling the resource, e.g `:primary_key`"
+  def get_persisted(resource, key, default \\ nil) do
+    Ash.try_compile(resource)
+    :persistent_term.get({resource, key}, default)
   end
 
   @doc """
@@ -124,6 +131,8 @@ defmodule Ash.Dsl.Extension do
           value
 
         _ ->
+          Ash.try_compile(resource)
+
           Keyword.get(
             :persistent_term.get({resource, :ash, path}, %{opts: []}).opts,
             value,
@@ -131,6 +140,8 @@ defmodule Ash.Dsl.Extension do
           )
       end
     else
+      Ash.try_compile(resource)
+
       Keyword.get(
         :persistent_term.get({resource, :ash, path}, %{opts: []}).opts,
         value,
@@ -407,9 +418,16 @@ defmodule Ash.Dsl.Extension do
   end
 
   @doc false
-  defmacro set_state do
-    quote generated: true, location: :keep do
+  defmacro set_state(additional_persisted_data \\ []) do
+    quote generated: true,
+          location: :keep,
+          bind_quoted: [additional_persisted_data: additional_persisted_data] do
       alias Ash.Dsl.Transformer
+
+      persist =
+        additional_persisted_data
+        |> Keyword.put(:extensions, @extensions || [])
+        |> Enum.into(%{})
 
       ash_dsl_config =
         {__MODULE__, :ash_sections}
@@ -422,8 +440,11 @@ defmodule Ash.Dsl.Extension do
            )}
         end)
         |> Enum.into(%{})
-
-      :persistent_term.put({__MODULE__, :extensions}, @extensions)
+        |> Map.update(
+          :persist,
+          persist,
+          &Map.merge(&1, persist)
+        )
 
       Ash.Dsl.Extension.write_dsl_to_persistent_term(__MODULE__, ash_dsl_config)
 
@@ -437,14 +458,11 @@ defmodule Ash.Dsl.Extension do
         transformers_to_run,
         ash_dsl_config
       )
-      |> Map.put_new(:persist, %{})
     end
   end
 
   defmacro load do
     quote do
-      :persistent_term.put({__MODULE__, :extensions}, @extensions)
-
       Ash.Dsl.Extension.write_dsl_to_persistent_term(
         __MODULE__,
         ash_dsl_config()
@@ -494,7 +512,7 @@ defmodule Ash.Dsl.Extension do
     end)
 
     Enum.each(Map.get(dsl, :persist, %{}), fn {key, value} ->
-      :persistent_term.put(key, value)
+      :persistent_term.put({mod, key}, value)
     end)
 
     dsl

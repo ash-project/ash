@@ -90,7 +90,7 @@ defmodule Ash.Changeset do
   @spec new(Ash.resource() | Ash.record(), initial_attributes :: map) :: t
   def new(resource, initial_attributes \\ %{})
 
-  def new(%resource{} = record, initial_attributes) do
+  def new(%{__resource__: resource} = record, initial_attributes) do
     tenant =
       record
       |> Map.get(:__metadata__, %{})

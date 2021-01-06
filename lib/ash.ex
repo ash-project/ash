@@ -52,6 +52,14 @@ defmodule Ash do
   @doc "Returns all extensions of a resource or api"
   @spec extensions(resource() | api()) :: [module]
   def extensions(resource) do
-    :persistent_term.get({resource, :extensions}, [])
+    Ash.Dsl.Extension.get_persisted(resource, :extensions)
   end
+
+  @spec try_compile(term) :: :ok
+  def try_compile(module) when is_atom(module) do
+    Code.ensure_loaded(module)
+    :ok
+  end
+
+  def ensure_compiled!(_), do: :ok
 end

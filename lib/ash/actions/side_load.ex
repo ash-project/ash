@@ -76,7 +76,7 @@ defmodule Ash.Actions.SideLoad do
   defp tenant_from_data([%{__metadata__: %{tenant: tenant}} | _]), do: tenant
   defp tenant_from_data(_), do: nil
 
-  def attach_side_loads([%resource{} | _] = data, %{side_load: side_loads})
+  def attach_side_loads([%{__resource__: resource} | _] = data, %{side_load: side_loads})
       when is_list(data) do
     side_loads
     |> Enum.sort_by(fn {key, _value} ->
@@ -561,12 +561,12 @@ defmodule Ash.Actions.SideLoad do
           [] ->
             false
 
-          [%resource{} = item] ->
+          [%{__resource__: resource} = item] ->
             item
             |> Map.take(Ash.Resource.primary_key(resource))
             |> Enum.to_list()
 
-          [%resource{} | _] = items ->
+          [%{__resource__: resource} | _] = items ->
             pkey = Ash.Resource.primary_key(resource)
             [or: Enum.map(items, fn item -> item |> Map.take(pkey) |> Enum.to_list() end)]
         end

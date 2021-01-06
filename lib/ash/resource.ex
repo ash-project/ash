@@ -71,12 +71,14 @@ defmodule Ash.Resource do
 
       @on_load :on_load
 
-      :persistent_term.put({__MODULE__, :data_layer}, @data_layer)
-      :persistent_term.put({__MODULE__, :authorizers}, @authorizers)
-      :persistent_term.put({__MODULE__, :notifiers}, @notifiers)
-      :persistent_term.put({__MODULE__, :extensions}, @extensions)
-
-      ash_dsl_config = Macro.escape(Extension.set_state())
+      ash_dsl_config =
+        Macro.escape(
+          Extension.set_state(
+            notifiers: @notifiers,
+            authorizers: @authorizers,
+            data_layer: @data_layer
+          )
+        )
 
       @doc false
       def ash_dsl_config do
@@ -84,11 +86,6 @@ defmodule Ash.Resource do
       end
 
       def on_load do
-        :persistent_term.put({__MODULE__, :data_layer}, @data_layer)
-        :persistent_term.put({__MODULE__, :authorizers}, @authorizers)
-        :persistent_term.put({__MODULE__, :notifiers}, @notifiers)
-        :persistent_term.put({__MODULE__, :extensions}, @extensions)
-
         Extension.load()
       end
 
@@ -96,10 +93,6 @@ defmodule Ash.Resource do
 
       Ash.Schema.define_schema()
     end
-  end
-
-  def extensions(resource) do
-    :persistent_term.get({resource, :extensions}, [])
   end
 
   @spec description(Ash.resource()) :: String.t() | nil
@@ -122,17 +115,13 @@ defmodule Ash.Resource do
   @doc "A list of authorizers to be used when accessing"
   @spec authorizers(Ash.resource()) :: [module]
   def authorizers(resource) do
-    {resource, :authorizers}
-    |> :persistent_term.get([])
-    |> List.wrap()
+    Extension.get_persisted(resource, :authorizers, [])
   end
 
   @doc "A list of notifiers to be used when accessing"
   @spec notifiers(Ash.resource()) :: [module]
   def notifiers(resource) do
-    {resource, :notifiers}
-    |> :persistent_term.get([])
-    |> List.wrap()
+    Extension.get_persisted(resource, :notifiers, [])
   end
 
   @spec validations(Ash.resource(), :create | :update | :destroy) :: [Ash.validation()]
@@ -159,7 +148,7 @@ defmodule Ash.Resource do
   @doc "A list of field names corresponding to the primary key"
   @spec primary_key(Ash.resource()) :: list(atom)
   def primary_key(resource) do
-    :persistent_term.get({resource, :primary_key}, [])
+    Ash.Dsl.Extension.get_persisted(resource, :primary_key, [])
   end
 
   @doc "Returns all relationships of a resource"
@@ -457,7 +446,7 @@ defmodule Ash.Resource do
   @doc "The data layer of the resource, or nil if it does not have one"
   @spec data_layer(Ash.resource()) :: Ash.data_layer()
   def data_layer(resource) do
-    :persistent_term.get({resource, :data_layer}, [])
+    Extension.get_persisted(resource, :data_layer)
   end
 
   @doc "Whether or not the data layer supports a specific feature"

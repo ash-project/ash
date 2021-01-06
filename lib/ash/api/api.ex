@@ -673,7 +673,7 @@ defmodule Ash.Api do
     end
   end
 
-  def load(api, [%resource{} | _] = data, query, opts) do
+  def load(api, [%{__resource__: resource} | _] = data, query, opts) do
     query =
       case query do
         %Ash.Query{} = query ->
