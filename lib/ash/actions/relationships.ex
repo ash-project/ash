@@ -892,7 +892,7 @@ defmodule Ash.Actions.Relationships do
     )
   end
 
-  defp clear_relationships(%{__resource__: resource} = record) do
+  defp clear_relationships(%resource{} = record) do
     resource
     |> Ash.Resource.relationships()
     |> Enum.reduce(record, fn relationship, record ->
