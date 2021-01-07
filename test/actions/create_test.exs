@@ -148,6 +148,7 @@ defmodule Ash.Test.Actions.CreateTest do
       attribute(:list_attribute, {:array, :integer})
       attribute(:date, :date)
       attribute(:private_content, :string, private?: true, allow_nil?: false)
+      attribute(:binary, :binary)
 
       attribute(:list_attribute_with_constraints, {:array, :integer},
         constraints: [
@@ -213,7 +214,8 @@ defmodule Ash.Test.Actions.CreateTest do
                |> change_attributes(%{
                  title: "foo",
                  contents: "bar",
-                 date: Date.utc_today()
+                 date: Date.utc_today(),
+                 binary: <<0, 1, 2, 3, 4, 5>>
                })
                |> Api.create!()
     end
@@ -267,6 +269,15 @@ defmodule Ash.Test.Actions.CreateTest do
                Post
                |> new()
                |> change_attribute(:title, "foo")
+               |> Api.create!()
+    end
+
+    test "binary values are set properly" do
+      assert %Post{binary: <<0, 1, 2>>} =
+               Post
+               |> new()
+               |> change_attribute(:title, "foo")
+               |> change_attribute(:binary, <<0, 1, 2>>)
                |> Api.create!()
     end
   end
