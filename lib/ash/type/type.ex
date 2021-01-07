@@ -23,6 +23,7 @@ defmodule Ash.Type do
     integer: Ash.Type.Integer,
     boolean: Ash.Type.Boolean,
     uuid: Ash.Type.UUID,
+    binary: Ash.Type.Binary,
     date: Ash.Type.Date,
     utc_datetime: Ash.Type.UtcDatetime
   ]
