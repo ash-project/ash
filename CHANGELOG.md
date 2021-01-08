@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.27.1](https://github.com/ash-project/ash/compare/v1.27.0...v1.27.1) (2021-01-08)
+
+
+
+
+### Bug Fixes:
+
+* fix small sort bugs
+
+### Improvements:
+
+* add `Ash.Sort.parse_input/2`
+
 ## [v1.27.0](https://github.com/ash-project/ash/compare/v1.26.13...v1.27.0) (2021-01-08)
 ### Breaking Changes:
 
