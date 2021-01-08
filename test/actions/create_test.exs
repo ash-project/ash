@@ -186,7 +186,7 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     attributes do
-      integer_primary_key :id
+      uuid_primary_key :id
     end
   end
 
