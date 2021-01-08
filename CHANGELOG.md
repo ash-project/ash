@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.27.0](https://github.com/ash-project/ash/compare/v1.26.13...v1.27.0) (2021-01-08)
+### Breaking Changes:
+
+* Use usec timestamps by default
+
+
+
+### Improvements:
+
+* Add built in usec datetime type (#160) (#161)
+
 ## [v1.26.13](https://github.com/ash-project/ash/compare/v1.26.12...v1.26.13) (2021-01-08)
 
 
