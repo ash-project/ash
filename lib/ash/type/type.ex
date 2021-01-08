@@ -25,6 +25,7 @@ defmodule Ash.Type do
     uuid: Ash.Type.UUID,
     binary: Ash.Type.Binary,
     date: Ash.Type.Date,
+    decimal: Ash.Type.Decimal,
     utc_datetime: Ash.Type.UtcDatetime,
     utc_datetime_usec: Ash.Type.UtcDatetimeUsec
   ]
