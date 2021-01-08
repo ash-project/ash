@@ -99,11 +99,37 @@ defmodule Ash.Actions.Sort do
   defp to_sort_by_fun(sorter) when is_function(sorter, 2),
     do: &sorter.(elem(&1, 1), elem(&2, 1))
 
-  defp to_sort_by_fun(:asc),
-    do: &(elem(&1, 1) <= elem(&2, 1))
+  defp to_sort_by_fun(:asc) do
+    fn
+      nil, nil ->
+        true
 
-  defp to_sort_by_fun(:desc),
-    do: &(elem(&1, 1) >= elem(&2, 1))
+      _, nil ->
+        true
+
+      nil, _ ->
+        false
+
+      x, y ->
+        elem(x, 1) <= elem(y, 1)
+    end
+  end
+
+  defp to_sort_by_fun(:desc) do
+    fn
+      nil, nil ->
+        true
+
+      _, nil ->
+        false
+
+      nil, _ ->
+        true
+
+      x, y ->
+        elem(x, 1) >= elem(y, 1)
+    end
+  end
 
   defp to_sort_by_fun(:asc_nils_last) do
     fn x, y ->
@@ -125,7 +151,7 @@ defmodule Ash.Actions.Sort do
     end
   end
 
-  defp to_sort_by_fun(:desc_nulls_first) do
+  defp to_sort_by_fun(:desc_nils_first) do
     fn x, y ->
       if is_nil(elem(x, 1)) && !is_nil(elem(y, 1)) do
         true
@@ -135,7 +161,7 @@ defmodule Ash.Actions.Sort do
     end
   end
 
-  defp to_sort_by_fun(:desc_nulls_last) do
+  defp to_sort_by_fun(:desc_nils_last) do
     fn x, y ->
       if is_nil(elem(x, 1)) && !is_nil(elem(y, 1)) do
         false
