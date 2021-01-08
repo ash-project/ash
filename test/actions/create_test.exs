@@ -545,7 +545,7 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     test "it honors item constraints" do
-      assert_raise Ash.Error.Invalid, ~r/must be less than 10 at index 0/, fn ->
+      assert_raise Ash.Error.Invalid, ~r/must be less than or equal to 10 at index 0/, fn ->
         list = [28, 2, 4]
 
         Post
