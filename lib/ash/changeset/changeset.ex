@@ -151,7 +151,8 @@ defmodule Ash.Changeset do
 
   ### Params
   `params` may be attributes, relationships, or arguments. You can safely pass user/form input directly into this function.
-
+  Only public attributes and relationships are supported. If you want to change private attributes as well, see the
+  Customization section below.
 
   ### Opts
 
@@ -326,10 +327,10 @@ defmodule Ash.Changeset do
   defp cast_params(changeset, action, params, opts) do
     Enum.reduce(params, changeset, fn {name, value}, changeset ->
       cond do
-        attr = Ash.Resource.attribute(changeset.resource, name) ->
+        attr = Ash.Resource.public_attribute(changeset.resource, name) ->
           change_attribute(changeset, attr.name, value)
 
-        rel = Ash.Resource.relationship(changeset.resource, name) ->
+        rel = Ash.Resource.public_relationship(changeset.resource, name) ->
           behaviour = opts[:relationships][rel.name] || :replace
 
           case behaviour do
