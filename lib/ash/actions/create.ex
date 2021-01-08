@@ -5,8 +5,6 @@ defmodule Ash.Actions.Create do
   alias Ash.Engine.Request
   require Logger
 
-  alias Ash.Error.Changes.{InvalidAttribute, InvalidRelationship, Required}
-
   @spec run(Ash.api(), Ash.changeset(), Ash.action(), Keyword.t()) ::
           {:ok, Ash.record()} | {:error, Ash.error()}
   def run(api, changeset, action, opts) do
@@ -18,8 +16,7 @@ defmodule Ash.Actions.Create do
       |> Keyword.take([:verbose?, :actor, :authorize?])
       |> Keyword.put(:transaction?, true)
 
-    with :ok <- validate_multitenancy(changeset),
-         %{valid?: true} = changeset <- changeset(changeset, api, action, opts[:actor]),
+    with %{valid?: true} = changeset <- changeset(changeset, api, action, opts[:actor]),
          :ok <- check_upsert_support(changeset.resource, upsert?),
          %{
            data: %{commit: %^resource{} = created},
@@ -65,128 +62,16 @@ defmodule Ash.Actions.Create do
   end
 
   defp changeset(changeset, api, action, actor) do
-    %{changeset | api: api}
-    |> validate_attributes_accepted(action)
-    |> validate_relationships_accepted(action)
-    |> run_action_changes(action, actor)
-    |> Relationships.handle_relationship_changes()
-    |> set_defaults()
-    |> validate_required_belongs_to()
-    |> add_validations()
-    |> require_values()
-    |> Ash.Changeset.cast_arguments(action)
-  end
+    changeset = %{changeset | api: api}
 
-  defp require_values(changeset) do
-    changeset.resource
-    |> Ash.Resource.attributes()
-    |> Enum.reject(&(&1.allow_nil? || &1.private?))
-    |> Enum.reduce(changeset, fn required_attribute, changeset ->
-      if Ash.Changeset.changing_attribute?(changeset, required_attribute.name) do
+    changeset =
+      if changeset.__validated_for_action__ == action.name do
         changeset
       else
-        Ash.Changeset.add_error(
-          changeset,
-          Required.exception(field: required_attribute.name, type: :attribute)
-        )
+        Ash.Changeset.for_create(changeset, action.name, %{}, actor: actor)
       end
-    end)
-  end
 
-  defp validate_required_belongs_to(changeset) do
-    changeset.resource
-    |> Ash.Resource.relationships()
-    |> Enum.filter(&(&1.type == :belongs_to))
-    |> Enum.filter(& &1.required?)
-    |> Enum.reduce(changeset, fn required_relationship, changeset ->
-      case Map.fetch(changeset.relationships, required_relationship.name) do
-        {:ok, %{add: adding}} when adding != nil and adding != [] ->
-          changeset
-
-        {:ok, %{replace: replacing}} when replacing != nil and replacing != [] ->
-          changeset
-
-        _ ->
-          Ash.Changeset.add_error(
-            changeset,
-            Required.exception(
-              field: required_relationship.name,
-              type: :relationship
-            )
-          )
-      end
-    end)
-  end
-
-  defp run_action_changes(changeset, %{changes: changes}, actor) do
-    Enum.reduce(changes, changeset, fn %{change: {module, opts}}, changeset ->
-      module.change(changeset, opts, %{actor: actor})
-    end)
-  end
-
-  defp validate_attributes_accepted(changeset, %{accept: nil}), do: changeset
-
-  defp validate_attributes_accepted(changeset, %{accept: accepted_attributes}) do
-    changeset.attributes
-    |> Enum.reject(fn {key, _value} ->
-      key in accepted_attributes
-    end)
-    |> Enum.reduce(changeset, fn {key, _}, changeset ->
-      Ash.Changeset.add_error(
-        changeset,
-        InvalidAttribute.exception(field: key, message: "cannot be changed")
-      )
-    end)
-  end
-
-  defp validate_relationships_accepted(changeset, %{accept: nil}), do: changeset
-
-  defp validate_relationships_accepted(changeset, %{accept: accepted_relationships}) do
-    changeset.relationships
-    |> Enum.reject(fn {key, _value} ->
-      key in accepted_relationships
-    end)
-    |> Enum.reduce(changeset, fn {key, _}, changeset ->
-      Ash.Changeset.add_error(
-        changeset,
-        InvalidRelationship.exception(
-          relationship: key,
-          message: "Cannot be changed"
-        )
-      )
-    end)
-  end
-
-  defp add_validations(changeset) do
-    Ash.Changeset.before_action(changeset, fn changeset ->
-      changeset.resource
-      |> Ash.Resource.validations(:create)
-      |> Enum.reduce(changeset, fn validation, changeset ->
-        if validation.expensive? and not changeset.valid? do
-          changeset
-        else
-          do_validation(changeset, validation)
-        end
-      end)
-    end)
-  end
-
-  defp do_validation(changeset, validation) do
-    case validation.module.validate(changeset, validation.opts) do
-      :ok -> changeset
-      {:error, error} -> Ash.Changeset.add_error(changeset, error)
-    end
-  end
-
-  defp set_defaults(changeset) do
-    changeset.resource
-    |> Ash.Resource.attributes()
-    |> Enum.filter(&(not is_nil(&1.default)))
-    |> Enum.reduce(changeset, fn attribute, changeset ->
-      Ash.Changeset.force_change_new_attribute_lazy(changeset, attribute.name, fn ->
-        default(attribute.default)
-      end)
-    end)
+    Relationships.handle_relationship_changes(changeset)
   end
 
   defp do_run_requests(
@@ -246,15 +131,6 @@ defmodule Ash.Actions.Create do
     )
   end
 
-  defp validate_multitenancy(changeset) do
-    if Ash.Resource.multitenancy_strategy(changeset.resource) &&
-         not Ash.Resource.multitenancy_global?(changeset.resource) && is_nil(changeset.tenant) do
-      {:error, "#{inspect(changeset.resource)} changesets require a tenant to be specified"}
-    else
-      :ok
-    end
-  end
-
   defp set_tenant(changeset) do
     if changeset.tenant && Ash.Resource.multitenancy_strategy(changeset.resource) == :attribute do
       attribute = Ash.Resource.multitenancy_attribute(changeset.resource)
@@ -278,8 +154,4 @@ defmodule Ash.Actions.Create do
       {:error, {:unsupported, :upsert}}
     end
   end
-
-  defp default({mod, func, args}), do: apply(mod, func, args)
-  defp default(function) when is_function(function, 0), do: function.()
-  defp default(value), do: value
 end

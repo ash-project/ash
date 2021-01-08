@@ -54,6 +54,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     actions do
       read :default
       create :default
+      update :default
     end
 
     attributes do
@@ -199,7 +200,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
     test "it returns an error for a non-resource record" do
       assert %Changeset{
-               action_type: :create,
+               action_type: :update,
                attributes: %{},
                data: %NonResource{},
                errors: [%Ash.Error.Invalid.NoSuchResource{}],
@@ -437,7 +438,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       author =
         changeset
-        |> Api.create!()
+        |> Api.update!()
 
       [author] =
         Author
@@ -764,7 +765,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     test "arguments can be used in invalid changes" do
-      assert_raise Ash.Error.Invalid, ~r/Value did not match confirmation/, fn ->
+      assert_raise Ash.Error.Invalid, ~r/Confirmation did not match value/, fn ->
         Category
         |> Changeset.new(%{"name" => "foo"})
         |> Changeset.set_argument(:confirm_name, "bar")
@@ -778,6 +779,23 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         |> Changeset.new(%{"name" => "foo"})
         |> Api.create!(action: :create_with_confirmation)
       end
+    end
+  end
+
+  describe "for_<action>" do
+    test "arguments are validated" do
+      assert [
+               %Ash.Error.Changes.InvalidAttribute{
+                 class: :invalid,
+                 field: :confirm_name,
+                 message: "Confirmation did not match value",
+                 path: []
+               }
+             ] =
+               Ash.Changeset.for_create(Category, :create_with_confirmation, %{
+                 "name" => "foo",
+                 "confirm_name" => "bar"
+               }).errors
     end
   end
 end

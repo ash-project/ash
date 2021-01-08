@@ -244,7 +244,7 @@ defmodule Ash.DataLayer.EtsTest do
   end
 
   defp create_user(attrs, opts \\ []) do
-    %EtsTestUser{}
+    EtsTestUser
     |> Ash.Changeset.new(attrs)
     |> EtsApiTest.create!(opts)
   end

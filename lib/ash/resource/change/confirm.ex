@@ -41,8 +41,8 @@ defmodule Ash.Resource.Change.Confirm do
       Changeset.add_error(
         changeset,
         InvalidAttribute.exception(
-          field: opts[:field],
-          message: "Value did not match confirmation"
+          field: opts[:confirmation],
+          message: "Confirmation did not match value"
         )
       )
     end

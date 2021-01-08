@@ -6,7 +6,12 @@ defmodule Ash.Actions.Destroy do
   @spec run(Ash.api(), Ash.Changeset.t(), Ash.action(), Keyword.t()) ::
           :ok | {:error, Ash.Changeset.t()} | {:error, Ash.error()}
   def run(api, changeset, %{soft?: true} = action, opts) do
-    case Ash.Actions.Update.run(api, %{changeset | action_type: :destroy}, action, opts) do
+    changeset =
+      Ash.Changeset.for_update(%{changeset | action_type: :destroy}, action.name, %{},
+        actor: opts[:actor]
+      )
+
+    case Ash.Actions.Update.run(api, changeset, action, opts) do
       {:ok, _} -> :ok
       other -> other
     end
@@ -28,11 +33,16 @@ defmodule Ash.Actions.Destroy do
         name: "destroy request"
       )
 
-    changeset = %{changeset | action_type: :destroy, api: api}
+    changeset =
+      if changeset.__validated_for_action__ == action.name do
+        changeset
+      else
+        Ash.Changeset.for_destroy(%{changeset | action_type: :destroy}, action.name, %{},
+          actor: opts[:actor]
+        )
+      end
 
-    with %{valid?: true} <- Ash.Changeset.cast_arguments(changeset, action),
-         :ok <- validate(changeset),
-         :ok <- validate_multitenancy(changeset) do
+    if changeset.valid? do
       destroy_request =
         Request.new(
           resource: resource,
@@ -70,8 +80,7 @@ defmodule Ash.Actions.Destroy do
           {:error, Ash.Error.to_ash_error(errors)}
       end
     else
-      {:error, error} ->
-        {:error, error}
+      {:error, Ash.Error.to_ash_error(changeset.errors)}
     end
   end
 
@@ -80,40 +89,6 @@ defmodule Ash.Actions.Destroy do
       {:ok, Map.get(engine_result, :resource_notifications, [])}
     else
       :ok
-    end
-  end
-
-  defp validate_multitenancy(changeset) do
-    if Ash.Resource.multitenancy_strategy(changeset.resource) &&
-         not Ash.Resource.multitenancy_global?(changeset.resource) && is_nil(changeset.tenant) do
-      {:error, "#{inspect(changeset.resource)} changesets require a tenant to be specified"}
-    else
-      :ok
-    end
-  end
-
-  defp validate(changeset) do
-    changeset.resource
-    |> Ash.Resource.validations(:destroy)
-    |> Enum.reduce(:ok, fn validation, acc ->
-      if validation.expensive? and not changeset.valid? do
-        acc
-      else
-        do_validation(changeset, validation, acc)
-      end
-    end)
-  end
-
-  defp do_validation(changeset, validation, acc) do
-    case validation.module.validate(changeset, validation.opts) do
-      :ok ->
-        acc
-
-      {:error, error} ->
-        case acc do
-          :ok -> {:error, [error]}
-          {:error, errors} -> {:error, [error | errors]}
-        end
     end
   end
 end
