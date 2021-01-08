@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.26.13](https://github.com/ash-project/ash/compare/v1.26.12...v1.26.13) (2021-01-08)
+
+
+
+
+### Bug Fixes:
+
+* only cast public relationships/attributes
+
 ## [v1.26.12](https://github.com/ash-project/ash/compare/v1.26.11...v1.26.12) (2021-01-08)
 
 
