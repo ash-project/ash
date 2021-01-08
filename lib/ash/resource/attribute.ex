@@ -90,14 +90,14 @@ defmodule Ash.Resource.Attribute do
                            |> OptionsHelpers.set_default!(:writable?, false)
                            |> OptionsHelpers.set_default!(:private?, true)
                            |> OptionsHelpers.set_default!(:default, &DateTime.utc_now/0)
-                           |> OptionsHelpers.set_default!(:type, Ash.Type.UtcDatetime)
+                           |> OptionsHelpers.set_default!(:type, Ash.Type.UtcDatetimeUsec)
 
   @update_timestamp_schema @schema
                            |> OptionsHelpers.set_default!(:writable?, false)
                            |> OptionsHelpers.set_default!(:private?, true)
                            |> OptionsHelpers.set_default!(:default, &DateTime.utc_now/0)
                            |> OptionsHelpers.set_default!(:update_default, &DateTime.utc_now/0)
-                           |> OptionsHelpers.set_default!(:type, Ash.Type.UtcDatetime)
+                           |> OptionsHelpers.set_default!(:type, Ash.Type.UtcDatetimeUsec)
 
   @uuid_primary_key_schema @schema
                            |> OptionsHelpers.set_default!(:writable?, false)
