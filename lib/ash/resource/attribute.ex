@@ -111,7 +111,7 @@ defmodule Ash.Resource.Attribute do
                               |> OptionsHelpers.set_default!(:primary_key?, true)
                               |> OptionsHelpers.set_default!(:generated?, true)
                               |> OptionsHelpers.set_default!(:type, Ash.Type.Integer)
-                              |> OptionsHelpers.set_default!(:allow_nil?, true)
+                              |> OptionsHelpers.set_default!(:allow_nil?, false)
 
   def transform(%{constraints: []} = attribute), do: {:ok, attribute}
 
