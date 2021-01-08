@@ -25,7 +25,8 @@ defmodule Ash.Type do
     uuid: Ash.Type.UUID,
     binary: Ash.Type.Binary,
     date: Ash.Type.Date,
-    utc_datetime: Ash.Type.UtcDatetime
+    utc_datetime: Ash.Type.UtcDatetime,
+    utc_datetime_usec: Ash.Type.UtcDatetimeUsec
   ]
 
   @builtin_types Keyword.values(@short_names)
