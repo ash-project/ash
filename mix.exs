@@ -145,13 +145,7 @@ defmodule Ash.MixProject do
       {:credo, ">= 0.0.0", only: :dev, runtime: false},
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
       {:sobelow, ">= 0.0.0", only: :dev, runtime: false},
-<<<<<<< Updated upstream
       {:git_ops, "~> 2.4.2", only: :dev},
-      {:picosat_elixir, "~> 0.1.5"},
-      {:nimble_options, "~> 0.3.5"},
-=======
-      {:git_ops, "~> 2.0.1", only: :dev},
->>>>>>> Stashed changes
       {:excoveralls, "~> 0.13.0", only: [:dev, :test]},
       {:mix_test_watch, "~> 1.0", only: :dev, runtime: false},
       {:parse_trans, "3.3.0", only: [:dev, :test], override: true}
