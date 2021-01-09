@@ -37,14 +37,14 @@ defmodule Ash.Type.Integer do
       Enum.reduce(constraints, [], fn
         {:max, max}, errors ->
           if value > max do
-            [{"must be less than %{max}", max: max} | errors]
+            [{"must be less than or equal to %{max}", max: max} | errors]
           else
             errors
           end
 
         {:min, min}, errors ->
           if value < min do
-            [{"must be more than %{min}", min: min} | errors]
+            [{"must be more than or equal to %{min}", min: min} | errors]
           else
             errors
           end
