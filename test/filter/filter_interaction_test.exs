@@ -74,9 +74,15 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     end
 
     relationships do
-      belongs_to(:source_post, Ash.Test.Filter.FilterInteractionTest.Post, primary_key?: true)
+      belongs_to(:source_post, Ash.Test.Filter.FilterInteractionTest.Post,
+        primary_key?: true,
+        required?: true
+      )
 
-      belongs_to(:destination_post, Ash.Test.Filter.FilterInteractionTest.Post, primary_key?: true)
+      belongs_to(:destination_post, Ash.Test.Filter.FilterInteractionTest.Post,
+        primary_key?: true,
+        required?: true
+      )
     end
   end
 
