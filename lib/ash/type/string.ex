@@ -57,16 +57,17 @@ defmodule Ash.Type.String do
 
   def apply_constraints(value, constraints) do
     value =
-      Enum.reduce(
-        constraints[:empty_values],
-        value,
-        &String.replace(&2, &1, constraints[:empty_value_replacement])
-      )
+      replace_characters(value, constraints[:empty_values], constraints[:empty_value_replacement])
 
     trim_value? = constraints[:trim_value?]
     trimmed_value = String.trim(value)
 
-    value = (trim_value? && trimmed_value) || value
+    value =
+      if trim_value? do
+        trimmed_value
+      else
+        value
+      end
 
     errors =
       Enum.reduce(constraints, [], fn
@@ -109,6 +110,10 @@ defmodule Ash.Type.String do
       [] -> {:ok, value}
       errors -> {:error, errors}
     end
+  end
+
+  defp replace_characters(value, characters, replacement) do
+    Enum.reduce(characters, value, &String.replace(&2, &1, replacement))
   end
 
   @impl true
