@@ -51,7 +51,7 @@ defmodule Ash.Test.Type.TypeTest do
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      uuid_primary_key :id
       attribute :title, PostTitle, constraints: [max_length: 10]
       attribute :post_type, :atom, allow_nil?: false, constraints: [one_of: [:text, :video]]
     end

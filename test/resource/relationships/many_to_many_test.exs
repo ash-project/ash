@@ -13,7 +13,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
         use Ash.Resource
 
         attributes do
-          attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+          uuid_primary_key :id
         end
 
         unquote(body)
