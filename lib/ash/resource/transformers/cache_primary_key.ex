@@ -14,7 +14,7 @@ defmodule Ash.Resource.Transformers.CachePrimaryKey do
     pk_allows_nil? = Enum.any?(primary_key_attribute, & &1.allow_nil?)
 
     primary_key =
-      unless pk_allows_nil? do
+      if pk_allows_nil? == false do
         Enum.map(primary_key_attribute, & &1.name)
       else
         :error_pk_allows_nil
