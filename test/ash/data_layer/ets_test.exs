@@ -31,7 +31,7 @@ defmodule Ash.DataLayer.EtsTest do
     end
 
     attributes do
-      uuid_primary_key :id
+      uuid_primary_key :id, writable?: true
       attribute :name, :string
       attribute :age, :integer
       attribute :title, :string
