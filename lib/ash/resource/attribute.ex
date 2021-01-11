@@ -46,7 +46,7 @@ defmodule Ash.Resource.Attribute do
       type: :boolean,
       default: false,
       doc:
-        "Whether or not the attribute is part of the primary key (one or more fields that uniquely identify a resource)." <>
+        "Whether or not the attribute is part of the primary key (one or more fields that uniquely identify a resource). " <>
           "If primary_key? is true, allow_nil? must be false."
     ],
     allow_nil?: [
