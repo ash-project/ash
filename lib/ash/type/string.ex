@@ -1,8 +1,4 @@
 defmodule Ash.Type.String do
-  @empty_characters ["\u00A0", "\u2000", "\u2001", "\u2002", "\u2003"] ++
-                      ["\u2004", "\u2005", "\u2006", "\u2007", "\u2008"] ++
-                      ["\u2009", "\u200A", "\u2028", "\u205F", "\u3000"]
-
   @constraints [
     max_length: [
       type: :non_neg_integer,
@@ -15,19 +11,6 @@ defmodule Ash.Type.String do
     match: [
       type: {:custom, __MODULE__, :match, []},
       doc: "Enforces that the string matches a passed in regex"
-    ],
-    empty_values: [
-      type: {:list, :binary},
-      doc:
-        "A list of characters which get replaced by a value defined in empty_value_replacement. " <>
-          "To avoid replacing any values, set to an empty list",
-      default: @empty_characters
-    ],
-    empty_value_replacement: [
-      type: :binary,
-      doc:
-        "A value that is used to replace any values defined in empty_values. Defaults to a single space",
-      default: "\u0020"
     ],
     trim_value?: [
       type: :boolean,
@@ -56,15 +39,11 @@ defmodule Ash.Type.String do
   def apply_constraints(nil, _), do: :ok
 
   def apply_constraints(value, constraints) do
-    value =
-      replace_characters(value, constraints[:empty_values], constraints[:empty_value_replacement])
-
     trim_value? = constraints[:trim_value?]
-    trimmed_value = String.trim(value)
 
     value =
       if trim_value? do
-        trimmed_value
+        String.trim(value)
       else
         value
       end
@@ -110,10 +89,6 @@ defmodule Ash.Type.String do
       [] -> {:ok, value}
       errors -> {:error, errors}
     end
-  end
-
-  defp replace_characters(value, characters, replacement) do
-    Enum.reduce(characters, value, &String.replace(&2, &1, replacement))
   end
 
   @impl true
