@@ -39,7 +39,7 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     attributes do
-      attribute(:id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0)
+      uuid_primary_key :id
       attribute(:bio, :string)
       attribute(:date, :date)
     end
@@ -84,7 +84,7 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     attributes do
-      attribute(:id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0)
+      uuid_primary_key :id
       attribute(:name, :string)
       attribute(:bio, :string)
     end
@@ -139,7 +139,7 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     attributes do
-      attribute(:id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0)
+      uuid_primary_key :id
       attribute(:title, :string, allow_nil?: false)
       attribute(:contents, :string)
       attribute(:tag, :string, default: "garbage")

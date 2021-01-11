@@ -18,7 +18,7 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      uuid_primary_key :id
       attribute :name, :string
     end
 
@@ -47,7 +47,7 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      uuid_primary_key :id
       attribute :uuid, :uuid, default: &Ecto.UUID.generate/0
       attribute :title, :string
       attribute :contents, :string
