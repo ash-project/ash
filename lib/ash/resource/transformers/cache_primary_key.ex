@@ -11,7 +11,7 @@ defmodule Ash.Resource.Transformers.CachePrimaryKey do
       |> Transformer.get_entities([:attributes])
       |> Enum.filter(& &1.primary_key?)
 
-    pk_allows_nil? = Enum.count(primary_key_attribute, & &1.allow_nil?) > 0
+    pk_allows_nil? = Enum.any?(primary_key_attribute, & &1.allow_nil?)
 
     primary_key =
       unless pk_allows_nil? do
