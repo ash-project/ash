@@ -74,8 +74,11 @@ defmodule Ash.Test.Actions.SideLoadTest do
     end
 
     relationships do
-      belongs_to :post, Post, primary_key?: true
-      belongs_to :category, Ash.Test.Actions.SideLoadTest.Category, primary_key?: true
+      belongs_to :post, Post, primary_key?: true, required?: true
+
+      belongs_to :category, Ash.Test.Actions.SideLoadTest.Category,
+        primary_key?: true,
+        required?: true
     end
   end
 
