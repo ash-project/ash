@@ -23,7 +23,12 @@ defmodule Ash.Resource.Transformers.BelongsToAttribute do
       case Transformer.build_entity(@extension, [:attributes], :attribute,
              name: relationship.source_field,
              type: relationship.field_type,
-             allow_nil?: not relationship.required?,
+             allow_nil?:
+               if relationship.primary_key? do
+                 false
+               else
+                 not relationship.required?
+               end,
              writable?: false,
              private?: true,
              primary_key?: relationship.primary_key?

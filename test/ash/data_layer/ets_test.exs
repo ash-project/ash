@@ -31,7 +31,7 @@ defmodule Ash.DataLayer.EtsTest do
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      uuid_primary_key :id
       attribute :name, :string
       attribute :age, :integer
       attribute :title, :string

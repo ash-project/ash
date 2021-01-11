@@ -22,7 +22,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     end
 
     attributes do
-      attribute(:id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0)
+      uuid_primary_key :id
       attribute(:bio, :string)
     end
 
@@ -46,7 +46,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     end
 
     attributes do
-      attribute(:id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0)
+      uuid_primary_key :id
       attribute(:name, :string)
       attribute(:allow_second_author, :boolean)
     end
@@ -95,7 +95,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     end
 
     attributes do
-      attribute(:id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0)
+      uuid_primary_key :id
       attribute(:title, :string)
       attribute(:contents, :string)
       attribute(:points, :integer)
