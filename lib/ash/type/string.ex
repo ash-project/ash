@@ -17,7 +17,7 @@ defmodule Ash.Type.String do
       doc: "Enforces that the string matches a passed in regex"
     ],
     empty_values: [
-      type: :any,
+      type: {:list, :binary},
       doc:
         "A list of characters which get replaced by a value defined in empty_value_replacement. " <>
           "To avoid replacing any values, set to an empty list",
