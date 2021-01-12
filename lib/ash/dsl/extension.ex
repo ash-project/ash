@@ -205,7 +205,7 @@ defmodule Ash.Dsl.Extension do
           doc_index(sections_and_entities)
       end
 
-    options = NimbleOptions.docs(section.schema)
+    options = Ash.OptionsHelpers.docs(section.schema)
 
     examples =
       case section.examples do
@@ -273,7 +273,7 @@ defmodule Ash.Dsl.Extension do
   end
 
   defp doc_entity(entity, depth) do
-    options = NimbleOptions.docs(entity.schema)
+    options = Ash.OptionsHelpers.docs(Keyword.drop(entity.schema, entity.hide))
 
     examples =
       case entity.examples do

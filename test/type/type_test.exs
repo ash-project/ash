@@ -19,7 +19,8 @@ defmodule Ash.Test.Type.TypeTest do
 
     def apply_constraints(value, constraints) do
       if constraints[:max_length] && String.length(value) >= constraints[:max_length] do
-        {:error, "is too long, max_length is #{inspect(constraints[:max_length])}"}
+        {:error,
+         message: "is too long, max_length is %{max_length}", max_length: constraints[:max_length]}
       else
         :ok
       end

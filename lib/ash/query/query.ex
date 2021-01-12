@@ -352,7 +352,7 @@ defmodule Ash.Query do
         end
       else
         with {:ok, casted} <- Ash.Type.cast_input(argument.type, value),
-             :ok <-
+             {:ok, casted} <-
                Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
           {:cont, {:ok, Map.put(arg_values, argument.name, casted)}}
         else
@@ -375,6 +375,7 @@ defmodule Ash.Query do
   """
   @spec put_context(t(), atom, term) :: t()
   def put_context(query, key, value) do
+    query = to_query(query)
     %{query | context: Map.put(query.context, key, value)}
   end
 
@@ -385,6 +386,8 @@ defmodule Ash.Query do
   """
   @spec set_context(t(), map) :: t()
   def set_context(query, map) do
+    query = to_query(query)
+
     %{
       query
       | context:

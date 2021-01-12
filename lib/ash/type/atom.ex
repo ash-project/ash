@@ -28,7 +28,7 @@ defmodule Ash.Type.Atom do
             errors
           else
             [
-              {"atom must be one of %{atom_list}", atom_list: Enum.join(atom_list, ", ")}
+              [message: "atom must be one of %{atom_list}", atom_list: Enum.join(atom_list, ", ")]
               | errors
             ]
           end

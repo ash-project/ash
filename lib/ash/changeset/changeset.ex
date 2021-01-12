@@ -281,7 +281,7 @@ defmodule Ash.Changeset do
 
       if action do
         changeset
-        |> cast_params(action, params, opts)
+        |> cast_params(action, params || %{}, opts)
         |> cast_arguments(action)
         |> Map.put(:__validated_for_action__, action.name)
         |> validate_attributes_accepted(action)
@@ -328,20 +328,28 @@ defmodule Ash.Changeset do
     Enum.reduce(params, changeset, fn {name, value}, changeset ->
       cond do
         attr = Ash.Resource.public_attribute(changeset.resource, name) ->
-          change_attribute(changeset, attr.name, value)
+          if attr.writable? do
+            change_attribute(changeset, attr.name, value)
+          else
+            changeset
+          end
 
         rel = Ash.Resource.public_relationship(changeset.resource, name) ->
-          behaviour = opts[:relationships][rel.name] || :replace
+          if rel.writable? do
+            behaviour = opts[:relationships][rel.name] || :replace
 
-          case behaviour do
-            :replace ->
-              replace_relationship(changeset, rel.name, value)
+            case behaviour do
+              :replace ->
+                replace_relationship(changeset, rel.name, value)
 
-            :append ->
-              append_to_relationship(changeset, rel.name, value)
+              :append ->
+                append_to_relationship(changeset, rel.name, value)
 
-            :remove ->
-              append_to_relationship(changeset, rel.name, value)
+              :remove ->
+                append_to_relationship(changeset, rel.name, value)
+            end
+          else
+            changeset
           end
 
         has_argument?(action, name) ->
@@ -451,13 +459,19 @@ defmodule Ash.Changeset do
           changeset
 
         _ ->
-          add_error(
-            changeset,
-            Required.exception(
-              field: required_relationship.name,
-              type: :relationship
-            )
-          )
+          case Map.fetch(changeset.attributes, required_relationship.source_field) do
+            {:ok, value} when not is_nil(value) ->
+              changeset
+
+            _ ->
+              add_error(
+                changeset,
+                Required.exception(
+                  field: required_relationship.name,
+                  type: :relationship
+                )
+              )
+          end
       end
     end)
   end
@@ -610,8 +624,9 @@ defmodule Ash.Changeset do
         )
       else
         with {:ok, casted} <- Ash.Type.cast_input(argument.type, value),
-             :ok <- Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
-          %{new_changeset | arguments: Map.put(new_changeset.arguments, argument.name, value)}
+             {:ok, casted} <-
+               Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
+          %{new_changeset | arguments: Map.put(new_changeset.arguments, argument.name, casted)}
         else
           _ ->
             Ash.Changeset.add_error(
@@ -1002,9 +1017,12 @@ defmodule Ash.Changeset do
         add_attribute_invalid_error(changeset, attribute, "Attribute is not writable")
 
       attribute ->
-        with {:ok, casted} <- Ash.Type.cast_input(attribute.type, value),
+        with {:ok, prepared} <- prepare_change(changeset, attribute, value),
+             {:ok, casted} <- Ash.Type.cast_input(attribute.type, prepared),
+             {:ok, casted} <- handle_change(changeset, attribute, casted),
              :ok <- validate_allow_nil(attribute, casted),
-             :ok <- Ash.Type.apply_constraints(attribute.type, casted, attribute.constraints) do
+             {:ok, casted} <-
+               Ash.Type.apply_constraints(attribute.type, casted, attribute.constraints) do
           data_value = Map.get(changeset.data, attribute.name)
 
           cond do
@@ -1022,9 +1040,14 @@ defmodule Ash.Changeset do
             add_attribute_invalid_error(changeset, attribute)
 
           {:error, error_or_errors} ->
-            error_or_errors
-            |> List.wrap()
-            |> Enum.reduce(changeset, &add_attribute_invalid_error(&2, attribute, &1))
+            errors =
+              if Keyword.keyword?(error_or_errors) do
+                [error_or_errors]
+              else
+                List.wrap(error_or_errors)
+              end
+
+            Enum.reduce(errors, changeset, &add_attribute_invalid_error(&2, attribute, &1))
         end
     end
   end
@@ -1054,8 +1077,11 @@ defmodule Ash.Changeset do
         %{changeset | attributes: Map.put(changeset.attributes, attribute.name, nil)}
 
       attribute ->
-        with {:ok, casted} <- Ash.Type.cast_input(attribute.type, value),
-             :ok <- Ash.Type.apply_constraints(attribute.type, casted, attribute.constraints) do
+        with {:ok, prepared} <- prepare_change(changeset, attribute, value),
+             {:ok, casted} <- Ash.Type.cast_input(attribute.type, prepared),
+             {:ok, casted} <- handle_change(changeset, attribute, casted),
+             {:ok, casted} <-
+               Ash.Type.apply_constraints(attribute.type, casted, attribute.constraints) do
           data_value = Map.get(changeset.data, attribute.name)
 
           cond do
@@ -1108,6 +1134,20 @@ defmodule Ash.Changeset do
   @spec add_error(t(), Ash.error() | String.t()) :: t()
   def add_error(changeset, error) do
     %{changeset | errors: [error | changeset.errors], valid?: false}
+  end
+
+  defp prepare_change(%{action_type: :create}, _attribute, value), do: {:ok, value}
+
+  defp prepare_change(changeset, attribute, value) do
+    old_value = Map.get(changeset.data, attribute.name)
+    Ash.Type.prepare_change(attribute.type, old_value, value)
+  end
+
+  defp handle_change(%{action_type: :create}, _attribute, value), do: {:ok, value}
+
+  defp handle_change(changeset, attribute, value) do
+    old_value = Map.get(changeset.data, attribute.name)
+    Ash.Type.handle_change(attribute.type, old_value, value)
   end
 
   defp reconcile_relationship_changes(%{replace: _, add: add} = changes) do
@@ -1294,12 +1334,69 @@ defmodule Ash.Changeset do
   defp validate_allow_nil(_, _), do: :ok
 
   defp add_attribute_invalid_error(changeset, attribute, message \\ nil) do
-    error =
-      InvalidAttribute.exception(
-        field: attribute.name,
-        message: message
-      )
+    messages =
+      if Keyword.keyword?(message) do
+        [message]
+      else
+        List.wrap(message)
+      end
 
-    add_error(changeset, error)
+    Enum.reduce(messages, changeset, fn message, changeset ->
+      opts =
+        case message do
+          keyword when is_list(keyword) ->
+            fields =
+              case List.wrap(keyword[:fields]) do
+                [] ->
+                  List.wrap(keyword[:field])
+
+                fields ->
+                  fields
+              end
+
+            fields
+            |> case do
+              [] ->
+                [
+                  Keyword.put(keyword, :field, add_index(to_string(attribute.name), keyword))
+                ]
+
+              fields ->
+                Enum.map(
+                  fields,
+                  &Keyword.put(
+                    message,
+                    :field,
+                    add_index(to_string(attribute.name), message) <> ".#{&1}"
+                  )
+                )
+            end
+
+          message when is_binary(message) ->
+            [[field: to_string(attribute.name), message: message]]
+
+          _ ->
+            [[field: to_string(attribute.name)]]
+        end
+
+      Enum.reduce(opts, changeset, fn opts, changeset ->
+        error =
+          InvalidAttribute.exception(
+            field: Keyword.get(opts, :field),
+            message: Keyword.get(opts, :message),
+            vars: opts
+          )
+
+        add_error(changeset, error)
+      end)
+    end)
+  end
+
+  defp add_index(string, opts) do
+    if opts[:index] do
+      string <> "[#{opts[:index]}]"
+    else
+      string
+    end
   end
 end

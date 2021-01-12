@@ -16,10 +16,14 @@ defmodule Ash.Error.Changes.InvalidAttribute do
     defp for_field(%{field: field}) when not is_nil(field), do: " for #{field}"
     defp for_field(_), do: ""
 
-    defp do_message(%{message: message}) when not is_nil(message) do
+    defp do_message(%{message: ""} = error), do: do_message(%{error | message: nil})
+
+    defp do_message(%{message: message}) when is_binary(message) do
       ": #{message}."
     end
 
-    defp do_message(_), do: "."
+    defp do_message(_other) do
+      "."
+    end
   end
 end

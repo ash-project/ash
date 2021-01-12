@@ -8,7 +8,17 @@ defmodule Ash.Resource do
   alias Ash.Dsl.Extension
 
   defmacro __using__(opts) do
-    data_layer = Macro.expand(opts[:data_layer], __CALLER__) || Ash.DataLayer.Simple
+    data_layer = Macro.expand(opts[:data_layer], __CALLER__)
+    embedded? = data_layer == :embedded
+
+    data_layer =
+      if embedded? do
+        Ash.DataLayer.Simple
+      else
+        data_layer || Ash.DataLayer.Simple
+      end
+
+    opts = Keyword.put(opts, :data_layer, data_layer)
 
     authorizers =
       opts[:authorizers]
@@ -42,7 +52,7 @@ defmodule Ash.Resource do
       ])
 
     body =
-      quote bind_quoted: [opts: opts] do
+      quote bind_quoted: [opts: opts, embedded?: embedded?] do
         @before_compile Ash.Resource
 
         @authorizers opts[:authorizers] || []
@@ -51,11 +61,503 @@ defmodule Ash.Resource do
         @extensions (opts[:extensions] || []) ++
                       List.wrap(opts[:data_layer] || Ash.DataLayer.Simple) ++
                       (opts[:authorizers] || [])
+        @embedded embedded?
+
+        if embedded? do
+          Ash.Resource.define_embeddable_type()
+        end
       end
 
     preparations = Extension.prepare(extensions)
 
     [body | preparations]
+  end
+
+  @embedded_resource_array_constraints [
+    sort: [
+      type: :any,
+      doc: """
+      A sort to be applied when casting the data.
+
+      Only relevant for a type of {:array, `EmbeddedResource}`
+
+      The sort is not applied when reading the data, so if the sort changes you will
+      need to fix it in your database or wait for the data to be written again, at which
+      point it will be sorted when casting.
+      """
+    ],
+    load: [
+      type: {:list, :atom},
+      doc: """
+      A list of calculations to load on the resource.
+
+      Only relevant for a type of {:array, `EmbeddedResource}`
+
+      Aggregates are not supported on embedded resources.
+      """
+    ]
+  ]
+
+  @doc false
+  def embedded_resource_array_constraints, do: @embedded_resource_array_constraints
+
+  @doc false
+  def handle_errors(errors) do
+    errors
+    |> do_handle_errors()
+    |> List.wrap()
+    |> Ash.Error.flatten_preserving_keywords()
+  end
+
+  defp do_handle_errors(errors) when is_list(errors) do
+    if Keyword.keyword?(errors) do
+      main_fields = Keyword.take(errors, [:message, :field, :fields])
+      vars = Keyword.merge(main_fields, Keyword.get(errors, :vars, []))
+
+      main_fields
+      |> Keyword.put(:vars, vars)
+      |> Enum.into(%{})
+      |> do_handle_errors()
+    else
+      Enum.map(errors, &do_handle_errors/1)
+    end
+  end
+
+  defp do_handle_errors(%{errors: errors}) do
+    errors
+    |> List.wrap()
+    |> do_handle_errors()
+  end
+
+  defp do_handle_errors(%Ash.Error.Changes.InvalidAttribute{
+         message: message,
+         field: field,
+         vars: vars
+       }) do
+    vars
+    |> Keyword.put(:field, field)
+    |> Keyword.put(:message, message)
+    |> add_index()
+  end
+
+  defp do_handle_errors(%{message: message, vars: vars, field: field}) do
+    vars
+    |> Keyword.put(:message, message)
+    |> Keyword.put(:field, field)
+    |> add_index()
+  end
+
+  defp do_handle_errors(%{message: message, vars: vars}) do
+    vars
+    |> Keyword.put(:message, message)
+    |> add_index()
+  end
+
+  defp do_handle_errors(%{field: field} = exception) do
+    [field: field, message: Exception.message(exception)]
+  end
+
+  defp do_handle_errors(error) when is_binary(error) do
+    [message: error]
+  end
+
+  defp do_handle_errors(error) do
+    [message: Exception.message(error)]
+  end
+
+  defp add_index(opts) do
+    cond do
+      opts[:index] && opts[:field] ->
+        Keyword.put(opts, :field, "#{opts[:field]}[#{opts[:index]}]")
+
+      opts[:index] ->
+        Keyword.put(opts, :field, "[#{opts[:index]}]")
+
+      true ->
+        opts
+    end
+  end
+
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
+  defmacro single_embed_implementation do
+    # credo:disable-for-next-line Credo.Check.Refactor.LongQuoteBlocks
+    quote do
+      alias __MODULE__.ShadowApi
+      def storage_type, do: :map
+
+      def cast_input(%{__struct__: __MODULE__} = input), do: {:ok, input}
+
+      def cast_input(value) when is_map(value) do
+        action = Ash.Resource.primary_action(__MODULE__, :create)
+
+        __MODULE__
+        |> Ash.Changeset.for_create(action.name, value)
+        |> ShadowApi.create()
+        |> case do
+          {:ok, result} ->
+            {:ok, result}
+
+          {:error, error} ->
+            {:error, Ash.Resource.handle_errors(error)}
+        end
+      end
+
+      def cast_input(nil), do: {:ok, nil}
+      def cast_input(_), do: :error
+
+      def cast_stored(value) when is_map(value) do
+        __MODULE__
+        |> Ash.Resource.attributes()
+        |> Enum.reduce_while(%{__struct__: __MODULE__}, fn attr, {:ok, struct} ->
+          with {:fetch, {:ok, value}} <- {:fetch, fetch_key(value, attr.name)},
+               {:ok, casted} <- Ash.Type.cast_stored(attr.type, value) do
+            {:ok, Map.put(struct, attr.name, casted)}
+          else
+            {:fetch, :error} ->
+              {:ok, struct}
+
+            other ->
+              {:halt, other}
+          end
+        end)
+      end
+
+      def cast_stored(nil), do: {:ok, nil}
+
+      def cast_stored(_other) do
+        :error
+      end
+
+      def fetch_key(map, atom) do
+        case Map.fetch(map, atom) do
+          {:ok, value} ->
+            value
+
+          :error ->
+            Map.fetch(map, to_string(atom))
+        end
+      end
+
+      def dump_to_native(value) when is_map(value) do
+        attributes = Ash.Resource.attributes(__MODULE__)
+        calculations = Ash.Resource.calculations(__MODULE__)
+        {:ok, Map.take(value, Enum.map(attributes ++ calculations, & &1.name))}
+      end
+
+      def dump_to_native(nil), do: {:ok, nil}
+      def dump_to_native(_), do: :error
+
+      def constraints, do: Keyword.take(array_constraints(), [:load])
+
+      def apply_constraints(nil, _), do: {:ok, nil}
+
+      def apply_constraints(term, constraints) do
+        __MODULE__
+        |> Ash.Query.put_context(:data, [term])
+        |> Ash.Query.load(constraints[:load] || [])
+        |> ShadowApi.read()
+        |> case do
+          {:ok, [result]} ->
+            {:ok, result}
+
+          {:error, errors} ->
+            {:error, Ash.Resource.handle_errors(errors)}
+        end
+      end
+
+      def handle_change(nil, new_value) do
+        {:ok, new_value}
+      end
+
+      def handle_change(old_value, nil) do
+        case ShadowApi.destroy(old_value) do
+          :ok -> {:ok, nil}
+          {:error, error} -> {:error, Ash.Resource.handle_errors(error)}
+        end
+      end
+
+      def handle_change(old_value, new_value) do
+        pkey_fields = Ash.Resource.primary_key(__MODULE__)
+
+        if Enum.all?(pkey_fields, fn pkey_field ->
+             Ash.Resource.attribute(__MODULE__, pkey_field).private?
+           end) do
+          {:ok, new_value}
+        else
+          pkey = Map.take(old_value, pkey_fields)
+
+          if Map.take(new_value, pkey_fields) == pkey do
+            {:ok, new_value}
+          else
+            case ShadowApi.destroy(old_value) do
+              :ok -> {:ok, new_value}
+              {:error, error} -> {:error, Ash.Resource.handle_errors(error)}
+            end
+          end
+        end
+      end
+
+      def prepare_change(_old_value, nil) do
+        {:ok, nil}
+      end
+
+      def prepare_change(_old_value, %{__struct__: __MODULE__} = new_value) do
+        {:ok, new_value}
+      end
+
+      def prepare_change(nil, new_value) do
+        {:ok, new_value}
+      end
+
+      def prepare_change(old_value, new_uncasted_value) do
+        pkey_fields = Ash.Resource.primary_key(__MODULE__)
+
+        if Enum.all?(pkey_fields, fn pkey_field ->
+             Ash.Resource.attribute(__MODULE__, pkey_field).private?
+           end) do
+          action = Ash.Resource.primary_action!(__MODULE__, :update)
+
+          old_value
+          |> Ash.Changeset.for_update(action.name, new_uncasted_value)
+          |> ShadowApi.update()
+          |> case do
+            {:ok, value} -> {:ok, value}
+            {:error, error} -> {:error, Ash.Resource.handle_errors(error)}
+          end
+        else
+          pkey =
+            Enum.into(pkey_fields, %{}, fn pkey_field ->
+              case fetch_key(new_uncasted_value, pkey_field) do
+                :error ->
+                  {pkey_field, :error}
+
+                value ->
+                  attribute = Ash.Resource.attribute(__MODULE__, pkey_field)
+
+                  case Ash.Type.cast_input(attribute.type, value) do
+                    {:ok, casted} ->
+                      {pkey_field, casted}
+
+                    _ ->
+                      {pkey_field, :error}
+                  end
+              end
+            end)
+
+          if Enum.any?(Map.values(pkey), &(&1 == :error)) do
+            {:ok, new_uncasted_value}
+          else
+            old_pkey = Map.take(old_value, pkey_fields)
+
+            if old_pkey == pkey do
+              action = Ash.Resource.primary_action!(__MODULE__, :update)
+
+              old_value
+              |> Ash.Changeset.for_update(action.name, new_uncasted_value)
+              |> ShadowApi.update()
+              |> case do
+                {:ok, value} -> {:ok, value}
+                {:error, error} -> {:error, Ash.Resource.handle_errors(error)}
+              end
+            else
+              {:ok, new_uncasted_value}
+            end
+          end
+        end
+      end
+    end
+  end
+
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
+  defmacro array_embed_implementation do
+    # credo:disable-for-next-line Credo.Check.Refactor.LongQuoteBlocks
+    quote do
+      alias __MODULE__.ShadowApi
+      def array_constraints, do: Ash.Resource.embedded_resource_array_constraints()
+
+      def apply_constraints_array([], _constraints), do: {:ok, []}
+
+      def apply_constraints_array(term, constraints) do
+        pkey = Ash.Resource.primary_key(__MODULE__)
+        unique_keys = Enum.map(Ash.Resource.identities(__MODULE__), & &1.keys) ++ [pkey]
+
+        case Enum.find(unique_keys, fn unique_key ->
+               has_duplicates?(term, &Map.take(&1, unique_key))
+             end) do
+          nil ->
+            query =
+              __MODULE__
+              |> Ash.Query.put_context(:data, term)
+              |> Ash.Query.load(constraints[:load] || [])
+
+            query =
+              if constraints[:sort] do
+                Ash.Query.sort(query, constraints[:sort])
+              else
+                query
+              end
+
+            ShadowApi.read(query)
+
+          keys ->
+            {:error, message: "items must be unique on keys %{keys}", keys: Enum.join(keys, ",")}
+        end
+      end
+
+      defp has_duplicates?(list, func) do
+        list
+        |> Enum.reduce_while(MapSet.new(), fn x, acc ->
+          x = func.(x)
+
+          if MapSet.member?(acc, x) do
+            {:halt, 0}
+          else
+            {:cont, MapSet.put(acc, x)}
+          end
+        end)
+        |> is_integer()
+      end
+
+      def handle_change_array(nil, new_values) do
+        handle_change_array([], new_values)
+      end
+
+      def handle_change_array(old_values, nil) do
+        handle_change_array(old_values, [])
+      end
+
+      def handle_change_array(old_values, new_values) do
+        pkey_fields = Ash.Resource.primary_key(__MODULE__)
+
+        old_values
+        |> Enum.with_index()
+        |> Enum.reject(fn {old_value, _} ->
+          pkey = Map.take(old_value, pkey_fields)
+
+          Enum.any?(new_values, fn new_value ->
+            Map.take(new_value, pkey_fields) == pkey
+          end)
+        end)
+        |> Enum.reduce_while(:ok, fn {record, index}, :ok ->
+          case ShadowApi.destroy(record) do
+            :ok ->
+              {:cont, :ok}
+
+            {:error, error} ->
+              errors =
+                error
+                |> Ash.Resource.handle_errors()
+                |> Enum.map(fn keyword ->
+                  Keyword.put(keyword, :index, index)
+                end)
+
+              {:halt, {:error, errors}}
+          end
+        end)
+        |> case do
+          :ok ->
+            {:ok, new_values}
+
+          {:error, error} ->
+            {:error, error}
+        end
+      end
+
+      def prepare_change_array(old_values, new_uncasted_values) do
+        pkey_fields = Ash.Resource.primary_key(__MODULE__)
+
+        if Enum.all?(pkey_fields, fn pkey_field ->
+             Ash.Resource.attribute(__MODULE__, pkey_field).private?
+           end) do
+          {:ok, new_uncasted_values}
+        else
+          pkey_attributes =
+            Enum.into(pkey_fields, %{}, fn field ->
+              {field, Ash.Resource.attribute(__MODULE__, field)}
+            end)
+
+          new_uncasted_values
+          |> Enum.with_index()
+          |> Enum.reduce_while({:ok, []}, fn {new, index}, {:ok, new_uncasted_values} ->
+            pkey =
+              Enum.into(pkey_fields, %{}, fn pkey_field ->
+                case fetch_key(new, pkey_field) do
+                  :error ->
+                    :error
+
+                  value ->
+                    case Ash.Type.cast_input(Map.get(pkey_attributes, pkey_field).type, value) do
+                      {:ok, casted} ->
+                        {pkey_field, casted}
+
+                      _ ->
+                        :error
+                    end
+                end
+              end)
+
+            if Enum.any?(Map.values(pkey), &(&1 == :error)) do
+              {:cont, {:ok, [new | new_uncasted_values]}}
+            else
+              value_updating_from =
+                Enum.find(old_values, fn old_value ->
+                  Map.take(old_value, pkey_fields) == pkey
+                end)
+
+              if value_updating_from do
+                default_update = Ash.Resource.primary_action!(__MODULE__, :update)
+
+                value_updating_from
+                |> Ash.Changeset.for_update(default_update.name, new)
+                |> ShadowApi.update()
+                |> case do
+                  {:ok, value} ->
+                    {:cont, {:ok, [value | new_uncasted_values]}}
+
+                  {:error, error} ->
+                    errors =
+                      error
+                      |> Ash.Resource.handle_errors()
+                      |> Enum.map(fn keyword ->
+                        Keyword.put(keyword, :index, index)
+                      end)
+
+                    {:halt, {:error, errors}}
+                end
+              else
+                {:cont, {:ok, [new | new_uncasted_values]}}
+              end
+            end
+          end)
+          |> case do
+            {:ok, values} -> {:ok, Enum.reverse(values)}
+            {:error, error} -> {:error, error}
+          end
+        end
+      end
+    end
+  end
+
+  defmacro define_embeddable_type do
+    quote do
+      use Ash.Type
+
+      parent = __MODULE__
+
+      defmodule ShadowApi do
+        @moduledoc false
+        use Ash.Api
+
+        @parent parent
+
+        resources do
+          resource @parent, warn_on_compile_failure?: false
+        end
+      end
+
+      Ash.Resource.single_embed_implementation()
+      Ash.Resource.array_embed_implementation()
+    end
   end
 
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
@@ -76,7 +578,8 @@ defmodule Ash.Resource do
           Extension.set_state(
             notifiers: @notifiers,
             authorizers: @authorizers,
-            data_layer: @data_layer
+            data_layer: @data_layer,
+            embedded?: @embedded
           )
         )
 
@@ -97,7 +600,12 @@ defmodule Ash.Resource do
 
   @spec extensions(Ash.resource()) :: [module]
   def extensions(resource) do
-    :persistent_term.get({resource, :extensions}, [])
+    Extension.get_persisted(resource, :extensions)
+  end
+
+  @spec embedded?(Ash.resource()) :: boolean
+  def embedded?(resource) do
+    Extension.get_persisted(resource, :embedded?, false)
   end
 
   @spec description(Ash.resource()) :: String.t() | nil
@@ -145,7 +653,12 @@ defmodule Ash.Resource do
   @doc "Whether or not a given module is a resource module"
   @spec resource?(module) :: boolean
   def resource?(module) when is_atom(module) do
+    Ash.try_compile(module)
+
     module.module_info(:attributes)[:is_ash_resource] == [true]
+  rescue
+    _ ->
+      false
   end
 
   def resource?(_), do: false

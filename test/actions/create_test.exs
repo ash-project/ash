@@ -525,7 +525,7 @@ defmodule Ash.Test.Actions.CreateTest do
 
   describe "list type constraints" do
     test "it honors min_length" do
-      assert_raise Ash.Error.Invalid, ~r/must have more than 2 items/, fn ->
+      assert_raise Ash.Error.Invalid, ~r/must have 2 or more items/, fn ->
         Post
         |> new()
         |> change_attribute(:list_attribute_with_constraints, [])
@@ -534,7 +534,7 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     test "it honors max_length" do
-      assert_raise Ash.Error.Invalid, ~r/must have fewer than 10 items/, fn ->
+      assert_raise Ash.Error.Invalid, ~r/must have 10 or fewer items/, fn ->
         list = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 
         Post
@@ -545,7 +545,7 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     test "it honors item constraints" do
-      assert_raise Ash.Error.Invalid, ~r/must be less than or equal to 10 at index 0/, fn ->
+      assert_raise Ash.Error.Invalid, ~r/must be less than or equal to 10/, fn ->
         list = [28, 2, 4]
 
         Post

@@ -43,8 +43,11 @@ defmodule Ash.Dsl.Transformer do
     entity = Enum.find(section.entities, &(&1.name == name))
 
     case Ash.OptionsHelpers.validate(opts, entity.schema) do
-      {:ok, opts} -> {:ok, struct(entity.target, opts)}
-      {:error, error} -> {:error, error}
+      {:ok, opts} ->
+        {:ok, struct(entity.target, opts)}
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 

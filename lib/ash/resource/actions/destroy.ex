@@ -4,11 +4,11 @@ defmodule Ash.Resource.Actions.Destroy do
   defstruct [
     :name,
     :primary?,
-    :arguments,
-    :changes,
-    :accept,
     :soft?,
     :description,
+    arguments: [],
+    accept: nil,
+    changes: [],
     type: :destroy
   ]
 

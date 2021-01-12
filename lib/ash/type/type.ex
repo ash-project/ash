@@ -1,5 +1,5 @@
 defmodule Ash.Type do
-  @list_constraints [
+  @array_constraints [
     min_length: [
       type: :non_neg_integer,
       doc: "A minimum length for the items"
@@ -35,18 +35,23 @@ defmodule Ash.Type do
   def builtin?(type) when type in @builtin_types, do: true
   def builtin?(_), do: false
 
-  @doc_list_constraints Keyword.put(@list_constraints, :items,
-                          type: :any,
-                          doc:
-                            "Constraints for the elements of the list. See the contained type's docs for more."
-                        )
+  @doc_array_constraints Keyword.put(@array_constraints, :items,
+                           type: :any,
+                           doc:
+                             "Constraints for the elements of the list. See the contained type's docs for more."
+                         )
   @moduledoc """
   This behaviour is a superset of the Ecto.Type behavior, that also contains
-  api level information, like what kinds of filters are allowed. Eventually,
-  this may be used for composite types or serialization.
+  api level information, like what kinds of filters are allowed.
 
   Much better to `use Ash.Type` than to say `@behaviour Ash.Type` and define
   everything yourself.
+
+  Overriding the `{:array, type}` behavior. By definining the `*_array` versions
+  of `cast_input`, `cast_stored`, `dump_to_native` and `apply_constraints`, you can
+  override how your type behaves as a collection. This is how the features of embedded
+  resources are implemented. No need to implement them unless you wish to override the
+  default behavior.
 
   ## Built in types
 
@@ -61,22 +66,58 @@ defmodule Ash.Type do
   Currently, the only composite type supported is a list type, specified via:
   `{:array, Type}`. The constraints available are:
 
-  #{Ash.OptionsHelpers.docs(@doc_list_constraints)}
+  #{Ash.OptionsHelpers.docs(@doc_array_constraints)}
   """
   @type constraints :: Keyword.t()
   @callback storage_type() :: Ecto.Type.t()
   @callback ecto_type() :: Ecto.Type.t()
   @callback cast_input(term) :: {:ok, term} | {:error, Keyword.t()} | :error
+  @callback cast_input_array(list(term)) :: {:ok, list(term)} | {:error, Keyword.t()} | :error
   @callback cast_stored(term) :: {:ok, term} | :error
+  @callback cast_stored_array(list(term)) :: {:ok, list(term)} | :error
   @callback dump_to_native(term) :: {:ok, term} | :error
+  @callback dump_to_native_array(list(term)) :: {:ok, term} | :error
+  @callback handle_change(old_term :: term, new_term :: term) ::
+              {:ok, term} | {:error, Ash.error()}
+  @callback handle_change_array(old_term :: list(term), new_term :: list(term)) ::
+              {:ok, term} | {:error, Ash.error()}
+  @callback prepare_change(old_term :: term, new_uncasted_term :: term) ::
+              {:ok, term} | {:error, Ash.error()}
+  @callback prepare_change_array(old_term :: list(term), new_uncasted_term :: list(term)) ::
+              {:ok, term} | {:error, Ash.error()}
   @callback constraints() :: constraints()
-  @callback apply_constraints(term, constraints()) ::
-              :ok | {:error, constraint_error() | list(constraint_error)}
+  @callback array_constraints() :: constraints()
+  @callback apply_constraints(term, constraints) ::
+              {:ok, new_value :: term}
+              | :ok
+              | {:error, constraint_error() | list(constraint_error)}
+  @callback apply_constraints_array(list(term), constraints) ::
+              {:ok, new_values :: list(term)}
+              | :ok
+              | {:error, constraint_error() | list(constraint_error)}
   @callback describe(constraints()) :: String.t() | nil
   @callback equal?(term, term) :: boolean
 
+  @optional_callbacks [
+    cast_stored_array: 1,
+    cast_input_array: 1,
+    dump_to_native_array: 1,
+    handle_change_array: 2,
+    prepare_change_array: 2,
+    apply_constraints_array: 2,
+    array_constraints: 0
+  ]
+
   @type constraint_error :: String.t() | {String.t(), Keyword.t()}
   @type t :: atom | {:array, atom}
+
+  def embedded_type?({:array, type}) do
+    embedded_type?(type)
+  end
+
+  def embedded_type?(type) do
+    Ash.Resource.resource?(type)
+  end
 
   def describe(type, constraints) do
     case get_type(type) do
@@ -88,8 +129,13 @@ defmodule Ash.Type do
     end
   end
 
-  @doc false
-  def list_constraints, do: @list_constraints
+  def array_constraints({:array, type}) do
+    [items: array_constraints(type)]
+  end
+
+  def array_constraints(type) do
+    type.array_constraints()
+  end
 
   @spec get_type(atom | module) :: atom | module | {:array, atom | module}
   def get_type({:array, value}) do
@@ -105,6 +151,42 @@ defmodule Ash.Type do
 
   def get_type(value) do
     value
+  end
+
+  @doc """
+  Process the old casted values alongside the new casted values.
+
+  This is leveraged by embedded types to know if something is being updated
+  or destroyed. This is not called on creates.
+  """
+  def handle_change({:array, type}, old_value, new_value) do
+    if is_atom(type) && :erlang.function_exported(type, :handle_change_array, 2) do
+      type.handle_change_array(old_value, new_value)
+    else
+      {:ok, new_value}
+    end
+  end
+
+  def handle_change(type, old_value, new_value) do
+    type.handle_change(old_value, new_value)
+  end
+
+  @doc """
+  Process the old casted values alongside the new *un*casted values.
+
+  This is leveraged by embedded types to know if something is being updated
+  or destroyed. This is not called on creates.
+  """
+  def prepare_change({:array, type}, old_value, new_value) do
+    if is_atom(type) && :erlang.function_exported(type, :prepare_change_array, 2) do
+      type.prepare_change_array(old_value, new_value)
+    else
+      {:ok, new_value}
+    end
+  end
+
+  def prepare_change(type, old_value, new_value) do
+    type.prepare_change(old_value, new_value)
   end
 
   @doc """
@@ -137,8 +219,11 @@ defmodule Ash.Type do
 
   def ash_type?(module) when is_atom(module) do
     case Code.ensure_compiled(module) do
-      {:module, _} -> ash_type_module?(module)
-      _ -> false
+      {:module, _} ->
+        ash_type_module?(module)
+
+      _other ->
+        false
     end
   end
 
@@ -155,21 +240,37 @@ defmodule Ash.Type do
   end
 
   def cast_input({:array, type}, term) do
-    term
-    |> Enum.with_index()
-    |> Enum.reverse()
-    |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
-      case cast_input(type, item) do
-        :error ->
-          {:halt, {:error, index: index}}
+    if is_atom(type) && :erlang.function_exported(type, :cast_input_array, 1) do
+      type.cast_input_array(term)
+    else
+      term
+      |> Enum.with_index()
+      |> Enum.reverse()
+      |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
+        case cast_input(type, item) do
+          :error ->
+            {:halt, {:error, message: "invalid value at %{index}", index: index}}
 
-        {:error, keyword} ->
-          {:halt, {:error, Keyword.put(keyword, :index, index)}}
+          {:error, keyword} ->
+            errors =
+              keyword
+              |> List.wrap()
+              |> Ash.Error.flatten_preserving_keywords()
+              |> Enum.map(fn
+                message when is_binary(message) ->
+                  [message: message, index: index]
 
-        {:ok, value} ->
-          {:cont, {:ok, [value | casted]}}
-      end
-    end)
+                keyword ->
+                  Keyword.put(keyword, :index, index)
+              end)
+
+            {:halt, {:error, errors}}
+
+          {:ok, value} ->
+            {:cont, {:ok, [value | casted]}}
+        end
+      end)
+    end
   end
 
   def cast_input(type, term) do
@@ -192,21 +293,37 @@ defmodule Ash.Type do
   """
   @spec cast_stored(t(), term) :: {:ok, term} | {:error, keyword()} | :error
   def cast_stored({:array, type}, term) when is_list(term) do
-    term
-    |> Enum.with_index()
-    |> Enum.reverse()
-    |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
-      case cast_stored(type, item) do
-        :error ->
-          {:halt, {:error, index: index}}
+    if is_atom(type) && :erlang.function_exported(type, :cast_stored_array, 1) do
+      type.cast_stored_array(term)
+    else
+      term
+      |> Enum.with_index()
+      |> Enum.reverse()
+      |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
+        case cast_stored(type, item) do
+          :error ->
+            {:halt, {:error, index: index}}
 
-        {:error, keyword} ->
-          {:halt, {:error, Keyword.put(keyword, :index, index)}}
+          {:error, keyword} ->
+            errors =
+              keyword
+              |> List.wrap()
+              |> Ash.Error.flatten_preserving_keywords()
+              |> Enum.map(fn
+                string when is_binary(string) ->
+                  [message: string, index: index]
 
-        {:ok, value} ->
-          {:cont, {:ok, [value | casted]}}
-      end
-    end)
+                vars ->
+                  Keyword.put(vars, :index, index)
+              end)
+
+            {:halt, {:error, errors}}
+
+          {:ok, value} ->
+            {:cont, {:ok, [value | casted]}}
+        end
+      end)
+    end
   end
 
   def cast_stored(type, term) do
@@ -216,59 +333,63 @@ defmodule Ash.Type do
   @doc """
   Confirms if a casted value matches the provided constraints.
   """
-  @spec apply_constraints(t(), term, constraints()) :: :ok | {:error, String.t()}
+  @spec apply_constraints(t(), term, constraints()) :: {:ok, term} | {:error, String.t()}
   def apply_constraints({:array, type}, term, constraints) when is_list(term) do
-    list_constraint_errors = list_constraint_errors(term, constraints)
+    if is_atom(type) && :erlang.function_exported(type, :apply_constraints_array, 2) do
+      case type.apply_constraints_array(term, constraints) do
+        :ok -> {:ok, term}
+        other -> other
+      end
+    else
+      list_constraint_errors = list_constraint_errors(term, constraints)
 
-    case list_constraint_errors do
-      [] ->
-        nil_items? = Keyword.get(constraints, :nil_items?, true)
-        item_constraints = constraints[:items] || []
+      case list_constraint_errors do
+        [] ->
+          nil_items? = Keyword.get(constraints, :nil_items?, true)
+          item_constraints = constraints[:items] || []
 
-        if item_constraints != [] || !nil_items? do
-          errors =
+          if item_constraints != [] || !nil_items? do
             term
             |> Enum.with_index()
-            |> Enum.reduce([], fn {item, index}, errors ->
-              errors =
-                if is_nil(item) && not nil_items? do
-                  [{"no nil/null values at index %{index}", index: index} | errors]
-                else
-                  errors
+            |> Enum.reduce({[], []}, fn {item, index}, {items, errors} ->
+              if is_nil(item) && not nil_items? do
+                {[item | items], [[message: "no nil/null values", index: index] | errors]}
+              else
+                case apply_constraints(type, item, item_constraints) do
+                  {:ok, value} ->
+                    {[value | items], errors}
+
+                  {:error, new_errors} ->
+                    new_errors =
+                      new_errors
+                      |> List.wrap()
+                      |> Ash.Error.flatten_preserving_keywords()
+                      |> Enum.map(fn
+                        string when is_binary(string) ->
+                          [message: string, index: index]
+
+                        vars ->
+                          Keyword.put(vars, :index, index)
+                      end)
+
+                    {[item | items], List.wrap(new_errors) ++ errors}
                 end
-
-              case apply_constraints(type, item, item_constraints) do
-                :ok ->
-                  errors
-
-                {:error, new_errors} ->
-                  new_errors =
-                    new_errors
-                    |> List.wrap()
-                    |> Enum.map(fn
-                      {template, replacements} ->
-                        {template <> " at index %{index}",
-                         Keyword.put(replacements, :index, index)}
-
-                      string ->
-                        {string <> " at index %{index}", index: index}
-                    end)
-
-                  List.wrap(new_errors) ++ errors
               end
             end)
+            |> case do
+              {terms, []} ->
+                {:ok, Enum.reverse(terms)}
 
-          if errors == [] do
-            :ok
+              {_, errors} ->
+                {:error, errors}
+            end
           else
-            {:error, errors}
+            {:ok, term}
           end
-        else
-          :ok
-        end
 
-      errors ->
-        {:error, errors}
+        errors ->
+          {:error, errors}
+      end
     end
   end
 
@@ -277,7 +398,10 @@ defmodule Ash.Type do
   end
 
   def apply_constraints(type, term, constraints) do
-    type.apply_constraints(term, constraints)
+    case type.apply_constraints(term, constraints) do
+      :ok -> {:ok, term}
+      other -> other
+    end
   end
 
   defp list_constraint_errors(term, constraints) do
@@ -292,14 +416,14 @@ defmodule Ash.Type do
     |> Enum.reduce([], fn
       {:min_length, min_length}, errors ->
         if length < min_length do
-          [{"must have more than %{min} items", min: min_length} | errors]
+          [message: "must have %{min} or more items", min: min_length]
         else
           errors
         end
 
       {:max_length, max_length}, errors ->
         if length > max_length do
-          [{"must have fewer than %{max} items", max: max_length} | errors]
+          [message: "must have %{max} or fewer items", max: max_length]
         else
           errors
         end
@@ -311,7 +435,7 @@ defmodule Ash.Type do
 
   @spec constraints(t()) :: constraints()
   def constraints({:array, _type}) do
-    @list_constraints
+    @array_constraints
   end
 
   def constraints(type) do
@@ -325,17 +449,21 @@ defmodule Ash.Type do
   """
   @spec dump_to_native(t(), term) :: {:ok, term} | {:error, keyword()} | :error
   def dump_to_native({:array, type}, term) do
-    term
-    |> Enum.reverse()
-    |> Enum.reduce_while({:ok, []}, fn item, {:ok, dumped} ->
-      case dump_to_native(type, item) do
-        :error ->
-          {:halt, :error}
+    if is_atom(type) && :erlang.function_exported(type, :dump_to_native_array, 1) do
+      type.dump_to_native_array(term)
+    else
+      term
+      |> Enum.reverse()
+      |> Enum.reduce_while({:ok, []}, fn item, {:ok, dumped} ->
+        case dump_to_native(type, item) do
+          :error ->
+            {:halt, :error}
 
-        {:ok, value} ->
-          {:cont, {:ok, [value | dumped]}}
-      end
-    end)
+          {:ok, value} ->
+            {:cont, {:ok, [value | dumped]}}
+        end
+      end)
+    end
   end
 
   def dump_to_native(type, term) do
@@ -428,7 +556,23 @@ defmodule Ash.Type do
       @impl true
       def apply_constraints(_, _), do: :ok
 
-      defoverridable equal?: 2, constraints: 0, apply_constraints: 2
+      @impl true
+      def handle_change(_old_value, new_value), do: {:ok, new_value}
+
+      @impl true
+      def prepare_change(_old_value, new_value), do: {:ok, new_value}
+
+      @impl true
+      def array_constraints do
+        unquote(@array_constraints)
+      end
+
+      defoverridable equal?: 2,
+                     constraints: 0,
+                     array_constraints: 0,
+                     apply_constraints: 2,
+                     handle_change: 2,
+                     prepare_change: 2
     end
   end
 

@@ -41,12 +41,13 @@ defmodule Ash.Error do
   def to_ash_error(values) when is_list(values) do
     values =
       values
+      |> flatten_preserving_keywords()
       |> Enum.uniq_by(&clear_stacktraces/1)
       |> Enum.map(fn value ->
         if ash_error?(value) do
           value
         else
-          Unknown.exception(error: values)
+          Unknown.exception(errors: values)
         end
       end)
       |> Enum.uniq()
@@ -60,6 +61,22 @@ defmodule Ash.Error do
     else
       to_ash_error([value])
     end
+  end
+
+  @doc "A utility to flatten a list, but preserve keyword list elements"
+  def flatten_preserving_keywords(list) do
+    Enum.flat_map(list, fn item ->
+      cond do
+        Keyword.keyword?(item) ->
+          [item]
+
+        is_list(item) ->
+          item
+
+        true ->
+          [item]
+      end
+    end)
   end
 
   def clear_stacktraces(%{stacktrace: stacktrace} = error) when not is_nil(stacktrace) do
@@ -151,13 +168,20 @@ defmodule Ash.Error do
 
   defmacro def_ash_error(fields, opts \\ []) do
     quote do
-      defexception unquote(fields) ++ [path: [], stacktrace: [], class: unquote(opts)[:class]]
+      defexception unquote(fields) ++
+                     [vars: [], path: [], stacktrace: [], class: unquote(opts)[:class]]
 
       @impl Exception
-      def message(%{message: {string, replacements}} = exception) do
+      def message(%{message: message, vars: vars} = exception) do
+        string = message || ""
+
         string =
-          Enum.reduce(replacements, string, fn {key, value}, acc ->
-            String.replace(acc, "%{#{key}}", to_string(value))
+          Enum.reduce(vars, string, fn {key, value}, acc ->
+            if String.contains?(acc, "%{#{key}}") do
+              String.replace(acc, "%{#{key}}", to_string(value))
+            else
+              acc
+            end
           end)
 
         Ash.Error.message(%{exception | message: string})
