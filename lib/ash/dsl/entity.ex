@@ -40,6 +40,7 @@ defmodule Ash.Dsl.Entity do
     entities: [],
     describe: "",
     args: [],
+    hide: [],
     modules: [],
     schema: [],
     auto_set_fields: []
@@ -52,6 +53,7 @@ defmodule Ash.Dsl.Entity do
           examples: [String.t()],
           transform: mfa | nil,
           args: [atom],
+          hide: [atom],
           entities: Keyword.t(),
           auto_set_fields: Keyword.t(),
           schema: Ash.OptionsHelpers.schema()

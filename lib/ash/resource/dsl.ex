@@ -783,7 +783,8 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.SetPrimaryActions,
     Ash.Resource.Transformers.ValidateActionTypesSupported,
     Ash.Resource.Transformers.CountableActions,
-    Ash.Resource.Transformers.ValidateMultitenancy
+    Ash.Resource.Transformers.ValidateMultitenancy,
+    Ash.Resource.Transformers.DefaultPrimaryKey
   ]
 
   @moduledoc """

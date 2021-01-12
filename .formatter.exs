@@ -87,6 +87,7 @@ locals_without_parens = [
   uuid_primary_key: 2,
   validate: 1,
   validate: 2,
+  warn_on_compile_failure?: 1,
   writable?: 1
 ]
 

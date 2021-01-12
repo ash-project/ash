@@ -12,6 +12,7 @@ defmodule Ash.Api.Transformers.EnsureResourcesCompiled do
   def transform(_module, dsl) do
     dsl
     |> Transformer.get_entities([:resources])
+    |> Enum.filter(& &1.warn_on_compile_failure?)
     |> Enum.map(& &1.resource)
     |> Enum.filter(fn resource ->
       case Code.ensure_compiled(resource) do

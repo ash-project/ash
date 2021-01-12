@@ -7,7 +7,14 @@ defmodule Ash.Api.Dsl do
     examples: [
       "resource MyApp.User"
     ],
+    # This is an internal tool used by embedded resources,
+    # so we hide it from the documentation
+    hide: [:warn_on_compile_failure?],
     schema: [
+      warn_on_compile_failure?: [
+        type: :atom,
+        default: true
+      ],
       resource: [
         type: :atom,
         required: true,

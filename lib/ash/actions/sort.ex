@@ -24,6 +24,12 @@ defmodule Ash.Actions.Sort do
           !attribute ->
             {sorts, [NoSuchAttribute.exception(attribute: field) | errors]}
 
+          Ash.Type.embedded_type?(attribute.type) ->
+            {sorts, ["Cannot sort on embedded types" | errors]}
+
+          match?({:array, _}, attribute.type) ->
+            {sorts, ["Cannot sort on array types" | errors]}
+
           !Ash.Resource.data_layer_can?(resource, {:sort, Ash.Type.storage_type(attribute.type)}) ->
             {sorts,
              [

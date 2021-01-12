@@ -43,9 +43,8 @@ defmodule Ash.Resource.Validation.OneOf do
           {:error,
            InvalidAttribute.exception(
              field: opts[:attribute],
-             message:
-               {"expected one of %{values}",
-                values: Enum.map_join(opts[:values], ", ", &to_string/1)}
+             message: "expected one of %{values}",
+             vars: [values: Enum.map_join(opts[:values], ", ", &to_string/1)]
            )}
         end
 

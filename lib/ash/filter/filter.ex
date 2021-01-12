@@ -1195,6 +1195,7 @@ defmodule Ash.Filter do
     end
   end
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp add_expression_part({field, nested_statement}, context, expression)
        when is_atom(field) or is_binary(field) do
     aggregates =
@@ -1252,12 +1253,21 @@ defmodule Ash.Filter do
         end
 
       attr = attribute(context, field) ->
-        case parse_predicates(nested_statement, attr, context) do
-          {:ok, nested_statement} ->
-            {:ok, Expression.optimized_new(:and, expression, nested_statement)}
+        cond do
+          match?({:array, _}, attr.type) ->
+            {:error, "Cannot filter on array types"}
 
-          {:error, error} ->
-            {:error, error}
+          Ash.Type.embedded_type?(attr.type) ->
+            {:error, "Cannot filter on embedded types"}
+
+          true ->
+            case parse_predicates(nested_statement, attr, context) do
+              {:ok, nested_statement} ->
+                {:ok, Expression.optimized_new(:and, expression, nested_statement)}
+
+              {:error, error} ->
+                {:error, error}
+            end
         end
 
       field in aggregates ->
@@ -1352,7 +1362,16 @@ defmodule Ash.Filter do
         {:cont, {:ok, [%{ref | attribute: Map.get(aggregates, field)} | acc]}}
 
       attribute = attribute(context, field) ->
-        {:cont, {:ok, [%{ref | attribute: attribute} | acc]}}
+        cond do
+          match?({:array, _}, attribute.type) ->
+            {:halt, {:error, "Cannot filter on array fields"}}
+
+          Ash.Type.embedded_type?(attribute.type) ->
+            {:halt, {:error, "Cannot filter on embedded fields"}}
+
+          true ->
+            {:cont, {:ok, [%{ref | attribute: attribute} | acc]}}
+        end
 
       relationship = relationship(context, field) ->
         case Ash.Resource.primary_key(relationship.destination) do

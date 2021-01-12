@@ -80,7 +80,7 @@ defmodule Ash.Resource.Calculation do
           with {:ok, new_constraints} <-
                  Ash.OptionsHelpers.validate(
                    Keyword.delete(constraints, :items),
-                   Ash.Type.list_constraints()
+                   Ash.Type.array_constraints(type)
                  ),
                {:ok, item_constraints} <- validate_item_constraints(type, constraints) do
             {:ok,

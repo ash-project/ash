@@ -49,6 +49,11 @@ defmodule Ash.Resource.Validation.Present do
         end
       end)
 
+    opts =
+      opts
+      |> Keyword.put(:keys, Enum.join(opts[:attributes] || [], ","))
+      |> Keyword.put(:fields, opts[:attributes])
+
     cond do
       opts[:exactly] && present != opts[:exactly] ->
         if opts[:exactly] == 0 do
@@ -57,7 +62,11 @@ defmodule Ash.Resource.Validation.Present do
           if count == 1 do
             attribute_error(opts, count, "must be present")
           else
-            attribute_error(opts, count, {"exactly %{exactly} must be present", opts})
+            attribute_error(
+              opts,
+              count,
+              "exactly %{exactly} of %{keys} must be present"
+            )
           end
         end
 
@@ -65,14 +74,14 @@ defmodule Ash.Resource.Validation.Present do
         if count == 1 do
           attribute_error(opts, count, "must be present")
         else
-          changes_error(opts, count, {"at least %{at_least} must be present", opts})
+          changes_error(opts, count, "at least %{at_least} of %{keys} must be present")
         end
 
       opts[:at_most] && present > opts[:at_most] ->
         if count == 1 do
           attribute_error(opts, count, "must not be present")
         else
-          changes_error(opts, count, {"at least %{at_most} must be present", opts})
+          changes_error(opts, count, "at least %{at_most} of %{keys} must be present")
         end
 
       true ->
@@ -84,16 +93,22 @@ defmodule Ash.Resource.Validation.Present do
     {:error,
      InvalidChanges.exception(
        fields: opts[:attributes],
-       message: message
+       message: message,
+       vars: opts
      )}
   end
 
   defp attribute_error(opts, _count, message) do
     {:error,
-     InvalidAttribute.exception(
-       field: List.first(opts[:attributes]),
-       message: message
-     )}
+     opts[:attributes]
+     |> List.wrap()
+     |> Enum.map(fn attribute ->
+       InvalidAttribute.exception(
+         field: attribute,
+         message: message,
+         vars: opts
+       )
+     end)}
   end
 
   @doc false

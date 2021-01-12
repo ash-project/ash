@@ -13,8 +13,9 @@ defmodule Ash.Error.Changes.InvalidChanges do
       "#{for_fields(error)}#{do_message(error)}"
     end
 
-    defp for_fields(%{fields: fields}) when not is_nil(fields),
-      do: "#{Enum.join(fields, ", ")}"
+    defp for_fields(%{fields: fields}) when not is_nil(fields) do
+      "#{Enum.join(fields, ", ")}"
+    end
 
     defp for_fields(_), do: ""
 
