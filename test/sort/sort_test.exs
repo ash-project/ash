@@ -21,7 +21,7 @@ defmodule Ash.Test.Sort.SortTest do
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      uuid_primary_key :id
       attribute :title, :string
       attribute :contents, :string
       attribute :points, :integer, private?: true
