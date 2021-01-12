@@ -29,8 +29,13 @@ defmodule Ash.Test.NotifierTest do
     end
 
     relationships do
-      belongs_to :source_post, Ash.Test.NotifierTest.Post, primary_key?: true
-      belongs_to :destination_post, Ash.Test.NotifierTest.Post, primary_key?: true
+      belongs_to :source_post, Ash.Test.NotifierTest.Post,
+        primary_key?: true,
+        required?: true
+
+      belongs_to :destination_post, Ash.Test.NotifierTest.Post,
+        primary_key?: true,
+        required?: true
     end
   end
 
@@ -53,7 +58,7 @@ defmodule Ash.Test.NotifierTest do
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      uuid_primary_key :id
 
       attribute :name, :string
     end
@@ -83,7 +88,7 @@ defmodule Ash.Test.NotifierTest do
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      uuid_primary_key :id
 
       attribute :name, :string
     end

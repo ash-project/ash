@@ -22,7 +22,7 @@ defmodule Ash.Test.Actions.SideLoadTest do
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      uuid_primary_key :id
       attribute :name, :string
     end
 
@@ -45,7 +45,7 @@ defmodule Ash.Test.Actions.SideLoadTest do
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      uuid_primary_key :id
       attribute :title, :string
       attribute :contents, :string
     end
@@ -74,8 +74,11 @@ defmodule Ash.Test.Actions.SideLoadTest do
     end
 
     relationships do
-      belongs_to :post, Post, primary_key?: true
-      belongs_to :category, Ash.Test.Actions.SideLoadTest.Category, primary_key?: true
+      belongs_to :post, Post, primary_key?: true, required?: true
+
+      belongs_to :category, Ash.Test.Actions.SideLoadTest.Category,
+        primary_key?: true,
+        required?: true
     end
   end
 
@@ -92,7 +95,7 @@ defmodule Ash.Test.Actions.SideLoadTest do
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      uuid_primary_key :id
       attribute :name, :string
     end
 

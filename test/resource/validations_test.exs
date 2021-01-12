@@ -9,7 +9,7 @@ defmodule Ash.Test.Resource.ValidationsTest do
         use Ash.Resource
 
         attributes do
-          attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+          uuid_primary_key :id
 
           attribute :name, :string
           attribute :contents, :string

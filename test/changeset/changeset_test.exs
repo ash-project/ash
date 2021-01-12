@@ -27,7 +27,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      uuid_primary_key :id
       attribute :name, :string
     end
 
@@ -58,7 +58,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      uuid_primary_key :id
       attribute :name, :string
     end
 
@@ -84,8 +84,11 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     relationships do
-      belongs_to :post, Ash.Test.Changeset.ChangesetTest.Post, primary_key?: true
-      belongs_to :category, Ash.Test.Changeset.ChangesetTest.Category, primary_key?: true
+      belongs_to :post, Ash.Test.Changeset.ChangesetTest.Post, primary_key?: true, required?: true
+
+      belongs_to :category, Ash.Test.Changeset.ChangesetTest.Category,
+        primary_key?: true,
+        required?: true
     end
   end
 
@@ -104,7 +107,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      uuid_primary_key :id
       attribute :title, :string
       attribute :contents, :string
     end
@@ -134,8 +137,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     attributes do
-      attribute :serial, :integer, primary_key?: true
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      attribute :serial, :integer, primary_key?: true, allow_nil?: false
+      uuid_primary_key :id
       attribute :title, :string
       attribute :contents, :string
     end

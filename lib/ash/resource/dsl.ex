@@ -51,7 +51,8 @@ defmodule Ash.Resource.Dsl do
   @integer_primary_key %Ash.Dsl.Entity{
     name: :integer_primary_key,
     describe: """
-    Declares a generated (set by the data layer), non writable, non nil, primary key column of type integer
+    Declares a generated (set by the data layer), non writable, non nil, primary key column of type integer.
+    Using `integer_primary_key`, `allow_nil?` is automatically set to `false`.
     """,
     examples: [
       "integer_primary_key :id"
@@ -59,13 +60,15 @@ defmodule Ash.Resource.Dsl do
     args: [:name],
     transform: {Ash.Resource.Attribute, :transform, []},
     target: Ash.Resource.Attribute,
-    schema: Ash.Resource.Attribute.integer_primary_key_schema()
+    schema: Ash.Resource.Attribute.integer_primary_key_schema(),
+    auto_set_fields: [allow_nil?: false]
   }
 
   @uuid_primary_key %Ash.Dsl.Entity{
     name: :uuid_primary_key,
     describe: """
-    Declares a non writable, non nil, primary key column of type uuid, which defaults to `Ash.uuid/0`
+    Declares a non writable, non nil, primary key column of type uuid, which defaults to `Ash.uuid/0`.
+    Using `uuid_primary_key`, `allow_nil?` is automatically set to `false`.
     """,
     examples: [
       "uuid_primary_key :id"
@@ -73,7 +76,8 @@ defmodule Ash.Resource.Dsl do
     args: [:name],
     transform: {Ash.Resource.Attribute, :transform, []},
     target: Ash.Resource.Attribute,
-    schema: Ash.Resource.Attribute.uuid_primary_key_schema()
+    schema: Ash.Resource.Attribute.uuid_primary_key_schema(),
+    auto_set_fields: [allow_nil?: false]
   }
 
   @attributes %Ash.Dsl.Section{

@@ -58,7 +58,7 @@ defmodule Ash.Actions.PaginationTest do
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      uuid_primary_key :id
       attribute :name, :string
     end
   end

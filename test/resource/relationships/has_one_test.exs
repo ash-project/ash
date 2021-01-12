@@ -11,7 +11,7 @@ defmodule Ash.Test.Resource.Relationshihps.HasOneTest do
         use Ash.Resource, data_layer: Ash.DataLayer.Ets
 
         attributes do
-          attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+          uuid_primary_key :id
         end
 
         unquote(body)

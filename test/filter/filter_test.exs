@@ -21,7 +21,7 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      uuid_primary_key :id
       attribute :bio, :string
       attribute :private, :string, private?: true
     end
@@ -46,7 +46,7 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      uuid_primary_key :id
       attribute :name, :string
       attribute :allow_second_author, :boolean
     end
@@ -76,8 +76,13 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     relationships do
-      belongs_to :source_post, Ash.Test.Filter.FilterTest.Post, primary_key?: true
-      belongs_to :destination_post, Ash.Test.Filter.FilterTest.Post, primary_key?: true
+      belongs_to :source_post, Ash.Test.Filter.FilterTest.Post,
+        primary_key?: true,
+        required?: true
+
+      belongs_to :destination_post, Ash.Test.Filter.FilterTest.Post,
+        primary_key?: true,
+        required?: true
     end
   end
 
@@ -98,7 +103,7 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      uuid_primary_key :id
       attribute :title, :string
       attribute :contents, :string
       attribute :points, :integer
@@ -144,7 +149,7 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      uuid_primary_key :id
       attribute :deleted_at, :utc_datetime
     end
   end

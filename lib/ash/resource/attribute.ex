@@ -46,7 +46,8 @@ defmodule Ash.Resource.Attribute do
       type: :boolean,
       default: false,
       doc:
-        "Whether or not the attribute is part of the primary key (one or more fields that uniquely identify a resource)"
+        "Whether or not the attribute is part of the primary key (one or more fields that uniquely identify a resource). " <>
+          "If primary_key? is true, allow_nil? must be false."
     ],
     allow_nil?: [
       type: :boolean,
@@ -91,6 +92,7 @@ defmodule Ash.Resource.Attribute do
                            |> OptionsHelpers.set_default!(:private?, true)
                            |> OptionsHelpers.set_default!(:default, &DateTime.utc_now/0)
                            |> OptionsHelpers.set_default!(:type, Ash.Type.UtcDatetimeUsec)
+                           |> OptionsHelpers.set_default!(:allow_nil?, false)
 
   @update_timestamp_schema @schema
                            |> OptionsHelpers.set_default!(:writable?, false)
@@ -98,20 +100,21 @@ defmodule Ash.Resource.Attribute do
                            |> OptionsHelpers.set_default!(:default, &DateTime.utc_now/0)
                            |> OptionsHelpers.set_default!(:update_default, &DateTime.utc_now/0)
                            |> OptionsHelpers.set_default!(:type, Ash.Type.UtcDatetimeUsec)
+                           |> OptionsHelpers.set_default!(:allow_nil?, false)
 
   @uuid_primary_key_schema @schema
                            |> OptionsHelpers.set_default!(:writable?, false)
                            |> OptionsHelpers.set_default!(:default, &Ash.uuid/0)
                            |> OptionsHelpers.set_default!(:primary_key?, true)
                            |> OptionsHelpers.set_default!(:type, Ash.Type.UUID)
-                           |> OptionsHelpers.set_default!(:allow_nil?, true)
+                           |> Keyword.delete(:allow_nil?)
 
   @integer_primary_key_schema @schema
                               |> OptionsHelpers.set_default!(:writable?, false)
                               |> OptionsHelpers.set_default!(:primary_key?, true)
                               |> OptionsHelpers.set_default!(:generated?, true)
                               |> OptionsHelpers.set_default!(:type, Ash.Type.Integer)
-                              |> OptionsHelpers.set_default!(:allow_nil?, false)
+                              |> Keyword.delete(:allow_nil?)
 
   def transform(%{constraints: []} = attribute), do: {:ok, attribute}
 

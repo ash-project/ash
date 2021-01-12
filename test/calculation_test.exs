@@ -38,7 +38,7 @@ defmodule Ash.Test.CalculationTest do
     end
 
     attributes do
-      attribute :id, :uuid, primary_key?: true, default: &Ecto.UUID.generate/0
+      uuid_primary_key :id
       attribute :first_name, :string
       attribute :last_name, :string
     end
