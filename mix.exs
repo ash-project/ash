@@ -49,16 +49,39 @@ defmodule Ash.MixProject do
         "documentation/introduction/getting_started_phx.md": [
           title: "Getting Started with Phoenix"
         ],
-        "documentation/topics/authorization.md": [],
-        "documentation/topics/identities.md": [],
-        "documentation/topics/pagination.md": [],
-        "documentation/topics/validation.md": [],
-        "documentation/topics/notifiers.md": [],
-        "documentation/topics/error_handling.md": [],
-        "documentation/topics/aggregates.md": [],
-        "documentation/topics/calculations.md": [],
-        "documentation/topics/contexts_and_domains.md": [],
-        "documentation/topics/multitenancy.md": []
+        "documentation/topics/authorization.md": [
+          title: "Authorization"
+        ],
+        "documentation/topics/identities.md": [
+          title: "Identities"
+        ],
+        "documentation/topics/pagination.md": [
+          title: "Pagination"
+        ],
+        "documentation/topics/validation.md": [
+          title: "Validation"
+        ],
+        "documentation/topics/notifiers.md": [
+          title: "Notifiers"
+        ],
+        "documentation/topics/error_handling.md": [
+          title: "Error Handling"
+        ],
+        "documentation/topics/aggregates.md": [
+          title: "Aggregates"
+        ],
+        "documentation/topics/calculations.md": [
+          title: "Calculations"
+        ],
+        "documentation/topics/embedded_resources.md": [
+          title: "Embedded Resources"
+        ],
+        "documentation/topics/contexts_and_domains.md": [
+          title: "Context And Domains"
+        ],
+        "documentation/topics/multitenancy.md": [
+          title: "Multitenancy"
+        ]
       ],
       groups_for_extras: [
         Introduction: Path.wildcard("documentation/introduction/*.md"),
