@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.28.0](https://github.com/ash-project/ash/compare/v1.27.1...v1.28.0) (2021-01-12)
+
+
+
+
+### Features:
+
+* Add Embedded Resources (#170)
+
+### Bug Fixes:
+
+* Correct error message (#163)
+
+### Improvements:
+
+* Add built in decimal type (#162)
+
 ## [v1.27.1](https://github.com/ash-project/ash/compare/v1.27.0...v1.27.1) (2021-01-08)
 
 
