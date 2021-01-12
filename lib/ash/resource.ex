@@ -241,11 +241,12 @@ defmodule Ash.Resource do
       def dump_to_native(value) when is_map(value) do
         attributes = Ash.Resource.attributes(__MODULE__)
         calculations = Ash.Resource.calculations(__MODULE__)
-        Map.take(value, Enum.map(attributes ++ calculations, & &1.name))
+        {:ok, Map.take(value, Enum.map(attributes ++ calculations, & &1.name))}
       end
 
-      def dump_to_native(nil), do: nil
+      def dump_to_native(nil), do: {:ok, nil}
       def dump_to_native(_), do: :error
+
       def constraints, do: Keyword.take(array_constraints(), [:load])
 
       def apply_constraints(nil, _), do: {:ok, nil}
@@ -652,7 +653,12 @@ defmodule Ash.Resource do
   @doc "Whether or not a given module is a resource module"
   @spec resource?(module) :: boolean
   def resource?(module) when is_atom(module) do
+    Ash.try_compile(module)
+
     module.module_info(:attributes)[:is_ash_resource] == [true]
+  rescue
+    _ ->
+      false
   end
 
   def resource?(_), do: false
