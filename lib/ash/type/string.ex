@@ -39,12 +39,19 @@ defmodule Ash.Type.String do
   def apply_constraints(nil, _), do: :ok
 
   def apply_constraints(value, constraints) do
+<<<<<<< HEAD
     opts = NimbleOptions.validate!(constraints, @constraints)
 
     trim? = opts[:trim?]
 
     value =
       if trim? do
+=======
+    trim_value? = constraints[:trim_value?]
+
+    value =
+      if trim_value? do
+>>>>>>> 836c9767b96c232d5025e757e3377fab9888db1b
         String.trim(value)
       else
         value
@@ -81,7 +88,11 @@ defmodule Ash.Type.String do
       end)
 
     value =
+<<<<<<< HEAD
       if trim? && value == "" do
+=======
+      if trim_value? && value == "" do
+>>>>>>> 836c9767b96c232d5025e757e3377fab9888db1b
         nil
       else
         value
