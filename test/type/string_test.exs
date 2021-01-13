@@ -1,4 +1,4 @@
-defmodule Ash.Test.Type.TypeTest do
+defmodule Ash.Test.Type.StringTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
