@@ -51,17 +51,24 @@ defmodule Ash.Type.String do
 
     trimmed_value = String.trim(value)
 
+    value =
+      if trim_value? do
+        trimmed_value
+      else
+        value
+      end
+
     errors =
       Enum.reduce(constraints, [], fn
         {:max_length, max_length}, errors ->
-          if String.length(trimmed_value) > max_length do
+          if String.length(value) > max_length do
             [[message: "length must be less than or equal to %{max}", max: max_length] | errors]
           else
             errors
           end
 
         {:min_length, min_length}, errors ->
-          if String.length(trimmed_value) < min_length do
+          if String.length(value) < min_length do
             [
               [message: "length must be greater than or equal to %{min}", min: min_length]
               | errors
@@ -82,15 +89,10 @@ defmodule Ash.Type.String do
       end)
 
     value =
-      cond do
-        allow_empty? == false && trimmed_value == "" ->
-          nil
-
-        trim_value? ->
-          trimmed_value
-
-        true ->
-          value
+      if allow_empty? == false && trimmed_value == "" do
+        nil
+      else
+        value
       end
 
     case errors do
