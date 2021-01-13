@@ -21,8 +21,11 @@ defmodule Ash.Type.String do
 
   @moduledoc """
   Stores a string in the database
-  A builtin type that can be referenced via `:string`
+
+  A builtin type that can be referenced via `:string`.
+
   ### Constraints
+
   #{Ash.OptionsHelpers.docs(@constraints)}
   """
   use Ash.Type
