@@ -36,7 +36,9 @@ end
 # Usage in a resource
 calculations do
   calculate :full_name, {Concat, keys: [:first_name, :last_name]} do
-    argument :separator, :string
+    # You might want to use [trim?: false] here, otherwise spaces
+    # surrounding the separator will be removed
+    argument :separator, :string, constraints: [trim?: false]
   end
 end
 ```
