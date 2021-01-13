@@ -12,7 +12,7 @@ defmodule Ash.Type.String do
       type: {:custom, __MODULE__, :match, []},
       doc: "Enforces that the string matches a passed in regex"
     ],
-    trim_value?: [
+    trim?: [
       type: :boolean,
       doc: "Trims the value and sets it to nil if it's empty",
       default: true
@@ -39,10 +39,12 @@ defmodule Ash.Type.String do
   def apply_constraints(nil, _), do: :ok
 
   def apply_constraints(value, constraints) do
-    trim_value? = constraints[:trim_value?]
+    opts = NimbleOptions.validate!(constraints, @constraints)
+
+    trim? = opts[:trim?]
 
     value =
-      if trim_value? do
+      if trim? do
         String.trim(value)
       else
         value
@@ -79,7 +81,7 @@ defmodule Ash.Type.String do
       end)
 
     value =
-      if trim_value? && value == "" do
+      if trim? && value == "" do
         nil
       else
         value
