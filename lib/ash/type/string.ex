@@ -11,16 +11,18 @@ defmodule Ash.Type.String do
     match: [
       type: {:custom, __MODULE__, :match, []},
       doc: "Enforces that the string matches a passed in regex"
+    ],
+    trim?: [
+      type: :boolean,
+      doc: "Trims the value and sets it to nil if it's empty",
+      default: true
     ]
   ]
 
   @moduledoc """
   Stores a string in the database
-
   A builtin type that can be referenced via `:string`
-
   ### Constraints
-
   #{Ash.OptionsHelpers.docs(@constraints)}
   """
   use Ash.Type
@@ -34,6 +36,17 @@ defmodule Ash.Type.String do
   def apply_constraints(nil, _), do: :ok
 
   def apply_constraints(value, constraints) do
+    opts = NimbleOptions.validate!(constraints, @constraints)
+
+    trim_value? = opts[:trim?]
+
+    value =
+      if trim_value? do
+        String.trim(value)
+      else
+        value
+      end
+
     errors =
       Enum.reduce(constraints, [], fn
         {:max_length, max_length}, errors ->
@@ -59,10 +72,20 @@ defmodule Ash.Type.String do
           else
             [{"must match the pattern %{regex}", regex: inspect(regex)} | errors]
           end
+
+        _, errors ->
+          errors
       end)
 
+    value =
+      if trim_value? && value == "" do
+        nil
+      else
+        value
+      end
+
     case errors do
-      [] -> :ok
+      [] -> {:ok, value}
       errors -> {:error, errors}
     end
   end
