@@ -15,7 +15,12 @@ defmodule Ash.Type.String do
     trim?: [
       type: :boolean,
       doc: "Trims the value and sets it to nil if it's empty",
-      default: true
+      default: false
+    ],
+    allow_empty?: [
+      type: :boolean,
+      doc: "Trims the value and sets it to nil if it's empty",
+      default: false
     ]
   ]
 
@@ -42,25 +47,21 @@ defmodule Ash.Type.String do
     opts = NimbleOptions.validate!(constraints, @constraints)
 
     trim_value? = opts[:trim?]
+    allow_empty? = opts[:allow_empty?]
 
-    value =
-      if trim_value? do
-        String.trim(value)
-      else
-        value
-      end
+    trimmed_value = String.trim(value)
 
     errors =
       Enum.reduce(constraints, [], fn
         {:max_length, max_length}, errors ->
-          if String.length(value) > max_length do
+          if String.length(trimmed_value) > max_length do
             [[message: "length must be less than or equal to %{max}", max: max_length] | errors]
           else
             errors
           end
 
         {:min_length, min_length}, errors ->
-          if String.length(value) < min_length do
+          if String.length(trimmed_value) < min_length do
             [
               [message: "length must be greater than or equal to %{min}", min: min_length]
               | errors
@@ -81,10 +82,15 @@ defmodule Ash.Type.String do
       end)
 
     value =
-      if trim_value? && value == "" do
-        nil
-      else
-        value
+      cond do
+        allow_empty? == false && trimmed_value == "" ->
+          nil
+
+        trim_value? ->
+          trimmed_value
+
+        true ->
+          value
       end
 
     case errors do
