@@ -47,37 +47,38 @@ defmodule Ash.Type.String do
   def apply_constraints(nil, _), do: :ok
 
   def apply_constraints(value, constraints) do
-    trim_value? = constraints[:trim?]
-    allow_empty? = constraints[:allow_empty?]
-
-    trimmed_value = String.trim(value)
-
-    value =
-      cond do
-        allow_empty? == false && trimmed_value == "" ->
-          nil
-
-        trim_value? ->
-          trimmed_value
-
-        true ->
-          value
-      end
-
-    skip_validation? = value == nil || (allow_empty? && trimmed_value == "")
-
-    errors =
-      unless skip_validation? do
-        validate(value, constraints)
-      else
-        []
-      end
+    {value, errors} =
+      return_value(constraints[:trim?], constraints[:allow_empty?], value, constraints)
 
     case errors do
       [] -> {:ok, value}
       errors -> {:error, errors}
     end
   end
+
+  defp return_value(false, false, value, _constraints) do
+    if String.trim(value) == "" do
+      {nil, []}
+    else
+      {value, []}
+    end
+  end
+
+  defp return_value(false, true, value, _constraints) do
+    trimmed = String.trim(value)
+
+    if trimmed == "" do
+      {nil, []}
+    else
+      {trimmed, []}
+    end
+  end
+
+  defp return_value(true, false, value, constraints),
+    do: {value, validate(value, constraints)}
+
+  defp return_value(true, true, value, constraints),
+    do: {value, validate(value, constraints)}
 
   defp validate(value, constraints) do
     Enum.reduce(constraints, [], fn
