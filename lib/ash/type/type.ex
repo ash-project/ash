@@ -398,6 +398,8 @@ defmodule Ash.Type do
   end
 
   def apply_constraints(type, term, constraints) do
+    constraints = NimbleOptions.validate!(constraints, type.constraints())
+
     case type.apply_constraints(term, constraints) do
       :ok -> {:ok, term}
       other -> other
