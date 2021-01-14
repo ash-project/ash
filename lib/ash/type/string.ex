@@ -55,24 +55,24 @@ defmodule Ash.Type.String do
     trimmed_value = String.trim(value)
 
     value =
-      if trim_value? do
-        trimmed_value
-      else
-        value
+      cond do
+        allow_empty? == false && trimmed_value == "" ->
+          nil
+
+        trim_value? ->
+          trimmed_value
+
+        true ->
+          value
       end
+
+    skip_validation? = value == nil || (allow_empty? && trimmed_value == "")
 
     errors =
-      unless trimmed_value == "" do
-        errors(value, constraints)
+      unless skip_validation? do
+        validate(value, constraints)
       else
         []
-      end
-
-    value =
-      if allow_empty? == false && trimmed_value == "" do
-        nil
-      else
-        value
       end
 
     case errors do
@@ -81,7 +81,7 @@ defmodule Ash.Type.String do
     end
   end
 
-  defp errors(value, constraints) do
+  defp validate(value, constraints) do
     Enum.reduce(constraints, [], fn
       {:max_length, max_length}, errors ->
         if String.length(value) > max_length do
