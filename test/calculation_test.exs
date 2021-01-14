@@ -45,6 +45,8 @@ defmodule Ash.Test.CalculationTest do
 
     calculations do
       calculate :full_name, :string, {Concat, keys: [:first_name, :last_name]} do
+        # You currently need to use the [allow_empty?: true] constraint here.
+        # As it's an empty string, your separator would otherwise be set to `nil`.
         argument :separator, :string, default: " ", constraints: [allow_empty?: true]
       end
     end
