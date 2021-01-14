@@ -97,7 +97,7 @@ defmodule Ash.Test.Type.StringTest do
 
     assert_raise(Ash.Error.Invalid, ~r/string_f: length must be greater/, fn ->
       Post
-      |> new(%{string_f: "  12  "})
+      |> new(%{string_f: "   45   "})
       |> Api.create!()
     end)
   end
@@ -105,7 +105,7 @@ defmodule Ash.Test.Type.StringTest do
   test "it handles too long values with length constraints" do
     assert_raise(Ash.Error.Invalid, ~r/string_e: length must be less/, fn ->
       Post
-      |> new(%{string_e: "   4   "})
+      |> new(%{string_e: "   45   "})
       |> Api.create!()
     end)
 
