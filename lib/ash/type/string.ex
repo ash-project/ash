@@ -14,12 +14,12 @@ defmodule Ash.Type.String do
     ],
     trim?: [
       type: :boolean,
-      doc: "Trims the value",
+      doc: "Trims the value.",
       default: false
     ],
     allow_empty?: [
       type: :boolean,
-      doc: "Sets the value it to nil if it's empty",
+      doc: "Sets the value to `nil` if it's empty.",
       default: false
     ]
   ]
@@ -27,7 +27,7 @@ defmodule Ash.Type.String do
   @moduledoc """
   Stores a string in the database.
 
-  A builtin type that can be referenced via `:string`.
+  A built-in type that can be referenced via `:string`.
 
   Empty values are, by default, being set to `nil`.
   You can use the `allow_empty?` constraint to change this behavior.
