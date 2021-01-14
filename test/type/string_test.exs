@@ -15,18 +15,18 @@ defmodule Ash.Test.Type.StringTest do
 
       # Possible constraint combinations:
       #
-      # a. [allow_empty?: false, trim?: false] (default)
-      # b. [allow_empty?: false, trim?: true]
-      # c. [allow_empty?: true, trim?: false]
-      # d. [allow_empty?: true, trim?: true]
+      # a. [allow_empty?: false, trim?: true] (default)
+      # b. [allow_empty?: false, trim?: false]
+      # c. [allow_empty?: true, trim?: true]
+      # d. [allow_empty?: true, trim?: false]
       #
       attribute :string_a, :string
-      attribute :string_b, :string, constraints: [trim?: true]
+      attribute :string_b, :string, constraints: [trim?: false]
       attribute :string_c, :string, constraints: [allow_empty?: true]
-      attribute :string_d, :string, constraints: [allow_empty?: true, trim?: true]
+      attribute :string_d, :string, constraints: [allow_empty?: true, trim?: false]
 
       attribute :string_e, :string, constraints: [min_length: 3, max_length: 6]
-      attribute :string_f, :string, constraints: [min_length: 3, max_length: 6, trim?: true]
+      attribute :string_f, :string, constraints: [min_length: 3, max_length: 6, trim?: false]
     end
   end
 
@@ -52,10 +52,10 @@ defmodule Ash.Test.Type.StringTest do
       })
       |> Api.create!()
 
-    assert post.string_a == "  foo  "
-    assert post.string_b == "bar"
-    assert post.string_c == "  foo  "
-    assert post.string_d == "bar"
+    assert post.string_a == "foo"
+    assert post.string_b == "  bar  "
+    assert post.string_c == "foo"
+    assert post.string_d == "  bar  "
   end
 
   test "it handles empty values" do
@@ -71,13 +71,13 @@ defmodule Ash.Test.Type.StringTest do
 
     assert post.string_a == nil
     assert post.string_b == nil
-    assert post.string_c == " "
-    assert post.string_d == ""
+    assert post.string_c == ""
+    assert post.string_d == " "
   end
 
   test "it handles values with length constraints" do
-    e_allowed_values = ["", " 2 ", "123456", "  34  "]
-    f_allowed_values = ["", "123", "123456", " 123456 "]
+    e_allowed_values = ["", "123", "123456", " 123456 "]
+    f_allowed_values = ["", " 2 ", "123456", "  34  "]
 
     allowed_values = Enum.zip(e_allowed_values, f_allowed_values)
 
@@ -91,13 +91,13 @@ defmodule Ash.Test.Type.StringTest do
   test "it handles too short values with length constraints" do
     assert_raise(Ash.Error.Invalid, ~r/string_e: length must be greater/, fn ->
       Post
-      |> new(%{string_e: "12"})
+      |> new(%{string_e: "   45   "})
       |> Api.create!()
     end)
 
     assert_raise(Ash.Error.Invalid, ~r/string_f: length must be greater/, fn ->
       Post
-      |> new(%{string_f: "   45   "})
+      |> new(%{string_f: "12"})
       |> Api.create!()
     end)
   end
@@ -105,13 +105,13 @@ defmodule Ash.Test.Type.StringTest do
   test "it handles too long values with length constraints" do
     assert_raise(Ash.Error.Invalid, ~r/string_e: length must be less/, fn ->
       Post
-      |> new(%{string_e: "   45   "})
+      |> new(%{string_e: "1234567"})
       |> Api.create!()
     end)
 
     assert_raise(Ash.Error.Invalid, ~r/string_f: length must be less/, fn ->
       Post
-      |> new(%{string_f: "1234567"})
+      |> new(%{string_f: "   45   "})
       |> Api.create!()
     end)
   end

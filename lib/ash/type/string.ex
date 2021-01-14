@@ -15,7 +15,7 @@ defmodule Ash.Type.String do
     trim?: [
       type: :boolean,
       doc: "Trims the value.",
-      default: false
+      default: true
     ],
     allow_empty?: [
       type: :boolean,
