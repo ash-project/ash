@@ -47,10 +47,8 @@ defmodule Ash.Type.String do
   def apply_constraints(nil, _), do: :ok
 
   def apply_constraints(value, constraints) do
-    opts = NimbleOptions.validate!(constraints, @constraints)
-
-    trim_value? = opts[:trim?]
-    allow_empty? = opts[:allow_empty?]
+    trim_value? = constraints[:trim?]
+    allow_empty? = constraints[:allow_empty?]
 
     trimmed_value = String.trim(value)
 
