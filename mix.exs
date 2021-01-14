@@ -114,6 +114,9 @@ defmodule Ash.MixProject do
           Ash.Dsl.Section,
           Ash.Dsl.Transformer
         ],
+        "dsl tooling": [
+          Ash.Dsl
+        ],
         "resource dsl transformers": ~r/Ash.Resource.Transformers/,
         "api dsl transformers": ~r/Ash.Api.Transformers/,
         "filter operators": ~r/Ash.Query.Operator/,

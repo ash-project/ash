@@ -365,41 +365,16 @@ defmodule Ash.Api do
 
   alias Ash.Dsl.Extension
 
-  defmacro __using__(opts) do
-    extensions = [Ash.Api.Dsl | opts[:extensions] || []]
+  use Ash.Dsl, default_extensions: [extensions: [Ash.Api.Dsl]]
 
-    body =
-      quote do
-        @before_compile Ash.Api
-        @behaviour Ash.Api
-      end
-
-    preparations = Extension.prepare(extensions)
-
-    [body | preparations]
+  def handle_opts(_) do
+    quote do
+      @behaviour Ash.Api
+    end
   end
 
-  defmacro __before_compile__(_env) do
-    quote generated: true, unquote: false do
-      alias Ash.Dsl.Extension
-
-      @on_load :on_load
-
-      ash_dsl_config = Macro.escape(Extension.set_state())
-
-      @doc false
-      def ash_dsl_config do
-        unquote(ash_dsl_config)
-      end
-
-      def on_load do
-        Extension.load()
-
-        __MODULE__
-        |> Ash.Api.resources()
-        |> Enum.each(&Code.ensure_loaded/1)
-      end
-
+  def handle_before_compile(_) do
+    quote do
       use Ash.Api.Interface
     end
   end

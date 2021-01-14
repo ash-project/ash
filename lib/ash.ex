@@ -43,6 +43,9 @@ defmodule Ash do
       _ -> []
     end)
     |> Enum.any?(&(&1 == behaviour))
+  rescue
+    _ ->
+      false
   end
 
   def uuid do

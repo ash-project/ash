@@ -7,70 +7,44 @@ defmodule Ash.Resource do
 
   alias Ash.Dsl.Extension
 
-  defmacro __using__(opts) do
-    data_layer = Macro.expand(opts[:data_layer], __CALLER__)
-    embedded? = data_layer == :embedded
+  use Ash.Dsl,
+    single_extension_kinds: [:data_layer],
+    many_extension_kinds: [
+      :authorizers,
+      :notifiers
+    ],
+    default_extensions: [
+      data_layer: Ash.DataLayer.Simple,
+      extensions: [Ash.Resource.Dsl]
+    ]
 
-    data_layer =
+  def init(opts) do
+    if opts[:data_layer] == :embedded do
+      {:ok,
+       opts
+       |> Keyword.put(:data_layer, Ash.DataLayer.Simple)
+       |> Keyword.put(:embedded?, true)}
+    else
+      {:ok, opts}
+    end
+  end
+
+  def handle_opts(opts) do
+    quote bind_quoted: [embedded?: opts[:embedded?]] do
       if embedded? do
-        Ash.DataLayer.Simple
-      else
-        data_layer || Ash.DataLayer.Simple
+        @persist {:embedded?, true}
+
+        Ash.Resource.define_embeddable_type()
       end
+    end
+  end
 
-    opts = Keyword.put(opts, :data_layer, data_layer)
+  def handle_before_compile(_opts) do
+    quote do
+      require Ash.Schema
 
-    authorizers =
-      opts[:authorizers]
-      |> List.wrap()
-      |> Enum.map(&Macro.expand(&1, __CALLER__))
-
-    notifiers =
-      opts[:notifiers]
-      |> List.wrap()
-      |> Enum.map(&Macro.expand(&1, __CALLER__))
-
-    extensions =
-      if Ash.implements_behaviour?(data_layer, Ash.Dsl.Extension) do
-        [data_layer, Ash.Resource.Dsl]
-      else
-        [Ash.Resource.Dsl]
-      end
-
-    authorizer_extensions =
-      Enum.filter(authorizers, &Ash.implements_behaviour?(&1, Ash.Dsl.Extension))
-
-    notifier_extensions =
-      Enum.filter(notifiers, &Ash.implements_behaviour?(&1, Ash.Dsl.Extension))
-
-    extensions =
-      Enum.concat([
-        extensions,
-        opts[:extensions] || [],
-        authorizer_extensions,
-        notifier_extensions
-      ])
-
-    body =
-      quote bind_quoted: [opts: opts, embedded?: embedded?] do
-        @before_compile Ash.Resource
-
-        @authorizers opts[:authorizers] || []
-        @notifiers opts[:notifiers] || []
-        @data_layer opts[:data_layer] || Ash.DataLayer.Simple
-        @extensions (opts[:extensions] || []) ++
-                      List.wrap(opts[:data_layer] || Ash.DataLayer.Simple) ++
-                      (opts[:authorizers] || [])
-        @embedded embedded?
-
-        if embedded? do
-          Ash.Resource.define_embeddable_type()
-        end
-      end
-
-    preparations = Extension.prepare(extensions)
-
-    [body | preparations]
+      Ash.Schema.define_schema()
+    end
   end
 
   @embedded_resource_array_constraints [
@@ -560,44 +534,6 @@ defmodule Ash.Resource do
     end
   end
 
-  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
-  defmacro __before_compile__(_env) do
-    quote unquote: false do
-      @doc false
-      alias Ash.Dsl.Extension
-
-      @type t :: %__MODULE__{}
-
-      Module.register_attribute(__MODULE__, :is_ash_resource, persist: true, accumulate: false)
-      @is_ash_resource true
-
-      @on_load :on_load
-
-      ash_dsl_config =
-        Macro.escape(
-          Extension.set_state(
-            notifiers: @notifiers,
-            authorizers: @authorizers,
-            data_layer: @data_layer,
-            embedded?: @embedded
-          )
-        )
-
-      @doc false
-      def ash_dsl_config do
-        unquote(ash_dsl_config)
-      end
-
-      def on_load do
-        Extension.load()
-      end
-
-      require Ash.Schema
-
-      Ash.Schema.define_schema()
-    end
-  end
-
   @spec extensions(Ash.resource()) :: [module]
   def extensions(resource) do
     Extension.get_persisted(resource, :extensions)
@@ -653,12 +589,7 @@ defmodule Ash.Resource do
   @doc "Whether or not a given module is a resource module"
   @spec resource?(module) :: boolean
   def resource?(module) when is_atom(module) do
-    Ash.try_compile(module)
-
-    module.module_info(:attributes)[:is_ash_resource] == [true]
-  rescue
-    _ ->
-      false
+    Ash.Dsl.is?(module, __MODULE__)
   end
 
   def resource?(_), do: false
