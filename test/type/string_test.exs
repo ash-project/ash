@@ -24,6 +24,9 @@ defmodule Ash.Test.Type.StringTest do
       attribute :string_b, :string, constraints: [trim?: true]
       attribute :string_c, :string, constraints: [allow_empty?: true]
       attribute :string_d, :string, constraints: [allow_empty?: true, trim?: true]
+
+      attribute :string_e, :string, constraints: [min_length: 3, max_length: 6]
+      attribute :string_f, :string, constraints: [min_length: 3, max_length: 6, trim?: true]
     end
   end
 
@@ -70,5 +73,46 @@ defmodule Ash.Test.Type.StringTest do
     assert post.string_b == nil
     assert post.string_c == " "
     assert post.string_d == ""
+  end
+
+  test "it handles values with length constraints" do
+    e_allowed_values = ["   ", "123456", "      "]
+    f_allowed_values = ["123", "123456", " 123456 "]
+
+    allowed_values = Enum.zip(e_allowed_values, f_allowed_values)
+
+    Enum.each(allowed_values, fn {e_val, f_val} ->
+      Post
+      |> new(%{string_e: e_val, string_f: f_val})
+      |> Api.create!()
+    end)
+  end
+
+  test "it handles too short values with length constraints" do
+    assert_raise(Ash.Error.Invalid, ~r/string_e: length must be greater/, fn ->
+      Post
+      |> new(%{string_e: "12"})
+      |> Api.create!()
+    end)
+
+    assert_raise(Ash.Error.Invalid, ~r/string_f: length must be greater/, fn ->
+      Post
+      |> new(%{string_f: "  12  "})
+      |> Api.create!()
+    end)
+  end
+
+  test "it handles too long values with length constraints" do
+    assert_raise(Ash.Error.Invalid, ~r/string_e: length must be less/, fn ->
+      Post
+      |> new(%{string_e: "   4   "})
+      |> Api.create!()
+    end)
+
+    assert_raise(Ash.Error.Invalid, ~r/string_f: length must be less/, fn ->
+      Post
+      |> new(%{string_f: "1234567"})
+      |> Api.create!()
+    end)
   end
 end
