@@ -12,9 +12,18 @@ defmodule Ash.Test.Type.StringTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :optional_string, :string
-      attribute :required_string, :string, allow_nil?: false
-      attribute :original_string, :string, constraints: [trim?: false]
+
+      # Possible constraint combinations:
+      #
+      # a. [allow_empty?: false, trim?: false] (default)
+      # b. [allow_empty?: false, trim?: true]
+      # c. [allow_empty?: true, trim?: false]
+      # d. [allow_empty?: true, trim?: true]
+      #
+      attribute :string_a, :string
+      attribute :string_b, :string, constraints: [trim?: true]
+      attribute :string_c, :string, constraints: [allow_empty?: true]
+      attribute :string_d, :string, constraints: [allow_empty?: true, trim?: true]
     end
   end
 
@@ -29,45 +38,37 @@ defmodule Ash.Test.Type.StringTest do
 
   import Ash.Changeset
 
-  test "it trims values" do
+  test "it handles non-empty values" do
     post =
       Post
-      |> new(%{required_string: "    foobar   "})
+      |> new(%{
+        string_a: "  foo  ",
+        string_b: "  bar  ",
+        string_c: "  foo  ",
+        string_d: "  bar  "
+      })
       |> Api.create!()
 
-    assert post.required_string == "foobar"
+    assert post.string_a == "  foo  "
+    assert post.string_b == "bar"
+    assert post.string_c == "  foo  "
+    assert post.string_d == "bar"
   end
 
-  test "it sets empty values to nil" do
+  test "it handles empty values" do
     post =
       Post
-      |> new(%{required_string: "value", optional_string: "   "})
+      |> new(%{
+        string_a: " ",
+        string_b: " ",
+        string_c: " ",
+        string_d: " "
+      })
       |> Api.create!()
 
-    assert post.optional_string == nil
-  end
-
-  test "it rejects required but empty values" do
-    assert_raise(Ash.Error.Invalid, ~r/attribute required_string is required/, fn ->
-      Post
-      |> new(%{required_string: "   "})
-      |> Api.create!()
-    end)
-  end
-
-  test "it doesn't change values if trim? is set to false" do
-    post =
-      Post
-      |> new(%{required_string: "value", original_string: "  value  "})
-      |> Api.create!()
-
-    assert post.original_string == "  value  "
-
-    post2 =
-      Post
-      |> new(%{required_string: "value", original_string: "   "})
-      |> Api.create!()
-
-    assert post2.original_string == "   "
+    assert post.string_a == nil
+    assert post.string_b == nil
+    assert post.string_c == " "
+    assert post.string_d == ""
   end
 end
