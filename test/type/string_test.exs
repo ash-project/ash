@@ -76,8 +76,8 @@ defmodule Ash.Test.Type.StringTest do
   end
 
   test "it handles values with length constraints" do
-    e_allowed_values = ["   ", "123456", "      "]
-    f_allowed_values = ["123", "123456", " 123456 "]
+    e_allowed_values = ["", " 2 ", "123456", "  34  "]
+    f_allowed_values = ["", "123", "123456", " 123456 "]
 
     allowed_values = Enum.zip(e_allowed_values, f_allowed_values)
 

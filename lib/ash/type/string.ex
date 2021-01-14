@@ -62,34 +62,11 @@ defmodule Ash.Type.String do
       end
 
     errors =
-      Enum.reduce(constraints, [], fn
-        {:max_length, max_length}, errors ->
-          if String.length(value) > max_length do
-            [[message: "length must be less than or equal to %{max}", max: max_length] | errors]
-          else
-            errors
-          end
-
-        {:min_length, min_length}, errors ->
-          if String.length(value) < min_length do
-            [
-              [message: "length must be greater than or equal to %{min}", min: min_length]
-              | errors
-            ]
-          else
-            errors
-          end
-
-        {:match, regex}, errors ->
-          if String.match?(value, regex) do
-            errors
-          else
-            [{"must match the pattern %{regex}", regex: inspect(regex)} | errors]
-          end
-
-        _, errors ->
-          errors
-      end)
+      unless trimmed_value == "" do
+        errors(value, constraints)
+      else
+        []
+      end
 
     value =
       if allow_empty? == false && trimmed_value == "" do
@@ -102,6 +79,37 @@ defmodule Ash.Type.String do
       [] -> {:ok, value}
       errors -> {:error, errors}
     end
+  end
+
+  defp errors(value, constraints) do
+    Enum.reduce(constraints, [], fn
+      {:max_length, max_length}, errors ->
+        if String.length(value) > max_length do
+          [[message: "length must be less than or equal to %{max}", max: max_length] | errors]
+        else
+          errors
+        end
+
+      {:min_length, min_length}, errors ->
+        if String.length(value) < min_length do
+          [
+            [message: "length must be greater than or equal to %{min}", min: min_length]
+            | errors
+          ]
+        else
+          errors
+        end
+
+      {:match, regex}, errors ->
+        if String.match?(value, regex) do
+          errors
+        else
+          [{"must match the pattern %{regex}", regex: inspect(regex)} | errors]
+        end
+
+      _, errors ->
+        errors
+    end)
   end
 
   @impl true
