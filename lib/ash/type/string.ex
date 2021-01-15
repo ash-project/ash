@@ -29,8 +29,8 @@ defmodule Ash.Type.String do
 
   A built-in type that can be referenced via `:string`.
 
-  Empty values are, by default, being set to `nil`.
-  You can use the `allow_empty?` constraint to change this behavior.
+  By default, values are trimmed and empty values are set to `nil`.
+  You can use the `allow_empty?` and `trim?` constraints to change these behaviors.
 
   ### Constraints
 
