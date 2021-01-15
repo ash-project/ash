@@ -46,15 +46,15 @@ defmodule Ash.Test.Type.StringTest do
       Post
       |> new(%{
         string_a: "  foo  ",
-        string_b: "  bar  ",
-        string_c: "  foo  ",
+        string_b: "  foo  ",
+        string_c: "  bar  ",
         string_d: "  bar  "
       })
       |> Api.create!()
 
     assert post.string_a == "foo"
-    assert post.string_b == "  bar  "
-    assert post.string_c == "foo"
+    assert post.string_b == "  foo  "
+    assert post.string_c == "bar"
     assert post.string_d == "  bar  "
   end
 

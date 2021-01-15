@@ -48,7 +48,7 @@ defmodule Ash.Type.String do
 
   def apply_constraints(value, constraints) do
     {value, errors} =
-      return_value(constraints[:trim?], constraints[:allow_empty?], value, constraints)
+      return_value(constraints[:allow_empty?], constraints[:trim?], value, constraints)
 
     case errors do
       [] -> {:ok, value}
@@ -56,28 +56,30 @@ defmodule Ash.Type.String do
     end
   end
 
-  defp return_value(false, false, value, _constraints) do
-    if String.trim(value) == "" do
-      {nil, []}
-    else
-      {value, []}
-    end
-  end
-
-  defp return_value(false, true, value, _constraints) do
+  defp return_value(false, true, value, constraints) do
     trimmed = String.trim(value)
 
     if trimmed == "" do
       {nil, []}
     else
-      {trimmed, []}
+      {trimmed, validate(trimmed, constraints)}
     end
   end
 
-  defp return_value(true, false, value, constraints),
-    do: {value, validate(value, constraints)}
+  defp return_value(false, false, value, constraints) do
+    if String.trim(value) == "" do
+      {nil, []}
+    else
+      {value, validate(value, constraints)}
+    end
+  end
 
-  defp return_value(true, true, value, constraints),
+  defp return_value(true, true, value, constraints) do
+    trimmed = String.trim(value)
+    {trimmed, validate(trimmed, constraints)}
+  end
+
+  defp return_value(true, false, value, constraints),
     do: {value, validate(value, constraints)}
 
   defp validate(value, constraints) do
