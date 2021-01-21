@@ -11,6 +11,16 @@ defmodule Ash.Type.CiString do
     match: [
       type: {:custom, __MODULE__, :match, []},
       doc: "Enforces that the string matches a passed in regex"
+    ],
+    trim?: [
+      type: :boolean,
+      doc: "Trims the value.",
+      default: true
+    ],
+    allow_empty?: [
+      type: :boolean,
+      doc: "Sets the value to `nil` if it's empty.",
+      default: false
     ]
   ]
 
@@ -36,49 +46,70 @@ defmodule Ash.Type.CiString do
   def apply_constraints(nil, _), do: :ok
 
   def apply_constraints(value, constraints) do
-    errors =
-      Enum.reduce(constraints, [], fn
-        {:max_length, max_length}, errors ->
-          if String.length(value) > max_length do
-            [[message: "length must be less than or equal to %{max}", max: max_length] | errors]
-          else
-            errors
-          end
-
-        {:min_length, min_length}, errors ->
-          if String.length(value) < min_length do
-            [
-              [message: "length must be greater than or equal to %{min}", min: min_length]
-              | errors
-            ]
-          else
-            errors
-          end
-
-        {:match, regex}, errors ->
-          cond do
-            !String.contains?(Regex.opts(regex), "i") ->
-              [
-                [
-                  message:
-                    "must provide a case insensitive regex (using the `i` modifier), got: %{regex}",
-                  regex: regex
-                ]
-                | errors
-              ]
-
-            String.match?(value, regex) ->
-              errors
-
-            true ->
-              [[message: "must match the pattern %{regex}", regex: inspect(regex)] | errors]
-          end
-      end)
+    {value, errors} =
+      return_value(constraints[:allow_empty?], constraints[:trim?], value, constraints)
 
     case errors do
-      [] -> :ok
+      [] -> {:ok, value}
       errors -> {:error, errors}
     end
+  end
+
+  defp return_value(false, true, value, constraints) do
+    trimmed = String.trim(value)
+
+    if trimmed == "" do
+      {nil, []}
+    else
+      {trimmed, validate(trimmed, constraints)}
+    end
+  end
+
+  defp return_value(false, false, value, constraints) do
+    if String.trim(value) == "" do
+      {nil, []}
+    else
+      {value, validate(value, constraints)}
+    end
+  end
+
+  defp return_value(true, true, value, constraints) do
+    trimmed = String.trim(value)
+    {trimmed, validate(trimmed, constraints)}
+  end
+
+  defp return_value(true, false, value, constraints),
+    do: {value, validate(value, constraints)}
+
+  defp validate(value, constraints) do
+    Enum.reduce(constraints, [], fn
+      {:max_length, max_length}, errors ->
+        if String.length(value) > max_length do
+          [[message: "length must be less than or equal to %{max}", max: max_length] | errors]
+        else
+          errors
+        end
+
+      {:min_length, min_length}, errors ->
+        if String.length(value) < min_length do
+          [
+            [message: "length must be greater than or equal to %{min}", min: min_length]
+            | errors
+          ]
+        else
+          errors
+        end
+
+      {:match, regex}, errors ->
+        if String.match?(value, regex) do
+          errors
+        else
+          [{"must match the pattern %{regex}", regex: inspect(regex)} | errors]
+        end
+
+      _, errors ->
+        errors
+    end)
   end
 
   @impl true
