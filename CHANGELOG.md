@@ -5,6 +5,85 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.29.0-rc0](https://github.com/ash-project/ash/compare/v1.28.1...v1.29.0-rc0) (2021-01-21)
+
+
+
+
+### Features:
+
+* freeform expressions
+
+* validatiosn in actions
+
+* query arguments
+
+* add `Ash.Query.for_read/3`
+
+* return changeset with API errors
+
+* add case insensitive string `CiString`/`:ci_string`
+
+* support `context/1` and `arg/1` in filter templates
+
+* support targeting notifications with the `for` option
+
+* add `ago/2` query function
+
+* add basic arithmetic operators (+, *, -, /)
+
+* `sensitive?` option for attributes
+
+* `sensitive?` option for arguments
+
+* `private` arguments, which canât be set using `for_<action>`
+
+* add `prevent_change` which will erase changes just before the changeset is committed
+
+* add `match?` validation that supports a custom error message
+
+* add `interval` type to support `ago/2` function
+
+* add `url_encoded_binary` type
+
+* add `function` type
+
+### Bug Fixes:
+
+* properly expand module aliases for options w/o compile time dependency
+
+### Improvements:
+
+* support all string constraints for ci_string
+
+* `changing?` is now a validation
+
+* add `Transformer.get_persisted/3`
+
+* add `api` field to `Notification`
+
+* standardize errors, add `to_error_class`
+
+* use `Comp` everywhere
+
+* use action on changeset if set by `for_<action_type>`
+
+* `action_failed?` field on change sets
+
+* remove ability for data layers to add operators (for now at least)
+
+* Changeset.apply_attributes/2 now returns an error tuple
+
+* add a bunch of new/informative errors
+
+* runtime filter now uses left join logic (a naive implementation of it)
+
+* support more filter templates in resources
+
+* basic/naive type system for operators/functions
+
+* Add trim/allow_empty to string type (#171)
+
 ## [v1.28.1](https://github.com/ash-project/ash/compare/v1.28.0...v1.28.1) (2021-01-12)
 
 
