@@ -46,6 +46,17 @@ defmodule Ash.Engine.RequestHandler do
 
         {:noreply, new_state, {:continue, :next}}
 
+      {:error, error, notifications, new_request} ->
+        new_request = %{new_request | state: :error}
+
+        new_state =
+          %{state | request: new_request}
+          |> notify(notifications)
+
+        notify_error(new_state, error)
+
+        {:noreply, new_state}
+
       {:error, error, new_request} ->
         new_request = %{new_request | state: :error}
         new_state = %{state | request: new_request}
@@ -163,6 +174,10 @@ defmodule Ash.Engine.RequestHandler do
     Enum.reduce(notifications, state, fn
       {:set_extra_data, key, value}, state ->
         send(state.runner_pid, {:data, [key], value})
+        state
+
+      {:update_changeset, changeset}, state ->
+        send(state.runner_pid, {:runner, :update_changeset, changeset})
         state
 
       %Ash.Notifier.Notification{} = resource_notification, state ->

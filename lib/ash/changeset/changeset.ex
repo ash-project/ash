@@ -42,6 +42,7 @@ defmodule Ash.Changeset do
     :api,
     :tenant,
     :__validated_for_action__,
+    action_failed?: false,
     arguments: %{},
     context: %{},
     after_action: [],
@@ -65,6 +66,7 @@ defmodule Ash.Changeset do
           concat("action: ", inspect(changeset.action && changeset.action.name)),
           concat("attributes: ", to_doc(changeset.attributes, opts)),
           concat("relationships: ", to_doc(changeset.relationships, opts)),
+          arguments(changeset, opts),
           concat("errors: ", to_doc(changeset.errors, opts)),
           concat("data: ", to_doc(changeset.data, opts)),
           concat("valid?: ", to_doc(changeset.valid?, opts))
@@ -74,6 +76,31 @@ defmodule Ash.Changeset do
         fn str, _ -> str end
       )
     end
+
+    defp arguments(changeset, opts) do
+      if changeset.action do
+        action = Ash.Resource.action(changeset.resource, changeset.action, changeset.action_type)
+
+        if Enum.empty?(action.arguments) do
+          nil
+        else
+          arg_string =
+            action.arguments
+            |> Map.new(fn argument ->
+              if argument.sensitive? do
+                {argument.name, "**redacted**"}
+              else
+                {argument.name, Ash.Changeset.get_argument(changeset, argument.name)}
+              end
+            end)
+            |> to_doc(opts)
+
+          concat(["arguments: ", arg_string])
+        end
+      else
+        nil
+      end
+    end
   end
 
   @type t :: %__MODULE__{}
@@ -81,6 +108,7 @@ defmodule Ash.Changeset do
   alias Ash.Error.{
     Changes.InvalidArgument,
     Changes.InvalidAttribute,
+    Changes.InvalidChanges,
     Changes.InvalidRelationship,
     Changes.NoSuchAttribute,
     Changes.NoSuchRelationship,
@@ -113,9 +141,7 @@ defmodule Ash.Changeset do
       |> Map.get(:tenant, nil)
 
     if Ash.Resource.resource?(resource) do
-      action = Ash.Resource.primary_action(resource, :update)
-
-      %__MODULE__{resource: resource, data: record, action_type: :update, action: action}
+      %__MODULE__{resource: resource, data: record, action_type: :update}
       |> change_attributes(params)
       |> set_tenant(tenant)
     else
@@ -131,13 +157,10 @@ defmodule Ash.Changeset do
 
   def new(resource, params) do
     if Ash.Resource.resource?(resource) do
-      action = Ash.Resource.primary_action(resource, :create)
-
       %__MODULE__{
         resource: resource,
         action_type: :create,
-        data: struct(resource),
-        action: action
+        data: struct(resource)
       }
       |> change_attributes(params)
     else
@@ -237,7 +260,7 @@ defmodule Ash.Changeset do
   Pass an `actor` option to specify the actor
   """
 
-  def for_destroy(initial, action, params, opts \\ []) do
+  def for_destroy(initial, action_name, params, opts \\ []) do
     changeset =
       case initial do
         %__MODULE__{} = changeset ->
@@ -255,11 +278,13 @@ defmodule Ash.Changeset do
       end
 
     if changeset.valid? do
-      action = Ash.Resource.action(changeset.resource, action, :destroy)
+      action = Ash.Resource.action(changeset.resource, action_name, changeset.action_type)
 
       if action do
         changeset
         |> cast_params(action, params, opts)
+        |> Map.put(:action, action)
+        |> Map.put(:__validated_for_action__, action.name)
         |> cast_arguments(action)
         |> add_validations()
         |> validate_multitenancy()
@@ -267,7 +292,11 @@ defmodule Ash.Changeset do
       else
         add_error(
           changeset,
-          NoSuchAction.exception(resource: changeset.resource, action: action, type: :destroy)
+          NoSuchAction.exception(
+            resource: changeset.resource,
+            action: action_name,
+            type: :destroy
+          )
         )
       end
     else
@@ -283,6 +312,7 @@ defmodule Ash.Changeset do
         changeset
         |> cast_params(action, params || %{}, opts)
         |> cast_arguments(action)
+        |> Map.put(:action, action)
         |> Map.put(:__validated_for_action__, action.name)
         |> validate_attributes_accepted(action)
         |> validate_relationships_accepted(action)
@@ -362,11 +392,11 @@ defmodule Ash.Changeset do
   end
 
   defp has_argument?(action, name) when is_atom(name) do
-    Enum.any?(action.arguments, &(&1.name == name))
+    Enum.any?(action.arguments, &(&1.private? == false && &1.name == name))
   end
 
   defp has_argument?(action, name) when is_binary(name) do
-    Enum.any?(action.arguments, &(to_string(&1.name) == name))
+    Enum.any?(action.arguments, &(&1.private? == false && to_string(&1.name) == name))
   end
 
   defp validate_attributes_accepted(changeset, %{accept: nil}), do: changeset
@@ -403,8 +433,16 @@ defmodule Ash.Changeset do
   end
 
   defp run_action_changes(changeset, %{changes: changes}, actor) do
-    Enum.reduce(changes, changeset, fn %{change: {module, opts}}, changeset ->
-      module.change(changeset, opts, %{actor: actor})
+    Enum.reduce(changes, changeset, fn
+      %{change: {module, opts}}, changeset ->
+        module.change(changeset, opts, %{actor: actor})
+
+      %{validation: _} = validation, changeset ->
+        if validation.expensive? and not changeset.valid? do
+          changeset
+        else
+          do_validation(changeset, validation)
+        end
     end)
   end
 
@@ -494,8 +532,26 @@ defmodule Ash.Changeset do
 
   defp do_validation(changeset, validation) do
     case validation.module.validate(changeset, validation.opts) do
-      :ok -> changeset
-      {:error, error} -> Ash.Changeset.add_error(changeset, error)
+      :ok ->
+        changeset
+
+      {:error, error} when is_binary(error) ->
+        Ash.Changeset.add_error(changeset, validation.message || error)
+
+      {:error, error} when is_exception(error) ->
+        error = validation.message || error
+
+        Ash.Changeset.add_error(changeset, error)
+
+      {:error, error} ->
+        error =
+          if Keyword.keyword?(error) do
+            Keyword.put(error, :message, validation.message || error[:message])
+          else
+            validation.message || error
+          end
+
+        Ash.Changeset.add_error(changeset, error)
     end
   end
 
@@ -548,8 +604,25 @@ defmodule Ash.Changeset do
             fn after_action, {:ok, result, %{notifications: notifications} = acc} ->
               case after_action.(changeset, result) do
                 {:ok, new_result, new_notifications} ->
-                  {:cont,
-                   {:ok, new_result, %{acc | notifications: notifications ++ new_notifications}}}
+                  all_notifications =
+                    Enum.map(notifications ++ new_notifications, fn notification ->
+                      %{
+                        notification
+                        | resource: notification.resource || changeset.resource,
+                          action:
+                            notification.action ||
+                              Ash.Resource.action(
+                                changeset.resource,
+                                changeset.action,
+                                changeset.action_type
+                              ),
+                          data: notification.data || new_result,
+                          changeset: notification.changeset || changeset,
+                          actor: notification.actor || Map.get(changeset.context, :actor)
+                      }
+                    end)
+
+                  {:cont, {:ok, new_result, %{acc | notifications: all_notifications}}}
 
                 {:ok, new_result} ->
                   {:cont, {:ok, new_result, acc}}
@@ -615,7 +688,7 @@ defmodule Ash.Changeset do
 
   defp cast_arguments(changeset, action) do
     Enum.reduce(action.arguments, %{changeset | arguments: %{}}, fn argument, new_changeset ->
-      value = get_argument(changeset, argument.name)
+      value = get_argument(changeset, argument.name) || argument_default(argument.default)
 
       if is_nil(value) && !argument.allow_nil? do
         Ash.Changeset.add_error(
@@ -637,6 +710,9 @@ defmodule Ash.Changeset do
       end
     end)
   end
+
+  defp argument_default(value) when is_function(value, 0), do: value.()
+  defp argument_default(value), do: value
 
   @doc """
   Appends a record or a list of records to a relationship. Stacks with previous removals/additions.
@@ -1122,18 +1198,70 @@ defmodule Ash.Changeset do
     %{changeset | after_action: [func | changeset.after_action]}
   end
 
-  @doc "Returns the original data with attribute changes merged."
-  @spec apply_attributes(t()) :: Ash.record()
-  def apply_attributes(changeset) do
-    Enum.reduce(changeset.attributes, changeset.data, fn {attribute, value}, data ->
-      Map.put(data, attribute, value)
-    end)
+  @doc "Returns the original data with attribute changes merged, if the changeset is valid."
+  @spec apply_attributes(t()) :: {:ok, Ash.record()} | {:error, t()}
+  def apply_attributes(%{valid?: true} = changeset) do
+    {:ok,
+     Enum.reduce(changeset.attributes, changeset.data, fn {attribute, value}, data ->
+       Map.put(data, attribute, value)
+     end)}
+  end
+
+  def apply_attribute(changeset), do: {:error, changeset}
+
+  @doc "Clears an attribute or relationship change off of the changeset"
+  def clear_change(changeset, field) do
+    cond do
+      attr = Ash.Resource.attribute(changeset.resource, field) ->
+        %{changeset | attributes: Map.delete(changeset.attributes, attr.name)}
+
+      rel = Ash.Resource.relationship(changeset.resource, field) ->
+        %{changeset | relationships: Map.delete(changeset.relationships, rel.name)}
+
+      true ->
+        changeset
+    end
   end
 
   @doc "Adds an error to the changesets errors list, and marks the change as `valid?: false`"
-  @spec add_error(t(), Ash.error() | String.t()) :: t()
+  @spec add_error(t(), Ash.error() | String.t() | list(Ash.error() | String.t())) :: t()
+  def add_error(changeset, errors) when is_list(errors) do
+    if Keyword.keyword?(errors) do
+      %{
+        changeset
+        | errors: [to_change_error(errors) | changeset.errors],
+          valid?: false
+      }
+    else
+      Enum.reduce(errors, changeset, &add_error(&2, &1))
+    end
+  end
+
+  def add_error(changeset, error) when is_binary(error) do
+    add_error(
+      changeset,
+      InvalidChanges.exception(message: error)
+    )
+  end
+
   def add_error(changeset, error) do
     %{changeset | errors: [error | changeset.errors], valid?: false}
+  end
+
+  defp to_change_error(keyword) do
+    if keyword[:field] do
+      InvalidAttribute.exception(
+        field: keyword[:field],
+        message: keyword[:message],
+        vars: keyword
+      )
+    else
+      InvalidChanges.exception(
+        fields: keyword[:fields] || [],
+        message: keyword[:message],
+        vars: keyword
+      )
+    end
   end
 
   defp prepare_change(%{action_type: :create}, _attribute, value), do: {:ok, value}

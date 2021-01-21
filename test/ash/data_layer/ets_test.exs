@@ -3,7 +3,6 @@ defmodule Ash.DataLayer.EtsTest do
 
   alias Ash.DataLayer.Ets, as: EtsDataLayer
   alias Ash.DataLayer.Ets.Query
-  alias Ash.Query.Operator.{Eq, GreaterThan, In, LessThan}
 
   require Ash.Query
 
@@ -44,28 +43,6 @@ defmodule Ash.DataLayer.EtsTest do
     resources do
       resource EtsTestUser
     end
-  end
-
-  test "can?" do
-    assert EtsDataLayer.can?(EtsTestUser, :async_engine) == false
-    assert EtsDataLayer.can?(EtsTestUser, :composite_primary_key) == true
-    assert EtsDataLayer.can?(EtsTestUser, :upsert) == true
-    assert EtsDataLayer.can?(EtsTestUser, :boolean_filter) == true
-    assert EtsDataLayer.can?(EtsTestUser, :transact) == false
-    assert EtsDataLayer.can?(EtsTestUser, :create) == true
-    assert EtsDataLayer.can?(EtsTestUser, :read) == true
-    assert EtsDataLayer.can?(EtsTestUser, :update) == true
-    assert EtsDataLayer.can?(EtsTestUser, :destroy) == true
-    assert EtsDataLayer.can?(EtsTestUser, :sort) == true
-    assert EtsDataLayer.can?(EtsTestUser, :filter) == true
-    assert EtsDataLayer.can?(EtsTestUser, :limit) == true
-    assert EtsDataLayer.can?(EtsTestUser, :offset) == true
-    assert EtsDataLayer.can?(EtsTestUser, {:filter_operator, %In{}}) == true
-    assert EtsDataLayer.can?(EtsTestUser, {:filter_operator, %Eq{}}) == true
-    assert EtsDataLayer.can?(EtsTestUser, {:filter_operator, %LessThan{}}) == true
-    assert EtsDataLayer.can?(EtsTestUser, {:filter_operator, %GreaterThan{}}) == true
-    assert EtsDataLayer.can?(EtsTestUser, {:sort, :foo}) == true
-    assert EtsDataLayer.can?(EtsTestUser, :foo) == false
   end
 
   test "resource_to_query" do
@@ -230,7 +207,6 @@ defmodule Ash.DataLayer.EtsTest do
     end
 
     test "is_nil", %{zachary: zachary, matthew: matthew, joe: joe} do
-      assert [^joe, ^matthew, ^zachary] = filter_users(is_nil: :title)
       assert [^joe, ^matthew, ^zachary] = filter_users(title: [is_nil: true])
     end
   end

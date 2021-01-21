@@ -130,7 +130,6 @@ defmodule Ash.Dsl do
             opts = unquote(opts)
             parent_opts = unquote(parent_opts)
             their_opt_schema = unquote(their_opt_schema)
-            extensions = unquote(extensions)
 
             @opts opts
             @before_compile Ash.Dsl
@@ -173,7 +172,7 @@ defmodule Ash.Dsl do
     Enum.reduce(opts, {[], []}, fn {key, value}, {opts, extensions} ->
       cond do
         key in their_opt_schema[:single_extension_kinds] ->
-          mod = Macro.expand(value, env)
+          mod = Macro.expand(value, %{env | lexical_tracker: nil})
 
           extensions =
             if Ash.implements_behaviour?(mod, Ash.Dsl.Extension) do
@@ -185,7 +184,8 @@ defmodule Ash.Dsl do
           {Keyword.put(opts, key, mod), extensions}
 
         key in their_opt_schema[:many_extension_kinds] || key == :extensions ->
-          mods = value |> List.wrap() |> Enum.map(&Macro.expand(&1, env))
+          mods =
+            value |> List.wrap() |> Enum.map(&Macro.expand(&1, %{env | lexical_tracker: nil}))
 
           extensions =
             extensions ++ Enum.filter(mods, &Ash.implements_behaviour?(&1, Ash.Dsl.Extension))

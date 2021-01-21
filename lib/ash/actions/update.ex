@@ -14,10 +14,10 @@ defmodule Ash.Actions.Update do
       |> Keyword.put(:transaction?, true)
 
     resource = changeset.resource
+    changeset = changeset(changeset, api, action, opts[:actor])
 
-    with %{valid?: true} = changeset <-
-           changeset(changeset, api, action, opts[:actor]),
-         %{data: %{commit: %^resource{} = updated}, errors: []} = engine_result <-
+    with %{valid?: true} <- changeset,
+         {:ok, %{data: %{commit: %^resource{} = updated}} = engine_result} <-
            do_run_requests(
              changeset,
              engine_opts,
@@ -29,14 +29,14 @@ defmodule Ash.Actions.Update do
       |> add_tenant(changeset)
       |> add_notifications(engine_result, opts)
     else
-      %Ash.Changeset{errors: errors} ->
-        {:error, Ash.Error.to_ash_error(errors)}
+      %Ash.Changeset{errors: errors} = changeset ->
+        {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
 
-      %{errors: errors} ->
-        {:error, Ash.Error.to_ash_error(errors)}
+      {:error, %Ash.Engine.Runner{errors: errors, changeset: changeset}} ->
+        {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
 
       {:error, error} ->
-        {:error, Ash.Error.to_ash_error(error)}
+        {:error, Ash.Error.to_error_class(error, changeset: changeset)}
     end
   end
 
@@ -97,11 +97,14 @@ defmodule Ash.Actions.Update do
         action: action,
         resource: resource,
         notify?: true,
+        manage_changeset?: true,
         data:
           Request.resolve(
             [[:data, :changeset]],
             fn %{data: %{changeset: changeset}} ->
-              Ash.Changeset.with_hooks(changeset, fn changeset ->
+              changeset
+              |> Ash.Changeset.put_context(:actor, engine_opts[:actor])
+              |> Ash.Changeset.with_hooks(fn changeset ->
                 changeset = set_tenant(changeset)
 
                 Ash.DataLayer.update(resource, changeset)

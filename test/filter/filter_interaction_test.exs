@@ -180,17 +180,17 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
         |> replace_relationship(:author, author)
         |> Api.create!()
 
+      post1_id = post1.id
+
       Post
       |> new(%{title: "worst"})
       |> Api.create!()
-
-      post1 = Api.reload!(post1)
 
       query =
         Post
         |> Ash.Query.filter(author.name == "best author")
 
-      assert [^post1] = Api.read!(query)
+      assert [%{id: ^post1_id}] = Api.read!(query)
     end
 
     test "parallelizable filtering of related resources with a data layer that cannot join" do
@@ -216,6 +216,21 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
       post1 = Api.reload!(post1)
 
       assert [^post1] = Api.read!(query)
+    end
+
+    test "fails when attempting to use multiple data layers within a single call" do
+      query =
+        Post
+        |> Ash.Query.filter(related_posts.title == title)
+
+      message =
+        ~r/Cannot access multiple resources for a data layer that can't be joined from within a single expression/
+
+      assert_raise Ash.Error.Invalid,
+                   message,
+                   fn ->
+                     Api.read!(query)
+                   end
     end
 
     test "parallelizable filter with filtered side loads" do

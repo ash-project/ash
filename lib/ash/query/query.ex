@@ -32,6 +32,9 @@ defmodule Ash.Query do
     :resource,
     :filter,
     :tenant,
+    :action,
+    :__validated_for_action__,
+    arguments: %{},
     aggregates: %{},
     side_load: [],
     calculations: %{},
@@ -53,6 +56,7 @@ defmodule Ash.Query do
       side_load? = query.side_load != []
       aggregates? = query.aggregates != %{}
       calculations? = query.calculations != %{}
+      arguments? = query.arguments != %{}
       limit? = not is_nil(query.limit)
       offset? = not (is_nil(query.offset) || query.offset == 0)
       filter? = not is_nil(query.filter)
@@ -64,6 +68,7 @@ defmodule Ash.Query do
         [
           concat("resource: ", inspect(query.resource)),
           or_empty(concat("tenant: ", to_doc(query.tenant, opts)), tenant?),
+          arguments(query, opts),
           or_empty(concat("filter: ", to_doc(query.filter, opts)), filter?),
           or_empty(concat("sort: ", to_doc(query.sort, opts)), sort?),
           or_empty(concat("limit: ", to_doc(query.limit, opts)), limit?),
@@ -71,6 +76,7 @@ defmodule Ash.Query do
           or_empty(concat("side_load: ", to_doc(query.side_load, opts)), side_load?),
           or_empty(concat("aggregates: ", to_doc(query.aggregates, opts)), aggregates?),
           or_empty(concat("calculations: ", to_doc(query.calculations, opts)), calculations?),
+          or_empty(concat("arguments: ", to_doc(query.arguments, opts)), arguments?),
           or_empty(concat("errors: ", to_doc(query.errors, opts)), errors?)
         ],
         ">",
@@ -79,14 +85,48 @@ defmodule Ash.Query do
       )
     end
 
+    defp arguments(query, opts) do
+      if query.action do
+        action = Ash.Resource.action(query.resource, query.action, :read)
+
+        if Enum.empty?(action.arguments) do
+          nil
+        else
+          arg_string =
+            action.arguments
+            |> Map.new(fn argument ->
+              if argument.sensitive? do
+                {argument.name, "**redacted**"}
+              else
+                {argument.name, Ash.Query.get_argument(query, argument.name)}
+              end
+            end)
+            |> to_doc(opts)
+
+          concat(["arguments: ", arg_string])
+        end
+      else
+        nil
+      end
+    end
+
     defp or_empty(value, true), do: value
     defp or_empty(_, false), do: empty()
   end
 
   alias Ash.Actions.Sort
-  alias Ash.Error.Query.{AggregatesNotSupported, InvalidLimit, InvalidOffset, NoReadAction}
+
+  alias Ash.Error.Query.{
+    AggregatesNotSupported,
+    InvalidArgument,
+    InvalidLimit,
+    InvalidOffset,
+    NoReadAction,
+    Required
+  }
+
   alias Ash.Error.SideLoad.{InvalidQuery, NoSuchRelationship}
-  alias Ash.Query.{Aggregate, Calculation}
+  alias Ash.Query.{Aggregate, BooleanExpression, Calculation}
 
   @doc """
   Attach a filter statement to the query.
@@ -154,6 +194,89 @@ defmodule Ash.Query do
     end
   end
 
+  @doc """
+  Creates a query for a given read action and prepares it
+  ### Arguments
+  Provide a map or keyword list of arguments for the read action
+
+  ### Opts
+
+  * `:actor` - set the actor, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)
+  """
+  def for_read(query, action_name, args, opts \\ []) do
+    query = to_query(query)
+    action = Ash.Resource.action(query.resource, action_name, :read)
+
+    if action do
+      query = Map.put(query, :action, action.name)
+
+      arguments = Enum.reject(action.arguments, & &1.private?)
+
+      query
+      |> set_args(args, arguments)
+      |> check_required_args(arguments)
+      |> Map.put(:__validated_for_action__, action_name)
+      |> run_preparations(action, opts[:actor])
+    else
+      add_error(query, :action, "No such action #{action_name}")
+    end
+  end
+
+  defp run_preparations(query, action, actor) do
+    Enum.reduce(action.preparations || [], query, fn %{preparation: {module, opts}}, query ->
+      module.prepare(query, opts, %{actor: actor})
+    end)
+  end
+
+  defp check_required_args(query, arguments) do
+    Enum.reduce(arguments, query, fn arg, query ->
+      if not arg.allow_nil? && is_nil(get_argument(query, arg.name)) do
+        add_error(query, :arguments, Required.exception(field: arg.name, type: :argument))
+      else
+        query
+      end
+    end)
+  end
+
+  defp set_args(query, args, arguments) do
+    args
+    |> Enum.flat_map(fn {key, val} ->
+      argument =
+        Enum.find(
+          arguments,
+          &(&1.name == key || to_string(&1.name) == key)
+        )
+
+      if argument do
+        [{argument, val}]
+      else
+        []
+      end
+    end)
+    |> Enum.reduce(query, fn {argument, value}, new_query ->
+      if is_nil(value) && !argument.allow_nil? do
+        add_error(
+          query,
+          :arguments,
+          Required.exception(field: argument.name, type: :argument)
+        )
+      else
+        with {:ok, casted} <- Ash.Type.cast_input(argument.type, value),
+             {:ok, casted} <-
+               Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
+          %{new_query | arguments: Map.put(new_query.arguments, argument.name, casted)}
+        else
+          _ ->
+            add_error(
+              query,
+              :arguments,
+              InvalidArgument.exception(field: argument.name)
+            )
+        end
+      end
+    end)
+  end
+
   defmacro expr(do: body) do
     quote do
       Ash.Query.expr(unquote(body))
@@ -173,40 +296,69 @@ defmodule Ash.Query do
       end
     else
       quote do
-        List.wrap(unquote(do_expr(body)))
+        unquote(do_expr(body))
       end
     end
   end
 
-  defp do_expr({:^, _, [var]}), do: var
+  @operator_symbols Ash.Query.Operator.operator_symbols()
 
-  defp do_expr({:., _, [left, right]} = ref) when is_atom(right) do
+  defp do_expr(expr, escape? \\ true)
+
+  defp do_expr({:^, _, [value]}, _escape?) do
+    value
+  end
+
+  defp do_expr({{:., _, [_, _]} = left, _, _}, escape?) do
+    do_expr(left, escape?)
+  end
+
+  defp do_expr({:., _, [left, right]} = ref, escape?) when is_atom(right) do
     case do_ref(left, right) do
       %Ash.Query.Ref{} = ref ->
-        Macro.escape(ref)
+        soft_escape(ref, escape?)
 
       :error ->
         raise "Invalid reference! #{Macro.to_string(ref)}"
     end
   end
 
-  defp do_expr({op, _, nil}) when is_atom(op) do
-    Macro.escape(%Ash.Query.Ref{relationship_path: [], attribute: op})
+  defp do_expr({op, _, nil}, escape?) when is_atom(op) do
+    soft_escape(%Ash.Query.Ref{relationship_path: [], attribute: op}, escape?)
   end
 
-  defp do_expr({op, _, args}) when is_atom(op) and is_list(args) do
-    {op, Enum.map(args, &do_expr(&1))}
+  defp do_expr({op, _, args}, escape?) when op in [:and, :or] do
+    args = Enum.map(args, &do_expr(&1, false))
+
+    soft_escape(BooleanExpression.optimized_new(op, Enum.at(args, 0), Enum.at(args, 1)), escape?)
   end
 
-  defp do_expr({left, _, _}) when is_tuple(left), do: do_expr(left)
+  defp do_expr({op, _, [_, _] = args}, escape?)
+       when is_atom(op) and op in @operator_symbols do
+    args = Enum.map(args, &do_expr(&1, false))
 
-  defp do_expr(other), do: other
+    soft_escape(%Ash.Query.Call{name: op, args: args, operator?: true}, escape?)
+  end
+
+  defp do_expr({op, _, args}, escape?) when is_atom(op) and is_list(args) do
+    args = Enum.map(args, &do_expr(&1, false))
+
+    soft_escape(%Ash.Query.Call{name: op, args: args, operator?: false}, escape?)
+  end
+
+  defp do_expr({left, _, _}, escape?) when is_tuple(left), do: do_expr(left, escape?)
+
+  defp do_expr(other, _), do: other
+
+  defp soft_escape(%_{} = val, _) do
+    {:%{}, [], Map.to_list(val)}
+  end
+
+  defp soft_escape(other, _), do: other
 
   defp do_ref({left, _, nil}, right) do
     %Ash.Query.Ref{relationship_path: [left], attribute: right}
   end
-
-  # {{:., [line: 2], [{:foo, [line: 2], nil}, :bar]}, [no_parens: true, line: 2], []}
 
   defp do_ref({{:., _, [_, _]} = left, _, _}, right) do
     do_ref(left, right)
@@ -400,6 +552,72 @@ defmodule Ash.Query do
           end)
     }
   end
+
+  @doc "Gets the value of an argument provided to the query"
+  @spec get_argument(t, atom) :: term
+  def get_argument(query, argument) when is_atom(argument) do
+    Map.get(query.arguments, argument) || Map.get(query.arguments, to_string(argument))
+  end
+
+  @doc """
+  Add an argument to the query, which can be used in filter templates on actions
+  """
+  def set_argument(query, argument, value) do
+    query = to_query(query)
+    %{query | arguments: Map.put(query.arguments, argument, value)}
+  end
+
+  @doc """
+  Remove an argument from the query
+  """
+  def delete_argument(query, argument_or_arguments) do
+    query = to_query(query)
+
+    argument_or_arguments
+    |> List.wrap()
+    |> Enum.reduce(query, fn argument, query ->
+      %{query | arguments: Map.delete(query.arguments, argument)}
+    end)
+  end
+
+  @doc """
+  Merge a map of arguments to the arguments list
+  """
+  def set_arguments(query, map) do
+    query = to_query(query)
+    %{query | arguments: Map.merge(query.arguments, map)}
+  end
+
+  @doc false
+  def cast_arguments(query, action) do
+    Enum.reduce(action.arguments, %{query | arguments: %{}}, fn argument, new_query ->
+      value = get_argument(query, argument.name) || argument_default(argument.default)
+
+      if is_nil(value) && !argument.allow_nil? do
+        add_error(
+          query,
+          :arguments,
+          Required.exception(field: argument.name, type: :argument)
+        )
+      else
+        with {:ok, casted} <- Ash.Type.cast_input(argument.type, value),
+             {:ok, casted} <-
+               Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
+          %{new_query | arguments: Map.put(new_query.arguments, argument.name, casted)}
+        else
+          _ ->
+            add_error(
+              query,
+              :arguments,
+              InvalidArgument.exception(field: argument.name)
+            )
+        end
+      end
+    end)
+  end
+
+  defp argument_default(value) when is_function(value, 0), do: value.()
+  defp argument_default(value), do: value
 
   def struct?(%_{}), do: true
   def struct?(_), do: false
@@ -950,21 +1168,29 @@ defmodule Ash.Query do
     end
   end
 
-  defp add_error(query, key, message) do
+  def add_error(query, keys \\ [], message) do
+    keys = List.wrap(keys)
     query = to_query(query)
 
     message =
       if is_binary(message) do
-        "#{key}: #{message}"
+        string_path =
+          case keys do
+            [key] -> to_string(key)
+            keys -> Enum.join(keys, ".")
+          end
+
+        "#{string_path}: #{message}"
       else
         message
       end
 
-    %{
-      query
-      | errors: [Map.put(Ash.Error.to_ash_error(message), :path, key) | query.errors],
-        valid?: false
-    }
+    error =
+      message
+      |> Ash.Error.to_ash_error()
+      |> Map.update(:path, keys, &(keys ++ List.wrap(&1)))
+
+    %{query | errors: [error | query.errors], valid?: false}
   end
 
   defp validate_matching_query_and_continue(value, resource, key, path, relationship) do

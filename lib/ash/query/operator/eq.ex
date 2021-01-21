@@ -11,42 +11,15 @@ defmodule Ash.Query.Operator.Eq do
     operator: :==,
     name: :eq,
     predicate?: true,
-    types: [:any_same_or_ref]
-
-  def new(%Ref{} = ref, nil) do
-    Ash.Query.Operator.new(Ash.Query.Operator.IsNil, ref, true)
-  end
-
-  def new(%Ref{} = left, %Ref{} = right) do
-    {:ok, left, right}
-  end
-
-  def new(%Ref{attribute: %{type: type}} = left, right) do
-    case Ash.Type.cast_input(type, right) do
-      {:ok, casted} ->
-        {:ok, left, casted}
-
-      _ ->
-        {:error,
-         Ash.Error.Query.InvalidFilterValue.exception(
-           value: right,
-           message: "Could not be casted to type #{inspect(type)}",
-           context: %__MODULE__{left: left, right: right}
-         )}
-    end
-  end
-
-  def new(left, right) do
-    {:known, left == right}
-  end
+    types: [:same, :any]
 
   def evaluate(%{left: left, right: right}) do
-    left == right
+    {:known, Comp.equal?(left, right)}
   end
 
   def bulk_compare(predicates) do
     predicates
-    |> Enum.filter(&match?(%struct{} when struct in [__MODULE__, IsNil], &1))
+    |> Enum.filter(&match?(%struct{} when struct in [__MODULE__, Ash.Query.Operator.IsNil], &1))
     |> Enum.uniq()
     |> Enum.group_by(& &1.left)
     |> Enum.flat_map(fn {_, predicates} ->

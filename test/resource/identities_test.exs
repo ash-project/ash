@@ -23,10 +23,8 @@ defmodule Ash.Test.Resource.IdentitiesTest do
   describe "representation" do
     test "identities are persisted on the resource properly" do
       defposts do
-        resource do
-          identities do
-            identity :foobar, [:name, :contents]
-          end
+        identities do
+          identity :foobar, [:name, :contents]
         end
       end
 
@@ -36,10 +34,8 @@ defmodule Ash.Test.Resource.IdentitiesTest do
 
     test "Identity descriptions are allowed" do
       defposts do
-        resource do
-          identities do
-            identity :foobar, [:name, :contents], description: "require one of name/contents"
-          end
+        identities do
+          identity :foobar, [:name, :contents], description: "require one of name/contents"
         end
       end
 

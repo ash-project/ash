@@ -2,7 +2,7 @@ defmodule Ash.Resource.Validation.OneOf do
   @moduledoc false
   alias Ash.Error.Changes.InvalidAttribute
 
-  @behaviour Ash.Resource.Validation
+  use Ash.Resource.Validation
 
   @opt_schema [
     values: [

@@ -6,105 +6,71 @@ defmodule Ash.Query.Function do
   are there. A function must meet both behaviours.
   """
 
-  @callback new(list(term)) :: {:ok, term}
-
-  @type arg :: :ref | :term | {:options, Keyword.t()}
+  @type arg :: any
   @doc """
   The number and types of arguments supported.
-
-  Currently supports three values: `:ref`, `:term`, and `{:options, schema}`.
-
-  * `:ref` - a column/relationship path reference. Will be an instance of `Ash.Query.Ref`
-  * `:term` - any value. No type validation is currently supported except for what is listed here, so it must be done in the `c:new/1` function
-  * `{:options, keys}` - Only the last arg may be options, and `keys` is a list of atoms for which options are accepted
   """
   @callback args() :: [arg]
+  @callback new(list(term)) :: {:ok, term}
+  @callback evaluate(func :: map) :: :unknown | {:known, term}
 
-  def new(mod, args, ref) do
+  alias Ash.Query.{BooleanExpression, Call, Not, Ref}
+
+  def new(mod, args) do
     args = List.wrap(args)
-    configured_args = List.wrap(mod.args())
-    configured_arg_count = Enum.count(configured_args)
-    given_arg_count = Enum.count(args)
+    all_args = args
 
-    if configured_arg_count == given_arg_count do
-      args
-      |> Enum.zip(configured_args)
-      |> Enum.with_index()
-      |> Enum.reduce_while({:ok, []}, fn
-        {{%Ash.Query.Ref{} = ref, :ref}, _i}, {:ok, args} ->
-          {:cont, {:ok, [ref | args]}}
+    case mod.args() do
+      :var_args ->
+        mod.new(args)
 
-        {{arg, :ref}, i}, {:ok, args} when is_atom(arg) ->
-          case Ash.Resource.attribute(ref.resource, arg) do
-            nil ->
-              {:halt,
-               {:error, "invalid reference in #{ordinal(i + 1)} argument to #{mod.name()}"}}
+      mod_args ->
+        configured_args = List.wrap(mod_args)
+        configured_arg_count = Enum.count(configured_args)
+        given_arg_count = Enum.count(args)
 
-            attribute ->
-              {:cont, {:ok, [%{ref | attribute: attribute} | args]}}
+        if configured_arg_count == given_arg_count do
+          args
+          |> Enum.zip(configured_args)
+          |> Enum.with_index()
+          |> Enum.reduce_while({:ok, []}, fn
+            {{arg, :any}, _}, {:ok, args} ->
+              {:cont, {:ok, [arg | args]}}
+
+            {{%struct{} = arg, _}, _}, {:ok, args}
+            when struct in [BooleanExpression, Call, Not, Ref] ->
+              {:cont, {:ok, [arg | args]}}
+
+            {{%{__predicate__?: _} = arg, _}, _}, {:ok, args} ->
+              {:cont, {:ok, [arg | args]}}
+
+            {{arg, type}, i}, {:ok, args} ->
+              case Ash.Type.cast_input(type, arg) do
+                {:ok, value} ->
+                  {:cont, {:ok, [value | args]}}
+
+                _ ->
+                  {:halt,
+                   {:error,
+                    Ash.Error.Query.InvalidExpression.exception(
+                      expression: struct(mod, arguments: all_args),
+                      message: "#{ordinal(i + 1)} argument to #{mod.name()} is invalid"
+                    )}}
+              end
+          end)
+          |> case do
+            {:ok, args} ->
+              mod.new(Enum.reverse(args))
+
+            {:error, error} ->
+              {:error, error}
           end
-
-        {{arg, :term}, _}, {:ok, args} ->
-          {:cont, {:ok, [arg | args]}}
-
-        {{arg, {:options, keys}}, i}, {:ok, args} ->
-          case to_keys(arg, keys) do
-            {:ok, opts} ->
-              {:cont, {:ok, [opts | args]}}
-
-            {:error, message} when is_binary(message) ->
-              {:halt,
-               {:error, "#{ordinal(i + 1)} argument to #{mod.name()} is invalid: #{message}"}}
-
-            {:error, exception} ->
-              {:halt,
-               {:error,
-                "#{ordinal(i + 1)} argument to #{mod.name()} is invalid: #{
-                  Exception.message(exception)
-                }"}}
-          end
-      end)
-      |> case do
-        {:ok, args} ->
-          mod.new(Enum.reverse(args))
-
-        {:error, error} ->
-          {:error, error}
-      end
-    else
-      {:error,
-       "function #{mod.name()} takes #{configured_arg_count} arguments, provided #{
-         given_arg_count
-       }"}
-    end
-  end
-
-  defp to_keys(nil, _), do: {:ok, nil}
-
-  defp to_keys(opts, keys) do
-    if is_map(opts) || Keyword.keyword?(opts) do
-      string_keys = Enum.map(keys, &to_string/1)
-
-      Enum.reduce_while(opts, {:ok, []}, fn
-        {key, value}, {:ok, opts} when is_binary(key) ->
-          if key in string_keys do
-            {:cont, {:ok, [{String.to_existing_atom(key), value} | opts]}}
-          else
-            {:halt, {:error, "No such option #{key}"}}
-          end
-
-        {key, value}, {:ok, opts} when is_atom(key) ->
-          if key in keys do
-            {:cont, {:ok, [{key, value} | opts]}}
-          else
-            {:halt, {:error, "No such option #{key}"}}
-          end
-
-        {key, _}, _ ->
-          {:halt, {:error, "No such option #{key}"}}
-      end)
-    else
-      {:error, "Invalid options #{inspect(opts)}"}
+        else
+          {:error,
+           "function #{mod.name()} takes #{configured_arg_count} arguments, provided #{
+             given_arg_count
+           }"}
+        end
     end
   end
 
@@ -147,11 +113,11 @@ defmodule Ash.Query.Function do
 
       def name, do: unquote(opts[:name])
 
-      if unquote(opts[:predicate?]) do
-        def match?(struct) do
-          evaluate(struct) not in [nil, false]
-        end
-      end
+      def new(args), do: {:ok, struct(__MODULE__, arguments: args)}
+
+      def evaluate(_), do: :unknown
+
+      defoverridable new: 1, evaluate: 1
 
       defimpl Inspect do
         import Inspect.Algebra
@@ -159,7 +125,7 @@ defmodule Ash.Query.Function do
         def inspect(%{arguments: args, name: name}, opts) do
           concat(
             to_string(name),
-            container_doc("(", args, ")", opts, &to_doc(&1, &2), separator: ", ")
+            container_doc("(", args, ")", opts, &to_doc/2, separator: ",")
           )
         end
       end

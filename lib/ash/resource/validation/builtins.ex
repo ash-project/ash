@@ -14,6 +14,38 @@ defmodule Ash.Resource.Validation.Builtins do
     {Validation.OneOf, attribute: attribute, values: values}
   end
 
+  @doc "Validates that an attribute is being changed"
+  def changing(field) do
+    {Validation.Changing, field: field}
+  end
+
+  @doc "Validates that a field or argument matches another field or argument"
+  def confirm(field, confirmation) do
+    {Validation.Confirm, [field: field, confirmation: confirmation]}
+  end
+
+  @doc "Validates that an attribute on the original record does not equal a specific value"
+  def attribute_does_not_equal(attribute, value) do
+    {Validation.AttributeDoesNotEqual, attribute: attribute, value: value}
+  end
+
+  @doc "Validates that an attribute on the original record equals a specific value"
+  def attribute_equals(attribute, value) do
+    {Validation.AttributeEquals, attribute: attribute, value: value}
+  end
+
+  @doc """
+  Validates that an attribute's value matches a given regex or string, using the provided error, message if not.
+
+  `String.match?/2` is used to determine if it matches.
+  """
+
+  def match(attribute, match, message \\ nil) do
+    message = message || "must match #{match}"
+
+    {Validation.Match, attribute: attribute, match: match, message: message}
+  end
+
   @doc """
   Validates the presence of a list of attributes
 

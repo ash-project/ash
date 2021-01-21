@@ -1,7 +1,16 @@
 defmodule Ash.Resource.Actions.Read do
   @moduledoc "Represents a read action on a resource."
 
-  defstruct [:name, :pagination, :primary?, :filter, :description, type: :read]
+  defstruct [
+    :name,
+    :pagination,
+    :primary?,
+    :filter,
+    :description,
+    arguments: [],
+    preparations: [],
+    type: :read
+  ]
 
   @type t :: %__MODULE__{
           type: :read,

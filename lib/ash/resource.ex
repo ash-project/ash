@@ -135,8 +135,12 @@ defmodule Ash.Resource do
     [message: error]
   end
 
-  defp do_handle_errors(error) do
+  defp do_handle_errors(error) when is_exception(error) do
     [message: Exception.message(error)]
+  end
+
+  defp do_handle_errors(_error) do
+    [message: "Something went wrong"]
   end
 
   defp add_index(opts) do
@@ -557,8 +561,7 @@ defmodule Ash.Resource do
   @doc "A list of identities for the resource"
   @spec identities(Ash.resource()) :: [Ash.Resource.Identity.t()]
   def identities(resource) do
-    resource
-    |> Extension.get_entities([:resource, :identities])
+    Extension.get_entities(resource, [:identities])
   end
 
   @doc "A list of authorizers to be used when accessing"
@@ -904,12 +907,6 @@ defmodule Ash.Resource do
     data_layer = data_layer(resource)
 
     data_layer && Ash.DataLayer.can?(feature, resource)
-  end
-
-  @doc "Custom operators supported by the data layer of the resource"
-  @spec data_layer_operators(Ash.resource()) :: map
-  def data_layer_operators(resource) do
-    Ash.DataLayer.operators(resource)
   end
 
   @doc "Custom functions supported by the data layer of the resource"

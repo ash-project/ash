@@ -22,7 +22,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
           allow_nil? false
         end
 
-        change confirm(:name, :confirm_name)
+        validate confirm(:name, :confirm_name)
       end
     end
 

@@ -2,7 +2,7 @@ defmodule Ash.SatSolver do
   @moduledoc false
 
   alias Ash.Filter
-  alias Ash.Query.{Expression, Not, Ref}
+  alias Ash.Query.{BooleanExpression, Not, Ref}
 
   @dialyzer {:nowarn_function, overlap?: 2}
 
@@ -74,7 +74,7 @@ defmodule Ash.SatSolver do
   defp do_strict_filter_subset(filter, candidate) do
     case transform_and_solve(
            filter.resource,
-           Expression.new(:and, filter.expression, candidate.expression)
+           BooleanExpression.new(:and, filter.expression, candidate.expression)
          ) do
       {:error, :unsatisfiable} ->
         false
@@ -82,7 +82,7 @@ defmodule Ash.SatSolver do
       {:ok, _} ->
         case transform_and_solve(
                filter.resource,
-               Expression.new(:and, Not.new(filter.expression), candidate.expression)
+               BooleanExpression.new(:and, Not.new(filter.expression), candidate.expression)
              ) do
           {:error, :unsatisfiable} ->
             true
@@ -100,7 +100,7 @@ defmodule Ash.SatSolver do
   defp filter_to_expr(%{__predicate__?: true} = predicate), do: predicate
   defp filter_to_expr(%Not{expression: expression}), do: b(not filter_to_expr(expression))
 
-  defp filter_to_expr(%Expression{op: op, left: left, right: right}) do
+  defp filter_to_expr(%BooleanExpression{op: op, left: left, right: right}) do
     {op, filter_to_expr(left), filter_to_expr(right)}
   end
 
@@ -113,10 +113,10 @@ defmodule Ash.SatSolver do
   end
 
   defp upgrade_related_filters_to_join_keys(
-         %Expression{op: op, left: left, right: right},
+         %BooleanExpression{op: op, left: left, right: right},
          resource
        ) do
-    Expression.new(
+    BooleanExpression.new(
       op,
       upgrade_related_filters_to_join_keys(left, resource),
       upgrade_related_filters_to_join_keys(right, resource)
@@ -184,10 +184,10 @@ defmodule Ash.SatSolver do
   end
 
   defp do_consolidate_relationships(
-         %Expression{op: op, left: left, right: right},
+         %BooleanExpression{op: op, left: left, right: right},
          replacements
        ) do
-    Expression.new(
+    BooleanExpression.new(
       op,
       do_consolidate_relationships(left, replacements),
       do_consolidate_relationships(right, replacements)
@@ -408,7 +408,11 @@ defmodule Ash.SatSolver do
   def find_non_equal_overlap(expression) do
     Ash.Filter.find(expression, fn sub_expr ->
       Ash.Filter.find(expression, fn sub_expr2 ->
+        # if has_call_or_expression?(sub_expr) || has_call_or_expression?(sub_expr2) do
+        #   false
+        # else
         overlap?(sub_expr, sub_expr2)
+        # end
       end)
     end)
   end
@@ -428,7 +432,7 @@ defmodule Ash.SatSolver do
         %Ash.Query.Operator.Eq{right: value} = non_equal_overlap
       ) do
     if overlap?(non_equal_overlap, sub_expr) do
-      Ash.Query.Expression.new(
+      Ash.Query.BooleanExpression.new(
         :or,
         new_in(sub_expr, MapSet.delete(right, value)),
         non_equal_overlap
@@ -447,12 +451,12 @@ defmodule Ash.SatSolver do
 
       if MapSet.size(diff) == 0 do
         Enum.reduce(sub_expr.right, nil, fn var, acc ->
-          Expression.new(:or, %Ash.Query.Operator.Eq{left: sub_expr.left, right: var}, acc)
+          BooleanExpression.new(:or, %Ash.Query.Operator.Eq{left: sub_expr.left, right: var}, acc)
         end)
       else
         new_right = new_in(sub_expr, MapSet.intersection(sub_expr.right, right))
 
-        Ash.Query.Expression.new(
+        Ash.Query.BooleanExpression.new(
           :or,
           new_in(sub_expr, diff),
           new_right
@@ -471,12 +475,15 @@ defmodule Ash.SatSolver do
   def split_in_expressions(%Not{expression: expression} = not_expr, non_equal_overlap),
     do: %{not_expr | expression: split_in_expressions(expression, non_equal_overlap)}
 
-  def split_in_expressions(%Expression{left: left, right: right} = expr, non_equal_overlap),
-    do: %{
-      expr
-      | left: split_in_expressions(left, non_equal_overlap),
-        right: split_in_expressions(right, non_equal_overlap)
-    }
+  def split_in_expressions(
+        %BooleanExpression{left: left, right: right} = expr,
+        non_equal_overlap
+      ),
+      do: %{
+        expr
+        | left: split_in_expressions(left, non_equal_overlap),
+          right: split_in_expressions(right, non_equal_overlap)
+      }
 
   def split_in_expressions(other, _), do: other
 
@@ -576,8 +583,8 @@ defmodule Ash.SatSolver do
 
   defp refs(_), do: []
 
-  defp simplify(%Expression{op: op, left: left, right: right}) do
-    Expression.new(op, simplify(left), simplify(right))
+  defp simplify(%BooleanExpression{op: op, left: left, right: right}) do
+    BooleanExpression.new(op, simplify(left), simplify(right))
   end
 
   defp simplify(%Not{expression: expression}) do

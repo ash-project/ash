@@ -39,6 +39,7 @@ defmodule Ash.Engine do
     :verbose?,
     :actor,
     :authorize?,
+    :changeset,
     :runner_pid,
     :local_requests?,
     request_handlers: %{},
@@ -70,52 +71,43 @@ defmodule Ash.Engine do
 
     opts = Keyword.put(opts, :callers, [self() | Process.get(:"$callers", [])])
 
-    case Request.validate_requests(requests) do
-      :ok ->
-        requests =
-          Enum.map(requests, fn request ->
-            request = %{
-              request
-              | authorize?: request.authorize? and authorize?,
-                actor: actor,
-                verbose?: opts[:verbose?]
-            }
+    # If the requests are invalid, this is a framework level error
+    Request.validate_requests!(requests)
 
-            Request.add_initial_authorizer_state(request)
-          end)
+    requests =
+      Enum.map(requests, fn request ->
+        request = %{
+          request
+          | authorize?: request.authorize? and authorize?,
+            actor: actor,
+            verbose?: opts[:verbose?]
+        }
 
-        transaction_result =
-          maybe_transact(opts, requests, fn innermost_resource ->
-            {local_requests, async_requests} = split_local_async_requests(requests)
+        Request.add_initial_authorizer_state(request)
+      end)
 
-            opts =
-              opts
-              |> Keyword.put(:requests, async_requests)
-              |> Keyword.put(:local_requests?, !Enum.empty?(local_requests))
-              |> Keyword.put(:runner_pid, self())
-              |> Keyword.put(:api, api)
+    transaction_result =
+      maybe_transact(opts, requests, fn innermost_resource ->
+        {local_requests, async_requests} = split_local_async_requests(requests)
 
-            run_requests(async_requests, local_requests, opts, innermost_resource)
-          end)
+        opts =
+          opts
+          |> Keyword.put(:requests, async_requests)
+          |> Keyword.put(:local_requests?, !Enum.empty?(local_requests))
+          |> Keyword.put(:runner_pid, self())
+          |> Keyword.put(:api, api)
 
-        case transaction_result do
-          {:ok, %{resource_notifications: resource_notifications} = result} ->
-            unsent = Ash.Notifier.notify(resource_notifications)
+        run_requests(async_requests, local_requests, opts, innermost_resource)
+      end)
 
-            %{result | resource_notifications: unsent}
+    case transaction_result do
+      {:ok, %{errors: [], resource_notifications: resource_notifications} = result} ->
+        unsent = Ash.Notifier.notify(resource_notifications)
 
-          {:ok, value} ->
-            value
+        {:ok, %{result | resource_notifications: unsent}}
 
-          {:error, %Runner{} = runner} ->
-            {:error, runner.errors}
-
-          {:error, errors} ->
-            {:error, errors}
-        end
-
-      {:error, error} ->
-        {:error, error}
+      {:error, runner} ->
+        {:error, runner}
     end
   end
 
@@ -154,18 +146,18 @@ defmodule Ash.Engine do
        ) do
     case Runner.run(local_requests, opts[:verbose?], pid, pid_info) do
       %{errors: errors} = runner when errors == [] ->
-        runner
+        {:ok, runner}
 
-      %{errors: errors} ->
-        rollback_or_return(innermost_resource, errors)
+      runner ->
+        rollback_or_return(innermost_resource, runner)
     end
   end
 
-  defp rollback_or_return(innermost_resource, errors) do
+  defp rollback_or_return(innermost_resource, runner) do
     if innermost_resource do
-      Ash.Resource.rollback(innermost_resource, errors)
+      Ash.Resource.rollback(innermost_resource, runner)
     else
-      {:error, errors}
+      {:error, runner}
     end
   end
 
@@ -177,14 +169,14 @@ defmodule Ash.Engine do
       |> Enum.filter(&Ash.Resource.data_layer_can?(&1, :transact))
       |> do_in_transaction(func)
     else
-      {:ok, func.(nil)}
+      func.(nil)
     end
   end
 
   defp do_in_transaction(resources, func, innnermost \\ nil)
 
   defp do_in_transaction([], func, innermost_resource) do
-    {:ok, func.(innermost_resource)}
+    func.(innermost_resource)
   end
 
   defp do_in_transaction([resource | rest], func, _innermost) do
@@ -481,8 +473,13 @@ defmodule Ash.Engine do
     state
   end
 
+  defp add_error(state, path, errors) when is_list(errors) do
+    Enum.reduce(errors, state, &add_error(&2, path, &1))
+  end
+
   defp add_error(state, path, error) do
     path = List.wrap(path)
+
     error = Ash.Error.to_ash_error(error)
 
     %{state | errors: [Map.put(error, :path, path) | state.errors]}

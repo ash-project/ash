@@ -9,8 +9,13 @@ defmodule Ash.Error.Unknown do
 
     def code(_), do: "unknown"
 
-    def message(%{errors: errors, error: error, path: path, stacktraces?: stacktraces?})
-        when not is_nil(errors) do
+    def message(%{errors: [], error: nil} = error) do
+      message(%{error | errors: [], error: "Something went wrong"})
+    end
+
+    def message(%{errors: errors, error: error, path: path, stacktraces?: stacktraces?}) do
+      errors = List.wrap(errors)
+
       custom_prefix =
         if path && path != [] do
           inspect(path) <> " - "

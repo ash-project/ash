@@ -37,12 +37,22 @@ defmodule Ash.Actions.Read do
 
     if Ash.Resource.data_layer_can?(query.resource, :read) do
       engine_opts = Keyword.take(opts, [:verbose?, :actor, :authorize?])
+      query = %{query | action: action.name}
+
       original_query = query
 
       initial_offset = query.offset
       initial_limit = query.limit
 
-      with :ok <- validate_multitenancy(query, opts),
+      query =
+        if query.__validated_for_action__ == action.name do
+          query
+        else
+          Ash.Query.for_read(query, action.name, %{}, actor: engine_opts[:actor])
+        end
+
+      with %{valid?: true} <- query,
+           :ok <- validate_multitenancy(query, opts),
            %{errors: []} = query <- query_with_initial_data(query, opts),
            %{errors: []} = query <- add_action_filters(query, action, engine_opts[:actor]),
            {:ok, filter_requests} <- filter_requests(query, opts),
@@ -51,7 +61,7 @@ defmodule Ash.Actions.Read do
            page_opts <- page_opts && Keyword.delete(page_opts, :filter),
            {:ok, requests} <- requests(query, action, filter_requests, opts),
            side_load_requests <- SideLoad.requests(query),
-           %{data: %{data: data} = all_data, errors: []} <-
+           {:ok, %{data: %{data: data} = all_data}} <-
              Engine.run(
                requests ++ side_load_requests ++ List.wrap(count_request),
                query.api,
@@ -77,10 +87,10 @@ defmodule Ash.Actions.Read do
         |> add_query(Map.get(all_data, :ultimate_query), opts)
       else
         %{errors: errors} ->
-          {:error, Ash.Error.to_ash_error(errors)}
+          {:error, Ash.Error.to_error_class(errors)}
 
         {:error, error} ->
-          {:error, Ash.Error.to_ash_error(error)}
+          {:error, Ash.Error.to_error_class(error)}
       end
     else
       {:error, "Datalayer does not support reads"}
@@ -181,7 +191,13 @@ defmodule Ash.Actions.Read do
     if Ash.Filter.template_references_actor?(action.filter) and is_nil(actor) do
       {:error, "Read action requires actor"}
     else
-      built_filter = Ash.Filter.build_filter_from_template(action.filter, actor)
+      built_filter =
+        Ash.Filter.build_filter_from_template(
+          action.filter,
+          actor,
+          query.arguments,
+          query.context
+        )
 
       Ash.Query.filter(query, ^built_filter)
     end

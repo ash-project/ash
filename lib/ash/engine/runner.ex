@@ -5,6 +5,7 @@ defmodule Ash.Engine.Runner do
     notified_of_complete?: false,
     requests: [],
     errors: [],
+    changeset: %{},
     data: %{},
     pid_info: %{},
     dependencies: %{},
@@ -19,11 +20,19 @@ defmodule Ash.Engine.Runner do
   require Logger
 
   def run(requests, verbose?, engine_pid \\ nil, pid_info \\ %{}) do
+    changeset =
+      Enum.find_value(requests, fn request ->
+        if request.manage_changeset? && not match?(%Request.UnresolvedField{}, request.changeset) do
+          request.changeset
+        end
+      end)
+
     state = %__MODULE__{
       requests: requests,
       verbose?: verbose?,
       engine_pid: engine_pid,
       pid_info: pid_info,
+      changeset: changeset,
       resource_notifications: []
     }
 
@@ -113,6 +122,9 @@ defmodule Ash.Engine.Runner do
     log(state, fn -> "waiting for engine" end)
 
     receive do
+      {:runner, :update_changeset, changeset} ->
+        run_to_completion(%{state | changeset: changeset})
+
       {:wont_receive, receiver_path, path, field} ->
         request = Enum.find(state.requests, &(&1.path == receiver_path))
 
@@ -354,6 +366,9 @@ defmodule Ash.Engine.Runner do
       {:set_extra_data, key, value}, state ->
         %{state | data: Map.put(state.data, key, value)}
 
+      {:update_changeset, value}, state ->
+        %{state | changeset: value}
+
       %Ash.Notifier.Notification{} = resource_notification, state ->
         add_resource_notification(state, resource_notification)
 
@@ -407,6 +422,16 @@ defmodule Ash.Engine.Runner do
 
         {new_state, notifications, new_dependencies}
 
+      {:error, error, notifications, new_request} ->
+        notify_error(error, state)
+
+        new_state =
+          state
+          |> add_error(new_request.path, error)
+          |> replace_request(%{new_request | state: :error})
+
+        {new_state, notifications, []}
+
       {:error, error, new_request} ->
         notify_error(error, state)
 
@@ -450,6 +475,9 @@ defmodule Ash.Engine.Runner do
       {:continue, new_request, new_notifications} ->
         {:ok, new_request, new_notifications, []}
 
+      {:error, error, notifications, new_request} ->
+        {:error, error, notifications, new_request}
+
       {:error, error, new_request} ->
         {:error, error, new_request}
 
@@ -465,9 +493,14 @@ defmodule Ash.Engine.Runner do
     }
   end
 
+  defp add_error(state, path, errors) when is_list(errors) do
+    Enum.reduce(errors, state, &add_error(&2, path, &1))
+  end
+
   defp add_error(state, path, error) do
     path = List.wrap(path)
-    error = Map.put(Ash.Error.to_ash_error(error), :path, path)
+    error = Ash.Error.to_ash_error(error)
+    error = Map.put(error, :path, path)
 
     if error in state.errors do
       state

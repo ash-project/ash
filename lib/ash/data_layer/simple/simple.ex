@@ -64,11 +64,11 @@ defmodule Ash.DataLayer.Simple do
   end
 
   def create(_resource, changeset) do
-    {:ok, Ash.Changeset.apply_attributes(changeset)}
+    Ash.Changeset.apply_attributes(changeset)
   end
 
   def update(_resource, changeset) do
-    {:ok, Ash.Changeset.apply_attributes(changeset)}
+    Ash.Changeset.apply_attributes(changeset)
   end
 
   def destroy(_resource, _changeset) do

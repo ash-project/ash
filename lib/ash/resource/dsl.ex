@@ -313,6 +313,35 @@ defmodule Ash.Resource.Dsl do
     schema: Ash.Resource.Actions.Argument.schema()
   }
 
+  @validate %Ash.Dsl.Entity{
+    name: :validate,
+    describe: """
+    Declares a validation for creates and updates.
+    """,
+    examples: [
+      "validate {Mod, [foo: :bar]}",
+      "validate at_least_one_of_present([:first_name, :last_name])"
+    ],
+    target: Ash.Resource.Validation,
+    schema: Ash.Resource.Validation.opt_schema(),
+    transform: {Ash.Resource.Validation, :transform, []},
+    args: [:validation]
+  }
+
+  @action_validate %Ash.Dsl.Entity{
+    name: :validate,
+    describe: """
+    Declares a validation for the current action
+    """,
+    examples: [
+      "validate changing(:email)"
+    ],
+    target: Ash.Resource.Validation,
+    schema: Ash.Resource.Validation.action_schema(),
+    transform: {Ash.Resource.Validation, :transform, []},
+    args: [:validation]
+  }
+
   @create %Ash.Dsl.Entity{
     name: :create,
     describe: """
@@ -329,13 +358,30 @@ defmodule Ash.Resource.Dsl do
     schema: Ash.Resource.Actions.Create.opt_schema(),
     entities: [
       changes: [
-        @change
+        @change,
+        @action_validate
       ],
       arguments: [
         @action_argument
       ]
     ],
     args: [:name]
+  }
+
+  @preparation %Ash.Dsl.Entity{
+    name: :prepare,
+    describe: """
+    Declares a preparation, which can be used to prepare a query for a read action.
+    """,
+    examples: [
+      """
+      prepare default_sort([:foo, :bar])
+      """
+    ],
+    target: Ash.Resource.Preparation,
+    schema: Ash.Resource.Preparation.schema(),
+    args: [:preparation],
+    transform: {Ash.Resource.Preparation, :transform, []}
   }
 
   @read %Ash.Dsl.Entity{
@@ -356,6 +402,14 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Actions.Read,
     schema: Ash.Resource.Actions.Read.opt_schema(),
+    entities: [
+      arguments: [
+        @action_argument
+      ],
+      preparations: [
+        @preparation
+      ]
+    ],
     args: [:name]
   }
 
@@ -369,7 +423,8 @@ defmodule Ash.Resource.Dsl do
     ],
     entities: [
       changes: [
-        @change
+        @change,
+        @action_validate
       ],
       arguments: [
         @action_argument
@@ -394,7 +449,8 @@ defmodule Ash.Resource.Dsl do
     ],
     entities: [
       changes: [
-        @change
+        @change,
+        @action_validate
       ],
       arguments: [
         @action_argument
@@ -422,7 +478,9 @@ defmodule Ash.Resource.Dsl do
     if an action of that type is requested, but no specific action name is given.
     """,
     imports: [
-      Ash.Resource.Change.Builtins
+      Ash.Resource.Change.Builtins,
+      Ash.Resource.Validation.Builtins,
+      Ash.Filter.TemplateHelpers
     ],
     schema: [
       defaults: [
@@ -443,7 +501,7 @@ defmodule Ash.Resource.Dsl do
         create :signup do
           argument :password, :string
           argument :password_confirmation, :string
-          change confirm(:password, :password_confirmation)
+          validate confirm(:password, :password_confirmation)
           change {MyApp.HashPassword, []} # A custom implemented Change
         end
 
@@ -518,9 +576,6 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Resource-wide configuration
     """,
-    sections: [
-      @identities
-    ],
     examples: [
       """
       resource do
@@ -529,6 +584,7 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
+    imports: [Ash.Filter.TemplateHelpers],
     schema: [
       description: [
         type: :string,
@@ -539,21 +595,6 @@ defmodule Ash.Resource.Dsl do
         doc: "A filter statement to be applied to any queries on the resource"
       ]
     ]
-  }
-
-  @validate %Ash.Dsl.Entity{
-    name: :validate,
-    describe: """
-    Declares a validation for creates and updates.
-    """,
-    examples: [
-      "validate {Mod, [foo: :bar]}",
-      "validate at_least_one_of_present([:first_name, :last_name])"
-    ],
-    target: Ash.Resource.Validation,
-    schema: Ash.Resource.Validation.opt_schema(),
-    transform: {Ash.Resource.Validation, :transform, []},
-    args: [:validation]
   }
 
   @validations %Ash.Dsl.Section{
@@ -768,6 +809,7 @@ defmodule Ash.Resource.Dsl do
   def identity(x), do: x
 
   @sections [
+    @identities,
     @attributes,
     @relationships,
     @actions,

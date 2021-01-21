@@ -17,23 +17,12 @@ defmodule Ash.Query.Operator.LessThan do
     operator: :<,
     name: :less_than,
     predicate?: true,
-    types: [:any_same_or_ref]
+    types: [:same, :any]
 
   alias Ash.Query.Operator.{Eq, IsNil}
 
-  def new(%Ref{attribute: %{type: type}} = left, right) do
-    case Ash.Type.cast_input(type, right) do
-      {:ok, casted} -> {:ok, left, casted}
-      :error -> {:ok, left, right}
-    end
-  end
-
-  def new(left, right) do
-    {:known, left < right}
-  end
-
   def evaluate(%{left: left, right: right}) do
-    left < right
+    {:known, Comp.less_than?(left, right)}
   end
 
   def bulk_compare(all_predicates) do

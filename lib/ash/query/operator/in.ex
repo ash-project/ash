@@ -10,26 +10,19 @@ defmodule Ash.Query.Operator.In do
   use Ash.Query.Operator,
     operator: :in,
     predicate?: true,
-    types: [[{:ref, :any}, {:array, :same}], [{:array, :same}, {:ref, :any}]]
+    types: [[:any, {:array, :same}]]
 
   @inspect_items_limit 10
   @dialyzer {:nowarn_function, compare: 2}
 
-  def new(_, []), do: {:known, false}
-
-  def new(%Ref{attribute: %{type: type}} = left, right) do
-    case Ash.Type.cast_input({:array, type}, right) do
-      {:ok, casted} -> {:ok, left, MapSet.new(casted)}
-      :error -> {:ok, left, MapSet.new(right)}
-    end
+  def new(%Ash.Query.Ref{} = left, right) when is_list(right) do
+    {:ok, %__MODULE__{left: left, right: MapSet.new(right)}}
   end
 
-  def new(left, right) when is_list(right) do
-    {:known, left in right}
-  end
+  def new(left, right), do: {:ok, %__MODULE__{left: left, right: right}}
 
   def evaluate(%{left: left, right: right}) do
-    left in right
+    {:known, Enum.any?(right, &Comp.equal?(&1, left))}
   end
 
   def compare(%__MODULE__{left: left, right: %MapSet{} = left_right}, %__MODULE__{

@@ -66,6 +66,7 @@ defmodule Ash.Engine.Request do
     :actor,
     :authorize?,
     :engine_pid,
+    manage_changeset?: false,
     notify?: false,
     authorized?: false,
     authorizer_state: %{},
@@ -179,6 +180,7 @@ defmodule Ash.Engine.Request do
       async?: Keyword.get(opts, :async?, true),
       data: data,
       query: query,
+      manage_changeset?: opts[:manage_changeset?] || false,
       api: opts[:api],
       name: opts[:name],
       strict_check_only?: opts[:strict_check_only?],
@@ -195,6 +197,7 @@ defmodule Ash.Engine.Request do
   def resource_notification(request) do
     %Ash.Notifier.Notification{
       resource: request.resource,
+      api: request.api,
       actor: request.actor,
       action: request.action,
       data: request.data,
@@ -205,6 +208,8 @@ defmodule Ash.Engine.Request do
   def next(request) do
     case do_next(request) do
       {:complete, new_request, notifications, dependencies} ->
+        notifications = update_changeset(request, new_request.changeset, notifications)
+
         if request.state != :complete do
           {:complete, new_request, notifications, dependencies}
         else
@@ -212,15 +217,37 @@ defmodule Ash.Engine.Request do
         end
 
       {:waiting, new_request, notifications, dependencies} ->
+        notifications = update_changeset(request, new_request.changeset, notifications)
         {:wait, new_request, notifications, dependencies}
 
       {:continue, new_request, notifications} ->
+        notifications = update_changeset(request, new_request.changeset, notifications)
         {:continue, new_request, notifications}
 
       {:error, error, request} ->
-        {:error, error, request}
+        if request.manage_changeset? && !match?(%UnresolvedField{}, request.changeset) do
+          new_changeset = Ash.Changeset.add_error(request.changeset, error)
+          notifications = update_changeset(request, new_changeset, [])
+          {:error, error, notifications, %{request | changeset: new_changeset}}
+        else
+          {:error, error, request}
+        end
     end
   end
+
+  defp update_changeset(
+         %{manage_changeset?: true, changeset: changeset},
+         new_changeset,
+         notifications
+       ) do
+    if new_changeset != changeset && not match?(%UnresolvedField{}, new_changeset) do
+      [{:update_changeset, changeset} | notifications]
+    else
+      notifications
+    end
+  end
+
+  defp update_changeset(_, _, notifications), do: notifications
 
   def do_next(%{state: :strict_check, authorize?: false} = request) do
     log(request, fn -> "Skipping strict check due to authorize?: false" end)
@@ -931,20 +958,13 @@ defmodule Ash.Engine.Request do
     Map.get(request.authorizer_state, authorizer) || %{}
   end
 
-  def validate_requests(requests) do
-    with :ok <- validate_unique_paths(requests),
-         :ok <- validate_dependencies(requests) do
-      :ok
-    else
-      {:error, {:impossible, path}} ->
-        {:error, ImpossiblePath.exception(impossible_path: path)}
-
-      {:error, paths} ->
-        {:error, DuplicatedPath.exception(paths: paths)}
-    end
+  def validate_requests!(requests) do
+    validate_unique_paths!(requests)
+    validate_dependencies!(requests)
+    :ok
   end
 
-  defp validate_unique_paths(requests) do
+  defp validate_unique_paths!(requests) do
     requests
     |> Enum.group_by(& &1.path)
     |> Enum.filter(fn {_path, value} ->
@@ -957,46 +977,40 @@ defmodule Ash.Engine.Request do
       invalid_paths ->
         invalid_paths = Enum.map(invalid_paths, &elem(&1, 0))
 
-        {:error, invalid_paths}
+        raise DuplicatedPath, paths: invalid_paths
     end
   end
 
-  defp validate_dependencies(requests) do
-    result =
-      Enum.reduce_while(requests, :ok, fn request, :ok ->
-        case do_build_dependencies(request, requests) do
-          :ok -> {:cont, :ok}
-          {:error, error} -> {:halt, {:error, error}}
-        end
-      end)
-
-    case result do
-      {:ok, requests} -> {:ok, Enum.reverse(requests)}
-      other -> other
-    end
+  defp validate_dependencies!(requests) do
+    Enum.each(requests, &do_build_dependencies(&1, requests))
+    :ok
   end
 
   defp do_build_dependencies(request, requests, trail \\ []) do
     request
     |> Map.from_struct()
-    |> Enum.reduce_while(:ok, fn
-      {_key, %UnresolvedField{deps: deps}}, :ok ->
-        case expand_deps(deps, requests, trail) do
-          {:error, error} ->
-            {:halt, {:error, error}}
+    |> Enum.each(fn
+      {_key, %UnresolvedField{deps: deps}} ->
+        expand_deps(deps, requests, trail)
 
-          :ok ->
-            {:cont, :ok}
-        end
-
-      _, :ok ->
-        {:cont, :ok}
+      _ ->
+        :ok
     end)
   end
 
-  defp expand_deps([], _, _), do: :ok
-
   defp expand_deps(deps, requests, trail) do
+    case do_expand_deps(deps, requests, trail) do
+      :ok ->
+        :ok
+
+      {:error, {:impossible, dep}} ->
+        raise ImpossiblePath, impossible_path: dep
+    end
+  end
+
+  defp do_expand_deps([], _, _), do: :ok
+
+  defp do_expand_deps(deps, requests, trail) do
     Enum.reduce_while(deps, :ok, fn dep, :ok ->
       case do_expand_dep(dep, requests, trail) do
         :ok -> {:cont, :ok}
@@ -1017,7 +1031,7 @@ defmodule Ash.Engine.Request do
           {:error, {:impossible, dep}}
 
         %{^request_key => %UnresolvedField{deps: nested_deps}} ->
-          case expand_deps(nested_deps, requests, [dep | trail]) do
+          case do_expand_deps(nested_deps, requests, [dep | trail]) do
             :ok -> :ok
             other -> other
           end

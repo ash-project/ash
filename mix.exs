@@ -122,9 +122,10 @@ defmodule Ash.MixProject do
         "filter operators": ~r/Ash.Query.Operator/,
         "filter functions": ~r/Ash.Query.Function/,
         "query expressions": [
-          Ash.Query.Expression,
+          Ash.Query.BooleanBooleanExpression,
           Ash.Query.Not,
-          Ash.Query.Ref
+          Ash.Query.Ref,
+          Ash.Query.Call
         ],
         filter: ~r/Ash.Filter/,
         "resource introspection": ~r/Ash.Resource/,
@@ -165,6 +166,8 @@ defmodule Ash.MixProject do
       {:decimal, "~> 2.0"},
       {:picosat_elixir, "~> 0.1.5"},
       {:nimble_options, "~> 0.3.5"},
+      {:timex, ">= 3.0.0"},
+      {:comparable, "~> 1.0"},
       # Dev/Test dependencies
       {:ex_doc, "~> 0.22", only: :dev, runtime: false},
       {:ex_check, "~> 0.12.0", only: :dev},

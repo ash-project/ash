@@ -8,22 +8,10 @@ defmodule Ash.Query.Operator.GreaterThanOrEqual do
     operator: :>=,
     name: :greater_than_or_equal,
     predicate?: true,
-    types: [:any_same_or_ref]
+    types: [:same, :any]
 
-  def new(%Ref{attribute: %{type: type}} = left, right) do
-    case Ash.Type.cast_input(type, right) do
-      {:ok, casted} -> {:ok, left, casted}
-      :error -> {:ok, left, right}
-    end
-  end
-
-  def new(left, right) do
-    {:known, left >= right}
-  end
-
-  def evaluate(%{left: left, right: right}) do
-    left >= right
-  end
+  def evaluate(%{left: left, right: right}),
+    do: {:known, Comp.greater_or_equal?(left, right)}
 
   def simplify(%__MODULE__{left: %Ref{} = ref, right: value}) do
     {:ok, op} = Ash.Query.Operator.new(Ash.Query.Operator.LessThan, ref, value)

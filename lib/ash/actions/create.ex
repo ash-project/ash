@@ -16,12 +16,11 @@ defmodule Ash.Actions.Create do
       |> Keyword.take([:verbose?, :actor, :authorize?])
       |> Keyword.put(:transaction?, true)
 
-    with %{valid?: true} = changeset <- changeset(changeset, api, action, opts[:actor]),
+    changeset = changeset(changeset, api, action, opts[:actor])
+
+    with %{valid?: true} <- changeset,
          :ok <- check_upsert_support(changeset.resource, upsert?),
-         %{
-           data: %{commit: %^resource{} = created},
-           errors: []
-         } = engine_result <-
+         {:ok, %{data: %{commit: %^resource{} = created}} = engine_result} <-
            do_run_requests(
              changeset,
              upsert?,
@@ -34,14 +33,14 @@ defmodule Ash.Actions.Create do
       |> add_tenant(changeset)
       |> add_notifications(engine_result, opts)
     else
-      %Ash.Changeset{errors: errors} ->
-        {:error, Ash.Error.to_ash_error(errors)}
+      %Ash.Changeset{errors: errors} = changeset ->
+        {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
 
-      %{errors: errors} ->
-        {:error, Ash.Error.to_ash_error(errors)}
+      {:error, %Ash.Engine.Runner{errors: errors, changeset: changeset}} ->
+        {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
 
       {:error, error} ->
-        {:error, Ash.Error.to_ash_error(error)}
+        {:error, Ash.Error.to_error_class(error, changeset: changeset)}
     end
   end
 
@@ -105,13 +104,16 @@ defmodule Ash.Actions.Create do
           end),
         action: action,
         notify?: true,
+        manage_changeset?: true,
         data:
           Request.resolve(
             [[:commit, :changeset]],
             fn %{commit: %{changeset: changeset}} ->
               changeset = set_tenant(changeset)
 
-              Ash.Changeset.with_hooks(changeset, fn changeset ->
+              changeset
+              |> Ash.Changeset.put_context(:actor, engine_opts[:actor])
+              |> Ash.Changeset.with_hooks(fn changeset ->
                 if upsert? do
                   Ash.DataLayer.upsert(resource, changeset)
                 else

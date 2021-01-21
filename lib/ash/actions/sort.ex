@@ -117,7 +117,7 @@ defmodule Ash.Actions.Sort do
         false
 
       x, y ->
-        elem(x, 1) <= elem(y, 1)
+        Comp.less_or_equal?(elem(x, 1), elem(y, 1))
     end
   end
 
@@ -133,7 +133,7 @@ defmodule Ash.Actions.Sort do
         true
 
       x, y ->
-        elem(x, 1) >= elem(y, 1)
+        Comp.greater_or_equal?(elem(x, 1), elem(y, 1))
     end
   end
 
@@ -142,7 +142,7 @@ defmodule Ash.Actions.Sort do
       if is_nil(elem(x, 1)) && !is_nil(elem(y, 1)) do
         false
       else
-        elem(x, 1) <= elem(y, 1)
+        Comp.less_or_equal?(elem(x, 1), elem(y, 1))
       end
     end
   end
@@ -152,7 +152,7 @@ defmodule Ash.Actions.Sort do
       if is_nil(elem(x, 1)) && !is_nil(elem(y, 1)) do
         true
       else
-        elem(x, 1) <= elem(y, 1)
+        Comp.less_or_equal?(elem(x, 1), elem(y, 1))
       end
     end
   end
@@ -162,7 +162,7 @@ defmodule Ash.Actions.Sort do
       if is_nil(elem(x, 1)) && !is_nil(elem(y, 1)) do
         true
       else
-        elem(x, 1) >= elem(y, 1)
+        Comp.greater_or_equal?(elem(x, 1), elem(y, 1))
       end
     end
   end
@@ -172,7 +172,7 @@ defmodule Ash.Actions.Sort do
       if is_nil(elem(x, 1)) && !is_nil(elem(y, 1)) do
         false
       else
-        elem(x, 1) >= elem(y, 1)
+        Comp.greater_or_equal?(elem(x, 1), elem(y, 1))
       end
     end
   end

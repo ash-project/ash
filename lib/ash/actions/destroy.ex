@@ -52,11 +52,14 @@ defmodule Ash.Actions.Destroy do
           authorize?: false,
           changeset: changeset,
           notify?: true,
+          manage_changeset?: true,
           data:
             Request.resolve(
               [[:data, :data], [:destroy, :changeset]],
               fn %{destroy: %{changeset: changeset}} ->
-                Ash.Changeset.with_hooks(changeset, fn changeset ->
+                changeset
+                |> Ash.Changeset.put_context(:actor, engine_opts[:actor])
+                |> Ash.Changeset.with_hooks(fn changeset ->
                   case Ash.DataLayer.destroy(resource, changeset) do
                     :ok ->
                       {:ok, record}
@@ -70,17 +73,17 @@ defmodule Ash.Actions.Destroy do
         )
 
       case Engine.run([authorization_request, destroy_request], api, engine_opts) do
-        %{errors: []} = engine_result ->
+        {:ok, engine_result} ->
           add_notifications(engine_result, opts)
 
-        {:error, errors} ->
-          {:error, Ash.Error.to_ash_error(errors)}
+        {:error, %Ash.Engine.Runner{errors: errors, changeset: changeset}} ->
+          {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
 
-        %{errors: errors} ->
-          {:error, Ash.Error.to_ash_error(errors)}
+        {:error, error} ->
+          {:error, Ash.Error.to_error_class(error, changeset: changeset)}
       end
     else
-      {:error, Ash.Error.to_ash_error(changeset.errors)}
+      {:error, Ash.Error.to_error_class(changeset.errors, changeset: changeset)}
     end
   end
 

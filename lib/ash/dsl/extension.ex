@@ -878,7 +878,7 @@ defmodule Ash.Dsl.Extension do
           opts =
             Enum.map(opts, fn {key, value} ->
               if key in entity.modules do
-                {Ash.Dsl.Extension.expand_alias(key, __CALLER__), value}
+                {key, Ash.Dsl.Extension.expand_alias(value, __CALLER__)}
               else
                 {key, value}
               end
@@ -1053,9 +1053,13 @@ defmodule Ash.Dsl.Extension do
     module_name
   end
 
-  def expand_alias({:__aliases__, _, _} = ast, env),
-    do: Macro.expand(ast, %{env | lexical_tracker: nil})
+  def expand_alias(ast, env) do
+    Macro.postwalk(ast, fn
+      {:__aliases__, _, _} = node ->
+        Macro.expand(node, %{env | lexical_tracker: nil})
 
-  def expand_alias(ast, _env),
-    do: ast
+      other ->
+        other
+    end)
+  end
 end

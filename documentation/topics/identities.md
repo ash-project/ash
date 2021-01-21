@@ -1,15 +1,13 @@
 # Identities
 
 Identities can be used to describe the ways that a resource is uniquely identified. For example, you may have a user resource that has an `id` primary key, but is uniquely identifiable via the `email` attribute as well.
-To configure this, add an `identities` block inside of the `resource` block.
+To configure this, add an `identities` block to your resource
 
 For example:
 
 ```elixir
-resource do
-  identities do
-    identity :unique_email, [:email]
-  end
+identities do
+  identity :unique_email, [:email]
 end
 ```
 

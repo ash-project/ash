@@ -39,16 +39,6 @@ defmodule Ash.DataLayer.Mnesia do
     end)
   end
 
-  alias Ash.Query.Operator.{
-    Eq,
-    GreaterThan,
-    GreaterThanOrEqual,
-    In,
-    IsNil,
-    LessThan,
-    LessThanOrEqual
-  }
-
   @behaviour Ash.DataLayer
 
   @mnesia %Ash.Dsl.Section{
@@ -98,14 +88,10 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, :offset), do: true
   def can?(_, :boolean_filter), do: true
   def can?(_, :transact), do: true
-  def can?(_, {:filter_operator, %In{}}), do: true
-  def can?(_, {:filter_operator, %Eq{}}), do: true
-  def can?(_, {:filter_operator, %LessThan{}}), do: true
-  def can?(_, {:filter_operator, %GreaterThan{}}), do: true
-  def can?(_, {:filter_operator, %LessThanOrEqual{}}), do: true
-  def can?(_, {:filter_operator, %GreaterThanOrEqual{}}), do: true
-  def can?(_, {:filter_operator, %IsNil{}}), do: true
+  def can?(_, {:filter_expr, _}), do: true
+  def can?(_, :nested_expressions), do: true
   def can?(_, {:sort, _}), do: true
+
   def can?(_, _), do: false
 
   @impl true
@@ -176,29 +162,33 @@ defmodule Ash.DataLayer.Mnesia do
             )
           end)
 
-        offset_records =
-          structified_records
-          |> Enum.filter(&Ash.Filter.Runtime.matches?(api, &1, filter))
-          |> Sort.runtime_sort(sort)
-          |> Enum.drop(offset || 0)
+        api
+        |> Ash.Filter.Runtime.filter_matches(structified_records, filter)
+        |> case do
+          {:ok, filtered} ->
+            offset_records =
+              filtered
+              |> Sort.runtime_sort(sort)
+              |> Enum.drop(offset || 0)
 
-        limited_records =
-          if limit do
-            Enum.take(offset_records, limit)
-          else
-            offset_records
-          end
+            limited_records =
+              if limit do
+                Enum.take(offset_records, limit)
+              else
+                offset_records
+              end
 
-        {:ok, limited_records}
+            {:ok, limited_records}
+
+          {:error, error} ->
+            {:error, error}
+        end
     end
-  rescue
-    error ->
-      {:error, error}
   end
 
   @impl true
   def create(resource, changeset) do
-    record = Ash.Changeset.apply_attributes(changeset)
+    {:ok, record} = Ash.Changeset.apply_attributes(changeset)
 
     pkey =
       resource
@@ -231,9 +221,6 @@ defmodule Ash.DataLayer.Mnesia do
       {:atomic, _} -> {:ok, record}
       {:aborted, error} -> {:error, error}
     end
-  rescue
-    error ->
-      {:error, error}
   end
 
   @impl true
@@ -252,9 +239,6 @@ defmodule Ash.DataLayer.Mnesia do
       {:atomic, _} -> :ok
       {:aborted, error} -> {:error, error}
     end
-  rescue
-    error ->
-      {:error, error}
   end
 
   @impl true

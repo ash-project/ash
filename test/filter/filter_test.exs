@@ -107,6 +107,7 @@ defmodule Ash.Test.Filter.FilterTest do
       attribute :title, :string
       attribute :contents, :string
       attribute :points, :integer
+      attribute :approved_at, :utc_datetime
     end
 
     relationships do
@@ -461,6 +462,40 @@ defmodule Ash.Test.Filter.FilterTest do
       |> Api.destroy()
 
       assert [] = Api.read!(SoftDeletePost)
+    end
+  end
+
+  describe "calls in filters" do
+    test "calls are evaluated and can be used in predicates" do
+      post1 =
+        Post
+        |> new(%{title: "title1", contents: "contents1", points: 2})
+        |> Api.create!()
+
+      post_id = post1.id
+
+      assert [%Post{id: ^post_id}] =
+               Post
+               |> Ash.Query.filter(points + 1 == 3)
+               |> Api.read!()
+    end
+
+    test "function calls are evaluated properly" do
+      post1 =
+        Post
+        |> new(%{title: "title1", approved_at: Timex.shift(Timex.now(), weeks: -1)})
+        |> Api.create!()
+
+      Post
+      |> new(%{title: "title1", approved_at: Timex.shift(Timex.now(), weeks: -4)})
+      |> Api.create!()
+
+      post_id = post1.id
+
+      assert [%Post{id: ^post_id}] =
+               Post
+               |> Ash.Query.filter(approved_at > ago(2, :week))
+               |> Api.read!()
     end
   end
 end

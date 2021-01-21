@@ -39,7 +39,17 @@ defmodule Ash.Resource.Validation do
   end
   ```
   """
-  defstruct [:validation, :module, :opts, :expensive?, :description, on: []]
+  defstruct [:validation, :module, :opts, :expensive?, :description, :message, on: []]
+
+  defmacro __using__(_) do
+    quote do
+      @behaviour Ash.Resource.Validation
+
+      def init(opts), do: {:ok, opts}
+
+      defoverridable init: 1
+    end
+  end
 
   @type t :: %__MODULE__{
           validation: {atom(), list(atom())},
@@ -75,17 +85,24 @@ defmodule Ash.Resource.Validation do
       doc:
         "If a validation is expensive, it won't be run on invalid changes. All inexpensive validations are always run, to provide informative errors."
     ],
+    message: [
+      type: :string,
+      doc: "If provided, overrides any message set by the validation error"
+    ],
     description: [
       type: :string,
       doc: "An optional description for the validation"
     ]
   ]
 
+  @action_schema Keyword.delete(@schema, :on)
+
   def transform(%__MODULE__{validation: {module, opts}} = validation) do
     {:ok, %{validation | module: module, opts: opts}}
   end
 
   def opt_schema, do: @schema
+  def action_schema, do: @action_schema
 
   def on(list) do
     list

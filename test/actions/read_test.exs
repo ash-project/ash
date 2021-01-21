@@ -31,10 +31,8 @@ defmodule Ash.Test.Actions.ReadTest do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
 
-    resource do
-      identities do
-        identity :backup_id, [:uuid]
-      end
+    identities do
+      identity :backup_id, [:uuid]
     end
 
     ets do
@@ -186,18 +184,6 @@ defmodule Ash.Test.Actions.ReadTest do
 
     test "it returns the records not in a tuple" do
       assert [_, _] = Api.read!(Post)
-    end
-
-    test "it raises on an error" do
-      assert_raise(
-        Ash.Error.Invalid,
-        ~r/Invalid filter value `10` supplied in `title == 10`: Could not be casted to type Ash.Type.String/,
-        fn ->
-          Post
-          |> Ash.Query.filter(title == 10)
-          |> Api.read!()
-        end
-      )
     end
   end
 

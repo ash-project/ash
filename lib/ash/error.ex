@@ -23,6 +23,9 @@ defmodule Ash.Error do
 
   @error_class_indices @error_classes |> Enum.with_index() |> Enum.into(%{})
 
+  @doc false
+  def error_modules, do: Keyword.values(@error_modules)
+
   defmodule Stacktrace do
     @moduledoc "A placeholder for a stacktrace so that we can avoid printing it everywhere"
     defstruct [:stacktrace]
@@ -38,7 +41,9 @@ defmodule Ash.Error do
     !!impl_for(value)
   end
 
-  def to_ash_error(values) when is_list(values) do
+  def to_error_class(values, opts \\ [])
+
+  def to_error_class(values, opts) when is_list(values) do
     values =
       values
       |> flatten_preserving_keywords()
@@ -52,14 +57,37 @@ defmodule Ash.Error do
       end)
       |> Enum.uniq()
 
-    choose_error(values)
+    choose_error(values, opts[:changeset])
   end
 
-  def to_ash_error(value) do
-    if ash_error?(value) do
-      value
+  def to_error_class(value, opts) do
+    if ash_error?(value) && value.__struct__ in Keyword.values(@error_modules) do
+      add_changeset(value, [value], opts[:changeset])
     else
-      to_ash_error([value])
+      to_error_class([value], opts)
+    end
+  end
+
+  def to_ash_error(list) when is_list(list) do
+    if Keyword.keyword?(list) do
+      list
+      |> Keyword.take([:error, :vars])
+      |> Keyword.put_new(:error, list[:message])
+      |> Unknown.exception()
+    else
+      Enum.map(list, &to_ash_error/1)
+    end
+  end
+
+  def to_ash_error(error) when is_binary(error) do
+    Unknown.exception(error: error)
+  end
+
+  def to_ash_error(other) do
+    if ash_error?(other) do
+      other
+    else
+      Unknown.exception(error: "unknown error: #{inspect(other)}")
     end
   end
 
@@ -89,7 +117,17 @@ defmodule Ash.Error do
 
   def clear_stacktraces(error), do: error
 
-  def choose_error(errors) do
+  def choose_error(errors, changeset \\ nil)
+
+  def choose_error([], changeset) do
+    error = Ash.Error.Unknown.exception([])
+
+    add_changeset(error, [], changeset)
+  end
+
+  def choose_error(errors, changeset) do
+    errors = Enum.map(errors, &to_ash_error/1)
+
     [error | other_errors] =
       Enum.sort_by(errors, fn error ->
         # the second element here sorts errors that are already parent errors
@@ -99,14 +137,31 @@ defmodule Ash.Error do
 
     parent_error_module = @error_modules[error.class]
 
-    if parent_error_module == error.__struct__ do
-      %{error | errors: (error.errors || []) ++ other_errors}
+    top_level_error =
+      if parent_error_module == error.__struct__ do
+        %{error | errors: (error.errors || []) ++ other_errors}
+      else
+        parent_error_module.exception(errors: errors)
+      end
+
+    add_changeset(top_level_error, errors, changeset)
+  end
+
+  defp add_changeset(error, errors, changeset) do
+    changeset = error.changeset || changeset
+
+    if changeset do
+      changeset = %{changeset | action_failed?: true}
+      changeset = Ash.Changeset.add_error(changeset, errors)
+      %{error | changeset: changeset}
     else
-      parent_error_module.exception(errors: errors)
+      error
     end
   end
 
   def error_messages(errors, custom_message \\ nil, stacktraces? \\ false) do
+    errors = Enum.map(errors, &to_ash_error/1)
+
     generic_message =
       errors
       |> List.wrap()
@@ -118,6 +173,9 @@ defmodule Ash.Error do
         if stacktraces? do
           header <>
             Enum.map_join(class_errors, "\n", fn
+              error when is_binary(error) ->
+                "* #{error}"
+
               %{stacktrace: %Stacktrace{stacktrace: stacktrace}} = class_error ->
                 "* #{Exception.message(class_error)}\n" <>
                   Enum.map_join(stacktrace, "\n", fn stack_item ->
@@ -126,8 +184,12 @@ defmodule Ash.Error do
             end)
         else
           header <>
-            Enum.map_join(class_errors, "\n", fn class_error ->
-              "* #{Exception.message(class_error)}"
+            Enum.map_join(class_errors, "\n", fn
+              class_error when is_binary(class_error) ->
+                "* #{class_error}"
+
+              class_error ->
+                "* #{Exception.message(class_error)}"
             end)
         end
       end)
@@ -169,7 +231,13 @@ defmodule Ash.Error do
   defmacro def_ash_error(fields, opts \\ []) do
     quote do
       defexception unquote(fields) ++
-                     [vars: [], path: [], stacktrace: [], class: unquote(opts)[:class]]
+                     [
+                       :changeset,
+                       vars: [],
+                       path: [],
+                       stacktrace: [],
+                       class: unquote(opts)[:class]
+                     ]
 
       @impl Exception
       def message(%{message: message, vars: vars} = exception) do

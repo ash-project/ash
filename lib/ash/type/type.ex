@@ -21,13 +21,17 @@ defmodule Ash.Type do
     atom: Ash.Type.Atom,
     string: Ash.Type.String,
     integer: Ash.Type.Integer,
+    interval: Ash.Type.Interval,
+    function: Ash.Type.Function,
     boolean: Ash.Type.Boolean,
     uuid: Ash.Type.UUID,
     binary: Ash.Type.Binary,
     date: Ash.Type.Date,
     decimal: Ash.Type.Decimal,
+    ci_string: Ash.Type.CiString,
     utc_datetime: Ash.Type.UtcDatetime,
-    utc_datetime_usec: Ash.Type.UtcDatetimeUsec
+    utc_datetime_usec: Ash.Type.UtcDatetimeUsec,
+    url_encoded_binary: Ash.Type.UrlEncodedBinary
   ]
 
   @builtin_types Keyword.values(@short_names)
@@ -274,6 +278,8 @@ defmodule Ash.Type do
   end
 
   def cast_input(type, term) do
+    type = get_type(type)
+
     case type.cast_input(term) do
       {:ok, value} ->
         {:ok, value}

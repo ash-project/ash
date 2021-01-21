@@ -17,11 +17,12 @@ defmodule Ash.Resource.Change.Builtins do
     {Ash.Resource.Change.SetAttribute, attribute: attribute, value: value}
   end
 
-  @doc "A helper for builting filter templates"
-  def actor(value), do: {:_actor, value}
+  @doc """
+  Clears a change off of the changeset before the action runs.
 
-  @doc "A helper to confirm the value of one field against another field, or an argument"
-  def confirm(field, confirmation) do
-    {Ash.Resource.Change.Confirm, [field: field, confirmation: confirmation]}
+  Useful if a change is only used in validations but shouldn't ultimately be written to the data layer
+  """
+  def prevent_change(field) do
+    {Ash.Resource.Change.PreventChange, field: field}
   end
 end

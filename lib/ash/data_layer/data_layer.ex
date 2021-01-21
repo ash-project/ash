@@ -26,8 +26,7 @@ defmodule Ash.DataLayer do
           | :offset
           | :transact
           | :filter
-          | {:filter_operator, struct}
-          | {:filter_predicate, Ash.Type.t(), struct}
+          | {:filter_expr, struct}
           | :sort
           | {:sort, Ash.Type.t()}
           | :upsert
@@ -317,16 +316,6 @@ defmodule Ash.DataLayer do
       data_layer.in_transaction?(resource)
     else
       false
-    end
-  end
-
-  def operators(resource) do
-    data_layer = Ash.Resource.data_layer(resource)
-
-    if :erlang.function_exported(data_layer, :operators, 1) do
-      data_layer.operators(resource)
-    else
-      %{}
     end
   end
 

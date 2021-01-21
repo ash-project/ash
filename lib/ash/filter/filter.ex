@@ -8,10 +8,12 @@ defmodule Ash.Filter do
     InvalidFilterValue,
     NoSuchAttributeOrRelationship,
     NoSuchFilterPredicate,
+    NoSuchFunction,
+    NoSuchOperator,
     ReadActionRequired
   }
 
-  alias Ash.Query.Function.IsNil
+  alias Ash.Query.Function.{Ago, IsNil}
 
   alias Ash.Query.Operator.{
     Eq,
@@ -23,45 +25,40 @@ defmodule Ash.Filter do
     NotEq
   }
 
-  alias Ash.Query.{Expression, Not, Ref}
+  alias Ash.Query.{BooleanExpression, Call, Not, Ref}
   alias Ash.Query.{Aggregate, Function, Operator}
 
   @functions [
+    Ago,
     IsNil
   ]
 
   @operators [
-    Ash.Query.Operator.IsNil,
-    Eq,
-    NotEq,
-    In,
-    LessThan,
-    GreaterThan,
-    LessThanOrEqual,
-    GreaterThanOrEqual
-  ]
+               Ash.Query.Operator.IsNil,
+               Eq,
+               NotEq,
+               In,
+               LessThan,
+               GreaterThan,
+               LessThanOrEqual,
+               GreaterThanOrEqual
+             ] ++ Ash.Query.Operator.Basic.operator_modules()
 
   @builtins @functions ++ @operators
 
   @operator_aliases [
-    eq: Eq,
-    equals: Eq,
-    not_eq: NotEq,
-    not_equals: NotEq,
-    gt: GreaterThan,
-    greater_than: GreaterThan,
-    lt: LessThan,
-    less_than: LessThan,
-    gte: GreaterThanOrEqual,
-    greater_than_or_equal: GreaterThanOrEqual,
-    lte: LessThanOrEqual,
-    less_than_or_equal: LessThanOrEqual
-  ]
+                      equals: Eq,
+                      not_equals: NotEq,
+                      gt: GreaterThan,
+                      lt: LessThan,
+                      gte: GreaterThanOrEqual,
+                      lte: LessThanOrEqual
+                    ] ++ Enum.map(@operators, &{&1.name(), &1})
 
   @moduledoc """
   The representation of a filter in Ash.
 
-  Ash filters are stored as nested `Ash.Query.Expression{}` and `%Ash.Query.Not{}` structs,
+  Ash filters are stored as nested `Ash.Query.BooleanExpression{}` and `%Ash.Query.Not{}` structs,
   terminating in an operator or a function struct. An expression is simply a boolean operator
   and the left and right hand side of that operator.
 
@@ -85,7 +82,7 @@ defmodule Ash.Filter do
     end)
   }
 
-  ### Expression syntax
+  ### BooleanExpression syntax
 
   The expression syntax ultimately just builds the keyword list style filter, but with lots of conveniences that
   would be very annoying to do manually.
@@ -155,6 +152,7 @@ defmodule Ash.Filter do
   def builtins, do: @builtins
   def builtin_functions, do: @functions
   def builtin_operators, do: @operators
+  def builtin_predicate_operators, do: Enum.filter(@operators, & &1.predicate?())
 
   defmodule Simple do
     @moduledoc "Represents a simplified filter, with a simple list of predicates"
@@ -176,15 +174,12 @@ defmodule Ash.Filter do
       resource: resource,
       relationship_path: [],
       aggregates: aggregates,
-      public?: true
+      public?: true,
+      data_layer: Ash.Resource.data_layer(resource)
     }
 
-    case parse_expression(statement, context) do
-      {:ok, expression} ->
-        {:ok, %__MODULE__{expression: expression, resource: resource}}
-
-      {:error, error} ->
-        {:error, error}
+    with {:ok, expression} <- parse_expression(statement, context) do
+      {:ok, %__MODULE__{expression: expression, resource: resource}}
     end
   end
 
@@ -245,15 +240,12 @@ defmodule Ash.Filter do
       resource: resource,
       relationship_path: [],
       aggregates: aggregates,
-      public?: false
+      public?: false,
+      data_layer: Ash.Resource.data_layer(resource)
     }
 
-    case parse_expression(statement, context) do
-      {:ok, expression} ->
-        {:ok, %__MODULE__{expression: expression, resource: resource}}
-
-      {:error, error} ->
-        {:error, error}
+    with {:ok, expression} <- parse_expression(statement, context) do
+      {:ok, %__MODULE__{expression: expression, resource: resource}}
     end
   end
 
@@ -265,7 +257,7 @@ defmodule Ash.Filter do
   end
 
   @doc "Replace any actor value references in a template with the values from a given actor"
-  def build_filter_from_template(template, actor) do
+  def build_filter_from_template(template, actor, args \\ %{}, context \\ %{}) do
     walk_filter_template(template, fn
       {:_actor, :_primary_key} ->
         if actor do
@@ -276,6 +268,12 @@ defmodule Ash.Filter do
 
       {:_actor, field} ->
         Map.get(actor || %{}, field)
+
+      {:_arg, field} ->
+        Map.get(args, field) || Map.get(args, to_string(field))
+
+      {:_context, field} ->
+        Map.get(context, field)
 
       other ->
         other
@@ -290,7 +288,9 @@ defmodule Ash.Filter do
   end
 
   def template_references_actor?(filter) when is_map(filter) do
-    Enum.any?(fn {key, value} ->
+    filter
+    |> Map.delete(:__struct__)
+    |> Enum.any?(fn {key, value} ->
       template_references_actor?(key) || template_references_actor?(value)
     end)
   end
@@ -311,13 +311,81 @@ defmodule Ash.Filter do
     end
   end
 
-  defp walk_filter_template(filter, mapper) when is_map(filter) do
-    case mapper.(filter) do
-      ^filter ->
-        Enum.into(filter, %{}, &walk_filter_template(&1, mapper))
+  defp walk_filter_template(%BooleanExpression{left: left, right: right} = expr, mapper) do
+    case mapper.(expr) do
+      ^expr ->
+        %{
+          expr
+          | left: walk_filter_template(left, mapper),
+            right: walk_filter_template(right, mapper)
+        }
 
       other ->
         walk_filter_template(other, mapper)
+    end
+  end
+
+  defp walk_filter_template(%Not{expression: expression} = not_expr, mapper) do
+    case mapper.(not_expr) do
+      ^not_expr ->
+        %{not_expr | expression: walk_filter_template(expression, mapper)}
+
+      other ->
+        walk_filter_template(other, mapper)
+    end
+  end
+
+  defp walk_filter_template(%{__predicate__?: _, left: left, right: right} = pred, mapper) do
+    case mapper.(pred) do
+      ^pred ->
+        %{
+          pred
+          | left: walk_filter_template(left, mapper),
+            right: walk_filter_template(right, mapper)
+        }
+
+      other ->
+        walk_filter_template(other, mapper)
+    end
+  end
+
+  defp walk_filter_template(%{__predicate__?: _, arguments: arguments} = func, mapper) do
+    case mapper.(func) do
+      ^func ->
+        %{
+          func
+          | arguments: Enum.map(arguments, &walk_filter_template(&1, mapper))
+        }
+
+      other ->
+        walk_filter_template(other, mapper)
+    end
+  end
+
+  defp walk_filter_template(%Call{args: args} = call, mapper) do
+    case mapper.(call) do
+      ^call ->
+        %{
+          call
+          | args: Enum.map(args, &walk_filter_template(&1, mapper))
+        }
+
+      other ->
+        walk_filter_template(other, mapper)
+    end
+  end
+
+  defp walk_filter_template(filter, mapper) when is_map(filter) do
+    if Map.has_key?(filter, :__struct__) do
+      filter
+    else
+      case mapper.(filter) do
+        ^filter ->
+          Enum.into(filter, %{}, &walk_filter_template(&1, mapper))
+
+        other ->
+          walk_filter_template(other, mapper)
+      end
     end
   end
 
@@ -342,7 +410,7 @@ defmodule Ash.Filter do
   defp get_predicates(false, _), do: false
   defp get_predicates(_, false), do: false
 
-  defp get_predicates(%Expression{op: :and, left: left, right: right}, acc) do
+  defp get_predicates(%BooleanExpression{op: :and, left: left, right: right}, acc) do
     acc = get_predicates(left, acc)
     get_predicates(right, acc)
   end
@@ -359,30 +427,178 @@ defmodule Ash.Filter do
 
   def used_aggregates(filter) do
     filter
-    |> list_predicates()
-    |> Enum.flat_map(fn
-      %{__operator__?: true, left: left, right: right} ->
-        [left, right]
-        |> Enum.filter(fn
-          %Ref{attribute: %Aggregate{}} ->
-            true
+    |> list_refs()
+    |> Enum.filter(fn
+      %Ref{attribute: %Aggregate{}} ->
+        true
 
-          _ ->
-            false
-        end)
-        |> Enum.map(& &1.attribute)
-
-      %{__function__?: true, arguments: arguments} ->
-        arguments
-        |> Enum.filter(fn
-          %Ash.Query.Ref{attribute: %Aggregate{}} ->
-            true
-
-          _ ->
-            false
-        end)
-        |> Enum.map(& &1.attribute)
+      _ ->
+        false
     end)
+    |> Enum.map(& &1.attribute)
+  end
+
+  def put_at_path(value, []), do: value
+  def put_at_path(value, [key | rest]), do: [{key, put_at_path(value, rest)}]
+
+  def add_to_filter!(base, addition, op \\ :and, aggregates \\ %{}) do
+    case add_to_filter(base, addition, op, aggregates) do
+      {:ok, value} ->
+        value
+
+      {:error, error} ->
+        raise Ash.Error.to_ash_error(error)
+    end
+  end
+
+  def add_to_filter(base, addition, op \\ :and, aggregates \\ %{})
+
+  def add_to_filter(nil, %__MODULE__{} = addition, _, _), do: {:ok, addition}
+
+  def add_to_filter(
+        %__MODULE__{} = base,
+        %__MODULE__{} = addition,
+        op,
+        _
+      ) do
+    {:ok,
+     %{
+       base
+       | expression: BooleanExpression.optimized_new(op, base.expression, addition.expression)
+     }}
+  end
+
+  def add_to_filter(%__MODULE__{} = base, statement, op, aggregates) do
+    case parse(base.resource, statement, aggregates) do
+      {:ok, filter} -> add_to_filter(base, filter, op, aggregates)
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  @doc """
+  Returns true if the second argument is a strict subset (always returns the same or less data) of the first
+  """
+  def strict_subset_of(nil, _), do: true
+
+  def strict_subset_of(_, nil), do: false
+
+  def strict_subset_of(%{resource: resource}, %{resource: other_resource})
+      when resource != other_resource,
+      do: false
+
+  def strict_subset_of(filter, candidate) do
+    Ash.SatSolver.strict_filter_subset(filter, candidate)
+  end
+
+  def strict_subset_of?(filter, candidate) do
+    strict_subset_of(filter, candidate) == true
+  end
+
+  def relationship_filter_request_paths(filter) do
+    filter
+    |> relationship_paths()
+    |> Enum.map(&[:filter, &1])
+  end
+
+  def read_requests(_, nil), do: {:ok, []}
+
+  def read_requests(api, filter) do
+    filter
+    |> Ash.Filter.relationship_paths()
+    |> Enum.map(fn path ->
+      {path, scope_expression_by_relationship_path(filter, path)}
+    end)
+    |> Enum.reduce_while({:ok, []}, fn {path, scoped_filter}, {:ok, requests} ->
+      %{resource: resource} = scoped_filter
+
+      with %{errors: []} = query <- Ash.Query.new(resource, api),
+           %{errors: []} = query <- Ash.Query.do_filter(query, scoped_filter),
+           {:action, action} when not is_nil(action) <-
+             {:action, Ash.Resource.primary_action(resource, :read)} do
+        request =
+          Request.new(
+            resource: resource,
+            api: api,
+            query:
+              Request.resolve(
+                [[:data, :authorization_filter]],
+                fn %{
+                     data: %{
+                       authorization_filter: authorization_filter
+                     }
+                   } ->
+                  if authorization_filter do
+                    relationship =
+                      Ash.Resource.relationship(
+                        resource,
+                        List.first(path)
+                      )
+
+                    case SideLoad.reverse_relationship_path(
+                           relationship,
+                           tl(path)
+                         ) do
+                      :error ->
+                        {:ok, query}
+
+                      {:ok, reverse_relationship} ->
+                        filter = put_at_path(authorization_filter, reverse_relationship)
+                        {:ok, Ash.Query.do_filter(query, filter)}
+                    end
+                  else
+                    {:ok, query}
+                  end
+                end
+              ),
+            async?: false,
+            path: [:filter, path],
+            strict_check_only?: true,
+            action: action,
+            name: "authorize filter #{Enum.join(path, ".")}",
+            data: []
+          )
+
+        {:cont, {:ok, [request | requests]}}
+      else
+        {:error, error} -> {:halt, {:error, error}}
+        %{errors: errors} -> {:halt, {:error, errors}}
+        {:action, nil} -> {:halt, {:error, ReadActionRequired.exception(resource: resource)}}
+      end
+    end)
+  end
+
+  defp map(%__MODULE__{expression: nil} = filter, _) do
+    filter
+  end
+
+  defp map(%__MODULE__{expression: expression} = filter, func) do
+    %{filter | expression: do_map(func.(expression), func)}
+  end
+
+  defp map(expression, func) do
+    do_map(func.(expression), func)
+  end
+
+  defp do_map(expression, func) do
+    case expression do
+      {:halt, expr} ->
+        expr
+
+      %BooleanExpression{left: left, right: right} = expr ->
+        %{expr | left: do_map(left, func), right: do_map(right, func)}
+
+      %Not{expression: not_expr} = expr ->
+        %{expr | expression: do_map(not_expr, func)}
+
+      %{__operator__?: true, left: left, right: right} = op ->
+        %{op | left: do_map(left, func), right: do_map(right, func)}
+
+      %{__function__?: true, arguments: arguments} = func ->
+        %{func | arguments: Enum.map(arguments, &do_map(&1, func))}
+
+      other ->
+        func.(other)
+    end
   end
 
   def run_other_data_layer_filters(api, resource, %{expression: expression} = filter) do
@@ -396,17 +612,17 @@ defmodule Ash.Filter do
     do: {:ok, filter}
 
   defp do_run_other_data_layer_filters(
-         %Expression{op: :or, left: left, right: right},
+         %BooleanExpression{op: :or, left: left, right: right},
          api,
          resource
        ) do
     with {:ok, left} <- do_run_other_data_layer_filters(left, api, resource),
          {:ok, right} <- do_run_other_data_layer_filters(right, api, resource) do
-      {:ok, Expression.optimized_new(:or, left, right)}
+      {:ok, BooleanExpression.optimized_new(:or, left, right)}
     end
   end
 
-  defp do_run_other_data_layer_filters(%Expression{op: :and} = expression, api, resource) do
+  defp do_run_other_data_layer_filters(%BooleanExpression{op: :and} = expression, api, resource) do
     expression
     |> relationship_paths(:ands_only)
     |> filter_paths_that_change_data_layers(resource)
@@ -423,10 +639,10 @@ defmodule Ash.Filter do
         end
     end
     |> case do
-      {:ok, %Expression{op: :and, left: left, right: right}} ->
+      {:ok, %BooleanExpression{op: :and, left: left, right: right}} ->
         with {:ok, new_left} <- do_run_other_data_layer_filters(left, api, resource),
              {:ok, new_right} <- do_run_other_data_layer_filters(right, api, resource) do
-          {:ok, Expression.optimized_new(:and, new_left, new_right)}
+          {:ok, BooleanExpression.optimized_new(:and, new_left, new_right)}
         end
     end
   end
@@ -480,13 +696,99 @@ defmodule Ash.Filter do
 
       case filter_related_in(query, relationship, :lists.droplast(path)) do
         {:ok, new_predicate} ->
-          {:cont, {:ok, Expression.optimized_new(:and, without_path, new_predicate)}}
+          {:cont, {:ok, BooleanExpression.optimized_new(:and, without_path, new_predicate)}}
 
         {:error, error} ->
           {:halt, {:error, error}}
       end
     end)
   end
+
+  defp split_expression_by_relationship_path(%{expression: expression}, path) do
+    split_expression_by_relationship_path(expression, path)
+  end
+
+  defp split_expression_by_relationship_path(
+         %BooleanExpression{op: op, left: left, right: right},
+         path
+       ) do
+    {new_for_path_left, new_without_path_left} = split_expression_by_relationship_path(left, path)
+
+    {new_for_path_right, new_without_path_right} =
+      split_expression_by_relationship_path(right, path)
+
+    {BooleanExpression.optimized_new(op, new_for_path_left, new_for_path_right),
+     BooleanExpression.optimized_new(op, new_without_path_left, new_without_path_right)}
+  end
+
+  defp split_expression_by_relationship_path(%Not{expression: expression}, path) do
+    {new_for_path, new_without_path} = split_expression_by_relationship_path(expression, path)
+    {Not.new(new_for_path), Not.new(new_without_path)}
+  end
+
+  defp split_expression_by_relationship_path(
+         %{
+           __predicate__?: _,
+           left: left,
+           right: right
+         } = predicate,
+         path
+       ) do
+    refs = list_refs([left, right])
+
+    if Enum.any?(refs, &List.starts_with?(&1.relationship_path, path)) do
+      if Enum.all?(refs, &List.starts_with?(&1.relationship_path, path)) do
+        {scope_refs(predicate, path), nil}
+      else
+        {scope_refs(predicate, path), predicate}
+      end
+    else
+      {nil, predicate}
+    end
+  end
+
+  defp split_expression_by_relationship_path(
+         %{__predicate__?: _, arguments: args} = predicate,
+         path
+       ) do
+    refs = list_refs(args)
+
+    if Enum.any?(refs, &List.starts_with?(&1.relationship_path, path)) do
+      if Enum.all?(refs, &List.starts_with?(&1.relationship_path, path)) do
+        {scope_refs(predicate, path), nil}
+      else
+        {scope_refs(predicate, path), predicate}
+      end
+    else
+      {nil, predicate}
+    end
+  end
+
+  defp scope_refs(%BooleanExpression{left: left, right: right} = expr, path) do
+    %{expr | left: scope_refs(left, path), right: scope_refs(right, path)}
+  end
+
+  defp scope_refs(%Not{expression: expression} = expr, path) do
+    %{expr | expression: scope_refs(expression, path)}
+  end
+
+  defp scope_refs(%{__predicate__?: _, left: left, right: right} = pred, path) do
+    %{pred | left: scope_refs(left, path), right: scope_refs(right, path)}
+  end
+
+  defp scope_refs(%{__predicate__?: _, argsuments: arguments} = pred, path) do
+    %{pred | args: Enum.map(arguments, &scope_refs(&1, path))}
+  end
+
+  defp scope_refs(%Ref{relationship_path: ref_path} = ref, path) do
+    if List.starts_with?(ref_path, path) do
+      %{ref | relationship_path: Enum.drop(ref_path, Enum.count(path))}
+    else
+      ref
+    end
+  end
+
+  defp scope_refs(other, _), do: other
 
   defp fetch_related_data(
          resource,
@@ -589,7 +891,7 @@ defmodule Ash.Filter do
     Enum.reduce_while(records, {:ok, nil}, fn record, {:ok, expression} ->
       case records_to_expression([record], relationship, path) do
         {:ok, operator} ->
-          {:cont, {:ok, Expression.optimized_new(:and, expression, operator)}}
+          {:cont, {:ok, BooleanExpression.optimized_new(:and, expression, operator)}}
 
         {:error, error} ->
           {:halt, {:error, error}}
@@ -636,9 +938,6 @@ defmodule Ash.Filter do
     end
   end
 
-  def put_at_path(value, []), do: value
-  def put_at_path(value, [key | rest]), do: [{key, put_at_path(value, rest)}]
-
   def relationship_paths(filter_or_expression, kind \\ :all)
   def relationship_paths(nil, _), do: []
   def relationship_paths(%{expression: nil}, _), do: []
@@ -655,411 +954,15 @@ defmodule Ash.Filter do
     |> Enum.map(fn {path} -> path end)
   end
 
-  def add_to_filter!(base, addition, op \\ :and, aggregates \\ %{}) do
-    case add_to_filter(base, addition, op, aggregates) do
-      {:ok, value} ->
-        value
-
-      {:error, error} ->
-        raise Ash.Error.to_ash_error(error)
-    end
-  end
-
-  def add_to_filter(base, addition, op \\ :and, aggregates \\ %{})
-
-  def add_to_filter(nil, %__MODULE__{} = addition, _, _), do: {:ok, addition}
-
-  def add_to_filter(
-        %__MODULE__{} = base,
-        %__MODULE__{} = addition,
-        op,
-        _
-      ) do
-    {:ok,
-     %{
-       base
-       | expression: Expression.optimized_new(op, base.expression, addition.expression)
-     }}
-  end
-
-  def add_to_filter(%__MODULE__{} = base, statement, op, aggregates) do
-    case parse(base.resource, statement, aggregates) do
-      {:ok, filter} -> add_to_filter(base, filter, op, aggregates)
-      {:error, error} -> {:error, error}
-    end
-  end
-
-  @doc """
-  Returns true if the second argument is a strict subset (always returns the same or less data) of the first
-  """
-  def strict_subset_of(nil, _), do: true
-
-  def strict_subset_of(_, nil), do: false
-
-  def strict_subset_of(%{resource: resource}, %{resource: other_resource})
-      when resource != other_resource,
-      do: false
-
-  def strict_subset_of(filter, candidate) do
-    Ash.SatSolver.strict_filter_subset(filter, candidate)
-  end
-
-  def strict_subset_of?(filter, candidate) do
-    strict_subset_of(filter, candidate) == true
-  end
-
-  def relationship_filter_request_paths(filter) do
-    filter
-    |> relationship_paths()
-    |> Enum.map(&[:filter, &1])
-  end
-
-  def read_requests(_, nil), do: {:ok, []}
-
-  def read_requests(api, filter) do
-    filter
-    |> Ash.Filter.relationship_paths()
-    |> Enum.map(fn path ->
-      {path, filter_expression_by_relationship_path(filter, path, true)}
-    end)
-    |> Enum.reduce_while({:ok, []}, fn {path, scoped_filter}, {:ok, requests} ->
-      %{resource: resource} = scoped_filter
-
-      with %{errors: []} = query <- Ash.Query.new(resource, api),
-           %{errors: []} = query <- Ash.Query.do_filter(query, scoped_filter),
-           {:action, action} when not is_nil(action) <-
-             {:action, Ash.Resource.primary_action(resource, :read)} do
-        request =
-          Request.new(
-            resource: resource,
-            api: api,
-            query:
-              Request.resolve(
-                [[:data, :authorization_filter]],
-                fn %{
-                     data: %{
-                       authorization_filter: authorization_filter
-                     }
-                   } ->
-                  if authorization_filter do
-                    relationship =
-                      Ash.Resource.relationship(
-                        resource,
-                        List.first(path)
-                      )
-
-                    case SideLoad.reverse_relationship_path(
-                           relationship,
-                           tl(path)
-                         ) do
-                      :error ->
-                        {:ok, query}
-
-                      {:ok, reverse_relationship} ->
-                        filter = put_at_path(authorization_filter, reverse_relationship)
-                        {:ok, Ash.Query.do_filter(query, filter)}
-                    end
-                  else
-                    {:ok, query}
-                  end
-                end
-              ),
-            async?: false,
-            path: [:filter, path],
-            strict_check_only?: true,
-            action: action,
-            name: "authorize filter #{Enum.join(path, ".")}",
-            data: []
-          )
-
-        {:cont, {:ok, [request | requests]}}
-      else
-        {:error, error} -> {:halt, {:error, error}}
-        %{errors: errors} -> {:halt, {:error, errors}}
-        {:action, nil} -> {:halt, {:error, ReadActionRequired.exception(resource: resource)}}
-      end
-    end)
-  end
-
-  defp map(%__MODULE__{expression: nil} = filter, _) do
-    filter
-  end
-
-  defp map(%__MODULE__{expression: expression} = filter, func) do
-    %{filter | expression: do_map(func.(expression), func)}
-  end
-
-  defp map(expression, func) do
-    do_map(func.(expression), func)
-  end
-
-  defp do_map(expression, func) do
-    case expression do
-      {:halt, expr} ->
-        expr
-
-      %Expression{left: left, right: right} = expr ->
-        %{expr | left: do_map(left, func), right: do_map(right, func)}
-
-      %Not{expression: not_expr} = expr ->
-        %{expr | expression: do_map(not_expr, func)}
-
-      %{__operator__?: true, left: left, right: right} = op ->
-        %{op | left: do_map(left, func), right: do_map(right, func)}
-
-      %{__function__?: true, arguments: arguments} = func ->
-        %{func | arguments: Enum.map(arguments, &do_map(&1, func))}
-
-      other ->
-        func.(other)
-    end
-  end
-
-  @doc false
-  def embed_predicates(nil), do: nil
-
-  def embed_predicates(%__MODULE__{expression: expression} = filter) do
-    %{filter | expression: embed_predicates(expression)}
-  end
-
-  def embed_predicates(%Not{expression: expression} = not_expr) do
-    %{not_expr | expression: embed_predicates(expression)}
-  end
-
-  def embed_predicates(%Expression{left: left, right: right} = expr) do
-    %{expr | left: embed_predicates(left), right: embed_predicates(right)}
-  end
-
-  def embed_predicates(%{__predicate__?: true} = pred) do
-    %{pred | embedded?: true}
-  end
-
-  def embed_predicates(other), do: other
-
-  def find(%__MODULE__{expression: nil}, _), do: nil
-
-  def find(%__MODULE__{expression: expression}, func) do
-    find(expression, func)
-  end
-
-  def find(%Expression{left: left, right: right}, func) do
-    find(left, func) || find(right, func)
-  end
-
-  def find(%Not{expression: not_expr}, func) do
-    find(not_expr, func)
-  end
-
-  def find(other, func) do
-    if func.(other), do: other
-  end
-
-  def list_predicates(%__MODULE__{expression: expression}) do
-    list_predicates(expression)
-  end
-
-  def list_predicates(expression) do
-    case expression do
-      %Expression{left: left, right: right} ->
-        list_predicates(left) ++ list_predicates(right)
-
-      %Not{expression: not_expr} ->
-        list_predicates(not_expr)
-
-      %{__predicate__?: true} = pred ->
-        [pred]
-
-      _ ->
-        []
-    end
-  end
-
-  def filter_expression_by_relationship_path(filter, path, scope? \\ false) do
-    %__MODULE__{
-      resource: Ash.Resource.related(filter.resource, path),
-      expression: do_filter_expression_by_relationship_path(filter.expression, path, scope?)
-    }
-  end
-
-  defp split_expression_by_relationship_path(%{expression: expression}, path) do
-    split_expression_by_relationship_path(expression, path)
-  end
-
-  defp split_expression_by_relationship_path(
-         %Expression{op: op, left: left, right: right},
-         path
-       ) do
-    {new_for_path_left, new_without_path_left} = split_expression_by_relationship_path(left, path)
-
-    {new_for_path_right, new_without_path_right} =
-      split_expression_by_relationship_path(right, path)
-
-    {Expression.optimized_new(op, new_for_path_left, new_for_path_right),
-     Expression.optimized_new(op, new_without_path_left, new_without_path_right)}
-  end
-
-  defp split_expression_by_relationship_path(%Not{expression: expression}, path) do
-    {new_for_path, new_without_path} = split_expression_by_relationship_path(expression, path)
-    {Not.new(new_for_path), Not.new(new_without_path)}
-  end
-
-  defp split_expression_by_relationship_path(
-         %{
-           __operator__?: true,
-           left: %Ref{relationship_path: predicate_path} = left,
-           right: %Ref{relationship_path: predicate_path}
-         } = predicate,
-         path
-       ) do
-    if List.starts_with?(predicate_path, path) do
-      new_path = Enum.drop(predicate_path, length(path))
-
-      {%{
-         predicate
-         | left: %{
-             left
-             | relationship_path: new_path
-           }
-       }, nil}
-    else
-      {nil, predicate}
-    end
-  end
-
-  defp split_expression_by_relationship_path(
-         %{__operator__?: true, right: %Ref{}},
-         _path
-       ) do
-    raise "Refs not currently supported on the right side of operators with different relationship paths"
-  end
-
-  defp split_expression_by_relationship_path(
-         %{__operator__?: true, left: %Ref{relationship_path: predicate_path} = ref} = predicate,
-         path
-       ) do
-    if List.starts_with?(predicate_path, path) do
-      new_path = Enum.drop(predicate_path, length(path))
-
-      {%{predicate | left: %{ref | relationship_path: new_path}}, nil}
-    else
-      {nil, predicate}
-    end
-  end
-
-  defp split_expression_by_relationship_path(
-         %{__function__?: true, arguments: arguments} = func,
-         path
-       ) do
-    arguments
-    |> Enum.filter(&match?(%Ref{}, &1))
-    |> Enum.map(& &1.relationship_path)
-    |> Enum.uniq()
-    |> case do
-      [] ->
-        {func, func}
-
-      [predicate_path] ->
-        if List.starts_with?(predicate_path, path) do
-          new_args =
-            Enum.map(arguments, fn
-              %Ref{relationship_path: predicate_path} = ref ->
-                %{ref | relationship_path: Enum.drop(predicate_path, length(path))}
-
-              arg ->
-                arg
-            end)
-
-          {%{func | arguments: new_args}, nil}
-        else
-          {nil, func}
-        end
-
-      _ ->
-        raise "Refs for multiple relationship paths not supported in a single function call"
-    end
-  end
-
-  defp do_filter_expression_by_relationship_path(
-         %Expression{op: op, left: left, right: right},
-         path,
-         scope?
-       ) do
-    new_left = do_filter_expression_by_relationship_path(left, path, scope?)
-    new_right = do_filter_expression_by_relationship_path(right, path, scope?)
-
-    Expression.optimized_new(op, new_left, new_right)
-  end
-
-  defp do_filter_expression_by_relationship_path(%Not{expression: expression}, path, scope?) do
-    new_expression = do_filter_expression_by_relationship_path(expression, path, scope?)
-    Not.new(new_expression)
-  end
-
-  defp do_filter_expression_by_relationship_path(
-         %{__operator__?: true, left: left, right: right} = op,
-         path,
-         scope?
-       ) do
-    if scope? do
-      %{op | left: scope_ref(left, path), right: scope_ref(right, path)}
-    else
-      [left, right]
-      |> Enum.filter(&match?(%Ref{}, &1))
-      |> Enum.any?(&List.starts_with?(&1.relationship_path, path))
-      |> case do
-        true ->
-          nil
-
-        false ->
-          op
-      end
-    end
-  end
-
-  defp do_filter_expression_by_relationship_path(
-         %{__function__?: true, arguments: arguments} = func,
-         path,
-         scope?
-       ) do
-    if scope? do
-      %{func | arguments: Enum.map(arguments, &scope_ref(&1, path))}
-    else
-      arguments
-      |> Enum.filter(&match?(%Ref{}, &1))
-      |> Enum.any?(&List.starts_with?(&1.relationship_path, path))
-      |> case do
-        true ->
-          nil
-
-        false ->
-          func
-      end
-    end
-  end
-
-  defp do_filter_expression_by_relationship_path(other, _path, _scope) do
-    other
-  end
-
-  defp scope_ref(%Ref{} = ref, path) do
-    if List.starts_with?(ref.relationship_path, path) do
-      %{ref | relationship_path: Enum.drop(ref.relationship_path, Enum.count(path))}
-    else
-      ref
-    end
-  end
-
-  defp scope_ref(other, _), do: other
-
   defp do_relationship_paths(%Ref{relationship_path: path}, _) when path != [] do
     {path}
   end
 
-  defp do_relationship_paths(%Expression{op: :or}, :ands_only) do
+  defp do_relationship_paths(%BooleanExpression{op: :or}, :ands_only) do
     []
   end
 
-  defp do_relationship_paths(%Expression{left: left, right: right}, kind) do
+  defp do_relationship_paths(%BooleanExpression{left: left, right: right}, kind) do
     [do_relationship_paths(left, kind), do_relationship_paths(right, kind)]
   end
 
@@ -1076,6 +979,210 @@ defmodule Ash.Filter do
   end
 
   defp do_relationship_paths(_, _), do: []
+
+  @doc false
+  def embed_predicates(nil), do: nil
+
+  def embed_predicates(%__MODULE__{expression: expression} = filter) do
+    %{filter | expression: embed_predicates(expression)}
+  end
+
+  def embed_predicates(%Not{expression: expression} = not_expr) do
+    %{not_expr | expression: embed_predicates(expression)}
+  end
+
+  def embed_predicates(%BooleanExpression{left: left, right: right} = expr) do
+    %{expr | left: embed_predicates(left), right: embed_predicates(right)}
+  end
+
+  def embed_predicates(%Call{args: args} = call) do
+    %{call | args: embed_predicates(args)}
+  end
+
+  def embed_predicates(%{__predicate__?: true} = pred) do
+    %{pred | embedded?: true}
+  end
+
+  def embed_predicates(list) when is_list(list) do
+    Enum.map(list, &embed_predicates(&1))
+  end
+
+  def embed_predicates(other), do: other
+
+  def find(%__MODULE__{expression: nil}, _), do: nil
+
+  def find(%__MODULE__{expression: expression}, func) do
+    if func.(expression) do
+      expression
+    else
+      find(expression, func)
+    end
+  end
+
+  def find(%BooleanExpression{left: left, right: right} = expr, func) do
+    if func.(expr) do
+      expr
+    else
+      find(left, func) || find(right, func)
+    end
+  end
+
+  def find(%Not{expression: not_expr} = expr, func) do
+    if func.(expr) do
+      expr
+    else
+      find(not_expr, func)
+    end
+  end
+
+  def find(%{__predicate__?: _, left: left, right: right} = pred, func) do
+    if func.(pred) do
+      pred
+    else
+      find(left, func) || find(right, func)
+    end
+  end
+
+  def find(%{__predicate__?: _, arguments: arguments} = pred, func) do
+    if func.(pred) do
+      pred
+    else
+      Enum.find(arguments, func)
+    end
+  end
+
+  def find(%Call{args: args} = call, func) do
+    if func.(call) do
+      call
+    else
+      Enum.find(args, func)
+    end
+  end
+
+  def find(other, func) do
+    if func.(other), do: other
+  end
+
+  def list_refs(list) when is_list(list) do
+    Enum.flat_map(list, &list_refs/1)
+  end
+
+  def list_refs(%__MODULE__{expression: expression}) do
+    list_refs(expression)
+  end
+
+  def list_refs(expression) do
+    case expression do
+      %BooleanExpression{left: left, right: right} ->
+        list_refs(left) ++ list_refs(right)
+
+      %Not{expression: not_expr} ->
+        list_refs(not_expr)
+
+      %{__predicate__?: _, left: left, right: right} ->
+        list_refs(left) ++ list_refs(right)
+
+      %{__predicate__?: _, arguments: args} ->
+        Enum.flat_map(args, &list_refs/1)
+
+      %Call{args: args} ->
+        Enum.flat_map(args, &list_refs/1)
+
+      %Ref{} = ref ->
+        [ref]
+
+      _ ->
+        []
+    end
+  end
+
+  def list_predicates(%__MODULE__{expression: expression}) do
+    list_predicates(expression)
+  end
+
+  def list_predicates(expression) do
+    case expression do
+      %BooleanExpression{left: left, right: right} ->
+        list_predicates(left) ++ list_predicates(right)
+
+      %Not{expression: not_expr} ->
+        list_predicates(not_expr)
+
+      %{__predicate__?: true} = pred ->
+        [pred]
+
+      _ ->
+        []
+    end
+  end
+
+  def scope_expression_by_relationship_path(filter, path) do
+    %__MODULE__{
+      resource: Ash.Resource.related(filter.resource, path),
+      expression: do_scope_expression_by_relationship_path(filter.expression, path)
+    }
+  end
+
+  defp do_scope_expression_by_relationship_path(
+         %BooleanExpression{op: op, left: left, right: right},
+         path
+       ) do
+    new_left = do_scope_expression_by_relationship_path(left, path)
+    new_right = do_scope_expression_by_relationship_path(right, path)
+
+    BooleanExpression.optimized_new(op, new_left, new_right)
+  end
+
+  defp do_scope_expression_by_relationship_path(%Not{expression: expression}, path) do
+    new_expression = do_scope_expression_by_relationship_path(expression, path)
+    Not.new(new_expression)
+  end
+
+  defp do_scope_expression_by_relationship_path(
+         %{__operator__?: true, left: left, right: right} = op,
+         path
+       ) do
+    [left, right]
+    |> Enum.filter(&match?(%Ref{}, &1))
+    |> Enum.any?(&List.starts_with?(&1.relationship_path, path))
+    |> case do
+      true ->
+        nil
+
+      false ->
+        %{op | left: scope_ref(left, path), right: scope_ref(right, path)}
+    end
+  end
+
+  defp do_scope_expression_by_relationship_path(
+         %{__function__?: true, arguments: arguments} = func,
+         path
+       ) do
+    arguments
+    |> Enum.filter(&match?(%Ref{}, &1))
+    |> Enum.any?(&List.starts_with?(&1.relationship_path, path))
+    |> case do
+      true ->
+        nil
+
+      false ->
+        %{func | arguments: Enum.map(arguments, &scope_ref(&1, path))}
+    end
+  end
+
+  defp do_scope_expression_by_relationship_path(other, _path) do
+    other
+  end
+
+  defp scope_ref(%Ref{} = ref, path) do
+    if List.starts_with?(ref.relationship_path, path) do
+      %{ref | relationship_path: Enum.drop(ref.relationship_path, Enum.count(path))}
+    else
+      ref
+    end
+  end
+
+  defp scope_ref(other, _), do: other
 
   defp attribute(%{public?: true, resource: resource}, attribute),
     do: Ash.Resource.public_attribute(resource, attribute)
@@ -1107,7 +1214,7 @@ defmodule Ash.Filter do
   defp parse_expression(%__MODULE__{expression: expression}, context),
     do: {:ok, add_to_predicate_path(expression, context)}
 
-  defp parse_expression(statement, context) when is_map(statement) or is_list(statement) do
+  defp parse_expression(statement, context) when is_list(statement) do
     Enum.reduce_while(statement, {:ok, nil}, fn expression_part, {:ok, expression} ->
       case add_expression_part(expression_part, context, expression) do
         {:ok, new_expression} ->
@@ -1124,31 +1231,22 @@ defmodule Ash.Filter do
   end
 
   defp add_expression_part(boolean, _context, expression) when is_boolean(boolean),
-    do: {:ok, Expression.optimized_new(:and, expression, boolean)}
+    do: {:ok, BooleanExpression.optimized_new(:and, expression, boolean)}
 
   defp add_expression_part(%__MODULE__{expression: adding_expression}, context, expression) do
     {:ok,
-     Expression.optimized_new(
+     BooleanExpression.optimized_new(
        :and,
        expression,
        add_to_predicate_path(adding_expression, context)
      )}
   end
 
-  defp add_expression_part(%_{} = record, context, expression) do
-    pkey_filter =
-      record
-      |> Map.take(Ash.Resource.primary_key(context.resource))
-      |> Map.to_list()
-
-    add_expression_part(pkey_filter, context, expression)
-  end
-
   defp add_expression_part({not_key, nested_statement}, context, expression)
        when not_key in [:not, "not"] do
     case parse_expression(nested_statement, context) do
       {:ok, nested_expression} ->
-        {:ok, Expression.optimized_new(:and, expression, Not.new(nested_expression))}
+        {:ok, BooleanExpression.optimized_new(:and, expression, Not.new(nested_expression))}
 
       {:error, error} ->
         {:error, error}
@@ -1159,7 +1257,7 @@ defmodule Ash.Filter do
        when or_key in [:or, "or"] do
     with {:ok, nested_expression} <- parse_and_join(nested_statements, :or, context),
          :ok <- validate_data_layers_support_boolean_filters(nested_expression) do
-      {:ok, Expression.optimized_new(:and, expression, nested_expression)}
+      {:ok, BooleanExpression.optimized_new(:and, expression, nested_expression)}
     end
   end
 
@@ -1167,7 +1265,17 @@ defmodule Ash.Filter do
        when and_key in [:and, "and"] do
     case parse_and_join(nested_statements, :and, context) do
       {:ok, nested_expression} ->
-        {:ok, Expression.optimized_new(:and, expression, nested_expression)}
+        {:ok, BooleanExpression.optimized_new(:and, expression, nested_expression)}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp add_expression_part(%Call{} = call, context, expression) do
+    case resolve_call(call, context) do
+      {:ok, result} ->
+        {:ok, BooleanExpression.optimized_new(:and, expression, result)}
 
       {:error, error} ->
         {:error, error}
@@ -1195,6 +1303,31 @@ defmodule Ash.Filter do
     end
   end
 
+  defp add_expression_part(
+         %BooleanExpression{op: op, left: left, right: right},
+         context,
+         expression
+       ) do
+    add_expression_part({op, [left, right]}, context, expression)
+  end
+
+  defp add_expression_part(%Not{expression: expression}, context, expression) do
+    add_expression_part({:not, expression}, context, expression)
+  end
+
+  defp add_expression_part(%_{} = record, context, expression) do
+    pkey_filter =
+      record
+      |> Map.take(Ash.Resource.primary_key(context.resource))
+      |> Map.to_list()
+
+    add_expression_part(pkey_filter, context, expression)
+  end
+
+  defp add_expression_part({:is_nil, attribute}, context, expression) when is_atom(attribute) do
+    add_expression_part({attribute, [is_nil: true]}, context, expression)
+  end
+
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp add_expression_part({field, nested_statement}, context, expression)
        when is_atom(field) or is_binary(field) do
@@ -1207,16 +1340,27 @@ defmodule Ash.Filter do
       function_module = get_function(field, Ash.Resource.data_layer_functions(context.resource)) ->
         with {:ok, args} <-
                hydrate_refs(List.wrap(nested_statement), context),
+             refs <- list_refs(args),
+             :ok <-
+               validate_not_crossing_datalayer_boundaries(
+                 refs,
+                 context.resource,
+                 {field, nested_statement}
+               ),
              {:ok, function} <-
                Function.new(
                  function_module,
-                 args,
-                 %Ref{
-                   relationship_path: context.relationship_path,
-                   resource: context.resource
-                 }
+                 args
                ) do
-          {:ok, Expression.optimized_new(:and, expression, function)}
+          if is_boolean(function) do
+            {:ok, BooleanExpression.optimized_new(:and, expression, function)}
+          else
+            if Ash.Resource.data_layer_can?(context.resource, {:filter_expr, function}) do
+              {:ok, BooleanExpression.optimized_new(:and, expression, function)}
+            else
+              {:error, "data layer does not support the function #{inspect(function)}"}
+            end
+          end
         end
 
       rel = relationship(context, field) ->
@@ -1228,7 +1372,7 @@ defmodule Ash.Filter do
         if is_list(nested_statement) || is_map(nested_statement) do
           case parse_expression(nested_statement, context) do
             {:ok, nested_expression} ->
-              {:ok, Expression.optimized_new(:and, expression, nested_expression)}
+              {:ok, BooleanExpression.optimized_new(:and, expression, nested_expression)}
 
             {:error, error} ->
               {:error, error}
@@ -1253,21 +1397,12 @@ defmodule Ash.Filter do
         end
 
       attr = attribute(context, field) ->
-        cond do
-          match?({:array, _}, attr.type) ->
-            {:error, "Cannot filter on array types"}
+        case parse_predicates(nested_statement, attr, context) do
+          {:ok, nested_statement} ->
+            {:ok, BooleanExpression.optimized_new(:and, expression, nested_statement)}
 
-          Ash.Type.embedded_type?(attr.type) ->
-            {:error, "Cannot filter on embedded types"}
-
-          true ->
-            case parse_predicates(nested_statement, attr, context) do
-              {:ok, nested_statement} ->
-                {:ok, Expression.optimized_new(:and, expression, nested_statement)}
-
-              {:error, error} ->
-                {:error, error}
-            end
+          {:error, error} ->
+            {:error, error}
         end
 
       field in aggregates ->
@@ -1280,12 +1415,26 @@ defmodule Ash.Filter do
 
         add_aggregate_expression(context, nested_statement, field, expression)
 
-      (op_module = get_operator(field, Ash.Resource.data_layer_operators(context.resource))) &&
-          match?([_, _ | _], nested_statement) ->
+      op_module = get_operator(field) && match?([_, _ | _], nested_statement) ->
         with {:ok, [left, right]} <-
                hydrate_refs(nested_statement, context),
+             refs <- list_refs([left, right]),
+             :ok <-
+               validate_not_crossing_datalayer_boundaries(
+                 refs,
+                 context.resource,
+                 {field, nested_statement}
+               ),
              {:ok, operator} <- Operator.new(op_module, left, right) do
-          {:ok, Expression.optimized_new(:and, expression, operator)}
+          if is_boolean(operator) do
+            {:ok, BooleanExpression.optimized_new(:and, expression, operator)}
+          else
+            if Ash.Resource.data_layer_can?(context.resource, {:filter_expr, operator}) do
+              {:ok, BooleanExpression.optimized_new(:and, expression, operator)}
+            else
+              {:error, "data layer does not support the operator #{inspect(operator)}"}
+            end
+          end
         end
 
       true ->
@@ -1313,7 +1462,7 @@ defmodule Ash.Filter do
     end)
     |> case do
       {:ok, new_expression} ->
-        {:ok, Expression.optimized_new(:and, expression, new_expression)}
+        {:ok, BooleanExpression.optimized_new(:and, expression, new_expression)}
 
       {:error, error} ->
         {:error, error}
@@ -1333,71 +1482,216 @@ defmodule Ash.Filter do
     {:error, InvalidFilterValue.exception(value: value)}
   end
 
-  defp hydrate_refs(list, context) do
-    list
-    |> Enum.reduce_while({:ok, []}, fn
-      %Ref{attribute: attribute} = ref, {:ok, acc} when is_atom(attribute) ->
-        case related(context, ref.relationship_path) do
-          nil ->
-            {:halt, {:error, "Invalid reference #{inspect(ref)}"}}
+  defp validate_not_crossing_datalayer_boundaries(refs, resource, expr) do
+    refs
+    |> Enum.map(&Ash.Resource.related(resource, &1.relationship_path))
+    |> Enum.group_by(&Ash.Resource.data_layer/1)
+    |> Map.to_list()
+    |> case do
+      [] ->
+        :ok
 
-          related ->
-            do_hydrate_ref(ref, attribute, related, context, acc)
+      [{_data_layer, resources}] ->
+        can_join? =
+          Enum.all?(resources, fn resource ->
+            resources
+            |> Kernel.--([resource])
+            |> Enum.all?(fn other_resource ->
+              Ash.Resource.data_layer_can?(resource, {:join, other_resource})
+            end)
+          end)
+
+        if can_join? do
+          :ok
+        else
+          {:error,
+           Ash.Error.Query.InvalidExpression.exception(
+             expression: expr,
+             message:
+               "Cannot access multiple resources for a data layer that can't be joined from within a single expression"
+           )}
         end
 
-      other, {:ok, acc} ->
-        {:cont, {:ok, [other | acc]}}
+      [_ | _] ->
+        {:error,
+         Ash.Error.Query.InvalidExpression.exception(
+           expression: expr,
+           message: "Cannot access multiple data layers within a single expression"
+         )}
+    end
+  end
+
+  defp resolve_call(%Call{name: name, args: args, operator?: true} = call, context) do
+    with :ok <- validate_datalayer_supports_nested_expressions(args, context.resource),
+         {:op, op_module} when not is_nil(op_module) <-
+           {:op, get_operator(name)},
+         {:ok, [left, right]} <-
+           hydrate_refs(args, context),
+         refs <- list_refs([left, right]),
+         :ok <-
+           validate_not_crossing_datalayer_boundaries(refs, context.resource, call),
+         {:ok, operator} <- Operator.new(op_module, left, right) do
+      if is_boolean(operator) do
+        {:ok, operator}
+      else
+        if Ash.Resource.data_layer_can?(context.resource, {:filter_expr, operator}) do
+          {:ok, operator}
+        else
+          {:error, "data layer does not support the operator #{inspect(operator)}"}
+        end
+      end
+    else
+      {:op, nil} ->
+        {:error, NoSuchOperator.exception(name: name)}
+
+      other ->
+        other
+    end
+  end
+
+  defp resolve_call(%Call{name: name, args: args} = call, context) do
+    with :ok <- validate_datalayer_supports_nested_expressions(args, context.resource),
+         {:ok, args} <-
+           hydrate_refs(args, context),
+         refs <- list_refs(args),
+         :ok <- validate_not_crossing_datalayer_boundaries(refs, context.resource, call),
+         {:func, function_module} when not is_nil(function_module) <-
+           {:func, get_function(name, Ash.Resource.data_layer_functions(context.resource))},
+         {:ok, function} <-
+           Function.new(
+             function_module,
+             args
+           ) do
+      if is_boolean(function) do
+        {:ok, function}
+      else
+        if Ash.Resource.data_layer_can?(context.resource, {:filter_expr, function}) do
+          {:ok, function}
+        else
+          {:error, "data layer does not support the function #{inspect(function)}"}
+        end
+      end
+    else
+      {:func, nil} ->
+        {:error, NoSuchFunction.exception(name: name, resource: context.resource)}
+
+      other ->
+        other
+    end
+  end
+
+  defp validate_datalayer_supports_nested_expressions(args, resource) do
+    if Enum.any?(args, &is_expr?/1) &&
+         !Ash.Resource.data_layer_can?(resource, :nested_expressions) do
+      {:error, "Datalayer does not support nested expressions"}
+    else
+      :ok
+    end
+  end
+
+  defp is_expr?(%Call{}), do: true
+  defp is_expr?(%BooleanExpression{}), do: true
+  defp is_expr?(%Not{}), do: true
+  defp is_expr?(%{__predicate__?: _}), do: true
+  defp is_expr?(_), do: false
+
+  defp hydrate_refs(%Ref{attribute: attribute} = ref, %{aggregates: aggregates} = context)
+       when is_atom(attribute) do
+    case related(context, ref.relationship_path) do
+      nil ->
+        {:error, "Invalid reference #{inspect(ref)}"}
+
+      related ->
+        context = %{context | resource: related}
+
+        cond do
+          Map.has_key?(aggregates, attribute) ->
+            {:ok, %{ref | attribute: Map.get(aggregates, attribute)}}
+
+          attribute = attribute(context, attribute) ->
+            {:ok, %{ref | attribute: attribute}}
+
+          relationship = relationship(context, attribute) ->
+            case Ash.Resource.primary_key(relationship.destination) do
+              [key] ->
+                new_ref = %{
+                  ref
+                  | relationship_path: ref.relationship_path ++ [relationship.name],
+                    attribute: Ash.Resource.attribute(relationship.destination, key)
+                }
+
+                {:ok, new_ref}
+
+              _ ->
+                {:error, "Invalid reference #{inspect(ref)}"}
+            end
+
+          true ->
+            {:error, "Invalid reference #{inspect(ref)}"}
+        end
+    end
+  end
+
+  defp hydrate_refs(%BooleanExpression{left: left, right: right} = expr, context) do
+    with {:ok, left} <- hydrate_refs(left, context),
+         {:ok, right} <- hydrate_refs(right, context) do
+      {:ok, %{expr | left: left, right: right}}
+    else
+      other ->
+        other
+    end
+  end
+
+  defp hydrate_refs(%Call{} = call, context) do
+    resolve_call(call, context)
+  end
+
+  defp hydrate_refs(%{__predicate__?: _, left: left, right: right} = expr, context) do
+    with {:ok, left} <- hydrate_refs(left, context),
+         {:ok, right} <- hydrate_refs(right, context) do
+      {:ok, %{expr | left: left, right: right}}
+    else
+      other ->
+        other
+    end
+  end
+
+  defp hydrate_refs(%{__predicate__?: _, arguments: arguments} = expr, context) do
+    case hydrate_refs(arguments, context) do
+      {:ok, args} ->
+        {:ok, %{expr | argumentss: args}}
+
+      other ->
+        other
+    end
+  end
+
+  defp hydrate_refs(list, context) when is_list(list) do
+    list
+    |> Enum.reduce_while({:ok, []}, fn val, {:ok, acc} ->
+      case hydrate_refs(val, context) do
+        {:ok, value} ->
+          {:cont, {:ok, [value | acc]}}
+
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
     end)
     |> case do
-      {:ok, refs} -> {:ok, Enum.reverse(refs)}
+      {:ok, value} -> {:ok, Enum.reverse(value)}
       {:error, error} -> {:error, error}
     end
   end
 
-  defp do_hydrate_ref(ref, field, related, %{aggregates: aggregates} = context, acc) do
-    context = %{context | resource: related}
-
-    cond do
-      Map.has_key?(aggregates, field) ->
-        {:cont, {:ok, [%{ref | attribute: Map.get(aggregates, field)} | acc]}}
-
-      attribute = attribute(context, field) ->
-        cond do
-          match?({:array, _}, attribute.type) ->
-            {:halt, {:error, "Cannot filter on array fields"}}
-
-          Ash.Type.embedded_type?(attribute.type) ->
-            {:halt, {:error, "Cannot filter on embedded fields"}}
-
-          true ->
-            {:cont, {:ok, [%{ref | attribute: attribute} | acc]}}
-        end
-
-      relationship = relationship(context, field) ->
-        case Ash.Resource.primary_key(relationship.destination) do
-          [key] ->
-            new_ref = %{
-              ref
-              | relationship_path: ref.relationship_path ++ [relationship.name],
-                attribute: Ash.Resource.attribute(relationship.destination, key)
-            }
-
-            {:cont, {:ok, [new_ref | acc]}}
-
-          _ ->
-            {:halt, {:error, "Invalid reference #{inspect(ref)}"}}
-        end
-
-      true ->
-        {:halt, {:error, "Invalid reference #{inspect(ref)}"}}
-    end
+  defp hydrate_refs(val, _context) do
+    {:ok, val}
   end
 
   defp add_aggregate_expression(context, nested_statement, field, expression) do
     if Ash.Resource.data_layer_can?(context.resource, :aggregate_filter) do
       case parse_predicates(nested_statement, Map.get(context.aggregates, field), context) do
         {:ok, nested_statement} ->
-          {:ok, Expression.optimized_new(:and, expression, nested_statement)}
+          {:ok, BooleanExpression.optimized_new(:and, expression, nested_statement)}
 
         {:error, error} ->
           {:error, error}
@@ -1407,7 +1701,7 @@ defmodule Ash.Filter do
     end
   end
 
-  defp validate_data_layers_support_boolean_filters(%Expression{
+  defp validate_data_layers_support_boolean_filters(%BooleanExpression{
          op: :or,
          left: left,
          right: right
@@ -1454,7 +1748,7 @@ defmodule Ash.Filter do
       %Not{expression: expression} = not_expr ->
         %{not_expr | expression: add_to_predicate_path(expression, context)}
 
-      %Expression{left: left, right: right} = expression ->
+      %BooleanExpression{left: left, right: right} = expression ->
         %{
           expression
           | left: add_to_predicate_path(left, context),
@@ -1484,7 +1778,7 @@ defmodule Ash.Filter do
     Enum.reduce_while(statements, {:ok, nil}, fn statement, {:ok, expression} ->
       case parse_expression(statement, context) do
         {:ok, nested_expression} ->
-          {:cont, {:ok, Expression.optimized_new(op, expression, nested_expression)}}
+          {:cont, {:ok, BooleanExpression.optimized_new(op, expression, nested_expression)}}
 
         {:error, error} ->
           {:halt, {:error, error}}
@@ -1503,14 +1797,15 @@ defmodule Ash.Filter do
           case parse_predicates(List.wrap(value), attr, context) do
             {:ok, not_expression} ->
               {:cont,
-               {:ok, Expression.optimized_new(:and, expression, %Not{expression: not_expression})}}
+               {:ok,
+                BooleanExpression.optimized_new(:and, expression, %Not{expression: not_expression})}}
 
             {:error, error} ->
               {:halt, {:error, error}}
           end
 
         {key, value}, {:ok, expression} ->
-          case get_operator(key, Ash.Resource.data_layer_operators(context.resource)) do
+          case get_operator(key) do
             nil ->
               error = NoSuchFilterPredicate.exception(key: key, resource: context.resource)
               {:halt, {:error, error}}
@@ -1524,12 +1819,19 @@ defmodule Ash.Filter do
 
               with {:ok, [left, right]} <-
                      hydrate_refs([left, value], context),
+                   refs <- list_refs([left, right]),
+                   :ok <-
+                     validate_not_crossing_datalayer_boundaries(
+                       refs,
+                       context.resource,
+                       {attr, value}
+                     ),
                    {:ok, operator} <- Operator.new(operator_module, left, right) do
                 if is_boolean(operator) do
                   {:cont, {:ok, operator}}
                 else
-                  if Ash.Resource.data_layer_can?(context.resource, {:filter_operator, operator}) do
-                    {:cont, {:ok, Expression.optimized_new(:and, expression, operator)}}
+                  if Ash.Resource.data_layer_can?(context.resource, {:filter_expr, operator}) do
+                    {:cont, {:ok, BooleanExpression.optimized_new(:and, expression, operator)}}
                   else
                     {:halt,
                      {:error, "data layer does not support the operator #{inspect(operator)}"}}
@@ -1555,16 +1857,15 @@ defmodule Ash.Filter do
       Enum.find(data_layer_functions, &(&1.name() == key))
   end
 
-  defp get_operator(key, data_layer_operators) when is_atom(key) do
-    @builtin_operators[key] || Enum.find(data_layer_operators, &(&1.operator() == key))
+  defp get_operator(key) when is_atom(key) do
+    @builtin_operators[key]
   end
 
-  defp get_operator(key, data_layer_operators) when is_binary(key) do
-    Map.get(@string_builtin_operators, key) ||
-      Enum.find(data_layer_operators, &(&1.name() == key))
+  defp get_operator(key) when is_binary(key) do
+    Map.get(@string_builtin_operators, key)
   end
 
-  defp get_operator(_, _), do: nil
+  defp get_operator(_), do: nil
 
   defimpl Inspect do
     import Inspect.Algebra

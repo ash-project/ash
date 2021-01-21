@@ -19,7 +19,11 @@ defmodule Ash.Api.Transformers.EnsureResourcesCompiled do
         {:module, _module} ->
           false
 
-        _ ->
+        other ->
+          Logger.error(
+            "Could not ensure that #{inspect(resource)} was compiled: #{inspect(other)}"
+          )
+
           true
       end
     end)
@@ -27,9 +31,7 @@ defmodule Ash.Api.Transformers.EnsureResourcesCompiled do
       [] ->
         {:ok, dsl}
 
-      resources ->
-        Logger.error("Could not ensure that resources #{inspect(resources)} were compiled")
-
+      _ ->
         :halt
     end
   end

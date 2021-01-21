@@ -34,6 +34,12 @@ defmodule Ash.Dsl.Transformer do
     Map.update(dsl, :persist, %{key => value}, &Map.put(&1, key, value))
   end
 
+  def get_persisted(dsl, key, default) do
+    dsl
+    |> Map.get(:persist, %{})
+    |> Map.get(key, default)
+  end
+
   def build_entity(extension, path, name, opts) do
     do_build_entity(extension.sections(), path, name, opts)
   end

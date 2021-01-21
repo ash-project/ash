@@ -7,16 +7,6 @@ defmodule Ash.DataLayer.Ets do
 
   alias Ash.Actions.Sort
 
-  alias Ash.Query.Operator.{
-    Eq,
-    GreaterThan,
-    GreaterThanOrEqual,
-    In,
-    IsNil,
-    LessThan,
-    LessThanOrEqual
-  }
-
   @behaviour Ash.DataLayer
 
   @ets %Ash.Dsl.Section{
@@ -71,13 +61,8 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, :offset), do: true
   def can?(_, :boolean_filter), do: true
   def can?(_, :transact), do: false
-  def can?(_, {:filter_operator, %In{}}), do: true
-  def can?(_, {:filter_operator, %Eq{}}), do: true
-  def can?(_, {:filter_operator, %LessThan{}}), do: true
-  def can?(_, {:filter_operator, %GreaterThan{}}), do: true
-  def can?(_, {:filter_operator, %LessThanOrEqual{}}), do: true
-  def can?(_, {:filter_operator, %GreaterThanOrEqual{}}), do: true
-  def can?(_, {:filter_operator, %IsNil{}}), do: true
+  def can?(_, {:filter_expr, _}), do: true
+  def can?(_, :nested_expressions), do: true
   def can?(_, {:query_aggregate, :count}), do: true
   def can?(_, {:sort, _}), do: true
   def can?(_, _), do: false
@@ -117,12 +102,15 @@ defmodule Ash.DataLayer.Ets do
       {:ok, results} ->
         Enum.reduce_while(aggregates, {:ok, %{}}, fn
           %{kind: :count, name: name, query: query}, {:ok, acc} ->
-            value =
-              results
-              |> filter_matches(Map.get(query || %{}, :filter), api)
-              |> Enum.count()
+            results
+            |> filter_matches(Map.get(query || %{}, :filter), api)
+            |> case do
+              {:ok, matches} ->
+                {:cont, {:ok, Map.put(acc, name, Enum.count(matches))}}
 
-            {:cont, {:ok, Map.put(acc, name, value)}}
+              {:error, error} ->
+                {:halt, {:error, error}}
+            end
 
           _, _ ->
             {:halt, {:error, "unsupported aggregate"}}
@@ -144,7 +132,7 @@ defmodule Ash.DataLayer.Ets do
         _resource
       ) do
     with {:ok, records} <- get_records(resource, tenant),
-         filtered_records <- filter_matches(records, filter, api) do
+         {:ok, filtered_records} <- filter_matches(records, filter, api) do
       offset_records =
         filtered_records
         |> Sort.runtime_sort(sort)
@@ -170,10 +158,10 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  defp filter_matches(records, nil, _api), do: records
+  defp filter_matches(records, nil, _api), do: {:ok, records}
 
   defp filter_matches(records, filter, api) do
-    Enum.filter(records, &Ash.Filter.Runtime.matches?(api, &1, filter))
+    Ash.Filter.Runtime.filter_matches(api, records, filter)
   end
 
   @impl true
@@ -191,7 +179,7 @@ defmodule Ash.DataLayer.Ets do
       end)
 
     with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
-         record <- Ash.Changeset.apply_attributes(changeset),
+         {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
          {:ok, _} <- ETS.Set.put(table, {pkey, record}) do
       {:ok, record}
     else

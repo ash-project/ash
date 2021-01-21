@@ -12,6 +12,7 @@ defmodule Ash.Resource.Attribute do
     :default,
     :update_default,
     :description,
+    sensitive?: false,
     constraints: []
   ]
 
@@ -23,6 +24,7 @@ defmodule Ash.Resource.Attribute do
           private?: boolean(),
           default: (() -> term),
           update_default: (() -> term) | (Ash.record() -> term),
+          sensitive?: boolean(),
           writable?: boolean()
         }
 
@@ -41,6 +43,12 @@ defmodule Ash.Resource.Attribute do
       type: :keyword_list,
       doc:
         "Constraints to provide to the type when casting the value. See the type's documentation for more information."
+    ],
+    sensitive?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "Whether or not the attribute value contains sensitive information, like PII. If so, it will be redacted while inspecting data."
     ],
     primary_key?: [
       type: :boolean,

@@ -72,13 +72,13 @@ defmodule Ash.Actions.PaginationTest do
   end
 
   test "pagination is required by default" do
-    assert_raise Ash.Error.Invalid.PaginationRequired, fn ->
+    assert_raise Ash.Error.Invalid, ~r/Pagination is required/, fn ->
       Api.read!(User, page: false)
     end
   end
 
   test "a default limit allows not specifying page parameters" do
-    assert_raise Ash.Error.Invalid.LimitRequired, fn ->
+    assert_raise Ash.Error.Invalid, ~r/Limit is required/, fn ->
       Api.read!(User, page: [offset: 1])
     end
 

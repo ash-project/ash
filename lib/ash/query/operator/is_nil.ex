@@ -8,20 +8,10 @@ defmodule Ash.Query.Operator.IsNil do
   use Ash.Query.Operator,
     operator: :is_nil,
     predicate?: true,
-    types: [[{:ref, :any}, :boolean], [:boolean, {:ref, :any}]]
-
-  def new(%Ref{} = left, right) when is_boolean(right) do
-    {:ok, left, right}
-  end
-
-  def new(%Ref{}, right) do
-    {:error, "#{inspect(right)} is not a valid operand for is_nil"}
-  end
-
-  def new(value, nil?), do: {:known, is_nil(value) == nil?}
+    types: [[:any, :boolean]]
 
   def evaluate(%{left: left, right: is_nil?}) do
-    is_nil(left) == is_nil?
+    {:known, is_nil(left) == is_nil?}
   end
 
   def to_string(%{left: left, right: right}, opts) do

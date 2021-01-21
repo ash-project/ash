@@ -23,13 +23,21 @@ defmodule Ash.Notifier do
       |> List.wrap()
       |> Enum.group_by(& &1.resource)
       |> Enum.split_with(fn {resource, _} ->
-        Ash.DataLayer.in_transaction?(resource)
+        resource && Ash.DataLayer.in_transaction?(resource)
       end)
 
     for {resource, notifications} <- to_send do
-      for notifier <- Ash.Resource.notifiers(resource) do
-        for notification <- notifications do
-          notifier.notify(notification)
+      for notification <- notifications do
+        case notification.for do
+          nil ->
+            for notifier <- Ash.Resource.notifiers(resource) do
+              notifier.notify(notification)
+            end
+
+          allowed_notifiers ->
+            for notifier <- List.wrap(allowed_notifiers) do
+              notifier.notify(notification)
+            end
         end
       end
     end

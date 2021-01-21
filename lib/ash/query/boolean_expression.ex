@@ -1,4 +1,4 @@
-defmodule Ash.Query.Expression do
+defmodule Ash.Query.BooleanExpression do
   @moduledoc "Represents a boolean expression"
   @dialyzer {:nowarn_function, optimized_new: 4}
 
@@ -234,6 +234,9 @@ defmodule Ash.Query.Expression do
           {:right, _} ->
             %{left_expr | right: optimized_new(:or, right, eq_op)}
         end
+
+      _ ->
+        do_new(op, left_expr, right_expr)
     end
   end
 
@@ -280,12 +283,16 @@ defmodule Ash.Query.Expression do
     if left == right do
       left
     else
-      %__MODULE__{op: op, left: left, right: right}
+      %__MODULE__{
+        op: op,
+        left: left,
+        right: right
+      }
     end
   end
 end
 
-defimpl Inspect, for: Ash.Query.Expression do
+defimpl Inspect, for: Ash.Query.BooleanExpression do
   import Inspect.Algebra
 
   def inspect(

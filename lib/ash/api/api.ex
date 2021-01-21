@@ -661,7 +661,7 @@ defmodule Ash.Api do
       end
 
     with %{valid?: true} <- query,
-         {:ok, action} <- get_action(query.resource, opts, :read),
+         {:ok, action} <- get_action(query.resource, opts, :read, query.action),
          {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @load_opts_schema) do
       Read.run(query, action, Keyword.put(opts, :initial_data, data))
     else
@@ -697,7 +697,7 @@ defmodule Ash.Api do
     query = Ash.Query.set_api(query, api)
 
     with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @read_opts_schema),
-         {:ok, action} <- get_action(query.resource, opts, :read) do
+         {:ok, action} <- get_action(query.resource, opts, :read, query.action) do
       Read.run(query, action, opts)
     else
       {:error, error} ->
@@ -720,7 +720,7 @@ defmodule Ash.Api do
   end
 
   defp unwrap_one({:error, error}) do
-    {:error, Ash.Error.to_ash_error(error)}
+    {:error, error}
   end
 
   defp unwrap_one({:ok, result, query}) do
@@ -780,7 +780,7 @@ defmodule Ash.Api do
   def create(api, changeset, opts) do
     with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @create_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, changeset.resource),
-         {:ok, action} <- get_action(resource, opts, :create) do
+         {:ok, action} <- get_action(resource, opts, :create, changeset.action) do
       Create.run(api, changeset, action, opts)
     end
   end
@@ -800,7 +800,7 @@ defmodule Ash.Api do
   def update(api, changeset, opts) do
     with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @update_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, changeset.resource),
-         {:ok, action} <- get_action(resource, opts, :update) do
+         {:ok, action} <- get_action(resource, opts, :update, changeset.action) do
       Update.run(api, changeset, action, opts)
     end
   end
@@ -821,7 +821,7 @@ defmodule Ash.Api do
   def destroy(api, %Ash.Changeset{resource: resource} = changeset, opts) do
     with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @destroy_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, resource),
-         {:ok, action} <- get_action(resource, opts, :destroy) do
+         {:ok, action} <- get_action(resource, opts, :destroy, changeset.action) do
       Destroy.run(api, changeset, action, opts)
     end
   end
@@ -830,13 +830,17 @@ defmodule Ash.Api do
     destroy(api, Ash.Changeset.new(record), opts)
   end
 
-  defp get_action(resource, params, type) do
+  defp get_action(resource, params, type, preset \\ nil) do
     case Keyword.fetch(params, :action) do
       {:ok, %_{} = action} ->
         {:ok, action}
 
       {:ok, nil} ->
-        get_action(resource, Keyword.delete(params, :action), type)
+        if preset do
+          get_action(resource, Keyword.put(params, :action, preset), type)
+        else
+          get_action(resource, Keyword.delete(params, :action), type)
+        end
 
       {:ok, action} ->
         case Ash.Resource.action(resource, action, type) do
@@ -848,12 +852,16 @@ defmodule Ash.Api do
         end
 
       :error ->
-        case Ash.Resource.primary_action(resource, type) do
-          nil ->
-            {:error, NoPrimaryAction.exception(resource: resource, type: type)}
+        if preset do
+          get_action(resource, Keyword.put(params, :action, preset), type)
+        else
+          case Ash.Resource.primary_action(resource, type) do
+            nil ->
+              {:error, NoPrimaryAction.exception(resource: resource, type: type)}
 
-          action ->
-            {:ok, action}
+            action ->
+              {:ok, action}
+          end
         end
     end
   end
@@ -874,7 +882,12 @@ defmodule Ash.Api do
 
     case exception do
       %{stacktraces?: _} ->
-        raise %{exception | stacktraces?: stacktraces?}
+        if stacktraces? do
+          reraise %{exception | stacktraces?: stacktraces?},
+                  Map.get(exception.stacktrace || %{}, :stacktrace)
+        else
+          raise %{exception | stacktraces?: stacktraces?}
+        end
 
       _ ->
         raise exception

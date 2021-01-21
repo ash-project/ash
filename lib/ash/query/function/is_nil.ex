@@ -4,16 +4,9 @@ defmodule Ash.Query.Function.IsNil do
   """
   use Ash.Query.Function, name: :is_nil
 
-  def args, do: [:ref]
+  def args, do: [:any]
 
-  def new([%Ref{} = ref]) do
-    Ash.Query.Operator.new(Ash.Query.Operator.IsNil, ref, true)
+  def evaluate(%{arguments: [val]}) do
+    {:known, is_nil(val)}
   end
-
-  def new(args) do
-    {:error, "#{inspect(args)} are invalid for `is_nil`"}
-  end
-
-  # No need to define `match` because this function just turns into the operator
-  # def match
 end
