@@ -52,7 +52,7 @@ jobs:
     strategy:
       matrix:
         otp: ["23"]
-        elixir: ["1.10.0"]
+        elixir: ["1.11.0"]
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -78,7 +78,7 @@ jobs:
     strategy:
       matrix:
         otp: ["23"]
-        elixir: ["1.10.0"]
+        elixir: ["1.11.0"]
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -131,7 +131,7 @@ jobs:
             "ash_policy_authorizer",
           ]
         otp: ["23"]
-        elixir: ["1.10.4"]
+        elixir: ["1.11.0"]
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       ASH_CI: true
