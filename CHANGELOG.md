@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.30.1](https://github.com/ash-project/ash/compare/v1.30.0...v1.30.1) (2021-01-22)
+
+
+
+
+### Bug Fixes:
+
+* update elixir versions in CI
+
 ## [v1.30.0](https://github.com/ash-project/ash/compare/v1.29.0-rc1...v1.30.0) (2021-01-22)
 
 
