@@ -168,6 +168,7 @@ defmodule Ash.MixProject do
       {:nimble_options, "~> 0.3.5"},
       {:timex, ">= 3.0.0"},
       {:comparable, "~> 1.0"},
+      {:jason, ">= 1.0.0"},
       # Dev/Test dependencies
       {:ex_doc, "~> 0.22", only: :dev, runtime: false},
       {:ex_check, "~> 0.12.0", only: :dev},
