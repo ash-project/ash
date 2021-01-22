@@ -309,29 +309,29 @@ defmodule Ash.Test.Filter.FilterTest do
       }
     end
 
-    test "filtering on a has_one relationship", %{profile2: profile2, user2: user2} do
-      assert [^user2] =
+    test "filtering on a has_one relationship", %{profile2: profile2, user2: %{id: user2_id}} do
+      assert [%{id: ^user2_id}] =
                User
                |> Ash.Query.filter(profile == ^profile2.id)
                |> Api.read!()
     end
 
-    test "filtering on a belongs_to relationship", %{profile1: profile1, user1: user1} do
-      assert [^profile1] =
+    test "filtering on a belongs_to relationship", %{profile1: %{id: id}, user1: user1} do
+      assert [%{id: ^id}] =
                Profile
                |> Ash.Query.filter(user == ^user1.id)
                |> Api.read!()
     end
 
-    test "filtering on a has_many relationship", %{user2: user2, post2: post2} do
-      assert [^user2] =
+    test "filtering on a has_many relationship", %{user2: %{id: user2_id}, post2: post2} do
+      assert [%{id: ^user2_id}] =
                User
                |> Ash.Query.filter(posts == ^post2.id)
                |> Api.read!()
     end
 
-    test "filtering on a many_to_many relationship", %{post4: post4, post3: post3} do
-      assert [^post4] =
+    test "filtering on a many_to_many relationship", %{post4: %{id: post4_id}, post3: post3} do
+      assert [%{id: ^post4_id}] =
                Post
                |> Ash.Query.filter(related_posts == ^post3.id)
                |> Api.read!()

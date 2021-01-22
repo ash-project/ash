@@ -2,6 +2,7 @@ defmodule Ash.Engine.Runner do
   @moduledoc false
   defstruct [
     :engine_pid,
+    :ref,
     notified_of_complete?: false,
     requests: [],
     errors: [],
@@ -19,7 +20,7 @@ defmodule Ash.Engine.Runner do
 
   require Logger
 
-  def run(requests, verbose?, engine_pid \\ nil, pid_info \\ %{}) do
+  def run(requests, verbose?, ref, engine_pid \\ nil, pid_info \\ %{}) do
     changeset =
       Enum.find_value(requests, fn request ->
         if request.manage_changeset? && not match?(%Request.UnresolvedField{}, request.changeset) do
@@ -32,6 +33,7 @@ defmodule Ash.Engine.Runner do
       verbose?: verbose?,
       engine_pid: engine_pid,
       pid_info: pid_info,
+      ref: ref,
       changeset: changeset,
       resource_notifications: []
     }
@@ -75,6 +77,7 @@ defmodule Ash.Engine.Runner do
           else
             if new_state.errors == [] do
               log(state, fn -> "Synchronous engine stuck:\n\n#{stuck_report(state)}" end)
+              GenServer.cast(state.engine_pid, :log_stuck_report)
               add_error(new_state, :__engine__, SynchronousEngineStuck.exception([]))
             else
               new_state
@@ -118,14 +121,16 @@ defmodule Ash.Engine.Runner do
   end
 
   defp wait_for_engine(state, complete?) do
-    engine_pid = state.engine_pid
     log(state, fn -> "waiting for engine" end)
+    do_wait_for_engine(state, complete?)
+  end
 
+  defp do_wait_for_engine(%{engine_pid: engine_pid, ref: ref} = state, complete?) do
     receive do
-      {:runner, :update_changeset, changeset} ->
+      {^ref, {:update_changeset, changeset}} ->
         run_to_completion(%{state | changeset: changeset})
 
-      {:wont_receive, receiver_path, path, field} ->
+      {^ref, {:wont_receive, receiver_path, path, field}} ->
         request = Enum.find(state.requests, &(&1.path == receiver_path))
 
         new_state =
@@ -137,7 +142,7 @@ defmodule Ash.Engine.Runner do
 
         run_to_completion(new_state)
 
-      {:send_field, receiver_path, pid, dep} ->
+      {^ref, {:send_field, receiver_path, pid, dep}} ->
         log(state, fn -> "notifying #{inspect(receiver_path)} of #{inspect(dep)}" end)
         path = :lists.droplast(dep)
         field = List.last(dep)
@@ -162,7 +167,7 @@ defmodule Ash.Engine.Runner do
 
             {:error, error, new_request} ->
               if pid == self() do
-                send(self(), {:wont_receive, receiver_path, new_request.path, field})
+                send(self(), {ref, {:wont_receive, receiver_path, new_request.path, field}})
               else
                 GenServer.cast(pid, {:wont_receive, receiver_path, new_request.path, field})
               end
@@ -174,7 +179,7 @@ defmodule Ash.Engine.Runner do
 
         run_to_completion(new_state)
 
-      {:field_value, receiver_path, request_path, field, value} ->
+      {^ref, {:field_value, receiver_path, request_path, field, value}} ->
         receiver_path =
           case receiver_path do
             {_, path} -> path
@@ -190,21 +195,22 @@ defmodule Ash.Engine.Runner do
             |> run_to_completion()
         end
 
-      {:runner, :notification, resource_notification} ->
+      {^ref, {:notification, resource_notification}} ->
         state
         |> add_resource_notification(resource_notification)
         |> run_to_completion()
 
-      {:data, path, data} ->
+      {^ref, {:data, path, data}} ->
         state
         |> add_data(path, data)
         |> run_to_completion()
 
-      {:DOWN, _, _, ^engine_pid, {:shutdown, %{errored_requests: []} = engine_state}} ->
+      {:DOWN, _, _, ^engine_pid,
+       {:shutdown, %{errored_requests: [], runner_ref: ^ref} = engine_state}} ->
         log(state, fn -> "Engine complete" end)
         handle_completion(state, engine_state, complete?, false)
 
-      {:DOWN, _, _, ^engine_pid, {:shutdown, engine_state}} ->
+      {:DOWN, _, _, ^engine_pid, {:shutdown, %{runner_ref: ^ref} = engine_state}} ->
         log(state, fn -> "Engine complete" end)
         handle_completion(state, engine_state, complete?, true)
     end
@@ -233,23 +239,9 @@ defmodule Ash.Engine.Runner do
     flush(new_state)
   end
 
-  defp flush(state) do
+  defp flush(%{ref: ref} = state) do
     receive do
-      {:data, path, data} ->
-        state
-        |> add_data(path, data)
-        |> flush()
-
-      {:wont_receive, _, _, _} ->
-        flush(state)
-
-      {:send_field, _, _, _} ->
-        flush(state)
-
-      {:field_value, _, _, _, _} ->
-        flush(state)
-
-      {:runner, _, _} ->
+      {^ref, _} ->
         flush(state)
     after
       0 ->

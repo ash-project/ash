@@ -213,24 +213,9 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
         Post
         |> Ash.Query.filter(related_posts.title == "two")
 
-      post1 = Api.reload!(post1)
+      post1_id = post1.id
 
-      assert [^post1] = Api.read!(query)
-    end
-
-    test "fails when attempting to use multiple data layers within a single call" do
-      query =
-        Post
-        |> Ash.Query.filter(related_posts.title == title)
-
-      message =
-        ~r/Cannot access multiple resources for a data layer that can't be joined from within a single expression/
-
-      assert_raise Ash.Error.Invalid,
-                   message,
-                   fn ->
-                     Api.read!(query)
-                   end
+      assert [%{id: ^post1_id}] = Api.read!(query)
     end
 
     test "parallelizable filter with filtered side loads" do

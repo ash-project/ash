@@ -113,6 +113,8 @@ defmodule Ash.Type.CiString do
   end
 
   @impl true
+  def cast_input(%Ash.CiString{} = value), do: {:ok, value}
+
   def cast_input(value) do
     case Ecto.Type.cast(:string, value) do
       {:ok, value} -> {:ok, String.downcase(value)}

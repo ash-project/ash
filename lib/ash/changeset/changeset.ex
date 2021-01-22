@@ -81,8 +81,8 @@ defmodule Ash.Changeset do
       if changeset.action do
         action = Ash.Resource.action(changeset.resource, changeset.action, changeset.action_type)
 
-        if Enum.empty?(action.arguments) do
-          nil
+        if is_nil(action) || Enum.empty?(action.arguments) do
+          ""
         else
           arg_string =
             action.arguments
@@ -98,7 +98,7 @@ defmodule Ash.Changeset do
           concat(["arguments: ", arg_string])
         end
       else
-        nil
+        ""
       end
     end
   end

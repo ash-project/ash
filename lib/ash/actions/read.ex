@@ -54,7 +54,6 @@ defmodule Ash.Actions.Read do
       with %{valid?: true} <- query,
            :ok <- validate_multitenancy(query, opts),
            %{errors: []} = query <- query_with_initial_data(query, opts),
-           %{errors: []} = query <- add_action_filters(query, action, engine_opts[:actor]),
            {:ok, filter_requests} <- filter_requests(query, opts),
            {:ok, query, page_opts, count_request} <-
              paginate(query, action, filter_requests, initial_offset, initial_limit, opts),
@@ -87,6 +86,9 @@ defmodule Ash.Actions.Read do
         |> add_query(Map.get(all_data, :ultimate_query), opts)
       else
         %{errors: errors} ->
+          {:error, Ash.Error.to_error_class(errors)}
+
+        {:error, %Ash.Engine.Runner{errors: errors}} ->
           {:error, Ash.Error.to_error_class(errors)}
 
         {:error, error} ->
@@ -182,24 +184,6 @@ defmodule Ash.Actions.Read do
       Filter.read_requests(query.api, query.filter)
     else
       {:ok, []}
-    end
-  end
-
-  defp add_action_filters(query, %{filter: nil}, _actor), do: query
-
-  defp add_action_filters(query, action, actor) do
-    if Ash.Filter.template_references_actor?(action.filter) and is_nil(actor) do
-      {:error, "Read action requires actor"}
-    else
-      built_filter =
-        Ash.Filter.build_filter_from_template(
-          action.filter,
-          actor,
-          query.arguments,
-          query.context
-        )
-
-      Ash.Query.filter(query, ^built_filter)
     end
   end
 

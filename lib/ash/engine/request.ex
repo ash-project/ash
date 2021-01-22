@@ -348,10 +348,14 @@ defmodule Ash.Engine.Request do
         {field, _paths}, {:complete, request, notifications, deps} ->
           case try_resolve_local(request, field, false) do
             {:skipped, new_request, new_notifications, other_deps} ->
+              new_request = %{new_request | state: :complete}
+
               {:cont,
                {:complete, new_request, new_notifications ++ notifications, other_deps ++ deps}}
 
             {:ok, new_request, new_notifications, other_deps} ->
+              new_request = %{new_request | state: :complete}
+
               {:cont,
                {:complete, new_request, new_notifications ++ notifications, other_deps ++ deps}}
 

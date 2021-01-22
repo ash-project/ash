@@ -6,6 +6,7 @@ defmodule Ash.Engine.RequestHandler do
     :engine_pid,
     :pid_info,
     :runner_pid,
+    :runner_ref,
     dependencies_requested: [],
     notifications_sent: MapSet.new()
   ]
@@ -22,7 +23,8 @@ defmodule Ash.Engine.RequestHandler do
       request: opts[:request],
       verbose?: opts[:verbose?] || false,
       runner_pid: opts[:runner_pid],
-      engine_pid: opts[:engine_pid]
+      engine_pid: opts[:engine_pid],
+      runner_ref: opts[:runner_ref]
     }
 
     log(state, fn -> "Starting request" end)
@@ -82,7 +84,11 @@ defmodule Ash.Engine.RequestHandler do
 
         if new_request.notify? do
           resource_notification = Request.resource_notification(new_request)
-          send(new_state.runner_pid, {:runner, :notification, resource_notification})
+
+          send(
+            new_state.runner_pid,
+            {state.runner_ref, {:notification, resource_notification}}
+          )
         end
 
         complete(new_state)
@@ -114,7 +120,7 @@ defmodule Ash.Engine.RequestHandler do
         %{request: %{path: path, state: :error}} = state
       ) do
     if pid == state.runner_pid do
-      send(pid, {:wont_receive, receiver_path, path, List.last(dep)})
+      send(pid, {state.runner_ref, {:wont_receive, receiver_path, path, List.last(dep)}})
     else
       GenServer.cast(
         pid,
@@ -165,6 +171,19 @@ defmodule Ash.Engine.RequestHandler do
     end
   end
 
+  def handle_cast(:log_stuck_report, state) do
+    log(
+      state,
+      fn ->
+        "Synchronous runner stuck: async request handler current state #{
+          inspect(state.request.path)
+        } #{state.request.state}"
+      end
+    )
+
+    {:noreply, state}
+  end
+
   defp notify_error(state, error) do
     log(state, fn -> "Request error, notifying engine" end)
     GenServer.cast(state.engine_pid, {:error, error, state})
@@ -173,15 +192,19 @@ defmodule Ash.Engine.RequestHandler do
   defp notify(state, notifications) do
     Enum.reduce(notifications, state, fn
       {:set_extra_data, key, value}, state ->
-        send(state.runner_pid, {:data, [key], value})
+        send(state.runner_pid, {state.runner_ref, {:data, [key], value}})
         state
 
       {:update_changeset, changeset}, state ->
-        send(state.runner_pid, {:runner, :update_changeset, changeset})
+        send(state.runner_pid, {state.runner_ref, {:update_changeset, changeset}})
         state
 
       %Ash.Notifier.Notification{} = resource_notification, state ->
-        send(state.runner_pid, {:runner, :notification, resource_notification})
+        send(
+          state.runner_pid,
+          {state.runner_ref, {state.runner_ref, {:notification, resource_notification}}}
+        )
+
         state
 
       {receiver_path, request_path, field, value}, state ->
@@ -199,7 +222,10 @@ defmodule Ash.Engine.RequestHandler do
           log(state, fn -> "notifying #{inspect(receiver_path)} of #{inspect(field)}" end)
 
           if destination_pid == state.runner_pid do
-            send(destination_pid, {:field_value, receiver_path, request_path, field, value})
+            send(
+              destination_pid,
+              {state.runner_ref, {:field_value, receiver_path, request_path, field, value}}
+            )
           else
             GenServer.cast(
               destination_pid,
@@ -230,7 +256,7 @@ defmodule Ash.Engine.RequestHandler do
     if destination_pid == state.runner_pid do
       send(
         destination_pid,
-        {:send_field, state.request.path, self(), dep}
+        {state.runner_ref, {:send_field, state.request.path, self(), dep}}
       )
     else
       GenServer.cast(
@@ -251,7 +277,7 @@ defmodule Ash.Engine.RequestHandler do
 
   defp complete(state) do
     log(state, fn -> "Request complete, sending data" end)
-    send(state.runner_pid, {:data, state.request.path, state.request.data})
+    send(state.runner_pid, {state.runner_ref, {:data, state.request.path, state.request.data}})
     GenServer.cast(state.engine_pid, {:complete, state.request.path})
   end
 

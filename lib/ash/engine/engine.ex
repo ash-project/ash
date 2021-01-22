@@ -42,6 +42,7 @@ defmodule Ash.Engine do
     :changeset,
     :runner_pid,
     :local_requests?,
+    :runner_ref,
     request_handlers: %{},
     active_requests: [],
     completed_requests: [],
@@ -86,12 +87,15 @@ defmodule Ash.Engine do
         Request.add_initial_authorizer_state(request)
       end)
 
+    runner_ref = make_ref()
+
     transaction_result =
       maybe_transact(opts, requests, fn innermost_resource ->
         {local_requests, async_requests} = split_local_async_requests(requests)
 
         opts =
           opts
+          |> Keyword.put(:runner_ref, runner_ref)
           |> Keyword.put(:requests, async_requests)
           |> Keyword.put(:local_requests?, !Enum.empty?(local_requests))
           |> Keyword.put(:runner_pid, self())
@@ -118,21 +122,17 @@ defmodule Ash.Engine do
       Process.flag(:trap_exit, true)
 
       {:ok, pid} = GenServer.start(__MODULE__, opts)
-      ref = Process.monitor(pid)
+      _ = Process.monitor(pid)
 
-      try do
-        receive do
-          {:pid_info, pid_info} ->
-            run_and_return_or_rollback(
-              local_requests,
-              opts,
-              innermost_resource,
-              pid,
-              pid_info
-            )
-        end
-      after
-        Process.demonitor(ref, [:flush])
+      receive do
+        {:pid_info, pid_info} ->
+          run_and_return_or_rollback(
+            local_requests,
+            opts,
+            innermost_resource,
+            pid,
+            pid_info
+          )
       end
     end
   end
@@ -144,7 +144,7 @@ defmodule Ash.Engine do
          pid \\ nil,
          pid_info \\ %{}
        ) do
-    case Runner.run(local_requests, opts[:verbose?], pid, pid_info) do
+    case Runner.run(local_requests, opts[:verbose?], opts[:runner_ref], pid, pid_info) do
       %{errors: errors} = runner when errors == [] ->
         {:ok, runner}
 
@@ -203,6 +203,7 @@ defmodule Ash.Engine do
         verbose?: opts[:verbose?] || false,
         api: opts[:api],
         actor: opts[:actor],
+        runner_ref: opts[:runner_ref],
         authorize?: opts[:authorize?] || false
       }
       |> log_engine_init()
@@ -221,6 +222,7 @@ defmodule Ash.Engine do
             request: request,
             verbose?: state.verbose?,
             actor?: state.actor,
+            runner_ref: state.runner_ref,
             authorize?: state.authorize?,
             engine_pid: self(),
             runner_pid: state.runner_pid
@@ -261,25 +263,42 @@ defmodule Ash.Engine do
       {:error, _pid, request} ->
         case Map.get(request, field) do
           %Request.UnresolvedField{} ->
+            log(state, "#{receiver_path} won't receive #{inspect(request.path)} #{field}")
+
             send_or_cast(
               request_handler_pid,
               state.runner_pid,
+              state.runner_ref,
               {:wont_receive, receiver_path, request.path, field}
             )
 
           value ->
+            log(
+              state,
+              "Already have #{receiver_path} #{inspect(request.path)} #{field}, sending value"
+            )
+
             send_or_cast(
               request_handler_pid,
               state.runner_pid,
+              state.runner_ref,
               {:field_value, receiver_path, request.path, field, value}
             )
         end
 
         {:noreply, state}
 
-      _ ->
+      _other ->
         {:noreply, state}
     end
+  end
+
+  def handle_cast(:log_stuck_report, state) do
+    state.request_handlers
+    |> Map.keys()
+    |> Enum.each(&GenServer.cast(&1, :log_stuck_report))
+
+    {:noreply, state}
   end
 
   def handle_cast({:local_requests_failed, _error}, state) do
@@ -331,9 +350,9 @@ defmodule Ash.Engine do
     |> maybe_shutdown()
   end
 
-  defp send_or_cast(request_handler_pid, runner_pid, message) do
+  defp send_or_cast(request_handler_pid, runner_pid, runner_ref, message) do
     if request_handler_pid == runner_pid do
-      send(request_handler_pid, message)
+      send(request_handler_pid, {runner_ref, message})
     else
       GenServer.cast(request_handler_pid, message)
     end

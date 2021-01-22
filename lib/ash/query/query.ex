@@ -56,7 +56,6 @@ defmodule Ash.Query do
       side_load? = query.side_load != []
       aggregates? = query.aggregates != %{}
       calculations? = query.calculations != %{}
-      arguments? = query.arguments != %{}
       limit? = not is_nil(query.limit)
       offset? = not (is_nil(query.offset) || query.offset == 0)
       filter? = not is_nil(query.filter)
@@ -76,7 +75,6 @@ defmodule Ash.Query do
           or_empty(concat("side_load: ", to_doc(query.side_load, opts)), side_load?),
           or_empty(concat("aggregates: ", to_doc(query.aggregates, opts)), aggregates?),
           or_empty(concat("calculations: ", to_doc(query.calculations, opts)), calculations?),
-          or_empty(concat("arguments: ", to_doc(query.arguments, opts)), arguments?),
           or_empty(concat("errors: ", to_doc(query.errors, opts)), errors?)
         ],
         ">",
@@ -89,8 +87,8 @@ defmodule Ash.Query do
       if query.action do
         action = Ash.Resource.action(query.resource, query.action, :read)
 
-        if Enum.empty?(action.arguments) do
-          nil
+        if is_nil(action) || Enum.empty?(action.arguments) do
+          ""
         else
           arg_string =
             action.arguments
@@ -106,7 +104,7 @@ defmodule Ash.Query do
           concat(["arguments: ", arg_string])
         end
       else
-        nil
+        ""
       end
     end
 
@@ -217,6 +215,7 @@ defmodule Ash.Query do
       |> check_required_args(arguments)
       |> Map.put(:__validated_for_action__, action_name)
       |> run_preparations(action, opts[:actor])
+      |> add_action_filters(action, opts[:actor])
     else
       add_error(query, :action, "No such action #{action_name}")
     end
@@ -236,6 +235,24 @@ defmodule Ash.Query do
         query
       end
     end)
+  end
+
+  defp add_action_filters(query, %{filter: nil}, _actor), do: query
+
+  defp add_action_filters(query, action, actor) do
+    if Ash.Filter.template_references_actor?(action.filter) and is_nil(actor) do
+      {:error, "Read action requires actor"}
+    else
+      built_filter =
+        Ash.Filter.build_filter_from_template(
+          action.filter,
+          actor,
+          query.arguments,
+          query.context
+        )
+
+      do_filter(query, built_filter)
+    end
   end
 
   defp set_args(query, args, arguments) do
@@ -295,8 +312,10 @@ defmodule Ash.Query do
         unquote(body)
       end
     else
+      expr = do_expr(body)
+
       quote do
-        unquote(do_expr(body))
+        unquote(expr)
       end
     end
   end
@@ -876,7 +895,8 @@ defmodule Ash.Query do
     query = to_query(query)
 
     with sanitized_statement <- List.wrap(sanitize_side_loads(statement)),
-         :ok <- validate_side_load(query.resource, sanitized_statement),
+         :ok <-
+           validate_side_load(query.resource, sanitized_statement),
          new_side_loads <- merge_side_load(query.side_load, sanitized_statement) do
       %{query | side_load: new_side_loads}
     else

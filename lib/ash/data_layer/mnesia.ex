@@ -88,6 +88,15 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, :offset), do: true
   def can?(_, :boolean_filter), do: true
   def can?(_, :transact), do: true
+
+  def can?(_, {:join, resource}) do
+    # This is to ensure that these can't join, which is necessary for testing
+    # if someone needs to use these both and *actually* needs real joins for private
+    # ets resources then we can talk about making this only happen in ash tests
+    not (Ash.Resource.data_layer(resource) == Ash.DataLayer.Ets &&
+           Ash.DataLayer.Ets.private?(resource))
+  end
+
   def can?(_, {:filter_expr, _}), do: true
   def can?(_, :nested_expressions), do: true
   def can?(_, {:sort, _}), do: true

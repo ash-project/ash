@@ -62,6 +62,12 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, :boolean_filter), do: true
   def can?(_, :transact), do: false
   def can?(_, {:filter_expr, _}), do: true
+
+  def can?(resource, {:join, other_resource}) do
+    # See the comment in can?/2 in mnesia data layer to explain this
+    not (private?(resource) and Ash.Resource.data_layer(other_resource) == Ash.DataLayer.Mnesia)
+  end
+
   def can?(_, :nested_expressions), do: true
   def can?(_, {:query_aggregate, :count}), do: true
   def can?(_, {:sort, _}), do: true
@@ -180,6 +186,7 @@ defmodule Ash.DataLayer.Ets do
 
     with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
          {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
+         record <- unload_relationships(resource, record),
          {:ok, _} <- ETS.Set.put(table, {pkey, record}) do
       {:ok, record}
     else
@@ -202,6 +209,16 @@ defmodule Ash.DataLayer.Ets do
   @impl true
   def update(resource, changeset) do
     create(resource, changeset)
+  end
+
+  defp unload_relationships(resource, record) do
+    empty = resource.__struct__
+
+    resource
+    |> Ash.Resource.relationships()
+    |> Enum.reduce(record, fn relationship, record ->
+      Map.put(record, relationship.name, Map.get(empty, relationship.name))
+    end)
   end
 
   # sobelow_skip ["DOS.StringToAtom"]

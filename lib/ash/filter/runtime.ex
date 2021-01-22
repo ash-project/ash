@@ -29,8 +29,10 @@ defmodule Ash.Filter.Runtime do
     filter
     |> Ash.Filter.list_refs()
     |> Enum.map(& &1.relationship_path)
+    |> Enum.reject(&(&1 == []))
     |> Enum.uniq()
     |> Enum.reject(&loaded?(records, &1))
+    |> Enum.map(&path_to_side_load/1)
     |> case do
       [] ->
         {:ok,
@@ -266,7 +268,7 @@ defmodule Ash.Filter.Runtime do
 
   defp resolve_ref(value, _record), do: value
 
-  defp path_to_side_load([first]), do: first
+  defp path_to_side_load([first]), do: {first, []}
 
   defp path_to_side_load([first | rest]) do
     {first, [path_to_side_load(rest)]}
