@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.30.0](https://github.com/ash-project/ash/compare/v1.29.0-rc1...v1.30.0) (2021-01-22)
+
+
+
+
+### Bug Fixes:
+
+* add action filters in `for_read/3`
+
+* don't let local runner processes mix up messages
+
+* runtime filter filters properly
+
 ## [v1.29.0-rc1](https://github.com/ash-project/ash/compare/v1.28.0-rc0...v1.29.0-rc1) (2021-01-21)
 
 
