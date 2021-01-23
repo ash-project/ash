@@ -34,7 +34,7 @@ defmodule Ash.Dsl.Transformer do
     Map.update(dsl, :persist, %{key => value}, &Map.put(&1, key, value))
   end
 
-  def get_persisted(dsl, key, default) do
+  def get_persisted(dsl, key, default \\ nil) do
     dsl
     |> Map.get(:persist, %{})
     |> Map.get(key, default)
