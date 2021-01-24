@@ -23,7 +23,8 @@ defmodule Ash.MixProject do
       test_coverage: [tool: ExCoveralls],
       preferred_cli_env: [
         coveralls: :test,
-        "coveralls.github": :test
+        "coveralls.github": :test,
+        "coveralls.html": :test
       ],
       xref: [exclude: [:mnesia]],
       docs: docs(),

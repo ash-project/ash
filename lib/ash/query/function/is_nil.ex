@@ -4,7 +4,7 @@ defmodule Ash.Query.Function.IsNil do
   """
   use Ash.Query.Function, name: :is_nil
 
-  def args, do: [:any]
+  def args, do: [[:any]]
 
   def evaluate(%{arguments: [val]}) do
     {:known, is_nil(val)}

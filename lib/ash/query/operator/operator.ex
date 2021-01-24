@@ -80,7 +80,7 @@ defmodule Ash.Query.Operator do
   end
 
   defp try_cast(%Ref{attribute: %{type: type}} = left, right, :same) do
-    case Ash.Type.cast_input(type, right) do
+    case Ash.Query.Type.try_cast(right, type) do
       {:ok, new_right} ->
         {:ok, left, new_right}
 
@@ -90,7 +90,7 @@ defmodule Ash.Query.Operator do
   end
 
   defp try_cast(left, %Ref{attribute: %{type: type}} = right, :same) do
-    case Ash.Type.cast_input(type, left) do
+    case Ash.Query.Type.try_cast(left, type) do
       {:ok, new_left} ->
         {:ok, new_left, right}
 
@@ -100,7 +100,7 @@ defmodule Ash.Query.Operator do
   end
 
   defp try_cast(%Ref{attribute: %{type: type}} = left, right, [:any, {:array, :same}]) do
-    case Ash.Type.cast_input({:array, type}, right) do
+    case Ash.Query.Type.try_cast(right, {:array, type}) do
       {:ok, new_right} ->
         {:ok, left, new_right}
 
@@ -110,7 +110,7 @@ defmodule Ash.Query.Operator do
   end
 
   defp try_cast(left, %Ref{attribute: %{type: {:array, type}}} = right, [:any, {:array, :same}]) do
-    case Ash.Type.cast_input(type, left) do
+    case Ash.Query.Type.try_cast(left, type) do
       {:ok, new_left} ->
         {:ok, new_left, right}
 
@@ -185,9 +185,12 @@ defmodule Ash.Query.Operator do
   end
 
   defp cast_one(value, type) do
-    case Ash.Type.cast_input(type, value) do
-      {:ok, casted} -> {:ok, casted}
-      :error -> {:error, "Could not cast #{inspect(type)} as #{value}"}
+    case Ash.Query.Type.try_cast(value, type) do
+      {:ok, casted} ->
+        {:ok, casted}
+
+      _ ->
+        {:error, "Could not cast #{inspect(type)} as #{value}"}
     end
   end
 

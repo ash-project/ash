@@ -4,6 +4,8 @@ defmodule Ash.Type.Function do
 
   If the type would be dumped to a native format, `:erlang.term_to_binary(term, [:safe])` is used.
 
+  Please keep in mind, this is not safe to use with external input. This could easily cause you t
+
   More information available here: https://erlang.org/doc/man/erlang.html#binary_to_term-2
   """
 
@@ -39,10 +41,17 @@ defmodule Ash.Type.Function do
   def cast_input(_), do: :error
 
   @impl true
+  # sobelow_skip ["Misc.BinToTerm"]
   def cast_stored(value) do
     case Ecto.Type.load(:binary, value) do
       {:ok, val} ->
-        Ash.non_executable_binary_to_term(val, [:safe])
+        case :erlang.binary_to_term(val, [:safe]) do
+          function when is_function(function) ->
+            function
+
+          _ ->
+            :error
+        end
 
       other ->
         other

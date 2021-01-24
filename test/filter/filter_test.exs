@@ -108,6 +108,7 @@ defmodule Ash.Test.Filter.FilterTest do
       attribute :contents, :string
       attribute :points, :integer
       attribute :approved_at, :utc_datetime
+      attribute :category, :ci_string
     end
 
     relationships do
@@ -462,6 +463,53 @@ defmodule Ash.Test.Filter.FilterTest do
       |> Api.destroy()
 
       assert [] = Api.read!(SoftDeletePost)
+    end
+  end
+
+  describe "contains/2" do
+    test "works for simple strings" do
+      Post
+      |> new(%{title: "foobar"})
+      |> Api.create!()
+
+      Post
+      |> new(%{title: "bazbuz"})
+      |> Api.create!()
+
+      assert [%{title: "foobar"}] =
+               Post
+               |> Ash.Query.filter(contains(title, "oba"))
+               |> Api.read!()
+    end
+
+    test "works for simple strings with a case insensitive search term" do
+      Post
+      |> new(%{title: "foobar"})
+      |> Api.create!()
+
+      Post
+      |> new(%{title: "bazbuz"})
+      |> Api.create!()
+
+      assert [%{title: "foobar"}] =
+               Post
+               |> Ash.Query.filter(contains(title, ^%Ash.CiString{string: "OBA"}))
+               |> Api.read!()
+    end
+
+    test "works for case insensitive strings" do
+      Post
+      |> new(%{category: "foobar"})
+      |> Api.create!()
+
+      Post
+      |> new(%{category: "bazbuz"})
+      |> Api.create!()
+
+      assert [%{category: %Ash.CiString{string: "foobar"}}] =
+               Post
+               |> Ash.Query.filter(contains(category, "OBA"))
+               |> Api.read!()
     end
   end
 

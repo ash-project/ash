@@ -43,7 +43,21 @@ defmodule Ash.Type.CiString do
   @impl true
   def constraints, do: @constraints
 
-  def apply_constraints(nil, _), do: :ok
+  def apply_constraints(%Ash.CiString{} = value, constraints) do
+    value
+    |> Ash.CiString.value()
+    |> apply_constraints(constraints)
+    |> case do
+      {:ok, nil} ->
+        {:ok, nil}
+
+      {:ok, value} ->
+        {:ok, %Ash.CiString{string: value, lowered?: true}}
+
+      other ->
+        other
+    end
+  end
 
   def apply_constraints(value, constraints) do
     {value, errors} =
@@ -117,7 +131,7 @@ defmodule Ash.Type.CiString do
 
   def cast_input(value) do
     case Ecto.Type.cast(:string, value) do
-      {:ok, value} -> {:ok, String.downcase(value)}
+      {:ok, value} -> {:ok, Ash.CiString.new(value)}
       :error -> :error
     end
   end
@@ -125,12 +139,19 @@ defmodule Ash.Type.CiString do
   @impl true
   def cast_stored(value) do
     case Ecto.Type.load(:string, value) do
-      {:ok, value} -> {:ok, String.downcase(value)}
+      {:ok, value} -> {:ok, Ash.CiString.new(value)}
       :error -> :error
     end
   end
 
   @impl true
+  def dump_to_native(%Ash.CiString{} = ci_string) do
+    case Ecto.Type.dump(:string, Ash.CiString.value(ci_string)) do
+      {:ok, value} -> {:ok, value}
+      :error -> :error
+    end
+  end
+
   def dump_to_native(value) do
     case Ecto.Type.dump(:string, value) do
       {:ok, value} -> {:ok, String.downcase(value)}

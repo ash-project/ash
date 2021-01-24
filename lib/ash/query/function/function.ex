@@ -18,59 +18,64 @@ defmodule Ash.Query.Function do
 
   def new(mod, args) do
     args = List.wrap(args)
-    all_args = args
 
     case mod.args() do
       :var_args ->
+        # Varargs is special, and should only be used in rare circumstances (like this one)
+        # no type casting or help can be provided for these functions.
         mod.new(args)
 
       mod_args ->
         configured_args = List.wrap(mod_args)
-        configured_arg_count = Enum.count(configured_args)
+        configured_arg_count = Enum.count(Enum.at(configured_args, 0))
         given_arg_count = Enum.count(args)
 
         if configured_arg_count == given_arg_count do
-          args
-          |> Enum.zip(configured_args)
-          |> Enum.with_index()
-          |> Enum.reduce_while({:ok, []}, fn
-            {{arg, :any}, _}, {:ok, args} ->
-              {:cont, {:ok, [arg | args]}}
-
-            {{%struct{} = arg, _}, _}, {:ok, args}
-            when struct in [BooleanExpression, Call, Not, Ref] ->
-              {:cont, {:ok, [arg | args]}}
-
-            {{%{__predicate__?: _} = arg, _}, _}, {:ok, args} ->
-              {:cont, {:ok, [arg | args]}}
-
-            {{arg, type}, i}, {:ok, args} ->
-              case Ash.Type.cast_input(type, arg) do
-                {:ok, value} ->
-                  {:cont, {:ok, [value | args]}}
-
-                _ ->
-                  {:halt,
-                   {:error,
-                    Ash.Error.Query.InvalidExpression.exception(
-                      expression: struct(mod, arguments: all_args),
-                      message: "#{ordinal(i + 1)} argument to #{mod.name()} is invalid"
-                    )}}
-              end
-          end)
+          mod_args
+          |> Enum.find_value(&try_cast_arguments(&1, args))
           |> case do
-            {:ok, args} ->
-              mod.new(Enum.reverse(args))
+            nil ->
+              {:error,
+               "Could not cast function arguments for #{mod.name()}/#{configured_arg_count}"}
 
-            {:error, error} ->
-              {:error, error}
+            casted ->
+              mod.new(casted)
           end
         else
           {:error,
-           "function #{mod.name()} takes #{configured_arg_count} arguments, provided #{
+           "function #{mod.name()}/#{configured_arg_count} takes #{configured_arg_count} arguments, provided #{
              given_arg_count
            }"}
         end
+    end
+  end
+
+  defp try_cast_arguments(configured_args, args) do
+    args
+    |> Enum.zip(configured_args)
+    |> Enum.reduce_while({:ok, []}, fn
+      {arg, :any}, {:ok, args} ->
+        {:cont, {:ok, [arg | args]}}
+
+      {%struct{} = arg, _}, {:ok, args}
+      when struct in [BooleanExpression, Call, Not, Ref] ->
+        {:cont, {:ok, [arg | args]}}
+
+      {%{__predicate__?: _} = arg, _}, {:ok, args} ->
+        {:cont, {:ok, [arg | args]}}
+
+      {arg, type}, {:ok, args} ->
+        case Ash.Query.Type.try_cast(arg, type) do
+          {:ok, value} -> {:cont, {:ok, [value | args]}}
+          :error -> {:halt, :error}
+        end
+    end)
+    |> case do
+      {:ok, args} ->
+        Enum.reverse(args)
+
+      _ ->
+        nil
     end
   end
 

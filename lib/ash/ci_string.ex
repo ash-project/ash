@@ -11,21 +11,38 @@ defmodule Ash.CiString do
 
   defstruct [:string, lowered?: false]
 
-  def sigil_i(value), do: %Ash.CiString{lowered?: true, string: String.downcase(value)}
+  def sigil_i(value), do: new(value)
 
   defimpl Jason.Encoder do
-    def encode(%Ash.CiString{string: string, lowered?: false}, _opts) do
-      String.downcase(string)
-    end
-
-    def encode(%Ash.CiString{string: string, lowered?: true}, _opts) do
-      string
+    def encode(ci_string, _opts) do
+      Ash.CiString.value(ci_string)
     end
   end
 
   defimpl String.Chars do
-    def to_string(%Ash.CiString{lowered?: false, string: string}), do: String.downcase(string)
-    def to_string(%Ash.CiString{string: string}), do: string
+    def to_string(ci_string) do
+      Ash.CiString.value(ci_string)
+    end
+  end
+
+  defimpl Inspect do
+    import Inspect.Algebra
+
+    def inspect(%Ash.CiString{string: string}, opts) do
+      concat(["#Ash.CiString<", to_doc(string, opts), ">"])
+    end
+  end
+
+  def new(value) do
+    %Ash.CiString{lowered?: true, string: String.downcase(value)}
+  end
+
+  def value(%Ash.CiString{string: value, lowered?: false}) do
+    String.downcase(value)
+  end
+
+  def value(%Ash.CiString{string: value, lowered?: true}) do
+    value
   end
 
   def compare(left, right) do
@@ -51,7 +68,7 @@ end
 
 use Comp
 
-defcomparable left :: Ash.CiString, right :: String do
+defcomparable left :: Ash.CiString, right :: BitString do
   Ash.CiString.compare(left, right)
 end
 

@@ -65,7 +65,7 @@ defmodule Ash do
   # Ripped from https://github.com/elixir-plug/plug_crypto/blob/v1.2.0/lib/plug/crypto.ex
 
   # sobelow_skip ["Misc.BinToTerm"]
-  def non_executable_binary_to_term(binary, opts) when is_binary(binary) do
+  def non_executable_binary_to_term(binary, opts \\ []) when is_binary(binary) do
     term = :erlang.binary_to_term(binary, opts)
     non_executable_terms(term)
     term

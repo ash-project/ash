@@ -13,7 +13,7 @@ defmodule Ash.Filter do
     ReadActionRequired
   }
 
-  alias Ash.Query.Function.{Ago, IsNil}
+  alias Ash.Query.Function.{Ago, Contains, IsNil}
 
   alias Ash.Query.Operator.{
     Eq,
@@ -30,6 +30,7 @@ defmodule Ash.Filter do
 
   @functions [
     Ago,
+    Contains,
     IsNil
   ]
 
@@ -46,6 +47,8 @@ defmodule Ash.Filter do
 
   @builtins @functions ++ @operators
 
+  @operators_with_aliases @operators |> Enum.reject(&(&1.name() == &1.operator()))
+
   @operator_aliases [
                       equals: Eq,
                       not_equals: NotEq,
@@ -53,7 +56,7 @@ defmodule Ash.Filter do
                       lt: LessThan,
                       gte: GreaterThanOrEqual,
                       lte: LessThanOrEqual
-                    ] ++ Enum.map(@operators, &{&1.name(), &1})
+                    ] ++ Enum.map(@operators_with_aliases, &{&1.name(), &1})
 
   @moduledoc """
   The representation of a filter in Ash.
