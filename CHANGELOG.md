@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.31.1](https://github.com/ash-project/ash/compare/v1.31.0...v1.31.1) (2021-01-24)
+
+
+
+
+### Bug Fixes:
+
+* remove invalid boolean expression optimization
+
+### Improvements:
+
+* make form errors work better with phoenix
+
 ## [v1.31.0](https://github.com/ash-project/ash/compare/v1.30.2...v1.31.0) (2021-01-24)
 
 
