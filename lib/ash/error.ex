@@ -153,7 +153,7 @@ defmodule Ash.Error do
     if changeset do
       changeset = %{changeset | action_failed?: true}
       changeset = Ash.Changeset.add_error(changeset, errors)
-      %{error | changeset: changeset}
+      %{error | changeset: %{changeset | errors: Enum.uniq(changeset.errors)}}
     else
       error
     end

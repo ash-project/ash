@@ -181,8 +181,11 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
   end
 
   test "embedded resources run validations on create" do
+    msg =
+      ~r/Invalid value provided for profile: at field last_name exactly 2 of first_name,last_name must be present/
+
     assert_raise Ash.Error.Invalid,
-                 ~r/Invalid value provided for profile.last_name: exactly 2 of first_name,last_name must be present/,
+                 msg,
                  fn ->
                    Author
                    |> Changeset.for_create(
@@ -214,7 +217,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
     input = %{counter: author.profile.counter - 1}
 
     assert_raise Ash.Error.Invalid,
-                 ~r/Invalid value provided for profile.counter: must be increasing/,
+                 ~r/Invalid value provided for profile: at field counter must be increasing/,
                  fn ->
                    Changeset.for_update(
                      author,
@@ -326,7 +329,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
              |> Api.create!()
 
     assert_raise Ash.Error.Invalid,
-                 ~r/Invalid value provided for tags\[0\]\.score: must be present/,
+                 ~r/Invalid value provided for tags: at index 0 at field score must be present/,
                  fn ->
                    Changeset.for_update(
                      author,
@@ -341,7 +344,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
                  end
 
     assert_raise Ash.Error.Invalid,
-                 ~r/Invalid value provided for tags\[0\]\.score: must be absent/,
+                 ~r/Invalid value provided for tags: at index 0 at field score must be absent/,
                  fn ->
                    Changeset.for_update(
                      author,
@@ -371,7 +374,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
              |> Api.create!()
 
     assert_raise Ash.Error.Invalid,
-                 ~r/Invalid value provided for tags_with_id\[0\].score: must be increasing/,
+                 ~r/Invalid value provided for tags_with_id: at index 0 at field score must be increasing/,
                  fn ->
                    Changeset.for_update(
                      author,

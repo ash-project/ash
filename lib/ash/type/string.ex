@@ -105,7 +105,7 @@ defmodule Ash.Type.String do
         if String.match?(value, regex) do
           errors
         else
-          [{"must match the pattern %{regex}", regex: inspect(regex)} | errors]
+          [[message: "must match the pattern %{regex}", regex: inspect(regex)] | errors]
         end
 
       _, errors ->
@@ -114,6 +114,12 @@ defmodule Ash.Type.String do
   end
 
   @impl true
+  def cast_input(%Ash.CiString{} = ci_string) do
+    ci_string
+    |> Ash.CiString.value()
+    |> cast_input()
+  end
+
   def cast_input(value) do
     Ecto.Type.cast(:string, value)
   end

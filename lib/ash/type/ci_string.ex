@@ -118,7 +118,7 @@ defmodule Ash.Type.CiString do
         if String.match?(value, regex) do
           errors
         else
-          [{"must match the pattern %{regex}", regex: inspect(regex)} | errors]
+          [[message: "must match the pattern %{regex}", regex: inspect(regex)] | errors]
         end
 
       _, errors ->

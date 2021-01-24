@@ -88,7 +88,7 @@ defmodule Ash.Query do
         action = Ash.Resource.action(query.resource, query.action, :read)
 
         if is_nil(action) || Enum.empty?(action.arguments) do
-          ""
+          empty()
         else
           arg_string =
             action.arguments
@@ -104,7 +104,7 @@ defmodule Ash.Query do
           concat(["arguments: ", arg_string])
         end
       else
-        ""
+        empty()
       end
     end
 

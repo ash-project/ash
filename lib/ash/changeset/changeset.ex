@@ -42,6 +42,7 @@ defmodule Ash.Changeset do
     :api,
     :tenant,
     :__validated_for_action__,
+    params: %{},
     action_failed?: false,
     arguments: %{},
     context: %{},
@@ -82,7 +83,7 @@ defmodule Ash.Changeset do
         action = Ash.Resource.action(changeset.resource, changeset.action, changeset.action_type)
 
         if is_nil(action) || Enum.empty?(action.arguments) do
-          ""
+          empty()
         else
           arg_string =
             action.arguments
@@ -98,7 +99,7 @@ defmodule Ash.Changeset do
           concat(["arguments: ", arg_string])
         end
       else
-        ""
+        empty()
       end
     end
   end
@@ -175,7 +176,7 @@ defmodule Ash.Changeset do
   ### Params
   `params` may be attributes, relationships, or arguments. You can safely pass user/form input directly into this function.
   Only public attributes and relationships are supported. If you want to change private attributes as well, see the
-  Customization section below.
+  Customization section below. `params` are stored directly as given in the `params` field of the changeset, which is used
 
   ### Opts
 
@@ -355,6 +356,8 @@ defmodule Ash.Changeset do
   end
 
   defp cast_params(changeset, action, params, opts) do
+    changeset = %{changeset | params: Enum.into(params, %{})}
+
     Enum.reduce(params, changeset, fn {name, value}, changeset ->
       cond do
         attr = Ash.Resource.public_attribute(changeset.resource, name) ->
@@ -701,11 +704,8 @@ defmodule Ash.Changeset do
                Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
           %{new_changeset | arguments: Map.put(new_changeset.arguments, argument.name, casted)}
         else
-          _ ->
-            Ash.Changeset.add_error(
-              changeset,
-              InvalidArgument.exception(field: argument.name)
-            )
+          {:error, error} ->
+            add_invalid_errors(:argument, changeset, argument, error)
         end
       end
     end)
@@ -1090,7 +1090,7 @@ defmodule Ash.Changeset do
         add_error(changeset, error)
 
       %{writable?: false} = attribute ->
-        add_attribute_invalid_error(changeset, attribute, "Attribute is not writable")
+        add_invalid_errors(:attribute, changeset, attribute, "Attribute is not writable")
 
       attribute ->
         with {:ok, prepared} <- prepare_change(changeset, attribute, value),
@@ -1113,17 +1113,10 @@ defmodule Ash.Changeset do
           end
         else
           :error ->
-            add_attribute_invalid_error(changeset, attribute)
+            add_invalid_errors(:attribute, changeset, attribute)
 
           {:error, error_or_errors} ->
-            errors =
-              if Keyword.keyword?(error_or_errors) do
-                [error_or_errors]
-              else
-                List.wrap(error_or_errors)
-              end
-
-            Enum.reduce(errors, changeset, &add_attribute_invalid_error(&2, attribute, &1))
+            add_invalid_errors(:attribute, changeset, attribute, error_or_errors)
         end
     end
   end
@@ -1172,12 +1165,10 @@ defmodule Ash.Changeset do
           end
         else
           :error ->
-            add_attribute_invalid_error(changeset, attribute)
+            add_invalid_errors(:attribute, changeset, attribute)
 
           {:error, error_or_errors} ->
-            error_or_errors
-            |> List.wrap()
-            |> Enum.reduce(changeset, &add_attribute_invalid_error(&2, attribute, &1))
+            add_invalid_errors(:attribute, changeset, attribute, error_or_errors)
         end
     end
   end
@@ -1461,7 +1452,7 @@ defmodule Ash.Changeset do
 
   defp validate_allow_nil(_, _), do: :ok
 
-  defp add_attribute_invalid_error(changeset, attribute, message \\ nil) do
+  defp add_invalid_errors(type, changeset, attribute, message \\ nil) do
     messages =
       if Keyword.keyword?(message) do
         [message]
@@ -1486,30 +1477,40 @@ defmodule Ash.Changeset do
             |> case do
               [] ->
                 [
-                  Keyword.put(keyword, :field, add_index(to_string(attribute.name), keyword))
+                  keyword
+                  |> Keyword.put(
+                    :message,
+                    add_index(keyword[:message], keyword)
+                  )
+                  |> Keyword.put(:field, attribute.name)
                 ]
 
               fields ->
                 Enum.map(
                   fields,
-                  &Keyword.put(
-                    message,
-                    :field,
-                    add_index(to_string(attribute.name), message) <> ".#{&1}"
+                  &Keyword.merge(message,
+                    field: attribute.name,
+                    message: add_index(add_field(keyword[:message], "#{&1}"), keyword)
                   )
                 )
             end
 
           message when is_binary(message) ->
-            [[field: to_string(attribute.name), message: message]]
+            [[field: attribute.name, message: message]]
 
           _ ->
-            [[field: to_string(attribute.name)]]
+            [[field: attribute.name]]
+        end
+
+      exception =
+        case type do
+          :attribute -> InvalidAttribute
+          :argument -> InvalidArgument
         end
 
       Enum.reduce(opts, changeset, fn opts, changeset ->
         error =
-          InvalidAttribute.exception(
+          exception.exception(
             field: Keyword.get(opts, :field),
             message: Keyword.get(opts, :message),
             vars: opts
@@ -1520,11 +1521,15 @@ defmodule Ash.Changeset do
     end)
   end
 
-  defp add_index(string, opts) do
+  defp add_field(message, field) do
+    "at field #{field} " <> message
+  end
+
+  defp add_index(message, opts) do
     if opts[:index] do
-      string <> "[#{opts[:index]}]"
+      "at index #{opts[:index]} " <> message
     else
-      string
+      message
     end
   end
 end

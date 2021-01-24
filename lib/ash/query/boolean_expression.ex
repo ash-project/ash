@@ -206,7 +206,7 @@ defmodule Ash.Query.BooleanExpression do
 
   def optimized_new(
         op,
-        %__MODULE__{op: op, left: left, right: right} = left_expr,
+        %__MODULE__{left: left, right: right} = left_expr,
         right_expr,
         op
       ) do
@@ -214,7 +214,7 @@ defmodule Ash.Query.BooleanExpression do
       %In{} = in_op ->
         with {:left, nil} <- {:left, Ash.Filter.find(left, &simplify?(&1, in_op))},
              {:right, nil} <- {:right, Ash.Filter.find(right, &simplify?(&1, in_op))} do
-          do_new(:or, left_expr, in_op)
+          do_new(op, left_expr, in_op)
         else
           {:left, _} ->
             %{left_expr | left: optimized_new(:or, left, in_op)}
@@ -226,7 +226,7 @@ defmodule Ash.Query.BooleanExpression do
       %Eq{} = eq_op ->
         with {:left, nil} <- {:left, Ash.Filter.find(left, &simplify?(&1, eq_op))},
              {:right, nil} <- {:right, Ash.Filter.find(right, &simplify?(&1, eq_op))} do
-          do_new(:or, left_expr, eq_op)
+          do_new(op, left_expr, eq_op)
         else
           {:left, _} ->
             %{left_expr | left: optimized_new(:or, left, eq_op)}
