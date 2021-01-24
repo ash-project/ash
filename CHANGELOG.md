@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.31.0](https://github.com/ash-project/ash/compare/v1.30.2...v1.31.0) (2021-01-24)
+
+
+
+
+### Features:
+
+* add `contains/2` query function
+
+### Bug Fixes:
+
+* various ci_string improvements
+
 ## [v1.30.2](https://github.com/ash-project/ash/compare/v1.30.1...v1.30.2) (2021-01-22)
 
 
