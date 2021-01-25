@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.32.0](https://github.com/ash-project/ash/compare/v1.31.1...v1.32.0) (2021-01-25)
+
+
+
+
+### Features:
+
+* add `after_action` for queries
+
+### Bug Fixes:
+
+* default to calculating filters on `data_layer_query`
+
 ## [v1.31.1](https://github.com/ash-project/ash/compare/v1.31.0...v1.31.1) (2021-01-24)
 
 
