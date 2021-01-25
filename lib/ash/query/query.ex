@@ -43,6 +43,7 @@ defmodule Ash.Query do
     limit: nil,
     offset: 0,
     errors: [],
+    after_action: [],
     valid?: true
   ]
 
@@ -190,6 +191,16 @@ defmodule Ash.Query do
 
         do_filter(query, filter)
     end
+  end
+
+  @doc "Adds an after_action hook to the query."
+  @spec after_action(
+          t(),
+          (t(), [Ash.record()] ->
+             {:ok, [Ash.record()]} | {:error, term})
+        ) :: t()
+  def after_action(query, func) do
+    %{query | after_action: [func | query.after_action]}
   end
 
   @doc """
@@ -1240,7 +1251,7 @@ defmodule Ash.Query do
   defp maybe_filter(query, ash_query, opts) do
     case Ash.DataLayer.filter(query, ash_query.filter, ash_query.resource) do
       {:ok, filtered} ->
-        if Keyword.get(opts, :only_validate_filter?, true) do
+        if Keyword.get(opts, :only_validate_filter?, false) do
           {:ok, query}
         else
           {:ok, filtered}

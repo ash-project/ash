@@ -307,7 +307,7 @@ defmodule Ash.Actions.Read do
           query =
             initial_query
             |> Ash.Query.unset([:filter, :aggregates, :sort])
-            |> Ash.Query.data_layer_query()
+            |> Ash.Query.data_layer_query(only_validate_filter?: true)
 
           with {:ok, query} <- query,
                {:ok, filter} <-
@@ -326,6 +326,7 @@ defmodule Ash.Actions.Read do
                query <- Ash.DataLayer.set_context(ash_query.resource, query, ash_query.context),
                {:ok, query} <- set_tenant(query, ash_query),
                {:ok, results} <- run_query(ash_query, query),
+               {:ok, results} <- run_after_action(ash_query, results),
                {:ok, with_calculations} <-
                  add_calculation_values(ash_query, results, ash_query.calculations) do
             if params[:return_query?] do
@@ -342,6 +343,17 @@ defmodule Ash.Actions.Read do
         end
       )
     end
+  end
+
+  defp run_after_action(query, results) do
+    query.after_action
+    |> Enum.reduce_while({query, {:ok, results}}, fn after_action, {query, {:ok, results}} ->
+      case after_action.(query, results) do
+        {:ok, results} -> {:cont, {query, {:ok, results}}}
+        {:error, error} -> {:halt, {query, {:error, error}}}
+      end
+    end)
+    |> elem(1)
   end
 
   defp set_tenant(query, ash_query) do
@@ -546,7 +558,7 @@ defmodule Ash.Actions.Read do
                 |> Ash.Query.limit(initial_limit)
                 |> Ash.Query.offset(initial_offset)
                 |> Ash.Query.filter(^auth_filter)
-                |> Ash.Query.data_layer_query()
+                |> Ash.Query.data_layer_query(only_validate_filter?: true)
 
               with {:ok, query} <- query,
                    {:ok, filter} <-
