@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.32.1](https://github.com/ash-project/ash/compare/v1.32.0...v1.32.1) (2021-01-27)
+
+
+
+
+### Bug Fixes:
+
+* only run authorization once per request
+
+* don't error on replacing empty relationship with empty
+
+### Improvements:
+
+* support `tenant` option to `get/2`
+
+* support `message` option on identities
+
 ## [v1.32.0](https://github.com/ash-project/ash/compare/v1.31.1...v1.32.0) (2021-01-25)
 
 
