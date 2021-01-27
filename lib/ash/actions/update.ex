@@ -83,6 +83,7 @@ defmodule Ash.Actions.Update do
         action: action,
         resource: resource,
         data: changeset.data,
+        authorize?: false,
         path: :data,
         name: "#{action.type} - `#{action.name}`: prepare"
       )
@@ -98,6 +99,7 @@ defmodule Ash.Actions.Update do
         resource: resource,
         notify?: true,
         manage_changeset?: true,
+        authorize?: false,
         data:
           Request.resolve(
             [[:data, :changeset]],

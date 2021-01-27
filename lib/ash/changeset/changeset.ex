@@ -202,6 +202,10 @@ defmodule Ash.Changeset do
       MyResource
       |> Changeset.change_attribute(:foo, 1)
       |> Changeset.for_create(:create, ...opts)
+
+  Once a changeset has been validated by `for_create/4` (or `for_update/4`), it isn't validated again in the action.
+  New changes added are validated individually, though. This allows you to create a changeset according
+  to a given action, and then add custom changes if necessary.
   """
   def for_create(initial, action, params, opts \\ []) do
     changeset =
@@ -259,6 +263,10 @@ defmodule Ash.Changeset do
   Constructs a changeset for a given destroy action, and validates it.
 
   Pass an `actor` option to specify the actor
+
+  Once a changeset has been validated by `for_destroy/4`, it isn't validated again in the action.
+  New changes added are validated individually, though. This allows you to create a changeset according
+  to a given action, and then add custom changes if necessary.
   """
 
   def for_destroy(initial, action_name, params, opts \\ []) do

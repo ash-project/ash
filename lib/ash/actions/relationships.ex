@@ -379,6 +379,9 @@ defmodule Ash.Actions.Relationships do
           current: current,
           replace: new
         })
+
+      %{current: [], replace: []} ->
+        changeset
     end
   end
 

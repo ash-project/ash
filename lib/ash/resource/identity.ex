@@ -1,6 +1,6 @@
 defmodule Ash.Resource.Identity do
   @moduledoc "Represents a unique constraint on a resource"
-  defstruct [:name, :keys, :description]
+  defstruct [:name, :keys, :description, :message]
 
   @schema [
     name: [
@@ -18,6 +18,10 @@ defmodule Ash.Resource.Identity do
     description: [
       type: :string,
       doc: "An optional description for the identity"
+    ],
+    message: [
+      type: :string,
+      doc: "An error message to use when the unique identity would be violated"
     ]
   ]
 

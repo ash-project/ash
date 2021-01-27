@@ -167,6 +167,10 @@ defmodule Ash.Api do
                      load: [
                        type: :any,
                        doc: "Fields or relationships to load in the query. See `Ash.Query.load/2`"
+                     ],
+                     tenant: [
+                       type: :any,
+                       doc: "The tenant to set on the query being run"
                      ]
                    ]
                    |> merge_schemas(@global_opts, "Global Options")
@@ -418,6 +422,7 @@ defmodule Ash.Api do
       query =
         resource
         |> Ash.Query.new(api)
+        |> Ash.Query.set_tenant(opts[:tenant])
         |> Ash.Query.filter(^filter)
         |> Ash.Query.load(opts[:load] || [])
 

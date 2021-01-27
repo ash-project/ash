@@ -53,6 +53,7 @@ defmodule Ash.Actions.Destroy do
           changeset: changeset,
           notify?: true,
           manage_changeset?: true,
+          authorize?: false,
           data:
             Request.resolve(
               [[:data, :data], [:destroy, :changeset]],
