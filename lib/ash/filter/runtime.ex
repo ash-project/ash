@@ -155,6 +155,9 @@ defmodule Ash.Filter.Runtime do
           {:error, error} ->
             {:error, error}
 
+          :unknown ->
+            :unknown
+
           _ ->
             {:ok, false}
         end
@@ -167,12 +170,18 @@ defmodule Ash.Filter.Runtime do
           {:error, error} ->
             {:error, error}
 
+          :unknown ->
+            :unknown
+
           _ ->
             {:ok, false}
         end
 
       %Not{expression: expression} ->
         case do_match(record, expression) do
+          :unknown ->
+            :unknown
+
           {:ok, match?} ->
             {:ok, !match?}
 
@@ -191,9 +200,11 @@ defmodule Ash.Filter.Runtime do
       case resolve_expr(expr, record) do
         {:ok, resolved} -> {:cont, {:ok, [resolved | exprs]}}
         {:error, error} -> {:halt, {:error, error}}
+        :unknown -> {:halt, :unknown}
       end
     end)
     |> case do
+      :unknown -> :unknown
       {:ok, resolved} -> {:ok, Enum.reverse(resolved)}
       {:error, error} -> {:error, error}
     end
@@ -225,6 +236,9 @@ defmodule Ash.Filter.Runtime do
       {:error, error} ->
         {:error, error}
 
+      :unknown ->
+        :unknown
+
       _ ->
         {:ok, false}
     end
@@ -237,6 +251,9 @@ defmodule Ash.Filter.Runtime do
     else
       {:error, error} ->
         {:error, error}
+
+      :unknown ->
+        :unknown
 
       _ ->
         {:ok, false}
@@ -281,6 +298,9 @@ defmodule Ash.Filter.Runtime do
 
       {:ok, false} ->
         {:ok, false}
+
+      :unknown ->
+        :unknown
     end
   end
 
@@ -291,6 +311,9 @@ defmodule Ash.Filter.Runtime do
 
       {:ok, false} ->
         do_match(record, right)
+
+      :unknown ->
+        :unknown
     end
   end
 

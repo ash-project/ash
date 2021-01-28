@@ -507,31 +507,15 @@ defmodule Ash.Engine.Request do
             {:ok, set_authorizer_state(request, authorizer, :authorized)}
 
           {:filter, filter} ->
-            request
-            |> Map.update!(:query, &Ash.Query.filter(&1, ^filter))
-            |> Map.update(
-              :authorization_filter,
-              filter,
-              &add_to_or_parse(&1, filter, request.resource)
-            )
-            |> set_authorizer_state(authorizer, :authorized)
-            |> try_resolve([request.path ++ [:query]], false)
+            apply_filter(request, authorizer, filter, true)
 
           {:filter_and_continue, _, _} when strict_check_only? ->
             {:error, MustPassStrictCheck.exception(resource: request.resource)}
 
           {:filter_and_continue, filter, new_authorizer_state} ->
-            new_request =
-              request
-              |> Map.update!(:query, &Ash.Query.filter(&1, ^filter))
-              |> Map.update(
-                :authorization_filter,
-                filter,
-                &add_to_or_parse(&1, filter, request.resource)
-              )
-              |> set_authorizer_state(authorizer, new_authorizer_state)
-
-            {:ok, new_request}
+            request
+            |> set_authorizer_state(authorizer, new_authorizer_state)
+            |> apply_filter(authorizer, filter)
 
           {:continue, _} when strict_check_only? ->
             {:error, MustPassStrictCheck.exception(resource: request.resource)}
@@ -559,6 +543,42 @@ defmodule Ash.Engine.Request do
           {:error, error} ->
             {:error, error}
         end
+    end
+  end
+
+  defp apply_filter(request, authorizer, filter, resolve_data? \\ false)
+
+  defp apply_filter(%{action: %{type: :read}} = request, authorizer, filter, resolve_data?) do
+    request =
+      request
+      |> Map.update!(:query, &Ash.Query.filter(&1, ^filter))
+      |> Map.update(
+        :authorization_filter,
+        filter,
+        &add_to_or_parse(&1, filter, request.resource)
+      )
+      |> set_authorizer_state(authorizer, :authorized)
+
+    if resolve_data? do
+      try_resolve(request, [request.path ++ [:query]], false)
+    else
+      {:ok, request}
+    end
+  end
+
+  defp apply_filter(request, authorizer, filter, resolve_data?) do
+    case do_runtime_filter(request, filter) do
+      {:ok, request} ->
+        request = set_authorizer_state(request, authorizer, :authorized)
+
+        if resolve_data? do
+          try_resolve(request, [request.path ++ [:query]], false)
+        else
+          {:ok, request}
+        end
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 
@@ -652,10 +672,11 @@ defmodule Ash.Engine.Request do
     end
   end
 
-  defp do_runtime_filter(%{data: empty} = request, _filter) when empty in [nil, []],
-    do: {:ok, request}
+  defp do_runtime_filter(%{action: %{type: :read}, data: empty} = request, _filter)
+       when empty in [nil, []],
+       do: {:ok, request}
 
-  defp do_runtime_filter(request, filter) do
+  defp do_runtime_filter(%{action: %{type: :read}} = request, filter) do
     pkey = Ash.Resource.primary_key(request.resource)
 
     pkeys =
@@ -686,6 +707,34 @@ defmodule Ash.Engine.Request do
         new_data = Enum.filter(request.data, &(Map.take(&1, pkey) in pkeys))
 
         {:ok, %{request | data: new_data, query: new_query}}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp do_runtime_filter(request, filter) do
+    pkey = Ash.Resource.primary_key(request.resource)
+
+    pkey =
+      request.changeset.data
+      |> Map.take(pkey)
+      |> Map.to_list()
+
+    new_query =
+      request.resource
+      |> Ash.Query.filter(^pkey)
+      |> Ash.Query.filter(^filter)
+      |> Ash.Query.limit(1)
+
+    new_query
+    |> Ash.Actions.Read.unpaginated_read()
+    |> case do
+      {:ok, []} ->
+        {:error, Ash.Error.Forbidden.exception([])}
+
+      {:ok, [_]} ->
+        {:ok, request}
 
       {:error, error} ->
         {:error, error}
@@ -918,6 +967,7 @@ defmodule Ash.Engine.Request do
   defp missing_strict_check_dependencies?(authorizer, request) do
     authorizer
     |> Authorizer.strict_check_context(authorizer_state(request, authorizer))
+    |> List.wrap()
     |> Enum.filter(fn dependency ->
       match?(%UnresolvedField{}, Map.get(request, dependency))
     end)

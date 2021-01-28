@@ -1,6 +1,6 @@
 defmodule Ash.Test.Actions.SideLoadTest do
   @moduledoc false
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   require Ash.Query
 
@@ -120,8 +120,12 @@ defmodule Ash.Test.Actions.SideLoadTest do
   end
 
   setup do
-    Process.put(:authorize?, true)
-    Process.put(:strict_check_context, [:query])
+    start_supervised(
+      {Ash.Test.Authorizer,
+       strict_check: :authorized,
+       check: {:error, Ash.Error.Forbidden.exception([])},
+       strict_check_context: [:query]}
+    )
 
     :ok
   end

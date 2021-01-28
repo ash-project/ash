@@ -24,7 +24,7 @@ defmodule Ash.OptionsHelpers do
     |> sanitize_schema()
     |> Enum.map(fn {key, opts} ->
       if opts[:doc] do
-        {key, Keyword.update!(opts, :doc, &String.replace(&1, "\n", "\n  "))}
+        {key, Keyword.update!(opts, :doc, &String.replace(&1, "\n\n", "  \n"))}
       else
         {key, opts}
       end

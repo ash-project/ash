@@ -120,6 +120,8 @@ defmodule Ash.Test.Actions.DestroyTest do
         |> new(%{name: "foobar"})
         |> Api.create!()
 
+      start_supervised({Ash.Test.Authorizer, strict_check: :continue, check: :forbidden})
+
       assert_raise(Ash.Error.Forbidden, fn ->
         Api.destroy!(author, authorize?: true)
       end)

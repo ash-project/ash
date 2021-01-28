@@ -104,6 +104,9 @@ defmodule Ash.MixProject do
           Ash.Query.Calculation,
           Ash.Calculation
         ],
+        values: [
+          Ash.CiString
+        ],
         type: ~r/Ash.Type/,
         data_layer: ~r/Ash.DataLayer/,
         authorizer: ~r/Ash.Authorizer/,
@@ -123,7 +126,7 @@ defmodule Ash.MixProject do
         "filter operators": ~r/Ash.Query.Operator/,
         "filter functions": ~r/Ash.Query.Function/,
         "query expressions": [
-          Ash.Query.BooleanBooleanExpression,
+          Ash.Query.BooleanExpression,
           Ash.Query.Not,
           Ash.Query.Ref,
           Ash.Query.Call
@@ -137,8 +140,10 @@ defmodule Ash.MixProject do
         miscellaneous: [
           Ash.NotLoaded,
           Ash.Error.Stacktrace,
-          Ash.Query.Aggregate
-        ]
+          Ash.Query.Aggregate,
+          Ash.Query.Type
+        ],
+        comparable: ~r/Comparable/
       ]
     ]
   end

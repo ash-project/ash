@@ -565,6 +565,8 @@ defmodule Ash.Test.Actions.CreateTest do
 
   describe "unauthorized create" do
     test "it does not create the record" do
+      start_supervised({Ash.Test.Authorizer, check: :forbidden, strict_check: :continue})
+
       assert_raise(Ash.Error.Forbidden, fn ->
         Authorized
         |> new()

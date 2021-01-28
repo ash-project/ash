@@ -569,6 +569,8 @@ defmodule Ash.Test.Actions.UpdateTest do
         |> new(%{name: "bar"})
         |> Api.create!()
 
+      start_supervised({Ash.Test.Authorizer, check: :forbidden, strict_check: :continue})
+
       assert_raise(Ash.Error.Forbidden, fn ->
         record
         |> new(%{name: "foo"})
