@@ -44,6 +44,13 @@ defmodule Ash.Type.CiString do
   def constraints, do: @constraints
 
   def apply_constraints(%Ash.CiString{} = value, constraints) do
+    constraints =
+      if constraints[:min_length] do
+        Keyword.put(constraints, :allow_empty?, true)
+      else
+        constraints
+      end
+
     value
     |> Ash.CiString.value()
     |> apply_constraints(constraints)

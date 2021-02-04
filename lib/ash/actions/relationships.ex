@@ -16,6 +16,7 @@ defmodule Ash.Actions.Relationships do
     |> add_replace_requests(relationship, input)
     |> add_remove_requests(relationship, input)
     |> add_add_requests(relationship, input)
+    |> add_manage_read_requests(relationship, input)
     |> add_belongs_to_change(relationship, input)
   end
 
@@ -36,6 +37,23 @@ defmodule Ash.Actions.Relationships do
     changeset
     |> add_add_requests(relationship, Map.delete(input, :remove), key)
     |> add_belongs_to_change(relationship, input)
+    |> add_manage_read_requests(relationship, input)
+  end
+
+  defp add_manage_read_requests(changeset, relationship, %{manage: _}) do
+    # If the relationship is being replaced, we don't need to add
+    # the currently related request because it is added by the replacement request
+    case Map.fetch(relationship, :replace) do
+      {:ok, _} ->
+        changeset
+
+      _ ->
+        add_relationship_currently_related_request(changeset, relationship)
+    end
+  end
+
+  defp add_manage_read_requests(changeset, _relationship, _input) do
+    changeset
   end
 
   defp add_belongs_to_change(
@@ -175,7 +193,8 @@ defmodule Ash.Actions.Relationships do
                     query
                   end
 
-                with {:ok, results} <-
+                with query <- Ash.Query.set_context(query, relationship.context),
+                     {:ok, results} <-
                        Ash.Actions.Read.unpaginated_read(query),
                      :ok <-
                        ensure_all_found(
@@ -321,6 +340,15 @@ defmodule Ash.Actions.Relationships do
               end)
               |> Map.put_new(:current, [])
 
+            relationship_data =
+              case changeset.relationships[relationship.name][:manage] do
+                nil ->
+                  relationship_data
+
+                manage ->
+                  Map.put(relationship_data, :manage, manage)
+              end
+
             add_relationship_to_changeset(changeset, relationship, relationship_data)
           end)
 
@@ -381,7 +409,7 @@ defmodule Ash.Actions.Relationships do
         })
 
       %{current: [], replace: []} ->
-        changeset
+        set_belongs_to(changeset, relationship, nil)
     end
   end
 
@@ -402,9 +430,9 @@ defmodule Ash.Actions.Relationships do
       end
 
     changeset
-    |> set_relationship(relationship.name, Map.get(relationship_data, :current, []))
     |> remove_has_many(relationship, relationship_data, pkey)
     |> relate_has_many(relationship, relationship_data, pkey)
+    |> set_relationship(relationship.name, Map.get(relationship_data, :current, []))
     |> add_relationship_change_metadata(relationship.name, relationship_data)
   end
 
@@ -426,10 +454,10 @@ defmodule Ash.Actions.Relationships do
       end
 
     changeset
-    |> set_relationship(relationship.name, Map.get(relationship_data, :current, []))
     |> remove_many_to_many(relationship, relationship_data, join_pkey, pkey)
     |> relate_many_to_many(relationship, relationship_data, pkey)
     |> add_relationship_change_metadata(relationship.name, relationship_data)
+    |> set_relationship(relationship.name, Map.get(relationship_data, :current, []))
   end
 
   defp split_relationship_data(current, replace, pkey) do
@@ -485,6 +513,7 @@ defmodule Ash.Actions.Relationships do
       |> Kernel.||(Ash.Changeset.new(relationship.through))
       |> Ash.Changeset.force_change_attributes(join_attrs)
       |> Ash.Changeset.set_tenant(changeset.tenant)
+      |> Ash.Changeset.set_context(relationship.context || %{})
       |> changeset.api.create(upsert?: true, return_notifications?: true)
       |> case do
         {:ok, join_row, notifications} ->
@@ -580,6 +609,7 @@ defmodule Ash.Actions.Relationships do
     join_row
     |> Ash.Changeset.new()
     |> Ash.Changeset.set_tenant(tenant)
+    |> Ash.Changeset.set_context(relationship.context || %{})
     |> api.destroy(return_notifications?: true)
     |> case do
       {:ok, notifications} ->
@@ -605,6 +635,7 @@ defmodule Ash.Actions.Relationships do
           Map.get(record, relationship.source_field)
         )
         |> Ash.Changeset.set_tenant(changeset.tenant)
+        |> Ash.Changeset.set_context(relationship.context || %{})
         |> changeset.api.update(return_notifications?: true)
         |> case do
           {:ok, related, notifications} ->
@@ -628,6 +659,7 @@ defmodule Ash.Actions.Relationships do
         |> Ash.Changeset.new()
         |> Ash.Changeset.force_change_attribute(relationship.destination_field, nil)
         |> Ash.Changeset.set_tenant(changeset.tenant)
+        |> Ash.Changeset.set_context(relationship.context || %{})
         |> changeset.api.update(return_notifications?: true)
         |> case do
           {:ok, related, notifications} ->
@@ -662,7 +694,8 @@ defmodule Ash.Actions.Relationships do
   end
 
   defp set_relationship(changeset, relationship_name, value) do
-    Map.update!(changeset, :data, fn data ->
+    changeset
+    |> Map.update!(:data, fn data ->
       case value do
         values when is_list(values) ->
           Map.put(data, relationship_name, Enum.map(values, &clear_relationships/1))
@@ -670,6 +703,18 @@ defmodule Ash.Actions.Relationships do
         value ->
           Map.put(data, relationship_name, clear_relationships(value))
       end
+    end)
+    |> Changeset.after_action(fn _changeset, data ->
+      data =
+        case value do
+          values when is_list(values) ->
+            Map.put(data, relationship_name, Enum.map(values, &clear_relationships/1))
+
+          value ->
+            Map.put(data, relationship_name, clear_relationships(value))
+        end
+
+      {:ok, data}
     end)
   end
 
@@ -704,9 +749,13 @@ defmodule Ash.Actions.Relationships do
         Changeset.force_change_attribute(changeset, relationship.source_field, nil)
       end
 
+    set_belongs_to(changeset, relationship, new)
+  end
+
+  defp set_belongs_to(changeset, relationship, value) do
     Changeset.after_action(changeset, fn _changeset, result ->
-      if new do
-        {:ok, Map.put(result, relationship.name, clear_relationships(new))}
+      if value do
+        {:ok, Map.put(result, relationship.name, clear_relationships(value))}
       else
         {:ok, Map.put(result, relationship.name, nil)}
       end
@@ -723,6 +772,7 @@ defmodule Ash.Actions.Relationships do
           Map.get(record, relationship.source_field)
         )
         |> Ash.Changeset.set_tenant(changeset.tenant)
+        |> Ash.Changeset.set_context(relationship.context || %{})
         |> changeset.api.update(return_notifications?: true)
         |> case do
           {:ok, related, notifications} ->
@@ -743,6 +793,7 @@ defmodule Ash.Actions.Relationships do
       |> Changeset.new()
       |> Changeset.force_change_attribute(relationship.destination_field, nil)
       |> Ash.Changeset.set_tenant(changeset.tenant)
+      |> Ash.Changeset.set_context(relationship.context || %{})
       |> changeset.api.update(return_notifications?: true)
       |> case do
         {:ok, _related, notifications} ->
@@ -843,7 +894,9 @@ defmodule Ash.Actions.Relationships do
               query
             end
 
-          Ash.Actions.Read.unpaginated_read(query)
+          query
+          |> Ash.Query.set_context(relationship.context)
+          |> Ash.Actions.Read.unpaginated_read()
         end),
       name: "Read related join for #{relationship.name} before replace"
     )

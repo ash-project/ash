@@ -10,6 +10,7 @@ defmodule Ash.Resource.Relationships.HasOne do
     :source_field,
     :allow_orphans?,
     :writable?,
+    :context,
     :description,
     cardinality: :one,
     type: :has_one

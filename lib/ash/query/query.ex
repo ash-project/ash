@@ -179,17 +179,26 @@ defmodule Ash.Query do
       resource: resource
     }
 
-    case Ash.Resource.base_filter(resource) do
+    query =
+      case Ash.Resource.base_filter(resource) do
+        nil ->
+          query
+
+        filter ->
+          filter =
+            resource
+            |> Ash.Filter.parse!(filter)
+            |> Ash.Filter.embed_predicates()
+
+          do_filter(query, filter)
+      end
+
+    case Ash.Resource.default_context(resource) do
       nil ->
         query
 
-      filter ->
-        filter =
-          resource
-          |> Ash.Filter.parse!(filter)
-          |> Ash.Filter.embed_predicates()
-
-        do_filter(query, filter)
+      context ->
+        Ash.Query.set_context(query, context)
     end
   end
 
@@ -341,6 +350,50 @@ defmodule Ash.Query do
 
   defp do_expr({{:., _, [_, _]} = left, _, _}, escape?) do
     do_expr(left, escape?)
+  end
+
+  defp do_expr({:ref, _, [field, path]}, escape?) do
+    ref =
+      case do_expr(path, false) do
+        %Ash.Query.Ref{attribute: head_attr, relationship_path: head_path} ->
+          case do_expr(field) do
+            %Ash.Query.Ref{attribute: tail_attribute, relationship_path: tail_relationship_path} ->
+              %Ash.Query.Ref{
+                relationship_path: head_path ++ [head_attr] ++ tail_relationship_path,
+                attribute: tail_attribute
+              }
+
+            other ->
+              %Ash.Query.Ref{relationship_path: head_path ++ [head_attr], attribute: other}
+          end
+
+        other ->
+          case do_expr(field, false) do
+            %Ash.Query.Ref{attribute: attribute, relationship_path: relationship_path} ->
+              %Ash.Query.Ref{
+                attribute: attribute,
+                relationship_path: List.wrap(other) ++ List.wrap(relationship_path)
+              }
+
+            other_field ->
+              %Ash.Query.Ref{attribute: other_field, relationship_path: other}
+          end
+      end
+
+    soft_escape(ref, escape?)
+  end
+
+  defp do_expr({:ref, _, [field]}, escape?) do
+    ref =
+      case do_expr(field, false) do
+        %Ash.Query.Ref{} = ref ->
+          ref
+
+        other ->
+          %Ash.Query.Ref{attribute: other, relationship_path: []}
+      end
+
+    soft_escape(ref, escape?)
   end
 
   defp do_expr({:., _, [left, right]} = ref, escape?) when is_atom(right) do
@@ -566,7 +619,9 @@ defmodule Ash.Query do
 
   Not much uses this currently.
   """
-  @spec set_context(t(), map) :: t()
+  @spec set_context(t(), map | nil) :: t()
+  def set_context(query, nil), do: query
+
   def set_context(query, map) do
     query = to_query(query)
 
@@ -746,6 +801,18 @@ defmodule Ash.Query do
 
   Ash.Query.build(Myresource, filter: expr(name == "marge"))
   ```
+
+  Supported keys:
+  * `filter` - filter keyword/expr or `%Ash.Filter{}`
+  * `sort` - sort keyword
+  * `limit` - integer limit
+  * `offset` - integer offset
+  * `load` - keyword/list of atoms to load
+  * `aggregate` - `{name, type, relationship}`
+  * `aggregate` - `{name, type, relationship, query_in_build_format}`
+  * `calculate` - `{name, module_and_opts}`
+  * `calculate` - `{name, module_and_opts, context}`
+  * `context: %{key: value}`
   """
   @spec build(Ash.resource(), Ash.api() | nil, Keyword.t()) :: t()
   def build(resource, api \\ nil, keyword) do
@@ -776,6 +843,9 @@ defmodule Ash.Query do
 
       {:calculate, {name, module_and_opts, context}}, query ->
         calculate(query, name, module_and_opts, context)
+
+      {:context, context}, query ->
+        set_context(query, context)
     end)
   end
 

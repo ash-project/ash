@@ -78,8 +78,8 @@ defmodule Ash.Test.Type.CiString do
   end
 
   test "it handles values with length constraints" do
-    e_allowed_values = ["", "123", "123456", " 123456 "]
-    f_allowed_values = ["", " 2 ", "123456", "  34  "]
+    e_allowed_values = ["123", "123456", " 123456 "]
+    f_allowed_values = [" 2 ", "123456", "  34  "]
 
     allowed_values = Enum.zip(e_allowed_values, f_allowed_values)
 

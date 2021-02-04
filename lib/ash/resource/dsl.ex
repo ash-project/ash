@@ -342,6 +342,55 @@ defmodule Ash.Resource.Dsl do
     args: [:validation]
   }
 
+  @manage_relationship %Ash.Dsl.Entity{
+    name: :managed_relationship,
+    describe: """
+    Declares a managed relationship for the current action.
+
+    A managed relationship creates an argument with the same name
+    in that action, and ultimately calls `Ash.Changeset.manage_relationship/4`
+    with the provided options.
+
+    Keep in mind that, in code, these are only acessible when using
+    `Ash.Changeset.for_create/3` and `Ash.Changeset.for_update/3`. In code
+    you can manage relationships with `Ash.Changeset.manage_relationship/4`
+    without worrying about what is declared on the action.
+    """,
+    examples: [
+      """
+      managed_relationship :add_comments, :comments do
+        on_update :error
+        on_destroy :ignore
+      end
+      """,
+      """
+      managed_relationship :remove_comments, :comments do
+        on_update :destroy
+        on_destroy {:destroy, :soft_delete}
+      end
+      """
+    ],
+    target: Ash.Resource.Actions.ManagedRelationship,
+    schema:
+      [
+        name: [
+          type: :atom,
+          required: true,
+          doc: "The name of the argument that will accept the managed relationship input"
+        ],
+        relationship: [
+          type: :atom,
+          required: true,
+          doc: "the name of the relationship that will be managed"
+        ]
+      ]
+      |> Ash.OptionsHelpers.merge_schemas(
+        Ash.Changeset.manage_relationship_schema(),
+        "Shared with changeset"
+      ),
+    args: [:name, :relationship]
+  }
+
   @create %Ash.Dsl.Entity{
     name: :create,
     describe: """
@@ -363,6 +412,9 @@ defmodule Ash.Resource.Dsl do
       ],
       arguments: [
         @action_argument
+      ],
+      managed_relationships: [
+        @manage_relationship
       ]
     ],
     args: [:name]
@@ -428,6 +480,9 @@ defmodule Ash.Resource.Dsl do
       ],
       arguments: [
         @action_argument
+      ],
+      managed_relationships: [
+        @manage_relationship
       ]
     ],
     target: Ash.Resource.Actions.Update,
@@ -454,6 +509,9 @@ defmodule Ash.Resource.Dsl do
       ],
       arguments: [
         @action_argument
+      ],
+      managed_relationships: [
+        @manage_relationship
       ]
     ],
     target: Ash.Resource.Actions.Destroy,
@@ -593,6 +651,10 @@ defmodule Ash.Resource.Dsl do
       base_filter: [
         type: :any,
         doc: "A filter statement to be applied to any queries on the resource"
+      ],
+      default_context: [
+        type: :any,
+        doc: "Default context to apply to any queries/changesets generated for this resource."
       ]
     ]
   }
@@ -830,7 +892,8 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.ValidateActionTypesSupported,
     Ash.Resource.Transformers.CountableActions,
     Ash.Resource.Transformers.ValidateMultitenancy,
-    Ash.Resource.Transformers.DefaultPrimaryKey
+    Ash.Resource.Transformers.DefaultPrimaryKey,
+    Ash.Resource.Transformers.DefaultAccept
   ]
 
   @moduledoc """

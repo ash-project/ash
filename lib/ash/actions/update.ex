@@ -111,6 +111,23 @@ defmodule Ash.Actions.Update do
 
                 Ash.DataLayer.update(resource, changeset)
               end)
+              |> case do
+                {:ok, updated, %{notifications: notifications}} ->
+                  case Ash.Actions.ManagedRelationships.manage_relationships(
+                         updated,
+                         changeset,
+                         engine_opts[:actor]
+                       ) do
+                    {:ok, updated, new_notifications} ->
+                      {:ok, updated, %{notifications: notifications ++ new_notifications}}
+
+                    {:error, error} ->
+                      {:error, error}
+                  end
+
+                {:error, error} ->
+                  {:error, error}
+              end
             end
           ),
         path: [:commit],

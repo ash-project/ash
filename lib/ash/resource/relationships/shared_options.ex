@@ -29,6 +29,14 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       type: :string,
       doc: "An optional description for the relationship"
     ],
+    context: [
+      type: :any,
+      doc: """
+      Context to be set on any queries or changesets generated for this relationship.
+
+      This is used by ash_postgres for polymorphic resources.
+      """
+    ],
     private?: [
       type: :boolean,
       default: false,

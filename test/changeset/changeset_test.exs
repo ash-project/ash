@@ -53,8 +53,13 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
     actions do
       read :default
-      create :default
+      create :default, primary?: true
       update :default
+
+      create :with_posts do
+        reject([:posts])
+        managed_relationship(:posts, :posts)
+      end
     end
 
     attributes do
@@ -411,6 +416,118 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
   end
 
+  describe "manage_relationship/3" do
+    test "it creates related entities" do
+      post1 = %{title: "title"}
+      post2 = %{title: "title"}
+
+      author =
+        Author
+        |> Changeset.new()
+        |> Changeset.manage_relationship(:posts, [post1, post2])
+        |> Api.create!()
+
+      assert [%{title: "title"}, %{title: "title"}] = Api.read!(Post)
+
+      assert %{posts: [%{title: "title"}, %{title: "title"}]} = Api.load!(author, :posts)
+    end
+
+    test "it ignores creates if configured" do
+      post1 = %{title: "title"}
+      post2 = %{title: "title"}
+
+      author =
+        Author
+        |> Changeset.new()
+        |> Changeset.manage_relationship(:posts, [post1, post2], on_create: :ignore)
+        |> Api.create!()
+
+      assert [] = Api.read!(Post)
+
+      assert %{posts: []} = Api.load!(author, :posts)
+    end
+
+    test "it errors on creates if configured" do
+      post1 = %{title: "title"}
+      post2 = %{title: "title"}
+
+      assert_raise Ash.Error.Invalid,
+                   ~r/Invalid value provided for posts: Changes would create a new related record/,
+                   fn ->
+                     Author
+                     |> Changeset.new()
+                     |> Changeset.manage_relationship(:posts, [post1, post2], on_create: :error)
+                     |> Api.create!(stacktraces?: true)
+                   end
+    end
+
+    test "it destroys related records if not present" do
+      post1 = %{title: "title"}
+      post2 = %{title: "title"}
+
+      author =
+        Author
+        |> Changeset.new()
+        |> Changeset.manage_relationship(:posts, [post1, post2])
+        |> Api.create!()
+
+      assert [%{title: "title"}, %{title: "title"}] = Api.read!(Post)
+
+      author
+      |> Changeset.new()
+      |> Changeset.manage_relationship(:posts, [])
+      |> Api.update!(stacktraces?: true)
+
+      assert [] = Api.read!(Post)
+    end
+
+    test "it unrelated records if specified" do
+      post1 = %{title: "title"}
+      post2 = %{title: "title"}
+
+      author =
+        Author
+        |> Changeset.new()
+        |> Changeset.manage_relationship(:posts, [post1, post2])
+        |> Api.create!()
+
+      assert [%{title: "title"}, %{title: "title"}] = Api.read!(Post)
+
+      author =
+        author
+        |> Changeset.new()
+        |> Changeset.manage_relationship(:posts, [], on_destroy: :unrelate)
+        |> Api.update!(stacktraces?: true)
+
+      assert [%{title: "title"}, %{title: "title"}] = Api.read!(Post)
+
+      assert %{posts: []} = Api.load!(author, :posts)
+    end
+
+    test "it updates records" do
+      post1 = %{title: "title"}
+      post2 = %{title: "title"}
+
+      author =
+        Author
+        |> Changeset.new()
+        |> Changeset.manage_relationship(:posts, [post1, post2])
+        |> Api.create!()
+
+      assert posts = [%{title: "title"}, %{title: "title"}] = Api.read!(Post)
+
+      post_ids = Enum.map(posts, &Map.get(&1, :id))
+      input = Enum.map(post_ids, &%{"id" => &1, title: "new_title"})
+
+      author
+      |> Changeset.new()
+      |> Changeset.manage_relationship(:posts, input)
+      |> Api.update!(stacktraces?: true)
+
+      assert [%{title: "new_title"}, %{title: "new_title"}] = Api.read!(Post)
+    end
+  end
+
   describe "replace_relationship/3" do
     test "it replaces entities to a resource's relationship" do
       post1 = Post |> Changeset.new(%{title: "title1"}) |> Api.create!()
@@ -527,7 +644,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         |> Ash.Query.filter(id == ^post1.id and serial == ^post1.serial)
         |> Api.read!()
 
-      assert author == fetched_post.author
+      assert Api.reload!(author) == Api.reload!(fetched_post.author)
     end
 
     test "it accepts a list of maps representing primary_keys as a second param" do
@@ -570,7 +687,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         |> Ash.Query.filter(id == ^post1.id and serial == ^post1.serial)
         |> Api.read!()
 
-      assert author == fetched_post.author
+      assert Api.reload!(author) == Api.reload!(fetched_post.author)
     end
 
     test "it accepts mix of entities and maps representing primary_keys as a second param" do

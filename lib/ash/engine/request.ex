@@ -723,6 +723,8 @@ defmodule Ash.Engine.Request do
 
     new_query =
       request.resource
+      |> Ash.Query.set_tenant(request.changeset.tenant)
+      |> Ash.Query.set_context(request.changeset.context)
       |> Ash.Query.filter(^pkey)
       |> Ash.Query.filter(^filter)
       |> Ash.Query.limit(1)

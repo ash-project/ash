@@ -14,6 +14,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
     :writable?,
     :private?,
     :description,
+    :context,
     cardinality: :many,
     type: :many_to_many
   ]

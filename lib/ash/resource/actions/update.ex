@@ -8,6 +8,8 @@ defmodule Ash.Resource.Actions.Update do
     accept: nil,
     arguments: [],
     changes: [],
+    reject: [],
+    managed_relationships: [],
     type: :update
   ]
 
@@ -23,17 +25,16 @@ defmodule Ash.Resource.Actions.Update do
   import Ash.Resource.Actions.SharedOptions
 
   @global_opts shared_options()
+  @create_update_opts create_update_opts()
 
-  @opt_schema Ash.OptionsHelpers.merge_schemas(
-                [
-                  accept: [
-                    type: {:custom, Ash.OptionsHelpers, :list_of_atoms, []},
-                    doc:
-                      "The list of attributes and relationships to accept. Defaults to all attributes on the resource"
-                  ]
-                ],
+  @opt_schema []
+              |> Ash.OptionsHelpers.merge_schemas(
                 @global_opts,
                 "Action Options"
+              )
+              |> Ash.OptionsHelpers.merge_schemas(
+                @create_update_opts,
+                "Create/Update Options"
               )
 
   @doc false

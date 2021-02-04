@@ -171,6 +171,10 @@ defmodule Ash.Api do
                      tenant: [
                        type: :any,
                        doc: "The tenant to set on the query being run"
+                     ],
+                     context: [
+                       type: :any,
+                       doc: "Context to be set on the query being run"
                      ]
                    ]
                    |> merge_schemas(@global_opts, "Global Options")
@@ -425,6 +429,7 @@ defmodule Ash.Api do
         |> Ash.Query.set_tenant(opts[:tenant])
         |> Ash.Query.filter(^filter)
         |> Ash.Query.load(opts[:load] || [])
+        |> Ash.Query.set_context(opts[:context] || %{})
 
       query
       |> api.read(Keyword.delete(opts, :load))

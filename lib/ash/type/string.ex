@@ -19,7 +19,7 @@ defmodule Ash.Type.String do
     ],
     allow_empty?: [
       type: :boolean,
-      doc: "Sets the value to `nil` if it's empty.",
+      doc: "If false, the value is set to `nil` if it's empty.",
       default: false
     ]
   ]
@@ -47,6 +47,13 @@ defmodule Ash.Type.String do
   def apply_constraints(nil, _), do: :ok
 
   def apply_constraints(value, constraints) do
+    constraints =
+      if constraints[:min_length] do
+        Keyword.put(constraints, :allow_empty?, true)
+      else
+        constraints
+      end
+
     {value, errors} =
       return_value(constraints[:allow_empty?], constraints[:trim?], value, constraints)
 

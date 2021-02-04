@@ -7,6 +7,7 @@ defmodule Ash.Resource.Relationships.HasMany do
     :private?,
     :source_field,
     :source,
+    :context,
     :writable?,
     :description,
     cardinality: :many,

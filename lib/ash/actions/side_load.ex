@@ -486,18 +486,24 @@ defmodule Ash.Actions.SideLoad do
                relationship.destination_field}
           }
         })
+        |> Ash.Query.set_context(relationship.context)
         |> Ash.Actions.Read.unpaginated_read()
 
       (query.limit || offset?) && relationship.type != :many_to_many ->
         artificial_limit_and_offset(query, relationship)
 
       true ->
-        Ash.Actions.Read.unpaginated_read(query)
+        query
+        |> Ash.Query.set_context(relationship.context)
+        |> Ash.Actions.Read.unpaginated_read()
     end
   end
 
   defp artificial_limit_and_offset(query, relationship) do
-    case Ash.Actions.Read.unpaginated_read(query) do
+    query
+    |> Ash.Query.set_context(relationship.context)
+    |> Ash.Actions.Read.unpaginated_read()
+    |> case do
       {:ok, results} ->
         new_results =
           results

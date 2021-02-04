@@ -13,6 +13,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :source,
     :required?,
     :writable?,
+    :context,
     :description,
     cardinality: :one,
     type: :belongs_to

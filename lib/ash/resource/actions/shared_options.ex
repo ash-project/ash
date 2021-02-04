@@ -18,7 +18,28 @@ defmodule Ash.Resource.Actions.SharedOptions do
     ]
   ]
 
+  @create_update_opts [
+    accept: [
+      type: {:custom, Ash.OptionsHelpers, :list_of_atoms, []},
+      doc:
+        "The list of attributes and relationships to accept. Defaults to all attributes on the resource"
+    ],
+    reject: [
+      type: {:custom, Ash.OptionsHelpers, :list_of_atoms, []},
+      doc: """
+      A list of attributes and relationships not to accept. This is useful if you want to say 'accept all but x'
+
+      If this is specified along with `accept`, then everything in the `accept` list minuse any matches in the
+      `reject` list will be accepted.
+      """
+    ]
+  ]
+
   def shared_options do
     @shared_options
+  end
+
+  def create_update_opts do
+    @create_update_opts
   end
 end

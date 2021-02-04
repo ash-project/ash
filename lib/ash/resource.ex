@@ -558,6 +558,11 @@ defmodule Ash.Resource do
     Extension.get_opt(resource, [:resource], :base_filter, nil)
   end
 
+  @spec default_context(Ash.resource()) :: term
+  def default_context(resource) do
+    Extension.get_opt(resource, [:resource], :default_context, nil)
+  end
+
   @doc "A list of identities for the resource"
   @spec identities(Ash.resource()) :: [Ash.Resource.Identity.t()]
   def identities(resource) do

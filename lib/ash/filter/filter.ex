@@ -859,6 +859,7 @@ defmodule Ash.Filter do
     relationship.destination
     |> Ash.Query.new(api)
     |> Ash.Query.do_filter(filter)
+    |> Ash.Query.set_context(relationship.context)
     |> filter_related_in(relationship, :lists.droplast(path))
   end
 
