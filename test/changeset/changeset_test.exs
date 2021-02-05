@@ -153,6 +153,26 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
   end
 
+  defmodule IntegerPost do
+    @moduledoc false
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      create :default
+      read :default
+    end
+
+    attributes do
+      integer_primary_key :id
+
+      attribute :title, :string
+    end
+  end
+
   defmodule Api do
     @moduledoc false
     use Ash.Api
@@ -163,12 +183,21 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       resource PostCategory
       resource Post
       resource CompositeKeyPost
+      resource IntegerPost
     end
   end
 
   defmodule NonResource do
     @moduledoc false
     defstruct [:name]
+  end
+
+  describe "integer primary keys" do
+    test "creates resource using an integer id" do
+      integer_post = IntegerPost |> Changeset.new(%{title: "My first post with an integer id"})
+
+      assert {:ok, _} = Api.create(integer_post)
+    end
   end
 
   describe "new" do
