@@ -112,7 +112,7 @@ defmodule Ash.Actions.Update do
                 Ash.DataLayer.update(resource, changeset)
               end)
               |> case do
-                {:ok, updated, %{notifications: notifications}} ->
+                {:ok, updated, changeset, %{notifications: notifications}} ->
                   case Ash.Actions.ManagedRelationships.manage_relationships(
                          updated,
                          changeset,

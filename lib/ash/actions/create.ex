@@ -115,6 +115,15 @@ defmodule Ash.Actions.Create do
 
               changeset
               |> Ash.Changeset.put_context(:actor, engine_opts[:actor])
+              |> Ash.Changeset.before_action(fn changeset ->
+                {changeset, instructions} =
+                  Ash.Actions.ManagedRelationships.setup_managed_belongs_to_relationships(
+                    changeset,
+                    engine_opts[:actor]
+                  )
+
+                {changeset, instructions}
+              end)
               |> Ash.Changeset.with_hooks(fn changeset ->
                 if upsert? do
                   Ash.DataLayer.upsert(resource, changeset)
@@ -123,7 +132,7 @@ defmodule Ash.Actions.Create do
                 end
               end)
               |> case do
-                {:ok, created, %{notifications: notifications}} ->
+                {:ok, created, changeset, %{notifications: notifications}} ->
                   case Ash.Actions.ManagedRelationships.manage_relationships(
                          created,
                          changeset,

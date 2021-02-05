@@ -87,7 +87,8 @@ defmodule Ash.DataLayer do
   @callback source(Ash.resource()) :: String.t()
   @callback rollback(Ash.resource(), term) :: no_return
   @callback can?(Ash.resource(), feature()) :: boolean
-  @callback set_context(Ash.resource(), Ash.data_layer_query(), map) :: Ash.data_layer_query()
+  @callback set_context(Ash.resource(), Ash.data_layer_query(), map) ::
+              {:ok, Ash.data_layer_query()} | {:error, Ash.error()}
 
   @optional_callbacks source: 1,
                       equal?: 1,
@@ -165,14 +166,15 @@ defmodule Ash.DataLayer do
     Ash.Resource.data_layer(resource).upsert(resource, changeset)
   end
 
-  @spec set_context(Ash.resource(), Ash.data_layer_query(), map) :: Ash.data_layer_query()
+  @spec set_context(Ash.resource(), Ash.data_layer_query(), map) ::
+          {:ok, Ash.data_layer_query()} | {:error, Ash.error()}
   def set_context(resource, query, map) do
     data_layer = Ash.Resource.data_layer(resource)
 
     if :erlang.function_exported(data_layer, :set_context, 3) do
       data_layer.set_context(resource, query, map)
     else
-      query
+      {:ok, query}
     end
   end
 

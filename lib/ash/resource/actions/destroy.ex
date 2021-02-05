@@ -6,7 +6,6 @@ defmodule Ash.Resource.Actions.Destroy do
     :primary?,
     :soft?,
     :description,
-    managed_relationships: [],
     arguments: [],
     accept: nil,
     changes: [],

@@ -69,6 +69,13 @@ defmodule Ash.Actions.Destroy do
                       {:error, error}
                   end
                 end)
+                |> case do
+                  {:ok, result, _changeset, instructions} ->
+                    {:ok, result, instructions}
+
+                  {:error, error} ->
+                    {:error, error}
+                end
               end
             )
         )

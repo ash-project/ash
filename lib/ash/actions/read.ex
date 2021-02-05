@@ -323,7 +323,8 @@ defmodule Ash.Actions.Read do
                  Ash.DataLayer.filter(query, filter, ash_query.resource),
                {:ok, query} <-
                  Ash.DataLayer.sort(query, ash_query.sort, ash_query.resource),
-               query <- Ash.DataLayer.set_context(ash_query.resource, query, ash_query.context),
+               {:ok, query} <-
+                 Ash.DataLayer.set_context(ash_query.resource, query, ash_query.context),
                {:ok, query} <- set_tenant(query, ash_query),
                {:ok, results} <- run_query(ash_query, query),
                {:ok, results} <- run_after_action(ash_query, results),

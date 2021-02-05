@@ -644,6 +644,21 @@ defmodule Ash.Query do
     Map.get(query.arguments, argument) || Map.get(query.arguments, to_string(argument))
   end
 
+  @doc "fetches the value of an argument provided to the query or `:error`"
+  @spec fetch_argument(t, atom) :: {:ok, term} | :error
+  def fetch_argument(query, argument) when is_atom(argument) do
+    case Map.fetch(query.arguments, argument) do
+      {:ok, value} ->
+        {:ok, value}
+
+      :error ->
+        case Map.fetch(query.arguments, to_string(argument)) do
+          {:ok, value} -> {:ok, value}
+          :error -> :error
+        end
+    end
+  end
+
   @doc """
   Add an argument to the query, which can be used in filter templates on actions
   """
@@ -685,17 +700,34 @@ defmodule Ash.Query do
           Required.exception(field: argument.name, type: :argument)
         )
       else
-        with {:ok, casted} <- Ash.Type.cast_input(argument.type, value),
+        val =
+          case fetch_argument(query, argument.name) do
+            :error ->
+              if argument.default do
+                {:ok, argument_default(argument.default)}
+              else
+                :error
+              end
+
+            {:ok, val} ->
+              {:ok, val}
+          end
+
+        with {:found, {:ok, value}} <- {:found, val},
+             {:ok, casted} <- Ash.Type.cast_input(argument.type, value),
              {:ok, casted} <-
                Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
           %{new_query | arguments: Map.put(new_query.arguments, argument.name, casted)}
         else
-          _ ->
+          {:error, _error} ->
             add_error(
               query,
               :arguments,
               InvalidArgument.exception(field: argument.name)
             )
+
+          {:found, :error} ->
+            query
         end
       end
     end)
@@ -1206,7 +1238,7 @@ defmodule Ash.Query do
              Ash.DataLayer.limit(query, ash_query.limit, resource),
            {:ok, query} <-
              Ash.DataLayer.offset(query, ash_query.offset, resource) do
-        {:ok, Ash.DataLayer.set_context(resource, query, ash_query.context)}
+        Ash.DataLayer.set_context(resource, query, ash_query.context)
       else
         {:error, error} -> {:error, error}
       end

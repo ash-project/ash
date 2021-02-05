@@ -9,7 +9,6 @@ defmodule Ash.Resource.Actions.Update do
     arguments: [],
     changes: [],
     reject: [],
-    managed_relationships: [],
     type: :update
   ]
 

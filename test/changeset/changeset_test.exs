@@ -55,11 +55,6 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       read :default
       create :default, primary?: true
       update :default
-
-      create :with_posts do
-        reject([:posts])
-        managed_relationship(:posts, :posts)
-      end
     end
 
     attributes do
@@ -417,6 +412,20 @@ defmodule Ash.Test.Changeset.ChangesetTest do
   end
 
   describe "manage_relationship/3" do
+    test "it works for has_one relationships" do
+      author = %{name: "title"}
+
+      post =
+        Post
+        |> Changeset.new()
+        |> Changeset.manage_relationship(:author, author)
+        |> Api.create!()
+
+      assert [%{name: "title"}] = Api.read!(Author)
+
+      assert %{name: "title"} = Api.load!(post, :author).author
+    end
+
     test "it creates related entities" do
       post1 = %{title: "title"}
       post2 = %{title: "title"}

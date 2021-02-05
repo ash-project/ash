@@ -100,6 +100,13 @@ defmodule Ash.Changeset do
     import Inspect.Algebra
 
     def inspect(changeset, opts) do
+      context =
+        if changeset.context == %{} do
+          empty()
+        else
+          concat("context: ", to_doc(changeset.context, opts))
+        end
+
       container_doc(
         "#Ash.Changeset<",
         [
@@ -110,6 +117,7 @@ defmodule Ash.Changeset do
           arguments(changeset, opts),
           concat("errors: ", to_doc(changeset.errors, opts)),
           concat("data: ", to_doc(changeset.data, opts)),
+          context,
           concat("valid?: ", to_doc(changeset.valid?, opts))
         ],
         ">",
@@ -429,6 +437,9 @@ defmodule Ash.Changeset do
 
     Enum.reduce(params, changeset, fn {name, value}, changeset ->
       cond do
+        has_argument?(action, name) ->
+          set_argument(changeset, name, value)
+
         attr = Ash.Resource.public_attribute(changeset.resource, name) ->
           if attr.writable? do
             change_attribute(changeset, attr.name, value)
@@ -453,9 +464,6 @@ defmodule Ash.Changeset do
           else
             changeset
           end
-
-        has_argument?(action, name) ->
-          set_argument(changeset, name, value)
 
         true ->
           changeset
@@ -652,7 +660,7 @@ defmodule Ash.Changeset do
   defp require_values(changeset, :create) do
     changeset.resource
     |> Ash.Resource.attributes()
-    |> Enum.reject(&(&1.allow_nil? || &1.private?))
+    |> Enum.reject(&(&1.allow_nil? || &1.private? || &1.generated?))
     |> Enum.reduce(changeset, fn required_attribute, changeset ->
       if Ash.Changeset.changing_attribute?(changeset, required_attribute.name) do
         changeset
@@ -679,53 +687,35 @@ defmodule Ash.Changeset do
           (t() ->
              {:ok, Ash.record(), %{notifications: list(Ash.notification())}} | {:error, term})
         ) ::
-          {:ok, term, %{notifications: list(Ash.notification())}} | {:error, term}
+          {:ok, term, t(), %{notifications: list(Ash.notification())}} | {:error, term}
   def with_hooks(changeset, func) do
-    changeset =
-      Enum.reduce_while(changeset.before_action, changeset, fn before_action, changeset ->
-        case before_action.(changeset) do
-          %{valid?: true} = changeset -> {:cont, changeset}
-          changeset -> {:halt, changeset}
+    {changeset, %{notifications: before_action_notifications}} =
+      Enum.reduce_while(
+        changeset.before_action,
+        {changeset, %{notifications: []}},
+        fn before_action, {changeset, instructions} ->
+          case before_action.(changeset) do
+            {%{valid?: true} = changeset, %{notifications: notifications}} ->
+              {:cont,
+               {changeset,
+                %{
+                  instructions
+                  | notifications: instructions.notifications ++ List.wrap(notifications)
+                }}}
+
+            %{valid?: true} = changeset ->
+              {:cont, {changeset, instructions}}
+
+            changeset ->
+              {:halt, {changeset, instructions}}
+          end
         end
-      end)
+      )
 
     if changeset.valid? do
       case func.(changeset) do
         {:ok, result} ->
-          Enum.reduce_while(
-            changeset.after_action,
-            {:ok, result, %{notifications: []}},
-            fn after_action, {:ok, result, %{notifications: notifications} = acc} ->
-              case after_action.(changeset, result) do
-                {:ok, new_result, new_notifications} ->
-                  all_notifications =
-                    Enum.map(notifications ++ new_notifications, fn notification ->
-                      %{
-                        notification
-                        | resource: notification.resource || changeset.resource,
-                          action:
-                            notification.action ||
-                              Ash.Resource.action(
-                                changeset.resource,
-                                changeset.action,
-                                changeset.action_type
-                              ),
-                          data: notification.data || new_result,
-                          changeset: notification.changeset || changeset,
-                          actor: notification.actor || Map.get(changeset.context, :actor)
-                      }
-                    end)
-
-                  {:cont, {:ok, new_result, %{acc | notifications: all_notifications}}}
-
-                {:ok, new_result} ->
-                  {:cont, {:ok, new_result, acc}}
-
-                {:error, error} ->
-                  {:halt, {:error, error}}
-              end
-            end
-          )
+          run_after_actions(result, changeset, before_action_notifications)
 
         {:error, error} ->
           {:error, error}
@@ -735,10 +725,62 @@ defmodule Ash.Changeset do
     end
   end
 
+  defp run_after_actions(result, changeset, before_action_notifications) do
+    Enum.reduce_while(
+      changeset.after_action,
+      {:ok, result, changeset, %{notifications: before_action_notifications}},
+      fn after_action, {:ok, result, changeset, %{notifications: notifications} = acc} ->
+        case after_action.(changeset, result) do
+          {:ok, new_result, new_notifications} ->
+            all_notifications =
+              Enum.map(notifications ++ new_notifications, fn notification ->
+                %{
+                  notification
+                  | resource: notification.resource || changeset.resource,
+                    action:
+                      notification.action ||
+                        Ash.Resource.action(
+                          changeset.resource,
+                          changeset.action,
+                          changeset.action_type
+                        ),
+                    data: notification.data || new_result,
+                    changeset: notification.changeset || changeset,
+                    actor: notification.actor || Map.get(changeset.context, :actor)
+                }
+              end)
+
+            {:cont, {:ok, new_result, changeset, %{acc | notifications: all_notifications}}}
+
+          {:ok, new_result} ->
+            {:cont, {:ok, new_result, changeset, acc}}
+
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+      end
+    )
+  end
+
   @doc "Gets the value of an argument provided to the changeset"
   @spec get_argument(t, atom) :: term
   def get_argument(changeset, argument) when is_atom(argument) do
     Map.get(changeset.arguments, argument) || Map.get(changeset.arguments, to_string(argument))
+  end
+
+  @doc "fetches the value of an argument provided to the changeset or `:error`"
+  @spec fetch_argument(t, atom) :: {:ok, term} | :error
+  def fetch_argument(changeset, argument) when is_atom(argument) do
+    case Map.fetch(changeset.arguments, argument) do
+      {:ok, value} ->
+        {:ok, value}
+
+      :error ->
+        case Map.fetch(changeset.arguments, to_string(argument)) do
+          {:ok, value} -> {:ok, value}
+          :error -> :error
+        end
+    end
   end
 
   @doc "Gets the changing value or the original value of an attribute"
@@ -792,13 +834,30 @@ defmodule Ash.Changeset do
           Required.exception(field: argument.name, type: :argument)
         )
       else
-        with {:ok, casted} <- Ash.Type.cast_input(argument.type, value),
+        val =
+          case fetch_argument(changeset, argument.name) do
+            :error ->
+              if argument.default do
+                {:ok, argument_default(argument.default)}
+              else
+                :error
+              end
+
+            {:ok, val} ->
+              {:ok, val}
+          end
+
+        with {:found, {:ok, value}} <- {:found, val},
+             {:ok, casted} <- Ash.Type.cast_input(argument.type, value),
              {:ok, casted} <-
                Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
           %{new_changeset | arguments: Map.put(new_changeset.arguments, argument.name, casted)}
         else
           {:error, error} ->
             add_invalid_errors(:argument, changeset, argument, error)
+
+          {:found, :error} ->
+            changeset
         end
       end
     end)
@@ -814,12 +873,6 @@ defmodule Ash.Changeset do
       doc:
         "Authorize changes to the destination records, if the primary change is being authorized as well."
     ],
-    identities: [
-      type: {:list, :atom},
-      default: [],
-      doc:
-        "A list of identities on the destination resource to use for determining create/update/destory status (the primary key is always checked)."
-    ],
     on_create: [
       type: :any,
       default: :create,
@@ -828,7 +881,7 @@ defmodule Ash.Changeset do
 
       * `:create`(default) - the records are created using the destination's primary create action
       * `{:create, :action_name}` - the records are created using the specified action on the destination resource
-      * `{:create, :action_name, :join_table_action_name, [:list, :of, :join_table, :params]} - Same as `{:update, :action_name}` but takes
+      * `{:create, :action_name, :join_table_action_name, [:list, :of, :join_table, :params]}` - Same as `{:update, :action_name}` but takes
           the list of params specified out and applies them when creating the join table row.
       * `:ignore` - those inputs are ignored
       * `:error`  - an eror is returned indicating that a record would have been created
@@ -842,7 +895,7 @@ defmodule Ash.Changeset do
 
       * `:update`(default) - the record is updated using the destination's primary update action
       * `{:update, :action_name}` - the record is updated using the specified action on the destination resource
-      * `{:update, :action_name, :join_table_action_name, [:list, :of, :params]} - Same as `{:update, :action_name}` but takes
+      * `{:update, :action_name, :join_table_action_name, [:list, :of, :params]}` - Same as `{:update, :action_name}` but takes
           the list of params specified out and applies them as an update to the join table row (only valid for many to many).
       * `:ignore` - those inputs are ignored
       * `:error`  - an eror is returned indicating that a record would have been updated
@@ -981,6 +1034,7 @@ defmodule Ash.Changeset do
           case {relationship.cardinality, input} do
             {:one, []} -> nil
             {:one, [val]} -> val
+            {:one, val} -> val
             {:many, val_or_vals} -> List.wrap(val_or_vals)
           end
 
@@ -1463,7 +1517,8 @@ defmodule Ash.Changeset do
   end
 
   @doc "Adds a before_action hook to the changeset."
-  @spec before_action(t(), (t() -> t())) :: t()
+  @spec before_action(t(), (t() -> t() | {t(), %{notificactions: list(Ash.notification())}})) ::
+          t()
   def before_action(changeset, func) do
     %{changeset | before_action: [func | changeset.before_action]}
   end

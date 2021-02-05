@@ -25,4 +25,29 @@ defmodule Ash.Resource.Change.Builtins do
   def prevent_change(field) do
     {Ash.Resource.Change.PreventChange, field: field}
   end
+
+  @doc """
+  Calls `Ash.Changeset.manage_relationship/4` with the changeset and relationship provided, using the value provided for the named argument
+
+  For example
+
+  ```elixir
+  change manage_relationship(:add_comments, :comments, on_destroy: :ignore, on_update: :create, on_create: {:create, :add_comment_to_post}
+  ```
+  """
+  def manage_relationship(argument, relationship_name, opts) do
+    {Ash.Resource.Change.ManageRelationship,
+     [argument: argument, relationship: relationship_name, opts: opts]}
+  end
+
+  @doc """
+  Merges the given query context. If an MFA is provided, it will be called with the changeset.
+
+  The MFA should return `{:ok, context_to_be_merged}` or `{:error, Ash.error()}`
+  """
+  @spec set_context(map | mfa) ::
+          {atom, Keyword.t()}
+  def set_context(context) do
+    {Ash.Resource.Change.SetContext, context: context}
+  end
 end

@@ -60,7 +60,7 @@ defmodule Ash.DataLayer.Simple do
   def set_context(_resource, query, context) do
     data = Map.get(context, :data) || []
 
-    %{query | data: data}
+    {:ok, %{query | data: data}}
   end
 
   def create(_resource, changeset) do

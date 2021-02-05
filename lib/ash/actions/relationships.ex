@@ -410,6 +410,9 @@ defmodule Ash.Actions.Relationships do
 
       %{current: [], replace: []} ->
         set_belongs_to(changeset, relationship, nil)
+
+      %{current: current} ->
+        set_belongs_to(changeset, relationship, Enum.at(current, 0))
     end
   end
 
@@ -859,7 +862,9 @@ defmodule Ash.Actions.Relationships do
                     query
                   end
 
-                Ash.Actions.Read.unpaginated_read(query)
+                query
+                |> Ash.Query.set_context(relationship.context)
+                |> Ash.Actions.Read.unpaginated_read()
               end),
             name: "Read related #{relationship.name} before replace"
           )
@@ -941,7 +946,9 @@ defmodule Ash.Actions.Relationships do
                 query
               end
 
-            Ash.Actions.Read.unpaginated_read(query)
+            query
+            |> Ash.Query.set_context(relationship.context)
+            |> Ash.Actions.Read.unpaginated_read()
           end
         ),
       name: "Read related join for #{name} before replace"

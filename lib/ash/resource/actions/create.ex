@@ -5,7 +5,6 @@ defmodule Ash.Resource.Actions.Create do
     :primary?,
     :description,
     accept: nil,
-    managed_relationships: [],
     arguments: [],
     changes: [],
     reject: [],
