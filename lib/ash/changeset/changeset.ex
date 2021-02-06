@@ -878,13 +878,12 @@ defmodule Ash.Changeset do
       default: :create,
       doc: """
       instructions for handling records where no matching record existed in the relationship
-
-      * `:create`(default) - the records are created using the destination's primary create action
-      * `{:create, :action_name}` - the records are created using the specified action on the destination resource
-      * `{:create, :action_name, :join_table_action_name, [:list, :of, :join_table, :params]}` - Same as `{:update, :action_name}` but takes
-          the list of params specified out and applies them when creating the join table row.
-      * `:ignore` - those inputs are ignored
-      * `:error`  - an eror is returned indicating that a record would have been created
+          * `:create`(default) - the records are created using the destination's primary create action
+          * `{:create, :action_name}` - the records are created using the specified action on the destination resource
+          * `{:create, :action_name, :join_table_action_name, [:list, :of, :join_table, :params]}` - Same as `{:update, :action_name}` but takes
+              the list of params specified out and applies them when creating the join table row.
+          * `:ignore` - those inputs are ignored
+          * `:error`  - an eror is returned indicating that a record would have been created
       """
     ],
     on_update: [
@@ -892,15 +891,14 @@ defmodule Ash.Changeset do
       default: :update,
       doc: """
       instructions for handling records where a matching record existed in the relationship already
-
-      * `:update`(default) - the record is updated using the destination's primary update action
-      * `{:update, :action_name}` - the record is updated using the specified action on the destination resource
-      * `{:update, :action_name, :join_table_action_name, [:list, :of, :params]}` - Same as `{:update, :action_name}` but takes
-          the list of params specified out and applies them as an update to the join table row (only valid for many to many).
-      * `:ignore` - those inputs are ignored
-      * `:error`  - an eror is returned indicating that a record would have been updated
-      * `:create` - ignores the primary key match and follows the create instructions with these records instead.
-      * `:destroy` - follows the destroy instructions for any records with matching primary keys
+          * `:update`(default) - the record is updated using the destination's primary update action
+          * `{:update, :action_name}` - the record is updated using the specified action on the destination resource
+          * `{:update, :action_name, :join_table_action_name, [:list, :of, :params]}` - Same as `{:update, :action_name}` but takes
+              the list of params specified out and applies them as an update to the join table row (only valid for many to many).
+          * `:ignore` - those inputs are ignored
+          * `:error`  - an eror is returned indicating that a record would have been updated
+          * `:create` - ignores the primary key match and follows the create instructions with these records instead.
+          * `:destroy` - follows the destroy instructions for any records with matching primary keys
       """
     ],
     on_destroy: [
@@ -908,23 +906,22 @@ defmodule Ash.Changeset do
       default: :destroy,
       doc: """
       instructions for handling records that existed in the current relationship but not in the input
-
-      * `:destroy`(default) - the record is destroyed using the destination's primary destroy action
-      * `{:destroy, :action_name}` - the record is destroyed using the specified action on the destination resource
-      * `{:destroy, :action_name, :join_resource_action_name}` - the record is destroyed using the specified action on the destination resource,
-         but first the join resource is destroyed with its specified action
-      * `:ignore` - those inputs are ignored
-      * `:error`  - an error is returned indicating that a record would have been updated
-      * `:unrelate` - the related item is not destroyed, but the data is "unrelated", making this behave like `remove_from_relationship/3`
-        * many_to_many - the join resource row is destroyed
-        * has_many - the destination_field (on the related record) is set to `nil`
-        * has_one - the destination_field (on the related record) is set to `nil`
-        * belongs_to - the source_field (on this record) is set to `nil`
-      * `{:unrelate, :action_name}` - the record is unrelated using the provided update action.
-        * many_to_many - a destroy action on the join resource
-        * has_many - an update action on the destination resource
-        * has_one - an update action on the destination resource
-        * belongs_to - an update action on the source resourfce
+          * `:destroy`(default) - the record is destroyed using the destination's primary destroy action
+          * `{:destroy, :action_name}` - the record is destroyed using the specified action on the destination resource
+          * `{:destroy, :action_name, :join_resource_action_name}` - the record is destroyed using the specified action on the destination resource,
+            but first the join resource is destroyed with its specified action
+          * `:ignore` - those inputs are ignored
+          * `:error`  - an error is returned indicating that a record would have been updated
+          * `:unrelate` - the related item is not destroyed, but the data is "unrelated", making this behave like `remove_from_relationship/3`
+            * many_to_many - the join resource row is destroyed
+            * has_many - the destination_field (on the related record) is set to `nil`
+            * has_one - the destination_field (on the related record) is set to `nil`
+            * belongs_to - the source_field (on this record) is set to `nil`
+          * `{:unrelate, :action_name}` - the record is unrelated using the provided update action.
+            * many_to_many - a destroy action on the join resource
+            * has_many - an update action on the destination resource
+            * has_one - an update action on the destination resource
+            * belongs_to - an update action on the source resource
       """
     ]
   ]
