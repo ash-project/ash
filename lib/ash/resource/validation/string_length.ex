@@ -5,6 +5,10 @@ defmodule Ash.Resource.Validation.StringLength do
   alias Ash.Error.Changes.InvalidAttribute
 
   @opt_schema [
+    attribute: [
+      type: :atom,
+      required: true
+    ],
     min: [
       type: :non_neg_integer,
       doc: "String must be this length at least"
@@ -16,14 +20,6 @@ defmodule Ash.Resource.Validation.StringLength do
     exact: [
       type: :non_neg_integer,
       doc: "String must be this length exactly"
-    ],
-    attribute: [
-      type: :atom,
-      required: true
-    ],
-    message: [
-      type: :string,
-      doc: "The message that will be placed on the field in the case of failure"
     ]
   ]
 
@@ -55,7 +51,7 @@ defmodule Ash.Resource.Validation.StringLength do
       {:error,
        InvalidAttribute.exception(
          field: opts[:attribute],
-         message: opts[:message] || "%{field} must have length of exactly %{exact}",
+         message: "%{field} must have length of exactly %{exact}",
          vars: [field: opts[:attribute], exact: exact]
        )}
     end
@@ -70,7 +66,7 @@ defmodule Ash.Resource.Validation.StringLength do
       {:error,
        InvalidAttribute.exception(
          field: opts[:attribute],
-         message: opts[:message] || "%{field} must have length of between %{min} and %{max}",
+         message: "%{field} must have length of between %{min} and %{max}",
          vars: [field: opts[:attribute], min: min, max: max]
        )}
     end
@@ -83,7 +79,7 @@ defmodule Ash.Resource.Validation.StringLength do
       {:error,
        InvalidAttribute.exception(
          field: opts[:attribute],
-         message: opts[:message] || "%{field} must have length of at least %{min}",
+         message: "%{field} must have length of at least %{min}",
          vars: [field: opts[:attribute], min: min]
        )}
     end
@@ -96,7 +92,7 @@ defmodule Ash.Resource.Validation.StringLength do
       {:error,
        InvalidAttribute.exception(
          field: opts[:attribute],
-         message: opts[:message] || "%{field} must have length of no more than %{max}",
+         message: "%{field} must have length of no more than %{max}",
          vars: [field: opts[:attribute], max: max]
        )}
     end
