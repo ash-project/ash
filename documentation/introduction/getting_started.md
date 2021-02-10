@@ -350,7 +350,7 @@ iex(9)> MyApp.Tweet |> Ash.Changeset.new(%{body: "ashy slashy"}) |> Ash.Changese
 
 ## Add front end extensions
 
-Now that the Elixir API is complete, you can move on to the [next section](./getting_started_phx.md)
+Now that the Elixir API is complete, you can move on to the [next section](https://hexdocs.pm/ash/getting_started_phx.html)
 to learn how to change the data_layer to PostgreSQL and expose it via a JSON API.
 
 - `AshJsonApi` - can be used to build a spec compliant JSON:API.
