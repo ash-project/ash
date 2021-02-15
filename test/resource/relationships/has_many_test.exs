@@ -23,7 +23,7 @@ defmodule Ash.Test.Resource.Relationshihps.HasManyTest do
     test "it creates a relationship" do
       defposts do
         relationships do
-          has_many :foo, Foo, destination_field: :post_id
+          has_many :foo, Foo
           has_many :bar, Bar, destination_field: :bazz, private?: true
         end
       end
