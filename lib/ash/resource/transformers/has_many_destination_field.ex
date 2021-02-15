@@ -28,7 +28,7 @@ defmodule Ash.Resource.Transformers.HasManyDestinationField do
     {:ok, new_dsl_state}
   end
 
-  # sobelow_skip ["DOS.BinToAtom"]
+  # sobelow_skip ["DOS.StringToAtom"]
   defp resource_id_field(resource) do
     resource
     |> Module.split()
