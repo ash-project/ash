@@ -159,7 +159,7 @@ defmodule Ash.Engine.Request do
           raise "Got a weird thing #{inspect(other)}"
       end
 
-    id = Ecto.UUID.generate()
+    id = Ash.UUID.generate()
 
     data =
       case opts[:data] do

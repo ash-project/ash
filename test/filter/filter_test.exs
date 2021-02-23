@@ -412,8 +412,8 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     test "understands relationship filter subsets" do
-      id1 = Ecto.UUID.generate()
-      id2 = Ecto.UUID.generate()
+      id1 = Ash.UUID.generate()
+      id2 = Ash.UUID.generate()
       filter = Filter.parse!(Post, author1: [id: [in: [id1, id2]]])
 
       candidate = Filter.parse!(Post, author1: id1)
@@ -422,8 +422,8 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     test "understands relationship filter subsets when a value coincides with the join field" do
-      id1 = Ecto.UUID.generate()
-      id2 = Ecto.UUID.generate()
+      id1 = Ash.UUID.generate()
+      id2 = Ash.UUID.generate()
       filter = Filter.parse!(Post, author1: [id: [in: [id1, id2]]])
 
       candidate = Filter.parse!(Post, author1_id: id1)

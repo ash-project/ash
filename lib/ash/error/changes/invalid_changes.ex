@@ -5,7 +5,7 @@ defmodule Ash.Error.Changes.InvalidChanges do
   def_ash_error([:fields, :message, :validation], class: :invalid)
 
   defimpl Ash.ErrorKind do
-    def id(_), do: Ecto.UUID.generate()
+    def id(_), do: Ash.UUID.generate()
 
     def code(_), do: "invalid_attribute"
 

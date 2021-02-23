@@ -5,7 +5,7 @@ defmodule Ash.Error.Framework.SynchronousEngineStuck do
   def_ash_error([], class: :framework)
 
   defimpl Ash.ErrorKind do
-    def id(_), do: Ecto.UUID.generate()
+    def id(_), do: Ash.UUID.generate()
 
     def code(_), do: "synchronous_engine_stuck"
 

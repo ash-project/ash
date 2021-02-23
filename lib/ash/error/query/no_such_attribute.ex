@@ -5,7 +5,7 @@ defmodule Ash.Error.Query.NoSuchAttribute do
   def_ash_error([:resource, :name], class: :invalid)
 
   defimpl Ash.ErrorKind do
-    def id(_), do: Ecto.UUID.generate()
+    def id(_), do: Ash.UUID.generate()
 
     def code(_), do: "no_such_attribute"
 

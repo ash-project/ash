@@ -5,7 +5,7 @@ defmodule Ash.Error.Query.NotFound do
   def_ash_error([:primary_key, :resource], class: :invalid)
 
   defimpl Ash.ErrorKind do
-    def id(_), do: Ecto.UUID.generate()
+    def id(_), do: Ash.UUID.generate()
 
     def code(_), do: "not_found"
 
