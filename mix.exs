@@ -137,9 +137,13 @@ defmodule Ash.MixProject do
         engine: [
           ~r/Ash.Engine/
         ],
-        miscellaneous: [
-          Ash.NotLoaded,
+        errors: [
           Ash.Error.Stacktrace,
+          Ash.Error.Exception
+        ],
+        miscellaneous: [
+          Ash.UUID,
+          Ash.NotLoaded,
           Ash.Query.Aggregate,
           Ash.Query.Type
         ],
