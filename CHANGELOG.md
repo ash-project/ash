@@ -5,6 +5,36 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.34.0](https://github.com/ash-project/ash/compare/v1.33.1...v1.34.0) (2021-02-23)
+
+
+
+
+### Features:
+
+* refactored manage_relationship options/behavior
+
+### Improvements:
+
+* many compile time fixes via code splitting
+
+* Guess destination_field for has many relationships (#187)
+
+* Implement string length validation (#183)
+
+## [v1.33.1](https://github.com/ash-project/ash/compare/v1.33.0...v1.33.1) (2021-02-23)
+
+
+
+
+### Improvements:
+
+* many compile time fixes via code splitting
+
+* Guess destination_field for has many relationships (#187)
+
+* Implement string length validation (#183)
+
 ## [v1.33.0](https://github.com/ash-project/ash/compare/v1.32.2...v1.33.0) (2021-02-05)
 
 
