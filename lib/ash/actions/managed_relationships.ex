@@ -109,10 +109,10 @@ defmodule Ash.Actions.ManagedRelationships do
                             Map.get(found, relationship.destination_field)
                           )
 
-                        {changeset, instructions}
+                        {:cont, {changeset, instructions}}
 
                       {:error, error} ->
-                        {:halt, {:error, error}}
+                        {:halt, {Ash.Changeset.add_error(changeset, error), instructions}}
                     end
 
                   :error ->
@@ -133,6 +133,9 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Ash.Resource.Info.relationships()
     |> Enum.filter(&(&1.type == :belongs_to))
     |> Enum.filter(& &1.required?)
+    |> Enum.reject(fn relationship ->
+      changeset.context[:private][:error][relationship.name]
+    end)
     |> Enum.reduce({changeset, instructions}, fn required_relationship,
                                                  {changeset, instructions} ->
       case Ash.Changeset.get_attribute(changeset, required_relationship.source_field) do
@@ -169,23 +172,29 @@ defmodule Ash.Actions.ManagedRelationships do
 
       :error ->
         if opts[:on_lookup] != :ignore do
-          {:halt,
-           Ash.Changeset.add_error(
-             changeset,
-             NotFound.exception(
-               primary_key: input,
-               resource: relationship.destination
-             )
-           )}
+          changeset =
+            changeset
+            |> Ash.Changeset.add_error(
+              NotFound.exception(
+                primary_key: input,
+                resource: relationship.destination
+              )
+            )
+            |> Ash.Changeset.put_context(:private, %{error: %{relationship.name => true}})
+
+          {:halt, {changeset, instructions}}
         else
-          {:halt,
-           Ash.Changeset.add_error(
-             changeset,
-             InvalidRelationship.exception(
-               relationship: relationship.name,
-               message: "Changes would create a new related record"
-             )
-           )}
+          changeset =
+            changeset
+            |> Ash.Changeset.add_error(
+              InvalidRelationship.exception(
+                relationship: relationship.name,
+                message: "Changes would create a new related record"
+              )
+            )
+            |> Ash.Changeset.put_context(:private, %{error: %{relationship.name => true}})
+
+          {:halt, {changeset, instructions}}
         end
 
       {:create, action_name} ->
@@ -237,7 +246,7 @@ defmodule Ash.Actions.ManagedRelationships do
          {changeset, %{instructions | notifications: instructions.notifications ++ notifications}}}
 
       {:error, error} ->
-        {:halt, Ash.Changeset.add_error(changeset, error)}
+        {:halt, {Ash.Changeset.add_error(changeset, error), instructions}}
     end
   end
 
