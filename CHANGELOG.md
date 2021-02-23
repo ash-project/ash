@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.34.2](https://github.com/ash-project/ash/compare/v1.34.1...v1.34.2) (2021-02-23)
+
+
+
+
+### Bug Fixes:
+
+* support belongs_to relationships properly
+
 ## [v1.34.1](https://github.com/ash-project/ash/compare/v1.34.0...v1.34.1) (2021-02-23)
 
 
