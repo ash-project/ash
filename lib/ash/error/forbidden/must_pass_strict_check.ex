@@ -5,7 +5,7 @@ defmodule Ash.Error.Forbidden.MustPassStrictCheck do
   def_ash_error([:resource], class: :forbidden)
 
   defimpl Ash.ErrorKind do
-    def id(_), do: Ecto.UUID.generate()
+    def id(_), do: Ash.UUID.generate()
 
     def code(_), do: "must_pass_strict_check"
 

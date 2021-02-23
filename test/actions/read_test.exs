@@ -46,7 +46,7 @@ defmodule Ash.Test.Actions.ReadTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :uuid, :uuid, default: &Ecto.UUID.generate/0
+      attribute :uuid, :uuid, default: &Ash.UUID.generate/0
       attribute :title, :string
       attribute :contents, :string
     end
@@ -86,7 +86,7 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     test "it returns nil when there is no matching record" do
-      assert {:ok, nil} = Api.get(Post, Ecto.UUID.generate())
+      assert {:ok, nil} = Api.get(Post, Ash.UUID.generate())
     end
 
     test "it uses identities if they exist", %{post: post} do

@@ -5,7 +5,7 @@ defmodule Ash.Error.Invalid.PaginationRequired do
   def_ash_error([], class: :invalid)
 
   defimpl Ash.ErrorKind do
-    def id(_), do: Ecto.UUID.generate()
+    def id(_), do: Ash.UUID.generate()
 
     def code(_), do: "pagination_required"
 

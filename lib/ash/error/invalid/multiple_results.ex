@@ -5,7 +5,7 @@ defmodule Ash.Error.Invalid.MultipleResults do
   def_ash_error([:count, :query, :at_least?], class: :invalid)
 
   defimpl Ash.ErrorKind do
-    def id(_), do: Ecto.UUID.generate()
+    def id(_), do: Ash.UUID.generate()
 
     def code(_), do: "multiple_results"
 

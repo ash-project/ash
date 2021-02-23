@@ -5,7 +5,7 @@ defmodule Ash.Error.Query.NoSuchFilterPredicate do
   def_ash_error([:message, :value, :key, :resource], class: :invalid)
 
   defimpl Ash.ErrorKind do
-    def id(_), do: Ecto.UUID.generate()
+    def id(_), do: Ash.UUID.generate()
 
     def code(_), do: "no_such_filter_predicate"
 

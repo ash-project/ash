@@ -5,7 +5,7 @@ defmodule Ash.Error.Query.NoSuchFunction do
   def_ash_error([:name], class: :invalid)
 
   defimpl Ash.ErrorKind do
-    def id(_), do: Ecto.UUID.generate()
+    def id(_), do: Ash.UUID.generate()
 
     def code(_), do: "no_such_function"
 

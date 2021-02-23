@@ -5,7 +5,7 @@ defmodule Ash.Error.SideLoad.InvalidQuery do
   def_ash_error([:query, :side_load_path], class: :invalid)
 
   defimpl Ash.ErrorKind do
-    def id(_), do: Ecto.UUID.generate()
+    def id(_), do: Ash.UUID.generate()
 
     def code(_), do: "invalid_side_load_query"
 

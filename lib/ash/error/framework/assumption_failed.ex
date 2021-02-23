@@ -5,7 +5,7 @@ defmodule Ash.Error.Framework.AssumptionFailed do
   def_ash_error([:message], class: :framework)
 
   defimpl Ash.ErrorKind do
-    def id(_), do: Ecto.UUID.generate()
+    def id(_), do: Ash.UUID.generate()
 
     def code(_), do: "assumption_failed"
 

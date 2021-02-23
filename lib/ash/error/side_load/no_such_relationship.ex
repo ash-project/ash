@@ -5,7 +5,7 @@ defmodule Ash.Error.SideLoad.NoSuchRelationship do
   def_ash_error([:resource, :relationship, :side_load_path], class: :invalid)
 
   defimpl Ash.ErrorKind do
-    def id(_), do: Ecto.UUID.generate()
+    def id(_), do: Ash.UUID.generate()
 
     def code(_), do: "no_such_side_load_relationship"
 
