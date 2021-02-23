@@ -50,8 +50,7 @@ defmodule Ash.Api do
       doc: "The action to use, either an Action struct or the name of the action"
     ],
     authorize?: [
-      type: :boolean,
-      default: false,
+      type: {:in, [true, false, nil]},
       doc:
         "If an actor is provided, authorization happens automatically. If not, this flag can be used to authorize with no user."
     ],

@@ -33,6 +33,14 @@ defmodule Ash.Actions.Read do
           | {:ok, Ash.Page.page() | list(Ash.Resource.record()), Ash.Query.t()}
           | {:error, term}
   def run(query, action, opts \\ []) do
+    authorize? =
+      if opts[:authorize?] == false do
+        false
+      else
+        opts[:authorize?] || Keyword.has_key?(opts, :actor)
+      end
+
+    opts = Keyword.put(opts, :authorize?, authorize?)
     opts = Keyword.merge(opts, Map.get(query.context, :override_api_params) || [])
 
     engine_opts = Keyword.take(opts, [:verbose?, :actor, :authorize?])

@@ -7,6 +7,15 @@ defmodule Ash.Actions.Update do
   @spec run(Ash.Api.t(), Ash.Resource.record(), Ash.Resource.Actions.action(), Keyword.t()) ::
           {:ok, Ash.Resource.record()} | {:error, Ash.Changeset.t()} | {:error, term}
   def run(api, changeset, action, opts) do
+    authorize? =
+      if opts[:authorize?] == false do
+        false
+      else
+        opts[:authorize?] || Keyword.has_key?(opts, :actor)
+      end
+
+    opts = Keyword.put(opts, :authorize?, authorize?)
+
     engine_opts =
       opts
       |> Keyword.take([:verbose?, :actor, :authorize?])

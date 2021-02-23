@@ -10,6 +10,15 @@ defmodule Ash.Actions.Create do
     upsert? = opts[:upsert?] || false
     resource = changeset.resource
 
+    authorize? =
+      if opts[:authorize?] == false do
+        false
+      else
+        opts[:authorize?] || Keyword.has_key?(opts, :actor)
+      end
+
+    opts = Keyword.put(opts, :authorize?, authorize?)
+
     engine_opts =
       opts
       |> Keyword.take([:verbose?, :actor, :authorize?])
