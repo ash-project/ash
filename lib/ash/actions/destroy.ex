@@ -3,8 +3,8 @@ defmodule Ash.Actions.Destroy do
   alias Ash.Engine
   alias Ash.Engine.Request
 
-  @spec run(Ash.api(), Ash.Changeset.t(), Ash.action(), Keyword.t()) ::
-          :ok | {:error, Ash.Changeset.t()} | {:error, Ash.error()}
+  @spec run(Ash.Api.t(), Ash.Changeset.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
+          :ok | {:error, Ash.Changeset.t()} | {:error, term}
   def run(api, changeset, %{soft?: true} = action, opts) do
     changeset =
       Ash.Changeset.for_update(%{changeset | action_type: :destroy}, action.name, %{},
@@ -59,7 +59,7 @@ defmodule Ash.Actions.Destroy do
               [[:data, :data], [:destroy, :changeset]],
               fn %{destroy: %{changeset: changeset}} ->
                 changeset
-                |> Ash.Changeset.put_context(:actor, engine_opts[:actor])
+                |> Ash.Changeset.put_context(:private, %{actor: engine_opts[:actor]})
                 |> Ash.Changeset.with_hooks(fn changeset ->
                   case Ash.DataLayer.destroy(resource, changeset) do
                     :ok ->

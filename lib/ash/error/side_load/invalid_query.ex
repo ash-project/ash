@@ -1,6 +1,6 @@
 defmodule Ash.Error.SideLoad.InvalidQuery do
   @moduledoc "Used when an invalid query is provided in a side load"
-  use Ash.Error
+  use Ash.Error.Exception
 
   def_ash_error([:query, :side_load_path], class: :invalid)
 

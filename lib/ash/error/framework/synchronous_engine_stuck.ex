@@ -1,6 +1,6 @@
 defmodule Ash.Error.Framework.SynchronousEngineStuck do
   @moduledoc "Used when the sycnrhonous engine cannot proceed"
-  use Ash.Error
+  use Ash.Error.Exception
 
   def_ash_error([], class: :framework)
 

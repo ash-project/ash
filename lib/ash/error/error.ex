@@ -2,6 +2,8 @@ defmodule Ash.Error do
   @moduledoc false
   @type error_class() :: :invalid | :authorization | :framework | :unknown
 
+  @type t :: struct
+
   # We use these error classes also to choose a single error
   # to raise when multiple errors have occured. We raise them
   # sorted by their error classes
@@ -38,7 +40,7 @@ defmodule Ash.Error do
   end
 
   def ash_error?(value) do
-    !!impl_for(value)
+    !!Ash.ErrorKind.impl_for(value)
   end
 
   def to_error_class(values, opts \\ [])
@@ -93,18 +95,22 @@ defmodule Ash.Error do
 
   @doc "A utility to flatten a list, but preserve keyword list elements"
   def flatten_preserving_keywords(list) do
-    Enum.flat_map(list, fn item ->
-      cond do
-        Keyword.keyword?(item) ->
-          [item]
+    if Keyword.keyword?(list) do
+      [list]
+    else
+      Enum.flat_map(list, fn item ->
+        cond do
+          Keyword.keyword?(item) ->
+            [item]
 
-        is_list(item) ->
-          item
+          is_list(item) ->
+            item
 
-        true ->
-          [item]
-      end
-    end)
+          true ->
+            [item]
+        end
+      end)
+    end
   end
 
   def clear_stacktraces(%{stacktrace: stacktrace} = error) when not is_nil(stacktrace) do
@@ -151,8 +157,12 @@ defmodule Ash.Error do
     changeset = error.changeset || changeset
 
     if changeset do
-      changeset = %{changeset | action_failed?: true}
-      changeset = Ash.Changeset.add_error(changeset, errors)
+      changeset = %{
+        changeset
+        | action_failed?: true,
+          errors: List.wrap(errors) ++ changeset.errors
+      }
+
       %{error | changeset: %{changeset | errors: Enum.uniq(changeset.errors)}}
     else
       error
@@ -213,7 +223,7 @@ defmodule Ash.Error do
     |> Enum.map_join("\n\n", fn {class, class_errors} ->
       header = header(class) <> "\n\n"
 
-      header <> Enum.map_join(class_errors, "\n", &"* #{Ash.Error.message(&1)}")
+      header <> Enum.map_join(class_errors, "\n", &"* #{Ash.ErrorKind.message(&1)}")
     end)
   end
 
@@ -221,71 +231,4 @@ defmodule Ash.Error do
   defp header(:forbidden), do: "Forbidden"
   defp header(:framework), do: "Framework Error"
   defp header(:unknown), do: "Unknown Error"
-
-  defmacro __using__(_) do
-    quote do
-      import Ash.Error, only: [def_ash_error: 1, def_ash_error: 2]
-    end
-  end
-
-  defmacro def_ash_error(fields, opts \\ []) do
-    quote do
-      defexception unquote(fields) ++
-                     [
-                       :changeset,
-                       vars: [],
-                       path: [],
-                       stacktrace: [],
-                       class: unquote(opts)[:class]
-                     ]
-
-      @impl Exception
-      def message(%{message: message, vars: vars} = exception) do
-        string = message || ""
-
-        string =
-          Enum.reduce(vars, string, fn {key, value}, acc ->
-            if String.contains?(acc, "%{#{key}}") do
-              String.replace(acc, "%{#{key}}", to_string(value))
-            else
-              acc
-            end
-          end)
-
-        Ash.Error.message(%{exception | message: string})
-      end
-
-      def message(exception), do: Ash.Error.message(exception)
-
-      def exception(opts) do
-        case Process.info(self(), :current_stacktrace) do
-          {:current_stacktrace, [_, _ | stacktrace]} ->
-            super(
-              Keyword.put_new(opts, :stacktrace, %Ash.Error.Stacktrace{stacktrace: stacktrace})
-            )
-
-          _ ->
-            super(opts)
-        end
-      end
-    end
-  end
-
-  defdelegate id(error), to: Ash.ErrorKind
-  defdelegate code(error), to: Ash.ErrorKind
-  defdelegate message(error), to: Ash.ErrorKind
-  defdelegate impl_for(error), to: Ash.ErrorKind
-end
-
-defprotocol Ash.ErrorKind do
-  @moduledoc false
-
-  @spec id(t()) :: String.t()
-  def id(error)
-
-  @spec code(t()) :: String.t()
-  def code(error)
-
-  @spec message(t()) :: String.t()
-  def message(error)
 end

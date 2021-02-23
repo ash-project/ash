@@ -47,13 +47,6 @@ defmodule Ash.Type.String do
   def apply_constraints(nil, _), do: :ok
 
   def apply_constraints(value, constraints) do
-    constraints =
-      if constraints[:min_length] do
-        Keyword.put(constraints, :allow_empty?, true)
-      else
-        constraints
-      end
-
     {value, errors} =
       return_value(constraints[:allow_empty?], constraints[:trim?], value, constraints)
 
@@ -121,23 +114,23 @@ defmodule Ash.Type.String do
   end
 
   @impl true
-  def cast_input(%Ash.CiString{} = ci_string) do
+  def cast_input(%Ash.CiString{} = ci_string, constraints) do
     ci_string
     |> Ash.CiString.value()
-    |> cast_input()
+    |> cast_input(constraints)
   end
 
-  def cast_input(value) do
+  def cast_input(value, _) do
     Ecto.Type.cast(:string, value)
   end
 
   @impl true
-  def cast_stored(value) do
+  def cast_stored(value, _) do
     Ecto.Type.load(:string, value)
   end
 
   @impl true
-  def dump_to_native(value) do
+  def dump_to_native(value, _) do
     Ecto.Type.dump(:string, value)
   end
 

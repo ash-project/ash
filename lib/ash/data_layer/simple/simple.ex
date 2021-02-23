@@ -16,7 +16,6 @@ defmodule Ash.DataLayer.Simple do
     LessThanOrEqual
   }
 
-  def can?(_, :read), do: true
   def can?(_, :create), do: true
   def can?(_, :update), do: true
   def can?(_, :destroy), do: true

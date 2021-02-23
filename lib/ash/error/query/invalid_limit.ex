@@ -1,6 +1,6 @@
 defmodule Ash.Error.Query.InvalidLimit do
   @moduledoc "Used when an invalid limit is provided"
-  use Ash.Error
+  use Ash.Error.Exception
 
   def_ash_error([:limit], class: :invalid)
 

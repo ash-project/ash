@@ -15,7 +15,7 @@ defmodule Ash.Query.Operator do
     * `{:error, error}` - If there was an error creating the operator
   """
   @callback new(term, term) ::
-              {:ok, term, term} | {:ok, term} | {:known, boolean} | {:error, Ash.error()}
+              {:ok, term, term} | {:ok, term} | {:known, boolean} | {:error, term}
 
   @doc """
   The implementation of the inspect protocol.

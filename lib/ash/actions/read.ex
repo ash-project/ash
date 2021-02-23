@@ -13,7 +13,7 @@ defmodule Ash.Actions.Read do
   alias Ash.Query.Aggregate
 
   def unpaginated_read(query, action \\ nil, opts \\ []) do
-    action = action || Ash.Resource.primary_action(query.resource, :read)
+    action = action || Ash.Resource.Info.primary_action(query.resource, :read)
 
     cond do
       !action ->
@@ -28,80 +28,77 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  @spec run(Ash.query(), Ash.action(), Keyword.t()) ::
-          {:ok, Ash.page() | list(Ash.record())}
-          | {:ok, Ash.page() | list(Ash.record()), Ash.query()}
-          | {:error, Ash.error()}
+  @spec run(Ash.Query.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
+          {:ok, Ash.Page.page() | list(Ash.Resource.record())}
+          | {:ok, Ash.Page.page() | list(Ash.Resource.record()), Ash.Query.t()}
+          | {:error, term}
   def run(query, action, opts \\ []) do
     opts = Keyword.merge(opts, Map.get(query.context, :override_api_params) || [])
 
-    if Ash.Resource.data_layer_can?(query.resource, :read) do
-      engine_opts = Keyword.take(opts, [:verbose?, :actor, :authorize?])
-      query = %{query | action: action.name}
+    engine_opts = Keyword.take(opts, [:verbose?, :actor, :authorize?])
+    query = %{query | action: action.name}
 
-      original_query = query
+    original_query = query
 
-      initial_offset = query.offset
-      initial_limit = query.limit
+    initial_offset = query.offset
+    initial_limit = query.limit
 
-      query =
-        if query.__validated_for_action__ == action.name do
-          query
-        else
-          Ash.Query.for_read(query, action.name, %{}, actor: engine_opts[:actor])
-        end
-
-      with %{valid?: true} <- query,
-           :ok <- validate_multitenancy(query, opts),
-           %{errors: []} = query <- query_with_initial_data(query, opts),
-           {:ok, filter_requests} <- filter_requests(query, opts),
-           {:ok, query, page_opts, count_request} <-
-             paginate(query, action, filter_requests, initial_offset, initial_limit, opts),
-           page_opts <- page_opts && Keyword.delete(page_opts, :filter),
-           {:ok, requests} <- requests(query, action, filter_requests, opts),
-           side_load_requests <- SideLoad.requests(query),
-           {:ok, %{data: %{data: data} = all_data}} <-
-             Engine.run(
-               requests ++ side_load_requests ++ List.wrap(count_request),
-               query.api,
-               engine_opts
-             ),
-           data_with_side_loads <- SideLoad.attach_side_loads(data, all_data),
-           data_with_aggregates <-
-             add_aggregate_values(
-               data_with_side_loads,
-               query.aggregates,
-               query.resource,
-               Map.get(all_data, :aggregate_values, %{})
-             ) do
-        data_with_aggregates
-        |> add_tenant(query)
-        |> add_page(
-          action,
-          Map.get(all_data, :count),
-          query.sort,
-          original_query,
-          Keyword.put(opts, :page, page_opts)
-        )
-        |> add_query(Map.get(all_data, :ultimate_query), opts)
+    query =
+      if query.__validated_for_action__ == action.name do
+        query
       else
-        %{errors: errors} ->
-          {:error, Ash.Error.to_error_class(errors)}
-
-        {:error, %Ash.Engine.Runner{errors: errors}} ->
-          {:error, Ash.Error.to_error_class(errors)}
-
-        {:error, error} ->
-          {:error, Ash.Error.to_error_class(error)}
+        Ash.Query.for_read(query, action.name, %{}, actor: engine_opts[:actor])
       end
+
+    with %{valid?: true} <- query,
+         :ok <- validate_multitenancy(query, opts),
+         %{errors: []} = query <- query_with_initial_data(query, opts),
+         {:ok, filter_requests} <- filter_requests(query, opts),
+         {:ok, query, page_opts, count_request} <-
+           paginate(query, action, filter_requests, initial_offset, initial_limit, opts),
+         page_opts <- page_opts && Keyword.delete(page_opts, :filter),
+         {:ok, requests} <- requests(query, action, filter_requests, opts),
+         side_load_requests <- SideLoad.requests(query),
+         {:ok, %{data: %{data: data} = all_data}} <-
+           Engine.run(
+             requests ++ side_load_requests ++ List.wrap(count_request),
+             query.api,
+             engine_opts
+           ),
+         data_with_side_loads <- SideLoad.attach_side_loads(data, all_data),
+         data_with_aggregates <-
+           add_aggregate_values(
+             data_with_side_loads,
+             query.aggregates,
+             query.resource,
+             Map.get(all_data, :aggregate_values, %{})
+           ) do
+      data_with_aggregates
+      |> add_tenant(query)
+      |> add_page(
+        action,
+        Map.get(all_data, :count),
+        query.sort,
+        original_query,
+        Keyword.put(opts, :page, page_opts)
+      )
+      |> add_query(Map.get(all_data, :ultimate_query), opts)
     else
-      {:error, "Datalayer does not support reads"}
+      %{errors: errors} ->
+        {:error, Ash.Error.to_error_class(errors)}
+
+      {:error, %Ash.Engine.Runner{errors: errors}} ->
+        {:error, Ash.Error.to_error_class(errors)}
+
+      {:error, error} ->
+        {:error, Ash.Error.to_error_class(error)}
     end
   end
 
   defp validate_multitenancy(query, opts) do
-    if is_nil(Ash.Resource.multitenancy_strategy(query.resource)) ||
-         Ash.Resource.multitenancy_global?(query.resource) || query.tenant || opts[:initial_data] do
+    if is_nil(Ash.Resource.Info.multitenancy_strategy(query.resource)) ||
+         Ash.Resource.Info.multitenancy_global?(query.resource) || query.tenant ||
+         opts[:initial_data] do
       :ok
     else
       {:error,
@@ -110,7 +107,7 @@ defmodule Ash.Actions.Read do
   end
 
   defp add_tenant(data, query) do
-    if Ash.Resource.multitenancy_strategy(query.resource) do
+    if Ash.Resource.Info.multitenancy_strategy(query.resource) do
       Enum.map(data, fn item ->
         %{item | __metadata__: Map.put(item.__metadata__, :tenant, query.tenant)}
       end)
@@ -199,17 +196,19 @@ defmodule Ash.Actions.Read do
         Ash.Query.filter(query, false)
 
       {:ok, [record]} ->
-        pkey_value = record |> Map.take(Ash.Resource.primary_key(query.resource)) |> Map.to_list()
+        pkey_value =
+          record |> Map.take(Ash.Resource.Info.primary_key(query.resource)) |> Map.to_list()
 
         Ash.Query.filter(query, ^pkey_value)
 
       {:ok, %{} = record} ->
-        pkey_value = record |> Map.take(Ash.Resource.primary_key(query.resource)) |> Map.to_list()
+        pkey_value =
+          record |> Map.take(Ash.Resource.Info.primary_key(query.resource)) |> Map.to_list()
 
         Ash.Query.filter(query, ^pkey_value)
 
       {:ok, records} when is_list(records) ->
-        pkey = Ash.Resource.primary_key(query.resource)
+        pkey = Ash.Resource.Info.primary_key(query.resource)
         pkey_value = Enum.map(records, fn record -> record |> Map.take(pkey) |> Map.to_list() end)
 
         filter = [or: pkey_value]
@@ -293,11 +292,11 @@ defmodule Ash.Actions.Read do
       Request.resolve(
         deps,
         fn %{data: %{query: ash_query}} = data ->
-          multitenancy_attribute = Ash.Resource.multitenancy_attribute(ash_query.resource)
+          multitenancy_attribute = Ash.Resource.Info.multitenancy_attribute(ash_query.resource)
 
           ash_query =
             if multitenancy_attribute && ash_query.tenant do
-              {m, f, a} = Ash.Resource.multitenancy_parse_attribute(ash_query.resource)
+              {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(ash_query.resource)
               attribute_value = apply(m, f, [ash_query.tenant | a])
               Ash.Query.filter(ash_query, [{multitenancy_attribute, attribute_value}])
             else
@@ -358,7 +357,7 @@ defmodule Ash.Actions.Read do
   end
 
   defp set_tenant(query, ash_query) do
-    if Ash.Resource.multitenancy_strategy(ash_query.resource) == :context && ash_query.tenant do
+    if Ash.Resource.Info.multitenancy_strategy(ash_query.resource) == :context && ash_query.tenant do
       Ash.DataLayer.set_tenant(ash_query.resource, query, ash_query.tenant)
     else
       {:ok, query}
@@ -462,7 +461,7 @@ defmodule Ash.Actions.Read do
       if Ash.Actions.Sort.sorting_on_identity?(query) do
         query
       else
-        Ash.Query.sort(query, Ash.Resource.primary_key(query.resource))
+        Ash.Query.sort(query, Ash.Resource.Info.primary_key(query.resource))
       end
 
     limited =
@@ -694,7 +693,7 @@ defmodule Ash.Actions.Read do
         end)
       end)
 
-    pkey = Ash.Resource.primary_key(resource)
+    pkey = Ash.Resource.Info.primary_key(resource)
 
     loaded =
       aggregates

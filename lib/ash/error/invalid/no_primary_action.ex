@@ -1,6 +1,6 @@
 defmodule Ash.Error.Invalid.NoPrimaryAction do
   @moduledoc "Used when an action name is provided that doesn't exist"
-  use Ash.Error
+  use Ash.Error.Exception
 
   def_ash_error([:resource, :type], class: :invalid)
 

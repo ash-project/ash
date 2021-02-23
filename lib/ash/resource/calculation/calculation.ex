@@ -9,7 +9,7 @@ defmodule Ash.Resource.Calculation do
       doc: "The field name to use for the calculation value"
     ],
     type: [
-      type: {:custom, Ash.OptionsHelpers, :ash_type, []},
+      type: :any,
       required: true
     ],
     calculation: [
@@ -48,7 +48,7 @@ defmodule Ash.Resource.Calculation do
         doc: "The name to use for the argument"
       ],
       type: [
-        type: {:custom, Ash.OptionsHelpers, :ash_type, []},
+        type: :any,
         required: true,
         doc: "The type of the argument"
       ],
@@ -71,50 +71,6 @@ defmodule Ash.Resource.Calculation do
     ]
 
     def schema, do: @schema
-
-    def transform(%{constraints: []} = argument), do: {:ok, argument}
-
-    def transform(%{constraints: constraints, type: type} = argument) do
-      case type do
-        {:array, type} ->
-          with {:ok, new_constraints} <-
-                 Ash.OptionsHelpers.validate(
-                   Keyword.delete(constraints, :items),
-                   Ash.Type.array_constraints(type)
-                 ),
-               {:ok, item_constraints} <- validate_item_constraints(type, constraints) do
-            {:ok,
-             %{argument | constraints: Keyword.put(new_constraints, :items, item_constraints)}}
-          end
-
-        type ->
-          schema = Ash.Type.constraints(type)
-
-          case Ash.OptionsHelpers.validate(constraints, schema) do
-            {:ok, constraints} ->
-              {:ok, %{argument | constraints: constraints}}
-
-            {:error, error} ->
-              {:error, error}
-          end
-      end
-    end
-
-    defp validate_item_constraints(type, constraints) do
-      if Keyword.has_key?(constraints, :items) do
-        schema = Ash.Type.constraints(type)
-
-        case Ash.OptionsHelpers.validate(constraints[:items], schema) do
-          {:ok, item_constraints} ->
-            {:ok, item_constraints}
-
-          {:error, error} ->
-            {:error, error}
-        end
-      else
-        {:ok, constraints}
-      end
-    end
   end
 
   def schema, do: @schema

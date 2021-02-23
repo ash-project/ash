@@ -6,6 +6,9 @@ defmodule Ash.Resource.Dsl do
 
     Type can be either a built in type (see `Ash.Type`) for more, or a module
     implementing the `Ash.Type` behaviour.
+
+    *Strings are trimmed by default*. If you want to retain whitespace, use
+    `attribute :foo, :string, constraints: [trim?: false]`
     """,
     examples: [
       """
@@ -14,9 +17,9 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
-    transform: {Ash.Resource.Attribute, :transform, []},
     target: Ash.Resource.Attribute,
     args: [:name, :type],
+    modules: [:type],
     schema: Ash.Resource.Attribute.attribute_schema()
   }
 
@@ -28,7 +31,6 @@ defmodule Ash.Resource.Dsl do
     examples: [
       "create_timestamp :inserted_at"
     ],
-    transform: {Ash.Resource.Attribute, :transform, []},
     target: Ash.Resource.Attribute,
     args: [:name],
     schema: Ash.Resource.Attribute.create_timestamp_schema()
@@ -42,7 +44,6 @@ defmodule Ash.Resource.Dsl do
     examples: [
       "update_timestamp :inserted_at"
     ],
-    transform: {Ash.Resource.Attribute, :transform, []},
     target: Ash.Resource.Attribute,
     schema: Ash.Resource.Attribute.update_timestamp_schema(),
     args: [:name]
@@ -58,7 +59,6 @@ defmodule Ash.Resource.Dsl do
       "integer_primary_key :id"
     ],
     args: [:name],
-    transform: {Ash.Resource.Attribute, :transform, []},
     target: Ash.Resource.Attribute,
     schema: Ash.Resource.Attribute.integer_primary_key_schema(),
     auto_set_fields: [allow_nil?: false]
@@ -67,14 +67,13 @@ defmodule Ash.Resource.Dsl do
   @uuid_primary_key %Ash.Dsl.Entity{
     name: :uuid_primary_key,
     describe: """
-    Declares a non writable, non nil, primary key column of type uuid, which defaults to `Ash.uuid/0`.
+    Declares a non writable, non nil, primary key column of type uuid, which defaults to `Ash.UUID.generate/0`.
     Using `uuid_primary_key`, `allow_nil?` is automatically set to `false`.
     """,
     examples: [
       "uuid_primary_key :id"
     ],
     args: [:name],
-    transform: {Ash.Resource.Attribute, :transform, []},
     target: Ash.Resource.Attribute,
     schema: Ash.Resource.Attribute.uuid_primary_key_schema(),
     auto_set_fields: [allow_nil?: false]
@@ -477,12 +476,14 @@ defmodule Ash.Resource.Dsl do
     primary action for that type, via: `primary?: true`. This tells the ash what to do
     if an action of that type is requested, but no specific action name is given.
     """,
-    imports: [
-      Ash.Resource.Change.Builtins,
-      Ash.Resource.Preparation.Builtins,
-      Ash.Resource.Validation.Builtins,
-      Ash.Filter.TemplateHelpers
-    ],
+    imports:
+      [
+        Resource.Change.Builtins,
+        Resource.Preparation.Builtins,
+        Resource.Validation.Builtins,
+        Filter.TemplateHelpers
+      ]
+      |> Enum.map(&Module.concat(["Ash", &1])),
     schema: [
       defaults: [
         type: {:list, {:in, [:create, :read, :update, :destroy]}},
@@ -585,7 +586,7 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
-    imports: [Ash.Filter.TemplateHelpers],
+    imports: [Module.concat(["Ash", Filter, TemplateHelpers])],
     schema: [
       description: [
         type: :string,
@@ -608,7 +609,7 @@ defmodule Ash.Resource.Dsl do
     Declare validations prior to performing actions against the resource
     """,
     imports: [
-      Ash.Resource.Validation.Builtins
+      Module.concat(["Ash", Resource, Validation, Builtins])
     ],
     examples: [
       """
@@ -707,8 +708,8 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Calculation.Argument,
     args: [:name, :type],
-    schema: Ash.Resource.Calculation.Argument.schema(),
-    transform: {Ash.Resource.Calculation.Argument, :transform, []}
+    modules: [:type],
+    schema: Ash.Resource.Calculation.Argument.schema()
   }
 
   @calculation %Ash.Dsl.Entity{
@@ -726,6 +727,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Calculation,
     args: [:name, :type, :calculation],
+    modules: [:type],
     entities: [
       arguments: [@argument]
     ],
@@ -748,7 +750,7 @@ defmodule Ash.Resource.Dsl do
       """
     ],
     imports: [
-      Ash.Resource.Calculation.Builtins
+      Module.concat(["Ash", Resource, Calculation, Builtins])
     ],
     entities: [
       @calculation
@@ -826,19 +828,21 @@ defmodule Ash.Resource.Dsl do
   ]
 
   @transformers [
-    Ash.Resource.Transformers.SetRelationshipSource,
-    Ash.Resource.Transformers.BelongsToAttribute,
-    Ash.Resource.Transformers.BelongsToSourceField,
-    Ash.Resource.Transformers.HasManyDestinationField,
-    Ash.Resource.Transformers.CreateJoinRelationship,
-    Ash.Resource.Transformers.CachePrimaryKey,
-    Ash.Resource.Transformers.SetPrimaryActions,
-    Ash.Resource.Transformers.ValidateActionTypesSupported,
-    Ash.Resource.Transformers.CountableActions,
-    Ash.Resource.Transformers.ValidateMultitenancy,
-    Ash.Resource.Transformers.DefaultPrimaryKey,
-    Ash.Resource.Transformers.DefaultAccept
-  ]
+                  SetRelationshipSource,
+                  BelongsToAttribute,
+                  BelongsToSourceField,
+                  HasManyDestinationField,
+                  CreateJoinRelationship,
+                  CachePrimaryKey,
+                  SetPrimaryActions,
+                  ValidateActionTypesSupported,
+                  CountableActions,
+                  ValidateMultitenancy,
+                  DefaultPrimaryKey,
+                  DefaultAccept,
+                  SetTypes
+                ]
+                |> Enum.map(&Module.concat(["Ash", Resource, Transformers, &1]))
 
   @moduledoc """
   The built in resource DSL. The core DSL components of a resource are:

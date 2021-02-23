@@ -1,6 +1,6 @@
 defmodule Ash.Error.Query.NoSuchOperator do
   @moduledoc "Used when an operator that doesn't exist is used in a query"
-  use Ash.Error
+  use Ash.Error.Exception
 
   def_ash_error([:name], class: :invalid)
 

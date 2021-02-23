@@ -1,6 +1,6 @@
 defmodule Ash.Error.Changes.Required do
   @moduledoc "Used when an attrbute or relationship is required"
-  use Ash.Error
+  use Ash.Error.Exception
 
   def_ash_error([:field, :type], class: :invalid)
 

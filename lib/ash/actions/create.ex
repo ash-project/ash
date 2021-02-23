@@ -1,12 +1,11 @@
 defmodule Ash.Actions.Create do
   @moduledoc false
-  alias Ash.Actions.Relationships
   alias Ash.Engine
   alias Ash.Engine.Request
   require Logger
 
-  @spec run(Ash.api(), Ash.changeset(), Ash.action(), Keyword.t()) ::
-          {:ok, Ash.record()} | {:error, Ash.error()}
+  @spec run(Ash.Api.t(), Ash.Changeset.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
+          {:ok, Ash.Resource.record()} | {:error, term}
   def run(api, changeset, action, opts) do
     upsert? = opts[:upsert?] || false
     resource = changeset.resource
@@ -45,7 +44,7 @@ defmodule Ash.Actions.Create do
   end
 
   defp add_tenant(data, changeset) do
-    if Ash.Resource.multitenancy_strategy(changeset.resource) do
+    if Ash.Resource.Info.multitenancy_strategy(changeset.resource) do
       %{data | __metadata__: Map.put(data.__metadata__, :tenant, changeset.tenant)}
     else
       data
@@ -63,14 +62,12 @@ defmodule Ash.Actions.Create do
   defp changeset(changeset, api, action, actor) do
     changeset = %{changeset | api: api}
 
-    changeset =
-      if changeset.__validated_for_action__ == action.name do
-        changeset
-      else
-        Ash.Changeset.for_create(changeset, action.name, %{}, actor: actor)
-      end
-
-    Relationships.handle_relationship_changes(changeset)
+    if changeset.__validated_for_action__ == action.name do
+      changeset
+    else
+      Ash.Changeset.for_create(changeset, action.name, %{}, actor: actor)
+    end
+    |> Ash.Changeset.set_defaults(:create)
   end
 
   defp do_run_requests(
@@ -85,15 +82,13 @@ defmodule Ash.Actions.Create do
       Request.new(
         api: api,
         resource: resource,
-        changeset: Relationships.changeset(changeset),
+        changeset: changeset,
         action: action,
         authorize?: false,
         data: nil,
         path: [:data],
         name: "#{action.type} - `#{action.name}`: prepare"
       )
-
-    relationship_read_requests = changeset.requests
 
     commit_request =
       Request.new(
@@ -113,40 +108,36 @@ defmodule Ash.Actions.Create do
             fn %{commit: %{changeset: changeset}} ->
               changeset = set_tenant(changeset)
 
-              changeset
-              |> Ash.Changeset.put_context(:actor, engine_opts[:actor])
-              |> Ash.Changeset.before_action(fn changeset ->
-                {changeset, instructions} =
-                  Ash.Actions.ManagedRelationships.setup_managed_belongs_to_relationships(
-                    changeset,
-                    engine_opts[:actor]
-                  )
+              result =
+                changeset
+                |> Ash.Changeset.put_context(:private, %{actor: engine_opts[:actor]})
+                |> Ash.Changeset.before_action(fn changeset ->
+                  {changeset, instructions} =
+                    Ash.Actions.ManagedRelationships.setup_managed_belongs_to_relationships(
+                      changeset,
+                      engine_opts[:actor]
+                    )
 
-                {changeset, instructions}
-              end)
-              |> Ash.Changeset.with_hooks(fn changeset ->
-                if upsert? do
-                  Ash.DataLayer.upsert(resource, changeset)
-                else
-                  Ash.DataLayer.create(resource, changeset)
-                end
-              end)
-              |> case do
-                {:ok, created, changeset, %{notifications: notifications}} ->
-                  case Ash.Actions.ManagedRelationships.manage_relationships(
-                         created,
-                         changeset,
-                         engine_opts[:actor]
-                       ) do
-                    {:ok, created, new_notifications} ->
-                      {:ok, created, %{notifications: new_notifications ++ notifications}}
-
-                    {:error, error} ->
-                      {:error, error}
+                  {changeset, instructions}
+                end)
+                |> Ash.Changeset.with_hooks(fn changeset ->
+                  if upsert? do
+                    Ash.DataLayer.upsert(resource, changeset)
+                  else
+                    Ash.DataLayer.create(resource, changeset)
                   end
+                end)
 
-                {:error, error} ->
-                  {:error, error}
+              with {:ok, created, changeset, %{notifications: notifications}} <- result,
+                   {:ok, loaded} <-
+                     Ash.Actions.ManagedRelationships.load(api, created, changeset, engine_opts),
+                   {:ok, with_relationships, new_notifications} <-
+                     Ash.Actions.ManagedRelationships.manage_relationships(
+                       loaded,
+                       changeset,
+                       engine_opts[:actor]
+                     ) do
+                {:ok, with_relationships, %{notifications: new_notifications ++ notifications}}
               end
             end
           ),
@@ -155,16 +146,17 @@ defmodule Ash.Actions.Create do
       )
 
     Engine.run(
-      [authorization_request | [commit_request | relationship_read_requests]],
+      [authorization_request, commit_request],
       api,
       engine_opts
     )
   end
 
   defp set_tenant(changeset) do
-    if changeset.tenant && Ash.Resource.multitenancy_strategy(changeset.resource) == :attribute do
-      attribute = Ash.Resource.multitenancy_attribute(changeset.resource)
-      {m, f, a} = Ash.Resource.multitenancy_parse_attribute(changeset.resource)
+    if changeset.tenant &&
+         Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do
+      attribute = Ash.Resource.Info.multitenancy_attribute(changeset.resource)
+      {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(changeset.resource)
       attribute_value = apply(m, f, [changeset.tenant | a])
 
       changeset
@@ -178,7 +170,7 @@ defmodule Ash.Actions.Create do
   defp check_upsert_support(_resource, false), do: :ok
 
   defp check_upsert_support(resource, true) do
-    if Ash.Resource.data_layer_can?(resource, :upsert) do
+    if Ash.DataLayer.data_layer_can?(resource, :upsert) do
       :ok
     else
       {:error, {:unsupported, :upsert}}

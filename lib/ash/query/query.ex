@@ -86,7 +86,7 @@ defmodule Ash.Query do
 
     defp arguments(query, opts) do
       if query.action do
-        action = Ash.Resource.action(query.resource, query.action, :read)
+        action = Ash.Resource.Info.action(query.resource, query.action, :read)
 
         if is_nil(action) || Enum.empty?(action.arguments) do
           empty()
@@ -180,7 +180,7 @@ defmodule Ash.Query do
     }
 
     query =
-      case Ash.Resource.base_filter(resource) do
+      case Ash.Resource.Info.base_filter(resource) do
         nil ->
           query
 
@@ -193,7 +193,7 @@ defmodule Ash.Query do
           do_filter(query, filter)
       end
 
-    case Ash.Resource.default_context(resource) do
+    case Ash.Resource.Info.default_context(resource) do
       nil ->
         query
 
@@ -205,8 +205,8 @@ defmodule Ash.Query do
   @doc "Adds an after_action hook to the query."
   @spec after_action(
           t(),
-          (t(), [Ash.record()] ->
-             {:ok, [Ash.record()]} | {:error, term})
+          (t(), [Ash.Resource.record()] ->
+             {:ok, [Ash.Resource.record()]} | {:error, term})
         ) :: t()
   def after_action(query, func) do
     %{query | after_action: [func | query.after_action]}
@@ -223,7 +223,7 @@ defmodule Ash.Query do
   """
   def for_read(query, action_name, args, opts \\ []) do
     query = to_query(query)
-    action = Ash.Resource.action(query.resource, action_name, :read)
+    action = Ash.Resource.Info.action(query.resource, action_name, :read)
 
     if action do
       query = Map.put(query, :action, action.name)
@@ -298,7 +298,7 @@ defmodule Ash.Query do
           Required.exception(field: argument.name, type: :argument)
         )
       else
-        with {:ok, casted} <- Ash.Type.cast_input(argument.type, value),
+        with {:ok, casted} <- Ash.Type.cast_input(argument.type, value, argument.constraints),
              {:ok, casted} <-
                Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
           %{new_query | arguments: Map.put(new_query.arguments, argument.name, casted)}
@@ -473,7 +473,7 @@ defmodule Ash.Query do
   `load(query, [:attribute1])`, that will be the only field filled in. This will let
   data layers make more intelligent "select" statements as well.
   """
-  @spec load(t() | Ash.resource(), atom | list(atom) | Keyword.t()) :: t()
+  @spec load(t() | Ash.Resource.t(), atom | list(atom) | Keyword.t()) :: t()
   def load(query, fields) when not is_list(fields) do
     load(query, List.wrap(fields))
   end
@@ -487,12 +487,12 @@ defmodule Ash.Query do
 
       {field, rest}, query ->
         cond do
-          rel = Ash.Resource.relationship(query.resource, field) ->
+          rel = Ash.Resource.Info.relationship(query.resource, field) ->
             nested_query = load(rel.destination, rest)
 
             side_load(query, [{field, nested_query}])
 
-          calculation = Ash.Resource.calculation(query.resource, field) ->
+          calculation = Ash.Resource.Info.calculation(query.resource, field) ->
             {module, opts} = module_and_opts(calculation.calculation)
 
             with {:ok, args} <- validate_arguments(calculation, rest),
@@ -521,14 +521,14 @@ defmodule Ash.Query do
 
   defp do_load(query, field) do
     cond do
-      Ash.Resource.attribute(query.resource, field) ->
+      Ash.Resource.Info.attribute(query.resource, field) ->
         query
 
-      Ash.Resource.relationship(query.resource, field) ->
+      Ash.Resource.Info.relationship(query.resource, field) ->
         side_load(query, field)
 
-      aggregate = Ash.Resource.aggregate(query.resource, field) ->
-        related = Ash.Resource.related(query.resource, aggregate.relationship_path)
+      aggregate = Ash.Resource.Info.aggregate(query.resource, field) ->
+        related = Ash.Resource.Info.related(query.resource, aggregate.relationship_path)
 
         with %{valid?: true} = aggregate_query <-
                build(related, filter: aggregate.filter, sort: aggregate.sort),
@@ -553,7 +553,7 @@ defmodule Ash.Query do
             add_error(query, :aggregates, Ash.Error.to_ash_error(error))
         end
 
-      calculation = Ash.Resource.calculation(query.resource, field) ->
+      calculation = Ash.Resource.Info.calculation(query.resource, field) ->
         {module, opts} =
           case calculation.calculation do
             {module, opts} -> {module, opts}
@@ -586,7 +586,7 @@ defmodule Ash.Query do
           {:halt, {:error, "Argument #{argument.name} is required"}}
         end
       else
-        with {:ok, casted} <- Ash.Type.cast_input(argument.type, value),
+        with {:ok, casted} <- Ash.Type.cast_input(argument.type, value, argument.constraints),
              {:ok, casted} <-
                Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
           {:cont, {:ok, Map.put(arg_values, argument.name, casted)}}
@@ -611,7 +611,7 @@ defmodule Ash.Query do
   @spec put_context(t(), atom, term) :: t()
   def put_context(query, key, value) do
     query = to_query(query)
-    %{query | context: Map.put(query.context, key, value)}
+    set_context(query, %{key => value})
   end
 
   @doc """
@@ -625,17 +625,7 @@ defmodule Ash.Query do
   def set_context(query, map) do
     query = to_query(query)
 
-    %{
-      query
-      | context:
-          Map.merge(query.context, map, fn _k, v1, v2 ->
-            if is_map(v1) and is_map(v2) and not (struct?(v1) || struct?(v2)) do
-              Map.merge(v1, v2)
-            else
-              v2
-            end
-          end)
-    }
+    %{query | context: Ash.Helpers.deep_merge_maps(query.context, map)}
   end
 
   @doc "Gets the value of an argument provided to the query"
@@ -714,7 +704,7 @@ defmodule Ash.Query do
           end
 
         with {:found, {:ok, value}} <- {:found, val},
-             {:ok, casted} <- Ash.Type.cast_input(argument.type, value),
+             {:ok, casted} <- Ash.Type.cast_input(argument.type, value, argument.constraints),
              {:ok, casted} <-
                Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
           %{new_query | arguments: Map.put(new_query.arguments, argument.name, casted)}
@@ -739,7 +729,7 @@ defmodule Ash.Query do
   def struct?(%_{}), do: true
   def struct?(_), do: false
 
-  @spec set_tenant(t() | Ash.resource(), String.t()) :: t()
+  @spec set_tenant(t() | Ash.Resource.t(), String.t()) :: t()
   def set_tenant(query, tenant) do
     query = to_query(query)
     %{query | tenant: tenant}
@@ -764,13 +754,13 @@ defmodule Ash.Query do
 
   defp do_unload(query, field) do
     cond do
-      Ash.Resource.attribute(query.resource, field) ->
+      Ash.Resource.Info.attribute(query.resource, field) ->
         query
 
-      Ash.Resource.relationship(query.resource, field) ->
+      Ash.Resource.Info.relationship(query.resource, field) ->
         %{query | side_load: Keyword.delete(query.side_load, field)}
 
-      Ash.Resource.aggregate(query.resource, field) ->
+      Ash.Resource.Info.aggregate(query.resource, field) ->
         new_aggregates =
           Enum.reduce(query.aggregates, %{}, fn
             {_field, %{load: ^field}}, acc ->
@@ -846,7 +836,7 @@ defmodule Ash.Query do
   * `calculate` - `{name, module_and_opts, context}`
   * `context: %{key: value}`
   """
-  @spec build(Ash.resource(), Ash.api() | nil, Keyword.t()) :: t()
+  @spec build(Ash.Resource.t(), Ash.Api.t() | nil, Keyword.t()) :: t()
   def build(resource, api \\ nil, keyword) do
     Enum.reduce(keyword, new(resource, api), fn
       {:filter, value}, query ->
@@ -896,9 +886,9 @@ defmodule Ash.Query do
   See the DSL docs for each aggregate type in `Ash.Resource.Dsl` for more information.
   """
   @spec aggregate(
-          t() | Ash.resource(),
+          t() | Ash.Resource.t(),
           atom(),
-          Ash.aggregate_kind(),
+          Ash.Query.Aggregate.kind(),
           atom | list(atom),
           Keyword.t() | nil
         ) :: t()
@@ -908,14 +898,14 @@ defmodule Ash.Query do
     query = to_query(query)
     relationship = List.wrap(relationship)
 
-    if Ash.Resource.data_layer_can?(query.resource, {:aggregate, type}) do
+    if Ash.DataLayer.data_layer_can?(query.resource, {:aggregate, type}) do
       agg_query =
         case agg_query do
           [] ->
             nil
 
           options when is_list(options) ->
-            build(Ash.Resource.related(query.resource, relationship), options)
+            build(Ash.Resource.Info.related(query.resource, relationship), options)
         end
 
       case Aggregate.new(query.resource, name, type, relationship, agg_query, field) do
@@ -965,13 +955,13 @@ defmodule Ash.Query do
   end
 
   @doc "Limit the results returned from the query"
-  @spec limit(t() | Ash.resource(), nil | integer()) :: t()
+  @spec limit(t() | Ash.Resource.t(), nil | integer()) :: t()
   def limit(query, nil), do: to_query(query)
 
   def limit(query, limit) when is_integer(limit) do
     query = to_query(query)
 
-    if Ash.Resource.data_layer_can?(query.resource, :limit) do
+    if Ash.DataLayer.data_layer_can?(query.resource, :limit) do
       query
       |> Map.put(:limit, max(0, limit))
     else
@@ -984,13 +974,13 @@ defmodule Ash.Query do
   end
 
   @doc "Skip the first n records"
-  @spec offset(t() | Ash.resource(), nil | integer()) :: t()
+  @spec offset(t() | Ash.Resource.t(), nil | integer()) :: t()
   def offset(query, nil), do: to_query(query)
 
   def offset(query, offset) when is_integer(offset) do
     query = to_query(query)
 
-    if Ash.Resource.data_layer_can?(query.resource, :offset) do
+    if Ash.DataLayer.data_layer_can?(query.resource, :offset) do
       query
       |> Map.put(:offset, max(0, offset))
     else
@@ -1058,7 +1048,7 @@ defmodule Ash.Query do
         []
 
       {key, value} ->
-        case Ash.Resource.relationship(resource, key) do
+        case Ash.Resource.Info.relationship(resource, key) do
           nil ->
             [
               {:error,
@@ -1071,7 +1061,7 @@ defmodule Ash.Query do
 
           relationship ->
             cond do
-              !Ash.Resource.primary_action(relationship.destination, :read) ->
+              !Ash.Resource.Info.primary_action(relationship.destination, :read) ->
                 {:error,
                  NoReadAction.exception(
                    resource: relationship.destination,
@@ -1079,7 +1069,7 @@ defmodule Ash.Query do
                  )}
 
               relationship.type == :many_to_many &&
-                  !Ash.Resource.primary_action(relationship.through, :read) ->
+                  !Ash.Resource.Info.primary_action(relationship.through, :read) ->
                 {:error,
                  NoReadAction.exception(
                    resource: relationship.destination,
@@ -1097,7 +1087,7 @@ defmodule Ash.Query do
   def do_filter(query, %Ash.Filter{} = filter) do
     query = to_query(query)
 
-    if Ash.Resource.data_layer_can?(query.resource, :filter) do
+    if Ash.DataLayer.data_layer_can?(query.resource, :filter) do
       new_filter =
         case query.filter do
           nil ->
@@ -1122,7 +1112,7 @@ defmodule Ash.Query do
   def do_filter(query, statement) do
     query = to_query(query)
 
-    if Ash.Resource.data_layer_can?(query.resource, :filter) do
+    if Ash.DataLayer.data_layer_can?(query.resource, :filter) do
       filter =
         if query.filter do
           Ash.Filter.add_to_filter(query.filter, statement, :and, query.aggregates)
@@ -1159,11 +1149,11 @@ defmodule Ash.Query do
   Ash.Query.sort(query, [foo: :desc, bar: :asc])
   ```
   """
-  @spec sort(t() | Ash.resource(), Ash.sort()) :: t()
+  @spec sort(t() | Ash.Resource.t(), Ash.Sort.t()) :: t()
   def sort(query, sorts) do
     query = to_query(query)
 
-    if Ash.Resource.data_layer_can?(query.resource, :sort) do
+    if Ash.DataLayer.data_layer_can?(query.resource, :sort) do
       sorts
       |> List.wrap()
       |> Enum.reduce(query, fn
@@ -1179,7 +1169,7 @@ defmodule Ash.Query do
     end
   end
 
-  @spec unset(Ash.resource() | t(), atom | [atom]) :: t()
+  @spec unset(Ash.Resource.t() | t(), atom | [atom]) :: t()
   def unset(query, keys) when is_list(keys) do
     query = to_query(query)
 
@@ -1205,50 +1195,46 @@ defmodule Ash.Query do
 
   @doc "Return the underlying data layer query for an ash query"
   def data_layer_query(%{resource: resource, api: api} = ash_query, opts \\ []) do
-    if Ash.Resource.data_layer_can?(resource, :read) do
-      query = Ash.DataLayer.resource_to_query(resource, api)
+    query = Ash.DataLayer.resource_to_query(resource, api)
 
-      filter_aggregates =
-        if ash_query.filter do
-          Ash.Filter.used_aggregates(ash_query.filter)
-        else
-          []
-        end
-
-      sort_aggregates =
-        Enum.flat_map(ash_query.sort, fn {field, _} ->
-          case Map.fetch(ash_query.aggregates, field) do
-            :error ->
-              []
-
-            {:ok, agg} ->
-              [agg]
-          end
-        end)
-
-      aggregates = Enum.uniq_by(filter_aggregates ++ sort_aggregates, & &1.name)
-
-      with {:ok, query} <-
-             add_aggregates(query, ash_query, aggregates),
-           {:ok, query} <-
-             Ash.DataLayer.sort(query, ash_query.sort, resource),
-           {:ok, query} <- maybe_filter(query, ash_query, opts),
-           {:ok, query} <- add_tenant(query, ash_query),
-           {:ok, query} <-
-             Ash.DataLayer.limit(query, ash_query.limit, resource),
-           {:ok, query} <-
-             Ash.DataLayer.offset(query, ash_query.offset, resource) do
-        Ash.DataLayer.set_context(resource, query, ash_query.context)
+    filter_aggregates =
+      if ash_query.filter do
+        Ash.Filter.used_aggregates(ash_query.filter)
       else
-        {:error, error} -> {:error, error}
+        []
       end
+
+    sort_aggregates =
+      Enum.flat_map(ash_query.sort, fn {field, _} ->
+        case Map.fetch(ash_query.aggregates, field) do
+          :error ->
+            []
+
+          {:ok, agg} ->
+            [agg]
+        end
+      end)
+
+    aggregates = Enum.uniq_by(filter_aggregates ++ sort_aggregates, & &1.name)
+
+    with {:ok, query} <-
+           add_aggregates(query, ash_query, aggregates),
+         {:ok, query} <-
+           Ash.DataLayer.sort(query, ash_query.sort, resource),
+         {:ok, query} <- maybe_filter(query, ash_query, opts),
+         {:ok, query} <- add_tenant(query, ash_query),
+         {:ok, query} <-
+           Ash.DataLayer.limit(query, ash_query.limit, resource),
+         {:ok, query} <-
+           Ash.DataLayer.offset(query, ash_query.offset, resource) do
+      Ash.DataLayer.set_context(resource, query, ash_query.context)
     else
-      {:error, "Resource does not support reading"}
+      {:error, error} -> {:error, error}
     end
   end
 
   defp add_tenant(query, ash_query) do
-    with :context <- Ash.Resource.multitenancy_strategy(ash_query.resource),
+    with :context <- Ash.Resource.Info.multitenancy_strategy(ash_query.resource),
          tenant when not is_nil(tenant) <- ash_query.tenant,
          {:ok, query} <- Ash.DataLayer.set_tenant(ash_query.resource, query, tenant) do
       {:ok, query}
@@ -1279,13 +1265,13 @@ defmodule Ash.Query do
   end
 
   defp add_tenant_to_aggregate_query(aggregate, ash_query) do
-    case Ash.Resource.multitenancy_strategy(aggregate.resource) do
+    case Ash.Resource.Info.multitenancy_strategy(aggregate.resource) do
       nil ->
         aggregate
 
       :attribute ->
-        attribute = Ash.Resource.multitenancy_attribute(aggregate.resource)
-        {m, f, a} = Ash.Resource.multitenancy_parse_attribute(ash_query.resource)
+        attribute = Ash.Resource.Info.multitenancy_attribute(aggregate.resource)
+        {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(ash_query.resource)
         attribute_value = apply(m, f, [ash_query.tenant | a])
         %{aggregate | query: filter(aggregate.query, ^[{attribute, attribute_value}])}
 

@@ -1,6 +1,6 @@
 defmodule Ash.Error.Changes.UnknownError do
   @moduledoc "Used when a change fails for an unknown reason"
-  use Ash.Error
+  use Ash.Error.Exception
 
   def_ash_error([:field, :error], class: :invalid)
 

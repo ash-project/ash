@@ -15,7 +15,7 @@ defmodule Ash.Actions.Sort do
     sort
     |> Enum.reduce({[], []}, fn
       {field, order}, {sorts, errors} when order in @sort_orders ->
-        attribute = Ash.Resource.attribute(resource, field)
+        attribute = Ash.Resource.Info.attribute(resource, field)
 
         cond do
           Map.has_key?(aggregates, field) ->
@@ -30,7 +30,10 @@ defmodule Ash.Actions.Sort do
           match?({:array, _}, attribute.type) ->
             {sorts, ["Cannot sort on array types" | errors]}
 
-          !Ash.Resource.data_layer_can?(resource, {:sort, Ash.Type.storage_type(attribute.type)}) ->
+          !Ash.DataLayer.data_layer_can?(
+            resource,
+            {:sort, Ash.Type.storage_type(attribute.type)}
+          ) ->
             {sorts,
              [
                UnsortableAttribute.exception(field: field)
@@ -55,12 +58,12 @@ defmodule Ash.Actions.Sort do
   def sorting_on_identity?(query) do
     identity_keys =
       query.resource
-      |> Ash.Resource.identities()
+      |> Ash.Resource.Info.identities()
       |> Enum.map(& &1.keys)
 
     sort_fields = Keyword.keys(query.sort)
 
-    Enum.any?([Ash.Resource.primary_key(query.resource) | identity_keys], fn keyset ->
+    Enum.any?([Ash.Resource.Info.primary_key(query.resource) | identity_keys], fn keyset ->
       Enum.all?(keyset, &(&1 in sort_fields))
     end)
   end
@@ -68,8 +71,8 @@ defmodule Ash.Actions.Sort do
   defp aggregate_sort(aggregates, field, order, resource, sorts, errors) do
     aggregate = Map.get(aggregates, field)
 
-    if Ash.Resource.data_layer_can?(resource, :aggregate_sort) &&
-         Ash.Resource.data_layer_can?(
+    if Ash.DataLayer.data_layer_can?(resource, :aggregate_sort) &&
+         Ash.DataLayer.data_layer_can?(
            resource,
            {:sort, Ash.Type.storage_type(aggregate.type)}
          ) do

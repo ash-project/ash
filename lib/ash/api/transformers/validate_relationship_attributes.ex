@@ -9,15 +9,16 @@ defmodule Ash.Api.Transformers.ValidateRelationshipAttributes do
   def transform(_api, dsl) do
     dsl
     |> Transformer.get_entities([:resources])
+    |> Enum.filter(& &1.warn_on_compile_failure?)
     |> Enum.map(& &1.resource)
     |> Enum.each(fn resource ->
       attribute_names =
         resource
-        |> Ash.Resource.attributes()
+        |> Ash.Resource.Info.attributes()
         |> Enum.map(& &1.name)
 
       resource
-      |> Ash.Resource.relationships()
+      |> Ash.Resource.Info.relationships()
       |> Enum.each(&validate_relationship(&1, attribute_names))
     end)
 
@@ -36,7 +37,7 @@ defmodule Ash.Api.Transformers.ValidateRelationshipAttributes do
     if relationship.type == :many_to_many do
       through_attributes =
         relationship.through
-        |> Ash.Resource.attributes()
+        |> Ash.Resource.Info.attributes()
         |> Enum.map(& &1.name)
 
       unless relationship.source_field_on_join_table in through_attributes do
@@ -62,7 +63,7 @@ defmodule Ash.Api.Transformers.ValidateRelationshipAttributes do
 
     destination_attributes =
       relationship.destination
-      |> Ash.Resource.attributes()
+      |> Ash.Resource.Info.attributes()
       |> Enum.map(& &1.name)
 
     unless relationship.destination_field in destination_attributes do

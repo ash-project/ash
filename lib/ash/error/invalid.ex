@@ -1,6 +1,6 @@
 defmodule Ash.Error.Invalid do
   @moduledoc "The top level invalid error"
-  use Ash.Error
+  use Ash.Error.Exception
 
   def_ash_error([:errors, :stacktraces?], class: :invalid)
 

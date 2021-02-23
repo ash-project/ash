@@ -1,6 +1,6 @@
 defmodule Ash.Error.Query.NotFound do
   @moduledoc "Used when an entity that not exist is referenced"
-  use Ash.Error
+  use Ash.Error.Exception
 
   def_ash_error([:primary_key, :resource], class: :invalid)
 
@@ -12,7 +12,7 @@ defmodule Ash.Error.Query.NotFound do
     def class(_), do: :invalid
 
     def message(%{primary_key: key, resource: _resource}) do
-      "record with id: #{id_string(key)} not found"
+      "record with #{id_string(key)} not found"
     end
 
     def stacktrace(_), do: nil

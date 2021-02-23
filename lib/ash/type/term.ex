@@ -10,12 +10,12 @@ defmodule Ash.Type.Term do
   def storage_type, do: :string
 
   @impl true
-  def cast_input(value), do: {:ok, value}
+  def cast_input(value, _), do: {:ok, value}
 
   @impl true
   # sobelow_skip ["Misc.BinToTerm"]
-  def cast_stored(value), do: {:ok, :erlang.binary_to_term(value, [:safe])}
+  def cast_stored(value, _), do: {:ok, :erlang.binary_to_term(value, [:safe])}
 
   @impl true
-  def dump_to_native(value), do: {:ok, :erlang.term_to_binary(value)}
+  def dump_to_native(value, _), do: {:ok, :erlang.term_to_binary(value)}
 end

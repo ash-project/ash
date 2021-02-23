@@ -28,7 +28,7 @@ defmodule Ash.Type.Decimal do
 
   @doc false
   def decimal(value) do
-    case cast_input(value) do
+    case cast_input(value, []) do
       {:ok, decimal} ->
         {:ok, decimal}
 
@@ -64,17 +64,17 @@ defmodule Ash.Type.Decimal do
   end
 
   @impl true
-  def cast_input(value) do
+  def cast_input(value, _) do
     Ecto.Type.cast(:decimal, value)
   end
 
   @impl true
-  def cast_stored(value) do
+  def cast_stored(value, _) do
     Ecto.Type.load(:decimal, value)
   end
 
   @impl true
-  def dump_to_native(value) do
+  def dump_to_native(value, _) do
     Ecto.Type.dump(:decimal, value)
   end
 end

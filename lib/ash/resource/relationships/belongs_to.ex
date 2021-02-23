@@ -24,12 +24,12 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           cardinality: :one,
           writable?: boolean,
           name: atom,
-          source: Ash.resource(),
-          destination: Ash.resource(),
+          source: Ash.Resource.t(),
+          destination: Ash.Resource.t(),
           required?: boolean,
           primary_key?: boolean,
           define_field?: boolean,
-          field_type: Ash.Type.t(),
+          field_type: term,
           destination_field: atom,
           private?: boolean,
           source_field: atom | nil,
@@ -64,7 +64,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                       "If set to `false` a field is not created on the resource for this relationship, and one must be manually added in `attributes`."
                   ],
                   field_type: [
-                    type: {:custom, OptionsHelpers, :ash_type, []},
+                    type: :any,
                     default: :uuid,
                     doc: "The field type of the automatically created field."
                   ]

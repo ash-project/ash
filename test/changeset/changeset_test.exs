@@ -336,89 +336,14 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
   end
 
-  describe "append_to_relationship/3" do
-    test "it appends entities to a resource's relationship" do
-      post1 = Post |> Changeset.new(%{title: "title1"}) |> Api.create!()
-      post2 = Post |> Changeset.new(%{title: "title2"}) |> Api.create!()
-
-      changeset =
-        Author
-        |> Changeset.new()
-        |> Changeset.append_to_relationship(:posts, [post1, post2])
-
-      assert Enum.sort([%{id: post1.id}, %{id: post2.id}]) ==
-               Enum.sort(changeset.relationships.posts.add)
-    end
-
-    test "it accepts value of single attribute primary_key as a second param" do
-      post1 = Post |> Changeset.new(%{title: "title1"}) |> Api.create!()
-
-      changeset =
-        Author
-        |> Changeset.new()
-        |> Changeset.append_to_relationship(:posts, post1.id)
-
-      assert %{add: [%{id: post1.id}]} == changeset.relationships.posts
-    end
-
-    test "it accepts a map %{id: value} representing primary key as a second param only if primary key is a single attribute" do
-      post1 = Post |> Changeset.new(%{title: "foo"}) |> Api.create!()
-
-      changeset =
-        Author
-        |> Changeset.new()
-        |> Changeset.append_to_relationship(:posts, %{id: post1.id})
-
-      assert %{add: [%{id: post1.id}]} == changeset.relationships.posts
-    end
-
-    test "it accepts many-to-many relationship" do
-      post1 = Post |> Changeset.new(%{title: "foo"}) |> Api.create!()
-
-      changeset =
-        Category
-        |> Changeset.new()
-        |> Changeset.append_to_relationship(:posts, post1)
-
-      assert %{add: [%{id: post1.id}]} == changeset.relationships.posts
-    end
-
-    test "it returns error if relationship does not exists" do
-      post1 = Post |> Changeset.new(%{title: "foo"}) |> Api.create!()
-
-      changeset =
-        Author
-        |> Changeset.new()
-        |> Changeset.append_to_relationship(:na, post1)
-
-      assert %{} == changeset.relationships
-      assert [%Ash.Error.Changes.NoSuchRelationship{}] = changeset.errors
-    end
-
-    test "it reconciles after appending" do
-      post1 = Post |> Changeset.new(%{title: "title1"}) |> Api.create!()
-      post2 = Post |> Changeset.new(%{title: "title2"}) |> Api.create!()
-
-      changeset =
-        Author
-        |> Changeset.new()
-        |> Changeset.append_to_relationship(:posts, [post1])
-        |> Changeset.append_to_relationship(:posts, [post2])
-        |> Changeset.append_to_relationship(:posts, [post2])
-
-      assert Enum.sort([%{id: post1.id}, %{id: post2.id}]) ==
-               Enum.sort(changeset.relationships.posts.add)
-    end
-  end
-
   describe "manage_relationship/3" do
-    test "it works for has_one relationships" do
+    test "it works for belongs_to relationships" do
       author = %{name: "title"}
 
       post =
         Post
         |> Changeset.new()
-        |> Changeset.manage_relationship(:author, author)
+        |> Changeset.manage_relationship(:author, author, on_no_match: :create)
         |> Api.create!()
 
       assert [%{name: "title"}] = Api.read!(Author)
@@ -433,7 +358,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       author =
         Author
         |> Changeset.new()
-        |> Changeset.manage_relationship(:posts, [post1, post2])
+        |> Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :create)
         |> Api.create!()
 
       assert [%{title: "title"}, %{title: "title"}] = Api.read!(Post)
@@ -448,7 +373,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       author =
         Author
         |> Changeset.new()
-        |> Changeset.manage_relationship(:posts, [post1, post2], on_create: :ignore)
+        |> Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :ignore)
         |> Api.create!()
 
       assert [] = Api.read!(Post)
@@ -465,7 +390,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                    fn ->
                      Author
                      |> Changeset.new()
-                     |> Changeset.manage_relationship(:posts, [post1, post2], on_create: :error)
+                     |> Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :error)
                      |> Api.create!(stacktraces?: true)
                    end
     end
@@ -477,14 +402,14 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       author =
         Author
         |> Changeset.new()
-        |> Changeset.manage_relationship(:posts, [post1, post2])
+        |> Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :create)
         |> Api.create!()
 
       assert [%{title: "title"}, %{title: "title"}] = Api.read!(Post)
 
       author
       |> Changeset.new()
-      |> Changeset.manage_relationship(:posts, [])
+      |> Changeset.manage_relationship(:posts, [], on_missing: :destroy)
       |> Api.update!(stacktraces?: true)
 
       assert [] = Api.read!(Post)
@@ -497,7 +422,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       author =
         Author
         |> Changeset.new()
-        |> Changeset.manage_relationship(:posts, [post1, post2])
+        |> Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :create)
         |> Api.create!()
 
       assert [%{title: "title"}, %{title: "title"}] = Api.read!(Post)
@@ -505,7 +430,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       author =
         author
         |> Changeset.new()
-        |> Changeset.manage_relationship(:posts, [], on_destroy: :unrelate)
+        |> Changeset.manage_relationship(:posts, [], on_missing: :unrelate)
         |> Api.update!(stacktraces?: true)
 
       assert [%{title: "title"}, %{title: "title"}] = Api.read!(Post)
@@ -520,7 +445,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       author =
         Author
         |> Changeset.new()
-        |> Changeset.manage_relationship(:posts, [post1, post2])
+        |> Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :create)
         |> Api.create!()
 
       assert posts = [%{title: "title"}, %{title: "title"}] = Api.read!(Post)
@@ -530,8 +455,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       author
       |> Changeset.new()
-      |> Changeset.manage_relationship(:posts, input)
-      |> Api.update!(stacktraces?: true)
+      |> Changeset.manage_relationship(:posts, input, on_match: :update)
+      |> Api.update!()
 
       assert [%{title: "new_title"}, %{title: "new_title"}] = Api.read!(Post)
     end
@@ -558,15 +483,10 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       assert author_post.id == post1.id
 
-      changeset =
+      author =
         author
         |> Changeset.new()
         |> Changeset.replace_relationship(:posts, [post2])
-
-      assert %{replace: [%{id: post2.id}]} == changeset.relationships.posts
-
-      author =
-        changeset
         |> Api.update!()
 
       [author] =
@@ -580,71 +500,19 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       assert author_post.id == post2.id
     end
 
-    test "it puts relationship destination entities into changeset's context iff all entities are valid Ash resources" do
-      post1 = Post |> Changeset.new(%{title: "title1"}) |> Api.create!()
-      post2 = Post |> Changeset.new(%{title: "title2"}) |> Api.create!()
-
-      changeset =
-        Author
-        |> Changeset.new()
-        |> Changeset.replace_relationship(:posts, [post1, post2.id])
-
-      refute Map.get(changeset.context, :destination_entities)
-
-      changeset =
-        Author
-        |> Changeset.new()
-        |> Changeset.replace_relationship(:posts, [post1, post2])
-
-      assert get_in(changeset.context, [:destination_entities, :posts, Post]) == [post1, post2]
-    end
-
-    test "it accepts value of single attribute primary_key as a second param" do
-      post1 = Post |> Changeset.new(%{title: "title1"}) |> Api.create!()
-
-      changeset =
-        Author
-        |> Changeset.new()
-        |> Changeset.replace_relationship(:posts, post1.id)
-
-      assert %{replace: [%{id: post1.id}]} == changeset.relationships.posts
-    end
-
-    test "it accepts a map %{id: value} representing primary key as a second param" do
-      post1 =
-        Post
-        |> Changeset.new(%{title: "foo"})
-        |> Api.create!()
-
-      changeset =
-        Author
-        |> Changeset.new()
-        |> Changeset.replace_relationship(:posts, %{id: post1.id})
-
-      assert %{replace: [%{id: post1.id}]} == changeset.relationships.posts
-    end
-
     test "it accepts a map %{att1: value1, att2: value2} representing primary key as a second param" do
       post1 =
         CompositeKeyPost
         |> Changeset.new(%{serial: 1})
         |> Api.create!()
 
-      changeset =
+      author =
         Author
         |> Changeset.new()
         |> Changeset.replace_relationship(
           :composite_key_posts,
-          %{id: post1.id, serial: post1.serial}
+          [%{id: post1.id, serial: post1.serial}]
         )
-
-      assert %{replace: [%{id: post1.id, serial: post1.serial}]} ==
-               changeset.relationships.composite_key_posts
-
-      assert [] == changeset.errors
-
-      author =
-        changeset
         |> Api.create!()
 
       [fetched_post] =
@@ -667,7 +535,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         |> Changeset.new(%{serial: 2})
         |> Api.create!()
 
-      changeset =
+      author =
         Author
         |> Changeset.new()
         |> Changeset.replace_relationship(
@@ -677,17 +545,6 @@ defmodule Ash.Test.Changeset.ChangesetTest do
             %{id: post2.id, serial: post2.serial}
           ]
         )
-
-      assert Enum.sort([
-               %{id: post1.id, serial: post1.serial},
-               %{id: post2.id, serial: post2.serial}
-             ]) ==
-               Enum.sort(changeset.relationships.composite_key_posts.replace)
-
-      assert [] == changeset.errors
-
-      author =
-        changeset
         |> Api.create!()
 
       [fetched_post] =
@@ -710,7 +567,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         |> Changeset.new(%{serial: 2})
         |> Api.create!()
 
-      changeset =
+      author =
         Author
         |> Changeset.new()
         |> Changeset.replace_relationship(
@@ -720,17 +577,6 @@ defmodule Ash.Test.Changeset.ChangesetTest do
             post2
           ]
         )
-
-      assert Enum.sort([
-               %{id: post1.id, serial: post1.serial},
-               %{id: post2.id, serial: post2.serial}
-             ]) ==
-               Enum.sort(changeset.relationships.composite_key_posts.replace)
-
-      assert [] == changeset.errors
-
-      author =
-        changeset
         |> Api.create!()
 
       [fetched_author] =
@@ -771,24 +617,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
           ]
         )
 
-      assert Enum.empty?(changeset.relationships)
-
       assert [%Ash.Error.Changes.InvalidRelationship{} = relation_error] = changeset.errors
-      assert relation_error.message =~ "Invalid identifier"
-    end
-
-    test "it accepts many-to-many relationship" do
-      post1 =
-        Post
-        |> Changeset.new(%{title: "foo"})
-        |> Api.create!()
-
-      changeset =
-        Category
-        |> Changeset.new()
-        |> Changeset.replace_relationship(:posts, post1)
-
-      assert %{replace: [%{id: post1.id}]} == changeset.relationships.posts
+      assert relation_error.message =~ "Cannot provide structs that don't match the destination"
     end
 
     test "it returns error if relationship does not exists" do
@@ -801,26 +631,6 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       assert %{} == changeset.relationships
       assert [%Ash.Error.Changes.NoSuchRelationship{}] = changeset.errors
-    end
-
-    test "it reconciles after replacement" do
-      post1 = Post |> Changeset.new(%{title: "title1"}) |> Api.create!()
-      post2 = Post |> Changeset.new(%{title: "title2"}) |> Api.create!()
-
-      changeset =
-        Author
-        |> Changeset.new()
-        |> Changeset.replace_relationship(:posts, [post1])
-        |> Changeset.replace_relationship(:posts, [post2])
-
-      assert Enum.sort([%{id: post2.id}]) ==
-               Enum.sort(changeset.relationships.posts.replace)
-
-      changeset =
-        changeset
-        |> Changeset.replace_relationship(:posts, [])
-
-      assert [] == changeset.relationships.posts.replace
     end
   end
 

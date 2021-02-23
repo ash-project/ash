@@ -31,7 +31,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.UpdateTest do
                  primary?: true,
                  type: :update
                }
-             ] = Ash.Resource.actions(Post)
+             ] = Ash.Resource.Info.actions(Post)
     end
   end
 

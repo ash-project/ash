@@ -10,17 +10,17 @@ defmodule Ash.Type.Boolean do
   def storage_type, do: :boolean
 
   @impl true
-  def cast_input(value) do
+  def cast_input(value, _) do
     Ecto.Type.cast(:boolean, value)
   end
 
   @impl true
-  def cast_stored(value) do
+  def cast_stored(value, _) do
     Ecto.Type.load(:boolean, value)
   end
 
   @impl true
-  def dump_to_native(value) do
+  def dump_to_native(value, _) do
     Ecto.Type.dump(:boolean, value)
   end
 end

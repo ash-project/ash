@@ -12,7 +12,7 @@ defmodule Ash.Api.Transformers.ValidateManyToManyJoinAttributes do
     |> Enum.map(& &1.resource)
     |> Enum.each(fn resource ->
       resource
-      |> Ash.Resource.relationships()
+      |> Ash.Resource.Info.relationships()
       |> Enum.filter(&(&1.type == :many_to_many && &1.join_attributes != []))
       |> Enum.each(&validate_relationship/1)
     end)
@@ -23,7 +23,7 @@ defmodule Ash.Api.Transformers.ValidateManyToManyJoinAttributes do
   defp validate_relationship(relationship) do
     through_attributes =
       relationship.through
-      |> Ash.Resource.attributes()
+      |> Ash.Resource.Info.attributes()
       |> Enum.map(& &1.name)
 
     for join_attribute <- relationship.join_attributes do

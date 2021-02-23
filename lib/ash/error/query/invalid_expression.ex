@@ -1,6 +1,6 @@
 defmodule Ash.Error.Query.InvalidExpression do
   @moduledoc "Used when an invalid expression is used in a filter"
-  use Ash.Error
+  use Ash.Error.Exception
 
   def_ash_error([:expression, :message], class: :invalid)
 

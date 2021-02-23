@@ -8,17 +8,22 @@ defmodule Ash.Authorizer do
   """
   @type state :: map
   @type context :: map
-  @callback initial_state(Ash.resource(), Ash.actor(), Ash.action(), boolean) :: state
+  @callback initial_state(
+              Ash.Resource.t(),
+              Ash.Resource.record(),
+              Ash.Resource.Actions.action(),
+              boolean
+            ) :: state
   @callback strict_check_context(state) :: [atom]
   @callback strict_check(state, context) ::
               :authorized
               | {:continue, state}
               | {:filter, Keyword.t()}
               | {:filter_and_continue, Keyword.t(), state}
-              | {:error, Ash.error()}
+              | {:error, term}
   @callback check_context(state) :: [atom]
   @callback check(state, context) ::
-              :authorized | {:data, list(Ash.record())} | {:error, Ash.error()}
+              :authorized | {:data, list(Ash.Resource.record())} | {:error, term}
 
   def initial_state(module, actor, resource, action, verbose?) do
     module.initial_state(actor, resource, action, verbose?)

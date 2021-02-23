@@ -42,16 +42,17 @@ defmodule Ash.Test.Resource.CalculationsTest do
                  calculation: {Calculation.Concat, [keys: [:name, :context], separator: ""]},
                  private?: true
                }
-             ] = Ash.Resource.calculations(Post)
+             ] = Ash.Resource.Info.calculations(Post)
 
-      assert [%Calculation{name: :name_and_contents}] = Ash.Resource.public_calculations(Post)
+      assert [%Calculation{name: :name_and_contents}] =
+               Ash.Resource.Info.public_calculations(Post)
 
       assert %Calculation{name: :another_cal_but_private} =
-               Ash.Resource.calculation(Post, :another_cal_but_private)
+               Ash.Resource.Info.calculation(Post, :another_cal_but_private)
 
-      assert nil == Ash.Resource.public_calculation(Post, :another_cal_but_private)
+      assert nil == Ash.Resource.Info.public_calculation(Post, :another_cal_but_private)
 
-      assert nil == Ash.Resource.calculation(Post, :totally_legit_calculation)
+      assert nil == Ash.Resource.Info.calculation(Post, :totally_legit_calculation)
     end
 
     test "Calculation descriptions are allowed" do
@@ -65,7 +66,7 @@ defmodule Ash.Test.Resource.CalculationsTest do
 
       assert [
                %Ash.Resource.Calculation{description: "require one of name/contents"}
-             ] = Ash.Resource.calculations(Post)
+             ] = Ash.Resource.Info.calculations(Post)
     end
   end
 end

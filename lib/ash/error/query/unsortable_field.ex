@@ -1,6 +1,6 @@
 defmodule Ash.Error.Query.UnsortableAttribute do
   @moduledoc "Used when attempting to sort on a field that cannot be used for sorting"
-  use Ash.Error
+  use Ash.Error.Exception
 
   def_ash_error([:field], class: :invalid)
 

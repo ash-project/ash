@@ -19,6 +19,10 @@ defmodule Ash.Api.Transformers.EnsureResourcesCompiled do
         {:module, _module} ->
           false
 
+        {:error, :unavailable} ->
+          # The module is being compiled but is in a deadlock that may or may not be resolved
+          false
+
         other ->
           Logger.error(
             "Could not ensure that #{inspect(resource)} was compiled: #{inspect(other)}"

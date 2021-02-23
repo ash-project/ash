@@ -255,7 +255,7 @@ defmodule Ash.Engine.Request do
   end
 
   def do_next(%{state: :strict_check} = request) do
-    case Ash.Resource.authorizers(request.resource) do
+    case Ash.Resource.Info.authorizers(request.resource) do
       [] ->
         log(request, fn -> "No authorizers found, skipping strict check" end)
         {:continue, %{request | state: :fetch_data}, []}
@@ -316,7 +316,7 @@ defmodule Ash.Engine.Request do
   end
 
   def do_next(%{state: :check} = request) do
-    case Ash.Resource.authorizers(request.resource) do
+    case Ash.Resource.Info.authorizers(request.resource) do
       [] ->
         log(request, fn -> "No authorizers found, skipping check" end)
         {:complete, %{request | state: :complete}, [], []}
@@ -406,7 +406,7 @@ defmodule Ash.Engine.Request do
   defp set_authorized(%{authorized?: false, resource: resource} = request) do
     authorized? =
       resource
-      |> Ash.Resource.authorizers()
+      |> Ash.Resource.Info.authorizers()
       |> Enum.all?(fn authorizer ->
         authorizer_state(request, authorizer) == :authorizer
       end)
@@ -677,7 +677,7 @@ defmodule Ash.Engine.Request do
        do: {:ok, request}
 
   defp do_runtime_filter(%{action: %{type: :read}} = request, filter) do
-    pkey = Ash.Resource.primary_key(request.resource)
+    pkey = Ash.Resource.Info.primary_key(request.resource)
 
     pkeys =
       request.data
@@ -701,7 +701,7 @@ defmodule Ash.Engine.Request do
     |> Ash.Actions.Read.unpaginated_read()
     |> case do
       {:ok, results} ->
-        pkey = Ash.Resource.primary_key(request.resource)
+        pkey = Ash.Resource.Info.primary_key(request.resource)
         pkeys = Enum.map(results, &Map.take(&1, pkey))
 
         new_data = Enum.filter(request.data, &(Map.take(&1, pkey) in pkeys))
@@ -714,7 +714,7 @@ defmodule Ash.Engine.Request do
   end
 
   defp do_runtime_filter(request, filter) do
-    pkey = Ash.Resource.primary_key(request.resource)
+    pkey = Ash.Resource.Info.primary_key(request.resource)
 
     pkey =
       request.changeset.data
@@ -947,7 +947,7 @@ defmodule Ash.Engine.Request do
 
   def add_initial_authorizer_state(request) do
     request.resource
-    |> Ash.Resource.authorizers()
+    |> Ash.Resource.Info.authorizers()
     |> Enum.reduce(request, fn authorizer, request ->
       if request.authorize? do
         initial_state =

@@ -12,7 +12,7 @@ defmodule Ash.Resource.Actions.Argument do
         doc: "Whether or not the argument may be ommitted or set to `nil`"
       ],
       type: [
-        type: {:custom, Ash.OptionsHelpers, :ash_type, []},
+        type: :any,
         required: true,
         doc: "The type of the argument"
       ],

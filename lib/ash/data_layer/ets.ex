@@ -33,7 +33,7 @@ defmodule Ash.DataLayer.Ets do
   use Ash.Dsl.Extension, sections: [@ets]
   alias Ash.Dsl.Extension
 
-  @spec private?(Ash.resource()) :: boolean
+  @spec private?(Ash.Resource.t()) :: boolean
   def private?(resource) do
     Extension.get_opt(resource, [:ets], :private?, false, true)
   end
@@ -65,7 +65,8 @@ defmodule Ash.DataLayer.Ets do
 
   def can?(resource, {:join, other_resource}) do
     # See the comment in can?/2 in mnesia data layer to explain this
-    not (private?(resource) and Ash.Resource.data_layer(other_resource) == Ash.DataLayer.Mnesia)
+    not (private?(resource) and
+           Ash.DataLayer.data_layer(other_resource) == Ash.DataLayer.Mnesia)
   end
 
   def can?(_, :nested_expressions), do: true
@@ -179,7 +180,7 @@ defmodule Ash.DataLayer.Ets do
   def create(resource, changeset) do
     pkey =
       resource
-      |> Ash.Resource.primary_key()
+      |> Ash.Resource.Info.primary_key()
       |> Enum.into(%{}, fn attr ->
         {attr, Ash.Changeset.get_attribute(changeset, attr)}
       end)
@@ -196,7 +197,7 @@ defmodule Ash.DataLayer.Ets do
 
   @impl true
   def destroy(resource, %{data: record} = changeset) do
-    pkey = Map.take(record, Ash.Resource.primary_key(resource))
+    pkey = Map.take(record, Ash.Resource.Info.primary_key(resource))
 
     with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
          {:ok, _} <- ETS.Set.delete(table, pkey) do
@@ -215,7 +216,7 @@ defmodule Ash.DataLayer.Ets do
     empty = resource.__struct__
 
     resource
-    |> Ash.Resource.relationships()
+    |> Ash.Resource.Info.relationships()
     |> Enum.reduce(record, fn relationship, record ->
       Map.put(record, relationship.name, Map.get(empty, relationship.name))
     end)

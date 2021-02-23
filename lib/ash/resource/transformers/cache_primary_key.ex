@@ -40,8 +40,8 @@ defmodule Ash.Resource.Transformers.CachePrimaryKey do
         {:ok, dsl_state}
 
       fields ->
-        if Ash.Resource.data_layer(resource) &&
-             Ash.Resource.data_layer_can?(resource, :composite_primary_key) do
+        if Ash.DataLayer.data_layer(resource) &&
+             Ash.DataLayer.data_layer_can?(resource, :composite_primary_key) do
           dsl_state = Transformer.persist(dsl_state, :primary_key, fields)
 
           {:ok, dsl_state}

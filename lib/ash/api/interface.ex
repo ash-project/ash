@@ -107,12 +107,12 @@ defmodule Ash.Api.Interface do
       end
 
       def reload!(%resource{} = record, params \\ []) do
-        id = record |> Map.take(Ash.Resource.primary_key(resource)) |> Enum.to_list()
+        id = record |> Map.take(Ash.Resource.Info.primary_key(resource)) |> Enum.to_list()
         get!(resource, id, params)
       end
 
       def reload(%resource{} = record, params \\ []) do
-        id = record |> Map.take(Ash.Resource.primary_key(resource)) |> Enum.to_list()
+        id = record |> Map.take(Ash.Resource.Info.primary_key(resource)) |> Enum.to_list()
         get(resource, id, params)
       end
     end

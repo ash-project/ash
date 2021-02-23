@@ -48,9 +48,9 @@ defmodule Ash.Resource.Change do
     end
   end
 
-  @type context :: %{actor: Ash.actor()} | %{}
+  @type context :: %{actor: Ash.Resource.record()} | %{}
   @callback init(Keyword.t()) :: {:ok, Keyword.t()} | {:error, term}
-  @callback change(Ash.changeset(), Keyword.t(), context) :: Ash.changeset()
+  @callback change(Ash.Changeset.t(), Keyword.t(), context) :: Ash.Changeset.t()
 
   defmacro __using__(_) do
     quote do

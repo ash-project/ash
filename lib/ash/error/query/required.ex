@@ -1,6 +1,6 @@
 defmodule Ash.Error.Query.Required do
   @moduledoc "Used when a filter or argument is required in a query"
-  use Ash.Error
+  use Ash.Error.Exception
 
   def_ash_error([:field, :type], class: :invalid)
 

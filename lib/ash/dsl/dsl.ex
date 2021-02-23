@@ -42,7 +42,7 @@ defmodule Ash.Dsl do
   @doc """
   Validate/add options. Those options will be passed to `handle_opts` and `handle_before_compile`
   """
-  @callback init(opts) :: {:ok, opts} | {:error, String.t() | Ash.error()}
+  @callback init(opts) :: {:ok, opts} | {:error, String.t() | term}
   @doc """
   Handle options in the context of the module. Must return a `quote` block.
 
@@ -175,7 +175,7 @@ defmodule Ash.Dsl do
           mod = Macro.expand(value, %{env | lexical_tracker: nil})
 
           extensions =
-            if Ash.implements_behaviour?(mod, Ash.Dsl.Extension) do
+            if Ash.Helpers.implements_behaviour?(mod, Ash.Dsl.Extension) do
               [mod | extensions]
             else
               extensions
@@ -188,7 +188,8 @@ defmodule Ash.Dsl do
             value |> List.wrap() |> Enum.map(&Macro.expand(&1, %{env | lexical_tracker: nil}))
 
           extensions =
-            extensions ++ Enum.filter(mods, &Ash.implements_behaviour?(&1, Ash.Dsl.Extension))
+            extensions ++
+              Enum.filter(mods, &Ash.Helpers.implements_behaviour?(&1, Ash.Dsl.Extension))
 
           {Keyword.put(opts, key, mods), extensions}
 
@@ -198,7 +199,6 @@ defmodule Ash.Dsl do
     end)
   end
 
-  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defmacro __before_compile__(_env) do
     quote unquote: false do
       @type t :: __MODULE__
@@ -223,7 +223,7 @@ defmodule Ash.Dsl do
   end
 
   def is?(module, type) do
-    Ash.try_compile(module)
+    Ash.Helpers.try_compile(module)
 
     type in List.wrap(module.module_info(:attributes)[:ash_is])
   rescue

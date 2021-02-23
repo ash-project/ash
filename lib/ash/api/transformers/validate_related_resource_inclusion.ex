@@ -15,6 +15,7 @@ defmodule Ash.Api.Transformers.ValidateRelatedResourceInclusion do
     resources =
       dsl
       |> Transformer.get_entities([:resources])
+      |> Enum.filter(& &1.warn_on_compile_failure?)
       |> Enum.map(& &1.resource)
 
     resources
@@ -34,7 +35,7 @@ defmodule Ash.Api.Transformers.ValidateRelatedResourceInclusion do
 
   defp get_all_related_resources(resource, checked \\ []) do
     resource
-    |> Ash.Resource.relationships()
+    |> Ash.Resource.Info.relationships()
     |> Enum.flat_map(fn
       %{type: :many_to_many} = relationship ->
         [relationship.through, relationship.destination]

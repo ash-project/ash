@@ -107,7 +107,7 @@ defmodule Ash.Actions.MultitenancyTest do
 
   describe "attribute multitenancy" do
     setup do
-      %{tenant1: Ash.uuid(), tenant2: Ash.uuid()}
+      %{tenant1: Ash.UUID.generate(), tenant2: Ash.UUID.generate()}
     end
 
     test "a simple write works when a tenant is specified", %{tenant1: tenant1} do
@@ -152,7 +152,7 @@ defmodule Ash.Actions.MultitenancyTest do
 
   describe "contextual multitenancy" do
     setup do
-      %{tenant1: Ash.uuid(), tenant2: Ash.uuid()}
+      %{tenant1: Ash.UUID.generate(), tenant2: Ash.UUID.generate()}
     end
 
     test "a simple write works when a tenant is specified", %{tenant1: tenant1} do

@@ -50,16 +50,6 @@ defmodule Ash.OptionsHelpers do
   def map(value) when is_map(value), do: {:ok, value}
   def map(_), do: {:error, "must be a map"}
 
-  def ash_type(type) do
-    type = Ash.Type.get_type(type)
-
-    if Ash.Type.ash_type?(type) do
-      {:ok, type}
-    else
-      {:error, "Attribute type must be a built in type or a type module, got: #{inspect(type)}"}
-    end
-  end
-
   def list_of_atoms(value) do
     if is_list(value) and Enum.all?(value, &is_atom/1) do
       {:ok, value}

@@ -51,9 +51,9 @@ defmodule Ash.Resource.Preparation do
     end
   end
 
-  @type context :: %{actor: Ash.actor()} | %{}
+  @type context :: %{actor: Ash.Resource.record()} | %{}
   @callback init(Keyword.t()) :: {:ok, Keyword.t()} | {:error, term}
-  @callback prepare(Ash.query(), Keyword.t(), context) :: Ash.query()
+  @callback prepare(query, Keyword.t(), context) :: query when query: struct
 
   defmacro __using__(_) do
     quote do

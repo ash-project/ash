@@ -26,7 +26,7 @@ defmodule Ash.Test.Type.TypeTest do
       end
     end
 
-    def cast_input(value) when is_binary(value) do
+    def cast_input(value, _) when is_binary(value) do
       if String.match?(value, ~r/[a-zA-Z\w]*/) do
         {:ok, value}
       else
@@ -34,13 +34,13 @@ defmodule Ash.Test.Type.TypeTest do
       end
     end
 
-    def cast_input(_), do: :error
+    def cast_input(_, _), do: :error
 
-    def cast_stored(value) when is_binary(value), do: value
-    def cast_stored(_), do: :error
+    def cast_stored(value, _) when is_binary(value), do: value
+    def cast_stored(_, _), do: :error
 
-    def dump_to_native(value) when is_binary(value), do: value
-    def dump_to_native(_), do: :error
+    def dump_to_native(value, _) when is_binary(value), do: value
+    def dump_to_native(_, _), do: :error
   end
 
   defmodule Post do

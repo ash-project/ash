@@ -35,7 +35,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
                  private?: true
                },
                _
-             ] = Ash.Resource.attributes(Post)
+             ] = Ash.Resource.Info.attributes(Post)
     end
 
     test "it creates an attribute that honors private?" do
@@ -53,7 +53,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
                  private?: true
                },
                _
-             ] = Ash.Resource.attributes(Post)
+             ] = Ash.Resource.Info.attributes(Post)
     end
 
     test "it creates a relationship" do
@@ -70,7 +70,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
                  define_field?: true,
                  destination: Foo,
                  destination_field: :id,
-                 field_type: Ash.Type.UUID,
+                 field_type: :uuid,
                  name: :foo,
                  primary_key?: false,
                  source_field: :foo_id,
@@ -82,22 +82,22 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
                  define_field?: true,
                  destination: Bar,
                  destination_field: :id,
-                 field_type: Ash.Type.UUID,
+                 field_type: :uuid,
                  name: :bar,
                  primary_key?: false,
                  source_field: :bazz,
                  type: :belongs_to,
                  private?: true
                }
-             ] = Ash.Resource.relationships(Post)
+             ] = Ash.Resource.Info.relationships(Post)
 
-      assert [%BelongsTo{name: :foo}] = Ash.Resource.public_relationships(Post)
+      assert [%BelongsTo{name: :foo}] = Ash.Resource.Info.public_relationships(Post)
 
-      assert %BelongsTo{name: :foo} = Ash.Resource.public_relationship(Post, :foo)
+      assert %BelongsTo{name: :foo} = Ash.Resource.Info.public_relationship(Post, :foo)
 
-      assert nil == Ash.Resource.relationship(Post, :definitely_legit_relationship)
+      assert nil == Ash.Resource.Info.relationship(Post, :definitely_legit_relationship)
 
-      assert nil == Ash.Resource.public_relationship(Post, :bar)
+      assert nil == Ash.Resource.Info.public_relationship(Post, :bar)
     end
   end
 
@@ -195,20 +195,6 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
         defposts do
           relationships do
             belongs_to(:foobar, Foobar, define_field?: "blah")
-          end
-        end
-      end
-    )
-  end
-
-  test "fails if `field_type` is not an atom" do
-    assert_raise(
-      Ash.Error.Dsl.DslError,
-      "[Ash.Resource.Dsl.BelongsTo]\n relationships -> belongs_to -> foobar:\n  Attribute type must be a built in type or a type module, got: \"foo\"",
-      fn ->
-        defposts do
-          relationships do
-            belongs_to(:foobar, Foobar, field_type: "foo")
           end
         end
       end

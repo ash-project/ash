@@ -30,8 +30,8 @@ defmodule Ash.Query.Aggregate do
   def new(resource, name, kind, relationship, query, field) do
     field_type =
       if field do
-        related = Ash.Resource.related(resource, relationship)
-        Ash.Resource.attribute(related, field).type
+        related = Ash.Resource.Info.related(resource, relationship)
+        Ash.Resource.Info.attribute(related, field).type
       end
 
     with :ok <- validate_path(resource, List.wrap(relationship)),
@@ -54,19 +54,19 @@ defmodule Ash.Query.Aggregate do
   defp validate_path(_, []), do: :ok
 
   defp validate_path(resource, [relationship | rest]) do
-    case Ash.Resource.relationship(resource, relationship) do
+    case Ash.Resource.Info.relationship(resource, relationship) do
       nil ->
         {:error, NoSuchRelationship.exception(resource: resource, name: relationship)}
 
       %{type: :many_to_many, through: through, destination: destination} ->
         cond do
-          !Ash.Resource.primary_action(through, :read) ->
+          !Ash.Resource.Info.primary_action(through, :read) ->
             {:error, NoReadAction.exception(resource: through, when: "aggregating")}
 
-          !Ash.Resource.primary_action(destination, :read) ->
+          !Ash.Resource.Info.primary_action(destination, :read) ->
             {:error, NoReadAction.exception(resource: destination, when: "aggregating")}
 
-          !Ash.Resource.data_layer(through) == Ash.Resource.data_layer(resource) ->
+          !Ash.DataLayer.data_layer(through) == Ash.DataLayer.data_layer(resource) ->
             {:error, "Cannot cross data layer boundaries when building an aggregate"}
 
           true ->
@@ -75,10 +75,11 @@ defmodule Ash.Query.Aggregate do
 
       relationship ->
         cond do
-          !Ash.Resource.primary_action(relationship.destination, :read) ->
+          !Ash.Resource.Info.primary_action(relationship.destination, :read) ->
             NoReadAction.exception(resource: relationship.destination, when: "aggregating")
 
-          !Ash.Resource.data_layer(relationship.destination) == Ash.Resource.data_layer(resource) ->
+          !Ash.DataLayer.data_layer(relationship.destination) ==
+              Ash.DataLayer.data_layer(resource) ->
             {:error, "Cannot cross data layer boundaries when building an aggregate"}
 
           true ->
@@ -123,10 +124,10 @@ defmodule Ash.Query.Aggregate do
     |> Enum.group_by(&{&1.resource, &1.relationship_path})
     |> Enum.reduce({[], [], []}, fn {{aggregate_resource, relationship_path}, aggregates},
                                     {auth_requests, value_requests, aggregates_in_query} ->
-      related = Ash.Resource.related(aggregate_resource, relationship_path)
+      related = Ash.Resource.Info.related(aggregate_resource, relationship_path)
 
       relationship =
-        Ash.Resource.relationship(
+        Ash.Resource.Info.relationship(
           aggregate_resource,
           List.first(relationship_path)
         )
@@ -183,7 +184,7 @@ defmodule Ash.Query.Aggregate do
       query: aggregate_query(related, reverse_relationship),
       path: [:aggregate, relationship_path],
       strict_check_only?: true,
-      action: Ash.Resource.primary_action(related, :read),
+      action: Ash.Resource.Info.primary_action(related, :read),
       name: "authorize aggregate: #{Enum.join(relationship_path, ".")}",
       data: []
     )
@@ -198,7 +199,7 @@ defmodule Ash.Query.Aggregate do
          auth_request,
          aggregate_resource
        ) do
-    pkey = Ash.Resource.primary_key(aggregate_resource)
+    pkey = Ash.Resource.Info.primary_key(aggregate_resource)
 
     deps =
       if auth_request do
@@ -212,7 +213,7 @@ defmodule Ash.Query.Aggregate do
       api: initial_query.api,
       query: aggregate_query(related, reverse_relationship),
       path: [:aggregate_values, relationship_path],
-      action: Ash.Resource.primary_action(aggregate_resource, :read),
+      action: Ash.Resource.Info.primary_action(aggregate_resource, :read),
       name: "fetch aggregate: #{Enum.join(relationship_path, ".")}",
       data:
         Request.resolve(

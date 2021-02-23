@@ -1,6 +1,6 @@
 defmodule Ash.Error.Invalid.ImpossiblePath do
   @moduledoc "Used when a request expresses a dependency on another request that doesn't exist"
-  use Ash.Error
+  use Ash.Error.Exception
 
   def_ash_error([:impossible_path], class: :invalid)
 

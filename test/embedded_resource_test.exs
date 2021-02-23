@@ -162,7 +162,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
                  ]
                }
              )
-             |> Api.create!()
+             |> Api.create!(stacktraces?: true)
   end
 
   test "embedded resources support calculations" do

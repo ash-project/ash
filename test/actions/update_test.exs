@@ -315,8 +315,12 @@ defmodule Ash.Test.Actions.UpdateTest do
       new_post =
         post
         |> new()
-        |> replace_relationship(:related_posts, [{post2, %{type: "a"}}, {post3, %{type: "b"}}])
+        |> replace_relationship(:related_posts, [
+          Ash.Resource.Info.set_metadata(post2, %{join_keys: %{type: "a"}}),
+          Ash.Resource.Info.set_metadata(post3, %{join_keys: %{type: "b"}})
+        ])
         |> Api.update!()
+        |> Api.load!(:related_posts_join_assoc)
 
       types = Enum.sort(Enum.map(new_post.related_posts_join_assoc, &Map.get(&1, :type)))
 
@@ -325,8 +329,17 @@ defmodule Ash.Test.Actions.UpdateTest do
       new_post =
         new_post
         |> new()
-        |> replace_relationship(:related_posts, [{post2, %{type: "c"}}, {post3, %{type: "d"}}])
-        |> Api.update!()
+        |> replace_relationship(
+          :related_posts,
+          [
+            Ash.Resource.Info.set_metadata(post2, %{join_keys: %{type: "c"}}),
+            Ash.Resource.Info.set_metadata(post3, %{join_keys: %{type: "d"}})
+          ],
+          on_match: :update,
+          on_lookup: :relate
+        )
+        |> Api.update!(stacktraces?: true)
+        |> Api.load!(:related_posts_join_assoc)
 
       types = Enum.sort(Enum.map(new_post.related_posts_join_assoc, &Map.get(&1, :type)))
 
@@ -535,7 +548,9 @@ defmodule Ash.Test.Actions.UpdateTest do
       |> replace_relationship(:author, author2)
       |> Api.update!()
 
-      assert Api.get!(Author, author2.id, load: [:posts]).posts == [Api.get!(Post, post.id)]
+      assert Api.get!(Author, author2.id, load: [:posts]).posts == [
+               Api.get!(Post, post.id)
+             ]
     end
 
     test "it responds with the relationship field filled in" do

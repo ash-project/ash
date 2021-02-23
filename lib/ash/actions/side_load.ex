@@ -32,7 +32,7 @@ defmodule Ash.Actions.SideLoad do
     side_loads
     |> List.wrap()
     |> Enum.flat_map(fn {relationship, further} ->
-      relationship = Ash.Resource.relationship(query.resource, relationship)
+      relationship = Ash.Resource.Info.relationship(query.resource, relationship)
 
       related_query =
         case further do
@@ -191,11 +191,11 @@ defmodule Ash.Actions.SideLoad do
   end
 
   defp last_relationship!(resource, [last]) do
-    Ash.Resource.relationship(resource, last) || raise "Assumption Failed"
+    Ash.Resource.Info.relationship(resource, last) || raise "Assumption Failed"
   end
 
   defp last_relationship!(resource, [first | rest]) do
-    relationship = Ash.Resource.relationship(resource, first) || raise "Assumption Failed"
+    relationship = Ash.Resource.Info.relationship(resource, first) || raise "Assumption Failed"
 
     last_relationship!(relationship.destination, rest)
   end
@@ -287,7 +287,7 @@ defmodule Ash.Actions.SideLoad do
       |> Enum.map_join(".", &Map.get(&1, :name))
 
     Engine.Request.new(
-      action: Ash.Resource.primary_action(relationship.destination, :read),
+      action: Ash.Resource.Info.primary_action(relationship.destination, :read),
       resource: relationship.destination,
       name: "side_load #{source}",
       api: related_query.api,
@@ -338,7 +338,7 @@ defmodule Ash.Actions.SideLoad do
   end
 
   defp join_relationship(relationship) do
-    Ash.Resource.relationship(relationship.source, relationship.join_relationship)
+    Ash.Resource.Info.relationship(relationship.source, relationship.join_relationship)
   end
 
   defp join_relationship_path(path, join_relationship) do
@@ -391,7 +391,7 @@ defmodule Ash.Actions.SideLoad do
           end
 
         Request.new(
-          action: Ash.Resource.primary_action(relationship.destination, :read),
+          action: Ash.Resource.Info.primary_action(relationship.destination, :read),
           resource: relationship.through,
           name: "side_load join #{join_relationship.name}",
           api: related_query.api,
@@ -474,7 +474,7 @@ defmodule Ash.Actions.SideLoad do
     cond do
       (query.limit ||
          offset?) && relationship.type != :many_to_many &&
-          Ash.Resource.data_layer_can?(
+          Ash.DataLayer.data_layer_can?(
             relationship.source,
             {:lateral_join, relationship.destination}
           ) ->
@@ -569,11 +569,11 @@ defmodule Ash.Actions.SideLoad do
 
           [%resource{} = item] ->
             item
-            |> Map.take(Ash.Resource.primary_key(resource))
+            |> Map.take(Ash.Resource.Info.primary_key(resource))
             |> Enum.to_list()
 
           [%resource{} | _] = items ->
-            pkey = Ash.Resource.primary_key(resource)
+            pkey = Ash.Resource.Info.primary_key(resource)
             [or: Enum.map(items, fn item -> item |> Map.take(pkey) |> Enum.to_list() end)]
         end
 
@@ -664,7 +664,7 @@ defmodule Ash.Actions.SideLoad do
     cond do
       (query.limit ||
          offset?) && relationship.type != :many_to_many &&
-          Ash.Resource.data_layer_can?(
+          Ash.DataLayer.data_layer_can?(
             relationship.source,
             {:lateral_join, relationship.destination}
           ) ->
@@ -708,7 +708,7 @@ defmodule Ash.Actions.SideLoad do
 
   def reverse_relationship_path(relationship, [], acc) do
     relationship.destination
-    |> Ash.Resource.relationships()
+    |> Ash.Resource.Info.relationships()
     |> Enum.find(fn destination_relationship ->
       reverse_relationship?(relationship, destination_relationship)
     end)
@@ -723,7 +723,7 @@ defmodule Ash.Actions.SideLoad do
 
   def reverse_relationship_path(relationship, [next_relationship | rest], acc) do
     relationship.destination
-    |> Ash.Resource.relationships()
+    |> Ash.Resource.Info.relationships()
     |> Enum.find(fn destination_relationship ->
       reverse_relationship?(relationship, destination_relationship)
     end)

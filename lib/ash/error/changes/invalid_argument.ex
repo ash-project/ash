@@ -1,6 +1,6 @@
 defmodule Ash.Error.Changes.InvalidArgument do
   @moduledoc "Used when an invalid value is provided for an action argument"
-  use Ash.Error
+  use Ash.Error.Exception
 
   def_ash_error([:field, :message], class: :invalid)
 

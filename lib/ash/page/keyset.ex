@@ -118,5 +118,5 @@ defmodule Ash.Page.Keyset do
     Enum.map(fields, &Map.get(record, &1))
   end
 
-  defdelegate non_executable_binary_to_term(binary, opts), to: Ash
+  defdelegate non_executable_binary_to_term(binary, opts), to: Ash.Helpers
 end

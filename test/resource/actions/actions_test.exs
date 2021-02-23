@@ -21,7 +21,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
     defposts do
     end
 
-    assert Ash.Resource.primary_action!(Post, :read)
+    assert Ash.Resource.Info.primary_action!(Post, :read)
   end
 
   describe "validations" do

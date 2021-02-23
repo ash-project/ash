@@ -155,7 +155,7 @@ defmodule Ash.Engine do
 
   defp rollback_or_return(innermost_resource, runner) do
     if innermost_resource do
-      Ash.Resource.rollback(innermost_resource, runner)
+      Ash.DataLayer.rollback(innermost_resource, runner)
     else
       {:error, runner}
     end
@@ -166,7 +166,7 @@ defmodule Ash.Engine do
       requests
       |> Enum.map(& &1.resource)
       |> Enum.uniq()
-      |> Enum.filter(&Ash.Resource.data_layer_can?(&1, :transact))
+      |> Enum.filter(&Ash.DataLayer.data_layer_can?(&1, :transact))
       |> do_in_transaction(func)
     else
       func.(nil)
@@ -180,13 +180,13 @@ defmodule Ash.Engine do
   end
 
   defp do_in_transaction([resource | rest], func, _innermost) do
-    Ash.Resource.transaction(resource, fn ->
+    Ash.DataLayer.transaction(resource, fn ->
       case do_in_transaction(rest, func, resource) do
         {:ok, value} ->
           value
 
         {:error, error} ->
-          Ash.Resource.rollback(resource, error)
+          Ash.DataLayer.rollback(resource, error)
       end
     end)
   end
@@ -429,8 +429,8 @@ defmodule Ash.Engine do
 
   defp split_local_async_requests(requests) do
     if Enum.any?(requests, fn request ->
-         Ash.Resource.data_layer_can?(request.resource, :transact) &&
-           Ash.Resource.in_transaction?(request.resource)
+         Ash.DataLayer.data_layer_can?(request.resource, :transact) &&
+           Ash.DataLayer.in_transaction?(request.resource)
        end) do
       {requests, []}
     else
@@ -448,7 +448,7 @@ defmodule Ash.Engine do
 
   defp must_be_local?(request) do
     not request.async? ||
-      not Ash.Resource.data_layer_can?(request.resource, :async_engine)
+      not Ash.DataLayer.data_layer_can?(request.resource, :async_engine)
   end
 
   defp maybe_shutdown(%{active_requests: [], local_requests?: false} = state) do

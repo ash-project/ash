@@ -1,6 +1,6 @@
 defmodule Ash.Error.Query.AggregatesNotSupported do
   @moduledoc "Used when the data_layer does not support aggregates, or filtering/sorting them"
-  use Ash.Error
+  use Ash.Error.Exception
 
   def_ash_error([:resource, :feature], class: :invalid)
 

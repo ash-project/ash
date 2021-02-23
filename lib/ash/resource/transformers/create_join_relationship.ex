@@ -9,7 +9,7 @@ defmodule Ash.Resource.Transformers.CreateJoinRelationship do
 
   alias Ash.Dsl.Transformer
 
-  @extension Ash.Resource.Dsl
+  @extension Module.concat(["Ash", Resource, Dsl])
 
   def transform(_resource, dsl_state) do
     dsl_state

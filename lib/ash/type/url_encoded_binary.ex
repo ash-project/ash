@@ -11,7 +11,7 @@ defmodule Ash.Type.UrlEncodedBinary do
   def storage_type, do: :binary
 
   @impl true
-  def cast_input(value) when is_binary(value) do
+  def cast_input(value, _) when is_binary(value) do
     case Base.url_decode64(value, padding: false) do
       {:ok, decoded} ->
         Ecto.Type.cast(:binary, decoded)
@@ -21,17 +21,17 @@ defmodule Ash.Type.UrlEncodedBinary do
     end
   end
 
-  def cast_input(value) do
+  def cast_input(value, _) do
     Ecto.Type.cast(:binary, value)
   end
 
   @impl true
-  def cast_stored(value) do
+  def cast_stored(value, _) do
     Ecto.Type.load(:binary, value)
   end
 
   @impl true
-  def dump_to_native(value) do
+  def dump_to_native(value, _) do
     Ecto.Type.dump(:binary, value)
   end
 end

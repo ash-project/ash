@@ -1,6 +1,6 @@
 defmodule Ash.Error.Changes.InvalidChanges do
   @moduledoc "Used when a change is provided that covers multiple attributes/relationships"
-  use Ash.Error
+  use Ash.Error.Exception
 
   def_ash_error([:fields, :message, :validation], class: :invalid)
 

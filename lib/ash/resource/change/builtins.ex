@@ -32,7 +32,7 @@ defmodule Ash.Resource.Change.Builtins do
   For example
 
   ```elixir
-  change manage_relationship(:add_comments, :comments, on_destroy: :ignore, on_update: :create, on_create: {:create, :add_comment_to_post}
+  change manage_relationship(:add_comments, :comments, on_missing: :ignore, on_match: :create, on_no_match: {:create, :add_comment_to_post}
   ```
   """
   def manage_relationship(argument, relationship_name, opts) do
@@ -43,7 +43,7 @@ defmodule Ash.Resource.Change.Builtins do
   @doc """
   Merges the given query context. If an MFA is provided, it will be called with the changeset.
 
-  The MFA should return `{:ok, context_to_be_merged}` or `{:error, Ash.error()}`
+  The MFA should return `{:ok, context_to_be_merged}` or `{:error, term}`
   """
   @spec set_context(map | mfa) ::
           {atom, Keyword.t()}

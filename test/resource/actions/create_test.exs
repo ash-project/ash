@@ -33,7 +33,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.CreateTest do
                  primary?: true,
                  type: :create
                }
-             ] = Ash.Resource.actions(Post)
+             ] = Ash.Resource.Info.actions(Post)
     end
   end
 

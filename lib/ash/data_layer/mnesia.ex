@@ -23,9 +23,10 @@ defmodule Ash.DataLayer.Mnesia do
     api
     |> Ash.Api.resources()
     |> Enum.each(fn resource ->
-      attributes = resource |> Ash.Resource.attributes() |> Enum.map(& &1.name) |> Enum.sort()
+      attributes =
+        resource |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name) |> Enum.sort()
 
-      case Ash.Resource.primary_key(resource) do
+      case Ash.Resource.Info.primary_key(resource) do
         [] ->
           resource
           |> table()
@@ -93,7 +94,7 @@ defmodule Ash.DataLayer.Mnesia do
     # This is to ensure that these can't join, which is necessary for testing
     # if someone needs to use these both and *actually* needs real joins for private
     # ets resources then we can talk about making this only happen in ash tests
-    not (Ash.Resource.data_layer(resource) == Ash.DataLayer.Ets &&
+    not (Ash.DataLayer.data_layer(resource) == Ash.DataLayer.Ets &&
            Ash.DataLayer.Ets.private?(resource))
   end
 
@@ -152,10 +153,11 @@ defmodule Ash.DataLayer.Mnesia do
         {:error, reason}
 
       {:atomic, records} ->
-        attributes = resource |> Ash.Resource.attributes() |> Enum.map(& &1.name) |> Enum.sort()
+        attributes =
+          resource |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name) |> Enum.sort()
 
         elements_to_drop =
-          case Ash.Resource.primary_key(resource) do
+          case Ash.Resource.Info.primary_key(resource) do
             [] ->
               1
 
@@ -201,14 +203,14 @@ defmodule Ash.DataLayer.Mnesia do
 
     pkey =
       resource
-      |> Ash.Resource.primary_key()
+      |> Ash.Resource.Info.primary_key()
       |> Enum.map(fn attr ->
         Map.get(record, attr)
       end)
 
     values =
       resource
-      |> Ash.Resource.attributes()
+      |> Ash.Resource.Info.attributes()
       |> Enum.sort_by(& &1.name)
       |> Enum.map(&Map.get(record, &1.name))
 
@@ -236,7 +238,7 @@ defmodule Ash.DataLayer.Mnesia do
   def destroy(resource, %{data: record}) do
     pkey =
       resource
-      |> Ash.Resource.primary_key()
+      |> Ash.Resource.Info.primary_key()
       |> Enum.map(&Map.get(record, &1))
 
     result =

@@ -53,16 +53,16 @@ defmodule Ash.Test.Resource.AggregatesTest do
                  relationship_path: [:comments],
                  private?: true
                }
-             ] = Ash.Resource.aggregates(Post)
+             ] = Ash.Resource.Info.aggregates(Post)
 
-      assert [%Aggregate{name: :count_of_comments}] = Ash.Resource.public_aggregates(Post)
+      assert [%Aggregate{name: :count_of_comments}] = Ash.Resource.Info.public_aggregates(Post)
 
       assert %Aggregate{name: :another_count_but_private} =
-               Ash.Resource.aggregate(Post, :another_count_but_private)
+               Ash.Resource.Info.aggregate(Post, :another_count_but_private)
 
-      assert nil == Ash.Resource.public_aggregate(Post, :another_count_but_private)
+      assert nil == Ash.Resource.Info.public_aggregate(Post, :another_count_but_private)
 
-      assert nil == Ash.Resource.aggregate(Post, :totally_legit_aggregate)
+      assert nil == Ash.Resource.Info.aggregate(Post, :totally_legit_aggregate)
     end
 
     test "Aggregate descriptions are allowed" do
@@ -78,7 +78,7 @@ defmodule Ash.Test.Resource.AggregatesTest do
 
       assert [
                %Ash.Resource.Aggregate{description: "require one of name/contents"}
-             ] = Ash.Resource.aggregates(Post)
+             ] = Ash.Resource.Info.aggregates(Post)
     end
   end
 end

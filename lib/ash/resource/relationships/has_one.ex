@@ -19,11 +19,11 @@ defmodule Ash.Resource.Relationships.HasOne do
   @type t :: %__MODULE__{
           type: :has_one,
           cardinality: :one,
-          source: Ash.resource(),
+          source: Ash.Resource.t(),
           writable?: boolean,
           name: atom,
           type: Ash.Type.t(),
-          destination: Ash.resource(),
+          destination: Ash.Resource.t(),
           destination_field: atom,
           private?: boolean,
           source_field: atom,

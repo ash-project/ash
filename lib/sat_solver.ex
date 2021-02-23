@@ -148,10 +148,11 @@ defmodule Ash.SatSolver do
          resource
        )
        when path != [] do
-    with relationship when not is_nil(relationship) <- Ash.Resource.relationship(resource, path),
+    with relationship when not is_nil(relationship) <-
+           Ash.Resource.Info.relationship(resource, path),
          true <- attribute.name == relationship.destination_field,
          new_attribute when not is_nil(new_attribute) <-
-           Ash.Resource.attribute(relationship.source, relationship.source_field) do
+           Ash.Resource.Info.attribute(relationship.source, relationship.source_field) do
       %{
         ref
         | relationship_path: :lists.droplast(path),
@@ -242,7 +243,7 @@ defmodule Ash.SatSolver do
   def synonymous_relationship_paths?(resource, [candidate_first | candidate_rest], [first | rest])
       when first == candidate_first do
     synonymous_relationship_paths?(
-      Ash.Resource.relationship(resource, candidate_first).destination,
+      Ash.Resource.Info.relationship(resource, candidate_first).destination,
       candidate_rest,
       rest
     )
@@ -266,8 +267,8 @@ defmodule Ash.SatSolver do
         right_resource
       ) do
     right_resource = right_resource || left_resource
-    relationship = Ash.Resource.relationship(left_resource, first)
-    candidate_relationship = Ash.Resource.relationship(right_resource, candidate_first)
+    relationship = Ash.Resource.Info.relationship(left_resource, first)
+    candidate_relationship = Ash.Resource.Info.relationship(right_resource, candidate_first)
 
     cond do
       !relationship || !candidate_relationship ->

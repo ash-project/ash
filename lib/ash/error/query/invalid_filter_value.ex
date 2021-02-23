@@ -1,6 +1,6 @@
 defmodule Ash.Error.Query.InvalidFilterValue do
   @moduledoc "Used when an invalid value is provided for a filter"
-  use Ash.Error
+  use Ash.Error.Exception
 
   def_ash_error([:message, :value, :context], class: :invalid)
 

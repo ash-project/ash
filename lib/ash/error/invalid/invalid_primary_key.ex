@@ -1,6 +1,6 @@
 defmodule Ash.Error.Invalid.InvalidPrimaryKey do
   @moduledoc "Used when an invalid primary key is given to an Api's `get`"
-  use Ash.Error
+  use Ash.Error.Exception
 
   def_ash_error([:resource, :value], class: :invalid)
 

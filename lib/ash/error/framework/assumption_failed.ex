@@ -1,6 +1,6 @@
 defmodule Ash.Error.Framework.AssumptionFailed do
   @moduledoc "Used when unreachable code/conditions are reached in the framework"
-  use Ash.Error
+  use Ash.Error.Exception
 
   def_ash_error([:message], class: :framework)
 

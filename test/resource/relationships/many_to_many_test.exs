@@ -85,16 +85,16 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                  type: :many_to_many,
                  private?: true
                }
-             ] = Ash.Resource.relationships(Post)
+             ] = Ash.Resource.Info.relationships(Post)
 
-      assert [%ManyToMany{name: :related_posts}] = Ash.Resource.public_relationships(Post)
+      assert [%ManyToMany{name: :related_posts}] = Ash.Resource.Info.public_relationships(Post)
 
       assert %ManyToMany{name: :related_posts} =
-               Ash.Resource.public_relationship(Post, :related_posts)
+               Ash.Resource.Info.public_relationship(Post, :related_posts)
 
-      assert nil == Ash.Resource.relationship(Post, :definitely_legit_relationship)
+      assert nil == Ash.Resource.Info.relationship(Post, :definitely_legit_relationship)
 
-      assert nil == Ash.Resource.public_relationship(Post, :unrelated_posts)
+      assert nil == Ash.Resource.Info.public_relationship(Post, :unrelated_posts)
     end
   end
 

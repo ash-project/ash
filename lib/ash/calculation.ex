@@ -22,9 +22,9 @@ defmodule Ash.Calculation do
     end
   end
 
-  @callback init(Keyword.t()) :: {:ok, Keyword.t()} | {:error, Ash.error()}
+  @callback init(Keyword.t()) :: {:ok, Keyword.t()} | {:error, term}
   @callback type() :: Ash.Type.t()
   @callback describe(Keyword.t()) :: String.t()
-  @callback calculate([Ash.record()], Keyword.t(), map) ::
-              {:ok, [term]} | [term] | {:error, Ash.error()}
+  @callback calculate([Ash.Resource.record()], Keyword.t(), map) ::
+              {:ok, [term]} | [term] | {:error, term}
 end

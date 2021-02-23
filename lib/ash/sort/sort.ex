@@ -3,6 +3,11 @@ defmodule Ash.Sort do
 
   alias Ash.Error.Query.{InvalidSortOrder, NoSuchAttribute}
 
+  @type sort_order ::
+          :asc | :desc | :asc_nils_first | :asc_nils_last | :desc_nils_first | :desc_nils_last
+
+  @type t :: list(atom | {atom, sort_order})
+
   @doc """
   A utility for parsing sorts provided from external input. Only allows sorting
   on public attributes and aggregates.
@@ -35,12 +40,12 @@ defmodule Ash.Sort do
   ### A standard Ash sort
   """
   @spec parse_input(
-          Ash.resource(),
+          Ash.Resource.t(),
           String.t()
-          | list(atom | String.t() | {atom, Ash.sort_order()} | list(String.t()))
+          | list(atom | String.t() | {atom, sort_order()} | list(String.t()))
           | nil
         ) ::
-          Ash.sort() | nil
+          Ash.Sort.t() | nil
   def parse_input(resource, sort) when is_binary(sort) do
     sort = String.split(sort, ",")
     parse_input(resource, sort)
@@ -117,12 +122,12 @@ defmodule Ash.Sort do
   end
 
   defp get_field(resource, field) do
-    case Ash.Resource.public_attribute(resource, field) do
+    case Ash.Resource.Info.public_attribute(resource, field) do
       %{name: name} ->
         name
 
       nil ->
-        case Ash.Resource.public_attribute(resource, field) do
+        case Ash.Resource.Info.public_attribute(resource, field) do
           %{name: name} ->
             name
 

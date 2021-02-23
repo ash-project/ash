@@ -27,13 +27,14 @@ defmodule Ash.Api do
   alias Ash.Actions.{Create, Destroy, Read, Update}
 
   alias Ash.Error.Invalid.{
-    InvalidPrimaryKey,
     NoPrimaryAction,
     NoSuchAction,
     NoSuchResource
   }
 
   require Ash.Query
+
+  @type t() :: module
 
   @type page_request ::
           :next | :prev | :first | :last | integer
@@ -50,6 +51,7 @@ defmodule Ash.Api do
     ],
     authorize?: [
       type: :boolean,
+      default: false,
       doc:
         "If an actor is provided, authorization happens automatically. If not, this flag can be used to authorize with no user."
     ],
@@ -172,6 +174,10 @@ defmodule Ash.Api do
                        type: :any,
                        doc: "The tenant to set on the query being run"
                      ],
+                     action: [
+                       type: :atom,
+                       doc: "The action to use for reading the data"
+                     ],
                      context: [
                        type: :any,
                        doc: "Context to be set on the query being run"
@@ -226,8 +232,12 @@ defmodule Ash.Api do
   @doc """
   Get a record by a primary key. See `c:get/3` for more.
   """
-  @callback get!(resource :: Ash.resource(), id_or_filter :: term(), params :: Keyword.t()) ::
-              Ash.record() | no_return
+  @callback get!(
+              resource :: Ash.Resource.t(),
+              id_or_filter :: term(),
+              params :: Keyword.t()
+            ) ::
+              Ash.Resource.record() | no_return
 
   @doc """
   Get a record by a primary key.
@@ -237,14 +247,18 @@ defmodule Ash.Api do
 
   #{Ash.OptionsHelpers.docs(@get_opts_schema)}
   """
-  @callback get(resource :: Ash.resource(), id_or_filter :: term(), params :: Keyword.t()) ::
-              {:ok, Ash.record()} | {:error, Ash.error()}
+  @callback get(
+              resource :: Ash.Resource.t(),
+              id_or_filter :: term(),
+              params :: Keyword.t()
+            ) ::
+              {:ok, Ash.Resource.record()} | {:error, term}
 
   @doc """
   Run an ash query, raising on more than one result. See `c:read_one/2` for more.
   """
-  @callback read_one!(Ash.query() | Ash.resource(), params :: Keyword.t()) ::
-              Ash.record() | {Ash.record(), Ash.query()} | no_return
+  @callback read_one!(Ash.Query.t() | Ash.Resource.t(), params :: Keyword.t()) ::
+              Ash.Resource.record() | {Ash.Resource.record(), Ash.Query.t()} | no_return
 
   @doc """
   Run a query on a resource, but fail on more than one result
@@ -252,13 +266,17 @@ defmodule Ash.Api do
   This is useful if you have a query that doesn't include a primary key
   but you know that it will only ever return a single result
   """
-  @callback read_one(Ash.query() | Ash.resource(), params :: Keyword.t()) ::
-              {:ok, Ash.record()} | {:ok, Ash.record(), Ash.query()} | {:error, Ash.error()}
+  @callback read_one(Ash.Query.t() | Ash.Resource.t(), params :: Keyword.t()) ::
+              {:ok, Ash.Resource.record()}
+              | {:ok, Ash.Resource.record(), Ash.Query.t()}
+              | {:error, term}
   @doc """
   Run an ash query. See `c:read/2` for more.
   """
-  @callback read!(Ash.query() | Ash.resource(), params :: Keyword.t()) ::
-              list(Ash.record()) | {list(Ash.record()), Ash.Query.t()} | no_return
+  @callback read!(Ash.Query.t() | Ash.Resource.t(), params :: Keyword.t()) ::
+              list(Ash.Resource.record())
+              | {list(Ash.Resource.record()), Ash.Query.t()}
+              | no_return
 
   @doc """
   Run a query on a resource.
@@ -275,34 +293,34 @@ defmodule Ash.Api do
   #### Keyset pagination
   #{Ash.OptionsHelpers.docs(@keyset_page_opts)}
   """
-  @callback read(Ash.query(), params :: Keyword.t()) ::
-              {:ok, list(Ash.record())}
-              | {:ok, list(Ash.record()), Ash.query()}
-              | {:error, Ash.error()}
+  @callback read(Ash.Query.t(), params :: Keyword.t()) ::
+              {:ok, list(Ash.Resource.record())}
+              | {:ok, list(Ash.Resource.record()), Ash.Query.t()}
+              | {:error, term}
 
   @doc """
   Fetch a page relative to the provided page.
   """
-  @callback page!(Ash.page(), page_request) ::
-              Ash.page() | no_return
+  @callback page!(Ash.Page.page(), page_request) ::
+              Ash.Page.page() | no_return
 
   @doc """
   Fetch a page relative to the provided page.
 
   A page is the return value of a paginated action called via `c:read/2`.
   """
-  @callback page(Ash.page(), page_request) ::
-              {:ok, Ash.page()} | {:error, Ash.error()}
+  @callback page(Ash.Page.page(), page_request) ::
+              {:ok, Ash.Page.page()} | {:error, term}
 
   @doc """
   Load fields or relationships on already fetched records. See `c:load/2` for more information.
   """
   @callback load!(
-              record_or_records :: Ash.record() | [Ash.record()],
-              query :: Ash.query(),
+              record_or_records :: Ash.Resource.record() | [Ash.Resource.record()],
+              query :: Ash.Query.t(),
               opts :: Keyword.t()
             ) ::
-              Ash.record() | [Ash.record()] | no_return
+              Ash.Resource.record() | [Ash.Resource.record()] | no_return
 
   @doc """
   Load fields or relationships on already fetched records.
@@ -314,62 +332,65 @@ defmodule Ash.Api do
   #{Ash.OptionsHelpers.docs(@load_opts_schema)}
   """
   @callback load(
-              record_or_records :: Ash.record() | [Ash.record()],
-              query :: Ash.query(),
+              record_or_records :: Ash.Resource.record() | [Ash.Resource.record()],
+              query :: Ash.Query.t(),
               opts :: Keyword.t()
             ) ::
-              {:ok, Ash.record() | [Ash.record()]} | {:error, Ash.error()}
+              {:ok, Ash.Resource.record() | [Ash.Resource.record()]} | {:error, term}
 
   @doc """
   Create a record. See `c:create/2` for more information.
   """
-  @callback create!(Ash.changeset(), params :: Keyword.t()) ::
-              Ash.record() | no_return
+  @callback create!(Ash.Changeset.t(), params :: Keyword.t()) ::
+              Ash.Resource.record() | no_return
 
   @doc """
   Create a record.
 
   #{Ash.OptionsHelpers.docs(@create_opts_schema)}
   """
-  @callback create(Ash.changeset(), params :: Keyword.t()) ::
-              {:ok, Ash.record()} | {:error, Ash.error()}
+  @callback create(Ash.Changeset.t(), params :: Keyword.t()) ::
+              {:ok, Ash.Resource.record()} | {:error, term}
 
   @doc """
   Update a record. See `c:update/2` for more information.
   """
-  @callback update!(Ash.changeset(), params :: Keyword.t()) ::
-              Ash.record() | no_return
+  @callback update!(Ash.Changeset.t(), params :: Keyword.t()) ::
+              Ash.Resource.record() | no_return
 
   @doc """
   Update a record.
 
   #{Ash.OptionsHelpers.docs(@update_opts_schema)}
   """
-  @callback update(Ash.changeset(), params :: Keyword.t()) ::
-              {:ok, Ash.record()} | {:error, Ash.error()}
+  @callback update(Ash.Changeset.t(), params :: Keyword.t()) ::
+              {:ok, Ash.Resource.record()} | {:error, term}
 
   @doc """
   Destroy a record. See `c:destroy/2` for more information.
   """
-  @callback destroy!(Ash.changeset() | Ash.record(), params :: Keyword.t()) :: :ok | no_return
+  @callback destroy!(Ash.Changeset.t() | Ash.Resource.record(), params :: Keyword.t()) ::
+              :ok | no_return
 
   @doc """
   Destroy a record.
 
   #{Ash.OptionsHelpers.docs(@destroy_opts_schema)}
   """
-  @callback destroy(Ash.changeset() | Ash.record(), params :: Keyword.t()) ::
-              :ok | {:error, Ash.error()}
+  @callback destroy(Ash.Changeset.t() | Ash.Resource.record(), params :: Keyword.t()) ::
+              :ok | {:error, term}
 
   @doc """
   Refetches a record by primary key. See `c:reload/1` for more.
   """
-  @callback reload!(record :: Ash.record(), params :: Keyword.t()) :: Ash.record() | no_return
+  @callback reload!(record :: Ash.Resource.record(), params :: Keyword.t()) ::
+              Ash.Resource.record() | no_return
 
   @doc """
   Refetches a record by primary key.
   """
-  @callback reload(record :: Ash.record()) :: {:ok, Ash.record()} | {:error, Ash.error()}
+  @callback reload(record :: Ash.Resource.record()) ::
+              {:ok, Ash.Resource.record()} | {:error, term}
 
   alias Ash.Dsl.Extension
 
@@ -399,7 +420,7 @@ defmodule Ash.Api do
     end
   end
 
-  @spec resources(Ash.api()) :: [Ash.resource()]
+  @spec resources(Ash.Api.t()) :: [Ash.Resource.t()]
   def resources(api) do
     api
     |> Extension.get_entities([:resources])
@@ -407,7 +428,8 @@ defmodule Ash.Api do
   end
 
   @doc false
-  @spec get!(Ash.api(), Ash.resource(), term(), Keyword.t()) :: Ash.record() | no_return
+  @spec get!(Ash.Api.t(), Ash.Resource.t(), term(), Keyword.t()) ::
+          Ash.Resource.record() | no_return
   def get!(api, resource, id, opts \\ []) do
     opts = Ash.OptionsHelpers.validate!(opts, @get_opts_schema)
 
@@ -417,12 +439,12 @@ defmodule Ash.Api do
   end
 
   @doc false
-  @spec get(Ash.api(), Ash.resource(), term(), Keyword.t()) ::
-          {:ok, Ash.record() | nil} | {:error, Ash.error()}
+  @spec get(Ash.Api.t(), Ash.Resource.t(), term(), Keyword.t()) ::
+          {:ok, Ash.Resource.record() | nil} | {:error, term}
   def get(api, resource, id, opts) do
     with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @get_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, resource),
-         {:ok, filter} <- get_filter(resource, id) do
+         {:ok, filter} <- Ash.Filter.get_filter(resource, id) do
       query =
         resource
         |> Ash.Query.new(api)
@@ -573,56 +595,14 @@ defmodule Ash.Api do
     end
   end
 
-  defp get_filter(resource, id) do
-    primary_key = Ash.Resource.primary_key(resource)
-    keyword? = Keyword.keyword?(id)
-
-    case {primary_key, id} do
-      {[field], [{field, value}]} ->
-        {:ok, [{field, value}]}
-
-      {[field], value} when not keyword? ->
-        {:ok, [{field, value}]}
-
-      {fields, value} ->
-        cond do
-          not keyword? ->
-            {:error, InvalidPrimaryKey.exception(resource: resource, value: id)}
-
-          Enum.sort(Keyword.keys(value)) == Enum.sort(fields) ->
-            {:ok, value}
-
-          true ->
-            get_identity_filter(resource, id)
-        end
-    end
-  end
-
-  defp get_identity_filter(resource, id) do
-    sorted_keys = Enum.sort(Keyword.keys(id))
-
-    resource
-    |> Ash.Resource.identities()
-    |> Enum.find_value(
-      {:error, InvalidPrimaryKey.exception(resource: resource, value: id)},
-      fn identity ->
-        if sorted_keys == Enum.sort(identity.keys) do
-          {:ok, id}
-        else
-          false
-        end
-      end
-    )
-  end
-
   @doc false
   @spec load!(
-          Ash.api(),
-          Ash.record() | list(Ash.record()),
-          Ash.query() | list(atom | {atom, list()}),
+          Ash.Api.t(),
+          Ash.Resource.record() | list(Ash.Resource.record()),
+          Ash.Query.t() | list(atom | {atom, list()}),
           Keyword.t()
         ) ::
-          list(Ash.record()) | Ash.record() | no_return
+          list(Ash.Resource.record()) | Ash.Resource.record() | no_return
   def load!(api, data, query, opts \\ []) do
     opts = Ash.OptionsHelpers.validate!(opts, @load_opts_schema)
 
@@ -633,12 +613,12 @@ defmodule Ash.Api do
 
   @doc false
   @spec load(
-          Ash.api(),
-          Ash.record() | list(Ash.record()),
-          Ash.query() | list(atom | {atom, list()}),
+          Ash.Api.t(),
+          Ash.Resource.record() | list(Ash.Resource.record()),
+          Ash.Query.t() | list(atom | {atom, list()}),
           Keyword.t()
         ) ::
-          {:ok, list(Ash.record()) | Ash.record()} | {:error, Ash.error()}
+          {:ok, list(Ash.Resource.record()) | Ash.Resource.record()} | {:error, term}
   def load(api, data, query, opts \\ [])
   def load(_, [], _, _), do: {:ok, []}
   def load(_, nil, _, _), do: {:ok, nil}
@@ -684,8 +664,8 @@ defmodule Ash.Api do
   end
 
   @doc false
-  @spec read!(Ash.api(), Ash.query() | Ash.resource(), Keyword.t()) ::
-          list(Ash.record()) | no_return
+  @spec read!(Ash.Api.t(), Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
+          list(Ash.Resource.record()) | no_return
   def read!(api, query, opts \\ []) do
     opts = Ash.OptionsHelpers.validate!(opts, @read_opts_schema)
 
@@ -695,8 +675,8 @@ defmodule Ash.Api do
   end
 
   @doc false
-  @spec read(Ash.api(), Ash.query() | Ash.resource(), Keyword.t()) ::
-          {:ok, list(Ash.record()) | Ash.page()} | {:error, Ash.error()}
+  @spec read(Ash.Api.t(), Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
+          {:ok, list(Ash.Resource.record()) | Ash.Page.page()} | {:error, term}
   def read(api, query, opts \\ [])
 
   def read(api, resource, opts) when is_atom(resource) do
@@ -774,8 +754,8 @@ defmodule Ash.Api do
   end
 
   @doc false
-  @spec create!(Ash.api(), Ash.changeset(), Keyword.t()) ::
-          Ash.record() | no_return
+  @spec create!(Ash.Api.t(), Ash.Changeset.t(), Keyword.t()) ::
+          Ash.Resource.record() | no_return
   def create!(api, changeset, opts) do
     opts = Ash.OptionsHelpers.validate!(opts, @create_opts_schema)
 
@@ -785,8 +765,8 @@ defmodule Ash.Api do
   end
 
   @doc false
-  @spec create(Ash.api(), Ash.changeset(), Keyword.t()) ::
-          {:ok, Ash.record()} | {:error, Ash.error()}
+  @spec create(Ash.Api.t(), Ash.Changeset.t(), Keyword.t()) ::
+          {:ok, Ash.Resource.record()} | {:error, term}
   def create(api, changeset, opts) do
     with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @create_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, changeset.resource),
@@ -805,8 +785,8 @@ defmodule Ash.Api do
   end
 
   @doc false
-  @spec update(Ash.api(), Ash.record(), Keyword.t()) ::
-          {:ok, Ash.record()} | {:error, Ash.error()}
+  @spec update(Ash.Api.t(), Ash.Resource.record(), Keyword.t()) ::
+          {:ok, Ash.Resource.record()} | {:error, term}
   def update(api, changeset, opts) do
     with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @update_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, changeset.resource),
@@ -816,7 +796,8 @@ defmodule Ash.Api do
   end
 
   @doc false
-  @spec destroy!(Ash.api(), Ash.changeset() | Ash.record(), Keyword.t()) :: :ok | no_return
+  @spec destroy!(Ash.Api.t(), Ash.Changeset.t() | Ash.Resource.record(), Keyword.t()) ::
+          :ok | no_return
   def destroy!(api, changeset, opts) do
     opts = Ash.OptionsHelpers.validate!(opts, @destroy_opts_schema)
 
@@ -826,8 +807,8 @@ defmodule Ash.Api do
   end
 
   @doc false
-  @spec destroy(Ash.api(), Ash.changeset() | Ash.record(), Keyword.t()) ::
-          :ok | {:error, Ash.error()}
+  @spec destroy(Ash.Api.t(), Ash.Changeset.t() | Ash.Resource.record(), Keyword.t()) ::
+          :ok | {:error, term}
   def destroy(api, %Ash.Changeset{resource: resource} = changeset, opts) do
     with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @destroy_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, resource),
@@ -853,7 +834,7 @@ defmodule Ash.Api do
         end
 
       {:ok, action} ->
-        case Ash.Resource.action(resource, action, type) do
+        case Ash.Resource.Info.action(resource, action, type) do
           nil ->
             {:error, NoSuchAction.exception(resource: resource, action: action, type: type)}
 
@@ -865,7 +846,7 @@ defmodule Ash.Api do
         if preset do
           get_action(resource, Keyword.put(params, :action, preset), type)
         else
-          case Ash.Resource.primary_action(resource, type) do
+          case Ash.Resource.Info.primary_action(resource, type) do
             nil ->
               {:error, NoPrimaryAction.exception(resource: resource, type: type)}
 

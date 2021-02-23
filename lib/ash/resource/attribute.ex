@@ -23,7 +23,7 @@ defmodule Ash.Resource.Attribute do
           primary_key?: boolean(),
           private?: boolean(),
           default: (() -> term),
-          update_default: (() -> term) | (Ash.record() -> term),
+          update_default: (() -> term) | (Ash.Resource.record() -> term),
           sensitive?: boolean(),
           writable?: boolean()
         }
@@ -36,7 +36,7 @@ defmodule Ash.Resource.Attribute do
       doc: "The name of the attribute."
     ],
     type: [
-      type: {:custom, OptionsHelpers, :ash_type, []},
+      type: :any,
       doc: "The type of the attribute."
     ],
     constraints: [
@@ -112,7 +112,7 @@ defmodule Ash.Resource.Attribute do
 
   @uuid_primary_key_schema @schema
                            |> OptionsHelpers.set_default!(:writable?, false)
-                           |> OptionsHelpers.set_default!(:default, &Ash.uuid/0)
+                           |> OptionsHelpers.set_default!(:default, &Ash.UUID.generate/0)
                            |> OptionsHelpers.set_default!(:primary_key?, true)
                            |> OptionsHelpers.set_default!(:type, Ash.Type.UUID)
                            |> Keyword.delete(:allow_nil?)
@@ -123,50 +123,6 @@ defmodule Ash.Resource.Attribute do
                               |> OptionsHelpers.set_default!(:generated?, true)
                               |> OptionsHelpers.set_default!(:type, Ash.Type.Integer)
                               |> Keyword.delete(:allow_nil?)
-
-  def transform(%{constraints: []} = attribute), do: {:ok, attribute}
-
-  def transform(%{constraints: constraints, type: type} = attribute) do
-    case type do
-      {:array, type} ->
-        with {:ok, new_constraints} <-
-               Ash.OptionsHelpers.validate(
-                 Keyword.delete(constraints, :items),
-                 Ash.Type.array_constraints(type)
-               ),
-             {:ok, item_constraints} <- validate_item_constraints(type, constraints) do
-          {:ok,
-           %{attribute | constraints: Keyword.put(new_constraints, :items, item_constraints)}}
-        end
-
-      type ->
-        schema = Ash.Type.constraints(type)
-
-        case Ash.OptionsHelpers.validate(constraints, schema) do
-          {:ok, constraints} ->
-            {:ok, %{attribute | constraints: constraints}}
-
-          {:error, error} ->
-            {:error, error}
-        end
-    end
-  end
-
-  defp validate_item_constraints(type, constraints) do
-    if Keyword.has_key?(constraints, :items) do
-      schema = Ash.Type.constraints(type)
-
-      case Ash.OptionsHelpers.validate(constraints[:items], schema) do
-        {:ok, item_constraints} ->
-          {:ok, item_constraints}
-
-        {:error, error} ->
-          {:error, error}
-      end
-    else
-      {:ok, constraints}
-    end
-  end
 
   @doc false
   def attribute_schema, do: @schema

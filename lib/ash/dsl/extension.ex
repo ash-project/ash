@@ -107,13 +107,13 @@ defmodule Ash.Dsl.Extension do
 
   @doc "Get the entities configured for a given section"
   def get_entities(resource, path) do
-    Ash.try_compile(resource)
+    Ash.Helpers.try_compile(resource)
     :persistent_term.get({resource, :ash, path}, %{entities: []}).entities
   end
 
   @doc "Get a value that was persisted while transforming or compiling the resource, e.g `:primary_key`"
   def get_persisted(resource, key, default \\ nil) do
-    Ash.try_compile(resource)
+    Ash.Helpers.try_compile(resource)
     :persistent_term.get({resource, key}, default)
   end
 
@@ -131,7 +131,7 @@ defmodule Ash.Dsl.Extension do
           value
 
         _ ->
-          Ash.try_compile(resource)
+          Ash.Helpers.try_compile(resource)
 
           Keyword.get(
             :persistent_term.get({resource, :ash, path}, %{opts: []}).opts,
@@ -140,7 +140,7 @@ defmodule Ash.Dsl.Extension do
           )
       end
     else
-      Ash.try_compile(resource)
+      Ash.Helpers.try_compile(resource)
 
       Keyword.get(
         :persistent_term.get({resource, :ash, path}, %{opts: []}).opts,

@@ -13,12 +13,12 @@ defmodule Ash.Schema do
       @primary_key false
 
       schema Ash.DataLayer.source(__MODULE__) do
-        for relationship <- Ash.Resource.relationships(__MODULE__) do
+        for relationship <- Ash.Resource.Info.relationships(__MODULE__) do
           @struct_fields {relationship.name,
                           %Ash.NotLoaded{type: :relationship, field: relationship.name}}
         end
 
-        for attribute <- Ash.Resource.attributes(__MODULE__) do
+        for attribute <- Ash.Resource.Info.attributes(__MODULE__) do
           read_after_writes? = attribute.generated? and is_nil(attribute.default)
 
           field(attribute.name, Ash.Type.ecto_type(attribute.type),
@@ -32,7 +32,7 @@ defmodule Ash.Schema do
         field(:calculations, :map, virtual: true, default: %{})
         field(:__metadata__, :map, virtual: true, default: %{})
 
-        for aggregate <- Ash.Resource.aggregates(__MODULE__) do
+        for aggregate <- Ash.Resource.Info.aggregates(__MODULE__) do
           {:ok, type} = Aggregate.kind_to_type(aggregate.kind, :string)
 
           field(aggregate.name, Ash.Type.ecto_type(type),
@@ -41,7 +41,7 @@ defmodule Ash.Schema do
           )
         end
 
-        for calculation <- Ash.Resource.calculations(__MODULE__) do
+        for calculation <- Ash.Resource.Info.calculations(__MODULE__) do
           {mod, _} = calculation.calculation
 
           field(calculation.name, Ash.Type.ecto_type(mod.type()),

@@ -41,11 +41,11 @@ defmodule Ash.Type.Atom do
   end
 
   @impl true
-  def cast_input(value) when is_atom(value) do
+  def cast_input(value, _) when is_atom(value) do
     {:ok, value}
   end
 
-  def cast_input(value) when is_binary(value) do
+  def cast_input(value, _) when is_binary(value) do
     {:ok, String.to_existing_atom(value)}
   rescue
     ArgumentError ->
@@ -53,11 +53,11 @@ defmodule Ash.Type.Atom do
   end
 
   @impl true
-  def cast_stored(value) when is_atom(value) do
+  def cast_stored(value, _) when is_atom(value) do
     {:ok, value}
   end
 
-  def cast_stored(value) when is_binary(value) do
+  def cast_stored(value, _) when is_binary(value) do
     {:ok, String.to_existing_atom(value)}
   rescue
     ArgumentError ->
@@ -65,9 +65,9 @@ defmodule Ash.Type.Atom do
   end
 
   @impl true
-  def dump_to_native(value) when is_atom(value) do
+  def dump_to_native(value, _) when is_atom(value) do
     {:ok, to_string(value)}
   end
 
-  def dump_to_native(_), do: :error
+  def dump_to_native(_, _), do: :error
 end

@@ -1,12 +1,11 @@
 defmodule Ash.Actions.Update do
   @moduledoc false
-  alias Ash.Actions.Relationships
   alias Ash.Engine
   alias Ash.Engine.Request
   require Logger
 
-  @spec run(Ash.api(), Ash.record(), Ash.action(), Keyword.t()) ::
-          {:ok, Ash.record()} | {:error, Ash.Changeset.t()} | {:error, Ash.error()}
+  @spec run(Ash.Api.t(), Ash.Resource.record(), Ash.Resource.Actions.action(), Keyword.t()) ::
+          {:ok, Ash.Resource.record()} | {:error, Ash.Changeset.t()} | {:error, term}
   def run(api, changeset, action, opts) do
     engine_opts =
       opts
@@ -41,7 +40,7 @@ defmodule Ash.Actions.Update do
   end
 
   defp add_tenant(data, changeset) do
-    if Ash.Resource.multitenancy_strategy(changeset.resource) do
+    if Ash.Resource.Info.multitenancy_strategy(changeset.resource) do
       %{data | __metadata__: Map.put(data.__metadata__, :tenant, changeset.tenant)}
     else
       data
@@ -59,14 +58,12 @@ defmodule Ash.Actions.Update do
   defp changeset(changeset, api, action, actor) do
     changeset = %{changeset | api: api}
 
-    changeset =
-      if changeset.__validated_for_action__ == action.name do
-        changeset
-      else
-        Ash.Changeset.for_update(changeset, action.name, %{}, actor: actor)
-      end
-
-    Relationships.handle_relationship_changes(changeset)
+    if changeset.__validated_for_action__ == action.name do
+      changeset
+    else
+      Ash.Changeset.for_update(changeset, action.name, %{}, actor: actor)
+    end
+    |> Ash.Changeset.set_defaults(:update)
   end
 
   defp do_run_requests(
@@ -79,7 +76,7 @@ defmodule Ash.Actions.Update do
     authorization_request =
       Request.new(
         api: api,
-        changeset: Relationships.changeset(changeset),
+        changeset: changeset,
         action: action,
         resource: resource,
         data: changeset.data,
@@ -104,29 +101,34 @@ defmodule Ash.Actions.Update do
           Request.resolve(
             [[:data, :changeset]],
             fn %{data: %{changeset: changeset}} ->
-              changeset
-              |> Ash.Changeset.put_context(:actor, engine_opts[:actor])
-              |> Ash.Changeset.with_hooks(fn changeset ->
-                changeset = set_tenant(changeset)
+              result =
+                changeset
+                |> Ash.Changeset.put_context(:private, %{actor: engine_opts[:actor]})
+                |> Ash.Changeset.before_action(fn changeset ->
+                  {changeset, instructions} =
+                    Ash.Actions.ManagedRelationships.setup_managed_belongs_to_relationships(
+                      changeset,
+                      engine_opts[:actor]
+                    )
 
-                Ash.DataLayer.update(resource, changeset)
-              end)
-              |> case do
-                {:ok, updated, changeset, %{notifications: notifications}} ->
-                  case Ash.Actions.ManagedRelationships.manage_relationships(
-                         updated,
-                         changeset,
-                         engine_opts[:actor]
-                       ) do
-                    {:ok, updated, new_notifications} ->
-                      {:ok, updated, %{notifications: notifications ++ new_notifications}}
+                  {changeset, instructions}
+                end)
+                |> Ash.Changeset.with_hooks(fn changeset ->
+                  changeset = set_tenant(changeset)
 
-                    {:error, error} ->
-                      {:error, error}
-                  end
+                  Ash.DataLayer.update(resource, changeset)
+                end)
 
-                {:error, error} ->
-                  {:error, error}
+              with {:ok, updated, changeset, %{notifications: notifications}} <- result,
+                   {:ok, loaded} <-
+                     Ash.Actions.ManagedRelationships.load(api, updated, changeset, engine_opts),
+                   {:ok, with_relationships, new_notifications} <-
+                     Ash.Actions.ManagedRelationships.manage_relationships(
+                       loaded,
+                       changeset,
+                       engine_opts[:actor]
+                     ) do
+                {:ok, with_relationships, %{notifications: notifications ++ new_notifications}}
               end
             end
           ),
@@ -134,20 +136,19 @@ defmodule Ash.Actions.Update do
         name: "#{action.type} - `#{action.name}` commit"
       )
 
-    relationship_requests = changeset.requests
-
     Engine.run(
-      [authorization_request | [commit_request | relationship_requests]],
+      [authorization_request, commit_request],
       api,
       engine_opts
     )
   end
 
   defp set_tenant(changeset) do
-    if changeset.tenant && Ash.Resource.multitenancy_strategy(changeset.resource) == :attribute do
-      attribute = Ash.Resource.multitenancy_attribute(changeset.resource)
+    if changeset.tenant &&
+         Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do
+      attribute = Ash.Resource.Info.multitenancy_attribute(changeset.resource)
 
-      {m, f, a} = Ash.Resource.multitenancy_parse_attribute(changeset.resource)
+      {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(changeset.resource)
       attribute_value = apply(m, f, [changeset.tenant | a])
 
       changeset

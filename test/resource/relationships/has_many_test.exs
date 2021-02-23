@@ -47,15 +47,15 @@ defmodule Ash.Test.Resource.Relationshihps.HasManyTest do
                  type: :has_many,
                  private?: true
                }
-             ] = Ash.Resource.relationships(Post)
+             ] = Ash.Resource.Info.relationships(Post)
 
-      assert [%HasMany{name: :foo}] = Ash.Resource.public_relationships(Post)
+      assert [%HasMany{name: :foo}] = Ash.Resource.Info.public_relationships(Post)
 
-      assert %HasMany{name: :foo} = Ash.Resource.public_relationship(Post, :foo)
+      assert %HasMany{name: :foo} = Ash.Resource.Info.public_relationship(Post, :foo)
 
-      assert nil == Ash.Resource.relationship(Post, :definitely_legit_relationship)
+      assert nil == Ash.Resource.Info.relationship(Post, :definitely_legit_relationship)
 
-      assert nil == Ash.Resource.public_relationship(Post, :bar)
+      assert nil == Ash.Resource.Info.public_relationship(Post, :bar)
     end
   end
 

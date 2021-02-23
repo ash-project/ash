@@ -1,6 +1,6 @@
 defmodule Ash.Error.Forbidden.MustPassStrictCheck do
   @moduledoc "Used when unreachable code/conditions are reached in the framework"
-  use Ash.Error
+  use Ash.Error.Exception
 
   def_ash_error([:resource], class: :forbidden)
 

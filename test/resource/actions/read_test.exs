@@ -33,7 +33,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.ReadTest do
                  primary?: true,
                  type: :read
                }
-             ] = Ash.Resource.actions(Post)
+             ] = Ash.Resource.Info.actions(Post)
     end
   end
 

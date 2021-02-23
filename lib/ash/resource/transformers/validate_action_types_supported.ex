@@ -10,12 +10,13 @@ defmodule Ash.Resource.Transformers.ValidateActionTypesSupported do
   def transform(resource, dsl_state) do
     dsl_state
     |> Transformer.get_entities([:actions])
+    |> Enum.reject(&(&1.type == :read))
     |> Enum.each(fn action ->
-      unless Ash.Resource.data_layer_can?(resource, action.type) do
+      unless Ash.DataLayer.data_layer_can?(resource, action.type) do
         raise DslError,
           module: __MODULE__,
           message:
-            "Data layer #{Ash.Resource.data_layer(resource)} for #{inspect(resource)} does not support #{
+            "Data layer #{Ash.DataLayer.data_layer(resource)} for #{inspect(resource)} does not support #{
               action.type
             } actions",
           path: [:actions, action.type, action.name]

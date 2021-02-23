@@ -11,13 +11,13 @@ defmodule Ash.Resource.Transformers.DefaultPrimaryKey do
   alias Ash.Dsl.Transformer
   alias Ash.Error.Dsl.DslError
 
-  @extension Ash.Resource.Dsl
+  @extension Module.concat(["Ash", Resource, Dsl])
 
   def transform(resource, dsl_state) do
-    if Ash.Resource.embedded?(resource) do
+    if Ash.Resource.Info.embedded?(resource) do
       has_pkey? =
         resource
-        |> Ash.Resource.attributes()
+        |> Ash.Resource.Info.attributes()
         |> Enum.any?(& &1.primary_key?)
 
       if has_pkey? do

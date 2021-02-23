@@ -13,27 +13,27 @@ defmodule Ash.Type.Interval do
   def storage_type, do: :string
 
   @impl true
-  def cast_input(value) when value in @intervals do
+  def cast_input(value, _) when value in @intervals do
     {:ok, value}
   end
 
-  def cast_input(value) when value in @string_intervals do
+  def cast_input(value, _) when value in @string_intervals do
     {:ok, @string_intervals_to_interval[value]}
   end
 
   @impl true
-  def cast_stored(value) when value in @intervals do
+  def cast_stored(value, _) when value in @intervals do
     {:ok, value}
   end
 
-  def cast_stored(value) when value in @string_intervals do
+  def cast_stored(value, _) when value in @string_intervals do
     {:ok, @string_intervals_to_interval[value]}
   end
 
   @impl true
-  def dump_to_native(value) when is_atom(value) do
+  def dump_to_native(value, _) when is_atom(value) do
     {:ok, to_string(value)}
   end
 
-  def dump_to_native(_), do: :error
+  def dump_to_native(_, _), do: :error
 end

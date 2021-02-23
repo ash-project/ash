@@ -1,6 +1,6 @@
 defmodule Ash.Error.Framework do
   @moduledoc "Used when an unknown/generic framework error occurs"
-  use Ash.Error
+  use Ash.Error.Exception
 
   def_ash_error([:errors, :stacktraces?], class: :framework)
 

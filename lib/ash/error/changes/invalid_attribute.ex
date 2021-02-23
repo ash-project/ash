@@ -1,6 +1,6 @@
 defmodule Ash.Error.Changes.InvalidAttribute do
   @moduledoc "Used when an invalid value is provided for an attribute change"
-  use Ash.Error
+  use Ash.Error.Exception
 
   def_ash_error([:field, :message], class: :invalid)
 

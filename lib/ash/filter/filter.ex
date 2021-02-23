@@ -13,6 +13,8 @@ defmodule Ash.Filter do
     ReadActionRequired
   }
 
+  alias Ash.Error.Invalid.InvalidPrimaryKey
+
   alias Ash.Query.Function.{Ago, Contains, IsNil}
 
   alias Ash.Query.Operator.{
@@ -178,7 +180,7 @@ defmodule Ash.Filter do
       relationship_path: [],
       aggregates: aggregates,
       public?: true,
-      data_layer: Ash.Resource.data_layer(resource)
+      data_layer: Ash.DataLayer.data_layer(resource)
     }
 
     with {:ok, expression} <- parse_expression(statement, context) do
@@ -244,12 +246,88 @@ defmodule Ash.Filter do
       relationship_path: [],
       aggregates: aggregates,
       public?: false,
-      data_layer: Ash.Resource.data_layer(resource)
+      data_layer: Ash.DataLayer.data_layer(resource)
     }
 
     with {:ok, expression} <- parse_expression(statement, context) do
       {:ok, %__MODULE__{expression: expression, resource: resource}}
     end
+  end
+
+  @doc """
+  Returns a filter statement that would find a single record based on the input.
+
+  For example:
+
+      iex> get_filter(MyApp.Post, 1)
+      {:ok, %{id: 1}} #using primary key
+      iex> get_filter(MyApp.Post, id: 1)
+      {:ok, %{id: 1}} #using primary key
+      iex> get_filter(MyApp.Post, author_id: 1, publication_id: 2, first_name: "fred")
+      {:ok, %{author_id: 1, publication_id: 1}} # using a unique identity
+      iex> get_filter(MyApp.Post, first_name: "fred")
+      :error # not enough information
+  """
+  def get_filter(resource, id) do
+    primary_key = Ash.Resource.Info.primary_key(resource)
+    keyval? = Keyword.keyword?(id) || is_map(id)
+
+    case {primary_key, id} do
+      {[field], [{field, value}]} ->
+        {:ok, %{field => value}}
+
+      {[field], value} when not keyval? ->
+        {:ok, %{field => value}}
+
+      {fields, value} ->
+        if keyval? do
+          with :error <- get_keys(value, fields),
+               :error <- get_identity_filter(resource, id) do
+            {:error, InvalidPrimaryKey.exception(resource: resource, value: id)}
+          end
+        else
+          {:error, InvalidPrimaryKey.exception(resource: resource, value: id)}
+        end
+    end
+  end
+
+  defp get_keys(value, fields) do
+    Enum.reduce_while(fields, {:ok, %{}}, fn field, {:ok, vals} ->
+      case fetch(value, field) do
+        {:ok, value} ->
+          {:cont, {:ok, Map.put(vals, field, value)}}
+
+        :error ->
+          case fetch(value, to_string(field)) do
+            {:ok, value} ->
+              {:cont, {:ok, Map.put(vals, field, value)}}
+
+            :error ->
+              {:halt, :error}
+          end
+      end
+    end)
+  end
+
+  defp fetch(val, key) when is_map(val), do: Map.fetch(val, key)
+  defp fetch(val, key) when is_list(val) and is_atom(key), do: Keyword.fetch(val, key)
+  defp fetch(_, _), do: :error
+
+  defp get_identity_filter(resource, id) do
+    resource
+    |> Ash.Resource.Info.identities()
+    |> Enum.find_value(
+      :error,
+      fn identity ->
+        case get_keys(id, identity.keys) do
+          {:ok, key} ->
+            {:ok, key}
+
+          _ ->
+            nil
+        end
+      end
+    )
   end
 
   @doc "transform an expression based filter to a simple filter, which is just a list of predicates"
@@ -264,7 +342,7 @@ defmodule Ash.Filter do
     walk_filter_template(template, fn
       {:_actor, :_primary_key} ->
         if actor do
-          Map.take(actor, Ash.Resource.primary_key(actor.__struct__))
+          Map.take(actor, Ash.Resource.Info.primary_key(actor.__struct__))
         else
           false
         end
@@ -517,7 +595,7 @@ defmodule Ash.Filter do
       with %{errors: []} = query <- Ash.Query.new(resource, api),
            %{errors: []} = query <- Ash.Query.do_filter(query, scoped_filter),
            {:action, action} when not is_nil(action) <-
-             {:action, Ash.Resource.primary_action(resource, :read)} do
+             {:action, Ash.Resource.Info.primary_action(resource, :read)} do
         request =
           Request.new(
             resource: resource,
@@ -532,7 +610,7 @@ defmodule Ash.Filter do
                    } ->
                   if authorization_filter do
                     relationship =
-                      Ash.Resource.relationship(
+                      Ash.Resource.Info.relationship(
                         resource,
                         List.first(path)
                       )
@@ -675,7 +753,7 @@ defmodule Ash.Filter do
         {:ok, predicate}
 
       {path, new_predicate} ->
-        relationship = Ash.Resource.relationship(resource, path)
+        relationship = Ash.Resource.Info.relationship(resource, path)
 
         fetch_related_data(resource, path, new_predicate, api, relationship)
     end
@@ -687,7 +765,7 @@ defmodule Ash.Filter do
     Enum.reduce_while(paths, {:ok, expression}, fn path, {:ok, expression} ->
       {for_path, without_path} = split_expression_by_relationship_path(expression, path)
 
-      relationship = Ash.Resource.relationship(resource, path)
+      relationship = Ash.Resource.Info.relationship(resource, path)
 
       query =
         relationship.destination
@@ -801,8 +879,8 @@ defmodule Ash.Filter do
          %{type: :many_to_many, join_relationship: join_relationship, through: through} =
            relationship
        ) do
-    if Ash.Resource.data_layer(through) == Ash.Resource.data_layer(resource) &&
-         Ash.Resource.data_layer_can?(resource, {:join, through}) do
+    if Ash.DataLayer.data_layer(through) == Ash.DataLayer.data_layer(resource) &&
+         Ash.DataLayer.data_layer_can?(resource, {:join, through}) do
       filter = %__MODULE__{
         resource: relationship.destination,
         expression: new_predicate
@@ -834,7 +912,7 @@ defmodule Ash.Filter do
              in: Enum.map(results, &Map.get(&1, relationship.destination_field))}
           ])
           |> filter_related_in(
-            Ash.Resource.relationship(resource, join_relationship),
+            Ash.Resource.Info.relationship(resource, join_relationship),
             :lists.droplast(path)
           )
 
@@ -885,7 +963,7 @@ defmodule Ash.Filter do
       %Ref{
         relationship_path: path,
         resource: relationship.source,
-        attribute: Ash.Resource.attribute(relationship.source, relationship.source_field)
+        attribute: Ash.Resource.Info.attribute(relationship.source, relationship.source_field)
       },
       Map.get(single_record, relationship.destination_field)
     )
@@ -921,10 +999,10 @@ defmodule Ash.Filter do
   defp shortest_path_to_changed_data_layer(_resource, [], _acc), do: :error
 
   defp shortest_path_to_changed_data_layer(resource, [relationship | rest], acc) do
-    relationship = Ash.Resource.relationship(resource, relationship)
+    relationship = Ash.Resource.Info.relationship(resource, relationship)
 
     if relationship.type == :many_to_many do
-      if Ash.Resource.data_layer_can?(resource, {:join, relationship.through}) do
+      if Ash.DataLayer.data_layer_can?(resource, {:join, relationship.through}) do
         shortest_path_to_changed_data_layer(relationship.destination, rest, [
           relationship.name | acc
         ])
@@ -932,7 +1010,7 @@ defmodule Ash.Filter do
         {:ok, Enum.reverse([relationship.name | acc])}
       end
     else
-      if Ash.Resource.data_layer_can?(resource, {:join, relationship.destination}) do
+      if Ash.DataLayer.data_layer_can?(resource, {:join, relationship.destination}) do
         shortest_path_to_changed_data_layer(relationship.destination, rest, [
           relationship.name | acc
         ])
@@ -1122,7 +1200,7 @@ defmodule Ash.Filter do
 
   def scope_expression_by_relationship_path(filter, path) do
     %__MODULE__{
-      resource: Ash.Resource.related(filter.resource, path),
+      resource: Ash.Resource.Info.related(filter.resource, path),
       expression: do_scope_expression_by_relationship_path(filter.expression, path)
     }
   end
@@ -1189,17 +1267,17 @@ defmodule Ash.Filter do
   defp scope_ref(other, _), do: other
 
   defp attribute(%{public?: true, resource: resource}, attribute),
-    do: Ash.Resource.public_attribute(resource, attribute)
+    do: Ash.Resource.Info.public_attribute(resource, attribute)
 
   defp attribute(%{public?: false, resource: resource}, attribute),
-    do: Ash.Resource.attribute(resource, attribute)
+    do: Ash.Resource.Info.attribute(resource, attribute)
 
   defp relationship(%{public?: true, resource: resource}, relationship) do
-    Ash.Resource.public_relationship(resource, relationship)
+    Ash.Resource.Info.public_relationship(resource, relationship)
   end
 
   defp relationship(%{public?: false, resource: resource}, relationship) do
-    Ash.Resource.relationship(resource, relationship)
+    Ash.Resource.Info.relationship(resource, relationship)
   end
 
   defp related(context, relationship) when not is_list(relationship) do
@@ -1322,7 +1400,7 @@ defmodule Ash.Filter do
   defp add_expression_part(%_{} = record, context, expression) do
     pkey_filter =
       record
-      |> Map.take(Ash.Resource.primary_key(context.resource))
+      |> Map.take(Ash.Resource.Info.primary_key(context.resource))
       |> Map.to_list()
 
     add_expression_part(pkey_filter, context, expression)
@@ -1332,7 +1410,6 @@ defmodule Ash.Filter do
     add_expression_part({attribute, [is_nil: true]}, context, expression)
   end
 
-  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp add_expression_part({field, nested_statement}, context, expression)
        when is_atom(field) or is_binary(field) do
     aggregates =
@@ -1341,7 +1418,7 @@ defmodule Ash.Filter do
       end)
 
     cond do
-      function_module = get_function(field, Ash.Resource.data_layer_functions(context.resource)) ->
+      function_module = get_function(field, Ash.DataLayer.data_layer_functions(context.resource)) ->
         with {:ok, args} <-
                hydrate_refs(List.wrap(nested_statement), context),
              refs <- list_refs(args),
@@ -1359,7 +1436,7 @@ defmodule Ash.Filter do
           if is_boolean(function) do
             {:ok, BooleanExpression.optimized_new(:and, expression, function)}
           else
-            if Ash.Resource.data_layer_can?(context.resource, {:filter_expr, function}) do
+            if Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, function}) do
               {:ok, BooleanExpression.optimized_new(:and, expression, function)}
             else
               {:error, "data layer does not support the function #{inspect(function)}"}
@@ -1382,10 +1459,10 @@ defmodule Ash.Filter do
               {:error, error}
           end
         else
-          with [field] <- Ash.Resource.primary_key(context.resource),
+          with [field] <- Ash.Resource.Info.primary_key(context.resource),
                attribute <- attribute(context, field),
                {:ok, casted} <-
-                 Ash.Type.cast_input(attribute.type, nested_statement) do
+                 Ash.Type.cast_input(attribute.type, nested_statement, attribute.constraints) do
             add_expression_part({field, casted}, context, expression)
           else
             _other ->
@@ -1433,7 +1510,7 @@ defmodule Ash.Filter do
           if is_boolean(operator) do
             {:ok, BooleanExpression.optimized_new(:and, expression, operator)}
           else
-            if Ash.Resource.data_layer_can?(context.resource, {:filter_expr, operator}) do
+            if Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, operator}) do
               {:ok, BooleanExpression.optimized_new(:and, expression, operator)}
             else
               {:error, "data layer does not support the operator #{inspect(operator)}"}
@@ -1488,8 +1565,8 @@ defmodule Ash.Filter do
 
   defp validate_not_crossing_datalayer_boundaries(refs, resource, expr) do
     refs
-    |> Enum.map(&Ash.Resource.related(resource, &1.relationship_path))
-    |> Enum.group_by(&Ash.Resource.data_layer/1)
+    |> Enum.map(&Ash.Resource.Info.related(resource, &1.relationship_path))
+    |> Enum.group_by(&Ash.DataLayer.data_layer/1)
     |> Map.to_list()
     |> case do
       [] ->
@@ -1501,7 +1578,7 @@ defmodule Ash.Filter do
             resources
             |> Kernel.--([resource])
             |> Enum.all?(fn other_resource ->
-              Ash.Resource.data_layer_can?(resource, {:join, other_resource})
+              Ash.DataLayer.data_layer_can?(resource, {:join, other_resource})
             end)
           end)
 
@@ -1538,7 +1615,7 @@ defmodule Ash.Filter do
       if is_boolean(operator) do
         {:ok, operator}
       else
-        if Ash.Resource.data_layer_can?(context.resource, {:filter_expr, operator}) do
+        if Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, operator}) do
           {:ok, operator}
         else
           {:error, "data layer does not support the operator #{inspect(operator)}"}
@@ -1560,7 +1637,7 @@ defmodule Ash.Filter do
          refs <- list_refs(args),
          :ok <- validate_not_crossing_datalayer_boundaries(refs, context.resource, call),
          {:func, function_module} when not is_nil(function_module) <-
-           {:func, get_function(name, Ash.Resource.data_layer_functions(context.resource))},
+           {:func, get_function(name, Ash.DataLayer.data_layer_functions(context.resource))},
          {:ok, function} <-
            Function.new(
              function_module,
@@ -1569,7 +1646,7 @@ defmodule Ash.Filter do
       if is_boolean(function) do
         {:ok, function}
       else
-        if Ash.Resource.data_layer_can?(context.resource, {:filter_expr, function}) do
+        if Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, function}) do
           {:ok, function}
         else
           {:error, "data layer does not support the function #{inspect(function)}"}
@@ -1586,7 +1663,7 @@ defmodule Ash.Filter do
 
   defp validate_datalayer_supports_nested_expressions(args, resource) do
     if Enum.any?(args, &is_expr?/1) &&
-         !Ash.Resource.data_layer_can?(resource, :nested_expressions) do
+         !Ash.DataLayer.data_layer_can?(resource, :nested_expressions) do
       {:error, "Datalayer does not support nested expressions"}
     else
       :ok
@@ -1616,12 +1693,12 @@ defmodule Ash.Filter do
             {:ok, %{ref | attribute: attribute}}
 
           relationship = relationship(context, attribute) ->
-            case Ash.Resource.primary_key(relationship.destination) do
+            case Ash.Resource.Info.primary_key(relationship.destination) do
               [key] ->
                 new_ref = %{
                   ref
                   | relationship_path: ref.relationship_path ++ [relationship.name],
-                    attribute: Ash.Resource.attribute(relationship.destination, key)
+                    attribute: Ash.Resource.Info.attribute(relationship.destination, key)
                 }
 
                 {:ok, new_ref}
@@ -1692,7 +1769,7 @@ defmodule Ash.Filter do
   end
 
   defp add_aggregate_expression(context, nested_statement, field, expression) do
-    if Ash.Resource.data_layer_can?(context.resource, :aggregate_filter) do
+    if Ash.DataLayer.data_layer_can?(context.resource, :aggregate_filter) do
       case parse_predicates(nested_statement, Map.get(context.aggregates, field), context) do
         {:ok, nested_statement} ->
           {:ok, BooleanExpression.optimized_new(:and, expression, nested_statement)}
@@ -1737,7 +1814,7 @@ defmodule Ash.Filter do
     left_resources
     |> Enum.filter(&(&1 in right_resources))
     |> Enum.reduce_while(:ok, fn resource, :ok ->
-      if Ash.Resource.data_layer_can?(resource, :boolean_filter) do
+      if Ash.DataLayer.data_layer_can?(resource, :boolean_filter) do
         {:cont, :ok}
       else
         {:halt, {:error, "Data layer for #{resource} does not support boolean filters"}}
@@ -1834,7 +1911,7 @@ defmodule Ash.Filter do
                 if is_boolean(operator) do
                   {:cont, {:ok, operator}}
                 else
-                  if Ash.Resource.data_layer_can?(context.resource, {:filter_expr, operator}) do
+                  if Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, operator}) do
                     {:cont, {:ok, BooleanExpression.optimized_new(:and, expression, operator)}}
                   else
                     {:halt,

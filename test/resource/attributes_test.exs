@@ -37,15 +37,15 @@ defmodule Ash.Test.Resource.AttributesTest do
                  primary_key?: false,
                  private?: true
                }
-             ] = Ash.Resource.attributes(Post)
+             ] = Ash.Resource.Info.attributes(Post)
 
-      assert [_, %Attribute{name: :foo}] = Ash.Resource.public_attributes(Post)
+      assert [_, %Attribute{name: :foo}] = Ash.Resource.Info.public_attributes(Post)
 
-      assert %Attribute{name: :bar} = Ash.Resource.attribute(Post, :bar)
+      assert %Attribute{name: :bar} = Ash.Resource.Info.attribute(Post, :bar)
 
-      assert nil == Ash.Resource.attribute(Post, :totally_valid_attributes)
+      assert nil == Ash.Resource.Info.attribute(Post, :totally_valid_attributes)
 
-      assert nil == Ash.Resource.public_attribute(Post, :bar)
+      assert nil == Ash.Resource.Info.public_attribute(Post, :bar)
     end
   end
 
@@ -58,20 +58,6 @@ defmodule Ash.Test.Resource.AttributesTest do
           defposts do
             attributes do
               attribute 10, :string
-            end
-          end
-        end
-      )
-    end
-
-    test "raises if the type is not a known type" do
-      assert_raise(
-        Ash.Error.Dsl.DslError,
-        "[Ash.Resource.Dsl.Attribute]\n attributes -> attribute -> foo:\n  Attribute type must be a built in type or a type module, got: 10",
-        fn ->
-          defposts do
-            attributes do
-              attribute :foo, 10
             end
           end
         end
