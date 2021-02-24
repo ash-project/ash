@@ -171,6 +171,64 @@ defmodule Ash.Test.Filter.FilterTest do
 
   import Ash.Changeset
 
+  describe "predicate optimization" do
+    # Testing against the stringified query may be a bad idea, but its a quick win and we
+    # can switch to actually checking the structure if this bites us
+    test "equality simplifies to `in`" do
+      stringified_query =
+        Post
+        |> Ash.Query.filter(title == "foo" or title == "bar")
+        |> inspect()
+
+      assert stringified_query =~ ~S(title in ["bar", "foo"])
+    end
+
+    test "in with equality simplifies to `in`" do
+      stringified_query =
+        Post
+        |> Ash.Query.filter(title in ["foo", "bar", "baz"] or title == "bar")
+        |> inspect()
+
+      assert stringified_query =~ ~S(title in ["bar", "baz", "foo"])
+    end
+
+    test "in with non-equality simplifies to `in`" do
+      stringified_query =
+        Post
+        |> Ash.Query.filter(title in ["foo", "bar", "baz"] and title != "bar")
+        |> inspect()
+
+      assert stringified_query =~ ~S(title in ["baz", "foo"])
+    end
+
+    test "in with or-in simplifies to `in`" do
+      stringified_query =
+        Post
+        |> Ash.Query.filter(title in ["foo", "bar"] or title in ["bar", "baz"])
+        |> inspect()
+
+      assert stringified_query =~ ~S(title in ["bar", "baz", "foo"])
+    end
+
+    test "in with and-in simplifies to `in` when multiple values overlap" do
+      stringified_query =
+        Post
+        |> Ash.Query.filter(title in ["foo", "bar", "baz"] and title in ["bar", "baz", "bif"])
+        |> inspect()
+
+      assert stringified_query =~ ~S(title in ["bar", "baz"])
+    end
+
+    test "in with and-in simplifies to `eq` when one value overlaps" do
+      stringified_query =
+        Post
+        |> Ash.Query.filter(title in ["foo", "bar"] and title in ["bar", "baz", "bif"])
+        |> inspect()
+
+      assert stringified_query =~ ~S(title == "bar")
+    end
+  end
+
   describe "simple attribute filters" do
     setup do
       post1 =

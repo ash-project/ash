@@ -71,7 +71,8 @@
         {Credo.Check.Consistency.ExceptionNames, []},
         {Credo.Check.Consistency.LineEndings, []},
         {Credo.Check.Consistency.ParameterPatternMatching, []},
-        {Credo.Check.Consistency.SpaceAroundOperators, []},
+        # This check was erroring on sigils so I had to disable it
+        {Credo.Check.Consistency.SpaceAroundOperators, false},
         {Credo.Check.Consistency.SpaceInParentheses, []},
         {Credo.Check.Consistency.TabsOrSpaces, []},
 
