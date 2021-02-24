@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.34.4](https://github.com/ash-project/ash/compare/v1.34.3...v1.34.4) (2021-02-24)
+
+
+
+
+### Bug Fixes:
+
+* treat empty string as `nil` in `manage_relationship`
+
+* be more conservative (and more correct) when optimizing predicates
+
 ## [v1.34.3](https://github.com/ash-project/ash/compare/v1.34.2...v1.34.3) (2021-02-23)
 
 
