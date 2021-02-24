@@ -371,16 +371,12 @@ defmodule Ash.Actions.ManagedRelationships do
     end)
     |> Keyword.update!(:on_lookup, fn
       operation
-      when relationship.type == :many_to_many
-      when operation in [:relate, :relate_and_update] ->
+      when relationship.type == :many_to_many and
+             operation in [:relate, :relate_and_update] ->
         read = Ash.Resource.Info.primary_action(relationship.destination, :read)
-        create = Ash.Resource.Info.primary_action(relationship.destination, :create)
+        create = Ash.Resource.Info.primary_action(relationship.through, :create)
 
-        if relationship.type == :many_to_many do
-          {operation, create.name, read.name, []}
-        else
-          {operation, create.name, read.name}
-        end
+        {operation, create.name, read.name, []}
 
       operation
       when relationship.type in [:has_many, :has_one] and

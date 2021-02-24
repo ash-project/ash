@@ -1072,13 +1072,7 @@ defmodule Ash.Changeset do
               manage_relationship(changeset, relationship.name, input, opts)
 
             :error ->
-              add_error(
-                changeset,
-                InvalidRelationship.exception(
-                  relationship: relationship.name,
-                  message: "Input must be a list or a map of indices to inputs"
-                )
-              )
+              manage_relationship(changeset, relationship.name, List.wrap(input), opts)
           end
         else
           input =
