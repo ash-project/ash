@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.34.6](https://github.com/ash-project/ash/compare/v1.34.5...v1.34.6) (2021-02-24)
+
+
+
+
+### Bug Fixes:
+
+* manage_relationship fixes, input + option defaults
+
 ## [v1.34.5](https://github.com/ash-project/ash/compare/v1.34.4...v1.34.5) (2021-02-24)
 
 
