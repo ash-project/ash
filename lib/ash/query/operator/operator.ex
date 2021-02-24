@@ -79,6 +79,14 @@ defmodule Ash.Query.Operator do
     end
   end
 
+  defp try_cast(%{__predicate__?: _} = left, right, _) do
+    {:ok, left, right}
+  end
+
+  defp try_cast(left, %{__predicate__?: _} = right, _) do
+    {:ok, left, right}
+  end
+
   defp try_cast(%Ref{attribute: %{type: type}} = left, right, :same) do
     case Ash.Query.Type.try_cast(right, type) do
       {:ok, new_right} ->

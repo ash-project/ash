@@ -15,6 +15,13 @@ defmodule Ash.Query.BooleanExpression do
     %__MODULE__{op: op, left: left, right: right}
   end
 
+  # In many cases we could actually just return `true/false` directly because we know
+  # statements are contradictions. However, that would likely confuse users. For example:
+  # `Ash.Query.filter(Resource, x == 1 and x in [2, 3])` becomes `#Ash.Query<filter: false>`
+  # We may want to go down this route some day, but for now we simply use this to combine
+  # statements where possible, which helps with authorization logic that leverages the query
+  # For example, `x in [1, 2] or x == 3` becomes `x in [1, 2, 3]`, and `x in [1, 2, 3] and x != 1`
+  # becomes `x in [2, 3]`
   def optimized_new(op, left, right, current_op \\ :and)
   def optimized_new(_, nil, nil, _), do: nil
   def optimized_new(:and, false, _, _), do: false
@@ -71,51 +78,68 @@ defmodule Ash.Query.BooleanExpression do
 
   def optimized_new(
         :or,
-        %Eq{left: left, right: value},
+        %Eq{left: left, right: value} = left_op,
         %In{left: left, right: %{__struct__: MapSet} = mapset} = right,
         _
       ) do
-    %{right | right: MapSet.put(mapset, value)}
+    if can_optimize?(value) do
+      %{right | right: MapSet.put(mapset, value)}
+    else
+      do_new(:or, left_op, right)
+    end
   end
 
   def optimized_new(
         :or,
-        %NotEq{left: left, right: value},
+        %NotEq{left: left, right: value} = left_op,
         %In{left: left, right: %{__struct__: MapSet} = mapset} = right,
         _
       ) do
-    without = MapSet.delete(mapset, value)
+    if can_optimize?(value) do
+      without = MapSet.delete(mapset, value)
 
-    case MapSet.size(without) do
-      0 -> false
-      1 -> %Eq{left: left, right: Enum.at(without, 0)}
-      _ -> %{right | right: without}
+      case MapSet.size(without) do
+        0 ->
+          do_new(:or, left_op, right)
+
+        1 ->
+          %Eq{left: left, right: Enum.at(without, 0)}
+
+        _ ->
+          %{right | right: without}
+      end
+    else
+      do_new(:or, left_op, right)
     end
   end
 
   def optimized_new(
         :and,
         %Eq{left: left, right: value} = left_expr,
-        %In{left: left, right: %{__struct__: MapSet} = mapset},
+        %In{left: left, right: %{__struct__: MapSet} = mapset} = right,
         _
       ) do
-    if MapSet.member?(mapset, value) do
-      left_expr
+    if can_optimize?(value) do
+      if MapSet.member?(mapset, value) do
+        left_expr
+      else
+        do_new(:or, left_expr, right)
+      end
     else
-      false
+      do_new(:or, left_expr, right)
     end
   end
 
   def optimized_new(
         :and,
-        %NotEq{left: left, right: value},
+        %NotEq{left: left, right: value} = left_op,
         %In{left: left, right: %{__struct__: MapSet} = mapset} = right_expr,
         _
       ) do
-    if MapSet.member?(mapset, value) do
-      false
+    if can_optimize?(value) do
+      %{right_expr | right: MapSet.delete(mapset, value)}
     else
-      right_expr
+      do_new(:or, left_op, right_expr)
     end
   end
 
@@ -130,77 +154,68 @@ defmodule Ash.Query.BooleanExpression do
 
   def optimized_new(
         :or,
-        %Eq{left: left, right: left_value},
-        %Eq{left: left, right: right_value},
-        _
-      ) do
-    %In{left: left, right: MapSet.new([left_value, right_value])}
-  end
-
-  def optimized_new(
-        :or,
-        %NotEq{left: left, right: left_value},
+        %Eq{left: left, right: left_value} = left_expr,
         %Eq{left: left, right: right_value} = right_expr,
         _
-      )
-      when left_value != right_value do
-    right_expr
-  end
-
-  def optimized_new(
-        :or,
-        %NotEq{left: left, right: left_value},
-        %Eq{left: left, right: right_value},
-        _
-      )
-      when left_value == right_value do
-    true
+      ) do
+    if can_optimize?(left_value) && can_optimize?(right_value) do
+      %In{left: left, right: MapSet.new([left_value, right_value])}
+    else
+      do_new(:or, left_expr, right_expr)
+    end
   end
 
   def optimized_new(
         :and,
         %Eq{left: left, right: left_value} = left_expr,
-        %Eq{left: left, right: right_value},
+        %Eq{left: left, right: right_value} = right_expr,
         _
       ) do
-    if left_value == right_value do
+    if can_optimize?(left_value) && can_optimize?(right_value) && left_value == right_value do
       left_expr
     else
-      false
+      do_new(:and, left_expr, right_expr)
     end
   end
 
   def optimized_new(
         :and,
         %NotEq{left: left, right: left_value} = left_expr,
-        %NotEq{left: left, right: right_value},
+        %NotEq{left: left, right: right_value} = right_expr,
         _
-      )
-      when left_value == right_value do
-    left_expr
+      ) do
+    if can_optimize?(left_value) && can_optimize?(right_value) && left_value == right_value do
+      left_value
+    else
+      do_new(:and, left_expr, right_expr)
+    end
   end
 
   def optimized_new(
         :or,
-        %In{left: left, right: left_values},
-        %In{left: left, right: right_values} = right,
+        %In{left: left, right: %{__struct__: MapSet} = left_values},
+        %In{left: left, right: %{__struct__: MapSet} = right_values} = right_expr,
         _
       ) do
-    %{right | right: MapSet.union(left_values, right_values)}
+    %{right_expr | right: MapSet.union(left_values, right_values)}
   end
 
   def optimized_new(
         :and,
-        %In{left: left, right: left_values},
-        %In{left: left, right: right_values} = right,
+        %In{left: left, right: left_values} = left_expr,
+        %In{left: left, right: right_values} = right_expr,
         _
       ) do
-    intersection = MapSet.intersection(left_values, right_values)
+    if can_optimize?(left_values) && can_optimize?(right_values) do
+      intersection = MapSet.intersection(left_values, right_values)
 
-    case MapSet.size(intersection) do
-      0 -> false
-      1 -> %Eq{left: left, right: Enum.at(intersection, 0)}
-      _ -> %{right | right: intersection}
+      case MapSet.size(intersection) do
+        0 -> do_new(:and, left_expr, right_expr)
+        1 -> %Eq{left: left, right: Enum.at(intersection, 0)}
+        _ -> %{right_expr | right: intersection}
+      end
+    else
+      do_new(:and, left_expr, right_expr)
     end
   end
 
@@ -253,31 +268,60 @@ defmodule Ash.Query.BooleanExpression do
 
   defp simplify?(%Eq{right: %Ref{}}, _), do: false
   defp simplify?(_, %Eq{right: %Ref{}}), do: false
-  defp simplify?(%Eq{left: left}, %Eq{left: left}), do: true
+
+  defp simplify?(%Eq{left: left, right: left_right}, %Eq{left: left, right: right_right}) do
+    can_optimize?(left_right) && can_optimize?(right_right)
+  end
 
   defp simplify?(%NotEq{right: %Ref{}}, _), do: false
   defp simplify?(_, %NotEq{right: %Ref{}}), do: false
-  defp simplify?(%NotEq{left: left}, %NotEq{left: left}), do: true
+
+  defp simplify?(%NotEq{left: left, right: left_right}, %NotEq{left: left, right: right_right}) do
+    can_optimize?(left_right) && can_optimize?(right_right)
+  end
 
   defp simplify?(
-         %Eq{left: left},
+         %Eq{left: left, right: left_right},
          %In{left: left, right: %MapSet{}}
-       ),
-       do: true
+       ) do
+    can_optimize?(left_right)
+  end
 
   defp simplify?(
-         %NotEq{left: left},
+         %NotEq{left: left, right: left_right},
          %In{left: left, right: %MapSet{}}
-       ),
-       do: true
+       ) do
+    can_optimize?(left_right)
+  end
 
   defp simplify?(
-         %Eq{left: left},
+         %Eq{left: left, right: left_right},
          %NotEq{left: left, right: %MapSet{}}
-       ),
-       do: true
+       ) do
+    can_optimize?(left_right)
+  end
 
   defp simplify?(_, _), do: false
+
+  defp can_optimize?(value) when is_list(value) do
+    Enum.all?(value, &can_optimize?/1)
+  end
+
+  defp can_optimize?(map) when is_map(map) and not is_struct(map) do
+    Enum.all?(map, fn {key, val} ->
+      can_optimize?(key) && can_optimize?(val)
+    end)
+  end
+
+  defp can_optimize?(%{__struct__: MapSet} = mapset) do
+    Enum.all?(mapset, &can_optimize?/1)
+  end
+
+  defp can_optimize?(value) when is_integer(value) or is_binary(value) do
+    true
+  end
+
+  defp can_optimize?(_), do: false
 
   defp do_new(op, left, right) do
     if left == right do

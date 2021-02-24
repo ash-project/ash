@@ -1028,7 +1028,13 @@ defmodule Ash.Changeset do
   )
   ```
   """
-  def manage_relationship(changeset, relationship, input, opts \\ []) do
+  def manage_relationship(changeset, relationship, input, opts \\ [])
+
+  def manage_relationship(changeset, relationship, "", opts) do
+    manage_relationship(changeset, relationship, nil, opts)
+  end
+
+  def manage_relationship(changeset, relationship, input, opts) do
     opts = Ash.OptionsHelpers.validate!(opts, @manage_opts)
 
     case Ash.Resource.Info.relationship(changeset.resource, relationship) do
