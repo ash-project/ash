@@ -123,10 +123,10 @@ defmodule Ash.Query.BooleanExpression do
       if MapSet.member?(mapset, value) do
         left_expr
       else
-        do_new(:or, left_expr, right)
+        do_new(:and, left_expr, right)
       end
     else
-      do_new(:or, left_expr, right)
+      do_new(:and, left_expr, right)
     end
   end
 
@@ -139,7 +139,7 @@ defmodule Ash.Query.BooleanExpression do
     if can_optimize?(value) do
       %{right_expr | right: MapSet.delete(mapset, value)}
     else
-      do_new(:or, left_op, right_expr)
+      do_new(:and, left_op, right_expr)
     end
   end
 
@@ -232,10 +232,10 @@ defmodule Ash.Query.BooleanExpression do
           do_new(op, left_expr, in_op)
         else
           {:left, _} ->
-            %{left_expr | left: optimized_new(:or, left, in_op)}
+            %{left_expr | left: optimized_new(op, left, in_op)}
 
           {:right, _} ->
-            %{left_expr | right: optimized_new(:or, right, in_op)}
+            %{left_expr | right: optimized_new(op, right, in_op)}
         end
 
       %Eq{} = eq_op ->
@@ -244,10 +244,10 @@ defmodule Ash.Query.BooleanExpression do
           do_new(op, left_expr, eq_op)
         else
           {:left, _} ->
-            %{left_expr | left: optimized_new(:or, left, eq_op)}
+            %{left_expr | left: optimized_new(op, left, eq_op)}
 
           {:right, _} ->
-            %{left_expr | right: optimized_new(:or, right, eq_op)}
+            %{left_expr | right: optimized_new(op, right, eq_op)}
         end
 
       _ ->
