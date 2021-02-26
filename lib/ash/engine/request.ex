@@ -720,9 +720,6 @@ defmodule Ash.Engine.Request do
       request.changeset.data
       |> Map.take(pkey)
       |> Map.to_list()
-      |> IO.inspect()
-
-    IO.inspect(filter)
 
     new_query =
       request.resource
@@ -731,7 +728,6 @@ defmodule Ash.Engine.Request do
       |> Ash.Query.filter(^pkey)
       |> Ash.Query.filter(^filter)
       |> Ash.Query.limit(1)
-      |> IO.inspect()
 
     new_query
     |> Ash.Actions.Read.unpaginated_read()
