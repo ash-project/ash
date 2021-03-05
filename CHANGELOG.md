@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.34.8](https://github.com/ash-project/ash/compare/v1.34.7...v1.34.8) (2021-03-05)
+
+
+
+
+### Bug Fixes:
+
+* various validation lifecycle fixes
+
+* don't fetch sideloads for empty data
+
+### Improvements:
+
+* various validation lifecycle options
+
 ## [v1.34.7](https://github.com/ash-project/ash/compare/v1.34.6...v1.34.7) (2021-02-26)
 
 
