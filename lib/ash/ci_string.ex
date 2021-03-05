@@ -34,11 +34,11 @@ defmodule Ash.CiString do
   end
 
   def new(value) do
-    %Ash.CiString{lowered?: true, string: String.downcase(value)}
+    %Ash.CiString{lowered?: true, string: value && String.downcase(value)}
   end
 
   def value(%Ash.CiString{string: value, lowered?: false}) do
-    String.downcase(value)
+    value && String.downcase(value)
   end
 
   def value(%Ash.CiString{string: value, lowered?: true}) do
@@ -58,7 +58,7 @@ defmodule Ash.CiString do
   end
 
   defp to_binary(%__MODULE__{lowered?: false, string: value}) do
-    String.downcase(value)
+    value && String.downcase(value)
   end
 
   defp to_binary(%__MODULE__{string: value}) do

@@ -452,8 +452,15 @@ defmodule Ash.Api do
         |> Ash.Query.load(opts[:load] || [])
         |> Ash.Query.set_context(opts[:context] || %{})
 
+      query =
+        if Ash.DataLayer.data_layer_can?(query.resource, :limit) do
+          Ash.Query.limit(query, 2)
+        else
+          query
+        end
+
       query
-      |> api.read(Keyword.delete(opts, :load))
+      |> api.read(Keyword.take(opts, Keyword.keys(@read_opts_schema)))
       |> case do
         {:ok, %{results: [single_result]}} ->
           {:ok, single_result}
@@ -637,15 +644,16 @@ defmodule Ash.Api do
     end
   end
 
-  def load(api, [%resource{} | _] = data, query, opts) do
+  def load(api, [%resource{} = record | _] = data, query, opts) do
     query =
       case query do
         %Ash.Query{} = query ->
-          query
+          Ash.Query.set_tenant(query, query.tenant || Map.get(record.__metadata__, :tenant))
 
         keyword ->
           resource
           |> Ash.Query.new(api)
+          |> Ash.Query.set_tenant(Map.get(record.__metadata__, :tenant))
           |> Ash.Query.load(keyword)
       end
 

@@ -12,6 +12,7 @@ defmodule Ash.Error.Exception do
       defexception unquote(fields) ++
                      [
                        :changeset,
+                       :query,
                        vars: [],
                        path: [],
                        stacktrace: [],

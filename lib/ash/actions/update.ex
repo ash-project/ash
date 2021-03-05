@@ -24,7 +24,7 @@ defmodule Ash.Actions.Update do
     resource = changeset.resource
     changeset = changeset(changeset, api, action, opts[:actor])
 
-    with %{valid?: true} <- changeset,
+    with %{valid?: true} <- Ash.Changeset.validate_multitenancy(changeset),
          {:ok, %{data: %{commit: %^resource{} = updated}} = engine_result} <-
            do_run_requests(
              changeset,
@@ -73,6 +73,7 @@ defmodule Ash.Actions.Update do
       Ash.Changeset.for_update(changeset, action.name, %{}, actor: actor)
     end
     |> Ash.Changeset.set_defaults(:update)
+    |> Ash.Changeset.cast_arguments(action)
   end
 
   defp do_run_requests(
@@ -160,9 +161,7 @@ defmodule Ash.Actions.Update do
       {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(changeset.resource)
       attribute_value = apply(m, f, [changeset.tenant | a])
 
-      changeset
-      |> Ash.Changeset.force_change_attribute(attribute, attribute_value)
-      |> Map.put(:tenant, nil)
+      Ash.Changeset.force_change_attribute(changeset, attribute, attribute_value)
     else
       changeset
     end

@@ -26,7 +26,7 @@ defmodule Ash.Actions.Create do
 
     changeset = changeset(changeset, api, action, opts[:actor])
 
-    with %{valid?: true} <- changeset,
+    with %{valid?: true} <- Ash.Changeset.validate_multitenancy(changeset),
          :ok <- check_upsert_support(changeset.resource, upsert?),
          {:ok, %{data: %{commit: %^resource{} = created}} = engine_result} <-
            do_run_requests(
@@ -37,9 +37,7 @@ defmodule Ash.Actions.Create do
              resource,
              api
            ) do
-      created
-      |> add_tenant(changeset)
-      |> add_notifications(engine_result, opts)
+      add_notifications(created, engine_result, opts)
     else
       %Ash.Changeset{errors: errors} = changeset ->
         {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
@@ -77,6 +75,7 @@ defmodule Ash.Actions.Create do
       Ash.Changeset.for_create(changeset, action.name, %{}, actor: actor)
     end
     |> Ash.Changeset.set_defaults(:create)
+    |> Ash.Changeset.cast_arguments(action)
   end
 
   defp do_run_requests(
@@ -138,6 +137,7 @@ defmodule Ash.Actions.Create do
                 end)
 
               with {:ok, created, changeset, %{notifications: notifications}} <- result,
+                   created <- add_tenant(created, changeset),
                    {:ok, loaded} <-
                      Ash.Actions.ManagedRelationships.load(api, created, changeset, engine_opts),
                    {:ok, with_relationships, new_notifications} <-
@@ -168,9 +168,7 @@ defmodule Ash.Actions.Create do
       {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(changeset.resource)
       attribute_value = apply(m, f, [changeset.tenant | a])
 
-      changeset
-      |> Ash.Changeset.force_change_attribute(attribute, attribute_value)
-      |> Map.put(:tenant, nil)
+      Ash.Changeset.force_change_attribute(changeset, attribute, attribute_value)
     else
       changeset
     end

@@ -44,7 +44,7 @@ defmodule Ash.Actions.Read do
     opts = Keyword.merge(opts, Map.get(query.context, :override_api_params) || [])
 
     engine_opts = Keyword.take(opts, [:verbose?, :actor, :authorize?])
-    query = %{query | action: action.name}
+    query = %{query | action: action}
 
     original_query = query
 
@@ -57,6 +57,8 @@ defmodule Ash.Actions.Read do
       else
         Ash.Query.for_read(query, action.name, %{}, actor: engine_opts[:actor])
       end
+
+    query = Ash.Query.cast_arguments(query, action)
 
     with %{valid?: true} <- query,
          :ok <- validate_multitenancy(query, opts),
@@ -92,14 +94,14 @@ defmodule Ash.Actions.Read do
       )
       |> add_query(Map.get(all_data, :ultimate_query), opts)
     else
-      %{errors: errors} ->
-        {:error, Ash.Error.to_error_class(errors)}
+      %Ash.Query{errors: errors} = query ->
+        {:error, Ash.Error.to_error_class(errors, query: query)}
 
       {:error, %Ash.Engine.Runner{errors: errors}} ->
-        {:error, Ash.Error.to_error_class(errors)}
+        {:error, Ash.Error.to_error_class(errors, query: query)}
 
       {:error, error} ->
-        {:error, Ash.Error.to_error_class(error)}
+        {:error, Ash.Error.to_error_class(error, query: query)}
     end
   end
 
@@ -310,13 +312,15 @@ defmodule Ash.Actions.Read do
             else
               ash_query
             end
+            |> run_before_action()
 
           query =
             initial_query
             |> Ash.Query.unset([:filter, :aggregates, :sort])
             |> Ash.Query.data_layer_query(only_validate_filter?: true)
 
-          with {:ok, query} <- query,
+          with %{valid?: true} <- ash_query,
+               {:ok, query} <- query,
                {:ok, filter} <-
                  filter_with_related(relationship_filter_paths, ash_query, data),
                {:ok, query} <-
@@ -334,7 +338,7 @@ defmodule Ash.Actions.Read do
                  Ash.DataLayer.set_context(ash_query.resource, query, ash_query.context),
                {:ok, query} <- set_tenant(query, ash_query),
                {:ok, results} <- run_query(ash_query, query),
-               {:ok, results} <- run_after_action(ash_query, results),
+               {:ok, results} <- run_after_action(initial_query, results),
                {:ok, with_calculations} <-
                  add_calculation_values(ash_query, results, ash_query.calculations) do
             if params[:return_query?] do
@@ -347,10 +351,20 @@ defmodule Ash.Actions.Read do
             else
               {:ok, with_calculations}
             end
+          else
+            %{valid?: false} = query ->
+              {:error, query}
+
+            other ->
+              other
           end
         end
       )
     end
+  end
+
+  defp run_before_action(query) do
+    Enum.reduce(query.before_action, query, & &1.(&2))
   end
 
   defp run_after_action(query, results) do

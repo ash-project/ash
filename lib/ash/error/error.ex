@@ -59,12 +59,12 @@ defmodule Ash.Error do
       end)
       |> Enum.uniq()
 
-    choose_error(values, opts[:changeset])
+    choose_error(values, opts[:changeset] || opts[:query])
   end
 
   def to_error_class(value, opts) do
     if ash_error?(value) && value.__struct__ in Keyword.values(@error_modules) do
-      add_changeset(value, [value], opts[:changeset])
+      add_changeset_or_query(value, [value], opts[:changeset] || opts[:query])
     else
       to_error_class([value], opts)
     end
@@ -123,15 +123,15 @@ defmodule Ash.Error do
 
   def clear_stacktraces(error), do: error
 
-  def choose_error(errors, changeset \\ nil)
+  def choose_error(errors, changeset_or_query \\ nil)
 
-  def choose_error([], changeset) do
+  def choose_error([], changeset_or_query) do
     error = Ash.Error.Unknown.exception([])
 
-    add_changeset(error, [], changeset)
+    add_changeset_or_query(error, [], changeset_or_query)
   end
 
-  def choose_error(errors, changeset) do
+  def choose_error(errors, changeset_or_query) do
     errors = Enum.map(errors, &to_ash_error/1)
 
     [error | other_errors] =
@@ -150,20 +150,26 @@ defmodule Ash.Error do
         parent_error_module.exception(errors: errors)
       end
 
-    add_changeset(top_level_error, errors, changeset)
+    add_changeset_or_query(top_level_error, errors, changeset_or_query)
   end
 
-  defp add_changeset(error, errors, changeset) do
-    changeset = error.changeset || changeset
+  defp add_changeset_or_query(error, errors, changeset_or_query) do
+    changeset = error.changeset || error.query || changeset_or_query
 
-    if changeset do
-      changeset = %{
-        changeset
+    if changeset_or_query do
+      changeset_or_query = %{
+        changeset_or_query
         | action_failed?: true,
           errors: List.wrap(errors) ++ changeset.errors
       }
 
-      %{error | changeset: %{changeset | errors: Enum.uniq(changeset.errors)}}
+      case changeset_or_query do
+        %Ash.Changeset{} = changeset ->
+          %{error | changeset: %{changeset | errors: Enum.uniq(changeset.errors)}}
+
+        %Ash.Query{} = query ->
+          %{error | query: %{query | errors: Enum.uniq(query.errors)}}
+      end
     else
       error
     end

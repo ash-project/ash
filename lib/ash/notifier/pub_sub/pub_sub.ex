@@ -19,7 +19,6 @@ defmodule Ash.Notifier.PubSub do
     prefix "user"
 
     publish :create, ["created", :user_id]
-    publish :update, ["updated:{user_id}"]
     ```
 
     This might publish a message to \"user:created:1\"" for example.
@@ -70,6 +69,7 @@ defmodule Ash.Notifier.PubSub do
         publish :destroy, ["foo", :id]
         publish :default, ["foo", :id], type: :update
         publish :default, ["bar", :name], type: :update, event: "name_change"
+        publish_all :create, "created"
       end
       """
     ],

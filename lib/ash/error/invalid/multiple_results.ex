@@ -2,7 +2,7 @@ defmodule Ash.Error.Invalid.MultipleResults do
   @moduledoc "Used when multiple requests with the same path are passed to the internal engine"
   use Ash.Error.Exception
 
-  def_ash_error([:count, :query, :at_least?], class: :invalid)
+  def_ash_error([:count, :at_least?], class: :invalid)
 
   defimpl Ash.ErrorKind do
     def id(_), do: Ash.UUID.generate()

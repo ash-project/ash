@@ -34,6 +34,7 @@ defmodule Ash.Query do
     :tenant,
     :action,
     :__validated_for_action__,
+    params: %{},
     arguments: %{},
     aggregates: %{},
     side_load: [],
@@ -43,6 +44,8 @@ defmodule Ash.Query do
     limit: nil,
     offset: 0,
     errors: [],
+    action_failed?: false,
+    before_action: [],
     after_action: [],
     valid?: true
   ]
@@ -202,43 +205,58 @@ defmodule Ash.Query do
     end
   end
 
-  @doc "Adds an after_action hook to the query."
-  @spec after_action(
-          t(),
-          (t(), [Ash.Resource.record()] ->
-             {:ok, [Ash.Resource.record()]} | {:error, term})
-        ) :: t()
-  def after_action(query, func) do
-    %{query | after_action: [func | query.after_action]}
-  end
-
   @doc """
-  Creates a query for a given read action and prepares it
+  Creates a query for a given read action and prepares it.
+
+  Multitenancy is *not* validated until an action is called. This allows you to avoid specifying a tenant until just before calling
+  the api action.
+
   ### Arguments
   Provide a map or keyword list of arguments for the read action
 
   ### Opts
 
   * `:actor` - set the actor, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)
+  * `:defaults` - A list of arguments to apply defaults for. Defaults to: []. Any unset defaults are set when the action is called.
+
   """
-  def for_read(query, action_name, args, opts \\ []) do
+  def for_read(query, action_name, args \\ %{}, opts \\ []) do
     query = to_query(query)
+    query = %{query | params: Map.merge(query.params || %{}, Enum.into(args, %{}))}
+
     action = Ash.Resource.Info.action(query.resource, action_name, :read)
 
     if action do
       query = Map.put(query, :action, action.name)
 
-      arguments = Enum.reject(action.arguments, & &1.private?)
-
       query
-      |> set_args(args, arguments)
-      |> check_required_args(arguments)
+      |> Map.put(:action, action)
       |> Map.put(:__validated_for_action__, action_name)
+      |> cast_params(action, args)
       |> run_preparations(action, opts[:actor])
       |> add_action_filters(action, opts[:actor])
+      |> cast_arguments(action, opts[:defaults], true)
     else
       add_error(query, :action, "No such action #{action_name}")
     end
+  end
+
+  defp cast_params(query, action, args) do
+    Enum.reduce(args, query, fn {name, value}, query ->
+      if has_argument?(action, name) do
+        set_argument(query, name, value)
+      else
+        query
+      end
+    end)
+  end
+
+  defp has_argument?(action, name) when is_atom(name) do
+    Enum.any?(action.arguments, &(&1.private? == false && &1.name == name))
+  end
+
+  defp has_argument?(action, name) when is_binary(name) do
+    Enum.any?(action.arguments, &(&1.private? == false && to_string(&1.name) == name))
   end
 
   defp run_preparations(query, action, actor) do
@@ -247,14 +265,26 @@ defmodule Ash.Query do
     end)
   end
 
-  defp check_required_args(query, arguments) do
-    Enum.reduce(arguments, query, fn arg, query ->
-      if not arg.allow_nil? && is_nil(get_argument(query, arg.name)) do
-        add_error(query, :arguments, Required.exception(field: arg.name, type: :argument))
-      else
-        query
-      end
-    end)
+  @spec before_action(
+          t(),
+          (t() -> t())
+        ) ::
+          t()
+  def before_action(query, func) do
+    query = to_query(query)
+    %{query | before_action: [func | query.before_action]}
+  end
+
+  @spec after_action(
+          t(),
+          (t(), [Ash.Resource.record()] ->
+             {:ok, [Ash.Resource.record()]}
+             | {:ok, [Ash.Resource.record()]}
+             | {:error, term})
+        ) :: t()
+  def after_action(query, func) do
+    query = to_query(query)
+    %{query | after_action: [func | query.after_action]}
   end
 
   defp add_action_filters(query, %{filter: nil}, _actor), do: query
@@ -273,45 +303,6 @@ defmodule Ash.Query do
 
       do_filter(query, built_filter)
     end
-  end
-
-  defp set_args(query, args, arguments) do
-    args
-    |> Enum.flat_map(fn {key, val} ->
-      argument =
-        Enum.find(
-          arguments,
-          &(&1.name == key || to_string(&1.name) == key)
-        )
-
-      if argument do
-        [{argument, val}]
-      else
-        []
-      end
-    end)
-    |> Enum.reduce(query, fn {argument, value}, new_query ->
-      if is_nil(value) && !argument.allow_nil? do
-        add_error(
-          query,
-          :arguments,
-          Required.exception(field: argument.name, type: :argument)
-        )
-      else
-        with {:ok, casted} <- Ash.Type.cast_input(argument.type, value, argument.constraints),
-             {:ok, casted} <-
-               Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
-          %{new_query | arguments: Map.put(new_query.arguments, argument.name, casted)}
-        else
-          _ ->
-            add_error(
-              query,
-              :arguments,
-              InvalidArgument.exception(field: argument.name)
-            )
-        end
-      end
-    end)
   end
 
   defmacro expr(do: body) do
@@ -654,7 +645,54 @@ defmodule Ash.Query do
   """
   def set_argument(query, argument, value) do
     query = to_query(query)
-    %{query | arguments: Map.put(query.arguments, argument, value)}
+
+    if query.action do
+      with {:arg, argument} when not is_nil(argument) <-
+             {:arg,
+              Enum.find(
+                query.action.arguments,
+                &(&1.name == argument || to_string(&1.name) == argument)
+              )},
+           {:ok, casted} <- Ash.Changeset.cast_input(argument.type, value, argument.constraints),
+           {:constrained, {:ok, casted}, argument} when not is_nil(casted) <-
+             {:constrained,
+              Ash.Type.apply_constraints(argument.type, casted, argument.constraints),
+              argument} do
+        %{query | arguments: Map.put(query.arguments, argument.name, casted)}
+      else
+        {:arg, nil} ->
+          query
+
+        {:constrained, {:ok, nil}, _argument} ->
+          query
+
+        {:constrained, {:error, error}, argument} ->
+          add_invalid_errors(query, argument, error)
+
+        {:error, error} ->
+          add_invalid_errors(query, argument, error)
+
+        :error ->
+          nil
+      end
+    else
+      %{query | arguments: Map.put(query.arguments, argument, value)}
+    end
+  end
+
+  defp add_invalid_errors(query, argument, error) do
+    messages =
+      if Keyword.keyword?(error) do
+        [error]
+      else
+        List.wrap(error)
+      end
+
+    messages
+    |> Enum.reduce(query, fn message, query ->
+      opts = Ash.Changeset.error_to_exception_opts(message, argument)
+      add_error(query, InvalidArgument.exception(opts))
+    end)
   end
 
   @doc """
@@ -679,46 +717,69 @@ defmodule Ash.Query do
   end
 
   @doc false
-  def cast_arguments(query, action) do
-    Enum.reduce(action.arguments, %{query | arguments: %{}}, fn argument, new_query ->
-      value = get_argument(query, argument.name) || argument_default(argument.default)
-
-      if is_nil(value) && !argument.allow_nil? do
-        add_error(
-          query,
-          :arguments,
-          Required.exception(field: argument.name, type: :argument)
-        )
-      else
-        val =
-          case fetch_argument(query, argument.name) do
-            :error ->
-              if argument.default do
-                {:ok, argument_default(argument.default)}
-              else
-                :error
-              end
-
-            {:ok, val} ->
-              {:ok, val}
-          end
-
-        with {:found, {:ok, value}} <- {:found, val},
-             {:ok, casted} <- Ash.Type.cast_input(argument.type, value, argument.constraints),
-             {:ok, casted} <-
-               Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
-          %{new_query | arguments: Map.put(new_query.arguments, argument.name, casted)}
+  def cast_arguments(query, action, defaults \\ :all, only_supplied? \\ false) do
+    action.arguments
+    |> Enum.reject(& &1.private?)
+    |> Enum.reject(&(only_supplied? && match?({:ok, _}, fetch_argument(query, &1.name))))
+    |> Enum.reduce(query, fn argument, new_query ->
+      {ignore_nil_check, value} =
+        if defaults == :all || argument.name in (defaults || []) do
+          {false, get_argument(query, argument.name) || argument_default(argument.default)}
         else
-          {:error, _error} ->
-            add_error(
-              query,
-              :arguments,
-              InvalidArgument.exception(field: argument.name)
-            )
+          value = get_argument(query, argument.name)
 
-          {:found, :error} ->
-            query
+          if argument_default(argument.default) do
+            {true, value}
+          else
+            {false, value}
+          end
         end
+
+      cond do
+        !ignore_nil_check && is_nil(value) && !argument.allow_nil? ->
+          add_error(
+            query,
+            :arguments,
+            Required.exception(field: argument.name, type: :argument)
+          )
+
+        is_nil(value) ->
+          new_query
+
+        true ->
+          val =
+            case fetch_argument(query, argument.name) do
+              :error ->
+                if argument.default do
+                  {:ok, argument_default(argument.default)}
+                else
+                  :error
+                end
+
+              {:ok, val} ->
+                {:ok, val}
+            end
+
+          with {:found, {:ok, value}} <- {:found, val},
+               {:ok, casted} <- Ash.Type.cast_input(argument.type, value, argument.constraints),
+               {:ok, casted} <-
+                 Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
+            if casted do
+              %{new_query | arguments: Map.put(new_query.arguments, argument.name, casted)}
+            else
+              new_query
+            end
+          else
+            {:error, _error} ->
+              add_error(
+                query,
+                :arguments,
+                InvalidArgument.exception(field: argument.name)
+              )
+
+            {:found, :error} ->
+              query
+          end
       end
     end)
   end

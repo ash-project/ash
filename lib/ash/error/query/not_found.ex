@@ -2,7 +2,7 @@ defmodule Ash.Error.Query.NotFound do
   @moduledoc "Used when an entity that not exist is referenced"
   use Ash.Error.Exception
 
-  def_ash_error([:primary_key, :resource], class: :invalid)
+  def_ash_error([:primary_key, :resource, :message], class: :invalid)
 
   defimpl Ash.ErrorKind do
     def id(_), do: Ash.UUID.generate()

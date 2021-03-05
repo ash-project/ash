@@ -331,7 +331,11 @@ defmodule Ash.Actions.SideLoad do
                  ) do
             {:ok, results}
           else
-            {:error, error} -> {:error, error}
+            :nothing ->
+              {:ok, []}
+
+            {:error, error} ->
+              {:error, error}
           end
         end)
     )
@@ -446,7 +450,11 @@ defmodule Ash.Actions.SideLoad do
                      ) do
                 {:ok, results}
               else
-                {:error, error} -> {:error, error}
+                :nothing ->
+                  {:ok, []}
+
+                {:error, error} ->
+                  {:error, error}
               end
             end)
         )
@@ -655,7 +663,16 @@ defmodule Ash.Actions.SideLoad do
           |> Map.get(path, %{})
       end
 
-    get_query(query, relationship, source_data, source_field)
+    case source_data do
+      %{data: empty} when empty in [[], nil] ->
+        :nothing
+
+      empty when empty in [[], nil] ->
+        :nothing
+
+      _ ->
+        get_query(query, relationship, source_data, source_field)
+    end
   end
 
   defp get_query(query, relationship, source_data, source_field) do
