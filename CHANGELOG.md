@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.34.9](https://github.com/ash-project/ash/compare/v1.34.8...v1.34.9) (2021-03-05)
+
+
+
+
+### Improvements:
+
+* ignore destination field on some relationship inputs
+
 ## [v1.34.8](https://github.com/ash-project/ash/compare/v1.34.7...v1.34.8) (2021-03-05)
 
 
