@@ -65,6 +65,9 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     relationships do
       has_many :posts, Ash.Test.Changeset.ChangesetTest.Post, destination_field: :author_id
 
+      has_many :unique_posts, Ash.Test.Changeset.ChangesetTest.UniqueNamePerAuthor,
+        destination_field: :author_id
+
       has_many :composite_key_posts, Ash.Test.Changeset.ChangesetTest.CompositeKeyPost,
         destination_field: :author_id
     end
@@ -153,6 +156,40 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
   end
 
+  defmodule UniqueNamePerAuthor do
+    @moduledoc false
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      read :default
+      create :default
+      update :default
+    end
+
+    identities do
+      identity :unique_name_per_author, [:title, :author_id]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :title, :string
+      attribute :contents, :string
+    end
+
+    relationships do
+      belongs_to :author, Author
+
+      many_to_many :categories, Ash.Test.Changeset.ChangesetTest.Category,
+        through: Ash.Test.Changeset.ChangesetTest.PostCategory,
+        destination_field_on_join_table: :category_id,
+        source_field_on_join_table: :post_id
+    end
+  end
+
   defmodule Api do
     @moduledoc false
     use Ash.Api
@@ -163,6 +200,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       resource PostCategory
       resource Post
       resource CompositeKeyPost
+      resource UniqueNamePerAuthor
     end
   end
 
@@ -415,7 +453,32 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       assert [] = Api.read!(Post)
     end
 
-    test "it unrelated records if specified" do
+    test "it unrelates records if specified" do
+      post1 = %{title: "title"}
+      post2 = %{title: "title1"}
+
+      author =
+        Author
+        |> Changeset.new()
+        |> Changeset.manage_relationship(:unique_posts, [post1, post2], on_no_match: :create)
+        |> Api.create!()
+
+      assert [%{title: "title"}, %{title: "title1"}] =
+               Enum.sort_by(Api.read!(UniqueNamePerAuthor), & &1.title)
+
+      author =
+        author
+        |> Changeset.new()
+        |> Changeset.manage_relationship(:unique_posts, [%{title: "title"}], on_missing: :unrelate)
+        |> Api.update!(stacktraces?: true)
+
+      assert [%{title: "title"}, %{title: "title1"}] =
+               Enum.sort_by(Api.read!(UniqueNamePerAuthor), & &1.title)
+
+      assert %{unique_posts: [%{title: "title"}]} = Api.load!(author, :unique_posts)
+    end
+
+    test "it properly assumes the destination field of the relationship matches records when not provided" do
       post1 = %{title: "title"}
       post2 = %{title: "title"}
 

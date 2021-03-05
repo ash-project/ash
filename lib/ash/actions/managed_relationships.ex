@@ -48,7 +48,7 @@ defmodule Ash.Actions.ManagedRelationships do
       opts = sanitize_opts(relationship, opts)
       current_value = Map.get(changeset.data, relationship.name)
 
-      case find_match(List.wrap(current_value), input, pkeys) do
+      case find_match(List.wrap(current_value), input, pkeys, relationship) do
         nil ->
           case opts[:on_lookup] do
             :ignore ->
@@ -561,7 +561,7 @@ defmodule Ash.Actions.ManagedRelationships do
          index,
          opts
        ) do
-    match = find_match(List.wrap(original_value), input, pkeys)
+    match = find_match(List.wrap(original_value), input, pkeys, relationship)
 
     if is_nil(match) || opts[:on_match] == :create do
       case handle_create(
@@ -1057,24 +1057,46 @@ defmodule Ash.Actions.ManagedRelationships do
     end
   end
 
-  defp find_match(current_value, input, pkeys) do
+  defp find_match(current_value, input, pkeys, relationship \\ nil) do
     Enum.find(current_value, fn current_value ->
       Enum.any?(pkeys, fn pkey ->
-        matches?(current_value, input, pkey)
+        matches?(current_value, input, pkey, relationship)
       end)
     end)
   end
 
-  defp matches?(current_value, input, pkey) do
-    Enum.all?(pkey, fn field ->
-      with {:ok, current_val} <- Map.fetch(current_value, field),
-           {:ok, input_val} <- fetch_field(input, field) do
-        current_val == input_val
-      else
-        _ ->
-          false
-      end
-    end)
+  defp matches?(current_value, input, pkey, relationship) do
+    if relationship && relationship.type in [:has_one, :has_many] &&
+         relationship.destination_field in pkey do
+      Enum.all?(pkey, fn field ->
+        if field == relationship.destination_field do
+          if is_struct(input) do
+            do_matches?(current_value, input, field)
+          else
+            # We know that it will be the same as all other records in this relationship
+            # (because thats how has_one and has_many relationships work), so we
+            # can assume its the same as the current value
+            true
+          end
+        else
+          do_matches?(current_value, input, field)
+        end
+      end)
+    else
+      Enum.all?(pkey, fn field ->
+        do_matches?(current_value, input, field)
+      end)
+    end
+  end
+
+  defp do_matches?(current_value, input, field) do
+    with {:ok, current_val} <- Map.fetch(current_value, field),
+         {:ok, input_val} <- fetch_field(input, field) do
+      current_val == input_val
+    else
+      _ ->
+        false
+    end
   end
 
   defp split_join_keys(%_{__metadata__: metadata} = input, _join_keys) do
