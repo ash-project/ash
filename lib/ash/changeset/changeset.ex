@@ -32,6 +32,7 @@ defmodule Ash.Changeset do
     :api,
     :tenant,
     :__validated_for_action__,
+    select: nil,
     params: %{},
     action_failed?: false,
     arguments: %{},
@@ -182,6 +183,64 @@ defmodule Ash.Changeset do
     else
       %__MODULE__{resource: resource, action_type: :create, data: struct(resource)}
       |> add_error(NoSuchResource.exception(resource: resource))
+    end
+  end
+
+  @doc """
+  Ensure that only the specified attributes are present in the results.
+
+  The first call to `select/2` will replace the default behavior of selecting
+  all attributes. Subsequent calls to `select/2` will combine the provided
+  fields unless the `replace?` option is provided with a value of `true`.
+
+  If a field has been deselected, selecting it again will override that (because a single list of fields is tracked for selection)
+
+  Primary key and private attributes are always selected and cannot be deselected.
+
+  When attempting to load a relationship (or manage it with `Ash.Changeset.manage_relationship/3`),
+  if the source field is not selected on the query/provided data an error will be produced. If loading
+  a relationship with a query, an error is produced if the query does not select the destination field
+  of the relationship.
+  """
+  def select(changeset, fields, opts \\ []) do
+    if opts[:replace?] do
+      %{changeset | select: Enum.uniq(List.wrap(fields))}
+    else
+      %{changeset | select: Enum.uniq(List.wrap(fields) ++ (changeset.select || []))}
+    end
+  end
+
+  @doc """
+  Ensure the the specified attributes are `nil` in the changeset results.
+  """
+  def deselect(changeset, fields) do
+    select =
+      if changeset.select do
+        changeset.select
+      else
+        changeset.resource
+        |> Ash.Resource.Info.attributes()
+        |> Enum.map(& &1.name)
+      end
+
+    select = select -- List.wrap(fields)
+
+    select(changeset, select, replace?: true)
+  end
+
+  def selecting?(changeset, field) do
+    case changeset.select do
+      nil ->
+        not is_nil(Ash.Resource.Info.attribute(changeset.resource, field))
+
+      select ->
+        if field in select do
+          true
+        else
+          attribute = Ash.Resource.Info.attribute(changeset.resource, field)
+
+          attribute && (attribute.private? || attribute.primary_key?)
+        end
     end
   end
 

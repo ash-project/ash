@@ -181,6 +181,21 @@ defmodule Ash.Test.Actions.UpdateTest do
     end
   end
 
+  describe "select" do
+    test "allows selecting fields on the changeset" do
+      post =
+        Post
+        |> new(%{title: "foo", contents: "bar"})
+        |> Api.create!()
+
+      assert %Post{title: "bar", contents: nil} =
+               post
+               |> new(%{title: "bar", contents: "foo"})
+               |> Ash.Changeset.select(:title)
+               |> Api.update!()
+    end
+  end
+
   describe "allow" do
     test "allows attributes in the list" do
       author =

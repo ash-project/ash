@@ -1,5 +1,7 @@
 defmodule Ash.Actions.Destroy do
   @moduledoc false
+
+  alias Ash.Actions.Helpers
   alias Ash.Engine
   alias Ash.Engine.Request
 
@@ -84,8 +86,8 @@ defmodule Ash.Actions.Destroy do
                   end
                 end)
                 |> case do
-                  {:ok, result, _changeset, instructions} ->
-                    {:ok, result, instructions}
+                  {:ok, result, changeset, instructions} ->
+                    {:ok, Helpers.select(result, changeset), instructions}
 
                   {:error, error} ->
                     {:error, error}

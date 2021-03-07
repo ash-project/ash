@@ -1,8 +1,10 @@
 defmodule Ash.Actions.Update do
   @moduledoc false
+
+  require Logger
+  alias Ash.Actions.Helpers
   alias Ash.Engine
   alias Ash.Engine.Request
-  require Logger
 
   @spec run(Ash.Api.t(), Ash.Resource.record(), Ash.Resource.Actions.action(), Keyword.t()) ::
           {:ok, Ash.Resource.record()} | {:error, Ash.Changeset.t()} | {:error, term}
@@ -138,7 +140,8 @@ defmodule Ash.Actions.Update do
                        changeset,
                        engine_opts[:actor]
                      ) do
-                {:ok, with_relationships, %{notifications: notifications ++ new_notifications}}
+                {:ok, Helpers.select(with_relationships, changeset),
+                 %{notifications: notifications ++ new_notifications}}
               end
             end
           ),

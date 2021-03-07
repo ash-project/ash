@@ -318,6 +318,18 @@ defmodule Ash.Test.Actions.CreateTest do
     end
   end
 
+  describe "select" do
+    test "allows selecting fields on the changeset" do
+      author =
+        Author
+        |> new(%{name: "fred"})
+        |> Ash.Changeset.select(:bio)
+        |> Api.create!(action: :duplicate_name)
+
+      assert is_nil(author.name)
+    end
+  end
+
   describe "creating many to many relationships" do
     test "allows creating with a many_to_many relationship" do
       post2 =

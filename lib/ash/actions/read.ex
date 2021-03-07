@@ -1,10 +1,9 @@
 defmodule Ash.Actions.Read do
   @moduledoc false
   require Logger
-
   require Ash.Query
 
-  alias Ash.Actions.SideLoad
+  alias Ash.Actions.{Helpers, SideLoad}
   alias Ash.Engine
   alias Ash.Engine.Request
   alias Ash.Error.Invalid.{LimitRequired, PaginationRequired}
@@ -608,21 +607,24 @@ defmodule Ash.Actions.Read do
                lateral_join_source: {root_data, resource, source, destination}
              }
            }
-         },
+         } = ash_query,
          query
        ) do
-    Ash.DataLayer.run_query_with_lateral_join(
-      query,
+    query
+    |> Ash.DataLayer.run_query_with_lateral_join(
       root_data,
       resource,
       destination_resource,
       source,
       destination
     )
+    |> Helpers.select(ash_query)
   end
 
-  defp run_query(%{resource: resource}, query) do
-    Ash.DataLayer.run_query(query, resource)
+  defp run_query(%{resource: resource} = ash_query, query) do
+    query
+    |> Ash.DataLayer.run_query(resource)
+    |> Helpers.select(ash_query)
   end
 
   defp run_count_query(

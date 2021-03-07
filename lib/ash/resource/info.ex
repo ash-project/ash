@@ -18,6 +18,25 @@ defmodule Ash.Resource.Info do
     get_in(record.__metadata__ || %{}, List.wrap(key_or_path))
   end
 
+  @spec selected?(Ash.Resource.record(), atom) :: boolean
+  def selected?(%resource{} = record, field) do
+    case get_metadata(record, :selected) do
+      nil ->
+        attribute = Ash.Resource.Info.attribute(resource, field)
+
+        attribute && (!attribute.private? || attribute.primary_key?)
+
+      select ->
+        if field in select do
+          true
+        else
+          attribute = Ash.Resource.Info.attribute(resource, field)
+
+          attribute && attribute.primary_key?
+        end
+    end
+  end
+
   @spec extensions(Ash.Resource.t()) :: [module]
   def extensions(resource) do
     Extension.get_persisted(resource, :extensions, [])

@@ -227,6 +227,36 @@ defmodule Ash.Test.Actions.ReadTest do
     end
   end
 
+  describe "select" do
+    test "it automatically selects all fields" do
+      author =
+        Author
+        |> new(%{name: "bruh"})
+        |> Api.create!()
+
+      assert author.name
+      assert author.id
+    end
+
+    test "you can deselect a field" do
+      Author
+      |> new(%{name: "bruh"})
+      |> Api.create!()
+
+      assert [%{name: "bruh"}] = Api.read!(Author)
+      assert [%{name: nil}] = Api.read!(Ash.Query.deselect(Author, :name))
+    end
+
+    test "you can select fields, but the primary key is always present" do
+      Author
+      |> new(%{name: "bruh"})
+      |> Api.create!()
+
+      assert [%{name: "bruh", id: id}] = Api.read!(Ash.Query.select(Author, :name))
+      assert id
+    end
+  end
+
   describe "relationship filters" do
     setup do
       author1 =

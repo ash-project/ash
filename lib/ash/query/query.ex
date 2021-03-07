@@ -40,6 +40,7 @@ defmodule Ash.Query do
     side_load: [],
     calculations: %{},
     context: %{},
+    select: nil,
     sort: [],
     limit: nil,
     offset: 0,
@@ -65,6 +66,7 @@ defmodule Ash.Query do
       filter? = not is_nil(query.filter)
       errors? = not Enum.empty?(query.errors)
       tenant? = not is_nil(query.tenant)
+      select? = query.select not in [[], nil]
 
       container_doc(
         "#Ash.Query<",
@@ -79,7 +81,8 @@ defmodule Ash.Query do
           or_empty(concat("side_load: ", to_doc(query.side_load, opts)), side_load?),
           or_empty(concat("aggregates: ", to_doc(query.aggregates, opts)), aggregates?),
           or_empty(concat("calculations: ", to_doc(query.calculations, opts)), calculations?),
-          or_empty(concat("errors: ", to_doc(query.errors, opts)), errors?)
+          or_empty(concat("errors: ", to_doc(query.errors, opts)), errors?),
+          or_empty(concat("select: ", to_doc(query.select, opts)), select?)
         ],
         ">",
         opts,
@@ -454,6 +457,68 @@ defmodule Ash.Query do
 
   defp do_ref(_left, _right) do
     :error
+  end
+
+  @doc """
+  Ensure that only the specified attributes are present in the results.
+
+  The first call to `select/2` will replace the default behavior of selecting
+  all attributes. Subsequent calls to `select/2` will combine the provided
+  fields unless the `replace?` option is provided with a value of `true`.
+
+  If a field has been deselected, selecting it again will override that (because a single list of fields is tracked for selection)
+
+  Primary key attributes and private attributes are always selected and cannot be deselected.
+
+  When attempting to load a relationship (or manage it with `Ash.Changeset.manage_relationship/3`),
+  if the source field is not selected on the query/provided data an error will be produced. If loading
+  a relationship with a query, an error is produced if the query does not select the destination field
+  of the relationship.
+  """
+  def select(query, fields, opts \\ []) do
+    query = to_query(query)
+
+    if opts[:replace?] do
+      %{query | select: Enum.uniq(List.wrap(fields))}
+    else
+      %{query | select: Enum.uniq(List.wrap(fields) ++ (query.select || []))}
+    end
+  end
+
+  @doc """
+  Ensure the the specified attributes are `nil` in the query results.
+  """
+  def deselect(query, fields) do
+    query = to_query(query)
+
+    select =
+      if query.select do
+        query.select
+      else
+        query.resource
+        |> Ash.Resource.Info.attributes()
+        |> Enum.map(& &1.name)
+      end
+
+    select = select -- List.wrap(fields)
+
+    select(query, select, replace?: true)
+  end
+
+  def selecting?(query, field) do
+    case query.select do
+      nil ->
+        not is_nil(Ash.Resource.Info.attribute(query.resource, field))
+
+      select ->
+        if field in select do
+          true
+        else
+          attribute = Ash.Resource.Info.attribute(query.resource, field)
+
+          attribute && (attribute.primary_key? || attribute.private?)
+        end
+    end
   end
 
   @doc """
@@ -1060,7 +1125,7 @@ defmodule Ash.Query do
 
     with sanitized_statement <- List.wrap(sanitize_side_loads(statement)),
          :ok <-
-           validate_side_load(query.resource, sanitized_statement),
+           validate_side_load(query, sanitized_statement),
          new_side_loads <- merge_side_load(query.side_load, sanitized_statement) do
       %{query | side_load: new_side_loads}
     else
@@ -1070,51 +1135,44 @@ defmodule Ash.Query do
   end
 
   @doc false
-  def validate_side_load(resource, side_loads, path \\ []) do
-    case do_validate_side_load(resource, side_loads, path) do
+  def validate_side_load(query, side_loads, path \\ []) do
+    case do_validate_side_load(query, side_loads, path) do
       [] -> :ok
       errors -> {:error, errors}
     end
   end
 
-  defp do_validate_side_load(_resource, %Ash.Query{} = query, path) do
-    if query.limit || (query.offset && query.offset != 0) do
-      [{:error, InvalidQuery.exception(query: query, side_load_path: Enum.reverse(path))}]
-    else
-      case query.errors do
-        [] ->
-          []
+  defp do_validate_side_load(_query, %Ash.Query{} = side_load_query, path) do
+    case side_load_query.errors do
+      [] ->
+        []
 
-        _errors ->
-          [
-            {:error,
-             InvalidQuery.exception(
-               query: query,
-               side_load_path: Enum.reverse(path)
-             )}
-          ]
-      end
+      _errors ->
+        [
+          {:error,
+           InvalidQuery.exception(
+             query: side_load_query,
+             side_load_path: Enum.reverse(path)
+           )}
+        ]
     end
   end
 
-  defp do_validate_side_load(resource, {atom, _} = tuple, path) when is_atom(atom) do
-    do_validate_side_load(resource, [tuple], path)
+  defp do_validate_side_load(query, {atom, _} = tuple, path) when is_atom(atom) do
+    do_validate_side_load(query, [tuple], path)
   end
 
-  defp do_validate_side_load(resource, side_loads, path) when is_list(side_loads) do
+  defp do_validate_side_load(query, side_loads, path) when is_list(side_loads) do
     side_loads
     |> List.wrap()
     |> Enum.flat_map(fn
-      {_key, %Ash.Query{}} ->
-        []
-
       {key, value} ->
-        case Ash.Resource.Info.relationship(resource, key) do
+        case Ash.Resource.Info.relationship(query.resource, key) do
           nil ->
             [
               {:error,
                NoSuchRelationship.exception(
-                 resource: resource,
+                 resource: query.resource,
                  relationship: key,
                  side_load_path: Enum.reverse(path)
                )}
@@ -1122,23 +1180,54 @@ defmodule Ash.Query do
 
           relationship ->
             cond do
+              !selecting?(query, relationship.source_field) ->
+                [
+                  {:error,
+                   "Cannot side load a relationship if you are not selecting the source field of that relationship"}
+                ]
+
               !Ash.Resource.Info.primary_action(relationship.destination, :read) ->
-                {:error,
-                 NoReadAction.exception(
-                   resource: relationship.destination,
-                   when: "loading relationship #{relationship.name}"
-                 )}
+                [
+                  {:error,
+                   NoReadAction.exception(
+                     resource: relationship.destination,
+                     when: "loading relationship #{relationship.name}"
+                   )}
+                ]
 
               relationship.type == :many_to_many &&
                   !Ash.Resource.Info.primary_action(relationship.through, :read) ->
-                {:error,
-                 NoReadAction.exception(
-                   resource: relationship.destination,
-                   when: "loading relationship #{relationship.name}"
-                 )}
+                [
+                  {:error,
+                   NoReadAction.exception(
+                     resource: relationship.destination,
+                     when: "loading relationship #{relationship.name}"
+                   )}
+                ]
+
+              match?(%Ash.Query{}, value) && selecting?(value, relationship.destination_field) ->
+                validate_matching_query_and_continue(
+                  value,
+                  query.resource,
+                  key,
+                  path,
+                  relationship
+                )
+
+              match?(%Ash.Query{}, value) ->
+                [
+                  {:error,
+                   "Cannot side load a relationship with a query unless the destination field of that query is selected"}
+                ]
 
               true ->
-                validate_matching_query_and_continue(value, resource, key, path, relationship)
+                validate_matching_query_and_continue(
+                  value,
+                  query.resource,
+                  key,
+                  path,
+                  relationship
+                )
             end
         end
     end)
