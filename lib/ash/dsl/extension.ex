@@ -932,7 +932,6 @@ defmodule Ash.Dsl.Extension do
                     {__MODULE__, :ash, nested_path}
                     |> Process.get(%{entities: []})
                     |> Map.get(:entities, [])
-                    |> Enum.reverse()
 
                   Process.delete({__MODULE__, :ash, nested_path})
 
