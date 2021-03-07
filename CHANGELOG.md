@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.35.1](https://github.com/ash-project/ash/compare/v1.35.0...v1.35.1) (2021-03-07)
+
+
+
+
+### Bug Fixes:
+
+* don't reverse sub-entities in DSL
+
 ## [v1.35.0](https://github.com/ash-project/ash/compare/v1.34.9...v1.35.0) (2021-03-07)
 
 
