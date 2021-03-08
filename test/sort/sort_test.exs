@@ -13,11 +13,11 @@ defmodule Ash.Test.Sort.SortTest do
     end
 
     actions do
-      read :default
+      read :read
 
-      create :default
+      create :create
 
-      update :default
+      update :update
     end
 
     attributes do

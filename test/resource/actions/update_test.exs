@@ -21,13 +21,13 @@ defmodule Ash.Test.Dsl.Resource.Actions.UpdateTest do
       defposts do
         actions do
           defaults []
-          update :default
+          update :update
         end
       end
 
       assert [
                %Ash.Resource.Actions.Update{
-                 name: :default,
+                 name: :update,
                  primary?: true,
                  type: :update
                }
@@ -53,11 +53,11 @@ defmodule Ash.Test.Dsl.Resource.Actions.UpdateTest do
     test "it fails if `primary?` is not a boolean" do
       assert_raise(
         Ash.Error.Dsl.DslError,
-        "[Ash.Resource.Dsl.Update]\n actions -> update -> default:\n  expected :primary? to be a boolean, got: 10",
+        "[Ash.Resource.Dsl.Update]\n actions -> update -> update:\n  expected :primary? to be a boolean, got: 10",
         fn ->
           defposts do
             actions do
-              update :default, primary?: 10
+              update :update, primary?: 10
             end
           end
         end

@@ -218,10 +218,10 @@ following block to your resources:
   # and lib/my_app/resources/tweet.ex
 
   actions do
-    create :default
-    read :default
-    update :default
-    destroy :default
+    create :create
+    read :read
+    update :update
+    destroy :destroy
   end
 ```
 

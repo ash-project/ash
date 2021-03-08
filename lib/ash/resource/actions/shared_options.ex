@@ -7,6 +7,11 @@ defmodule Ash.Resource.Actions.SharedOptions do
       required: true,
       doc: "The name of the action"
     ],
+    as: [
+      type: :atom,
+      doc:
+        "Overwrite the name of the helper function added onto the Api module. The helper defaults to <resource_name>_<action_name>"
+    ],
     primary?: [
       type: :boolean,
       default: false,

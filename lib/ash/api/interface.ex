@@ -2,8 +2,185 @@ defmodule Ash.Api.Interface do
   @moduledoc false
 
   defmacro __using__(_) do
-    quote do
+    quote bind_quoted: [] do
       alias Ash.Api
+
+      default_opts = [
+        tenant: [
+          type: :any,
+          doc: "A tenant to use for the action."
+        ],
+        context: [
+          type: :map,
+          doc: "Context to set for the action"
+        ]
+      ]
+
+      for {resource, resource_name, action} <- Ash.Api.Interface.action_interface(__MODULE__) do
+        name = action.as || :"#{resource_name}_#{action.name}"
+
+        doc =
+          case action.type do
+            :create ->
+              opts = Keyword.merge(Ash.Api.create_opts_schema(), default_opts)
+
+              """
+              #{
+                action.description ||
+                  "Create a #{resource_name} with the `#{action.name}` action."
+              }
+
+              ## Options
+
+              #{Ash.OptionsHelpers.docs(opts)}
+              """
+
+            :read ->
+              opts = Keyword.merge(Ash.Api.read_opts_schema(), default_opts)
+
+              """
+              #{
+                action.description ||
+                  "Read a list of #{resource_name} with the `#{action.name}` action."
+              }
+
+              ## Options
+
+              #{Ash.OptionsHelpers.docs(opts)}
+              """
+
+            :update ->
+              opts = Keyword.merge(Ash.Api.update_opts_schema(), default_opts)
+
+              """
+              #{
+                action.description ||
+                  "Update a #{resource_name} with the `#{action.name}` action."
+              }
+
+              ## Options
+
+              #{Ash.OptionsHelpers.docs(opts)}
+              """
+
+            :destroy ->
+              opts = Keyword.merge(Ash.Api.destroy_opts_schema(), default_opts)
+
+              """
+              #{
+                action.description ||
+                  "Destroy a #{resource_name} with the `#{action.name}` action."
+              }
+
+              ## Options
+
+              #{Ash.OptionsHelpers.docs(opts)}
+              """
+          end
+
+        case action.type do
+          :create ->
+            @doc doc
+            @spec unquote(name)(Keyword.t() | map, Keyword.t()) ::
+                    {:ok, unquote(resource).t()} | {:error, Ash.Error.t()}
+            def unquote(name)(params \\ [], opts \\ []) do
+              opts
+              |> Keyword.get(:changeset, unquote(resource))
+              |> Ash.Changeset.for_create(unquote(action.name), params, opts)
+              |> Ash.Api.Interface.set_tenant(opts)
+              |> Ash.Changeset.set_context(opts[:context] || %{})
+              |> __MODULE__.create()
+            end
+
+            @doc doc
+            @spec unquote(:"#{name}!")(Keyword.t() | map, Keyword.t()) ::
+                    unquote(resource).t() | no_return
+            # sobelow_skip ["DOS.BinToAtom"]
+            def unquote(:"#{name}!")(params \\ [], opts \\ []) do
+              unquote(resource)
+              |> Ash.Changeset.for_create(unquote(action.name), params, opts)
+              |> Ash.Api.Interface.set_tenant(opts)
+              |> Ash.Changeset.set_context(opts[:context] || %{})
+              |> __MODULE__.create!()
+            end
+
+          :update ->
+            @doc doc
+            @spec unquote(name)(unquote(resource).t(), map | Keyword.t(), Keyword.t()) ::
+                    {:ok, unquote(resource).t()} | {:error, Ash.Error.t()}
+            def unquote(name)(record, params \\ [], opts \\ []) do
+              record
+              |> Ash.Changeset.for_update(unquote(action.name), params, opts)
+              |> Ash.Api.Interface.set_tenant(opts)
+              |> Ash.Changeset.set_context(opts[:context] || %{})
+              |> __MODULE__.update()
+            end
+
+            @doc doc
+            @spec unquote(:"#{name}!")(unquote(resource).t(), Keyword.t() | map, Keyword.t()) ::
+                    unquote(resource).t() | no_return
+            # sobelow_skip ["DOS.BinToAtom"]
+            def unquote(:"#{name}!")(record, params \\ [], opts \\ []) do
+              record
+              |> Ash.Changeset.for_update(unquote(action.name), params, opts)
+              |> Ash.Api.Interface.set_tenant(opts)
+              |> Ash.Changeset.set_context(opts[:context] || %{})
+              |> __MODULE__.update!()
+            end
+
+          :destroy ->
+            @doc doc
+            @spec unquote(name)(unquote(resource).t(), map | Keyword.t(), Keyword.t()) ::
+                    :ok | {:error, Ash.Error.t()}
+            def unquote(name)(record, params \\ [], opts \\ []) do
+              record
+              |> Ash.Changeset.for_destroy(unquote(action.name), params, opts)
+              |> Ash.Api.Interface.set_tenant(opts)
+              |> Ash.Changeset.set_context(opts[:context] || %{})
+              |> __MODULE__.destroy()
+            end
+
+            @doc doc
+            @spec unquote(:"#{name}!")(unquote(resource).t(), Keyword.t() | map, Keyword.t()) ::
+                    :ok | no_return
+            # sobelow_skip ["DOS.BinToAtom"]
+            def unquote(:"#{name}!")(record, params \\ [], opts \\ []) do
+              record
+              |> Ash.Changeset.for_destroy(unquote(action.name), params, opts)
+              |> Ash.Api.Interface.set_tenant(opts)
+              |> Ash.Changeset.set_context(opts[:context] || %{})
+              |> __MODULE__.destroy!()
+            end
+
+          :read ->
+            @doc doc
+            @spec unquote(name)(map | Keyword.t(), Keyword.t()) ::
+                    list(unquote(resource).t())
+                    | list(unquote(resource).t())
+                    | {:error, Ash.Error.t()}
+            def unquote(name)(params, opts \\ []) do
+              unquote(resource)
+              |> Ash.Query.for_read(unquote(action.name), params, opts)
+              |> Ash.Api.Interface.set_tenant(opts)
+              |> Ash.Query.set_context(opts[:context] || %{})
+              |> __MODULE__.read()
+            end
+
+            @doc doc
+            @spec unquote(:"#{name}!")(Keyword.t() | map, Keyword.t()) ::
+                    list(unquote(resource).t())
+                    | list(unquote(resource).t())
+                    | no_return
+            # sobelow_skip ["DOS.BinToAtom"]
+            def unquote(:"#{name}!")(params, opts \\ []) do
+              unquote(resource)
+              |> Ash.Query.for_read(unquote(action.name), params, opts)
+              |> Ash.Api.Interface.set_tenant(opts)
+              |> Ash.Query.set_context(opts[:context] || %{})
+              |> __MODULE__.read!()
+            end
+        end
+      end
 
       def get!(resource, id, params \\ []) do
         Api.get!(__MODULE__, resource, id, params)
@@ -119,5 +296,73 @@ defmodule Ash.Api.Interface do
         get(resource, id, params)
       end
     end
+  end
+
+  @doc false
+  def set_tenant(query_or_changeset, opts) do
+    case Keyword.fetch(opts, :tenant) do
+      {:ok, tenant} ->
+        case query_or_changeset do
+          %Ash.Query{} = query ->
+            Ash.Query.set_tenant(query, tenant)
+
+          %Ash.Changeset{} = changeset ->
+            Ash.Changeset.set_tenant(changeset, tenant)
+
+          other ->
+            other
+        end
+
+      :error ->
+        query_or_changeset
+    end
+  end
+
+  @doc false
+  def action_interface(api) do
+    api
+    |> Ash.Api.resource_references()
+    |> Enum.flat_map(fn %{resource: resource} = reference ->
+      resource_name = name(reference)
+
+      resource
+      |> Ash.Resource.Info.actions()
+      |> Enum.map(fn action ->
+        {resource, resource_name, action}
+      end)
+    end)
+  end
+
+  @doc false
+  def getters(api) do
+    api
+    |> Ash.Api.resource_references()
+    |> Enum.flat_map(fn %{resource: resource} = reference ->
+      if Ash.Resource.Info.primary_action(resource, :read) do
+        resource_name = name(reference)
+
+        resource
+        |> Ash.Resource.Info.identities()
+        |> Enum.map(fn identity ->
+          {resource, resource_name, identity}
+        end)
+      else
+        []
+      end
+    end)
+  end
+
+  @doc false
+  def name(reference) do
+    reference
+    |> Map.get(:as)
+    |> Kernel.||(
+      reference.resource
+      |> Module.split()
+      |> List.last()
+      |> to_string()
+      |> Macro.underscore()
+    )
+    |> to_string()
   end
 end

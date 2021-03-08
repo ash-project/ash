@@ -32,9 +32,7 @@ defmodule Ash.Notifier.PubSub do
     examples: [
       "publish :create, \"created\"",
       """
-      publish :assign, "assigned" do
-        type :create
-      end
+      publish :assign, "assigned"
       """
     ],
     schema: Ash.Notifier.PubSub.Publication.schema(),
@@ -67,8 +65,7 @@ defmodule Ash.Notifier.PubSub do
         prefix "post"
 
         publish :destroy, ["foo", :id]
-        publish :default, ["foo", :id], type: :update
-        publish :default, ["bar", :name], type: :update, event: "name_change"
+        publish :update, ["bar", :name] event: "name_change"
         publish_all :create, "created"
       end
       """
@@ -174,9 +171,8 @@ defmodule Ash.Notifier.PubSub do
     end)
   end
 
-  defp matches?(%{action: action, type: nil}, %{action: %{name: action}}), do: true
-  defp matches?(%{action: nil, type: type}, %{action: %{type: type}}), do: true
-  defp matches?(%{action: action, type: type}, %{action: %{name: action, type: type}}), do: true
+  defp matches?(%{action: action}, %{action: %{name: action}}), do: true
+  defp matches?(%{type: type}, %{action: %{type: type}}), do: true
 
   defp matches?(_, _), do: false
 end

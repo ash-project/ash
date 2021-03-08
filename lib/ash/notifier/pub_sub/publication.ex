@@ -4,8 +4,7 @@ defmodule Ash.Notifier.PubSub.Publication do
   defstruct [
     :action,
     :topic,
-    :event,
-    :type
+    :event
   ]
 
   @schema [
@@ -22,15 +21,16 @@ defmodule Ash.Notifier.PubSub.Publication do
     event: [
       type: :string,
       doc: "The name of the event to publish. Defaults to the action name"
-    ],
-    type: [
-      type: {:in, [:create, :update, :destroy]},
-      doc:
-        "In the case of multiple actions with the same name, you may need to provide the action type as well."
     ]
   ]
 
-  @publish_all_schema Keyword.update!(@schema, :action, &Keyword.delete(&1, :required))
+  @publish_all_schema @schema
+                      |> Keyword.update!(:action, &Keyword.delete(&1, :required))
+                      |> Keyword.put(:type,
+                        type: {:in, [:create, :update, :destroy]},
+                        doc:
+                          "In the case of multiple actions with the same name, you may need to provide the action type as well."
+                      )
 
   def schema, do: @schema
   def publish_all_schema, do: @publish_all_schema

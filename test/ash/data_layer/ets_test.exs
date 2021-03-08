@@ -23,10 +23,10 @@ defmodule Ash.DataLayer.EtsTest do
     end
 
     actions do
-      read(:default)
-      create(:default)
-      update(:default)
-      destroy(:default)
+      read(:read)
+      create(:create)
+      update(:update)
+      destroy(:destroy)
     end
 
     attributes do

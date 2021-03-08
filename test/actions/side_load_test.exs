@@ -17,8 +17,8 @@ defmodule Ash.Test.Actions.SideLoadTest do
     end
 
     actions do
-      read :default
-      create :default
+      read :read
+      create :create
     end
 
     attributes do
@@ -40,8 +40,8 @@ defmodule Ash.Test.Actions.SideLoadTest do
     end
 
     actions do
-      read :default
-      create :default
+      read :read
+      create :create
     end
 
     attributes do
@@ -69,8 +69,8 @@ defmodule Ash.Test.Actions.SideLoadTest do
     end
 
     actions do
-      read :default
-      create :default
+      read :read
+      create :create
     end
 
     relationships do
@@ -90,8 +90,8 @@ defmodule Ash.Test.Actions.SideLoadTest do
     end
 
     actions do
-      read :default
-      create :default
+      read :read
+      create :create
     end
 
     attributes do

@@ -109,9 +109,9 @@ defmodule Post do
   use Ash.Resource
 
   actions do
-    read :default
+    read :read
 
-    create :default
+    create :create
   end
 
   attributes do

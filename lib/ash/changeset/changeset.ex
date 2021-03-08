@@ -244,6 +244,41 @@ defmodule Ash.Changeset do
     end
   end
 
+  @for_create_opts [
+    relationships: [
+      type: :any,
+      doc: """
+      customize relationship behavior.
+
+      By default, any relationships are *replaced* via `replace_relationship`. To change this behavior, provide the
+      `relationships` option. The values for each relationship can be
+          * `:append` - passes input to `append_to_relatinship/3`
+          * `:remove` - passes input to `remove_from_relationship/3`
+          * `:replace` - passes input to `replace_relationship/3`
+          * `{:manage, opts}` - passes the input to `manage_relationship/4`, with the given `opts`.
+
+      For example:
+
+      ```elixir
+      Ash.Changeset.for_create(MyResource, :create, params, relationships: [relationship: :append, other_relationship: :remove])
+      ```
+      """
+    ],
+    actor: [
+      type: :any,
+      doc:
+        "set the actor, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)"
+    ],
+    defaults: [
+      type: :any,
+      doc:
+        "A list of attributes and arguments to apply defaults for. Defaults to: []. Any unset defaults are set when the action is called."
+    ]
+  ]
+
+  @doc false
+  def for_create_opts, do: @for_create_opts
+
   @doc """
   Constructs a changeset for a given create action, and validates it.
 
@@ -259,22 +294,7 @@ defmodule Ash.Changeset do
 
   ### Opts
 
-  * `:relationships` - customize relationship behavior. See the Relationships section below.
-  * `:actor` - set the actor, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)
-  * `:defaults` - A list of attributes and arguments to apply defaults for. Defaults to: []. Any unset defaults are set when the action is called.
-
-  ### Relationships
-
-  By default, any relationships are *replaced* via `replace_relationship`. To change this behavior, provide the
-  `relationships` option. The values for each relationship can be
-  * `:append` - passes input to `append_to_relatinship/3`
-  * `:remove` - passes input to `remove_from_relationship/3`
-  * `:replace` - passes input to `replace_relationship/3`
-  * `{:manage, opts}` - passes the input to `manage_relationship/4`, with the given `opts`.
-
-  For example:
-
-      Ash.Changeset.for_create(MyResource, :create, params, relationships: [relationship: :append, other_relationship: :remove])
+  #{Ash.OptionsHelpers.docs(@for_create_opts)}
 
   ### Customization
 

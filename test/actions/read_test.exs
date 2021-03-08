@@ -13,8 +13,8 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     actions do
-      read :default
-      create :default
+      read :read
+      create :create
     end
 
     attributes do
@@ -40,8 +40,8 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     actions do
-      read :default
-      create :default
+      read :read
+      create :create
     end
 
     attributes do

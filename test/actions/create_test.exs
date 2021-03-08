@@ -17,9 +17,9 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
-      read(:default)
-      create(:default)
-      update(:default)
+      read(:read)
+      create(:create)
+      update(:update)
     end
   end
 
@@ -33,9 +33,9 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
-      read(:default)
-      create(:default)
-      update(:default)
+      read(:read)
+      create(:create)
+      update(:update)
     end
 
     attributes do
@@ -69,8 +69,8 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
-      read :default
-      create :default, primary?: true
+      read :read
+      create :create, primary?: true
 
       create :only_allow_name do
         accept([:name])
@@ -80,7 +80,7 @@ defmodule Ash.Test.Actions.CreateTest do
         change {DuplicateName, []}
       end
 
-      update :default
+      update :update
     end
 
     attributes do
@@ -112,10 +112,10 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
-      read(:default)
+      read(:read)
 
-      create(:default)
-      update(:default)
+      create(:create)
+      update(:update)
     end
 
     relationships do
@@ -140,9 +140,9 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
-      read(:default)
-      create(:default)
-      update(:default)
+      read(:read)
+      create(:create)
+      update(:update)
     end
 
     attributes do
@@ -186,10 +186,10 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
-      read(:default)
+      read(:read)
 
-      create(:default)
-      update(:default)
+      create(:create)
+      update(:update)
     end
 
     attributes do

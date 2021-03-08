@@ -828,21 +828,21 @@ defmodule Ash.Resource.Dsl do
   ]
 
   @transformers [
-                  SetRelationshipSource,
-                  BelongsToAttribute,
-                  BelongsToSourceField,
-                  HasManyDestinationField,
-                  CreateJoinRelationship,
-                  CachePrimaryKey,
-                  SetPrimaryActions,
-                  ValidateActionTypesSupported,
-                  CountableActions,
-                  ValidateMultitenancy,
-                  DefaultPrimaryKey,
-                  DefaultAccept,
-                  SetTypes
-                ]
-                |> Enum.map(&Module.concat(["Ash", Resource, Transformers, &1]))
+    Ash.Resource.Transformers.RequireUniqueActionNames,
+    Ash.Resource.Transformers.SetRelationshipSource,
+    Ash.Resource.Transformers.BelongsToAttribute,
+    Ash.Resource.Transformers.BelongsToSourceField,
+    Ash.Resource.Transformers.HasManyDestinationField,
+    Ash.Resource.Transformers.CreateJoinRelationship,
+    Ash.Resource.Transformers.CachePrimaryKey,
+    Ash.Resource.Transformers.SetPrimaryActions,
+    Ash.Resource.Transformers.ValidateActionTypesSupported,
+    Ash.Resource.Transformers.CountableActions,
+    Ash.Resource.Transformers.ValidateMultitenancy,
+    Ash.Resource.Transformers.DefaultPrimaryKey,
+    Ash.Resource.Transformers.DefaultAccept,
+    Ash.Resource.Transformers.SetTypes
+  ]
 
   @moduledoc """
   The built in resource DSL. The core DSL components of a resource are:

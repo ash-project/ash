@@ -22,10 +22,10 @@ defmodule Ash.Test.NotifierTest do
     end
 
     actions do
-      create :default
-      read :default
-      update :default
-      destroy :default
+      create :create
+      read :read
+      update :update
+      destroy :destroy
     end
 
     relationships do
@@ -51,10 +51,10 @@ defmodule Ash.Test.NotifierTest do
     end
 
     actions do
-      create :default
-      read :default
-      update :default
-      destroy :default
+      create :create
+      read :read
+      update :update
+      destroy :destroy
     end
 
     attributes do
@@ -81,10 +81,10 @@ defmodule Ash.Test.NotifierTest do
     end
 
     actions do
-      create :default
-      read :default
-      update :default
-      destroy :default
+      create :create
+      read :read
+      update :update
+      destroy :destroy
     end
 
     attributes do

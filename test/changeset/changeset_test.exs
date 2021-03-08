@@ -14,8 +14,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     actions do
-      read :default
-      create :default, primary?: true
+      read :read
+      create :create, primary?: true
 
       create :create_with_confirmation do
         argument :confirm_name, :string do
@@ -52,9 +52,9 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     actions do
-      read :default
-      create :default, primary?: true
-      update :default
+      read :read
+      create :create, primary?: true
+      update :update
     end
 
     attributes do
@@ -82,8 +82,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     actions do
-      read :default
-      create :default
+      read :read
+      create :create
     end
 
     relationships do
@@ -104,9 +104,9 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     actions do
-      read :default
-      create :default
-      update :default
+      read :read
+      create :create
+      update :update
     end
 
     attributes do
@@ -134,9 +134,9 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     actions do
-      read :default
-      create :default
-      update :default
+      read :read
+      create :create
+      update :update
     end
 
     attributes do
@@ -165,9 +165,9 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     actions do
-      read :default
-      create :default
-      update :default
+      read :read
+      create :create
+      update :update
     end
 
     identities do

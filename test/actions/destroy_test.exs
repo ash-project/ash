@@ -11,10 +11,10 @@ defmodule Ash.Test.Actions.DestroyTest do
     end
 
     actions do
-      read :default
-      create :default
-      update :default
-      destroy :default
+      read :read
+      create :create
+      update :update
+      destroy :destroy
     end
 
     attributes do
@@ -36,10 +36,10 @@ defmodule Ash.Test.Actions.DestroyTest do
     end
 
     actions do
-      read :default
-      create :default
-      update :default
-      destroy :default
+      read :read
+      create :create
+      update :update
+      destroy :destroy
     end
 
     attributes do
@@ -69,10 +69,10 @@ defmodule Ash.Test.Actions.DestroyTest do
     end
 
     actions do
-      read :default
-      create :default
-      update :default
-      destroy :default
+      read :read
+      create :create
+      update :update
+      destroy :destroy
     end
 
     attributes do

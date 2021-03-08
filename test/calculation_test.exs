@@ -32,9 +32,9 @@ defmodule Ash.Test.CalculationTest do
     end
 
     actions do
-      read :default
-      create :default
-      update :default
+      read :read
+      create :create
+      update :update
     end
 
     attributes do

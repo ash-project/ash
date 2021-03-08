@@ -23,13 +23,13 @@ defmodule Ash.Test.Dsl.Resource.Actions.DestroyTest do
       defposts do
         actions do
           defaults []
-          destroy :default
+          destroy :destroy
         end
       end
 
       assert [
                %Ash.Resource.Actions.Destroy{
-                 name: :default,
+                 name: :destroy,
                  primary?: true,
                  type: :destroy
                }
@@ -55,11 +55,11 @@ defmodule Ash.Test.Dsl.Resource.Actions.DestroyTest do
     test "it fails if `primary?` is not a boolean" do
       assert_raise(
         Ash.Error.Dsl.DslError,
-        "[Ash.Resource.Dsl.Destroy]\n actions -> destroy -> default:\n  expected :primary? to be a boolean, got: 10",
+        "[Ash.Resource.Dsl.Destroy]\n actions -> destroy -> destroy:\n  expected :primary? to be a boolean, got: 10",
         fn ->
           defposts do
             actions do
-              destroy :default, primary?: 10
+              destroy :destroy, primary?: 10
             end
           end
         end

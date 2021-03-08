@@ -23,13 +23,13 @@ defmodule Ash.Test.Dsl.Resource.Actions.ReadTest do
       defposts do
         actions do
           defaults []
-          read :default
+          read :read
         end
       end
 
       assert [
                %Ash.Resource.Actions.Read{
-                 name: :default,
+                 name: :read,
                  primary?: true,
                  type: :read
                }
@@ -55,11 +55,11 @@ defmodule Ash.Test.Dsl.Resource.Actions.ReadTest do
     test "it fails if `primary?` is not a boolean" do
       assert_raise(
         Ash.Error.Dsl.DslError,
-        "[Ash.Resource.Dsl.Read]\n actions -> read -> default:\n  expected :primary? to be a boolean, got: 10",
+        "[Ash.Resource.Dsl.Read]\n actions -> read -> read:\n  expected :primary? to be a boolean, got: 10",
         fn ->
           defposts do
             actions do
-              read :default, primary?: 10
+              read :read, primary?: 10
             end
           end
         end

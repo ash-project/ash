@@ -208,6 +208,21 @@ defmodule Ash.Query do
     end
   end
 
+  @for_read_opts [
+    actor: [
+      type: :any,
+      doc:
+        "set the actor, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)"
+    ],
+    defaults: [
+      type: :any,
+      doc:
+        "A list of arguments to apply defaults for. Defaults to: []. Any unset defaults are set when the action is called."
+    ]
+  ]
+
+  def for_read_opts, do: @for_read_opts
+
   @doc """
   Creates a query for a given read action and prepares it.
 
@@ -219,8 +234,7 @@ defmodule Ash.Query do
 
   ### Opts
 
-  * `:actor` - set the actor, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)
-  * `:defaults` - A list of arguments to apply defaults for. Defaults to: []. Any unset defaults are set when the action is called.
+  #{Ash.OptionsHelpers.docs(@for_read_opts)}
 
   """
   def for_read(query, action_name, args \\ %{}, opts \\ []) do

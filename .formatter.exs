@@ -6,6 +6,7 @@ locals_without_parens = [
   allow_nil?: 1,
   argument: 2,
   argument: 3,
+  as: 1,
   attribute: 1,
   attribute: 2,
   attribute: 3,

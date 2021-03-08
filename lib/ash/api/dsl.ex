@@ -15,6 +15,15 @@ defmodule Ash.Api.Dsl do
         type: :atom,
         default: true
       ],
+      as: [
+        type: :atom,
+        required: false,
+        doc: """
+        A short name for the resource. Defaults to the last part of the module underscored, e.g `SpecialThing` -> `:special_thing`.
+
+        Can be used in calls to Api modules, e.g `Api.read(:special_thing)` and also customizes action helpers defined on the Api, e.g `Api.special_thing_create(...)`
+        """
+      ],
       resource: [
         type: :atom,
         required: true,

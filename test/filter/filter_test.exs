@@ -15,9 +15,9 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     actions do
-      read :default
-      create :default
-      update :default
+      read :read
+      create :create
+      update :update
     end
 
     attributes do
@@ -40,9 +40,9 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     actions do
-      read :default
-      create :default
-      update :default
+      read :read
+      create :create
+      update :update
     end
 
     attributes do
@@ -69,10 +69,10 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     actions do
-      read :default
+      read :read
 
-      create :default
-      update :default
+      create :create
+      update :update
     end
 
     relationships do
@@ -95,11 +95,11 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     actions do
-      read :default
+      read :read
 
-      create :default
+      create :create
 
-      update :default
+      update :update
     end
 
     attributes do
@@ -140,10 +140,10 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     actions do
-      read :default
-      create :default
+      read :read
+      create :create
 
-      destroy :default do
+      destroy :destroy do
         soft? true
 
         change set_attribute(:deleted_at, &DateTime.utc_now/0)

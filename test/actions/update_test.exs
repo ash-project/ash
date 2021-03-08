@@ -17,9 +17,9 @@ defmodule Ash.Test.Actions.UpdateTest do
     end
 
     actions do
-      read :default
-      create :default
-      update :default
+      read :read
+      create :create
+      update :update
     end
   end
 
@@ -32,9 +32,9 @@ defmodule Ash.Test.Actions.UpdateTest do
     end
 
     actions do
-      read :default
-      create :default
-      update :default
+      read :read
+      create :create
+      update :update
     end
 
     attributes do
@@ -67,9 +67,9 @@ defmodule Ash.Test.Actions.UpdateTest do
     end
 
     actions do
-      read :default
-      create :default
-      update :default, primary?: true
+      read :read
+      create :create
+      update :update, primary?: true
 
       update :only_allow_name do
         accept([:name])
@@ -106,10 +106,10 @@ defmodule Ash.Test.Actions.UpdateTest do
     end
 
     actions do
-      read :default
+      read :read
 
-      create :default
-      update :default
+      create :create
+      update :update
     end
 
     relationships do
@@ -132,9 +132,9 @@ defmodule Ash.Test.Actions.UpdateTest do
     end
 
     actions do
-      read :default
-      create :default
-      update :default
+      read :read
+      create :create
+      update :update
     end
 
     attributes do

@@ -24,8 +24,8 @@ defmodule Ash.Test.Notifier.PubSubTest do
       prefix "post"
 
       publish :destroy, ["foo", :id]
-      publish :default, ["foo", :id], type: :update
-      publish :default, ["bar", :name], type: :update, event: "name_change"
+      publish :update, ["foo", :id]
+      publish :update, ["bar", :name], event: "name_change"
     end
 
     ets do
@@ -33,9 +33,9 @@ defmodule Ash.Test.Notifier.PubSubTest do
     end
 
     actions do
-      create :default
-      read :default
-      update :default
+      create :create
+      read :read
+      update :update
       destroy :destroy
     end
 
@@ -83,7 +83,7 @@ defmodule Ash.Test.Notifier.PubSubTest do
     |> Api.update!()
 
     message = "post:foo:#{post.id}"
-    assert_receive {:broadcast, ^message, "default", %Ash.Notifier.Notification{}}
+    assert_receive {:broadcast, ^message, "update", %Ash.Notifier.Notification{}}
 
     message = "post:bar:joe"
     assert_receive {:broadcast, ^message, "name_change", %Ash.Notifier.Notification{}}

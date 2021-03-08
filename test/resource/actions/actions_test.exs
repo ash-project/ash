@@ -32,7 +32,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
         fn ->
           defposts do
             actions do
-              create :default, primary?: true
+              create :create, primary?: true
               create :special, primary?: true
             end
           end
@@ -47,7 +47,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
         fn ->
           defposts do
             actions do
-              create :default
+              create :create
               create :special
             end
           end

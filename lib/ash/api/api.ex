@@ -20,6 +20,61 @@ defmodule Ash.Api do
   Then you can interact through that Api with the actions that those resources expose.
   For example: `MyApp.Api.create(changeset)`, or `MyApp.Api.read(query)`. Corresponding
   actions must be defined in your resources in order to call them through the Api.
+
+  ## Interface
+
+  The functions documented here can be used to call any action on any resource in the Api.
+  For example, `MyApi.read(Myresource, [...])`.
+
+  Ash now also creates a functional interface for each resource, based on the name of the
+  resource and actions on that resource. A function is defined for each resource/action
+  pair, in the form of <resource_name>_<action_name>. The resource name defaults to the
+  snake case form of the last part of the module name. The name can be customized via
+  the `as` option when declaring a resource.
+
+  For example:
+
+  ```elixir
+  defmodule MyApp.MyApi do
+    ...
+
+    resources do
+      resource MyApp.User
+      resource MyApp.Organization, as: :org
+    end
+  end
+
+  defmodule MyApp.User do
+    ...
+
+    actions do
+      create :create do
+        # generally speaking, you can avoid specifying names manually
+        as :register_user
+      end
+      ...
+    end
+  end
+
+  defmodule MyApp.Organization do
+    ...
+
+    actions do
+      destroy :destroy
+
+      ...
+    end
+  end
+  ```
+
+  You would get the following functions
+
+  ```elixir
+  MyApp.Api.register_user(%{...}, opts)
+  MyApp.Api.org_destroy(org, %{...}, opts)
+  ```
+
+  And so on.
   """
 
   import Ash.OptionsHelpers, only: [merge_schemas: 3]
@@ -90,6 +145,9 @@ defmodule Ash.Api do
                       @global_opts,
                       "Global Options"
                     )
+
+  @doc false
+  def read_opts_schema, do: @read_opts_schema
 
   @offset_page_opts [
     offset: [
@@ -214,6 +272,9 @@ defmodule Ash.Api do
                         "Shared create/update/destroy Options"
                       )
 
+  @doc false
+  def create_opts_schema, do: @create_opts_schema
+
   @update_opts_schema []
                       |> merge_schemas(@global_opts, "Global Options")
                       |> merge_schemas(
@@ -221,12 +282,17 @@ defmodule Ash.Api do
                         "Shared create/update/destroy Options"
                       )
 
+  @doc false
+  def update_opts_schema, do: @update_opts_schema
+
   @destroy_opts_schema []
                        |> merge_schemas(@global_opts, "Global Opts")
                        |> merge_schemas(
                          @shared_created_update_and_destroy_opts_schema,
                          "Shared create/update/destroy Options"
                        )
+
+  def destroy_opts_schema, do: @destroy_opts_schema
 
   @doc """
   Get a record by a primary key. See `c:get/3` for more.
@@ -411,11 +477,11 @@ defmodule Ash.Api do
 
   def resource(api, resource) do
     api
-    |> resources()
-    |> Enum.find(&(&1 == resource))
+    |> resource_references()
+    |> Enum.find(&(&1.resource == resource || &1.as == resource))
     |> case do
       nil -> {:error, NoSuchResource.exception(resource: resource)}
-      resource -> {:ok, resource}
+      reference -> {:ok, reference.resource}
     end
   end
 
@@ -424,6 +490,11 @@ defmodule Ash.Api do
     api
     |> Extension.get_entities([:resources])
     |> Enum.map(& &1.resource)
+  end
+
+  @spec resource_references(Ash.Api.t()) :: [Ash.Api.ResourceReference.t()]
+  def resource_references(api) do
+    Extension.get_entities(api, [:resources])
   end
 
   @doc false
