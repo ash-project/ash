@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.36.0](https://github.com/ash-project/ash/compare/v1.35.1...v1.36.0) (2021-03-08)
+
+
+
+
+### Features:
+
+* functional interface on the Api module
+
+* resource aliases
+
+### Improvements:
+
+* update interface to accept query/changesets
+
+* require completely unique action names
+
 ## [v1.35.1](https://github.com/ash-project/ash/compare/v1.35.0...v1.35.1) (2021-03-07)
 
 
