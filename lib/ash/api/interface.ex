@@ -106,7 +106,11 @@ defmodule Ash.Api.Interface do
 
           :update ->
             @doc doc
-            @spec unquote(name)(unquote(resource).t(), map | Keyword.t(), Keyword.t()) ::
+            @spec unquote(name)(
+                    unquote(resource).t() | Ash.Changeset.t(),
+                    map | Keyword.t(),
+                    Keyword.t()
+                  ) ::
                     {:ok, unquote(resource).t()} | {:error, Ash.Error.t()}
             def unquote(name)(record, params \\ [], opts \\ []) do
               record
@@ -117,7 +121,11 @@ defmodule Ash.Api.Interface do
             end
 
             @doc doc
-            @spec unquote(:"#{name}!")(unquote(resource).t(), Keyword.t() | map, Keyword.t()) ::
+            @spec unquote(:"#{name}!")(
+                    unquote(resource).t() | Ash.Changeset.t(),
+                    Keyword.t() | map,
+                    Keyword.t()
+                  ) ::
                     unquote(resource).t() | no_return
             # sobelow_skip ["DOS.BinToAtom"]
             def unquote(:"#{name}!")(record, params \\ [], opts \\ []) do
@@ -130,7 +138,11 @@ defmodule Ash.Api.Interface do
 
           :destroy ->
             @doc doc
-            @spec unquote(name)(unquote(resource).t(), map | Keyword.t(), Keyword.t()) ::
+            @spec unquote(name)(
+                    unquote(resource).t() | Ash.Changeset.t(),
+                    map | Keyword.t(),
+                    Keyword.t()
+                  ) ::
                     :ok | {:error, Ash.Error.t()}
             def unquote(name)(record, params \\ [], opts \\ []) do
               record
@@ -141,7 +153,11 @@ defmodule Ash.Api.Interface do
             end
 
             @doc doc
-            @spec unquote(:"#{name}!")(unquote(resource).t(), Keyword.t() | map, Keyword.t()) ::
+            @spec unquote(:"#{name}!")(
+                    unquote(resource).t() | Ash.Changeset.t(),
+                    Keyword.t() | map,
+                    Keyword.t()
+                  ) ::
                     :ok | no_return
             # sobelow_skip ["DOS.BinToAtom"]
             def unquote(:"#{name}!")(record, params \\ [], opts \\ []) do
@@ -154,12 +170,13 @@ defmodule Ash.Api.Interface do
 
           :read ->
             @doc doc
-            @spec unquote(name)(map | Keyword.t(), Keyword.t()) ::
+            @spec unquote(name)(map | Keyword.t(), Keyword.t(), Ash.Query.t() | nil) ::
                     list(unquote(resource).t())
                     | list(unquote(resource).t())
                     | {:error, Ash.Error.t()}
-            def unquote(name)(params, opts \\ []) do
-              unquote(resource)
+            def unquote(name)(params, opts \\ [], query \\ nil) do
+              query
+              |> Kernel.||(unquote(resource))
               |> Ash.Query.for_read(unquote(action.name), params, opts)
               |> Ash.Api.Interface.set_tenant(opts)
               |> Ash.Query.set_context(opts[:context] || %{})
@@ -167,13 +184,14 @@ defmodule Ash.Api.Interface do
             end
 
             @doc doc
-            @spec unquote(:"#{name}!")(Keyword.t() | map, Keyword.t()) ::
+            @spec unquote(:"#{name}!")(Keyword.t() | map, Keyword.t(), Ash.Query.t() | nil) ::
                     list(unquote(resource).t())
                     | list(unquote(resource).t())
                     | no_return
             # sobelow_skip ["DOS.BinToAtom"]
-            def unquote(:"#{name}!")(params, opts \\ []) do
-              unquote(resource)
+            def unquote(:"#{name}!")(params, opts \\ [], query \\ nil) do
+              query
+              |> Kernel.||(unquote(resource))
               |> Ash.Query.for_read(unquote(action.name), params, opts)
               |> Ash.Api.Interface.set_tenant(opts)
               |> Ash.Query.set_context(opts[:context] || %{})
