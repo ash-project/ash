@@ -1,6 +1,4 @@
 defmodule Ash.Notifier.PubSub do
-  @moduledoc "A pubsub notifier extension"
-
   @publish %Ash.Dsl.Entity{
     name: :publish,
     target: Ash.Notifier.PubSub.Publication,
@@ -89,7 +87,18 @@ defmodule Ash.Notifier.PubSub do
     ]
   }
 
-  use Ash.Dsl.Extension, sections: [@pub_sub]
+  @sections [@pub_sub]
+
+  @moduledoc """
+  A pubsub notifier extension
+
+  # Table of Contents
+  #{Ash.Dsl.Extension.doc_index(@sections)}
+
+  #{Ash.Dsl.Extension.doc(@sections)}
+  """
+
+  use Ash.Dsl.Extension, sections: @sections
 
   def publications(resource) do
     Ash.Dsl.Extension.get_entities(resource, [:pub_sub])
