@@ -214,6 +214,10 @@ defmodule Ash.Query do
       doc:
         "set the actor, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)"
     ],
+    tenant: [
+      type: :any,
+      doc: "set the tenant on the query"
+    ],
     defaults: [
       type: :any,
       doc:
@@ -253,6 +257,7 @@ defmodule Ash.Query do
       |> run_preparations(action, opts[:actor])
       |> add_action_filters(action, opts[:actor])
       |> cast_arguments(action, opts[:defaults], true)
+      |> Ash.Query.set_tenant(opts[:tenant])
     else
       add_error(query, :action, "No such action #{action_name}")
     end

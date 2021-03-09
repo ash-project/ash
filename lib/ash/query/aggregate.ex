@@ -237,7 +237,7 @@ defmodule Ash.Query.Aggregate do
                     )
 
                   records ->
-                    filter = [or: [Enum.map(records, &Map.take(&1, pkey))]]
+                    filter = [or: Enum.map(records, &Map.take(&1, pkey))]
 
                     Ash.Query.filter(
                       initial_query,
