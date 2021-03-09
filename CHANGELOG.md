@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.36.1](https://github.com/ash-project/ash/compare/v1.36.0...v1.36.1) (2021-03-09)
+
+
+
+
+### Bug Fixes:
+
+* properly filter aggregates
+
+### Improvements:
+
+* accept `tenant` in `for_read`
+
 ## [v1.36.0](https://github.com/ash-project/ash/compare/v1.35.1...v1.36.0) (2021-03-08)
 
 
