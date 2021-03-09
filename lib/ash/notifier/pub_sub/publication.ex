@@ -4,7 +4,8 @@ defmodule Ash.Notifier.PubSub.Publication do
   defstruct [
     :action,
     :topic,
-    :event
+    :event,
+    :type
   ]
 
   @schema [
@@ -41,7 +42,7 @@ defmodule Ash.Notifier.PubSub.Publication do
   end
 
   def topic(topic) when is_list(topic) do
-    if Enum.all?(topic, fn item -> is_binary(item) || is_atom(item) end) do
+    if nested_list_of_binaries_or_atoms?(topic) do
       {:ok, topic}
     else
       {:error,
@@ -56,5 +57,17 @@ defmodule Ash.Notifier.PubSub.Publication do
      "Expected topic to be a string or a list of strings or attribute names (as atoms), got: #{
        inspect(other)
      }"}
+  end
+
+  defp nested_list_of_binaries_or_atoms?(list) when is_list(list) do
+    Enum.all?(list, &nested_list_of_binaries_or_atoms?/1)
+  end
+
+  defp nested_list_of_binaries_or_atoms?(value) when is_binary(value) or is_atom(value) do
+    true
+  end
+
+  defp nested_list_of_binaries_or_atoms?(_) do
+    false
   end
 end

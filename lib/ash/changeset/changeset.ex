@@ -59,11 +59,19 @@ defmodule Ash.Changeset do
           concat("context: ", to_doc(context, opts))
         end
 
+      tenant =
+        if changeset.tenant do
+          concat("tenant: ", to_doc(changeset.tenant, opts))
+        else
+          empty()
+        end
+
       container_doc(
         "#Ash.Changeset<",
         [
           concat("action_type: ", inspect(changeset.action_type)),
           concat("action: ", inspect(changeset.action && changeset.action.name)),
+          tenant,
           concat("attributes: ", to_doc(changeset.attributes, opts)),
           concat("relationships: ", to_doc(changeset.relationships, opts)),
           arguments(changeset, opts),
@@ -269,6 +277,10 @@ defmodule Ash.Changeset do
       doc:
         "set the actor, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)"
     ],
+    tenant: [
+      type: :any,
+      doc: "set the tenant on the changeset"
+    ],
     defaults: [
       type: :any,
       doc:
@@ -372,6 +384,7 @@ defmodule Ash.Changeset do
 
   * `:actor` - set the actor, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)
   * `:defaults` - A list of attributes and arguments to apply defaults for. Defaults to: []. Any unset defaults are set when the action is called.
+  * `:tenant` - set the tenant on the changeset
 
   Anything that is modified prior to `for_destroy/4` is validated against the rules of the action, while *anything after it is not*.
 
@@ -401,6 +414,7 @@ defmodule Ash.Changeset do
 
       if action do
         changeset
+        |> set_tenant(opts[:tenant] || changeset.tenant)
         |> Map.put(:__validated_for_action__, action.name)
         |> Map.put(:action, action)
         |> cast_params(action, params, opts)
@@ -428,6 +442,7 @@ defmodule Ash.Changeset do
 
       if action do
         changeset
+        |> set_tenant(opts[:tenant] || changeset.tenant)
         |> Map.put(:action, action)
         |> Map.put(:__validated_for_action__, action.name)
         |> cast_params(action, params || %{}, opts)

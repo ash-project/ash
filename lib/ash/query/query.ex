@@ -251,13 +251,13 @@ defmodule Ash.Query do
       query = Map.put(query, :action, action.name)
 
       query
+      |> Ash.Query.set_tenant(opts[:tenant] || query.tenant)
       |> Map.put(:action, action)
       |> Map.put(:__validated_for_action__, action_name)
       |> cast_params(action, args)
       |> run_preparations(action, opts[:actor])
       |> add_action_filters(action, opts[:actor])
       |> cast_arguments(action, opts[:defaults], true)
-      |> Ash.Query.set_tenant(opts[:tenant])
     else
       add_error(query, :action, "No such action #{action_name}")
     end

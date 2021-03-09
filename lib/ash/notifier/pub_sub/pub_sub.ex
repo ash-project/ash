@@ -26,6 +26,29 @@ defmodule Ash.Notifier.PubSub do
     be published to `user:updated:1` and `user:updated:2`. If there are multiple
     attributes in the template, and they are all being changed, a message is sent for
     every combination of substitutions.
+
+    ## Template parts
+
+    Templates may contain lists, in which case all combinations of values in the list will be used. Add
+    `nil` to the list if you want to produce a pattern where that entry is ommitted.
+
+    The atom `:_tenant` may be used. If the changeset has a tenant set on it, that
+    value will be used, otherwise that combination of values is ignored. For example:
+
+    The atom `:_skip` may be used. It only makes sense to use it in the context of a list of alternatives,
+    and adds a pattern where that part is skipped.
+
+    ```elixir
+    publish :updated, [[:team_id, :_tenant], "updated", [:id, nil]]
+    ```
+
+    Would produce the following messages, given a `team_id` of 1, a `tenant` of `org_1`, and an `id` of `50`:
+    ```elixir
+    "1:updated:50"
+    "1:updated"
+    "org_1:updated:50"
+    "org_1:updated"
+    ```
     """,
     examples: [
       "publish :create, \"created\"",
@@ -122,6 +145,7 @@ defmodule Ash.Notifier.PubSub do
   defp publish_notification(publish, notification) do
     publish.topic
     |> fill_template(notification)
+    |> IO.inspect()
     |> Enum.each(fn topic ->
       event = publish.event || to_string(notification.action.name)
       prefix = prefix(notification.resource) || ""
@@ -137,38 +161,24 @@ defmodule Ash.Notifier.PubSub do
 
   defp fill_template(topic, _) when is_binary(topic), do: [topic]
 
-  defp fill_template(topic, %{action: %{type: type}, data: data})
-       when type in [:create, :destroy] do
-    topic
-    |> Enum.map(fn item ->
-      if is_binary(item) do
-        item
-      else
-        data
-        |> Map.get(item)
-        |> to_string()
-      end
-    end)
-    |> Enum.join(":")
-    |> List.wrap()
-  end
-
   defp fill_template(topic, notification) do
     topic
-    |> all_combinations_of_values(notification)
+    |> all_combinations_of_values(notification, notification.action.type)
     |> Enum.map(&List.flatten/1)
     |> Enum.map(&Enum.join(&1, ":"))
   end
 
-  defp all_combinations_of_values(items, notification, trail \\ [])
+  defp all_combinations_of_values(items, notification, action_type, trail \\ [])
 
-  defp all_combinations_of_values([], _, trail), do: [Enum.reverse(trail)]
+  defp all_combinations_of_values([], _, _, trail), do: [Enum.reverse(trail)]
 
-  defp all_combinations_of_values([item | rest], notification, trail) when is_binary(item) do
-    all_combinations_of_values(rest, notification, [item | trail])
+  defp all_combinations_of_values([item | rest], notification, action_type, trail)
+       when is_binary(item) do
+    all_combinations_of_values(rest, notification, action_type, [item | trail])
   end
 
-  defp all_combinations_of_values([item | rest], notification, trail) when is_atom(item) do
+  defp all_combinations_of_values([item | rest], notification, :update, trail)
+       when is_atom(item) do
     value_before_change = Map.get(notification.changeset.data, item)
     value_after_change = Map.get(notification.data, item)
 
@@ -177,6 +187,30 @@ defmodule Ash.Notifier.PubSub do
     |> Enum.uniq()
     |> Enum.flat_map(fn possible_value ->
       all_combinations_of_values(rest, notification, [possible_value | trail])
+    end)
+  end
+
+  defp all_combinations_of_values([:_tenant | rest], notification, action_type, trail) do
+    if notification.changeset.tenant do
+      all_combinations_of_values(rest, notification, action_type, [
+        notification.changeset.tenant | trail
+      ])
+    else
+      []
+    end
+  end
+
+  defp all_combinations_of_values([item | rest], notification, action_type, trail)
+       when is_atom(item) do
+    all_combinations_of_values(rest, notification, action_type, [
+      Map.get(notification.data, item) | trail
+    ])
+  end
+
+  defp all_combinations_of_values([item | rest], notification, action_type, trail)
+       when is_list(item) do
+    Enum.flat_map(item, fn possible_value ->
+      all_combinations_of_values([possible_value | rest], notification, action_type, trail)
     end)
   end
 

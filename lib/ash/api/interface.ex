@@ -22,7 +22,10 @@ defmodule Ash.Api.Interface do
         doc =
           case action.type do
             :create ->
-              opts = Keyword.merge(Ash.Api.create_opts_schema(), default_opts)
+              opts =
+                Ash.Api.create_opts_schema()
+                |> Keyword.drop([:action])
+                |> Keyword.merge(default_opts)
 
               """
               #{
@@ -36,7 +39,10 @@ defmodule Ash.Api.Interface do
               """
 
             :read ->
-              opts = Keyword.merge(Ash.Api.read_opts_schema(), default_opts)
+              opts =
+                Ash.Api.read_opts_schema()
+                |> Keyword.drop([:action])
+                |> Keyword.merge(default_opts)
 
               """
               #{
@@ -50,7 +56,10 @@ defmodule Ash.Api.Interface do
               """
 
             :update ->
-              opts = Keyword.merge(Ash.Api.update_opts_schema(), default_opts)
+              opts =
+                Ash.Api.update_opts_schema()
+                |> Keyword.drop([:action])
+                |> Keyword.merge(default_opts)
 
               """
               #{
@@ -64,7 +73,10 @@ defmodule Ash.Api.Interface do
               """
 
             :destroy ->
-              opts = Keyword.merge(Ash.Api.destroy_opts_schema(), default_opts)
+              opts =
+                Ash.Api.destroy_opts_schema()
+                |> Keyword.drop([:action])
+                |> Keyword.merge(default_opts)
 
               """
               #{
@@ -197,6 +209,63 @@ defmodule Ash.Api.Interface do
               |> Ash.Query.set_context(opts[:context] || %{})
               |> __MODULE__.read!()
             end
+        end
+      end
+
+      opts =
+        Ash.Api.read_opts_schema()
+        |> Keyword.merge(default_opts)
+
+      for {resource, resource_name} <- Ash.Api.Interface.resources_with_names(__MODULE__) do
+        if Ash.Resource.Info.primary_action(resource, :read) do
+          @doc """
+          Get a #{resource_name} by primary key
+
+          ## Options
+
+          #{Ash.OptionsHelpers.docs(opts)}
+          """
+          def unquote(:"get_#{resource_name}")(key, params \\ []) do
+            __MODULE__.get(unquote(resource), key, params)
+          end
+
+          @doc """
+          Get a #{resource_name} by primary key
+
+          ## Options
+
+          #{Ash.OptionsHelpers.docs(opts)}
+          """
+          def unquote(:"get_#{resource_name}!")(key, params \\ []) do
+            __MODULE__.get!(unquote(resource), key, params)
+          end
+        end
+      end
+
+      for {resource, resource_name, identity} <- Ash.Api.Interface.getters(__MODULE__) do
+        @doc """
+        Get a #{resource_name} by #{String.replace(to_string(identity.name), "_", " ")}
+
+        ## Options
+
+        #{Ash.OptionsHelpers.docs(opts)}
+        """
+        vars = Enum.map(identity.keys, &{&1, [], Elixir})
+
+        def unquote(:"get_#{resource_name}_by_#{identity.name}")(
+              unquote_splicing(vars),
+              params \\ []
+            ) do
+          id = Enum.zip(unquote(identity.keys), [unquote_splicing(vars)])
+          __MODULE__.get(unquote(resource), id, params)
+        end
+
+        def unquote(:"get_#{resource_name}_by_#{identity.name}!")(
+              unquote_splicing(vars),
+              params \\ []
+            ) do
+          id = Enum.zip(unquote(identity.keys), [unquote_splicing(vars)])
+          __MODULE__.get!(unquote(resource), id, params)
         end
       end
 
@@ -367,6 +436,15 @@ defmodule Ash.Api.Interface do
       else
         []
       end
+    end)
+  end
+
+  @doc false
+  def resources_with_names(api) do
+    api
+    |> Ash.Api.resource_references()
+    |> Enum.map(fn ref ->
+      {ref.resource, name(ref)}
     end)
   end
 
