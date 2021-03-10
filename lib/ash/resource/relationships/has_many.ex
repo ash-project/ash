@@ -10,6 +10,8 @@ defmodule Ash.Resource.Relationships.HasMany do
     :context,
     :writable?,
     :description,
+    :not_found_message,
+    :violation_message,
     cardinality: :many,
     type: :has_many
   ]

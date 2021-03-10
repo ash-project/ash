@@ -22,16 +22,35 @@ defmodule Ash.Resource.Transformers.CreateJoinRelationship do
     end)
     |> Enum.reduce({:ok, dsl_state}, fn relationship, {:ok, dsl_state} ->
       {:ok, relationship} =
-        Transformer.build_entity(@extension, [:relationships], :has_many,
-          name: relationship.join_relationship,
-          destination: relationship.through,
-          destination_field: relationship.source_field_on_join_table,
-          source_field: relationship.source_field,
-          private?: true
+        Transformer.build_entity(
+          @extension,
+          [:relationships],
+          :has_many,
+          [
+            name: relationship.join_relationship,
+            destination: relationship.through,
+            destination_field: relationship.source_field_on_join_table,
+            source_field: relationship.source_field,
+            private?: true
+          ]
+          |> add_messages(relationship)
         )
 
       {:ok, Transformer.add_entity(dsl_state, [:relationships], relationship)}
     end)
+  end
+
+  defp add_messages(opts, relationship) do
+    new_opts =
+      [
+        not_found_message: relationship.not_found_message,
+        violation_message: relationship.violation_message
+      ]
+      |> Enum.reject(fn {_, v} ->
+        is_nil(v)
+      end)
+
+    Keyword.merge(opts, new_opts)
   end
 
   def before?(Ash.Resource.Transformers.SetRelationshipSource), do: true

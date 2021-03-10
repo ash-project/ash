@@ -225,6 +225,8 @@ defmodule Ash.Api.Interface do
 
           #{Ash.OptionsHelpers.docs(opts)}
           """
+
+          # sobelow_skip ["DOS.BinToAtom"]
           def unquote(:"get_#{resource_name}")(key, params \\ []) do
             __MODULE__.get(unquote(resource), key, params)
           end
@@ -236,6 +238,8 @@ defmodule Ash.Api.Interface do
 
           #{Ash.OptionsHelpers.docs(opts)}
           """
+
+          # sobelow_skip ["DOS.BinToAtom"]
           def unquote(:"get_#{resource_name}!")(key, params \\ []) do
             __MODULE__.get!(unquote(resource), key, params)
           end
@@ -252,6 +256,7 @@ defmodule Ash.Api.Interface do
         """
         vars = Enum.map(identity.keys, &{&1, [], Elixir})
 
+        # sobelow_skip ["DOS.BinToAtom"]
         def unquote(:"get_#{resource_name}_by_#{identity.name}")(
               unquote_splicing(vars),
               params \\ []
@@ -260,6 +265,7 @@ defmodule Ash.Api.Interface do
           __MODULE__.get(unquote(resource), id, params)
         end
 
+        # sobelow_skip ["DOS.BinToAtom"]
         def unquote(:"get_#{resource_name}_by_#{identity.name}!")(
               unquote_splicing(vars),
               params \\ []

@@ -42,6 +42,21 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       default: false,
       doc:
         "Whether or not the relationship will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql"
+    ],
+    not_found_message: [
+      type: :string,
+      doc: """
+      A message to show if there is a conflict with this relationship in the database on update or create.
+
+      For example, if a value is added that has no match in the destination (very hard to do with the way Ash relationship changes work).
+      """
+    ],
+    violation_message: [
+      type: :string,
+      doc: """
+      A message to show if there is a conflict with this relationship in the database on destroy.
+      For example, if a record is deleted while related records still exist (and aren't configured to cascade deletes)
+      """
     ]
   ]
 

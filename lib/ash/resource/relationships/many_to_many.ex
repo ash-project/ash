@@ -11,6 +11,8 @@ defmodule Ash.Resource.Relationships.ManyToMany do
     :destination_field_on_join_table,
     :join_relationship,
     :join_attributes,
+    :not_found_message,
+    :violation_message,
     :writable?,
     :private?,
     :description,

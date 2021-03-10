@@ -11,6 +11,8 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :private?,
     :source_field,
     :source,
+    :not_found_message,
+    :violation_message,
     :required?,
     :writable?,
     :context,

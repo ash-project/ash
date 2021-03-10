@@ -145,7 +145,6 @@ defmodule Ash.Notifier.PubSub do
   defp publish_notification(publish, notification) do
     publish.topic
     |> fill_template(notification)
-    |> IO.inspect()
     |> Enum.each(fn topic ->
       event = publish.event || to_string(notification.action.name)
       prefix = prefix(notification.resource) || ""
@@ -186,7 +185,7 @@ defmodule Ash.Notifier.PubSub do
     |> Enum.reject(&is_nil/1)
     |> Enum.uniq()
     |> Enum.flat_map(fn possible_value ->
-      all_combinations_of_values(rest, notification, [possible_value | trail])
+      all_combinations_of_values(rest, notification, :update, [possible_value | trail])
     end)
   end
 

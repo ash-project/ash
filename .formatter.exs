@@ -58,6 +58,7 @@ locals_without_parens = [
   many_to_many: 3,
   message: 1,
   module: 1,
+  not_found_message: 1,
   on: 1,
   pagination: 1,
   parse_attribute: 1,
@@ -95,6 +96,7 @@ locals_without_parens = [
   uuid_primary_key: 2,
   validate: 1,
   validate: 2,
+  violation_message: 1,
   warn_on_compile_failure?: 1,
   writable?: 1
 ]

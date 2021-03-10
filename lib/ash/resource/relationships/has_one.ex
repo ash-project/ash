@@ -12,6 +12,8 @@ defmodule Ash.Resource.Relationships.HasOne do
     :writable?,
     :context,
     :description,
+    :not_found_message,
+    :violation_message,
     cardinality: :one,
     type: :has_one
   ]
