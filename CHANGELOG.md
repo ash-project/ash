@@ -5,6 +5,31 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.36.2](https://github.com/ash-project/ash/compare/v1.36.1...v1.36.2) (2021-03-12)
+
+
+
+
+### Bug Fixes:
+
+* fix pub_sub on update
+
+* fix `publish_all` pub_sub notifier
+
+### Improvements:
+
+* derive has_one destination_field
+
+* finalize code API logic
+
+* add not_found_message + violation_message for relationships
+
+* support `get_by_<identity>` in interface
+
+* support sublists in pub_sub topics
+
+* support `:_tenant` in pub_sub topics
+
 ## [v1.36.1](https://github.com/ash-project/ash/compare/v1.36.0...v1.36.1) (2021-03-09)
 
 
