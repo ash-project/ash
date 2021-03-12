@@ -107,7 +107,7 @@ defmodule Ash.Api do
     authorize?: [
       type: {:in, [true, false, nil]},
       doc:
-        "If an actor is provided, authorization happens automatically. If not, this flag can be used to authorize with no user."
+        "If an actor option is provided (even if it is `nil`), authorization happens automatically. If not, this flag can be used to authorize with no user."
     ],
     stacktraces?: [
       type: :boolean,

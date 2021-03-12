@@ -603,6 +603,60 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
+  @define %Ash.Dsl.Entity{
+    name: :define,
+    describe: """
+    Defines a function on the Api with the corresponding name and arguments.
+
+    If the action is an update or destroy, it will take a record or a changeset as its *first* argument.
+    If the action is a read action, it will take a starting query as an *opt in the last* argument.
+
+    All functions will have an optional last argument that accepts options. Those options are:
+
+    #{Ash.OptionsHelpers.docs(Ash.Resource.Interface.interface_options())}
+
+    For reads:
+
+    * `:query` - a query to start the action with, can be used to filter/sort the results of the action.
+
+    They will also have an optional third argument that is a freeform map to provide action input. It *must be a map*.
+    If it is a keyword list, it will be assumed that it is actually `options` (for convenience).
+    This allows for the following behaviour:
+
+    ```elixir
+    # Because the 3rd argument is a keyword list, we use it as options
+    Api.register_user(username, password, [tenant: "organization_22"])
+    # Because the 3rd argument is a keyword list, we use it as action input
+    Api.register_user(username, password, %{key: "val"})
+    # When all are provided it is unambiguous
+    Api.register_user(username, password, %{key: "val"}, [tenant: "organization_22"])
+    ```
+    """,
+    examples: [
+      "interface :get_user_by_id, action: :get_by_id, args: [:id]"
+    ],
+    target: Ash.Resource.Interface,
+    schema: Ash.Resource.Interface.schema(),
+    args: [:name]
+  }
+
+  @code_interface %Ash.Dsl.Section{
+    name: :code_interface,
+    describe: """
+    Functions that will be defined on the Api module to interact with this resource.
+    """,
+    examples: [
+      """
+      interfaces do
+        interface :get_user_by_id, action: :get_by_id, args: [:id]
+      end
+      """
+    ],
+    entities: [
+      @define
+    ]
+  }
+
   @validations %Ash.Dsl.Section{
     name: :validations,
     describe: """
@@ -824,7 +878,8 @@ defmodule Ash.Resource.Dsl do
     @validations,
     @aggregates,
     @calculations,
-    @multitenancy
+    @multitenancy,
+    @code_interface
   ]
 
   @transformers [
@@ -832,7 +887,7 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.SetRelationshipSource,
     Ash.Resource.Transformers.BelongsToAttribute,
     Ash.Resource.Transformers.BelongsToSourceField,
-    Ash.Resource.Transformers.HasManyDestinationField,
+    Ash.Resource.Transformers.HasDestinationField,
     Ash.Resource.Transformers.CreateJoinRelationship,
     Ash.Resource.Transformers.CachePrimaryKey,
     Ash.Resource.Transformers.SetPrimaryActions,

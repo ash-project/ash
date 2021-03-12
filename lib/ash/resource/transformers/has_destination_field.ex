@@ -1,5 +1,5 @@
-defmodule Ash.Resource.Transformers.HasManyDestinationField do
-  @moduledoc "Guesses the `destination_field` for has many relationships unless provided"
+defmodule Ash.Resource.Transformers.HasDestinationField do
+  @moduledoc "Guesses the `destination_field` for has many and has one relationships unless provided"
   use Ash.Dsl.Transformer
 
   alias Ash.Dsl.Transformer
@@ -9,7 +9,8 @@ defmodule Ash.Resource.Transformers.HasManyDestinationField do
       dsl_state
       |> Transformer.get_entities([:relationships])
       |> Enum.reduce(dsl_state, fn
-        %{type: :has_many, destination_field: nil} = relationship, dsl_state ->
+        %{type: type, destination_field: nil} = relationship, dsl_state
+        when type in [:has_many, :has_one] ->
           new_relationship = %{relationship | destination_field: resource_id_field(resource)}
 
           Transformer.replace_entity(

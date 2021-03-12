@@ -37,6 +37,11 @@ defmodule Ash.Resource.Info do
     end
   end
 
+  @spec interfaces(Ash.Resource.t()) :: [Ash.Resource.Interface.t()]
+  def interfaces(resource) do
+    Extension.get_entities(resource, [:code_interface])
+  end
+
   @spec extensions(Ash.Resource.t()) :: [module]
   def extensions(resource) do
     Extension.get_persisted(resource, :extensions, [])
@@ -342,12 +347,13 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "Returns the action with the matching name and type on the resource"
-  @spec action(Ash.Resource.t(), atom(), Ash.Resource.Actions.action_type()) ::
+  @spec action(Ash.Resource.t(), atom(), Ash.Resource.Actions.action_type() | nil) ::
           Ash.Resource.Actions.action() | nil
-  def action(resource, name, type) do
+  def action(resource, name, _type \\ nil) do
+    # We used to need type, but we don't anymore since action names are unique
     resource
     |> actions()
-    |> Enum.find(&(&1.name == name && &1.type == type))
+    |> Enum.find(&(&1.name == name))
   end
 
   @doc "Returns all attributes of a resource"
