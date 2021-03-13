@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.36.3](https://github.com/ash-project/ash/compare/v1.36.2...v1.36.3) (2021-03-13)
+
+
+
+
+### Bug Fixes:
+
+* set argument default on cast
+
 ## [v1.36.2](https://github.com/ash-project/ash/compare/v1.36.1...v1.36.2) (2021-03-12)
 
 
