@@ -38,7 +38,7 @@ end
 
 ## Transactions
 
-Api calls involving resources who's datalayer supports transactions (like Postgres), notifications are saved up and sent after the transaction is closed. For example, the api call below ultimately results in many many database calls.
+API calls involving resources who's datalayer supports transactions (like Postgres), notifications are saved up and sent after the transaction is closed. For example, the api call below ultimately results in many many database calls.
 
 ```elixir
 Post

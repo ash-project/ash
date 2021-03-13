@@ -65,8 +65,8 @@ end
 
 - [Getting Started Tutorial](https://hexdocs.pm/ash/getting_started.html)
 - [Resource DSL Documentation](https://hexdocs.pm/ash/Ash.Resource.Dsl.html)
-- [Api DSL Documentation](https://hexdocs.pm/ash/Ash.Api.Dsl.html)
-- [Api interface documentation](https://hexdocs.pm/ash/Ash.Api.html)
+- [API DSL Documentation](https://hexdocs.pm/ash/Ash.Api.Dsl.html)
+- [API interface documentation](https://hexdocs.pm/ash/Ash.Api.html)
 - [Query Documentation](https://hexdocs.pm/ash/Ash.Query.html)
 - [Changeset Documentation](https://hexdocs.pm/ash/Ash.Changeset.html)
 - [Example Application](https://github.com/ash-project/ash_example)
@@ -125,7 +125,7 @@ end
 
 See the [Getting Started Tutorial](https://hexdocs.pm/ash/getting_started.html) for more information.
 
-For those looking to add ash extensions:
+For those looking to add Ash extensions:
 
 - see `Ash.Dsl.Extension` for adding configuration.
 - If you are looking to write a new data source, also see the `Ash.DataLayer` documentation.

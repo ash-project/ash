@@ -46,7 +46,7 @@ defmodule Ash.Type do
                          )
   @moduledoc """
   This behaviour is a superset of the Ecto.Type behavior, that also contains
-  api level information, like what kinds of filters are allowed.
+  API level information, like what kinds of filters are allowed.
 
   Much better to `use Ash.Type` than to say `@behaviour Ash.Type` and define
   everything yourself.

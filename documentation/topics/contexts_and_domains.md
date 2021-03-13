@@ -9,6 +9,6 @@ An experimental "Delegation" data layer was added to allow you to use other reso
 Things missing to make this work well:
 
 - Define the ecto schema as a separate module (prerequisite for hidden attributes)
-- "hidden" attributes - attributes that are defined on the schema but not the ash struct
+- "hidden" attributes - attributes that are defined on the schema but not the Ash struct
 - ability to filter on hidden fields in certain places (haven't determined where this needs to happen)
 - ability to add a "base_filter" that can leverage hidden attributes
