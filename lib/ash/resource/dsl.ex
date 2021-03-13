@@ -640,7 +640,7 @@ defmodule Ash.Resource.Dsl do
     ```
     """,
     examples: [
-      "define :get_user_by_id, action: :get_by_id, args: [:id]"
+      "define :get_user_by_id, action: :get_by_id, args: [:id], get?: true"
     ],
     target: Ash.Resource.Interface,
     schema: Ash.Resource.Interface.schema(),
@@ -655,7 +655,8 @@ defmodule Ash.Resource.Dsl do
     examples: [
       """
       code_interface do
-        define :get_user_by_id, action: :get_by_id, args: [:id]
+        define :create_user, action: :create
+        define :get_user_by_id, action: :get_by_id, args: [:id], get?: true
       end
       """
     ],
