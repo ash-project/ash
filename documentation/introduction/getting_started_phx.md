@@ -1,7 +1,7 @@
 # Getting started with Ash and Phoenix
 
 In this guide we will convert the sample app from the [getting
-stated guide](https://github.com/ash-project/ash/blob/master/documentation/introduction/getting_started.md) into
+stated guide](getting_started.html) into
 a full blown service backed by PostgreSQL as a storage and a Json Web API.
 
 For the web part of the application we will rely on the

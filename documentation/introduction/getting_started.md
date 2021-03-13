@@ -1,22 +1,18 @@
-# Getting Started
+# Getting Started Tutorial
+
+This tutorial will walk you through creating a very simple application that uses
+ash. The finished application will look like this:
+https://github.com/mario-mazo/my_app
 
 ## Creating an application
 
-For information on creating a new Elixir application, see [this guide](https://elixir-lang.org/getting-started/mix-otp/introduction-to-mix.html).
+The first step is to [create an application](https://elixir-lang.org/getting-started/mix-otp/introduction-to-mix.html).
 
 ```shell
 mix new my_app
 ```
 
-For the finished example, see [this example](https://github.com/mario-mazo/my_app).
-
-### With Phoenix
-
-The next guide will show you how to create a new Phoenix application and copy your resources and APIs over. However, if you know that you will be building a web application and would like to start with Phoenix, you can replace the above command with:
-
-```shell
-mix phx.new my_app --no-html --no-webpack --no-gettext
-```
+Note: alternatively you create a phoenix application with `mix phx.new` (which is covered in more detail in the [next guide](getting_started_phx.html)).
 
 ## Add Ash
 
@@ -31,12 +27,14 @@ def deps() do
 end
 ```
 
-If you want to have a more idiomatic formatting (the one used in this documentation) of your Ash resource and APIs,
-you need to add Ash (and any other extensions you use) to your `.formatter.exs` otherwise the default Elixir formatter will wrap portions of the DSL in parenthesis.
+If you want to have a more idiomatic formatting (like the formatting used in the
+documentation) of your Ash resource and APIs, you need to add `:ash` (and any other
+extensions you use like `:ash_postgres`) to your `.formatter.exs` otherwise the
+default Elixir formatter will wrap portions of the DSL in parenthesis.
 
 ```elixir
  import_deps: [
-    :ash
+    :ash # add this line
   ]
 ```
 
@@ -54,7 +52,7 @@ attribute(:id, :integer, allow_nil?: true)
 
 ## Create an Ash API
 
-Create an API module. This will be your primary way to interact with your Ash resources. We recommend `lib/my_app/api.ex` for simple setups. For more information on organizing resources into contexts/domains, see the "Contexts and Domains" guide.
+Create an API module. This will be your primary way to interact with your Ash resources. We recommend `lib/my_app/api.ex` for simple setups. For more information on organizing resources into contexts/domains, see the [Contexts and Domains](contexts_and_domains.html) guide.
 
 ```elixir
 # lib/my_app/api.ex
@@ -68,7 +66,7 @@ end
 
 ## Create a resource
 
-A resource is the primary entity in Ash. Your Api module ties your resources together and gives them an interface, but the vast majority of your configuration will live in resources. In your typical setup, you might have a resource per database table. For those already familiar with Ecto, a resource and an Ecto schema are very similar. In fact, all resources define an Ecto schema under the hood. This can be leveraged when you need to do things that are not yet implemented or fall outside of the scope of Ash. The current recommendation for where to put your resources is in `lib/my_app/resources/<resource_name>.ex`. Here are a few examples:
+A resource is the primary entity in Ash. Your Api module ties your resources together and gives them an interface, but the vast majority of your configuration will live in resources. In your typical setup, you might have a resource per database table. For those already familiar with [Ecto](https://github.com/elixir-ecto/ecto), a resource and an Ecto schema are very similar. In fact, all resources define an Ecto schema under the hood. This can be leveraged when you need to do things that are not yet implemented or fall outside of the scope of Ash. The current recommendation for where to put your resources is in `lib/my_app/resources/<resource_name>.ex`. Here are a few examples:
 
 ```elixir
 # in lib/my_app/resources/tweet.ex
@@ -94,7 +92,7 @@ defmodule MyApp.Tweet do
     update_timestamp :updated_at
 
     # `create_timestamp` above is just shorthand for:
-    # attribute :created_at, :utc_datetime,
+    # attribute :created_at, :utc_datetime_usec,
     #   writable?: false,
     #   default: &DateTime.utc_now/0
   end
@@ -109,6 +107,7 @@ defmodule MyApp.User do
     attribute :email, :string,
       allow_nil?: false,
       constraints: [
+        # Note: This regex is just an example
         match: ~r/^[\w.!#$%&’*+\-\/=?\^`{|}~]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*$/i
       ]
 
@@ -119,7 +118,7 @@ end
 
 ## Add resources to your API
 
-Alter your API in `api.ex` like so:
+Alter your API (`lib/my_app/api.ex`) to add the resources we created on the previous step:
 
 ```elixir
 resources do
@@ -130,7 +129,7 @@ end
 
 ### Test the resources
 
-Now you should be able to create changesets for your resources
+Now you are able to create changesets for your resources using `Ash.Changeset.new/2`:
 
 ```elixir
 iex(7)> change = Ash.Changeset.new(MyApp.User, %{email: "ash.man@enguento.com"})
@@ -152,10 +151,10 @@ iex(7)> change = Ash.Changeset.new(MyApp.User, %{email: "ash.man@enguento.com"})
 ```
 
 If you try to use an invalid email (the email regex is for demonstration purposes only)
-an error will be displayed as shown:
+an error will be returned:
 
 ```elixir
-iex(6)> change = Ash.Changeset.new(MyApp.User, %{email: "@eng.com"})
+iex(6)> changeset = Ash.Changeset.new(MyApp.User, %{email: "@eng.com"})
 #Ash.Changeset<
   action_type: :create,
   attributes: %{},
@@ -184,19 +183,20 @@ iex(6)> change = Ash.Changeset.new(MyApp.User, %{email: "@eng.com"})
 >
 ```
 
-## Add your data_layer
+## Add your data layer
 
 To be able to store and later on read your resources, a _data layer_ is required. For more information, see the documentation for the data layer you would like to use. The currently supported data layers are listed below:
 
-| Storage | Datalayer | Documentation | Storage Documentation |
-|---|---|---| --- |
-| postgres | AshPostgres.DataLayer | [Documentation](https://hexdocs.pm/ash_postgres) | [Storage Documentation](https://www.postgresql.org/docs/) |
-| ets | Ash.DataLayer.Ets | [Documentation](https://hexdocs.pm/ash/Ash.DataLayer.Ets.html) | [Storage Documentation](https://erlang.org/doc/man/ets.html) |
-| mnesia | Ash.DataLayer.Mnesia | [Documentation](https://hexdocs.pm/ash/Ash.DataLayer.Mnesia.html) | [Storage Documentation](https://erlang.org/doc/man/mnesia.html) |
-| csv | AshCsv.DataLayer | [Documentation](https://hexdocs.pm/ash_csv) | [Storage Documentation](https://en.wikipedia.org/wiki/Comma-separated_values) |
+| Storage | Datalayer | Storage Documentation |
+| --- | ---| --- |
+| postgres | [AshPostgres.DataLayer](https://hexdocs.pm/ash_postgres) | [Postgres Documentation](https://www.postgresql.org/docs/) |
+| csv | [AshCsv.DataLayer](https://hexdocs.pm/ash_csv) | [CSV Information](https://en.wikipedia.org/wiki/Comma-separated_values) |
+| ets | `Ash.DataLayer.Ets` | [Erlang Term Storage Documentation](https://erlang.org/doc/man/ets.html) |
+| mnesia | `Ash.DataLayer.Mnesia` | [Mnesia Documentation](https://erlang.org/doc/man/mnesia.html) |
 
-To add a `data_layer`, add it to the `use Ash.Resource` statement. In this case we are going to use `ETS` which is a in memory data layer good enough for testing purposes. Also we will make the ETS private so Read/Write limited
-to owner process.
+To add a data layer, we need to add it to the `use Ash.Resource` statement. In
+this case we are going to use ETS which is a in-memory data layer that is built
+into the BEAM and works well for testing purposes.
 
 ```elixir
   # in both lib/my_app/resources/user.ex
@@ -208,10 +208,8 @@ to owner process.
 ## Add actions to enable functionality
 
 Actions are the primary driver for adding specific interactions to your resource.
-You can read the [actions](https://hexdocs.pm/ash/Ash.Resource.Dsl.html#module-actions
-) section to learn how to customize the functionality.
-For now we will enable all of them with default implementations by adding the
-following block to your resources:
+You can read the about `Ash.Resource.Dsl` [actions](Ash.Resource.Dsl.html#module-actions)
+to learn how to customize the functionality. For now we will enable all of them with default implementations by adding the following block to your resources:
 
 ```elixir
   # in both lib/my_app/resources/user.ex
@@ -264,7 +262,7 @@ iex(2)> MyApp.Api.create(user_changeset)
 ##### List and Read a resource
 
 ```elixir
-iex(3)> MyApp.Api.read MyApp.User
+iex(3)> MyApp.Api.read(MyApp.User)
 {:ok,
  [
    %MyApp.User{
@@ -348,10 +346,11 @@ iex(9)> MyApp.Tweet |> Ash.Changeset.new(%{body: "ashy slashy"}) |> Ash.Changese
  }}
 ```
 
-## Add front end extensions
+## Add a Phoenix Frontend
 
-Now that the Elixir API is complete, you can move on to the [next section](https://hexdocs.pm/ash/getting_started_phx.html)
-to learn how to change the data_layer to PostgreSQL and expose it via a JSON API.
+Now that the Elixir API is complete, you can move on to the [next
+guide](getting_started_phx.html) to learn how to change the data_layer to
+PostgreSQL and expose it via a JSON API.
 
 - `AshJsonApi` - can be used to build a spec compliant JSON:API.
 - `AshPostgres.DataLayer` - can be used to persist your resources to PostgreSQL.

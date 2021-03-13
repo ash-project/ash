@@ -63,13 +63,12 @@ end
 
 ## Guides
 
-- [Getting Started Guide](https://hexdocs.pm/ash/getting_started.html)
+- [Getting Started Tutorial](https://hexdocs.pm/ash/getting_started.html)
 - [Resource DSL Documentation](https://hexdocs.pm/ash/Ash.Resource.Dsl.html)
 - [Api DSL Documentation](https://hexdocs.pm/ash/Ash.Api.Dsl.html)
 - [Api interface documentation](https://hexdocs.pm/ash/Ash.Api.html)
 - [Query Documentation](https://hexdocs.pm/ash/Ash.Query.html)
 - [Changeset Documentation](https://hexdocs.pm/ash/Ash.Changeset.html)
-- [Guides](https://hexdocs.pm/ash/getting_started.html)
 - [Example Application](https://github.com/ash-project/ash_example)
 
 ## Extensions
@@ -87,7 +86,7 @@ end
 
 - [AshPostgres](https://hexdocs.pm/ash_postgres)
 - [AshCsv](https://hexdocs.pm/ash_csv)
-- [Ets (built-in)](https://hexdocs.pm/ash/Ash.DataLayer.Ets.html)
+- [Ets (built-in)](https://hexdocs.pm/ash/Ash.DataLayer.Ets.html) - Only used for testing
 - [Mnesia (built-in)](https://hexdocs.pm/ash/Ash.DataLayer.Mnesia.html)
 
 ## Introduction
@@ -124,7 +123,7 @@ defmodule Post do
 end
 ```
 
-See the [getting started guide](https://hexdocs.pm/ash/getting_started.html) for more information.
+See the [Getting Started Tutorial](https://hexdocs.pm/ash/getting_started.html) for more information.
 
 For those looking to add ash extensions:
 
