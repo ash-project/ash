@@ -167,7 +167,7 @@ defmodule Ash.Dsl.Extension do
         docs =
           if depth == 0 do
             String.duplicate(" ", depth + 1) <>
-              "* [#{section.name}](#module-#{link_name(section.name)})"
+              "* [#{section.name}](#module-#{to_string(section.name)})"
           else
             String.duplicate(" ", depth + 1) <> "* #{section.name}"
           end
@@ -333,13 +333,6 @@ defmodule Ash.Dsl.Extension do
 
     #{entities_doc}
     """
-  end
-
-  defp link_name(name) do
-    name
-    |> to_string()
-    |> String.split("_")
-    |> Enum.join("-")
   end
 
   def get_opt_config(resource, path, value) do
