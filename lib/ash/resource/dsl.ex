@@ -472,9 +472,16 @@ defmodule Ash.Resource.Dsl do
     your resources to conform to your business logic. It is normal and expected to have
     multiple actions of each type in a large application.
 
+    ## Primary actions
+
     If you have multiple actions of the same type, one of them must be designated as the
     primary action for that type, via: `primary?: true`. This tells the ash what to do
-    if an action of that type is requested, but no specific action name is given.
+    if an action of that type is requested, but no specific action name is given. This is how
+    many relationship changes will happen, by utilizing the primary actions. For this reason,
+    ** when defining actions, you usually want to ensure that the primary action takes no required
+    arguments **. Without that, relationship changes to your resources might fail due to missing
+    arguments. This does, however, allow you to customize exactly how related entities are read/
+    created.
     """,
     imports:
       [
