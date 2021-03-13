@@ -125,6 +125,7 @@ defmodule Ash.Actions.Update do
 
                   {changeset, instructions}
                 end)
+                |> Ash.Changeset.require_values(:update, true)
                 |> Ash.Changeset.with_hooks(fn changeset ->
                   changeset = set_tenant(changeset)
 

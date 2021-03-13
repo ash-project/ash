@@ -34,12 +34,17 @@ defmodule Ash.Test.Actions.UpdateTest do
     actions do
       read :read
       create :create
-      update :update
+      update :update, primary?: true
+
+      update :set_private_attribute_to_nil do
+        change set_attribute(:non_nil_private, nil)
+      end
     end
 
     attributes do
       uuid_primary_key :id
-      attribute :bio, :string
+      attribute :bio, :string, allow_nil?: false
+      attribute :non_nil_private, :string, allow_nil?: false, default: "non_nil"
     end
 
     relationships do
@@ -178,6 +183,30 @@ defmodule Ash.Test.Actions.UpdateTest do
 
       assert %Post{title: "bar", contents: "foo"} =
                post |> new(%{title: "bar", contents: "foo"}) |> Api.update!()
+    end
+  end
+
+  describe "allow_nil?" do
+    test "it does not allow updating a value to `nil` when `allow_nil?: false`" do
+      profile =
+        Profile
+        |> new(%{bio: "foobar"})
+        |> Api.create!()
+
+      assert_raise Ash.Error.Invalid, ~r/attribute bio is required/, fn ->
+        profile |> new(%{bio: ""}) |> Api.update!()
+      end
+    end
+
+    test "it does not allow updating a private attribute's value to `nil` when `allow_nil?: false`" do
+      profile =
+        Profile
+        |> new(%{bio: "foobar"})
+        |> Api.create!()
+
+      assert_raise Ash.Error.Invalid, ~r/attribute non_nil_private is required/, fn ->
+        profile |> new(%{bio: "foobar"}) |> Api.update!(action: :set_private_attribute_to_nil)
+      end
     end
   end
 

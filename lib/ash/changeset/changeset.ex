@@ -689,11 +689,22 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp require_values(changeset, :create) do
-    changeset.resource
-    |> Ash.Resource.Info.attributes()
-    |> Enum.reject(&(&1.allow_nil? || &1.private? || &1.generated?))
-    |> Enum.reduce(changeset, fn required_attribute, changeset ->
+  @doc false
+  def require_values(changeset, action_type, private? \\ false)
+
+  def require_values(changeset, :create, private?) do
+    attributes =
+      if private? do
+        changeset.resource
+        |> Ash.Resource.Info.attributes()
+        |> Enum.filter(&(!&1.allow_nil? && &1.private? && !&1.generated?))
+      else
+        changeset.resource
+        |> Ash.Resource.Info.attributes()
+        |> Enum.reject(&(&1.allow_nil? || &1.private? || &1.generated?))
+      end
+
+    Enum.reduce(attributes, changeset, fn required_attribute, changeset ->
       if Ash.Changeset.changing_attribute?(changeset, required_attribute.name) ||
            required_attribute.default do
         changeset
@@ -706,7 +717,36 @@ defmodule Ash.Changeset do
     end)
   end
 
-  defp require_values(changeset, _), do: changeset
+  def require_values(changeset, :update, private?) do
+    attributes =
+      if private? do
+        changeset.resource
+        |> Ash.Resource.Info.attributes()
+        |> Enum.filter(&(!&1.allow_nil? && &1.private? && !&1.generated?))
+      else
+        changeset.resource
+        |> Ash.Resource.Info.attributes()
+        |> Enum.reject(&(&1.allow_nil? || &1.private? || &1.generated?))
+      end
+
+    Enum.reduce(attributes, changeset, fn required_attribute, changeset ->
+      if Ash.Changeset.changing_attribute?(changeset, required_attribute.name) ||
+           required_attribute.default do
+        if get_attribute(changeset, required_attribute.name) do
+          changeset
+        else
+          Ash.Changeset.add_error(
+            changeset,
+            Required.exception(field: required_attribute.name, type: :attribute)
+          )
+        end
+      else
+        changeset
+      end
+    end)
+  end
+
+  def require_values(changeset, _, _), do: changeset
 
   @doc """
   Wraps a function in the before/after action hooks of a changeset.
@@ -722,6 +762,10 @@ defmodule Ash.Changeset do
              | {:error, term})
         ) ::
           {:ok, term, t(), %{notifications: list(Ash.Notifier.Notification.t())}} | {:error, term}
+  def with_hooks(%{valid?: false} = changeset, _func) do
+    {:error, changeset.errors}
+  end
+
   def with_hooks(changeset, func) do
     {changeset, %{notifications: before_action_notifications}} =
       Enum.reduce_while(

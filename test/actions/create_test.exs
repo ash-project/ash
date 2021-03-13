@@ -154,7 +154,6 @@ defmodule Ash.Test.Actions.CreateTest do
       attribute(:tag3, :string, default: {PostDefaults, :garbage3, []})
       attribute(:list_attribute, {:array, :integer})
       attribute(:date, :date)
-      attribute(:private_content, :string, private?: true, allow_nil?: false)
       attribute(:binary, :binary)
 
       attribute(:list_attribute_with_constraints, {:array, :integer},
