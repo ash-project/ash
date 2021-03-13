@@ -58,7 +58,7 @@ jobs:
     steps:
       - run: sudo apt-get install --yes erlang-dev
       - uses: actions/checkout@v2
-      - uses: actions/setup-elixir@v1
+      - uses: actions/setup-elixir@v1.5
         with:
           otp-version: ${{matrix.otp}}
           elixir-version: ${{matrix.elixir}}
@@ -84,7 +84,7 @@ jobs:
     steps:
       - run: sudo apt-get install --yes erlang-dev
       - uses: actions/checkout@v2
-      - uses: actions/setup-elixir@v1
+      - uses: actions/setup-elixir@v1.5
         with:
           otp-version: ${{matrix.otp}}
           elixir-version: ${{matrix.elixir}}
@@ -147,7 +147,7 @@ jobs:
           repository: ash-project/${{matrix.project}}
           path: ${{matrix.project}}
           ref: master
-      - uses: actions/setup-elixir@v1
+      - uses: actions/setup-elixir@v1.5
         with:
           otp-version: ${{matrix.otp}}
           elixir-version: ${{matrix.elixir}}
