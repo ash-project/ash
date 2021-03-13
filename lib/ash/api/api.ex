@@ -26,55 +26,8 @@ defmodule Ash.Api do
   The functions documented here can be used to call any action on any resource in the Api.
   For example, `MyApi.read(Myresource, [...])`.
 
-  Ash now also creates a functional interface for each resource, based on the name of the
-  resource and actions on that resource. A function is defined for each resource/action
-  pair, in the form of <resource_name>_<action_name>. The resource name defaults to the
-  snake case form of the last part of the module name. The name can be customized via
-  the `as` option when declaring a resource.
-
-  For example:
-
-  ```elixir
-  defmodule MyApp.MyApi do
-    ...
-
-    resources do
-      resource MyApp.User
-      resource MyApp.Organization, as: :org
-    end
-  end
-
-  defmodule MyApp.User do
-    ...
-
-    actions do
-      create :create do
-        # generally speaking, you can avoid specifying names manually
-        as :register_user
-      end
-      ...
-    end
-  end
-
-  defmodule MyApp.Organization do
-    ...
-
-    actions do
-      destroy :destroy
-
-      ...
-    end
-  end
-  ```
-
-  You would get the following functions
-
-  ```elixir
-  MyApp.Api.register_user(%{...}, opts)
-  MyApp.Api.org_destroy(org, %{...}, opts)
-  ```
-
-  And so on.
+  Additionally, you can define a `code_interface` on each resource to be exposed in the Api module.
+  See the resource DSL documentation for more.
   """
 
   import Ash.OptionsHelpers, only: [merge_schemas: 3]
