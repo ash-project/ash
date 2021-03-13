@@ -167,7 +167,7 @@ defmodule Ash.Dsl.Extension do
         docs =
           if depth == 0 do
             String.duplicate(" ", depth + 1) <>
-              "* [#{section.name}](#module-#{to_string(section.name)})"
+              "* [#{section.name}](#module-#{section.name})"
           else
             String.duplicate(" ", depth + 1) <> "* #{section.name}"
           end
