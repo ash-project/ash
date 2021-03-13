@@ -938,7 +938,16 @@ defmodule Ash.Changeset do
                 | arguments: Map.put(new_changeset.arguments, argument.name, casted)
               }
             else
-              changeset
+              case argument_default(argument.default) do
+                nil ->
+                  changeset
+
+                value ->
+                  %{
+                    new_changeset
+                    | arguments: Map.put(new_changeset.arguments, argument.name, value)
+                  }
+              end
             end
           else
             {:error, error} ->
