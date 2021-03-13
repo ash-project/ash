@@ -633,7 +633,7 @@ defmodule Ash.Resource.Dsl do
     ```
     """,
     examples: [
-      "interface :get_user_by_id, action: :get_by_id, args: [:id]"
+      "define :get_user_by_id, action: :get_by_id, args: [:id]"
     ],
     target: Ash.Resource.Interface,
     schema: Ash.Resource.Interface.schema(),
@@ -647,8 +647,8 @@ defmodule Ash.Resource.Dsl do
     """,
     examples: [
       """
-      interfaces do
-        interface :get_user_by_id, action: :get_by_id, args: [:id]
+      code_interface do
+        define :get_user_by_id, action: :get_by_id, args: [:id]
       end
       """
     ],
