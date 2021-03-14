@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.36.5](https://github.com/ash-project/ash/compare/v1.36.4...v1.36.5) (2021-03-14)
+
+
+
+
+### Bug Fixes:
+
+* remove the `as` option
+
+### Improvements:
+
+* Add timestamps() attribute (#198)
+
 ## [v1.36.4](https://github.com/ash-project/ash/compare/v1.36.3...v1.36.4) (2021-03-13)
 
 
