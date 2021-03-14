@@ -16,7 +16,7 @@ defmodule Ash.Resource.Transformers.ReplaceTimestamps do
           attrs ++ [attr]
       end)
 
-    new_dsl_state = Map.put(dsl_state, [:attributes], %{entities: attributes})
+    new_dsl_state = put_in(dsl_state, [[:attributes], :entities], attributes)
 
     {:ok, new_dsl_state}
   end
