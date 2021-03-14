@@ -378,7 +378,7 @@ defmodule Ash.Api do
               {:ok, Ash.Page.page()} | {:error, term}
 
   @doc """
-  Load fields or relationships on already fetched records. See `c:load/2` for more information.
+  Load fields or relationships on already fetched records. See `c:load/3` for more information.
   """
   @callback load!(
               record_or_records :: Ash.Resource.record() | [Ash.Resource.record()],
