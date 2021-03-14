@@ -7,7 +7,6 @@ defmodule Ash.Resource.Actions.Read do
     :primary?,
     :filter,
     :description,
-    :as,
     arguments: [],
     preparations: [],
     type: :read
