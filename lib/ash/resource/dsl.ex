@@ -59,7 +59,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Attribute,
     auto_set_fields: [
-      name: :__timestamps
+      name: :__timestamps__
     ]
   }
 

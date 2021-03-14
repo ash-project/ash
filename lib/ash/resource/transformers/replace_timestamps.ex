@@ -9,7 +9,7 @@ defmodule Ash.Resource.Transformers.ReplaceTimestamps do
       dsl_state
       |> Transformer.get_entities([:attributes])
       |> Enum.reduce([], fn
-        %{name: :__timestamps}, attrs ->
+        %{name: :__timestamps__}, attrs ->
           attrs ++ timestamp_attributes()
 
         attr, attrs ->
