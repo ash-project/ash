@@ -66,7 +66,9 @@ end
 
 ## Create a resource
 
-A resource is the primary entity in Ash. Your API module ties your resources together and gives them an interface, but the vast majority of your configuration will live in resources. In your typical setup, you might have a resource per database table. For those already familiar with [Ecto](https://github.com/elixir-ecto/ecto), a resource and an Ecto schema are very similar. In fact, all resources define an Ecto schema under the hood. This can be leveraged when you need to do things that are not yet implemented or fall outside of the scope of Ash. The current recommendation for where to put your resources is in `lib/my_app/resources/<resource_name>.ex`. Here are a few examples:
+A resource is the primary entity in Ash. Your API module ties your resources together and gives them an interface, but the vast majority of your configuration will live in resources.
+
+In your typical setup, you might have a resource per database table. For those already familiar with [Ecto](https://github.com/elixir-ecto/ecto), a resource and an Ecto schema are very similar. In fact, all resources define an Ecto schema under the hood. This can be leveraged when you need to do things that are not yet implemented or fall outside of the scope of Ash. The current recommendation for where to put your resources is in `lib/my_app/resources/<resource_name>.ex`. Here are a few examples:
 
 ```elixir
 # in lib/my_app/resources/tweet.ex
@@ -87,12 +89,12 @@ defmodule MyApp.Tweet do
     attribute :public, :boolean, allow_nil?: false, default: false
 
     # This is set on create
-    create_timestamp :created_at
+    create_timestamp :inserted_at
     # This is updated on all updates
     update_timestamp :updated_at
 
     # `create_timestamp` above is just shorthand for:
-    # attribute :created_at, :utc_datetime_usec,
+    # attribute :inserted_at, :utc_datetime_usec,
     #   writable?: false,
     #   default: &DateTime.utc_now/0
   end
@@ -116,6 +118,8 @@ defmodule MyApp.User do
 end
 ```
 
+For full details on defining a resource, see: `Ash.Resource.Dsl`.
+
 ## Add resources to your API
 
 Alter your API (`lib/my_app/api.ex`) to add the resources we created on the previous step:
@@ -132,7 +136,7 @@ end
 Now you are able to create changesets for your resources using `Ash.Changeset.new/2`:
 
 ```elixir
-iex(7)> change = Ash.Changeset.new(MyApp.User, %{email: "ash.man@enguento.com"})
+iex(7)> changeset = Ash.Changeset.new(MyApp.User, %{email: "ash.man@enguento.com"})
 #Ash.Changeset<
   action_type: :create,
   attributes: %{email: "ash.man@enguento.com"},
@@ -329,7 +333,7 @@ iex(9)> MyApp.Tweet |> Ash.Changeset.new(%{body: "ashy slashy"}) |> Ash.Changese
    aggregates: %{},
    body: "ashy slashy",
    calculations: %{},
-   created_at: ~U[2020-11-14 12:54:06Z],
+   inserted_at: ~U[2020-11-14 12:54:06Z],
    id: "f0b0b9d5-832c-45c9-9313-5e3fb9f1af24",
    public: false,
    updated_at: ~U[2020-11-14 12:54:06Z],

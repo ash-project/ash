@@ -12,7 +12,7 @@ defmodule Ash.Resource.Dsl do
     """,
     examples: [
       """
-      attribute :first_name, :string
+      attribute :first_name, :string do
         primary_key? true
       end
       """
@@ -114,7 +114,7 @@ defmodule Ash.Resource.Dsl do
           ]
         end
 
-        create_timestamp :created_at
+        create_timestamp :inserted_at
         update_timestamp :updated_at
       end
       """

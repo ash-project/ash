@@ -25,7 +25,7 @@ The default type for those attributes was changed to `:utc_datetime_usec`. If yo
 used by your timestamps like so:
 
 ```elixir
-created_timestamp :created_at, type: :utc_datetime
+created_timestamp :inserted_at, type: :utc_datetime
 updated_timestamp :updated_at, type: :utc_datetime
 ```
 
