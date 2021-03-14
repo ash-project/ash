@@ -49,6 +49,20 @@ defmodule Ash.Resource.Dsl do
     args: [:name]
   }
 
+  @timestamps %Ash.Dsl.Entity{
+    name: :timestamps,
+    describe: """
+    Declares non-writable `inserted_at` and `updated_at` attributes whith create and update defaults of `&DateTime.utc_now/0`.
+    """,
+    examples: [
+      "timestamps()"
+    ],
+    target: Ash.Resource.Attribute,
+    auto_set_fields: [
+      name: :__timestamps__
+    ]
+  }
+
   @integer_primary_key %Ash.Dsl.Entity{
     name: :integer_primary_key,
     describe: """
@@ -123,6 +137,7 @@ defmodule Ash.Resource.Dsl do
       @attribute,
       @create_timestamp,
       @update_timestamp,
+      @timestamps,
       @integer_primary_key,
       @uuid_primary_key
     ]
@@ -898,6 +913,7 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.HasDestinationField,
     Ash.Resource.Transformers.CreateJoinRelationship,
     Ash.Resource.Transformers.CachePrimaryKey,
+    Ash.Resource.Transformers.ReplaceTimestamps,
     Ash.Resource.Transformers.SetPrimaryActions,
     Ash.Resource.Transformers.ValidateActionTypesSupported,
     Ash.Resource.Transformers.CountableActions,
