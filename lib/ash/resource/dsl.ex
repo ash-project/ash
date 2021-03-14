@@ -59,7 +59,6 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Attribute,
     auto_set_fields: [
-      type: :atom,
       name: :timestamps
     ]
   }
