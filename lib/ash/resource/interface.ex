@@ -2,7 +2,7 @@ defmodule Ash.Resource.Interface do
   @moduledoc """
   Represents a function in a resource's code interface
   """
-  defstruct [:name, :action, :args, :get?]
+  defstruct [:name, :action, :args, :params, :get?]
 
   @type t :: %__MODULE__{}
 
@@ -49,6 +49,14 @@ defmodule Ash.Resource.Interface do
       type: {:list, :atom},
       doc: """
       Map specific arguments to named inputs. Can provide any argument/attributes that the action allows.
+      """
+    ],
+    params: [
+      type: {:in, [:none, :optional, :required]},
+      doc: """
+      * `:none`: The generated function doesn't accept a map of params
+      * `:optional`: The generated function accepts a map of params but doesn't require it
+      * `:required`: The function will be generated in a way that requires a map of params
       """
     ],
     get?: [

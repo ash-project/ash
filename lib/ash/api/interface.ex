@@ -2,283 +2,395 @@ defmodule Ash.Api.Interface do
   @moduledoc false
 
   defmacro define_interface(api, resource) do
-    quote bind_quoted: [api: api, resource: resource] do
-      for interface <- Ash.Resource.Info.interfaces(resource) do
-        action = Ash.Resource.Info.action(resource, interface.action || interface.name)
+    q =
+      quote bind_quoted: [api: api, resource: resource] do
+        for interface <- Ash.Resource.Info.interfaces(resource) do
+          action = Ash.Resource.Info.action(resource, interface.action || interface.name)
 
-        unless action do
-          raise Ash.Error.Dsl.DslError,
-            module: resource,
-            message:
-              "The interface of #{inspect(resource)} refers to a non-existent action #{
-                interface.action || interface.name
-              }",
-            path: [:interfaces, :interface, interface.name]
-        end
+          unless action do
+            raise Ash.Error.Dsl.DslError,
+              module: resource,
+              message:
+                "The interface of #{inspect(resource)} refers to a non-existent action #{
+                  interface.action || interface.name
+                }",
+              path: [:interfaces, :interface, interface.name]
+          end
 
-        args = interface.args || []
-        arg_vars = Enum.map(args, &{&1, [], Elixir})
+          args = interface.args || []
+          arg_params = arg_vars = Enum.map(args, &{&1, [], Elixir})
 
-        doc = """
-        #{
-          action.description ||
-            "Calls the #{action.name} action on the #{inspect(resource)} resource."
-        }
+          params =
+            cond do
+              interface.params != nil -> interface.params
+              action.type in [:create, :update] -> :required
+              action.type in [:read, :destroy] -> :none
+            end
 
-        ## Options
+          {args, arg_vars, arg_params} =
+            case params do
+              :required ->
+                {
+                  args ++ [:params],
+                  arg_vars ++ [{:params, [], Elixir}],
+                  arg_params ++ [{:=, [], [{:%{}, [], []}, {:params, [], Elixir}]}]
+                }
 
-        #{Ash.OptionsHelpers.docs(Ash.Resource.Interface.interface_options())}
-        """
+              :optional ->
+                {
+                  args ++ [:params_or_opts],
+                  arg_vars ++ [{:params_or_opts, [], Elixir}],
+                  arg_params ++ [{:\\, [], [{:params_or_opts, [], Elixir}, {:%{}, [], []}]}]
+                }
 
-        case action.type do
-          :read ->
-            @doc doc
-            def unquote(interface.name)(
-                  unquote_splicing(arg_vars),
-                  params_or_opts \\ %{},
-                  opts \\ []
-                ) do
-              if opts == [] && Keyword.keyword?(params_or_opts) do
-                unquote(interface.name)(%{}, params_or_opts)
-              else
-                input =
-                  unquote(args)
-                  |> Enum.zip([unquote_splicing(arg_vars)])
-                  |> Enum.reduce(params_or_opts, fn {key, value}, params_or_opts ->
-                    Map.put(params_or_opts, key, value)
+              :none ->
+                {args, arg_vars, arg_params}
+            end
+
+          doc = """
+          #{
+            action.description ||
+              "Calls the #{action.name} action on the #{inspect(resource)} resource."
+          }
+
+          ## Options
+
+          #{Ash.OptionsHelpers.docs(Ash.Resource.Interface.interface_options())}
+          """
+
+          case action.type do
+            :read ->
+              @doc doc
+              def unquote(interface.name)(
+                    unquote_splicing(arg_params),
+                    opts \\ []
+                  ) do
+                input = Enum.zip(unquote(args), [unquote_splicing(arg_vars)])
+
+                params =
+                  input
+                  |> Enum.reject(fn {key, _val} -> key in [:params, :params_or_opts] end)
+                  |> Enum.find_value(fn {key, val} ->
+                    if key in [:params, :params_or_opts], do: val
                   end)
+                  |> Kernel.||(%{})
 
-                query =
-                  opts[:query]
-                  |> Kernel.||(unquote(resource))
-                  |> Ash.Query.for_read(
-                    unquote(action.name),
-                    input,
-                    Keyword.take(opts, [:actor, :tenant])
-                  )
+                # if opts == [] && Keyword.keyword?(params) do
+                #   unquote(interface.name)(%{}, params)
+                # else
+                if true do
+                  input =
+                    input
+                    |> Enum.reject(fn {key, _val} -> key in [:params, :params_or_opts] end)
+                    |> Enum.reduce(params, fn {key, value}, params ->
+                      Map.put(params, key, value)
+                    end)
 
-                if unquote(interface.get?) do
-                  unquote(api).read_one(query, Keyword.delete(opts, :query))
-                else
-                  unquote(api).read(query, Keyword.delete(opts, :query))
+                  query =
+                    opts[:query]
+                    |> Kernel.||(unquote(resource))
+                    |> Ash.Query.for_read(
+                      unquote(action.name),
+                      input,
+                      Keyword.take(opts, [:actor, :tenant])
+                    )
+
+                  if unquote(interface.get?) do
+                    unquote(api).read_one(query, Keyword.delete(opts, :query))
+                  else
+                    unquote(api).read(query, Keyword.delete(opts, :query))
+                  end
                 end
               end
-            end
 
-            @doc doc
-            # sobelow_skip ["DOS.BinToAtom"]
-            def unquote(:"#{interface.name}!")(
-                  unquote_splicing(arg_vars),
-                  params_or_opts \\ %{},
-                  opts \\ []
-                ) do
-              if opts == [] && Keyword.keyword?(params_or_opts) do
-                unquote(interface.name)(%{}, params_or_opts)
-              else
-                input =
-                  unquote(args)
-                  |> Enum.zip([unquote_splicing(arg_vars)])
-                  |> Enum.reduce(params_or_opts, fn {key, value}, params_or_opts ->
-                    Map.put(params_or_opts, key, value)
+              @doc doc
+              # sobelow_skip ["DOS.BinToAtom"]
+              def unquote(:"#{interface.name}!")(
+                    unquote_splicing(arg_params),
+                    opts \\ []
+                  ) do
+                input = Enum.zip(unquote(args), [unquote_splicing(arg_vars)])
+
+                params =
+                  input
+                  |> Enum.reject(fn {key, _val} -> key in [:params, :params_or_opts] end)
+                  |> Enum.find_value(fn {key, val} ->
+                    if key in [:params, :params_or_opts], do: val
                   end)
+                  |> Kernel.||(%{})
 
-                query =
-                  opts[:query]
-                  |> Kernel.||(unquote(resource))
-                  |> Ash.Query.for_read(
-                    unquote(action.name),
-                    input,
-                    Keyword.take(opts, [:actor, :tenant])
-                  )
+                # if opts == [] && Keyword.keyword?(params) do
+                #   unquote(interface.name)(%{}, params)
+                # else
+                if true do
+                  input =
+                    input
+                    |> Enum.reject(fn {key, _val} -> key in [:params, :params_or_opts] end)
+                    |> Enum.reduce(params, fn {key, value}, params ->
+                      Map.put(params, key, value)
+                    end)
 
-                if unquote(interface.get?) do
-                  unquote(api).read_one!(query, Keyword.delete(opts, :query))
-                else
-                  unquote(api).read!(query, Keyword.delete(opts, :query))
+                  query =
+                    opts[:query]
+                    |> Kernel.||(unquote(resource))
+                    |> Ash.Query.for_read(
+                      unquote(action.name),
+                      input,
+                      Keyword.take(opts, [:actor, :tenant])
+                    )
+
+                  if unquote(interface.get?) do
+                    unquote(api).read_one!(query, Keyword.delete(opts, :query))
+                  else
+                    unquote(api).read!(query, Keyword.delete(opts, :query))
+                  end
                 end
               end
-            end
 
-          :create ->
-            @doc doc
-            def unquote(interface.name)(
-                  unquote_splicing(arg_vars),
-                  params_or_opts \\ %{},
-                  opts \\ []
-                ) do
-              if opts == [] && Keyword.keyword?(params_or_opts) do
-                unquote(interface.name)(%{}, params_or_opts)
-              else
-                input =
-                  unquote(args)
-                  |> Enum.zip([unquote_splicing(arg_vars)])
-                  |> Enum.reduce(params_or_opts, fn {key, value}, params_or_opts ->
-                    Map.put(params_or_opts, key, value)
+            :create ->
+              @doc doc
+              def unquote(interface.name)(
+                    unquote_splicing(arg_params),
+                    opts \\ []
+                  ) do
+                input = Enum.zip(unquote(args), [unquote_splicing(arg_vars)])
+
+                params =
+                  input
+                  |> Enum.reject(fn {key, _val} -> key in [:params, :params_or_opts] end)
+                  |> Enum.find_value(fn {key, val} ->
+                    if key in [:params, :params_or_opts], do: val
                   end)
+                  |> Kernel.||(%{})
 
-                changeset =
-                  unquote(resource)
-                  |> Ash.Changeset.for_create(
-                    unquote(action.name),
-                    input,
-                    Keyword.take(opts, [:actor, :tenant])
-                  )
+                # if opts == [] && Keyword.keyword?(params) do
+                #   unquote(interface.name)(%{}, params)
+                # else
+                if true do
+                  input =
+                    input
+                    |> Enum.reject(fn {key, _val} -> key in [:params, :params_or_opts] end)
+                    |> Enum.reduce(params, fn {key, value}, params ->
+                      Map.put(params, key, value)
+                    end)
 
-                unquote(api).create(changeset, opts)
+                  changeset =
+                    unquote(resource)
+                    |> Ash.Changeset.for_create(
+                      unquote(action.name),
+                      input,
+                      Keyword.take(opts, [:actor, :tenant])
+                    )
+
+                  unquote(api).create(changeset, opts)
+                end
               end
-            end
 
-            @doc doc
-            # sobelow_skip ["DOS.BinToAtom"]
-            def unquote(:"#{interface.name}!")(
-                  unquote_splicing(arg_vars),
-                  params_or_opts \\ %{},
-                  opts \\ []
-                ) do
-              if opts == [] && Keyword.keyword?(params_or_opts) do
-                unquote(interface.name)(%{}, params_or_opts)
-              else
-                input =
-                  unquote(args)
-                  |> Enum.zip([unquote_splicing(arg_vars)])
-                  |> Enum.reduce(params_or_opts, fn {key, value}, params_or_opts ->
-                    Map.put(params_or_opts, key, value)
+              @doc doc
+              # sobelow_skip ["DOS.BinToAtom"]
+              def unquote(:"#{interface.name}!")(
+                    unquote_splicing(arg_params),
+                    opts \\ []
+                  ) do
+                input = Enum.zip(unquote(args), [unquote_splicing(arg_vars)])
+
+                params =
+                  input
+                  |> Enum.reject(fn {key, _val} -> key in [:params, :params_or_opts] end)
+                  |> Enum.find_value(fn {key, val} ->
+                    if key in [:params, :params_or_opts], do: val
                   end)
+                  |> Kernel.||(%{})
 
-                changeset =
-                  unquote(resource)
-                  |> Ash.Changeset.for_create(
-                    unquote(action.name),
-                    input,
-                    Keyword.take(opts, [:actor, :tenant])
-                  )
+                # if opts == [] && Keyword.keyword?(params) do
+                #   unquote(interface.name)(%{}, params)
+                # else
+                if true do
+                  input =
+                    input
+                    |> Enum.reject(fn {key, _val} -> key in [:params, :params_or_opts] end)
+                    |> Enum.reduce(params, fn {key, value}, params ->
+                      Map.put(params, key, value)
+                    end)
 
-                unquote(api).create!(changeset, opts)
+                  changeset =
+                    unquote(resource)
+                    |> Ash.Changeset.for_create(
+                      unquote(action.name),
+                      input,
+                      Keyword.take(opts, [:actor, :tenant])
+                    )
+
+                  unquote(api).create!(changeset, opts)
+                end
               end
-            end
 
-          :update ->
-            @doc doc
-            def unquote(interface.name)(
-                  record,
-                  unquote_splicing(arg_vars),
-                  params_or_opts \\ %{},
-                  opts \\ []
-                ) do
-              if opts == [] && Keyword.keyword?(params_or_opts) do
-                unquote(interface.name)(%{}, params_or_opts)
-              else
-                input =
-                  unquote(args)
-                  |> Enum.zip([unquote_splicing(arg_vars)])
-                  |> Enum.reduce(params_or_opts, fn {key, value}, params_or_opts ->
-                    Map.put(params_or_opts, key, value)
+            :update ->
+              @doc doc
+              def unquote(interface.name)(
+                    record,
+                    unquote_splicing(arg_params),
+                    opts \\ []
+                  ) do
+                input = Enum.zip(unquote(args), [unquote_splicing(arg_vars)])
+
+                params =
+                  input
+                  |> Enum.reject(fn {key, _val} -> key in [:params, :params_or_opts] end)
+                  |> Enum.find_value(fn {key, val} ->
+                    if key in [:params, :params_or_opts], do: val
                   end)
+                  |> Kernel.||(%{})
 
-                changeset =
-                  record
-                  |> Ash.Changeset.for_update(
-                    unquote(action.name),
-                    input,
-                    Keyword.take(opts, [:actor, :tenant])
-                  )
+                # if opts == [] && Keyword.keyword?(params) do
+                #   unquote(interface.name)(%{}, params)
+                # else
+                if true do
+                  input =
+                    input
+                    |> Enum.reject(fn {key, _val} -> key in [:params, :params_or_opts] end)
+                    |> Enum.reduce(params, fn {key, value}, params ->
+                      Map.put(params, key, value)
+                    end)
 
-                unquote(api).update(changeset, opts)
+                  changeset =
+                    record
+                    |> Ash.Changeset.for_update(
+                      unquote(action.name),
+                      input,
+                      Keyword.take(opts, [:actor, :tenant])
+                    )
+
+                  unquote(api).update(changeset, opts)
+                end
               end
-            end
 
-            @doc doc
-            # sobelow_skip ["DOS.BinToAtom"]
-            def unquote(:"#{interface.name}!")(
-                  record,
-                  unquote_splicing(arg_vars),
-                  params_or_opts \\ %{},
-                  opts \\ []
-                ) do
-              if opts == [] && Keyword.keyword?(params_or_opts) do
-                unquote(interface.name)(%{}, params_or_opts)
-              else
-                input =
-                  unquote(args)
-                  |> Enum.zip([unquote_splicing(arg_vars)])
-                  |> Enum.reduce(params_or_opts, fn {key, value}, params_or_opts ->
-                    Map.put(params_or_opts, key, value)
+              @doc doc
+              # sobelow_skip ["DOS.BinToAtom"]
+              def unquote(:"#{interface.name}!")(
+                    record,
+                    unquote_splicing(arg_params),
+                    opts \\ []
+                  ) do
+                input = Enum.zip(unquote(args), [unquote_splicing(arg_vars)])
+
+                params =
+                  input
+                  |> Enum.reject(fn {key, _val} -> key in [:params, :params_or_opts] end)
+                  |> Enum.find_value(fn {key, val} ->
+                    if key in [:params, :params_or_opts], do: val
                   end)
+                  |> Kernel.||(%{})
 
-                changeset =
-                  record
-                  |> Ash.Changeset.for_update(
-                    unquote(action.name),
-                    input,
-                    Keyword.take(opts, [:actor, :tenant])
-                  )
+                # if opts == [] && Keyword.keyword?(params) do
+                #   unquote(interface.name)(%{}, params)
+                # else
+                if true do
+                  input =
+                    input
+                    |> Enum.reject(fn {key, _val} -> key in [:params, :params_or_opts] end)
+                    |> Enum.reduce(params, fn {key, value}, params ->
+                      Map.put(params, key, value)
+                    end)
 
-                unquote(api).update!(changeset, opts)
+                  changeset =
+                    record
+                    |> Ash.Changeset.for_update(
+                      unquote(action.name),
+                      input,
+                      Keyword.take(opts, [:actor, :tenant])
+                    )
+
+                  unquote(api).update!(changeset, opts)
+                end
               end
-            end
 
-          :destroy ->
-            @doc doc
-            def unquote(interface.name)(
-                  record,
-                  unquote_splicing(arg_vars),
-                  params_or_opts \\ %{},
-                  opts \\ []
-                ) do
-              if opts == [] && Keyword.keyword?(params_or_opts) do
-                unquote(interface.name)(%{}, params_or_opts)
-              else
-                input =
-                  unquote(args)
-                  |> Enum.zip([unquote_splicing(arg_vars)])
-                  |> Enum.reduce(params_or_opts, fn {key, value}, params_or_opts ->
-                    Map.put(params_or_opts, key, value)
+            :destroy ->
+              @doc doc
+              def unquote(interface.name)(
+                    record,
+                    unquote_splicing(arg_params),
+                    opts \\ []
+                  ) do
+                input = Enum.zip(unquote(args), [unquote_splicing(arg_vars)])
+
+                params =
+                  input
+                  |> Enum.reject(fn {key, _val} -> key in [:params, :params_or_opts] end)
+                  |> Enum.find_value(fn {key, val} ->
+                    if key in [:params, :params_or_opts], do: val
                   end)
+                  |> Kernel.||(%{})
 
-                changeset =
-                  record
-                  |> Ash.Changeset.for_destroy(
-                    unquote(action.name),
-                    input,
-                    Keyword.take(opts, [:actor, :tenant])
-                  )
+                # if opts == [] && Keyword.keyword?(params) do
+                #   unquote(interface.name)(%{}, params)
+                # else
+                if true do
+                  input =
+                    input
+                    |> Enum.reject(fn {key, _val} -> key in [:params, :params_or_opts] end)
+                    |> Enum.reduce(params, fn {key, value}, params ->
+                      Map.put(params, key, value)
+                    end)
 
-                unquote(api).destroy(changeset, opts)
+                  changeset =
+                    record
+                    |> Ash.Changeset.for_destroy(
+                      unquote(action.name),
+                      input,
+                      Keyword.take(opts, [:actor, :tenant])
+                    )
+
+                  unquote(api).destroy(changeset, opts)
+                end
               end
-            end
 
-            @doc doc
-            # sobelow_skip ["DOS.BinToAtom"]
-            def unquote(:"#{interface.name}!")(
-                  record,
-                  unquote_splicing(arg_vars),
-                  params_or_opts \\ %{},
-                  opts \\ []
-                ) do
-              if opts == [] && Keyword.keyword?(params_or_opts) do
-                unquote(interface.name)(%{}, params_or_opts)
-              else
-                input =
-                  unquote(args)
-                  |> Enum.zip([unquote_splicing(arg_vars)])
-                  |> Enum.reduce(params_or_opts, fn {key, value}, params_or_opts ->
-                    Map.put(params_or_opts, key, value)
+              @doc doc
+              # sobelow_skip ["DOS.BinToAtom"]
+              def unquote(:"#{interface.name}!")(
+                    record,
+                    unquote_splicing(arg_params),
+                    opts \\ []
+                  ) do
+                input = Enum.zip(unquote(args), [unquote_splicing(arg_vars)])
+
+                params =
+                  input
+                  |> Enum.reject(fn {key, _val} -> key in [:params, :params_or_opts] end)
+                  |> Enum.find_value(fn {key, val} ->
+                    if key in [:params, :params_or_opts], do: val
                   end)
+                  |> Kernel.||(%{})
 
-                changeset =
-                  record
-                  |> Ash.Changeset.for_destroy(
-                    unquote(action.name),
-                    input,
-                    Keyword.take(opts, [:actor, :tenant])
-                  )
+                # if opts == [] && Keyword.keyword?(params) do
+                #   unquote(interface.name)(%{}, params)
+                # else
+                if true do
+                  input =
+                    input
+                    |> Enum.reject(fn {key, _val} -> key in [:params, :params_or_opts] end)
+                    |> Enum.reduce(params, fn {key, value}, params ->
+                      Map.put(params, key, value)
+                    end)
 
-                unquote(api).destroy(changeset, opts)
+                  changeset =
+                    record
+                    |> Ash.Changeset.for_destroy(
+                      unquote(action.name),
+                      input,
+                      Keyword.take(opts, [:actor, :tenant])
+                    )
+
+                  unquote(api).destroy(changeset, opts)
+                end
               end
-            end
+          end
         end
       end
-    end
+
+    IO.inspect(Macro.to_string(q), printable_limit: :infinity)
+
+    q
   end
 
   defmacro __using__(_) do
