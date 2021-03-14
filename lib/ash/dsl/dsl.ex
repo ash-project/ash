@@ -28,6 +28,10 @@ defmodule Ash.Dsl do
     ]
   ]
 
+  @type entity :: %Ash.Dsl.Entity{}
+
+  @type section :: %Ash.Dsl.Section{}
+
   @moduledoc """
   The primary entry point for adding a DSL to a module.
 

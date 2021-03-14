@@ -46,19 +46,6 @@ defmodule Ash.Dsl.Entity do
     auto_set_fields: []
   ]
 
-  @type t :: %__MODULE__{
-          name: atom,
-          describe: String.t(),
-          target: module,
-          examples: [String.t()],
-          transform: mfa | nil,
-          args: [atom],
-          hide: [atom],
-          entities: Keyword.t(),
-          auto_set_fields: Keyword.t(),
-          schema: Ash.OptionsHelpers.schema()
-        }
-
   def build(
         %{target: target, schema: schema, auto_set_fields: auto_set_fields, transform: transform},
         opts,

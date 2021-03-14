@@ -102,7 +102,7 @@ defmodule Ash.Dsl.Extension do
   See the documentation for `Ash.Dsl.Section` and `Ash.Dsl.Entity` for more information
   """
 
-  @callback sections() :: [Ash.Dsl.Section.t()]
+  @callback sections() :: [Ash.Dsl.section()]
   @callback transformers() :: [module]
 
   @doc "Get the entities configured for a given section"

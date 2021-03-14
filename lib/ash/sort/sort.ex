@@ -1,5 +1,7 @@
 defmodule Ash.Sort do
-  @moduledoc false
+  @moduledoc """
+  Utilities and types for sorting.
+  """
 
   alias Ash.Error.Query.{InvalidSortOrder, NoSuchAttribute}
 

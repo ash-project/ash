@@ -97,6 +97,10 @@ defmodule Ash.MixProject do
           Ash.Resource.Dsl,
           Ash.Api.Dsl
         ],
+        tools: [
+          Ash.Filter,
+          Ash.Sort
+        ],
         validations: ~r/Ash.Resource.Validation/,
         changes: ~r/Ash.Resource.Change/,
         calculations: [
@@ -145,7 +149,8 @@ defmodule Ash.MixProject do
           Ash.UUID,
           Ash.NotLoaded,
           Ash.Query.Aggregate,
-          Ash.Query.Type
+          Ash.Query.Type,
+          Ash.SatSolver
         ],
         comparable: ~r/Comparable/
       ]

@@ -118,5 +118,18 @@ defmodule Ash.Page.Keyset do
     Enum.map(fields, &Map.get(record, &1))
   end
 
+  @doc """
+  A restricted version of `:erlang.binary_to_term/2` that forbids
+  *executable* terms, such as anonymous functions.
+  The `opts` are given to the underlying `:erlang.binary_to_term/2`
+  call, with an empty list as a default.
+  By default this function does not restrict atoms, as an atom
+  interned in one node may not yet have been interned on another
+  (except for releases, which preload all code).
+  If you want to avoid atoms from being created, then you can pass
+  `[:safe]` as options, as that will also enable the safety mechanisms
+  from `:erlang.binary_to_term/2` itself.
+  Ripped from https://github.com/elixir-plug/plug_crypto/blob/v1.2.0/lib/plug/crypto.ex
+  """
   defdelegate non_executable_binary_to_term(binary, opts), to: Ash.Helpers
 end

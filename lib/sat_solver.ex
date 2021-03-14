@@ -1,5 +1,7 @@
 defmodule Ash.SatSolver do
-  @moduledoc false
+  @moduledoc """
+  Tools for working with the satsolver that drives filter subset checking (for authorization)
+  """
 
   alias Ash.Filter
   alias Ash.Query.{BooleanExpression, Not, Ref}

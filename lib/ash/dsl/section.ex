@@ -30,13 +30,4 @@ defmodule Ash.Dsl.Section do
     entities: [],
     sections: []
   ]
-
-  @type t :: %__MODULE__{
-          name: atom,
-          describe: String.t(),
-          examples: [String.t()],
-          entities: [Ash.Dsl.Entity.t()],
-          sections: [%__MODULE__{}],
-          schema: Ash.OptionsHelpers.schema()
-        }
 end
