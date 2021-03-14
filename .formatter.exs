@@ -90,6 +90,8 @@ locals_without_parens = [
   strategy: 1,
   table: 1,
   through: 1,
+  timestamps: 0,
+  timestamps: 1,
   type: 1,
   update: 1,
   update: 2,
