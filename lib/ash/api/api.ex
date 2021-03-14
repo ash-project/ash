@@ -2,9 +2,8 @@ defmodule Ash.Api do
   @moduledoc """
   An Api allows you to interact with your resources, and holds non-resource-specific configuration.
 
-  Your Api can also house config that is not resource specific. For example, the json api extension
-  adds an api extension that lets you toggle authorization on/off for all resources in that Api.
-  You include them in an Api like so:
+  For example, the json api extension adds an api extension that lets you toggle authorization on/off
+  for all resources in that Api. You include them in an Api like so:
 
   ```elixir
   defmodule MyApp.Api do
