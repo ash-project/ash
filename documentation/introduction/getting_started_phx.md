@@ -1,7 +1,7 @@
 # Getting started with Ash and Phoenix
 
 In this guide we will convert the sample app from the [getting
-stated guide](https://github.com/ash-project/ash/blob/master/documentation/introduction/getting_started.md) into
+stated guide](getting_started.html) into
 a full blown service backed by PostgreSQL as a storage and a Json Web API.
 
 For the web part of the application we will rely on the
@@ -179,7 +179,7 @@ eplace_relationship(:user, user) |> MyApp.Api.create()
 [debug] QUERY OK db=0.1ms idle=1197.5ms
 begin []
 [debug] QUERY OK db=2.2ms
-INSERT INTO "tweets" ("body","created_at","id","public","updated_at","user_id") VAL
+INSERT INTO "tweets" ("body","inserted_at","id","public","updated_at","user_id") VAL
 UES ($1,$2,$3,$4,$5,$6) ["ashy slashy", ~U[2020-11-22 21:15:33Z], <<163, 22, 225, 4
 3, 217, 10, 67, 242, 152, 149, 197, 133, 253, 154, 244, 95>>, false, ~U[2020-11-22
 21:15:33Z], <<72, 226, 94, 187, 145, 81, 66, 25, 183, 79, 59, 199, 93, 88, 32, 243>
@@ -193,7 +193,7 @@ commit []
    aggregates: %{},
    body: "ashy slashy",
    calculations: %{},
-   created_at: ~U[2020-11-22 21:15:33Z],
+   inserted_at: ~U[2020-11-22 21:15:33Z],
    id: "a316e12b-d90a-43f2-9895-c585fd9af45f",
    public: false,
    updated_at: ~U[2020-11-22 21:15:33Z],

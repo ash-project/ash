@@ -60,7 +60,7 @@ defmodule Ash.Resource.Attribute do
     allow_nil?: [
       type: :boolean,
       default: true,
-      doc: "Whether or not the attribute can be set to nil"
+      doc: "Whether or not the attribute can be set to nil."
     ],
     generated?: [
       type: :boolean,
@@ -71,13 +71,13 @@ defmodule Ash.Resource.Attribute do
     writable?: [
       type: :boolean,
       default: true,
-      doc: "Whether or not the value can be written to"
+      doc: "Whether or not the value can be written to."
     ],
     private?: [
       type: :boolean,
       default: false,
       doc:
-        "Whether or not the attribute will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql"
+        "Whether or not the attribute will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql."
     ],
     update_default: [
       type: {:custom, Ash.OptionsHelpers, :default, []},
@@ -91,7 +91,7 @@ defmodule Ash.Resource.Attribute do
     ],
     description: [
       type: :string,
-      doc: "An optional description for the attribute"
+      doc: "An optional description for the attribute."
     ]
   ]
 

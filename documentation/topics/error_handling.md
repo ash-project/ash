@@ -11,7 +11,7 @@ To this effect, exceptions in Ash have one of four classes mapping to the top le
 - framework - `Ash.Error.Framework`
 - unknown - `Ash.Error.Unknown`
 
-Since many actions can be happening at once, we want to support the presence of multiple errors as a result of a request to ash. We do this by grouping up the errors into one before returning or raising.
+Since many actions can be happening at once, we want to support the presence of multiple errors as a result of a request to Ash. We do this by grouping up the errors into one before returning or raising.
 We choose an exception based on the order of the exceptions listed above. If there is a single forbidden, we choose `Ash.Error.Forbidden`, if there is a single invalid, we choose `Ash.Error.Invalid` and so on. The actual errors will be included in the `errors` key on the exception. The exception's message will contain a bulleted list of all the underlying exceptions that occured. This makes it easy to react to specific kinds of errors, as well as to react to _any/all_ of the errors present.
 
 An example of a single error being raised, representing multiple underlying errors:
