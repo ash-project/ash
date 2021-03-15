@@ -8,12 +8,12 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
   def transform(resource, dsl_state) do
     default_accept_attributes =
       resource
-      |> Ash.Resource.Info.attributes()
+      |> Ash.Resource.Info.public_attributes()
       |> Enum.map(& &1.name)
 
     default_accept_relationships =
       resource
-      |> Ash.Resource.Info.relationships()
+      |> Ash.Resource.Info.public_relationships()
       |> Enum.map(& &1.name)
 
     default_accept = Enum.concat(default_accept_attributes, default_accept_relationships)

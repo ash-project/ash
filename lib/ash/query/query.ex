@@ -313,7 +313,7 @@ defmodule Ash.Query do
 
   defp add_action_filters(query, action, actor) do
     if Ash.Filter.template_references_actor?(action.filter) and is_nil(actor) do
-      {:error, "Read action requires actor"}
+      Ash.Query.add_error(query, "Read action requires actor")
     else
       built_filter =
         Ash.Filter.build_filter_from_template(
