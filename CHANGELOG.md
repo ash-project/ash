@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.36.6](https://github.com/ash-project/ash/compare/v1.36.5...v1.36.6) (2021-03-15)
+
+
+
+
+### Bug Fixes:
+
+* force_change attrs *after* `for_create/update`
+
+* pattern match errors in `manage_relationships`
+
+* clean up some error cases
+
+* only default accept to `public` attributes
+
+* allow_nil?: false + default interaction
+
 ## [v1.36.5](https://github.com/ash-project/ash/compare/v1.36.4...v1.36.5) (2021-03-14)
 
 
