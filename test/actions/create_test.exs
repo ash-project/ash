@@ -155,6 +155,8 @@ defmodule Ash.Test.Actions.CreateTest do
       attribute(:list_attribute, {:array, :integer})
       attribute(:date, :date)
       attribute(:binary, :binary)
+      attribute(:required_with_default, :string, allow_nil?: false, default: "string")
+      attribute(:required_boolean_with_default, :boolean, allow_nil?: false, default: false)
 
       attribute(:list_attribute_with_constraints, {:array, :integer},
         constraints: [
