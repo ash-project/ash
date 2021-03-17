@@ -260,6 +260,9 @@ defmodule Ash.Type do
   @spec cast_input(t(), term, constraints | nil) :: {:ok, term} | {:error, Keyword.t()} | :error
   def cast_input(type, term, constraints \\ [])
 
+  def cast_input({:array, type}, empty, constraints) when empty in [nil, ""],
+    do: cast_input({:array, type}, [], constraints)
+
   def cast_input({:array, _type}, term, _) when not is_list(term) do
     {:error,
      message: "must be a list or a map of integer indices (string encoded or not) to values"}

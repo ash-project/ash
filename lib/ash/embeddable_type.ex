@@ -261,6 +261,10 @@ defmodule Ash.EmbeddableType do
         end
       end
 
+      def prepare_change(old_value, "", constraints) do
+        prepare_change(old_value, nil, constraints)
+      end
+
       def prepare_change(_old_value, nil, _constraints) do
         {:ok, nil}
       end
