@@ -130,12 +130,17 @@ defmodule Ash.Actions.Create do
 
                   {changeset, instructions}
                 end)
-                |> Ash.Changeset.require_values(:create, true)
                 |> Ash.Changeset.with_hooks(fn changeset ->
-                  if upsert? do
-                    Ash.DataLayer.upsert(resource, changeset)
+                  changeset = Ash.Changeset.require_values(changeset, :create, true)
+
+                  if changeset.valid? do
+                    if upsert? do
+                      Ash.DataLayer.upsert(resource, changeset)
+                    else
+                      Ash.DataLayer.create(resource, changeset)
+                    end
                   else
-                    Ash.DataLayer.create(resource, changeset)
+                    {:error, changeset.errors}
                   end
                 end)
 

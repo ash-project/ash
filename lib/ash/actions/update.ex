@@ -125,11 +125,15 @@ defmodule Ash.Actions.Update do
 
                   {changeset, instructions}
                 end)
-                |> Ash.Changeset.require_values(:update, true)
                 |> Ash.Changeset.with_hooks(fn changeset ->
+                  changeset = Ash.Changeset.require_values(changeset, :update, true)
                   changeset = set_tenant(changeset)
 
-                  Ash.DataLayer.update(resource, changeset)
+                  if changeset.valid? do
+                    Ash.DataLayer.update(resource, changeset)
+                  else
+                    {:error, changeset.errors}
+                  end
                 end)
 
               with {:ok, updated, changeset, %{notifications: notifications}} <- result,

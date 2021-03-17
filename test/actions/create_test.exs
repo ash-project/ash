@@ -49,6 +49,32 @@ defmodule Ash.Test.Actions.CreateTest do
     end
   end
 
+  defmodule ProfileWithBelongsTo do
+    @moduledoc false
+    use Ash.Resource,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      read(:read)
+      create(:create)
+      update(:update)
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute(:bio, :string)
+      attribute(:date, :date)
+    end
+
+    relationships do
+      belongs_to(:author, Ash.Test.Actions.CreateTest.Author, required?: true)
+    end
+  end
+
   defmodule DuplicateName do
     use Ash.Resource.Change
 
@@ -206,6 +232,7 @@ defmodule Ash.Test.Actions.CreateTest do
       resource(Author)
       resource(Post)
       resource(Profile)
+      resource(ProfileWithBelongsTo)
       resource(PostLink)
       resource(Authorized)
       resource(GeneratedPkey)
@@ -531,6 +558,28 @@ defmodule Ash.Test.Actions.CreateTest do
         |> Api.create!()
 
       assert post.author == author
+    end
+  end
+
+  describe "creating with required belongs_to relationships" do
+    test "allows creating with belongs_to relationship" do
+      author =
+        Author
+        |> new()
+        |> change_attribute(:bio, "best dude")
+        |> Api.create!()
+
+      ProfileWithBelongsTo
+      |> Ash.Changeset.for_create(:create, author: author)
+      |> Api.create!()
+    end
+
+    test "does not allow creating without the required belongs_to relationship" do
+      assert_raise Ash.Error.Invalid, ~r/relationship author is required/, fn ->
+        ProfileWithBelongsTo
+        |> Ash.Changeset.for_create(:create)
+        |> Api.create!()
+      end
     end
   end
 
