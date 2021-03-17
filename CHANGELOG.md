@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.36.8](https://github.com/ash-project/ash/compare/v1.36.7...v1.36.8) (2021-03-17)
+
+
+
+
+### Bug Fixes:
+
+* validate required attributes *after* before_action hooks
+
 ## [v1.36.7](https://github.com/ash-project/ash/compare/v1.36.6...v1.36.7) (2021-03-17)
 
 
