@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.36.9](https://github.com/ash-project/ash/compare/v1.36.8...v1.36.9) (2021-03-18)
+
+
+
+
+### Improvements:
+
+* improve the behavior of defaults
+
 ## [v1.36.8](https://github.com/ash-project/ash/compare/v1.36.7...v1.36.8) (2021-03-17)
 
 
