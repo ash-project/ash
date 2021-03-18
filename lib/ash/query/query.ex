@@ -217,11 +217,6 @@ defmodule Ash.Query do
     tenant: [
       type: :any,
       doc: "set the tenant on the query"
-    ],
-    defaults: [
-      type: :any,
-      doc:
-        "A list of arguments to apply defaults for. Defaults to: []. Any unset defaults are set when the action is called."
     ]
   ]
 
@@ -257,7 +252,7 @@ defmodule Ash.Query do
       |> cast_params(action, args)
       |> run_preparations(action, opts[:actor])
       |> add_action_filters(action, opts[:actor])
-      |> cast_arguments(action, opts[:defaults], true)
+      |> cast_arguments(action, true)
     else
       add_error(query, :action, "No such action #{action_name}")
     end
@@ -801,22 +796,18 @@ defmodule Ash.Query do
   end
 
   @doc false
-  def cast_arguments(query, action, defaults \\ :all, only_supplied? \\ false) do
+  def cast_arguments(query, action, only_supplied? \\ false) do
     action.arguments
     |> Enum.reject(& &1.private?)
     |> Enum.reject(&(only_supplied? && match?({:ok, _}, fetch_argument(query, &1.name))))
     |> Enum.reduce(query, fn argument, new_query ->
-      {ignore_nil_check, value} =
-        if defaults == :all || argument.name in (defaults || []) do
-          {false, get_argument(query, argument.name) || argument_default(argument.default)}
-        else
-          value = get_argument(query, argument.name)
+      value = get_argument(query, argument.name)
 
-          if argument_default(argument.default) do
-            {true, value}
-          else
-            {false, value}
-          end
+      {ignore_nil_check, value} =
+        if argument_default(argument.default) do
+          {true, value}
+        else
+          {false, value}
         end
 
       cond do

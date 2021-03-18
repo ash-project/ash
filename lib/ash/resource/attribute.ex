@@ -82,12 +82,12 @@ defmodule Ash.Resource.Attribute do
     update_default: [
       type: {:custom, Ash.OptionsHelpers, :default, []},
       doc:
-        "A zero argument function, an {mod, fun, args} triple or a value. If no value is provided for the attribute on update, this value is used."
+        "A zero argument function, an {mod, fun, args} triple or a value. `Ash.Changeset.for_update/4` sets the default in the changeset if a value is not provided."
     ],
     default: [
       type: {:custom, Ash.OptionsHelpers, :default, []},
       doc:
-        "A zero argument function, an {mod, fun, args} triple or a value. If no value is provided for the attribute on create, this value is used."
+        "A zero argument function, an {mod, fun, args} triple or a value. `Ash.Changeset.for_create/4` sets the default in the changeset if a value is not provided."
     ],
     description: [
       type: :string,
@@ -106,7 +106,10 @@ defmodule Ash.Resource.Attribute do
                            |> OptionsHelpers.set_default!(:writable?, false)
                            |> OptionsHelpers.set_default!(:private?, true)
                            |> OptionsHelpers.set_default!(:default, &DateTime.utc_now/0)
-                           |> OptionsHelpers.set_default!(:update_default, &DateTime.utc_now/0)
+                           |> OptionsHelpers.set_default!(
+                             :update_default,
+                             &DateTime.utc_now/0
+                           )
                            |> OptionsHelpers.set_default!(:type, Ash.Type.UtcDatetimeUsec)
                            |> OptionsHelpers.set_default!(:allow_nil?, false)
 

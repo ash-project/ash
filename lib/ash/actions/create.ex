@@ -76,7 +76,7 @@ defmodule Ash.Actions.Create do
     else
       Ash.Changeset.for_create(changeset, action.name, %{}, actor: actor)
     end
-    |> Ash.Changeset.set_defaults(:create)
+    |> Ash.Changeset.set_defaults(:create, true)
     |> Ash.Changeset.cast_arguments(action)
   end
 

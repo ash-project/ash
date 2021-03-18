@@ -280,11 +280,6 @@ defmodule Ash.Changeset do
     tenant: [
       type: :any,
       doc: "set the tenant on the changeset"
-    ],
-    defaults: [
-      type: :any,
-      doc:
-        "A list of attributes and arguments to apply defaults for. Defaults to: []. Any unset defaults are set when the action is called."
     ]
   ]
 
@@ -450,7 +445,7 @@ defmodule Ash.Changeset do
         |> validate_relationships_accepted(action)
         |> cast_arguments(action, opts[:defaults], true)
         |> run_action_changes(action, opts[:actor])
-        |> set_defaults(changeset.action_type, opts[:defaults] || [])
+        |> set_defaults(changeset.action_type, false)
         |> add_validations()
         |> require_values(changeset.action_type)
         |> mark_validated(action.name)
@@ -585,13 +580,16 @@ defmodule Ash.Changeset do
   end
 
   @doc false
-  def set_defaults(changeset, action_type, keys \\ :all)
+  def set_defaults(changeset, action_type, lazy? \\ false)
 
-  def set_defaults(changeset, :create, keys) do
+  def set_defaults(changeset, :create, lazy?) do
     changeset.resource
     |> Ash.Resource.Info.attributes()
     |> Enum.filter(&(not is_nil(&1.default)))
-    |> Enum.filter(&(keys == :all || &1.name in keys))
+    |> Enum.filter(fn attribute ->
+      lazy? or
+        not (is_function(attribute.default) or match?({_, _, _}, attribute.default))
+    end)
     |> Enum.reduce(changeset, fn attribute, changeset ->
       force_change_new_attribute_lazy(changeset, attribute.name, fn ->
         default(:create, attribute)
@@ -599,11 +597,14 @@ defmodule Ash.Changeset do
     end)
   end
 
-  def set_defaults(changeset, :update, keys) do
+  def set_defaults(changeset, :update, lazy?) do
     changeset.resource
     |> Ash.Resource.Info.attributes()
     |> Enum.filter(&(not is_nil(&1.update_default)))
-    |> Enum.filter(&(keys == :all || &1.name in keys))
+    |> Enum.filter(fn attribute ->
+      lazy? or
+        not (is_function(attribute.update_default) or match?({_, _, _}, attribute.update_default))
+    end)
     |> Enum.reduce(changeset, fn attribute, changeset ->
       force_change_new_attribute_lazy(changeset, attribute.name, fn ->
         default(:update, attribute)

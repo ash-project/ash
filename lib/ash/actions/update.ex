@@ -74,7 +74,7 @@ defmodule Ash.Actions.Update do
     else
       Ash.Changeset.for_update(changeset, action.name, %{}, actor: actor)
     end
-    |> Ash.Changeset.set_defaults(:update)
+    |> Ash.Changeset.set_defaults(:update, true)
     |> Ash.Changeset.cast_arguments(action)
   end
 
