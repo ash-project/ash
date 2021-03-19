@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.36.10](https://github.com/ash-project/ash/compare/v1.36.9...v1.36.10) (2021-03-19)
+
+
+
+
+### Bug Fixes:
+
+* set `source_field` when replacing `belongs_to` relationship
+
+* don't consider `false` as absent value
+
+* set argument name in `manage_relationship`
+
+### Improvements:
+
+* trim whitespace in uuid
+
 ## [v1.36.9](https://github.com/ash-project/ash/compare/v1.36.8...v1.36.9) (2021-03-18)
 
 
