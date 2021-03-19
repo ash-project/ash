@@ -142,6 +142,7 @@ defmodule Ash.MixProject do
           ~r/Ash.Engine/
         ],
         errors: [
+          Ash.Error,
           Ash.Error.Stacktrace,
           Ash.Error.Exception
         ],

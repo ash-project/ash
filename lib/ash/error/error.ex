@@ -1,5 +1,7 @@
 defmodule Ash.Error do
-  @moduledoc false
+  @moduledoc """
+  Tools and utilities used by Ash to manage and conform errors
+  """
   @type error_class() :: :invalid | :authorization | :framework | :unknown
 
   @type t :: struct
