@@ -150,7 +150,8 @@ defmodule Ash.MixProject do
           Ash.NotLoaded,
           Ash.Query.Aggregate,
           Ash.Query.Type,
-          Ash.SatSolver
+          Ash.SatSolver,
+          Ash.OptionsHelpers
         ],
         comparable: ~r/Comparable/
       ]

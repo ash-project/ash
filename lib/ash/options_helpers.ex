@@ -1,7 +1,10 @@
 defmodule Ash.OptionsHelpers do
+  @moduledoc """
+  Helpers for working with nimble options
+  """
+
   @type schema :: NimbleOptions.schema()
 
-  @moduledoc false
   def merge_schemas(left, right, section \\ nil) do
     new_right =
       Enum.map(right, fn {key, value} ->

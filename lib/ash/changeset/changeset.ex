@@ -483,7 +483,10 @@ defmodule Ash.Changeset do
   end
 
   defp cast_params(changeset, action, params, opts) do
-    changeset = %{changeset | params: Map.merge(changeset.params || %{}, Enum.into(params, %{}))}
+    changeset = %{
+      changeset
+      | params: Map.merge(changeset.params || %{}, Enum.into(params || %{}, %{}))
+    }
 
     Enum.reduce(params, changeset, fn {name, value}, changeset ->
       cond do
