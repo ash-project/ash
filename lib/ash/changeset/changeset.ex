@@ -732,13 +732,13 @@ defmodule Ash.Changeset do
 
     Enum.reduce(attributes, changeset, fn required_attribute, changeset ->
       if Ash.Changeset.changing_attribute?(changeset, required_attribute.name) do
-        if not is_nil(get_attribute(changeset, required_attribute.name)) do
-          changeset
-        else
+        if is_nil(get_attribute(changeset, required_attribute.name)) do
           Ash.Changeset.add_error(
             changeset,
             Required.exception(field: required_attribute.name, type: :attribute)
           )
+        else
+          changeset
         end
       else
         changeset
