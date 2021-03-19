@@ -1345,7 +1345,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
     source_record
     |> Ash.Changeset.for_update(action_name, %{})
-    |> Ash.Changeset.force_change_attribute(relationship.destination_field, nil)
+    |> Ash.Changeset.force_change_attribute(relationship.source_field, nil)
     |> Ash.Changeset.set_context(relationship.context)
     |> Ash.Changeset.set_tenant(tenant)
     |> api.update(return_notifications?: true, actor: actor, authorize?: opts[:authorize?])
