@@ -11,6 +11,10 @@ defmodule Ash.Type.UUID do
   def storage_type, do: :binary_id
 
   @impl true
+  def cast_input(value, _) when is_binary(value) do
+    Ecto.Type.cast(:binary_id, String.trim(value))
+  end
+
   def cast_input(value, _) do
     Ecto.Type.cast(:binary_id, value)
   end
