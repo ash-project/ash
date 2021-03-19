@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.36.12](https://github.com/ash-project/ash/compare/v1.36.11...v1.36.12) (2021-03-19)
+
+
+
+
+### Improvements:
+
+* make `Ash.Error` a public module
+
 ## [v1.36.11](https://github.com/ash-project/ash/compare/v1.36.10...v1.36.11) (2021-03-19)
 
 
