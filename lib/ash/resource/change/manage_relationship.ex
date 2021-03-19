@@ -8,10 +8,14 @@ defmodule Ash.Resource.Change.ManageRelationship do
   end
 
   def change(changeset, opts, _) do
-    manage_opts = opts[:opts] || []
-
     case Changeset.fetch_argument(changeset, opts[:argument]) do
       {:ok, argument_value} ->
+        manage_opts =
+          opts[:opts]
+          |> Kernel.||([])
+          |> Keyword.put_new(:meta, [])
+          |> Keyword.update!(:meta, &Keyword.put(&1, :id, opts[:argument]))
+
         Ash.Changeset.manage_relationship(
           changeset,
           opts[:relationship],
