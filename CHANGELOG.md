@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.36.13](https://github.com/ash-project/ash/compare/v1.36.12...v1.36.13) (2021-03-20)
+
+
+
+
+### Bug Fixes:
+
+* avoid exception in `Changeset.new/2` for bad attribute
+
+* use ecto's uuid type under the hood
+
+### Improvements:
+
+* raise informative errors on bad inputs to `for_*`
+
 ## [v1.36.12](https://github.com/ash-project/ash/compare/v1.36.11...v1.36.12) (2021-03-19)
 
 
