@@ -433,6 +433,16 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                    end
     end
 
+    test "if an attribute does not exist in `new/2`, a corresponding error is added`" do
+      error =
+        Author
+        |> Changeset.new(%{"flarb" => 10})
+        |> Map.get(:errors)
+        |> Enum.at(0)
+
+      assert %Ash.Error.Changes.NoSuchAttribute{name: "flarb"} = error
+    end
+
     test "it destroys related records if not present" do
       post1 = %{title: "title"}
       post2 = %{title: "title"}

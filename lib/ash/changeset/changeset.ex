@@ -1576,11 +1576,6 @@ defmodule Ash.Changeset do
             name: attribute
           )
 
-        changeset = %{
-          changeset
-          | attributes: Map.put(changeset.attributes, attribute.name, value)
-        }
-
         add_error(changeset, error)
 
       %{writable?: false} = attribute ->
