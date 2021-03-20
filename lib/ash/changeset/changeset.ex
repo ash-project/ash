@@ -123,7 +123,6 @@ defmodule Ash.Changeset do
     Changes.NoSuchAttribute,
     Changes.NoSuchRelationship,
     Changes.Required,
-    Invalid.NoSuchAction,
     Invalid.NoSuchResource
   }
 
@@ -132,7 +131,6 @@ defmodule Ash.Changeset do
 
   If you are using external input, you almost certainly want to use `Ash.Changeset.for_<action_type>`. However, you can
   use `Ash.Changeset.new/2` to start a changeset and make a few changes prior to calling `for_action`. For example:
-
 
   ```elixir
   Ash.Changeset.new()
@@ -324,18 +322,16 @@ defmodule Ash.Changeset do
         %__MODULE__{action_type: :create} = changeset ->
           changeset
 
-        %__MODULE__{} = changeset ->
-          add_error(
-            changeset,
-            "Initial changeset provided with invalid action type: #{changeset.action_type}"
-          )
-
         resource when is_atom(resource) ->
           new(resource)
 
         other ->
-          %__MODULE__{resource: other, action_type: :create}
-          |> add_error(NoSuchResource.exception(resource: other))
+          raise ArgumentError,
+            message: """
+            Initial must be a changeset with the action type of `:create`, or a resource.
+
+            Got: #{inspect(other)}
+            """
       end
 
     for_action(changeset, action, params, opts)
@@ -355,18 +351,16 @@ defmodule Ash.Changeset do
         %__MODULE__{action_type: type} = changeset when type in [:update, :destroy] ->
           changeset
 
-        %__MODULE__{} = changeset ->
-          add_error(
-            changeset,
-            "Initial changeset provided with invalid action type: #{changeset.action_type}"
-          )
-
-        %_{} = struct ->
+        %mod{} = struct when mod != __MODULE__ ->
           new(struct)
 
-        _other ->
-          %__MODULE__{resource: nil, action_type: :update}
-          |> add_error(NoSuchResource.exception(resource: nil))
+        other ->
+          raise ArgumentError,
+            message: """
+            Initial must be a changeset with the action type of `:update` or `:destroy`, or a record.
+
+            Got: #{inspect(other)}
+            """
       end
 
     for_action(changeset, action, params, opts)
@@ -399,9 +393,13 @@ defmodule Ash.Changeset do
           |> new()
           |> Map.put(:action_type, :destroy)
 
-        _other ->
-          %__MODULE__{resource: nil, action_type: :destroy}
-          |> add_error(NoSuchResource.exception(resource: nil))
+        other ->
+          raise ArgumentError,
+            message: """
+            Initial must be a changeset with the action type of `:destroy`, or a record.
+
+            Got: #{inspect(other)}
+            """
       end
 
     if changeset.valid? do
@@ -417,23 +415,16 @@ defmodule Ash.Changeset do
         |> add_validations()
         |> mark_validated(action.name)
       else
-        add_error(
-          changeset,
-          NoSuchAction.exception(
-            resource: changeset.resource,
-            action: action_name,
-            type: :destroy
-          )
-        )
+        raise_no_action(changeset.resource, action_name, :destroy)
       end
     else
       changeset
     end
   end
 
-  defp for_action(changeset, action, params, opts) do
+  defp for_action(changeset, action_name, params, opts) do
     if changeset.valid? do
-      action = Ash.Resource.Info.action(changeset.resource, action, changeset.action_type)
+      action = Ash.Resource.Info.action(changeset.resource, action_name, changeset.action_type)
 
       if action do
         changeset
@@ -450,18 +441,34 @@ defmodule Ash.Changeset do
         |> require_values(changeset.action_type)
         |> mark_validated(action.name)
       else
-        add_error(
-          changeset,
-          NoSuchAction.exception(
-            resource: changeset.resource,
-            action: action,
-            type: changeset.action_type
-          )
-        )
+        raise_no_action(changeset.resource, action_name, changeset.action_type)
       end
     else
       changeset
     end
+  end
+
+  defp raise_no_action(resource, action, type) do
+    available_actions =
+      resource
+      |> Ash.Resource.Info.actions()
+      |> Enum.filter(&(&1.type == type))
+      |> Enum.map_join("\n", &"    - `#{inspect(&1.name)}`")
+
+    raise ArgumentError,
+      message: """
+      No such #{type} action on resource #{inspect(resource)}: #{
+        String.slice(inspect(action), 0..50)
+      }
+
+      Example Call:
+
+        Ash.Changeset.for_#{type}(changeset_or_record, :action_name, input, options)
+
+      Available actions:
+
+      #{available_actions}
+      """
   end
 
   defp mark_validated(changeset, action_name) do
