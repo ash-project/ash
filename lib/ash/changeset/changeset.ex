@@ -288,6 +288,8 @@ defmodule Ash.Changeset do
   Constructs a changeset for a given create action, and validates it.
 
   Anything that is modified prior to `for_create/4` is validated against the rules of the action, while *anything after it is not*.
+  This runs any `change`s contained on your action. To have your logic execute *only* during the action, you can use `after_action/2`
+  or `before_action/2`.
 
   Multitenancy is *not* validated until an action is called. This allows you to avoid specifying a tenant until just before calling
   the api action.
@@ -407,6 +409,7 @@ defmodule Ash.Changeset do
 
       if action do
         changeset
+        |> set_actor(opts)
         |> set_tenant(opts[:tenant] || changeset.tenant)
         |> Map.put(:__validated_for_action__, action.name)
         |> Map.put(:action, action)
@@ -428,6 +431,7 @@ defmodule Ash.Changeset do
 
       if action do
         changeset
+        |> set_actor(opts)
         |> set_tenant(opts[:tenant] || changeset.tenant)
         |> Map.put(:action, action)
         |> Map.put(:__validated_for_action__, action.name)
@@ -443,6 +447,14 @@ defmodule Ash.Changeset do
       else
         raise_no_action(changeset.resource, action_name, changeset.action_type)
       end
+    else
+      changeset
+    end
+  end
+
+  defp set_actor(changeset, opts) do
+    if Keyword.has_key?(opts, :actor) do
+      put_context(changeset, :private, %{actor: opts[:actor]})
     else
       changeset
     end
@@ -465,7 +477,7 @@ defmodule Ash.Changeset do
 
         Ash.Changeset.for_#{type}(changeset_or_record, :action_name, input, options)
 
-      Available actions:
+      Available #{type} actions:
 
       #{available_actions}
       """

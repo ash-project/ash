@@ -12,6 +12,15 @@ defmodule Ash.Actions.Create do
     upsert? = opts[:upsert?] || false
     resource = changeset.resource
 
+    opts =
+      case Map.fetch(changeset.context[:private] || %{}, :actor) do
+        {:ok, actor} ->
+          Keyword.put_new(opts, :actor, actor)
+
+        _ ->
+          opts
+      end
+
     authorize? =
       if opts[:authorize?] == false do
         false

@@ -18,6 +18,15 @@ defmodule Ash.Actions.Update do
 
     opts = Keyword.put(opts, :authorize?, authorize?)
 
+    opts =
+      case Map.fetch(changeset.context[:private] || %{}, :actor) do
+        {:ok, actor} ->
+          Keyword.put_new(opts, :actor, actor)
+
+        _ ->
+          opts
+      end
+
     engine_opts =
       opts
       |> Keyword.take([:verbose?, :actor, :authorize?])

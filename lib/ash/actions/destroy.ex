@@ -34,6 +34,15 @@ defmodule Ash.Actions.Destroy do
       |> Keyword.take([:verbose?, :actor, :authorize?])
       |> Keyword.put(:transaction?, true)
 
+    opts =
+      case Map.fetch(changeset.context[:private] || %{}, :actor) do
+        {:ok, actor} ->
+          Keyword.put_new(opts, :actor, actor)
+
+        _ ->
+          opts
+      end
+
     authorization_request =
       Request.new(
         resource: resource,
