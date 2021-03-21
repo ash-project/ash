@@ -21,6 +21,7 @@ defmodule Ash.Type do
     atom: Ash.Type.Atom,
     string: Ash.Type.String,
     integer: Ash.Type.Integer,
+    float: Ash.Type.Float,
     interval: Ash.Type.Interval,
     function: Ash.Type.Function,
     boolean: Ash.Type.Boolean,
@@ -45,17 +46,10 @@ defmodule Ash.Type do
                              "Constraints for the elements of the list. See the contained type's docs for more."
                          )
   @moduledoc """
-  This behaviour is a superset of the Ecto.Type behavior, that also contains
+  Describes how to convert data to `Ecto.Type` and eventually into the database.
+
+  This behaviour is a superset of the `Ecto.Type` behavior, that also contains
   API level information, like what kinds of filters are allowed.
-
-  Much better to `use Ash.Type` than to say `@behaviour Ash.Type` and define
-  everything yourself.
-
-  Overriding the `{:array, type}` behavior. By definining the `*_array` versions
-  of `cast_input`, `cast_stored`, `dump_to_native` and `apply_constraints`, you can
-  override how your type behaves as a collection. This is how the features of embedded
-  resources are implemented. No need to implement them unless you wish to override the
-  default behavior.
 
   ## Built in types
 
@@ -71,6 +65,46 @@ defmodule Ash.Type do
   `{:array, Type}`. The constraints available are:
 
   #{Ash.OptionsHelpers.docs(@doc_array_constraints)}
+
+  ## Defining Custom Types
+
+  Generally you add `use Ash.Type` to your module (it is possible to add `@behaviour
+  Ash.Type` and define everything yourself, but this is more work and error-prone).
+
+  Overriding the `{:array, type}` behavior. By definining the `*_array` versions
+  of `cast_input`, `cast_stored`, `dump_to_native` and `apply_constraints`, you can
+  override how your type behaves as a collection. This is how the features of embedded
+  resources are implemented. No need to implement them unless you wish to override the
+  default behavior.
+
+  Simple example of a float custom type
+
+  ```Elixir
+  defmodule GenTracker.AshFloat do
+    use Ash.Type
+
+    @impl Ash.Type
+    def storage_type, do: :float
+
+    @impl Ash.Type
+    def cast_input(value, _) do
+      Ecto.Type.cast(:float, value)
+    end
+
+    @impl Ash.Type
+    def cast_stored(value, _) do
+      Ecto.Type.load(:float, value)
+    end
+
+    @impl Ash.Type
+    def dump_to_native(value, _) do
+      Ecto.Type.dump(:float, value)
+    end
+  end
+  ```
+
+  All the Ash built-in types are implemented with `use Ash.Type` so they are good
+  examples to look at to create your own `Ash.Type`
   """
   @type constraints :: Keyword.t()
   @callback storage_type() :: Ecto.Type.t()
