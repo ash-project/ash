@@ -7,4 +7,4 @@
   building something that needs to be cohesive and well thought out across all use cases. Our top priority is 
   supporting real life use cases like yours, but we have to make sure that we do that in a sustainable way. The 
   best compromise there is to make sure that discussions are centered around the *use case* for a feature, rather
-  than the propsed feature itself.
+  than the proposed feature itself.

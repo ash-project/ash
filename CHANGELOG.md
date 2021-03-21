@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.36.15](https://github.com/ash-project/ash/compare/v1.36.14...v1.36.15) (2021-03-21)
+
+
+
+
+### Bug Fixes:
+
+* exception on invalid query arguments
+
+* allow casting strings as uuids (for embedded types)
+
+### Improvements:
+
+* retain actor context from changeset
+
 ## [v1.36.14](https://github.com/ash-project/ash/compare/v1.36.13...v1.36.14) (2021-03-21)
 
 
