@@ -726,12 +726,13 @@ defmodule Ash.Query do
     query = to_query(query)
 
     if query.action do
-      with {:arg, argument} when not is_nil(argument) <-
-             {:arg,
-              Enum.find(
-                query.action.arguments,
-                &(&1.name == argument || to_string(&1.name) == argument)
-              )},
+      argument =
+        Enum.find(
+          query.action.arguments,
+          &(&1.name == argument || to_string(&1.name) == argument)
+        )
+
+      with {:arg, argument} when not is_nil(argument) <- {:arg, argument},
            {:ok, casted} <- Ash.Changeset.cast_input(argument.type, value, argument.constraints),
            {:constrained, {:ok, casted}, argument} when not is_nil(casted) <-
              {:constrained,
@@ -742,17 +743,20 @@ defmodule Ash.Query do
         {:arg, nil} ->
           query
 
-        {:constrained, {:ok, nil}, _argument} ->
-          query
+        {:constrained, {:ok, nil}, argument} ->
+          %{query | arguments: Map.put(query.arguments, argument.name, nil)}
 
         {:constrained, {:error, error}, argument} ->
+          query = %{query | arguments: Map.put(query.arguments, argument.name, value)}
           add_invalid_errors(query, argument, error)
 
         {:error, error} ->
+          query = %{query | arguments: Map.put(query.arguments, argument.name, value)}
           add_invalid_errors(query, argument, error)
 
         :error ->
-          nil
+          query = %{query | arguments: Map.put(query.arguments, argument.name, value)}
+          add_invalid_errors(query, argument, "is invalid")
       end
     else
       %{query | arguments: Map.put(query.arguments, argument, value)}
@@ -769,8 +773,11 @@ defmodule Ash.Query do
 
     messages
     |> Enum.reduce(query, fn message, query ->
-      opts = Ash.Changeset.error_to_exception_opts(message, argument)
-      add_error(query, InvalidArgument.exception(opts))
+      message
+      |> Ash.Changeset.error_to_exception_opts(argument)
+      |> Enum.reduce(query, fn opts, query ->
+        add_error(query, InvalidArgument.exception(opts))
+      end)
     end)
   end
 
