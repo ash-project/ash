@@ -536,12 +536,22 @@ defmodule Ash.Query do
   end
 
   @doc """
-  Loads named calculations or aggregates on the resource.
+  Loads relationships, calculations, or aggregates on the resource.
 
   Currently, loading attributes has no effects, as all attributes are returned.
   Before long, we will have the default list to load as the attributes, but if you say
   `load(query, [:attribute1])`, that will be the only field filled in. This will let
   data layers make more intelligent "select" statements as well.
+
+
+  ```elixir
+  # Loading nested relationships
+  Ash.Query.load(query, [comments: [:author, :ratings]])
+
+  # Loading relationships with a query
+  Ash.Query.load(query, [comments: [author: author_query]])
+  ```
+
   """
   @spec load(t() | Ash.Resource.t(), atom | list(atom) | Keyword.t()) :: t()
   def load(query, fields) when not is_list(fields) do
@@ -678,7 +688,7 @@ defmodule Ash.Query do
 
   See `set_context/2` for more information.
   """
-  @spec put_context(t(), atom, term) :: t()
+  @spec put_context(t() | Ash.Resource.t(), atom, term) :: t()
   def put_context(query, key, value) do
     query = to_query(query)
     set_context(query, %{key => value})
@@ -689,8 +699,8 @@ defmodule Ash.Query do
 
   Not much uses this currently.
   """
-  @spec set_context(t(), map | nil) :: t()
-  def set_context(query, nil), do: query
+  @spec set_context(t() | Ash.Resource.t(), map | nil) :: t()
+  def set_context(query, nil), do: to_query(query)
 
   def set_context(query, map) do
     query = to_query(query)
@@ -1530,6 +1540,7 @@ defmodule Ash.Query do
     end)
   end
 
+  @spec to_query(t() | Ash.Resource.t()) :: t()
   defp to_query(%__MODULE__{} = query), do: query
 
   defp to_query(resource) do

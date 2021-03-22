@@ -82,7 +82,8 @@ defmodule Ash.Dsl do
             their_opt_schema: their_opt_schema,
             parent_opts: opts,
             parent: __CALLER__.module
-          ] do
+          ],
+          generated: true do
       @dialyzer {:nowarn_function, handle_opts: 1, handle_before_compile: 1}
 
       def init(opts), do: {:ok, opts}
@@ -129,7 +130,7 @@ defmodule Ash.Dsl do
           |> Ash.Dsl.unwrap()
 
         body =
-          quote do
+          quote generated: true do
             parent = unquote(parent)
             opts = unquote(opts)
             parent_opts = unquote(parent_opts)
@@ -204,7 +205,7 @@ defmodule Ash.Dsl do
   end
 
   defmacro __before_compile__(_env) do
-    quote unquote: false do
+    quote unquote: false, generated: true do
       @type t :: __MODULE__
 
       Module.register_attribute(__MODULE__, :ash_is, persist: true)

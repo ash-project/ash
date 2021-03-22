@@ -796,7 +796,9 @@ defmodule Ash.Api do
 
   @doc false
   @spec create(Ash.Api.t(), Ash.Changeset.t(), Keyword.t()) ::
-          {:ok, Ash.Resource.record()} | {:error, term}
+          {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
+          | {:ok, Ash.Resource.record()}
+          | {:error, term}
   def create(api, changeset, opts) do
     with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @create_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, changeset.resource),
@@ -816,7 +818,9 @@ defmodule Ash.Api do
 
   @doc false
   @spec update(Ash.Api.t(), Ash.Resource.record(), Keyword.t()) ::
-          {:ok, Ash.Resource.record()} | {:error, term}
+          {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
+          | {:ok, Ash.Resource.record()}
+          | {:error, term}
   def update(api, changeset, opts) do
     with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @update_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, changeset.resource),
@@ -838,7 +842,7 @@ defmodule Ash.Api do
 
   @doc false
   @spec destroy(Ash.Api.t(), Ash.Changeset.t() | Ash.Resource.record(), Keyword.t()) ::
-          :ok | {:error, term}
+          {:ok, list(Ash.Notifier.Notification.t())} | :ok | {:error, term}
   def destroy(api, %Ash.Changeset{resource: resource} = changeset, opts) do
     with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @destroy_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, resource),
@@ -878,7 +882,11 @@ defmodule Ash.Api do
         else
           case Ash.Resource.Info.primary_action(resource, type) do
             nil ->
-              {:error, NoPrimaryAction.exception(resource: resource, type: type)}
+              if Ash.Resource.Info.resource?(resource) do
+                {:error, NoSuchResource.exception(resource: resource)}
+              else
+                {:error, NoPrimaryAction.exception(resource: resource, type: type)}
+              end
 
             action ->
               {:ok, action}

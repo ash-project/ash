@@ -7,7 +7,10 @@ defmodule Ash.Actions.Update do
   alias Ash.Engine.Request
 
   @spec run(Ash.Api.t(), Ash.Resource.record(), Ash.Resource.Actions.action(), Keyword.t()) ::
-          {:ok, Ash.Resource.record()} | {:error, Ash.Changeset.t()} | {:error, term}
+          {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
+          | {:ok, Ash.Resource.record()}
+          | {:error, Ash.Changeset.t()}
+          | {:error, term}
   def run(api, changeset, action, opts) do
     authorize? =
       if opts[:authorize?] == false do

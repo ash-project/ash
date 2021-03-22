@@ -2,7 +2,7 @@ defmodule Ash.Api.Interface do
   @moduledoc false
 
   defmacro define_interface(api, resource) do
-    quote bind_quoted: [api: api, resource: resource] do
+    quote bind_quoted: [api: api, resource: resource], generated: true do
       for interface <- Ash.Resource.Info.interfaces(resource) do
         action = Ash.Resource.Info.action(resource, interface.action || interface.name)
 
@@ -282,17 +282,20 @@ defmodule Ash.Api.Interface do
   end
 
   defmacro __using__(_) do
-    quote bind_quoted: [] do
+    quote bind_quoted: [], generated: true do
       alias Ash.Api
 
       for resource <- Ash.Api.resources(__MODULE__) do
         Ash.Api.Interface.define_interface(__MODULE__, resource)
       end
 
+      # @spec get!(Ash.Resource.t(), term, Keyword.t()) :: Ash.Resource.record() | no_return
       def get!(resource, id, params \\ []) do
         Api.get!(__MODULE__, resource, id, params)
       end
 
+      # @spec get(Ash.Resource.t(), term, Keyword.t()) ::
+      #         {:ok, Ash.Resource.record() | nil} | {:error, Ash.Error.t()}
       def get(resource, id, params \\ []) do
         case Api.get(__MODULE__, resource, id, params) do
           {:ok, instance} -> {:ok, instance}
@@ -300,6 +303,7 @@ defmodule Ash.Api.Interface do
         end
       end
 
+      # @spec read!(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
       def read!(query, opts \\ [])
 
       def read!(query, opts) do

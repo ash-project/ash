@@ -1151,6 +1151,20 @@ defmodule Ash.Changeset do
   Keep in mind that the default values for all `on_*` are `:ignore`, meaning nothing will happen
   unless you provide instructions.
 
+  The input provided to `manage_relationship` should be a map, in the case of to_one relationships, or a list of maps
+  in the case of to_many relationships. The following steps are followed for each input provided:
+
+  - The input is checked against the currently related records to find any matches. The primary key and unique identities are used to find matches.
+  - For any input that had a match in the current relationship, the `:on_match` behavior is triggered
+  - For any input that does not have a match:
+    - if there is `on_lookup` behavior:
+      - we try to find the record in the data layer.
+      - if the record is found, the on_lookup behavior is triggered
+      - if the record is not found, the `on_no_match` behavior is triggered
+    - if there is no `on_lookup` behavior:
+      - the `on_no_match` behavior is triggered
+  - finally, for any records present in the *current relationship* that had no match *in the input*, the `on_missing` behavior is triggered
+
   ## Options
 
   #{Ash.OptionsHelpers.docs(@manage_opts)}
@@ -1183,15 +1197,14 @@ defmodule Ash.Changeset do
   If you want the input to update existing entities, you need to ensure that the primary key (or unique identity) is provided as
   part of the input. See the example below:
 
-      Changeset.manage_relationship(
-        changeset,
+      changeset,
+      |> Changeset.manage_relationship(
         :comments,
         [%{rating: 10, contents: "foo"}],
         on_no_match: {:create, :create_action},
         on_missing: :ignore
       )
-      Changeset.manage_relationship(
-        changeset,
+      |> Changeset.manage_relationship(
         :comments,
         [%{id: 10, rating: 10, contents: "foo"}],
         on_match: {:update, :update_action},

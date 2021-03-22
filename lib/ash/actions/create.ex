@@ -7,7 +7,9 @@ defmodule Ash.Actions.Create do
   alias Ash.Engine.Request
 
   @spec run(Ash.Api.t(), Ash.Changeset.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
-          {:ok, Ash.Resource.record()} | {:error, term}
+          {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
+          | {:ok, Ash.Resource.record()}
+          | {:error, term}
   def run(api, changeset, action, opts) do
     upsert? = opts[:upsert?] || false
     resource = changeset.resource

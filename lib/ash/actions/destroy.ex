@@ -6,7 +6,10 @@ defmodule Ash.Actions.Destroy do
   alias Ash.Engine.Request
 
   @spec run(Ash.Api.t(), Ash.Changeset.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
-          :ok | {:error, Ash.Changeset.t()} | {:error, term}
+          {:ok, list(Ash.Notifier.Notification.t())}
+          | :ok
+          | {:error, Ash.Changeset.t()}
+          | {:error, term}
   def run(api, changeset, %{soft?: true} = action, opts) do
     changeset =
       Ash.Changeset.for_update(%{changeset | action_type: :destroy}, action.name, %{},
