@@ -55,8 +55,8 @@ defmodule Ash.Actions.Create do
       %Ash.Changeset{errors: errors} = changeset ->
         {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
 
-      {:error, %Ash.Engine.Runner{errors: errors, changeset: changeset}} ->
-        {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
+      {:error, %Ash.Engine.Runner{errors: errors, changeset: runner_changeset}} ->
+        {:error, Ash.Error.to_error_class(errors, changeset: runner_changeset || changeset)}
 
       {:error, error} ->
         {:error, Ash.Error.to_error_class(error, changeset: changeset)}
