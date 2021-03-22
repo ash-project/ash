@@ -18,7 +18,7 @@ defmodule Ash.Calculation do
 
       def describe(opts), do: inspect({__MODULE__, opts})
 
-      defoverridable init: 1, type: 0
+      defoverridable init: 1, type: 0, describe: 1
     end
   end
 

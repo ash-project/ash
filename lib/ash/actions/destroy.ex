@@ -112,8 +112,8 @@ defmodule Ash.Actions.Destroy do
         {:ok, engine_result} ->
           add_notifications(engine_result, opts)
 
-        {:error, %Ash.Engine.Runner{errors: errors, changeset: changeset}} ->
-          {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
+        {:error, %Ash.Engine.Runner{errors: errors, changeset: runner_changeset}} ->
+          {:error, Ash.Error.to_error_class(errors, changeset: runner_changeset || changeset)}
 
         {:error, error} ->
           {:error, Ash.Error.to_error_class(error, changeset: changeset)}
