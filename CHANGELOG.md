@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.36.16](https://github.com/ash-project/ash/compare/v1.36.15...v1.36.16) (2021-03-22)
+
+
+
+
+### Bug Fixes:
+
+* force_change_attributes before passing to action
+
 ## [v1.36.15](https://github.com/ash-project/ash/compare/v1.36.14...v1.36.15) (2021-03-21)
 
 
