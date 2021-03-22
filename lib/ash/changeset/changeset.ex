@@ -270,6 +270,12 @@ defmodule Ash.Changeset do
       ```
       """
     ],
+    require?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "If set to `true`, values are only required when the action is run (instead of immediately)."
+    ],
     actor: [
       type: :any,
       doc:
@@ -430,20 +436,26 @@ defmodule Ash.Changeset do
       action = Ash.Resource.Info.action(changeset.resource, action_name, changeset.action_type)
 
       if action do
-        changeset
-        |> set_actor(opts)
-        |> set_tenant(opts[:tenant] || changeset.tenant)
-        |> Map.put(:action, action)
-        |> Map.put(:__validated_for_action__, action.name)
-        |> cast_params(action, params || %{}, opts)
-        |> validate_attributes_accepted(action)
-        |> validate_relationships_accepted(action)
-        |> cast_arguments(action, opts[:defaults], true)
-        |> run_action_changes(action, opts[:actor])
-        |> set_defaults(changeset.action_type, false)
-        |> add_validations()
-        |> require_values(changeset.action_type)
-        |> mark_validated(action.name)
+        changeset =
+          changeset
+          |> set_actor(opts)
+          |> set_tenant(opts[:tenant] || changeset.tenant)
+          |> Map.put(:action, action)
+          |> Map.put(:__validated_for_action__, action.name)
+          |> cast_params(action, params || %{}, opts)
+          |> validate_attributes_accepted(action)
+          |> validate_relationships_accepted(action)
+          |> cast_arguments(action, opts[:defaults], true)
+          |> run_action_changes(action, opts[:actor])
+          |> set_defaults(changeset.action_type, false)
+          |> add_validations()
+          |> mark_validated(action.name)
+
+        if Keyword.get(opts, :require?, true) do
+          require_values(changeset, action.type)
+        else
+          changeset
+        end
       else
         raise_no_action(changeset.resource, action_name, changeset.action_type)
       end
@@ -720,7 +732,7 @@ defmodule Ash.Changeset do
       if private? do
         changeset.resource
         |> Ash.Resource.Info.attributes()
-        |> Enum.filter(&(!&1.allow_nil? && &1.private? && !&1.generated?))
+        |> Enum.reject(&(&1.allow_nil? || &1.generated?))
       else
         changeset.resource
         |> Ash.Resource.Info.attributes()
@@ -745,7 +757,7 @@ defmodule Ash.Changeset do
       if private? do
         changeset.resource
         |> Ash.Resource.Info.attributes()
-        |> Enum.filter(&(!&1.allow_nil? && &1.private? && !&1.generated?))
+        |> Enum.reject(&(&1.allow_nil? || &1.generated?))
       else
         changeset.resource
         |> Ash.Resource.Info.attributes()
