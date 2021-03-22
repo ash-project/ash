@@ -714,6 +714,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
         relationship.through
         |> Ash.Changeset.new()
+        |> Ash.Changeset.for_create(create_or_update, join_input)
         |> Ash.Changeset.force_change_attribute(
           relationship.source_field_on_join_table,
           Map.get(record, relationship.source_field)
@@ -722,7 +723,6 @@ defmodule Ash.Actions.ManagedRelationships do
           relationship.destination_field_on_join_table,
           Map.get(found, relationship.destination_field)
         )
-        |> Ash.Changeset.for_create(create_or_update, join_input)
         |> Ash.Changeset.set_context(join_relationship.context)
         |> Ash.Changeset.set_tenant(changeset.tenant)
         |> api.create(
@@ -768,12 +768,11 @@ defmodule Ash.Actions.ManagedRelationships do
           end
 
         found
-        |> Ash.Changeset.new()
+        |> Ash.Changeset.for_update(create_or_update, input)
         |> Ash.Changeset.force_change_attribute(
           relationship.destination_field,
           Map.get(record, relationship.source_field)
         )
-        |> Ash.Changeset.for_update(create_or_update, input)
         |> Ash.Changeset.set_context(relationship.context)
         |> Ash.Changeset.set_tenant(changeset.tenant)
         |> api.update(
@@ -819,12 +818,11 @@ defmodule Ash.Actions.ManagedRelationships do
                 {:ok, input, [], []}
               else
                 relationship.destination
-                |> Ash.Changeset.new()
+                |> Ash.Changeset.for_create(action_name, input)
                 |> Ash.Changeset.force_change_attribute(
                   relationship.destination_field,
                   Map.get(record, relationship.source_field)
                 )
-                |> Ash.Changeset.for_create(action_name, input)
                 |> Ash.Changeset.set_context(relationship.context)
                 |> Ash.Changeset.set_tenant(changeset.tenant)
                 |> changeset.api.create(
@@ -880,6 +878,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
             relationship.through
             |> Ash.Changeset.new()
+            |> Ash.Changeset.for_create(join_action_name, join_params)
             |> Ash.Changeset.force_change_attribute(
               relationship.source_field_on_join_table,
               Map.get(record, relationship.source_field)
@@ -888,7 +887,6 @@ defmodule Ash.Actions.ManagedRelationships do
               relationship.destination_field_on_join_table,
               Map.get(created, relationship.destination_field)
             )
-            |> Ash.Changeset.for_create(join_action_name, join_params)
             |> Ash.Changeset.set_context(join_relationship.context)
             |> Ash.Changeset.set_tenant(changeset.tenant)
             |> changeset.api.create(
@@ -1318,9 +1316,8 @@ defmodule Ash.Actions.ManagedRelationships do
       action_name || Ash.Resource.Info.primary_action(relationship.destination, :update).name
 
     record
-    |> Ash.Changeset.new()
-    |> Ash.Changeset.force_change_attribute(relationship.destination_field, nil)
     |> Ash.Changeset.for_update(action_name, %{})
+    |> Ash.Changeset.force_change_attribute(relationship.destination_field, nil)
     |> Ash.Changeset.set_context(relationship.context)
     |> Ash.Changeset.set_tenant(tenant)
     |> api.update(return_notifications?: true, actor: actor, authorize?: opts[:authorize?])
@@ -1347,9 +1344,8 @@ defmodule Ash.Actions.ManagedRelationships do
       action_name || Ash.Resource.Info.primary_action(relationship.source, :update).name
 
     source_record
-    |> Ash.Changeset.new()
-    |> Ash.Changeset.force_change_attribute(relationship.source_field, nil)
     |> Ash.Changeset.for_update(action_name, %{})
+    |> Ash.Changeset.force_change_attribute(relationship.source_field, nil)
     |> Ash.Changeset.set_context(relationship.context)
     |> Ash.Changeset.set_tenant(tenant)
     |> api.update(return_notifications?: true, actor: actor, authorize?: opts[:authorize?])
