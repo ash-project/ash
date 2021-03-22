@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.36.17](https://github.com/ash-project/ash/compare/v1.36.16...v1.36.17) (2021-03-22)
+
+
+
+
+### Bug Fixes:
+
+* don't require values when managing relationships
+
+* Revert "fix: force_change_attributes before passing to action"
+
 ## [v1.36.16](https://github.com/ash-project/ash/compare/v1.36.15...v1.36.16) (2021-03-22)
 
 
