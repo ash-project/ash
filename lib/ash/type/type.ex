@@ -404,6 +404,7 @@ defmodule Ash.Type do
 
   def cast_stored(type, term, constraints) do
     constraints = Ash.OptionsHelpers.validate!(constraints, constraints(type))
+    type = get_type(type)
     type.cast_stored(term, constraints)
   end
 
@@ -563,6 +564,7 @@ defmodule Ash.Type do
 
   def dump_to_native(type, term, constraints) do
     constraints = Ash.OptionsHelpers.validate!(constraints, constraints(type))
+    type = get_type(type)
     type.dump_to_native(term, constraints)
   end
 
