@@ -63,13 +63,15 @@ defmodule Ash.Actions.Create do
     end
   end
 
-  defp add_tenant(data, changeset) do
+  defp add_tenant({:ok, data}, changeset) do
     if Ash.Resource.Info.multitenancy_strategy(changeset.resource) do
-      %{data | __metadata__: Map.put(data.__metadata__, :tenant, changeset.tenant)}
+      {:ok, %{data | __metadata__: Map.put(data.__metadata__, :tenant, changeset.tenant)}}
     else
-      data
+      {:ok, data}
     end
   end
+
+  defp add_tenant(other, _), do: other
 
   defp add_notifications(result, engine_result, opts) do
     if opts[:return_notifications?] do
@@ -146,9 +148,13 @@ defmodule Ash.Actions.Create do
 
                   if changeset.valid? do
                     if upsert? do
-                      Ash.DataLayer.upsert(resource, changeset)
+                      resource
+                      |> Ash.DataLayer.upsert(changeset)
+                      |> add_tenant(changeset)
                     else
-                      Ash.DataLayer.create(resource, changeset)
+                      resource
+                      |> Ash.DataLayer.create(changeset)
+                      |> add_tenant(changeset)
                     end
                   else
                     {:error, changeset.errors}
@@ -156,7 +162,6 @@ defmodule Ash.Actions.Create do
                 end)
 
               with {:ok, created, changeset, %{notifications: notifications}} <- result,
-                   created <- add_tenant(created, changeset),
                    {:ok, loaded} <-
                      Ash.Actions.ManagedRelationships.load(api, created, changeset, engine_opts),
                    {:ok, with_relationships, new_notifications} <-

@@ -47,9 +47,7 @@ defmodule Ash.Actions.Update do
              resource,
              api
            ) do
-      updated
-      |> add_tenant(changeset)
-      |> add_notifications(engine_result, opts)
+      add_notifications(updated, engine_result, opts)
     else
       %Ash.Changeset{errors: errors} = changeset ->
         {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
@@ -62,12 +60,16 @@ defmodule Ash.Actions.Update do
     end
   end
 
-  defp add_tenant(data, changeset) do
+  defp add_tenant({:ok, data}, changeset) do
     if Ash.Resource.Info.multitenancy_strategy(changeset.resource) do
-      %{data | __metadata__: Map.put(data.__metadata__, :tenant, changeset.tenant)}
+      {:ok, %{data | __metadata__: Map.put(data.__metadata__, :tenant, changeset.tenant)}}
     else
-      data
+      {:ok, data}
     end
+  end
+
+  defp add_tenant(other, _changeset) do
+    other
   end
 
   defp add_notifications(result, engine_result, opts) do
@@ -142,7 +144,9 @@ defmodule Ash.Actions.Update do
                   changeset = set_tenant(changeset)
 
                   if changeset.valid? do
-                    Ash.DataLayer.update(resource, changeset)
+                    resource
+                    |> Ash.DataLayer.update(changeset)
+                    |> add_tenant(changeset)
                   else
                     {:error, changeset.errors}
                   end
