@@ -2,7 +2,7 @@ defmodule Ash.Resource.Validation do
   @moduledoc """
   Represents a validation in Ash.
 
-  See `Ash.Resource.Validation.Builtin` for a list of builtin validations.
+  See `Ash.Resource.Validation.Builtins` for a list of builtin validations.
 
   To write your own validation, define a module that implements the `c:init/1` callback
   to validate options at compile time, and `c:validate/2` callback to do the validation.
