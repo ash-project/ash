@@ -5,6 +5,26 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.36.21](https://github.com/ash-project/ash/compare/v1.36.20...v1.36.21) (2021-03-24)
+
+
+
+
+### Bug Fixes:
+
+* support type aliases in more type casting functions
+
+* support `tenant` option in read interface
+
+## [v1.36.20](https://github.com/ash-project/ash/compare/v1.36.19...v1.36.20) (2021-03-24)
+
+
+
+
+### Bug Fixes:
+
+* support `tenant` option in read interface
+
 ## [v1.36.19](https://github.com/ash-project/ash/compare/v1.36.18...v1.36.19) (2021-03-22)
 
 
