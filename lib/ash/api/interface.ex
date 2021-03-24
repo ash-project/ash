@@ -58,9 +58,9 @@ defmodule Ash.Api.Interface do
                   )
 
                 if unquote(interface.get?) do
-                  unquote(api).read_one(query, Keyword.delete(opts, :query))
+                  unquote(api).read_one(query, Keyword.drop(opts, [:query, :tenant]))
                 else
-                  unquote(api).read(query, Keyword.delete(opts, :query))
+                  unquote(api).read(query, Keyword.drop(opts, [:query, :tenant]))
                 end
               end
             end
@@ -92,9 +92,9 @@ defmodule Ash.Api.Interface do
                   )
 
                 if unquote(interface.get?) do
-                  unquote(api).read_one!(query, Keyword.delete(opts, :query))
+                  unquote(api).read_one!(query, Keyword.drop(opts, [:query, :tenant]))
                 else
-                  unquote(api).read!(query, Keyword.delete(opts, :query))
+                  unquote(api).read!(query, Keyword.drop(opts, [:query, :tenant]))
                 end
               end
             end
