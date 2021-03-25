@@ -120,7 +120,7 @@ defmodule Ash.Actions.ManagedRelationships do
                         {:halt, {Ash.Changeset.add_error(changeset, error), instructions}}
                     end
 
-                  :error ->
+                  _ ->
                     {:cont, {changeset, instructions}}
                 end
               end
@@ -716,14 +716,15 @@ defmodule Ash.Actions.ManagedRelationships do
                 {:ok, input, [], []}
               else
                 relationship.destination
+                |> Ash.Changeset.new()
+                |> Ash.Changeset.force_change_attribute(
+                  relationship.destination_field,
+                  Map.get(record, relationship.source_field)
+                )
                 |> Ash.Changeset.for_create(action_name, input,
                   require?: false,
                   actor: actor,
                   relationships: opts[:relationships]
-                )
-                |> Ash.Changeset.force_change_attribute(
-                  relationship.destination_field,
-                  Map.get(record, relationship.source_field)
                 )
                 |> Ash.Changeset.set_context(relationship.context)
                 |> Ash.Changeset.set_tenant(changeset.tenant)
@@ -784,10 +785,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
             relationship.through
             |> Ash.Changeset.new()
-            |> Ash.Changeset.for_create(join_action_name, join_params,
-              require?: false,
-              actor: actor
-            )
+            |> IO.inspect(label: "before")
             |> Ash.Changeset.force_change_attribute(
               relationship.source_field_on_join_table,
               Map.get(record, relationship.source_field)
@@ -796,6 +794,11 @@ defmodule Ash.Actions.ManagedRelationships do
               relationship.destination_field_on_join_table,
               Map.get(created, relationship.destination_field)
             )
+            |> Ash.Changeset.for_create(join_action_name, join_params,
+              require?: false,
+              actor: actor
+            )
+            |> IO.inspect(label: "after")
             |> Ash.Changeset.set_context(join_relationship.context)
             |> Ash.Changeset.set_tenant(changeset.tenant)
             |> changeset.api.create(

@@ -332,6 +332,7 @@ defmodule Ash.Changeset do
   to a given action, and then add custom changes if necessary.
   """
   def for_create(initial, action, params \\ %{}, opts \\ []) do
+    IO.inspect(initial, label: "initial")
     changeset =
       case initial do
         %__MODULE__{action_type: :create} = changeset ->
