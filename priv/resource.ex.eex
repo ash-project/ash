@@ -1,0 +1,38 @@
+  defmodule <%= project_name %>.<%= module_name %> do
+  <%= if data_layer == "postgres" do %>
+    use Ash.Resource, data_layer: AshPostgres.DataLayer
+
+    postgres do
+      repo <%= project_name %>.Repo
+      table "<%= name %>"
+    end
+  <% end %>
+  <%= if data_layer == "ets" do %>
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+  <% end %>
+
+    attributes do
+      uuid_primary_key :id
+      <%= for attribute <- attributes do %>
+        attribute :<%= attribute %>, :string do
+          # allow_nil? false
+          # constraints max_length: 255
+        end
+      <% end %>
+
+      # Alternatively, you can use the keyword list syntax
+      # You can also set functional defaults, via passing in a zero
+      # argument function or an MFA
+      attribute :public, :boolean, allow_nil?: false, default: false
+
+      # This is set on create
+      create_timestamp :inserted_at
+      # This is updated on all updates
+      update_timestamp :updated_at
+
+      # `create_timestamp` above is just shorthand for:
+      # attribute :inserted_at, :utc_datetime_usec,
+      #   writable?: false,
+      #   default: &DateTime.utc_now/0
+    end
+  end
