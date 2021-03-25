@@ -13,10 +13,9 @@
 
     attributes do
       uuid_primary_key :id
-      <%= for attribute <- attributes do %>
-        attribute :<%= attribute %>, :string do
+      <%= for {attribute, attr_type} <- attributes do %>
+          attribute :<%= attribute %>, <%= attr_type %> do
           # allow_nil? false
-          # constraints max_length: 255
         end
       <% end %>
 
@@ -34,5 +33,11 @@
       # attribute :inserted_at, :utc_datetime_usec,
       #   writable?: false,
       #   default: &DateTime.utc_now/0
+      actions do
+        create :create
+        read :read
+        update :update
+        destroy :destroy
+      end
     end
   end

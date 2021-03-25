@@ -3,6 +3,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   alias Mix.Tasks.Ash.Helpers
 
   @template_path Path.join(:code.priv_dir(:ash), "resource.ex.eex")
+  @valid_attributes ~w(atom binary boolean cistring date decimal float function integer interval map string term uuid utcdatetime utcdatetimeusec)
 
   @impl Mix.Task
   @shortdoc """
@@ -30,14 +31,33 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
         data_layer: data_layer,
         project_name: Helpers.project_module_name(),
         name: resource,
-        attributes: attributes
+        attributes: parse_attributes(attributes)
       )
 
-    IO.inspect(initial_data)
-    #if not File.exists?(Helpers.resources_folder()), do: File.mkdir!(Helpers.resources_folder())
-    #File.write!(Helpers.resource_file_name(resource), initial_data)
+    IO.inspect(parse_attributes(attributes, []))
+    IO.puts(initial_data)
+    # if not File.exists?(Helpers.resources_folder()), do: File.mkdir!(Helpers.resources_folder())
+    # File.write!(Helpers.resource_file_name(resource), initial_data)
     data_layer_info(data_layer)
     resource_info(resource)
+  end
+
+  def parse_attributes(_, parsed \\ [])
+  def parse_attributes([], parsed), do: parsed
+
+  def parse_attributes([attribute, attr_type | rest], parsed)
+      when attr_type in @valid_attributes do
+    parse_attributes(
+      rest,
+      [{attribute, String.to_atom(attr_type)} | parsed]
+    )
+  end
+
+  def parse_attributes([attribute | rest], parsed) do
+    parse_attributes(
+      rest,
+      [{attribute, :string} | parsed]
+    )
   end
 
   defp resource_info(resource) do
