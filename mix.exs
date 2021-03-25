@@ -148,6 +148,7 @@ defmodule Ash.MixProject do
         ],
         miscellaneous: [
           Ash.UUID,
+          Ash.Changeset.ManagedRelationshipHelpers,
           Ash.NotLoaded,
           Ash.Query.Aggregate,
           Ash.Query.Type,
