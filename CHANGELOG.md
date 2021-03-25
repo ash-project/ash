@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.37.0](https://github.com/ash-project/ash/compare/v1.36.22...v1.37.0) (2021-03-25)
+
+
+
+
+### Features:
+
+* add manage relationship types
+
+### Improvements:
+
+* don't accept relationships on actions anymore
+
+* require arguments
+
 ## [v1.36.22](https://github.com/ash-project/ash/compare/v1.36.21...v1.36.22) (2021-03-24)
 
 
