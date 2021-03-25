@@ -570,7 +570,7 @@ defmodule Ash.Test.Actions.CreateTest do
         |> Api.create!()
 
       ProfileWithBelongsTo
-      |> Ash.Changeset.for_create(:create, author: author)
+      |> Ash.Changeset.for_create(:create, [author: author], relationships: [author: :replace])
       |> Api.create!()
     end
 

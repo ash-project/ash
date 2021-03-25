@@ -250,24 +250,31 @@ defmodule Ash.Changeset do
     end
   end
 
+  @manage_types [:replace, :append, :remove, :direct_control, :create]
+
   @for_create_opts [
     relationships: [
       type: :any,
       doc: """
       customize relationship behavior.
 
-      By default, any relationships are *replaced* via `replace_relationship`. To change this behavior, provide the
-      `relationships` option. The values for each relationship can be
-          * `:append` - passes input to `append_to_relatinship/3`
-          * `:remove` - passes input to `remove_from_relationship/3`
-          * `:replace` - passes input to `replace_relationship/3`
-          * `{:manage, opts}` - passes the input to `manage_relationship/4`, with the given `opts`.
+      By default, any relationships are ignored. There are three ways to change relationships with this function:
 
-      For example:
+      ### Action Arguments (preferred)
+
+      Create an argument on the action and add a `Ash.Resource.Change.Builtins.manage_relationship/3` change to the action.
+
+      ### Overrides
+
+      You can pass the `relationships` option to specify the behavior. It is a keyword list of relationship and either
+        * one of the preset manage types: #{inspect(@manage_types)}
+        * explicit options, in the form of `{:manage, [...opts]}`
 
       ```elixir
-      Ash.Changeset.for_create(MyResource, :create, params, relationships: [relationship: :append, other_relationship: :remove])
+      Ash.Changeset.for_create(MyResource, :create, params, relationships: [relationship: :append, other_relationship: {:manage, [...opts]}])
       ```
+
+      You can also use explicit calls to `manage_relationship/4`.
       """
     ],
     require?: [
@@ -444,7 +451,6 @@ defmodule Ash.Changeset do
           |> Map.put(:__validated_for_action__, action.name)
           |> cast_params(action, params || %{}, opts)
           |> validate_attributes_accepted(action)
-          |> validate_relationships_accepted(action)
           |> cast_arguments(action, opts[:defaults], true)
           |> run_action_changes(action, opts[:actor])
           |> set_defaults(changeset.action_type, false)
@@ -533,20 +539,17 @@ defmodule Ash.Changeset do
 
         rel = Ash.Resource.Info.public_relationship(changeset.resource, name) ->
           if rel.writable? do
-            behaviour = opts[:relationships][rel.name] || :replace
+            behaviour = opts[:relationships][rel.name]
 
             case behaviour do
-              :replace ->
-                replace_relationship(changeset, rel.name, value)
+              nil ->
+                changeset
 
-              :append ->
-                append_to_relationship(changeset, rel.name, value)
+              type when is_atom(type) ->
+                manage_relationship(changeset, rel.name, value, type: type)
 
-              :remove ->
-                remove_from_relationship(changeset, rel.name, value)
-
-              {:manage, opts} ->
-                manage_relationship(changeset, rel.name, value, opts)
+              {:manage, manage_opts} ->
+                manage_relationship(changeset, rel.name, value, manage_opts)
             end
           else
             changeset
@@ -577,24 +580,6 @@ defmodule Ash.Changeset do
       add_error(
         changeset,
         InvalidAttribute.exception(field: key, message: "cannot be changed")
-      )
-    end)
-  end
-
-  defp validate_relationships_accepted(changeset, %{accept: nil}), do: changeset
-
-  defp validate_relationships_accepted(changeset, %{accept: accepted_relationships}) do
-    changeset.relationships
-    |> Enum.reject(fn {key, _value} ->
-      key in accepted_relationships
-    end)
-    |> Enum.reduce(changeset, fn {key, _}, changeset ->
-      add_error(
-        changeset,
-        InvalidRelationship.exception(
-          relationship: key,
-          message: "Cannot be changed"
-        )
       )
     end)
   end
@@ -1041,10 +1026,100 @@ defmodule Ash.Changeset do
   defp argument_default(value) when is_function(value, 0), do: value.()
   defp argument_default(value), do: value
 
+  @type manage_relationship_type :: :replace | :append | :remove | :direct_control
+
+  @spec manage_relationship_opts(manage_relationship_type()) :: Keyword.t()
+  def manage_relationship_opts(:replace) do
+    [
+      on_lookup: :relate,
+      on_no_match: :error,
+      on_match: :ignore,
+      on_missing: :unrelate
+    ]
+  end
+
+  def manage_relationship_opts(:append) do
+    [
+      on_lookup: :relate,
+      on_no_match: :error,
+      on_match: :ignore,
+      on_missing: :ignore
+    ]
+  end
+
+  def manage_relationship_opts(:remove) do
+    [
+      on_no_match: :error,
+      on_match: :unrelate,
+      on_missing: :ignore
+    ]
+  end
+
+  def manage_relationship_opts(:create) do
+    [
+      on_no_match: :create,
+      on_match: :ignore
+    ]
+  end
+
+  def manage_relationship_opts(:direct_control) do
+    [
+      on_lookup: :ignore,
+      on_no_match: :create,
+      on_match: :update,
+      on_missing: :destroy
+    ]
+  end
+
   @manage_opts [
+    type: [
+      type: {:one_of, @manage_types},
+      doc: """
+      If the `type` is specified, the default values of each option is modified to match that `type` of operation.
+
+      This allows for specifying certain operations much more succinctly. The defaults that are modified are listed below
+
+      ## `:replace`
+        [
+          on_lookup: :relate,
+          on_no_match: :error,
+          on_match: :ignore,
+          on_missing: :unrelate
+        ]
+
+      ## `:append`
+        [
+          on_lookup: :relate,
+          on_no_match: :error,
+          on_match: :ignore,
+          on_missing: :ignore
+        ]
+
+      ## `:remove`
+        [
+          on_no_match: :error,
+          on_match: :unrelate,
+          on_missing: :ignore
+        ]
+
+      ## `:direct_control`
+        [
+          on_lookup: :ignore,
+          on_no_match: :create,
+          on_match: :update,
+          on_missing: :destroy
+        ]
+
+      ## `:create`
+        [
+          on_no_match: :create,
+          on_match: :ignore
+        ]
+      """
+    ],
     authorize?: [
       type: :boolean,
-      default: false,
+      default: true,
       doc:
         "Authorize reads and changes to the destination records, if the primary change is being authorized as well."
     ],
@@ -1134,6 +1209,11 @@ defmodule Ash.Changeset do
             * has_one - an update action on the destination resource
             * belongs_to - an update action on the source resource
       """
+    ],
+    relationships: [
+      type: :any,
+      default: [],
+      doc: "A keyword list of instructions for nested relationships."
     ],
     meta: [
       type: :any,
@@ -1267,7 +1347,18 @@ defmodule Ash.Changeset do
   end
 
   def manage_relationship(changeset, relationship, input, opts) do
-    opts = Ash.OptionsHelpers.validate!(opts, @manage_opts)
+    manage_opts =
+      if opts[:type] do
+        defaults = manage_relationship_opts(opts[:type])
+
+        Enum.reduce(defaults, @manage_opts, fn {key, value}, manage_opts ->
+          Ash.OptionsHelpers.set_default!(manage_opts, key, value)
+        end)
+      else
+        @manage_opts
+      end
+
+    opts = Ash.OptionsHelpers.validate!(opts, manage_opts)
 
     case Ash.Resource.Info.relationship(changeset.resource, relationship) do
       nil ->
@@ -1348,6 +1439,10 @@ defmodule Ash.Changeset do
           end
         end
     end
+  end
+
+  defp map_input_to_list(input) when input == %{} do
+    :error
   end
 
   defp map_input_to_list(input) do
@@ -1538,30 +1633,31 @@ defmodule Ash.Changeset do
   """
   def set_argument(changeset, argument, value) do
     if changeset.action do
-      with {:arg, argument} when not is_nil(argument) <-
-             {:arg,
-              Enum.find(
-                changeset.action.arguments,
-                &(&1.name == argument || to_string(&1.name) == argument)
-              )},
-           {:ok, casted} <- cast_input(argument.type, value, argument.constraints),
-           {:constrained, {:ok, casted}, argument} when not is_nil(casted) <-
-             {:constrained,
-              Ash.Type.apply_constraints(argument.type, casted, argument.constraints),
-              argument} do
-        %{changeset | arguments: Map.put(changeset.arguments, argument.name, casted)}
+      argument =
+        Enum.find(
+          changeset.action.arguments,
+          &(&1.name == argument || to_string(&1.name) == argument)
+        )
+
+      if argument do
+        with {:ok, casted} <- cast_input(argument.type, value, argument.constraints),
+             {:constrained, {:ok, casted}, argument} when not is_nil(casted) <-
+               {:constrained,
+                Ash.Type.apply_constraints(argument.type, casted, argument.constraints),
+                argument} do
+          %{changeset | arguments: Map.put(changeset.arguments, argument.name, casted)}
+        else
+          {:constrained, {:ok, nil}, _argument} ->
+            changeset
+
+          {:constrained, {:error, error}, argument} ->
+            add_invalid_errors(:argument, changeset, argument, error)
+
+          {:error, error} ->
+            add_invalid_errors(:argument, changeset, argument, error)
+        end
       else
-        {:arg, nil} ->
-          changeset
-
-        {:constrained, {:ok, nil}, _argument} ->
-          changeset
-
-        {:constrained, {:error, error}, argument} ->
-          add_invalid_errors(:argument, changeset, argument, error)
-
-        {:error, error} ->
-          add_invalid_errors(:argument, changeset, argument, error)
+        %{changeset | arguments: Map.put(changeset.arguments, argument, value)}
       end
     else
       %{changeset | arguments: Map.put(changeset.arguments, argument, value)}
