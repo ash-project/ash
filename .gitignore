@@ -25,6 +25,9 @@ ash-*.tar
 # Ignoring Elixir Language Server
 .elixir_ls/
 
+# Ignoring .tools-version
+.tool-versions
+
 /Mnesia.*
 
 .DS_Store
