@@ -1,6 +1,13 @@
 defmodule Mix.Tasks.Ash.Helpers do
   def capitalize(""), do: ""
 
+  def write_file(file_name, file_content, has_context) do
+    if not File.exists?(context_folder(file_name)) do
+      File.mkdir!(context_folder(file_name))
+    end
+    File.write!(api_file_name(file_name, has_context), file_content)
+  end
+
   def capitalize(name) do
     with <<first::utf8, rest::binary>> <- name, do: String.upcase(<<first::utf8>>) <> rest
   end

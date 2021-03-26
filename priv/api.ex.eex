@@ -1,8 +1,8 @@
-  defmodule <%= project_module_name %>.<%= if has_context do %><%= module_name %>.<% end %><%= module_name %> do
-    use Ash.Api
+defmodule <%= project_module_name %>.<%= if has_context do %><%= module_name %>.<% end %><%= module_name %> do
+  use Ash.Api
 
-    resources do
-      # add your resources here
-      #resource <%= project_module_name %>.<%= if has_context do %><%= module_name %>.<% end %>ResourceName
-    end
+  resources do
+    # add your resources here
+    # resource <%= project_module_name %>.<%= if has_context do %><%= module_name %>.<% end %>ResourceName
   end
+end
