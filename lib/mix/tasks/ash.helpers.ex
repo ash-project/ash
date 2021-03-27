@@ -1,12 +1,13 @@
 defmodule Mix.Tasks.Ash.Helpers do
-  def write_resource_file(file_content, file_name, context \\ nil, has_context \\ false) do
-    if has_context do
+  def write_resource_file(file_content, file_name, context \\ nil) do
+    if context do
       context |> context_folder() |> maybe_create_folder()
-      context |> resources_folder(has_context) |> maybe_create_folder()
+      context |> resources_folder() |> maybe_create_folder()
     else
-      context |> resources_folder(has_context) |> maybe_create_folder()
+      context |> resources_folder() |> maybe_create_folder()
     end
-    File.write!(resource_file_name(file_name, context, has_context), file_content)
+
+    File.write!(resource_file_name(file_name, context), file_content)
   end
 
   def write_api_file(file_content, file_name, has_context) do
@@ -39,13 +40,12 @@ defmodule Mix.Tasks.Ash.Helpers do
   def api_file_name(context, has_context \\ false)
   def api_file_name(context, true), do: "#{context_folder(context)}/#{context}.ex"
   def api_file_name(context, false), do: "#{lib_folder()}/#{context}.ex"
-  def resources_folder(context, has_context \\ false)
-  def resources_folder(context, true), do: "#{context_folder(context)}/resources"
-  def resources_folder(_context, false), do: "#{lib_folder()}/resources"
-  def resources_folder(), do: resources_folder(nil)
+  def resources_folder(context \\ nil)
+  def resources_folder(nil), do: "#{lib_folder()}/resources"
+  def resources_folder(context), do: "#{context_folder(context)}/resources"
   def context_folder("api"), do: "#{lib_folder()}"
   def context_folder(context), do: "#{lib_folder()}/#{context}"
-  def resource_file_name(name, context, has_context \\ false)
-  def resource_file_name(name, context, true), do: "#{resources_folder(context, true)}/#{name}.ex"
-  def resource_file_name(name, _, false), do: "#{resources_folder()}/#{name}.ex"
+  def resource_file_name(name, context \\ nil)
+  def resource_file_name(name, nil), do: "#{resources_folder()}/#{name}.ex"
+  def resource_file_name(name, context), do: "#{resources_folder(context)}/#{name}.ex"
 end

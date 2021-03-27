@@ -133,6 +133,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
     IO.puts(
       "Please specify resource name eg.\n mix ash.gen.resource users name age integer born date"
     )
+
     :error_missing_resource
   end
 
@@ -143,6 +144,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
       where valid column types are:
     #{@valid_attributes |> Enum.map(&inspect/1) |> Enum.join("\n")}
     """)
+
     :error_missing_columns
   end
 
@@ -152,6 +154,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
     #{list_of_invalid_params |> Enum.map(&inspect/1) |> Enum.join("\n")}
     remember to use '-' instead of '_' on command line parameters
     """)
+
     :error_invalid_attribute
   end
 
