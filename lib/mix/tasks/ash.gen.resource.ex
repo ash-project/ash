@@ -61,48 +61,48 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
     enables timestamps generated file - defaults to true - to disable use --no-timestamps
   """
   def run(args) do
-    OptionParser.parse(args,
-      switches: @switches
-    )
-    |> case do
-      {_, [], _} ->
-        print_resource_name_missing_info()
+    options =
+      OptionParser.parse(args,
+        switches: @switches
+      )
 
-      {switches, [resource | attributes], invalid} ->
-        if Enum.count(invalid) > 0 do
-          print_invalid_param_info(invalid)
-        end
+    with {file_content, switches, resource, context_name} <- generate_file(options) do
+      if Keyword.get(switches, :debug) do
+        file_content
+        |> IO.puts()
+      else
+        Helpers.write_resource_file(file_content, resource, context_name)
+      end
 
-        has_context = if Keyword.get(switches, :api), do: true, else: false
-        context_name = if has_context, do: Keyword.get(switches, :api), else: ""
-
-        switches =
-          @default_opts
-          |> Keyword.merge(switches)
-
-        file_content =
-          EEx.eval_file(@template_path,
-            module_name: Helpers.capitalize(resource),
-            project_name: Helpers.project_module_name(),
-            name: resource,
-            switches: switches,
-            attributes: parse_attributes(attributes),
-            has_context: has_context,
-            context_name: Helpers.capitalize(context_name)
-          )
-          |> Code.format_string!()
-
-        if Keyword.get(switches, :debug) do
-          file_content
-          |> IO.iodata_to_binary()
-          |> IO.puts()
-        else
-          Helpers.write_resource_file(file_content, resource, context_name, has_context)
-        end
-
-        print_resource_info(resource, context_name, has_context)
-        print_info(switches)
+      print_resource_info(resource, context_name)
+      print_info(switches)
     end
+  end
+
+  def generate_file({_, [], _}), do: print_resource_name_missing_info()
+
+  def generate_file({_, _, invalid}) when length(invalid) > 0,
+    do: print_invalid_param_info(invalid)
+
+  def generate_file({_, [_resource], _}), do: print_missing_attributes()
+
+  def generate_file({switches, [resource | attributes], _}) do
+    switches = Keyword.merge(@default_opts, switches)
+    context_name = Keyword.get(switches, :api)
+
+    file_content =
+      EEx.eval_file(@template_path,
+        module_name: Helpers.capitalize(resource),
+        project_name: Helpers.project_module_name(),
+        name: resource,
+        switches: switches,
+        attributes: parse_attributes(attributes),
+        context_name: Helpers.capitalize(context_name)
+      )
+      |> Code.format_string!()
+      |> IO.iodata_to_binary()
+
+    {file_content, switches, resource, context_name}
   end
 
   def parse_attributes(_, parsed \\ [])
@@ -133,6 +133,17 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
     IO.puts(
       "Please specify resource name eg.\n mix ash.gen.resource users name age integer born date"
     )
+    :error_missing_resource
+  end
+
+  defp print_missing_attributes() do
+    IO.puts("""
+      You have not entered any column types for your resource
+      mix ash.gen.resource user name string age integer
+      where valid column types are:
+    #{@valid_attributes |> Enum.map(&inspect/1) |> Enum.join("\n")}
+    """)
+    :error_missing_columns
   end
 
   defp print_invalid_param_info(list_of_invalid_params) do
@@ -141,26 +152,29 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
     #{list_of_invalid_params |> Enum.map(&inspect/1) |> Enum.join("\n")}
     remember to use '-' instead of '_' on command line parameters
     """)
+    :error_invalid_attribute
   end
 
-  defp print_resource_info(resource, _, false) do
+  defp print_resource_info(resource, context) when is_nil(context) do
     IO.puts("""
     Please add your resource to #{Helpers.api_file_name(resource)}
 
     resources do
       ...
-      resource #{Helpers.project_module_name}.#{Helpers.capitalize(resource)}
+      resource #{Helpers.project_module_name()}.#{Helpers.capitalize(resource)}
     end
     """)
   end
-  defp print_resource_info(resource, context_name, has_context) do
-    context_name=Helpers.capitalize(context_name)
+
+  defp print_resource_info(resource, context_name) do
+    context_name = Helpers.capitalize(context_name)
+
     IO.puts("""
-    Please add your resource to #{Helpers.api_file_name(resource, has_context)}
+    Please add your resource to #{Helpers.api_file_name(resource, true)}
 
     resources do
       ...
-      resource #{Helpers.project_module_name}.#{context_name}.#{Helpers.capitalize(resource)}
+      resource #{Helpers.project_module_name()}.#{context_name}.#{Helpers.capitalize(resource)}
     end
     """)
   end
@@ -170,13 +184,14 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
       switches
       |> Enum.map(&get_info_for/1)
       |> Enum.filter(&Kernel.!=(&1, nil))
+
     if Enum.count(switches) > 0 do
       IO.puts("""
-        Ensure you made these changes to your app:
+      Ensure you made these changes to your app:
 
-        #{ Enum.join(switches, "\n ###### \n") }
+      #{Enum.join(switches, "\n ###### \n")}
 
-        """)
+      """)
     end
   end
 
@@ -185,17 +200,18 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
       switches
       |> Enum.map(&get_deps_info_for/1)
       |> Enum.filter(&Kernel.!=(&1, nil))
+
     if Enum.count(switches) > 0 do
       IO.puts("""
-        Ensure you've added dependencies to your mix.exs file.
-        def deps do
-        [
-        ...
+      Ensure you've added dependencies to your mix.exs file.
+      def deps do
+      [
+      ...
 
-        #{Enum.join(switches, ",\n    ")}
-        ]
-        end
-        """)
+      #{Enum.join(switches, ",\n    ")}
+      ]
+      end
+      """)
     end
   end
 

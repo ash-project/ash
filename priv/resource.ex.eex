@@ -1,4 +1,4 @@
-defmodule <%= project_name %>.<%= if has_context, do: "#{context_name}."%><%= module_name %> do
+defmodule <%= project_name %>.<%= if context_name, do: "#{context_name}."%><%= module_name %> do
   use Ash.Resource<%= if Keyword.get(switches, :postgres) do %>,
     data_layer: AshPostgres.DataLayer<% end %><%= if Keyword.get(switches, :ets) do %>,
     data_layer: Ash.DataLayer.Ets<% end %><%= if Keyword.get(switches, :mnesia) do %>,
@@ -9,7 +9,7 @@ defmodule <%= project_name %>.<%= if has_context, do: "#{context_name}."%><%= mo
 <%= if Keyword.get(switches, :postgres) do %>
   postgres do
     repo <%= project_name %>.Repo
-    table "<%= name %>"
+    table "<%= Keyword.get(switches, :table_name, name) %>"
   end
 <% end %>
 <%= if Keyword.get(switches, :csv) do %>
