@@ -16,9 +16,9 @@ defmodule Mix.Tasks.Ash.Gen.Api do
 
   def run([file_name | _]) do
     has_context = file_name != "api"
-    file_content = generate_file(file_name, has_context)
 
-    Helpers.write_file(file_name, file_content, has_context)
+    generate_file(file_name, has_context)
+    |> Helpers.write_api_file(file_name, has_context)
   end
 
   @spec generate_file(String.t(), boolean()) :: String.t()

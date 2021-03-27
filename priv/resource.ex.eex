@@ -1,43 +1,120 @@
-  defmodule <%= project_name %>.<%= module_name %> do
-  <%= if data_layer == "postgres" do %>
-    use Ash.Resource, data_layer: AshPostgres.DataLayer
+defmodule <%= project_name %>.<%= module_name %> do
+  use Ash.Resource<%= if Keyword.get(switches, :postgres) do %>,
+    data_layer: AshPostgres.DataLayer<% end %><%= if Keyword.get(switches, :ets) do %>,
+    data_layer: Ash.DataLayer.Ets<% end %><%= if Keyword.get(switches, :mnesia) do %>,
+    data_layer: Ash.DataLayer.Mnesia<% end %><%= if Keyword.get(switches, :json_api) do %>,
+    extensions: [AshJsonApi.Resource]<% end %><%= if Keyword.get(switches, :policy_authorizer) do %>,
+    authorizers: [AshPolicyAuthorizer.Authorizer]<% end %>
 
-    postgres do
-      repo <%= project_name %>.Repo
-      table "<%= name %>"
+<%= if Keyword.get(switches, :postgres) do %>
+  postgres do
+    repo <%= project_name %>.Repo
+    table "<%= name %>"
+  end
+<% end %>
+<%= if Keyword.get(switches, :csv) do %>
+  csv do
+  file "priv/data/<%= name %>.csv"
+    create? true
+    header? true
+    separator '-'
+    columns [<%= for {attribute, _} <- attributes, do: ":#{attribute}, " %>]
+  end
+<% end %>
+
+  attributes do
+    uuid_primary_key :id
+  <%= for {attribute, attr_type} <- attributes do %>
+    attribute :<%= attribute %>, <%= attr_type %> do
     end
   <% end %>
-  <%= if data_layer == "ets" do %>
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+  end
+<%= if Keyword.get(switches, :guides) do %>
+  # attribute :public, :boolean do
+  #   allow_nil? false
+  #   default: false
+  # end
+
+  # Alternatively, you can use the keyword list syntax
+  # You can also set functional defaults, via passing in a zero
+  # argument function or an MFA
+  # attribute :public, :boolean, allow_nil?: false, default: false
+<% end %>
+
+
+<%= if Keyword.get(switches, :timestamps) do %>
+  # This is set on create
+  create_timestamp :inserted_at
+  # This is updated on all updates
+  update_timestamp :updated_at
+  <%= if Keyword.get(switches, :guides) do %>
+  # `create_timestamp` above is just shorthand for:
+  # attribute :inserted_at, :utc_datetime_usec,
+  # writable?: false,
+  # default: &DateTime.utc_now/0
   <% end %>
+<% end %>
 
-    attributes do
-      uuid_primary_key :id
-      <%= for {attribute, attr_type} <- attributes do %>
-          attribute :<%= attribute %>, <%= attr_type %> do
-          # allow_nil? false
-        end
-      <% end %>
 
-      # Alternatively, you can use the keyword list syntax
-      # You can also set functional defaults, via passing in a zero
-      # argument function or an MFA
-      attribute :public, :boolean, allow_nil?: false, default: false
+<%= if Keyword.get(switches, :policy_authorizer) do %>
+  policies do
+  <%= if Keyword.get(switches, :guides) do %>
+  #   # Anything you can use in a condition, you can use in a check, and vice-versa
+  #   # This policy applies if the actor is a super_user
+  #   # Addtionally, this policy is declared as a `bypass`. That means that this check is allowed to fail without
+  #   # failing the whole request, and that if this check *passes*, the entire request passes.
+  #   bypass actor_attribute_equals(:super_user, true) do
+  #     authorize_if always()
+  #   end
 
-      # This is set on create
-      create_timestamp :inserted_at
-      # This is updated on all updates
-      update_timestamp :updated_at
+  #   # This will likely be a common occurrence. Specifically, policies that apply to all read actions
+  #   policy action_type(:read) do
+  #     # unless the actor is an active user, forbid their request
+  #     forbid_unless actor_attribute_equals(:active, true)
+  #     # if the record is marked as public, authorize the request
+  #     authorize_if attribute(:public, true)
+  #     # if the actor is related to the data via that data's `owner` relationship, authorize the request
+  #     authorize_if relates_to_actor_via(:owner)
+  #   end
+  <% end %>
+  end
+<% end %>
 
-      # `create_timestamp` above is just shorthand for:
-      # attribute :inserted_at, :utc_datetime_usec,
-      #   writable?: false,
-      #   default: &DateTime.utc_now/0
-      actions do
-        create :create
-        read :read
-        update :update
-        destroy :destroy
-      end
+<%= if Keyword.get(switches, :json_api) do %>
+  json_api do
+    routes do
+      base "/<%= name %>"
+  <%= if Keyword.get(switches, :guides) do %>
+      # Add a `GET /<%= name %>/:id` route, that calls into the :read action called :default
+      # Add a `GET /<%= name %>` route, that calls into the :read action called :default
+  <% end %>
+      get :default
+      index :default
     end
   end
+<% end %>
+
+<%= if Keyword.get(switches, :graphql) do %>
+  graphql do
+    type :post
+
+    queries do
+      get :get_post, :read
+      list :list_posts, :read
+    end
+
+    mutations do
+      create :create_post, :create
+      update :update_post, :update
+      destroy :destroy_post, :destroy
+    end
+  end
+<% end %>
+
+  actions do
+    create :create
+    read :read
+    update :update
+    destroy :destroy
+  end
+end
