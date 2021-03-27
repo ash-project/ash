@@ -73,6 +73,9 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
           print_invalid_param_info(invalid)
         end
 
+        has_context = if Keyword.get(switches, :api), do: true, else: false
+        context_name = if has_context, do: Keyword.get(switches, :api), else: ""
+
         switches =
           @default_opts
           |> Keyword.merge(switches)
@@ -83,18 +86,21 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
             project_name: Helpers.project_module_name(),
             name: resource,
             switches: switches,
-            attributes: parse_attributes(attributes)
+            attributes: parse_attributes(attributes),
+            has_context: has_context,
+            context_name: Helpers.capitalize(context_name)
           )
           |> Code.format_string!()
 
         if Keyword.get(switches, :debug) do
           file_content
           |> IO.iodata_to_binary()
-          |> IO.puts
+          |> IO.puts()
         else
-        # Helpers.write_resource_file(file_content, resource, false)
+          Helpers.write_resource_file(file_content, resource, context_name, has_context)
         end
-        print_resource_info(resource)
+
+        print_resource_info(resource, context_name, has_context)
         print_info(switches)
     end
   end
@@ -125,7 +131,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
 
   defp print_resource_name_missing_info() do
     IO.puts(
-      "please specify resource name eg.\n mix ash.gen.resource users name age integer born date"
+      "Please specify resource name eg.\n mix ash.gen.resource users name age integer born date"
     )
   end
 
@@ -133,36 +139,64 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
     IO.puts("""
     You entered invalid params:
     #{list_of_invalid_params |> Enum.map(&inspect/1) |> Enum.join("\n")}
-    remember to use '-' instead of '_'
+    remember to use '-' instead of '_' on command line parameters
     """)
   end
 
-  defp print_resource_info(_) do
+  defp print_resource_info(resource, _, false) do
     IO.puts("""
-    Please add your resource to #{Helpers.api_file_name("api")}
+    Please add your resource to #{Helpers.api_file_name(resource)}
+
+    resources do
+      ...
+      resource #{Helpers.project_module_name}.#{Helpers.capitalize(resource)}
+    end
     """)
   end
-  
+  defp print_resource_info(resource, context_name, has_context) do
+    context_name=Helpers.capitalize(context_name)
+    IO.puts("""
+    Please add your resource to #{Helpers.api_file_name(resource, has_context)}
+
+    resources do
+      ...
+      resource #{Helpers.project_module_name}.#{context_name}.#{Helpers.capitalize(resource)}
+    end
+    """)
+  end
+
   def print_changes(switches) do
-    IO.puts("""
-    Ensure you made these changes to your app:
+    switches =
+      switches
+      |> Enum.map(&get_info_for/1)
+      |> Enum.filter(&Kernel.!=(&1, nil))
+    if Enum.count(switches) > 0 do
+      IO.puts("""
+        Ensure you made these changes to your app:
 
-    #{Enum.join(Enum.map(switches, &get_info_for/1) |> Enum.filter(&Kernel.!=(&1, nil)), "\n ###### \n")}
+        #{ Enum.join(switches, "\n ###### \n") }
 
-    """)
+        """)
+    end
   end
 
   defp print_deps(switches) do
-    IO.puts("""
-    Ensure you've added dependencies to your mix.exs file.
-    def deps do
-      [
-         ...
+    switches =
+      switches
+      |> Enum.map(&get_deps_info_for/1)
+      |> Enum.filter(&Kernel.!=(&1, nil))
+    if Enum.count(switches) > 0 do
+      IO.puts("""
+        Ensure you've added dependencies to your mix.exs file.
+        def deps do
+        [
+        ...
 
-        #{Enum.join(Enum.map(switches, &get_deps_info_for/1) |> Enum.filter(&Kernel.!=(&1, nil)), ",\n    ")}
-      ]
+        #{Enum.join(switches, ",\n    ")}
+        ]
+        end
+        """)
     end
-    """)
   end
 
   defp get_deps_info_for(dependency) when dependency in @require_package do
@@ -190,6 +224,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
     mix ash_postgres.generate_migrations
     """
   end
+
   defp get_info_for(:json_api) do
     """
     add json api extension to your api file
@@ -225,5 +260,5 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
     """
   end
 
-  defp get_info_for(_), do: nil 
-  end
+  defp get_info_for(_), do: nil
+end

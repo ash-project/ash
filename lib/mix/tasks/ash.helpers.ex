@@ -1,6 +1,11 @@
 defmodule Mix.Tasks.Ash.Helpers do
   def write_resource_file(file_content, file_name, context \\ nil, has_context \\ false) do
-    context |> resources_folder(has_context) |> maybe_create_folder()
+    if has_context do
+      context |> context_folder() |> maybe_create_folder()
+      context |> resources_folder(has_context) |> maybe_create_folder()
+    else
+      context |> resources_folder(has_context) |> maybe_create_folder()
+    end
     File.write!(resource_file_name(file_name, context, has_context), file_content)
   end
 
