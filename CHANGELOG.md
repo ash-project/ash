@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.37.1](https://github.com/ash-project/ash/compare/v1.37.0...v1.37.1) (2021-03-28)
+
+
+
+
+### Bug Fixes:
+
+* fix required relationships and add test
+
+* fix required relationships
+
+* various managed_relationship fixes
+
 ## [v1.37.0](https://github.com/ash-project/ash/compare/v1.36.22...v1.37.0) (2021-03-25)
 
 
