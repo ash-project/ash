@@ -499,14 +499,14 @@ defmodule Ash.Changeset do
     Enum.reduce(action.arguments, changeset, fn argument, changeset ->
       case fetch_argument(changeset, argument.name) do
         :error ->
-          if not is_nil(argument.default) do
+          if is_nil(argument.default) do
+            changeset
+          else
             %{
               changeset
               | arguments:
                   Map.put(changeset.arguments, argument.name, default(:create, argument.default))
             }
-          else
-            changeset
           end
 
         _ ->
@@ -755,19 +755,10 @@ defmodule Ash.Changeset do
   end
 
   @doc false
-  def require_values(changeset, action_type, private? \\ false)
+  def require_values(changeset, action_type, private_and_belongs_to? \\ false)
 
-  def require_values(changeset, :create, private?) do
-    attributes =
-      if private? do
-        changeset.resource
-        |> Ash.Resource.Info.attributes()
-        |> Enum.reject(&(&1.allow_nil? || &1.generated?))
-      else
-        changeset.resource
-        |> Ash.Resource.Info.attributes()
-        |> Enum.reject(&(&1.allow_nil? || &1.private? || &1.generated?))
-      end
+  def require_values(changeset, :create, private_and_belongs_to?) do
+    attributes = attributes_to_require(changeset.resource, private_and_belongs_to?)
 
     Enum.reduce(attributes, changeset, fn required_attribute, changeset ->
       if Ash.Changeset.changing_attribute?(changeset, required_attribute.name) ||
@@ -782,17 +773,8 @@ defmodule Ash.Changeset do
     end)
   end
 
-  def require_values(changeset, :update, private?) do
-    attributes =
-      if private? do
-        changeset.resource
-        |> Ash.Resource.Info.attributes()
-        |> Enum.reject(&(&1.allow_nil? || &1.generated?))
-      else
-        changeset.resource
-        |> Ash.Resource.Info.attributes()
-        |> Enum.reject(&(&1.allow_nil? || &1.private? || &1.generated?))
-      end
+  def require_values(changeset, :update, private_and_belongs_to?) do
+    attributes = attributes_to_require(changeset.resource, private_and_belongs_to?)
 
     Enum.reduce(attributes, changeset, fn required_attribute, changeset ->
       if Ash.Changeset.changing_attribute?(changeset, required_attribute.name) do
@@ -811,6 +793,27 @@ defmodule Ash.Changeset do
   end
 
   def require_values(changeset, _, _), do: changeset
+
+  # Attributes that are private and/or are the source field of a belongs_to relationship
+  # are typically not set by input, so they aren't required until the actual action
+  # is run.
+  defp attributes_to_require(resource, _private_and_belongs_to? = true) do
+    resource
+    |> Ash.Resource.Info.attributes()
+    |> Enum.reject(&(&1.allow_nil? || &1.generated?))
+  end
+
+  defp attributes_to_require(resource, _private_and_belongs_to? = false) do
+    belongs_to =
+      resource
+      |> Ash.Resource.Info.relationships()
+      |> Enum.filter(&(&1.type == :belongs_to))
+      |> Enum.map(& &1.source_field)
+
+    resource
+    |> Ash.Resource.Info.attributes()
+    |> Enum.reject(&(&1.allow_nil? || &1.private? || &1.generated? || &1.name in belongs_to))
+  end
 
   @doc """
   Wraps a function in the before/after action hooks of a changeset.

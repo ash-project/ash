@@ -288,14 +288,14 @@ defmodule Ash.Query do
     Enum.reduce(action.arguments, query, fn argument, query ->
       case fetch_argument(query, argument.name) do
         :error ->
-          if not is_nil(argument.default) do
+          if is_nil(argument.default) do
+            query
+          else
             %{
               query
               | arguments:
                   Map.put(query.arguments, argument.name, argument_default(argument.default))
             }
-          else
-            query
           end
 
         _ ->
