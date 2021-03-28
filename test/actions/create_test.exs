@@ -581,6 +581,18 @@ defmodule Ash.Test.Actions.CreateTest do
         |> Api.create!()
       end
     end
+
+    test "allows creating with the required belongs_to relationship" do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, bio: "best dude")
+        |> Api.create!()
+
+      ProfileWithBelongsTo
+      |> Ash.Changeset.for_create(:create)
+      |> Ash.Changeset.replace_relationship(:author, author)
+      |> Api.create!()
+    end
   end
 
   describe "list type" do

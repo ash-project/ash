@@ -797,13 +797,13 @@ defmodule Ash.Changeset do
   # Attributes that are private and/or are the source field of a belongs_to relationship
   # are typically not set by input, so they aren't required until the actual action
   # is run.
-  defp attributes_to_require(resource, _private_and_belongs_to? = true) do
+  defp attributes_to_require(resource, true = _private_and_belongs_to?) do
     resource
     |> Ash.Resource.Info.attributes()
     |> Enum.reject(&(&1.allow_nil? || &1.generated?))
   end
 
-  defp attributes_to_require(resource, _private_and_belongs_to? = false) do
+  defp attributes_to_require(resource, false = _private_and_belongs_to?) do
     belongs_to =
       resource
       |> Ash.Resource.Info.relationships()
