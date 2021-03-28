@@ -57,8 +57,6 @@ defmodule Ash.Actions.Read do
         Ash.Query.for_read(query, action.name, %{}, actor: engine_opts[:actor])
       end
 
-    query = Ash.Query.cast_arguments(query, action)
-
     with %{valid?: true} <- query,
          :ok <- validate_multitenancy(query, opts),
          %{errors: []} = query <- query_with_initial_data(query, opts),
