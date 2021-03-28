@@ -148,21 +148,19 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Enum.reduce({changeset, instructions}, fn required_relationship,
                                                  {changeset, instructions} ->
       changeset =
-        Ash.Changeset.before_action(changeset, fn changeset ->
-          case Ash.Changeset.get_attribute(changeset, required_relationship.source_field) do
-            nil ->
-              Ash.Changeset.add_error(
-                changeset,
-                Ash.Error.Changes.Required.exception(
-                  field: required_relationship.name,
-                  type: :relationship
-                )
+        case Ash.Changeset.get_attribute(changeset, required_relationship.source_field) do
+          nil ->
+            Ash.Changeset.add_error(
+              changeset,
+              Ash.Error.Changes.Required.exception(
+                field: required_relationship.name,
+                type: :relationship
               )
+            )
 
-            _ ->
-              changeset
-          end
-        end)
+          _ ->
+            changeset
+        end
 
       {changeset, instructions}
     end)
