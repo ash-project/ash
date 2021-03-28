@@ -32,7 +32,7 @@ defmodule Ash.Resource.Change.Builtins do
   For example
 
   ```elixir
-  change manage_relationship(:add_comments, :comments, on_missing: :ignore, on_match: :create, on_no_match: {:create, :add_comment_to_post}
+  change manage_relationship(:add_comments, :comments, on_missing: :ignore, on_match: :no_match, on_no_match: {:create, :add_comment_to_post}
   ```
   """
   def manage_relationship(argument, relationship_name \\ nil, opts) do

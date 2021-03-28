@@ -387,7 +387,6 @@ defmodule Ash.Changeset do
   ### Opts
 
   * `:actor` - set the actor, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)
-  * `:defaults` - A list of attributes and arguments to apply defaults for. Defaults to: []. Any unset defaults are set when the action is called.
   * `:tenant` - set the tenant on the changeset
 
   Anything that is modified prior to `for_destroy/4` is validated against the rules of the action, while *anything after it is not*.
@@ -427,9 +426,9 @@ defmodule Ash.Changeset do
         |> Map.put(:__validated_for_action__, action.name)
         |> Map.put(:action, action)
         |> cast_params(action, params, opts)
-        |> cast_arguments(action, opts[:defaults], true)
         |> add_validations()
         |> mark_validated(action.name)
+        |> require_arguments(action)
       else
         raise_no_action(changeset.resource, action_name, :destroy)
       end
@@ -451,11 +450,11 @@ defmodule Ash.Changeset do
           |> Map.put(:__validated_for_action__, action.name)
           |> cast_params(action, params || %{}, opts)
           |> validate_attributes_accepted(action)
-          |> cast_arguments(action, opts[:defaults], true)
           |> run_action_changes(action, opts[:actor])
           |> set_defaults(changeset.action_type, false)
           |> add_validations()
           |> mark_validated(action.name)
+          |> require_arguments(action)
 
         if Keyword.get(opts, :require?, true) do
           require_values(changeset, action.type)
@@ -468,6 +467,52 @@ defmodule Ash.Changeset do
     else
       changeset
     end
+  end
+
+  defp require_arguments(changeset, action) do
+    changeset
+    |> set_argument_defaults(action)
+    |> do_require_arguments(action)
+  end
+
+  defp do_require_arguments(changeset, action) do
+    action.arguments
+    |> Enum.filter(&(&1.allow_nil? == false))
+    |> Enum.reduce(changeset, fn argument, changeset ->
+      case fetch_argument(changeset, argument.name) do
+        {:ok, value} when not is_nil(value) ->
+          changeset
+
+        _ ->
+          add_error(
+            changeset,
+            Ash.Error.Changes.Required.exception(
+              field: argument.name,
+              type: :argument
+            )
+          )
+      end
+    end)
+  end
+
+  defp set_argument_defaults(changeset, action) do
+    Enum.reduce(action.arguments, changeset, fn argument, changeset ->
+      case fetch_argument(changeset, argument.name) do
+        :error ->
+          if not is_nil(argument.default) do
+            %{
+              changeset
+              | arguments:
+                  Map.put(changeset.arguments, argument.name, default(:create, argument.default))
+            }
+          else
+            changeset
+          end
+
+        _ ->
+          changeset
+      end
+    end)
   end
 
   defp set_actor(changeset, opts) do
@@ -942,90 +987,6 @@ defmodule Ash.Changeset do
     %{changeset | context: Ash.Helpers.deep_merge_maps(changeset.context, map)}
   end
 
-  @doc false
-  def cast_arguments(changeset, action, defaults \\ :all, only_supplied? \\ false) do
-    action.arguments
-    |> Enum.reject(& &1.private?)
-    |> Enum.filter(fn argument ->
-      if only_supplied? do
-        match?({:ok, _}, fetch_argument(changeset, argument.name))
-      else
-        true
-      end
-    end)
-    |> Enum.reduce(changeset, fn argument, new_changeset ->
-      {ignore_nil_check, value} =
-        if defaults == :all || argument.name in (defaults || []) do
-          {false, get_argument(changeset, argument.name) || argument_default(argument.default)}
-        else
-          value = get_argument(changeset, argument.name)
-
-          if argument_default(argument.default) do
-            {true, value}
-          else
-            {false, value}
-          end
-        end
-
-      cond do
-        !ignore_nil_check && is_nil(value) && !argument.allow_nil? ->
-          Ash.Changeset.add_error(
-            changeset,
-            Required.exception(field: argument.name, type: :argument)
-          )
-
-        is_nil(value) ->
-          changeset
-
-        true ->
-          val =
-            case fetch_argument(changeset, argument.name) do
-              :error ->
-                if argument.default do
-                  {:ok, argument_default(argument.default)}
-                else
-                  :error
-                end
-
-              {:ok, val} ->
-                {:ok, val}
-            end
-
-          with {:found, {:ok, value}} <- {:found, val},
-               {:ok, casted} <- Ash.Type.cast_input(argument.type, value),
-               {:ok, casted} <-
-                 Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
-            if casted do
-              %{
-                new_changeset
-                | arguments: Map.put(new_changeset.arguments, argument.name, casted)
-              }
-            else
-              case argument_default(argument.default) do
-                nil ->
-                  changeset
-
-                value ->
-                  %{
-                    new_changeset
-                    | arguments: Map.put(new_changeset.arguments, argument.name, value)
-                  }
-              end
-            end
-          else
-            {:error, error} ->
-              add_invalid_errors(:argument, changeset, argument, error)
-
-            {:found, :error} ->
-              changeset
-          end
-      end
-    end)
-  end
-
-  defp argument_default(value) when is_function(value, 0), do: value.()
-  defp argument_default(value), do: value
-
   @type manage_relationship_type :: :replace | :append | :remove | :direct_control
 
   @spec manage_relationship_opts(manage_relationship_type()) :: Keyword.t()
@@ -1151,15 +1112,15 @@ defmodule Ash.Changeset do
               * has_one - an update action on the destination resource
               * belongs_to - an update action on the source resource
           * `{:relate, :action_name, :read_action_name}` - Same as the above, but customizes the read action called to search for matches.
-          * `:relate_and_update` - Same as calling `{:relate_and_update, primary_action_name}`, but the remaining parameters are used with the `on_match` option
-          * `{:relate_and_update, :action_name}` - the records are looked up by primary key/the first identity that is found (using the primary read action), and related. Then the `update` instructions are followed. The action should be:
+          * `:relate_and_update` - Same as `:relate`, but the remaining parameters from the lookup are passed into the action that is used to change the relationship key
+          * `{:relate_and_update, :action_name}` - Same as the above, but customizes the action used. The action should be:
               * many_to_many - a create action on the join resource
               * has_many - an update action on the destination resource
               * has_one - an update action on the destination resource
               * belongs_to - an update action on the source resource
           * `{:relate_and_update, :action_name, :read_action_name}` - Same as the above, but customizes the read action called to search for matches.
           * `{:relate_and_update, :action_name, :read_action_name, [:list, :of, :join_table, :params]}` - Same as the above, but uses the provided list of parameters when creating
-             the join row (only relevant for many to many relationships)
+             the join row (only relevant for many to many relationships). Use `:all` to *only* update the join table row, and pass all parameters to its action
       """
     ],
     on_match: [
@@ -1173,8 +1134,7 @@ defmodule Ash.Changeset do
           * `{:update, :action_name, :join_table_action_name, [:list, :of, :params]}` - Same as `{:update, :action_name}` but takes
               the list of params specified out and applies them as an update to the join table row (only valid for many to many).
           * `:error`  - an eror is returned indicating that a record would have been updated
-          * `:create` - ignores the primary key match and follows the create instructions with these records instead.
-          * `:destroy` - follows the destroy instructions for any records with matching primary keys
+          * `:no_match` - ignores the primary key match and follows the on_no_match instructions with these records instead.
           * `:unrelate` - the related item is not destroyed, but the data is "unrelated", making this behave like `remove_from_relationship/3`. The action should be:
             * many_to_many - the join resource row is destroyed
             * has_many - the destination_field (on the related record) is set to `nil`
@@ -1195,7 +1155,7 @@ defmodule Ash.Changeset do
           * `:ignore`(default) - those inputs are ignored
           * `:destroy` - the record is destroyed using the destination's primary destroy action
           * `{:destroy, :action_name}` - the record is destroyed using the specified action on the destination resource
-          * `{:destroy, :action_name, :join_resource_action_name}` - the record is destroyed using the specified action on the destination resource,
+          * `{:destroy, :action_name, :join_resource_action_name, [:join, :keys]}` - the record is destroyed using the specified action on the destination resource,
             but first the join resource is destroyed with its specified action
           * `:error`  - an error is returned indicating that a record would have been updated
           * `:unrelate` - the related item is not destroyed, but the data is "unrelated", making this behave like `remove_from_relationship/3`. The action should be:
@@ -1336,7 +1296,7 @@ defmodule Ash.Changeset do
     author,
     :posts,
     [post1, post2],
-    on_lookup: :relate_and_update
+    on_lookup: :relate
   )
   ```
   """
@@ -1648,12 +1608,22 @@ defmodule Ash.Changeset do
           %{changeset | arguments: Map.put(changeset.arguments, argument.name, casted)}
         else
           {:constrained, {:ok, nil}, _argument} ->
-            changeset
+            %{changeset | arguments: Map.put(changeset.arguments, argument.name, nil)}
 
           {:constrained, {:error, error}, argument} ->
+            changeset = %{
+              changeset
+              | arguments: Map.put(changeset.arguments, argument.name, value)
+            }
+
             add_invalid_errors(:argument, changeset, argument, error)
 
           {:error, error} ->
+            changeset = %{
+              changeset
+              | arguments: Map.put(changeset.arguments, argument.name, value)
+            }
+
             add_invalid_errors(:argument, changeset, argument, error)
         end
       else
@@ -1796,7 +1766,7 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp handle_indexed_maps({:array, type}, term) when is_map(term) do
+  defp handle_indexed_maps({:array, type}, term) when is_map(term) and term != %{} do
     term
     |> Enum.reduce_while({:ok, []}, fn
       {key, value}, {:ok, acc} when is_integer(key) ->

@@ -19,7 +19,7 @@ defmodule Ash.Actions.ManagedRelationships do
     end
   end
 
-  def setup_managed_belongs_to_relationships(changeset, actor) do
+  def setup_managed_belongs_to_relationships(changeset, actor, engine_opts) do
     changeset.relationships
     |> Enum.map(fn {relationship, val} ->
       {Ash.Resource.Info.relationship(changeset.resource, relationship), val}
@@ -50,6 +50,7 @@ defmodule Ash.Actions.ManagedRelationships do
       pkeys = pkeys(relationship)
 
       opts = Ash.Changeset.ManagedRelationshipHelpers.sanitize_opts(relationship, opts)
+      opts = Keyword.put(opts, :authorize?, engine_opts[:authorize?] && opts[:authorize?])
       current_value = Map.get(changeset.data, relationship.name)
 
       case find_match(List.wrap(current_value), input, pkeys, relationship) do
@@ -88,7 +89,10 @@ defmodule Ash.Actions.ManagedRelationships do
                     |> Ash.Query.set_context(relationship.context)
                     |> Ash.Query.limit(1)
                     |> Ash.Query.set_tenant(changeset.tenant)
-                    |> changeset.api.read_one(authorize?: opts[:authorize?], actor: actor)
+                    |> changeset.api.read_one(
+                      authorize?: opts[:authorize?],
+                      actor: actor
+                    )
                     |> case do
                       {:ok, nil} ->
                         create_belongs_to_record(
@@ -120,7 +124,7 @@ defmodule Ash.Actions.ManagedRelationships do
                         {:halt, {Ash.Changeset.add_error(changeset, error), instructions}}
                     end
 
-                  :error ->
+                  _ ->
                     {:cont, {changeset, instructions}}
                 end
               end
@@ -143,22 +147,24 @@ defmodule Ash.Actions.ManagedRelationships do
     end)
     |> Enum.reduce({changeset, instructions}, fn required_relationship,
                                                  {changeset, instructions} ->
-      case Ash.Changeset.get_attribute(changeset, required_relationship.source_field) do
-        nil ->
-          changeset =
-            Ash.Changeset.add_error(
-              changeset,
-              Ash.Error.Changes.Required.exception(
-                field: required_relationship.name,
-                type: :relationship
+      changeset =
+        Ash.Changeset.before_action(changeset, fn changeset ->
+          case Ash.Changeset.get_attribute(changeset, required_relationship.source_field) do
+            nil ->
+              Ash.Changeset.add_error(
+                changeset,
+                Ash.Error.Changes.Required.exception(
+                  field: required_relationship.name,
+                  type: :relationship
+                )
               )
-            )
 
-          {changeset, instructions}
+            _ ->
+              changeset
+          end
+        end)
 
-        _ ->
-          {changeset, instructions}
-      end
+      {changeset, instructions}
     end)
   end
 
@@ -261,7 +267,7 @@ defmodule Ash.Actions.ManagedRelationships do
     end
   end
 
-  def manage_relationships(record, changeset, actor) do
+  def manage_relationships(record, changeset, actor, engine_opts) do
     changeset.relationships
     |> Enum.map(fn {relationship, val} ->
       {Ash.Resource.Info.relationship(changeset.resource, relationship), val}
@@ -270,6 +276,7 @@ defmodule Ash.Actions.ManagedRelationships do
       batches
       |> Enum.with_index()
       |> Enum.map(fn {{batch, opts}, index} ->
+        opts = Keyword.put(opts, :authorize?, engine_opts[:authorize?] && opts[:authorize?])
         {key, batch, opts, index}
       end)
     end)
@@ -458,7 +465,7 @@ defmodule Ash.Actions.ManagedRelationships do
        ) do
     match = find_match(List.wrap(original_value), input, pkeys, relationship)
 
-    if is_nil(match) || opts[:on_match] == :create do
+    if is_nil(match) || opts[:on_match] == :no_match do
       case handle_create(
              record,
              current_value,
@@ -846,7 +853,7 @@ defmodule Ash.Actions.ManagedRelationships do
       :ignore ->
         {:ok, [match | current_value], [], [match]}
 
-      :destroy ->
+      :missing ->
         {:ok, current_value, [], []}
 
       {:unrelate, action_name} ->
@@ -1024,6 +1031,10 @@ defmodule Ash.Actions.ManagedRelationships do
     {metadata[:join_keys] || %{}, input}
   end
 
+  defp split_join_keys(input, :all) do
+    {input, %{}}
+  end
+
   defp split_join_keys(input, join_keys) do
     Map.split(input, join_keys ++ Enum.map(join_keys, &to_string/1))
   end
@@ -1098,7 +1109,7 @@ defmodule Ash.Actions.ManagedRelationships do
                   actor: actor
                 )
                 |> case do
-                  {:ok, _result, join_notifications} ->
+                  {:ok, join_notifications} ->
                     notifications = join_notifications ++ all_notifications
 
                     record
@@ -1113,20 +1124,21 @@ defmodule Ash.Actions.ManagedRelationships do
                     # credo:disable-for-next-line Credo.Check.Refactor.Nesting
                     |> case do
                       {:ok, destroy_destination_notifications} ->
-                        {:ok, current_value,
-                         notifications ++
-                           all_notifications ++ destroy_destination_notifications}
+                        {:cont,
+                         {:ok, current_value,
+                          notifications ++
+                            all_notifications ++ destroy_destination_notifications}}
 
                       {:error, error} ->
-                        {:error, error}
+                        {:halt, {:error, error}}
                     end
 
                   {:error, error} ->
-                    {:error, error}
+                    {:halt, {:error, error}}
                 end
 
               {:error, error} ->
-                {:error, error}
+                {:halt, {:error, error}}
             end
 
           {:destroy, action_name} ->

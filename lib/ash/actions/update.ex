@@ -89,7 +89,6 @@ defmodule Ash.Actions.Update do
       Ash.Changeset.for_update(changeset, action.name, %{}, actor: actor)
     end
     |> Ash.Changeset.set_defaults(:update, true)
-    |> Ash.Changeset.cast_arguments(action)
   end
 
   defp do_run_requests(
@@ -134,7 +133,8 @@ defmodule Ash.Actions.Update do
                   {changeset, instructions} =
                     Ash.Actions.ManagedRelationships.setup_managed_belongs_to_relationships(
                       changeset,
-                      engine_opts[:actor]
+                      engine_opts[:actor],
+                      engine_opts
                     )
 
                   {changeset, instructions}
@@ -159,7 +159,8 @@ defmodule Ash.Actions.Update do
                      Ash.Actions.ManagedRelationships.manage_relationships(
                        loaded,
                        changeset,
-                       engine_opts[:actor]
+                       engine_opts[:actor],
+                       engine_opts
                      ) do
                 {:ok, Helpers.select(with_relationships, changeset),
                  %{notifications: notifications ++ new_notifications}}
