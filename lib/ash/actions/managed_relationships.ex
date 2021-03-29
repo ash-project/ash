@@ -278,6 +278,9 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Enum.map(fn {relationship, val} ->
       {Ash.Resource.Info.relationship(changeset.resource, relationship), val}
     end)
+    |> Enum.reject(fn {relationship, _} ->
+      relationship.type == :belongs_to
+    end)
     |> Enum.flat_map(fn {key, batches} ->
       batches
       |> Enum.with_index()
