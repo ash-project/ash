@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.37.2](https://github.com/ash-project/ash/compare/v1.37.1...v1.37.2) (2021-03-29)
+
+
+
+
+### Bug Fixes:
+
+* don't overwrite managed `belongs_to` relationships
+
+* handle `on_lookup` + `on_no_match` for `belongs_to`
+
+* fix required relationships and add test
+
+* fix required relationships
+
+* various managed_relationship fixes
+
 ## [v1.37.1](https://github.com/ash-project/ash/compare/v1.37.0...v1.37.1) (2021-03-28)
 
 
