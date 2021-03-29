@@ -125,7 +125,15 @@ defmodule Ash.Actions.ManagedRelationships do
                     end
 
                   _ ->
-                    {:cont, {changeset, instructions}}
+                    create_belongs_to_record(
+                      changeset,
+                      instructions,
+                      relationship,
+                      input,
+                      actor,
+                      index,
+                      opts
+                    )
                 end
               end
           end
