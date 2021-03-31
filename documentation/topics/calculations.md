@@ -13,9 +13,12 @@ Example:
 
 ```elixir
 defmodule Concat do
-  # An example concatenation calculation, that accepts the delimeter as an argument, and the fields to concatenate as options
+  # An example concatenation calculation, that accepts the delimeter as an argument,
+  #and the fields to concatenate as options
   use Ash.Calculation, type: :string
 
+  # Optional callback that verifies the passed in options (and optionally transforms them)
+  @impl true
   def init(opts) do
     if opts[:keys] && is_list(opts[:keys]) && Enum.all?(opts[:keys], &is_atom/1) do
       {:ok, opts}
@@ -24,6 +27,7 @@ defmodule Concat do
     end
   end
 
+  @impl true
   def calculate(records, opts, %{separator: separator}) do
     Enum.map(records, fn record ->
       Enum.map_join(opts[:keys], separator, fn key ->
@@ -44,7 +48,7 @@ calculations do
 end
 ```
 
-See the documentation for the calculations section in `Ash.Resource.Dsl` for more information.
+See the documentation for the calculations section in `Ash.Resource.Dsl` and the `Ash.Calculation` docs for more information.
 
 The calculations declared on a resource allow for declaring a set of named calculations that can be used by extensions.
 They can also be loaded in the query using `Ash.Query.load/2`, or after the fact using `c:Ash.Api.load/3`. Calculations declared on the resource will be keys in the resource's struct.

@@ -9,13 +9,17 @@ defmodule Ash.Actions.ManagedRelationships do
   def load(_api, created, %{relationships: nil}, _), do: {:ok, created}
 
   def load(api, created, changeset, opts) do
-    api.load(created, Map.keys(changeset.relationships),
-      authorize?: opts[:authorize?],
-      actor: opts[:actor]
-    )
+    if Ash.Changeset.ManagedRelationshipHelpers.must_load?(opts) do
+      api.load(created, Map.keys(changeset.relationships),
+        authorize?: opts[:authorize?],
+        actor: opts[:actor]
+      )
+    else
+      {:ok, created}
+    end
   end
 
-  def setup_managed_belongs_to_relationships(changeset, actor) do
+  def setup_managed_belongs_to_relationships(changeset, actor, engine_opts) do
     changeset.relationships
     |> Enum.map(fn {relationship, val} ->
       {Ash.Resource.Info.relationship(changeset.resource, relationship), val}
@@ -45,7 +49,8 @@ defmodule Ash.Actions.ManagedRelationships do
                                                                {changeset, instructions} ->
       pkeys = pkeys(relationship)
 
-      opts = sanitize_opts(relationship, opts)
+      opts = Ash.Changeset.ManagedRelationshipHelpers.sanitize_opts(relationship, opts)
+      opts = Keyword.put(opts, :authorize?, engine_opts[:authorize?] && opts[:authorize?])
       current_value = Map.get(changeset.data, relationship.name)
 
       case find_match(List.wrap(current_value), input, pkeys, relationship) do
@@ -79,12 +84,15 @@ defmodule Ash.Actions.ManagedRelationships do
                 case Ash.Filter.get_filter(relationship.destination, input) do
                   {:ok, keys} ->
                     relationship.destination
-                    |> Ash.Query.for_read(read, input)
+                    |> Ash.Query.for_read(read, input, actor: actor)
                     |> Ash.Query.filter(^keys)
                     |> Ash.Query.set_context(relationship.context)
                     |> Ash.Query.limit(1)
                     |> Ash.Query.set_tenant(changeset.tenant)
-                    |> changeset.api.read_one(authorize?: opts[:authorize?], actor: actor)
+                    |> changeset.api.read_one(
+                      authorize?: opts[:authorize?],
+                      actor: actor
+                    )
                     |> case do
                       {:ok, nil} ->
                         create_belongs_to_record(
@@ -116,8 +124,16 @@ defmodule Ash.Actions.ManagedRelationships do
                         {:halt, {Ash.Changeset.add_error(changeset, error), instructions}}
                     end
 
-                  :error ->
-                    {:cont, {changeset, instructions}}
+                  _ ->
+                    create_belongs_to_record(
+                      changeset,
+                      instructions,
+                      relationship,
+                      input,
+                      actor,
+                      index,
+                      opts
+                    )
                 end
               end
           end
@@ -139,9 +155,9 @@ defmodule Ash.Actions.ManagedRelationships do
     end)
     |> Enum.reduce({changeset, instructions}, fn required_relationship,
                                                  {changeset, instructions} ->
-      case Ash.Changeset.get_attribute(changeset, required_relationship.source_field) do
-        nil ->
-          changeset =
+      changeset =
+        case Ash.Changeset.get_attribute(changeset, required_relationship.source_field) do
+          nil ->
             Ash.Changeset.add_error(
               changeset,
               Ash.Error.Changes.Required.exception(
@@ -150,11 +166,11 @@ defmodule Ash.Actions.ManagedRelationships do
               )
             )
 
-          {changeset, instructions}
+          _ ->
+            changeset
+        end
 
-        _ ->
-          {changeset, instructions}
-      end
+      {changeset, instructions}
     end)
   end
 
@@ -223,7 +239,11 @@ defmodule Ash.Actions.ManagedRelationships do
          index
        ) do
     relationship.destination
-    |> Ash.Changeset.for_create(action_name, input, require?: false)
+    |> Ash.Changeset.for_create(action_name, input,
+      require?: false,
+      actor: actor,
+      relationships: opts[:relationships] || []
+    )
     |> Ash.Changeset.set_context(relationship.context)
     |> Ash.Changeset.set_tenant(changeset.tenant)
     |> changeset.api.create(
@@ -253,15 +273,19 @@ defmodule Ash.Actions.ManagedRelationships do
     end
   end
 
-  def manage_relationships(record, changeset, actor) do
+  def manage_relationships(record, changeset, actor, engine_opts) do
     changeset.relationships
     |> Enum.map(fn {relationship, val} ->
       {Ash.Resource.Info.relationship(changeset.resource, relationship), val}
+    end)
+    |> Enum.reject(fn {relationship, _} ->
+      relationship.type == :belongs_to
     end)
     |> Enum.flat_map(fn {key, batches} ->
       batches
       |> Enum.with_index()
       |> Enum.map(fn {{batch, opts}, index} ->
+        opts = Keyword.put(opts, :authorize?, engine_opts[:authorize?] && opts[:authorize?])
         {key, batch, opts, index}
       end)
     end)
@@ -295,119 +319,6 @@ defmodule Ash.Actions.ManagedRelationships do
     end)
   end
 
-  defp sanitize_opts(relationship, opts) do
-    [
-      on_no_match: :ignore,
-      on_missing: :ignore,
-      on_match: :ignore,
-      on_lookup: :ignore
-    ]
-    |> Keyword.merge(opts)
-    |> Keyword.update!(:on_no_match, fn
-      :create when relationship.type == :many_to_many ->
-        action = Ash.Resource.Info.primary_action!(relationship.destination, :create)
-        join_action = Ash.Resource.Info.primary_action!(relationship.through_destination, :create)
-        {:create, action.name, join_action.name, []}
-
-      {:create, action_name} when relationship.type == :many_to_many ->
-        join_action = Ash.Resource.Info.primary_action!(relationship.through_destination, :create)
-        {:create, action_name, join_action.name, []}
-
-      :create ->
-        action = Ash.Resource.Info.primary_action!(relationship.destination, :create)
-        {:create, action.name}
-
-      other ->
-        other
-    end)
-    |> Keyword.update!(:on_missing, fn
-      :destroy when relationship.type == :many_to_many ->
-        action = Ash.Resource.Info.primary_action!(relationship.destination, :destroy)
-
-        join_action =
-          Ash.Resource.Info.primary_action!(relationship.through_destination, :destroy)
-
-        {:destroy, action.name, join_action.name, []}
-
-      {:destroy, action_name} when relationship.type == :many_to_many ->
-        join_action =
-          Ash.Resource.Info.primary_action!(relationship.through_destination, :destroy)
-
-        {:destroy, action_name, join_action.name, []}
-
-      :destroy ->
-        action = Ash.Resource.Info.primary_action!(relationship.destination, :destroy)
-
-        {:destroy, action.name}
-
-      :unrelate ->
-        {:unrelate, nil}
-
-      other ->
-        other
-    end)
-    |> Keyword.update!(:on_match, fn
-      :update when relationship.type == :many_to_many ->
-        update = Ash.Resource.Info.primary_action!(relationship.destination, :update)
-        join_update = Ash.Resource.Info.primary_action!(relationship.through, :update)
-
-        {:update, update.name, join_update.name, []}
-
-      {:update, update} when relationship.type == :many_to_many ->
-        join_update = Ash.Resource.Info.primary_action!(relationship.through, :update)
-
-        {:update, update, join_update.name, []}
-
-      {:update, update, join_update} when relationship.type == :many_to_many ->
-        {:update, update, join_update, []}
-
-      :update ->
-        action = Ash.Resource.Info.primary_action!(relationship.destination, :update)
-
-        {:update, action.name}
-
-      :unrelate ->
-        {:unrelate, nil}
-
-      other ->
-        other
-    end)
-    |> Keyword.update!(:on_lookup, fn
-      operation
-      when relationship.type == :many_to_many and
-             operation in [:relate, :relate_and_update] ->
-        read = Ash.Resource.Info.primary_action(relationship.destination, :read)
-        create = Ash.Resource.Info.primary_action(relationship.through, :create)
-
-        {operation, create.name, read.name, []}
-
-      operation
-      when relationship.type in [:has_many, :has_one] and
-             operation in [:relate, :relate_and_update] ->
-        read = Ash.Resource.Info.primary_action(relationship.destination, :read)
-        update = Ash.Resource.Info.primary_action(relationship.destination, :update)
-
-        if relationship.type == :many_to_many do
-          {operation, update.name, read.name, []}
-        else
-          {operation, update.name, read.name}
-        end
-
-      operation when operation in [:relate, :relate_and_update] ->
-        read = Ash.Resource.Info.primary_action(relationship.destination, :read)
-        update = Ash.Resource.Info.primary_action(relationship.source, :update)
-
-        if relationship.type == :many_to_many do
-          {operation, update.name, read.name, []}
-        else
-          {operation, update.name, read.name}
-        end
-
-      :ignore ->
-        :ignore
-    end)
-  end
-
   defp pkeys(relationship) do
     identities =
       relationship.destination
@@ -427,7 +338,7 @@ defmodule Ash.Actions.ManagedRelationships do
          opts
        ) do
     inputs = List.wrap(inputs)
-    opts = sanitize_opts(relationship, opts)
+    opts = Ash.Changeset.ManagedRelationshipHelpers.sanitize_opts(relationship, opts)
     pkeys = pkeys(relationship)
     original_value = List.wrap(Map.get(record, relationship.name))
 
@@ -489,7 +400,7 @@ defmodule Ash.Actions.ManagedRelationships do
          index,
          opts
        ) do
-    opts = sanitize_opts(relationship, opts)
+    opts = Ash.Changeset.ManagedRelationshipHelpers.sanitize_opts(relationship, opts)
 
     identities =
       relationship.destination
@@ -563,7 +474,7 @@ defmodule Ash.Actions.ManagedRelationships do
        ) do
     match = find_match(List.wrap(original_value), input, pkeys, relationship)
 
-    if is_nil(match) || opts[:on_match] == :create do
+    if is_nil(match) || opts[:on_match] == :no_match do
       case handle_create(
              record,
              current_value,
@@ -619,7 +530,7 @@ defmodule Ash.Actions.ManagedRelationships do
                   {:ok, input}
                 else
                   relationship.destination
-                  |> Ash.Query.for_read(read, input)
+                  |> Ash.Query.for_read(read, input, actor: actor)
                   |> Ash.Query.filter(^keys)
                   |> Ash.Query.set_context(relationship.context)
                   |> Ash.Query.set_tenant(changeset.tenant)
@@ -714,7 +625,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
         relationship.through
         |> Ash.Changeset.new()
-        |> Ash.Changeset.for_create(create_or_update, join_input)
+        |> Ash.Changeset.for_create(create_or_update, join_input, actor: actor)
         |> Ash.Changeset.force_change_attribute(
           relationship.source_field_on_join_table,
           Map.get(record, relationship.source_field)
@@ -768,7 +679,10 @@ defmodule Ash.Actions.ManagedRelationships do
           end
 
         found
-        |> Ash.Changeset.for_update(create_or_update, input)
+        |> Ash.Changeset.for_update(create_or_update, input,
+          relationships: opts[:relationships] || [],
+          actor: actor
+        )
         |> Ash.Changeset.force_change_attribute(
           relationship.destination_field,
           Map.get(record, relationship.source_field)
@@ -818,7 +732,11 @@ defmodule Ash.Actions.ManagedRelationships do
                 {:ok, input, [], []}
               else
                 relationship.destination
-                |> Ash.Changeset.for_create(action_name, input, require?: false)
+                |> Ash.Changeset.for_create(action_name, input,
+                  require?: false,
+                  actor: actor,
+                  relationships: opts[:relationships]
+                )
                 |> Ash.Changeset.force_change_attribute(
                   relationship.destination_field,
                   Map.get(record, relationship.source_field)
@@ -861,7 +779,11 @@ defmodule Ash.Actions.ManagedRelationships do
             {:ok, input, []}
           else
             relationship.destination
-            |> Ash.Changeset.for_create(action_name, regular_params, require?: false)
+            |> Ash.Changeset.for_create(action_name, regular_params,
+              require?: false,
+              relationships: opts[:relationships],
+              actor: actor
+            )
             |> Ash.Changeset.set_context(relationship.context)
             |> Ash.Changeset.set_tenant(changeset.tenant)
             |> changeset.api.create(
@@ -878,7 +800,10 @@ defmodule Ash.Actions.ManagedRelationships do
 
             relationship.through
             |> Ash.Changeset.new()
-            |> Ash.Changeset.for_create(join_action_name, join_params, require?: false)
+            |> Ash.Changeset.for_create(join_action_name, join_params,
+              require?: false,
+              actor: actor
+            )
             |> Ash.Changeset.force_change_attribute(
               relationship.source_field_on_join_table,
               Map.get(record, relationship.source_field)
@@ -937,7 +862,7 @@ defmodule Ash.Actions.ManagedRelationships do
       :ignore ->
         {:ok, [match | current_value], [], [match]}
 
-      :destroy ->
+      :missing ->
         {:ok, current_value, [], []}
 
       {:unrelate, action_name} ->
@@ -967,7 +892,10 @@ defmodule Ash.Actions.ManagedRelationships do
           end
 
         match
-        |> Ash.Changeset.for_update(action_name, input)
+        |> Ash.Changeset.for_update(action_name, input,
+          actor: actor,
+          relationships: opts[:relationships] || []
+        )
         |> Ash.Changeset.set_context(relationship.context)
         |> Ash.Changeset.set_tenant(changeset.tenant)
         |> api.update(actor: actor, authorize?: opts[:authorize?], return_notifications?: true)
@@ -993,7 +921,10 @@ defmodule Ash.Actions.ManagedRelationships do
         source_value = Map.get(source_record, relationship.source_field)
 
         match
-        |> Ash.Changeset.for_update(action_name, regular_params)
+        |> Ash.Changeset.for_update(action_name, regular_params,
+          actor: actor,
+          relationships: opts[:relationships]
+        )
         |> Ash.Changeset.set_context(relationship.context)
         |> Ash.Changeset.set_tenant(changeset.tenant)
         |> api.update(actor: actor, authorize?: opts[:authorize?], return_notifications?: true)
@@ -1028,7 +959,7 @@ defmodule Ash.Actions.ManagedRelationships do
                     )
 
                   result
-                  |> Ash.Changeset.for_update(join_action_name, join_params)
+                  |> Ash.Changeset.for_update(join_action_name, join_params, actor: actor)
                   |> Ash.Changeset.set_context(join_relationship.context)
                   |> Ash.Changeset.set_tenant(changeset.tenant)
                   |> api.update(
@@ -1057,7 +988,13 @@ defmodule Ash.Actions.ManagedRelationships do
     end
   end
 
-  defp find_match(current_value, input, pkeys, relationship \\ nil) do
+  defp find_match(current_value, input, pkeys, relationship \\ nil)
+
+  defp find_match(%Ash.NotLoaded{}, _input, _pkeys, _relationship) do
+    nil
+  end
+
+  defp find_match(current_value, input, pkeys, relationship) do
     Enum.find(current_value, fn current_value ->
       Enum.any?(pkeys, fn pkey ->
         matches?(current_value, input, pkey, relationship)
@@ -1101,6 +1038,10 @@ defmodule Ash.Actions.ManagedRelationships do
 
   defp split_join_keys(%_{__metadata__: metadata} = input, _join_keys) do
     {metadata[:join_keys] || %{}, input}
+  end
+
+  defp split_join_keys(input, :all) do
+    {input, %{}}
   end
 
   defp split_join_keys(input, join_keys) do
@@ -1166,7 +1107,8 @@ defmodule Ash.Actions.ManagedRelationships do
                 result
                 |> Ash.Changeset.for_destroy(
                   join_action_name,
-                  %{}
+                  %{},
+                  actor: actor
                 )
                 |> Ash.Changeset.set_context(join_relationship.context)
                 |> Ash.Changeset.set_tenant(changeset.tenant)
@@ -1176,11 +1118,11 @@ defmodule Ash.Actions.ManagedRelationships do
                   actor: actor
                 )
                 |> case do
-                  {:ok, _result, join_notifications} ->
+                  {:ok, join_notifications} ->
                     notifications = join_notifications ++ all_notifications
 
                     record
-                    |> Ash.Changeset.for_destroy(action_name, %{})
+                    |> Ash.Changeset.for_destroy(action_name, %{}, actor: actor)
                     |> Ash.Changeset.set_context(relationship.context)
                     |> Ash.Changeset.set_tenant(changeset.tenant)
                     |> api.destroy(
@@ -1191,25 +1133,26 @@ defmodule Ash.Actions.ManagedRelationships do
                     # credo:disable-for-next-line Credo.Check.Refactor.Nesting
                     |> case do
                       {:ok, destroy_destination_notifications} ->
-                        {:ok, current_value,
-                         notifications ++
-                           all_notifications ++ destroy_destination_notifications}
+                        {:cont,
+                         {:ok, current_value,
+                          notifications ++
+                            all_notifications ++ destroy_destination_notifications}}
 
                       {:error, error} ->
-                        {:error, error}
+                        {:halt, {:error, error}}
                     end
 
                   {:error, error} ->
-                    {:error, error}
+                    {:halt, {:error, error}}
                 end
 
               {:error, error} ->
-                {:error, error}
+                {:halt, {:error, error}}
             end
 
           {:destroy, action_name} ->
             record
-            |> Ash.Changeset.for_destroy(action_name, %{})
+            |> Ash.Changeset.for_destroy(action_name, %{}, actor: actor)
             |> Ash.Changeset.set_context(relationship.context)
             |> Ash.Changeset.set_tenant(changeset.tenant)
             |> api.destroy(
@@ -1280,7 +1223,7 @@ defmodule Ash.Actions.ManagedRelationships do
     |> case do
       {:ok, result} ->
         result
-        |> Ash.Changeset.for_destroy(action_name, %{})
+        |> Ash.Changeset.for_destroy(action_name, %{}, actor: actor)
         |> Ash.Changeset.set_context(relationship.context)
         |> Ash.Changeset.set_tenant(tenant)
         |> api.destroy(
@@ -1316,7 +1259,10 @@ defmodule Ash.Actions.ManagedRelationships do
       action_name || Ash.Resource.Info.primary_action(relationship.destination, :update).name
 
     record
-    |> Ash.Changeset.for_update(action_name, %{})
+    |> Ash.Changeset.for_update(action_name, %{},
+      relationships: opts[:relationships] || [],
+      actor: actor
+    )
     |> Ash.Changeset.force_change_attribute(relationship.destination_field, nil)
     |> Ash.Changeset.set_context(relationship.context)
     |> Ash.Changeset.set_tenant(tenant)
@@ -1344,7 +1290,10 @@ defmodule Ash.Actions.ManagedRelationships do
       action_name || Ash.Resource.Info.primary_action(relationship.source, :update).name
 
     source_record
-    |> Ash.Changeset.for_update(action_name, %{})
+    |> Ash.Changeset.for_update(action_name, %{},
+      relationships: opts[:relationships] || [],
+      actor: actor
+    )
     |> Ash.Changeset.force_change_attribute(relationship.source_field, nil)
     |> Ash.Changeset.set_context(relationship.context)
     |> Ash.Changeset.set_tenant(tenant)

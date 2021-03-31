@@ -67,7 +67,6 @@ defmodule Ash.Actions.Destroy do
 
     changeset =
       changeset
-      |> Ash.Changeset.cast_arguments(action)
       |> Ash.Changeset.validate_multitenancy()
 
     if changeset.valid? do

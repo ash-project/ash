@@ -15,7 +15,7 @@ defmodule Ash.Resource.Calculation do
     calculation: [
       type: {:custom, __MODULE__, :calculation, []},
       required: true,
-      doc: "The module or {module, opts} to use for the calculation"
+      doc: "The module or `{module, opts}` to use for the calculation"
     ],
     description: [
       type: :string,

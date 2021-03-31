@@ -33,6 +33,7 @@ defmodule Ash.Query do
     :filter,
     :tenant,
     :action,
+    :distinct,
     :__validated_for_action__,
     params: %{},
     arguments: %{},
@@ -67,6 +68,7 @@ defmodule Ash.Query do
       errors? = not Enum.empty?(query.errors)
       tenant? = not is_nil(query.tenant)
       select? = query.select not in [[], nil]
+      distinct? = query.distinct not in [[], nil]
 
       container_doc(
         "#Ash.Query<",
@@ -82,7 +84,8 @@ defmodule Ash.Query do
           or_empty(concat("aggregates: ", to_doc(query.aggregates, opts)), aggregates?),
           or_empty(concat("calculations: ", to_doc(query.calculations, opts)), calculations?),
           or_empty(concat("errors: ", to_doc(query.errors, opts)), errors?),
-          or_empty(concat("select: ", to_doc(query.select, opts)), select?)
+          or_empty(concat("select: ", to_doc(query.select, opts)), select?),
+          or_empty(concat("distinct: ", to_doc(query.distinct, opts)), distinct?)
         ],
         ">",
         opts,
@@ -252,10 +255,56 @@ defmodule Ash.Query do
       |> cast_params(action, args)
       |> run_preparations(action, opts[:actor])
       |> add_action_filters(action, opts[:actor])
-      |> cast_arguments(action, true)
+      |> require_arguments(action)
     else
       add_error(query, :action, "No such action #{action_name}")
     end
+  end
+
+  defp require_arguments(query, action) do
+    query
+    |> set_argument_defaults(action)
+    |> do_require_arguments(action)
+  end
+
+  defp do_require_arguments(query, action) do
+    action.arguments
+    |> Enum.filter(&(&1.allow_nil? == false))
+    |> Enum.reduce(query, fn argument, query ->
+      case fetch_argument(query, argument.name) do
+        {:ok, value} when not is_nil(value) ->
+          query
+
+        _ ->
+          add_error(
+            query,
+            Required.exception(
+              field: argument.name,
+              type: :argument
+            )
+          )
+      end
+    end)
+  end
+
+  defp set_argument_defaults(query, action) do
+    Enum.reduce(action.arguments, query, fn argument, query ->
+      case fetch_argument(query, argument.name) do
+        :error ->
+          if is_nil(argument.default) do
+            query
+          else
+            %{
+              query
+              | arguments:
+                  Map.put(query.arguments, argument.name, argument_default(argument.default))
+            }
+          end
+
+        _ ->
+          query
+      end
+    end)
   end
 
   defp cast_params(query, action, args) do
@@ -812,70 +861,6 @@ defmodule Ash.Query do
     %{query | arguments: Map.merge(query.arguments, map)}
   end
 
-  @doc false
-  def cast_arguments(query, action, only_supplied? \\ false) do
-    action.arguments
-    |> Enum.reject(& &1.private?)
-    |> Enum.reject(&(only_supplied? && match?({:ok, _}, fetch_argument(query, &1.name))))
-    |> Enum.reduce(query, fn argument, new_query ->
-      value = get_argument(query, argument.name)
-
-      {ignore_nil_check, value} =
-        if argument_default(argument.default) do
-          {true, value}
-        else
-          {false, value}
-        end
-
-      cond do
-        !ignore_nil_check && is_nil(value) && !argument.allow_nil? ->
-          add_error(
-            query,
-            :arguments,
-            Required.exception(field: argument.name, type: :argument)
-          )
-
-        is_nil(value) ->
-          new_query
-
-        true ->
-          val =
-            case fetch_argument(query, argument.name) do
-              :error ->
-                if argument.default do
-                  {:ok, argument_default(argument.default)}
-                else
-                  :error
-                end
-
-              {:ok, val} ->
-                {:ok, val}
-            end
-
-          with {:found, {:ok, value}} <- {:found, val},
-               {:ok, casted} <- Ash.Type.cast_input(argument.type, value, argument.constraints),
-               {:ok, casted} <-
-                 Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
-            if casted do
-              %{new_query | arguments: Map.put(new_query.arguments, argument.name, casted)}
-            else
-              new_query
-            end
-          else
-            {:error, _error} ->
-              add_error(
-                query,
-                :arguments,
-                InvalidArgument.exception(field: argument.name)
-              )
-
-            {:found, :error} ->
-              query
-          end
-      end
-    end)
-  end
-
   defp argument_default(value) when is_function(value, 0), do: value.()
   defp argument_default(value), do: value
 
@@ -987,6 +972,7 @@ defmodule Ash.Query do
   * `aggregate` - `{name, type, relationship, query_in_build_format}`
   * `calculate` - `{name, module_and_opts}`
   * `calculate` - `{name, module_and_opts, context}`
+  * `distinct` - list of atoms
   * `context: %{key: value}`
   """
   @spec build(Ash.Resource.t(), Ash.Api.t() | nil, Keyword.t()) :: t()
@@ -1006,6 +992,9 @@ defmodule Ash.Query do
 
       {:load, value}, query ->
         load(query, value)
+
+      {:distinct, value}, query ->
+        distinct(query, value)
 
       {:aggregate, {name, type, relationship}}, query ->
         aggregate(query, name, type, relationship)
@@ -1343,6 +1332,31 @@ defmodule Ash.Query do
       |> validate_sort()
     else
       add_error(query, :sort, "Data layer does not support sorting")
+    end
+  end
+
+  @doc """
+  Get results distinct on the provided fields.
+
+  Takes a list of fields to distinct on. Each call is additive, so to remove the `distinct` use
+  `unset/2`.
+
+  Examples:
+
+  ```
+  Ash.Query.distinct(query, [:first_name, :last_name])
+
+  Ash.Query.distinct(query, :email)
+  ```
+  """
+  @spec distinct(t() | Ash.Resource.t(), Ash.Sort.t()) :: t()
+  def distinct(query, distincts) do
+    query = to_query(query)
+
+    if Ash.DataLayer.data_layer_can?(query.resource, :distinct) do
+      %{query | distinct: List.wrap(query.distinct) ++ List.wrap(distincts)}
+    else
+      add_error(query, :distinct, "Data layer does not support distincting")
     end
   end
 

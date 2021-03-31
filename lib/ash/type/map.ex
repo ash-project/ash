@@ -12,6 +12,8 @@ defmodule Ash.Type.Map do
   def storage_type, do: :map
 
   @impl true
+  def cast_input("", _), do: {:ok, nil}
+
   def cast_input(value, _) when is_binary(value) do
     case Jason.decode(value) do
       {:ok, value} ->

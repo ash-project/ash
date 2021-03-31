@@ -5,6 +5,66 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.38.0](https://github.com/ash-project/ash/compare/v1.37.2...v1.38.0) (2021-03-31)
+
+
+
+
+### Features:
+
+* support `Ash.Query.distinct/2`
+
+* add `build/2` query preparation
+
+### Bug Fixes:
+
+* manage_relationships *before* after_action callbacks
+
+## [v1.37.2](https://github.com/ash-project/ash/compare/v1.37.1...v1.37.2) (2021-03-29)
+
+
+
+
+### Bug Fixes:
+
+* don't overwrite managed `belongs_to` relationships
+
+* handle `on_lookup` + `on_no_match` for `belongs_to`
+
+* fix required relationships and add test
+
+* fix required relationships
+
+* various managed_relationship fixes
+
+## [v1.37.1](https://github.com/ash-project/ash/compare/v1.37.0...v1.37.1) (2021-03-28)
+
+
+
+
+### Bug Fixes:
+
+* fix required relationships and add test
+
+* fix required relationships
+
+* various managed_relationship fixes
+
+## [v1.37.0](https://github.com/ash-project/ash/compare/v1.36.22...v1.37.0) (2021-03-25)
+
+
+
+
+### Features:
+
+* add manage relationship types
+
+### Improvements:
+
+* don't accept relationships on actions anymore
+
+* require arguments
+
 ## [v1.36.22](https://github.com/ash-project/ash/compare/v1.36.21...v1.36.22) (2021-03-24)
 
 

@@ -89,7 +89,6 @@ defmodule Ash.Actions.Update do
       Ash.Changeset.for_update(changeset, action.name, %{}, actor: actor)
     end
     |> Ash.Changeset.set_defaults(:update, true)
-    |> Ash.Changeset.cast_arguments(action)
   end
 
   defp do_run_requests(
@@ -134,7 +133,8 @@ defmodule Ash.Actions.Update do
                   {changeset, instructions} =
                     Ash.Actions.ManagedRelationships.setup_managed_belongs_to_relationships(
                       changeset,
-                      engine_opts[:actor]
+                      engine_opts[:actor],
+                      engine_opts
                     )
 
                   {changeset, instructions}
@@ -147,22 +147,18 @@ defmodule Ash.Actions.Update do
                     resource
                     |> Ash.DataLayer.update(changeset)
                     |> add_tenant(changeset)
+                    |> manage_relationships(api, changeset, engine_opts)
                   else
                     {:error, changeset.errors}
                   end
                 end)
 
-              with {:ok, updated, changeset, %{notifications: notifications}} <- result,
-                   {:ok, loaded} <-
-                     Ash.Actions.ManagedRelationships.load(api, updated, changeset, engine_opts),
-                   {:ok, with_relationships, new_notifications} <-
-                     Ash.Actions.ManagedRelationships.manage_relationships(
-                       loaded,
-                       changeset,
-                       engine_opts[:actor]
-                     ) do
-                {:ok, Helpers.select(with_relationships, changeset),
-                 %{notifications: notifications ++ new_notifications}}
+              case result do
+                {:ok, updated, _changeset, instructions} ->
+                  {:ok, updated, instructions}
+
+                other ->
+                  other
               end
             end
           ),
@@ -176,6 +172,22 @@ defmodule Ash.Actions.Update do
       engine_opts
     )
   end
+
+  defp manage_relationships({:ok, updated}, api, changeset, engine_opts) do
+    with {:ok, loaded} <-
+           Ash.Actions.ManagedRelationships.load(api, updated, changeset, engine_opts),
+         {:ok, with_relationships, new_notifications} <-
+           Ash.Actions.ManagedRelationships.manage_relationships(
+             loaded,
+             changeset,
+             engine_opts[:actor],
+             engine_opts
+           ) do
+      {:ok, Helpers.select(with_relationships, changeset), %{notifications: new_notifications}}
+    end
+  end
+
+  defp manage_relationships(other, _, _, _), do: other
 
   defp set_tenant(changeset) do
     if changeset.tenant &&

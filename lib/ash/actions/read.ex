@@ -57,8 +57,6 @@ defmodule Ash.Actions.Read do
         Ash.Query.for_read(query, action.name, %{}, actor: engine_opts[:actor])
       end
 
-    query = Ash.Query.cast_arguments(query, action)
-
     with %{valid?: true} <- query,
          :ok <- validate_multitenancy(query, opts),
          %{errors: []} = query <- query_with_initial_data(query, opts),
@@ -334,6 +332,8 @@ defmodule Ash.Actions.Read do
                {:ok, query} <-
                  Ash.DataLayer.sort(query, ash_query.sort, ash_query.resource),
                {:ok, query} <-
+                 Ash.DataLayer.distinct(query, ash_query.distinct, ash_query.resource),
+               {:ok, query} <-
                  Ash.DataLayer.set_context(ash_query.resource, query, ash_query.context),
                {:ok, query} <- set_tenant(query, ash_query),
                {:ok, results} <- run_query(ash_query, query),
@@ -588,6 +588,8 @@ defmodule Ash.Actions.Read do
                      Ash.DataLayer.filter(query, filter, initial_query.resource),
                    {:ok, query} <-
                      Ash.DataLayer.sort(query, initial_query.sort, initial_query.resource),
+                   {:ok, query} <-
+                     Ash.DataLayer.distinct(query, initial_query.distinct, initial_query.resource),
                    {:ok, %{count: count}} <- run_count_query(initial_query, query) do
                 {:ok, count}
               end

@@ -7,7 +7,7 @@ defmodule Ash.MixProject do
   designed to be used by multiple front ends.
   """
 
-  @version "1.36.22"
+  @version "1.38.0"
 
   def project do
     [
@@ -148,6 +148,7 @@ defmodule Ash.MixProject do
         ],
         miscellaneous: [
           Ash.UUID,
+          Ash.Changeset.ManagedRelationshipHelpers,
           Ash.NotLoaded,
           Ash.Query.Aggregate,
           Ash.Query.Type,
