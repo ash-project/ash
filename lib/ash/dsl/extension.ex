@@ -2,7 +2,7 @@ defmodule Ash.Dsl.Extension do
   @moduledoc """
   An extension to the Ash DSL.
 
-  This allows configuring custom DSL components, whos configurations
+  This allows configuring custom DSL components, whose configurations
   can then be read back. This guide is still a work in progress, but should
   serve as a decent example of what is possible. Open issues on Github if you
   have any issues/something is unclear.
@@ -213,14 +213,7 @@ defmodule Ash.Dsl.Extension do
           ""
 
         examples ->
-          "Examples:\n" <>
-            Enum.map_join(examples, fn example ->
-              """
-              ```
-              #{example}
-              ```
-              """
-            end)
+          "Examples:\n" <> Enum.map_join(examples, &doc_example/1)
       end
 
     entities =
@@ -281,14 +274,7 @@ defmodule Ash.Dsl.Extension do
           ""
 
         examples ->
-          "Examples:\n" <>
-            Enum.map_join(examples, fn example ->
-              """
-              ```
-              #{example}
-              ```
-              """
-            end)
+          "Examples:\n" <> Enum.map_join(examples, &doc_example/1)
       end
 
     entities =
@@ -353,6 +339,23 @@ defmodule Ash.Dsl.Extension do
            end) do
       {:ok, value}
     end
+  end
+
+  defp doc_example({description, example}) when is_binary(description) and is_binary(example) do
+    """
+    #{description}
+    ```
+    #{example}
+    ```
+    """
+  end
+
+  defp doc_example(example) when is_binary(example) do
+    """
+    ```
+    #{example}
+    ```
+    """
   end
 
   @doc false

@@ -799,7 +799,10 @@ defmodule Ash.Resource.Dsl do
     """,
     examples: [
       "calculate :full_name, :string, MyApp.MyResource.FullName",
-      "calculate :full_name, :string, {MyApp.FullName, keys: [:first_name, :last_name]}",
+      {
+        "`Ash.Calculation` implementation example:",
+        "calculate :full_name, :string, {MyApp.FullName, keys: [:first_name, :last_name]}"
+      },
       "calculate :full_name, :string, full_name([:first_name, :last_name])"
     ],
     target: Ash.Resource.Calculation,
