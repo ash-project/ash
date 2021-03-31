@@ -870,6 +870,13 @@ defmodule Ash.Changeset do
 
     if changeset.valid? do
       case func.(changeset) do
+        {:ok, result, instructions} ->
+          run_after_actions(
+            result,
+            changeset,
+            List.wrap(instructions[:notifications]) ++ before_action_notifications
+          )
+
         {:ok, result} ->
           run_after_actions(result, changeset, before_action_notifications)
 

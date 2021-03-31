@@ -44,6 +44,8 @@ defmodule Ash.DataLayer do
               {:ok, data_layer_query()} | {:error, term}
   @callback sort(data_layer_query(), Ash.Sort.t(), resource :: Ash.Resource.t()) ::
               {:ok, data_layer_query()} | {:error, term}
+  @callback distinct(data_layer_query(), list(atom), resource :: Ash.Resource.t()) ::
+              {:ok, data_layer_query()} | {:error, term}
   @callback limit(
               data_layer_query(),
               limit :: non_neg_integer(),
@@ -111,6 +113,7 @@ defmodule Ash.DataLayer do
   @optional_callbacks source: 1,
                       equal?: 1,
                       run_query: 2,
+                      distinct: 3,
                       run_query_with_lateral_join: 6,
                       create: 2,
                       update: 2,
@@ -257,6 +260,17 @@ defmodule Ash.DataLayer do
     if can?(:sort, resource) do
       data_layer = Ash.DataLayer.data_layer(resource)
       data_layer.sort(query, sort, resource)
+    else
+      {:ok, query}
+    end
+  end
+
+  @spec distinct(data_layer_query(), list(atom) | nil, Ash.Resource.t()) ::
+          {:ok, data_layer_query()} | {:error, term}
+  def distinct(query, distinct, resource) do
+    if can?(:distinct, resource) && distinct do
+      data_layer = Ash.DataLayer.data_layer(resource)
+      data_layer.distinct(query, distinct, resource)
     else
       {:ok, query}
     end

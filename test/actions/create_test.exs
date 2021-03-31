@@ -595,10 +595,9 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     test "allows creating with the required belongs_to relationship with an on_no_match :create" do
-      author =
-        Author
-        |> Ash.Changeset.for_create(:create, bio: "best dude")
-        |> Api.create!()
+      Author
+      |> Ash.Changeset.for_create(:create, bio: "best dude")
+      |> Api.create!()
 
       ProfileWithBelongsTo
       |> Ash.Changeset.for_create(:create)
