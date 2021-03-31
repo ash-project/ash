@@ -33,6 +33,7 @@ defmodule Ash.Query do
     :filter,
     :tenant,
     :action,
+    :distinct,
     :__validated_for_action__,
     params: %{},
     arguments: %{},
@@ -67,6 +68,7 @@ defmodule Ash.Query do
       errors? = not Enum.empty?(query.errors)
       tenant? = not is_nil(query.tenant)
       select? = query.select not in [[], nil]
+      distinct? = query.distinct not in [[], nil]
 
       container_doc(
         "#Ash.Query<",
@@ -82,7 +84,8 @@ defmodule Ash.Query do
           or_empty(concat("aggregates: ", to_doc(query.aggregates, opts)), aggregates?),
           or_empty(concat("calculations: ", to_doc(query.calculations, opts)), calculations?),
           or_empty(concat("errors: ", to_doc(query.errors, opts)), errors?),
-          or_empty(concat("select: ", to_doc(query.select, opts)), select?)
+          or_empty(concat("select: ", to_doc(query.select, opts)), select?),
+          or_empty(concat("distinct: ", to_doc(query.distinct, opts)), distinct?)
         ],
         ">",
         opts,
@@ -969,6 +972,7 @@ defmodule Ash.Query do
   * `aggregate` - `{name, type, relationship, query_in_build_format}`
   * `calculate` - `{name, module_and_opts}`
   * `calculate` - `{name, module_and_opts, context}`
+  * `distinct` - list of atoms
   * `context: %{key: value}`
   """
   @spec build(Ash.Resource.t(), Ash.Api.t() | nil, Keyword.t()) :: t()
@@ -988,6 +992,9 @@ defmodule Ash.Query do
 
       {:load, value}, query ->
         load(query, value)
+
+      {:distinct, value}, query ->
+        distinct(query, value)
 
       {:aggregate, {name, type, relationship}}, query ->
         aggregate(query, name, type, relationship)
@@ -1325,6 +1332,31 @@ defmodule Ash.Query do
       |> validate_sort()
     else
       add_error(query, :sort, "Data layer does not support sorting")
+    end
+  end
+
+  @doc """
+  Get results distinct on the provided fields.
+
+  Takes a list of fields to distinct on. Each call is additive, so to remove the `distinct` use
+  `unset/2`.
+
+  Examples:
+
+  ```
+  Ash.Query.distinct(query, [:first_name, :last_name])
+
+  Ash.Query.distinct(query, :email)
+  ```
+  """
+  @spec distinct(t() | Ash.Resource.t(), Ash.Sort.t()) :: t()
+  def distinct(query, distincts) do
+    query = to_query(query)
+
+    if Ash.DataLayer.data_layer_can?(query.resource, :distinct) do
+      %{query | distinct: List.wrap(query.distinct) ++ List.wrap(distincts)}
+    else
+      add_error(query, :distinct, "Data layer does not support distincting")
     end
   end
 

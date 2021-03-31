@@ -332,6 +332,8 @@ defmodule Ash.Actions.Read do
                {:ok, query} <-
                  Ash.DataLayer.sort(query, ash_query.sort, ash_query.resource),
                {:ok, query} <-
+                 Ash.DataLayer.distinct(query, ash_query.distinct, ash_query.resource),
+               {:ok, query} <-
                  Ash.DataLayer.set_context(ash_query.resource, query, ash_query.context),
                {:ok, query} <- set_tenant(query, ash_query),
                {:ok, results} <- run_query(ash_query, query),
@@ -586,6 +588,8 @@ defmodule Ash.Actions.Read do
                      Ash.DataLayer.filter(query, filter, initial_query.resource),
                    {:ok, query} <-
                      Ash.DataLayer.sort(query, initial_query.sort, initial_query.resource),
+                   {:ok, query} <-
+                     Ash.DataLayer.distinct(query, initial_query.distinct, initial_query.resource),
                    {:ok, %{count: count}} <- run_count_query(initial_query, query) do
                 {:ok, count}
               end
