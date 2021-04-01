@@ -37,7 +37,7 @@ defmodule Ash.Resource.Validation.OneOf do
         :ok
 
       {:ok, changing_to} ->
-        if changing_to in opts[:values] do
+        if Enum.any?(opts[:values], &Comp.equal?(&1, changing_to)) do
           :ok
         else
           {:error,

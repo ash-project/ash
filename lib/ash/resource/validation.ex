@@ -39,7 +39,16 @@ defmodule Ash.Resource.Validation do
   end
   ```
   """
-  defstruct [:validation, :module, :opts, :expensive?, :description, :message, on: []]
+  defstruct [
+    :validation,
+    :module,
+    :opts,
+    :expensive?,
+    :description,
+    :message,
+    :before_action?,
+    on: []
+  ]
 
   defmacro __using__(_) do
     quote do
@@ -92,6 +101,12 @@ defmodule Ash.Resource.Validation do
     description: [
       type: :string,
       doc: "An optional description for the validation"
+    ],
+    before_action?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "If set to `true`, the validation is not run when building changesets using `Ash.Changeset.for_*`. The validation will only ever be run once the action itself is called."
     ]
   ]
 

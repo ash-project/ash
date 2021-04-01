@@ -636,11 +636,7 @@ defmodule Ash.Changeset do
         module.change(changeset, opts, %{actor: actor})
 
       %{validation: _} = validation, changeset ->
-        if validation.expensive? and not changeset.valid? do
-          changeset
-        else
-          do_validation(changeset, validation)
-        end
+        validate(changeset, validation)
     end)
   end
 
@@ -693,19 +689,29 @@ defmodule Ash.Changeset do
   defp default(:update, %{update_default: value}), do: value
 
   defp add_validations(changeset) do
-    Ash.Changeset.before_action(changeset, fn changeset ->
-      changeset.resource
-      # We use the `changeset.action_type` to support soft deletes
-      # Because a delete is an `update` with an action type of `update`
-      |> Ash.Resource.Info.validations(changeset.action_type)
-      |> Enum.reduce(changeset, fn validation, changeset ->
+    changeset.resource
+    # We use the `changeset.action_type` to support soft deletes
+    # Because a delete is an `update` with an action type of `update`
+    |> Ash.Resource.Info.validations(changeset.action_type)
+    |> Enum.reduce(changeset, &validate(&2, &1))
+  end
+
+  defp validate(changeset, validation) do
+    if validation.before_action? do
+      before_action(changeset, fn changeset ->
         if validation.expensive? and not changeset.valid? do
           changeset
         else
           do_validation(changeset, validation)
         end
       end)
-    end)
+    else
+      if validation.expensive? and not changeset.valid? do
+        changeset
+      else
+        do_validation(changeset, validation)
+      end
+    end
   end
 
   defp do_validation(changeset, validation) do

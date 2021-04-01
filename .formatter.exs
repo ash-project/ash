@@ -12,6 +12,7 @@ locals_without_parens = [
   attribute: 2,
   attribute: 3,
   base_filter: 1,
+  before_action?: 1,
   belongs_to: 2,
   belongs_to: 3,
   calculate: 3,

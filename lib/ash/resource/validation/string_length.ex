@@ -36,12 +36,32 @@ defmodule Ash.Resource.Validation.StringLength do
 
   @impl true
   def validate(changeset, opts) do
-    Ash.Changeset.get_attribute(changeset, opts[:attribute])
-    |> do_validate(Enum.into(opts, %{}))
-  end
+    case Ash.Changeset.get_attribute(changeset, opts[:attribute]) do
+      nil ->
+        :ok
 
-  defp do_validate(nil, _) do
-    :ok
+      value ->
+        value =
+          try do
+            {:ok, to_string(value)}
+          rescue
+            _ ->
+              {:error,
+               InvalidAttribute.exception(
+                 field: opts[:attribute],
+                 message: "%{field} could not be parsed",
+                 vars: [field: opts[:attribute]]
+               )}
+          end
+
+        case value do
+          {:ok, value} ->
+            do_validate(value, Enum.into(opts, %{}))
+
+          {:error, error} ->
+            {:error, error}
+        end
+    end
   end
 
   defp do_validate(value, %{exact: exact} = opts) do

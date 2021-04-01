@@ -35,7 +35,7 @@ defmodule Ash.Resource.Validation.Confirm do
       Changeset.get_argument(changeset, opts[:field]) ||
         Changeset.get_attribute(changeset, opts[:field])
 
-    if confirmation_value == value do
+    if Comp.equal?(confirmation_value, value) do
       :ok
     else
       {:error,

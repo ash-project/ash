@@ -36,20 +36,38 @@ defmodule Ash.Resource.Validation.Match do
   @impl true
   def validate(changeset, opts) do
     case Ash.Changeset.fetch_change(changeset, opts[:attribute]) do
-      {:ok, changing_to} when is_binary(changing_to) ->
-        if String.match?(changing_to, opts[:match]) do
-          :ok
-        else
-          {:error,
-           InvalidAttribute.exception(
-             field: opts[:attribute],
-             message: opts[:message],
-             vars: [match: opts[:match]]
-           )}
+      {:ok, changing_to} ->
+        case string_value(changing_to, opts) do
+          {:ok, changing_to} ->
+            if String.match?(changing_to, opts[:match]) do
+              :ok
+            else
+              {:error,
+               InvalidAttribute.exception(
+                 field: opts[:attribute],
+                 message: opts[:message],
+                 vars: [match: opts[:match]]
+               )}
+            end
+
+          {:error, error} ->
+            {:error, error}
         end
 
       _ ->
         :ok
     end
+  end
+
+  defp string_value(value, opts) do
+    {:ok, to_string(value)}
+  rescue
+    _ ->
+      {:error,
+       InvalidAttribute.exception(
+         field: opts[:attribute],
+         message: opts[:message],
+         vars: [match: opts[:match]]
+       )}
   end
 end
