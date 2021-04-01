@@ -2,12 +2,12 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   @moduledoc "Initializes new resource in lib/resources/__.ex with default content"
 
   use Mix.Task
-  alias Mix.Tasks.Ash.Helpers
+  alias Mix.Tasks.Ash.{Helpers, Templates}
 
   @template_path Path.join(:code.priv_dir(:ash), "resource.ex.eex")
   @valid_attributes ~w(atom binary boolean cistring date decimal float function integer ) ++
                       ~w(interval map string term uuid utcdatetime utcdatetimeusec)
-  @switches [
+  @cmd_switches [
     api: :string,
     csv: :boolean,
     debug: :boolean,
@@ -25,6 +25,9 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   @default_opts [timestamps: true, guides: true]
   @require_package ~w(json_api graphql postgres policy_authorizer phoenix csv)a
 
+  def require_package, do: @require_package
+  def valid_attributes, do: @valid_attributes
+
   @impl Mix.Task
   @shortdoc @moduledoc
   @doc """
@@ -32,7 +35,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
 
   run as mix ash.resource user first_name last_name password email --postgres
 
-  current valid switches:
+  current valid cmd_switches:
    --api :string 
     if specified controls the context folder where the file will be created 
    --table_name :string
@@ -60,49 +63,88 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
    --timestamps 
     enables timestamps generated file - defaults to true - to disable use --no-timestamps
   """
+  @spec run(any()) :: nil
   def run(args) do
     options =
       OptionParser.parse(args,
-        switches: @switches
+        switches: @cmd_switches
       )
 
-    with {file_content, switches, resource, context_name} <- generate_file(options) do
-      if Keyword.get(switches, :debug) do
+    with {file_content, cmd_switches, resource, context_name} <- generate_file(options) do
+      if Keyword.get(cmd_switches, :debug) do
         file_content
-        |> IO.puts()
+        |> Mix.shell().info()
       else
         Helpers.write_resource_file(file_content, resource, context_name)
       end
 
-      print_resource_info(resource, context_name)
-      print_info(switches)
+      Templates.print_resource_info(resource, context_name)
+      Templates.print_info(cmd_switches)
     end
   end
 
-  def generate_file({_, [], _}), do: print_resource_name_missing_info()
+  @spec generate_file(OptionParser.t()) :: {String.t(), list(), String.t(), String.t()}
+  def generate_file({_, [], _}), do: Templates.print_resource_name_missing_info()
 
   def generate_file({_, _, invalid}) when length(invalid) > 0,
-    do: print_invalid_param_info(invalid)
+    do: Templates.print_invalid_param_info(invalid)
 
-  def generate_file({_, [_resource], _}), do: print_missing_attributes()
+  def generate_file({_, [_resource], _}), do: Templates.print_missing_attributes()
 
-  def generate_file({switches, [resource | attributes], _}) do
-    switches = Keyword.merge(@default_opts, switches)
-    context_name = Keyword.get(switches, :api)
+  def generate_file({cmd_switches, [resource_name | attributes], _}) do
+    cmd_switches = Keyword.merge(@default_opts, cmd_switches)
+    context_name = Keyword.get(cmd_switches, :api, nil)
+
+    assigns = %{
+      module_name: Helpers.capitalize(resource_name),
+      project_name: Helpers.project_module_name(),
+      name: resource_name,
+      table_name: Keyword.get(cmd_switches, :table_name, resource_name),
+      cmd_switches: cmd_switches,
+      attributes: parse_attributes(attributes),
+      context_name: Helpers.capitalize(context_name),
+      templates: nil,
+      guides: nil
+    }
+
+    templates = get_template_strings(cmd_switches, :resource_template, assigns)
+    guides = get_template_strings(cmd_switches, :guide_template, assigns)
 
     file_content =
       EEx.eval_file(@template_path,
-        module_name: Helpers.capitalize(resource),
-        project_name: Helpers.project_module_name(),
-        name: resource,
-        switches: switches,
-        attributes: parse_attributes(attributes),
-        context_name: Helpers.capitalize(context_name)
+        assigns: %{assigns | templates: templates, guides: guides}
       )
       |> Code.format_string!()
       |> IO.iodata_to_binary()
 
-    {file_content, switches, resource, context_name}
+    {file_content, cmd_switches, resource_name, context_name}
+  end
+
+  @spec gen_module_name(atom()) :: atom()
+  def gen_module_name(name) do
+    ("Elixir.Ash" <>
+       (name |> Atom.to_string() |> Helpers.capitalize()) <>
+       ".Templates")
+    |> String.to_existing_atom()
+  end
+
+  @spec get_template_strings(list, atom, map()) :: map
+  def get_template_strings(cmd_switches, fname, assigns) do
+    cmd_switches
+    |> Enum.filter(fn {_name, val} -> val == true end)
+    |> Enum.map(fn {name, _} ->
+      {name,
+       if name in @require_package do
+         try do
+           apply(gen_module_name(name), fname, [assigns])
+         rescue
+           _ -> apply(Mix.Tasks.Ash.Templates, fname, [name, assigns])
+         end
+       else
+         true
+       end}
+    end)
+    |> Map.new()
   end
 
   def parse_attributes(_, parsed \\ [])
@@ -122,162 +164,4 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
       [{attribute, :string} | parsed]
     )
   end
-
-  def print_info(switches) do
-    switches = switches |> Enum.filter(fn {_, bool} -> bool == true end) |> Enum.map(&elem(&1, 0))
-    print_deps(switches)
-    print_changes(switches)
-  end
-
-  defp print_resource_name_missing_info() do
-    IO.puts(
-      "Please specify resource name eg.\n mix ash.gen.resource users name age integer born date"
-    )
-
-    :error_missing_resource
-  end
-
-  defp print_missing_attributes() do
-    IO.puts("""
-      You have not entered any column types for your resource
-      mix ash.gen.resource user name string age integer
-      where valid column types are:
-    #{@valid_attributes |> Enum.map(&inspect/1) |> Enum.join("\n")}
-    """)
-
-    :error_missing_columns
-  end
-
-  defp print_invalid_param_info(list_of_invalid_params) do
-    IO.puts("""
-    You entered invalid params:
-    #{list_of_invalid_params |> Enum.map(&inspect/1) |> Enum.join("\n")}
-    remember to use '-' instead of '_' on command line parameters
-    """)
-
-    :error_invalid_attribute
-  end
-
-  defp print_resource_info(resource, context) when is_nil(context) do
-    IO.puts("""
-    Please add your resource to #{Helpers.api_file_name(resource)}
-
-    resources do
-      ...
-      resource #{Helpers.project_module_name()}.#{Helpers.capitalize(resource)}
-    end
-    """)
-  end
-
-  defp print_resource_info(resource, context_name) do
-    context_name = Helpers.capitalize(context_name)
-
-    IO.puts("""
-    Please add your resource to #{Helpers.api_file_name(resource, true)}
-
-    resources do
-      ...
-      resource #{Helpers.project_module_name()}.#{context_name}.#{Helpers.capitalize(resource)}
-    end
-    """)
-  end
-
-  def print_changes(switches) do
-    switches =
-      switches
-      |> Enum.map(&get_info_for/1)
-      |> Enum.filter(&Kernel.!=(&1, nil))
-
-    if Enum.count(switches) > 0 do
-      IO.puts("""
-      Ensure you made these changes to your app:
-
-      #{Enum.join(switches, "\n ###### \n")}
-
-      """)
-    end
-  end
-
-  defp print_deps(switches) do
-    switches =
-      switches
-      |> Enum.map(&get_deps_info_for/1)
-      |> Enum.filter(&Kernel.!=(&1, nil))
-
-    if Enum.count(switches) > 0 do
-      IO.puts("""
-      Ensure you've added dependencies to your mix.exs file.
-      def deps do
-      [
-      ...
-
-      #{Enum.join(switches, ",\n    ")}
-      ]
-      end
-      """)
-    end
-  end
-
-  defp get_deps_info_for(dependency) when dependency in @require_package do
-    ~s({:ash_#{dependency}, "~> x.y.z"})
-  end
-
-  defp get_deps_info_for(_) do
-    nil
-  end
-
-  defp get_info_for(:graphql) do
-    """
-    You can add graphgl configuration to your main context file
-
-    graphql do
-      authorize? false # To skip authorization for this API
-    end
-    """
-  end
-
-  defp get_info_for(:postgres) do
-    """
-    Make sure you ran migrations
-
-    mix ash_postgres.generate_migrations
-    """
-  end
-
-  defp get_info_for(:json_api) do
-    """
-    add json api extension to your api file
-
-    defmodule MyApp.Api do
-      use Ash.Api, extensions: [AshJsonApi.Api]
-
-      ...
-
-      json_api do
-        prefix "/json_api"
-        serve_schema? true
-        log_errors? true
-      end
-    end
-
-    This configuration is required to support working with the JSON:API custom mime type.
-    Edit your config/config.exs
-    config :mime, :types, %{
-      "application/vnd.api+json" => ["json"]
-    }
-
-    Add the routes from your API module(s)
-    In your router, use AshJsonApi.forward/2.
-
-    For example:
-
-    scope "/json_api" do
-      pipe_through(:api)
-
-      AshJsonApi.forward("/helpdesk", Helpdesk.Helpdesk.Api)
-    end
-    """
-  end
-
-  defp get_info_for(_), do: nil
 end

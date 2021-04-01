@@ -39,18 +39,6 @@ defmodule Mix.Tasks.Ash.Gen.ResourceTest do
            ]
   end
 
-  test "IO messages" do
-    assert cio_print_info([{:json_api, true}]) =~ "{:ash_json_api"
-    assert cio_print_info([{:json_api, true}]) =~ "extensions: [AshJsonApi.Api]"
-    assert cio_print_info([{:json_api, true}]) =~ "json_api do\n"
-    assert cio_print_info([{:graphql, true}]) =~ "{:ash_graphql"
-    assert cio_print_info([{:graphql, true}]) =~ "graphql do\n"
-    assert cio_print_info([{:postgres, true}]) =~ "{:ash_postgres"
-    assert cio_print_info([{:csv, true}]) =~ "{:ash_csv"
-    assert cio_print_info([{:phoenix, true}]) =~ "{:ash_phoenix"
-    assert cio_print_info([{:policy_authorizer, true}]) =~ "{:ash_policy_authorizer"
-  end
-
   test "generate_file" do
     assert Resource.generate_file({[], [], []}) == :error_missing_resource
     assert Resource.generate_file({[], ["1", "2"], ["invalid"]}) == :error_invalid_attribute
@@ -106,11 +94,5 @@ defmodule Mix.Tasks.Ash.Gen.ResourceTest do
 
     assert Resource.generate_file({[policy_authorizer: true], ["user", "name"], []}) |> elem(0) =~
              ~s/policies do\n/
-  end
-
-  #  guides: :boolean,
-  #  policy_authorizer: :boolean,
-  def cio_print_info(switches) do
-    capture_io(fn -> Resource.print_info(switches) end)
   end
 end
