@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.39.0](https://github.com/ash-project/ash/compare/v1.38.0...v1.39.0) (2021-04-01)
+
+
+
+
+### Features:
+
+* support `Ash.Query.distinct/2`
+
+* add `build/2` query preparation
+
+### Bug Fixes:
+
+* manage_relationships *before* after_action callbacks
+
+### Improvements:
+
+* `before_action?` on `validate`, validate inline
+
 ## [v1.38.0](https://github.com/ash-project/ash/compare/v1.37.2...v1.38.0) (2021-03-31)
 
 
