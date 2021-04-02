@@ -39,7 +39,7 @@ defmodule Ash.Api.Interface do
                   opts \\ []
                 ) do
               if opts == [] && Keyword.keyword?(params_or_opts) do
-                unquote(interface.name)(%{}, params_or_opts)
+                apply(__MODULE__, elem(__ENV__.function, 0), [%{}, params_or_opts])
               else
                 input =
                   unquote(args)
@@ -73,7 +73,7 @@ defmodule Ash.Api.Interface do
                   opts \\ []
                 ) do
               if opts == [] && Keyword.keyword?(params_or_opts) do
-                unquote(interface.name)(%{}, params_or_opts)
+                apply(__MODULE__, elem(__ENV__.function, 0), [%{}, params_or_opts])
               else
                 input =
                   unquote(args)
@@ -107,7 +107,7 @@ defmodule Ash.Api.Interface do
                   opts \\ []
                 ) do
               if opts == [] && Keyword.keyword?(params_or_opts) do
-                unquote(interface.name)(%{}, params_or_opts)
+                apply(__MODULE__, elem(__ENV__.function, 0), [%{}, params_or_opts])
               else
                 input =
                   unquote(args)
@@ -136,7 +136,7 @@ defmodule Ash.Api.Interface do
                   opts \\ []
                 ) do
               if opts == [] && Keyword.keyword?(params_or_opts) do
-                unquote(interface.name)(%{}, params_or_opts)
+                apply(__MODULE__, elem(__ENV__.function, 0), [%{}, params_or_opts])
               else
                 input =
                   unquote(args)
@@ -153,7 +153,7 @@ defmodule Ash.Api.Interface do
                     Keyword.take(opts, [:actor, :tenant])
                   )
 
-                unquote(api).create!(changeset, opts)
+                unquote(api).create!(changeset, Keyword.drop(opts, [:actor, :tenant]))
               end
             end
 
@@ -166,7 +166,7 @@ defmodule Ash.Api.Interface do
                   opts \\ []
                 ) do
               if opts == [] && Keyword.keyword?(params_or_opts) do
-                unquote(interface.name)(%{}, params_or_opts)
+                apply(__MODULE__, elem(__ENV__.function, 0), [%{}, params_or_opts])
               else
                 input =
                   unquote(args)
@@ -183,7 +183,7 @@ defmodule Ash.Api.Interface do
                     Keyword.take(opts, [:actor, :tenant])
                   )
 
-                unquote(api).update(changeset, opts)
+                unquote(api).update(changeset, Keyword.drop(opts, [:actor, :tenant]))
               end
             end
 
@@ -196,7 +196,7 @@ defmodule Ash.Api.Interface do
                   opts \\ []
                 ) do
               if opts == [] && Keyword.keyword?(params_or_opts) do
-                unquote(interface.name)(%{}, params_or_opts)
+                apply(__MODULE__, elem(__ENV__.function, 0), [%{}, params_or_opts])
               else
                 input =
                   unquote(args)
@@ -213,7 +213,7 @@ defmodule Ash.Api.Interface do
                     Keyword.take(opts, [:actor, :tenant])
                   )
 
-                unquote(api).update!(changeset, opts)
+                unquote(api).update!(changeset, Keyword.drop(opts, [:actor, :tenant]))
               end
             end
 
@@ -226,7 +226,7 @@ defmodule Ash.Api.Interface do
                   opts \\ []
                 ) do
               if opts == [] && Keyword.keyword?(params_or_opts) do
-                unquote(interface.name)(%{}, params_or_opts)
+                apply(__MODULE__, elem(__ENV__.function, 0), [%{}, params_or_opts])
               else
                 input =
                   unquote(args)
@@ -243,7 +243,7 @@ defmodule Ash.Api.Interface do
                     Keyword.take(opts, [:actor, :tenant])
                   )
 
-                unquote(api).destroy(changeset, opts)
+                unquote(api).destroy(changeset, Keyword.drop(opts, [:actor, :tenant]))
               end
             end
 
@@ -256,7 +256,7 @@ defmodule Ash.Api.Interface do
                   opts \\ []
                 ) do
               if opts == [] && Keyword.keyword?(params_or_opts) do
-                unquote(interface.name)(%{}, params_or_opts)
+                apply(__MODULE__, elem(__ENV__.function, 0), [%{}, params_or_opts])
               else
                 input =
                   unquote(args)
@@ -273,7 +273,7 @@ defmodule Ash.Api.Interface do
                     Keyword.take(opts, [:actor, :tenant])
                   )
 
-                unquote(api).destroy(changeset, opts)
+                unquote(api).destroy!(changeset, Keyword.drop(opts, [:actor, :tenant]))
               end
             end
         end
