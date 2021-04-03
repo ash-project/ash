@@ -278,7 +278,7 @@ iex(3)> MyApp.Api.read(MyApp.User)
      id: "2642ca11-330b-4a07-83c7-b0e9ef391df6"
    }
  ]}
-iex(4)> MyApp.Api.get(MyApp.User, "ash.man@enguento.com")
+iex(4)> MyApp.Api.get(MyApp.User, "2642ca11-330b-4a07-83c7-b0e9ef391df6")
 {:ok,
  %MyApp.User{
    __meta__: #Ecto.Schema.Metadata<:built, "">,
