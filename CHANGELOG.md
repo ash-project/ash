@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.39.1](https://github.com/ash-project/ash/compare/v1.39.0...v1.39.1) (2021-04-03)
+
+
+
+
+### Bug Fixes:
+
+* update struct_field logic for latest ecto
+
+* apply proper interface operation when opts aren't passed
+
 ## [v1.39.0](https://github.com/ash-project/ash/compare/v1.38.0...v1.39.0) (2021-04-01)
 
 
