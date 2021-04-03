@@ -35,19 +35,28 @@ defmodule Ash.Schema do
         for aggregate <- Ash.Resource.Info.aggregates(__MODULE__) do
           {:ok, type} = Aggregate.kind_to_type(aggregate.kind, :string)
 
-          field(aggregate.name, Ash.Type.ecto_type(type),
-            virtual: true,
-            default: %Ash.NotLoaded{type: :aggregate, field: aggregate.name}
-          )
+          field(aggregate.name, Ash.Type.ecto_type(type), virtual: true)
+
+          struct_fields = Keyword.delete(@struct_fields, aggregate.name)
+          Module.delete_attribute(__MODULE__, :struct_fields)
+          Module.register_attribute(__MODULE__, :struct_fields, accumulate: true)
+          Enum.each(struct_fields, &Module.put_attribute(__MODULE__, :struct_fields, &1))
+
+          @struct_fields {aggregate.name, %Ash.NotLoaded{type: :aggregate, field: aggregate.name}}
         end
 
         for calculation <- Ash.Resource.Info.calculations(__MODULE__) do
           {mod, _} = calculation.calculation
 
-          field(calculation.name, Ash.Type.ecto_type(mod.type()),
-            virtual: true,
-            default: %Ash.NotLoaded{type: :calculation, field: calculation.name}
-          )
+          field(calculation.name, Ash.Type.ecto_type(mod.type()), virtual: true)
+
+          struct_fields = Keyword.delete(@struct_fields, calculation.name)
+          Module.delete_attribute(__MODULE__, :struct_fields)
+          Module.register_attribute(__MODULE__, :struct_fields, accumulate: true)
+          Enum.each(struct_fields, &Module.put_attribute(__MODULE__, :struct_fields, &1))
+
+          @struct_fields {calculation.name,
+                          %Ash.NotLoaded{type: :calculation, field: calculation.name}}
         end
       end
     end
