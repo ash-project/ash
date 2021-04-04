@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.39.3](https://github.com/ash-project/ash/compare/v1.39.2...v1.39.3) (2021-04-04)
+
+
+
+
+### Improvements:
+
+* add sum aggregate (#221)
+
 ## [v1.39.2](https://github.com/ash-project/ash/compare/v1.39.1...v1.39.2) (2021-04-04)
 
 
