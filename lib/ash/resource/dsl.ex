@@ -748,7 +748,7 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declares a named `sum` aggregate on the resource
 
-    Supports `filter`, but not `sort` (because that wouldn't affect the count)
+    Supports `filter`, but not `sort` (because that wouldn't affect the sum)
     """,
     examples: [
       """
