@@ -1,6 +1,6 @@
 defmodule Ash.Resource.Calculation do
   @moduledoc "Represents a named calculation on a resource"
-  defstruct [:name, :type, :calculation, :arguments, :description, :private?]
+  defstruct [:name, :type, :calculation, :arguments, :description, :private?, :allow_nil?]
 
   @schema [
     name: [
@@ -26,6 +26,11 @@ defmodule Ash.Resource.Calculation do
       default: false,
       doc:
         "Whether or not the calculation will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql"
+    ],
+    allow_nil?: [
+      type: :boolean,
+      default: true,
+      doc: "Whether or not the calculation can return nil."
     ]
   ]
 
@@ -34,7 +39,8 @@ defmodule Ash.Resource.Calculation do
           calculation: {:ok, {atom(), any()}} | {:error, String.t()},
           arguments: list(any()),
           description: String.t() | nil,
-          private?: boolean
+          private?: boolean,
+          allow_nil?: boolean
         }
 
   defmodule Argument do
