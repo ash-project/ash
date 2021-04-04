@@ -89,6 +89,8 @@ locals_without_parens = [
   source_field: 1,
   source_field_on_join_table: 1,
   strategy: 1,
+  sum: 3,
+  sum: 4,
   table: 1,
   through: 1,
   timestamps: 0,

@@ -35,6 +35,7 @@ defmodule Ash.Test.Resource.AggregatesTest do
         aggregates do
           count :count_of_comments, :comments
           count :another_count_but_private, :comments, private?: true
+          sum :sum_of_comment_likes, :comments, :likes
         end
 
         relationships do
@@ -45,17 +46,29 @@ defmodule Ash.Test.Resource.AggregatesTest do
       assert [
                %Aggregate{
                  name: :count_of_comments,
+                 kind: :count,
                  relationship_path: [:comments],
                  private?: false
                },
                %Aggregate{
                  name: :another_count_but_private,
+                 kind: :count,
                  relationship_path: [:comments],
                  private?: true
+               },
+               %Ash.Resource.Aggregate{
+                 field: :likes,
+                 kind: :sum,
+                 name: :sum_of_comment_likes,
+                 private?: false,
+                 relationship_path: [:comments]
                }
              ] = Ash.Resource.Info.aggregates(Post)
 
-      assert [%Aggregate{name: :count_of_comments}] = Ash.Resource.Info.public_aggregates(Post)
+      assert [
+               %Aggregate{name: :count_of_comments},
+               %Aggregate{name: :sum_of_comment_likes}
+             ] = Ash.Resource.Info.public_aggregates(Post)
 
       assert %Aggregate{name: :another_count_but_private} =
                Ash.Resource.Info.aggregate(Post, :another_count_but_private)
