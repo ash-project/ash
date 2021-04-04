@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.39.2](https://github.com/ash-project/ash/compare/v1.39.1...v1.39.2) (2021-04-04)
+
+
+
+
+### Improvements:
+
+* allow specifying that calculation can't be nil (#220)
+
 ## [v1.39.1](https://github.com/ash-project/ash/compare/v1.39.0...v1.39.1) (2021-04-03)
 
 
