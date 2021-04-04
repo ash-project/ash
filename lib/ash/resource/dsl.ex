@@ -743,6 +743,26 @@ defmodule Ash.Resource.Dsl do
     auto_set_fields: [kind: :first]
   }
 
+  @sum %Ash.Dsl.Entity{
+    name: :sum,
+    describe: """
+    Declares a named `sum` aggregate on the resource
+
+    Supports `filter`, but not `sort` (because that wouldn't affect the count)
+    """,
+    examples: [
+      """
+      sum :assigned_ticket_price_sum, :assigned_tickets, :price do
+        filter [active: true]
+      end
+      """
+    ],
+    target: Ash.Resource.Aggregate,
+    args: [:name, :relationship_path, :field],
+    schema: Keyword.delete(Ash.Resource.Aggregate.schema(), :sort),
+    auto_set_fields: [kind: :sum]
+  }
+
   @aggregates %Ash.Dsl.Section{
     name: :aggregates,
     describe: """
@@ -762,7 +782,8 @@ defmodule Ash.Resource.Dsl do
     ],
     entities: [
       @count,
-      @first
+      @first,
+      @sum
     ]
   }
 

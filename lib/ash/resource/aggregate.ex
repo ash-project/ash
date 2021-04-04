@@ -14,7 +14,7 @@ defmodule Ash.Resource.Aggregate do
       required: true
     ],
     kind: [
-      type: {:in, [:count, :first]},
+      type: {:in, [:count, :first, :sum]},
       doc: "The kind of the aggregate",
       required: true
     ],
@@ -50,7 +50,7 @@ defmodule Ash.Resource.Aggregate do
           relationship_path: {:ok, list(atom())} | {:error, String.t()},
           filter: Keyword.t(),
           field: atom,
-          kind: :count | :first,
+          kind: :count | :first | :sum,
           description: String.t() | nil,
           private?: boolean
         }
