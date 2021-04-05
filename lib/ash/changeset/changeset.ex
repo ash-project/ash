@@ -1109,8 +1109,8 @@ defmodule Ash.Changeset do
           * `:ignore`(default) - those inputs are ignored
           * `:create` - the records are created using the destination's primary create action
           * `{:create, :action_name}` - the records are created using the specified action on the destination resource
-          * `{:create, :action_name, :join_table_action_name, [:list, :of, :join_table, :params]}` - Same as `{:update, :action_name}` but takes
-              the list of params specified out and applies them when creating the join table row.
+          * `{:create, :action_name, :join_table_action_name, [:list, :of, :join_table, :params]}` - Same as `{:create, :action_name}` but takes
+              the list of params specified out and applies them when creating the join table row, with the provided join_table_action_name.
           * `:error`  - an eror is returned indicating that a record would have been created
             *  If `on_lookup` is set, and the data contained a primary key or identity, then the error is a `NotFound` error
             * Otherwise, an `InvalidRelationship` error is returned

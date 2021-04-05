@@ -50,6 +50,9 @@ defmodule Ash.MixProject do
         "documentation/introduction/getting_started_phx.md": [
           title: "Getting Started with Phoenix"
         ],
+        "documentation/topics/managing_relationships.md": [
+          title: "Managing Relationships"
+        ],
         "documentation/topics/authorization.md": [
           title: "Authorization"
         ],
