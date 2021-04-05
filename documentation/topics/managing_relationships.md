@@ -24,7 +24,7 @@ actions do
 end
 ```
 
-With this, those arguments can be used simply in action input: 
+With this, those arguments can be used simply in action input:
 
 ```elixir
 post
@@ -44,6 +44,8 @@ end
 
 MyApi.update_post!(%{tags: [tag1_uuid, tag2_uuid], add_comment: %{text: "comment text"}})
 ```
+
+These arguments will also be exposed as fields in `ash_graphql` and `ash_json_api`. 
 
 ## Argument Types
 
