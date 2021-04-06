@@ -2,7 +2,8 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   @moduledoc "Initializes new resource in lib/resources/__.ex with default content"
 
   use Mix.Task
-  alias Mix.Tasks.Ash.{Helpers, Templates}
+  alias Mix.Tasks.Ash.Helpers
+  alias Ash.Template
 
   @template_path Path.join(:code.priv_dir(:ash), "resource.ex.eex")
   @valid_attributes ~w(atom binary boolean cistring date decimal float function integer ) ++
@@ -78,18 +79,18 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
         Helpers.write_resource_file(file_content, resource, context_name)
       end
 
-      Templates.print_resource_info(resource, context_name)
-      Templates.print_info(cmd_switches)
+      Template.print_resource_info(resource, context_name)
+      Template.print_info(cmd_switches)
     end
   end
 
   @spec generate_file(OptionParser.t()) :: {String.t(), list(), String.t(), String.t()}
-  def generate_file({_, [], _}), do: Templates.print_resource_name_missing_info()
+  def generate_file({_, [], _}), do: Template.print_resource_name_missing_info()
 
   def generate_file({_, _, invalid}) when length(invalid) > 0,
-    do: Templates.print_invalid_param_info(invalid)
+    do: Template.print_invalid_param_info(invalid)
 
-  def generate_file({_, [_resource], _}), do: Templates.print_missing_attributes()
+  def generate_file({_, [_resource], _}), do: Template.print_missing_attributes()
 
   def generate_file({cmd_switches, [resource_name | attributes], _}) do
     cmd_switches = Keyword.merge(@default_opts, cmd_switches)
@@ -124,7 +125,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   def gen_module_name(name) do
     ("Elixir.Ash" <>
        (name |> Atom.to_string() |> Helpers.capitalize()) <>
-       ".Templates")
+       ".Template")
     |> String.to_existing_atom()
   end
 
@@ -138,7 +139,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
          try do
            apply(gen_module_name(name), fname, [assigns])
          rescue
-           _ -> apply(Mix.Tasks.Ash.Templates, fname, [name, assigns])
+           _ -> apply(Ash.Template, fname, [name, assigns])
          end
        else
          true

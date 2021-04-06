@@ -1,7 +1,14 @@
-defmodule Mix.Tasks.Ash.Templates do
-  import Mix.Tasks.Ash.Gen.Resource, only: [require_package: 0, valid_attributes: 0]
+defmodule Ash.Template do
+  import Mix.Tasks.Ash.Gen.Resource,
+    only: [require_package: 0, valid_attributes: 0, get_template_strings: 3]
+
   alias Mix.Tasks.Ash.Helpers
 
+  @callback resource_template(map) :: String.t()
+  @callback guide_template(map) :: String.t()
+  @callback shell_template(map) :: String.t()
+
+  @spec resource_template(atom, map) :: String.t()
   def resource_template(:csv, assigns) do
     """
     csv do
@@ -44,6 +51,7 @@ defmodule Mix.Tasks.Ash.Templates do
 
   def resource_template(_, _assigns), do: ""
 
+  @spec guide_template(atom, map) :: String.t()
   def guide_template(:graphql, _assigns) do
     """
     graphql do
@@ -112,18 +120,17 @@ defmodule Mix.Tasks.Ash.Templates do
 
   def guide_template(_, _assigns), do: ""
 
+  @spec print_info([{atom, any}]) :: nil
   def print_info(cmd_switches) do
-    cmd_switches =
-      cmd_switches |> Enum.filter(fn {_, bool} -> bool == true end) |> Enum.map(&elem(&1, 0))
-
-    print_deps(cmd_switches)
-    print_changes(cmd_switches)
+    print_dependencies(cmd_switches)
+    print_required_changes(cmd_switches)
   end
 
   def print_resource_name_missing_info() do
-    Mix.shell().info(
-      "Please specify resource name eg.\n mix ash.gen.resource users name age integer born date"
-    )
+    Mix.shell().info("""
+    Please specify resource name eg.
+    mix ash.gen.resource users name age integer born date
+    """)
 
     :error_missing_resource
   end
@@ -133,7 +140,7 @@ defmodule Mix.Tasks.Ash.Templates do
       You have not entered any column types for your resource
       mix ash.gen.resource user name string age integer
       where valid column types are:
-    #{valid_attributes |> Enum.map(&inspect/1) |> Enum.join("\n")}
+    #{valid_attributes() |> Enum.map(&inspect/1) |> Enum.join("\n")}
     """)
 
     :error_missing_columns
@@ -173,27 +180,29 @@ defmodule Mix.Tasks.Ash.Templates do
     """)
   end
 
-  def print_changes(cmd_switches) do
-    cmd_switches =
-      cmd_switches
-      |> Enum.map(&get_info_for/1)
-      |> Enum.filter(&Kernel.!=(&1, nil))
+  def print_required_changes(cmd_switches) do
+    shell_info =
+      get_template_strings(cmd_switches, :shell_template, %{})
+      |> Enum.map(fn {_name, str} -> str end)
+      |> Enum.filter(fn str -> is_bitstring(str) end)
+      |> Enum.join("\n ###### \n")
 
     if Enum.count(cmd_switches) > 0 do
       Mix.shell().info("""
       Ensure you made these changes to your app:
 
-      #{Enum.join(cmd_switches, "\n ###### \n")}
+        #{shell_info}
 
       """)
     end
   end
 
-  def print_deps(cmd_switches) do
+  @spec print_dependencies([{atom, any}]) :: nil
+  def print_dependencies(cmd_switches) do
     cmd_switches =
       cmd_switches
-      |> Enum.map(&get_deps_info_for/1)
-      |> Enum.filter(&Kernel.!=(&1, nil))
+      |> Enum.map(&dependency_template/1)
+      |> Enum.filter(&if &1, do: true, else: false)
 
     if Enum.count(cmd_switches) > 0 do
       Mix.shell().info("""
@@ -209,15 +218,18 @@ defmodule Mix.Tasks.Ash.Templates do
     end
   end
 
-  def get_deps_info_for(dependency) do
-    if dependency in require_package do
+  @spec dependency_template({atom, any}) :: String.t() | nil
+  def dependency_template({dependency, true}) do
+    # TODO get dependency from hex
+    if dependency in require_package() do
       ~s({:ash_#{dependency}, "~> x.y.z"})
-    else
-      nil
     end
   end
 
-  def get_info_for(:graphql) do
+  def dependency_template({_dependency, _}), do: nil
+
+  @spec shell_template(atom, map) :: String.t()
+  def shell_template(:graphql, _assigns) do
     """
     You can add graphgl configuration to your main context file
 
@@ -227,7 +239,7 @@ defmodule Mix.Tasks.Ash.Templates do
     """
   end
 
-  def get_info_for(:postgres) do
+  def shell_template(:postgres, _assigns) do
     """
     Make sure you ran migrations
 
@@ -235,7 +247,7 @@ defmodule Mix.Tasks.Ash.Templates do
     """
   end
 
-  def get_info_for(:json_api) do
+  def shell_template(:json_api, _assigns) do
     """
     add json api extension to your api file
 
@@ -270,5 +282,5 @@ defmodule Mix.Tasks.Ash.Templates do
     """
   end
 
-  def get_info_for(_), do: nil
+  def shell_template(_, _assigns), do: nil
 end

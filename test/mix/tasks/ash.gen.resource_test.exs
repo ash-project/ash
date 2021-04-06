@@ -1,6 +1,5 @@
 defmodule Mix.Tasks.Ash.Gen.ResourceTest do
   use ExUnit.Case, async: true
-  import ExUnit.CaptureIO
 
   alias Mix.Tasks.Ash.Gen.Resource
 
