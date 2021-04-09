@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.39.5](https://github.com/ash-project/ash/compare/v1.39.4...v1.39.5) (2021-04-09)
+
+
+
+
+### Bug Fixes:
+
+* logic bug in selecting specific fields
+
 ## [v1.39.4](https://github.com/ash-project/ash/compare/v1.39.3...v1.39.4) (2021-04-09)
 
 
