@@ -531,7 +531,7 @@ defmodule Ash.Query do
 
   If a field has been deselected, selecting it again will override that (because a single list of fields is tracked for selection)
 
-  Primary key attributes and private attributes are always selected and cannot be deselected.
+  Primary key attributes are always selected and cannot be deselected.
 
   When attempting to load a relationship (or manage it with `Ash.Changeset.manage_relationship/3`),
   if the source field is not selected on the query/provided data an error will be produced. If loading

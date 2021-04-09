@@ -77,6 +77,8 @@ defmodule Ash.Resource.Attribute do
         end
       end
       ```
+
+      This will prevent unnecessary fields from being selected.
       """
     ],
     primary_key?: [
