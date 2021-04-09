@@ -9,6 +9,7 @@ defmodule Ash.Resource.Attribute do
     :primary_key?,
     :private?,
     :writable?,
+    :always_select?,
     :default,
     :update_default,
     :description,
@@ -49,6 +50,34 @@ defmodule Ash.Resource.Attribute do
       default: false,
       doc:
         "Whether or not the attribute value contains sensitive information, like PII. If so, it will be redacted while inspecting data."
+    ],
+    always_select?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      Whether or not to always select this attribute when reading from the database.
+      Useful if fields are used in read action preparations consistently.
+
+      A primary key attribute *cannot be deselected*, so this option will have no effect.
+
+      Generally, you should favor selecting the field that you need while running your preparation. For example:
+
+      ```elixir
+      defmodule MyApp.QueryPreparation.Thing do
+        use Ash.Resource.Preparation
+
+        def prepare(query, _, _) do
+          query
+          |> Ash.Query.select(:attribute_i_need)
+          |> Ash.Query.after_action(fn query, results ->
+            {:ok, Enum.map(results, fn result ->
+              do_something_with_attribute_i_need(result)
+            end)}
+          end)
+        end
+      end
+      ```
+      """
     ],
     primary_key?: [
       type: :boolean,

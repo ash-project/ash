@@ -523,7 +523,7 @@ defmodule Ash.Query do
   end
 
   @doc """
-  Ensure that only the specified attributes are present in the results.
+  Ensure that only the specified *attributes* are present in the results.
 
   The first call to `select/2` will replace the default behavior of selecting
   all attributes. Subsequent calls to `select/2` will combine the provided

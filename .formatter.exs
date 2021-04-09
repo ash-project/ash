@@ -4,6 +4,7 @@ locals_without_parens = [
   accept: 1,
   action: 1,
   allow_nil?: 1,
+  always_select?: 1,
   args: 1,
   argument: 2,
   argument: 3,

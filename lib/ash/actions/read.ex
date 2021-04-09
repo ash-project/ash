@@ -321,6 +321,12 @@ defmodule Ash.Actions.Read do
                {:ok, filter} <-
                  filter_with_related(relationship_filter_paths, ash_query, data),
                {:ok, query} <-
+                 Ash.DataLayer.select(
+                   query,
+                   Helpers.attributes_to_select(ash_query),
+                   ash_query.resource
+                 ),
+               {:ok, query} <-
                  add_aggregates(
                    query,
                    ash_query,
@@ -575,7 +581,7 @@ defmodule Ash.Actions.Read do
                } = data ->
               query =
                 initial_query
-                |> Ash.Query.unset([:filter, :aggregates, :sort, :limit, :offset])
+                |> Ash.Query.unset([:filter, :aggregates, :sort, :limit, :offset, :select])
                 |> Ash.Query.limit(initial_limit)
                 |> Ash.Query.offset(initial_offset)
                 |> Ash.Query.filter(^auth_filter)

@@ -23,7 +23,7 @@ defmodule Ash.Actions.Helpers do
     resource
     |> Ash.Resource.Info.attributes()
     |> Enum.flat_map(fn attribute ->
-      if attribute.private? || attribute.primary_key? || attribute.name in select do
+      if attribute.always_select? || attribute.primary_key? || attribute.name in select do
         []
       else
         [attribute.name]
@@ -33,5 +33,23 @@ defmodule Ash.Actions.Helpers do
       Map.put(record, key, nil)
     end)
     |> Ash.Resource.Info.put_metadata(:selected, select)
+  end
+
+  def attributes_to_select(%{select: nil, resource: resource}) do
+    resource
+    |> Ash.Resource.Info.attributes()
+    |> Enum.map(& &1.name)
+  end
+
+  def attributes_to_select(%{select: select, resource: resource}) do
+    resource
+    |> Ash.Resource.Info.attributes()
+    |> Enum.flat_map(fn attribute ->
+      if attribute.always_select? || attribute.primary_key? || attribute.name in select do
+        []
+      else
+        [attribute.name]
+      end
+    end)
   end
 end

@@ -207,6 +207,9 @@ defmodule Ash.Changeset do
   if the source field is not selected on the query/provided data an error will be produced. If loading
   a relationship with a query, an error is produced if the query does not select the destination field
   of the relationship.
+
+  Datalayers currently are not notified of the `select` for a changeset(unlike queries), and creates/updates select all fields when they are performed.
+  A select provided on a changeset simply sets the unselected fields to `nil` before returning the result.
   """
   def select(changeset, fields, opts \\ []) do
     if opts[:replace?] do

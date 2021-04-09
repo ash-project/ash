@@ -20,6 +20,7 @@ defmodule Ash.DataLayer do
           | {:join, Ash.Resource.t()}
           | {:aggregate, Ash.Query.Aggregate.kind()}
           | {:query_aggregate, Ash.Query.Aggregate.kind()}
+          | :select
           | :aggregate_filter
           | :aggregate_sort
           | :boolean_filter
@@ -55,6 +56,11 @@ defmodule Ash.DataLayer do
   @callback offset(
               data_layer_query(),
               offset :: non_neg_integer(),
+              resource :: Ash.Resource.t()
+            ) :: {:ok, data_layer_query()} | {:error, term}
+  @callback select(
+              data_layer_query(),
+              select :: list(atom),
               resource :: Ash.Resource.t()
             ) :: {:ok, data_layer_query()} | {:error, term}
   @callback set_tenant(Ash.Resource.t(), data_layer_query(), term) ::
@@ -121,6 +127,7 @@ defmodule Ash.DataLayer do
                       destroy: 2,
                       filter: 3,
                       sort: 3,
+                      select: 3,
                       limit: 3,
                       offset: 3,
                       transaction: 2,
@@ -297,6 +304,19 @@ defmodule Ash.DataLayer do
     if can?(:offset, resource) do
       data_layer = Ash.DataLayer.data_layer(resource)
       data_layer.offset(query, offset, resource)
+    else
+      {:ok, query}
+    end
+  end
+
+  @spec select(data_layer_query(), offset :: list(atom), Ash.Resource.t()) ::
+          {:ok, data_layer_query()} | {:error, term}
+  def select(query, nil, _resource), do: {:ok, query}
+
+  def select(query, select, resource) do
+    if can?(:select, resource) do
+      data_layer = Ash.DataLayer.data_layer(resource)
+      data_layer.select(query, select, resource)
     else
       {:ok, query}
     end
