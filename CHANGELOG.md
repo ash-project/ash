@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.39.4](https://github.com/ash-project/ash/compare/v1.39.3...v1.39.4) (2021-04-09)
+
+
+
+
+### Improvements:
+
+* support the datalayer selecting fields in reads
+
 ## [v1.39.3](https://github.com/ash-project/ash/compare/v1.39.2...v1.39.3) (2021-04-04)
 
 
