@@ -15,8 +15,8 @@ defmodule Ash.Actions.SideLoad do
         tenant \\ nil
       )
 
-  def requests(nil, _, _, _, _, _), do: []
-  def requests(%{side_load: []}, _, _, _root_query, _, _), do: []
+  def requests(nil, _, _, _, _, _), do: {nil, []}
+  def requests(%{side_load: []} = query, _, _, _, _, _), do: {query, []}
 
   def requests(
         %{side_load: side_loads} = query,
@@ -31,7 +31,7 @@ defmodule Ash.Actions.SideLoad do
 
     side_loads
     |> List.wrap()
-    |> Enum.flat_map(fn {relationship, further} ->
+    |> Enum.reduce({query, []}, fn {relationship, further}, {query, requests} ->
       relationship = Ash.Resource.Info.relationship(query.resource, relationship)
 
       related_query =
@@ -51,25 +51,39 @@ defmodule Ash.Actions.SideLoad do
         else
           related_query
         end
+        |> case do
+          %{select: nil} = related_query ->
+            related_query
+
+          related_query ->
+            Ash.Query.select(related_query, relationship.destination_field)
+        end
 
       new_path = [relationship | path]
 
-      requests(
-        related_query,
-        use_data_for_filter?,
-        root_data,
-        root_query,
-        new_path,
-        related_query.tenant
-      ) ++
-        do_requests(
-          relationship,
+      {_, further_requests} =
+        requests(
           related_query,
-          path,
-          root_query,
+          use_data_for_filter?,
           root_data,
-          use_data_for_filter?
+          root_query,
+          new_path,
+          related_query.tenant
         )
+
+      {
+        Ash.Query.select(query, relationship.source_field),
+        requests ++
+          further_requests ++
+          do_requests(
+            relationship,
+            related_query,
+            path,
+            root_query,
+            root_data,
+            use_data_for_filter?
+          )
+      }
     end)
   end
 

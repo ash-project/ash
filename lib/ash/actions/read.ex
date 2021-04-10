@@ -65,7 +65,7 @@ defmodule Ash.Actions.Read do
            paginate(query, action, filter_requests, initial_offset, initial_limit, opts),
          page_opts <- page_opts && Keyword.delete(page_opts, :filter),
          {:ok, requests} <- requests(query, action, filter_requests, opts),
-         side_load_requests <- SideLoad.requests(query),
+         {query, side_load_requests} <- SideLoad.requests(query),
          {:ok, %{data: %{data: data} = all_data}} <-
            Engine.run(
              requests ++ side_load_requests ++ List.wrap(count_request),
