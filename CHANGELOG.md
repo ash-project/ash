@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.39.6](https://github.com/ash-project/ash/compare/v1.39.5...v1.39.6) (2021-04-10)
+
+
+
+
+### Bug Fixes:
+
+* always select necessary fields for side loading
+
 ## [v1.39.5](https://github.com/ash-project/ash/compare/v1.39.4...v1.39.5) (2021-04-09)
 
 
