@@ -19,7 +19,7 @@ Typically a project wouldn't have breaking changes on 1.0.0+ that only change th
 If you were using Ash prior to 1.27.0, a breaking change was made that will affect you if you are
 
 * using the postgres data layer
-* are using the `create_timestamp` or `update_timestamp` helpers 
+* are using the `create_timestamp` or `update_timestamp` helpers
 
 The default type for those attributes was changed to `:utc_datetime_usec`. If you don't want to change your data, you can update the type
 used by your timestamps like so:
@@ -95,7 +95,7 @@ Traditional MVC Frameworks (Rails, Django, .Net, Phoenix, etc) leave it up to th
 
 Ash is an opinionated yet configurable framework designed to reduce boilerplate in an Elixir application. Ash does this by providing a layer of abstraction over your system's data layer(s) with `Resources`. It is designed to be used in conjunction with a phoenix application, or on its own.
 
-To riff on a famous JRR Tolkien quote, a `Resource`is "One Interface to rule them all, One Interface to find them" and will become an indispensable place to define contracts for interacting with data throughout your application.
+To riff on a famous JRR Tolkien quote, a `Resource` is "One Interface to rule them all, One Interface to find them" and will become an indispensable place to define contracts for interacting with data throughout your application.
 
 To start using Ash, first declare your `Resources` using the Ash `Resource` DSL. You could technically stop there, and just leverage the Ash Elixir API to avoid writing boilerplate. More likely, you would use extensions like Ash.JsonApi or Ash.GraphQL with Phoenix to add external interfaces to those resources without having to write any extra code at all.
 

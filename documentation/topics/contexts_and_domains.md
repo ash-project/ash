@@ -1,6 +1,6 @@
 # Contexts and Domains
 
-It is suggested that you read a bit on Domain Driven Design before proceeding. If you are using phoenix or are familiar with phoenix contextxs, then this will make sense to you.
+It is suggested that you read a bit on Domain Driven Design before proceeding. If you are using phoenix or are familiar with phoenix contexts, then this will make sense to you.
 
 In order to support domain driven design, Ash supports defining multiple APIs, each with their own set of resources. It is possible to share a resource between APIs, but this gets untenable very quickly because any resources related to the shared resource must _both_ appear in each API.
 
