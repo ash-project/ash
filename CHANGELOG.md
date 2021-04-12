@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.39.7](https://github.com/ash-project/ash/compare/v1.39.6...v1.39.7) (2021-04-12)
+
+
+
+
+### Bug Fixes:
+
+* always select necessary load fields for nested loads
+
 ## [v1.39.6](https://github.com/ash-project/ash/compare/v1.39.5...v1.39.6) (2021-04-10)
 
 
