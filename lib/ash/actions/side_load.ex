@@ -61,7 +61,7 @@ defmodule Ash.Actions.SideLoad do
 
       new_path = [relationship | path]
 
-      {_, further_requests} =
+      {related_query, further_requests} =
         requests(
           related_query,
           use_data_for_filter?,
