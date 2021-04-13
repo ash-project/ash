@@ -52,4 +52,11 @@ defmodule Ash.Resource.Change.Builtins do
   def set_context(context) do
     {Ash.Resource.Change.SetContext, context: context}
   end
+
+  @doc """
+  Passes the provided value into `changeset.api.load()`, after the action has completed.
+  """
+  def load(value) do
+    {Ash.Resource.Change.Load, target: value}
+  end
 end

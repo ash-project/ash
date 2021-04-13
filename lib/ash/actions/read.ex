@@ -279,7 +279,9 @@ defmodule Ash.Actions.Read do
          initial_query
        ) do
     if params[:initial_data] do
-      List.wrap(params[:initial_data])
+      Request.resolve([], fn _ ->
+        add_calculation_values(initial_query, params[:initial_data], initial_query.calculations)
+      end)
     else
       relationship_filter_paths =
         Enum.map(filter_requests, fn request ->
