@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.40.0](https://github.com/ash-project/ash/compare/v1.39.7...v1.40.0) (2021-04-13)
+
+
+
+
+### Features:
+
+* change `get?: true` interface functions to raise on `nil`
+
+### Bug Fixes:
+
+* allow api.load/2 to load calculations
+
+### Improvements:
+
+* add `allow_nil_input` to create actions for api layers
+
+* add `load/1` builtin change
+
 ## [v1.39.7](https://github.com/ash-project/ash/compare/v1.39.6...v1.39.7) (2021-04-12)
 
 
