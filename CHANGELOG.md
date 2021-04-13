@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.41.1](https://github.com/ash-project/ash/compare/v1.41.0...v1.41.1) (2021-04-13)
+
+
+
+
+### Bug Fixes:
+
+* `get!` should raise on `nil` not `{:ok, nil}`
+
 ## [v1.41.0](https://github.com/ash-project/ash/compare/v1.40.0...v1.41.0) (2021-04-13)
 
 
