@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.41.2](https://github.com/ash-project/ash/compare/v1.41.1...v1.41.2) (2021-04-13)
+
+
+
+
+### Bug Fixes:
+
+* embedded cast_stored must cast all key/values
+
+* ci_string constraints when `nil`
+
+* manage_relationship change turns embedded resources to maps
+
+* fixes for common types parsing from embedded, e.g utc_datetime_usec
+
+### Improvements:
+
+* special provisions for casting to embedded type (e.g uuid)
+
 ## [v1.41.1](https://github.com/ash-project/ash/compare/v1.41.0...v1.41.1) (2021-04-13)
 
 
