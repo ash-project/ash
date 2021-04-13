@@ -58,7 +58,15 @@ defmodule Ash.Api.Interface do
                   )
 
                 if unquote(interface.get?) do
-                  unquote(api).read_one(query, Keyword.drop(opts, [:query, :tenant]))
+                  query
+                  |> unquote(api).read_one(Keyword.drop(opts, [:query, :tenant]))
+                  |> case do
+                    {:ok, nil} ->
+                      {:error, Ash.Error.Query.NotFound.exception(resource: query.resource)}
+
+                    {:ok, result} ->
+                      {:ok, result}
+                  end
                 else
                   unquote(api).read(query, Keyword.drop(opts, [:query, :tenant]))
                 end
@@ -92,7 +100,15 @@ defmodule Ash.Api.Interface do
                   )
 
                 if unquote(interface.get?) do
-                  unquote(api).read_one!(query, Keyword.drop(opts, [:query, :tenant]))
+                  query
+                  |> unquote(api).read_one!(Keyword.drop(opts, [:query, :tenant]))
+                  |> case do
+                    {:ok, nil} ->
+                      {:error, Ash.Error.Query.NotFound.exception(resource: query.resource)}
+
+                    {:ok, result} ->
+                      {:ok, result}
+                  end
                 else
                   unquote(api).read!(query, Keyword.drop(opts, [:query, :tenant]))
                 end
