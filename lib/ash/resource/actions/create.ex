@@ -7,7 +7,7 @@ defmodule Ash.Resource.Actions.Create do
     accept: nil,
     arguments: [],
     changes: [],
-    allow_nil: [],
+    allow_nil_input: [],
     reject: [],
     type: :create
   ]
@@ -16,7 +16,7 @@ defmodule Ash.Resource.Actions.Create do
           type: :create,
           name: atom,
           accept: [atom],
-          allow_nil: [atom],
+          allow_nil_input: [atom],
           arguments: [Ash.Resource.Actions.Argument.t()],
           primary?: boolean,
           description: String.t()
