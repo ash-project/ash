@@ -573,9 +573,10 @@ defmodule Ash.Type do
   end
 
   @doc """
-  Casts a value from the Elixir type to a value that the data store can persist
+  Casts a value from the Elixir type to a value that can be embedded in another data structure.
 
-  Maps to `Ecto.Type.dump/2`
+  Embedded resources expect to be stored in JSON, so this allows things like UUIDs to be stored
+  as strings in embedded resources instead of binary.
   """
   @spec dump_to_embedded(t(), term, constraints | nil) ::
           {:ok, term} | {:error, keyword()} | :error
