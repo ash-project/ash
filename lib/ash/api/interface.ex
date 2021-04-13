@@ -103,11 +103,11 @@ defmodule Ash.Api.Interface do
                   query
                   |> unquote(api).read_one!(Keyword.drop(opts, [:query, :tenant]))
                   |> case do
-                    {:ok, nil} ->
-                      {:error, Ash.Error.Query.NotFound.exception(resource: query.resource)}
+                    nil ->
+                      raise Ash.Error.Query.NotFound, resource: query.resource
 
-                    {:ok, result} ->
-                      {:ok, result}
+                    result ->
+                      result
                   end
                 else
                   unquote(api).read!(query, Keyword.drop(opts, [:query, :tenant]))
