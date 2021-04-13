@@ -59,6 +59,8 @@ defmodule Ash.Type.CiString do
     end
   end
 
+  def apply_constraints(nil, _), do: {:ok, nil}
+
   def apply_constraints(value, constraints) do
     {value, errors} =
       return_value(constraints[:allow_empty?], constraints[:trim?], value, constraints)

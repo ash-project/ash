@@ -159,7 +159,8 @@ defmodule Ash.EmbeddableType do
         |> Ash.Resource.Info.attributes()
         |> Enum.reduce_while({:ok, struct(__MODULE__)}, fn attr, {:ok, struct} ->
           with {:fetch, {:ok, value}} <- {:fetch, fetch_key(value, attr.name)},
-               {:ok, casted} <- Ash.Type.cast_stored(attr.type, value, constraints) do
+               {:ok, casted} <-
+                 Ash.Type.cast_stored(attr.type, value, constraints) do
             {:cont, {:ok, Map.put(struct, attr.name, casted)}}
           else
             {:fetch, :error} ->
@@ -190,7 +191,26 @@ defmodule Ash.EmbeddableType do
       def dump_to_native(value, _) when is_map(value) do
         attributes = Ash.Resource.Info.attributes(__MODULE__)
         calculations = Ash.Resource.Info.calculations(__MODULE__)
-        {:ok, Map.take(value, Enum.map(attributes ++ calculations, & &1.name))}
+
+        Enum.reduce_while(attributes ++ calculations, {:ok, %{}}, fn attribute, {:ok, acc} ->
+          case Map.fetch(value, attribute.name) do
+            :error ->
+              {:cont, {:ok, acc}}
+
+            {:ok, value} ->
+              case Ash.Type.dump_to_embedded(
+                     attribute.type,
+                     value,
+                     Map.get(attribute, :constraints) || []
+                   ) do
+                :error ->
+                  {:halt, :error}
+
+                {:ok, dumped} ->
+                  {:cont, {:ok, Map.put(acc, attribute.name, dumped)}}
+              end
+          end
+        end)
       end
 
       def dump_to_native(nil, _), do: {:ok, nil}

@@ -116,6 +116,8 @@ defmodule Ash.Type do
   @callback cast_stored_array(list(term), constraints) :: {:ok, list(term)} | :error
   @callback dump_to_native(term, constraints) :: {:ok, term} | :error
   @callback dump_to_native_array(list(term), constraints) :: {:ok, term} | :error
+  @callback dump_to_embedded(term, constraints) :: {:ok, term} | :error
+  @callback dump_to_embedded_array(list(term), constraints) :: {:ok, term} | :error
   @callback handle_change(old_term :: term, new_term :: term, constraints) ::
               {:ok, term} | {:error, term}
   @callback handle_change_array(old_term :: list(term), new_term :: list(term), constraints) ::
@@ -148,7 +150,9 @@ defmodule Ash.Type do
     handle_change_array: 3,
     prepare_change_array: 3,
     apply_constraints_array: 2,
-    array_constraints: 0
+    array_constraints: 0,
+    dump_to_embedded: 2,
+    dump_to_embedded_array: 2
   ]
 
   @type constraint_error :: String.t() | {String.t(), Keyword.t()}
@@ -566,6 +570,48 @@ defmodule Ash.Type do
     constraints = Ash.OptionsHelpers.validate!(constraints, constraints(type))
     type = get_type(type)
     type.dump_to_native(term, constraints)
+  end
+
+  @doc """
+  Casts a value from the Elixir type to a value that the data store can persist
+
+  Maps to `Ecto.Type.dump/2`
+  """
+  @spec dump_to_embedded(t(), term, constraints | nil) ::
+          {:ok, term} | {:error, keyword()} | :error
+  def dump_to_embedded(type, term, constraints \\ [])
+
+  def dump_to_embedded({:array, type}, term, constraints) do
+    if is_atom(type) && :erlang.function_exported(type, :dump_to_embedded_array, 2) do
+      constraints = Ash.OptionsHelpers.validate!(constraints, array_constraints(type))
+      type.dump_to_embedded_array(term, constraints)
+    else
+      single_constraints =
+        Ash.OptionsHelpers.validate!(constraints[:items] || [], array_constraints(type))
+
+      term
+      |> Enum.reverse()
+      |> Enum.reduce_while({:ok, []}, fn item, {:ok, dumped} ->
+        case dump_to_embedded(type, item, single_constraints) do
+          :error ->
+            {:halt, :error}
+
+          {:ok, value} ->
+            {:cont, {:ok, [value | dumped]}}
+        end
+      end)
+    end
+  end
+
+  def dump_to_embedded(type, term, constraints) do
+    constraints = Ash.OptionsHelpers.validate!(constraints, constraints(type))
+    type = get_type(type)
+
+    if :erlang.function_exported(type, :dump_to_embedded, 2) do
+      type.dump_to_embedded(term, constraints)
+    else
+      type.dump_to_native(term, constraints)
+    end
   end
 
   @doc """

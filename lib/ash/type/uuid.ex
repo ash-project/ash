@@ -21,10 +21,21 @@ defmodule Ash.Type.UUID do
 
   @impl true
   def cast_stored(value, constraints) do
-    Ecto.Type.load(Ecto.UUID, value)
+    case Ecto.Type.load(Ecto.UUID, value) do
+      :error ->
+        cast_input(value, constraints)
+
+      {:ok, value} ->
+        {:ok, value}
+    end
   rescue
     _e in ArgumentError ->
       cast_input(value, constraints)
+  end
+
+  @impl true
+  def dump_to_embedded(value, constraints) do
+    cast_input(value, constraints)
   end
 
   @impl true
