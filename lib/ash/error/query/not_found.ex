@@ -11,6 +11,10 @@ defmodule Ash.Error.Query.NotFound do
 
     def class(_), do: :invalid
 
+    def message(%{primary_key: nil, resource: _resource}) do
+      "record not found"
+    end
+
     def message(%{primary_key: key, resource: _resource}) do
       "record with #{id_string(key)} not found"
     end
