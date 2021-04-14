@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.41.3](https://github.com/ash-project/ash/compare/v1.41.2...v1.41.3) (2021-04-14)
+
+
+
+
+### Bug Fixes:
+
+* handle no key provided to `NotFound`
+
 ## [v1.41.2](https://github.com/ash-project/ash/compare/v1.41.1...v1.41.2) (2021-04-13)
 
 
