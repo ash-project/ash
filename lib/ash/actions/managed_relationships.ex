@@ -5,18 +5,35 @@ defmodule Ash.Actions.ManagedRelationships do
   alias Ash.Error.Changes.InvalidRelationship
   alias Ash.Error.Query.NotFound
 
-  def load(_api, created, %{relationships: rels}, _) when rels == %{}, do: {:ok, created}
+  def load(_api, created, %{relationships: rels}, _) when rels == %{},
+    do: {:ok, created}
+
   def load(_api, created, %{relationships: nil}, _), do: {:ok, created}
 
-  def load(api, created, changeset, opts) do
-    if Ash.Changeset.ManagedRelationshipHelpers.must_load?(opts) do
-      api.load(created, Map.keys(changeset.relationships),
-        authorize?: opts[:authorize?],
-        actor: opts[:actor]
-      )
-    else
-      {:ok, created}
-    end
+  def load(api, created, changeset, engine_opts) do
+    Enum.reduce_while(changeset.relationships, {:ok, created}, fn {key, value}, {:ok, acc} ->
+      relationship = Ash.Resource.Info.relationship(changeset.resource, key)
+
+      case Enum.filter(value, fn {_, opts} ->
+             opts = Ash.Changeset.ManagedRelationshipHelpers.sanitize_opts(relationship, opts)
+             Ash.Changeset.ManagedRelationshipHelpers.must_load?(opts)
+           end) do
+        [] ->
+          {:cont, {:ok, acc}}
+
+        relationships ->
+          authorize? =
+            engine_opts[:authorize?] &&
+              Enum.any?(relationships, fn {_, opts} -> opts[:authorize?] end)
+
+          actor = engine_opts[:actor]
+
+          case api.load(acc, key, authorize?: authorize?, actor: actor) do
+            {:ok, loaded} -> {:cont, {:ok, loaded}}
+            {:error, error} -> {:halt, {:error, error}}
+          end
+      end
+    end)
   end
 
   def setup_managed_belongs_to_relationships(changeset, actor, engine_opts) do

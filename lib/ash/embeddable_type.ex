@@ -128,7 +128,7 @@ defmodule Ash.EmbeddableType do
 
   defmacro single_embed_implementation do
     # credo:disable-for-next-line Credo.Check.Refactor.LongQuoteBlocks
-    quote do
+    quote location: :keep do
       alias __MODULE__.ShadowApi
       def storage_type, do: :map
 
@@ -181,7 +181,7 @@ defmodule Ash.EmbeddableType do
       def fetch_key(map, atom) do
         case Map.fetch(map, atom) do
           {:ok, value} ->
-            value
+            {:ok, value}
 
           :error ->
             Map.fetch(map, to_string(atom))
@@ -321,7 +321,7 @@ defmodule Ash.EmbeddableType do
                 :error ->
                   {pkey_field, :error}
 
-                value ->
+                {:ok, value} ->
                   attribute = Ash.Resource.Info.attribute(__MODULE__, pkey_field)
 
                   case Ash.Type.cast_input(attribute.type, value, attribute.constraints) do
@@ -362,7 +362,7 @@ defmodule Ash.EmbeddableType do
 
   defmacro array_embed_implementation do
     # credo:disable-for-next-line Credo.Check.Refactor.LongQuoteBlocks
-    quote do
+    quote location: :keep do
       alias __MODULE__.ShadowApi
       def array_constraints, do: Ash.EmbeddableType.embedded_resource_array_constraints()
 
@@ -482,9 +482,9 @@ defmodule Ash.EmbeddableType do
               Enum.into(pkey_fields, %{}, fn pkey_field ->
                 case fetch_key(new, pkey_field) do
                   :error ->
-                    :error
+                    {pkey_field, :error}
 
-                  value ->
+                  {:ok, value} ->
                     attr = Map.get(pkey_attributes, pkey_field)
 
                     case Ash.Type.cast_input(attr.type, value, attr.constraints) do
@@ -492,7 +492,7 @@ defmodule Ash.EmbeddableType do
                         {pkey_field, casted}
 
                       _ ->
-                        :error
+                        {pkey_field, :error}
                     end
                 end
               end)
@@ -538,7 +538,7 @@ defmodule Ash.EmbeddableType do
   end
 
   defmacro define_embeddable_type do
-    quote do
+    quote location: :keep do
       use Ash.Type
 
       parent = __MODULE__

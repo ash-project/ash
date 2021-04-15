@@ -1718,7 +1718,8 @@ defmodule Ash.Changeset do
         add_invalid_errors(:attribute, changeset, attribute, "Attribute is not writable")
 
       attribute ->
-        with {:ok, prepared} <-
+        with value <- handle_indexed_maps(attribute.type, value),
+             {:ok, prepared} <-
                prepare_change(changeset, attribute, value, attribute.constraints),
              {:ok, casted} <-
                cast_input(attribute.type, prepared, attribute.constraints, true),
@@ -1844,7 +1845,8 @@ defmodule Ash.Changeset do
         %{changeset | attributes: Map.put(changeset.attributes, attribute.name, nil)}
 
       attribute ->
-        with {:ok, prepared} <-
+        with value <- handle_indexed_maps(attribute.type, value),
+             {:ok, prepared} <-
                prepare_change(changeset, attribute, value, attribute.constraints),
              {:ok, casted} <-
                cast_input(attribute.type, prepared, attribute.constraints),
