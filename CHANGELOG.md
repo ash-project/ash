@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.41.4](https://github.com/ash-project/ash/compare/v1.41.3...v1.41.4) (2021-04-15)
+
+
+
+
+### Bug Fixes:
+
+* load relationships for management properly
+
+* `fetch_key` bug in embedded types
+
+* handle_indexed_maps for embedded types
+
 ## [v1.41.3](https://github.com/ash-project/ash/compare/v1.41.2...v1.41.3) (2021-04-14)
 
 
