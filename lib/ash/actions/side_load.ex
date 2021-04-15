@@ -51,13 +51,7 @@ defmodule Ash.Actions.SideLoad do
         else
           related_query
         end
-        |> case do
-          %{select: nil} = related_query ->
-            related_query
-
-          related_query ->
-            Ash.Query.select(related_query, relationship.destination_field)
-        end
+        |> maybe_select(relationship.destination_field)
 
       new_path = [relationship | path]
 
@@ -72,7 +66,7 @@ defmodule Ash.Actions.SideLoad do
         )
 
       {
-        Ash.Query.select(query, relationship.source_field),
+        maybe_select(query, relationship.source_field),
         requests ++
           further_requests ++
           do_requests(
@@ -85,6 +79,14 @@ defmodule Ash.Actions.SideLoad do
           )
       }
     end)
+  end
+
+  defp maybe_select(query, field) do
+    if query.select do
+      Ash.Query.select(query, [field])
+    else
+      query
+    end
   end
 
   defp tenant_from_data([%{__metadata__: %{tenant: tenant}} | _]), do: tenant
