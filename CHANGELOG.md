@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.41.5](https://github.com/ash-project/ash/compare/v1.41.4...v1.41.5) (2021-04-15)
+
+
+
+
+### Bug Fixes:
+
+* don't overwrite select in side_load
+
 ## [v1.41.4](https://github.com/ash-project/ash/compare/v1.41.3...v1.41.4) (2021-04-15)
 
 
