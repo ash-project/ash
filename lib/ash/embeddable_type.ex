@@ -132,7 +132,7 @@ defmodule Ash.EmbeddableType do
       alias __MODULE__.ShadowApi
       def storage_type, do: :map
 
-      def cast_input(%{__struct__: __MODULE__} = input, _constraints), do: {:ok, input}
+      def cast_input(%{__struct__: __MODULE__} = input, constraints), do: cast_input(Map.from_struct(input), constraints)
 
       def cast_input(value, constraints) when is_map(value) do
         action =
