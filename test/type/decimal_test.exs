@@ -46,7 +46,6 @@ defmodule Ash.Test.Type.DecimalTest do
     end
   end
 
-
   defmodule Api do
     @moduledoc false
     use Ash.Api
@@ -83,7 +82,6 @@ defmodule Ash.Test.Type.DecimalTest do
     assert transform = %Transform{position: %Vector3{x: %Decimal{}, y: %Decimal{}, z: %Decimal{}}} =
       Transform
       |> new(%{position: %Vector3{x: 0, y: 0, z: 0}})
-      |> IO.inspect()
       |> Api.create!()
 
     assert [_] = Api.read!(Transform)
