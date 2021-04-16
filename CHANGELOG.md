@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.41.6](https://github.com/ash-project/ash/compare/v1.41.5...v1.41.6) (2021-04-16)
+
+
+
+
+### Bug Fixes:
+
+* use items for single constraints
+
 ## [v1.41.5](https://github.com/ash-project/ash/compare/v1.41.4...v1.41.5) (2021-04-15)
 
 
