@@ -378,7 +378,7 @@ defmodule Ash.Type do
       |> Enum.reverse()
       |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
         single_constraints =
-          Ash.OptionsHelpers.validate!(constraints[:items] || [], array_constraints(type))
+          Ash.OptionsHelpers.validate!(constraints[:items] || [], constraints(type))
 
         case cast_stored(type, item, single_constraints) do
           :error ->
@@ -550,7 +550,7 @@ defmodule Ash.Type do
       type.dump_to_native_array(term, constraints)
     else
       single_constraints =
-        Ash.OptionsHelpers.validate!(constraints[:items] || [], array_constraints(type))
+        Ash.OptionsHelpers.validate!(constraints[:items] || [], constraints(type))
 
       term
       |> Enum.reverse()
@@ -588,7 +588,7 @@ defmodule Ash.Type do
       type.dump_to_embedded_array(term, constraints)
     else
       single_constraints =
-        Ash.OptionsHelpers.validate!(constraints[:items] || [], array_constraints(type))
+        Ash.OptionsHelpers.validate!(constraints[:items] || [], constraints(type))
 
       term
       |> Enum.reverse()
