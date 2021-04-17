@@ -132,9 +132,14 @@ defmodule Ash.EmbeddableType do
       alias __MODULE__.ShadowApi
       def storage_type, do: :map
 
-      def cast_input(%{__struct__: __MODULE__, __metadata__: %{private: %{casted?: true}}} = input, _constraints), do: {:ok, input}
+      def cast_input(
+            %{__struct__: __MODULE__, __metadata__: %{private: %{casted?: true}}} = input,
+            _constraints
+          ),
+          do: {:ok, input}
 
-      def cast_input(%{__struct__: __MODULE__} = input, constraints), do: cast_input(Map.from_struct(input), constraints)
+      def cast_input(%{__struct__: __MODULE__} = input, constraints),
+        do: cast_input(Map.from_struct(input), constraints)
 
       def cast_input(value, constraints) when is_map(value) do
         action =
@@ -163,9 +168,11 @@ defmodule Ash.EmbeddableType do
           with {:fetch, {:ok, value}} <- {:fetch, fetch_key(value, attr.name)},
                {:ok, casted} <-
                  Ash.Type.cast_stored(attr.type, value, constraints) do
-            {:cont, {:ok, struct
-                          |> Map.put(attr.name, casted)
-                          |> Ash.Resource.Info.set_metadata(%{private: %{casted?: true}})}}
+            {:cont,
+             {:ok,
+              struct
+              |> Map.put(attr.name, casted)
+              |> Ash.Resource.Info.set_metadata(%{private: %{casted?: true}})}}
           else
             {:fetch, :error} ->
               {:cont, {:ok, struct}}
