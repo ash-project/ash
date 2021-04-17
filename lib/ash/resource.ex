@@ -47,6 +47,41 @@ defmodule Ash.Resource do
       require Ash.Schema
 
       Ash.Schema.define_schema()
+
+      @all_arguments __MODULE__
+                     |> Ash.Resource.Info.actions()
+                     |> Enum.flat_map(& &1.arguments)
+                     |> Enum.map(& &1.name)
+                     |> Enum.uniq()
+
+      @all_attributes __MODULE__
+                      |> Ash.Resource.Info.attributes()
+                      |> Enum.map(& &1.name)
+                      |> Enum.uniq()
+
+      @doc """
+      Validates that the keys in the provided input are valid for at least one action on the resource.
+
+      Raises a KeyError error at compile time if not. This exists because generally a struct should only ever
+      be created by Ash as a result of a successful action. You should not be creating records manually in code,
+      e.g `%MyResource{value: 1, value: 2}`. Generally that is fine, but often with embedded resources it is nice
+      to be able to validate the keys that are being provided, e.g
+
+      ```elixir
+      Resource
+      |> Ash.Changeset.for_create(:create, %{embedded: EmbeddedResource.input(foo: 1, bar: 2)})
+      |> MyApp.Api.create()
+      ```
+      """
+      def input(opts) do
+        Map.new(opts, fn {key, value} ->
+          if key in @all_arguments || key in @all_attributes do
+            {key, value}
+          else
+            raise KeyError, key: key
+          end
+        end)
+      end
     end
   end
 end
