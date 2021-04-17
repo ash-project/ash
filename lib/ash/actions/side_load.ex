@@ -511,6 +511,7 @@ defmodule Ash.Actions.SideLoad do
           }
         })
         |> Ash.Query.set_context(relationship.context)
+        |> remove_relationships_from_load()
         |> Ash.Actions.Read.unpaginated_read()
 
       (query.limit || offset?) && relationship.type != :many_to_many ->
@@ -519,6 +520,7 @@ defmodule Ash.Actions.SideLoad do
       true ->
         query
         |> Ash.Query.set_context(relationship.context)
+        |> remove_relationships_from_load()
         |> Ash.Actions.Read.unpaginated_read()
     end
   end
@@ -526,6 +528,7 @@ defmodule Ash.Actions.SideLoad do
   defp artificial_limit_and_offset(query, relationship) do
     query
     |> Ash.Query.set_context(relationship.context)
+    |> remove_relationships_from_load()
     |> Ash.Actions.Read.unpaginated_read()
     |> case do
       {:ok, results} ->
@@ -548,6 +551,27 @@ defmodule Ash.Actions.SideLoad do
 
       {:error, error} ->
         {:error, error}
+    end
+  end
+
+  defp remove_relationships_from_load(query) do
+    case query.side_load do
+      empty when empty in [nil, []] ->
+        query
+
+      load ->
+        new_load =
+          load
+          |> List.wrap()
+          |> Enum.reject(fn
+            item when is_atom(item) ->
+              Ash.Resource.Info.relationship(query.resource, item)
+
+            {item, _} ->
+              Ash.Resource.Info.relationship(query.resource, item)
+          end)
+
+        %{query | side_load: new_load}
     end
   end
 
