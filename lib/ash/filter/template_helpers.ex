@@ -7,6 +7,11 @@ defmodule Ash.Filter.TemplateHelpers do
   @doc "A helper for using action arguments in filter templates"
   def arg(name), do: {:_arg, name}
 
+  @doc """
+  A helper for using query context in filter templates
+
+  An atom will just get the key, and a list will be accessed via `get_in`.
+  """
   def context(name), do: {:_context, name}
 
   @doc "A helper for building an expression style filter"

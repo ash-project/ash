@@ -353,6 +353,9 @@ defmodule Ash.Filter do
       {:_arg, field} ->
         Map.get(args, field) || Map.get(args, to_string(field))
 
+      {:_context, fields} when is_list(fields) ->
+        get_in(context, fields)
+
       {:_context, field} ->
         Map.get(context, field)
 
