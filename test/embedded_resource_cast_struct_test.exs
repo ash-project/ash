@@ -1,22 +1,6 @@
-defmodule Ash.Test.Type.DecimalTest do
+defmodule Ash.Test.EmbeddedResourceCastStructTest do
   @moduledoc false
   use ExUnit.Case, async: true
-
-  defmodule Vector2 do
-    @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
-
-    ets do
-      private?(true)
-    end
-
-    attributes do
-      uuid_primary_key :id
-
-      attribute :x, :decimal
-      attribute :y, :decimal
-    end
-  end
 
   defmodule Vector3 do
     @moduledoc false
@@ -52,33 +36,12 @@ defmodule Ash.Test.Type.DecimalTest do
 
     resources do
       resource Transform
-      resource Vector2
     end
   end
 
   import Ash.Changeset
 
-  test "decimal type works on regular resource" do
-    assert vector2 = %Vector2{x: %Decimal{}, y: %Decimal{}} =
-      Vector2
-      |> new(%{x: 0, y: 0})
-      |> Api.create!()
-
-    assert vector2 == Api.get!(Vector2, vector2.id)
-
-    assert vector2_updated = %Vector2{x: %Decimal{}, y: %Decimal{}} = %Vector2{x: %Decimal{}, y: %Decimal{}} =
-      vector2
-      |> new(%{x: 1.1, y: 1.1})
-      |> Api.update!()
-
-    assert Decimal.new("1.1") == vector2_updated.x
-    assert Decimal.new("1.1") == vector2_updated.y
-
-    assert [_] = Api.read!(Vector2)
-    assert :ok = Api.destroy!(vector2_updated)
-  end
-
-  test "decimal type works on embedded resources" do
+  test "embedded resource is casted if passed as a struct" do
     assert transform = %Transform{position: %Vector3{x: %Decimal{}, y: %Decimal{}, z: %Decimal{}}} =
       Transform
       |> new(%{position: %Vector3{x: 0, y: 0, z: 0}})
