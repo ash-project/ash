@@ -2,7 +2,10 @@ defmodule Ash.Test.Actions.UpdateTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  import Ash.Changeset
+
   defmodule Authorized do
+    @moduledoc false
     use Ash.Resource,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Test.Authorizer]
@@ -53,6 +56,7 @@ defmodule Ash.Test.Actions.UpdateTest do
   end
 
   defmodule DuplicateName do
+    @moduledoc false
     use Ash.Resource.Change
 
     def change(changeset, _, _) do
@@ -171,8 +175,6 @@ defmodule Ash.Test.Actions.UpdateTest do
       resource(Authorized)
     end
   end
-
-  import Ash.Changeset
 
   describe "simple updates" do
     test "allows updating a record with valid attributes" do

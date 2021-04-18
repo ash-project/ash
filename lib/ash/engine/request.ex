@@ -4,12 +4,45 @@ defmodule Ash.Engine.Request do
 
   See `new/1` for more information
   """
+  defstruct [
+    :id,
+    :async?,
+    :error?,
+    :resource,
+    :changeset,
+    :path,
+    :action_type,
+    :action,
+    :data,
+    :name,
+    :api,
+    :query,
+    :authorization_filter,
+    :write_to_data?,
+    :strict_check_only?,
+    :verbose?,
+    :state,
+    :actor,
+    :authorize?,
+    :engine_pid,
+    manage_changeset?: false,
+    notify?: false,
+    authorized?: false,
+    authorizer_state: %{},
+    dependencies_to_send: %{},
+    dependency_data: %{},
+    dependencies_requested: []
+  ]
 
+  @type t :: %__MODULE__{}
+
+  alias Ash.Authorizer
   alias Ash.Error.Forbidden.MustPassStrictCheck
   alias Ash.Error.Framework.AssumptionFailed
   alias Ash.Error.Invalid.{DuplicatedPath, ImpossiblePath}
 
   require Ash.Query
+  require Logger
 
   defmodule UnresolvedField do
     @moduledoc """
@@ -44,42 +77,6 @@ defmodule Ash.Engine.Request do
       ])
     end
   end
-
-  defstruct [
-    :id,
-    :async?,
-    :error?,
-    :resource,
-    :changeset,
-    :path,
-    :action_type,
-    :action,
-    :data,
-    :name,
-    :api,
-    :query,
-    :authorization_filter,
-    :write_to_data?,
-    :strict_check_only?,
-    :verbose?,
-    :state,
-    :actor,
-    :authorize?,
-    :engine_pid,
-    manage_changeset?: false,
-    notify?: false,
-    authorized?: false,
-    authorizer_state: %{},
-    dependencies_to_send: %{},
-    dependency_data: %{},
-    dependencies_requested: []
-  ]
-
-  @type t :: %__MODULE__{}
-
-  require Logger
-
-  alias Ash.Authorizer
 
   @doc """
   Create an unresolved field.

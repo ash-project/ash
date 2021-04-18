@@ -721,8 +721,8 @@ defmodule Ash.Dsl.Extension do
 
         {:module, module, _, _} =
           defmodule mod_name do
-            alias Ash.Dsl
             @moduledoc false
+            alias Ash.Dsl
 
             require Dsl.Extension
 

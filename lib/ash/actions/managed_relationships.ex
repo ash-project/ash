@@ -1,9 +1,10 @@
 defmodule Ash.Actions.ManagedRelationships do
   @moduledoc false
-  require Ash.Query
 
   alias Ash.Error.Changes.InvalidRelationship
   alias Ash.Error.Query.NotFound
+
+  require Ash.Query
 
   def load(_api, created, %{relationships: rels}, _) when rels == %{},
     do: {:ok, created}

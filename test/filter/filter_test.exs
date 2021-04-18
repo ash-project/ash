@@ -2,6 +2,8 @@ defmodule Ash.Test.Filter.FilterTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  import Ash.Changeset
+
   alias Ash.Filter
 
   require Ash.Query
@@ -168,8 +170,6 @@ defmodule Ash.Test.Filter.FilterTest do
       resource(PostLink)
     end
   end
-
-  import Ash.Changeset
 
   describe "predicate optimization" do
     # Testing against the stringified query may be a bad idea, but its a quick win and we

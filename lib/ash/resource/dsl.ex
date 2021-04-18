@@ -913,9 +913,6 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
-  @doc false
-  def identity(x), do: x
-
   @sections [
     @identities,
     @attributes,
@@ -959,4 +956,7 @@ defmodule Ash.Resource.Dsl do
   use Ash.Dsl.Extension,
     sections: @sections,
     transformers: @transformers
+
+  @doc false
+  def identity(x), do: x
 end

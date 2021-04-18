@@ -2,10 +2,10 @@ defmodule Ash.Query.BooleanExpression do
   @moduledoc "Represents a boolean expression"
   @dialyzer {:nowarn_function, optimized_new: 4}
 
+  defstruct [:op, :left, :right]
+
   alias Ash.Query.Operator.{Eq, In, NotEq}
   alias Ash.Query.Ref
-
-  defstruct [:op, :left, :right]
 
   def new(_, nil, nil), do: nil
   def new(_, left, nil), do: left

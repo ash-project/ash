@@ -1,8 +1,8 @@
 defmodule Ash.Resource.Validation.Present do
   @moduledoc false
-  alias Ash.Error.Changes.{InvalidAttribute, InvalidChanges}
-
   use Ash.Resource.Validation
+
+  alias Ash.Error.Changes.{InvalidAttribute, InvalidChanges}
 
   @opt_schema [
     at_least: [

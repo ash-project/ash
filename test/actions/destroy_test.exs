@@ -2,6 +2,8 @@ defmodule Ash.Test.Actions.DestroyTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  import Ash.Changeset
+
   defmodule Profile do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -99,8 +101,6 @@ defmodule Ash.Test.Actions.DestroyTest do
       resource(Profile)
     end
   end
-
-  import Ash.Changeset
 
   describe "simple destroy" do
     test "allows destroying a record" do

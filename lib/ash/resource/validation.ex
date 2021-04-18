@@ -50,16 +50,6 @@ defmodule Ash.Resource.Validation do
     on: []
   ]
 
-  defmacro __using__(_) do
-    quote do
-      @behaviour Ash.Resource.Validation
-
-      def init(opts), do: {:ok, opts}
-
-      defoverridable init: 1
-    end
-  end
-
   @type t :: %__MODULE__{
           validation: {atom(), list(atom())},
           module: atom(),
@@ -111,6 +101,16 @@ defmodule Ash.Resource.Validation do
   ]
 
   @action_schema Keyword.delete(@schema, :on)
+
+  defmacro __using__(_) do
+    quote do
+      @behaviour Ash.Resource.Validation
+
+      def init(opts), do: {:ok, opts}
+
+      defoverridable init: 1
+    end
+  end
 
   def transform(%__MODULE__{validation: {module, opts}} = validation) do
     {:ok, %{validation | module: module, opts: opts}}

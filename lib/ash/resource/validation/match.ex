@@ -1,8 +1,9 @@
 defmodule Ash.Resource.Validation.Match do
   @moduledoc false
-  alias Ash.Error.Changes.InvalidAttribute
 
   use Ash.Resource.Validation
+
+  alias Ash.Error.Changes.InvalidAttribute
 
   @opt_schema [
     attribute: [

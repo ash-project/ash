@@ -6,6 +6,12 @@ defmodule Ash.DataLayer.Simple do
   by embedded resources
   """
 
+  @transformers [
+    Ash.DataLayer.Simple.Transformers.ValidateDslSections
+  ]
+
+  use Ash.Dsl.Extension, transformers: @transformers, sections: []
+
   alias Ash.Query.Operator.{
     Eq,
     GreaterThan,
@@ -73,10 +79,4 @@ defmodule Ash.DataLayer.Simple do
   def destroy(_resource, _changeset) do
     :ok
   end
-
-  @transformers [
-    Ash.DataLayer.Simple.Transformers.ValidateDslSections
-  ]
-
-  use Ash.Dsl.Extension, transformers: @transformers, sections: []
 end

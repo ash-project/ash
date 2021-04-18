@@ -10,8 +10,32 @@ defmodule Ash.DataLayer.Mnesia do
   in place. This is primarily used for testing the behavior of data layers in Ash. If it was improved,
   it could be a viable data layer.
   """
+  @behaviour Ash.DataLayer
+
+  @mnesia %Ash.Dsl.Section{
+    name: :mnesia,
+    describe: """
+    A section for configuring the mnesia data layer
+    """,
+    examples: [
+      """
+      mnesia do
+        table :custom_table
+      end
+      """
+    ],
+    schema: [
+      table: [
+        type: :atom,
+        doc: "The table name to use, defaults to the name of the resource"
+      ]
+    ]
+  }
+
+  use Ash.Dsl.Extension, sections: [@mnesia]
 
   alias Ash.Actions.Sort
+  alias Ash.Dsl.Extension
   alias :mnesia, as: Mnesia
 
   def start(api) do
@@ -39,32 +63,6 @@ defmodule Ash.DataLayer.Mnesia do
       end
     end)
   end
-
-  @behaviour Ash.DataLayer
-
-  @mnesia %Ash.Dsl.Section{
-    name: :mnesia,
-    describe: """
-    A section for configuring the mnesia data layer
-    """,
-    examples: [
-      """
-      mnesia do
-        table :custom_table
-      end
-      """
-    ],
-    schema: [
-      table: [
-        type: :atom,
-        doc: "The table name to use, defaults to the name of the resource"
-      ]
-    ]
-  }
-
-  use Ash.Dsl.Extension, sections: [@mnesia]
-
-  alias Ash.Dsl.Extension
 
   def table(resource) do
     Extension.get_opt(resource, [:ets], :private?, resource, true)
