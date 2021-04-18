@@ -176,7 +176,9 @@ defmodule Ash.Engine.RequestHandler do
     log(
       state,
       fn ->
-        "Synchronous runner stuck: async request handler current state #{inspect(state.request.path)} #{state.request.state}"
+        "Synchronous runner stuck: async request handler current state #{
+          inspect(state.request.path)
+        } #{state.request.state}"
       end
     )
 
