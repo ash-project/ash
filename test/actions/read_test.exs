@@ -94,6 +94,30 @@ defmodule Ash.Test.Actions.ReadTest do
 
       assert fetched_post == post
     end
+
+    test "raises an error when the first argument is not a module" do
+      res = assert_raise Ash.Error.Invalid.NoSuchResource, fn -> Api.get("bogus", 1, []) end
+      assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.get\/3/
+      assert res.message =~ ~r/expected an Ash Resource but instead got "bogus"/
+    end
+
+    test "raises an error when the first argument is a module that is not an ash resource" do
+      res = assert_raise Ash.Error.Invalid.NoSuchResource, fn -> Api.get(BadModuleName, []) end
+      assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.get\/3/
+      assert res.message =~ ~r/expected an Ash Resource but instead got BadModuleName/
+    end
+
+    test "raises an error when the third argument is not a list" do
+      res = assert_raise RuntimeError, fn -> Api.get(Post, "id", 1) end
+      assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.get\/3/
+      assert res.message =~ ~r/expected a keyword list, but instead got 1/
+    end
+
+    test "raises an error when the third argument is not a valid keyword list" do
+      res = assert_raise RuntimeError, fn -> Api.get(Post, "id", [1]) end
+      assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.get\/3/
+      assert res.message =~ ~r/expected a keyword list, but instead got \[1\]/
+    end
   end
 
   describe "api.get!/3" do
@@ -110,10 +134,34 @@ defmodule Ash.Test.Actions.ReadTest do
       assert ^post = Api.get!(Post, post.id)
     end
 
-    test "it raises on an error", %{post: post} do
-      assert_raise(Ash.Error.Invalid.NoSuchResource, ~r/\No such resource Something/, fn ->
-        Api.get!(Something, post.id)
-      end)
+    test "raises an error when the first argument is not a module", %{post: post} do
+      res = assert_raise Ash.Error.Invalid.NoSuchResource, fn -> Api.get("bogus", post.id, []) end
+      assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.get\/3/
+      assert res.message =~ ~r/expected an Ash Resource but instead got "bogus"/
+    end
+
+    test "raises an error when the first argument is a module that is not an ash resource", %{
+      post: post
+    } do
+      res =
+        assert_raise Ash.Error.Invalid.NoSuchResource, fn ->
+          Api.get(BadModuleName, post.id, [])
+        end
+
+      assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.get\/3/
+      assert res.message =~ ~r/expected an Ash Resource but instead got BadModuleName/
+    end
+
+    test "raises an error when the third argument is not a list", %{post: post} do
+      res = assert_raise RuntimeError, fn -> Api.get(Post, post.id, 1) end
+      assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.get\/3/
+      assert res.message =~ ~r/expected a keyword list, but instead got 1/
+    end
+
+    test "raises an error when the third argument is not a valid keyword list", %{post: post} do
+      res = assert_raise RuntimeError, fn -> Api.get(Post, post.id, [1]) end
+      assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.get\/3/
+      assert res.message =~ ~r/expected a keyword list, but instead got \[1\]/
     end
   end
 
@@ -121,11 +169,67 @@ defmodule Ash.Test.Actions.ReadTest do
     test "returns an empty result" do
       assert {:ok, []} = Api.read(Post)
     end
+
+    test "raises an error when the first argument is not a module" do
+      res = assert_raise RuntimeError, fn -> Api.read("bogus", []) end
+      assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.read\/2/
+
+      assert res.message =~
+               ~r/expected an %Ash.Query{} or an Ash Resource but instead got "bogus"/
+    end
+
+    test "raises an error when the first argument is a module that is not an ash resource" do
+      res = assert_raise RuntimeError, fn -> Api.read(BadModuleName, []) end
+      assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.read\/2/
+
+      assert res.message =~
+               ~r/expected an %Ash.Query{} or an Ash Resource but instead got BadModuleName/
+    end
+
+    test "raises an error when the second argument is not a list" do
+      res = assert_raise RuntimeError, fn -> Api.read(Post, 1) end
+      assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.read\/2/
+      assert res.message =~ ~r/expected a keyword list, but instead got 1/
+    end
+
+    test "raises an error when the second argument is not a valid keyword list" do
+      res = assert_raise RuntimeError, fn -> Api.read(Post, [1]) end
+      assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.read\/2/
+      assert res.message =~ ~r/expected a keyword list, but instead got \[1\]/
+    end
   end
 
   describe "Api.read!/2 with no records" do
     test "returns an empty result" do
       assert [] = Api.read!(Post)
+    end
+
+    test "raises an error when the first argument is not a module" do
+      res = assert_raise RuntimeError, fn -> Api.read!("bogus", []) end
+      assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.read!\/2/
+
+      assert res.message =~
+               ~r/expected an %Ash.Query{} or an Ash Resource but instead got "bogus"/
+    end
+
+    test "raises an error when the first argument is a module that is not an ash resource" do
+      res = assert_raise RuntimeError, fn -> Api.read!(BadModuleName, []) end
+      assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.read!\/2/
+
+      assert res.message =~
+               ~r/expected an %Ash.Query{} or an Ash Resource but instead got BadModuleName/
+    end
+
+    test "raises an error when the second argument is not a list" do
+      res = assert_raise RuntimeError, fn -> Api.read!(Post, 1) end
+      assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.read!\/2/
+      assert res.message =~ ~r/expected a keyword list, but instead got 1/
+    end
+
+    test "raises an error when the second argument is not a valid keyword list" do
+      res = assert_raise RuntimeError, fn -> Api.read!(Post, [1]) end
+      assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.read!\/2/
+      assert res.message =~ ~r/expected a keyword list, but instead got \[1\]/
     end
   end
 
@@ -184,6 +288,66 @@ defmodule Ash.Test.Actions.ReadTest do
 
     test "it returns the records not in a tuple" do
       assert [_, _] = Api.read!(Post)
+    end
+  end
+
+  describe "Api.read_one/2" do
+    test "raises an error when the first argument is not a module" do
+      res = assert_raise RuntimeError, fn -> Api.read_one("bogus", []) end
+      assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.read_one\/2/
+
+      assert res.message =~
+               ~r/expected an %Ash.Query{} or an Ash Resource but instead got "bogus"/
+    end
+
+    test "raises an error when the first argument is a module that is not an ash resource" do
+      res = assert_raise RuntimeError, fn -> Api.read_one(BadModuleName, []) end
+      assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.read_one\/2/
+
+      assert res.message =~
+               ~r/expected an %Ash.Query{} or an Ash Resource but instead got BadModuleName/
+    end
+
+    test "raises an error when the second argument is not a list" do
+      res = assert_raise RuntimeError, fn -> Api.read_one(Post, 1) end
+      assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.read_one\/2/
+      assert res.message =~ ~r/expected a keyword list, but instead got 1/
+    end
+
+    test "raises an error when the second argument is not a valid keyword list" do
+      res = assert_raise RuntimeError, fn -> Api.read_one(Post, [1]) end
+      assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.read_one\/2/
+      assert res.message =~ ~r/expected a keyword list, but instead got \[1\]/
+    end
+  end
+
+  describe "Api.read_one!/2" do
+    test "raises an error when the first argument is not a module" do
+      res = assert_raise RuntimeError, fn -> Api.read_one!("bogus", []) end
+      assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.read_one!\/2/
+
+      assert res.message =~
+               ~r/expected an %Ash.Query{} or an Ash Resource but instead got "bogus"/
+    end
+
+    test "raises an error when the first argument is a module that is not an ash resource" do
+      res = assert_raise RuntimeError, fn -> Api.read_one!(BadModuleName, []) end
+      assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.read_one!\/2/
+
+      assert res.message =~
+               ~r/expected an %Ash.Query{} or an Ash Resource but instead got BadModuleName/
+    end
+
+    test "raises an error when the second argument is not a list" do
+      res = assert_raise RuntimeError, fn -> Api.read_one!(Post, 1) end
+      assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.read_one!\/2/
+      assert res.message =~ ~r/expected a keyword list, but instead got 1/
+    end
+
+    test "raises an error when the second argument is not a valid keyword list" do
+      res = assert_raise RuntimeError, fn -> Api.read_one!(Post, [1]) end
+      assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.read_one!\/2/
+      assert res.message =~ ~r/expected a keyword list, but instead got \[1\]/
     end
   end
 

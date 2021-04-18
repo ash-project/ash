@@ -306,14 +306,19 @@ defmodule Ash.Api.Interface do
       end
 
       # @spec get!(Ash.Resource.t(), term, Keyword.t()) :: Ash.Resource.record() | no_return
-      def get!(resource, id, params \\ []) do
-        Api.get!(__MODULE__, resource, id, params)
+      def get!(resource, id_or_filter, params \\ []) do
+        Ash.Api.Interface.enforce_resource!(resource)
+
+        Api.get!(__MODULE__, resource, id_or_filter, params)
       end
 
       # @spec get(Ash.Resource.t(), term, Keyword.t()) ::
       #         {:ok, Ash.Resource.record() | nil} | {:error, Ash.Error.t()}
-      def get(resource, id, params \\ []) do
-        case Api.get(__MODULE__, resource, id, params) do
+      def get(resource, id_or_filter, params \\ []) do
+        Ash.Api.Interface.enforce_resource!(resource)
+        Ash.Api.Interface.enforce_keyword_list!(params)
+
+        case Api.get(__MODULE__, resource, id_or_filter, params) do
           {:ok, instance} -> {:ok, instance}
           {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
         end
@@ -323,12 +328,18 @@ defmodule Ash.Api.Interface do
       def read!(query, opts \\ [])
 
       def read!(query, opts) do
+        Ash.Api.Interface.enforce_query_or_resource!(query)
+        Ash.Api.Interface.enforce_keyword_list!(opts)
+
         Api.read!(__MODULE__, query, opts)
       end
 
       def read(query, opts \\ [])
 
       def read(query, opts) do
+        Ash.Api.Interface.enforce_query_or_resource!(query)
+        Ash.Api.Interface.enforce_keyword_list!(opts)
+
         case Api.read(__MODULE__, query, opts) do
           {:ok, results, query} -> {:ok, results, query}
           {:ok, results} -> {:ok, results}
@@ -336,15 +347,23 @@ defmodule Ash.Api.Interface do
         end
       end
 
+      # @spec read_one!(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
+      #         {:ok, Ash.Resource.record() | nil} | {:error, Ash.Error.t()} | no_return
       def read_one!(query, opts \\ [])
 
       def read_one!(query, opts) do
+        Ash.Api.Interface.enforce_query_or_resource!(query)
+        Ash.Api.Interface.enforce_keyword_list!(opts)
+
         Api.read_one!(__MODULE__, query, opts)
       end
 
       def read_one(query, opts \\ [])
 
       def read_one(query, opts) do
+        Ash.Api.Interface.enforce_query_or_resource!(query)
+        Ash.Api.Interface.enforce_keyword_list!(opts)
+
         case Api.read_one(__MODULE__, query, opts) do
           {:ok, result} -> {:ok, result}
           {:ok, result, query} -> {:ok, result, query}
@@ -500,5 +519,57 @@ defmodule Ash.Api.Interface do
       |> Macro.underscore()
     )
     |> to_string()
+  end
+
+  defmacro enforce_query_or_resource!(query_or_resource) do
+    quote do
+      case Ash.Api.Interface.do_enforce_query_or_resource!(unquote(query_or_resource)) do
+        :ok ->
+          :ok
+
+        _ ->
+          {fun, arity} = __ENV__.function
+          mfa = "#{inspect(__ENV__.module)}.#{fun}/#{arity}"
+
+          raise "#{mfa} expected an %Ash.Query{} or an Ash Resource but instead got #{
+                  inspect(unquote(query_or_resource))
+                }"
+      end
+    end
+  end
+
+  def do_enforce_query_or_resource!(query_or_resource)
+  def do_enforce_query_or_resource!(%Ash.Query{}), do: :ok
+
+  def do_enforce_query_or_resource!(resource) when is_atom(resource) do
+    if Ash.Resource.Info.resource?(resource), do: :ok, else: :error
+  end
+
+  def do_enforce_query_or_resource!(_something), do: :error
+
+  defmacro enforce_resource!(resource) do
+    quote do
+      if Ash.Resource.Info.resource?(unquote(resource)) do
+        :ok
+      else
+        {fun, arity} = __ENV__.function
+        mfa = "#{inspect(__ENV__.module)}.#{fun}/#{arity}"
+
+        raise Ash.Error.Invalid.NoSuchResource,
+          message: "#{mfa} expected an Ash Resource but instead got #{inspect(unquote(resource))}"
+      end
+    end
+  end
+
+  defmacro enforce_keyword_list!(list) do
+    quote do
+      if Keyword.keyword?(unquote(list)) do
+        :ok
+      else
+        {fun, arity} = __ENV__.function
+        mfa = "#{inspect(__ENV__.module)}.#{fun}/#{arity}"
+        raise "#{mfa} expected a keyword list, but instead got #{inspect(unquote(list))}"
+      end
+    end
   end
 end
