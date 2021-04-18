@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.41.7](https://github.com/ash-project/ash/compare/v1.41.6...v1.41.7) (2021-04-18)
+
+
+
+
+### Bug Fixes:
+
+* clearer errors when resource fails to compile
+
+* don't preload multiplicatively
+
+* Decimal casting issues on ash_postgres (#227)
+
+### Improvements:
+
+* add list access to `context`
+
+* add Resource.input/1
+
 ## [v1.41.6](https://github.com/ash-project/ash/compare/v1.41.5...v1.41.6) (2021-04-16)
 
 
