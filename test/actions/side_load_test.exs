@@ -2,6 +2,7 @@ defmodule Ash.Test.Actions.SideLoadTest do
   @moduledoc false
   use ExUnit.Case, async: false
 
+  import Ash.Changeset
   require Ash.Query
 
   defmodule Author do
@@ -83,6 +84,7 @@ defmodule Ash.Test.Actions.SideLoadTest do
   end
 
   defmodule Category do
+    @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -129,8 +131,6 @@ defmodule Ash.Test.Actions.SideLoadTest do
 
     :ok
   end
-
-  import Ash.Changeset
 
   describe "side_loads" do
     test "it allows sideloading related data" do

@@ -2,6 +2,8 @@ defmodule Ash.Test.Actions.ReadTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  import Ash.Changeset
+
   require Ash.Query
 
   defmodule Author do
@@ -66,8 +68,6 @@ defmodule Ash.Test.Actions.ReadTest do
       resource Author
     end
   end
-
-  import Ash.Changeset
 
   describe "api.get/3" do
     setup do

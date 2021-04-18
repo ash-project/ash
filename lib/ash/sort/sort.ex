@@ -3,12 +3,12 @@ defmodule Ash.Sort do
   Utilities and types for sorting.
   """
 
-  alias Ash.Error.Query.{InvalidSortOrder, NoSuchAttribute}
-
   @type sort_order ::
           :asc | :desc | :asc_nils_first | :asc_nils_last | :desc_nils_first | :desc_nils_last
 
   @type t :: list(atom | {atom, sort_order})
+
+  alias Ash.Error.Query.{InvalidSortOrder, NoSuchAttribute}
 
   @doc """
   A utility for parsing sorts provided from external input. Only allows sorting

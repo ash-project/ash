@@ -6,6 +6,8 @@ defmodule Ash.Query.Operator do
   are there. An operator must meet both behaviours.
   """
 
+  alias Ash.Query.{Call, Expression, Not, Ref}
+
   @doc """
   Create a new predicate. There are various return types possible:
 
@@ -23,8 +25,6 @@ defmodule Ash.Query.Operator do
   If not defined, it will be inferred
   """
   @callback to_string(struct, Inspect.Opts.t()) :: term
-
-  alias Ash.Query.{Call, Expression, Not, Ref}
 
   @doc "Create a new operator. Pass the module and the left and right values"
   def new(mod, %Ref{} = left, right) do

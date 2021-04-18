@@ -1,6 +1,7 @@
 defmodule Ash.Test.Filter.FilterInteractionTest do
   use ExUnit.Case, async: false
 
+  import Ash.Changeset
   import ExUnit.CaptureLog
 
   alias Ash.DataLayer.Mnesia
@@ -145,8 +146,6 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
       end)
     end)
   end
-
-  import Ash.Changeset
 
   test "mnesia data layer sanity test" do
     post =

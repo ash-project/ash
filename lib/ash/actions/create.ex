@@ -1,10 +1,11 @@
 defmodule Ash.Actions.Create do
   @moduledoc false
-  require Logger
 
   alias Ash.Actions.Helpers
   alias Ash.Engine
   alias Ash.Engine.Request
+
+  require Logger
 
   @spec run(Ash.Api.t(), Ash.Changeset.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
           {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}

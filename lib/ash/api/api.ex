@@ -29,6 +29,8 @@ defmodule Ash.Api do
   See the resource DSL documentation for more.
   """
 
+  use Ash.Dsl, default_extensions: [extensions: [Ash.Api.Dsl]]
+
   import Ash.OptionsHelpers, only: [merge_schemas: 3]
 
   alias Ash.Actions.{Create, Destroy, Read, Update}
@@ -38,6 +40,8 @@ defmodule Ash.Api do
     NoSuchAction,
     NoSuchResource
   }
+
+  alias Ash.Dsl.Extension
 
   require Ash.Query
 
@@ -409,10 +413,6 @@ defmodule Ash.Api do
   @callback reload(record :: Ash.Resource.record()) ::
               {:ok, Ash.Resource.record()} | {:error, term}
 
-  alias Ash.Dsl.Extension
-
-  use Ash.Dsl, default_extensions: [extensions: [Ash.Api.Dsl]]
-
   def handle_opts(_) do
     quote do
       @behaviour Ash.Api
@@ -424,8 +424,6 @@ defmodule Ash.Api do
       use Ash.Api.Interface
     end
   end
-
-  alias Ash.Dsl.Extension
 
   def resource(api, resource) do
     api

@@ -2,6 +2,9 @@ defmodule Ash.Error do
   @moduledoc """
   Tools and utilities used by Ash to manage and conform errors
   """
+
+  alias Ash.Error.{Forbidden, Framework, Invalid, Unknown}
+
   @type error_class() :: :invalid | :authorization | :framework | :unknown
 
   @type t :: struct
@@ -15,8 +18,6 @@ defmodule Ash.Error do
     :framework,
     :unknown
   ]
-
-  alias Ash.Error.{Forbidden, Framework, Invalid, Unknown}
 
   @error_modules [
     forbidden: Forbidden,

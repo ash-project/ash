@@ -33,6 +33,9 @@ defmodule Ash.Engine do
   interface at the moment, though, so this documentation is just here to explain how it works
   it is not intended to give you enough information to use the engine directly.
   """
+
+  use GenServer
+
   defstruct [
     :api,
     :requests,
@@ -52,8 +55,6 @@ defmodule Ash.Engine do
   ]
 
   alias Ash.Engine.{Request, Runner}
-
-  use GenServer
 
   require Logger
 

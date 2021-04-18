@@ -54,6 +54,20 @@ defmodule Ash.Query do
 
   @type t :: %__MODULE__{}
 
+  alias Ash.Actions.Sort
+
+  alias Ash.Error.Query.{
+    AggregatesNotSupported,
+    InvalidArgument,
+    InvalidLimit,
+    InvalidOffset,
+    NoReadAction,
+    Required
+  }
+
+  alias Ash.Error.SideLoad.{InvalidQuery, NoSuchRelationship}
+  alias Ash.Query.{Aggregate, BooleanExpression, Calculation}
+
   defimpl Inspect do
     import Inspect.Algebra
 
@@ -121,20 +135,6 @@ defmodule Ash.Query do
     defp or_empty(value, true), do: value
     defp or_empty(_, false), do: empty()
   end
-
-  alias Ash.Actions.Sort
-
-  alias Ash.Error.Query.{
-    AggregatesNotSupported,
-    InvalidArgument,
-    InvalidLimit,
-    InvalidOffset,
-    NoReadAction,
-    Required
-  }
-
-  alias Ash.Error.SideLoad.{InvalidQuery, NoSuchRelationship}
-  alias Ash.Query.{Aggregate, BooleanExpression, Calculation}
 
   @doc """
   Attach a filter statement to the query.

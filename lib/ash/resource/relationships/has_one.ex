@@ -33,8 +33,8 @@ defmodule Ash.Resource.Relationships.HasOne do
           description: String.t()
         }
 
-  alias Ash.OptionsHelpers
   import Ash.Resource.Relationships.SharedOptions
+  alias Ash.OptionsHelpers
 
   @global_opts shared_options()
                |> OptionsHelpers.make_required!(:destination_field)

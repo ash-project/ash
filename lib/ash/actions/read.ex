@@ -1,7 +1,5 @@
 defmodule Ash.Actions.Read do
   @moduledoc false
-  require Logger
-  require Ash.Query
 
   alias Ash.Actions.{Helpers, SideLoad}
   alias Ash.Engine
@@ -10,6 +8,9 @@ defmodule Ash.Actions.Read do
   alias Ash.Error.Query.NoReadAction
   alias Ash.Filter
   alias Ash.Query.Aggregate
+
+  require Logger
+  require Ash.Query
 
   def unpaginated_read(query, action \\ nil, opts \\ []) do
     action = action || Ash.Resource.Info.primary_action(query.resource, :read)

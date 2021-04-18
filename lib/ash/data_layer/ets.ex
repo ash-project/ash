@@ -5,8 +5,6 @@ defmodule Ash.DataLayer.Ets do
   This is used for testing. *Do not use this data layer in production*
   """
 
-  alias Ash.Actions.Sort
-
   @behaviour Ash.DataLayer
 
   @ets %Ash.Dsl.Section{
@@ -29,8 +27,9 @@ defmodule Ash.DataLayer.Ets do
       ]
     ]
   }
-
   use Ash.Dsl.Extension, sections: [@ets]
+
+  alias Ash.Actions.Sort
   alias Ash.Dsl.Extension
 
   @spec private?(Ash.Resource.t()) :: boolean

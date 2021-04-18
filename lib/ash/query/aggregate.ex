@@ -13,19 +13,19 @@ defmodule Ash.Query.Aggregate do
     :load
   ]
 
-  @kinds [:count, :first, :sum]
-
   @type t :: %__MODULE__{}
+
+  @kinds [:count, :first, :sum]
   @type kind :: unquote(Enum.reduce(@kinds, &{:|, [], [&1, &2]}))
+
+  alias Ash.Actions.SideLoad
+  alias Ash.Engine.Request
+  alias Ash.Error.Query.{NoReadAction, NoSuchRelationship}
 
   require Ash.Query
 
   @doc false
   def kinds, do: @kinds
-
-  alias Ash.Actions.SideLoad
-  alias Ash.Engine.Request
-  alias Ash.Error.Query.{NoReadAction, NoSuchRelationship}
 
   def new(resource, name, kind, relationship, query, field) do
     field_type =

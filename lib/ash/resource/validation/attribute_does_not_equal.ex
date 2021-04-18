@@ -1,5 +1,9 @@
 defmodule Ash.Resource.Validation.AttributeDoesNotEqual do
   @moduledoc "A validation that fails unless the attribute does not equal a specific value"
+  use Ash.Resource.Validation
+
+  alias Ash.Error.Changes.InvalidAttribute
+
   @opt_schema [
     attribute: [
       type: :atom,
@@ -12,10 +16,6 @@ defmodule Ash.Resource.Validation.AttributeDoesNotEqual do
       doc: "The value the attribute must not equal"
     ]
   ]
-
-  alias Ash.Error.Changes.InvalidAttribute
-
-  use Ash.Resource.Validation
 
   @impl true
   def init(opts) do

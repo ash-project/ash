@@ -1,6 +1,7 @@
 defmodule Ash.Test.Type.TypeTest do
   @moduledoc false
   use ExUnit.Case, async: true
+  import Ash.Changeset
 
   defmodule PostTitle do
     @moduledoc false
@@ -71,8 +72,6 @@ defmodule Ash.Test.Type.TypeTest do
       resource(Post)
     end
   end
-
-  import Ash.Changeset
 
   test "it accepts valid data" do
     post =

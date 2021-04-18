@@ -1,5 +1,7 @@
 defmodule Ash.Engine.RequestHandler do
   @moduledoc false
+  use GenServer
+
   defstruct [
     :request,
     :verbose?,
@@ -11,10 +13,9 @@ defmodule Ash.Engine.RequestHandler do
     notifications_sent: MapSet.new()
   ]
 
-  use GenServer
-  require Logger
-
   alias Ash.Engine.Request
+
+  require Logger
 
   def init(opts) do
     Process.put(:"$callers", opts[:callers])
@@ -175,9 +176,7 @@ defmodule Ash.Engine.RequestHandler do
     log(
       state,
       fn ->
-        "Synchronous runner stuck: async request handler current state #{
-          inspect(state.request.path)
-        } #{state.request.state}"
+        "Synchronous runner stuck: async request handler current state #{inspect(state.request.path)} #{state.request.state}"
       end
     )
 

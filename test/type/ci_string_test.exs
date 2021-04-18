@@ -2,6 +2,7 @@ defmodule Ash.Test.Type.CiString do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  import Ash.Changeset
   require Ash.Query
 
   defmodule Post do
@@ -40,8 +41,6 @@ defmodule Ash.Test.Type.CiString do
       resource(Post)
     end
   end
-
-  import Ash.Changeset
 
   test "it handles non-empty values" do
     post =

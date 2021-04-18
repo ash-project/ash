@@ -2,7 +2,10 @@ defmodule Ash.Test.Actions.CreateTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  import Ash.Changeset
+
   defmodule Authorized do
+    @moduledoc false
     use Ash.Resource,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Test.Authorizer]
@@ -76,6 +79,7 @@ defmodule Ash.Test.Actions.CreateTest do
   end
 
   defmodule DuplicateName do
+    @moduledoc false
     use Ash.Resource.Change
 
     def change(changeset, _, _) do
@@ -205,6 +209,7 @@ defmodule Ash.Test.Actions.CreateTest do
   end
 
   defmodule GeneratedPkey do
+    @moduledoc false
     use Ash.Resource,
       data_layer: Ash.DataLayer.Ets
 
@@ -238,8 +243,6 @@ defmodule Ash.Test.Actions.CreateTest do
       resource(GeneratedPkey)
     end
   end
-
-  import Ash.Changeset
 
   describe "simple creates" do
     test "allows creating a record with valid attributes" do

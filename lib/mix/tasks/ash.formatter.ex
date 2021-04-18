@@ -1,5 +1,6 @@
 defmodule Mix.Tasks.Ash.Formatter do
-  @moduledoc "Generates a .formatter.exs from a list of extensions, and writes it."
+  @shortdoc "Generates a .formatter.exs from a list of extensions, and writes it."
+  @moduledoc @shortdoc
   use Mix.Task
 
   @formatter_exs_template """
@@ -17,7 +18,6 @@ defmodule Mix.Tasks.Ash.Formatter do
 
   """
 
-  @shortdoc @moduledoc
   @spec run(term) :: no_return
   def run(opts) do
     Mix.Task.run("compile")

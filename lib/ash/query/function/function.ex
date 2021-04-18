@@ -6,6 +6,8 @@ defmodule Ash.Query.Function do
   are there. A function must meet both behaviours.
   """
 
+  alias Ash.Query.{BooleanExpression, Call, Not, Ref}
+
   @type arg :: any
   @doc """
   The number and types of arguments supported.
@@ -13,8 +15,6 @@ defmodule Ash.Query.Function do
   @callback args() :: [arg]
   @callback new(list(term)) :: {:ok, term}
   @callback evaluate(func :: map) :: :unknown | {:known, term}
-
-  alias Ash.Query.{BooleanExpression, Call, Not, Ref}
 
   def new(mod, args) do
     args = List.wrap(args)

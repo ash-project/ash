@@ -35,11 +35,6 @@ defmodule Ash.Type do
     url_encoded_binary: Ash.Type.UrlEncodedBinary
   ]
 
-  @builtin_types Keyword.values(@short_names)
-
-  def builtin?(type) when type in @builtin_types, do: true
-  def builtin?(_), do: false
-
   @doc_array_constraints Keyword.put(@array_constraints, :items,
                            type: :any,
                            doc:
@@ -106,7 +101,11 @@ defmodule Ash.Type do
   All the Ash built-in types are implemented with `use Ash.Type` so they are good
   examples to look at to create your own `Ash.Type`
   """
+
   @type constraints :: Keyword.t()
+  @type constraint_error :: String.t() | {String.t(), Keyword.t()}
+  @type t :: atom | {:array, atom}
+
   @callback storage_type() :: Ecto.Type.t()
   @callback ecto_type() :: Ecto.Type.t()
   @callback cast_input(term, constraints) :: {:ok, term} | {:error, Keyword.t()} | :error
@@ -155,8 +154,10 @@ defmodule Ash.Type do
     dump_to_embedded_array: 2
   ]
 
-  @type constraint_error :: String.t() | {String.t(), Keyword.t()}
-  @type t :: atom | {:array, atom}
+  @builtin_types Keyword.values(@short_names)
+
+  def builtin?(type) when type in @builtin_types, do: true
+  def builtin?(_), do: false
 
   def embedded_type?({:array, type}) do
     embedded_type?(type)
