@@ -14,21 +14,18 @@ defmodule Ash.Api.Transformers.EnsureResourcesCompiled do
     |> Transformer.get_entities([:resources])
     |> Enum.filter(& &1.warn_on_compile_failure?)
     |> Enum.map(& &1.resource)
-    |> Enum.filter(fn resource ->
+    |> Enum.reject(fn resource ->
       case Code.ensure_compiled(resource) do
         {:module, _module} ->
-          false
+          true
 
-        {:error, :unavailable} ->
-          # The module is being compiled but is in a deadlock that may or may not be resolved
-          false
-
-        other ->
+        {:error, error} ->
           Logger.error(
-            "Could not ensure that #{inspect(resource)} was compiled: #{inspect(other)}"
+            "Could not ensure that #{inspect(resource)} was compiled: #{inspect(error)}"
           )
 
-          true
+          # The module is being compiled but is in a deadlock that may or may not be resolved
+          false
       end
     end)
     |> case do
