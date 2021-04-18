@@ -11,22 +11,23 @@ defmodule Ash.Query do
 
   ```elixir
   MyApp.Post
-  |> Query.filter(likes > 10)
-  |> Query.sort([:title])
+  |> Ash.Query.filter(likes > 10)
+  |> Ash.Query.sort([:title])
   |> MyApp.Api.read!()
 
   MyApp.Author
-  |> Query.aggregate(:published_post_count, :posts, filter: [published: true])
-  |> Query.sort(published_post_count: :desc)
-  |> Query.limit(10)
+  |> Ash.Query.aggregate(:published_post_count, :posts, filter: [published: true])
+  |> Ash.Query.sort(published_post_count: :desc)
+  |> Ash.Query.limit(10)
   |> MyApp.Api.read!()
 
   MyApp.Author
-  |> Query.load([:post_count, :comment_count])
-  |> Query.load(posts: [:comments])
+  |> Ash.Query.load([:post_count, :comment_count])
+  |> Ash.Query.load(posts: [:comments])
   |> MyApp.Api.read!()
   ```
   """
+
   defstruct [
     :api,
     :resource,
