@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.41.8](https://github.com/ash-project/ash/compare/v1.41.7...v1.41.8) (2021-04-21)
+
+
+
+
+### Bug Fixes:
+
+* don't consider nils for pkey matching
+
+### Improvements:
+
+* add first class support for enum types
+
+* Add detailed parameter checking for Api read functions (#229)
+
 ## [v1.41.7](https://github.com/ash-project/ash/compare/v1.41.6...v1.41.7) (2021-04-18)
 
 
