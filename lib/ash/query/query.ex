@@ -746,8 +746,6 @@ defmodule Ash.Query do
 
   @doc """
   Merge a map of values into the query context
-
-  Not much uses this currently.
   """
   @spec set_context(t() | Ash.Resource.t(), map | nil) :: t()
   def set_context(query, nil), do: to_query(query)
