@@ -2,6 +2,7 @@ defmodule Ash.Test.Type.EnumTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  import Ash.Changeset
   require Ash.Query
 
   defmodule Status do
@@ -31,8 +32,6 @@ defmodule Ash.Test.Type.EnumTest do
       resource(Post)
     end
   end
-
-  import Ash.Changeset
 
   test "it handles exact matches" do
     Post
