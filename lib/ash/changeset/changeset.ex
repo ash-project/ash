@@ -455,6 +455,7 @@ defmodule Ash.Changeset do
           |> cast_params(action, params || %{}, opts)
           |> validate_attributes_accepted(action)
           |> run_action_changes(action, opts[:actor])
+          |> require_values(action.type, false, action.require_attributes)
           |> set_defaults(changeset.action_type, false)
           |> add_validations()
           |> mark_validated(action.name)
@@ -765,44 +766,66 @@ defmodule Ash.Changeset do
   end
 
   @doc false
-  def require_values(changeset, action_type, private_and_belongs_to? \\ false)
+  def require_values(changeset, action_type, private_and_belongs_to? \\ false, attrs \\ nil)
 
-  def require_values(changeset, :create, private_and_belongs_to?) do
-    attributes = attributes_to_require(changeset.resource, private_and_belongs_to?)
-
-    Enum.reduce(attributes, changeset, fn required_attribute, changeset ->
-      if Ash.Changeset.changing_attribute?(changeset, required_attribute.name) ||
-           not is_nil(required_attribute.default) do
-        changeset
-      else
-        Ash.Changeset.add_error(
-          changeset,
-          Required.exception(field: required_attribute.name, type: :attribute)
-        )
-      end
-    end)
-  end
-
-  def require_values(changeset, :update, private_and_belongs_to?) do
-    attributes = attributes_to_require(changeset.resource, private_and_belongs_to?)
+  def require_values(changeset, :create, private_and_belongs_to?, attrs) do
+    attributes = attrs || attributes_to_require(changeset.resource, private_and_belongs_to?)
 
     Enum.reduce(attributes, changeset, fn required_attribute, changeset ->
-      if Ash.Changeset.changing_attribute?(changeset, required_attribute.name) do
-        if is_nil(get_attribute(changeset, required_attribute.name)) do
-          Ash.Changeset.add_error(
+      if is_atom(required_attribute) do
+        if is_nil(get_attribute(changeset, required_attribute)) do
+          add_error(
             changeset,
-            Required.exception(field: required_attribute.name, type: :attribute)
+            Required.exception(field: required_attribute, type: :attribute)
           )
         else
           changeset
         end
       else
-        changeset
+        if changing_attribute?(changeset, required_attribute.name) ||
+             not is_nil(required_attribute.default) do
+          changeset
+        else
+          add_error(
+            changeset,
+            Required.exception(field: required_attribute.name, type: :attribute)
+          )
+        end
       end
     end)
   end
 
-  def require_values(changeset, _, _), do: changeset
+  def require_values(changeset, :update, private_and_belongs_to?, attrs) do
+    attributes = attrs || attributes_to_require(changeset.resource, private_and_belongs_to?)
+
+    Enum.reduce(attributes, changeset, fn required_attribute, changeset ->
+      if is_atom(required_attribute) do
+        if is_nil(get_attribute(changeset, required_attribute)) do
+          add_error(
+            changeset,
+            Required.exception(field: required_attribute, type: :attribute)
+          )
+        else
+          changeset
+        end
+      else
+        if changing_attribute?(changeset, required_attribute.name) do
+          if is_nil(get_attribute(changeset, required_attribute.name)) do
+            add_error(
+              changeset,
+              Required.exception(field: required_attribute.name, type: :attribute)
+            )
+          else
+            changeset
+          end
+        else
+          changeset
+        end
+      end
+    end)
+  end
+
+  def require_values(changeset, _, _, _), do: changeset
 
   # Attributes that are private and/or are the source field of a belongs_to relationship
   # are typically not set by input, so they aren't required until the actual action

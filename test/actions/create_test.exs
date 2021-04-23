@@ -171,7 +171,15 @@ defmodule Ash.Test.Actions.CreateTest do
 
     actions do
       read(:read)
-      create(:create)
+
+      create :create do
+        primary? true
+      end
+
+      create :create_with_required do
+        require_attributes [:tag]
+      end
+
       update(:update)
     end
 
@@ -317,6 +325,22 @@ defmodule Ash.Test.Actions.CreateTest do
                |> change_attribute(:title, "foo")
                |> change_attribute(:binary, <<0, 1, 2>>)
                |> Api.create!()
+    end
+  end
+
+  describe "require_attributes" do
+    test "it requires attributes that have a default" do
+      assert_raise Ash.Error.Invalid, ~r/attribute tag is required/, fn ->
+        Post
+        |> new(title: "foo")
+        |> Api.create!(action: :create_with_required)
+      end
+    end
+
+    test "it does not raise an error when those attributes have been set" do
+      Post
+      |> new(title: "foo", tag: "foo")
+      |> Api.create!(action: :create_with_required)
     end
   end
 

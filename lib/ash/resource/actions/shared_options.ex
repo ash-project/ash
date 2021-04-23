@@ -31,6 +31,14 @@ defmodule Ash.Resource.Actions.SharedOptions do
       If this is specified along with `accept`, then everything in the `accept` list minus any matches in the
       `reject` list will be accepted.
       """
+    ],
+    require_attributes: [
+      type: {:custom, Ash.OptionsHelpers, :list_of_atoms, []},
+      doc: """
+      A list of attributes that would normally `allow_nil` to require for this action.
+
+      No need to include attributes that are `allow_nil?: false`.
+      """
     ]
   ]
 

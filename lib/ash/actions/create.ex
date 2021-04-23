@@ -145,7 +145,17 @@ defmodule Ash.Actions.Create do
                   {changeset, instructions}
                 end)
                 |> Ash.Changeset.with_hooks(fn changeset ->
-                  changeset = Ash.Changeset.require_values(changeset, :create, true)
+                  changeset =
+                    Ash.Changeset.require_values(
+                      changeset,
+                      :create,
+                      true
+                    )
+                    |> Ash.Changeset.require_values(
+                      :update,
+                      false,
+                      action.require_attributes
+                    )
 
                   if changeset.valid? do
                     if upsert? do

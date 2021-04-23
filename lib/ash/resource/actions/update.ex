@@ -6,6 +6,7 @@ defmodule Ash.Resource.Actions.Update do
     :primary?,
     :description,
     accept: nil,
+    require_attributes: [],
     arguments: [],
     changes: [],
     reject: [],

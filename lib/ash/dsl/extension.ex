@@ -444,6 +444,12 @@ defmodule Ash.Dsl.Extension do
 
       Ash.Dsl.Extension.write_dsl_to_persistent_term(__MODULE__, ash_dsl_config)
 
+      for {key, _value} <- Process.get() do
+        if is_tuple(key) and elem(key, 0) == __MODULE__ do
+          Process.delete(key)
+        end
+      end
+
       transformers_to_run =
         @extensions
         |> Enum.flat_map(& &1.transformers())
@@ -1050,6 +1056,12 @@ defmodule Ash.Dsl.Extension do
 
   def expand_alias(ast, env) do
     Macro.postwalk(ast, fn
+      {first, {:__aliases__, _, _} = node} ->
+        {first, Macro.expand(node, %{env | function: {:ash_dsl_config, 0}})}
+
+      {{:__aliases__, _, _} = node, second} ->
+        {Macro.expand(node, %{env | function: {:ash_dsl_config, 0}}), second}
+
       {:__aliases__, _, _} = node ->
         Macro.expand(node, %{env | function: {:ash_dsl_config, 0}})
 

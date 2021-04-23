@@ -82,6 +82,7 @@ locals_without_parens = [
   read: 1,
   read: 2,
   reject: 1,
+  require_attributes: 1,
   required?: 1,
   resource: 1,
   resource: 2,
