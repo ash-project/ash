@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.41.9](https://github.com/ash-project/ash/compare/v1.41.8...v1.41.9) (2021-04-23)
+
+
+
+
+### Bug Fixes:
+
+* compile time fixes
+
+### Improvements:
+
+* add `require_attributes` to create/update/destroy
+
 ## [v1.41.8](https://github.com/ash-project/ash/compare/v1.41.7...v1.41.8) (2021-04-21)
 
 
