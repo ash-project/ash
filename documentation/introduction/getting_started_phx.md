@@ -56,7 +56,7 @@ Next modify the the `.formatter` and `mix.exs` files:
 Next, modify `MyApp.Repo` and add the postgres adapter.
 
 ```diff
--  use AshPostgres.Repo, otp_app: :my_app
+-  use Ecto.Repo, otp_app: :my_app
 +  use AshPostgres.Repo, otp_app: :my_app
 ```
 
