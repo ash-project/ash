@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.41.10](https://github.com/ash-project/ash/compare/v1.41.9...v1.41.10) (2021-04-25)
+
+
+
+
+### Bug Fixes:
+
+* don't include `NotLoaded` in `manage_relationship`
+
 ## [v1.41.9](https://github.com/ash-project/ash/compare/v1.41.8...v1.41.9) (2021-04-23)
 
 
