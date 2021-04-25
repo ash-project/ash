@@ -53,12 +53,12 @@ Next modify the the `.formatter` and `mix.exs` files:
 
 ```
 
-Next, modify `MyApp.Repo` and add the postgres adapter.
+Next, modify `MyApp.Repo` and add the postgres adapter. We will update our repo to use `AshPostgres.Repo` instead of `Ecto.Repo`.
 
-```diff
+```elixir
 defmodule MyApp.Repo do
--  use Ecto.Repo, otp_app: :my_app
-+  use AshPostgres.Repo, otp_app: :my_app
+  use AshPostgres.Repo,
+    otp_app: :my_app
 end
 ```
 
