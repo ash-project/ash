@@ -69,7 +69,18 @@ defmodule Ash.Actions.ManagedRelationships do
 
       opts = Ash.Changeset.ManagedRelationshipHelpers.sanitize_opts(relationship, opts)
       opts = Keyword.put(opts, :authorize?, engine_opts[:authorize?] && opts[:authorize?])
-      current_value = Map.get(changeset.data, relationship.name)
+
+      current_value =
+        case Map.get(changeset.data, relationship.name) do
+          %Ash.NotLoaded{} ->
+            case relationship.cardinality do
+              :many -> []
+              :one -> nil
+            end
+
+          other ->
+            other
+        end
 
       case find_match(List.wrap(current_value), input, pkeys, relationship) do
         nil ->
@@ -358,7 +369,12 @@ defmodule Ash.Actions.ManagedRelationships do
     inputs = List.wrap(inputs)
     opts = Ash.Changeset.ManagedRelationshipHelpers.sanitize_opts(relationship, opts)
     pkeys = pkeys(relationship)
-    original_value = List.wrap(Map.get(record, relationship.name))
+
+    original_value =
+      case Map.get(record, relationship.name) do
+        %Ash.NotLoaded{} -> []
+        value -> value
+      end
 
     inputs
     |> Enum.reduce_while(
@@ -426,7 +442,13 @@ defmodule Ash.Actions.ManagedRelationships do
       |> Enum.map(& &1.keys)
 
     pkeys = [Ash.Resource.Info.primary_key(relationship.destination) | identities]
-    original_value = List.wrap(Map.get(record, relationship.name))
+
+    original_value =
+      case Map.get(record, relationship.name) do
+        %Ash.NotLoaded{} -> []
+        value -> value
+      end
+
     inputs = List.wrap(inputs)
 
     inputs

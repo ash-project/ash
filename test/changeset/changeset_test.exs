@@ -103,12 +103,6 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       private?(true)
     end
 
-    actions do
-      read :read
-      create :create
-      update :update
-    end
-
     attributes do
       uuid_primary_key :id
       attribute :title, :string
@@ -220,6 +214,16 @@ defmodule Ash.Test.Changeset.ChangesetTest do
              } =
                Category
                |> Changeset.new()
+    end
+
+    test "if an attribute does not exist in `new/2`, a corresponding error is added`" do
+      error =
+        Author
+        |> Changeset.new(%{"flarb" => 10})
+        |> Map.get(:errors)
+        |> Enum.at(0)
+
+      assert %Ash.Error.Changes.NoSuchAttribute{name: "flarb"} = error
     end
 
     test "it wraps a resource's record in an `update` changeset" do
@@ -389,6 +393,23 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       assert %{name: "title"} = Api.load!(post, :author).author
     end
 
+    test "upsert with many_to_many relationships creates and relates records, and returns the created/related records" do
+      Category
+      |> Changeset.new(name: "foo")
+      |> Api.create!()
+
+      post =
+        Post
+        |> Changeset.new()
+        |> Changeset.manage_relationship(:categories, [%{name: "foo"}, %{name: "bar"}],
+          on_lookup: :relate,
+          on_no_match: :create
+        )
+        |> Api.create!()
+
+      assert [%{name: "bar"}, %{name: "foo"}] = Enum.sort_by(post.categories, & &1.name)
+    end
+
     test "it creates related entities" do
       post1 = %{title: "title"}
       post2 = %{title: "title"}
@@ -431,16 +452,6 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                      |> Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :error)
                      |> Api.create!(stacktraces?: true)
                    end
-    end
-
-    test "if an attribute does not exist in `new/2`, a corresponding error is added`" do
-      error =
-        Author
-        |> Changeset.new(%{"flarb" => 10})
-        |> Map.get(:errors)
-        |> Enum.at(0)
-
-      assert %Ash.Error.Changes.NoSuchAttribute{name: "flarb"} = error
     end
 
     test "it destroys related records if not present" do
