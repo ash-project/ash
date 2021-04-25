@@ -57,7 +57,7 @@ Next, modify `AshApi.Repo` and add the postgres adapter.
 
 ```diff
 -  use Ecto.Repo, otp_app: :ash_api
-+  use Ecto.Repo, otp_app: :ash_api, adapter: Ecto.Adapters.Postgres`
++  use Ecto.Repo, otp_app: :ash_api, adapter: Ecto.Adapters.Postgres
 ```
 
 Make sure you can connect to Postgres by verifying that the credentials in `config/dev.exs` are correct and create the database by running:
