@@ -56,8 +56,10 @@ Next modify the the `.formatter` and `mix.exs` files:
 Next, modify `MyApp.Repo` and add the postgres adapter.
 
 ```diff
+defmodule MyApp.Repo do
 -  use Ecto.Repo, otp_app: :my_app
 +  use AshPostgres.Repo, otp_app: :my_app
+end
 ```
 
 Make sure you can connect to Postgres by verifying that the credentials in `config/dev.exs` are correct and create the database by running:
@@ -89,15 +91,6 @@ and `lib/my_app/resources/user.ex` from the Getting Started
 sample app into this project in the same path.
 
 ## Switch data layer to Postgres
-
-First, we will update our repo to use `AshPostgres.Repo` instead of `Ecto.Repo`.
-
-```elixir
-defmodule MyApp.Repo do
-  use AshPostgres.Repo,
-    otp_app: :my_app
-end
-```
 
 We can now proceed to switch the data layer from `ETS`
 to `PostgreSQL` simply by changing the `data_layer` to
