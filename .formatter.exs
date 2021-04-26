@@ -61,6 +61,8 @@ locals_without_parens = [
   join_attributes: 1,
   join_relationship: 1,
   kind: 1,
+  list: 3,
+  list: 4,
   many_to_many: 2,
   many_to_many: 3,
   message: 1,

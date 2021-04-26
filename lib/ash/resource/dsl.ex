@@ -763,6 +763,27 @@ defmodule Ash.Resource.Dsl do
     auto_set_fields: [kind: :sum]
   }
 
+  @list %Ash.Dsl.Entity{
+    name: :list,
+    describe: """
+    Declares a named `list` aggregate on the resource.
+
+    A list aggregate simply selects the list of all values for the given field
+    and relationship combination.
+    """,
+    examples: [
+      """
+      list :assigned_ticket_prices, :assigned_tickets, :price do
+        filter [active: true]
+      end
+      """
+    ],
+    target: Ash.Resource.Aggregate,
+    args: [:name, :relationship_path, :field],
+    schema: Ash.Resource.Aggregate.schema(),
+    auto_set_fields: [kind: :list]
+  }
+
   @aggregates %Ash.Dsl.Section{
     name: :aggregates,
     describe: """
@@ -783,7 +804,8 @@ defmodule Ash.Resource.Dsl do
     entities: [
       @count,
       @first,
-      @sum
+      @sum,
+      @list
     ]
   }
 

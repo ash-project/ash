@@ -15,7 +15,7 @@ defmodule Ash.Query.Aggregate do
 
   @type t :: %__MODULE__{}
 
-  @kinds [:count, :first, :sum]
+  @kinds [:count, :first, :sum, :list]
   @type kind :: unquote(Enum.reduce(@kinds, &{:|, [], [&1, &2]}))
 
   alias Ash.Actions.SideLoad
@@ -91,6 +91,7 @@ defmodule Ash.Query.Aggregate do
   defp default_value(:count), do: 0
   defp default_value(:first), do: nil
   defp default_value(:sum), do: nil
+  defp default_value(:list), do: []
 
   defp validate_query(nil), do: {:ok, nil}
 
@@ -117,6 +118,7 @@ defmodule Ash.Query.Aggregate do
   def kind_to_type(:count, _field_type), do: {:ok, Ash.Type.Integer}
   def kind_to_type(kind, nil), do: {:error, "Must provide field type for #{kind}"}
   def kind_to_type(kind, field_type) when kind in [:first, :sum], do: {:ok, field_type}
+  def kind_to_type(:list, field_type), do: {:ok, {:array, field_type}}
   def kind_to_type(kind, _field_type), do: {:error, "Invalid aggregate kind: #{kind}"}
 
   def requests(initial_query, can_be_in_query?, authorizing?) do
