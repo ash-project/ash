@@ -481,6 +481,13 @@ defmodule Ash.Query do
     soft_escape(%Ash.Query.Call{name: op, args: args, operator?: true}, escape?)
   end
 
+  defp do_expr({left, _, [{op, _, [right]}]}, escape?)
+       when is_atom(op) and op in @operator_symbols and is_atom(left) do
+    args = Enum.map([{left, [], nil}, right], &do_expr(&1, false))
+
+    soft_escape(%Ash.Query.Call{name: op, args: args, operator?: true}, escape?)
+  end
+
   defp do_expr({op, _, args}, escape?) when is_atom(op) and is_list(args) do
     args = Enum.map(args, &do_expr(&1, false))
 
