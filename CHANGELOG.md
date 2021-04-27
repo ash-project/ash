@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.41.12](https://github.com/ash-project/ash/compare/v1.41.11...v1.41.12) (2021-04-27)
+
+
+
+
+### Improvements:
+
+* add `has` filter predicate
+
 ## [v1.41.11](https://github.com/ash-project/ash/compare/v1.41.10...v1.41.11) (2021-04-26)
 
 

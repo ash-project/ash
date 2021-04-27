@@ -7,7 +7,7 @@ defmodule Ash.MixProject do
   designed to be used by multiple front ends.
   """
 
-  @version "1.41.11"
+  @version "1.41.12"
 
   def project do
     [
