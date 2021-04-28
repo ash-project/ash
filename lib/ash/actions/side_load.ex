@@ -464,7 +464,6 @@ defmodule Ash.Actions.SideLoad do
                        use_data_for_filter?,
                        relationship
                      ) do
-                IO.inspect(results, label: "r2")
                 {:ok, results}
               else
                 :nothing ->

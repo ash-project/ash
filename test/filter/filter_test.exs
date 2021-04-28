@@ -404,9 +404,10 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     test "relationship filters are honored when filtering on relationships", %{post2: post} do
-      post
-      |> Api.load!([:special_author1, :author1])
-      |> IO.inspect()
+      post = Api.load!(post, [:special_author1, :author1])
+
+      assert post.author1
+      refute post.special_author1
     end
   end
 

@@ -176,7 +176,7 @@ defmodule Ash.Api do
     end
   end
 
-  @load_opts_schemamerge_schemas([], @global_opts, "Global Options")
+  @load_opts_schema merge_schemas([], @global_opts, "Global Options")
 
   @get_opts_schema [
                      load: [
