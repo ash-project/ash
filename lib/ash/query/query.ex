@@ -1281,6 +1281,8 @@ defmodule Ash.Query do
     end
   end
 
+  def do_filter(query, nil), do: to_query(query)
+
   def do_filter(query, statement) do
     query = to_query(query)
 

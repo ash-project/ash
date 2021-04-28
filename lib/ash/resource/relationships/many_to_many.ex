@@ -17,6 +17,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
     :private?,
     :description,
     :context,
+    :filter,
     cardinality: :many,
     type: :many_to_many
   ]
@@ -27,6 +28,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
           source: Ash.Resource.t(),
           writable?: boolean,
           private?: boolean,
+          filter: Ash.Filter.t(),
           name: atom,
           through: Ash.Resource.t(),
           destination: Ash.Resource.t(),

@@ -51,6 +51,12 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       For example, if a value is added that has no match in the destination (very hard to do with the way Ash relationship changes work).
       """
     ],
+    filter: [
+      type: :any,
+      doc: """
+      A filter to be applied when reading the relationship.
+      """
+    ],
     violation_message: [
       type: :string,
       doc: """

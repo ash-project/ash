@@ -85,16 +85,13 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
     end)
     |> Keyword.update!(:on_lookup, fn
       key when relationship.type == :many_to_many and key in [:relate, :relate_and_update] ->
-        read = Ash.Resource.Info.primary_action(relationship.destination, :read)
-        create = Ash.Resource.Info.primary_action(relationship.through, :create)
-
-        {key, create.name, read.name}
+        {key, primary_action_name(relationship.through, :create),
+         primary_action_name(relationship.destination, :read)}
 
       {key, action}
       when relationship.type == :many_to_many and
              key in [:relate, :relate_and_update] ->
-        read = Ash.Resource.Info.primary_action(relationship.destination, :read)
-        {key, action, read.name}
+        {key, action, primary_action_name(relationship.destination, :read)}
 
       {key, action, read}
       when relationship.type == :many_to_many and
@@ -103,27 +100,19 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
 
       key
       when relationship.type in [:has_many, :has_one] and key in [:relate, :relate_and_update] ->
-        read = Ash.Resource.Info.primary_action(relationship.destination, :read)
-        update = Ash.Resource.Info.primary_action(relationship.destination, :update)
-
-        {key, update.name, read.name}
+        {key, primary_action_name(relationship.destination, :update),
+         primary_action_name(relationship.destination, :read)}
 
       {key, update}
       when relationship.type in [:has_many, :has_one] and key in [:relate, :relate_and_update] ->
-        read = Ash.Resource.Info.primary_action(relationship.destination, :read)
-
-        {key, update, read.name}
+        {key, update, primary_action_name(relationship.destination, :read)}
 
       key when key in [:relate, :relate_and_update] ->
-        read = Ash.Resource.Info.primary_action(relationship.destination, :read)
-        update = Ash.Resource.Info.primary_action(relationship.source, :update)
-
-        {key, update.name, read.name}
+        {key, primary_action_name(relationship.source, :update),
+         primary_action_name(relationship.destination, :read)}
 
       {key, update} when key in [:relate, :relate_and_update] ->
-        read = Ash.Resource.Info.primary_action(relationship.destination, :read)
-
-        {key, update, read.name}
+        {key, update, primary_action_name(relationship.destination, :read)}
 
       other ->
         other

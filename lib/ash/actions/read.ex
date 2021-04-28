@@ -21,7 +21,7 @@ defmodule Ash.Actions.Read do
 
       action.pagination ->
         opts = Keyword.put(opts, :page, false)
-        run(query, %{action | pagination: %{action.pagination | required?: false}}, opts)
+        run(query, %{action | pagination: nil}, opts)
 
       true ->
         run(query, action, opts)
@@ -133,7 +133,7 @@ defmodule Ash.Actions.Read do
   end
 
   defp add_page(data, action, count, sort, original_query, opts) do
-    if opts[:page] && action.pagination do
+    if opts[:page] && action.pagination && !opts[:initial_data] do
       to_page(data, action, count, sort, original_query, opts)
     else
       data

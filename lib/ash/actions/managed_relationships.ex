@@ -115,6 +115,7 @@ defmodule Ash.Actions.ManagedRelationships do
                     relationship.destination
                     |> Ash.Query.for_read(read, input, actor: actor)
                     |> Ash.Query.filter(^keys)
+                    |> Ash.Query.do_filter(relationship.filter)
                     |> Ash.Query.set_context(relationship.context)
                     |> Ash.Query.limit(1)
                     |> Ash.Query.set_tenant(changeset.tenant)
@@ -572,6 +573,7 @@ defmodule Ash.Actions.ManagedRelationships do
                   relationship.destination
                   |> Ash.Query.for_read(read, input, actor: actor)
                   |> Ash.Query.filter(^keys)
+                  |> Ash.Query.do_filter(relationship.filter)
                   |> Ash.Query.set_context(relationship.context)
                   |> Ash.Query.set_tenant(changeset.tenant)
                   |> Ash.Query.limit(1)
@@ -1125,6 +1127,9 @@ defmodule Ash.Actions.ManagedRelationships do
             source_value = Map.get(source_record, relationship.source_field)
             destination_value = Map.get(record, relationship.destination_field)
 
+            join_relationship =
+              Ash.Resource.Info.relationship(relationship.source, relationship.join_relationship)
+
             relationship.through
             |> Ash.Query.filter(ref(^relationship.source_field_on_join_table) == ^source_value)
             |> Ash.Query.filter(
@@ -1132,6 +1137,8 @@ defmodule Ash.Actions.ManagedRelationships do
             )
             |> Ash.Query.limit(1)
             |> Ash.Query.set_tenant(changeset.tenant)
+            |> Ash.Query.set_context(join_relationship.context)
+            |> Ash.Query.do_filter(relationship.filter)
             |> api.read_one(
               authorize?: opts[:authorize?],
               actor: actor

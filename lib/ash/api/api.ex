@@ -176,7 +176,7 @@ defmodule Ash.Api do
     end
   end
 
-  @load_opts_schema merge_schemas([], @global_opts, "Global Options")
+  @load_opts_schemamerge_schemas([], @global_opts, "Global Options")
 
   @get_opts_schema [
                      load: [
@@ -655,11 +655,20 @@ defmodule Ash.Api do
     load(api, values, query, opts)
   end
 
+  def load(api, %struct{results: results} = page, query, opts)
+      when struct in [Ash.Page.Offset, Ash.Page.Keyset] do
+    api
+    |> load(results, query, opts)
+    |> case do
+      {:ok, results} -> %{page | results: results}
+      {:error, error} -> {:error, error}
+    end
+  end
+
   def load(api, data, query, opts) when not is_list(data) do
     api
     |> load(List.wrap(data), query, opts)
     |> case do
-      {:ok, %{results: [data]}} -> {:ok, data}
       {:ok, [data]} -> {:ok, data}
       {:error, error} -> {:error, error}
     end

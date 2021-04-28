@@ -464,6 +464,7 @@ defmodule Ash.Actions.SideLoad do
                        use_data_for_filter?,
                        relationship
                      ) do
+                IO.inspect(results, label: "r2")
                 {:ok, results}
               else
                 :nothing ->
@@ -511,6 +512,7 @@ defmodule Ash.Actions.SideLoad do
           }
         })
         |> Ash.Query.set_context(relationship.context)
+        |> Ash.Query.do_filter(relationship.filter)
         |> remove_relationships_from_load()
         |> Ash.Actions.Read.unpaginated_read()
 
@@ -520,6 +522,7 @@ defmodule Ash.Actions.SideLoad do
       true ->
         query
         |> Ash.Query.set_context(relationship.context)
+        |> Ash.Query.do_filter(relationship.filter)
         |> remove_relationships_from_load()
         |> Ash.Actions.Read.unpaginated_read()
     end
@@ -528,6 +531,7 @@ defmodule Ash.Actions.SideLoad do
   defp artificial_limit_and_offset(query, relationship) do
     query
     |> Ash.Query.set_context(relationship.context)
+    |> Ash.Query.do_filter(relationship.filter)
     |> remove_relationships_from_load()
     |> Ash.Actions.Read.unpaginated_read()
     |> case do

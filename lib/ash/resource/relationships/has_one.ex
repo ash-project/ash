@@ -12,6 +12,7 @@ defmodule Ash.Resource.Relationships.HasOne do
     :writable?,
     :context,
     :description,
+    :filter,
     :not_found_message,
     :violation_message,
     cardinality: :one,
@@ -25,6 +26,7 @@ defmodule Ash.Resource.Relationships.HasOne do
           writable?: boolean,
           name: atom,
           type: Ash.Type.t(),
+          filter: Ash.Filter.t(),
           destination: Ash.Resource.t(),
           destination_field: atom,
           private?: boolean,
@@ -37,7 +39,6 @@ defmodule Ash.Resource.Relationships.HasOne do
   alias Ash.OptionsHelpers
 
   @global_opts shared_options()
-               |> OptionsHelpers.make_required!(:destination_field)
                |> OptionsHelpers.set_default!(:source_field, :id)
 
   @opt_schema Ash.OptionsHelpers.merge_schemas(

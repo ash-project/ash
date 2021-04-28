@@ -51,6 +51,7 @@ defmodule Ash.Test.Filter.FilterTest do
       uuid_primary_key :id
       attribute :name, :string
       attribute :allow_second_author, :boolean
+      attribute :special, :boolean
     end
 
     relationships do
@@ -117,6 +118,12 @@ defmodule Ash.Test.Filter.FilterTest do
       belongs_to :author1, User,
         destination_field: :id,
         source_field: :author1_id
+
+      belongs_to :special_author1, User,
+        destination_field: :id,
+        source_field: :author1_id,
+        define_field?: false,
+        filter: expr(special == true)
 
       belongs_to :author2, User,
         destination_field: :id,
@@ -346,7 +353,7 @@ defmodule Ash.Test.Filter.FilterTest do
 
       user2 =
         User
-        |> new(%{name: "broseph"})
+        |> new(%{name: "broseph", special: false})
         |> replace_relationship(:posts, [post2])
         |> Api.create!()
 
@@ -394,6 +401,12 @@ defmodule Ash.Test.Filter.FilterTest do
                Post
                |> Ash.Query.filter(related_posts == ^post3.id)
                |> Api.read!()
+    end
+
+    test "relationship filters are honored when filtering on relationships", %{post2: post} do
+      post
+      |> Api.load!([:special_author1, :author1])
+      |> IO.inspect()
     end
   end
 

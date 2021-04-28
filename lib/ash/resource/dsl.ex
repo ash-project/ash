@@ -276,6 +276,9 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
+    imports: [
+      Module.concat(["Ash", Filter.TemplateHelpers])
+    ],
     entities: [
       @has_one,
       @has_many,
