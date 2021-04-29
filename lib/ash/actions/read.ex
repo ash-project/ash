@@ -615,7 +615,7 @@ defmodule Ash.Actions.Read do
            resource: destination_resource,
            context: %{
              data_layer: %{
-               lateral_join_source: {root_data, resource, source, destination}
+               lateral_join_source: {root_data, path}
              }
            }
          } = ash_query,
@@ -624,10 +624,8 @@ defmodule Ash.Actions.Read do
     query
     |> Ash.DataLayer.run_query_with_lateral_join(
       root_data,
-      resource,
       destination_resource,
-      source,
-      destination
+      path
     )
     |> Helpers.select(ash_query)
   end
@@ -642,7 +640,7 @@ defmodule Ash.Actions.Read do
          %{
            resource: destination_resource,
            context: %{
-             data_layer: %{lateral_join_source: {root_data, resource, source, destination}}
+             data_layer: %{lateral_join_source: {root_data, path}}
            }
          },
          query
@@ -653,10 +651,8 @@ defmodule Ash.Actions.Read do
           query,
           [aggregate],
           root_data,
-          resource,
           destination_resource,
-          source,
-          destination
+          path
         )
 
       {:error, error} ->

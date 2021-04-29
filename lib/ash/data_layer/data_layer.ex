@@ -16,7 +16,7 @@ defmodule Ash.DataLayer do
   @type feature() ::
           :transact
           | :multitenant
-          | {:lateral_join, Ash.Resource.t()}
+          | {:lateral_join, list(Ash.Resource.t())}
           | {:join, Ash.Resource.t()}
           | {:aggregate, Ash.Query.Aggregate.kind()}
           | {:query_aggregate, Ash.Query.Aggregate.kind()}
@@ -38,6 +38,9 @@ defmodule Ash.DataLayer do
           | {:sort, Ash.Type.t()}
           | :upsert
           | :composite_primary_key
+
+  @type lateral_join_link ::
+          {Ash.Resource.t(), atom, atom, Ash.Resource.Relationships.relationship()}
 
   @callback functions(Ash.Resource.t()) :: [module]
   @callback operators(Ash.Resource.t()) :: [module]
@@ -69,7 +72,6 @@ defmodule Ash.DataLayer do
   @callback transform_query(Ash.Query.t()) :: Ash.Query.t()
   @callback run_query(data_layer_query(), Ash.Resource.t()) ::
               {:ok, list(Ash.Resource.t())} | {:error, term}
-  @callback equal?(Ash.DataLayer.t()) :: boolean
   @callback run_aggregate_query(
               data_layer_query(),
               list(Ash.Query.Aggregate.t()),
@@ -80,19 +82,15 @@ defmodule Ash.DataLayer do
               data_layer_query(),
               list(Ash.Query.Aggregate.t()),
               [Ash.Resource.record()],
-              source_resource :: Ash.Resource.t(),
               destination_resource :: Ash.Resource.t(),
-              source :: atom,
-              destination :: atom
+              list(lateral_join_link())
             ) ::
               {:ok, list(Ash.Resource.t())} | {:error, term}
   @callback run_query_with_lateral_join(
               data_layer_query(),
               [Ash.Resource.record()],
               source_resource :: Ash.Resource.t(),
-              destination_resource :: Ash.Resource.t(),
-              source :: atom,
-              destination :: atom
+              list(lateral_join_link())
             ) ::
               {:ok, list(Ash.Resource.t())} | {:error, term}
   @callback create(Ash.Resource.t(), Ash.Changeset.t()) ::
@@ -117,10 +115,9 @@ defmodule Ash.DataLayer do
               {:ok, data_layer_query()} | {:error, term}
 
   @optional_callbacks source: 1,
-                      equal?: 1,
                       run_query: 2,
                       distinct: 3,
-                      run_query_with_lateral_join: 6,
+                      run_query_with_lateral_join: 4,
                       create: 2,
                       update: 2,
                       set_context: 3,
@@ -138,7 +135,7 @@ defmodule Ash.DataLayer do
                       in_transaction?: 1,
                       add_aggregate: 3,
                       run_aggregate_query: 3,
-                      run_aggregate_query_with_lateral_join: 7,
+                      run_aggregate_query_with_lateral_join: 5,
                       transform_query: 1,
                       set_tenant: 3,
                       resource_to_query: 2
@@ -361,37 +358,29 @@ defmodule Ash.DataLayer do
         query,
         aggregates,
         root_data,
-        source_resource,
         destination_resource,
-        source,
-        destination
+        path
       ) do
-    Ash.DataLayer.data_layer(source_resource).run_query_with_lateral_join(
+    Ash.DataLayer.data_layer(destination_resource).run_query_with_lateral_join(
       query,
       aggregates,
       root_data,
-      source_resource,
       destination_resource,
-      source,
-      destination
+      path
     )
   end
 
   def run_query_with_lateral_join(
         query,
         root_data,
-        source_resource,
         destination_resource,
-        source,
-        destination
+        path
       ) do
-    Ash.DataLayer.data_layer(source_resource).run_query_with_lateral_join(
+    Ash.DataLayer.data_layer(destination_resource).run_query_with_lateral_join(
       query,
       root_data,
-      source_resource,
       destination_resource,
-      source,
-      destination
+      path
     )
   end
 
