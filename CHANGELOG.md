@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.42.0](https://github.com/ash-project/ash/compare/v1.41.12...v1.42.0) (2021-04-29)
+
+
+
+
+### Features:
+
+* inner lateral join for many to many relationships
+
+### Improvements:
+
+* inner later join for many to many relationships
+
+* support relationship filters
+
 ## [v1.41.12](https://github.com/ash-project/ash/compare/v1.41.11...v1.41.12) (2021-04-27)
 
 
