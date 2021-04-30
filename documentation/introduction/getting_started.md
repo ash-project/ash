@@ -95,6 +95,7 @@ defmodule MyApp.Tweet do
 
     # `create_timestamp` above is just shorthand for:
     # attribute :inserted_at, :utc_datetime_usec,
+    #   private?: true,
     #   writable?: false,
     #   default: &DateTime.utc_now/0
   end
