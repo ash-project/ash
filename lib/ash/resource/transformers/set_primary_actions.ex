@@ -55,7 +55,7 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
               DslError.exception(
                 module: __MODULE__,
                 message:
-                  "Multiple actions of type #{type} defined, one must be designated as `primary?: true`",
+                  "Multiple actions of type #{type} defined, one must be designated as `primary?`",
                 path: [:actions, type]
               )}}
 

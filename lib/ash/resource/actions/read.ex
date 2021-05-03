@@ -103,7 +103,7 @@ defmodule Ash.Resource.Actions.Read do
         end
 
       {:error, error} ->
-        {:error, error}
+        {:error, Exception.message(error)}
     end
   end
 

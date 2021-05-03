@@ -83,6 +83,7 @@ locals_without_parens = [
   publish_all: 3,
   read: 1,
   read: 2,
+  read_action: 1,
   reject: 1,
   require_attributes: 1,
   required?: 1,

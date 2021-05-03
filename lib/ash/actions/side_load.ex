@@ -81,8 +81,7 @@ defmodule Ash.Actions.SideLoad do
     end
   end
 
-  def attach_side_loads([%resource{} | _] = data, %{side_load: side_loads})
-      when is_list(data) do
+  def attach_side_loads([%resource{} | _] = data, %{side_load: side_loads}) do
     side_loads
     |> Enum.sort_by(fn {key, _value} ->
       last_relationship = last_relationship!(resource, key)
@@ -177,6 +176,7 @@ defmodule Ash.Actions.SideLoad do
   end
 
   defp map_or_update(nil, _, _), do: nil
+
   defp map_or_update(record, [], func) when not is_list(record), do: func.(record)
 
   defp map_or_update(records, [], func) do
@@ -240,9 +240,11 @@ defmodule Ash.Actions.SideLoad do
          root_query,
          path
        ) do
+    relationship_path = Enum.reverse(Enum.map([relationship | path], &Map.get(&1, :name)))
+
     request_path = [
       :side_load,
-      Enum.reverse(Enum.map([relationship | path], &Map.get(&1, :name)))
+      relationship_path
     ]
 
     dependencies =
@@ -260,13 +262,17 @@ defmodule Ash.Actions.SideLoad do
     dependencies = [[:data, :data] | dependencies]
 
     dependencies =
-      if relationship.type == :many_to_many && !lateral_join?(related_query, relationship) do
+      if relationship.type == :many_to_many &&
+           !lateral_join?(related_query, relationship) do
         join_relationship = join_relationship(relationship)
+
+        join_relationship_path =
+          Enum.map(join_relationship_path(path, join_relationship), & &1.name)
 
         [
           [
             :side_load,
-            Enum.map(join_relationship_path(path, join_relationship), & &1.name),
+            join_relationship_path,
             :data
           ]
           | dependencies
@@ -448,7 +454,7 @@ defmodule Ash.Actions.SideLoad do
                          new_query,
                          data,
                          path,
-                         relationship
+                         join_relationship
                        ) do
                   {:ok, results}
                 else
@@ -471,6 +477,13 @@ defmodule Ash.Actions.SideLoad do
         destination_path,
         :data
       ])
+      |> case do
+        %page{results: results} when page in [Ash.Page.Keyset, Ash.Page.Offset] ->
+          results
+
+        data ->
+          data
+      end
       |> List.wrap()
       |> Enum.map(fn related ->
         Map.get(related, relationship.destination_field)
@@ -486,22 +499,24 @@ defmodule Ash.Actions.SideLoad do
   end
 
   defp lateral_join?(query, relationship) do
-    offset? = !is_nil(query.offset) && query.offset != 0
+    {offset, limit} = offset_and_limit(query)
 
     resources =
       [relationship.source, Map.get(relationship, :through), relationship.destination]
       |> Enum.reject(&is_nil/1)
 
-    (query.limit ||
-       offset?) &&
-      Ash.DataLayer.data_layer_can?(
-        relationship.source,
-        {:lateral_join, resources}
-      )
+    lateral_join =
+      (limit || offset) &&
+        Ash.DataLayer.data_layer_can?(
+          relationship.source,
+          {:lateral_join, resources}
+        )
+
+    !!lateral_join
   end
 
   defp run_actual_query(query, data, path, relationship) do
-    offset? = !is_nil(query.offset) && query.offset != 0
+    {offset, limit} = offset_and_limit(query)
 
     source_data =
       case path do
@@ -531,7 +546,7 @@ defmodule Ash.Actions.SideLoad do
         |> Ash.Query.set_context(relationship.context)
         |> Ash.Query.do_filter(relationship.filter)
         |> remove_relationships_from_load()
-        |> Ash.Actions.Read.unpaginated_read()
+        |> read(relationship.read_action)
 
       lateral_join?(query, relationship) ->
         join_relationship =
@@ -554,26 +569,34 @@ defmodule Ash.Actions.SideLoad do
         |> Ash.Query.set_context(relationship.context)
         |> Ash.Query.do_filter(relationship.filter)
         |> remove_relationships_from_load()
-        |> Ash.Actions.Read.unpaginated_read()
+        |> read(relationship.read_action)
 
-      query.limit || offset? ->
-        artificial_limit_and_offset(query, relationship)
+      limit || offset ->
+        artificial_limit_and_offset(query, limit, offset, relationship)
 
       true ->
         query
         |> Ash.Query.set_context(relationship.context)
         |> Ash.Query.do_filter(relationship.filter)
         |> remove_relationships_from_load()
-        |> Ash.Actions.Read.unpaginated_read()
+        |> read(relationship.read_action)
     end
   end
 
-  defp artificial_limit_and_offset(query, relationship) do
+  defp offset_and_limit(query) do
+    if query.offset == 0 do
+      {nil, query.limit}
+    else
+      {query.offset, query.limit}
+    end
+  end
+
+  defp artificial_limit_and_offset(query, limit, offset, relationship) do
     query
     |> Ash.Query.set_context(relationship.context)
     |> Ash.Query.do_filter(relationship.filter)
     |> remove_relationships_from_load()
-    |> Ash.Actions.Read.unpaginated_read()
+    |> read(relationship.read_action)
     |> case do
       {:ok, results} ->
         new_results =
@@ -582,10 +605,10 @@ defmodule Ash.Actions.SideLoad do
             Map.get(record, relationship.destination_field)
           end)
           |> Enum.flat_map(fn {_, group} ->
-            offset_records = Enum.drop(group, query.offset || 0)
+            offset_records = Enum.drop(group, offset || 0)
 
-            if query.limit do
-              Enum.take(offset_records, query.limit)
+            if limit do
+              Enum.take(offset_records, limit)
             else
               offset_records
             end
@@ -595,6 +618,24 @@ defmodule Ash.Actions.SideLoad do
 
       {:error, error} ->
         {:error, error}
+    end
+  end
+
+  defp read(query, action) do
+    action = action || primary_read(query)
+
+    Ash.Actions.Read.unpaginated_read(query, action)
+  end
+
+  defp primary_read(query) do
+    action = Ash.Resource.Info.primary_action(query.resource, :read)
+
+    if action do
+      action
+    else
+      raise """
+      No read action for loaded resource: #{query.resource}
+      """
     end
   end
 
@@ -653,6 +694,15 @@ defmodule Ash.Actions.SideLoad do
          root_query
        ) do
     Request.resolve([[:data, :data]], fn %{data: %{data: data}} ->
+      data =
+        case data do
+          %page{results: results} when page in [Ash.Page.Keyset, Ash.Page.Offset] ->
+            results
+
+          data ->
+            data
+        end
+
       root_data_filter =
         case data do
           [] ->
@@ -727,17 +777,26 @@ defmodule Ash.Actions.SideLoad do
   end
 
   defp get_query(query, relationship, source_data, source_field) do
-    offset? = !is_nil(query.offset) && query.offset != 0
+    {offset, limit} = offset_and_limit(query)
 
     cond do
       lateral_join?(query, relationship) ->
         {:ok, Ash.Query.unset(query, :side_load)}
 
-      query.limit || offset? ->
+      limit || offset ->
         {:ok, Ash.Query.unset(query, [:side_load, :limit, :offset])}
 
       true ->
         related_data = Map.get(source_data || %{}, :data, [])
+
+        related_data =
+          case related_data do
+            %page{results: results} when page in [Ash.Page.Keyset, Ash.Page.Offset] ->
+              results
+
+            data ->
+              data
+          end
 
         ids =
           Enum.flat_map(related_data, fn data ->

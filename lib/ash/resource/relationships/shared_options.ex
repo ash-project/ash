@@ -51,6 +51,16 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       For example, if a value is added that has no match in the destination (very hard to do with the way Ash relationship changes work).
       """
     ],
+    read_action: [
+      type: :atom,
+      doc: """
+      The read action on the destination resource to use when loading data.
+
+      Keep in mind, any filters that exist on the destination action are not honored when filtering on this
+      relationship. The only time the read action comes into play is when loading the actual relationship, which happens when they are loaded
+      explicitly and when the relationship is managed.
+      """
+    ],
     filter: [
       type: :any,
       doc: """

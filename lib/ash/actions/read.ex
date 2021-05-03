@@ -13,7 +13,17 @@ defmodule Ash.Actions.Read do
   require Ash.Query
 
   def unpaginated_read(query, action \\ nil, opts \\ []) do
-    action = action || Ash.Resource.Info.primary_action(query.resource, :read)
+    action =
+      cond do
+        action && is_atom(action) ->
+          Ash.Resource.Info.action(query.resource, action)
+
+        action ->
+          action
+
+        true ->
+          Ash.Resource.Info.primary_action!(query.resource, :read)
+      end
 
     cond do
       !action ->
@@ -21,7 +31,7 @@ defmodule Ash.Actions.Read do
 
       action.pagination ->
         opts = Keyword.put(opts, :page, false)
-        run(query, %{action | pagination: nil}, opts)
+        run(query, %{action | pagination: false}, opts)
 
       true ->
         run(query, action, opts)
@@ -38,6 +48,18 @@ defmodule Ash.Actions.Read do
         false
       else
         opts[:authorize?] || Keyword.has_key?(opts, :actor)
+      end
+
+    action =
+      cond do
+        action && is_atom(action) ->
+          Ash.Resource.Info.action(query.resource, action)
+
+        action ->
+          action
+
+        true ->
+          Ash.Resource.Info.primary_action!(query.resource, :read)
       end
 
     opts = Keyword.put(opts, :authorize?, authorize?)
@@ -58,6 +80,8 @@ defmodule Ash.Actions.Read do
         Ash.Query.for_read(query, action.name, %{}, actor: engine_opts[:actor])
       end
 
+    load = (opts[:page] || nil)[:load]
+
     with %{valid?: true} <- query,
          :ok <- validate_multitenancy(query, opts),
          %{errors: []} = query <- query_with_initial_data(query, opts),
@@ -66,14 +90,15 @@ defmodule Ash.Actions.Read do
            paginate(query, action, filter_requests, initial_offset, initial_limit, opts),
          page_opts <- page_opts && Keyword.delete(page_opts, :filter),
          {:ok, requests} <- requests(query, action, filter_requests, opts),
-         {query, side_load_requests} <- SideLoad.requests(query),
+         {query, side_load_requests} <- SideLoad.requests(query, load),
          {:ok, %{data: %{data: data} = all_data}} <-
            Engine.run(
              requests ++ side_load_requests ++ List.wrap(count_request),
              query.api,
              engine_opts
            ),
-         data_with_side_loads <- SideLoad.attach_side_loads(data, all_data),
+         data_with_side_loads <-
+           SideLoad.attach_side_loads(data, all_data),
          data_with_aggregates <-
            add_aggregate_values(
              data_with_side_loads,
@@ -132,7 +157,8 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp add_page(data, action, count, sort, original_query, opts) do
+  @doc false
+  def add_page(data, action, count, sort, original_query, opts) do
     if opts[:page] && action.pagination && !opts[:initial_data] do
       to_page(data, action, count, sort, original_query, opts)
     else
@@ -140,7 +166,8 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp to_page(data, action, count, sort, original_query, opts) do
+  @doc false
+  def to_page(data, action, count, sort, original_query, opts) do
     page_opts = opts[:page]
 
     {data, rest} =
@@ -394,7 +421,7 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp page_opts(action, opts) do
+  def page_opts(action, opts) do
     cond do
       !(action.pagination && action.pagination.default_limit) ->
         opts[:page]
@@ -458,19 +485,19 @@ defmodule Ash.Actions.Read do
     paginated =
       cond do
         opts[:page][:before] || opts[:page][:after] ->
-          keyset_pagination(query, opts[:page])
+          keyset_pagination(query, pagination, opts[:page])
 
         opts[:page][:offset] ->
-          limit_offset_pagination(query, opts[:page])
+          limit_offset_pagination(query, pagination, opts[:page])
 
         pagination.offset? && pagination.keyset? ->
-          keyset_pagination(query, opts[:page])
+          keyset_pagination(query, pagination, opts[:page])
 
         pagination.offset? ->
-          limit_offset_pagination(query, opts[:page])
+          limit_offset_pagination(query, pagination, opts[:page])
 
         true ->
-          keyset_pagination(query, opts[:page])
+          keyset_pagination(query, pagination, opts[:page])
       end
 
     case paginated do
@@ -486,7 +513,7 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp keyset_pagination(query, opts) do
+  defp keyset_pagination(query, pagination, opts) do
     sorted =
       if Ash.Actions.Sort.sorting_on_identity?(query) do
         query
@@ -494,17 +521,7 @@ defmodule Ash.Actions.Read do
         Ash.Query.sort(query, Ash.Resource.Info.primary_key(query.resource))
       end
 
-    limited =
-      cond do
-        opts[:limit] && sorted.limit ->
-          Ash.Query.limit(sorted, min(opts[:limit], sorted.limit) + 1)
-
-        opts[:limit] ->
-          Ash.Query.limit(sorted, opts[:limit] + 1)
-
-        true ->
-          sorted
-      end
+    limited = Ash.Query.limit(sorted, limit(opts[:limit], query.limit, pagination) + 1)
 
     if opts[:before] || opts[:after] do
       after_or_before =
@@ -530,18 +547,16 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp limit_offset_pagination(query, opts) do
-    limited =
-      cond do
-        opts[:limit] && query.limit ->
-          Ash.Query.limit(query, min(opts[:limit], query.limit) + 1)
+  defp limit(page_size, query_limit, pagination) do
+    max_page_size = pagination && pagination.max_page_size
 
-        opts[:limit] ->
-          Ash.Query.limit(query, opts[:limit] + 1)
+    [page_size, query_limit, max_page_size]
+    |> Enum.filter(&is_integer/1)
+    |> Enum.min()
+  end
 
-        true ->
-          query
-      end
+  defp limit_offset_pagination(query, pagination, opts) do
+    limited = Ash.Query.limit(query, limit(opts[:limit], query.limit, pagination) + 1)
 
     with_offset =
       cond do
