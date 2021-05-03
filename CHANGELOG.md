@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.43.0](https://github.com/ash-project/ash/compare/v1.42.0...v1.43.0) (2021-05-03)
+
+
+
+
+### Features:
+
+* rework lateral joins for many to many performance boost
+
+### Improvements:
+
+* add `read_action` option
+
 ## [v1.42.0](https://github.com/ash-project/ash/compare/v1.41.12...v1.42.0) (2021-04-29)
 
 
