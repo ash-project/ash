@@ -320,6 +320,7 @@ defmodule Ash.Actions.SideLoad do
                {:ok, results} <-
                  run_actual_query(
                    new_query,
+                   base_query,
                    data,
                    path,
                    relationship
@@ -452,6 +453,7 @@ defmodule Ash.Actions.SideLoad do
                      {:ok, results} <-
                        run_actual_query(
                          new_query,
+                         base_query,
                          data,
                          path,
                          join_relationship
@@ -515,8 +517,8 @@ defmodule Ash.Actions.SideLoad do
     !!lateral_join
   end
 
-  defp run_actual_query(query, data, path, relationship) do
-    {offset, limit} = offset_and_limit(query)
+  defp run_actual_query(query, base_query, data, path, relationship) do
+    {offset, limit} = offset_and_limit(base_query)
 
     source_data =
       case path do
@@ -531,24 +533,7 @@ defmodule Ash.Actions.SideLoad do
       end
 
     cond do
-      lateral_join?(query, relationship) && relationship.type != :many_to_many ->
-        query
-        |> Ash.Query.set_context(%{
-          data_layer: %{
-            lateral_join_source:
-              {source_data,
-               [
-                 {relationship.source, relationship.source_field, relationship.destination_field,
-                  relationship}
-               ]}
-          }
-        })
-        |> Ash.Query.set_context(relationship.context)
-        |> Ash.Query.do_filter(relationship.filter)
-        |> remove_relationships_from_load()
-        |> read(relationship.read_action)
-
-      lateral_join?(query, relationship) ->
+      lateral_join?(query, relationship) && relationship.type == :many_to_many ->
         join_relationship =
           Ash.Resource.Info.relationship(relationship.source, relationship.join_relationship)
 
@@ -564,6 +549,23 @@ defmodule Ash.Actions.SideLoad do
                  relationship.destination_field, join_relationship}
               ]
             }
+          }
+        })
+        |> Ash.Query.set_context(relationship.context)
+        |> Ash.Query.do_filter(relationship.filter)
+        |> remove_relationships_from_load()
+        |> read(relationship.read_action)
+
+      lateral_join?(query, relationship) && (limit || offset) ->
+        query
+        |> Ash.Query.set_context(%{
+          data_layer: %{
+            lateral_join_source:
+              {source_data,
+               [
+                 {relationship.source, relationship.source_field, relationship.destination_field,
+                  relationship}
+               ]}
           }
         })
         |> Ash.Query.set_context(relationship.context)
