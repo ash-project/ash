@@ -17,6 +17,7 @@ defmodule Ash.Engine.Request do
     :name,
     :api,
     :query,
+    :data_layer_query,
     :authorization_filter,
     :write_to_data?,
     :strict_check_only?,
@@ -177,6 +178,7 @@ defmodule Ash.Engine.Request do
       async?: Keyword.get(opts, :async?, true),
       data: data,
       query: query,
+      data_layer_query: resolve([], fn _ -> nil end),
       manage_changeset?: opts[:manage_changeset?] || false,
       api: opts[:api],
       name: opts[:name],
@@ -774,7 +776,8 @@ defmodule Ash.Engine.Request do
     authorized? = Enum.all?(Map.values(request.authorizer_state), &(&1 == :authorized))
 
     # Don't fetch honor requests for data until the request is authorized
-    if field in [:data, :query, :changeset, :authorized?] and not authorized? and not internal? do
+    if field in [:data, :query, :changeset, :authorized?, :data_layer_query] and not authorized? and
+         not internal? do
       try_resolve_dependencies_of(request, field, internal?)
     else
       case Map.get(request, field) do

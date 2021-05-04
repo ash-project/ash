@@ -121,6 +121,9 @@ defmodule Ash.DataLayer.Ets do
           _, _ ->
             {:halt, {:error, "unsupported aggregate"}}
         end)
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 

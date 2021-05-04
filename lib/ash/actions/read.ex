@@ -70,9 +70,6 @@ defmodule Ash.Actions.Read do
 
     original_query = query
 
-    initial_offset = query.offset
-    initial_limit = query.limit
-
     query =
       if query.__validated_for_action__ == action.name do
         query
@@ -80,20 +77,24 @@ defmodule Ash.Actions.Read do
         Ash.Query.for_read(query, action.name, %{}, actor: engine_opts[:actor])
       end
 
+    initial_limit = query.limit
+    initial_offset = query.offset
+
     load = (opts[:page] || nil)[:load]
 
     with %{valid?: true} <- query,
          :ok <- validate_multitenancy(query, opts),
          %{errors: []} = query <- query_with_initial_data(query, opts),
          {:ok, filter_requests} <- filter_requests(query, opts),
-         {:ok, query, page_opts, count_request} <-
-           paginate(query, action, filter_requests, initial_offset, initial_limit, opts),
+         {:ok, query, page_opts} <-
+           paginate(query, action, opts),
          page_opts <- page_opts && Keyword.delete(page_opts, :filter),
-         {:ok, requests} <- requests(query, action, filter_requests, opts),
+         {:ok, requests} <-
+           requests(query, action, filter_requests, initial_limit, initial_offset, opts),
          {query, side_load_requests} <- SideLoad.requests(query, load),
          {:ok, %{data: %{data: data} = all_data}} <-
            Engine.run(
-             requests ++ side_load_requests ++ List.wrap(count_request),
+             requests ++ side_load_requests,
              query.api,
              engine_opts
            ),
@@ -251,7 +252,7 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp requests(query, action, filter_requests, opts) do
+  defp requests(query, action, filter_requests, initial_limit, initial_offset, opts) do
     authorizing? =
       if opts[:authorize?] == false do
         false
@@ -290,6 +291,8 @@ defmodule Ash.Actions.Read do
             filter_requests,
             aggregate_auth_requests,
             aggregates_in_query,
+            initial_limit,
+            initial_offset,
             query
           ),
         path: [:data],
@@ -304,6 +307,8 @@ defmodule Ash.Actions.Read do
          filter_requests,
          aggregate_auth_requests,
          aggregates_in_query,
+         initial_limit,
+         initial_offset,
          initial_query
        ) do
     if params[:initial_data] do
@@ -343,7 +348,7 @@ defmodule Ash.Actions.Read do
 
           query =
             initial_query
-            |> Ash.Query.unset([:filter, :aggregates, :sort])
+            |> Ash.Query.unset([:filter, :aggregates, :sort, :limit, :offset])
             |> Ash.Query.data_layer_query(only_validate_filter?: true)
 
           with %{valid?: true} <- ash_query,
@@ -371,20 +376,34 @@ defmodule Ash.Actions.Read do
                  Ash.DataLayer.distinct(query, ash_query.distinct, ash_query.resource),
                {:ok, query} <-
                  Ash.DataLayer.set_context(ash_query.resource, query, ash_query.context),
+               {:ok, count} <-
+                 fetch_count(
+                   ash_query,
+                   query,
+                   ash_query.resource,
+                   ash_query.action,
+                   initial_limit,
+                   initial_offset,
+                   params
+                 ),
+               {:ok, query} <- Ash.DataLayer.limit(query, ash_query.limit, ash_query.resource),
+               {:ok, query} <- Ash.DataLayer.offset(query, ash_query.offset, ash_query.resource),
                {:ok, query} <- set_tenant(query, ash_query),
                {:ok, results} <- run_query(ash_query, query),
                {:ok, results} <- run_after_action(initial_query, results),
                {:ok, with_calculations} <-
-                 add_calculation_values(ash_query, results, ash_query.calculations) do
+                 add_calculation_values(ash_query, results, ash_query.calculations),
+               {:ok, count} <- maybe_await(count) do
             if params[:return_query?] do
               ultimate_query =
                 ash_query
                 |> Ash.Query.unset(:filter)
                 |> Ash.Query.filter(filter)
 
-              {:ok, with_calculations, %{extra_data: %{ultimate_query: ultimate_query}}}
+              {:ok, with_calculations,
+               %{extra_data: %{ultimate_query: ultimate_query, count: count}}}
             else
-              {:ok, with_calculations}
+              {:ok, with_calculations, %{extra_data: %{count: count}}}
             end
           else
             %{valid?: false} = query ->
@@ -395,6 +414,41 @@ defmodule Ash.Actions.Read do
           end
         end
       )
+    end
+  end
+
+  defp maybe_await(%Task{} = task) do
+    Task.await(task)
+  end
+
+  defp maybe_await(other), do: other
+
+  defp fetch_count(ash_query, query, resource, action, initial_limit, initial_offset, opts) do
+    if action.pagination &&
+         opts[:page] &&
+         (opts[:page][:count] == true ||
+            (opts[:page][:count] != false and action.pagination.countable == :by_default)) do
+      if Ash.DataLayer.in_transaction?(resource) || !Ash.DataLayer.can?(:async_engine, resource) do
+        case do_fetch_count(ash_query, query, initial_limit, initial_offset) do
+          {:ok, count} -> {:ok, {:ok, count}}
+          {:error, error} -> {:error, error}
+        end
+      else
+        {:ok,
+         Task.async(fn ->
+           do_fetch_count(ash_query, query, initial_limit, initial_offset)
+         end)}
+      end
+    else
+      {:ok, {:ok, nil}}
+    end
+  end
+
+  defp do_fetch_count(ash_query, query, initial_limit, initial_offset) do
+    with {:ok, query} <- Ash.DataLayer.limit(query, initial_limit, ash_query.resource),
+         {:ok, query} <- Ash.DataLayer.offset(query, initial_offset, ash_query.resource),
+         {:ok, %{count: count}} <- run_count_query(ash_query, query) do
+      {:ok, count}
     end
   end
 
@@ -437,7 +491,7 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp paginate(starting_query, action, filter_requests, initial_offset, initial_limit, opts) do
+  defp paginate(starting_query, action, opts) do
     page_opts = page_opts(action, opts)
 
     cond do
@@ -445,29 +499,19 @@ defmodule Ash.Actions.Read do
         {:error, "Pagination is not supported"}
 
       action.pagination == false ->
-        {:ok, starting_query, opts[:page], nil}
+        {:ok, starting_query, opts[:page]}
 
       page_opts == false ->
         if action.pagination.required? do
           {:error, PaginationRequired.exception([])}
         else
-          {:ok, starting_query, false, nil}
+          {:ok, starting_query, false}
         end
 
       page_opts[:limit] || is_nil(page_opts) || page_opts == [] ->
         case do_paginate(starting_query, action.pagination, opts) do
           {:ok, query} ->
-            count_request =
-              count_request(
-                starting_query,
-                action,
-                filter_requests,
-                initial_offset,
-                initial_limit,
-                opts
-              )
-
-            {:ok, query, page_opts, count_request}
+            {:ok, query, page_opts}
 
           {:error, error} ->
             {:error, error}
@@ -571,58 +615,6 @@ defmodule Ash.Actions.Read do
       end
 
     {:ok, with_offset}
-  end
-
-  defp count_request(_, %{pagination: %{countable: false}}, _, _, _, _), do: nil
-
-  defp count_request(initial_query, action, filter_requests, initial_offset, initial_limit, opts) do
-    if opts[:page][:count] == true ||
-         (opts[:page][:count] != false and action.pagination.countable == :by_default) do
-      relationship_filter_paths =
-        Enum.map(filter_requests, fn request ->
-          request.path ++ [:authorization_filter]
-        end)
-
-      Request.new(
-        resource: initial_query.resource,
-        api: initial_query.api,
-        query: initial_query,
-        action: action,
-        authorize?: false,
-        data:
-          Request.resolve(
-            [[:data, :authorization_filter]] ++ relationship_filter_paths,
-            fn %{
-                 data: %{
-                   authorization_filter: auth_filter
-                 }
-               } = data ->
-              query =
-                initial_query
-                |> Ash.Query.unset([:filter, :aggregates, :sort, :limit, :offset, :select])
-                |> Ash.Query.limit(initial_limit)
-                |> Ash.Query.offset(initial_offset)
-                |> Ash.Query.filter(^auth_filter)
-                |> Ash.Query.data_layer_query(only_validate_filter?: true)
-
-              with {:ok, query} <- query,
-                   {:ok, filter} <-
-                     filter_with_related(relationship_filter_paths, initial_query, data),
-                   {:ok, query} <-
-                     Ash.DataLayer.filter(query, filter, initial_query.resource),
-                   {:ok, query} <-
-                     Ash.DataLayer.sort(query, initial_query.sort, initial_query.resource),
-                   {:ok, query} <-
-                     Ash.DataLayer.distinct(query, initial_query.distinct, initial_query.resource),
-                   {:ok, %{count: count}} <- run_count_query(initial_query, query) do
-                {:ok, count}
-              end
-            end
-          ),
-        path: [:count],
-        name: "#{action.type} - `#{action.name}`"
-      )
-    end
   end
 
   defp run_query(
