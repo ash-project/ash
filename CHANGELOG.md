@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.43.2](https://github.com/ash-project/ash/compare/v1.43.1...v1.43.2) (2021-05-04)
+
+
+
+
+### Bug Fixes:
+
+* include aggregates in count request for aggregate filters
+
 ## [v1.43.1](https://github.com/ash-project/ash/compare/v1.43.0...v1.43.1) (2021-05-04)
 
 
