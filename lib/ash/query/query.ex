@@ -67,7 +67,7 @@ defmodule Ash.Query do
   }
 
   alias Ash.Error.SideLoad.{InvalidQuery, NoSuchRelationship}
-  alias Ash.Query.{Aggregate, BooleanExpression, Calculation}
+  alias Ash.Query.{Aggregate, BooleanExpression, Calculation, Not}
 
   defimpl Inspect do
     import Inspect.Algebra
@@ -482,10 +482,16 @@ defmodule Ash.Query do
   end
 
   defp do_expr({left, _, [{op, _, [right]}]}, escape?)
-       when is_atom(op) and op in @operator_symbols and is_atom(left) do
+       when is_atom(op) and op in @operator_symbols and is_atom(left) and left != :not do
     args = Enum.map([{left, [], nil}, right], &do_expr(&1, false))
 
     soft_escape(%Ash.Query.Call{name: op, args: args, operator?: true}, escape?)
+  end
+
+  defp do_expr({:not, _, [expression]}, escape?) do
+    expression = do_expr(expression, false)
+
+    soft_escape(Not.new(expression), escape?)
   end
 
   defp do_expr({op, _, args}, escape?) when is_atom(op) and is_list(args) do
