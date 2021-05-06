@@ -12,43 +12,6 @@ All documentation is contained in the generated hex documentation located [here]
 
 Ash is in alpha. The package version is 1.0.0+, and most of the time that means stable, but in this case it _does not_. The 2.0 release will be the stable release.
 
-## Upgrading to 1.27.0+
-
-Typically a project wouldn't have breaking changes on 1.0.0+ that only change the minor version. See the ALPHA NOTICE above.
-
-If you were using Ash prior to 1.27.0, a breaking change was made that will affect you if you are
-
-* using the postgres data layer
-* are using the `create_timestamp` or `update_timestamp` helpers
-
-The default type for those attributes was changed to `:utc_datetime_usec`. If you don't want to change your data, you can update the type
-used by your timestamps like so:
-
-```elixir
-created_timestamp :inserted_at, type: :utc_datetime
-updated_timestamp :updated_at, type: :utc_datetime
-```
-
-If you want to change the data to leverage this new (more specific) type, you can create a migration like so:
-
-```bash
-mix ecto.gen.migration update_timestamp_types
-```
-
-```elixir
-# In the generated migration
-
-def change do
-  # do this for each table
-  alter table(:table_name) do
-    # do this for each timestamp you want to change on that table
-    modify :attribute_name, :utc_datetime_usec, from: :utc_datetime
-  end
-
-  ...
-end
-```
-
 # Dependency
 
 ```elixir
