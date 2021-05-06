@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.43.3](https://github.com/ash-project/ash/compare/v1.43.2...v1.43.3) (2021-05-06)
+
+
+
+
+### Bug Fixes:
+
+* don't consider contextual relationships as reverse relationships
+
+* support `not` in query expressions
+
 ## [v1.43.2](https://github.com/ash-project/ash/compare/v1.43.1...v1.43.2) (2021-05-04)
 
 
