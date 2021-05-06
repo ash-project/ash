@@ -868,7 +868,8 @@ defmodule Ash.Actions.SideLoad do
       Map.fetch(rel, :source_field_on_join_table) ==
         Map.fetch(destination_rel, :destination_field_on_join_table) &&
       Map.fetch(rel, :destination_field_on_join_table) ==
-        Map.fetch(destination_rel, :source_field_on_join_table)
+        Map.fetch(destination_rel, :source_field_on_join_table) && is_nil(destination_rel.context) &&
+      is_nil(rel.context)
   end
 
   defp put_nested_relationship(request_filter, path, value, records?) when not is_list(value) do
