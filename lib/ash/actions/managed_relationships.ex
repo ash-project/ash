@@ -116,6 +116,7 @@ defmodule Ash.Actions.ManagedRelationships do
                     |> Ash.Query.for_read(read, input, actor: actor)
                     |> Ash.Query.filter(^keys)
                     |> Ash.Query.do_filter(relationship.filter)
+                    |> Ash.Query.sort(relationship.sort)
                     |> Ash.Query.set_context(relationship.context)
                     |> Ash.Query.limit(1)
                     |> Ash.Query.set_tenant(changeset.tenant)
@@ -574,6 +575,7 @@ defmodule Ash.Actions.ManagedRelationships do
                   |> Ash.Query.for_read(read, input, actor: actor)
                   |> Ash.Query.filter(^keys)
                   |> Ash.Query.do_filter(relationship.filter)
+                  |> Ash.Query.sort(relationship.sort)
                   |> Ash.Query.set_context(relationship.context)
                   |> Ash.Query.set_tenant(changeset.tenant)
                   |> Ash.Query.limit(1)
@@ -1139,6 +1141,7 @@ defmodule Ash.Actions.ManagedRelationships do
             |> Ash.Query.set_tenant(changeset.tenant)
             |> Ash.Query.set_context(join_relationship.context)
             |> Ash.Query.do_filter(relationship.filter)
+            |> Ash.Query.sort(relationship.sort)
             |> api.read_one(
               authorize?: opts[:authorize?],
               actor: actor

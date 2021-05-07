@@ -553,6 +553,7 @@ defmodule Ash.Actions.SideLoad do
         })
         |> Ash.Query.set_context(relationship.context)
         |> Ash.Query.do_filter(relationship.filter)
+        |> Ash.Query.sort(relationship.sort)
         |> remove_relationships_from_load()
         |> read(relationship.read_action)
 
@@ -570,6 +571,7 @@ defmodule Ash.Actions.SideLoad do
         })
         |> Ash.Query.set_context(relationship.context)
         |> Ash.Query.do_filter(relationship.filter)
+        |> Ash.Query.sort(relationship.sort)
         |> remove_relationships_from_load()
         |> read(relationship.read_action)
 
@@ -580,6 +582,7 @@ defmodule Ash.Actions.SideLoad do
         query
         |> Ash.Query.set_context(relationship.context)
         |> Ash.Query.do_filter(relationship.filter)
+        |> Ash.Query.sort(relationship.sort)
         |> remove_relationships_from_load()
         |> read(relationship.read_action)
     end
@@ -597,6 +600,7 @@ defmodule Ash.Actions.SideLoad do
     query
     |> Ash.Query.set_context(relationship.context)
     |> Ash.Query.do_filter(relationship.filter)
+    |> Ash.Query.sort(relationship.sort)
     |> remove_relationships_from_load()
     |> read(relationship.read_action)
     |> case do

@@ -67,6 +67,12 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       A filter to be applied when reading the relationship.
       """
     ],
+    sort: [
+      type: :any,
+      doc: """
+      A sort statement to be applied when reading the relationship.
+      """
+    ],
     violation_message: [
       type: :string,
       doc: """

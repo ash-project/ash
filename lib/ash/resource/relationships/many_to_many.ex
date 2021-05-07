@@ -15,6 +15,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
     :violation_message,
     :writable?,
     :private?,
+    :sort,
     :read_action,
     :description,
     :context,

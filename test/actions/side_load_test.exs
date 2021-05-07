@@ -29,6 +29,10 @@ defmodule Ash.Test.Actions.SideLoadTest do
 
     relationships do
       has_many :posts, Ash.Test.Actions.SideLoadTest.Post, destination_field: :author_id
+
+      has_one :latest_post, Ash.Test.Actions.SideLoadTest.Post,
+        destination_field: :author_id,
+        sort: :inserted_at
     end
   end
 
@@ -49,6 +53,7 @@ defmodule Ash.Test.Actions.SideLoadTest do
       uuid_primary_key :id
       attribute :title, :string
       attribute :contents, :string
+      timestamps()
     end
 
     relationships do
@@ -219,6 +224,34 @@ defmodule Ash.Test.Actions.SideLoadTest do
       post_id = post.id
 
       assert [%{posts: [%{id: ^post_id}]}, %{posts: [%{id: ^post_id}]}] = post.categories
+    end
+
+    test "it loads sorted relationships in the proper order" do
+      author =
+        Author
+        |> new(%{name: "zerg"})
+        |> Api.create!()
+
+      _post1 =
+        Post
+        |> new(%{title: "post1"})
+        |> replace_relationship(:author, author)
+        |> Api.create!()
+
+      :timer.sleep(2)
+
+      post2 =
+        Post
+        |> new(%{title: "post2"})
+        |> replace_relationship(:author, author)
+        |> Api.create!()
+
+      [author] =
+        Author
+        |> Ash.Query.load(:latest_post)
+        |> Api.read!()
+
+      assert author.latest_post.id == post2.id
     end
   end
 end

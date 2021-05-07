@@ -11,6 +11,7 @@ defmodule Ash.Resource.Relationships.HasMany do
     :writable?,
     :description,
     :filter,
+    :sort,
     :read_action,
     :not_found_message,
     :violation_message,
