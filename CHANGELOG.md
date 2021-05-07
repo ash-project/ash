@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.43.8](https://github.com/ash-project/ash/compare/v1.43.7...v1.43.8) (2021-05-07)
+
+
+
+
+### Bug Fixes:
+
+* don't raise unnecessary side load error
+
 ## [v1.43.7](https://github.com/ash-project/ash/compare/v1.43.6...v1.43.7) (2021-05-07)
 
 
