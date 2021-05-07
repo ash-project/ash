@@ -6,6 +6,10 @@ defmodule Ash.Query.Function.IsNil do
 
   def args, do: [[:any]]
 
+  def new([arg]) do
+    Ash.Query.Operator.IsNil.new(arg, true)
+  end
+
   def evaluate(%{arguments: [val]}) do
     {:known, is_nil(val)}
   end
