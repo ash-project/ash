@@ -1233,7 +1233,7 @@ defmodule Ash.Query do
                    )}
                 ]
 
-              match?(%Ash.Query{}, value) && selecting?(value, relationship.destination_field) ->
+              match?(%Ash.Query{}, value) ->
                 validate_matching_query_and_continue(
                   value,
                   query.resource,
@@ -1241,12 +1241,6 @@ defmodule Ash.Query do
                   path,
                   relationship
                 )
-
-              match?(%Ash.Query{}, value) ->
-                [
-                  {:error,
-                   "Cannot side load a relationship with a query unless the destination field of that query is selected"}
-                ]
 
               true ->
                 validate_matching_query_and_continue(
