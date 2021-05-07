@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.43.6](https://github.com/ash-project/ash/compare/v1.43.5...v1.43.6) (2021-05-07)
+
+
+
+
+### Bug Fixes:
+
+* IsNil function to IsNil operator
+
+* function clause match error in not expression
+
 ## [v1.43.5](https://github.com/ash-project/ash/compare/v1.43.4...v1.43.5) (2021-05-07)
 
 
