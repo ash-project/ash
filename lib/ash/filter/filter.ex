@@ -1401,8 +1401,8 @@ defmodule Ash.Filter do
     add_expression_part({op, [left, right]}, context, expression)
   end
 
-  defp add_expression_part(%Not{expression: expression}, context, expression) do
-    add_expression_part({:not, expression}, context, expression)
+  defp add_expression_part(%Not{expression: not_expression}, context, expression) do
+    add_expression_part({:not, not_expression}, context, expression)
   end
 
   defp add_expression_part(%_{} = record, context, expression) do
