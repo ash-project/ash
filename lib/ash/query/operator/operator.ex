@@ -72,7 +72,7 @@ defmodule Ash.Query.Operator do
     end)
     |> case do
       nil ->
-        {:error, "Could not cast expression"}
+        {:error, "Could not cast expression: #{inspect(mod)} #{inspect(left)} #{inspect(right)}"}
 
       {:ok, left, right} ->
         mod.new(left, right)

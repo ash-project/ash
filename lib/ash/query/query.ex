@@ -95,7 +95,7 @@ defmodule Ash.Query do
           or_empty(concat("sort: ", to_doc(query.sort, opts)), sort?),
           or_empty(concat("limit: ", to_doc(query.limit, opts)), limit?),
           or_empty(concat("offset: ", to_doc(query.offset, opts)), offset?),
-          or_empty(concat("side_load: ", to_doc(query.side_load, opts)), side_load?),
+          or_empty(concat("load: ", to_doc(query.side_load, opts)), side_load?),
           or_empty(concat("aggregates: ", to_doc(query.aggregates, opts)), aggregates?),
           or_empty(concat("calculations: ", to_doc(query.calculations, opts)), calculations?),
           or_empty(concat("errors: ", to_doc(query.errors, opts)), errors?),

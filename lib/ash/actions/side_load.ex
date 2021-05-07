@@ -264,7 +264,8 @@ defmodule Ash.Actions.SideLoad do
         dependent_path ->
           [
             request_path ++ [:authorization_filter],
-            [:side_load, Enum.reverse(Enum.map(dependent_path, &Map.get(&1, :name))), :data]
+            [:side_load, Enum.reverse(Enum.map(dependent_path, &Map.get(&1, :name))), :data],
+            [:side_load, Enum.reverse(Enum.map(dependent_path, &Map.get(&1, :name))), :query]
           ]
       end
 
@@ -319,6 +320,19 @@ defmodule Ash.Actions.SideLoad do
                 Ash.Query.filter(related_query, ^authorization_filter)
             end
 
+          source_query =
+            case path do
+              [] ->
+                root_query
+
+              path ->
+                get_in(data, [
+                  :side_load,
+                  Enum.reverse(Enum.map(path, &Map.get(&1, :name))),
+                  :query
+                ])
+            end
+
           with {:ok, new_query} <-
                  true_side_load_query(
                    relationship,
@@ -332,7 +346,8 @@ defmodule Ash.Actions.SideLoad do
                    base_query,
                    data,
                    path,
-                   relationship
+                   relationship,
+                   source_query
                  ) do
             {:ok, results}
           else
@@ -373,11 +388,14 @@ defmodule Ash.Actions.SideLoad do
 
         dependencies =
           if path == [] do
-            [[:side_load, join_relationship_path_names, :authorization_filter]]
+            [
+              [:side_load, join_relationship_path_names, :authorization_filter]
+            ]
           else
             [
               [:side_load, join_relationship_path_names, :authorization_filter],
-              [:side_load, Enum.reverse(Enum.map(path, &Map.get(&1, :name))), :data]
+              [:side_load, Enum.reverse(Enum.map(path, &Map.get(&1, :name))), :data],
+              [:side_load, Enum.reverse(Enum.map(path, &Map.get(&1, :name))), :query]
             ]
           end
 
@@ -444,6 +462,18 @@ defmodule Ash.Actions.SideLoad do
                     base_query
                   end
 
+                source_query =
+                  case path do
+                    [] ->
+                      root_query
+
+                    path ->
+                      get_in(
+                        data,
+                        [:side_load, Enum.reverse(Enum.map(path, &Map.get(&1, :name))), :query]
+                      )
+                  end
+
                 with {:ok, new_query} <-
                        true_side_load_query(
                          join_relationship,
@@ -465,7 +495,8 @@ defmodule Ash.Actions.SideLoad do
                          base_query,
                          data,
                          path,
-                         join_relationship
+                         join_relationship,
+                         source_query
                        ) do
                   {:ok, results}
                 else
@@ -526,7 +557,7 @@ defmodule Ash.Actions.SideLoad do
     !!lateral_join
   end
 
-  defp run_actual_query(query, base_query, data, path, relationship) do
+  defp run_actual_query(query, base_query, data, path, relationship, source_query) do
     {offset, limit} = offset_and_limit(base_query)
 
     source_data =
@@ -537,7 +568,7 @@ defmodule Ash.Actions.SideLoad do
         path ->
           data
           |> Map.get(:side_load, %{})
-          |> Map.get(path, %{})
+          |> Map.get(Enum.reverse(Enum.map(path, & &1.name)), %{})
           |> Map.get(:data, [])
       end
 
@@ -552,8 +583,8 @@ defmodule Ash.Actions.SideLoad do
             lateral_join_source: {
               source_data,
               [
-                {relationship.source, relationship.source_field,
-                 relationship.source_field_on_join_table, relationship},
+                {source_query, relationship.source_field, relationship.source_field_on_join_table,
+                 relationship},
                 {relationship.through, relationship.destination_field_on_join_table,
                  relationship.destination_field, join_relationship}
               ]
@@ -573,7 +604,7 @@ defmodule Ash.Actions.SideLoad do
             lateral_join_source:
               {source_data,
                [
-                 {relationship.source, relationship.source_field, relationship.destination_field,
+                 {source_query, relationship.source_field, relationship.destination_field,
                   relationship}
                ]}
           }
@@ -722,11 +753,6 @@ defmodule Ash.Actions.SideLoad do
         case data do
           [] ->
             false
-
-          [%resource{} = item] ->
-            item
-            |> Map.take(Ash.Resource.Info.primary_key(resource))
-            |> Enum.to_list()
 
           [%resource{} | _] = items ->
             pkey = Ash.Resource.Info.primary_key(resource)

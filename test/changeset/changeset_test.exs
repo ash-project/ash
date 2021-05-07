@@ -635,7 +635,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         CompositeKeyPost
         |> Ash.Query.load(author: :composite_key_posts)
         |> Ash.Query.filter(id == ^post1.id and serial == ^post1.serial)
-        |> Api.read!()
+        |> Api.read!(stacktraces?: true)
 
       assert Api.reload!(author) == Api.reload!(fetched_post.author)
     end
