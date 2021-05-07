@@ -49,6 +49,13 @@ defmodule Ash.Actions.SideLoad do
         end
         |> maybe_select(relationship.destination_field)
 
+      related_query =
+        if relationship.cardinality == :one do
+          Ash.Query.limit(related_query, 1)
+        else
+          related_query
+        end
+
       new_path = [relationship | path]
 
       {related_query, further_requests} =
@@ -134,7 +141,9 @@ defmodule Ash.Actions.SideLoad do
 
   defp attach_to_one_side_loads(value, last_relationship, data, lead_path) do
     values =
-      Enum.into(value, %{}, fn item ->
+      value
+      |> Enum.reverse()
+      |> Enum.into(%{}, fn item ->
         {Map.get(item, last_relationship.destination_field), item}
       end)
 

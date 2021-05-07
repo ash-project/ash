@@ -32,7 +32,7 @@ defmodule Ash.Test.Actions.SideLoadTest do
 
       has_one :latest_post, Ash.Test.Actions.SideLoadTest.Post,
         destination_field: :author_id,
-        sort: :inserted_at
+        sort: [inserted_at: :desc]
     end
   end
 
