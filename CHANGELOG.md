@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.43.9](https://github.com/ash-project/ash/compare/v1.43.8...v1.43.9) (2021-05-09)
+
+
+
+
+### Bug Fixes:
+
+* don't fail on nil root filters
+
+### Improvements:
+
+* support filtering on related aggregates
+
+* autoload aggregates used in filters
+
 ## [v1.43.8](https://github.com/ash-project/ash/compare/v1.43.7...v1.43.8) (2021-05-07)
 
 
