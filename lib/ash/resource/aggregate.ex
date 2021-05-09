@@ -25,7 +25,7 @@ defmodule Ash.Resource.Aggregate do
       required: false
     ],
     filter: [
-      type: :keyword_list,
+      type: :any,
       doc: "A filter to apply to the aggregate",
       default: []
     ],

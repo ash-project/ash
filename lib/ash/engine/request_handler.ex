@@ -111,7 +111,7 @@ defmodule Ash.Engine.RequestHandler do
     case Request.wont_receive(state.request, path, field) do
       {:stop, :dependency_failed, request} ->
         new_state = %{state | request: %{request | state: :error}}
-        notify_error(new_state, :dependency_failed)
+        notify_error(new_state, {:dependency_failed, path})
         {:noreply, new_state}
     end
   end

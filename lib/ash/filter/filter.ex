@@ -234,10 +234,16 @@ defmodule Ash.Filter do
   filters over public attributes/relationships.
 
   ### Aggregates
+
   Since custom aggregates can be added to a query, and aggregates must be explicitly loaded into
   a query, the filter parser does not parse them by default. If you wish to support parsing filters
   over aggregates, provide them as the third argument. The best way to do this is to build a query
   with the aggregates added/loaded, and then use the `aggregates` key on the query, e.g
+
+  ### NOTE
+
+  A change was made recently that will automatically load any aggregates that are used in a filter.
+  This function still requires aggregates to be passed in.
 
   ```elixir
   Ash.Filter.parse(MyResource, [id: 1], query.aggregates)
@@ -518,12 +524,13 @@ defmodule Ash.Filter do
 
   defp get_predicates(%{__predicate__?: true} = predicate, acc), do: [predicate | acc]
 
-  def used_aggregates(filter) do
+  def used_aggregates(filter, relationship_path \\ []) do
     filter
     |> list_refs()
     |> Enum.filter(fn
-      %Ref{attribute: %Aggregate{}} ->
-        true
+      %Ref{attribute: %Aggregate{}, relationship_path: ref_relationship_path} ->
+        (relationship_path in [nil, []] and ref_relationship_path in [nil, []]) ||
+          relationship_path == ref_relationship_path
 
       _ ->
         false
@@ -1286,6 +1293,12 @@ defmodule Ash.Filter do
   defp attribute(%{public?: false, resource: resource}, attribute),
     do: Ash.Resource.Info.attribute(resource, attribute)
 
+  defp aggregate(%{public?: true, resource: resource}, aggregate),
+    do: Ash.Resource.Info.public_aggregate(resource, aggregate)
+
+  defp aggregate(%{public?: false, resource: resource}, aggregate),
+    do: Ash.Resource.Info.aggregate(resource, aggregate)
+
   defp relationship(%{public?: true, resource: resource}, relationship) do
     Ash.Resource.Info.public_relationship(resource, relationship)
   end
@@ -1500,6 +1513,35 @@ defmodule Ash.Filter do
             {:error, error}
         end
 
+      aggregate = aggregate(context, field) ->
+        related = Ash.Resource.Info.related(context.resource, aggregate.relationship_path)
+
+        with %{valid?: true} = aggregate_query <-
+               Ash.Query.build(related, filter: aggregate.filter, sort: aggregate.sort),
+             {:ok, query_aggregate} <-
+               Aggregate.new(
+                 context.resource,
+                 aggregate.name,
+                 aggregate.kind,
+                 aggregate.relationship_path,
+                 aggregate_query,
+                 aggregate.field
+               ) do
+          case parse_predicates(nested_statement, query_aggregate, context) do
+            {:ok, nested_statement} ->
+              {:ok, BooleanExpression.optimized_new(:and, expression, nested_statement)}
+
+            {:error, error} ->
+              {:error, error}
+          end
+        else
+          %{valid?: false, errors: errors} ->
+            {:error, errors}
+
+          {:error, error} ->
+            {:error, error}
+        end
+
       field in aggregates ->
         field =
           if is_binary(field) do
@@ -1705,6 +1747,29 @@ defmodule Ash.Filter do
 
           attribute = attribute(context, attribute) ->
             {:ok, %{ref | attribute: attribute}}
+
+          aggregate = aggregate(context, attribute) ->
+            agg_related = Ash.Resource.Info.related(related, aggregate.relationship_path)
+
+            with %{valid?: true} = aggregate_query <-
+                   Ash.Query.build(agg_related, filter: aggregate.filter, sort: aggregate.sort),
+                 {:ok, query_aggregate} <-
+                   Aggregate.new(
+                     related,
+                     aggregate.name,
+                     aggregate.kind,
+                     aggregate.relationship_path,
+                     aggregate_query,
+                     aggregate.field
+                   ) do
+              {:ok, %{ref | attribute: query_aggregate}}
+            else
+              %{valid?: false, errors: errors} ->
+                {:error, errors}
+
+              {:error, error} ->
+                {:error, error}
+            end
 
           relationship = relationship(context, attribute) ->
             case Ash.Resource.Info.primary_key(relationship.destination) do

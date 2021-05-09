@@ -804,6 +804,9 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
+    imports: [
+      Module.concat(["Ash", Filter.TemplateHelpers])
+    ],
     entities: [
       @count,
       @first,

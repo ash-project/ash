@@ -1282,21 +1282,37 @@ defmodule Ash.Query do
   end
 
   def do_filter(query, nil), do: to_query(query)
+  def do_filter(query, []), do: to_query(query)
 
   def do_filter(query, statement) do
     query = to_query(query)
 
     if Ash.DataLayer.data_layer_can?(query.resource, :filter) do
+      agg_names =
+        query.resource
+        |> Ash.Resource.Info.aggregates()
+        |> Enum.map(& &1.name)
+
+      temp_query = Ash.Query.load(query, agg_names)
+
       filter =
         if query.filter do
           Ash.Filter.add_to_filter(query.filter, statement, :and, query.aggregates)
         else
-          Ash.Filter.parse(query.resource, statement, query.aggregates)
+          Ash.Filter.parse(query.resource, statement, temp_query.aggregates)
         end
 
       case filter do
         {:ok, filter} ->
+          aggregates_to_load =
+            filter
+            |> Ash.Filter.used_aggregates()
+            |> Enum.map(& &1.name)
+            |> Enum.filter(&(&1 in agg_names))
+            |> Enum.reject(&Map.has_key?(query.aggregates, &1))
+
           query
+          |> Ash.Query.load(aggregates_to_load)
           |> Map.put(:filter, filter)
 
         {:error, error} ->
@@ -1503,12 +1519,21 @@ defmodule Ash.Query do
         message
       end
 
-    error =
-      message
-      |> Ash.Error.to_ash_error()
-      |> Map.update(:path, keys, &(keys ++ List.wrap(&1)))
+    message
+    |> Ash.Error.to_ash_error()
+    |> case do
+      errors when is_list(errors) ->
+        errors =
+          Enum.map(errors, fn error ->
+            Map.update(error, :path, keys, &(keys ++ List.wrap(&1)))
+          end)
 
-    %{query | errors: [error | query.errors], valid?: false}
+        %{query | errors: query.errors ++ errors, valid?: false}
+
+      error ->
+        error = Map.update(error, :path, keys, &(keys ++ List.wrap(&1)))
+        %{query | errors: [error | query.errors]}
+    end
   end
 
   defp validate_matching_query_and_continue(value, resource, key, path, relationship) do

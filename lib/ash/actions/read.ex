@@ -334,6 +334,19 @@ defmodule Ash.Actions.Read do
       Request.resolve(
         deps,
         fn %{data: %{query: ash_query}} = data ->
+          aggregates =
+            ash_query.resource
+            |> Ash.Resource.Info.aggregates()
+            |> Enum.map(& &1.name)
+
+          to_load =
+            ash_query.filter
+            |> Ash.Filter.used_aggregates()
+            |> Enum.filter(&(&1.name in aggregates))
+            |> Enum.map(& &1.name)
+
+          ash_query = Ash.Query.load(ash_query, to_load)
+
           multitenancy_attribute = Ash.Resource.Info.multitenancy_attribute(ash_query.resource)
 
           ash_query =

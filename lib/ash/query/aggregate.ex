@@ -386,11 +386,18 @@ defmodule Ash.Query.Aggregate do
     end
 
     def inspect(%{query: query} = aggregate, opts) do
+      field =
+        if aggregate.field do
+          [aggregate.field]
+        else
+          []
+        end
+
       container_doc(
         "#" <> to_string(aggregate.kind) <> "<",
         [
           concat([
-            Enum.join(aggregate.relationship_path, "."),
+            Enum.join(aggregate.relationship_path ++ field, "."),
             concat(" from ", to_doc(query, opts))
           ])
         ],

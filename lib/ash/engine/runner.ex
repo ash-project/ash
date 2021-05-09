@@ -136,7 +136,7 @@ defmodule Ash.Engine.Runner do
         new_state =
           case Request.wont_receive(request, path, field) do
             {:stop, :dependency_failed, new_request} ->
-              notify_error(:dependency_failed, state)
+              notify_error({:dependency_failed, path}, state)
               replace_request(state, %{new_request | state: :error})
           end
 
