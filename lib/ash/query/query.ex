@@ -2,7 +2,7 @@ defmodule Ash.Query do
   @moduledoc """
   Utilties around constructing/manipulating ash queries.
 
-  Ash queries are used for read actions and side loads, and ultimately
+  Ash queries are used for read actions and loads, and ultimately
   map to queries to a resource's data layer.
 
   Queries are run by calling `read` on an API that contains the resource in question
@@ -39,7 +39,7 @@ defmodule Ash.Query do
     params: %{},
     arguments: %{},
     aggregates: %{},
-    side_load: [],
+    load: [],
     calculations: %{},
     context: %{},
     select: nil,
@@ -66,7 +66,7 @@ defmodule Ash.Query do
     Required
   }
 
-  alias Ash.Error.SideLoad.{InvalidQuery, NoSuchRelationship}
+  alias Ash.Error.Load.{InvalidQuery, NoSuchRelationship}
   alias Ash.Query.{Aggregate, BooleanExpression, Calculation, Not}
 
   defimpl Inspect do
@@ -74,7 +74,7 @@ defmodule Ash.Query do
 
     def inspect(query, opts) do
       sort? = query.sort != []
-      side_load? = query.side_load != []
+      load? = query.load != []
       aggregates? = query.aggregates != %{}
       calculations? = query.calculations != %{}
       limit? = not is_nil(query.limit)
@@ -95,7 +95,7 @@ defmodule Ash.Query do
           or_empty(concat("sort: ", to_doc(query.sort, opts)), sort?),
           or_empty(concat("limit: ", to_doc(query.limit, opts)), limit?),
           or_empty(concat("offset: ", to_doc(query.offset, opts)), offset?),
-          or_empty(concat("load: ", to_doc(query.side_load, opts)), side_load?),
+          or_empty(concat("load: ", to_doc(query.load, opts)), load?),
           or_empty(concat("aggregates: ", to_doc(query.aggregates, opts)), aggregates?),
           or_empty(concat("calculations: ", to_doc(query.calculations, opts)), calculations?),
           or_empty(concat("errors: ", to_doc(query.errors, opts)), errors?),
@@ -626,14 +626,14 @@ defmodule Ash.Query do
 
     Enum.reduce(fields, query, fn
       {field, %__MODULE__{} = nested}, query ->
-        side_load(query, [{field, nested}])
+        load_relationship(query, [{field, nested}])
 
       {field, rest}, query ->
         cond do
           rel = Ash.Resource.Info.relationship(query.resource, field) ->
             nested_query = load(rel.destination, rest)
 
-            side_load(query, [{field, nested_query}])
+            load_relationship(query, [{field, nested_query}])
 
           calculation = Ash.Resource.Info.calculation(query.resource, field) ->
             {module, opts} = module_and_opts(calculation.calculation)
@@ -668,7 +668,7 @@ defmodule Ash.Query do
         query
 
       Ash.Resource.Info.relationship(query.resource, field) ->
-        side_load(query, field)
+        load_relationship(query, field)
 
       aggregate = Ash.Resource.Info.aggregate(query.resource, field) ->
         related = Ash.Resource.Info.related(query.resource, aggregate.relationship_path)
@@ -893,8 +893,8 @@ defmodule Ash.Query do
     Enum.reduce(fields, query, fn field, query ->
       case field do
         {field, rest} ->
-          new_side_loads = do_unload_side_load(query.side_load, {field, rest})
-          %{query | side_load: new_side_loads}
+          new_loads = do_unload_load(query.load, {field, rest})
+          %{query | load: new_loads}
 
         field ->
           do_unload(query, field)
@@ -908,7 +908,7 @@ defmodule Ash.Query do
         query
 
       Ash.Resource.Info.relationship(query.resource, field) ->
-        %{query | side_load: Keyword.delete(query.side_load, field)}
+        %{query | load: Keyword.delete(query.load, field)}
 
       Ash.Resource.Info.aggregate(query.resource, field) ->
         new_aggregates =
@@ -924,12 +924,12 @@ defmodule Ash.Query do
     end
   end
 
-  defp do_unload_side_load(%__MODULE__{} = query, unload) do
-    %{query | side_load: do_unload_side_load(query.side_load, unload)}
+  defp do_unload_load(%__MODULE__{} = query, unload) do
+    %{query | load: do_unload_load(query.load, unload)}
   end
 
-  defp do_unload_side_load(side_loads, {field, rest}) do
-    Enum.reduce(side_loads, [], fn
+  defp do_unload_load(loads, {field, rest}) do
+    Enum.reduce(loads, [], fn
       ^field, acc ->
         acc
 
@@ -937,7 +937,7 @@ defmodule Ash.Query do
         new_value =
           rest
           |> List.wrap()
-          |> Enum.reduce(value, &do_unload_side_load(&2, &1))
+          |> Enum.reduce(value, &do_unload_load(&2, &1))
 
         [{field, new_value} | acc]
 
@@ -947,8 +947,8 @@ defmodule Ash.Query do
     |> Enum.reverse()
   end
 
-  defp do_unload_side_load(side_loads, field) do
-    do_unload_side_load(side_loads, {field, []})
+  defp do_unload_load(loads, field) do
+    do_unload_load(loads, {field, []})
   end
 
   @doc """
@@ -1025,10 +1025,10 @@ defmodule Ash.Query do
     end)
   end
 
-  @doc "Set the query's api, and any side loaded query's api"
+  @doc "Set the query's api, and any loaded query's api"
   def set_api(query, api) do
     query = to_query(query)
-    %{query | api: api, side_load: set_side_load_api(query.side_load, api)}
+    %{query | api: api, load: set_load_api(query.load, api)}
   end
 
   @doc """
@@ -1148,30 +1148,30 @@ defmodule Ash.Query do
     |> add_error(:offset, InvalidOffset.exception(offset: offset))
   end
 
-  defp side_load(query, statement) do
+  defp load_relationship(query, statement) do
     query = to_query(query)
 
-    with sanitized_statement <- List.wrap(sanitize_side_loads(statement)),
+    with sanitized_statement <- List.wrap(sanitize_loads(statement)),
          :ok <-
-           validate_side_load(query, sanitized_statement),
-         new_side_loads <- merge_side_load(query.side_load, sanitized_statement) do
-      %{query | side_load: new_side_loads}
+           validate_load(query, sanitized_statement),
+         new_loads <- merge_load(query.load, sanitized_statement) do
+      %{query | load: new_loads}
     else
       {:error, errors} ->
-        Enum.reduce(errors, query, &add_error(&2, :side_load, &1))
+        Enum.reduce(errors, query, &add_error(&2, :load, &1))
     end
   end
 
   @doc false
-  def validate_side_load(query, side_loads, path \\ []) do
-    case do_validate_side_load(query, side_loads, path) do
+  def validate_load(query, loads, path \\ []) do
+    case do_validate_load(query, loads, path) do
       [] -> :ok
       errors -> {:error, errors}
     end
   end
 
-  defp do_validate_side_load(_query, %Ash.Query{} = side_load_query, path) do
-    case side_load_query.errors do
+  defp do_validate_load(_query, %Ash.Query{} = load_query, path) do
+    case load_query.errors do
       [] ->
         []
 
@@ -1179,19 +1179,19 @@ defmodule Ash.Query do
         [
           {:error,
            InvalidQuery.exception(
-             query: side_load_query,
-             side_load_path: Enum.reverse(path)
+             query: load_query,
+             load_path: Enum.reverse(path)
            )}
         ]
     end
   end
 
-  defp do_validate_side_load(query, {atom, _} = tuple, path) when is_atom(atom) do
-    do_validate_side_load(query, [tuple], path)
+  defp do_validate_load(query, {atom, _} = tuple, path) when is_atom(atom) do
+    do_validate_load(query, [tuple], path)
   end
 
-  defp do_validate_side_load(query, side_loads, path) when is_list(side_loads) do
-    side_loads
+  defp do_validate_load(query, loads, path) when is_list(loads) do
+    loads
     |> List.wrap()
     |> Enum.flat_map(fn
       {key, value} ->
@@ -1202,7 +1202,7 @@ defmodule Ash.Query do
                NoSuchRelationship.exception(
                  resource: query.resource,
                  relationship: key,
-                 side_load_path: Enum.reverse(path)
+                 load_path: Enum.reverse(path)
                )}
             ]
 
@@ -1211,7 +1211,7 @@ defmodule Ash.Query do
               !selecting?(query, relationship.source_field) ->
                 [
                   {:error,
-                   "Cannot side load a relationship if you are not selecting the source field of that relationship"}
+                   "Cannot load a relationship if you are not selecting the source field of that relationship"}
                 ]
 
               !Ash.Resource.Info.primary_action(relationship.destination, :read) ->
@@ -1522,12 +1522,12 @@ defmodule Ash.Query do
             resource: resource,
             relationship: key,
             query: destination_query,
-            side_load_path: Enum.reverse(path)
+            load_path: Enum.reverse(path)
           )
         ]
 
       other ->
-        do_validate_side_load(relationship.destination, other, [key | path])
+        do_validate_load(relationship.destination, other, [key | path])
     end
   end
 
@@ -1549,16 +1549,16 @@ defmodule Ash.Query do
     end
   end
 
-  defp set_side_load_api(nil, _), do: nil
-  defp set_side_load_api([], _), do: []
+  defp set_load_api(nil, _), do: nil
+  defp set_load_api([], _), do: []
 
-  defp set_side_load_api(%__MODULE__{} = query, api) do
+  defp set_load_api(%__MODULE__{} = query, api) do
     set_api(query, api)
   end
 
-  defp set_side_load_api(side_loads, api) do
-    Enum.map(side_loads, fn {key, further} ->
-      {key, set_side_load_api(further, api)}
+  defp set_load_api(loads, api) do
+    Enum.map(loads, fn {key, further} ->
+      {key, set_load_api(further, api)}
     end)
   end
 
@@ -1571,54 +1571,54 @@ defmodule Ash.Query do
     |> Ash.DataLayer.transform_query()
   end
 
-  defp merge_side_load([], right), do: sanitize_side_loads(right)
-  defp merge_side_load(left, []), do: sanitize_side_loads(left)
+  defp merge_load([], right), do: sanitize_loads(right)
+  defp merge_load(left, []), do: sanitize_loads(left)
 
-  defp merge_side_load(
-         %__MODULE__{side_load: left_side_loads, tenant: left_tenant},
-         %__MODULE__{side_load: right_side_loads} = query
+  defp merge_load(
+         %__MODULE__{load: left_loads, tenant: left_tenant},
+         %__MODULE__{load: right_loads} = query
        ) do
-    %{query | side_load: merge_side_load(left_side_loads, right_side_loads)}
+    %{query | load: merge_load(left_loads, right_loads)}
     |> set_tenant(query.tenant || left_tenant)
   end
 
-  defp merge_side_load(%__MODULE__{} = query, right) when is_list(right) do
-    side_load(query, right)
+  defp merge_load(%__MODULE__{} = query, right) when is_list(right) do
+    load_relationship(query, right)
   end
 
-  defp merge_side_load(left, %Ash.Query{} = query) when is_list(left) do
-    side_load(query, left)
+  defp merge_load(left, %Ash.Query{} = query) when is_list(left) do
+    load_relationship(query, left)
   end
 
-  defp merge_side_load(left, right) when is_atom(left), do: merge_side_load([{left, []}], right)
-  defp merge_side_load(left, right) when is_atom(right), do: merge_side_load(left, [{right, []}])
+  defp merge_load(left, right) when is_atom(left), do: merge_load([{left, []}], right)
+  defp merge_load(left, right) when is_atom(right), do: merge_load(left, [{right, []}])
 
-  defp merge_side_load(left, right) when is_list(left) and is_list(right) do
+  defp merge_load(left, right) when is_list(left) and is_list(right) do
     right
-    |> sanitize_side_loads()
-    |> Enum.reduce(sanitize_side_loads(left), fn {rel, rest}, acc ->
-      Keyword.update(acc, rel, rest, &merge_side_load(&1, rest))
+    |> sanitize_loads()
+    |> Enum.reduce(sanitize_loads(left), fn {rel, rest}, acc ->
+      Keyword.update(acc, rel, rest, &merge_load(&1, rest))
     end)
   end
 
-  defp sanitize_side_loads(side_load) when is_atom(side_load), do: {side_load, []}
+  defp sanitize_loads(load) when is_atom(load), do: {load, []}
 
-  defp sanitize_side_loads(%Ash.Query{} = query) do
-    Map.update!(query, :side_load, &sanitize_side_loads/1)
+  defp sanitize_loads(%Ash.Query{} = query) do
+    Map.update!(query, :load, &sanitize_loads/1)
   end
 
-  defp sanitize_side_loads(side_loads) do
-    side_loads
+  defp sanitize_loads(loads) do
+    loads
     |> List.wrap()
     |> Enum.map(fn
       {key, value} ->
-        {key, sanitize_side_loads(value)}
+        {key, sanitize_loads(value)}
 
-      side_load_part ->
+      load_part ->
         cond do
-          is_atom(side_load_part) -> {side_load_part, []}
-          is_list(side_load_part) -> sanitize_side_loads(side_load_part)
-          true -> side_load_part
+          is_atom(load_part) -> {load_part, []}
+          is_list(load_part) -> sanitize_loads(load_part)
+          true -> load_part
         end
     end)
   end

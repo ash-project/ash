@@ -18,7 +18,7 @@ defmodule Ash.Query.Aggregate do
   @kinds [:count, :first, :sum, :list]
   @type kind :: unquote(Enum.reduce(@kinds, &{:|, [], [&1, &2]}))
 
-  alias Ash.Actions.SideLoad
+  alias Ash.Actions.Load
   alias Ash.Engine.Request
   alias Ash.Error.Query.{NoReadAction, NoSuchRelationship}
 
@@ -97,8 +97,8 @@ defmodule Ash.Query.Aggregate do
 
   defp validate_query(query) do
     cond do
-      query.side_load != [] ->
-        {:error, "Cannot side load in an aggregate"}
+      query.load != [] ->
+        {:error, "Cannot load in an aggregate"}
 
       query.aggregates != %{} ->
         {:error, "Cannot aggregate in an aggregate"}
@@ -136,7 +136,7 @@ defmodule Ash.Query.Aggregate do
         )
 
       {in_query?, reverse_relationship} =
-        case SideLoad.reverse_relationship_path(relationship, tl(relationship_path)) do
+        case Load.reverse_relationship_path(relationship, tl(relationship_path)) do
           :error ->
             {can_be_in_query?, nil}
 

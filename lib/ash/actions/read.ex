@@ -1,7 +1,7 @@
 defmodule Ash.Actions.Read do
   @moduledoc false
 
-  alias Ash.Actions.{Helpers, SideLoad}
+  alias Ash.Actions.{Helpers, Load}
   alias Ash.Engine
   alias Ash.Engine.Request
   alias Ash.Error.Invalid.{LimitRequired, PaginationRequired}
@@ -91,18 +91,18 @@ defmodule Ash.Actions.Read do
          page_opts <- page_opts && Keyword.delete(page_opts, :filter),
          {:ok, requests} <-
            requests(query, action, filter_requests, initial_limit, initial_offset, opts),
-         {query, side_load_requests} <- SideLoad.requests(query, load),
+         {query, load_requests} <- Load.requests(query, load),
          {:ok, %{data: %{data: data} = all_data}} <-
            Engine.run(
-             requests ++ side_load_requests,
+             requests ++ load_requests,
              query.api,
              engine_opts
            ),
-         data_with_side_loads <-
-           SideLoad.attach_side_loads(data, all_data),
+         data_with_loads <-
+           Load.attach_loads(data, all_data),
          data_with_aggregates <-
            add_aggregate_values(
-             data_with_side_loads,
+             data_with_loads,
              query.aggregates,
              query.resource,
              Map.get(all_data, :aggregate_values, %{})

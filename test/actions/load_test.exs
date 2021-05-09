@@ -1,4 +1,4 @@
-defmodule Ash.Test.Actions.SideLoadTest do
+defmodule Ash.Test.Actions.LoadTest do
   @moduledoc false
   use ExUnit.Case, async: false
 
@@ -28,9 +28,9 @@ defmodule Ash.Test.Actions.SideLoadTest do
     end
 
     relationships do
-      has_many :posts, Ash.Test.Actions.SideLoadTest.Post, destination_field: :author_id
+      has_many :posts, Ash.Test.Actions.LoadTest.Post, destination_field: :author_id
 
-      has_one :latest_post, Ash.Test.Actions.SideLoadTest.Post,
+      has_one :latest_post, Ash.Test.Actions.LoadTest.Post,
         destination_field: :author_id,
         sort: [inserted_at: :desc]
     end
@@ -59,8 +59,8 @@ defmodule Ash.Test.Actions.SideLoadTest do
     relationships do
       belongs_to :author, Author
 
-      many_to_many :categories, Ash.Test.Actions.SideLoadTest.Category,
-        through: Ash.Test.Actions.SideLoadTest.PostCategory,
+      many_to_many :categories, Ash.Test.Actions.LoadTest.Category,
+        through: Ash.Test.Actions.LoadTest.PostCategory,
         destination_field_on_join_table: :category_id,
         source_field_on_join_table: :post_id
     end
@@ -82,7 +82,7 @@ defmodule Ash.Test.Actions.SideLoadTest do
     relationships do
       belongs_to :post, Post, primary_key?: true, required?: true
 
-      belongs_to :category, Ash.Test.Actions.SideLoadTest.Category,
+      belongs_to :category, Ash.Test.Actions.LoadTest.Category,
         primary_key?: true,
         required?: true
     end
@@ -137,8 +137,8 @@ defmodule Ash.Test.Actions.SideLoadTest do
     :ok
   end
 
-  describe "side_loads" do
-    test "it allows sideloading related data" do
+  describe "loads" do
+    test "it allows loading related data" do
       author =
         Author
         |> new(%{name: "zerg"})
@@ -170,7 +170,7 @@ defmodule Ash.Test.Actions.SideLoadTest do
       end
     end
 
-    test "it allows sideloading many to many relationships" do
+    test "it allows loading many to many relationships" do
       category1 =
         Category
         |> new(%{name: "lame"})
@@ -198,7 +198,7 @@ defmodule Ash.Test.Actions.SideLoadTest do
       assert Enum.sort([category1.id, category2.id]) == Enum.sort([id1, id2])
     end
 
-    test "it allows sideloading nested many to many relationships" do
+    test "it allows loading nested many to many relationships" do
       category1 =
         Category
         |> new(%{name: "lame"})
