@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.43.11](https://github.com/ash-project/ash/compare/v1.43.10...v1.43.11) (2021-05-09)
+
+
+
+
+### Bug Fixes:
+
+* internal rename (requires version bump for other packages)
+
 ## [v1.43.10](https://github.com/ash-project/ash/compare/v1.43.9...v1.43.10) (2021-05-09)
 
 
