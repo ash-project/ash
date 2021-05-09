@@ -16,7 +16,7 @@ defmodule Ash.Filter.Runtime do
   alias Ash.Query.{BooleanExpression, Not, Ref}
 
   @doc """
-  Removes any records that don't match the filter. Automatically side loads
+  Removes any records that don't match the filter. Automatically loads
   if necessary. If there are any ambigious terms in the filter (e.g things
   that could only be determined by data layer), it is assumed that they
   are not matches.
@@ -32,7 +32,7 @@ defmodule Ash.Filter.Runtime do
     |> Enum.reject(&(&1 == []))
     |> Enum.uniq()
     |> Enum.reject(&loaded?(records, &1))
-    |> Enum.map(&path_to_side_load/1)
+    |> Enum.map(&path_to_load/1)
     |> case do
       [] ->
         {:ok,
@@ -52,7 +52,7 @@ defmodule Ash.Filter.Runtime do
   end
 
   @doc """
-  Checks if a record matches a filter, side loading any necessary relationships"
+  Checks if a record matches a filter, loading any necessary relationships"
 
   If it can't tell, this returns false.
   """
@@ -61,10 +61,10 @@ defmodule Ash.Filter.Runtime do
       {:ok, boolean} ->
         boolean
 
-      {:side_load, side_loads} when not is_nil(api) ->
-        matches?(api, api.load!(record, side_loads), filter)
+      {:load, loads} when not is_nil(api) ->
+        matches?(api, api.load!(record, loads), filter)
 
-      {:side_load, _} ->
+      {:load, _} ->
         false
     end
   end
@@ -91,7 +91,7 @@ defmodule Ash.Filter.Runtime do
          end)}
 
       need_to_load ->
-        {:side_load, Enum.map(need_to_load, &path_to_side_load/1)}
+        {:load, Enum.map(need_to_load, &path_to_load/1)}
     end
   end
 
@@ -285,10 +285,10 @@ defmodule Ash.Filter.Runtime do
 
   defp resolve_ref(value, _record), do: value
 
-  defp path_to_side_load([first]), do: {first, []}
+  defp path_to_load([first]), do: {first, []}
 
-  defp path_to_side_load([first | rest]) do
-    {first, [path_to_side_load(rest)]}
+  defp path_to_load([first | rest]) do
+    {first, [path_to_load(rest)]}
   end
 
   defp expression_matches(:and, left, right, record) do

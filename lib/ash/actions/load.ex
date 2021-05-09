@@ -1,4 +1,4 @@
-defmodule Ash.Actions.SideLoad do
+defmodule Ash.Actions.Load do
   @moduledoc false
 
   alias Ash.Engine
@@ -14,10 +14,10 @@ defmodule Ash.Actions.SideLoad do
       )
 
   def requests(nil, _, _, _), do: {nil, []}
-  def requests(%{side_load: []} = query, _, _, _), do: {query, []}
+  def requests(%{load: []} = query, _, _, _), do: {query, []}
 
   def requests(
-        %{side_load: side_loads} = query,
+        %{load: loads} = query,
         root_query,
         path,
         tenant
@@ -25,7 +25,7 @@ defmodule Ash.Actions.SideLoad do
     root_query = root_query || query
     tenant = tenant || query.tenant || root_query.tenant
 
-    side_loads
+    loads
     |> List.wrap()
     |> Enum.reduce({query, []}, fn {relationship, further}, {query, requests} ->
       relationship = Ash.Resource.Info.relationship(query.resource, relationship)
@@ -88,8 +88,8 @@ defmodule Ash.Actions.SideLoad do
     end
   end
 
-  def attach_side_loads([%resource{} | _] = data, %{side_load: side_loads}) do
-    side_loads
+  def attach_loads([%resource{} | _] = data, %{load: loads}) do
+    loads
     |> Enum.sort_by(fn {key, _value} ->
       last_relationship = last_relationship!(resource, key)
       # We want to do `many_to_many` last, so we know we've
@@ -102,34 +102,34 @@ defmodule Ash.Actions.SideLoad do
 
       case last_relationship do
         %{type: :many_to_many} ->
-          attach_many_to_many_side_loads(
+          attach_many_to_many_loads(
             data,
             lead_path,
             last_relationship,
-            side_loads,
+            loads,
             value
           )
 
         %{cardinality: :many} ->
-          attach_to_many_side_loads(value, last_relationship, data, lead_path)
+          attach_to_many_loads(value, last_relationship, data, lead_path)
 
         %{cardinality: :one} ->
-          attach_to_one_side_loads(value, last_relationship, data, lead_path)
+          attach_to_one_loads(value, last_relationship, data, lead_path)
       end
     end)
   end
 
-  def attach_side_loads(data, state) when not is_list(data) do
+  def attach_loads(data, state) when not is_list(data) do
     [data]
-    |> attach_side_loads(state)
+    |> attach_loads(state)
     |> List.first()
   end
 
-  def attach_side_loads(data, _) do
+  def attach_loads(data, _) do
     data
   end
 
-  defp attach_to_many_side_loads(value, last_relationship, data, lead_path) do
+  defp attach_to_many_loads(value, last_relationship, data, lead_path) do
     values = Enum.group_by(value, &Map.get(&1, last_relationship.destination_field))
 
     map_or_update(data, lead_path, fn record ->
@@ -139,7 +139,7 @@ defmodule Ash.Actions.SideLoad do
     end)
   end
 
-  defp attach_to_one_side_loads(value, last_relationship, data, lead_path) do
+  defp attach_to_one_loads(value, last_relationship, data, lead_path) do
     values =
       value
       |> Enum.reverse()
@@ -154,11 +154,11 @@ defmodule Ash.Actions.SideLoad do
     end)
   end
 
-  defp attach_many_to_many_side_loads(data, lead_path, last_relationship, side_loads, value) do
+  defp attach_many_to_many_loads(data, lead_path, last_relationship, loads, value) do
     join_path = lead_path ++ [last_relationship.join_relationship]
 
     join_data =
-      side_loads
+      loads
       |> Map.get(join_path, [])
 
     map_or_update(data, lead_path, fn record ->
@@ -215,8 +215,8 @@ defmodule Ash.Actions.SideLoad do
   end
 
   defp do_requests(relationship, related_query, path, root_query) do
-    side_load_request =
-      side_load_request(
+    load_request =
+      load_request(
         relationship,
         related_query,
         root_query,
@@ -232,18 +232,18 @@ defmodule Ash.Actions.SideLoad do
                path
              ) do
           nil ->
-            [side_load_request]
+            [load_request]
 
           request ->
-            [side_load_request, request]
+            [load_request, request]
         end
 
       _ ->
-        [side_load_request]
+        [load_request]
     end
   end
 
-  defp side_load_request(
+  defp load_request(
          relationship,
          related_query,
          root_query,
@@ -252,7 +252,7 @@ defmodule Ash.Actions.SideLoad do
     relationship_path = Enum.reverse(Enum.map([relationship | path], &Map.get(&1, :name)))
 
     request_path = [
-      :side_load,
+      :load,
       relationship_path
     ]
 
@@ -264,8 +264,8 @@ defmodule Ash.Actions.SideLoad do
         dependent_path ->
           [
             request_path ++ [:authorization_filter],
-            [:side_load, Enum.reverse(Enum.map(dependent_path, &Map.get(&1, :name))), :data],
-            [:side_load, Enum.reverse(Enum.map(dependent_path, &Map.get(&1, :name))), :query]
+            [:load, Enum.reverse(Enum.map(dependent_path, &Map.get(&1, :name))), :data],
+            [:load, Enum.reverse(Enum.map(dependent_path, &Map.get(&1, :name))), :query]
           ]
       end
 
@@ -281,7 +281,7 @@ defmodule Ash.Actions.SideLoad do
 
         [
           [
-            :side_load,
+            :load,
             join_relationship_path,
             :data
           ]
@@ -299,11 +299,11 @@ defmodule Ash.Actions.SideLoad do
     Engine.Request.new(
       action: Ash.Resource.Info.primary_action(relationship.destination, :read),
       resource: relationship.destination,
-      name: "side_load #{source}",
+      name: "load #{source}",
       api: related_query.api,
       path: request_path,
       query:
-        side_load_query(
+        load_query(
           relationship,
           related_query,
           path,
@@ -327,14 +327,14 @@ defmodule Ash.Actions.SideLoad do
 
               path ->
                 get_in(data, [
-                  :side_load,
+                  :load,
                   Enum.reverse(Enum.map(path, &Map.get(&1, :name))),
                   :query
                 ])
             end
 
           with {:ok, new_query} <-
-                 true_side_load_query(
+                 true_load_query(
                    relationship,
                    base_query,
                    data,
@@ -389,13 +389,13 @@ defmodule Ash.Actions.SideLoad do
         dependencies =
           if path == [] do
             [
-              [:side_load, join_relationship_path_names, :authorization_filter]
+              [:load, join_relationship_path_names, :authorization_filter]
             ]
           else
             [
-              [:side_load, join_relationship_path_names, :authorization_filter],
-              [:side_load, Enum.reverse(Enum.map(path, &Map.get(&1, :name))), :data],
-              [:side_load, Enum.reverse(Enum.map(path, &Map.get(&1, :name))), :query]
+              [:load, join_relationship_path_names, :authorization_filter],
+              [:load, Enum.reverse(Enum.map(path, &Map.get(&1, :name))), :data],
+              [:load, Enum.reverse(Enum.map(path, &Map.get(&1, :name))), :query]
             ]
           end
 
@@ -406,7 +406,7 @@ defmodule Ash.Actions.SideLoad do
             dependencies ++
               [
                 [
-                  :side_load,
+                  :load,
                   Enum.reverse(Enum.map(path, &Map.get(&1, :name))) ++ [relationship.name],
                   :data
                 ]
@@ -429,11 +429,11 @@ defmodule Ash.Actions.SideLoad do
         Request.new(
           action: Ash.Resource.Info.primary_action(relationship.destination, :read),
           resource: relationship.through,
-          name: "side_load join #{join_relationship.name}",
+          name: "load join #{join_relationship.name}",
           api: related_query.api,
-          path: [:side_load, join_relationship_path_names],
+          path: [:load, join_relationship_path_names],
           query:
-            side_load_query(
+            load_query(
               join_relationship,
               related_query,
               Enum.reverse(join_relationship_path),
@@ -444,7 +444,7 @@ defmodule Ash.Actions.SideLoad do
               data ->
                 base_query =
                   case get_in(data, [
-                         :side_load,
+                         :load,
                          join_relationship_path_names,
                          :authorization_filter
                        ]) do
@@ -470,12 +470,12 @@ defmodule Ash.Actions.SideLoad do
                     path ->
                       get_in(
                         data,
-                        [:side_load, Enum.reverse(Enum.map(path, &Map.get(&1, :name))), :query]
+                        [:load, Enum.reverse(Enum.map(path, &Map.get(&1, :name))), :query]
                       )
                   end
 
                 with {:ok, new_query} <-
-                       true_side_load_query(
+                       true_load_query(
                          join_relationship,
                          base_query,
                          data,
@@ -515,7 +515,7 @@ defmodule Ash.Actions.SideLoad do
     ids =
       data
       |> get_in([
-        :side_load,
+        :load,
         destination_path,
         :data
       ])
@@ -567,7 +567,7 @@ defmodule Ash.Actions.SideLoad do
 
         path ->
           data
-          |> Map.get(:side_load, %{})
+          |> Map.get(:load, %{})
           |> Map.get(Enum.reverse(Enum.map(path, & &1.name)), %{})
           |> Map.get(:data, [])
       end
@@ -686,7 +686,7 @@ defmodule Ash.Actions.SideLoad do
   end
 
   defp remove_relationships_from_load(query) do
-    case query.side_load do
+    case query.load do
       empty when empty in [nil, []] ->
         query
 
@@ -702,11 +702,11 @@ defmodule Ash.Actions.SideLoad do
               Ash.Resource.Info.relationship(query.resource, item)
           end)
 
-        %{query | side_load: new_load}
+        %{query | load: new_load}
     end
   end
 
-  defp side_load_query_with_reverse_path(
+  defp load_query_with_reverse_path(
          root_query,
          related_query,
          reverse_path,
@@ -715,7 +715,7 @@ defmodule Ash.Actions.SideLoad do
     case Ash.Filter.parse(root_query.resource, root_query.filter) do
       {:ok, nil} ->
         related_query
-        |> Ash.Query.unset(:side_load)
+        |> Ash.Query.unset(:load)
         |> Ash.Query.filter(
           ^put_nested_relationship(
             [],
@@ -729,7 +729,7 @@ defmodule Ash.Actions.SideLoad do
 
       {:ok, parsed} ->
         related_query
-        |> Ash.Query.unset(:side_load)
+        |> Ash.Query.unset(:load)
         |> Ash.Query.filter(
           ^put_nested_relationship(
             [],
@@ -747,7 +747,7 @@ defmodule Ash.Actions.SideLoad do
     end
   end
 
-  defp side_load_query(
+  defp load_query(
          relationship,
          related_query,
          path,
@@ -778,7 +778,7 @@ defmodule Ash.Actions.SideLoad do
              Enum.drop(path, 1)
            ) do
         {:ok, reverse_path} ->
-          side_load_query_with_reverse_path(
+          load_query_with_reverse_path(
             root_query,
             related_query,
             reverse_path,
@@ -797,7 +797,7 @@ defmodule Ash.Actions.SideLoad do
   defp extract_errors(%{errors: []} = item), do: {:ok, item}
   defp extract_errors(%{errors: errors}), do: {:error, errors}
 
-  defp true_side_load_query(relationship, query, data, path) do
+  defp true_load_query(relationship, query, data, path) do
     {source_field, path} =
       if relationship.type == :many_to_many do
         join_relationship = join_relationship(relationship)
@@ -815,7 +815,7 @@ defmodule Ash.Actions.SideLoad do
 
         path ->
           data
-          |> Map.get(:side_load, %{})
+          |> Map.get(:load, %{})
           |> Map.get(path, %{})
       end
 
@@ -836,10 +836,10 @@ defmodule Ash.Actions.SideLoad do
 
     cond do
       lateral_join?(query, relationship) ->
-        {:ok, Ash.Query.unset(query, :side_load)}
+        {:ok, Ash.Query.unset(query, :load)}
 
       limit || offset ->
-        {:ok, Ash.Query.unset(query, [:side_load, :limit, :offset])}
+        {:ok, Ash.Query.unset(query, [:load, :limit, :offset])}
 
       true ->
         related_data = Map.get(source_data || %{}, :data, [])
@@ -872,7 +872,7 @@ defmodule Ash.Actions.SideLoad do
         new_query =
           query
           |> Ash.Query.filter(^[{relationship.destination_field, filter_value}])
-          |> Ash.Query.unset(:side_load)
+          |> Ash.Query.unset(:load)
 
         {:ok, new_query}
     end

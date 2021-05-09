@@ -217,7 +217,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
       assert [%{id: ^post1_id}] = Api.read!(query)
     end
 
-    test "parallelizable filter with filtered side loads" do
+    test "parallelizable filter with filtered loads" do
       post2 =
         Post
         |> new(%{title: "two"})

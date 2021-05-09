@@ -1,7 +1,7 @@
 defmodule Ash.Filter do
   # credo:disable-for-this-file Credo.Check.Readability.StrictModuleLayout
   @dialyzer {:nowarn_function, do_map: 2, map: 2}
-  alias Ash.Actions.SideLoad
+  alias Ash.Actions.Load
   alias Ash.Engine.Request
 
   alias Ash.Error.Query.{
@@ -634,7 +634,7 @@ defmodule Ash.Filter do
                         List.first(path)
                       )
 
-                    case SideLoad.reverse_relationship_path(
+                    case Load.reverse_relationship_path(
                            relationship,
                            tl(path)
                          ) do
