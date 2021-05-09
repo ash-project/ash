@@ -15,9 +15,7 @@ defmodule Ash.Error.Load.NoSuchRelationship do
       if load_path == [] do
         "No such relationship #{inspect(resource)}.#{relationship}"
       else
-        "No such relationship #{inspect(resource)}.#{relationship} at #{
-          Enum.join(load_path, ".")
-        }"
+        "No such relationship #{inspect(resource)}.#{relationship} at #{Enum.join(load_path, ".")}"
       end
     end
 
