@@ -243,7 +243,13 @@ defmodule Ash.Filter do
   Ash.Filter.parse(MyResource, [id: 1], query.aggregates)
   ```
   """
-  def parse(resource, statement, aggregates \\ %{}) do
+  def parse(resource, statement, aggregates \\ %{})
+
+  def parse(_resource, nil, _aggregates) do
+    {:ok, nil}
+  end
+
+  def parse(resource, statement, aggregates) do
     context = %{
       resource: resource,
       relationship_path: [],

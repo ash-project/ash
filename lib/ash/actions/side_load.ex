@@ -713,6 +713,20 @@ defmodule Ash.Actions.SideLoad do
          root_data_filter
        ) do
     case Ash.Filter.parse(root_query.resource, root_query.filter) do
+      {:ok, nil} ->
+        related_query
+        |> Ash.Query.unset(:side_load)
+        |> Ash.Query.filter(
+          ^put_nested_relationship(
+            [],
+            reverse_path,
+            root_data_filter,
+            false
+          )
+        )
+        |> Ash.Query.filter(^related_query.filter)
+        |> extract_errors()
+
       {:ok, parsed} ->
         related_query
         |> Ash.Query.unset(:side_load)
