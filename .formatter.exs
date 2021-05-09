@@ -63,6 +63,7 @@ locals_without_parens = [
   kind: 1,
   list: 3,
   list: 4,
+  manual?: 1,
   many_to_many: 2,
   many_to_many: 3,
   message: 1,

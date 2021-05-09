@@ -5,6 +5,7 @@ defmodule Ash.Resource.Actions.Create do
     :primary?,
     :description,
     accept: nil,
+    manual?: false,
     require_attributes: [],
     arguments: [],
     changes: [],

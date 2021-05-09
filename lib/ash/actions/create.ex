@@ -64,6 +64,8 @@ defmodule Ash.Actions.Create do
     end
   end
 
+  defp add_tenant({:ok, nil}, _), do: {:ok, nil}
+
   defp add_tenant({:ok, data}, changeset) do
     if Ash.Resource.Info.multitenancy_strategy(changeset.resource) do
       {:ok, %{data | __metadata__: Map.put(data.__metadata__, :tenant, changeset.tenant)}}
@@ -158,16 +160,20 @@ defmodule Ash.Actions.Create do
                     )
 
                   if changeset.valid? do
-                    if upsert? do
-                      resource
-                      |> Ash.DataLayer.upsert(changeset)
-                      |> add_tenant(changeset)
-                      |> manage_relationships(api, changeset, engine_opts)
+                    if action.manual? do
+                      {:ok, nil}
                     else
-                      resource
-                      |> Ash.DataLayer.create(changeset)
-                      |> add_tenant(changeset)
-                      |> manage_relationships(api, changeset, engine_opts)
+                      if upsert? do
+                        resource
+                        |> Ash.DataLayer.upsert(changeset)
+                        |> add_tenant(changeset)
+                        |> manage_relationships(api, changeset, engine_opts)
+                      else
+                        resource
+                        |> Ash.DataLayer.create(changeset)
+                        |> add_tenant(changeset)
+                        |> manage_relationships(api, changeset, engine_opts)
+                      end
                     end
                   else
                     {:error, changeset.errors}
@@ -175,8 +181,56 @@ defmodule Ash.Actions.Create do
                 end)
 
               case result do
+                {:ok, nil, _changeset, _instructions} ->
+                  if action.manual? do
+                    {:error,
+                     """
+                     No record created in create action!
+                     For manual actions, you must implement an `after_action` inside of a `change` that returns a newly created record.
+
+                     For example:
+
+                     # in the resource
+
+                     action :special_create do
+                       manual? true
+                       change MyApp.DoCreate
+                     end
+
+                     # The change
+                     defmodule MyApp.DoCreate do
+                      use Ash.Resource.Change
+
+                      def change(changeset, _, _) do
+                        Ash.Changeset.after_action(changeset, fn changeset, _result ->
+                          # result will be `nil`, because this is a manual action
+
+                          result = do_something_that_creates_the_record(changeset)
+
+                          {:ok, result}
+                        end)
+                      end
+                     end
+                     """}
+                  else
+                    {:error, "No record created in create action!"}
+                  end
+
                 {:ok, created, _changeset, instructions} ->
-                  {:ok, created, instructions}
+                  if action.manual? do
+                    {:ok, created}
+                    |> add_tenant(changeset)
+                    |> manage_relationships(api, changeset, engine_opts)
+                    |> case do
+                      {:ok, result} ->
+                        {:ok, result, instructions}
+
+                      {:error, error} ->
+                        {:error, error}
+                    end
+                  else
+                    {:ok, created, instructions}
+                  end
 
                 other ->
                   other
@@ -192,6 +246,10 @@ defmodule Ash.Actions.Create do
       api,
       engine_opts
     )
+  end
+
+  defp manage_relationships({:ok, nil}, _, _, _) do
+    {:ok, nil}
   end
 
   defp manage_relationships({:ok, created}, api, changeset, engine_opts) do

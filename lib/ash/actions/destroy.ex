@@ -88,12 +88,16 @@ defmodule Ash.Actions.Destroy do
                 changeset
                 |> Ash.Changeset.put_context(:private, %{actor: engine_opts[:actor]})
                 |> Ash.Changeset.with_hooks(fn changeset ->
-                  case Ash.DataLayer.destroy(resource, changeset) do
-                    :ok ->
-                      {:ok, record}
+                  if action.manual? do
+                    {:ok, record}
+                  else
+                    case Ash.DataLayer.destroy(resource, changeset) do
+                      :ok ->
+                        {:ok, record}
 
-                    {:error, error} ->
-                      {:error, error}
+                      {:error, error} ->
+                        {:error, error}
+                    end
                   end
                 end)
                 |> case do

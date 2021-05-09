@@ -156,18 +156,37 @@ defmodule Ash.Actions.Update do
                   changeset = set_tenant(changeset)
 
                   if changeset.valid? do
-                    resource
-                    |> Ash.DataLayer.update(changeset)
-                    |> add_tenant(changeset)
-                    |> manage_relationships(api, changeset, engine_opts)
+                    if action.manual? do
+                      {:ok, nil}
+                    else
+                      resource
+                      |> Ash.DataLayer.update(changeset)
+                      |> add_tenant(changeset)
+                      |> manage_relationships(api, changeset, engine_opts)
+                    end
                   else
                     {:error, changeset.errors}
                   end
                 end)
 
               case result do
-                {:ok, updated, _changeset, instructions} ->
-                  {:ok, updated, instructions}
+                {:ok, updated, changeset, instructions} ->
+                  if action.manual? do
+                    updated = updated || changeset.data
+
+                    {:ok, updated}
+                    |> add_tenant(changeset)
+                    |> manage_relationships(api, changeset, engine_opts)
+                    |> case do
+                      {:ok, data} ->
+                        {:ok, data, instructions}
+
+                      {:error, error} ->
+                        {:error, error}
+                    end
+                  else
+                    {:ok, updated, instructions}
+                  end
 
                 other ->
                   other

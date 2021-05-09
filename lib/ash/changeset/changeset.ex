@@ -858,7 +858,7 @@ defmodule Ash.Changeset do
   @spec with_hooks(
           t(),
           (t() ->
-             {:ok, Ash.Resource.record(), %{notifications: list(Ash.Notifier.Notification.t())}}
+             {:ok, term, %{notifications: list(Ash.Notifier.Notification.t())}}
              | {:error, term})
         ) ::
           {:ok, term, t(), %{notifications: list(Ash.Notifier.Notification.t())}} | {:error, term}
