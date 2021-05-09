@@ -29,6 +29,19 @@ defmodule Ash.Test.Actions.DestroyTest do
     end
   end
 
+  defmodule ManualDestroyAuthor do
+    @moduledoc false
+    use Ash.Resource.Change
+
+    def change(changeset, _, _) do
+      Ash.Changeset.after_action(changeset, fn _changeset, data ->
+        Ash.Test.Actions.DestroyTest.Api.destroy!(data)
+
+        {:ok, data}
+      end)
+    end
+  end
+
   defmodule Author do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets, authorizers: [Ash.Test.Authorizer]
@@ -41,7 +54,16 @@ defmodule Ash.Test.Actions.DestroyTest do
       read :read
       create :create
       update :update
-      destroy :destroy
+
+      destroy :destroy do
+        primary? true
+      end
+
+      destroy :manual do
+        accept []
+        manual? true
+        change ManualDestroyAuthor
+      end
     end
 
     attributes do
@@ -127,6 +149,19 @@ defmodule Ash.Test.Actions.DestroyTest do
       end)
 
       assert Api.get!(Author, author.id)
+    end
+  end
+
+  describe "manual destroy" do
+    test "allows destroying a record" do
+      author =
+        Author
+        |> new(%{name: "foo"})
+        |> Api.create!()
+
+      assert Api.destroy!(author, action: :manual) == :ok
+
+      refute Api.get!(Author, author.id)
     end
   end
 end

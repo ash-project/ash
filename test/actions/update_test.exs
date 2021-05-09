@@ -67,6 +67,21 @@ defmodule Ash.Test.Actions.UpdateTest do
     end
   end
 
+  defmodule ManualUpdateAuthor do
+    @moduledoc false
+    use Ash.Resource.Change
+
+    def change(changeset, _, _) do
+      Ash.Changeset.after_action(changeset, fn _changeset, data ->
+        {:ok,
+         data
+         |> Ash.Changeset.new()
+         |> Ash.Changeset.change_attribute(:name, "manual")
+         |> Ash.Test.Actions.UpdateTest.Api.update!()}
+      end)
+    end
+  end
+
   defmodule Author do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -86,6 +101,12 @@ defmodule Ash.Test.Actions.UpdateTest do
 
       update :duplicate_name do
         change {DuplicateName, []}
+      end
+
+      update :manual_update do
+        accept []
+        manual? true
+        change ManualUpdateAuthor
       end
     end
 
@@ -185,6 +206,17 @@ defmodule Ash.Test.Actions.UpdateTest do
 
       assert %Post{title: "bar", contents: "foo"} =
                post |> new(%{title: "bar", contents: "foo"}) |> Api.update!()
+    end
+  end
+
+  describe "manual updates" do
+    test "the update occurs properly" do
+      author =
+        Author
+        |> new(%{name: "auto"})
+        |> Api.create!()
+
+      assert %Author{name: "manual"} = author |> new() |> Api.update!(action: :manual_update)
     end
   end
 

@@ -430,6 +430,7 @@ defmodule Ash.Changeset do
         |> Map.put(:__validated_for_action__, action.name)
         |> Map.put(:action, action)
         |> cast_params(action, params, opts)
+        |> run_action_changes(action, opts[:actor])
         |> add_validations()
         |> mark_validated(action.name)
         |> require_arguments(action)

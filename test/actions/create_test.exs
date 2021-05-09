@@ -90,6 +90,20 @@ defmodule Ash.Test.Actions.CreateTest do
     end
   end
 
+  defmodule ManualCreateAuthor do
+    @moduledoc false
+    use Ash.Resource.Change
+
+    def change(changeset, _, _) do
+      Ash.Changeset.after_action(changeset, fn _, nil ->
+        {:ok,
+         Ash.Test.Actions.CreateTest.Author
+         |> Ash.Changeset.for_create(:create, %{name: "manual"})
+         |> Ash.Test.Actions.CreateTest.Api.create!()}
+      end)
+    end
+  end
+
   defmodule Author do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -108,6 +122,12 @@ defmodule Ash.Test.Actions.CreateTest do
 
       create :duplicate_name do
         change {DuplicateName, []}
+      end
+
+      create :manual_create do
+        accept []
+        manual? true
+        change ManualCreateAuthor
       end
 
       update :update
@@ -325,6 +345,16 @@ defmodule Ash.Test.Actions.CreateTest do
                |> change_attribute(:title, "foo")
                |> change_attribute(:binary, <<0, 1, 2>>)
                |> Api.create!()
+    end
+  end
+
+  describe "manual creates" do
+    test "the manual action succeeds" do
+      Author
+      |> Ash.Changeset.for_create(:manual_create)
+      |> Api.create!()
+
+      assert [%{name: "manual"}] = Api.read!(Author)
     end
   end
 

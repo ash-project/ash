@@ -157,7 +157,7 @@ defmodule Ash.Actions.Update do
 
                   if changeset.valid? do
                     if action.manual? do
-                      {:ok, nil}
+                      {:ok, changeset.data}
                     else
                       resource
                       |> Ash.DataLayer.update(changeset)
@@ -178,8 +178,9 @@ defmodule Ash.Actions.Update do
                     |> add_tenant(changeset)
                     |> manage_relationships(api, changeset, engine_opts)
                     |> case do
-                      {:ok, data} ->
-                        {:ok, data, instructions}
+                      {:ok, data, %{notifications: new_notifications}} ->
+                        {:ok, data,
+                         Map.update!(instructions, :notifications, &(&1 ++ new_notifications))}
 
                       {:error, error} ->
                         {:error, error}

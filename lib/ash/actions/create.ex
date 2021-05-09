@@ -222,8 +222,9 @@ defmodule Ash.Actions.Create do
                     |> add_tenant(changeset)
                     |> manage_relationships(api, changeset, engine_opts)
                     |> case do
-                      {:ok, result} ->
-                        {:ok, result, instructions}
+                      {:ok, result, %{notifications: new_notifications}} ->
+                        {:ok, result,
+                         Map.update!(instructions, :notifications, &(&1 ++ new_notifications))}
 
                       {:error, error} ->
                         {:error, error}
@@ -249,7 +250,7 @@ defmodule Ash.Actions.Create do
   end
 
   defp manage_relationships({:ok, nil}, _, _, _) do
-    {:ok, nil}
+    {:ok, nil, %{notifications: []}}
   end
 
   defp manage_relationships({:ok, created}, api, changeset, engine_opts) do
