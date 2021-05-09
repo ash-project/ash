@@ -673,7 +673,10 @@ defmodule Ash.Query do
       aggregate = Ash.Resource.Info.aggregate(query.resource, field) ->
         related = Ash.Resource.Info.related(query.resource, aggregate.relationship_path)
 
-        with %{valid?: true} = aggregate_query <-
+        with {:can?, true} <-
+               {:can?,
+                Ash.DataLayer.data_layer_can?(query.resource, {:aggregate, aggregate.kind})},
+             %{valid?: true} = aggregate_query <-
                build(related, filter: aggregate.filter, sort: aggregate.sort),
              {:ok, query_aggregate} <-
                Aggregate.new(
@@ -694,6 +697,13 @@ defmodule Ash.Query do
 
           {:error, error} ->
             add_error(query, :aggregates, Ash.Error.to_ash_error(error))
+
+          {:can?, false} ->
+            add_error(
+              query,
+              :aggregate,
+              AggregatesNotSupported.exception(resource: query.resource, feature: "using")
+            )
         end
 
       calculation = Ash.Resource.Info.calculation(query.resource, field) ->
