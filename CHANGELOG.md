@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.43.10](https://github.com/ash-project/ash/compare/v1.43.9...v1.43.10) (2021-05-09)
+
+
+
+
+### Bug Fixes:
+
+* run action changes on destroy
+
+* pattern match manage_relationship notifications fix
+
+### Improvements:
+
+* add `manual?` option for create/update/destroy
+
+* ensure data layer can perform aggregates
+
 ## [v1.43.9](https://github.com/ash-project/ash/compare/v1.43.8...v1.43.9) (2021-05-09)
 
 
