@@ -498,7 +498,11 @@ defmodule Ash.Test.Actions.UpdateTest do
         |> replace_relationship(:profile, profile2)
         |> Api.update!()
 
-      assert updated_author.profile == %{profile2 | author_id: author.id}
+      assert %{updated_author.profile | __metadata__: nil} == %{
+               profile2
+               | author_id: author.id,
+                 __metadata__: nil
+             }
     end
   end
 
@@ -576,7 +580,11 @@ defmodule Ash.Test.Actions.UpdateTest do
         |> replace_relationship(:posts, [post2])
         |> Api.update!()
 
-      assert updated_author.posts == [Api.get!(Post, post2.id)]
+      post = Api.get!(Post, post2.id)
+
+      assert Enum.map(updated_author.posts, &%{&1 | __metadata__: nil}) == [
+               %{post | __metadata__: nil}
+             ]
     end
   end
 

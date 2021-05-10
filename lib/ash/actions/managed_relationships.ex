@@ -270,6 +270,7 @@ defmodule Ash.Actions.ManagedRelationships do
          index
        ) do
     relationship.destination
+    |> Ash.Changeset.new()
     |> Ash.Changeset.for_create(action_name, input,
       require?: false,
       actor: actor,
@@ -723,6 +724,8 @@ defmodule Ash.Actions.ManagedRelationships do
           end
 
         found
+        |> Ash.Changeset.new()
+        |> set_source_context({relationship, changeset})
         |> Ash.Changeset.for_update(create_or_update, input,
           relationships: opts[:relationships] || [],
           actor: actor
@@ -776,6 +779,8 @@ defmodule Ash.Actions.ManagedRelationships do
                 {:ok, input, [], []}
               else
                 relationship.destination
+                |> Ash.Changeset.new()
+                |> set_source_context({relationship, changeset})
                 |> Ash.Changeset.for_create(action_name, input,
                   require?: false,
                   actor: actor,
@@ -823,6 +828,8 @@ defmodule Ash.Actions.ManagedRelationships do
             {:ok, input, []}
           else
             relationship.destination
+            |> Ash.Changeset.new()
+            |> set_source_context({relationship, changeset})
             |> Ash.Changeset.for_create(action_name, regular_params,
               require?: false,
               relationships: opts[:relationships],
@@ -918,7 +925,8 @@ defmodule Ash.Actions.ManagedRelationships do
                opts,
                action_name,
                changeset.tenant,
-               relationship
+               relationship,
+               changeset
              ) do
           {:ok, notifications} ->
             {:ok, current_value, notifications, []}
@@ -936,6 +944,8 @@ defmodule Ash.Actions.ManagedRelationships do
           end
 
         match
+        |> Ash.Changeset.new()
+        |> set_source_context({relationship, changeset})
         |> Ash.Changeset.for_update(action_name, input,
           actor: actor,
           relationships: opts[:relationships] || []
@@ -965,6 +975,8 @@ defmodule Ash.Actions.ManagedRelationships do
         source_value = Map.get(source_record, relationship.source_field)
 
         match
+        |> Ash.Changeset.new()
+        |> set_source_context({relationship, changeset})
         |> Ash.Changeset.for_update(action_name, regular_params,
           actor: actor,
           relationships: opts[:relationships]
@@ -1003,6 +1015,7 @@ defmodule Ash.Actions.ManagedRelationships do
                     )
 
                   result
+                  |> Ash.Changeset.new()
                   |> Ash.Changeset.for_update(join_action_name, join_params, actor: actor)
                   |> Ash.Changeset.set_context(join_relationship.context)
                   |> Ash.Changeset.set_tenant(changeset.tenant)
@@ -1102,6 +1115,32 @@ defmodule Ash.Actions.ManagedRelationships do
     end
   end
 
+  defp set_source_context(changeset, {relationship, original_changeset}) do
+    case changeset.data.__metadata__[:manage_relationship_source] ||
+           original_changeset.context[:manage_relationship_source] do
+      nil ->
+        Ash.Changeset.set_context(changeset, %{
+          manage_relationship_source: [
+            {relationship.source, relationship.name, original_changeset}
+          ]
+        })
+
+      value ->
+        Ash.Changeset.set_context(changeset, %{
+          manage_relationship_source:
+            value ++ [{relationship.source, relationship.name, original_changeset}]
+        })
+    end
+    |> Ash.Changeset.after_action(fn changeset, record ->
+      {:ok,
+       Ash.Resource.Info.put_metadata(
+         record,
+         :manage_relationship_source,
+         changeset.context[:manage_relationship_source]
+       )}
+    end)
+  end
+
   defp delete_unused(
          source_record,
          original_value,
@@ -1172,6 +1211,8 @@ defmodule Ash.Actions.ManagedRelationships do
                     notifications = join_notifications ++ all_notifications
 
                     record
+                    |> Ash.Changeset.new()
+                    |> set_source_context({relationship, changeset})
                     |> Ash.Changeset.for_destroy(action_name, %{}, actor: actor)
                     |> Ash.Changeset.set_context(relationship.context)
                     |> Ash.Changeset.set_tenant(changeset.tenant)
@@ -1202,6 +1243,8 @@ defmodule Ash.Actions.ManagedRelationships do
 
           {:destroy, action_name} ->
             record
+            |> Ash.Changeset.new()
+            |> set_source_context({relationship, changeset})
             |> Ash.Changeset.for_destroy(action_name, %{}, actor: actor)
             |> Ash.Changeset.set_context(relationship.context)
             |> Ash.Changeset.set_tenant(changeset.tenant)
@@ -1235,7 +1278,8 @@ defmodule Ash.Actions.ManagedRelationships do
                    opts,
                    action_name,
                    changeset.tenant,
-                   relationship
+                   relationship,
+                   changeset
                  ) do
               {:ok, notifications} ->
                 {:cont, {:ok, current_value, notifications}}
@@ -1256,7 +1300,8 @@ defmodule Ash.Actions.ManagedRelationships do
          opts,
          action_name,
          tenant,
-         %{type: :many_to_many} = relationship
+         %{type: :many_to_many} = relationship,
+         changeset
        ) do
     action_name =
       action_name || Ash.Resource.Info.primary_action(relationship.through, :destroy).name
@@ -1273,6 +1318,8 @@ defmodule Ash.Actions.ManagedRelationships do
     |> case do
       {:ok, result} ->
         result
+        |> Ash.Changeset.new()
+        |> set_source_context({relationship, changeset})
         |> Ash.Changeset.for_destroy(action_name, %{}, actor: actor)
         |> Ash.Changeset.set_context(relationship.context)
         |> Ash.Changeset.set_tenant(tenant)
@@ -1302,13 +1349,16 @@ defmodule Ash.Actions.ManagedRelationships do
          opts,
          action_name,
          tenant,
-         %{type: type} = relationship
+         %{type: type} = relationship,
+         changeset
        )
        when type in [:has_many, :has_one] do
     action_name =
       action_name || Ash.Resource.Info.primary_action(relationship.destination, :update).name
 
     record
+    |> Ash.Changeset.new()
+    |> set_source_context({relationship, changeset})
     |> Ash.Changeset.for_update(action_name, %{},
       relationships: opts[:relationships] || [],
       actor: actor
@@ -1334,7 +1384,8 @@ defmodule Ash.Actions.ManagedRelationships do
          opts,
          action_name,
          tenant,
-         %{type: :belongs_to} = relationship
+         %{type: :belongs_to} = relationship,
+         _changeset
        ) do
     action_name =
       action_name || Ash.Resource.Info.primary_action(relationship.source, :update).name

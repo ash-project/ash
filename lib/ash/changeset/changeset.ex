@@ -510,8 +510,7 @@ defmodule Ash.Changeset do
           else
             %{
               changeset
-              | arguments:
-                  Map.put(changeset.arguments, argument.name, default(:create, argument.default))
+              | arguments: Map.put(changeset.arguments, argument.name, default(:create, argument))
             }
           end
 
