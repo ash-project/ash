@@ -24,6 +24,9 @@ defmodule Ash.OptionsHelpers do
 
   def docs(schema) do
     schema
+    |> Enum.reject(fn {_key, opts} ->
+      opts[:hide]
+    end)
     |> sanitize_schema()
     |> Enum.map(fn {key, opts} ->
       if opts[:doc] do
@@ -46,7 +49,7 @@ defmodule Ash.OptionsHelpers do
             opts
         end
 
-      {key, new_opts}
+      {key, Keyword.delete(new_opts, :hide)}
     end)
   end
 

@@ -105,7 +105,6 @@ end
 
 Remember: default actions are already implemented for a resource, with no need to add them. They are called `:create`, `:update`, `:destroy`, and `:read`. You can use those without defining them. You only need to define them if you wish to override their configuration.
 
-
 ### Single Embeds
 
 * If the current value is `nil` - a `create` with the provided values
@@ -164,3 +163,8 @@ Currently embedded resources cannot be filtered on or sorted. However, this will
 
 The AshJsonApi extension simply exposes these attributes as maps. However, the AshGraphql extension allows you
 to specify a type (but not queries/mutations) for an embedded resource. If you do, instead of being treated as a `:json` type it will get its own named input object type and field type.
+
+## Accessing the source changeset
+
+When building changesets for embedded resources, the source changeset will be available in action changes under `changeset.context.__source__`.
+This allows you to customize the action based on the details of the parent changeset.

@@ -814,7 +814,8 @@ defmodule Ash.Query do
         )
 
       with {:arg, argument} when not is_nil(argument) <- {:arg, argument},
-           {:ok, casted} <- Ash.Changeset.cast_input(argument.type, value, argument.constraints),
+           {:ok, casted} <-
+             Ash.Changeset.cast_input(argument.type, value, argument.constraints, query),
            {:constrained, {:ok, casted}, argument} when not is_nil(casted) <-
              {:constrained,
               Ash.Type.apply_constraints(argument.type, casted, argument.constraints),

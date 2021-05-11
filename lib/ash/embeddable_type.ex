@@ -38,6 +38,12 @@ defmodule Ash.EmbeddableType do
       type: :atom,
       doc:
         "The action to use on the resource when destroying an embed. The primary is used by default."
+    ],
+    __source__: [
+      type: :any,
+      hide: true,
+      doc:
+        "This is hidden in the documentation, but this is used to add the `__source__` context to the changeset."
     ]
   ]
 
@@ -140,6 +146,8 @@ defmodule Ash.EmbeddableType do
             Ash.Resource.Info.primary_action!(__MODULE__, :create).name
 
         __MODULE__
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.set_context(%{__source__: constraints[:__source__]})
         |> Ash.Changeset.for_create(action, value)
         |> ShadowApi.create()
         |> case do
@@ -222,7 +230,8 @@ defmodule Ash.EmbeddableType do
             :load,
             :create_action,
             :destroy_action,
-            :update_action
+            :update_action,
+            :__source__
           ])
 
       def apply_constraints(nil, _), do: {:ok, nil}
@@ -308,6 +317,8 @@ defmodule Ash.EmbeddableType do
               Ash.Resource.Info.primary_action!(__MODULE__, :update).name
 
           old_value
+          |> Ash.Changeset.new()
+          |> Ash.Changeset.set_context(%{__source__: constraints[:__source__]})
           |> Ash.Changeset.for_update(action, new_uncasted_value)
           |> ShadowApi.update()
           |> case do
@@ -345,6 +356,8 @@ defmodule Ash.EmbeddableType do
                   Ash.Resource.Info.primary_action!(__MODULE__, :update).name
 
               old_value
+              |> Ash.Changeset.new()
+              |> Ash.Changeset.set_context(%{__source__: constraints[:__source__]})
               |> Ash.Changeset.for_update(action, new_uncasted_value)
               |> ShadowApi.update()
               |> case do
@@ -507,6 +520,8 @@ defmodule Ash.EmbeddableType do
 
               if value_updating_from do
                 value_updating_from
+                |> Ash.Changeset.new()
+                |> Ash.Changeset.set_context(%{__source__: constraints[:__source__]})
                 |> Ash.Changeset.for_update(action, new)
                 |> ShadowApi.update()
                 |> case do

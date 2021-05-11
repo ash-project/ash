@@ -524,6 +524,15 @@ defmodule Ash.Type do
     end)
   end
 
+  @spec constraints(Ash.Changeset.t() | Ash.Query.t(), Ash.Type.t(), Keyword.t()) :: Keyword.t()
+  def constraints(source, type, constraints) do
+    if embedded_type?(type) do
+      Keyword.put(constraints, :__source__, source)
+    else
+      constraints
+    end
+  end
+
   @spec constraints(t()) :: constraints()
   def constraints({:array, _type}) do
     @array_constraints

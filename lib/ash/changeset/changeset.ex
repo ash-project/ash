@@ -1644,7 +1644,7 @@ defmodule Ash.Changeset do
         )
 
       if argument do
-        with {:ok, casted} <- cast_input(argument.type, value, argument.constraints),
+        with {:ok, casted} <- cast_input(argument.type, value, argument.constraints, changeset),
              {:constrained, {:ok, casted}, argument} when not is_nil(casted) <-
                {:constrained,
                 Ash.Type.apply_constraints(argument.type, casted, argument.constraints),
@@ -1745,7 +1745,7 @@ defmodule Ash.Changeset do
              {:ok, prepared} <-
                prepare_change(changeset, attribute, value, attribute.constraints),
              {:ok, casted} <-
-               cast_input(attribute.type, prepared, attribute.constraints, true),
+               cast_input(attribute.type, prepared, attribute.constraints, changeset, true),
              {:ok, casted} <-
                handle_change(changeset, attribute, casted, attribute.constraints),
              :ok <-
@@ -1793,10 +1793,11 @@ defmodule Ash.Changeset do
   end
 
   @doc false
-  def cast_input(type, term, constraints, return_value? \\ false)
+  def cast_input(type, term, constraints, changeset, return_value? \\ false)
 
-  def cast_input(type, value, constraints, return_value?) do
+  def cast_input(type, value, constraints, changeset, return_value?) do
     value = handle_indexed_maps(type, value)
+    constraints = Ash.Type.constraints(changeset, type, constraints)
 
     case Ash.Type.cast_input(type, value, constraints) do
       {:ok, value} ->
@@ -1872,7 +1873,7 @@ defmodule Ash.Changeset do
              {:ok, prepared} <-
                prepare_change(changeset, attribute, value, attribute.constraints),
              {:ok, casted} <-
-               cast_input(attribute.type, prepared, attribute.constraints),
+               cast_input(attribute.type, prepared, attribute.constraints, changeset),
              {:ok, casted} <- handle_change(changeset, attribute, casted, attribute.constraints),
              {:ok, casted} <-
                Ash.Type.apply_constraints(attribute.type, casted, attribute.constraints) do
