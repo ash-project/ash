@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.43.12](https://github.com/ash-project/ash/compare/v1.43.11...v1.43.12) (2021-05-11)
+
+
+
+
+### Improvements:
+
+* set `__source__` context for embeds
+
+* utility `manage_relationship_source` context
+
 ## [v1.43.11](https://github.com/ash-project/ash/compare/v1.43.10...v1.43.11) (2021-05-09)
 
 
