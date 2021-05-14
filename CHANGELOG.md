@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.44.1](https://github.com/ash-project/ash/compare/v1.44.0...v1.44.1) (2021-05-14)
+
+
+
+
+### Bug Fixes:
+
+* handle error return in code_interface getter
+
 ## [v1.44.0](https://github.com/ash-project/ash/compare/v1.43.12...v1.44.0) (2021-05-14)
 
 
