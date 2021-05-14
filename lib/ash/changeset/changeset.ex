@@ -1133,6 +1133,7 @@ defmodule Ash.Changeset do
       doc: """
       instructions for handling records where no matching record existed in the relationship
           * `:ignore`(default) - those inputs are ignored
+          * `:match` - For "has_one" and "belongs_to" only, any input is treated as a match for an existing value. For has_many and many_to_many, this is the same as :ignore.
           * `:create` - the records are created using the destination's primary create action
           * `{:create, :action_name}` - the records are created using the specified action on the destination resource
           * `{:create, :action_name, :join_table_action_name, [:list, :of, :join_table, :params]}` - Same as `{:create, :action_name}` but takes

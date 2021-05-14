@@ -57,6 +57,7 @@ defmodule Ash.Dsl.Entity do
     with {:ok, opts} <-
            Ash.OptionsHelpers.validate(Keyword.merge(opts || [], before_validate_auto), schema),
          opts <- Keyword.merge(opts, after_validate_auto),
+         opts <- Enum.map(opts, fn {key, value} -> {schema[key][:as] || key, value} end),
          built <- struct(target, opts),
          built <- struct(built, nested_entities),
          {:ok, built} <-

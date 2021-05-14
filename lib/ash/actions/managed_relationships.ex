@@ -82,7 +82,13 @@ defmodule Ash.Actions.ManagedRelationships do
             other
         end
 
-      case find_match(List.wrap(current_value), input, pkeys, relationship) do
+      case find_match(
+             List.wrap(current_value),
+             input,
+             pkeys,
+             relationship,
+             opts[:on_no_match] == :match
+           ) do
         nil ->
           case opts[:on_lookup] do
             :ignore ->
@@ -215,7 +221,7 @@ defmodule Ash.Actions.ManagedRelationships do
          opts
        ) do
     case opts[:on_no_match] do
-      :ignore ->
+      ignore when ignore in [:ignore, :match] ->
         {:cont, {changeset, instructions}}
 
       :error ->
@@ -515,7 +521,14 @@ defmodule Ash.Actions.ManagedRelationships do
          index,
          opts
        ) do
-    match = find_match(List.wrap(original_value), input, pkeys, relationship)
+    match =
+      find_match(
+        List.wrap(original_value),
+        input,
+        pkeys,
+        relationship,
+        opts[:on_no_match] == :match
+      )
 
     if is_nil(match) || opts[:on_match] == :no_match do
       case handle_create(
@@ -1045,13 +1058,17 @@ defmodule Ash.Actions.ManagedRelationships do
     end
   end
 
-  defp find_match(current_value, input, pkeys, relationship \\ nil)
+  defp find_match(current_value, input, pkeys, relationship \\ nil, force_has_one? \\ false)
 
-  defp find_match(%Ash.NotLoaded{}, _input, _pkeys, _relationship) do
+  defp find_match(%Ash.NotLoaded{}, _input, _pkeys, _relationship, _force_has_one?) do
     nil
   end
 
-  defp find_match(current_value, input, pkeys, relationship) do
+  defp find_match([match], _input, _pkeys, %{cardinality: :one}, true) do
+    match
+  end
+
+  defp find_match(current_value, input, pkeys, relationship, _force_has_one?) do
     Enum.find(current_value, fn current_value ->
       Enum.any?(pkeys, fn pkey ->
         matches?(current_value, input, pkey, relationship)

@@ -156,6 +156,9 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
       value when value in [:ignore, :error] ->
         nil
 
+      :match ->
+        on_match_destination_actions(opts, relationship)
+
       :create ->
         all(destination(primary_action_name(relationship.destination, :create)))
 

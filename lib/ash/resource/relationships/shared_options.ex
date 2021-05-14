@@ -29,8 +29,9 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       type: :string,
       doc: "An optional description for the relationship"
     ],
-    context: [
+    relationship_context: [
       type: :any,
+      as: :context,
       doc: """
       Context to be set on any queries or changesets generated for this relationship.
 

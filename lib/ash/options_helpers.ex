@@ -49,7 +49,7 @@ defmodule Ash.OptionsHelpers do
             opts
         end
 
-      {key, Keyword.delete(new_opts, :hide)}
+      {key, Keyword.drop(new_opts, [:hide, :as])}
     end)
   end
 
