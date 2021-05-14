@@ -66,6 +66,9 @@ defmodule Ash.Api.Interface do
 
                     {:ok, result} ->
                       {:ok, result}
+
+                    {:error, error} ->
+                      {:error, error}
                   end
                 else
                   unquote(api).read(query, Keyword.drop(opts, [:query, :tenant]))
