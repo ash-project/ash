@@ -106,6 +106,10 @@ defmodule Ash.SatSolver do
     {op, filter_to_expr(left), filter_to_expr(right)}
   end
 
+  defp filter_to_expr(expr) do
+    raise ArgumentError, message: "Invalid filter expression #{inspect(expr)}"
+  end
+
   def transform_and_solve(resource, expression) do
     expression
     |> consolidate_relationships(resource)
