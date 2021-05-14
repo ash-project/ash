@@ -334,7 +334,7 @@ defmodule Ash.Query do
 
   @spec before_action(
           t(),
-          (t() -> t())
+          (t() -> t() | {t(), list(Ash.Notifier.Notification.t())})
         ) ::
           t()
   def before_action(query, func) do
@@ -346,7 +346,7 @@ defmodule Ash.Query do
           t(),
           (t(), [Ash.Resource.record()] ->
              {:ok, [Ash.Resource.record()]}
-             | {:ok, [Ash.Resource.record()]}
+             | {:ok, [Ash.Resource.record()], list(Ash.Notifier.Notification.t())}
              | {:error, term})
         ) :: t()
   def after_action(query, func) do

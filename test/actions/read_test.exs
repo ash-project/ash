@@ -6,17 +6,23 @@ defmodule Ash.Test.Actions.ReadTest do
 
   require Ash.Query
 
+  defmodule PostPreparation do
+    @moduledoc false
+    use Ash.Resource.Preparation
+
+    def prepare(query, _, _) do
+      Ash.Query.after_action(query, fn _query, authors ->
+        {:ok, Enum.map(authors, &Ash.Resource.Info.set_metadata(&1, %{prepared?: true}))}
+      end)
+    end
+  end
+
   defmodule Author do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
-    end
-
-    actions do
-      read :read
-      create :create
     end
 
     attributes do
@@ -42,8 +48,11 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     actions do
-      read :read
-      create :create
+      read :read, primary?: true
+
+      read :read_with_after_action do
+        prepare PostPreparation
+      end
     end
 
     attributes do
@@ -253,6 +262,11 @@ defmodule Ash.Test.Actions.ReadTest do
                Post
                |> Ash.Query.limit(1)
                |> Api.read()
+    end
+
+    test "after action hooks are run" do
+      assert [%{__metadata__: %{prepared?: true}}, %{__metadata__: %{prepared?: true}}] =
+               Api.read!(Post, action: :read_with_after_action)
     end
 
     test "with a limit size of 2, returns 2 records" do

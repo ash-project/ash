@@ -102,6 +102,7 @@ locals_without_parens = [
   through: 1,
   timestamps: 0,
   timestamps: 1,
+  transaction?: 1,
   type: 1,
   update: 1,
   update: 2,

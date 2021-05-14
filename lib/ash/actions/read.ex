@@ -65,7 +65,11 @@ defmodule Ash.Actions.Read do
     opts = Keyword.put(opts, :authorize?, authorize?)
     opts = Keyword.merge(opts, Map.get(query.context, :override_api_params) || [])
 
-    engine_opts = Keyword.take(opts, [:verbose?, :actor, :authorize?])
+    engine_opts =
+      opts
+      |> Keyword.take([:verbose?, :actor, :authorize?])
+      |> Keyword.put(:transaction?, action.transaction?)
+
     query = %{query | action: action}
 
     original_query = query
@@ -349,7 +353,7 @@ defmodule Ash.Actions.Read do
 
           multitenancy_attribute = Ash.Resource.Info.multitenancy_attribute(ash_query.resource)
 
-          ash_query =
+          {ash_query, before_notifications} =
             if multitenancy_attribute && ash_query.tenant do
               {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(ash_query.resource)
               attribute_value = apply(m, f, [ash_query.tenant | a])
@@ -403,7 +407,7 @@ defmodule Ash.Actions.Read do
                {:ok, query} <- Ash.DataLayer.offset(query, ash_query.offset, ash_query.resource),
                {:ok, query} <- set_tenant(query, ash_query),
                {:ok, results} <- run_query(ash_query, query),
-               {:ok, results} <- run_after_action(initial_query, results),
+               {:ok, results, after_notifications} <- run_after_action(initial_query, results),
                {:ok, with_calculations} <-
                  add_calculation_values(ash_query, results, ash_query.calculations),
                {:ok, count} <- maybe_await(count) do
@@ -414,7 +418,10 @@ defmodule Ash.Actions.Read do
                 |> Ash.Query.filter(filter)
 
               {:ok, with_calculations,
-               %{extra_data: %{ultimate_query: ultimate_query, count: count}}}
+               %{
+                 notifications: before_notifications ++ after_notifications,
+                 extra_data: %{ultimate_query: ultimate_query, count: count}
+               }}
             else
               {:ok, with_calculations, %{extra_data: %{count: count}}}
             end
@@ -466,15 +473,31 @@ defmodule Ash.Actions.Read do
   end
 
   defp run_before_action(query) do
-    Enum.reduce(query.before_action, query, & &1.(&2))
+    query.before_action
+    |> Enum.reduce({query, []}, fn before_action, {query, notifications} ->
+      case before_action.(query) do
+        {query, new_notifications} ->
+          {query, notifications ++ new_notifications}
+
+        query ->
+          {query, notifications}
+      end
+    end)
   end
 
   defp run_after_action(query, results) do
     query.after_action
-    |> Enum.reduce_while({query, {:ok, results}}, fn after_action, {query, {:ok, results}} ->
+    |> Enum.reduce_while({query, {:ok, results, []}}, fn after_action,
+                                                         {query, {:ok, results, notifications}} ->
       case after_action.(query, results) do
-        {:ok, results} -> {:cont, {query, {:ok, results}}}
-        {:error, error} -> {:halt, {query, {:error, error}}}
+        {:ok, results} ->
+          {:cont, {query, {:ok, results, notifications}}}
+
+        {:ok, results, new_notifications} ->
+          {:cont, {query, {:ok, results, notifications ++ new_notifications}}}
+
+        {:error, error} ->
+          {:halt, {query, {:error, error}}}
       end
     end)
     |> elem(1)
