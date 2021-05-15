@@ -88,10 +88,10 @@ defmodule Ash.Query.Aggregate do
     end
   end
 
-  defp default_value(:count), do: 0
-  defp default_value(:first), do: nil
-  defp default_value(:sum), do: nil
-  defp default_value(:list), do: []
+  def default_value(:count), do: 0
+  def default_value(:first), do: nil
+  def default_value(:sum), do: nil
+  def default_value(:list), do: []
 
   defp validate_query(nil), do: {:ok, nil}
 
