@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.44.2](https://github.com/ash-project/ash/compare/v1.44.1...v1.44.2) (2021-05-15)
+
+
+
+
+### Bug Fixes:
+
+* raise better error w/ invalid filter expression
+
+### Improvements:
+
+* expose `default_value/1` in aggregate
+
+* transactions for reads, notifications from read callbacks
+
 ## [v1.44.1](https://github.com/ash-project/ash/compare/v1.44.0...v1.44.1) (2021-05-14)
 
 
