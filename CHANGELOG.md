@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.44.4](https://github.com/ash-project/ash/compare/v1.44.3...v1.44.4) (2021-05-17)
+
+
+
+
+### Bug Fixes:
+
+* reverse-reverse relationship detection
+
 ## [v1.44.3](https://github.com/ash-project/ash/compare/v1.44.2...v1.44.3) (2021-05-17)
 
 
