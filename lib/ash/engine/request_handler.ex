@@ -40,6 +40,10 @@ defmodule Ash.Engine.RequestHandler do
     end
   end
 
+  def handle_continue(:next, %{request: %{state: :error}} = state) do
+    {:noreply, state}
+  end
+
   def handle_continue(:next, %{request: request} = state) do
     case Request.next(request) do
       {:continue, new_request, notifications} ->

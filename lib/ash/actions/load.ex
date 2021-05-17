@@ -728,16 +728,17 @@ defmodule Ash.Actions.Load do
         |> extract_errors()
 
       {:ok, parsed} ->
-        related_query
-        |> Ash.Query.unset(:load)
-        |> Ash.Query.filter(
-          ^put_nested_relationship(
+        filter =
+          put_nested_relationship(
             [],
             reverse_path,
             root_data_filter,
             false
           )
-        )
+
+        related_query
+        |> Ash.Query.unset(:load)
+        |> Ash.Query.filter(^filter)
         |> Ash.Query.filter(^put_nested_relationship([], reverse_path, parsed, false))
         |> Ash.Query.filter(^related_query.filter)
         |> extract_errors()
@@ -753,6 +754,8 @@ defmodule Ash.Actions.Load do
          path,
          root_query
        ) do
+    path = Enum.reverse(path)
+
     Request.resolve([[:data, :data]], fn %{data: %{data: data}} ->
       data =
         case data do
@@ -916,12 +919,14 @@ defmodule Ash.Actions.Load do
 
   defp reverse_relationship?(rel, destination_rel) do
     rel.source == destination_rel.destination &&
+      rel.destination == destination_rel.source &&
       rel.source_field == destination_rel.destination_field &&
       rel.destination_field == destination_rel.source_field &&
       Map.fetch(rel, :source_field_on_join_table) ==
         Map.fetch(destination_rel, :destination_field_on_join_table) &&
       Map.fetch(rel, :destination_field_on_join_table) ==
-        Map.fetch(destination_rel, :source_field_on_join_table) && is_nil(destination_rel.context) &&
+        Map.fetch(destination_rel, :source_field_on_join_table) &&
+      is_nil(destination_rel.context) &&
       is_nil(rel.context)
   end
 

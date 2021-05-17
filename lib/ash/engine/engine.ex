@@ -336,13 +336,17 @@ defmodule Ash.Engine do
   end
 
   def handle_info({:DOWN, _, _, pid, reason}, state) do
-    {_state, _pid, request} = get_request(state, pid)
+    case get_request(state, pid) do
+      nil ->
+        {:noreply, state}
 
-    state
-    |> log(fn -> "Request exited in failure #{request.name}: #{inspect(reason)}" end)
-    |> move_to_error(request.path)
-    |> add_error(request.path, reason)
-    |> maybe_shutdown()
+      {_state, _pid, request} ->
+        state
+        |> log(fn -> "Request exited in failure #{request.name}: #{inspect(reason)}" end)
+        |> move_to_error(request.path)
+        |> add_error(request.path, reason)
+        |> maybe_shutdown()
+    end
   end
 
   defp send_or_cast(request_handler_pid, runner_pid, runner_ref, message) do
