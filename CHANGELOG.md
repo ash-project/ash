@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.44.3](https://github.com/ash-project/ash/compare/v1.44.2...v1.44.3) (2021-05-17)
+
+
+
+
+### Bug Fixes:
+
+* support non-predicates in satsolver
+
 ## [v1.44.2](https://github.com/ash-project/ash/compare/v1.44.1...v1.44.2) (2021-05-15)
 
 
