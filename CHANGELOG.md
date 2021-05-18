@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.44.5](https://github.com/ash-project/ash/compare/v1.44.4...v1.44.5) (2021-05-18)
+
+
+
+
+### Bug Fixes:
+
+* set default values before calling resource changes
+
+### Improvements:
+
+* `ignore?` option for `manage_relationship` change
+
 ## [v1.44.4](https://github.com/ash-project/ash/compare/v1.44.3...v1.44.4) (2021-05-17)
 
 
