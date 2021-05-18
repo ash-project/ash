@@ -455,9 +455,9 @@ defmodule Ash.Changeset do
           |> Map.put(:__validated_for_action__, action.name)
           |> cast_params(action, params || %{}, opts)
           |> validate_attributes_accepted(action)
+          |> set_defaults(changeset.action_type, false)
           |> run_action_changes(action, opts[:actor])
           |> require_values(action.type, false, action.require_attributes)
-          |> set_defaults(changeset.action_type, false)
           |> add_validations()
           |> mark_validated(action.name)
           |> require_arguments(action)
@@ -1076,6 +1076,10 @@ defmodule Ash.Changeset do
   end
 
   @manage_opts [
+    ignore?: [
+      type: :any,
+      hide: true
+    ],
     type: [
       type: {:one_of, @manage_types},
       doc: """
