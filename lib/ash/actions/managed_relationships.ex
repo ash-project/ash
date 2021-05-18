@@ -47,6 +47,7 @@ defmodule Ash.Actions.ManagedRelationships do
     end)
     |> Enum.flat_map(fn {relationship, inputs} ->
       inputs
+      |> Enum.reject(fn {_, opts} -> opts[:ignore?] end)
       |> Enum.with_index()
       |> Enum.map(fn {{input, opts}, index} ->
         {{relationship, {input, opts}}, index}
@@ -321,6 +322,7 @@ defmodule Ash.Actions.ManagedRelationships do
     end)
     |> Enum.flat_map(fn {key, batches} ->
       batches
+      |> Enum.reject(fn {_, opts} -> opts[:ignore?] end)
       |> Enum.with_index()
       |> Enum.map(fn {{batch, opts}, index} ->
         opts = Keyword.put(opts, :authorize?, engine_opts[:authorize?] && opts[:authorize?])

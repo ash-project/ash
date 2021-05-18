@@ -34,10 +34,6 @@ defmodule Ash.Resource.Change.Builtins do
   ```elixir
   change manage_relationship(:add_comments, :comments, on_missing: :ignore, on_match: :no_match, on_no_match: {:create, :add_comment_to_post}
   ```
-
-  A special `:ignore?` option can be passed to tell the change not to actually happen.
-  This is useful specifically if you have tooling that looks for `manage_relationship` changes,
-  like `ash_admin`, but you want to actually handle the input yourself.
   """
   def manage_relationship(argument, relationship_name \\ nil, opts) do
     relationship_name = relationship_name || argument
