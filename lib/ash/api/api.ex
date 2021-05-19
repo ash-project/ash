@@ -220,6 +220,11 @@ defmodule Ash.Api do
                           default: false,
                           doc:
                             "If a conflict is found based on the primary key, the record is updated in the database (requires upsert support)"
+                        ],
+                        upsert_identity: [
+                          type: :atom,
+                          doc:
+                            "The identity to use when detecting conflicts for upsert?. By default, the primary key is used. Has no effect if `upsert?: true` is not provided"
                         ]
                       ]
                       |> merge_schemas(@global_opts, "Global Options")

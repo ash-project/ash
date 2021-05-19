@@ -39,7 +39,15 @@ defmodule Ash.Api.Interface do
                   opts \\ []
                 ) do
               if opts == [] && Keyword.keyword?(params_or_opts) do
-                apply(__MODULE__, elem(__ENV__.function, 0), [%{}, params_or_opts])
+                apply(
+                  __MODULE__,
+                  elem(__ENV__.function, 0),
+                  [
+                    unquote_splicing(arg_vars),
+                    %{},
+                    params_or_opts
+                  ]
+                )
               else
                 input =
                   unquote(args)
@@ -84,7 +92,15 @@ defmodule Ash.Api.Interface do
                   opts \\ []
                 ) do
               if opts == [] && Keyword.keyword?(params_or_opts) do
-                apply(__MODULE__, elem(__ENV__.function, 0), [%{}, params_or_opts])
+                apply(
+                  __MODULE__,
+                  elem(__ENV__.function, 0),
+                  [
+                    unquote_splicing(arg_vars),
+                    %{},
+                    params_or_opts
+                  ]
+                )
               else
                 input =
                   unquote(args)
@@ -126,7 +142,11 @@ defmodule Ash.Api.Interface do
                   opts \\ []
                 ) do
               if opts == [] && Keyword.keyword?(params_or_opts) do
-                apply(__MODULE__, elem(__ENV__.function, 0), [%{}, params_or_opts])
+                apply(__MODULE__, elem(__ENV__.function, 0), [
+                  unquote_splicing(arg_vars),
+                  %{},
+                  params_or_opts
+                ])
               else
                 input =
                   unquote(args)
@@ -155,7 +175,11 @@ defmodule Ash.Api.Interface do
                   opts \\ []
                 ) do
               if opts == [] && Keyword.keyword?(params_or_opts) do
-                apply(__MODULE__, elem(__ENV__.function, 0), [%{}, params_or_opts])
+                apply(__MODULE__, elem(__ENV__.function, 0), [
+                  unquote_splicing(arg_vars),
+                  %{},
+                  params_or_opts
+                ])
               else
                 input =
                   unquote(args)
@@ -185,7 +209,11 @@ defmodule Ash.Api.Interface do
                   opts \\ []
                 ) do
               if opts == [] && Keyword.keyword?(params_or_opts) do
-                apply(__MODULE__, elem(__ENV__.function, 0), [%{}, params_or_opts])
+                apply(__MODULE__, elem(__ENV__.function, 0), [
+                  unquote_splicing(arg_vars),
+                  %{},
+                  params_or_opts
+                ])
               else
                 input =
                   unquote(args)
@@ -215,7 +243,11 @@ defmodule Ash.Api.Interface do
                   opts \\ []
                 ) do
               if opts == [] && Keyword.keyword?(params_or_opts) do
-                apply(__MODULE__, elem(__ENV__.function, 0), [%{}, params_or_opts])
+                apply(__MODULE__, elem(__ENV__.function, 0), [
+                  unquote_splicing(arg_vars),
+                  %{},
+                  params_or_opts
+                ])
               else
                 input =
                   unquote(args)
@@ -245,7 +277,11 @@ defmodule Ash.Api.Interface do
                   opts \\ []
                 ) do
               if opts == [] && Keyword.keyword?(params_or_opts) do
-                apply(__MODULE__, elem(__ENV__.function, 0), [%{}, params_or_opts])
+                apply(__MODULE__, elem(__ENV__.function, 0), [
+                  unquote_splicing(arg_vars),
+                  %{},
+                  params_or_opts
+                ])
               else
                 input =
                   unquote(args)
@@ -275,7 +311,11 @@ defmodule Ash.Api.Interface do
                   opts \\ []
                 ) do
               if opts == [] && Keyword.keyword?(params_or_opts) do
-                apply(__MODULE__, elem(__ENV__.function, 0), [%{}, params_or_opts])
+                apply(__MODULE__, elem(__ENV__.function, 0), [
+                  unquote_splicing(arg_vars),
+                  %{},
+                  params_or_opts
+                ])
               else
                 input =
                   unquote(args)

@@ -897,7 +897,7 @@ defmodule Ash.Actions.ManagedRelationships do
             {:error, error}
         end
 
-      :ignore ->
+      ignore when ignore in [:ignore, :match] ->
         {:ok, current_value, [], []}
     end
   end

@@ -95,7 +95,7 @@ defmodule Ash.DataLayer do
               {:ok, list(Ash.Resource.t())} | {:error, term}
   @callback create(Ash.Resource.t(), Ash.Changeset.t()) ::
               {:ok, Ash.Resource.t()} | {:error, term}
-  @callback upsert(Ash.Resource.t(), Ash.Changeset.t()) ::
+  @callback upsert(Ash.Resource.t(), Ash.Changeset.t(), list(atom)) ::
               {:ok, Ash.Resource.t()} | {:error, term}
   @callback update(Ash.Resource.t(), Ash.Changeset.t()) ::
               {:ok, Ash.Resource.t()} | {:error, term}
@@ -129,7 +129,7 @@ defmodule Ash.DataLayer do
                       offset: 3,
                       transaction: 2,
                       rollback: 2,
-                      upsert: 2,
+                      upsert: 3,
                       operators: 1,
                       functions: 1,
                       in_transaction?: 1,
@@ -221,10 +221,10 @@ defmodule Ash.DataLayer do
     Ash.DataLayer.data_layer(resource).set_tenant(resource, query, term)
   end
 
-  @spec upsert(Ash.Resource.t(), Ash.Changeset.t()) ::
+  @spec upsert(Ash.Resource.t(), Ash.Changeset.t(), list(atom)) ::
           {:ok, Ash.Resource.record()} | {:error, term}
-  def upsert(resource, changeset) do
-    Ash.DataLayer.data_layer(resource).upsert(resource, changeset)
+  def upsert(resource, changeset, keys) do
+    Ash.DataLayer.data_layer(resource).upsert(resource, changeset, keys)
   end
 
   @spec set_context(Ash.Resource.t(), data_layer_query(), map) ::

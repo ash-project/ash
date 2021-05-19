@@ -13,6 +13,26 @@ defmodule Ash.Actions.Create do
           | {:error, term}
   def run(api, changeset, action, opts) do
     upsert? = opts[:upsert?] || false
+
+    upsert_keys =
+      case opts[:upsert_identity] do
+        nil ->
+          Ash.Resource.Info.primary_key(changeset.resource)
+
+        identity ->
+          changeset.resource
+          |> Ash.Resource.Info.identities()
+          |> Enum.find(&(&1.name == identity))
+          |> Kernel.||(
+            raise ArgumentError,
+                  "No identity found for #{inspect(changeset.resource)} called #{
+                    inspect(identity)
+                  }"
+          )
+          |> Map.get(:keys)
+      end
+      |> IO.inspect()
+
     resource = changeset.resource
 
     opts =
@@ -49,7 +69,8 @@ defmodule Ash.Actions.Create do
              engine_opts,
              action,
              resource,
-             api
+             api,
+             upsert_keys
            ) do
       add_notifications(created, engine_result, opts)
     else
@@ -101,7 +122,8 @@ defmodule Ash.Actions.Create do
          engine_opts,
          action,
          resource,
-         api
+         api,
+         upsert_keys
        ) do
     authorization_request =
       Request.new(
@@ -165,7 +187,7 @@ defmodule Ash.Actions.Create do
                     else
                       if upsert? do
                         resource
-                        |> Ash.DataLayer.upsert(changeset)
+                        |> Ash.DataLayer.upsert(changeset, upsert_keys)
                         |> add_tenant(changeset)
                         |> manage_relationships(api, changeset, engine_opts)
                       else
