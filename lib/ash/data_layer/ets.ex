@@ -174,7 +174,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   @impl true
-  def upsert(resource, changeset) do
+  def upsert(resource, changeset, _) do
     update(resource, changeset)
   end
 

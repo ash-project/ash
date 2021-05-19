@@ -31,7 +31,6 @@ defmodule Ash.Actions.Create do
           )
           |> Map.get(:keys)
       end
-      |> IO.inspect()
 
     resource = changeset.resource
 

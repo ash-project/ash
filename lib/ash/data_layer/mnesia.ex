@@ -256,7 +256,7 @@ defmodule Ash.DataLayer.Mnesia do
   end
 
   @impl true
-  def upsert(resource, changeset) do
+  def upsert(resource, changeset, _) do
     create(resource, changeset)
   end
 
