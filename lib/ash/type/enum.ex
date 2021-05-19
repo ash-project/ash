@@ -73,7 +73,7 @@ defmodule Ash.Type.Enum do
       end
 
       @impl unquote(__MODULE__)
-      @spec match(term) :: {:ok, term} | :error
+      @spec match(term) :: {:ok, atom} | :error
       def match(value) when value in @values, do: {:ok, value}
       def match(value) when value in @string_values, do: {:ok, String.to_existing_atom(value)}
 

@@ -1,20 +1,27 @@
 defmodule Ash.Api.Interface do
   @moduledoc false
 
-  defmacro define_interface(api, resource) do
-    quote bind_quoted: [api: api, resource: resource], generated: true do
-      for interface <- Ash.Resource.Info.interfaces(resource) do
-        action = Ash.Resource.Info.action(resource, interface.action || interface.name)
+  @doc false
+  def require_action(resource, interface) do
+    action = Ash.Resource.Info.action(resource, interface.action || interface.name)
 
-        unless action do
-          raise Ash.Error.Dsl.DslError,
-            module: resource,
-            message:
-              "The interface of #{inspect(resource)} refers to a non-existent action #{
-                interface.action || interface.name
-              }",
-            path: [:interfaces, :interface, interface.name]
-        end
+    unless action do
+      raise Ash.Error.Dsl.DslError,
+        module: resource,
+        message:
+          "The interface of #{inspect(resource)} refers to a non-existent action #{
+            interface.action || interface.name
+          }",
+        path: [:interfaces, :interface, interface.name]
+    end
+
+    action
+  end
+
+  defmacro define_interface(api, resource) do
+    quote bind_quoted: [api: api, resource: resource], generated: true, location: :keep do
+      for interface <- Ash.Resource.Info.interfaces(resource) do
+        action = Ash.Api.Interface.require_action(resource, interface)
 
         args = interface.args || []
         arg_vars = Enum.map(args, &{&1, [], Elixir})
@@ -33,6 +40,7 @@ defmodule Ash.Api.Interface do
         case action.type do
           :read ->
             @doc doc
+            @dialyzer {:nowarn_function, {interface.name, Enum.count(args) + 2}}
             def unquote(interface.name)(
                   unquote_splicing(arg_vars),
                   params_or_opts \\ %{},
@@ -86,6 +94,7 @@ defmodule Ash.Api.Interface do
 
             @doc doc
             # sobelow_skip ["DOS.BinToAtom"]
+            @dialyzer {:nowarn_function, {:"#{interface.name}!", Enum.count(args) + 2}}
             def unquote(:"#{interface.name}!")(
                   unquote_splicing(arg_vars),
                   params_or_opts \\ %{},
@@ -136,6 +145,7 @@ defmodule Ash.Api.Interface do
 
           :create ->
             @doc doc
+            @dialyzer {:nowarn_function, {interface.name, Enum.count(args) + 2}}
             def unquote(interface.name)(
                   unquote_splicing(arg_vars),
                   params_or_opts \\ %{},
@@ -168,6 +178,7 @@ defmodule Ash.Api.Interface do
             end
 
             @doc doc
+            @dialyzer {:nowarn_function, {:"#{interface.name}!", Enum.count(args) + 2}}
             # sobelow_skip ["DOS.BinToAtom"]
             def unquote(:"#{interface.name}!")(
                   unquote_splicing(arg_vars),
@@ -202,6 +213,7 @@ defmodule Ash.Api.Interface do
 
           :update ->
             @doc doc
+            @dialyzer {:nowarn_function, {interface.name, Enum.count(args) + 3}}
             def unquote(interface.name)(
                   record,
                   unquote_splicing(arg_vars),
@@ -236,6 +248,7 @@ defmodule Ash.Api.Interface do
 
             @doc doc
             # sobelow_skip ["DOS.BinToAtom"]
+            @dialyzer {:nowarn_function, {:"#{interface.name}!", Enum.count(args) + 3}}
             def unquote(:"#{interface.name}!")(
                   record,
                   unquote_splicing(arg_vars),
@@ -270,6 +283,7 @@ defmodule Ash.Api.Interface do
 
           :destroy ->
             @doc doc
+            @dialyzer {:nowarn_function, {interface.name, Enum.count(args) + 3}}
             def unquote(interface.name)(
                   record,
                   unquote_splicing(arg_vars),
@@ -304,6 +318,7 @@ defmodule Ash.Api.Interface do
 
             @doc doc
             # sobelow_skip ["DOS.BinToAtom"]
+            @dialyzer {:nowarn_function, {:"#{interface.name}!", Enum.count(args) + 3}}
             def unquote(:"#{interface.name}!")(
                   record,
                   unquote_splicing(arg_vars),
@@ -565,7 +580,7 @@ defmodule Ash.Api.Interface do
   end
 
   defmacro enforce_query_or_resource!(query_or_resource) do
-    quote do
+    quote generated: true do
       case Ash.Api.Interface.do_enforce_query_or_resource!(unquote(query_or_resource)) do
         :ok ->
           :ok
@@ -591,7 +606,7 @@ defmodule Ash.Api.Interface do
   def do_enforce_query_or_resource!(_something), do: :error
 
   defmacro enforce_resource!(resource) do
-    quote do
+    quote generated: true do
       if Ash.Resource.Info.resource?(unquote(resource)) do
         :ok
       else
@@ -605,7 +620,7 @@ defmodule Ash.Api.Interface do
   end
 
   defmacro enforce_keyword_list!(list) do
-    quote do
+    quote generated: true do
       if Keyword.keyword?(unquote(list)) do
         :ok
       else
