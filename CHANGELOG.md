@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.44.7](https://github.com/ash-project/ash/compare/v1.44.6...v1.44.7) (2021-05-19)
+
+
+
+
+### Bug Fixes:
+
+* fix code interface + `args` combo error
+
+### Improvements:
+
+* support specifying the `upsert_identity` option
+
 ## [v1.44.6](https://github.com/ash-project/ash/compare/v1.44.5...v1.44.6) (2021-05-18)
 
 
