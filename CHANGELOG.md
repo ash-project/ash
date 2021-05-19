@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.44.8](https://github.com/ash-project/ash/compare/v1.44.7...v1.44.8) (2021-05-19)
+
+
+
+
+### Bug Fixes:
+
+* fix dialyzer errors for enum + code interface
+
 ## [v1.44.7](https://github.com/ash-project/ash/compare/v1.44.6...v1.44.7) (2021-05-19)
 
 
