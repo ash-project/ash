@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.44.9](https://github.com/ash-project/ash/compare/v1.44.8...v1.44.9) (2021-05-20)
+
+
+
+
+### Improvements:
+
+* set moduledoc to description if one is not set
+
 ## [v1.44.8](https://github.com/ash-project/ash/compare/v1.44.7...v1.44.8) (2021-05-19)
 
 
