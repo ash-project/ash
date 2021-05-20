@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.44.11](https://github.com/ash-project/ash/compare/v1.44.10...v1.44.11) (2021-05-20)
+
+
+
+
+### Improvements:
+
+* calculation.select/2 + `select` calculation option
+
 ## [v1.44.10](https://github.com/ash-project/ash/compare/v1.44.9...v1.44.10) (2021-05-20)
 
 
