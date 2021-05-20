@@ -113,7 +113,7 @@ defmodule Ash.Changeset do
     end
   end
 
-  @type t :: %__MODULE__{}
+  @type t :: %__MODULE__{data: Ash.Resource.record()}
 
   alias Ash.Error.{
     Changes.InvalidArgument,

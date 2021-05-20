@@ -338,12 +338,20 @@ defmodule Ash.Api do
   @callback page(Ash.Page.page(), page_request) ::
               {:ok, Ash.Page.page()} | {:error, term}
 
+  @type load_statement ::
+          Ash.Query.t()
+          | [atom]
+          | atom
+          | Keyword.t()
+          | list(atom | {atom, atom | Keyword.t()})
+
   @doc """
   Load fields or relationships on already fetched records. See `c:load/3` for more information.
   """
+
   @callback load!(
               record_or_records :: Ash.Resource.record() | [Ash.Resource.record()],
-              query :: Ash.Query.t(),
+              query :: load_statement(),
               opts :: Keyword.t()
             ) ::
               Ash.Resource.record() | [Ash.Resource.record()] | no_return
@@ -359,7 +367,7 @@ defmodule Ash.Api do
   """
   @callback load(
               record_or_records :: Ash.Resource.record() | [Ash.Resource.record()],
-              query :: Ash.Query.t(),
+              query :: load_statement(),
               opts :: Keyword.t()
             ) ::
               {:ok, Ash.Resource.record() | [Ash.Resource.record()]} | {:error, term}
@@ -628,13 +636,6 @@ defmodule Ash.Api do
   end
 
   @doc false
-  @spec load!(
-          Ash.Api.t(),
-          Ash.Resource.record() | list(Ash.Resource.record()),
-          Ash.Query.t() | list(atom | {atom, list()}),
-          Keyword.t()
-        ) ::
-          list(Ash.Resource.record()) | Ash.Resource.record() | no_return
   def load!(api, data, query, opts \\ []) do
     opts = Ash.OptionsHelpers.validate!(opts, @load_opts_schema)
 
@@ -644,13 +645,6 @@ defmodule Ash.Api do
   end
 
   @doc false
-  @spec load(
-          Ash.Api.t(),
-          Ash.Resource.record() | list(Ash.Resource.record()),
-          Ash.Query.t() | list(atom | {atom, list()}),
-          Keyword.t()
-        ) ::
-          {:ok, list(Ash.Resource.record()) | Ash.Resource.record()} | {:error, term}
   def load(api, data, query, opts \\ [])
   def load(_, [], _, _), do: {:ok, []}
   def load(_, nil, _, _), do: {:ok, nil}
@@ -674,7 +668,7 @@ defmodule Ash.Api do
     api
     |> load(List.wrap(data), query, opts)
     |> case do
-      {:ok, [data]} -> {:ok, data}
+      {:ok, data} -> {:ok, Enum.at(data, 0)}
       {:error, error} -> {:error, error}
     end
   end

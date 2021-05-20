@@ -363,15 +363,12 @@ defmodule Ash.Api.Interface do
         Ash.Api.Interface.define_interface(__MODULE__, resource)
       end
 
-      # @spec get!(Ash.Resource.t(), term, Keyword.t()) :: Ash.Resource.record() | no_return
       def get!(resource, id_or_filter, params \\ []) do
         Ash.Api.Interface.enforce_resource!(resource)
 
         Api.get!(__MODULE__, resource, id_or_filter, params)
       end
 
-      # @spec get(Ash.Resource.t(), term, Keyword.t()) ::
-      #         {:ok, Ash.Resource.record() | nil} | {:error, Ash.Error.t()}
       def get(resource, id_or_filter, params \\ []) do
         Ash.Api.Interface.enforce_resource!(resource)
         Ash.Api.Interface.enforce_keyword_list!(params)
@@ -382,7 +379,6 @@ defmodule Ash.Api.Interface do
         end
       end
 
-      # @spec read!(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
       def read!(query, opts \\ [])
 
       def read!(query, opts) do
@@ -405,8 +401,6 @@ defmodule Ash.Api.Interface do
         end
       end
 
-      # @spec read_one!(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
-      #         {:ok, Ash.Resource.record() | nil} | {:error, Ash.Error.t()} | no_return
       def read_one!(query, opts \\ [])
 
       def read_one!(query, opts) do

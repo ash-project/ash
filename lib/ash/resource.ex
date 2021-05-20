@@ -46,6 +46,10 @@ defmodule Ash.Resource do
     quote do
       require Ash.Schema
 
+      if !@moduledoc do
+        @moduledoc Ash.Resource.Info.description(__MODULE__) || false
+      end
+
       Ash.Schema.define_schema()
 
       @all_arguments __MODULE__

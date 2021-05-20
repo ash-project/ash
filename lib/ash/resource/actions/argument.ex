@@ -1,6 +1,15 @@
 defmodule Ash.Resource.Actions.Argument do
   @moduledoc "Represents an argument to an action"
-  defstruct [:allow_nil?, :type, :name, :default, :private?, :sensitive?, constraints: []]
+  defstruct [
+    :allow_nil?,
+    :type,
+    :name,
+    :default,
+    :private?,
+    :sensitive?,
+    :description,
+    constraints: []
+  ]
 
   @type t :: %__MODULE__{}
 
@@ -41,6 +50,10 @@ defmodule Ash.Resource.Actions.Argument do
         type: :keyword_list,
         default: [],
         doc: "Type constraints on the argument"
+      ],
+      description: [
+        type: :string,
+        doc: "An optional description for the argument."
       ]
     ]
   end
