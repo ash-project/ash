@@ -45,6 +45,7 @@ defmodule Ash.Test.CalculationTest do
 
     calculations do
       calculate :full_name, :string, {Concat, keys: [:first_name, :last_name]} do
+        select [:first_name, :last_name]
         # We currently need to use the [allow_empty?: true, trim?: false] constraints here.
         # As it's an empty string, the separator would otherwise be trimmed and set to `nil`.
         argument :separator, :string,
@@ -89,6 +90,18 @@ defmodule Ash.Test.CalculationTest do
   test "arguments can be supplied" do
     full_names =
       User
+      |> Ash.Query.load(full_name: %{separator: " - "})
+      |> Api.read!()
+      |> Enum.map(& &1.full_name)
+      |> Enum.sort()
+
+    assert full_names == ["brian - cranston", "zach - daniel"]
+  end
+
+  test "fields are selected if necessary for the calculation" do
+    full_names =
+      User
+      |> Ash.Query.select(:first_name)
       |> Ash.Query.load(full_name: %{separator: " - "})
       |> Api.read!()
       |> Enum.map(& &1.full_name)

@@ -18,7 +18,9 @@ defmodule Ash.Calculation do
 
       def describe(opts), do: inspect({__MODULE__, opts})
 
-      defoverridable init: 1, type: 0, describe: 1
+      def select(_query, _opts), do: []
+
+      defoverridable init: 1, type: 0, describe: 1, select: 2
     end
   end
 
@@ -27,4 +29,5 @@ defmodule Ash.Calculation do
   @callback describe(Keyword.t()) :: String.t()
   @callback calculate([Ash.Resource.record()], Keyword.t(), map) ::
               {:ok, [term]} | [term] | {:error, term}
+  @callback select(Ash.Query.t(), Keyword.t()) :: list(atom)
 end

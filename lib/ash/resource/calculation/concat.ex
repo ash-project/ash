@@ -10,6 +10,10 @@ defmodule Ash.Resource.Calculation.Concat do
     end
   end
 
+  def select(_query, opts) do
+    opts[:keys]
+  end
+
   def calculate(records, opts, _) do
     Enum.map(records, fn record ->
       Enum.map_join(opts[:keys], opts[:separator] || "", fn key ->

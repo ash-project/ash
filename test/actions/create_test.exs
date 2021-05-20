@@ -614,7 +614,7 @@ defmodule Ash.Test.Actions.CreateTest do
         |> replace_relationship(:author, author)
         |> Api.create!()
 
-      assert post.author == author
+      assert post.author.id == author.id
     end
   end
 

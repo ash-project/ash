@@ -634,8 +634,8 @@ defmodule Ash.Test.Actions.UpdateTest do
       |> replace_relationship(:author, author2)
       |> Api.update!()
 
-      assert Api.get!(Author, author2.id, load: [:posts]).posts == [
-               Api.get!(Post, post.id)
+      assert Enum.map(Api.get!(Author, author2.id, load: [:posts]).posts, & &1.id) == [
+               Api.get!(Post, post.id).id
              ]
     end
 
@@ -658,8 +658,8 @@ defmodule Ash.Test.Actions.UpdateTest do
 
       updated_post = post |> new() |> replace_relationship(:author, author2) |> Api.update!()
 
-      assert updated_post.author ==
-               Api.get!(Author, author2.id)
+      assert updated_post.author.id ==
+               Api.get!(Author, author2.id).id
     end
   end
 

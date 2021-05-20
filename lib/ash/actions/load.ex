@@ -82,9 +82,14 @@ defmodule Ash.Actions.Load do
 
   defp maybe_select(query, field) do
     if query.select do
-      Ash.Query.select(query, [field])
+      Ash.Query.select(query, List.wrap(field))
     else
-      query
+      to_select =
+        query.resource
+        |> Ash.Resource.Info.attributes()
+        |> Enum.map(& &1.name)
+
+      Ash.Query.select(query, to_select)
     end
   end
 

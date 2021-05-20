@@ -90,6 +90,7 @@ locals_without_parens = [
   required?: 1,
   resource: 1,
   resource: 2,
+  select: 1,
   sensitive?: 1,
   soft?: 1,
   sort: 1,

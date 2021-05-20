@@ -635,19 +635,27 @@ defmodule Ash.Query do
 
             load_relationship(query, [{field, nested_query}])
 
-          calculation = Ash.Resource.Info.calculation(query.resource, field) ->
-            {module, opts} = module_and_opts(calculation.calculation)
+          resource_calculation = Ash.Resource.Info.calculation(query.resource, field) ->
+            {module, opts} = module_and_opts(resource_calculation.calculation)
 
-            with {:ok, args} <- validate_arguments(calculation, rest),
+            with {:ok, args} <- validate_arguments(resource_calculation, rest),
                  {:ok, calculation} <-
                    Calculation.new(
-                     calculation.name,
+                     resource_calculation.name,
                      module,
                      opts,
                      args
                    ) do
               calculation = %{calculation | load: field}
-              %{query | calculations: Map.put(query.calculations, field, calculation)}
+
+              fields_to_select =
+                resource_calculation.select
+                |> Kernel.||([])
+                |> Enum.concat(module.select(query, opts) || [])
+
+              query
+              |> Map.update!(:calculations, &Map.put(&1, field, calculation))
+              |> maybe_select(fields_to_select)
             end
 
           true ->
@@ -706,18 +714,26 @@ defmodule Ash.Query do
             )
         end
 
-      calculation = Ash.Resource.Info.calculation(query.resource, field) ->
+      resource_calculation = Ash.Resource.Info.calculation(query.resource, field) ->
         {module, opts} =
-          case calculation.calculation do
+          case resource_calculation.calculation do
             {module, opts} -> {module, opts}
             module -> {module, []}
           end
 
-        with {:ok, args} <- validate_arguments(calculation, %{}),
+        with {:ok, args} <- validate_arguments(resource_calculation, %{}),
              {:ok, calculation} <-
-               Calculation.new(calculation.name, module, opts, args) do
+               Calculation.new(resource_calculation.name, module, opts, args) do
           calculation = %{calculation | load: field}
-          %{query | calculations: Map.put(query.calculations, field, calculation)}
+
+          fields_to_select =
+            resource_calculation.select
+            |> Kernel.||([])
+            |> Enum.concat(module.select(query, opts) || [])
+
+          query
+          |> Map.update!(:calculations, &Map.put(&1, field, calculation))
+          |> maybe_select(fields_to_select)
         else
           {:error, error} ->
             add_error(query, :load, error)
@@ -725,6 +741,19 @@ defmodule Ash.Query do
 
       true ->
         add_error(query, :load, "Could not load #{inspect(field)}")
+    end
+  end
+
+  defp maybe_select(query, field) do
+    if query.select do
+      Ash.Query.select(query, List.wrap(field))
+    else
+      to_select =
+        query.resource
+        |> Ash.Resource.Info.attributes()
+        |> Enum.map(& &1.name)
+
+      Ash.Query.select(query, to_select)
     end
   end
 
