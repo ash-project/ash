@@ -113,6 +113,7 @@ locals_without_parens = [
   uuid_primary_key: 2,
   validate: 1,
   validate: 2,
+  validate_destination_field?: 1,
   violation_message: 1,
   warn_on_compile_failure?: 1,
   writable?: 1
