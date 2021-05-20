@@ -17,6 +17,7 @@ defmodule Ash.Resource.Relationships.HasOne do
     :read_action,
     :not_found_message,
     :violation_message,
+    validate_destination_field?: true,
     cardinality: :one,
     type: :has_one
   ]

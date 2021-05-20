@@ -20,6 +20,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :writable?,
     :context,
     :description,
+    validate_destination_field?: true,
     cardinality: :one,
     type: :belongs_to
   ]

@@ -15,6 +15,12 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       doc:
         "The field on the related resource that should match the `source_field` on this resource."
     ],
+    validate_destination_field?: [
+      type: :boolean,
+      default: true,
+      doc:
+        "Whether or not to validate that the destination field exists on the destination resource"
+    ],
     source_field: [
       type: :atom,
       doc:

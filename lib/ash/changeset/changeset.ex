@@ -1937,7 +1937,7 @@ defmodule Ash.Changeset do
              | {:error, term})
         ) :: t()
   def after_action(changeset, func) do
-    %{changeset | after_action: [func | changeset.after_action]}
+    %{changeset | after_action: changeset.after_action ++ [func]}
   end
 
   @doc "Returns the original data with attribute changes merged, if the changeset is valid."

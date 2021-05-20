@@ -59,4 +59,11 @@ defmodule Ash.Resource.Change.Builtins do
   def load(value) do
     {Ash.Resource.Change.Load, target: value}
   end
+
+  @doc """
+  Passes the provided value into `Ash.Changeset.select/3`
+  """
+  def select(value) do
+    {Ash.Resource.Change.Select, target: value}
+  end
 end
