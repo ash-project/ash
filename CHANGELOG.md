@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.44.10](https://github.com/ash-project/ash/compare/v1.44.9...v1.44.10) (2021-05-20)
+
+
+
+
+### Bug Fixes:
+
+* run after_action hooks in the proper order
+
+### Improvements:
+
+* add `validate_destination_field?`
+
+* add builtin `select` change
+
 ## [v1.44.9](https://github.com/ash-project/ash/compare/v1.44.8...v1.44.9) (2021-05-20)
 
 
