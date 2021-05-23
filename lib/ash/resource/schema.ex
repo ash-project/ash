@@ -7,56 +7,114 @@ defmodule Ash.Schema do
   # schema for persistence.
 
   defmacro define_schema do
-    quote unquote: false do
-      alias Ash.Query.Aggregate
-      use Ecto.Schema
-      @primary_key false
+    if Ash.Resource.Info.embedded?(__CALLER__.module) do
+      quote unquote: false do
+        alias Ash.Query.Aggregate
+        use Ecto.Schema
+        @primary_key false
 
-      schema Ash.DataLayer.source(__MODULE__) do
-        for relationship <- Ash.Resource.Info.relationships(__MODULE__) do
-          @struct_fields {relationship.name,
-                          %Ash.NotLoaded{type: :relationship, field: relationship.name}}
+        embedded_schema do
+          for relationship <- Ash.Resource.Info.relationships(__MODULE__) do
+            @struct_fields {relationship.name,
+                            %Ash.NotLoaded{type: :relationship, field: relationship.name}}
+          end
+
+          for attribute <- Ash.Resource.Info.attributes(__MODULE__) do
+            read_after_writes? = attribute.generated? and is_nil(attribute.default)
+
+            field(attribute.name, Ash.Type.ecto_type(attribute.type),
+              primary_key: attribute.primary_key?,
+              read_after_writes: read_after_writes?,
+              redacted: attribute.sensitive?
+            )
+          end
+
+          field(:aggregates, :map, virtual: true, default: %{})
+          field(:calculations, :map, virtual: true, default: %{})
+          field(:__metadata__, :map, virtual: true, default: %{})
+
+          for aggregate <- Ash.Resource.Info.aggregates(__MODULE__) do
+            {:ok, type} = Aggregate.kind_to_type(aggregate.kind, :string)
+
+            field(aggregate.name, Ash.Type.ecto_type(type), virtual: true)
+
+            struct_fields = Keyword.delete(@struct_fields, aggregate.name)
+            Module.delete_attribute(__MODULE__, :struct_fields)
+            Module.register_attribute(__MODULE__, :struct_fields, accumulate: true)
+            Enum.each(struct_fields, &Module.put_attribute(__MODULE__, :struct_fields, &1))
+
+            @struct_fields {aggregate.name,
+                            %Ash.NotLoaded{type: :aggregate, field: aggregate.name}}
+          end
+
+          for calculation <- Ash.Resource.Info.calculations(__MODULE__) do
+            {mod, _} = calculation.calculation
+
+            field(calculation.name, Ash.Type.ecto_type(mod.type()), virtual: true)
+
+            struct_fields = Keyword.delete(@struct_fields, calculation.name)
+            Module.delete_attribute(__MODULE__, :struct_fields)
+            Module.register_attribute(__MODULE__, :struct_fields, accumulate: true)
+            Enum.each(struct_fields, &Module.put_attribute(__MODULE__, :struct_fields, &1))
+
+            @struct_fields {calculation.name,
+                            %Ash.NotLoaded{type: :calculation, field: calculation.name}}
+          end
         end
+      end
+    else
+      quote unquote: false do
+        alias Ash.Query.Aggregate
+        use Ecto.Schema
+        @primary_key false
 
-        for attribute <- Ash.Resource.Info.attributes(__MODULE__) do
-          read_after_writes? = attribute.generated? and is_nil(attribute.default)
+        schema Ash.DataLayer.source(__MODULE__) do
+          for relationship <- Ash.Resource.Info.relationships(__MODULE__) do
+            @struct_fields {relationship.name,
+                            %Ash.NotLoaded{type: :relationship, field: relationship.name}}
+          end
 
-          field(attribute.name, Ash.Type.ecto_type(attribute.type),
-            primary_key: attribute.primary_key?,
-            read_after_writes: read_after_writes?,
-            redacted: attribute.sensitive?
-          )
-        end
+          for attribute <- Ash.Resource.Info.attributes(__MODULE__) do
+            read_after_writes? = attribute.generated? and is_nil(attribute.default)
 
-        field(:aggregates, :map, virtual: true, default: %{})
-        field(:calculations, :map, virtual: true, default: %{})
-        field(:__metadata__, :map, virtual: true, default: %{})
+            field(attribute.name, Ash.Type.ecto_type(attribute.type),
+              primary_key: attribute.primary_key?,
+              read_after_writes: read_after_writes?,
+              redacted: attribute.sensitive?
+            )
+          end
 
-        for aggregate <- Ash.Resource.Info.aggregates(__MODULE__) do
-          {:ok, type} = Aggregate.kind_to_type(aggregate.kind, :string)
+          field(:aggregates, :map, virtual: true, default: %{})
+          field(:calculations, :map, virtual: true, default: %{})
+          field(:__metadata__, :map, virtual: true, default: %{})
 
-          field(aggregate.name, Ash.Type.ecto_type(type), virtual: true)
+          for aggregate <- Ash.Resource.Info.aggregates(__MODULE__) do
+            {:ok, type} = Aggregate.kind_to_type(aggregate.kind, :string)
 
-          struct_fields = Keyword.delete(@struct_fields, aggregate.name)
-          Module.delete_attribute(__MODULE__, :struct_fields)
-          Module.register_attribute(__MODULE__, :struct_fields, accumulate: true)
-          Enum.each(struct_fields, &Module.put_attribute(__MODULE__, :struct_fields, &1))
+            field(aggregate.name, Ash.Type.ecto_type(type), virtual: true)
 
-          @struct_fields {aggregate.name, %Ash.NotLoaded{type: :aggregate, field: aggregate.name}}
-        end
+            struct_fields = Keyword.delete(@struct_fields, aggregate.name)
+            Module.delete_attribute(__MODULE__, :struct_fields)
+            Module.register_attribute(__MODULE__, :struct_fields, accumulate: true)
+            Enum.each(struct_fields, &Module.put_attribute(__MODULE__, :struct_fields, &1))
 
-        for calculation <- Ash.Resource.Info.calculations(__MODULE__) do
-          {mod, _} = calculation.calculation
+            @struct_fields {aggregate.name,
+                            %Ash.NotLoaded{type: :aggregate, field: aggregate.name}}
+          end
 
-          field(calculation.name, Ash.Type.ecto_type(mod.type()), virtual: true)
+          for calculation <- Ash.Resource.Info.calculations(__MODULE__) do
+            {mod, _} = calculation.calculation
 
-          struct_fields = Keyword.delete(@struct_fields, calculation.name)
-          Module.delete_attribute(__MODULE__, :struct_fields)
-          Module.register_attribute(__MODULE__, :struct_fields, accumulate: true)
-          Enum.each(struct_fields, &Module.put_attribute(__MODULE__, :struct_fields, &1))
+            field(calculation.name, Ash.Type.ecto_type(mod.type()), virtual: true)
 
-          @struct_fields {calculation.name,
-                          %Ash.NotLoaded{type: :calculation, field: calculation.name}}
+            struct_fields = Keyword.delete(@struct_fields, calculation.name)
+            Module.delete_attribute(__MODULE__, :struct_fields)
+            Module.register_attribute(__MODULE__, :struct_fields, accumulate: true)
+            Enum.each(struct_fields, &Module.put_attribute(__MODULE__, :struct_fields, &1))
+
+            @struct_fields {calculation.name,
+                            %Ash.NotLoaded{type: :calculation, field: calculation.name}}
+          end
         end
       end
     end
