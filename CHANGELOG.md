@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.44.12](https://github.com/ash-project/ash/compare/v1.44.11...v1.44.12) (2021-05-23)
+
+
+
+
+### Improvements:
+
+* define embedded schemas where appropriate
+
 ## [v1.44.11](https://github.com/ash-project/ash/compare/v1.44.10...v1.44.11) (2021-05-20)
 
 
