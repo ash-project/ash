@@ -62,7 +62,7 @@ defmodule Ash.Actions.Update do
   end
 
   defp add_tenant({:ok, data}, changeset) do
-    if Ash.Resource.Info.multitenancy_strategy(changeset.resource) do
+    if changeset.tenant do
       {:ok, %{data | __metadata__: Map.put(data.__metadata__, :tenant, changeset.tenant)}}
     else
       {:ok, data}
