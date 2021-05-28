@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.44.13](https://github.com/ash-project/ash/compare/v1.44.12...v1.44.13) (2021-05-28)
+
+
+
+
+### Bug Fixes:
+
+* properly process managed belongs to relationships
+
+* cast nil -> {:ok, nil} in all cases
+
+* set tenant even on non-tenant resources where relevant (#241)
+
 ## [v1.44.12](https://github.com/ash-project/ash/compare/v1.44.11...v1.44.12) (2021-05-23)
 
 
