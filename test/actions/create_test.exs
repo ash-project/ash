@@ -663,7 +663,7 @@ defmodule Ash.Test.Actions.CreateTest do
         on_lookup: :relate,
         on_match: :ignore
       )
-      |> Api.create!()
+      |> Api.create!(stacktraces?: true)
     end
   end
 

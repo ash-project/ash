@@ -317,9 +317,6 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Enum.map(fn {relationship, val} ->
       {Ash.Resource.Info.relationship(changeset.resource, relationship), val}
     end)
-    |> Enum.reject(fn {relationship, _} ->
-      relationship.type == :belongs_to
-    end)
     |> Enum.flat_map(fn {key, batches} ->
       batches
       |> Enum.reject(fn {_, opts} -> opts[:ignore?] end)
@@ -791,7 +788,7 @@ defmodule Ash.Actions.ManagedRelationships do
           nil ->
             created =
               if is_struct(input) do
-                {:ok, input, [], []}
+                {:ok, input, [], [input]}
               else
                 relationship.destination
                 |> Ash.Changeset.new()
@@ -816,14 +813,14 @@ defmodule Ash.Actions.ManagedRelationships do
 
             case created do
               {:ok, created, notifications} ->
-                {:ok, [created | current_value], notifications, []}
+                {:ok, [created | current_value], notifications, [created]}
 
               {:error, error} ->
                 {:error, error}
             end
 
           created ->
-            {:ok, [created | current_value], [], []}
+            {:ok, [created | current_value], [], [created]}
         end
 
       {:create, action_name, join_action_name, params} ->
@@ -887,7 +884,8 @@ defmodule Ash.Actions.ManagedRelationships do
             )
             |> case do
               {:ok, _join_row, notifications} ->
-                {:ok, [created | current_value], regular_notifications ++ notifications, []}
+                {:ok, [created | current_value], regular_notifications ++ notifications,
+                 [created]}
 
               {:error, error} ->
                 {:error, error}
