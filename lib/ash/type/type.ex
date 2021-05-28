@@ -345,6 +345,8 @@ defmodule Ash.Type do
     end
   end
 
+  def cast_input(_, nil, _), do: {:ok, nil}
+
   def cast_input(type, term, constraints) do
     constraints = Ash.OptionsHelpers.validate!(constraints, constraints(type))
     type = get_type(type)
