@@ -39,6 +39,11 @@ defmodule Ash.Resource.Validation.Builtins do
     {Validation.StringLength, Keyword.merge(opts, attribute: attribute)}
   end
 
+  @doc "Validates that attribute meets the given criteria"
+  def compare(attribute, opts \\ []) do
+    {Validation.Compare, Keyword.merge(opts, attribute: attribute)}
+  end
+
   @doc """
   Validates that an attribute's value matches a given regex or string, using the provided error, message if not.
 
