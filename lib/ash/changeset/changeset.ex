@@ -991,10 +991,28 @@ defmodule Ash.Changeset do
     end
   end
 
+  @doc "Gets the value of an argument provided to the changeset, falling back to `Ash.Changeset.get_attribute/2` if nothing was provided"
+  @spec get_argument_or_attribute(t, atom) :: term
+  def get_argument_or_attribute(changeset, attribute) do
+    case fetch_argument(changeset, attribute) do
+      {:ok, value} -> value
+      :error -> get_attribute(changeset, attribute)
+    end
+  end
+
   @doc "Gets the new value for an attribute, or `:error` if it is not being changed"
   @spec fetch_change(t, atom) :: {:ok, any} | :error
   def fetch_change(changeset, attribute) do
     Map.fetch(changeset.attributes, attribute)
+  end
+
+  @doc "Gets the value of an argument provided to the changeset, falling back to `Ash.Changeset.fetch_change/2` if nothing was provided"
+  @spec fetch_argument_or_change(t, atom) :: {:ok, any} | :error
+  def fetch_argument_or_change(changeset, attribute) do
+    case fetch_argument(changeset, attribute) do
+      {:ok, value} -> {:ok, value}
+      :error -> fetch_change(changeset, attribute)
+    end
   end
 
   @doc "Gets the original value for an attribute"
