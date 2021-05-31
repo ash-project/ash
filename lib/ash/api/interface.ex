@@ -173,7 +173,7 @@ defmodule Ash.Api.Interface do
                     Keyword.take(opts, [:actor, :tenant])
                   )
 
-                unquote(api).create(changeset, opts)
+                unquote(api).create(changeset, Keyword.drop(opts, [:query, :tenant]))
               end
             end
 
