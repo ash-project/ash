@@ -198,10 +198,14 @@ defmodule Ash.Resource.Dsl do
       many_to_many :books, Book do
         through BookWord
         source_field :text
-        source_field_on_join_table: :word_text
-        destination_field: :id
-        destination_field_on_join_table: :book_id
+        source_field_on_join_table :word_text
+        destination_field :id
+        destination_field_on_join_table :book_id
       end
+
+      # And in `BookWord` (the resource that defines the join table)
+      belongs_to :book, Book, primary_key?: true, required?: true
+      belongs_to :word, Word, primary_key?: true, required?: true
       """
     ],
     modules: [:destination, :through],
@@ -223,7 +227,7 @@ defmodule Ash.Resource.Dsl do
       # In a resource called `Word`
       belongs_to :dictionary_entry, DictionaryEntry do
         source_field :text,
-        destination_field: :word_text
+        destination_field :word_text
       end
       """
     ],
@@ -267,7 +271,7 @@ defmodule Ash.Resource.Dsl do
       """
       relationships do
         has_many :posts, MyApp.Post do
-          destination_field: :author_id
+          destination_field :author_id
         end
 
         has_many :composite_key_posts, MyApp.CompositeKeyPost do
