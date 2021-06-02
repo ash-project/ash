@@ -33,7 +33,7 @@ defmodule Ash.Resource.Validation.OneOf do
 
   @impl true
   def validate(changeset, opts) do
-    case Ash.Changeset.fetch_change(changeset, opts[:attribute]) do
+    case Ash.Changeset.fetch_argument_or_change(changeset, opts[:attribute]) do
       {:ok, nil} ->
         :ok
 

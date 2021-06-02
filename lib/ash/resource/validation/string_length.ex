@@ -36,7 +36,7 @@ defmodule Ash.Resource.Validation.StringLength do
 
   @impl true
   def validate(changeset, opts) do
-    case Ash.Changeset.get_attribute(changeset, opts[:attribute]) do
+    case Ash.Changeset.get_argument_or_attribute(changeset, opts[:attribute]) do
       nil ->
         :ok
 
