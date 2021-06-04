@@ -6,7 +6,7 @@ defmodule Ash.Resource.Interface do
 
   @type t :: %__MODULE__{}
 
-  def interface_options do
+  def interface_options(action_type) do
     [
       tenant: [
         type: :any,
@@ -31,8 +31,28 @@ defmodule Ash.Resource.Interface do
         type: :boolean,
         doc: "a flag to toggle verbose output from the internal Ash engine (for debugging)"
       ]
+    ] ++ action_type_opts(action_type)
+  end
+
+  defp action_type_opts(:create) do
+    [
+      changeset: [
+        type: :any,
+        doc: "A changeset to seed the action with."
+      ]
     ]
   end
+
+  defp action_type_opts(:read) do
+    [
+      query: [
+        type: :any,
+        doc: "A query to seed the action with."
+      ]
+    ]
+  end
+
+  defp action_type_opts(_), do: []
 
   @schema [
     name: [

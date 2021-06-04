@@ -1,7 +1,7 @@
 defmodule Ash.Query.Call do
   @moduledoc "Represents a function call/AST node in an Ash query expression"
 
-  defstruct [:name, :args, operator?: false]
+  defstruct [:name, :args, relationship_path: [], operator?: false]
 
   defimpl Inspect do
     import Inspect.Algebra
@@ -16,7 +16,15 @@ defmodule Ash.Query.Call do
           to_doc(Enum.at(call.args, 1), inspect_opts)
         ])
       else
+        prefix =
+          if call.relationship_path == [] do
+            ""
+          else
+            Enum.map_join(call.relationship_path, ".", &to_string/1) <> "."
+          end
+
         concat([
+          prefix,
           to_string(call.name),
           container_doc("(", call.args, ")", inspect_opts, &to_doc/2, separator: ", ")
         ])

@@ -34,7 +34,7 @@ defmodule Ash.Api.Interface do
 
         ## Options
 
-        #{Ash.OptionsHelpers.docs(Ash.Resource.Interface.interface_options())}
+        #{Ash.OptionsHelpers.docs(Ash.Resource.Interface.interface_options(action.type))}
         """
 
         case action.type do
@@ -166,14 +166,15 @@ defmodule Ash.Api.Interface do
                   end)
 
                 changeset =
-                  unquote(resource)
+                  opts[:changeset]
+                  |> Kernel.||(unquote(resource))
                   |> Ash.Changeset.for_create(
                     unquote(action.name),
                     input,
                     Keyword.take(opts, [:actor, :tenant])
                   )
 
-                unquote(api).create(changeset, opts)
+                unquote(api).create(changeset, Keyword.drop(opts, [:changeset, :tenant]))
               end
             end
 
@@ -222,6 +223,7 @@ defmodule Ash.Api.Interface do
                 ) do
               if opts == [] && Keyword.keyword?(params_or_opts) do
                 apply(__MODULE__, elem(__ENV__.function, 0), [
+                  record,
                   unquote_splicing(arg_vars),
                   %{},
                   params_or_opts
@@ -257,6 +259,7 @@ defmodule Ash.Api.Interface do
                 ) do
               if opts == [] && Keyword.keyword?(params_or_opts) do
                 apply(__MODULE__, elem(__ENV__.function, 0), [
+                  record,
                   unquote_splicing(arg_vars),
                   %{},
                   params_or_opts
@@ -292,6 +295,7 @@ defmodule Ash.Api.Interface do
                 ) do
               if opts == [] && Keyword.keyword?(params_or_opts) do
                 apply(__MODULE__, elem(__ENV__.function, 0), [
+                  record,
                   unquote_splicing(arg_vars),
                   %{},
                   params_or_opts
@@ -327,6 +331,7 @@ defmodule Ash.Api.Interface do
                 ) do
               if opts == [] && Keyword.keyword?(params_or_opts) do
                 apply(__MODULE__, elem(__ENV__.function, 0), [
+                  record,
                   unquote_splicing(arg_vars),
                   %{},
                   params_or_opts

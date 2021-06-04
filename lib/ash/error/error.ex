@@ -178,7 +178,7 @@ defmodule Ash.Error do
     end
   end
 
-  def error_messages(errors, custom_message \\ nil, stacktraces? \\ false) do
+  def error_messages(errors, custom_message, stacktraces?) do
     errors = Enum.map(errors, &to_ash_error/1)
 
     generic_message =

@@ -39,7 +39,17 @@ defmodule Ash.DataLayer.Ets do
 
   defmodule Query do
     @moduledoc false
-    defstruct [:resource, :filter, :limit, :sort, :tenant, :api, relationships: %{}, offset: 0]
+    defstruct [
+      :resource,
+      :filter,
+      :limit,
+      :sort,
+      :tenant,
+      :api,
+      calculations: [],
+      relationships: %{},
+      offset: 0
+    ]
   end
 
   @impl true
@@ -86,6 +96,10 @@ defmodule Ash.DataLayer.Ets do
 
   @impl true
   def offset(query, offset, _), do: {:ok, %{query | offset: offset}}
+
+  @impl true
+  def add_calculation(query, calculation, _, _),
+    do: {:ok, %{query | calculations: [calculation | query.calculations]}}
 
   @impl true
   def set_tenant(_resource, query, tenant) do
@@ -136,6 +150,7 @@ defmodule Ash.DataLayer.Ets do
           limit: limit,
           sort: sort,
           tenant: tenant,
+          calculations: calculations,
           api: api
         },
         _resource
@@ -154,7 +169,52 @@ defmodule Ash.DataLayer.Ets do
           offset_records
         end
 
-      {:ok, limited_records}
+      if Enum.empty?(calculations) do
+        {:ok, limited_records}
+      else
+        Enum.reduce_while(limited_records, {:ok, []}, fn record, {:ok, records} ->
+          calculations
+          |> Enum.reduce_while({:ok, record}, fn calculation, {:ok, record} ->
+            expression = calculation.module.expression(calculation.opts, calculation.context)
+
+            case Ash.Filter.hydrate_refs(expression, %{
+                   resource: resource,
+                   aggregates: %{},
+                   calculations: %{},
+                   public?: false
+                 }) do
+              {:ok, expression} ->
+                case Ash.Filter.Runtime.do_match(record, expression) do
+                  {:ok, value} ->
+                    if calculation.load do
+                      {:cont, {:ok, Map.put(record, calculation.load, value)}}
+                    else
+                      {:cont,
+                       {:ok,
+                        Map.update!(record, :calculations, &Map.put(&1, calculation.name, value))}}
+                    end
+
+                  {:error, error} ->
+                    {:halt, {:error, error}}
+                end
+
+              {:error, error} ->
+                {:halt, {:error, error}}
+            end
+          end)
+          |> case do
+            {:ok, record} ->
+              {:cont, {:ok, [record | records]}}
+
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
+        end)
+        |> case do
+          {:ok, records} -> {:ok, Enum.reverse(records)}
+          {:error, error} -> {:error, error}
+        end
+      end
     else
       {:error, error} -> {:error, error}
     end

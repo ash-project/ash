@@ -67,9 +67,13 @@ defmodule Ash.Api do
     ],
     stacktraces?: [
       type: :boolean,
-      default: false,
+      default: true,
       doc:
-        "For Ash errors, can be set to true to get a stacktrace for each error that occured. See the error_handling guide for more."
+        "For Ash errors, wether or not each error has a stacktrace. See the error_handling guide for more."
+    ],
+    tenant: [
+      type: :any,
+      doc: "A tenant to set on the query or changeset"
     ],
     actor: [
       type: :any,

@@ -121,11 +121,17 @@ defmodule Ash.Query.Aggregate do
   def kind_to_type(:list, field_type), do: {:ok, {:array, field_type}}
   def kind_to_type(kind, _field_type), do: {:error, "Invalid aggregate kind: #{kind}"}
 
-  def requests(initial_query, can_be_in_query?, authorizing?) do
+  def requests(initial_query, can_be_in_query?, authorizing?, calculations_in_query) do
     initial_query.aggregates
     |> Map.values()
-    |> Enum.group_by(&{&1.resource, &1.relationship_path})
-    |> Enum.reduce({[], [], []}, fn {{aggregate_resource, relationship_path}, aggregates},
+    |> Enum.map(&{{&1.resource, &1.relationship_path, []}, &1})
+    |> Enum.concat(aggregates_from_filter(initial_query))
+    |> Enum.group_by(&elem(&1, 0))
+    |> Enum.map(fn {key, value} ->
+      {key, Enum.uniq_by(Enum.map(value, &elem(&1, 1)), & &1.name)}
+    end)
+    |> Enum.reduce({[], [], []}, fn {{aggregate_resource, relationship_path, ref_path},
+                                     aggregates},
                                     {auth_requests, value_requests, aggregates_in_query} ->
       related = Ash.Resource.Info.related(aggregate_resource, relationship_path)
 
@@ -138,17 +144,25 @@ defmodule Ash.Query.Aggregate do
       {in_query?, reverse_relationship} =
         case Load.reverse_relationship_path(relationship, tl(relationship_path)) do
           :error ->
-            {can_be_in_query?, nil}
+            {ref_path == [] && can_be_in_query?, nil}
 
           {:ok, reverse_relationship} ->
-            {can_be_in_query? &&
-               any_aggregate_matching_path_used_in_query?(initial_query, relationship_path),
-             reverse_relationship}
+            {ref_path == [] && can_be_in_query? &&
+               any_aggregate_matching_path_used_in_query?(
+                 initial_query,
+                 relationship_path,
+                 calculations_in_query
+               ), reverse_relationship}
         end
 
       auth_request =
         if authorizing? do
-          auth_request(related, initial_query, reverse_relationship, relationship_path)
+          auth_request(
+            related,
+            initial_query,
+            reverse_relationship,
+            ref_path ++ relationship_path
+          )
         else
           nil
         end
@@ -163,20 +177,60 @@ defmodule Ash.Query.Aggregate do
       if in_query? do
         {new_auth_requests, value_requests, aggregates_in_query ++ aggregates}
       else
-        request =
-          value_request(
-            initial_query,
-            related,
-            reverse_relationship,
-            relationship_path,
-            aggregates,
-            auth_request,
-            aggregate_resource
-          )
+        if ref_path == [] do
+          request =
+            value_request(
+              initial_query,
+              related,
+              reverse_relationship,
+              relationship_path,
+              aggregates,
+              auth_request,
+              aggregate_resource
+            )
 
-        {new_auth_requests, [request | value_requests], aggregates_in_query}
+          {new_auth_requests, [request | value_requests], aggregates_in_query}
+        else
+          {new_auth_requests, value_requests, aggregates_in_query}
+        end
       end
     end)
+  end
+
+  defp aggregates_from_filter(query) do
+    aggs =
+      query.filter
+      |> Ash.Filter.used_aggregates(:all, true)
+      |> Enum.reject(&(&1.relationship_path == []))
+      |> Enum.map(fn ref ->
+        {{ref.resource, ref.attribute.relationship_path, ref.attribute.relationship_path},
+         ref.attribute}
+      end)
+
+    calculations =
+      query.filter
+      |> Ash.Filter.used_calculations(query.resource)
+      |> Enum.flat_map(fn calculation ->
+        expression = calculation.module.expression(calculation.opts, calculation.context)
+
+        case Ash.Filter.hydrate_refs(expression, %{
+               resource: query.resource,
+               aggregates: query.aggregates,
+               calculations: query.calculations,
+               public?: false
+             }) do
+          {:ok, expression} ->
+            Ash.Filter.used_aggregates(expression)
+
+          _ ->
+            []
+        end
+      end)
+      |> Enum.map(fn aggregate ->
+        {{query.resource, aggregate.relationship_path, []}, aggregate}
+      end)
+
+    Enum.uniq_by(aggs ++ calculations, &elem(&1, 1).name)
   end
 
   defp auth_request(related, initial_query, reverse_relationship, relationship_path) do
@@ -250,13 +304,16 @@ defmodule Ash.Query.Aggregate do
 
               aggregates =
                 if auth_request do
-                  case get_in(data, [auth_request.path ++ [:authorization_filter]]) do
+                  case get_in(data, auth_request.path ++ [:authorization_filter]) do
                     nil ->
                       aggregates
 
                     filter ->
                       Enum.map(aggregates, fn aggregate ->
-                        %{aggregate | query: Ash.Query.filter(aggregate.query, ^filter)}
+                        %{
+                          aggregate
+                          | query: Ash.Query.filter(aggregate.query, ^filter)
+                        }
                       end)
                   end
                 else
@@ -345,7 +402,7 @@ defmodule Ash.Query.Aggregate do
     )
   end
 
-  defp any_aggregate_matching_path_used_in_query?(query, relationship_path) do
+  defp any_aggregate_matching_path_used_in_query?(query, relationship_path, calculations_in_query) do
     filter_aggregates =
       if query.filter do
         Ash.Filter.used_aggregates(query.filter)
@@ -353,7 +410,37 @@ defmodule Ash.Query.Aggregate do
         []
       end
 
-    if Enum.any?(filter_aggregates, &(&1.relationship_path == relationship_path)) do
+    used_calculations =
+      Ash.Filter.used_calculations(
+        query.filter,
+        query.resource
+      ) ++ calculations_in_query
+
+    calculation_aggregates =
+      used_calculations
+      |> Enum.filter(&:erlang.function_exported(&1.module, :expression, 2))
+      |> Enum.flat_map(fn calculation ->
+        case Ash.Filter.hydrate_refs(
+               calculation.module.expression(calculation.opts, calculation.context),
+               %{
+                 resource: query.resource,
+                 aggregates: query.aggregates,
+                 calculations: query.calculations,
+                 public?: false
+               }
+             ) do
+          {:ok, hydrated} ->
+            Ash.Filter.used_aggregates(hydrated)
+
+          _ ->
+            []
+        end
+      end)
+
+    if Enum.any?(
+         filter_aggregates ++ calculation_aggregates,
+         &(&1.relationship_path == relationship_path)
+       ) do
       true
     else
       sort_aggregates =
@@ -367,7 +454,42 @@ defmodule Ash.Query.Aggregate do
           end
         end)
 
-      Enum.any?(sort_aggregates, &(&1.relationship_path == relationship_path))
+      sort_calculations =
+        Enum.flat_map(query.sort, fn {field, _} ->
+          case Map.fetch(query.calculations, field) do
+            :error ->
+              []
+
+            {:ok, calc} ->
+              [calc]
+          end
+        end)
+
+      sort_calc_aggregates =
+        sort_calculations
+        |> Enum.filter(&:erlang.function_exported(&1.module, :expression, 2))
+        |> Enum.flat_map(fn calculation ->
+          case Ash.Filter.hydrate_refs(
+                 calculation.module.expression(calculation.opts, calculation.context),
+                 %{
+                   resource: query.resource,
+                   aggregates: query.aggregates,
+                   calculations: query.calculations,
+                   public?: false
+                 }
+               ) do
+            {:ok, hydrated} ->
+              Ash.Filter.used_aggregates(hydrated)
+
+            _ ->
+              []
+          end
+        end)
+
+      Enum.any?(
+        sort_aggregates ++ sort_calc_aggregates,
+        &(&1.relationship_path == relationship_path)
+      )
     end
   end
 

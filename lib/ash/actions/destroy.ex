@@ -37,6 +37,13 @@ defmodule Ash.Actions.Destroy do
       |> Keyword.take([:verbose?, :actor, :authorize?])
       |> Keyword.put(:transaction?, true)
 
+    changeset =
+      if opts[:tenant] do
+        Ash.Changeset.set_tenant(changeset, opts[:tenant])
+      else
+        changeset
+      end
+
     opts =
       case Map.fetch(changeset.context[:private] || %{}, :actor) do
         {:ok, actor} ->

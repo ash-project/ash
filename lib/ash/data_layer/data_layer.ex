@@ -50,6 +50,7 @@ defmodule Ash.DataLayer do
               {:ok, data_layer_query()} | {:error, term}
   @callback distinct(data_layer_query(), list(atom), resource :: Ash.Resource.t()) ::
               {:ok, data_layer_query()} | {:error, term}
+  @callback set_context(data_layer_query(), map) :: {:ok, data_layer_query()} | {:error, term}
   @callback limit(
               data_layer_query(),
               limit :: non_neg_integer(),
@@ -105,6 +106,13 @@ defmodule Ash.DataLayer do
               Ash.Resource.t()
             ) ::
               {:ok, data_layer_query()} | {:error, term}
+  @callback add_calculation(
+              data_layer_query(),
+              Ash.Query.Calculation.t(),
+              expression :: any,
+              Ash.Resource.t()
+            ) ::
+              {:ok, data_layer_query()} | {:error, term}
   @callback destroy(Ash.Resource.t(), Ash.Changeset.t()) :: :ok | {:error, term}
   @callback transaction(Ash.Resource.t(), (() -> term)) :: {:ok, term} | {:error, term}
   @callback in_transaction?(Ash.Resource.t()) :: boolean
@@ -134,6 +142,8 @@ defmodule Ash.DataLayer do
                       functions: 1,
                       in_transaction?: 1,
                       add_aggregate: 3,
+                      add_calculation: 4,
+                      set_context: 2,
                       run_aggregate_query: 3,
                       run_aggregate_query_with_lateral_join: 5,
                       transform_query: 1,
@@ -324,6 +334,18 @@ defmodule Ash.DataLayer do
   def add_aggregate(query, aggregate, resource) do
     data_layer = Ash.DataLayer.data_layer(resource)
     data_layer.add_aggregate(query, aggregate, resource)
+  end
+
+  @spec add_calculation(
+          data_layer_query(),
+          Ash.Query.Calculation.t(),
+          expression :: term,
+          Ash.Resource.t()
+        ) ::
+          {:ok, data_layer_query()} | {:error, term}
+  def add_calculation(query, calculation, expression, resource) do
+    data_layer = Ash.DataLayer.data_layer(resource)
+    data_layer.add_calculation(query, calculation, expression, resource)
   end
 
   @spec can?(feature, Ash.Resource.t()) :: boolean

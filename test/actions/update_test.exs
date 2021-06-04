@@ -416,7 +416,7 @@ defmodule Ash.Test.Actions.UpdateTest do
           on_match: :update,
           on_lookup: :relate
         )
-        |> Api.update!(stacktraces?: true)
+        |> Api.update!()
         |> Api.load!(:related_posts_join_assoc)
 
       types = Enum.sort(Enum.map(new_post.related_posts_join_assoc, &Map.get(&1, :type)))

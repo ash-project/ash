@@ -1,17 +1,18 @@
 defmodule Ash.Query.Calculation do
   @moduledoc "Represents a calculated attribute requested on a query"
 
-  defstruct [:name, :module, :opts, :load, context: %{}]
+  defstruct [:name, :module, :opts, :load, :type, context: %{}, select: [], sequence: 0]
 
   @type t :: %__MODULE__{}
 
-  def new(name, module, opts, context \\ %{}) do
+  def new(name, module, opts, type, context \\ %{}) do
     case module.init(opts) do
       {:ok, opts} ->
         {:ok,
          %__MODULE__{
            name: name,
            module: module,
+           type: type,
            opts: opts,
            context: context
          }}

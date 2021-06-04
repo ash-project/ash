@@ -240,20 +240,20 @@ defmodule Ash.SatSolver do
     end)
   end
 
-  def synonymous_relationship_paths?(_, [], []), do: true
+  # def synonymous_relationship_paths?(_, [], []), do: true
 
-  def synonymous_relationship_paths?(_resource, candidate_path, path)
-      when length(candidate_path) != length(path),
-      do: false
+  # def synonymous_relationship_paths?(_resource, candidate_path, path)
+  #     when length(candidate_path) != length(path),
+  #     do: false
 
-  def synonymous_relationship_paths?(resource, [candidate_first | candidate_rest], [first | rest])
-      when first == candidate_first do
-    synonymous_relationship_paths?(
-      Ash.Resource.Info.relationship(resource, candidate_first).destination,
-      candidate_rest,
-      rest
-    )
-  end
+  # def synonymous_relationship_paths?(resource, [candidate_first | candidate_rest], [first | rest])
+  #     when first == candidate_first do
+  #   synonymous_relationship_paths?(
+  #     Ash.Resource.Info.relationship(resource, candidate_first).destination,
+  #     candidate_rest,
+  #     rest
+  #   )
+  # end
 
   def synonymous_relationship_paths?(
         left_resource,
@@ -268,8 +268,8 @@ defmodule Ash.SatSolver do
 
   def synonymous_relationship_paths?(
         left_resource,
-        [candidate_first | candidate_rest] = candidate,
-        [first | rest] = search,
+        [candidate_first | candidate_rest],
+        [first | rest],
         right_resource
       ) do
     right_resource = right_resource || left_resource
@@ -281,20 +281,26 @@ defmodule Ash.SatSolver do
         false
 
       relationship.type == :many_to_many && candidate_relationship.type == :has_many ->
-        synonymous_relationship_paths?(
-          left_resource,
-          [relationship.join_relationship | candidate],
-          search,
-          right_resource
-        )
+        synonymous_relationship_paths?(left_resource, [relationship.join_relationship], [
+          candidate_first
+        ]) &&
+          synonymous_relationship_paths?(
+            left_resource,
+            candidate_rest,
+            rest,
+            right_resource
+          )
 
       relationship.type == :has_many && candidate_relationship.type == :many_to_many ->
-        synonymous_relationship_paths?(
-          left_resource,
-          candidate,
-          [candidate_relationship.join_relationship | search],
-          right_resource
-        )
+        synonymous_relationship_paths?(left_resource, [relationship.name], [
+          candidate_relationship.join_relationship
+        ]) &&
+          synonymous_relationship_paths?(
+            left_resource,
+            candidate_rest,
+            rest,
+            right_resource
+          )
 
       true ->
         comparison_keys = [

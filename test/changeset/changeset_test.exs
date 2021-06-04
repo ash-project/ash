@@ -450,7 +450,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                      Author
                      |> Changeset.new()
                      |> Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :error)
-                     |> Api.create!(stacktraces?: true)
+                     |> Api.create!()
                    end
     end
 
@@ -469,7 +469,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       author
       |> Changeset.new()
       |> Changeset.manage_relationship(:posts, [], on_missing: :destroy)
-      |> Api.update!(stacktraces?: true)
+      |> Api.update!()
 
       assert [] = Api.read!(Post)
     end
@@ -491,7 +491,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         author
         |> Changeset.new()
         |> Changeset.manage_relationship(:unique_posts, [%{title: "title"}], on_missing: :unrelate)
-        |> Api.update!(stacktraces?: true)
+        |> Api.update!()
 
       assert [%{title: "title"}, %{title: "title1"}] =
                Enum.sort_by(Api.read!(UniqueNamePerAuthor), & &1.title)
@@ -515,7 +515,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         author
         |> Changeset.new()
         |> Changeset.manage_relationship(:posts, [], on_missing: :unrelate)
-        |> Api.update!(stacktraces?: true)
+        |> Api.update!()
 
       assert [%{title: "title"}, %{title: "title"}] = Api.read!(Post)
 
@@ -635,7 +635,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         CompositeKeyPost
         |> Ash.Query.load(author: :composite_key_posts)
         |> Ash.Query.filter(id == ^post1.id and serial == ^post1.serial)
-        |> Api.read!(stacktraces?: true)
+        |> Api.read!()
 
       assert Api.reload!(author) == Api.reload!(fetched_post.author)
     end

@@ -2,7 +2,7 @@ defmodule Ash.Error.Unknown do
   @moduledoc "The top level unknown error container"
   use Ash.Error.Exception
 
-  def_ash_error([:errors, :error, :stacktraces?, :field], class: :unknown)
+  def_ash_error([:errors, :error, :field, stacktraces?: true], class: :unknown)
 
   defimpl Ash.ErrorKind do
     def id(_), do: Ash.UUID.generate()

@@ -2,7 +2,7 @@ defmodule Ash.Error.Invalid do
   @moduledoc "The top level invalid error"
   use Ash.Error.Exception
 
-  def_ash_error([:errors, :stacktraces?], class: :invalid)
+  def_ash_error([:errors, stacktraces?: true], class: :invalid)
 
   defimpl Ash.ErrorKind do
     def id(_), do: Ash.UUID.generate()

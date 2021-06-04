@@ -3,7 +3,7 @@ defmodule Ash.Error.Forbidden do
 
   use Ash.Error.Exception
 
-  def_ash_error([:errors, :stacktraces?], class: :forbidden)
+  def_ash_error([:errors, stacktraces?: true], class: :forbidden)
 
   defimpl Ash.ErrorKind do
     def id(_), do: Ash.UUID.generate()

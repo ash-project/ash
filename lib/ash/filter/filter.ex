@@ -6,6 +6,7 @@ defmodule Ash.Filter do
 
   alias Ash.Error.Query.{
     AggregatesNotSupported,
+    CalculationsNotSupported,
     InvalidFilterValue,
     NoSuchAttributeOrRelationship,
     NoSuchFilterPredicate,
@@ -16,7 +17,7 @@ defmodule Ash.Filter do
 
   alias Ash.Error.Invalid.InvalidPrimaryKey
 
-  alias Ash.Query.Function.{Ago, Contains, IsNil}
+  alias Ash.Query.Function.{Ago, Contains, If, IsNil}
 
   alias Ash.Query.Operator.{
     Eq,
@@ -30,12 +31,13 @@ defmodule Ash.Filter do
   }
 
   alias Ash.Query.{BooleanExpression, Call, Not, Ref}
-  alias Ash.Query.{Aggregate, Function, Operator}
+  alias Ash.Query.{Aggregate, Calculation, Function, Operator}
 
   @functions [
     Ago,
     Contains,
-    IsNil
+    IsNil,
+    If
   ]
 
   @operators [
@@ -137,8 +139,9 @@ defmodule Ash.Filter do
   Maps are also accepted, as are maps with string keys. Technically, a list of `[{"string_key", value}]` would also work.
   If you are using a map with string keys, it is likely that you are parsing input. It is important to note that, before
   passing a filter supplied from an external source directly to `Ash.Query.filter/2`, you should first call `Ash.Filter.parse_input/2`
-  (or `Ash.Filter.parse_input/3` if your query has aggregates in it). This ensures that the filter only uses public attributes,
-  relationships and aggregates.
+  (or `Ash.Filter.parse_input/4` if your query has aggregates/calculations in it). This ensures that the filter only uses public attributes,
+  relationships, aggregates and calculations. You may additionally wish to pass in the query context, in the case that you have calculations
+  that use the provided context.
   ```
   """
 
@@ -177,13 +180,21 @@ defmodule Ash.Filter do
 
   See `parse/2` for more
   """
-  def parse_input(resource, statement, aggregates \\ %{}) do
+  def parse_input(
+        resource,
+        statement,
+        aggregates \\ %{},
+        calculations \\ %{},
+        context \\ %{}
+      ) do
     context = %{
       resource: resource,
       relationship_path: [],
       aggregates: aggregates,
+      calculations: calculations,
       public?: true,
-      data_layer: Ash.DataLayer.data_layer(resource)
+      data_layer: Ash.DataLayer.data_layer(resource),
+      query_context: context
     }
 
     with {:ok, expression} <- parse_expression(statement, context) do
@@ -196,8 +207,8 @@ defmodule Ash.Filter do
 
   See `parse_input/2` for more
   """
-  def parse_input!(resource, statement, aggregates \\ %{}) do
-    case parse_input(resource, statement, aggregates) do
+  def parse_input!(resource, statement, aggregates \\ %{}, calculations \\ %{}, context \\ %{}) do
+    case parse_input(resource, statement, aggregates, calculations, context) do
       {:ok, filter} ->
         filter
 
@@ -211,8 +222,8 @@ defmodule Ash.Filter do
 
   See `parse/2` for more
   """
-  def parse!(resource, statement, aggregates \\ %{}) do
-    case parse(resource, statement, aggregates) do
+  def parse!(resource, statement, aggregates \\ %{}, calculations \\ %{}, context \\ %{}) do
+    case parse(resource, statement, aggregates, calculations, context) do
       {:ok, filter} ->
         filter
 
@@ -233,35 +244,37 @@ defmodule Ash.Filter do
   be sure to use `parse_input/2` instead! The only difference is that it only accepts
   filters over public attributes/relationships.
 
-  ### Aggregates
+  ### Aggregates and calculations
 
-  Since custom aggregates can be added to a query, and aggregates must be explicitly loaded into
+  Since custom aggregates/calculations can be added to a query, and they must be explicitly loaded into
   a query, the filter parser does not parse them by default. If you wish to support parsing filters
-  over aggregates, provide them as the third argument. The best way to do this is to build a query
-  with the aggregates added/loaded, and then use the `aggregates` key on the query, e.g
+  over aggregates/calculations, provide them as the third argument. The best way to do this is to build a query
+  with them added/loaded, and then use the `aggregates` and `calculations` keys on the query.
 
   ### NOTE
 
-  A change was made recently that will automatically load any aggregates that are used in a filter.
-  This function still requires aggregates to be passed in.
+  A change was made recently that will automatically load any aggregates/calculations that are used in a filter, but
+  if you are using this function you still need to pass them in.
 
   ```elixir
-  Ash.Filter.parse(MyResource, [id: 1], query.aggregates)
+  Ash.Filter.parse(MyResource, [id: 1], query.aggregates, query.calculations)
   ```
   """
-  def parse(resource, statement, aggregates \\ %{})
+  def parse(resource, statement, aggregates \\ %{}, calculations \\ %{}, context \\ %{})
 
-  def parse(_resource, nil, _aggregates) do
+  def parse(_resource, nil, _aggregates, _calculations, _context) do
     {:ok, nil}
   end
 
-  def parse(resource, statement, aggregates) do
+  def parse(resource, statement, aggregates, calculations, context) do
     context = %{
       resource: resource,
       relationship_path: [],
       aggregates: aggregates,
+      calculations: calculations,
       public?: false,
-      data_layer: Ash.DataLayer.data_layer(resource)
+      data_layer: Ash.DataLayer.data_layer(resource),
+      query_context: context
     }
 
     with {:ok, expression} <- parse_expression(statement, context) do
@@ -353,7 +366,7 @@ defmodule Ash.Filter do
   end
 
   @doc "Replace any actor value references in a template with the values from a given actor"
-  def build_filter_from_template(template, actor, args \\ %{}, context \\ %{}) do
+  def build_filter_from_template(template, actor \\ nil, args \\ %{}, context \\ %{}) do
     walk_filter_template(template, fn
       {:_actor, :_primary_key} ->
         if actor do
@@ -524,11 +537,17 @@ defmodule Ash.Filter do
 
   defp get_predicates(%{__predicate__?: true} = predicate, acc), do: [predicate | acc]
 
-  def used_aggregates(filter, relationship_path \\ []) do
+  def used_calculations(
+        filter,
+        resource,
+        relationship_path \\ [],
+        calculations \\ %{},
+        aggregates \\ %{}
+      ) do
     filter
     |> list_refs()
     |> Enum.filter(fn
-      %Ref{attribute: %Aggregate{}, relationship_path: ref_relationship_path} ->
+      %Ref{attribute: %Calculation{}, relationship_path: ref_relationship_path} ->
         (relationship_path in [nil, []] and ref_relationship_path in [nil, []]) ||
           relationship_path == ref_relationship_path
 
@@ -536,13 +555,88 @@ defmodule Ash.Filter do
         false
     end)
     |> Enum.map(& &1.attribute)
+    |> calculations_used_by_calculations(
+      resource,
+      relationship_path,
+      calculations,
+      aggregates
+    )
+  end
+
+  defp calculations_used_by_calculations(
+         used_calculations,
+         resource,
+         relationship_path,
+         calculations,
+         aggregates
+       ) do
+    used_calculations
+    |> Enum.flat_map(fn calculation ->
+      expression = calculation.module.expression(calculation.opts, calculation.context)
+
+      case Ash.Filter.hydrate_refs(expression, %{
+             resource: resource,
+             aggregates: aggregates,
+             calculations: calculations,
+             public?: false
+           }) do
+        {:ok, expression} ->
+          with_recursive_used =
+            calculations_used_by_calculations(
+              used_calculations(
+                expression,
+                resource,
+                relationship_path,
+                calculations,
+                aggregates
+              ),
+              resource,
+              relationship_path,
+              calculations,
+              aggregates
+            )
+
+          [calculation | with_recursive_used]
+
+        _ ->
+          [calculation]
+      end
+    end)
+  end
+
+  def used_aggregates(filter, relationship_path \\ [], return_refs? \\ false) do
+    refs =
+      filter
+      |> list_refs()
+      |> Enum.filter(fn
+        %Ref{attribute: %Aggregate{}, relationship_path: ref_relationship_path} ->
+          relationship_path == :all ||
+            (relationship_path in [nil, []] and ref_relationship_path in [nil, []]) ||
+            relationship_path == ref_relationship_path
+
+        _ ->
+          false
+      end)
+
+    if return_refs? do
+      refs
+    else
+      Enum.map(refs, & &1.attribute)
+    end
   end
 
   def put_at_path(value, []), do: value
   def put_at_path(value, [key | rest]), do: [{key, put_at_path(value, rest)}]
 
-  def add_to_filter!(base, addition, op \\ :and, aggregates \\ %{}) do
-    case add_to_filter(base, addition, op, aggregates) do
+  def add_to_filter!(
+        base,
+        addition,
+        op \\ :and,
+        aggregates \\ %{},
+        calculations \\ %{},
+        context \\ %{}
+      ) do
+    case add_to_filter(base, addition, op, aggregates, calculations, context) do
       {:ok, value} ->
         value
 
@@ -551,14 +645,23 @@ defmodule Ash.Filter do
     end
   end
 
-  def add_to_filter(base, addition, op \\ :and, aggregates \\ %{})
+  def add_to_filter(
+        base,
+        addition,
+        op \\ :and,
+        aggregates \\ %{},
+        calculations \\ %{},
+        context \\ %{}
+      )
 
-  def add_to_filter(nil, %__MODULE__{} = addition, _, _), do: {:ok, addition}
+  def add_to_filter(nil, %__MODULE__{} = addition, _, _, _, _), do: {:ok, addition}
 
   def add_to_filter(
         %__MODULE__{} = base,
         %__MODULE__{} = addition,
         op,
+        _,
+        _,
         _
       ) do
     {:ok,
@@ -568,9 +671,9 @@ defmodule Ash.Filter do
      }}
   end
 
-  def add_to_filter(%__MODULE__{} = base, statement, op, aggregates) do
-    case parse(base.resource, statement, aggregates) do
-      {:ok, filter} -> add_to_filter(base, filter, op, aggregates)
+  def add_to_filter(%__MODULE__{} = base, statement, op, aggregates, calculations, context) do
+    case parse(base.resource, statement, aggregates, calculations, context) do
+      {:ok, filter} -> add_to_filter(base, filter, op, aggregates, calculations)
       {:error, error} -> {:error, error}
     end
   end
@@ -698,6 +801,38 @@ defmodule Ash.Filter do
 
       other ->
         func.(other)
+    end
+  end
+
+  def update_aggregates(%__MODULE__{expression: expression} = filter, mapper) do
+    %{filter | expression: update_aggregates(expression, mapper)}
+  end
+
+  def update_aggregates(expression, mapper) do
+    case expression do
+      %Not{expression: expression} = not_expr ->
+        %{not_expr | expression: update_aggregates(expression, mapper)}
+
+      %BooleanExpression{left: left, right: right} = expression ->
+        %{
+          expression
+          | left: update_aggregates(left, mapper),
+            right: update_aggregates(right, mapper)
+        }
+
+      %{__operator__?: true, left: left, right: right} = op ->
+        left = update_aggregates(left, mapper)
+        right = update_aggregates(right, mapper)
+        %{op | left: left, right: right}
+
+      %{__function__?: true, arguments: args} = func ->
+        %{func | arguments: Enum.map(args, &update_aggregates(&1, mapper))}
+
+      %Ref{attribute: %Aggregate{} = agg} = ref ->
+        %{ref | attribute: mapper.(agg, ref)}
+
+      other ->
+        other
     end
   end
 
@@ -889,6 +1024,32 @@ defmodule Ash.Filter do
   end
 
   defp scope_refs(other, _), do: other
+
+  def prefix_refs(%BooleanExpression{left: left, right: right} = expr, path) do
+    %{expr | left: prefix_refs(left, path), right: prefix_refs(right, path)}
+  end
+
+  def prefix_refs(%Not{expression: expression} = expr, path) do
+    %{expr | expression: prefix_refs(expression, path)}
+  end
+
+  def prefix_refs(%{__predicate__?: _, left: left, right: right} = pred, path) do
+    %{pred | left: prefix_refs(left, path), right: prefix_refs(right, path)}
+  end
+
+  def prefix_refs(%{__predicate__?: _, argsuments: arguments} = pred, path) do
+    %{pred | args: Enum.map(arguments, &prefix_refs(&1, path))}
+  end
+
+  def prefix_refs(%Ref{relationship_path: ref_path} = ref, path) do
+    if List.starts_with?(ref_path, path) do
+      %{ref | relationship_path: path ++ ref_path}
+    else
+      ref
+    end
+  end
+
+  def prefix_refs(other, _), do: other
 
   defp fetch_related_data(
          resource,
@@ -1299,6 +1460,12 @@ defmodule Ash.Filter do
   defp aggregate(%{public?: false, resource: resource}, aggregate),
     do: Ash.Resource.Info.aggregate(resource, aggregate)
 
+  defp calculation(%{public?: true, resource: resource}, calculation),
+    do: Ash.Resource.Info.public_calculation(resource, calculation)
+
+  defp calculation(%{public?: false, resource: resource}, calculation),
+    do: Ash.Resource.Info.calculation(resource, calculation)
+
   defp relationship(%{public?: true, resource: resource}, relationship) do
     Ash.Resource.Info.public_relationship(resource, relationship)
   end
@@ -1405,6 +1572,8 @@ defmodule Ash.Filter do
           relationship_path: ref.relationship_path,
           resource: related,
           aggregates: context.aggregates,
+          calculations: context.calculations,
+          query_context: context.query_context,
           public?: context.public?
         }
 
@@ -1444,6 +1613,11 @@ defmodule Ash.Filter do
         [key, to_string(key)]
       end)
 
+    calculations =
+      Enum.flat_map(context.calculations, fn {key, _} ->
+        [key, to_string(key)]
+      end)
+
     cond do
       function_module = get_function(field, Ash.DataLayer.data_layer_functions(context.resource)) ->
         with {:ok, args} <-
@@ -1476,6 +1650,10 @@ defmodule Ash.Filter do
           context
           |> Map.update!(:relationship_path, fn path -> path ++ [rel.name] end)
           |> Map.put(:resource, rel.destination)
+          |> Map.update!(
+            :query_context,
+            &Ash.Helpers.deep_merge_maps(&1 || %{}, rel.context || %{})
+          )
 
         if is_list(nested_statement) || is_map(nested_statement) do
           case parse_expression(nested_statement, context) do
@@ -1542,6 +1720,18 @@ defmodule Ash.Filter do
             {:error, error}
         end
 
+      field in calculations ->
+        {module, _} = module_and_opts(Map.get(context.calculations, field).calculation)
+
+        field =
+          if is_binary(field) do
+            String.to_existing_atom(field)
+          else
+            field
+          end
+
+        add_calculation_expression(context, nested_statement, field, module, expression)
+
       field in aggregates ->
         field =
           if is_binary(field) do
@@ -1551,6 +1741,34 @@ defmodule Ash.Filter do
           end
 
         add_aggregate_expression(context, nested_statement, field, expression)
+
+      resource_calculation = calculation(context, field) ->
+        {module, opts} = module_and_opts(resource_calculation.calculation)
+
+        with {:ok, args} <-
+               Ash.Query.validate_calculation_arguments(
+                 resource_calculation,
+                 %{}
+               ),
+             {:ok, calculation} <-
+               Calculation.new(
+                 resource_calculation.name,
+                 module,
+                 opts,
+                 resource_calculation.type,
+                 Map.put(args, :context, context.query_context)
+               ) do
+          case parse_predicates(nested_statement, calculation, context) do
+            {:ok, nested_statement} ->
+              {:ok, BooleanExpression.optimized_new(:and, expression, nested_statement)}
+
+            {:error, error} ->
+              {:error, error}
+          end
+        else
+          {:error, error} ->
+            {:error, error}
+        end
 
       op_module = get_operator(field) && match?([_, _ | _], nested_statement) ->
         with {:ok, [left, right]} <-
@@ -1687,33 +1905,67 @@ defmodule Ash.Filter do
   end
 
   defp resolve_call(%Call{name: name, args: args} = call, context) do
-    with :ok <- validate_datalayer_supports_nested_expressions(args, context.resource),
-         {:ok, args} <-
-           hydrate_refs(args, context),
-         refs <- list_refs(args),
-         :ok <- validate_not_crossing_datalayer_boundaries(refs, context.resource, call),
-         {:func, function_module} when not is_nil(function_module) <-
-           {:func, get_function(name, Ash.DataLayer.data_layer_functions(context.resource))},
-         {:ok, function} <-
-           Function.new(
-             function_module,
-             args
-           ) do
-      if is_boolean(function) do
-        {:ok, function}
-      else
-        if Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, function}) do
-          {:ok, function}
-        else
-          {:error, "data layer does not support the function #{inspect(function)}"}
-        end
-      end
-    else
-      {:func, nil} ->
-        {:error, NoSuchFunction.exception(name: name, resource: context.resource)}
+    could_be_calculation? = Enum.count(args) == 1 && Keyword.keyword?(Enum.at(args, 0))
 
-      other ->
-        other
+    resource = Ash.Resource.Info.related(context.resource, call.relationship_path)
+
+    case {calculation(%{context | resource: resource}, name), could_be_calculation?} do
+      {resource_calculation, true} when not is_nil(resource_calculation) ->
+        {module, opts} = module_and_opts(resource_calculation.calculation)
+
+        with {:ok, args} <-
+               Ash.Query.validate_calculation_arguments(
+                 resource_calculation,
+                 Map.new(Enum.at(args, 0) || [])
+               ),
+             {:ok, calculation} <-
+               Calculation.new(
+                 resource_calculation.name,
+                 module,
+                 opts,
+                 resource_calculation.type,
+                 Map.put(args, :context, context.query_context)
+               ) do
+          {:ok,
+           %Ref{
+             attribute: calculation,
+             relationship_path: context.relationship_path ++ call.relationship_path,
+             resource: resource
+           }}
+        else
+          {:error, error} ->
+            {:error, error}
+        end
+
+      _ ->
+        with :ok <- validate_datalayer_supports_nested_expressions(args, context.resource),
+             {:ok, args} <-
+               hydrate_refs(args, context),
+             refs <- list_refs(args),
+             :ok <- validate_not_crossing_datalayer_boundaries(refs, context.resource, call),
+             {:func, function_module} when not is_nil(function_module) <-
+               {:func, get_function(name, Ash.DataLayer.data_layer_functions(context.resource))},
+             {:ok, function} <-
+               Function.new(
+                 function_module,
+                 args
+               ) do
+          if is_boolean(function) do
+            {:ok, function}
+          else
+            if Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, function}) do
+              {:ok, function}
+            else
+              {:error, "data layer does not support the function #{inspect(function)}"}
+            end
+          end
+        else
+          {:func, nil} ->
+            {:error, NoSuchFunction.exception(name: name, resource: context.resource)}
+
+          other ->
+            other
+        end
     end
   end
 
@@ -1732,21 +1984,50 @@ defmodule Ash.Filter do
   defp is_expr?(%{__predicate__?: _}), do: true
   defp is_expr?(_), do: false
 
-  defp hydrate_refs(%Ref{attribute: attribute} = ref, %{aggregates: aggregates} = context)
-       when is_atom(attribute) do
+  defp module_and_opts({module, opts}), do: {module, opts}
+  defp module_and_opts(module), do: {module, []}
+
+  def hydrate_refs(
+        %Ref{attribute: attribute} = ref,
+        %{aggregates: aggregates, calculations: calculations} = context
+      )
+      when is_atom(attribute) do
     case related(context, ref.relationship_path) do
       nil ->
-        {:error, "Invalid reference #{inspect(ref)}"}
+        {:error,
+         "Invalid reference #{inspect(ref)} at relationship_path #{inspect(ref.relationship_path)}"}
 
       related ->
         context = %{context | resource: related}
 
         cond do
           Map.has_key?(aggregates, attribute) ->
-            {:ok, %{ref | attribute: Map.get(aggregates, attribute)}}
+            {:ok, %{ref | attribute: Map.get(aggregates, attribute), resource: related}}
+
+          Map.has_key?(calculations, attribute) ->
+            {:ok, %{ref | attribute: Map.get(calculations, attribute), resource: related}}
 
           attribute = attribute(context, attribute) ->
-            {:ok, %{ref | attribute: attribute}}
+            {:ok, %{ref | attribute: attribute, resource: related}}
+
+          resource_calculation = calculation(context, attribute) ->
+            {module, opts} = module_and_opts(resource_calculation.calculation)
+
+            with {:ok, args} <-
+                   Ash.Query.validate_calculation_arguments(resource_calculation, %{}),
+                 {:ok, calculation} <-
+                   Calculation.new(
+                     resource_calculation.name,
+                     module,
+                     opts,
+                     resource_calculation.type,
+                     Map.put(args, :context, context.query_context)
+                   ) do
+              {:ok, %{ref | attribute: calculation, resource: related}}
+            else
+              {:error, error} ->
+                {:error, error}
+            end
 
           aggregate = aggregate(context, attribute) ->
             agg_related = Ash.Resource.Info.related(related, aggregate.relationship_path)
@@ -1762,7 +2043,7 @@ defmodule Ash.Filter do
                      aggregate_query,
                      aggregate.field
                    ) do
-              {:ok, %{ref | attribute: query_aggregate}}
+              {:ok, %{ref | attribute: query_aggregate, resource: related}}
             else
               %{valid?: false, errors: errors} ->
                 {:error, errors}
@@ -1777,13 +2058,17 @@ defmodule Ash.Filter do
                 new_ref = %{
                   ref
                   | relationship_path: ref.relationship_path ++ [relationship.name],
-                    attribute: Ash.Resource.Info.attribute(relationship.destination, key)
+                    attribute: Ash.Resource.Info.attribute(relationship.destination, key),
+                    resource: relationship.destination
                 }
 
                 {:ok, new_ref}
 
               _ ->
-                {:error, "Invalid reference #{inspect(ref)}"}
+                {:error,
+                 "Invalid reference #{inspect(ref)} when hydrating relationship ref for #{
+                   inspect(ref.relationship_path ++ [relationship.name])
+                 }. Require single attribute primary key."}
             end
 
           true ->
@@ -1792,7 +2077,11 @@ defmodule Ash.Filter do
     end
   end
 
-  defp hydrate_refs(%BooleanExpression{left: left, right: right} = expr, context) do
+  def hydrate_refs(%Ref{relationship_path: relationship_path, resource: nil} = ref, context) do
+    {:ok, %{ref | resource: Ash.Resource.Info.related(context.resource, relationship_path)}}
+  end
+
+  def hydrate_refs(%BooleanExpression{left: left, right: right} = expr, context) do
     with {:ok, left} <- hydrate_refs(left, context),
          {:ok, right} <- hydrate_refs(right, context) do
       {:ok, %{expr | left: left, right: right}}
@@ -1802,11 +2091,17 @@ defmodule Ash.Filter do
     end
   end
 
-  defp hydrate_refs(%Call{} = call, context) do
+  def hydrate_refs(%Not{expression: expression} = expr, context) do
+    with {:ok, expression} <- hydrate_refs(expression, context) do
+      {:ok, %{expr | expression: expression}}
+    end
+  end
+
+  def hydrate_refs(%Call{} = call, context) do
     resolve_call(call, context)
   end
 
-  defp hydrate_refs(%{__predicate__?: _, left: left, right: right} = expr, context) do
+  def hydrate_refs(%{__predicate__?: _, left: left, right: right} = expr, context) do
     with {:ok, left} <- hydrate_refs(left, context),
          {:ok, right} <- hydrate_refs(right, context) do
       {:ok, %{expr | left: left, right: right}}
@@ -1816,17 +2111,17 @@ defmodule Ash.Filter do
     end
   end
 
-  defp hydrate_refs(%{__predicate__?: _, arguments: arguments} = expr, context) do
+  def hydrate_refs(%{__predicate__?: _, arguments: arguments} = expr, context) do
     case hydrate_refs(arguments, context) do
       {:ok, args} ->
-        {:ok, %{expr | argumentss: args}}
+        {:ok, %{expr | arguments: args}}
 
       other ->
         other
     end
   end
 
-  defp hydrate_refs(list, context) when is_list(list) do
+  def hydrate_refs(list, context) when is_list(list) do
     list
     |> Enum.reduce_while({:ok, []}, fn val, {:ok, acc} ->
       case hydrate_refs(val, context) do
@@ -1843,7 +2138,7 @@ defmodule Ash.Filter do
     end
   end
 
-  defp hydrate_refs(val, _context) do
+  def hydrate_refs(val, _context) do
     {:ok, val}
   end
 
@@ -1858,6 +2153,22 @@ defmodule Ash.Filter do
       end
     else
       {:error, AggregatesNotSupported.exception(resource: context.resource, feature: "filtering")}
+    end
+  end
+
+  defp add_calculation_expression(context, nested_statement, field, module, expression) do
+    if Ash.DataLayer.data_layer_can?(context.resource, :expression_calculation) &&
+         :erlang.function_exported(module, :expression, 1) do
+      case parse_predicates(nested_statement, Map.get(context.calculations, field), context) do
+        {:ok, nested_statement} ->
+          {:ok, BooleanExpression.optimized_new(:and, expression, nested_statement)}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    else
+      {:error,
+       CalculationsNotSupported.exception(resource: context.resource, feature: "filtering")}
     end
   end
 
@@ -1916,12 +2227,15 @@ defmodule Ash.Filter do
         }
 
       %{__operator__?: true, left: left, right: right} = op ->
-        left = add_to_ref_path(left, context.relationship_path)
-        right = add_to_ref_path(right, context.relationship_path)
+        left = add_to_predicate_path(left, context)
+        right = add_to_predicate_path(right, context)
         %{op | left: left, right: right}
 
+      %Ref{} = ref ->
+        add_to_ref_path(ref, context.relationship_path)
+
       %{__function__?: true, arguments: args} = func ->
-        %{func | arguments: Enum.map(args, &add_to_ref_path(&1, context.relationship_path))}
+        %{func | arguments: Enum.map(args, &add_to_predicate_path(&1, context))}
 
       other ->
         other
