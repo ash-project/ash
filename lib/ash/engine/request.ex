@@ -39,7 +39,6 @@ defmodule Ash.Engine.Request do
 
   alias Ash.Authorizer
   alias Ash.Error.Forbidden.MustPassStrictCheck
-  alias Ash.Error.Framework.AssumptionFailed
   alias Ash.Error.Invalid.{DuplicatedPath, ImpossiblePath}
 
   require Ash.Query
@@ -288,8 +287,8 @@ defmodule Ash.Engine.Request do
       end
 
     case try_resolve_local(request, key, true) do
-      {:skipped, _, _, _} ->
-        {:error, AssumptionFailed.exception(message: "Skipped fetching data"), request}
+      {:skipped, new_request, notifications, waiting_for} ->
+        {:waiting, new_request, notifications, waiting_for}
 
       {:ok, request, notifications, []} ->
         if key == :changeset do
@@ -407,7 +406,7 @@ defmodule Ash.Engine.Request do
       resource
       |> Ash.Resource.Info.authorizers()
       |> Enum.all?(fn authorizer ->
-        authorizer_state(request, authorizer) == :authorizer
+        authorizer_state(request, authorizer) == :authorized
       end)
 
     %{request | authorized?: authorized?}
@@ -503,10 +502,21 @@ defmodule Ash.Engine.Request do
       [] ->
         case strict_check_authorizer(authorizer, request) do
           :authorized ->
-            {:ok, set_authorizer_state(request, authorizer, :authorized)}
+            {:ok, set_authorizer_state(request, authorizer, :authorized), notifications, []}
 
           {:filter, filter} ->
-            apply_filter(request, authorizer, filter, true)
+            request
+            |> apply_filter(authorizer, filter, true)
+            |> case do
+              {:ok, request} ->
+                {:ok, request, notifications, []}
+
+              {:ok, request, new_notifications, deps} ->
+                {:ok, request, new_notifications ++ notifications, deps}
+
+              other ->
+                other
+            end
 
           {:filter_and_continue, _, _} when strict_check_only? ->
             {:error, MustPassStrictCheck.exception(resource: request.resource)}
@@ -515,12 +525,22 @@ defmodule Ash.Engine.Request do
             request
             |> set_authorizer_state(authorizer, new_authorizer_state)
             |> apply_filter(authorizer, filter)
+            |> case do
+              {:ok, request} ->
+                {:ok, request, notifications, []}
+
+              {:ok, request, new_notifications, deps} ->
+                {:ok, request, new_notifications ++ notifications, deps}
+
+              other ->
+                other
+            end
 
           {:continue, _} when strict_check_only? ->
             {:error, MustPassStrictCheck.exception(resource: request.resource)}
 
           {:continue, authorizer_state} ->
-            {:ok, set_authorizer_state(request, authorizer, authorizer_state)}
+            {:ok, set_authorizer_state(request, authorizer, authorizer_state), notifications, []}
 
           {:error, error} ->
             {:error, error}
@@ -547,14 +567,19 @@ defmodule Ash.Engine.Request do
 
   defp apply_filter(request, authorizer, filter, resolve_data? \\ false)
 
-  defp apply_filter(%{action: %{type: :read}} = request, authorizer, filter, resolve_data?) do
+  defp apply_filter(
+         %{action: %{type: :read}} = request,
+         authorizer,
+         filter,
+         resolve_data?
+       ) do
     request =
       request
       |> Map.update!(:query, &Ash.Query.filter(&1, ^filter))
       |> Map.update(
         :authorization_filter,
         filter,
-        &add_to_or_parse(&1, filter, request.resource)
+        &add_to_or_parse(&1, filter, request.resource, request.query)
       )
       |> set_authorizer_state(authorizer, :authorized)
 
@@ -581,11 +606,17 @@ defmodule Ash.Engine.Request do
     end
   end
 
-  defp add_to_or_parse(existing_authorization_filter, filter, resource) do
+  defp add_to_or_parse(existing_authorization_filter, filter, resource, query) do
     if existing_authorization_filter do
-      Ash.Filter.add_to_filter(existing_authorization_filter, filter)
+      Ash.Filter.add_to_filter(
+        existing_authorization_filter,
+        filter,
+        query.aggregates,
+        query.calculations,
+        query.context
+      )
     else
-      Ash.Filter.parse!(resource, filter)
+      Ash.Filter.parse!(resource, filter, query.aggregates, query.calculations, query.context)
     end
   end
 
@@ -776,7 +807,14 @@ defmodule Ash.Engine.Request do
     authorized? = Enum.all?(Map.values(request.authorizer_state), &(&1 == :authorized))
 
     # Don't fetch honor requests for data until the request is authorized
-    if field in [:data, :query, :changeset, :authorized?, :data_layer_query] and not authorized? and
+    if field in [
+         :data,
+         :query,
+         :changeset,
+         :authorized?,
+         :data_layer_query,
+         :authorization_filter
+       ] and not authorized? and
          not internal? do
       try_resolve_dependencies_of(request, field, internal?)
     else
@@ -826,6 +864,38 @@ defmodule Ash.Engine.Request do
       log(request, fn -> "resolving #{field}" end)
 
       case resolver.(resolver_context) do
+        {:requests, requests} ->
+          new_deps =
+            Enum.flat_map(requests, fn
+              {request, key} ->
+                [request.path ++ [key]]
+
+              _request ->
+                []
+            end)
+
+          new_unresolved =
+            Map.update!(
+              unresolved,
+              :deps,
+              &(&1 ++ new_deps)
+            )
+
+          new_request = Map.put(request, field, new_unresolved)
+
+          new_requests =
+            Enum.map(requests, fn
+              {request, _} ->
+                request
+
+              request ->
+                request
+            end)
+
+          {:skipped, new_request,
+           notifications ++
+             [{:requests, new_requests}], new_deps}
+
         {:ok, value, instructions} ->
           set_data_notifications =
             Enum.map(Map.get(instructions, :extra_data, %{}), fn {key, value} ->
@@ -834,12 +904,28 @@ defmodule Ash.Engine.Request do
 
           resource_notifications = Map.get(instructions, :notifications, [])
 
+          extra_requests = Map.get(instructions, :requests, [])
+
+          request_notifications =
+            case extra_requests do
+              [] ->
+                []
+
+              nil ->
+                []
+
+              requests ->
+                [{:requests, requests}]
+            end
+
           handle_successful_resolve(
             field,
             value,
             request,
             new_request,
-            notifications ++ resource_notifications ++ set_data_notifications,
+            notifications ++
+              resource_notifications ++
+              set_data_notifications ++ request_notifications,
             internal?
           )
 
@@ -874,7 +960,7 @@ defmodule Ash.Engine.Request do
 
         {new_request, notifications}
       else
-        {request, []}
+        {request, Enum.filter(notifications, &match?({:requests, _}, &1))}
       end
 
     new_request = Map.put(new_request, field, value)
@@ -939,6 +1025,7 @@ defmodule Ash.Engine.Request do
           resolver_context
       end
     end)
+    |> Map.put(:verbose?, request.verbose?)
   end
 
   defp local_dep?(request, dep) do
@@ -990,7 +1077,11 @@ defmodule Ash.Engine.Request do
 
     keys = Authorizer.strict_check_context(authorizer, authorizer_state)
 
-    Authorizer.strict_check(authorizer, authorizer_state, Map.take(request, keys))
+    Authorizer.strict_check(
+      authorizer,
+      authorizer_state,
+      Map.take(request, keys)
+    )
   end
 
   defp check_authorizer(authorizer, request) do

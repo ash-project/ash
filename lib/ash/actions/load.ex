@@ -47,7 +47,7 @@ defmodule Ash.Actions.Load do
         else
           related_query
         end
-        |> maybe_select(relationship.destination_field)
+        |> Ash.Query.ensure_selected(relationship.destination_field)
 
       related_query =
         if relationship.cardinality == :one do
@@ -67,7 +67,7 @@ defmodule Ash.Actions.Load do
         )
 
       {
-        maybe_select(query, relationship.source_field),
+        Ash.Query.ensure_selected(query, relationship.source_field),
         requests ++
           further_requests ++
           do_requests(
@@ -78,19 +78,6 @@ defmodule Ash.Actions.Load do
           )
       }
     end)
-  end
-
-  defp maybe_select(query, field) do
-    if query.select do
-      Ash.Query.select(query, List.wrap(field))
-    else
-      to_select =
-        query.resource
-        |> Ash.Resource.Info.attributes()
-        |> Enum.map(& &1.name)
-
-      Ash.Query.select(query, to_select)
-    end
   end
 
   def attach_loads([%resource{} | _] = data, %{load: loads}) do
@@ -717,7 +704,7 @@ defmodule Ash.Actions.Load do
          reverse_path,
          root_data_filter
        ) do
-    case Ash.Filter.parse(root_query.resource, root_query.filter) do
+    case Ash.Filter.parse(root_query.resource, root_query.filter, %{}, %{}) do
       {:ok, nil} ->
         related_query
         |> Ash.Query.unset(:load)

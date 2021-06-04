@@ -4,7 +4,7 @@ defmodule Ash.Test.CalculationTest do
 
   defmodule Concat do
     # An example concatenation calculation, that accepts the delimeter as an argument
-    use Ash.Calculation, type: :string
+    use Ash.Calculation
 
     def init(opts) do
       if opts[:keys] && is_list(opts[:keys]) && Enum.all?(opts[:keys], &is_atom/1) do
@@ -52,6 +52,12 @@ defmodule Ash.Test.CalculationTest do
           default: " ",
           constraints: [allow_empty?: true, trim?: false]
       end
+
+      calculate :expr_full_name, :string, expr(first_name <> " " <> last_name)
+
+      calculate :conditional_full_name,
+                :string,
+                expr(if(first_name and last_name, first_name <> " " <> last_name, "(none)"))
     end
   end
 
@@ -113,7 +119,7 @@ defmodule Ash.Test.CalculationTest do
   test "custom calculations can be added to a query" do
     full_names =
       User
-      |> Ash.Query.calculate(:full_name, {Concat, keys: [:first_name, :last_name]}, %{
+      |> Ash.Query.calculate(:full_name, {Concat, keys: [:first_name, :last_name]}, :string, %{
         separator: " \o.o/ "
       })
       |> Api.read!()
@@ -121,5 +127,31 @@ defmodule Ash.Test.CalculationTest do
       |> Enum.sort()
 
     assert full_names == ["brian \o.o/ cranston", "zach \o.o/ daniel"]
+  end
+
+  test "expression based calculations are resolved via evaluating the expression" do
+    full_names =
+      User
+      |> Ash.Query.load(:expr_full_name)
+      |> Api.read!()
+      |> Enum.map(& &1.expr_full_name)
+      |> Enum.sort()
+
+    assert full_names == ["brian cranston", "zach daniel"]
+  end
+
+  test "the `if` calculation resolves the first expr when true, and the second when false" do
+    User
+    |> Ash.Changeset.new(%{first_name: "bob"})
+    |> Api.create!()
+
+    full_names =
+      User
+      |> Ash.Query.load(:conditional_full_name)
+      |> Api.read!()
+      |> Enum.map(& &1.conditional_full_name)
+      |> Enum.sort()
+
+    assert full_names == ["(none)", "brian cranston", "zach daniel"]
   end
 end

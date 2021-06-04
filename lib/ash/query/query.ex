@@ -197,7 +197,7 @@ defmodule Ash.Query do
         filter ->
           filter =
             resource
-            |> Ash.Filter.parse!(filter)
+            |> Ash.Filter.parse!(filter, query.aggregates, query.calculations, query.context)
             |> Ash.Filter.embed_predicates()
 
           do_filter(query, filter)
@@ -250,6 +250,7 @@ defmodule Ash.Query do
       query = Map.put(query, :action, action.name)
 
       query
+      |> set_actor(opts)
       |> Ash.Query.set_tenant(opts[:tenant] || query.tenant)
       |> Map.put(:action, action)
       |> Map.put(:__validated_for_action__, action_name)
@@ -259,6 +260,14 @@ defmodule Ash.Query do
       |> require_arguments(action)
     else
       add_error(query, :action, "No such action #{action_name}")
+    end
+  end
+
+  defp set_actor(query, opts) do
+    if Keyword.has_key?(opts, :actor) do
+      put_context(query, :private, %{actor: opts[:actor]})
+    else
+      query
     end
   end
 
@@ -406,8 +415,45 @@ defmodule Ash.Query do
     value
   end
 
-  defp do_expr({{:., _, [_, _]} = left, _, _}, escape?) do
+  defp do_expr({{:., _, [_, _]} = left, _, []}, escape?) do
     do_expr(left, escape?)
+  end
+
+  defp do_expr({{:., _, [_, _]} = left, _, args}, escape?) do
+    args = Enum.map(args, &do_expr(&1, false))
+
+    case do_expr(left, escape?) do
+      {:%{}, [], parts} = other when is_list(parts) ->
+        if Enum.any?(parts, &(&1 == {:__struct__, Ash.Query.Ref})) do
+          ref = Map.new(parts)
+
+          soft_escape(
+            %Ash.Query.Call{
+              name: ref.attribute,
+              relationship_path: ref.relationship_path,
+              args: args,
+              operator?: false
+            },
+            escape?
+          )
+        else
+          other
+        end
+
+      %Ash.Query.Ref{} = ref ->
+        soft_escape(
+          %Ash.Query.Call{
+            name: ref.attribute,
+            relationship_path: ref.relationship_path,
+            args: args,
+            operator?: false
+          },
+          escape?
+        )
+
+      other ->
+        other
+    end
   end
 
   defp do_expr({:ref, _, [field, path]}, escape?) do
@@ -562,6 +608,19 @@ defmodule Ash.Query do
     end
   end
 
+  def ensure_selected(query, fields) do
+    if query.select do
+      Ash.Query.select(query, List.wrap(fields))
+    else
+      to_select =
+        query.resource
+        |> Ash.Resource.Info.attributes()
+        |> Enum.map(& &1.name)
+
+      Ash.Query.select(query, to_select)
+    end
+  end
+
   @doc """
   Ensure the the specified attributes are `nil` in the query results.
   """
@@ -638,24 +697,33 @@ defmodule Ash.Query do
           resource_calculation = Ash.Resource.Info.calculation(query.resource, field) ->
             {module, opts} = module_and_opts(resource_calculation.calculation)
 
-            with {:ok, args} <- validate_arguments(resource_calculation, rest),
+            with {:ok, args} <- validate_calculation_arguments(resource_calculation, rest),
                  {:ok, calculation} <-
                    Calculation.new(
                      resource_calculation.name,
                      module,
                      opts,
-                     args
+                     resource_calculation.type,
+                     Map.put(args, :context, query.context)
                    ) do
-              calculation = %{calculation | load: field}
-
               fields_to_select =
                 resource_calculation.select
                 |> Kernel.||([])
-                |> Enum.concat(module.select(query, opts) || [])
+                |> Enum.concat(module.select(query, opts, calculation.context) || [])
+
+              calculation = %{calculation | load: field, select: fields_to_select}
+
+              query =
+                query
+                |> module.load(
+                  opts,
+                  calculation.context
+                  |> Map.put(:context, query.context)
+                )
 
               query
+              |> Ash.Query.load(resource_calculation.load || [])
               |> Map.update!(:calculations, &Map.put(&1, field, calculation))
-              |> maybe_select(fields_to_select)
             end
 
           true ->
@@ -721,19 +789,34 @@ defmodule Ash.Query do
             module -> {module, []}
           end
 
-        with {:ok, args} <- validate_arguments(resource_calculation, %{}),
+        with {:ok, args} <- validate_calculation_arguments(resource_calculation, %{}),
              {:ok, calculation} <-
-               Calculation.new(resource_calculation.name, module, opts, args) do
+               Calculation.new(
+                 resource_calculation.name,
+                 module,
+                 opts,
+                 resource_calculation.type,
+                 Map.put(args, :context, query.context)
+               ) do
           calculation = %{calculation | load: field}
 
           fields_to_select =
             resource_calculation.select
             |> Kernel.||([])
-            |> Enum.concat(module.select(query, opts) || [])
+            |> Enum.concat(module.select(query, opts, calculation.context) || [])
+
+          query =
+            query
+            |> module.load(
+              opts,
+              calculation.context
+              |> Map.put(:context, query.context)
+            )
+            |> Ash.Query.load(resource_calculation.load || [])
 
           query
           |> Map.update!(:calculations, &Map.put(&1, field, calculation))
-          |> maybe_select(fields_to_select)
+          |> ensure_selected(fields_to_select)
         else
           {:error, error} ->
             add_error(query, :load, error)
@@ -744,20 +827,15 @@ defmodule Ash.Query do
     end
   end
 
-  defp maybe_select(query, field) do
-    if query.select do
-      Ash.Query.select(query, List.wrap(field))
-    else
-      to_select =
-        query.resource
-        |> Ash.Resource.Info.attributes()
-        |> Enum.map(& &1.name)
+  @doc false
+  def validate_calculation_arguments(calculation, args) do
+    args =
+      if Keyword.keyword?(args) do
+        Map.new(args)
+      else
+        args
+      end
 
-      Ash.Query.select(query, to_select)
-    end
-  end
-
-  defp validate_arguments(calculation, args) do
     Enum.reduce_while(calculation.arguments, {:ok, %{}}, fn argument, {:ok, arg_values} ->
       value = default(Map.get(args, argument.name), argument.default)
 
@@ -768,13 +846,17 @@ defmodule Ash.Query do
           {:halt, {:error, "Argument #{argument.name} is required"}}
         end
       else
-        with {:ok, casted} <- Ash.Type.cast_input(argument.type, value, argument.constraints),
-             {:ok, casted} <-
-               Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
-          {:cont, {:ok, Map.put(arg_values, argument.name, casted)}}
+        if !Map.get(args, argument.name) && value do
+          {:cont, {:ok, Map.put(arg_values, argument.name, value)}}
         else
-          {:error, error} ->
-            {:halt, {:error, error}}
+          with {:ok, casted} <- Ash.Type.cast_input(argument.type, value, argument.constraints),
+               {:ok, casted} <-
+                 Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
+            {:cont, {:ok, Map.put(arg_values, argument.name, casted)}}
+          else
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
         end
       end
     end)
@@ -1054,11 +1136,11 @@ defmodule Ash.Query do
       {:aggregate, {name, type, relationship, agg_query}}, query ->
         aggregate(query, name, type, relationship, agg_query)
 
-      {:calculate, {name, module_and_opts}}, query ->
-        calculate(query, name, module_and_opts)
+      {:calculate, {name, module_and_opts, type}}, query ->
+        calculate(query, name, module_and_opts, type)
 
-      {:calculate, {name, module_and_opts, context}}, query ->
-        calculate(query, name, module_and_opts, context)
+      {:calculate, {name, module_and_opts, type, context}}, query ->
+        calculate(query, name, module_and_opts, type, context)
 
       {:context, context}, query ->
         set_context(query, context)
@@ -1130,7 +1212,7 @@ defmodule Ash.Query do
 
   More features for calculations, like passing anonymous functions, will be supported in the future.
   """
-  def calculate(query, name, module_and_opts, context \\ %{}) do
+  def calculate(query, name, module_and_opts, type, context \\ %{}) do
     query = to_query(query)
 
     {module, opts} =
@@ -1139,8 +1221,19 @@ defmodule Ash.Query do
         module -> {module, []}
       end
 
-    case Calculation.new(name, module, opts, context) do
+    case Calculation.new(name, module, opts, type, Map.put(context, :context, query.context)) do
       {:ok, calculation} ->
+        fields_to_select = module.select(query, opts, calculation.context) || []
+
+        query =
+          query
+          |> module.load(
+            opts,
+            calculation.context
+            |> Map.put(:context, query.context)
+          )
+
+        calculation = %{calculation | select: fields_to_select}
         %{query | calculations: Map.put(query.calculations, name, calculation)}
 
       {:error, error} ->
@@ -1306,7 +1399,13 @@ defmodule Ash.Query do
             {:ok, filter}
 
           existing_filter ->
-            Ash.Filter.add_to_filter(existing_filter, filter, :and, query.aggregates)
+            Ash.Filter.add_to_filter(
+              existing_filter,
+              filter,
+              :and,
+              query.aggregates,
+              query.calculations
+            )
         end
 
       case new_filter do
@@ -1333,13 +1432,22 @@ defmodule Ash.Query do
         |> Ash.Resource.Info.aggregates()
         |> Enum.map(& &1.name)
 
-      temp_query = Ash.Query.load(query, agg_names)
-
       filter =
         if query.filter do
-          Ash.Filter.add_to_filter(query.filter, statement, :and, query.aggregates)
+          Ash.Filter.add_to_filter(
+            query.filter,
+            statement,
+            :and,
+            query.aggregates,
+            query.calculations
+          )
         else
-          Ash.Filter.parse(query.resource, statement, temp_query.aggregates)
+          Ash.Filter.parse(
+            query.resource,
+            statement,
+            query.aggregates,
+            query.calculations
+          )
         end
 
       case filter do
@@ -1351,8 +1459,38 @@ defmodule Ash.Query do
             |> Enum.filter(&(&1 in agg_names))
             |> Enum.reject(&Map.has_key?(query.aggregates, &1))
 
+          aggs_to_load_for_calculations =
+            filter
+            |> Ash.Filter.used_calculations(
+              query.resource,
+              [],
+              query.calculations,
+              query.aggregates
+            )
+            |> Enum.flat_map(fn calculation ->
+              expression = calculation.module.expression(calculation.opts, calculation.context)
+
+              case Ash.Filter.hydrate_refs(expression, %{
+                     resource: query.resource,
+                     aggregates: query.aggregates,
+                     calculations: query.calculations,
+                     public?: false
+                   }) do
+                {:ok, expression} ->
+                  expression
+                  |> Ash.Filter.used_aggregates([])
+                  |> Enum.map(& &1.name)
+
+                _ ->
+                  []
+              end
+            end)
+            |> Enum.filter(&(&1 in agg_names))
+            |> Enum.reject(&Map.has_key?(query.aggregates, &1))
+            |> Enum.reject(&(&1 in aggregates_to_load))
+
           query
-          |> Ash.Query.load(aggregates_to_load)
+          |> Ash.Query.load(aggregates_to_load ++ aggs_to_load_for_calculations)
           |> Map.put(:filter, filter)
 
         {:error, error} ->

@@ -200,6 +200,13 @@ defmodule Ash.Engine.RequestHandler do
         send(state.runner_pid, {state.runner_ref, {:data, [key], value}})
         state
 
+      {:requests, new_requests}, state ->
+        unless Enum.empty?(new_requests) do
+          GenServer.cast(state.engine_pid, {:new_requests, new_requests})
+        end
+
+        state
+
       {:update_changeset, changeset}, state ->
         send(state.runner_pid, {state.runner_ref, {:update_changeset, changeset}})
         state

@@ -21,11 +21,12 @@ defmodule Ash.Filter.Runtime do
   that could only be determined by data layer), it is assumed that they
   are not matches.
   """
-  def filter_matches(_api, [], _filter, _), do: {:ok, []}
+  def filter_matches(api, records, filter, loaded? \\ false)
+  def filter_matches(_api, [], _filter, _loaded), do: {:ok, []}
 
-  def filter_matches(_api, records, nil), do: {:ok, records}
+  def filter_matches(_api, records, nil, _loaded), do: {:ok, records}
 
-  def filter_matches(api, records, filter) do
+  def filter_matches(api, records, filter, loaded?) do
     filter
     |> Ash.Filter.list_refs()
     |> Enum.map(& &1.relationship_path)
@@ -40,14 +41,17 @@ defmodule Ash.Filter.Runtime do
            matches?(nil, record, filter)
          end)}
 
-      need_to_load ->
+      need_to_load when not loaded? ->
         case api.load(records, need_to_load) do
           {:ok, loaded} ->
-            filter_matches(api, loaded, filter)
+            filter_matches(api, loaded, filter, true)
 
           other ->
             other
         end
+
+      _need_to_load when loaded? ->
+        {:ok, []}
     end
   end
 
@@ -135,7 +139,7 @@ defmodule Ash.Filter.Runtime do
     end)
   end
 
-  defp do_match(record, expression) do
+  def do_match(record, expression) do
     case expression do
       %Ash.Filter{expression: expression} ->
         do_match(record, expression)
@@ -159,7 +163,7 @@ defmodule Ash.Filter.Runtime do
             :unknown
 
           _ ->
-            {:ok, false}
+            {:ok, nil}
         end
 
       %func{__function__?: true, arguments: arguments} = function ->
@@ -174,7 +178,7 @@ defmodule Ash.Filter.Runtime do
             :unknown
 
           _ ->
-            {:ok, false}
+            {:ok, nil}
         end
 
       %Not{expression: expression} ->
@@ -240,7 +244,7 @@ defmodule Ash.Filter.Runtime do
         :unknown
 
       _ ->
-        {:ok, false}
+        {:ok, nil}
     end
   end
 
@@ -256,7 +260,7 @@ defmodule Ash.Filter.Runtime do
         :unknown
 
       _ ->
-        {:ok, false}
+        {:ok, nil}
     end
   end
 
@@ -299,6 +303,9 @@ defmodule Ash.Filter.Runtime do
       {:ok, false} ->
         {:ok, false}
 
+      {:ok, nil} ->
+        {:ok, false}
+
       :unknown ->
         :unknown
     end
@@ -310,6 +317,9 @@ defmodule Ash.Filter.Runtime do
         {:ok, true}
 
       {:ok, false} ->
+        do_match(record, right)
+
+      {:ok, nil} ->
         do_match(record, right)
 
       :unknown ->

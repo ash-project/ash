@@ -50,7 +50,7 @@ defmodule Ash.Schema do
           for calculation <- Ash.Resource.Info.calculations(__MODULE__) do
             {mod, _} = calculation.calculation
 
-            field(calculation.name, Ash.Type.ecto_type(mod.type()), virtual: true)
+            field(calculation.name, Ash.Type.ecto_type(calculation.type), virtual: true)
 
             struct_fields = Keyword.delete(@struct_fields, calculation.name)
             Module.delete_attribute(__MODULE__, :struct_fields)
@@ -105,7 +105,7 @@ defmodule Ash.Schema do
           for calculation <- Ash.Resource.Info.calculations(__MODULE__) do
             {mod, _} = calculation.calculation
 
-            field(calculation.name, Ash.Type.ecto_type(mod.type()), virtual: true)
+            field(calculation.name, Ash.Type.ecto_type(calculation.type), virtual: true)
 
             struct_fields = Keyword.delete(@struct_fields, calculation.name)
             Module.delete_attribute(__MODULE__, :struct_fields)

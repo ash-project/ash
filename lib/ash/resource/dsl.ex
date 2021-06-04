@@ -642,13 +642,17 @@ defmodule Ash.Resource.Dsl do
 
     All functions will have an optional last argument that accepts options. Those options are:
 
-    #{Ash.OptionsHelpers.docs(Ash.Resource.Interface.interface_options())}
+    #{Ash.OptionsHelpers.docs(Ash.Resource.Interface.interface_options(nil))}
 
     For reads:
 
     * `:query` - a query to start the action with, can be used to filter/sort the results of the action.
 
-    They will also have an optional third argument that is a freeform map to provide action input. It *must be a map*.
+    For creates:
+
+    * `:changeset` - a changeset to start the action with
+
+    They will also have an optional second to last argument that is a freeform map to provide action input. It *must be a map*.
     If it is a keyword list, it will be assumed that it is actually `options` (for convenience).
     This allows for the following behaviour:
 
@@ -889,7 +893,8 @@ defmodule Ash.Resource.Dsl do
       """
     ],
     imports: [
-      Module.concat(["Ash", Resource, Calculation, Builtins])
+      Module.concat(["Ash", Resource, Calculation, Builtins]),
+      Module.concat(["Ash", Filter.TemplateHelpers])
     ],
     entities: [
       @calculation

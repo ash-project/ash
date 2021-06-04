@@ -11,6 +11,9 @@ defmodule Ash.Query.Operator.Basic do
     ],
     div: [
       symbol: :/
+    ],
+    concat: [
+      symbol: :<>
     ]
   ]
 
@@ -22,7 +25,7 @@ defmodule Ash.Query.Operator.Basic do
 
     Module.create(
       mod,
-      quote do
+      quote generated: true do
         @moduledoc """
         left #{unquote(opts[:symbol])} right
         """
@@ -34,6 +37,20 @@ defmodule Ash.Query.Operator.Basic do
           types: [:same, :any]
 
         def evaluate(%{left: left, right: right}) do
+          if is_nil(left) || is_nil(right) do
+            nil
+          else
+            # delegate to function to avoid dialyzer warning
+            # that this can only ever be one value (for each module we define)
+            do_evaluate(unquote(opts[:symbol]), left, right)
+          end
+        end
+
+        defp do_evaluate(:<>, left, right) do
+          {:known, left <> right}
+        end
+
+        defp do_evaluate(op, left, right) do
           {:known, apply(Kernel, unquote(opts[:symbol]), [left, right])}
         end
       end,

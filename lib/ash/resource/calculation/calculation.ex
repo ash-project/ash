@@ -8,7 +8,8 @@ defmodule Ash.Resource.Calculation do
     :description,
     :private?,
     :allow_nil?,
-    :select
+    :select,
+    :load
   ]
 
   @schema [
@@ -40,6 +41,11 @@ defmodule Ash.Resource.Calculation do
       type: {:list, :atom},
       default: [],
       doc: "A list of fields to ensure selected in the case that the calculation is run."
+    ],
+    load: [
+      type: :any,
+      default: [],
+      doc: "A load statement to be applied if the calculation is used."
     ],
     allow_nil?: [
       type: :boolean,
@@ -101,6 +107,6 @@ defmodule Ash.Resource.Calculation do
   def calculation(module) when is_atom(module), do: {:ok, {module, []}}
 
   def calculation(other) do
-    {:error, "Expected a module or {module, opts}, got: #{inspect(other)}"}
+    {:ok, {Ash.Resource.Calculation.Expression, expr: other}}
   end
 end

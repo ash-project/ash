@@ -44,8 +44,8 @@ defmodule Ash.Engine do
     :authorize?,
     :changeset,
     :runner_pid,
-    :local_requests?,
     :runner_ref,
+    local_requests: [],
     request_handlers: %{},
     active_requests: [],
     completed_requests: [],
@@ -92,11 +92,11 @@ defmodule Ash.Engine do
           opts
           |> Keyword.put(:runner_ref, runner_ref)
           |> Keyword.put(:requests, async_requests)
-          |> Keyword.put(:local_requests?, !Enum.empty?(local_requests))
+          |> Keyword.put(:local_requests, Enum.map(local_requests, & &1.path))
           |> Keyword.put(:runner_pid, self())
           |> Keyword.put(:api, api)
 
-        run_requests(async_requests, local_requests, opts, innermost_resource)
+        run_requests(local_requests, opts, innermost_resource)
       end)
 
     case transaction_result do
@@ -110,25 +110,22 @@ defmodule Ash.Engine do
     end
   end
 
-  defp run_requests(async_requests, local_requests, opts, innermost_resource) do
-    if async_requests == [] do
-      run_and_return_or_rollback(local_requests, opts, innermost_resource)
-    else
-      Process.flag(:trap_exit, true)
+  defp run_requests(local_requests, opts, innermost_resource) do
+    Process.flag(:trap_exit, true)
+    runner_ref = opts[:runner_ref]
 
-      {:ok, pid} = GenServer.start(__MODULE__, opts)
-      _ = Process.monitor(pid)
+    {:ok, pid} = GenServer.start(__MODULE__, opts)
+    _ = Process.monitor(pid)
 
-      receive do
-        {:pid_info, pid_info} ->
-          run_and_return_or_rollback(
-            local_requests,
-            opts,
-            innermost_resource,
-            pid,
-            pid_info
-          )
-      end
+    receive do
+      {:pid_info, pid_info, ^runner_ref} ->
+        run_and_return_or_rollback(
+          local_requests,
+          opts,
+          innermost_resource,
+          pid,
+          pid_info
+        )
     end
   end
 
@@ -136,8 +133,8 @@ defmodule Ash.Engine do
          local_requests,
          opts,
          innermost_resource,
-         pid \\ nil,
-         pid_info \\ %{}
+         pid,
+         pid_info
        ) do
     case Runner.run(local_requests, opts[:verbose?], opts[:runner_ref], pid, pid_info) do
       %{errors: errors} = runner when errors == [] ->
@@ -194,7 +191,7 @@ defmodule Ash.Engine do
         requests: opts[:requests],
         active_requests: Enum.map(opts[:requests], & &1.path),
         runner_pid: opts[:runner_pid],
-        local_requests?: opts[:local_requests?],
+        local_requests: opts[:local_requests],
         verbose?: opts[:verbose?] || false,
         api: opts[:api],
         actor: opts[:actor],
@@ -236,8 +233,8 @@ defmodule Ash.Engine do
         {path, pid}
       end)
 
-    if new_state.local_requests? do
-      send(new_state.runner_pid, {:pid_info, pid_info})
+    if new_state.local_requests != [] do
+      send(new_state.runner_pid, {:pid_info, pid_info, state.runner_ref})
     end
 
     Enum.each(new_state.request_handlers, fn {pid, _} ->
@@ -306,16 +303,35 @@ defmodule Ash.Engine do
     |> maybe_shutdown()
   end
 
-  def handle_cast(:local_requests_complete, state) do
-    %{state | local_requests?: false}
-    |> maybe_shutdown()
-  end
-
   def handle_cast({:error, error, request_handler_state}, state) do
     state
     |> log(fn -> "Error received from request_handler #{inspect(error)}" end)
     |> move_to_error(request_handler_state.request.path)
     |> add_error(request_handler_state.request.path, error)
+    |> maybe_shutdown()
+  end
+
+  def handle_cast({:new_requests, requests}, state) do
+    requests =
+      requests
+      |> Enum.map(
+        &%{
+          &1
+          | authorize?: &1.authorize? and state.authorize?,
+            actor: state.actor,
+            verbose?: state.verbose?
+        }
+      )
+      |> Enum.map(&Request.add_initial_authorizer_state/1)
+
+    send(state.runner_pid, {state.runner_ref, {:requests, requests}})
+
+    %{state | local_requests: state.local_requests ++ Enum.map(requests, & &1.path)}
+    |> maybe_shutdown()
+  end
+
+  def handle_cast({:local_request_complete, path}, state) do
+    %{state | local_requests: state.local_requests -- [path]}
     |> maybe_shutdown()
   end
 
@@ -450,7 +466,7 @@ defmodule Ash.Engine do
       not Ash.DataLayer.data_layer_can?(request.resource, :async_engine)
   end
 
-  defp maybe_shutdown(%{active_requests: [], local_requests?: false} = state) do
+  defp maybe_shutdown(%{active_requests: [], local_requests: []} = state) do
     log(state, fn -> "shutting down, completion criteria reached" end)
     {:stop, {:shutdown, state}, state}
   end

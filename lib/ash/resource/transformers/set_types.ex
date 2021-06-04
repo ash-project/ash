@@ -94,14 +94,12 @@ defmodule Ash.Resource.Transformers.SetTypes do
 
       case new_arguments do
         {:ok, new_args} ->
-          type = Ash.Type.get_type(calculation.type)
-
           {:cont,
            {:ok,
             Transformer.replace_entity(
               dsl_state,
               [:calculations],
-              %{calculation | arguments: Enum.reverse(new_args), type: type},
+              %{calculation | arguments: Enum.reverse(new_args)},
               fn replacing ->
                 replacing.name == calculation.name
               end

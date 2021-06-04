@@ -32,6 +32,13 @@ defmodule Ash.Actions.Create do
           |> Map.get(:keys)
       end
 
+    changeset =
+      if opts[:tenant] do
+        Ash.Changeset.set_tenant(changeset, opts[:tenant])
+      else
+        changeset
+      end
+
     resource = changeset.resource
 
     opts =

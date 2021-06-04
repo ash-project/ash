@@ -36,6 +36,13 @@ defmodule Ash.Actions.Update do
       |> Keyword.take([:verbose?, :actor, :authorize?])
       |> Keyword.put(:transaction?, true)
 
+    changeset =
+      if opts[:tenant] do
+        Ash.Changeset.set_tenant(changeset, opts[:tenant])
+      else
+        changeset
+      end
+
     resource = changeset.resource
     changeset = changeset(changeset, api, action, opts[:actor])
 

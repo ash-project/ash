@@ -4,7 +4,9 @@ defmodule Ash.Engine.Runner do
     :engine_pid,
     :ref,
     notified_of_complete?: false,
+    local_failed?: false,
     requests: [],
+    completed: [],
     errors: [],
     changeset: %{},
     data: %{},
@@ -34,6 +36,7 @@ defmodule Ash.Engine.Runner do
       engine_pid: engine_pid,
       pid_info: pid_info,
       ref: ref,
+      data: %{verbose?: verbose?},
       changeset: changeset,
       resource_notifications: []
     }
@@ -50,43 +53,43 @@ defmodule Ash.Engine.Runner do
   end
 
   def run_to_completion(state) do
+    # This allows for publishing any dependencies
+
     if Enum.all?(state.requests, &(&1.state in [:complete, :error])) do
-      # This allows for publishing any dependencies
-      new_state = run_iteration(state)
+      state = run_iteration(state)
 
-      if new_state.engine_pid do
-        new_state =
-          if new_state.notified_of_complete? do
-            new_state
-          else
-            log(new_state, fn -> "notifying engine of local request completion" end)
-            GenServer.cast(new_state.engine_pid, :local_requests_complete)
-            %{new_state | notified_of_complete?: true}
-          end
-
-        wait_for_engine(new_state, true)
+      if Enum.all?(state.requests, &(&1.state in [:complete, :error])) do
+        if state.engine_pid do
+          wait_for_engine(state, true)
+        else
+          log(state, fn -> "Synchronous engine complete." end)
+          state
+        end
       else
-        log(state, fn -> "Synchronous engine complete." end)
-        new_state
+        do_run_to_completion(state)
       end
     else
-      case run_iteration(state) do
-        new_state when new_state == state ->
-          if new_state.engine_pid do
-            wait_for_engine(new_state, false)
-          else
-            if new_state.errors == [] do
-              log(state, fn -> "Synchronous engine stuck:\n\n#{stuck_report(state)}" end)
-              GenServer.cast(state.engine_pid, :log_stuck_report)
-              add_error(new_state, :__engine__, SynchronousEngineStuck.exception([]))
-            else
-              new_state
-            end
-          end
+      do_run_to_completion(state)
+    end
+  end
 
-        new_state ->
-          run_to_completion(new_state)
-      end
+  defp do_run_to_completion(state) do
+    case run_iteration(state) do
+      new_state when new_state == state ->
+        if new_state.engine_pid do
+          wait_for_engine(new_state, false)
+        else
+          if new_state.errors == [] do
+            log(state, fn -> "Synchronous engine stuck:\n\n#{stuck_report(state)}" end)
+            GenServer.cast(state.engine_pid, :log_stuck_report)
+            add_error(new_state, :__engine__, SynchronousEngineStuck.exception([]))
+          else
+            new_state
+          end
+        end
+
+      new_state ->
+        run_to_completion(new_state)
     end
   end
 
@@ -125,6 +128,10 @@ defmodule Ash.Engine.Runner do
     do_wait_for_engine(state, complete?)
   end
 
+  defp do_wait_for_engine(%{local_failed?: true} = state, _complete?) do
+    state
+  end
+
   defp do_wait_for_engine(%{engine_pid: engine_pid, ref: ref} = state, complete?) do
     receive do
       {^ref, {:update_changeset, changeset}} ->
@@ -136,8 +143,9 @@ defmodule Ash.Engine.Runner do
         new_state =
           case Request.wont_receive(request, path, field) do
             {:stop, :dependency_failed, new_request} ->
-              notify_error({:dependency_failed, path}, state)
-              replace_request(state, %{new_request | state: :error})
+              state
+              |> notify_error({:dependency_failed, path})
+              |> replace_request(%{new_request | state: :error})
           end
 
         run_to_completion(new_state)
@@ -205,6 +213,11 @@ defmodule Ash.Engine.Runner do
         |> add_data(path, data)
         |> run_to_completion()
 
+      {^ref, {:requests, requests}} ->
+        state
+        |> handle_requests(requests)
+        |> run_to_completion()
+
       {:DOWN, _, _, ^engine_pid,
        {:shutdown, %{errored_requests: [], runner_ref: ^ref} = engine_state}} ->
         log(state, fn -> "Engine complete" end)
@@ -264,7 +277,23 @@ defmodule Ash.Engine.Runner do
         {new_state, notifications ++ new_notifications, new_dependencies ++ dependencies}
       end)
 
-    store_dependencies(new_state, dependencies, notifications)
+    new_state
+    |> store_dependencies(dependencies, notifications)
+    |> notify_engine_complete()
+  end
+
+  defp notify_engine_complete(state) do
+    newly_completed =
+      state.requests
+      |> Enum.filter(&(&1.state in [:complete, :error]))
+      |> Enum.reject(&(&1.path in state.completed))
+      |> Enum.map(& &1.path)
+
+    Enum.each(newly_completed, fn completed_path ->
+      GenServer.cast(state.engine_pid, {:local_request_complete, completed_path})
+    end)
+
+    %{state | completed: state.completed ++ newly_completed}
   end
 
   defp store_dependencies(state, dependencies, notifications \\ []) do
@@ -332,10 +361,9 @@ defmodule Ash.Engine.Runner do
         {new_state, notifications ++ new_notifications, new_dependencies ++ dependencies}
 
       {:error, error, new_request} ->
-        notify_error(error, state)
-
         new_state =
           state
+          |> notify_error(error)
           |> replace_request(%{new_request | state: :error, error?: true})
           |> add_error(new_request.path, error)
           |> replace_request(%{new_request | state: :error, error?: true})
@@ -344,8 +372,10 @@ defmodule Ash.Engine.Runner do
     end
   end
 
-  defp notify_error(error, state) do
+  defp notify_error(state, error) do
     GenServer.cast(state.engine_pid, {:local_requests_failed, error})
+
+    %{state | local_failed?: true}
   end
 
   defp notify(state, notifications) do
@@ -355,6 +385,13 @@ defmodule Ash.Engine.Runner do
     |> List.wrap()
     |> Enum.uniq()
     |> Enum.reduce(state, fn
+      {:requests, requests}, state ->
+        unless Enum.empty?(requests) do
+          GenServer.cast(state.engine_pid, {:new_requests, requests})
+        end
+
+        state
+
       {:set_extra_data, key, value}, state ->
         %{state | data: Map.put(state.data, key, value)}
 
@@ -379,6 +416,15 @@ defmodule Ash.Engine.Runner do
             replace_request(state, new_request)
         end
     end)
+  end
+
+  defp handle_requests(state, []) do
+    state
+  end
+
+  defp handle_requests(state, requests) do
+    # TODO: At some point we might run these requests async, e.g send some to the engine
+    %{state | requests: state.requests ++ requests, notified_of_complete?: false}
   end
 
   defp replace_request(state, request) do
@@ -415,20 +461,18 @@ defmodule Ash.Engine.Runner do
         {new_state, notifications, new_dependencies}
 
       {:error, error, notifications, new_request} ->
-        notify_error(error, state)
-
         new_state =
           state
+          |> notify_error(error)
           |> add_error(new_request.path, error)
           |> replace_request(%{new_request | state: :error})
 
         {new_state, notifications, []}
 
       {:error, error, new_request} ->
-        notify_error(error, state)
-
         new_state =
           state
+          |> notify_error(error)
           |> add_error(new_request.path, error)
           |> replace_request(%{new_request | state: :error})
 
