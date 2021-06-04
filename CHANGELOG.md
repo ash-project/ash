@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.45.0-rc1](https://github.com/ash-project/ash/compare/v1.45.0-rc0...v1.45.0-rc1) (2021-06-04)
+
+
+
+
+### Bug Fixes:
+
+* constraints on calculations
+
+* better calculation inspect
+
+* allow supplying stacktraces when building errors
+
 ## [v1.45.0-rc0](https://github.com/ash-project/ash/compare/v1.44.13...v1.45.0-rc0) (2021-06-04)
 
 
