@@ -196,7 +196,7 @@ defmodule Ash.MixProject do
       {:credo, ">= 0.0.0", only: :dev, runtime: false},
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
       {:sobelow, ">= 0.0.0", only: :dev, runtime: false},
-      {:git_ops, "~> 2.4.2", only: :dev},
+      {:git_ops, "~> 2.4.3", only: :dev},
       {:excoveralls, "~> 0.13.0", only: [:dev, :test]},
       {:mix_test_watch, "~> 1.0", only: :dev, runtime: false},
       {:parse_trans, "3.3.0", only: [:dev, :test], override: true}
