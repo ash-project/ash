@@ -6,6 +6,7 @@ defmodule Ash.Resource.Calculation do
     :calculation,
     :arguments,
     :description,
+    :constraints,
     :private?,
     :allow_nil?,
     :select,
@@ -21,6 +22,11 @@ defmodule Ash.Resource.Calculation do
     type: [
       type: :any,
       required: true
+    ],
+    constraints: [
+      type: :keyword_list,
+      default: [],
+      doc: "Constraints to provide to the type."
     ],
     calculation: [
       type: {:custom, __MODULE__, :calculation, []},

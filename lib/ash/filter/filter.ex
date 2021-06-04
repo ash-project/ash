@@ -1745,10 +1745,19 @@ defmodule Ash.Filter do
       resource_calculation = calculation(context, field) ->
         {module, opts} = module_and_opts(resource_calculation.calculation)
 
+        {input, nested_statement} =
+          case nested_statement do
+            {input, nested} ->
+              {input || %{}, nested}
+
+            nested ->
+              {%{}, nested}
+          end
+
         with {:ok, args} <-
                Ash.Query.validate_calculation_arguments(
                  resource_calculation,
-                 %{}
+                 input
                ),
              {:ok, calculation} <-
                Calculation.new(

@@ -73,26 +73,50 @@ defmodule Ash.Error do
     end
   end
 
-  def to_ash_error(list) when is_list(list) do
+  def to_ash_error(list, stacktrace \\ nil)
+
+  def to_ash_error(list, stacktrace) when is_list(list) do
     if Keyword.keyword?(list) do
-      list
-      |> Keyword.take([:error, :vars])
-      |> Keyword.put_new(:error, list[:message])
-      |> Unknown.exception()
+      error =
+        list
+        |> Keyword.take([:error, :vars])
+        |> Keyword.put_new(:error, list[:message])
+        |> Unknown.exception()
+
+      if stacktrace do
+        %{error | stacktrace: stacktrace}
+      else
+        stacktrace
+      end
     else
-      Enum.map(list, &to_ash_error/1)
+      Enum.map(list, &to_ash_error(&1, stacktrace))
     end
   end
 
-  def to_ash_error(error) when is_binary(error) do
-    Unknown.exception(error: error)
+  def to_ash_error(error, stacktrace) when is_binary(error) do
+    if stacktrace do
+      error = Unknown.exception(error: error)
+      %{error | stacktrace: %Stacktrace{stacktrace: stacktrace}}
+    else
+      Unknown.exception(error: error)
+    end
   end
 
-  def to_ash_error(other) do
+  def to_ash_error(other, stacktrace) do
     if ash_error?(other) do
-      other
+      if stacktrace do
+        Map.put(other, :stacktrace, %Stacktrace{stacktrace: stacktrace})
+      else
+        other
+      end
     else
-      Unknown.exception(error: "unknown error: #{inspect(other)}")
+      other = Unknown.exception(error: "unknown error: #{inspect(other)}")
+
+      if stacktrace do
+        Map.put(other, :stacktrace, %Stacktrace{stacktrace: stacktrace})
+      else
+        other
+      end
     end
   end
 

@@ -78,32 +78,42 @@ defmodule Ash.Resource.Transformers.SetTypes do
     dsl_state
     |> Transformer.get_entities([:calculations])
     |> Enum.reduce_while({:ok, dsl_state}, fn calculation, {:ok, dsl_state} ->
-      new_arguments =
-        calculation.arguments
-        |> Enum.reduce_while({:ok, []}, fn argument, {:ok, args} ->
-          type = Ash.Type.get_type(argument.type)
+      type = Ash.Type.get_type(calculation.type)
 
-          case validate_constraints(type, argument.constraints) do
-            {:ok, constraints} ->
-              {:cont, {:ok, [%{argument | type: type, constraints: constraints} | args]}}
+      case validate_constraints(type, calculation.constraints) do
+        {:ok, constraints} ->
+          calculation = %{calculation | type: type, constraints: constraints}
+
+          new_arguments =
+            calculation.arguments
+            |> Enum.reduce_while({:ok, []}, fn argument, {:ok, args} ->
+              type = Ash.Type.get_type(argument.type)
+
+              case validate_constraints(type, argument.constraints) do
+                {:ok, constraints} ->
+                  {:cont, {:ok, [%{argument | type: type, constraints: constraints} | args]}}
+
+                {:error, error} ->
+                  {:halt, {:error, error}}
+              end
+            end)
+
+          case new_arguments do
+            {:ok, new_args} ->
+              {:cont,
+               {:ok,
+                Transformer.replace_entity(
+                  dsl_state,
+                  [:calculations],
+                  %{calculation | arguments: Enum.reverse(new_args)},
+                  fn replacing ->
+                    replacing.name == calculation.name
+                  end
+                )}}
 
             {:error, error} ->
-              {:halt, {:error, error}}
+              {:error, error}
           end
-        end)
-
-      case new_arguments do
-        {:ok, new_args} ->
-          {:cont,
-           {:ok,
-            Transformer.replace_entity(
-              dsl_state,
-              [:calculations],
-              %{calculation | arguments: Enum.reverse(new_args)},
-              fn replacing ->
-                replacing.name == calculation.name
-              end
-            )}}
 
         {:error, error} ->
           {:error, error}
