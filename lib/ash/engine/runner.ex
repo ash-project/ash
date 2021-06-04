@@ -123,16 +123,14 @@ defmodule Ash.Engine.Runner do
     end)
   end
 
-  defp wait_for_engine(state, complete?) do
-    log(state, fn -> "waiting for engine" end)
-    do_wait_for_engine(state, complete?)
-  end
+  defp wait_for_engine(%{engine_pid: engine_pid, ref: ref} = state, complete?) do
+    timeout =
+      if state.local_failed? do
+        0
+      else
+        :infinity
+      end
 
-  defp do_wait_for_engine(%{local_failed?: true} = state, _complete?) do
-    state
-  end
-
-  defp do_wait_for_engine(%{engine_pid: engine_pid, ref: ref} = state, complete?) do
     receive do
       {^ref, {:update_changeset, changeset}} ->
         run_to_completion(%{state | changeset: changeset})
@@ -214,8 +212,31 @@ defmodule Ash.Engine.Runner do
         |> run_to_completion()
 
       {^ref, {:requests, requests}} ->
+        {local, async} =
+          if Enum.any?(requests, fn request ->
+               Ash.DataLayer.data_layer_can?(request.resource, :transact) &&
+                 Ash.DataLayer.in_transaction?(request.resource)
+             end) do
+            {requests, []}
+          else
+            Enum.split_with(requests, &Ash.Engine.must_be_local?/1)
+          end
+
+        state =
+          if Enum.empty?(async) do
+            state
+          else
+            GenServer.cast(state.engine_pid, {:spawn_requests, async})
+            runner_ref = state.ref
+
+            receive do
+              {:pid_info, pid_info, ^runner_ref} ->
+                %{state | pid_info: pid_info}
+            end
+          end
+
         state
-        |> handle_requests(requests)
+        |> handle_requests(local)
         |> run_to_completion()
 
       {:DOWN, _, _, ^engine_pid,
@@ -226,6 +247,9 @@ defmodule Ash.Engine.Runner do
       {:DOWN, _, _, ^engine_pid, {:shutdown, %{runner_ref: ^ref} = engine_state}} ->
         log(state, fn -> "Engine complete" end)
         handle_completion(state, engine_state, complete?, true)
+    after
+      timeout ->
+        state
     end
   end
 

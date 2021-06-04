@@ -244,6 +244,49 @@ defmodule Ash.Engine do
     {:noreply, new_state}
   end
 
+  def handle_cast({:spawn_requests, requests}, state) do
+    log(state, fn -> "Spawning request processes" end, :debug)
+
+    new_state =
+      Enum.reduce(requests, state, fn request, state ->
+        {:ok, pid} =
+          GenServer.start(Ash.Engine.RequestHandler,
+            callers: [self() | Process.get("$callers", [])],
+            request: request,
+            verbose?: state.verbose?,
+            actor?: state.actor,
+            runner_ref: state.runner_ref,
+            authorize?: state.authorize?,
+            engine_pid: self(),
+            runner_pid: state.runner_pid
+          )
+
+        Process.monitor(pid)
+
+        %{
+          state
+          | request_handlers: Map.put(state.request_handlers, pid, request.path),
+            local_requests: state.local_requests -- [request.path],
+            active_requests: state.active_requests ++ [request.path]
+        }
+      end)
+
+    pid_info =
+      Enum.into(new_state.request_handlers, %{}, fn {pid, path} ->
+        {path, pid}
+      end)
+
+    if new_state.runner_pid do
+      send(new_state.runner_pid, {:pid_info, pid_info, state.runner_ref})
+    end
+
+    Enum.each(new_state.request_handlers, fn {pid, _} ->
+      send(pid, {:pid_info, pid_info})
+    end)
+
+    {:noreply, new_state}
+  end
+
   def handle_cast(
         {:register_dependency, receiver_path, request_handler_pid, dependency},
         state
@@ -461,7 +504,8 @@ defmodule Ash.Engine do
     end
   end
 
-  defp must_be_local?(request) do
+  @doc false
+  def must_be_local?(request) do
     not request.async? ||
       not Ash.DataLayer.data_layer_can?(request.resource, :async_engine)
   end

@@ -111,6 +111,10 @@ defmodule Ash.Engine.RequestHandler do
     end
   end
 
+  def handle_info({:pid_info, pid_info}, state) do
+    {:noreply, %{state | pid_info: pid_info}}
+  end
+
   def handle_cast({:wont_receive, _receiver_path, path, field}, state) do
     case Request.wont_receive(state.request, path, field) do
       {:stop, :dependency_failed, request} ->
