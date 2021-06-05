@@ -3,6 +3,7 @@ defmodule Ash.Test.Filter.FilterTest do
   use ExUnit.Case, async: true
 
   import Ash.Changeset
+  import Ash.Test.Helpers
 
   alias Ash.Filter
 
@@ -256,6 +257,7 @@ defmodule Ash.Test.Filter.FilterTest do
                Post
                |> Ash.Query.filter(title == ^post1.title)
                |> Api.read!()
+               |> clear_meta()
     end
 
     test "multiple filter field matches", %{post1: post1} do
@@ -263,6 +265,7 @@ defmodule Ash.Test.Filter.FilterTest do
                Post
                |> Ash.Query.filter(title == ^post1.title and contents == ^post1.contents)
                |> Api.read!()
+               |> clear_meta()
     end
 
     test "no field matches" do
@@ -290,12 +293,14 @@ defmodule Ash.Test.Filter.FilterTest do
                Post
                |> Ash.Query.filter(points < 2)
                |> Api.read!()
+               |> clear_meta()
 
       assert [^post1, ^post2] =
                Post
                |> Ash.Query.filter(points < 3)
                |> Ash.Query.sort(points: :asc)
                |> Api.read!()
+               |> clear_meta()
     end
 
     test "greater than works", %{
@@ -306,12 +311,14 @@ defmodule Ash.Test.Filter.FilterTest do
                Post
                |> Ash.Query.filter(points > 1)
                |> Api.read!()
+               |> clear_meta()
 
       assert [^post1, ^post2] =
                Post
                |> Ash.Query.filter(points > 0)
                |> Ash.Query.sort(points: :asc)
                |> Api.read!()
+               |> clear_meta()
     end
   end
 

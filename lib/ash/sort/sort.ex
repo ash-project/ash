@@ -124,18 +124,12 @@ defmodule Ash.Sort do
   end
 
   defp get_field(resource, field) do
-    case Ash.Resource.Info.public_attribute(resource, field) do
-      %{name: name} ->
-        name
-
-      nil ->
-        case Ash.Resource.Info.public_attribute(resource, field) do
-          %{name: name} ->
-            name
-
-          nil ->
-            nil
-        end
+    with nil <- Ash.Resource.Info.public_attribute(resource, field),
+         nil <- Ash.Resource.Info.public_aggregate(resource, field),
+         nil <- Ash.Resource.Info.public_calculation(resource, field) do
+      nil
+    else
+      %{name: name} -> name
     end
   end
 

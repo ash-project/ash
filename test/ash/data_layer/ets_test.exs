@@ -1,6 +1,8 @@
 defmodule Ash.DataLayer.EtsTest do
   use ExUnit.Case, async: false
 
+  import Ash.Test.Helpers
+
   alias Ash.DataLayer.Ets, as: EtsDataLayer
   alias Ash.DataLayer.Ets.Query
 
@@ -116,7 +118,7 @@ defmodule Ash.DataLayer.EtsTest do
       |> Ash.Query.new()
       |> Ash.Query.sort(:name)
 
-    assert [^joe, ^matthew, ^mike, ^zachary] = EtsApiTest.read!(query)
+    assert [^joe, ^matthew, ^mike, ^zachary] = clear_meta(EtsApiTest.read!(query))
   end
 
   test "limit" do
@@ -131,7 +133,7 @@ defmodule Ash.DataLayer.EtsTest do
       |> Ash.Query.sort(:name)
       |> Ash.Query.limit(2)
 
-    assert [^joe, ^matthew] = EtsApiTest.read!(query)
+    assert [^joe, ^matthew] = clear_meta(EtsApiTest.read!(query))
   end
 
   test "offset" do
@@ -146,7 +148,7 @@ defmodule Ash.DataLayer.EtsTest do
       |> Ash.Query.sort(:name)
       |> Ash.Query.offset(1)
 
-    assert [^matthew, ^mike, ^zachary] = EtsApiTest.read!(query)
+    assert [^matthew, ^mike, ^zachary] = clear_meta(EtsApiTest.read!(query))
   end
 
   describe "filter" do
@@ -159,55 +161,61 @@ defmodule Ash.DataLayer.EtsTest do
     end
 
     test "values", %{zachary: zachary, matthew: matthew, joe: joe} do
-      assert [^zachary] = filter_users(name: "Zachary")
-      assert [^joe] = filter_users(name: "Joe")
-      assert [^matthew] = filter_users(age: 9)
+      assert [^zachary] = clear_meta(filter_users(name: "Zachary"))
+      assert [^joe] = clear_meta(filter_users(name: "Joe"))
+      assert [^matthew] = clear_meta(filter_users(age: 9))
     end
 
     test "or, in, eq", %{mike: mike, zachary: zachary, joe: joe} do
       assert [^joe, ^mike, ^zachary] =
-               filter_users(
-                 or: [
-                   [name: [in: ["Zachary", "Mike"]]],
-                   [age: [eq: 11]]
-                 ]
+               clear_meta(
+                 filter_users(
+                   or: [
+                     [name: [in: ["Zachary", "Mike"]]],
+                     [age: [eq: 11]]
+                   ]
+                 )
                )
     end
 
     test "and, in, eq", %{mike: mike} do
       assert [^mike] =
-               filter_users(
-                 and: [
-                   [name: [in: ["Zachary", "Mike"]]],
-                   [age: [eq: 37]]
-                 ]
+               clear_meta(
+                 filter_users(
+                   and: [
+                     [name: [in: ["Zachary", "Mike"]]],
+                     [age: [eq: 37]]
+                   ]
+                 )
                )
     end
 
     test "and, in, not", %{zachary: zachary} do
       assert [^zachary] =
-               filter_users(
-                 and: [
-                   [name: [in: ["Zachary", "Mike"]]],
-                   [not: [age: 37]]
-                 ]
+               clear_meta(
+                 filter_users(
+                   and: [
+                     [name: [in: ["Zachary", "Mike"]]],
+                     [not: [age: 37]]
+                   ]
+                 )
                )
     end
 
     test "gt", %{mike: mike, joe: joe} do
-      assert [^joe, ^mike] = filter_users(age: [gt: 10])
+      assert [^joe, ^mike] = clear_meta(filter_users(age: [gt: 10]))
     end
 
     test "lt", %{zachary: zachary, matthew: matthew} do
-      assert [^matthew, ^zachary] = filter_users(age: [lt: 10])
+      assert [^matthew, ^zachary] = clear_meta(filter_users(age: [lt: 10]))
     end
 
     test "boolean", %{zachary: zachary, matthew: matthew} do
-      assert [^matthew, ^zachary] = filter_users(and: [true, age: [lt: 10]])
+      assert [^matthew, ^zachary] = clear_meta(filter_users(and: [true, age: [lt: 10]]))
     end
 
     test "is_nil", %{zachary: zachary, matthew: matthew, joe: joe} do
-      assert [^joe, ^matthew, ^zachary] = filter_users(title: [is_nil: true])
+      assert [^joe, ^matthew, ^zachary] = clear_meta(filter_users(title: [is_nil: true]))
     end
   end
 

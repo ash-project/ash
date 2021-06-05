@@ -58,6 +58,8 @@ defmodule Ash.DataLayer.Ets do
   end
 
   def can?(_, :composite_primary_key), do: true
+  def can?(_, :expression_calculation), do: true
+  def can?(_, :expression_calculation_sort), do: true
   def can?(_, :multitenancy), do: true
   def can?(_, :upsert), do: true
   def can?(_, :create), do: true

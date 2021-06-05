@@ -3,6 +3,7 @@ defmodule Ash.Test.Actions.UpdateTest do
   use ExUnit.Case, async: true
 
   import Ash.Changeset
+  import Ash.Test.Helpers
 
   defmodule Authorized do
     @moduledoc false
@@ -372,6 +373,7 @@ defmodule Ash.Test.Actions.UpdateTest do
                  Api.get!(Post, post2.id),
                  Api.get!(Post, post3.id)
                ])
+               |> clear_meta()
     end
 
     test "it updates any join fields" do

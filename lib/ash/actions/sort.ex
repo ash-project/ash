@@ -9,17 +9,89 @@ defmodule Ash.Actions.Sort do
 
   @sort_orders [:asc, :desc, :asc_nils_first, :asc_nils_last, :desc_nils_first, :desc_nils_last]
 
-  def process(_resource, empty, _aggregates) when empty in [nil, []], do: {:ok, []}
+  def process(_resource, empty, _aggregates, context \\ %{})
 
-  def process(resource, sort, aggregates) when is_list(sort) do
+  def process(_resource, empty, _aggregates, _context) when empty in [nil, []], do: {:ok, []}
+
+  def process(resource, sort, aggregates, context) when is_list(sort) do
     sort
+    |> Enum.map(fn {key, val} ->
+      if !is_atom(val) do
+        {key, {:asc, val}}
+      else
+        {key, val}
+      end
+    end)
     |> Enum.reduce({[], []}, fn
+      {field, {inner_order, _} = order}, {sorts, errors} when inner_order in @sort_orders ->
+        case Ash.Resource.Info.calculation(resource, field) do
+          nil ->
+            {sorts,
+             [
+               "Cannot provide context to a non-calculation field while sorting"
+               | errors
+             ]}
+
+          calc ->
+            {module, opts} = calc.calculation
+
+            if :erlang.function_exported(module, :expression, 2) do
+              if Ash.DataLayer.data_layer_can?(resource, :expression_calculation_sort) do
+                calculation_sort(
+                  field,
+                  calc,
+                  module,
+                  opts,
+                  calc.type,
+                  order,
+                  sorts,
+                  errors,
+                  context
+                )
+              else
+                {sorts, ["Datalayer cannot sort on calculations"]}
+              end
+            else
+              {sorts, ["Calculations cannot be sorted on unless they define an expression"]}
+            end
+        end
+
+      {%Ash.Query.Calculation{} = calc, order}, {sorts, errors} ->
+        if order in @sort_orders do
+          {sorts ++ [{calc, order}], errors}
+        else
+          {sorts, [InvalidSortOrder.exception(order: order) | errors]}
+        end
+
       {field, order}, {sorts, errors} when order in @sort_orders ->
         attribute = Ash.Resource.Info.attribute(resource, field)
 
         cond do
           Map.has_key?(aggregates, field) ->
             aggregate_sort(aggregates, field, order, resource, sorts, errors)
+
+          calc = Ash.Resource.Info.calculation(resource, field) ->
+            {module, opts} = calc.calculation
+
+            if :erlang.function_exported(module, :expression, 2) do
+              if Ash.DataLayer.data_layer_can?(resource, :expression_calculation_sort) do
+                calculation_sort(
+                  field,
+                  calc,
+                  module,
+                  opts,
+                  calc.type,
+                  order,
+                  sorts,
+                  errors,
+                  context
+                )
+              else
+                {sorts, ["Datalayer cannot sort on calculations"]}
+              end
+            else
+              {sorts, ["Calculations cannot be sorted on unless they define an expression"]}
+            end
 
           !attribute ->
             {sorts, [NoSuchAttribute.exception(attribute: field) | errors]}
@@ -78,23 +150,91 @@ defmodule Ash.Actions.Sort do
          ) do
       {sorts ++ [{field, order}], errors}
     else
-      {sorts, AggregatesNotSupported.exception(resource: resource, feature: "sorting")}
+      {sorts, [AggregatesNotSupported.exception(resource: resource, feature: "sorting") | errors]}
+    end
+  end
+
+  defp calculation_sort(field, calc, module, opts, type, order, sorts, errors, context) do
+    {order, calc_context} =
+      case order do
+        order when is_atom(order) ->
+          {order, %{}}
+
+        {order, value} when is_list(value) ->
+          {order, Map.new(value)}
+
+        {order, value} when is_map(value) ->
+          {order, value}
+
+        other ->
+          {other, %{}}
+      end
+
+    with {:ok, input} <- Ash.Query.validate_calculation_arguments(calc, calc_context),
+         {:ok, calc} <-
+           Ash.Query.Calculation.new(
+             field,
+             module,
+             opts,
+             type,
+             Map.put(input, :context, context)
+           ) do
+      {sorts ++ [{calc, order}], errors}
+    else
+      {:error, error} ->
+        {sorts, [error | errors]}
     end
   end
 
   def runtime_sort(results, empty) when empty in [nil, []], do: results
 
-  def runtime_sort(results, [{field, direction}]) do
-    sort_by(results, &Map.get(&1, field), direction)
+  def runtime_sort([%resource{} | _] = results, [{field, direction}]) do
+    sort_by(results, &resolve_field(&1, field, resource), direction)
   end
 
-  def runtime_sort(results, [{field, direction} | rest]) do
+  def runtime_sort([%resource{} | _] = results, [{field, direction} | rest]) do
     results
-    |> Enum.group_by(&Map.get(&1, field))
+    |> Enum.group_by(&resolve_field(&1, field, resource))
     |> sort_by(fn {key, _value} -> key end, direction)
     |> Enum.flat_map(fn {_, records} ->
       runtime_sort(records, rest)
     end)
+  end
+
+  defp resolve_field(record, %Ash.Query.Calculation{} = calc, resource) do
+    cond do
+      :erlang.function_exported(calc.module, :calculate, 3) ->
+        calc.module.calculate([record], calc.opts, calc.context)
+
+      :erlang.function_exported(calc.module, :expression, 2) ->
+        expression = calc.module.expression(calc.opts, calc.context)
+
+        case Ash.Filter.hydrate_refs(expression, %{
+               resource: resource,
+               aggregates: %{},
+               calculations: %{},
+               public?: false
+             }) do
+          {:ok, expression} ->
+            case Ash.Filter.Runtime.do_match(record, expression) do
+              {:ok, value} ->
+                {:ok, value}
+
+              _ ->
+                nil
+            end
+
+          _ ->
+            nil
+        end
+
+      true ->
+        nil
+    end
+  end
+
+  defp resolve_field(record, field, _resource) do
+    Map.get(record, field)
   end
 
   # :asc/:desc added to elixir in 1.10. sort_by and to_sort_by_fun copied from core
@@ -178,6 +318,10 @@ defmodule Ash.Actions.Sort do
         Comp.greater_or_equal?(elem(x, 1), elem(y, 1))
       end
     end
+  end
+
+  defp to_sort_by_fun({direction, _input}) do
+    to_sort_by_fun(direction)
   end
 
   defp to_sort_by_fun(module) when is_atom(module),

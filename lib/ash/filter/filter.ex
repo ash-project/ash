@@ -2167,7 +2167,7 @@ defmodule Ash.Filter do
 
   defp add_calculation_expression(context, nested_statement, field, module, expression) do
     if Ash.DataLayer.data_layer_can?(context.resource, :expression_calculation) &&
-         :erlang.function_exported(module, :expression, 1) do
+         :erlang.function_exported(module, :expression, 2) do
       case parse_predicates(nested_statement, Map.get(context.calculations, field), context) do
         {:ok, nested_statement} ->
           {:ok, BooleanExpression.optimized_new(:and, expression, nested_statement)}

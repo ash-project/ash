@@ -293,8 +293,19 @@ defmodule Ash.Actions.Read do
                    query.filter
                  ) do
               {:ok, filter} ->
-                {:ok, %{query | filter: filter},
-                 %{requests: load_requests, notifications: before_notifications}}
+                case Ash.Actions.Sort.process(
+                       query.resource,
+                       query.sort,
+                       query.aggregates,
+                       query.context
+                     ) do
+                  {:ok, sort} ->
+                    {:ok, %{query | filter: filter, sort: sort},
+                     %{requests: load_requests, notifications: before_notifications}}
+
+                  {:error, error} ->
+                    {:error, error}
+                end
 
               {:error, error} ->
                 {:error, error}
@@ -942,26 +953,30 @@ defmodule Ash.Actions.Read do
   defp add_calculations(data_layer_query, query, calculations_to_add) do
     Enum.reduce_while(calculations_to_add, {:ok, data_layer_query}, fn calculation,
                                                                        {:ok, data_layer_query} ->
-      expression = calculation.module.expression(calculation.opts, calculation.context)
+      if Ash.DataLayer.data_layer_can?(query.resource, :expression_calculation) do
+        expression = calculation.module.expression(calculation.opts, calculation.context)
 
-      with {:ok, expression} <-
-             Ash.Filter.hydrate_refs(expression, %{
-               resource: query.resource,
-               aggregates: query.aggregates,
-               calculations: query.calculations,
-               public?: false
-             }),
-           {:ok, query} <-
-             Ash.DataLayer.add_calculation(
-               data_layer_query,
-               calculation,
-               expression,
-               query.resource
-             ) do
-        {:cont, {:ok, query}}
+        with {:ok, expression} <-
+               Ash.Filter.hydrate_refs(expression, %{
+                 resource: query.resource,
+                 aggregates: query.aggregates,
+                 calculations: query.calculations,
+                 public?: false
+               }),
+             {:ok, query} <-
+               Ash.DataLayer.add_calculation(
+                 data_layer_query,
+                 calculation,
+                 expression,
+                 query.resource
+               ) do
+          {:cont, {:ok, query}}
+        else
+          other ->
+            {:halt, other}
+        end
       else
-        other ->
-          {:halt, other}
+        {:halt, {:error, "Expression calculations are not supported"}}
       end
     end)
   end

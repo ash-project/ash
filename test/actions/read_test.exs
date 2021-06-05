@@ -3,6 +3,7 @@ defmodule Ash.Test.Actions.ReadTest do
   use ExUnit.Case, async: true
 
   import Ash.Changeset
+  import Ash.Test.Helpers
 
   require Ash.Query
 
@@ -91,7 +92,7 @@ defmodule Ash.Test.Actions.ReadTest do
     test "it returns a matching record", %{post: post} do
       assert {:ok, fetched_post} = Api.get(Post, post.id)
 
-      assert fetched_post == post
+      assert clear_meta(fetched_post) == post
     end
 
     test "it returns nil when there is no matching record" do
@@ -101,7 +102,7 @@ defmodule Ash.Test.Actions.ReadTest do
     test "it uses identities if they exist", %{post: post} do
       assert {:ok, fetched_post} = Api.get(Post, uuid: post.uuid)
 
-      assert fetched_post == post
+      assert clear_meta(fetched_post) == post
     end
 
     test "raises an error when the first argument is not a module" do
@@ -140,7 +141,7 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     test "it returns a matching record", %{post: post} do
-      assert ^post = Api.get!(Post, post.id)
+      assert ^post = clear_meta(Api.get!(Post, post.id))
     end
 
     test "raises an error when the first argument is not a module", %{post: post} do
@@ -392,6 +393,7 @@ defmodule Ash.Test.Actions.ReadTest do
                Post
                |> Ash.Query.filter(title == ^post1.title)
                |> Api.read()
+               |> clear_meta()
     end
 
     test "a filter returns multiple records if they match", %{post1: post1, post2: post2} do
@@ -399,6 +401,7 @@ defmodule Ash.Test.Actions.ReadTest do
                Post
                |> Ash.Query.filter(contents == "yeet")
                |> Api.read()
+               |> clear_meta()
 
       assert post1 in results
       assert post2 in results
@@ -495,6 +498,7 @@ defmodule Ash.Test.Actions.ReadTest do
                Post
                |> Ash.Query.sort(title: :asc)
                |> Api.read()
+               |> clear_meta()
     end
 
     test "a sort will sor rows accordingly when descending", %{
@@ -505,6 +509,7 @@ defmodule Ash.Test.Actions.ReadTest do
                Post
                |> Ash.Query.sort(title: :desc)
                |> Api.read()
+               |> clear_meta()
     end
 
     test "a nested sort sorts accordingly", %{post1: post1, post2: post2} do
@@ -512,11 +517,13 @@ defmodule Ash.Test.Actions.ReadTest do
         Post
         |> new(%{title: "abc", contents: "xyz"})
         |> Api.create!()
+        |> clear_meta()
 
       assert {:ok, [^post1, ^middle_post, ^post2]} =
                Post
                |> Ash.Query.sort(title: :asc, contents: :asc)
                |> Api.read()
+               |> clear_meta()
     end
   end
 end

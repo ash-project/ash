@@ -3,6 +3,7 @@ defmodule Ash.Test.Actions.CreateTest do
   use ExUnit.Case, async: true
 
   import Ash.Changeset
+  import Ash.Test.Helpers
 
   defmodule Authorized do
     @moduledoc false
@@ -465,24 +466,28 @@ defmodule Ash.Test.Actions.CreateTest do
         |> new()
         |> change_attribute(:title, "title2")
         |> Api.create!()
+        |> clear_meta()
 
       post3 =
         Post
         |> new()
         |> change_attribute(:title, "title3")
         |> Api.create!()
+        |> clear_meta()
 
       post =
         Post
         |> new(%{title: "cannot_be_missing"})
         |> replace_relationship(:related_posts, [post2, post3])
         |> Api.create!()
+        |> clear_meta()
 
       assert Enum.sort(post.related_posts) ==
                Enum.sort([
                  Api.get!(Post, post2.id),
                  Api.get!(Post, post3.id)
                ])
+               |> clear_meta()
     end
   end
 

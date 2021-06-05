@@ -140,6 +140,26 @@ defmodule Ash.Test.CalculationTest do
     assert full_names == ["brian cranston", "zach daniel"]
   end
 
+  test "expression based calculations can be sorted on" do
+    full_names =
+      User
+      |> Ash.Query.load(:expr_full_name)
+      |> Ash.Query.sort(:expr_full_name)
+      |> Api.read!()
+      |> Enum.map(& &1.expr_full_name)
+
+    assert full_names == ["brian cranston", "zach daniel"]
+
+    full_names =
+      User
+      |> Ash.Query.load(:expr_full_name)
+      |> Ash.Query.sort(expr_full_name: :desc)
+      |> Api.read!()
+      |> Enum.map(& &1.expr_full_name)
+
+    assert full_names == ["zach daniel", "brian cranston"]
+  end
+
   test "the `if` calculation resolves the first expr when true, and the second when false" do
     User
     |> Ash.Changeset.new(%{first_name: "bob"})

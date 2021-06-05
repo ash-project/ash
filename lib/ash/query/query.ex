@@ -1674,7 +1674,7 @@ defmodule Ash.Query do
   end
 
   defp validate_sort(%{resource: resource, sort: sort} = query) do
-    case Sort.process(resource, sort, query.aggregates) do
+    case Sort.process(resource, sort, query.aggregates, query.context) do
       {:ok, new_sort} -> %{query | sort: new_sort}
       {:error, error} -> add_error(query, :sort, error)
     end
