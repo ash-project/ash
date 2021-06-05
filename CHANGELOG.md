@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.45.0-rc4](https://github.com/ash-project/ash/compare/v1.45.0-rc3...v1.45.0-rc4) (2021-06-05)
+
+
+
+
+### Improvements:
+
+* support calculation sorts
+
 ## [v1.45.0-rc3](https://github.com/ash-project/ash/compare/v1.45.0-rc2...v1.45.0-rc3) (2021-06-05)
 
 
