@@ -10,6 +10,7 @@ defmodule Ash.Engine.Runner do
     errors: [],
     changeset: %{},
     data: %{},
+    engine_complete?: false,
     pid_info: %{},
     dependencies: %{},
     resource_notifications: [],
@@ -125,7 +126,7 @@ defmodule Ash.Engine.Runner do
 
   defp wait_for_engine(%{engine_pid: engine_pid, ref: ref} = state, complete?) do
     timeout =
-      if state.local_failed? do
+      if state.engine_complete? do
         0
       else
         :infinity
@@ -253,7 +254,25 @@ defmodule Ash.Engine.Runner do
     end
   end
 
+  defp flush(state) do
+    ref = state.ref
+    engine_pid = state.engine_pid
+
+    receive do
+      {^ref, _} ->
+        flush(state)
+
+      {:DOWN, _, _, ^engine_pid, _} ->
+        flush(state)
+    after
+      0 ->
+        state
+    end
+  end
+
   defp handle_completion(state, engine_state, complete?, engine_error?) do
+    state = %{state | engine_complete?: true}
+
     new_state =
       if complete? do
         if engine_error? do
@@ -274,16 +293,6 @@ defmodule Ash.Engine.Runner do
     new_state = %{state | errors: engine_state.errors ++ state.errors}
 
     flush(new_state)
-  end
-
-  defp flush(%{ref: ref} = state) do
-    receive do
-      {^ref, _} ->
-        flush(state)
-    after
-      0 ->
-        state
-    end
   end
 
   defp build_dependencies(request, dependencies) do
