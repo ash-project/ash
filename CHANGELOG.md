@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.45.0-rc3](https://github.com/ash-project/ash/compare/v1.45.0-rc2...v1.45.0-rc3) (2021-06-05)
+
+
+
+
+### Bug Fixes:
+
+* always wait on the engine if it hasn't completed
+
 ## [v1.45.0-rc2](https://github.com/ash-project/ash/compare/v1.45.0-rc1...v1.45.0-rc2) (2021-06-04)
 
 
