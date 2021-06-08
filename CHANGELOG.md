@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.45.0-rc6](https://github.com/ash-project/ash/compare/v1.45.0-rc5...v1.45.0-rc6) (2021-06-08)
+
+
+
+
+### Bug Fixes:
+
+* hide __metadata__ field on inspect
+
+* load relationships required for calculations (optimize later)
+
 ## [v1.45.0-rc5](https://github.com/ash-project/ash/compare/v1.45.0-rc4...v1.45.0-rc5) (2021-06-08)
 
 
