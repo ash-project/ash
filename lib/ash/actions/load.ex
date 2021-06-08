@@ -662,7 +662,19 @@ defmodule Ash.Actions.Load do
   defp read(query, action) do
     action = action || primary_read(query)
 
-    Ash.Actions.Read.unpaginated_read(query, action)
+    query
+    |> load_for_calcs()
+    |> Ash.Actions.Read.unpaginated_read(action)
+  end
+
+  defp load_for_calcs(query) do
+    Enum.reduce(query.calculations || %{}, query, fn {_, calc}, query ->
+      calc.module.load(
+        query,
+        calc.opts,
+        Map.put(calc.context, :context, query.context)
+      )
+    end)
   end
 
   defp primary_read(query) do
