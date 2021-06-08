@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.45.0-rc5](https://github.com/ash-project/ash/compare/v1.45.0-rc4...v1.45.0-rc5) (2021-06-08)
+
+
+
+
+### Bug Fixes:
+
+* don't halt on request handler failure
+
+* properly error when more than 2 requests of the same type are primary
+
+* properly process sort when the sort is an atom
+
+* properly calculate reverse relationship paths
+
 ## [v1.45.0-rc4](https://github.com/ash-project/ash/compare/v1.45.0-rc3...v1.45.0-rc4) (2021-06-05)
 
 
