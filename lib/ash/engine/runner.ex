@@ -345,7 +345,14 @@ defmodule Ash.Engine.Runner do
           nil ->
             pid = Map.get(state.pid_info, path)
 
-            GenServer.cast(pid, {:send_field, request_path, self(), dep})
+            try do
+              # If the request handler is down, the engine will fail and
+              # we won't get stuck in a loop
+              GenServer.call(pid, {:send_field, request_path, self(), dep})
+            catch
+              :exit, _ ->
+                :ok
+            end
 
             {state, notifications, dependencies}
 

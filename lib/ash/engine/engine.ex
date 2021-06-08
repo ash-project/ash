@@ -267,7 +267,8 @@ defmodule Ash.Engine do
           state
           | request_handlers: Map.put(state.request_handlers, pid, request.path),
             local_requests: state.local_requests -- [request.path],
-            active_requests: state.active_requests ++ [request.path]
+            active_requests: state.active_requests ++ [request.path],
+            requests: state.requests ++ [request]
         }
       end)
 
@@ -298,7 +299,9 @@ defmodule Ash.Engine do
       {:error, _pid, request} ->
         case Map.get(request, field) do
           %Request.UnresolvedField{} ->
-            log(state, "#{receiver_path} won't receive #{inspect(request.path)} #{field}")
+            log(state, fn ->
+              "#{inspect(receiver_path)} won't receive #{inspect(request.path)} #{field}"
+            end)
 
             send_or_cast(
               request_handler_pid,
@@ -310,7 +313,9 @@ defmodule Ash.Engine do
           value ->
             log(
               state,
-              "Already have #{receiver_path} #{inspect(request.path)} #{field}, sending value"
+              fn ->
+                "Already have #{receiver_path} #{inspect(request.path)} #{field}, sending value"
+              end
             )
 
             send_or_cast(
@@ -383,7 +388,7 @@ defmodule Ash.Engine do
     |> log(fn -> "Error received from request_handler #{inspect(error)}" end)
     |> move_to_error(request_handler_state.request.path)
     |> add_error(request_handler_state.request.path, error)
-    |> maybe_shutdown()
+    |> maybe_shutdown(true)
   end
 
   def handle_info({:DOWN, _, _, _pid, {:error, error, %Request{} = request}}, state) do
@@ -510,12 +515,19 @@ defmodule Ash.Engine do
       not Ash.DataLayer.data_layer_can?(request.resource, :async_engine)
   end
 
-  defp maybe_shutdown(%{active_requests: [], local_requests: []} = state) do
+  defp maybe_shutdown(state, crash? \\ false)
+
+  defp maybe_shutdown(state, true) do
+    log(state, fn -> "shutting down, due to request crash" end)
+    {:stop, {:shutdown, state}, state}
+  end
+
+  defp maybe_shutdown(%{active_requests: [], local_requests: []} = state, _crash?) do
     log(state, fn -> "shutting down, completion criteria reached" end)
     {:stop, {:shutdown, state}, state}
   end
 
-  defp maybe_shutdown(state) do
+  defp maybe_shutdown(state, _crash?) do
     {:noreply, state}
   end
 

@@ -16,10 +16,10 @@ defmodule Ash.Actions.Sort do
   def process(resource, sort, aggregates, context) when is_list(sort) do
     sort
     |> Enum.map(fn {key, val} ->
-      if !is_atom(val) do
-        {key, {:asc, val}}
-      else
+      if is_atom(val) do
         {key, val}
+      else
+        {key, {:asc, val}}
       end
     end)
     |> Enum.reduce({[], []}, fn

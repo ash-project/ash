@@ -48,7 +48,7 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
           )}}
 
       {type, actions}, {:ok, dsl_state} ->
-        case Enum.count(actions, & &1.primary?) do
+        case min(Enum.count(actions, & &1.primary?), 2) do
           0 ->
             {:halt,
              {:error,

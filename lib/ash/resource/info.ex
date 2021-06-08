@@ -13,6 +13,52 @@ defmodule Ash.Resource.Info do
     set_metadata(record, %{key => term})
   end
 
+  def reverse_relationship(resource, path, acc \\ [])
+
+  def reverse_relationship(_, [], acc),
+    do: acc
+
+  def reverse_relationship(resource, [name | rest], acc) do
+    resource
+    |> relationships()
+    |> Enum.find(fn relationship ->
+      relationship.name == name
+    end)
+    |> case do
+      nil ->
+        nil
+
+      relationship ->
+        relationship.destination
+        |> relationships()
+        |> Enum.find(fn candidate ->
+          reverse_relationship?(relationship, candidate)
+        end)
+        |> case do
+          nil ->
+            nil
+
+          destination_relationship ->
+            reverse_relationship(relationship.destination, rest, [
+              destination_relationship.name | acc
+            ])
+        end
+    end
+  end
+
+  defp reverse_relationship?(rel, destination_rel) do
+    rel.source == destination_rel.destination &&
+      rel.destination == destination_rel.source &&
+      rel.source_field == destination_rel.destination_field &&
+      rel.destination_field == destination_rel.source_field &&
+      Map.fetch(rel, :source_field_on_join_table) ==
+        Map.fetch(destination_rel, :destination_field_on_join_table) &&
+      Map.fetch(rel, :destination_field_on_join_table) ==
+        Map.fetch(destination_rel, :source_field_on_join_table) &&
+      is_nil(destination_rel.context) &&
+      is_nil(rel.context)
+  end
+
   @spec get_metadata(Ash.Resource.record(), atom | list(atom)) :: term
   def get_metadata(record, key_or_path) do
     get_in(record.__metadata__ || %{}, List.wrap(key_or_path))

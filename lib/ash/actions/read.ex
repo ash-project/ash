@@ -391,11 +391,14 @@ defmodule Ash.Actions.Read do
 
           true ->
             if params[:initial_data] do
-              add_calculation_values(
-                initial_query,
-                params[:initial_data],
-                initial_query.calculations
-              )
+              {:ok, params[:initial_data],
+               %{
+                 requests: aggregate_value_requests,
+                 extra_data: %{
+                   aggregates_in_query: aggregates_in_query,
+                   calculations_at_runtime: calculations_at_runtime
+                 }
+               }}
             else
               query =
                 initial_query

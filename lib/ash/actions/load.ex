@@ -746,8 +746,6 @@ defmodule Ash.Actions.Load do
          path,
          root_query
        ) do
-    path = Enum.reverse(path)
-
     Request.resolve([[:data, :data]], fn %{data: %{data: data}} ->
       data =
         case data do
@@ -768,23 +766,25 @@ defmodule Ash.Actions.Load do
             [or: Enum.map(items, fn item -> item |> Map.take(pkey) |> Enum.to_list() end)]
         end
 
-      case reverse_relationship_path(
-             relationship,
-             Enum.drop(path, 1)
+      path = Enum.reverse([relationship.name | Enum.map(path, & &1.name)])
+
+      case Ash.Resource.Info.reverse_relationship(
+             root_query.resource,
+             path
            ) do
-        {:ok, reverse_path} ->
+        nil ->
+          relationship.destination
+          |> Ash.Query.new(related_query.api)
+          |> Ash.Query.filter(^related_query.filter)
+          |> extract_errors()
+
+        reverse_path ->
           load_query_with_reverse_path(
             root_query,
             related_query,
             reverse_path,
             root_data_filter
           )
-
-        _ ->
-          relationship.destination
-          |> Ash.Query.new(related_query.api)
-          |> Ash.Query.filter(^related_query.filter)
-          |> extract_errors()
       end
     end)
   end
@@ -873,13 +873,7 @@ defmodule Ash.Actions.Load do
     end
   end
 
-  def reverse_relationship_path(relationship, prior_path, acc \\ [])
-
-  def reverse_relationship_path(nil, _, _) do
-    :error
-  end
-
-  def reverse_relationship_path(relationship, [], acc) do
+  def reverse_relationship_path(relationship, []) do
     relationship.destination
     |> Ash.Resource.Info.relationships()
     |> Enum.find(fn destination_relationship ->
@@ -890,11 +884,11 @@ defmodule Ash.Actions.Load do
         :error
 
       reverse ->
-        {:ok, Enum.reverse([reverse.name | acc])}
+        {:ok, [reverse.name]}
     end
   end
 
-  def reverse_relationship_path(relationship, [next_relationship | rest], acc) do
+  def reverse_relationship_path(relationship, rest) do
     relationship.destination
     |> Ash.Resource.Info.relationships()
     |> Enum.find(fn destination_relationship ->
@@ -905,7 +899,49 @@ defmodule Ash.Actions.Load do
         :error
 
       reverse ->
-        reverse_relationship_path(next_relationship, rest, [reverse.name | acc])
+        case do_reverse_relationship_path(reverse, rest) do
+          :error ->
+            :error
+
+          {:ok, path} ->
+            {:ok, [reverse.name | path]}
+        end
+    end
+  end
+
+  def do_reverse_relationship_path(relationship, prior_path, acc \\ [])
+
+  def do_reverse_relationship_path(nil, _, _) do
+    :error
+  end
+
+  def do_reverse_relationship_path(relationship, [], acc) do
+    relationship.source
+    |> Ash.Resource.Info.relationships()
+    |> Enum.find(fn destination_relationship ->
+      reverse_relationship?(relationship, destination_relationship)
+    end)
+    |> case do
+      nil ->
+        :error
+
+      reverse ->
+        {:ok, [reverse.name | acc]}
+    end
+  end
+
+  def do_reverse_relationship_path(relationship, [next_relationship | rest], acc) do
+    relationship.destination
+    |> Ash.Resource.Info.relationships()
+    |> Enum.find(fn destination_relationship ->
+      reverse_relationship?(relationship, destination_relationship)
+    end)
+    |> case do
+      nil ->
+        :error
+
+      reverse ->
+        do_reverse_relationship_path(next_relationship, rest, [reverse.name | acc])
     end
   end
 

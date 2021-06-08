@@ -115,17 +115,9 @@ defmodule Ash.Engine.RequestHandler do
     {:noreply, %{state | pid_info: pid_info}}
   end
 
-  def handle_cast({:wont_receive, _receiver_path, path, field}, state) do
-    case Request.wont_receive(state.request, path, field) do
-      {:stop, :dependency_failed, request} ->
-        new_state = %{state | request: %{request | state: :error}}
-        notify_error(new_state, {:dependency_failed, path})
-        {:noreply, new_state}
-    end
-  end
-
-  def handle_cast(
+  def handle_call(
         {:send_field, receiver_path, pid, dep},
+        _,
         %{request: %{path: path, state: :error}} = state
       ) do
     if pid == state.runner_pid do
@@ -137,10 +129,10 @@ defmodule Ash.Engine.RequestHandler do
       )
     end
 
-    {:noreply, state}
+    {:reply, :ok, state}
   end
 
-  def handle_cast({:send_field, receiver_path, _pid, dep}, state) do
+  def handle_call({:send_field, receiver_path, _pid, dep}, _, state) do
     field = List.last(dep)
 
     case Request.send_field(
@@ -156,19 +148,28 @@ defmodule Ash.Engine.RequestHandler do
 
         Enum.each(dependency_requests, &register_dependency(new_state, &1))
 
-        {:noreply, new_state}
+        {:reply, :ok, new_state}
 
       {:ok, new_request, notifications} ->
         new_state =
           %{state | request: new_request}
           |> notify(notifications)
 
-        {:noreply, new_state}
+        {:reply, :ok, new_state}
 
       {:error, error, new_request} ->
         new_request = %{new_request | state: :error}
         new_state = %{state | request: new_request}
         notify_error(new_state, error)
+        {:reply, :ok, new_state}
+    end
+  end
+
+  def handle_cast({:wont_receive, _receiver_path, path, field}, state) do
+    case Request.wont_receive(state.request, path, field) do
+      {:stop, :dependency_failed, request} ->
+        new_state = %{state | request: %{request | state: :error}}
+        notify_error(new_state, {:dependency_failed, path})
         {:noreply, new_state}
     end
   end
@@ -275,7 +276,7 @@ defmodule Ash.Engine.RequestHandler do
         {state.runner_ref, {:send_field, state.request.path, self(), dep}}
       )
     else
-      GenServer.cast(
+      GenServer.call(
         destination_pid,
         {:send_field, state.request.path, self(), dep}
       )
