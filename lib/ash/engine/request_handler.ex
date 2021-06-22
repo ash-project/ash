@@ -278,7 +278,8 @@ defmodule Ash.Engine.RequestHandler do
     else
       GenServer.call(
         destination_pid,
-        {:send_field, state.request.path, self(), dep}
+        {:send_field, state.request.path, self(), dep},
+        :infinity
       )
     end
 

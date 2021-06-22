@@ -348,7 +348,7 @@ defmodule Ash.Engine.Runner do
             try do
               # If the request handler is down, the engine will fail and
               # we won't get stuck in a loop
-              GenServer.call(pid, {:send_field, request_path, self(), dep})
+              GenServer.call(pid, {:send_field, request_path, self(), dep}, :infinity)
             catch
               :exit, _ ->
                 :ok
