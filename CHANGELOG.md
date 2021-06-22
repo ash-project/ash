@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.45.0-rc7](https://github.com/ash-project/ash/compare/v1.45.0-rc6...v1.45.0-rc7) (2021-06-22)
+
+
+
+
+### Bug Fixes:
+
+* `:infinity` on engine genserver calls
+
 ## [v1.45.0-rc6](https://github.com/ash-project/ash/compare/v1.45.0-rc5...v1.45.0-rc6) (2021-06-08)
 
 
