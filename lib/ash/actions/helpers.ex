@@ -1,6 +1,27 @@
 defmodule Ash.Actions.Helpers do
   @moduledoc false
 
+  def process_errors(changeset, [error]) do
+    %{changeset | errors: []}
+    |> Ash.Changeset.add_error(error)
+    |> Map.get(:errors)
+    |> case do
+      [error] ->
+        error
+
+      errors ->
+        errors
+    end
+  end
+
+  def process_errors(changeset, errors) when is_list(errors) do
+    %{changeset | errors: []}
+    |> Ash.Changeset.add_error(errors)
+    |> Map.get(:errors)
+  end
+
+  def process_errors(changeset, error), do: process_errors(changeset, [error])
+
   def select({:ok, results}, query) do
     {:ok, select(results, query)}
   end

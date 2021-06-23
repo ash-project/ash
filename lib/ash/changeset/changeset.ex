@@ -32,6 +32,7 @@ defmodule Ash.Changeset do
     :api,
     :tenant,
     :__validated_for_action__,
+    :handle_errors,
     select: nil,
     params: %{},
     action_failed?: false,
@@ -425,6 +426,7 @@ defmodule Ash.Changeset do
 
       if action do
         changeset
+        |> handle_errors(action.error_handler)
         |> set_actor(opts)
         |> set_tenant(opts[:tenant] || changeset.tenant)
         |> Map.put(:__validated_for_action__, action.name)
@@ -449,6 +451,7 @@ defmodule Ash.Changeset do
       if action do
         changeset =
           changeset
+          |> handle_errors(action.error_handler)
           |> set_actor(opts)
           |> set_tenant(opts[:tenant] || changeset.tenant)
           |> Map.put(:action, action)
@@ -1983,15 +1986,39 @@ defmodule Ash.Changeset do
     end
   end
 
+  @doc """
+  Sets a custom error handler on the changeset.
+
+  The error handler should be a two argument function or an mfa, in which case the first two arguments will be set
+  to the changeset and the error, w/ the supplied arguments following those.
+
+  Any errors generated are passed to `handle_errors`, which can return any of the following:
+
+  * `:ignore` - the error is discarded, and the changeset is not marked as invalid
+  * `changeset` - a new (or the same) changeset. The error is not added (you'll want to add an error yourself), but the changeset *is* marked as invalid.
+  * `{changeset, error}` - a new (or the same) error and changeset. The error is added to the changeset, and the changeset is marked as invalid.
+  * `anything_else` - is treated as a new, transformed version of the error. The result is added as an error to the changeset, and the changeset is marked as invalid.
+  """
+  @spec handle_errors(
+          t(),
+          (t(), error :: term -> :ignore | t() | (error :: term) | {error :: term, t()})
+          | {module, atom, [term]}
+        ) :: t()
+  def handle_errors(changeset, {m, f, a}) do
+    %{changeset | handle_errors: &apply(m, f, [&1, &2 | a])}
+  end
+
+  def handle_errors(changeset, func) do
+    %{changeset | handle_errors: func}
+  end
+
   @doc "Adds an error to the changesets errors list, and marks the change as `valid?: false`"
   @spec add_error(t(), term | String.t() | list(term | String.t())) :: t()
   def add_error(changeset, errors) when is_list(errors) do
     if Keyword.keyword?(errors) do
-      %{
-        changeset
-        | errors: [to_change_error(errors) | changeset.errors],
-          valid?: false
-      }
+      errors
+      |> to_change_error()
+      |> handle_error(changeset)
     else
       Enum.reduce(errors, changeset, &add_error(&2, &1))
     end
@@ -2005,7 +2032,29 @@ defmodule Ash.Changeset do
   end
 
   def add_error(changeset, error) do
-    %{changeset | errors: [error | changeset.errors], valid?: false}
+    handle_error(error, changeset)
+  end
+
+  defp handle_error(error, %{handle_errors: nil} = changeset) do
+    %{changeset | valid?: false, errors: [error | changeset.errors]}
+  end
+
+  defp handle_error(error, changeset) do
+    changeset
+    |> changeset.handle_errors.(error)
+    |> case do
+      :ignore ->
+        changeset
+
+      %__MODULE__{} = changeset ->
+        %{changeset | valid?: false}
+
+      {changeset, error} ->
+        %{changeset | valid?: false, errors: [error | changeset.errors]}
+
+      error ->
+        %{changeset | valid?: false, errors: [error | changeset.errors]}
+    end
   end
 
   defp to_change_error(keyword) do

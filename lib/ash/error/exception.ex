@@ -14,17 +14,18 @@ defmodule Ash.Error.Exception do
                        :changeset,
                        :query,
                        vars: [],
+                       private_vars: [],
                        path: [],
                        stacktrace: [],
                        class: unquote(opts)[:class]
                      ]
 
       @impl Exception
-      def message(%{message: message, vars: vars} = exception) do
+      def message(%{message: message, vars: vars, private_vars: private_vars} = exception) do
         string = message || ""
 
         string =
-          Enum.reduce(vars, string, fn {key, value}, acc ->
+          Enum.reduce(vars ++ private_vars, string, fn {key, value}, acc ->
             if String.contains?(acc, "%{#{key}}") do
               String.replace(acc, "%{#{key}}", to_string(value))
             else

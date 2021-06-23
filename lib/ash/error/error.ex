@@ -251,6 +251,7 @@ defmodule Ash.Error do
 
   def error_descriptions(errors) do
     errors
+    |> Kernel.||([])
     |> Enum.group_by(& &1.class)
     |> Enum.sort_by(fn {group, _} -> Map.get(@error_class_indices, group) end)
     |> Enum.map_join("\n\n", fn {class, class_errors} ->

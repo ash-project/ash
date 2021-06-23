@@ -61,9 +61,11 @@ defmodule Ash.Actions.Update do
         {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
 
       {:error, %Ash.Engine.Runner{errors: errors, changeset: runner_changeset}} ->
+        errors = Helpers.process_errors(changeset, errors)
         {:error, Ash.Error.to_error_class(errors, changeset: runner_changeset || changeset)}
 
       {:error, error} ->
+        error = Helpers.process_errors(changeset, error)
         {:error, Ash.Error.to_error_class(error, changeset: changeset)}
     end
   end

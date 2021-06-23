@@ -40,6 +40,10 @@ defmodule Ash.Resource.Actions.SharedOptions do
       No need to include attributes that are `allow_nil?: false`.
       """
     ],
+    error_handler: [
+      type: :mfa,
+      doc: "Sets the error handler on the changeset. See `Ash.Changeset.handle_errors/2` for more"
+    ],
     manual?: [
       type: :boolean,
       doc: """

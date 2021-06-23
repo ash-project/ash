@@ -39,6 +39,7 @@ locals_without_parens = [
   destination_field_on_join_table: 1,
   destroy: 1,
   destroy: 2,
+  error_handler: 1,
   event: 1,
   expensive?: 1,
   field: 1,
