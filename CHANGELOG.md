@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.45.0-rc9](https://github.com/ash-project/ash/compare/v1.45.0-rc8...v1.45.0-rc9) (2021-06-23)
+
+
+
+
+### Bug Fixes:
+
+* pass opts through to Jason.Encode.string/2
+
+### Improvements:
+
+* add `error_handler` for create/update/destroy actions
+
 ## [v1.45.0-rc8](https://github.com/ash-project/ash/compare/v1.45.0-rc7...v1.45.0-rc8) (2021-06-23)
 
 
