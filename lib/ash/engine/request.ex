@@ -865,6 +865,10 @@ defmodule Ash.Engine.Request do
 
       case resolver.(resolver_context) do
         {:requests, requests} ->
+          log(request, fn ->
+            "#{field} added requests #{inspect(Enum.map(requests, & &1.path))}"
+          end)
+
           new_deps =
             Enum.flat_map(requests, fn
               {request, key} ->
@@ -897,6 +901,10 @@ defmodule Ash.Engine.Request do
              [{:requests, new_requests}], new_deps}
 
         {:ok, value, instructions} ->
+          log(request, fn ->
+            "successfully resolved #{field} with instructions"
+          end)
+
           set_data_notifications =
             Enum.map(Map.get(instructions, :extra_data, %{}), fn {key, value} ->
               {:set_extra_data, key, value}
@@ -905,6 +913,12 @@ defmodule Ash.Engine.Request do
           resource_notifications = Map.get(instructions, :notifications, [])
 
           extra_requests = Map.get(instructions, :requests, [])
+
+          unless Enum.empty?(extra_requests) do
+            log(request, fn ->
+              "added requests #{inspect(Enum.map(extra_requests, & &1.path))}"
+            end)
+          end
 
           request_notifications =
             case extra_requests do
@@ -930,6 +944,10 @@ defmodule Ash.Engine.Request do
           )
 
         {:ok, value} ->
+          log(request, fn ->
+            "successfully resolved #{field}"
+          end)
+
           handle_successful_resolve(
             field,
             value,
@@ -940,6 +958,10 @@ defmodule Ash.Engine.Request do
           )
 
         {:error, error} ->
+          log(request, fn ->
+            "error resolving #{field}:\n #{inspect(error)}"
+          end)
+
           {:error, error}
       end
     end
