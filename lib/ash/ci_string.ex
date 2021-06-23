@@ -14,10 +14,10 @@ defmodule Ash.CiString do
   def sigil_i(value), do: new(value)
 
   defimpl Jason.Encoder do
-    def encode(ci_string, _opts) do
+    def encode(ci_string, opts) do
       ci_string
       |> Ash.CiString.value()
-      |> Jason.Encode.string()
+      |> Jason.Encode.string(opts)
     end
   end
 
