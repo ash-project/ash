@@ -15,7 +15,9 @@ defmodule Ash.CiString do
 
   defimpl Jason.Encoder do
     def encode(ci_string, _opts) do
-      Ash.CiString.value(ci_string)
+      ci_string
+      |> Ash.CiString.value()
+      |> Jason.Encode.string()
     end
   end
 
