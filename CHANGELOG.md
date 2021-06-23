@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.45.0-rc8](https://github.com/ash-project/ash/compare/v1.45.0-rc7...v1.45.0-rc8) (2021-06-23)
+
+
+
+
+### Bug Fixes:
+
+* properly encode ci string to json
+
+### Improvements:
+
+* more engine logging
+
 ## [v1.45.0-rc7](https://github.com/ash-project/ash/compare/v1.45.0-rc6...v1.45.0-rc7) (2021-06-22)
 
 
