@@ -5,23 +5,6 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
-## [v1.45.0-rc12](https://github.com/ash-project/ash/compare/v1.45.0-rc11...v1.45.0-rc12) (2021-06-24)
-
-
-
-
-### Bug Fixes:
-
-* don't call `type()` on `:string`
-
-* optimize ash type loading
-
-### Improvements:
-
-* add `Ash.Type.type/1`
-
-* more optimized types
-
 ## [v1.45.0-rc11](https://github.com/ash-project/ash/compare/v1.45.0-rc10...v1.45.0-rc11) (2021-06-24)
 
 
