@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.45.0-rc10](https://github.com/ash-project/ash/compare/v1.45.0-rc9...v1.45.0-rc10) (2021-06-24)
+
+
+
+
+### Bug Fixes:
+
+* optimize ash type loading
+
 ## [v1.45.0-rc9](https://github.com/ash-project/ash/compare/v1.45.0-rc8...v1.45.0-rc9) (2021-06-23)
 
 
