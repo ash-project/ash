@@ -661,28 +661,22 @@ defmodule Ash.Type do
 
         @impl true
         def type do
-          storage_type = @parent.storage_type()
-
-          if Ash.Type.ash_type?(storage_type) do
-            Ash.Type.storage_type(@parent.storage_type())
-          else
-            storage_type
-          end
+          @parent.storage_type()
         end
 
         @impl true
         def cast(term) do
-          @parent.cast_input(term, Ash.OptionsHelpers.validate!([], @parent.constraints()))
+          @parent.cast_input(term, [])
         end
 
         @impl true
         def load(term) do
-          @parent.cast_stored(term, Ash.OptionsHelpers.validate!([], @parent.constraints()))
+          @parent.cast_stored(term, [])
         end
 
         @impl true
         def dump(term) do
-          @parent.dump_to_native(term, Ash.OptionsHelpers.validate!([], @parent.constraints()))
+          @parent.dump_to_native(term, [])
         end
 
         @impl true
