@@ -36,7 +36,7 @@ defmodule Ash.Schema do
           field(:__metadata__, :map, virtual: true, default: %{}, redact: true)
 
           for aggregate <- Ash.Resource.Info.aggregates(__MODULE__) do
-            {:ok, type} = Aggregate.kind_to_type(aggregate.kind, :string)
+            {:ok, type} = Aggregate.kind_to_type(aggregate.kind, Ash.Type.String)
             Ash.Schema.require_type(type)
 
             field(aggregate.name, type, virtual: true)
@@ -95,7 +95,7 @@ defmodule Ash.Schema do
           field(:__metadata__, :map, virtual: true, default: %{}, redact: true)
 
           for aggregate <- Ash.Resource.Info.aggregates(__MODULE__) do
-            {:ok, type} = Aggregate.kind_to_type(aggregate.kind, :string)
+            {:ok, type} = Aggregate.kind_to_type(aggregate.kind, Ash.Type.String)
 
             Ash.Schema.require_type(type)
             field(aggregate.name, type, virtual: true)
