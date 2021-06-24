@@ -626,9 +626,6 @@ defmodule Ash.Type do
     type.equal?(left, right)
   end
 
-  def type({:array, type}), do: type(type)
-  def type(type), do: type.type()
-
   defmacro __using__(_) do
     quote location: :keep do
       @behaviour Ash.Type
