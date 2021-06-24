@@ -22,7 +22,7 @@ defmodule Ash.Schema do
           for attribute <- Ash.Resource.Info.attributes(__MODULE__) do
             read_after_writes? = attribute.generated? and is_nil(attribute.default)
 
-            field(attribute.name, attribute.type,
+            field(attribute.name, Ash.Type.ecto_type(attribute.type),
               primary_key: attribute.primary_key?,
               read_after_writes: read_after_writes?,
               redacted: attribute.sensitive?
@@ -36,7 +36,7 @@ defmodule Ash.Schema do
           for aggregate <- Ash.Resource.Info.aggregates(__MODULE__) do
             {:ok, type} = Aggregate.kind_to_type(aggregate.kind, :string)
 
-            field(aggregate.name, type, virtual: true)
+            field(aggregate.name, Ash.Type.ecto_type(type), virtual: true)
 
             struct_fields = Keyword.delete(@struct_fields, aggregate.name)
             Module.delete_attribute(__MODULE__, :struct_fields)
@@ -50,7 +50,7 @@ defmodule Ash.Schema do
           for calculation <- Ash.Resource.Info.calculations(__MODULE__) do
             {mod, _} = calculation.calculation
 
-            field(calculation.name, calculation.type, virtual: true)
+            field(calculation.name, Ash.Type.ecto_type(calculation.type), virtual: true)
 
             struct_fields = Keyword.delete(@struct_fields, calculation.name)
             Module.delete_attribute(__MODULE__, :struct_fields)
@@ -77,7 +77,7 @@ defmodule Ash.Schema do
           for attribute <- Ash.Resource.Info.attributes(__MODULE__) do
             read_after_writes? = attribute.generated? and is_nil(attribute.default)
 
-            field(attribute.name, attribute.type,
+            field(attribute.name, Ash.Type.ecto_type(attribute.type),
               primary_key: attribute.primary_key?,
               read_after_writes: read_after_writes?,
               redacted: attribute.sensitive?
@@ -91,7 +91,7 @@ defmodule Ash.Schema do
           for aggregate <- Ash.Resource.Info.aggregates(__MODULE__) do
             {:ok, type} = Aggregate.kind_to_type(aggregate.kind, :string)
 
-            field(aggregate.name, type, virtual: true)
+            field(aggregate.name, Ash.Type.ecto_type(type), virtual: true)
 
             struct_fields = Keyword.delete(@struct_fields, aggregate.name)
             Module.delete_attribute(__MODULE__, :struct_fields)
@@ -105,7 +105,7 @@ defmodule Ash.Schema do
           for calculation <- Ash.Resource.Info.calculations(__MODULE__) do
             {mod, _} = calculation.calculation
 
-            field(calculation.name, calculation.type, virtual: true)
+            field(calculation.name, Ash.Type.ecto_type(calculation.type), virtual: true)
 
             struct_fields = Keyword.delete(@struct_fields, calculation.name)
             Module.delete_attribute(__MODULE__, :struct_fields)
