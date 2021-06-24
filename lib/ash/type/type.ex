@@ -107,7 +107,6 @@ defmodule Ash.Type do
   @type t :: atom | {:array, atom}
 
   @callback storage_type() :: Ecto.Type.t()
-  @callback ecto_type() :: Ecto.Type.t()
   @callback cast_input(term, constraints) :: {:ok, term} | {:error, Keyword.t()} | :error
   @callback cast_input_array(list(term), constraints) ::
               {:ok, list(term)} | {:error, Keyword.t()} | :error
@@ -140,7 +139,6 @@ defmodule Ash.Type do
               | :ok
               | {:error, constraint_error() | list(constraint_error)}
   @callback describe(constraints()) :: String.t() | nil
-  @callback equal?(term, term) :: boolean
 
   @optional_callbacks [
     cast_stored_array: 2,
@@ -247,23 +245,6 @@ defmodule Ash.Type do
   @spec storage_type(t()) :: Ecto.Type.t()
   def storage_type({:array, type}), do: {:array, type.storage_type()}
   def storage_type(type), do: type.storage_type()
-
-  @doc """
-  Returns the ecto compatible type for an Ash.Type.
-
-  If you `use Ash.Type`, this is created for you. For builtin types
-  this may return a corresponding ecto builtin type (atom)
-  """
-  @spec ecto_type(t) :: Ecto.Type.t()
-  def ecto_type({:array, type}), do: {:array, ecto_type(type)}
-
-  for {name, mod} <- @short_names do
-    def ecto_type(unquote(name)), do: ecto_type(unquote(mod))
-  end
-
-  def ecto_type(type) do
-    type.ecto_type()
-  end
 
   def ash_type_option(type) do
     type = get_type(type)
@@ -645,51 +626,34 @@ defmodule Ash.Type do
     type.equal?(left, right)
   end
 
-  # @callback equal?(term, term) :: boolean
-
   defmacro __using__(_) do
     quote location: :keep do
       @behaviour Ash.Type
+      @behaviour Ecto.Type
+      @compile {:inline, storage_type: 0}
 
-      parent = __MODULE__
-
-      defmodule EctoType do
-        @moduledoc false
-        @behaviour Ecto.Type
-
-        @parent parent
-
-        @impl true
-        def type do
-          @parent.storage_type()
-        end
-
-        @impl true
-        def cast(term) do
-          @parent.cast_input(term, [])
-        end
-
-        @impl true
-        def load(term) do
-          @parent.cast_stored(term, [])
-        end
-
-        @impl true
-        def dump(term) do
-          @parent.dump_to_native(term, [])
-        end
-
-        @impl true
-        def equal?(left, right) do
-          @parent.equal?(left, right)
-        end
-
-        @impl true
-        def embed_as(_), do: :self
+      @impl true
+      def type do
+        storage_type()
       end
 
       @impl true
-      def ecto_type, do: EctoType
+      def cast(term) do
+        cast_input(term, [])
+      end
+
+      @impl true
+      def load(term) do
+        cast_stored(term, [])
+      end
+
+      @impl true
+      def dump(term) do
+        dump_to_native(term, [])
+      end
+
+      @impl true
+      def embed_as(_), do: :self
 
       @impl true
       def equal?(left, right), do: left == right
