@@ -22,6 +22,8 @@ defmodule Ash.Schema do
           for attribute <- Ash.Resource.Info.attributes(__MODULE__) do
             read_after_writes? = attribute.generated? and is_nil(attribute.default)
 
+            Ash.Schema.require_type(attribute.type)
+
             field(attribute.name, attribute.type,
               primary_key: attribute.primary_key?,
               read_after_writes: read_after_writes?,
@@ -35,6 +37,7 @@ defmodule Ash.Schema do
 
           for aggregate <- Ash.Resource.Info.aggregates(__MODULE__) do
             {:ok, type} = Aggregate.kind_to_type(aggregate.kind, :string)
+            Ash.Schema.require_type(type)
 
             field(aggregate.name, type, virtual: true)
 
@@ -49,6 +52,7 @@ defmodule Ash.Schema do
 
           for calculation <- Ash.Resource.Info.calculations(__MODULE__) do
             {mod, _} = calculation.calculation
+            Ash.Schema.require_type(calculation.type)
 
             field(calculation.name, calculation.type, virtual: true)
 
@@ -77,6 +81,8 @@ defmodule Ash.Schema do
           for attribute <- Ash.Resource.Info.attributes(__MODULE__) do
             read_after_writes? = attribute.generated? and is_nil(attribute.default)
 
+            Ash.Schema.require_type(attribute.type)
+
             field(attribute.name, attribute.type,
               primary_key: attribute.primary_key?,
               read_after_writes: read_after_writes?,
@@ -91,6 +97,7 @@ defmodule Ash.Schema do
           for aggregate <- Ash.Resource.Info.aggregates(__MODULE__) do
             {:ok, type} = Aggregate.kind_to_type(aggregate.kind, :string)
 
+            Ash.Schema.require_type(type)
             field(aggregate.name, type, virtual: true)
 
             struct_fields = Keyword.delete(@struct_fields, aggregate.name)
@@ -105,6 +112,7 @@ defmodule Ash.Schema do
           for calculation <- Ash.Resource.Info.calculations(__MODULE__) do
             {mod, _} = calculation.calculation
 
+            Ash.Schema.require_type(calculation.type)
             field(calculation.name, calculation.type, virtual: true)
 
             struct_fields = Keyword.delete(@struct_fields, calculation.name)
@@ -119,4 +127,7 @@ defmodule Ash.Schema do
       end
     end
   end
+
+  def require_type({:array, type}), do: require_type(type)
+  def require_type(type), do: type.type()
 end
