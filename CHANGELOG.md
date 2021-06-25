@@ -5,6 +5,31 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.45.0-rc15](https://github.com/ash-project/ash/compare/v1.45.0-rc14...v1.45.0-rc15) (2021-06-25)
+
+
+
+
+### Bug Fixes:
+
+* ensure ci_strings casted after constraints
+
+* Revert "more optimized types"
+
+* revert a suboptimal change to the type system
+
+* don't call `type()` on `:string`
+
+* optimize ash type loading
+
+### Improvements:
+
+* revamp ci_string
+
+* add `Ash.Type.type/1`
+
+* more optimized types
+
 ## [v1.45.0-rc14](https://github.com/ash-project/ash/compare/v1.45.0-rc13...v1.45.0-rc14) (2021-06-24)
 
 
