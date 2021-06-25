@@ -43,12 +43,18 @@ defmodule Ash.Test.Actions.UpdateTest do
       update :set_private_attribute_to_nil do
         change set_attribute(:non_nil_private, nil)
       end
+
+      update :set_private_attribute_from_arg do
+        argument :private, :string
+        change set_attribute(:private, {:arg, :private})
+      end
     end
 
     attributes do
       uuid_primary_key :id
       attribute :bio, :string, allow_nil?: false
       attribute :non_nil_private, :string, allow_nil?: false, default: "non_nil"
+      attribute :private, :string, default: "non_nil"
     end
 
     relationships do
@@ -242,6 +248,20 @@ defmodule Ash.Test.Actions.UpdateTest do
       assert_raise Ash.Error.Invalid, ~r/attribute non_nil_private is required/, fn ->
         profile |> new(%{bio: "foobar"}) |> Api.update!(action: :set_private_attribute_to_nil)
       end
+    end
+
+    test "it passes through an argument's value" do
+      profile =
+        Profile
+        |> new(%{bio: "foobar"})
+        |> Api.create!()
+
+      profile =
+        profile
+        |> new(%{bio: "foobar", private: "blah"})
+        |> Api.update!(action: :set_private_attribute_from_arg)
+
+      assert profile.private == "blah"
     end
   end
 
