@@ -65,12 +65,7 @@ defmodule Ash.Type.CiString do
         {:ok, nil}
 
       {:ok, value} ->
-        {:ok,
-         %Ash.CiString{
-           string: value,
-           casted?: is_nil(constraints[:case]),
-           case: constraints[:casing]
-         }}
+        {:ok, Ash.CiString.new(value, constraints[:casing])}
 
       other ->
         other
