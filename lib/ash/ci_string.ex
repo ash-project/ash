@@ -9,9 +9,20 @@ defmodule Ash.CiString do
   For the type implementation, see `Ash.Type.CiString`
   """
 
-  defstruct [:string, lowered?: false]
+  defstruct [:string, casted?: false, case: nil]
 
-  def sigil_i(value), do: new(value)
+  def sigil_i(value, mods) do
+    cond do
+      ?l in mods ->
+        new(value, :lower)
+
+      ?u in mods ->
+        new(value, :upper)
+
+      true ->
+        new(value)
+    end
+  end
 
   defimpl Jason.Encoder do
     def encode(ci_string, opts) do
@@ -35,37 +46,53 @@ defmodule Ash.CiString do
     end
   end
 
-  def new(value) do
-    %Ash.CiString{lowered?: true, string: value && String.downcase(value)}
+  def new(value, casing \\ nil) do
+    case casing do
+      :upper ->
+        %Ash.CiString{casted?: true, string: value && String.upcase(value)}
+
+      :lower ->
+        %Ash.CiString{casted?: true, string: value && String.downcase(value)}
+
+      nil ->
+        %Ash.CiString{casted?: false, string: value}
+    end
   end
 
-  def value(%Ash.CiString{string: value, lowered?: false}) do
+  def value(%Ash.CiString{string: value, casted?: false, case: :lower}) do
     value && String.downcase(value)
   end
 
-  def value(%Ash.CiString{string: value, lowered?: true}) do
+  def value(%Ash.CiString{string: value, casted?: false, case: :upper}) do
+    value && String.upcase(value)
+  end
+
+  def value(%Ash.CiString{string: value}) do
     value
   end
 
   def compare(left, right) do
-    do_compare(to_binary(left), to_binary(right))
+    do_compare(to_comparable_string(left), to_comparable_string(right))
   end
 
   defp do_compare(left, right) when left < right, do: :lt
   defp do_compare(left, right) when left == right, do: :eq
   defp do_compare(_, _), do: :gt
 
-  defp to_binary(value) when is_binary(value) do
+  @doc "Returns the downcased value, only downcasing if it hasn't already been down"
+  def to_comparable_string(value) when is_binary(value) do
     String.downcase(value)
   end
 
-  defp to_binary(%__MODULE__{lowered?: false, string: value}) do
+  def to_comparable_string(%__MODULE__{case: :lower, casted?: true, string: value}) do
+    value
+  end
+
+  def to_comparable_string(%__MODULE__{string: value}) do
     value && String.downcase(value)
   end
 
-  defp to_binary(%__MODULE__{string: value}) do
-    value
-  end
+  def to_comparable_string(nil), do: nil
 end
 
 use Comp

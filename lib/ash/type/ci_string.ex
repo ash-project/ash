@@ -21,6 +21,19 @@ defmodule Ash.Type.CiString do
       type: :boolean,
       doc: "Sets the value to `nil` if it's empty.",
       default: false
+    ],
+    casing: [
+      type: {:one_of, [:upper, :lower, nil]},
+      default: nil,
+      doc: """
+      Lowercases or uppercases the value, fully discarding case information.
+
+      For example, if you don't set this, a value of `FrEd` could be saved to the data layer.
+      `FrEd` and `fReD` would still compare as equal, but the original casing information  is retained.
+      In many cases, this is what you want. In some cases, however, you want to remove all case information.
+      For example, in an email, you may want to support a user inputting an upper case letter, but discard it
+      when saved.
+      """
     ]
   ]
 
@@ -52,7 +65,12 @@ defmodule Ash.Type.CiString do
         {:ok, nil}
 
       {:ok, value} ->
-        {:ok, %Ash.CiString{string: value, lowered?: true}}
+        {:ok,
+         %Ash.CiString{
+           string: value,
+           casted?: is_nil(constraints[:case]),
+           case: constraints[:casing]
+         }}
 
       other ->
         other
@@ -156,7 +174,7 @@ defmodule Ash.Type.CiString do
 
   def dump_to_native(value, _) do
     case Ecto.Type.dump(:string, value) do
-      {:ok, value} -> {:ok, String.downcase(value)}
+      {:ok, value} -> {:ok, value}
       :error -> :error
     end
   end

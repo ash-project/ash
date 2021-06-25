@@ -29,19 +29,24 @@ defmodule Ash.Query.Function.Contains do
   def evaluate(%{arguments: [_, nil]}), do: false
 
   def evaluate(%{arguments: [%CiString{} = left, %CiString{} = right]}) do
-    {:known, String.contains?(CiString.value(left), CiString.value(right))}
+    {:known,
+     String.contains?(CiString.to_comparable_string(left), CiString.to_comparable_string(right))}
   end
 
   def evaluate(%{arguments: [left, %Ash.CiString{} = right]}) when is_binary(left) do
     {:known,
      left
-     |> String.downcase()
-     |> String.contains?(CiString.value(right))}
+     |> Ash.CiString.to_comparable_string()
+     |> String.contains?(Ash.CiString.to_comparable_string(right))}
   end
 
   def evaluate(%{arguments: [%Ash.CiString{} = left, right]})
       when is_binary(right) do
-    {:known, String.contains?(Ash.CiString.value(left), String.downcase(right))}
+    {:known,
+     String.contains?(
+       Ash.CiString.to_comparable_string(left),
+       Ash.CiString.to_comparable_string(right)
+     )}
   end
 
   def evaluate(%{arguments: [left, right]})
