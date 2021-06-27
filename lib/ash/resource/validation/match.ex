@@ -37,7 +37,7 @@ defmodule Ash.Resource.Validation.Match do
   @impl true
   def validate(changeset, opts) do
     case Ash.Changeset.fetch_argument_or_change(changeset, opts[:attribute]) do
-      {:ok, changing_to} ->
+      {:ok, changing_to} when not is_nil(changing_to) ->
         case string_value(changing_to, opts) do
           {:ok, changing_to} ->
             if String.match?(changing_to, opts[:match]) do
