@@ -5,6 +5,47 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.45.0-rc18](https://github.com/ash-project/ash/compare/v1.45.0-rc17...v1.45.0-rc18) (2021-06-28)
+
+
+
+
+### Bug Fixes:
+
+* handle sorting empty data properly
+
+* manage ets tables properly
+
+* link request handler to engine and runner, solve mem leak
+
+* ensure ci_strings casted after constraints
+
+* Revert "more optimized types"
+
+* revert a suboptimal change to the type system
+
+* don't call `type()` on `:string`
+
+* optimize ash type loading
+
+### Improvements:
+
+* if "" fails to cast, cast it as `nil` instead
+
+* ReadActionRequiresActor error
+
+* `ensure_selected` change
+
+* don't perform `match` on `nil`
+
+* add `{:arg, :name}` input for `set_attribute`
+
+* revamp ci_string
+
+* add `Ash.Type.type/1`
+
+* more optimized types
+
 ## [v1.45.0-rc17](https://github.com/ash-project/ash/compare/v1.45.0-rc16...v1.45.0-rc17) (2021-06-28)
 
 
