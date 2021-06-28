@@ -52,6 +52,103 @@ defmodule Ash.DataLayer.Ets do
     ]
   end
 
+  defmodule TableManager do
+    @moduledoc false
+    use GenServer
+
+    def start(resource, tenant) do
+      table =
+        if tenant do
+          Module.concat(to_string(resource), to_string(tenant))
+        else
+          resource
+        end
+
+      if Ash.DataLayer.Ets.private?(resource) do
+        do_wrap_existing(resource, table)
+      else
+        case GenServer.start(__MODULE__, {resource, table},
+               name: Module.concat(table, TableManager)
+             ) do
+          {:error, {:already_started, pid}} ->
+            ETS.Set.wrap_existing(table)
+
+          {:error, error} ->
+            {:error, error}
+
+          _ ->
+            ETS.Set.wrap_existing(table)
+        end
+      end
+    end
+
+    def init({resource, table}) do
+      case do_wrap_existing(resource, table) do
+        {:ok, table} ->
+          {:ok, {resource, table}, :hibernate}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    end
+
+    def handle_call(:wait, _, state), do: {:reply, :ok, state}
+
+    defp do_wrap_existing(resource, table) do
+      case ETS.Set.wrap_existing(table) do
+        {:error, :table_not_found} ->
+          protection =
+            if Ash.DataLayer.Ets.private?(resource) do
+              :private
+            else
+              :public
+            end
+
+          case ETS.Set.new(
+                 name: table,
+                 protection: protection,
+                 ordered: true,
+                 read_concurrency: true
+               ) do
+            {:ok, tab} ->
+              {:ok, tab}
+
+            {:error, :table_already_exists} ->
+              ETS.Set.wrap_existing(table)
+
+            other ->
+              other
+          end
+
+        {:ok, table} ->
+          {:ok, table}
+
+        {:error, other} ->
+          {:error, other}
+      end
+    end
+  end
+
+  @doc "Stops the storage for a given resource/tenant (deleting all of the data)"
+  def stop(resource, tenant \\ nil) do
+    table =
+      if tenant do
+        String.to_atom(to_string(tenant) <> to_string(resource))
+      else
+        resource
+      end
+
+    name = Module.concat(table, TableManager)
+
+    case Process.whereis(name) do
+      nil ->
+        :ok
+
+      pid ->
+        Process.exit(pid, :shutdown)
+    end
+  end
+
   @impl true
   def can?(resource, :async_engine) do
     not private?(resource)
@@ -288,43 +385,6 @@ defmodule Ash.DataLayer.Ets do
 
   # sobelow_skip ["DOS.StringToAtom"]
   defp wrap_or_create_table(resource, tenant) do
-    table =
-      if tenant do
-        String.to_atom(to_string(tenant) <> to_string(resource))
-      else
-        resource
-      end
-
-    case ETS.Set.wrap_existing(table) do
-      {:error, :table_not_found} ->
-        protection =
-          if private?(resource) do
-            :private
-          else
-            :public
-          end
-
-        case ETS.Set.new(
-               name: table,
-               protection: protection,
-               ordered: true,
-               read_concurrency: true
-             ) do
-          {:ok, tab} ->
-            {:ok, tab}
-
-          {:error, :table_already_exists} ->
-            ETS.Set.wrap_existing(table)
-
-          other ->
-            other
-        end
-
-      {:ok, table} ->
-        {:ok, table}
-
-      {:error, other} ->
-        {:error, other}
-    end
+    TableManager.start(resource, tenant)
   end
 end

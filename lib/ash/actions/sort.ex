@@ -186,6 +186,7 @@ defmodule Ash.Actions.Sort do
     end
   end
 
+  def runtime_sort([], _empty), do: []
   def runtime_sort(results, empty) when empty in [nil, []], do: results
 
   def runtime_sort([%resource{} | _] = results, [{field, direction}]) do
