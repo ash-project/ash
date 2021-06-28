@@ -63,6 +63,7 @@ defmodule Ash.Query do
     InvalidLimit,
     InvalidOffset,
     NoReadAction,
+    ReadActionRequiresActor,
     Required
   }
 
@@ -367,7 +368,7 @@ defmodule Ash.Query do
 
   defp add_action_filters(query, action, actor) do
     if Ash.Filter.template_references_actor?(action.filter) and is_nil(actor) do
-      Ash.Query.add_error(query, "Read action requires actor")
+      Ash.Query.add_error(query, ReadActionRequiresActor.exception([]))
     else
       built_filter =
         Ash.Filter.build_filter_from_template(
@@ -597,6 +598,8 @@ defmodule Ash.Query do
   if the source field is not selected on the query/provided data an error will be produced. If loading
   a relationship with a query, an error is produced if the query does not select the destination field
   of the relationship.
+
+  Use `ensure_selected/2` if you simply wish to make sure a field has been selected, without deselecting any other fields.
   """
   def select(query, fields, opts \\ []) do
     query = to_query(query)
@@ -608,6 +611,14 @@ defmodule Ash.Query do
     end
   end
 
+  @doc """
+  Ensures that the given attributes are selected.
+
+  The first call to `select/2` will *limit* the fields to only the provided fields.
+  Use `ensure_selected/2` to say "select this field (or these fields) without deselecting anything else".
+
+  See `select/2` for more.
+  """
   def ensure_selected(query, fields) do
     if query.select do
       Ash.Query.select(query, List.wrap(fields))

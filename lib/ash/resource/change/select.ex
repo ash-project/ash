@@ -3,6 +3,10 @@ defmodule Ash.Resource.Change.Select do
   use Ash.Resource.Change
 
   def change(changeset, opts, _) do
-    Ash.Changeset.select(changeset, opts[:target] || [])
+    if opts[:ensure?] do
+      Ash.Changeset.ensure_selected(changeset, opts[:target] || [])
+    else
+      Ash.Changeset.select(changeset, opts[:target] || [])
+    end
   end
 end

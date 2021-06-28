@@ -72,4 +72,11 @@ defmodule Ash.Resource.Change.Builtins do
   def select(value) do
     {Ash.Resource.Change.Select, target: value}
   end
+
+  @doc """
+  Passes the provided value into `Ash.Changeset.ensure_selected/2`
+  """
+  def ensure_selected(value) do
+    {Ash.Resource.Change.Select, target: value, ensure?: true}
+  end
 end

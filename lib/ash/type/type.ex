@@ -356,10 +356,22 @@ defmodule Ash.Type do
         {:ok, value}
 
       :error ->
-        {:error, "is invalid"}
+        case term do
+          "" ->
+            cast_input(type, nil, constraints)
+
+          _ ->
+            {:error, "is invalid"}
+        end
 
       {:error, other} ->
-        {:error, other}
+        case term do
+          "" ->
+            cast_input(type, nil, constraints)
+
+          _ ->
+            {:error, other}
+        end
     end
   end
 

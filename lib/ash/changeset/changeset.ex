@@ -211,12 +211,35 @@ defmodule Ash.Changeset do
 
   Datalayers currently are not notified of the `select` for a changeset(unlike queries), and creates/updates select all fields when they are performed.
   A select provided on a changeset simply sets the unselected fields to `nil` before returning the result.
+
+  Use `ensure_selected/2` if you simply wish to make sure a field has been selected, without deselecting any other fields.
   """
   def select(changeset, fields, opts \\ []) do
     if opts[:replace?] do
       %{changeset | select: Enum.uniq(List.wrap(fields))}
     else
       %{changeset | select: Enum.uniq(List.wrap(fields) ++ (changeset.select || []))}
+    end
+  end
+
+  @doc """
+  Ensures that the given attributes are selected.
+
+  The first call to `select/2` will *limit* the fields to only the provided fields.
+  Use `ensure_selected/2` to say "select this field (or these fields) without deselecting anything else".
+
+  See `select/2` for more.
+  """
+  def ensure_selected(changeset, fields) do
+    if changeset.select do
+      Ash.Changeset.select(changeset, List.wrap(fields))
+    else
+      to_select =
+        changeset.resource
+        |> Ash.Resource.Info.attributes()
+        |> Enum.map(& &1.name)
+
+      Ash.Changeset.select(changeset, to_select)
     end
   end
 
