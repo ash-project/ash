@@ -28,6 +28,14 @@ defmodule Ash.Engine.RequestHandler do
       runner_ref: opts[:runner_ref]
     }
 
+    if opts[:engine_pid] do
+      Process.monitor(opts[:engine_pid])
+    end
+
+    if opts[:runner_pid] do
+      Process.monitor(opts[:runner_pid])
+    end
+
     log(state, fn -> "Starting request" end)
 
     {:ok, state, {:continue, :next}}
@@ -113,6 +121,22 @@ defmodule Ash.Engine.RequestHandler do
 
   def handle_info({:pid_info, pid_info}, state) do
     {:noreply, %{state | pid_info: pid_info}}
+  end
+
+  def handle_info({:DOWN, _, _, pid, reason}, state) do
+    reason =
+      case reason do
+        {:shutdown, _} -> :shutdown
+        reason -> reason
+      end
+
+    if pid == state.runner_pid do
+      log(state, fn -> "Runner down #{state.request.name}: #{inspect(reason)}" end)
+    else
+      log(state, fn -> "Engine down #{state.request.name}: #{inspect(reason)}" end)
+    end
+
+    {:stop, reason, state}
   end
 
   def handle_call(
