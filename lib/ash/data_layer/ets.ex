@@ -70,7 +70,7 @@ defmodule Ash.DataLayer.Ets do
         case GenServer.start(__MODULE__, {resource, table},
                name: Module.concat(table, TableManager)
              ) do
-          {:error, {:already_started, pid}} ->
+          {:error, {:already_started, _pid}} ->
             ETS.Set.wrap_existing(table)
 
           {:error, error} ->
@@ -130,6 +130,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   @doc "Stops the storage for a given resource/tenant (deleting all of the data)"
+  # sobelow_skip ["DOS.StringToAtom"]
   def stop(resource, tenant \\ nil) do
     table =
       if tenant do
