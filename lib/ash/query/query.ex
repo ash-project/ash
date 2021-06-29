@@ -620,6 +620,8 @@ defmodule Ash.Query do
   See `select/2` for more.
   """
   def ensure_selected(query, fields) do
+    query = to_query(query)
+
     if query.select do
       Ash.Query.select(query, List.wrap(fields))
     else
@@ -1152,6 +1154,12 @@ defmodule Ash.Query do
 
       {:calculate, {name, module_and_opts, type, context}}, query ->
         calculate(query, name, module_and_opts, type, context)
+
+      {:select, fields}, query ->
+        select(query, fields)
+
+      {:ensure_selected, fields}, query ->
+        ensure_selected(query, fields)
 
       {:context, context}, query ->
         set_context(query, context)
