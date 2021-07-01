@@ -1541,16 +1541,25 @@ defmodule Ash.Query do
     query = to_query(query)
 
     if Ash.DataLayer.data_layer_can?(query.resource, :sort) do
-      sorts
-      |> List.wrap()
-      |> Enum.reduce(query, fn
-        {sort, direction}, query ->
-          %{query | sort: query.sort ++ [{sort, direction}]}
+      query_with_sort =
+        sorts
+        |> List.wrap()
+        |> Enum.reduce(query, fn
+          {sort, direction}, query ->
+            %{query | sort: query.sort ++ [{sort, direction}]}
 
-        sort, query ->
-          %{query | sort: query.sort ++ [{sort, :asc}]}
+          sort, query ->
+            %{query | sort: query.sort ++ [{sort, :asc}]}
+        end)
+        |> validate_sort()
+
+      Enum.reduce(query_with_sort.sort || [], query_with_sort, fn {key, _value}, query ->
+        if Ash.Resource.Info.aggregate(query.resource, key) do
+          Ash.Query.load(query, key)
+        else
+          query
+        end
       end)
-      |> validate_sort()
     else
       add_error(query, :sort, "Data layer does not support sorting")
     end

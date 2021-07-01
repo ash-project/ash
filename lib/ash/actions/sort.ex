@@ -67,6 +67,9 @@ defmodule Ash.Actions.Sort do
         attribute = Ash.Resource.Info.attribute(resource, field)
 
         cond do
+          aggregate = Ash.Resource.Info.aggregate(resource, field) ->
+            aggregate_sort(aggregates, aggregate, order, resource, sorts, errors)
+
           Map.has_key?(aggregates, field) ->
             aggregate_sort(aggregates, field, order, resource, sorts, errors)
 
@@ -94,7 +97,7 @@ defmodule Ash.Actions.Sort do
             end
 
           !attribute ->
-            {sorts, [NoSuchAttribute.exception(attribute: field) | errors]}
+            {sorts, [NoSuchAttribute.exception(name: field) | errors]}
 
           Ash.Type.embedded_type?(attribute.type) ->
             {sorts, ["Cannot sort on embedded types" | errors]}
@@ -141,16 +144,38 @@ defmodule Ash.Actions.Sort do
   end
 
   defp aggregate_sort(aggregates, field, order, resource, sorts, errors) do
-    aggregate = Map.get(aggregates, field)
+    {field, type} =
+      case field do
+        field when is_atom(field) ->
+          aggregate = Map.get(aggregates, field)
 
-    if Ash.DataLayer.data_layer_can?(resource, :aggregate_sort) &&
-         Ash.DataLayer.data_layer_can?(
-           resource,
-           {:sort, Ash.Type.storage_type(aggregate.type)}
-         ) do
-      {sorts ++ [{field, order}], errors}
-    else
-      {sorts, [AggregatesNotSupported.exception(resource: resource, feature: "sorting") | errors]}
+          {field, {:ok, aggregate.type}}
+
+        %Ash.Resource.Aggregate{} = agg ->
+          field_type =
+            if agg.field do
+              related = Ash.Resource.Info.related(resource, agg.relationship_path)
+              Ash.Resource.Info.attribute(related, agg.field).type
+            end
+
+          {agg.name, Ash.Query.Aggregate.kind_to_type(agg.kind, field_type)}
+      end
+
+    case type do
+      {:ok, type} ->
+        if Ash.DataLayer.data_layer_can?(resource, :aggregate_sort) &&
+             Ash.DataLayer.data_layer_can?(
+               resource,
+               {:sort, Ash.Type.storage_type(type)}
+             ) do
+          {sorts ++ [{field, order}], errors}
+        else
+          {sorts,
+           [AggregatesNotSupported.exception(resource: resource, feature: "sorting") | errors]}
+        end
+
+      {:error, error} ->
+        {sorts, [error | errors]}
     end
   end
 
