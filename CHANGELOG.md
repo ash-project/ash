@@ -5,6 +5,11 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.46.0](https://github.com/ash-project/ash/compare/v1.45.0-rc20...v1.46.0) (2021-07-02)
+
+
+
+
 ## [v1.45.0-rc20](https://github.com/ash-project/ash/compare/v1.45.0-rc19...v1.45.0-rc20) (2021-07-01)
 
 
