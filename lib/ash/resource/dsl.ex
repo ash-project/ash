@@ -867,7 +867,7 @@ defmodule Ash.Resource.Dsl do
       },
       {
         "`expr/1` example:",
-        "calculate :full_name, expr(first_name <> \" \" <> last_name "
+        "calculate :full_name, :string, expr(first_name <> \" \" <> last_name "
       }
     ],
     target: Ash.Resource.Calculation,
