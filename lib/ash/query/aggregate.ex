@@ -141,8 +141,18 @@ defmodule Ash.Query.Aggregate do
           List.first(relationship_path)
         )
 
+      path_for_checking =
+        relationship_path
+        |> tl()
+        |> Enum.reduce({[], aggregate_resource}, fn rel, {path, resource} ->
+          relationship = Ash.Resource.Info.relationship(resource, rel)
+          {[relationship | path], relationship.destination}
+        end)
+        |> elem(0)
+        |> Enum.reverse()
+
       {in_query?, reverse_relationship} =
-        case Load.reverse_relationship_path(relationship, tl(relationship_path)) do
+        case Load.reverse_relationship_path(relationship, path_for_checking) do
           :error ->
             {ref_path == [] && can_be_in_query?, nil}
 
