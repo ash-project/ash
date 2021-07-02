@@ -10,6 +10,9 @@ defmodule Ash.Sort do
 
   alias Ash.Error.Query.{InvalidSortOrder, NoSuchAttribute}
 
+  # See the comment in that module for more on why this is here
+  Ash.Resource.Calculation.Expression.check()
+
   @doc """
   A utility for parsing sorts provided from external input. Only allows sorting
   on public attributes and aggregates.

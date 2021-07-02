@@ -2,6 +2,12 @@ defmodule Ash.Resource.Calculation.Expression do
   @moduledoc false
   use Ash.Calculation, type: :string
 
+  @doc false
+  # This exists to fix some very strange
+  # compile time errors, whereby Code.ensure_compiled(this_module)
+  # doesn't work, but calling a function on it does
+  def check, do: :ok
+
   def expression(opts, context) do
     expr =
       Ash.Filter.build_filter_from_template(opts[:expr], nil, context, context[:context] || %{})
