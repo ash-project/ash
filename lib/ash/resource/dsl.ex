@@ -861,12 +861,14 @@ defmodule Ash.Resource.Dsl do
     3.) Set `always_select?` on the attribute in question
     """,
     examples: [
-      "calculate :full_name, :string, MyApp.MyResource.FullName, select: [:first_name, :last_name]",
       {
         "`Ash.Calculation` implementation example:",
         "calculate :full_name, :string, {MyApp.FullName, keys: [:first_name, :last_name]}, select: [:first_name, :last_name]"
       },
-      "calculate :full_name, :string, full_name([:first_name, :last_name]), select: [:first_name, :last_name]"
+      {
+        "`expr/1` example:",
+        "calculate :full_name, expr(first_name <> \" \" <> last_name "
+      }
     ],
     target: Ash.Resource.Calculation,
     args: [:name, :type, :calculation],
