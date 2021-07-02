@@ -105,13 +105,13 @@ aggregates do
 end
 
 calculations do
-  argument :separator, :string, default: " "
-  calculate :full_name, :string, expr(first_name <> ^arg(:separator) <> last_name)
+  calculate :full_name, :string, expr(first_name <> ^arg(:separator) <> last_name) do
+    argument :separator, :string, default: " "
+  end
 end
 ```
 
 As an aside: this also allows loading that value on the user, e.g `Ash.Query.load(User, [:first_name, :last_name])`
-
 
 ### Using calculation modules
 
