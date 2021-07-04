@@ -19,7 +19,8 @@ defmodule Ash.Resource.Relationships.HasOne do
     :violation_message,
     validate_destination_field?: true,
     cardinality: :one,
-    type: :has_one
+    type: :has_one,
+    required?: false
   ]
 
   @type t :: %__MODULE__{
@@ -46,7 +47,16 @@ defmodule Ash.Resource.Relationships.HasOne do
                |> OptionsHelpers.set_default!(:source_field, :id)
 
   @opt_schema Ash.OptionsHelpers.merge_schemas(
-                [],
+                [
+                  required?: [
+                    type: :boolean,
+                    doc: """
+                    Marks the relationship as required. This is *not* currently validated anywhere, since the
+                    relationship is managed by the destination, but ash_graphql uses it for type information,
+                    and it can be used for expressiveness.
+                    """
+                  ]
+                ],
                 @global_opts,
                 "Relationship Options"
               )
