@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.46.2](https://github.com/ash-project/ash/compare/v1.46.1...v1.46.2) (2021-07-04)
+
+
+
+
+### Improvements:
+
+* info only `required?` flag for `has_one`
+
 ## [v1.46.1](https://github.com/ash-project/ash/compare/v1.46.0...v1.46.1) (2021-07-02)
 
 
