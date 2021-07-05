@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.46.3](https://github.com/ash-project/ash/compare/v1.46.2...v1.46.3) (2021-07-05)
+
+
+
+
+### Bug Fixes:
+
+* build aggregate paths properly
+
 ## [v1.46.2](https://github.com/ash-project/ash/compare/v1.46.1...v1.46.2) (2021-07-04)
 
 
