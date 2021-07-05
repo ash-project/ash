@@ -144,7 +144,7 @@ defmodule Ash.Query.Aggregate do
       path_for_checking =
         relationship_path
         |> tl()
-        |> Enum.reduce({[], aggregate_resource}, fn rel, {path, resource} ->
+        |> Enum.reduce({[], relationship.destination}, fn rel, {path, resource} ->
           relationship = Ash.Resource.Info.relationship(resource, rel)
           {[relationship | path], relationship.destination}
         end)
