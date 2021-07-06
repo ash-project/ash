@@ -309,11 +309,9 @@ defmodule Ash.Type do
 
   def cast_input({:array, type}, term, constraints) do
     if is_atom(type) && :erlang.function_exported(type, :cast_input_array, 2) do
-      constraints = Ash.OptionsHelpers.validate!(constraints, array_constraints(type))
       type.cast_input_array(term, constraints)
     else
-      single_constraints =
-        Ash.OptionsHelpers.validate!(constraints[:items] || [], constraints(type))
+      single_constraints = constraints[:items] || []
 
       term
       |> Enum.with_index()
@@ -348,7 +346,6 @@ defmodule Ash.Type do
   def cast_input(_, nil, _), do: {:ok, nil}
 
   def cast_input(type, term, constraints) do
-    constraints = Ash.OptionsHelpers.validate!(constraints, constraints(type))
     type = get_type(type)
 
     case type.cast_input(term, constraints) do
@@ -385,15 +382,13 @@ defmodule Ash.Type do
 
   def cast_stored({:array, type}, term, constraints) when is_list(term) do
     if is_atom(type) && :erlang.function_exported(type, :cast_stored_array, 2) do
-      constraints = Ash.OptionsHelpers.validate!(constraints, array_constraints(type))
       type.cast_stored_array(term, constraints)
     else
       term
       |> Enum.with_index()
       |> Enum.reverse()
       |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
-        single_constraints =
-          Ash.OptionsHelpers.validate!(constraints[:items] || [], constraints(type))
+        single_constraints = constraints[:items] || []
 
         case cast_stored(type, item, single_constraints) do
           :error ->
@@ -422,7 +417,6 @@ defmodule Ash.Type do
   end
 
   def cast_stored(type, term, constraints) do
-    constraints = Ash.OptionsHelpers.validate!(constraints, constraints(type))
     type = get_type(type)
     type.cast_stored(term, constraints)
   end
@@ -498,8 +492,6 @@ defmodule Ash.Type do
     type = get_type(type)
 
     if ash_type?(type) do
-      constraints = Ash.OptionsHelpers.validate!(constraints, constraints(type))
-
       case type.apply_constraints(term, constraints) do
         :ok -> {:ok, term}
         other -> other
@@ -570,11 +562,9 @@ defmodule Ash.Type do
 
   def dump_to_native({:array, type}, term, constraints) do
     if is_atom(type) && :erlang.function_exported(type, :dump_to_native_array, 2) do
-      constraints = Ash.OptionsHelpers.validate!(constraints, array_constraints(type))
       type.dump_to_native_array(term, constraints)
     else
-      single_constraints =
-        Ash.OptionsHelpers.validate!(constraints[:items] || [], constraints(type))
+      single_constraints = constraints[:items] || []
 
       term
       |> Enum.reverse()
@@ -591,7 +581,6 @@ defmodule Ash.Type do
   end
 
   def dump_to_native(type, term, constraints) do
-    constraints = Ash.OptionsHelpers.validate!(constraints, constraints(type))
     type = get_type(type)
     type.dump_to_native(term, constraints)
   end
@@ -608,11 +597,9 @@ defmodule Ash.Type do
 
   def dump_to_embedded({:array, type}, term, constraints) do
     if is_atom(type) && :erlang.function_exported(type, :dump_to_embedded_array, 2) do
-      constraints = Ash.OptionsHelpers.validate!(constraints, array_constraints(type))
       type.dump_to_embedded_array(term, constraints)
     else
-      single_constraints =
-        Ash.OptionsHelpers.validate!(constraints[:items] || [], constraints(type))
+      single_constraints = constraints[:items] || []
 
       term
       |> Enum.reverse()
@@ -629,7 +616,6 @@ defmodule Ash.Type do
   end
 
   def dump_to_embedded(type, term, constraints) do
-    constraints = Ash.OptionsHelpers.validate!(constraints, constraints(type))
     type = get_type(type)
 
     if :erlang.function_exported(type, :dump_to_embedded, 2) do
