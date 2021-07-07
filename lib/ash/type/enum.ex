@@ -4,11 +4,7 @@ defmodule Ash.Type.Enum do
 
   For example, you might have:
   ```elixir
-<<<<<<< HEAD
   attribute :status, :atom, constraints: [one_of: [:open, :closed]]
-=======
-  attribute :status, :atom, constraints: [one_of: []:open, :closed]]
->>>>>>> 7afc45ef5dd8ab6f34c5380af337e1a0a78e553f
   ```
 
   But as that starts to spread around your system you may find that you want
