@@ -4,7 +4,7 @@ defmodule Ash.Type.Enum do
 
   For example, you might have:
   ```elixir
-  attribute :status, :atom, constraints: [:open, :closed]
+  attribute :status, :atom, constraints: [one_of: []:open, :closed]]
   ```
 
   But as that starts to spread around your system you may find that you want
