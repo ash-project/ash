@@ -9,6 +9,10 @@ defmodule Ash.Type.Atom do
   Stores an atom as a string in the database
 
   A builtin type that can be referenced via `:atom`
+
+  ### Constraints
+
+  #{Ash.OptionsHelpers.docs(@constraints)}
   """
   use Ash.Type
 
