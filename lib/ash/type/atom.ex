@@ -49,7 +49,7 @@ defmodule Ash.Type.Atom do
     {:ok, value}
   end
 
-  def cast_input("", _), do: nil
+  def cast_input("", _), do: {:ok, nil}
 
   def cast_input(value, _) when is_binary(value) do
     {:ok, String.to_existing_atom(value)}
