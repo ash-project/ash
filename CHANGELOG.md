@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.46.4](https://github.com/ash-project/ash/compare/v1.46.3...v1.46.4) (2021-07-08)
+
+
+
+
+### Bug Fixes:
+
+* cast empty string to nil in atom
+
+* accept strings for atom types again
+
+* don't turn strings to atoms in `:atom` type
+
+* don't do unnecessary validation in type
+
 ## [v1.46.3](https://github.com/ash-project/ash/compare/v1.46.2...v1.46.3) (2021-07-05)
 
 
