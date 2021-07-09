@@ -57,7 +57,7 @@ defmodule Ash.Changeset do
         if context == %{} do
           empty()
         else
-          concat("context: ", to_doc(context, opts))
+          concat("context: ", to_doc(sanitize_context(context), opts))
         end
 
       tenant =
@@ -86,6 +86,24 @@ defmodule Ash.Changeset do
         fn str, _ -> str end
       )
     end
+
+    defp sanitize_context(%{manage_relationship_source: manage_relationship_source} = context) do
+      sanitized_managed_relationship_source =
+        manage_relationship_source
+        |> Enum.reverse()
+        |> Enum.map(fn {resource, rel, _} ->
+          "#{inspect(resource)}.#{rel}"
+        end)
+        |> Enum.join(" -> ")
+
+      %{
+        context
+        | manage_relationship_source:
+            "#manage_relationship_source<#{sanitized_managed_relationship_source}>"
+      }
+    end
+
+    defp sanitize_context(context), do: context
 
     defp arguments(changeset, opts) do
       if changeset.action do

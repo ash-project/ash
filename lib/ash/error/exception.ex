@@ -21,22 +21,18 @@ defmodule Ash.Error.Exception do
                      ]
 
       @impl Exception
-      def message(%{message: message, vars: vars, private_vars: private_vars} = exception) do
-        string = message || ""
 
-        string =
-          Enum.reduce(vars ++ private_vars, string, fn {key, value}, acc ->
-            if String.contains?(acc, "%{#{key}}") do
-              String.replace(acc, "%{#{key}}", to_string(value))
-            else
-              acc
-            end
-          end)
+      def message(%{vars: vars, private_vars: private_vars} = exception) do
+        string = Ash.ErrorKind.message(exception)
 
-        Ash.ErrorKind.message(%{exception | message: string})
+        Enum.reduce(List.wrap(vars) ++ List.wrap(private_vars), string, fn {key, value}, acc ->
+          if String.contains?(acc, "%{#{key}}") do
+            String.replace(acc, "%{#{key}}", to_string(value))
+          else
+            acc
+          end
+        end)
       end
-
-      def message(exception), do: Ash.ErrorKind.message(exception)
 
       def exception(opts) do
         case Process.info(self(), :current_stacktrace) do
@@ -49,6 +45,8 @@ defmodule Ash.Error.Exception do
             super(opts)
         end
       end
+
+      defoverridable exception: 1, message: 1
     end
   end
 end
