@@ -12,16 +12,6 @@ defmodule Ash.DataLayer.Simple do
 
   use Ash.Dsl.Extension, transformers: @transformers, sections: []
 
-  alias Ash.Query.Operator.{
-    Eq,
-    GreaterThan,
-    GreaterThanOrEqual,
-    In,
-    IsNil,
-    LessThan,
-    LessThanOrEqual
-  }
-
   def can?(_, :create), do: true
   def can?(_, :update), do: true
   def can?(_, :destroy), do: true
@@ -29,13 +19,7 @@ defmodule Ash.DataLayer.Simple do
   def can?(_, {:sort, _}), do: true
   def can?(_, :filter), do: true
   def can?(_, :boolean_filter), do: true
-  def can?(_, {:filter_operator, %In{}}), do: true
-  def can?(_, {:filter_operator, %Eq{}}), do: true
-  def can?(_, {:filter_operator, %LessThan{}}), do: true
-  def can?(_, {:filter_operator, %GreaterThan{}}), do: true
-  def can?(_, {:filter_operator, %LessThanOrEqual{}}), do: true
-  def can?(_, {:filter_operator, %GreaterThanOrEqual{}}), do: true
-  def can?(_, {:filter_operator, %IsNil{}}), do: true
+  def can?(_, {:filter_expr, _}), do: true
   def can?(_, _), do: false
 
   defmodule Query do
