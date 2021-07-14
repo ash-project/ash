@@ -159,7 +159,11 @@ defmodule Ash.Actions.ManagedRelationships do
                         {:cont, {changeset, instructions}}
 
                       {:error, error} ->
-                        {:halt, {Ash.Changeset.add_error(changeset, error), instructions}}
+                        {:halt,
+                         {Ash.Changeset.add_error(changeset, error, [
+                            opts[:meta][:id] || relationship.name,
+                            index
+                          ]), instructions}}
                     end
 
                   _ ->
@@ -233,7 +237,8 @@ defmodule Ash.Actions.ManagedRelationships do
               NotFound.exception(
                 primary_key: input,
                 resource: relationship.destination
-              )
+              ),
+              [opts[:meta][:id], index]
             )
             |> Ash.Changeset.put_context(:private, %{error: %{relationship.name => true}})
 
@@ -245,7 +250,8 @@ defmodule Ash.Actions.ManagedRelationships do
               InvalidRelationship.exception(
                 relationship: relationship.name,
                 message: "Changes would create a new related record"
-              )
+              ),
+              [opts[:meta][:id], index]
             )
             |> Ash.Changeset.put_context(:private, %{error: %{relationship.name => true}})
 
@@ -308,7 +314,8 @@ defmodule Ash.Actions.ManagedRelationships do
          {changeset, %{instructions | notifications: instructions.notifications ++ notifications}}}
 
       {:error, error} ->
-        {:halt, {Ash.Changeset.add_error(changeset, error), instructions}}
+        {:halt,
+         {Ash.Changeset.add_error(changeset, error, [opts[:meta][:id], index]), instructions}}
     end
   end
 

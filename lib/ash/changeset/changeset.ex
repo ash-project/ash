@@ -2055,25 +2055,45 @@ defmodule Ash.Changeset do
 
   @doc "Adds an error to the changesets errors list, and marks the change as `valid?: false`"
   @spec add_error(t(), term | String.t() | list(term | String.t())) :: t()
-  def add_error(changeset, errors) when is_list(errors) do
+  def add_error(changeset, errors, path \\ [])
+
+  def add_error(changeset, errors, path) when is_list(errors) do
     if Keyword.keyword?(errors) do
       errors
       |> to_change_error()
       |> handle_error(changeset)
     else
-      Enum.reduce(errors, changeset, &add_error(&2, &1))
+      Enum.reduce(errors, changeset, &add_error(&2, &1, path))
     end
   end
 
-  def add_error(changeset, error) when is_binary(error) do
+  def add_error(changeset, error, path) when is_binary(error) do
     add_error(
       changeset,
-      InvalidChanges.exception(message: error)
+      InvalidChanges.exception(message: error),
+      path
     )
   end
 
-  def add_error(changeset, error) do
-    handle_error(error, changeset)
+  def add_error(changeset, error, path) do
+    error
+    |> set_path(path)
+    |> handle_error(changeset)
+  end
+
+  defp set_path(error, path) do
+    error =
+      if Map.has_key?(error, :path) && is_list(error.path) do
+        %{error | path: path ++ error.path}
+      else
+        error
+      end
+
+    if Map.has_key?(error, :errors) && is_list(error.errors) do
+      %{error | errors: Enum.map(error.errors, &set_path(&1, path))}
+    else
+      error
+    end
   end
 
   defp handle_error(error, %{handle_errors: nil} = changeset) do
