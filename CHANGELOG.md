@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.46.6](https://github.com/ash-project/ash/compare/v1.46.5...v1.46.6) (2021-07-15)
+
+
+
+
+### Bug Fixes:
+
+* fix simple data layer filtering
+
+### Improvements:
+
+* add in error paths for managed relationships
+
+* set error paths on managed rels
+
 ## [v1.46.5](https://github.com/ash-project/ash/compare/v1.46.4...v1.46.5) (2021-07-09)
 
 
