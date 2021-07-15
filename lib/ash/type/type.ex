@@ -303,8 +303,7 @@ defmodule Ash.Type do
     do: cast_input({:array, type}, [], constraints)
 
   def cast_input({:array, _type}, term, _) when not is_list(term) do
-    {:error,
-     message: "must be a list or a map of integer indices (string encoded or not) to values"}
+    {:error, "is invalid"}
   end
 
   def cast_input({:array, type}, term, constraints) do

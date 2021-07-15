@@ -161,8 +161,7 @@ defmodule Ash.Actions.ManagedRelationships do
                       {:error, error} ->
                         {:halt,
                          {Ash.Changeset.add_error(changeset, error, [
-                            opts[:meta][:id] || relationship.name,
-                            index
+                            opts[:meta][:id] || relationship.name
                           ]), instructions}}
                     end
 
@@ -238,7 +237,7 @@ defmodule Ash.Actions.ManagedRelationships do
                 primary_key: input,
                 resource: relationship.destination
               ),
-              [opts[:meta][:id], index]
+              [opts[:meta][:id] || relationship.name]
             )
             |> Ash.Changeset.put_context(:private, %{error: %{relationship.name => true}})
 
@@ -251,7 +250,7 @@ defmodule Ash.Actions.ManagedRelationships do
                 relationship: relationship.name,
                 message: "Changes would create a new related record"
               ),
-              [opts[:meta][:id], index]
+              [opts[:meta][:id] || relationship.name]
             )
             |> Ash.Changeset.put_context(:private, %{error: %{relationship.name => true}})
 
@@ -315,7 +314,8 @@ defmodule Ash.Actions.ManagedRelationships do
 
       {:error, error} ->
         {:halt,
-         {Ash.Changeset.add_error(changeset, error, [opts[:meta][:id], index]), instructions}}
+         {Ash.Changeset.add_error(changeset, error, [opts[:meta][:id] || relationship.name]),
+          instructions}}
     end
   end
 
@@ -392,9 +392,10 @@ defmodule Ash.Actions.ManagedRelationships do
       end
 
     inputs
+    |> Enum.with_index()
     |> Enum.reduce_while(
       {:ok, [], [], []},
-      fn input, {:ok, current_value, all_notifications, all_used} ->
+      fn {input, input_index}, {:ok, current_value, all_notifications, all_used} ->
         case handle_input(
                record,
                current_value,
@@ -411,7 +412,9 @@ defmodule Ash.Actions.ManagedRelationships do
             {:cont, {:ok, new_value, all_notifications ++ notifications, all_used ++ used}}
 
           {:error, error} ->
-            {:halt, {:error, error}}
+            {:halt,
+             {:error,
+              Ash.Changeset.set_path(error, [opts[:meta][:id] || relationship.name, input_index])}}
         end
       end
     )
@@ -432,7 +435,7 @@ defmodule Ash.Actions.ManagedRelationships do
              all_notifications ++ notifications}
 
           {:error, error} ->
-            {:error, error}
+            {:error, Ash.Changeset.set_path(error, [opts[:meta][:id] || relationship.name])}
         end
 
       {:error, error} ->
@@ -486,7 +489,8 @@ defmodule Ash.Actions.ManagedRelationships do
             {:cont, {:ok, new_value, all_notifications ++ notifications, all_used ++ used}}
 
           {:error, error} ->
-            {:halt, {:error, error}}
+            {:halt,
+             {:error, Ash.Changeset.set_path(error, [opts[:meta][:id] || relationship.name])}}
         end
       end
     )
@@ -507,11 +511,11 @@ defmodule Ash.Actions.ManagedRelationships do
              all_notifications ++ notifications}
 
           {:error, error} ->
-            {:error, error}
+            {:error, Ash.Changeset.set_path(error, [opts[:meta][:id] || relationship.name])}
         end
 
       {:error, error} ->
-        {:error, error}
+        {:error, Ash.Changeset.set_path(error, [opts[:meta][:id] || relationship.name])}
     end
   end
 

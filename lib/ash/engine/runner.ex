@@ -573,10 +573,8 @@ defmodule Ash.Engine.Runner do
     Enum.reduce(errors, state, &add_error(&2, path, &1))
   end
 
-  defp add_error(state, path, error) do
-    path = List.wrap(path)
+  defp add_error(state, _path, error) do
     error = Ash.Error.to_ash_error(error)
-    error = Map.put(error, :path, path)
 
     if error in state.errors do
       state

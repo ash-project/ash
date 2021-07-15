@@ -290,6 +290,7 @@ defmodule Ash.Query do
           add_error(
             query,
             Required.exception(
+              resource: query.resource,
               field: argument.name,
               type: :argument
             )

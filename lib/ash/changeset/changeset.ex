@@ -537,6 +537,7 @@ defmodule Ash.Changeset do
           add_error(
             changeset,
             Ash.Error.Changes.Required.exception(
+              resource: changeset.resource,
               field: argument.name,
               type: :argument
             )
@@ -820,7 +821,11 @@ defmodule Ash.Changeset do
         if is_nil(get_attribute(changeset, required_attribute)) do
           add_error(
             changeset,
-            Required.exception(field: required_attribute, type: :attribute)
+            Required.exception(
+              resource: changeset.resource,
+              field: required_attribute,
+              type: :attribute
+            )
           )
         else
           changeset
@@ -832,7 +837,11 @@ defmodule Ash.Changeset do
         else
           add_error(
             changeset,
-            Required.exception(field: required_attribute.name, type: :attribute)
+            Required.exception(
+              resource: changeset.resource,
+              field: required_attribute.name,
+              type: :attribute
+            )
           )
         end
       end
@@ -847,7 +856,11 @@ defmodule Ash.Changeset do
         if is_nil(get_attribute(changeset, required_attribute)) do
           add_error(
             changeset,
-            Required.exception(field: required_attribute, type: :attribute)
+            Required.exception(
+              resource: changeset.resource,
+              field: required_attribute,
+              type: :attribute
+            )
           )
         else
           changeset
@@ -857,7 +870,11 @@ defmodule Ash.Changeset do
           if is_nil(get_attribute(changeset, required_attribute.name)) do
             add_error(
               changeset,
-              Required.exception(field: required_attribute.name, type: :attribute)
+              Required.exception(
+                resource: changeset.resource,
+                field: required_attribute.name,
+                type: :attribute
+              )
             )
           else
             changeset
@@ -2081,10 +2098,22 @@ defmodule Ash.Changeset do
     |> handle_error(changeset)
   end
 
-  defp set_path(error, path) do
+  @doc false
+  def set_path(errors, path) when is_list(errors) do
+    Enum.map(errors, &set_path(&1, path))
+  end
+
+  def set_path(error, path) do
     error =
       if Map.has_key?(error, :path) && is_list(error.path) do
         %{error | path: path ++ error.path}
+      else
+        error
+      end
+
+    error =
+      if Map.has_key?(error, :changeset) && error.changeset do
+        %{error | changeset: %{error.changeset | errors: set_path(error.changeset.errors, path)}}
       else
         error
       end
