@@ -151,18 +151,14 @@ defmodule Ash.Resource.Transformers.SetTypes do
   end
 
   defp validate_item_constraints(type, constraints) do
-    if Keyword.has_key?(constraints, :items) do
-      schema = Ash.Type.constraints(type)
+    schema = Ash.Type.constraints(type)
 
-      case Ash.OptionsHelpers.validate(constraints[:items], schema) do
-        {:ok, item_constraints} ->
-          {:ok, item_constraints}
+    case Ash.OptionsHelpers.validate(constraints[:items] || [], schema) do
+      {:ok, item_constraints} ->
+        {:ok, item_constraints}
 
-        {:error, error} ->
-          {:error, error}
-      end
-    else
-      {:ok, nil}
+      {:error, error} ->
+        {:error, error}
     end
   end
 
