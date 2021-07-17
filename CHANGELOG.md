@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.46.7](https://github.com/ash-project/ash/compare/v1.46.6...v1.46.7) (2021-07-17)
+
+
+
+
+### Bug Fixes:
+
+* set item constraints properly
+
+### Improvements:
+
+* add on_lookup_read_action
+
 ## [v1.46.6](https://github.com/ash-project/ash/compare/v1.46.5...v1.46.6) (2021-07-15)
 
 
