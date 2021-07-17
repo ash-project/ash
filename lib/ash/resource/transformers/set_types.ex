@@ -130,11 +130,7 @@ defmodule Ash.Resource.Transformers.SetTypes do
                  Ash.Type.array_constraints(type)
                ),
              {:ok, item_constraints} <- validate_item_constraints(type, constraints) do
-          if item_constraints do
-            {:ok, Keyword.put(new_constraints, :items, item_constraints)}
-          else
-            {:ok, new_constraints}
-          end
+          {:ok, Keyword.put(new_constraints, :items, item_constraints)}
         end
 
       type ->
