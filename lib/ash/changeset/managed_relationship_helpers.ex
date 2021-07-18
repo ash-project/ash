@@ -231,15 +231,6 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
 
     if unwrap(opts[:on_lookup]) not in [:ignore] do
       case opts[:on_lookup] do
-        :relate when relationship.type == :many_to_many ->
-          join(primary_action_name(relationship.through, :read), [])
-
-        {:relate, _} when relationship.type == :many_to_many ->
-          join(primary_action_name(relationship.through, :read), [])
-
-        {:relate, _, read} when relationship.type == :many_to_many ->
-          join(read, [])
-
         :relate ->
           destination(primary_action_name(relationship.destination, :read))
 
@@ -248,18 +239,6 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
 
         {:relate, _, read} ->
           destination(read)
-
-        :relate_and_update when relationship.type == :many_to_many ->
-          join(primary_action_name(relationship.through, :read), [])
-
-        {:relate_and_update, _action_name} when relationship.type == :many_to_many ->
-          join(primary_action_name(relationship.through, :read), [])
-
-        {:relate_and_update, _action_name, read} when relationship.type == :many_to_many ->
-          join(read, [])
-
-        {:relate_and_update, _action_name, read, keys} when relationship.type == :many_to_many ->
-          join(read, keys)
 
         :relate_and_update when relationship.type in [:has_one, :has_many] ->
           destination(primary_action_name(relationship.destination, :read))
@@ -271,6 +250,9 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
           destination(:read)
 
         {:relate_and_update, _action_name, read} ->
+          destination(read)
+
+        {:relate_and_update, _action_name, read, _} ->
           destination(read)
       end
     end
