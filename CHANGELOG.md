@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.46.8](https://github.com/ash-project/ash/compare/v1.46.7...v1.46.8) (2021-07-18)
+
+
+
+
+### Bug Fixes:
+
+* on_lookup read is always on destination
+
 ## [v1.46.7](https://github.com/ash-project/ash/compare/v1.46.6...v1.46.7) (2021-07-17)
 
 
