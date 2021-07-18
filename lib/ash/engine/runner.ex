@@ -3,6 +3,7 @@ defmodule Ash.Engine.Runner do
   defstruct [
     :engine_pid,
     :ref,
+    :engine_monitor_ref,
     notified_of_complete?: false,
     local_failed?: false,
     requests: [],
@@ -23,7 +24,7 @@ defmodule Ash.Engine.Runner do
 
   require Logger
 
-  def run(requests, verbose?, ref, engine_pid \\ nil, pid_info \\ %{}) do
+  def run(requests, verbose?, ref, engine_pid, pid_info, engine_monitor_ref) do
     changeset =
       Enum.find_value(requests, fn request ->
         if request.manage_changeset? && not match?(%Request.UnresolvedField{}, request.changeset) do
@@ -35,6 +36,7 @@ defmodule Ash.Engine.Runner do
       requests: requests,
       verbose?: verbose?,
       engine_pid: engine_pid,
+      engine_monitor_ref: engine_monitor_ref,
       pid_info: pid_info,
       ref: ref,
       data: %{verbose?: verbose?},
@@ -292,6 +294,7 @@ defmodule Ash.Engine.Runner do
   defp add_engine_state(state, engine_state) do
     new_state = %{state | errors: engine_state.errors ++ state.errors}
 
+    Process.demonitor(state.engine_monitor_ref, [:flush])
     flush(new_state)
   end
 

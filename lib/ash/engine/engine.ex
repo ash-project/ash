@@ -115,7 +115,7 @@ defmodule Ash.Engine do
     runner_ref = opts[:runner_ref]
 
     {:ok, pid} = GenServer.start(__MODULE__, opts)
-    _ = Process.monitor(pid)
+    ref = Process.monitor(pid)
 
     receive do
       {:pid_info, pid_info, ^runner_ref} ->
@@ -124,7 +124,8 @@ defmodule Ash.Engine do
           opts,
           innermost_resource,
           pid,
-          pid_info
+          pid_info,
+          ref
         )
     end
   end
@@ -134,9 +135,17 @@ defmodule Ash.Engine do
          opts,
          innermost_resource,
          pid,
-         pid_info
+         pid_info,
+         engine_monitor_ref
        ) do
-    case Runner.run(local_requests, opts[:verbose?], opts[:runner_ref], pid, pid_info) do
+    case Runner.run(
+           local_requests,
+           opts[:verbose?],
+           opts[:runner_ref],
+           pid,
+           pid_info,
+           engine_monitor_ref
+         ) do
       %{errors: errors} = runner when errors == [] ->
         {:ok, runner}
 
