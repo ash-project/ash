@@ -2019,16 +2019,30 @@ defmodule Ash.Changeset do
     %{changeset | after_action: changeset.after_action ++ [func]}
   end
 
-  @doc "Returns the original data with attribute changes merged, if the changeset is valid."
-  @spec apply_attributes(t()) :: {:ok, Ash.Resource.record()} | {:error, t()}
-  def apply_attributes(%{valid?: true} = changeset) do
+  @doc """
+  Returns the original data with attribute changes merged, if the changeset is valid.
+
+  Options:
+
+  * force? - applies current attributes even if the changeset is not valid
+  """
+  @spec apply_attributes(t(), opts :: Keyword.t()) :: {:ok, Ash.Resource.record()} | {:error, t()}
+  def apply_attributes(changeset, opts \\ [])
+
+  def apply_attributes(%{valid?: true} = changeset, _opts) do
     {:ok,
      Enum.reduce(changeset.attributes, changeset.data, fn {attribute, value}, data ->
        Map.put(data, attribute, value)
      end)}
   end
 
-  def apply_attributes(changeset), do: {:error, changeset}
+  def apply_attributes(changeset, opts) do
+    if opts[:force?] do
+      apply_attributes(%{changeset | valid?: true}, opts)
+    else
+      {:error, changeset}
+    end
+  end
 
   @doc "Clears an attribute or relationship change off of the changeset"
   def clear_change(changeset, field) do
