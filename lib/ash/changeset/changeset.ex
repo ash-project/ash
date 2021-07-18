@@ -2028,7 +2028,7 @@ defmodule Ash.Changeset do
      end)}
   end
 
-  def apply_attribute(changeset), do: {:error, changeset}
+  def apply_attributes(changeset), do: {:error, changeset}
 
   @doc "Clears an attribute or relationship change off of the changeset"
   def clear_change(changeset, field) do
