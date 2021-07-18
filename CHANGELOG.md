@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.46.10](https://github.com/ash-project/ash/compare/v1.46.9...v1.46.10) (2021-07-18)
+
+
+
+
+### Bug Fixes:
+
+* missing apply_attributes clause
+
+### Improvements:
+
+* add `force?` option to `apply_attributes/2`
+
 ## [v1.46.9](https://github.com/ash-project/ash/compare/v1.46.8...v1.46.9) (2021-07-18)
 
 
