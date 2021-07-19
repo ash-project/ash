@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.46.11](https://github.com/ash-project/ash/compare/v1.46.10...v1.46.11) (2021-07-19)
+
+
+
+
+### Improvements:
+
+* speed up type loading
+
+* add `__order__` field to be used by data layers
+
 ## [v1.46.10](https://github.com/ash-project/ash/compare/v1.46.9...v1.46.10) (2021-07-18)
 
 
