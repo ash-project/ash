@@ -47,7 +47,7 @@ defmodule Ash.Resource.Aggregate do
 
   @type t :: %__MODULE__{
           name: atom(),
-          relationship_path: {:ok, list(atom())} | {:error, String.t()},
+          relationship_path: list(atom()),
           filter: Keyword.t(),
           field: atom,
           kind: :count | :first | :sum | :list,
