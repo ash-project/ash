@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.46.12](https://github.com/ash-project/ash/compare/v1.46.11...v1.46.12) (2021-07-20)
+
+
+
+
+### Bug Fixes:
+
+* call `get_type` in cast_stored again
+
 ## [v1.46.11](https://github.com/ash-project/ash/compare/v1.46.10...v1.46.11) (2021-07-19)
 
 
