@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.46.13](https://github.com/ash-project/ash/compare/v1.46.12...v1.46.13) (2021-07-21)
+
+
+
+
+### Bug Fixes:
+
+* ensure calculation compiled
+
+* don't limit/offset aggregate queries
+
 ## [v1.46.12](https://github.com/ash-project/ash/compare/v1.46.11...v1.46.12) (2021-07-20)
 
 
