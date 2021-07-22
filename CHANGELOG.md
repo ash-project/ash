@@ -5,6 +5,27 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.47.0](https://github.com/ash-project/ash/compare/v1.46.13...v1.47.0) (2021-07-22)
+
+
+
+
+### Features:
+
+* Ash.Resource.Info: add &public_field/2 helper (#254)
+
+* Ash.Resource.Info: add &sortable?/3 helper
+
+### Bug Fixes:
+
+* load calculations from sorts properly
+
+* rename conflicting test name
+
+* fix complex attribute check
+
+* disallow aggregate/calculation sorting w/ keyset pagination
+
 ## [v1.46.13](https://github.com/ash-project/ash/compare/v1.46.12...v1.46.13) (2021-07-21)
 
 
