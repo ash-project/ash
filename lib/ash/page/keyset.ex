@@ -22,6 +22,15 @@ defmodule Ash.Page.Keyset do
   end
 
   def data_with_keyset(results, sort) do
+    sort =
+      Enum.map(sort, fn
+        value when is_tuple(value) ->
+          value
+
+        value ->
+          {value, :asc}
+      end)
+
     fields_in_keyset =
       sort
       |> Keyword.keys()
@@ -37,6 +46,15 @@ defmodule Ash.Page.Keyset do
   end
 
   def filter(values, sort, after_or_before) when after_or_before in [:after, :before] do
+    sort =
+      Enum.map(sort, fn
+        value when is_tuple(value) ->
+          value
+
+        value ->
+          {value, :asc}
+      end)
+
     sort_fields =
       sort
       |> Keyword.keys()
