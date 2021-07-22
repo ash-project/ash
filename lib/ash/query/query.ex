@@ -1554,12 +1554,39 @@ defmodule Ash.Query do
         end)
         |> validate_sort()
 
-      Enum.reduce(query_with_sort.sort || [], query_with_sort, fn {key, _value}, query ->
-        if Ash.Resource.Info.aggregate(query.resource, key) do
-          Ash.Query.load(query, key)
-        else
-          query
-        end
+      Enum.reduce(query_with_sort.sort || [], query_with_sort, fn
+        {%Ash.Query.Calculation{name: name, module: module, opts: opts} = calculation, _},
+        query ->
+          {resource_load, resource_select} =
+            if resource_calculation = Ash.Resource.Info.calculation(query.resource, name) do
+              {resource_calculation.load, resource_calculation.select}
+            else
+              {[], []}
+            end
+
+          fields_to_select =
+            resource_select
+            |> Kernel.||([])
+            |> Enum.concat(module.select(query, opts, calculation.context) || [])
+
+          calculation = %{calculation | load: name, select: fields_to_select}
+
+          query =
+            query
+            |> module.load(
+              opts,
+              calculation.context
+              |> Map.put(:context, query.context)
+            )
+
+          Ash.Query.load(query, resource_load)
+
+        {key, _value}, query ->
+          if Ash.Resource.Info.aggregate(query.resource, key) do
+            Ash.Query.load(query, key)
+          else
+            query
+          end
       end)
     else
       add_error(query, :sort, "Data layer does not support sorting")

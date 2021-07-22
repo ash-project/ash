@@ -466,14 +466,18 @@ defmodule Ash.Query.Aggregate do
         end)
 
       sort_calculations =
-        Enum.flat_map(query.sort, fn {field, _} ->
-          case Map.fetch(query.calculations, field) do
-            :error ->
-              []
+        Enum.flat_map(query.sort, fn
+          {%Ash.Query.Calculation{} = calc, _} ->
+            [calc]
 
-            {:ok, calc} ->
-              [calc]
-          end
+          {field, _} ->
+            case Map.fetch(query.calculations, field) do
+              :error ->
+                []
+
+              {:ok, calc} ->
+                [calc]
+            end
         end)
 
       sort_calc_aggregates =
