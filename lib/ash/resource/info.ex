@@ -522,6 +522,7 @@ defmodule Ash.Resource.Info do
         false
 
       %Ash.Resource.Calculation{calculation: {module, _}} ->
+        Code.ensure_compiled(module)
         :erlang.function_exported(module, :expression, 2) && pagination_type == :offset
 
       %Ash.Resource.Calculation{} ->

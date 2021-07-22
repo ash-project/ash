@@ -2,8 +2,8 @@ defmodule Ash.Test.Resource.InfoTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  alias Ash.Resource.Info
   alias Ash.Resource
+  alias Ash.Resource.Info
 
   defmodule Post do
     @moduledoc false
@@ -98,8 +98,6 @@ defmodule Ash.Test.Resource.InfoTest do
   end
 
   describe "resource info" do
-    Code.ensure_compiled(Ash.Resource.Calculation.Expression)
-
     test "get only public fields" do
       assert %Resource.Attribute{name: :title} = Info.public_field(Post, :title)
       assert nil == Info.public_field(Post, :points)
