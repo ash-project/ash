@@ -458,4 +458,84 @@ defmodule Ash.Resource.Info do
       nil -> nil
     end
   end
+
+  @doc "Get a field from a resource by name"
+  @spec field(Ash.Resource.t(), String.t() | atom) ::
+          Ash.Resource.Attribute.t()
+          | Ash.Resource.Aggregate.t()
+          | Ash.Resource.Calculation.t()
+          | Ash.Resource.Relationships.relationship()
+          | nil
+  def field(resource, name),
+    do:
+      attribute(resource, name) ||
+        aggregate(resource, name) ||
+        calculation(resource, name) ||
+        relationship(resource, name)
+
+  @doc "Get a public field from a resource by name"
+  @spec public_field(Ash.Resource.t(), String.t() | atom) ::
+          Ash.Resource.Attribute.t()
+          | Ash.Resource.Aggregate.t()
+          | Ash.Resource.Calculation.t()
+          | Ash.Resource.Relationships.relationship()
+          | nil
+  def public_field(resource, name),
+    do:
+      public_attribute(resource, name) ||
+        public_aggregate(resource, name) ||
+        public_calculation(resource, name) ||
+        public_relationship(resource, name)
+
+  @doc "Determine if a field is sortable by name"
+  @spec sortable?(Ash.Resource.t(), String.t() | atom,
+          pagination_type: Ash.Page.type(),
+          include_private?: boolean()
+        ) ::
+          boolean()
+  def sortable?(resource, name, opts \\ []) do
+    pagination_type = Keyword.get(opts, :pagination_type, :offset)
+    include_private? = Keyword.get(opts, :include_private?, true)
+
+    field = if include_private?, do: field(resource, name), else: public_field(resource, name)
+
+    case field do
+      nil ->
+        false
+
+      %{type: {:array, _}} ->
+        false
+
+      %{type: Ash.Type.Map} ->
+        false
+
+      %Ash.Resource.Relationships.BelongsTo{} ->
+        false
+
+      %Ash.Resource.Relationships.HasOne{} ->
+        false
+
+      %Ash.Resource.Relationships.HasMany{} ->
+        false
+
+      %Ash.Resource.Relationships.ManyToMany{} ->
+        false
+
+      %Ash.Resource.Calculation{calculation: {module, _}} ->
+        :erlang.function_exported(module, :expression, 2) && pagination_type == :offset
+
+      %Ash.Resource.Calculation{} ->
+        false
+
+      %Ash.Resource.Aggregate{kind: :first, relationship_path: relationship_path} = aggregate ->
+        related = related(resource, relationship_path)
+        sortable?(related, aggregate.field) && pagination_type == :offset
+
+      %Ash.Resource.Aggregate{} ->
+        pagination_type == :offset
+
+      _ ->
+        true
+    end
+  end
 end
