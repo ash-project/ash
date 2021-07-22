@@ -49,6 +49,11 @@ last_record = List.last(page.results)
 next_page = Api.read(Resource, page: [limit: 10, after: last_record.__metadata__.keyset])
 ```
 
+### Important Limitation
+
+Keyset pagination cannot currently be used in conjunction with aggregate and calculation sorting.
+Combining them will result in an error on the query.
+
 ### Keyset Pros
 
 - Performs very well on large datasets (assuming indices exist on the columns being sorted on)
@@ -58,7 +63,8 @@ next_page = Api.read(Resource, page: [limit: 10, after: last_record.__metadata__
 
 - A bit more complex
 - Can't go to a specific page number
-- Going to the last page requires
+- Can't use aggregate and calculation sorting
+
 
 For more information on keyset vs offset based pagination, see:
 

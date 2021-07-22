@@ -197,7 +197,7 @@ defmodule Ash.Actions.Read do
     if page_opts[:offset] do
       if action.pagination.keyset? do
         data
-        |> Ash.Page.Keyset.data_with_keyset(sort)
+        |> Ash.Page.Keyset.data_with_keyset(original_query.resource, sort)
         |> Ash.Page.Offset.new(count, original_query, more?, opts)
       else
         Ash.Page.Offset.new(data, count, original_query, more?, opts)
@@ -206,7 +206,7 @@ defmodule Ash.Actions.Read do
       cond do
         action.pagination.offset? && action.pagination.keyset? ->
           data
-          |> Ash.Page.Keyset.data_with_keyset(sort)
+          |> Ash.Page.Keyset.data_with_keyset(original_query.resource, sort)
           |> Ash.Page.Offset.new(count, original_query, more?, opts)
 
         action.pagination.offset? ->
@@ -714,6 +714,7 @@ defmodule Ash.Actions.Read do
         end
 
       case Ash.Page.Keyset.filter(
+             query.resource,
              opts[:before] || opts[:after],
              sorted.sort,
              after_or_before

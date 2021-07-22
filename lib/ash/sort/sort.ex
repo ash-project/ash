@@ -1,6 +1,11 @@
 defmodule Ash.Sort do
   @moduledoc """
   Utilities and types for sorting.
+
+  ## Important
+
+  Keyset pagination cannot currently be used in conjunction with aggregate and calculation sorting.
+  Combining them will result in an error on the query.
   """
 
   @type sort_order ::

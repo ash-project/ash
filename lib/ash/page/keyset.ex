@@ -4,6 +4,11 @@ defmodule Ash.Page.Keyset do
 
   The results are generated with a `keyset` metadata,
   which can be used to fetch the next/previous pages.
+
+  ## Important
+
+  Keyset pagination cannot currently be used in conjunction with aggregate and calculation sorting.
+  Combining them will result in an error on the query.
   """
   defstruct [:results, :count, :before, :after, :limit, :rerun, :more?]
 
@@ -11,7 +16,7 @@ defmodule Ash.Page.Keyset do
 
   def new(results, count, sort, original_query, more?, opts) do
     %__MODULE__{
-      results: data_with_keyset(results, sort),
+      results: data_with_keyset(results, original_query.resource, sort),
       count: count,
       before: opts[:page][:before],
       after: opts[:page][:after],
@@ -21,54 +26,65 @@ defmodule Ash.Page.Keyset do
     }
   end
 
-  def data_with_keyset(results, sort) do
-    sort =
-      Enum.map(sort, fn
-        value when is_tuple(value) ->
-          value
+  def data_with_keyset(results, resource, sort) do
+    if any_complex?(resource, sort) do
+      results
+    else
+      fields_in_keyset =
+        sort
+        |> Keyword.keys()
+        |> Enum.sort()
 
-        value ->
-          {value, :asc}
+      Enum.map(results, fn result ->
+        Map.update!(
+          result,
+          :__metadata__,
+          &Map.put(&1, :keyset, keyset(result, fields_in_keyset))
+        )
       end)
-
-    fields_in_keyset =
-      sort
-      |> Keyword.keys()
-      |> Enum.sort()
-
-    Enum.map(results, fn result ->
-      Map.update!(
-        result,
-        :__metadata__,
-        &Map.put(&1, :keyset, keyset(result, fields_in_keyset))
-      )
-    end)
+    end
   end
 
-  def filter(values, sort, after_or_before) when after_or_before in [:after, :before] do
-    sort =
-      Enum.map(sort, fn
-        value when is_tuple(value) ->
-          value
+  def filter(resource, values, sort, after_or_before) when after_or_before in [:after, :before] do
+    if any_complex?(resource, sort) do
+      {:error,
+       Ash.Error.Query.NoComplexSortsWithKeysetPagination.exception(
+         resource: resource,
+         sort: sort
+       )}
+    else
+      sort_fields =
+        sort
+        # |> Enum.map(fn {key, val} when is_atom(key) ->
+        # end)
+        |> Keyword.keys()
+        |> Enum.sort()
 
-        value ->
-          {value, :asc}
-      end)
+      with {:ok, decoded} <- decode_values(values),
+           {:ok, zipped} <- zip_fields(sort_fields, decoded) do
+        field_values =
+          Enum.map(sort, fn {field, direction} ->
+            {field, direction, Keyword.get(zipped, field)}
+          end)
 
-    sort_fields =
-      sort
-      |> Keyword.keys()
-      |> Enum.sort()
-
-    with {:ok, decoded} <- decode_values(values),
-         {:ok, zipped} <- zip_fields(sort_fields, decoded) do
-      field_values =
-        Enum.map(sort, fn {field, direction} ->
-          {field, direction, Keyword.get(zipped, field)}
-        end)
-
-      {:ok, filters(field_values, after_or_before)}
+        {:ok, filters(field_values, after_or_before)}
+      end
     end
+  end
+
+  defp any_complex?(resource, sort) do
+    Enum.any?(sort, fn
+      {key, _value} ->
+        if Ash.Resource.Info.calculation(resource, key) ||
+             Ash.Resource.Info.aggregate(resource, key) do
+          true
+        else
+          false
+        end
+
+      _ ->
+        true
+    end)
   end
 
   defp decode_values(values) do
