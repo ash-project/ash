@@ -74,7 +74,7 @@ defmodule Ash.Page.Keyset do
 
   defp any_complex?(resource, sort) do
     Enum.any?(sort, fn
-      {key, _value} ->
+      {key, _value} when is_atom(key) ->
         if Ash.Resource.Info.calculation(resource, key) ||
              Ash.Resource.Info.aggregate(resource, key) do
           true
