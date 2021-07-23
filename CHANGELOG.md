@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.47.2](https://github.com/ash-project/ash/compare/v1.47.1...v1.47.2) (2021-07-23)
+
+
+
+
+### Bug Fixes:
+
+* don't match on explicitly `:exit`
+
 ## [v1.47.1](https://github.com/ash-project/ash/compare/v1.47.0...v1.47.1) (2021-07-23)
 
 
