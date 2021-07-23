@@ -269,10 +269,10 @@ defmodule Ash.Engine.Runner do
       {^ref, _} ->
         flush(state)
 
-      {:exit, ^engine_pid} ->
+      {_, ^engine_pid} ->
         flush(state)
 
-      {:exit, ^engine_pid, _} ->
+      {_, ^engine_pid, _} ->
         flush(state)
 
       {:DOWN, _, _, ^engine_pid, _} ->
