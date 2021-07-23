@@ -111,7 +111,6 @@ defmodule Ash.Engine do
   end
 
   defp run_requests(local_requests, opts, innermost_resource) do
-    Process.flag(:trap_exit, true)
     runner_ref = opts[:runner_ref]
 
     {:ok, pid} = GenServer.start(__MODULE__, opts)
@@ -392,14 +391,6 @@ defmodule Ash.Engine do
     |> maybe_shutdown()
   end
 
-  def handle_info({:EXIT, _pid, {:shutdown, {:error, error, request_handler_state}}}, state) do
-    state
-    |> log(fn -> "Error received from request_handler #{inspect(error)}" end)
-    |> move_to_error(request_handler_state.request.path)
-    |> add_error(request_handler_state.request.path, error)
-    |> maybe_shutdown(true)
-  end
-
   def handle_info({:DOWN, _, _, _pid, {:error, error, %Request{} = request}}, state) do
     state
     |> log(fn -> "Request exited in failure #{request.name}: #{inspect(error)}" end)
@@ -524,19 +515,12 @@ defmodule Ash.Engine do
       not Ash.DataLayer.data_layer_can?(request.resource, :async_engine)
   end
 
-  defp maybe_shutdown(state, crash? \\ false)
-
-  defp maybe_shutdown(state, true) do
-    log(state, fn -> "shutting down, due to request crash" end)
-    {:stop, {:shutdown, state}, state}
-  end
-
-  defp maybe_shutdown(%{active_requests: [], local_requests: []} = state, _crash?) do
+  defp maybe_shutdown(%{active_requests: [], local_requests: []} = state) do
     log(state, fn -> "shutting down, completion criteria reached" end)
     {:stop, {:shutdown, state}, state}
   end
 
-  defp maybe_shutdown(state, _crash?) do
+  defp maybe_shutdown(state) do
     {:noreply, state}
   end
 
