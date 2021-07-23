@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.47.1](https://github.com/ash-project/ash/compare/v1.47.0...v1.47.1) (2021-07-23)
+
+
+
+
+### Bug Fixes:
+
+* catch normal exit message from engine
+
+* flush engine state always
+
 ## [v1.47.0](https://github.com/ash-project/ash/compare/v1.46.13...v1.47.0) (2021-07-22)
 
 
