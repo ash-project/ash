@@ -48,11 +48,16 @@ defmodule Ash.Engine.Runner do
       "Synchronous engine starting - #{Enum.map_join(requests, ", ", & &1.name)}"
     end)
 
-    new_state = run_to_completion(state)
+    try do
+      new_state = run_to_completion(state)
 
-    new_state.requests
-    |> Enum.reduce(new_state, &add_data(&2, &1.path, &1.data))
-    |> Map.put(:resource_notifications, new_state.resource_notifications)
+      new_state.requests
+      |> Enum.reduce(new_state, &add_data(&2, &1.path, &1.data))
+      |> Map.put(:resource_notifications, new_state.resource_notifications)
+    after
+      Process.demonitor(state.engine_monitor_ref, [:flush])
+      flush(state)
+    end
   end
 
   def run_to_completion(state) do
@@ -292,10 +297,7 @@ defmodule Ash.Engine.Runner do
   end
 
   defp add_engine_state(state, engine_state) do
-    new_state = %{state | errors: engine_state.errors ++ state.errors}
-
-    Process.demonitor(state.engine_monitor_ref, [:flush])
-    flush(new_state)
+    %{state | errors: engine_state.errors ++ state.errors}
   end
 
   defp build_dependencies(request, dependencies) do

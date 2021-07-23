@@ -55,8 +55,6 @@ defmodule Ash.Page.Keyset do
     else
       sort_fields =
         sort
-        # |> Enum.map(fn {key, val} when is_atom(key) ->
-        # end)
         |> Keyword.keys()
         |> Enum.sort()
 

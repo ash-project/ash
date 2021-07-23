@@ -65,7 +65,6 @@ Combining them will result in an error on the query.
 - Can't go to a specific page number
 - Can't use aggregate and calculation sorting
 
-
 For more information on keyset vs offset based pagination, see:
 
 - [Offset vs Seek Pagination](https://taylorbrazelton.com/posts/2019/03/offset-vs-seek-pagination/)
