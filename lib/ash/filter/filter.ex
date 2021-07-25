@@ -1238,7 +1238,7 @@ defmodule Ash.Filter do
     [do_relationship_paths(left, kind), do_relationship_paths(right, kind)]
   end
 
-  defp do_relationship_paths(%{__operator__?: true, arguments: arguments}, kind) do
+  defp do_relationship_paths(%{__function__?: true, arguments: arguments}, kind) do
     Enum.map(arguments, &do_relationship_paths(&1, kind))
   end
 
