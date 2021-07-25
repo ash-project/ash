@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.47.4](https://github.com/ash-project/ash/compare/v1.47.3...v1.47.4) (2021-07-25)
+
+
+
+
+### Improvements:
+
+* pull relationship paths out of functions
+
 ## [v1.47.3](https://github.com/ash-project/ash/compare/v1.47.2...v1.47.3) (2021-07-23)
 
 
