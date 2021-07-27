@@ -49,7 +49,7 @@ defmodule Ash.Resource.Transformers.BelongsToAttribute do
   end
 
   defp add_entity({:ok, attribute}, dsl_state, _relationship),
-    do: {:cont, {:ok, Transformer.add_entity(dsl_state, [:attributes], attribute)}}
+    do: {:cont, {:ok, Transformer.add_entity(dsl_state, [:attributes], attribute, type: :append)}}
 
   defp add_entity({:error, error}, _dsl_state, relationship),
     do:

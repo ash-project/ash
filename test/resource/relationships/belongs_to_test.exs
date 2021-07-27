@@ -28,13 +28,13 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
       end
 
       assert [
+               _,
                %Ash.Resource.Attribute{
                  name: :foobar_id,
                  primary_key?: false,
                  type: Ash.Type.UUID,
                  private?: true
-               },
-               _
+               }
              ] = Ash.Resource.Info.attributes(Post)
     end
 
@@ -46,13 +46,13 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
       end
 
       assert [
+               _,
                %Ash.Resource.Attribute{
                  name: :foobar_id,
                  primary_key?: false,
                  type: Ash.Type.UUID,
                  private?: true
-               },
-               _
+               }
              ] = Ash.Resource.Info.attributes(Post)
     end
 

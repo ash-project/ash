@@ -63,10 +63,14 @@ defmodule Ash.Dsl.Transformer do
     do_build_entity(section.sections, rest, name, opts)
   end
 
-  def add_entity(dsl_state, path, entity) do
+  def add_entity(dsl_state, path, entity, opts \\ []) do
     Map.update(dsl_state, path, %{entities: [entity], opts: []}, fn config ->
       Map.update(config, :entities, [entity], fn entities ->
-        [entity | entities]
+        if (opts[:type] || :prepend) == :prepend do
+          [entity | entities]
+        else
+          entities ++ [entity]
+        end
       end)
     end)
   end
