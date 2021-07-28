@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.47.5](https://github.com/ash-project/ash/compare/v1.47.4...v1.47.5) (2021-07-28)
+
+
+
+
+### Bug Fixes:
+
+* set source_query tenant in lateral join
+
+### Improvements:
+
+* add `belongs_to` attributes *after* the others
+
 ## [v1.47.4](https://github.com/ash-project/ash/compare/v1.47.3...v1.47.4) (2021-07-25)
 
 
