@@ -325,6 +325,13 @@ defmodule Ash.Actions.Load do
                 ])
             end
 
+          source_query =
+            if related_query.tenant do
+              Ash.Query.set_tenant(source_query, related_query.tenant)
+            else
+              source_query
+            end
+
           with {:ok, new_query} <-
                  true_load_query(
                    relationship,
@@ -466,6 +473,13 @@ defmodule Ash.Actions.Load do
                       )
                   end
 
+                source_query =
+                  if related_query.tenant do
+                    Ash.Query.set_tenant(source_query, related_query.tenant)
+                  else
+                    source_query
+                  end
+
                 with {:ok, new_query} <-
                        true_load_query(
                          join_relationship,
@@ -590,6 +604,9 @@ defmodule Ash.Actions.Load do
         |> read(relationship.read_action)
 
       lateral_join?(query, relationship) && (limit || offset) ->
+        IO.inspect(query, label: "query")
+        IO.inspect(source_query, label: "source_query")
+
         query
         |> Ash.Query.set_context(%{
           data_layer: %{
