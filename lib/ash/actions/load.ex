@@ -604,9 +604,6 @@ defmodule Ash.Actions.Load do
         |> read(relationship.read_action)
 
       lateral_join?(query, relationship) && (limit || offset) ->
-        IO.inspect(query, label: "query")
-        IO.inspect(source_query, label: "source_query")
-
         query
         |> Ash.Query.set_context(%{
           data_layer: %{
