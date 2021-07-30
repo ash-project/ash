@@ -799,7 +799,7 @@ defmodule Ash.Actions.ManagedRelationships do
           nil ->
             created =
               if is_struct(input) do
-                {:ok, input, [], [input]}
+                {:ok, input, []}
               else
                 relationship.destination
                 |> Ash.Changeset.new()
@@ -824,7 +824,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
             case created do
               {:ok, created, notifications} ->
-                {:ok, [created | current_value], notifications, [created]}
+                {:ok, [created | current_value], notifications, [input]}
 
               {:error, error} ->
                 {:error, error}
