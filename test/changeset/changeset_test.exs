@@ -393,6 +393,31 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       assert %{name: "title"} = Api.load!(post, :author).author
     end
 
+    test "it removes belongs_to entities on replace" do
+      author = %{name: "title"}
+
+      post =
+        Post
+        |> Changeset.new()
+        |> Changeset.manage_relationship(:author, author, on_no_match: :create)
+        |> Api.create!()
+
+      new_author = %{name: "title2"}
+
+      post =
+        post
+        |> Changeset.new()
+        |> Changeset.manage_relationship(:author, new_author,
+          on_no_match: :create,
+          on_missing: :destroy
+        )
+        |> Api.update!()
+
+      assert [%{name: "title2"}] = Api.read!(Author)
+
+      assert %{name: "title2"} = Api.load!(post, :author).author
+    end
+
     test "upsert with many_to_many relationships creates and relates records, and returns the created/related records" do
       Category
       |> Changeset.new(name: "foo")

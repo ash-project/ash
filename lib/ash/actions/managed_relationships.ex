@@ -301,7 +301,8 @@ defmodule Ash.Actions.ManagedRelationships do
           changeset
           |> Ash.Changeset.set_context(%{
             private: %{
-              belongs_to_manage_created: %{relationship.name => %{index => created}}
+              belongs_to_manage_created: %{relationship.name => %{index => created}},
+              belongs_to_manage_original: Map.get(changeset.data, relationship.name)
             }
           })
           |> Ash.Changeset.force_change_attribute(
@@ -385,11 +386,7 @@ defmodule Ash.Actions.ManagedRelationships do
     opts = Ash.Changeset.ManagedRelationshipHelpers.sanitize_opts(relationship, opts)
     pkeys = pkeys(relationship)
 
-    original_value =
-      case Map.get(record, relationship.name) do
-        %Ash.NotLoaded{} -> []
-        value -> value
-      end
+    original_value = original_value(record, changeset, relationship)
 
     inputs
     |> Enum.with_index()
@@ -461,11 +458,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
     pkeys = [Ash.Resource.Info.primary_key(relationship.destination) | identities]
 
-    original_value =
-      case Map.get(record, relationship.name) do
-        %Ash.NotLoaded{} -> []
-        value -> value
-      end
+    original_value = original_value(record, changeset, relationship)
 
     inputs = List.wrap(inputs)
 
@@ -516,6 +509,22 @@ defmodule Ash.Actions.ManagedRelationships do
 
       {:error, error} ->
         {:error, Ash.Changeset.set_path(error, [opts[:meta][:id] || relationship.name])}
+    end
+  end
+
+  defp original_value(record, changeset, relationship) do
+    original =
+      case Map.fetch(changeset.context[:private] || %{}, :belongs_to_manage_original) do
+        :error ->
+          Map.get(record, relationship.name)
+
+        {:ok, value} ->
+          value
+      end
+
+    case original do
+      %Ash.NotLoaded{} -> []
+      value -> List.wrap(value)
     end
   end
 
@@ -799,7 +808,7 @@ defmodule Ash.Actions.ManagedRelationships do
           nil ->
             created =
               if is_struct(input) do
-                {:ok, input, []}
+                {:ok, input, [], []}
               else
                 relationship.destination
                 |> Ash.Changeset.new()
@@ -831,7 +840,7 @@ defmodule Ash.Actions.ManagedRelationships do
             end
 
           created ->
-            {:ok, [created | current_value], [], [created]}
+            {:ok, [created | current_value], [], [input]}
         end
 
       {:create, action_name, join_action_name, params} ->
@@ -848,7 +857,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
         created =
           if is_struct(input) do
-            {:ok, input, []}
+            {:ok, input, [], [input]}
           else
             relationship.destination
             |> Ash.Changeset.new()
@@ -895,8 +904,7 @@ defmodule Ash.Actions.ManagedRelationships do
             )
             |> case do
               {:ok, _join_row, notifications} ->
-                {:ok, [created | current_value], regular_notifications ++ notifications,
-                 [created]}
+                {:ok, [created | current_value], regular_notifications ++ notifications, [input]}
 
               {:error, error} ->
                 {:error, error}
@@ -907,7 +915,7 @@ defmodule Ash.Actions.ManagedRelationships do
         end
 
       ignore when ignore in [:ignore, :match] ->
-        {:ok, current_value, [], []}
+        {:ok, current_value, [], [input]}
     end
   end
 
