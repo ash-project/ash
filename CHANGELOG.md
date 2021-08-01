@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.47.6](https://github.com/ash-project/ash/compare/v1.47.5...v1.47.6) (2021-08-01)
+
+
+
+
+### Bug Fixes:
+
+* honor `on_missing:` behavior for belongs_to relationships
+
+* properly remove old belongs_to records
+
 ## [v1.47.5](https://github.com/ash-project/ash/compare/v1.47.4...v1.47.5) (2021-07-28)
 
 
