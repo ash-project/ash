@@ -16,9 +16,7 @@ defmodule Ash.DataLayer.Simple.Transformers.ValidateDslSections do
          DslError.exception(
            module: __MODULE__,
            message:
-             "Embedded resources or resources without a data layer cannot have any #{
-               to_string(type)
-             }.",
+             "Embedded resources or resources without a data layer cannot have any #{to_string(type)}.",
            path: [type, name]
          )}
     end

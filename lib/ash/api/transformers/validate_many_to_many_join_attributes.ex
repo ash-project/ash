@@ -32,9 +32,7 @@ defmodule Ash.Api.Transformers.ValidateManyToManyJoinAttributes do
           module: __MODULE__,
           path: [:relationships, relationship.name],
           message:
-            "Relationship `#{relationship.name}` expects join_attribute `#{join_attribute}` to be defined on the `through` resource #{
-              inspect(relationship.through)
-            }"
+            "Relationship `#{relationship.name}` expects join_attribute `#{join_attribute}` to be defined on the `through` resource #{inspect(relationship.through)}"
       end
     end
   end

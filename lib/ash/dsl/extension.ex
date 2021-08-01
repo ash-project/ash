@@ -484,9 +484,7 @@ defmodule Ash.Dsl.Extension do
             if Exception.exception?(e) do
               reraise e, __STACKTRACE__
             else
-              reraise "Exception in transformer #{inspect(transformer)}: \n\n#{
-                        Exception.message(e)
-                      }",
+              reraise "Exception in transformer #{inspect(transformer)}: \n\n#{Exception.message(e)}",
                       __STACKTRACE__
             end
         end

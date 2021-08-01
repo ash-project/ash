@@ -46,9 +46,7 @@ defmodule Ash.Api.Transformers.ValidateRelationshipAttributes do
           module: __MODULE__,
           path: [:relationships, relationship.name],
           message:
-            "Relationship `#{relationship.name}` expects source field on join table `#{
-              relationship.source_field_on_join_table
-            }` to be defined on #{inspect(relationship.through)}"
+            "Relationship `#{relationship.name}` expects source field on join table `#{relationship.source_field_on_join_table}` to be defined on #{inspect(relationship.through)}"
       end
 
       unless relationship.destination_field_on_join_table in through_attributes do
@@ -56,9 +54,7 @@ defmodule Ash.Api.Transformers.ValidateRelationshipAttributes do
           module: __MODULE__,
           path: [:relationships, relationship.name],
           message:
-            "Relationship `#{relationship.name}` expects destination field on join table `#{
-              relationship.destination_field_on_join_table
-            }` to be defined on #{inspect(relationship.through)}"
+            "Relationship `#{relationship.name}` expects destination field on join table `#{relationship.destination_field_on_join_table}` to be defined on #{inspect(relationship.through)}"
       end
     end
 
@@ -72,9 +68,7 @@ defmodule Ash.Api.Transformers.ValidateRelationshipAttributes do
         module: __MODULE__,
         path: [:relationships, relationship.name],
         message:
-          "Relationship `#{relationship.name}` expects destination field `#{
-            relationship.destination_field
-          }` to be defined on #{inspect(relationship.destination)}"
+          "Relationship `#{relationship.name}` expects destination field `#{relationship.destination_field}` to be defined on #{inspect(relationship.destination)}"
     end
   end
 

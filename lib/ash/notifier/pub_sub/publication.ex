@@ -46,17 +46,13 @@ defmodule Ash.Notifier.PubSub.Publication do
       {:ok, topic}
     else
       {:error,
-       "Expected topic to be a string or a list of strings or attribute names (as atoms), got: #{
-         inspect(topic)
-       }"}
+       "Expected topic to be a string or a list of strings or attribute names (as atoms), got: #{inspect(topic)}"}
     end
   end
 
   def topic(other) do
     {:error,
-     "Expected topic to be a string or a list of strings or attribute names (as atoms), got: #{
-       inspect(other)
-     }"}
+     "Expected topic to be a string or a list of strings or attribute names (as atoms), got: #{inspect(other)}"}
   end
 
   defp nested_list_of_binaries_or_atoms?(list) when is_list(list) do

@@ -10,9 +10,7 @@ defmodule Ash.Error.Invalid.NoSuchAction do
     def code(_), do: "no_such_action"
 
     def message(%{resource: resource, action: action, type: type}) do
-      "No such action #{inspect(action)} of type #{inspect(type)} for resource #{
-        inspect(resource)
-      }"
+      "No such action #{inspect(action)} of type #{inspect(type)} for resource #{inspect(resource)}"
     end
   end
 end

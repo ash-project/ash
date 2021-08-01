@@ -43,9 +43,7 @@ defmodule Ash.Query.Function do
           end
         else
           {:error,
-           "function #{mod.name()}/#{configured_arg_count} takes #{configured_arg_count} arguments, provided #{
-             given_arg_count
-           }"}
+           "function #{mod.name()}/#{configured_arg_count} takes #{configured_arg_count} arguments, provided #{given_arg_count}"}
         end
     end
   end

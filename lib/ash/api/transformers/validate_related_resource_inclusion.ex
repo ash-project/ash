@@ -27,9 +27,7 @@ defmodule Ash.Api.Transformers.ValidateRelatedResourceInclusion do
         {:ok, dsl}
 
       resources ->
-        raise "Resources #{Enum.map_join(resources, ", ", &inspect/1)} must be included in API #{
-                inspect(module)
-              }"
+        raise "Resources #{Enum.map_join(resources, ", ", &inspect/1)} must be included in API #{inspect(module)}"
     end
   end
 

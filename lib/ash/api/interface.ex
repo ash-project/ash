@@ -9,9 +9,7 @@ defmodule Ash.Api.Interface do
       raise Ash.Error.Dsl.DslError,
         module: resource,
         message:
-          "The interface of #{inspect(resource)} refers to a non-existent action #{
-            interface.action || interface.name
-          }",
+          "The interface of #{inspect(resource)} refers to a non-existent action #{interface.action || interface.name}",
         path: [:interfaces, :interface, interface.name]
     end
 
@@ -27,10 +25,7 @@ defmodule Ash.Api.Interface do
         arg_vars = Enum.map(args, &{&1, [], Elixir})
 
         doc = """
-        #{
-          action.description ||
-            "Calls the #{action.name} action on the #{inspect(resource)} resource."
-        }
+        #{action.description || "Calls the #{action.name} action on the #{inspect(resource)} resource."}
 
         ## Options
 
@@ -588,9 +583,7 @@ defmodule Ash.Api.Interface do
           {fun, arity} = __ENV__.function
           mfa = "#{inspect(__ENV__.module)}.#{fun}/#{arity}"
 
-          raise "#{mfa} expected an %Ash.Query{} or an Ash Resource but instead got #{
-                  inspect(unquote(query_or_resource))
-                }"
+          raise "#{mfa} expected an %Ash.Query{} or an Ash Resource but instead got #{inspect(unquote(query_or_resource))}"
       end
     end
   end

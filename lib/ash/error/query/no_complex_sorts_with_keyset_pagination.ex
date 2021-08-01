@@ -22,9 +22,7 @@ defmodule Ash.Error.Query.NoComplexSortsWithKeysetPagination do
 
     def message(%{resource: resource, sort: sort}) do
       """
-      Attempted to sort by a calculation or aggregate while using keyset pagination with #{
-        inspect(resource)
-      }
+      Attempted to sort by a calculation or aggregate while using keyset pagination with #{inspect(resource)}
 
       This is not currently supported.
 

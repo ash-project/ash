@@ -48,11 +48,7 @@ defmodule Ash.Type do
 
   ## Built in types
 
-  #{
-    Enum.map_join(@short_names, fn {key, module} ->
-      "* `#{inspect(key)}` - `#{inspect(module)}`\n"
-    end)
-  }
+  #{Enum.map_join(@short_names, fn {key, module} -> "* `#{inspect(key)}` - `#{inspect(module)}`\n" end)}
 
   ### Composite Types
 

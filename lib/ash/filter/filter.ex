@@ -86,11 +86,7 @@ defmodule Ash.Filter do
   ### Built In Predicates
 
   #{Enum.map_join(@operators, "\n", &"* `#{&1.operator()}`")}
-  #{
-    Enum.map_join(@operator_aliases, "\n", fn {key, val} ->
-      "* `#{key}` (alias for `#{val.operator()}`)"
-    end)
-  }
+  #{Enum.map_join(@operator_aliases, "\n", fn {key, val} -> "* `#{key}` (alias for `#{val.operator()}`)" end)}
 
   ### BooleanExpression syntax
 
@@ -1675,9 +1671,7 @@ defmodule Ash.Filter do
                InvalidFilterValue.exception(
                  value: inspect(nested_statement),
                  message:
-                   "A single value must be castable to the primary key of the resource: #{
-                     inspect(context.resource)
-                   }"
+                   "A single value must be castable to the primary key of the resource: #{inspect(context.resource)}"
                )}
           end
         end
@@ -2075,9 +2069,7 @@ defmodule Ash.Filter do
 
               _ ->
                 {:error,
-                 "Invalid reference #{inspect(ref)} when hydrating relationship ref for #{
-                   inspect(ref.relationship_path ++ [relationship.name])
-                 }. Require single attribute primary key."}
+                 "Invalid reference #{inspect(ref)} when hydrating relationship ref for #{inspect(ref.relationship_path ++ [relationship.name])}. Require single attribute primary key."}
             end
 
           true ->

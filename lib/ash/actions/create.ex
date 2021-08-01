@@ -25,9 +25,7 @@ defmodule Ash.Actions.Create do
           |> Enum.find(&(&1.name == identity))
           |> Kernel.||(
             raise ArgumentError,
-                  "No identity found for #{inspect(changeset.resource)} called #{
-                    inspect(identity)
-                  }"
+                  "No identity found for #{inspect(changeset.resource)} called #{inspect(identity)}"
           )
           |> Map.get(:keys)
       end

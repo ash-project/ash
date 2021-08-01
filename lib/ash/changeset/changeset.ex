@@ -582,9 +582,7 @@ defmodule Ash.Changeset do
 
     raise ArgumentError,
       message: """
-      No such #{type} action on resource #{inspect(resource)}: #{
-        String.slice(inspect(action), 0..50)
-      }
+      No such #{type} action on resource #{inspect(resource)}: #{String.slice(inspect(action), 0..50)}
 
       Example Call:
 
