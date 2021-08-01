@@ -53,9 +53,6 @@ defmodule Ash.Actions.ManagedRelationships do
         {{relationship, {input, opts}}, index}
       end)
     end)
-    |> Enum.reject(fn {{_relationship, {input, _opts}}, _index} ->
-      is_nil(input) || input == []
-    end)
     |> Enum.map(fn
       {{relationship, {[input], opts}}, index} ->
         {{relationship, {input, opts}}, index}
@@ -224,50 +221,95 @@ defmodule Ash.Actions.ManagedRelationships do
          index,
          opts
        ) do
-    case opts[:on_no_match] do
-      ignore when ignore in [:ignore, :match] ->
-        {:cont, {changeset, instructions}}
+    data =
+      case Map.get(changeset.data, relationship.name) do
+        %Ash.NotLoaded{} ->
+          changeset.api.load(changeset.data, relationship.name,
+            authorize?: opts[:authorize?],
+            actor: actor
+          )
 
-      :error ->
-        if opts[:on_lookup] != :ignore do
-          changeset =
-            changeset
-            |> Ash.Changeset.add_error(
-              NotFound.exception(
-                primary_key: input,
-                resource: relationship.destination
-              ),
-              [opts[:meta][:id] || relationship.name]
-            )
-            |> Ash.Changeset.put_context(:private, %{error: %{relationship.name => true}})
+        _ ->
+          {:ok, changeset.data}
+      end
 
-          {:halt, {changeset, instructions}}
-        else
-          changeset =
-            changeset
-            |> Ash.Changeset.add_error(
-              InvalidRelationship.exception(
-                relationship: relationship.name,
-                message: "Changes would create a new related record"
-              ),
-              [opts[:meta][:id] || relationship.name]
-            )
-            |> Ash.Changeset.put_context(:private, %{error: %{relationship.name => true}})
+    case data do
+      {:ok, data} ->
+        current_value = Map.get(data, relationship.name)
 
-          {:halt, {changeset, instructions}}
+        case delete_unused(
+               data,
+               List.wrap(current_value),
+               relationship,
+               [],
+               [],
+               changeset,
+               actor,
+               opts
+             ) do
+          {:ok, _, new_instructions} ->
+            instructions = new_instructions ++ instructions
+
+            if input in [nil || []] do
+              {:cont, {changeset, instructions}}
+            else
+              case opts[:on_no_match] do
+                ignore when ignore in [:ignore, :match] ->
+                  {:cont, {changeset, instructions}}
+
+                :error ->
+                  if opts[:on_lookup] != :ignore do
+                    changeset =
+                      changeset
+                      |> Ash.Changeset.add_error(
+                        NotFound.exception(
+                          primary_key: input,
+                          resource: relationship.destination
+                        ),
+                        [opts[:meta][:id] || relationship.name]
+                      )
+                      |> Ash.Changeset.put_context(:private, %{
+                        error: %{relationship.name => true}
+                      })
+
+                    {:halt, {changeset, instructions}}
+                  else
+                    changeset =
+                      changeset
+                      |> Ash.Changeset.add_error(
+                        InvalidRelationship.exception(
+                          relationship: relationship.name,
+                          message: "Changes would create a new related record"
+                        ),
+                        [opts[:meta][:id] || relationship.name]
+                      )
+                      |> Ash.Changeset.put_context(:private, %{
+                        error: %{relationship.name => true}
+                      })
+
+                    {:halt, {changeset, instructions}}
+                  end
+
+                {:create, action_name} ->
+                  do_create_belongs_to_record(
+                    relationship,
+                    action_name,
+                    input,
+                    changeset,
+                    actor,
+                    opts,
+                    instructions,
+                    index
+                  )
+              end
+            end
+
+          {:error, error} ->
+            {:halt, {Ash.Changeset.add_error(changeset, error), instructions}}
         end
 
-      {:create, action_name} ->
-        do_create_belongs_to_record(
-          relationship,
-          action_name,
-          input,
-          changeset,
-          actor,
-          opts,
-          instructions,
-          index
-        )
+      {:error, error} ->
+        {:halt, {Ash.Changeset.add_error(changeset, error), instructions}}
     end
   end
 
@@ -489,22 +531,26 @@ defmodule Ash.Actions.ManagedRelationships do
     )
     |> case do
       {:ok, new_value, all_notifications, all_used} ->
-        case delete_unused(
-               record,
-               original_value,
-               relationship,
-               new_value,
-               all_used,
-               changeset,
-               actor,
-               opts
-             ) do
-          {:ok, new_value, notifications} ->
-            {:ok, Map.put(record, relationship.name, Enum.at(List.wrap(new_value), 0)),
-             all_notifications ++ notifications}
+        if relationship.type == :belongs_to do
+          {:ok, record, all_notifications}
+        else
+          case delete_unused(
+                 record,
+                 original_value,
+                 relationship,
+                 new_value,
+                 all_used,
+                 changeset,
+                 actor,
+                 opts
+               ) do
+            {:ok, new_value, notifications} ->
+              {:ok, Map.put(record, relationship.name, Enum.at(List.wrap(new_value), 0)),
+               all_notifications ++ notifications}
 
-          {:error, error} ->
-            {:error, Ash.Changeset.set_path(error, [opts[:meta][:id] || relationship.name])}
+            {:error, error} ->
+              {:error, Ash.Changeset.set_path(error, [opts[:meta][:id] || relationship.name])}
+          end
         end
 
       {:error, error} ->
@@ -512,17 +558,8 @@ defmodule Ash.Actions.ManagedRelationships do
     end
   end
 
-  defp original_value(record, changeset, relationship) do
-    original =
-      case Map.fetch(changeset.context[:private] || %{}, :belongs_to_manage_original) do
-        :error ->
-          Map.get(record, relationship.name)
-
-        {:ok, value} ->
-          value
-      end
-
-    case original do
+  defp original_value(record, _changeset, relationship) do
+    case Map.get(record, relationship.name) do
       %Ash.NotLoaded{} -> []
       value -> List.wrap(value)
     end
