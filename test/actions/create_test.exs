@@ -621,6 +621,31 @@ defmodule Ash.Test.Actions.CreateTest do
 
       assert post.author.id == author.id
     end
+
+    test "it clears the relationship if replaced with nil" do
+      author =
+        Author
+        |> new()
+        |> change_attribute(:bio, "best dude")
+        |> Api.create!()
+
+      post =
+        Post
+        |> new()
+        |> change_attribute(:title, "foobar")
+        |> replace_relationship(:author, author)
+        |> Api.create!()
+
+      post =
+        post
+        |> new()
+        |> change_attribute(:title, "foobuz")
+        |> replace_relationship(:author, nil)
+        |> Api.update!()
+
+      assert post.author == nil
+      assert post.author_id == nil
+    end
   end
 
   describe "creating with required belongs_to relationships" do
