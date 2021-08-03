@@ -71,10 +71,10 @@ defmodule Ash.Actions.ManagedRelationships do
       current_value =
         case Map.get(changeset.data, relationship.name) do
           %Ash.NotLoaded{} ->
-            case relationship.cardinality do
-              :many -> []
-              :one -> nil
-            end
+            nil
+
+          other when is_list(other) ->
+            Enum.at(other, 0)
 
           other ->
             other
