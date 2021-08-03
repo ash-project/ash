@@ -84,13 +84,20 @@ defmodule Ash.Actions.ManagedRelationships do
           input
         end
 
-      case find_match(
-             List.wrap(current_value),
-             input,
-             pkeys,
-             relationship,
-             opts[:on_no_match] == :match
-           ) do
+      match =
+        if input do
+          find_match(
+            List.wrap(current_value),
+            input,
+            pkeys,
+            relationship,
+            opts[:on_no_match] == :match
+          )
+        else
+          nil
+        end
+
+      case match do
         nil ->
           case opts[:on_lookup] do
             :ignore ->
