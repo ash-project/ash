@@ -257,7 +257,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
     case data do
       {:ok, data} ->
-        if input in [nil || []] do
+        if input in [nil, []] do
           {:cont, {changeset, instructions}}
         else
           case opts[:on_no_match] do
