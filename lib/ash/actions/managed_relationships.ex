@@ -100,6 +100,17 @@ defmodule Ash.Actions.ManagedRelationships do
       case match do
         nil ->
           case opts[:on_lookup] do
+            _ when is_nil(input) ->
+              create_belongs_to_record(
+                changeset,
+                instructions,
+                relationship,
+                input,
+                actor,
+                index,
+                opts
+              )
+
             :ignore ->
               create_belongs_to_record(
                 changeset,
