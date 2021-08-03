@@ -73,11 +73,15 @@ defmodule Ash.Actions.ManagedRelationships do
           %Ash.NotLoaded{} ->
             nil
 
-          other when is_list(other) ->
-            Enum.at(other, 0)
-
           other ->
             other
+        end
+
+      input =
+        if is_list(input) do
+          Enum.at(input, 0)
+        else
+          input
         end
 
       case find_match(
