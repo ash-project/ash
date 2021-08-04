@@ -5,6 +5,31 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.47.7](https://github.com/ash-project/ash/compare/v1.47.6...v1.47.7) (2021-08-04)
+
+
+
+
+### Bug Fixes:
+
+* redact fields in the resource struct as well
+
+* allow `before_action` to manage `belongs_to` relationships
+
+* load belongs to relationships before managing them
+
+* don't lookup nil input
+
+* don't look for matches for nil
+
+* don't accept list inputs for managed belongs_to
+
+* don't use list inputs in belongs_to managed
+
+* remove belongs to related after action
+
+* fix more cases where belongs_to isn't replaced
+
 ## [v1.47.6](https://github.com/ash-project/ash/compare/v1.47.5...v1.47.6) (2021-08-01)
 
 
