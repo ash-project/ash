@@ -25,7 +25,7 @@ defmodule Ash.Schema do
             field(attribute.name, Ash.Type.ecto_type(attribute.type),
               primary_key: attribute.primary_key?,
               read_after_writes: read_after_writes?,
-              redacted: attribute.sensitive?
+              redact: attribute.sensitive?
             )
           end
 
@@ -81,7 +81,7 @@ defmodule Ash.Schema do
             field(attribute.name, Ash.Type.ecto_type(attribute.type),
               primary_key: attribute.primary_key?,
               read_after_writes: read_after_writes?,
-              redacted: attribute.sensitive?
+              redact: attribute.sensitive?
             )
           end
 
