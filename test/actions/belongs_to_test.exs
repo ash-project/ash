@@ -3,6 +3,7 @@ defmodule Ash.Test.Actions.BelongsToTest do
   use ExUnit.Case, async: true
 
   defmodule UpdateReviewFields do
+    @moduledoc false
     use Ash.Resource.Change
 
     def init(_), do: {:ok, []}

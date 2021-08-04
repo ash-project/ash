@@ -139,42 +139,61 @@ defmodule Ash.Actions.Update do
               result =
                 changeset
                 |> Ash.Changeset.put_context(:private, %{actor: engine_opts[:actor]})
-                |> Ash.Changeset.before_action(fn changeset ->
-                  {changeset, instructions} =
-                    Ash.Actions.ManagedRelationships.setup_managed_belongs_to_relationships(
-                      changeset,
-                      engine_opts[:actor],
-                      engine_opts
-                    )
-
-                  {changeset, instructions}
-                end)
+                |> Ash.Changeset.before_action(
+                  &Ash.Actions.ManagedRelationships.setup_managed_belongs_to_relationships(
+                    &1,
+                    engine_opts[:actor],
+                    engine_opts
+                  )
+                )
                 |> Ash.Changeset.with_hooks(fn changeset ->
-                  changeset =
-                    changeset
-                    |> Ash.Changeset.require_values(
-                      :update,
-                      true
-                    )
-                    |> Ash.Changeset.require_values(
-                      :update,
-                      false,
-                      action.require_attributes
-                    )
+                  case Ash.Actions.ManagedRelationships.setup_managed_belongs_to_relationships(
+                         changeset,
+                         engine_opts[:actor],
+                         engine_opts
+                       ) do
+                    {:error, error} ->
+                      {:error, error}
 
-                  changeset = set_tenant(changeset)
+                    {changeset, manage_instructions} ->
+                      changeset =
+                        changeset
+                        |> Ash.Changeset.require_values(
+                          :update,
+                          true
+                        )
+                        |> Ash.Changeset.require_values(
+                          :update,
+                          false,
+                          action.require_attributes
+                        )
 
-                  if changeset.valid? do
-                    if action.manual? do
-                      {:ok, changeset.data}
-                    else
-                      resource
-                      |> Ash.DataLayer.update(changeset)
-                      |> add_tenant(changeset)
-                      |> manage_relationships(api, changeset, engine_opts)
-                    end
-                  else
-                    {:error, changeset.errors}
+                      changeset = set_tenant(changeset)
+
+                      if changeset.valid? do
+                        if action.manual? do
+                          {:ok, changeset.data, %{notifications: []}}
+                        else
+                          resource
+                          |> Ash.DataLayer.update(changeset)
+                          |> add_tenant(changeset)
+                          |> manage_relationships(api, changeset, engine_opts)
+                        end
+                        |> case do
+                          {:ok, result, notifications} ->
+                            {:ok, result,
+                             Map.update!(
+                               notifications,
+                               :notifications,
+                               &(&1 ++ manage_instructions.notifications)
+                             )}
+
+                          {:error, error} ->
+                            {:error, error}
+                        end
+                      else
+                        {:error, changeset.errors}
+                      end
                   end
                 end)
 

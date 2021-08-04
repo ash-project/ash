@@ -47,7 +47,7 @@ defmodule Ash.Actions.ManagedRelationships do
     end)
     |> Enum.flat_map(fn {relationship, inputs} ->
       inputs
-      |> Enum.reject(fn {_, opts} -> opts[:ignore?] end)
+      |> Enum.reject(fn {_, opts} -> opts[:ignore?] || opts[:handled?] end)
       |> Enum.with_index()
       |> Enum.map(fn {{input, opts}, index} ->
         {{relationship, {input, opts}}, index}
@@ -236,6 +236,23 @@ defmodule Ash.Actions.ManagedRelationships do
       end
     end)
     |> validate_required_belongs_to()
+    |> case do
+      {:error, error} ->
+        {:error, error}
+
+      {changeset, instructions} ->
+        changeset =
+          Map.update!(changeset, :relationships, fn relationships ->
+            Map.new(relationships, fn {rel, inputs} ->
+              {rel,
+               Enum.map(inputs, fn {input, config} ->
+                 {input, Keyword.put(config, :handled?, true)}
+               end)}
+            end)
+          end)
+
+        {changeset, instructions}
+    end
   end
 
   defp validate_required_belongs_to({changeset, instructions}) do
