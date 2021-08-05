@@ -462,7 +462,11 @@ defmodule Ash.Actions.ManagedRelationships do
     opts = Ash.Changeset.ManagedRelationshipHelpers.sanitize_opts(relationship, opts)
     pkeys = pkeys(relationship)
 
-    original_value = original_value(changeset, relationship)
+    original_value =
+      case Map.get(record, relationship.name) do
+        %Ash.NotLoaded{} -> []
+        value -> value
+      end
 
     inputs
     |> Enum.with_index()
@@ -534,7 +538,18 @@ defmodule Ash.Actions.ManagedRelationships do
 
     pkeys = [Ash.Resource.Info.primary_key(relationship.destination) | identities]
 
-    original_value = original_value(changeset, relationship)
+    original_value =
+      if relationship.type == :belongs_to do
+        Map.get(changeset.data, relationship.name)
+      else
+        Map.get(record, relationship.name)
+      end
+
+    original_value =
+      case original_value do
+        %Ash.NotLoaded{} -> []
+        value -> value
+      end
 
     inputs = List.wrap(inputs)
 
@@ -585,13 +600,6 @@ defmodule Ash.Actions.ManagedRelationships do
 
       {:error, error} ->
         {:error, Ash.Changeset.set_path(error, [opts[:meta][:id] || relationship.name])}
-    end
-  end
-
-  defp original_value(changeset, relationship) do
-    case Map.get(changeset.data, relationship.name) do
-      %Ash.NotLoaded{} -> []
-      value -> List.wrap(value)
     end
   end
 
