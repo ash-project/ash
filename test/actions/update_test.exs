@@ -4,6 +4,7 @@ defmodule Ash.Test.Actions.UpdateTest do
 
   import Ash.Changeset
   import Ash.Test.Helpers
+  require Ash.Query
 
   defmodule Authorized do
     @moduledoc false
@@ -343,6 +344,28 @@ defmodule Ash.Test.Actions.UpdateTest do
       |> new()
       |> replace_relationship(:related_posts, [post2, post3])
       |> Api.update!()
+    end
+
+    test "allows directly managing a many_to_many relationship" do
+      post =
+        Post
+        |> new(%{title: "title"})
+        |> manage_relationship(:related_posts, [%{title: "title0"}], type: :direct_control)
+        |> Api.create!()
+
+      other_post = Post |> Ash.Query.filter(title == "title0") |> Api.read_one!()
+
+      post
+      |> new()
+      |> manage_relationship(
+        :related_posts,
+        [%{title: "title3", id: other_post.id}, %{title: "title1"}],
+        type: :direct_control
+      )
+      |> Api.update!()
+
+      assert ["title", "title1", "title3"] =
+               Post |> Ash.Query.sort(:title) |> Api.read!() |> Enum.map(& &1.title)
     end
 
     test "it updates the join table properly" do
