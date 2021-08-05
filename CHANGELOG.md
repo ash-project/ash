@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.47.8](https://github.com/ash-project/ash/compare/v1.47.7...v1.47.8) (2021-08-05)
+
+
+
+
+### Bug Fixes:
+
+* stop managed relationships from sourcing wrong data
+
 ## [v1.47.7](https://github.com/ash-project/ash/compare/v1.47.6...v1.47.7) (2021-08-04)
 
 
