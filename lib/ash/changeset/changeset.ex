@@ -473,6 +473,7 @@ defmodule Ash.Changeset do
         |> Map.put(:__validated_for_action__, action.name)
         |> Map.put(:action, action)
         |> cast_params(action, params, opts)
+        |> set_argument_defaults(action)
         |> run_action_changes(action, opts[:actor])
         |> add_validations()
         |> mark_validated(action.name)
@@ -498,6 +499,7 @@ defmodule Ash.Changeset do
           |> Map.put(:action, action)
           |> Map.put(:__validated_for_action__, action.name)
           |> cast_params(action, params || %{}, opts)
+          |> set_argument_defaults(action)
           |> validate_attributes_accepted(action)
           |> require_values(action.type, false, action.require_attributes)
           |> run_action_changes(action, opts[:actor])
@@ -521,7 +523,6 @@ defmodule Ash.Changeset do
 
   defp require_arguments(changeset, action) do
     changeset
-    |> set_argument_defaults(action)
     |> do_require_arguments(action)
   end
 
@@ -1437,6 +1438,8 @@ defmodule Ash.Changeset do
   end
 
   def manage_relationship(changeset, relationship, input, opts) do
+    inputs_was_list? = is_list(input)
+
     manage_opts =
       if opts[:type] do
         defaults = manage_relationship_opts(opts[:type])
@@ -1449,6 +1452,18 @@ defmodule Ash.Changeset do
       end
 
     opts = Ash.OptionsHelpers.validate!(opts, manage_opts)
+
+    opts =
+      if Keyword.has_key?(opts[:meta] || [], :inputs_was_list?) do
+        opts
+      else
+        Keyword.update(
+          opts,
+          :meta,
+          [inputs_was_list?: inputs_was_list?],
+          &Keyword.put(&1, :inputs_was_list?, inputs_was_list?)
+        )
+      end
 
     case Ash.Resource.Info.relationship(changeset.resource, relationship) do
       nil ->

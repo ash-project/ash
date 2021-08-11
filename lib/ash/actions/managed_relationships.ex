@@ -489,9 +489,19 @@ defmodule Ash.Actions.ManagedRelationships do
             {:cont, {:ok, new_value, all_notifications ++ notifications, all_used ++ used}}
 
           {:error, error} ->
-            {:halt,
-             {:error,
-              Ash.Changeset.set_path(error, [opts[:meta][:id] || relationship.name, input_index])}}
+            case Keyword.fetch(opts[:meta] || [], :inputs_was_list?) do
+              {:ok, false} ->
+                {:halt,
+                 {:error, Ash.Changeset.set_path(error, [opts[:meta][:id] || relationship.name])}}
+
+              _ ->
+                {:halt,
+                 {:error,
+                  Ash.Changeset.set_path(error, [
+                    opts[:meta][:id] || relationship.name,
+                    input_index
+                  ])}}
+            end
         end
       end
     )
