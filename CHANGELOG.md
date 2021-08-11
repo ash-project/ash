@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.47.9](https://github.com/ash-project/ash/compare/v1.47.8...v1.47.9) (2021-08-11)
+
+
+
+
+### Bug Fixes:
+
+* set argument defaults early
+
+* don't add indices to non-list inputs in managed relationships
+
 ## [v1.47.8](https://github.com/ash-project/ash/compare/v1.47.7...v1.47.8) (2021-08-05)
 
 
