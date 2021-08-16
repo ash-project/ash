@@ -67,9 +67,17 @@ defmodule Ash.Changeset do
           empty()
         end
 
+      api =
+        if changeset.api do
+          concat("api: ", to_doc(changeset.api, opts))
+        else
+          empty()
+        end
+
       container_doc(
         "#Ash.Changeset<",
         [
+          api,
           concat("action_type: ", inspect(changeset.action_type)),
           concat("action: ", inspect(changeset.action && changeset.action.name)),
           tenant,

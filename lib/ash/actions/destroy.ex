@@ -37,6 +37,8 @@ defmodule Ash.Actions.Destroy do
       |> Keyword.take([:verbose?, :actor, :authorize?])
       |> Keyword.put(:transaction?, true)
 
+    changeset = %{changeset | api: api}
+
     changeset =
       if opts[:tenant] do
         Ash.Changeset.set_tenant(changeset, opts[:tenant])

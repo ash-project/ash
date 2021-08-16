@@ -323,8 +323,7 @@ defmodule Ash.Actions.ManagedRelationships do
                 InvalidRelationship.exception(
                   relationship: relationship.name,
                   message: "Changes would create a new related record"
-                ),
-                [opts[:meta][:id] || relationship.name]
+                )
               )
               |> Ash.Changeset.put_context(:private, %{
                 error: %{relationship.name => true}
@@ -488,6 +487,9 @@ defmodule Ash.Actions.ManagedRelationships do
           {:ok, new_value, notifications, used} ->
             {:cont, {:ok, new_value, all_notifications ++ notifications, all_used ++ used}}
 
+          {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
+            {:error, error}
+
           {:error, error} ->
             case Keyword.fetch(opts[:meta] || [], :inputs_was_list?) do
               {:ok, false} ->
@@ -520,6 +522,9 @@ defmodule Ash.Actions.ManagedRelationships do
           {:ok, new_value, notifications} ->
             {:ok, Map.put(record, relationship.name, new_value),
              all_notifications ++ notifications}
+
+          {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
+            {:error, error}
 
           {:error, error} ->
             {:error, Ash.Changeset.set_path(error, [opts[:meta][:id] || relationship.name])}
@@ -582,6 +587,9 @@ defmodule Ash.Actions.ManagedRelationships do
           {:ok, new_value, notifications, used} ->
             {:cont, {:ok, new_value, all_notifications ++ notifications, all_used ++ used}}
 
+          {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
+            {:error, error}
+
           {:error, error} ->
             {:halt,
              {:error, Ash.Changeset.set_path(error, [opts[:meta][:id] || relationship.name])}}
@@ -604,9 +612,15 @@ defmodule Ash.Actions.ManagedRelationships do
             {:ok, Map.put(record, relationship.name, Enum.at(List.wrap(new_value), 0)),
              all_notifications ++ notifications}
 
+          {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
+            {:error, error}
+
           {:error, error} ->
             {:error, Ash.Changeset.set_path(error, [opts[:meta][:id] || relationship.name])}
         end
+
+      {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
+        {:error, error}
 
       {:error, error} ->
         {:error, Ash.Changeset.set_path(error, [opts[:meta][:id] || relationship.name])}
