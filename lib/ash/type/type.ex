@@ -298,11 +298,20 @@ defmodule Ash.Type do
   def cast_input({:array, type}, empty, constraints) when empty in [nil, ""],
     do: cast_input({:array, type}, [], constraints)
 
-  def cast_input({:array, _type}, term, _) when not is_list(term) do
+  def cast_input({:array, _type}, term, _) when not (is_list(term) or is_map(term)) do
     {:error, "is invalid"}
   end
 
   def cast_input({:array, type}, term, constraints) do
+    term =
+      if is_map(term) do
+        term
+        |> Enum.sort_by(&elem(&1, 1))
+        |> Enum.map(&elem(&1, 0))
+      else
+        term
+      end
+
     if is_atom(type) && :erlang.function_exported(type, :cast_input_array, 2) do
       type.cast_input_array(term, constraints)
     else

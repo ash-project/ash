@@ -49,16 +49,26 @@ defmodule Ash.Type.Enum do
       def storage_type, do: :string
 
       @impl Ash.Type
+      def cast_input(nil, _) do
+        {:ok, nil}
+      end
+
       def cast_input(value, _) do
         match(value)
       end
 
       @impl Ash.Type
+      def cast_stored(nil, _), do: {:ok, nil}
+
       def cast_stored(value, _) do
         match(value)
       end
 
       @impl Ash.Type
+      def dump_to_native(nil, _) do
+        {:ok, nil}
+      end
+
       def dump_to_native(value, _) do
         {:ok, to_string(value)}
       end
