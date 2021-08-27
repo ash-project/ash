@@ -80,6 +80,14 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
       :unrelate ->
         {:unrelate, nil}
 
+      :destroy when relationship.type == :many_to_many ->
+        action = Ash.Resource.Info.primary_action!(relationship.through, :destroy)
+        {:destroy, action.name}
+
+      :destroy ->
+        action = Ash.Resource.Info.primary_action!(relationship.destination, :destroy)
+        {:destroy, action.name}
+
       other ->
         other
     end)
@@ -134,6 +142,24 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
 
       opts[:on_match] == :missing ->
         on_missing_destination_actions(opts, relationship)
+
+      unwrap(opts[:on_match]) == :destroy && relationship.type == :many_to_many ->
+        case opts[:on_match] do
+          :destroy ->
+            all(join(primary_action_name(relationship.through, :destroy), :all))
+
+          {:destroy, action_name} ->
+            all(join(action_name, :all))
+        end
+
+      unwrap(opts[:on_match]) == :destroy ->
+        case opts[:on_match] do
+          :destroy ->
+            all(destination(primary_action_name(relationship.destination, :destroy)))
+
+          {:destroy, action_name} ->
+            all(destination(action_name))
+        end
 
       unwrap(opts[:on_match]) == :update ->
         case opts[:on_match] do

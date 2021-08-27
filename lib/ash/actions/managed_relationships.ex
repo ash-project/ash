@@ -228,7 +228,18 @@ defmodule Ash.Actions.ManagedRelationships do
               end
 
             _value ->
-              {:cont, {changeset, instructions}}
+              if opts[:on_match] == :destroy do
+                changeset =
+                  Ash.Changeset.force_change_attribute(
+                    changeset,
+                    relationship.source_field,
+                    nil
+                  )
+
+                {:cont, {changeset, instructions}}
+              else
+                {:cont, {changeset, instructions}}
+              end
           end
 
         {:error, error} ->
@@ -488,7 +499,7 @@ defmodule Ash.Actions.ManagedRelationships do
             {:cont, {:ok, new_value, all_notifications ++ notifications, all_used ++ used}}
 
           {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
-            {:error, error}
+            {:halt, {:error, error}}
 
           {:error, error} ->
             case Keyword.fetch(opts[:meta] || [], :inputs_was_list?) do
@@ -1048,6 +1059,25 @@ defmodule Ash.Actions.ManagedRelationships do
       :missing ->
         {:ok, current_value, [], []}
 
+      {:destroy, action_name} ->
+        case destroy_data(
+               source_record,
+               match,
+               api,
+               actor,
+               opts,
+               action_name,
+               changeset.tenant,
+               relationship,
+               changeset
+             ) do
+          {:ok, notifications} ->
+            {:ok, current_value, notifications, []}
+
+          {:error, error} ->
+            {:error, error}
+        end
+
       {:unrelate, action_name} ->
         case unrelate_data(
                source_record,
@@ -1524,5 +1554,80 @@ defmodule Ash.Actions.ManagedRelationships do
          _changeset
        ) do
     {:ok, []}
+  end
+
+  defp destroy_data(
+         source_record,
+         record,
+         api,
+         actor,
+         opts,
+         action_name,
+         tenant,
+         %{type: :many_to_many} = relationship,
+         changeset
+       ) do
+    action_name =
+      action_name || Ash.Resource.Info.primary_action(relationship.through, :destroy).name
+
+    source_value = Map.get(source_record, relationship.source_field)
+    destination_value = Map.get(record, relationship.destination_field)
+
+    relationship.through
+    |> Ash.Query.filter(ref(^relationship.source_field_on_join_table) == ^source_value)
+    |> Ash.Query.filter(ref(^relationship.destination_field_on_join_table) == ^destination_value)
+    |> Ash.Query.limit(1)
+    |> Ash.Query.set_tenant(tenant)
+    |> api.read_one(authorize?: opts[:authorize?], actor: actor)
+    |> case do
+      {:ok, result} ->
+        result
+        |> Ash.Changeset.new()
+        |> set_source_context({relationship, changeset})
+        |> Ash.Changeset.for_destroy(action_name, %{}, actor: actor)
+        |> Ash.Changeset.set_context(relationship.context)
+        |> Ash.Changeset.set_tenant(tenant)
+        |> api.destroy(
+          return_notifications?: true,
+          authorize?: opts[:authorize?],
+          actor: actor
+        )
+        |> case do
+          {:ok, notifications} ->
+            {:ok, notifications}
+
+          {:error, error} ->
+            {:error, error}
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp destroy_data(
+         _source_record,
+         record,
+         api,
+         actor,
+         opts,
+         action_name,
+         tenant,
+         relationship,
+         changeset
+       ) do
+    action_name =
+      action_name || Ash.Resource.Info.primary_action(relationship.destination, :update).name
+
+    record
+    |> Ash.Changeset.new()
+    |> set_source_context({relationship, changeset})
+    |> Ash.Changeset.for_destroy(action_name, %{},
+      relationships: opts[:relationships] || [],
+      actor: actor
+    )
+    |> Ash.Changeset.set_context(relationship.context)
+    |> Ash.Changeset.set_tenant(tenant)
+    |> api.destroy(return_notifications?: true, actor: actor, authorize?: opts[:authorize?])
   end
 end

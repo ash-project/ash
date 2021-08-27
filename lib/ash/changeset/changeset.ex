@@ -1263,6 +1263,11 @@ defmodule Ash.Changeset do
           * `{:update, :action_name}` - the record is updated using the specified action on the destination resource
           * `{:update, :action_name, :join_table_action_name, [:list, :of, :params]}` - Same as `{:update, :action_name}` but takes
               the list of params specified out and applies them as an update to the join table row (only valid for many to many).
+          * `{:destroy, :action_name}` - the record is destroyed using the specified action on the destination resource. The action should be:
+            * many_to_many - a destroy action on the join table
+            * has_many - a destroy action on the destination resource
+            * has_one - a destroy action on the destination resource
+            * belongs_to - a destroy action on the destination resource
           * `:error`  - an eror is returned indicating that a record would have been updated
           * `:no_match` - ignores the primary key match and follows the on_no_match instructions with these records instead.
           * `:unrelate` - the related item is not destroyed, but the data is "unrelated", making this behave like `remove_from_relationship/3`. The action should be:
