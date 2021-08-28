@@ -68,6 +68,8 @@ locals_without_parens = [
   many_to_many: 2,
   many_to_many: 3,
   message: 1,
+  metadata: 2,
+  metadata: 3,
   module: 1,
   not_found_message: 1,
   on: 1,

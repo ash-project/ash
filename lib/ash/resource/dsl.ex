@@ -855,7 +855,6 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
-
   @argument %Ash.Dsl.Entity{
     name: :argument,
     describe: """
