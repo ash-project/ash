@@ -12,6 +12,7 @@ defmodule Ash.Resource.Actions.Update do
     arguments: [],
     changes: [],
     reject: [],
+    metadata: [],
     type: :update
   ]
 

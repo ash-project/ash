@@ -13,6 +13,7 @@ defmodule Ash.Resource.Actions.Destroy do
     changes: [],
     reject: [],
     require_attributes: [],
+    metadata: [],
     type: :destroy
   ]
 

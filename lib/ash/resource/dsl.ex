@@ -334,6 +334,26 @@ defmodule Ash.Resource.Dsl do
     schema: Ash.Resource.Actions.Argument.schema()
   }
 
+  @metadata %Ash.Dsl.Entity{
+    name: :metadata,
+    describe: """
+    A special kind of attribute that is only added to specific actions. Nothing sets this value, it must be set in a custom
+    change via `Ash.Resource.Info.put_metadata/3`.
+    """,
+    examples: [
+      """
+      metadata :api_token, :string, allow_nil?: false
+      """,
+      """
+      metadata :operation_id, :string, allow_nil?: false
+      """
+    ],
+    target: Ash.Resource.Actions.Metadata,
+    args: [:name, :type],
+    modules: [:type],
+    schema: Ash.Resource.Actions.Metadata.schema()
+  }
+
   @validate %Ash.Dsl.Entity{
     name: :validate,
     describe: """
@@ -384,6 +404,9 @@ defmodule Ash.Resource.Dsl do
       ],
       arguments: [
         @action_argument
+      ],
+      metadata: [
+        @metadata
       ]
     ],
     args: [:name]
@@ -424,6 +447,9 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Actions.Read,
     schema: Ash.Resource.Actions.Read.opt_schema(),
     entities: [
+      metadata: [
+        @metadata
+      ],
       arguments: [
         @action_argument
       ],
@@ -446,6 +472,9 @@ defmodule Ash.Resource.Dsl do
       changes: [
         @change,
         @action_validate
+      ],
+      metadata: [
+        @metadata
       ],
       arguments: [
         @action_argument
@@ -472,6 +501,9 @@ defmodule Ash.Resource.Dsl do
       changes: [
         @change,
         @action_validate
+      ],
+      metadata: [
+        @metadata
       ],
       arguments: [
         @action_argument
@@ -822,6 +854,7 @@ defmodule Ash.Resource.Dsl do
       @list
     ]
   }
+
 
   @argument %Ash.Dsl.Entity{
     name: :argument,

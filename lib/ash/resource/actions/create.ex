@@ -12,6 +12,7 @@ defmodule Ash.Resource.Actions.Create do
     changes: [],
     allow_nil_input: [],
     reject: [],
+    metadata: [],
     type: :create
   ]
 
