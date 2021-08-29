@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.47.11](https://github.com/ash-project/ash/compare/v1.47.10...v1.47.11) (2021-08-29)
+
+
+
+
+### Bug Fixes:
+
+* hydrate metadata types
+
+### Improvements:
+
+* remove metadata from read actions
+
 ## [v1.47.10](https://github.com/ash-project/ash/compare/v1.47.9...v1.47.10) (2021-08-29)
 
 
