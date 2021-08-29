@@ -5,6 +5,31 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.47.10](https://github.com/ash-project/ash/compare/v1.47.9...v1.47.10) (2021-08-29)
+
+
+
+
+### Bug Fixes:
+
+* update to latest picosat_elixir for releases
+
+* cast `nil` enum values propertly
+
+* set api in destroy action hooks
+
+### Improvements:
+
+* support action level metadata
+
+* add `on_match: :destroy` option
+
+* if a map is given for a list, take it's keys
+
+* set better error paths for invalid relationships
+
+* include api in changeset inspect
+
 ## [v1.47.9](https://github.com/ash-project/ash/compare/v1.47.8...v1.47.9) (2021-08-11)
 
 
