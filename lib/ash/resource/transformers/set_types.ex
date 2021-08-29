@@ -7,6 +7,7 @@ defmodule Ash.Resource.Transformers.SetTypes do
   def transform(_resource, dsl_state) do
     with {:ok, dsl_state} <- set_attribute_types(dsl_state),
          {:ok, dsl_state} <- set_argument_types(dsl_state),
+         {:ok, dsl_state} <- set_metadata_types(dsl_state),
          {:ok, dsl_state} <- set_calculation_types(dsl_state) do
       {:ok, dsl_state}
     end
@@ -63,6 +64,44 @@ defmodule Ash.Resource.Transformers.SetTypes do
               dsl_state,
               [:actions],
               %{action | arguments: Enum.reverse(new_args)},
+              fn replacing ->
+                replacing.name == action.name && replacing.type == action.type
+              end
+            )}}
+
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
+    end)
+  end
+
+  defp set_metadata_types(dsl_state) do
+    dsl_state
+    |> Transformer.get_entities([:actions])
+    |> Enum.filter(&Map.has_key?(&1, :metadata))
+    |> Enum.reduce_while({:ok, dsl_state}, fn action, {:ok, dsl_state} ->
+      new_metadatas =
+        action.metadata
+        |> Enum.reduce_while({:ok, []}, fn metadata, {:ok, metadatas} ->
+          type = Ash.Type.get_type(metadata.type)
+
+          case validate_constraints(type, metadata.constraints) do
+            {:ok, constraints} ->
+              {:cont, {:ok, [%{metadata | type: type, constraints: constraints} | metadatas]}}
+
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
+        end)
+
+      case new_metadatas do
+        {:ok, new_metadatas} ->
+          {:cont,
+           {:ok,
+            Transformer.replace_entity(
+              dsl_state,
+              [:actions],
+              %{action | metadata: Enum.reverse(new_metadatas)},
               fn replacing ->
                 replacing.name == action.name && replacing.type == action.type
               end
