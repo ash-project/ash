@@ -447,9 +447,6 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Actions.Read,
     schema: Ash.Resource.Actions.Read.opt_schema(),
     entities: [
-      metadata: [
-        @metadata
-      ],
       arguments: [
         @action_argument
       ],

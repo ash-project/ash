@@ -10,7 +10,6 @@ defmodule Ash.Resource.Actions.Read do
     transaction?: false,
     arguments: [],
     preparations: [],
-    metadata: [],
     type: :read
   ]
 
