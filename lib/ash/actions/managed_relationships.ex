@@ -60,6 +60,9 @@ defmodule Ash.Actions.ManagedRelationships do
       {{relationship, {other, opts}}, index} ->
         {{relationship, {other, opts}}, index}
     end)
+    |> Enum.sort_by(fn {{_rel, {_input, opts}}, _index} ->
+      opts[:meta][:order]
+    end)
     |> Enum.reduce_while({changeset, %{notifications: []}}, fn {{relationship, {input, opts}},
                                                                 index},
                                                                {changeset, instructions} ->
@@ -419,6 +422,9 @@ defmodule Ash.Actions.ManagedRelationships do
         opts = Keyword.put(opts, :authorize?, engine_opts[:authorize?] && opts[:authorize?])
         {key, batch, opts, index}
       end)
+    end)
+    |> Enum.sort_by(fn {_key, _batch, opts, _index} ->
+      opts[:meta][:order]
     end)
     |> Enum.reduce_while({:ok, record, []}, fn {relationship, inputs, opts, index},
                                                {:ok, record, all_notifications} ->
