@@ -35,14 +35,8 @@ defmodule Ash.Resource.Actions.Create do
                 allow_nil_input: [
                   type: {:list, :atom},
                   doc: """
-                  A list of attributes that would normally be required, but should not be for this action.
-
-                  This exists because extensions like ash_graphql and ash_json_api will add non-null validations to their input for any attribute
-                  that is accepted by an action that has `allow_nil?: false`. This tells those extensions that some `change` on the resource might
-                  set that attribute, and so they should not require it at the API layer.
-
-                  Ash core doesn't actually use the values in this list, because it does its `nil` validation *after* running all resource
-                  changes. If the value is still `nil` by the time Ash would submit to the data layer, then an error is returned.
+                  A list of attributes that would normally be required, but should not be for this action. They will still be validated just before
+                  the record is created, but this allows for setting required attributes in your changes under the hood.
                   """
                 ]
               ]
