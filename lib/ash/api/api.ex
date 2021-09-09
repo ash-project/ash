@@ -524,7 +524,11 @@ defmodule Ash.Api do
           {:ok, single_result}
 
         {:ok, []} ->
-          {:ok, nil}
+          {:error,
+           NotFound.exception(
+             primary_key: filter,
+             resource: resource
+           )}
 
         {:error, error} ->
           {:error, error}
