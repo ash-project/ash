@@ -491,10 +491,11 @@ defmodule Ash.Engine do
   end
 
   defp split_local_async_requests(requests) do
-    if Enum.any?(requests, fn request ->
-         Ash.DataLayer.data_layer_can?(request.resource, :transact) &&
-           Ash.DataLayer.in_transaction?(request.resource)
-       end) do
+    if Application.get_env(:ash, :disable_async?) ||
+         Enum.any?(requests, fn request ->
+           Ash.DataLayer.data_layer_can?(request.resource, :transact) &&
+             Ash.DataLayer.in_transaction?(request.resource)
+         end) do
       {requests, []}
     else
       {local, async} = Enum.split_with(requests, &must_be_local?/1)
