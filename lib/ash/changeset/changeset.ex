@@ -821,7 +821,9 @@ defmodule Ash.Changeset do
   def require_values(changeset, action_type, private_and_belongs_to? \\ false, attrs \\ nil)
 
   def require_values(changeset, :create, private_and_belongs_to?, attrs) do
-    attributes = attrs || attributes_to_require(changeset.resource, private_and_belongs_to?)
+    attributes =
+      attrs ||
+        attributes_to_require(changeset.resource, changeset.action, private_and_belongs_to?)
 
     Enum.reduce(attributes, changeset, fn required_attribute, changeset ->
       if is_atom(required_attribute) do
@@ -856,7 +858,9 @@ defmodule Ash.Changeset do
   end
 
   def require_values(changeset, :update, private_and_belongs_to?, attrs) do
-    attributes = attrs || attributes_to_require(changeset.resource, private_and_belongs_to?)
+    attributes =
+      attrs ||
+        attributes_to_require(changeset.resource, changeset.action, private_and_belongs_to?)
 
     Enum.reduce(attributes, changeset, fn required_attribute, changeset ->
       if is_atom(required_attribute) do
@@ -898,22 +902,43 @@ defmodule Ash.Changeset do
   # Attributes that are private and/or are the source field of a belongs_to relationship
   # are typically not set by input, so they aren't required until the actual action
   # is run.
-  defp attributes_to_require(resource, true = _private_and_belongs_to?) do
+  defp attributes_to_require(resource, _action, true = _private_and_belongs_to?) do
     resource
     |> Ash.Resource.Info.attributes()
     |> Enum.reject(&(&1.allow_nil? || &1.generated?))
   end
 
-  defp attributes_to_require(resource, false = _private_and_belongs_to?) do
+  defp attributes_to_require(resource, action, false = _private_and_belongs_to?) do
     belongs_to =
       resource
       |> Ash.Resource.Info.relationships()
       |> Enum.filter(&(&1.type == :belongs_to))
       |> Enum.map(& &1.source_field)
 
+    action =
+      case action do
+        action when is_atom(action) ->
+          Ash.Resource.Info.action(resource, action)
+
+        _ ->
+          action
+      end
+
+    allow_nil_input =
+      case action do
+        %{allow_nil_input: allow_nil_input} ->
+          allow_nil_input
+
+        _ ->
+          []
+      end
+
     resource
     |> Ash.Resource.Info.attributes()
-    |> Enum.reject(&(&1.allow_nil? || &1.private? || &1.generated? || &1.name in belongs_to))
+    |> Enum.reject(
+      &(&1.allow_nil? || &1.private? || &1.generated? || &1.name in belongs_to ||
+          &1.name in allow_nil_input)
+    )
   end
 
   @doc """
