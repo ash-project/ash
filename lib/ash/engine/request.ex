@@ -743,6 +743,35 @@ defmodule Ash.Engine.Request do
     end
   end
 
+  defp do_runtime_filter(%{action: %{type: :create}, changeset: changeset} = request, filter) do
+    {:ok, fake_result} = Ash.Changeset.apply_attributes(changeset, force?: true)
+
+    case Ash.Filter.parse(request.resource, filter) do
+      {:ok, filter} ->
+        case Ash.Filter.Runtime.do_match(fake_result, filter) do
+          {:ok, true} ->
+            {:ok, request}
+
+          {:ok, false} ->
+            {:error, Ash.Error.Forbidden.exception([])}
+
+          :unknown ->
+            Logger.error("""
+            Could not apply filter policy because it cannot be checked using Ash.Filter.Runtime: #{inspect(filter)}.
+
+            If you are using ash_policy_authorizer policy must include a filter like this, try setting the access_type to `:runtime`"
+
+            Otherwise, please report this issue: https://github.com/ash-project/ash_policy_authorizer/issues/new?assignees=&labels=bug%2C+needs+review&template=bug_report.md&title=
+            """)
+
+            {:error, Ash.Error.Forbidden.exception([])}
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
   defp do_runtime_filter(request, filter) do
     pkey = Ash.Resource.Info.primary_key(request.resource)
 
@@ -771,6 +800,13 @@ defmodule Ash.Engine.Request do
       {:error, error} ->
         {:error, error}
     end
+  rescue
+    e ->
+      Logger.error(
+        "Exception while running authorization query: #{inspect(Exception.message(e))}"
+      )
+
+      {:error, Ash.Error.Forbidden.exception([])}
   end
 
   defp try_resolve(request, deps, internal?) do

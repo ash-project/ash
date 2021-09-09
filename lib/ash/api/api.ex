@@ -41,6 +41,8 @@ defmodule Ash.Api do
     NoSuchResource
   }
 
+  alias Ash.Error.Query.NotFound
+
   alias Ash.Dsl.Extension
 
   require Ash.Query
@@ -477,7 +479,7 @@ defmodule Ash.Api do
 
   @doc false
   @spec get(Ash.Api.t(), Ash.Resource.t(), term(), Keyword.t()) ::
-          {:ok, Ash.Resource.record() | nil} | {:error, term}
+          {:ok, Ash.Resource.record()} | {:error, term}
   def get(api, resource, id, opts) do
     with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @get_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, resource),
@@ -504,7 +506,11 @@ defmodule Ash.Api do
           {:ok, single_result}
 
         {:ok, %{results: []}} ->
-          {:ok, nil}
+          {:error,
+           NotFound.exception(
+             primary_key: filter,
+             resource: resource
+           )}
 
         {:ok, %{results: results}} ->
           {:error,

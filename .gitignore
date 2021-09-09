@@ -31,3 +31,5 @@ ash-*.tar
 /Mnesia.*
 
 .DS_Store
+
+.vscode

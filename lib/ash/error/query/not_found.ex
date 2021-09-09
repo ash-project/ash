@@ -21,10 +21,22 @@ defmodule Ash.Error.Query.NotFound do
 
     def stacktrace(_), do: nil
 
-    defp id_string(map) do
-      Enum.map_join(map, " | ", fn {key, value} ->
-        "#{key}: #{inspect(value)}"
-      end)
+    defp id_string(%Ash.Filter{} = filter) do
+      inspect(filter)
+    end
+
+    defp id_string(map) when is_map(map) do
+      if Map.has_key?(map, :__struct__) do
+        inspect(map)
+      else
+        Enum.map_join(map, " | ", fn {key, value} ->
+          "#{key}: #{inspect(value)}"
+        end)
+      end
+    end
+
+    defp id_string(other) do
+      inspect(other)
     end
   end
 end
