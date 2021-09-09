@@ -3,6 +3,7 @@ defmodule Ash.Test.Actions.DestroyTest do
   use ExUnit.Case, async: true
 
   import Ash.Changeset
+  require Ash.Query
 
   defmodule Profile do
     @moduledoc false
@@ -133,7 +134,7 @@ defmodule Ash.Test.Actions.DestroyTest do
 
       assert Api.destroy!(post) == :ok
 
-      refute Api.get!(Post, post.id)
+      refute Api.read_one!(Ash.Query.filter(Post, id == ^post.id))
     end
 
     test "the destroy does not happen if it is unauthorized" do
@@ -161,7 +162,7 @@ defmodule Ash.Test.Actions.DestroyTest do
 
       assert Api.destroy!(author, action: :manual) == :ok
 
-      refute Api.get!(Author, author.id)
+      refute Api.read_one!(Ash.Query.filter(Author, id == ^author.id))
     end
   end
 end

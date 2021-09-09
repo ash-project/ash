@@ -95,8 +95,8 @@ defmodule Ash.Test.Actions.ReadTest do
       assert clear_meta(fetched_post) == post
     end
 
-    test "it returns nil when there is no matching record" do
-      assert {:ok, nil} = Api.get(Post, Ash.UUID.generate())
+    test "it returns an error when there is no matching record" do
+      assert {:error, %Ash.Error.Query.NotFound{}} = Api.get(Post, Ash.UUID.generate())
     end
 
     test "it uses identities if they exist", %{post: post} do
