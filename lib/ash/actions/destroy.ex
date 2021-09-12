@@ -61,6 +61,7 @@ defmodule Ash.Actions.Destroy do
         api: api,
         path: [:data],
         action: action,
+        changeset: changeset,
         data: [record],
         name: "destroy request"
       )
