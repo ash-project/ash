@@ -74,7 +74,8 @@ defmodule Ash.Actions.Create do
              action,
              resource,
              api,
-             upsert_keys
+             upsert_keys,
+             opts
            ) do
       add_notifications(created, engine_result, opts)
     else
@@ -130,7 +131,8 @@ defmodule Ash.Actions.Create do
          action,
          resource,
          api,
-         upsert_keys
+         upsert_keys,
+         opts
        ) do
     authorization_request =
       Request.new(
@@ -264,7 +266,7 @@ defmodule Ash.Actions.Create do
                     {:error, "No record created in create action!"}
                   end
 
-                {:ok, created, _changeset, instructions} ->
+                {:ok, created, changeset, instructions} ->
                   if action.manual? do
                     {:ok, created}
                     |> add_tenant(changeset)
@@ -280,6 +282,7 @@ defmodule Ash.Actions.Create do
                   else
                     {:ok, created, instructions}
                   end
+                  |> run_after_action(changeset, opts)
 
                 other ->
                   other
@@ -297,6 +300,19 @@ defmodule Ash.Actions.Create do
     )
   end
 
+  defp run_after_action({:ok, result, instructions}, changeset, opts) do
+    if opts[:after_action] do
+      case opts[:after_action].(changeset, result) do
+        {:ok, result} -> {:ok, Helpers.select(result, changeset), instructions}
+        other -> other
+      end
+    else
+      {:ok, Helpers.select(result, changeset), instructions}
+    end
+  end
+
+  defp run_after_action(other, _, _), do: other
+
   defp manage_relationships({:ok, nil}, _, _, _) do
     {:ok, nil, %{notifications: []}}
   end
@@ -311,7 +327,7 @@ defmodule Ash.Actions.Create do
              engine_opts[:actor],
              engine_opts
            ) do
-      {:ok, Helpers.select(with_relationships, changeset), %{notifications: new_notifications}}
+      {:ok, with_relationships, %{notifications: new_notifications}}
     end
   end
 

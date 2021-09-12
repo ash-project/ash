@@ -53,7 +53,8 @@ defmodule Ash.Actions.Update do
              engine_opts,
              action,
              resource,
-             api
+             api,
+             opts
            ) do
       add_notifications(updated, engine_result, opts)
     else
@@ -82,6 +83,19 @@ defmodule Ash.Actions.Update do
     other
   end
 
+  defp run_after_action({:ok, result, instructions}, changeset, opts) do
+    if opts[:after_action] do
+      case opts[:after_action].(changeset, result) do
+        {:ok, result} -> {:ok, Helpers.select(result, changeset), instructions}
+        other -> other
+      end
+    else
+      {:ok, Helpers.select(result, changeset), instructions}
+    end
+  end
+
+  defp run_after_action(other, _, _), do: other
+
   defp add_notifications(result, engine_result, opts) do
     if opts[:return_notifications?] do
       {:ok, result, Map.get(engine_result, :resource_notifications, [])}
@@ -106,7 +120,8 @@ defmodule Ash.Actions.Update do
          engine_opts,
          action,
          resource,
-         api
+         api,
+         opts
        ) do
     authorization_request =
       Request.new(
@@ -216,6 +231,7 @@ defmodule Ash.Actions.Update do
                   else
                     {:ok, updated, instructions}
                   end
+                  |> run_after_action(changeset, opts)
 
                 other ->
                   other
@@ -243,7 +259,7 @@ defmodule Ash.Actions.Update do
              engine_opts[:actor],
              engine_opts
            ) do
-      {:ok, Helpers.select(with_relationships, changeset), %{notifications: new_notifications}}
+      {:ok, with_relationships, %{notifications: new_notifications}}
     end
   end
 
