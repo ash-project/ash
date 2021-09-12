@@ -5,6 +5,29 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.47.12](https://github.com/ash-project/ash/compare/v1.47.11...v1.47.12) (2021-09-12)
+
+
+
+
+### Bug Fixes:
+
+* return not found in all cases on get
+
+* don't allow get! to return nil
+
+* don't do db filters on creation
+
+* honor `allow_nil_input` in required validations
+
+### Improvements:
+
+* add `after_action` option to create/update
+
+* add config :ash, disable_async?: true
+
+* add `meta[:order]` option for managed relationships
+
 ## [v1.47.11](https://github.com/ash-project/ash/compare/v1.47.10...v1.47.11) (2021-08-29)
 
 
