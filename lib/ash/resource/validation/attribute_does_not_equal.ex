@@ -44,7 +44,7 @@ defmodule Ash.Resource.Validation.AttributeDoesNotEqual do
            vars: [field: opts[:attribute], value: opts[:value]]
          )}
 
-      changeset.data.action_type != :create && changeset.data &&
+      changeset.action_type != :create && changeset.data &&
           Map.get(changeset.data, opts[:attribute]) == opts[:value] ->
         {:error,
          InvalidAttribute.exception(

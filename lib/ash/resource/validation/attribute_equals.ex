@@ -33,9 +33,13 @@ defmodule Ash.Resource.Validation.AttributeEquals do
 
   @impl true
   def validate(changeset, opts) do
+    IO.inspect(changeset)
+    IO.inspect(opts)
+
     cond do
       changeset.action_type == :create &&
-          Ash.Changeset.get_attribute(changeset, opts[:attribute]) != opts[:value] ->
+          IO.inspect(Ash.Changeset.get_attribute(changeset, opts[:attribute])) !=
+            IO.inspect(opts[:value]) ->
         {:error,
          InvalidAttribute.exception(
            field: opts[:attribute],
@@ -43,7 +47,7 @@ defmodule Ash.Resource.Validation.AttributeEquals do
            vars: [field: opts[:attribute], value: opts[:value]]
          )}
 
-      changeset.data.action_type != :create && changeset.data &&
+      changeset.action_type != :create && changeset.data &&
           Map.get(changeset.data, opts[:attribute]) != opts[:value] ->
         {:error,
          InvalidAttribute.exception(
