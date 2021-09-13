@@ -22,10 +22,17 @@ defmodule Ash.Schema do
           for attribute <- Ash.Resource.Info.attributes(__MODULE__) do
             read_after_writes? = attribute.generated? and is_nil(attribute.default)
 
-            field(attribute.name, Ash.Type.ecto_type(attribute.type),
-              primary_key: attribute.primary_key?,
-              read_after_writes: read_after_writes?,
-              redact: attribute.sensitive?
+            field(
+              attribute.name,
+              Ash.Type.ecto_type(attribute.type),
+              Keyword.merge(
+                [
+                  primary_key: attribute.primary_key?,
+                  read_after_writes: read_after_writes?,
+                  redact: attribute.sensitive?
+                ],
+                attribute.constraints
+              )
             )
           end
 
@@ -78,10 +85,17 @@ defmodule Ash.Schema do
           for attribute <- Ash.Resource.Info.attributes(__MODULE__) do
             read_after_writes? = attribute.generated? and is_nil(attribute.default)
 
-            field(attribute.name, Ash.Type.ecto_type(attribute.type),
-              primary_key: attribute.primary_key?,
-              read_after_writes: read_after_writes?,
-              redact: attribute.sensitive?
+            field(
+              attribute.name,
+              Ash.Type.ecto_type(attribute.type),
+              Keyword.merge(
+                [
+                  primary_key: attribute.primary_key?,
+                  read_after_writes: read_after_writes?,
+                  redact: attribute.sensitive?
+                ],
+                attribute.constraints
+              )
             )
           end
 

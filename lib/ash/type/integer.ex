@@ -62,6 +62,8 @@ defmodule Ash.Type.Integer do
   end
 
   @impl true
+  def cast_stored(nil, _), do: {:ok, nil}
+
   def cast_stored(string, constraints) when is_binary(string) do
     case Integer.parse(string) do
       {integer, ""} ->
@@ -77,6 +79,8 @@ defmodule Ash.Type.Integer do
   end
 
   @impl true
+  def dump_to_native(nil, _), do: {:ok, nil}
+
   def dump_to_native(value, _) do
     Ecto.Type.dump(:integer, value)
   end

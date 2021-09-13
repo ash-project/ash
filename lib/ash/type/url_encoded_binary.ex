@@ -26,11 +26,15 @@ defmodule Ash.Type.UrlEncodedBinary do
   end
 
   @impl true
+  def cast_stored(nil, _), do: {:ok, nil}
+
   def cast_stored(value, _) do
     Ecto.Type.load(:binary, value)
   end
 
   @impl true
+  def dump_to_native(nil, _), do: {:ok, nil}
+
   def dump_to_native(value, _) do
     Ecto.Type.dump(:binary, value)
   end

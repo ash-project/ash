@@ -657,37 +657,44 @@ defmodule Ash.Type do
 
       defmodule EctoType do
         @moduledoc false
-        @behaviour Ecto.Type
+        use Ecto.ParameterizedType
 
         @parent parent
 
         @impl true
-        def type do
+        def init(opts) do
+          constraints = @parent.constraints()
+
+          Keyword.take(opts, Keyword.keys(constraints))
+        end
+
+        @impl true
+        def type(_) do
           @parent.storage_type()
         end
 
         @impl true
-        def cast(term) do
-          @parent.cast_input(term, [])
+        def cast(term, params) do
+          @parent.cast_input(term, params)
         end
 
         @impl true
-        def load(term) do
-          @parent.cast_stored(term, [])
+        def load(term, _, params) do
+          @parent.cast_stored(term, params)
         end
 
         @impl true
-        def dump(term) do
-          @parent.dump_to_native(term, [])
+        def dump(term, _dumper, params) do
+          @parent.dump_to_native(term, params)
         end
 
         @impl true
-        def equal?(left, right) do
+        def equal?(left, right, _params) do
           @parent.equal?(left, right)
         end
 
         @impl true
-        def embed_as(_), do: :self
+        def embed_as(_, _), do: :self
       end
 
       @impl true

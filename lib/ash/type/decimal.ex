@@ -80,6 +80,7 @@ defmodule Ash.Type.Decimal do
   end
 
   @impl true
+
   def cast_stored(value, _) when is_binary(value) do
     case Decimal.parse(value) do
       {decimal, ""} ->
@@ -91,12 +92,16 @@ defmodule Ash.Type.Decimal do
   end
 
   @impl true
+  def cast_stored(nil, _), do: {:ok, nil}
+
   def cast_stored(value, _) do
     Ecto.Type.load(:decimal, value)
   end
 
   @impl true
   @spec dump_to_native(any, any) :: :error | {:ok, any}
+  def dump_to_native(nil, _), do: {:ok, nil}
+
   def dump_to_native(value, _) do
     Ecto.Type.dump(:decimal, value)
   end

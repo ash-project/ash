@@ -15,6 +15,8 @@ defmodule Ash.Type.UtcDatetimeUsec do
   end
 
   @impl true
+  def cast_stored(nil, _), do: {:ok, nil}
+
   def cast_stored(value, _) do
     case Ecto.Type.load(:utc_datetime_usec, value) do
       {:ok, value} ->
@@ -36,6 +38,9 @@ defmodule Ash.Type.UtcDatetimeUsec do
   end
 
   @impl true
+
+  def dump_to_native(nil, _), do: {:ok, nil}
+
   def dump_to_native(value, _) do
     Ecto.Type.dump(:utc_datetime_usec, value)
   end

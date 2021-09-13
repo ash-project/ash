@@ -167,7 +167,7 @@ defmodule Ash.EmbeddableType do
         |> Enum.reduce_while({:ok, struct(__MODULE__)}, fn attr, {:ok, struct} ->
           with {:fetch, {:ok, value}} <- {:fetch, fetch_key(value, attr.name)},
                {:ok, casted} <-
-                 Ash.Type.cast_stored(attr.type, value, constraints) do
+                 Ash.Type.cast_stored(attr.type, value, attr.constraints) do
             {:cont, {:ok, Map.put(struct, attr.name, casted)}}
           else
             {:fetch, :error} ->

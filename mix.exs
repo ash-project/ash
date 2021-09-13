@@ -185,7 +185,7 @@ defmodule Ash.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:ecto, "~> 3.4"},
+      {:ecto, "~> 3.7"},
       {:ets, "~> 0.8.0"},
       {:decimal, "~> 2.0"},
       {:picosat_elixir, "~> 0.2"},

@@ -20,6 +20,8 @@ defmodule Ash.Type.UUID do
   end
 
   @impl true
+  def cast_stored(nil, _), do: {:ok, nil}
+
   def cast_stored(value, constraints) do
     case Ecto.Type.load(Ecto.UUID, value) do
       :error ->
@@ -39,6 +41,9 @@ defmodule Ash.Type.UUID do
   end
 
   @impl true
+
+  def dump_to_native(nil, _), do: {:ok, nil}
+
   def dump_to_native(value, _) do
     Ecto.Type.dump(Ecto.UUID, value)
   end

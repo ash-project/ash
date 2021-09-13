@@ -42,6 +42,8 @@ defmodule Ash.Type.Function do
 
   @impl true
   # sobelow_skip ["Misc.BinToTerm"]
+  def cast_stored(nil, _), do: {:ok, nil}
+
   def cast_stored(value, _) do
     case Ecto.Type.load(:binary, value) do
       {:ok, val} ->
@@ -62,6 +64,9 @@ defmodule Ash.Type.Function do
   end
 
   @impl true
+
+  def dump_to_native(nil, _), do: {:ok, nil}
+
   def dump_to_native(value, _) do
     Ecto.Type.dump(:binary, :erlang.term_to_binary(value))
   end

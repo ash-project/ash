@@ -61,6 +61,8 @@ defmodule Ash.Type.Atom do
   def cast_input(_value, _), do: :error
 
   @impl true
+  def cast_stored(nil, _), do: {:ok, nil}
+
   def cast_stored(value, _) when is_atom(value) do
     {:ok, value}
   end
@@ -75,6 +77,8 @@ defmodule Ash.Type.Atom do
   def cast_stored(_, _), do: :error
 
   @impl true
+  def dump_to_native(nil, _), do: {:ok, nil}
+
   def dump_to_native(value, _) when is_atom(value) do
     {:ok, to_string(value)}
   end

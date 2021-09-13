@@ -22,6 +22,8 @@ defmodule Ash.Type.Interval do
   end
 
   @impl true
+  def cast_stored(nil, _), do: {:ok, nil}
+
   def cast_stored(value, _) when value in @intervals do
     {:ok, value}
   end
@@ -31,6 +33,8 @@ defmodule Ash.Type.Interval do
   end
 
   @impl true
+  def dump_to_native(nil, _), do: {:ok, nil}
+
   def dump_to_native(value, _) when is_atom(value) do
     {:ok, to_string(value)}
   end
