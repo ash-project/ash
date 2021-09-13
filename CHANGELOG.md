@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.0](https://github.com/ash-project/ash/compare/v1.47.12...v1.48.0-rc.0) (2021-09-13)
+### Breaking Changes:
+
+* update ecto version
+
+
+
+### Bug Fixes:
+
+* pass constraints to sub-fields loaded in embeddable resources
+
+* take creates into account w/ attribute_equals and attribute_does_not_equal
+
+* set changeset in destroy authorization request
+
+### Improvements:
+
+* use paramaterized types under the hood
+
 ## [v1.47.12](https://github.com/ash-project/ash/compare/v1.47.11...v1.47.12) (2021-09-12)
 
 
