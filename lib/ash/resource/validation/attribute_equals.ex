@@ -1,5 +1,9 @@
 defmodule Ash.Resource.Validation.AttributeEquals do
-  @moduledoc "A validation that fails unless the attribute equals a specific value"
+  @moduledoc """
+  A validation that fails unless the attribute equals a specific value *before* changes are applied.
+
+  Creates, however, will take into account the changes.
+  """
   @opt_schema [
     attribute: [
       type: :atom,
@@ -29,15 +33,27 @@ defmodule Ash.Resource.Validation.AttributeEquals do
 
   @impl true
   def validate(changeset, opts) do
-    if changeset.data && Map.get(changeset.data, opts[:attribute]) != opts[:value] do
-      {:error,
-       InvalidAttribute.exception(
-         field: opts[:attribute],
-         message: "must equal %{value}",
-         vars: [field: opts[:attribute], value: opts[:value]]
-       )}
-    else
-      :ok
+    cond do
+      changeset.action_type == :create &&
+          Ash.Changeset.get_attribute(changeset, opts[:attribute]) != opts[:value] ->
+        {:error,
+         InvalidAttribute.exception(
+           field: opts[:attribute],
+           message: "must equal %{value}",
+           vars: [field: opts[:attribute], value: opts[:value]]
+         )}
+
+      changeset.data.action_type != :create && changeset.data &&
+          Map.get(changeset.data, opts[:attribute]) != opts[:value] ->
+        {:error,
+         InvalidAttribute.exception(
+           field: opts[:attribute],
+           message: "must equal %{value}",
+           vars: [field: opts[:attribute], value: opts[:value]]
+         )}
+
+      true ->
+        :ok
     end
   end
 end
