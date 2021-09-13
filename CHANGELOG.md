@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.1](https://github.com/ash-project/ash/compare/v1.48.0-rc.0...v1.48.0-rc.1) (2021-09-13)
+
+
+
+
+### Bug Fixes:
+
+* check action type properly in attribute validations
+
 ## [v1.48.0-rc.0](https://github.com/ash-project/ash/compare/v1.47.12...v1.48.0-rc.0) (2021-09-13)
 ### Breaking Changes:
 
