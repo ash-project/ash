@@ -41,9 +41,9 @@ defmodule Ash.Type.Function do
   def cast_input(_, _), do: :error
 
   @impl true
-  # sobelow_skip ["Misc.BinToTerm"]
   def cast_stored(nil, _), do: {:ok, nil}
 
+  # sobelow_skip ["Misc.BinToTerm"]
   def cast_stored(value, _) do
     case Ecto.Type.load(:binary, value) do
       {:ok, val} ->
