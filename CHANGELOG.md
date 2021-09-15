@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.2](https://github.com/ash-project/ash/compare/v1.48.0-rc.1...v1.48.0-rc.2) (2021-09-15)
+
+
+
+
+### Bug Fixes:
+
+* set tenant properly on create interface
+
+* update type spec for Ash.Sort to include single atom instead of only list. (#263)
+
+### Improvements:
+
+* remove IO.inspect :*( and fix sobelow
+
+* support non-endpoint pubsub adapters
+
 ## [v1.48.0-rc.1](https://github.com/ash-project/ash/compare/v1.48.0-rc.0...v1.48.0-rc.1) (2021-09-13)
 
 
