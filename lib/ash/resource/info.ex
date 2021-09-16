@@ -149,8 +149,7 @@ defmodule Ash.Resource.Info do
   @doc "Whether or not a given module is a resource module"
   @spec resource?(module) :: boolean
   def resource?(module) when is_atom(module) do
-    # Prevent compile time dependency
-    Ash.Dsl.is?(module, Module.concat(["Ash", Resource]))
+    Ash.Dsl.is?(module, Ash.Resource)
   end
 
   def resource?(_), do: false

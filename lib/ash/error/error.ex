@@ -221,6 +221,7 @@ defmodule Ash.Error do
 
               %{stacktrace: %Stacktrace{stacktrace: stacktrace}} = class_error ->
                 "* #{Exception.message(class_error)}\n" <>
+                  path(class_error) <>
                   Enum.map_join(stacktrace, "\n", fn stack_item ->
                     "  " <> Exception.format_stacktrace_entry(stack_item)
                   end)
@@ -260,6 +261,12 @@ defmodule Ash.Error do
       header <> Enum.map_join(class_errors, "\n", &"* #{Ash.ErrorKind.message(&1)}")
     end)
   end
+
+  defp path(%{path: path}) when path not in [[], nil] do
+    "    at " <> Enum.join(path, ", ") <> "\n"
+  end
+
+  defp path(_), do: ""
 
   defp header(:invalid), do: "Input Invalid"
   defp header(:forbidden), do: "Forbidden"

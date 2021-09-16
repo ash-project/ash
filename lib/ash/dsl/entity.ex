@@ -66,9 +66,9 @@ defmodule Ash.Dsl.Entity do
     end
   end
 
-  defp transform(nil, built), do: {:ok, built}
+  def transform(nil, built), do: {:ok, built}
 
-  defp transform({module, function, args}, built) do
+  def transform({module, function, args}, built) do
     apply(module, function, [built | args])
   end
 end

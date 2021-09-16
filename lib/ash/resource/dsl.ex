@@ -281,7 +281,7 @@ defmodule Ash.Resource.Dsl do
       """
     ],
     imports: [
-      Module.concat(["Ash", Filter.TemplateHelpers])
+      Ash.Filter.TemplateHelpers
     ],
     entities: [
       @has_one,
@@ -534,14 +534,12 @@ defmodule Ash.Resource.Dsl do
     arguments. This does, however, allow you to customize exactly how related entities are read/
     created.
     """,
-    imports:
-      [
-        Resource.Change.Builtins,
-        Resource.Preparation.Builtins,
-        Resource.Validation.Builtins,
-        Filter.TemplateHelpers
-      ]
-      |> Enum.map(&Module.concat(["Ash", &1])),
+    imports: [
+      Ash.Resource.Change.Builtins,
+      Ash.Resource.Preparation.Builtins,
+      Ash.Resource.Validation.Builtins,
+      Ash.Filter.TemplateHelpers
+    ],
     schema: [
       defaults: [
         type: {:list, {:in, [:create, :read, :update, :destroy]}},
@@ -644,7 +642,7 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
-    imports: [Module.concat(["Ash", Filter, TemplateHelpers])],
+    imports: [Ash.Filter.TemplateHelpers],
     schema: [
       description: [
         type: :string,
@@ -725,9 +723,7 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declare validations prior to performing actions against the resource
     """,
-    imports: [
-      Module.concat(["Ash", Resource, Validation, Builtins])
-    ],
+    imports: [Ash.Resource.Validation.Builtins],
     examples: [
       """
       validations do
@@ -841,9 +837,7 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
-    imports: [
-      Module.concat(["Ash", Filter.TemplateHelpers])
-    ],
+    imports: [Ash.Filter.TemplateHelpers],
     entities: [
       @count,
       @first,
@@ -923,10 +917,7 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
-    imports: [
-      Module.concat(["Ash", Resource, Calculation, Builtins]),
-      Module.concat(["Ash", Filter.TemplateHelpers])
-    ],
+    imports: [Ash.Resource.Calculation.Builtins, Ash.Filter.TemplateHelpers],
     entities: [
       @calculation
     ]

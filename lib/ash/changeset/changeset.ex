@@ -2213,18 +2213,25 @@ defmodule Ash.Changeset do
   end
 
   defp to_change_error(keyword) do
-    if keyword[:field] do
-      InvalidAttribute.exception(
-        field: keyword[:field],
-        message: keyword[:message],
-        vars: keyword
-      )
+    error =
+      if keyword[:field] do
+        InvalidAttribute.exception(
+          field: keyword[:field],
+          message: keyword[:message],
+          vars: keyword
+        )
+      else
+        InvalidChanges.exception(
+          fields: keyword[:fields] || [],
+          message: keyword[:message],
+          vars: keyword
+        )
+      end
+
+    if keyword[:path] do
+      set_path(error, keyword[:path])
     else
-      InvalidChanges.exception(
-        fields: keyword[:fields] || [],
-        message: keyword[:message],
-        vars: keyword
-      )
+      error
     end
   end
 
@@ -2276,6 +2283,13 @@ defmodule Ash.Changeset do
             message: Keyword.get(opts, :message),
             vars: opts
           )
+
+        error =
+          if opts[:path] do
+            set_path(error, opts[:path])
+          else
+            error
+          end
 
         add_error(changeset, error)
       end)

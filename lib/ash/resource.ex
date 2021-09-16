@@ -15,15 +15,15 @@ defmodule Ash.Resource do
       :notifiers
     ],
     default_extensions: [
-      data_layer: Module.concat(["Ash", DataLayer, Simple]),
-      extensions: [Module.concat(["Ash", Resource, Dsl])]
+      data_layer: Ash.DataLayer.Simple,
+      extensions: [Ash.Resource.Dsl]
     ]
 
   def init(opts) do
     if opts[:data_layer] == :embedded do
       {:ok,
        opts
-       |> Keyword.put(:data_layer, Module.concat(["Ash", DataLayer, Simple]))
+       |> Keyword.put(:data_layer, Ash.DataLayer.Simple)
        |> Keyword.put(:embedded?, true)}
     else
       {:ok, opts}
