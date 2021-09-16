@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.3](https://github.com/ash-project/ash/compare/v1.48.0-rc.2...v1.48.0-rc.3) (2021-09-16)
+
+
+
+
+### Improvements:
+
+* transformer/extension improvements
+
+* add path to errors
+
 ## [v1.48.0-rc.2](https://github.com/ash-project/ash/compare/v1.48.0-rc.1...v1.48.0-rc.2) (2021-09-15)
 
 
