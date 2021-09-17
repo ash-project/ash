@@ -385,8 +385,6 @@ defmodule Ash.Query do
 
   @doc """
   Creates an Ash expression for evaluation later.
-
-  #{File.read!("documentation/topics/expressions.md")}
   """
   defmacro expr(do: body) do
     quote do
