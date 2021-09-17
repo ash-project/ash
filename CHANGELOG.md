@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.5](https://github.com/ash-project/ash/compare/v1.48.0-rc.4...v1.48.0-rc.5) (2021-09-17)
+
+
+
+
+### Improvements:
+
+* upgrade docs/tooling for elixir_sense
+
+* set docs statically
+
 ## [v1.48.0-rc.4](https://github.com/ash-project/ash/compare/v1.48.0-rc.3...v1.48.0-rc.4) (2021-09-17)
 
 
