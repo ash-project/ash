@@ -372,7 +372,29 @@ defmodule Ash.Dsl.Extension do
       @_transformers transformers
 
       @doc false
-      def sections, do: @_sections
+      def sections, do: set_docs(@_sections)
+
+      defp set_docs(items) when is_list(items) do
+        Enum.map(items, &set_docs/1)
+      end
+
+      defp set_docs(%Ash.Dsl.Entity{} = entity) do
+        %{
+          entity
+          | docs: Ash.Dsl.Extension.doc_entity(entity),
+            entities:
+              Enum.map(entity.entities || [], fn {key, value} -> {key, set_docs(value)} end)
+        }
+      end
+
+      defp set_docs(%Ash.Dsl.Section{} = section) do
+        %{
+          section
+          | entities: set_docs(section.entities),
+            sections: set_docs(section.sections),
+            docs: Ash.Dsl.Extension.doc_section(section)
+        }
+      end
 
       @doc false
       def transformers, do: @_transformers

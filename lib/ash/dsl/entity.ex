@@ -44,7 +44,8 @@ defmodule Ash.Dsl.Entity do
     hide: [],
     modules: [],
     schema: [],
-    auto_set_fields: []
+    auto_set_fields: [],
+    docs: ""
   ]
 
   def build(

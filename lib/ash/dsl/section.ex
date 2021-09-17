@@ -29,6 +29,7 @@ defmodule Ash.Dsl.Section do
     examples: [],
     modules: [],
     entities: [],
-    sections: []
+    sections: [],
+    docs: ""
   ]
 end
