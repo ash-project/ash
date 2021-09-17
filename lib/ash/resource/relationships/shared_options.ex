@@ -7,7 +7,7 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       doc: "The name of the relationship"
     ],
     destination: [
-      type: :atom,
+      type: :ash_resource,
       doc: "The destination resource"
     ],
     destination_field: [

@@ -37,7 +37,7 @@ defmodule Ash.Resource.Attribute do
       doc: "The name of the attribute."
     ],
     type: [
-      type: :any,
+      type: :ash_type,
       doc: "The type of the attribute."
     ],
     constraints: [

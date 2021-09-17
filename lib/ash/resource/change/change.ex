@@ -16,7 +16,7 @@ defmodule Ash.Resource.Change do
   def schema do
     [
       change: [
-        type: {:custom, __MODULE__, :change, []},
+        type: {:ash_behaviour, Ash.Resource.Change, Ash.Resource.Change.Builtins},
         doc: """
         The module and options for a change.
         """,

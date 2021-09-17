@@ -379,21 +379,19 @@ defmodule Ash.Dsl.Extension do
       end
 
       defp set_docs(%Ash.Dsl.Entity{} = entity) do
-        %{
-          entity
-          | docs: Ash.Dsl.Extension.doc_entity(entity),
-            entities:
-              Enum.map(entity.entities || [], fn {key, value} -> {key, set_docs(value)} end)
-        }
+        entity
+        |> Map.put(:docs, Ash.Dsl.Extension.doc_entity(entity))
+        |> Map.put(
+          :entities,
+          Enum.map(entity.entities || [], fn {key, value} -> {key, set_docs(value)} end)
+        )
       end
 
       defp set_docs(%Ash.Dsl.Section{} = section) do
-        %{
-          section
-          | entities: set_docs(section.entities),
-            sections: set_docs(section.sections),
-            docs: Ash.Dsl.Extension.doc_section(section)
-        }
+        section
+        |> Map.put(:entities, set_docs(section.entities))
+        |> Map.put(:sections, set_docs(section.sections))
+        |> Map.put(:docs, Ash.Dsl.Extension.doc_section(section))
       end
 
       @doc false

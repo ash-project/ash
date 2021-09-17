@@ -152,6 +152,11 @@ defmodule Ash.Type do
 
   @builtin_types Keyword.values(@short_names)
 
+  @doc false
+  def builtin_types do
+    @short_names
+  end
+
   def builtin?(type) when type in @builtin_types, do: true
   def builtin?(_), do: false
 

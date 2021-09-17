@@ -80,7 +80,7 @@ defmodule Ash.Resource.Calculation do
         doc: "The name to use for the argument"
       ],
       type: [
-        type: :any,
+        type: :ash_type,
         required: true,
         doc: "The type of the argument"
       ],
