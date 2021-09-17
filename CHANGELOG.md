@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.4](https://github.com/ash-project/ash/compare/v1.48.0-rc.3...v1.48.0-rc.4) (2021-09-17)
+
+
+
+
+### Improvements:
+
+* improvements for elixirsense integration
+
 ## [v1.48.0-rc.3](https://github.com/ash-project/ash/compare/v1.48.0-rc.2...v1.48.0-rc.3) (2021-09-16)
 
 
