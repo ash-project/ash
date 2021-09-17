@@ -84,7 +84,17 @@ defmodule Ash.Dsl do
             parent: __CALLER__.module
           ],
           generated: true do
+      require Ash.Dsl.Extension
       @dialyzer {:nowarn_function, handle_opts: 1, handle_before_compile: 1}
+      Module.register_attribute(__MODULE__, :ash_dsl, persist: true)
+      Module.register_attribute(__MODULE__, :ash_default_extensions, persist: true)
+      Module.register_attribute(__MODULE__, :ash_extension_kinds, persist: true)
+      @ash_dsl true
+      @ash_default_extensions parent_opts[:default_extensions]
+                              |> Keyword.values()
+                              |> List.flatten()
+      @ash_extension_kinds List.wrap(parent_opts[:many_extension_kinds]) ++
+                             List.wrap(parent_opts[:single_extension_kinds])
 
       def init(opts), do: {:ok, opts}
 
@@ -104,6 +114,7 @@ defmodule Ash.Dsl do
         parent = unquote(parent)
         parent_opts = unquote(parent_opts)
         their_opt_schema = unquote(their_opt_schema)
+        require Ash.Dsl.Extension
 
         {opts, extensions} =
           parent_opts[:default_extensions]
@@ -207,10 +218,12 @@ defmodule Ash.Dsl do
   defmacro __before_compile__(_env) do
     quote unquote: false, generated: true do
       @type t :: __MODULE__
+      require Ash.Dsl.Extension
 
       Module.register_attribute(__MODULE__, :ash_is, persist: true)
       Module.put_attribute(__MODULE__, :ash_is, @ash_is)
       @on_load :on_load
+
       ash_dsl_config = Macro.escape(Ash.Dsl.Extension.set_state(@persist))
 
       def ash_dsl_config do

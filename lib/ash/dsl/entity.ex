@@ -39,6 +39,7 @@ defmodule Ash.Dsl.Entity do
     examples: [],
     entities: [],
     describe: "",
+    snippet: "",
     args: [],
     hide: [],
     modules: [],

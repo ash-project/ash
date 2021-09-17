@@ -25,6 +25,7 @@ defmodule Ash.Dsl.Section do
     imports: [],
     schema: [],
     describe: "",
+    snippet: "",
     examples: [],
     modules: [],
     entities: [],
