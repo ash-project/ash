@@ -924,7 +924,7 @@ defmodule Ash.Actions.ManagedRelationships do
           nil ->
             created =
               if is_struct(input) do
-                {:ok, input, [], []}
+                {:ok, input, []}
               else
                 relationship.destination
                 |> Ash.Changeset.new()
