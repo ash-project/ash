@@ -687,6 +687,8 @@ defmodule Ash.Changeset do
   end
 
   defp run_action_changes(changeset, %{changes: changes}, actor) do
+    changes = changes ++ Ash.Resource.Info.changes(changeset.resource, changeset.action_type)
+
     Enum.reduce(changes, changeset, fn
       %{change: {module, opts}}, changeset ->
         module.change(changeset, opts, %{actor: actor})

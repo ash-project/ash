@@ -291,7 +291,7 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
-  @change %Ash.Dsl.Entity{
+  @action_change %Ash.Dsl.Entity{
     name: :change,
     describe: """
     A change to be applied to the changeset after it is generated. They are run in order, from top to bottom.
@@ -314,7 +314,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Change,
     transform: {Ash.Resource.Change, :transform, []},
-    schema: Ash.Resource.Change.schema(),
+    schema: Ash.Resource.Change.action_schema(),
     args: [:change]
   }
 
@@ -352,6 +352,33 @@ defmodule Ash.Resource.Dsl do
     args: [:name, :type],
     modules: [:type],
     schema: Ash.Resource.Actions.Metadata.schema()
+  }
+
+  @change %Ash.Dsl.Entity{
+    name: :change,
+    describe: """
+    A change to be applied to the changeset after it is generated. They are run in order, from top to bottom.
+
+    To implement your own, see `Ash.Resource.Change`.
+    To use it, you can simply refer to the module and its options, like so:
+
+    `change {MyChange, foo: 1}`
+
+    But for readability, you may want to define a function elsewhere and import it,
+    so you can say something like:
+
+    `change my_change(1)`
+
+    For destroys, `changes` are not applied unless `soft?` is set to true.
+    """,
+    examples: [
+      "change relate_actor(:reporter)",
+      "change {MyCustomChange, :foo}"
+    ],
+    target: Ash.Resource.Change,
+    transform: {Ash.Resource.Change, :transform, []},
+    schema: Ash.Resource.Change.schema(),
+    args: [:change]
   }
 
   @validate %Ash.Dsl.Entity{
@@ -399,7 +426,7 @@ defmodule Ash.Resource.Dsl do
     schema: Ash.Resource.Actions.Create.opt_schema(),
     entities: [
       changes: [
-        @change,
+        @action_change,
         @action_validate
       ],
       arguments: [
@@ -467,7 +494,7 @@ defmodule Ash.Resource.Dsl do
     ],
     entities: [
       changes: [
-        @change,
+        @action_change,
         @action_validate
       ],
       metadata: [
@@ -496,7 +523,7 @@ defmodule Ash.Resource.Dsl do
     ],
     entities: [
       changes: [
-        @change,
+        @action_change,
         @action_validate
       ],
       metadata: [
@@ -734,6 +761,25 @@ defmodule Ash.Resource.Dsl do
     ],
     entities: [
       @validate
+    ]
+  }
+
+  @changes %Ash.Dsl.Section{
+    name: :changes,
+    describe: """
+    Declare changes that occur on create/update/destroy actions against the resource
+    """,
+    imports: [Ash.Resource.Validation.Builtins],
+    examples: [
+      """
+      changes do
+        change {Mod, [foo: :bar]}
+        change set_context(%{some: :context})
+      end
+      """
+    ],
+    entities: [
+      @change
     ]
   }
 
@@ -984,6 +1030,7 @@ defmodule Ash.Resource.Dsl do
     @relationships,
     @actions,
     @resource,
+    @changes,
     @validations,
     @aggregates,
     @calculations,
