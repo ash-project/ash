@@ -61,6 +61,20 @@ defmodule Ash.Resource.Change do
     end
   end
 
+  @doc false
+  def on(list) do
+    list
+    |> List.wrap()
+    |> Enum.all?(&(&1 in [:create, :update, :destroy]))
+    |> case do
+      true ->
+        {:ok, List.wrap(list)}
+
+      false ->
+        {:error, "Expected items of [:create, :update, :destroy], got: #{inspect(list)}"}
+    end
+  end
+
   @type context :: %{actor: Ash.Resource.record()} | %{}
   @callback init(Keyword.t()) :: {:ok, Keyword.t()} | {:error, term}
   @callback change(Ash.Changeset.t(), Keyword.t(), context) :: Ash.Changeset.t()

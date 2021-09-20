@@ -1736,6 +1736,14 @@ defmodule Ash.Changeset do
     )
   end
 
+  @doc "Returns true if any attributes on the resource are being changed."
+  @spec changing_attributes?(t()) :: boolean
+  def changing_attributes?(changeset) do
+    changeset.resource
+    |> Ash.Resource.Info.attributes()
+    |> Enum.any?(&changing_attribute?(changeset, &1.name))
+  end
+
   @doc "Returns true if an attribute exists in the changes"
   @spec changing_attribute?(t(), atom) :: boolean
   def changing_attribute?(changeset, attribute) do
