@@ -5,6 +5,27 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.6](https://github.com/ash-project/ash/compare/v1.48.0-rc.5...v1.48.0-rc.6) (2021-09-20)
+
+
+
+
+### Bug Fixes:
+
+* support `on` for global changes
+
+* return proper result when input is struct
+
+* remove File.read! from docs
+
+### Improvements:
+
+* skip resource action if no changes have been made
+
+* add `changing_attributes?/1` to determine if any attributes are chaning
+
+* add global changes
+
 ## [v1.48.0-rc.5](https://github.com/ash-project/ash/compare/v1.48.0-rc.4...v1.48.0-rc.5) (2021-09-17)
 
 
