@@ -2350,12 +2350,12 @@ defmodule Ash.Changeset do
   end
 
   defp add_field(message, field) do
-    "at field #{field} " <> message
+    "at field #{field} " <> (message || "")
   end
 
   defp add_index(message, opts) do
     if opts[:index] do
-      "at index #{opts[:index]} " <> message
+      "at index #{opts[:index]} " <> (message || "")
     else
       message
     end

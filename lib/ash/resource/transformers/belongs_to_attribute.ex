@@ -23,7 +23,7 @@ defmodule Ash.Resource.Transformers.BelongsToAttribute do
       entity =
         Transformer.build_entity(@extension, [:attributes], :attribute,
           name: relationship.source_field,
-          type: relationship.field_type,
+          type: relationship.field_type || :uuid,
           allow_nil?:
             if relationship.primary_key? do
               false
