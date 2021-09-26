@@ -2,16 +2,19 @@ defmodule Ash.Resource.Calculation.Expression do
   @moduledoc false
   use Ash.Calculation, type: :string
 
-  def expression(opts, context) do
-    expr =
-      Ash.Filter.build_filter_from_template(opts[:expr], nil, context, context[:context] || %{})
+  def expression(opts, query) do
+    expr = Ash.Filter.build_filter_from_template(opts[:expr], nil, query)
 
-    Ash.Filter.build_filter_from_template(expr, nil, context, context[:context] || %{})
+    Ash.Filter.build_filter_from_template(expr, nil, query)
   end
 
   def load(query, opts, context) do
     expr =
-      Ash.Filter.build_filter_from_template(opts[:expr], nil, context, context[:context] || %{})
+      Ash.Filter.build_filter_from_template(
+        opts[:expr],
+        nil,
+        Map.merge(query, %{arguments: context, context: context[:context] || %{}})
+      )
 
     case Ash.Filter.hydrate_refs(expr, %{
            resource: query.resource,
@@ -41,7 +44,10 @@ defmodule Ash.Resource.Calculation.Expression do
               |> Map.put(:context, query.context)
 
             case Ash.Filter.hydrate_refs(
-                   calculation.module.expression(calculation.opts, calculation_context),
+                   calculation.module.expression(
+                     calculation.opts,
+                     Map.put(query, :context, calculation_context)
+                   ),
                    %{
                      resource: query.resource,
                      calculations: query.calculations,
@@ -71,7 +77,11 @@ defmodule Ash.Resource.Calculation.Expression do
 
   def select(query, opts, context) do
     expr =
-      Ash.Filter.build_filter_from_template(opts[:expr], nil, context, context[:context] || %{})
+      Ash.Filter.build_filter_from_template(
+        opts[:expr],
+        nil,
+        Map.merge(query, %{arguments: context, context: context[:context] || %{}})
+      )
 
     case Ash.Filter.hydrate_refs(expr, %{
            resource: query.resource,

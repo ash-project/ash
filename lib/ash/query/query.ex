@@ -375,8 +375,7 @@ defmodule Ash.Query do
         Ash.Filter.build_filter_from_template(
           action.filter,
           actor,
-          query.arguments,
-          query.context
+          query
         )
 
       do_filter(query, built_filter)

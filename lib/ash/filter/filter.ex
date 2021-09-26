@@ -362,7 +362,10 @@ defmodule Ash.Filter do
   end
 
   @doc "Replace any actor value references in a template with the values from a given actor"
-  def build_filter_from_template(template, actor \\ nil, args \\ %{}, context \\ %{}) do
+  def build_filter_from_template(template, actor \\ nil, query) do
+    args = Map.get(query, :arguments, %{})
+    context = Map.get(query, :context, %{})
+
     walk_filter_template(template, fn
       {:_actor, :_primary_key} ->
         if actor do
@@ -373,6 +376,9 @@ defmodule Ash.Filter do
 
       {:_actor, field} ->
         Map.get(actor || %{}, field)
+
+      {:_tenant} ->
+        Map.get(query, :tenant)
 
       {:_arg, field} ->
         Map.get(args, field) || Map.get(args, to_string(field))

@@ -7,6 +7,8 @@ defmodule Ash.Filter.TemplateHelpers do
   @doc "A helper for using action arguments in filter templates"
   def arg(name), do: {:_arg, name}
 
+  def tenant(), do: {:_tenant}
+
   @doc """
   A helper for using query context in filter templates
 
