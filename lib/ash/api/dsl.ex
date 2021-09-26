@@ -50,12 +50,11 @@ defmodule Ash.Api.Dsl do
   }
 
   @transformers [
-                  EnsureResourcesCompiled,
-                  ValidateRelatedResourceInclusion,
-                  ValidateRelationshipAttributes,
-                  ValidateManyToManyJoinAttributes
-                ]
-                |> Enum.map(&Module.concat(["Ash", Api, Transformers, &1]))
+    Ash.Api.Transformers.EnsureResourcesCompiled,
+    Ash.Api.Transformers.ValidateRelatedResourceInclusion,
+    Ash.Api.Transformers.ValidateRelationshipAttributes,
+    Ash.Api.Transformers.ValidateManyToManyJoinAttributes
+  ]
 
   @sections [@resources]
 

@@ -146,11 +146,25 @@ defmodule Ash.Resource.Info do
     Extension.get_entities(resource, [:validations])
   end
 
+  @spec changes(Ash.Resource.t(), :create | :update | :destroy) :: [
+          Ash.Resource.Validation.t()
+        ]
+  def changes(resource, type) do
+    resource
+    |> changes()
+    |> Enum.filter(&(type in &1.on))
+  end
+
+  @doc "A list of all changes for the resource"
+  @spec changes(Ash.Resource.t()) :: [Ash.Resource.Validation.t()]
+  def changes(resource) do
+    Extension.get_entities(resource, [:changes])
+  end
+
   @doc "Whether or not a given module is a resource module"
   @spec resource?(module) :: boolean
   def resource?(module) when is_atom(module) do
-    # Prevent compile time dependency
-    Ash.Dsl.is?(module, Module.concat(["Ash", Resource]))
+    Ash.Dsl.is?(module, Ash.Resource)
   end
 
   def resource?(_), do: false

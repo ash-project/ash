@@ -48,19 +48,52 @@ defmodule Ash.Dsl.Transformer do
     section = Enum.find(sections, &(&1.name == section_name))
     entity = Enum.find(section.entities, &(&1.name == name))
 
-    case Ash.OptionsHelpers.validate(opts, entity.schema) do
-      {:ok, opts} ->
-        {:ok, struct(entity.target, opts)}
+    do_build(entity, opts)
+  end
 
-      {:error, error} ->
-        {:error, error}
+  defp do_build_entity(
+         sections,
+         [section_name, maybe_entity_name],
+         maybe_nested_entity_name,
+         opts
+       ) do
+    section = Enum.find(sections, &(&1.name == section_name))
+    entity = Enum.find(section.entities, &(&1.name == maybe_entity_name))
+
+    sub_entity =
+      entity.entities
+      |> Keyword.values()
+      |> List.flatten()
+      |> Enum.find(&(&1.name == maybe_nested_entity_name))
+
+    if sub_entity do
+      do_build(sub_entity, opts)
+    else
+      do_build_entity(section.sections, [maybe_entity_name], maybe_nested_entity_name, opts)
     end
   end
 
   defp do_build_entity(sections, [section_name | rest], name, opts) do
     section = Enum.find(sections, &(&1.name == section_name))
-
     do_build_entity(section.sections, rest, name, opts)
+  end
+
+  defp do_build(entity, opts) do
+    entity_names =
+      entity.entities
+      |> Kernel.||([])
+      |> Keyword.keys()
+
+    {entities, opts} = Keyword.split(opts, entity_names)
+
+    case Ash.OptionsHelpers.validate(opts, entity.schema) do
+      {:ok, opts} ->
+        result = struct(struct(entity.target, opts), entities)
+        Ash.Dsl.Entity.transform(entity.transform, result)
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   def add_entity(dsl_state, path, entity, opts \\ []) do

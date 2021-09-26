@@ -7,7 +7,7 @@ defmodule Ash.Resource.Transformers.BelongsToAttribute do
   alias Ash.Dsl.Transformer
   alias Ash.Error.Dsl.DslError
 
-  @extension Module.concat(["Ash", Resource, Dsl])
+  @extension Ash.Resource.Dsl
 
   def transform(_resource, dsl_state) do
     dsl_state
@@ -23,7 +23,7 @@ defmodule Ash.Resource.Transformers.BelongsToAttribute do
       entity =
         Transformer.build_entity(@extension, [:attributes], :attribute,
           name: relationship.source_field,
-          type: relationship.field_type,
+          type: relationship.field_type || :uuid,
           allow_nil?:
             if relationship.primary_key? do
               false

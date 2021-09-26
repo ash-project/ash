@@ -39,11 +39,13 @@ defmodule Ash.Dsl.Entity do
     examples: [],
     entities: [],
     describe: "",
+    snippet: "",
     args: [],
     hide: [],
     modules: [],
     schema: [],
-    auto_set_fields: []
+    auto_set_fields: [],
+    docs: ""
   ]
 
   def build(
@@ -66,9 +68,9 @@ defmodule Ash.Dsl.Entity do
     end
   end
 
-  defp transform(nil, built), do: {:ok, built}
+  def transform(nil, built), do: {:ok, built}
 
-  defp transform({module, function, args}, built) do
+  def transform({module, function, args}, built) do
     apply(module, function, [built | args])
   end
 end

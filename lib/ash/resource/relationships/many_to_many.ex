@@ -67,7 +67,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
                       "The field on the join table that should line up with `destination_field` on the related resource."
                   ],
                   through: [
-                    type: :atom,
+                    type: :ash_resource,
                     required: true,
                     doc: "The resource to use as the join resource."
                   ],

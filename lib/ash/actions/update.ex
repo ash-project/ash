@@ -112,7 +112,6 @@ defmodule Ash.Actions.Update do
     else
       Ash.Changeset.for_update(changeset, action.name, %{}, actor: actor)
     end
-    |> Ash.Changeset.set_defaults(:update, true)
   end
 
   defp do_run_requests(
@@ -189,10 +188,18 @@ defmodule Ash.Actions.Update do
                         if action.manual? do
                           {:ok, changeset.data, %{notifications: []}}
                         else
-                          resource
-                          |> Ash.DataLayer.update(changeset)
-                          |> add_tenant(changeset)
-                          |> manage_relationships(api, changeset, engine_opts)
+                          if Ash.Changeset.changing_attributes?(changeset) do
+                            changeset = Ash.Changeset.set_defaults(changeset, :update, true)
+
+                            resource
+                            |> Ash.DataLayer.update(changeset)
+                            |> add_tenant(changeset)
+                            |> manage_relationships(api, changeset, engine_opts)
+                          else
+                            {:ok, changeset.data}
+                            |> add_tenant(changeset)
+                            |> manage_relationships(api, changeset, engine_opts)
+                          end
                         end
                         |> case do
                           {:ok, result, notifications} ->

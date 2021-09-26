@@ -45,12 +45,41 @@ defmodule Ash.OptionsHelpers do
           {:one_of, values} ->
             Keyword.put(opts, :type, {:in, values})
 
+          {:ash_behaviour, behaviour, builtins} ->
+            Keyword.put(opts, :type, {:custom, __MODULE__, :ash_behaviour, [behaviour, builtins]})
+
+          :ash_resource ->
+            Keyword.put(opts, :type, :atom)
+
+          :ash_type ->
+            # We don't want to add compile time dependencies on types
+            # TODO: consider making this a legitimate validation
+            Keyword.put(opts, :type, :any)
+
           _ ->
             opts
         end
 
-      {key, Keyword.drop(new_opts, [:hide, :as])}
+      {key, Keyword.drop(new_opts, [:hide, :as, :snippet])}
     end)
+  end
+
+  def ash_behaviour({module, opts}, _behaviour, _builtins) when is_atom(module) do
+    if Keyword.keyword?(opts) do
+      # We can't check if it implements the behaviour here, unfortunately
+      # As it may not be immediately available
+      {:ok, {module, opts}}
+    else
+      {:error, "Expected opts to be a keyword, got: #{inspect(opts)}"}
+    end
+  end
+
+  def ash_behaviour(module, behaviour, builtins) when is_atom(module) do
+    ash_behaviour({module, []}, behaviour, builtins)
+  end
+
+  def ash_behaviour(other, _, _) do
+    {:error, "Expected a module and opts, got: #{inspect(other)}"}
   end
 
   def map(value) when is_map(value), do: {:ok, value}

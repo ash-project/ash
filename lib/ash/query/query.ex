@@ -383,6 +383,9 @@ defmodule Ash.Query do
     end
   end
 
+  @doc """
+  Creates an Ash expression for evaluation later.
+  """
   defmacro expr(do: body) do
     quote do
       Ash.Query.expr(unquote(body))

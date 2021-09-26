@@ -11,7 +11,7 @@ defmodule Ash.Resource.Transformers.DefaultPrimaryKey do
   alias Ash.Dsl.Transformer
   alias Ash.Error.Dsl.DslError
 
-  @extension Module.concat(["Ash", Resource, Dsl])
+  @extension Ash.Resource.Dsl
 
   def transform(resource, dsl_state) do
     if Ash.Resource.Info.embedded?(resource) do

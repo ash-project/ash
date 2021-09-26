@@ -60,7 +60,7 @@ defmodule Ash.EmbeddableType do
 
   defp do_handle_errors(errors) when is_list(errors) do
     if Keyword.keyword?(errors) do
-      main_fields = Keyword.take(errors, [:message, :field, :fields])
+      main_fields = Keyword.take(errors, [:message, :field, :fields, :path])
       vars = Keyword.merge(main_fields, Keyword.get(errors, :vars, []))
 
       main_fields

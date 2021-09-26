@@ -193,7 +193,7 @@ defmodule Ash.Dsl.Extension do
     end)
   end
 
-  defp doc_section(section, depth) do
+  def doc_section(section, depth \\ 1) do
     sections_and_entities = List.wrap(section.entities) ++ List.wrap(section.sections)
 
     table_of_contents =
@@ -265,7 +265,7 @@ defmodule Ash.Dsl.Extension do
     """
   end
 
-  defp doc_entity(entity, depth) do
+  def doc_entity(entity, depth \\ 1) do
     options = Ash.OptionsHelpers.docs(Keyword.drop(entity.schema, entity.hide))
 
     examples =
@@ -372,7 +372,27 @@ defmodule Ash.Dsl.Extension do
       @_transformers transformers
 
       @doc false
-      def sections, do: @_sections
+      def sections, do: set_docs(@_sections)
+
+      defp set_docs(items) when is_list(items) do
+        Enum.map(items, &set_docs/1)
+      end
+
+      defp set_docs(%Ash.Dsl.Entity{} = entity) do
+        entity
+        |> Map.put(:docs, Ash.Dsl.Extension.doc_entity(entity))
+        |> Map.put(
+          :entities,
+          Enum.map(entity.entities || [], fn {key, value} -> {key, set_docs(value)} end)
+        )
+      end
+
+      defp set_docs(%Ash.Dsl.Section{} = section) do
+        section
+        |> Map.put(:entities, set_docs(section.entities))
+        |> Map.put(:sections, set_docs(section.sections))
+        |> Map.put(:docs, Ash.Dsl.Extension.doc_section(section))
+      end
 
       @doc false
       def transformers, do: @_transformers
@@ -405,8 +425,7 @@ defmodule Ash.Dsl.Extension do
 
         quote location: :keep do
           require Ash.Dsl.Extension
-          alias Ash.Dsl.Extension
-          Extension.import_extension(unquote(extension))
+          import unquote(extension), only: :macros
         end
       end
 
@@ -560,13 +579,6 @@ defmodule Ash.Dsl.Extension do
   end
 
   @doc false
-  defmacro import_extension(extension) do
-    quote do
-      import unquote(extension), only: :macros
-    end
-  end
-
-  @doc false
   defmacro build(extension, sections) do
     quote bind_quoted: [sections: sections, extension: extension] do
       alias Ash.Dsl.Extension
@@ -606,14 +618,14 @@ defmodule Ash.Dsl.Extension do
         entity_imports =
           for module <- unquote(entity_modules) do
             quote do
-              import unquote(module)
+              import unquote(module), only: :macros
             end
           end
 
         section_imports =
           for module <- unquote(section_modules) do
             quote do
-              import unquote(module)
+              import unquote(module), only: :macros
             end
           end
 
@@ -903,6 +915,7 @@ defmodule Ash.Dsl.Extension do
 
               import unquote(options_mod_name)
 
+              require Ash.Dsl.Extension
               Ash.Dsl.Extension.import_mods(unquote(nested_entity_mods))
 
               unquote(opts[:do])
@@ -915,6 +928,7 @@ defmodule Ash.Dsl.Extension do
 
               import unquote(options_mod_name), only: []
 
+              require Ash.Dsl.Extension
               Ash.Dsl.Extension.unimport_mods(unquote(nested_entity_mods))
 
               opts = Process.delete({:builder_opts, unquote(nested_entity_path)})

@@ -10,19 +10,32 @@ defmodule Ash.Resource.Change do
   when this change was configured on a resource, and the context, which currently only has
   the actor.
   """
-  defstruct [:change]
+  defstruct [:change, :on]
 
   @doc false
   def schema do
     [
+      on: [
+        type: {:custom, __MODULE__, :on, []},
+        default: [:create, :update],
+        doc: """
+        The action types the validation should run on.
+
+        Many validations don't make sense in the context of deletion, so by default it is left out of the list.
+        """
+      ],
       change: [
-        type: {:custom, __MODULE__, :change, []},
+        type: {:ash_behaviour, Ash.Resource.Change, Ash.Resource.Change.Builtins},
         doc: """
         The module and options for a change.
         """,
         required: true
       ]
     ]
+  end
+
+  def action_schema do
+    Keyword.delete(schema(), :on)
   end
 
   @doc false
@@ -45,6 +58,20 @@ defmodule Ash.Resource.Change do
     case module.init(opts) do
       {:ok, opts} -> {:ok, %{change | change: {module, opts}}}
       {:error, error} -> {:error, error}
+    end
+  end
+
+  @doc false
+  def on(list) do
+    list
+    |> List.wrap()
+    |> Enum.all?(&(&1 in [:create, :update, :destroy]))
+    |> case do
+      true ->
+        {:ok, List.wrap(list)}
+
+      false ->
+        {:error, "Expected items of [:create, :update, :destroy], got: #{inspect(list)}"}
     end
   end
 

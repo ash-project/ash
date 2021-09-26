@@ -65,7 +65,7 @@ defmodule Ash.Resource.Validation do
 
   @schema [
     validation: [
-      type: {:custom, __MODULE__, :validation, []},
+      type: {:ash_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins},
       required: true,
       doc: "The module/opts pair of the validation"
     ],
@@ -112,8 +112,12 @@ defmodule Ash.Resource.Validation do
     end
   end
 
-  def transform(%__MODULE__{validation: {module, opts}} = validation) do
-    {:ok, %{validation | module: module, opts: opts}}
+  @doc false
+  def transform(%{validation: {module, opts}} = validation) do
+    case module.init(opts) do
+      {:ok, opts} -> {:ok, %{validation | validation: {module, opts}, module: module, opts: opts}}
+      {:error, error} -> {:error, error}
+    end
   end
 
   def opt_schema, do: @schema
@@ -130,27 +134,5 @@ defmodule Ash.Resource.Validation do
       false ->
         {:error, "Expected items of [:create, :update, :destroy], got: #{inspect(list)}"}
     end
-  end
-
-  def validation({module, opts}) when is_atom(module) do
-    if Keyword.keyword?(opts) do
-      case module.init(opts) do
-        {:ok, opts} ->
-          {:ok, {module, opts}}
-
-        {:error, error} ->
-          {:error, error}
-      end
-    else
-      {:error, "Validation must be a `{module, opts}` tuple, got: #{inspect({module, opts})}"}
-    end
-  end
-
-  def validation(module) when is_atom(module) do
-    validation({module, []})
-  end
-
-  def validation(other) do
-    {:error, "Validation must be a `{module, opts}` tuple, got: #{inspect(other)}"}
   end
 end

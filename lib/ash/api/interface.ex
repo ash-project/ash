@@ -169,7 +169,7 @@ defmodule Ash.Api.Interface do
                     Keyword.take(opts, [:actor, :tenant])
                   )
 
-                unquote(api).create(changeset, Keyword.drop(opts, [:changeset, :tenant]))
+                unquote(api).create(changeset, Keyword.drop(opts, [:actor, :changeset, :tenant]))
               end
             end
 
@@ -196,14 +196,14 @@ defmodule Ash.Api.Interface do
                   end)
 
                 changeset =
-                  unquote(resource)
+                  (opts[:changeset] || unquote(resource))
                   |> Ash.Changeset.for_create(
                     unquote(action.name),
                     input,
                     Keyword.take(opts, [:actor, :tenant])
                   )
 
-                unquote(api).create!(changeset, Keyword.drop(opts, [:actor, :tenant]))
+                unquote(api).create!(changeset, Keyword.drop(opts, [:actor, :changeset]))
               end
             end
 

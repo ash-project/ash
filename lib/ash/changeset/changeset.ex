@@ -687,6 +687,8 @@ defmodule Ash.Changeset do
   end
 
   defp run_action_changes(changeset, %{changes: changes}, actor) do
+    changes = changes ++ Ash.Resource.Info.changes(changeset.resource, changeset.action_type)
+
     Enum.reduce(changes, changeset, fn
       %{change: {module, opts}}, changeset ->
         module.change(changeset, opts, %{actor: actor})
@@ -1734,6 +1736,14 @@ defmodule Ash.Changeset do
     )
   end
 
+  @doc "Returns true if any attributes on the resource are being changed."
+  @spec changing_attributes?(t()) :: boolean
+  def changing_attributes?(changeset) do
+    changeset.resource
+    |> Ash.Resource.Info.attributes()
+    |> Enum.any?(&changing_attribute?(changeset, &1.name))
+  end
+
   @doc "Returns true if an attribute exists in the changes"
   @spec changing_attribute?(t(), atom) :: boolean
   def changing_attribute?(changeset, attribute) do
@@ -2213,18 +2223,25 @@ defmodule Ash.Changeset do
   end
 
   defp to_change_error(keyword) do
-    if keyword[:field] do
-      InvalidAttribute.exception(
-        field: keyword[:field],
-        message: keyword[:message],
-        vars: keyword
-      )
+    error =
+      if keyword[:field] do
+        InvalidAttribute.exception(
+          field: keyword[:field],
+          message: keyword[:message],
+          vars: keyword
+        )
+      else
+        InvalidChanges.exception(
+          fields: keyword[:fields] || [],
+          message: keyword[:message],
+          vars: keyword
+        )
+      end
+
+    if keyword[:path] do
+      set_path(error, keyword[:path])
     else
-      InvalidChanges.exception(
-        fields: keyword[:fields] || [],
-        message: keyword[:message],
-        vars: keyword
-      )
+      error
     end
   end
 
@@ -2277,6 +2294,13 @@ defmodule Ash.Changeset do
             vars: opts
           )
 
+        error =
+          if opts[:path] do
+            set_path(error, opts[:path])
+          else
+            error
+          end
+
         add_error(changeset, error)
       end)
     end)
@@ -2326,12 +2350,12 @@ defmodule Ash.Changeset do
   end
 
   defp add_field(message, field) do
-    "at field #{field} " <> message
+    "at field #{field} " <> (message || "")
   end
 
   defp add_index(message, opts) do
     if opts[:index] do
-      "at index #{opts[:index]} " <> message
+      "at index #{opts[:index]} " <> (message || "")
     else
       message
     end
