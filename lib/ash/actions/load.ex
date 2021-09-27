@@ -553,14 +553,19 @@ defmodule Ash.Actions.Load do
       [relationship.source, Map.get(relationship, :through), relationship.destination]
       |> Enum.reject(&is_nil/1)
 
-    lateral_join =
-      (limit || offset) &&
-        Ash.DataLayer.data_layer_can?(
-          relationship.source,
-          {:lateral_join, resources}
-        )
+    if limit == 1 && is_nil(relationship.context) && is_nil(relationship.filter) &&
+         is_nil(relationship.sort) do
+      false
+    else
+      lateral_join =
+        (limit || offset) &&
+          Ash.DataLayer.data_layer_can?(
+            relationship.source,
+            {:lateral_join, resources}
+          )
 
-    !!lateral_join
+      !!lateral_join
+    end
   end
 
   defp run_actual_query(query, base_query, data, path, relationship, source_query) do
