@@ -123,6 +123,7 @@ locals_without_parens = [
   validate_destination_field?: 1,
   violation_message: 1,
   warn_on_compile_failure?: 1,
+  where: 1,
   writable?: 1
 ]
 

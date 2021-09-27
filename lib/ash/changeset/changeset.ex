@@ -773,49 +773,55 @@ defmodule Ash.Changeset do
   end
 
   defp do_validation(changeset, validation) do
-    case validation.module.validate(changeset, validation.opts) do
-      :ok ->
-        changeset
+    if Enum.all?(validation.where || [], fn {module, opts} ->
+         module.validate(changeset, opts) == :ok
+       end) do
+      case validation.module.validate(changeset, validation.opts) do
+        :ok ->
+          changeset
 
-      {:error, error} when is_binary(error) ->
-        Ash.Changeset.add_error(changeset, validation.message || error)
+        {:error, error} when is_binary(error) ->
+          Ash.Changeset.add_error(changeset, validation.message || error)
 
-      {:error, error} when is_exception(error) ->
-        if validation.message do
+        {:error, error} when is_exception(error) ->
+          if validation.message do
+            error =
+              case error do
+                %{field: field} when not is_nil(field) ->
+                  error
+                  |> Map.take([:field, :vars])
+                  |> Map.to_list()
+                  |> Keyword.put(:message, validation.message)
+                  |> InvalidAttribute.exception()
+
+                %{fields: fields} when fields not in [nil, []] ->
+                  error
+                  |> Map.take([:fields, :vars])
+                  |> Map.to_list()
+                  |> Keyword.put(:message, validation.message)
+                  |> InvalidChanges.exception()
+
+                _ ->
+                  validation.message
+              end
+
+            Ash.Changeset.add_error(changeset, error)
+          else
+            Ash.Changeset.add_error(changeset, error)
+          end
+
+        {:error, error} ->
           error =
-            case error do
-              %{field: field} when not is_nil(field) ->
-                error
-                |> Map.take([:field, :vars])
-                |> Map.to_list()
-                |> Keyword.put(:message, validation.message)
-                |> InvalidAttribute.exception()
-
-              %{fields: fields} when fields not in [nil, []] ->
-                error
-                |> Map.take([:fields, :vars])
-                |> Map.to_list()
-                |> Keyword.put(:message, validation.message)
-                |> InvalidChanges.exception()
-
-              _ ->
-                validation.message
+            if Keyword.keyword?(error) do
+              Keyword.put(error, :message, validation.message || error[:message])
+            else
+              validation.message || error
             end
 
           Ash.Changeset.add_error(changeset, error)
-        else
-          Ash.Changeset.add_error(changeset, error)
-        end
-
-      {:error, error} ->
-        error =
-          if Keyword.keyword?(error) do
-            Keyword.put(error, :message, validation.message || error[:message])
-          else
-            validation.message || error
-          end
-
-        Ash.Changeset.add_error(changeset, error)
+      end
+    else
+      changeset
     end
   end
 
