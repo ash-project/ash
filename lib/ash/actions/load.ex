@@ -265,7 +265,7 @@ defmodule Ash.Actions.Load do
 
     dependencies =
       if relationship.type == :many_to_many &&
-           !lateral_join?(related_query, relationship, :unkown) do
+           !lateral_join?(related_query, relationship, :unknown) do
         join_relationship = join_relationship(relationship)
 
         join_relationship_path =
