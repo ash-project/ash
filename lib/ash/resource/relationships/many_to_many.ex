@@ -31,7 +31,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
           source: Ash.Resource.t(),
           writable?: boolean,
           private?: boolean,
-          filter: Ash.Filter.t(),
+          filter: Ash.Filter.t() | nil,
           read_action: atom,
           name: atom,
           through: Ash.Resource.t(),
