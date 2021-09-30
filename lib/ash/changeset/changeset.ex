@@ -474,18 +474,22 @@ defmodule Ash.Changeset do
       action = Ash.Resource.Info.action(changeset.resource, action_name, changeset.action_type)
 
       if action do
-        changeset
-        |> handle_errors(action.error_handler)
-        |> set_actor(opts)
-        |> set_tenant(opts[:tenant] || changeset.tenant)
-        |> Map.put(:__validated_for_action__, action.name)
-        |> Map.put(:action, action)
-        |> cast_params(action, params, opts)
-        |> set_argument_defaults(action)
-        |> run_action_changes(action, opts[:actor])
-        |> add_validations()
-        |> mark_validated(action.name)
-        |> require_arguments(action)
+        if action.soft? do
+          for_action(%{changeset | action_type: :destroy}, action.name, params, opts)
+        else
+          changeset
+          |> handle_errors(action.error_handler)
+          |> set_actor(opts)
+          |> set_tenant(opts[:tenant] || changeset.tenant)
+          |> Map.put(:__validated_for_action__, action.name)
+          |> Map.put(:action, action)
+          |> cast_params(action, params, opts)
+          |> set_argument_defaults(action)
+          |> run_action_changes(action, opts[:actor])
+          |> add_validations()
+          |> mark_validated(action.name)
+          |> require_arguments(action)
+        end
       else
         raise_no_action(changeset.resource, action_name, :destroy)
       end
@@ -1007,7 +1011,7 @@ defmodule Ash.Changeset do
         {:ok, result, instructions} ->
           run_after_actions(
             result,
-            changeset,
+            instructions[:new_changeset] || changeset,
             List.wrap(instructions[:notifications]) ++ before_action_notifications
           )
 

@@ -122,6 +122,18 @@ defmodule Ash.Dsl.Transformer do
     |> Keyword.get(option)
   end
 
+  def set_option(dsl_state, path, option, value) do
+    dsl_state
+    |> Map.put_new(path, %{opts: []})
+    |> Map.update!(path, fn existing_opts ->
+      existing_opts
+      |> Map.put_new(:opts, [])
+      |> Map.update!(:opts, fn opts ->
+        Keyword.put(opts, option, value)
+      end)
+    end)
+  end
+
   def replace_entity(dsl_state, path, replacement, matcher) do
     Map.update(dsl_state, path, %{entities: [replacement], opts: []}, fn config ->
       Map.update(config, :entities, [replacement], fn entities ->

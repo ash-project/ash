@@ -12,14 +12,15 @@ defmodule Ash.Actions.Destroy do
           | {:error, term}
   def run(api, changeset, %{soft?: true} = action, opts) do
     changeset =
-      Ash.Changeset.for_update(%{changeset | action_type: :destroy}, action.name, %{},
-        actor: opts[:actor]
-      )
+      if changeset.__validated_for_action__ == action.name do
+        %{changeset | action_type: :destroy}
+      else
+        Ash.Changeset.for_destroy(%{changeset | action_type: :destroy}, action.name, %{},
+          actor: opts[:actor]
+        )
+      end
 
-    case Ash.Actions.Update.run(api, changeset, action, opts) do
-      {:ok, _} -> :ok
-      other -> other
-    end
+    Ash.Actions.Update.run(api, changeset, action, opts)
   end
 
   def run(api, %{data: record, resource: resource} = changeset, action, opts) do
