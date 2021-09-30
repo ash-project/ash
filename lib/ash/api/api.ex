@@ -889,7 +889,7 @@ defmodule Ash.Api do
 
     api
     |> destroy(changeset, opts)
-    |> unwrap_or_raise!(opts[:stacktraces?])
+    |> unwrap_or_raise!(opts[:stacktraces?], true)
   end
 
   @doc false
