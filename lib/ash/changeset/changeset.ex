@@ -1880,6 +1880,7 @@ defmodule Ash.Changeset do
   end
 
   @doc "Adds a change to the changeset, unless the value matches the existing value"
+  @spec change_attribute(t(), atom, any) :: t()
   def change_attribute(changeset, attribute, value) do
     case Ash.Resource.Info.attribute(changeset.resource, attribute) do
       nil ->
