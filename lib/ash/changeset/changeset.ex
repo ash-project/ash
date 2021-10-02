@@ -474,18 +474,22 @@ defmodule Ash.Changeset do
       action = Ash.Resource.Info.action(changeset.resource, action_name, changeset.action_type)
 
       if action do
-        changeset
-        |> handle_errors(action.error_handler)
-        |> set_actor(opts)
-        |> set_tenant(opts[:tenant] || changeset.tenant)
-        |> Map.put(:__validated_for_action__, action.name)
-        |> Map.put(:action, action)
-        |> cast_params(action, params, opts)
-        |> set_argument_defaults(action)
-        |> run_action_changes(action, opts[:actor])
-        |> add_validations()
-        |> mark_validated(action.name)
-        |> require_arguments(action)
+        if action.soft? do
+          for_action(%{changeset | action_type: :destroy}, action.name, params, opts)
+        else
+          changeset
+          |> handle_errors(action.error_handler)
+          |> set_actor(opts)
+          |> set_tenant(opts[:tenant] || changeset.tenant)
+          |> Map.put(:__validated_for_action__, action.name)
+          |> Map.put(:action, action)
+          |> cast_params(action, params, opts)
+          |> set_argument_defaults(action)
+          |> run_action_changes(action, opts[:actor])
+          |> add_validations()
+          |> mark_validated(action.name)
+          |> require_arguments(action)
+        end
       else
         raise_no_action(changeset.resource, action_name, :destroy)
       end
@@ -773,49 +777,55 @@ defmodule Ash.Changeset do
   end
 
   defp do_validation(changeset, validation) do
-    case validation.module.validate(changeset, validation.opts) do
-      :ok ->
-        changeset
+    if Enum.all?(validation.where || [], fn {module, opts} ->
+         module.validate(changeset, opts) == :ok
+       end) do
+      case validation.module.validate(changeset, validation.opts) do
+        :ok ->
+          changeset
 
-      {:error, error} when is_binary(error) ->
-        Ash.Changeset.add_error(changeset, validation.message || error)
+        {:error, error} when is_binary(error) ->
+          Ash.Changeset.add_error(changeset, validation.message || error)
 
-      {:error, error} when is_exception(error) ->
-        if validation.message do
+        {:error, error} when is_exception(error) ->
+          if validation.message do
+            error =
+              case error do
+                %{field: field} when not is_nil(field) ->
+                  error
+                  |> Map.take([:field, :vars])
+                  |> Map.to_list()
+                  |> Keyword.put(:message, validation.message)
+                  |> InvalidAttribute.exception()
+
+                %{fields: fields} when fields not in [nil, []] ->
+                  error
+                  |> Map.take([:fields, :vars])
+                  |> Map.to_list()
+                  |> Keyword.put(:message, validation.message)
+                  |> InvalidChanges.exception()
+
+                _ ->
+                  validation.message
+              end
+
+            Ash.Changeset.add_error(changeset, error)
+          else
+            Ash.Changeset.add_error(changeset, error)
+          end
+
+        {:error, error} ->
           error =
-            case error do
-              %{field: field} when not is_nil(field) ->
-                error
-                |> Map.take([:field, :vars])
-                |> Map.to_list()
-                |> Keyword.put(:message, validation.message)
-                |> InvalidAttribute.exception()
-
-              %{fields: fields} when fields not in [nil, []] ->
-                error
-                |> Map.take([:fields, :vars])
-                |> Map.to_list()
-                |> Keyword.put(:message, validation.message)
-                |> InvalidChanges.exception()
-
-              _ ->
-                validation.message
+            if Keyword.keyword?(error) do
+              Keyword.put(error, :message, validation.message || error[:message])
+            else
+              validation.message || error
             end
 
           Ash.Changeset.add_error(changeset, error)
-        else
-          Ash.Changeset.add_error(changeset, error)
-        end
-
-      {:error, error} ->
-        error =
-          if Keyword.keyword?(error) do
-            Keyword.put(error, :message, validation.message || error[:message])
-          else
-            validation.message || error
-          end
-
-        Ash.Changeset.add_error(changeset, error)
+      end
+    else
+      changeset
     end
   end
 
@@ -1001,7 +1011,7 @@ defmodule Ash.Changeset do
         {:ok, result, instructions} ->
           run_after_actions(
             result,
-            changeset,
+            instructions[:new_changeset] || changeset,
             List.wrap(instructions[:notifications]) ++ before_action_notifications
           )
 
@@ -1870,6 +1880,7 @@ defmodule Ash.Changeset do
   end
 
   @doc "Adds a change to the changeset, unless the value matches the existing value"
+  @spec change_attribute(t(), atom, any) :: t()
   def change_attribute(changeset, attribute, value) do
     case Ash.Resource.Info.attribute(changeset.resource, attribute) do
       nil ->
@@ -2350,12 +2361,12 @@ defmodule Ash.Changeset do
   end
 
   defp add_field(message, field) do
-    "at field #{field} " <> message
+    "at field #{field} " <> (message || "")
   end
 
   defp add_index(message, opts) do
     if opts[:index] do
-      "at index #{opts[:index]} " <> message
+      "at index #{opts[:index]} " <> (message || "")
     else
       message
     end

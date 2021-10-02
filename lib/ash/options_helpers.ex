@@ -40,28 +40,36 @@ defmodule Ash.OptionsHelpers do
 
   defp sanitize_schema(schema) do
     Enum.map(schema, fn {key, opts} ->
-      new_opts =
-        case opts[:type] do
-          {:one_of, values} ->
-            Keyword.put(opts, :type, {:in, values})
-
-          {:ash_behaviour, behaviour, builtins} ->
-            Keyword.put(opts, :type, {:custom, __MODULE__, :ash_behaviour, [behaviour, builtins]})
-
-          :ash_resource ->
-            Keyword.put(opts, :type, :atom)
-
-          :ash_type ->
-            # We don't want to add compile time dependencies on types
-            # TODO: consider making this a legitimate validation
-            Keyword.put(opts, :type, :any)
-
-          _ ->
-            opts
-        end
-
+      new_opts = Keyword.update!(opts, :type, &sanitize_type/1)
       {key, Keyword.drop(new_opts, [:hide, :as, :snippet])}
     end)
+  end
+
+  defp sanitize_type(type) do
+    case type do
+      {:one_of, values} ->
+        {:in, sanitize_type(values)}
+
+      {:in, values} ->
+        {:in, sanitize_type(values)}
+
+      {:list, values} ->
+        {:list, sanitize_type(values)}
+
+      {:ash_behaviour, behaviour, builtins} ->
+        {:custom, __MODULE__, :ash_behaviour, [behaviour, builtins]}
+
+      :ash_resource ->
+        :atom
+
+      :ash_type ->
+        # We don't want to add compile time dependencies on types
+        # TODO: consider making this a legitimate validation
+        :any
+
+      type ->
+        type
+    end
   end
 
   def ash_behaviour({module, opts}, _behaviour, _builtins) when is_atom(module) do

@@ -56,7 +56,7 @@ defmodule Ash.Actions.Update do
              api,
              opts
            ) do
-      add_notifications(updated, engine_result, opts)
+      add_notifications(updated, changeset, engine_result, opts)
     else
       %Ash.Changeset{errors: errors} = changeset ->
         {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
@@ -96,11 +96,19 @@ defmodule Ash.Actions.Update do
 
   defp run_after_action(other, _, _), do: other
 
-  defp add_notifications(result, engine_result, opts) do
+  defp add_notifications(result, changeset, engine_result, opts) do
     if opts[:return_notifications?] do
-      {:ok, result, Map.get(engine_result, :resource_notifications, [])}
+      if changeset.action_type == :destroy do
+        {:ok, Map.get(engine_result, :resource_notifications, [])}
+      else
+        {:ok, result, Map.get(engine_result, :resource_notifications, [])}
+      end
     else
-      {:ok, result}
+      if changeset.action_type == :destroy do
+        :ok
+      else
+        {:ok, result}
+      end
     end
   end
 
@@ -266,7 +274,7 @@ defmodule Ash.Actions.Update do
              engine_opts[:actor],
              engine_opts
            ) do
-      {:ok, with_relationships, %{notifications: new_notifications}}
+      {:ok, with_relationships, %{notifications: new_notifications, new_changeset: changeset}}
     end
   end
 

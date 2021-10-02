@@ -47,6 +47,7 @@ defmodule Ash.Resource.Validation do
     :description,
     :message,
     :before_action?,
+    :where,
     on: []
   ]
 
@@ -56,6 +57,7 @@ defmodule Ash.Resource.Validation do
           opts: list(atom()),
           expensive?: boolean(),
           description: String.t() | nil,
+          where: list({atom(), list(atom())}),
           on: list(atom())
         }
 
@@ -68,6 +70,14 @@ defmodule Ash.Resource.Validation do
       type: {:ash_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins},
       required: true,
       doc: "The module/opts pair of the validation"
+    ],
+    where: [
+      type: {:list, {:ash_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins}},
+      required: false,
+      doc: """
+      Validations that should pass in order for this validation to apply.
+      These validations failing will not invalidate the changes, but instead just result in this validation being ignored.
+      """
     ],
     on: [
       type: {:custom, __MODULE__, :on, []},

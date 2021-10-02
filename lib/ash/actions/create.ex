@@ -327,7 +327,7 @@ defmodule Ash.Actions.Create do
              engine_opts[:actor],
              engine_opts
            ) do
-      {:ok, with_relationships, %{notifications: new_notifications}}
+      {:ok, with_relationships, %{notifications: new_notifications, new_changeset: changeset}}
     end
   end
 

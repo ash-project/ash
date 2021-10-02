@@ -31,7 +31,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           writable?: boolean,
           name: atom,
           read_action: atom,
-          filter: Ash.Filter.t(),
+          filter: Ash.Filter.t() | nil,
           source: Ash.Resource.t(),
           destination: Ash.Resource.t(),
           required?: boolean,

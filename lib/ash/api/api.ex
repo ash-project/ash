@@ -889,7 +889,7 @@ defmodule Ash.Api do
 
     api
     |> destroy(changeset, opts)
-    |> unwrap_or_raise!(opts[:stacktraces?])
+    |> unwrap_or_raise!(opts[:stacktraces?], true)
   end
 
   @doc false
@@ -947,11 +947,13 @@ defmodule Ash.Api do
     end
   end
 
-  defp unwrap_or_raise!(:ok, _), do: :ok
-  defp unwrap_or_raise!({:ok, result}, _), do: result
-  defp unwrap_or_raise!({:ok, result, other}, _), do: {result, other}
+  defp unwrap_or_raise!(first, second, destroy? \\ false)
+  defp unwrap_or_raise!(:ok, _, _), do: :ok
+  defp unwrap_or_raise!({:ok, result}, _, false), do: result
+  defp unwrap_or_raise!({:ok, result}, _, true), do: {:ok, result}
+  defp unwrap_or_raise!({:ok, result, other}, _, _), do: {result, other}
 
-  defp unwrap_or_raise!({:error, error}, stacktraces?) do
+  defp unwrap_or_raise!({:error, error}, stacktraces?, _) do
     exception = Ash.Error.to_ash_error(error)
 
     exception =

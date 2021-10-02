@@ -26,7 +26,7 @@ defmodule Ash.Resource.Relationships.HasMany do
           source: Ash.Resource.t(),
           writable?: boolean,
           read_action: atom,
-          filter: Ash.Filter.t(),
+          filter: Ash.Filter.t() | nil,
           name: atom,
           type: Ash.Type.t(),
           destination: Ash.Resource.t(),

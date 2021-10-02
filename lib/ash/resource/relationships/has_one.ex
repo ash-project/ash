@@ -31,7 +31,7 @@ defmodule Ash.Resource.Relationships.HasOne do
           name: atom,
           read_action: atom,
           type: Ash.Type.t(),
-          filter: Ash.Filter.t(),
+          filter: Ash.Filter.t() | nil,
           destination: Ash.Resource.t(),
           destination_field: atom,
           private?: boolean,

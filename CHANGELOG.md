@@ -5,6 +5,35 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.7](https://github.com/ash-project/ash/compare/v1.48.0-rc.6...v1.48.0-rc.7) (2021-09-30)
+
+
+
+
+### Bug Fixes:
+
+* ensure changeset is up to date in `after_action` hooks
+
+* fix a case where `unwrap_or_raise!` returned the wrong value on destroy
+
+* fix typo on lateral join checker
+
+* set default attribute type (in case it is explicitly set to nil) on belongs_to attributes
+
+* if an error with no message is produced, don't attempt to concat nil with a string
+
+### Improvements:
+
+* simpler patterns around soft destroy actions
+
+* add `set_option/4` to transformer helpers
+
+* add `where` option to validate that accepts a list of validations
+
+* prevent more unnecessary lateral joins
+
+* only issue a lateral join when required (#269)
+
 ## [v1.48.0-rc.6](https://github.com/ash-project/ash/compare/v1.48.0-rc.5...v1.48.0-rc.6) (2021-09-20)
 
 

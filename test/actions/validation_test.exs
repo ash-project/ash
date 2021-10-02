@@ -22,7 +22,12 @@ defmodule Ash.Test.Actions.ValidationTest do
       validate absent([:bio, :date]), on: :create
       validate present(:bio), on: :update
       validate absent(:date), on: :destroy
+
       validate one_of(:status, ["foo", "bar"])
+
+      validate attribute_equals(:status, "foo") do
+        where([attribute_equals(:foo, true)])
+      end
     end
 
     attributes do
@@ -30,6 +35,7 @@ defmodule Ash.Test.Actions.ValidationTest do
       attribute :bio, :string
       attribute :date, :date
       attribute :status, :string
+      attribute :foo, :boolean
     end
   end
 
@@ -45,6 +51,18 @@ defmodule Ash.Test.Actions.ValidationTest do
     assert_raise(Ash.Error.Invalid, ~r/bio, date: must be absent/, fn ->
       Profile
       |> Ash.Changeset.new(%{bio: "foobar"})
+      |> Api.create!()
+    end)
+  end
+
+  test "validations only run when their when conditions validate properly" do
+    Profile
+    |> Ash.Changeset.new(%{foo: false, status: "foo"})
+    |> Api.create!()
+
+    assert_raise(Ash.Error.Invalid, ~r/status: must equal foo/, fn ->
+      Profile
+      |> Ash.Changeset.new(%{foo: true, status: "bar"})
       |> Api.create!()
     end)
   end
