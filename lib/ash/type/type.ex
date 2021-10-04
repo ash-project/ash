@@ -11,7 +11,7 @@ defmodule Ash.Type do
     nil_items?: [
       type: :boolean,
       doc: "Whether or not the list can contain nil items",
-      default: true
+      default: false
     ]
   ]
 
