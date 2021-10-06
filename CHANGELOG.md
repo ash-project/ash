@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.8](https://github.com/ash-project/ash/compare/v1.48.0-rc.7...v1.48.0-rc.8) (2021-10-06)
+
+
+
+
+### Bug Fixes:
+
+* make arrays default to nil_items?: false
+
+### Improvements:
+
+* breaking change! don't define code interface by default
+
 ## [v1.48.0-rc.7](https://github.com/ash-project/ash/compare/v1.48.0-rc.6...v1.48.0-rc.7) (2021-09-30)
 
 
