@@ -56,8 +56,11 @@ defmodule Ash.OptionsHelpers do
       {:list, values} ->
         {:list, sanitize_type(values)}
 
-      {:ash_behaviour, behaviour, builtins} ->
-        {:custom, __MODULE__, :ash_behaviour, [behaviour, builtins]}
+      {:ash_behaviour, behaviour, _builtins} ->
+        {:custom, __MODULE__, :ash_behaviour, [behaviour]}
+
+      {:ash_behaviour, behaviour} ->
+        {:custom, __MODULE__, :ash_behaviour, [behaviour]}
 
       :ash_resource ->
         :atom
@@ -72,7 +75,7 @@ defmodule Ash.OptionsHelpers do
     end
   end
 
-  def ash_behaviour({module, opts}, _behaviour, _builtins) when is_atom(module) do
+  def ash_behaviour({module, opts}, _behaviour) when is_atom(module) do
     if Keyword.keyword?(opts) do
       # We can't check if it implements the behaviour here, unfortunately
       # As it may not be immediately available
@@ -82,11 +85,11 @@ defmodule Ash.OptionsHelpers do
     end
   end
 
-  def ash_behaviour(module, behaviour, builtins) when is_atom(module) do
-    ash_behaviour({module, []}, behaviour, builtins)
+  def ash_behaviour(module, behaviour) when is_atom(module) do
+    ash_behaviour({module, []}, behaviour)
   end
 
-  def ash_behaviour(other, _, _) do
+  def ash_behaviour(other, _) do
     {:error, "Expected a module and opts, got: #{inspect(other)}"}
   end
 

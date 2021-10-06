@@ -39,6 +39,8 @@ defmodule Ash.Test.CodeInterfaceTest do
     use Ash.Api
 
     resources do
+      define_interfaces?(true)
+
       resource(User)
     end
   end

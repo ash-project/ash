@@ -6,10 +6,17 @@ defmodule Ash.Api.Transformers.ValidateRelationshipAttributes do
 
   alias Ash.Dsl.Transformer
 
+  @impl true
+  def after_compile?, do: true
+
+  @impl true
+  def after?(Ash.Api.Transformers.EnsureResourcesCompiled), do: true
+  def after?(_), do: false
+
+  @impl true
   def transform(_api, dsl) do
     dsl
     |> Transformer.get_entities([:resources])
-    |> Enum.filter(& &1.warn_on_compile_failure?)
     |> Enum.map(& &1.resource)
     |> Enum.each(fn resource ->
       attribute_names =
@@ -71,7 +78,4 @@ defmodule Ash.Api.Transformers.ValidateRelationshipAttributes do
           "Relationship `#{relationship.name}` expects destination field `#{relationship.destination_field}` to be defined on #{inspect(relationship.destination)}"
     end
   end
-
-  def after?(Ash.Api.Transformers.EnsureResourcesCompiled), do: true
-  def after?(_), do: false
 end

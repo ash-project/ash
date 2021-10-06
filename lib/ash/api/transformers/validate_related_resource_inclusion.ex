@@ -7,6 +7,9 @@ defmodule Ash.Api.Transformers.ValidateRelatedResourceInclusion do
   alias Ash.Dsl.Transformer
 
   @impl true
+  def after_compile?, do: true
+
+  @impl true
   def after?(Ash.Api.Transformers.EnsureResourcesCompiled), do: true
   def after?(_), do: false
 
@@ -15,7 +18,6 @@ defmodule Ash.Api.Transformers.ValidateRelatedResourceInclusion do
     resources =
       dsl
       |> Transformer.get_entities([:resources])
-      |> Enum.filter(& &1.warn_on_compile_failure?)
       |> Enum.map(& &1.resource)
 
     resources

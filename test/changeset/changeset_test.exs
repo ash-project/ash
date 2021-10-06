@@ -243,16 +243,11 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                |> Changeset.new()
     end
 
-    test "it returns an error for a non-resource record" do
-      assert %Changeset{
-               action_type: :update,
-               attributes: %{},
-               data: %NonResource{},
-               errors: [%Ash.Error.Invalid.NoSuchResource{}],
-               valid?: false
-             } =
-               %NonResource{name: "foo"}
-               |> Changeset.new()
+    test "it raises an error for a non-resource record" do
+      assert_raise ArgumentError, ~r/No such entity/, fn ->
+        %NonResource{name: "foo"}
+        |> Changeset.new()
+      end
     end
   end
 

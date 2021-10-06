@@ -493,6 +493,11 @@ defmodule Ash.Api do
     |> Enum.map(& &1.resource)
   end
 
+  @spec define_interfaces?(atom) :: boolean
+  def define_interfaces?(api) do
+    Extension.get_opt(api, [:resources], :define_interfaces?, false)
+  end
+
   @spec resource_references(Ash.Api.t()) :: [Ash.Api.ResourceReference.t()]
   def resource_references(api) do
     Extension.get_entities(api, [:resources])

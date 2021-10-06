@@ -564,7 +564,7 @@ defmodule Ash.EmbeddableType do
         @parent parent
 
         resources do
-          resource @parent, warn_on_compile_failure?: false
+          resource @parent, []
         end
       end
 

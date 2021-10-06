@@ -3,7 +3,16 @@ defmodule Ash.Helpers do
 
   @spec try_compile(term) :: :ok
   def try_compile(module) when is_atom(module) do
-    Code.ensure_loaded(module)
+    try do
+      # This is to get the compiler to ensure that the resource is compiled
+      # For some very strange reason, `Code.ensure_compiled/1` isn't enough
+      module.ash_dsl_config()
+    rescue
+      _ ->
+        :ok
+    end
+
+    Code.ensure_compiled!(module)
     :ok
   end
 

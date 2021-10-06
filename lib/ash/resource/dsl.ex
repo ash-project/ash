@@ -315,6 +315,7 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Change,
     transform: {Ash.Resource.Change, :transform, []},
     schema: Ash.Resource.Change.action_schema(),
+    modules: [:change],
     args: [:change]
   }
 
@@ -378,6 +379,7 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Change,
     transform: {Ash.Resource.Change, :transform, []},
     schema: Ash.Resource.Change.schema(),
+    modules: [:change],
     args: [:change]
   }
 
@@ -735,10 +737,19 @@ defmodule Ash.Resource.Dsl do
     examples: [
       """
       code_interface do
+        auto_define MyApp.Api
         define :create_user, action: :create
         define :get_user_by_id, action: :get_by_id, args: [:id], get?: true
       end
       """
+    ],
+    schema: [
+      define_for: [
+        type: {:ash_behaviour, Ash.Api},
+        doc:
+          "Defines the code interface on the resource module directly, using the provided Api.",
+        default: false
+      ]
     ],
     entities: [
       @define

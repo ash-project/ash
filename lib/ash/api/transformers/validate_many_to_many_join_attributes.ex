@@ -6,6 +6,14 @@ defmodule Ash.Api.Transformers.ValidateManyToManyJoinAttributes do
 
   alias Ash.Dsl.Transformer
 
+  @impl true
+  def after_compile?, do: true
+
+  @impl true
+  def after?(Ash.Api.Transformers.EnsureResourcesCompiled), do: true
+  def after?(_), do: false
+
+  @impl true
   def transform(_api, dsl) do
     dsl
     |> Transformer.get_entities([:resources])
@@ -36,7 +44,4 @@ defmodule Ash.Api.Transformers.ValidateManyToManyJoinAttributes do
       end
     end
   end
-
-  def after?(Ash.Api.Transformers.EnsureResourcesCompiled), do: true
-  def after?(_), do: false
 end

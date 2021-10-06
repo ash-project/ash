@@ -9,15 +9,15 @@ defmodule Ash.Dsl.Transformer do
   Use the `after?/1` and `before?/1` callbacks to ensure that your transformer
   runs either before or after some other transformer.
 
-  The pattern for requesting information from other modules that use the DSL and are
-  also currently compiling has not yet been determined. If you have that requirement
-  you will need extra utilities to ensure that some other DSL based module has either
-  completed or reached a certain point in its transformers. These utilities have not
-  yet been written.
+  Return `true` in `after_compile/0` to have the transformer run in an `after_compile` hook,
+  but keep in mind that no modifications to the dsl structure will be retained, so there is no
+  point in returning a new dsl structure from `transform/2` if `after_compile/0` is defined. Instead,
+  simply return `:ok` or `{:error, error}`
   """
-  @callback transform(module, map) :: {:ok, map} | {:error, term} | :halt
+  @callback transform(module, map) :: :ok | {:ok, map} | {:error, term} | :halt
   @callback before?(module) :: boolean
   @callback after?(module) :: boolean
+  @callback after_compile?() :: boolean
 
   defmacro __using__(_) do
     quote do
@@ -25,8 +25,9 @@ defmodule Ash.Dsl.Transformer do
 
       def before?(_), do: false
       def after?(_), do: false
+      def after_compile?, do: false
 
-      defoverridable before?: 1, after?: 1
+      defoverridable before?: 1, after?: 1, after_compile?: 0
     end
   end
 

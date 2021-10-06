@@ -1843,6 +1843,7 @@ defmodule Ash.Filter do
   defp validate_not_crossing_datalayer_boundaries(refs, resource, expr) do
     refs
     |> Enum.map(&Ash.Resource.Info.related(resource, &1.relationship_path))
+    |> Enum.filter(& &1)
     |> Enum.group_by(&Ash.DataLayer.data_layer/1)
     |> Map.to_list()
     |> case do

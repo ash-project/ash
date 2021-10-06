@@ -149,8 +149,15 @@ defmodule Ash.Dsl do
 
             @opts opts
             @before_compile Ash.Dsl
+            @after_compile __MODULE__
             @ash_is parent
             @ash_parent parent
+
+            defmacro __after_compile__(_, _) do
+              quote do
+                Ash.Dsl.Extension.run_after_compile()
+              end
+            end
 
             Module.register_attribute(__MODULE__, :persist, accumulate: true)
 
@@ -222,16 +229,11 @@ defmodule Ash.Dsl do
 
       Module.register_attribute(__MODULE__, :ash_is, persist: true)
       Module.put_attribute(__MODULE__, :ash_is, @ash_is)
-      @on_load :on_load
 
-      ash_dsl_config = Macro.escape(Ash.Dsl.Extension.set_state(@persist))
+      Ash.Dsl.Extension.set_state(@persist)
 
       def ash_dsl_config do
-        unquote(ash_dsl_config)
-      end
-
-      def on_load do
-        Ash.Dsl.Extension.load()
+        @ash_dsl_config
       end
 
       @opts

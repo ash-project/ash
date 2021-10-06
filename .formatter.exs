@@ -9,7 +9,6 @@ locals_without_parens = [
   args: 1,
   argument: 2,
   argument: 3,
-  as: 1,
   attribute: 1,
   attribute: 2,
   attribute: 3,
@@ -34,6 +33,8 @@ locals_without_parens = [
   define: 1,
   define: 2,
   define_field?: 1,
+  define_for: 1,
+  define_interfaces?: 1,
   description: 1,
   destination_field: 1,
   destination_field_on_join_table: 1,
@@ -122,7 +123,6 @@ locals_without_parens = [
   validate: 2,
   validate_destination_field?: 1,
   violation_message: 1,
-  warn_on_compile_failure?: 1,
   where: 1,
   writable?: 1
 ]

@@ -105,16 +105,35 @@ defmodule Ash.Dsl.Extension do
   @callback sections() :: [Ash.Dsl.section()]
   @callback transformers() :: [module]
 
+  defp dsl!(resource) do
+    resource.ash_dsl_config()
+  rescue
+    UndefinedFunctionError ->
+      try do
+        Module.get_attribute(resource, :ash_dsl_config) || %{}
+      rescue
+        ArgumentError ->
+          try do
+            resource.ash_dsl_config()
+          rescue
+            _ ->
+              reraise ArgumentError,
+                      """
+                      No such entity #{inspect(resource)} found.
+                      """,
+                      __STACKTRACE__
+          end
+      end
+  end
+
   @doc "Get the entities configured for a given section"
   def get_entities(resource, path) do
-    Ash.Helpers.try_compile(resource)
-    :persistent_term.get({resource, :ash, path}, %{entities: []}).entities
+    dsl!(resource)[path][:entities] || []
   end
 
   @doc "Get a value that was persisted while transforming or compiling the resource, e.g `:primary_key`"
   def get_persisted(resource, key, default \\ nil) do
-    Ash.Helpers.try_compile(resource)
-    :persistent_term.get({resource, key}, default)
+    Map.get(dsl!(resource)[:persist] || %{}, key, default)
   end
 
   @doc """
@@ -131,22 +150,10 @@ defmodule Ash.Dsl.Extension do
           value
 
         _ ->
-          Ash.Helpers.try_compile(resource)
-
-          Keyword.get(
-            :persistent_term.get({resource, :ash, path}, %{opts: []}).opts,
-            value,
-            default
-          )
+          Keyword.get(dsl!(resource)[path][:opts] || [], value, default)
       end
     else
-      Ash.Helpers.try_compile(resource)
-
-      Keyword.get(
-        :persistent_term.get({resource, :ash, path}, %{opts: []}).opts,
-        value,
-        default
-      )
+      Keyword.get(dsl!(resource)[path][:opts] || [], value, default)
     end
   end
 
@@ -404,19 +411,6 @@ defmodule Ash.Dsl.Extension do
     body =
       quote location: :keep do
         @extensions unquote(extensions)
-        # Due to a few strange stateful bugs I've seen,
-        # we clear the process of any potentially related state
-        for {key, _value} <- Process.get() do
-          if is_tuple(key) and elem(key, 0) == __MODULE__ do
-            Process.delete(key)
-          end
-        end
-
-        for {key, _value} <- :persistent_term.get() do
-          if is_tuple(key) and elem(key, 0) == __MODULE__ do
-            :persistent_term.erase(key)
-          end
-        end
       end
 
     imports =
@@ -433,7 +427,7 @@ defmodule Ash.Dsl.Extension do
   end
 
   @doc false
-  defmacro set_state(additional_persisted_data \\ []) do
+  defmacro set_state(additional_persisted_data) do
     quote generated: true,
           location: :keep,
           bind_quoted: [additional_persisted_data: additional_persisted_data] do
@@ -461,7 +455,7 @@ defmodule Ash.Dsl.Extension do
           &Map.merge(&1, persist)
         )
 
-      Ash.Dsl.Extension.write_dsl_to_persistent_term(__MODULE__, ash_dsl_config)
+      @ash_dsl_config ash_dsl_config
 
       for {key, _value} <- Process.get() do
         if is_tuple(key) and elem(key, 0) == __MODULE__ do
@@ -473,27 +467,35 @@ defmodule Ash.Dsl.Extension do
         @extensions
         |> Enum.flat_map(& &1.transformers())
         |> Transformer.sort()
+        |> Enum.reject(& &1.after_compile?())
 
       __MODULE__
       |> Ash.Dsl.Extension.run_transformers(
         transformers_to_run,
-        ash_dsl_config
+        ash_dsl_config,
+        true
       )
     end
   end
 
-  defmacro load do
+  defmacro run_after_compile do
     quote do
-      Ash.Dsl.Extension.write_dsl_to_persistent_term(
-        __MODULE__,
-        ash_dsl_config()
-      )
+      transformers_to_run =
+        @extensions
+        |> Enum.flat_map(& &1.transformers())
+        |> Ash.Dsl.Transformer.sort()
+        |> Enum.filter(& &1.after_compile?())
 
-      :ok
+      __MODULE__
+      |> Ash.Dsl.Extension.run_transformers(
+        transformers_to_run,
+        Module.get_attribute(__MODULE__, :ash_dsl_config),
+        false
+      )
     end
   end
 
-  def run_transformers(mod, transformers, ash_dsl_config) do
+  def run_transformers(mod, transformers, ash_dsl_config, store?) do
     Enum.reduce_while(transformers, ash_dsl_config, fn transformer, dsl ->
       result =
         try do
@@ -509,32 +511,23 @@ defmodule Ash.Dsl.Extension do
         end
 
       case result do
+        :ok ->
+          {:cont, dsl}
+
         :halt ->
           {:halt, dsl}
 
         {:ok, new_dsl} ->
-          write_dsl_to_persistent_term(mod, new_dsl)
+          if store? do
+            Module.put_attribute(mod, :ash_dsl_config, new_dsl)
+          end
+
           {:cont, new_dsl}
 
         {:error, error} ->
           raise_transformer_error(transformer, error)
       end
     end)
-  end
-
-  @doc false
-  def write_dsl_to_persistent_term(mod, dsl) do
-    dsl
-    |> Map.delete(:persist)
-    |> Enum.each(fn {section_path, value} ->
-      :persistent_term.put({mod, :ash, section_path}, value)
-    end)
-
-    Enum.each(Map.get(dsl, :persist, %{}), fn {key, value} ->
-      :persistent_term.put({mod, key}, value)
-    end)
-
-    dsl
   end
 
   defp raise_transformer_error(transformer, error) do

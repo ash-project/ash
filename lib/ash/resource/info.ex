@@ -88,6 +88,16 @@ defmodule Ash.Resource.Info do
     Extension.get_entities(resource, [:code_interface])
   end
 
+  @spec define_interface_in_resource?(Ash.Resource.t()) :: boolean
+  def define_interface_in_resource?(resource) do
+    !!Extension.get_opt(resource, [:code_interface], :define_for, false)
+  end
+
+  @spec define_interface_for(Ash.Resource.t()) :: atom | nil
+  def define_interface_for(resource) do
+    Extension.get_opt(resource, [:code_interface], :define_for, nil)
+  end
+
   @spec extensions(Ash.Resource.t()) :: [module]
   def extensions(resource) do
     Extension.get_persisted(resource, :extensions, [])
