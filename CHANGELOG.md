@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.10](https://github.com/ash-project/ash/compare/v1.48.0-rc.9...v1.48.0-rc.10) (2021-10-07)
+
+
+
+
+### Bug Fixes:
+
+* remove certain modules from avoiding recompilation
+
 ## [v1.48.0-rc.9](https://github.com/ash-project/ash/compare/v1.48.0-rc.8...v1.48.0-rc.9) (2021-10-07)
 
 
