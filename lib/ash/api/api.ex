@@ -6,12 +6,20 @@ defmodule Ash.Api do
   for all resources in that Api. You include them in an Api like so:
 
   ```elixir
+  defmodule MyApp.Registry do
+    use Ash.Registry
+
+    entries do
+      entry OneResource
+      entry SecondResource
+    end
+  end
+
   defmodule MyApp.Api do
     use Ash.Api
 
     resources do
-      resource OneResource
-      resource SecondResource
+      registry MyApp.Registry
     end
   end
   ```
@@ -477,30 +485,45 @@ defmodule Ash.Api do
   end
 
   def resource(api, resource) do
-    api
-    |> resource_references()
-    |> Enum.find(&(&1.resource == resource || &1.as == resource))
-    |> case do
-      nil -> {:error, NoSuchResource.exception(resource: resource)}
-      reference -> {:ok, reference.resource}
+    if Ash.Resource.Info.embedded?(resource) do
+      {:ok, resource}
+    else
+      api
+      |> resources()
+      |> Enum.find(&(&1 == resource))
+      |> case do
+        nil -> {:error, NoSuchResource.exception(resource: resource)}
+        resource -> {:ok, resource}
+      end
     end
   end
 
-  @spec resources(Ash.Api.t()) :: [Ash.Resource.t()]
+  @spec resources(Ash.Api.t()) :: list(Ash.Resource.t())
   def resources(api) do
     api
     |> Extension.get_entities([:resources])
     |> Enum.map(& &1.resource)
+    |> case do
+      [] ->
+        if registry = registry(api) do
+          Ash.Registry.entries(registry)
+        else
+          []
+        end
+
+      other ->
+        other
+    end
+  end
+
+  @spec registry(atom) :: atom | nil
+  def registry(api) do
+    Extension.get_opt(api, [:resources], :registry, nil)
   end
 
   @spec define_interfaces?(atom) :: boolean
   def define_interfaces?(api) do
     Extension.get_opt(api, [:resources], :define_interfaces?, false)
-  end
-
-  @spec resource_references(Ash.Api.t()) :: [Ash.Api.ResourceReference.t()]
-  def resource_references(api) do
-    Extension.get_entities(api, [:resources])
   end
 
   @doc false

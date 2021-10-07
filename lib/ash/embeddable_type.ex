@@ -47,6 +47,11 @@ defmodule Ash.EmbeddableType do
     ]
   ]
 
+  defmodule ShadowApi do
+    @moduledoc false
+    use Ash.Api
+  end
+
   @doc false
   def embedded_resource_array_constraints, do: @embedded_resource_array_constraints
 
@@ -135,7 +140,7 @@ defmodule Ash.EmbeddableType do
   defmacro single_embed_implementation do
     # credo:disable-for-next-line Credo.Check.Refactor.LongQuoteBlocks
     quote location: :keep do
-      alias __MODULE__.ShadowApi
+      alias Ash.EmbeddableType.ShadowApi
       def storage_type, do: :map
 
       def cast_input(%{__struct__: __MODULE__} = input, _constraints), do: {:ok, input}
@@ -375,7 +380,7 @@ defmodule Ash.EmbeddableType do
   defmacro array_embed_implementation do
     # credo:disable-for-next-line Credo.Check.Refactor.LongQuoteBlocks
     quote location: :keep do
-      alias __MODULE__.ShadowApi
+      alias Ash.EmbeddableType.ShadowApi
       def array_constraints, do: Ash.EmbeddableType.embedded_resource_array_constraints()
 
       def apply_constraints_array([], _constraints), do: {:ok, []}
@@ -554,19 +559,6 @@ defmodule Ash.EmbeddableType do
   defmacro define_embeddable_type do
     quote location: :keep do
       use Ash.Type
-
-      parent = __MODULE__
-
-      defmodule ShadowApi do
-        @moduledoc false
-        use Ash.Api
-
-        @parent parent
-
-        resources do
-          resource @parent, []
-        end
-      end
 
       Ash.EmbeddableType.single_embed_implementation()
       Ash.EmbeddableType.array_embed_implementation()

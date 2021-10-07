@@ -3,7 +3,6 @@ defmodule Ash.Api.Dsl do
     name: :resource,
     describe: "A reference to a resource",
     target: Ash.Api.ResourceReference,
-    modules: [:resource],
     args: [:resource],
     examples: [
       "resource MyApp.User"
@@ -38,7 +37,38 @@ defmodule Ash.Api.Dsl do
 
         Keep in mind that this can increase the compile times of your application.
         """
+      ],
+      registry: [
+        type: :atom,
+        # {:ash_behaviour, Ash.Registry},
+        doc: """
+        Allows declaring that only the modules in a certain registry should be allowed to work with this Api.
+
+        This option is ignored if any explicit resources are included in the api, so everything is either in the registry
+        or in the api. See the docs on `Ash.Registry` for what the registry is used for.
+        """
       ]
+    ],
+    modules: [:registry],
+    deprecations: [
+      resource: """
+      Please define your resources in an `Ash.Registry`. For example:
+
+      # my_app/my_api/registry.ex
+      defmodule MyApp.MyApi.Registry do
+        use Ash.Registry
+
+        entries do
+          entry MyApp.Post
+          entry MyApp.Comment
+        end
+      end
+
+      # In your api module
+      resources do
+        registry MyApp.MyApi.Registry
+      end
+      """
     ],
     entities: [
       @resource
@@ -46,6 +76,7 @@ defmodule Ash.Api.Dsl do
   }
 
   @transformers [
+    Ash.Api.Transformers.EnsureResourcesCompiled,
     Ash.Api.Transformers.ValidateRelatedResourceInclusion,
     Ash.Api.Transformers.ValidateRelationshipAttributes,
     Ash.Api.Transformers.ValidateManyToManyJoinAttributes

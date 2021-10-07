@@ -31,11 +31,20 @@ defmodule Ash.Test.QueryTest do
     end
   end
 
+  defmodule Registry do
+    @moduledoc false
+    use Ash.Registry
+
+    entries do
+      entry(User)
+    end
+  end
+
   defmodule Api do
     use Ash.Api
 
     resources do
-      resource User
+      registry Registry
     end
   end
 

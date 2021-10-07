@@ -122,15 +122,24 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     end
   end
 
+  defmodule Registry do
+    @moduledoc false
+    use Ash.Registry
+
+    entries do
+      entry(Post)
+      entry(User)
+      entry(Profile)
+      entry(PostLink)
+    end
+  end
+
   defmodule Api do
     @moduledoc false
     use Ash.Api
 
     resources do
-      resource(Post)
-      resource(User)
-      resource(Profile)
-      resource(PostLink)
+      registry Registry
     end
   end
 

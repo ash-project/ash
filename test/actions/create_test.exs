@@ -258,18 +258,27 @@ defmodule Ash.Test.Actions.CreateTest do
     end
   end
 
+  defmodule Registry do
+    @moduledoc false
+    use Ash.Registry
+
+    entries do
+      entry(Author)
+      entry(Post)
+      entry(Profile)
+      entry(ProfileWithBelongsTo)
+      entry(PostLink)
+      entry(Authorized)
+      entry(GeneratedPkey)
+    end
+  end
+
   defmodule Api do
     @moduledoc false
     use Ash.Api
 
     resources do
-      resource(Author)
-      resource(Post)
-      resource(Profile)
-      resource(ProfileWithBelongsTo)
-      resource(PostLink)
-      resource(Authorized)
-      resource(GeneratedPkey)
+      registry Registry
     end
   end
 

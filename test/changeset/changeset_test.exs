@@ -184,17 +184,26 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
   end
 
+  defmodule Registry do
+    @moduledoc false
+    use Ash.Registry
+
+    entries do
+      entry Category
+      entry Author
+      entry PostCategory
+      entry Post
+      entry CompositeKeyPost
+      entry UniqueNamePerAuthor
+    end
+  end
+
   defmodule Api do
     @moduledoc false
     use Ash.Api
 
     resources do
-      resource Category
-      resource Author
-      resource PostCategory
-      resource Post
-      resource CompositeKeyPost
-      resource UniqueNamePerAuthor
+      registry Registry
     end
   end
 

@@ -103,13 +103,22 @@ defmodule Ash.Test.NotifierTest do
     end
   end
 
+  defmodule Registry do
+    @moduledoc false
+    use Ash.Registry
+
+    entries do
+      entry Post
+      entry PostLink
+      entry Comment
+    end
+  end
+
   defmodule Api do
     use Ash.Api
 
     resources do
-      resource Post
-      resource PostLink
-      resource Comment
+      registry Registry
     end
   end
 

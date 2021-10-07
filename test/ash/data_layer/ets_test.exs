@@ -39,11 +39,20 @@ defmodule Ash.DataLayer.EtsTest do
     end
   end
 
+  defmodule Registry do
+    @moduledoc false
+    use Ash.Registry
+
+    entries do
+      entry EtsTestUser
+    end
+  end
+
   defmodule EtsApiTest do
     use Ash.Api
 
     resources do
-      resource EtsTestUser
+      registry Registry
     end
   end
 

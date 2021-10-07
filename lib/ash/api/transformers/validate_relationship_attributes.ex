@@ -4,8 +4,6 @@ defmodule Ash.Api.Transformers.ValidateRelationshipAttributes do
   """
   use Ash.Dsl.Transformer
 
-  alias Ash.Dsl.Transformer
-
   @impl true
   def after_compile?, do: true
 
@@ -14,10 +12,9 @@ defmodule Ash.Api.Transformers.ValidateRelationshipAttributes do
   def after?(_), do: false
 
   @impl true
-  def transform(_api, dsl) do
-    dsl
-    |> Transformer.get_entities([:resources])
-    |> Enum.map(& &1.resource)
+  def transform(api, dsl) do
+    api
+    |> Ash.Api.resources()
     |> Enum.each(fn resource ->
       attribute_names =
         resource

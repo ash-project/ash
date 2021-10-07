@@ -192,16 +192,25 @@ defmodule Ash.Test.Actions.UpdateTest do
     end
   end
 
+  defmodule Registry do
+    @moduledoc false
+    use Ash.Registry
+
+    entries do
+      entry(Author)
+      entry(Post)
+      entry(Profile)
+      entry(PostLink)
+      entry(Authorized)
+    end
+  end
+
   defmodule Api do
     @moduledoc false
     use Ash.Api
 
     resources do
-      resource(Author)
-      resource(Post)
-      resource(Profile)
-      resource(PostLink)
-      resource(Authorized)
+      registry Registry
     end
   end
 

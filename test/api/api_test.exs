@@ -12,15 +12,4 @@ defmodule Ash.Test.Resource.ApiTest do
       end
     end
   end
-
-  defmacrop defapi(opts \\ [], do: body) do
-    quote do
-      defmodule Api do
-        @moduledoc false
-        use Ash.Api, unquote(opts)
-
-        unquote(body)
-      end
-    end
-  end
 end

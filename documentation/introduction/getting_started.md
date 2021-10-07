@@ -52,7 +52,7 @@ attribute(:id, :integer, allow_nil?: true)
 
 ## Create an Ash API
 
-Create an API module. This will be your primary way to interact with your Ash resources. We recommend `lib/my_app/api.ex` for simple setups. For more information on organizing resources into contexts/domains, see the [Contexts and Domains](contexts_and_domains.html) guide.
+Create an API module. This will be your primary way to interact with your Ash resources. We recommend `lib/my_app/api.ex` for simple setups.
 
 ```elixir
 # lib/my_app/api.ex
@@ -60,6 +60,33 @@ defmodule MyApp.Api do
   use Ash.Api
 
   resources do
+  end
+end
+```
+
+## Create a registry
+
+The registry is in charge of keeping track of the resources available to an api.
+
+```elixir
+# lib/my_app/registry.ex
+defmodule MyApp.Registry do
+  use Ash.Registry
+
+  entries do
+  end
+end
+```
+
+## Refer to that registry in your api
+
+```elixir
+# lib/my_app/api.ex
+defmodule MyApp.Api do
+  use Ash.Api
+
+  resources do
+    registry MyApp.Registry
   end
 end
 ```
@@ -123,12 +150,12 @@ For full details on defining a resource, see: `Ash.Resource.Dsl`.
 
 ## Add resources to your API
 
-Alter your API (`lib/my_app/api.ex`) to add the resources we created on the previous step:
+Alter your Registry (`lib/my_app/registry.ex`) to add the resources we created on the previous step:
 
 ```elixir
-resources do
-  resource MyApp.User
-  resource MyApp.Tweet
+entries do
+  entry MyApp.User
+  entry MyApp.Tweet
 end
 ```
 
@@ -192,12 +219,12 @@ iex(6)> changeset = Ash.Changeset.new(MyApp.User, %{email: "@eng.com"})
 
 To be able to store and later on read your resources, a _data layer_ is required. For more information, see the documentation for the data layer you would like to use. The currently supported data layers are listed below:
 
-| Storage | Datalayer | Storage Documentation |
-| --- | ---| --- |
-| postgres | [AshPostgres.DataLayer](https://hexdocs.pm/ash_postgres) | [Postgres Documentation](https://www.postgresql.org/docs/) |
-| csv | [AshCsv.DataLayer](https://hexdocs.pm/ash_csv) | [CSV Information](https://en.wikipedia.org/wiki/Comma-separated_values) |
-| ets | `Ash.DataLayer.Ets` | [Erlang Term Storage Documentation](https://erlang.org/doc/man/ets.html) |
-| mnesia | `Ash.DataLayer.Mnesia` | [Mnesia Documentation](https://erlang.org/doc/man/mnesia.html) |
+| Storage  | Datalayer                                                | Storage Documentation                                                    |
+| -------- | -------------------------------------------------------- | ------------------------------------------------------------------------ |
+| postgres | [AshPostgres.DataLayer](https://hexdocs.pm/ash_postgres) | [Postgres Documentation](https://www.postgresql.org/docs/)               |
+| csv      | [AshCsv.DataLayer](https://hexdocs.pm/ash_csv)           | [CSV Information](https://en.wikipedia.org/wiki/Comma-separated_values)  |
+| ets      | `Ash.DataLayer.Ets`                                      | [Erlang Term Storage Documentation](https://erlang.org/doc/man/ets.html) |
+| mnesia   | `Ash.DataLayer.Mnesia`                                   | [Mnesia Documentation](https://erlang.org/doc/man/mnesia.html)           |
 
 To add a data layer, we need to add it to the `use Ash.Resource` statement. In
 this case we are going to use ETS which is a in-memory data layer that is built

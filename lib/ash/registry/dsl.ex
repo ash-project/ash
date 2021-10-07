@@ -1,56 +1,48 @@
-# defmodule Ash.Registry.Dsl do
-#   @entry %Ash.Dsl.Entity{
-#     name: :entry,
-#     describe: "A reference to a a module",
-#     target: Ash.Registry.EntryReference,
-#     args: [:entry],
-#     examples: [
-#       "entry MyApp.Post"
-#     ],
-#     schema: [
-#       entry: [
-#         type: :atom,
-#         required: true,
-#         doc: "The module of the entry"
-#       ]
-#     ]
-#   }
+defmodule Ash.Registry.Dsl do
+  @entry %Ash.Dsl.Entity{
+    name: :entry,
+    describe: "A reference to an ash module (typically a resource)",
+    target: Ash.Registry.Entry,
+    args: [:entry],
+    examples: [
+      "entry MyApp.User"
+    ],
+    schema: [
+      entry: [
+        type: :atom,
+        required: true,
+        doc: "The referenced module"
+      ]
+    ]
+  }
 
-#   @entries %Ash.Dsl.Section{
-#     name: :entries,
-#     describe: "List the entries present in this registry",
-#     examples: [
-#       """
-#       entries do
-#         entry MyApp.User
-#         entry MyApp.Post
-#         entry MyApp.Comment
-#       end
-#       """
-#     ],
-#     entities: [
-#       @entry
-#     ]
-#   }
+  @entries %Ash.Dsl.Section{
+    name: :entries,
+    describe: "List the entries present in this registry",
+    examples: [
+      """
+      entries do
+        entry MyApp.User
+        entry MyApp.Post
+        entry MyApp.Comment
+      end
+      """
+    ],
+    entities: [
+      @entry
+    ]
+  }
 
-#   @sections [@resources]
+  @sections [@entries]
 
-#   @moduledoc """
-#   A small DSL for declaring APIs
+  @moduledoc """
+  A small DSL for declaring an `Ash.Registry`.
 
-#   Apis are the entrypoints for working with your resources.
+  # Table of Contents
+  #{Ash.Dsl.Extension.doc_index(@sections)}
 
-#   Apis may optionally include a list of resources, in which case they can be
-#   used as an `Ash.Registry` in various places. This is for backwards compatibility,
-#   but if at all possible you should define an `Ash.Registry` if you are using an extension
-#   that requires a list of resources. For example, most extensions look for two application
-#   environment variables called `:ash_apis` and `:ash_registries` to find any potential registries
+  #{Ash.Dsl.Extension.doc(@sections)}
+  """
 
-#   # Table of Contents
-#   #{Ash.Dsl.Extension.doc_index(@sections)}
-
-#   #{Ash.Dsl.Extension.doc(@sections)}
-#   """
-
-#   use Ash.Dsl.Extension, sections: @sections, transformers: @transformers
-# end
+  use Ash.Dsl.Extension, sections: @sections
+end

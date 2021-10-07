@@ -28,6 +28,7 @@ defmodule Ash.Dsl.Section do
     snippet: "",
     examples: [],
     modules: [],
+    deprecations: [],
     entities: [],
     sections: [],
     docs: ""

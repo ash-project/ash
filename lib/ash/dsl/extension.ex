@@ -106,9 +106,10 @@ defmodule Ash.Dsl.Extension do
   @callback transformers() :: [module]
 
   defp dsl!(resource) do
+    Code.ensure_compiled!(resource)
     resource.ash_dsl_config()
   rescue
-    UndefinedFunctionError ->
+    _ in [UndefinedFunctionError, ArgumentError] ->
       try do
         Module.get_attribute(resource, :ash_dsl_config) || %{}
       rescue
@@ -711,7 +712,7 @@ defmodule Ash.Dsl.Extension do
   def do_build_section(mod, extension, section, path) do
     entity_modules =
       Enum.map(section.entities, fn entity ->
-        build_entity(mod, extension, path ++ [section.name], entity)
+        build_entity(mod, extension, path ++ [section.name], entity, section.deprecations)
       end)
 
     section_modules =
@@ -768,6 +769,13 @@ defmodule Ash.Dsl.Extension do
                 extension = unquote(extension)
                 section = unquote(Macro.escape(section))
 
+                Ash.Dsl.Extension.maybe_deprecated(
+                  field,
+                  section.deprecations,
+                  section_path,
+                  __CALLER__
+                )
+
                 value =
                   if field in section.modules do
                     Ash.Dsl.Extension.expand_alias(value, __CALLER__)
@@ -811,7 +819,7 @@ defmodule Ash.Dsl.Extension do
   end
 
   @doc false
-  def build_entity(mod, extension, section_path, entity, nested_entity_path \\ []) do
+  def build_entity(mod, extension, section_path, entity, deprecations, nested_entity_path \\ []) do
     nested_entity_parts = Enum.map(nested_entity_path, &Macro.camelize(to_string(&1)))
 
     mod_parts =
@@ -831,6 +839,7 @@ defmodule Ash.Dsl.Extension do
             extension,
             section_path,
             entity,
+            entity.deprecations,
             nested_entity_path ++ [key]
           )
         end)
@@ -840,6 +849,7 @@ defmodule Ash.Dsl.Extension do
       options_mod_name,
       entity.schema,
       entity.modules,
+      entity.deprecations,
       nested_entity_path
     )
 
@@ -854,7 +864,8 @@ defmodule Ash.Dsl.Extension do
               section_path: Macro.escape(section_path),
               options_mod_name: Macro.escape(options_mod_name),
               nested_entity_mods: Macro.escape(nested_entity_mods),
-              nested_entity_path: Macro.escape(nested_entity_path)
+              nested_entity_path: Macro.escape(nested_entity_path),
+              deprecations: deprecations
             ] do
         @moduledoc false
         defmacro unquote(entity.name)(unquote_splicing(args), opts \\ []) do
@@ -863,16 +874,32 @@ defmodule Ash.Dsl.Extension do
           entity = unquote(Macro.escape(entity))
           entity_name = unquote(Macro.escape(entity.name))
           entity_args = unquote(Macro.escape(entity.args))
+          entity_deprecations = unquote(entity.deprecations)
           options_mod_name = unquote(Macro.escape(options_mod_name))
           source = unquote(__MODULE__)
           extension = unquote(Macro.escape(extension))
           nested_entity_mods = unquote(Macro.escape(nested_entity_mods))
           nested_entity_path = unquote(Macro.escape(nested_entity_path))
+          deprecations = unquote(deprecations)
+
+          Ash.Dsl.Extension.maybe_deprecated(
+            entity.name,
+            deprecations,
+            section_path ++ nested_entity_path,
+            __CALLER__
+          )
 
           arg_values =
             entity_args
             |> Enum.zip(unquote(args))
             |> Enum.map(fn {key, value} ->
+              Ash.Dsl.Extension.maybe_deprecated(
+                key,
+                entity_deprecations,
+                nested_entity_path,
+                __CALLER__
+              )
+
               if key in entity.modules do
                 Ash.Dsl.Extension.expand_alias(value, __CALLER__)
               else
@@ -882,6 +909,13 @@ defmodule Ash.Dsl.Extension do
 
           opts =
             Enum.map(opts, fn {key, value} ->
+              Ash.Dsl.Extension.maybe_deprecated(
+                key,
+                entity_deprecations,
+                nested_entity_path,
+                __CALLER__
+              )
+
               if key in entity.modules do
                 {key, Ash.Dsl.Extension.expand_alias(value, __CALLER__)}
               else
@@ -1019,13 +1053,14 @@ defmodule Ash.Dsl.Extension do
   end
 
   @doc false
-  def build_entity_options(module_name, schema, modules, nested_entity_path) do
+  def build_entity_options(module_name, schema, modules, deprecations, nested_entity_path) do
     Module.create(
       module_name,
       quote bind_quoted: [
               schema: Macro.escape(schema),
               nested_entity_path: nested_entity_path,
-              modules: modules
+              modules: modules,
+              deprecations: deprecations
             ] do
         @moduledoc false
 
@@ -1034,6 +1069,9 @@ defmodule Ash.Dsl.Extension do
             key = unquote(key)
             nested_entity_path = unquote(nested_entity_path)
             modules = unquote(modules)
+            deprecations = unquote(deprecations)
+
+            Ash.Dsl.Extension.maybe_deprecated(key, deprecations, nested_entity_path, __CALLER__)
 
             value =
               if key in modules do
@@ -1057,6 +1095,22 @@ defmodule Ash.Dsl.Extension do
     )
 
     module_name
+  end
+
+  @doc false
+  def maybe_deprecated(field, deprecations, path, env) do
+    if Keyword.has_key?(deprecations, field) do
+      prefix =
+        case Enum.join(path) do
+          "" -> ""
+          path -> "#{path}."
+        end
+
+      IO.warn(
+        "The #{prefix}#{field} key will be deprecated in an upcoming release!\n\n#{deprecations[field]}",
+        Macro.Env.stacktrace(env)
+      )
+    end
   end
 
   def expand_alias(ast, env) do

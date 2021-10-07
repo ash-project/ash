@@ -75,13 +75,22 @@ defmodule Ash.Test.Actions.BelongsToTest do
     end
   end
 
+  defmodule Registry do
+    @moduledoc false
+    use Ash.Registry
+
+    entries do
+      entry(Post)
+      entry(Reviewer)
+    end
+  end
+
   defmodule Api do
     @moduledoc false
     use Ash.Api
 
     resources do
-      resource(Post)
-      resource(Reviewer)
+      registry Registry
     end
   end
 

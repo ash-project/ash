@@ -22,11 +22,20 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
     end
   end
 
+  defmodule Registry do
+    @moduledoc false
+    use Ash.Registry
+
+    entries do
+      entry Post
+    end
+  end
+
   defmodule Api do
     use Ash.Api
 
     resources do
-      resource Post
+      registry Registry
     end
   end
 

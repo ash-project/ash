@@ -95,13 +95,23 @@ defmodule Ash.Actions.MultitenancyTest do
     end
   end
 
+  defmodule Registry do
+    @moduledoc false
+    use Ash.Registry
+
+    entries do
+      entry(Comment)
+      entry(Post)
+      entry(User)
+    end
+  end
+
   defmodule Api do
+    @moduledoc false
     use Ash.Api
 
     resources do
-      resource Comment
-      resource Post
-      resource User
+      registry Registry
     end
   end
 

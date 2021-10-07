@@ -38,6 +38,7 @@ defmodule Ash.Dsl.Entity do
     :transform,
     examples: [],
     entities: [],
+    deprecations: [],
     describe: "",
     snippet: "",
     args: [],

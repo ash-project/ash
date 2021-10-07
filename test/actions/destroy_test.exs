@@ -114,14 +114,23 @@ defmodule Ash.Test.Actions.DestroyTest do
     end
   end
 
+  defmodule Registry do
+    @moduledoc false
+    use Ash.Registry
+
+    entries do
+      entry(Author)
+      entry(Post)
+      entry(Profile)
+    end
+  end
+
   defmodule Api do
     @moduledoc false
     use Ash.Api
 
     resources do
-      resource(Author)
-      resource(Post)
-      resource(Profile)
+      registry Registry
     end
   end
 
