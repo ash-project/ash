@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.9](https://github.com/ash-project/ash/compare/v1.48.0-rc.8...v1.48.0-rc.9) (2021-10-07)
+
+
+
+
+### Improvements:
+
+* deprecation!
+
 ## [v1.48.0-rc.8](https://github.com/ash-project/ash/compare/v1.48.0-rc.7...v1.48.0-rc.8) (2021-10-06)
 
 
