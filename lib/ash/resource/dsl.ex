@@ -19,7 +19,6 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Attribute,
     args: [:name, :type],
-    modules: [:type],
     schema: Ash.Resource.Attribute.attribute_schema()
   }
 
@@ -315,7 +314,6 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Change,
     transform: {Ash.Resource.Change, :transform, []},
     schema: Ash.Resource.Change.action_schema(),
-    modules: [:change],
     args: [:change]
   }
 
@@ -351,7 +349,6 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Actions.Metadata,
     args: [:name, :type],
-    modules: [:type],
     schema: Ash.Resource.Actions.Metadata.schema()
   }
 
@@ -379,7 +376,6 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Change,
     transform: {Ash.Resource.Change, :transform, []},
     schema: Ash.Resource.Change.schema(),
-    modules: [:change],
     args: [:change]
   }
 
@@ -922,7 +918,6 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Calculation.Argument,
     args: [:name, :type],
-    modules: [:type],
     schema: Ash.Resource.Calculation.Argument.schema()
   }
 
@@ -952,7 +947,6 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Calculation,
     args: [:name, :type, :calculation],
-    modules: [:type],
     entities: [
       arguments: [@argument]
     ],
