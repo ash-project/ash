@@ -151,11 +151,11 @@ defmodule Ash.Resource.Transformers.SetTypes do
                 )}}
 
             {:error, error} ->
-              {:error, error}
+              {:halt, {:error, error}}
           end
 
         {:error, error} ->
-          {:error, error}
+          {:halt, {:error, error}}
       end
     end)
   end

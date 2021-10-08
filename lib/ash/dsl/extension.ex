@@ -87,6 +87,12 @@ defmodule Ash.Dsl.Extension do
         MyApp.Transformers.ValidateNoOverlappingMakesAndModels
       ]
 
+  By default, the generated modules will have names like `__MODULE__.SectionName.EntityName`, and that could
+  potentially conflict with modules you are defining, so you can specify the `module_prefix` option, which would allow
+  you to prefix the modules with something like `__MODULE__.Dsl`, so that the module path generated might be something like
+  `__MODULE__.Dsl.SectionName.EntityName`, and you could then have the entity struct be `__MODULE__.SectionName.EntityName`
+  without conflicts.
+
   To expose the configuration of your DSL, define functions that use the
   helpers like `get_entities/2` and `get_opt/3`. For example:
 
@@ -370,12 +376,13 @@ defmodule Ash.Dsl.Extension do
   defmacro __using__(opts) do
     quote bind_quoted: [
             sections: opts[:sections] || [],
-            transformers: opts[:transformers] || []
+            transformers: opts[:transformers] || [],
+            module_prefix: opts[:module_prefix]
           ] do
       alias Ash.Dsl.Extension
 
       @behaviour Extension
-      Extension.build(__MODULE__, sections)
+      Extension.build(__MODULE__, module_prefix, sections)
       @_sections sections
       @_transformers transformers
 
@@ -573,23 +580,28 @@ defmodule Ash.Dsl.Extension do
   end
 
   @doc false
-  defmacro build(extension, sections) do
-    quote bind_quoted: [sections: sections, extension: extension] do
+  defmacro build(extension, module_prefix, sections) do
+    quote bind_quoted: [sections: sections, extension: extension, module_prefix: module_prefix] do
       alias Ash.Dsl.Extension
 
       for section <- sections do
-        Extension.build_section(extension, section, true)
+        Extension.build_section(extension, section, [], module_prefix)
       end
     end
   end
 
   @doc false
-  defmacro build_section(extension, section, doc?, path \\ []) do
-    quote bind_quoted: [section: section, path: path, extension: extension, doc?: doc?] do
+  defmacro build_section(extension, section, path \\ [], module_prefix \\ nil) do
+    quote bind_quoted: [
+            section: section,
+            path: path,
+            extension: extension,
+            module_prefix: module_prefix
+          ] do
       alias Ash.Dsl
 
       {section_modules, entity_modules, opts_module} =
-        Dsl.Extension.do_build_section(__MODULE__, extension, section, path)
+        Dsl.Extension.do_build_section(module_prefix || __MODULE__, extension, section, path)
 
       @doc false
 
@@ -739,7 +751,6 @@ defmodule Ash.Dsl.Extension do
             Dsl.Extension.build_section(
               extension,
               nested_section,
-              false,
               path ++ [section.name]
             )
           end
