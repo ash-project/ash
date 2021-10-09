@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.11](https://github.com/ash-project/ash/compare/v1.48.0-rc.10...v1.48.0-rc.11) (2021-10-09)
+
+
+
+
+### Bug Fixes:
+
+* handle errors when validation calculation constraints
+
+* remove certain modules from avoiding recompilation
+
+### Improvements:
+
+* support `module_prefix` for dsl extensions
+
 ## [v1.48.0-rc.10](https://github.com/ash-project/ash/compare/v1.48.0-rc.9...v1.48.0-rc.10) (2021-10-07)
 
 
