@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.12](https://github.com/ash-project/ash/compare/v1.48.0-rc.11...v1.48.0-rc.12) (2021-10-11)
+
+
+
+
+### Bug Fixes:
+
+* move related field validations to resource
+
+* remove join_attributes, which didn't do anything anyway
+
+### Improvements:
+
+* add resource registry validation
+
 ## [v1.48.0-rc.11](https://github.com/ash-project/ash/compare/v1.48.0-rc.10...v1.48.0-rc.11) (2021-10-09)
 
 
