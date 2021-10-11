@@ -56,7 +56,8 @@ defmodule Ash.Api.Dsl do
 
       # my_app/my_api/registry.ex
       defmodule MyApp.MyApi.Registry do
-        use Ash.Registry
+        use Ash.Registry,
+          extensions: [Ash.Registry.ResourceValidations]
 
         entries do
           entry MyApp.Post
@@ -74,13 +75,6 @@ defmodule Ash.Api.Dsl do
       @resource
     ]
   }
-
-  @transformers [
-    Ash.Api.Transformers.EnsureResourcesCompiled,
-    Ash.Api.Transformers.ValidateRelatedResourceInclusion,
-    Ash.Api.Transformers.ValidateRelationshipAttributes,
-    Ash.Api.Transformers.ValidateManyToManyJoinAttributes
-  ]
 
   @sections [@resources]
 
@@ -101,5 +95,5 @@ defmodule Ash.Api.Dsl do
   #{Ash.Dsl.Extension.doc(@sections)}
   """
 
-  use Ash.Dsl.Extension, sections: @sections, transformers: @transformers
+  use Ash.Dsl.Extension, sections: @sections
 end

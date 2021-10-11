@@ -10,7 +10,6 @@ defmodule Ash.Resource.Relationships.ManyToMany do
     :source_field_on_join_table,
     :destination_field_on_join_table,
     :join_relationship,
-    :join_attributes,
     :not_found_message,
     :violation_message,
     :writable?,
@@ -37,7 +36,6 @@ defmodule Ash.Resource.Relationships.ManyToMany do
           through: Ash.Resource.t(),
           destination: Ash.Resource.t(),
           join_relationship: atom,
-          join_attributes: [atom],
           source_field: atom,
           destination_field: atom,
           source_field_on_join_table: atom,
@@ -75,18 +73,6 @@ defmodule Ash.Resource.Relationships.ManyToMany do
                     type: :atom,
                     doc:
                       "The has_many relationship to the join table. Defaults to <relationship_name>_join_assoc"
-                  ],
-                  join_attributes: [
-                    type: {:custom, __MODULE__, :join_attributes, []},
-                    default: [],
-                    doc: """
-                    Attributes to expose as editable when modifying the relationship.
-
-                    Extensions may use this when deciding what fields to render from the join table.
-
-                    See `Ash.Changeset.append_to_relationship/3` and `Ash.Changeset.replace_relationship/3` for
-                    how to edit these fields.
-                    """
                   ]
                 ],
                 @global_opts,
@@ -102,17 +88,4 @@ defmodule Ash.Resource.Relationships.ManyToMany do
   end
 
   def transform(relationship), do: {:ok, relationship}
-
-  @doc false
-  def join_attributes(attributes) when is_list(attributes) do
-    if Enum.all?(attributes, &is_atom/1) do
-      {:ok, attributes}
-    else
-      {:error, "Expected a list of atoms, got #{inspect(attributes)}"}
-    end
-  end
-
-  def join_attributes(attributes) do
-    {:error, "Expected a list of atoms, got #{inspect(attributes)}"}
-  end
 end

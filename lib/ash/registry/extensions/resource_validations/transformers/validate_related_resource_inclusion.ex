@@ -1,24 +1,19 @@
-defmodule Ash.Api.Transformers.ValidateRelatedResourceInclusion do
+defmodule Ash.Registry.ResourceValidations.Transformers.ValidateRelatedResourceInclusion do
   @moduledoc """
   Ensures that all related resources are included in an API.
   """
   use Ash.Dsl.Transformer
 
-  alias Ash.Dsl.Transformer
-
   @impl true
   def after_compile?, do: true
 
   @impl true
-  def after?(Ash.Api.Transformers.EnsureResourcesCompiled), do: true
+  def after?(Ash.Registry.ResourceValidations.Transformers.EnsureResourcesCompiled), do: true
   def after?(_), do: false
 
   @impl true
   def transform(module, dsl) do
-    resources =
-      dsl
-      |> Transformer.get_entities([:resources])
-      |> Enum.map(& &1.resource)
+    resources = Ash.Registry.entries(module)
 
     resources
     |> Enum.flat_map(&get_all_related_resources/1)
@@ -29,7 +24,7 @@ defmodule Ash.Api.Transformers.ValidateRelatedResourceInclusion do
         {:ok, dsl}
 
       resources ->
-        raise "Resources #{Enum.map_join(resources, ", ", &inspect/1)} must be included in API #{inspect(module)}"
+        raise "Resources #{Enum.map_join(resources, ", ", &inspect/1)} must be included in #{inspect(module)}"
     end
   end
 

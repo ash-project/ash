@@ -62,7 +62,6 @@ locals_without_parens = [
   identity: 3,
   integer_primary_key: 1,
   integer_primary_key: 2,
-  join_attributes: 1,
   join_relationship: 1,
   kind: 1,
   list: 3,

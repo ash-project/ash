@@ -6,7 +6,10 @@ defmodule Ash.Registry do
 
   ```elixir
   defmodule MyApp.MyRegistry do
-    use Ash.Registry
+    use Ash.Registry,
+      extensions: [Ash.Registry.ResourceValidations]
+      # This extension adds some simple validations, for example that
+      # all related resources are also present in this registry.
 
     entries do
       entry MyApp.Resource

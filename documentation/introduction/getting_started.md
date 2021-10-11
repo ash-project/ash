@@ -71,7 +71,8 @@ The registry is in charge of keeping track of the resources available to an api.
 ```elixir
 # lib/my_app/registry.ex
 defmodule MyApp.Registry do
-  use Ash.Registry
+  use Ash.Registry,
+    extensions: [Ash.Registry.ResourceValidations]
 
   entries do
   end

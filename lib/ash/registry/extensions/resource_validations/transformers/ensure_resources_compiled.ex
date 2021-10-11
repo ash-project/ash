@@ -1,8 +1,6 @@
-defmodule Ash.Api.Transformers.EnsureResourcesCompiled do
+defmodule Ash.Registry.ResourceValidations.Transformers.EnsureResourcesCompiled do
   @moduledoc """
-  Ensures that all resources for a given api are compiled.
-
-  This is required for later transformers.
+  Ensures that all resources for a given registry are compiled.
   """
   use Ash.Dsl.Transformer
 
@@ -12,9 +10,9 @@ defmodule Ash.Api.Transformers.EnsureResourcesCompiled do
   def after_compile?, do: true
 
   @impl true
-  def transform(api, dsl) do
-    api
-    |> Ash.Api.resources()
+  def transform(registry, dsl) do
+    registry
+    |> Ash.Registry.entries()
     |> Enum.map(fn resource ->
       try do
         # This is to get the compiler to ensure that the resource is compiled

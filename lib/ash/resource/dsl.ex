@@ -1058,7 +1058,8 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.ValidateMultitenancy,
     Ash.Resource.Transformers.DefaultPrimaryKey,
     Ash.Resource.Transformers.DefaultAccept,
-    Ash.Resource.Transformers.SetTypes
+    Ash.Resource.Transformers.SetTypes,
+    Ash.Resource.Transformers.ValidateRelationshipAttributes
   ]
 
   @moduledoc """

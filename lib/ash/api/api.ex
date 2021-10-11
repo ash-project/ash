@@ -7,7 +7,8 @@ defmodule Ash.Api do
 
   ```elixir
   defmodule MyApp.Registry do
-    use Ash.Registry
+    use Ash.Registry,
+      extensions: [Ash.Registry.ResourceValidations]
 
     entries do
       entry OneResource
