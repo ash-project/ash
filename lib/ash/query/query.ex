@@ -1625,12 +1625,14 @@ defmodule Ash.Query do
   def unset(query, keys) when is_list(keys) do
     query = to_query(query)
 
+    new = new(query.resource)
+
     keys
     |> Enum.reduce(query, fn key, query ->
       if key in [:api, :resource] do
         query
       else
-        struct(query, [{key, Map.get(%__MODULE__{}, key)}])
+        struct(query, [{key, Map.get(new, key)}])
       end
     end)
   end
@@ -1639,9 +1641,11 @@ defmodule Ash.Query do
     if key in [:api, :resource] do
       to_query(query)
     else
+      new = new(query.resource)
+
       query
       |> to_query()
-      |> struct([{key, Map.get(%__MODULE__{}, key)}])
+      |> struct([{key, Map.get(new, key)}])
     end
   end
 
