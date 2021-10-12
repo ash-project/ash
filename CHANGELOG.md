@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.13](https://github.com/ash-project/ash/compare/v1.48.0-rc.12...v1.48.0-rc.13) (2021-10-12)
+
+
+
+
+### Bug Fixes:
+
+* honor base query still when removing filters
+
 ## [v1.48.0-rc.12](https://github.com/ash-project/ash/compare/v1.48.0-rc.11...v1.48.0-rc.12) (2021-10-11)
 
 
