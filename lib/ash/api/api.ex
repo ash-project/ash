@@ -486,16 +486,25 @@ defmodule Ash.Api do
   end
 
   def resource(api, resource) do
-    if Ash.Resource.Info.embedded?(resource) do
-      {:ok, resource}
-    else
-      api
-      |> resources()
-      |> Enum.find(&(&1 == resource))
-      |> case do
-        nil -> {:error, NoSuchResource.exception(resource: resource)}
-        resource -> {:ok, resource}
-      end
+    cond do
+      allow_unregistered?(api) ->
+        if Ash.Dsl.is?(resource, Ash.Resource) do
+          resource
+        else
+          nil
+        end
+
+      Ash.Resource.Info.embedded?(resource) ->
+        resource
+
+      true ->
+        api
+        |> resources()
+        |> Enum.find(&(&1 == resource))
+    end
+    |> case do
+      nil -> {:error, NoSuchResource.exception(resource: resource)}
+      resource -> {:ok, resource}
     end
   end
 
@@ -522,9 +531,9 @@ defmodule Ash.Api do
     Extension.get_opt(api, [:resources], :registry, nil)
   end
 
-  @spec define_interfaces?(atom) :: boolean
-  def define_interfaces?(api) do
-    Extension.get_opt(api, [:resources], :define_interfaces?, false)
+  @spec allow_unregistered?(atom) :: atom | nil
+  def allow_unregistered?(api) do
+    Extension.get_opt(api, [:resources], :allow_unregistered?, nil)
   end
 
   @doc false

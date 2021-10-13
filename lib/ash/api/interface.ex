@@ -5,14 +5,6 @@ defmodule Ash.Api.Interface do
     quote bind_quoted: [], generated: true do
       alias Ash.Api
 
-      if Ash.Api.define_interfaces?(__MODULE__) do
-        require Ash.CodeInterface
-
-        for resource <- Ash.Api.resources(__MODULE__) do
-          Ash.CodeInterface.define_interface(__MODULE__, resource)
-        end
-      end
-
       def get!(resource, id_or_filter, params \\ []) do
         Ash.Api.Interface.enforce_resource!(resource)
 

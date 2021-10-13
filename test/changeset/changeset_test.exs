@@ -13,6 +13,10 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       private?(true)
     end
 
+    identities do
+      identity :unique_name, [:name]
+    end
+
     actions do
       read :read
       create :create, primary?: true
@@ -437,6 +441,28 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         |> Api.create!()
 
       assert [%{name: "bar"}, %{name: "foo"}] = Enum.sort_by(post.categories, & &1.name)
+    end
+
+    test "upsert with many_to_many relationships can eager validate" do
+      Category
+      |> Changeset.new(name: "foo")
+      |> Api.create!()
+
+      assert %{valid?: false, errors: [%Ash.Error.Query.NotFound{}]} =
+               Post
+               |> Changeset.new()
+               |> Changeset.manage_relationship(:categories, [%{name: "foo"}, %{name: "bar"}],
+                 on_lookup: :relate,
+                 eager_validate_with: Api
+               )
+
+      assert %{valid?: true} =
+               Post
+               |> Changeset.new()
+               |> Changeset.manage_relationship(:categories, [%{name: "foo"}],
+                 on_lookup: :relate,
+                 eager_validate_with: Api
+               )
     end
 
     test "it creates related entities" do

@@ -62,6 +62,9 @@ defmodule Ash.OptionsHelpers do
       {:ash_behaviour, behaviour} ->
         {:custom, __MODULE__, :ash_behaviour, [behaviour]}
 
+      {:behaviour, _behaviour} ->
+        :atom
+
       :ash_resource ->
         :atom
 

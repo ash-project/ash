@@ -389,9 +389,7 @@ defmodule Ash.EmbeddableType do
         pkey = Ash.Resource.Info.primary_key(__MODULE__)
         unique_keys = Enum.map(Ash.Resource.Info.identities(__MODULE__), & &1.keys) ++ [pkey]
 
-        case Enum.find(unique_keys, fn unique_key ->
-               has_duplicates?(term, &Map.take(&1, unique_key))
-             end) do
+        case find_duplicates(term, unique_keys) do
           nil ->
             query =
               __MODULE__
@@ -412,15 +410,51 @@ defmodule Ash.EmbeddableType do
         end
       end
 
-      defp has_duplicates?(list, func) do
+      defp find_duplicates(term, unique_keys) do
+        Enum.find(unique_keys, fn unique_key ->
+          has_duplicates?(term, __MODULE__, fn item ->
+            Enum.reduce(unique_key, %{}, fn key, acc ->
+              if Map.has_key?(item, key) || Map.has_key?(item, to_string(key)) do
+                attribute = Ash.Resource.Info.attribute(__MODULE__, key)
+
+                case Ash.Type.cast_input(
+                       attribute.type,
+                       Map.get(item, key) || Map.get(item, to_string(key)),
+                       attribute.constraints
+                     ) do
+                  {:ok, value} ->
+                    Map.put(acc, key, value)
+
+                  _ ->
+                    acc
+                end
+              end
+            end)
+          end)
+        end)
+      end
+
+      defp has_duplicates?(list, resource, func) do
         list
         |> Enum.reduce_while(MapSet.new(), fn x, acc ->
           x = func.(x)
 
-          if MapSet.member?(acc, x) do
-            {:halt, 0}
-          else
-            {:cont, MapSet.put(acc, x)}
+          acc
+          |> Enum.any?(fn item ->
+            Enum.all?(x, fn {key, value} ->
+              attr = Ash.Resource.Info.attribute(resource, key)
+
+              Enum.any?(acc, fn other ->
+                Ash.Type.equal?(attr.type, Map.get(other, key), value)
+              end)
+            end)
+          end)
+          |> case do
+            true ->
+              {:halt, 0}
+
+            false ->
+              {:cont, MapSet.put(acc, x)}
           end
         end)
         |> is_integer()

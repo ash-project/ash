@@ -29,18 +29,21 @@ defmodule Ash.Api.Dsl do
       """
     ],
     schema: [
-      define_interfaces?: [
+      allow_unregistered?: [
         type: :boolean,
         default: false,
         doc: """
-        If set to true, the code interface of each resource will be defined in the api.
+        This is still experimental, but will be supported if you run into any issues.
 
-        Keep in mind that this can increase the compile times of your application.
+        By default, an api will only work with resources that are explicitly included in the provided registry. In order to separate your
+        application into multiple domains, you may wish to "mix and match" your resources across contexts. Specifying this option allows you
+        to refer to resources in different apis in your resources, and allows providing any resource to api actions (to facilitate that requirement).
+
+        Be sure to remove the Ash.Registry.ResourceValidations extension from your registry as well.
         """
       ],
       registry: [
-        type: :atom,
-        # {:ash_behaviour, Ash.Registry},
+        type: {:behaviour, Ash.Registry},
         doc: """
         Allows declaring that only the modules in a certain registry should be allowed to work with this Api.
 

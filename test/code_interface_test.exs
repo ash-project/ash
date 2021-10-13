@@ -11,6 +11,7 @@ defmodule Ash.Test.CodeInterfaceTest do
     end
 
     code_interface do
+      define_for Ash.Test.CodeInterfaceTest.Api
       define :get_user, action: :read, get?: true, args: [:id]
       define :read_users, action: :read
     end
@@ -48,15 +49,13 @@ defmodule Ash.Test.CodeInterfaceTest do
     use Ash.Api
 
     resources do
-      define_interfaces?(true)
-
       registry Registry
     end
   end
 
   test "get! raises on not found" do
     assert_raise Ash.Error.Query.NotFound, fn ->
-      Api.get_user!(Ash.UUID.generate())
+      User.get_user!(Ash.UUID.generate())
     end
   end
 end

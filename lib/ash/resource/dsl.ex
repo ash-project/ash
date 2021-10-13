@@ -733,7 +733,7 @@ defmodule Ash.Resource.Dsl do
     examples: [
       """
       code_interface do
-        auto_define MyApp.Api
+        define_for MyApp.Api
         define :create_user, action: :create
         define :get_user_by_id, action: :get_by_id, args: [:id], get?: true
       end
@@ -741,7 +741,7 @@ defmodule Ash.Resource.Dsl do
     ],
     schema: [
       define_for: [
-        type: {:ash_behaviour, Ash.Api},
+        type: {:behaviour, Ash.Api},
         doc:
           "Defines the code interface on the resource module directly, using the provided Api.",
         default: false

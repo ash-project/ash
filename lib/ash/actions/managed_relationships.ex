@@ -456,7 +456,7 @@ defmodule Ash.Actions.ManagedRelationships do
     end)
   end
 
-  defp pkeys(relationship) do
+  def pkeys(relationship) do
     identities =
       relationship.destination
       |> Ash.Resource.Info.identities()

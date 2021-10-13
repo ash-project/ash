@@ -63,6 +63,11 @@ defmodule Ash.Resource do
                       |> Enum.map(& &1.name)
                       |> Enum.uniq()
 
+      if api = Ash.Resource.Info.define_interface_for(__MODULE__) do
+        require Ash.CodeInterface
+        Ash.CodeInterface.define_interface(api, __MODULE__)
+      end
+
       @doc """
       Validates that the keys in the provided input are valid for at least one action on the resource.
 

@@ -24,6 +24,7 @@ defmodule Ash.Changeset do
 
   See the action DSL documentation for more.
   """
+
   defstruct [
     :data,
     :action_type,
@@ -50,6 +51,19 @@ defmodule Ash.Changeset do
   defimpl Inspect do
     import Inspect.Algebra
 
+    @spec inspect(Ash.Changeset.t(), Inspect.Opts.t()) ::
+            {:doc_cons, :doc_line | :doc_nil | binary | tuple,
+             :doc_line | :doc_nil | binary | tuple}
+            | {:doc_group,
+               :doc_line
+               | :doc_nil
+               | binary
+               | {:doc_collapse, pos_integer}
+               | {:doc_force, any}
+               | {:doc_break | :doc_color | :doc_cons | :doc_fits | :doc_group | :doc_string, any,
+                  any}
+               | {:doc_nest, any, :cursor | :reset | non_neg_integer, :always | :break},
+               :inherit | :self}
     def inspect(changeset, opts) do
       context = Map.delete(changeset.context, :private)
 
@@ -152,6 +166,8 @@ defmodule Ash.Changeset do
     Changes.Required,
     Invalid.NoSuchResource
   }
+
+  require Ash.Query
 
   @doc """
   Return a changeset over a resource or a record. `params` can be either attributes, relationship values or arguments.
@@ -1250,6 +1266,12 @@ defmodule Ash.Changeset do
       doc:
         "Authorize reads and changes to the destination records, if the primary change is being authorized as well."
     ],
+    eager_validate_with: [
+      type: :atom,
+      default: false,
+      doc:
+        "Validates that any referenced entities exist *before* the action is being performed, using the provided api for the read."
+    ],
     on_no_match: [
       type: :any,
       default: :ignore,
@@ -1590,9 +1612,188 @@ defmodule Ash.Changeset do
               |> Map.put_new(relationship.name, [])
               |> Map.update!(relationship.name, &(&1 ++ [{input, opts}]))
 
-            %{changeset | relationships: relationships}
+            changeset = %{changeset | relationships: relationships}
+
+            if opts[:eager_validate_with] do
+              eager_validate_relationship_input(
+                relationship,
+                input,
+                changeset,
+                opts[:eager_validate_with]
+              )
+            else
+              changeset
+            end
           end
         end
+    end
+  end
+
+  defp eager_validate_relationship_input(_relationship, [], _changeset, _api), do: :ok
+
+  defp eager_validate_relationship_input(relationship, input, changeset, api) do
+    pkeys = Ash.Actions.ManagedRelationships.pkeys(relationship)
+
+    pkeys =
+      Enum.map(pkeys, fn pkey ->
+        Enum.map(pkey, fn key ->
+          Ash.Resource.Info.attribute(relationship.destination, key)
+        end)
+      end)
+
+    search =
+      Enum.reduce(input, false, fn item, expr ->
+        filter =
+          Enum.find_value(pkeys, fn pkey ->
+            this_filter =
+              pkey
+              |> Enum.reject(&(&1.name == relationship.destination_field))
+              |> Enum.all?(fn key ->
+                case fetch_identity_field(
+                       item,
+                       changeset.data,
+                       key,
+                       relationship
+                     ) do
+                  {:ok, _value} ->
+                    true
+
+                  :error ->
+                    false
+                end
+              end)
+              |> case do
+                true ->
+                  case Map.take(
+                         item,
+                         Enum.map(pkey, & &1.name) ++ Enum.map(pkey, &to_string(&1.name))
+                       ) do
+                    empty when empty == %{} -> nil
+                    filter -> filter
+                  end
+
+                false ->
+                  nil
+              end
+
+            if Enum.any?(pkey, &(&1.name == relationship.destination_field)) &&
+                 relationship.type in [:has_many, :has_one] do
+              destination_value = Map.get(changeset.data, relationship.source_field)
+
+              Ash.Query.expr(
+                ^this_filter and
+                  (is_nil(ref(^relationship.destination_field, [])) or
+                     ref(^relationship.destination_field, []) == ^destination_value)
+              )
+            else
+              this_filter
+            end
+          end)
+
+        if filter && filter != %{} do
+          Ash.Query.expr(^expr or ^filter)
+        else
+          expr
+        end
+      end)
+
+    results =
+      if search == false do
+        {:ok, []}
+      else
+        action =
+          relationship.read_action ||
+            Ash.Resource.Info.primary_action!(relationship.destination, :read).name
+
+        relationship.destination
+        |> Ash.Query.for_read(action, %{},
+          actor: changeset.context[:private][:actor],
+          tenant: changeset.tenant
+        )
+        |> Ash.Query.limit(Enum.count(input))
+        |> Ash.Query.filter(^search)
+        |> api.read()
+      end
+
+    case results do
+      {:error, error} ->
+        {:error, error}
+
+      {:ok, results} ->
+        case Enum.find(input, fn item ->
+               no_pkey_all_matches(results, pkeys, fn result, key ->
+                 case fetch_identity_field(item, changeset.data, key, relationship) do
+                   {:ok, value} ->
+                     Ash.Type.equal?(
+                       key.type,
+                       value,
+                       Map.get(result, key.name)
+                     )
+
+                   :error ->
+                     false
+                 end
+               end)
+             end) do
+          nil ->
+            :ok
+
+          item ->
+            pkey_search =
+              Enum.find_value(pkeys, fn pkey ->
+                if Enum.all?(pkey, fn key ->
+                     Map.has_key?(item, key.name) || Map.has_key?(item, to_string(key.name))
+                   end) do
+                  Map.take(item, pkey ++ Enum.map(pkey, &to_string(&1.name)))
+                end
+              end)
+
+            {:error,
+             Ash.Error.Query.NotFound.exception(
+               primary_key: pkey_search,
+               resource: relationship.destination
+             )}
+        end
+    end
+    |> case do
+      :ok ->
+        changeset
+
+      {:error, error} ->
+        add_error(changeset, set_path(error, [relationship.name]))
+    end
+  end
+
+  defp no_pkey_all_matches(results, pkeys, func) do
+    !Enum.any?(results, fn result ->
+      Enum.any?(pkeys, fn pkey ->
+        Enum.all?(pkey, fn key ->
+          func.(result, key)
+        end)
+      end)
+    end)
+  end
+
+  defp fetch_identity_field(item, data, attribute, relationship) do
+    if attribute.name == relationship.destination_field &&
+         relationship.type in [:has_many, :has_one] do
+      {:ok, Map.get(data, relationship.source_field)}
+    else
+      string_attribute = to_string(attribute.name)
+
+      if Map.has_key?(item, attribute.name) || Map.has_key?(item, string_attribute) do
+        input_value = Map.get(item, attribute.name) || Map.get(item, string_attribute)
+
+        case Ash.Type.cast_input(attribute.type, input_value, attribute.name) do
+          {:ok, casted_input_value} ->
+            {:ok, casted_input_value}
+
+          _ ->
+            :error
+        end
+      else
+        :error
+      end
     end
   end
 

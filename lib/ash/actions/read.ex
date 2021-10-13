@@ -782,15 +782,16 @@ defmodule Ash.Actions.Read do
     |> Helpers.select(ash_query)
   end
 
-  defp run_count_query(
-         %{
-           resource: destination_resource,
-           context: %{
-             data_layer: %{lateral_join_source: {root_data, path}}
-           }
-         },
-         query
-       ) do
+  @doc false
+  def run_count_query(
+        %{
+          resource: destination_resource,
+          context: %{
+            data_layer: %{lateral_join_source: {root_data, path}}
+          }
+        },
+        query
+      ) do
     case Ash.Query.Aggregate.new(destination_resource, :count, :count, [], nil, nil) do
       {:ok, aggregate} ->
         Ash.DataLayer.run_aggregate_query_with_lateral_join(
@@ -806,7 +807,7 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp run_count_query(ash_query, query) do
+  def run_count_query(ash_query, query) do
     case Ash.Query.Aggregate.new(ash_query.resource, :count, :count, [], nil, nil) do
       {:ok, aggregate} ->
         Ash.DataLayer.run_aggregate_query(query, [aggregate], ash_query.resource)
