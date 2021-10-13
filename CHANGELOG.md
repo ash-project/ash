@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.14](https://github.com/ash-project/ash/compare/v1.48.0-rc.13...v1.48.0-rc.14) (2021-10-13)
+
+
+
+
+### Bug Fixes:
+
+* fix code interface on resources
+
+### Improvements:
+
+* breaking change! api level code interface *removed*, contact me on discord if you want a way to avoid changing to resource-based interface, but otherwise
+
+* use proper equality checking in places where we were using simple elixir equality checking
+
 ## [v1.48.0-rc.13](https://github.com/ash-project/ash/compare/v1.48.0-rc.12...v1.48.0-rc.13) (2021-10-12)
 
 
