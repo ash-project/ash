@@ -2109,8 +2109,6 @@ defmodule Ash.Changeset do
                cast_input(attribute.type, prepared, attribute.constraints, changeset, true),
              {:ok, casted} <-
                handle_change(changeset, attribute, casted, attribute.constraints),
-             :ok <-
-               validate_allow_nil(attribute, casted),
              {:ok, casted} <-
                Ash.Type.apply_constraints(attribute.type, casted, attribute.constraints) do
           data_value = Map.get(changeset.data, attribute.name)
@@ -2470,16 +2468,6 @@ defmodule Ash.Changeset do
     old_value = Map.get(changeset.data, attribute.name)
     Ash.Type.handle_change(attribute.type, old_value, value, constraints)
   end
-
-  defp validate_allow_nil(%{allow_nil?: false} = attribute, nil) do
-    {:error,
-     InvalidAttribute.exception(
-       field: attribute.name,
-       message: "must be present"
-     )}
-  end
-
-  defp validate_allow_nil(_, _), do: :ok
 
   defp add_invalid_errors(type, changeset, attribute, message \\ nil) do
     messages =
