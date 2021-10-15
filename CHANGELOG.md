@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.15](https://github.com/ash-project/ash/compare/v1.48.0-rc.14...v1.48.0-rc.15) (2021-10-15)
+
+
+
+
+### Bug Fixes:
+
+* don't validate allow_nil in attribute casting
+
 ## [v1.48.0-rc.14](https://github.com/ash-project/ash/compare/v1.48.0-rc.13...v1.48.0-rc.14) (2021-10-13)
 
 
