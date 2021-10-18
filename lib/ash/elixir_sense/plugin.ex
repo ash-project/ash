@@ -254,7 +254,7 @@ if Code.ensure_loaded?(ElixirSense) do
           Resource.find_resources(hint)
 
         {:ash_behaviour, behaviour, builtins} ->
-          Resource.find_ash_behaviour_impls(behaviour, builtins, hint)
+          Resource.find_ash_behaviour_impls(behaviour, builtins, hint, opts.module_store)
 
         {:behaviour, behaviour} ->
           Resource.find_ash_behaviour_impls(behaviour, nil, hint)
@@ -533,6 +533,4 @@ if Code.ensure_loaded?(ElixirSense) do
       |> Enum.filter(&Code.ensure_loaded?/1)
     end
   end
-else
-  IO.inspect("NO ELIXIRSENSE")
 end
