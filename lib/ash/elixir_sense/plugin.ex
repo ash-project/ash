@@ -246,7 +246,7 @@ if Code.ensure_loaded?(ElixirSense) do
 
         :ash_type ->
           builtin_types = Types.find_builtin_types(hint, opts.cursor_context)
-          custom_types = Types.find_custom_types(hint)
+          custom_types = Types.find_custom_types(hint, opts.module_store)
 
           builtin_types ++ custom_types
 
@@ -257,10 +257,10 @@ if Code.ensure_loaded?(ElixirSense) do
           Resource.find_ash_behaviour_impls(behaviour, builtins, hint, opts.module_store)
 
         {:behaviour, behaviour} ->
-          Resource.find_ash_behaviour_impls(behaviour, nil, hint)
+          Resource.find_ash_behaviour_impls(behaviour, nil, hint, opts.module_store)
 
         {:ash_behaviour, behaviour} ->
-          Resource.find_ash_behaviour_impls(behaviour, nil, hint)
+          Resource.find_ash_behaviour_impls(behaviour, nil, hint, opts.module_store)
 
         _ ->
           []

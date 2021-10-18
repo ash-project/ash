@@ -35,11 +35,10 @@ if Code.ensure_loaded?(ElixirSense) do
       |> Enum.concat([{"{:array, inner_type}", "list", "{:array, ${1:inner_type}}"}])
     end
 
-    def find_custom_types(hint) do
+    def find_custom_types(hint, module_store) do
       builtin_types = Keyword.values(apply(Ash.Type, :builtin_types, []))
 
-      for {module, _} <- :code.all_loaded(),
-          Ash.Type in behaviours(module),
+      for module <- module_store.by_behaviour[Ash.Type] || [],
           module not in builtin_types,
           type_str = inspect(module),
           Util.match_module?(type_str, hint) do
