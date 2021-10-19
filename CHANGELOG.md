@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.16](https://github.com/ash-project/ash/compare/v1.48.0-rc.15...v1.48.0-rc.16) (2021-10-19)
+
+
+
+
+### Improvements:
+
+* add `primary_actions?` option
+
 ## [v1.48.0-rc.15](https://github.com/ash-project/ash/compare/v1.48.0-rc.14...v1.48.0-rc.15) (2021-10-15)
 
 
