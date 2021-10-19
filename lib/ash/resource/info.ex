@@ -390,13 +390,35 @@ defmodule Ash.Resource.Info do
   @spec primary_action(Ash.Resource.t(), Ash.Resource.Actions.action_type()) ::
           Ash.Resource.Actions.action() | nil
   def primary_action(resource, type) do
-    resource
-    |> actions()
-    |> Enum.filter(&(&1.type == type))
-    |> case do
-      [action] -> action
-      actions -> Enum.find(actions, & &1.primary?)
+    primary_actions? = primary_actions?(resource)
+
+    cond do
+      primary_actions? == :only_read && type != :read ->
+        raise "Cannot use primary #{type} actions with resource: #{inspect(resource)}, because `primary_actions?` is set to `:only_read`"
+
+      !primary_actions? ->
+        raise "Cannot use primary actions with resource: #{inspect(resource)}, because `primary_actions?` is set to `false`"
+
+      true ->
+        resource
+        |> actions()
+        |> Enum.filter(&(&1.type == type))
+        |> case do
+          [action] -> action
+          actions -> Enum.find(actions, & &1.primary?)
+        end
     end
+  end
+
+  @doc "Returns the value of the primary_actions? configuration"
+  @spec primary_actions?(Ash.Resource.t()) :: boolean | :only_read
+  def primary_actions?(resource) do
+    Extension.get_opt(
+      resource,
+      [:actions],
+      :primary_actions?,
+      true
+    )
   end
 
   @doc "Returns the configured default actions"

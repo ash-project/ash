@@ -83,6 +83,7 @@ locals_without_parens = [
   prepare: 1,
   prepare: 2,
   primary?: 1,
+  primary_actions?: 1,
   primary_key?: 1,
   private?: 1,
   publish: 2,

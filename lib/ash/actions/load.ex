@@ -289,7 +289,8 @@ defmodule Ash.Actions.Load do
       |> Enum.map_join(".", &Map.get(&1, :name))
 
     Engine.Request.new(
-      action: Ash.Resource.Info.primary_action(relationship.destination, :read),
+      action:
+        related_query.action || Ash.Resource.Info.primary_action(relationship.destination, :read),
       resource: relationship.destination,
       name: "load #{source}",
       api: related_query.api,
@@ -426,7 +427,9 @@ defmodule Ash.Actions.Load do
           end
 
         Request.new(
-          action: Ash.Resource.Info.primary_action(relationship.destination, :read),
+          action:
+            related_query.action ||
+              Ash.Resource.Info.primary_action(relationship.destination, :read),
           resource: relationship.through,
           name: "load join #{join_relationship.name}",
           api: related_query.api,

@@ -558,6 +558,19 @@ defmodule Ash.Resource.Dsl do
     arguments **. Without that, relationship changes to your resources might fail due to missing
     arguments. This does, however, allow you to customize exactly how related entities are read/
     created.
+
+
+    ## Turning primary actions off
+
+    If you want an extremely explicit experience with actions, you can specify the following two options:
+    ```elixir
+    defaults []
+    primary_actions? false
+    ```
+
+    This will prevent Ash from adding a default implementation of each action type, as well as cause any calls
+    to `Ash.Resource.Info.primary_action/2` to raise an error. This is experimental, but any errors raised in appropriate
+    places can be addressed, just report them as issues.
     """,
     imports: [
       Ash.Resource.Change.Builtins,
@@ -566,6 +579,16 @@ defmodule Ash.Resource.Dsl do
       Ash.Filter.TemplateHelpers
     ],
     schema: [
+      primary_actions?: [
+        type: {:in, [true, false, :only_read]},
+        default: true,
+        doc: """
+        Causes any calls to `Ash.Resource.Info.primary_action/2` to raise an error. This is experimental, but any errors raised in appropriate
+        places can be addressed, just report them as issues. Use `:read_only` to allow primary actions only for reads.
+        This can be useful to avoid constantly having to provide the basic `read` action of a given resource, when you need
+        to do things like loading data.
+        """
+      ],
       defaults: [
         type: {:list, {:in, [:create, :read, :update, :destroy]}},
         default: [:create, :read, :update, :destroy],
