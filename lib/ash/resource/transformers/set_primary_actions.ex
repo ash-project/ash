@@ -14,6 +14,8 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
   @extension Ash.Resource.Dsl
 
   def transform(resource, dsl_state) do
+    primary_actions? = Ash.Resource.Info.primary_actions?(resource)
+
     dsl_state
     |> Transformer.get_entities([:actions])
     |> Enum.group_by(& &1.type)
@@ -48,29 +50,33 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
           )}}
 
       {type, actions}, {:ok, dsl_state} ->
-        case min(Enum.count(actions, & &1.primary?), 2) do
-          0 ->
-            {:halt,
-             {:error,
-              DslError.exception(
-                module: __MODULE__,
-                message:
-                  "Multiple actions of type #{type} defined, one must be designated as `primary?`",
-                path: [:actions, type]
-              )}}
+        if primary_actions? && !(primary_actions? == :only_read && type != :read) do
+          case min(Enum.count(actions, & &1.primary?), 2) do
+            0 ->
+              {:halt,
+               {:error,
+                DslError.exception(
+                  module: __MODULE__,
+                  message:
+                    "Multiple actions of type #{type} defined, one must be designated as `primary?`",
+                  path: [:actions, type]
+                )}}
 
-          1 ->
-            {:cont, {:ok, dsl_state}}
+            1 ->
+              {:cont, {:ok, dsl_state}}
 
-          2 ->
-            {:halt,
-             {:error,
-              DslError.exception(
-                module: __MODULE__,
-                message:
-                  "Multiple actions of type #{type} configured as `primary?: true`, but only one action per type can be the primary",
-                path: [:actions, type]
-              )}}
+            2 ->
+              {:halt,
+               {:error,
+                DslError.exception(
+                  module: __MODULE__,
+                  message:
+                    "Multiple actions of type #{type} configured as `primary?: true`, but only one action per type can be the primary",
+                  path: [:actions, type]
+                )}}
+          end
+        else
+          {:cont, {:ok, dsl_state}}
         end
     end)
   end
