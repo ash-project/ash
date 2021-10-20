@@ -147,13 +147,27 @@ defmodule Ash.CodeInterface do
                   end)
 
                 query =
-                  opts[:query]
-                  |> Kernel.||(unquote(resource))
-                  |> Ash.Query.for_read(
-                    unquote(action.name),
-                    input,
-                    Keyword.take(opts, [:actor, :tenant])
-                  )
+                  if unquote(filter_keys) do
+                    require Ash.Query
+                    {filters, input} = Map.split(input, unquote(filter_keys))
+
+                    opts[:query]
+                    |> Kernel.||(unquote(resource))
+                    |> Ash.Query.for_read(
+                      unquote(action.name),
+                      input,
+                      Keyword.take(opts, [:actor, :tenant])
+                    )
+                    |> Ash.Query.filter(filters)
+                  else
+                    opts[:query]
+                    |> Kernel.||(unquote(resource))
+                    |> Ash.Query.for_read(
+                      unquote(action.name),
+                      input,
+                      Keyword.take(opts, [:actor, :tenant])
+                    )
+                  end
 
                 if unquote(interface.get?) do
                   query
