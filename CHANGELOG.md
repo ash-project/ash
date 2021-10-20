@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.19](https://github.com/ash-project/ash/compare/v1.48.0-rc.18...v1.48.0-rc.19) (2021-10-20)
+
+
+
+
+### Bug Fixes:
+
+* honor `get_by` and `get_by_identity` on bang (!) interfaces
+
 ## [v1.48.0-rc.18](https://github.com/ash-project/ash/compare/v1.48.0-rc.17...v1.48.0-rc.18) (2021-10-20)
 
 
