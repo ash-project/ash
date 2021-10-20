@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.18](https://github.com/ash-project/ash/compare/v1.48.0-rc.17...v1.48.0-rc.18) (2021-10-20)
+
+
+
+
+### Improvements:
+
+* add `get_by` and `get_by_identity` to code interface
+
+* compile time validations for managed relationships
+
 ## [v1.48.0-rc.17](https://github.com/ash-project/ash/compare/v1.48.0-rc.16...v1.48.0-rc.17) (2021-10-19)
 
 
