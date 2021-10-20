@@ -23,8 +23,25 @@ defmodule Ash.CodeInterface do
       for interface <- Ash.Resource.Info.interfaces(resource) do
         action = Ash.CodeInterface.require_action(resource, interface)
 
-        args = interface.args || []
+        filter_keys =
+          if action.type == :read do
+            if interface.get_by_identity do
+              Ash.Resource.Info.identity(resource, interface.get_by_identity).keys
+            else
+              if interface.get_by do
+                interface.get_by
+              end
+            end
+          end
+
+        args = List.wrap(filter_keys) ++ (interface.args || [])
         arg_vars = Enum.map(args, &{&1, [], Elixir})
+
+        unless Enum.uniq(args) == args do
+          raise """
+          Arguments #{inspect(args)} for #{interface.name} are not unique!
+          """
+        end
 
         doc = """
         #{action.description || "Calls the #{action.name} action on the #{inspect(resource)} resource."}
@@ -62,13 +79,27 @@ defmodule Ash.CodeInterface do
                   end)
 
                 query =
-                  opts[:query]
-                  |> Kernel.||(unquote(resource))
-                  |> Ash.Query.for_read(
-                    unquote(action.name),
-                    input,
-                    Keyword.take(opts, [:actor, :tenant])
-                  )
+                  if unquote(filter_keys) do
+                    require Ash.Query
+                    {filters, input} = Map.split(input, unquote(filter_keys))
+
+                    opts[:query]
+                    |> Kernel.||(unquote(resource))
+                    |> Ash.Query.for_read(
+                      unquote(action.name),
+                      input,
+                      Keyword.take(opts, [:actor, :tenant])
+                    )
+                    |> Ash.Query.filter(filters)
+                  else
+                    opts[:query]
+                    |> Kernel.||(unquote(resource))
+                    |> Ash.Query.for_read(
+                      unquote(action.name),
+                      input,
+                      Keyword.take(opts, [:actor, :tenant])
+                    )
+                  end
 
                 if unquote(interface.get?) do
                   query

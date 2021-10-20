@@ -745,6 +745,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Interface,
     schema: Ash.Resource.Interface.schema(),
+    transform: {Ash.Resource.Interface, :transform, []},
     args: [:name]
   }
 
@@ -1067,6 +1068,7 @@ defmodule Ash.Resource.Dsl do
   ]
 
   @transformers [
+    Ash.Resource.Transformers.ValidateManagedRelationshipOpts,
     Ash.Resource.Transformers.RequireUniqueActionNames,
     Ash.Resource.Transformers.SetRelationshipSource,
     Ash.Resource.Transformers.BelongsToAttribute,

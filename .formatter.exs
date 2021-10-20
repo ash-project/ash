@@ -53,6 +53,8 @@ locals_without_parens = [
   first: 4,
   generated?: 1,
   get?: 1,
+  get_by: 1,
+  get_by_identity: 1,
   global?: 1,
   has_many: 2,
   has_many: 3,

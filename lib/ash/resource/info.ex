@@ -129,6 +129,14 @@ defmodule Ash.Resource.Info do
     Extension.get_entities(resource, [:identities])
   end
 
+  @doc "Get an identity by name from the resource"
+  @spec identity(Ash.Resource.t(), atom) :: Ash.Resource.Identity.t() | nil
+  def identity(resource, name) do
+    resource
+    |> identities()
+    |> Enum.find(&(&1.name == name))
+  end
+
   @doc "A list of authorizers to be used when accessing"
   @spec authorizers(Ash.Resource.t()) :: [module]
   def authorizers(resource) do
@@ -268,12 +276,12 @@ defmodule Ash.Resource.Info do
       resource,
       [:multitenancy],
       :parse_attribute,
-      {__MODULE__, :identity, []}
+      {__MODULE__, :_identity, []}
     )
   end
 
   @doc false
-  def identity(x), do: x
+  def _identity(x), do: x
 
   @spec multitenancy_global?(Ash.Resource.t()) :: atom | nil
   def multitenancy_global?(resource) do
