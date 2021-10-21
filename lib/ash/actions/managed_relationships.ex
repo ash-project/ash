@@ -166,7 +166,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
                     {:cont, {changeset, instructions}}
                   else
-                    case IO.inspect(Ash.Filter.get_filter(relationship.destination, input)) do
+                    case Ash.Filter.get_filter(relationship.destination, input) do
                       {:ok, keys} ->
                         relationship.destination
                         |> Ash.Query.for_read(read, input, actor: actor)
