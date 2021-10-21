@@ -1369,6 +1369,15 @@ defmodule Ash.Changeset do
       default: [],
       doc: "A keyword list of instructions for nested relationships."
     ],
+    error_path: [
+      type: :any,
+      doc: """
+      By default, errors added to the changeset will use the path `[:relationship_name]`, or `[:relationship_name, <index>]`.
+      If you want to modify this path, you can specify `error_path`, e.g if had a `change` on an action that takes an argument
+      and uses that argument data to call `manage_relationship`, you may want any generated errors to appear under the name of that
+      argument, so you could specify `error_path: :argument_name` when calling `manage_relationship`.
+      """
+    ],
     meta: [
       type: :any,
       doc:
@@ -1619,7 +1628,8 @@ defmodule Ash.Changeset do
                 relationship,
                 input,
                 changeset,
-                opts[:eager_validate_with]
+                opts[:eager_validate_with],
+                opts[:error_path] || opts[:meta][:id] || relationship.name
               )
             else
               changeset
@@ -1629,9 +1639,10 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp eager_validate_relationship_input(_relationship, [], _changeset, _api), do: :ok
+  defp eager_validate_relationship_input(_relationship, [], _changeset, _api, _error_path),
+    do: :ok
 
-  defp eager_validate_relationship_input(relationship, input, changeset, api) do
+  defp eager_validate_relationship_input(relationship, input, changeset, api, error_path) do
     pkeys = Ash.Actions.ManagedRelationships.pkeys(relationship)
 
     pkeys =
@@ -1760,7 +1771,7 @@ defmodule Ash.Changeset do
         changeset
 
       {:error, error} ->
-        add_error(changeset, set_path(error, [relationship.name]))
+        add_error(changeset, set_path(error, error_path))
     end
   end
 
@@ -2389,6 +2400,8 @@ defmodule Ash.Changeset do
   end
 
   def set_path(error, path) do
+    path = List.wrap(path)
+
     error =
       if Map.has_key?(error, :path) && is_list(error.path) do
         %{error | path: path ++ error.path}

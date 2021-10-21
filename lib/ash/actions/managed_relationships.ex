@@ -166,7 +166,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
                     {:cont, {changeset, instructions}}
                   else
-                    case Ash.Filter.get_filter(relationship.destination, input) do
+                    case IO.inspect(Ash.Filter.get_filter(relationship.destination, input)) do
                       {:ok, keys} ->
                         relationship.destination
                         |> Ash.Query.for_read(read, input, actor: actor)
@@ -511,15 +511,22 @@ defmodule Ash.Actions.ManagedRelationships do
             case Keyword.fetch(opts[:meta] || [], :inputs_was_list?) do
               {:ok, false} ->
                 {:halt,
-                 {:error, Ash.Changeset.set_path(error, [opts[:meta][:id] || relationship.name])}}
+                 {:error,
+                  Ash.Changeset.set_path(
+                    error,
+                    opts[:error_path] ||
+                      [
+                        opts[:meta][:id] || relationship.name
+                      ]
+                  )}}
 
               _ ->
                 {:halt,
                  {:error,
-                  Ash.Changeset.set_path(error, [
-                    opts[:meta][:id] || relationship.name,
-                    input_index
-                  ])}}
+                  Ash.Changeset.set_path(
+                    error,
+                    opts[:error_path] || [opts[:meta][:id] || relationship.name, input_index]
+                  )}}
             end
         end
       end
@@ -544,7 +551,11 @@ defmodule Ash.Actions.ManagedRelationships do
             {:error, error}
 
           {:error, error} ->
-            {:error, Ash.Changeset.set_path(error, [opts[:meta][:id] || relationship.name])}
+            {:error,
+             Ash.Changeset.set_path(
+               error,
+               opts[:error_path] || [opts[:meta][:id] || relationship.name]
+             )}
         end
 
       {:error, error} ->
@@ -609,7 +620,11 @@ defmodule Ash.Actions.ManagedRelationships do
 
           {:error, error} ->
             {:halt,
-             {:error, Ash.Changeset.set_path(error, [opts[:meta][:id] || relationship.name])}}
+             {:error,
+              Ash.Changeset.set_path(
+                error,
+                opts[:error_path] || [opts[:meta][:id] || relationship.name]
+              )}}
         end
       end
     )
@@ -633,14 +648,22 @@ defmodule Ash.Actions.ManagedRelationships do
             {:error, error}
 
           {:error, error} ->
-            {:error, Ash.Changeset.set_path(error, [opts[:meta][:id] || relationship.name])}
+            {:error,
+             Ash.Changeset.set_path(
+               error,
+               opts[:error_path] || [opts[:meta][:id] || relationship.name]
+             )}
         end
 
       {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
         {:error, error}
 
       {:error, error} ->
-        {:error, Ash.Changeset.set_path(error, [opts[:meta][:id] || relationship.name])}
+        {:error,
+         Ash.Changeset.set_path(
+           error,
+           opts[:error_path] || [opts[:meta][:id] || relationship.name]
+         )}
     end
   end
 
