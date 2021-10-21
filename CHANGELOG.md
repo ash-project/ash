@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.20](https://github.com/ash-project/ash/compare/v1.48.0-rc.19...v1.48.0-rc.20) (2021-10-21)
+
+
+
+
+### Improvements:
+
+* custom error paths for managed relationships
+
 ## [v1.48.0-rc.19](https://github.com/ash-project/ash/compare/v1.48.0-rc.18...v1.48.0-rc.19) (2021-10-20)
 
 
