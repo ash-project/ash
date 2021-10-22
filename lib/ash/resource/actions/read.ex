@@ -34,6 +34,7 @@ defmodule Ash.Resource.Actions.Read do
                   ],
                   get?: [
                     type: :boolean,
+                    default: false,
                     doc: """
                     Expresses that this action innately only returns a single result. Can be used by extensions to validate that you have not hooked something up that expects a list
                     to an action that can only return one thing. This is not used internally (but may be in the future).
