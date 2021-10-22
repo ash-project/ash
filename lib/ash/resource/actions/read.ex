@@ -7,6 +7,7 @@ defmodule Ash.Resource.Actions.Read do
     :primary?,
     :filter,
     :description,
+    :get?,
     transaction?: false,
     arguments: [],
     preparations: [],
@@ -30,6 +31,13 @@ defmodule Ash.Resource.Actions.Read do
                     type: :any,
                     doc:
                       "A filter template, that may contain actor references. See `Ash.Filter` for more on templates"
+                  ],
+                  get?: [
+                    type: :boolean,
+                    doc: """
+                    Expresses that this action innately only returns a single result. Can be used by extensions to validate that you have not hooked something up that expects a list
+                    to an action that can only return one thing. This is not used internally (but may be in the future).
+                    """
                   ],
                   transaction?: [
                     type: :boolean,
