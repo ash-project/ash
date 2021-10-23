@@ -52,7 +52,7 @@ defmodule Ash.Sort do
           | list(atom | String.t() | {atom, sort_order()} | list(String.t()))
           | nil
         ) ::
-          Ash.Sort.t() | nil
+          {:ok, Ash.Sort.t()} | {:error, term}
   def parse_input(resource, sort) when is_binary(sort) do
     sort = String.split(sort, ",")
     parse_input(resource, sort)
