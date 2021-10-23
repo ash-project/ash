@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.22](https://github.com/ash-project/ash/compare/v1.48.0-rc.21...v1.48.0-rc.22) (2021-10-23)
+
+
+
+
+### Bug Fixes:
+
+* use correct typespec for `Ash.Sort.parse_input/2`
+
 ## [v1.48.0-rc.21](https://github.com/ash-project/ash/compare/v1.48.0-rc.20...v1.48.0-rc.21) (2021-10-22)
 
 
