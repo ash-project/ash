@@ -1602,20 +1602,19 @@ defmodule Ash.Filter do
     add_expression_part({attribute, [is_nil: true]}, context, expression)
   end
 
-  defp add_expression_part({field, nested_statement}, context, expression)
-       when is_atom(field) or is_binary(field) do
-    aggregates =
-      Enum.flat_map(context.aggregates, fn {key, _} ->
-        [key, to_string(key)]
-      end)
+  defp add_expression_part({function, args}, context, expression)
+       when is_tuple(args) and is_atom(function) do
+    case get_function(function, Ash.DataLayer.data_layer_functions(context.resource)) do
+      nil ->
+        {:error,
+         NoSuchAttributeOrRelationship.exception(
+           attribute_or_relationship: function,
+           resource: context.resource
+         )}
 
-    calculations =
-      Enum.flat_map(context.calculations, fn {key, _} ->
-        [key, to_string(key)]
-      end)
+      function_module ->
+        nested_statement = Tuple.to_list(args)
 
-    cond do
-      function_module = get_function(field, Ash.DataLayer.data_layer_functions(context.resource)) ->
         with {:ok, args} <-
                hydrate_refs(List.wrap(nested_statement), context),
              refs <- list_refs(args),
@@ -1623,7 +1622,7 @@ defmodule Ash.Filter do
                validate_not_crossing_datalayer_boundaries(
                  refs,
                  context.resource,
-                 {field, nested_statement}
+                 {function, nested_statement}
                ),
              {:ok, function} <-
                Function.new(
@@ -1640,7 +1639,22 @@ defmodule Ash.Filter do
             end
           end
         end
+    end
+  end
 
+  defp add_expression_part({field, nested_statement}, context, expression)
+       when is_atom(field) or is_binary(field) do
+    aggregates =
+      Enum.flat_map(context.aggregates, fn {key, _} ->
+        [key, to_string(key)]
+      end)
+
+    calculations =
+      Enum.flat_map(context.calculations, fn {key, _} ->
+        [key, to_string(key)]
+      end)
+
+    cond do
       rel = relationship(context, field) ->
         context =
           context
