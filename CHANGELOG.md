@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.23](https://github.com/ash-project/ash/compare/v1.48.0-rc.22...v1.48.0-rc.23) (2021-10-24)
+
+
+
+
+### Bug Fixes:
+
+* breaking change! disambiguating functions in keyword filter syntax
+
 ## [v1.48.0-rc.22](https://github.com/ash-project/ash/compare/v1.48.0-rc.21...v1.48.0-rc.22) (2021-10-23)
 
 
