@@ -814,6 +814,25 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
+  @preparations %Ash.Dsl.Section{
+    name: :preparations,
+    describe: """
+    Declare preparations that occur on all read actions for a given resource
+    """,
+    imports: [Ash.Resource.Validation.Builtins],
+    examples: [
+      """
+      preparations do
+        prepare {Mod, [foo: :bar]}
+        prepare set_context(%{some: :context})
+      end
+      """
+    ],
+    entities: [
+      @preparation
+    ]
+  }
+
   @count %Ash.Dsl.Entity{
     name: :count,
     describe: """
@@ -1060,6 +1079,7 @@ defmodule Ash.Resource.Dsl do
     @actions,
     @resource,
     @changes,
+    @preparations,
     @validations,
     @aggregates,
     @calculations,

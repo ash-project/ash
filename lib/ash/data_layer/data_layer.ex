@@ -50,7 +50,6 @@ defmodule Ash.DataLayer do
               {:ok, data_layer_query()} | {:error, term}
   @callback distinct(data_layer_query(), list(atom), resource :: Ash.Resource.t()) ::
               {:ok, data_layer_query()} | {:error, term}
-  @callback set_context(data_layer_query(), map) :: {:ok, data_layer_query()} | {:error, term}
   @callback limit(
               data_layer_query(),
               limit :: non_neg_integer(),
@@ -69,6 +68,7 @@ defmodule Ash.DataLayer do
             ) :: {:ok, data_layer_query()} | {:error, term}
   @callback set_tenant(Ash.Resource.t(), data_layer_query(), term) ::
               {:ok, data_layer_query()} | {:error, term}
+  @callback resource_to_query(Ash.Resource.t()) :: data_layer_query()
   @callback resource_to_query(Ash.Resource.t(), Ash.Api.t()) :: data_layer_query()
   @callback transform_query(Ash.Query.t()) :: Ash.Query.t()
   @callback run_query(data_layer_query(), Ash.Resource.t()) ::
@@ -143,11 +143,11 @@ defmodule Ash.DataLayer do
                       in_transaction?: 1,
                       add_aggregate: 3,
                       add_calculation: 4,
-                      set_context: 2,
                       run_aggregate_query: 3,
                       run_aggregate_query_with_lateral_join: 5,
                       transform_query: 1,
                       set_tenant: 3,
+                      resource_to_query: 1,
                       resource_to_query: 2
 
   @doc "The data layer of the resource, or nil if it does not have one"

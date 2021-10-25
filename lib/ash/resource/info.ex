@@ -164,9 +164,11 @@ defmodule Ash.Resource.Info do
     Extension.get_entities(resource, [:validations])
   end
 
-  @spec changes(Ash.Resource.t(), :create | :update | :destroy) :: [
-          Ash.Resource.Validation.t()
-        ]
+  @spec changes(Ash.Resource.t(), :create | :update | :destroy) ::
+          list(
+            Ash.Resource.Validation.t()
+            | Ash.Resource.Change.t()
+          )
   def changes(resource, type) do
     resource
     |> changes()
@@ -174,9 +176,14 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "A list of all changes for the resource"
-  @spec changes(Ash.Resource.t()) :: [Ash.Resource.Validation.t()]
+  @spec changes(Ash.Resource.t()) :: list(Ash.Resource.Validation.t() | Ash.Resource.Change.t())
   def changes(resource) do
     Extension.get_entities(resource, [:changes])
+  end
+
+  @spec preparations(Ash.Resource.t()) :: list(Ash.Resource.Preparation.t())
+  def preparations(resource) do
+    Extension.get_entities(resource, [:preparations])
   end
 
   @doc "Whether or not a given module is a resource module"

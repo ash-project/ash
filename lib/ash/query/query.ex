@@ -338,7 +338,10 @@ defmodule Ash.Query do
   end
 
   defp run_preparations(query, action, actor) do
-    Enum.reduce(action.preparations || [], query, fn %{preparation: {module, opts}}, query ->
+    query.resource
+    |> Ash.Resource.Info.preparations()
+    |> Enum.concat(action.preparations || [])
+    |> Enum.reduce(query, fn %{preparation: {module, opts}}, query ->
       module.prepare(query, opts, %{actor: actor})
     end)
   end

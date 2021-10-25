@@ -12,6 +12,8 @@ defmodule Ash.Resource.Change do
   """
   defstruct [:change, :on]
 
+  @type t :: %__MODULE__{}
+
   @doc false
   def schema do
     [

@@ -879,7 +879,7 @@ defmodule Ash.Actions.Read do
         |> Map.to_list()
       end)
 
-    with query <- Ash.Query.unset(query, [:filter, :aggregates, :sort, :limit, :offset]),
+    with query <- Ash.Query.unset(query, [:filter, :aggregates, :sort, :limit, :offset, :load]),
          query <- Ash.Query.filter(query, ^[or: pkey_filter]),
          {:ok, data_layer_query} <- Ash.Query.data_layer_query(query),
          {:ok, data_layer_query} <-
