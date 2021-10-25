@@ -1711,7 +1711,8 @@ defmodule Ash.Filter do
                  aggregate.kind,
                  aggregate.relationship_path,
                  aggregate_query,
-                 aggregate.field
+                 aggregate.field,
+                 aggregate.default
                ) do
           case parse_predicates(nested_statement, query_aggregate, context) do
             {:ok, nested_statement} ->
@@ -2059,7 +2060,8 @@ defmodule Ash.Filter do
                      aggregate.kind,
                      aggregate.relationship_path,
                      aggregate_query,
-                     aggregate.field
+                     aggregate.field,
+                     aggregate.default
                    ) do
               {:ok, %{ref | attribute: query_aggregate, resource: related}}
             else

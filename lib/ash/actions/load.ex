@@ -572,10 +572,11 @@ defmodule Ash.Actions.Load do
 
     cond do
       limit == 1 && is_nil(relationship.context) && is_nil(relationship.filter) &&
-          is_nil(relationship.sort) ->
+        is_nil(relationship.sort) && relationship.type != :many_to_many ->
         false
 
-      limit == 1 && (source_data == :unknown || Enum.count_until(source_data, 2) == 1) ->
+      limit == 1 && (source_data == :unknown || Enum.count_until(source_data, 2) == 1) &&
+          relationship.type != :many_to_many ->
         false
 
       true ->

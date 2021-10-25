@@ -786,7 +786,8 @@ defmodule Ash.Query do
                  aggregate.kind,
                  aggregate.relationship_path,
                  aggregate_query,
-                 aggregate.field
+                 aggregate.field,
+                 aggregate.default
                ) do
           query_aggregate = %{query_aggregate | load: field}
           new_aggregates = Map.put(query.aggregates, aggregate.name, query_aggregate)

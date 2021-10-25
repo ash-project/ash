@@ -27,7 +27,7 @@ defmodule Ash.Query.Aggregate do
   @doc false
   def kinds, do: @kinds
 
-  def new(resource, name, kind, relationship, query, field) do
+  def new(resource, name, kind, relationship, query, field, default \\ nil) do
     field_type =
       if field do
         related = Ash.Resource.Info.related(resource, relationship)
@@ -41,7 +41,7 @@ defmodule Ash.Query.Aggregate do
        %__MODULE__{
          name: name,
          resource: resource,
-         default_value: default_value(kind),
+         default_value: default || default_value(kind),
          relationship_path: List.wrap(relationship),
          field: field,
          kind: kind,

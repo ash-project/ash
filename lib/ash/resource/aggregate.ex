@@ -1,6 +1,16 @@
 defmodule Ash.Resource.Aggregate do
   @moduledoc "Represents a named aggregate on the resource that can be loaded"
-  defstruct [:name, :relationship_path, :filter, :kind, :description, :private?, :field, :sort]
+  defstruct [
+    :name,
+    :relationship_path,
+    :filter,
+    :kind,
+    :description,
+    :private?,
+    :field,
+    :sort,
+    :default
+  ]
 
   @schema [
     name: [
@@ -37,6 +47,11 @@ defmodule Ash.Resource.Aggregate do
       type: :string,
       doc: "An optional description for the aggregate"
     ],
+    default: [
+      type: :any,
+      doc:
+        "A default value to use in cases where nil would be used. Count defaults to `0` but `first` and `count` do not have defaults."
+    ],
     private?: [
       type: :boolean,
       default: false,
@@ -52,7 +67,8 @@ defmodule Ash.Resource.Aggregate do
           field: atom,
           kind: :count | :first | :sum | :list,
           description: String.t() | nil,
-          private?: boolean
+          private?: boolean,
+          default: term
         }
 
   @doc false
