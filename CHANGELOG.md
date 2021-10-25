@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.24](https://github.com/ash-project/ash/compare/v1.48.0-rc.23...v1.48.0-rc.24) (2021-10-25)
+
+
+
+
+### Bug Fixes:
+
+* unset `load` when running calculation queries
+
+### Improvements:
+
+* add `allow_async?` to calculations, default to false
+
+* add elixir evaluation step to expression calculations
+
+* global resource preparations
+
 ## [v1.48.0-rc.23](https://github.com/ash-project/ash/compare/v1.48.0-rc.22...v1.48.0-rc.23) (2021-10-24)
 
 
