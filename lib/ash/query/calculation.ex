@@ -1,7 +1,17 @@
 defmodule Ash.Query.Calculation do
   @moduledoc "Represents a calculated attribute requested on a query"
 
-  defstruct [:name, :module, :opts, :load, :type, context: %{}, select: [], sequence: 0]
+  defstruct [
+    :name,
+    :module,
+    :opts,
+    :load,
+    :type,
+    context: %{},
+    select: [],
+    sequence: 0,
+    allow_async?: false
+  ]
 
   @type t :: %__MODULE__{}
 

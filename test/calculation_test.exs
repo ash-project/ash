@@ -53,7 +53,9 @@ defmodule Ash.Test.CalculationTest do
           constraints: [allow_empty?: true, trim?: false]
       end
 
-      calculate :expr_full_name, :string, expr(first_name <> " " <> last_name)
+      calculate :expr_full_name, :string, expr(first_name <> " " <> last_name) do
+        allow_async? true
+      end
 
       calculate :conditional_full_name,
                 :string,

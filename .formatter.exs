@@ -3,6 +3,7 @@
 locals_without_parens = [
   accept: 1,
   action: 1,
+  allow_async?: 1,
   allow_nil?: 1,
   allow_nil_input: 1,
   allow_unregistered?: 1,

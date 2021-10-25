@@ -731,7 +731,12 @@ defmodule Ash.Query do
                 |> Kernel.||([])
                 |> Enum.concat(module.select(query, opts, calculation.context) || [])
 
-              calculation = %{calculation | load: field, select: fields_to_select}
+              calculation = %{
+                calculation
+                | load: field,
+                  select: fields_to_select,
+                  allow_async?: resource_calculation.allow_async?
+              }
 
               query =
                 query

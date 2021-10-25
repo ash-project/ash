@@ -10,7 +10,8 @@ defmodule Ash.Resource.Calculation do
     :private?,
     :allow_nil?,
     :select,
-    :load
+    :load,
+    :allow_async?
   ]
 
   @schema [
@@ -27,6 +28,20 @@ defmodule Ash.Resource.Calculation do
       type: :keyword_list,
       default: [],
       doc: "Constraints to provide to the type."
+    ],
+    allow_async?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      If set to `true`, then the calculation may be run after the main query.
+
+      This is useful for calculations that are very expensive, especially when combined with complex filters/join
+      scenarios. By adding this, we will rerun a trimmed down version of the main query, using the primary keys for
+      fast access. This will be done asynchronously for each calculation that has `allow_async?: true`.
+
+      Keep in mind that if the calculation is used in a filter or sort, it cannot be done asynchrnously,
+      and *must* be done in the main query.
+      """
     ],
     calculation: [
       type: {:custom, __MODULE__, :calculation, []},

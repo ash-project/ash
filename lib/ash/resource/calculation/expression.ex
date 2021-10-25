@@ -9,6 +9,47 @@ defmodule Ash.Resource.Calculation.Expression do
     Ash.Filter.build_filter_from_template(expr, nil, context, context[:context] || %{})
   end
 
+  def calculate([], _, _), do: []
+
+  def calculate([%resource{} | _] = records, opts, context) do
+    expression =
+      Ash.Filter.build_filter_from_template(opts[:expr], nil, context, context[:context] || %{})
+
+    Enum.reduce_while(records, {:ok, []}, fn record, {:ok, values} ->
+      case Ash.Filter.hydrate_refs(expression, %{
+             resource: resource,
+             aggregates: %{},
+             calculations: %{},
+             public?: false
+           }) do
+        {:ok, expression} ->
+          case Ash.Filter.Runtime.do_match(record, expression) do
+            {:ok, value} ->
+              {:cont, {:ok, [value | values]}}
+
+            :unknown ->
+              {:halt, :unknown}
+
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
+
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
+    end)
+    |> case do
+      {:ok, values} ->
+        {:ok, Enum.reverse(values)}
+
+      :unknown ->
+        :unknown
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
   def load(query, opts, context) do
     expr =
       Ash.Filter.build_filter_from_template(opts[:expr], nil, context, context[:context] || %{})

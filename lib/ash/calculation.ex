@@ -26,7 +26,7 @@ defmodule Ash.Calculation do
   @callback init(Keyword.t()) :: {:ok, Keyword.t()} | {:error, term}
   @callback describe(Keyword.t()) :: String.t()
   @callback calculate([Ash.Resource.record()], Keyword.t(), map) ::
-              {:ok, [term]} | [term] | {:error, term}
+              {:ok, [term]} | [term] | {:error, term} | :unknown
   @callback expression(Keyword.t(), map) :: any
   @callback load(Ash.Query.t(), Keyword.t(), map) :: Ash.Query.t()
   @callback select(Ash.Query.t(), Keyword.t(), map) :: list(atom)

@@ -147,9 +147,6 @@ defmodule Ash.Filter.Runtime do
       nil ->
         {:ok, true}
 
-      boolean when is_boolean(boolean) ->
-        {:ok, boolean}
-
       %op{__operator__?: true, left: left, right: right} = operator ->
         with {:ok, [left, right]} <-
                resolve_exprs([left, right], record),
@@ -195,6 +192,9 @@ defmodule Ash.Filter.Runtime do
 
       %BooleanExpression{op: op, left: left, right: right} ->
         expression_matches(op, left, right, record)
+
+      other ->
+        {:ok, other}
     end
   end
 
