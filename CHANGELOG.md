@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.25](https://github.com/ash-project/ash/compare/v1.48.0-rc.24...v1.48.0-rc.25) (2021-10-25)
+
+
+
+
+### Bug Fixes:
+
+* always lateral join for many to many relationships
+
+### Improvements:
+
+* add `default` option for aggregates
+
 ## [v1.48.0-rc.24](https://github.com/ash-project/ash/compare/v1.48.0-rc.23...v1.48.0-rc.24) (2021-10-25)
 
 
