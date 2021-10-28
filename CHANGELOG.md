@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.26](https://github.com/ash-project/ash/compare/v1.48.0-rc.25...v1.48.0-rc.26) (2021-10-28)
+
+
+
+
+### Bug Fixes:
+
+* correctly handle errors in validate_required_belongs_to (#276)
+
+* set actor when loading to manage belongs_to
+
+* cast to string before concatenating
+
+### Improvements:
+
+* set `action` into data layer context
+
 ## [v1.48.0-rc.25](https://github.com/ash-project/ash/compare/v1.48.0-rc.24...v1.48.0-rc.25) (2021-10-25)
 
 
