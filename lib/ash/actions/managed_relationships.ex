@@ -272,6 +272,8 @@ defmodule Ash.Actions.ManagedRelationships do
     end
   end
 
+  defp validate_required_belongs_to({:error, error}), do: {:error, error}
+
   defp validate_required_belongs_to({changeset, instructions}) do
     changeset.resource
     |> Ash.Resource.Info.relationships()
