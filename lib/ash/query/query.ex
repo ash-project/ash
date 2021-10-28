@@ -1692,7 +1692,11 @@ defmodule Ash.Query do
            Ash.DataLayer.limit(query, ash_query.limit, resource),
          {:ok, query} <-
            Ash.DataLayer.offset(query, ash_query.offset, resource) do
-      Ash.DataLayer.set_context(resource, query, ash_query.context)
+      Ash.DataLayer.set_context(
+        resource,
+        query,
+        Map.put(ash_query.context, :action, ash_query.action)
+      )
     else
       {:error, error} -> {:error, error}
     end

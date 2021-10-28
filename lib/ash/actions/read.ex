@@ -435,7 +435,11 @@ defmodule Ash.Actions.Read do
                      filter_with_related(Enum.map(filter_requests, & &1.path), ash_query, data),
                    filter <- update_aggregate_filters(filter, data),
                    {:ok, query} <-
-                     Ash.DataLayer.set_context(ash_query.resource, query, ash_query.context),
+                     Ash.DataLayer.set_context(
+                       ash_query.resource,
+                       query,
+                       Map.put(ash_query.context, :action, ash_query.action)
+                     ),
                    {:ok, query} <-
                      Ash.DataLayer.select(
                        query,
