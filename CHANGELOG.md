@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.27](https://github.com/ash-project/ash/compare/v1.48.0-rc.26...v1.48.0-rc.27) (2021-10-29)
+
+
+
+
+### Improvements:
+
+* compile time optimizations via configuration
+
+* breaking change! if you were previously relying on the undocumented
+
 ## [v1.48.0-rc.26](https://github.com/ash-project/ash/compare/v1.48.0-rc.25...v1.48.0-rc.26) (2021-10-28)
 
 
