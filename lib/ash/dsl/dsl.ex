@@ -167,10 +167,6 @@ defmodule Ash.Dsl do
             |> @ash_parent.handle_opts()
             |> Code.eval_quoted([], __ENV__)
 
-            if __MODULE__ == Overcode.Accounts do
-              IO.inspect(opts)
-            end
-
             if opts[:otp_app] do
               @persist {:otp_app, opts[:otp_app]}
             end
