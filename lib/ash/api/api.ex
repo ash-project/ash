@@ -528,7 +528,7 @@ defmodule Ash.Api do
 
   @spec registry(atom) :: atom | nil
   def registry(api) do
-    Extension.get_opt(api, [:resources], :registry, nil)
+    Extension.get_opt(api, [:resources], :registry, nil, true)
   end
 
   @spec allow_unregistered?(atom) :: atom | nil

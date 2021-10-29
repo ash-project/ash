@@ -130,7 +130,7 @@ defmodule Ash.Dsl do
                   List.wrap(current_value) ++ List.wrap(defaults)
 
                 true ->
-                  opts
+                  current_value
               end
             end)
           end)
@@ -166,6 +166,10 @@ defmodule Ash.Dsl do
             opts
             |> @ash_parent.handle_opts()
             |> Code.eval_quoted([], __ENV__)
+
+            if __MODULE__ == Overcode.Accounts do
+              IO.inspect(opts)
+            end
 
             if opts[:otp_app] do
               @persist {:otp_app, opts[:otp_app]}
@@ -223,7 +227,7 @@ defmodule Ash.Dsl do
           {Keyword.put(opts, key, mods), extensions}
 
         true ->
-          {opts, extensions}
+          {Keyword.put(opts, key, value), extensions}
       end
     end)
   end
