@@ -78,6 +78,8 @@ defmodule Ash.Dsl do
         their_opt_schema
       end
 
+    their_opt_schema = Keyword.put(their_opt_schema, :otp_app, type: :atom)
+
     quote bind_quoted: [
             their_opt_schema: their_opt_schema,
             parent_opts: opts,
@@ -165,6 +167,10 @@ defmodule Ash.Dsl do
             |> @ash_parent.handle_opts()
             |> Code.eval_quoted([], __ENV__)
 
+            if opts[:otp_app] do
+              @persist {:otp_app, opts[:otp_app]}
+            end
+
             for single_extension_kind <- parent_opts[:single_extension_kinds] do
               @persist {single_extension_kind, opts[single_extension_kind]}
               Module.put_attribute(__MODULE__, single_extension_kind, opts[single_extension_kind])
@@ -217,7 +223,7 @@ defmodule Ash.Dsl do
           {Keyword.put(opts, key, mods), extensions}
 
         true ->
-          {key, value}
+          {opts, extensions}
       end
     end)
   end

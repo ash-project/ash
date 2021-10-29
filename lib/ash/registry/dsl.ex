@@ -7,6 +7,9 @@ defmodule Ash.Registry.Dsl do
     examples: [
       "entry MyApp.User"
     ],
+    modules: [
+      :entry
+    ],
     schema: [
       entry: [
         type: :atom,

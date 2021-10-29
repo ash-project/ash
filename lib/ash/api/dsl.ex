@@ -49,6 +49,19 @@ defmodule Ash.Api.Dsl do
 
         This option is ignored if any explicit resources are included in the api, so everything is either in the registry
         or in the api. See the docs on `Ash.Registry` for what the registry is used for.
+
+        To optimize for compile times, you can place the connection from the api to the registry in application configuration.
+
+        To accomplish this:
+        1. Configure an `otp_app` when using your api, e.g `use Ash.Api, otp_app: :my_app`
+        2. Add application config to set up the connection
+
+        ```elixir
+        config :my_app, MyApp.Api,
+          resources: [
+            registry: MyApp.Api.Registry
+          ]
+        ```
         """
       ]
     ],

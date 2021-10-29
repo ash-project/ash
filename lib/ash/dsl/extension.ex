@@ -336,7 +336,8 @@ defmodule Ash.Dsl.Extension do
   end
 
   def get_opt_config(resource, path, value) do
-    with {:ok, config} <- Application.fetch_env(:ash, resource),
+    with otp_app when not is_nil(otp_app) <- get_persisted(resource, :otp_app),
+         {:ok, config} <- Application.fetch_env(otp_app, resource),
          {:ok, value} <-
            path
            |> List.wrap()
