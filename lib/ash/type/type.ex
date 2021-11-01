@@ -654,7 +654,7 @@ defmodule Ash.Type do
 
   # @callback equal?(term, term) :: boolean
 
-  defmacro __using__(_) do
+  defmacro __using__(_opts) do
     quote location: :keep do
       @behaviour Ash.Type
 

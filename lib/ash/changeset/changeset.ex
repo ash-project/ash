@@ -710,6 +710,9 @@ defmodule Ash.Changeset do
     changes = changes ++ Ash.Resource.Info.changes(changeset.resource, changeset.action_type)
 
     Enum.reduce(changes, changeset, fn
+      %{only_when_valid?: true}, %{valid?: false} = changeset ->
+        changeset
+
       %{change: {module, opts}}, changeset ->
         module.change(changeset, opts, %{actor: actor})
 

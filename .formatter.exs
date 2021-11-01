@@ -80,6 +80,7 @@ locals_without_parens = [
   name: 1,
   not_found_message: 1,
   on: 1,
+  only_when_valid?: 1,
   pagination: 1,
   parse_attribute: 1,
   prefix: 1,
