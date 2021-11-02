@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.48.0-rc.30](https://github.com/ash-project/ash/compare/v1.48.0-rc.29...v1.48.0-rc.30) (2021-11-01)
+
+
+
+
+### Bug Fixes:
+
+* set storage_type to `:uuid` for Ash.Type.UUID
+
+### Improvements:
+
+* `only_when_valid?` on changes
+
 ## [v1.48.0-rc.29](https://github.com/ash-project/ash/compare/v1.48.0-rc.28...v1.48.0-rc.29) (2021-10-29)
 
 

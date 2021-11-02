@@ -10,7 +10,7 @@ defmodule Ash.Resource.Change do
   when this change was configured on a resource, and the context, which currently only has
   the actor.
   """
-  defstruct [:change, :on]
+  defstruct [:change, :on, :only_when_valid?]
 
   @type t :: %__MODULE__{}
 
@@ -24,6 +24,15 @@ defmodule Ash.Resource.Change do
         The action types the validation should run on.
 
         Many validations don't make sense in the context of deletion, so by default it is left out of the list.
+        """
+      ],
+      only_when_valid?: [
+        type: :boolean,
+        default: false,
+        doc: """
+        If the change should only be run on valid changes. By default, all changes are run unless stated otherwise here.
+
+        For 2.0 this may become the default.
         """
       ],
       change: [

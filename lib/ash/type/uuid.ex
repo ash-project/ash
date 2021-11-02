@@ -8,7 +8,7 @@ defmodule Ash.Type.UUID do
   use Ash.Type
 
   @impl true
-  def storage_type, do: Ecto.UUID
+  def storage_type, do: :uuid
 
   @impl true
   def cast_input(value, _) when is_binary(value) do
