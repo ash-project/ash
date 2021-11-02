@@ -1660,7 +1660,7 @@ defmodule Ash.Query do
 
   @doc "Return the underlying data layer query for an ash query"
   def data_layer_query(%{resource: resource, api: api} = ash_query, opts \\ []) do
-    query = Ash.DataLayer.resource_to_query(resource, api)
+    query = opts[:initial_query] || Ash.DataLayer.resource_to_query(resource, api)
 
     filter_aggregates =
       if ash_query.filter do
@@ -1683,11 +1683,12 @@ defmodule Ash.Query do
     aggregates = Enum.uniq_by(filter_aggregates ++ sort_aggregates, & &1.name)
 
     with {:ok, query} <-
+           add_tenant(query, ash_query),
+         {:ok, query} <-
            add_aggregates(query, ash_query, aggregates),
          {:ok, query} <-
            Ash.DataLayer.sort(query, ash_query.sort, resource),
          {:ok, query} <- maybe_filter(query, ash_query, opts),
-         {:ok, query} <- add_tenant(query, ash_query),
          {:ok, query} <-
            Ash.DataLayer.limit(query, ash_query.limit, resource),
          {:ok, query} <-
