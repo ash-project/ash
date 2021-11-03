@@ -883,47 +883,49 @@ defmodule Ash.Actions.Load do
   defp get_query(query, relationship, source_data, source_field) do
     {offset, limit} = offset_and_limit(query)
 
-    cond do
-      lateral_join?(query, relationship, source_data) ->
-        {:ok, Ash.Query.unset(query, :load)}
-
-      limit || offset ->
-        {:ok, Ash.Query.unset(query, [:load, :limit, :offset])}
-
-      true ->
-        related_data = Map.get(source_data || %{}, :data, [])
-
-        related_data =
-          case related_data do
-            %page{results: results} when page in [Ash.Page.Keyset, Ash.Page.Offset] ->
-              results
-
-            data ->
-              data
-          end
-
-        ids =
-          Enum.flat_map(related_data, fn data ->
-            data
-            |> Map.get(source_field)
-            |> List.wrap()
-          end)
-
-        filter_value =
-          case ids do
-            [id] ->
-              id
-
-            ids ->
-              [in: ids]
-          end
-
-        new_query =
+    if lateral_join?(query, relationship, source_data) do
+      {:ok, Ash.Query.unset(query, :load)}
+    else
+      query =
+        if limit || offset do
+          Ash.Query.unset(query, [:limit, :offset])
+        else
           query
-          |> Ash.Query.filter(^[{relationship.destination_field, filter_value}])
-          |> Ash.Query.unset(:load)
+        end
 
-        {:ok, new_query}
+      related_data = Map.get(source_data || %{}, :data, [])
+
+      related_data =
+        case related_data do
+          %page{results: results} when page in [Ash.Page.Keyset, Ash.Page.Offset] ->
+            results
+
+          data ->
+            data
+        end
+
+      ids =
+        Enum.flat_map(related_data, fn data ->
+          data
+          |> Map.get(source_field)
+          |> List.wrap()
+        end)
+
+      filter_value =
+        case ids do
+          [id] ->
+            id
+
+          ids ->
+            [in: ids]
+        end
+
+      new_query =
+        query
+        |> Ash.Query.filter(^[{relationship.destination_field, filter_value}])
+        |> Ash.Query.unset(:load)
+
+      {:ok, new_query}
     end
   end
 
