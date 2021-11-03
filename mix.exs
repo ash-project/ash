@@ -85,6 +85,9 @@ defmodule Ash.MixProject do
         ],
         "documentation/topics/multitenancy.md": [
           title: "Multitenancy"
+        ],
+        "documentation/topics/compile_times.md": [
+          title: "Compile Times"
         ]
       ],
       groups_for_extras: [
