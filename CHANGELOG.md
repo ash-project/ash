@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.49.0](https://github.com/ash-project/ash/compare/v1.48.0-rc.30...v1.49.0) (2021-11-03)
+
+
+
+
+### Bug Fixes:
+
+* don't ask the data layer to sort if no sort is applied
+
+* set tenant at start of query build (#278)
+
+### Improvements:
+
+* still filter in cases w/o a lateral join on load
+
 ## [v1.48.0-rc.30](https://github.com/ash-project/ash/compare/v1.48.0-rc.29...v1.48.0-rc.30) (2021-11-01)
 
 
