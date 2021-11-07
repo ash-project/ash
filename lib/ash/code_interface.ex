@@ -1,6 +1,8 @@
 defmodule Ash.CodeInterface do
   @moduledoc """
   Used to define the functions of a code interface for a resource.
+
+  For more information on defining code interfaces, see: `Ash.Resource.Dsl.html#module-code_interface`
   """
 
   @doc false
@@ -18,6 +20,44 @@ defmodule Ash.CodeInterface do
     action
   end
 
+  @doc """
+  Defines the code interface for a given resource + api combination in the current module. For example:
+
+  ```elixir
+  defmodule MyApp.Accounting do
+    require Ash.CodeInterface
+
+    Ash.CodeInterface.define_interface(MyApp.Accounting, MyApp.Accounting.Transaction)
+    Ash.CodeInterface.define_interface(MyApp.Accounting, MyApp.Accounting.Account)
+    Ash.CodeInterface.define_interface(MyApp.Accounting, MyApp.Accounting.Invoice)
+  end
+  ```
+
+  Keep in mind that you can have this "automatically" defined in your resources by using the `define_for`
+  flag in a resource.
+
+  For example:
+
+  ```elixir
+  defmodule MyApp.Accounting.Transaction do
+    use Ash.Resource
+
+    ...
+
+    code_interface do
+      define_for MyApp.Accounting
+
+      define :start do
+        args [:invoice_id]
+      end
+    end
+  end
+
+  # Which can now be used like so:
+
+  MyApp.Accounting.Transaction.start!(invoice.id)
+  ```
+  """
   defmacro define_interface(api, resource) do
     quote bind_quoted: [api: api, resource: resource], generated: true, location: :keep do
       for interface <- Ash.Resource.Info.interfaces(resource) do

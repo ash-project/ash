@@ -101,7 +101,8 @@ defmodule Ash.MixProject do
           Ash.Query,
           Ash.Changeset,
           Ash.Resource.Dsl,
-          Ash.Api.Dsl
+          Ash.Api.Dsl,
+          Ash.CodeInterface
         ],
         tools: [
           Ash.Filter,
@@ -147,6 +148,8 @@ defmodule Ash.MixProject do
         engine: [
           ~r/Ash.Engine/
         ],
+        registry: [Ash.Registry],
+        "registry introspection": ~r/Ash.Registry/,
         errors: [
           Ash.Error,
           Ash.Error.Stacktrace,
