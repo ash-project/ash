@@ -332,6 +332,28 @@ defmodule Ash.Test.Actions.CreateTest do
                |> Api.create!()
     end
 
+    test "nil will override defaults" do
+      post =
+        Post
+        |> new()
+        |> change_attribute(:title, "foo")
+        |> change_attribute(:tag, nil)
+        |> Api.create!()
+
+      assert post.tag == nil
+    end
+
+    test "nil will error on required attribute with default" do
+      assert_raise Ash.Error.Invalid, ~r/required_with_default is required/, fn ->
+        Post
+        |> new()
+        |> change_attribute(:title, "foo")
+        |> change_attribute(:tag, nil)
+        |> change_attribute(:required_with_default, nil)
+        |> Api.create!()
+      end
+    end
+
     test "constant functions values are set properly" do
       assert %Post{tag2: "garbage2"} =
                Post

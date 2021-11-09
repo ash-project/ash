@@ -872,8 +872,24 @@ defmodule Ash.Changeset do
         end
       else
         if changing_attribute?(changeset, required_attribute.name) ||
-             not is_nil(required_attribute.default) do
-          changeset
+             (not is_nil(required_attribute.default) && !private_and_belongs_to?) do
+          if is_nil(get_attribute(changeset, required_attribute.name)) do
+            if not is_nil(required_attribute.default) &&
+                 private_and_belongs_to? do
+              add_error(
+                changeset,
+                Required.exception(
+                  resource: changeset.resource,
+                  field: required_attribute.name,
+                  type: :attribute
+                )
+              )
+            else
+              changeset
+            end
+          else
+            changeset
+          end
         else
           add_error(
             changeset,
@@ -2128,6 +2144,9 @@ defmodule Ash.Changeset do
           data_value = Map.get(changeset.data, attribute.name)
 
           cond do
+            changeset.action_type == :create ->
+              %{changeset | attributes: Map.put(changeset.attributes, attribute.name, casted)}
+
             is_nil(data_value) and is_nil(casted) ->
               %{changeset | attributes: Map.delete(changeset.attributes, attribute.name)}
 
