@@ -296,6 +296,24 @@ defmodule Ash.Test.Actions.CreateTest do
                |> Api.create!()
     end
 
+    test "allow_nil validation" do
+      {:error, error} =
+        Post
+        |> for_create(:create, %{})
+        |> Api.create()
+
+      assert %Ash.Error.Invalid{} = error
+    end
+
+    test "allow_nil validation when attribute provided" do
+      {:error, error} =
+        Post
+        |> for_create(:create, %{title: nil})
+        |> Api.create()
+
+      assert %Ash.Error.Invalid{} = error
+    end
+
     test "return missing required attribute" do
       {:error, err} =
         Post

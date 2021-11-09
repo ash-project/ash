@@ -871,34 +871,32 @@ defmodule Ash.Changeset do
           changeset
         end
       else
-        if changing_attribute?(changeset, required_attribute.name) ||
-             (not is_nil(required_attribute.default) && !private_and_belongs_to?) do
+        if private_and_belongs_to? || changing_attribute?(changeset, required_attribute.name) do
           if is_nil(get_attribute(changeset, required_attribute.name)) do
-            if not is_nil(required_attribute.default) &&
-                 private_and_belongs_to? do
-              add_error(
-                changeset,
-                Required.exception(
-                  resource: changeset.resource,
-                  field: required_attribute.name,
-                  type: :attribute
-                )
+            add_error(
+              changeset,
+              Required.exception(
+                resource: changeset.resource,
+                field: required_attribute.name,
+                type: :attribute
               )
-            else
-              changeset
-            end
+            )
           else
             changeset
           end
         else
-          add_error(
-            changeset,
-            Required.exception(
-              resource: changeset.resource,
-              field: required_attribute.name,
-              type: :attribute
+          if is_nil(required_attribute.default) do
+            add_error(
+              changeset,
+              Required.exception(
+                resource: changeset.resource,
+                field: required_attribute.name,
+                type: :attribute
+              )
             )
-          )
+          else
+            changeset
+          end
         end
       end
     end)
