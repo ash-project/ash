@@ -13,7 +13,6 @@ defmodule Ash.Resource.Change.Builtins do
   @doc """
   Sets the attribute to the value provided.
 
-
   If a zero argument function is provided, it is called to determine the value.
 
   If a tuple of `{:arg, :argument_name}` is provided, the value will be read from the argument if supplied.
@@ -21,6 +20,18 @@ defmodule Ash.Resource.Change.Builtins do
   """
   def set_attribute(attribute, value) do
     {Ash.Resource.Change.SetAttribute, attribute: attribute, value: value}
+  end
+
+  @doc """
+  Sets the attribute to the value provided if the attribtue is not already being changed.
+
+  If a zero argument function is provided, it is called to determine the value.
+
+  If a tuple of `{:arg, :argument_name}` is provided, the value will be read from the argument if supplied.
+  If the argument is not supplied then nothing happens.
+  """
+  def set_new_attribute(attribute, value) do
+    {Ash.Resource.Change.SetAttribute, attribute: attribute, value: value, new?: true}
   end
 
   @doc """

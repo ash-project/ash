@@ -25,7 +25,15 @@ defmodule Ash.Resource.Change.SetAttribute do
       {:arg, arg} ->
         case Ash.Changeset.fetch_argument(changeset, arg) do
           {:ok, value} ->
-            Changeset.force_change_attribute(changeset, opts[:attribute], value)
+            if opts[:new?] do
+              if Ash.Changeset.changing_attribute?(changeset, opts[:attribute]) do
+                changeset
+              else
+                Changeset.force_change_attribute(changeset, opts[:attribute], value)
+              end
+            else
+              Changeset.force_change_attribute(changeset, opts[:attribute], value)
+            end
 
           _ ->
             changeset
@@ -38,7 +46,15 @@ defmodule Ash.Resource.Change.SetAttribute do
             value -> value
           end
 
-        Changeset.force_change_attribute(changeset, opts[:attribute], value)
+        if opts[:new?] do
+          if Ash.Changeset.changing_attribute?(changeset, opts[:attribute]) do
+            changeset
+          else
+            Changeset.force_change_attribute(changeset, opts[:attribute], value)
+          end
+        else
+          Changeset.force_change_attribute(changeset, opts[:attribute], value)
+        end
     end
   end
 end
