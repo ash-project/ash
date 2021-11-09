@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.50.1](https://github.com/ash-project/ash/compare/v1.50.0...v1.50.1) (2021-11-09)
+
+
+
+
+### Bug Fixes:
+
+* simplify and improve allow_nil checking
+
 ## [v1.50.0](https://github.com/ash-project/ash/compare/v1.49.0...v1.50.0) (2021-11-09)
 ### Breaking Changes:
 
