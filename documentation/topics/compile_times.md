@@ -24,7 +24,7 @@ defmodule MyApp.MyApi.Registry do
   use Ash.Registry,
     extensions: Ash.Registry.ResourceValidations
 
-  registry do
+  entries do
     entry MyApp.MyResource
     ...
   end
