@@ -24,4 +24,16 @@ defmodule Ash.Test.Helpers do
   end
 
   def clear_meta(other), do: other
+
+  defmacro hydrated_expr(resource, expr) do
+    quote do
+      Ash.Query.expr(unquote(expr))
+      |> Ash.Filter.hydrate_refs(%{
+        resource: unquote(resource),
+        aggregates: %{},
+        calculations: %{},
+        public?: false
+      })
+    end
+  end
 end
