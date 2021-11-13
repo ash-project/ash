@@ -362,8 +362,8 @@ defmodule Ash.Actions.Read do
             Enum.split_with(ash_query.calculations, fn {_name, calculation} ->
               Enum.find(used_calculations, &(&1.name == calculation.name)) ||
                 calculation.name in Enum.map(ash_query.sort || [], &elem(&1, 0)) ||
-                (!:erlang.function_exported(calculation.module, :calculate, 3) &&
-                   calculation.allow_async?)
+                (:erlang.function_exported(calculation.module, :expression, 2) &&
+                   !calculation.allow_async?)
             end)
           else
             {[], ash_query.calculations}
