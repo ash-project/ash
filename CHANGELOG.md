@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.50.2](https://github.com/ash-project/ash/compare/v1.50.1...v1.50.2) (2021-11-13)
+
+
+
+
+### Bug Fixes:
+
+* run calculations inline by default
+
+* use Date.add when using LessThanOrEqual with date value (#281)
+
+* cast nil input on strings
+
+### Improvements:
+
+* support do/else blocks in if
+
+* support `cond`
+
 ## [v1.50.1](https://github.com/ash-project/ash/compare/v1.50.0...v1.50.1) (2021-11-09)
 
 
