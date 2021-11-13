@@ -214,6 +214,16 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
+  defp resolve_expr({key, value}, record) when is_atom(key) do
+    case resolve_expr(value, record) do
+      {:ok, resolved} ->
+        {:ok, {key, resolved}}
+
+      other ->
+        other
+    end
+  end
+
   defp resolve_expr(%Ref{} = ref, record) do
     {:ok, resolve_ref(ref, record)}
   end

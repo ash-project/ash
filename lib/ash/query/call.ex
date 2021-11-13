@@ -6,7 +6,54 @@ defmodule Ash.Query.Call do
   defimpl Inspect do
     import Inspect.Algebra
 
+    def inspect(%{name: :if, operator?: false, args: [condition, blocks]} = call, opts) do
+      if Keyword.keyword?(blocks) do
+        if Keyword.has_key?(blocks, :else) do
+          concat([
+            nest(
+              concat([
+                group(concat(["if ", to_doc(condition, opts), " do"])),
+                line(),
+                to_doc(blocks[:do], opts)
+              ]),
+              2
+            ),
+            line(),
+            "else",
+            nest(
+              concat([
+                line(),
+                to_doc(blocks[:else], opts)
+              ]),
+              2
+            ),
+            line(),
+            "end"
+          ])
+        else
+          concat([
+            nest(
+              concat([
+                group(concat(["if ", to_doc(condition, opts), " do"])),
+                line(),
+                to_doc(blocks[:do], opts)
+              ]),
+              2
+            ),
+            line(),
+            "end"
+          ])
+        end
+      else
+        do_inspect(call, opts)
+      end
+    end
+
     def inspect(call, inspect_opts) do
+      do_inspect(call, inspect_opts)
+    end
+
+    defp do_inspect(call, inspect_opts) do
       if call.operator? do
         concat([
           to_doc(Enum.at(call.args, 0), inspect_opts),

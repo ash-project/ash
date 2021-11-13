@@ -548,8 +548,29 @@ defmodule Ash.Query do
     soft_escape(Not.new(expression), escape?)
   end
 
+  defp do_expr({:cond, _, [[do: options]]}, escape?) do
+    options
+    |> Enum.map(fn {:->, _, [condition, result]} ->
+      {condition, result}
+    end)
+    |> cond_to_if_tree()
+    |> do_expr(escape?)
+  end
+
   defp do_expr({op, _, args}, escape?) when is_atom(op) and is_list(args) do
-    args = Enum.map(args, &do_expr(&1, false))
+    last_arg = List.last(args)
+
+    args =
+      if Keyword.keyword?(last_arg) && Keyword.has_key?(last_arg, :do) do
+        Enum.map(:lists.droplast(args), &do_expr(&1, false)) ++
+          [
+            Enum.map(last_arg, fn {key, arg_value} ->
+              {key, do_expr(arg_value, false)}
+            end)
+          ]
+      else
+        Enum.map(args, &do_expr(&1, false))
+      end
 
     soft_escape(%Ash.Query.Call{name: op, args: args, operator?: false}, escape?)
   end
@@ -557,6 +578,22 @@ defmodule Ash.Query do
   defp do_expr({left, _, _}, escape?) when is_tuple(left), do: do_expr(left, escape?)
 
   defp do_expr(other, _), do: other
+
+  defp cond_to_if_tree([{condition, result}]) do
+    {:if, [], [cond_condition(condition), [do: result]]}
+  end
+
+  defp cond_to_if_tree([{condition, result} | rest]) do
+    {:if, [], [cond_condition(condition), [do: result, else: cond_to_if_tree(rest)]]}
+  end
+
+  defp cond_condition([condition]) do
+    condition
+  end
+
+  defp cond_condition([condition | rest]) do
+    {:and, [], [condition, cond_condition(rest)]}
+  end
 
   defp soft_escape(%_{} = val, _) do
     {:%{}, [], Map.to_list(val)}

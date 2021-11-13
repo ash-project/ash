@@ -60,6 +60,28 @@ defmodule Ash.Test.CalculationTest do
       calculate :conditional_full_name,
                 :string,
                 expr(if(first_name and last_name, first_name <> " " <> last_name, "(none)"))
+
+      calculate :conditional_full_name_block,
+                :string,
+                expr(
+                  if first_name and last_name do
+                    first_name <> " " <> last_name
+                  else
+                    "(none)"
+                  end
+                )
+
+      calculate :conditional_full_name_cond,
+                :string,
+                expr(
+                  cond do
+                    first_name and last_name ->
+                      first_name <> " " <> last_name
+
+                    true ->
+                      "(none)"
+                  end
+                )
     end
   end
 
@@ -181,6 +203,36 @@ defmodule Ash.Test.CalculationTest do
       |> Ash.Query.load(:conditional_full_name)
       |> Api.read!()
       |> Enum.map(& &1.conditional_full_name)
+      |> Enum.sort()
+
+    assert full_names == ["(none)", "brian cranston", "zach daniel"]
+  end
+
+  test "the `if` calculation can use the `do` style syntax" do
+    User
+    |> Ash.Changeset.new(%{first_name: "bob"})
+    |> Api.create!()
+
+    full_names =
+      User
+      |> Ash.Query.load(:conditional_full_name_block)
+      |> Api.read!()
+      |> Enum.map(& &1.conditional_full_name_block)
+      |> Enum.sort()
+
+    assert full_names == ["(none)", "brian cranston", "zach daniel"]
+  end
+
+  test "the `if` calculation can use the `cond` style syntax" do
+    User
+    |> Ash.Changeset.new(%{first_name: "bob"})
+    |> Api.create!()
+
+    full_names =
+      User
+      |> Ash.Query.load(:conditional_full_name_cond)
+      |> Api.read!()
+      |> Enum.map(& &1.conditional_full_name_cond)
       |> Enum.sort()
 
     assert full_names == ["(none)", "brian cranston", "zach daniel"]

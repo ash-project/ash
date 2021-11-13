@@ -793,7 +793,17 @@ defmodule Ash.Filter do
         %{op | left: do_map(left, func), right: do_map(right, func)}
 
       %{__function__?: true, arguments: arguments} = func ->
-        %{func | arguments: Enum.map(arguments, &do_map(&1, func))}
+        %{
+          func
+          | arguments:
+              Enum.map(arguments, fn
+                {key, arg} when is_atom(key) ->
+                  {key, do_map(arg, func)}
+
+                arg ->
+                  do_map(arg, func)
+              end)
+        }
 
       other ->
         func.(other)
@@ -806,6 +816,9 @@ defmodule Ash.Filter do
 
   def update_aggregates(expression, mapper) do
     case expression do
+      {key, value} when is_atom(key) ->
+        {key, update_aggregates(value, mapper)}
+
       %Not{expression: expression} = not_expr ->
         %{not_expr | expression: update_aggregates(expression, mapper)}
 
@@ -1234,6 +1247,10 @@ defmodule Ash.Filter do
     [do_relationship_paths(left, kind), do_relationship_paths(right, kind)]
   end
 
+  defp do_relationship_paths({key, value}, kind) when is_atom(key) do
+    do_relationship_paths(value, kind)
+  end
+
   defp do_relationship_paths(%{__function__?: true, arguments: arguments}, kind) do
     Enum.map(arguments, &do_relationship_paths(&1, kind))
   end
@@ -1327,6 +1344,8 @@ defmodule Ash.Filter do
     Enum.flat_map(list, &list_refs/1)
   end
 
+  def list_refs({key, value}) when is_atom(key), do: list_refs(value)
+
   def list_refs(%__MODULE__{expression: expression}) do
     list_refs(expression)
   end
@@ -1419,7 +1438,7 @@ defmodule Ash.Filter do
          path
        ) do
     arguments
-    |> Enum.filter(&match?(%Ref{}, &1))
+    |> Enum.filter(fn arg -> match?(%Ref{}, arg) || match?({_, %Ref{}}, arg) end)
     |> Enum.any?(&List.starts_with?(&1.relationship_path, path))
     |> case do
       true ->
@@ -1433,6 +1452,8 @@ defmodule Ash.Filter do
   defp do_scope_expression_by_relationship_path(other, _path) do
     other
   end
+
+  defp scope_ref({key, %Ref{} = ref}, path), do: {key, scope_ref(ref, path)}
 
   defp scope_ref(%Ref{} = ref, path) do
     if List.starts_with?(ref.relationship_path, path) do
@@ -2006,6 +2027,16 @@ defmodule Ash.Filter do
   defp module_and_opts({module, opts}), do: {module, opts}
   defp module_and_opts(module), do: {module, []}
 
+  def hydrate_refs({key, value}, context) when is_atom(key) do
+    case hydrate_refs(value, context) do
+      {:ok, hydrated} ->
+        {:ok, {key, hydrated}}
+
+      other ->
+        other
+    end
+  end
+
   def hydrate_refs(
         %Ref{attribute: attribute} = ref,
         %{aggregates: aggregates, calculations: calculations} = context
@@ -2234,6 +2265,9 @@ defmodule Ash.Filter do
 
   defp add_to_predicate_path(expression, context) do
     case expression do
+      {key, value} when is_atom(key) ->
+        {key, add_to_predicate_path(value, context)}
+
       %Not{expression: expression} = not_expr ->
         %{not_expr | expression: add_to_predicate_path(expression, context)}
 

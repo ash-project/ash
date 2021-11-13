@@ -149,6 +149,10 @@ defmodule Ash.SatSolver do
 
   defp upgrade_related_filters_to_join_keys(expr, _), do: expr
 
+  defp upgrade_ref({key, ref}, resource) when is_atom(key) do
+    {key, upgrade_ref(ref, resource)}
+  end
+
   defp upgrade_ref(
          %Ash.Query.Ref{attribute: attribute, relationship_path: path} = ref,
          resource

@@ -27,23 +27,34 @@ defmodule Ash.Query.Function do
 
       mod_args ->
         configured_args = List.wrap(mod_args)
-        configured_arg_count = Enum.count(Enum.at(configured_args, 0))
+        allowed_arg_counts = Enum.map(configured_args, &Enum.count/1)
         given_arg_count = Enum.count(args)
 
-        if configured_arg_count == given_arg_count do
+        if given_arg_count in allowed_arg_counts do
           mod_args
+          |> Enum.filter(fn args ->
+            Enum.count(args) == given_arg_count
+          end)
           |> Enum.find_value(&try_cast_arguments(&1, args))
           |> case do
             nil ->
-              {:error,
-               "Could not cast function arguments for #{mod.name()}/#{configured_arg_count}"}
+              {:error, "Could not cast function arguments for #{mod.name()}/#{given_arg_count}"}
 
             casted ->
               mod.new(casted)
           end
         else
+          did_you_mean =
+            Enum.map_join(allowed_arg_counts, "\n", fn arg_count ->
+              " . * #{mod.name()}/#{arg_count}"
+            end)
+
           {:error,
-           "function #{mod.name()}/#{configured_arg_count} takes #{configured_arg_count} arguments, provided #{given_arg_count}"}
+           """
+             No such function #{mod.name()}/#{given_arg_count}. Did you mean one of:
+
+             #{did_you_mean}
+           """}
         end
     end
   end
