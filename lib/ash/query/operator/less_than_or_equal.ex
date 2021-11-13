@@ -20,7 +20,7 @@ defmodule Ash.Query.Operator.LessThanOrEqual do
     op
   end
 
-  def simplify(%__MODULE__{left: %Ref{} = same_ref, right: value}) do
+  def simplify(%__MODULE__{left: %Ref{} = same_ref, right: value}) when is_integer(value) do
     {:ok, op} = Ash.Query.Operator.new(Ash.Query.Operator.LessThan, same_ref, value + 1)
 
     op
