@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.50.4](https://github.com/ash-project/ash/compare/v1.50.3...v1.50.4) (2021-11-17)
+
+
+
+
+### Improvements:
+
+* add `Ash.Query.equivalent_to/2`
+
 ## [v1.50.3](https://github.com/ash-project/ash/compare/v1.50.2...v1.50.3) (2021-11-17)
 
 
