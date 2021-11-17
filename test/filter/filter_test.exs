@@ -453,8 +453,9 @@ defmodule Ash.Test.Filter.FilterTest do
     test "can detect a filter is a subset based on a simplification" do
       query = Ash.Query.filter(Post, points in [1, 2])
 
-      assert Ash.Query.superset_of(query, points == 1) == true
-      assert Ash.Query.subset_of(query, points in [1, 2, 3]) == true
+      assert Ash.Query.superset_of?(query, points == 1)
+      assert Ash.Query.subset_of?(query, points in [1, 2, 3])
+      assert Ash.Query.equivalent_to?(query, points == 1 or points == 2)
     end
 
     test "can detect a filter is not a subset based on a simplification" do

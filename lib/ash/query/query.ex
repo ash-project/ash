@@ -656,10 +656,42 @@ defmodule Ash.Query do
   end
 
   @doc """
+  Determines if the filter statement of a query is equivalent to the provided expression.
+
+  This uses the satisfiability solver that is used when solving for policy authorizations. In complex scenarios, or when using
+  custom database expressions, (like fragments in ash_postgres), this function may return `:maybe`. Use `supserset_of?` to always return
+  a boolean.
+  """
+  defmacro equivalent_to(query, expr) do
+    quote do
+      query = unquote(query)
+      expr = unquote(do_expr(expr))
+      require Ash.Query
+
+      case Ash.Query.superset_of(query, expr) do
+        :maybe ->
+          :maybe
+
+        true ->
+          Ash.Query.subset_of(query, expr)
+      end
+    end
+  end
+
+  @doc """
+  Same as `equivalent_to/2` but always returns a boolean. `:maybe` returns `false`.
+  """
+  defmacro equivalent_to?(query, expr) do
+    quote do
+      Ash.Query.equivalent_to(unquote(query), unquote(expr)) == true
+    end
+  end
+
+  @doc """
   Determines if the provided expression would return data that is a subset of the data returned by the filter on the query.
 
   This uses the satisfiability solver that is used when solving for policy authorizations. In complex scenarios, or when using
-  custom database expressions, (like fragments in ash_postgres), this function may return `:unknown`. Use `supserset_of?` to always return
+  custom database expressions, (like fragments in ash_postgres), this function may return `:maybe`. Use `supserset_of?` to always return
   a boolean.
   """
   defmacro superset_of(query, expr) do
@@ -694,7 +726,7 @@ defmodule Ash.Query do
   end
 
   @doc """
-  Same as `superset_of?/2` but always returns a boolean. `:unknown` returns `false`.
+  Same as `superset_of/2` but always returns a boolean. `:maybe` returns `false`.
   """
   defmacro superset_of?(query, expr) do
     quote do
@@ -706,7 +738,7 @@ defmodule Ash.Query do
   Determines if the provided expression would return data that is a suprset of the data returned by the filter on the query.
 
   This uses the satisfiability solver that is used when solving for policy authorizations. In complex scenarios, or when using
-  custom database expressions, (like fragments in ash_postgres), this function may return `:unknown`. Use `subset_of?` to always return
+  custom database expressions, (like fragments in ash_postgres), this function may return `:maybe`. Use `subset_of?` to always return
   a boolean.
   """
   defmacro subset_of(query, expr) do
@@ -739,7 +771,7 @@ defmodule Ash.Query do
   end
 
   @doc """
-  Same as `subset_of?/2` but always returns a boolean. `:unknown` returns `false`.
+  Same as `subset_of/2` but always returns a boolean. `:maybe` returns `false`.
   """
   defmacro subset_of?(query, expr) do
     quote do
