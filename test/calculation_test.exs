@@ -78,6 +78,9 @@ defmodule Ash.Test.CalculationTest do
                     first_name and last_name ->
                       first_name <> " " <> last_name
 
+                    first_name ->
+                      first_name
+
                     true ->
                       "(none)"
                   end
@@ -235,6 +238,6 @@ defmodule Ash.Test.CalculationTest do
       |> Enum.map(& &1.conditional_full_name_cond)
       |> Enum.sort()
 
-    assert full_names == ["(none)", "brian cranston", "zach daniel"]
+    assert full_names == ["bob", "brian cranston", "zach daniel"]
   end
 end

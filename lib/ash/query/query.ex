@@ -656,6 +656,98 @@ defmodule Ash.Query do
   end
 
   @doc """
+  Determines if the provided expression would return data that is a subset of the data returned by the filter on the query.
+
+  This uses the satisfiability solver that is used when solving for policy authorizations. In complex scenarios, or when using
+  custom database expressions, (like fragments in ash_postgres), this function may return `:unknown`. Use `supserset_of?` to always return
+  a boolean.
+  """
+  defmacro superset_of(query, expr) do
+    quote do
+      query = unquote(query)
+      require Ash.Query
+      expr = unquote(do_expr(expr))
+      left_filter = query.filter
+
+      {:ok, left_expression} =
+        Ash.Filter.hydrate_refs(left_filter.expression, %{
+          resource: query.resource,
+          aggregates: query.aggregates,
+          calculations: query.calculations,
+          public?: false
+        })
+
+      left_filter = %{left_filter | expression: left_expression}
+
+      {:ok, right_expression} =
+        Ash.Filter.hydrate_refs(expr, %{
+          resource: query.resource,
+          aggregates: query.aggregates,
+          calculations: query.calculations,
+          public?: false
+        })
+
+      right_filter = %{left_filter | expression: right_expression}
+
+      Ash.SatSolver.strict_filter_subset(left_filter, right_filter)
+    end
+  end
+
+  @doc """
+  Same as `superset_of?/2` but always returns a boolean. `:unknown` returns `false`.
+  """
+  defmacro superset_of?(query, expr) do
+    quote do
+      Ash.Query.superset_of(unquote(query), unquote(expr)) == true
+    end
+  end
+
+  @doc """
+  Determines if the provided expression would return data that is a suprset of the data returned by the filter on the query.
+
+  This uses the satisfiability solver that is used when solving for policy authorizations. In complex scenarios, or when using
+  custom database expressions, (like fragments in ash_postgres), this function may return `:unknown`. Use `subset_of?` to always return
+  a boolean.
+  """
+  defmacro subset_of(query, expr) do
+    quote do
+      query = unquote(query)
+      expr = unquote(do_expr(expr))
+      right_filter = query.filter
+
+      {:ok, right_expression} =
+        Ash.Filter.hydrate_refs(right_filter.expression, %{
+          resource: query.resource,
+          aggregates: query.aggregates,
+          calculations: query.calculations,
+          public?: false
+        })
+
+      right_filter = %{right_filter | expression: right_expression}
+
+      {:ok, left_expression} =
+        Ash.Filter.hydrate_refs(expr, %{
+          resource: query.resource,
+          aggregates: query.aggregates,
+          calculations: query.calculations,
+          public?: false
+        })
+
+      left_filter = %{right_filter | expression: left_expression}
+      Ash.SatSolver.strict_filter_subset(left_filter, right_filter)
+    end
+  end
+
+  @doc """
+  Same as `subset_of?/2` but always returns a boolean. `:unknown` returns `false`.
+  """
+  defmacro subset_of?(query, expr) do
+    quote do
+      Ash.Query.subset_of(unquote(query), unquote(expr)) == true
+    end
+  end
+
+  @doc """
   Ensures that the given attributes are selected.
 
   The first call to `select/2` will *limit* the fields to only the provided fields.
