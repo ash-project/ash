@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.50.3](https://github.com/ash-project/ash/compare/v1.50.2...v1.50.3) (2021-11-17)
+
+
+
+
+### Improvements:
+
+* add `subset_of?` and `superset_of?` query macros
+
 ## [v1.50.2](https://github.com/ash-project/ash/compare/v1.50.1...v1.50.2) (2021-11-13)
 
 
