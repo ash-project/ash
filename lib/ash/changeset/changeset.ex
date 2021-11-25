@@ -39,6 +39,7 @@ defmodule Ash.Changeset do
     action_failed?: false,
     arguments: %{},
     context: %{},
+    defaults: [],
     after_action: [],
     before_action: [],
     errors: [],
@@ -733,10 +734,15 @@ defmodule Ash.Changeset do
         not (is_function(attribute.default) or match?({_, _, _}, attribute.default))
     end)
     |> Enum.reduce(changeset, fn attribute, changeset ->
-      force_change_new_attribute_lazy(changeset, attribute.name, fn ->
+      changeset
+      |> force_change_new_attribute_lazy(attribute.name, fn ->
         default(:create, attribute)
       end)
+      |> Map.update!(:defaults, fn defaults ->
+        [attribute.name | defaults]
+      end)
     end)
+    |> Map.update!(:defaults, &Enum.uniq/1)
   end
 
   def set_defaults(changeset, :update, lazy?) do
@@ -748,10 +754,15 @@ defmodule Ash.Changeset do
         not (is_function(attribute.update_default) or match?({_, _, _}, attribute.update_default))
     end)
     |> Enum.reduce(changeset, fn attribute, changeset ->
-      force_change_new_attribute_lazy(changeset, attribute.name, fn ->
+      changeset
+      |> force_change_new_attribute_lazy(attribute.name, fn ->
         default(:update, attribute)
       end)
+      |> Map.update!(:defaults, fn defaults ->
+        [attribute.name | defaults]
+      end)
     end)
+    |> Map.update!(:defaults, &Enum.uniq/1)
   end
 
   def set_defaults(changeset, _, _) do
@@ -2140,6 +2151,7 @@ defmodule Ash.Changeset do
              {:ok, casted} <-
                Ash.Type.apply_constraints(attribute.type, casted, attribute.constraints) do
           data_value = Map.get(changeset.data, attribute.name)
+          changeset = remove_default(changeset, attribute.name)
 
           cond do
             changeset.action_type == :create ->
@@ -2179,6 +2191,33 @@ defmodule Ash.Changeset do
 
             add_invalid_errors(:attribute, changeset, attribute, error_or_errors)
         end
+    end
+  end
+
+  @doc """
+  The same as `change_attribute`, but annotates that the attribute is currently holding a default value.
+
+  This information can be used in changes to see if a value was explicitly set or if it was set by being the default.
+  Additionally, this is used in `upsert` actions to not overwrite existing values with the default
+  """
+  @spec change_default_attribute(t(), atom, any) :: t()
+  def change_default_attribute(changeset, attribute, value) do
+    case Ash.Resource.Info.attribute(changeset.resource, attribute) do
+      nil ->
+        error =
+          NoSuchAttribute.exception(
+            resource: changeset.resource,
+            name: attribute
+          )
+
+        add_error(changeset, error)
+
+      attribute ->
+        changeset
+        |> change_attribute(attribute.name, value)
+        |> Map.update!(:defaults, fn defaults ->
+          Enum.uniq([attribute.name | defaults])
+        end)
     end
   end
 
@@ -2269,6 +2308,8 @@ defmodule Ash.Changeset do
                Ash.Type.apply_constraints(attribute.type, casted, attribute.constraints) do
           data_value = Map.get(changeset.data, attribute.name)
 
+          changeset = remove_default(changeset, attribute.name)
+
           cond do
             is_nil(data_value) and is_nil(casted) ->
               changeset
@@ -2344,6 +2385,10 @@ defmodule Ash.Changeset do
     else
       {:error, changeset}
     end
+  end
+
+  defp remove_default(changeset, attribute) do
+    %{changeset | defaults: changeset.defaults -- [attribute]}
   end
 
   @doc "Clears an attribute or relationship change off of the changeset"

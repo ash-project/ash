@@ -361,6 +361,16 @@ defmodule Ash.Test.Actions.CreateTest do
       assert post.tag == nil
     end
 
+    test "a default being set will be annotated as a default" do
+      changeset =
+        Post
+        |> new()
+        |> change_attribute(:title, "foo")
+        |> Ash.Changeset.for_create(:create)
+
+      assert :tag in changeset.defaults
+    end
+
     test "nil will error on required attribute with default" do
       assert_raise Ash.Error.Invalid, ~r/required_with_default is required/, fn ->
         Post

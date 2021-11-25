@@ -1695,7 +1695,14 @@ defmodule Ash.Query do
   end
 
   @doc """
-  Sort the results based on attributes or aggregates (calculations are not yet supported)
+  Sort the results based on attributes, aggregates or calculations.
+
+  Calculations are supported if they are defined with expressions, which can be done one of two ways.
+
+  1. with the shorthand `calculate :calc, :type, expr(a + b)`
+  2. By defining `expression/2` in a custom calculation module
+
+  See the guide on calculations for more.
 
   Takes a list of fields to sort on, or a keyword list/mixed keyword list of fields and sort directions.
   The default sort direction is `:asc`.
