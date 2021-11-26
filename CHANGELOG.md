@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.50.6](https://github.com/ash-project/ash/compare/v1.50.5...v1.50.6) (2021-11-26)
+
+
+
+
+### Improvements:
+
+* add `Transformer.eval/3` (for special use cases only)
+
 ## [v1.50.5](https://github.com/ash-project/ash/compare/v1.50.4...v1.50.5) (2021-11-25)
 
 
