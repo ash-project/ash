@@ -37,6 +37,7 @@ defmodule Ash.Resource.Transformers.CachePrimaryKey do
 
       [field] ->
         dsl_state = Transformer.persist(dsl_state, :primary_key, [field])
+
         {:ok, dsl_state}
 
       fields ->

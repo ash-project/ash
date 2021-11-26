@@ -238,6 +238,10 @@ defmodule Ash.Dsl do
 
       Ash.Dsl.Extension.set_state(@persist)
 
+      for {block, bindings} <- @ash_dsl_config[:eval] || [] do
+        Code.eval_quoted(block, bindings, __ENV__)
+      end
+
       def ash_dsl_config do
         @ash_dsl_config
       end

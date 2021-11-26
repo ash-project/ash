@@ -31,8 +31,54 @@ defmodule Ash.Dsl.Transformer do
     end
   end
 
+  @doc """
+  Saves a value into the dsl config with the given key.
+
+  This can be used to precompute some information and cache it onto the resource,
+  or simply store a computed value. It can later be retrieved with `Ash.Dsl.Extension.get_persisted/3`.
+  """
   def persist(dsl, key, value) do
     Map.update(dsl, :persist, %{key => value}, &Map.put(&1, key, value))
+  end
+
+  @doc """
+  Add a quoted expression to be evaluated in the DSL module's context.
+
+  Use this *extremely sparingly*. It should almost never be necessary, unless building certain
+  extensions that *require* the module in question to define a given function.
+
+  What you likely want is either one of the DSL introspection functions, like `Ash.Dsl.Extension.get_entities/2`
+  or `Ash.Dsl.Extension.get_opt/5)`. If you simply want to store a custom value that can be retrieved easily, or
+  cache some precomputed information onto the resource, use `persist/3`.
+
+  Provide the dsl state, bindings that should be unquote-able, and the quoted block
+  to evaluate in the module. For example, if we wanted to support a `resource.primary_key()` function
+  that would return the primary key (this is unnecessary, just an example), we might do this:
+
+  ```elixir
+  fields = the_primary_key_fields
+
+  dsl_state =
+    Transformer.eval(
+      dsl_state,
+      [fields: fields],
+      quote do
+        def primary_key() do
+          unquote(fields)
+        end
+      end
+    )
+  ```
+  """
+  def eval(dsl, bindings, block) do
+    to_eval = {block, bindings}
+
+    Map.update(
+      dsl,
+      :eval,
+      [to_eval],
+      &[to_eval | &1]
+    )
   end
 
   def get_persisted(dsl, key, default \\ nil) do
