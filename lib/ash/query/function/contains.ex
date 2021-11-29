@@ -13,7 +13,7 @@ defmodule Ash.Query.Function.Contains do
      contains("foo", %Ash.CiString{:string "FOO"})
      true
   """
-  use Ash.Query.Function, name: :contains
+  use Ash.Query.Function, name: :contains, predicate?: true
 
   alias Ash.CiString
 

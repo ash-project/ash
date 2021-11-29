@@ -354,9 +354,25 @@ defmodule Ash.Filter do
     )
   end
 
-  @doc "transform an expression based filter to a simple filter, which is just a list of predicates"
-  def to_simple_filter(%{resource: resource, expression: expression}) do
-    predicates = get_predicates(expression)
+  @to_simple_filter_options [
+    skip_invalid?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "If an invalid filter expression is reached that can't be used with a simple filter (like an `or` statement, or a non-predicate expression), it will be ignored instead of raising an error."
+    ]
+  ]
+
+  @doc """
+  Transform an expression based filter to a simple filter, which is just a list of predicates
+
+  Options:
+
+    - skip_invalid?:
+  """
+  def to_simple_filter(%{resource: resource, expression: expression}, opts \\ []) do
+    opts = NimbleOptions.validate!(opts, @to_simple_filter_options)
+    predicates = get_predicates(expression, opts[:skip_invalid?])
 
     %Simple{resource: resource, predicates: predicates}
   end
@@ -512,26 +528,33 @@ defmodule Ash.Filter do
 
   defp walk_filter_template(value, mapper), do: mapper.(value)
 
-  defp get_predicates(expr, acc \\ [])
+  defp get_predicates(expr, skip_invalid?, acc \\ [])
 
-  defp get_predicates(true, acc), do: acc
-  defp get_predicates(false, _), do: false
-  defp get_predicates(_, false), do: false
+  defp get_predicates(true, _skip_invalid?, acc), do: acc
+  defp get_predicates(false, _, _), do: false
+  defp get_predicates(_, _, false), do: false
 
-  defp get_predicates(%BooleanExpression{op: :and, left: left, right: right}, acc) do
-    acc = get_predicates(left, acc)
-    get_predicates(right, acc)
+  defp get_predicates(%BooleanExpression{op: :and, left: left, right: right}, skip_invalid?, acc) do
+    acc = get_predicates(left, skip_invalid?, acc)
+    get_predicates(right, skip_invalid?, acc)
   end
 
-  defp get_predicates(%Not{expression: expression}, acc) do
+  defp get_predicates(%Not{expression: expression}, skip_invalid?, acc) do
     expression
-    |> get_predicates()
+    |> get_predicates(skip_invalid?)
     |> Enum.reduce(acc, fn predicate, acc ->
       [%Simple.Not{predicate: predicate} | acc]
     end)
   end
 
-  defp get_predicates(%{__predicate__?: true} = predicate, acc), do: [predicate | acc]
+  defp get_predicates(%{__predicate__?: true} = predicate, _skip_invalid?, acc),
+    do: [predicate | acc]
+
+  defp get_predicates(_invalid, true, acc), do: acc
+
+  defp get_predicates(invalid, false, _acc) do
+    raise "Invalid filter statement provided: #{inspect(invalid)} while constructing a simple filter. To skip invalid statements, use `skip_invalid?: true`."
+  end
 
   def used_calculations(
         filter,
