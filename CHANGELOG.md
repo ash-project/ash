@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.50.7](https://github.com/ash-project/ash/compare/v1.50.6...v1.50.7) (2021-12-01)
+
+
+
+
+### Bug Fixes:
+
+* missing rename on refactor
+
+* typo in `unquote`
+
+* mark `contains` as a predicate
+
+### Improvements:
+
+* expose small filter helpers
+
+* make to_simple_filter fail better, add failure option
+
 ## [v1.50.6](https://github.com/ash-project/ash/compare/v1.50.5...v1.50.6) (2021-11-26)
 
 
