@@ -2399,12 +2399,12 @@ defmodule Ash.Filter do
 
   def get_function(key, resource) when is_atom(key) do
     @builtin_functions[key] ||
-      Enum.find(Ash.DataLayer.data_layer_functions(context.resource), &(&1.name() == key))
+      Enum.find(Ash.DataLayer.data_layer_functions(resource), &(&1.name() == key))
   end
 
   def get_function(key, resource) when is_binary(key) do
     Map.get(@string_builtin_functions, key) ||
-      Enum.find(Ash.DataLayer.data_layer_functions(context.resource), &(&1.name() == key))
+      Enum.find(Ash.DataLayer.data_layer_functions(resource), &(&1.name() == key))
   end
 
   def get_function(_, _), do: nil
