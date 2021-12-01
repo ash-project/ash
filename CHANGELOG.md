@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.50.8](https://github.com/ash-project/ash/compare/v1.50.7...v1.50.8) (2021-12-01)
+
+
+
+
+### Bug Fixes:
+
+* case clause error in `Query.equivalent_to?`
+
 ## [v1.50.7](https://github.com/ash-project/ash/compare/v1.50.6...v1.50.7) (2021-12-01)
 
 
