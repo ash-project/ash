@@ -131,6 +131,8 @@ defmodule Ash.Query.Function do
 
       def evaluate(_), do: :unknown
 
+      def predicate?, do: unqutoe(opts[:predicate?] || false)
+
       defoverridable new: 1, evaluate: 1
 
       defimpl Inspect do

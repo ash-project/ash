@@ -1648,7 +1648,7 @@ defmodule Ash.Filter do
 
   defp add_expression_part({function, args}, context, expression)
        when is_tuple(args) and is_atom(function) do
-    case get_function(function, Ash.DataLayer.data_layer_functions(context.resource)) do
+    case get_function(function, context.resource) do
       nil ->
         {:error,
          NoSuchAttributeOrRelationship.exception(
@@ -2007,7 +2007,7 @@ defmodule Ash.Filter do
              refs <- list_refs(args),
              :ok <- validate_not_crossing_datalayer_boundaries(refs, context.resource, call),
              {:func, function_module} when not is_nil(function_module) <-
-               {:func, get_function(name, Ash.DataLayer.data_layer_functions(context.resource))},
+               {:func, get_function(name, context.resource)},
              {:ok, function} <-
                Function.new(
                  function_module,
@@ -2397,24 +2397,27 @@ defmodule Ash.Filter do
     end
   end
 
-  defp get_function(key, data_layer_functions) when is_atom(key) do
-    @builtin_functions[key] || Enum.find(data_layer_functions, &(&1.name() == key))
+  def get_function(key, resource) when is_atom(key) do
+    @builtin_functions[key] ||
+      Enum.find(Ash.DataLayer.data_layer_functions(context.resource), &(&1.name() == key))
   end
 
-  defp get_function(key, data_layer_functions) when is_binary(key) do
+  def get_function(key, resource) when is_binary(key) do
     Map.get(@string_builtin_functions, key) ||
-      Enum.find(data_layer_functions, &(&1.name() == key))
+      Enum.find(Ash.DataLayer.data_layer_functions(context.resource), &(&1.name() == key))
   end
 
-  defp get_operator(key) when is_atom(key) do
+  def get_function(_, _), do: nil
+
+  def get_operator(key) when is_atom(key) do
     @builtin_operators[key]
   end
 
-  defp get_operator(key) when is_binary(key) do
+  def get_operator(key) when is_binary(key) do
     Map.get(@string_builtin_operators, key)
   end
 
-  defp get_operator(_), do: nil
+  def get_operator(_), do: nil
 
   defimpl Inspect do
     import Inspect.Algebra
