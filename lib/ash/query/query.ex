@@ -674,6 +674,9 @@ defmodule Ash.Query do
 
         true ->
           Ash.Query.subset_of(query, expr)
+
+        false ->
+          false
       end
     end
   end
