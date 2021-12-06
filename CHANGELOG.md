@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.50.9](https://github.com/ash-project/ash/compare/v1.50.8...v1.50.9) (2021-12-06)
+
+
+
+
+### Bug Fixes:
+
+* undo an unnecessary `contains` change
+
+* WIP attempt to resolve ci_string typing errors
+
+### Improvements:
+
+* catch more equivalencey cases around is_nil in sat solver
+
 ## [v1.50.8](https://github.com/ash-project/ash/compare/v1.50.7...v1.50.8) (2021-12-01)
 
 
