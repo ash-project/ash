@@ -20,9 +20,9 @@ defmodule Ash.Query.Function.Contains do
   def args,
     do: [
       [:string, :string],
-      [:ci_string, :ci_string],
-      [:string, :ci_string],
-      [:ci_string, :string]
+      [:ci_string, :ci_string]
+      # [:string, :ci_string],
+      # [:ci_string, :string]
     ]
 
   def evaluate(%{arguments: [nil, _]}), do: false
