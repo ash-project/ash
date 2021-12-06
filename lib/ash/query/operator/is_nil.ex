@@ -41,7 +41,14 @@ defmodule Ash.Query.Operator.IsNil do
         left: %Ref{} = same_ref,
         right: nil
       }) do
-    :mutually_exclusive
+    :mutually_exclusive_and_collectively_exhaustive
+  end
+
+  def compare(%__MODULE__{left: %Ref{} = same_ref, right: false}, %Ash.Query.Operator.Eq{
+        left: %Ref{} = same_ref,
+        right: %Ref{}
+      }) do
+    :unknown
   end
 
   def compare(%__MODULE__{left: %Ref{} = same_ref, right: false}, %Ash.Query.Operator.Eq{
@@ -50,9 +57,29 @@ defmodule Ash.Query.Operator.IsNil do
     :right_includes_left
   end
 
-  def compare(%__MODULE__{left: %Ref{} = same_ref}, %__MODULE__{left: %Ref{} = same_ref}) do
-    :mutually_exclusive
+  def compare(%__MODULE__{left: %Ref{} = same_ref, right: true}, %__MODULE__{
+        left: %Ref{} = same_ref,
+        right: false
+      }) do
+    :mutually_exclusive_and_collectively_exhaustive
   end
 
-  def compare(_, _), do: :unknown
+  def compare(%__MODULE__{left: %Ref{} = same_ref, right: false}, %__MODULE__{
+        left: %Ref{} = same_ref,
+        right: true
+      }) do
+    :mutually_exclusive_and_collectively_exhaustive
+  end
+
+  def compare(%__MODULE__{left: %Ref{} = same_ref, right: right}, %__MODULE__{
+        left: %Ref{} = same_ref,
+        right: right
+      })
+      when is_boolean(right) do
+    :mutually_inclusive
+  end
+
+  def compare(_left, _right) do
+    :unknown
+  end
 end

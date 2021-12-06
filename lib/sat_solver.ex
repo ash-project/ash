@@ -74,22 +74,37 @@ defmodule Ash.SatSolver do
   end
 
   defp do_strict_filter_subset(filter, candidate) do
+    expr = BooleanExpression.new(:and, filter.expression, candidate.expression)
+
     case transform_and_solve(
            filter.resource,
-           BooleanExpression.new(:and, filter.expression, candidate.expression)
+           expr
          ) do
       {:error, :unsatisfiable} ->
         false
 
-      {:ok, _} ->
+      {:ok, _scenario} ->
+        expr = BooleanExpression.new(:and, Not.new(filter.expression), candidate.expression)
+
+        # expr_with_scenario =
+        #   scenario
+        #   |> Enum.reject(fn {fact, _} -> is_boolean(fact) end)
+        #   |> Enum.reduce(expr, fn {fact, requirement}, expr ->
+        #     if requirement do
+        #       BooleanExpression.new(:and, fact, expr)
+        #     else
+        #       BooleanExpression.new(:and, Not.new(fact), expr)
+        #     end
+        #   end)
+
         case transform_and_solve(
                filter.resource,
-               BooleanExpression.new(:and, Not.new(filter.expression), candidate.expression)
+               expr
              ) do
           {:error, :unsatisfiable} ->
             true
 
-          _ ->
+          {:ok, scenario} ->
             :maybe
         end
     end
@@ -366,6 +381,15 @@ defmodule Ash.SatSolver do
             :mutually_exclusive ->
               [b(not (other_predicate and predicate)) | new_expressions]
 
+            :mutually_exclusive_and_collectively_exhaustive ->
+              [
+                b(
+                  not (other_predicate and predicate) and
+                    not (not other_predicate and not predicate)
+                )
+                | new_expressions
+              ]
+
             _other ->
               # If we can't tell, we assume that both could be true
               new_expressions
@@ -557,6 +581,28 @@ defmodule Ash.SatSolver do
       end)
 
     mutually_exclusive(rest, new_acc)
+  end
+
+  def mutually_exclusive_and_collectively_exhaustive([]), do: []
+
+  def mutually_exclusive_and_collectively_exhaustive([_]), do: []
+
+  def mutually_exclusive_and_collectively_exhaustive(predicates) do
+    mutually_exclusive(predicates) ++
+      Enum.flat_map(predicates, fn predicate ->
+        other_predicates = Enum.reject(predicates, &(&1 == predicate))
+
+        other_predicates_union =
+          Enum.reduce(other_predicates, nil, fn other_predicate, expr ->
+            if expr do
+              b(expr or other_predicate)
+            else
+              other_predicate
+            end
+          end)
+
+        b(not predicate and other_predicates_union)
+      end)
   end
 
   def left_excludes_right(left, right) do

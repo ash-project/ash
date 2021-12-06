@@ -466,6 +466,14 @@ defmodule Ash.Test.Filter.FilterTest do
       refute Filter.strict_subset_of?(filter, candidate)
     end
 
+    test "can detect that `not is_nil(field)` is the same as `field is_nil false`" do
+      filter = Filter.parse!(Post, not: [is_nil: :points])
+      candidate = Filter.parse!(Post, points: [is_nil: false])
+
+      assert Filter.strict_subset_of?(filter, candidate)
+      assert Filter.strict_subset_of?(candidate, filter)
+    end
+
     test "can detect a more complicated scenario" do
       filter = Filter.parse!(Post, or: [[points: [in: [1, 2, 3]]], [points: 4], [points: 5]])
 
