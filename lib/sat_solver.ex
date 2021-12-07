@@ -104,7 +104,7 @@ defmodule Ash.SatSolver do
           {:error, :unsatisfiable} ->
             true
 
-          {:ok, scenario} ->
+          {:ok, _scenario} ->
             :maybe
         end
     end
@@ -601,7 +601,10 @@ defmodule Ash.SatSolver do
             end
           end)
 
-        b(not predicate and other_predicates_union)
+        b(
+          not (predicate and other_predicates_union) and
+            not (not predicate and not other_predicates_union)
+        )
       end)
   end
 
