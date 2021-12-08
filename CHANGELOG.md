@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.50.10](https://github.com/ash-project/ash/compare/v1.50.9...v1.50.10) (2021-12-08)
+
+
+
+
+### Improvements:
+
+* add `Ash.DataLayer.Simple.set_data/2`
+
+* complete mutually_exclusive_and_collectively_exhaustive logic
+
 ## [v1.50.9](https://github.com/ash-project/ash/compare/v1.50.8...v1.50.9) (2021-12-06)
 
 
