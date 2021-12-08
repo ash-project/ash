@@ -56,6 +56,9 @@ defmodule Ash.MixProject do
         "documentation/topics/managing_relationships.md": [
           title: "Managing Relationships"
         ],
+        "documentation/topics/resources_without_a_data_layer.md": [
+          title: "Resources without a Data Layer"
+        ],
         "documentation/topics/authorization.md": [
           title: "Authorization"
         ],

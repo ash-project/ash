@@ -3,7 +3,7 @@ defmodule Ash.DataLayer.Simple do
   A data layer that simply returns structs
 
   This is the data layer that is used under the hood
-  by embedded resources
+  by embedded resources, and resources without data layers.
   """
 
   @transformers [
@@ -25,6 +25,13 @@ defmodule Ash.DataLayer.Simple do
   defmodule Query do
     @moduledoc false
     defstruct [:data, :resource, :filter, :api, sort: []]
+  end
+
+  @doc """
+  Sets the data for a query against a data-layer-less resource
+  """
+  def set_data(query, data) do
+    Ash.Query.put_context(query, :data, data)
   end
 
   def resource_to_query(resource, api) do
