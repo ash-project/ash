@@ -37,7 +37,9 @@ end
 # in `config/config.exs`
 
 config :my_app, MyApp.MyApi,
-  registry: MyApp.MyApi.Registry
+  resources: [
+    registry: MyApp.MyApi.Registry
+  ]
 ```
 
 This will prevent a bunch of cross-concern compile time dependencies, allowing for much faster compile times in general.
