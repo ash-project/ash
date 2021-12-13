@@ -1,4 +1,4 @@
-if Code.ensure_loaded?(ElixirSense) do
+if Code.ensure_loaded?(ElixirSense.Plugin) do
   defmodule Ash.ElixirSense.Resource do
     @moduledoc false
     alias ElixirSense.Core.Introspection
@@ -25,10 +25,8 @@ if Code.ensure_loaded?(ElixirSense) do
 
     def find_ash_behaviour_impls(behaviour, builtins, hint, module_store) do
       builtins =
-        if builtins do
-          Complete.match_module_funs(builtins, hint, false, %{mods_and_funs: %{}})
-          |> Enum.map(&Complete.to_entries/1)
-          |> List.flatten()
+        if builtins && !String.contains?(hint, ".") && lowercase_string?(hint) do
+          Complete.complete(to_string("#{inspect(builtins)}.#{hint}"), %Complete.Env{})
         else
           []
         end
@@ -51,6 +49,11 @@ if Code.ensure_loaded?(ElixirSense) do
         end
 
       builtins ++ custom
+    end
+
+    defp lowercase_string?(string) do
+      first = String.first(string)
+      String.downcase(first) == first
     end
   end
 end

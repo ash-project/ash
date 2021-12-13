@@ -1,13 +1,13 @@
-if Code.ensure_loaded?(ElixirSense) do
+if Code.ensure_loaded?(ElixirSense.Plugin) do
   defmodule Ash.ElixirSense.Plugin do
     @moduledoc false
 
+    @behaviour ElixirSense.Plugin
     use ElixirSense.Providers.Suggestion.GenericReducer
+
     alias Ash.ElixirSense.Resource
     alias Ash.ElixirSense.Types
     alias ElixirSense.Providers.Suggestion.Matcher
-
-    @behaviour ElixirSense.Plugin
 
     def suggestions(hint, {_, function_call, arg_index, info}, _chain, opts) do
       option = info.option || get_option(opts.cursor_context.text_before)

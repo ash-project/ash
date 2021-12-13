@@ -1,4 +1,4 @@
-if Code.ensure_loaded?(ElixirSense) do
+if Code.ensure_loaded?(ElixirSense.Plugin) do
   defmodule Ash.ElixirSense.Types do
     @moduledoc false
 
@@ -26,7 +26,7 @@ if Code.ensure_loaded?(ElixirSense) do
       end
     end
 
-    defp builtin_types() do
+    defp builtin_types do
       Ash.Type
       |> apply(:builtin_types, [])
       |> Enum.map(fn {name, value} ->
@@ -44,13 +44,6 @@ if Code.ensure_loaded?(ElixirSense) do
           Util.match_module?(type_str, hint) do
         custom_type_to_suggestion(module, hint)
       end
-    end
-
-    defp behaviours(module) do
-      module.module_info(:attributes)[:behaviour] || []
-    rescue
-      _ ->
-        []
     end
 
     defp buitin_type_to_suggestion({type, mod_or_description, snippet}, hint, text_after) do

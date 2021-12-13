@@ -209,8 +209,7 @@ defmodule Ash.MixProject do
       {:excoveralls, "~> 0.13.0", only: [:dev, :test]},
       {:mix_test_watch, "~> 1.0", only: :dev, runtime: false},
       {:parse_trans, "3.3.0", only: [:dev, :test], override: true},
-      {:elixir_sense,
-       github: "zachdaniel/elixir_sense", branch: "external-extensions", only: [:dev, :test]}
+      {:elixir_sense, github: "elixir-lsp/elixir_sense", only: [:dev, :test]}
     ]
   end
 
