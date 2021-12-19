@@ -1051,6 +1051,10 @@ defmodule Ash.Filter do
     %{pred | args: Enum.map(arguments, &scope_refs(&1, path))}
   end
 
+  defp scope_refs({key, value}, path) do
+    {key, scope_refs(value, path)}
+  end
+
   defp scope_refs(%Ref{relationship_path: ref_path} = ref, path) do
     if List.starts_with?(ref_path, path) do
       %{ref | relationship_path: Enum.drop(ref_path, Enum.count(path))}
@@ -1448,41 +1452,28 @@ defmodule Ash.Filter do
          %{__operator__?: true, left: left, right: right} = op,
          path
        ) do
-    [left, right]
-    |> Enum.filter(&match?(%Ref{}, &1))
-    |> Enum.any?(&List.starts_with?(&1.relationship_path, path))
-    |> case do
-      true ->
-        nil
-
-      false ->
-        %{op | left: scope_ref(left, path), right: scope_ref(right, path)}
-    end
+    [left, right] = Enum.map([left, right], &do_scope_expression_by_relationship_path(&1, path))
+    %{op | left: left, right: right}
   end
 
   defp do_scope_expression_by_relationship_path(
          %{__function__?: true, arguments: arguments} = func,
          path
        ) do
-    arguments
-    |> Enum.filter(fn arg -> match?(%Ref{}, arg) || match?({_, %Ref{}}, arg) end)
-    |> Enum.any?(&List.starts_with?(&1.relationship_path, path))
-    |> case do
-      true ->
-        nil
-
-      false ->
-        %{func | arguments: Enum.map(arguments, &scope_ref(&1, path))}
-    end
+    arguments = Enum.map(arguments, &do_scope_expression_by_relationship_path(&1, path))
+    %{func | arguments: arguments}
   end
 
-  defp do_scope_expression_by_relationship_path(other, _path) do
-    other
+  defp do_scope_expression_by_relationship_path(%Call{args: arguments} = call, path) do
+    arguments = Enum.map(arguments, &do_scope_expression_by_relationship_path(&1, path))
+    %{call | args: arguments}
   end
 
-  defp scope_ref({key, %Ref{} = ref}, path), do: {key, scope_ref(ref, path)}
+  defp do_scope_expression_by_relationship_path({key, value}, path) do
+    {key, do_scope_expression_by_relationship_path(value, path)}
+  end
 
-  defp scope_ref(%Ref{} = ref, path) do
+  defp do_scope_expression_by_relationship_path(%Ref{} = ref, path) do
     if List.starts_with?(ref.relationship_path, path) do
       %{ref | relationship_path: Enum.drop(ref.relationship_path, Enum.count(path))}
     else
@@ -1490,7 +1481,9 @@ defmodule Ash.Filter do
     end
   end
 
-  defp scope_ref(other, _), do: other
+  defp do_scope_expression_by_relationship_path(other, _path) do
+    other
+  end
 
   defp attribute(%{public?: true, resource: resource}, attribute),
     do: Ash.Resource.Info.public_attribute(resource, attribute)
