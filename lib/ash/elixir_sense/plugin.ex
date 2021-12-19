@@ -358,12 +358,13 @@ if Code.ensure_loaded?(ElixirSense.Plugin) do
       Enum.flat_map(
         extensions,
         fn extension ->
-          if :erlang.function_exported(extension, :sections, 0) do
+          try do
             Enum.filter(extension.sections(), fn section ->
               Matcher.match?(to_string(section.name), hint)
             end)
-          else
-            []
+          rescue
+            _ ->
+              []
           end
         end
       )
@@ -373,7 +374,7 @@ if Code.ensure_loaded?(ElixirSense.Plugin) do
       Enum.flat_map(
         extensions,
         fn extension ->
-          if :erlang.function_exported(extension, :sections, 0) do
+          try do
             Enum.flat_map(extension.sections(), fn section ->
               if section.name == first do
                 do_find_constructors(section, rest, hint, type)
@@ -381,8 +382,9 @@ if Code.ensure_loaded?(ElixirSense.Plugin) do
                 []
               end
             end)
-          else
-            []
+          rescue
+            _ ->
+              []
           end
         end
       )

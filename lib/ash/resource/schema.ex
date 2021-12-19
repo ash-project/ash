@@ -14,9 +14,19 @@ defmodule Ash.Schema do
         @primary_key false
 
         embedded_schema do
+          struct_fields_name =
+            if Module.get_attribute(__MODULE__, :struct_fields) do
+              :struct_fields
+            else
+              :ecto_struct_fields
+            end
+
           for relationship <- Ash.Resource.Info.relationships(__MODULE__) do
-            @struct_fields {relationship.name,
-                            %Ash.NotLoaded{type: :relationship, field: relationship.name}}
+            Module.put_attribute(
+              __MODULE__,
+              struct_fields_name,
+              {relationship.name, %Ash.NotLoaded{type: :relationship, field: relationship.name}}
+            )
           end
 
           for attribute <- Ash.Resource.Info.attributes(__MODULE__) do
@@ -46,13 +56,11 @@ defmodule Ash.Schema do
 
             field(aggregate.name, Ash.Type.ecto_type(type), virtual: true)
 
-            struct_fields = Keyword.delete(@struct_fields, aggregate.name)
-            Module.delete_attribute(__MODULE__, :struct_fields)
-            Module.register_attribute(__MODULE__, :struct_fields, accumulate: true)
-            Enum.each(struct_fields, &Module.put_attribute(__MODULE__, :struct_fields, &1))
-
-            @struct_fields {aggregate.name,
-                            %Ash.NotLoaded{type: :aggregate, field: aggregate.name}}
+            Module.put_attribute(
+              __MODULE__,
+              struct_fields_name,
+              {aggregate.name, %Ash.NotLoaded{type: :aggregate, field: aggregate.name}}
+            )
           end
 
           for calculation <- Ash.Resource.Info.calculations(__MODULE__) do
@@ -60,14 +68,17 @@ defmodule Ash.Schema do
 
             field(calculation.name, Ash.Type.ecto_type(calculation.type), virtual: true)
 
-            struct_fields = Keyword.delete(@struct_fields, calculation.name)
-            Module.delete_attribute(__MODULE__, :struct_fields)
-            Module.register_attribute(__MODULE__, :struct_fields, accumulate: true)
-            Enum.each(struct_fields, &Module.put_attribute(__MODULE__, :struct_fields, &1))
-
-            @struct_fields {calculation.name,
-                            %Ash.NotLoaded{type: :calculation, field: calculation.name}}
+            Module.put_attribute(
+              __MODULE__,
+              struct_fields_name,
+              {calculation.name, %Ash.NotLoaded{type: :calculation, field: calculation.name}}
+            )
           end
+
+          struct_fields = Keyword.new(Module.get_attribute(__MODULE__, struct_fields_name))
+          Module.delete_attribute(__MODULE__, struct_fields_name)
+          Module.register_attribute(__MODULE__, struct_fields_name, accumulate: true)
+          Enum.each(struct_fields, &Module.put_attribute(__MODULE__, struct_fields_name, &1))
         end
       end
     else
@@ -77,9 +88,19 @@ defmodule Ash.Schema do
         @primary_key false
 
         schema Ash.DataLayer.source(__MODULE__) do
+          struct_fields_name =
+            if Module.get_attribute(__MODULE__, :struct_fields) do
+              :struct_fields
+            else
+              :ecto_struct_fields
+            end
+
           for relationship <- Ash.Resource.Info.relationships(__MODULE__) do
-            @struct_fields {relationship.name,
-                            %Ash.NotLoaded{type: :relationship, field: relationship.name}}
+            Module.put_attribute(
+              __MODULE__,
+              struct_fields_name,
+              {relationship.name, %Ash.NotLoaded{type: :relationship, field: relationship.name}}
+            )
           end
 
           for attribute <- Ash.Resource.Info.attributes(__MODULE__) do
@@ -109,13 +130,11 @@ defmodule Ash.Schema do
 
             field(aggregate.name, Ash.Type.ecto_type(type), virtual: true)
 
-            struct_fields = Keyword.delete(@struct_fields, aggregate.name)
-            Module.delete_attribute(__MODULE__, :struct_fields)
-            Module.register_attribute(__MODULE__, :struct_fields, accumulate: true)
-            Enum.each(struct_fields, &Module.put_attribute(__MODULE__, :struct_fields, &1))
-
-            @struct_fields {aggregate.name,
-                            %Ash.NotLoaded{type: :aggregate, field: aggregate.name}}
+            Module.put_attribute(
+              __MODULE__,
+              struct_fields_name,
+              {aggregate.name, %Ash.NotLoaded{type: :aggregate, field: aggregate.name}}
+            )
           end
 
           for calculation <- Ash.Resource.Info.calculations(__MODULE__) do
@@ -123,14 +142,17 @@ defmodule Ash.Schema do
 
             field(calculation.name, Ash.Type.ecto_type(calculation.type), virtual: true)
 
-            struct_fields = Keyword.delete(@struct_fields, calculation.name)
-            Module.delete_attribute(__MODULE__, :struct_fields)
-            Module.register_attribute(__MODULE__, :struct_fields, accumulate: true)
-            Enum.each(struct_fields, &Module.put_attribute(__MODULE__, :struct_fields, &1))
-
-            @struct_fields {calculation.name,
-                            %Ash.NotLoaded{type: :calculation, field: calculation.name}}
+            Module.put_attribute(
+              __MODULE__,
+              struct_fields_name,
+              {calculation.name, %Ash.NotLoaded{type: :calculation, field: calculation.name}}
+            )
           end
+
+          struct_fields = Keyword.new(Module.get_attribute(__MODULE__, struct_fields_name))
+          Module.delete_attribute(__MODULE__, struct_fields_name)
+          Module.register_attribute(__MODULE__, struct_fields_name, accumulate: true)
+          Enum.each(struct_fields, &Module.put_attribute(__MODULE__, struct_fields_name, &1))
         end
       end
     end

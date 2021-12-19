@@ -32,7 +32,7 @@ if Code.ensure_loaded?(ElixirSense.Plugin) do
         end
 
       custom =
-        for module <- module_store.by_behaviour[behaviour],
+        for module <- module_store.by_behaviour[behaviour] || [],
             mod_str = inspect(module),
             !String.starts_with?(mod_str, "Ash."),
             Util.match_module?(mod_str, hint) do

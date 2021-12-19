@@ -407,20 +407,24 @@ defmodule Ash.Filter do
   @doc "Whether or not a given template contains an actor reference"
   def template_references_actor?({:_actor, _}), do: true
 
-  def template_references_actor?(filter) when is_list(filter) do
-    Enum.any?(filter, &template_references_actor?/1)
+  def template_references_actor?(%BooleanExpression{op: :and, left: left, right: right}) do
+    template_references_actor?(left) || template_references_actor?(right)
   end
 
-  def template_references_actor?(filter) when is_map(filter) do
-    filter
-    |> Map.delete(:__struct__)
-    |> Enum.any?(fn {key, value} ->
-      template_references_actor?(key) || template_references_actor?(value)
-    end)
+  def template_references_actor?(%Not{expression: expression}) do
+    template_references_actor?(expression)
   end
 
-  def template_references_actor?(tuple) when is_tuple(tuple) do
-    Enum.any?(Tuple.to_list(tuple), &template_references_actor?/1)
+  def template_references_actor?(%{left: left, right: right}) do
+    template_references_actor?(left) || template_references_actor?(right)
+  end
+
+  def template_references_actor?(%{arguments: args}) do
+    Enum.any?(args, &template_references_actor?/1)
+  end
+
+  def template_references_actor?(%Ash.Query.Call{args: args}) do
+    Enum.any?(args, &template_references_actor?/1)
   end
 
   def template_references_actor?(_), do: false
