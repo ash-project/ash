@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.50.12](https://github.com/ash-project/ash/compare/v1.50.11...v1.50.12) (2021-12-19)
+
+
+
+
+### Bug Fixes:
+
+* support new versions of ecto's struct fields
+
+* fixes for elixir_sense plugin
+
 ## [v1.50.11](https://github.com/ash-project/ash/compare/v1.50.10...v1.50.11) (2021-12-13)
 
 
