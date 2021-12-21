@@ -19,6 +19,7 @@ defmodule Ash.Authorizer do
               :authorized
               | {:continue, state}
               | {:filter, Keyword.t()}
+              | {:filter, Keyword.t(), state}
               | {:filter_and_continue, Keyword.t(), state}
               | {:error, term}
   @callback check_context(state) :: [atom]
