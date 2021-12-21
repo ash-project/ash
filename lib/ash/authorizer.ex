@@ -24,9 +24,20 @@ defmodule Ash.Authorizer do
   @callback check_context(state) :: [atom]
   @callback check(state, context) ::
               :authorized | {:data, list(Ash.Resource.record())} | {:error, term}
+  @callback exception(atom, state) :: no_return
+
+  @optional_callbacks [exception: 2]
 
   def initial_state(module, actor, resource, action, verbose?) do
     module.initial_state(actor, resource, action, verbose?)
+  end
+
+  def exception(module, reason, state) do
+    if function_exported?(module, :exception, 2) do
+      module.exception(reason, state)
+    else
+      Ash.Error.Forbidden.exception([])
+    end
   end
 
   def strict_check_context(module, state) do

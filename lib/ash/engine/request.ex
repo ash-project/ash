@@ -591,7 +591,7 @@ defmodule Ash.Engine.Request do
   end
 
   defp apply_filter(request, authorizer, filter, resolve_data?) do
-    case do_runtime_filter(request, filter) do
+    case do_runtime_filter(request, filter, authorizer, get_authorizer_state(request, authorizer)) do
       {:ok, request} ->
         request = set_authorizer_state(request, authorizer, :authorized)
 
@@ -691,7 +691,7 @@ defmodule Ash.Engine.Request do
   end
 
   defp runtime_filter(request, authorizer, filter) do
-    case do_runtime_filter(request, filter) do
+    case do_runtime_filter(request, filter, authorizer, get_authorizer_state(request, authorizer)) do
       {:ok, request} ->
         request
         |> set_authorizer_state(authorizer, :authorized)
@@ -702,11 +702,21 @@ defmodule Ash.Engine.Request do
     end
   end
 
-  defp do_runtime_filter(%{action: %{type: :read}, data: empty} = request, _filter)
+  defp do_runtime_filter(
+         %{action: %{type: :read}, data: empty} = request,
+         _filter,
+         _authorizer,
+         _authorizer_state
+       )
        when empty in [nil, []],
        do: {:ok, request}
 
-  defp do_runtime_filter(%{action: %{type: :read}} = request, filter) do
+  defp do_runtime_filter(
+         %{action: %{type: :read}} = request,
+         filter,
+         _authorizer,
+         _authorizer_state
+       ) do
     pkey = Ash.Resource.Info.primary_key(request.resource)
 
     pkeys =
@@ -743,7 +753,12 @@ defmodule Ash.Engine.Request do
     end
   end
 
-  defp do_runtime_filter(%{action: %{type: :create}, changeset: changeset} = request, filter) do
+  defp do_runtime_filter(
+         %{action: %{type: :create}, changeset: changeset} = request,
+         filter,
+         authorizer,
+         authorizer_state
+       ) do
     {:ok, fake_result} = Ash.Changeset.apply_attributes(changeset, force?: true)
 
     case Ash.Filter.parse(request.resource, filter) do
@@ -753,7 +768,12 @@ defmodule Ash.Engine.Request do
             {:ok, request}
 
           {:ok, false} ->
-            {:error, Ash.Error.Forbidden.exception([])}
+            {:error,
+             Authorizer.exception(
+               authorizer,
+               {:changeset_doesnt_match_filter, filter},
+               authorizer_state
+             )}
 
           :unknown ->
             Logger.error("""
@@ -764,7 +784,12 @@ defmodule Ash.Engine.Request do
             Otherwise, please report this issue: https://github.com/ash-project/ash_policy_authorizer/issues/new?assignees=&labels=bug%2C+needs+review&template=bug_report.md&title=
             """)
 
-            {:error, Ash.Error.Forbidden.exception([])}
+            {:error,
+             Authorizer.exception(
+               authorizer,
+               :unknown,
+               authorizer
+             )}
         end
 
       {:error, error} ->
@@ -772,7 +797,7 @@ defmodule Ash.Engine.Request do
     end
   end
 
-  defp do_runtime_filter(request, filter) do
+  defp do_runtime_filter(request, filter, authorizer, authorizer_state) do
     pkey = Ash.Resource.Info.primary_key(request.resource)
 
     pkey =
@@ -784,15 +809,21 @@ defmodule Ash.Engine.Request do
       request.resource
       |> Ash.Query.set_tenant(request.changeset.tenant)
       |> Ash.Query.set_context(request.changeset.context)
-      |> Ash.Query.filter(^pkey)
       |> Ash.Query.filter(^filter)
       |> Ash.Query.limit(1)
 
-    new_query
+    query_with_pkey_filter = Ash.Query.filter(new_query, ^pkey)
+
+    query_with_pkey_filter
     |> Ash.Actions.Read.unpaginated_read()
     |> case do
       {:ok, []} ->
-        {:error, Ash.Error.Forbidden.exception([])}
+        {:error,
+         Authorizer.exception(
+           authorizer,
+           {:changeset_doesnt_match_filter, new_query.filter},
+           authorizer_state
+         )}
 
       {:ok, [_]} ->
         {:ok, request}
@@ -806,7 +837,12 @@ defmodule Ash.Engine.Request do
         "Exception while running authorization query: #{inspect(Exception.message(e))}"
       )
 
-      {:error, Ash.Error.Forbidden.exception([])}
+      {:error,
+       Authorizer.exception(
+         authorizer,
+         :unknown,
+         authorizer_state
+       )}
   end
 
   defp try_resolve(request, deps, internal?) do
@@ -1157,6 +1193,10 @@ defmodule Ash.Engine.Request do
       request
       | authorizer_state: Map.put(request.authorizer_state, authorizer, authorizer_state)
     }
+  end
+
+  defp get_authorizer_state(request, authorizer) do
+    request.authorizer_state[authorizer] || %{}
   end
 
   defp authorizer_state(request, authorizer) do
