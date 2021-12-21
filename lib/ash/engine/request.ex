@@ -38,7 +38,6 @@ defmodule Ash.Engine.Request do
   @type t :: %__MODULE__{}
 
   alias Ash.Authorizer
-  alias Ash.Error.Forbidden.MustPassStrictCheck
   alias Ash.Error.Invalid.{DuplicatedPath, ImpossiblePath}
 
   require Ash.Query
@@ -504,6 +503,21 @@ defmodule Ash.Engine.Request do
           :authorized ->
             {:ok, set_authorizer_state(request, authorizer, :authorized), notifications, []}
 
+          {:filter, authorizer_state, filter} ->
+            request
+            |> set_authorizer_state(authorizer, authorizer_state)
+            |> apply_filter(authorizer, filter, true)
+            |> case do
+              {:ok, request} ->
+                {:ok, request, notifications, []}
+
+              {:ok, request, new_notifications, deps} ->
+                {:ok, request, new_notifications ++ notifications, deps}
+
+              other ->
+                other
+            end
+
           {:filter, filter} ->
             request
             |> apply_filter(authorizer, filter, true)
@@ -518,8 +532,13 @@ defmodule Ash.Engine.Request do
                 other
             end
 
-          {:filter_and_continue, _, _} when strict_check_only? ->
-            {:error, MustPassStrictCheck.exception(resource: request.resource)}
+          {:filter_and_continue, _, authorizer_state} when strict_check_only? ->
+            {:error,
+             Authorizer.exception(
+               authorizer,
+               :must_pass_strict_check,
+               authorizer_state
+             )}
 
           {:filter_and_continue, filter, new_authorizer_state} ->
             request
@@ -536,8 +555,13 @@ defmodule Ash.Engine.Request do
                 other
             end
 
-          {:continue, _} when strict_check_only? ->
-            {:error, MustPassStrictCheck.exception(resource: request.resource)}
+          {:continue, authorizer_state} when strict_check_only? ->
+            {:error,
+             Authorizer.exception(
+               authorizer,
+               :must_pass_strict_check,
+               authorizer_state
+             )}
 
           {:continue, authorizer_state} ->
             {:ok, set_authorizer_state(request, authorizer, authorizer_state), notifications, []}

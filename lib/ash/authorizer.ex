@@ -36,7 +36,11 @@ defmodule Ash.Authorizer do
     if function_exported?(module, :exception, 2) do
       module.exception(reason, state)
     else
-      Ash.Error.Forbidden.exception([])
+      if reason == :must_pass_strict_check do
+        Ash.Error.Forbidden.MustPassStrictCheck.exception([])
+      else
+        Ash.Error.Forbidden.exception([])
+      end
     end
   end
 
