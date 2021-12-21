@@ -997,7 +997,11 @@ defmodule Ash.Actions.Load do
         :error
 
       reverse ->
-        do_reverse_relationship_path(next_relationship, rest, [reverse.name | acc])
+        do_reverse_relationship_path(
+          Ash.Resource.Info.relationship(relationship.destination, next_relationship),
+          rest,
+          [reverse.name | acc]
+        )
     end
   end
 
