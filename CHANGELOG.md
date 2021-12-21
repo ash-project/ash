@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.50.13](https://github.com/ash-project/ash/compare/v1.50.12...v1.50.13) (2021-12-21)
+
+
+
+
+### Bug Fixes:
+
+* properly construct reverse relationship paths
+
+### Improvements:
+
+* cover more potential cases in filter parsing
+
 ## [v1.50.12](https://github.com/ash-project/ash/compare/v1.50.11...v1.50.12) (2021-12-19)
 
 
