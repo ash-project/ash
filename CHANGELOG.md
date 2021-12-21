@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.50.14](https://github.com/ash-project/ash/compare/v1.50.13...v1.50.14) (2021-12-21)
+
+
+
+
+### Bug Fixes:
+
+* fix recursion in `do_reverse_relationship_path/3`
+
+### Improvements:
+
+* add more authorizer state management
+
+* customizable exception for authorizers
+
 ## [v1.50.13](https://github.com/ash-project/ash/compare/v1.50.12...v1.50.13) (2021-12-21)
 
 
