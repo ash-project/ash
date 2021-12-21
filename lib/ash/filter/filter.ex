@@ -728,7 +728,7 @@ defmodule Ash.Filter do
 
   def read_requests(_, nil), do: {:ok, []}
 
-  def read_requests(api, filter) do
+  def read_requests(api, %{resource: original_resource} = filter) do
     filter
     |> Ash.Filter.relationship_paths()
     |> Enum.map(fn path ->
@@ -756,7 +756,7 @@ defmodule Ash.Filter do
                   if authorization_filter do
                     relationship =
                       Ash.Resource.Info.relationship(
-                        resource,
+                        original_resource,
                         List.first(path)
                       )
 
