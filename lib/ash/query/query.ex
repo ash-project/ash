@@ -1682,8 +1682,9 @@ defmodule Ash.Query do
               end
             end)
             |> Enum.filter(&(&1 in agg_names))
-            |> Enum.reject(&Map.has_key?(query.aggregates, &1))
-            |> Enum.reject(&(&1 in aggregates_to_load))
+            |> Enum.reject(fn agg ->
+              Map.has_key?(query.aggregates, agg) || agg in aggregates_to_load
+            end)
 
           query
           |> Ash.Query.load(aggregates_to_load ++ aggs_to_load_for_calculations)
@@ -1892,14 +1893,9 @@ defmodule Ash.Query do
   defp add_aggregates(query, ash_query, aggregates) do
     resource = ash_query.resource
 
-    aggregates
-    |> Enum.map(&add_tenant_to_aggregate_query(&1, ash_query))
-    |> Enum.reduce_while({:ok, query}, fn aggregate, {:ok, query} ->
-      case Ash.DataLayer.add_aggregate(query, aggregate, resource) do
-        {:ok, query} -> {:cont, {:ok, query}}
-        {:error, error} -> {:halt, {:error, error}}
-      end
-    end)
+    aggregates = Enum.map(aggregates, &add_tenant_to_aggregate_query(&1, ash_query))
+
+    Ash.DataLayer.add_aggregates(query, aggregates, resource)
   end
 
   defp add_tenant_to_aggregate_query(aggregate, %{tenant: nil}), do: aggregate

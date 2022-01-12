@@ -114,10 +114,9 @@ defmodule Ash.Changeset do
       sanitized_managed_relationship_source =
         manage_relationship_source
         |> Enum.reverse()
-        |> Enum.map(fn {resource, rel, _} ->
+        |> Enum.map_join(" -> ", fn {resource, rel, _} ->
           "#{inspect(resource)}.#{rel}"
         end)
-        |> Enum.join(" -> ")
 
       %{
         context
@@ -728,10 +727,10 @@ defmodule Ash.Changeset do
   def set_defaults(changeset, :create, lazy?) do
     changeset.resource
     |> Ash.Resource.Info.attributes()
-    |> Enum.filter(&(not is_nil(&1.default)))
     |> Enum.filter(fn attribute ->
-      lazy? or
-        not (is_function(attribute.default) or match?({_, _, _}, attribute.default))
+      not is_nil(attribute.default) &&
+        (lazy? or
+           not (is_function(attribute.default) or match?({_, _, _}, attribute.default)))
     end)
     |> Enum.reduce(changeset, fn attribute, changeset ->
       changeset
@@ -748,10 +747,11 @@ defmodule Ash.Changeset do
   def set_defaults(changeset, :update, lazy?) do
     changeset.resource
     |> Ash.Resource.Info.attributes()
-    |> Enum.filter(&(not is_nil(&1.update_default)))
     |> Enum.filter(fn attribute ->
-      lazy? or
-        not (is_function(attribute.update_default) or match?({_, _, _}, attribute.update_default))
+      not is_nil(attribute.update_default) &&
+        (lazy? or
+           not (is_function(attribute.update_default) or
+                  match?({_, _, _}, attribute.update_default)))
     end)
     |> Enum.reduce(changeset, fn attribute, changeset ->
       changeset

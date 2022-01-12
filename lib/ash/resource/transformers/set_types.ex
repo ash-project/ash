@@ -7,9 +7,8 @@ defmodule Ash.Resource.Transformers.SetTypes do
   def transform(_resource, dsl_state) do
     with {:ok, dsl_state} <- set_attribute_types(dsl_state),
          {:ok, dsl_state} <- set_argument_types(dsl_state),
-         {:ok, dsl_state} <- set_metadata_types(dsl_state),
-         {:ok, dsl_state} <- set_calculation_types(dsl_state) do
-      {:ok, dsl_state}
+         {:ok, dsl_state} <- set_metadata_types(dsl_state) do
+      set_calculation_types(dsl_state)
     end
   end
 

@@ -277,8 +277,7 @@ defmodule Ash.Actions.ManagedRelationships do
   defp validate_required_belongs_to({changeset, instructions}) do
     changeset.resource
     |> Ash.Resource.Info.relationships()
-    |> Enum.filter(&(&1.type == :belongs_to))
-    |> Enum.filter(& &1.required?)
+    |> Enum.filter(&(&1.type == :belongs_to && &1.required?))
     |> Enum.reject(fn relationship ->
       changeset.context[:private][:error][relationship.name]
     end)

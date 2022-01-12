@@ -10,9 +10,9 @@ defmodule Ash.Resource.Transformers.CountableActions do
   def transform(resource, dsl_state) do
     dsl_state
     |> Transformer.get_entities([:actions])
-    |> Enum.filter(&(&1.type == :read))
-    |> Enum.filter(& &1.pagination)
-    |> Enum.filter(& &1.pagination.countable)
+    |> Enum.filter(fn action ->
+      action.type == :read && action.pagination && action.pagination.countable
+    end)
     |> case do
       [] ->
         {:ok, dsl_state}

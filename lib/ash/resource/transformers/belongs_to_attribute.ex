@@ -12,8 +12,7 @@ defmodule Ash.Resource.Transformers.BelongsToAttribute do
   def transform(_resource, dsl_state) do
     dsl_state
     |> Transformer.get_entities([:relationships])
-    |> Enum.filter(&(&1.type == :belongs_to))
-    |> Enum.filter(& &1.define_field?)
+    |> Enum.filter(&(&1.type == :belongs_to && &1.define_field?))
     |> Enum.reject(fn relationship ->
       dsl_state
       |> Transformer.get_entities([:attributes])

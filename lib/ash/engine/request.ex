@@ -962,7 +962,16 @@ defmodule Ash.Engine.Request do
       case resolver.(resolver_context) do
         {:requests, requests} ->
           log(request, fn ->
-            "#{field} added requests #{inspect(Enum.map(requests, & &1.path))}"
+            paths =
+              Enum.map(requests, fn
+                {request, _} ->
+                  request.path
+
+                request ->
+                  request.path
+              end)
+
+            "#{field} added requests #{inspect(paths)}"
           end)
 
           new_deps =

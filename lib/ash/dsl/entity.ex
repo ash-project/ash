@@ -62,10 +62,8 @@ defmodule Ash.Dsl.Entity do
          opts <- Keyword.merge(opts, after_validate_auto),
          opts <- Enum.map(opts, fn {key, value} -> {schema[key][:as] || key, value} end),
          built <- struct(target, opts),
-         built <- struct(built, nested_entities),
-         {:ok, built} <-
-           transform(transform, built) do
-      {:ok, built}
+         built <- struct(built, nested_entities) do
+      transform(transform, built)
     end
   end
 

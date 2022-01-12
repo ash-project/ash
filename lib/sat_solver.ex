@@ -86,17 +86,6 @@ defmodule Ash.SatSolver do
       {:ok, _scenario} ->
         expr = BooleanExpression.new(:and, Not.new(filter.expression), candidate.expression)
 
-        # expr_with_scenario =
-        #   scenario
-        #   |> Enum.reject(fn {fact, _} -> is_boolean(fact) end)
-        #   |> Enum.reduce(expr, fn {fact, requirement}, expr ->
-        #     if requirement do
-        #       BooleanExpression.new(:and, fact, expr)
-        #     else
-        #       BooleanExpression.new(:and, Not.new(fact), expr)
-        #     end
-        #   end)
-
         case transform_and_solve(
                filter.resource,
                expr

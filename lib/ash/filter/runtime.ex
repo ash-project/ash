@@ -106,10 +106,10 @@ defmodule Ash.Filter.Runtime do
       Enum.flat_map(records, fn record ->
         case Map.get(record, rel) do
           nil ->
-            []
+            [record]
 
           [] ->
-            []
+            [record]
 
           value when is_list(value) ->
             flatten_many_to_many(record, rel, value, rest)

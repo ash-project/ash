@@ -17,8 +17,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - elixir: 1.12.0
-            otp: 23.0.3
+          - elixir: 1.13.1
+            otp: 24.1.2
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:

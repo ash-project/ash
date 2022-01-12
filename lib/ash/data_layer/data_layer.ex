@@ -106,10 +106,25 @@ defmodule Ash.DataLayer do
               Ash.Resource.t()
             ) ::
               {:ok, data_layer_query()} | {:error, term}
+
+  @callback add_aggregates(
+              data_layer_query(),
+              list(Ash.Query.Aggregate.t()),
+              Ash.Resource.t()
+            ) ::
+              {:ok, data_layer_query()} | {:error, term}
+
   @callback add_calculation(
               data_layer_query(),
               Ash.Query.Calculation.t(),
               expression :: any,
+              Ash.Resource.t()
+            ) ::
+              {:ok, data_layer_query()} | {:error, term}
+
+  @callback add_calculations(
+              data_layer_query(),
+              list({Ash.Query.Calculation.t(), expression :: any}),
               Ash.Resource.t()
             ) ::
               {:ok, data_layer_query()} | {:error, term}
@@ -142,7 +157,9 @@ defmodule Ash.DataLayer do
                       functions: 1,
                       in_transaction?: 1,
                       add_aggregate: 3,
+                      add_aggregates: 3,
                       add_calculation: 4,
+                      add_calculations: 3,
                       run_aggregate_query: 3,
                       run_aggregate_query_with_lateral_join: 5,
                       transform_query: 1,
@@ -329,23 +346,50 @@ defmodule Ash.DataLayer do
     end
   end
 
-  @spec add_aggregate(data_layer_query(), Ash.Query.Aggregate.t(), Ash.Resource.t()) ::
+  @spec add_aggregates(data_layer_query(), list(Ash.Query.Aggregate.t()), Ash.Resource.t()) ::
           {:ok, data_layer_query()} | {:error, term}
-  def add_aggregate(query, aggregate, resource) do
-    data_layer = Ash.DataLayer.data_layer(resource)
-    data_layer.add_aggregate(query, aggregate, resource)
+  def add_aggregates(query, [], _) do
+    {:ok, query}
   end
 
-  @spec add_calculation(
+  def add_aggregates(query, aggregates, resource) do
+    data_layer = Ash.DataLayer.data_layer(resource)
+
+    if function_exported?(data_layer, :add_aggregates, 3) do
+      data_layer.add_aggregates(query, aggregates, resource)
+    else
+      Enum.reduce_while(aggregates, {:ok, query}, fn aggregate, {:ok, data_layer_query} ->
+        case data_layer.add_aggregate(data_layer_query, aggregate, resource) do
+          {:ok, data_layer_query} -> {:cont, {:ok, data_layer_query}}
+          {:error, error} -> {:halt, {:error, error}}
+        end
+      end)
+    end
+  end
+
+  @spec add_calculations(
           data_layer_query(),
-          Ash.Query.Calculation.t(),
-          expression :: term,
+          list({Ash.Query.Calculation.t(), expression :: term}),
           Ash.Resource.t()
         ) ::
           {:ok, data_layer_query()} | {:error, term}
-  def add_calculation(query, calculation, expression, resource) do
+  def add_calculations(query, [], _) do
+    {:ok, query}
+  end
+
+  def add_calculations(query, calculations, resource) do
     data_layer = Ash.DataLayer.data_layer(resource)
-    data_layer.add_calculation(query, calculation, expression, resource)
+
+    if function_exported?(data_layer, :add_calculations, 3) do
+      data_layer.add_calculations(query, calculations, resource)
+    else
+      Enum.reduce_while(calculations, {:ok, query}, fn {calculation, expression}, {:ok, query} ->
+        case data_layer.add_calculation(query, calculation, expression, resource) do
+          {:ok, query} -> {:cont, {:ok, query}}
+          {:error, error} -> {:halt, {:error, error}}
+        end
+      end)
+    end
   end
 
   @spec can?(feature, Ash.Resource.t()) :: boolean

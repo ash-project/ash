@@ -960,34 +960,39 @@ defmodule Ash.Actions.Read do
   end
 
   defp add_calculations(data_layer_query, query, calculations_to_add) do
-    Enum.reduce_while(calculations_to_add, {:ok, data_layer_query}, fn calculation,
-                                                                       {:ok, data_layer_query} ->
-      if Ash.DataLayer.data_layer_can?(query.resource, :expression_calculation) do
-        expression = calculation.module.expression(calculation.opts, calculation.context)
+    calculations =
+      Enum.reduce_while(calculations_to_add, {:ok, []}, fn calculation, {:ok, calculations} ->
+        if Ash.DataLayer.data_layer_can?(query.resource, :expression_calculation) do
+          expression = calculation.module.expression(calculation.opts, calculation.context)
 
-        with {:ok, expression} <-
-               Ash.Filter.hydrate_refs(expression, %{
+          case Ash.Filter.hydrate_refs(expression, %{
                  resource: query.resource,
                  aggregates: query.aggregates,
                  calculations: query.calculations,
                  public?: false
-               }),
-             {:ok, query} <-
-               Ash.DataLayer.add_calculation(
-                 data_layer_query,
-                 calculation,
-                 expression,
-                 query.resource
-               ) do
-          {:cont, {:ok, query}}
+               }) do
+            {:ok, expression} ->
+              {:cont, {:ok, [{calculation, expression} | calculations]}}
+
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
         else
-          other ->
-            {:halt, other}
+          {:halt, {:error, "Expression calculations are not supported"}}
         end
-      else
-        {:halt, {:error, "Expression calculations are not supported"}}
-      end
-    end)
+      end)
+
+    case calculations do
+      {:ok, calculations} ->
+        Ash.DataLayer.add_calculations(
+          data_layer_query,
+          calculations,
+          query.resource
+        )
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   defp add_aggregates(data_layer_query, query, aggregates_to_add, aggregate_filters) do
@@ -996,26 +1001,22 @@ defmodule Ash.Actions.Read do
         {aggregate.name, aggregate}
       end)
 
-    aggregates_to_add
-    |> Enum.reduce({aggregates_to_add, aggregate_filters}, fn {name, aggregate},
-                                                              {aggregates, aggregate_filters} ->
-      case Map.fetch(aggregate_filters, aggregate.relationship_path) do
-        {:ok, %{authorization_filter: filter}} ->
-          {Map.put(aggregates, name, %{aggregate | authorization_filter: filter}),
-           Map.delete(aggregates, aggregate.relationship_path)}
+    aggregates =
+      aggregates_to_add
+      |> Enum.reduce({aggregates_to_add, aggregate_filters}, fn {name, aggregate},
+                                                                {aggregates, aggregate_filters} ->
+        case Map.fetch(aggregate_filters, aggregate.relationship_path) do
+          {:ok, %{authorization_filter: filter}} ->
+            {Map.put(aggregates, name, %{aggregate | authorization_filter: filter}),
+             Map.delete(aggregates, aggregate.relationship_path)}
 
-        :error ->
-          {aggregates, aggregate_filters}
-      end
-    end)
-    |> elem(0)
-    |> Enum.reduce_while({:ok, data_layer_query}, fn {_name, aggregate},
-                                                     {:ok, data_layer_query} ->
-      case Ash.DataLayer.add_aggregate(data_layer_query, aggregate, query.resource) do
-        {:ok, new_query} -> {:cont, {:ok, new_query}}
-        {:error, error} -> {:halt, {:error, error}}
-      end
-    end)
+          :error ->
+            {aggregates, aggregate_filters}
+        end
+      end)
+      |> elem(0)
+
+    Ash.DataLayer.add_aggregates(data_layer_query, aggregates, query.resource)
   end
 
   defp filter_with_related(relationship_filter_paths, ash_query, data) do

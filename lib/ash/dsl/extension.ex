@@ -337,22 +337,20 @@ defmodule Ash.Dsl.Extension do
 
   def get_opt_config(resource, path, value) do
     with otp_app when not is_nil(otp_app) <- get_persisted(resource, :otp_app),
-         {:ok, config} <- Application.fetch_env(otp_app, resource),
-         {:ok, value} <-
-           path
-           |> List.wrap()
-           |> Kernel.++([value])
-           |> Enum.reduce_while({:ok, config}, fn key, {:ok, config} ->
-             if Keyword.keyword?(config) do
-               case Keyword.fetch(config, key) do
-                 {:ok, value} -> {:cont, {:ok, value}}
-                 :error -> {:halt, :error}
-               end
-             else
-               {:halt, :error}
-             end
-           end) do
-      {:ok, value}
+         {:ok, config} <- Application.fetch_env(otp_app, resource) do
+      path
+      |> List.wrap()
+      |> Kernel.++([value])
+      |> Enum.reduce_while({:ok, config}, fn key, {:ok, config} ->
+        if Keyword.keyword?(config) do
+          case Keyword.fetch(config, key) do
+            {:ok, value} -> {:cont, {:ok, value}}
+            :error -> {:halt, :error}
+          end
+        else
+          {:halt, :error}
+        end
+      end)
     end
   end
 

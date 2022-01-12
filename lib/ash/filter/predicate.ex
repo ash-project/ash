@@ -52,16 +52,14 @@ defmodule Ash.Filter.Predicate do
   def compare(left, right) do
     if :erlang.function_exported(right.__struct__, :compare, 2) do
       if left.__struct__ == right.__struct__ do
-        with :unknown <- left.__struct__.compare(left, right),
-             :unknown <- right.__struct__.compare(left, right) do
-          :unknown
+        with :unknown <- left.__struct__.compare(left, right) do
+          right.__struct__.compare(left, right)
         end
       else
         with :unknown <- left.__struct__.compare(left, right),
              :unknown <- right.__struct__.compare(right, left),
-             :unknown <- right.__struct__.compare(left, right),
-             :unknown <- left.__struct__.compare(right, left) do
-          :unknown
+             :unknown <- right.__struct__.compare(left, right) do
+          left.__struct__.compare(right, left)
         end
       end
     else
