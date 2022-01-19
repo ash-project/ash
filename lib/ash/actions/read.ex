@@ -1016,7 +1016,7 @@ defmodule Ash.Actions.Read do
       end)
       |> elem(0)
 
-    Ash.DataLayer.add_aggregates(data_layer_query, aggregates, query.resource)
+    Ash.DataLayer.add_aggregates(data_layer_query, Map.values(aggregates), query.resource)
   end
 
   defp filter_with_related(relationship_filter_paths, ash_query, data) do
