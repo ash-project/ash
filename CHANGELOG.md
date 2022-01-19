@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.50.15](https://github.com/ash-project/ash/compare/v1.50.14...v1.50.15) (2022-01-19)
+
+
+
+
+### Bug Fixes:
+
+* don't call add_aggregates w/ a map
+
+* allow new `filter` pattern in typespec
+
+### Improvements:
+
+* add `where` to `change`
+
+* support data layers bulk adding aggregates
+
 ## [v1.50.14](https://github.com/ash-project/ash/compare/v1.50.13...v1.50.14) (2021-12-21)
 
 
