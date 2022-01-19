@@ -10,7 +10,7 @@ defmodule Ash.Resource.Change do
   when this change was configured on a resource, and the context, which currently only has
   the actor.
   """
-  defstruct [:change, :on, :only_when_valid?]
+  defstruct [:change, :on, :only_when_valid?, where: []]
 
   @type t :: %__MODULE__{}
 
@@ -41,6 +41,16 @@ defmodule Ash.Resource.Change do
         The module and options for a change.
         """,
         required: true
+      ],
+      where: [
+        type:
+          {:list, {:ash_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins}},
+        required: false,
+        default: [],
+        doc: """
+        Validations that should pass in order for this validation to apply.
+        These validations failing will not invalidate the changes, but instead just result in this change being ignored.
+        """
       ]
     ]
   end

@@ -800,7 +800,7 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declare changes that occur on create/update/destroy actions against the resource
     """,
-    imports: [Ash.Resource.Validation.Builtins],
+    imports: [Ash.Resource.Validation.Builtins, Ash.Resource.Change.Builtins],
     examples: [
       """
       changes do

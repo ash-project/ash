@@ -74,6 +74,7 @@ defmodule Ash.Resource.Validation do
     where: [
       type: {:list, {:ash_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins}},
       required: false,
+      default: [],
       doc: """
       Validations that should pass in order for this validation to apply.
       These validations failing will not invalidate the changes, but instead just result in this validation being ignored.

@@ -713,8 +713,14 @@ defmodule Ash.Changeset do
       %{only_when_valid?: true}, %{valid?: false} = changeset ->
         changeset
 
-      %{change: {module, opts}}, changeset ->
-        module.change(changeset, opts, %{actor: actor})
+      %{change: {module, opts}, where: where}, changeset ->
+        if Enum.all?(where || [], fn {module, opts} ->
+             module.validate(changeset, opts) == :ok
+           end) do
+          module.change(changeset, opts, %{actor: actor})
+        else
+          changeset
+        end
 
       %{validation: _} = validation, changeset ->
         validate(changeset, validation)
