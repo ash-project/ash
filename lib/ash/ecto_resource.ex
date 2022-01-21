@@ -1,36 +1,33 @@
 defmodule Ash.EctoResource do
   defmacro __using__(opts) do
     quote do
-      use Ash.Resource
+      use Ash.Resource, unquote(Keyword.delete(opts, :schema))
+
       @source_schema unquote(opts[:schema])
 
       attributes do
-        Ash.EctoResource.primary_key_definition(@source_schema)
+        primary_key = @source_schema.__schema__(:primary_key)
 
-        for field <- @source_schema.__schema__(:fields) -- @source_schema.__schema__(:primary_key) do
-          attribute field, @source_schema.__schema__(:type, field)
-        end
-      end
-    end
-  end
+        for field <- @source_schema.__schema__(:fields) do
+          type = @source_schema.__schema__(:type, field)
+          pkey? = field in primary_key
 
-  defmacro primary_key_definition(schema) do
-    quote do
-      case unquote(schema).__schema__(:primary_key) do
-        [field] ->
-          case unquote(schema).__schema__(:type, field) do
-            type when type in [Ecto.UUID, :binary_id] ->
+          case {type, pkey?} do
+            {uuid, true} when uuid in [Ecto.UUID, :binary_id] ->
               uuid_primary_key field
 
-            :id ->
+            {:id, true} ->
               integer_primary_key field
 
-            type ->
-              raise "#{type} not currently supported for primary keys"
+            {type, pkey?} ->
+              attribute field, type, primary_key?: pkey?
           end
+        end
+      end
 
-        _fields ->
-          raise "Ash.EctoResource does not currently support multiple primary keys"
+      # we only want to enable reads by default, for other actions you should migrate a resource to Ash.Resource
+      actions do
+        defaults [:read]
       end
     end
   end
