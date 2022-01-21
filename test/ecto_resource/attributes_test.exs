@@ -1,4 +1,4 @@
-defmodule Ash.Test.Resource.FromEctoSchema.AttributesTest do
+defmodule Ash.Test.EctoResource.AttributesTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
@@ -8,7 +8,6 @@ defmodule Ash.Test.Resource.FromEctoSchema.AttributesTest do
     quote do
       defmodule EctoUser do
         use Ecto.Schema
-
 
         schema "users" do
           unquote(body)
@@ -31,16 +30,12 @@ defmodule Ash.Test.Resource.FromEctoSchema.AttributesTest do
       assert [
                _,
                %Attribute{name: :foo, type: Ash.Type.String, primary_key?: false},
-               %Attribute{ name: :bar, type: Ash.Type.Boolean, primary_key?: false }
+               %Attribute{name: :bar, type: Ash.Type.Boolean, primary_key?: false}
              ] = Ash.Resource.Info.attributes(User)
-
-      assert [_, %Attribute{name: :foo}] = Ash.Resource.Info.public_attributes(User)
 
       assert %Attribute{name: :bar} = Ash.Resource.Info.attribute(User, :bar)
 
       assert nil == Ash.Resource.Info.attribute(User, :totally_valid_attributes)
-
-      assert nil == Ash.Resource.Info.public_attribute(User, :bar)
     end
   end
 end
