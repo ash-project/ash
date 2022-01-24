@@ -14,21 +14,6 @@ defmodule Ash.Schema do
         @primary_key false
 
         embedded_schema do
-          struct_fields_name =
-            if Module.get_attribute(__MODULE__, :struct_fields) do
-              :struct_fields
-            else
-              :ecto_struct_fields
-            end
-
-          for relationship <- Ash.Resource.Info.relationships(__MODULE__) do
-            Module.put_attribute(
-              __MODULE__,
-              struct_fields_name,
-              {relationship.name, %Ash.NotLoaded{type: :relationship, field: relationship.name}}
-            )
-          end
-
           for attribute <- Ash.Resource.Info.attributes(__MODULE__) do
             read_after_writes? = attribute.generated? and is_nil(attribute.default)
 
@@ -51,6 +36,27 @@ defmodule Ash.Schema do
           field(:__metadata__, :map, virtual: true, default: %{}, redact: true)
           field(:__order__, :integer, virtual: true)
 
+          struct_fields_name =
+            if Module.get_attribute(__MODULE__, :struct_fields) do
+              :struct_fields
+            else
+              :ecto_struct_fields
+            end
+
+          Module.register_attribute(__MODULE__, :ash_struct_fields, accumulate: true)
+
+          for field <- Module.get_attribute(__MODULE__, struct_fields_name) do
+            Module.put_attribute(__MODULE__, :ash_struct_fields, field)
+          end
+
+          for relationship <- Ash.Resource.Info.relationships(__MODULE__) do
+            Module.put_attribute(
+              __MODULE__,
+              :ash_struct_fields,
+              {relationship.name, %Ash.NotLoaded{type: :relationship, field: relationship.name}}
+            )
+          end
+
           for aggregate <- Ash.Resource.Info.aggregates(__MODULE__) do
             {:ok, type} = Aggregate.kind_to_type(aggregate.kind, :string)
 
@@ -58,7 +64,7 @@ defmodule Ash.Schema do
 
             Module.put_attribute(
               __MODULE__,
-              struct_fields_name,
+              :ash_struct_fields,
               {aggregate.name, %Ash.NotLoaded{type: :aggregate, field: aggregate.name}}
             )
           end
@@ -70,12 +76,12 @@ defmodule Ash.Schema do
 
             Module.put_attribute(
               __MODULE__,
-              struct_fields_name,
+              :ash_struct_fields,
               {calculation.name, %Ash.NotLoaded{type: :calculation, field: calculation.name}}
             )
           end
 
-          struct_fields = Keyword.new(Module.get_attribute(__MODULE__, struct_fields_name))
+          struct_fields = Module.get_attribute(__MODULE__, :ash_struct_fields)
           Module.delete_attribute(__MODULE__, struct_fields_name)
           Module.register_attribute(__MODULE__, struct_fields_name, accumulate: true)
           Enum.each(struct_fields, &Module.put_attribute(__MODULE__, struct_fields_name, &1))
@@ -88,21 +94,6 @@ defmodule Ash.Schema do
         @primary_key false
 
         schema Ash.DataLayer.source(__MODULE__) do
-          struct_fields_name =
-            if Module.get_attribute(__MODULE__, :struct_fields) do
-              :struct_fields
-            else
-              :ecto_struct_fields
-            end
-
-          for relationship <- Ash.Resource.Info.relationships(__MODULE__) do
-            Module.put_attribute(
-              __MODULE__,
-              struct_fields_name,
-              {relationship.name, %Ash.NotLoaded{type: :relationship, field: relationship.name}}
-            )
-          end
-
           for attribute <- Ash.Resource.Info.attributes(__MODULE__) do
             read_after_writes? = attribute.generated? and is_nil(attribute.default)
 
@@ -125,6 +116,27 @@ defmodule Ash.Schema do
           field(:__metadata__, :map, virtual: true, default: %{}, redact: true)
           field(:__order__, :integer, virtual: true)
 
+          struct_fields_name =
+            if Module.get_attribute(__MODULE__, :struct_fields) do
+              :struct_fields
+            else
+              :ecto_struct_fields
+            end
+
+          Module.register_attribute(__MODULE__, :ash_struct_fields, accumulate: true)
+
+          for field <- Module.get_attribute(__MODULE__, struct_fields_name) do
+            Module.put_attribute(__MODULE__, :ash_struct_fields, field)
+          end
+
+          for relationship <- Ash.Resource.Info.relationships(__MODULE__) do
+            Module.put_attribute(
+              __MODULE__,
+              :ash_struct_fields,
+              {relationship.name, %Ash.NotLoaded{type: :relationship, field: relationship.name}}
+            )
+          end
+
           for aggregate <- Ash.Resource.Info.aggregates(__MODULE__) do
             {:ok, type} = Aggregate.kind_to_type(aggregate.kind, :string)
 
@@ -132,7 +144,7 @@ defmodule Ash.Schema do
 
             Module.put_attribute(
               __MODULE__,
-              struct_fields_name,
+              :ash_struct_fields,
               {aggregate.name, %Ash.NotLoaded{type: :aggregate, field: aggregate.name}}
             )
           end
@@ -144,12 +156,13 @@ defmodule Ash.Schema do
 
             Module.put_attribute(
               __MODULE__,
-              struct_fields_name,
+              :ash_struct_fields,
               {calculation.name, %Ash.NotLoaded{type: :calculation, field: calculation.name}}
             )
           end
 
-          struct_fields = Keyword.new(Module.get_attribute(__MODULE__, struct_fields_name))
+          struct_fields = Module.get_attribute(__MODULE__, :ash_struct_fields)
+
           Module.delete_attribute(__MODULE__, struct_fields_name)
           Module.register_attribute(__MODULE__, struct_fields_name, accumulate: true)
           Enum.each(struct_fields, &Module.put_attribute(__MODULE__, struct_fields_name, &1))
