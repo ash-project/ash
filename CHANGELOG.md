@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.50.16](https://github.com/ash-project/ash/compare/v1.50.15...v1.50.16) (2022-01-24)
+
+
+
+
+### Bug Fixes:
+
+* use `ash_struct_fields` to accumulate schema struct field defaults
+
 ## [v1.50.15](https://github.com/ash-project/ash/compare/v1.50.14...v1.50.15) (2022-01-19)
 
 
