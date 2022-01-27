@@ -9,9 +9,25 @@ defmodule Ash.Query.Function.If do
   def new([condition, block]) do
     if Keyword.keyword?(block) && Keyword.has_key?(block, :do) do
       if Keyword.has_key?(block, :else) do
-        super([condition, block[:do], block[:else]])
+        if condition == true do
+          {:ok, block[:do]}
+        else
+          if condition == false do
+            {:ok, block[:else]}
+          else
+            super([condition, block[:do], block[:else]])
+          end
+        end
       else
-        super([condition, block[:do], nil])
+        if condition == true do
+          {:ok, block[:do]}
+        else
+          if condition == false do
+            {:ok, nil}
+          else
+            super([condition, block[:do], nil])
+          end
+        end
       end
     else
       super([condition, block, nil])

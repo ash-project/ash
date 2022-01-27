@@ -10,6 +10,10 @@ defmodule Ash.Query.Operator.IsNil do
     predicate?: true,
     types: [[:any, :boolean]]
 
+  def new(nil, true), do: {:ok, true}
+  def new(nil, false), do: {:ok, false}
+  def new(left, right), do: super(left, right)
+
   def evaluate(%{left: left, right: is_nil?}) do
     {:known, is_nil(left) == is_nil?}
   end
