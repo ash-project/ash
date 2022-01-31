@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.50.17](https://github.com/ash-project/ash/compare/v1.50.16...v1.50.17) (2022-01-31)
+
+
+
+
+### Improvements:
+
+* optimize `if` and `is_nil` functions
+
 ## [v1.50.16](https://github.com/ash-project/ash/compare/v1.50.15...v1.50.16) (2022-01-24)
 
 
