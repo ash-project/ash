@@ -39,21 +39,22 @@ defmodule Ash.ResourceFormatter do
   config :ash, :formatter,
     using_modules: [Ash.Resource, MyApp.Resource]
   ```
+
   """
   @behaviour Mix.Tasks.Format
+
+  require Logger
 
   def features(_opts) do
     [extensions: [".ex", ".exs"]]
   end
 
   def format(contents, opts) do
-    IO.inspect(opts)
     using_modules = Application.get_env(:ash, :formatter)[:using_modules] || [Ash.Resource]
 
     contents
     |> Sourceror.parse_string!()
     |> format_resources(opts, using_modules)
-    |> IO.inspect()
     |> then(fn patches ->
       Sourceror.patch_string(contents, patches)
     end)
@@ -62,11 +63,11 @@ defmodule Ash.ResourceFormatter do
       [iodata, ?\n]
     end)
     |> IO.iodata_to_binary()
+  rescue
+    e ->
+      Logger.info("Exception while formatting: #{Exception.format(:error, e, __STACKTRACE__)}")
 
-    # rescue
-    #   e ->
-    #     IO.inspect(e)
-    #     contents
+      contents
   end
 
   defp format_resources(parsed, opts, using_modules) do
@@ -75,7 +76,6 @@ defmodule Ash.ResourceFormatter do
         {:defmodule, _, [_, [{{:__block__, _, [:do]}, {:__block__, _, body}}]]} = expr, patches ->
           case get_extensions(body, using_modules) do
             {:ok, extensions} ->
-              IO.inspect(extensions, label: "extensions")
               replacement = format_resource(body, extensions)
 
               patches =
@@ -186,7 +186,6 @@ defmodule Ash.ResourceFormatter do
             [using, opts] ->
               [using, opts]
           end
-          |> IO.inspect()
 
         if using in using_modules do
           {:ok, parse_extensions(opts)}
