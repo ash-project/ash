@@ -111,6 +111,9 @@ defmodule Ash.MixProject do
           Ash.Filter,
           Ash.Sort
         ],
+        formatting: [
+          Ash.ResourceFormatter
+        ],
         validations: ~r/Ash.Resource.Validation/,
         changes: ~r/Ash.Resource.Change/,
         calculations: [
@@ -199,6 +202,7 @@ defmodule Ash.MixProject do
       {:timex, ">= 3.0.0"},
       {:comparable, "~> 1.0"},
       {:jason, ">= 1.0.0"},
+      {:sourceror, "~> 0.9"},
       # Dev/Test dependencies
       {:ex_doc, "~> 0.22", only: :dev, runtime: false},
       {:ex_check, "~> 0.12.0", only: :dev},
