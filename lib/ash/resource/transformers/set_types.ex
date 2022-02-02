@@ -176,7 +176,7 @@ defmodule Ash.Resource.Transformers.SetTypes do
 
         case Ash.OptionsHelpers.validate(constraints, schema) do
           {:ok, constraints} ->
-            {:ok, constraints}
+            validate_none_reserved(constraints, type)
 
           {:error, error} ->
             {:error, error}
@@ -189,10 +189,23 @@ defmodule Ash.Resource.Transformers.SetTypes do
 
     case Ash.OptionsHelpers.validate(constraints[:items] || [], schema) do
       {:ok, item_constraints} ->
-        {:ok, item_constraints}
+        validate_none_reserved(item_constraints, type)
 
       {:error, error} ->
         {:error, error}
+    end
+  end
+
+  @reserved ~w(default source autogenerate read_after_writes virtual primary_key load_in_query redact)a
+
+  defp validate_none_reserved(constraints, type) do
+    case Enum.find(@reserved, &Keyword.has_key?(constraints, &1)) do
+      nil ->
+        {:ok, constraints}
+
+      key ->
+        {:error,
+         "Invalid constraint key #{key} in type #{inspect(type)}. This name is reserved due to the underlying ecto implementation."}
     end
   end
 

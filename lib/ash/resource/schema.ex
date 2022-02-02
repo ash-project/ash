@@ -17,16 +17,23 @@ defmodule Ash.Schema do
           for attribute <- Ash.Resource.Info.attributes(__MODULE__) do
             read_after_writes? = attribute.generated? and is_nil(attribute.default)
 
+            constraint_opts =
+              case attribute.type do
+                {:array, _type} ->
+                  attribute.constraints[:items] || []
+
+                _ ->
+                  attribute.constraints
+              end
+
             field(
               attribute.name,
               Ash.Type.ecto_type(attribute.type),
               Keyword.merge(
-                [
-                  primary_key: attribute.primary_key?,
-                  read_after_writes: read_after_writes?,
-                  redact: attribute.sensitive?
-                ],
-                attribute.constraints
+                constraint_opts,
+                primary_key: attribute.primary_key?,
+                read_after_writes: read_after_writes?,
+                redact: attribute.sensitive?
               )
             )
           end
@@ -97,16 +104,23 @@ defmodule Ash.Schema do
           for attribute <- Ash.Resource.Info.attributes(__MODULE__) do
             read_after_writes? = attribute.generated? and is_nil(attribute.default)
 
+            constraint_opts =
+              case attribute.type do
+                {:array, _type} ->
+                  attribute.constraints[:items] || []
+
+                _ ->
+                  attribute.constraints
+              end
+
             field(
               attribute.name,
               Ash.Type.ecto_type(attribute.type),
               Keyword.merge(
-                [
-                  primary_key: attribute.primary_key?,
-                  read_after_writes: read_after_writes?,
-                  redact: attribute.sensitive?
-                ],
-                attribute.constraints
+                constraint_opts,
+                primary_key: attribute.primary_key?,
+                read_after_writes: read_after_writes?,
+                redact: attribute.sensitive?
               )
             )
           end

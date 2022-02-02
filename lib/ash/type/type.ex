@@ -389,39 +389,43 @@ defmodule Ash.Type do
   @spec cast_stored(t(), term, constraints | nil) :: {:ok, term} | {:error, keyword()} | :error
   def cast_stored(type, term, constraints \\ [])
 
-  def cast_stored({:array, type}, term, constraints) when is_list(term) do
+  def cast_stored({:array, type}, term, constraints) do
     if is_atom(type) && :erlang.function_exported(type, :cast_stored_array, 2) do
       type.cast_stored_array(term, constraints)
     else
-      term
-      |> Enum.with_index()
-      |> Enum.reverse()
-      |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
-        single_constraints = constraints[:items] || []
+      if is_nil(term) do
+        {:ok, nil}
+      else
+        term
+        |> Enum.with_index()
+        |> Enum.reverse()
+        |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
+          single_constraints = constraints[:items] || []
 
-        case cast_stored(type, item, single_constraints) do
-          :error ->
-            {:halt, {:error, index: index}}
+          case cast_stored(type, item, single_constraints) do
+            :error ->
+              {:halt, {:error, index: index}}
 
-          {:error, keyword} ->
-            errors =
-              keyword
-              |> List.wrap()
-              |> Ash.Error.flatten_preserving_keywords()
-              |> Enum.map(fn
-                string when is_binary(string) ->
-                  [message: string, index: index]
+            {:error, keyword} ->
+              errors =
+                keyword
+                |> List.wrap()
+                |> Ash.Error.flatten_preserving_keywords()
+                |> Enum.map(fn
+                  string when is_binary(string) ->
+                    [message: string, index: index]
 
-                vars ->
-                  Keyword.put(vars, :index, index)
-              end)
+                  vars ->
+                    Keyword.put(vars, :index, index)
+                end)
 
-            {:halt, {:error, errors}}
+              {:halt, {:error, errors}}
 
-          {:ok, value} ->
-            {:cont, {:ok, [value | casted]}}
-        end
-      end)
+            {:ok, value} ->
+              {:cont, {:ok, [value | casted]}}
+          end
+        end)
+      end
     end
   end
 
@@ -608,19 +612,23 @@ defmodule Ash.Type do
     if is_atom(type) && :erlang.function_exported(type, :dump_to_embedded_array, 2) do
       type.dump_to_embedded_array(term, constraints)
     else
-      single_constraints = constraints[:items] || []
+      if is_nil(term) do
+        {:ok, nil}
+      else
+        single_constraints = constraints[:items] || []
 
-      term
-      |> Enum.reverse()
-      |> Enum.reduce_while({:ok, []}, fn item, {:ok, dumped} ->
-        case dump_to_embedded(type, item, single_constraints) do
-          :error ->
-            {:halt, :error}
+        term
+        |> Enum.reverse()
+        |> Enum.reduce_while({:ok, []}, fn item, {:ok, dumped} ->
+          case dump_to_embedded(type, item, single_constraints) do
+            :error ->
+              {:halt, :error}
 
-          {:ok, value} ->
-            {:cont, {:ok, [value | dumped]}}
-        end
-      end)
+            {:ok, value} ->
+              {:cont, {:ok, [value | dumped]}}
+          end
+        end)
+      end
     end
   end
 
