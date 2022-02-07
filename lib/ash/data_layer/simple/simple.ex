@@ -6,11 +6,7 @@ defmodule Ash.DataLayer.Simple do
   by embedded resources, and resources without data layers.
   """
 
-  @transformers [
-    Ash.DataLayer.Simple.Transformers.ValidateDslSections
-  ]
-
-  use Ash.Dsl.Extension, transformers: @transformers, sections: []
+  use Ash.Dsl.Extension, transformers: [], sections: []
 
   def can?(_, :create), do: true
   def can?(_, :update), do: true
@@ -19,7 +15,9 @@ defmodule Ash.DataLayer.Simple do
   def can?(_, {:sort, _}), do: true
   def can?(_, :filter), do: true
   def can?(_, :boolean_filter), do: true
+  def can?(_, :nested_expressions), do: true
   def can?(_, {:filter_expr, _}), do: true
+  def can?(_, :multitenancy), do: true
   def can?(_, _), do: false
 
   defmodule Query do
@@ -44,6 +42,8 @@ defmodule Ash.DataLayer.Simple do
      |> Enum.filter(&Ash.Filter.Runtime.matches?(api, &1, filter))
      |> Ash.Actions.Sort.runtime_sort(sort)}
   end
+
+  def set_tenant(_, query, _), do: {:ok, query}
 
   def filter(query, filter, _resource) do
     {:ok, %{query | filter: filter}}

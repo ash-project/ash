@@ -9,6 +9,17 @@ defmodule Ash.Test.Filter.FilterTest do
 
   require Ash.Query
 
+  defmodule EmbeddedBio do
+    @moduledoc false
+    use Ash.Resource, data_layer: :embedded
+
+    attributes do
+      uuid_primary_key :id
+      attribute :bio, :string
+      attribute :title, :string
+    end
+  end
+
   defmodule Profile do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -26,6 +37,7 @@ defmodule Ash.Test.Filter.FilterTest do
     attributes do
       uuid_primary_key :id
       attribute :bio, :string
+      attribute :embedded_bio, EmbeddedBio
       attribute :private, :string, private?: true
     end
 
@@ -328,6 +340,34 @@ defmodule Ash.Test.Filter.FilterTest do
                |> Ash.Query.sort(points: :asc)
                |> Api.read!()
                |> clear_meta()
+    end
+  end
+
+  describe "embedded filters" do
+    setup do
+      Profile
+      |> new(%{embedded_bio: %{title: "Dr.", bio: "foo"}})
+      |> Api.create!()
+
+      Profile
+      |> new(%{embedded_bio: %{title: "Highlander", bio: "There can be only one"}})
+      |> Api.create!()
+
+      :ok
+    end
+
+    test "simple equality filters work" do
+      assert [%Profile{embedded_bio: %EmbeddedBio{title: "Dr."}}] =
+               Profile
+               |> Ash.Query.filter(embedded_bio[:title] == "Dr.")
+               |> Api.read!()
+    end
+
+    test "expressions work on accessed values" do
+      assert [%Profile{embedded_bio: %EmbeddedBio{title: "Highlander"}}] =
+               Profile
+               |> Ash.Query.filter(contains(embedded_bio[:bio], "can be only one"))
+               |> Api.read!()
     end
   end
 

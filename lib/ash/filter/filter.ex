@@ -193,7 +193,8 @@ defmodule Ash.Filter do
       query_context: context
     }
 
-    with {:ok, expression} <- parse_expression(statement, context) do
+    with {:ok, expression} <- parse_expression(statement, context),
+         :ok <- validate_references(expression, resource) do
       {:ok, %__MODULE__{expression: expression, resource: resource}}
     end
   end
@@ -273,8 +274,83 @@ defmodule Ash.Filter do
       query_context: context
     }
 
-    with {:ok, expression} <- parse_expression(statement, context) do
+    with {:ok, expression} <- parse_expression(statement, context),
+         :ok <- validate_references(expression, resource) do
       {:ok, %__MODULE__{expression: expression, resource: resource}}
+    end
+  end
+
+  defp validate_references(expression, resource) do
+    refs =
+      expression
+      |> list_refs()
+      |> Enum.map(fn ref ->
+        field =
+          case ref.attribute do
+            field when is_atom(field) ->
+              Ash.Resource.Info.field(resource, field)
+
+            field ->
+              field
+          end
+
+        %{ref | attribute: field}
+      end)
+
+    errors =
+      refs
+      |> Enum.flat_map(fn ref ->
+        field = ref.attribute
+
+        case field.filterable? do
+          true ->
+            []
+
+          false ->
+            [Ash.Error.Query.InvalidFilterReference.exception(field: field.name)]
+
+          :simple_equality ->
+            if ref.simple_equality? do
+              []
+            else
+              [
+                Ash.Error.Query.InvalidFilterReference.exception(
+                  field: field.name,
+                  simple_equality?: true
+                )
+              ]
+            end
+        end
+      end)
+
+    multiple_filter_errors =
+      refs
+      |> Enum.filter(fn ref ->
+        ref.attribute.filterable? == :simple_equality
+      end)
+      |> Enum.group_by(& &1.attribute.name)
+      |> Enum.flat_map(fn
+        {_, []} ->
+          []
+
+        {_, [_]} ->
+          []
+
+        {name, _} ->
+          [
+            Ash.Error.Query.InvalidFilterReference.exception(
+              field: name,
+              simple_equality?: true
+            )
+          ]
+      end)
+
+    case Enum.concat(errors, multiple_filter_errors) do
+      [] ->
+        :ok
+
+      errors ->
+        {:error, Enum.uniq(errors)}
     end
   end
 
@@ -531,6 +607,64 @@ defmodule Ash.Filter do
   end
 
   defp walk_filter_template(value, mapper), do: mapper.(value)
+
+  @doc """
+  Can be used to find a simple equality predicate on an attribute
+
+  Use this when your attribute is configured with `filterable? :simple_equality`, and you want to
+  to find the value that it is being filtered on with (if any).
+  """
+  def find_simple_equality_predicate(expression, attribute) do
+    expression
+    |> find(&simple_eq?(&1, attribute))
+    |> case do
+      nil ->
+        nil
+
+      %{right: right} ->
+        right
+    end
+  end
+
+  defp simple_eq?(%Eq{left: %Ref{}, right: %Ref{}}, _), do: false
+
+  defp simple_eq?(%Eq{right: %Ref{}} = eq, attribute) do
+    simple_eq?(%{eq | left: eq.right, right: eq.left}, attribute)
+  end
+
+  defp simple_eq?(%Eq{left: %Ref{attribute: attribute}}, attribute), do: true
+  defp simple_eq?(%Eq{left: %Ref{attribute: %{name: attribute}}}, attribute), do: true
+  defp simple_eq?(_, _), do: false
+
+  @doc "Find an expression inside of a filter that matches the provided predicate"
+  def find(expr, pred) do
+    if pred.(expr) do
+      expr
+    else
+      case expr do
+        %__MODULE__{expression: expression} ->
+          find(expression, pred)
+
+        %Not{expression: expression} ->
+          find(expression, pred)
+
+        %BooleanExpression{left: left, right: right} ->
+          find(left, pred) || find(right, pred)
+
+        %Call{args: arguments} ->
+          Enum.find(arguments, &find(&1, pred))
+
+        %{__operator__?: true, left: left, right: right} ->
+          find(left, pred) || find(right, pred)
+
+        %{__function__?: true, arguments: arguments} ->
+          Enum.find(arguments, &find(&1, pred))
+
+        _ ->
+          nil
+      end
+    end
+  end
 
   defp get_predicates(expr, skip_invalid?, acc \\ [])
 
@@ -1317,89 +1451,42 @@ defmodule Ash.Filter do
 
   def embed_predicates(other), do: other
 
-  def find(%__MODULE__{expression: nil}, _), do: nil
+  def list_refs(expression, no_longer_simple? \\ false, in_an_eq? \\ false)
 
-  def find(%__MODULE__{expression: expression}, func) do
-    if func.(expression) do
-      expression
-    else
-      find(expression, func)
-    end
+  def list_refs(list, no_longer_simple?, in_an_eq?) when is_list(list) do
+    Enum.flat_map(list, &list_refs(&1, no_longer_simple?, in_an_eq?))
   end
 
-  def find(%BooleanExpression{left: left, right: right} = expr, func) do
-    if func.(expr) do
-      expr
-    else
-      find(left, func) || find(right, func)
-    end
+  def list_refs({key, value}, no_longer_simple?, in_an_eq?) when is_atom(key),
+    do: list_refs(value, no_longer_simple?, in_an_eq?)
+
+  def list_refs(%__MODULE__{expression: expression}, no_longer_simple?, in_an_eq?) do
+    list_refs(expression, no_longer_simple?, in_an_eq?)
   end
 
-  def find(%Not{expression: not_expr} = expr, func) do
-    if func.(expr) do
-      expr
-    else
-      find(not_expr, func)
-    end
-  end
-
-  def find(%{__predicate__?: _, left: left, right: right} = pred, func) do
-    if func.(pred) do
-      pred
-    else
-      find(left, func) || find(right, func)
-    end
-  end
-
-  def find(%{__predicate__?: _, arguments: arguments} = pred, func) do
-    if func.(pred) do
-      pred
-    else
-      Enum.find(arguments, func)
-    end
-  end
-
-  def find(%Call{args: args} = call, func) do
-    if func.(call) do
-      call
-    else
-      Enum.find(args, func)
-    end
-  end
-
-  def find(other, func) do
-    if func.(other), do: other
-  end
-
-  def list_refs(list) when is_list(list) do
-    Enum.flat_map(list, &list_refs/1)
-  end
-
-  def list_refs({key, value}) when is_atom(key), do: list_refs(value)
-
-  def list_refs(%__MODULE__{expression: expression}) do
-    list_refs(expression)
-  end
-
-  def list_refs(expression) do
+  def list_refs(expression, no_longer_simple?, in_an_eq?) do
     case expression do
-      %BooleanExpression{left: left, right: right} ->
-        list_refs(left) ++ list_refs(right)
+      %BooleanExpression{left: left, right: right, op: op} ->
+        no_longer_simple? = no_longer_simple? || op == :or
+        list_refs(left, no_longer_simple?) ++ list_refs(right, no_longer_simple?)
 
       %Not{expression: not_expr} ->
-        list_refs(not_expr)
+        list_refs(not_expr, true)
 
-      %{__predicate__?: _, left: left, right: right} ->
-        list_refs(left) ++ list_refs(right)
+      %struct{__predicate__?: _, left: left, right: right} ->
+        in_an_eq? = struct == Ash.Query.Operator.Eq
+
+        list_refs(left, no_longer_simple?, in_an_eq?) ++
+          list_refs(right, no_longer_simple?, in_an_eq?)
 
       %{__predicate__?: _, arguments: args} ->
-        Enum.flat_map(args, &list_refs/1)
+        Enum.flat_map(args, &list_refs(&1, true))
 
       %Call{args: args} ->
-        Enum.flat_map(args, &list_refs/1)
+        Enum.flat_map(args, &list_refs(&1, true))
 
       %Ref{} = ref ->
-        [ref]
+        [%{ref | simple_equality?: !no_longer_simple? && in_an_eq?}]
 
       _ ->
         []

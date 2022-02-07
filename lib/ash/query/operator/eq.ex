@@ -19,8 +19,15 @@ defmodule Ash.Query.Operator.Eq do
 
   def bulk_compare(predicates) do
     predicates
-    |> Enum.filter(&match?(%struct{} when struct in [__MODULE__, Ash.Query.Operator.IsNil], &1))
+    |> Enum.filter(&match?(%struct{} when struct == __MODULE__, &1))
     |> Enum.uniq()
+    |> Enum.reject(fn
+      %{right: %struct{}} when struct in [Ash.Query.Ref, Ash.Query.Call] ->
+        true
+
+      _ ->
+        false
+    end)
     |> Enum.group_by(& &1.left)
     |> Enum.flat_map(fn {_, predicates} ->
       Ash.SatSolver.mutually_exclusive(predicates)

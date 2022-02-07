@@ -13,7 +13,7 @@ defmodule Ash.Query.Function do
   The number and types of arguments supported.
   """
   @callback args() :: [arg]
-  @callback new(list(term)) :: {:ok, term}
+  @callback new(list(term)) :: {:ok, term} | {:error, String.t() | Exception.t()}
   @callback evaluate(func :: map) :: :unknown | {:known, term}
 
   def new(mod, args) do
@@ -135,14 +135,16 @@ defmodule Ash.Query.Function do
 
       defoverridable new: 1, evaluate: 1
 
-      defimpl Inspect do
-        import Inspect.Algebra
+      unless unquote(opts[:no_inspect?]) do
+        defimpl Inspect do
+          import Inspect.Algebra
 
-        def inspect(%{arguments: args, name: name}, opts) do
-          concat(
-            to_string(name),
-            container_doc("(", args, ")", opts, &to_doc/2, separator: ",")
-          )
+          def inspect(%{arguments: args, name: name}, opts) do
+            concat(
+              to_string(name),
+              container_doc("(", args, ")", opts, &to_doc/2, separator: ",")
+            )
+          end
         end
       end
     end

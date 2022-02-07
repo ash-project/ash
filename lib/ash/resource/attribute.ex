@@ -14,6 +14,7 @@ defmodule Ash.Resource.Attribute do
     :update_default,
     :description,
     sensitive?: false,
+    filterable?: true,
     constraints: []
   ]
 
@@ -114,6 +115,11 @@ defmodule Ash.Resource.Attribute do
       type: {:custom, Ash.OptionsHelpers, :default, []},
       doc:
         "A zero argument function, an {mod, fun, args} triple or a value. `Ash.Changeset.for_update/4` sets the default in the changeset if a value is not provided."
+    ],
+    filterable?: [
+      type: {:or, [:boolean, {:in, [:simple_equality]}]},
+      default: true,
+      doc: "Whether or not the attribute should be usable in filters."
     ],
     default: [
       type: {:custom, Ash.OptionsHelpers, :default, []},

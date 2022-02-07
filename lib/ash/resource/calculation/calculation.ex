@@ -11,7 +11,8 @@ defmodule Ash.Resource.Calculation do
     :allow_nil?,
     :select,
     :load,
-    :allow_async?
+    :allow_async?,
+    filterable?: true
   ]
 
   @schema [
@@ -72,6 +73,11 @@ defmodule Ash.Resource.Calculation do
       type: :boolean,
       default: true,
       doc: "Whether or not the calculation can return nil."
+    ],
+    filterable?: [
+      type: {:or, [:boolean, {:in, [:simple_equality]}]},
+      default: true,
+      doc: "Whether or not the calculation should be usable in filters."
     ]
   ]
 

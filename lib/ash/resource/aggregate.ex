@@ -9,7 +9,8 @@ defmodule Ash.Resource.Aggregate do
     :private?,
     :field,
     :sort,
-    :default
+    :default,
+    filterable?: true
   ]
 
   @schema [
@@ -57,6 +58,11 @@ defmodule Ash.Resource.Aggregate do
       default: false,
       doc:
         "Whether or not the aggregate will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql"
+    ],
+    filterable?: [
+      type: {:or, [:boolean, {:in, [:simple_equality]}]},
+      default: true,
+      doc: "Whether or not the aggregate should be usable in filters."
     ]
   ]
 

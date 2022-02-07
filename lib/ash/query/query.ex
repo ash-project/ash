@@ -423,6 +423,21 @@ defmodule Ash.Query do
     value
   end
 
+  defp do_expr({{:., _, [Access, :get]}, _, [left, right]}, escape?) do
+    left = do_expr(left, false)
+    right = do_expr(right, false)
+
+    [left, right]
+    |> Ash.Query.Function.GetPath.new()
+    |> case do
+      {:ok, call} ->
+        soft_escape(call, escape?)
+
+      {:error, error} ->
+        raise error
+    end
+  end
+
   defp do_expr({{:., _, [_, _]} = left, _, []}, escape?) do
     do_expr(left, escape?)
   end

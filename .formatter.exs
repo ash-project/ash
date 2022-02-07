@@ -50,6 +50,7 @@ locals_without_parens = [
   field: 1,
   field_type: 1,
   filter: 1,
+  filterable?: 1,
   first: 3,
   first: 4,
   generated?: 1,
