@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.50.19](https://github.com/ash-project/ash/compare/v1.50.18...v1.50.19) (2022-02-07)
+
+
+
+
+### Bug Fixes:
+
+* include a missing module
+
+* properly set filterability on attributes
+
 ## [v1.50.18](https://github.com/ash-project/ash/compare/v1.50.17...v1.50.18) (2022-02-07)
 
 
