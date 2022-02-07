@@ -10,7 +10,8 @@ defmodule Ash.Query.Aggregate do
     :kind,
     :type,
     :authorization_filter,
-    :load
+    :load,
+    filterable?: true
   ]
 
   @type t :: %__MODULE__{}
@@ -27,7 +28,7 @@ defmodule Ash.Query.Aggregate do
   @doc false
   def kinds, do: @kinds
 
-  def new(resource, name, kind, relationship, query, field, default \\ nil) do
+  def new(resource, name, kind, relationship, query, field, default \\ nil, filterable? \\ true) do
     field_type =
       if field do
         related = Ash.Resource.Info.related(resource, relationship)
@@ -46,7 +47,8 @@ defmodule Ash.Query.Aggregate do
          field: field,
          kind: kind,
          type: type,
-         query: query
+         query: query,
+         filterable?: filterable?
        }}
     end
   end

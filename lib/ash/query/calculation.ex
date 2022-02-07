@@ -10,12 +10,13 @@ defmodule Ash.Query.Calculation do
     context: %{},
     select: [],
     sequence: 0,
-    allow_async?: false
+    allow_async?: false,
+    filterable?: true
   ]
 
   @type t :: %__MODULE__{}
 
-  def new(name, module, opts, type, context \\ %{}) do
+  def new(name, module, opts, type, context \\ %{}, filterable? \\ true) do
     case module.init(opts) do
       {:ok, opts} ->
         {:ok,
@@ -24,7 +25,8 @@ defmodule Ash.Query.Calculation do
            module: module,
            type: type,
            opts: opts,
-           context: context
+           context: context,
+           filterable?: filterable?
          }}
 
       {:error, error} ->

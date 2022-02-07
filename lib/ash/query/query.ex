@@ -966,7 +966,8 @@ defmodule Ash.Query do
                  aggregate.relationship_path,
                  aggregate_query,
                  aggregate.field,
-                 aggregate.default
+                 aggregate.default,
+                 aggregate.filterable?
                ) do
           query_aggregate = %{query_aggregate | load: field}
           new_aggregates = Map.put(query.aggregates, aggregate.name, query_aggregate)
@@ -1379,7 +1380,15 @@ defmodule Ash.Query do
           atom | list(atom),
           Keyword.t() | nil
         ) :: t()
-  def aggregate(query, name, type, relationship, agg_query \\ nil) do
+  def aggregate(
+        query,
+        name,
+        type,
+        relationship,
+        agg_query \\ nil,
+        default \\ nil,
+        filterable? \\ true
+      ) do
     {field, agg_query} = Keyword.pop(agg_query || [], :field)
 
     query = to_query(query)
@@ -1395,7 +1404,16 @@ defmodule Ash.Query do
             build(Ash.Resource.Info.related(query.resource, relationship), options)
         end
 
-      case Aggregate.new(query.resource, name, type, relationship, agg_query, field) do
+      case Aggregate.new(
+             query.resource,
+             name,
+             type,
+             relationship,
+             agg_query,
+             field,
+             default,
+             filterable?
+           ) do
         {:ok, aggregate} ->
           new_aggregates = Map.put(query.aggregates, aggregate.name, aggregate)
 

@@ -302,14 +302,18 @@ defmodule Ash.Filter do
       |> Enum.flat_map(fn ref ->
         field = ref.attribute
 
-        case field.filterable? do
-          true ->
+        # This handles manually added calcualtions and aggregates
+        case Map.fetch(field, :filterable?) do
+          :error ->
             []
 
-          false ->
+          {:ok, true} ->
+            []
+
+          {:ok, false} ->
             [Ash.Error.Query.InvalidFilterReference.exception(field: field.name)]
 
-          :simple_equality ->
+          {:ok, :simple_equality} ->
             if ref.simple_equality? do
               []
             else
@@ -326,7 +330,7 @@ defmodule Ash.Filter do
     multiple_filter_errors =
       refs
       |> Enum.filter(fn ref ->
-        ref.attribute.filterable? == :simple_equality
+        Map.fetch(ref.attribute, :filterable?) == {:ok, :simple_equality}
       end)
       |> Enum.group_by(& &1.attribute.name)
       |> Enum.flat_map(fn
@@ -1840,7 +1844,8 @@ defmodule Ash.Filter do
                  aggregate.relationship_path,
                  aggregate_query,
                  aggregate.field,
-                 aggregate.default
+                 aggregate.default,
+                 aggregate.filterable?
                ) do
           case parse_predicates(nested_statement, query_aggregate, context) do
             {:ok, nested_statement} ->
@@ -1902,7 +1907,8 @@ defmodule Ash.Filter do
                  module,
                  opts,
                  resource_calculation.type,
-                 Map.put(args, :context, context.query_context)
+                 Map.put(args, :context, context.query_context),
+                 resource_calculation.filterable?
                ) do
           case parse_predicates(nested_statement, calculation, context) do
             {:ok, nested_statement} ->
@@ -2071,7 +2077,8 @@ defmodule Ash.Filter do
                  module,
                  opts,
                  resource_calculation.type,
-                 Map.put(args, :context, context.query_context)
+                 Map.put(args, :context, context.query_context),
+                 resource_calculation.filterable?
                ) do
           {:ok,
            %Ref{
@@ -2178,7 +2185,8 @@ defmodule Ash.Filter do
                      module,
                      opts,
                      resource_calculation.type,
-                     Map.put(args, :context, context.query_context)
+                     Map.put(args, :context, context.query_context),
+                     resource_calculation.filterable?
                    ) do
               {:ok, %{ref | attribute: calculation, resource: related}}
             else
@@ -2199,7 +2207,8 @@ defmodule Ash.Filter do
                      aggregate.relationship_path,
                      aggregate_query,
                      aggregate.field,
-                     aggregate.default
+                     aggregate.default,
+                     aggregate.filterable?
                    ) do
               {:ok, %{ref | attribute: query_aggregate, resource: related}}
             else
