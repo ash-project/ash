@@ -386,6 +386,14 @@ defmodule Ash.Query do
     end
   end
 
+  @doc "Returns true if the value is one of the expression structs."
+  def is_expr?(%Ash.Query.Call{}), do: true
+  def is_expr?(%Ash.Query.BooleanExpression{}), do: true
+  def is_expr?(%Ash.Query.Not{}), do: true
+  def is_expr?(%Ash.Query.Ref{}), do: true
+  def is_expr?(%{__predicate__?: _}), do: true
+  def is_expr?(_), do: false
+
   @doc """
   Creates an Ash expression for evaluation later.
   """
@@ -1991,7 +1999,7 @@ defmodule Ash.Query do
 
       error ->
         error = Map.update(error, :path, keys, &(keys ++ List.wrap(&1)))
-        %{query | errors: [error | query.errors]}
+        %{query | errors: [error | query.errors], valid?: false}
     end
   end
 

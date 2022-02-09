@@ -102,9 +102,6 @@ defmodule Ash.Query.Aggregate do
       query.load != [] ->
         {:error, "Cannot load in an aggregate"}
 
-      query.aggregates != %{} ->
-        {:error, "Cannot aggregate in an aggregate"}
-
       not is_nil(query.limit) ->
         {:error, "Cannot limit an aggregate (for now)"}
 

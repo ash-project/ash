@@ -12,7 +12,23 @@ defmodule Ash.Query.Operator.IsNil do
 
   def new(nil, true), do: {:ok, true}
   def new(nil, false), do: {:ok, false}
-  def new(left, right), do: super(left, right)
+
+  def new(left, right) do
+    if Ash.Query.is_expr?(left) do
+      super(left, right)
+    else
+      cond do
+        right == true ->
+          {:ok, false}
+
+        right == false ->
+          {:ok, true}
+
+        true ->
+          super(left, right)
+      end
+    end
+  end
 
   def evaluate(%{left: left, right: is_nil?}) do
     {:known, is_nil(left) == is_nil?}
