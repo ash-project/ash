@@ -180,10 +180,10 @@ defmodule Ash.Query do
   end
 
   @doc "Create a new query"
-  def new(resource, api \\ nil)
-  def new(%__MODULE__{} = query, _), do: query
+  def new(resource, api \\ nil, opts \\ [])
+  def new(%__MODULE__{} = query, _, _opts), do: query
 
-  def new(resource, api) when is_atom(resource) do
+  def new(resource, api, opts) when is_atom(resource) do
     query = %__MODULE__{
       api: api,
       filter: nil,
@@ -196,12 +196,16 @@ defmodule Ash.Query do
           query
 
         filter ->
-          filter =
-            resource
-            |> Ash.Filter.parse!(filter, query.aggregates, query.calculations, query.context)
-            |> Ash.Filter.embed_predicates()
+          if Keyword.get(opts, :base_filter?, true) do
+            filter =
+              resource
+              |> Ash.Filter.parse!(filter, query.aggregates, query.calculations, query.context)
+              |> Ash.Filter.embed_predicates()
 
-          do_filter(query, filter)
+            do_filter(query, filter)
+          else
+            query
+          end
       end
 
     case Ash.Resource.Info.default_context(resource) do

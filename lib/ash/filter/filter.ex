@@ -1616,7 +1616,7 @@ defmodule Ash.Filter do
   end
 
   defp parse_expression(%__MODULE__{expression: expression}, context),
-    do: {:ok, add_to_predicate_path(expression, context)}
+    do: {:ok, move_to_relationship_path(expression, context.relationship_path)}
 
   defp parse_expression(statement, context) when is_list(statement) do
     Enum.reduce_while(statement, {:ok, nil}, fn expression_part, {:ok, expression} ->
@@ -1642,7 +1642,7 @@ defmodule Ash.Filter do
      BooleanExpression.optimized_new(
        :and,
        expression,
-       add_to_predicate_path(adding_expression, context)
+       move_to_relationship_path(adding_expression, context.relationship_path)
      )}
   end
 
@@ -2373,31 +2373,39 @@ defmodule Ash.Filter do
 
   defp validate_data_layers_support_boolean_filters(_), do: :ok
 
-  defp add_to_predicate_path(expression, context) do
+  def move_to_relationship_path(expression, []), do: expression
+
+  def move_to_relationship_path(expression, relationship_path) do
     case expression do
       {key, value} when is_atom(key) ->
-        {key, add_to_predicate_path(value, context)}
+        {key, move_to_relationship_path(value, relationship_path)}
 
       %Not{expression: expression} = not_expr ->
-        %{not_expr | expression: add_to_predicate_path(expression, context)}
+        %{not_expr | expression: move_to_relationship_path(expression, relationship_path)}
 
       %BooleanExpression{left: left, right: right} = expression ->
         %{
           expression
-          | left: add_to_predicate_path(left, context),
-            right: add_to_predicate_path(right, context)
+          | left: move_to_relationship_path(left, relationship_path),
+            right: move_to_relationship_path(right, relationship_path)
         }
 
       %{__operator__?: true, left: left, right: right} = op ->
-        left = add_to_predicate_path(left, context)
-        right = add_to_predicate_path(right, context)
+        left = move_to_relationship_path(left, relationship_path)
+        right = move_to_relationship_path(right, relationship_path)
         %{op | left: left, right: right}
 
       %Ref{} = ref ->
-        add_to_ref_path(ref, context.relationship_path)
+        add_to_ref_path(ref, relationship_path)
 
       %{__function__?: true, arguments: args} = func ->
-        %{func | arguments: Enum.map(args, &add_to_predicate_path(&1, context))}
+        %{func | arguments: Enum.map(args, &move_to_relationship_path(&1, relationship_path))}
+
+      %Call{args: args} = call ->
+        %{call | args: Enum.map(args, &move_to_relationship_path(&1, relationship_path))}
+
+      %__MODULE__{expression: expression} = filter ->
+        %{filter | expression: move_to_relationship_path(expression, relationship_path)}
 
       other ->
         other
