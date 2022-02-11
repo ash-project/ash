@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.50.20](https://github.com/ash-project/ash/compare/v1.50.19...v1.50.20) (2022-02-11)
+
+
+
+
+### Improvements:
+
+* small data layer improvements
+
 ## [v1.50.19](https://github.com/ash-project/ash/compare/v1.50.18...v1.50.19) (2022-02-07)
 
 
