@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.50.21](https://github.com/ash-project/ash/compare/v1.50.20...v1.50.21) (2022-02-14)
+
+
+
+
+### Improvements:
+
+* add `cast_in_query?/0` to `Ash.Type`
+
 ## [v1.50.20](https://github.com/ash-project/ash/compare/v1.50.19...v1.50.20) (2022-02-11)
 
 
