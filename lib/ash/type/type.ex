@@ -103,6 +103,12 @@ defmodule Ash.Type do
   @type t :: atom | {:array, atom}
 
   @callback storage_type() :: Ecto.Type.t()
+  @doc """
+  Useful for typed data layers (like ash_postgres) to instruct them not to attempt to cast input values.
+
+  You generally won't need this, but it can be an escape hatch for certain cases.
+  """
+  @callback cast_in_query?() :: boolean
   @callback ecto_type() :: Ecto.Type.t()
   @callback cast_input(term, constraints) :: {:ok, term} | {:error, Keyword.t()} | :error
   @callback cast_input_array(list(term), constraints) ::
@@ -565,6 +571,14 @@ defmodule Ash.Type do
     end
   end
 
+  def cast_in_query?(type) do
+    if ash_type?(type) do
+      type.cast_in_query?()
+    else
+      false
+    end
+  end
+
   @doc """
   Casts a value from the Elixir type to a value that the data store can persist
 
@@ -730,6 +744,9 @@ defmodule Ash.Type do
       def apply_constraints(_, _), do: :ok
 
       @impl true
+      def cast_in_query?, do: true
+
+      @impl true
       def handle_change(_old_value, new_value, _constraints), do: {:ok, new_value}
 
       @impl true
@@ -745,7 +762,8 @@ defmodule Ash.Type do
                      array_constraints: 0,
                      apply_constraints: 2,
                      handle_change: 3,
-                     prepare_change: 3
+                     prepare_change: 3,
+                     cast_in_query?: 0
     end
   end
 
