@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.51.0](https://github.com/ash-project/ash/compare/v1.50.21...v1.51.0) (2022-02-14)
+
+
+
+
+### Features:
+
+* add `source` option to attributes
+
 ## [v1.50.21](https://github.com/ash-project/ash/compare/v1.50.20...v1.50.21) (2022-02-14)
 
 
