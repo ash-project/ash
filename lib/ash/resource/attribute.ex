@@ -13,6 +13,7 @@ defmodule Ash.Resource.Attribute do
     :default,
     :update_default,
     :description,
+    :source,
     sensitive?: false,
     filterable?: true,
     constraints: []
@@ -51,6 +52,12 @@ defmodule Ash.Resource.Attribute do
       default: false,
       doc:
         "Whether or not the attribute value contains sensitive information, like PII. If so, it will be redacted while inspecting data."
+    ],
+    source: [
+      type: :atom,
+      doc: """
+      If the field should be mapped to a different name in the data layer.
+      """
     ],
     always_select?: [
       type: :boolean,

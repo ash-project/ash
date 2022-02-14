@@ -25,7 +25,12 @@ defmodule Ash.Resource.Transformers.SetTypes do
             Transformer.replace_entity(
               dsl_state,
               [:attributes],
-              %{attribute | type: type, constraints: constraints},
+              %{
+                attribute
+                | type: type,
+                  constraints: constraints,
+                  source: attribute.source || attribute.name
+              },
               fn replacing ->
                 replacing.name == attribute.name
               end

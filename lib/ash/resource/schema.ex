@@ -33,7 +33,8 @@ defmodule Ash.Schema do
                 constraint_opts,
                 primary_key: attribute.primary_key?,
                 read_after_writes: read_after_writes?,
-                redact: attribute.sensitive?
+                redact: attribute.sensitive?,
+                source: attribute.source
               )
             )
           end
@@ -120,7 +121,8 @@ defmodule Ash.Schema do
                 constraint_opts,
                 primary_key: attribute.primary_key?,
                 read_after_writes: read_after_writes?,
-                redact: attribute.sensitive?
+                redact: attribute.sensitive?,
+                source: attribute.source
               )
             )
           end

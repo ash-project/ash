@@ -109,6 +109,7 @@ locals_without_parens = [
   sensitive?: 1,
   soft?: 1,
   sort: 1,
+  source: 1,
   source_field: 1,
   source_field_on_join_table: 1,
   strategy: 1,
