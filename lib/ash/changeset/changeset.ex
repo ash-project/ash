@@ -2349,7 +2349,7 @@ defmodule Ash.Changeset do
   @doc "Adds a before_action hook to the changeset."
   @spec before_action(
           t(),
-          (t() -> t() | {t(), %{notificactions: list(Ash.Notifier.Notification.t())}})
+          (t() -> t() | {t(), %{notifications: list(Ash.Notifier.Notification.t())}})
         ) ::
           t()
   def before_action(changeset, func) do
