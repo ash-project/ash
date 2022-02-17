@@ -66,52 +66,69 @@ defmodule Ash.ResourceFormatter do
       contents
   end
 
+  # Due to issues around generating a list of patches to apply and applying them all at once, this now iteratively swaps sections until no more sections
+  # need to be swapped. It is probably way slower than a more efficient alternative, but its the only non-buggy implementation so far.
+  # An alternative may be to use a depth-tracker (via a custom AST traversal function) and do the "deepest" changes first, or group them by depth, and make n
+  # calls to `patch_string/2` where n is each depth that has patches, starting at the highest depth.
   defp reorder_sections(contents, opts, using_modules) do
     contents
     |> Sourceror.parse_string!()
     |> get_reorder_patch(opts, using_modules)
     |> case do
-      nil ->
+      [] ->
         contents
 
-      patch ->
+      patches ->
         contents
-        |> Sourceror.patch_string([patch])
+        |> Sourceror.patch_string(patches)
         |> reorder_sections(opts, using_modules)
     end
   end
 
   defp get_reorder_patch(parsed, opts, using_modules) do
-    {_, patch} =
-      Macro.prewalk(parsed, nil, fn
-        {:defmodule, _, [_, [{{:__block__, _, [:do]}, {:__block__, _, body}}]]} = expr, nil ->
+    {_, patches} =
+      Macro.prewalk(parsed, [], fn
+        {:defmodule, _, [_, [{{:__block__, _, [:do]}, {:__block__, _, body}}]]} = expr, [] ->
           case get_extensions(body, using_modules) do
             {:ok, extensions} ->
               replacement = do_reorder_sections(body, extensions)
 
-              patch =
-                body
-                |> Enum.zip(replacement)
-                |> Enum.find_value(fn {body_section, replacement_section} ->
+              section_moves = body |> Enum.zip(replacement)
+
+              patches =
+                Enum.find_value(section_moves, fn {body_section, replacement_section} ->
                   if body_section != replacement_section do
-                    %{
-                      range: Sourceror.get_range(body_section, include_comments: true),
-                      change: Sourceror.to_string(replacement_section, opts)
-                    }
+                    move_to =
+                      Enum.find_value(section_moves, fn {left, _} ->
+                        if left == replacement_section do
+                          left
+                        end
+                      end)
+
+                    [
+                      %{
+                        range: Sourceror.get_range(body_section, include_comments: true),
+                        change: Sourceror.to_string(replacement_section, opts)
+                      },
+                      %{
+                        range: Sourceror.get_range(move_to, include_comments: true),
+                        change: Sourceror.to_string(body_section)
+                      }
+                    ]
                   end
                 end)
 
-              {expr, patch}
+              {expr, patches || []}
 
             _ ->
-              {expr, nil}
+              {expr, []}
           end
 
-        expr, patch ->
-          {expr, patch}
+        expr, patches ->
+          {expr, patches}
       end)
 
-    patch
+    patches
   end
 
   defp do_reorder_sections(body, extensions) do
