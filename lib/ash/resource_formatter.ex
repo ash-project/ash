@@ -53,11 +53,7 @@ defmodule Ash.ResourceFormatter do
     using_modules = Application.get_env(:ash, :formatter)[:using_modules] || [Ash.Resource]
 
     contents
-    |> Sourceror.parse_string!()
-    |> format_resources(opts, using_modules)
-    |> then(fn patches ->
-      Sourceror.patch_string(contents, patches)
-    end)
+    |> reorder_sections(opts, using_modules)
     |> Code.format_string!(opts_without_plugin(opts))
     |> then(fn iodata ->
       [iodata, ?\n]
@@ -70,45 +66,55 @@ defmodule Ash.ResourceFormatter do
       contents
   end
 
-  defp format_resources(parsed, opts, using_modules) do
-    {_, patches} =
-      Macro.prewalk(parsed, [], fn
-        {:defmodule, _, [_, [{{:__block__, _, [:do]}, {:__block__, _, body}}]]} = expr, patches ->
+  defp reorder_sections(contents, opts, using_modules) do
+    contents
+    |> Sourceror.parse_string!()
+    |> get_reorder_patch(opts, using_modules)
+    |> case do
+      nil ->
+        contents
+
+      patch ->
+        contents
+        |> Sourceror.patch_string([patch])
+        |> reorder_sections(opts, using_modules)
+    end
+  end
+
+  defp get_reorder_patch(parsed, opts, using_modules) do
+    {_, patch} =
+      Macro.prewalk(parsed, nil, fn
+        {:defmodule, _, [_, [{{:__block__, _, [:do]}, {:__block__, _, body}}]]} = expr, nil ->
           case get_extensions(body, using_modules) do
             {:ok, extensions} ->
-              replacement = format_resource(body, extensions)
+              replacement = do_reorder_sections(body, extensions)
 
-              patches =
+              patch =
                 body
                 |> Enum.zip(replacement)
-                |> Enum.reduce(patches, fn {body_section, replacement_section}, patches ->
-                  if body_section == replacement_section do
-                    patches
-                  else
-                    [
-                      %{
-                        range: Sourceror.get_range(body_section, include_comments: true),
-                        change: Sourceror.to_string(replacement_section, opts)
-                      }
-                      | patches
-                    ]
+                |> Enum.find_value(fn {body_section, replacement_section} ->
+                  if body_section != replacement_section do
+                    %{
+                      range: Sourceror.get_range(body_section, include_comments: true),
+                      change: Sourceror.to_string(replacement_section, opts)
+                    }
                   end
                 end)
 
-              {expr, patches}
+              {expr, patch}
 
             _ ->
-              {expr, patches}
+              {expr, nil}
           end
 
-        expr, patches ->
-          {expr, patches}
+        expr, patch ->
+          {expr, patch}
       end)
 
-    patches
+    patch
   end
 
-  defp format_resource(body, extensions) do
+  defp do_reorder_sections(body, extensions) do
     sections =
       [Ash.Resource.Dsl | extensions]
       |> Enum.flat_map(fn extension ->
