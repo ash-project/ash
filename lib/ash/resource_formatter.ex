@@ -66,10 +66,13 @@ defmodule Ash.ResourceFormatter do
       contents
   end
 
-  # Due to issues around generating a list of patches to apply and applying them all at once, this now iteratively swaps sections until no more sections
-  # need to be swapped. It is probably way slower than a more efficient alternative, but its the only non-buggy implementation so far.
-  # An alternative may be to use a depth-tracker (via a custom AST traversal function) and do the "deepest" changes first, or group them by depth, and make n
-  # calls to `patch_string/2` where n is each depth that has patches, starting at the highest depth.
+  # Due to issues around generating a list of patches to apply and applying them all at once, this now
+  # iteratively swaps sections until no more sections need to be swapped. It is probably way slower than a
+  # more efficient alternative, but its the only non-buggy implementation so far.
+
+  # An alternative may be to use a depth-tracker (via a custom AST traversal function) and do the "deepest"
+  # changes first, or group them by depth, and make n calls to `patch_string/2` where n is each depth that
+  # has patches, starting at the highest depth.
   defp reorder_sections(contents, opts, using_modules) do
     contents
     |> Sourceror.parse_string!()
@@ -100,9 +103,7 @@ defmodule Ash.ResourceFormatter do
                   if body_section != replacement_section do
                     move_to =
                       Enum.find_value(section_moves, fn {left, _} ->
-                        if left == replacement_section do
-                          left
-                        end
+                        left == replacement_section && left
                       end)
 
                     [
