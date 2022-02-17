@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.51.2](https://github.com/ash-project/ash/compare/v1.51.1...v1.51.2) (2022-02-17)
+
+
+
+
+### Bug Fixes:
+
+* don't blow away sections when formatting
+
+* properly reorder sections in the formatter
+
 ## [v1.51.1](https://github.com/ash-project/ash/compare/v1.51.0...v1.51.1) (2022-02-17)
 
 
