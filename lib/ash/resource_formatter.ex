@@ -53,7 +53,11 @@ defmodule Ash.ResourceFormatter do
     using_modules = Application.get_env(:ash, :formatter)[:using_modules] || [Ash.Resource]
 
     contents
-    |> reorder_sections(opts, using_modules)
+    |> Sourceror.parse_string!()
+    |> format_resources(opts, using_modules)
+    |> then(fn patches ->
+      Sourceror.patch_string(contents, patches)
+    end)
     |> Code.format_string!(opts_without_plugin(opts))
     |> then(fn iodata ->
       [iodata, ?\n]
@@ -66,64 +70,114 @@ defmodule Ash.ResourceFormatter do
       contents
   end
 
-  # Due to issues around generating a list of patches to apply and applying them all at once, this now
-  # iteratively swaps sections until no more sections need to be swapped. It is probably way slower than a
-  # more efficient alternative, but its the only non-buggy implementation so far.
-
-  # An alternative may be to use a depth-tracker (via a custom AST traversal function) and do the "deepest"
-  # changes first, or group them by depth, and make n calls to `patch_string/2` where n is each depth that
-  # has patches, starting at the highest depth.
-  defp reorder_sections(contents, opts, using_modules) do
-    contents
-    |> Sourceror.parse_string!()
-    |> get_reorder_patch(opts, using_modules)
-    |> case do
-      [] ->
-        contents
-
-      patches ->
-        contents
-        |> Sourceror.patch_string(patches)
-        |> reorder_sections(opts, using_modules)
-    end
-  end
-
-  defp get_reorder_patch(parsed, opts, using_modules) do
+  defp format_resources(parsed, opts, using_modules) do
     {_, patches} =
-      Macro.prewalk(parsed, [], fn
-        {:defmodule, _, [_, [{{:__block__, _, [:do]}, {:__block__, _, body}}]]} = expr, [] ->
+      prewalk(parsed, [], false, fn
+        {:defmodule, _, [_, [{{:__block__, _, [:do]}, {:__block__, _, body}}]]} = expr,
+        patches,
+        false ->
           case get_extensions(body, using_modules) do
             {:ok, extensions} ->
-              replacement = do_reorder_sections(body, extensions)
-
-              section_moves = body |> Enum.zip(replacement)
+              replacement = format_resource(body, extensions)
 
               patches =
-                Enum.find_value(section_moves, fn {body_section, replacement_section} ->
-                  if body_section != replacement_section do
+                body
+                |> Enum.zip(replacement)
+                |> Enum.reduce(patches, fn {body_section, replacement_section}, patches ->
+                  if body_section == replacement_section do
+                    patches
+                  else
                     [
                       %{
                         range: Sourceror.get_range(body_section, include_comments: true),
-                        change: Sourceror.to_string([replacement_section, body_section], opts)
+                        change: Sourceror.to_string(replacement_section, opts)
                       }
+                      | patches
                     ]
                   end
                 end)
 
-              {expr, patches || []}
+              {expr, patches, true}
 
             _ ->
-              {expr, []}
+              {expr, patches, true}
           end
 
-        expr, patches ->
-          {expr, patches}
+        expr, patches, branch_acc ->
+          {expr, patches, branch_acc}
       end)
 
     patches
   end
 
-  defp do_reorder_sections(body, extensions) do
+  @doc """
+  Copy of `Macro.prewalk/2` w/ a branch accumulator
+  """
+  def prewalk(ast, fun) when is_function(fun, 1) do
+    elem(prewalk(ast, nil, nil, fn x, nil, nil -> {fun.(x), nil} end), 0)
+  end
+
+  @doc """
+  Copy of `Macro.prewalk/3` w/ a branch accumulator
+  """
+  def prewalk(ast, acc, branch_acc, fun) when is_function(fun, 3) do
+    traverse(ast, acc, branch_acc, fun, fn x, a -> {x, a} end)
+  end
+
+  @doc """
+  A copy of the corresponding `Macro.traverse` function that has a separate accumulator that only goes *down* each branch, only for `pre`
+  """
+  def traverse(ast, acc, branch_acc, pre, post)
+      when is_function(pre, 3) and is_function(post, 2) do
+    {ast, acc, branch_acc} = pre.(ast, acc, branch_acc)
+    do_traverse(ast, acc, branch_acc, pre, post)
+  end
+
+  defp do_traverse({form, meta, args}, acc, branch_acc, pre, post) when is_atom(form) do
+    {args, acc} = do_traverse_args(args, acc, branch_acc, pre, post)
+    post.({form, meta, args}, acc)
+  end
+
+  defp do_traverse({form, meta, args}, acc, branch_acc, pre, post) do
+    {form, acc, branch_acc} = pre.(form, acc, branch_acc)
+    {form, acc} = do_traverse(form, acc, branch_acc, pre, post)
+    {args, acc} = do_traverse_args(args, acc, branch_acc, pre, post)
+    post.({form, meta, args}, acc)
+  end
+
+  defp do_traverse({left, right}, acc, branch_acc, pre, post) do
+    {left, acc, left_branch_acc} = pre.(left, acc, branch_acc)
+    {left, acc} = do_traverse(left, acc, left_branch_acc, pre, post)
+    {right, acc, right_branch_acc} = pre.(right, acc, branch_acc)
+    {right, acc} = do_traverse(right, acc, right_branch_acc, pre, post)
+    post.({left, right}, acc)
+  end
+
+  defp do_traverse(list, acc, branch_acc, pre, post) when is_list(list) do
+    {list, acc} = do_traverse_args(list, acc, branch_acc, pre, post)
+    post.(list, acc)
+  end
+
+  defp do_traverse(x, acc, _branch_acc, _pre, post) do
+    post.(x, acc)
+  end
+
+  defp do_traverse_args(args, acc, _branch_acc, _pre, _post) when is_atom(args) do
+    {args, acc}
+  end
+
+  defp do_traverse_args(args, acc, branch_acc, pre, post) when is_list(args) do
+    :lists.mapfoldl(
+      fn x, acc ->
+        {x, acc, branch_acc} = pre.(x, acc, branch_acc)
+        do_traverse(x, acc, branch_acc, pre, post)
+      end,
+      acc,
+      args
+    )
+  end
+
+  defp format_resource(body, extensions) do
     sections =
       [Ash.Resource.Dsl | extensions]
       |> Enum.flat_map(fn extension ->
