@@ -197,13 +197,18 @@ defmodule Ash.Actions.Update do
                           {:ok, changeset.data, %{notifications: []}}
                         else
                           if Ash.Changeset.changing_attributes?(changeset) do
-                            changeset = Ash.Changeset.set_defaults(changeset, :update, true)
+                            changeset =
+                              changeset
+                              |> Ash.Changeset.set_defaults(:update, true)
+                              |> Ash.Changeset.put_context(:changed?, false)
 
                             resource
                             |> Ash.DataLayer.update(changeset)
                             |> add_tenant(changeset)
                             |> manage_relationships(api, changeset, engine_opts)
                           else
+                            changeset = Ash.Changeset.put_context(changeset, :changed?, false)
+
                             {:ok, changeset.data}
                             |> add_tenant(changeset)
                             |> manage_relationships(api, changeset, engine_opts)

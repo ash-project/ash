@@ -17,6 +17,7 @@ defmodule Ash.Resource.Relationships.HasOne do
     :read_action,
     :not_found_message,
     :violation_message,
+    :manual,
     validate_destination_field?: true,
     cardinality: :one,
     type: :has_one,
@@ -37,7 +38,8 @@ defmodule Ash.Resource.Relationships.HasOne do
           private?: boolean,
           source_field: atom,
           allow_orphans?: boolean,
-          description: String.t()
+          description: String.t(),
+          manual: atom | {atom, Keyword.t()} | nil
         }
 
   import Ash.Resource.Relationships.SharedOptions
@@ -47,16 +49,17 @@ defmodule Ash.Resource.Relationships.HasOne do
                |> OptionsHelpers.set_default!(:source_field, :id)
 
   @opt_schema Ash.OptionsHelpers.merge_schemas(
-                [
-                  required?: [
-                    type: :boolean,
-                    doc: """
-                    Marks the relationship as required. This is *not* currently validated anywhere, since the
-                    relationship is managed by the destination, but ash_graphql uses it for type information,
-                    and it can be used for expressiveness.
-                    """
-                  ]
-                ],
+                [manual()] ++
+                  [
+                    required?: [
+                      type: :boolean,
+                      doc: """
+                      Marks the relationship as required. This is *not* currently validated anywhere, since the
+                      relationship is managed by the destination, but ash_graphql uses it for type information,
+                      and it can be used for expressiveness.
+                      """
+                    ]
+                  ],
                 @global_opts,
                 "Relationship Options"
               )

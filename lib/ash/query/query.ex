@@ -2022,6 +2022,22 @@ defmodule Ash.Query do
           )
         ]
 
+      %__MODULE__{} = destination_query ->
+        if Map.get(relationship, :manual) &&
+             (destination_query.limit ||
+                (destination_query.offset && destination_query.offset != 0)) do
+          [
+            InvalidQuery.exception(
+              resource: resource,
+              relationship: key,
+              query: destination_query,
+              load_path: Enum.reverse(path)
+            )
+          ]
+        else
+          do_validate_load(relationship.destination, destination_query, [key | path])
+        end
+
       other ->
         do_validate_load(relationship.destination, other, [key | path])
     end

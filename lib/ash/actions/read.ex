@@ -285,7 +285,7 @@ defmodule Ash.Actions.Read do
               end
               |> run_before_action()
 
-            {query, load_requests} = Load.requests(query)
+            {query, load_requests} = Load.requests(query, opts)
 
             case Filter.run_other_data_layer_filters(
                    query.api,

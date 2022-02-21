@@ -15,6 +15,7 @@ defmodule Ash.Resource.Relationships.HasMany do
     :read_action,
     :not_found_message,
     :violation_message,
+    :manual,
     validate_destination_field?: true,
     cardinality: :many,
     type: :has_many
@@ -33,7 +34,8 @@ defmodule Ash.Resource.Relationships.HasMany do
           destination_field: atom,
           private?: boolean,
           source_field: atom,
-          description: String.t()
+          description: String.t(),
+          manual: atom | {atom, Keyword.t()} | nil
         }
 
   import Ash.Resource.Relationships.SharedOptions
@@ -43,11 +45,18 @@ defmodule Ash.Resource.Relationships.HasMany do
                |> OptionsHelpers.set_default!(:source_field, :id)
 
   @opt_schema Ash.OptionsHelpers.merge_schemas(
-                [],
+                [
+                  manual()
+                ],
                 @global_opts,
                 "Relationship Options"
               )
 
   @doc false
   def opt_schema, do: @opt_schema
+
+  def manual({module, opts}) when is_atom(module) and is_list(opts),
+    do: {:ok, {module, opts}}
+
+  def manual(module) when is_atom(module), do: {:ok, {module, []}}
 end

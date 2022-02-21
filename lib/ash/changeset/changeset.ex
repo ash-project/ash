@@ -1590,11 +1590,20 @@ defmodule Ash.Changeset do
 
         add_error(changeset, error)
 
+      %{manual: manual} = relationship when not is_nil(manual) ->
+        error =
+          InvalidRelationship.exception(
+            relationship: relationship.name,
+            message: "Cannot manage a manual relationship"
+          )
+
+        add_error(changeset, error)
+
       %{cardinality: :one, type: type} = relationship when is_list(input) and length(input) > 1 ->
         error =
           InvalidRelationship.exception(
             relationship: relationship.name,
-            message: "Cannot manage to a #{type} relationship with a list of records"
+            message: "Cannot manage a #{type} relationship with a list of records"
           )
 
         add_error(changeset, error)

@@ -92,4 +92,53 @@ defmodule Ash.Resource.Relationships.SharedOptions do
   def shared_options do
     @shared_options
   end
+
+  def manual do
+    {:manual,
+     type: {:ash_behaviour, Ash.Resource.ManualRelationship},
+     doc: """
+     Allows for relationships that are fetched manually. WARNING: EXPERIMENTAL
+
+     Manual relationships do not support filters or aggregates at the moment. In the future, what we may do is
+     allow the data layer to be configured with a hook that expresses how to implement this manual relationship
+     at the data layer level, like providing a custom ecto join for ash_postgres. This is the simple groundwork
+     for that.
+
+     ```elixir
+     # in the resource
+     relationships do
+       has_many :somethings, MyApp.Something do
+         manual {MyApp.FetchSomethings, [opt1: :value]}
+         # or if there are no opts
+         # manual MyApp.FetchSomethings
+       end
+     end
+
+     # the implementation
+     defmodule MyApp.FetchSomethings do
+       use Ash.Resource.ManualRelationship
+
+       def load(records, _opts, %{relationship: relationship}) do
+         # Return a map of primary keys of the records to the related records.
+         # This example is likely suboptimal because it does a separate fetch for
+         # each record, whereas you likely want to try to fetch them all at once,
+         # and then create the mapping from pkey values to related records
+         # For example:
+
+         # get the primary key
+         primary_key = Ash.Resource.Info.primary_key(relationship.source)
+         # e.g [:id]
+
+         # key the records by primary key and the related records with that primary key
+         {:ok,
+           Map.new(records, fn record ->
+             # the key is the pkey values, e.g `%{id: 1}`
+             # the value is the related records for that record
+             {Map.take(record, primary_key), get_related_records(record)}
+           end)}
+       end
+     end
+     ```
+     """}
+  end
 end

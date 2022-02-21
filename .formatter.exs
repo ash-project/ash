@@ -71,6 +71,7 @@ locals_without_parens = [
   list: 3,
   list: 4,
   load: 1,
+  manual: 1,
   manual?: 1,
   many_to_many: 2,
   many_to_many: 3,

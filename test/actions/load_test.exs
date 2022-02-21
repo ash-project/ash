@@ -36,6 +36,30 @@ defmodule Ash.Test.Actions.LoadTest do
     end
   end
 
+  defmodule PostsInSameCategory do
+    use Ash.Resource.ManualRelationship
+
+    def load(posts, _, %{query: destination_query, api: api}) do
+      categories = Enum.map(posts, & &1.category)
+
+      other_posts =
+        destination_query
+        |> Ash.Query.filter(category in ^categories)
+        |> api.read!()
+        |> Enum.group_by(& &1.category)
+
+      {:ok,
+       Map.new(posts, fn post ->
+         related_posts =
+           other_posts
+           |> Map.get(post.category, [])
+           |> Enum.reject(&(&1.id == post.id))
+
+         {Map.take(post, [:id]), related_posts}
+       end)}
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -53,11 +77,16 @@ defmodule Ash.Test.Actions.LoadTest do
       uuid_primary_key :id
       attribute :title, :string
       attribute :contents, :string
+      attribute :category, :string
       timestamps()
     end
 
     relationships do
       belongs_to :author, Author
+
+      has_many :posts_in_same_category, __MODULE__ do
+        manual PostsInSameCategory
+      end
 
       many_to_many :categories, Ash.Test.Actions.LoadTest.Category,
         through: Ash.Test.Actions.LoadTest.PostCategory,
@@ -147,6 +176,29 @@ defmodule Ash.Test.Actions.LoadTest do
   end
 
   describe "loads" do
+    test "it allows loading manual relationships" do
+      post1 =
+        Post
+        |> new(%{title: "post1", category: "foo"})
+        |> Api.create!()
+
+      Post
+      |> new(%{title: "post2", category: "bar"})
+      |> Api.create!()
+
+      post3 =
+        Post
+        |> new(%{title: "post2", category: "foo"})
+        |> Api.create!()
+
+      post3_id = post3.id
+
+      assert [%{id: ^post3_id}] =
+               post1
+               |> Api.load!(:posts_in_same_category)
+               |> Map.get(:posts_in_same_category)
+    end
+
     test "it allows loading related data" do
       author =
         Author

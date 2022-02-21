@@ -16,6 +16,7 @@ defmodule Ash.Resource.Transformers.ValidateRelationshipAttributes do
 
     resource
     |> Ash.Resource.Info.relationships()
+    |> Enum.reject(&Map.get(&1, :manual))
     |> Enum.filter(& &1.validate_destination_field?)
     |> Enum.each(&validate_relationship(&1, attribute_names))
 

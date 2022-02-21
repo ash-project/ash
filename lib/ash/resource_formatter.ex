@@ -101,19 +101,10 @@ defmodule Ash.ResourceFormatter do
               patches =
                 Enum.find_value(section_moves, fn {body_section, replacement_section} ->
                   if body_section != replacement_section do
-                    move_to =
-                      Enum.find_value(section_moves, fn {left, _} ->
-                        left == replacement_section && left
-                      end)
-
                     [
                       %{
                         range: Sourceror.get_range(body_section, include_comments: true),
-                        change: Sourceror.to_string(replacement_section, opts)
-                      },
-                      %{
-                        range: Sourceror.get_range(move_to, include_comments: true),
-                        change: Sourceror.to_string(body_section)
+                        change: Sourceror.to_string([replacement_section, body_section], opts)
                       }
                     ]
                   end
