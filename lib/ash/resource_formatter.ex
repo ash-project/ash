@@ -63,11 +63,6 @@ defmodule Ash.ResourceFormatter do
       [iodata, ?\n]
     end)
     |> IO.iodata_to_binary()
-  rescue
-    e ->
-      Logger.info("Exception while formatting: #{Exception.format(:error, e, __STACKTRACE__)}")
-
-      contents
   end
 
   defp format_resources(parsed, opts, using_modules) do

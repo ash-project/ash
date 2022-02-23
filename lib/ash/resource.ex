@@ -58,6 +58,12 @@ defmodule Ash.Resource do
                      |> Enum.map(& &1.name)
                      |> Enum.uniq()
 
+      @arguments_by_action __MODULE__
+                           |> Ash.Resource.Info.actions()
+                           |> Map.new(fn action ->
+                             {action.name, Enum.map(action.arguments, & &1.name)}
+                           end)
+
       @all_attributes __MODULE__
                       |> Ash.Resource.Info.attributes()
                       |> Enum.map(& &1.name)
@@ -82,6 +88,7 @@ defmodule Ash.Resource do
       |> MyApp.Api.create()
       ```
       """
+      @spec input(values :: map | Keyword.t()) :: map | no_return
       def input(opts) do
         Map.new(opts, fn {key, value} ->
           if key in @all_arguments || key in @all_attributes do
@@ -90,6 +97,28 @@ defmodule Ash.Resource do
             raise KeyError, key: key
           end
         end)
+      end
+
+      @doc """
+      Same as `input/1`, except restricts the keys to values accepted by the action provided.
+      """
+      @spec input(values :: map | Keyword.t(), action :: atom) :: map | no_return
+      def input(opts, action) do
+        case Map.fetch(@arguments_by_action, action) do
+          :error ->
+            raise ArgumentError, message: "No such action #{inspect(action)}"
+
+          {:ok, args} ->
+            action = Ash.Resource.Info.action(__MODULE__, action)
+
+            Map.new(opts, fn {key, value} ->
+              if key in action.accept do
+                {key, value}
+              else
+                raise KeyError, key: key
+              end
+            end)
+        end
       end
     end
   end
