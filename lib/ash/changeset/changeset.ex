@@ -717,6 +717,7 @@ defmodule Ash.Changeset do
         if Enum.all?(where || [], fn {module, opts} ->
              module.validate(changeset, opts) == :ok
            end) do
+          {:ok, opts} = module.init(opts)
           module.change(changeset, opts, %{actor: actor})
         else
           changeset

@@ -75,14 +75,6 @@ defmodule Ash.Resource.Change do
   end
 
   @doc false
-  def transform(%{change: {module, opts}} = change) do
-    case module.init(opts) do
-      {:ok, opts} -> {:ok, %{change | change: {module, opts}}}
-      {:error, error} -> {:error, error}
-    end
-  end
-
-  @doc false
   def on(list) do
     list
     |> List.wrap()

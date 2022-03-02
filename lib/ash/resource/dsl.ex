@@ -311,8 +311,8 @@ defmodule Ash.Resource.Dsl do
       "change relate_actor(:reporter)",
       "change {MyCustomChange, :foo}"
     ],
+    modules: [:change],
     target: Ash.Resource.Change,
-    transform: {Ash.Resource.Change, :transform, []},
     schema: Ash.Resource.Change.action_schema(),
     args: [:change]
   }
@@ -373,8 +373,8 @@ defmodule Ash.Resource.Dsl do
       "change relate_actor(:reporter)",
       "change {MyCustomChange, :foo}"
     ],
+    modules: [:change],
     target: Ash.Resource.Change,
-    transform: {Ash.Resource.Change, :transform, []},
     schema: Ash.Resource.Change.schema(),
     args: [:change]
   }
