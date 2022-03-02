@@ -1123,16 +1123,17 @@ defmodule Ash.Dsl.Extension do
     end
   end
 
-  def expand_alias(ast, env) do
+  def expand_alias(ast, %Macro.Env{} = env) do
     Macro.postwalk(ast, fn
       {first, {:__aliases__, _, _} = node} ->
-        {first, Macro.expand(node, %{env | function: {:ash_dsl_config, 0}})}
+        {first, Macro.expand(node, %{env | function: {:ash_dsl_config, 0}, lexical_tracker: nil})}
 
       {{:__aliases__, _, _} = node, second} ->
-        {Macro.expand(node, %{env | function: {:ash_dsl_config, 0}}), second}
+        {Macro.expand(node, %{env | function: {:ash_dsl_config, 0}, lexical_tracker: nil}),
+         second}
 
       {:__aliases__, _, _} = node ->
-        Macro.expand(node, %{env | function: {:ash_dsl_config, 0}})
+        Macro.expand(node, %{env | function: {:ash_dsl_config, 0}, lexical_tracker: nil})
 
       other ->
         other
