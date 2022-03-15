@@ -1,3 +1,4 @@
+:erlang.system_flag(:backtrace_depth, 80)
 ExUnit.start()
 Logger.configure(level: :debug)
 

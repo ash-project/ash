@@ -14,7 +14,7 @@ defmodule Ash.Resource.Transformers.RequireUniqueActionNames do
     |> Enum.each(fn {name, actions} ->
       unless Enum.count(actions) == 1 do
         raise DslError.exception(
-                module: __MODULE__,
+                module: resource,
                 message: """
                 Multiple actions with the name `#{name}` defined in #{inspect(resource)}.
 

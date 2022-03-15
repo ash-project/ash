@@ -26,6 +26,7 @@ defmodule Ash.Engine.Request do
     :actor,
     :authorize?,
     :engine_pid,
+    additional_context: %{},
     manage_changeset?: false,
     notify?: false,
     authorized?: false,
@@ -171,7 +172,7 @@ defmodule Ash.Engine.Request do
       resource: opts[:resource],
       changeset: opts[:changeset],
       path: List.wrap(opts[:path]),
-      action_type: opts[:action_type],
+      action_type: opts[:action_type] || (opts[:action] && opts[:action].type),
       action: opts[:action],
       async?: Keyword.get(opts, :async?, true),
       data: data,
@@ -184,9 +185,9 @@ defmodule Ash.Engine.Request do
       state: :strict_check,
       actor: opts[:actor],
       notify?: opts[:notify?] == true,
+      authorize?: Keyword.get(opts, :authorize?, true),
       authorized?: opts[:authorize?] == false,
       verbose?: opts[:verbose?] || false,
-      authorize?: opts[:authorize?] || true,
       write_to_data?: Keyword.get(opts, :write_to_data?, true)
     }
   end
@@ -214,7 +215,7 @@ defmodule Ash.Engine.Request do
         end
 
       {:waiting, new_request, notifications, dependencies} ->
-        notifications = update_changeset(request, new_request.changeset, notifications)
+        notifications = update_changeset(new_request, new_request.changeset, notifications)
         {:wait, new_request, notifications, dependencies}
 
       {:continue, new_request, notifications} ->
@@ -248,6 +249,10 @@ defmodule Ash.Engine.Request do
 
   def do_next(%{state: :strict_check, authorize?: false} = request) do
     log(request, fn -> "Skipping strict check due to authorize?: false" end)
+    {:continue, %{request | state: :fetch_data}, []}
+  end
+
+  def do_next(%{state: :strict_check, resource: nil} = request) do
     {:continue, %{request | state: :fetch_data}, []}
   end
 
@@ -312,6 +317,10 @@ defmodule Ash.Engine.Request do
     {:complete, %{request | state: :complete}, [], []}
   end
 
+  def do_next(%{state: :check, resource: nil} = request) do
+    {:complete, %{request | state: :complete}, [], []}
+  end
+
   def do_next(%{state: :check} = request) do
     case Ash.Resource.Info.authorizers(request.resource) do
       [] ->
@@ -361,6 +370,22 @@ defmodule Ash.Engine.Request do
           end
       end)
     end
+  end
+
+  def sort_and_clean_notifications(notifications) do
+    {front, back} =
+      notifications
+      |> List.wrap()
+      |> Enum.uniq()
+      |> Enum.split_with(fn
+        {:requests, _} ->
+          true
+
+        _ ->
+          false
+      end)
+
+    front ++ back
   end
 
   def wont_receive(request, path, field) do
@@ -858,7 +883,7 @@ defmodule Ash.Engine.Request do
   rescue
     e ->
       Logger.error(
-        "Exception while running authorization query: #{inspect(Exception.message(e))}"
+        "Exception while running authorization query: #{inspect(Exception.format(:error, e, __STACKTRACE__))}"
       )
 
       {:error,
@@ -902,7 +927,7 @@ defmodule Ash.Engine.Request do
   defp try_resolve_local(request, field, internal?) do
     authorized? = Enum.all?(Map.values(request.authorizer_state), &(&1 == :authorized))
 
-    # Don't fetch honor requests for data until the request is authorized
+    # Don't honor requests for special fields until the request is authorized
     if field in [
          :data,
          :query,
@@ -960,6 +985,18 @@ defmodule Ash.Engine.Request do
       log(request, fn -> "resolving #{field}" end)
 
       case resolver.(resolver_context) do
+        {:new_deps, new_deps} ->
+          log(request, fn -> "New dependencies for #{field}: #{inspect(new_deps)}" end)
+
+          new_request =
+            Map.put(
+              new_request,
+              field,
+              %{unresolved | deps: Enum.uniq(unresolved.deps ++ new_deps)}
+            )
+
+          {:skipped, new_request, notifications, new_deps}
+
         {:requests, requests} ->
           log(request, fn ->
             paths =
@@ -987,7 +1024,7 @@ defmodule Ash.Engine.Request do
             Map.update!(
               unresolved,
               :deps,
-              &(&1 ++ new_deps)
+              &Enum.uniq(&1 ++ new_deps)
             )
 
           new_request = Map.put(request, field, new_unresolved)
@@ -1040,7 +1077,6 @@ defmodule Ash.Engine.Request do
           handle_successful_resolve(
             field,
             value,
-            request,
             new_request,
             notifications ++
               resource_notifications ++
@@ -1056,7 +1092,6 @@ defmodule Ash.Engine.Request do
           handle_successful_resolve(
             field,
             value,
-            request,
             new_request,
             notifications,
             internal?
@@ -1072,8 +1107,8 @@ defmodule Ash.Engine.Request do
     end
   end
 
-  defp handle_successful_resolve(field, value, request, new_request, notifications, internal?) do
-    value = process_resolved_field(field, value, request)
+  defp handle_successful_resolve(field, value, new_request, notifications, internal?) do
+    value = process_resolved_field(field, value, new_request)
 
     {new_request, notifications} =
       if internal? do
@@ -1087,10 +1122,11 @@ defmodule Ash.Engine.Request do
 
         {new_request, notifications}
       else
-        {request, Enum.filter(notifications, &match?({:requests, _}, &1))}
+        {new_request, Enum.filter(notifications, &match?({:requests, _}, &1))}
       end
 
     new_request = Map.put(new_request, field, value)
+
     {:ok, new_request, notifications, []}
   end
 
@@ -1153,11 +1189,17 @@ defmodule Ash.Engine.Request do
       end
     end)
     |> Map.put(:verbose?, request.verbose?)
+    |> Map.put(:actor, request.actor)
+    |> Map.put(:authorize?, request.authorize?)
+    |> Map.put(:async?, request.async?)
+    |> Ash.Helpers.deep_merge_maps(request.additional_context || %{})
   end
 
   defp local_dep?(request, dep) do
     :lists.droplast(dep) == request.path
   end
+
+  def add_initial_authorizer_state(%{resource: nil} = request), do: request
 
   def add_initial_authorizer_state(request) do
     request.resource
@@ -1282,7 +1324,7 @@ defmodule Ash.Engine.Request do
         :ok
 
       {:error, {:impossible, dep}} ->
-        raise ImpossiblePath, impossible_path: dep
+        raise ImpossiblePath, impossible_path: dep, paths: Enum.map(requests, & &1.path)
     end
   end
 

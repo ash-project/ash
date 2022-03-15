@@ -70,8 +70,6 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 ### Bug Fixes:
 
-* no IO.inspect, and log errors from formatting
-
 ### Improvements:
 
 * initial implementation of ash resource formatter
@@ -321,7 +319,6 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 ### Bug Fixes:
 
-* remove IO.inspect
 
 ## [v1.48.0-rc.28](https://github.com/ash-project/ash/compare/v1.48.0-rc.27...v1.48.0-rc.28) (2021-10-29)
 
@@ -649,8 +646,6 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 * update type spec for Ash.Sort to include single atom instead of only list. (#263)
 
 ### Improvements:
-
-* remove IO.inspect :*( and fix sobelow
 
 * support non-endpoint pubsub adapters
 

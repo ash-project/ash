@@ -36,6 +36,7 @@ defmodule Ash.Dsl.Entity do
     :name,
     :target,
     :transform,
+    :recursive_as,
     examples: [],
     entities: [],
     deprecations: [],

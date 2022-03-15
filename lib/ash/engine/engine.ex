@@ -45,12 +45,15 @@ defmodule Ash.Engine do
     :changeset,
     :runner_pid,
     :runner_ref,
+    pid_info: %{},
+    fields_to_send: %{},
     local_requests: [],
     request_handlers: %{},
     active_requests: [],
     completed_requests: [],
     errored_requests: [],
     data: %{},
+    async?: true,
     errors: []
   ]
 
@@ -72,11 +75,14 @@ defmodule Ash.Engine do
 
     requests =
       Enum.map(requests, fn request ->
+        authorize? = request.authorize? and authorize?
+
         request = %{
           request
-          | authorize?: request.authorize? and authorize?,
-            actor: actor,
-            verbose?: opts[:verbose?]
+          | authorize?: authorize?,
+            authorized?: !authorize?,
+            actor: request.actor || actor,
+            verbose?: request.verbose? || opts[:verbose?]
         }
 
         Request.add_initial_authorizer_state(request)
@@ -140,6 +146,8 @@ defmodule Ash.Engine do
     case Runner.run(
            local_requests,
            opts[:verbose?],
+           opts[:authorize?],
+           opts[:actor],
            opts[:runner_ref],
            pid,
            pid_info,
@@ -204,7 +212,8 @@ defmodule Ash.Engine do
         api: opts[:api],
         actor: opts[:actor],
         runner_ref: opts[:runner_ref],
-        authorize?: opts[:authorize?] || false
+        authorize?: opts[:authorize?] || false,
+        async?: !Application.get_env(:ash, :disable_async?)
       }
       |> log_engine_init()
 
@@ -249,7 +258,52 @@ defmodule Ash.Engine do
       send(pid, {:pid_info, pid_info})
     end)
 
-    {:noreply, new_state}
+    {:noreply, %{new_state | pid_info: pid_info}}
+  end
+
+  def sanitize_requests(requests, actor, authorize?, verbose?, async?) do
+    requests
+    |> Enum.map(fn request ->
+      authorize? = request.authorize? and authorize?
+
+      %{
+        request
+        | authorize?: authorize?,
+          authorized?: !authorize?,
+          actor: request.actor || actor,
+          verbose?: request.verbose? || verbose?,
+          async?: request.async? and async?
+      }
+    end)
+    |> Enum.map(&Request.add_initial_authorizer_state/1)
+  end
+
+  def handle_call({:new_requests, requests, from}, _, state) do
+    requests =
+      requests
+      |> Enum.reject(fn request ->
+        Enum.any?(state.requests, &(&1.path == request.path))
+      end)
+      |> sanitize_requests(state.actor, state.authorize?, state.verbose?, state.async?)
+
+    if from != state.runner_pid do
+      send(state.runner_pid, {state.runner_ref, {:requests, requests}})
+    end
+
+    {:reply, :ok,
+     %{
+       state
+       | requests: state.requests ++ requests,
+         local_requests: state.local_requests ++ Enum.map(requests, & &1.path)
+     }
+     |> maybe_send_fields()}
+  end
+
+  def handle_cast({:send_field_later, receiver_path, from, dep}, state) do
+    {:noreply,
+     state
+     |> add_field_to_send({receiver_path, from, dep})
+     |> maybe_send_fields()}
   end
 
   def handle_cast({:spawn_requests, requests}, state) do
@@ -293,7 +347,7 @@ defmodule Ash.Engine do
       send(pid, {:pid_info, pid_info})
     end)
 
-    {:noreply, new_state}
+    {:noreply, maybe_send_fields(new_state)}
   end
 
   def handle_cast(
@@ -367,25 +421,6 @@ defmodule Ash.Engine do
     |> maybe_shutdown()
   end
 
-  def handle_cast({:new_requests, requests}, state) do
-    requests =
-      requests
-      |> Enum.map(
-        &%{
-          &1
-          | authorize?: &1.authorize? and state.authorize?,
-            actor: state.actor,
-            verbose?: state.verbose?
-        }
-      )
-      |> Enum.map(&Request.add_initial_authorizer_state/1)
-
-    send(state.runner_pid, {state.runner_ref, {:requests, requests}})
-
-    %{state | local_requests: state.local_requests ++ Enum.map(requests, & &1.path)}
-    |> maybe_shutdown()
-  end
-
   def handle_cast({:local_request_complete, path}, state) do
     %{state | local_requests: state.local_requests -- [path]}
     |> maybe_shutdown()
@@ -419,6 +454,43 @@ defmodule Ash.Engine do
     else
       GenServer.cast(request_handler_pid, message)
     end
+  end
+
+  defp add_field_to_send(state, {receiver_path, from, dep}) do
+    path = :lists.droplast(dep)
+
+    Map.update!(state, :fields_to_send, fn fields_to_send ->
+      fields_to_send
+      |> Map.put_new(path, [])
+      |> Map.update!(path, &[{receiver_path, from, dep} | &1])
+    end)
+  end
+
+  defp maybe_send_fields(state) do
+    Enum.reduce(state.fields_to_send, state, fn {path, to_send}, state ->
+      case Map.fetch(state.pid_info, path) do
+        {:ok, pid} ->
+          Enum.each(to_send, fn {receiver_path, from, dep} ->
+            GenServer.cast(pid, {:send_field, receiver_path, from, dep})
+          end)
+
+          %{state | fields_to_send: Map.delete(state.fields_to_send, path)}
+
+        :error ->
+          if Enum.any?(state.requests, &(&1.path == path)) do
+            Enum.each(to_send, fn {receiver_path, from, dep} ->
+              send(
+                state.runner_pid,
+                {state.runner_ref, {:send_field, receiver_path, from, dep}}
+              )
+            end)
+
+            %{state | fields_to_send: Map.delete(state.fields_to_send, path)}
+          else
+            state
+          end
+      end
+    end)
   end
 
   defp get_request(state, pid) when is_pid(pid) do
@@ -493,7 +565,7 @@ defmodule Ash.Engine do
   defp split_local_async_requests(requests) do
     if Application.get_env(:ash, :disable_async?) ||
          Enum.any?(requests, fn request ->
-           Ash.DataLayer.data_layer_can?(request.resource, :transact) &&
+           request.resource && Ash.DataLayer.data_layer_can?(request.resource, :transact) &&
              Ash.DataLayer.in_transaction?(request.resource)
          end) do
       {requests, []}
@@ -504,6 +576,9 @@ defmodule Ash.Engine do
         {[], [first_async | rest]} ->
           {[first_async], rest}
 
+        {[local], [one_async]} ->
+          {[local], [one_async]}
+
         {local, async} ->
           {local, async}
       end
@@ -513,7 +588,8 @@ defmodule Ash.Engine do
   @doc false
   def must_be_local?(request) do
     not request.async? ||
-      not Ash.DataLayer.data_layer_can?(request.resource, :async_engine)
+      (request.resource &&
+         not Ash.DataLayer.data_layer_can?(request.resource, :async_engine))
   end
 
   defp maybe_shutdown(%{active_requests: [], local_requests: []} = state) do

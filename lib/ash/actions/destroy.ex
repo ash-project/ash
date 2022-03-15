@@ -23,30 +23,7 @@ defmodule Ash.Actions.Destroy do
     Ash.Actions.Update.run(api, changeset, action, opts)
   end
 
-  def run(api, %{data: record, resource: resource} = changeset, action, opts) do
-    authorize? =
-      if opts[:authorize?] == false do
-        false
-      else
-        opts[:authorize?] || Keyword.has_key?(opts, :actor)
-      end
-
-    opts = Keyword.put(opts, :authorize?, authorize?)
-
-    engine_opts =
-      opts
-      |> Keyword.take([:verbose?, :actor, :authorize?])
-      |> Keyword.put(:transaction?, true)
-
-    changeset = %{changeset | api: api}
-
-    changeset =
-      if opts[:tenant] do
-        Ash.Changeset.set_tenant(changeset, opts[:tenant])
-      else
-        changeset
-      end
-
+  def run(api, %{resource: resource} = changeset, action, opts) do
     opts =
       case Map.fetch(changeset.context[:private] || %{}, :actor) do
         {:ok, actor} ->
@@ -56,94 +33,201 @@ defmodule Ash.Actions.Destroy do
           opts
       end
 
+    authorize? = authorize?(opts)
+    actor = opts[:actor]
+    verbose? = opts[:verbose?]
+    return_notifications? = opts[:return_notifications?]
+    changeset = %{changeset | api: api}
+
+    changeset =
+      if opts[:tenant] do
+        Ash.Changeset.set_tenant(changeset, opts[:tenant])
+      else
+        changeset
+      end
+
+    []
+    |> as_requests(resource, api, action,
+      changeset: changeset,
+      authorize?: authorize?,
+      actor: actor
+    )
+    |> Engine.run(api,
+      verbose?: verbose?,
+      actor: actor,
+      authorize?: authorize?,
+      transaction?: true
+    )
+    |> case do
+      {:ok, engine_result} ->
+        add_notifications(engine_result, return_notifications?)
+
+      {:error, %Ash.Engine.Runner{errors: errors, changeset: runner_changeset}} ->
+        errors = Helpers.process_errors(changeset, errors)
+        {:error, Ash.Error.to_error_class(errors, changeset: runner_changeset || changeset)}
+
+      {:error, error} ->
+        error = Helpers.process_errors(changeset, error)
+
+        {:error, Ash.Error.to_error_class(error, changeset: changeset)}
+    end
+  end
+
+  def as_requests(path, resource, api, %{soft?: true} = action, request_opts) do
+    Ash.Actions.Update.as_requests(path, resource, api, action, request_opts)
+  end
+
+  def as_requests(path, resource, api, action, request_opts) do
+    changeset_dependencies = request_opts[:changeset_dependencies]
+    changeset = request_opts[:changeset]
+    changeset_input = request_opts[:changeset_input] || fn _ -> %{} end
+    modify_changeset = request_opts[:modify_changeset] || fn changeset, _ -> changeset end
+    tenant = request_opts[:tenant]
+    skip_on_nil_record? = request_opts[:skip_on_nil_record?]
+
+    record =
+      request_opts[:record] ||
+        fn _ -> raise "`record` option must be passed if `changeset` is not" end
+
     authorization_request =
       Request.new(
         resource: resource,
         api: api,
-        path: [:data],
+        path: path ++ [:data],
         action: action,
-        changeset: changeset,
-        data: [record],
+        changeset:
+          Request.resolve(changeset_dependencies, fn %{actor: actor} = context ->
+            input = changeset_input.(context) || %{}
+
+            changeset =
+              case changeset do
+                nil ->
+                  case record.(context) do
+                    nil ->
+                      if skip_on_nil_record? do
+                        :skip
+                      else
+                        raise "record was nil but `skip_on_nil_record?` was not set!"
+                      end
+
+                    record ->
+                      record
+                      |> Ash.Changeset.for_destroy(action.name, input,
+                        actor: actor,
+                        tenant: tenant
+                      )
+                      |> changeset(api, action, actor)
+                  end
+
+                changeset ->
+                  changeset(changeset, api, action, actor)
+              end
+
+            if changeset == :skip do
+              {:ok, nil}
+            else
+              changeset =
+                if tenant do
+                  Ash.Changeset.set_tenant(changeset, tenant)
+                else
+                  changeset
+                end
+
+              with %{valid?: true} = changeset <- modify_changeset.(changeset, context),
+                   %{valid?: true} = changeset <- Ash.Changeset.validate_multitenancy(changeset) do
+                {:ok, changeset}
+              else
+                %Ash.Changeset{valid?: false} = changeset ->
+                  {:error, changeset.errors}
+              end
+            end
+          end),
+        data:
+          Request.resolve([path ++ [:data, :changeset]], fn context ->
+            case get_in(context, [path] ++ [:data, :changeset]) do
+              nil ->
+                {:ok, nil}
+
+              changeset ->
+                {:ok, changeset.data}
+            end
+          end),
         name: "destroy request"
       )
 
-    changeset =
-      if changeset.__validated_for_action__ == action.name do
-        changeset
-      else
-        Ash.Changeset.for_destroy(%{changeset | action_type: :destroy}, action.name, %{},
-          actor: opts[:actor]
-        )
-      end
+    destroy_request =
+      Request.new(
+        resource: resource,
+        api: api,
+        path: path ++ [:destroy],
+        action: action,
+        authorize?: false,
+        changeset:
+          Request.resolve([path ++ [:data, :changeset]], fn context ->
+            {:ok, get_in(context, path ++ [:data, :changeset])}
+          end),
+        notify?: true,
+        manage_changeset?: true,
+        authorize?: false,
+        data:
+          Request.resolve(
+            [path ++ [:data, :data], path ++ [:destroy, :changeset]],
+            fn %{actor: actor} = context ->
+              changeset = get_in(context, path ++ [:destroy, :changeset])
+              record = changeset.data
 
-    changeset =
-      changeset
-      |> Ash.Changeset.validate_multitenancy()
+              changeset
+              |> Ash.Changeset.put_context(:private, %{actor: actor})
+              |> Ash.Changeset.with_hooks(fn changeset ->
+                if action.manual? do
+                  {:ok, record}
+                else
+                  case Ash.DataLayer.destroy(resource, changeset) do
+                    :ok ->
+                      {:ok, record}
 
-    if changeset.valid? do
-      destroy_request =
-        Request.new(
-          resource: resource,
-          api: api,
-          path: [:destroy],
-          action: action,
-          authorize?: false,
-          changeset: changeset,
-          notify?: true,
-          manage_changeset?: true,
-          authorize?: false,
-          data:
-            Request.resolve(
-              [[:data, :data], [:destroy, :changeset]],
-              fn %{destroy: %{changeset: changeset}} ->
-                changeset
-                |> Ash.Changeset.put_context(:private, %{actor: engine_opts[:actor]})
-                |> Ash.Changeset.with_hooks(fn changeset ->
-                  if action.manual? do
-                    {:ok, record}
-                  else
-                    case Ash.DataLayer.destroy(resource, changeset) do
-                      :ok ->
-                        {:ok, record}
-
-                      {:error, error} ->
-                        {:error, error}
-                    end
+                    {:error, error} ->
+                      {:error, error}
                   end
-                end)
-                |> case do
-                  {:ok, result, changeset, instructions} ->
-                    {:ok, Helpers.select(result, changeset), instructions}
-
-                  {:error, error} ->
-                    {:error, error}
                 end
+              end)
+              |> case do
+                {:ok, result, changeset, instructions} ->
+                  {:ok, Helpers.select(result, changeset), instructions}
+
+                {:error, error} ->
+                  {:error, error}
               end
-            )
-        )
+            end
+          )
+      )
 
-      case Engine.run([authorization_request, destroy_request], api, engine_opts) do
-        {:ok, engine_result} ->
-          add_notifications(engine_result, opts)
-
-        {:error, %Ash.Engine.Runner{errors: errors, changeset: runner_changeset}} ->
-          errors = Helpers.process_errors(changeset, errors)
-          {:error, Ash.Error.to_error_class(errors, changeset: runner_changeset || changeset)}
-
-        {:error, error} ->
-          error = Helpers.process_errors(changeset, error)
-          {:error, Ash.Error.to_error_class(error, changeset: changeset)}
-      end
-    else
-      {:error, Ash.Error.to_error_class(changeset.errors, changeset: changeset)}
-    end
+    [authorization_request, destroy_request]
   end
 
-  defp add_notifications(engine_result, opts) do
-    if opts[:return_notifications?] do
+  defp add_notifications(engine_result, return_notifications?) do
+    if return_notifications? do
       {:ok, Map.get(engine_result, :resource_notifications, [])}
     else
       :ok
+    end
+  end
+
+  defp authorize?(opts) do
+    if opts[:authorize?] == false do
+      false
+    else
+      opts[:authorize?] || Keyword.has_key?(opts, :actor)
+    end
+  end
+
+  defp changeset(changeset, api, action, actor) do
+    changeset = %{changeset | api: api}
+
+    if changeset.__validated_for_action__ == action.name do
+      changeset
+    else
+      Ash.Changeset.for_destroy(changeset, action.name, %{}, actor: actor)
     end
   end
 end

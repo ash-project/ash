@@ -24,14 +24,14 @@ defmodule Ash.Resource.Transformers.CachePrimaryKey do
       :error_pk_allows_nil ->
         {:error,
          DslError.exception(
-           module: __MODULE__,
+           module: resource,
            message: "Primary keys must not be allowed to be nil"
          )}
 
       [] ->
         {:error,
          DslError.exception(
-           module: __MODULE__,
+           module: resource,
            message: "Resources without a primary key are not yet supported"
          )}
 
@@ -49,7 +49,7 @@ defmodule Ash.Resource.Transformers.CachePrimaryKey do
         else
           {:error,
            DslError.exception(
-             module: __MODULE__,
+             module: resource,
              message: "Data layer does not support composite primary keys"
            )}
         end

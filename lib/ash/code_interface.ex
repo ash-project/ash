@@ -141,7 +141,7 @@ defmodule Ash.CodeInterface do
                     )
                   end
 
-                if unquote(interface.get?) do
+                if unquote(interface.get? || action.get?) do
                   query
                   |> unquote(api).read_one(Keyword.drop(opts, [:query, :tenant]))
                   |> case do
@@ -209,7 +209,7 @@ defmodule Ash.CodeInterface do
                     )
                   end
 
-                if unquote(interface.get?) do
+                if unquote(interface.get? || action.get?) do
                   query
                   |> unquote(api).read_one!(Keyword.drop(opts, [:query, :tenant]))
                   |> case do

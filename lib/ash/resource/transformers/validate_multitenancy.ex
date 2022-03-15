@@ -15,7 +15,7 @@ defmodule Ash.Resource.Transformers.ValidateMultitenancy do
       strategy == :context && not Ash.DataLayer.data_layer_can?(resource, :multitenancy) ->
         {:error,
          Ash.Error.Dsl.DslError.exception(
-           module: __MODULE__,
+           module: resource,
            path: [:multitenancy, :strategy],
            message: "Data layer does not support multitenancy"
          )}
@@ -23,7 +23,7 @@ defmodule Ash.Resource.Transformers.ValidateMultitenancy do
       strategy == :attribute && is_nil(Ash.Resource.Info.attribute(resource, attribute)) ->
         {:error,
          Ash.Error.Dsl.DslError.exception(
-           module: __MODULE__,
+           module: resource,
            path: [:multitenancy, :attribute],
            message: "Attribute #{attribute} used in multitenancy configuration does not exist"
          )}

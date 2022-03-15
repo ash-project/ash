@@ -19,6 +19,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Attribute,
     args: [:name, :type],
+    modules: [:type],
     schema: Ash.Resource.Attribute.attribute_schema()
   }
 
@@ -328,6 +329,7 @@ defmodule Ash.Resource.Dsl do
     examples: [
       "argument :password_confirmation, :string"
     ],
+    modules: [:type],
     target: Ash.Resource.Actions.Argument,
     args: [:name, :type],
     schema: Ash.Resource.Actions.Argument.schema()
@@ -1108,7 +1110,7 @@ defmodule Ash.Resource.Dsl do
   ]
 
   @moduledoc """
-  The built in resource DSL. The core DSL components of a resource are:
+  The built in resource DSL.
 
   # Table of Contents
   #{Ash.Dsl.Extension.doc_index(@sections)}

@@ -361,29 +361,39 @@ defmodule Ash.Type do
   def cast_input(_, nil, _), do: {:ok, nil}
 
   def cast_input(type, term, constraints) do
-    type = get_type(type)
+    if Ash.Dsl.is?(type, Ash.Resource) && !Ash.Resource.Info.embedded?(type) do
+      case term do
+        %^type{} = value ->
+          {:ok, value}
 
-    case type.cast_input(term, constraints) do
-      {:ok, value} ->
-        {:ok, value}
+        _other ->
+          :error
+      end
+    else
+      type = get_type(type)
 
-      :error ->
-        case term do
-          "" ->
-            cast_input(type, nil, constraints)
+      case type.cast_input(term, constraints) do
+        {:ok, value} ->
+          {:ok, value}
 
-          _ ->
-            {:error, "is invalid"}
-        end
+        :error ->
+          case term do
+            "" ->
+              cast_input(type, nil, constraints)
 
-      {:error, other} ->
-        case term do
-          "" ->
-            cast_input(type, nil, constraints)
+            _ ->
+              {:error, "is invalid"}
+          end
 
-          _ ->
-            {:error, other}
-        end
+        {:error, other} ->
+          case term do
+            "" ->
+              cast_input(type, nil, constraints)
+
+            _ ->
+              {:error, other}
+          end
+      end
     end
   end
 

@@ -2257,7 +2257,8 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp handle_indexed_maps({:array, type}, term) when is_map(term) and term != %{} do
+  @doc false
+  def handle_indexed_maps({:array, type}, term) when is_map(term) and term != %{} do
     term
     |> Enum.reduce_while({:ok, []}, fn
       {key, value}, {:ok, acc} when is_integer(key) ->
@@ -2287,7 +2288,7 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp handle_indexed_maps(_, value), do: value
+  def handle_indexed_maps(_, value), do: value
 
   @doc "Calls `force_change_attribute/3` for each key/value pair provided"
   @spec force_change_attributes(t(), map) :: t()
@@ -2480,7 +2481,7 @@ defmodule Ash.Changeset do
     Enum.map(errors, &set_path(&1, path))
   end
 
-  def set_path(error, path) do
+  def set_path(error, path) when is_map(error) do
     path = List.wrap(path)
 
     error =
@@ -2503,6 +2504,8 @@ defmodule Ash.Changeset do
       error
     end
   end
+
+  def set_path(error, _), do: error
 
   defp handle_error(error, %{handle_errors: nil} = changeset) do
     %{changeset | valid?: false, errors: [error | changeset.errors]}

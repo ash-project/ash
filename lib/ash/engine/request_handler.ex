@@ -9,6 +9,7 @@ defmodule Ash.Engine.RequestHandler do
     :pid_info,
     :runner_pid,
     :runner_ref,
+    sent_requests: [],
     dependencies_requested: [],
     notifications_sent: MapSet.new()
   ]
@@ -139,24 +140,23 @@ defmodule Ash.Engine.RequestHandler do
     {:stop, reason, state}
   end
 
-  def handle_call(
-        {:send_field, receiver_path, pid, dep},
-        _,
+  def handle_cast(
+        {:send_field, receiver_path, from, dep},
         %{request: %{path: path, state: :error}} = state
       ) do
-    if pid == state.runner_pid do
-      send(pid, {state.runner_ref, {:wont_receive, receiver_path, path, List.last(dep)}})
+    if from == state.runner_pid do
+      send(from, {state.runner_ref, {:wont_receive, receiver_path, path, List.last(dep)}})
     else
       GenServer.cast(
-        pid,
+        from,
         {:wont_receive, receiver_path, path, List.last(dep)}
       )
     end
 
-    {:reply, :ok, state}
+    {:noreply, state}
   end
 
-  def handle_call({:send_field, receiver_path, _pid, dep}, _, state) do
+  def handle_cast({:send_field, receiver_path, _from, dep}, state) do
     field = List.last(dep)
 
     case Request.send_field(
@@ -172,20 +172,20 @@ defmodule Ash.Engine.RequestHandler do
 
         Enum.each(dependency_requests, &register_dependency(new_state, &1))
 
-        {:reply, :ok, new_state}
+        {:noreply, new_state}
 
       {:ok, new_request, notifications} ->
         new_state =
           %{state | request: new_request}
           |> notify(notifications)
 
-        {:reply, :ok, new_state}
+        {:noreply, new_state}
 
       {:error, error, new_request} ->
         new_request = %{new_request | state: :error}
         new_state = %{state | request: new_request}
         notify_error(new_state, error)
-        {:reply, :ok, new_state}
+        {:noreply, new_state}
     end
   end
 
@@ -222,17 +222,21 @@ defmodule Ash.Engine.RequestHandler do
   end
 
   defp notify(state, notifications) do
-    Enum.reduce(notifications, state, fn
+    notifications
+    |> Request.sort_and_clean_notifications()
+    |> Enum.reduce(state, fn
       {:set_extra_data, key, value}, state ->
         send(state.runner_pid, {state.runner_ref, {:data, [key], value}})
         state
 
       {:requests, new_requests}, state ->
+        new_requests = Enum.reject(new_requests, &(&1.path in state.sent_requests))
+
         unless Enum.empty?(new_requests) do
-          GenServer.cast(state.engine_pid, {:new_requests, new_requests})
+          GenServer.call(state.engine_pid, {:new_requests, new_requests, self()})
         end
 
-        state
+        %{state | sent_requests: state.sent_requests ++ Enum.map(new_requests, & &1.path)}
 
       {:update_changeset, changeset}, state ->
         send(state.runner_pid, {state.runner_ref, {:update_changeset, changeset}})
@@ -281,7 +285,7 @@ defmodule Ash.Engine.RequestHandler do
     end)
   end
 
-  def register_dependency(state, dep) do
+  defp register_dependency(state, dep) do
     path = :lists.droplast(dep)
 
     destination_pid = Map.get(state.pid_info, path) || state.runner_pid
@@ -298,10 +302,9 @@ defmodule Ash.Engine.RequestHandler do
         {state.runner_ref, {:send_field, state.request.path, self(), dep}}
       )
     else
-      GenServer.call(
+      GenServer.cast(
         destination_pid,
-        {:send_field, state.request.path, self(), dep},
-        :infinity
+        {:send_field, state.request.path, self(), dep}
       )
     end
 

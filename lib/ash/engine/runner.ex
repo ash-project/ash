@@ -9,13 +9,16 @@ defmodule Ash.Engine.Runner do
     requests: [],
     completed: [],
     errors: [],
+    sent_requests: [],
     changeset: %{},
     data: %{},
     engine_complete?: false,
     pid_info: %{},
     dependencies: %{},
     resource_notifications: [],
-    verbose?: false
+    verbose?: false,
+    authorize?: false,
+    actor: nil
   ]
 
   alias Ash.Engine
@@ -24,7 +27,7 @@ defmodule Ash.Engine.Runner do
 
   require Logger
 
-  def run(requests, verbose?, ref, engine_pid, pid_info, engine_monitor_ref) do
+  def run(requests, verbose?, authorize?, actor, ref, engine_pid, pid_info, engine_monitor_ref) do
     changeset =
       Enum.find_value(requests, fn request ->
         if request.manage_changeset? && not match?(%Request.UnresolvedField{}, request.changeset) do
@@ -41,6 +44,8 @@ defmodule Ash.Engine.Runner do
       ref: ref,
       data: %{verbose?: verbose?},
       changeset: changeset,
+      authorize?: authorize?,
+      actor: actor,
       resource_notifications: []
     }
 
@@ -157,41 +162,48 @@ defmodule Ash.Engine.Runner do
         run_to_completion(new_state)
 
       {^ref, {:send_field, receiver_path, pid, dep}} ->
-        log(state, fn -> "notifying #{inspect(receiver_path)} of #{inspect(dep)}" end)
         path = :lists.droplast(dep)
-        field = List.last(dep)
+
         request = Enum.find(state.requests, &(&1.path == path))
 
-        new_state =
-          case Request.send_field(request, receiver_path, field) do
-            {:waiting, new_request, notifications, dependencies} ->
-              new_dependencies = build_dependencies(new_request, dependencies)
+        if request do
+          log(state, fn -> "notifying #{inspect(receiver_path)} of #{inspect(dep)}" end)
+          field = List.last(dep)
 
-              {new_state, new_notifications} =
+          new_state =
+            case Request.send_field(request, receiver_path, field) do
+              {:waiting, new_request, notifications, dependencies} ->
+                new_dependencies = build_dependencies(new_request, dependencies)
+
+                {new_state, new_notifications} =
+                  state
+                  |> replace_request(new_request)
+                  |> store_dependencies(new_dependencies)
+
+                notify(new_state, notifications ++ new_notifications)
+
+              {:ok, new_request, notifications} ->
                 state
                 |> replace_request(new_request)
-                |> store_dependencies(new_dependencies)
+                |> notify(notifications)
 
-              notify(new_state, notifications ++ new_notifications)
+              {:error, error, new_request} ->
+                if pid == self() do
+                  send(self(), {ref, {:wont_receive, receiver_path, new_request.path, field}})
+                else
+                  GenServer.cast(pid, {:wont_receive, receiver_path, new_request.path, field})
+                end
 
-            {:ok, new_request, notifications} ->
-              state
-              |> replace_request(new_request)
-              |> notify(notifications)
+                state
+                |> add_error(new_request.path, error)
+                |> replace_request(%{new_request | state: :error})
+            end
 
-            {:error, error, new_request} ->
-              if pid == self() do
-                send(self(), {ref, {:wont_receive, receiver_path, new_request.path, field}})
-              else
-                GenServer.cast(pid, {:wont_receive, receiver_path, new_request.path, field})
-              end
-
-              state
-              |> add_error(new_request.path, error)
-              |> replace_request(%{new_request | state: :error})
-          end
-
-        run_to_completion(new_state)
+          run_to_completion(new_state)
+        else
+          GenServer.cast(state.engine_pid, {:send_field_later, receiver_path, pid, dep})
+          run_to_completion(state)
+        end
 
       {^ref, {:field_value, receiver_path, request_path, field, value}} ->
         receiver_path =
@@ -220,32 +232,7 @@ defmodule Ash.Engine.Runner do
         |> run_to_completion()
 
       {^ref, {:requests, requests}} ->
-        {local, async} =
-          if Enum.any?(requests, fn request ->
-               Ash.DataLayer.data_layer_can?(request.resource, :transact) &&
-                 Ash.DataLayer.in_transaction?(request.resource)
-             end) do
-            {requests, []}
-          else
-            Enum.split_with(requests, &Ash.Engine.must_be_local?/1)
-          end
-
-        state =
-          if Enum.empty?(async) do
-            state
-          else
-            GenServer.cast(state.engine_pid, {:spawn_requests, async})
-            runner_ref = state.ref
-
-            receive do
-              {:pid_info, pid_info, ^runner_ref} ->
-                %{state | pid_info: pid_info}
-            end
-          end
-
-        state
-        |> handle_requests(local)
-        |> run_to_completion()
+        handle_new_requests(state, requests)
 
       {:DOWN, _, _, ^engine_pid,
        {:shutdown, %{errored_requests: [], runner_ref: ^ref} = engine_state}} ->
@@ -259,6 +246,43 @@ defmodule Ash.Engine.Runner do
       timeout ->
         state
     end
+  end
+
+  defp handle_new_requests(state, requests) do
+    requests =
+      Enum.reject(requests, fn request ->
+        Enum.any?(state.requests, &(&1.path == request.path))
+      end)
+
+    {local, async} =
+      if Enum.any?(requests, fn request ->
+           request.resource && Ash.DataLayer.data_layer_can?(request.resource, :transact) &&
+             Ash.DataLayer.in_transaction?(request.resource)
+         end) do
+        {requests, []}
+      else
+        Enum.split_with(requests, &Ash.Engine.must_be_local?/1)
+      end
+
+    state =
+      if Enum.empty?(async) do
+        state
+      else
+        GenServer.cast(state.engine_pid, {:spawn_requests, async})
+        runner_ref = state.ref
+
+        receive do
+          {:pid_info, pid_info, ^runner_ref} ->
+            %{state | pid_info: pid_info}
+        end
+      end
+
+    local =
+      Ash.Engine.sanitize_requests(local, state.actor, state.authorize?, state.verbose?, false)
+
+    state
+    |> handle_requests(local)
+    |> run_to_completion()
   end
 
   defp flush(state) do
@@ -356,13 +380,10 @@ defmodule Ash.Engine.Runner do
           nil ->
             pid = Map.get(state.pid_info, path)
 
-            try do
-              # If the request handler is down, the engine will fail and
-              # we won't get stuck in a loop
-              GenServer.call(pid, {:send_field, request_path, self(), dep}, :infinity)
-            catch
-              :exit, _ ->
-                :ok
+            if is_nil(pid) do
+              GenServer.cast(state.engine_pid, {:send_field_later, request_path, self(), dep})
+            else
+              GenServer.cast(pid, {:send_field, request_path, self(), dep})
             end
 
             {state, notifications, dependencies}
@@ -433,15 +454,21 @@ defmodule Ash.Engine.Runner do
     log(state, fn -> "sending/updating requests with notifications" end)
 
     notifications
-    |> List.wrap()
-    |> Enum.uniq()
+    |> Request.sort_and_clean_notifications()
     |> Enum.reduce(state, fn
       {:requests, requests}, state ->
+        requests = Enum.reject(requests, &(&1.path in state.sent_requests))
+        state = %{state | sent_requests: state.sent_requests ++ Enum.map(requests, & &1.path)}
+
         unless Enum.empty?(requests) do
-          GenServer.cast(state.engine_pid, {:new_requests, requests})
+          GenServer.call(
+            state.engine_pid,
+            {:new_requests, requests, self()},
+            :infinity
+          )
         end
 
-        state
+        handle_new_requests(state, requests)
 
       {:set_extra_data, key, value}, state ->
         %{state | data: Map.put(state.data, key, value)}
@@ -551,7 +578,7 @@ defmodule Ash.Engine.Runner do
         {:ok, new_request, new_notifications, new_dependencies}
 
       {:complete, new_request, new_notifications, new_dependencies} ->
-        if new_request.notify? do
+        if new_request.resource && new_request.notify? do
           resource_notification = Request.resource_notification(new_request)
 
           {:ok, new_request, new_notifications, new_dependencies, resource_notification}

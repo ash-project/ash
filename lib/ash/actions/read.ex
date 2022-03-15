@@ -38,25 +38,7 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  @spec run(Ash.Query.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
-          {:ok, Ash.Page.page() | list(Ash.Resource.record())}
-          | {:ok, Ash.Page.page() | list(Ash.Resource.record()), Ash.Query.t()}
-          | {:error, term}
-  def run(query, action, opts \\ []) do
-    authorize? =
-      if opts[:authorize?] == false do
-        false
-      else
-        opts[:authorize?] || Keyword.has_key?(opts, :actor)
-      end
-
-    query =
-      if opts[:tenant] do
-        Ash.Query.set_tenant(query, opts[:tenant])
-      else
-        query
-      end
-
+  def unpaginated_read_request(query, action \\ nil, opts \\ []) do
     action =
       cond do
         action && is_atom(action) ->
@@ -69,71 +51,65 @@ defmodule Ash.Actions.Read do
           Ash.Resource.Info.primary_action!(query.resource, :read)
       end
 
-    opts = Keyword.put(opts, :authorize?, authorize?)
-    opts = Keyword.merge(opts, Map.get(query.context, :override_api_params) || [])
+    cond do
+      !action ->
+        {:error, NoReadAction.exception(resource: query.resource, when: "reading")}
 
-    engine_opts =
-      opts
-      |> Keyword.take([:verbose?, :actor, :authorize?])
-      |> Keyword.put(:transaction?, action.transaction?)
+      action.pagination ->
+        opts = Keyword.put(opts, :page, false)
+        run(query, %{action | pagination: false}, opts)
 
-    query = %{query | action: action}
+      true ->
+        run(query, action, opts)
+    end
+  end
 
-    original_query = query
+  @spec run(Ash.Query.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
+          {:ok, Ash.Page.page() | list(Ash.Resource.record())}
+          | {:ok, Ash.Page.page() | list(Ash.Resource.record()), Ash.Query.t()}
+          | {:error, term}
+  def run(query, action, opts \\ []) do
+    authorize? = authorize?(opts)
+    opts = sanitize_opts(opts, authorize?, query)
+    query = set_tenant_opt(query, opts)
+    action = get_action(query.resource, action)
+    engine_opts = engine_opts(opts, action)
 
     query =
-      if query.__validated_for_action__ == action.name do
-        query
+      for_read(
+        query,
+        action,
+        engine_opts[:actor],
+        engine_opts[:tenant] || query.tenant,
+        authorize?
+      )
+
+    request_opts =
+      Keyword.merge(engine_opts,
+        query: query,
+        page: opts[:page],
+        return_query?: opts[:return_query?]
+      )
+
+    request_opts =
+      if Keyword.has_key?(opts, :initial_data) do
+        Keyword.put(request_opts, :initial_data, opts[:initial_data])
       else
-        Ash.Query.for_read(query, action.name, %{}, actor: engine_opts[:actor])
+        request_opts
       end
 
-    initial_limit = query.limit
-    initial_offset = query.offset
-
-    with %{valid?: true} <- query,
-         :ok <- validate_multitenancy(query, opts),
-         %{errors: []} = query <- query_with_initial_data(query, opts),
-         {:ok, query, page_opts} <-
-           paginate(query, action, opts),
-         page_opts <- page_opts && Keyword.delete(page_opts, :filter),
-         {:ok, requests} <-
-           requests(query, action, initial_limit, initial_offset, opts),
-         {:ok, %{data: %{data: data} = all_data}} <-
-           Engine.run(
-             requests,
-             query.api,
-             engine_opts
-           ),
-         data_with_loads <-
-           Load.attach_loads(data, all_data),
-         data_with_aggregates <-
-           add_aggregate_values(
-             data_with_loads,
-             query.aggregates,
-             query.resource,
-             Map.get(all_data, :aggregate_values) || %{},
-             Map.get(all_data, :aggregates_in_query) || []
-           ),
-         {:ok, with_calculations} <-
-           add_calculation_values(
-             Map.get(all_data, :ultimate_query) || query,
-             data_with_aggregates,
-             Map.get(all_data, :calculations_at_runtime) || []
-           ) do
-      with_calculations
-      |> add_tenant(query)
-      |> add_page(
+    requests =
+      as_requests(
+        [:data],
+        query.resource,
+        query.api,
         action,
-        Map.get(all_data, :count),
-        query.sort,
-        original_query,
-        Keyword.put(opts, :page, page_opts)
+        request_opts
       )
-      |> add_query(Map.get(all_data, :ultimate_query), opts)
-    else
-      %Ash.Query{errors: errors} = query ->
-        {:error, Ash.Error.to_error_class(errors, query: query)}
+
+    case Engine.run(requests, query.api, engine_opts) do
+      {:ok, %{data: %{data: %{data: data}}}} ->
+        {:ok, data}
 
       {:error, %Ash.Engine.Runner{errors: errors}} ->
         {:error, Ash.Error.to_error_class(errors, query: query)}
@@ -143,10 +119,264 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp validate_multitenancy(query, opts) do
+  def as_requests(path, resource, api, action, request_opts) do
+    query_dependencies = request_opts[:query_dependencies] || []
+    query_input = request_opts[:query_input] || fn _ -> %{} end
+    modify_query = request_opts[:modify_query] || fn query, _ -> query end
+    initial_data = request_opts[:initial_data]
+    query = request_opts[:query]
+    get? = request_opts[:get?]
+    tenant = request_opts[:tenant]
+
+    fetch =
+      Request.new(
+        resource: resource,
+        api: api,
+        action: action,
+        query:
+          Request.resolve(
+            query_dependencies,
+            fn %{authorize?: authorize?, actor: actor} = context ->
+              query_opts = query_opts(request_opts, context)
+
+              input = query_input.(context) || %{}
+
+              query =
+                case query do
+                  nil ->
+                    Ash.Query.for_read(resource, action.name, input, tenant: tenant)
+
+                  query ->
+                    for_read(
+                      query,
+                      action,
+                      actor,
+                      query.tenant,
+                      authorize?
+                    )
+                end
+
+              query =
+                if tenant do
+                  Ash.Query.set_tenant(query, tenant)
+                else
+                  query
+                end
+
+              with %{valid?: true} = query <- modify_query.(query, context),
+                   %{limit: initial_limit, offset: initial_offset} <- query,
+                   %{valid?: true} = query <-
+                     handle_attribute_multitenancy(query),
+                   :ok <- validate_multitenancy(query, initial_data),
+                   %{valid?: true} = query <-
+                     query_with_initial_data(query, request_opts),
+                   {:ok, initial_query, query, page_opts} <-
+                     paginate(query, action, page: request_opts[:page]),
+                   page_opts <- page_opts && Keyword.delete(page_opts, :filter),
+                   {%{valid?: true} = query, before_notifications} <-
+                     run_before_action(query),
+                   {:ok, filter} <-
+                     Filter.run_other_data_layer_filters(
+                       query.api,
+                       query.resource,
+                       query.filter,
+                       {path, query.tenant, context}
+                     ),
+                   {query, load_requests} <-
+                     Load.requests(
+                       query,
+                       [actor: actor, authorize?: authorize?],
+                       path ++ [:fetch]
+                     ),
+                   {:ok, sort} <-
+                     Ash.Actions.Sort.process(
+                       query.resource,
+                       query.sort,
+                       query.aggregates,
+                       query.context
+                     ) do
+                load_paths = Enum.map(load_requests, & &1.path)
+
+                {:ok,
+                 query
+                 |> Map.put(:filter, filter)
+                 |> Map.put(:sort, sort)
+                 |> Ash.Query.set_context(%{
+                   load_paths: load_paths,
+                   initial_limit: initial_limit,
+                   initial_offset: initial_offset,
+                   page_opts: page_opts,
+                   initial_query: initial_query,
+                   query_opts: query_opts
+                 }),
+                 %{
+                   requests: load_requests,
+                   notifications: before_notifications
+                 }}
+              else
+                {:filter_requests, requests} ->
+                  {:requests, requests}
+
+                %{valid?: false} = query ->
+                  {:error, query.errors}
+
+                other ->
+                  other
+              end
+            end
+          ),
+        authorize?: true,
+        data: data_field(request_opts, path),
+        path: path ++ [:fetch],
+        async?: !Keyword.has_key?(request_opts, :initial_data),
+        name: "#{inspect(path)} #{action.type} - fetch `#{action.name}`"
+      )
+
+    process =
+      Request.new(
+        resource: resource,
+        api: api,
+        path: path ++ [:data],
+        action: action,
+        authorize?: false,
+        async?: false,
+        name: "#{inspect(path)} #{action.type} - process `#{action.name}`",
+        data:
+          Request.resolve([path ++ [:fetch, :data], path ++ [:fetch, :query]], fn context ->
+            query_opts = query_opts(request_opts, context)
+            query = get_in(context, path ++ [:fetch, :query])
+            fetched_data = get_in(context, path ++ [:fetch, :data])
+            data = fetched_data[:results]
+            load_paths = query.context.load_paths
+            initial_query = query.context.initial_query
+
+            case Enum.filter(load_paths, fn path ->
+                   !get_in(context, path ++ [:data])
+                 end) do
+              [] ->
+                data
+                |> Load.attach_loads(get_in(context, [:data, :fetch, :load]) || %{})
+                |> add_aggregate_values(
+                  query.aggregates,
+                  query.resource,
+                  Map.get(fetched_data, :aggregate_values) || %{},
+                  Map.get(fetched_data, :aggregates_in_query) || []
+                )
+                |> add_calculation_values(
+                  Map.get(fetched_data, :ultimate_query) || query,
+                  Map.get(fetched_data, :calculations_at_runtime) || []
+                )
+                |> case do
+                  {:ok, values} ->
+                    values
+                    |> add_tenant(query)
+                    |> add_page(
+                      action,
+                      Map.get(fetched_data, :count),
+                      query.sort,
+                      initial_query,
+                      Keyword.put(query_opts, :page, query.context[:page_opts])
+                    )
+                    |> add_query(Map.get(fetched_data, :ultimate_query), request_opts)
+                    |> unwrap_for_get(get?)
+                end
+
+              deps ->
+                {:new_deps, Enum.map(deps, &(&1 ++ [:data]))}
+            end
+          end)
+      )
+
+    [fetch, process]
+  end
+
+  defp unwrap_for_get({:ok, [value | _]}, true), do: {:ok, value}
+  defp unwrap_for_get({:ok, []}, true), do: {:ok, nil}
+  defp unwrap_for_get(value, _), do: value
+
+  defp query_opts(request_opts, %{authorize?: authorize?, actor: actor, verbose?: verbose?}) do
+    request_opts
+    |> Keyword.take([
+      :page,
+      :return_query?,
+      :action,
+      :tenant,
+      :stacktraces?
+    ])
+    |> Keyword.put(:authorize?, authorize?)
+    |> Keyword.put(:actor, actor)
+    |> Keyword.put(:verbose?, verbose?)
+  end
+
+  defp handle_attribute_multitenancy(query) do
+    multitenancy_attribute = Ash.Resource.Info.multitenancy_attribute(query.resource)
+
+    if multitenancy_attribute && query.tenant do
+      {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(query.resource)
+      attribute_value = apply(m, f, [query.tenant | a])
+      Ash.Query.filter(query, [{multitenancy_attribute, attribute_value}])
+    else
+      query
+    end
+  end
+
+  defp authorize?(opts) do
+    if opts[:authorize?] == false do
+      false
+    else
+      opts[:authorize?] || Keyword.has_key?(opts, :actor)
+    end
+  end
+
+  defp set_tenant_opt(query, opts) do
+    if opts[:tenant] do
+      Ash.Query.set_tenant(query, opts[:tenant])
+    else
+      query
+    end
+  end
+
+  defp get_action(resource, action) do
+    cond do
+      action && is_atom(action) ->
+        Ash.Resource.Info.action(resource, action)
+
+      action ->
+        action
+
+      true ->
+        Ash.Resource.Info.primary_action!(resource, :read)
+    end
+  end
+
+  defp sanitize_opts(opts, authorize?, query) do
+    opts
+    |> Keyword.put(:authorize?, authorize?)
+    |> Keyword.merge(Map.get(query.context, :override_api_params) || [])
+  end
+
+  defp engine_opts(opts, action) do
+    opts
+    |> Keyword.take([:verbose?, :actor, :authorize?])
+    |> Keyword.put(:transaction?, action.transaction?)
+  end
+
+  defp for_read(query, action, actor, tenant, authorize?) do
+    if query.__validated_for_action__ == action.name do
+      query
+    else
+      Ash.Query.for_read(query, action.name, %{},
+        actor: actor,
+        tenant: tenant,
+        authorize?: authorize?
+      )
+    end
+  end
+
+  defp validate_multitenancy(query, initial_data) do
     if is_nil(Ash.Resource.Info.multitenancy_strategy(query.resource)) ||
          Ash.Resource.Info.multitenancy_global?(query.resource) || query.tenant ||
-         opts[:initial_data] do
+         initial_data do
       :ok
     else
       {:error,
@@ -218,7 +448,7 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp filter_requests(query, opts) do
+  defp filter_requests(query, request_path, opts) do
     authorizing? =
       if opts[:authorize?] == false do
         false
@@ -228,7 +458,7 @@ defmodule Ash.Actions.Read do
 
     if not Keyword.has_key?(opts, :initial_data) &&
          authorizing? do
-      Filter.read_requests(query.api, query.filter)
+      Filter.read_requests(query.api, query.filter, request_path)
     else
       {:ok, []}
     end
@@ -266,76 +496,17 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp requests(query, action, initial_limit, initial_offset, opts) do
-    request =
-      Request.new(
-        resource: query.resource,
-        api: query.api,
-        query:
-          Request.resolve([], fn _ ->
-            multitenancy_attribute = Ash.Resource.Info.multitenancy_attribute(query.resource)
-
-            {query, before_notifications} =
-              if multitenancy_attribute && query.tenant do
-                {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(query.resource)
-                attribute_value = apply(m, f, [query.tenant | a])
-                Ash.Query.filter(query, [{multitenancy_attribute, attribute_value}])
-              else
-                query
-              end
-              |> run_before_action()
-
-            {query, load_requests} = Load.requests(query, opts)
-
-            case Filter.run_other_data_layer_filters(
-                   query.api,
-                   query.resource,
-                   query.filter
-                 ) do
-              {:ok, filter} ->
-                case Ash.Actions.Sort.process(
-                       query.resource,
-                       query.sort,
-                       query.aggregates,
-                       query.context
-                     ) do
-                  {:ok, sort} ->
-                    {:ok, %{query | filter: filter, sort: sort},
-                     %{requests: load_requests, notifications: before_notifications}}
-
-                  {:error, error} ->
-                    {:error, error}
-                end
-
-              {:error, error} ->
-                {:error, error}
-            end
-          end),
-        action: action,
-        authorize?: not Keyword.has_key?(opts, :initial_data),
-        data:
-          data_field(
-            opts,
-            initial_limit,
-            initial_offset,
-            query
-          ),
-        path: [:data],
-        name: "#{action.type} - `#{action.name}`"
-      )
-
-    {:ok, [request]}
-  end
-
-  defp data_field(
-         params,
-         initial_limit,
-         initial_offset,
-         initial_query
-       ) do
+  defp data_field(request_opts, path) do
     Request.resolve(
-      [[:data, :query]],
-      fn %{data: %{query: ash_query}} = data ->
+      [path ++ [:fetch, :query]],
+      fn data ->
+        ash_query = get_in(data, path ++ [:fetch, :query])
+
+        initial_query = ash_query.context[:initial_query]
+
+        initial_limit = initial_query.context[:initial_limit]
+        initial_offset = initial_query.context[:initial_offset]
+
         used_calculations =
           ash_query.filter
           |> Ash.Filter.used_calculations(
@@ -345,20 +516,20 @@ defmodule Ash.Actions.Read do
             ash_query.aggregates
           )
 
-        can_be_in_query? = not Keyword.has_key?(params, :initial_data)
+        can_be_in_query? = not Keyword.has_key?(request_opts, :initial_data)
 
         authorizing? =
-          if params[:authorize?] == false do
+          if request_opts[:authorize?] == false do
             false
           else
-            params[:authorize?] || Keyword.has_key?(params, :actor)
+            request_opts[:authorize?] || Keyword.has_key?(request_opts, :actor)
           end
 
-        filter_requests = filter_requests(ash_query, params)
+        filter_requests = filter_requests(ash_query, path, request_opts)
 
         {calculations_in_query, calculations_at_runtime} =
           if Ash.DataLayer.data_layer_can?(ash_query.resource, :expression_calculation) &&
-               !params[:initial_data] do
+               !request_opts[:initial_data] do
             Enum.split_with(ash_query.calculations, fn {_name, calculation} ->
               Enum.find(used_calculations, &(&1.name == calculation.name)) ||
                 calculation.name in Enum.map(ash_query.sort || [], &elem(&1, 0)) ||
@@ -374,7 +545,8 @@ defmodule Ash.Actions.Read do
             ash_query,
             can_be_in_query?,
             authorizing?,
-            Enum.map(calculations_in_query, &elem(&1, 1))
+            Enum.map(calculations_in_query, &elem(&1, 1)),
+            path
           )
 
         cond do
@@ -383,22 +555,23 @@ defmodule Ash.Actions.Read do
 
           # if aggregate auth requests is not empty but we have not received the data from
           # those requests, we should ask the engine to run the aggregate value requests
-          !Enum.empty?(aggregate_auth_requests) && !data[:aggregate] ->
+          !Enum.empty?(aggregate_auth_requests) && !get_in(data, path ++ [:aggregate]) ->
             {:requests, Enum.map(aggregate_auth_requests, &{&1, :authorization_filter})}
 
-          !match?({:ok, []}, filter_requests) && !data[:filter] ->
+          !match?({:ok, []}, filter_requests) && !get_in(data, path ++ [:filter]) ->
             {:ok, filter_requests} = filter_requests
             {:requests, Enum.map(filter_requests, &{&1, :authorization_filter})}
 
           true ->
-            if params[:initial_data] do
-              {:ok, params[:initial_data],
+            if request_opts[:initial_data] do
+              {:ok,
                %{
-                 requests: aggregate_value_requests,
-                 extra_data: %{
-                   aggregates_in_query: aggregates_in_query,
-                   calculations_at_runtime: calculations_at_runtime
-                 }
+                 results: request_opts[:initial_data],
+                 aggregates_in_query: aggregates_in_query,
+                 calculations_at_runtime: calculations_at_runtime
+               },
+               %{
+                 requests: aggregate_value_requests
                }}
             else
               query =
@@ -477,7 +650,7 @@ defmodule Ash.Actions.Read do
                        ash_query.action,
                        initial_limit,
                        initial_offset,
-                       params
+                       request_opts
                      ),
                    {:ok, query} <-
                      Ash.DataLayer.limit(query, ash_query.limit, ash_query.resource),
@@ -485,41 +658,44 @@ defmodule Ash.Actions.Read do
                      Ash.DataLayer.offset(query, ash_query.offset, ash_query.resource),
                    {:ok, query} <- set_tenant(query, ash_query),
                    {:ok, results} <- run_query(ash_query, query),
+                   :ok <- validate_get(results, ash_query.action, ash_query),
                    {:ok, results, after_notifications} <-
                      run_after_action(initial_query, results),
                    {:ok, count} <- maybe_await(count) do
-                if params[:return_query?] do
+                if request_opts[:return_query?] do
                   ultimate_query =
                     ash_query
                     |> Ash.Query.unset(:filter)
                     |> Ash.Query.filter(filter)
 
-                  {:ok, results,
+                  {:ok,
+                   %{
+                     results: results,
+                     ultimate_query: ultimate_query,
+                     count: count,
+                     calculations_at_runtime: calculations_at_runtime,
+                     aggregates_in_query: aggregates_in_query
+                   },
                    %{
                      notifications: after_notifications,
-                     requests: aggregate_value_requests,
-                     extra_data: %{
-                       ultimate_query: ultimate_query,
-                       count: count,
-                       calculations_at_runtime: calculations_at_runtime,
-                       aggregates_in_query: aggregates_in_query
-                     }
+                     requests: aggregate_value_requests
                    }}
                 else
-                  {:ok, results,
+                  {:ok,
+                   %{
+                     results: results,
+                     count: count,
+                     calculations_at_runtime: calculations_at_runtime,
+                     aggregates_in_query: aggregates_in_query
+                   },
                    %{
                      notifications: after_notifications,
-                     requests: aggregate_value_requests,
-                     extra_data: %{
-                       count: count,
-                       calculations_at_runtime: calculations_at_runtime,
-                       aggregates_in_query: aggregates_in_query
-                     }
+                     requests: aggregate_value_requests
                    }}
                 end
               else
                 %{valid?: false} = query ->
-                  {:error, query}
+                  {:error, query.errors}
 
                 other ->
                   other
@@ -529,6 +705,17 @@ defmodule Ash.Actions.Read do
       end
     )
   end
+
+  defp validate_get([_, _ | _] = results, %{get?: true}, query) do
+    {:error,
+     Ash.Error.Invalid.MultipleResults.exception(
+       count: Enum.count(results),
+       at_least?: true,
+       query: query
+     )}
+  end
+
+  defp validate_get(_, _, _), do: :ok
 
   defp update_aggregate_filters(filter, data) do
     Filter.update_aggregates(filter, fn aggregate, ref ->
@@ -642,19 +829,19 @@ defmodule Ash.Actions.Read do
         {:error, "Pagination is not supported"}
 
       action.pagination == false ->
-        {:ok, starting_query, opts[:page]}
+        {:ok, starting_query, starting_query, opts[:page]}
 
       page_opts == false ->
         if action.pagination.required? do
           {:error, PaginationRequired.exception([])}
         else
-          {:ok, starting_query, false}
+          {:ok, starting_query, starting_query, false}
         end
 
       page_opts[:limit] || is_nil(page_opts) || page_opts == [] ->
         case do_paginate(starting_query, action.pagination, opts) do
-          {:ok, query} ->
-            {:ok, query, page_opts}
+          {:ok, initial_query, query} ->
+            {:ok, initial_query, query, page_opts}
 
           {:error, error} ->
             {:error, error}
@@ -688,11 +875,12 @@ defmodule Ash.Actions.Read do
       end
 
     case paginated do
-      {:ok, paginated} ->
+      {:ok, initial_query, query} ->
         if opts[:page][:filter] do
-          {:ok, Ash.Query.filter(paginated, ^opts[:page][:filter])}
+          {:ok, Ash.Query.filter(initial_query, ^opts[:page][:filter]),
+           Ash.Query.filter(query, ^opts[:page][:filter])}
         else
-          {:ok, paginated}
+          {:ok, initial_query, query}
         end
 
       {:error, error} ->
@@ -725,13 +913,13 @@ defmodule Ash.Actions.Read do
              after_or_before
            ) do
         {:ok, filter} ->
-          {:ok, Ash.Query.filter(limited, ^filter)}
+          {:ok, limited, Ash.Query.filter(limited, ^filter)}
 
         {:error, error} ->
           {:error, error}
       end
     else
-      {:ok, limited}
+      {:ok, limited, limited}
     end
   end
 
@@ -747,18 +935,13 @@ defmodule Ash.Actions.Read do
     limited = Ash.Query.limit(query, limit(opts[:limit], query.limit, pagination) + 1)
 
     with_offset =
-      cond do
-        opts[:offset] && query.offset ->
-          Ash.Query.offset(limited, max(opts[:offset], query.offset))
-
-        opts[:offset] ->
-          Ash.Query.offset(limited, opts[:offset])
-
-        true ->
-          limited
+      if opts[:offset] do
+        Ash.Query.offset(limited, opts[:offset])
+      else
+        limited
       end
 
-    {:ok, with_offset}
+    {:ok, with_offset, with_offset}
   end
 
   defp run_query(
@@ -822,7 +1005,7 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp add_calculation_values(query, results, calculations) do
+  defp add_calculation_values(results, query, calculations) do
     {can_be_runtime, require_query} =
       calculations
       |> Enum.map(&elem(&1, 1))

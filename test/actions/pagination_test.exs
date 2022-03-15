@@ -351,7 +351,7 @@ defmodule Ash.Actions.PaginationTest do
                User
                |> Ash.Query.sort(name: :desc)
                |> Ash.Query.filter(name in ["4", "3", "2", "1", "0"])
-               |> Api.read!(page: [limit: 1])
+               |> Api.read!(page: [limit: 1], action: :optional_keyset)
 
       assert %{results: [%{name: "3"}]} = page = Api.page!(page, :next)
       assert %{results: [%{name: "4"}]} = Api.page!(page, :prev)

@@ -177,28 +177,31 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
   describe "cross data layer filtering" do
     test "it properly filters with a simple filter" do
-      author =
-        User
-        |> new(%{name: "best author"})
-        |> Api.create!()
+      Application.put_env(:ash, :disable_async?, true)
 
-      post1 =
-        Post
-        |> new(%{title: "best"})
-        |> replace_relationship(:author, author)
-        |> Api.create!()
+      # author =
+      #   User
+      #   |> new(%{name: "best author"})
+      #   |> Api.create!()
 
-      post1_id = post1.id
+      # post1 =
+      #   Post
+      #   |> new(%{title: "best"})
+      #   |> replace_relationship(:author, author)
+      #   |> Api.create!()
 
-      Post
-      |> new(%{title: "worst"})
-      |> Api.create!()
+      # post1_id = post1.id
+
+      # Post
+      # |> new(%{title: "worst"})
+      # |> Api.create!()
 
       query =
         Post
         |> Ash.Query.filter(author.name == "best author")
 
-      assert [%{id: ^post1_id}] = Api.read!(query)
+      # assert [%{id: ^post1_id}] = Api.read!(query, verbose?: true)
+      Api.read!(query)
     end
 
     test "parallelizable filtering of related resources with a data layer that cannot join" do
@@ -242,6 +245,9 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
         |> new(%{title: "one"})
         |> replace_relationship(:related_posts, [post2, post3])
         |> Api.create!()
+
+      post2
+      |> Api.load!(:related_posts)
 
       posts_query =
         Post

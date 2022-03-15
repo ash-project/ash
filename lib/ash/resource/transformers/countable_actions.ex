@@ -23,7 +23,7 @@ defmodule Ash.Resource.Transformers.CountableActions do
         else
           {:error,
            Ash.Error.Dsl.DslError.exception(
-             module: __MODULE__,
+             module: resource,
              path: [:actions, action.name],
              message:
                "Action cannot be countable, as the datalayer does not support counting queries"
