@@ -281,7 +281,7 @@ defmodule Ash.Query.Aggregate do
       resource: aggregate_resource,
       api: initial_query.api,
       query: aggregate_query(related, reverse_relationship, request_path),
-      path: [:aggregate_values, relationship_path],
+      path: request_path ++ [:aggregate_values, relationship_path],
       action: Ash.Resource.Info.primary_action(aggregate_resource, :read),
       name: "fetch aggregate: #{Enum.join(relationship_path, ".")}",
       data:

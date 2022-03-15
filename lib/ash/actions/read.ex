@@ -249,40 +249,46 @@ defmodule Ash.Actions.Read do
             data = fetched_data[:results]
             load_paths = query.context.load_paths
             initial_query = query.context.initial_query
+            aggregate_value_request_paths = fetched_data[:aggregate_value_request_paths] || []
 
-            case Enum.filter(load_paths, fn path ->
-                   !get_in(context, path ++ [:data])
-                 end) do
-              [] ->
-                data
-                |> Load.attach_loads(get_in(context, [:data, :fetch, :load]) || %{})
-                |> add_aggregate_values(
-                  query.aggregates,
-                  query.resource,
-                  Map.get(fetched_data, :aggregate_values) || %{},
-                  Map.get(fetched_data, :aggregates_in_query) || []
-                )
-                |> add_calculation_values(
-                  Map.get(fetched_data, :ultimate_query) || query,
-                  Map.get(fetched_data, :calculations_at_runtime) || []
-                )
-                |> case do
-                  {:ok, values} ->
-                    values
-                    |> add_tenant(query)
-                    |> add_page(
-                      action,
-                      Map.get(fetched_data, :count),
-                      query.sort,
-                      initial_query,
-                      Keyword.put(query_opts, :page, query.context[:page_opts])
-                    )
-                    |> add_query(Map.get(fetched_data, :ultimate_query), request_opts)
-                    |> unwrap_for_get(get?)
-                end
+            if !Enum.empty?(aggregate_value_request_paths) &&
+                 !get_in(context, path ++ [:aggregate_values]) do
+              {:new_deps, aggregate_value_request_paths}
+            else
+              case Enum.filter(load_paths, fn path ->
+                     !get_in(context, path ++ [:data])
+                   end) do
+                [] ->
+                  data
+                  |> Load.attach_loads(get_in(context, [:data, :fetch, :load]) || %{})
+                  |> add_aggregate_values(
+                    query.aggregates,
+                    query.resource,
+                    get_in(context, path ++ [:aggregate_values]) || %{},
+                    Map.get(fetched_data, :aggregates_in_query) || []
+                  )
+                  |> add_calculation_values(
+                    Map.get(fetched_data, :ultimate_query) || query,
+                    Map.get(fetched_data, :calculations_at_runtime) || []
+                  )
+                  |> case do
+                    {:ok, values} ->
+                      values
+                      |> add_tenant(query)
+                      |> add_page(
+                        action,
+                        Map.get(fetched_data, :count),
+                        query.sort,
+                        initial_query,
+                        Keyword.put(query_opts, :page, query.context[:page_opts])
+                      )
+                      |> add_query(Map.get(fetched_data, :ultimate_query), request_opts)
+                      |> unwrap_for_get(get?)
+                  end
 
-              deps ->
-                {:new_deps, Enum.map(deps, &(&1 ++ [:data]))}
+                deps ->
+                  {:new_deps, Enum.map(deps, &(&1 ++ [:data]))}
+              end
             end
           end)
       )
@@ -568,7 +574,9 @@ defmodule Ash.Actions.Read do
                %{
                  results: request_opts[:initial_data],
                  aggregates_in_query: aggregates_in_query,
-                 calculations_at_runtime: calculations_at_runtime
+                 calculations_at_runtime: calculations_at_runtime,
+                 aggregate_value_request_paths:
+                   Enum.map(aggregate_value_requests, &(&1.path ++ [:data]))
                },
                %{
                  requests: aggregate_value_requests
@@ -606,7 +614,7 @@ defmodule Ash.Actions.Read do
                    {:ok, query} <- query,
                    {:ok, filter} <-
                      filter_with_related(Enum.map(filter_requests, & &1.path), ash_query, data),
-                   filter <- update_aggregate_filters(filter, data),
+                   filter <- update_aggregate_filters(filter, data, path),
                    {:ok, query} <-
                      Ash.DataLayer.set_context(
                        ash_query.resource,
@@ -674,7 +682,9 @@ defmodule Ash.Actions.Read do
                      ultimate_query: ultimate_query,
                      count: count,
                      calculations_at_runtime: calculations_at_runtime,
-                     aggregates_in_query: aggregates_in_query
+                     aggregates_in_query: aggregates_in_query,
+                     aggregate_value_request_paths:
+                       Enum.map(aggregate_value_requests, &(&1.path ++ [:data]))
                    },
                    %{
                      notifications: after_notifications,
@@ -686,7 +696,9 @@ defmodule Ash.Actions.Read do
                      results: results,
                      count: count,
                      calculations_at_runtime: calculations_at_runtime,
-                     aggregates_in_query: aggregates_in_query
+                     aggregates_in_query: aggregates_in_query,
+                     aggregate_value_request_paths:
+                       Enum.map(aggregate_value_requests, &(&1.path ++ [:data]))
                    },
                    %{
                      notifications: after_notifications,
@@ -717,11 +729,14 @@ defmodule Ash.Actions.Read do
 
   defp validate_get(_, _, _), do: :ok
 
-  defp update_aggregate_filters(filter, data) do
+  defp update_aggregate_filters(filter, data, path) do
     Filter.update_aggregates(filter, fn aggregate, ref ->
-      case data[:aggregate][ref.relationship_path ++ aggregate.relationship_path][
-             :authorization_filter
-           ] do
+      case get_in(
+             data,
+             path ++
+               [:aggregate, ref.relationship_path] ++
+               aggregate.relationship_path ++ [:authorization_filter]
+           ) do
         nil ->
           aggregate
 
@@ -1111,10 +1126,14 @@ defmodule Ash.Actions.Read do
 
   defp add_aggregate_values(results, aggregates, resource, aggregate_values, aggregates_in_query) do
     keys_to_aggregates =
-      Enum.reduce(aggregate_values, %{}, fn {_name, keys_to_values}, acc ->
-        Enum.reduce(keys_to_values, acc, fn {pkey, values}, acc ->
-          Map.update(acc, pkey, values, &Map.merge(&1, values))
-        end)
+      Enum.reduce(aggregate_values, %{}, fn
+        {_name, %{data: keys_to_values}}, acc ->
+          Enum.reduce(keys_to_values, acc, fn {pkey, values}, acc ->
+            Map.update(acc, pkey, values, &Map.merge(&1, values))
+          end)
+
+        _, acc ->
+          acc
       end)
 
     pkey = Ash.Resource.Info.primary_key(resource)
