@@ -851,19 +851,10 @@ defmodule Ash.Dsl.Extension do
               require Dsl.Extension
 
               Dsl.Extension.build_section(
-                extension,
-                nested_section,
-                path ++ [section.name],
-                unimports ++
-                  unimports(
-                    mod,
-                    %{
-                      section
-                      | section: Enum.reject(section.sections, &(&1.name == nested_section.name))
-                    },
-                    path,
-                    opts_mod_name
-                  ),
+                unquote(extension),
+                unquote(Macro.escape(nested_section)),
+                unquote(unimports),
+                unquote(path ++ [section.name]),
                 nil
               )
             end,
