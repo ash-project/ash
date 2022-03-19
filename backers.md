@@ -11,3 +11,5 @@ Philia Software
 [Florian Kraft](https://github.com/floriank)
 
 [Ian Knauer](https://github.com/ianknauer)
+
+[Theo Harris](https://github.com/Theosaurus-Rex)
