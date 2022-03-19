@@ -13,3 +13,5 @@ Philia Software
 [Ian Knauer](https://github.com/ianknauer)
 
 [Theo Harris](https://github.com/Theosaurus-Rex)
+
+[kernel-io](https://github.com/kernel-io)
