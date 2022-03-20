@@ -238,6 +238,8 @@ defmodule Ash.Engine.RequestHandler do
         new_requests = Enum.reject(new_requests, &(&1.path in state.sent_requests))
 
         if Enum.empty?(new_requests) do
+          state
+        else
           try do
             GenServer.call(state.engine_pid, {:new_requests, new_requests, self()})
 
@@ -246,11 +248,7 @@ defmodule Ash.Engine.RequestHandler do
             :exit, {:noproc, {GenServer, :call, [pid | _]}} when pid == state.engine_pid ->
               state
           end
-        else
-          state
         end
-
-        %{state | sent_requests: state.sent_requests ++ Enum.map(new_requests, & &1.path)}
 
       {:update_changeset, changeset}, state ->
         send(state.runner_pid, {state.runner_ref, {:update_changeset, changeset}})
