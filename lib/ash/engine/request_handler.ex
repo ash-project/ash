@@ -131,13 +131,18 @@ defmodule Ash.Engine.RequestHandler do
         reason -> reason
       end
 
-    if pid == state.runner_pid do
-      log(state, fn -> "Runner down #{state.request.name}: #{inspect(reason)}" end)
-    else
-      log(state, fn -> "Engine down #{state.request.name}: #{inspect(reason)}" end)
-    end
+    cond do
+      pid == state.runner_pid ->
+        log(state, fn -> "Runner down #{state.request.name}: #{inspect(reason)}" end)
+        {:stop, reason, state}
 
-    {:stop, reason, state}
+      pid == state.engine_pid ->
+        log(state, fn -> "Engine down #{state.request.name}: #{inspect(reason)}" end)
+        {:stop, reason, state}
+
+      true ->
+        {:noreply, state}
+    end
   end
 
   def handle_cast(
@@ -232,8 +237,17 @@ defmodule Ash.Engine.RequestHandler do
       {:requests, new_requests}, state ->
         new_requests = Enum.reject(new_requests, &(&1.path in state.sent_requests))
 
-        unless Enum.empty?(new_requests) do
-          GenServer.call(state.engine_pid, {:new_requests, new_requests, self()})
+        if Enum.empty?(new_requests) do
+          try do
+            GenServer.call(state.engine_pid, {:new_requests, new_requests, self()})
+
+            %{state | sent_requests: state.sent_requests ++ Enum.map(new_requests, & &1.path)}
+          catch
+            :exit, {:noproc, {GenServer, :call, [pid | _]}} when pid == state.engine_pid ->
+              state
+          end
+        else
+          state
         end
 
         %{state | sent_requests: state.sent_requests ++ Enum.map(new_requests, & &1.path)}

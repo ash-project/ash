@@ -62,6 +62,129 @@ defmodule Ash.ElixirSense.PluginTest do
     assert doc =~ "attributes"
   end
 
+  test "autocomplete remains when cursor is at the end of the word" do
+    buffer = """
+    defmodule MyResource do
+      use Ash.Resource
+
+      attributes
+      #         ^
+    end
+    """
+
+    [cursor] = cursors(buffer)
+
+    result = suggestions(buffer, cursor)
+
+    assert [
+             %{
+               detail: "Dsl Section",
+               documentation: doc,
+               kind: :function,
+               label: "attributes",
+               snippet: "attributes do\n  $0\nend",
+               type: :generic
+             }
+           ] = result
+
+    assert doc =~ "attributes"
+  end
+
+  test "autocomplete remains when cursor is at the end of a nested word" do
+    buffer = """
+    defmodule MyResource do
+      use Ash.Resource
+
+      attributes do
+        attribute
+      #          ^
+      end
+    end
+    """
+
+    [cursor] = cursors(buffer)
+
+    result = suggestions(buffer, cursor)
+
+    assert [
+             %{
+               detail: "Dsl Entity",
+               documentation: doc,
+               kind: :function,
+               label: "attribute",
+               type: :generic
+             }
+           ] = result
+
+    assert doc =~ "attribute"
+  end
+
+  test "autocomplete can detect recursive sections" do
+    buffer = """
+    defmodule MyFlow do
+      use Ash.Flow
+
+      steps do
+        map :name do
+          cre
+    #        ^
+        end
+      end
+    end
+    """
+
+    [cursor] = cursors(buffer)
+
+    result = suggestions(buffer, cursor)
+
+    assert [
+             %{
+               detail: "Dsl Entity",
+               documentation: doc,
+               kind: :function,
+               label: "create",
+               type: :generic
+             }
+           ] = result
+
+    assert doc =~ "create"
+  end
+
+  test "autocomplete can detect recursive sections deeply" do
+    buffer = """
+    defmodule MyFlow do
+      use Ash.Flow
+
+      steps do
+        map :name, :over do
+          transaction :transaction do
+            map :name, :over do
+               tra
+    #             ^
+            end
+          end
+        end
+      end
+    end
+    """
+
+    [cursor] = cursors(buffer)
+
+    result = suggestions(buffer, cursor)
+
+    assert [
+             %{
+               detail: "Dsl Entity",
+               documentation: doc,
+               kind: :function,
+               label: "transaction",
+               type: :generic
+             }
+           ] = result
+
+    assert doc =~ "transaction"
+  end
+
   test "suggesting DSL options in a section" do
     buffer = """
     defmodule MyResource do

@@ -19,6 +19,12 @@ defmodule Ash.Flow.Step do
         type: :atom,
         required: true,
         doc: "The name of the step. Will be used when expressing dependencies, and step inputs."
+      ],
+      touches_resources: [
+        type: {:list, :atom},
+        doc: """
+        A list of resources touched by any custom logic in this step. This is used in the case that this step is run in a transaction. This is primarily only needed for `custom` steps.
+        """
       ]
     ]
   end

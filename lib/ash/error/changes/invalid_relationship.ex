@@ -18,8 +18,12 @@ defmodule Ash.Error.Changes.InvalidRelationship do
 
     defp for_relationship(_), do: ""
 
-    defp do_message(%{message: message}) when not is_nil(message) do
+    defp do_message(%{message: message}) when is_binary(message) do
       ": #{message}."
+    end
+
+    defp do_message(%{message: message}) when not is_nil(message) do
+      ": #{inspect(message)}."
     end
 
     defp do_message(_), do: "."

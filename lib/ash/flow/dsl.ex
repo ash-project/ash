@@ -9,7 +9,7 @@ defmodule Ash.Flow.Dsl do
       create :create_post, MyApp.Post, :create
       """
     ],
-    modules: [:resource],
+    modules: [:resource, :touches_resources],
     target: Ash.Flow.Step.Create,
     args: [:name, :resource, :action],
     schema: Ash.Flow.Step.Create.schema()
@@ -22,10 +22,12 @@ defmodule Ash.Flow.Dsl do
     """,
     examples: [
       """
-      update :update_post, MyApp.Post, :update
+      update :update_post, MyApp.Post, :update do
+        record result(:get_post)
+      end
       """
     ],
-    modules: [:resource],
+    modules: [:resource, :touches_resources],
     target: Ash.Flow.Step.Update,
     args: [:name, :resource, :action],
     schema: Ash.Flow.Step.Update.schema()
@@ -41,7 +43,7 @@ defmodule Ash.Flow.Dsl do
       destroy :destroy_post, MyApp.Post, :destroy
       """
     ],
-    modules: [:resource],
+    modules: [:resource, :touches_resources],
     target: Ash.Flow.Step.Destroy,
     args: [:name, :resource, :action],
     schema: Ash.Flow.Step.Destroy.schema()
@@ -57,7 +59,7 @@ defmodule Ash.Flow.Dsl do
       read :destroy_post, MyApp.Post, :destroy
       """
     ],
-    modules: [:resource],
+    modules: [:resource, :touches_resources],
     target: Ash.Flow.Step.Read,
     args: [:name, :resource, :action],
     schema: Ash.Flow.Step.Read.schema()
@@ -77,7 +79,7 @@ defmodule Ash.Flow.Dsl do
         }
       """
     ],
-    modules: [:resource],
+    modules: [:resource, :touches_resources],
     target: Ash.Flow.Step.RunFlow,
     args: [:name, :flow],
     schema: Ash.Flow.Step.RunFlow.schema()
@@ -102,7 +104,7 @@ defmodule Ash.Flow.Dsl do
       end
       """
     ],
-    modules: [:custom],
+    modules: [:custom, :touches_resources],
     target: Ash.Flow.Step.Custom,
     args: [:name, :custom],
     schema: Ash.Flow.Step.Custom.schema()
@@ -170,6 +172,47 @@ defmodule Ash.Flow.Dsl do
 
   @step_entities [@create, @update, @destroy, @read, @run_flow, @custom]
 
+  @transaction %Ash.Dsl.Entity{
+    name: :transaction,
+    describe: """
+    Runs a set of steps in a transaction.
+    """,
+    schema: Ash.Flow.Step.Transaction.schema(),
+    target: Ash.Flow.Step.Transaction,
+    args: [:name],
+    recursive_as: :steps,
+    entities: [
+      steps: @step_entities
+    ],
+    modules: [:touches_resources],
+    examples: [
+      """
+      transaction :create_users do
+        create :create_user, User, :create do
+          input %{
+            first_name: {Faker.Person, :first_name, []},
+            last_name: {Faker.Person, :last_name, []}
+          }
+        end
+
+        update :update_user, User, :update do
+          record
+
+        end
+        over range(1, arg(:count))
+        output :create_user
+
+        create :create_user, Org, :create do
+          input %{
+            first_name: {Faker.Person, :first_name, []},
+            last_name: {Faker.Person, :last_name, []}
+          }
+        end
+      end
+      """
+    ]
+  }
+
   @map %Ash.Dsl.Entity{
     name: :map,
     describe: """
@@ -179,6 +222,7 @@ defmodule Ash.Flow.Dsl do
     target: Ash.Flow.Step.Map,
     args: [:name, :over],
     recursive_as: :steps,
+    modules: [:touches_resources],
     entities: [
       steps: @step_entities
     ],
@@ -199,6 +243,12 @@ defmodule Ash.Flow.Dsl do
     ]
   }
 
+  transaction = %{@transaction | entities: [steps: [@map | @step_entities]]}
+  map = %{@map | entities: [steps: [@transaction | @step_entities]]}
+
+  @transaction transaction
+  @map map
+
   @steps %Ash.Dsl.Section{
     name: :steps,
     describe: """
@@ -208,14 +258,12 @@ defmodule Ash.Flow.Dsl do
       """
       steps do
         # invokes a create action
-        transaction do
-          create :create_post, MyApp.Post, :create
-        end
+        create :create_post, MyApp.Post, :create
       end
       """
     ],
     imports: [Ash.Flow.StepHelpers],
-    entities: [@map] ++ @step_entities
+    entities: [@map, @transaction] ++ @step_entities
   }
 
   @transformers [

@@ -27,7 +27,11 @@ defmodule Ash.Error.Unknown do
         error
         |> List.wrap()
         |> Enum.map(fn message ->
-          custom_prefix <> inspect(message)
+          if is_binary(message) do
+            custom_prefix <> message
+          else
+            custom_prefix <> inspect(message)
+          end
         end)
 
       Ash.Error.error_messages(errors, custom_message, stacktraces?)

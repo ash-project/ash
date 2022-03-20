@@ -200,7 +200,7 @@ if Code.ensure_loaded?(ElixirSense.Plugin) do
     end
 
     defp get_option(text) when is_binary(text) do
-      case Regex.named_captures(~r/\s(?<option>[^\s]*):[[:blank:]]*$/, text) do
+      case Regex.named_captures(~r/\s(?<option>[^\s]+):[[:blank:]]+$/, text) do
         %{"option" => option} when option != "" ->
           try do
             String.to_existing_atom(option)
@@ -217,7 +217,7 @@ if Code.ensure_loaded?(ElixirSense.Plugin) do
     defp get_option(_), do: nil
 
     defp get_section_option(text) when is_binary(text) do
-      case Regex.named_captures(~r/\n[[:blank:]]+(?<option>[^\s]+)[[:blank:]]*$/, text) do
+      case Regex.named_captures(~r/\n[[:blank:]]+(?<option>[^\s]+)[[:blank:]]+$/, text) do
         %{"option" => option} when option != "" ->
           try do
             String.to_existing_atom(option)
@@ -390,14 +390,19 @@ if Code.ensure_loaded?(ElixirSense.Plugin) do
       )
     end
 
-    defp do_find_constructors(%{__struct__: Ash.Dsl.Entity} = entity, [], hint, type) do
+    defp do_find_constructors(entity_or_section, path, hint, type, recursives \\ [])
+
+    defp do_find_constructors(%{__struct__: Ash.Dsl.Entity} = entity, [], hint, type, recursives) do
       case type do
         {:value, _value} ->
-          entity.schema ++ Enum.flat_map(entity.entities || [], &elem(&1, 1))
+          entity.schema ++
+            Enum.flat_map(entity.entities || [], &elem(&1, 1)) ++
+            Enum.uniq(recursives ++ List.wrap(recursive_for(entity)))
 
         {:arg, arg_index} ->
           if arg_index >= Enum.count(entity.args || []) do
-            find_opt_hints(entity, hint) ++ find_entity_hints(entity, hint)
+            find_opt_hints(entity, hint) ++
+              find_entity_hints(entity, hint, recursives)
           else
             Enum.map(entity.schema, fn {key, value} ->
               arg_index = Enum.find_index(entity.args || [], &(&1 == key))
@@ -407,31 +412,53 @@ if Code.ensure_loaded?(ElixirSense.Plugin) do
               else
                 {key, value}
               end
-            end)
+            end) ++
+              Enum.uniq(
+                recursives ++
+                  List.wrap(recursive_for(entity))
+              )
           end
 
         _ ->
-          find_opt_hints(entity, hint) ++ find_entity_hints(entity, hint)
+          find_opt_hints(entity, hint) ++
+            find_entity_hints(entity, hint, recursives)
       end
     end
 
-    defp do_find_constructors(section, [], hint, _type) do
+    defp do_find_constructors(section, [], hint, _type, recursives) do
       find_opt_hints(section, hint) ++
-        find_entity_hints(section, hint) ++
+        find_entity_hints(section, hint, []) ++
         Enum.filter(section.sections, fn section ->
           Matcher.match?(to_string(section.name), hint)
-        end)
+        end) ++ recursives
     end
 
-    defp do_find_constructors(%{__struct__: Ash.Dsl.Entity} = entity, [next], hint, type) do
+    defp do_find_constructors(
+           %{__struct__: Ash.Dsl.Entity} = entity,
+           [next | rest],
+           hint,
+           type,
+           recursives
+         ) do
       entity.entities
       |> Kernel.||([])
       |> Enum.flat_map(&elem(&1, 1))
+      |> Enum.concat(recursives)
+      |> Enum.concat(List.wrap(recursive_for(entity)))
       |> Enum.filter(&(&1.name == next))
-      |> Enum.flat_map(&do_find_constructors(&1, [], hint, type))
+      |> Enum.flat_map(
+        &do_find_constructors(
+          &1,
+          rest,
+          hint,
+          type,
+          Enum.uniq(recursives ++ List.wrap(recursive_for(entity)))
+        )
+      )
+      |> Enum.uniq()
     end
 
-    defp do_find_constructors(section, [first | rest], hint, type) do
+    defp do_find_constructors(section, [first | rest], hint, type, recursives) do
       Enum.flat_map(section.entities, fn entity ->
         if entity.name == first do
           do_find_constructors(entity, rest, hint, type)
@@ -445,7 +472,13 @@ if Code.ensure_loaded?(ElixirSense.Plugin) do
           else
             []
           end
-        end)
+        end) ++ recursives
+    end
+
+    defp recursive_for(entity) do
+      if entity.recursive_as do
+        entity
+      end
     end
 
     defp find_opt_hints(%{__struct__: Ash.Dsl.Entity} = entity, hint) do
@@ -470,16 +503,18 @@ if Code.ensure_loaded?(ElixirSense.Plugin) do
       end)
     end
 
-    defp find_entity_hints(%{__struct__: Ash.Dsl.Entity} = entity, hint) do
+    defp find_entity_hints(%{__struct__: Ash.Dsl.Entity} = entity, hint, recursives) do
       entity.entities
       |> Keyword.values()
+      |> Enum.concat(recursives)
+      |> Enum.concat(List.wrap(recursive_for(entity)))
       |> List.flatten()
       |> Enum.filter(fn entity ->
         Matcher.match?(to_string(entity.name), hint)
       end)
     end
 
-    defp find_entity_hints(section, hint) do
+    defp find_entity_hints(section, hint, _recursives) do
       Enum.filter(section.entities, fn entity ->
         Matcher.match?(to_string(entity.name), hint)
       end)

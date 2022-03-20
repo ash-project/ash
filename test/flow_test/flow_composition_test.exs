@@ -1,116 +1,20 @@
 defmodule Ash.FlowTest.FlowCompositionTest do
   @moduledoc false
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
-  defmodule Org do
-    @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+  alias Ash.Test.Support.Flow.{Api, Org, User}
 
-    ets do
-      private?(true)
-    end
+  setup do
+    ExUnit.CaptureLog.capture_log(fn ->
+      Ash.DataLayer.Mnesia.start(Api)
+    end)
 
-    identities do
-      identity :unique_name, [:name]
-    end
-
-    actions do
-      read :read do
-        primary? true
-      end
-
-      read :by_name do
-        argument :name, :string, allow_nil?: false
-        get? true
-
-        filter expr(name == ^arg(:name))
-      end
-
-      create :create
-      update :update
-    end
-
-    attributes do
-      uuid_primary_key :id
-      attribute :name, :string
-    end
-
-    relationships do
-      has_many :users, Ash.FlowTest.User
-    end
-  end
-
-  defmodule User do
-    @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
-
-    ets do
-      private?(true)
-    end
-
-    actions do
-      read :read do
-        primary? true
-      end
-
-      read :for_org do
-        argument :org, :uuid, allow_nil?: false
-
-        filter(expr(org_id == ^arg(:org)))
-      end
-
-      create :create do
-        argument :org, :uuid, allow_nil?: false
-        change manage_relationship(:org, type: :replace)
-      end
-
-      update :update do
-        primary? true
-      end
-
-      update :approve do
-        accept []
-        change set_attribute(:approved, true)
-      end
-
-      update :unapprove do
-        accept []
-        change set_attribute(:approved, false)
-      end
-    end
-
-    attributes do
-      uuid_primary_key :id
-      attribute :first_name, :string
-      attribute :last_name, :string
-
-      attribute :approved, :boolean do
-        private? true
-      end
-    end
-
-    relationships do
-      belongs_to :org, Org
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(User)
-      entry(Org)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
-    end
+    on_exit(fn ->
+      ExUnit.CaptureLog.capture_log(fn ->
+        :mnesia.stop()
+        :mnesia.delete_schema([node()])
+      end)
+    end)
   end
 
   defmodule GetOrgByName do
@@ -119,7 +23,10 @@ defmodule Ash.FlowTest.FlowCompositionTest do
     flow do
       api Api
 
-      argument :org_name, :string
+      argument :org_name, :string do
+        allow_nil? false
+      end
+
       returns :get_org
     end
 
@@ -137,7 +44,11 @@ defmodule Ash.FlowTest.FlowCompositionTest do
 
     flow do
       api Api
-      argument :org_name, :string
+
+      argument :org_name, :string do
+        allow_nil? false
+      end
+
       returns get_org: :org, list_users: :users
     end
 
@@ -161,7 +72,11 @@ defmodule Ash.FlowTest.FlowCompositionTest do
 
     flow do
       api Api
-      argument :org_name, :string
+
+      argument :org_name, :string do
+        allow_nil? false
+      end
+
       returns :unapprove_users
     end
 
@@ -195,7 +110,11 @@ defmodule Ash.FlowTest.FlowCompositionTest do
 
     flow do
       api Api
-      argument :org_name, :string
+
+      argument :org_name, :string do
+        allow_nil? false
+      end
+
       returns :count_unapproved_users
     end
 

@@ -84,6 +84,7 @@ defmodule Ash.Actions.Destroy do
     modify_changeset = request_opts[:modify_changeset] || fn changeset, _ -> changeset end
     tenant = request_opts[:tenant]
     skip_on_nil_record? = request_opts[:skip_on_nil_record?]
+    error_path = request_opts[:error_path]
 
     record =
       request_opts[:record] ||
@@ -95,6 +96,7 @@ defmodule Ash.Actions.Destroy do
         api: api,
         path: path ++ [:data],
         action: action,
+        error_path: error_path,
         changeset:
           Request.resolve(changeset_dependencies, fn %{actor: actor} = context ->
             input = changeset_input.(context) || %{}
@@ -162,6 +164,7 @@ defmodule Ash.Actions.Destroy do
         path: path ++ [:destroy],
         action: action,
         authorize?: false,
+        error_path: error_path,
         changeset:
           Request.resolve([path ++ [:data, :changeset]], fn context ->
             {:ok, get_in(context, path ++ [:data, :changeset])}

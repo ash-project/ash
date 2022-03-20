@@ -11,6 +11,7 @@ defmodule Ash.Resource.Actions.Read do
     transaction?: false,
     arguments: [],
     preparations: [],
+    touches_resources: [],
     type: :read
   ]
 
@@ -18,6 +19,7 @@ defmodule Ash.Resource.Actions.Read do
           type: :read,
           name: atom,
           primary?: boolean,
+          touches_resources: list(atom),
           description: String.t()
         }
 

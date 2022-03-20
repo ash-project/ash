@@ -461,11 +461,12 @@ defmodule Ash.Engine.Runner do
         state = %{state | sent_requests: state.sent_requests ++ Enum.map(requests, & &1.path)}
 
         unless Enum.empty?(requests) do
-          GenServer.call(
-            state.engine_pid,
-            {:new_requests, requests, self()},
-            :infinity
-          )
+          try do
+            GenServer.call(state.engine_pid, {:new_requests, requests, self()})
+          catch
+            :exit, {:noproc, {GenServer, :call, [pid | _]}} when pid == state.engine_pid ->
+              :ok
+          end
         end
 
         handle_new_requests(state, requests)

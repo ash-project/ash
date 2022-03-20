@@ -125,14 +125,16 @@ defmodule Ash.Actions.Read do
     modify_query = request_opts[:modify_query] || fn query, _ -> query end
     initial_data = request_opts[:initial_data]
     query = request_opts[:query]
-    get? = request_opts[:get?]
+    get? = !!request_opts[:get?]
     tenant = request_opts[:tenant]
+    error_path = request_opts[:error_path]
 
     fetch =
       Request.new(
         resource: resource,
         api: api,
         action: action,
+        error_path: error_path,
         query:
           Request.resolve(
             query_dependencies,
@@ -241,6 +243,7 @@ defmodule Ash.Actions.Read do
         authorize?: false,
         async?: false,
         name: "#{inspect(path)} #{action.type} - process `#{action.name}`",
+        error_path: error_path,
         data:
           Request.resolve([path ++ [:fetch, :data], path ++ [:fetch, :query]], fn context ->
             query_opts = query_opts(request_opts, context)
@@ -283,7 +286,7 @@ defmodule Ash.Actions.Read do
                         Keyword.put(query_opts, :page, query.context[:page_opts])
                       )
                       |> add_query(Map.get(fetched_data, :ultimate_query), request_opts)
-                      |> unwrap_for_get(get?)
+                      |> unwrap_for_get(get?, query.resource)
                   end
 
                 deps ->
@@ -296,9 +299,12 @@ defmodule Ash.Actions.Read do
     [fetch, process]
   end
 
-  defp unwrap_for_get({:ok, [value | _]}, true), do: {:ok, value}
-  defp unwrap_for_get({:ok, []}, true), do: {:ok, nil}
-  defp unwrap_for_get(value, _), do: value
+  defp unwrap_for_get({:ok, [value | _]}, true, _resource), do: {:ok, value}
+
+  defp unwrap_for_get({:ok, []}, true, resource),
+    do: {:error, Ash.Error.Query.NotFound.exception(resource: resource)}
+
+  defp unwrap_for_get(other, false, _resource), do: other
 
   defp query_opts(request_opts, %{authorize?: authorize?, actor: actor, verbose?: verbose?}) do
     request_opts

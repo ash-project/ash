@@ -172,7 +172,22 @@ defmodule Ash.Engine do
   defp maybe_transact(opts, requests, func) do
     if opts[:transaction?] do
       requests
-      |> Enum.map(& &1.resource)
+      |> Enum.flat_map(fn request ->
+        resources =
+          if request.resource do
+            [request.resource]
+          else
+            []
+          end
+
+        case request.action do
+          %{touches_resources: touches_resources} when is_list(touches_resources) ->
+            resources ++ touches_resources ++ request.touches_resources
+
+          _ ->
+            resources ++ request.touches_resources
+        end
+      end)
       |> Enum.uniq()
       |> Enum.filter(&Ash.DataLayer.data_layer_can?(&1, :transact))
       |> do_in_transaction(func)
@@ -388,11 +403,11 @@ defmodule Ash.Engine do
             )
         end
 
-        {:noreply, state}
-
       _other ->
-        {:noreply, state}
+        :ok
     end
+
+    {:noreply, state}
   end
 
   def handle_cast(:log_stuck_report, state) do
@@ -434,18 +449,8 @@ defmodule Ash.Engine do
     |> maybe_shutdown()
   end
 
-  def handle_info({:DOWN, _, _, pid, reason}, state) do
-    case get_request(state, pid) do
-      nil ->
-        {:noreply, state}
-
-      {_state, _pid, request} ->
-        state
-        |> log(fn -> "Request exited in failure #{request.name}: #{inspect(reason)}" end)
-        |> move_to_error(request.path)
-        |> add_error(request.path, reason)
-        |> maybe_shutdown()
-    end
+  def handle_info({:DOWN, _, _, _, _}, state) do
+    {:stop, :shutdown, state}
   end
 
   defp send_or_cast(request_handler_pid, runner_pid, runner_ref, message) do
@@ -493,12 +498,6 @@ defmodule Ash.Engine do
     end)
   end
 
-  defp get_request(state, pid) when is_pid(pid) do
-    path = Map.get(state.request_handlers, pid)
-
-    get_request(state, path, pid)
-  end
-
   defp get_request(state, path, pid \\ nil) do
     case get_status(state, path) do
       nil ->
@@ -536,7 +535,7 @@ defmodule Ash.Engine do
       {:ok, nested_state} when is_map(nested_state) ->
         Map.put(state, key, put_nested_key(nested_state, rest, value))
 
-      :error ->
+      _ ->
         Map.put(state, key, put_nested_key(%{}, rest, value))
     end
   end
@@ -586,10 +585,14 @@ defmodule Ash.Engine do
   end
 
   @doc false
+  def must_be_local?(%{async?: false}), do: true
+
   def must_be_local?(request) do
-    not request.async? ||
-      (request.resource &&
-         not Ash.DataLayer.data_layer_can?(request.resource, :async_engine))
+    [request.resource | request.touches_resources || []]
+    |> Enum.filter(& &1)
+    |> Enum.any?(fn resource ->
+      not Ash.DataLayer.data_layer_can?(resource, :async_engine)
+    end)
   end
 
   defp maybe_shutdown(%{active_requests: [], local_requests: []} = state) do

@@ -130,6 +130,7 @@ defmodule Ash.Actions.Update do
     tenant = request_opts[:tenant]
     after_action = request_opts[:after_action]
     skip_on_nil_record? = request_opts[:skip_on_nil_record?]
+    error_path = request_opts[:error_path]
 
     record =
       request_opts[:record] ||
@@ -138,6 +139,7 @@ defmodule Ash.Actions.Update do
     authorization_request =
       Request.new(
         api: api,
+        error_path: error_path,
         changeset:
           Request.resolve(changeset_dependencies, fn %{actor: actor} = context ->
             input = changeset_input.(context) || %{}
@@ -209,6 +211,7 @@ defmodule Ash.Actions.Update do
         action: action,
         resource: resource,
         notify?: true,
+        error_path: error_path,
         manage_changeset?: true,
         authorize?: false,
         data:

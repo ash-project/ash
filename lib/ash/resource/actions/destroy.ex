@@ -9,6 +9,7 @@ defmodule Ash.Resource.Actions.Destroy do
     :error_handler,
     manual?: false,
     arguments: [],
+    touches_resources: [],
     accept: nil,
     changes: [],
     reject: [],
@@ -20,7 +21,8 @@ defmodule Ash.Resource.Actions.Destroy do
   @type t :: %__MODULE__{
           type: :destroy,
           name: atom,
-          arguments: [Ash.Resource.Actions.Argument.t()],
+          arguments: list(Ash.Resource.Actions.Argument.t()),
+          touches_resources: list(atom),
           primary?: boolean,
           description: String.t()
         }

@@ -7,6 +7,7 @@ defmodule Ash.Resource.Actions.Create do
     :error_handler,
     accept: nil,
     manual?: false,
+    touches_resources: [],
     require_attributes: [],
     arguments: [],
     changes: [],
@@ -19,9 +20,10 @@ defmodule Ash.Resource.Actions.Create do
   @type t :: %__MODULE__{
           type: :create,
           name: atom,
-          accept: [atom],
-          allow_nil_input: [atom],
-          arguments: [Ash.Resource.Actions.Argument.t()],
+          accept: list(atom),
+          allow_nil_input: list(atom),
+          touches_resources: list(atom),
+          arguments: list(Ash.Resource.Actions.Argument.t()),
           primary?: boolean,
           description: String.t()
         }

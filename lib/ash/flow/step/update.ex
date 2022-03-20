@@ -1,6 +1,6 @@
 defmodule Ash.Flow.Step.Update do
   @moduledoc "Runs an update action"
-  defstruct [:name, :resource, :action, :api, :input, :record]
+  use Ash.Flow.Step.BuiltinStep, [:resource, :action, :api, :input, :record]
   @shared_opts Ash.Flow.Step.shared_opts()
   @shared_action_opts Ash.Flow.Step.shared_action_opts()
 

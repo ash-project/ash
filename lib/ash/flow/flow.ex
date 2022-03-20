@@ -71,26 +71,86 @@ defmodule Ash.Flow do
   @doc false
   def handle_before_compile(_opts) do
     quote bind_quoted: [] do
-      args = Enum.map(Ash.Flow.Info.arguments(__MODULE__), & &1.name)
+      {opt_args, args} =
+        __MODULE__
+        |> Ash.Flow.Info.arguments()
+        |> Enum.split_with(& &1.allow_nil?)
+
+      args = Enum.map(args, & &1.name)
+
+      opt_args = Enum.map(opt_args, & &1.name)
+
       arg_vars = Enum.map(args, &{&1, [], Elixir})
       @doc Ash.Flow.Info.description(__MODULE__)
 
-      def run!(unquote_splicing(arg_vars), opts \\ []) do
-        input =
+      def run!(unquote_splicing(arg_vars), input \\ %{}, opts \\ []) do
+        {input, opts} =
+          if opts == [] && Keyword.keyword?(input) do
+            {%{}, input}
+          else
+            {input, opts}
+          end
+
+        opt_input =
+          Enum.reduce(unquote(opt_args), input, fn opt_arg, input ->
+            case Map.fetch(input, opt_arg) do
+              {:ok, val} ->
+                Map.put(input, opt_arg, val)
+
+              :error ->
+                case Map.fetch(input, to_string(opt_arg)) do
+                  {:ok, val} ->
+                    Map.put(input, opt_arg, val)
+
+                  :error ->
+                    input
+                end
+            end
+          end)
+
+        required_input =
           unquote(args)
           |> Enum.zip([unquote_splicing(arg_vars)])
           |> Map.new()
 
-        Ash.Flow.run!(__MODULE__, input, opts)
+        all_input = Map.merge(required_input, opt_input)
+
+        Ash.Flow.run!(__MODULE__, all_input, opts)
       end
 
-      def run(unquote_splicing(arg_vars), opts \\ []) do
-        input =
+      def run(unquote_splicing(arg_vars), input \\ %{}, opts \\ []) do
+        {input, opts} =
+          if opts == [] && Keyword.keyword?(input) do
+            {%{}, input}
+          else
+            {input, opts}
+          end
+
+        opt_input =
+          Enum.reduce(unquote(opt_args), input, fn opt_arg, input ->
+            case Map.fetch(input, opt_arg) do
+              {:ok, val} ->
+                Map.put(input, opt_arg, val)
+
+              :error ->
+                case Map.fetch(input, to_string(opt_arg)) do
+                  {:ok, val} ->
+                    Map.put(input, opt_arg, val)
+
+                  :error ->
+                    input
+                end
+            end
+          end)
+
+        required_input =
           unquote(args)
           |> Enum.zip([unquote_splicing(arg_vars)])
           |> Map.new()
 
-        Ash.Flow.run(__MODULE__, input, opts)
+        all_input = Map.merge(required_input, opt_input)
+
+        Ash.Flow.run(__MODULE__, all_input, opts)
       end
     end
   end
@@ -122,13 +182,14 @@ defmodule Ash.Flow do
 
   defp do_handle_modifiers(other), do: other
 
-  defp do_get_in(value, []), do: value
+  @doc false
+  def do_get_in(value, []), do: value
 
-  defp do_get_in(value, [key | rest]) when is_atom(key) and is_struct(value) do
+  def do_get_in(value, [key | rest]) when is_atom(key) and is_struct(value) do
     do_get_in(Map.get(value, key), rest)
   end
 
-  defp do_get_in(value, [key | rest]) do
+  def do_get_in(value, [key | rest]) do
     do_get_in(get_in(value, [key]), rest)
   end
 

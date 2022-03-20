@@ -424,6 +424,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Actions.Create,
     schema: Ash.Resource.Actions.Create.opt_schema(),
+    modules: [:touches_resources],
     entities: [
       changes: [
         @action_change,
@@ -473,6 +474,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Actions.Read,
     schema: Ash.Resource.Actions.Read.opt_schema(),
+    modules: [:touches_resources],
     entities: [
       arguments: [
         @action_argument
@@ -504,6 +506,7 @@ defmodule Ash.Resource.Dsl do
         @action_argument
       ]
     ],
+    modules: [:touches_resources],
     target: Ash.Resource.Actions.Update,
     schema: Ash.Resource.Actions.Update.opt_schema(),
     args: [:name]
@@ -521,6 +524,7 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
+    modules: [:touches_resources],
     entities: [
       changes: [
         @action_change,

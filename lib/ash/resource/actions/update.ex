@@ -13,15 +13,17 @@ defmodule Ash.Resource.Actions.Update do
     changes: [],
     reject: [],
     metadata: [],
+    touches_resources: [],
     type: :update
   ]
 
   @type t :: %__MODULE__{
           type: :update,
           name: atom,
-          accept: [atom],
-          arguments: [Ash.Resource.Actions.Argument.t()],
+          accept: list(atom),
+          arguments: list(Ash.Resource.Actions.Argument.t()),
           primary?: boolean,
+          touches_resources: list(atom),
           description: String.t()
         }
 

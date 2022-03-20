@@ -1,6 +1,6 @@
 defmodule Ash.Flow.Step.RunFlow do
   @moduledoc "Runs another flow"
-  defstruct [:name, :input, :flow]
+  use Ash.Flow.Step.BuiltinStep, [:input, :flow]
   @shared_opts Ash.Flow.Step.shared_opts()
 
   def schema,

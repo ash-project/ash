@@ -26,6 +26,8 @@ defmodule Ash.Engine.Request do
     :actor,
     :authorize?,
     :engine_pid,
+    :error_path,
+    touches_resources: [],
     additional_context: %{},
     manage_changeset?: false,
     notify?: false,
@@ -177,6 +179,8 @@ defmodule Ash.Engine.Request do
       async?: Keyword.get(opts, :async?, true),
       data: data,
       query: query,
+      error_path: opts[:error_path],
+      touches_resources: opts[:touches_resources] || [],
       data_layer_query: resolve([], fn _ -> nil end),
       manage_changeset?: opts[:manage_changeset?] || false,
       api: opts[:api],
@@ -223,6 +227,15 @@ defmodule Ash.Engine.Request do
         {:continue, new_request, notifications}
 
       {:error, error, request} ->
+        error = Ash.Error.to_ash_error(error)
+
+        error =
+          if request.error_path do
+            Ash.Error.set_path(error, request.error_path)
+          else
+            error
+          end
+
         if request.manage_changeset? && !match?(%UnresolvedField{}, request.changeset) do
           new_changeset = Ash.Changeset.add_error(request.changeset, error)
           notifications = update_changeset(request, new_changeset, [])
@@ -231,6 +244,13 @@ defmodule Ash.Engine.Request do
           {:error, error, request}
         end
     end
+  rescue
+    exception ->
+      error = Ash.Error.to_ash_error(exception, __STACKTRACE__)
+      {:error, error, request}
+  catch
+    :exit, exception ->
+      {:error, Ash.Error.to_ash_error(exception), request}
   end
 
   defp update_changeset(
@@ -412,6 +432,14 @@ defmodule Ash.Engine.Request do
 
       {:error, error, new_request} ->
         log(request, fn -> "Error resolving #{field}: #{inspect(error)}" end)
+        error = Ash.Error.to_ash_error(error)
+
+        error =
+          if request.error_path do
+            Ash.Error.set_path(error, request.error_path)
+          else
+            error
+          end
 
         {:error, error, new_request}
     end
@@ -1032,10 +1060,10 @@ defmodule Ash.Engine.Request do
           new_requests =
             Enum.map(requests, fn
               {request, _} ->
-                request
+                %{request | error_path: request.error_path || new_request.error_path}
 
               request ->
-                request
+                %{request | error_path: request.error_path || new_request.error_path}
             end)
 
           {:skipped, new_request,
@@ -1071,7 +1099,16 @@ defmodule Ash.Engine.Request do
                 []
 
               requests ->
-                [{:requests, requests}]
+                [
+                  {:requests,
+                   Enum.map(requests, fn
+                     {request, _} ->
+                       %{request | error_path: request.error_path || new_request.error_path}
+
+                     request ->
+                       %{request | error_path: request.error_path || new_request.error_path}
+                   end)}
+                ]
             end
 
           handle_successful_resolve(

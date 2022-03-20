@@ -15,6 +15,16 @@ defmodule Ash.Resource.Actions.SharedOptions do
     description: [
       type: :string,
       doc: "An optional description for the action"
+    ],
+    touches_resources: [
+      type: {:list, :atom},
+      doc: """
+      A list of resources that the action may touch.
+
+      If your action has custom code (i.e custom changes) that touch resources that use a different data layer,
+      this can be used to inform the transaction logic that these resource's data layer's should be involved in the
+      transaction. In most standard set ups, this should not be necessary.
+      """
     ]
   ]
 

@@ -107,11 +107,13 @@ defmodule Ash.Actions.Create do
     upsert? = request_opts[:upsert?]
     upsert_identity = request_opts[:upsert_identity]
     tenant = request_opts[:tenant]
+    error_path = request_opts[:error_path]
 
     authorization_request =
       Request.new(
         api: api,
         resource: resource,
+        error_path: error_path,
         changeset:
           Request.resolve(changeset_dependencies, fn %{actor: actor} = context ->
             input = changeset_input.(context) || %{}
@@ -159,6 +161,7 @@ defmodule Ash.Actions.Create do
       Request.new(
         api: api,
         resource: resource,
+        error_path: error_path,
         changeset:
           Request.resolve([path ++ [:data, :changeset]], fn data ->
             {:ok, get_in(data, path ++ [:data, :changeset])}

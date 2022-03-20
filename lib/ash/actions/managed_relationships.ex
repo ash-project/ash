@@ -516,7 +516,7 @@ defmodule Ash.Actions.ManagedRelationships do
               {:ok, false} ->
                 {:halt,
                  {:error,
-                  Ash.Changeset.set_path(
+                  Ash.Error.set_path(
                     error,
                     opts[:error_path] ||
                       [
@@ -527,7 +527,7 @@ defmodule Ash.Actions.ManagedRelationships do
               _ ->
                 {:halt,
                  {:error,
-                  Ash.Changeset.set_path(
+                  Ash.Error.set_path(
                     error,
                     opts[:error_path] || [opts[:meta][:id] || relationship.name, input_index]
                   )}}
@@ -556,7 +556,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
           {:error, error} ->
             {:error,
-             Ash.Changeset.set_path(
+             Ash.Error.set_path(
                error,
                opts[:error_path] || [opts[:meta][:id] || relationship.name]
              )}
@@ -625,7 +625,7 @@ defmodule Ash.Actions.ManagedRelationships do
           {:error, error} ->
             {:halt,
              {:error,
-              Ash.Changeset.set_path(
+              Ash.Error.set_path(
                 error,
                 opts[:error_path] || [opts[:meta][:id] || relationship.name]
               )}}
@@ -653,7 +653,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
           {:error, error} ->
             {:error,
-             Ash.Changeset.set_path(
+             Ash.Error.set_path(
                error,
                opts[:error_path] || [opts[:meta][:id] || relationship.name]
              )}
@@ -664,7 +664,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
       {:error, error} ->
         {:error,
-         Ash.Changeset.set_path(
+         Ash.Error.set_path(
            error,
            opts[:error_path] || [opts[:meta][:id] || relationship.name]
          )}

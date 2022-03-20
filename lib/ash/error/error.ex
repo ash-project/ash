@@ -42,6 +42,37 @@ defmodule Ash.Error do
     end
   end
 
+  @doc false
+  def set_path(errors, path) when is_list(errors) do
+    Enum.map(errors, &set_path(&1, path))
+  end
+
+  def set_path(error, path) when is_map(error) do
+    path = List.wrap(path)
+
+    error =
+      if Map.has_key?(error, :path) && is_list(error.path) do
+        %{error | path: path ++ error.path}
+      else
+        error
+      end
+
+    error =
+      if Map.has_key?(error, :changeset) && error.changeset do
+        %{error | changeset: %{error.changeset | errors: set_path(error.changeset.errors, path)}}
+      else
+        error
+      end
+
+    if Map.has_key?(error, :errors) && is_list(error.errors) do
+      %{error | errors: Enum.map(error.errors, &set_path(&1, path))}
+    else
+      error
+    end
+  end
+
+  def set_path(error, _), do: error
+
   def ash_error?(value) do
     !!Ash.ErrorKind.impl_for(value)
   end
@@ -103,20 +134,30 @@ defmodule Ash.Error do
   end
 
   def to_ash_error(other, stacktrace) do
-    if ash_error?(other) do
-      if stacktrace do
-        Map.put(other, :stacktrace, %Stacktrace{stacktrace: stacktrace})
-      else
-        other
-      end
-    else
-      other = Unknown.exception(error: "unknown error: #{inspect(other)}")
+    cond do
+      ash_error?(other) ->
+        if stacktrace do
+          Map.put(other, :stacktrace, %Stacktrace{stacktrace: stacktrace})
+        else
+          other
+        end
 
-      if stacktrace do
-        Map.put(other, :stacktrace, %Stacktrace{stacktrace: stacktrace})
-      else
-        other
-      end
+      is_exception(other) ->
+        if stacktrace do
+          other = Unknown.exception(error: Exception.format(:error, other))
+          Map.put(other, :stacktrace, %Stacktrace{stacktrace: stacktrace})
+        else
+          Unknown.exception(error: Exception.format(:error, other))
+        end
+
+      true ->
+        other = Unknown.exception(error: "unknown error: #{inspect(other)}")
+
+        if stacktrace do
+          Map.put(other, :stacktrace, %Stacktrace{stacktrace: stacktrace})
+        else
+          other
+        end
     end
   end
 
@@ -263,10 +304,24 @@ defmodule Ash.Error do
   end
 
   defp path(%{path: path}) when path not in [[], nil] do
-    "    at " <> Enum.join(path, ", ") <> "\n"
+    "    at " <> to_path(path) <> "\n"
   end
 
   defp path(_), do: ""
+
+  defp to_path(path) do
+    Enum.map_join(path, ", ", fn item ->
+      if is_list(item) do
+        "[#{to_path(item)}]"
+      else
+        if is_binary(item) || is_atom(item) || is_number(item) do
+          item
+        else
+          inspect(item)
+        end
+      end
+    end)
+  end
 
   defp header(:invalid), do: "Input Invalid"
   defp header(:forbidden), do: "Forbidden"

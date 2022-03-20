@@ -999,7 +999,7 @@ defmodule Ash.Changeset do
     resource
     |> Ash.Resource.Info.attributes()
     |> Enum.reject(
-      &(&1.allow_nil? || &1.private? || &1.generated? || &1.name in belongs_to ||
+      &(&1.allow_nil? || &1.private? || !&1.writable? || &1.generated? || &1.name in belongs_to ||
           &1.name in allow_nil_input)
     )
   end
@@ -1815,7 +1815,7 @@ defmodule Ash.Changeset do
         changeset
 
       {:error, error} ->
-        add_error(changeset, set_path(error, error_path))
+        add_error(changeset, Ash.Error.set_path(error, error_path))
     end
   end
 
@@ -2472,40 +2472,9 @@ defmodule Ash.Changeset do
 
   def add_error(changeset, error, path) do
     error
-    |> set_path(path)
+    |> Ash.Error.set_path(path)
     |> handle_error(changeset)
   end
-
-  @doc false
-  def set_path(errors, path) when is_list(errors) do
-    Enum.map(errors, &set_path(&1, path))
-  end
-
-  def set_path(error, path) when is_map(error) do
-    path = List.wrap(path)
-
-    error =
-      if Map.has_key?(error, :path) && is_list(error.path) do
-        %{error | path: path ++ error.path}
-      else
-        error
-      end
-
-    error =
-      if Map.has_key?(error, :changeset) && error.changeset do
-        %{error | changeset: %{error.changeset | errors: set_path(error.changeset.errors, path)}}
-      else
-        error
-      end
-
-    if Map.has_key?(error, :errors) && is_list(error.errors) do
-      %{error | errors: Enum.map(error.errors, &set_path(&1, path))}
-    else
-      error
-    end
-  end
-
-  def set_path(error, _), do: error
 
   defp handle_error(error, %{handle_errors: nil} = changeset) do
     %{changeset | valid?: false, errors: [error | changeset.errors]}
@@ -2546,7 +2515,7 @@ defmodule Ash.Changeset do
       end
 
     if keyword[:path] do
-      set_path(error, keyword[:path])
+      Ash.Error.set_path(error, keyword[:path])
     else
       error
     end
@@ -2593,7 +2562,7 @@ defmodule Ash.Changeset do
 
         error =
           if opts[:path] do
-            set_path(error, opts[:path])
+            Ash.Error.set_path(error, opts[:path])
           else
             error
           end

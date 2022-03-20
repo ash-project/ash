@@ -1,16 +1,11 @@
-defmodule Ash.Flow.Step.Map do
+defmodule Ash.Flow.Step.Transaction do
   @moduledoc "Runs a series of steps over a given input."
-  use Ash.Flow.Step.BuiltinStep, [:over, :element, :output, steps: []]
+  use Ash.Flow.Step.BuiltinStep, [:output, steps: []]
   @shared_opts Ash.Flow.Step.shared_opts()
 
   def schema,
     do:
       [
-        over: [
-          type: :any,
-          doc:
-            "The value to be iterated over. Will be available inside the `map` step as `element(:map_step_name)`"
-        ],
         output: [
           type: :any,
           doc:
