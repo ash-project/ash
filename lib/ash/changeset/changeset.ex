@@ -996,10 +996,13 @@ defmodule Ash.Changeset do
           []
       end
 
+    masked_argument_names = Enum.map(action.arguments, & &1.name)
+
     resource
     |> Ash.Resource.Info.attributes()
     |> Enum.reject(
-      &(&1.allow_nil? || &1.private? || !&1.writable? || &1.generated? || &1.name in belongs_to ||
+      &(&1.allow_nil? || &1.private? || !&1.writable? || &1.generated? ||
+          &1.name in masked_argument_names || &1.name in belongs_to ||
           &1.name in allow_nil_input)
     )
   end

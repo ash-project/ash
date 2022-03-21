@@ -49,9 +49,13 @@ defmodule Ash.Actions.Create do
       {:ok, %{data: %{commit: %^resource{} = created}} = engine_result} ->
         add_notifications(created, engine_result, return_notifications?)
 
-      {:error, %Ash.Engine.Runner{errors: errors, changeset: runner_changeset}} ->
+      {:error, %Ash.Engine.Runner{errors: errors, changeset: %Ash.Changeset{} = runner_changeset}} ->
         errors = Helpers.process_errors(changeset, errors)
-        {:error, Ash.Error.to_error_class(errors, changeset: runner_changeset || changeset)}
+        {:error, Ash.Error.to_error_class(errors, changeset: runner_changeset)}
+
+      {:error, %Ash.Engine.Runner{errors: errors}} ->
+        errors = Helpers.process_errors(changeset, errors)
+        {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
 
       {:error, error} ->
         error = Helpers.process_errors(changeset, error)

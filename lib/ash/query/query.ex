@@ -407,12 +407,6 @@ defmodule Ash.Query do
     end
   end
 
-  defmacro expr({var, _, context} = binding) when is_atom(var) and is_atom(context) do
-    quote do
-      unquote(binding)
-    end
-  end
-
   defmacro expr(body) do
     if Keyword.keyword?(body) do
       quote do
@@ -430,6 +424,14 @@ defmodule Ash.Query do
   @operator_symbols Ash.Query.Operator.operator_symbols()
 
   defp do_expr(expr, escape? \\ true)
+
+  defp do_expr({op, _, nil}, escape?) when is_atom(op) do
+    soft_escape(%Ash.Query.Ref{relationship_path: [], attribute: op}, escape?)
+  end
+
+  defp do_expr({op, _, Elixir}, escape?) when is_atom(op) do
+    soft_escape(%Ash.Query.Ref{relationship_path: [], attribute: op}, escape?)
+  end
 
   defp do_expr({:^, _, [value]}, _escape?) do
     value
@@ -543,10 +545,6 @@ defmodule Ash.Query do
       :error ->
         raise "Invalid reference! #{Macro.to_string(ref)}"
     end
-  end
-
-  defp do_expr({op, _, nil}, escape?) when is_atom(op) do
-    soft_escape(%Ash.Query.Ref{relationship_path: [], attribute: op}, escape?)
   end
 
   defp do_expr({op, _, args}, escape?) when op in [:and, :or] do

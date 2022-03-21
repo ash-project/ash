@@ -7,6 +7,12 @@ defmodule Ash.Filter.TemplateHelpers do
   @doc "A helper for using action arguments in filter templates"
   def arg(name), do: {:_arg, name}
 
+  @doc "A helper for creating a reference"
+  def ref(name), do: {:_ref, [], name}
+
+  @doc "A helper for creating a reference to a related path"
+  def ref(path, name), do: {:_ref, path, name}
+
   @doc """
   A helper for using query context in filter templates
 
