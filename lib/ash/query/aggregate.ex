@@ -388,7 +388,7 @@ defmodule Ash.Query.Aggregate do
     Request.resolve(
       [request_path ++ [:fetch, :query]],
       fn data ->
-        data_query = data.data.query
+        data_query = get_in(data, request_path ++ [:fetch, :query])
 
         if reverse_relationship do
           filter =
