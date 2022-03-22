@@ -1175,7 +1175,7 @@ defmodule Ash.Changeset do
   end
 
   @doc "Gets the original value for an attribute"
-  @spec get_data(t, atom) :: {:ok, any} | :error
+  @spec get_data(t, atom) :: term
   def get_data(changeset, attribute) do
     Map.get(changeset.data, attribute)
   end
