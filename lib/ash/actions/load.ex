@@ -392,7 +392,7 @@ defmodule Ash.Actions.Load do
         query: related_query,
         root_query: root_query,
         actor: request_opts[:actor],
-        authorize: request_opts[:authorize?],
+        authorize?: request_opts[:authorize?],
         api: root_query.api,
         tenant: related_query.tenant
       })

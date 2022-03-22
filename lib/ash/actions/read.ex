@@ -73,7 +73,7 @@ defmodule Ash.Actions.Read do
     opts = sanitize_opts(opts, authorize?, query)
     query = set_tenant_opt(query, opts)
     action = get_action(query.resource, action)
-    engine_opts = engine_opts(opts, action)
+    engine_opts = engine_opts(Keyword.put(opts, :authorize?, authorize?), action)
 
     query =
       for_read(
