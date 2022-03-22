@@ -324,6 +324,8 @@ defmodule Ash.Engine do
   def handle_cast({:spawn_requests, requests}, state) do
     log(state, fn -> "Spawning request processes" end, :debug)
 
+    requests = sanitize_requests(requests, state.actor, state.authorize?, state.verbose?, true)
+
     new_state =
       Enum.reduce(requests, state, fn request, state ->
         {:ok, pid} =
