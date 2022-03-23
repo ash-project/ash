@@ -179,6 +179,13 @@ defmodule Ash.Engine.Runner do
                   state
                   |> replace_request(new_request)
                   |> store_dependencies(new_dependencies)
+                  |> case do
+                    {new_state, new_notifications} ->
+                      {new_state, new_notifications}
+
+                    %__MODULE__{} = new_state ->
+                      {new_state, []}
+                  end
 
                 notify(new_state, notifications ++ new_notifications)
 

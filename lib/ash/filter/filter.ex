@@ -885,10 +885,10 @@ defmodule Ash.Filter do
             api: api,
             query:
               Request.resolve(
-                [request_path ++ [:data, :authorization_filter]],
+                [request_path ++ [:fetch, :authorization_filter]],
                 fn context ->
                   authorization_filter =
-                    get_in(context, request_path ++ [:data, :authorization_filter])
+                    get_in(context, request_path ++ [:fetch, :authorization_filter])
 
                   if authorization_filter do
                     relationship =

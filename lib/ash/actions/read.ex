@@ -1228,16 +1228,21 @@ defmodule Ash.Actions.Read do
   end
 
   defp filter_with_related(relationship_filter_paths, ash_query, data) do
-    Enum.reduce_while(relationship_filter_paths, {:ok, ash_query.filter}, fn path,
-                                                                             {:ok, filter} ->
-      case get_in(data, path ++ [:authorization_filter]) do
-        nil ->
-          {:cont, {:ok, filter}}
+    Enum.reduce_while(
+      relationship_filter_paths,
+      {:ok, ash_query.filter},
+      fn path, {:ok, filter} ->
+        case get_in(data, path ++ [:authorization_filter]) do
+          nil ->
+            {:cont, {:ok, filter}}
 
-        authorization_filter ->
-          add_authorization_filter(filter, authorization_filter)
+          authorization_filter ->
+            path = List.last(path)
+            authorization_filter = Ash.Filter.put_at_path(authorization_filter, path)
+            add_authorization_filter(filter, authorization_filter)
+        end
       end
-    end)
+    )
   end
 
   defp add_authorization_filter(filter, authorization_filter) do
