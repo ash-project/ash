@@ -48,4 +48,8 @@ defmodule Ash.Registry.Dsl do
   """
 
   use Ash.Dsl.Extension, sections: @sections
+
+  def name, do: "Registry"
+  def target, do: "Ash.Registry"
+  def default_for_target?: do: true
 end

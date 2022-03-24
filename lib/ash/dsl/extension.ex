@@ -115,6 +115,7 @@ defmodule Ash.Dsl.Extension do
   @callback default_for_target?() :: boolean
   @callback show_in_docs?() :: boolean
   @callback type() :: String.t()
+
   @optional_callbacks [
     name: 0,
     target: 0,
