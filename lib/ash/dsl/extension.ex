@@ -110,6 +110,10 @@ defmodule Ash.Dsl.Extension do
 
   @callback sections() :: [Ash.Dsl.section()]
   @callback transformers() :: [module]
+  @callback name() :: String.t()
+  @callback target() :: String.t()
+  @callback default_for_target?() :: boolean
+  @optional_callbacks [name: 0, target: 0, default_for_target?: 0]
 
   defp dsl!(resource) do
     Code.ensure_compiled!(resource)
