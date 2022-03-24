@@ -112,4 +112,8 @@ defmodule Ash.Api.Dsl do
   """
 
   use Ash.Dsl.Extension, sections: @sections
+
+  def name, do: "Api"
+  def target, do: "Ash.Api"
+  def default_for_target?, do: true
 end

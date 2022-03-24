@@ -25,6 +25,10 @@ defmodule Ash.Registry do
 
   alias Ash.Dsl.Extension
 
+  def name, do: "Registry"
+  def target, do: "Ash.Registry"
+  def default_for_target?, do: true
+
   @spec entries(t()) :: list(module)
   def entries(registry) do
     case registry |> Extension.get_entities([:entries]) |> Enum.map(& &1.entry) do

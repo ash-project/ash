@@ -113,7 +113,15 @@ defmodule Ash.Dsl.Extension do
   @callback name() :: String.t()
   @callback target() :: String.t()
   @callback default_for_target?() :: boolean
-  @optional_callbacks [name: 0, target: 0, default_for_target?: 0]
+  @callback show_in_docs?() :: boolean
+  @callback type() :: String.t()
+  @optional_callbacks [
+    name: 0,
+    target: 0,
+    default_for_target?: 0,
+    show_in_docs?: 0,
+    type: 0
+  ]
 
   defp dsl!(resource) do
     Code.ensure_compiled!(resource)

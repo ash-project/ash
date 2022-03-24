@@ -136,6 +136,10 @@ defmodule Ash.Notifier.PubSub do
 
   use Ash.Dsl.Extension, sections: @sections
 
+  def name, do: "PubSub"
+  def target, do: "Ash.Resource"
+  def type, do: "Notifier"
+
   def publications(resource) do
     Ash.Dsl.Extension.get_entities(resource, [:pub_sub])
   end

@@ -287,4 +287,8 @@ defmodule Ash.Flow.Dsl do
   use Ash.Dsl.Extension,
     sections: @sections,
     transformers: @transformers
+
+  def name, do: "Flow"
+  def target, do: "Ash.Flow"
+  def default_for_target?, do: true
 end

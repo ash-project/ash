@@ -8,4 +8,7 @@ defmodule Ash.Registry.ResourceValidations do
   ]
 
   use Ash.Dsl.Extension, transformers: @transformers
+
+  def name, do: "Resource Validations"
+  def target, do: "Ash.Registry"
 end

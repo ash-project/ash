@@ -34,6 +34,13 @@ defmodule Ash.DataLayer.Mnesia do
 
   use Ash.Dsl.Extension, sections: [@mnesia]
 
+  @impl true
+  def name, do: "Mnesia"
+  @impl true
+  def target, do: "Ash.Resource"
+  @impl true
+  def type, do: "DataLayer"
+
   alias Ash.Actions.Sort
   alias Ash.Dsl.Extension
   alias :mnesia, as: Mnesia

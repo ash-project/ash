@@ -8,6 +8,8 @@ defmodule Ash.DataLayer.Simple do
 
   use Ash.Dsl.Extension, transformers: [], sections: []
 
+  def show_in_docs?, do: false
+
   def can?(_, :create), do: true
   def can?(_, :update), do: true
   def can?(_, :destroy), do: true
