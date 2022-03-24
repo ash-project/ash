@@ -76,6 +76,13 @@ defmodule Ash.Actions.Read do
     engine_opts = engine_opts(Keyword.put(opts, :authorize?, authorize?), action)
 
     query =
+      if opts[:load] do
+        Ash.Query.load(query, opts[:load])
+      else
+        query
+      end
+
+    query =
       for_read(
         query,
         action,

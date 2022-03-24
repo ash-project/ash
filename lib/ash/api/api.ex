@@ -100,6 +100,10 @@ defmodule Ash.Api do
                             "Nested pagination options, see the section on pagination for more",
                           type: {:custom, __MODULE__, :page_opts, []}
                         ],
+                        load: [
+                          type: :any,
+                          doc: "A load statement to add onto the query"
+                        ],
                         return_query?: [
                           type: :boolean,
                           doc: """

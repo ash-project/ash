@@ -69,6 +69,10 @@ defmodule Ash.Resource.Interface do
       query: [
         type: :any,
         doc: "A query to seed the action with."
+      ],
+      load: [
+        type: :any,
+        doc: "Adds a load statement to the query before passing it to the action."
       ]
     ]
   end

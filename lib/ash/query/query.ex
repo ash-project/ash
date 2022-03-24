@@ -346,7 +346,19 @@ defmodule Ash.Query do
     |> Ash.Resource.Info.preparations()
     |> Enum.concat(action.preparations || [])
     |> Enum.reduce(query, fn %{preparation: {module, opts}}, query ->
-      module.prepare(query, opts, %{actor: actor})
+      case module.prepare(query, opts, %{actor: actor}) do
+        %__MODULE__{} = prepared ->
+          prepared
+
+        other ->
+          raise """
+          Invalid value returned from #{inspect(module)}.prepare/3
+
+          A query must be returned, but the following was received instead:
+
+          #{inspect(other)}
+          """
+      end
     end)
   end
 
