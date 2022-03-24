@@ -51,5 +51,5 @@ defmodule Ash.Registry.Dsl do
 
   def name, do: "Registry"
   def target, do: "Ash.Registry"
-  def default_for_target?: do: true
+  def default_for_target?, do: true
 end
