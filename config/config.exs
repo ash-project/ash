@@ -1,4 +1,4 @@
-use Mix.Config
+import Config
 
 config :ash, :allow_flow, true
 
