@@ -73,6 +73,15 @@ if Code.ensure_loaded?(ElixirSense.Plugin) do
                     option_values(arg, config, hint, opts)
                   else
                     _ ->
+                      hint =
+                        case type do
+                          {:value, val} when not is_nil(val) ->
+                            to_string(val)
+
+                          _ ->
+                            nil
+                        end
+
                       Enum.map(constructors, fn
                         {key, config} ->
                           option_suggestions(key, config, type)
@@ -83,6 +92,7 @@ if Code.ensure_loaded?(ElixirSense.Plugin) do
                         %{__struct__: Ash.Dsl.Section} = section ->
                           section_suggestions(section)
                       end)
+                      |> filter_matches(hint)
                   end
               end
 
@@ -91,6 +101,16 @@ if Code.ensure_loaded?(ElixirSense.Plugin) do
       else
         _ ->
           :ignore
+      end
+    end
+
+    defp filter_matches(hints, match) do
+      if match do
+        Enum.filter(hints, fn %{label: label} ->
+          Matcher.match?(label, match)
+        end)
+      else
+        hints
       end
     end
 
@@ -200,7 +220,7 @@ if Code.ensure_loaded?(ElixirSense.Plugin) do
     end
 
     defp get_option(text) when is_binary(text) do
-      case Regex.named_captures(~r/\s(?<option>[^\s]+):[[:blank:]]+$/, text) do
+      case Regex.named_captures(~r/\s(?<option>[^\s]*):[[:blank:]]*$/, text) do
         %{"option" => option} when option != "" ->
           try do
             String.to_existing_atom(option)
@@ -217,7 +237,7 @@ if Code.ensure_loaded?(ElixirSense.Plugin) do
     defp get_option(_), do: nil
 
     defp get_section_option(text) when is_binary(text) do
-      case Regex.named_captures(~r/\n[[:blank:]]+(?<option>[^\s]+)[[:blank:]]+$/, text) do
+      case Regex.named_captures(~r/\n[[:blank:]]+(?<option>[^\s]*)[[:blank:]]*$/, text) do
         %{"option" => option} when option != "" ->
           try do
             String.to_existing_atom(option)

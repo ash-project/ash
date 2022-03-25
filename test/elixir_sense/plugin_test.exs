@@ -90,35 +90,6 @@ defmodule Ash.ElixirSense.PluginTest do
     assert doc =~ "attributes"
   end
 
-  test "autocomplete remains when cursor is at the end of a nested word" do
-    buffer = """
-    defmodule MyResource do
-      use Ash.Resource
-
-      attributes do
-        attribute
-      #          ^
-      end
-    end
-    """
-
-    [cursor] = cursors(buffer)
-
-    result = suggestions(buffer, cursor)
-
-    assert [
-             %{
-               detail: "Dsl Entity",
-               documentation: doc,
-               kind: :function,
-               label: "attribute",
-               type: :generic
-             }
-           ] = result
-
-    assert doc =~ "attribute"
-  end
-
   test "autocomplete can detect recursive sections" do
     buffer = """
     defmodule MyFlow do
@@ -303,6 +274,7 @@ defmodule Ash.ElixirSense.PluginTest do
              "primary?",
              "reject",
              "require_attributes",
+             "touches_resources",
              "validate"
            ]
   end

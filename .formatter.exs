@@ -136,6 +136,7 @@ locals_without_parens = [
   sum: 4,
   table: 1,
   through: 1,
+  timeout: 1,
   timestamps: 0,
   timestamps: 1,
   touches_resources: 1,

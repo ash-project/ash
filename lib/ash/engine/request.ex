@@ -815,6 +815,7 @@ defmodule Ash.Engine.Request do
       |> Ash.Query.filter(^filter)
 
     new_query
+    |> Map.put(:api, request.api)
     |> Ash.Actions.Read.unpaginated_read()
     |> case do
       {:ok, results} ->
@@ -892,6 +893,7 @@ defmodule Ash.Engine.Request do
     query_with_pkey_filter = Ash.Query.filter(new_query, ^pkey)
 
     query_with_pkey_filter
+    |> Map.put(:api, request.api)
     |> Ash.Actions.Read.unpaginated_read()
     |> case do
       {:ok, []} ->
