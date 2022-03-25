@@ -4,7 +4,8 @@ defmodule Ash.Registry.ResourceValidations do
   """
   @transformers [
     Ash.Registry.ResourceValidations.Transformers.EnsureResourcesCompiled,
-    Ash.Registry.ResourceValidations.Transformers.ValidateRelatedResourceInclusion
+    Ash.Registry.ResourceValidations.Transformers.ValidateRelatedResourceInclusion,
+    Ash.Registry.ResourceValidations.Transformers.EnsureNoEmbeds
   ]
 
   use Ash.Dsl.Extension, transformers: @transformers

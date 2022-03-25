@@ -44,7 +44,7 @@ defmodule Ash.Registry.ResourceValidations.Transformers.EnsureResourcesCompiled 
           )
         end
 
-        :halt
+        {:ok, dsl}
     end
   end
 end
