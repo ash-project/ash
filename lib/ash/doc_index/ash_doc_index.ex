@@ -1,19 +1,13 @@
-defmodule Ash.DocIndex do
-  @moduledoc "A module for configuring how a library is rendered in ash_hq"
-  @type extension :: %{
-          optional(:module) => module,
-          optional(:target) => String.t(),
-          optional(:default_for_target?) => boolean,
-          optional(:name) => String.t(),
-          optional(:type) => String.t()
-        }
-
-  @callback extensions() :: list(extension())
-
-  @behaviour __MODULE__
+defmodule Ash.DocIndex.AshDocIndex do
+  @moduledoc "Doc index for Ash"
+  @behaviour Ash.DocIndex
 
   @impl true
-  @spec extensions() :: list(extension)
+  @spec for_library() :: String.t()
+  def for_library, do: "ash"
+
+  @impl true
+  @spec extensions() :: list(Ash.DocIndex.extension())
   def extensions do
     [
       %{
