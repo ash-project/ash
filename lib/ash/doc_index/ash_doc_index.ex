@@ -41,12 +41,6 @@ defmodule Ash.DocIndex.AshDocIndex do
         default_for_target?: true
       },
       %{
-        module: Ash.Flow.Dsl,
-        name: "Flow",
-        target: "Ash.Flow",
-        default_for_target?: true
-      },
-      %{
         module: Ash.Notifier.PubSub,
         name: "PubSub",
         target: "Ash.Resource",
