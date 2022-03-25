@@ -14,12 +14,14 @@ defmodule Ash.DocIndex.AshDocIndex do
         module: Ash.Resource.Dsl,
         name: "Resource",
         target: "Ash.Resource",
+        type: "Resource",
         default_for_target?: true
       },
       %{
         module: Ash.Api.Dsl,
         name: "Api",
         target: "Ash.Api",
+        type: "Api",
         default_for_target?: true
       },
       %{
@@ -38,6 +40,7 @@ defmodule Ash.DocIndex.AshDocIndex do
         module: Ash.Flow.Dsl,
         name: "Flow",
         target: "Ash.Flow",
+        type: "Flow",
         default_for_target?: true
       },
       %{
@@ -50,11 +53,13 @@ defmodule Ash.DocIndex.AshDocIndex do
         module: Ash.Registry.Dsl,
         name: "Registry",
         target: "Ash.Registry",
+        type: "Registry",
         default_for_target?: true
       },
       %{
         module: Ash.Registry.ResourceValidations,
         name: "Resource Validations",
+        type: "Extension",
         target: "Ash.Registry"
       }
     ]

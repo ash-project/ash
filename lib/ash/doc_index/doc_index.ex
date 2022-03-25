@@ -4,8 +4,8 @@ defmodule Ash.DocIndex do
           optional(:module) => module,
           optional(:target) => String.t(),
           optional(:default_for_target?) => boolean,
-          optional(:name) => String.t(),
-          optional(:type) => String.t()
+          :name => String.t(),
+          :type => String.t()
         }
 
   @callback extensions() :: list(extension())
