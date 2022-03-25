@@ -5,6 +5,67 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.52.0-rc.0](https://github.com/ash-project/ash/compare/v1.51.2...v1.52.0-rc.0) (2022-03-25)
+
+
+
+
+### Features:
+
+* add `Ash.Flow`
+
+* support recursive DSL entities.
+
+* manual relationships
+
+### Bug Fixes:
+
+* add `load` option convenience for reads/code interface
+
+* handle errors in all action types where `changeset` wasn't resolved
+
+* always sanitize requests before we spawn them
+
+* context name in loading manual relationships
+
+* get aggregate query from proper engine path
+
+* handle error case in create
+
+* don't require attributes if an argument overrides them
+
+* fix hanging issue when adding engine requests
+
+* don't require `writable?: false` attributes
+
+* pull aggregate values properly
+
+* fix nested section configs having wrong path
+
+* don't rescue errors in resource_formatter
+
+* add `input/2` to resource modules
+
+* move back to more efficient formatter
+
+* make the formatter safer, again
+
+* typo in changeset.ex (#291)
+
+### Improvements:
+
+* properly attach authorization_filters to loaded items
+
+* add `ref` template helper
+
+* add transaction steps to flow
+
+* unimport to avoid name collisions in nested DSLs
+
+* disable lexical tracker when expanding aliases
+
+* temporarily move init to runtime for changes
+
 ## [v1.51.2](https://github.com/ash-project/ash/compare/v1.51.1...v1.51.2) (2022-02-17)
 
 
