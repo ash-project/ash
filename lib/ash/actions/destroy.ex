@@ -56,6 +56,7 @@ defmodule Ash.Actions.Destroy do
       verbose?: verbose?,
       actor: actor,
       authorize?: authorize?,
+      timeout: opts[:timeout] || Ash.Api.timeout(api),
       transaction?: true
     )
     |> case do

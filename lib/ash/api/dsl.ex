@@ -16,6 +16,25 @@ defmodule Ash.Api.Dsl do
     ]
   }
 
+  @execution %Ash.Dsl.Section{
+    name: :execution,
+    describe: "Options for how requests are executed using this Api",
+    examples: [
+      """
+      execution do
+        timeout 30_000
+      end
+      """
+    ],
+    schema: [
+      timeout: [
+        type: :timeout,
+        doc: "The default timeout to use for requests using this API.",
+        default: :infinity
+      ]
+    ]
+  }
+
   @resources %Ash.Dsl.Section{
     name: :resources,
     describe: "List the resources present in this API",
@@ -92,7 +111,7 @@ defmodule Ash.Api.Dsl do
     ]
   }
 
-  @sections [@resources]
+  @sections [@resources, @execution]
 
   @moduledoc """
   A small DSL for declaring APIs
@@ -112,8 +131,4 @@ defmodule Ash.Api.Dsl do
   """
 
   use Ash.Dsl.Extension, sections: @sections
-
-  def name, do: "Api"
-  def target, do: "Ash.Api"
-  def default_for_target?, do: true
 end

@@ -1126,10 +1126,6 @@ defmodule Ash.Resource.Dsl do
     sections: @sections,
     transformers: @transformers
 
-  def name, do: "Resource"
-  def target, do: "Ash.Resource"
-  def default_for_target?, do: true
-
   @doc false
   def identity(x), do: x
 end

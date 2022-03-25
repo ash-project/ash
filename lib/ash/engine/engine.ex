@@ -68,6 +68,13 @@ defmodule Ash.Engine do
     authorize? = opts[:authorize?]
     actor = opts[:actor]
 
+    if opts[:timeout] && is_integer(opts[:timeout]) do
+      Task.start_link(fn ->
+        :timer.sleep(opts[:timeout])
+        exit(:timeout)
+      end)
+    end
+
     opts = Keyword.put(opts, :callers, [self() | Process.get(:"$callers", [])])
 
     # If the requests are invalid, this is a framework level error

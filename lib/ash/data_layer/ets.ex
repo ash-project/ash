@@ -30,13 +30,6 @@ defmodule Ash.DataLayer.Ets do
 
   use Ash.Dsl.Extension, sections: [@ets]
 
-  @impl true
-  def name, do: "Ets"
-  @impl true
-  def target, do: "Ash.Resource"
-  @impl true
-  def type, do: "DataLayer"
-
   alias Ash.Actions.Sort
   alias Ash.Dsl.Extension
 

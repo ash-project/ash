@@ -73,7 +73,7 @@ defmodule Ash.Actions.Read do
     opts = sanitize_opts(opts, authorize?, query)
     query = set_tenant_opt(query, opts)
     action = get_action(query.resource, action)
-    engine_opts = engine_opts(Keyword.put(opts, :authorize?, authorize?), action)
+    engine_opts = engine_opts(Keyword.put(opts, :authorize?, authorize?), action, query.api)
 
     query =
       if opts[:load] do
@@ -374,10 +374,11 @@ defmodule Ash.Actions.Read do
     |> Keyword.merge(Map.get(query.context, :override_api_params) || [])
   end
 
-  defp engine_opts(opts, action) do
+  defp engine_opts(opts, action, api) do
     opts
     |> Keyword.take([:verbose?, :actor, :authorize?])
     |> Keyword.put(:transaction?, action.transaction?)
+    |> Keyword.put(:timeout, opts[:timeout] || Ash.Api.timeout(api))
   end
 
   defp for_read(query, action, actor, tenant, authorize?) do

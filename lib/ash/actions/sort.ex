@@ -15,12 +15,16 @@ defmodule Ash.Actions.Sort do
 
   def process(resource, sort, aggregates, context) when is_list(sort) do
     sort
-    |> Enum.map(fn {key, val} ->
-      if is_atom(val) do
-        {key, val}
-      else
-        {key, {:asc, val}}
-      end
+    |> Enum.map(fn
+      {key, {order, context}} when is_atom(order) ->
+        {key, {order, context}}
+
+      {key, val} ->
+        if is_atom(val) do
+          {key, val}
+        else
+          {key, {:asc, val}}
+        end
     end)
     |> Enum.reduce({[], []}, fn
       {field, {inner_order, _} = order}, {sorts, errors} when inner_order in @sort_orders ->

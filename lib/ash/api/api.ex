@@ -62,6 +62,12 @@ defmodule Ash.Api do
           :next | :prev | :first | :last | integer
 
   @global_opts [
+    timeout: [
+      type: :timeout,
+      doc: """
+      A positive integer, or `:infinity`. If none is provided, the timeout configured on the api is used (which defaults to `:infinity`).
+      """
+    ],
     verbose?: [
       type: :boolean,
       default: false,
@@ -533,6 +539,11 @@ defmodule Ash.Api do
   @spec registry(atom) :: atom | nil
   def registry(api) do
     Extension.get_opt(api, [:resources], :registry, nil, true)
+  end
+
+  @spec timeout(atom) :: :timeout | integer()
+  def timeout(api) do
+    Extension.get_opt(api, [:execution], :timeout, :infinity, true)
   end
 
   @spec allow_unregistered?(atom) :: atom | nil
