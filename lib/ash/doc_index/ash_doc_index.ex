@@ -53,7 +53,7 @@ defmodule Ash.DocIndex.AshDocIndex do
         type: "Notifier"
       },
       %{
-        module: Ash.Registry,
+        module: Ash.Registry.Dsl,
         name: "Registry",
         target: "Ash.Registry",
         default_for_target?: true
