@@ -1110,7 +1110,8 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.DefaultPrimaryKey,
     Ash.Resource.Transformers.DefaultAccept,
     Ash.Resource.Transformers.SetTypes,
-    Ash.Resource.Transformers.ValidateRelationshipAttributes
+    Ash.Resource.Transformers.ValidateRelationshipAttributes,
+    Ash.Resource.Transformers.ValidateAttributeAndRelationshipNames
   ]
 
   @moduledoc """
