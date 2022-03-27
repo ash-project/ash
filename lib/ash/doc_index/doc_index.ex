@@ -1,5 +1,8 @@
 defmodule Ash.DocIndex do
-  @moduledoc "A module for configuring how a library is rendered in ash_hq"
+  @moduledoc """
+  A module for configuring how a library is rendered in ash_hq
+  """
+
   @type extension :: %{
           optional(:module) => module,
           optional(:target) => String.t(),
