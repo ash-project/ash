@@ -1111,7 +1111,7 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.DefaultAccept,
     Ash.Resource.Transformers.SetTypes,
     Ash.Resource.Transformers.ValidateRelationshipAttributes,
-    Ash.Resource.Transformers.ValidateAttributeAndRelationshipNames
+    Ash.Resource.Transformers.RequireUniqueFieldNames
   ]
 
   @moduledoc """

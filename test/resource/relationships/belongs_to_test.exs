@@ -158,24 +158,6 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
       )
     end
 
-    test "fails if the relationship and an attribute have the same name" do
-      assert_raise(
-        Ash.Error.Dsl.DslError,
-        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n Attribute and relationship with name `foobar` are defined in Ash.Test.Resource.Relationships.BelongsToTest.Post\n\nA resource cannot have an attribute and relationship with the same name.\n",
-        fn ->
-          defposts do
-            attributes do
-              attribute(:foobar, :string)
-            end
-
-            relationships do
-              belongs_to(:foobar, Foobar)
-            end
-          end
-        end
-      )
-    end
-
     test "fails if `primary_key?` is not a boolean" do
       assert_raise(
         Ash.Error.Dsl.DslError,
