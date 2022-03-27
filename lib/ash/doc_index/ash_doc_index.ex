@@ -1,5 +1,5 @@
 defmodule Ash.DocIndex.AshDocIndex do
-  @moduledoc "The documentation index for Ash"
+  @moduledoc "The Ash documentation index"
 
   @behaviour Ash.DocIndex
 
