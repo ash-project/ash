@@ -65,4 +65,17 @@ defmodule Ash.DocIndex.AshDocIndex do
       }
     ]
   end
+
+  @getting_started File.read!("documentation/introduction/getting_started.md")
+
+  @impl true
+  @spec guides() :: list(Ash.DocIndex.guide())
+  def guides do
+    [
+      %{
+        name: "Getting Started",
+        text: @getting_started
+      }
+    ]
+  end
 end
