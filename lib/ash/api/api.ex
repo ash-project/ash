@@ -56,6 +56,8 @@ defmodule Ash.Api do
 
   require Ash.Query
 
+  @dialyzer {:nowarn_function, unwrap_or_raise!: 3}
+
   @type t() :: module
 
   @type page_request ::
@@ -1005,6 +1007,10 @@ defmodule Ash.Api do
   defp unwrap_or_raise!({:ok, result}, _, false), do: result
   defp unwrap_or_raise!({:ok, result}, _, true), do: {:ok, result}
   defp unwrap_or_raise!({:ok, result, other}, _, _), do: {result, other}
+
+  defp unwrap_or_raise!({:error, error}, stacktraces?, destroy?) when is_list(error) do
+    unwrap_or_raise!({:error, Ash.Error.to_error_class(error)}, stacktraces?, destroy?)
+  end
 
   defp unwrap_or_raise!({:error, error}, stacktraces?, _) do
     exception = Ash.Error.to_ash_error(error)

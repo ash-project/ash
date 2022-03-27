@@ -1,6 +1,18 @@
 defmodule Ash.DocIndex.AshDocIndex do
-  @moduledoc "Doc index for Ash"
+  @moduledoc "The documentation index for Ash"
+
   @behaviour Ash.DocIndex
+
+  @impl true
+  @spec guides() :: list(Ash.DocIndex.guide())
+  def guides do
+    [
+      %{
+        name: "Getting Started with Ash",
+        text: File.read!("documentation/getting_started.md")
+      }
+    ]
+  end
 
   @impl true
   @spec for_library() :: String.t()
