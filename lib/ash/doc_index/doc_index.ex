@@ -15,6 +15,4 @@ defmodule Ash.DocIndex do
 
   @callback extensions() :: list(extension())
   @callback for_library() :: String.t()
-  @callback guides() :: list(guide())
-  @optional_callbacks [guides: 0]
 end
