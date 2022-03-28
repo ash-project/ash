@@ -825,7 +825,7 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declare preparations that occur on all read actions for a given resource
     """,
-    imports: [Ash.Resource.Validation.Builtins],
+    imports: [Ash.Resource.Preparation.Builtins, Ash.Resource.Validation.Builtins],
     examples: [
       """
       preparations do

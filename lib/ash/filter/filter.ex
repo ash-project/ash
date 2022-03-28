@@ -479,6 +479,12 @@ defmodule Ash.Filter do
       {:_context, field} ->
         Map.get(context, field)
 
+      {:_ref, path, name} ->
+        %Ref{
+          attribute: name,
+          relationship_path: path
+        }
+
       other ->
         other
     end)

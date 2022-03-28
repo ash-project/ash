@@ -87,6 +87,20 @@ defmodule Ash.Dsl.Transformer do
     |> Map.get(key, default)
   end
 
+  def build_entity!(extension, path, name, opts) do
+    case build_entity(extension, path, name, opts) do
+      {:ok, entity} ->
+        entity
+
+      {:error, error} ->
+        if is_exception(error) do
+          raise error
+        else
+          raise "Error building entity #{inspect(error)}"
+        end
+    end
+  end
+
   def build_entity(extension, path, name, opts) do
     do_build_entity(extension.sections(), path, name, opts)
   end

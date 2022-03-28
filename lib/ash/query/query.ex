@@ -1373,6 +1373,9 @@ defmodule Ash.Query do
       {:select, fields}, query ->
         select(query, fields)
 
+      {:deselect, fields}, query ->
+        deselect(query, fields)
+
       {:ensure_selected, fields}, query ->
         ensure_selected(query, fields)
 
