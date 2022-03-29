@@ -50,7 +50,8 @@ defmodule Ash.Query do
     action_failed?: false,
     before_action: [],
     after_action: [],
-    valid?: true
+    valid?: true,
+    data_set?: false
   ]
 
   @type t :: %__MODULE__{}

@@ -24,7 +24,7 @@ defmodule Ash.DataLayer.Simple do
 
   defmodule Query do
     @moduledoc false
-    defstruct [:data, :resource, :filter, :api, sort: []]
+    defstruct [:data, :resource, :filter, :api, sort: [], data_set?: false]
   end
 
   @doc """
@@ -36,6 +36,14 @@ defmodule Ash.DataLayer.Simple do
 
   def resource_to_query(resource, api) do
     %Query{data: [], resource: resource, api: api}
+  end
+
+  def run_query(%{data_set?: false}, resource) do
+    {:error,
+     Ash.Error.SimpleDataLayer.NoDataProvided.exception(
+       message:
+         "No data provided to resource #{resource}\nA common cause of this is not having a data layer for the resource.\n\nYou can create a data layer by including the following in your resource:\n`use Ash.Resource, data_layer: Ash.DataLayer.Ets`"
+     )}
   end
 
   def run_query(%{data: data, sort: sort, api: api, filter: filter}, _resource) do
@@ -56,9 +64,13 @@ defmodule Ash.DataLayer.Simple do
   end
 
   def set_context(_resource, query, context) do
-    data = Map.get(context, :data) || []
+    case Map.fetch(context, :data) do
+      {:ok, value} ->
+        {:ok, %{query | data_set?: true, data: value || []}}
 
-    {:ok, %{query | data: data}}
+      :error ->
+        {:ok, query}
+    end
   end
 
   def create(_resource, changeset) do
