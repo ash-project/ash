@@ -1079,18 +1079,18 @@ defmodule Ash.Resource.Dsl do
   }
 
   @sections [
-    @identities,
     @attributes,
     @relationships,
     @actions,
+    @code_interface,
     @resource,
+    @identities,
     @changes,
     @preparations,
     @validations,
     @aggregates,
     @calculations,
-    @multitenancy,
-    @code_interface
+    @multitenancy
   ]
 
   @transformers [

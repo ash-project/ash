@@ -9,7 +9,7 @@ defmodule Ash.Error.Invalid.NoSuchResource do
 
     def code(_), do: "no_such_resource"
 
-    def message(%{message: message}) when message != "", do: message
+    def message(%{message: message}) when message not in ["", nil], do: message
 
     def message(%{resource: resource}) do
       "No such resource #{inspect(resource)}"

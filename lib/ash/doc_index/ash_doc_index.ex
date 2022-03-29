@@ -68,12 +68,17 @@ defmodule Ash.DocIndex.AshDocIndex do
     ]
   end
 
-  @getting_started File.read!("documentation/introduction/getting_started.md")
+  @getting_started File.read!("documentation/guides/getting_started.md")
+  @overview File.read!("documentation/guides/getting_started.md")
 
   @impl true
   @spec guides() :: list(Ash.DocIndex.guide())
   def guides do
     [
+      %{
+        name: "Overview",
+        text: @overview
+      },
       %{
         name: "Getting Started",
         text: @getting_started
