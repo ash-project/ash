@@ -1115,11 +1115,6 @@ defmodule Ash.Resource.Dsl do
 
   @moduledoc """
   The built in resource DSL.
-
-  # Table of Contents
-  #{Ash.Dsl.Extension.doc_index(@sections)}
-
-  #{Ash.Dsl.Extension.doc(@sections)}
   """
 
   use Ash.Dsl.Extension,

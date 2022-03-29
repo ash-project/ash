@@ -277,11 +277,6 @@ defmodule Ash.Flow.Dsl do
 
   @moduledoc """
   The built in flow DSL.
-
-  # Table of Contents
-  #{Ash.Dsl.Extension.doc_index(@sections)}
-
-  #{Ash.Dsl.Extension.doc(@sections)}
   """
 
   use Ash.Dsl.Extension,

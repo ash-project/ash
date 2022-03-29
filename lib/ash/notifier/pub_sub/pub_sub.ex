@@ -127,11 +127,6 @@ defmodule Ash.Notifier.PubSub do
 
   @moduledoc """
   A pubsub notifier extension
-
-  # Table of Contents
-  #{Ash.Dsl.Extension.doc_index(@sections)}
-
-  #{Ash.Dsl.Extension.doc(@sections)}
   """
 
   use Ash.Dsl.Extension, sections: @sections

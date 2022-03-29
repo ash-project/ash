@@ -123,11 +123,6 @@ defmodule Ash.Api.Dsl do
   but if at all possible you should define an `Ash.Registry` if you are using an extension
   that requires a list of resources. For example, most extensions look for two application
   environment variables called `:ash_apis` and `:ash_registries` to find any potential registries
-
-  # Table of Contents
-  #{Ash.Dsl.Extension.doc_index(@sections)}
-
-  #{Ash.Dsl.Extension.doc(@sections)}
   """
 
   use Ash.Dsl.Extension, sections: @sections

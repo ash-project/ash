@@ -40,11 +40,6 @@ defmodule Ash.Registry.Dsl do
 
   @moduledoc """
   A small DSL for declaring an `Ash.Registry`.
-
-  # Table of Contents
-  #{Ash.Dsl.Extension.doc_index(@sections)}
-
-  #{Ash.Dsl.Extension.doc(@sections)}
   """
 
   use Ash.Dsl.Extension, sections: @sections
