@@ -8,6 +8,7 @@ defmodule Ash.Resource.Actions.Read do
     :filter,
     :description,
     :get?,
+    modify_query: nil,
     transaction?: false,
     arguments: [],
     preparations: [],
@@ -40,6 +41,18 @@ defmodule Ash.Resource.Actions.Read do
                     doc: """
                     Expresses that this action innately only returns a single result. Can be used by extensions to validate that you have not hooked something up that expects a list
                     to an action that can only return one thing. This is not used internally (but may be in the future).
+                    """
+                  ],
+                  modify_query: [
+                    type: :mfa,
+                    doc: """
+                    Allows direct manipulation of the data layer query via an MFA.
+
+                    The ash query and the data layer query will be provided as additional arguments.
+                    The result must be `{:ok, new_data_layer_query} | {:error, error}`.
+
+                    This is an experimental option, so if you use it you should be sure to test it under
+                    various scenarios, like usage in aggregates/calculations and loading from relationships.
                     """
                   ],
                   transaction?: [

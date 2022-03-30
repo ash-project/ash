@@ -89,6 +89,26 @@ defmodule Ash.DocIndex.AshDocIndex do
   @impl true
   @spec code_modules :: list(module())
   def code_modules() do
-    [Ash.Changeset, Ash.Query]
+    [
+      Ash.Resource.Info,
+      Ash.Api,
+      Ash.Type,
+      Ash.Error,
+      Ash.CiString,
+      Ash.Changeset,
+      Ash.Query,
+      Ash.Filter,
+      Ash.Sort,
+      Ash.Resource.Change,
+      Ash.Resource.Change.Builtins,
+      Ash.Calculation,
+      Ash.Aggregate,
+      Ash.Query,
+      Ash.CodeInterface,
+      Ash.Dsl.Entity,
+      Ash.DSl.Extension,
+      Ash.Dsl.Section,
+      ASh.DSl.Transformer
+    ]
   end
 end

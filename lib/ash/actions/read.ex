@@ -599,7 +599,7 @@ defmodule Ash.Actions.Read do
               query =
                 initial_query
                 |> Ash.Query.unset([:filter, :aggregates, :sort, :limit, :offset])
-                |> Ash.Query.data_layer_query(only_validate_filter?: true)
+                |> Ash.Query.data_layer_query(only_validate_filter?: true, no_modify?: true)
 
               ash_query =
                 if ash_query.select || calculations_at_runtime == %{} do

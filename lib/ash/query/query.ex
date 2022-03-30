@@ -1926,12 +1926,19 @@ defmodule Ash.Query do
          {:ok, query} <-
            Ash.DataLayer.limit(query, ash_query.limit, resource),
          {:ok, query} <-
-           Ash.DataLayer.offset(query, ash_query.offset, resource) do
-      Ash.DataLayer.set_context(
-        resource,
-        query,
-        Map.put(ash_query.context, :action, ash_query.action)
-      )
+           Ash.DataLayer.offset(query, ash_query.offset, resource),
+         {:ok, query} <-
+           Ash.DataLayer.set_context(
+             resource,
+             query,
+             Map.put(ash_query.context, :action, ash_query.action)
+           ) do
+      if opts[:no_modify?] || !ash_query.action || !ash_query.action.modify_query do
+        {:ok, query}
+      else
+        {m, f, a} = ash_query.action.modify_query
+        apply(m, f, a ++ [ash_query, query])
+      end
     else
       {:error, error} -> {:error, error}
     end
