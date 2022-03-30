@@ -89,6 +89,7 @@ locals_without_parens = [
   message: 1,
   metadata: 2,
   metadata: 3,
+  modify_query: 1,
   module: 1,
   name: 1,
   not_found_message: 1,

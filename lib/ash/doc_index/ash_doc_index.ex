@@ -88,7 +88,7 @@ defmodule Ash.DocIndex.AshDocIndex do
 
   @impl true
   @spec code_modules :: list(module())
-  def code_modules() do
+  def code_modules do
     [
       Ash.Resource.Info,
       Ash.Api,
