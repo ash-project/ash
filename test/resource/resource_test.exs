@@ -38,6 +38,44 @@ defmodule Ash.Test.Resource.ResourceTest do
     end
   end
 
+  defmodule Post do
+    @moduledoc false
+    use Ash.Resource
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string
+    end
+  end
+
+  defmodule Registry do
+    @moduledoc false
+    use Ash.Registry
+
+    entries do
+      entry(Post)
+    end
+  end
+
+  defmodule Api do
+    @moduledoc false
+    use Ash.Api
+
+    resources do
+      registry Registry
+    end
+  end
+
+  test "it returns the correct error when doing a read with no data layer setup" do
+    Post
+    |> Ash.Changeset.new(%{name: "foo"})
+    |> Api.create()
+
+    {_, error} = Api.read(Post)
+    [%Ash.Error.SimpleDataLayer.NoDataProvided{message: message} | _] = error.errors
+    assert message != nil
+  end
+
   test "fails if there are multiple fields that share the same name" do
     assert_raise(
       Ash.Error.Dsl.DslError,
