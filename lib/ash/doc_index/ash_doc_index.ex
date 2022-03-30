@@ -85,4 +85,10 @@ defmodule Ash.DocIndex.AshDocIndex do
       }
     ]
   end
+
+  @impl true
+  @spec code_modules :: list(module())
+  def code_modules() do
+    [Ash.Changeset, Ash.Query]
+  end
 end
