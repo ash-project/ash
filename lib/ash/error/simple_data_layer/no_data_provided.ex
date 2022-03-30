@@ -2,7 +2,7 @@ defmodule Ash.Error.SimpleDataLayer.NoDataProvided do
   @moduledoc "Used when no data was provided to the simple data layer"
   use Ash.Error.Exception
 
-  def_ash_error([:resource, :message], class: :invalid)
+  def_ash_error([:resource, :message], class: :framework)
 
   defimpl Ash.ErrorKind do
     def id(_), do: Ash.UUID.generate()
