@@ -102,13 +102,11 @@ defmodule Ash.DocIndex.AshDocIndex do
       Ash.Resource.Change,
       Ash.Resource.Change.Builtins,
       Ash.Calculation,
-      Ash.Aggregate,
-      Ash.Query,
       Ash.CodeInterface,
       Ash.Dsl.Entity,
-      Ash.DSl.Extension,
+      Ash.Dsl.Extension,
       Ash.Dsl.Section,
-      ASh.DSl.Transformer
+      ASh.Dsl.Transformer
     ]
   end
 end
