@@ -32,7 +32,7 @@ defmodule Ash.Filter.Runtime do
     |> Enum.map(& &1.relationship_path)
     |> Enum.reject(&(&1 == []))
     |> Enum.uniq()
-    |> Enum.reject(&loaded?(records, &1))
+    |> Enum.reject(&Ash.Resource.Info.loaded?(records, &1))
     |> Enum.map(&path_to_load/1)
     |> case do
       [] ->
@@ -81,7 +81,7 @@ defmodule Ash.Filter.Runtime do
       |> Enum.uniq()
 
     relationship_paths
-    |> Enum.reject(&loaded?(record, &1))
+    |> Enum.reject(&Ash.Resource.Info.loaded?(record, &1))
     |> case do
       [] ->
         {:ok,
@@ -349,19 +349,5 @@ defmodule Ash.Filter.Runtime do
       value ->
         get_related(value, rest)
     end
-  end
-
-  defp loaded?(records, path) when is_list(records) do
-    Enum.all?(records, &loaded?(&1, path))
-  end
-
-  defp loaded?(%Ash.NotLoaded{}, _), do: false
-
-  defp loaded?(_, []), do: true
-
-  defp loaded?(record, [key | rest]) do
-    record
-    |> Map.get(key)
-    |> loaded?(rest)
   end
 end

@@ -19,6 +19,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
     :description,
     :context,
     :filter,
+    could_be_related_at_creation?: false,
     validate_destination_field?: true,
     cardinality: :many,
     type: :many_to_many

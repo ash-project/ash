@@ -59,6 +59,24 @@ defmodule Ash.Resource.Info do
       is_nil(rel.context)
   end
 
+  def loaded?(records, path) when not is_list(path) do
+    loaded?(records, [path])
+  end
+
+  def loaded?(records, path) when is_list(records) do
+    Enum.all?(records, &loaded?(&1, path))
+  end
+
+  def loaded?(%Ash.NotLoaded{}, _), do: false
+
+  def loaded?(_, []), do: true
+
+  def loaded?(record, [key | rest]) do
+    record
+    |> Map.get(key)
+    |> loaded?(rest)
+  end
+
   @spec get_metadata(Ash.Resource.record(), atom | list(atom)) :: term
   def get_metadata(record, key_or_path) do
     get_in(record.__metadata__ || %{}, List.wrap(key_or_path))

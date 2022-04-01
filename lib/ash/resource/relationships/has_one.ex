@@ -18,6 +18,7 @@ defmodule Ash.Resource.Relationships.HasOne do
     :not_found_message,
     :violation_message,
     :manual,
+    could_be_related_at_creation?: false,
     validate_destination_field?: true,
     cardinality: :one,
     type: :has_one,

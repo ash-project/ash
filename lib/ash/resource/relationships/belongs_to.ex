@@ -51,6 +51,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
   @global_opts shared_options()
                |> OptionsHelpers.set_default!(:destination_field, :id)
                |> OptionsHelpers.append_doc!(:source_field, "Defaults to <name>_id")
+               |> Keyword.delete(:could_be_related_at_creation?)
 
   @opt_schema Ash.OptionsHelpers.merge_schemas(
                 [

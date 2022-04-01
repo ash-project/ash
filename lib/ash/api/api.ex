@@ -203,7 +203,18 @@ defmodule Ash.Api do
     end
   end
 
-  @load_opts_schema merge_schemas([], @global_opts, "Global Options")
+  @load_opts_schema merge_schemas(
+                      [
+                        lazy?: [
+                          type: :boolean,
+                          doc:
+                            "If set to true, values will only be loaded if the related value isn't currently loaded.",
+                          default: false
+                        ]
+                      ],
+                      @global_opts,
+                      "Global Options"
+                    )
 
   @get_opts_schema [
                      load: [
@@ -790,7 +801,7 @@ defmodule Ash.Api do
     with %{valid?: true} <- query,
          {:ok, action} <- get_action(query.resource, opts, :read, query.action),
          {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @load_opts_schema) do
-      Read.run(query, action, Keyword.put(opts, :initial_data, data))
+      Read.run(query, action, Keyword.merge(opts, initial_data: data, lazy?: true))
     else
       {:error, error} ->
         {:error, error}

@@ -80,6 +80,16 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       A sort statement to be applied when reading the relationship.
       """
     ],
+    could_be_related_at_creation?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      This toggle modifies the management of the relationship. Typically, on creation,
+      the existing value of the relationship isn't loaded. However, if it is possible for things
+      to be related *before* this record is created, for example if your data layers does not support
+      primary keys, then you should set this to true.
+      """
+    ],
     violation_message: [
       type: :string,
       doc: """

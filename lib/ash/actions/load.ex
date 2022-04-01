@@ -8,6 +8,7 @@ defmodule Ash.Actions.Load do
 
   def requests(
         query,
+        lazy?,
         opts,
         request_path,
         root_query \\ nil,
@@ -15,11 +16,12 @@ defmodule Ash.Actions.Load do
         tenant \\ nil
       )
 
-  def requests(nil, _opts, _, _, _, _), do: {nil, []}
-  def requests(%{load: []} = query, _opts, _, _, _, _), do: {query, []}
+  def requests(nil, _, _opts, _, _, _, _), do: {nil, []}
+  def requests(%{load: []} = query, _, _opts, _, _, _, _), do: {query, []}
 
   def requests(
         %{load: loads} = query,
+        lazy?,
         opts,
         request_path,
         root_query,
@@ -65,6 +67,7 @@ defmodule Ash.Actions.Load do
       {related_query, further_requests} =
         requests(
           related_query,
+          lazy?,
           opts,
           request_path,
           root_query,
@@ -78,6 +81,7 @@ defmodule Ash.Actions.Load do
           further_requests ++
           do_requests(
             relationship,
+            lazy?,
             opts,
             request_path,
             related_query,
@@ -231,10 +235,11 @@ defmodule Ash.Actions.Load do
     last_relationship!(relationship.destination, rest)
   end
 
-  defp do_requests(relationship, opts, request_path, related_query, path, root_query) do
+  defp do_requests(relationship, lazy?, opts, request_path, related_query, path, root_query) do
     load_request =
       load_request(
         relationship,
+        lazy?,
         opts,
         request_path,
         related_query,
@@ -249,7 +254,9 @@ defmodule Ash.Actions.Load do
                request_path,
                related_query,
                root_query,
-               path
+               path,
+               opts,
+               lazy?
              ) do
           nil ->
             [load_request]
@@ -265,6 +272,7 @@ defmodule Ash.Actions.Load do
 
   defp load_request(
          relationship,
+         lazy?,
          opts,
          request_path,
          related_query,
@@ -341,6 +349,7 @@ defmodule Ash.Actions.Load do
       data:
         data(
           relationship,
+          lazy?,
           dependencies,
           this_request_path,
           request_path,
@@ -354,6 +363,7 @@ defmodule Ash.Actions.Load do
 
   defp data(
          %{manual: manual} = relationship,
+         lazy?,
          dependencies,
          _this_request_path,
          request_path,
@@ -387,27 +397,38 @@ defmodule Ash.Actions.Load do
             |> Map.get(:data, %{})
         end
 
-      mod.load(data, opts, %{
-        relationship: relationship,
-        query: related_query,
-        root_query: root_query,
-        actor: request_opts[:actor],
-        authorize?: request_opts[:authorize?],
-        api: root_query.api,
-        tenant: related_query.tenant
-      })
+      lazy_load_or(
+        data,
+        lazy?,
+        relationship.name,
+        root_query.api,
+        related_query,
+        request_opts,
+        fn ->
+          mod.load(data, opts, %{
+            relationship: relationship,
+            query: related_query,
+            root_query: root_query,
+            actor: request_opts[:actor],
+            authorize?: request_opts[:authorize?],
+            api: root_query.api,
+            tenant: related_query.tenant
+          })
+        end
+      )
     end)
   end
 
   defp data(
          relationship,
+         lazy?,
          dependencies,
          this_request_path,
          request_path,
          related_query,
          path,
          root_query,
-         _
+         opts
        ) do
     Request.resolve(dependencies, fn data ->
       base_query =
@@ -459,7 +480,9 @@ defmodule Ash.Actions.Load do
                path,
                relationship,
                source_query,
-               request_path
+               request_path,
+               opts,
+               lazy?
              ) do
         {:ok, results}
       else
@@ -470,6 +493,32 @@ defmodule Ash.Actions.Load do
           {:error, error}
       end
     end)
+  end
+
+  defp lazy_load_or(data, lazy?, relationship, api, related_query, request_opts, func) do
+    if lazy? && Ash.Resource.Info.loaded?(data, relationship) do
+      data
+      |> get_related(relationship)
+      |> api.load(related_query,
+        lazy?: true,
+        authorize?: request_opts[:authorize?],
+        actor: request_opts[:actor]
+      )
+    else
+      func.()
+    end
+  end
+
+  defp get_related(data, relationship) when is_list(data) do
+    Enum.flat_map(data, fn item ->
+      item
+      |> Map.get(relationship)
+      |> List.wrap()
+    end)
+  end
+
+  defp get_related(data, relationship) do
+    get_related(List.wrap(data), relationship)
   end
 
   defp join_relationship(relationship) do
@@ -485,7 +534,9 @@ defmodule Ash.Actions.Load do
          request_path,
          related_query,
          root_query,
-         path
+         path,
+         opts,
+         lazy?
        ) do
     join_relationship = join_relationship(relationship)
     join_relationship_name = join_relationship.name
@@ -642,7 +693,9 @@ defmodule Ash.Actions.Load do
                          path,
                          join_relationship,
                          source_query,
-                         request_path
+                         request_path,
+                         opts,
+                         lazy?
                        ) do
                   {:ok, results}
                 else
@@ -714,7 +767,17 @@ defmodule Ash.Actions.Load do
     end
   end
 
-  defp run_actual_query(query, base_query, data, path, relationship, source_query, request_path) do
+  defp run_actual_query(
+         query,
+         base_query,
+         data,
+         path,
+         relationship,
+         source_query,
+         request_path,
+         request_opts,
+         lazy?
+       ) do
     {offset, limit} = offset_and_limit(base_query)
 
     source_data =
@@ -731,60 +794,70 @@ defmodule Ash.Actions.Load do
           |> Map.get(:data, %{})
       end
 
-    cond do
-      lateral_join?(query, relationship, source_data) && relationship.type == :many_to_many ->
-        join_relationship =
-          Ash.Resource.Info.relationship(relationship.source, relationship.join_relationship)
+    lazy_load_or(
+      source_data,
+      lazy?,
+      relationship.name,
+      query.api,
+      query,
+      request_opts,
+      fn ->
+        cond do
+          lateral_join?(query, relationship, source_data) && relationship.type == :many_to_many ->
+            join_relationship =
+              Ash.Resource.Info.relationship(relationship.source, relationship.join_relationship)
 
-        query
-        |> Ash.Query.set_context(%{
-          data_layer: %{
-            lateral_join_source: {
-              source_data,
-              [
-                {source_query, relationship.source_field, relationship.source_field_on_join_table,
-                 relationship},
-                {relationship.through, relationship.destination_field_on_join_table,
-                 relationship.destination_field, join_relationship}
-              ]
-            }
-          }
-        })
-        |> Ash.Query.set_context(relationship.context)
-        |> Ash.Query.do_filter(relationship.filter)
-        |> Ash.Query.sort(relationship.sort)
-        |> remove_relationships_from_load()
-        |> read(relationship.read_action)
+            query
+            |> Ash.Query.set_context(%{
+              data_layer: %{
+                lateral_join_source: {
+                  source_data,
+                  [
+                    {source_query, relationship.source_field,
+                     relationship.source_field_on_join_table, relationship},
+                    {relationship.through, relationship.destination_field_on_join_table,
+                     relationship.destination_field, join_relationship}
+                  ]
+                }
+              }
+            })
+            |> Ash.Query.set_context(relationship.context)
+            |> Ash.Query.do_filter(relationship.filter)
+            |> Ash.Query.sort(relationship.sort)
+            |> remove_relationships_from_load()
+            |> read(relationship.read_action)
 
-      lateral_join?(query, relationship, source_data) && (limit || offset) ->
-        query
-        |> Ash.Query.set_context(%{
-          data_layer: %{
-            lateral_join_source:
-              {source_data,
-               [
-                 {source_query, relationship.source_field, relationship.destination_field,
-                  relationship}
-               ]}
-          }
-        })
-        |> Ash.Query.set_context(relationship.context)
-        |> Ash.Query.do_filter(relationship.filter)
-        |> Ash.Query.sort(relationship.sort)
-        |> remove_relationships_from_load()
-        |> read(relationship.read_action)
+          lateral_join?(query, relationship, source_data) && (limit || offset) ->
+            query
+            |> Ash.Query.set_context(%{
+              data_layer: %{
+                lateral_join_source:
+                  {source_data,
+                   [
+                     {source_query, relationship.source_field, relationship.destination_field,
+                      relationship}
+                   ]}
+              }
+            })
+            |> Ash.Query.set_context(relationship.context)
+            |> Ash.Query.do_filter(relationship.filter)
+            |> Ash.Query.sort(relationship.sort)
+            |> remove_relationships_from_load()
+            |> read(relationship.read_action)
 
-      limit || offset ->
-        artificial_limit_and_offset(query, limit, offset, relationship)
+          limit || offset ->
+            artificial_limit_and_offset(query, limit, offset, relationship)
 
-      true ->
-        query
-        |> Ash.Query.set_context(relationship.context)
-        |> Ash.Query.do_filter(relationship.filter)
-        |> Ash.Query.sort(relationship.sort)
-        |> remove_relationships_from_load()
-        |> read(relationship.read_action)
-    end
+          true ->
+            query
+            |> Ash.Query.set_context(relationship.context)
+            |> Ash.Query.do_filter(relationship.filter)
+            |> Ash.Query.sort(relationship.sort)
+            |> remove_relationships_from_load()
+            |> read(relationship.read_action)
+        end
+      end
+    )
   end
 
   defp offset_and_limit(query) do

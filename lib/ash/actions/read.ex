@@ -105,6 +105,8 @@ defmodule Ash.Actions.Read do
         request_opts
       end
 
+    request_opts = Keyword.put(request_opts, :lazy?, opts[:lazy?] || false)
+
     requests =
       as_requests(
         [:data],
@@ -135,6 +137,7 @@ defmodule Ash.Actions.Read do
     get? = !!request_opts[:get?]
     tenant = request_opts[:tenant]
     error_path = request_opts[:error_path]
+    lazy? = request_opts[:lazy?]
 
     fetch =
       Request.new(
@@ -194,6 +197,7 @@ defmodule Ash.Actions.Read do
                    {query, load_requests} <-
                      Load.requests(
                        query,
+                       lazy?,
                        [actor: actor, authorize?: authorize?],
                        path ++ [:fetch]
                      ),

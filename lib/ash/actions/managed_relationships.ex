@@ -15,9 +15,20 @@ defmodule Ash.Actions.ManagedRelationships do
     Enum.reduce_while(changeset.relationships, {:ok, created}, fn {key, value}, {:ok, acc} ->
       relationship = Ash.Resource.Info.relationship(changeset.resource, key)
 
+      must_load_opts = [
+        type: relationship.type,
+        action_type: changeset.action.type,
+        could_be_related_at_creation?:
+          Map.get(relationship, :could_be_related_at_creation?, false)
+      ]
+
       case Enum.filter(value, fn {_, opts} ->
              opts = Ash.Changeset.ManagedRelationshipHelpers.sanitize_opts(relationship, opts)
-             Ash.Changeset.ManagedRelationshipHelpers.must_load?(opts)
+
+             Ash.Changeset.ManagedRelationshipHelpers.must_load?(
+               opts,
+               must_load_opts
+             )
            end) do
         [] ->
           {:cont, {:ok, acc}}
@@ -29,7 +40,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
           actor = engine_opts[:actor]
 
-          case api.load(acc, key, authorize?: authorize?, actor: actor) do
+          case api.load(acc, key, authorize?: authorize?, actor: actor, lazy?: true) do
             {:ok, loaded} -> {:cont, {:ok, loaded}}
             {:error, error} -> {:halt, {:error, error}}
           end

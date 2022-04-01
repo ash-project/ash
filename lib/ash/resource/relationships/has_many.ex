@@ -16,6 +16,7 @@ defmodule Ash.Resource.Relationships.HasMany do
     :not_found_message,
     :violation_message,
     :manual,
+    could_be_related_at_creation?: false,
     validate_destination_field?: true,
     cardinality: :many,
     type: :has_many

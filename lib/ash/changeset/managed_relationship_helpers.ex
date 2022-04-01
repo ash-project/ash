@@ -316,12 +316,32 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
     unwrap(opts[:on_match]) not in [:ignore, :no_match, :missing]
   end
 
-  def must_load?(opts) do
-    only_creates_or_ignores? =
-      unwrap(opts[:on_match]) in [:no_match, :ignore] &&
-        unwrap(opts[:on_no_match]) in [:create, :ignore]
+  def must_load?(opts, must_load_opts \\ []) do
+    creating_and_cant_have_related? =
+      must_load_opts[:could_be_related_at_creation?] == false &&
+        must_load_opts[:action_type] == :create
 
-    can_skip_load? = opts[:on_missing] == :ignore && only_creates_or_ignores?
+    allowed_on_no_match_values =
+      if creating_and_cant_have_related? do
+        [:create, :ignore, :error]
+      else
+        [:create, :ignore]
+      end
+
+    only_creates_or_ignores? =
+      creating_and_cant_have_related? ||
+        (unwrap(opts[:on_match]) in [:no_match, :ignore] &&
+           unwrap(opts[:on_no_match]) in allowed_on_no_match_values)
+
+    on_missing_can_skip_load? =
+      if must_load_opts[:could_be_related_at_creation?] == false &&
+           must_load_opts[:action_type] == :create do
+        true
+      else
+        opts[:on_missing] == :ignore
+      end
+
+    can_skip_load? = on_missing_can_skip_load? && only_creates_or_ignores?
 
     not can_skip_load?
   end

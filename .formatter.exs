@@ -25,6 +25,7 @@ locals_without_parens = [
   change: 1,
   change: 2,
   constraints: 1,
+  could_be_related_at_creation?: 1,
   count: 2,
   count: 3,
   create: 1,
