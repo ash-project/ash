@@ -845,7 +845,6 @@ defmodule Ash.Dsl.Extension do
           Module.create(
             mod_name,
             quote do
-              @moduledoc false
               alias Ash.Dsl
 
               require Dsl.Extension
@@ -872,8 +871,6 @@ defmodule Ash.Dsl.Extension do
                 section_path: path ++ [section.name],
                 extension: extension
               ] do
-          @moduledoc false
-
           for {field, _opts} <- section.schema do
             defmacro unquote(field)(value) do
               section_path = unquote(Macro.escape(section_path))
@@ -1007,7 +1004,6 @@ defmodule Ash.Dsl.Extension do
               unimports: Macro.escape(unimports),
               nested_key: nested_key
             ] do
-        @moduledoc false
         defmacro unquote(entity.name)(unquote_splicing(args), opts \\ []) do
           section_path = unquote(Macro.escape(section_path))
           entity_schema = unquote(Macro.escape(entity.schema))
@@ -1246,8 +1242,6 @@ defmodule Ash.Dsl.Extension do
               entity: Macro.escape(entity),
               nested_entity_path: nested_entity_path
             ] do
-        @moduledoc false
-
         for {key, _value} <- entity.schema do
           defmacro unquote(key)(value) do
             key = unquote(key)

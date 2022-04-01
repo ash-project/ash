@@ -228,6 +228,7 @@ defmodule Ash.Query.Aggregate do
                resource: query.resource,
                aggregates: query.aggregates,
                calculations: query.calculations,
+               relationship_path: [],
                public?: false
              }) do
           {:ok, expression} ->
@@ -429,6 +430,7 @@ defmodule Ash.Query.Aggregate do
                  resource: query.resource,
                  aggregates: query.aggregates,
                  calculations: query.calculations,
+                 relationship_path: [],
                  public?: false
                }
              ) do

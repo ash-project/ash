@@ -745,6 +745,7 @@ defmodule Ash.Filter do
              resource: resource,
              aggregates: aggregates,
              calculations: calculations,
+             relationship_path: [],
              public?: false
            }) do
         {:ok, expression} ->
@@ -2140,13 +2141,14 @@ defmodule Ash.Filter do
                  module,
                  opts,
                  resource_calculation.type,
-                 Map.put(args, :context, context.query_context),
+                 Map.put(args, :context, Map.get(context, :query_context, %{})),
                  resource_calculation.filterable?
                ) do
           {:ok,
            %Ref{
              attribute: calculation,
-             relationship_path: context.relationship_path ++ call.relationship_path,
+             relationship_path:
+               Map.get(context, :relationship_path, []) ++ call.relationship_path,
              resource: resource
            }}
         else
