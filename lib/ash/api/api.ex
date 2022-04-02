@@ -798,6 +798,8 @@ defmodule Ash.Api do
           |> Ash.Query.load(keyword)
       end
 
+    query = Map.put(query, :api, api)
+
     with %{valid?: true} <- query,
          {:ok, action} <- get_action(query.resource, opts, :read, query.action),
          {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @load_opts_schema) do

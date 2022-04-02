@@ -168,6 +168,8 @@ defmodule Ash.Actions.Read do
                     )
                 end
 
+              query = %{query | api: api}
+
               query =
                 if tenant do
                   Ash.Query.set_tenant(query, tenant)
@@ -274,7 +276,7 @@ defmodule Ash.Actions.Read do
                    end) do
                 [] ->
                   data
-                  |> Load.attach_loads(get_in(context, [:data, :fetch, :load]) || %{})
+                  |> Load.attach_loads(get_in(context, path ++ [:fetch, :load]) || %{})
                   |> add_aggregate_values(
                     query.aggregates,
                     query.resource,

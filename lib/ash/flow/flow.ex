@@ -17,6 +17,7 @@ defmodule Ash.Flow do
       extensions: [Ash.Flow.Dsl]
     ]
 
+  @spec run!(any, any, nil | maybe_improper_list | map) :: any
   def run!(flow, input, opts \\ []) do
     case run(flow, input, opts) do
       {:ok, result} ->
