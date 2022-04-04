@@ -22,9 +22,7 @@ defmodule Ash.Test.Actions.UpdateTest do
     end
 
     actions do
-      read :read
-      create :create
-      update :update
+      defaults [:read, :create, :update, :destroy]
     end
   end
 
@@ -144,10 +142,7 @@ defmodule Ash.Test.Actions.UpdateTest do
     end
 
     actions do
-      read :read
-
-      create :create
-      update :update
+      defaults [:read, :create, :update, :destroy]
     end
 
     relationships do
@@ -170,9 +165,7 @@ defmodule Ash.Test.Actions.UpdateTest do
     end
 
     actions do
-      read :read
-      create :create
-      update :update
+      defaults [:read, :create, :update, :destroy]
     end
 
     attributes do

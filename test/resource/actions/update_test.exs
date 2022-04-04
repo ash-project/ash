@@ -20,7 +20,6 @@ defmodule Ash.Test.Dsl.Resource.Actions.UpdateTest do
     test "it creates an action" do
       defposts do
         actions do
-          defaults []
           update :update
         end
       end

@@ -13,6 +13,8 @@ defmodule Ash.Test.Resource.Changes.LoadTest do
     end
 
     actions do
+      defaults [:read, :update, :destroy]
+
       create :create do
         change load(:full_text)
       end

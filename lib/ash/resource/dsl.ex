@@ -568,9 +568,8 @@ defmodule Ash.Resource.Dsl do
 
     ## Turning primary actions off
 
-    If you want an extremely explicit experience with actions, you can specify the following two options:
+    If you want an extremely explicit experience with actions, you can specify the following option:
     ```elixir
-    defaults []
     primary_actions? false
     ```
 
@@ -597,13 +596,13 @@ defmodule Ash.Resource.Dsl do
       ],
       defaults: [
         type: {:list, {:in, [:create, :read, :update, :destroy]}},
-        default: [:create, :read, :update, :destroy],
         doc: """
-        By default, an action of each type is added to each resource.
+        Creates a simple action of each specified type, with the same name as the type.
+        These actions will be the primary actions, unless you've declared a different action
+        of the same type that is explicitly set as primary.
 
-        If any other actions of that same type are added, the default of that type is *not*
-        added. If you wish to skip adding defaults of certain types, specify this option
-        with the defaults that you *do* want implemented.
+        By default, resources have no default actions. Embedded resources, however, have a default
+        of all resource types.
         """
       ]
     ],
@@ -1103,7 +1102,7 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.CreateJoinRelationship,
     Ash.Resource.Transformers.CachePrimaryKey,
     Ash.Resource.Transformers.ReplaceTimestamps,
-    Ash.Resource.Transformers.SetPrimaryActions,
+    Ash.Resource.Transformers.ValidatePrimaryActions,
     Ash.Resource.Transformers.ValidateActionTypesSupported,
     Ash.Resource.Transformers.CountableActions,
     Ash.Resource.Transformers.ValidateMultitenancy,

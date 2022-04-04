@@ -16,8 +16,6 @@ defmodule MyApp.MyComplexResource do
   end
 
   actions do
-    defaults [] # You may want to include this to remove the default `:create`, `:update`, `:destroy`, and `:read` actions, since they make less sense for resources without a data layer.
-
     read :read do
       prepare MyApp.FetchComplexResources
     end

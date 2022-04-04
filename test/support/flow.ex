@@ -8,9 +8,7 @@ defmodule Ash.Test.Support.Flow do
     end
 
     actions do
-      read :read do
-        primary? true
-      end
+      defaults [:create, :read, :update, :destroy]
 
       read :by_name do
         argument :name, :string, allow_nil?: false
@@ -18,9 +16,6 @@ defmodule Ash.Test.Support.Flow do
 
         filter expr(name == ^arg(:name))
       end
-
-      create :create
-      update :update
     end
 
     attributes do
@@ -38,9 +33,7 @@ defmodule Ash.Test.Support.Flow do
     use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
 
     actions do
-      read :read do
-        primary? true
-      end
+      defaults [:read, :update, :destroy]
 
       read :for_org do
         argument :org, :uuid, allow_nil?: false

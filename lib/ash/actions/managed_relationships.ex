@@ -190,7 +190,7 @@ defmodule Ash.Actions.ManagedRelationships do
                         |> Ash.Query.set_context(relationship.context)
                         |> Ash.Query.limit(1)
                         |> Ash.Query.set_tenant(changeset.tenant)
-                        |> changeset.api.read_one(
+                        |> api(changeset, relationship).read_one(
                           authorize?: opts[:authorize?],
                           actor: actor
                         )
@@ -281,6 +281,10 @@ defmodule Ash.Actions.ManagedRelationships do
 
         {changeset, instructions}
     end
+  end
+
+  defp api(changeset, relationship) do
+    relationship.api || changeset.api
   end
 
   defp validate_required_belongs_to({:error, error}), do: {:error, error}
@@ -395,7 +399,7 @@ defmodule Ash.Actions.ManagedRelationships do
     )
     |> Ash.Changeset.set_context(relationship.context)
     |> Ash.Changeset.set_tenant(changeset.tenant)
-    |> changeset.api.create(
+    |> api(changeset, relationship).create(
       actor: actor,
       authorize?: opts[:authorize?],
       return_notifications?: true
@@ -726,8 +730,6 @@ defmodule Ash.Actions.ManagedRelationships do
   end
 
   defp handle_create(record, current_value, relationship, input, changeset, actor, index, opts) do
-    api = changeset.api
-
     case opts[:on_lookup] do
       :ignore ->
         do_handle_create(
@@ -766,7 +768,7 @@ defmodule Ash.Actions.ManagedRelationships do
                   |> Ash.Query.set_context(relationship.context)
                   |> Ash.Query.set_tenant(changeset.tenant)
                   |> Ash.Query.limit(1)
-                  |> changeset.api.read_one(
+                  |> api(changeset, relationship).read_one(
                     authorize?: opts[:authorize?],
                     actor: actor
                   )
@@ -777,7 +779,7 @@ defmodule Ash.Actions.ManagedRelationships do
                       relationship,
                       join_keys,
                       input,
-                      api,
+                      api(changeset, relationship),
                       opts,
                       found,
                       current_value,
@@ -978,7 +980,7 @@ defmodule Ash.Actions.ManagedRelationships do
                 )
                 |> Ash.Changeset.set_context(relationship.context)
                 |> Ash.Changeset.set_tenant(changeset.tenant)
-                |> changeset.api.create(
+                |> api(changeset, relationship).create(
                   return_notifications?: true,
                   authorize?: opts[:authorize?],
                   actor: actor
@@ -1023,7 +1025,7 @@ defmodule Ash.Actions.ManagedRelationships do
             )
             |> Ash.Changeset.set_context(relationship.context)
             |> Ash.Changeset.set_tenant(changeset.tenant)
-            |> changeset.api.create(
+            |> api(changeset, relationship).create(
               return_notifications?: true,
               authorize?: opts[:authorize?],
               actor: actor
@@ -1051,7 +1053,7 @@ defmodule Ash.Actions.ManagedRelationships do
             )
             |> Ash.Changeset.set_context(join_relationship.context)
             |> Ash.Changeset.set_tenant(changeset.tenant)
-            |> changeset.api.create(
+            |> api(changeset, relationship).create(
               return_notifications?: true,
               authorize?: opts[:authorize?],
               actor: actor
@@ -1085,7 +1087,7 @@ defmodule Ash.Actions.ManagedRelationships do
          actor,
          opts
        ) do
-    api = changeset.api
+    api = api(changeset, relationship)
 
     case opts[:on_match] do
       # :create case is handled when determining updates/creates
@@ -1205,7 +1207,7 @@ defmodule Ash.Actions.ManagedRelationships do
             |> Ash.Query.set_context(join_relationship.context)
             |> Ash.Query.limit(1)
             |> Ash.Query.set_tenant(changeset.tenant)
-            |> changeset.api.read_one(
+            |> api(changeset, relationship).read_one(
               authorize?: opts[:authorize?],
               actor: actor
             )
@@ -1361,7 +1363,7 @@ defmodule Ash.Actions.ManagedRelationships do
          actor,
          opts
        ) do
-    api = changeset.api
+    api = api(changeset, relationship)
     pkey = Ash.Resource.Info.primary_key(relationship.destination)
 
     original_value

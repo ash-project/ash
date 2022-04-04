@@ -69,6 +69,11 @@ defmodule Ash.Test.Actions.BelongsToTest do
       private?(true)
     end
 
+    actions do
+      read :read
+      create :create
+    end
+
     attributes do
       uuid_primary_key :id
       attribute :name, :string, allow_nil?: false

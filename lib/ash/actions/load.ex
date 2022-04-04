@@ -39,7 +39,7 @@ defmodule Ash.Actions.Load do
       related_query =
         case further do
           %Ash.Query{} = query ->
-            Ash.Query.set_api(query, root_query.api)
+            Ash.Query.set_api(query, relationship.api || root_query.api)
 
           further ->
             relationship.destination
@@ -401,7 +401,7 @@ defmodule Ash.Actions.Load do
         data,
         lazy?,
         relationship.name,
-        root_query.api,
+        related_query.api,
         related_query,
         request_opts,
         fn ->
@@ -411,7 +411,7 @@ defmodule Ash.Actions.Load do
             root_query: root_query,
             actor: request_opts[:actor],
             authorize?: request_opts[:authorize?],
-            api: root_query.api,
+            api: related_query.api,
             tenant: related_query.tenant
           })
         end

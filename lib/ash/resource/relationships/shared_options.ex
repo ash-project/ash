@@ -68,6 +68,12 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       explicitly and when the relationship is managed.
       """
     ],
+    api: [
+      type: :atom,
+      doc: """
+      The API module to use when working with the related entity.
+      """
+    ],
     filter: [
       type: :any,
       doc: """

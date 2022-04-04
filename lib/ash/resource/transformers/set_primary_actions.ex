@@ -1,10 +1,8 @@
-defmodule Ash.Resource.Transformers.SetPrimaryActions do
+defmodule Ash.Resource.Transformers.ValidatePrimaryActions do
   @moduledoc """
-  Creates/validates the primary action configuration
+  Validates the primary action configuration
 
-  If only one action of a given type is defined, it is marked
-  as primary. If multiple exist, and one is not primary,
-  this results in an error.
+  If multiple primary actions exist this results in an error.
   """
   use Ash.Dsl.Transformer
 
@@ -16,6 +14,8 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
   def transform(resource, dsl_state) do
     primary_actions? = Ash.Resource.Info.primary_actions?(resource)
 
+    dsl_state = add_defaults(dsl_state, resource)
+
     dsl_state
     |> Transformer.get_entities([:actions])
     |> Enum.group_by(& &1.type)
@@ -24,18 +24,8 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
     |> Map.put_new(:create, [])
     |> Map.put_new(:destroy, [])
     |> Enum.reduce_while({:ok, dsl_state}, fn
-      {type, []}, {:ok, dsl_state} ->
-        if type in Ash.Resource.Info.default_actions(resource) do
-          {:ok, action} =
-            Transformer.build_entity(@extension, [:actions], type,
-              name: type,
-              primary?: true
-            )
-
-          {:cont, {:ok, Transformer.add_entity(dsl_state, [:actions], action)}}
-        else
-          {:cont, {:ok, dsl_state}}
-        end
+      {_type, []}, {:ok, dsl_state} ->
+        {:cont, {:ok, dsl_state}}
 
       {type, [action]}, {:ok, dsl_state} ->
         {:cont,
@@ -51,20 +41,7 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
 
       {type, actions}, {:ok, dsl_state} ->
         if primary_actions? && !(primary_actions? == :only_read && type != :read) do
-          case min(Enum.count(actions, & &1.primary?), 2) do
-            0 ->
-              {:halt,
-               {:error,
-                DslError.exception(
-                  module: resource,
-                  message:
-                    "Multiple actions of type #{type} defined, one must be designated as `primary?`",
-                  path: [:actions, type]
-                )}}
-
-            1 ->
-              {:cont, {:ok, dsl_state}}
-
+          case Enum.count_until(actions, & &1.primary?, 2) do
             2 ->
               {:halt,
                {:error,
@@ -74,10 +51,39 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
                     "Multiple actions of type #{type} configured as `primary?: true`, but only one action per type can be the primary",
                   path: [:actions, type]
                 )}}
+
+            _ ->
+              {:cont, {:ok, dsl_state}}
           end
         else
           {:cont, {:ok, dsl_state}}
         end
+    end)
+  end
+
+  defp add_defaults(dsl_state, resource) do
+    actions = Transformer.get_entities(dsl_state, [:actions])
+
+    resource
+    |> Ash.Resource.Info.default_actions()
+    |> Enum.with_index()
+    |> Enum.reduce(dsl_state, fn {type, i}, dsl_state ->
+      unless type in [:create, :update, :read, :destroy] do
+        raise Ash.Error.Dsl.DslError,
+          path: [:actions, :default_actions, i],
+          module: resource,
+          message: "#{type} is not a valid action type"
+      end
+
+      primary? = !Enum.any?(actions, &(&1.type == type && &1.primary?))
+
+      {:ok, action} =
+        Transformer.build_entity(@extension, [:actions], type,
+          name: type,
+          primary?: primary?
+        )
+
+      Transformer.add_entity(dsl_state, [:actions], action)
     end)
   end
 end

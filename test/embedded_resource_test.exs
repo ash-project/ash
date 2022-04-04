@@ -119,6 +119,11 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
       private?(true)
     end
 
+    actions do
+      create :create
+      update :update
+    end
+
     attributes do
       uuid_primary_key :id
 

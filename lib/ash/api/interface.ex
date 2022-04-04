@@ -17,7 +17,7 @@ defmodule Ash.Api.Interface do
 
         case Api.get(__MODULE__, resource, id_or_filter, params) do
           {:ok, instance} -> {:ok, instance}
-          {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
+          {:error, error} -> {:error, Ash.Error.to_error_class(error)}
         end
       end
 
@@ -37,9 +37,14 @@ defmodule Ash.Api.Interface do
         Ash.Api.Interface.enforce_keyword_list!(opts)
 
         case Api.read(__MODULE__, query, opts) do
-          {:ok, results, query} -> {:ok, results, query}
-          {:ok, results} -> {:ok, results}
-          {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
+          {:ok, results, query} ->
+            {:ok, results, query}
+
+          {:ok, results} ->
+            {:ok, results}
+
+          {:error, error} ->
+            {:error, Ash.Error.to_error_class(error)}
         end
       end
 
@@ -61,7 +66,7 @@ defmodule Ash.Api.Interface do
         case Api.read_one(__MODULE__, query, opts) do
           {:ok, result} -> {:ok, result}
           {:ok, result, query} -> {:ok, result, query}
-          {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
+          {:error, error} -> {:error, Ash.Error.to_error_class(error)}
         end
       end
 
@@ -72,7 +77,7 @@ defmodule Ash.Api.Interface do
       def page(page, request) do
         case Api.page(__MODULE__, page, request) do
           {:ok, page} -> {:ok, page}
-          {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
+          {:error, error} -> {:error, Ash.Error.to_error_class(error)}
         end
       end
 
@@ -83,7 +88,7 @@ defmodule Ash.Api.Interface do
       def load(data, query, opts \\ []) do
         case Api.load(__MODULE__, data, query, opts) do
           {:ok, results} -> {:ok, results}
-          {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
+          {:error, error} -> {:error, Ash.Error.to_error_class(error)}
         end
       end
 
@@ -95,7 +100,7 @@ defmodule Ash.Api.Interface do
         case Api.create(__MODULE__, changeset, params) do
           {:ok, instance} -> {:ok, instance}
           {:ok, instance, notifications} -> {:ok, instance, notifications}
-          {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
+          {:error, error} -> {:error, Ash.Error.to_error_class(error)}
         end
       end
 
@@ -107,7 +112,7 @@ defmodule Ash.Api.Interface do
         case Api.update(__MODULE__, changeset, params) do
           {:ok, instance} -> {:ok, instance}
           {:ok, instance, notifications} -> {:ok, instance, notifications}
-          {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
+          {:error, error} -> {:error, Ash.Error.to_error_class(error)}
         end
       end
 
@@ -119,7 +124,7 @@ defmodule Ash.Api.Interface do
         case Api.destroy(__MODULE__, record, params) do
           :ok -> :ok
           {:ok, notifications} -> {:ok, notifications}
-          {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
+          {:error, error} -> {:error, Ash.Error.to_error_class(error)}
         end
       end
 

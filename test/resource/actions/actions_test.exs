@@ -19,9 +19,15 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
 
   test "default actions are added" do
     defposts do
+      actions do
+        defaults [:create, :read, :update, :destroy]
+      end
     end
 
     assert Ash.Resource.Info.primary_action!(Post, :read)
+    assert Ash.Resource.Info.primary_action!(Post, :create)
+    assert Ash.Resource.Info.primary_action!(Post, :update)
+    assert Ash.Resource.Info.primary_action!(Post, :destroy)
   end
 
   describe "validations" do
@@ -34,21 +40,6 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
             actions do
               create :create, primary?: true
               create :special, primary?: true
-            end
-          end
-        end
-      )
-    end
-
-    test "raises if you have multiple actions for a type, but none are primary" do
-      assert_raise(
-        Ash.Error.Dsl.DslError,
-        "[Ash.Test.Dsl.Resource.Actions.ActionsTest.Post]\n actions -> create:\n  Multiple actions of type create defined, one must be designated as `primary?`",
-        fn ->
-          defposts do
-            actions do
-              create :create
-              create :special
             end
           end
         end

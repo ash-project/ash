@@ -26,6 +26,10 @@ defmodule Ash.Test.Actions.ReadTest do
       private?(true)
     end
 
+    actions do
+      defaults [:read, :create, :update, :destroy]
+    end
+
     attributes do
       uuid_primary_key :id
       attribute :name, :string
@@ -49,7 +53,7 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     actions do
-      read :read, primary?: true
+      defaults [:read, :create, :update, :destroy]
 
       read :read_with_after_action do
         prepare PostPreparation
@@ -105,7 +109,8 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     test "it returns an error when there is no matching record" do
-      assert {:error, %Ash.Error.Query.NotFound{}} = Api.get(Post, Ash.UUID.generate())
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{}]}} =
+               Api.get(Post, Ash.UUID.generate())
     end
 
     test "it uses identities if they exist", %{post: post} do

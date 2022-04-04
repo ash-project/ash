@@ -135,9 +135,9 @@ defmodule Ash.FlowTest.TransactionTest do
     |> Ash.Changeset.for_update(:approve, %{})
     |> Api.update!()
 
-    # assert_raise(Ash.Error.Unknown, ~r/uh oh!/, fn ->
-    UnapproveAllUsers.run!("Org 1", %{error: :raise})
-    # end)
+    assert_raise(Ash.Error.Unknown, ~r/uh oh!/, fn ->
+      UnapproveAllUsers.run!("Org 1", %{error: :raise})
+    end)
 
     assert User |> Api.read!() |> Enum.all?(& &1.approved)
   end

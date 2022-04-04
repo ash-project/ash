@@ -1003,9 +1003,9 @@ defmodule Ash.Api do
           case Ash.Resource.Info.primary_action(resource, type) do
             nil ->
               if Ash.Resource.Info.resource?(resource) do
-                {:error, NoSuchResource.exception(resource: resource)}
-              else
                 {:error, NoPrimaryAction.exception(resource: resource, type: type)}
+              else
+                {:error, NoSuchResource.exception(resource: resource)}
               end
 
             action ->

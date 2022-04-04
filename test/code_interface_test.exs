@@ -22,6 +22,8 @@ defmodule Ash.Test.CodeInterfaceTest do
         primary? true
       end
 
+      create :create
+
       read :by_id do
         argument :id, :uuid, allow_nil?: false
 

@@ -8,6 +8,10 @@ defmodule Ash.Test.Resource.ResourceTest do
         @moduledoc false
         use Ash.Resource, data_layer: Ash.DataLayer.Ets
 
+        actions do
+          defaults [:create, :read, :update, :destroy]
+        end
+
         attributes do
           uuid_primary_key :id
         end
@@ -41,6 +45,10 @@ defmodule Ash.Test.Resource.ResourceTest do
   defmodule Post do
     @moduledoc false
     use Ash.Resource
+
+    actions do
+      defaults [:create, :read, :update, :destroy]
+    end
 
     attributes do
       uuid_primary_key :id

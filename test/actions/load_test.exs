@@ -18,8 +18,7 @@ defmodule Ash.Test.Actions.LoadTest do
     end
 
     actions do
-      read :read
-      create :create
+      defaults [:create, :read, :update, :destroy]
     end
 
     attributes do
@@ -69,8 +68,7 @@ defmodule Ash.Test.Actions.LoadTest do
     end
 
     actions do
-      read :read
-      create :create
+      defaults [:create, :read, :update, :destroy]
     end
 
     attributes do
@@ -86,6 +84,10 @@ defmodule Ash.Test.Actions.LoadTest do
 
       has_many :posts_in_same_category, __MODULE__ do
         manual PostsInSameCategory
+      end
+
+      has_many :ratings, Ash.Test.Actions.LoadTest.Rating do
+        api Ash.Test.Actions.LoadTest.Api2
       end
 
       many_to_many :categories, Ash.Test.Actions.LoadTest.Category,
@@ -104,8 +106,7 @@ defmodule Ash.Test.Actions.LoadTest do
     end
 
     actions do
-      read :read
-      create :create
+      defaults [:create, :read, :update, :destroy]
     end
 
     relationships do
@@ -126,8 +127,7 @@ defmodule Ash.Test.Actions.LoadTest do
     end
 
     actions do
-      read :read
-      create :create
+      defaults [:create, :read, :update, :destroy]
     end
 
     attributes do
@@ -143,6 +143,26 @@ defmodule Ash.Test.Actions.LoadTest do
     end
   end
 
+  defmodule Rating do
+    use Ash.Resource,
+      data_layer: Ash.DataLayer.Ets
+
+    attributes do
+      uuid_primary_key :id
+      attribute :rating, :integer
+    end
+
+    actions do
+      defaults [:create, :read, :update, :destroy]
+    end
+
+    relationships do
+      belongs_to :post, Post do
+        api Ash.Test.Actions.LoadTest.Category
+      end
+    end
+  end
+
   defmodule Registry do
     @moduledoc false
     use Ash.Registry
@@ -155,12 +175,30 @@ defmodule Ash.Test.Actions.LoadTest do
     end
   end
 
+  defmodule Registry2 do
+    @moduledoc false
+    use Ash.Registry
+
+    entries do
+      entry(Rating)
+    end
+  end
+
   defmodule Api do
     @moduledoc false
     use Ash.Api
 
     resources do
       registry Registry
+    end
+  end
+
+  defmodule Api2 do
+    @moduledoc false
+    use Ash.Api
+
+    resources do
+      registry Registry2
     end
   end
 
@@ -229,6 +267,34 @@ defmodule Ash.Test.Actions.LoadTest do
       for post <- author.posts do
         assert post.author.id == author.id
       end
+    end
+
+    test "it allows loading across APIs" do
+      author =
+        Author
+        |> new(%{name: "zerg"})
+        |> Api.create!()
+
+      post =
+        Post
+        |> new(%{title: "post1"})
+        |> replace_relationship(:author, author)
+        |> Api.create!()
+
+      rating =
+        Rating
+        |> new(%{rating: 10})
+        |> replace_relationship(:post, post)
+        |> Api2.create!()
+
+      assert [loaded_rating] =
+               author
+               |> Api.load!(posts: :ratings)
+               |> Map.get(:posts)
+               |> Enum.at(0)
+               |> Map.get(:ratings)
+
+      assert loaded_rating.id == rating.id
     end
 
     test "it allows loading many to many relationships" do

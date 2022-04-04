@@ -22,7 +22,6 @@ defmodule Ash.Test.Dsl.Resource.Actions.CreateTest do
     test "it creates an action" do
       defposts do
         actions do
-          defaults []
           create :create
         end
       end

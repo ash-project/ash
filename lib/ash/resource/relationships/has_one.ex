@@ -13,6 +13,7 @@ defmodule Ash.Resource.Relationships.HasOne do
     :context,
     :description,
     :filter,
+    :api,
     :sort,
     :read_action,
     :not_found_message,
