@@ -3,7 +3,10 @@ defmodule Ash.DocIndex.AshDocIndex do
   Some documentation about Ash.
   """
 
-  @behaviour Ash.DocIndex
+  use Ash.DocIndex,
+    guides_from: [
+      "documentation/**/*.md"
+    ]
 
   @impl true
   @spec for_library() :: String.t()
@@ -64,34 +67,6 @@ defmodule Ash.DocIndex.AshDocIndex do
         name: "Resource Validations",
         type: "Extension",
         target: "Ash.Registry"
-      }
-    ]
-  end
-
-  @getting_started File.read!("documentation/guides/getting-started.md")
-  @overview File.read!("documentation/guides/overview.md")
-  @managing_relationships File.read!("documentation/guides/managing-relationships.md")
-  @upgrading File.read!("documentation/guides/upgrading.md")
-
-  @impl true
-  @spec guides() :: list(Ash.DocIndex.guide())
-  def guides do
-    [
-      %{
-        name: "Overview",
-        text: @overview
-      },
-      %{
-        name: "Getting Started",
-        text: @getting_started
-      },
-      %{
-        name: "Managing Relationships",
-        text: @managing_relationships
-      },
-      %{
-        name: "Upgrading",
-        text: @upgrading
       }
     ]
   end

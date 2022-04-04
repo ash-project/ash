@@ -184,6 +184,27 @@ defmodule Ash.Test.Actions.UpdateTest do
     end
   end
 
+  defmodule PaginatedPrimaryRead do
+    use Ash.Resource,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    actions do
+      defaults [:create, :update, :destroy]
+
+      read :read do
+        pagination offset?: true, required?: true
+      end
+    end
+  end
+
   defmodule Registry do
     @moduledoc false
     use Ash.Registry
@@ -194,6 +215,7 @@ defmodule Ash.Test.Actions.UpdateTest do
       entry(Profile)
       entry(PostLink)
       entry(Authorized)
+      entry(PaginatedPrimaryRead)
     end
   end
 

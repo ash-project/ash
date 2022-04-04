@@ -44,58 +44,58 @@ defmodule Ash.MixProject do
       extra_section: "GUIDES",
       extras: [
         "README.md": [],
-        "documentation/introduction/getting_started.md": [
+        "old_documentation/introduction/getting_started.md": [
           title: "Getting Started"
         ],
-        "documentation/introduction/getting_started_phx.md": [
-          title: "Getting Started with Phoenix"
+        "old_documentation/introduction/getting_started_phx.md": [
+          title: "Getting Started With Phoenix"
         ],
-        "documentation/topics/expressions.md": [
+        "old_documentation/topics/expressions.md": [
           title: "Expressions"
         ],
-        "documentation/topics/managing_relationships.md": [
+        "old_documentation/topics/managing_relationships.md": [
           title: "Managing Relationships"
         ],
-        "documentation/topics/resources_without_a_data_layer.md": [
+        "old_documentation/topics/resources_without_a_data_layer.md": [
           title: "Resources without a Data Layer"
         ],
-        "documentation/topics/authorization.md": [
+        "old_documentation/topics/authorization.md": [
           title: "Authorization"
         ],
-        "documentation/topics/identities.md": [
+        "old_documentation/topics/identities.md": [
           title: "Identities"
         ],
-        "documentation/topics/pagination.md": [
+        "old_documentation/topics/pagination.md": [
           title: "Pagination"
         ],
-        "documentation/topics/validation.md": [
+        "old_documentation/topics/validation.md": [
           title: "Validation"
         ],
-        "documentation/topics/notifiers.md": [
+        "old_documentation/topics/notifiers.md": [
           title: "Notifiers"
         ],
-        "documentation/topics/error_handling.md": [
+        "old_documentation/topics/error_handling.md": [
           title: "Error Handling"
         ],
-        "documentation/topics/aggregates.md": [
+        "old_documentation/topics/aggregates.md": [
           title: "Aggregates"
         ],
-        "documentation/topics/calculations.md": [
+        "old_documentation/topics/calculations.md": [
           title: "Calculations"
         ],
-        "documentation/topics/embedded_resources.md": [
+        "old_documentation/topics/embedded_resources.md": [
           title: "Embedded Resources"
         ],
-        "documentation/topics/multitenancy.md": [
+        "old_documentation/topics/multitenancy.md": [
           title: "Multitenancy"
         ],
-        "documentation/topics/compile_times.md": [
+        "old_documentation/topics/compile_times.md": [
           title: "Compile Times"
         ]
       ],
       groups_for_extras: [
-        Introduction: Path.wildcard("documentation/introduction/*.md"),
-        Topics: Path.wildcard("documentation/topics/*")
+        Introduction: Path.wildcard("old_documentation/introduction/*.md"),
+        Topics: Path.wildcard("old_documentation/topics/*")
       ],
       groups_for_modules: [
         entrypoint: [

@@ -90,10 +90,7 @@ mix phx.new <my_app> --live
     end
     ```
 
-7. Add
-
-8. Try it out. Currently, your resource won't do much. You can "create", "read", and manipulate it, but it won't be saved anywhere. For example:
-
-    ```elixir
-    
-    ```
+7. You can't do anything without adding [actions](../concepts/actions.md)
+8. Add some actions to your resource
+9. Try it out. Currently, your resource won't do much. The `defaults` option creates
+   four available "actions"
