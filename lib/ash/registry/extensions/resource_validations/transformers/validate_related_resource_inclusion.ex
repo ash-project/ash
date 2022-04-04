@@ -31,6 +31,7 @@ defmodule Ash.Registry.ResourceValidations.Transformers.ValidateRelatedResourceI
   defp get_all_related_resources(resource, checked \\ []) do
     resource
     |> Ash.Resource.Info.relationships()
+    |> Enum.reject(& &1.api)
     |> Enum.flat_map(fn
       %{type: :many_to_many} = relationship ->
         [relationship.through, relationship.destination]
@@ -38,7 +39,7 @@ defmodule Ash.Registry.ResourceValidations.Transformers.ValidateRelatedResourceI
       relationship ->
         [relationship.destination]
     end)
-    |> Enum.reject(&(&1.api || &1 in checked))
+    |> Enum.reject(&(&1 in checked))
     |> Enum.flat_map(fn resource ->
       [resource | get_all_related_resources(resource, [resource | checked])]
     end)
