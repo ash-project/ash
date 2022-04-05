@@ -146,6 +146,33 @@ defmodule Ash.Test.Actions.DestroyTest do
       refute Api.read_one!(Ash.Query.filter(Post, id == ^post.id))
     end
 
+    test "returns the record if requested" do
+      post =
+        Post
+        |> new(%{title: "foo", contents: "bar"})
+        |> Api.create!()
+
+      post_id = post.id
+
+      assert {:ok, %{id: ^post_id}} = Api.destroy(post, return_destroyed?: true)
+
+      refute Api.read_one!(Ash.Query.filter(Post, id == ^post.id))
+    end
+
+    test "returns the record and notifications if requested" do
+      post =
+        Post
+        |> new(%{title: "foo", contents: "bar"})
+        |> Api.create!()
+
+      post_id = post.id
+
+      assert {:ok, %{id: ^post_id}, []} =
+               Api.destroy(post, return_destroyed?: true, return_notifications?: true)
+
+      refute Api.read_one!(Ash.Query.filter(Post, id == ^post.id))
+    end
+
     test "the destroy does not happen if it is unauthorized" do
       author =
         Author

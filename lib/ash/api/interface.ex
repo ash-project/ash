@@ -123,6 +123,7 @@ defmodule Ash.Api.Interface do
       def destroy(record, params \\ []) do
         case Api.destroy(__MODULE__, record, params) do
           :ok -> :ok
+          {:ok, result, notifications} -> {:ok, result, notifications}
           {:ok, notifications} -> {:ok, notifications}
           {:error, error} -> {:error, Ash.Error.to_error_class(error)}
         end

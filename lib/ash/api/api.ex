@@ -316,7 +316,14 @@ defmodule Ash.Api do
   @doc false
   def update_opts_schema, do: @update_opts_schema
 
-  @destroy_opts_schema []
+  @destroy_opts_schema [
+                         return_destroyed?: [
+                           type: :boolean,
+                           default: false,
+                           doc:
+                             "If true, the destroyed record is included in the return result, e.g `{:ok, destroyed}` or `{:ok, destroyed, notifications}`"
+                         ]
+                       ]
                        |> merge_schemas(@global_opts, "Global Opts")
                        |> merge_schemas(
                          @shared_created_update_and_destroy_opts_schema,
@@ -474,7 +481,11 @@ defmodule Ash.Api do
   Destroy a record. See `c:destroy/2` for more information.
   """
   @callback destroy!(Ash.Changeset.t() | Ash.Resource.record(), params :: Keyword.t()) ::
-              :ok | no_return
+              :ok
+              | list(Ash.Notifier.Notification.t())
+              | Ash.Resource.record()
+              | {Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
+              | no_return
 
   @doc """
   Destroy a record.
@@ -482,7 +493,11 @@ defmodule Ash.Api do
   #{Ash.OptionsHelpers.docs(@destroy_opts_schema)}
   """
   @callback destroy(Ash.Changeset.t() | Ash.Resource.record(), params :: Keyword.t()) ::
-              :ok | {:error, term}
+              :ok
+              | {:ok, list(Ash.Notifier.Notification.t())}
+              | {:ok, Ash.Resource.record()}
+              | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
+              | {:error, term}
 
   @doc """
   Refetches a record by primary key. See `c:reload/1` for more.
@@ -951,18 +966,26 @@ defmodule Ash.Api do
 
   @doc false
   @spec destroy!(Ash.Api.t(), Ash.Changeset.t() | Ash.Resource.record(), Keyword.t()) ::
-          :ok | no_return
+          :ok
+          | list(Ash.Notifier.Notification.t())
+          | Ash.Resource.record()
+          | {Ash.Resource.record() | list(Ash.Notifier.Notification.t())}
+          | no_return()
   def destroy!(api, changeset, opts) do
     opts = Ash.OptionsHelpers.validate!(opts, @destroy_opts_schema)
 
     api
     |> destroy(changeset, opts)
-    |> unwrap_or_raise!(opts[:stacktraces?], true)
+    |> unwrap_or_raise!(opts[:stacktraces?], opts[:return_destroyed?] != true)
   end
 
   @doc false
   @spec destroy(Ash.Api.t(), Ash.Changeset.t() | Ash.Resource.record(), Keyword.t()) ::
-          {:ok, list(Ash.Notifier.Notification.t())} | :ok | {:error, term}
+          :ok
+          | {:ok, list(Ash.Notifier.Notification.t())}
+          | {:ok, Ash.Resource.record()}
+          | {:ok, Ash.Resource.record() | list(Ash.Notifier.Notification.t())}
+          | {:error, term}
   def destroy(api, %Ash.Changeset{resource: resource} = changeset, opts) do
     with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @destroy_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, resource),

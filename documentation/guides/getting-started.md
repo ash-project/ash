@@ -24,7 +24,7 @@ mix new <my_app>
 1. First off, add Ash as a dependency. In `mix.exs`, add
 `{:ash, "~> 1.52.0-rc.0"}` to your dependencies.
 
-2. Next, add an API. To start, a simple choice for naming your first API is a good name for the "core" of your application. For example, a help-desk application called "AwesomeDesk" might start with an API module called `AwesomeDesk.Tickets`. Create an `lib/my_app/my_api/my_api.ex`, with the following contents:
+2. Next, add an API. To start, a simple choice for naming your first API is a based on the "core" of your application. For example, a help-desk application called "AwesomeDesk" might start with an API module called `AwesomeDesk.Tickets`. Create  `lib/my_app/my_api/my_api.ex`, with the following contents:
 
     ```elixir
     defmodule MyApp.MyApi do
@@ -62,7 +62,7 @@ mix new <my_app>
       ]
     ```
 
-5. Define your first resource. Each resource should go in a folder inside of the `resources` folder in your API folder. For example, you might add `lib/my_app/my_api/resources/ticket.ex`. To start, create your resource with the following contents:
+5. Define your first resource. Place it at `lib/my_app/my_api/resources/ticket.ex`. To start, create your resource with the following contents:
 
     ```elixir
     defmodule MyApp.MyApi.ResourceName do
@@ -84,7 +84,7 @@ mix new <my_app>
     end
     ```
 
-6. Add your [resource](../concepts/resource.md) to the registry that you created
+6. Add your resource to the registry that you created
 
     ```elixir
 

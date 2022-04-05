@@ -37,6 +37,7 @@ defmodule Ash.Actions.Destroy do
     actor = opts[:actor]
     verbose? = opts[:verbose?]
     return_notifications? = opts[:return_notifications?]
+    return_destroyed? = opts[:return_destroyed?]
     changeset = %{changeset | api: api}
 
     changeset =
@@ -60,8 +61,10 @@ defmodule Ash.Actions.Destroy do
       transaction?: true
     )
     |> case do
-      {:ok, engine_result} ->
-        add_notifications(engine_result, return_notifications?)
+      {:ok, %{data: data} = engine_result} ->
+        engine_result
+        |> add_notifications(return_notifications?)
+        |> add_destroyed(return_destroyed?, Map.get(data, :destroy))
 
       {:error, %Ash.Engine.Runner{errors: errors, changeset: %Ash.Changeset{} = runner_changeset}} ->
         errors = Helpers.process_errors(changeset, errors)
@@ -219,6 +222,18 @@ defmodule Ash.Actions.Destroy do
     else
       :ok
     end
+  end
+
+  defp add_destroyed(:ok, true, destroyed) do
+    {:ok, destroyed}
+  end
+
+  defp add_destroyed({:ok, notifications}, true, destroyed) do
+    {:ok, destroyed, notifications}
+  end
+
+  defp add_destroyed(result, _, _) do
+    result
   end
 
   defp authorize?(opts) do
