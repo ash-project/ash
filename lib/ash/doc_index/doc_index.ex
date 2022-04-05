@@ -46,7 +46,7 @@ defmodule Ash.DocIndex do
                end)
 
         @impl Ash.DocIndex
-        def guides() do
+        def guides do
           @files
         end
       end
@@ -56,8 +56,7 @@ defmodule Ash.DocIndex do
   def to_name(string) do
     string
     |> String.split(~r/[-_]/, trim: true)
-    |> Enum.map(&String.capitalize/1)
-    |> Enum.join(" ")
+    |> Enum.map_join(" ", &String.capitalize/1)
   end
 
   def to_path(string) do

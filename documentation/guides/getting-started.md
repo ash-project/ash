@@ -2,18 +2,21 @@
 
 The first step is to decide if you're building a phoenix application or not. Phoenix is an extremely high quality web framework, and is the suggested pairing with Ash if you expect to be building a front end, or an API. For this guide, we assume that elixir has already been installed.
 
-## Installing Phoenix
+## Installing With Phoenix
 
-First, install the phoenix installation archive.
+Install the Phoenix installation archive and then create a new Phoenix application. Be sure to look over the options available with `mix help phx.new`, and visit the phoenix [Phoenix Documentation](https://www.phoenixframework.org/) for more information.
 
 ```bash
 mix archive.install hex phx_new
+mix phx.new <my_app> --live
 ```
 
-Then, create a new phx application. Generally, we suggest installing liveview as well, via the `--live` flag. See the phoenix [Phoenix Documentation](https://www.phoenixframework.org/) fore more information.
+## Installing Without Phoenix
+
+Create a new application. Be sure to look aver the options available with `mix help new`.
 
 ```bash
-mix phx.new <my_app> --live
+mix new <my_app>
 ```
 
 ## Adding Ash
@@ -21,7 +24,7 @@ mix phx.new <my_app> --live
 1. First off, add Ash as a dependency. In `mix.exs`, add
 `{:ash, "~> 1.52.0-rc.0"}` to your dependencies.
 
-2. Next, add an API. To start, a simple choice for naming your first API is a good name for the "core" of your application. For example, a help-desk application called "AwesomeDesk" might start with an API module called `AwesomeDesk.Tickets`. Create `lib/my_app/my_api/my_api.ex`, with the following contents:
+2. Next, add an API. To start, a simple choice for naming your first API is a good name for the "core" of your application. For example, a help-desk application called "AwesomeDesk" might start with an API module called `AwesomeDesk.Tickets`. Create an `lib/my_app/my_api/my_api.ex`, with the following contents:
 
     ```elixir
     defmodule MyApp.MyApi do
@@ -81,7 +84,7 @@ mix phx.new <my_app> --live
     end
     ```
 
-6. Add your resource to the registry that you created
+6. Add your [resource](../concepts/resource.md) to the registry that you created
 
     ```elixir
 
@@ -90,7 +93,9 @@ mix phx.new <my_app> --live
     end
     ```
 
-7. You can't do anything without adding [actions](../concepts/actions.md)
-8. Add some actions to your resource
-9. Try it out. Currently, your resource won't do much. The `defaults` option creates
+7. Resources are static descriptions of behavior, and don't do anything on their own. To give them functionality, we must first add [actions](../concepts/actions.md).
+8. 
+9. can't do anything **without** adding [actions](../concepts/actions.md). So to pro
+10. Add some actions to your resource
+11. Try it out. Currently, your resource won't do much. The `defaults` option creates
    four available "actions"

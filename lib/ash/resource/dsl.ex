@@ -553,29 +553,6 @@ defmodule Ash.Resource.Dsl do
     type, as long as they have different names. This is the primary mechanism for customizing
     your resources to conform to your business logic. It is normal and expected to have
     multiple actions of each type in a large application.
-
-    ## Primary actions
-
-    If you have multiple actions of the same type, one of them must be designated as the
-    primary action for that type, via the `primary?` option. This tells the ash what to do
-    if an action of that type is requested, but no specific action name is given. This is how
-    many relationship changes will happen, by utilizing the primary actions. For this reason,
-    ** when defining actions, you usually want to ensure that the primary action takes no required
-    arguments **. Without that, relationship changes to your resources might fail due to missing
-    arguments. This does, however, allow you to customize exactly how related entities are read/
-    created.
-
-
-    ## Turning primary actions off
-
-    If you want an extremely explicit experience with actions, you can specify the following option:
-    ```elixir
-    primary_actions? false
-    ```
-
-    This will prevent Ash from adding a default implementation of each action type, as well as cause any calls
-    to `Ash.Resource.Info.primary_action/2` to raise an error. This is experimental, but any errors raised in appropriate
-    places can be addressed, just report them as issues.
     """,
     imports: [
       Ash.Resource.Change.Builtins,
@@ -584,16 +561,6 @@ defmodule Ash.Resource.Dsl do
       Ash.Filter.TemplateHelpers
     ],
     schema: [
-      primary_actions?: [
-        type: {:in, [true, false, :only_read]},
-        default: true,
-        doc: """
-        Causes any calls to `Ash.Resource.Info.primary_action/2` to raise an error. This is experimental, but any errors raised in appropriate
-        places can be addressed, just report them as issues. Use `:read_only` to allow primary actions only for reads.
-        This can be useful to avoid constantly having to provide the basic `read` action of a given resource, when you need
-        to do things like loading data.
-        """
-      ],
       defaults: [
         type: {:list, {:in, [:create, :read, :update, :destroy]}},
         doc: """

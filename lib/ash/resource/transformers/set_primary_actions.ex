@@ -12,8 +12,6 @@ defmodule Ash.Resource.Transformers.ValidatePrimaryActions do
   @extension Ash.Resource.Dsl
 
   def transform(resource, dsl_state) do
-    primary_actions? = Ash.Resource.Info.primary_actions?(resource)
-
     dsl_state = add_defaults(dsl_state, resource)
 
     dsl_state
@@ -40,23 +38,19 @@ defmodule Ash.Resource.Transformers.ValidatePrimaryActions do
           )}}
 
       {type, actions}, {:ok, dsl_state} ->
-        if primary_actions? && !(primary_actions? == :only_read && type != :read) do
-          case Enum.count_until(actions, & &1.primary?, 2) do
-            2 ->
-              {:halt,
-               {:error,
-                DslError.exception(
-                  module: resource,
-                  message:
-                    "Multiple actions of type #{type} configured as `primary?: true`, but only one action per type can be the primary",
-                  path: [:actions, type]
-                )}}
+        case Enum.count_until(actions, & &1.primary?, 2) do
+          2 ->
+            {:halt,
+             {:error,
+              DslError.exception(
+                module: resource,
+                message:
+                  "Multiple actions of type #{type} configured as `primary?: true`, but only one action per type can be the primary",
+                path: [:actions, type]
+              )}}
 
-            _ ->
-              {:cont, {:ok, dsl_state}}
-          end
-        else
-          {:cont, {:ok, dsl_state}}
+          _ ->
+            {:cont, {:ok, dsl_state}}
         end
     end)
   end
