@@ -453,7 +453,9 @@ defmodule Ash.Api do
   Create a record. See `c:create/2` for more information.
   """
   @callback create!(Ash.Changeset.t(), params :: Keyword.t()) ::
-              Ash.Resource.record() | no_return
+              Ash.Resource.record()
+              | {Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
+              | no_return
 
   @doc """
   Create a record.
@@ -461,13 +463,17 @@ defmodule Ash.Api do
   #{Ash.OptionsHelpers.docs(@create_opts_schema)}
   """
   @callback create(Ash.Changeset.t(), params :: Keyword.t()) ::
-              {:ok, Ash.Resource.record()} | {:error, term}
+              {:ok, Ash.Resource.record()}
+              | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
+              | {:error, term}
 
   @doc """
   Update a record. See `c:update/2` for more information.
   """
   @callback update!(Ash.Changeset.t(), params :: Keyword.t()) ::
-              Ash.Resource.record() | no_return
+              Ash.Resource.record()
+              | {Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
+              | no_return
 
   @doc """
   Update a record.
@@ -475,15 +481,17 @@ defmodule Ash.Api do
   #{Ash.OptionsHelpers.docs(@update_opts_schema)}
   """
   @callback update(Ash.Changeset.t(), params :: Keyword.t()) ::
-              {:ok, Ash.Resource.record()} | {:error, term}
+              {:ok, Ash.Resource.record()}
+              | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
+              | {:error, term}
 
   @doc """
   Destroy a record. See `c:destroy/2` for more information.
   """
   @callback destroy!(Ash.Changeset.t() | Ash.Resource.record(), params :: Keyword.t()) ::
               :ok
-              | list(Ash.Notifier.Notification.t())
               | Ash.Resource.record()
+              | list(Ash.Notifier.Notification.t())
               | {Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
               | no_return
 
@@ -494,8 +502,8 @@ defmodule Ash.Api do
   """
   @callback destroy(Ash.Changeset.t() | Ash.Resource.record(), params :: Keyword.t()) ::
               :ok
-              | {:ok, list(Ash.Notifier.Notification.t())}
               | {:ok, Ash.Resource.record()}
+              | {:ok, list(Ash.Notifier.Notification.t())}
               | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
               | {:error, term}
 
@@ -920,7 +928,9 @@ defmodule Ash.Api do
 
   @doc false
   @spec create!(Ash.Api.t(), Ash.Changeset.t(), Keyword.t()) ::
-          Ash.Resource.record() | no_return
+          Ash.Resource.record()
+          | {Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
+          | no_return
   def create!(api, changeset, opts) do
     opts = Ash.OptionsHelpers.validate!(opts, @create_opts_schema)
 
@@ -931,8 +941,8 @@ defmodule Ash.Api do
 
   @doc false
   @spec create(Ash.Api.t(), Ash.Changeset.t(), Keyword.t()) ::
-          {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
-          | {:ok, Ash.Resource.record()}
+          {:ok, Ash.Resource.record()}
+          | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | {:error, term}
   def create(api, changeset, opts) do
     with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @create_opts_schema),
@@ -953,8 +963,8 @@ defmodule Ash.Api do
 
   @doc false
   @spec update(Ash.Api.t(), Ash.Resource.record(), Keyword.t()) ::
-          {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
-          | {:ok, Ash.Resource.record()}
+          {:ok, Ash.Resource.record()}
+          | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | {:error, term}
   def update(api, changeset, opts) do
     with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @update_opts_schema),
@@ -967,9 +977,9 @@ defmodule Ash.Api do
   @doc false
   @spec destroy!(Ash.Api.t(), Ash.Changeset.t() | Ash.Resource.record(), Keyword.t()) ::
           :ok
-          | list(Ash.Notifier.Notification.t())
           | Ash.Resource.record()
-          | {Ash.Resource.record() | list(Ash.Notifier.Notification.t())}
+          | list(Ash.Notifier.Notification.t())
+          | {Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | no_return()
   def destroy!(api, changeset, opts) do
     opts = Ash.OptionsHelpers.validate!(opts, @destroy_opts_schema)
@@ -982,9 +992,9 @@ defmodule Ash.Api do
   @doc false
   @spec destroy(Ash.Api.t(), Ash.Changeset.t() | Ash.Resource.record(), Keyword.t()) ::
           :ok
-          | {:ok, list(Ash.Notifier.Notification.t())}
           | {:ok, Ash.Resource.record()}
-          | {:ok, Ash.Resource.record() | list(Ash.Notifier.Notification.t())}
+          | {:ok, list(Ash.Notifier.Notification.t())}
+          | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | {:error, term}
   def destroy(api, %Ash.Changeset{resource: resource} = changeset, opts) do
     with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @destroy_opts_schema),
