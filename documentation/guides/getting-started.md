@@ -67,7 +67,8 @@ mix new cool_desk
     ```elixir
     defmodule CoolDesk.Tickets.Ticket do
       use Ash.Resource, data_layer: Ash.DataLayer.Ets
-      # For now, we will use the `Ets` data layer, which is builtin and is very useful for quick prototyping. Data is stored in memory and will be lost when the app restarts.
+      # For now, we will use the `Ets` data layer, which is builtin and is very useful for quick prototyping. 
+      # Data is stored in memory and will be lost when the app restarts.
 
       attributes do
         # We generally recommend using UUIDs, but you can
