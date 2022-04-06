@@ -1,21 +1,4 @@
 defmodule Ash.Api.Dsl do
-  @resource %Ash.Dsl.Entity{
-    name: :resource,
-    describe: "A reference to a resource",
-    target: Ash.Api.ResourceReference,
-    args: [:resource],
-    examples: [
-      "resource MyApp.User"
-    ],
-    schema: [
-      resource: [
-        type: :atom,
-        required: true,
-        doc: "The module of the resource"
-      ]
-    ]
-  }
-
   @execution %Ash.Dsl.Section{
     name: :execution,
     describe: "Options for how requests are executed using this Api",
@@ -105,9 +88,6 @@ defmodule Ash.Api.Dsl do
         registry MyApp.MyApi.Registry
       end
       """
-    ],
-    entities: [
-      @resource
     ]
   }
 

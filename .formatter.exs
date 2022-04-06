@@ -122,8 +122,6 @@ locals_without_parens = [
   relationship_context: 1,
   require_attributes: 1,
   required?: 1,
-  resource: 1,
-  resource: 2,
   returns: 1,
   run_flow: 2,
   run_flow: 3,
