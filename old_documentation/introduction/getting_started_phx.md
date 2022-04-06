@@ -234,20 +234,13 @@ Add it to your dependencies and don't forget to run `mix deps.get`:
        {:phoenix, "~> 1.5.6"},
 ```
 
-With the dependencies in place the extension has to be added to your
-API in `MyApp.Api`:
+Create a router module for your Api
 
-```diff
---- a/lib/my_app/api.ex
-+++ b/lib/my_app/api.ex
-@@ -1,6 +1,9 @@
- # lib/my_app/api.ex
- defmodule MyApp.Api do
--  use Ash.Api
-+  use Ash.Api,
-+    extensions: [
-+      AshJsonApi.Api
-+    ]
+```elixir
+defmodule MyApp.MyApi.Router do
+  # The registry must be explicitly provided here
+  use AshJsonApi.Api.Router, api: Api, registry: Registry 
+end
 ```
 
 We can proceed to add a route in the Phoenix router to forward requests
@@ -259,18 +252,11 @@ to our Ash API. To do so we use `AshJsonApi.forward/3` as shown in
 +++ b/lib/my_app_web/router.ex
 @@ -1,12 +1,14 @@
  defmodule MyAppWeb.Router do
-   use MyAppWeb, :router
--
-+  require AshJsonApi
-+
-   pipeline :api do
-     plug :accepts, ["json"]
-   end
 
 -  scope "/api", MyAppWeb do
 +  scope "/api" do
      pipe_through :api
-+    AshJsonApi.forward("/", MyApp.Api)
++    forward("/", MyApp.MyApi.Router)
    end
 ```
 
