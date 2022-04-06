@@ -39,7 +39,7 @@ defmodule Ash.Resource.Transformers.ValidateEagerIdentities do
                  module: resource,
                  path: [:identities, identity.name],
                  message:
-                   "Identity #{identity.name} is declared with `eager_check?` but not all of the `keys` are attributes."
+                   "Identity #{identity.name} is declared with `eager_check_with` or `pre_check_with` but not all of the `keys` are attributes."
                )}
 
             identities ->
@@ -48,7 +48,7 @@ defmodule Ash.Resource.Transformers.ValidateEagerIdentities do
                  module: resource,
                  path: [:identities],
                  message:
-                   "Identities #{Enum.map_join(identities, ",", & &1.name)} are declared with `eager_check?` but not all of the `keys` are attributes."
+                   "Identities #{Enum.map_join(identities, ",", & &1.name)} are declared with `eager_check_with` or `pre_check_with` but not all of the `keys` are attributes."
                )}
           end
         else
@@ -61,7 +61,7 @@ defmodule Ash.Resource.Transformers.ValidateEagerIdentities do
                  module: resource,
                  path: [:identities, name],
                  message:
-                   "Identity #{name} is declared with `eager_check?` but the resource has no primary read action."
+                   "Identity #{name} is declared with `eager_check_with` or `pre_check_with` but the resource has no primary read action."
                )}
 
             names ->
@@ -70,7 +70,7 @@ defmodule Ash.Resource.Transformers.ValidateEagerIdentities do
                  module: resource,
                  path: [:identities],
                  message:
-                   "Identities #{Enum.join(names, ",")} are declared with `eager_check?` but the resource has no primary read action."
+                   "Identities #{Enum.join(names, ",")} are declared with `eager_check_with` or `pre_check_with` but the resource has no primary read action."
                )}
           end
         end

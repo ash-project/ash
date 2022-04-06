@@ -47,7 +47,7 @@ defmodule Ash.Resource.Identity do
       doc: """
       Validates that the unique identity provided is unique *just prior* to enacting the resource action, using the Api provided.
 
-      Behaves the same as `eager_check?`, but it runs just prior to the action being committed. Useful for
+      Behaves the same as `eager_check_with`, but it runs just prior to the action being committed. Useful for
       data layers that don't support transactions/unique constraints, or manual resources with identities.
       """
     ],

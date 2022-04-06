@@ -32,16 +32,16 @@ defmodule Ash.Test.Resource.IdentitiesTest do
                Ash.Resource.Info.identities(Post)
     end
 
-    test "eager_check? requires a primary read action" do
-      defposts do
-        identities do
-          identity :foobar, [:name], eager_check?: true
-        end
-
-        actions do
-          defaults [:read]
-        end
-      end
+    test "eager_check_with requires a primary read action" do
+      assert_raise Ash.Error.Dsl.DslError,
+                   ~r/but the resource has no primary read action./,
+                   fn ->
+                     defposts do
+                       identities do
+                         identity :foobar, [:name], eager_check_with: Foobar
+                       end
+                     end
+                   end
     end
 
     test "Identity descriptions are allowed" do

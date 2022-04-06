@@ -53,7 +53,7 @@ defmodule Ash.Test.Actions.IdentityTest do
     end
   end
 
-  describe "eager_check?" do
+  describe "eager_check_with" do
     test "will check for an identity mismatch at validation" do
       Post
       |> Ash.Changeset.for_create(:create, %{title: "fred"}, api: Api)
