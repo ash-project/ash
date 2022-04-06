@@ -335,12 +335,53 @@ defmodule Ash.DataLayer.Ets do
   end
 
   @impl true
-  def upsert(resource, changeset, _) do
-    update(resource, changeset)
+  def upsert(resource, changeset, keys) do
+    if Enum.sort(keys) == Enum.sort(Ash.Resource.Info.primary_key(resource)) do
+      create(resource, changeset, upsert?: true)
+    else
+      key_filters =
+        Enum.map(keys, fn key ->
+          {key, Ash.Changeset.get_attribute(changeset, key)}
+        end)
+
+      if Enum.any?(key_filters, fn {_, val} -> is_nil(val) end) do
+        update(resource, changeset)
+      else
+        query = Ash.Query.do_filter(resource, and: [key_filters])
+
+        resource
+        |> resource_to_query(changeset.api)
+        |> Map.put(:filter, query.filter)
+        |> Map.put(:tenant, changeset.tenant)
+        |> run_query(resource)
+        |> case do
+          {:ok, []} ->
+            update(resource, changeset)
+
+          {:ok, results} ->
+            Enum.reduce_while(results, :ok, fn result, :ok ->
+              case do_destroy(changeset.resource, result, changeset.tenant) do
+                :ok ->
+                  {:cont, :ok}
+
+                {:error, error} ->
+                  {:halt, {:error, error}}
+              end
+            end)
+            |> case do
+              :ok ->
+                update(resource, changeset)
+
+              {:error, error} ->
+                {:error, error}
+            end
+        end
+      end
+    end
   end
 
   @impl true
-  def create(resource, changeset) do
+  def create(resource, changeset, opts \\ []) do
     pkey =
       resource
       |> Ash.Resource.Info.primary_key()
@@ -351,18 +392,31 @@ defmodule Ash.DataLayer.Ets do
     with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
          {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
          record <- unload_relationships(resource, record),
-         {:ok, _} <- ETS.Set.put(table, {pkey, record}) do
+         {:ok, _} <-
+           put_or_insert_new(table, {pkey, record}, opts) do
       {:ok, record}
     else
       {:error, error} -> {:error, error}
     end
   end
 
+  defp put_or_insert_new(table, {pkey, record}, opts) do
+    if opts[:upsert?] do
+      ETS.Set.put(table, {pkey, record})
+    else
+      ETS.Set.put_new(table, {pkey, record})
+    end
+  end
+
   @impl true
   def destroy(resource, %{data: record} = changeset) do
+    do_destroy(resource, record, changeset.tenant)
+  end
+
+  defp do_destroy(resource, record, tenant) do
     pkey = Map.take(record, Ash.Resource.Info.primary_key(resource))
 
-    with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
+    with {:ok, table} <- wrap_or_create_table(resource, tenant),
          {:ok, _} <- ETS.Set.delete(table, pkey) do
       :ok
     else
@@ -372,7 +426,7 @@ defmodule Ash.DataLayer.Ets do
 
   @impl true
   def update(resource, changeset) do
-    create(resource, changeset)
+    create(resource, changeset, upsert?: true)
   end
 
   defp unload_relationships(resource, record) do

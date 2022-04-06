@@ -628,6 +628,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Identity,
     schema: Ash.Resource.Identity.schema(),
+    modules: [:pre_check_with, :eager_check_with],
     args: [:name, :keys]
   }
 
@@ -1077,7 +1078,8 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.DefaultAccept,
     Ash.Resource.Transformers.SetTypes,
     Ash.Resource.Transformers.RequireUniqueFieldNames,
-    Ash.Resource.Transformers.ValidateRelationshipAttributes
+    Ash.Resource.Transformers.ValidateRelationshipAttributes,
+    Ash.Resource.Transformers.ValidateEagerIdentities
   ]
 
   @moduledoc """

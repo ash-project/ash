@@ -21,10 +21,13 @@ defmodule Ash.Actions.Create do
           opts
       end
 
-    upsert? = opts[:upsert?] || false
+    upsert? = opts[:upsert?] || get_in(changeset.context, [:private, :upsert?]) || false
     authorize? = authorize?(opts)
     upsert_keys = opts[:upsert_keys]
-    upsert_identity = opts[:upsert_identity]
+
+    upsert_identity =
+      opts[:upsert_identity] || get_in(changeset.context, [:private, :upsert_identity])
+
     return_notifications? = opts[:return_notifications?]
     actor = opts[:actor]
     verbose? = opts[:verbose?]

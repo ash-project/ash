@@ -31,6 +31,10 @@ defmodule Ash.DataLayer.EtsTest do
       destroy(:destroy)
     end
 
+    identities do
+      identity :unique_name, [:name]
+    end
+
     attributes do
       uuid_primary_key :id, writable?: true
       attribute :name, :string

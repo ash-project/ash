@@ -282,6 +282,11 @@ defmodule Ash.Test.Actions.CreateTest do
     end
   end
 
+  describe "upserts" do
+    test "allows upserting a record using an identity" do
+    end
+  end
+
   describe "simple creates" do
     test "allows creating a record with valid attributes" do
       assert %Post{title: "foo", contents: "bar"} =

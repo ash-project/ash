@@ -53,7 +53,7 @@ jobs:
     strategy:
       matrix:
         otp: ["23"]
-        elixir: ["1.11.0"]
+        elixir: ["1.13.1"]
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -79,7 +79,7 @@ jobs:
     name: Release
     strategy:
       matrix:
-        otp: ["23"]
+        otp: ["24.1.2"]
         elixir: ["1.11.0"]
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

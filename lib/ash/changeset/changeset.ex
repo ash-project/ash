@@ -169,6 +169,16 @@ defmodule Ash.Changeset do
 
   require Ash.Query
 
+  # Used for eager validating identities
+  defmodule ShadowApi do
+    @moduledoc false
+    use Ash.Api
+
+    resources do
+      allow_unregistered? true
+    end
+  end
+
   @doc """
   Return a changeset over a resource or a record. `params` can be either attributes, relationship values or arguments.
 
@@ -419,7 +429,11 @@ defmodule Ash.Changeset do
             """
       end
 
-    for_action(changeset, action, params, opts)
+    changeset
+    |> set_context(%{
+      private: %{upsert?: opts[:upsert?] || false, upsert_identity: opts[:upsert_identity]}
+    })
+    |> for_action(action, params, opts)
   end
 
   @doc """
@@ -535,6 +549,7 @@ defmodule Ash.Changeset do
           |> add_validations()
           |> mark_validated(action.name)
           |> require_arguments(action)
+          |> eager_validate_identities()
 
         if Keyword.get(opts, :require?, true) do
           require_values(changeset, action.type)
@@ -543,6 +558,97 @@ defmodule Ash.Changeset do
         end
       else
         raise_no_action(changeset.resource, action_name, changeset.action_type)
+      end
+    else
+      changeset
+    end
+  end
+
+  defp eager_validate_identities(changeset) do
+    identities =
+      changeset.resource
+      |> Ash.Resource.Info.identities()
+
+    case identities do
+      [] ->
+        changeset
+
+      identities ->
+        Enum.reduce(identities, changeset, fn identity, changeset ->
+          changeset =
+            if identity.eager_check_with do
+              validate_identity(changeset, identity)
+            else
+              changeset
+            end
+
+          if identity.pre_check_with do
+            before_action(changeset, &validate_identity(&1, identity))
+          else
+            changeset
+          end
+        end)
+    end
+  end
+
+  defp validate_identity(
+         %{context: %{private: %{upsert?: true, upsert_identity: name}}} = changeset,
+         %{name: name}
+       ) do
+    changeset
+  end
+
+  defp validate_identity(
+         %{action: %{soft?: true}} = changeset,
+         identity
+       ) do
+    do_validate_identity(changeset, identity)
+  end
+
+  defp validate_identity(
+         %{action: %{type: type}} = changeset,
+         identity
+       )
+       when type in [:create, :update] do
+    do_validate_identity(changeset, identity)
+  end
+
+  defp validate_identity(
+         %{action: %{type: type}} = changeset,
+         identity
+       )
+       when type in [:create, :update] do
+    do_validate_identity(changeset, identity)
+  end
+
+  defp validate_identity(changeset, _), do: changeset
+
+  defp do_validate_identity(changeset, identity) do
+    if Enum.any?(identity.keys, &changing_attribute?(changeset, &1)) do
+      action = Ash.Resource.Info.primary_action(changeset.resource, :read).name
+
+      values =
+        Enum.map(identity.keys, fn key ->
+          {key, Ash.Changeset.get_attribute(changeset, key)}
+        end)
+
+      changeset.resource
+      |> Ash.Query.for_read(action, %{}, tenant: changeset.tenant)
+      |> Ash.Query.do_filter(values)
+      |> Ash.Query.limit(1)
+      |> ShadowApi.read_one()
+      |> case do
+        {:ok, nil} ->
+          changeset
+
+        {:ok, _} ->
+          error =
+            Ash.Error.Changes.InvalidChanges.exception(
+              fields: identity.keys,
+              message: identity.message || "has already been taken"
+            )
+
+          add_error(changeset, error)
       end
     else
       changeset
