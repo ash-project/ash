@@ -46,32 +46,6 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
       - run: mix check
         if: "!startsWith(github.ref, 'refs/tags/v')"
-  coverage:
-    needs: [build]
-    runs-on: ubuntu-latest
-    name: Report Test Coverage
-    strategy:
-      matrix:
-        otp: ["23"]
-        elixir: ["1.13.1"]
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - run: sudo apt-get install --yes erlang-dev
-      - uses: actions/checkout@v2
-      - uses: actions/setup-elixir@v1.5
-        with:
-          experimental-otp: true
-          otp-version: ${{matrix.otp}}
-          elixir-version: ${{matrix.elixir}}
-      - uses: actions/cache@v1
-        id: cache-deps
-        with:
-          path: deps
-          key: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-deps-2-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
-          restore-keys: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-deps-2-
-      - run: mix deps.get
-      - run: mix coveralls.github
   release:
     needs: [build]
     if: startsWith(github.ref, 'refs/tags/v')

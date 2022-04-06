@@ -20,12 +20,6 @@ defmodule Ash.MixProject do
       package: package(),
       deps: deps(),
       dialyzer: [plt_add_apps: [:mix, :mnesia]],
-      test_coverage: [tool: ExCoveralls],
-      preferred_cli_env: [
-        coveralls: :test,
-        "coveralls.github": :test,
-        "coveralls.html": :test
-      ],
       xref: [exclude: [:mnesia]],
       docs: docs(),
       aliases: aliases(),
@@ -210,7 +204,6 @@ defmodule Ash.MixProject do
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
       {:sobelow, ">= 0.0.0", only: :dev, runtime: false},
       {:git_ops, "~> 2.4.4", only: :dev},
-      {:excoveralls, "~> 0.13.0", only: [:dev, :test]},
       {:mix_test_watch, "~> 1.0", only: :dev, runtime: false},
       {:parse_trans, "3.3.0", only: [:dev, :test], override: true},
       {:elixir_sense, github: "elixir-lsp/elixir_sense", only: [:dev, :test]}
