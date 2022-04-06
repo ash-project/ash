@@ -102,8 +102,7 @@ mix new cool_desk
    end
    ```
 
-8. Try it out in iex (run your app with `iex -S mix`):
-
+8. Try it out in iex by running your app with `iex -S mix`. Here are some examples:
     Create two tickets:
 
     ```elixir
@@ -115,10 +114,43 @@ mix new cool_desk
     |>  CoolDesk.Tickets.create!()
     ```
 
-    List your tickets 
+    List your tickets
 
     ```elixir
+    CoolDesk.Tickets.read!(CoolDesk.Tickets)
+    ```
+
+    Find tickets matching a filter
+
+    ```elixir
+    require Ash.Query
+
     CoolDesk.Tickets
-    |> Ash.Query.for_read(:read)
+    |> Ash.Query.filter(contains(subject, "Mount Doom"))
     |> CoolDesk.Tickets.read!()
+    ```
+
+    Update a ticket
+
+    ```elixir
+    ticket = 
+      CoolDesk.Tickets.Ticket
+      |> Ash.Changeset.for_create(
+        :create, 
+        %{subject: "My computer fell into Mount Doom."}
+      )
+      |>  CoolDesk.Tickets.create!()
+
+    ticket
+    |> Ash.Changeset.for_update(
+      :update,
+      %{subject: "I threw my computer into Mount Doom."}
+    )
+    |> CoolDesk.Tickets.update!()
+    ```
+
+    Or destroy it
+
+    ```elixir
+    CoolDesk.Tickets.destroy!(ticket)
     ```
