@@ -2,20 +2,7 @@ defmodule Ash.Test.Resource.RequireUniqueActionNamesTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  defmacrop defposts(do: body) do
-    quote do
-      defmodule Post do
-        @moduledoc false
-        use Ash.Resource, data_layer: Ash.DataLayer.Ets
-
-        attributes do
-          uuid_primary_key :id
-        end
-
-        unquote(body)
-      end
-    end
-  end
+  import Ash.Test.Helpers
 
   test "fails if there are multiple read actions" do
     assert_raise(
@@ -40,7 +27,7 @@ defmodule Ash.Test.Resource.RequireUniqueActionNamesTest do
     end
   end
 
-  test "passes if there is only one definded action" do
+  test "passes if there is only one defined action" do
     defposts do
       actions do
         read :read
