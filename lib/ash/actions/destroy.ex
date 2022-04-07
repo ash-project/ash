@@ -51,7 +51,8 @@ defmodule Ash.Actions.Destroy do
     |> as_requests(resource, api, action,
       changeset: changeset,
       authorize?: authorize?,
-      actor: actor
+      actor: actor,
+      tenant: opts[:tenant]
     )
     |> Engine.run(api,
       verbose?: verbose?,

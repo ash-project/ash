@@ -40,7 +40,8 @@ defmodule Ash.Actions.Create do
       upsert_identity: upsert_identity,
       upsert_keys: upsert_keys,
       authorize?: authorize?,
-      actor: actor
+      actor: actor,
+      tenant: opts[:tenant]
     )
     |> Engine.run(api,
       verbose?: verbose?,

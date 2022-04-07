@@ -1,4 +1,4 @@
-# Getting Started
+# Quick Start
 
 The first step is to decide if you're building a phoenix application or not. Phoenix is an extremely high quality web framework, and is the suggested pairing with Ash if you expect to be building a web front end, or an API. For this guide, we assume that elixir has already been installed. We will be using a "helpdesk" example throughout the documentation, so if you want to play along with your own application, you'll need to replace various names.
 
@@ -94,7 +94,8 @@ mix new cool_desk
     end
     ```
 
-7. Resources are static descriptions of behavior, and don't do anything on their own. To give them functionality, we must first add [actions](../concepts/actions.md), and then we will "invoke" those actions through an Api module. The simplest way to start is to use the `defaults` option to create the four default actions. Add the following to your resource.
+7. Resources are static descriptions of behavior, and don't do anything on their own. To give them functionality, we must first add [actions](../concepts/actions.md), and then we will "invoke" those actions through an Api module. The simplest way to start is to use the [defaults](ash-hq.org/docs/dsl/ash/latest/resource/actions/read) option to create the four default actions. Add the following to your resource.
+
 
    ```elixir
    actions do
@@ -154,3 +155,9 @@ mix new cool_desk
     ```elixir
     CoolDesk.Tickets.destroy!(ticket)
     ```
+
+9. More resources
+
+    - Back your resources with data using [Data Layers](../concepts/data-layers.md)
+    - Make more complex [actions](../concepts/actions.md)
+    - View the [Overview & Architecture Diagrams](../guides/overview.md)

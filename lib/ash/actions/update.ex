@@ -34,7 +34,8 @@ defmodule Ash.Actions.Update do
       changeset: changeset,
       authorize?: authorize?,
       actor: actor,
-      after_action: after_action
+      after_action: after_action,
+      tenant: opts[:tenant]
     )
     |> Engine.run(api,
       verbose?: verbose?,
