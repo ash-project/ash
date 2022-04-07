@@ -17,7 +17,6 @@ defmodule Ash.Resource.Transformers.RequireUniqueActionNames do
                 module: resource,
                 message: """
                 Multiple actions (#{Enum.count(actions)}) with the name `#{name}` defined in #{inspect(resource)}.
-                Actions: `#{inspect(actions)}`.
 
                 In the past, the pattern of having multiple actions called `:default`
                 was promoted in the documentation, but that is no longer valid. All
