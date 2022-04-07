@@ -13,7 +13,7 @@ defmodule Ash.Api.Dsl do
       timeout: [
         type: :timeout,
         doc: "The default timeout to use for requests using this API.",
-        default: :infinity
+        default: 30_000
       ]
     ]
   }

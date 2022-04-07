@@ -67,7 +67,7 @@ defmodule Ash.Api do
     timeout: [
       type: :timeout,
       doc: """
-      A positive integer, or `:infinity`. If none is provided, the timeout configured on the api is used (which defaults to `:infinity`).
+      A positive integer, or `:infinity`. If none is provided, the timeout configured on the api is used (which defaults to `30_000`).
       """
     ],
     verbose?: [
@@ -579,7 +579,7 @@ defmodule Ash.Api do
 
   @spec timeout(atom) :: :timeout | integer()
   def timeout(api) do
-    Extension.get_opt(api, [:execution], :timeout, :infinity, true)
+    Extension.get_opt(api, [:execution], :timeout, 30_000, true)
   end
 
   @spec allow_unregistered?(atom) :: atom | nil
