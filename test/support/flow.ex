@@ -33,7 +33,7 @@ defmodule Ash.Test.Support.Flow do
     use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
 
     actions do
-      defaults [:read, :update, :destroy]
+      defaults [:read, :destroy]
 
       read :for_org do
         argument :org, :uuid, allow_nil?: false

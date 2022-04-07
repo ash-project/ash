@@ -16,7 +16,8 @@ defmodule Ash.Resource.Transformers.RequireUniqueActionNames do
         raise DslError.exception(
                 module: resource,
                 message: """
-                Multiple actions with the name `#{name}` defined in #{inspect(resource)}.
+                Multiple actions (#{Enum.count(actions)}) with the name `#{name}` defined in #{inspect(resource)}.
+                Actions: `#{inspect(actions)}`.
 
                 In the past, the pattern of having multiple actions called `:default`
                 was promoted in the documentation, but that is no longer valid. All
@@ -29,4 +30,7 @@ defmodule Ash.Resource.Transformers.RequireUniqueActionNames do
 
     {:ok, dsl_state}
   end
+
+  def after?(Ash.Resource.Transformers.ValidatePrimaryActions), do: true
+  def after?(_), do: false
 end
