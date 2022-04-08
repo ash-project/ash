@@ -69,9 +69,25 @@ defmodule Ash.Engine do
     actor = opts[:actor]
 
     if opts[:timeout] && is_integer(opts[:timeout]) do
+      parent = self()
+
       Task.start_link(fn ->
-        :timer.sleep(opts[:timeout])
-        exit(:timeout)
+        ref = Process.monitor(parent)
+        timeout = opts[:timeout]
+
+        receive do
+          {:DOWN, ^ref, _, ^parent, _} ->
+            :ok
+        after
+          timeout ->
+            Logger.error("""
+            Engine timed out processing requests.
+
+            #{Enum.map_join(requests, "\n", &summarize(&1))}
+            """)
+
+            exit(:timeout)
+        end
       end)
     end
 
@@ -140,6 +156,15 @@ defmodule Ash.Engine do
           ref
         )
     end
+  end
+
+  defp summarize(%{name: name, action: %{name: action}, resource: resource})
+       when not is_nil(resource) do
+    "#{name}: #{inspect(resource)}.#{action}"
+  end
+
+  defp summarize(%{name: name}) do
+    name
   end
 
   defp run_and_return_or_rollback(
