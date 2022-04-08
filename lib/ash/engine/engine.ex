@@ -68,29 +68,6 @@ defmodule Ash.Engine do
     authorize? = opts[:authorize?]
     actor = opts[:actor]
 
-    if opts[:timeout] && is_integer(opts[:timeout]) do
-      parent = self()
-
-      Task.start_link(fn ->
-        ref = Process.monitor(parent)
-        timeout = opts[:timeout]
-
-        receive do
-          {:DOWN, ^ref, _, ^parent, _} ->
-            :ok
-        after
-          timeout ->
-            Logger.error("""
-            Engine timed out processing requests.
-
-            #{Enum.map_join(requests, "\n", &summarize(&1))}
-            """)
-
-            exit(:timeout)
-        end
-      end)
-    end
-
     opts = Keyword.put(opts, :callers, [self() | Process.get(:"$callers", [])])
 
     # If the requests are invalid, this is a framework level error
@@ -248,6 +225,32 @@ defmodule Ash.Engine do
 
   def init(opts) do
     Process.put(:"$callers", opts[:callers])
+
+    if opts[:timeout] && is_integer(opts[:timeout]) do
+      parent = self()
+
+      Task.start_link(fn ->
+        ref = Process.monitor(parent)
+        timeout = opts[:timeout]
+
+        receive do
+          {:DOWN, ^ref, _, ^parent, _} ->
+            :ok
+
+          other ->
+            IO.inspect(other, label: "GOT THING")
+        after
+          timeout ->
+            Logger.error("""
+            Engine timed out processing requests.
+
+            #{Enum.map_join(opts[:requests], "\n", &summarize(&1))}
+            """)
+
+            exit(:timeout)
+        end
+      end)
+    end
 
     state =
       %__MODULE__{
