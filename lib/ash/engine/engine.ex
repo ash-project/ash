@@ -247,7 +247,7 @@ defmodule Ash.Engine do
             #{Enum.map_join(opts[:requests], "\n", &summarize(&1))}
             """)
 
-            exit(:timeout)
+            exit(:engine_timeout)
         end
       end)
     end
@@ -476,6 +476,10 @@ defmodule Ash.Engine do
   def handle_cast({:local_request_complete, path}, state) do
     %{state | local_requests: state.local_requests -- [path]}
     |> maybe_shutdown()
+  end
+
+  def handle_info({:DOWN, _, _, _, :engine_timeout}, _state) do
+    exit(:timeout)
   end
 
   def handle_info({:DOWN, _, _, _pid, {:error, error, %Request{} = request}}, state) do
