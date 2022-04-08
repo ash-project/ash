@@ -1520,39 +1520,45 @@ defmodule Ash.Filter do
 
   def embed_predicates(other), do: other
 
-  def list_refs(expression, no_longer_simple? \\ false, in_an_eq? \\ false)
-
-  def list_refs(list, no_longer_simple?, in_an_eq?) when is_list(list) do
-    Enum.flat_map(list, &list_refs(&1, no_longer_simple?, in_an_eq?))
+  def list_refs(expression, no_longer_simple? \\ false, in_an_eq? \\ false) do
+    expression
+    |> do_list_refs(no_longer_simple?, in_an_eq?)
+    |> Enum.uniq()
   end
 
-  def list_refs({key, value}, no_longer_simple?, in_an_eq?) when is_atom(key),
-    do: list_refs(value, no_longer_simple?, in_an_eq?)
+  defp do_list_refs(list, no_longer_simple?, in_an_eq? \\ false)
 
-  def list_refs(%__MODULE__{expression: expression}, no_longer_simple?, in_an_eq?) do
-    list_refs(expression, no_longer_simple?, in_an_eq?)
+  defp do_list_refs(list, no_longer_simple?, in_an_eq?) when is_list(list) do
+    Enum.flat_map(list, &do_list_refs(&1, no_longer_simple?, in_an_eq?))
   end
 
-  def list_refs(expression, no_longer_simple?, in_an_eq?) do
+  defp do_list_refs({key, value}, no_longer_simple?, in_an_eq?) when is_atom(key),
+    do: do_list_refs(value, no_longer_simple?, in_an_eq?)
+
+  defp do_list_refs(%__MODULE__{expression: expression}, no_longer_simple?, in_an_eq?) do
+    do_list_refs(expression, no_longer_simple?, in_an_eq?)
+  end
+
+  defp do_list_refs(expression, no_longer_simple?, in_an_eq?) do
     case expression do
       %BooleanExpression{left: left, right: right, op: op} ->
         no_longer_simple? = no_longer_simple? || op == :or
-        list_refs(left, no_longer_simple?) ++ list_refs(right, no_longer_simple?)
+        do_list_refs(left, no_longer_simple?) ++ do_list_refs(right, no_longer_simple?)
 
       %Not{expression: not_expr} ->
-        list_refs(not_expr, true)
+        do_list_refs(not_expr, true)
 
       %struct{__predicate__?: _, left: left, right: right} ->
         in_an_eq? = struct == Ash.Query.Operator.Eq
 
-        list_refs(left, no_longer_simple?, in_an_eq?) ++
-          list_refs(right, no_longer_simple?, in_an_eq?)
+        do_list_refs(left, no_longer_simple?, in_an_eq?) ++
+          do_list_refs(right, no_longer_simple?, in_an_eq?)
 
       %{__predicate__?: _, arguments: args} ->
-        Enum.flat_map(args, &list_refs(&1, true))
+        Enum.flat_map(args, &do_list_refs(&1, true))
 
       %Call{args: args} ->
-        Enum.flat_map(args, &list_refs(&1, true))
+        Enum.flat_map(args, &do_list_refs(&1, true))
 
       %Ref{} = ref ->
         [%{ref | simple_equality?: !no_longer_simple? && in_an_eq?}]
