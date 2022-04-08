@@ -236,9 +236,6 @@ defmodule Ash.Engine do
         receive do
           {:DOWN, ^ref, _, ^parent, _} ->
             :ok
-
-          other ->
-            IO.inspect(other, label: "GOT THING")
         after
           timeout ->
             Logger.error("""
