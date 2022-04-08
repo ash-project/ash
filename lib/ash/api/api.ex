@@ -549,10 +549,24 @@ defmodule Ash.Api do
         |> Enum.find(&(&1 == resource))
     end
     |> case do
-      nil -> {:error, NoSuchResource.exception(resource: resource)}
-      resource -> {:ok, resource}
+      nil ->
+        if allowed?(allow(api), resource) do
+          {:ok, resource}
+        else
+          {:error, NoSuchResource.exception(resource: resource)}
+        end
+
+      resource ->
+        {:ok, resource}
     end
   end
+
+  @spec allowed?(mfa | nil, module()) :: boolean
+  defp allowed?({m, f, a}, resource) do
+    apply(m, f, List.wrap(a) ++ [resource])
+  end
+
+  defp allowed?(_, _), do: false
 
   @spec resources(Ash.Api.t()) :: list(Ash.Resource.t())
   def resources(api) do
@@ -577,7 +591,12 @@ defmodule Ash.Api do
     Extension.get_opt(api, [:resources], :registry, nil, true)
   end
 
-  @spec timeout(atom) :: :timeout | integer()
+  @spec allow(atom) :: mfa() | nil
+  def allow(api) do
+    Extension.get_opt(api, [:resources], :allow, nil, true)
+  end
+
+  @spec timeout(atom) :: nil | :infinity | integer()
   def timeout(api) do
     Extension.get_opt(api, [:execution], :timeout, 30_000, true)
   end

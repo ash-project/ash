@@ -54,6 +54,10 @@ defmodule Ash.EmbeddableType do
     resources do
       allow_unregistered? true
     end
+
+    execution do
+      timeout :infinity
+    end
   end
 
   @doc false

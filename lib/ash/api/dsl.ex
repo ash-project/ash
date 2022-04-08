@@ -31,12 +31,16 @@ defmodule Ash.Api.Dsl do
       """
     ],
     schema: [
+      allow: [
+        type: :mfa,
+        doc: """
+        Support a dynamic resource list by providing a callback that checks wether or not the resource should be allowed.
+        """
+      ],
       allow_unregistered?: [
         type: :boolean,
         default: false,
         doc: """
-        This is still experimental, but will be supported if you run into any issues.
-
         By default, an api will only work with resources that are explicitly included in the provided registry. In order to separate your
         application into multiple domains, you may wish to "mix and match" your resources across contexts. Specifying this option allows you
         to refer to resources in different apis in your resources, and allows providing any resource to api actions (to facilitate that requirement).

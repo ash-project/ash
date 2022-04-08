@@ -129,6 +129,7 @@ defmodule Ash.Query.Aggregate do
     |> Enum.map(fn {key, value} ->
       {key, Enum.uniq_by(Enum.map(value, &elem(&1, 1)), & &1.name)}
     end)
+    |> Enum.uniq()
     |> Enum.reduce({[], [], []}, fn {{aggregate_resource, relationship_path, ref_path},
                                      aggregates},
                                     {auth_requests, value_requests, aggregates_in_query} ->

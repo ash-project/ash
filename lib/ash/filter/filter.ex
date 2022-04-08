@@ -791,6 +791,7 @@ defmodule Ash.Filter do
     else
       Enum.map(refs, & &1.attribute)
     end
+    |> Enum.uniq()
   end
 
   def put_at_path(value, []), do: value
