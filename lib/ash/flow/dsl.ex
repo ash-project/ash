@@ -228,8 +228,7 @@ defmodule Ash.Flow.Dsl do
     ],
     examples: [
       """
-      map :create_users do
-        over range(1, arg(:count))
+      map :create_users, range(1, arg(:count)) do
         output :create_user
 
         create :create_user, Org, :create do

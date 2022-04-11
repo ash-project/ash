@@ -526,7 +526,7 @@ defmodule Ash.Type do
         other -> other
       end
     else
-      type.apply_constraints(term, [])
+      {:ok, term}
     end
   end
 

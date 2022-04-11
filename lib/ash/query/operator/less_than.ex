@@ -21,8 +21,8 @@ defmodule Ash.Query.Operator.LessThan do
 
   alias Ash.Query.Operator.{Eq, IsNil}
 
-  def evaluate(%{left: nil}), do: :unknown
-  def evaluate(%{right: nil}), do: :unknown
+  def evaluate(%{left: nil}), do: {:ok, nil}
+  def evaluate(%{right: nil}), do: {:ok, nil}
 
   def evaluate(%{left: left, right: right}) do
     {:known, Comp.less_than?(left, right)}

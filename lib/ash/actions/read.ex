@@ -153,6 +153,18 @@ defmodule Ash.Actions.Read do
 
               input = query_input.(context) || %{}
 
+              tenant =
+                case tenant do
+                  nil ->
+                    nil
+
+                  tenant when is_function(tenant) ->
+                    tenant.(context)
+
+                  tenant ->
+                    tenant
+                end
+
               query =
                 case query do
                   nil ->
@@ -163,7 +175,7 @@ defmodule Ash.Actions.Read do
                       query,
                       action,
                       actor,
-                      query.tenant,
+                      tenant || query.tenant,
                       authorize?
                     )
                 end

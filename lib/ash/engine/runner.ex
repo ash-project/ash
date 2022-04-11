@@ -277,10 +277,21 @@ defmodule Ash.Engine.Runner do
       else
         GenServer.cast(state.engine_pid, {:spawn_requests, async})
         runner_ref = state.ref
+        engine_pid = state.engine_pid
+        complete? = Enum.all?(state.requests, &(&1.state in [:complete, :error]))
 
         receive do
           {:pid_info, pid_info, ^runner_ref} ->
             %{state | pid_info: pid_info}
+
+          {:DOWN, _, _, ^engine_pid,
+           {:shutdown, %{errored_requests: [], runner_ref: ^runner_ref} = engine_state}} ->
+            log(state, fn -> "Engine complete" end)
+            handle_completion(state, engine_state, complete?, false)
+
+          {:DOWN, _, _, ^engine_pid, {:shutdown, %{runner_ref: ^runner_ref} = engine_state}} ->
+            log(state, fn -> "Engine complete" end)
+            handle_completion(state, engine_state, complete?, true)
         end
       end
 

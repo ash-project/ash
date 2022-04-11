@@ -12,10 +12,10 @@ defmodule Ash.Flow.Step.Map do
             "The value to be iterated over. Will be available inside the `map` step as `element(:map_step_name)`"
         ],
         output: [
-          type: :any,
-          doc:
-            "Which step or steps to use when constructing the output list. Defaults to the last step."
+          type: :atom,
+          doc: "Which step to use when constructing the output list. Defaults to the last step."
         ]
       ]
       |> Ash.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")
+      |> Keyword.delete(:wait_for)
 end

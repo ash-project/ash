@@ -537,7 +537,7 @@ defmodule Ash.Changeset do
           changeset
           |> handle_errors(action.error_handler)
           |> set_actor(opts)
-          |> set_tenant(opts[:tenant] || changeset.tenant)
+          |> set_tenant(opts[:tenant] || changeset.tenant || changeset.data.__metadata__[:tenant])
           |> Map.put(:action, action)
           |> Map.put(:__validated_for_action__, action.name)
           |> cast_params(action, params || %{}, opts)

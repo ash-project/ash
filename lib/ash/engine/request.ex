@@ -470,7 +470,13 @@ defmodule Ash.Engine.Request do
     %{request | dependency_data: Map.put(request.dependency_data, dep, value)}
   end
 
-  def store_dependency(request, receiver_path, field, internal? \\ false) do
+  def store_dependency(error, receiver_path, field, internal? \\ false)
+
+  def store_dependency(%{state: :error} = request, _receiver_path, _field, _internal?) do
+    {:ok, request, []}
+  end
+
+  def store_dependency(request, receiver_path, field, internal?) do
     request = do_store_dependency(request, field, receiver_path)
 
     case try_resolve_local(request, field, internal?) do

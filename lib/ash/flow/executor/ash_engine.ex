@@ -11,241 +11,116 @@ defmodule Ash.Flow.Executor.AshEngine do
 
   defmodule Flow do
     @moduledoc false
-    defstruct [:steps, :flow]
+    defstruct [:steps, :flow, :returns]
   end
 
   def build(flow, input, _opts) do
     steps =
       flow
       |> Ash.Flow.Info.steps()
-      |> Enum.map(&%Step{step: &1, input: input})
-      |> unnest_transactions()
-      |> expand_flows()
+      |> to_steps(input)
+      |> hydrate_flows()
 
     {:ok,
      %Flow{
        steps: steps,
-       flow: flow
+       flow: flow,
+       returns: Ash.Flow.Info.returns(flow)
      }}
   end
 
-  defp unnest_transactions(steps) do
-    Enum.map(steps, fn
-      %Step{step: %Ash.Flow.Step.Transaction{steps: steps}} = step ->
-        {steps, touches_resources} = do_unnest_transactions(steps)
+  defp to_steps(steps, input) do
+    Enum.map(steps, fn step ->
+      step =
+        case step do
+          %{steps: steps} = step ->
+            %{step | steps: to_steps(steps, input)}
 
-        %{
-          step
-          | step: %{
-              step.step
-              | touches_resources: Enum.uniq(step.step.touches_resources ++ touches_resources),
-                steps: steps
-            }
-        }
+          step ->
+            step
+        end
 
-      other ->
-        other
+      %Step{step: step, input: input}
     end)
   end
 
-  defp do_unnest_transactions(steps) do
-    Enum.reduce(steps, {[], []}, fn
-      %Ash.Flow.Step.Transaction{
-        steps: steps,
-        touches_resources: touches_resources,
-        name: transaction_name
-      },
-      {steps_acc, touches_resources_acc} ->
-        {steps, more_touches_resources} = do_unnest_transactions(steps)
-        steps = remap_step_names(steps, &[transaction_name | List.wrap(&1)])
-
-        {steps_acc ++ steps, touches_resources ++ more_touches_resources ++ touches_resources_acc}
-
-      step, {steps_acc, touches_resources_acc} ->
-        {steps_acc ++ [step], touches_resources_acc}
-    end)
-  end
-
-  defp expand_flows(steps, in_transaction? \\ false) do
+  defp hydrate_flows(steps) do
     Enum.flat_map(steps, fn
       %Step{
         input: input,
         step: %Ash.Flow.Step.RunFlow{
           name: name,
           flow: flow,
-          input: run_flow_input
+          input: run_flow_input,
+          wait_for: wait_for
         }
       } = run_flow_step ->
-        flow_steps = Ash.Flow.Info.steps(flow)
+        {run_flow_input, _} = Ash.Flow.handle_input_template(run_flow_input, input)
+        {:ok, %{steps: hydrated_steps}} = build(flow, run_flow_input, [])
 
-        flow_steps =
-          if in_transaction? do
-            do_unnest_transactions(flow_steps)
-          else
-            flow_steps
+        hydrated_steps
+        |> map_steps(fn step ->
+          case step do
+            %{wait_for: nil} = step ->
+              %{step | wait_for: wait_for}
+
+            %{wait_for: step_wait_for} = step ->
+              %{step | wait_for: [wait_for, step_wait_for]}
+
+            step ->
+              step
           end
-
-        flow_steps
-        |> Stream.map(fn step ->
-          %{step | name: [name | List.wrap(step.name)]}
         end)
-        |> Stream.map(fn step ->
-          {input, _} = Ash.Flow.handle_input_template(run_flow_input, input)
-
-          input = Ash.Flow.remap_result_references(input, name)
-          %Step{step: step, input: input}
+        |> remap_step_names(fn nested_name ->
+          List.wrap(name) ++ List.wrap(nested_name)
         end)
-        |> Stream.map(fn
-          %Step{step: %{input: step_input} = inner_step, input: input} = step ->
-            {input, _} = Ash.Flow.handle_input_template(step_input, input)
-
-            input = Ash.Flow.remap_result_references(input, name)
-
-            %{step | step: %{inner_step | input: input}}
-
-          other ->
-            other
-        end)
-        |> Stream.map(fn
-          %Step{step: %Ash.Flow.Step.Map{over: over}, input: input} = step ->
-            {over, _} = Ash.Flow.handle_input_template(over, input)
-
-            over = Ash.Flow.remap_result_references(over, name)
-            %{step | step: %{step.step | over: over}}
-
-          other ->
-            other
-        end)
-        |> Stream.map(fn
-          %Step{step: %Ash.Flow.Step.Map{output: output} = inner_step} = step ->
-            new_output =
-              case output do
-                empty when empty in [nil, []] ->
-                  empty
-
-                {key, val} ->
-                  [{key, [name | List.wrap(val)]}]
-
-                value when not is_list(value) ->
-                  [{value, [name | List.wrap(value)]}]
-
-                values when is_list(values) ->
-                  Enum.map(values, fn
-                    {key, value} ->
-                      {key, [name | List.wrap(value)]}
-
-                    key ->
-                      {key, [name | List.wrap(key)]}
-                  end)
-              end
-
-            %{step | step: %{inner_step | output: new_output}}
-
-          other ->
-            other
-        end)
-        |> expand_flows(in_transaction?)
-        # We add it back in here because we need to make a return value for that step available
+        |> handle_input_templates()
         |> Enum.concat([run_flow_step])
-        |> Enum.map(fn step ->
-          %{step | step: step.step}
-        end)
 
-      %Step{step: %Ash.Flow.Step.Map{steps: map_steps} = inner_step, input: input} = step ->
-        new_map_steps =
-          map_steps
-          |> Enum.map(&%Step{step: &1, input: input})
-          |> expand_flows(in_transaction?)
-
-        [%{step | step: %{inner_step | steps: new_map_steps}}]
-
-      %Step{
-        step: %Ash.Flow.Step.Transaction{steps: transaction_steps} = inner_step,
-        input: input
-      } = step ->
-        new_transaction_steps =
-          transaction_steps
-          |> Enum.map(&%Step{step: &1, input: input})
-          |> expand_flows(true)
-
-        [%{step | step: %{inner_step | steps: new_transaction_steps}}]
+      %Step{step: %{steps: steps} = inner_step} = step ->
+        [%{step | step: %{inner_step | steps: hydrate_flows(steps)}}]
 
       step ->
         [step]
     end)
   end
 
+  defp handle_input_templates(run_flow_steps) do
+    run_flow_steps
+    |> Stream.map(fn
+      %Step{step: %{input: step_input} = inner_step, input: input} = step ->
+        {input, _} = Ash.Flow.handle_input_template(step_input, input)
+
+        %{step | step: %{inner_step | input: input}}
+
+      other ->
+        other
+    end)
+    |> Stream.map(fn
+      %Step{step: %Ash.Flow.Step.Map{over: over}, input: input} = step ->
+        {over, _} = Ash.Flow.handle_input_template(over, input)
+
+        %{step | step: %{step.step | over: over}}
+
+      other ->
+        other
+    end)
+  end
+
   def execute(%Flow{steps: steps, flow: flow}, _input, opts) do
     steps
-    |> Enum.flat_map(fn
-      %Step{
-        step:
-          %Ash.Flow.Step.Transaction{
-            steps: transaction_steps,
-            name: name,
-            touches_resources: touches_resources
-          } = transaction
-      } ->
-        depends_on_requests = transaction_dependencies(transaction_steps, steps)
-
-        [
-          Ash.Engine.Request.new(
-            path: [name],
-            name: "Transaction #{inspect(name)}",
-            async?: Enum.any?(transaction_steps, &must_be_local?/1),
-            touches_resources: touches_resources,
-            error_path: [name],
-            data:
-              Ash.Engine.Request.resolve(depends_on_requests, fn context ->
-                steps
-                |> requests(
-                  transaction_steps,
-                  opts,
-                  context: context,
-                  transaction_name: transaction.name
-                )
-                |> case do
-                  [] ->
-                    {:ok, %{}}
-
-                  [first | rest] ->
-                    # only one of the requests needs to be annotated as touching the resources
-                    # the transaction claims to touch, since the transaction is urn over all touched resources
-                    # in all requests
-                    [
-                      %{
-                        first
-                        | touches_resources:
-                            Enum.uniq(touches_resources ++ first.touches_resources)
-                      }
-                      | rest
-                    ]
-                    |> Ash.Engine.run(nil, verbose?: opts[:verbose?], transaction?: true)
-                    |> case do
-                      {:ok, %{data: data}} ->
-                        {:ok,
-                         Map.new(transaction_steps, fn step ->
-                           {step.step.name, Ash.Flow.do_get_in(data, data_path(step.step))}
-                         end)}
-
-                      {:error, %Ash.Engine.Runner{errors: errors}} ->
-                        {:error, Ash.Error.to_error_class(errors)}
-
-                      {:error, error} ->
-                        {:error, error}
-                    end
-                end
-              end)
-          )
-        ]
-
-      %Step{} = step ->
-        requests(steps, [step], opts)
-    end)
-    |> Ash.Engine.run(nil, verbose?: opts[:verbose?])
+    |> Enum.flat_map(&requests(steps, &1, opts))
+    |> Ash.Engine.run(nil,
+      verbose?: opts[:verbose?]
+    )
     |> case do
-      {:ok, %Ash.Engine.Runner{data: data}} ->
-        {:ok, return_value(steps, data, Ash.Flow.Info.returns(flow))}
+      {:ok, %Ash.Engine.Runner{data: data, resource_notifications: resource_notifications}} ->
+        if opts[:return_notifications?] do
+          {:ok, return_value(steps, data, Ash.Flow.Info.returns(flow)),
+           %{notifications: resource_notifications}}
+        else
+          {:ok, return_value(steps, data, Ash.Flow.Info.returns(flow))}
+        end
 
       {:error, %Ash.Engine.Runner{errors: errors}} ->
         {:error, Ash.Error.to_error_class(errors)}
@@ -265,38 +140,49 @@ defmodule Ash.Flow.Executor.AshEngine do
 
   defp must_be_local?(_), do: false
 
-  defp transaction_dependencies(transaction_steps, all_steps, search_steps \\ nil) do
+  defp transaction_dependencies(
+         transaction_name,
+         transaction_steps,
+         all_steps,
+         search_steps \\ nil
+       ) do
     search_steps
     |> Kernel.||(transaction_steps)
     |> Enum.flat_map(fn
-      %Ash.Flow.Step.Map{steps: steps} ->
-        transaction_dependencies(transaction_steps, all_steps, steps)
+      %{steps: steps} ->
+        transaction_dependencies(transaction_name, transaction_steps, all_steps, steps)
 
       step ->
-        {_, deps} = Ash.Flow.handle_input_template(step.input, step.input)
+        deps = get_all_deps(step)
 
         Enum.flat_map(deps, fn {:_result, dep} ->
-          case Enum.find(transaction_steps, fn step ->
-                 step.step.name == dep
-               end) do
+          case find_step_dep(transaction_steps, dep, transaction_name, true) do
             nil ->
-              dependent_step =
-                Enum.find(all_steps, fn
-                  %Step{step: %Ash.Flow.Step.Transaction{steps: transaction_steps}} ->
-                    Enum.any?(transaction_steps, &(&1.name == dep))
-
-                  %Step{step: step} ->
-                    step.name == dep
-                end)
-
-              result_path(dependent_step)
-
-            _step ->
               []
+
+            step ->
+              result_path(step.step)
           end
         end)
     end)
     |> Enum.uniq()
+  end
+
+  @deps_keys [:input, :over, :record, :wait_for, :tenant]
+
+  def deps_keys, do: @deps_keys
+
+  defp get_all_deps(step) do
+    Enum.flat_map(@deps_keys, fn key ->
+      case Map.fetch(step, key) do
+        {:ok, value} ->
+          {_, deps} = Ash.Flow.handle_input_template(value, value)
+          deps
+
+        :error ->
+          []
+      end
+    end)
   end
 
   defp return_value(steps, data, returns) do
@@ -316,36 +202,102 @@ defmodule Ash.Flow.Executor.AshEngine do
   end
 
   defp get_return_value(steps, data, name) do
-    case Enum.find(steps, fn
-           %Step{step: %Ash.Flow.Step.Transaction{steps: steps}} ->
-             Enum.any?(steps, &(&1.step.name == name))
-
-           %Step{step: step} ->
-             step.name == name
-         end) do
+    case find_step_dep(steps, name, nil) do
       nil ->
         nil
 
-      %Step{step: %Ash.Flow.Step.Transaction{name: transaction_name}} ->
-        Ash.Flow.do_get_in(data, [transaction_name, :data, name])
+      %Ash.Flow.Step.Transaction{name: transaction_name} ->
+        Ash.Flow.do_get_in(data, [transaction_name, name])
 
-      %Step{step: step} ->
+      step ->
         Ash.Flow.do_get_in(data, data_path(step))
     end
   end
 
-  defp requests(all_steps, steps, opts, request_opts \\ []) do
+  defp requests(all_steps, step, opts, request_opts \\ []) do
     additional_context = request_opts[:context] || %{}
     transaction_name = request_opts[:transaction_name]
 
-    steps
-    |> Enum.flat_map(fn
+    case step do
       %Step{
-        step: %Ash.Flow.Step.Map{name: name, steps: map_steps, over: over, output: output},
+        step:
+          %Ash.Flow.Step.Transaction{
+            steps: transaction_steps,
+            name: name,
+            touches_resources: touches_resources
+          } = transaction
+      } ->
+        depends_on_requests = transaction_dependencies(name, transaction_steps, all_steps)
+
+        [
+          Ash.Engine.Request.new(
+            path: [name],
+            name: "Transaction #{inspect(name)}",
+            async?: Enum.any?(transaction_steps, &must_be_local?/1),
+            touches_resources: touches_resources,
+            error_path: [name],
+            data:
+              Ash.Engine.Request.resolve(depends_on_requests, fn context ->
+                transaction_steps
+                |> Enum.flat_map(
+                  &requests(all_steps, &1, opts,
+                    context: context,
+                    transaction_name: transaction.name
+                  )
+                )
+                |> case do
+                  [] ->
+                    {:ok, %{}}
+
+                  [first | rest] ->
+                    # only one of the requests needs to be annotated as touching the resources
+                    # the transaction claims to touch, since the transaction is urn over all touched resources
+                    # in all requests
+                    [
+                      %{
+                        first
+                        | touches_resources:
+                            Enum.uniq(touches_resources ++ first.touches_resources)
+                      }
+                      | rest
+                    ]
+                    |> Ash.Engine.run(nil, verbose?: opts[:verbose?], transaction?: true)
+                    |> case do
+                      {:ok, %{data: data, resource_notifications: notifications}} ->
+                        if opts[:return_notifications?] do
+                          {:ok,
+                           Map.new(transaction_steps, fn step ->
+                             {step.step.name, Ash.Flow.do_get_in(data, data_path(step.step))}
+                           end), %{notifications: notifications}}
+                        else
+                          {:ok,
+                           Map.new(transaction_steps, fn step ->
+                             {step.step.name, Ash.Flow.do_get_in(data, data_path(step.step))}
+                           end)}
+                        end
+
+                      {:error, %Ash.Engine.Runner{errors: errors}} ->
+                        {:error, Ash.Error.to_error_class(errors)}
+
+                      {:error, error} ->
+                        {:error, error}
+                    end
+                end
+              end)
+          )
+        ]
+
+      %Step{
+        step: %Ash.Flow.Step.Map{
+          name: name,
+          steps: map_steps,
+          over: over,
+          output: output
+        },
         input: input
       } ->
         output = output || List.last(map_steps).step.name
-        # {input_depends_on =
+
         {over, deps} = Ash.Flow.handle_input_template(over, input)
         dep_paths = get_dep_paths(all_steps, deps, transaction_name)
 
@@ -362,10 +314,7 @@ defmodule Ash.Flow.Executor.AshEngine do
               Ash.Engine.Request.resolve(request_deps, fn context ->
                 context = Ash.Helpers.deep_merge_maps(context, additional_context)
 
-                results =
-                  Map.new(dep_paths, fn {name, %{fetch_path: fetch_path}} ->
-                    {name, Ash.Flow.do_get_in(context, fetch_path)}
-                  end)
+                results = results(dep_paths, context)
 
                 elements =
                   over
@@ -393,24 +342,31 @@ defmodule Ash.Flow.Executor.AshEngine do
 
                         map_steps =
                           map_steps
-                          |> remap_step_names(&(List.wrap(&1) ++ [i]))
+                          |> remap_step_names(&put_second_to_last(&1, i))
 
-                        output_name = List.wrap(output) ++ [i]
-                        output_step = Enum.find(map_steps, &(&1.step.name == output_name)).step
+                        output_name = put_second_to_last(output, i)
+
+                        output_step = Enum.find(map_steps, &(&1.step.name == output_name))
+
+                        if is_nil(output_step) do
+                          raise "#{inspect(output_name)} not found in #{inspect(step_names(map_steps))}"
+                        end
+
+                        output_step = output_step.step
                         output_path = result_path(output_step)
 
-                        all_steps
-                        |> Enum.map(fn step ->
-                          if step.step.name == name do
+                        all_steps_with_map_steps =
+                          all_steps
+                          |> update_step(name, fn step ->
                             %{step | step: %{step.step | steps: map_steps}}
-                          else
-                            step
-                          end
-                        end)
-                        |> requests(
-                          map_steps,
-                          opts,
-                          context: new_additional_context
+                          end)
+
+                        map_steps
+                        |> Enum.flat_map(
+                          &requests(all_steps_with_map_steps, &1, opts,
+                            context: new_additional_context,
+                            transaction_name: transaction_name
+                          )
                         )
                         |> Kernel.++([
                           Ash.Engine.Request.new(
@@ -418,6 +374,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                             error_path: [[name, :elements], i],
                             name: "Handle #{inspect(name)} index #{i}",
                             authorize?: false,
+                            additional_context: new_additional_context,
                             data:
                               Ash.Engine.Request.resolve([output_path], fn context ->
                                 {:ok, Ash.Flow.do_get_in(context, output_path)}
@@ -451,12 +408,14 @@ defmodule Ash.Flow.Executor.AshEngine do
           name: name,
           input: custom_input,
           custom: {mod, opts},
-          async?: async?
+          async?: async?,
+          wait_for: wait_for
         },
         input: input
       } ->
         {custom_input, deps} = Ash.Flow.handle_input_template(custom_input, input)
-        dep_paths = get_dep_paths(all_steps, deps, transaction_name)
+        {_, wait_for_deps} = Ash.Flow.handle_input_template(wait_for, input)
+        dep_paths = get_dep_paths(all_steps, deps ++ wait_for_deps, transaction_name)
 
         request_deps =
           Enum.map(dep_paths, fn {_, %{request_path: request_path}} -> request_path end)
@@ -472,10 +431,7 @@ defmodule Ash.Flow.Executor.AshEngine do
               Ash.Engine.Request.resolve(request_deps, fn context ->
                 context = Ash.Helpers.deep_merge_maps(context, additional_context)
 
-                results =
-                  Map.new(dep_paths, fn {name, %{fetch_path: fetch_path}} ->
-                    {name, Ash.Flow.do_get_in(context, fetch_path)}
-                  end)
+                results = results(dep_paths, context)
 
                 custom_input =
                   custom_input
@@ -491,8 +447,8 @@ defmodule Ash.Flow.Executor.AshEngine do
         ]
 
       %Step{step: %Ash.Flow.Step.RunFlow{name: name, flow: flow}} ->
-        flow_steps = Ash.Flow.Info.steps(flow)
-
+        # No need to do anything with `wait_for` here, because
+        # `wait_for` is pushed down into all child steps when we hydrate
         depends_on_requests =
           flow
           |> Ash.Flow.Info.returns()
@@ -505,22 +461,38 @@ defmodule Ash.Flow.Executor.AshEngine do
               other
           end)
           |> Enum.map(fn key ->
-            step = Enum.find(flow_steps, &(&1.name == key))
+            looking_for = List.wrap(name) ++ List.wrap(key)
 
-            result_path(%{step | name: [name | List.wrap(step.name)]})
+            step = find_step_dep(all_steps, looking_for, transaction_name)
+
+            if is_nil(step) do
+              raise """
+              #{inspect(inspect(looking_for))}
+              not found in
+              #{inspect(step_names(all_steps))}
+              """
+            end
+
+            result_path(step)
           end)
 
         [
           Ash.Engine.Request.new(
             path: [name],
-            name: "Coalesce return value for #{inspect(name)}",
+            name: "Build return value for #{inspect(name)}",
             async?: false,
             error_path: List.wrap(name),
             data:
               Ash.Engine.Request.resolve(depends_on_requests, fn context ->
                 case Ash.Flow.Info.returns(flow) do
                   key when is_atom(key) ->
-                    {:ok, get_flow_return_value(all_steps, [name, key], context)}
+                    {:ok,
+                     get_flow_return_value(
+                       all_steps,
+                       List.wrap(name) ++ [key],
+                       context,
+                       transaction_name
+                     )}
 
                   list when is_list(list) ->
                     list =
@@ -534,7 +506,13 @@ defmodule Ash.Flow.Executor.AshEngine do
 
                     {:ok,
                      Map.new(list, fn {key, val} ->
-                       {val, get_flow_return_value(all_steps, [name, key], context)}
+                       {val,
+                        get_flow_return_value(
+                          all_steps,
+                          List.wrap(name) ++ [key],
+                          context,
+                          transaction_name
+                        )}
                      end)}
                 end
               end)
@@ -548,13 +526,16 @@ defmodule Ash.Flow.Executor.AshEngine do
           name: name,
           resource: resource,
           input: action_input,
-          get?: get?
+          tenant: tenant,
+          get?: get?,
+          wait_for: wait_for
         } = read
 
         %{
           action: action,
           action_input: action_input,
           dep_paths: dep_paths,
+          tenant: tenant,
           request_deps: request_deps
         } =
           action_request_info(
@@ -563,7 +544,9 @@ defmodule Ash.Flow.Executor.AshEngine do
             action,
             action_input,
             input,
-            transaction_name
+            transaction_name,
+            tenant,
+            wait_for
           )
 
         Ash.Actions.Read.as_requests([name], resource, api, action,
@@ -572,13 +555,21 @@ defmodule Ash.Flow.Executor.AshEngine do
           actor: opts[:actor],
           query_dependencies: request_deps,
           get?: get? || action.get?,
+          tenant: fn context ->
+            context = Ash.Helpers.deep_merge_maps(context, additional_context)
+            results = results(dep_paths, context)
+
+            tenant
+            |> Ash.Flow.set_dependent_values(%{
+              results: results,
+              elements: Map.get(context, :_ash_engine_elements)
+            })
+            |> Ash.Flow.handle_modifiers()
+          end,
           query_input: fn context ->
             context = Ash.Helpers.deep_merge_maps(context, additional_context)
 
-            results =
-              Map.new(dep_paths, fn {name, %{fetch_path: fetch_path}} ->
-                {name, Ash.Flow.do_get_in(context, fetch_path)}
-              end)
+            results = results(dep_paths, context)
 
             action_input
             |> Ash.Flow.set_dependent_values(%{
@@ -595,13 +586,16 @@ defmodule Ash.Flow.Executor.AshEngine do
           api: api,
           name: name,
           resource: resource,
-          input: action_input
+          input: action_input,
+          tenant: tenant,
+          wait_for: wait_for
         } = create
 
         %{
           action: action,
           action_input: action_input,
           dep_paths: dep_paths,
+          tenant: tenant,
           request_deps: request_deps
         } =
           action_request_info(
@@ -610,7 +604,9 @@ defmodule Ash.Flow.Executor.AshEngine do
             action,
             action_input,
             input,
-            transaction_name
+            transaction_name,
+            tenant,
+            wait_for
           )
 
         Ash.Actions.Create.as_requests([name], resource, api, action,
@@ -618,13 +614,21 @@ defmodule Ash.Flow.Executor.AshEngine do
           authorize?: opts[:authorize?],
           actor: opts[:actor],
           changeset_dependencies: request_deps,
+          tenant: fn context ->
+            context = Ash.Helpers.deep_merge_maps(context, additional_context)
+            results = results(dep_paths, context)
+
+            tenant
+            |> Ash.Flow.set_dependent_values(%{
+              results: results,
+              elements: Map.get(context, :_ash_engine_elements)
+            })
+            |> Ash.Flow.handle_modifiers()
+          end,
           changeset_input: fn context ->
             context = Ash.Helpers.deep_merge_maps(context, additional_context)
 
-            results =
-              Map.new(dep_paths, fn {name, %{fetch_path: fetch_path}} ->
-                {name, Ash.Flow.do_get_in(context, fetch_path)}
-              end)
+            results = results(dep_paths, context)
 
             action_input
             |> Ash.Flow.set_dependent_values(%{
@@ -642,13 +646,16 @@ defmodule Ash.Flow.Executor.AshEngine do
           name: name,
           resource: resource,
           input: action_input,
-          record: record
+          record: record,
+          tenant: tenant,
+          wait_for: wait_for
         } = update
 
         %{
           action: action,
           action_input: action_input,
           dep_paths: dep_paths,
+          tenant: tenant,
           request_deps: request_deps
         } =
           action_request_info(
@@ -657,7 +664,9 @@ defmodule Ash.Flow.Executor.AshEngine do
             action,
             action_input,
             input,
-            transaction_name
+            transaction_name,
+            tenant,
+            wait_for
           )
 
         get_request =
@@ -679,16 +688,24 @@ defmodule Ash.Flow.Executor.AshEngine do
               actor: opts[:actor],
               changeset_dependencies: [[name, :fetch, :data] | request_deps],
               skip_on_nil_record?: true,
+              tenant: fn context ->
+                context = Ash.Helpers.deep_merge_maps(context, additional_context)
+                results = results(dep_paths, context)
+
+                tenant
+                |> Ash.Flow.set_dependent_values(%{
+                  results: results,
+                  elements: Map.get(context, :_ash_engine_elements)
+                })
+                |> Ash.Flow.handle_modifiers()
+              end,
               record: fn context ->
                 Ash.Flow.do_get_in(context, [name, :fetch, :data])
               end,
               changeset_input: fn context ->
                 context = Ash.Helpers.deep_merge_maps(context, additional_context)
 
-                results =
-                  Map.new(dep_paths, fn {name, %{fetch_path: fetch_path}} ->
-                    {name, Ash.Flow.do_get_in(context, fetch_path)}
-                  end)
+                results = results(dep_paths, context)
 
                 action_input
                 |> Ash.Flow.set_dependent_values(%{
@@ -707,13 +724,16 @@ defmodule Ash.Flow.Executor.AshEngine do
           name: name,
           resource: resource,
           input: action_input,
-          record: record
+          record: record,
+          tenant: tenant,
+          wait_for: wait_for
         } = destroy
 
         %{
           action: action,
           action_input: action_input,
           dep_paths: dep_paths,
+          tenant: tenant,
           request_deps: request_deps
         } =
           action_request_info(
@@ -722,7 +742,9 @@ defmodule Ash.Flow.Executor.AshEngine do
             action,
             action_input,
             input,
-            transaction_name
+            transaction_name,
+            tenant,
+            wait_for
           )
 
         get_request =
@@ -747,13 +769,21 @@ defmodule Ash.Flow.Executor.AshEngine do
               record: fn context ->
                 Ash.Flow.do_get_in(context, [name, :fetch, :data])
               end,
+              tenant: fn context ->
+                context = Ash.Helpers.deep_merge_maps(context, additional_context)
+                results = results(dep_paths, context)
+
+                tenant
+                |> Ash.Flow.set_dependent_values(%{
+                  results: results,
+                  elements: Map.get(context, :_ash_engine_elements)
+                })
+                |> Ash.Flow.handle_modifiers()
+              end,
               changeset_input: fn context ->
                 context = Ash.Helpers.deep_merge_maps(context, additional_context)
 
-                results =
-                  Map.new(dep_paths, fn {name, %{fetch_path: fetch_path}} ->
-                    {name, Ash.Flow.do_get_in(context, fetch_path)}
-                  end)
+                results = results(dep_paths, context)
 
                 action_input
                 |> Ash.Flow.set_dependent_values(%{
@@ -764,61 +794,154 @@ defmodule Ash.Flow.Executor.AshEngine do
               end
             )
         ]
+    end
+  end
+
+  defp put_second_to_last(name, i) do
+    # name = List.wrap(name)
+    # last = List.last(name)
+    # body = :lists.droplast(name)
+    # body ++ [i] ++ [last]
+    List.wrap(i) ++ List.wrap(name)
+  end
+
+  defp results(dep_paths, context) do
+    Map.new(dep_paths, fn {name, %{fetch_path: fetch_path}} ->
+      {name, Ash.Flow.do_get_in(context, fetch_path)}
     end)
   end
 
-  defp remap_step_names(steps, fun) do
-    step_names =
-      Enum.map(steps, fn step ->
-        step.step.name
-      end)
+  defp map_steps(steps, fun) do
+    steps
+    |> Enum.map(fn %Step{step: inner_step} = step ->
+      %{step | step: fun.(inner_step)}
+    end)
+    |> Enum.map(fn
+      %Step{step: %{steps: inner_steps}} = step ->
+        %{step | step: %{step.step | steps: map_steps(inner_steps, fun)}}
+
+      step ->
+        step
+    end)
+  end
+
+  defp remap_step_names(steps, fun, step_names \\ nil) do
+    step_names = step_names || step_names(steps)
 
     steps
     |> Enum.map(fn
       %Step{step: %{name: name} = inner_step} = step ->
         %{step | step: %{inner_step | name: fun.(name)}}
-        |> remap_step_input(step_names, fun)
+        |> remap_step(step_names, fun)
     end)
     |> Enum.map(fn
       %Step{step: %{steps: inner_steps}} = step ->
-        %{step | step: %{step.step | steps: remap_step_names(inner_steps, fun)}}
+        %{step | step: %{step.step | steps: remap_step_names(inner_steps, fun, step_names)}}
 
       other ->
         other
     end)
   end
 
-  defp remap_step_input(%{step: %{input: input} = inner_step} = step, step_names, fun) do
-    new_input =
-      Ash.Flow.remap_result_references(input, fn name ->
-        if name in step_names do
-          fun.(name)
-        else
-          name
-        end
-      end)
+  defp step_names(steps) do
+    Enum.flat_map(steps, fn step ->
+      case step.step do
+        %{name: name, steps: steps} ->
+          [name | step_names(steps)]
 
-    %{step | step: %{inner_step | input: new_input}}
+        %{name: name} ->
+          [name]
+      end
+    end)
   end
 
-  defp remap_step_input(other, _, _), do: other
+  defp update_step(steps, name, func) do
+    Enum.map(steps, fn step ->
+      if step.step.name == name do
+        func.(step)
+      else
+        case step do
+          %{step: %{steps: steps}} ->
+            %{step | step: %{step.step | steps: update_step(steps, name, func)}}
 
-  defp get_flow_return_value(steps, name, data) do
-    case Enum.find(steps, fn
-           %Step{step: %Ash.Flow.Step.Transaction{steps: steps}} ->
-             Enum.any?(steps, &(&1.name == name))
+          step ->
+            step
+        end
+      end
+    end)
+  end
 
-           %Step{step: step} ->
-             step.name == name
-         end) do
+  # output needs a config
+  @remapped_step_keys [
+    input: [],
+    over: [],
+    output: [
+      raw?: true
+    ],
+    record: [],
+    tenant: [],
+    wait_for: []
+  ]
+
+  defp remap_step(step, step_names, fun) do
+    Enum.reduce(@remapped_step_keys, step, fn {key, config}, step ->
+      remap_key(step, step_names, key, config, fun)
+    end)
+  end
+
+  defp remap_key(%{step: step} = outer_step, step_names, key, config, fun) do
+    case Map.fetch(step, key) do
+      {:ok, value} ->
+        new_value =
+          if config[:raw?] do
+            if value do
+              fun.(value)
+            end
+          else
+            Ash.Flow.remap_result_references(value, fn name ->
+              if name in step_names do
+                fun.(name)
+              else
+                name
+              end
+            end)
+          end
+
+        %{outer_step | step: Map.put(step, key, new_value)}
+
+      :error ->
+        outer_step
+    end
+  end
+
+  defp get_flow_return_value(
+         steps,
+         name,
+         data,
+         transaction_name,
+         in_transaction? \\ false,
+         default \\ nil
+       ) do
+    case find_step_dep(steps, name, transaction_name) do
       nil ->
-        nil
+        default
 
-      %Step{step: %Ash.Flow.Step.Transaction{name: transaction_name}} ->
-        Ash.Flow.do_get_in(data, [transaction_name, :data, name])
+      %Ash.Flow.Step.Transaction{} = transaction ->
+        data =
+          if in_transaction? do
+            Ash.Flow.do_get_in(data, [transaction.name])
+          else
+            Ash.Flow.do_get_in(data, [transaction.name, :data])
+          end
 
-      %Step{step: step} ->
-        Ash.Flow.do_get_in(data, result_path(%{step | name: name}))
+        get_flow_return_value(transaction.steps, name, data, transaction.name, true, data)
+
+      step ->
+        if in_transaction? do
+          Ash.Flow.do_get_in(data, [step.name])
+        else
+          Ash.Flow.do_get_in(data, result_path(%{step | name: name}))
+        end
     end
   end
 
@@ -851,10 +974,7 @@ defmodule Ash.Flow.Executor.AshEngine do
         Ash.Engine.Request.resolve(get_request_deps, fn context ->
           context = Ash.Helpers.deep_merge_maps(context, additional_context)
 
-          results =
-            Map.new(get_request_dep_paths, fn {name, %{fetch_path: fetch_path}} ->
-              {name, Ash.Flow.do_get_in(context, fetch_path)}
-            end)
+          results = results(get_request_dep_paths, context)
 
           record
           |> Ash.Flow.set_dependent_values(%{
@@ -882,21 +1002,26 @@ defmodule Ash.Flow.Executor.AshEngine do
          action,
          action_input,
          input,
-         transaction_name
+         transaction_name,
+         tenant,
+         wait_for
        ) do
     action =
       Ash.Resource.Info.action(resource, action) ||
         raise "No such action #{action} for #{resource}"
 
     {action_input, deps} = Ash.Flow.handle_input_template(action_input, input)
+    {tenant, tenant_deps} = Ash.Flow.handle_input_template(tenant, input)
+    {_, wait_for_deps} = Ash.Flow.handle_input_template(wait_for, input)
 
-    dep_paths = get_dep_paths(all_steps, deps, transaction_name)
+    dep_paths = get_dep_paths(all_steps, deps ++ tenant_deps ++ wait_for_deps, transaction_name)
     request_deps = Enum.map(dep_paths, fn {_, %{request_path: request_path}} -> request_path end)
 
     %{
       action: action,
       action_input: action_input,
       dep_paths: dep_paths,
+      tenant: tenant,
       request_deps: request_deps
     }
   end
@@ -909,35 +1034,53 @@ defmodule Ash.Flow.Executor.AshEngine do
     deps
     |> Enum.reduce(%{}, fn
       {:_result, dep}, acc ->
-        case Enum.find(steps, fn
-               %Step{step: %Ash.Flow.Step.Transaction{steps: steps}} ->
-                 Enum.any?(steps, &(&1.step.name == dep))
-
-               %Step{step: %{name: ^dep}} ->
-                 true
-
-               _ ->
-                 false
-             end) do
+        case find_step_dep(steps, dep, transaction_name) do
           nil ->
             acc
 
-          %Step{step: %Ash.Flow.Step.Transaction{name: name, steps: transaction_steps}} ->
-            if transaction_name && name == transaction_name do
-              inner_step = Enum.find(transaction_steps, &(&1.step.name == dep))
-              result_path = result_path(inner_step.step)
-              Map.put(acc, dep, %{fetch_path: result_path, request_path: result_path})
-            else
-              Map.put(acc, dep, %{fetch_path: [name, :data, dep], request_path: [name, :data]})
-            end
+          %Ash.Flow.Step.Transaction{name: name} ->
+            Map.put(acc, dep, %{fetch_path: [name, :data, dep], request_path: [name, :data]})
 
-          %Step{step: step} ->
+          step ->
             result_path = result_path(step)
             Map.put(acc, dep, %{fetch_path: result_path, request_path: result_path})
         end
 
       _, acc ->
         acc
+    end)
+  end
+
+  defp find_step_dep(steps, dep, transaction_name, stop_at_transaction_name? \\ false) do
+    Enum.find_value(steps, fn
+      %Step{step: %Ash.Flow.Step.Transaction{name: ^transaction_name}}
+      when stop_at_transaction_name? ->
+        nil
+
+      %Step{step: %Ash.Flow.Step.Transaction{name: ^transaction_name, steps: steps}} ->
+        find_step_dep(steps, dep, nil)
+
+      %Step{step: %Ash.Flow.Step.Transaction{steps: steps} = step} ->
+        case find_step_dep(steps, dep, transaction_name) do
+          nil ->
+            nil
+
+          inner_step ->
+            if transaction_name do
+              inner_step
+            else
+              step
+            end
+        end
+
+      %Step{step: %{name: ^dep} = step} ->
+        step
+
+      %Step{step: %{steps: steps}} ->
+        find_step_dep(steps, dep, transaction_name)
+
+      _ ->
+        nil
     end)
   end
 
@@ -953,6 +1096,10 @@ defmodule Ash.Flow.Executor.AshEngine do
     [name, :commit, :data]
   end
 
+  defp result_path(%Ash.Flow.Step.Transaction{name: name}) do
+    [name, :data]
+  end
+
   defp result_path(%Ash.Flow.Step.RunFlow{name: name}) do
     [name, :data]
   end
@@ -962,6 +1109,10 @@ defmodule Ash.Flow.Executor.AshEngine do
   end
 
   defp result_path(%Ash.Flow.Step.Custom{name: name}) do
+    [name, :data]
+  end
+
+  defp data_path(%Ash.Flow.Step.Transaction{name: name}) do
     [name, :data]
   end
 

@@ -7,6 +7,7 @@ defmodule Ash.Flow.Transformers.ValidateUniqueNames do
   def transform(flow, dsl_state) do
     flow
     |> Ash.Flow.Info.steps()
+    |> unnest()
     |> Enum.map(& &1.name)
     |> Enum.group_by(& &1)
     |> Enum.find_value({:ok, dsl_state}, fn
@@ -21,6 +22,16 @@ defmodule Ash.Flow.Transformers.ValidateUniqueNames do
            message:
              "Step names must be unique, but #{Enum.count(dupes)} steps share the name #{name}."
          )}
+    end)
+  end
+
+  defp unnest(steps) do
+    Enum.flat_map(steps, fn
+      %{steps: steps} = step ->
+        [step | unnest(steps)]
+
+      step ->
+        [step]
     end)
   end
 end

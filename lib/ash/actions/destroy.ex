@@ -110,6 +110,18 @@ defmodule Ash.Actions.Destroy do
           Request.resolve(changeset_dependencies, fn %{actor: actor} = context ->
             input = changeset_input.(context) || %{}
 
+            tenant =
+              case tenant do
+                nil ->
+                  nil
+
+                tenant when is_function(tenant) ->
+                  tenant.(context)
+
+                tenant ->
+                  tenant
+              end
+
             changeset =
               case changeset do
                 nil ->

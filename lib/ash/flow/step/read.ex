@@ -1,6 +1,6 @@
 defmodule Ash.Flow.Step.Read do
   @moduledoc "Runs a read action"
-  use Ash.Flow.Step.BuiltinStep, [:resource, :action, :api, :input, get?: false]
+  use Ash.Flow.Step.BuiltinStep, [:resource, :action, :api, :input, :tenant, get?: false]
   @shared_opts Ash.Flow.Step.shared_opts()
   @shared_action_opts Ash.Flow.Step.shared_action_opts()
 

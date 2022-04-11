@@ -4,7 +4,13 @@ defmodule Ash.Flow.Step do
   """
 
   @callback run(input :: map | nil, opts :: Keyword.t(), context :: map) ::
-              {:ok, term} | {:error, term}
+              {:ok, term}
+              | {:ok, term, %{optional(:notifications) => list(Ash.Notifier.Notification.t())}}
+              | {:error, term}
+
+  @callback describe(opts :: Keyword.t()) :: String.t()
+  @callback short_name(opts :: Keyword.t()) :: String.t()
+  @optional_callbacks [describe: 1, short_name: 1]
 
   defmacro __using__(_) do
     quote do
@@ -19,6 +25,15 @@ defmodule Ash.Flow.Step do
         type: :atom,
         required: true,
         doc: "The name of the step. Will be used when expressing dependencies, and step inputs."
+      ],
+      wait_for: [
+        type: :any,
+        doc: """
+        Ensures that the step happens after the configured step or steps.
+
+        This value is just a template that isn't used, except to determine dependencies, so you can
+        use it like this `wait_for [result(:step_one), result(:step_two)]` or `wait_for result(:step)`.
+        """
       ],
       touches_resources: [
         type: {:list, :atom},
@@ -46,6 +61,10 @@ defmodule Ash.Flow.Step do
         type: :atom,
         doc:
           "The api to use when calling the action. Defaults to the api set in the `flow` section."
+      ],
+      tenant: [
+        type: :any,
+        doc: "A tenant to use for the operation. May be a template or a literal value."
       ],
       input: input()
     ]

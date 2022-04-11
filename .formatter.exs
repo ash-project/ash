@@ -137,6 +137,7 @@ locals_without_parens = [
   sum: 3,
   sum: 4,
   table: 1,
+  tenant: 1,
   through: 1,
   timeout: 1,
   timestamps: 0,
@@ -159,6 +160,7 @@ locals_without_parens = [
   validate: 2,
   validate_destination_field?: 1,
   violation_message: 1,
+  wait_for: 1,
   where: 1,
   writable?: 1
 ]

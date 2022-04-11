@@ -13,7 +13,13 @@ defmodule Ash.Error.Unknown do
       message(%{error | errors: [], error: "Something went wrong"})
     end
 
-    def message(%{errors: errors, error: error, path: path, stacktraces?: stacktraces?}) do
+    def message(%{
+          errors: errors,
+          error: error,
+          path: path,
+          stacktraces?: stacktraces?,
+          stacktrace: stacktrace
+        }) do
       errors = List.wrap(errors)
 
       custom_prefix =
@@ -45,7 +51,13 @@ defmodule Ash.Error.Unknown do
           end
         end)
 
-      Ash.Error.error_messages(errors, custom_message, stacktraces?)
+      if stacktrace && stacktrace.stacktrace do
+        Ash.Error.error_messages(errors, custom_message, stacktraces?) <>
+          "\n" <>
+          Exception.format_stacktrace(stacktrace.stacktrace)
+      else
+        Ash.Error.error_messages(errors, custom_message, stacktraces?)
+      end
     end
   end
 end

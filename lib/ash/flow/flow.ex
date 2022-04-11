@@ -20,6 +20,9 @@ defmodule Ash.Flow do
   @spec run!(any, any, nil | maybe_improper_list | map) :: any
   def run!(flow, input, opts \\ []) do
     case run(flow, input, opts) do
+      {:ok, result, metadata} ->
+        {result, metadata}
+
       {:ok, result} ->
         result
 
@@ -223,6 +226,14 @@ defmodule Ash.Flow do
     {:_result, [prefix | List.wrap(step)]}
   end
 
+  defp do_remap_result_references({:_element, step}, prefix) when is_function(prefix) do
+    {:_element, prefix.(step)}
+  end
+
+  defp do_remap_result_references({:_element, step}, prefix) do
+    {:_element, [prefix | List.wrap(step)]}
+  end
+
   defp do_remap_result_references(action_input, input) when is_tuple(action_input) do
     List.to_tuple(do_remap_result_references(Tuple.to_list(action_input), input))
   end
@@ -267,6 +278,66 @@ defmodule Ash.Flow do
   end
 
   defp do_set_dependent_values(other, _), do: other
+
+  def arg_refs(input) when is_map(input) do
+    Enum.flat_map(input, &arg_refs/1)
+  end
+
+  def arg_refs(input) when is_list(input) do
+    Enum.flat_map(input, &arg_refs/1)
+  end
+
+  def arg_refs({:_arg, name}) do
+    [name]
+  end
+
+  def arg_refs(input) when is_tuple(input) do
+    input
+    |> Tuple.to_list()
+    |> Enum.flat_map(&arg_refs/1)
+  end
+
+  def arg_refs(_), do: []
+
+  def element_refs(input) when is_map(input) do
+    Enum.flat_map(input, &element_refs/1)
+  end
+
+  def element_refs(input) when is_list(input) do
+    Enum.flat_map(input, &element_refs/1)
+  end
+
+  def element_refs({:_element, name}) do
+    [name]
+  end
+
+  def element_refs(input) when is_tuple(input) do
+    input
+    |> Tuple.to_list()
+    |> Enum.flat_map(&element_refs/1)
+  end
+
+  def element_refs(_), do: []
+
+  def result_refs(input) when is_map(input) do
+    Enum.flat_map(input, &result_refs/1)
+  end
+
+  def result_refs(input) when is_list(input) do
+    Enum.flat_map(input, &result_refs/1)
+  end
+
+  def result_refs({:_result, name}) do
+    [name]
+  end
+
+  def result_refs(input) when is_tuple(input) do
+    input
+    |> Tuple.to_list()
+    |> Enum.flat_map(&result_refs/1)
+  end
+
+  def result_refs(_), do: []
 
   def handle_input_template(action_input, input) do
     {val, deps} = do_handle_input_template(action_input, input)
