@@ -848,16 +848,17 @@ defmodule Ash.Engine.Request do
     case Ash.Filter.parse(request.resource, filter) do
       {:ok, filter} ->
         case Ash.Filter.Runtime.do_match(fake_result, filter) do
-          {:ok, true} ->
-            {:ok, request}
-
-          {:ok, false} ->
-            {:error,
-             Authorizer.exception(
-               authorizer,
-               {:changeset_doesnt_match_filter, filter},
-               authorizer_state
-             )}
+          {:ok, value} ->
+            if value do
+              {:ok, request}
+            else
+              {:error,
+               Authorizer.exception(
+                 authorizer,
+                 {:changeset_doesnt_match_filter, filter},
+                 authorizer_state
+               )}
+            end
 
           :unknown ->
             Logger.error("""
