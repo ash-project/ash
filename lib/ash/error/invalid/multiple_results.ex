@@ -10,7 +10,9 @@ defmodule Ash.Error.Invalid.MultipleResults do
     def code(_), do: "multiple_results"
 
     def message(%{count: count, query: nil, at_least?: at_least?}) do
-      "expected at most one result but got #{at_least(at_least?)}#{count}"
+      "expected at most one result but got #{at_least(at_least?)}#{count}.
+      
+      Please ensure your action is configured with an appropriate filter to ensure a single result is returned."
     end
 
     def message(%{count: count, query: query, at_least?: at_least?}) do
