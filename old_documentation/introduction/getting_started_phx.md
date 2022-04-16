@@ -53,12 +53,16 @@ Next modify the the `.formatter` and `mix.exs` files:
 
 ```
 
-Next, modify `MyApp.Repo` to use `AshPostgres.Repo` instead of `Ecto.Repo`.
+Next, modify `MyApp.Repo` to use `AshPostgres.Repo` instead of `Ecto.Repo`, and add the `uuid-ossp` extension (unless you won't be using uuids).
 
 ```elixir
 defmodule MyApp.Repo do
   use AshPostgres.Repo,
     otp_app: :my_app
+
+  def installed_extensions do
+    ["uuid-ossp"]
+  end
 end
 ```
 
