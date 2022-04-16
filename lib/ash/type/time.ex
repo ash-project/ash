@@ -10,6 +10,8 @@ defmodule Ash.Type.Time do
   def storage_type, do: :time
 
   @impl true
+  def cast_input(nil, _), do: {:ok, nil}
+
   def cast_input(value, _) do
     Ecto.Type.cast(:time, value)
   end
