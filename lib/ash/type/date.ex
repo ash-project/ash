@@ -10,6 +10,9 @@ defmodule Ash.Type.Date do
   def storage_type, do: :date
 
   @impl true
+
+  def cast_input(nil, _), do: {:ok, nil}
+
   def cast_input(value, _) do
     Ecto.Type.cast(:date, value)
   end
