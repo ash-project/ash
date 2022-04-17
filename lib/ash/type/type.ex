@@ -31,6 +31,7 @@ defmodule Ash.Type do
     time: Ash.Type.Time,
     decimal: Ash.Type.Decimal,
     ci_string: Ash.Type.CiString,
+    naive_datetime: Ash.Type.NaiveDatetime,
     utc_datetime: Ash.Type.UtcDatetime,
     utc_datetime_usec: Ash.Type.UtcDatetimeUsec,
     url_encoded_binary: Ash.Type.UrlEncodedBinary
