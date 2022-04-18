@@ -51,6 +51,10 @@ defmodule Ash.Resource.Interface do
       verbose?: [
         type: :boolean,
         doc: "a flag to toggle verbose output from the internal Ash engine (for debugging)"
+      ],
+      timeout: [
+        type: :timeout,
+        doc: "A timeout to apply to the operation. See the timeouts guide for more."
       ]
     ] ++ action_type_opts(action_type)
   end

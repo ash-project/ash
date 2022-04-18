@@ -55,19 +55,6 @@ defmodule Ash.Resource.Actions.Read do
                     various scenarios, like usage in aggregates/calculations and loading from relationships.
                     """
                   ],
-                  transaction?: [
-                    type: :boolean,
-                    default: false,
-                    doc: """
-                    Whether or not this read action should happen in a transaction.
-
-                    Only relevant if the data layer supports transactions.
-
-                    This is useful for cases where you have read actions with preparations that create
-                    data in `before_action` or `after_action` and you want those operations to happen
-                    in the same transaction as the read.
-                    """
-                  ],
                   pagination: [
                     type: {:custom, __MODULE__, :pagination, []},
                     doc:

@@ -5,7 +5,7 @@ defmodule Ash.Api.Dsl do
     examples: [
       """
       execution do
-        timeout 30_000
+        timeout :timer.seconds(30)
       end
       """
     ],

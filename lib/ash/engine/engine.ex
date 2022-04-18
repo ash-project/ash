@@ -17,551 +17,730 @@ defmodule Ash.Engine do
   is both imperative and performant. This is especially true of a framework that is
   designed to be configurable. What exactly is done, as well as the order it is done in,
   and wether or not is can be parallelized, varies wildly based on factors like how
-  the resources are configured and what capabilities the datalayer has. By implementing
-  a generic "parallel engine", we can let the engine solve for the optimization. We simply
+  the resources are configured and what capabilities the data layer has. By implementing
+  a generic "parallel engine", we can let the engine solve that problem. We simply
   have to express the various operations that must happen, and what other pieces of data
   they need in order to happen, and the engine handles the rest.
 
-  Eventually, this module may (potentially) be used more explicitly, as a way to construct
-  "sagas" or "multis" which represent a series of resource actions with linked up inputs.
-  If each of those resource actions can be broken into its component requests, and the full
-  set of requests can be processed, we can compose large series' of resource actions without
-  having to figure out the most optimal way to do it. They will be done as fast as possible.
-  But we have a long way to go before we get there.
+  There are various tradeoffs in the current design. The original version of the engine started a process
+  for each request. While this had the least constrained performance characteristics of all the designs,
+  it was problematic for various reasons. The primary reason being that it could deadlock without any
+  reasonable way to debug said deadlock because the various states were distributed. The second version
+  of the engine introduced a central `Engine` process that helped with some of these issues, but ultimately
+  had the same problem. The third (and current) version of the engine is reworked instead to be drastically
+  simpler, potentially at the expense of performance for some requests. Instead of starting a process per
+  request, it opts to only parallelize the `data` field resolution of fields that are marked as `async?: true`,
+  (unlike the previous versions which started a process for the whole request.) Although it does its best
+  to prioritize starting any async tasks, it is possible that if some mix of async/sync requests are passed in
+  a potentially long running sync task could prevent it from starting an async task, giving this potentially worse
+  performance characteristics. In practice, this doesn't really matter because the robust data layers support running
+  asynchronously, unless they are in a transaction in which case everything runs serially anyway.
+
+  The current version of the engine can be seen as an event loop that will async some events and yield them. It also
+  has support for a concurrency limit (per engine invocation, not globally, although that could now be added much more
+  easily). This limit defaults to `2 * schedulers_online`.
 
   Check out the docs for `Ash.Engine.Request` for some more information. This is a private
   interface at the moment, though, so this documentation is just here to explain how it works
   it is not intended to give you enough information to use the engine directly.
   """
 
-  use GenServer
-
   defstruct [
-    :api,
-    :requests,
-    :verbose?,
-    :actor,
+    :ref,
+    :id,
+    :resolved_fields,
     :authorize?,
-    :changeset,
-    :runner_pid,
-    :runner_ref,
-    pid_info: %{},
-    fields_to_send: %{},
-    local_requests: [],
-    request_handlers: %{},
-    active_requests: [],
-    completed_requests: [],
-    errored_requests: [],
+    :actor,
+    :verbose?,
+    :async?,
+    :concurrency_limit,
+    # There are no other failure modes, but this is there
+    # to express the intent for there to eventually be.
+    failure_mode: :complete,
+    opts: [],
+    requests: [],
     data: %{},
-    async?: true,
-    errors: []
+    unsent_dependencies: [],
+    dependencies_seen: MapSet.new(),
+    dependencies: %{},
+    reverse_dependencies: %{},
+    resource_notifications: [],
+    tasks: [],
+    errors: [],
+    notifications: MapSet.new(),
+    pending_tasks: []
   ]
 
-  alias Ash.Engine.{Request, Runner}
-
+  alias Ash.Engine.Request
   require Logger
 
-  def run(request, api, opts \\ [])
-  def run([], _api, _opts), do: {:error, :no_requests_provided}
+  def run(requests, opts \\ []) do
+    cond do
+      opts[:transaction?] && !opts[:resource] ->
+        raise "Engine invoked with `transaction?: true` but no resource, so no transaction could be started."
 
-  def run(requests, api, opts) do
-    authorize? = opts[:authorize?]
-    actor = opts[:actor]
+      opts[:transaction?] && Ash.DataLayer.data_layer_can?(opts[:resource], :transact) ->
+        Ash.DataLayer.transaction(
+          opts[:resource],
+          fn ->
+            case do_run(requests, opts) do
+              {:ok, result} ->
+                result
 
-    opts = Keyword.put(opts, :callers, [self() | Process.get(:"$callers", [])])
+              {:error, error} ->
+                Ash.DataLayer.rollback(opts[:resource], error)
+            end
+          end,
+          opts[:timeout] || :infinity
+        )
 
-    # If the requests are invalid, this is a framework level error
-    Request.validate_requests!(requests)
+      true ->
+        do_run(requests, opts)
+    end
+  end
 
-    requests =
+  def do_run(requests, opts \\ []) do
+    state =
+      %__MODULE__{
+        ref: make_ref(),
+        id: System.unique_integer([:positive, :monotonic]),
+        resolved_fields: %{},
+        actor: opts[:actor],
+        concurrency_limit: System.schedulers_online() * 2,
+        authorize?: opts[:authorize?] || false,
+        verbose?: opts[:verbose?] || false,
+        async?: !Application.get_env(:ash, :disable_async?),
+        opts: opts
+      }
+      |> add_requests(requests)
+
+    log(state, fn ->
+      "Engine Starting - #{Enum.map_join(state.requests, ", ", & &1.name)}"
+    end)
+
+    case run_to_completion(state) do
+      %__MODULE__{errors: [], resource_notifications: resource_notifications} = result ->
+        unsent = Ash.Notifier.notify(resource_notifications)
+
+        {:ok,
+         result.requests
+         |> Enum.reduce(result, &add_data(&2, &1.path, &1.data))
+         |> Map.put(:resource_notifications, unsent)}
+
+      state ->
+        {:error, state}
+    end
+  end
+
+  defp add_data(state, path, data) do
+    %{
+      state
+      | data: put_nested_key(state.data, path, data)
+    }
+  end
+
+  defp set_async(requests) do
+    if Application.get_env(:ash, :disable_async?) do
+      Enum.map(requests, &Map.put(&1, :async?, false))
+    else
       Enum.map(requests, fn request ->
-        authorize? = request.authorize? and authorize?
+        if must_be_local?(request) do
+          %{request | async?: false}
+        else
+          request
+        end
+      end)
+    end
+  end
 
-        request = %{
+  @doc false
+  def must_be_local?(%{async?: false}), do: true
+
+  def must_be_local?(request) do
+    [request.resource | request.touches_resources || []]
+    |> Enum.filter(& &1)
+    |> Enum.any?(fn resource ->
+      (Ash.DataLayer.data_layer_can?(resource, :transact) &&
+         Ash.DataLayer.in_transaction?(resource)) ||
+        not Ash.DataLayer.data_layer_can?(resource, :async_engine)
+    end)
+  end
+
+  defp run_to_completion(state) do
+    if Enum.all?(state.requests, &(&1.state in [:complete, :error])) do
+      log(state, "Engine Complete")
+      state
+    else
+      state
+      |> run_iteration()
+      |> case do
+        ^state ->
+          if state.tasks == [] && state.pending_tasks == [] do
+            detect_deadlocks(state)
+
+            raise """
+            Engine Deadlock! No async tasks and state is the same after iteration.
+            #{long_breakdown(state)}
+            """
+          else
+            state
+            |> run_iteration()
+            |> run_to_completion()
+          end
+
+        new_state ->
+          run_to_completion(new_state)
+      end
+    end
+  end
+
+  defp errors(state) do
+    if state.errors == [] do
+      ""
+    else
+      """
+      Errors:
+      #{Enum.map_join(state.errors, "\n", fn error -> Exception.format(:error, Ash.Error.to_ash_error(error), stacktrace(error)) end)}
+      """
+    end
+  end
+
+  defp stacktrace(%{stacktraces?: true, stacktrace: %{stacktrace: stacktrace}})
+       when not is_nil(stacktrace) do
+    stacktrace
+  end
+
+  defp stacktrace(_), do: nil
+
+  defp completed_requests(state) do
+    state.requests
+    |> Enum.filter(&(&1.state == :complete))
+    |> case do
+      [] ->
+        ""
+
+      requests ->
+        """
+        Complete Requests:
+        #{Enum.map_join(requests, "\n\n", fn request -> Request.summarize(request) end)}
+        """
+    end
+  end
+
+  defp errored_requests(state) do
+    state.requests
+    |> Enum.filter(&(&1.state == :error))
+    |> case do
+      [] ->
+        ""
+
+      requests ->
+        """
+        Errored Requests:
+        #{Enum.map_join(requests, "\n\n", fn request -> Request.summarize(request) end)}
+        """
+    end
+  end
+
+  defp pending_requests(state) do
+    state.requests
+    |> Enum.reject(&(&1.state in [:complete, :error]))
+    |> case do
+      [] ->
+        ""
+
+      requests ->
+        """
+        Requests:
+        #{Enum.map_join(requests, "\n\n", fn request -> Request.summarize(request) <> "\n  " <> depends_on_summary(request, state) end)}
+        """
+    end
+  end
+
+  defp depends_on_summary(request, state) do
+    dependencies = state.dependencies[request.path] || []
+
+    if Enum.empty?(dependencies) do
+      " state: #{request.state}"
+    else
+      " state: #{request.state} | depends on #{Enum.map_join(dependencies, ", ", &name_of(&1, state))}"
+    end
+  end
+
+  defp name_of({path, dep}, state) do
+    "#{inspect(Enum.find(state.requests, &(&1.path == path)).name)}.#{dep}"
+  end
+
+  defp run_iteration(%__MODULE__{tasks: tasks} = state) when tasks != [] do
+    Enum.reduce(tasks, state, fn task, state ->
+      case Task.yield(task, 0) do
+        {:ok, {request_path, result}} ->
+          state = %{state | tasks: tasks -- [task]}
+          request = Enum.find(state.requests, &(&1.path == request_path))
+
+          new_request = %{request | async_fetch_state: {:fetched, result}}
+
+          replace_request(state, new_request)
+
+        nil ->
+          state
+      end
+    end)
+  end
+
+  defp run_iteration(
+         %__MODULE__{unsent_dependencies: [{request_path, dep} | remaining_unsent_dependencies]} =
+           state
+       ) do
+    state = %{state | unsent_dependencies: remaining_unsent_dependencies}
+    request = Enum.find(state.requests, &(&1.path == request_path))
+    path = :lists.droplast(dep)
+    field = List.last(dep)
+
+    depended_on_request = Enum.find(state.requests, &(&1.path == path))
+
+    cond do
+      request.state == :error ->
+        state
+
+      depended_on_request.state == :error ->
+        case Request.wont_receive(request, path, field) do
+          {:stop, :dependency_failed, new_request} ->
+            new_request = %{new_request | state: :error}
+
+            state
+            |> replace_request(new_request)
+            |> notify_error(new_request)
+        end
+
+      true ->
+        {state, notifications, dependencies} =
+          notify_local_request(
+            state,
+            depended_on_request,
+            request,
+            field
+          )
+
+        state
+        |> notify(notifications)
+        |> store_dependencies(dependencies)
+    end
+  end
+
+  defp run_iteration(state) do
+    state = start_pending_tasks(state)
+
+    case Enum.find(state.requests, &match?({:requested, _}, &1.async_fetch_state)) do
+      nil ->
+        {async, sync} =
+          state.requests
+          |> Enum.filter(fn request ->
+            Enum.empty?(state.dependencies[request.path] || [])
+          end)
+          |> Enum.split_with(& &1.async?)
+
+        {state, do_sync?} =
+          Enum.reduce(async, {state, true}, fn
+            request, {state, false} ->
+              {do_run_iteration(state, request), false}
+
+            request, {state, true} ->
+              new_state = do_run_iteration(state, request)
+              # We only want to process synchronous requests once all asynchronous requests
+              # have done all of their work.
+              {new_state, state == new_state}
+          end)
+
+        if do_sync? do
+          Enum.reduce(sync, state, &do_run_iteration(&2, &1))
+        else
+          state
+        end
+
+      request ->
+        {_, resolver_context} = request.async_fetch_state
+        request = %{request | async_fetch_state: :fetching}
+
+        if Enum.count(state.tasks) >= state.concurrency_limit do
+          pending_task = fn ->
+            {request.path, request.data.resolver.(resolver_context)}
+          end
+
+          %{state | pending_tasks: [pending_task | state.pending_tasks]}
+        else
+          task =
+            Task.async(fn ->
+              {request.path, request.data.resolver.(resolver_context)}
+            end)
+
+          %{state | tasks: [task | state.tasks]}
+        end
+    end
+  end
+
+  defp do_run_iteration(state, request) do
+    log(state, fn -> breakdown(state) end)
+    {state, notifications, dependencies} = fully_advance_request(state, request)
+
+    state
+    |> notify(notifications)
+    |> store_dependencies(dependencies)
+  end
+
+  defp detect_deadlocks(state) do
+    state.dependencies
+    |> Enum.each(fn {path, deps} ->
+      case Enum.find_value(deps, &depends_on(state, &1, path)) do
+        nil ->
+          :ok
+
+        {circular_dep, path} ->
+          raise "Deadlock detected! #{inspect(path)} and #{circular_dep} depend on each other via #{Enum.map_join(path, " -> ", &inspect/1)}"
+
+        circular_dep ->
+          raise "Deadlock detected! #{inspect(path)} and #{circular_dep} depend on each other"
+      end
+    end)
+
+    state
+  end
+
+  defp depends_on(state, source, destination, trail \\ []) do
+    deps =
+      state.dependencies[source]
+      |> Kernel.||([])
+
+    if Enum.any?(deps, fn {path, _} -> path == destination end) do
+      source
+    else
+      deps
+      |> Enum.reject(&(&1 in trail))
+      |> Enum.find(&depends_on(state, &1, destination, [&1 | []]))
+      |> case do
+        nil ->
+          false
+
+        {circular_dep, path} ->
+          {source, path ++ circular_dep}
+
+        circular_dep ->
+          {source, [circular_dep]}
+      end
+    end
+  end
+
+  defp breakdown(state) do
+    """
+    State breakdown:
+    #{Enum.map_join(state.requests, "\n", &"#{&1.name}: #{&1.state}")}
+    """
+  end
+
+  defp long_breakdown(state) do
+    """
+    #{errors(state)}
+    #{completed_requests(state)}
+    #{errored_requests(state)}
+    #{pending_requests(state)}
+    """
+  end
+
+  defp fully_advance_request(state, request) do
+    case advance_request(request) do
+      {:ok, new_request, notifications, dependencies, resource_notification} ->
+        new_state =
+          state
+          |> replace_request(new_request)
+          |> add_resource_notification(resource_notification)
+
+        new_dependencies = build_dependencies(new_request, dependencies)
+
+        {new_state, notifications, new_dependencies}
+
+      {:ok, new_request, notifications, dependencies} ->
+        new_state = replace_request(state, new_request)
+
+        new_dependencies = build_dependencies(new_request, dependencies)
+
+        {new_state, notifications, new_dependencies}
+
+      {:error, error, new_request} ->
+        new_request = %{new_request | state: :error}
+
+        new_state =
+          state
+          |> add_error(new_request.path, error)
+          |> replace_request(new_request)
+          |> notify_error(new_request)
+
+        {new_state, [], []}
+    end
+  end
+
+  defp notify_error(state, new_request) do
+    state.reverse_dependencies[new_request.path]
+    |> Kernel.||([])
+    |> Enum.reduce(state, fn {request_path_that_wont_receive, dep_they_wont_receive}, state ->
+      request = Enum.find(state.requests, &(&1.path == request_path_that_wont_receive))
+
+      if request.state == :error do
+        state
+      else
+        case Request.wont_receive(
+               request,
+               new_request.path,
+               dep_they_wont_receive
+             ) do
+          {:stop, :dependency_failed, new_request} ->
+            new_request = %{new_request | state: :error}
+
+            state
+            |> notify_error(new_request)
+            |> replace_request(new_request)
+        end
+      end
+    end)
+  end
+
+  defp start_pending_tasks(%{pending_tasks: []} = state), do: state
+
+  defp start_pending_tasks(state) do
+    available_tasks = state.concurrency_limit - Enum.count(state.tasks)
+
+    {to_start, remaining} = Enum.split(state.pending_tasks, available_tasks)
+
+    state = %{state | pending_tasks: remaining}
+
+    new_tasks = Enum.map(to_start, &Task.async/1)
+
+    %{state | tasks: state.tasks ++ new_tasks}
+  end
+
+  defp advance_request(%{state: state} = request) when state in [:error] do
+    {:ok, request, [], []}
+  end
+
+  defp advance_request(request) do
+    case Request.next(request) do
+      {:already_complete, new_request, new_notifications, new_dependencies} ->
+        {:ok, new_request, new_notifications, new_dependencies}
+
+      {:complete, new_request, new_notifications, new_dependencies} ->
+        if new_request.resource && new_request.notify? do
+          resource_notification = Request.resource_notification(new_request)
+
+          {:ok, new_request, new_notifications, new_dependencies, resource_notification}
+        else
+          {:ok, new_request, new_notifications, new_dependencies}
+        end
+
+      {:continue, new_request, new_notifications} ->
+        {:ok, new_request, new_notifications, []}
+
+      {:error, error, new_request} ->
+        {:error, error, new_request}
+
+      {:wait, new_request, new_notifications, new_dependencies} ->
+        {:ok, new_request, new_notifications, new_dependencies}
+    end
+  end
+
+  defp notify(state, notifications) do
+    notifications =
+      notifications
+      |> Enum.uniq()
+      |> Enum.reject(&MapSet.member?(state.notifications, &1))
+
+    new_state_notifications = Enum.reduce(notifications, state.notifications, &MapSet.put(&2, &1))
+    state = %{state | notifications: new_state_notifications}
+
+    notifications
+    |> Request.sort_and_clean_notifications()
+    |> Enum.reduce(state, fn
+      {:requests, requests}, state ->
+        state
+        |> add_requests(requests)
+
+      {:set_extra_data, key, value}, state ->
+        %{state | data: Map.put(state.data, key, value)}
+
+      %Ash.Notifier.Notification{} = resource_notification, state ->
+        add_resource_notification(state, resource_notification)
+
+      {receiver_path, request_path, field, value}, state ->
+        receiver_request = Enum.find(state.requests, &(&1.path == receiver_path))
+
+        {:continue, new_request} =
+          Request.receive_field(receiver_request, request_path, field, value)
+
+        state
+        |> Map.update!(:dependencies, fn dependencies ->
+          Map.update!(dependencies, receiver_request.path, fn deps ->
+            MapSet.delete(deps, {request_path, field})
+          end)
+        end)
+        |> Map.update!(:reverse_dependencies, fn dependencies ->
+          Map.update!(dependencies, request_path, fn deps ->
+            MapSet.delete(deps, {receiver_request.path, field})
+          end)
+        end)
+        |> replace_request(new_request)
+    end)
+  end
+
+  defp store_dependencies(state, dependencies) do
+    dependencies
+    |> Enum.uniq()
+    |> Enum.reject(fn {request_path, dep} = path_and_field ->
+      MapSet.member?(state.dependencies_seen, path_and_field) ||
+        dep in (state.dependencies[request_path] || [])
+    end)
+    |> Enum.reduce(
+      state,
+      fn {request_path, dep} = seen_dep, state ->
+        dep_path = :lists.droplast(dep)
+        dep_field = List.last(dep)
+
+        depended_on_request = Enum.find(state.requests, &(&1.path == dep_path))
+
+        # we want to send things from non async requests
+        # after we've sent all info to async requests
+        unsent_dependencies =
+          if depended_on_request.async? do
+            state.unsent_dependencies ++ [{request_path, dep}]
+          else
+            [{request_path, dep} | state.unsent_dependencies]
+          end
+
+        %{
+          state
+          | dependencies:
+              state.dependencies
+              |> Map.put_new_lazy(request_path, fn -> MapSet.new() end)
+              |> Map.update!(request_path, &MapSet.put(&1, {dep_path, dep_field})),
+            reverse_dependencies:
+              state.reverse_dependencies
+              |> Map.put_new_lazy(dep_path, fn -> MapSet.new() end)
+              |> Map.update!(dep_path, &MapSet.put(&1, {request_path, dep_field})),
+            dependencies_seen: MapSet.put(state.dependencies_seen, seen_dep),
+            unsent_dependencies: unsent_dependencies
+        }
+      end
+    )
+  end
+
+  defp notify_local_request(
+         state,
+         depended_on_request,
+         request,
+         field
+       ) do
+    case Request.send_field(depended_on_request, request.path, field) do
+      {:ok, new_request, new_notifications} ->
+        state = replace_request(state, new_request)
+        {state, new_notifications, []}
+
+      {:waiting, new_request, new_notifications, new_dependencies} ->
+        new_dependencies = build_dependencies(new_request, new_dependencies)
+
+        new_state = replace_request(state, new_request)
+
+        {new_state, new_notifications, new_dependencies}
+
+      {:error, error, new_request} ->
+        new_state =
+          state
+          |> replace_request(%{new_request | state: :error})
+          |> add_error(new_request.path, error)
+
+        {new_state, [], []}
+    end
+  end
+
+  defp add_error(state, path, errors) when is_list(errors) do
+    Enum.reduce(errors, state, &add_error(&2, path, &1))
+  end
+
+  defp add_error(state, _path, error) do
+    error = Ash.Error.to_ash_error(error)
+
+    if error in state.errors do
+      state
+    else
+      %{state | errors: [error | state.errors]}
+    end
+  end
+
+  defp replace_request(state, request) do
+    %{
+      state
+      | requests:
+          Enum.map(state.requests, fn existing_request ->
+            if existing_request.path == request.path do
+              request
+            else
+              existing_request
+            end
+          end)
+    }
+  end
+
+  defp add_resource_notification(state, resource_notification) do
+    if Ash.DataLayer.in_transaction?(resource_notification.resource) do
+      %{state | resource_notifications: [resource_notification | state.resource_notifications]}
+    else
+      Ash.Notifier.notify(resource_notification)
+
+      state
+    end
+  end
+
+  def add_requests(state, requests) do
+    requests =
+      Enum.reject(requests, fn new_request ->
+        Enum.find(state.requests, &(&1.path == new_request.path))
+      end)
+
+    {async, non_async} =
+      requests
+      |> Enum.map(fn request ->
+        authorize? = request.authorize? and state.authorize?
+
+        %{
           request
           | authorize?: authorize?,
             authorized?: !authorize?,
-            actor: request.actor || actor,
-            verbose?: request.verbose? || opts[:verbose?]
-        }
-
-        Request.add_initial_authorizer_state(request)
-      end)
-
-    runner_ref = make_ref()
-
-    transaction_result =
-      maybe_transact(opts, requests, fn innermost_resource ->
-        {local_requests, async_requests} = split_local_async_requests(requests)
-
-        opts =
-          opts
-          |> Keyword.put(:runner_ref, runner_ref)
-          |> Keyword.put(:requests, async_requests)
-          |> Keyword.put(:local_requests, Enum.map(local_requests, & &1.path))
-          |> Keyword.put(:runner_pid, self())
-          |> Keyword.put(:api, api)
-
-        run_requests(local_requests, opts, innermost_resource)
-      end)
-
-    case transaction_result do
-      {:ok, %{errors: [], resource_notifications: resource_notifications} = result} ->
-        unsent = Ash.Notifier.notify(resource_notifications)
-
-        {:ok, %{result | resource_notifications: unsent}}
-
-      {:error, runner} ->
-        {:error, runner}
-    end
-  end
-
-  defp run_requests(local_requests, opts, innermost_resource) do
-    runner_ref = opts[:runner_ref]
-
-    {:ok, pid} = GenServer.start(__MODULE__, opts)
-    ref = Process.monitor(pid)
-
-    receive do
-      {:pid_info, pid_info, ^runner_ref} ->
-        run_and_return_or_rollback(
-          local_requests,
-          opts,
-          innermost_resource,
-          pid,
-          pid_info,
-          ref
-        )
-    end
-  end
-
-  defp summarize(%{name: name, action: %{name: action}, resource: resource})
-       when not is_nil(resource) do
-    "#{name}: #{inspect(resource)}.#{action}"
-  end
-
-  defp summarize(%{name: name}) do
-    name
-  end
-
-  defp run_and_return_or_rollback(
-         local_requests,
-         opts,
-         innermost_resource,
-         pid,
-         pid_info,
-         engine_monitor_ref
-       ) do
-    case Runner.run(
-           local_requests,
-           opts[:verbose?],
-           opts[:authorize?],
-           opts[:actor],
-           opts[:runner_ref],
-           pid,
-           pid_info,
-           engine_monitor_ref
-         ) do
-      %{errors: errors} = runner when errors == [] ->
-        {:ok, runner}
-
-      runner ->
-        rollback_or_return(innermost_resource, runner)
-    end
-  end
-
-  defp rollback_or_return(innermost_resource, runner) do
-    if innermost_resource do
-      Ash.DataLayer.rollback(innermost_resource, runner)
-    else
-      {:error, runner}
-    end
-  end
-
-  defp maybe_transact(opts, requests, func) do
-    if opts[:transaction?] do
-      requests
-      |> Enum.flat_map(fn request ->
-        resources =
-          if request.resource do
-            [request.resource]
-          else
-            []
-          end
-
-        case request.action do
-          %{touches_resources: touches_resources} when is_list(touches_resources) ->
-            resources ++ touches_resources ++ request.touches_resources
-
-          _ ->
-            resources ++ request.touches_resources
-        end
-      end)
-      |> Enum.uniq()
-      |> Enum.filter(&Ash.DataLayer.data_layer_can?(&1, :transact))
-      |> do_in_transaction(func)
-    else
-      func.(nil)
-    end
-  end
-
-  defp do_in_transaction(resources, func, innnermost \\ nil)
-
-  defp do_in_transaction([], func, innermost_resource) do
-    func.(innermost_resource)
-  end
-
-  defp do_in_transaction([resource | rest], func, _innermost) do
-    Ash.DataLayer.transaction(resource, fn ->
-      case do_in_transaction(rest, func, resource) do
-        {:ok, value} ->
-          value
-
-        {:error, error} ->
-          Ash.DataLayer.rollback(resource, error)
-      end
-    end)
-  end
-
-  def init(opts) do
-    Process.put(:"$callers", opts[:callers])
-
-    if opts[:timeout] && is_integer(opts[:timeout]) do
-      parent = self()
-
-      Task.start_link(fn ->
-        ref = Process.monitor(parent)
-        timeout = opts[:timeout]
-
-        receive do
-          {:DOWN, ^ref, _, ^parent, _} ->
-            :ok
-        after
-          timeout ->
-            Logger.error("""
-            Engine timed out processing requests.
-
-            #{Enum.map_join(opts[:requests], "\n", &summarize(&1))}
-            """)
-
-            exit(:engine_timeout)
-        end
-      end)
-    end
-
-    state =
-      %__MODULE__{
-        requests: opts[:requests],
-        active_requests: Enum.map(opts[:requests], & &1.path),
-        runner_pid: opts[:runner_pid],
-        local_requests: opts[:local_requests],
-        verbose?: opts[:verbose?] || false,
-        api: opts[:api],
-        actor: opts[:actor],
-        runner_ref: opts[:runner_ref],
-        authorize?: opts[:authorize?] || false,
-        async?: !Application.get_env(:ash, :disable_async?)
-      }
-      |> log_engine_init()
-
-    {:ok, state, {:continue, :spawn_requests}}
-  end
-
-  def handle_continue(:spawn_requests, state) do
-    log(state, fn -> "Spawning request processes" end, :debug)
-
-    new_state =
-      Enum.reduce(state.requests, state, fn request, state ->
-        {:ok, pid} =
-          GenServer.start(Ash.Engine.RequestHandler,
-            callers: [self() | Process.get("$callers", [])],
-            request: request,
-            verbose?: state.verbose?,
-            actor?: state.actor,
-            runner_ref: state.runner_ref,
-            authorize?: state.authorize?,
-            engine_pid: self(),
-            runner_pid: state.runner_pid
-          )
-
-        Process.monitor(pid)
-
-        %{
-          state
-          | request_handlers: Map.put(state.request_handlers, pid, request.path)
+            actor: request.actor || state.actor,
+            verbose?: request.verbose? || state.verbose?,
+            async?: request.async? and state.async?
         }
       end)
+      |> Enum.map(&Request.add_initial_authorizer_state/1)
+      |> set_async()
+      |> Enum.split_with(& &1.async?)
 
-    pid_info =
-      Enum.into(new_state.request_handlers, %{}, fn {pid, path} ->
-        {path, pid}
-      end)
-
-    if new_state.local_requests != [] do
-      send(new_state.runner_pid, {:pid_info, pid_info, state.runner_ref})
-    end
-
-    Enum.each(new_state.request_handlers, fn {pid, _} ->
-      send(pid, {:pid_info, pid_info})
-    end)
-
-    {:noreply, %{new_state | pid_info: pid_info}}
+    %{state | requests: async ++ state.requests ++ non_async}
   end
 
-  def sanitize_requests(requests, actor, authorize?, verbose?, async?) do
-    requests
-    |> Enum.map(fn request ->
-      authorize? = request.authorize? and authorize?
-
-      %{
-        request
-        | authorize?: authorize?,
-          authorized?: !authorize?,
-          actor: request.actor || actor,
-          verbose?: request.verbose? || verbose?,
-          async?: request.async? and async?
-      }
-    end)
-    |> Enum.map(&Request.add_initial_authorizer_state/1)
-  end
-
-  def handle_call({:new_requests, requests, from}, _, state) do
-    requests =
-      requests
-      |> Enum.reject(fn request ->
-        Enum.any?(state.requests, &(&1.path == request.path))
-      end)
-      |> sanitize_requests(state.actor, state.authorize?, state.verbose?, state.async?)
-
-    if from != state.runner_pid do
-      send(state.runner_pid, {state.runner_ref, {:requests, requests}})
-    end
-
-    {:reply, :ok,
-     %{
-       state
-       | requests: state.requests ++ requests,
-         local_requests: state.local_requests ++ Enum.map(requests, & &1.path)
-     }
-     |> maybe_send_fields()}
-  end
-
-  def handle_cast({:send_field_later, receiver_path, from, dep}, state) do
-    {:noreply,
-     state
-     |> add_field_to_send({receiver_path, from, dep})
-     |> maybe_send_fields()}
-  end
-
-  def handle_cast({:spawn_requests, requests}, state) do
-    log(state, fn -> "Spawning request processes" end, :debug)
-
-    requests = sanitize_requests(requests, state.actor, state.authorize?, state.verbose?, true)
-
-    new_state =
-      Enum.reduce(requests, state, fn request, state ->
-        {:ok, pid} =
-          GenServer.start(Ash.Engine.RequestHandler,
-            callers: [self() | Process.get("$callers", [])],
-            request: request,
-            verbose?: state.verbose?,
-            actor?: state.actor,
-            runner_ref: state.runner_ref,
-            authorize?: state.authorize?,
-            engine_pid: self(),
-            runner_pid: state.runner_pid
-          )
-
-        Process.monitor(pid)
-
-        %{
-          state
-          | request_handlers: Map.put(state.request_handlers, pid, request.path),
-            local_requests: state.local_requests -- [request.path],
-            active_requests: state.active_requests ++ [request.path],
-            requests: state.requests ++ [request]
-        }
-      end)
-
-    pid_info =
-      Enum.into(new_state.request_handlers, %{}, fn {pid, path} ->
-        {path, pid}
-      end)
-
-    if new_state.runner_pid do
-      send(new_state.runner_pid, {:pid_info, pid_info, state.runner_ref})
-    end
-
-    Enum.each(new_state.request_handlers, fn {pid, _} ->
-      send(pid, {:pid_info, pid_info})
-    end)
-
-    {:noreply, maybe_send_fields(new_state)}
-  end
-
-  def handle_cast(
-        {:register_dependency, receiver_path, request_handler_pid, dependency},
-        state
-      ) do
-    path = :lists.droplast(dependency)
-    field = List.last(dependency)
-
-    case get_request(state, path) do
-      {:error, _pid, request} ->
-        case Map.get(request, field) do
-          %Request.UnresolvedField{} ->
-            log(state, fn ->
-              "#{inspect(receiver_path)} won't receive #{inspect(request.path)} #{field}"
-            end)
-
-            send_or_cast(
-              request_handler_pid,
-              state.runner_pid,
-              state.runner_ref,
-              {:wont_receive, receiver_path, request.path, field}
-            )
-
-          value ->
-            log(
-              state,
-              fn ->
-                "Already have #{receiver_path} #{inspect(request.path)} #{field}, sending value"
-              end
-            )
-
-            send_or_cast(
-              request_handler_pid,
-              state.runner_pid,
-              state.runner_ref,
-              {:field_value, receiver_path, request.path, field, value}
-            )
-        end
-
-      _other ->
-        :ok
-    end
-
-    {:noreply, state}
-  end
-
-  def handle_cast(:log_stuck_report, state) do
-    state.request_handlers
-    |> Map.keys()
-    |> Enum.each(&GenServer.cast(&1, :log_stuck_report))
-
-    {:noreply, state}
-  end
-
-  def handle_cast({:local_requests_failed, _error}, state) do
-    {:stop, {:shutdown, state}, state}
-  end
-
-  def handle_cast({:complete, path}, state) do
-    state
-    |> move_to_complete(path)
-    |> maybe_shutdown()
-  end
-
-  def handle_cast({:error, error, request_handler_state}, state) do
-    state
-    |> log(fn -> "Error received from request_handler #{inspect(error)}" end)
-    |> move_to_error(request_handler_state.request.path)
-    |> add_error(request_handler_state.request.path, error)
-    |> maybe_shutdown()
-  end
-
-  def handle_cast({:local_request_complete, path}, state) do
-    %{state | local_requests: state.local_requests -- [path]}
-    |> maybe_shutdown()
-  end
-
-  def handle_info({:DOWN, _, _, _, :engine_timeout}, _state) do
-    exit(:timeout)
-  end
-
-  def handle_info({:DOWN, _, _, _pid, {:error, error, %Request{} = request}}, state) do
-    state
-    |> log(fn -> "Request exited in failure #{request.name}: #{inspect(error)}" end)
-    |> move_to_error(request.path)
-    |> add_error(request.path, error)
-    |> maybe_shutdown()
-  end
-
-  def handle_info({:DOWN, _, _, _, _}, state) do
-    {:stop, :shutdown, state}
-  end
-
-  defp send_or_cast(request_handler_pid, runner_pid, runner_ref, message) do
-    if request_handler_pid == runner_pid do
-      send(request_handler_pid, {runner_ref, message})
-    else
-      GenServer.cast(request_handler_pid, message)
-    end
-  end
-
-  defp add_field_to_send(state, {receiver_path, from, dep}) do
-    path = :lists.droplast(dep)
-
-    Map.update!(state, :fields_to_send, fn fields_to_send ->
-      fields_to_send
-      |> Map.put_new(path, [])
-      |> Map.update!(path, &[{receiver_path, from, dep} | &1])
+  defp build_dependencies(request, dependencies) do
+    Enum.map(dependencies, fn dep ->
+      {request.path, dep}
     end)
   end
 
-  defp maybe_send_fields(state) do
-    Enum.reduce(state.fields_to_send, state, fn {path, to_send}, state ->
-      case Map.fetch(state.pid_info, path) do
-        {:ok, pid} ->
-          Enum.each(to_send, fn {receiver_path, from, dep} ->
-            GenServer.cast(pid, {:send_field, receiver_path, from, dep})
-          end)
+  defp log(state, message, level \\ :debug)
 
-          %{state | fields_to_send: Map.delete(state.fields_to_send, path)}
-
-        :error ->
-          if Enum.any?(state.requests, &(&1.path == path)) do
-            Enum.each(to_send, fn {receiver_path, from, dep} ->
-              send(
-                state.runner_pid,
-                {state.runner_ref, {:send_field, receiver_path, from, dep}}
-              )
-            end)
-
-            %{state | fields_to_send: Map.delete(state.fields_to_send, path)}
-          else
-            state
-          end
-      end
-    end)
+  defp log(%{verbose?: true, id: id}, message, level) when is_function(message) do
+    Logger.log(level, fn -> ["#{id}: ", message.()] end)
   end
 
-  defp get_request(state, path, pid \\ nil) do
-    case get_status(state, path) do
-      nil ->
-        nil
-
-      status ->
-        pid = pid || get_pid(state, path)
-        {status, pid, Enum.find(state.requests, &(&1.path == path))}
-    end
+  defp log(%{verbose?: true, id: id}, message, level) do
+    Logger.log(level, fn -> ["#{id}: ", message] end)
   end
 
-  defp get_status(state, path) do
-    cond do
-      path in state.active_requests -> :active
-      path in state.completed_requests -> :complete
-      path in state.errored_requests -> :error
-      true -> nil
-    end
-  end
-
-  defp get_pid(state, path) do
-    Enum.find_value(state.request_handlers, fn {pid, request_path} ->
-      if request_path == path do
-        pid
-      end
-    end) || state.runner_pid
+  defp log(_, _, _) do
+    false
   end
 
   def put_nested_key(state, [key], value) do
@@ -580,107 +759,5 @@ defmodule Ash.Engine do
 
   def put_nested_key(state, key, value) do
     Map.put(state, key, value)
-  end
-
-  def fetch_nested_value(state, [key]) when is_map(state) do
-    Map.fetch(state, key)
-  end
-
-  def fetch_nested_value(%Request.UnresolvedField{}, _), do: :error
-
-  def fetch_nested_value(state, [key | rest]) when is_map(state) do
-    case Map.fetch(state, key) do
-      {:ok, value} -> fetch_nested_value(value, rest)
-      :error -> :error
-    end
-  end
-
-  def fetch_nested_value(state, key) when is_map(state) do
-    Map.fetch(state, key)
-  end
-
-  defp split_local_async_requests(requests) do
-    if Application.get_env(:ash, :disable_async?) ||
-         Enum.any?(requests, fn request ->
-           request.resource && Ash.DataLayer.data_layer_can?(request.resource, :transact) &&
-             Ash.DataLayer.in_transaction?(request.resource)
-         end) do
-      {requests, []}
-    else
-      {local, async} = Enum.split_with(requests, &must_be_local?/1)
-
-      case {local, async} do
-        {[], [first_async | rest]} ->
-          {[first_async], rest}
-
-        {[local], [one_async]} ->
-          {[local], [one_async]}
-
-        {local, async} ->
-          {local, async}
-      end
-    end
-  end
-
-  @doc false
-  def must_be_local?(%{async?: false}), do: true
-
-  def must_be_local?(request) do
-    [request.resource | request.touches_resources || []]
-    |> Enum.filter(& &1)
-    |> Enum.any?(fn resource ->
-      not Ash.DataLayer.data_layer_can?(resource, :async_engine)
-    end)
-  end
-
-  defp maybe_shutdown(%{active_requests: [], local_requests: []} = state) do
-    log(state, fn -> "shutting down, completion criteria reached" end)
-    {:stop, {:shutdown, state}, state}
-  end
-
-  defp maybe_shutdown(state) do
-    {:noreply, state}
-  end
-
-  defp move_to_complete(state, path) do
-    %{
-      state
-      | completed_requests: [path | state.completed_requests],
-        active_requests: state.active_requests -- [path]
-    }
-  end
-
-  defp move_to_error(state, path) do
-    %{
-      state
-      | errored_requests: [path | state.completed_requests],
-        active_requests: state.active_requests -- [path]
-    }
-  end
-
-  defp log_engine_init(state) do
-    log(state, fn -> "Initializing Engine with #{Enum.count(state.requests)} requests." end)
-  end
-
-  defp log(state, message, level \\ :info)
-
-  defp log(%{verbose?: true} = state, message, level) do
-    Logger.log(level, fn -> ["Engine: ", message.()] end)
-
-    state
-  end
-
-  defp log(state, _, _) do
-    state
-  end
-
-  defp add_error(state, path, errors) when is_list(errors) do
-    Enum.reduce(errors, state, &add_error(&2, path, &1))
-  end
-
-  defp add_error(state, _path, error) do
-    error = Ash.Error.to_ash_error(error)
-
-    %{state | errors: [error | state.errors]}
   end
 end

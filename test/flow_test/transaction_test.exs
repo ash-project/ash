@@ -62,7 +62,7 @@ defmodule Ash.FlowTest.TransactionTest do
     end
 
     steps do
-      transaction :get_org_and_unapprove_users do
+      transaction :get_org_and_unapprove_users, Org do
         read :get_org, Org, :by_name do
           input(%{
             name: arg(:org_name)

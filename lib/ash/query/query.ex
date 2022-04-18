@@ -36,6 +36,7 @@ defmodule Ash.Query do
     :action,
     :distinct,
     :__validated_for_action__,
+    :timeout,
     params: %{},
     arguments: %{},
     aggregates: %{},
@@ -56,6 +57,8 @@ defmodule Ash.Query do
   @type t :: %__MODULE__{}
 
   alias Ash.Actions.Sort
+
+  alias Ash.Error.Invalid.TimeoutNotSupported
 
   alias Ash.Error.Query.{
     AggregatesNotSupported,
@@ -255,6 +258,7 @@ defmodule Ash.Query do
       query = Map.put(query, :action, action.name)
 
       query
+      |> timeout(query.timeout || opts[:timeout])
       |> set_actor(opts)
       |> Ash.Query.set_tenant(opts[:tenant] || query.tenant)
       |> Map.put(:action, action)
@@ -265,6 +269,16 @@ defmodule Ash.Query do
       |> require_arguments(action)
     else
       add_error(query, :action, "No such action #{action_name}")
+    end
+  end
+
+  def timeout(query, timeout) do
+    query = to_query(query)
+
+    if Ash.DataLayer.data_layer_can?(query.resource, :timeout) || is_nil(timeout) do
+      %{query | timeout: timeout}
+    else
+      add_error(query, TimeoutNotSupported.exception(resource: query.resource))
     end
   end
 

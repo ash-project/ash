@@ -2,7 +2,6 @@ defmodule Ash.Actions.Create do
   @moduledoc false
 
   alias Ash.Actions.Helpers
-  alias Ash.Engine
   alias Ash.Engine.Request
 
   require Logger
@@ -37,30 +36,39 @@ defmodule Ash.Actions.Create do
     |> as_requests(resource, api, action,
       changeset: changeset,
       upsert?: upsert?,
+      timeout: opts[:timeout],
       upsert_identity: upsert_identity,
       upsert_keys: upsert_keys,
       authorize?: authorize?,
       actor: actor,
       tenant: opts[:tenant]
     )
-    |> Engine.run(api,
+    |> Ash.Engine.run(
+      resource: resource,
       verbose?: verbose?,
       actor: actor,
       authorize?: authorize?,
-      timeout: opts[:timeout] || Ash.Api.timeout(api),
-      transaction?: true
+      timeout: opts[:timeout] || changeset.timeout || Ash.Api.timeout(api),
+      transaction?: Keyword.get(opts, :transaction?, true)
     )
     |> case do
       {:ok, %{data: %{commit: %^resource{} = created}} = engine_result} ->
         add_notifications(created, engine_result, return_notifications?)
 
-      {:error, %Ash.Engine.Runner{errors: errors, changeset: %Ash.Changeset{} = runner_changeset}} ->
-        errors = Helpers.process_errors(changeset, errors)
-        {:error, Ash.Error.to_error_class(errors, changeset: runner_changeset)}
+      {:error, %Ash.Engine{errors: errors, requests: requests}} ->
+        case Enum.find_value(requests, fn request ->
+               if request.path == [:commit] && match?(%Ash.Changeset{}, request.changeset) do
+                 request.changeset
+               end
+             end) do
+          nil ->
+            errors = Helpers.process_errors(changeset, errors)
+            {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
 
-      {:error, %Ash.Engine.Runner{errors: errors}} ->
-        errors = Helpers.process_errors(changeset, errors)
-        {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
+          changeset ->
+            errors = Helpers.process_errors(changeset, errors)
+            {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
+        end
 
       {:error, error} ->
         error = Helpers.process_errors(changeset, error)
@@ -97,13 +105,13 @@ defmodule Ash.Actions.Create do
     {:ok, result}
   end
 
-  defp changeset(changeset, api, action, actor) do
+  defp changeset(changeset, api, action, opts) do
     changeset = %{changeset | api: api}
 
     if changeset.__validated_for_action__ == action.name do
       changeset
     else
-      Ash.Changeset.for_create(changeset, action.name, %{}, actor: actor)
+      Ash.Changeset.for_create(changeset, action.name, %{}, opts)
     end
     |> Ash.Changeset.set_defaults(:create, true)
   end
@@ -117,6 +125,7 @@ defmodule Ash.Actions.Create do
     upsert_identity = request_opts[:upsert_identity]
     tenant = request_opts[:tenant]
     error_path = request_opts[:error_path]
+    timeout = request_opts[:timeout]
 
     authorization_request =
       Request.new(
@@ -143,12 +152,29 @@ defmodule Ash.Actions.Create do
               case changeset do
                 nil ->
                   resource
-                  |> Ash.Changeset.for_create(action.name, input, actor: actor, tenant: tenant)
-                  |> changeset(api, action, actor)
+                  |> Ash.Changeset.for_create(action.name, input,
+                    actor: actor,
+                    tenant: tenant,
+                    timeout: timeout
+                  )
+                  |> changeset(api, action,
+                    actor: actor,
+                    tenant: tenant,
+                    timeout: timeout
+                  )
 
                 changeset ->
-                  changeset(changeset, api, action, actor)
+                  changeset(changeset, api, action,
+                    actor: actor,
+                    tenant: tenant,
+                    timeout: timeout
+                  )
               end
+
+            changeset = %{
+              changeset
+              | timeout: timeout || changeset.timeout || Ash.Api.timeout(api)
+            }
 
             tenant =
               case tenant do
@@ -201,7 +227,6 @@ defmodule Ash.Actions.Create do
           end),
         action: action,
         notify?: true,
-        manage_changeset?: true,
         authorize?: false,
         data:
           Request.resolve(

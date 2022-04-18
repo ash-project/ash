@@ -85,36 +85,33 @@ defmodule Ash.Flow.Executor.AshEngine do
     end)
   end
 
+  @deps_keys [:input, :over, :record, :wait_for, :tenant]
+
   defp handle_input_templates(run_flow_steps) do
     run_flow_steps
-    |> Stream.map(fn
-      %Step{step: %{input: step_input} = inner_step, input: input} = step ->
-        {input, _} = Ash.Flow.handle_input_template(step_input, input)
+    |> map_outer_steps(fn %Step{step: step, input: input} = outer_step ->
+      new_step =
+        Enum.reduce(@deps_keys, step, fn key, step ->
+          case Map.fetch(step, key) do
+            {:ok, value} ->
+              {new_value, _} = Ash.Flow.handle_input_template(value, input)
+              Map.put(step, key, new_value)
 
-        %{step | step: %{inner_step | input: input}}
+            :error ->
+              step
+          end
+        end)
 
-      other ->
-        other
-    end)
-    |> Stream.map(fn
-      %Step{step: %Ash.Flow.Step.Map{over: over}, input: input} = step ->
-        {over, _} = Ash.Flow.handle_input_template(over, input)
-
-        %{step | step: %{step.step | over: over}}
-
-      other ->
-        other
+      %{outer_step | step: new_step}
     end)
   end
 
   def execute(%Flow{steps: steps, flow: flow}, _input, opts) do
     steps
     |> Enum.flat_map(&requests(steps, &1, opts))
-    |> Ash.Engine.run(nil,
-      verbose?: opts[:verbose?]
-    )
+    |> Ash.Engine.run(verbose?: opts[:verbose?], timeout: opts[:timeout])
     |> case do
-      {:ok, %Ash.Engine.Runner{data: data, resource_notifications: resource_notifications}} ->
+      {:ok, %Ash.Engine{data: data, resource_notifications: resource_notifications}} ->
         if opts[:return_notifications?] do
           {:ok, return_value(steps, data, Ash.Flow.Info.returns(flow)),
            %{notifications: resource_notifications}}
@@ -122,7 +119,7 @@ defmodule Ash.Flow.Executor.AshEngine do
           {:ok, return_value(steps, data, Ash.Flow.Info.returns(flow))}
         end
 
-      {:error, %Ash.Engine.Runner{errors: errors}} ->
+      {:error, %Ash.Engine{errors: errors}} ->
         {:error, Ash.Error.to_error_class(errors)}
 
       {:error, error} ->
@@ -167,8 +164,6 @@ defmodule Ash.Flow.Executor.AshEngine do
     end)
     |> Enum.uniq()
   end
-
-  @deps_keys [:input, :over, :record, :wait_for, :tenant]
 
   def deps_keys, do: @deps_keys
 
@@ -224,6 +219,7 @@ defmodule Ash.Flow.Executor.AshEngine do
           %Ash.Flow.Step.Transaction{
             steps: transaction_steps,
             name: name,
+            resource: resource,
             touches_resources: touches_resources
           } = transaction
       } ->
@@ -261,7 +257,11 @@ defmodule Ash.Flow.Executor.AshEngine do
                       }
                       | rest
                     ]
-                    |> Ash.Engine.run(nil, verbose?: opts[:verbose?], transaction?: true)
+                    |> Ash.Engine.run(
+                      resource: resource,
+                      verbose?: opts[:verbose?],
+                      transaction?: true
+                    )
                     |> case do
                       {:ok, %{data: data, resource_notifications: notifications}} ->
                         if opts[:return_notifications?] do
@@ -276,7 +276,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                            end)}
                         end
 
-                      {:error, %Ash.Engine.Runner{errors: errors}} ->
+                      {:error, %Ash.Engine{errors: errors}} ->
                         {:error, Ash.Error.to_error_class(errors)}
 
                       {:error, error} ->
@@ -369,18 +369,18 @@ defmodule Ash.Flow.Executor.AshEngine do
                           )
                         )
                         |> Kernel.++([
-                          Ash.Engine.Request.new(
-                            path: [[name, :elements], i],
-                            error_path: [[name, :elements], i],
-                            name: "Handle #{inspect(name)} index #{i}",
-                            authorize?: false,
-                            additional_context: new_additional_context,
-                            data:
-                              Ash.Engine.Request.resolve([output_path], fn context ->
-                                {:ok, Ash.Flow.do_get_in(context, output_path)}
-                              end),
-                            async?: true
-                          )
+                          {Ash.Engine.Request.new(
+                             path: [[name, :elements], i],
+                             error_path: [[name, :elements], i],
+                             name: "Handle #{inspect(name)} index #{i}",
+                             authorize?: false,
+                             additional_context: new_additional_context,
+                             data:
+                               Ash.Engine.Request.resolve([output_path], fn context ->
+                                 {:ok, Ash.Flow.do_get_in(context, output_path)}
+                               end),
+                             async?: true
+                           ), :data}
                         ])
                       end)
                       |> case do
@@ -388,7 +388,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                           {:ok, []}
 
                         requests ->
-                          {:requests, Enum.map(requests, &{&1, :data})}
+                          {:requests, requests}
                       end
 
                     elements ->
@@ -441,7 +441,9 @@ defmodule Ash.Flow.Executor.AshEngine do
                   })
                   |> Ash.Flow.handle_modifiers()
 
-                mod.run(custom_input, opts, context)
+                context_arg = Map.take(context, [:actor, :authorize?, :async?, :verbose?])
+
+                mod.run(custom_input, opts, context_arg)
               end)
           )
         ]
@@ -449,75 +451,87 @@ defmodule Ash.Flow.Executor.AshEngine do
       %Step{step: %Ash.Flow.Step.RunFlow{name: name, flow: flow}} ->
         # No need to do anything with `wait_for` here, because
         # `wait_for` is pushed down into all child steps when we hydrate
-        depends_on_requests =
-          flow
-          |> Ash.Flow.Info.returns()
-          |> List.wrap()
-          |> Enum.map(fn
-            {key, _} ->
-              key
+        flow
+        |> Ash.Flow.Info.returns()
+        |> List.wrap()
+        |> Enum.map(fn
+          {key, _} ->
+            key
 
-            other ->
-              other
-          end)
-          |> Enum.map(fn key ->
-            looking_for = List.wrap(name) ++ List.wrap(key)
+          other ->
+            other
+        end)
+        |> Enum.map(fn key ->
+          looking_for = List.wrap(name) ++ List.wrap(key)
 
-            step = find_step_dep(all_steps, looking_for, transaction_name)
+          step = find_step_dep(all_steps, looking_for, transaction_name)
 
-            if is_nil(step) do
-              raise """
-              #{inspect(inspect(looking_for))}
-              not found in
-              #{inspect(step_names(all_steps))}
-              """
-            end
+          if is_nil(step) do
+            raise """
+            #{inspect(inspect(looking_for))}
+            not found in
+            #{inspect(step_names(all_steps))}
+            """
+          end
 
-            result_path(step)
-          end)
+          result_path(step)
+        end)
+        |> case do
+          [] ->
+            [
+              Ash.Engine.Request.new(
+                path: [name],
+                name: "Build return value for #{inspect(name)}",
+                async?: false,
+                error_path: List.wrap(name),
+                data: nil
+              )
+            ]
 
-        [
-          Ash.Engine.Request.new(
-            path: [name],
-            name: "Build return value for #{inspect(name)}",
-            async?: false,
-            error_path: List.wrap(name),
-            data:
-              Ash.Engine.Request.resolve(depends_on_requests, fn context ->
-                case Ash.Flow.Info.returns(flow) do
-                  key when is_atom(key) ->
-                    {:ok,
-                     get_flow_return_value(
-                       all_steps,
-                       List.wrap(name) ++ [key],
-                       context,
-                       transaction_name
-                     )}
+          depends_on_requests ->
+            [
+              Ash.Engine.Request.new(
+                path: [name],
+                name: "Build return value for #{inspect(name)}",
+                async?: false,
+                error_path: List.wrap(name),
+                data:
+                  Ash.Engine.Request.resolve(depends_on_requests, fn context ->
+                    case Ash.Flow.Info.returns(flow) do
+                      key when is_atom(key) ->
+                        {:ok,
+                         get_flow_return_value(
+                           all_steps,
+                           List.wrap(name) ++ [key],
+                           context,
+                           transaction_name
+                         )}
 
-                  list when is_list(list) ->
-                    list =
-                      Enum.map(list, fn
-                        {key, val} ->
-                          {key, val}
+                      list when is_list(list) ->
+                        list =
+                          Enum.map(list, fn
+                            {key, val} ->
+                              {key, val}
 
-                        key ->
-                          {key, key}
-                      end)
+                            key ->
+                              {key, key}
+                          end)
 
-                    {:ok,
-                     Map.new(list, fn {key, val} ->
-                       {val,
-                        get_flow_return_value(
-                          all_steps,
-                          List.wrap(name) ++ [key],
-                          context,
-                          transaction_name
-                        )}
-                     end)}
-                end
-              end)
-          )
-        ]
+                        {:ok,
+                         Map.new(list, fn {key, val} ->
+                           {val,
+                            get_flow_return_value(
+                              all_steps,
+                              List.wrap(name) ++ [key],
+                              context,
+                              transaction_name
+                            )}
+                         end)}
+                    end
+                  end)
+              )
+            ]
+        end
 
       %Step{step: %Ash.Flow.Step.Read{} = read, input: input} ->
         %{
@@ -819,6 +833,20 @@ defmodule Ash.Flow.Executor.AshEngine do
     |> Enum.map(fn
       %Step{step: %{steps: inner_steps}} = step ->
         %{step | step: %{step.step | steps: map_steps(inner_steps, fun)}}
+
+      step ->
+        step
+    end)
+  end
+
+  defp map_outer_steps(steps, fun) do
+    steps
+    |> Enum.map(fn step ->
+      fun.(step)
+    end)
+    |> Enum.map(fn
+      %Step{step: %{steps: inner_steps}} = step ->
+        %{step | step: %{step.step | steps: map_outer_steps(inner_steps, fun)}}
 
       step ->
         step

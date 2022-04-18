@@ -369,7 +369,7 @@ defmodule Ash.Type do
           {:ok, value}
 
         _other ->
-          :error
+          {:error, "is invalid"}
       end
     else
       type = get_type(type)

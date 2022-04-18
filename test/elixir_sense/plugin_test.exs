@@ -128,7 +128,7 @@ defmodule Ash.ElixirSense.PluginTest do
 
       steps do
         map :name, :over do
-          transaction :transaction do
+          transaction :transaction, Foobar do
             map :name, :over do
                tra
     #             ^
@@ -275,6 +275,7 @@ defmodule Ash.ElixirSense.PluginTest do
              "reject",
              "require_attributes",
              "touches_resources",
+             "transaction?",
              "validate"
            ]
   end

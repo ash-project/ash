@@ -5,9 +5,7 @@ defmodule Ash.Engine.Request do
   See `new/1` for more information
   """
   defstruct [
-    :id,
     :async?,
-    :error?,
     :resource,
     :changeset,
     :path,
@@ -27,15 +25,14 @@ defmodule Ash.Engine.Request do
     :authorize?,
     :engine_pid,
     :error_path,
+    async_fetch_state: :not_requested,
     touches_resources: [],
     additional_context: %{},
-    manage_changeset?: false,
     notify?: false,
     authorized?: false,
     authorizer_state: %{},
     dependencies_to_send: %{},
-    dependency_data: %{},
-    dependencies_requested: []
+    dependency_data: %{}
   ]
 
   @type t :: %__MODULE__{}
@@ -158,8 +155,6 @@ defmodule Ash.Engine.Request do
           raise "Got a weird thing #{inspect(other)}"
       end
 
-    id = Ash.UUID.generate()
-
     data =
       case opts[:data] do
         %UnresolvedField{} = unresolved ->
@@ -170,7 +165,6 @@ defmodule Ash.Engine.Request do
       end
 
     %__MODULE__{
-      id: id,
       resource: opts[:resource],
       changeset: opts[:changeset],
       path: List.wrap(opts[:path]),
@@ -182,7 +176,6 @@ defmodule Ash.Engine.Request do
       error_path: opts[:error_path],
       touches_resources: opts[:touches_resources] || [],
       data_layer_query: resolve([], fn _ -> nil end),
-      manage_changeset?: opts[:manage_changeset?] || false,
       api: opts[:api],
       name: opts[:name],
       strict_check_only?: opts[:strict_check_only?],
@@ -210,8 +203,6 @@ defmodule Ash.Engine.Request do
   def next(request) do
     case do_next(request) do
       {:complete, new_request, notifications, dependencies} ->
-        notifications = update_changeset(request, new_request.changeset, notifications)
-
         if request.state != :complete do
           {:complete, new_request, notifications, dependencies}
         else
@@ -219,11 +210,9 @@ defmodule Ash.Engine.Request do
         end
 
       {:waiting, new_request, notifications, dependencies} ->
-        notifications = update_changeset(new_request, new_request.changeset, notifications)
         {:wait, new_request, notifications, dependencies}
 
       {:continue, new_request, notifications} ->
-        notifications = update_changeset(request, new_request.changeset, notifications)
         {:continue, new_request, notifications}
 
       {:error, error, request} ->
@@ -236,13 +225,7 @@ defmodule Ash.Engine.Request do
             error
           end
 
-        if request.manage_changeset? && !match?(%UnresolvedField{}, request.changeset) do
-          new_changeset = Ash.Changeset.add_error(request.changeset, error)
-          notifications = update_changeset(request, new_changeset, [])
-          {:error, error, notifications, %{request | changeset: new_changeset}}
-        else
-          {:error, error, request}
-        end
+        {:error, error, request}
     end
   rescue
     exception ->
@@ -252,20 +235,6 @@ defmodule Ash.Engine.Request do
     :exit, exception ->
       {:error, Ash.Error.to_ash_error(exception), request}
   end
-
-  defp update_changeset(
-         %{manage_changeset?: true, changeset: changeset},
-         new_changeset,
-         notifications
-       ) do
-    if new_changeset != changeset && not match?(%UnresolvedField{}, new_changeset) do
-      [{:update_changeset, changeset} | notifications]
-    else
-      notifications
-    end
-  end
-
-  defp update_changeset(_, _, notifications), do: notifications
 
   def do_next(%{state: :strict_check, authorize?: false} = request) do
     log(request, fn -> "Skipping strict check due to authorize?: false" end)
@@ -392,6 +361,15 @@ defmodule Ash.Engine.Request do
     end
   end
 
+  def summarize(%{name: name, action: %{name: action}, resource: resource})
+      when not is_nil(resource) do
+    "#{name}: #{inspect(resource)}.#{action}"
+  end
+
+  def summarize(%{name: name}) do
+    name
+  end
+
   def sort_and_clean_notifications(notifications) do
     {front, back} =
       notifications
@@ -418,13 +396,7 @@ defmodule Ash.Engine.Request do
     log(request, fn -> "Attempting to provide #{inspect(field)} for #{inspect(receiver_path)}" end)
 
     case store_dependency(request, receiver_path, field) do
-      {:value, value, new_request} ->
-        {:ok, new_request, [{receiver_path, request.path, field, value}]}
-
       {:ok, new_request, notifications} ->
-        {:ok, new_request, notifications}
-
-      {:waiting, new_request, notifications, []} ->
         {:ok, new_request, notifications}
 
       {:waiting, new_request, notifications, waiting_for} ->
@@ -495,11 +467,14 @@ defmodule Ash.Engine.Request do
         case Map.get(new_request, field) do
           %UnresolvedField{} ->
             log(request, fn -> "Field could not be resolved #{field}, registering dependency" end)
+
             {:ok, new_request, []}
 
           value ->
             log(request, fn -> "Field #{field}, was resolved and provided" end)
-            {:value, value, new_request}
+            {new_request, notifications} = notifications(request, field, value)
+
+            {:ok, new_request, notifications}
         end
 
       {:error, error} ->
@@ -981,7 +956,7 @@ defmodule Ash.Engine.Request do
           do_try_resolve_local(request, field, unresolved, internal?)
 
         value ->
-          notify_existing_value(request, field, value, internal?)
+          notify_existing_value(request, field, value)
       end
     end
   end
@@ -1002,14 +977,10 @@ defmodule Ash.Engine.Request do
     end
   end
 
-  defp notify_existing_value(request, field, value, internal?) do
-    if internal? do
-      {:ok, request, [], []}
-    else
-      {new_request, notifications} = notifications(request, field, value)
+  defp notify_existing_value(request, field, value) do
+    {new_request, notifications} = notifications(request, field, value)
 
-      {:ok, new_request, notifications, []}
-    end
+    {:ok, new_request, notifications, []}
   end
 
   defp do_try_resolve_local(request, field, unresolved, internal?) do
@@ -1021,155 +992,172 @@ defmodule Ash.Engine.Request do
 
       log(request, fn -> "resolving #{field}" end)
 
-      case resolver.(resolver_context) do
-        {:new_deps, new_deps} ->
-          log(request, fn -> "New dependencies for #{field}: #{inspect(new_deps)}" end)
+      # Currently, only the `data` field is resolved asynchronously
 
-          new_request =
-            Map.put(
-              new_request,
-              field,
-              %{unresolved | deps: Enum.uniq(unresolved.deps ++ new_deps)}
-            )
-
-          {:skipped, new_request, notifications, new_deps}
-
-        {:requests, requests} ->
-          log(request, fn ->
-            paths =
-              Enum.map(requests, fn
-                {request, _} ->
-                  request.path
-
-                request ->
-                  request.path
-              end)
-
-            "#{field} added requests #{inspect(paths)}"
-          end)
-
-          new_deps =
-            Enum.flat_map(requests, fn
-              {request, key} ->
-                [request.path ++ [key]]
-
-              _request ->
-                []
-            end)
-
-          new_unresolved =
-            Map.update!(
-              unresolved,
-              :deps,
-              &Enum.uniq(&1 ++ new_deps)
-            )
-
-          new_request = Map.put(request, field, new_unresolved)
-
-          new_requests =
-            Enum.map(requests, fn
-              {request, _} ->
-                %{request | error_path: request.error_path || new_request.error_path}
-
-              request ->
-                %{request | error_path: request.error_path || new_request.error_path}
-            end)
-
-          {:skipped, new_request,
-           notifications ++
-             [{:requests, new_requests}], new_deps}
-
-        {:ok, value, instructions} ->
-          log(request, fn ->
-            "successfully resolved #{field} with instructions"
-          end)
-
-          set_data_notifications =
-            Enum.map(Map.get(instructions, :extra_data, %{}), fn {key, value} ->
-              {:set_extra_data, key, value}
-            end)
-
-          resource_notifications = Map.get(instructions, :notifications, [])
-
-          extra_requests = Map.get(instructions, :requests, [])
-
-          unless Enum.empty?(extra_requests) do
-            log(request, fn ->
-              "added requests #{inspect(Enum.map(extra_requests, & &1.path))}"
-            end)
+      if field == :data && new_request.async? &&
+           !match?({:fetched, _}, new_request.async_fetch_state) do
+        if new_request.async_fetch_state in [:requested, :fetching] do
+          {:skipped, new_request, notifications, []}
+        else
+          {:skipped, %{new_request | async_fetch_state: {:requested, resolver_context}},
+           notifications, []}
+        end
+      else
+        # Here we reset async_fetch_state to `:not_requested`
+        # because one of two things is true:
+        # the resolver returned additional requests, in which case
+        # we will need to call it again later, *or* the resolution
+        # moves the request onto the next step in which case
+        # async_fetch_state is no longer in play.
+        {new_request, result} =
+          if field == :data && new_request.async? do
+            {_, result} = new_request.async_fetch_state
+            {%{new_request | async_fetch_state: :not_requested}, result}
+          else
+            {%{new_request | async_fetch_state: :not_requested}, resolver.(resolver_context)}
           end
 
-          request_notifications =
-            case extra_requests do
-              [] ->
-                []
+        case result do
+          {:new_deps, new_deps} ->
+            log(request, fn -> "New dependencies for #{field}: #{inspect(new_deps)}" end)
 
-              nil ->
-                []
+            new_request =
+              Map.put(
+                new_request,
+                field,
+                %{unresolved | deps: Enum.uniq(unresolved.deps ++ new_deps)}
+              )
 
-              requests ->
-                [
-                  {:requests,
-                   Enum.map(requests, fn
-                     {request, _} ->
-                       %{request | error_path: request.error_path || new_request.error_path}
+            {:skipped, new_request, notifications, new_deps}
 
-                     request ->
-                       %{request | error_path: request.error_path || new_request.error_path}
-                   end)}
-                ]
+          {:requests, requests} ->
+            log(request, fn ->
+              paths =
+                Enum.map(requests, fn
+                  {request, _} ->
+                    request.path
+
+                  request ->
+                    request.path
+                end)
+
+              "#{field} added requests #{inspect(paths)}"
+            end)
+
+            new_deps =
+              Enum.flat_map(requests, fn
+                {request, key} ->
+                  [request.path ++ [key]]
+
+                _request ->
+                  []
+              end)
+
+            new_unresolved =
+              Map.update!(
+                unresolved,
+                :deps,
+                &Enum.uniq(&1 ++ new_deps)
+              )
+
+            new_request = Map.put(new_request, field, new_unresolved)
+
+            new_requests =
+              Enum.map(requests, fn
+                {request, _} ->
+                  %{request | error_path: request.error_path || new_request.error_path}
+
+                request ->
+                  %{request | error_path: request.error_path || new_request.error_path}
+              end)
+
+            {:skipped, new_request,
+             notifications ++
+               [{:requests, new_requests}], new_deps}
+
+          {:ok, value, instructions} ->
+            log(request, fn ->
+              "successfully resolved #{field} with instructions"
+            end)
+
+            set_data_notifications =
+              Enum.map(Map.get(instructions, :extra_data, %{}), fn {key, value} ->
+                {:set_extra_data, key, value}
+              end)
+
+            resource_notifications = Map.get(instructions, :notifications, [])
+
+            extra_requests = Map.get(instructions, :requests, [])
+
+            unless Enum.empty?(extra_requests) do
+              log(request, fn ->
+                "added requests #{inspect(Enum.map(extra_requests, & &1.path))}"
+              end)
             end
 
-          handle_successful_resolve(
-            field,
-            value,
-            new_request,
-            notifications ++
-              resource_notifications ++
-              set_data_notifications ++ request_notifications,
-            internal?
-          )
+            request_notifications =
+              case extra_requests do
+                [] ->
+                  []
 
-        {:ok, value} ->
-          log(request, fn ->
-            "successfully resolved #{field}"
-          end)
+                nil ->
+                  []
 
-          handle_successful_resolve(
-            field,
-            value,
-            new_request,
-            notifications,
-            internal?
-          )
+                requests ->
+                  [
+                    {:requests,
+                     Enum.map(requests, fn
+                       {request, _} ->
+                         %{request | error_path: request.error_path || new_request.error_path}
 
-        {:error, error} ->
-          log(request, fn ->
-            "error resolving #{field}:\n #{inspect(error)}"
-          end)
+                       request ->
+                         %{request | error_path: request.error_path || new_request.error_path}
+                     end)}
+                  ]
+              end
 
-          {:error, error}
+            handle_successful_resolve(
+              field,
+              value,
+              new_request,
+              notifications ++
+                resource_notifications ++
+                set_data_notifications ++ request_notifications
+            )
+
+          {:ok, value} ->
+            log(request, fn ->
+              "successfully resolved #{field}"
+            end)
+
+            handle_successful_resolve(
+              field,
+              value,
+              new_request,
+              notifications
+            )
+
+          {:error, error} ->
+            log(request, fn ->
+              "error resolving #{field}:\n #{inspect(error)}"
+            end)
+
+            {:error, error}
+        end
       end
     end
   end
 
-  defp handle_successful_resolve(field, value, new_request, notifications, internal?) do
+  defp handle_successful_resolve(field, value, new_request, notifications) do
     value = process_resolved_field(field, value, new_request)
 
-    {new_request, notifications} =
-      if internal? do
-        {new_request, new_notifications} = notifications(new_request, field, value)
+    {new_request, new_notifications} = notifications(new_request, field, value)
 
-        notifications =
-          Enum.concat([
-            notifications,
-            new_notifications
-          ])
-
-        {new_request, notifications}
-      else
-        {new_request, Enum.filter(notifications, &match?({:requests, _}, &1))}
-      end
+    notifications =
+      Enum.concat([
+        notifications,
+        new_notifications
+      ])
 
     new_request = Map.put(new_request, field, value)
 

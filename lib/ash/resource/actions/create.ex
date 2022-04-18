@@ -14,6 +14,7 @@ defmodule Ash.Resource.Actions.Create do
     allow_nil_input: [],
     reject: [],
     metadata: [],
+    transaction?: true,
     type: :create
   ]
 

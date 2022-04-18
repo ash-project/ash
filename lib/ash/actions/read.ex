@@ -2,7 +2,6 @@ defmodule Ash.Actions.Read do
   @moduledoc false
 
   alias Ash.Actions.{Helpers, Load}
-  alias Ash.Engine
   alias Ash.Engine.Request
   alias Ash.Error.Invalid.{LimitRequired, PaginationRequired}
   alias Ash.Error.Query.NoReadAction
@@ -73,7 +72,11 @@ defmodule Ash.Actions.Read do
     opts = sanitize_opts(opts, authorize?, query)
     query = set_tenant_opt(query, opts)
     action = get_action(query.resource, action)
-    engine_opts = engine_opts(Keyword.put(opts, :authorize?, authorize?), action, query.api)
+
+    engine_opts =
+      opts
+      |> Keyword.put(:authorize?, authorize?)
+      |> engine_opts(action, query.api, query.resource)
 
     query =
       if opts[:load] do
@@ -86,16 +89,17 @@ defmodule Ash.Actions.Read do
       for_read(
         query,
         action,
-        engine_opts[:actor],
-        engine_opts[:tenant] || query.tenant,
-        authorize?
+        actor: engine_opts[:actor],
+        timeout: opts[:timeout],
+        tenant: opts[:tenant]
       )
 
     request_opts =
       Keyword.merge(engine_opts,
         query: query,
         page: opts[:page],
-        return_query?: opts[:return_query?]
+        return_query?: opts[:return_query?],
+        timeout: opts[:timeout]
       )
 
     request_opts =
@@ -116,12 +120,22 @@ defmodule Ash.Actions.Read do
         request_opts
       )
 
-    case Engine.run(requests, query.api, engine_opts) do
+    case Ash.Engine.run(requests, engine_opts) do
       {:ok, %{data: %{data: %{data: data}}}} ->
         {:ok, data}
 
-      {:error, %Ash.Engine.Runner{errors: errors}} ->
-        {:error, Ash.Error.to_error_class(errors, query: query)}
+      {:error, %Ash.Engine{errors: errors, requests: requests}} ->
+        case Enum.find_value(requests, fn request ->
+               if request.path == [:fetch] && match?(%Ash.Query{}, request.query) do
+                 request.changeset
+               end
+             end) do
+          nil ->
+            {:error, Ash.Error.to_error_class(errors, query: query)}
+
+          query ->
+            {:error, Ash.Error.to_error_class(errors, query: query)}
+        end
 
       {:error, error} ->
         {:error, Ash.Error.to_error_class(error, query: query)}
@@ -136,6 +150,7 @@ defmodule Ash.Actions.Read do
     query = request_opts[:query]
     get? = !!request_opts[:get?]
     tenant = request_opts[:tenant]
+    timeout = request_opts[:timeout]
     error_path = request_opts[:error_path]
     lazy? = request_opts[:lazy?]
 
@@ -168,19 +183,27 @@ defmodule Ash.Actions.Read do
               query =
                 case query do
                   nil ->
-                    Ash.Query.for_read(resource, action.name, input, tenant: tenant)
+                    Ash.Query.for_read(resource, action.name, input,
+                      tenant: tenant,
+                      actor: actor,
+                      timeout: timeout
+                    )
 
                   query ->
                     for_read(
                       query,
                       action,
-                      actor,
-                      tenant || query.tenant,
-                      authorize?
+                      actor: actor,
+                      tenant: tenant,
+                      timeout: timeout
                     )
                 end
 
-              query = %{query | api: api}
+              query = %{
+                query
+                | api: api,
+                  timeout: timeout || query.timeout || Ash.Api.timeout(api)
+              }
 
               query =
                 if tenant do
@@ -392,22 +415,19 @@ defmodule Ash.Actions.Read do
     |> Keyword.merge(Map.get(query.context, :override_api_params) || [])
   end
 
-  defp engine_opts(opts, action, api) do
+  defp engine_opts(opts, action, api, resource) do
     opts
-    |> Keyword.take([:verbose?, :actor, :authorize?])
-    |> Keyword.put(:transaction?, action.transaction?)
-    |> Keyword.put(:timeout, opts[:timeout] || Ash.Api.timeout(api))
+    |> Keyword.take([:verbose?, :actor, :authorize?, :timeout])
+    |> Keyword.put(:transaction?, action.transaction? || opts[:transaction?])
+    |> Keyword.put(:default_timeout, Ash.Api.timeout(api))
+    |> Keyword.put(:resource, resource)
   end
 
-  defp for_read(query, action, actor, tenant, authorize?) do
+  defp for_read(query, action, opts) do
     if query.__validated_for_action__ == action.name do
       query
     else
-      Ash.Query.for_read(query, action.name, %{},
-        actor: actor,
-        tenant: tenant,
-        authorize?: authorize?
-      )
+      Ash.Query.for_read(query, action.name, %{}, opts)
     end
   end
 

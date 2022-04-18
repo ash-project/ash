@@ -2,7 +2,6 @@ defmodule Ash.Actions.Update do
   @moduledoc false
 
   alias Ash.Actions.Helpers
-  alias Ash.Engine
   alias Ash.Engine.Request
 
   require Logger
@@ -34,27 +33,37 @@ defmodule Ash.Actions.Update do
       changeset: changeset,
       authorize?: authorize?,
       actor: actor,
+      timeout: opts[:timeout],
       after_action: after_action,
       tenant: opts[:tenant]
     )
-    |> Engine.run(api,
+    |> Ash.Engine.run(
+      resource: resource,
       verbose?: verbose?,
       actor: actor,
       authorize?: authorize?,
-      timeout: opts[:timeout] || Ash.Api.timeout(api),
-      transaction?: true
+      timeout: opts[:timeout] || changeset.timeout || Ash.Api.timeout(api),
+      default_timeout: Ash.Api.timeout(api),
+      transaction?: Keyword.get(opts, :transaction?, true)
     )
     |> case do
       {:ok, %{data: %{commit: %^resource{} = updated}} = engine_result} ->
         add_notifications(updated, changeset, engine_result, return_notifications?)
 
-      {:error, %Ash.Engine.Runner{errors: errors, changeset: %Ash.Changeset{} = runner_changeset}} ->
-        errors = Helpers.process_errors(changeset, errors)
-        {:error, Ash.Error.to_error_class(errors, changeset: runner_changeset)}
+      {:error, %Ash.Engine{errors: errors, requests: requests}} ->
+        case Enum.find_value(requests, fn request ->
+               if request.path == [:commit] && match?(%Ash.Changeset{}, request.changeset) do
+                 request.changeset
+               end
+             end) do
+          nil ->
+            errors = Helpers.process_errors(changeset, errors)
+            {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
 
-      {:error, %Ash.Engine.Runner{errors: errors}} ->
-        errors = Helpers.process_errors(changeset, errors)
-        {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
+          changeset ->
+            errors = Helpers.process_errors(changeset, errors)
+            {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
+        end
 
       {:error, error} ->
         error = Helpers.process_errors(changeset, error)
@@ -112,13 +121,13 @@ defmodule Ash.Actions.Update do
     end
   end
 
-  defp changeset(changeset, api, action, actor) do
+  defp changeset(changeset, api, action, opts) do
     changeset = %{changeset | api: api}
 
     if changeset.__validated_for_action__ == action.name do
       changeset
     else
-      Ash.Changeset.for_update(changeset, action.name, %{}, actor: actor)
+      Ash.Changeset.for_update(changeset, action.name, %{}, opts)
     end
   end
 
@@ -137,6 +146,7 @@ defmodule Ash.Actions.Update do
     after_action = request_opts[:after_action]
     skip_on_nil_record? = request_opts[:skip_on_nil_record?]
     error_path = request_opts[:error_path]
+    timeout = request_opts[:timeout]
 
     record =
       request_opts[:record] ||
@@ -175,17 +185,34 @@ defmodule Ash.Actions.Update do
 
                     record ->
                       record
-                      |> Ash.Changeset.for_update(action.name, input, actor: actor, tenant: tenant)
-                      |> changeset(api, action, actor)
+                      |> Ash.Changeset.for_update(action.name, input,
+                        actor: actor,
+                        tenant: tenant,
+                        timeout: timeout
+                      )
+                      |> changeset(api, action,
+                        actor: actor,
+                        tenant: tenant,
+                        timeout: timeout
+                      )
                   end
 
                 changeset ->
-                  changeset(changeset, api, action, actor)
+                  changeset(changeset, api, action,
+                    actor: actor,
+                    tenant: tenant,
+                    timeout: timeout
+                  )
               end
 
             if changeset == :skip do
               {:ok, nil}
             else
+              changeset = %{
+                changeset
+                | timeout: timeout || changeset.timeout || Ash.Api.timeout(changeset.api)
+              }
+
               changeset =
                 if tenant do
                   Ash.Changeset.set_tenant(changeset, tenant)
@@ -230,7 +257,6 @@ defmodule Ash.Actions.Update do
         resource: resource,
         notify?: true,
         error_path: error_path,
-        manage_changeset?: true,
         authorize?: false,
         data:
           Request.resolve(

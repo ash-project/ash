@@ -179,7 +179,7 @@ defmodule Ash.Flow.Dsl do
     """,
     schema: Ash.Flow.Step.Transaction.schema(),
     target: Ash.Flow.Step.Transaction,
-    args: [:name],
+    args: [:name, :resource],
     recursive_as: :steps,
     entities: [
       steps: @step_entities

@@ -7,7 +7,7 @@ defmodule Ash.DataLayer.Mnesia do
   Additionally, you will want to create your mnesia tables there.
 
   This data layer is *extremely unoptimized*, fetching all records from a table and filtering them
-  in place. This is primarily used for testing the behavior of data layers in Ash. If it was improved,
+  in memory. This is primarily used for testing the behavior of data layers in Ash. If it was improved,
   it could be a viable data layer.
   """
   @behaviour Ash.DataLayer
@@ -261,7 +261,7 @@ defmodule Ash.DataLayer.Mnesia do
   end
 
   @impl true
-  def transaction(_, func) do
+  def transaction(_, func, _timeout) do
     case Mnesia.transaction(func) do
       {:atomic, result} -> {:ok, result}
       {:aborted, reason} -> {:error, reason}

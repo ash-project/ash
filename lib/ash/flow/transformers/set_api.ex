@@ -9,29 +9,40 @@ defmodule Ash.Flow.Transformers.SetApi do
 
     flow
     |> Ash.Flow.Info.steps()
-    |> Enum.filter(&Map.has_key?(&1, :api))
+    |> Enum.map(&set_api(&1, flow, api))
     |> Enum.reduce({:ok, dsl_state}, fn step, {:ok, dsl_state} ->
-      if step.api do
-        {:ok, dsl_state}
-      else
-        if api do
-          {:ok,
-           Ash.Dsl.Transformer.replace_entity(
-             dsl_state,
-             [:steps],
-             %{step | api: api},
-             &(&1.name == step.name)
-           )}
-        else
-          {:error,
-           Ash.Error.Dsl.DslError.exception(
-             module: flow,
-             path: [:flow, :steps, step.name, :api],
-             message:
-               "Api is required for #{step.__struct__} steps. A default one can be provided in the `flow` section."
-           )}
-        end
-      end
+      {:ok,
+       Ash.Dsl.Transformer.replace_entity(
+         dsl_state,
+         [:steps],
+         step,
+         &(&1.name == step.name)
+       )}
     end)
   end
+
+  def set_api(step, flow, default) do
+    if Map.has_key?(step, :api) do
+      step = %{step | api: step.api || default}
+
+      if step.api do
+        step
+      else
+        raise Ash.Error.Dsl.DslError,
+          module: flow,
+          path: [:flow, :steps, step.name, :api],
+          message:
+            "Api is required for #{step.__struct__} steps. A default one can be provided in the `flow` section."
+      end
+    else
+      step
+    end
+    |> set_nested_apis(flow, default)
+  end
+
+  defp set_nested_apis(%{steps: steps} = step, flow, default) do
+    %{step | steps: Enum.map(steps, &set_api(&1, flow, default))}
+  end
+
+  defp set_nested_apis(step, _, _), do: step
 end

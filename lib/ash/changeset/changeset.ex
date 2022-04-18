@@ -34,6 +34,7 @@ defmodule Ash.Changeset do
     :tenant,
     :__validated_for_action__,
     :handle_errors,
+    :timeout,
     select: nil,
     params: %{},
     action_failed?: false,
@@ -41,6 +42,7 @@ defmodule Ash.Changeset do
     context: %{},
     defaults: [],
     after_action: [],
+    around_action: [],
     before_action: [],
     errors: [],
     valid?: true,
@@ -164,7 +166,8 @@ defmodule Ash.Changeset do
     Changes.NoSuchAttribute,
     Changes.NoSuchRelationship,
     Changes.Required,
-    Invalid.NoSuchResource
+    Invalid.NoSuchResource,
+    Invalid.TimeoutNotSupported
   }
 
   require Ash.Query
@@ -537,6 +540,7 @@ defmodule Ash.Changeset do
           changeset
           |> handle_errors(action.error_handler)
           |> set_actor(opts)
+          |> timeout(changeset.timeout || opts[:timeout])
           |> set_tenant(opts[:tenant] || changeset.tenant || changeset.data.__metadata__[:tenant])
           |> Map.put(:action, action)
           |> Map.put(:__validated_for_action__, action.name)
@@ -1167,22 +1171,26 @@ defmodule Ash.Changeset do
       )
 
     if changeset.valid? do
-      case func.(changeset) do
-        {:ok, result, instructions} ->
-          run_after_actions(
-            result,
-            instructions[:new_changeset] || changeset,
-            List.wrap(instructions[:notifications]) ++ before_action_notifications
-          )
-
-        {:ok, result} ->
-          run_after_actions(result, changeset, before_action_notifications)
-
-        {:error, error} ->
-          {:error, error}
-      end
+      run_around_actions(changeset, func, before_action_notifications)
     else
       {:error, changeset.errors}
+    end
+  end
+
+  defp run_around_actions(%{around_action: []} = changeset, func, before_action_notifications) do
+    case func.(changeset) do
+      {:ok, result, instructions} ->
+        run_after_actions(
+          result,
+          instructions[:new_changeset] || changeset,
+          List.wrap(instructions[:notifications]) ++ before_action_notifications
+        )
+
+      {:ok, result} ->
+        run_after_actions(result, changeset, before_action_notifications)
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 
@@ -1299,6 +1307,15 @@ defmodule Ash.Changeset do
   @spec set_tenant(t(), String.t()) :: t()
   def set_tenant(changeset, tenant) do
     %{changeset | tenant: tenant}
+  end
+
+  @spec timeout(t(), nil | pos_integer, nil | pos_integer) :: t()
+  def timeout(changeset, timeout, default \\ nil) do
+    if Ash.DataLayer.data_layer_can?(changeset.resource, :timeout) || is_nil(timeout) do
+      %{changeset | timeout: timeout || default}
+    else
+      add_error(changeset, TimeoutNotSupported.exception(resource: changeset.resource))
+    end
   end
 
   @doc """
@@ -2486,6 +2503,11 @@ defmodule Ash.Changeset do
         ) :: t()
   def after_action(changeset, func) do
     %{changeset | after_action: changeset.after_action ++ [func]}
+  end
+
+  @doc "Adds an around_action hook to the changeset."
+  def around_action(changeset, func) do
+    %{changeset | around_action: changeset.around_action ++ [func]}
   end
 
   @doc """

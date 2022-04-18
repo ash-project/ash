@@ -1,7 +1,6 @@
 defmodule Ash.Actions.Load do
   @moduledoc false
 
-  alias Ash.Engine
   alias Ash.Engine.Request
 
   require Ash.Query
@@ -331,7 +330,7 @@ defmodule Ash.Actions.Load do
       |> Enum.reverse()
       |> Enum.map_join(".", &Map.get(&1, :name))
 
-    Engine.Request.new(
+    Request.new(
       action:
         related_query.action || Ash.Resource.Info.primary_action(relationship.destination, :read),
       resource: relationship.destination,

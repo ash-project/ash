@@ -129,7 +129,8 @@ defmodule Ash.DataLayer do
             ) ::
               {:ok, data_layer_query()} | {:error, term}
   @callback destroy(Ash.Resource.t(), Ash.Changeset.t()) :: :ok | {:error, term}
-  @callback transaction(Ash.Resource.t(), (() -> term)) :: {:ok, term} | {:error, term}
+  @callback transaction(Ash.Resource.t(), (() -> term), nil | pos_integer()) ::
+              {:ok, term} | {:error, term}
   @callback in_transaction?(Ash.Resource.t()) :: boolean
   @callback source(Ash.Resource.t()) :: String.t()
   @callback rollback(Ash.Resource.t(), term) :: no_return
@@ -150,7 +151,7 @@ defmodule Ash.DataLayer do
                       select: 3,
                       limit: 3,
                       offset: 3,
-                      transaction: 2,
+                      transaction: 3,
                       rollback: 2,
                       upsert: 3,
                       operators: 1,
@@ -188,10 +189,16 @@ defmodule Ash.DataLayer do
   end
 
   @doc "Wraps the execution of the function in a transaction with the resource's data_layer"
-  @spec transaction(Ash.Resource.t(), (() -> term)) :: term
-  def transaction(resource, func) do
-    if data_layer_can?(resource, :transact) do
-      data_layer(resource).transaction(resource, func)
+  @spec transaction(Ash.Resource.t(), (() -> term), nil | pos_integer()) :: term
+  def transaction(resource, func, timeout) do
+    data_layer = data_layer(resource)
+
+    if data_layer.can?(resource, :transact) do
+      if function_exported?(data_layer, :transaction, 3) do
+        data_layer.transaction(resource, func, timeout)
+      else
+        data_layer.transaction(resource, func)
+      end
     else
       func.()
     end

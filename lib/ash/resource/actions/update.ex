@@ -13,6 +13,7 @@ defmodule Ash.Resource.Actions.Update do
     changes: [],
     reject: [],
     metadata: [],
+    transaction?: true,
     touches_resources: [],
     type: :update
   ]

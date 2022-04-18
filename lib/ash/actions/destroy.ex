@@ -2,7 +2,6 @@ defmodule Ash.Actions.Destroy do
   @moduledoc false
 
   alias Ash.Actions.Helpers
-  alias Ash.Engine
   alias Ash.Engine.Request
 
   @spec run(Ash.Api.t(), Ash.Changeset.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
@@ -52,13 +51,15 @@ defmodule Ash.Actions.Destroy do
       changeset: changeset,
       authorize?: authorize?,
       actor: actor,
+      timeout: opts[:timeout],
       tenant: opts[:tenant]
     )
-    |> Engine.run(api,
+    |> Ash.Engine.run(
+      resource: resource,
       verbose?: verbose?,
       actor: actor,
       authorize?: authorize?,
-      timeout: opts[:timeout] || Ash.Api.timeout(api),
+      timeout: opts[:timeout] || changeset.timeout || Ash.Api.timeout(api),
       transaction?: true
     )
     |> case do
@@ -67,13 +68,20 @@ defmodule Ash.Actions.Destroy do
         |> add_notifications(return_notifications?)
         |> add_destroyed(return_destroyed?, Map.get(data, :destroy))
 
-      {:error, %Ash.Engine.Runner{errors: errors, changeset: %Ash.Changeset{} = runner_changeset}} ->
-        errors = Helpers.process_errors(changeset, errors)
-        {:error, Ash.Error.to_error_class(errors, changeset: runner_changeset)}
+      {:error, %Ash.Engine{errors: errors, requests: requests}} ->
+        case Enum.find_value(requests, fn request ->
+               if request.path == [:destroy] && match?(%Ash.Changeset{}, request.changeset) do
+                 request.changeset
+               end
+             end) do
+          nil ->
+            errors = Helpers.process_errors(changeset, errors)
+            {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
 
-      {:error, %Ash.Engine.Runner{errors: errors}} ->
-        errors = Helpers.process_errors(changeset, errors)
-        {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
+          changeset ->
+            errors = Helpers.process_errors(changeset, errors)
+            {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
+        end
 
       {:error, error} ->
         error = Helpers.process_errors(changeset, error)
@@ -94,6 +102,8 @@ defmodule Ash.Actions.Destroy do
     tenant = request_opts[:tenant]
     skip_on_nil_record? = request_opts[:skip_on_nil_record?]
     error_path = request_opts[:error_path]
+    timeout = request_opts[:timeout]
+    default_timeout = request_opts[:default_timeout]
 
     record =
       request_opts[:record] ||
@@ -137,18 +147,29 @@ defmodule Ash.Actions.Destroy do
                       record
                       |> Ash.Changeset.for_destroy(action.name, input,
                         actor: actor,
-                        tenant: tenant
+                        tenant: tenant,
+                        timeout: timeout
                       )
-                      |> changeset(api, action, actor)
+                      |> changeset(api, action,
+                        actor: actor,
+                        tenant: tenant,
+                        timeout: timeout
+                      )
                   end
 
                 changeset ->
-                  changeset(changeset, api, action, actor)
+                  changeset(changeset, api, action,
+                    actor: actor,
+                    tenant: tenant,
+                    timeout: timeout
+                  )
               end
 
             if changeset == :skip do
               {:ok, nil}
             else
+              changeset = %{changeset | timeout: timeout || changeset.timeout || default_timeout}
+
               changeset =
                 if tenant do
                   Ash.Changeset.set_tenant(changeset, tenant)
@@ -191,7 +212,6 @@ defmodule Ash.Actions.Destroy do
             {:ok, get_in(context, path ++ [:data, :changeset])}
           end),
         notify?: true,
-        manage_changeset?: true,
         authorize?: false,
         data:
           Request.resolve(
@@ -257,13 +277,13 @@ defmodule Ash.Actions.Destroy do
     end
   end
 
-  defp changeset(changeset, api, action, actor) do
+  defp changeset(changeset, api, action, opts) do
     changeset = %{changeset | api: api}
 
     if changeset.__validated_for_action__ == action.name do
       changeset
     else
-      Ash.Changeset.for_destroy(changeset, action.name, %{}, actor: actor)
+      Ash.Changeset.for_destroy(changeset, action.name, %{}, opts)
     end
   end
 end

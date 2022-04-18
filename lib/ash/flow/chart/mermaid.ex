@@ -33,16 +33,17 @@ defmodule Ash.Flow.Chart.Mermaid do
 
     arguments = flow |> Ash.Flow.Info.arguments()
 
-    init = """
-    flowchart TB
-    classDef hidden visibility:hidden
-    """
+    init = "flowchart TB"
 
     init
     |> add_arguments(arguments)
     |> add_steps(steps, steps, opts)
     |> add_links(steps, steps, opts)
     |> IO.iodata_to_binary()
+  end
+
+  defp add_arguments(message, []) do
+    message
   end
 
   defp add_arguments(message, arguments) do
@@ -82,25 +83,18 @@ defmodule Ash.Flow.Chart.Mermaid do
   defp add_steps(message, steps, all_steps, opts) do
     Enum.reduce(steps, message, fn step, message ->
       case step do
-        %Ash.Flow.Step.Map{steps: steps, over: over, output: output} = step ->
+        %Ash.Flow.Step.Map{steps: steps, over: over} = step ->
           id = "#{format_name(step)}.element"
 
-          highlight =
-            if output do
-              do_format_name(List.wrap(output))
-            else
-              format_name(List.last(steps))
-            end
-
           name = format_name(step)
+          template = format_template(over, all_steps)
 
           message =
             message
-            |> add_line("subgraph #{name} [Map]")
+            |> add_line("subgraph #{name} [\"Map Over #{template}\"]")
             |> add_line("direction TB")
-            |> add_line("#{id}(\"Element: #{format_template(over, all_steps)}\")")
+            |> add_line("#{id}(\"Element in #{template}\")")
             |> add_steps(steps, all_steps, opts)
-            |> highlight(highlight)
             |> add_line("end")
 
           message
@@ -133,6 +127,12 @@ defmodule Ash.Flow.Chart.Mermaid do
           else
             message
           end
+
+        %{input: input} = step when not is_nil(input) ->
+          add_line(
+            message,
+            "#{format_name(step)}(\"#{short_name(step)} <br/> #{format_template(input, all_steps)}\")"
+          )
 
         step ->
           add_line(message, "#{format_name(step)}(\"#{short_name(step)}\")")
@@ -179,9 +179,9 @@ defmodule Ash.Flow.Chart.Mermaid do
     "Read: #{inspect(resource)}.#{action}"
   end
 
-  defp highlight(message, id) do
-    add_line(message, "style #{id} fill:#4287f5,stroke:#333,stroke-width:4px")
-  end
+  # defp highlight(message, id) do
+  #   add_line(message, "style #{id} fill:#4287f5,stroke:#333,stroke-width:4px")
+  # end
 
   defp add_links(message, steps, all_steps, opts) do
     Enum.reduce(steps, message, fn step, message ->
@@ -190,8 +190,7 @@ defmodule Ash.Flow.Chart.Mermaid do
           id = "#{format_name(step)}.element"
 
           message
-          |> add_dependencies(step, all_steps)
-          |> add_deps(over, id, all_steps)
+          |> add_dependencies(step, all_steps, [over], id)
           |> add_links(steps, all_steps, opts)
 
         %Ash.Flow.Step.Transaction{steps: steps} = step ->
@@ -245,7 +244,18 @@ defmodule Ash.Flow.Chart.Mermaid do
   end
 
   defp do_format_template(template, all_steps) when is_map(template) do
-    "%{#{Enum.map_join(template, ", ", fn {key, value} -> "#{do_format_template(key, all_steps)}: #{do_format_template(value, all_steps)}" end)}}"
+    body =
+      Enum.map_join(template, ",<br/>", fn {key, value} ->
+        case do_format_template(key, all_steps) do
+          ":" <> key ->
+            "#{key}: #{do_format_template(value, all_steps)}"
+
+          key ->
+            "#{inspect(key)} => #{do_format_template(value, all_steps)}"
+        end
+      end)
+
+    "%{<br/>#{body}<br/>}"
   end
 
   defp do_format_template(template, all_steps) when is_list(template) do
@@ -261,11 +271,11 @@ defmodule Ash.Flow.Chart.Mermaid do
   end
 
   defp do_format_template({:_element, step_name}, all_steps) do
-    "element(#{short_name(find_step(all_steps, step_name)).name})"
+    "element(#{short_name(find_step(all_steps, step_name))})"
   end
 
   defp do_format_template(value, all_steps) when is_tuple(value) do
-    "#{Enum.map_join(value, ", ", &do_format_template(&1, all_steps))}"
+    "{#{value |> Tuple.to_list() |> Enum.map_join(", ", &do_format_template(&1, all_steps))}}"
   end
 
   defp do_format_template(value, _), do: inspect(value)
@@ -279,22 +289,25 @@ defmodule Ash.Flow.Chart.Mermaid do
     String.replace(string, "\"", "'")
   end
 
-  defp add_dependencies(message, step, all_steps) do
-    Enum.reduce(Ash.Flow.Executor.AshEngine.deps_keys(), message, fn key, message ->
-      case Map.fetch(step, key) do
-        {:ok, value} ->
-          add_deps(message, value, format_name(step), all_steps)
+  defp add_dependencies(message, step, all_steps, additional_inputs \\ [], name \\ nil) do
+    deps =
+      Enum.flat_map(Ash.Flow.Executor.AshEngine.deps_keys(), fn key ->
+        case Map.fetch(step, key) do
+          {:ok, value} ->
+            [value]
 
-        :error ->
-          message
-      end
-    end)
+          :error ->
+            []
+        end
+      end)
+
+    add_deps(message, deps ++ additional_inputs, name || format_name(step), all_steps)
   end
 
   defp add_deps(message, template, destination, all_steps) do
-    result_refs = Ash.Flow.result_refs(template)
-    arg_refs = Ash.Flow.arg_refs(template)
-    element_refs = Ash.Flow.element_refs(template)
+    result_refs = Ash.Flow.result_refs(template) |> Enum.uniq()
+    arg_refs = Ash.Flow.arg_refs(template) |> Enum.uniq()
+    element_refs = Ash.Flow.element_refs(template) |> Enum.uniq()
 
     message =
       Enum.reduce(element_refs, message, fn element, message ->
