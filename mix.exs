@@ -197,6 +197,7 @@ defmodule Ash.MixProject do
       {:comparable, "~> 1.0"},
       {:jason, ">= 1.0.0"},
       {:sourceror, "~> 0.9"},
+      {:earmark, "~> 1.4", optional: true},
       # Dev/Test dependencies
       {:ex_doc, "~> 0.22", only: :dev, runtime: false},
       {:ex_check, "~> 0.12.0", only: :dev},

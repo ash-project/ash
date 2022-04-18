@@ -131,13 +131,41 @@ defmodule Ash.Flow.Chart.Mermaid do
         %{input: input} = step when not is_nil(input) ->
           add_line(
             message,
-            "#{format_name(step)}(\"#{short_name(step)} <br/> #{format_template(input, all_steps)}\")"
+            "#{format_name(step)}(\"#{short_name(step)} <br/> #{format_template(input, all_steps)}#{description(step)}\")"
           )
 
         step ->
-          add_line(message, "#{format_name(step)}(\"#{short_name(step)}\")")
+          add_line(message, "#{format_name(step)}(\"#{short_name(step)}\"#{description(step)})")
       end
     end)
+  end
+
+  defp description(%{description: description}) when not is_nil(description) do
+    "<br/>" <> as_html!(description)
+  end
+
+  defp description(%Ash.Flow.Step.Custom{custom: {mod, opts}}) do
+    if function_exported?(mod, :describe, 1) do
+      case mod.describe(opts) do
+        nil ->
+          ""
+
+        description ->
+          "<br/>" <> as_html!(description)
+      end
+    else
+      ""
+    end
+  end
+
+  defp description(_), do: ""
+
+  if Code.ensure_loaded?(Earmark) do
+    defp as_html!(value) do
+      Earmark.as_html!(value)
+    end
+  else
+    defp as_html!(value), do: value
   end
 
   defp short_name(%Ash.Flow.Step.Custom{custom: {mod, opts}}) do

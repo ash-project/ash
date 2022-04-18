@@ -40,6 +40,12 @@ defmodule Ash.Flow.Step do
         doc: """
         A list of resources touched by any custom logic in this step. This is used in the case that this step is run in a transaction. This is primarily only needed for `custom` steps.
         """
+      ],
+      description: [
+        type: :string,
+        doc: """
+        A description for the step.
+        """
       ]
     ]
   end
