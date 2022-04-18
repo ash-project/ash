@@ -181,6 +181,24 @@ defmodule Ash.EmbeddableType do
           with {:fetch, {:ok, value}} <- {:fetch, fetch_key(value, attr.name)},
                {:ok, casted} <-
                  Ash.Type.cast_stored(attr.type, value, attr.constraints) do
+            case constraints[:load] do
+              empty when empty in [nil, []] ->
+                {:cont, {:ok, Map.put(struct, attr.name, casted)}}
+
+              load ->
+                __MODULE__
+                |> Ash.Query.put_context(:data, [casted])
+                |> Ash.Query.load(load)
+                |> ShadowApi.read()
+                |> case do
+                  {:ok, [casted]} ->
+                    {:cont, {:ok, Map.put(struct, attr.name, casted)}}
+
+                  {:error, errors} ->
+                    {:error, Ash.EmbeddableType.handle_errors(errors)}
+                end
+            end
+
             {:cont, {:ok, Map.put(struct, attr.name, casted)}}
           else
             {:fetch, :error} ->

@@ -162,10 +162,12 @@ defmodule Ash.Flow.Chart.Mermaid do
 
   if Code.ensure_loaded?(Earmark) do
     defp as_html!(value) do
-      Earmark.as_html!(value)
+      value
+      |> Earmark.as_html!()
+      |> String.replace("<br>", "<br/>")
     end
   else
-    defp as_html!(value), do: value
+    defp as_html!(value), do: value |> String.split("\n", trim: true) |> Enum.join("<br/>")
   end
 
   defp short_name(%Ash.Flow.Step.Custom{custom: {mod, opts}}) do
@@ -226,7 +228,7 @@ defmodule Ash.Flow.Chart.Mermaid do
           |> add_dependencies(step, all_steps)
           |> add_links(steps, all_steps, opts)
 
-        %Ash.Flow.Step.RunFlow{flow: flow} ->
+        %Ash.Flow.Step.RunFlow{flow: flow} = run_flow_step ->
           returns = Ash.Flow.Info.returns(flow)
           name = format_name(step)
 
@@ -248,9 +250,7 @@ defmodule Ash.Flow.Chart.Mermaid do
           if opts[:expand] do
             message
           else
-            message
-            |> add_dependencies(step, all_steps)
-            |> add_links(steps, all_steps, opts)
+            add_dependencies(message, run_flow_step, all_steps)
           end
 
         step ->
@@ -308,10 +308,34 @@ defmodule Ash.Flow.Chart.Mermaid do
 
   defp do_format_template(value, _), do: inspect(value)
 
-  def find_step(steps, name) when is_list(steps), do: Enum.find_value(steps, &find_step(&1, name))
-  def find_step(%{name: name} = step, name), do: step
-  def find_step(%{steps: steps}, name), do: find_step(steps, name)
-  def find_step(_, _), do: nil
+  defp find_step(steps, name) do
+    case do_find_step(steps, name) do
+      nil ->
+        raise "Could not find step called #{inspect(name)} in #{steps |> step_names() |> Enum.map_join(", ", &inspect/1)}"
+
+      step ->
+        step
+    end
+  end
+
+  defp do_find_step(steps, name) when is_list(steps),
+    do: Enum.find_value(steps, &do_find_step(&1, name))
+
+  defp do_find_step(%{name: name} = step, name), do: step
+  defp do_find_step(%{steps: steps}, name), do: do_find_step(steps, name)
+  defp do_find_step(_, _), do: nil
+
+  defp step_names(steps) do
+    Enum.flat_map(steps, fn step ->
+      case step do
+        %{name: name, steps: steps} ->
+          [name | step_names(steps)]
+
+        %{name: name} ->
+          [name]
+      end
+    end)
+  end
 
   defp escape(string) do
     String.replace(string, "\"", "'")
