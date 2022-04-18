@@ -5,7 +5,7 @@ Timeouts in Ash work a bit differently than other tools. The following considera
 1. If you run a resource action in a transaction, then the timeout applies to the entire transaction.
 2. If the resource action you are running, and any of its `touches_resources` is *already in a transaction* then the timeout is ignored, as the outer transaction is handling the timeout.
 3. If the resource is not in a transaction, then the timeout is applied to each query that is run. Ash may run many queries to fulfill the action, so keep in mind that the request can take *considerably longer* than the specified timeout. No single query will be allowed to take longer than that timeout, however. The practical implications here is that `create/update/destroy` actions with a timeout will honor that timeout because they default to `transaction?: true`. If you wish to specify a holistic timeout for read actions, then you must specify `transaction?: true, timeout: timeout`.
-4. If the data layer of the resource does not support timeouts, then timeouts are **ignored** and an error is returned if one is specified.
+4. If the data layer of the resource does not support timeouts, then timeouts are **ignored**.
 5. As of the writing of this guide, none of the API extensions support specifying a timeout, but the general idea is that if you need "holistic" timeouts for an action or a request, you have two options: if you are calling your resources with hand written code, run the code in a `Task` and await it with a timeout. If you are using an API extension, add the timeouts to the configuration of those extensions, as they can easily be configured to run requests in a `Task` with a timeout in the same way.
 
 ## Ways to Specify Timeouts
