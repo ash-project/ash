@@ -5,6 +5,107 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.52.0-rc.1](https://github.com/ash-project/ash/compare/v1.52.0-rc.0...v1.52.0-rc.1) (2022-04-19)
+
+
+
+
+### Bug Fixes:
+
+* Handle date type cast_input with nil value (#311)
+
+* fix expression logic
+
+* remove IO.inspect
+
+* don't throw away timeout exit
+
+* timeouts @ the engine, not the parent process
+
+* timeout logic was timing out after the fact
+
+* uniqueify `list_refs` even further
+
+* flaky test issue
+
+* Enforce unique action names (#308)
+
+* pass tenant option to requests properly
+
+* Fix typespecs in Ash.Api (#307)
+
+* fix resource relationship validation
+
+* fix paths for load in flow
+
+* aggregate/calculation filter issues
+
+* show error message in `NoSuchResource`
+
+* import builtin preparations in global preparations block
+
+### Improvements:
+
+* `load` on `cast_stored` in embedded type
+
+* add descriptions to mermaid charts/flow
+
+* tons of engine/timeout improvements
+
+* implement NaiveDateTime type (#312)
+
+* Improve usability of finding by primary key (ID) (#294)
+
+* Add time type matching existing date type (#310)
+
+* flow -> mermaid chart
+
+* flow tenants
+
+* fix nested map statements in flow
+
+* add dynamic allow list
+
+* uniqify list_references
+
+* set default timeout to 30_000
+
+* remove coverage from CI
+
+* fully deprecate the `resource` entity
+
+* add eager validate identities
+
+* percolate `nil` values in operators in ash expresion language (like SQL)
+
+* add `return_destroyed?` option
+
+* add `api` option to relationships
+
+* make default actions and primary actions far more explicit
+
+* better error messages on unknown
+
+* better loading behavior for managed relationships
+
+* add lazy? option for loading
+
+* show value in atom error list
+
+* add `modify_query` callback
+
+* add overview
+
+* add build_entity!
+
+* properly parse `{:_ref, path, name}`
+
+* add `deselect` to build
+
+* validates attributes and relationships have unique names (#300)
+
+* validate no embeds in api
+
 ## [v1.52.0-rc.0](https://github.com/ash-project/ash/compare/v1.51.2...v1.52.0-rc.0) (2022-03-25)
 
 

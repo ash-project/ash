@@ -1,12 +1,15 @@
 defmodule Ash.Flow.Chart.Mermaid do
   @moduledoc "Tools to render an Ash.Flow as a mermaid chart."
   @opts [
-    expand: [
+    expand?: [
       type: :boolean,
       default: true,
       doc: """
       If the flow should be fully expanded (all `run_flow` steps will be inlined)
       """
+    ],
+    link_to_flows: [
+      type: {:fun, 1}
     ]
   ]
 
@@ -24,7 +27,7 @@ defmodule Ash.Flow.Chart.Mermaid do
       end)
 
     steps =
-      if opts[:expand] do
+      if opts[:expand?] do
         {:ok, %{steps: steps}} = Ash.Flow.Executor.AshEngine.build(flow, args, [])
         unwrap(steps)
       else
@@ -112,7 +115,7 @@ defmodule Ash.Flow.Chart.Mermaid do
         %Ash.Flow.Step.RunFlow{flow: flow} = step ->
           returns = Ash.Flow.Info.returns(flow)
 
-          if returns && opts[:expand] do
+          if returns && opts[:expand?] do
             escaped_returns = escape(inspect(Ash.Flow.Info.returns(flow)))
             name = format_name(step)
 
@@ -126,8 +129,17 @@ defmodule Ash.Flow.Chart.Mermaid do
             message
             |> add_line("#{name}(\"#{header}: #{escaped_returns}\")")
           else
-            message
-            |> add_line("#{format_name(step)}(\"#{inspect(flow)}#{flow_description(flow)}\")")
+            if opts[:link_to_flows] do
+              link = opts[:link_to_flows].(flow)
+
+              message
+              |> add_line(
+                "#{format_name(step)}(\"<a href=\"#{link}\">#{inspect(flow)}</a>#{flow_description(flow)}\")"
+              )
+            else
+              message
+              |> add_line("#{format_name(step)}(\"#{inspect(flow)}#{flow_description(flow)}\")")
+            end
           end
 
         %{input: input} = step when not is_nil(input) ->
@@ -248,7 +260,7 @@ defmodule Ash.Flow.Chart.Mermaid do
             Enum.reduce(List.wrap(returns), message, fn
               {key, _}, message ->
                 {source, note} =
-                  if opts[:expand] do
+                  if opts[:expand?] do
                     link_source(all_steps, List.wrap(step.name) ++ List.wrap(key))
                   else
                     link_source(all_steps, step.name)
@@ -259,7 +271,7 @@ defmodule Ash.Flow.Chart.Mermaid do
 
               value, message ->
                 {source, note} =
-                  if opts[:expand] do
+                  if opts[:expand?] do
                     link_source(all_steps, List.wrap(step.name) ++ List.wrap(value))
                   else
                     link_source(all_steps, step.name)
@@ -269,7 +281,7 @@ defmodule Ash.Flow.Chart.Mermaid do
                 |> add_link(source, note, name)
             end)
 
-          if opts[:expand] do
+          if opts[:expand?] do
             message
           else
             add_dependencies(message, run_flow_step, all_steps)
