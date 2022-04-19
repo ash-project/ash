@@ -13,7 +13,7 @@ defmodule Ash.Flow.Step.Custom do
         type: :boolean,
         doc:
           "Whether or not this step can be run outside of the current process. Defaults to true.",
-        default: true
+        default: false
       ]
     ]
     |> Ash.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")
