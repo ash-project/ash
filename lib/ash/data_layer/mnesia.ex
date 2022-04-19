@@ -261,7 +261,16 @@ defmodule Ash.DataLayer.Mnesia do
   end
 
   @impl true
-  def transaction(_, func, _timeout) do
+  def transaction(resource, func, _timeout) do
+    func = fn ->
+      try do
+        func.()
+      rescue
+        exception ->
+          rollback(resource, Ash.Error.to_ash_error(exception, __STACKTRACE__))
+      end
+    end
+
     case Mnesia.transaction(func) do
       {:atomic, result} -> {:ok, result}
       {:aborted, reason} -> {:error, reason}

@@ -604,6 +604,10 @@ defmodule Ash.Engine do
 
         depended_on_request = Enum.find(state.requests, &(&1.path == dep_path))
 
+        if !depended_on_request do
+          raise "Engine Error: No request found with path #{inspect(dep_path)}. Available paths:\n #{Enum.map_join(state.requests, "\n", &inspect(&1.path))}"
+        end
+
         # we want to send things from non async requests
         # after we've sent all info to async requests
         unsent_dependencies =

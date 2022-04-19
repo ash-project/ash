@@ -134,7 +134,7 @@ defmodule Ash.Flow.Chart.Mermaid do
 
               message
               |> add_line(
-                "#{format_name(step)}(\"<a href=\"#{link}\">#{inspect(flow)}</a>#{flow_description(flow)}\")"
+                ~s[#{format_name(step)}("<a href="#{link}">#{inspect(flow)}</a>#{flow_description(flow)}")]
               )
             else
               message
