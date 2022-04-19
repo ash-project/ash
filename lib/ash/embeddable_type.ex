@@ -7,7 +7,7 @@ defmodule Ash.EmbeddableType do
       doc: """
       A sort to be applied when casting the data.
 
-      Only relevant for a type of {:array, `EmbeddedResource}`
+      Only relevant for a type of `{:array, EmbeddedResource}`
 
       The sort is not applied when reading the data, so if the sort changes you will
       need to fix it in your database or wait for the data to be written again, at which
@@ -19,7 +19,7 @@ defmodule Ash.EmbeddableType do
       doc: """
       A list of calculations to load on the resource.
 
-      Only relevant for a type of {:array, `EmbeddedResource}`
+      Only relevant for a type of `{:array, EmbeddedResource}`
 
       Aggregates are not supported on embedded resources.
       """
