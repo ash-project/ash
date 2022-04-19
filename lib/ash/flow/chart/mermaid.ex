@@ -36,21 +36,22 @@ defmodule Ash.Flow.Chart.Mermaid do
     init = "flowchart TB"
 
     init
-    |> add_arguments(arguments)
+    |> add_arguments(arguments, flow)
     |> add_steps(steps, steps, opts)
     |> add_links(steps, steps, opts)
     |> IO.iodata_to_binary()
   end
 
-  defp add_arguments(message, []) do
-    message
-  end
-
-  defp add_arguments(message, arguments) do
+  defp add_arguments(message, arguments, flow) do
     message =
       message
-      |> add_line("subgraph Arguments")
+      |> add_line("subgraph Flow")
       |> add_line("direction TB")
+
+    add_line(
+      message,
+      "_top_level_flow_(\"#{inspect(flow)}#{flow_description(flow)}\")"
+    )
 
     Enum.reduce(arguments, message, fn argument, message ->
       question_mark =
@@ -126,6 +127,7 @@ defmodule Ash.Flow.Chart.Mermaid do
             |> add_line("#{name}(\"#{header}: #{escaped_returns}\")")
           else
             message
+            |> add_line("#{format_name(step)}(\"#{inspect(flow)}#{flow_description(flow)}\")")
           end
 
         %{input: input} = step when not is_nil(input) ->
@@ -138,6 +140,16 @@ defmodule Ash.Flow.Chart.Mermaid do
           add_line(message, "#{format_name(step)}(\"#{short_name(step)}\"#{description(step)})")
       end
     end)
+  end
+
+  defp flow_description(flow) do
+    case Ash.Flow.Info.description(flow) do
+      nil ->
+        ""
+
+      description ->
+        "<br/>" <> as_html!(description)
+    end
   end
 
   defp description(%{description: description}) when not is_nil(description) do
@@ -235,13 +247,23 @@ defmodule Ash.Flow.Chart.Mermaid do
           message =
             Enum.reduce(List.wrap(returns), message, fn
               {key, _}, message ->
-                {source, note} = link_source(all_steps, List.wrap(step.name) ++ List.wrap(key))
+                {source, note} =
+                  if opts[:expand] do
+                    link_source(all_steps, List.wrap(step.name) ++ List.wrap(key))
+                  else
+                    link_source(all_steps, step.name)
+                  end
 
                 message
                 |> add_link(source, note, name)
 
               value, message ->
-                {source, note} = link_source(all_steps, List.wrap(step.name) ++ List.wrap(value))
+                {source, note} =
+                  if opts[:expand] do
+                    link_source(all_steps, List.wrap(step.name) ++ List.wrap(value))
+                  else
+                    link_source(all_steps, step.name)
+                  end
 
                 message
                 |> add_link(source, note, name)
@@ -383,7 +405,7 @@ defmodule Ash.Flow.Chart.Mermaid do
       %Ash.Flow.Step.Map{steps: steps, output: output} = step ->
         output_step =
           if output do
-            find_step(steps, List.wrap(output))
+            find_step(steps, output)
           else
             List.last(steps)
           end
