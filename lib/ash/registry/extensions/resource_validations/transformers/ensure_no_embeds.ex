@@ -20,7 +20,7 @@ defmodule Ash.Registry.ResourceValidations.Transformers.EnsureNoEmbeds do
 
       rejected ->
         {:error,
-         "Embedded resources shuold not be listed in the registry. Please remove #{inspect(rejected)} from the registry."}
+         "Embedded resources should not be listed in the registry. Please remove #{inspect(rejected)} from the registry."}
     end
   end
 end
