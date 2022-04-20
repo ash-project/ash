@@ -22,7 +22,7 @@ defmodule Ash.Actions.PaginationTest do
 
       read :read do
         primary? true
-        pagination offset?: true, required?: true
+        pagination offset?: true, required?: true, default_limit: 25
       end
     end
 
