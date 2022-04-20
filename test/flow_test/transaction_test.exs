@@ -62,13 +62,13 @@ defmodule Ash.FlowTest.TransactionTest do
     end
 
     steps do
-      transaction :get_org_and_unapprove_users, Org do
-        read :get_org, Org, :by_name do
-          input(%{
-            name: arg(:org_name)
-          })
-        end
+      read :get_org, Org, :by_name do
+        input(%{
+          name: arg(:org_name)
+        })
+      end
 
+      transaction :get_org_and_unapprove_users, Org do
         read :list_users, User, :for_org do
           input %{
             org: path(result(:get_org), :id)

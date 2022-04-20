@@ -3,6 +3,34 @@ defmodule Ash.Actions.PaginationTest do
 
   require Ash.Query
 
+  defmodule Post do
+    @moduledoc false
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :user_id, :uuid
+    end
+
+    actions do
+      defaults [:create, :update, :destroy]
+
+      read :read do
+        primary? true
+        pagination offset?: true, required?: true
+      end
+    end
+
+    relationships do
+      belongs_to :user, Ash.Actions.PaginationTest.User, define_field?: false
+    end
+  end
+
   defmodule User do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -13,7 +41,7 @@ defmodule Ash.Actions.PaginationTest do
 
     actions do
       read :offset do
-        pagination offset?: true, countable: true
+        pagination offset?: true, countable: true, required?: true
       end
 
       read :optional_offset do
@@ -61,6 +89,10 @@ defmodule Ash.Actions.PaginationTest do
       uuid_primary_key :id
       attribute :name, :string
     end
+
+    relationships do
+      has_many :posts, Post
+    end
   end
 
   defmodule Registry do
@@ -68,7 +100,8 @@ defmodule Ash.Actions.PaginationTest do
     use Ash.Registry
 
     entries do
-      entry(User)
+      entry User
+      entry Post
     end
   end
 
@@ -387,6 +420,18 @@ defmodule Ash.Actions.PaginationTest do
       for result <- Api.read!(User, action: :both_optional, page: [limit: 10]).results do
         refute is_nil(result.__metadata__.keyset)
       end
+    end
+  end
+
+  describe "loading with pagination" do
+    test "it does not paginate loads" do
+      user = Api.create!(Ash.Changeset.new(User, %{name: "user"}))
+      Api.create!(Ash.Changeset.new(Post, %{user_id: user.id}))
+
+      assert [_ | _] =
+               user
+               |> Api.load!([posts: :user], tenant: nil, actor: nil)
+               |> Map.get(:posts)
     end
   end
 end
