@@ -263,8 +263,14 @@ defmodule Ash.DataLayer.Mnesia do
   @impl true
   def transaction(_, func, _timeout) do
     case Mnesia.transaction(func) do
-      {:atomic, result} -> {:ok, result}
-      {:aborted, reason} -> {:error, reason}
+      {:atomic, result} ->
+        {:ok, result}
+
+      {:aborted, {reason, stacktrace}} when is_exception(reason) ->
+        {:error, Ash.Error.to_ash_error(reason, stacktrace)}
+
+      {:aborted, reason} ->
+        {:error, reason}
     end
   end
 
