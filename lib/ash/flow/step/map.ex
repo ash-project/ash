@@ -17,5 +17,4 @@ defmodule Ash.Flow.Step.Map do
         ]
       ]
       |> Ash.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")
-      |> Keyword.delete(:wait_for)
 end

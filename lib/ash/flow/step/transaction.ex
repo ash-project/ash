@@ -23,6 +23,5 @@ defmodule Ash.Flow.Step.Transaction do
         ]
       ]
       |> Ash.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")
-      |> Keyword.delete(:wait_for)
       |> Keyword.delete(:touches_resources)
 end

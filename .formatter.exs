@@ -37,6 +37,8 @@ locals_without_parens = [
   create_timestamp: 2,
   custom: 2,
   custom: 3,
+  debug: 1,
+  debug: 2,
   default: 1,
   default_context: 1,
   defaults: 1,

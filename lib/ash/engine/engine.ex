@@ -437,7 +437,7 @@ defmodule Ash.Engine do
     """
   end
 
-  defp long_breakdown(state) do
+  def long_breakdown(state) do
     """
     #{errors(state)}
     #{completed_requests(state)}
@@ -605,7 +605,7 @@ defmodule Ash.Engine do
         depended_on_request = Enum.find(state.requests, &(&1.path == dep_path))
 
         if !depended_on_request do
-          raise "Engine Error: No request found with path #{inspect(dep_path)}. Available paths:\n #{Enum.map_join(state.requests, "\n", &inspect(&1.path))}"
+          raise "Engine Error in request #{inspect(request_path)}: No request found with path #{inspect(dep_path)}. Available paths:\n #{Enum.map_join(state.requests, "\n", &inspect(&1.path))}"
         end
 
         # we want to send things from non async requests

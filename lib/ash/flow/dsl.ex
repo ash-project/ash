@@ -1,4 +1,22 @@
 defmodule Ash.Flow.Dsl do
+  @debug %Ash.Dsl.Entity{
+    name: :debug,
+    describe: """
+    Declares a step that will inspect its input and provide
+    additional debug information.
+    """,
+    examples: [
+      """
+      debug :show_some_information do
+        input %{post: result(:create_post)}
+      end
+      """
+    ],
+    target: Ash.Flow.Step.Debug,
+    args: [:name],
+    schema: Ash.Flow.Step.Debug.schema()
+  }
+
   @create %Ash.Dsl.Entity{
     name: :create,
     describe: """
@@ -170,7 +188,7 @@ defmodule Ash.Flow.Dsl do
     ]
   }
 
-  @step_entities [@create, @update, @destroy, @read, @run_flow, @custom]
+  @step_entities [@create, @debug, @update, @destroy, @read, @run_flow, @custom]
 
   @transaction %Ash.Dsl.Entity{
     name: :transaction,
