@@ -121,8 +121,8 @@ defmodule Ash.Actions.Read do
       )
 
     case Ash.Engine.run(requests, engine_opts) do
-      {:ok, %{data: %{data: %{data: data}}}} ->
-        {:ok, data}
+      {:ok, %{data: %{data: %{data: data} = all_data}}} ->
+        add_query(data, all_data[:fetch][:ultimate_query], request_opts)
 
       {:error, %Ash.Engine{errors: errors, requests: requests}} ->
         case Enum.find_value(requests, fn request ->

@@ -97,6 +97,14 @@ defmodule Ash.Engine do
       true ->
         do_run(requests, opts)
     end
+    |> case do
+      {:ok, %{resource_notifications: resource_notifications} = result} ->
+        unsent = Ash.Notifier.notify(resource_notifications)
+        {:ok, %{result | resource_notifications: unsent}}
+
+      other ->
+        other
+    end
   end
 
   def do_run(requests, opts \\ []) do
@@ -119,13 +127,10 @@ defmodule Ash.Engine do
     end)
 
     case run_to_completion(state) do
-      %__MODULE__{errors: [], resource_notifications: resource_notifications} = result ->
-        unsent = Ash.Notifier.notify(resource_notifications)
-
+      %__MODULE__{errors: []} = result ->
         {:ok,
          result.requests
-         |> Enum.reduce(result, &add_data(&2, &1.path, &1.data))
-         |> Map.put(:resource_notifications, unsent)}
+         |> Enum.reduce(result, &add_data(&2, &1.path, &1.data))}
 
       state ->
         {:error, state}

@@ -1,5 +1,39 @@
 defmodule Ash.Actions.Helpers do
   @moduledoc false
+  require Logger
+
+  def warn_missed!(action, result) do
+    case Map.get(result, :resource_notifications, []) do
+      empty when empty in [nil, []] ->
+        :ok
+
+      missed ->
+        case Application.get_env(:ash, :missed_notifications, :ignore) do
+          :ignore ->
+            :ok
+
+          :raise ->
+            raise """
+            Missed #{Enum.count(missed)} notifications in action #{action.name}.
+
+            This happens when the resources are in a transaction, and you did not pass
+            `return_notifications?: true`. If you are in a changeset hook, you can simply
+            return the notifications. If not, you can send the notifications using
+            `Ash.Notifier.notify/1` once your resources are out of a transaction.
+            """
+
+          :warn ->
+            Logger.warn("""
+            Missed #{Enum.count(missed)} notifications in action #{action.name}.
+
+            This happens when the resources are in a transaction, and you did not pass
+            `return_notifications?: true`. If you are in a changeset hook, you can simply
+            return the notifications. If not, you can send the notifications using
+            `Ash.Notifier.notify/1` once your resources are out of a transaction.
+            """)
+        end
+    end
+  end
 
   def process_errors(changeset, [error]) do
     %{changeset | errors: []}

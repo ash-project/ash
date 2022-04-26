@@ -112,7 +112,6 @@ defmodule Ash.Dsl.Extension do
   @callback transformers() :: [module]
 
   defp dsl!(resource) do
-    Code.ensure_compiled!(resource)
     resource.ash_dsl_config()
   rescue
     _ in [UndefinedFunctionError, ArgumentError] ->

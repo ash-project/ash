@@ -48,7 +48,7 @@ defmodule Ash.Actions.Update do
     )
     |> case do
       {:ok, %{data: %{commit: %^resource{} = updated}} = engine_result} ->
-        add_notifications(updated, changeset, engine_result, return_notifications?)
+        add_notifications(updated, action, changeset, engine_result, return_notifications?)
 
       {:error, %Ash.Engine{errors: errors, requests: requests}} ->
         case Enum.find_value(requests, fn request ->
@@ -105,7 +105,7 @@ defmodule Ash.Actions.Update do
 
   defp run_after_action(other, _, _), do: other
 
-  defp add_notifications(result, changeset, engine_result, return_notifications?) do
+  defp add_notifications(result, action, changeset, engine_result, return_notifications?) do
     if return_notifications? do
       if changeset.action_type == :destroy do
         {:ok, Map.get(engine_result, :resource_notifications, [])}
@@ -113,6 +113,8 @@ defmodule Ash.Actions.Update do
         {:ok, result, Map.get(engine_result, :resource_notifications, [])}
       end
     else
+      Ash.Actions.Helpers.warn_missed!(action, engine_result)
+
       if changeset.action_type == :destroy do
         :ok
       else
