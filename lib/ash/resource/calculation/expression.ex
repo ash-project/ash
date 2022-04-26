@@ -101,12 +101,10 @@ defmodule Ash.Resource.Calculation.Expression do
           end)
           |> Enum.map(& &1.name)
 
-        names = Enum.uniq(aggs_from_calcs ++ aggs_from_this_calc)
-
-        Ash.Query.load(query, names)
+        Enum.uniq(aggs_from_calcs ++ aggs_from_this_calc)
 
       {:error, _} ->
-        query
+        []
     end
   end
 

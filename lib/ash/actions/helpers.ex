@@ -2,6 +2,19 @@ defmodule Ash.Actions.Helpers do
   @moduledoc false
   require Logger
 
+  def validate_calculation_load!(%Ash.Query{}, module) do
+    raise """
+    `#{inspect(module)}.load/3` returned a query.
+
+    Returning a query from the `load/3` callback of a calculation is now deprecated.
+    Instead, return the load statement itself, i.e instead of `Ash.Query.load(query, [...])`,
+    just return `[...]`. This is so that Ash can examine the requirements of just this single
+    calculation to ensure that all required values are present
+    """
+  end
+
+  def validate_calculation_load!(other, _), do: other
+
   def warn_missed!(action, result) do
     case Map.get(result, :resource_notifications, []) do
       empty when empty in [nil, []] ->

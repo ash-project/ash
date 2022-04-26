@@ -1979,7 +1979,8 @@ defmodule Ash.Filter do
                  opts,
                  resource_calculation.type,
                  Map.put(args, :context, context.query_context),
-                 resource_calculation.filterable?
+                 resource_calculation.filterable?,
+                 resource_calculation.load
                ) do
           case parse_predicates(nested_statement, calculation, context) do
             {:ok, nested_statement} ->
@@ -2149,7 +2150,8 @@ defmodule Ash.Filter do
                  opts,
                  resource_calculation.type,
                  Map.put(args, :context, Map.get(context, :query_context, %{})),
-                 resource_calculation.filterable?
+                 resource_calculation.filterable?,
+                 resource_calculation.load
                ) do
           {:ok,
            %Ref{
@@ -2252,7 +2254,8 @@ defmodule Ash.Filter do
                      opts,
                      resource_calculation.type,
                      Map.put(args, :context, context.query_context),
-                     resource_calculation.filterable?
+                     resource_calculation.filterable?,
+                     resource_calculation.load
                    ) do
               {:ok, %{ref | attribute: calculation, resource: related}}
             else

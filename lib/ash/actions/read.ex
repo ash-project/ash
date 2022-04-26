@@ -319,8 +319,14 @@ defmodule Ash.Actions.Read do
                     Map.get(fetched_data, :aggregates_in_query) || []
                   )
                   |> add_calculation_values(
+                    query.resource,
+                    api,
+                    action,
+                    error_path,
+                    path,
                     Map.get(fetched_data, :ultimate_query) || query,
-                    Map.get(fetched_data, :calculations_at_runtime) || []
+                    Map.get(fetched_data, :calculations_at_runtime) || [],
+                    get_in(context, path ++ [:calculation_results]) || :error
                   )
                   |> case do
                     {:ok, values} ->
@@ -335,6 +341,9 @@ defmodule Ash.Actions.Read do
                       )
                       |> add_query(Map.get(fetched_data, :ultimate_query), request_opts)
                       |> unwrap_for_get(get?, query.resource)
+
+                    {:requests, requests} ->
+                      {:requests, Enum.map(requests, &{&1, :data})}
                   end
 
                 deps ->
@@ -588,14 +597,16 @@ defmodule Ash.Actions.Read do
         {calculations_in_query, calculations_at_runtime} =
           if Ash.DataLayer.data_layer_can?(ash_query.resource, :expression_calculation) &&
                !request_opts[:initial_data] do
-            Enum.split_with(ash_query.calculations, fn {_name, calculation} ->
+            ash_query.calculations
+            |> Map.values()
+            |> Enum.split_with(fn calculation ->
               Enum.find(used_calculations, &(&1.name == calculation.name)) ||
                 calculation.name in Enum.map(ash_query.sort || [], &elem(&1, 0)) ||
                 (:erlang.function_exported(calculation.module, :expression, 2) &&
                    !calculation.allow_async?)
             end)
           else
-            {[], ash_query.calculations}
+            {[], Map.values(ash_query.calculations)}
           end
 
         {aggregate_auth_requests, aggregate_value_requests, aggregates_in_query} =
@@ -603,7 +614,7 @@ defmodule Ash.Actions.Read do
             ash_query,
             can_be_in_query?,
             authorizing?,
-            Enum.map(calculations_in_query, &elem(&1, 1)),
+            calculations_in_query,
             path
           )
 
@@ -640,7 +651,7 @@ defmodule Ash.Actions.Read do
                 |> Ash.Query.data_layer_query(only_validate_filter?: true)
 
               ash_query =
-                if ash_query.select || calculations_at_runtime == %{} do
+                if ash_query.select || calculations_at_runtime == [] do
                   ash_query
                 else
                   to_select =
@@ -652,7 +663,7 @@ defmodule Ash.Actions.Read do
                 end
 
               ash_query =
-                Enum.reduce(calculations_at_runtime, ash_query, fn {_, calculation}, ash_query ->
+                Enum.reduce(calculations_at_runtime, ash_query, fn calculation, ash_query ->
                   if calculation.select do
                     Ash.Query.select(ash_query, calculation.select || [])
                   else
@@ -690,7 +701,7 @@ defmodule Ash.Actions.Read do
                      add_calculations(
                        query,
                        ash_query,
-                       Enum.map(calculations_in_query, &elem(&1, 1))
+                       calculations_in_query
                      ),
                    {:ok, query} <-
                      Ash.DataLayer.filter(
@@ -1072,58 +1083,178 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp add_calculation_values(results, query, calculations) do
-    {can_be_runtime, require_query} =
-      calculations
-      |> Enum.map(&elem(&1, 1))
-      |> Enum.split_with(fn calculation ->
-        :erlang.function_exported(calculation.module, :calculate, 3)
+  defp calculation_request(
+         all_calcs,
+         resource,
+         api,
+         action,
+         error_path,
+         path,
+         results,
+         calculation,
+         query
+       ) do
+    dependencies =
+      query
+      |> calculation.module.load(calculation.opts, calculation.context)
+      |> Ash.Actions.Helpers.validate_calculation_load!(calculation.module)
+      |> Enum.map(fn
+        {key, _} ->
+          key
+
+        key ->
+          key
+      end)
+      |> Enum.filter(fn key ->
+        key in all_calcs
+      end)
+      |> Enum.map(fn key ->
+        path ++ [:calculation_results, key]
       end)
 
-    can_be_runtime
-    |> Enum.reduce_while({:ok, %{}, require_query}, fn calculation,
-                                                       {:ok, calculation_results, require_query} ->
-      case calculation.module.calculate(results, calculation.opts, calculation.context) do
-        results when is_list(results) ->
-          {:cont, {:ok, Map.put(calculation_results, calculation, results), require_query}}
+    if function_exported?(calculation.module, :calculate, 3) do
+      Request.new(
+        resource: resource,
+        api: api,
+        action: action,
+        error_path: error_path,
+        query: query,
+        authorize?: false,
+        async?: true,
+        data:
+          Request.resolve(dependencies, fn data ->
+            temp_results =
+              Enum.reduce(get_in(data, path ++ [:calculation_results]) || %{}, results, fn {key,
+                                                                                            config},
+                                                                                           results ->
+                add_calc_to_results(results, key, config[:data])
+              end)
 
-        :unknown ->
-          {:cont, {:ok, calculation_results, [calculation | require_query]}}
+            case calculation.module.calculate(temp_results, calculation.opts, calculation.context) do
+              {:ok, values} ->
+                {:ok,
+                 %{
+                   values: values,
+                   load?: not is_nil(calculation.load)
+                 }}
 
-        {:ok, results} ->
-          {:cont, {:ok, Map.put(calculation_results, calculation, results), require_query}}
+              {:error, error} ->
+                {:error, error}
 
-        {:error, error} ->
-          {:halt, {:error, error}}
-      end
-    end)
-    |> case do
-      {:ok, calculation_results, require_query} ->
-        Enum.reduce(calculation_results, results, fn {calculation, values}, records ->
-          if calculation.load do
-            :lists.zipwith(
-              fn record, value -> Map.put(record, calculation.name, value) end,
-              records,
-              values
-            )
-          else
-            :lists.zipwith(
-              fn record, value ->
-                %{record | calculations: Map.put(record.calculations, calculation.name, value)}
-              end,
-              records,
-              values
-            )
-          end
-        end)
-        |> run_calculation_query(require_query, query)
+              values ->
+                {:ok,
+                 %{
+                   values: values,
+                   load?: not is_nil(calculation.load)
+                 }}
+            end
+          end),
+        path: path ++ [:calculation_results, calculation.name],
+        name: "#{inspect(path)} calculation #{calculation.name}"
+      )
+    else
+      Request.new(
+        resource: resource,
+        api: api,
+        action: action,
+        error_path: error_path,
+        query: query,
+        authorize?: false,
+        async?: true,
+        data:
+          Request.resolve([], fn _ ->
+            case run_calculation_query(results, [calculation], query) do
+              {:ok, results_with_calc} ->
+                {:ok,
+                 %{
+                   values:
+                     Enum.map(results_with_calc, fn record ->
+                       if calculation.load do
+                         Map.get(record, calculation.name)
+                       else
+                         Map.get(record.calculations, calculation.name)
+                       end
+                     end),
+                   load?: not is_nil(calculation.load)
+                 }}
 
-      {:error, error} ->
-        {:error, error}
+              other ->
+                other
+            end
+          end),
+        path: path ++ [:calculation_results, calculation.name],
+        name: "#{inspect(path)} calculation #{calculation.name}"
+      )
     end
   end
 
-  defp run_calculation_query(results, [], _), do: {:ok, results}
+  defp add_calculation_values(
+         results,
+         resource,
+         api,
+         action,
+         error_path,
+         path,
+         query,
+         calculations,
+         :error
+       )
+       when calculations != [] do
+    {:requests,
+     Enum.map(
+       calculations,
+       &calculation_request(
+         calculations,
+         resource,
+         api,
+         action,
+         error_path,
+         path,
+         results,
+         &1,
+         query
+       )
+     )}
+  end
+
+  defp add_calculation_values(
+         results,
+         _resource,
+         _api,
+         _action,
+         _error_path,
+         _path,
+         _query,
+         _calculations,
+         calculation_values
+       ) do
+    if calculation_values == :error do
+      {:ok, results}
+    else
+      {:ok,
+       Enum.reduce(calculation_values, results, fn {name, config}, results ->
+         add_calc_to_results(results, name, config[:data])
+       end)}
+    end
+  end
+
+  defp add_calc_to_results(results, name, config) do
+    if config[:load?] do
+      :lists.zipwith(
+        fn record, value -> Map.put(record, name, value) end,
+        results,
+        config[:values]
+      )
+    else
+      :lists.zipwith(
+        fn record, value ->
+          %{record | calculations: Map.put(record.calculations, name, value)}
+        end,
+        results,
+        config[:values]
+      )
+    end
+  end
 
   defp run_calculation_query(results, calculations, query) do
     pkey = Ash.Resource.Info.primary_key(query.resource)
@@ -1141,38 +1272,11 @@ defmodule Ash.Actions.Read do
          query <- Ash.Query.filter(query, ^[or: pkey_filter]),
          {:ok, data_layer_query} <- Ash.Query.data_layer_query(query),
          {:ok, data_layer_query} <-
-           add_calculations(data_layer_query, query, calculations),
-         {:ok, calculation_results} <-
-           Ash.DataLayer.run_query(
-             data_layer_query,
-             query.resource
-           ) do
-      results_with_calculations =
-        results
-        |> Enum.map(fn result ->
-          result_pkey = Map.take(result, pkey)
-          match = Enum.find(calculation_results, &(Map.take(&1, pkey) == result_pkey))
-
-          if match do
-            Enum.reduce(calculations, result, fn calculation, result ->
-              if calculation.load do
-                Map.put(result, calculation.load, Map.get(match, calculation.load))
-              else
-                Map.update!(result, :calculations, fn calculations ->
-                  Map.put(
-                    calculations,
-                    calculation.name,
-                    Map.get(match, :calculations)[calculation.name]
-                  )
-                end)
-              end
-            end)
-          else
-            result
-          end
-        end)
-
-      {:ok, results_with_calculations}
+           add_calculations(data_layer_query, query, calculations) do
+      Ash.DataLayer.run_query(
+        data_layer_query,
+        query.resource
+      )
     end
   end
 

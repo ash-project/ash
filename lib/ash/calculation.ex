@@ -15,7 +15,7 @@ defmodule Ash.Calculation do
 
       def describe(opts), do: "##{inspect(__MODULE__)}<#{inspect(opts)}>"
 
-      def load(query, _opts, _context), do: query
+      def load(_query, _opts, _context), do: []
 
       def select(_query, _opts, _context), do: []
 
@@ -28,7 +28,7 @@ defmodule Ash.Calculation do
   @callback calculate([Ash.Resource.record()], Keyword.t(), map) ::
               {:ok, [term]} | [term] | {:error, term} | :unknown
   @callback expression(Keyword.t(), map) :: any
-  @callback load(Ash.Query.t(), Keyword.t(), map) :: Ash.Query.t()
+  @callback load(Ash.Query.t(), Keyword.t(), map) :: Keyword.t()
   @callback select(Ash.Query.t(), Keyword.t(), map) :: list(atom)
 
   @optional_callbacks expression: 2, calculate: 3

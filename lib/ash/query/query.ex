@@ -939,7 +939,9 @@ defmodule Ash.Query do
                      module,
                      opts,
                      resource_calculation.type,
-                     Map.put(args, :context, query.context)
+                     Map.put(args, :context, query.context),
+                     resource_calculation.filterable?,
+                     resource_calculation.load
                    ) do
               fields_to_select =
                 resource_calculation.select
@@ -954,11 +956,14 @@ defmodule Ash.Query do
               }
 
               query =
-                query
-                |> module.load(
-                  opts,
-                  calculation.context
-                  |> Map.put(:context, query.context)
+                Ash.Query.load(
+                  query,
+                  module.load(
+                    query,
+                    opts,
+                    Map.put(calculation.context, :context, query.context)
+                  )
+                  |> Ash.Actions.Helpers.validate_calculation_load!(module)
                 )
 
               query
@@ -1038,7 +1043,9 @@ defmodule Ash.Query do
                  module,
                  opts,
                  resource_calculation.type,
-                 Map.put(args, :context, query.context)
+                 Map.put(args, :context, query.context),
+                 resource_calculation.filterable?,
+                 resource_calculation.load
                ) do
           calculation = %{calculation | load: field}
 
@@ -1048,11 +1055,14 @@ defmodule Ash.Query do
             |> Enum.concat(module.select(query, opts, calculation.context) || [])
 
           query =
-            query
-            |> module.load(
-              opts,
-              calculation.context
-              |> Map.put(:context, query.context)
+            Ash.Query.load(
+              query,
+              module.load(
+                query,
+                opts,
+                Map.put(calculation.context, :context, query.context)
+              )
+              |> Ash.Actions.Helpers.validate_calculation_load!(module)
             )
             |> Ash.Query.load(resource_calculation.load || [])
 
@@ -1477,8 +1487,6 @@ defmodule Ash.Query do
 
   The `module_and_opts` argument accepts either a `module` or a `{module, opts}`. For more information
   on what that module should look like, see `Ash.Calculation`.
-
-  More features for calculations, like passing anonymous functions, will be supported in the future.
   """
   def calculate(query, name, module_and_opts, type, context \\ %{}) do
     query = to_query(query)
@@ -1494,11 +1502,14 @@ defmodule Ash.Query do
         fields_to_select = module.select(query, opts, calculation.context) || []
 
         query =
-          query
-          |> module.load(
-            opts,
-            calculation.context
-            |> Map.put(:context, query.context)
+          Ash.Query.load(
+            query,
+            module.load(
+              query,
+              opts,
+              Map.put(calculation.context, :context, query.context)
+            )
+            |> Ash.Actions.Helpers.validate_calculation_load!(module)
           )
 
         calculation = %{calculation | select: fields_to_select}
@@ -1832,11 +1843,14 @@ defmodule Ash.Query do
             calculation = %{calculation | load: name, select: fields_to_select}
 
             query =
-              query
-              |> module.load(
-                opts,
-                calculation.context
-                |> Map.put(:context, query.context)
+              Ash.Query.load(
+                query,
+                module.load(
+                  query,
+                  opts,
+                  Map.put(calculation.context, :context, query.context)
+                )
+                |> Ash.Actions.Helpers.validate_calculation_load!(module)
               )
 
             Ash.Query.load(query, resource_load)

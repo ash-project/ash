@@ -208,7 +208,9 @@ defmodule Ash.Actions.Sort do
              module,
              opts,
              type,
-             Map.put(input, :context, context)
+             Map.put(input, :context, context),
+             calc.filterable?,
+             calc.load
            ) do
       {sorts ++ [{calc, order}], errors}
     else

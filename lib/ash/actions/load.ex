@@ -908,10 +908,14 @@ defmodule Ash.Actions.Load do
 
   defp load_for_calcs(query) do
     Enum.reduce(query.calculations || %{}, query, fn {_, calc}, query ->
-      calc.module.load(
+      Ash.Query.load(
         query,
-        calc.opts,
-        Map.put(calc.context, :context, query.context)
+        calc.module.load(
+          query,
+          calc.opts,
+          Map.put(calc.context, :context, query.context)
+        )
+        |> Ash.Actions.Helpers.validate_calculation_load!(calc.module)
       )
     end)
   end
