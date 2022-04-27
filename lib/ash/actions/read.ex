@@ -1094,6 +1094,8 @@ defmodule Ash.Actions.Read do
          calculation,
          query
        ) do
+    all_calcs = Enum.map(all_calcs, & &1.name)
+
     dependencies =
       query
       |> calculation.module.load(calculation.opts, calculation.context)
@@ -1105,11 +1107,12 @@ defmodule Ash.Actions.Read do
         key ->
           key
       end)
+      |> Enum.uniq()
       |> Enum.filter(fn key ->
         key in all_calcs
       end)
       |> Enum.map(fn key ->
-        path ++ [:calculation_results, key]
+        path ++ [:calculation_results, key, :data]
       end)
 
     if function_exported?(calculation.module, :calculate, 3) do

@@ -23,6 +23,31 @@ defmodule Ash.Test.CalculationTest do
     end
   end
 
+  defmodule ConcatWithLoad do
+    # An example concatenation calculation, that accepts the delimeter as an argument
+    use Ash.Calculation
+
+    def init(opts) do
+      if opts[:keys] && is_list(opts[:keys]) && Enum.all?(opts[:keys], &is_atom/1) do
+        {:ok, opts}
+      else
+        {:error, "Expected a `keys` option for which keys to concat"}
+      end
+    end
+
+    def load(query, opts, _) do
+      opts[:keys]
+    end
+
+    def calculate(records, opts, _) do
+      Enum.map(records, fn record ->
+        Enum.map_join(opts[:keys], " ", fn key ->
+          to_string(Map.get(record, key))
+        end)
+      end)
+    end
+  end
+
   defmodule User do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -52,6 +77,10 @@ defmodule Ash.Test.CalculationTest do
           default: " ",
           constraints: [allow_empty?: true, trim?: false]
       end
+
+      calculate :full_name_plus_full_name,
+                :string,
+                {ConcatWithLoad, keys: [:full_name, :full_name]}
 
       calculate :expr_full_name, :string, expr(first_name <> " " <> last_name) do
         allow_async? true
@@ -127,6 +156,17 @@ defmodule Ash.Test.CalculationTest do
       |> Enum.sort()
 
     assert full_names == ["brian cranston", "zach daniel"]
+  end
+
+  test "it loads anything specified by the load callback" do
+    full_names =
+      User
+      |> Ash.Query.load(:full_name_plus_full_name)
+      |> Api.read!()
+      |> Enum.map(& &1.full_name_plus_full_name)
+      |> Enum.sort()
+
+    assert full_names == ["brian cranston brian cranston", "zach daniel zach daniel"]
   end
 
   test "arguments can be supplied" do
