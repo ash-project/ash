@@ -48,6 +48,20 @@ defmodule Ash.Test.CalculationTest do
     end
   end
 
+  defmodule BestFriendsName do
+    use Ash.Calculation
+
+    def load(_query, opts, _) do
+      [best_friend: :full_name]
+    end
+
+    def calculate(records, opts, _) do
+      Enum.map(records, fn record ->
+        record.best_friend && record.best_friend.full_name
+      end)
+    end
+  end
+
   defmodule User do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -84,6 +98,8 @@ defmodule Ash.Test.CalculationTest do
         allow_async? true
       end
 
+      calculate :best_friends_name, :string, BestFriendsName
+
       calculate :conditional_full_name,
                 :string,
                 expr(if(first_name and last_name, first_name <> " " <> last_name, "(none)"))
@@ -113,6 +129,10 @@ defmodule Ash.Test.CalculationTest do
                   end
                 )
     end
+
+    relationships do
+      belongs_to :best_friend, __MODULE__
+    end
   end
 
   defmodule Registry do
@@ -134,15 +154,18 @@ defmodule Ash.Test.CalculationTest do
   end
 
   setup do
-    User
-    |> Ash.Changeset.new(%{first_name: "zach", last_name: "daniel"})
-    |> Api.create!()
+    user1 =
+      User
+      |> Ash.Changeset.new(%{first_name: "zach", last_name: "daniel"})
+      |> Api.create!()
 
-    User
-    |> Ash.Changeset.new(%{first_name: "brian", last_name: "cranston"})
-    |> Api.create!()
+    user2 =
+      User
+      |> Ash.Changeset.new(%{first_name: "brian", last_name: "cranston"})
+      |> Ash.Changeset.replace_relationship(:best_friend, user1)
+      |> Api.create!()
 
-    :ok
+    %{user1: user1, user2: user2}
   end
 
   test "it uses default arguments" do
@@ -165,6 +188,17 @@ defmodule Ash.Test.CalculationTest do
       |> Enum.sort()
 
     assert full_names == ["brian cranston brian cranston", "zach daniel zach daniel"]
+  end
+
+  test "nested calculations are loaded if necessary" do
+    best_friends_names =
+      User
+      |> Ash.Query.load(:best_friends_name)
+      |> Api.read!()
+      |> Enum.map(& &1.best_friends_name)
+      |> Enum.sort()
+
+    assert best_friends_names == [nil, "zach daniel"]
   end
 
   test "arguments can be supplied" do
