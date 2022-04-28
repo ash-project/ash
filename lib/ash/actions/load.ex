@@ -739,30 +739,43 @@ defmodule Ash.Actions.Load do
   end
 
   defp lateral_join?(query, relationship, source_data) do
-    {offset, limit} = offset_and_limit(query)
+    action =
+      case relationship.read_action do
+        nil ->
+          Ash.Resource.Info.primary_action!(relationship.destination, :read)
 
-    resources =
-      [relationship.source, Map.get(relationship, :through), relationship.destination]
-      |> Enum.reject(&is_nil/1)
+        action ->
+          Ash.Resource.Info.action(relationship.destination, action)
+      end
 
-    cond do
-      limit == 1 && is_nil(relationship.context) && is_nil(relationship.filter) &&
-        is_nil(relationship.sort) && relationship.type != :many_to_many ->
-        false
+    if action.manual do
+      false
+    else
+      {offset, limit} = offset_and_limit(query)
 
-      limit == 1 && (source_data == :unknown || Enum.count_until(source_data, 2) == 1) &&
-          relationship.type != :many_to_many ->
-        false
+      resources =
+        [relationship.source, Map.get(relationship, :through), relationship.destination]
+        |> Enum.reject(&is_nil/1)
 
-      true ->
-        lateral_join =
-          (limit || offset) &&
-            Ash.DataLayer.data_layer_can?(
-              relationship.source,
-              {:lateral_join, resources}
-            )
+      cond do
+        limit == 1 && is_nil(relationship.context) && is_nil(relationship.filter) &&
+          is_nil(relationship.sort) && relationship.type != :many_to_many ->
+          false
 
-        !!lateral_join
+        limit == 1 && (source_data == :unknown || Enum.count_until(source_data, 2) == 1) &&
+            relationship.type != :many_to_many ->
+          false
+
+        true ->
+          lateral_join =
+            (limit || offset) &&
+              Ash.DataLayer.data_layer_can?(
+                relationship.source,
+                {:lateral_join, resources}
+              )
+
+          !!lateral_join
+      end
     end
   end
 

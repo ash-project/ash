@@ -8,6 +8,7 @@ defmodule Ash.Resource.Actions.Read do
     :filter,
     :description,
     :get?,
+    :manual,
     modify_query: nil,
     transaction?: false,
     arguments: [],
@@ -19,6 +20,7 @@ defmodule Ash.Resource.Actions.Read do
   @type t :: %__MODULE__{
           type: :read,
           name: atom,
+          manual: atom | {atom, Keyword.t()} | nil,
           primary?: boolean,
           touches_resources: list(atom),
           description: String.t()
@@ -34,6 +36,39 @@ defmodule Ash.Resource.Actions.Read do
                     type: :any,
                     doc:
                       "A filter template, that may contain actor references. See `Ash.Filter` for more on templates"
+                  ],
+                  manual: [
+                    type: {:ash_behaviour, Ash.Resource.ManualRead},
+                    doc: """
+                    Allows for read actions that are fetched manually. WARNING: EXPERIMENTAL
+
+                    Manual read actions will simply be handed the ash query and the data layer query.
+                    If you simply want to customize/intercept the query before it is sent to the data layer
+                    then use `modify_query` instead. Using them in conjunction can help ensure that calculations and aggregates
+                    are all correct. For example, you could modify the query to alter/replace the where clause/filter using
+                    `modify_query` which will affect which records calculations are returned for. Then you can customize how it is
+                    run using `manual`.
+
+                    ```elixir
+                    # in the resource
+                    actions do
+                      read :action_name do
+                        manual MyApp.ManualRead
+                        # or `{MyApp.ManualRead, ...opts}`
+                      end
+                    end
+
+                    # the implementation
+                    defmodule MyApp.ManualRead do
+                      use Ash.Resource.ManualRead
+
+                      def read(ash_query, ecto_query, _opts, _context) do
+                        ...
+                        {:ok, query_results} | {:error, error}
+                      end
+                    end
+                    ```
+                    """
                   ],
                   get?: [
                     type: :boolean,

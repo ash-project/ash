@@ -32,15 +32,12 @@ defmodule Ash.Test.Actions.BelongsToTest do
     end
 
     actions do
-      read :read
-      create :create, primary?: true
+      defaults([:create, :read, :update, :destroy])
 
       create :create_with_reviewer do
         argument :reviewer_id, :uuid, allow_nil?: true
         change manage_relationship(:reviewer_id, :reviewer, type: :replace)
       end
-
-      update :update, primary?: true
 
       update :update_with_reviewer do
         argument :reviewer_id, :uuid, allow_nil?: true
@@ -70,8 +67,7 @@ defmodule Ash.Test.Actions.BelongsToTest do
     end
 
     actions do
-      read :read
-      create :create
+      defaults [:create, :read, :update, :destroy]
     end
 
     attributes do

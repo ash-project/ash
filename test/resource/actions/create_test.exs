@@ -29,7 +29,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.CreateTest do
       assert [
                %Ash.Resource.Actions.Create{
                  name: :create,
-                 primary?: true,
+                 primary?: false,
                  type: :create
                }
              ] = Ash.Resource.Info.actions(Post)

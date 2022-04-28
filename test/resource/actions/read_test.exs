@@ -29,7 +29,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.ReadTest do
       assert [
                %Ash.Resource.Actions.Read{
                  name: :read,
-                 primary?: true,
+                 primary?: false,
                  type: :read
                }
              ] = Ash.Resource.Info.actions(Post)

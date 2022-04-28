@@ -15,8 +15,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       ]
 
     actions do
-      read :read
-      create :create
+      defaults [:create, :read]
     end
 
     attributes do
@@ -62,8 +61,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
     use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
 
     actions do
-      read :read
-      create :create
+      defaults [:create, :read]
     end
 
     attributes do
@@ -93,8 +91,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
     use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
 
     actions do
-      read :read
-      create :create
+      defaults [:create, :read]
     end
 
     relationships do
@@ -111,8 +108,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
     use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
 
     actions do
-      read :read
-      create :create
+      defaults [:create, :read]
     end
 
     attributes do

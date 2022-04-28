@@ -29,9 +29,7 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     actions do
-      read :read
-      create :create
-      update :update
+      defaults [:create, :read, :update, :destroy]
     end
 
     attributes do
@@ -55,9 +53,7 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     actions do
-      read :read
-      create :create
-      update :update
+      defaults [:create, :read, :update, :destroy]
     end
 
     attributes do
@@ -85,10 +81,7 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     actions do
-      read :read
-
-      create :create
-      update :update
+      defaults [:create, :read, :update, :destroy]
     end
 
     relationships do
@@ -111,11 +104,7 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     actions do
-      read :read
-
-      create :create
-
-      update :update
+      defaults [:create, :read, :update, :destroy]
     end
 
     attributes do
@@ -162,10 +151,10 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     actions do
-      read :read
-      create :create
+      defaults [:create, :read, :update]
 
       destroy :destroy do
+        primary? true
         soft? true
 
         change set_attribute(:deleted_at, &DateTime.utc_now/0)
@@ -596,7 +585,7 @@ defmodule Ash.Test.Filter.FilterTest do
       SoftDeletePost
       |> new(%{})
       |> Api.create!()
-      |> Api.destroy()
+      |> Api.destroy!()
 
       assert [] = Api.read!(SoftDeletePost)
     end

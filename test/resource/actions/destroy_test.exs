@@ -29,7 +29,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.DestroyTest do
       assert [
                %Ash.Resource.Actions.Destroy{
                  name: :destroy,
-                 primary?: true,
+                 primary?: false,
                  type: :destroy
                }
              ] = Ash.Resource.Info.actions(Post)

@@ -81,8 +81,7 @@ defmodule Ash.Actions.PaginationTest do
         pagination keyset?: true, offset?: true, countable: true, default_limit: 25
       end
 
-      create :create
-      update :update
+      defaults [:create, :update]
     end
 
     attributes do

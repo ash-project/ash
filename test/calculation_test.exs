@@ -35,7 +35,7 @@ defmodule Ash.Test.CalculationTest do
       end
     end
 
-    def load(query, opts, _) do
+    def load(_query, opts, _) do
       opts[:keys]
     end
 
@@ -57,9 +57,7 @@ defmodule Ash.Test.CalculationTest do
     end
 
     actions do
-      read :read
-      create :create
-      update :update
+      defaults [:create, :read, :update, :destroy]
     end
 
     attributes do

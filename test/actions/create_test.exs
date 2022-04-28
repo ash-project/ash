@@ -21,9 +21,7 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
-      read(:read)
-      create(:create)
-      update(:update)
+      defaults [:create, :read, :update, :destroy]
     end
   end
 
@@ -37,9 +35,7 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
-      read(:read)
-      create(:create)
-      update(:update)
+      defaults [:create, :read, :update, :destroy]
     end
 
     attributes do
@@ -63,9 +59,7 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
-      read(:read)
-      create(:create)
-      update(:update)
+      defaults [:create, :read, :update, :destroy]
     end
 
     attributes do
@@ -114,8 +108,7 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
-      read :read
-      create :create, primary?: true
+      defaults [:create, :read, :update, :destroy]
 
       create :only_allow_name do
         accept([:name])
@@ -130,8 +123,6 @@ defmodule Ash.Test.Actions.CreateTest do
         manual? true
         change ManualCreateAuthor
       end
-
-      update :update
     end
 
     attributes do
@@ -163,10 +154,7 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
-      read(:read)
-
-      create(:create)
-      update(:update)
+      defaults [:create, :read, :update, :destroy]
     end
 
     relationships do
@@ -191,17 +179,11 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
-      read(:read)
-
-      create :create do
-        primary? true
-      end
+      defaults [:create, :read, :update, :destroy]
 
       create :create_with_required do
         require_attributes [:tag]
       end
-
-      update(:update)
     end
 
     attributes do
@@ -247,10 +229,7 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
-      read(:read)
-
-      create(:create)
-      update(:update)
+      defaults [:create, :read, :update, :destroy]
     end
 
     attributes do

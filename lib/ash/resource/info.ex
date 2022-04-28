@@ -414,7 +414,7 @@ defmodule Ash.Resource.Info do
           Ash.Resource.Actions.action() | no_return
   def primary_action!(resource, type) do
     case primary_action(resource, type) do
-      nil -> raise "Required primary #{type} action for #{inspect(resource)}"
+      nil -> raise "Required primary #{type} action for #{inspect(resource)}. ("
       action -> action
     end
   end
@@ -425,11 +425,7 @@ defmodule Ash.Resource.Info do
   def primary_action(resource, type) do
     resource
     |> actions()
-    |> Enum.filter(&(&1.type == type))
-    |> case do
-      [action] -> action
-      actions -> Enum.find(actions, & &1.primary?)
-    end
+    |> Enum.find(&(&1.type == type && &1.primary?))
   end
 
   @doc "Returns the configured default actions"

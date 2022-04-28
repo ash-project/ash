@@ -25,18 +25,6 @@ defmodule Ash.Resource.Transformers.ValidatePrimaryActions do
       {_type, []}, {:ok, dsl_state} ->
         {:cont, {:ok, dsl_state}}
 
-      {type, [action]}, {:ok, dsl_state} ->
-        {:cont,
-         {:ok,
-          Transformer.replace_entity(
-            dsl_state,
-            [:actions],
-            %{action | primary?: true},
-            fn replacing_action ->
-              replacing_action.name == action.name && replacing_action.type == type
-            end
-          )}}
-
       {type, actions}, {:ok, dsl_state} ->
         case Enum.count_until(actions, & &1.primary?, 2) do
           2 ->

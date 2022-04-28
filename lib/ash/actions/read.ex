@@ -568,6 +568,8 @@ defmodule Ash.Actions.Read do
       [path ++ [:fetch, :query]],
       fn data ->
         ash_query = get_in(data, path ++ [:fetch, :query])
+        actor = data[:actor]
+        authorize? = data[:authorize?]
 
         initial_query = ash_query.context[:initial_query]
 
@@ -583,7 +585,8 @@ defmodule Ash.Actions.Read do
             ash_query.aggregates
           )
 
-        can_be_in_query? = not Keyword.has_key?(request_opts, :initial_data)
+        can_be_in_query? =
+          not Keyword.has_key?(request_opts, :initial_data) && !ash_query.action.manual
 
         authorizing? =
           if request_opts[:authorize?] == false do
@@ -728,7 +731,13 @@ defmodule Ash.Actions.Read do
                    {:ok, query} <-
                      Ash.DataLayer.offset(query, ash_query.offset, ash_query.resource),
                    {:ok, query} <- set_tenant(query, ash_query),
-                   {:ok, results} <- run_query(ash_query, query),
+                   {:ok, results} <-
+                     run_query(ash_query, query, %{
+                       actor: actor,
+                       tenant: ash_query.tenant,
+                       authorize?: authorize?,
+                       api: ash_query.api
+                     }),
                    :ok <- validate_get(results, ash_query.action, ash_query),
                    {:ok, results, after_notifications} <-
                      run_after_action(initial_query, results),
@@ -1031,7 +1040,8 @@ defmodule Ash.Actions.Read do
              }
            }
          } = ash_query,
-         query
+         query,
+         _context
        ) do
     query
     |> Ash.DataLayer.run_query_with_lateral_join(
@@ -1042,9 +1052,19 @@ defmodule Ash.Actions.Read do
     |> Helpers.select(ash_query)
   end
 
-  defp run_query(%{resource: resource} = ash_query, query) do
+  defp run_query(%{resource: resource, action: %{manual: nil}} = ash_query, query, _context) do
     query
     |> Ash.DataLayer.run_query(resource)
+    |> Helpers.select(ash_query)
+  end
+
+  defp run_query(
+         %{action: %{manual: {mod, opts}}} = ash_query,
+         query,
+         context
+       ) do
+    ash_query
+    |> mod.read(query, opts, context)
     |> Helpers.select(ash_query)
   end
 

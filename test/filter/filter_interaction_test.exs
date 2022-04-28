@@ -17,9 +17,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     end
 
     actions do
-      read(:read)
-      create(:create)
-      update(:update)
+      defaults [:create, :read, :update, :destroy]
     end
 
     attributes do
@@ -41,9 +39,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     end
 
     actions do
-      read(:read)
-      create(:create)
-      update(:update)
+      defaults [:create, :read, :update, :destroy]
     end
 
     attributes do
@@ -68,10 +64,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
 
     actions do
-      read(:read)
-
-      create(:create)
-      update(:update)
+      defaults [:create, :read, :update, :destroy]
     end
 
     relationships do
@@ -92,13 +85,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
 
     actions do
-      read(:read)
-
-      create(:create)
-
-      update(:update)
-
-      destroy(:destroy)
+      defaults [:create, :read, :update, :destroy]
     end
 
     attributes do

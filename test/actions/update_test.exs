@@ -35,9 +35,7 @@ defmodule Ash.Test.Actions.UpdateTest do
     end
 
     actions do
-      read :read
-      create :create
-      update :update, primary?: true
+      defaults [:create, :read, :update, :destroy]
 
       update :set_private_attribute_to_nil do
         change set_attribute(:non_nil_private, nil)
@@ -97,9 +95,7 @@ defmodule Ash.Test.Actions.UpdateTest do
     end
 
     actions do
-      read :read
-      create :create
-      update :update, primary?: true
+      defaults [:create, :read, :update, :destroy]
 
       update :only_allow_name do
         accept([:name])
@@ -200,6 +196,7 @@ defmodule Ash.Test.Actions.UpdateTest do
       defaults [:create, :update, :destroy]
 
       read :read do
+        primary? true
         pagination offset?: true, required?: true
       end
     end

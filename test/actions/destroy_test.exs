@@ -14,10 +14,7 @@ defmodule Ash.Test.Actions.DestroyTest do
     end
 
     actions do
-      read :read
-      create :create
-      update :update
-      destroy :destroy
+      defaults [:create, :read, :update, :destroy]
     end
 
     attributes do
@@ -52,13 +49,7 @@ defmodule Ash.Test.Actions.DestroyTest do
     end
 
     actions do
-      read :read
-      create :create
-      update :update
-
-      destroy :destroy do
-        primary? true
-      end
+      defaults [:create, :read, :update, :destroy]
 
       destroy :manual do
         accept []
@@ -94,10 +85,7 @@ defmodule Ash.Test.Actions.DestroyTest do
     end
 
     actions do
-      read :read
-      create :create
-      update :update
-      destroy :destroy
+      defaults [:create, :read, :update, :destroy]
     end
 
     attributes do

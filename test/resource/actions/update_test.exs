@@ -27,7 +27,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.UpdateTest do
       assert [
                %Ash.Resource.Actions.Update{
                  name: :update,
-                 primary?: true,
+                 primary?: false,
                  type: :update
                }
              ] = Ash.Resource.Info.actions(Post)

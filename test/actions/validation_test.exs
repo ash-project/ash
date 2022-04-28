@@ -12,10 +12,7 @@ defmodule Ash.Test.Actions.ValidationTest do
     end
 
     actions do
-      read :read
-      create :create
-      update :update
-      destroy :destroy
+      defaults [:create, :read, :update, :destroy]
     end
 
     validations do
