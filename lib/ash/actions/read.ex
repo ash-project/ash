@@ -1154,7 +1154,7 @@ defmodule Ash.Actions.Read do
               end)
 
             case calculation.module.calculate(temp_results, calculation.opts, calculation.context) do
-              {:ok, :unknown} ->
+              :unknown ->
                 case run_calculation_query(results, [calculation], query) do
                   {:ok, results_with_calc} ->
                     {:ok,
