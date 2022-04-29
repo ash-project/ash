@@ -55,7 +55,7 @@ defmodule Ash.Test.CalculationTest do
       [best_friend: :full_name]
     end
 
-    def calculate(records, opts, _) do
+    def calculate(records, _opts, _) do
       Enum.map(records, fn record ->
         record.best_friend && record.best_friend.full_name
       end)

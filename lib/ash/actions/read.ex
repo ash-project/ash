@@ -1154,6 +1154,26 @@ defmodule Ash.Actions.Read do
               end)
 
             case calculation.module.calculate(temp_results, calculation.opts, calculation.context) do
+              {:ok, :unknown} ->
+                case run_calculation_query(results, [calculation], query) do
+                  {:ok, results_with_calc} ->
+                    {:ok,
+                     %{
+                       values:
+                         Enum.map(results_with_calc, fn record ->
+                           if calculation.load do
+                             Map.get(record, calculation.name)
+                           else
+                             Map.get(record.calculations, calculation.name)
+                           end
+                         end),
+                       load?: not is_nil(calculation.load)
+                     }}
+
+                  other ->
+                    other
+                end
+
               {:ok, values} ->
                 {:ok,
                  %{
