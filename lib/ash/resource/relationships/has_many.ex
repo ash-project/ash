@@ -17,6 +17,7 @@ defmodule Ash.Resource.Relationships.HasMany do
     :violation_message,
     :manual,
     :api,
+    no_fields?: false,
     could_be_related_at_creation?: false,
     validate_destination_field?: true,
     cardinality: :many,
@@ -30,6 +31,7 @@ defmodule Ash.Resource.Relationships.HasMany do
           writable?: boolean,
           read_action: atom,
           filter: Ash.Filter.t() | nil,
+          no_fields?: boolean,
           name: atom,
           type: Ash.Type.t(),
           destination: Ash.Resource.t(),
@@ -48,7 +50,8 @@ defmodule Ash.Resource.Relationships.HasMany do
 
   @opt_schema Ash.OptionsHelpers.merge_schemas(
                 [
-                  manual()
+                  manual(),
+                  no_fields()
                 ],
                 @global_opts,
                 "Relationship Options"

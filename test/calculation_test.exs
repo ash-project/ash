@@ -51,7 +51,7 @@ defmodule Ash.Test.CalculationTest do
   defmodule BestFriendsName do
     use Ash.Calculation
 
-    def load(_query, opts, _) do
+    def load(_query, _opts, _) do
       [best_friend: :full_name]
     end
 

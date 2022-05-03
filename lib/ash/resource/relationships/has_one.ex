@@ -19,6 +19,7 @@ defmodule Ash.Resource.Relationships.HasOne do
     :not_found_message,
     :violation_message,
     :manual,
+    no_fields?: false,
     could_be_related_at_creation?: false,
     validate_destination_field?: true,
     cardinality: :one,
@@ -33,6 +34,7 @@ defmodule Ash.Resource.Relationships.HasOne do
           writable?: boolean,
           name: atom,
           read_action: atom,
+          no_fields?: boolean,
           type: Ash.Type.t(),
           filter: Ash.Filter.t() | nil,
           destination: Ash.Resource.t(),
@@ -51,7 +53,7 @@ defmodule Ash.Resource.Relationships.HasOne do
                |> OptionsHelpers.set_default!(:source_field, :id)
 
   @opt_schema Ash.OptionsHelpers.merge_schemas(
-                [manual()] ++
+                [manual(), no_fields()] ++
                   [
                     required?: [
                       type: :boolean,

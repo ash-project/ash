@@ -97,6 +97,7 @@ locals_without_parens = [
   modify_query: 1,
   module: 1,
   name: 1,
+  no_fields?: 1,
   not_found_message: 1,
   on: 1,
   only_when_valid?: 1,

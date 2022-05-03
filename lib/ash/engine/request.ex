@@ -153,7 +153,8 @@ defmodule Ash.Engine.Request do
           nil
 
         other ->
-          raise "Got a weird thing #{inspect(other)}"
+          raise ArgumentError,
+            message: "Unexpected value passed to `Ash.Query.new/1`: #{inspect(other)}"
       end
 
     data =

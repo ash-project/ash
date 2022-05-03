@@ -74,8 +74,15 @@ defmodule Ash.Actions.Load do
           related_query.tenant
         )
 
+      query =
+        if Map.get(relationship, :no_fields?) do
+          query
+        else
+          Ash.Query.ensure_selected(query, relationship.source_field)
+        end
+
       {
-        Ash.Query.ensure_selected(query, relationship.source_field),
+        query,
         requests ++
           further_requests ++
           do_requests(
@@ -132,6 +139,12 @@ defmodule Ash.Actions.Load do
     data
   end
 
+  defp attach_to_many_loads(value, %{name: name, no_fields?: true}, data, lead_path) do
+    map_or_update(data, lead_path, fn record ->
+      Map.put(record, name, List.wrap(value))
+    end)
+  end
+
   defp attach_to_many_loads(value, last_relationship, data, lead_path) when is_map(value) do
     primary_key = Ash.Resource.Info.primary_key(last_relationship.source)
 
@@ -147,6 +160,12 @@ defmodule Ash.Actions.Load do
       source_key = Map.get(record, last_relationship.source_field)
       related_records = Map.get(values, source_key, [])
       Map.put(record, last_relationship.name, related_records)
+    end)
+  end
+
+  defp attach_to_one_loads(value, %{name: name, no_fields?: true}, data, lead_path) do
+    map_or_update(data, lead_path, fn record ->
+      Map.put(record, name, value |> List.wrap() |> Enum.at(0))
     end)
   end
 
@@ -340,10 +359,7 @@ defmodule Ash.Actions.Load do
       query:
         load_query(
           relationship,
-          related_query,
-          path,
-          root_query,
-          request_path
+          related_query
         ),
       data:
         data(
@@ -601,10 +617,7 @@ defmodule Ash.Actions.Load do
           query:
             load_query(
               join_relationship,
-              related_query,
-              Enum.reverse(join_relationship_path),
-              root_query,
-              request_path
+              related_query
             ),
           data:
             Request.resolve(dependencies, fn
@@ -966,105 +979,24 @@ defmodule Ash.Actions.Load do
     end
   end
 
-  defp load_query_with_reverse_path(
-         root_query,
-         related_query,
-         reverse_path,
-         root_data_filter
-       ) do
-    case Ash.Filter.parse(root_query.resource, root_query.filter, %{}, %{}) do
-      {:ok, nil} ->
-        related_query
-        |> Ash.Query.unset(:load)
-        |> Ash.Query.filter(
-          ^put_nested_relationship(
-            [],
-            reverse_path,
-            root_data_filter,
-            false
-          )
-        )
-        |> Ash.Query.filter(^related_query.filter)
-        |> extract_errors()
-
-      {:ok, parsed} ->
-        filter =
-          put_nested_relationship(
-            [],
-            reverse_path,
-            root_data_filter,
-            false
-          )
-
-        related_query
-        |> Ash.Query.unset(:load)
-        |> Ash.Query.filter(^filter)
-        |> Ash.Query.filter(^put_nested_relationship([], reverse_path, parsed, false))
-        |> Ash.Query.filter(^related_query.filter)
-        |> extract_errors()
-
-      {:error, error} ->
-        {:error, error}
-    end
-  end
-
-  defp load_query(%{manual: manual}, related_query, _path, _root_query, _request_path)
+  defp load_query(%{manual: manual}, related_query)
        when not is_nil(manual) do
     related_query
   end
 
   defp load_query(
          relationship,
-         related_query,
-         path,
-         root_query,
-         request_path
+         related_query
        ) do
-    Request.resolve([request_path ++ [:data]], fn context ->
-      data =
-        case get_in(context, request_path ++ [:data, :results]) do
-          %page{results: results} when page in [Ash.Page.Keyset, Ash.Page.Offset] ->
-            results
-
-          data ->
-            data
-        end
-
-      root_data_filter =
-        case data do
-          [] ->
-            false
-
-          [%resource{} | _] = items ->
-            pkey = Ash.Resource.Info.primary_key(resource)
-            [or: Enum.map(items, fn item -> item |> Map.take(pkey) |> Enum.to_list() end)]
-        end
-
-      path = Enum.reverse([relationship.name | Enum.map(path, & &1.name)])
-
-      case Ash.Resource.Info.reverse_relationship(
-             root_query.resource,
-             path
-           ) do
-        nil ->
-          relationship.destination
-          |> Ash.Query.new(related_query.api)
-          |> Ash.Query.filter(^related_query.filter)
-          |> extract_errors()
-
-        reverse_path ->
-          load_query_with_reverse_path(
-            root_query,
-            related_query,
-            reverse_path,
-            root_data_filter
-          )
-      end
-    end)
+    if Map.get(relationship, :no_fields?) do
+      relationship.destination
+      |> Ash.Query.new(related_query.api)
+    else
+      relationship.destination
+      |> Ash.Query.new(related_query.api)
+      |> Ash.Query.filter(^related_query.filter)
+    end
   end
-
-  defp extract_errors(%{errors: []} = item), do: {:ok, item}
-  defp extract_errors(%{errors: errors}), do: {:error, errors}
 
   defp true_load_query(relationship, query, data, path, request_path) do
     {source_field, path} =
@@ -1106,47 +1038,52 @@ defmodule Ash.Actions.Load do
   defp get_query(query, relationship, source_data, source_field) do
     {offset, limit} = offset_and_limit(query)
 
-    if lateral_join?(query, relationship, source_data) do
-      {:ok, Ash.Query.unset(query, :load)}
-    else
-      query =
-        if limit || offset do
-          Ash.Query.unset(query, [:limit, :offset])
-        else
-          query
-        end
+    cond do
+      lateral_join?(query, relationship, source_data) ->
+        {:ok, Ash.Query.unset(query, :load)}
 
-      related_data =
-        case source_data do
-          %page{results: results} when page in [Ash.Page.Keyset, Ash.Page.Offset] ->
-            results
+      Map.get(relationship, :no_fields?) ->
+        {:ok, query}
 
-          data ->
+      true ->
+        query =
+          if limit || offset do
+            Ash.Query.unset(query, [:limit, :offset])
+          else
+            query
+          end
+
+        related_data =
+          case source_data do
+            %page{results: results} when page in [Ash.Page.Keyset, Ash.Page.Offset] ->
+              results
+
+            data ->
+              data
+          end
+
+        ids =
+          Enum.flat_map(related_data, fn data ->
             data
-        end
+            |> Map.get(source_field)
+            |> List.wrap()
+          end)
 
-      ids =
-        Enum.flat_map(related_data, fn data ->
-          data
-          |> Map.get(source_field)
-          |> List.wrap()
-        end)
+        filter_value =
+          case ids do
+            [id] ->
+              id
 
-      filter_value =
-        case ids do
-          [id] ->
-            id
+            ids ->
+              [in: ids]
+          end
 
-          ids ->
-            [in: ids]
-        end
+        new_query =
+          query
+          |> Ash.Query.filter(^[{relationship.destination_field, filter_value}])
+          |> Ash.Query.unset(:load)
 
-      new_query =
-        query
-        |> Ash.Query.filter(^[{relationship.destination_field, filter_value}])
-        |> Ash.Query.unset(:load)
-
-      {:ok, new_query}
+        {:ok, new_query}
     end
   end
 
@@ -1237,31 +1174,5 @@ defmodule Ash.Actions.Load do
         Map.fetch(destination_rel, :source_field_on_join_table) &&
       is_nil(destination_rel.context) &&
       is_nil(rel.context)
-  end
-
-  defp put_nested_relationship(request_filter, path, value, records?) when not is_list(value) do
-    put_nested_relationship(request_filter, path, [value], records?)
-  end
-
-  defp put_nested_relationship(request_filter, [rel | rest], values, records?) do
-    [
-      {rel, put_nested_relationship(request_filter, rest, values, records?)}
-    ]
-  end
-
-  defp put_nested_relationship(request_filter, [], [{field, value}], _) do
-    [{field, value} | request_filter]
-  end
-
-  defp put_nested_relationship(request_filter, [], [{field, _} | _] = keys, _) do
-    [{field, [{:in, Enum.map(keys, &elem(&1, 1))}]} | request_filter]
-  end
-
-  defp put_nested_relationship(request_filter, [], [values], _) do
-    List.wrap(request_filter) ++ List.wrap(values)
-  end
-
-  defp put_nested_relationship(request_filter, [], values, _) do
-    Keyword.update(request_filter, :or, values, &Kernel.++(&1, values))
   end
 end
