@@ -59,6 +59,29 @@ defmodule Ash.EctoResource do
           case @source_schema.__schema__(:association, assoc) do
             %Ecto.Association.BelongsTo{field: field, related: related} ->
               belongs_to(field, Module.concat(related, @resource_module))
+
+            %Ecto.Association.Has{
+              cardinality: :one,
+              field: field,
+              related: related,
+              related_key: related_key
+            } ->
+              has_one(field, Module.concat(related, @resource_module),
+                destination_field: related_key
+              )
+
+            %Ecto.Association.Has{
+              cardinality: :many,
+              field: field,
+              related: related,
+              related_key: related_key
+            } ->
+              has_many(field, Module.concat(related, @resource_module),
+                destination_field: related_key
+              )
+
+            %Ecto.Association.ManyToMany{} ->
+              raise "many_to_many relationships not currently supported"
           end
         end
       end
