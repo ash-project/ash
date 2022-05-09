@@ -193,7 +193,7 @@ defmodule Ash.Test.CalculationTest do
   test "nested calculations are loaded if necessary" do
     best_friends_names =
       User
-      |> Ash.Query.load(:best_friends_name)
+      |> Ash.Query.load([:best_friends_name, best_friend: [:expr_full_name]])
       |> Api.read!()
       |> Enum.map(& &1.best_friends_name)
       |> Enum.sort()

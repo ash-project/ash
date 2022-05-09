@@ -22,7 +22,7 @@ defmodule Ash.Resource.Change.SetAttribute do
 
   def change(changeset, opts, _) do
     case opts[:value] do
-      {:arg, arg} ->
+      {arg_key, arg} when arg_key in [:arg, :_arg] ->
         case Ash.Changeset.fetch_argument(changeset, arg) do
           {:ok, value} ->
             if opts[:new?] do
