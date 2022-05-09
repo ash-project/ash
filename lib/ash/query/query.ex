@@ -2136,10 +2136,14 @@ defmodule Ash.Query do
   defp merge_load(left, []), do: sanitize_loads(left)
 
   defp merge_load(
-         %__MODULE__{load: left_loads, tenant: left_tenant},
-         %__MODULE__{load: right_loads} = query
+         %__MODULE__{load: left_loads, calculations: left_calculations, tenant: left_tenant},
+         %__MODULE__{load: right_loads, calculations: right_calculations} = query
        ) do
-    %{query | load: merge_load(left_loads, right_loads)}
+    %{
+      query
+      | load: merge_load(left_loads, right_loads),
+        calculations: Map.merge(left_calculations, right_calculations)
+    }
     |> set_tenant(query.tenant || left_tenant)
   end
 
