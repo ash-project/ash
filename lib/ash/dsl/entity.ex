@@ -45,6 +45,7 @@ defmodule Ash.Dsl.Entity do
     args: [],
     hide: [],
     modules: [],
+    no_depend_modules: [],
     schema: [],
     auto_set_fields: [],
     docs: ""

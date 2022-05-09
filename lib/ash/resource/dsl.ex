@@ -312,7 +312,7 @@ defmodule Ash.Resource.Dsl do
       "change relate_actor(:reporter)",
       "change {MyCustomChange, :foo}"
     ],
-    modules: [:change],
+    no_depend_modules: [:change],
     target: Ash.Resource.Change,
     schema: Ash.Resource.Change.action_schema(),
     args: [:change]
@@ -375,7 +375,7 @@ defmodule Ash.Resource.Dsl do
       "change relate_actor(:reporter)",
       "change {MyCustomChange, :foo}"
     ],
-    modules: [:change],
+    no_depend_modules: [:change],
     target: Ash.Resource.Change,
     schema: Ash.Resource.Change.schema(),
     args: [:change]
@@ -392,6 +392,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Validation,
     schema: Ash.Resource.Validation.opt_schema(),
+    no_depend_modules: [:validation],
     transform: {Ash.Resource.Validation, :transform, []},
     args: [:validation]
   }
@@ -406,6 +407,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Validation,
     schema: Ash.Resource.Validation.action_schema(),
+    no_depend_modules: [:validation],
     transform: {Ash.Resource.Validation, :transform, []},
     args: [:validation]
   }

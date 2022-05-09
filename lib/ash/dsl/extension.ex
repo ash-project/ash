@@ -885,10 +885,15 @@ defmodule Ash.Dsl.Extension do
               )
 
               value =
-                if field in section.modules do
-                  Ash.Dsl.Extension.expand_alias(value, __CALLER__)
-                else
-                  value
+                cond do
+                  field in section.modules ->
+                    Ash.Dsl.Extension.expand_alias(value, __CALLER__)
+
+                  field in section.no_depend_modules ->
+                    Ash.Dsl.Extension.expand_alias_no_require(value, __CALLER__)
+
+                  true ->
+                    value
                 end
 
               quote do
@@ -1303,6 +1308,24 @@ defmodule Ash.Dsl.Extension do
 
       {:__aliases__, _, _} = node ->
         Macro.expand(node, %{env | function: {:__ash_placeholder__, 0}})
+
+      other ->
+        other
+    end)
+  end
+
+  def expand_alias_no_require(ast, %Macro.Env{} = env) do
+    Macro.postwalk(ast, fn
+      {first, {:__aliases__, _, _} = node} ->
+        {first,
+         Macro.expand(node, %{env | function: {:__ash_placeholder__, 0}, lexical_tracker: nil})}
+
+      {{:__aliases__, _, _} = node, second} ->
+        {Macro.expand(node, %{env | function: {:__ash_placeholder__, 0}, lexical_tracker: nil}),
+         second}
+
+      {:__aliases__, _, _} = node ->
+        Macro.expand(node, %{env | function: {:__ash_placeholder__, 0}, lexical_tracker: nil})
 
       other ->
         other
