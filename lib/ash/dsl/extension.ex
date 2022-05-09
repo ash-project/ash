@@ -1042,10 +1042,15 @@ defmodule Ash.Dsl.Extension do
                 __CALLER__
               )
 
-              if key in entity.modules do
-                Ash.Dsl.Extension.expand_alias(value, __CALLER__)
-              else
-                value
+              cond do
+                key in entity.modules ->
+                  Ash.Dsl.Extension.expand_alias(value, __CALLER__)
+
+                key in entity.no_depend_modules ->
+                  Ash.Dsl.Extension.expand_alias_no_require(value, __CALLER__)
+
+                true ->
+                  value
               end
             end)
 
@@ -1058,10 +1063,15 @@ defmodule Ash.Dsl.Extension do
                 __CALLER__
               )
 
-              if key in entity.modules do
-                {key, Ash.Dsl.Extension.expand_alias(value, __CALLER__)}
-              else
-                {key, value}
+              cond do
+                key in entity.modules ->
+                  {key, Ash.Dsl.Extension.expand_alias(value, __CALLER__)}
+
+                key in entity.no_depend_modules ->
+                  {key, Ash.Dsl.Extension.expand_alias_no_require(value, __CALLER__)}
+
+                true ->
+                  {key, value}
               end
             end)
 
@@ -1250,6 +1260,7 @@ defmodule Ash.Dsl.Extension do
           defmacro unquote(key)(value) do
             key = unquote(key)
             modules = unquote(entity.modules)
+            no_depend_modules = unquote(entity.no_depend_modules)
             deprecations = unquote(entity.deprecations)
             entity_name = unquote(entity.name)
             recursive_as = unquote(entity.recursive_as)
@@ -1259,10 +1270,15 @@ defmodule Ash.Dsl.Extension do
             Ash.Dsl.Extension.maybe_deprecated(key, deprecations, nested_entity_path, __CALLER__)
 
             value =
-              if key in modules do
-                Ash.Dsl.Extension.expand_alias(value, __CALLER__)
-              else
-                value
+              cond do
+                key in modules ->
+                  Ash.Dsl.Extension.expand_alias(value, __CALLER__)
+
+                key in no_depend_modules ->
+                  Ash.Dsl.Extension.expand_alias_no_require(value, __CALLER__)
+
+                true ->
+                  value
               end
 
             quote do
