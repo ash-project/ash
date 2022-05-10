@@ -146,7 +146,7 @@ defmodule Ash.Resource.Dsl do
   @has_one %Ash.Dsl.Entity{
     name: :has_one,
     describe: """
-    Declares a has_one relationship. In a relationsal database, the foreign key would be on the *other* table.
+    Declares a has_one relationship. In a relational database, the foreign key would be on the *other* table.
 
     Generally speaking, a `has_one` also implies that the destination table is unique on that foreign key.
     """,
@@ -426,7 +426,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Actions.Create,
     schema: Ash.Resource.Actions.Create.opt_schema(),
-    modules: [:touches_resources],
+    no_depend_modules: [:touches_resources],
     entities: [
       changes: [
         @action_change,
@@ -477,7 +477,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Actions.Read,
     schema: Ash.Resource.Actions.Read.opt_schema(),
-    modules: [:touches_resources],
+    no_depend_modules: [:touches_resources],
     entities: [
       arguments: [
         @action_argument
@@ -509,7 +509,7 @@ defmodule Ash.Resource.Dsl do
         @action_argument
       ]
     ],
-    modules: [:touches_resources],
+    no_depend_modules: [:touches_resources],
     target: Ash.Resource.Actions.Update,
     schema: Ash.Resource.Actions.Update.opt_schema(),
     args: [:name]
@@ -527,7 +527,7 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
-    modules: [:touches_resources],
+    no_depend_modules: [:touches_resources],
     entities: [
       changes: [
         @action_change,
@@ -631,7 +631,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Identity,
     schema: Ash.Resource.Identity.schema(),
-    modules: [:pre_check_with, :eager_check_with],
+    no_depend_modules: [:pre_check_with, :eager_check_with],
     args: [:name, :keys]
   }
 

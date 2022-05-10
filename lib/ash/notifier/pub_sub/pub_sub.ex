@@ -95,7 +95,7 @@ defmodule Ash.Notifier.PubSub do
       @publish,
       @publish_all
     ],
-    modules: [:module],
+    no_depend_modules: [:module],
     schema: [
       module: [
         type: :atom,

@@ -568,21 +568,18 @@ defmodule Ash.Api do
 
   defp allowed?(_, _), do: false
 
+  @doc """
+  Gets the resources of an Api module. DO NOT USE AT COMPILE TIME.
+
+  If you need the resource list at compile time, you will need to introduce a compile time
+  dependency on all of the resources, and therefore should use the registry directly. `Registry |> Ash.Registry.entries()`
+  """
   @spec resources(Ash.Api.t()) :: list(Ash.Resource.t())
   def resources(api) do
-    api
-    |> Extension.get_entities([:resources])
-    |> Enum.map(& &1.resource)
-    |> case do
-      [] ->
-        if registry = registry(api) do
-          Ash.Registry.entries(registry)
-        else
-          []
-        end
-
-      other ->
-        other
+    if registry = registry(api) do
+      Ash.Registry.entries(registry)
+    else
+      []
     end
   end
 
