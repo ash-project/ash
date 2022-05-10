@@ -650,7 +650,7 @@ defmodule Ash.Actions.Read do
             else
               query =
                 initial_query
-                |> Ash.Query.unset([:filter, :aggregates, :sort, :limit, :offset])
+                |> Ash.Query.unset([:filter, :aggregates, :sort, :limit, :offset, :distinct])
                 |> Ash.Query.data_layer_query(only_validate_filter?: true)
 
               ash_query =
@@ -1311,7 +1311,8 @@ defmodule Ash.Actions.Read do
         |> Map.to_list()
       end)
 
-    with query <- Ash.Query.unset(query, [:filter, :aggregates, :sort, :limit, :offset, :load]),
+    with query <-
+           Ash.Query.unset(query, [:filter, :aggregates, :sort, :limit, :offset, :load, :distinct]),
          query <- Ash.Query.filter(query, ^[or: pkey_filter]),
          {:ok, data_layer_query} <- Ash.Query.data_layer_query(query),
          {:ok, data_layer_query} <-
