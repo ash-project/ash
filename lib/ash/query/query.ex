@@ -1952,11 +1952,11 @@ defmodule Ash.Query do
          {:ok, query} <-
            Ash.DataLayer.sort(query, ash_query.sort, resource),
          {:ok, query} <- maybe_filter(query, ash_query, opts),
+         {:ok, query} <- Ash.DataLayer.distinct(query, ash_query.distinct, resource),
          {:ok, query} <-
            Ash.DataLayer.limit(query, ash_query.limit, resource),
          {:ok, query} <-
            Ash.DataLayer.offset(query, ash_query.offset, resource),
-         {:ok, query} <- Ash.DataLayer.distinct(query, ash_query.distinct, resource),
          {:ok, query} <-
            Ash.DataLayer.set_context(
              resource,
