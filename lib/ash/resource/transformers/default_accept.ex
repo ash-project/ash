@@ -27,7 +27,15 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
 
           {:ok, new_dsl_state}
         else
-          {:ok, dsl_state}
+          new_dsl_state =
+            Transformer.replace_entity(
+              dsl_state,
+              [:actions],
+              %{action | accept: default_accept},
+              &(&1.name == action.name && &1.type == action.type)
+            )
+
+          {:ok, new_dsl_state}
         end
       else
         if action.reject do
