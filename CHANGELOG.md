@@ -5,6 +5,65 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.52.0-rc.2](https://github.com/ash-project/ash/compare/v1.52.0-rc.1...v1.52.0-rc.2) (2022-05-13)
+
+
+
+
+### Bug Fixes:
+
+* ensure that the default accept is used
+
+* distinct before limit and offset
+
+* add distinct in data_layer_query
+
+* merge calculations when merging loads
+
+* add `no_depend_modules` for changes/validations
+
+* match on `:unknown` not `{:ok, :unknown}`
+
+* run calc in data layer if it returns `:unknown`
+
+* don't ignore lexical tracker on modules in DSL
+
+* don't treat single actions of a type as primary
+
+* render contributor images correctly in hexdocs (#321)
+
+* go back to old method of checking for resource
+
+* properly load from `load` statement in calculations
+
+* send notifications in all cases
+
+* use unpaginated read when loading
+
+* properly handle errors in mnesia transactions
+
+* default custom steps to be async?: false
+
+* get tests/dialyzer passing
+
+### Improvements:
+
+* work on module dependencies
+
+* use new `no_depend_modules` everywhere
+
+* add `no_fields?` relationships
+
+* add manual read actions
+
+* calculation values from requests
+
+* small optimizations
+
+* more flow features/fixes, debug step
+
+* work on transaction flow steps
+
 ## [v1.52.0-rc.1](https://github.com/ash-project/ash/compare/v1.52.0-rc.0...v1.52.0-rc.1) (2022-04-19)
 
 
