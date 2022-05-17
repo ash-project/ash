@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.52.0-rc.3](https://github.com/ash-project/ash/compare/v1.52.0-rc.2...v1.52.0-rc.3) (2022-05-17)
+
+
+
+
+### Bug Fixes:
+
+* require calculations specified on resource load
+
 ## [v1.52.0-rc.2](https://github.com/ash-project/ash/compare/v1.52.0-rc.1...v1.52.0-rc.2) (2022-05-13)
 
 
