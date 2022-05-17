@@ -9,7 +9,6 @@ Each extension has its own formatting configuration for the extension that it cr
     :ash,
     :ash_postgres,
     :ash_json_api,
-    :ash_policy_authorizer,
     :ash_graphql
   ],
   inputs: ["*.{ex,exs}", "priv/*/seeds.exs", "{config,lib,test}/**/*.{ex,exs}"],

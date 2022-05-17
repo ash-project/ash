@@ -2,15 +2,11 @@
 
 ## Ash Policy Authorizer
 
-Generally speaking, you will want to use ash_policy_authorizer to authorize access to your resources.
+Generally speaking, you will want to use `Ash.Policy.Authorizer` to authorize access to your resources.
 
-use `mix hex.info ash_policy_authorizer` to get the latest version, and add it to your dependencies:
+At one point, it was a separate package but it is now built directly into Ash.
 
-```elixir
-{:ash_policy_authorizer, "~> x.x.x"}
-```
-
-For usage, see the `ash_policy_authorizer` [documentation](https://hexdocs.pm/ash_policy_authorizer) for the rest
+For usage, see the policies guide.
 
 ## Implementing a custom authorizer
 
