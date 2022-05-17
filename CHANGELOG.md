@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.52.0-rc.5](https://github.com/ash-project/ash/compare/v1.52.0-rc.4...v1.52.0-rc.5) (2022-05-17)
+
+
+
+
+### Improvements:
+
+* move ash_policy_authorizer into core as `Ash.Policy.Authorizer`
+
 ## [v1.52.0-rc.4](https://github.com/ash-project/ash/compare/v1.52.0-rc.3...v1.52.0-rc.4) (2022-05-17)
 
 
