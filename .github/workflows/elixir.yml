@@ -132,7 +132,6 @@ jobs:
         with:
           repository: ash-project/${{matrix.project}}
           path: ${{matrix.project}}
-          ref: master
       - uses: actions/setup-elixir@v1.5
         with:
           experimental-otp: true
