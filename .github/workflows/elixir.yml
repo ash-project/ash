@@ -54,7 +54,7 @@ jobs:
     strategy:
       matrix:
         otp: ["24.1.2"]
-        elixir: ["1.11.0"]
+        elixir: ["1.13.1"]
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
