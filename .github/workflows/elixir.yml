@@ -106,6 +106,7 @@ jobs:
             "ash_graphql",
             "ash_json_api",
             "ash_phoenix",
+            "ash_admin",
           ]
         otp: ["23"]
         elixir: ["1.13.1"]
