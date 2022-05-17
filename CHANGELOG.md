@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.52.0-rc.4](https://github.com/ash-project/ash/compare/v1.52.0-rc.3...v1.52.0-rc.4) (2022-05-17)
+
+
+
+
+### Bug Fixes:
+
+* run after_action in create properly
+
 ## [v1.52.0-rc.3](https://github.com/ash-project/ash/compare/v1.52.0-rc.2...v1.52.0-rc.3) (2022-05-17)
 
 
