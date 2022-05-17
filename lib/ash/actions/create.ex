@@ -41,7 +41,8 @@ defmodule Ash.Actions.Create do
       upsert_keys: upsert_keys,
       authorize?: authorize?,
       actor: actor,
-      tenant: opts[:tenant]
+      tenant: opts[:tenant],
+      after_action: opts[:after_action]
     )
     |> Ash.Engine.run(
       resource: resource,
@@ -128,6 +129,7 @@ defmodule Ash.Actions.Create do
     tenant = request_opts[:tenant]
     error_path = request_opts[:error_path]
     timeout = request_opts[:timeout]
+    after_action = request_opts[:after_action]
 
     authorization_request =
       Request.new(
@@ -380,7 +382,11 @@ defmodule Ash.Actions.Create do
                   else
                     {:ok, created, instructions}
                   end
-                  |> run_after_action(changeset, actor: actor, authorize?: authorize?)
+                  |> run_after_action(changeset,
+                    after_action: after_action,
+                    actor: actor,
+                    authorize?: authorize?
+                  )
 
                 other ->
                   other
