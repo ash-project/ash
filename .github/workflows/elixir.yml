@@ -99,7 +99,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: ["ash_postgres", "ash_csv", "ash_graphql", "ash_json_api"]
+        project:
+          [
+            "ash_postgres",
+            "ash_csv",
+            "ash_graphql",
+            "ash_json_api",
+            "ash_phoenix",
+          ]
         otp: ["23"]
         elixir: ["1.13.1"]
     services:

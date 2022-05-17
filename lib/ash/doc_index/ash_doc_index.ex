@@ -43,6 +43,12 @@ defmodule Ash.DocIndex.AshDocIndex do
         type: "DataLayer"
       },
       %{
+        module: Ash.Policy.Authorizer,
+        name: "Policy Authorizer",
+        target: "Ash.Resource",
+        type: "Authorizer"
+      },
+      %{
         module: Ash.Flow.Dsl,
         name: "Flow",
         target: "Ash.Flow",
