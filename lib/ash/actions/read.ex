@@ -1116,9 +1116,18 @@ defmodule Ash.Actions.Read do
        ) do
     all_calcs = Enum.map(all_calcs, & &1.name)
 
+    resource_load =
+      if resource_calculation = Ash.Resource.Info.calculation(resource, calculation.name) do
+        List.wrap(resource_calculation.load)
+      else
+        []
+      end
+
     dependencies =
       query
       |> calculation.module.load(calculation.opts, calculation.context)
+      |> List.wrap()
+      |> Enum.concat(resource_load)
       |> Ash.Actions.Helpers.validate_calculation_load!(calculation.module)
       |> Enum.map(fn
         {key, _} ->

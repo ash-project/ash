@@ -181,7 +181,7 @@ defmodule Ash.Filter do
         statement,
         aggregates \\ %{},
         calculations \\ %{},
-        context \\ %{}
+        _context \\ %{}
       ) do
     context = %{
       resource: resource,
@@ -189,8 +189,7 @@ defmodule Ash.Filter do
       aggregates: aggregates,
       calculations: calculations,
       public?: true,
-      data_layer: Ash.DataLayer.data_layer(resource),
-      query_context: context
+      data_layer: Ash.DataLayer.data_layer(resource)
     }
 
     with {:ok, expression} <- parse_expression(statement, context),
@@ -263,15 +262,14 @@ defmodule Ash.Filter do
     {:ok, nil}
   end
 
-  def parse(resource, statement, aggregates, calculations, context) do
+  def parse(resource, statement, aggregates, calculations, _context) do
     context = %{
       resource: resource,
       relationship_path: [],
       aggregates: aggregates,
       calculations: calculations,
       public?: false,
-      data_layer: Ash.DataLayer.data_layer(resource),
-      query_context: context
+      data_layer: Ash.DataLayer.data_layer(resource)
     }
 
     with {:ok, expression} <- parse_expression(statement, context),
@@ -1772,7 +1770,6 @@ defmodule Ash.Filter do
           resource: related,
           aggregates: context.aggregates,
           calculations: context.calculations,
-          query_context: context.query_context,
           public?: context.public?
         }
 
@@ -1863,10 +1860,6 @@ defmodule Ash.Filter do
           context
           |> Map.update!(:relationship_path, fn path -> path ++ [rel.name] end)
           |> Map.put(:resource, rel.destination)
-          |> Map.update!(
-            :query_context,
-            &Ash.Helpers.deep_merge_maps(&1 || %{}, rel.context || %{})
-          )
 
         if is_list(nested_statement) || is_map(nested_statement) do
           case parse_expression(nested_statement, context) do
@@ -1978,7 +1971,7 @@ defmodule Ash.Filter do
                  module,
                  opts,
                  resource_calculation.type,
-                 Map.put(args, :context, context.query_context),
+                 args,
                  resource_calculation.filterable?,
                  resource_calculation.load
                ) do
@@ -2149,7 +2142,7 @@ defmodule Ash.Filter do
                  module,
                  opts,
                  resource_calculation.type,
-                 Map.put(args, :context, Map.get(context, :query_context, %{})),
+                 args,
                  resource_calculation.filterable?,
                  resource_calculation.load
                ) do
@@ -2253,7 +2246,7 @@ defmodule Ash.Filter do
                      module,
                      opts,
                      resource_calculation.type,
-                     Map.put(args, :context, context.query_context),
+                     args,
                      resource_calculation.filterable?,
                      resource_calculation.load
                    ) do

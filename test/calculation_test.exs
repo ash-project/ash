@@ -94,6 +94,8 @@ defmodule Ash.Test.CalculationTest do
                 :string,
                 {ConcatWithLoad, keys: [:full_name, :full_name]}
 
+      calculate :slug, :string, expr(full_name <> "123"), load: [:full_name]
+
       calculate :expr_full_name, :string, expr(first_name <> " " <> last_name) do
         allow_async? true
       end
@@ -177,6 +179,10 @@ defmodule Ash.Test.CalculationTest do
       |> Enum.sort()
 
     assert full_names == ["brian cranston", "zach daniel"]
+  end
+
+  test "loads dependencies", %{user1: user} do
+    assert %{slug: "zach daniel123"} = Api.load!(user, [:slug])
   end
 
   test "it loads anything specified by the load callback" do
