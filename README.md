@@ -44,14 +44,14 @@ end
 
 ### Authorizers
 
-- [AshPolicyAuthorizer](https://hexdocs.pm/ash_policy_authorizer)
+- [Ash.Policy.Authorizer (builtin)](https://hexdocs.pm/ash/Ash.Policy.Authorizer.html)
 
 ### Datalayers
 
 - [AshPostgres](https://hexdocs.pm/ash_postgres)
 - [AshCsv](https://hexdocs.pm/ash_csv)
-- [Ets (built-in)](https://hexdocs.pm/ash/Ash.DataLayer.Ets.html) - Only used for testing
-- [Mnesia (built-in)](https://hexdocs.pm/ash/Ash.DataLayer.Mnesia.html)
+- [Ets (built-in)](https://hexdocs.pm/ash/Ash.DataLayer.Ets.html) - Only used for testing/prototyping
+- [Mnesia (built-in)](https://hexdocs.pm/ash/Ash.DataLayer.Mnesia.html) - Only used for testing/prototyping
 
 ## Introduction
 

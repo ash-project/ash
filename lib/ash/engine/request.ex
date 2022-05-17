@@ -842,9 +842,9 @@ defmodule Ash.Engine.Request do
             Logger.error("""
             Could not apply filter policy because it cannot be checked using Ash.Filter.Runtime: #{inspect(filter)}.
 
-            If you are using ash_policy_authorizer policy must include a filter like this, try setting the access_type to `:runtime`"
+            If you are using policies and the policy must include a filter like this, try setting the access_type to `:runtime`"
 
-            Otherwise, please report this issue: https://github.com/ash-project/ash_policy_authorizer/issues/new?assignees=&labels=bug%2C+needs+review&template=bug_report.md&title=
+            Otherwise, please report this issue.
             """)
 
             {:error,

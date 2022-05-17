@@ -157,9 +157,10 @@
         #
         # Controversial and experimental checks (opt-in, just replace `false` with `[]`)
         #
-        {Credo.Check.Readability.StrictModuleLayout,
-          order: [:shortdoc, :moduledoc, :behaviour, :use, :defstruct, :type, :import, :alias, :require],
-          ignore: [:module_attribute, :type]},
+        # {Credo.Check.Readability.StrictModuleLayout,
+        #   order: [:shortdoc, :moduledoc, :behaviour, :use, :defstruct, :type, :import, :alias, :require],
+        #   ignore: [:module_attribute, :type]},
+        {Credo.Check.Readability.StrictModuleLayout, false},
         {Credo.Check.Consistency.MultiAliasImportRequireUse, false},
         {Credo.Check.Consistency.UnusedVariableNames, false},
         {Credo.Check.Design.DuplicatedCode, false},

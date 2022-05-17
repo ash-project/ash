@@ -69,6 +69,14 @@ defmodule Ash.Resource do
                       |> Enum.map(& &1.name)
                       |> Enum.uniq()
 
+      if AshPolicyAuthorizer.Authorizer in @extensions do
+        raise """
+        AshPolicyAuthorizer has been deprecated and is now built into Ash core.
+
+        To use it, replace `authorizers: [AshPolicyAuthorizer.Authorizer]` with `authorizers: [Ash.Policy.Authorizer]`
+        """
+      end
+
       if api = Ash.Resource.Info.define_interface_for(__MODULE__) do
         require Ash.CodeInterface
         Ash.CodeInterface.define_interface(api, __MODULE__)
