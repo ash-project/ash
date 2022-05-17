@@ -152,6 +152,12 @@ jobs:
       - name: mix deps.get inside ./${{matrix.project}}
         run: mix deps.get
         working-directory: ./${{matrix.project}}
+      - run: mix test.create
+        if: ${{matrix.project == 'ash_postgres'}}
+      - run: mix test.migrate
+        if: ${{matrix.project == 'ash_postgres'}}
+      - run: mix test.migrate_tenants
+        if: ${{matrix.project == 'ash_postgres'}}
       - name: mix compile --force --warnings-as-errors inside ./${{matrix.project}}
         run: mix compile --force --warnings-as-errors
         env:
