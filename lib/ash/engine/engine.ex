@@ -16,7 +16,7 @@ defmodule Ash.Engine do
   As the complexity of a system grows, it becomes very difficult to write code that
   is both imperative and performant. This is especially true of a framework that is
   designed to be configurable. What exactly is done, as well as the order it is done in,
-  and wether or not is can be parallelized, varies wildly based on factors like how
+  and whether or not is can be parallelized, varies wildly based on factors like how
   the resources are configured and what capabilities the data layer has. By implementing
   a generic "parallel engine", we can let the engine solve that problem. We simply
   have to express the various operations that must happen, and what other pieces of data

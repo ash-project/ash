@@ -88,7 +88,7 @@ defmodule Ash.Api do
       type: :boolean,
       default: true,
       doc:
-        "For Ash errors, wether or not each error has a stacktrace. See the error_handling guide for more."
+        "For Ash errors, whether or not each error has a stacktrace. See the error_handling guide for more."
     ],
     tenant: [
       type: :any,
@@ -271,7 +271,7 @@ defmodule Ash.Api do
       ```
 
       If you tried to load that `:full_name` calculation after receiving the data, the `last_name` would not be selected and as such would not be
-      usable in the calculation, regardless of wether or not the calculation includes that field in its select list.
+      usable in the calculation, regardless of whether or not the calculation includes that field in its select list.
       """
     ]
   ]
@@ -286,7 +286,7 @@ defmodule Ash.Api do
                         upsert_identity: [
                           type: :atom,
                           doc:
-                            "The identity to use when detecting conflicts for upsert?. By default, the primary key is used. Has no effect if `upsert?: true` is not provided"
+                            "The identity to use when detecting conflicts for `upsert?`, e.g. `upsert_identity: :full_name`. By default, the primary key is used. Has no effect if `upsert?: true` is not provided"
                         ]
                       ]
                       |> merge_schemas(@global_opts, "Global Options")

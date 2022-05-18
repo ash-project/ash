@@ -19,7 +19,7 @@ defmodule Ash.Resource.Actions.SharedOptions do
     transaction?: [
       type: :boolean,
       doc: """
-      Wether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`.
+      Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`.
 
       Has no effect if the data layer does not support transactions, or if that data layer is already in a transaction.
       """

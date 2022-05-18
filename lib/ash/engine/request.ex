@@ -136,7 +136,7 @@ defmodule Ash.Engine.Request do
     * name - A human readable name for the request, used when logging/in errors
     * strict_check_only? - If true, authorization will not be allowed to proceed to a runtime check (so it cannot run db queries unless authorization is assured)
     * actor - The actor performing the action, used for authorization
-    * authorize? - Wether or not to perform authorization (defaults to true)
+    * authorize? - Whether or not to perform authorization (defaults to true)
     * verbose? - print informational logs (warning, this will be a whole lot of logs)
     * write_to_data? - If set to false, this value is not returned from the initial call to the engine
   """

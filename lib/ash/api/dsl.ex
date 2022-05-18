@@ -34,7 +34,7 @@ defmodule Ash.Api.Dsl do
       allow: [
         type: :mfa,
         doc: """
-        Support a dynamic resource list by providing a callback that checks wether or not the resource should be allowed.
+        Support a dynamic resource list by providing a callback that checks whether or not the resource should be allowed.
         """
       ],
       allow_unregistered?: [
