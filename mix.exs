@@ -85,6 +85,9 @@ defmodule Ash.MixProject do
         ],
         "old_documentation/topics/compile_times.md": [
           title: "Compile Times"
+        ],
+        "documentation/concepts/policies.md": [
+          title: "Policies"
         ]
       ],
       groups_for_extras: [

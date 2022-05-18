@@ -269,6 +269,71 @@ defmodule Ash.Test.Actions.LoadTest do
       end
     end
 
+    test "loading something already loaded still loads it unless lazy?: true" do
+      author =
+        Author
+        |> new(%{name: "zerg"})
+        |> Api.create!()
+
+      post1 =
+        Post
+        |> new(%{title: "post1"})
+        |> replace_relationship(:author, author)
+        |> Api.create!()
+
+      post2 =
+        Post
+        |> new(%{title: "post2"})
+        |> replace_relationship(:author, author)
+        |> Api.create!()
+
+      [author] =
+        Author
+        |> Ash.Query.load(posts: [:author])
+        |> Ash.Query.filter(posts.id == ^post1.id)
+        |> Api.read!(authorize?: true)
+
+      assert Enum.sort(Enum.map(author.posts, &Map.get(&1, :id))) ==
+               Enum.sort([post1.id, post2.id])
+
+      for post <- author.posts do
+        assert post.author.id == author.id
+      end
+
+      post3 =
+        Post
+        |> new(%{title: "post3"})
+        |> replace_relationship(:author, author)
+        |> Api.create!()
+
+      author =
+        author
+        |> Api.load!([posts: [:author]], authorize?: true)
+
+      assert Enum.sort(Enum.map(author.posts, &Map.get(&1, :id))) ==
+               Enum.sort([post1.id, post2.id, post3.id])
+
+      for post <- author.posts do
+        assert post.author.id == author.id
+      end
+
+      Post
+      |> new(%{title: "post4"})
+      |> replace_relationship(:author, author)
+      |> Api.create!()
+
+      author =
+        author
+        |> Api.load!([posts: [:author]], authorize?: true, lazy?: true)
+
+      assert Enum.sort(Enum.map(author.posts, &Map.get(&1, :id))) ==
+               Enum.sort([post1.id, post2.id, post3.id])
+
+      for post <- author.posts do
+        assert post.author.id == author.id
+      end
+    end
+
     test "it allows loading across APIs" do
       author =
         Author
