@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.52.0-rc.8](https://github.com/ash-project/ash/compare/v1.52.0-rc.7...v1.52.0-rc.8) (2022-05-18)
+
+
+
+
+### Bug Fixes:
+
+* add resource/action to policy error context
+
 ## [v1.52.0-rc.7](https://github.com/ash-project/ash/compare/v1.52.0-rc.6...v1.52.0-rc.7) (2022-05-18)
 
 
