@@ -681,6 +681,8 @@ defmodule Ash.Policy.Authorizer do
          Ash.Error.Forbidden.Policy.exception(
            facts: authorizer.facts,
            policies: authorizer.policies,
+           resource: Map.get(authorizer, :resource),
+           action: Map.get(authorizer, :action),
            scenarios: []
          )}
     end
