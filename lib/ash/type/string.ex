@@ -120,7 +120,7 @@ defmodule Ash.Type.String do
     |> cast_input(constraints)
   end
 
-  def cast_input(nil, _), do: nil
+  def cast_input(nil, _), do: {:ok, nil}
 
   def cast_input(value, _) do
     Ecto.Type.cast(:string, value)
