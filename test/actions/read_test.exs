@@ -158,6 +158,15 @@ defmodule Ash.Test.Actions.ReadTest do
       assert ^post = clear_meta(Api.get!(Post, post.id))
     end
 
+    test "it raises when there is no matching record" do
+      res =
+        assert_raise Ash.Error.Invalid, fn ->
+          Api.get!(Post, Ash.UUID.generate())
+        end
+
+      assert [%Ash.Error.Query.NotFound{}] = res.errors
+    end
+
     test "raises an error when the first argument is not a module", %{post: post} do
       res = assert_raise Ash.Error.Invalid.NoSuchResource, fn -> Api.get("bogus", post.id, []) end
       assert res.message =~ ~r/Ash.Test.Actions.ReadTest.Api.get\/3/
