@@ -1075,7 +1075,7 @@ defmodule Ash.Api do
   end
 
   defp unwrap_or_raise!({:error, error}, stacktraces?, _) do
-    exception = Ash.Error.to_ash_error(error)
+    exception = Ash.Error.to_error_class(error)
 
     exception =
       if stacktraces? do
