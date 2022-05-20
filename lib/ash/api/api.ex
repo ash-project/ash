@@ -88,7 +88,7 @@ defmodule Ash.Api do
       type: :boolean,
       default: true,
       doc:
-        "For Ash errors, wether or not each error has a stacktrace. See the error_handling guide for more."
+        "For Ash errors, whether or not each error has a stacktrace. See the error_handling guide for more."
     ],
     tenant: [
       type: :any,
@@ -271,7 +271,7 @@ defmodule Ash.Api do
       ```
 
       If you tried to load that `:full_name` calculation after receiving the data, the `last_name` would not be selected and as such would not be
-      usable in the calculation, regardless of wether or not the calculation includes that field in its select list.
+      usable in the calculation, regardless of whether or not the calculation includes that field in its select list.
       """
     ]
   ]
@@ -286,7 +286,7 @@ defmodule Ash.Api do
                         upsert_identity: [
                           type: :atom,
                           doc:
-                            "The identity to use when detecting conflicts for upsert?. By default, the primary key is used. Has no effect if `upsert?: true` is not provided"
+                            "The identity to use when detecting conflicts for `upsert?`, e.g. `upsert_identity: :full_name`. By default, the primary key is used. Has no effect if `upsert?: true` is not provided"
                         ]
                       ]
                       |> merge_schemas(@global_opts, "Global Options")
@@ -364,10 +364,10 @@ defmodule Ash.Api do
               Ash.Resource.record() | {Ash.Resource.record(), Ash.Query.t()} | no_return
 
   @doc """
-  Run a query on a resource, but fail on more than one result
+  Run a query on a resource, but fail on more than one result.
 
   This is useful if you have a query that doesn't include a primary key
-  but you know that it will only ever return a single result
+  but you know that it will only ever return a single result.
   """
   @callback read_one(Ash.Query.t() | Ash.Resource.t(), params :: Keyword.t()) ::
               {:ok, Ash.Resource.record()}
@@ -384,7 +384,7 @@ defmodule Ash.Api do
   @doc """
   Run a query on a resource.
 
-  For more information, on building a query, see `Ash.Query`.
+  For more information on building a query, see `Ash.Query`.
 
   #{Ash.OptionsHelpers.docs(@read_opts_schema)}
 
@@ -572,7 +572,7 @@ defmodule Ash.Api do
   Gets the resources of an Api module. DO NOT USE AT COMPILE TIME.
 
   If you need the resource list at compile time, you will need to introduce a compile time
-  dependency on all of the resources, and therefore should use the registry directly. `Registry |> Ash.Registry.entries()`
+  dependency on all of the resources, and therefore should use the registry directly. `Registry |> Ash.Registry.entries()`.
   """
   @spec resources(Ash.Api.t()) :: list(Ash.Resource.t())
   def resources(api) do
