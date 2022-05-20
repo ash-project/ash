@@ -46,7 +46,7 @@ defmodule Ash.Engine.Request do
 
   defmodule UnresolvedField do
     @moduledoc """
-    Represents an unresolved field to be resolved by the engine
+    Represents an unresolved field to be resolved by the engine.
     """
     defstruct [:resolver, deps: [], data?: false]
 
@@ -86,7 +86,7 @@ defmodule Ash.Engine.Request do
   being processed, like `[:data]`, and the last element is the
   key of that request that is required. Make sure to pass a
   list of lists of atoms. The second argument is a map, which
-  contains all the values you requested, at the same path
+  contains all of the values you requested, at the same path
   that they were requested.
 
   For example:
@@ -115,7 +115,7 @@ defmodule Ash.Engine.Request do
   When other requests depend on a value from this request, they will
   not be sent unless this request has completed its authorization (or this
   request has been configured not to do authorization). This allows requests
-  to depend on eachother without those requests happening just before a request
+  to depend on each other without those requests happening just before a request
   fails with a forbidden error. These fields are `data`, `query`, `changeset`
   and `authorized?`.
 
