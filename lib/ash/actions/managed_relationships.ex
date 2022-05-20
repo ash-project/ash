@@ -19,7 +19,7 @@ defmodule Ash.Actions.ManagedRelationships do
         type: relationship.type,
         action_type: changeset.action.type,
         could_be_related_at_creation?:
-          Map.get(relationship, :could_be_related_at_creation?, false)
+          engine_opts[:upsert?] || Map.get(relationship, :could_be_related_at_creation?, false)
       ]
 
       case Enum.filter(value, fn {_, opts} ->
@@ -190,7 +190,6 @@ defmodule Ash.Actions.ManagedRelationships do
                         |> Ash.Query.do_filter(relationship.filter)
                         |> Ash.Query.sort(relationship.sort)
                         |> Ash.Query.set_context(relationship.context)
-                        |> Ash.Query.limit(1)
                         |> Ash.Query.set_tenant(changeset.tenant)
                         |> api(changeset, relationship).read_one(
                           authorize?: opts[:authorize?],

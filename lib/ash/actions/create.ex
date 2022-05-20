@@ -300,7 +300,8 @@ defmodule Ash.Actions.Create do
                             |> add_tenant(changeset)
                             |> manage_relationships(api, changeset,
                               actor: actor,
-                              authorize?: authorize?
+                              authorize?: authorize?,
+                              upsert?: upsert?
                             )
                           else
                             resource
@@ -308,7 +309,8 @@ defmodule Ash.Actions.Create do
                             |> add_tenant(changeset)
                             |> manage_relationships(api, changeset,
                               actor: actor,
-                              authorize?: authorize?
+                              authorize?: authorize?,
+                              upsert?: upsert?
                             )
                           end
                           |> case do
