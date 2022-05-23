@@ -9,7 +9,7 @@ defmodule Ash.Query.Function.Ago do
   """
   use Ash.Query.Function, name: :ago
 
-  def args, do: [[:integer, :interval]]
+  def args, do: [[:integer, :duration_name]]
 
   def evaluate(%{arguments: [factor, interval]}) do
     interval =

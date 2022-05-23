@@ -22,7 +22,7 @@ defmodule Ash.Type do
     string: Ash.Type.String,
     integer: Ash.Type.Integer,
     float: Ash.Type.Float,
-    interval: Ash.Type.Interval,
+    duration_name: Ash.Type.DurationName,
     function: Ash.Type.Function,
     boolean: Ash.Type.Boolean,
     uuid: Ash.Type.UUID,
