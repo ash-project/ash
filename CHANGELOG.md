@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.52.0-rc.9](https://github.com/ash-project/ash/compare/v1.52.0-rc.8...v1.52.0-rc.9) (2022-05-23)
+
+
+
+
+### Bug Fixes:
+
+* rename `interval` to `duration_name`
+
+* Fix concat (#326)
+
+* Make get and get! consistent with what they raise when no record found (#325)
+
+### Improvements:
+
+* specify that upserts could be related at creation
+
 ## [v1.52.0-rc.8](https://github.com/ash-project/ash/compare/v1.52.0-rc.7...v1.52.0-rc.8) (2022-05-18)
 
 
