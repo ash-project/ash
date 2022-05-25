@@ -1,5 +1,5 @@
 defmodule Ash.Resource.Transformers.SetTypes do
-  @moduledoc "Sets the `source` key on relationships to be the resource they were defined on"
+  @moduledoc "Maps builtin type aliases to their type modules"
   use Ash.Dsl.Transformer
 
   alias Ash.Dsl.Transformer

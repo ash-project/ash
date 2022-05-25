@@ -45,6 +45,10 @@ defmodule Ash.OptionsHelpers do
     end)
   end
 
+  defp sanitize_type(type) when is_list(type) do
+    Enum.map(type, &sanitize_type/1)
+  end
+
   defp sanitize_type(type) do
     case type do
       {:one_of, values} ->
@@ -52,6 +56,9 @@ defmodule Ash.OptionsHelpers do
 
       {:in, values} ->
         {:in, sanitize_type(values)}
+
+      {:or, subtypes} ->
+        {:or, sanitize_type(subtypes)}
 
       {:list, values} ->
         {:list, sanitize_type(values)}
@@ -67,6 +74,9 @@ defmodule Ash.OptionsHelpers do
 
       :ash_resource ->
         :atom
+
+      :ash_action_type ->
+        {:in, [:create, :read, :update, :destroy]}
 
       :ash_type ->
         # We don't want to add compile time dependencies on types
