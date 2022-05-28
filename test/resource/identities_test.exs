@@ -23,8 +23,14 @@ defmodule Ash.Test.Resource.IdentitiesTest do
   describe "representation" do
     test "identities are persisted on the resource properly" do
       defposts do
+        actions do
+          read :read do
+            primary? true
+          end
+        end
+
         identities do
-          identity :foobar, [:name, :contents]
+          identity :foobar, [:name, :contents], pre_check_with: Foo
         end
       end
 
@@ -38,7 +44,7 @@ defmodule Ash.Test.Resource.IdentitiesTest do
                    fn ->
                      defposts do
                        identities do
-                         identity :foobar, [:name], eager_check_with: Foobar
+                         identity :foobar, [:name], eager_check_with: Foobar, pre_check_with: Foo
                        end
                      end
                    end
@@ -46,8 +52,16 @@ defmodule Ash.Test.Resource.IdentitiesTest do
 
     test "Identity descriptions are allowed" do
       defposts do
+        actions do
+          read :read do
+            primary? true
+          end
+        end
+
         identities do
-          identity :foobar, [:name, :contents], description: "require one of name/contents"
+          identity :foobar, [:name, :contents],
+            description: "require one of name/contents",
+            pre_check_with: Foo
         end
       end
 

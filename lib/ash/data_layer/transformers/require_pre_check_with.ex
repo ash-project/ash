@@ -21,17 +21,21 @@ defmodule Ash.DataLayer.Transformers.RequirePreCheckWith do
         {:ok, dsl}
 
       identities ->
-        {:error,
-         Ash.Error.Dsl.DslError.exception(
-           module: resource,
-           message: """
-           The data layer for #{inspect(resource)} does not support native checking of identities.
+        if function_exported?(resource, :testing_identities, 0) do
+          {:ok, dsl}
+        else
+          {:error,
+           Ash.Error.Dsl.DslError.exception(
+             module: resource,
+             message: """
+             The data layer for #{inspect(resource)} does not support native checking of identities.
 
-           Identities: #{Enum.map_join(identities, ", ", & &1.name)}
+             Identities: #{Enum.map_join(identities, ", ", & &1.name)}
 
-           They must specify the `pre_check_with` option.
-           """
-         )}
+             They must specify the `pre_check_with` option.
+             """
+           )}
+        end
     end
   end
 end

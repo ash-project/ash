@@ -14,7 +14,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     identities do
-      identity :unique_name, [:name]
+      identity :unique_name, [:name], pre_check_with: Ash.Test.Changeset.ChangesetTest.Api
     end
 
     actions do
@@ -165,7 +165,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     identities do
-      identity :unique_name_per_author, [:title, :author_id]
+      identity :unique_name_per_author, [:title, :author_id],
+        pre_check_with: Ash.Test.Changeset.ChangesetTest.Api
     end
 
     attributes do

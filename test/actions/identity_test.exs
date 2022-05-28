@@ -1,6 +1,6 @@
 defmodule Ash.Test.Actions.IdentityTest do
   @moduledoc false
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   defmodule Post do
     @moduledoc false
@@ -9,6 +9,8 @@ defmodule Ash.Test.Actions.IdentityTest do
     ets do
       private?(true)
     end
+
+    def testing_identities, do: true
 
     identities do
       identity :unique_title, [:title] do

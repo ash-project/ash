@@ -45,7 +45,7 @@ defmodule Ash.Test.Actions.ReadTest do
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
 
     identities do
-      identity :backup_id, [:uuid]
+      identity :backup_id, [:uuid], pre_check_with: Ash.Test.Actions.ReadTest.Api
     end
 
     ets do

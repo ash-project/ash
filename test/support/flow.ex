@@ -4,7 +4,7 @@ defmodule Ash.Test.Support.Flow do
     use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
 
     identities do
-      identity :unique_name, [:name]
+      identity :unique_name, [:name], pre_check_with: Ash.Test.Support.Flow.Api
     end
 
     actions do

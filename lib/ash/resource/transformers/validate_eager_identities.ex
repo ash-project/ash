@@ -10,10 +10,7 @@ defmodule Ash.Resource.Transformers.ValidateEagerIdentities do
   def after_compile?, do: true
 
   def transform(resource, dsl_state) do
-    primary_read =
-      dsl_state
-      |> Transformer.get_entities([:actions])
-      |> Enum.find(&(&1.type == :read && &1.primary?))
+    primary_read = Ash.Resource.Info.primary_action(resource, :read)
 
     dsl_state
     |> Transformer.get_entities([:identities])
