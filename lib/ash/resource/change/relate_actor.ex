@@ -18,13 +18,17 @@ defmodule Ash.Resource.Change.RelateActor do
   end
 
   def change(changeset, opts, %{actor: nil}) do
-    Changeset.add_error(
-      changeset,
-      InvalidRelationship.exception(
-        relationship: opts[:relationship],
-        message: "Could not relate to actor, as no actor was found"
+    if opts[:allow_nil?] do
+      changeset
+    else
+      Changeset.add_error(
+        changeset,
+        InvalidRelationship.exception(
+          relationship: opts[:relationship],
+          message: "Could not relate to actor, as no actor was found (and :allow_nil? is false)"
+        )
       )
-    )
+    end
   end
 
   def change(changeset, opts, %{actor: actor}) do
