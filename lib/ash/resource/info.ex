@@ -455,11 +455,28 @@ defmodule Ash.Resource.Info do
   @doc "Returns the action with the matching name and type on the resource"
   @spec action(Ash.Resource.t(), atom(), Ash.Resource.Actions.action_type() | nil) ::
           Ash.Resource.Actions.action() | nil
-  def action(resource, name, _type \\ nil) do
+  def action(resource, name, type \\ nil) do
     # We used to need type, but we don't anymore since action names are unique
-    resource
-    |> actions()
-    |> Enum.find(&(&1.name == name))
+    if type do
+      resource
+      |> actions()
+      |> Enum.find(&(&1.name == name))
+      |> case do
+        %{type: ^type} = action ->
+          action
+
+        %{type: found_type} ->
+          raise ArgumentError, """
+          Found an action of type #{found_type} while looking for an action of type #{type}
+
+          Perhaps you passed a changeset with the incorrect action type into your Api?
+          """
+      end
+    else
+      resource
+      |> actions()
+      |> Enum.find(&(&1.name == name))
+    end
   end
 
   @doc "Returns all attributes of a resource"

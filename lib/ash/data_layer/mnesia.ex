@@ -32,7 +32,9 @@ defmodule Ash.DataLayer.Mnesia do
     ]
   }
 
-  use Ash.Dsl.Extension, sections: [@mnesia]
+  use Ash.Dsl.Extension,
+    sections: [@mnesia],
+    transformers: [Ash.DataLayer.Transformers.RequirePreCheckWith]
 
   alias Ash.Actions.Sort
   alias Ash.Dsl.Extension

@@ -26,6 +26,7 @@ defmodule Ash.Test.Notifier.PubSubTest do
       publish :destroy, ["foo", :id]
       publish :update, ["foo", :id]
       publish :update, ["bar", :name], event: "name_change"
+      publish :update_pkey, ["foo", :_pkey]
     end
 
     ets do
@@ -34,10 +35,11 @@ defmodule Ash.Test.Notifier.PubSubTest do
 
     actions do
       defaults [:create, :read, :update, :destroy]
+      update :update_pkey
     end
 
     attributes do
-      uuid_primary_key :id
+      uuid_primary_key :id, writable?: true
 
       attribute :name, :string
     end
@@ -95,5 +97,24 @@ defmodule Ash.Test.Notifier.PubSubTest do
     assert_receive {:broadcast, ^message, "name_change", %Ash.Notifier.Notification{}}
     message = "post:bar:ted"
     assert_receive {:broadcast, ^message, "name_change", %Ash.Notifier.Notification{}}
+  end
+
+  test "publishing a message with a pkey matcher" do
+    post =
+      Post
+      |> Ash.Changeset.new(%{name: "ted"})
+      |> Api.create!()
+
+    new_id = Ash.UUID.generate()
+
+    post
+    |> Ash.Changeset.new(%{id: new_id})
+    |> Api.update!(action: :update_pkey)
+
+    message = "post:foo:#{post.id}"
+    assert_receive {:broadcast, ^message, "update_pkey", %Ash.Notifier.Notification{}}
+
+    message = "post:foo:#{new_id}"
+    assert_receive {:broadcast, ^message, "update_pkey", %Ash.Notifier.Notification{}}
   end
 end

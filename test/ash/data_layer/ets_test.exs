@@ -29,7 +29,7 @@ defmodule Ash.DataLayer.EtsTest do
     end
 
     identities do
-      identity :unique_name, [:name]
+      identity :unique_name, [:name], pre_check_with: Ash.DataLayer.EtsTest.EtsApiTest
     end
 
     attributes do
@@ -54,6 +54,24 @@ defmodule Ash.DataLayer.EtsTest do
 
     resources do
       registry Registry
+    end
+  end
+
+  test "won't compile with identities that don't precheck" do
+    assert_raise Ash.Error.Dsl.DslError, ~r/pre_check_with/, fn ->
+      defmodule Example do
+        use Ash.Resource,
+          data_layer: Ash.DataLayer.Ets
+
+        attributes do
+          uuid_primary_key :id
+          attribute :name, :string
+        end
+
+        identities do
+          identity :unique_name, [:name]
+        end
+      end
     end
   end
 

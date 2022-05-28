@@ -28,7 +28,9 @@ defmodule Ash.DataLayer.Ets do
     ]
   }
 
-  use Ash.Dsl.Extension, sections: [@ets]
+  use Ash.Dsl.Extension,
+    sections: [@ets],
+    transformers: [Ash.DataLayer.Transformers.RequirePreCheckWith]
 
   alias Ash.Actions.Sort
   alias Ash.Dsl.Extension

@@ -33,7 +33,10 @@ defmodule Ash.Notifier.PubSub do
     `nil` to the list if you want to produce a pattern where that entry is ommitted.
 
     The atom `:_tenant` may be used. If the changeset has a tenant set on it, that
-    value will be used, otherwise that combination of values is ignored. For example:
+    value will be used, otherwise that combination of values is ignored.
+
+    The atom `:_pkey` may be used. It will be a stringified, concatenation of the primary key fields,
+    or just the primary key if there is only one primary key field.
 
     The atom `:_skip` may be used. It only makes sense to use it in the context of a list of alternatives,
     and adds a pattern where that part is skipped.
@@ -232,8 +235,30 @@ defmodule Ash.Notifier.PubSub do
     end
   end
 
-  defp all_combinations_of_values([item | rest], notification, :update, trail)
-       when is_atom(item) do
+  defp all_combinations_of_values([:_pkey | rest], notification, type, trail)
+       when type in [:update, :destroy] do
+    pkey = Ash.Resource.Info.primary_key(notification.changeset.resource)
+    pkey_value_before_change = Enum.map_join(pkey, "-", &Map.get(notification.changeset.data, &1))
+    pkey_value_after_change = Enum.map_join(pkey, "-", &Map.get(notification.data, &1))
+
+    [pkey_value_before_change, pkey_value_after_change]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+    |> Enum.flat_map(fn possible_value ->
+      all_combinations_of_values(rest, notification, type, [possible_value | trail])
+    end)
+  end
+
+  defp all_combinations_of_values([:_pkey | rest], notification, action_type, trail) do
+    pkey = notification.changeset.resource
+
+    all_combinations_of_values(rest, notification, action_type, [
+      Enum.map_join(pkey, "-", &Map.get(notification.data, &1)) | trail
+    ])
+  end
+
+  defp all_combinations_of_values([item | rest], notification, type, trail)
+       when is_atom(item) and type in [:update, :destroy] do
     value_before_change = Map.get(notification.changeset.data, item)
     value_after_change = Map.get(notification.data, item)
 
@@ -241,7 +266,7 @@ defmodule Ash.Notifier.PubSub do
     |> Enum.reject(&is_nil/1)
     |> Enum.uniq()
     |> Enum.flat_map(fn possible_value ->
-      all_combinations_of_values(rest, notification, :update, [possible_value | trail])
+      all_combinations_of_values(rest, notification, type, [possible_value | trail])
     end)
   end
 
