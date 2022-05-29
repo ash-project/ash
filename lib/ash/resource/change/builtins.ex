@@ -5,9 +5,17 @@ defmodule Ash.Resource.Change.Builtins do
   The functions in this module are imported by default in the actions section.
   """
 
-  @doc "Relates the actor to the data being changed, as the provided relationship."
-  def relate_actor(relationship) do
-    {Ash.Resource.Change.RelateActor, relationship: relationship}
+  @doc """
+  Relates the actor to the data being changed, as the provided relationship.
+  Accepts the option `:allow_nil?`, which will not force an actor to be set.
+  `:allow_nil?` defaults to `false`.
+  """
+  def relate_actor(relationship, opts \\ []) do
+    opts =
+      opts
+      |> Keyword.put(:relationship, relationship)
+      |> Keyword.put_new(:allow_nil?, false)
+    {Ash.Resource.Change.RelateActor, opts}
   end
 
   @doc """
