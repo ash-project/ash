@@ -15,6 +15,7 @@ defmodule Ash.Resource.Change.Builtins do
       opts
       |> Keyword.put(:relationship, relationship)
       |> Keyword.put_new(:allow_nil?, false)
+
     {Ash.Resource.Change.RelateActor, opts}
   end
 
