@@ -106,8 +106,8 @@ defmodule Ash.Filter do
 
   A filter is a nested keyword list (with some exceptions, like `true` for everything and `false` for nothing).
 
-  The key is the "predicate" (A.K.A condition) and the value is the parameter. You can use `and` and `or` to create
-  nested filters. Datalayers can expose custom predicates. Eventually, you will be able to define your own custom
+  The key is the "predicate" (or "condition") and the value is the parameter. You can use `and` and `or` to create
+  nested filters. Data layers can expose custom predicates. Eventually, you will be able to define your own custom
   predicates, which will be a mechanism for you to attach complex filters supported by the data layer to your queries.
 
   ** Important **
@@ -129,6 +129,7 @@ defmodule Ash.Filter do
       [high_score: [less_than: -10]]
     ]
   ]])
+  ```
 
   ### Other formats
 
@@ -138,7 +139,6 @@ defmodule Ash.Filter do
   (or `Ash.Filter.parse_input/4` if your query has aggregates/calculations in it). This ensures that the filter only uses public attributes,
   relationships, aggregates and calculations. You may additionally wish to pass in the query context, in the case that you have calculations
   that use the provided context.
-  ```
   """
 
   @builtin_operators Enum.map(@operators, &{&1.operator(), &1}) ++ @operator_aliases
