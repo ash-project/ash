@@ -449,7 +449,7 @@ defmodule Ash.Resource.Dsl do
     """,
     examples: [
       """
-      prepare default_sort([:foo, :bar])
+      prepare build(sort: [:foo, :bar])
       """
     ],
     target: Ash.Resource.Preparation,

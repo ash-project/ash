@@ -53,6 +53,62 @@ defmodule Ash.DocIndex do
     end
   end
 
+  def ensure_documented!(doc_index) do
+    Enum.each(doc_index.extensions(), fn extension ->
+      Enum.each(extension.module().sections(), &do_ensure_documented!/1)
+    end)
+  end
+
+  defp do_ensure_documented!(
+         section_or_entity,
+         trail \\ []
+       )
+
+  defp do_ensure_documented!(
+         %Ash.Dsl.Section{name: name, schema: schema, entities: entities, sections: sections},
+         trail
+       ) do
+    case Enum.find(schema, fn {_key, opts} ->
+           !opts[:links]
+         end) do
+      {key, _opts} ->
+        opt =
+          trail
+          |> Enum.reverse([key])
+          |> Enum.join(".")
+
+        raise "#{opt} is not documented (must contain links)!"
+
+      _ ->
+        :ok
+    end
+
+    Enum.each(entities, &do_ensure_documented!(&1, [name | trail]))
+    Enum.each(sections, &do_ensure_documented!(&1, [name | trail]))
+  end
+
+  defp do_ensure_documented!(
+         %Ash.Dsl.Entity{name: name, schema: schema, entities: entities},
+         trail
+       ) do
+    case Enum.find(schema, fn {_key, opts} ->
+           !opts[:links]
+         end) do
+      {key, _opts} ->
+        opt =
+          trail
+          |> Enum.reverse([key])
+          |> Enum.join(".")
+
+        raise "#{opt} is not documented (must contain links)!"
+
+      _ ->
+        :ok
+    end
+
+    Enum.each(entities, &do_ensure_documented!(elem(&1, 1), [name | trail]))
+  end
+
   def to_name(string) do
     string
     |> String.split(~r/[-_]/, trim: true)
