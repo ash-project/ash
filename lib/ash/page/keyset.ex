@@ -58,7 +58,7 @@ defmodule Ash.Page.Keyset do
         |> Keyword.keys()
         |> Enum.sort()
 
-      with {:ok, decoded} <- decode_values(values),
+      with {:ok, decoded} <- decode_values(values, after_or_before),
            {:ok, zipped} <- zip_fields(sort_fields, decoded) do
         field_values =
           Enum.map(sort, fn {field, direction} ->
@@ -85,7 +85,7 @@ defmodule Ash.Page.Keyset do
     end)
   end
 
-  defp decode_values(values) do
+  defp decode_values(values, key) do
     {:ok,
      values
      |> URI.decode_www_form()
@@ -93,7 +93,7 @@ defmodule Ash.Page.Keyset do
      |> non_executable_binary_to_term([:safe])}
   rescue
     _e ->
-      {:error, Ash.Error.Page.InvalidKeyset.exception(value: values)}
+      {:error, Ash.Error.Page.InvalidKeyset.exception(value: values, key: key)}
   end
 
   defp filters(keyset, after_or_before) do
