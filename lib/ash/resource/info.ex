@@ -434,6 +434,7 @@ defmodule Ash.Resource.Info do
     default =
       if embedded?(resource) do
         [:create, :read, :update, :destroy]
+        |> Enum.reject(&Ash.Resource.Info.action(resource, &1))
       else
         []
       end
