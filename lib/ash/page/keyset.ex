@@ -92,8 +92,8 @@ defmodule Ash.Page.Keyset do
      |> Base.decode64!()
      |> non_executable_binary_to_term([:safe])}
   rescue
-    e ->
-      {:error, e}
+    _e ->
+      {:error, Ash.Error.Page.InvalidKeyset.exception(value: values)}
   end
 
   defp filters(keyset, after_or_before) do

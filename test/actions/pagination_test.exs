@@ -293,6 +293,12 @@ defmodule Ash.Actions.PaginationTest do
       refute id == next_id
     end
 
+    test "an invalid keyset returns an appropriate error" do
+      assert_raise(Ash.Error.Invalid, ~r/Invalid value provided as a keyset/, fn ->
+        Api.read!(User, action: :keyset, page: [limit: 1, after: "~"])
+      end)
+    end
+
     test "can ask for records before a specific keyset" do
       %{results: [%{id: id, __metadata__: %{keyset: keyset}}]} =
         Api.read!(User, action: :keyset, page: [limit: 1])
