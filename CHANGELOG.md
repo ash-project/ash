@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.52.0-rc.10](https://github.com/ash-project/ash/compare/v1.52.0-rc.9...v1.52.0-rc.10) (2022-05-30)
+
+
+
+
+### Improvements:
+
+* better error message on invalid keyset
+
+* added options to the built-in function `relate_actor/1` (#332)
+
+* add `:_pkey` shortcut in pub_sub
+
+* validate `pre_check_with` is set for ets/mnesia identities
+
+* clearer and raised error message on changeset action mismatch
+
+* accept atoms when casting strings
+
 ## [v1.52.0-rc.9](https://github.com/ash-project/ash/compare/v1.52.0-rc.8...v1.52.0-rc.9) (2022-05-23)
 
 
