@@ -2,14 +2,14 @@ defmodule Ash.Type.Enum do
   @moduledoc """
   A type for abstracting enums into a single type.
 
-  For example, you might have:
+  For example, your existing app might look like:
   ```elixir
   attribute :status, :atom, constraints: [one_of: [:open, :closed]]
   ```
 
   But as that starts to spread around your system you may find that you want
   to centralize that logic. To do that, use this module to define an Ash type
-  easily.
+  easily:
 
   ```elixir
   defmodule MyApp.TicketStatus do
