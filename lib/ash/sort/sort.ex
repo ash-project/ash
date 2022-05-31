@@ -138,6 +138,29 @@ defmodule Ash.Sort do
     end
   end
 
+  def reverse(sort) when is_list(sort) do
+    Enum.map(sort, &reverse/1)
+  end
+
+  def reverse(sort) when is_atom(sort) do
+    reverse({sort, :asc})
+  end
+
+  def reverse({key, {order, args}}) do
+    {key, {reverse_order(order), args}}
+  end
+
+  def reverse({key, order}) do
+    {key, reverse_order(order)}
+  end
+
+  defp reverse_order(:asc), do: :desc
+  defp reverse_order(:desc), do: :asc
+  defp reverse_order(:asc_nils_last), do: :desc_nils_first
+  defp reverse_order(:asc_nils_first), do: :desc_nils_last
+  defp reverse_order(:desc_nils_first), do: :asc_nils_last
+  defp reverse_order(:desc_nils_last), do: :asc_nils_first
+
   @doc """
   A utility for sorting a list of records at runtime.
 

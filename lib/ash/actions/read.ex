@@ -986,6 +986,15 @@ defmodule Ash.Actions.Read do
     limited = Ash.Query.limit(sorted, limit(opts[:limit], query.limit, pagination) + 1)
 
     if opts[:before] || opts[:after] do
+      reversed =
+        if opts[:before] do
+          limited
+          |> Ash.Query.unset(:sort)
+          |> Ash.Query.sort(Ash.Sort.reverse(limited.sort))
+        else
+          limited
+        end
+
       after_or_before =
         if opts[:before] do
           :before
@@ -1000,7 +1009,7 @@ defmodule Ash.Actions.Read do
              after_or_before
            ) do
         {:ok, filter} ->
-          {:ok, limited, Ash.Query.filter(limited, ^filter)}
+          {:ok, limited, Ash.Query.filter(reversed, ^filter)}
 
         {:error, error} ->
           {:error, error}

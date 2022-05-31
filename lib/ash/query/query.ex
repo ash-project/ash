@@ -114,13 +114,11 @@ defmodule Ash.Query do
 
     defp arguments(query, opts) do
       if query.action do
-        action = Ash.Resource.Info.action(query.resource, query.action, :read)
-
-        if is_nil(action) || Enum.empty?(action.arguments) do
+        if is_nil(query.action) || Enum.empty?(query.action.arguments) do
           empty()
         else
           arg_string =
-            action.arguments
+            query.action.arguments
             |> Map.new(fn argument ->
               if argument.sensitive? do
                 {argument.name, "**redacted**"}

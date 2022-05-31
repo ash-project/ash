@@ -325,16 +325,9 @@ defmodule Ash.Actions.PaginationTest do
       %{results: results} =
         User
         |> Ash.Query.sort(:name)
-        |> Api.read!(action: :keyset, page: [limit: 10, before: last_user.__metadata__.keyset])
+        |> Api.read!(action: :keyset, page: [limit: 2, before: last_user.__metadata__.keyset])
 
-      assert Enum.sort(Enum.map(results, & &1.name)) == [
-               "0",
-               "1",
-               "2",
-               "3",
-               "4",
-               "5",
-               "6",
+      assert Enum.map(results, & &1.name) == [
                "7",
                "8"
              ]
