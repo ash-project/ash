@@ -152,6 +152,11 @@ defmodule Ash.Actions.PaginationTest do
       assert Api.read!(User, action: :optional_offset, page: [limit: 1, count: true]).count == 10
     end
 
+    test "can include a full count with an offset" do
+      assert Api.read!(User, action: :optional_offset, page: [offset: 5, limit: 1, count: true]).count ==
+               10
+    end
+
     test "can default to including a count" do
       assert Api.read!(User, action: :offset_countable_by_default, page: [limit: 1]).count == 10
     end
@@ -267,6 +272,14 @@ defmodule Ash.Actions.PaginationTest do
       assert Api.read!(User, action: :optional_keyset, page: [limit: 1, count: true]).count == 10
     end
 
+    test "can include a full count with a sort and limit" do
+      assert 10 =
+               User
+               |> Ash.Query.sort(:name)
+               |> Api.read!(action: :optional_keyset, page: [limit: 1, count: true])
+               |> Map.get(:count)
+    end
+
     test "can default to including a count" do
       assert Api.read!(User, action: :keyset_countable_by_default, page: [limit: 1]).count == 10
     end
@@ -292,6 +305,14 @@ defmodule Ash.Actions.PaginationTest do
         Api.read!(User, action: :keyset, page: [limit: 1, after: keyset])
 
       refute id == next_id
+    end
+
+    test "can get the full count when asking for records after a specific keyset" do
+      %{results: [%{__metadata__: %{keyset: keyset}}], count: 10} =
+        Api.read!(User, action: :keyset, page: [count: true, limit: 1])
+
+      assert %{count: 10} =
+               Api.read!(User, action: :keyset, page: [count: true, limit: 1, after: keyset])
     end
 
     test "an invalid keyset returns an appropriate error" do
@@ -331,6 +352,23 @@ defmodule Ash.Actions.PaginationTest do
                "7",
                "8"
              ]
+    end
+
+    test "can ask for records before a specific keyset, with the full count shown" do
+      %{results: users} =
+        User |> Ash.Query.sort(:name) |> Api.read!(action: :keyset, page: [limit: 100])
+
+      users = Enum.sort_by(users, & &1.name)
+      last_user = List.last(users)
+      assert Enum.count(users) == 10
+
+      assert %{count: 10} =
+               User
+               |> Ash.Query.sort(:name)
+               |> Api.read!(
+                 action: :keyset,
+                 page: [count: true, limit: 2, before: last_user.__metadata__.keyset]
+               )
     end
 
     test "pagination works with a sort applied" do

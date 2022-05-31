@@ -123,7 +123,11 @@ defmodule Ash.DataLayer.Mnesia do
 
   @impl true
   def filter(query, filter, _resource) do
-    {:ok, %{query | filter: filter}}
+    if query.filter do
+      {:ok, %{query | filter: Ash.Filter.add_to_filter!(query.filter, filter)}}
+    else
+      {:ok, %{query | filter: filter}}
+    end
   end
 
   @impl true

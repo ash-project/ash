@@ -726,6 +726,7 @@ defmodule Ash.Actions.Read do
                        initial_offset,
                        request_opts
                      ),
+                   {:ok, query} <- apply_keyset_filter(query, ash_query),
                    {:ok, query} <-
                      Ash.DataLayer.limit(query, ash_query.limit, ash_query.resource),
                    {:ok, query} <-
@@ -788,6 +789,27 @@ defmodule Ash.Actions.Read do
         end
       end
     )
+  end
+
+  defp apply_keyset_filter(data_layer_query, query) do
+    case query.context[:private][:keyset_filter] do
+      nil ->
+        {:ok, data_layer_query}
+
+      filter ->
+        case Ash.Filter.parse(
+               query.resource,
+               filter,
+               query.aggregates,
+               query.calculations
+             ) do
+          {:ok, filter} ->
+            Ash.DataLayer.filter(data_layer_query, filter, query.resource)
+
+          {:error, error} ->
+            {:error, error}
+        end
+    end
   end
 
   defp validate_get([_, _ | _] = results, %{get?: true}, query) do
@@ -1009,7 +1031,13 @@ defmodule Ash.Actions.Read do
              after_or_before
            ) do
         {:ok, filter} ->
-          {:ok, limited, Ash.Query.filter(reversed, ^filter)}
+          {:ok, limited,
+           reversed
+           |> Ash.Query.set_context(%{
+             private: %{
+               keyset_filter: filter
+             }
+           })}
 
         {:error, error} ->
           {:error, error}
