@@ -250,11 +250,12 @@ defmodule Ash.Actions.PaginationTest do
 
   describe "keyset pagination" do
     setup do
-      for i <- 0..9 do
-        Api.create!(Ash.Changeset.new(User, %{name: "#{i}"}))
-      end
+      users =
+        for i <- 0..9 do
+          Api.create!(Ash.Changeset.new(User, %{name: "#{i}"}))
+        end
 
-      :ok
+      [users: users]
     end
 
     test "can be limited" do
@@ -312,6 +313,31 @@ defmodule Ash.Actions.PaginationTest do
         Api.read!(User, action: :keyset, page: [limit: 1, before: keyset2])
 
       assert id == before_id
+    end
+
+    test "can ask for records before a specific keyset, with the sort order honored" do
+      %{results: users} =
+        User |> Ash.Query.sort(:name) |> Api.read!(action: :keyset, page: [limit: 100])
+
+      users = Enum.sort_by(users, & &1.name)
+      last_user = List.last(users)
+
+      %{results: results} =
+        User
+        |> Ash.Query.sort(:name)
+        |> Api.read!(action: :keyset, page: [limit: 10, before: last_user.__metadata__.keyset])
+
+      assert Enum.sort(Enum.map(results, & &1.name)) == [
+               "0",
+               "1",
+               "2",
+               "3",
+               "4",
+               "5",
+               "6",
+               "7",
+               "8"
+             ]
     end
 
     test "pagination works with a sort applied" do

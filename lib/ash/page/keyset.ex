@@ -15,6 +15,13 @@ defmodule Ash.Page.Keyset do
   @type t :: %__MODULE__{}
 
   def new(results, count, sort, original_query, more?, opts) do
+    # results =
+    #   if opts[:page][:before] do
+    #     Enum.reverse(results)
+    #   else
+    #     results
+    #   end
+
     %__MODULE__{
       results: data_with_keyset(results, original_query.resource, sort),
       count: count,
