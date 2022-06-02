@@ -463,6 +463,9 @@ defmodule Ash.Resource.Info do
       |> actions()
       |> Enum.find(&(&1.name == name))
       |> case do
+        nil ->
+          nil
+
         %{type: ^type} = action ->
           action
 

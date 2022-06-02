@@ -1432,6 +1432,24 @@ defmodule Ash.Changeset do
             * Otherwise, an `InvalidRelationship` error is returned
       """
     ],
+    identity_priority: [
+      type: {:list, :atom},
+      default: [:_primary_key],
+      doc: """
+      The list, in priority order, of identities to use when looking up records for `on_lookup`, and matching records with `on_match`.
+
+      Use `:_primary_key` to prioritize checking a match with the primary key.
+      All identities, along with `:_primary_key` are checked regardless, this only allows ensuring that some are checked first.
+      """
+    ],
+    use_identities: [
+      type: {:list, :atom},
+      doc: """
+      A list of identities that may be used to look up and compare records.
+      Use `:_primary_key` to include the primary key. This does not determine the order
+      that they are checked, use `identity_priority` for that. By default, all are used.
+      """
+    ],
     on_lookup: [
       type: :any,
       default: :ignore,
@@ -1782,7 +1800,8 @@ defmodule Ash.Changeset do
                 input,
                 changeset,
                 opts[:eager_validate_with],
-                opts[:error_path] || opts[:meta][:id] || relationship.name
+                opts[:error_path] || opts[:meta][:id] || relationship.name,
+                opts
               )
             else
               changeset
@@ -1792,11 +1811,11 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp eager_validate_relationship_input(_relationship, [], _changeset, _api, _error_path),
+  defp eager_validate_relationship_input(_relationship, [], _changeset, _api, _error_path, _opts),
     do: :ok
 
-  defp eager_validate_relationship_input(relationship, input, changeset, api, error_path) do
-    pkeys = Ash.Actions.ManagedRelationships.pkeys(relationship)
+  defp eager_validate_relationship_input(relationship, input, changeset, api, error_path, opts) do
+    pkeys = Ash.Actions.ManagedRelationships.pkeys(relationship, opts)
 
     pkeys =
       Enum.map(pkeys, fn pkey ->
