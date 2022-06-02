@@ -14,6 +14,7 @@ defmodule Ash.DataLayer.Simple do
   def can?(_, :update), do: true
   def can?(_, :destroy), do: true
   def can?(_, :sort), do: true
+  def can?(_, :limit), do: true
   def can?(_, {:sort, _}), do: true
   def can?(_, :filter), do: true
   def can?(_, :boolean_filter), do: true
@@ -24,7 +25,7 @@ defmodule Ash.DataLayer.Simple do
 
   defmodule Query do
     @moduledoc false
-    defstruct [:data, :resource, :filter, :api, sort: [], data_set?: false]
+    defstruct [:data, :resource, :filter, :api, :limit, sort: [], data_set?: false]
   end
 
   @doc """
@@ -46,11 +47,22 @@ defmodule Ash.DataLayer.Simple do
      )}
   end
 
-  def run_query(%{data: data, sort: sort, api: api, filter: filter}, _resource) do
+  def run_query(%{data: data, sort: sort, api: api, filter: filter, limit: limit}, _resource) do
     {:ok,
      data
      |> Enum.filter(&Ash.Filter.Runtime.matches?(api, &1, filter))
-     |> Ash.Actions.Sort.runtime_sort(sort)}
+     |> Ash.Actions.Sort.runtime_sort(sort)
+     |> then(fn data ->
+       if limit do
+         Enum.take(data, limit)
+       else
+         data
+       end
+     end)}
+  end
+
+  def limit(query, limit, _) do
+    {:ok, %{query | limit: limit}}
   end
 
   def set_tenant(_, query, _), do: {:ok, query}
