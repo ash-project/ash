@@ -45,14 +45,6 @@ defmodule Ash.Resource.Preparation do
     {:error, "Expected a module and opts, got: #{inspect(other)}"}
   end
 
-  @doc false
-  def transform(%{preparation: {module, opts}} = preparation) do
-    case module.init(opts) do
-      {:ok, opts} -> {:ok, %{preparation | preparation: {module, opts}}}
-      {:error, error} -> {:error, error}
-    end
-  end
-
   @type context :: %{actor: Ash.Resource.record()} | %{}
   @callback init(Keyword.t()) :: {:ok, Keyword.t()} | {:error, term}
   @callback prepare(query, Keyword.t(), context) :: query when query: struct

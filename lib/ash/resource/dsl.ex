@@ -455,8 +455,7 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Preparation,
     schema: Ash.Resource.Preparation.schema(),
     no_depend_modules: [:preparation],
-    args: [:preparation],
-    transform: {Ash.Resource.Preparation, :transform, []}
+    args: [:preparation]
   }
 
   @read %Ash.Dsl.Entity{
