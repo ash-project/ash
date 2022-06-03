@@ -5,6 +5,33 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.52.0-rc.11](https://github.com/ash-project/ash/compare/v1.52.0-rc.10...v1.52.0-rc.11) (2022-06-03)
+
+
+
+
+### Bug Fixes:
+
+* move preparation init to runtime
+
+* don't automatically url encode keyset values
+
+* fixed bug wher embedded resources would always provide defaults, not allowing you to declare your own (primary?) actions (#339)
+
+* keyset pagination counts all rows
+
+* fetch items closest to cursor by reversing keyset sort
+
+* keyset + before results must be reversed
+
+### Improvements:
+
+* add `identity_priority` and `use_identities` option to manage_relationship
+
+* support limit in simple data layer
+
+* add `key` to `InvalidKeyset` error
+
 ## [v1.52.0-rc.10](https://github.com/ash-project/ash/compare/v1.52.0-rc.9...v1.52.0-rc.10) (2022-05-30)
 
 
