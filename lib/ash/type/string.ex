@@ -123,7 +123,7 @@ defmodule Ash.Type.String do
   def cast_input(nil, _), do: {:ok, nil}
 
   def cast_input(value, constraints) when is_atom(value) do
-    cast_input(value, constraints)
+    cast_input(to_string(value), constraints)
   end
 
   def cast_input(value, _) do
