@@ -12,6 +12,9 @@ defmodule Ash.DocIndex.AshDocIndex do
   @spec for_library() :: String.t()
   def for_library, do: "ash"
 
+  @overview File.read!("documentation/topics/overview.md")
+
+  @impl true
   def guides do
     guides = Enum.reject(super(), &(&1.name == "Overview"))
 
@@ -19,7 +22,7 @@ defmodule Ash.DocIndex.AshDocIndex do
       %{
         name: "Overview",
         category: "Topics",
-        text: File.read!("documentation/topics/overview.md"),
+        text: @overview,
         route: "topics/overview"
       }
       | guides
