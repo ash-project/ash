@@ -23,7 +23,7 @@ defmodule Ash.DocIndex.AshDocIndex do
         name: "Overview",
         category: "Topics",
         text: @overview,
-        route: "topics/overview"
+        route: "topics/overview.md"
       }
       | guides
     ]
