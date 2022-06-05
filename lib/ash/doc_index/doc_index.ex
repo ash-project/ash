@@ -21,7 +21,7 @@ defmodule Ash.DocIndex do
   @callback extensions() :: list(extension())
   @callback for_library() :: String.t()
   @callback guides() :: list(guide())
-  @callback code_modules() :: %{String.t() => list(module())}
+  @callback code_modules() :: [{String.t(), list(module())}]
 
   defmacro __using__(opts) do
     quote bind_quoted: [guides_from: opts[:guides_from]] do

@@ -78,57 +78,62 @@ defmodule Ash.DocIndex.AshDocIndex do
   end
 
   @impl true
-  @spec code_modules :: %{String.t() => list(module)}
+  @spec code_modules :: [{String.t(), list(module)}]
   def code_modules do
-    %{
-      "Resources" => [
-        Ash.Api,
-        Ash.Resource.Info,
-        Ash.Resource.Change,
-        Ash.Resource.Change.Builtins,
-        Ash.Calculation,
-        Ash.Resource.Calculation.Builtins,
-        Ash.CodeInterface,
-        Ash.Changeset,
-        Ash.Query
-      ],
-      "Utilities" => [
-        Ash.Filter,
-        Ash.Sort
-      ],
-      "Errors" => [
-        Ash.Error
-      ],
-      "Types" => [
-        Ash.Type,
-        Ash.Type.Enum,
-        Ash.Type.Atom,
-        Ash.Type.Binary,
-        Ash.Type.Boolean,
-        Ash.Type.CiString,
-        Ash.CiString,
-        Ash.Type.Date,
-        Ash.Type.Decimal,
-        Ash.Type.DurationName,
-        Ash.Type.Float,
-        Ash.Type.Function,
-        Ash.Type.Integer,
-        Ash.Type.Map,
-        Ash.Type.NaiveDatetime,
-        Ash.Type.String,
-        Ash.Type.Term,
-        Ash.Type.Time,
-        Ash.Type.UUID,
-        Ash.Type.UrlEncodedBinary,
-        Ash.Type.UtcDatetime,
-        Ash.Type.UtcDatetimeUsec
-      ],
-      "DSLs and Extensions" => [
-        Ash.Dsl.Entity,
-        Ash.Dsl.Extension,
-        Ash.Dsl.Section,
-        ASh.Dsl.Transformer
-      ]
-    }
+    [
+      {"Resources",
+       [
+         Ash.Api,
+         Ash.Resource.Info,
+         Ash.Resource.Change,
+         Ash.Resource.Change.Builtins,
+         Ash.Calculation,
+         Ash.Resource.Calculation.Builtins,
+         Ash.CodeInterface,
+         Ash.Changeset,
+         Ash.Query
+       ]},
+      {"Utilities",
+       [
+         Ash.Filter,
+         Ash.Sort
+       ]},
+      {"Errors",
+       [
+         Ash.Error
+       ]},
+      {"Types",
+       [
+         Ash.Type,
+         Ash.Type.Enum,
+         Ash.Type.Atom,
+         Ash.Type.Binary,
+         Ash.Type.Boolean,
+         Ash.Type.CiString,
+         Ash.CiString,
+         Ash.Type.Date,
+         Ash.Type.Decimal,
+         Ash.Type.DurationName,
+         Ash.Type.Float,
+         Ash.Type.Function,
+         Ash.Type.Integer,
+         Ash.Type.Map,
+         Ash.Type.NaiveDatetime,
+         Ash.Type.String,
+         Ash.Type.Term,
+         Ash.Type.Time,
+         Ash.Type.UUID,
+         Ash.Type.UrlEncodedBinary,
+         Ash.Type.UtcDatetime,
+         Ash.Type.UtcDatetimeUsec
+       ]},
+      {"DSLs and Extensions",
+       [
+         Ash.Dsl.Entity,
+         Ash.Dsl.Extension,
+         Ash.Dsl.Section,
+         ASh.Dsl.Transformer
+       ]}
+    ]
   end
 end

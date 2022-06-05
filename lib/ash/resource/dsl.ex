@@ -2,15 +2,9 @@ defmodule Ash.Resource.Dsl do
   @attribute %Ash.Dsl.Entity{
     name: :attribute,
     describe: """
-    Declares an attribute on the resource
+    Declares an attribute on the resource.
 
-    For more information, see `{{link:ash:guide:attributes.md}}`
-
-    Type can be either a built in type (see `Ash.Type`) for more, or a module
-    implementing the `Ash.Type` behaviour.
-
-    *Strings are trimmed by default*. If you want to retain whitespace, use
-    `attribute :foo, :string, constraints: [trim?: false]`
+    For more information, see {{link:ash:guide:topics/attributes.md}}
     """,
     examples: [
       """
