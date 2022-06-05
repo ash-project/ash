@@ -49,6 +49,8 @@ defmodule Ash.DocIndex do
         def guides do
           @files
         end
+
+        defoverridable guides: 0
       end
     end
   end
