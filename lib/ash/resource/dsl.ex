@@ -4,6 +4,8 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declares an attribute on the resource
 
+    For more information, see `{{link:ash:guide:attributes.md}}`
+
     Type can be either a built in type (see `Ash.Type`) for more, or a module
     implementing the `Ash.Type` behaviour.
 
