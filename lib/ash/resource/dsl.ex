@@ -4,7 +4,7 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declares an attribute on the resource.
 
-    For more information, see {{link:ash:guide:topics/attributes.md}}
+    For more information, see {{link:ash:guide:Attributes}}
     """,
     examples: [
       """
