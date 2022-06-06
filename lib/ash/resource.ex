@@ -14,6 +14,11 @@ defmodule Ash.Resource do
       :authorizers,
       :notifiers
     ],
+    generator: [
+      owned_by: Ash.Api,
+      child_path: "resources",
+      name: "resource"
+    ],
     default_extensions: [
       data_layer: Ash.DataLayer.Simple,
       extensions: [Ash.Resource.Dsl]

@@ -17,6 +17,11 @@ defmodule Ash.Dsl do
       default: true,
       doc: "Whether or not to support an `extensions` key which contains untyped extensions"
     ],
+    generator: [
+      type: :keyword_list,
+      default: [],
+      doc: "Configuration for code generation mix tasks"
+    ],
     default_extensions: [
       type: :keyword_list,
       default: [],
@@ -87,10 +92,13 @@ defmodule Ash.Dsl do
           ],
           generated: true do
       require Ash.Dsl.Extension
+      @behaviour Ash.Dsl
       @dialyzer {:nowarn_function, handle_opts: 1, handle_before_compile: 1}
       Module.register_attribute(__MODULE__, :ash_dsl, persist: true)
       Module.register_attribute(__MODULE__, :ash_default_extensions, persist: true)
       Module.register_attribute(__MODULE__, :ash_extension_kinds, persist: true)
+      Module.register_attribute(__MODULE__, :generator_options, persist: true)
+      @generator_options parent_opts[:generator]
       @ash_dsl true
       @ash_default_extensions parent_opts[:default_extensions]
                               |> Keyword.values()
