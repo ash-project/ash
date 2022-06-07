@@ -17,7 +17,7 @@ defmodule Ash.DocIndex do
 
   For example:
 
-  `link:ash:guide:Topics/Attributes` -> `-> `<a href="/docs/guides/ash/topics/attributes.md">Attributes</a>`
+  `link:ash:guide:Topics/Attributes` -> `-> `\<a href="/docs/guides/ash/topics/attributes.md"\>Attributes\</a\>`
 
   ## Mix dependencies
 
