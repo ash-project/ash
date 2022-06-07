@@ -150,6 +150,10 @@ defmodule Ash.DocIndex.AshDocIndex do
          Ash.Dsl.Extension,
          Ash.Dsl.Section,
          ASh.Dsl.Transformer
+       ]},
+      {"Documentation",
+       [
+         Ash.DocIndex
        ]}
     ]
   end
