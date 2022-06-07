@@ -6,26 +6,25 @@ defmodule Ash.DocIndex do
   The template syntax will link to the user's currently selected
   version for the relevant library.
 
-  All templates should be wrapped in double curly braces, e.g `{{}}`. This is not done here
-  as it would be replaced in the very documentation you are reading.
+  All templates should be wrapped in double curly braces, e.g `{{}}`.
 
   ## Links to other documentation
 
-  `link:library:item_type:name`
+  `{{link:library:item_type:name}}`
 
   The only item_type currently supported is `guide`, so the name would be `category/name`
 
   For example:
 
-  `link:ash:guide:Topics/Attributes` -> `-> `\<a href="/docs/guides/ash/topics/attributes.md"\>Attributes\</a\>`
+  `{{link:ash:guide:Topics/Attributes}}` -> `<a href="/docs/guides/ash/topics/attributes.md">Attributes</a>`
 
   ## Mix dependencies
 
-  `mix_dep:library`
+  `{{mix_dep:library}}`
 
   For example:
 
-  `mix_dep:ash` -> `{:ash, "~> 1.5"}`
+  `{{mix_dep:ash}}` -> `{:ash, "~> 1.5"}`
   """
 
   @type extension :: %{
