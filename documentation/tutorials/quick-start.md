@@ -1,5 +1,16 @@
 # Quick Start
 
+### NOTICE
+
+This guide is old, and will be replaced soon. Once the generators are done. At that point, the quick start will look something like
+
+- `mix new app_name` or `mix phx.new app_name`
+- Add the ash dependency `{{dep:ash}}`
+- Add the 
+
+## Start Here
+
+
 The first step is to decide if you're building a phoenix application or not. Phoenix is an extremely high quality web framework, and is the suggested pairing with Ash if you expect to be building a web front end, or an API. For this guide, we assume that elixir has already been installed. We will be using a "helpdesk" example throughout the documentation, so if you want to play along with your own application, you'll need to replace various names.
 
 ## Installing With Phoenix
