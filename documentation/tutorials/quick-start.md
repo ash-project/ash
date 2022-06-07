@@ -1,12 +1,14 @@
 # Quick Start
 
-### NOTICE
+## NOTICE
 
 This guide is old, and will be replaced soon. Once the generators are done. At that point, the quick start will look something like
 
 - `mix new app_name` or `mix phx.new app_name`
-- Add the ash dependency `{{dep:ash}}`
-- Add the 
+- Add the ash dependency `{{mix_dep:ash}}`
+- Run `mix ash.init`
+- Generate an api `mix ash.gen.api ApiName`
+- Generate a resource `mix ash.gen.resource ApiName ResourceName`
 
 ## Start Here
 
