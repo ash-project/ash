@@ -452,7 +452,7 @@ defmodule Ash.Engine do
   end
 
   defp fully_advance_request(state, request) do
-    case advance_request(request) do
+    case advance_request(request, state) do
       {:ok, new_request, notifications, dependencies, resource_notification} ->
         new_state =
           state
@@ -522,18 +522,19 @@ defmodule Ash.Engine do
     %{state | tasks: state.tasks ++ new_tasks}
   end
 
-  defp advance_request(%{state: state} = request) when state in [:error] do
+  defp advance_request(%{state: state} = request, _state) when state in [:error] do
     {:ok, request, [], []}
   end
 
-  defp advance_request(request) do
+  defp advance_request(request, state) do
     case Request.next(request) do
       {:already_complete, new_request, new_notifications, new_dependencies} ->
         {:ok, new_request, new_notifications, new_dependencies}
 
       {:complete, new_request, new_notifications, new_dependencies} ->
         if new_request.resource && new_request.notify? do
-          resource_notification = Request.resource_notification(new_request)
+          resource_notification =
+            sanitize_notification(Request.resource_notification(new_request), state)
 
           {:ok, new_request, new_notifications, new_dependencies, resource_notification}
         else
@@ -571,6 +572,8 @@ defmodule Ash.Engine do
         %{state | data: Map.put(state.data, key, value)}
 
       %Ash.Notifier.Notification{} = resource_notification, state ->
+        resource_notification = sanitize_notification(resource_notification, state)
+
         add_resource_notification(state, resource_notification)
 
       {receiver_path, request_path, field, value}, state ->
@@ -592,6 +595,18 @@ defmodule Ash.Engine do
         end)
         |> replace_request(new_request)
     end)
+  end
+
+  defp sanitize_notification(resource_notification, state) do
+    %{
+      resource_notification
+      | from: self(),
+        metadata:
+          Map.merge(
+            resource_notification.metadata || %{},
+            state.opts[:notification_metadata] || %{}
+          )
+    }
   end
 
   defp store_dependencies(state, dependencies) do

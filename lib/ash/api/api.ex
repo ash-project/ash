@@ -249,6 +249,13 @@ defmodule Ash.Api do
       To send notifications later, use `Ash.Notifier.notify(notifications)`. It sends any notifications
       that can be sent, and returns the rest.
       """
+    ],
+    notification_metadata: [
+      type: :any,
+      default: %{},
+      doc: """
+      Metadata to be merged into the metadata field for all notifications sent from this operation.
+      """
     ]
   ]
 

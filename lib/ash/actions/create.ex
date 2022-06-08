@@ -49,6 +49,7 @@ defmodule Ash.Actions.Create do
       verbose?: verbose?,
       actor: actor,
       authorize?: authorize?,
+      notification_metadata: opts[:notification_metadata],
       timeout: opts[:timeout] || changeset.timeout || Ash.Api.timeout(api),
       transaction?: Keyword.get(opts, :transaction?, true)
     )

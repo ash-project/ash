@@ -15,7 +15,7 @@ defmodule Ash.Notifier.Notification do
   behavior you can explicitly supply `nil` for the resource. If you supply `nil` for the resource,
   however, you must manually set the `for` option, e.g: `for: Notifier` or `for: [Notifier1, Notifier2]`
   """
-  defstruct [:resource, :api, :action, :data, :changeset, :actor, :for, metadata: %{}]
+  defstruct [:resource, :api, :action, :data, :changeset, :actor, :for, :from, metadata: %{}]
 
   @type t :: %__MODULE__{}
 

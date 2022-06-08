@@ -80,6 +80,33 @@ defmodule Ash.Test.Notifier.PubSubTest do
     assert_receive {:broadcast, ^message, "destroy", %Ash.Notifier.Notification{}}
   end
 
+  test "from is the pid that sent the message" do
+    post =
+      Post
+      |> Ash.Changeset.new(%{})
+      |> Api.create!()
+
+    Api.destroy!(post)
+
+    message = "post:foo:#{post.id}"
+    pid = self()
+    assert_receive {:broadcast, ^message, "destroy", %Ash.Notifier.Notification{from: ^pid}}
+  end
+
+  test "notification_metadata is included" do
+    post =
+      Post
+      |> Ash.Changeset.new(%{})
+      |> Api.create!()
+
+    Api.destroy!(post, notification_metadata: %{foo: :bar})
+
+    message = "post:foo:#{post.id}"
+
+    assert_receive {:broadcast, ^message, "destroy",
+                    %Ash.Notifier.Notification{metadata: %{foo: :bar}}}
+  end
+
   test "publishing a message with multiple matches/changes" do
     post =
       Post
