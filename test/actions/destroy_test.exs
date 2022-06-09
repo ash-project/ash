@@ -155,7 +155,7 @@ defmodule Ash.Test.Actions.DestroyTest do
 
       post_id = post.id
 
-      assert {:ok, %{id: ^post_id}, []} =
+      assert {:ok, %{id: ^post_id}, [_]} =
                Api.destroy(post, return_destroyed?: true, return_notifications?: true)
 
       refute Api.read_one!(Ash.Query.filter(Post, id == ^post.id))

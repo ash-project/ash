@@ -57,6 +57,7 @@ defmodule Ash.Engine do
     # There are no other failure modes, but this is there
     # to express the intent for there to eventually be.
     failure_mode: :complete,
+    return_notifications?: false,
     opts: [],
     requests: [],
     data: %{},
@@ -99,8 +100,14 @@ defmodule Ash.Engine do
     end
     |> case do
       {:ok, %{resource_notifications: resource_notifications} = result} ->
-        unsent = Ash.Notifier.notify(resource_notifications)
-        {:ok, %{result | resource_notifications: unsent}}
+        notifications =
+          if opts[:return_notifications?] do
+            resource_notifications
+          else
+            Ash.Notifier.notify(resource_notifications)
+          end
+
+        {:ok, %{result | resource_notifications: notifications}}
 
       other ->
         other
@@ -114,6 +121,7 @@ defmodule Ash.Engine do
         id: System.unique_integer([:positive, :monotonic]),
         resolved_fields: %{},
         actor: opts[:actor],
+        return_notifications?: opts[:return_notifications?],
         concurrency_limit: System.schedulers_online() * 2,
         authorize?: opts[:authorize?] || false,
         verbose?: opts[:verbose?] || false,
@@ -711,12 +719,13 @@ defmodule Ash.Engine do
   end
 
   defp add_resource_notification(state, resource_notification) do
-    if Ash.DataLayer.in_transaction?(resource_notification.resource) do
+    if Ash.DataLayer.in_transaction?(resource_notification.resource) ||
+         state.return_notifications? do
       %{state | resource_notifications: [resource_notification | state.resource_notifications]}
     else
-      Ash.Notifier.notify(resource_notification)
+      unsent = Ash.Notifier.notify(resource_notification)
 
-      state
+      %{state | resource_notifications: unsent ++ state.resource_notifications}
     end
   end
 

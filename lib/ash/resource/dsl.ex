@@ -9,7 +9,7 @@ defmodule Ash.Resource.Dsl do
     examples: [
       """
       attribute :first_name, :string do
-        primary_key? true
+        allow_nil? false
       end
       """
     ],

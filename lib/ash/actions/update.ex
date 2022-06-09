@@ -42,6 +42,7 @@ defmodule Ash.Actions.Update do
       verbose?: verbose?,
       actor: actor,
       notification_metadata: opts[:notification_metadata],
+      return_notifications?: opts[:return_notifications?],
       authorize?: authorize?,
       timeout: opts[:timeout] || changeset.timeout || Ash.Api.timeout(api),
       default_timeout: Ash.Api.timeout(api),

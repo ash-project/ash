@@ -51,6 +51,7 @@ defmodule Ash.Actions.Create do
       authorize?: authorize?,
       notification_metadata: opts[:notification_metadata],
       timeout: opts[:timeout] || changeset.timeout || Ash.Api.timeout(api),
+      return_notifications?: opts[:return_notifications?],
       transaction?: Keyword.get(opts, :transaction?, true)
     )
     |> case do

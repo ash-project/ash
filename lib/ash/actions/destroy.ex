@@ -58,6 +58,7 @@ defmodule Ash.Actions.Destroy do
       resource: resource,
       verbose?: verbose?,
       actor: actor,
+      return_notifications?: opts[:return_notifications?],
       notification_metadata: opts[:notification_metadata],
       authorize?: authorize?,
       timeout: opts[:timeout] || changeset.timeout || Ash.Api.timeout(api),
