@@ -1,4 +1,6 @@
 defmodule Ash.Notifier.PubSub do
+  require Logger
+
   @publish %Ash.Dsl.Entity{
     name: :publish,
     target: Ash.Notifier.PubSub.Publication,
@@ -158,11 +160,23 @@ defmodule Ash.Notifier.PubSub do
   end
 
   defp publish_notification(publish, notification) do
-    publish.topic
-    |> fill_template(notification)
-    |> Enum.each(fn topic ->
-      event = publish.event || to_string(notification.action.name)
-      prefix = prefix(notification.resource) || ""
+    debug? = Application.get_env(:ash, :pub_sub)[:debug?] || false
+    event = publish.event || to_string(notification.action.name)
+    prefix = prefix(notification.resource) || ""
+
+    topics = fill_template(publish.topic, notification)
+
+    if debug? do
+      Logger.debug("""
+      Broadcasting to topics #{inspect(topics)} via #{inspect(module(notification.resource))}.broadcast
+
+      Notification:
+
+      #{inspect(notification)}
+      """)
+    end
+
+    Enum.each(topics, fn topic ->
       prefixed_topic = prefix <> ":" <> topic
 
       args =
@@ -219,6 +233,10 @@ defmodule Ash.Notifier.PubSub do
   defp all_combinations_of_values(items, notification, action_type, trail \\ [])
 
   defp all_combinations_of_values([], _, _, trail), do: [Enum.reverse(trail)]
+
+  defp all_combinations_of_values([nil | rest], notification, action_type, trail) do
+    all_combinations_of_values(rest, notification, action_type, trail)
+  end
 
   defp all_combinations_of_values([item | rest], notification, action_type, trail)
        when is_binary(item) do
