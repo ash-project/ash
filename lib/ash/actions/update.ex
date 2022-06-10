@@ -329,7 +329,7 @@ defmodule Ash.Actions.Update do
                               changeset =
                                 changeset
                                 |> Ash.Changeset.set_defaults(:update, true)
-                                |> Ash.Changeset.put_context(:changed?, false)
+                                |> Ash.Changeset.put_context(:changed?, true)
 
                               resource
                               |> Ash.DataLayer.update(changeset)
