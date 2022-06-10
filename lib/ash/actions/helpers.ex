@@ -15,7 +15,7 @@ defmodule Ash.Actions.Helpers do
 
   def validate_calculation_load!(other, _), do: other
 
-  def warn_missed!(action, result) do
+  def warn_missed!(resource, action, result) do
     case Map.get(result, :resource_notifications, []) do
       empty when empty in [nil, []] ->
         :ok
@@ -27,7 +27,7 @@ defmodule Ash.Actions.Helpers do
 
           :raise ->
             raise """
-            Missed #{Enum.count(missed)} notifications in action #{action.name}.
+            Missed #{Enum.count(missed)} notifications in action #{inspect(resource)}.#{action.name}.
 
             This happens when the resources are in a transaction, and you did not pass
             `return_notifications?: true`. If you are in a changeset hook, you can simply
@@ -36,13 +36,17 @@ defmodule Ash.Actions.Helpers do
             """
 
           :warn ->
+            {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
+
             Logger.warn("""
-            Missed #{Enum.count(missed)} notifications in action #{action.name}.
+            Missed #{Enum.count(missed)} notifications in action #{inspect(resource)}.#{action.name}.
 
             This happens when the resources are in a transaction, and you did not pass
             `return_notifications?: true`. If you are in a changeset hook, you can simply
             return the notifications. If not, you can send the notifications using
             `Ash.Notifier.notify/1` once your resources are out of a transaction.
+
+            #{Exception.format_stacktrace(stacktrace)}
             """)
         end
     end

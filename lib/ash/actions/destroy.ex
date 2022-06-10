@@ -66,8 +66,8 @@ defmodule Ash.Actions.Destroy do
     )
     |> case do
       {:ok, %{data: data} = engine_result} ->
-        action
-        |> add_notifications(engine_result, return_notifications?)
+        resource
+        |> add_notifications(action, engine_result, return_notifications?)
         |> add_destroyed(return_destroyed?, Map.get(data, :destroy))
 
       {:error, %Ash.Engine{errors: errors, requests: requests}} ->
@@ -251,11 +251,11 @@ defmodule Ash.Actions.Destroy do
     [authorization_request, destroy_request]
   end
 
-  defp add_notifications(action, engine_result, return_notifications?) do
+  defp add_notifications(resource, action, engine_result, return_notifications?) do
     if return_notifications? do
       {:ok, Map.get(engine_result, :resource_notifications, [])}
     else
-      Ash.Actions.Helpers.warn_missed!(action, engine_result)
+      Ash.Actions.Helpers.warn_missed!(resource, action, engine_result)
       :ok
     end
   end

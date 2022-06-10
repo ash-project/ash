@@ -56,7 +56,7 @@ defmodule Ash.Actions.Create do
     )
     |> case do
       {:ok, %{data: %{commit: %^resource{} = created}} = engine_result} ->
-        add_notifications(action, created, engine_result, return_notifications?)
+        add_notifications(resource, action, created, engine_result, return_notifications?)
 
       {:error, %Ash.Engine{errors: errors, requests: requests}} ->
         case Enum.find_value(requests, fn request ->
@@ -100,12 +100,12 @@ defmodule Ash.Actions.Create do
 
   defp add_tenant(other, _), do: other
 
-  defp add_notifications(_action, result, engine_result, true) do
+  defp add_notifications(_resource, _action, result, engine_result, true) do
     {:ok, result, Map.get(engine_result, :resource_notifications, [])}
   end
 
-  defp add_notifications(action, result, engine_result, _) do
-    Ash.Actions.Helpers.warn_missed!(action, engine_result)
+  defp add_notifications(resource, action, result, engine_result, _) do
+    Ash.Actions.Helpers.warn_missed!(resource, action, engine_result)
 
     {:ok, result}
   end
