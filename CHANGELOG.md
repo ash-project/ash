@@ -5,6 +5,31 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.52.0-rc.12](https://github.com/ash-project/ash/compare/v1.52.0-rc.11...v1.52.0-rc.12) (2022-06-14)
+
+
+
+
+### Bug Fixes:
+
+* don't disable lexical tracker for extensions
+
+* properly set the `changed?` context
+
+* always return all notifications if `return_notifications?: true`
+
+* read file at compile time for doc index
+
+* when casting atom -> string, stringify it first
+
+### Improvements:
+
+* add resource to notification warning
+
+* add `config :ash, :pub_sub, debug?: true`
+
+* add `from` to notification, and `notification_metadata` to api
+
 ## [v1.52.0-rc.11](https://github.com/ash-project/ash/compare/v1.52.0-rc.10...v1.52.0-rc.11) (2022-06-03)
 
 
