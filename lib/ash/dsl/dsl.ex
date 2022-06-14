@@ -201,8 +201,7 @@ defmodule Ash.Dsl do
     Enum.reduce(opts, {[], []}, fn {key, value}, {opts, extensions} ->
       cond do
         key in their_opt_schema[:single_extension_kinds] ->
-          mod =
-            Macro.expand(value, %{env | function: {:__ash_placeholder__, 0}, lexical_tracker: nil})
+          mod = Macro.expand(value, env)
 
           extensions =
             if Ash.Helpers.implements_behaviour?(mod, Ash.Dsl.Extension) do
@@ -217,7 +216,7 @@ defmodule Ash.Dsl do
           mods =
             value
             |> List.wrap()
-            |> Enum.map(&Macro.expand(&1, %{env | function: {:__ash_placeholder__, 0}}))
+            |> Enum.map(&Macro.expand(&1, env))
 
           extensions =
             extensions ++
