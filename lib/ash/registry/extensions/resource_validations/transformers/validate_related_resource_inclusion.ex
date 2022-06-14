@@ -16,7 +16,7 @@ defmodule Ash.Registry.ResourceValidations.Transformers.ValidateRelatedResourceI
     resources = Ash.Registry.entries(module)
 
     resources
-    |> Enum.flat_map(&get_all_related_resources/1)
+    |> Enum.flat_map(&get_all_related_resources(&1, resources))
     |> Enum.uniq()
     |> Enum.reject(&(&1 in resources))
     |> case do
@@ -28,7 +28,7 @@ defmodule Ash.Registry.ResourceValidations.Transformers.ValidateRelatedResourceI
     end
   end
 
-  defp get_all_related_resources(resource, checked \\ []) do
+  defp get_all_related_resources(resource, checked) do
     resource
     |> Ash.Resource.Info.relationships()
     |> Enum.reject(& &1.api)
