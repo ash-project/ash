@@ -145,6 +145,7 @@ defmodule Ash.Type do
               | {:error, constraint_error() | list(constraint_error)}
   @callback describe(constraints()) :: String.t() | nil
   @callback equal?(term, term) :: boolean
+  @callback embedded?() :: boolean
 
   @optional_callbacks [
     cast_stored_array: 2,
@@ -173,7 +174,7 @@ defmodule Ash.Type do
   end
 
   def embedded_type?(type) do
-    Ash.Resource.Info.resource?(type)
+    type.embedded?()
   end
 
   def describe(type, constraints) do
@@ -362,40 +363,32 @@ defmodule Ash.Type do
 
   def cast_input(_, nil, _), do: {:ok, nil}
 
+  def cast_input(type, %type{__metadata__: _} = value, _), do: {:ok, value}
+
   def cast_input(type, term, constraints) do
-    if Ash.Dsl.is?(type, Ash.Resource) && !Ash.Resource.Info.embedded?(type) do
-      case term do
-        %^type{} = value ->
-          {:ok, value}
+    type = get_type(type)
 
-        _other ->
-          {:error, "is invalid"}
-      end
-    else
-      type = get_type(type)
+    case type.cast_input(term, constraints) do
+      {:ok, value} ->
+        {:ok, value}
 
-      case type.cast_input(term, constraints) do
-        {:ok, value} ->
-          {:ok, value}
+      :error ->
+        case term do
+          "" ->
+            cast_input(type, nil, constraints)
 
-        :error ->
-          case term do
-            "" ->
-              cast_input(type, nil, constraints)
+          _ ->
+            {:error, "is invalid"}
+        end
 
-            _ ->
-              {:error, "is invalid"}
-          end
+      {:error, other} ->
+        case term do
+          "" ->
+            cast_input(type, nil, constraints)
 
-        {:error, other} ->
-          case term do
-            "" ->
-              cast_input(type, nil, constraints)
-
-            _ ->
-              {:error, other}
-          end
-      end
+          _ ->
+            {:error, other}
+        end
     end
   end
 
@@ -563,6 +556,8 @@ defmodule Ash.Type do
 
   @spec constraints(Ash.Changeset.t() | Ash.Query.t(), Ash.Type.t(), Keyword.t()) :: Keyword.t()
   def constraints(source, type, constraints) do
+    type = get_type(type)
+
     if embedded_type?(type) do
       Keyword.put(constraints, :__source__, source)
     else
@@ -688,7 +683,7 @@ defmodule Ash.Type do
 
   # @callback equal?(term, term) :: boolean
 
-  defmacro __using__(_opts) do
+  defmacro __using__(opts) do
     quote location: :keep do
       @behaviour Ash.Type
 
@@ -767,6 +762,11 @@ defmodule Ash.Type do
       @impl true
       def array_constraints do
         unquote(@array_constraints)
+      end
+
+      @impl true
+      def embedded? do
+        unquote(opts[:embedded?] || false)
       end
 
       defoverridable equal?: 2,

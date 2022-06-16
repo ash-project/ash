@@ -618,7 +618,7 @@ defmodule Ash.EmbeddableType do
 
   defmacro define_embeddable_type do
     quote location: :keep do
-      use Ash.Type
+      use Ash.Type, embedded?: true
 
       Ash.EmbeddableType.single_embed_implementation()
       Ash.EmbeddableType.array_embed_implementation()

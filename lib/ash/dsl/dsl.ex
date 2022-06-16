@@ -259,7 +259,9 @@ defmodule Ash.Dsl do
   end
 
   def is?(module, type) when is_atom(module) do
-    function_exported?(module, :ash_is, 0) && module.ash_is() == type
+    module.ash_is() == type
+  rescue
+    _ -> false
   end
 
   def is?(_module, _type), do: false
