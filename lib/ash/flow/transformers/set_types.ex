@@ -95,5 +95,6 @@ defmodule Ash.Flow.Transformers.SetTypes do
   end
 
   def after?(Ash.Resource.Transformers.BelongsToAttribute), do: true
+  def after?(Ash.Resource.Transformers.ReplaceTimestamps), do: true
   def after?(_), do: false
 end

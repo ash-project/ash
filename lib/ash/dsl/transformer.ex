@@ -169,6 +169,14 @@ defmodule Ash.Dsl.Transformer do
     end)
   end
 
+  def remove_entity(dsl_state, path, func) do
+    Map.update(dsl_state, path, %{entities: [], opts: []}, fn config ->
+      Map.update(config, :entities, [], fn entities ->
+        Enum.reject(entities, func)
+      end)
+    end)
+  end
+
   def get_entities(dsl_state, path) do
     dsl_state
     |> Map.get(path, %{entities: []})
@@ -213,19 +221,87 @@ defmodule Ash.Dsl.Transformer do
     end)
   end
 
+  # def sort(transformers) do
+  #   Enum.reduce(transformers, [], fn transformer, list ->
+  #     put_transformer_in(list, transformer)
+  #   end)
+  # end
+
+  # defp put_transformer_in([], transformer), do: [transformer]
+
+  # defp put_transformer_in([first | rest] = remaining, transformer) do
+  #   if transformer.before?(first) or first.after?(transformer) do
+  #     [transformer | remaining]
+  #   else
+  #     [first | put_transformer_in(rest, transformer)]
+  #   end
+  # end
+
   def sort(transformers) do
-    Enum.reduce(transformers, [], fn transformer, list ->
-      put_transformer_in(list, transformer)
+    digraph = :digraph.new()
+
+    transformers
+    |> Enum.each(fn transformer ->
+      :digraph.add_vertex(digraph, transformer)
     end)
+
+    transformers
+    |> Enum.each(fn left ->
+      transformers
+      |> Enum.each(fn right ->
+        if left != right do
+          left_before_right? = left.before?(right) || right.after?(left)
+          left_after_right? = left.after?(right) || right.before?(left)
+
+          cond do
+            # This is annoying, but some modules have `def after?(_), do: true`
+            # The idea being that they'd like to go after everything that isn't
+            # explicitly after it. Same with `def before?(_), do: true`
+            left_before_right? && left_after_right? ->
+              :ok
+
+            left_before_right? ->
+              :digraph.add_edge(digraph, left, right)
+
+            left_after_right? ->
+              :digraph.add_edge(digraph, right, left)
+
+            true ->
+              :ok
+          end
+        end
+      end)
+    end)
+
+    transformers = walk_rest(digraph)
+    :digraph.delete(digraph)
+
+    transformers
   end
 
-  defp put_transformer_in([], transformer), do: [transformer]
+  defp walk_rest(digraph, acc \\ []) do
+    case :digraph.vertices(digraph) do
+      [] ->
+        Enum.reverse(acc)
 
-  defp put_transformer_in([first | rest] = remaining, transformer) do
-    if transformer.before?(first) or first.after?(transformer) do
-      [transformer | remaining]
-    else
-      [first | put_transformer_in(rest, transformer)]
+      vertices ->
+        case Enum.find(vertices, &(:digraph.in_neighbours(digraph, &1) == [])) do
+          nil ->
+            case Enum.find(vertices, &(:digraph.out_neighbours(digraph, &1) == [])) do
+              nil ->
+                raise "what"
+
+              # # Enum.reverse(acc ++ vertices)
+
+              vertex ->
+                :digraph.del_vertex(digraph, vertex)
+                walk_rest(digraph, acc ++ [vertex])
+            end
+
+          vertex ->
+            :digraph.del_vertex(digraph, vertex)
+            walk_rest(digraph, [vertex | acc])
+        end
     end
   end
 end
