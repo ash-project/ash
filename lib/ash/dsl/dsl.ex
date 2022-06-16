@@ -155,6 +155,8 @@ defmodule Ash.Dsl do
             @ash_is parent
             @ash_parent parent
 
+            def ash_is, do: @ash_is
+
             defmacro __after_compile__(_, _) do
               quote do
                 Ash.Dsl.Extension.run_after_compile()
@@ -257,10 +259,11 @@ defmodule Ash.Dsl do
   end
 
   def is?(module, type) when is_atom(module) do
-    type in List.wrap(module.module_info(:attributes)[:ash_is])
-  rescue
-    _ ->
+    if function_exported?(module, :ash_is, 0) do
+      module.ash_is() == type
+    else
       false
+    end
   end
 
   def is?(_module, _type), do: false
