@@ -274,7 +274,7 @@ defmodule Ash.Api do
       MyApp.User
       |> Ash.Changeset.for_create(:create, %{first_name: "first_name", last_name: "last_name"}
       |> Ash.Changeset.select(:first_name))
-      |> Api.create(after_action: fn _changeset, user -> Api.load(user, :full_name))
+      |> Api.create(after_action: fn _changeset, user -> Api.load(user, :full_name) end)
       ```
 
       If you tried to load that `:full_name` calculation after receiving the data, the `last_name` would not be selected and as such would not be

@@ -221,22 +221,6 @@ defmodule Ash.Dsl.Transformer do
     end)
   end
 
-  # def sort(transformers) do
-  #   Enum.reduce(transformers, [], fn transformer, list ->
-  #     put_transformer_in(list, transformer)
-  #   end)
-  # end
-
-  # defp put_transformer_in([], transformer), do: [transformer]
-
-  # defp put_transformer_in([first | rest] = remaining, transformer) do
-  #   if transformer.before?(first) or first.after?(transformer) do
-  #     [transformer | remaining]
-  #   else
-  #     [first | put_transformer_in(rest, transformer)]
-  #   end
-  # end
-
   def sort(transformers) do
     digraph = :digraph.new()
 
@@ -289,9 +273,7 @@ defmodule Ash.Dsl.Transformer do
           nil ->
             case Enum.find(vertices, &(:digraph.out_neighbours(digraph, &1) == [])) do
               nil ->
-                raise "what"
-
-              # # Enum.reverse(acc ++ vertices)
+                raise "Cycle detected in transformer order"
 
               vertex ->
                 :digraph.del_vertex(digraph, vertex)
