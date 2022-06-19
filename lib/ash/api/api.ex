@@ -1009,7 +1009,10 @@ defmodule Ash.Api do
 
     api
     |> destroy(changeset, opts)
-    |> unwrap_or_raise!(opts[:stacktraces?], opts[:return_destroyed?] != true)
+    |> unwrap_or_raise!(
+      opts[:stacktraces?],
+      !(opts[:return_notifications?] || opts[:return_destroyed?])
+    )
   end
 
   @doc false
@@ -1074,7 +1077,7 @@ defmodule Ash.Api do
   defp unwrap_or_raise!(first, second, destroy? \\ false)
   defp unwrap_or_raise!(:ok, _, _), do: :ok
   defp unwrap_or_raise!({:ok, result}, _, false), do: result
-  defp unwrap_or_raise!({:ok, result}, _, true), do: {:ok, result}
+  defp unwrap_or_raise!({:ok, _result}, _, true), do: :ok
   defp unwrap_or_raise!({:ok, result, other}, _, _), do: {result, other}
 
   defp unwrap_or_raise!({:error, error}, stacktraces?, destroy?) when is_list(error) do
