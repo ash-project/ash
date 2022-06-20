@@ -230,7 +230,11 @@ defmodule Ash.Actions.Destroy do
                 else
                   case Ash.DataLayer.destroy(resource, changeset) do
                     :ok ->
-                      {:ok, record}
+                      {:ok,
+                       %{
+                         record
+                         | __meta__: %Ecto.Schema.Metadata{state: :deleted, schema: resource}
+                       }}
 
                     {:error, error} ->
                       {:error, error}

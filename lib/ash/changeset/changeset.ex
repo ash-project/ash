@@ -1119,6 +1119,14 @@ defmodule Ash.Changeset do
   end
 
   def with_hooks(changeset, func) do
+    if changeset.valid? do
+      run_around_actions(changeset, func)
+    else
+      {:error, changeset.errors}
+    end
+  end
+
+  defp run_around_actions(%{around_action: []} = changeset, func) do
     {changeset, %{notifications: before_action_notifications}} =
       Enum.reduce_while(
         changeset.before_action,
@@ -1153,14 +1161,6 @@ defmodule Ash.Changeset do
         end
       )
 
-    if changeset.valid? do
-      run_around_actions(changeset, func, before_action_notifications)
-    else
-      {:error, changeset.errors}
-    end
-  end
-
-  defp run_around_actions(%{around_action: []} = changeset, func, before_action_notifications) do
     case func.(changeset) do
       {:ok, result, instructions} ->
         run_after_actions(
@@ -1175,6 +1175,15 @@ defmodule Ash.Changeset do
       {:error, error} ->
         {:error, error}
     end
+  end
+
+  defp run_around_actions(
+         %{around_action: [around | rest]} = changeset,
+         func
+       ) do
+    around.(changeset, fn changeset ->
+      run_around_actions(%{changeset | around_action: rest}, func)
+    end)
   end
 
   defp run_after_actions(result, changeset, before_action_notifications) do
@@ -2507,7 +2516,75 @@ defmodule Ash.Changeset do
     %{changeset | after_action: changeset.after_action ++ [func]}
   end
 
-  @doc "Adds an around_action hook to the changeset."
+  @doc """
+  Adds an around_action hook to the changeset.
+
+  Your function will get the changeset, and a callback that must be called with a changeset (that may be modified).
+  The callback will return `{:ok, result, instructions}` or `{:error, error}`. You can modify these values, but the
+  return value must be one of those types. Instructions contains the notifications in its `notifications` key, i.e
+  `%{notifications: [%Ash.Resource.Notification{}, ...]}`.
+
+  The around_action calls happen first, and then (after they each resolve their callbacks) the `before_action`
+  hooks are called, followed by the action itself ocurring at the data layer and then the `after_action` hooks being run.
+  Then, the code that appeared *after* the callbacks were called is then run.
+
+  For example:
+  ```elixir
+  changeset
+  |> Ash.Changeset.around_action(fn changeset, callback ->
+    IO.puts("first around: before")
+    result = callback.(changeset)
+    IO.puts("first around: after")
+  end)
+  |> Ash.Changeset.around_action(fn changeset, callback ->
+    IO.puts("second around: before")
+    result = callback.(changeset)
+    IO.puts("second around: after")
+  end)
+  |> Ash.Changeset.before_action(fn changeset ->
+    IO.puts("first before")
+    changeset
+  end)
+  |> Ash.Changeset.before_action(fn changeset ->
+    IO.puts("second before")
+    changeset
+  end)
+  |> Ash.Changeset.after_action(fn changeset, result ->
+    IO.puts("first after")
+    {:ok, result}
+  end)
+  |> Ash.Changeset.after_action(fn changeset ->
+    IO.puts("second after")
+    {:ok, result}
+  end)
+  ```
+
+  This would print:
+  ```
+  first around: before
+  second around: before
+  first before
+  second before
+               <-- action happens here
+  first after
+  second after
+  second around: after <-- Notice that because of the callbacks, the after of the around hooks is reversed from the before
+  first around: after
+  ```
+
+  Warning: using this without understanding how it works can cause big problems.
+  You *must* call the callback function that is provided to your hook, and the return value must
+  contain the same structure that was given to you, i.e `{:ok, result_of_action, instructions}`.
+
+  You can almost always get the same effect by using `before_action`, setting some context on the changeset
+  and reading it out in an `after_action` hook.
+  """
+  @type around_result ::
+          {:ok, Ash.Resource.record(), t(), %{notifications: list(Ash.Resource.Notification.t())}}
+          | {:error, Ash.Error.t()}
+
+  @type around_callback :: (t() -> around_result)
+  @spec around_action(t(), (t(), around_callback() -> around_result)) :: t()
   def around_action(changeset, func) do
     %{changeset | around_action: changeset.around_action ++ [func]}
   end

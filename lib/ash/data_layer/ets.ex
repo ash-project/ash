@@ -263,7 +263,8 @@ defmodule Ash.DataLayer.Ets do
         _resource
       ) do
     with {:ok, records} <- get_records(resource, tenant),
-         {:ok, filtered_records} <- filter_matches(records, filter, api) do
+         {:ok, filtered_records} <-
+           filter_matches(records, filter, api) do
       offset_records =
         filtered_records
         |> Sort.runtime_sort(sort)
@@ -400,7 +401,7 @@ defmodule Ash.DataLayer.Ets do
          record <- unload_relationships(resource, record),
          {:ok, _} <-
            put_or_insert_new(table, {pkey, record}, opts) do
-      {:ok, record}
+      {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
     else
       {:error, error} -> {:error, error}
     end

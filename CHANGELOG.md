@@ -217,8 +217,6 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 * fix expression logic
 
-* remove IO.inspect
-
 * don't throw away timeout exit
 
 * timeouts @ the engine, not the parent process

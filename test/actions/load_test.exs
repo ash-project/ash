@@ -147,6 +147,10 @@ defmodule Ash.Test.Actions.LoadTest do
     use Ash.Resource,
       data_layer: Ash.DataLayer.Ets
 
+    ets do
+      private? true
+    end
+
     attributes do
       uuid_primary_key :id
       attribute :rating, :integer

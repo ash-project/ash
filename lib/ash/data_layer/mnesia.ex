@@ -233,8 +233,11 @@ defmodule Ash.DataLayer.Mnesia do
       end)
 
     case result do
-      {:atomic, _} -> {:ok, record}
-      {:aborted, error} -> {:error, error}
+      {:atomic, _} ->
+        {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
+
+      {:aborted, error} ->
+        {:error, error}
     end
   end
 
