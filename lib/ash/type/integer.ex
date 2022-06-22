@@ -24,6 +24,14 @@ defmodule Ash.Type.Integer do
   def storage_type, do: :integer
 
   @impl true
+  def generator(constraints) do
+    min = constraints[:min] || -2_147_483_648
+    max = constraints[:max] || 2_147_483_647
+
+    StreamData.integer(min..max)
+  end
+
+  @impl true
   def constraints, do: @constraints
 
   @doc false

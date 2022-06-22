@@ -3,7 +3,7 @@ defmodule Ash.Test.Actions.ReadTest do
   use ExUnit.Case, async: true
 
   import Ash.Changeset
-  import Ash.Test.Helpers
+  import Ash.Test
 
   require Ash.Query
 
@@ -98,6 +98,7 @@ defmodule Ash.Test.Actions.ReadTest do
         Post
         |> new(%{title: "test", contents: "yeet"})
         |> Api.create!()
+        |> strip_metadata()
 
       %{post: post}
     end
@@ -105,7 +106,7 @@ defmodule Ash.Test.Actions.ReadTest do
     test "it returns a matching record", %{post: post} do
       assert {:ok, fetched_post} = Api.get(Post, post.id)
 
-      assert clear_meta(fetched_post) == post
+      assert strip_metadata(fetched_post) == post
     end
 
     test "it returns an error when there is no matching record" do
@@ -116,7 +117,7 @@ defmodule Ash.Test.Actions.ReadTest do
     test "it uses identities if they exist", %{post: post} do
       assert {:ok, fetched_post} = Api.get(Post, uuid: post.uuid)
 
-      assert clear_meta(fetched_post) == post
+      assert strip_metadata(fetched_post) == post
     end
 
     test "raises an error when the first argument is not a module" do
@@ -150,12 +151,13 @@ defmodule Ash.Test.Actions.ReadTest do
         Post
         |> new(%{title: "test", contents: "yeet"})
         |> Api.create!()
+        |> strip_metadata()
 
       %{post: post}
     end
 
     test "it returns a matching record", %{post: post} do
-      assert ^post = clear_meta(Api.get!(Post, post.id))
+      assert ^post = strip_metadata(Api.get!(Post, post.id))
     end
 
     test "it raises when there is no matching record" do
@@ -395,11 +397,13 @@ defmodule Ash.Test.Actions.ReadTest do
         Post
         |> new(%{title: "test", contents: "yeet"})
         |> Api.create!()
+        |> strip_metadata()
 
       post2 =
         Post
         |> new(%{title: "test1", contents: "yeet"})
         |> Api.create!()
+        |> strip_metadata()
 
       %{post1: post1, post2: post2}
     end
@@ -416,7 +420,7 @@ defmodule Ash.Test.Actions.ReadTest do
                Post
                |> Ash.Query.filter(title == ^post1.title)
                |> Api.read()
-               |> clear_meta()
+               |> strip_metadata()
     end
 
     test "a filter returns multiple records if they match", %{post1: post1, post2: post2} do
@@ -424,7 +428,7 @@ defmodule Ash.Test.Actions.ReadTest do
                Post
                |> Ash.Query.filter(contents == "yeet")
                |> Api.read()
-               |> clear_meta()
+               |> strip_metadata()
 
       assert post1 in results
       assert post2 in results
@@ -504,11 +508,13 @@ defmodule Ash.Test.Actions.ReadTest do
         Post
         |> new(%{title: "abc", contents: "abc"})
         |> Api.create!()
+        |> strip_metadata()
 
       post2 =
         Post
         |> new(%{title: "xyz", contents: "abc"})
         |> Api.create!()
+        |> strip_metadata()
 
       %{post1: post1, post2: post2}
     end
@@ -521,7 +527,7 @@ defmodule Ash.Test.Actions.ReadTest do
                Post
                |> Ash.Query.sort(title: :asc)
                |> Api.read()
-               |> clear_meta()
+               |> strip_metadata()
     end
 
     test "a sort will sor rows accordingly when descending", %{
@@ -532,7 +538,7 @@ defmodule Ash.Test.Actions.ReadTest do
                Post
                |> Ash.Query.sort(title: :desc)
                |> Api.read()
-               |> clear_meta()
+               |> strip_metadata()
     end
 
     test "a nested sort sorts accordingly", %{post1: post1, post2: post2} do
@@ -540,13 +546,13 @@ defmodule Ash.Test.Actions.ReadTest do
         Post
         |> new(%{title: "abc", contents: "xyz"})
         |> Api.create!()
-        |> clear_meta()
+        |> strip_metadata()
 
       assert {:ok, [^post1, ^middle_post, ^post2]} =
                Post
                |> Ash.Query.sort(title: :asc, contents: :asc)
                |> Api.read()
-               |> clear_meta()
+               |> strip_metadata()
     end
   end
 end

@@ -146,9 +146,11 @@ defmodule Ash.Type do
   @callback describe(constraints()) :: String.t() | nil
   @callback equal?(term, term) :: boolean
   @callback embedded?() :: boolean
+  @callback generator(constraints) :: Enumerable.t()
 
   @optional_callbacks [
     cast_stored_array: 2,
+    generator: 1,
     cast_input_array: 2,
     dump_to_native_array: 2,
     handle_change_array: 3,
@@ -199,7 +201,8 @@ defmodule Ash.Type do
     end
   end
 
-  @spec get_type(atom | module) :: atom | module | {:array, atom | module}
+  @spec get_type(atom | module | {:array, atom | module}) ::
+          atom | module | {:array, atom | module}
   def get_type({:array, value}) do
     {:array, get_type(value)}
   end
@@ -213,6 +216,37 @@ defmodule Ash.Type do
 
   def get_type(value) do
     value
+  end
+
+  @spec generator(
+          module | {:array, module},
+          constraints
+        ) :: Enumerable.t()
+  def generator(type, constraints) do
+    do_generator(type, constraints)
+  end
+
+  defp do_generator({:array, type}, constraints) do
+    generator = do_generator(type, constraints[:items] || [])
+
+    generator =
+      if constraints[:nil_items?] do
+        StreamData.one_of([StreamData.constant(nil), generator])
+      else
+        generator
+      end
+
+    StreamData.list_of(generator, Keyword.take(constraints, [:max_length, :min_length]))
+  end
+
+  defp do_generator(type, constraints) do
+    type = get_type(type)
+
+    if function_exported?(type, :generator, 1) do
+      type.generator(constraints)
+    else
+      raise "generator/1 unimplemented for #{inspect(type)}"
+    end
   end
 
   @doc """

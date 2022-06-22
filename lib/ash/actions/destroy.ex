@@ -231,10 +231,10 @@ defmodule Ash.Actions.Destroy do
                   case Ash.DataLayer.destroy(resource, changeset) do
                     :ok ->
                       {:ok,
-                       %{
-                         record
-                         | __meta__: %Ecto.Schema.Metadata{state: :deleted, schema: resource}
-                       }}
+                       Ash.Resource.Info.set_meta(record, %Ecto.Schema.Metadata{
+                         state: :deleted,
+                         schema: resource
+                       })}
 
                     {:error, error} ->
                       {:error, error}

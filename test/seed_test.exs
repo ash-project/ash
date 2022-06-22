@@ -8,10 +8,7 @@ defmodule Ash.Test.SeedTest do
   defmodule Author do
     @moduledoc false
     use Ash.Resource,
-      data_layer: Ash.DataLayer.Ets,
-      authorizers: [
-        Ash.Test.Authorizer
-      ]
+      data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -23,7 +20,7 @@ defmodule Ash.Test.SeedTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
+      attribute :name, :string, default: "Fred"
     end
 
     relationships do
@@ -178,17 +175,6 @@ defmodule Ash.Test.SeedTest do
     end
   end
 
-  setup do
-    start_supervised(
-      {Ash.Test.Authorizer,
-       strict_check: :authorized,
-       check: {:error, Ash.Error.Forbidden.exception([])},
-       strict_check_context: [:query]}
-    )
-
-    :ok
-  end
-
   describe "seed!/1" do
     test "it creates a single record with resource and input" do
       assert %Post{id: id, title: "seeded"} = seed!(Post, %{title: "seeded"})
@@ -202,6 +188,11 @@ defmodule Ash.Test.SeedTest do
 
       assert post = Api.get!(Post, id)
       assert post.title == "seeded"
+    end
+
+    test "defaults are set when using a struct" do
+      assert %Author{name: "Fred"} = seed!(%Author{})
+      assert %Author{name: "Fred"} = seed!(%Author{})
     end
 
     test "it creates related entities" do

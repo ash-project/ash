@@ -3,7 +3,7 @@ defmodule Ash.Test.Filter.FilterTest do
   use ExUnit.Case, async: true
 
   import Ash.Changeset
-  import Ash.Test.Helpers
+  import Ash.Test
 
   alias Ash.Filter
 
@@ -253,11 +253,13 @@ defmodule Ash.Test.Filter.FilterTest do
         Post
         |> new(%{title: "title1", contents: "contents1", points: 1})
         |> Api.create!()
+        |> strip_metadata()
 
       post2 =
         Post
         |> new(%{title: "title2", contents: "contents2", points: 2})
         |> Api.create!()
+        |> strip_metadata()
 
       %{post1: post1, post2: post2}
     end
@@ -267,7 +269,7 @@ defmodule Ash.Test.Filter.FilterTest do
                Post
                |> Ash.Query.filter(title == ^post1.title)
                |> Api.read!()
-               |> clear_meta()
+               |> strip_metadata()
     end
 
     test "multiple filter field matches", %{post1: post1} do
@@ -275,7 +277,7 @@ defmodule Ash.Test.Filter.FilterTest do
                Post
                |> Ash.Query.filter(title == ^post1.title and contents == ^post1.contents)
                |> Api.read!()
-               |> clear_meta()
+               |> strip_metadata()
     end
 
     test "no field matches" do
@@ -303,14 +305,14 @@ defmodule Ash.Test.Filter.FilterTest do
                Post
                |> Ash.Query.filter(points < 2)
                |> Api.read!()
-               |> clear_meta()
+               |> strip_metadata()
 
       assert [^post1, ^post2] =
                Post
                |> Ash.Query.filter(points < 3)
                |> Ash.Query.sort(points: :asc)
                |> Api.read!()
-               |> clear_meta()
+               |> strip_metadata()
     end
 
     test "greater than works", %{
@@ -321,14 +323,14 @@ defmodule Ash.Test.Filter.FilterTest do
                Post
                |> Ash.Query.filter(points > 1)
                |> Api.read!()
-               |> clear_meta()
+               |> strip_metadata()
 
       assert [^post1, ^post2] =
                Post
                |> Ash.Query.filter(points > 0)
                |> Ash.Query.sort(points: :asc)
                |> Api.read!()
-               |> clear_meta()
+               |> strip_metadata()
     end
   end
 
@@ -366,28 +368,33 @@ defmodule Ash.Test.Filter.FilterTest do
         Post
         |> new(%{title: "title1", contents: "contents1", points: 1})
         |> Api.create!()
+        |> strip_metadata()
 
       post2 =
         Post
         |> new(%{title: "title2", contents: "contents2", points: 2})
         |> Api.create!()
+        |> strip_metadata()
 
       post3 =
         Post
         |> new(%{title: "title3", contents: "contents3", points: 3})
         |> replace_relationship(:related_posts, [post1, post2])
         |> Api.create!()
+        |> strip_metadata()
 
       post4 =
         Post
         |> new(%{title: "title4", contents: "contents4", points: 4})
         |> replace_relationship(:related_posts, [post3])
         |> Api.create!()
+        |> strip_metadata()
 
       profile1 =
         Profile
         |> new(%{bio: "dope"})
         |> Api.create!()
+        |> strip_metadata()
 
       user1 =
         User
@@ -395,18 +402,21 @@ defmodule Ash.Test.Filter.FilterTest do
         |> replace_relationship(:posts, [post1, post2])
         |> replace_relationship(:profile, profile1)
         |> Api.create!()
+        |> strip_metadata()
 
       user2 =
         User
         |> new(%{name: "broseph", special: false})
         |> replace_relationship(:posts, [post2])
         |> Api.create!()
+        |> strip_metadata()
 
       profile2 =
         Profile
         |> new(%{bio: "dope2"})
         |> replace_relationship(:user, user2)
         |> Api.create!()
+        |> strip_metadata()
 
       %{
         post1: Api.reload!(post1),

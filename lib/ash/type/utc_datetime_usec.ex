@@ -10,6 +10,13 @@ defmodule Ash.Type.UtcDatetimeUsec do
   def storage_type, do: :utc_datetime_usec
 
   @impl true
+  def generator(_constraints) do
+    # Waiting on blessed date/datetime generators in stream data
+    # https://github.com/whatyouhide/stream_data/pull/161/files
+    StreamData.constant(DateTime.utc_now())
+  end
+
+  @impl true
   def cast_input(value, _) do
     Ecto.Type.cast(:utc_datetime_usec, value)
   end

@@ -3,6 +3,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
   import Ash.Changeset
   import ExUnit.CaptureLog
+  import Ash.Test
 
   alias Ash.DataLayer.Mnesia
 
@@ -148,14 +149,15 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
       Post
       |> new(%{title: "best"})
       |> Api.create!()
+      |> strip_metadata()
 
-    assert [^post] = Api.read!(Post)
+    assert [^post] = strip_metadata(Api.read!(Post))
 
     post |> new(%{title: "worst"}) |> Api.update!()
 
     new_post = %{post | title: "worst"}
 
-    assert [^new_post] = Api.read!(Post)
+    assert [^new_post] = strip_metadata(Api.read!(Post))
 
     Api.destroy!(post)
 
@@ -164,31 +166,28 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
   describe "cross data layer filtering" do
     test "it properly filters with a simple filter" do
-      Application.put_env(:ash, :disable_async?, true)
+      author =
+        User
+        |> new(%{name: "best author"})
+        |> Api.create!()
 
-      # author =
-      #   User
-      #   |> new(%{name: "best author"})
-      #   |> Api.create!()
+      post1 =
+        Post
+        |> new(%{title: "best"})
+        |> replace_relationship(:author, author)
+        |> Api.create!()
 
-      # post1 =
-      #   Post
-      #   |> new(%{title: "best"})
-      #   |> replace_relationship(:author, author)
-      #   |> Api.create!()
+      post1_id = post1.id
 
-      # post1_id = post1.id
-
-      # Post
-      # |> new(%{title: "worst"})
-      # |> Api.create!()
+      Post
+      |> new(%{title: "worst"})
+      |> Api.create!()
 
       query =
         Post
         |> Ash.Query.filter(author.name == "best author")
 
-      # assert [%{id: ^post1_id}] = Api.read!(query, verbose?: true)
-      Api.read!(query)
+      assert [%{id: ^post1_id}] = Api.read!(query)
     end
 
     test "parallelizable filtering of related resources with a data layer that cannot join" do

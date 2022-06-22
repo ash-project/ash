@@ -44,6 +44,14 @@ defmodule Ash.Type.String do
   @impl true
   def constraints, do: @constraints
 
+  @impl true
+  def generator(constraints) do
+    StreamData.string(
+      :printable,
+      Keyword.take(constraints, [:max_length, :min_length])
+    )
+  end
+
   def apply_constraints(nil, _), do: :ok
 
   def apply_constraints(value, constraints) do

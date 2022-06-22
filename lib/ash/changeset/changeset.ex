@@ -317,6 +317,39 @@ defmodule Ash.Changeset do
 
   @manage_types [:replace, :append, :remove, :direct_control, :create]
 
+  @doc """
+  Constructs a changeset for a given action, and validates it.
+
+  Simply calls `for_create/4`, `for_update/4` or `for_destroy/4` based on the type of action passed in.
+
+  See those functions for more explanation.
+  """
+  def for_action(initial, action, params \\ %{}, opts \\ []) do
+    resource =
+      case initial do
+        %__MODULE__{resource: resource} -> resource
+        %resource{} -> resource
+        resource -> resource
+      end
+
+    action = Ash.Resource.Info.action(resource, action)
+
+    case action.type do
+      :create ->
+        for_create(initial, action, params, opts)
+
+      :update ->
+        for_update(initial, action, params, opts)
+
+      :destroy ->
+        for_destroy(initial, action, params, opts)
+
+      :read ->
+        raise ArgumentError,
+              "Passed a read action `#{inspect(resource)}.#{action.name}` into `Ash.Changeset.for_action/4`. Use `Ash.Query.for_read/4` instead."
+    end
+  end
+
   @for_create_opts [
     relationships: [
       type: :any,
@@ -419,7 +452,7 @@ defmodule Ash.Changeset do
     |> set_context(%{
       private: %{upsert?: opts[:upsert?] || false, upsert_identity: opts[:upsert_identity]}
     })
-    |> for_action(action, params, opts)
+    |> do_for_action(action, params, opts)
   end
 
   @doc """
@@ -448,7 +481,7 @@ defmodule Ash.Changeset do
             """
       end
 
-    for_action(changeset, action, params, opts)
+    do_for_action(changeset, action, params, opts)
   end
 
   @doc """
@@ -491,7 +524,7 @@ defmodule Ash.Changeset do
 
       if action do
         if action.soft? do
-          for_action(%{changeset | action_type: :destroy}, action.name, params, opts)
+          do_for_action(%{changeset | action_type: :destroy}, action.name, params, opts)
         else
           changeset
           |> handle_errors(action.error_handler)
@@ -514,7 +547,7 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp for_action(changeset, action_name, params, opts) do
+  defp do_for_action(changeset, action_name, params, opts) do
     if changeset.valid? do
       action = Ash.Resource.Info.action(changeset.resource, action_name, changeset.action_type)
 
@@ -2580,7 +2613,7 @@ defmodule Ash.Changeset do
   and reading it out in an `after_action` hook.
   """
   @type around_result ::
-          {:ok, Ash.Resource.record(), t(), %{notifications: list(Ash.Resource.Notification.t())}}
+          {:ok, Ash.Resource.record(), t(), %{notifications: list(Ash.Notifier.Notification.t())}}
           | {:error, Ash.Error.t()}
 
   @type around_callback :: (t() -> around_result)

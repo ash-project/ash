@@ -11,6 +11,16 @@ defmodule Ash.Type.UrlEncodedBinary do
   def storage_type, do: :binary
 
   @impl true
+  def generator(_constraints) do
+    base64 =
+      [?A..?Z, ?a..?z, ?0..?9, ?+, ?/]
+      |> StreamData.string()
+      |> StreamData.map(&Base.encode64/1)
+
+    StreamData.one_of([StreamData.binary(), base64])
+  end
+
+  @impl true
   def cast_input(value, _) when is_binary(value) do
     case Base.url_decode64(value, padding: false) do
       {:ok, decoded} ->

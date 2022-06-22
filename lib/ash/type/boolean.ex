@@ -10,6 +10,11 @@ defmodule Ash.Type.Boolean do
   def storage_type, do: :boolean
 
   @impl true
+  def generator(_constraints) do
+    StreamData.boolean()
+  end
+
+  @impl true
   def cast_input(value, _) do
     Ecto.Type.cast(:boolean, value)
   end

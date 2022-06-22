@@ -11,6 +11,15 @@ defmodule Ash.Type.UUID do
   def storage_type, do: :uuid
 
   @impl true
+  def generator(_constraints) do
+    # Waiting on blessed date/datetime generators in stream data
+    # https://github.com/whatyouhide/stream_data/pull/161/files
+    StreamData.integer()
+    |> StreamData.bind(fn _i -> StreamData.constant(Ash.UUID.generate()) end)
+    |> StreamData.unshrinkable()
+  end
+
+  @impl true
   def cast_input(nil, _), do: {:ok, nil}
 
   def cast_input(value, _) when is_binary(value) do

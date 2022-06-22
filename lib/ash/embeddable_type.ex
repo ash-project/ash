@@ -149,6 +149,7 @@ defmodule Ash.EmbeddableType do
     # credo:disable-for-next-line Credo.Check.Refactor.LongQuoteBlocks
     quote location: :keep do
       alias Ash.EmbeddableType.ShadowApi
+
       def storage_type, do: :map
 
       def cast_input(%{__struct__: __MODULE__} = input, _constraints), do: {:ok, input}
@@ -313,8 +314,11 @@ defmodule Ash.EmbeddableType do
                 Ash.Resource.Info.primary_action!(__MODULE__, :destroy).name
 
             case ShadowApi.destroy(old_value, action: action) do
-              :ok -> {:ok, new_value}
-              {:error, error} -> {:error, Ash.EmbeddableType.handle_errors(error)}
+              :ok ->
+                {:ok, new_value}
+
+              {:error, error} ->
+                {:error, Ash.EmbeddableType.handle_errors(error)}
             end
           end
         end

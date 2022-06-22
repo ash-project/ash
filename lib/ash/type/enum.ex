@@ -49,6 +49,11 @@ defmodule Ash.Type.Enum do
       def storage_type, do: :string
 
       @impl Ash.Type
+      def generator(_constraints) do
+        StreamData.member_of(@values)
+      end
+
+      @impl Ash.Type
       def cast_input(nil, _) do
         {:ok, nil}
       end

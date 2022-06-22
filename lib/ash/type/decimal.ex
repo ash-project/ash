@@ -21,6 +21,12 @@ defmodule Ash.Type.Decimal do
   use Ash.Type
 
   @impl true
+  def generator(constraints) do
+    StreamData.float(Keyword.take(constraints, [:min, :max]))
+    |> StreamData.map(&Decimal.from_float/1)
+  end
+
+  @impl true
   def storage_type, do: :decimal
 
   @impl true
@@ -37,6 +43,7 @@ defmodule Ash.Type.Decimal do
     end
   end
 
+  @impl true
   def apply_constraints(nil, _), do: :ok
 
   def apply_constraints(value, constraints) do

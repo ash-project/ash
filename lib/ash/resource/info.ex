@@ -8,6 +8,13 @@ defmodule Ash.Resource.Info do
     %{record | __metadata__: Ash.Helpers.deep_merge_maps(record.__metadata__, map)}
   end
 
+  @doc false
+  def set_meta(%{__meta__: _} = struct, meta) do
+    %{struct | __meta__: meta}
+  end
+
+  def set_meta(struct, _), do: struct
+
   @spec put_metadata(Ash.Resource.record(), atom, term) :: Ash.Resource.record()
   def put_metadata(record, key, term) do
     set_metadata(record, %{key => term})
@@ -58,6 +65,8 @@ defmodule Ash.Resource.Info do
       is_nil(destination_rel.context) &&
       is_nil(rel.context)
   end
+
+  def loaded?(nil, _), do: true
 
   def loaded?(records, path) when not is_list(path) do
     loaded?(records, [path])

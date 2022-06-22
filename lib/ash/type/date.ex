@@ -10,6 +10,13 @@ defmodule Ash.Type.Date do
   def storage_type, do: :date
 
   @impl true
+  def generator(_constraints) do
+    # Waiting on blessed date/datetime generators in stream data
+    # https://github.com/whatyouhide/stream_data/pull/161/files
+    StreamData.constant(Date.utc_today())
+  end
+
+  @impl true
   def cast_input(nil, _), do: {:ok, nil}
 
   def cast_input(value, _) do

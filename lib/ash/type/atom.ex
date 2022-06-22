@@ -22,6 +22,13 @@ defmodule Ash.Type.Atom do
   @impl true
   def constraints, do: @constraints
 
+  @impl true
+  def generator(constraints) do
+    # We don't want to create tons of atoms.
+    one_of = constraints[:one_of] || [:example, :atom, :value]
+    StreamData.member_of(one_of)
+  end
+
   def apply_constraints(nil, _), do: :ok
 
   def apply_constraints(value, constraints) do

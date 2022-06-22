@@ -11,6 +11,11 @@ defmodule Ash.Type.Binary do
   def storage_type, do: :binary
 
   @impl true
+  def generator(_constraints) do
+    StreamData.binary()
+  end
+
+  @impl true
   def cast_input(value, _) do
     Ecto.Type.cast(:binary, value)
   end

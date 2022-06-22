@@ -56,6 +56,29 @@ defmodule Ash.Type.CiString do
   @impl true
   def constraints, do: @constraints
 
+  @impl true
+  def generator(constraints) do
+    StreamData.string(
+      :printable,
+      Keyword.take(constraints, [:max_length, :min_length])
+    )
+    |> StreamData.map(fn value ->
+      value =
+        case constraints[:casing] do
+          :lower ->
+            String.downcase(value)
+
+          :upper ->
+            String.upcase(value)
+
+          nil ->
+            value
+        end
+
+      Ash.CiString.new(value, constraints[:casing])
+    end)
+  end
+
   def apply_constraints(%Ash.CiString{} = value, constraints) do
     value
     |> Ash.CiString.value()

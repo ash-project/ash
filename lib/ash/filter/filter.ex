@@ -1351,9 +1351,9 @@ defmodule Ash.Filter do
 
   defp filter_related_in(query, relationship, path, api, {request_path, tenant, data}) do
     query = Ash.Query.set_tenant(query, tenant)
-    path = request_path ++ [:other_data_layer_filter, path ++ [relationship.name], query]
+    request_path = request_path ++ [:other_data_layer_filter, path ++ [relationship.name], query]
 
-    case get_in(data, path ++ [:data]) do
+    case get_in(data, request_path ++ [:data]) do
       %{data: records} ->
         records_to_expression(
           records,
@@ -1366,7 +1366,7 @@ defmodule Ash.Filter do
         action = %{action | pagination: false}
 
         {:filter_requests,
-         Ash.Actions.Read.as_requests(path, query.resource, api, action,
+         Ash.Actions.Read.as_requests(request_path, query.resource, api, action,
            query: query,
            page: false,
            tenant: tenant

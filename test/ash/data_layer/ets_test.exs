@@ -1,10 +1,9 @@
 defmodule Ash.DataLayer.EtsTest do
   use ExUnit.Case, async: false
 
-  import Ash.Test.Helpers
-
   alias Ash.DataLayer.Ets, as: EtsDataLayer
   alias Ash.DataLayer.Ets.Query
+  import Ash.Test
 
   require Ash.Query
 
@@ -123,7 +122,7 @@ defmodule Ash.DataLayer.EtsTest do
 
     EtsApiTest.destroy!(mike)
 
-    assert [{%{id: ^joes_id}, ^joe}] = user_table()
+    assert [{%{id: ^joes_id}, ^joe}] = strip_metadata(user_table())
   end
 
   test "get" do
@@ -146,7 +145,7 @@ defmodule Ash.DataLayer.EtsTest do
       |> Ash.Query.new()
       |> Ash.Query.sort(:name)
 
-    assert [^joe, ^matthew, ^mike, ^zachary] = clear_meta(EtsApiTest.read!(query))
+    assert [^joe, ^matthew, ^mike, ^zachary] = strip_metadata(EtsApiTest.read!(query))
   end
 
   test "limit" do
@@ -161,7 +160,7 @@ defmodule Ash.DataLayer.EtsTest do
       |> Ash.Query.sort(:name)
       |> Ash.Query.limit(2)
 
-    assert [^joe, ^matthew] = clear_meta(EtsApiTest.read!(query))
+    assert [^joe, ^matthew] = strip_metadata(EtsApiTest.read!(query))
   end
 
   test "offset" do
@@ -176,7 +175,7 @@ defmodule Ash.DataLayer.EtsTest do
       |> Ash.Query.sort(:name)
       |> Ash.Query.offset(1)
 
-    assert [^matthew, ^mike, ^zachary] = clear_meta(EtsApiTest.read!(query))
+    assert [^matthew, ^mike, ^zachary] = strip_metadata(EtsApiTest.read!(query))
   end
 
   describe "filter" do
@@ -189,14 +188,14 @@ defmodule Ash.DataLayer.EtsTest do
     end
 
     test "values", %{zachary: zachary, matthew: matthew, joe: joe} do
-      assert [^zachary] = clear_meta(filter_users(name: "Zachary"))
-      assert [^joe] = clear_meta(filter_users(name: "Joe"))
-      assert [^matthew] = clear_meta(filter_users(age: 9))
+      assert [^zachary] = strip_metadata(filter_users(name: "Zachary"))
+      assert [^joe] = strip_metadata(filter_users(name: "Joe"))
+      assert [^matthew] = strip_metadata(filter_users(age: 9))
     end
 
     test "or, in, eq", %{mike: mike, zachary: zachary, joe: joe} do
       assert [^joe, ^mike, ^zachary] =
-               clear_meta(
+               strip_metadata(
                  filter_users(
                    or: [
                      [name: [in: ["Zachary", "Mike"]]],
@@ -208,7 +207,7 @@ defmodule Ash.DataLayer.EtsTest do
 
     test "and, in, eq", %{mike: mike} do
       assert [^mike] =
-               clear_meta(
+               strip_metadata(
                  filter_users(
                    and: [
                      [name: [in: ["Zachary", "Mike"]]],
@@ -220,7 +219,7 @@ defmodule Ash.DataLayer.EtsTest do
 
     test "and, in, not", %{zachary: zachary} do
       assert [^zachary] =
-               clear_meta(
+               strip_metadata(
                  filter_users(
                    and: [
                      [name: [in: ["Zachary", "Mike"]]],
@@ -231,19 +230,19 @@ defmodule Ash.DataLayer.EtsTest do
     end
 
     test "gt", %{mike: mike, joe: joe} do
-      assert [^joe, ^mike] = clear_meta(filter_users(age: [gt: 10]))
+      assert [^joe, ^mike] = strip_metadata(filter_users(age: [gt: 10]))
     end
 
     test "lt", %{zachary: zachary, matthew: matthew} do
-      assert [^matthew, ^zachary] = clear_meta(filter_users(age: [lt: 10]))
+      assert [^matthew, ^zachary] = strip_metadata(filter_users(age: [lt: 10]))
     end
 
     test "boolean", %{zachary: zachary, matthew: matthew} do
-      assert [^matthew, ^zachary] = clear_meta(filter_users(and: [true, age: [lt: 10]]))
+      assert [^matthew, ^zachary] = strip_metadata(filter_users(and: [true, age: [lt: 10]]))
     end
 
     test "is_nil", %{zachary: zachary, matthew: matthew, joe: joe} do
-      assert [^joe, ^matthew, ^zachary] = clear_meta(filter_users(title: [is_nil: true]))
+      assert [^joe, ^matthew, ^zachary] = strip_metadata(filter_users(title: [is_nil: true]))
     end
   end
 
@@ -259,6 +258,7 @@ defmodule Ash.DataLayer.EtsTest do
     EtsTestUser
     |> Ash.Changeset.new(attrs)
     |> EtsApiTest.create!(opts)
+    |> strip_metadata()
   end
 
   defp user_table do

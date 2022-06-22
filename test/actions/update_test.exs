@@ -3,7 +3,7 @@ defmodule Ash.Test.Actions.UpdateTest do
   use ExUnit.Case, async: true
 
   import Ash.Changeset
-  import Ash.Test.Helpers
+  import Ash.Test
   require Ash.Query
 
   defmodule Authorized do
@@ -431,12 +431,12 @@ defmodule Ash.Test.Actions.UpdateTest do
       new_post =
         post |> new() |> replace_relationship(:related_posts, [post2, post3]) |> Api.update!()
 
-      assert Enum.sort(new_post.related_posts) ==
+      assert Enum.sort(strip_metadata(new_post.related_posts)) ==
                Enum.sort([
                  Api.get!(Post, post2.id),
                  Api.get!(Post, post3.id)
                ])
-               |> clear_meta()
+               |> strip_metadata()
     end
 
     test "it updates any join fields" do
