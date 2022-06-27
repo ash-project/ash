@@ -12,7 +12,7 @@ defmodule Ash.DocIndex.AshDocIndex do
   @spec for_library() :: String.t()
   def for_library, do: "ash"
 
-  @overview File.read!("documentation/topics/overview.md")
+  @overview ""
 
   @impl true
   def guides do

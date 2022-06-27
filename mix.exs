@@ -95,7 +95,8 @@ defmodule Ash.MixProject do
       ],
       groups_for_extras: [
         Introduction: Path.wildcard("old_documentation/introduction/*.md"),
-        Topics: Path.wildcard("old_documentation/topics/*")
+        Topics:
+          Path.wildcard("old_documentation/topics/*") ++ Path.wildcard("documentation/topics/*")
       ],
       groups_for_modules: [
         entrypoint: [
