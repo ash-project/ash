@@ -5,6 +5,35 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.52.0-rc.13](https://github.com/ash-project/ash/compare/v1.52.0-rc.12...v1.52.0-rc.13) (2022-06-27)
+
+
+
+
+### Bug Fixes:
+
+* bad return value for `destroy!` + `return_notifications?: true`
+
+* use digraph to order transformers
+
+* things breaking due to stricter expectations on type function inputs
+
+* depend on all entries in registry
+
+### Improvements:
+
+* `Ash.Generator`
+
+* add `Ash.Seed` module with seed helpers
+
+* add basic type handling for non embedded resources
+
+* better transformer ordering error
+
+* don't pay massive costs of a function undefined error
+
+* optimize related resource inclusion check
+
 ## [v1.52.0-rc.12](https://github.com/ash-project/ash/compare/v1.52.0-rc.11...v1.52.0-rc.12) (2022-06-14)
 
 
