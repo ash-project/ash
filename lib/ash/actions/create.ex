@@ -47,6 +47,7 @@ defmodule Ash.Actions.Create do
     |> Ash.Engine.run(
       resource: resource,
       verbose?: verbose?,
+      name: "#{inspect(resource)}.#{action.name}",
       actor: actor,
       authorize?: authorize?,
       notification_metadata: opts[:notification_metadata],

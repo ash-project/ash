@@ -96,7 +96,24 @@ defmodule Ash.Engine do
         )
 
       true ->
-        do_run(requests, opts)
+        if !Application.get_env(:ash, :disable_async?) &&
+             (is_nil(opts[:resource]) ||
+                Ash.DataLayer.data_layer_can?(opts[:resource], :async_engine)) && opts[:timeout] &&
+             opts[:timeout] != :infinity && !Ash.DataLayer.in_transaction?(opts[:resource]) do
+          task =
+            Task.async(fn ->
+              do_run(requests, opts)
+            end)
+
+          try do
+            Task.await(task, opts[:timeout])
+          catch
+            :exit, {:timeout, {Task, :await, [^task, timeout]}} ->
+              {:error, Ash.Error.Invalid.Timeout.exception(timeout: timeout, name: opts[:name])}
+          end
+        else
+          do_run(requests, opts)
+        end
     end
     |> case do
       {:ok, %{resource_notifications: resource_notifications} = result} ->
@@ -108,6 +125,9 @@ defmodule Ash.Engine do
           end
 
         {:ok, %{result | resource_notifications: notifications}}
+
+      {:error, :timeout} ->
+        {:error, Ash.Error.Invalid.Timeout.exception(timeout: opts[:timeout], name: opts[:name])}
 
       other ->
         other

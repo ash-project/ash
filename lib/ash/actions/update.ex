@@ -41,6 +41,7 @@ defmodule Ash.Actions.Update do
       resource: resource,
       verbose?: verbose?,
       actor: actor,
+      name: "#{inspect(resource)}.#{action.name}",
       notification_metadata: opts[:notification_metadata],
       return_notifications?: opts[:return_notifications?],
       authorize?: authorize?,

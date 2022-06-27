@@ -430,6 +430,7 @@ defmodule Ash.Actions.Read do
     |> Keyword.put(:transaction?, action.transaction? || opts[:transaction?])
     |> Keyword.put(:default_timeout, Ash.Api.timeout(api))
     |> Keyword.put(:resource, resource)
+    |> Keyword.put(:name, "#{inspect(resource)}.#{action.name}")
   end
 
   defp for_read(query, action, opts) do

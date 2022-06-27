@@ -122,7 +122,7 @@ defmodule Ash.Flow.Executor.AshEngine do
   def execute(%Flow{steps: steps, flow: flow}, _input, opts) do
     steps
     |> Enum.flat_map(&requests(steps, &1, opts))
-    |> Ash.Engine.run(verbose?: opts[:verbose?], timeout: opts[:timeout])
+    |> Ash.Engine.run(verbose?: opts[:verbose?], timeout: opts[:timeout], name: inspect(flow))
     |> case do
       {:ok, %Ash.Engine{data: data, resource_notifications: resource_notifications}} ->
         if opts[:return_notifications?] do
@@ -324,6 +324,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                     ]
                     |> Ash.Engine.run(
                       resource: resource,
+                      name: "Transaction #{inspect(name)}",
                       verbose?: opts[:verbose?],
                       transaction?: true
                     )

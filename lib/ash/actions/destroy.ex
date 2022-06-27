@@ -58,6 +58,7 @@ defmodule Ash.Actions.Destroy do
       resource: resource,
       verbose?: verbose?,
       actor: actor,
+      name: "#{inspect(resource)}.#{action.name}",
       return_notifications?: opts[:return_notifications?],
       notification_metadata: opts[:notification_metadata],
       authorize?: authorize?,
