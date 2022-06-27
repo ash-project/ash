@@ -88,6 +88,9 @@ defmodule Ash.MixProject do
         ],
         "documentation/topics/policies.md": [
           title: "Policies"
+        ],
+        "documentation/topics/overview.md": [
+          title: "Overview"
         ]
       ],
       groups_for_extras: [
