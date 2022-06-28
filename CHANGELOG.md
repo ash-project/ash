@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.52.0-rc.15](https://github.com/ash-project/ash/compare/v1.52.0-rc.14...v1.52.0-rc.15) (2022-06-28)
+
+
+
+
+### Bug Fixes:
+
+* ensure type is always set on attributes
+
 ## [v1.52.0-rc.14](https://github.com/ash-project/ash/compare/v1.52.0-rc.13...v1.52.0-rc.14) (2022-06-28)
 
 
