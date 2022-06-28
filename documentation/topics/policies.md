@@ -19,6 +19,41 @@ depending on the details of the request being authorized.
 
 To see what checks are built-in, see `Ash.Policy.Check.BuiltInChecks`
 
+### Basics
+
+#### Policy
+
+Policies are evaluated from top to bottom. Every policy that applies must pass for a given request.
+For example, a policy might have a condition `action_type(:read)` and another one might
+have a condition like `actor_attribute_equals(:admin, true)`. 
+If both apply (i.e an admin is using a read action), then both policies must pass.
+A policy can produce one of three results: `:forbidden`, `:authorized`, or `:unknown`. `:unknown` is treated
+the same as a `:forbidden`.
+A policy contains checks, which determine wether or not the policy passes for a given request.
+
+#### Bypass
+
+A bypass policy is just like a policy, except if a bypass passes, then other policies after it do _not_ need to pass.
+This can be useful for writing complex access rules, or for a simple rule like "an admin can do anything".
+
+#### Check
+
+Checks, like policies, evaluate from top to bottom. A check can produce one of three results, the same that a policy can produce.
+While checks are not necessarily evaluated in order, they _logically apply_ in that order, so you may as well think of it in that way. 
+It can be thought of as a simple step-through algorithm.
+
+For each check, starting from the top:
+
+- Run the check.
+  - If it returns `:authorized`, the policy is `:authorized`
+  - If it returns `:forbidden`, the policy is `:forbidden`
+  - If it returns `:unknown`, the next policy down is checked
+
+#### Filter checks
+
+Some checks don't return a status, but instead return a "filter". Filter checks are applied to the query that is being run, and then the
+rest of the checks are run.
+
 ### The Simplest Policy
 
 Lets start with the simplest policy set:

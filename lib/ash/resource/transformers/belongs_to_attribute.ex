@@ -63,4 +63,7 @@ defmodule Ash.Resource.Transformers.BelongsToAttribute do
 
   def after?(Ash.Resource.Transformers.BelongsToSourceField), do: true
   def after?(_), do: false
+
+  def before?(Ash.Resource.Transformers.SetTypes), do: true
+  def before?(_), do: false
 end
