@@ -718,7 +718,7 @@ defmodule Ash.Type do
   # @callback equal?(term, term) :: boolean
 
   defmacro __using__(opts) do
-    quote location: :keep do
+    quote location: :keep, generated: true do
       @behaviour Ash.Type
 
       parent = __MODULE__
@@ -748,7 +748,13 @@ defmodule Ash.Type do
 
         @impl true
         def load(term, _, params) do
-          @parent.cast_stored(term, params)
+          case @parent.cast_stored(term, params) do
+            {:ok, value} ->
+              {:ok, value}
+
+            _ ->
+              :error
+          end
         end
 
         @impl true
