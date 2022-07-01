@@ -103,6 +103,7 @@ defmodule Ash.Type do
   @type constraints :: Keyword.t()
   @type constraint_error :: String.t() | {String.t(), Keyword.t()}
   @type t :: atom | {:array, atom}
+  @type error :: :error | {:error, String.t() | Keyword.t()}
 
   @callback storage_type() :: Ecto.Type.t()
   @doc """
@@ -112,27 +113,28 @@ defmodule Ash.Type do
   """
   @callback cast_in_query?() :: boolean
   @callback ecto_type() :: Ecto.Type.t()
-  @callback cast_input(term, constraints) :: {:ok, term} | {:error, Keyword.t()} | :error
-  @callback cast_input_array(list(term), constraints) ::
-              {:ok, list(term)} | {:error, Keyword.t()} | :error
-  @callback cast_stored(term, constraints) :: {:ok, term} | :error
-  @callback cast_stored_array(list(term), constraints) :: {:ok, list(term)} | :error
-  @callback dump_to_native(term, constraints) :: {:ok, term} | :error
-  @callback dump_to_native_array(list(term), constraints) :: {:ok, term} | :error
+  @callback cast_input(term, constraints) ::
+              {:ok, term} | error()
+  @callback cast_input_array(list(term), constraints) :: {:ok, list(term)} | error()
+  @callback cast_stored(term, constraints) :: {:ok, term} | error()
+  @callback cast_stored_array(list(term), constraints) ::
+              {:ok, list(term)} | error()
+  @callback dump_to_native(term, constraints) :: {:ok, term} | error()
+  @callback dump_to_native_array(list(term), constraints) :: {:ok, term} | error()
   @callback dump_to_embedded(term, constraints) :: {:ok, term} | :error
-  @callback dump_to_embedded_array(list(term), constraints) :: {:ok, term} | :error
+  @callback dump_to_embedded_array(list(term), constraints) :: {:ok, term} | error()
   @callback handle_change(old_term :: term, new_term :: term, constraints) ::
-              {:ok, term} | {:error, term}
+              {:ok, term} | error()
   @callback handle_change_array(old_term :: list(term), new_term :: list(term), constraints) ::
-              {:ok, term} | {:error, term}
+              {:ok, term} | error()
   @callback prepare_change(old_term :: term, new_uncasted_term :: term, constraints) ::
-              {:ok, term} | {:error, term}
+              {:ok, term} | error()
   @callback prepare_change_array(
               old_term :: list(term),
               new_uncasted_term :: list(term),
               constraints
             ) ::
-              {:ok, term} | {:error, term}
+              {:ok, term} | error()
   @callback constraints() :: constraints()
   @callback array_constraints() :: constraints()
   @callback apply_constraints(term, constraints) ::
