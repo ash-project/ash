@@ -761,7 +761,13 @@ defmodule Ash.Type do
 
         @impl true
         def dump(term, _dumper, params) do
-          @parent.dump_to_native(term, params)
+          case @parent.dump_to_native(term, params) do
+            {:ok, value} ->
+              {:ok, value}
+
+            _ ->
+              :error
+          end
         end
 
         @impl true
