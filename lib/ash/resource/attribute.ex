@@ -14,6 +14,7 @@ defmodule Ash.Resource.Attribute do
     :update_default,
     :description,
     :source,
+    match_other_defaults?: false,
     sensitive?: false,
     filterable?: true,
     constraints: []
@@ -136,6 +137,18 @@ defmodule Ash.Resource.Attribute do
     description: [
       type: :string,
       doc: "An optional description for the attribute."
+    ],
+    match_other_defaults?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      Ensures that other attributes that use a matching "lazy" default (a default that is a zero argument function), use the same default value.
+
+      Has no effect unless `default` is a zero argument function.
+
+      This is used for timestamps, for example, when their default is `&DateTime.utc_now/0`, we want `created_at` and `updated_at` to be equal to eachoter,
+      instead of separated by the small amount of time between calling both functions.
+      """
     ]
   ]
 
@@ -143,12 +156,14 @@ defmodule Ash.Resource.Attribute do
                            |> OptionsHelpers.set_default!(:writable?, false)
                            |> OptionsHelpers.set_default!(:private?, true)
                            |> OptionsHelpers.set_default!(:default, &DateTime.utc_now/0)
+                           |> OptionsHelpers.set_default!(:match_other_defaults?, true)
                            |> OptionsHelpers.set_default!(:type, Ash.Type.UtcDatetimeUsec)
                            |> OptionsHelpers.set_default!(:allow_nil?, false)
 
   @update_timestamp_schema @schema
                            |> OptionsHelpers.set_default!(:writable?, false)
                            |> OptionsHelpers.set_default!(:private?, true)
+                           |> OptionsHelpers.set_default!(:match_other_defaults?, true)
                            |> OptionsHelpers.set_default!(:default, &DateTime.utc_now/0)
                            |> OptionsHelpers.set_default!(
                              :update_default,

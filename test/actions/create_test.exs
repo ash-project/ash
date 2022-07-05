@@ -206,6 +206,8 @@ defmodule Ash.Test.Actions.CreateTest do
           items: [min: -10, max: 10]
         ]
       )
+
+      timestamps()
     end
 
     relationships do
@@ -261,11 +263,6 @@ defmodule Ash.Test.Actions.CreateTest do
     end
   end
 
-  describe "upserts" do
-    test "allows upserting a record using an identity" do
-    end
-  end
-
   describe "simple creates" do
     test "allows creating a record with valid attributes" do
       assert %Post{title: "foo", contents: "bar"} =
@@ -278,6 +275,15 @@ defmodule Ash.Test.Actions.CreateTest do
                  binary: <<0, 1, 2, 3, 4, 5>>
                })
                |> Api.create!()
+    end
+
+    test "timestamps will match each other" do
+      post =
+        Post
+        |> for_create(:create, %{title: "foobar"})
+        |> Api.create!()
+
+      assert post.inserted_at == post.updated_at
     end
 
     test "allow_nil validation" do

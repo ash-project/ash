@@ -103,6 +103,7 @@ locals_without_parens = [
   many_to_many: 3,
   map: 2,
   map: 3,
+  match_other_defaults?: 1,
   message: 1,
   metadata: 2,
   metadata: 3,

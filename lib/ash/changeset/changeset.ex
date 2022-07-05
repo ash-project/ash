@@ -816,48 +816,131 @@ defmodule Ash.Changeset do
   def set_defaults(changeset, action_type, lazy? \\ false)
 
   def set_defaults(changeset, :create, lazy?) do
-    changeset.resource
-    |> Ash.Resource.Info.attributes()
-    |> Enum.filter(fn attribute ->
-      not is_nil(attribute.default) &&
-        (lazy? or
-           not (is_function(attribute.default) or match?({_, _, _}, attribute.default)))
-    end)
-    |> Enum.reduce(changeset, fn attribute, changeset ->
-      changeset
-      |> force_change_new_attribute_lazy(attribute.name, fn ->
-        default(:create, attribute)
+    attributes = Ash.Resource.Info.attributes(changeset.resource)
+
+    with_static_defaults =
+      attributes
+      |> Enum.filter(fn attribute ->
+        not is_nil(attribute.default) &&
+          not (is_function(attribute.default) or match?({_, _, _}, attribute.default))
       end)
-      |> Map.update!(:defaults, fn defaults ->
-        [attribute.name | defaults]
+      |> Enum.reduce(changeset, fn attribute, changeset ->
+        changeset
+        |> force_change_new_attribute_lazy(attribute.name, fn ->
+          default(:create, attribute)
+        end)
+        |> Map.update!(:defaults, fn defaults ->
+          [attribute.name | defaults]
+        end)
       end)
-    end)
+      |> Map.update!(:defaults, &Enum.uniq/1)
+
+    if lazy? do
+      set_lazy_defaults(with_static_defaults, attributes, :create)
+    else
+      with_static_defaults
+    end
     |> Map.update!(:defaults, &Enum.uniq/1)
   end
 
   def set_defaults(changeset, :update, lazy?) do
-    changeset.resource
-    |> Ash.Resource.Info.attributes()
-    |> Enum.filter(fn attribute ->
-      not is_nil(attribute.update_default) &&
-        (lazy? or
-           not (is_function(attribute.update_default) or
-                  match?({_, _, _}, attribute.update_default)))
-    end)
-    |> Enum.reduce(changeset, fn attribute, changeset ->
-      changeset
-      |> force_change_new_attribute_lazy(attribute.name, fn ->
-        default(:update, attribute)
+    attributes = Ash.Resource.Info.attributes(changeset.resource)
+
+    with_static_defaults =
+      attributes
+      |> Enum.filter(fn attribute ->
+        not is_nil(attribute.update_default) &&
+          not (is_function(attribute.update_default) or
+                 match?({_, _, _}, attribute.update_default))
       end)
-      |> Map.update!(:defaults, fn defaults ->
-        [attribute.name | defaults]
+      |> Enum.reduce(changeset, fn attribute, changeset ->
+        changeset
+        |> force_change_new_attribute_lazy(attribute.name, fn ->
+          default(:update, attribute)
+        end)
+        |> Map.update!(:defaults, fn defaults ->
+          [attribute.name | defaults]
+        end)
       end)
-    end)
+
+    if lazy? do
+      set_lazy_defaults(with_static_defaults, attributes, :update)
+    else
+      with_static_defaults
+    end
     |> Map.update!(:defaults, &Enum.uniq/1)
   end
 
   def set_defaults(changeset, _, _) do
     changeset
+  end
+
+  defp set_lazy_defaults(changeset, attributes, type) do
+    changeset
+    |> set_lazy_non_matching_defaults(attributes, type)
+    |> set_lazy_matching_defaults(attributes, type)
+  end
+
+  defp set_lazy_non_matching_defaults(changeset, attributes, type) do
+    attributes
+    |> Enum.filter(fn attribute ->
+      !attribute.match_other_defaults? && get_default_fun(attribute, type)
+    end)
+    |> Enum.reduce(changeset, fn attribute, changeset ->
+      changeset
+      |> force_change_new_attribute_lazy(attribute.name, fn ->
+        default(type, attribute)
+      end)
+      |> Map.update!(:defaults, fn defaults ->
+        [attribute.name | defaults]
+      end)
+    end)
+  end
+
+  defp get_default_fun(attribute, :create) do
+    if is_function(attribute.default) or match?({_, _, _}, attribute.default) do
+      attribute.default
+    end
+  end
+
+  defp get_default_fun(attribute, :update) do
+    if is_function(attribute.update_default) or match?({_, _, _}, attribute.update_default) do
+      attribute.update_default
+    end
+  end
+
+  defp set_lazy_matching_defaults(changeset, attributes, type) do
+    attributes
+    |> Enum.filter(fn attribute ->
+      attribute.match_other_defaults? && get_default_fun(attribute, type)
+    end)
+    |> Enum.group_by(fn attribute ->
+      case type do
+        :create ->
+          attribute.default
+
+        :update ->
+          attribute.update_default
+      end
+    end)
+    |> Enum.reduce(changeset, fn {default_fun, attributes}, changeset ->
+      default_value =
+        case default_fun do
+          function when is_function(function) ->
+            function.()
+
+          {m, f, a} when is_atom(m) and is_atom(f) and is_list(a) ->
+            apply(m, f, a)
+        end
+
+      Enum.reduce(attributes, changeset, fn attribute, changeset ->
+        changeset
+        |> force_change_new_attribute(attribute.name, default_value)
+        |> Map.update!(:defaults, fn defaults ->
+          [attribute.name | defaults]
+        end)
+      end)
+    end)
   end
 
   defp default(:create, %{default: {mod, func, args}}), do: apply(mod, func, args)
@@ -2228,7 +2311,21 @@ defmodule Ash.Changeset do
   end
 
   @doc """
-  Force change an attribute if is not currently being changed, by calling the provided function
+  Force change an attribute if it is not currently being changed
+
+  See `change_new_attribute/3` for more.
+  """
+  @spec force_change_new_attribute(t(), atom, term) :: t()
+  def force_change_new_attribute(changeset, attribute, value) do
+    if changing_attribute?(changeset, attribute) do
+      changeset
+    else
+      force_change_attribute(changeset, attribute, value)
+    end
+  end
+
+  @doc """
+  Force change an attribute if it is not currently being changed, by calling the provided function
 
   See `change_new_attribute_lazy/3` for more.
   """
