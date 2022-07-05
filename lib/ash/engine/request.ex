@@ -230,13 +230,6 @@ defmodule Ash.Engine.Request do
 
         {:error, error, request}
     end
-  rescue
-    exception ->
-      error = Ash.Error.to_ash_error(exception, __STACKTRACE__)
-      {:error, error, request}
-  catch
-    :exit, exception ->
-      {:error, Ash.Error.to_ash_error(exception), request}
   end
 
   def do_next(%{state: :strict_check, authorize?: false} = request) do
