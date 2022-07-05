@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.52.0-rc.16](https://github.com/ash-project/ash/compare/v1.52.0-rc.15...v1.52.0-rc.16) (2022-07-05)
+
+
+
+
+### Bug Fixes:
+
+* fix return type for `dump/3` ecto type
+
+* `load/3` returns `{:ok, value} | :error`
+
+### Improvements:
+
+* remove relationship writability, as it all happens through arguments now
+
+* repurpose `writable?` on `belongs_to` to make the attribute writable
+
 ## [v1.52.0-rc.15](https://github.com/ash-project/ash/compare/v1.52.0-rc.14...v1.52.0-rc.15) (2022-06-28)
 
 
