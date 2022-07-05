@@ -91,6 +91,9 @@ defmodule Ash.MixProject do
         ],
         "documentation/topics/overview.md": [
           title: "Overview"
+        ],
+        "documentation/topics/development-utilities.md": [
+          title: "Dev Utilities"
         ]
       ],
       groups_for_extras: [
@@ -215,7 +218,7 @@ defmodule Ash.MixProject do
       {:git_ops, "~> 2.4.4", only: :dev},
       {:mix_test_watch, "~> 1.0", only: :dev, runtime: false},
       {:parse_trans, "3.3.0", only: [:dev, :test], override: true},
-      {:elixir_sense, github: "elixir-lsp/elixir_sense", only: [:dev, :test]}
+      {:elixir_sense, github: "elixir-lsp/elixir_sense", only: [:dev, :test, :docs]}
     ]
   end
 
