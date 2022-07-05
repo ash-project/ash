@@ -351,30 +351,6 @@ defmodule Ash.Changeset do
   end
 
   @for_create_opts [
-    relationships: [
-      type: :any,
-      doc: """
-      customize relationship behavior.
-
-      By default, any relationships are ignored. There are three ways to change relationships with this function:
-
-      ### Action Arguments (preferred)
-
-      Create an argument on the action and add a `Ash.Resource.Change.Builtins.manage_relationship/3` change to the action.
-
-      ### Overrides
-
-      You can pass the `relationships` option to specify the behavior. It is a keyword list of relationship and either
-        * one of the preset manage types: #{inspect(@manage_types)}
-        * explicit options, in the form of `{:manage, [...opts]}`
-
-      ```elixir
-      Ash.Changeset.for_create(MyResource, :create, params, relationships: [relationship: :append, other_relationship: {:manage, [...opts]}])
-      ```
-
-      You can also use explicit calls to `manage_relationship/4`.
-      """
-    ],
     require?: [
       type: :boolean,
       default: false,
@@ -532,7 +508,7 @@ defmodule Ash.Changeset do
           |> set_tenant(opts[:tenant] || changeset.tenant)
           |> Map.put(:__validated_for_action__, action.name)
           |> Map.put(:action, action)
-          |> cast_params(action, params, opts)
+          |> cast_params(action, params)
           |> set_argument_defaults(action)
           |> run_action_changes(action, opts[:actor])
           |> add_validations()
@@ -560,7 +536,7 @@ defmodule Ash.Changeset do
           |> set_tenant(opts[:tenant] || changeset.tenant || changeset.data.__metadata__[:tenant])
           |> Map.put(:action, action)
           |> Map.put(:__validated_for_action__, action.name)
-          |> cast_params(action, params || %{}, opts)
+          |> cast_params(action, params || %{})
           |> set_argument_defaults(action)
           |> validate_attributes_accepted(action)
           |> require_values(action.type, false, action.require_attributes)
@@ -767,7 +743,7 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp cast_params(changeset, action, params, opts) do
+  defp cast_params(changeset, action, params) do
     changeset = %{
       changeset
       | params: Map.merge(changeset.params || %{}, Enum.into(params || %{}, %{}))
@@ -781,24 +757,6 @@ defmodule Ash.Changeset do
         attr = Ash.Resource.Info.public_attribute(changeset.resource, name) ->
           if attr.writable? do
             change_attribute(changeset, attr.name, value)
-          else
-            changeset
-          end
-
-        rel = Ash.Resource.Info.public_relationship(changeset.resource, name) ->
-          if rel.writable? do
-            behaviour = opts[:relationships][rel.name]
-
-            case behaviour do
-              nil ->
-                changeset
-
-              type when is_atom(type) ->
-                manage_relationship(changeset, rel.name, value, type: type)
-
-              {:manage, manage_opts} ->
-                manage_relationship(changeset, rel.name, value, manage_opts)
-            end
           else
             changeset
           end
@@ -1568,11 +1526,6 @@ defmodule Ash.Changeset do
             * belongs_to - an update action on the source resource
       """
     ],
-    relationships: [
-      type: :any,
-      default: [],
-      doc: "A keyword list of instructions for nested relationships."
-    ],
     error_path: [
       type: :any,
       doc: """
@@ -1774,15 +1727,6 @@ defmodule Ash.Changeset do
           InvalidRelationship.exception(
             relationship: relationship.name,
             message: "Cannot manage a #{type} relationship with a list of records"
-          )
-
-        add_error(changeset, error)
-
-      %{writable?: false} = relationship ->
-        error =
-          InvalidRelationship.exception(
-            relationship: relationship.name,
-            message: "Relationship is not editable"
           )
 
         add_error(changeset, error)

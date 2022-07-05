@@ -56,6 +56,12 @@ defmodule Ash.Resource.Relationships.BelongsTo do
 
   @opt_schema Ash.OptionsHelpers.merge_schemas(
                 [
+                  writable?: [
+                    type: :boolean,
+                    doc:
+                      "Whether or not the attribute created by this relationship will be marked with `writable?: true`.",
+                    default: false
+                  ],
                   primary_key?: [
                     type: :boolean,
                     default: false,

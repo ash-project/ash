@@ -159,7 +159,18 @@ defmodule Ash.Dsl do
 
             defmacro __after_compile__(_, _) do
               quote do
-                Ash.Dsl.Extension.run_after_compile()
+                transformers_to_run =
+                  @extensions
+                  |> Enum.flat_map(& &1.transformers())
+                  |> Ash.Dsl.Transformer.sort()
+                  |> Enum.filter(& &1.after_compile?())
+
+                __MODULE__
+                |> Ash.Dsl.Extension.run_transformers(
+                  transformers_to_run,
+                  Module.get_attribute(__MODULE__, :ash_dsl_config),
+                  false
+                )
               end
             end
 

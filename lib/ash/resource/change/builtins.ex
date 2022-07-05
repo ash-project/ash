@@ -24,8 +24,8 @@ defmodule Ash.Resource.Change.Builtins do
 
   If a zero argument function is provided, it is called to determine the value.
 
-  If a tuple of `{:arg, :argument_name}` is provided, the value will be read from the argument if supplied.
-  If the argument is not supplied then nothing happens.
+  If a `arg(:arg_name)` is provided, the value will be read from the argument if supplied.
+  If the argument specified is not given to the action, then nothing happens.
   """
   def set_attribute(attribute, value) do
     {Ash.Resource.Change.SetAttribute, attribute: attribute, value: value}

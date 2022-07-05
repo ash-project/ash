@@ -30,6 +30,41 @@ if Code.ensure_loaded?(ElixirSense.Plugin) do
         else
           []
         end
+        |> Enum.reject(fn
+          %{name: name} when name in ["__info__", "module_info", "module_info"] ->
+            true
+
+          _ ->
+            false
+        end)
+        |> Enum.map(fn
+          %{type: :function, origin: origin, name: name, arity: arity} = completion ->
+            try do
+              {:docs_v1, _, _, _, _, _, functions} = Code.fetch_docs(Module.concat([origin]))
+
+              new_summary =
+                Enum.find_value(functions, fn
+                  {{:function, func_name, func_arity}, _, _,
+                   %{
+                     "en" => docs
+                   }, _} ->
+                    if to_string(func_name) == name && func_arity == arity do
+                      docs
+                    end
+
+                  _other ->
+                    false
+                end)
+
+              %{completion | summary: new_summary || completion.summary}
+            rescue
+              _e ->
+                completion
+            end
+
+          other ->
+            other
+        end)
 
       custom =
         for module <- module_store.by_behaviour[behaviour] || [],
@@ -50,6 +85,8 @@ if Code.ensure_loaded?(ElixirSense.Plugin) do
 
       builtins ++ custom
     end
+
+    defp lowercase_string?(""), do: true
 
     defp lowercase_string?(string) do
       first = String.first(string)

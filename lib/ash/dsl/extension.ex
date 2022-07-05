@@ -484,23 +484,6 @@ defmodule Ash.Dsl.Extension do
     end
   end
 
-  defmacro run_after_compile do
-    quote do
-      transformers_to_run =
-        @extensions
-        |> Enum.flat_map(& &1.transformers())
-        |> Ash.Dsl.Transformer.sort()
-        |> Enum.filter(& &1.after_compile?())
-
-      __MODULE__
-      |> Ash.Dsl.Extension.run_transformers(
-        transformers_to_run,
-        Module.get_attribute(__MODULE__, :ash_dsl_config),
-        false
-      )
-    end
-  end
-
   def run_transformers(mod, transformers, ash_dsl_config, store?) do
     Enum.reduce_while(transformers, ash_dsl_config, fn transformer, dsl ->
       result =

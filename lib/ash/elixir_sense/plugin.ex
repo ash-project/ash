@@ -10,6 +10,7 @@ if Code.ensure_loaded?(ElixirSense.Plugin) do
     alias ElixirSense.Providers.Suggestion.Matcher
 
     def suggestions(hint, {_, function_call, arg_index, info}, _chain, opts) do
+      opts = add_module_store(opts)
       option = info.option || get_option(opts.cursor_context.text_before)
 
       if option do
@@ -20,6 +21,7 @@ if Code.ensure_loaded?(ElixirSense.Plugin) do
     end
 
     def suggestions(hint, opts) do
+      opts = add_module_store(opts)
       option = get_section_option(opts.cursor_context.text_before)
 
       if option do
@@ -27,6 +29,22 @@ if Code.ensure_loaded?(ElixirSense.Plugin) do
       else
         get_suggestions(hint, opts)
       end
+    end
+
+    # For some reason, the module store does not change when modules are defined
+    # so we are building our own fresh copy here. This is definitely a performance
+    # hit
+    defp add_module_store(opts) do
+      Map.put(opts, :module_store, ElixirSense.Core.ModuleStore.build(all_loaded()))
+    end
+
+    defp all_loaded do
+      :code.all_loaded()
+      |> Enum.filter(fn
+        {mod, _} when is_atom(mod) -> true
+        _ -> false
+      end)
+      |> Enum.map(&elem(&1, 0))
     end
 
     def get_suggestions(hint, opts, opt_path \\ [], type \\ nil) do
@@ -587,7 +605,14 @@ if Code.ensure_loaded?(ElixirSense.Plugin) do
       end)
       |> Enum.uniq()
       |> Enum.map(&Module.concat([&1]))
-      |> Enum.filter(&Code.ensure_loaded?/1)
+      |> Enum.filter(fn module ->
+        try do
+          Code.ensure_loaded?(module)
+        rescue
+          _ ->
+            false
+        end
+      end)
     end
   end
 end

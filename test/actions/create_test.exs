@@ -692,18 +692,6 @@ defmodule Ash.Test.Actions.CreateTest do
   end
 
   describe "creating with required belongs_to relationships" do
-    test "allows creating with belongs_to relationship" do
-      author =
-        Author
-        |> new()
-        |> change_attribute(:bio, "best dude")
-        |> Api.create!()
-
-      ProfileWithBelongsTo
-      |> Ash.Changeset.for_create(:create, [author: author], relationships: [author: :replace])
-      |> Api.create!()
-    end
-
     test "does not allow creating without the required belongs_to relationship" do
       assert_raise Ash.Error.Invalid, ~r/relationship author is required/, fn ->
         ProfileWithBelongsTo

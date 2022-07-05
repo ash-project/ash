@@ -543,7 +543,8 @@ defmodule Ash.ElixirSense.PluginTest do
                snippet: nil,
                spec: "",
                summary:
-                 "Calls `Ash.Changeset.manage_relationship/4` with the changeset and relationship provided, using the value provided for the named argument",
+                 "Calls `Ash.Changeset.manage_relationship/4` with the changeset and relationship provided, using the value provided for the named argument" <>
+                   _,
                type: :function,
                visibility: :public
              },
@@ -558,7 +559,8 @@ defmodule Ash.ElixirSense.PluginTest do
                snippet: nil,
                spec: "",
                summary:
-                 "Calls `Ash.Changeset.manage_relationship/4` with the changeset and relationship provided, using the value provided for the named argument",
+                 "Calls `Ash.Changeset.manage_relationship/4` with the changeset and relationship provided, using the value provided for the named argument" <>
+                   _,
                type: :function,
                visibility: :public
              }
