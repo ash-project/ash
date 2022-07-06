@@ -16,7 +16,7 @@ A minimal set of resource definitions and calls that can reproduce the bug.
 **Expected behavior**
 A clear and concise description of what you expected to happen.
 
-** Runtime
+**Runtime**
  - Elixir version
  - Erlang version
  - OS
