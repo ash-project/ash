@@ -29,7 +29,7 @@ defmodule Ash.Resource.Transformers.BelongsToAttribute do
             else
               not relationship.required?
             end,
-          writable?: relationship.writable?,
+          writable?: relationship.attribute_writable?,
           private?: true,
           primary_key?: relationship.primary_key?
         )

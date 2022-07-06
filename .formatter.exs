@@ -18,6 +18,7 @@ locals_without_parens = [
   attribute: 1,
   attribute: 2,
   attribute: 3,
+  attribute_writable?: 1,
   authorize_if: 1,
   authorize_if: 2,
   authorize_unless: 1,

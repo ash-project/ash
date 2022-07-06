@@ -53,6 +53,13 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       For example, if a value is added that has no match in the destination (very hard to do with the way Ash relationship changes work).
       """
     ],
+    writable?: [
+      type: :boolean,
+      default: true,
+      doc: """
+      Wether or not the relationship may be edited.
+      """
+    ],
     read_action: [
       type: :atom,
       doc: """

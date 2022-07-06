@@ -21,6 +21,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :writable?,
     :context,
     :description,
+    :attribute_writable?,
     validate_destination_field?: true,
     cardinality: :one,
     type: :belongs_to
@@ -39,6 +40,8 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           primary_key?: boolean,
           define_field?: boolean,
           field_type: term,
+          writable?: boolean,
+          attribute_writable?: boolean,
           destination_field: atom,
           private?: boolean,
           source_field: atom | nil,
@@ -56,12 +59,6 @@ defmodule Ash.Resource.Relationships.BelongsTo do
 
   @opt_schema Ash.OptionsHelpers.merge_schemas(
                 [
-                  writable?: [
-                    type: :boolean,
-                    doc:
-                      "Whether or not the attribute created by this relationship will be marked with `writable?: true`.",
-                    default: false
-                  ],
                   primary_key?: [
                     type: :boolean,
                     default: false,
@@ -72,6 +69,15 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                     default: false,
                     doc:
                       "Whether this relationship must always be present, e.g: must be included on creation, and never removed (it can still be changed)"
+                  ],
+                  attribute_writable?: [
+                    type: :boolean,
+                    default: false,
+                    doc: """
+                    Whether this relationship's generated attribute will be marked as writable.
+
+                    Has no effect when combined with `define_field?: false`.
+                    """
                   ],
                   define_field?: [
                     type: :boolean,

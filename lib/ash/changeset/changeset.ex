@@ -1796,6 +1796,15 @@ defmodule Ash.Changeset do
 
         add_error(changeset, error)
 
+      %{writable?: false} = relationship ->
+        error =
+          InvalidRelationship.exception(
+            relationship: relationship.name,
+            message: "Relationship is not editable"
+          )
+
+        add_error(changeset, error)
+
       %{manual: manual} = relationship when not is_nil(manual) ->
         error =
           InvalidRelationship.exception(

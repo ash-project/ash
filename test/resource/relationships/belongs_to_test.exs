@@ -56,6 +56,24 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
              ] = Ash.Resource.Info.attributes(Post)
     end
 
+    test "it creates an attribute that honors attribute_writable?" do
+      defposts do
+        relationships do
+          belongs_to(:foobar, FooBar, attribute_writable?: true)
+        end
+      end
+
+      assert [
+               _,
+               %Ash.Resource.Attribute{
+                 name: :foobar_id,
+                 primary_key?: false,
+                 type: Ash.Type.UUID,
+                 writable?: true
+               }
+             ] = Ash.Resource.Info.attributes(Post)
+    end
+
     test "it creates a relationship" do
       defposts do
         relationships do
