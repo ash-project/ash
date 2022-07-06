@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.52.0-rc.17](https://github.com/ash-project/ash/compare/v1.52.0-rc.16...v1.52.0-rc.17) (2022-07-06)
+
+
+
+
+### Bug Fixes:
+
+* add back in `writable?` option to relationships, and add `attribute_writable?` to `belongs_to`
+
+* don't rescue arbitrary exception/exits
+
+### Improvements:
+
+* add back in DSL docs
+
+* add `match_other_defaults?` to attribute
+
 ## [v1.52.0-rc.16](https://github.com/ash-project/ash/compare/v1.52.0-rc.15...v1.52.0-rc.16) (2022-07-05)
 
 
