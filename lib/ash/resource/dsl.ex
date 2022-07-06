@@ -1083,6 +1083,18 @@ defmodule Ash.Resource.Dsl do
 
   @moduledoc """
   The built in resource DSL.
+  <!--- ash-hq-hide-start -->
+
+  ## DSL Documentation
+
+  ### Index
+
+  #{Ash.Dsl.Extension.doc_index(@sections)}
+
+  ### Docs
+
+  #{Ash.Dsl.Extension.doc(@sections)}
+  <!--- ash-hq-hide-stop -->
   """
 
   use Ash.Dsl.Extension,
