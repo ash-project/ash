@@ -25,6 +25,10 @@ defmodule Ash.Test.Actions.ValidationTest do
       validate attribute_equals(:status, "foo") do
         where([attribute_equals(:foo, true)])
       end
+
+      validate attribute_does_not_equal(:status, "foo") do
+        where([attribute_equals(:foo, false)])
+      end
     end
 
     attributes do
@@ -63,8 +67,18 @@ defmodule Ash.Test.Actions.ValidationTest do
 
   test "validations only run when their when conditions validate properly" do
     Profile
-    |> Ash.Changeset.new(%{foo: false, status: "foo"})
+    |> Ash.Changeset.new(%{foo: false, status: "bar"})
     |> Api.create!()
+
+    Profile
+    |> Ash.Changeset.new(%{foo: true, status: "foo"})
+    |> Api.create!()
+
+    assert_raise(Ash.Error.Invalid, ~r/status: must not equal foo/, fn ->
+      Profile
+      |> Ash.Changeset.new(%{foo: false, status: "foo"})
+      |> Api.create!()
+    end)
 
     assert_raise(Ash.Error.Invalid, ~r/status: must equal foo/, fn ->
       Profile
