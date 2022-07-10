@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.52.0-rc.18](https://github.com/ash-project/ash/compare/v1.52.0-rc.17...v1.52.0-rc.18) (2022-07-10)
+
+
+
+
+### Bug Fixes:
+
+* fix doc links and include in release
+
 ## [v1.52.0-rc.17](https://github.com/ash-project/ash/compare/v1.52.0-rc.16...v1.52.0-rc.17) (2022-07-06)
 
 
