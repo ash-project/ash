@@ -4,6 +4,7 @@ defmodule Ash.DocIndex.AshDocIndex do
   """
 
   use Ash.DocIndex,
+    otp_app: :ash,
     guides_from: [
       "documentation/**/*.md"
     ]
@@ -12,7 +13,7 @@ defmodule Ash.DocIndex.AshDocIndex do
   @spec for_library() :: String.t()
   def for_library, do: "ash"
 
-  @overview ""
+  @overview Ash.DocIndex.read!(:ash, "documentation/topics/overview.md")
 
   @impl true
   def guides do
@@ -104,6 +105,8 @@ defmodule Ash.DocIndex.AshDocIndex do
          Ash.Resource.Info,
          Ash.Resource.Change,
          Ash.Resource.Change.Builtins,
+         Ash.Resource.Validation,
+         Ash.Resource.Validation.Builtins,
          Ash.Calculation,
          Ash.Resource.Calculation.Builtins,
          Ash.CodeInterface,

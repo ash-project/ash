@@ -48,7 +48,7 @@ defmodule Ash.DocIndex do
   @callback code_modules() :: [{String.t(), list(module())}]
 
   defmacro __using__(opts) do
-    quote bind_quoted: [guides_from: opts[:guides_from]] do
+    quote bind_quoted: [otp_app: opts[:otp_app], guides_from: opts[:guides_from]] do
       @behaviour Ash.DocIndex
 
       if guides_from do
@@ -63,7 +63,7 @@ defmodule Ash.DocIndex do
                      %{
                        name: Ash.DocIndex.to_name(Path.rootname(file)),
                        category: Ash.DocIndex.to_name(category),
-                       text: File.read!(path),
+                       text: Ash.DocIndex.read!(otp_app, path),
                        route: "#{Ash.DocIndex.to_path(category)}/#{Ash.DocIndex.to_path(file)}"
                      }
                  end
@@ -77,6 +77,13 @@ defmodule Ash.DocIndex do
         defoverridable guides: 0
       end
     end
+  end
+
+  def read!(app, path) do
+    app
+    |> :code.priv_dir()
+    |> Path.join(path)
+    |> File.read!()
   end
 
   def to_name(string) do
