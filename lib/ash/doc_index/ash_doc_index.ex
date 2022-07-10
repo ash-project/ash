@@ -152,7 +152,7 @@ defmodule Ash.DocIndex.AshDocIndex do
          Ash.Dsl.Entity,
          Ash.Dsl.Extension,
          Ash.Dsl.Section,
-         ASh.Dsl.Transformer
+         Ash.Dsl.Transformer
        ]},
       {"Documentation",
        [
