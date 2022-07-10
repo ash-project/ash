@@ -86,13 +86,13 @@ defmodule Ash.MixProject do
         "old_documentation/topics/compile_times.md": [
           title: "Compile Times"
         ],
-        "documentation/topics/policies.md": [
+        "priv/documentation/topics/policies.md": [
           title: "Policies"
         ],
-        "documentation/topics/overview.md": [
+        "priv/documentation/topics/overview.md": [
           title: "Overview"
         ],
-        "documentation/topics/development-utilities.md": [
+        "priv/documentation/topics/development-utilities.md": [
           title: "Dev Utilities"
         ]
       ],
