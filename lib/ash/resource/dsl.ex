@@ -3,12 +3,15 @@ defmodule Ash.Resource.Dsl do
     name: :attribute,
     describe: """
     Declares an attribute on the resource.
-
-    For more information, see {{link:ash:guide:Attributes}}
     """,
+    links: [
+      guides: [
+        "ash:guide:Attributes"
+      ]
+    ],
     examples: [
       """
-      attribute :first_name, :string do
+      attribute :name, :string do
         allow_nil? false
       end
       """
@@ -94,9 +97,13 @@ defmodule Ash.Resource.Dsl do
     describe: """
     A section for declaring attributes on the resource.
 
-    Attributes are fields on an instance of a resource. The two required
-    pieces of knowledge are the field name, and the type.
+    For more information, see {{link:ash:guide:Attributes}}
     """,
+    links: [
+      guides: [
+        "ash:guide:Attributes"
+      ]
+    ],
     examples: [
       """
       attributes do

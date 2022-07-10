@@ -106,7 +106,7 @@ defmodule Ash.Resource.Calculation do
         doc: "The type of the argument"
       ],
       default: [
-        type: {:custom, Ash.OptionsHelpers, :default, []},
+        type: {:or, [{:mfa_or_fun, 0}, :literal]},
         required: false,
         doc: "A default value to use for the argument if not provided"
       ],

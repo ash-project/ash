@@ -24,9 +24,7 @@ defmodule Ash.Api.Dsl do
     examples: [
       """
       resources do
-        resource MyApp.User
-        resource MyApp.Post
-        resource MyApp.Comment
+        registry MyApp.Registry
       end
       """
     ],
@@ -71,28 +69,7 @@ defmodule Ash.Api.Dsl do
         """
       ]
     ],
-    modules: [:registry],
-    deprecations: [
-      resource: """
-      Please define your resources in an `Ash.Registry`. For example:
-
-      # my_app/my_api/registry.ex
-      defmodule MyApp.MyApi.Registry do
-        use Ash.Registry,
-          extensions: [Ash.Registry.ResourceValidations]
-
-        entries do
-          entry MyApp.Post
-          entry MyApp.Comment
-        end
-      end
-
-      # In your api module
-      resources do
-        registry MyApp.MyApi.Registry
-      end
-      """
-    ]
+    modules: [:registry]
   }
 
   @sections [@resources, @execution]

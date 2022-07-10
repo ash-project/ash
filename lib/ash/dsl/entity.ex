@@ -43,6 +43,7 @@ defmodule Ash.Dsl.Entity do
     describe: "",
     snippet: "",
     args: [],
+    links: [],
     hide: [],
     modules: [],
     no_depend_modules: [],

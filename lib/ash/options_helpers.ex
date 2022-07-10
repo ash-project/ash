@@ -38,10 +38,12 @@ defmodule Ash.OptionsHelpers do
     |> NimbleOptions.docs()
   end
 
+  @non_nimble_options [:hide, :as, :snippet]
+
   defp sanitize_schema(schema) do
     Enum.map(schema, fn {key, opts} ->
       new_opts = Keyword.update!(opts, :type, &sanitize_type/1)
-      {key, Keyword.drop(new_opts, [:hide, :as, :snippet])}
+      {key, Keyword.drop(new_opts, @non_nimble_options)}
     end)
   end
 
@@ -72,8 +74,14 @@ defmodule Ash.OptionsHelpers do
       {:behaviour, _behaviour} ->
         :atom
 
+      {:mfa_or_fun, arity} ->
+        {:custom, __MODULE__, :mfa_or_fun, [arity]}
+
       :ash_resource ->
         :atom
+
+      :literal ->
+        :any
 
       :ash_action_type ->
         {:in, [:create, :read, :update, :destroy]}
@@ -133,13 +141,13 @@ defmodule Ash.OptionsHelpers do
     module_and_opts({module, []})
   end
 
-  def default(value) when is_function(value, 0), do: {:ok, value}
+  def mfa_or_fun(value, arity) when is_function(value, arity), do: {:ok, value}
 
-  def default({module, function, args})
+  def mfa_or_fun({module, function, args}, _arity)
       when is_atom(module) and is_atom(function) and is_list(args),
       do: {:ok, {module, function, args}}
 
-  def default(value), do: {:ok, value}
+  def mfa_or_fun(value, _), do: {:ok, value}
 
   def make_required!(options, field) do
     Keyword.update!(options, field, &Keyword.put(&1, :required, true))
