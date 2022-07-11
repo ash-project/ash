@@ -79,6 +79,7 @@ defmodule Ash.DocIndex do
     end
   end
 
+  # sobelow_skip ["Traversal.FileModule"]
   def read!(app, path) do
     app
     |> :code.priv_dir()
