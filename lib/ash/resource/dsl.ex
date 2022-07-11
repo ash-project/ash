@@ -51,7 +51,7 @@ defmodule Ash.Resource.Dsl do
   @timestamps %Ash.Dsl.Entity{
     name: :timestamps,
     describe: """
-    Declares non-writable `inserted_at` and `updated_at` attributes whith create and update defaults of `&DateTime.utc_now/0`.
+    Declares non-writable `inserted_at` and `updated_at` attributes with create and update defaults of `&DateTime.utc_now/0`.
     """,
     examples: [
       "timestamps()"
@@ -65,8 +65,9 @@ defmodule Ash.Resource.Dsl do
   @integer_primary_key %Ash.Dsl.Entity{
     name: :integer_primary_key,
     describe: """
-    Declares a generated (set by the data layer), non writable, non nil, primary key column of type integer.
-    Using `integer_primary_key`, `allow_nil?` is automatically set to `false`.
+    Declares a generated, non writable, non-nil, primary key column of type integer.
+
+    Generated integer primary keys must be supported by the data layer.
     """,
     examples: [
       "integer_primary_key :id"
@@ -80,8 +81,7 @@ defmodule Ash.Resource.Dsl do
   @uuid_primary_key %Ash.Dsl.Entity{
     name: :uuid_primary_key,
     describe: """
-    Declares a non writable, non nil, primary key column of type uuid, which defaults to `Ash.UUID.generate/0`.
-    Using `uuid_primary_key`, `allow_nil?` is automatically set to `false`.
+    Declares a non writable, non-nil, primary key column of type uuid, which defaults to `Ash.UUID.generate/0`.
     """,
     examples: [
       "uuid_primary_key :id"
@@ -96,8 +96,6 @@ defmodule Ash.Resource.Dsl do
     name: :attributes,
     describe: """
     A section for declaring attributes on the resource.
-
-    For more information, see {{link:ash:guide:Attributes}}
     """,
     links: [
       guides: [
@@ -300,14 +298,10 @@ defmodule Ash.Resource.Dsl do
     A change to be applied to the changeset after it is generated. They are run in order, from top to bottom.
 
     To implement your own, see `Ash.Resource.Change`.
-    To use it, you can simply refer to the module and its options, like so:
+    To use it, simply refer to the module and its options or just the module if there are no options, like so:
 
     `change {MyChange, foo: 1}`
-
-    But for readability, you may want to define a function elsewhere and import it,
-    so you can say something like:
-
-    `change my_change(1)`
+    `change MyChange`
 
     For destroys, `changes` are not applied unless `soft?` is set to true.
     """,
