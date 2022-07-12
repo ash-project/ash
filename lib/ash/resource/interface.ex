@@ -95,7 +95,7 @@ defmodule Ash.Resource.Interface do
         "The name of the action that will be called. Defaults to the same name as the function."
     ],
     args: [
-      type: {:list, :atom},
+      type: {:list, {:or, [:atom, {:tagged_tuple, :optional, :atom}]}},
       doc: """
       Map specific arguments to named inputs. Can provide any argument/attributes that the action allows.
       """

@@ -66,7 +66,58 @@ defmodule Ash.Resource.Info do
       is_nil(rel.context)
   end
 
+  @doc "Sets a list of loaded key or paths to a key back to their original unloaded stated"
+  @spec unload_many(
+          nil | list(Ash.Resource.record()) | Ash.Resource.record() | Ash.Page.page(),
+          list(atom) | list(list(atom))
+        ) ::
+          nil | list(Ash.Resource.record()) | Ash.Resource.record() | Ash.Page.page()
+  def unload_many(data, paths) do
+    Enum.reduce(paths, data, &unload(&2, &1))
+  end
+
+  @doc "Sets a loaded key or path to a key back to its original unloaded stated"
+  @spec unload(
+          nil | list(Ash.Resource.record()) | Ash.Resource.record() | Ash.Page.page(),
+          atom | list(atom)
+        ) ::
+          nil | list(Ash.Resource.record()) | Ash.Resource.record() | Ash.Page.page()
+  def unload(nil, _), do: nil
+
+  def unload(%struct{results: results} = page, path)
+      when struct in [Ash.Page.Keyset, Ash.Page.Offset] do
+    %{page | results: unload(results, path)}
+  end
+
+  def unload(records, path) when is_list(records) do
+    Enum.map(records, &unload(&1, path))
+  end
+
+  def unload(record, [path]) do
+    unload(record, path)
+  end
+
+  def unload(record, [key | rest]) do
+    Map.update!(record, key, &unload(&1, rest))
+  end
+
+  def unload(%struct{} = record, key) when is_atom(key) do
+    Map.put(record, key, Map.get(struct.__struct__(), key))
+  end
+
+  def unload(other, _), do: other
+
+  @doc "Returns true if the load or path to load has been loaded"
+  @spec loaded?(
+          nil | list(Ash.Resource.record()) | Ash.Resource.record() | Ash.Page.page(),
+          atom | list(atom)
+        ) ::
+          boolean
   def loaded?(nil, _), do: true
+
+  def loaded?(%page{results: results}, path) when page in [Ash.Page.Keyset, Ash.Page.Offset] do
+    loaded?(results, path)
+  end
 
   def loaded?(records, path) when not is_list(path) do
     loaded?(records, [path])

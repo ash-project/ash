@@ -273,6 +273,63 @@ defmodule Ash.Test.Actions.LoadTest do
       end
     end
 
+    test "unloading related data sets it back to `%Ash.NotLoaded{}`" do
+      author =
+        Author
+        |> new(%{name: "zerg"})
+        |> Api.create!()
+
+      post1 =
+        Post
+        |> new(%{title: "post1"})
+        |> replace_relationship(:author, author)
+        |> Api.create!()
+
+      Post
+      |> new(%{title: "post2"})
+      |> replace_relationship(:author, author)
+      |> Api.create!()
+
+      [author] =
+        Author
+        |> Ash.Query.load(posts: [:author])
+        |> Ash.Query.filter(posts.id == ^post1.id)
+        |> Api.read!(authorize?: true)
+
+      assert author
+             |> Ash.Resource.Info.unload([:posts, :author])
+             |> Map.get(:posts)
+             |> Enum.all?(fn post ->
+               %Ash.NotLoaded{} = post.author
+             end)
+    end
+
+    test "loading something does not unload previously loaded things" do
+      author =
+        Author
+        |> new(%{name: "zerg"})
+        |> Api.create!()
+
+      Post
+      |> new(%{title: "post1"})
+      |> replace_relationship(:author, author)
+      |> Api.create!()
+
+      Post
+      |> new(%{title: "post2"})
+      |> replace_relationship(:author, author)
+      |> Api.create!()
+
+      [author] =
+        Author
+        |> Ash.Query.load(:posts)
+        |> Api.read!(authorize?: true)
+        |> Api.load!(:latest_post)
+
+      refute match?(%Ash.NotLoaded{}, author.posts)
+      refute match?(%Ash.NotLoaded{}, author.latest_post)
+    end
+
     test "loading something already loaded still loads it unless lazy?: true" do
       author =
         Author

@@ -15,6 +15,7 @@ defmodule Ash.Test.CodeInterfaceTest do
       define :get_user, action: :read, get?: true, args: [:id]
       define :read_users, action: :read
       define :get_by_id, action: :read, get_by: [:id]
+      define :create, args: [{:optional, :first_name}]
     end
 
     actions do
@@ -33,7 +34,11 @@ defmodule Ash.Test.CodeInterfaceTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :first_name, :string
+
+      attribute :first_name, :string do
+        default "fred"
+      end
+
       attribute :last_name, :string
     end
   end
@@ -69,5 +74,10 @@ defmodule Ash.Test.CodeInterfaceTest do
       |> Api.create!()
 
     assert User.get_by_id!(user.id).id == user.id
+  end
+
+  test "optional arguments are optional" do
+    assert User.create!().first_name == "fred"
+    assert User.create!("joe").first_name == "joe"
   end
 end

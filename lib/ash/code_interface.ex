@@ -20,6 +20,55 @@ defmodule Ash.CodeInterface do
     action
   end
 
+  @doc false
+  def default_value(resource, action, key) do
+    field =
+      case Ash.Resource.Info.attribute(resource, key) do
+        nil ->
+          Enum.find(action.arguments, fn argument ->
+            argument.name == key
+          end)
+
+        attribute ->
+          attribute
+      end
+
+    if !field.allow_nil? do
+      raise "Code interface for #{action.name} has optional argument #{key} but it is not optional"
+    end
+
+    default =
+      if action.type == :update || (action.type == :destroy && action.soft?) do
+        if is_nil(action.update_default) do
+          field.default
+        else
+          field.update_default
+        end
+      else
+        field.default
+      end
+
+    if is_function(default) do
+      quote do
+        unquote(Macro.escape(default)).()
+      end
+    else
+      quote do
+        unquote(Macro.escape(default))
+      end
+    end
+  end
+
+  def without_optional(keys) do
+    Enum.map(keys, fn
+      {:optional, key} ->
+        key
+
+      key ->
+        key
+    end)
+  end
+
   @doc """
   Defines the code interface for a given resource + api combination in the current module. For example:
 
@@ -74,8 +123,22 @@ defmodule Ash.CodeInterface do
             end
           end
 
-        args = List.wrap(filter_keys) ++ (interface.args || [])
+        args = List.wrap(filter_keys) ++ Ash.CodeInterface.without_optional(interface.args || [])
+
         arg_vars = Enum.map(args, &{&1, [], Elixir})
+
+        arg_vars_function =
+          filter_keys
+          |> List.wrap()
+          |> Enum.concat(interface.args || [])
+          |> Enum.map(fn
+            {:optional, key} ->
+              default = Ash.CodeInterface.default_value(resource, action, key)
+              {:\\, [], [{key, [], Elixir}, default]}
+
+            key ->
+              {key, [], Elixir}
+          end)
 
         unless Enum.uniq(args) == args do
           raise """
@@ -96,7 +159,7 @@ defmodule Ash.CodeInterface do
             @doc doc
             @dialyzer {:nowarn_function, {interface.name, Enum.count(args) + 2}}
             def unquote(interface.name)(
-                  unquote_splicing(arg_vars),
+                  unquote_splicing(arg_vars_function),
                   params_or_opts \\ %{},
                   opts \\ []
                 ) do
@@ -105,7 +168,7 @@ defmodule Ash.CodeInterface do
                   __MODULE__,
                   elem(__ENV__.function, 0),
                   [
-                    unquote_splicing(arg_vars),
+                    unquote_splicing(arg_vars_function),
                     %{},
                     params_or_opts
                   ]
@@ -164,7 +227,7 @@ defmodule Ash.CodeInterface do
             # sobelow_skip ["DOS.BinToAtom"]
             @dialyzer {:nowarn_function, {:"#{interface.name}!", Enum.count(args) + 2}}
             def unquote(:"#{interface.name}!")(
-                  unquote_splicing(arg_vars),
+                  unquote_splicing(arg_vars_function),
                   params_or_opts \\ %{},
                   opts \\ []
                 ) do
@@ -229,7 +292,7 @@ defmodule Ash.CodeInterface do
             @doc doc
             @dialyzer {:nowarn_function, {interface.name, Enum.count(args) + 2}}
             def unquote(interface.name)(
-                  unquote_splicing(arg_vars),
+                  unquote_splicing(arg_vars_function),
                   params_or_opts \\ %{},
                   opts \\ []
                 ) do
@@ -264,7 +327,7 @@ defmodule Ash.CodeInterface do
             @dialyzer {:nowarn_function, {:"#{interface.name}!", Enum.count(args) + 2}}
             # sobelow_skip ["DOS.BinToAtom"]
             def unquote(:"#{interface.name}!")(
-                  unquote_splicing(arg_vars),
+                  unquote_splicing(arg_vars_function),
                   params_or_opts \\ %{},
                   opts \\ []
                 ) do
@@ -299,7 +362,7 @@ defmodule Ash.CodeInterface do
             @dialyzer {:nowarn_function, {interface.name, Enum.count(args) + 3}}
             def unquote(interface.name)(
                   record,
-                  unquote_splicing(arg_vars),
+                  unquote_splicing(arg_vars_function),
                   params_or_opts \\ %{},
                   opts \\ []
                 ) do
@@ -335,7 +398,7 @@ defmodule Ash.CodeInterface do
             @dialyzer {:nowarn_function, {:"#{interface.name}!", Enum.count(args) + 3}}
             def unquote(:"#{interface.name}!")(
                   record,
-                  unquote_splicing(arg_vars),
+                  unquote_splicing(arg_vars_function),
                   params_or_opts \\ %{},
                   opts \\ []
                 ) do
@@ -371,7 +434,7 @@ defmodule Ash.CodeInterface do
             @dialyzer {:nowarn_function, {interface.name, Enum.count(args) + 3}}
             def unquote(interface.name)(
                   record,
-                  unquote_splicing(arg_vars),
+                  unquote_splicing(arg_vars_function),
                   params_or_opts \\ %{},
                   opts \\ []
                 ) do
@@ -407,7 +470,7 @@ defmodule Ash.CodeInterface do
             @dialyzer {:nowarn_function, {:"#{interface.name}!", Enum.count(args) + 3}}
             def unquote(:"#{interface.name}!")(
                   record,
-                  unquote_splicing(arg_vars),
+                  unquote_splicing(arg_vars_function),
                   params_or_opts \\ %{},
                   opts \\ []
                 ) do

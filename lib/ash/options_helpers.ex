@@ -42,28 +42,31 @@ defmodule Ash.OptionsHelpers do
 
   defp sanitize_schema(schema) do
     Enum.map(schema, fn {key, opts} ->
-      new_opts = Keyword.update!(opts, :type, &sanitize_type/1)
+      new_opts = Keyword.update!(opts, :type, &sanitize_type(&1, key))
       {key, Keyword.drop(new_opts, @non_nimble_options)}
     end)
   end
 
-  defp sanitize_type(type) when is_list(type) do
-    Enum.map(type, &sanitize_type/1)
+  defp sanitize_type(type, key) when is_list(type) do
+    Enum.map(type, &sanitize_type(&1, key))
   end
 
-  defp sanitize_type(type) do
+  defp sanitize_type(type, key) do
     case type do
       {:one_of, values} ->
-        {:in, sanitize_type(values)}
+        {:in, sanitize_type(values, key)}
 
       {:in, values} ->
-        {:in, sanitize_type(values)}
+        {:in, sanitize_type(values, key)}
 
       {:or, subtypes} ->
-        {:or, sanitize_type(subtypes)}
+        {:or, sanitize_type(subtypes, key)}
+
+      {:tagged_tuple, tag, type} ->
+        {:custom, __MODULE__, :tagged_tuple, [key, type, tag]}
 
       {:list, values} ->
-        {:list, sanitize_type(values)}
+        {:list, sanitize_type(values, key)}
 
       {:ash_behaviour, behaviour, _builtins} ->
         {:custom, __MODULE__, :ash_behaviour, [behaviour]}
@@ -94,6 +97,29 @@ defmodule Ash.OptionsHelpers do
       type ->
         type
     end
+  end
+
+  def tagged_tuple({tag, value}, key, type, tag) do
+    case Ash.OptionsHelpers.validate(
+           [{key, value}],
+           [
+             {key,
+              [
+                type: type
+              ]}
+           ]
+         ) do
+      {:ok, opts} ->
+        {:ok, {tag, opts[key]}}
+
+      {:error, %NimbleOptions.ValidationError{message: message}} ->
+        {:error, message}
+    end
+  end
+
+  def tagged_tuple(other, _key, _type, tag) do
+    {:error,
+     "Expected a tagged tuple in the form of {#{inspect(tag)}, value}, got: #{inspect(other)}"}
   end
 
   def ash_behaviour({module, opts}, _behaviour) when is_atom(module) do
