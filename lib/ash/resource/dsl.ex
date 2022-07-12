@@ -302,8 +302,6 @@ defmodule Ash.Resource.Dsl do
 
     `change {MyChange, foo: 1}`
     `change MyChange`
-
-    For destroys, `changes` are not applied unless `soft?` is set to true.
     """,
     examples: [
       "change relate_actor(:reporter)",
@@ -319,9 +317,6 @@ defmodule Ash.Resource.Dsl do
     name: :argument,
     describe: """
     Declares an argument on the action
-
-    The type can be either a built in type (see `Ash.Type`) for more, or a module implementing
-    the `Ash.Type` behaviour.
     """,
     examples: [
       "argument :password_confirmation, :string"
@@ -357,16 +352,10 @@ defmodule Ash.Resource.Dsl do
     A change to be applied to the changeset after it is generated. They are run in order, from top to bottom.
 
     To implement your own, see `Ash.Resource.Change`.
-    To use it, you can simply refer to the module and its options, like so:
+    To use it, simply refer to the module and its options or just the module if there are no options, like so:
 
     `change {MyChange, foo: 1}`
-
-    But for readability, you may want to define a function elsewhere and import it,
-    so you can say something like:
-
-    `change my_change(1)`
-
-    For destroys, `changes` are not applied unless `soft?` is set to true.
+    `change MyChange`
     """,
     examples: [
       "change relate_actor(:reporter)",

@@ -196,6 +196,38 @@ defmodule Ash.Test.CalculationTest do
     assert full_names == ["brian cranston brian cranston", "zach daniel zach daniel"]
   end
 
+  test "it doesn't reload anything specified by the load callback if its already been loaded when using `lazy?: true`" do
+    full_names =
+      User
+      |> Ash.Query.load(:full_name_plus_full_name)
+      |> Api.read!()
+      |> Enum.map(&%{&1 | full_name: &1.full_name <> " more"})
+      |> Api.load!(:full_name_plus_full_name, lazy?: true)
+      |> Enum.map(& &1.full_name_plus_full_name)
+      |> Enum.sort()
+
+    assert full_names == [
+             "brian cranston more brian cranston more",
+             "zach daniel more zach daniel more"
+           ]
+  end
+
+  test "it reloads anything specified by the load callback if its already been loaded when using `lazy?: false`" do
+    full_names =
+      User
+      |> Ash.Query.load(:full_name_plus_full_name)
+      |> Api.read!()
+      |> Enum.map(&%{&1 | full_name: &1.full_name <> " more"})
+      |> Api.load!(:full_name_plus_full_name)
+      |> Enum.map(& &1.full_name_plus_full_name)
+      |> Enum.sort()
+
+    assert full_names == [
+             "brian cranston brian cranston",
+             "zach daniel zach daniel"
+           ]
+  end
+
   test "nested calculations are loaded if necessary" do
     best_friends_names =
       User

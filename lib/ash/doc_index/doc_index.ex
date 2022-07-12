@@ -52,26 +52,29 @@ defmodule Ash.DocIndex do
       @behaviour Ash.DocIndex
 
       if guides_from do
-        @files guides_from
-               |> Path.wildcard()
-               |> Enum.map(fn path ->
-                 path
-                 |> Path.split()
-                 |> Enum.drop(1)
-                 |> case do
-                   [category, file] ->
-                     %{
-                       name: Ash.DocIndex.to_name(Path.rootname(file)),
-                       category: Ash.DocIndex.to_name(category),
-                       text: Ash.DocIndex.read!(otp_app, path),
-                       route: "#{Ash.DocIndex.to_path(category)}/#{Ash.DocIndex.to_path(file)}"
-                     }
-                 end
-               end)
-
         @impl Ash.DocIndex
+        # sobelow_skip ["Traversal.FileModule"]
         def guides do
-          @files
+          unquote(otp_app)
+          |> :code.priv_dir()
+          |> Path.join(unquote(guides_from))
+          |> Path.wildcard()
+          |> Enum.map(fn path ->
+            path
+            |> Path.split()
+            |> Enum.reverse()
+            |> Enum.take(2)
+            |> Enum.reverse()
+            |> case do
+              [category, file] ->
+                %{
+                  name: Ash.DocIndex.to_name(Path.rootname(file)),
+                  category: Ash.DocIndex.to_name(category),
+                  text: File.read!(path),
+                  route: "#{Ash.DocIndex.to_path(category)}/#{Ash.DocIndex.to_path(file)}"
+                }
+            end
+          end)
         end
 
         defoverridable guides: 0

@@ -154,6 +154,28 @@ defmodule Ash.Actions.Read do
     error_path = request_opts[:error_path]
     lazy? = request_opts[:lazy?]
 
+    query =
+      if initial_data && query && lazy? do
+        new_load =
+          query.load
+          |> List.wrap()
+          |> Enum.reject(fn load ->
+            case load do
+              {key, _value} ->
+                calculation_or_aggregate?(resource, key) &&
+                  Ash.Resource.Info.loaded?(resource, key)
+
+              key ->
+                calculation_or_aggregate?(resource, key) &&
+                  Ash.Resource.Info.loaded?(resource, key)
+            end
+          end)
+
+        %{query | load: new_load}
+      else
+        query
+      end
+
     fetch =
       Request.new(
         resource: resource,
@@ -326,7 +348,8 @@ defmodule Ash.Actions.Read do
                     path,
                     Map.get(fetched_data, :ultimate_query) || query,
                     Map.get(fetched_data, :calculations_at_runtime) || [],
-                    get_in(context, path ++ [:calculation_results]) || :error
+                    get_in(context, path ++ [:calculation_results]) || :error,
+                    lazy?
                   )
                   |> case do
                     {:ok, values} ->
@@ -375,6 +398,11 @@ defmodule Ash.Actions.Read do
     |> Keyword.put(:authorize?, authorize?)
     |> Keyword.put(:actor, actor)
     |> Keyword.put(:verbose?, verbose?)
+  end
+
+  defp calculation_or_aggregate?(resource, field) do
+    !!(Ash.Resource.Info.aggregate(resource, field) ||
+         Ash.Resource.Info.calculation(resource, field))
   end
 
   defp handle_attribute_multitenancy(query) do
@@ -1150,7 +1178,8 @@ defmodule Ash.Actions.Read do
          path,
          results,
          calculation,
-         query
+         query,
+         lazy?
        ) do
     all_calcs = Enum.map(all_calcs, & &1.name)
 
@@ -1166,6 +1195,7 @@ defmodule Ash.Actions.Read do
       |> calculation.module.load(calculation.opts, calculation.context)
       |> List.wrap()
       |> Enum.concat(resource_load)
+      |> reject_loaded(results, lazy?)
       |> Ash.Actions.Helpers.validate_calculation_load!(calculation.module)
       |> Enum.map(fn
         {key, _} ->
@@ -1278,6 +1308,18 @@ defmodule Ash.Actions.Read do
     end
   end
 
+  defp reject_loaded(loads, results, true) do
+    loads
+    |> List.wrap()
+    |> Enum.reject(fn load ->
+      Ash.Resource.Info.loaded?(results, load)
+    end)
+  end
+
+  defp reject_loaded(loads, _, _) do
+    loads
+  end
+
   defp add_calculation_values(
          results,
          resource,
@@ -1287,7 +1329,8 @@ defmodule Ash.Actions.Read do
          path,
          query,
          calculations,
-         :error
+         :error,
+         lazy?
        )
        when calculations != [] do
     {:requests,
@@ -1302,7 +1345,8 @@ defmodule Ash.Actions.Read do
          path,
          results,
          &1,
-         query
+         query,
+         lazy?
        )
      )}
   end
@@ -1316,7 +1360,8 @@ defmodule Ash.Actions.Read do
          _path,
          _query,
          _calculations,
-         calculation_values
+         calculation_values,
+         _lazy?
        ) do
     if calculation_values == :error do
       {:ok, results}
