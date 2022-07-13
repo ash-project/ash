@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.52.0-rc.19](https://github.com/ash-project/ash/compare/v1.52.0-rc.18...v1.52.0-rc.19) (2022-07-13)
+
+
+
+
+### Bug Fixes:
+
+* make mnesia and ets work properly when sharing tables
+
+* make updates properly merge with mnesia and ets
+
+* `attribute_writable?` also makes it public
+
+### Improvements:
+
+* code_interface optional arguments
+
+* improve behavior of `lazy?: true` option
+
 ## [v1.52.0-rc.18](https://github.com/ash-project/ash/compare/v1.52.0-rc.17...v1.52.0-rc.18) (2022-07-10)
 
 
