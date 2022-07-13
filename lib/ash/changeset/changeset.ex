@@ -523,6 +523,71 @@ defmodule Ash.Changeset do
     end
   end
 
+  @spec set_on_upsert(t(), list(atom)) :: Keyword.t()
+  def set_on_upsert(changeset, upsert_keys) do
+    keys = upsert_keys || Ash.Resource.Info.primary_key(changeset.resource)
+
+    explicitly_changing_attributes =
+      Enum.map(
+        Map.keys(changeset.attributes) -- Map.get(changeset, :defaults, []) -- keys,
+        fn key ->
+          {key, Ash.Changeset.get_attribute(changeset, key)}
+        end
+      )
+
+    changeset
+    |> upsert_update_defaults()
+    |> Keyword.merge(explicitly_changing_attributes)
+  end
+
+  defp upsert_update_defaults(changeset) do
+    attributes =
+      changeset.resource
+      |> Ash.Resource.Info.attributes()
+      |> Enum.reject(&is_nil(&1.update_default))
+
+    attributes
+    |> static_defaults()
+    |> Enum.concat(lazy_matching_defaults(attributes))
+    |> Enum.concat(lazy_non_matching_defaults(attributes))
+  end
+
+  defp static_defaults(attributes) do
+    attributes
+    |> Enum.reject(&get_default_fun(&1))
+    |> Enum.map(&{&1.name, &1.update_default})
+  end
+
+  defp lazy_non_matching_defaults(attributes) do
+    attributes
+    |> Enum.filter(&(!&1.match_other_defaults? && get_default_fun(&1)))
+    |> Enum.map(&{&1.name, &1.update_default})
+  end
+
+  defp lazy_matching_defaults(attributes) do
+    attributes
+    |> Enum.filter(&(&1.match_other_defaults? && get_default_fun(&1)))
+    |> Enum.group_by(& &1.update_default)
+    |> Enum.flat_map(fn {default_fun, attributes} ->
+      default_value =
+        case default_fun do
+          function when is_function(function) ->
+            function.()
+
+          {m, f, a} when is_atom(m) and is_atom(f) and is_list(a) ->
+            apply(m, f, a)
+        end
+
+      Enum.map(attributes, &{&1.name, default_value})
+    end)
+  end
+
+  defp get_default_fun(attribute) do
+    if is_function(attribute.update_default) or match?({_, _, _}, attribute.update_default) do
+      attribute.update_default
+    end
+  end
+
   defp do_for_action(changeset, action_name, params, opts) do
     if changeset.valid? do
       action = Ash.Resource.Info.action(changeset.resource, action_name, changeset.action_type)
@@ -2511,7 +2576,7 @@ defmodule Ash.Changeset do
   def handle_indexed_maps(_, value), do: value
 
   @doc "Calls `force_change_attribute/3` for each key/value pair provided"
-  @spec force_change_attributes(t(), map) :: t()
+  @spec force_change_attributes(t(), map | Keyword.t()) :: t()
   def force_change_attributes(changeset, changes) do
     Enum.reduce(changes, changeset, fn {key, value}, changeset ->
       force_change_attribute(changeset, key, value)

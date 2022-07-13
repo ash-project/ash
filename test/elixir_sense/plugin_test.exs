@@ -587,10 +587,18 @@ defmodule Ash.ElixirSense.PluginTest do
     assert result == [
              %{
                detail: "Option",
-               documentation: nil,
+               documentation: "Sets the ets table protection to private",
                kind: :function,
                label: "private?",
                snippet: "private? true",
+               type: :generic
+             },
+             %{
+               detail: "Option",
+               documentation: "The name of the table. Defaults to the resource name.\n",
+               kind: :function,
+               label: "table",
+               snippet: "table :$0",
                type: :generic
              }
            ]

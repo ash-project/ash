@@ -23,7 +23,14 @@ defmodule Ash.DataLayer.Ets do
     schema: [
       private?: [
         type: :boolean,
-        default: false
+        default: false,
+        doc: "Sets the ets table protection to private"
+      ],
+      table: [
+        type: :atom,
+        doc: """
+        The name of the table. Defaults to the resource name.
+        """
       ]
     ]
   }
@@ -38,6 +45,11 @@ defmodule Ash.DataLayer.Ets do
   @spec private?(Ash.Resource.t()) :: boolean
   def private?(resource) do
     Extension.get_opt(resource, [:ets], :private?, false, true)
+  end
+
+  @spec table(Ash.Resource.t()) :: boolean
+  def table(resource) do
+    Extension.get_opt(resource, [:ets], :table, resource, true) || resource
   end
 
   defmodule Query do
@@ -62,9 +74,9 @@ defmodule Ash.DataLayer.Ets do
     def start(resource, tenant) do
       table =
         if tenant do
-          Module.concat(to_string(resource), to_string(tenant))
+          Module.concat(to_string(Ash.DataLayer.Ets.table(resource)), to_string(tenant))
         else
-          resource
+          Ash.DataLayer.Ets.table(resource)
         end
 
       if Ash.DataLayer.Ets.private?(resource) do
@@ -330,8 +342,66 @@ defmodule Ash.DataLayer.Ets do
 
   defp get_records(resource, tenant) do
     with {:ok, table} <- wrap_or_create_table(resource, tenant),
-         {:ok, record_tuples} <- ETS.Set.to_list(table) do
-      {:ok, Enum.map(record_tuples, &elem(&1, 1))}
+         {:ok, record_tuples} <- ETS.Set.to_list(table),
+         records <- Enum.map(record_tuples, &elem(&1, 1)) do
+      cast_records(records, resource)
+    end
+  end
+
+  @doc false
+  def cast_records(records, resource) do
+    records
+    |> Enum.reduce_while({:ok, []}, fn record, {:ok, casted} ->
+      case cast_record(record, resource) do
+        {:ok, casted_record} ->
+          {:cont, {:ok, [casted_record | casted]}}
+
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
+    end)
+    |> case do
+      {:ok, records} ->
+        {:ok, Enum.reverse(records)}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  @doc false
+  def cast_record(record, resource) do
+    resource
+    |> Ash.Resource.Info.attributes()
+    |> Enum.reduce_while({:ok, %{}}, fn attribute, {:ok, attrs} ->
+      case Map.get(record, attribute.name) do
+        nil ->
+          {:cont, {:ok, Map.put(attrs, attribute.name, nil)}}
+
+        value ->
+          case Ash.Type.cast_stored(attribute.type, value, attribute.constraints) do
+            {:ok, value} ->
+              {:cont, {:ok, Map.put(attrs, attribute.name, value)}}
+
+            :error ->
+              {:halt,
+               {:error, "Failed to load #{inspect(value)} as type #{inspect(attribute.type)}"}}
+
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
+      end
+    end)
+    |> case do
+      {:ok, attrs} ->
+        {:ok,
+         %{
+           struct(resource, attrs)
+           | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}
+         }}
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 
@@ -343,52 +413,45 @@ defmodule Ash.DataLayer.Ets do
 
   @impl true
   def upsert(resource, changeset, keys) do
-    if Enum.sort(keys) == Enum.sort(Ash.Resource.Info.primary_key(resource)) do
-      create(resource, changeset, upsert?: true)
+    keys = keys || Ash.Resource.Info.primary_key(resource)
+
+    if Enum.any?(keys, &is_nil(Ash.Changeset.get_attribute(changeset, &1))) do
+      create(resource, changeset)
     else
       key_filters =
         Enum.map(keys, fn key ->
           {key, Ash.Changeset.get_attribute(changeset, key)}
         end)
 
-      if Enum.any?(key_filters, fn {_, val} -> is_nil(val) end) do
-        update(resource, changeset)
-      else
-        query = Ash.Query.do_filter(resource, and: [key_filters])
+      query = Ash.Query.do_filter(resource, and: [key_filters])
 
-        resource
-        |> resource_to_query(changeset.api)
-        |> Map.put(:filter, query.filter)
-        |> Map.put(:tenant, changeset.tenant)
-        |> run_query(resource)
-        |> case do
-          {:ok, []} ->
-            update(resource, changeset)
+      resource
+      |> resource_to_query(changeset.api)
+      |> Map.put(:filter, query.filter)
+      |> Map.put(:tenant, changeset.tenant)
+      |> run_query(resource)
+      |> case do
+        {:ok, []} ->
+          create(resource, changeset)
 
-          {:ok, results} ->
-            Enum.reduce_while(results, :ok, fn result, :ok ->
-              case do_destroy(changeset.resource, result, changeset.tenant) do
-                :ok ->
-                  {:cont, :ok}
+        {:ok, [result]} ->
+          to_set = Ash.Changeset.set_on_upsert(changeset, keys)
 
-                {:error, error} ->
-                  {:halt, {:error, error}}
-              end
-            end)
-            |> case do
-              :ok ->
-                update(resource, changeset)
+          changeset =
+            changeset
+            |> Map.put(:data, result)
+            |> Ash.Changeset.force_change_attributes(to_set)
 
-              {:error, error} ->
-                {:error, error}
-            end
-        end
+          update(resource, changeset)
+
+        {:ok, _} ->
+          {:error, "Multiple records matching keys"}
       end
     end
   end
 
   @impl true
-  def create(resource, changeset, opts \\ []) do
+  def create(resource, changeset) do
     pkey =
       resource
       |> Ash.Resource.Info.primary_key()
@@ -399,20 +462,58 @@ defmodule Ash.DataLayer.Ets do
     with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
          {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
          record <- unload_relationships(resource, record),
-         {:ok, _} <-
-           put_or_insert_new(table, {pkey, record}, opts) do
+         {:ok, record} <-
+           put_or_insert_new(table, {pkey, record}, resource) do
       {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
     else
       {:error, error} -> {:error, error}
     end
   end
 
-  defp put_or_insert_new(table, {pkey, record}, opts) do
-    if opts[:upsert?] do
-      ETS.Set.put(table, {pkey, record})
-    else
-      ETS.Set.put_new(table, {pkey, record})
+  defp put_or_insert_new(table, {pkey, record}, resource) do
+    attributes = resource |> Ash.Resource.Info.attributes()
+
+    case dump_to_native(record, attributes) do
+      {:ok, casted} ->
+        case ETS.Set.put_new(table, {pkey, casted}) do
+          {:ok, set} ->
+            {_key, record} = ETS.Set.get!(set, pkey)
+            cast_record(record, resource)
+
+          other ->
+            other
+        end
+
+      other ->
+        other
     end
+  end
+
+  @doc false
+  def dump_to_native(record, attributes) do
+    Enum.reduce_while(attributes, {:ok, %{}}, fn attribute, {:ok, attrs} ->
+      case Map.get(record, attribute.name) do
+        nil ->
+          {:cont, {:ok, Map.put(attrs, attribute.name, nil)}}
+
+        value ->
+          case Ash.Type.dump_to_native(
+                 attribute.type,
+                 value,
+                 attribute.constraints
+               ) do
+            {:ok, casted_value} ->
+              {:cont, {:ok, Map.put(attrs, attribute.name, casted_value)}}
+
+            :error ->
+              {:error,
+               "Failed to dump #{inspect(Map.get(record, attribute.name))} as type #{inspect(attribute.type)}"}
+
+            {:error, error} ->
+              {:error, error}
+          end
+      end
+    end)
   end
 
   @impl true
@@ -433,7 +534,66 @@ defmodule Ash.DataLayer.Ets do
 
   @impl true
   def update(resource, changeset) do
-    create(resource, changeset, upsert?: true)
+    pkey = pkey_map(resource, changeset.data)
+
+    with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
+         {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
+         {:ok, record} <-
+           do_update(table, {pkey, record}, resource),
+         {:ok, record} <- cast_record(record, resource) do
+      new_pkey = pkey_map(resource, record)
+
+      if new_pkey != pkey do
+        case destroy(resource, changeset) do
+          :ok ->
+            {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
+
+          {:error, error} ->
+            {:error, error}
+        end
+      else
+        {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
+      end
+    else
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  @doc false
+  def pkey_map(resource, data) do
+    resource
+    |> Ash.Resource.Info.primary_key()
+    |> Enum.into(%{}, fn attr ->
+      {attr, Map.get(data, attr)}
+    end)
+  end
+
+  defp do_update(table, {pkey, record}, resource) do
+    attributes = resource |> Ash.Resource.Info.attributes()
+
+    case dump_to_native(record, attributes) do
+      {:ok, casted} ->
+        case ETS.Set.get(table, pkey) do
+          {:ok, {_key, record}} when is_map(record) ->
+            case ETS.Set.put(table, {pkey, Map.merge(record, casted)}) do
+              {:ok, set} ->
+                {_key, record} = ETS.Set.get!(set, pkey)
+                {:ok, record}
+
+              error ->
+                error
+            end
+
+          {:ok, _} ->
+            {:error, "Record not found matching: #{inspect(pkey)}"}
+
+          other ->
+            other
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   defp unload_relationships(resource, record) do

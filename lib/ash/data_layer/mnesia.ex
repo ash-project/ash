@@ -49,20 +49,7 @@ defmodule Ash.DataLayer.Mnesia do
     api
     |> Ash.Api.resources()
     |> Enum.each(fn resource ->
-      attributes =
-        resource |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name) |> Enum.sort()
-
-      case Ash.Resource.Info.primary_key(resource) do
-        [] ->
-          resource
-          |> table()
-          |> Mnesia.create_table(attributes: attributes)
-
-        _ ->
-          resource
-          |> table()
-          |> Mnesia.create_table(attributes: [:_pkey | attributes])
-      end
+      resource |> table() |> Mnesia.create_table(attributes: [:_pkey, :val])
     end)
   end
 
@@ -157,43 +144,32 @@ defmodule Ash.DataLayer.Mnesia do
         {:error, reason}
 
       {:atomic, records} ->
-        attributes =
-          resource |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name) |> Enum.sort()
-
-        elements_to_drop =
-          case Ash.Resource.Info.primary_key(resource) do
-            [] ->
-              1
-
-            _ ->
-              2
-          end
-
-        structified_records =
-          Enum.map(records, fn record ->
-            struct(
-              resource,
-              Enum.zip(attributes, Enum.drop(Tuple.to_list(record), elements_to_drop))
-            )
-          end)
-
-        api
-        |> Ash.Filter.Runtime.filter_matches(structified_records, filter)
+        records
+        |> Enum.map(&elem(&1, 2))
+        |> Ash.DataLayer.Ets.cast_records(resource)
         |> case do
-          {:ok, filtered} ->
-            offset_records =
-              filtered
-              |> Sort.runtime_sort(sort)
-              |> Enum.drop(offset || 0)
+          {:ok, records} ->
+            api
+            |> Ash.Filter.Runtime.filter_matches(records, filter)
+            |> case do
+              {:ok, filtered} ->
+                offset_records =
+                  filtered
+                  |> Sort.runtime_sort(sort)
+                  |> Enum.drop(offset || 0)
 
-            limited_records =
-              if limit do
-                Enum.take(offset_records, limit)
-              else
-                offset_records
-              end
+                limited_records =
+                  if limit do
+                    Enum.take(offset_records, limit)
+                  else
+                    offset_records
+                  end
 
-            {:ok, limited_records}
+                {:ok, limited_records}
+
+              {:error, error} ->
+                {:error, error}
+            end
 
           {:error, error} ->
             {:error, error}
@@ -212,31 +188,23 @@ defmodule Ash.DataLayer.Mnesia do
         Map.get(record, attr)
       end)
 
-    values =
-      resource
-      |> Ash.Resource.Info.attributes()
-      |> Enum.sort_by(& &1.name)
-      |> Enum.map(&Map.get(record, &1.name))
+    resource
+    |> Ash.Resource.Info.attributes()
+    |> Map.new(&{&1.name, Map.get(record, &1.name)})
+    |> Ash.DataLayer.Ets.dump_to_native(Ash.Resource.Info.attributes(resource))
+    |> case do
+      {:ok, values} ->
+        case Mnesia.transaction(fn ->
+               Mnesia.write({table(resource), pkey, values})
+             end) do
+          {:atomic, _} ->
+            {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
 
-    values_with_primary_key =
-      case pkey do
-        [] ->
-          List.to_tuple([table(resource) | values])
+          {:aborted, error} ->
+            {:error, error}
+        end
 
-        pkey_values ->
-          List.to_tuple([table(resource) | [pkey_values | values]])
-      end
-
-    result =
-      Mnesia.transaction(fn ->
-        Mnesia.write(values_with_primary_key)
-      end)
-
-    case result do
-      {:atomic, _} ->
-        {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
-
-      {:aborted, error} ->
+      {:error, error} ->
         {:error, error}
     end
   end
@@ -261,12 +229,111 @@ defmodule Ash.DataLayer.Mnesia do
 
   @impl true
   def update(resource, changeset) do
-    create(resource, changeset)
+    pkey = pkey_list(resource, changeset.data)
+
+    result =
+      Mnesia.transaction(fn ->
+        with {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
+             {:ok, record} <- do_update(table(resource), {pkey, record}, resource),
+             {:ok, record} <- Ash.DataLayer.Ets.cast_record(record, resource) do
+          new_pkey = pkey_list(resource, record)
+
+          if new_pkey != pkey do
+            case destroy(resource, changeset) do
+              :ok ->
+                {:ok,
+                 %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
+
+              {:error, error} ->
+                {:error, error}
+            end
+          else
+            {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
+          end
+        else
+          {:error, error} ->
+            {:error, error}
+        end
+      end)
+
+    case result do
+      {:atomic, {:error, error}} ->
+        {:error, error}
+
+      {:atomic, {:ok, result}} ->
+        {:ok, result}
+
+      {:aborted, {reason, stacktrace}} when is_exception(reason) ->
+        {:error, Ash.Error.to_ash_error(reason, stacktrace)}
+
+      {:aborted, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp pkey_list(resource, data) do
+    resource
+    |> Ash.Resource.Info.primary_key()
+    |> Enum.map(&Map.get(data, &1))
+  end
+
+  defp do_update(table, {pkey, record}, resource) do
+    attributes = Ash.Resource.Info.attributes(resource)
+
+    case Ash.DataLayer.Ets.dump_to_native(record, attributes) do
+      {:ok, casted} ->
+        case Mnesia.read({table(resource), pkey}) do
+          [] ->
+            {:error, "Record not found matching: #{inspect(pkey)}"}
+
+          [{_, _, record}] ->
+            Mnesia.write({table, pkey, Map.merge(record, casted)})
+            [{_, _, record}] = Mnesia.read({table, pkey})
+            {:ok, record}
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   @impl true
-  def upsert(resource, changeset, _) do
-    create(resource, changeset)
+  def upsert(resource, changeset, keys) do
+    keys = keys || Ash.Resource.Info.primary_key(resource)
+
+    if Enum.any?(keys, &is_nil(Ash.Changeset.get_attribute(changeset, &1))) do
+      create(resource, changeset)
+    else
+      key_filters =
+        Enum.map(keys, fn key ->
+          {key, Ash.Changeset.get_attribute(changeset, key)}
+        end)
+
+      query = Ash.Query.do_filter(resource, and: [key_filters])
+
+      resource
+      |> resource_to_query(changeset.api)
+      |> Map.put(:filter, query.filter)
+      |> Map.put(:tenant, changeset.tenant)
+      |> run_query(resource)
+      |> case do
+        {:ok, []} ->
+          create(resource, changeset)
+
+        {:ok, [result]} ->
+          to_set = Ash.Changeset.set_on_upsert(changeset, keys)
+
+          changeset =
+            changeset
+            |> Map.put(:data, result)
+            |> Ash.Changeset.force_change_attributes(to_set)
+
+          update(resource, changeset)
+
+        {:ok, _} ->
+          {:error, "Multiple records matching keys"}
+      end
+    end
   end
 
   @impl true

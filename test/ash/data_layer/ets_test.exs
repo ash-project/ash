@@ -265,5 +265,11 @@ defmodule Ash.DataLayer.EtsTest do
     EtsTestUser
     |> ETS.Set.wrap_existing!()
     |> ETS.Set.to_list!()
+    |> Enum.map(&cast_user!/1)
+  end
+
+  defp cast_user!({pkey, attrs}) do
+    {:ok, user} = Ash.DataLayer.Ets.cast_record(attrs, EtsTestUser)
+    {pkey, user}
   end
 end

@@ -34,7 +34,7 @@ defmodule Ash.Generator do
              query: 2,
              query: 3,
              query: 4,
-             generate_attributes: 2,
+             generate_attributes: 4,
              mixed_map: 2,
              many_changesets: 3,
              many_changesets: 4,
@@ -65,7 +65,7 @@ defmodule Ash.Generator do
     |> Enum.reject(fn attribute ->
       Enum.any?(relationships, &(&1.source_field == attribute.name))
     end)
-    |> generate_attributes(generators)
+    |> generate_attributes(generators, true, :create)
   end
 
   @doc """
@@ -112,7 +112,7 @@ defmodule Ash.Generator do
     |> Enum.filter(&(&1.name in action.accept))
     |> set_allow_nil(action)
     |> Enum.concat(arguments)
-    |> generate_attributes(generators)
+    |> generate_attributes(generators, false, action.type)
   end
 
   @doc """
@@ -183,15 +183,47 @@ defmodule Ash.Generator do
     end
   end
 
-  defp generate_attributes(attributes, generators) do
+  defp generate_attributes(attributes, generators, keep_nil?, action_type) do
     attributes
     |> Enum.reduce({%{}, %{}}, fn attribute, {required, optional} ->
-      if attribute.allow_nil? do
+      default =
+        cond do
+          action_type == :create ->
+            attribute.default
+
+          action_type in [:update, :destroy] ->
+            attribute.update_default
+
+          true ->
+            nil
+        end
+
+      if attribute.allow_nil? || !is_nil(default) do
+        options = [attribute_generator(attribute)]
+
+        options =
+          if attribute.allow_nil? do
+            if keep_nil? do
+              [StreamData.constant(:__keep_nil__) | options]
+            else
+              [StreamData.constant(nil) | options]
+            end
+          else
+            options
+          end
+
+        options =
+          if is_nil(default) do
+            options
+          else
+            [StreamData.constant(nil) | options]
+          end
+
         {required,
          Map.put(
            optional,
            attribute.name,
-           StreamData.one_of([StreamData.constant(nil), attribute_generator(attribute)])
+           StreamData.one_of(options)
          )}
       else
         {Map.put(required, attribute.name, attribute_generator(attribute)), optional}

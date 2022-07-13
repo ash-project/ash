@@ -37,7 +37,7 @@ defmodule Ash.Test.Type.TypeTest do
 
     def cast_input(_, _), do: :error
 
-    def cast_stored(value, _) when is_binary(value), do: value
+    def cast_stored(value, _) when is_binary(value), do: {:ok, value}
     def cast_stored(_, _), do: :error
 
     def dump_to_native(nil, _), do: {:ok, nil}

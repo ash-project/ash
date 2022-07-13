@@ -74,7 +74,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                     type: :boolean,
                     default: false,
                     doc: """
-                    Whether this relationship's generated attribute will be marked as writable.
+                    Whether this relationship's generated attribute will be marked as public & writable.
 
                     Has no effect when combined with `define_field?: false`.
                     """
