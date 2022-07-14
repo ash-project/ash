@@ -133,7 +133,13 @@ defmodule Ash.Policy.Info do
     Extension.get_opt(resource, [:policies], :default_access_type, :strict, false)
   end
 
-  @doc "A utility to determine if an actor is authorized for a given action."
+  @doc """
+  A utility to determine if an actor is or may be authorized for a given action.
+
+  A shortcut for calling `can/4` but with the `maybe_is` option defaulting to `false`, so this should always return a boolean.
+
+  See the documentation of `can/4` for more.
+  """
   @type can_option? :: {:api, module} | {:maybe_is, boolean()}
   @spec can?(Ash.Resource.t(), atom(), map() | nil, list(can_option?())) :: boolean()
   def can?(resource, action_or_action_name, actor, opts \\ []) do
@@ -142,7 +148,18 @@ defmodule Ash.Policy.Info do
     can(resource, action_or_action_name, actor, opts)
   end
 
-  @doc "A utility to determine if an actor is authorized for a given action."
+  @doc """
+  A utility to determine if an actor is or may be authorized for a given action.
+
+  This only runs the "strict check" portion of policies, meaning that it can return `:maybe` in some cases.
+  If you have `access_type :runtime` in any of your policies, then you may get `:maybe` from this function.
+  To customize what is returned in the case of `:maybe` you can provide the `maybe_is` option, i.e `maybe_is: true`.
+  This makes sense when you want to a show a button, but only if the user may be able to perform the action.
+
+  For read actions, an important thing to factor in here is that typically policies just end up filtering the action.
+  This means that even if you try to read something you can't read, your read action will succeed but nothing will be
+  returned, and this function would return `true`.
+  """
   @type can_option :: {:api, module} | {:maybe_is, boolean() | :maybe}
   @spec can(Ash.Resource.t(), atom(), map() | nil, list(can_option())) :: boolean() | :maybe
   def can(resource, action_or_action_name, actor, opts \\ []) do
