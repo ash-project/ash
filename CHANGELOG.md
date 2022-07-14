@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.52.0-rc.20](https://github.com/ash-project/ash/compare/v1.52.0-rc.19...v1.52.0-rc.20) (2022-07-14)
+
+
+
+
+### Features:
+
+* add can?/4 policy utility (#349)
+
+* add can?/4 policy utility
+
+### Improvements:
+
+* add default guide to doc_index
+
 ## [v1.52.0-rc.19](https://github.com/ash-project/ash/compare/v1.52.0-rc.18...v1.52.0-rc.19) (2022-07-13)
 
 
