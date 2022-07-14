@@ -40,7 +40,7 @@ defmodule Ash.Policy.Test.RbacTest do
     end
   end
 
-  test "if the actor has permission to read a file, the can? utility should return true", %{
+  test "if the action can be performed, the can utility should return true", %{
     user: user,
     org: org
   } do
@@ -49,7 +49,7 @@ defmodule Ash.Policy.Test.RbacTest do
     create_file(org, "bar")
     create_file(org, "baz")
 
-    assert Ash.Policy.Info.can?(File, :read, user, api: Api)
+    assert Ash.Policy.Info.can(File, :read, user, api: Api)
   end
 
   defp give_role(user, org, role, resource, resource_id) do

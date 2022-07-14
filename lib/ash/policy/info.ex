@@ -134,13 +134,17 @@ defmodule Ash.Policy.Info do
   end
 
   @doc "A utility to determine if an actor is authorized for a given action."
+  @type can_option? :: {:api, module} | {:maybe_is, boolean()}
+  @spec can?(Ash.Resource.t(), atom(), map() | nil, list(can_option?())) :: boolean()
   def can?(resource, action_or_action_name, actor, opts \\ []) do
     opts = Keyword.put(opts, :maybe_is, Keyword.get(opts, :maybe_is, false))
-    
+
     can(resource, action_or_action_name, actor, opts)
   end
 
   @doc "A utility to determine if an actor is authorized for a given action."
+  @type can_option :: {:api, module} | {:maybe_is, boolean() | :maybe}
+  @spec can(Ash.Resource.t(), atom(), map() | nil, list(can_option())) :: boolean() | :maybe
   def can(resource, action_or_action_name, actor, opts \\ []) do
     api = Keyword.fetch!(opts, :api)
     maybe_is = Keyword.get(opts, :maybe_is, :maybe)
