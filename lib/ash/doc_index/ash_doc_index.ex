@@ -31,6 +31,9 @@ defmodule Ash.DocIndex.AshDocIndex do
   end
 
   @impl true
+  def default_guide, do: "Overview"
+
+  @impl true
   @spec extensions() :: list(Ash.DocIndex.extension())
   def extensions do
     [

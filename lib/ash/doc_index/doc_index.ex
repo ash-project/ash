@@ -46,6 +46,7 @@ defmodule Ash.DocIndex do
   @callback for_library() :: String.t()
   @callback guides() :: list(guide())
   @callback code_modules() :: [{String.t(), list(module())}]
+  @callback default_guide() :: String.t()
 
   defmacro __using__(opts) do
     quote bind_quoted: [otp_app: opts[:otp_app], guides_from: opts[:guides_from]] do
