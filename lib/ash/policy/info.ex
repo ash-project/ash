@@ -135,8 +135,15 @@ defmodule Ash.Policy.Info do
 
   @doc "A utility to determine if an actor is authorized for a given action."
   def can?(resource, action_or_action_name, actor, opts \\ []) do
+    opts = Keyword.put(opts, :maybe_is, Keyword.get(opts, :maybe_is, false))
+    
+    can(resource, action_or_action_name, actor, opts)
+  end
+
+  @doc "A utility to determine if an actor is authorized for a given action."
+  def can(resource, action_or_action_name, actor, opts \\ []) do
     api = Keyword.fetch!(opts, :api)
-    maybe_is = Keyword.get(opts, :maybe_is, true)
+    maybe_is = Keyword.get(opts, :maybe_is, :maybe)
 
     action =
       case action_or_action_name do
