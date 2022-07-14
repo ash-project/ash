@@ -40,6 +40,18 @@ defmodule Ash.Policy.Test.RbacTest do
     end
   end
 
+  test "if the action can be performed, the can utility should return true", %{
+    user: user,
+    org: org
+  } do
+    file_with_access = create_file(org, "foo")
+    give_role(user, org, :viewer, :file, file_with_access.id)
+    create_file(org, "bar")
+    create_file(org, "baz")
+
+    assert Ash.Policy.Info.can(File, :read, user, api: Api)
+  end
+
   defp give_role(user, org, role, resource, resource_id) do
     Membership
     |> Ash.Changeset.new(%{role: role, resource: resource, resource_id: resource_id})

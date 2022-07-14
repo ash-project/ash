@@ -133,6 +133,79 @@ defmodule Ash.Policy.Info do
     Extension.get_opt(resource, [:policies], :default_access_type, :strict, false)
   end
 
+  @doc "A utility to determine if an actor is authorized for a given action."
+  @type can_option? :: {:api, module} | {:maybe_is, boolean()}
+  @spec can?(Ash.Resource.t(), atom(), map() | nil, list(can_option?())) :: boolean()
+  def can?(resource, action_or_action_name, actor, opts \\ []) do
+    opts = Keyword.put(opts, :maybe_is, Keyword.get(opts, :maybe_is, false))
+
+    can(resource, action_or_action_name, actor, opts)
+  end
+
+  @doc "A utility to determine if an actor is authorized for a given action."
+  @type can_option :: {:api, module} | {:maybe_is, boolean() | :maybe}
+  @spec can(Ash.Resource.t(), atom(), map() | nil, list(can_option())) :: boolean() | :maybe
+  def can(resource, action_or_action_name, actor, opts \\ []) do
+    api = Keyword.fetch!(opts, :api)
+    maybe_is = Keyword.get(opts, :maybe_is, :maybe)
+
+    action =
+      case action_or_action_name do
+        %Ash.Resource.Actions.Create{} = action -> action
+        %Ash.Resource.Actions.Read{} = action -> action
+        %Ash.Resource.Actions.Update{} = action -> action
+        %Ash.Resource.Actions.Destroy{} = action -> action
+        name when is_atom(name) -> Ash.Resource.Info.action(resource, name)
+      end
+
+    # Get action type from resource
+    case action.type do
+      :update ->
+        query =
+          struct(resource)
+          |> Ash.Changeset.new(%{})
+          |> Ash.Changeset.for_update(action.name)
+
+        run_check(actor, query, api: api, maybe_is: maybe_is)
+
+      :create ->
+        query =
+          resource
+          |> Ash.Changeset.new()
+          |> Ash.Changeset.for_create(action.name)
+
+        run_check(actor, query, api: api, maybe_is: maybe_is)
+
+      :read ->
+        query = Ash.Query.for_read(resource, action.name)
+        run_check(actor, query, api: api, maybe_is: maybe_is)
+
+      :destroy ->
+        query =
+          struct(resource)
+          |> Ash.Changeset.new()
+          |> Ash.Changeset.for_destroy(action.name)
+
+        run_check(actor, query, api: api, maybe_is: maybe_is)
+
+      action_type ->
+        raise ArgumentError, message: "Invalid action type \"#{action_type}\""
+    end
+  end
+
+  defp run_check(actor, query, api: api, maybe_is: maybe_is) do
+    case Ash.Policy.Info.strict_check(actor, query, api) do
+      true ->
+        true
+
+      :maybe ->
+        maybe_is
+
+      _ ->
+        false
+    end
+  end
+
   # This should be done at compile time
   defp set_access_type(policies, default) when is_list(policies) do
     Enum.map(policies, &set_access_type(&1, default))
