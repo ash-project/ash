@@ -491,12 +491,16 @@ defmodule Ash.Filter do
     end)
   end
 
+  defp get_path(map, [key]) when is_struct(map) do
+    Map.get(map, key)
+  end
+
   defp get_path(map, [key]) when is_map(map) do
     get_in(map, key)
   end
 
   defp get_path(map, [key | rest]) when is_map(map) do
-    get_path(Map.get(map, key), rest)
+    get_path(get_path(map, [key]), rest)
   end
 
   defp get_path(_, _), do: nil
