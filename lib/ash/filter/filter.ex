@@ -75,7 +75,7 @@ defmodule Ash.Filter do
   ## Filter Templates
 
   Filter templates are simplified fielter statements (they only support atom keys), that have substitutions in them.
-  Currently, the substitutions are `{:_actor, :field}` and `{:_actor, :_primary_key}`
+  Currently, the substitutions are `{:_actor, :field_or_path}` and `{:_actor, :_primary_key}`
 
   You can pass a filter template to `build_filter_from_template/2` with an actor, and it will return the new result
 
@@ -465,14 +465,17 @@ defmodule Ash.Filter do
           false
         end
 
-      {:_actor, field} ->
+      {:_actor, field} when is_atom(field) ->
         Map.get(actor || %{}, field)
+
+      {:_actor, path} when is_list(path) ->
+        get_path(actor || %{}, path)
 
       {:_arg, field} ->
         Map.get(args, field) || Map.get(args, to_string(field))
 
       {:_context, fields} when is_list(fields) ->
-        get_in(context, fields)
+        get_path(context, fields)
 
       {:_context, field} ->
         Map.get(context, field)
@@ -487,6 +490,16 @@ defmodule Ash.Filter do
         other
     end)
   end
+
+  defp get_path(map, [key]) when is_map(map) do
+    get_in(map, key)
+  end
+
+  defp get_path(map, [key | rest]) when is_map(map) do
+    get_path(Map.get(map, key), rest)
+  end
+
+  defp get_path(_, _), do: nil
 
   @doc "Whether or not a given template contains an actor reference"
   def template_references_actor?({:_actor, _}), do: true
