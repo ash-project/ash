@@ -559,6 +559,10 @@ defmodule Ash.Resource.Dsl do
         By default, resources have no default actions. Embedded resources, however, have a default
         of all resource types.
         """
+      ],
+      default_accept: [
+        type: {:or, [in: [:all], list: :atom]},
+        default: :all
       ]
     ],
     examples: [

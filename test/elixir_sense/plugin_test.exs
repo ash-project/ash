@@ -238,7 +238,7 @@ defmodule Ash.ElixirSense.PluginTest do
     result = suggestions(buffer, cursor)
     labels = result |> Enum.map(& &1.label) |> Enum.sort()
 
-    assert labels == ["create", "defaults", "destroy", "read", "update"]
+    assert labels == ["create", "default_accept", "defaults", "destroy", "read", "update"]
   end
 
   test "suggesting available options and entities" do
