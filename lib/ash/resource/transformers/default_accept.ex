@@ -42,10 +42,12 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
             reject when is_list(reject) -> Enum.reject(default_accept, &(&1 in action.reject))
           end
         else
+          action_accept = action.accept || default_accept
+
           if action.reject do
-            Enum.reject(action.accept, &(&1 in action.reject))
+            Enum.reject(action_accept, &(&1 in action.reject))
           else
-            default_accept
+            action_accept
           end
         end
 
