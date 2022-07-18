@@ -16,10 +16,16 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
     default_accept =
       Extension.get_opt(
         resource,
-        [:default_accept],
-        :defaults,
-        resource_attribute_names
+        [:actions],
+        :default_accept
       )
+
+    default_accept =
+      if default_accept == :all do
+        resource_attribute_names
+      else
+        default_accept
+      end
 
     dsl_state
     |> Transformer.get_entities([:actions])
