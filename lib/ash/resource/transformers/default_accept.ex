@@ -17,7 +17,8 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
       Extension.get_opt(
         resource,
         [:actions],
-        :default_accept
+        :default_accept,
+        resource_attribute_names
       )
 
     default_accept =
