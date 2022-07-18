@@ -7,23 +7,22 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
   alias Ash.Dsl.Transformer
 
   def transform(resource, dsl_state) do
-    resource_attribute_names =
+    public_attribute_names =
       resource
       |> Ash.Resource.Info.public_attributes()
       |> Enum.map(& &1.name)
 
-    # TODO: This needs to validate the given attribute names
     default_accept =
       Extension.get_opt(
         resource,
         [:actions],
         :default_accept,
-        resource_attribute_names
+        public_attribute_names
       )
 
     default_accept =
       if default_accept == :all do
-        resource_attribute_names
+        public_attribute_names
       else
         default_accept
       end
@@ -35,8 +34,6 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
       accept =
         if action.accept == :all do
           case action.reject do
-            # This is a contradiction but could be achieved by passing all attributes manually, too.
-            # Is it worth throwing an error?
             :all -> []
             nil -> default_accept
             reject when is_list(reject) -> Enum.reject(default_accept, &(&1 in action.reject))
