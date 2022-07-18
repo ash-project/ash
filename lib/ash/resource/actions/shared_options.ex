@@ -52,7 +52,7 @@ defmodule Ash.Resource.Actions.SharedOptions do
       """
     ],
     require_attributes: [
-      type: {:custom, Ash.OptionsHelpers, :list_of_atoms, []},
+      type: {:list, :atom},
       doc: """
       A list of attributes that would normally `allow_nil` to require for this action.
 
