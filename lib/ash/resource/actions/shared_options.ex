@@ -38,11 +38,11 @@ defmodule Ash.Resource.Actions.SharedOptions do
 
   @create_update_opts [
     accept: [
-      type: {:custom, Ash.OptionsHelpers, :list_of_atoms, []},
+      type: {:list, :atom},
       doc: "The list of attributes to accept. Defaults to all attributes on the resource"
     ],
     reject: [
-      type: {:custom, Ash.OptionsHelpers, :list_of_atoms, []},
+      type: {:list, :atom},
       doc: """
       A list of attributes not to accept. This is useful if you want to say 'accept all but x'
 
@@ -51,7 +51,7 @@ defmodule Ash.Resource.Actions.SharedOptions do
       """
     ],
     require_attributes: [
-      type: {:custom, Ash.OptionsHelpers, :list_of_atoms, []},
+      type: {:list, :atom},
       doc: """
       A list of attributes that would normally `allow_nil` to require for this action.
 
