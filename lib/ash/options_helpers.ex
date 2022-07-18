@@ -143,6 +143,7 @@ defmodule Ash.OptionsHelpers do
   def map(value) when is_map(value), do: {:ok, value}
   def map(_), do: {:error, "must be a map"}
 
+  @deprecated "Use {:list, :atom} instead"
   def list_of_atoms(value) do
     if is_list(value) and Enum.all?(value, &is_atom/1) do
       {:ok, value}
