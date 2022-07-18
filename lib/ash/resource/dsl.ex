@@ -561,8 +561,7 @@ defmodule Ash.Resource.Dsl do
         """
       ],
       default_accept: [
-        type: {:or, [in: [:all], list: :atom]},
-        default: :all
+        type: {:list, :atom}
       ]
     ],
     examples: [

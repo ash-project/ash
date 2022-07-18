@@ -3,7 +3,6 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
 
   use Ash.Dsl.Transformer
 
-  alias Ash.Dsl.Extension
   alias Ash.Dsl.Transformer
 
   def transform(resource, dsl_state) do
@@ -13,39 +12,22 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
       |> Enum.map(& &1.name)
 
     default_accept =
-      Extension.get_opt(
-        resource,
+      Transformer.get_option(
+        dsl_state,
         [:actions],
-        :default_accept,
-        public_attribute_names
-      )
-
-    default_accept =
-      if default_accept == :all do
-        public_attribute_names
-      else
-        default_accept
-      end
+        :default_accept
+      ) || public_attribute_names
 
     dsl_state
     |> Transformer.get_entities([:actions])
     |> Enum.reject(&(&1.type == :read))
     |> Enum.reduce({:ok, dsl_state}, fn action, {:ok, dsl_state} ->
       accept =
-        if action.accept == :all do
-          case action.reject do
-            :all -> []
-            nil -> default_accept
-            reject when is_list(reject) -> Enum.reject(default_accept, &(&1 in action.reject))
-          end
-        else
-          action_accept = action.accept || default_accept
-
-          if action.reject do
-            Enum.reject(action_accept, &(&1 in action.reject))
-          else
-            action_accept
-          end
+        case {action.accept, action.reject} do
+          {_, :all} -> []
+          {nil, reject} -> reject(default_accept, reject)
+          {:all, reject} -> reject(public_attribute_names, reject)
+          {accept, reject} -> reject(accept, reject)
         end
 
       new_dsl_state =
@@ -58,6 +40,10 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
 
       {:ok, new_dsl_state}
     end)
+  end
+
+  defp reject(list, reject) do
+    Enum.reject(list, &(&1 in reject))
   end
 
   def after?(Ash.Resource.Transformers.BelongsToSourceField), do: true

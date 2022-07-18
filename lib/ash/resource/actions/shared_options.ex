@@ -39,7 +39,6 @@ defmodule Ash.Resource.Actions.SharedOptions do
   @create_update_opts [
     accept: [
       type: {:or, [in: [:all], list: :atom]},
-      default: :all,
       doc: "The list of attributes to accept. Defaults to all attributes on the resource"
     ],
     reject: [
