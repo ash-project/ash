@@ -68,6 +68,7 @@ defmodule Ash.Actions.Read do
           | {:ok, Ash.Page.page() | list(Ash.Resource.record()), Ash.Query.t()}
           | {:error, term}
   def run(query, action, opts \\ []) do
+    {query, opts} = Ash.Actions.Helpers.add_process_context(query.api, query, opts)
     authorize? = authorize?(opts)
     opts = sanitize_opts(opts, authorize?, query)
     query = set_tenant_opt(query, opts)

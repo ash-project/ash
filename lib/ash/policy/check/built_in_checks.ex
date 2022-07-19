@@ -41,6 +41,11 @@ defmodule Ash.Policy.Check.BuiltInChecks do
     {Ash.Policy.Check.ActorAttributeEquals, attribute: attribute, value: value}
   end
 
+  @doc "This check is true when the value of the specified key or path in the changeset or query context equals the specified value"
+  def context_equals(key, value) do
+    {Ash.Policy.Check.ContextEquals, key: key, value: value}
+  end
+
   @doc """
   This check is true when attribute changes correspond to the provided options.
 

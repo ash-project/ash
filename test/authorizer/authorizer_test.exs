@@ -36,10 +36,65 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
   end
 
   defmodule Api do
-    use Ash.Api
+    use Ash.Api, otp_app: :ash
 
     resources do
       registry Registry
+    end
+  end
+
+  describe "authorization options" do
+    setup do
+      on_exit(fn ->
+        Application.delete_env(:ash, Api)
+      end)
+    end
+
+    test "always_authorize? authorizes automatically" do
+      Application.put_env(:ash, Api,
+        authorization: [
+          always_authorize?: true
+        ]
+      )
+
+      start_supervised({Ash.Test.Authorizer, strict_check: :forbidden})
+
+      assert_raise Ash.Error.Forbidden, fn ->
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "test"})
+        |> Api.create!()
+      end
+    end
+
+    test "require_actor? requires an actor for all requests" do
+      Application.put_env(:ash, Api,
+        authorization: [
+          require_actor?: true,
+          always_authorize?: true
+        ]
+      )
+
+      start_supervised({Ash.Test.Authorizer, strict_check: :forbidden})
+
+      assert_raise Ash.Error.Forbidden.ApiRequiresActor, fn ->
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "test"})
+        |> Api.create!()
+      end
+
+      assert_raise Ash.Error.Forbidden, fn ->
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "test"})
+        |> Api.create!(actor: nil)
+      end
+
+      assert_raise Ash.Error.Forbidden, fn ->
+        Ash.set_actor(nil)
+
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "test"})
+        |> Api.create!()
+      end
     end
   end
 

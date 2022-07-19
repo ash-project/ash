@@ -101,7 +101,7 @@ defmodule Ash.Engine do
                 Ash.DataLayer.data_layer_can?(opts[:resource], :async_engine)) && opts[:timeout] &&
              opts[:timeout] != :infinity && !Ash.DataLayer.in_transaction?(opts[:resource]) do
           task =
-            Task.async(fn ->
+            async(fn ->
               do_run(requests, opts)
             end)
 
@@ -403,13 +403,41 @@ defmodule Ash.Engine do
           %{state | pending_tasks: [pending_task | state.pending_tasks]}
         else
           task =
-            Task.async(fn ->
+            async(fn ->
               {request.path, request.data.resolver.(resolver_context)}
             end)
 
           %{state | tasks: [task | state.tasks]}
         end
     end
+  end
+
+  defp async(func) do
+    context = Ash.get_context()
+    actor = Process.get(:ash_actor)
+    tenant = Process.get(:tenant)
+
+    Task.async(fn ->
+      case actor do
+        {:actor, actor} ->
+          Ash.set_actor(actor)
+
+        _ ->
+          :ok
+      end
+
+      case tenant do
+        {:tenant, tenant} ->
+          Ash.set_tenant(tenant)
+
+        _ ->
+          :ok
+      end
+
+      Ash.set_context(context)
+
+      func.()
+    end)
   end
 
   defp do_run_iteration(state, request) do

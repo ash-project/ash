@@ -15,6 +15,67 @@ defmodule Ash.Actions.Helpers do
 
   def validate_calculation_load!(other, _), do: other
 
+  def add_process_context(api, query_or_changeset, opts) do
+    {add_context(query_or_changeset), opts |> add_actor(api) |> add_tenant()}
+  end
+
+  defp add_context(query_or_changeset) do
+    context = Process.get(:ash_context, %{}) || %{}
+
+    case query_or_changeset do
+      %Ash.Query{} ->
+        Ash.Query.set_context(query_or_changeset, context)
+
+      %Ash.Changeset{} ->
+        Ash.Changeset.set_context(query_or_changeset, context)
+    end
+  end
+
+  defp add_actor(opts, api) do
+    opts =
+      if Keyword.has_key?(opts, :actor) do
+        opts
+      else
+        case Process.get(:ash_actor) do
+          {:actor, value} ->
+            Keyword.put(opts, :actor, value)
+
+          _ ->
+            opts
+        end
+      end
+
+    if api do
+      if !Keyword.has_key?(opts, :actor) && Ash.Api.require_actor?(api) do
+        raise Ash.Error.Forbidden.ApiRequiresActor, api: api
+      end
+
+      if Ash.Api.always_authorize?(api) do
+        Keyword.put(opts, :authorize?, true)
+      else
+        opts
+      end
+    else
+      # The only time api would be nil here is when we call this helper inside of `Changeset.for_*` and `Query.for_read`
+      # meaning this will be run again later with the api, so we skip the validations on the api
+      opts
+    end
+  end
+
+  defp add_tenant(opts) do
+    if Keyword.has_key?(opts, :actor) do
+      opts
+    else
+      case Process.get(:ash_tenant) do
+        {:tenant, value} ->
+          Keyword.put(opts, :tenant, value)
+
+        _ ->
+          opts
+      end
+    end
+  end
+
   def warn_missed!(resource, action, result) do
     case Map.get(result, :resource_notifications, []) do
       empty when empty in [nil, []] ->

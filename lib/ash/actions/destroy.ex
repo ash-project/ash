@@ -10,6 +10,8 @@ defmodule Ash.Actions.Destroy do
           | {:error, Ash.Changeset.t()}
           | {:error, term}
   def run(api, changeset, %{soft?: true} = action, opts) do
+    {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
+
     changeset =
       if changeset.__validated_for_action__ == action.name do
         %{changeset | action_type: :destroy}
@@ -23,6 +25,8 @@ defmodule Ash.Actions.Destroy do
   end
 
   def run(api, %{resource: resource} = changeset, action, opts) do
+    {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
+
     opts =
       case Map.fetch(changeset.context[:private] || %{}, :actor) do
         {:ok, actor} ->

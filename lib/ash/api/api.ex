@@ -590,22 +590,32 @@ defmodule Ash.Api do
     end
   end
 
-  @spec registry(atom) :: atom | nil
+  @spec registry(Ash.Api.t()) :: atom | nil
   def registry(api) do
     Extension.get_opt(api, [:resources], :registry, nil, true)
   end
 
-  @spec allow(atom) :: mfa() | nil
+  @spec allow(Ash.Api.t()) :: mfa() | nil
   def allow(api) do
     Extension.get_opt(api, [:resources], :allow, nil, true)
   end
 
-  @spec timeout(atom) :: nil | :infinity | integer()
+  @spec timeout(Ash.Api.t()) :: nil | :infinity | integer()
   def timeout(api) do
     Extension.get_opt(api, [:execution], :timeout, 30_000, true)
   end
 
-  @spec allow_unregistered?(atom) :: atom | nil
+  @spec require_actor?(Ash.Api.t()) :: boolean
+  def require_actor?(api) do
+    Extension.get_opt(api, [:authorization], :require_actor?, false, true)
+  end
+
+  @spec always_authorize?(Ash.Api.t()) :: boolean
+  def always_authorize?(api) do
+    Extension.get_opt(api, [:authorization], :always_authorize?, false, true)
+  end
+
+  @spec allow_unregistered?(Ash.Api.t()) :: atom | nil
   def allow_unregistered?(api) do
     Extension.get_opt(api, [:resources], :allow_unregistered?, nil)
   end

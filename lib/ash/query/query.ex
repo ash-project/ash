@@ -216,6 +216,10 @@ defmodule Ash.Query do
       context ->
         Ash.Query.set_context(query, context)
     end
+
+    context = Process.get(:ash_context, %{}) || %{}
+
+    set_context(query, context)
   end
 
   @for_read_opts [
@@ -248,6 +252,8 @@ defmodule Ash.Query do
   """
   def for_read(query, action_name, args \\ %{}, opts \\ []) do
     query = to_query(query)
+
+    {query, opts} = Ash.Actions.Helpers.add_process_context(query.api, query, opts)
     query = %{query | params: Map.merge(query.params || %{}, Enum.into(args, %{}))}
 
     action = Ash.Resource.Info.action(query.resource, action_name, :read)

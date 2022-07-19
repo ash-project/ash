@@ -11,6 +11,8 @@ defmodule Ash.Actions.Create do
           | {:ok, Ash.Resource.record()}
           | {:error, term}
   def run(api, changeset, action, opts) do
+    {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
+
     opts =
       case Map.fetch(changeset.context[:private] || %{}, :actor) do
         {:ok, actor} ->

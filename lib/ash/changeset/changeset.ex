@@ -502,6 +502,9 @@ defmodule Ash.Changeset do
         if action.soft? do
           do_for_action(%{changeset | action_type: :destroy}, action.name, params, opts)
         else
+          {changeset, opts} =
+            Ash.Actions.Helpers.add_process_context(changeset.api, changeset, opts)
+
           changeset
           |> handle_errors(action.error_handler)
           |> set_actor(opts)
@@ -589,6 +592,8 @@ defmodule Ash.Changeset do
   end
 
   defp do_for_action(changeset, action_name, params, opts) do
+    {changeset, opts} = Ash.Actions.Helpers.add_process_context(changeset.api, changeset, opts)
+
     if changeset.valid? do
       action = Ash.Resource.Info.action(changeset.resource, action_name, changeset.action_type)
 

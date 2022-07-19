@@ -18,6 +18,40 @@ defmodule Ash.Api.Dsl do
     ]
   }
 
+  @authorization %Ash.Dsl.Section{
+    name: :authorization,
+    describe: "Options for how requests are authorized using this Api",
+    examples: [
+      """
+      execution do
+        always_authorize? true
+        require_actor? true
+      end
+      """
+    ],
+    schema: [
+      require_actor?: [
+        type: :boolean,
+        default: false,
+        doc: """
+        Requires that an actor has been supplied.
+        Important: `nil` is still a valid actor, so this won't prevent providing `actor: nil`.
+        This is effectively the same as setting `always_authorize?` to `true`, because providing an actor
+        causes authorization to happen.
+        """
+      ],
+      always_authorize?: [
+        type: :boolean,
+        default: false,
+        doc: """
+        Forces `authorize?: true` on all requests to the Api, but allows for an actor not to be set, authorizing with `nil` (which is a valid actor, i.e for unauthenticated actions)
+
+        To require that an actor is always set, use `require_actor?` instead (or in addition, will be the same effect).
+        """
+      ]
+    ]
+  }
+
   @resources %Ash.Dsl.Section{
     name: :resources,
     describe: "List the resources present in this API",
@@ -72,7 +106,7 @@ defmodule Ash.Api.Dsl do
     modules: [:registry]
   }
 
-  @sections [@resources, @execution]
+  @sections [@resources, @execution, @authorization]
 
   @moduledoc """
   A small DSL for declaring APIs

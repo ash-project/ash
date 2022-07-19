@@ -26,6 +26,14 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
     relationships do
       has_many :posts, Ash.Test.Actions.AsyncLoadTest.Post, destination_field: :author_id
 
+      has_many :authorized_actor_posts, Ash.Test.Actions.AsyncLoadTest.Post,
+        destination_field: :author_id,
+        read_action: :authorized_actor
+
+      has_many :authorized_context_posts, Ash.Test.Actions.AsyncLoadTest.Post,
+        destination_field: :author_id,
+        read_action: :authorized_context
+
       has_one :latest_post, Ash.Test.Actions.AsyncLoadTest.Post,
         destination_field: :author_id,
         sort: [inserted_at: :desc]
@@ -58,10 +66,15 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
+    use Ash.Resource,
+      data_layer: Ash.DataLayer.Mnesia,
+      authorizers: [Ash.Policy.Authorizer]
 
     actions do
       defaults [:create, :read]
+
+      read :authorized_actor
+      read :authorized_context
     end
 
     attributes do
@@ -69,6 +82,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       attribute :title, :string
       attribute :contents, :string
       attribute :category, :string
+      attribute :actor_id, :string
       timestamps()
     end
 
@@ -83,6 +97,20 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
         through: Ash.Test.Actions.AsyncLoadTest.PostCategory,
         destination_field_on_join_table: :category_id,
         source_field_on_join_table: :post_id
+    end
+
+    policies do
+      policy action(:authorized_actor) do
+        authorize_if expr(actor_id == ^actor(:id))
+      end
+
+      policy action(:authorized_context) do
+        authorize_if context_equals(:authorized?, true)
+      end
+
+      policy always() do
+        authorize_if always()
+      end
     end
   end
 
@@ -145,29 +173,105 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
     end
   end
 
-  setup do
-    capture_log(fn ->
-      Ash.DataLayer.Mnesia.start(Api)
-    end)
-
-    on_exit(fn ->
+  describe "context" do
+    setup do
       capture_log(fn ->
-        :mnesia.stop()
-        :mnesia.delete_schema([node()])
+        Ash.DataLayer.Mnesia.start(Api)
       end)
-    end)
 
-    start_supervised(
-      {Ash.Test.Authorizer,
-       strict_check: :authorized,
-       check: {:error, Ash.Error.Forbidden.exception([])},
-       strict_check_context: [:query]}
-    )
+      on_exit(fn ->
+        capture_log(fn ->
+          :mnesia.stop()
+          :mnesia.delete_schema([node()])
+        end)
+      end)
 
-    :ok
+      start_supervised(
+        {Ash.Test.Authorizer,
+         strict_check: :authorized,
+         check: {:error, Ash.Error.Forbidden.exception([])},
+         strict_check_context: [:query]}
+      )
+
+      :ok
+    end
+
+    test "context provides the actor" do
+      author =
+        Author
+        |> new(%{name: "zerg"})
+        |> Api.create!()
+
+      Ash.set_actor(author)
+
+      post1 =
+        Post
+        |> new(%{title: "post1", actor_id: author.id})
+        |> replace_relationship(:author, author)
+        |> Api.create!()
+
+      Post
+      |> new(%{title: "post2"})
+      |> replace_relationship(:author, author)
+      |> Api.create!()
+
+      authorized_posts =
+        author
+        |> Api.load!(:authorized_actor_posts)
+        |> Map.get(:authorized_actor_posts)
+
+      post1_id = post1.id
+      assert [%{id: ^post1_id}] = authorized_posts
+    end
+
+    test "context provides the context" do
+      author =
+        Author
+        |> new(%{name: "zerg"})
+        |> Api.create!()
+
+      Ash.set_actor(nil)
+      Ash.set_context(%{authorized?: false})
+
+      Post
+      |> new(%{title: "post1", actor_id: author.id})
+      |> replace_relationship(:author, author)
+      |> Api.create!()
+
+      Post
+      |> new(%{title: "post2"})
+      |> replace_relationship(:author, author)
+      |> Api.create!()
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               author
+               |> Api.load(:authorized_context_posts)
+    end
   end
 
   describe "loads" do
+    setup do
+      capture_log(fn ->
+        Ash.DataLayer.Mnesia.start(Api)
+      end)
+
+      on_exit(fn ->
+        capture_log(fn ->
+          :mnesia.stop()
+          :mnesia.delete_schema([node()])
+        end)
+      end)
+
+      start_supervised(
+        {Ash.Test.Authorizer,
+         strict_check: :authorized,
+         check: {:error, Ash.Error.Forbidden.exception([])},
+         strict_check_context: [:query]}
+      )
+
+      :ok
+    end
+
     test "it allows loading manual relationships" do
       post1 =
         Post

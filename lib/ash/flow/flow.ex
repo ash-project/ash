@@ -38,12 +38,45 @@ defmodule Ash.Flow do
 
     executor = opts[:executor] || Ash.Flow.Executor.AshEngine
 
+    opts =
+      opts
+      |> add_actor()
+      |> add_tenant()
+
     with {:ok, input} <- cast_input(flow, input),
          {:ok, built} <- executor.build(flow, input, opts) do
       executor.execute(built, input, opts)
     else
       {:error, error} ->
         {:error, error}
+    end
+  end
+
+  defp add_actor(opts) do
+    if Keyword.has_key?(opts, :actor) do
+      opts
+    else
+      case Process.get(:ash_actor) do
+        {:actor, value} ->
+          Keyword.put(opts, :actor, value)
+
+        _ ->
+          opts
+      end
+    end
+  end
+
+  defp add_tenant(opts) do
+    if Keyword.has_key?(opts, :actor) do
+      opts
+    else
+      case Process.get(:ash_tenant) do
+        {:tenant, value} ->
+          Keyword.put(opts, :tenant, value)
+
+        _ ->
+          opts
+      end
     end
   end
 
