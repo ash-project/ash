@@ -3,16 +3,19 @@ defmodule Ash.Test.Helpers do
 
   defmacro defposts(do: body) do
     quote do
-      defmodule Module.concat(["rand#{System.unique_integer([:positive])}", Post]) do
-        @moduledoc false
-        use Ash.Resource, data_layer: Ash.DataLayer.Ets
+      {:module, mod, _, _} =
+        defmodule Module.concat(["rand#{System.unique_integer([:positive])}", Post]) do
+          @moduledoc false
+          use Ash.Resource, data_layer: Ash.DataLayer.Ets
 
-        attributes do
-          uuid_primary_key :id
+          attributes do
+            uuid_primary_key :id
+          end
+
+          unquote(body)
         end
 
-        unquote(body)
-      end
+      mod
     end
   end
 

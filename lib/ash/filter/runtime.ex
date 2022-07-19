@@ -307,14 +307,26 @@ defmodule Ash.Filter.Runtime do
 
   defp expression_matches(:and, left, right, record) do
     case do_match(record, left) do
-      {:ok, true} ->
-        do_match(record, right)
-
       {:ok, false} ->
         {:ok, false}
 
       {:ok, nil} ->
         {:ok, false}
+
+      {:ok, true} ->
+        case do_match(record, right) do
+          {:ok, false} ->
+            {:ok, false}
+
+          {:ok, nil} ->
+            {:ok, false}
+
+          {:ok, _} ->
+            {:ok, true}
+
+          :unknown ->
+            :unknown
+        end
 
       :unknown ->
         :unknown
@@ -323,14 +335,20 @@ defmodule Ash.Filter.Runtime do
 
   defp expression_matches(:or, left, right, record) do
     case do_match(record, left) do
-      {:ok, true} ->
+      {:ok, falsy} when falsy in [nil, false] ->
+        case do_match(record, right) do
+          {:ok, falsy} when falsy in [nil, false] ->
+            {:ok, false}
+
+          {:ok, _} ->
+            {:ok, true}
+
+          :unknown ->
+            :unknown
+        end
+
+      {:ok, _} ->
         {:ok, true}
-
-      {:ok, false} ->
-        do_match(record, right)
-
-      {:ok, nil} ->
-        do_match(record, right)
 
       :unknown ->
         :unknown

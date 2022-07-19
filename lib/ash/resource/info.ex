@@ -474,7 +474,7 @@ defmodule Ash.Resource.Info do
           Ash.Resource.Actions.action() | no_return
   def primary_action!(resource, type) do
     case primary_action(resource, type) do
-      nil -> raise "Required primary #{type} action for #{inspect(resource)}. ("
+      nil -> raise "Required primary #{type} action for #{inspect(resource)}."
       action -> action
     end
   end

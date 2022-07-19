@@ -1,19 +1,30 @@
 defmodule Ash.Query.Operator.Basic do
   @operators [
     plus: [
-      symbol: :+
+      symbol: :+,
+      no_nils: true
     ],
     times: [
-      symbol: :*
+      symbol: :*,
+      no_nils: true
     ],
     minus: [
-      symbol: :-
+      symbol: :-,
+      no_nils: true
     ],
     div: [
-      symbol: :/
+      symbol: :/,
+      no_nils: true
     ],
     concat: [
-      symbol: :<>
+      symbol: :<>,
+      no_nils: true
+    ],
+    or: [
+      symbol: :||
+    ],
+    and: [
+      symbol: :&&
     ]
   ]
 
@@ -36,10 +47,18 @@ defmodule Ash.Query.Operator.Basic do
           predicate?: false,
           types: [:same, :any]
 
-        def evaluate(%{left: left, right: right}) do
-          if is_nil(left) || is_nil(right) do
-            nil
-          else
+        if unquote(opts[:no_nils]) do
+          def evaluate(%{left: left, right: right}) do
+            if is_nil(left) || is_nil(right) do
+              nil
+            else
+              # delegate to function to avoid dialyzer warning
+              # that this can only ever be one value (for each module we define)
+              do_evaluate(unquote(opts[:symbol]), left, right)
+            end
+          end
+        else
+          def evaluate(%{left: left, right: right}) do
             # delegate to function to avoid dialyzer warning
             # that this can only ever be one value (for each module we define)
             do_evaluate(unquote(opts[:symbol]), left, right)

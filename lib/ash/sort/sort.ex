@@ -44,24 +44,41 @@ defmodule Ash.Sort do
 
       ["foo", "-bar", "++baz", "--buz"]
 
-  ### A standard Ash sort
+
+  ## Handling specific values
+
+  A handler function may be provided that takes a string, and returns the relevant sort
+  It won't be given any prefixes, only the field. This allows for things like parsing the calculation values
+  out of the sort, or setting calculation values if they are not included in the sort string.
+
+  To return calculation parameters, return `{:field, %{param: :value}}`. This will end up as something
+  like `{:field, {:desc, %{param: :value}}}`, with the corresponding sort order.
+
+  This handler function will only be called if you pass in a string or list of strings for the sort.
+  Atoms will be assumed to have already been handled. The handler should return `nil` if it is not handling
+  the given field.
   """
   @spec parse_input(
           Ash.Resource.t(),
           String.t()
           | list(atom | String.t() | {atom, sort_order()} | list(String.t()))
-          | nil
+          | nil,
+          nil | (String.t() -> nil | atom | {atom, map})
         ) ::
           {:ok, Ash.Sort.t()} | {:error, term}
-  def parse_input(resource, sort) when is_binary(sort) do
+  def parse_input(resource, sort, handler \\ nil)
+
+  def parse_input(_, "", _), do: {:ok, []}
+
+  def parse_input(resource, sort, handler) when is_binary(sort) do
     sort = String.split(sort, ",")
-    parse_input(resource, sort)
+    parse_input(resource, sort, handler)
   end
 
-  def parse_input(resource, sort) when is_list(sort) do
+  def parse_input(resource, sort, handler) when is_list(sort) do
     sort
     |> Enum.reduce_while({:ok, []}, fn field, {:ok, sort} ->
-      case parse_sort(resource, field) do
+      case parse_sort(resource, field, handler) do
         {:ok, value} -> {:cont, {:ok, [value | sort]}}
         {:error, error} -> {:halt, {:error, error}}
       end
@@ -72,15 +89,15 @@ defmodule Ash.Sort do
     end
   end
 
-  def parse_input(_resource, nil), do: {:ok, nil}
+  def parse_input(_resource, nil, _), do: {:ok, nil}
 
   @doc """
   Same as `parse_input/2` except raises any errors
 
   See `parse_input/2` for more.
   """
-  def parse_input!(resource, sort) do
-    case parse_input(resource, sort) do
+  def parse_input!(resource, sort, handler \\ nil) do
+    case parse_input(resource, sort, handler) do
       {:ok, sort} ->
         sort
 
@@ -89,7 +106,9 @@ defmodule Ash.Sort do
     end
   end
 
-  def parse_sort(resource, {field, direction})
+  def parse_sort(resource, sort, handler \\ nil)
+
+  def parse_sort(resource, {field, direction}, handler)
       when direction in [
              :asc,
              :desc,
@@ -98,61 +117,84 @@ defmodule Ash.Sort do
              :desc_nils_first,
              :desc_nils_last
            ] do
-    case get_field(resource, field) do
+    case get_field(resource, field, handler) do
       nil -> {:error, NoSuchAttribute.exception(resource: resource, name: field)}
       field -> {:ok, {field, direction}}
     end
   end
 
-  def parse_sort(_resource, {_field, order}) do
+  def parse_sort(_resource, {_field, order}, _) do
     {:error, InvalidSortOrder.exception(order: order)}
   end
 
-  def parse_sort(resource, "++" <> field) do
-    case get_field(resource, field) do
+  def parse_sort(resource, "++" <> field, handler) do
+    case get_field(resource, field, handler) do
       nil -> {:error, NoSuchAttribute.exception(resource: resource, name: field)}
-      field -> {:ok, {field, :asc_nils_first}}
+      field -> {:ok, add_order(field, :asc_nils_first)}
     end
   end
 
-  def parse_sort(resource, "--" <> field) do
-    case get_field(resource, field) do
+  def parse_sort(resource, "--" <> field, handler) do
+    case get_field(resource, field, handler) do
       nil -> {:error, NoSuchAttribute.exception(resource: resource, name: field)}
-      field -> {:ok, {field, :desc_nils_last}}
+      field -> {:ok, add_order(field, :desc_nils_last)}
     end
   end
 
-  def parse_sort(resource, "+" <> field) do
-    case get_field(resource, field) do
+  def parse_sort(resource, "+" <> field, handler) do
+    case get_field(resource, field, handler) do
       nil -> {:error, NoSuchAttribute.exception(resource: resource, name: field)}
-      field -> {:ok, {field, :asc}}
+      field -> {:ok, add_order(field, :asc)}
     end
   end
 
-  def parse_sort(resource, "-" <> field) do
-    case get_field(resource, field) do
+  def parse_sort(resource, "-" <> field, handler) do
+    case get_field(resource, field, handler) do
       nil -> {:error, NoSuchAttribute.exception(resource: resource, name: field)}
-      field -> {:ok, {field, :desc}}
+      field -> {:ok, add_order(field, :desc)}
     end
   end
 
-  def parse_sort(resource, field) do
-    case get_field(resource, field) do
+  def parse_sort(resource, field, handler) do
+    case get_field(resource, field, handler) do
       nil -> {:error, NoSuchAttribute.exception(resource: resource, name: field)}
-      field -> {:ok, {field, :asc}}
+      field -> {:ok, add_order(field, :asc)}
     end
   end
 
-  defp get_field(resource, field) do
-    with nil <- Ash.Resource.Info.public_attribute(resource, field),
-         nil <- Ash.Resource.Info.public_aggregate(resource, field),
-         nil <- Ash.Resource.Info.public_calculation(resource, field) do
-      nil
-    else
-      %{name: name} -> name
+  defp add_order({field, map}, order) when is_map(map) do
+    {field, {order, map}}
+  end
+
+  defp add_order(field, order) do
+    {field, order}
+  end
+
+  defp get_field(resource, field, handler) do
+    case call_handler(field, handler) do
+      nil ->
+        with nil <- Ash.Resource.Info.public_attribute(resource, field),
+             nil <- Ash.Resource.Info.public_aggregate(resource, field),
+             nil <- Ash.Resource.Info.public_calculation(resource, field) do
+          nil
+        else
+          %{name: name} -> name
+        end
+
+      value ->
+        value
     end
   end
 
+  defp call_handler(field, handler) when is_binary(field) and is_function(handler, 1) do
+    handler.(field)
+  end
+
+  defp call_handler(_, _), do: nil
+
+  @doc """
+  Reverses an Ash sort statement.
+  """
   def reverse(sort) when is_list(sort) do
     Enum.map(sort, &reverse/1)
   end
