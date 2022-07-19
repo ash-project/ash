@@ -72,7 +72,22 @@ defmodule Ash.Sort do
     end
   end
 
-  def parse_input(_resource, nil), do: nil
+  def parse_input(_resource, nil), do: {:ok, nil}
+
+  @doc """
+  Same as `parse_input/2` except raises any errors
+
+  See `parse_input/2` for more.
+  """
+  def parse_input!(resource, sort) do
+    case parse_input(resource, sort) do
+      {:ok, sort} ->
+        sort
+
+      {:error, error} ->
+        raise Ash.Error.to_error_class(error)
+    end
+  end
 
   def parse_sort(resource, {field, direction})
       when direction in [
