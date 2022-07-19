@@ -49,6 +49,7 @@ locals_without_parens = [
   debug: 1,
   debug: 2,
   default: 1,
+  default_accept: 1,
   default_access_type: 1,
   default_context: 1,
   defaults: 1,

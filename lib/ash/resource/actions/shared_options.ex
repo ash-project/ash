@@ -38,11 +38,11 @@ defmodule Ash.Resource.Actions.SharedOptions do
 
   @create_update_opts [
     accept: [
-      type: {:list, :atom},
+      type: {:or, [in: [:all], list: :atom]},
       doc: "The list of attributes to accept. Defaults to all attributes on the resource"
     ],
     reject: [
-      type: {:list, :atom},
+      type: {:or, [in: [:all], list: :atom]},
       doc: """
       A list of attributes not to accept. This is useful if you want to say 'accept all but x'
 
