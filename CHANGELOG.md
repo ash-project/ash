@@ -5,6 +5,31 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.52.0-rc.21](https://github.com/ash-project/ash/compare/v1.52.0-rc.20...v1.52.0-rc.21) (2022-07-19)
+
+
+
+
+### Bug Fixes:
+
+* use `Map.get/2` when getting paths if the value is a struct
+
+### Improvements:
+
+* add || and && operators
+
+* sort parsing helpers
+
+* add `Ash.Sort.parse_input!/2`
+
+* add `transfer_context/1` and `get_context_for_transfer/0`
+
+* add process-based actor, tenant and query/changeset context
+
+* add `always_authorize?` and `require_actor?` to api config
+
+* support paths in `actor/1`
+
 ## [v1.52.0-rc.20](https://github.com/ash-project/ash/compare/v1.52.0-rc.19...v1.52.0-rc.20) (2022-07-14)
 
 

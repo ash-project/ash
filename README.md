@@ -18,7 +18,7 @@ With that said, we are getting closer and closer to a non-beta release. The prim
 ```elixir
 def deps do
   [
-    {:ash, "~> 1.52.0-rc.20"}
+    {:ash, "~> 1.52.0-rc.21"}
   ]
 end
 ```
