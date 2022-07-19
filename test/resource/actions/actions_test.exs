@@ -1,6 +1,6 @@
 defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
   @moduledoc false
-  use ExUnit.Case, async: true
+  use ExUnit.Case
 
   alias Ash.Resource.Info
 
