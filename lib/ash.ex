@@ -6,6 +6,41 @@ defmodule Ash do
   """
 
   @doc """
+  Gets all of the ash context so it can be set into a new process.
+
+  Use `transfer_context/1` in the new process to set the context.
+  """
+  @spec get_context_for_transfer() :: term
+  def get_context_for_transfer do
+    context = Ash.get_context()
+    actor = Process.get(:ash_actor)
+    tenant = Process.get(:tenant)
+
+    %{context: context, actor: actor, tenant: tenant}
+  end
+
+  @spec transfer_context(term) :: :ok
+  def transfer_context(%{context: context, actor: actor, tenant: tenant}) do
+    case actor do
+      {:actor, actor} ->
+        Ash.set_actor(actor)
+
+      _ ->
+        :ok
+    end
+
+    case tenant do
+      {:tenant, tenant} ->
+        Ash.set_tenant(tenant)
+
+      _ ->
+        :ok
+    end
+
+    Ash.set_context(context)
+  end
+
+  @doc """
   Sets context into the process dictionary that is used for all changesets and queries.
   """
   @spec set_context(map) :: :ok

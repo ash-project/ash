@@ -413,28 +413,10 @@ defmodule Ash.Engine do
   end
 
   defp async(func) do
-    context = Ash.get_context()
-    actor = Process.get(:ash_actor)
-    tenant = Process.get(:tenant)
+    ash_context = Ash.get_context_for_transfer()
 
     Task.async(fn ->
-      case actor do
-        {:actor, actor} ->
-          Ash.set_actor(actor)
-
-        _ ->
-          :ok
-      end
-
-      case tenant do
-        {:tenant, tenant} ->
-          Ash.set_tenant(tenant)
-
-        _ ->
-          :ok
-      end
-
-      Ash.set_context(context)
+      Ash.transfer_context(ash_context)
 
       func.()
     end)
