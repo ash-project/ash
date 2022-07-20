@@ -341,34 +341,11 @@ defmodule Ash.Actions.Create do
                 {:ok, nil, _changeset, _instructions} ->
                   if action.manual? do
                     {:error,
-                     """
-                     No record created in create action!
-                     For manual actions, you must implement an `after_action` inside of a `change` that returns a newly created record.
-
-                     For example:
-
-                     # in the resource
-
-                     action :special_create do
-                       manual? true
-                       change MyApp.DoCreate
-                     end
-
-                     # The change
-                     defmodule MyApp.DoCreate do
-                      use Ash.Resource.Change
-
-                      def change(changeset, _, _) do
-                        Ash.Changeset.after_action(changeset, fn changeset, _result ->
-                          # result will be `nil`, because this is a manual action
-
-                          result = do_something_that_creates_the_record(changeset)
-
-                          {:ok, result}
-                        end)
-                      end
-                     end
-                     """}
+                     Ash.Error.Framework.ManualActionMissed.exception(
+                       resource: resource,
+                       action: action.name,
+                       type: :create
+                     )}
                   else
                     {:error, "No record created in create action!"}
                   end
