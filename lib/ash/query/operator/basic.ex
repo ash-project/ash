@@ -50,7 +50,7 @@ defmodule Ash.Query.Operator.Basic do
         if unquote(opts[:no_nils]) do
           def evaluate(%{left: left, right: right}) do
             if is_nil(left) || is_nil(right) do
-              nil
+              {:known, nil}
             else
               # delegate to function to avoid dialyzer warning
               # that this can only ever be one value (for each module we define)
