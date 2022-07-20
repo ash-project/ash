@@ -512,8 +512,11 @@ defmodule Ash.Actions.Load do
 
   defp lazy_load_or(data, lazy?, relationship, api, related_query, request_opts, func) do
     if lazy? && Ash.Resource.Info.loaded?(data, relationship) do
+      pkey = Ash.Resource.Info.primary_key(related_query.resource)
+
       data
       |> get_related(relationship)
+      |> Enum.uniq_by(&Map.take(&1, pkey))
       |> api.load(related_query,
         lazy?: true,
         authorize?: request_opts[:authorize?],
