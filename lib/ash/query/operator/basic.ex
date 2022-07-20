@@ -65,9 +65,6 @@ defmodule Ash.Query.Operator.Basic do
           end
         end
 
-        defp do_evaluate(_, nil, _), do: {:known, nil}
-        defp do_evaluate(_, _, nil), do: {:known, nil}
-
         defp do_evaluate(:<>, left, right) do
           {:known, to_string(left) <> to_string(right)}
         end
