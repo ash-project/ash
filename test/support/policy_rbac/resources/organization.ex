@@ -1,4 +1,4 @@
-defmodule Ash.Policy.Test.Simple.CarUser do
+defmodule Ash.Test.Support.PolicyRbac.Organization do
   @moduledoc false
   use Ash.Resource,
     data_layer: Ash.DataLayer.Ets
@@ -16,7 +16,8 @@ defmodule Ash.Policy.Test.Simple.CarUser do
   end
 
   relationships do
-    belongs_to(:user, Ash.Policy.Test.Simple.User)
-    belongs_to(:car, Ash.Policy.Test.Simple.Car)
+    has_many :memberships, Ash.Test.Support.PolicyRbac.Membership do
+      destination_field(:organization_id)
+    end
   end
 end

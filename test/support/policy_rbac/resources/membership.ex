@@ -1,4 +1,4 @@
-defmodule Ash.Policy.Test.Rbac.Membership do
+defmodule Ash.Test.Support.PolicyRbac.Membership do
   @moduledoc false
   use Ash.Resource,
     data_layer: Ash.DataLayer.Ets
@@ -30,7 +30,7 @@ defmodule Ash.Policy.Test.Rbac.Membership do
   end
 
   relationships do
-    belongs_to(:user, Ash.Policy.Test.Rbac.User)
-    belongs_to(:organization, Ash.Policy.Test.Rbac.Organization)
+    belongs_to(:user, Ash.Test.Support.PolicyRbac.User)
+    belongs_to(:organization, Ash.Test.Support.PolicyRbac.Organization)
   end
 end

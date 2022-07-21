@@ -1,8 +1,8 @@
-defmodule Ash.Policy.Test.RbacTest do
+defmodule Ash.Test.Policy.RbacTest do
   @doc false
   use ExUnit.Case
 
-  alias Ash.Policy.Test.Rbac.{Api, File, Membership, Organization, User}
+  alias Ash.Test.Support.PolicyRbac.{Api, File, Membership, Organization, User}
 
   setup do
     [

@@ -1,9 +1,9 @@
-defmodule Ash.Policy.Test.SimpleTest do
+defmodule Ash.Test.Policy.SimpleTest do
   @doc false
   use ExUnit.Case
   require Ash.Query
 
-  alias Ash.Policy.Test.Simple.{Api, Car, Organization, Post, Trip, User}
+  alias Ash.Test.Support.PolicySimple.{Api, Car, Organization, Post, Trip, User}
 
   setup do
     [

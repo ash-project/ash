@@ -1,8 +1,8 @@
-defmodule Ash.Policy.Test.Simple.Registry do
+defmodule Ash.Test.Support.PolicySimple.Registry do
   @moduledoc false
   use Ash.Registry
 
-  alias Ash.Policy.Test.Simple
+  alias Ash.Test.Support.PolicySimple, as: Simple
 
   entries do
     entry(Simple.User)

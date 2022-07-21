@@ -1,4 +1,4 @@
-defmodule Ash.Policy.Test.Rbac.User do
+defmodule Ash.Test.Support.PolicyRbac.User do
   @moduledoc false
   use Ash.Resource,
     data_layer: Ash.DataLayer.Ets,
@@ -19,8 +19,8 @@ defmodule Ash.Policy.Test.Rbac.User do
   end
 
   relationships do
-    has_many(:memberships, Ash.Policy.Test.Rbac.Membership, destination_field: :user_id)
+    has_many(:memberships, Ash.Test.Support.PolicyRbac.Membership, destination_field: :user_id)
 
-    belongs_to(:organization, Ash.Policy.Test.Rbac.Organization)
+    belongs_to(:organization, Ash.Test.Support.PolicyRbac.Organization)
   end
 end

@@ -1,4 +1,4 @@
-defmodule Ash.Policy.Test.Simple.User do
+defmodule Ash.Test.Support.PolicySimple.User do
   @moduledoc false
   use Ash.Resource,
     data_layer: Ash.DataLayer.Ets,
@@ -31,11 +31,11 @@ defmodule Ash.Policy.Test.Simple.User do
   end
 
   relationships do
-    belongs_to(:organization, Ash.Policy.Test.Simple.Organization)
-    has_many(:posts, Ash.Policy.Test.Simple.Post, destination_field: :author_id)
+    belongs_to(:organization, Ash.Test.Support.PolicySimple.Organization)
+    has_many(:posts, Ash.Test.Support.PolicySimple.Post, destination_field: :author_id)
 
-    many_to_many :cars, Ash.Policy.Test.Simple.Car do
-      through(Ash.Policy.Test.Simple.CarUser)
+    many_to_many :cars, Ash.Test.Support.PolicySimple.Car do
+      through(Ash.Test.Support.PolicySimple.CarUser)
       source_field_on_join_table(:user_id)
       destination_field_on_join_table(:car_id)
     end

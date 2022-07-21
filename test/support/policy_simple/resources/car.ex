@@ -1,4 +1,4 @@
-defmodule Ash.Policy.Test.Simple.Car do
+defmodule Ash.Test.Support.PolicySimple.Car do
   @moduledoc false
   use Ash.Resource,
     data_layer: Ash.DataLayer.Ets,
@@ -29,8 +29,8 @@ defmodule Ash.Policy.Test.Simple.Car do
   end
 
   relationships do
-    many_to_many :users, Ash.Policy.Test.Simple.User do
-      through(Ash.Policy.Test.Simple.CarUser)
+    many_to_many :users, Ash.Test.Support.PolicySimple.User do
+      through(Ash.Test.Support.PolicySimple.CarUser)
       source_field_on_join_table(:car_id)
       destination_field_on_join_table(:user_id)
     end

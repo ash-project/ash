@@ -1,4 +1,4 @@
-defmodule Ash.Policy.Test.Simple.Post do
+defmodule Ash.Test.Support.PolicySimple.Post do
   @moduledoc false
   use Ash.Resource,
     data_layer: Ash.DataLayer.Ets,
@@ -46,7 +46,7 @@ defmodule Ash.Policy.Test.Simple.Post do
   end
 
   relationships do
-    belongs_to(:organization, Ash.Policy.Test.Simple.Organization)
-    belongs_to(:author, Ash.Policy.Test.Simple.User)
+    belongs_to(:organization, Ash.Test.Support.PolicySimple.Organization)
+    belongs_to(:author, Ash.Test.Support.PolicySimple.User)
   end
 end

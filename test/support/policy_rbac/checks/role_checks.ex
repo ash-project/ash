@@ -1,4 +1,4 @@
-defmodule Ash.Policy.Test.Rbac.Checks.RoleChecks do
+defmodule Ash.Test.Support.PolicyRbac.Checks.RoleChecks do
   @moduledoc false
 
   @behaviour Ash.Policy.Check
