@@ -119,13 +119,19 @@ defmodule Ash.Dsl.Transformer do
          opts
        ) do
     section = Enum.find(sections, &(&1.name == section_name))
-    entity = Enum.find(section.entities, &(&1.name == maybe_entity_name))
+
+    entity =
+      if section do
+        Enum.find(section.entities, &(&1.name == maybe_entity_name))
+      end
 
     sub_entity =
-      entity.entities
-      |> Keyword.values()
-      |> List.flatten()
-      |> Enum.find(&(&1.name == maybe_nested_entity_name))
+      if entity do
+        entity.entities
+        |> Keyword.values()
+        |> List.flatten()
+        |> Enum.find(&(&1.name == maybe_nested_entity_name))
+      end
 
     if sub_entity do
       do_build(sub_entity, opts)
