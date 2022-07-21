@@ -1,8 +1,8 @@
-defmodule Ash.Policy.Test.Rbac.Registry do
+defmodule Ash.Test.Support.PolicyRbac.Registry do
   @moduledoc false
   use Ash.Registry
 
-  alias Ash.Policy.Test.Rbac
+  alias Ash.Test.Support.PolicyRbac, as: Rbac
 
   entries do
     entry(Rbac.User)

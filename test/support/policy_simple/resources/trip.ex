@@ -1,4 +1,4 @@
-defmodule Ash.Policy.Test.Simple.Trip do
+defmodule Ash.Test.Support.PolicySimple.Trip do
   @moduledoc false
   use Ash.Resource,
     data_layer: Ash.DataLayer.Ets,
@@ -25,6 +25,6 @@ defmodule Ash.Policy.Test.Simple.Trip do
   end
 
   relationships do
-    belongs_to(:car, Ash.Policy.Test.Simple.Car)
+    belongs_to(:car, Ash.Test.Support.PolicySimple.Car)
   end
 end
