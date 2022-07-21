@@ -69,6 +69,14 @@ defmodule Ash.Query.Operator.Basic do
           {:known, to_string(left) <> to_string(right)}
         end
 
+        defp do_evaluate(:||, left, right) do
+          {:known, left || right}
+        end
+
+        defp do_evaluate(:&&, left, right) do
+          {:known, left && right}
+        end
+
         defp do_evaluate(op, left, right) do
           {:known, apply(Kernel, unquote(opts[:symbol]), [left, right])}
         end
