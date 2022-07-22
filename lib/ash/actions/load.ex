@@ -853,7 +853,7 @@ defmodule Ash.Actions.Load do
             |> Ash.Query.do_filter(relationship.filter)
             |> Ash.Query.sort(relationship.sort)
             |> remove_relationships_from_load()
-            |> read(relationship.read_action)
+            |> read(relationship.read_action, request_opts)
 
           lateral_join?(query, relationship, source_data) && (limit || offset) ->
             query
@@ -871,10 +871,10 @@ defmodule Ash.Actions.Load do
             |> Ash.Query.do_filter(relationship.filter)
             |> Ash.Query.sort(relationship.sort)
             |> remove_relationships_from_load()
-            |> read(relationship.read_action)
+            |> read(relationship.read_action, request_opts)
 
           limit || offset ->
-            artificial_limit_and_offset(query, limit, offset, relationship)
+            artificial_limit_and_offset(query, limit, offset, relationship, request_opts)
 
           true ->
             query
@@ -882,7 +882,7 @@ defmodule Ash.Actions.Load do
             |> Ash.Query.do_filter(relationship.filter)
             |> Ash.Query.sort(relationship.sort)
             |> remove_relationships_from_load()
-            |> read(relationship.read_action)
+            |> read(relationship.read_action, request_opts)
         end
       end
     )
@@ -896,13 +896,13 @@ defmodule Ash.Actions.Load do
     end
   end
 
-  defp artificial_limit_and_offset(query, limit, offset, relationship) do
+  defp artificial_limit_and_offset(query, limit, offset, relationship, request_opts) do
     query
     |> Ash.Query.set_context(relationship.context)
     |> Ash.Query.do_filter(relationship.filter)
     |> Ash.Query.sort(relationship.sort)
     |> remove_relationships_from_load()
-    |> read(relationship.read_action)
+    |> read(relationship.read_action, request_opts)
     |> case do
       {:ok, results} ->
         new_results =
@@ -927,12 +927,12 @@ defmodule Ash.Actions.Load do
     end
   end
 
-  defp read(query, action) do
+  defp read(query, action, request_opts) do
     action = action || primary_read(query)
 
     query
     |> load_for_calcs()
-    |> Ash.Actions.Read.unpaginated_read(action)
+    |> Ash.Actions.Read.unpaginated_read(action, request_opts)
   end
 
   defp load_for_calcs(query) do
