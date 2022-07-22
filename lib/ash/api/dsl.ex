@@ -23,7 +23,7 @@ defmodule Ash.Api.Dsl do
     describe: "Options for how requests are authorized using this Api",
     examples: [
       """
-      execution do
+      authorization do
         authorize :by_default
         require_actor? true
       end
