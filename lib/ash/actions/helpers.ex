@@ -16,6 +16,21 @@ defmodule Ash.Actions.Helpers do
   def validate_calculation_load!(other, _), do: other
 
   def add_process_context(api, query_or_changeset, opts) do
+    api = api || query_or_changeset.api
+
+    opts =
+      case query_or_changeset.context do
+        %{
+          private: %{
+            actor: actor
+          }
+        } ->
+          Keyword.put_new(opts, :actor, actor)
+
+        _ ->
+          opts
+      end
+
     {add_context(query_or_changeset), opts |> add_actor(api) |> add_tenant()}
   end
 
