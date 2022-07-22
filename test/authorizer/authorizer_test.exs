@@ -50,10 +50,10 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
       end)
     end
 
-    test "always_authorize? authorizes automatically" do
+    test "authorize :always authorizes automatically" do
       Application.put_env(:ash, Api,
         authorization: [
-          always_authorize?: true
+          authorize: :by_default
         ]
       )
 
@@ -70,7 +70,7 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
       Application.put_env(:ash, Api,
         authorization: [
           require_actor?: true,
-          always_authorize?: true
+          authorize: :by_default
         ]
       )
 

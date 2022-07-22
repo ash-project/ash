@@ -50,10 +50,15 @@ defmodule Ash.Actions.Helpers do
         raise Ash.Error.Forbidden.ApiRequiresActor, api: api
       end
 
-      if Ash.Api.always_authorize?(api) do
-        Keyword.put(opts, :authorize?, true)
-      else
-        opts
+      case Ash.Api.authorize(api) do
+        :always ->
+          Keyword.put(opts, :authorize?, true)
+
+        :by_default ->
+          Keyword.put_new(opts, :authorize?, true)
+
+        :when_requested ->
+          opts
       end
     else
       # The only time api would be nil here is when we call this helper inside of `Changeset.for_*` and `Query.for_read`

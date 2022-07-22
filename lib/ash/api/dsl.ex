@@ -24,7 +24,7 @@ defmodule Ash.Api.Dsl do
     examples: [
       """
       execution do
-        always_authorize? true
+        authorize :by_default
         require_actor? true
       end
       """
@@ -36,17 +36,17 @@ defmodule Ash.Api.Dsl do
         doc: """
         Requires that an actor has been supplied.
         Important: `nil` is still a valid actor, so this won't prevent providing `actor: nil`.
-        This is effectively the same as setting `always_authorize?` to `true`, because providing an actor
-        causes authorization to happen.
+
+        This doesn't necessarily enforce validation, because `authorize :by_default` still supports passing
+        `authorize?: false` when making requests.
         """
       ],
-      always_authorize?: [
-        type: :boolean,
-        default: false,
+      authorize: [
+        type: {:in, [:always, :by_default, :when_requested]},
+        default: :when_requested,
         doc: """
-        Forces `authorize?: true` on all requests to the Api, but allows for an actor not to be set, authorizing with `nil` (which is a valid actor, i.e for unauthenticated actions)
-
-        To require that an actor is always set, use `require_actor?` instead (or in addition, will be the same effect).
+        `:always` forces `authorize?: true` on all requests to the Api. `:by_default` sets `authorize?: true` if the `authorize?` option was not set (so it can be set to `false`).
+        `:when_requested` sets `authorize?: true` whenever an actor is set or `authorize?: true` is explicitly passed.
         """
       ]
     ]

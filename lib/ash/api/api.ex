@@ -610,9 +610,9 @@ defmodule Ash.Api do
     Extension.get_opt(api, [:authorization], :require_actor?, false, true)
   end
 
-  @spec always_authorize?(Ash.Api.t()) :: boolean
-  def always_authorize?(api) do
-    Extension.get_opt(api, [:authorization], :always_authorize?, false, true)
+  @spec authorize(Ash.Api.t()) :: :when_requested | :always | :by_default
+  def authorize(api) do
+    Extension.get_opt(api, [:authorization], :authorize, :when_requested, true)
   end
 
   @spec allow_unregistered?(Ash.Api.t()) :: atom | nil
