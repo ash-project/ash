@@ -50,13 +50,19 @@ defmodule Ash.Resource.Attribute do
     constraints: [
       type: :keyword_list,
       doc:
-        "Constraints to provide to the type when casting the value. See the type's documentation for more information."
+        "Constraints to provide to the type when casting the value. See the type's documentation for more information.",
+      links: [
+        modules: ["ash:module:Ash.Type"]
+      ]
     ],
     sensitive?: [
       type: :boolean,
       default: false,
       doc:
-        "Whether or not the attribute value contains sensitive information, like PII. If so, it will be redacted while inspecting data."
+        "Whether or not the attribute value contains sensitive information, like PII. If so, it will be redacted while inspecting data.",
+      links: [
+        guides: ["ash:guide:Topics/Security"]
+      ]
     ],
     source: [
       type: :atom,

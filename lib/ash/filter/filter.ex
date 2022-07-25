@@ -2611,7 +2611,94 @@ defmodule Ash.Filter do
           opts
         ) do
       opts = %{opts | syntax_colors: Keyword.merge(opts.syntax_colors, @custom_colors)}
+      expression = sanitize(expression)
       concat(["#Ash.Filter<", to_doc(expression, opts), ">"])
+    end
+
+    defp sanitize(%BooleanExpression{op: op, left: left, right: right}) do
+      %{op | left: sanitize(left), right: sanitize(right)}
+    end
+
+    defp sanitize(%Not{expression: expression} = not_expr) do
+      %{not_expr | expression: sanitize(expression)}
+    end
+
+    defp sanitize(%{__operator__?: true, left: left, right: right} = op) do
+      [left, right] = poison_exprs([left, right])
+      %{op | left: left, right: right}
+    end
+
+    defp sanitize(%{__function__?: true, arguments: arguments} = func) do
+      %{func | arguments: poison_exprs(arguments)}
+    end
+
+    defp sanitize(%Call{args: arguments} = call) do
+      %{call | args: poison_exprs(arguments)}
+    end
+
+    defp sanitize(other) do
+      other
+    end
+
+    defp poison_exprs(values) do
+      if Enum.any?(values, &refers_to_sensitive?/1) do
+        Enum.map(values, &scrub_values/1)
+      else
+        values
+      end
+    end
+
+    defp scrub_values(%BooleanExpression{op: op, left: left, right: right}) do
+      %{op | left: scrub_values(left), right: scrub_values(right)}
+    end
+
+    defp scrub_values(%Not{expression: expression} = not_expr) do
+      %{not_expr | expression: scrub_values(expression)}
+    end
+
+    defp scrub_values(%{__operator__?: true, left: left, right: right} = op) do
+      [left, right] = poison_exprs([left, right])
+      %{op | left: left, right: right}
+    end
+
+    defp scrub_values(%{__function__?: true, arguments: arguments} = func) do
+      %{func | arguments: poison_exprs(arguments)}
+    end
+
+    defp scrub_values(%Call{args: arguments} = call) do
+      %{call | args: poison_exprs(arguments)}
+    end
+
+    defp scrub_values(%Ref{} = ref), do: ref
+
+    defp scrub_values(_other) do
+      "**redacted**"
+    end
+
+    defp refers_to_sensitive?(%BooleanExpression{left: left, right: right}) do
+      Enum.any?([left, right], &refers_to_sensitive?/1)
+    end
+
+    defp refers_to_sensitive?(%Not{expression: expression}) do
+      refers_to_sensitive?(expression)
+    end
+
+    defp refers_to_sensitive?(%{__operator__?: true, left: left, right: right}) do
+      Enum.any?([left, right], &refers_to_sensitive?/1)
+    end
+
+    defp refers_to_sensitive?(%{__function__?: true, arguments: arguments}) do
+      Enum.any?(arguments, &refers_to_sensitive?/1)
+    end
+
+    defp refers_to_sensitive?(%Call{args: arguments}) do
+      Enum.any?(arguments, &refers_to_sensitive?/1)
+    end
+
+    defp refers_to_sensitive?(%Ref{attribute: %{sensitive?: true}}), do: true
+
+    defp refers_to_sensitive?(_other) do
+      false
     end
   end
 end

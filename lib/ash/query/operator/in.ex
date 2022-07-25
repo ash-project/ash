@@ -61,9 +61,7 @@ defmodule Ash.Query.Operator.In do
 
   def compare(_, _), do: :unknown
 
-  def to_string(%{right: %Ref{}} = op, opts), do: super(op, opts)
-
-  def to_string(%{left: left, right: mapset}, opts) do
+  def to_string(%{left: left, right: %MapSet{} = mapset}, opts) do
     import Inspect.Algebra
 
     list_doc =
@@ -78,4 +76,6 @@ defmodule Ash.Query.Operator.In do
       list_doc
     ])
   end
+
+  def to_string(op, opts), do: super(op, opts)
 end

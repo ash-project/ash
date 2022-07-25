@@ -29,25 +29,29 @@ defmodule Ash.Api.Dsl do
       end
       """
     ],
+    links: [
+      guides: [
+        security: "ash:guide:Topics/Security"
+      ]
+    ],
     schema: [
       require_actor?: [
         type: :boolean,
         default: false,
-        doc: """
-        Requires that an actor has been supplied.
-        Important: `nil` is still a valid actor, so this won't prevent providing `actor: nil`.
-
-        This doesn't necessarily enforce validation, because `authorize :by_default` still supports passing
-        `authorize?: false` when making requests.
-        """
+        doc: "Requires that an actor has been supplied.",
+        links: [
+          guides: ["ash:guide:Topics/Security"]
+        ]
       ],
       authorize: [
         type: {:in, [:always, :by_default, :when_requested]},
         default: :when_requested,
         doc: """
-        `:always` forces `authorize?: true` on all requests to the Api. `:by_default` sets `authorize?: true` if the `authorize?` option was not set (so it can be set to `false`).
-        `:when_requested` sets `authorize?: true` whenever an actor is set or `authorize?: true` is explicitly passed.
-        """
+        When to run authorization for a given request.
+        """,
+        links: [
+          guides: ["ash:guide:Topics/Security"]
+        ]
       ]
     ]
   }
