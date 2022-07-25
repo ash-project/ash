@@ -98,6 +98,9 @@ defmodule Ash.Flow do
             {:constrained, {:ok, nil}} ->
               {:cont, {:ok, Map.put(acc, arg.name, nil)}}
 
+            {:constrained, {:error, error}} ->
+              {:halt, {:error, error}}
+
             {:error, error} ->
               {:halt, {:error, error}}
           end

@@ -83,6 +83,37 @@ defmodule Ash.DocIndex do
     end
   end
 
+  def find_undocumented_items(doc_index) do
+    Enum.each(doc_index.extensions(), fn extension ->
+      Enum.each(
+        extension.module.sections(),
+        &find_undocumented_in_section(&1, [inspect(extension.module)])
+      )
+    end)
+  end
+
+  defp find_undocumented_in_section(section, path) do
+    find_undocumented_in_schema(section.schema(), [section.name() | path])
+    Enum.each(section.sections(), &find_undocumented_in_section(&1, [section.name() | path]))
+    Enum.each(section.entities(), &find_undocumented_in_entity(&1, [section.name() | path]))
+  end
+
+  defp find_undocumented_in_entity(entity, path) do
+    find_undocumented_in_schema(entity.schema(), [entity.name() | path])
+
+    Enum.each(entity.entities(), fn {_key, entities} ->
+      Enum.each(entities, &find_undocumented_in_entity(&1, [entity.name() | path]))
+    end)
+  end
+
+  defp find_undocumented_in_schema(schema, path) do
+    Enum.each(schema, fn {key, opts} ->
+      if !opts[:link] do
+        raise "Undocumented item #{Enum.reverse(path) |> Enum.join(".")}.#{key}"
+      end
+    end)
+  end
+
   # sobelow_skip ["Traversal.FileModule"]
   def read!(app, path) do
     app

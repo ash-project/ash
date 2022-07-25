@@ -37,11 +37,15 @@ defmodule Ash.Resource.Attribute do
   @schema [
     name: [
       type: :atom,
-      doc: "The name of the attribute."
+      doc: "The name of the attribute.",
+      links: []
     ],
     type: [
       type: :ash_type,
-      doc: "The type of the attribute."
+      doc: "The type of the attribute.",
+      links: [
+        modules: ["ash:module:Ash.Type"]
+      ]
     ],
     constraints: [
       type: :keyword_list,

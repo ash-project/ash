@@ -38,7 +38,7 @@ defmodule Ash.OptionsHelpers do
     |> NimbleOptions.docs()
   end
 
-  @non_nimble_options [:hide, :as, :snippet]
+  @non_nimble_options [:hide, :as, :snippet, :links]
 
   defp sanitize_schema(schema) do
     Enum.map(schema, fn {key, opts} ->

@@ -504,7 +504,7 @@ defmodule Ash.Type do
             |> Enum.with_index()
             |> Enum.reduce({[], []}, fn {item, index}, {items, errors} ->
               if is_nil(item) && not nil_items? do
-                {[item | items], [[message: "no nil/null values", index: index] | errors]}
+                {[item | items], [[message: "no nil values", index: index] | errors]}
               else
                 case apply_constraints(type, item, item_constraints) do
                   {:ok, value} ->
