@@ -31,7 +31,7 @@ defmodule Ash.Api.Dsl do
     ],
     links: [
       guides: [
-        security: "ash:guide:Topics/Security"
+        "ash:guide:Topics/Security"
       ]
     ],
     schema: [
