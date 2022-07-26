@@ -61,7 +61,7 @@ defmodule Ash.Resource.Attribute do
       doc:
         "Whether or not the attribute value contains sensitive information, like PII. If so, it will be redacted while inspecting data.",
       links: [
-        guides: ["ash:guide:Topics/Security"]
+        guides: ["ash:guide:Security"]
       ]
     ],
     source: [

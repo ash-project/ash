@@ -31,7 +31,7 @@ defmodule Ash.Api.Dsl do
     ],
     links: [
       guides: [
-        "ash:guide:Topics/Security"
+        "ash:guide:Security"
       ]
     ],
     schema: [
@@ -40,7 +40,7 @@ defmodule Ash.Api.Dsl do
         default: false,
         doc: "Requires that an actor has been supplied.",
         links: [
-          guides: ["ash:guide:Topics/Security"]
+          guides: ["ash:guide:Security"]
         ]
       ],
       authorize: [
@@ -50,7 +50,7 @@ defmodule Ash.Api.Dsl do
         When to run authorization for a given request.
         """,
         links: [
-          guides: ["ash:guide:Topics/Security"]
+          guides: ["ash:guide:Security"]
         ]
       ]
     ]
