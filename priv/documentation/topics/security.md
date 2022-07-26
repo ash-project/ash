@@ -2,7 +2,7 @@
 
 ## Authorization
 
-Authorization in Ash is done via authorizers. Generally, you won't need to create your own  authorizer, as the builtin policy authorizer `Ash.Policy.Authorizer` should work well for any use case. Authorization is performed with a given actor and a query or changeset.
+Authorization in Ash is done via authorizers. Generally, you won't need to create your own  authorizer, as the builtin policy authorizer {{link:ash:module:Ash.Policy.Authorizer}} should work well for any use case. Authorization is performed with a given actor and a query or changeset.
 
 ### Actors
 
