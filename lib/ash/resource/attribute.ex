@@ -58,8 +58,7 @@ defmodule Ash.Resource.Attribute do
     sensitive?: [
       type: :boolean,
       default: false,
-      doc:
-        "Whether or not the attribute value contains sensitive information, like PII. If so, it will be redacted while inspecting data.",
+      doc: "Whether or not the attribute value contains sensitive information, like PII.",
       links: [
         guides: ["ash:guide:Security"]
       ]
