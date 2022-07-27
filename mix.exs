@@ -165,6 +165,9 @@ defmodule Ash.MixProject do
           Ash.Error.Stacktrace,
           Ash.Error.Exception
         ],
+        flow: [
+          Ash.Flow
+        ],
         miscellaneous: [
           Ash.UUID,
           Ash.Changeset.ManagedRelationshipHelpers,
