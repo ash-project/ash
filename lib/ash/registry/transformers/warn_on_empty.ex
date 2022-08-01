@@ -3,12 +3,16 @@ defmodule Ash.Registry.Transformers.WarnOnEmpty do
   use Ash.Dsl.Transformer
 
   def transform(registry, dsl) do
-    case Ash.Registry.entries(registry) do
-      [] ->
-        {:warn, dsl, "#{inspect(registry)} has no entries."}
+    if Ash.Registry.warn_on_empty?(registry) do
+      case Ash.Registry.entries(registry) do
+        [] ->
+          {:warn, dsl, "#{inspect(registry)} has no entries."}
 
-      _ ->
-        {:ok, dsl}
+        _ ->
+          {:ok, dsl}
+      end
+    else
+      {:ok, dsl}
     end
   end
 end

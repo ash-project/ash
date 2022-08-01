@@ -183,6 +183,7 @@ locals_without_parens = [
   validate_destination_field?: 1,
   violation_message: 1,
   wait_for: 1,
+  warn_on_empty?: 1,
   where: 1,
   writable?: 1
 ]

@@ -36,6 +36,11 @@ defmodule Ash.Registry do
     end
   end
 
+  @spec warn_on_empty?(t()) :: boolean
+  def warn_on_empty?(registry) do
+    Extension.get_opt(registry, [:entries], :warn_on_empty?, true, true)
+  end
+
   @spec api_or_api_and_registry(Ash.Api.t() | {Ash.Api.t(), t()}) :: {t(), t()}
   def api_or_api_and_registry({api, registry}), do: {api, registry}
   def api_or_api_and_registry(api), do: {api, api}
