@@ -169,7 +169,8 @@ defmodule Ash.Dsl do
                 |> Ash.Dsl.Extension.run_transformers(
                   transformers_to_run,
                   Module.get_attribute(__MODULE__, :ash_dsl_config),
-                  false
+                  false,
+                  __ENV__
                 )
               end
             end

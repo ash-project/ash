@@ -479,12 +479,13 @@ defmodule Ash.Dsl.Extension do
       |> Ash.Dsl.Extension.run_transformers(
         transformers_to_run,
         ash_dsl_config,
-        true
+        true,
+        __ENV__
       )
     end
   end
 
-  def run_transformers(mod, transformers, ash_dsl_config, store?) do
+  def run_transformers(mod, transformers, ash_dsl_config, store?, env) do
     Enum.reduce_while(transformers, ash_dsl_config, fn transformer, dsl ->
       result =
         try do
@@ -505,6 +506,17 @@ defmodule Ash.Dsl.Extension do
 
         :halt ->
           {:halt, dsl}
+
+        {:warn, new_dsl, warnings} ->
+          warnings
+          |> List.wrap()
+          |> Enum.each(&IO.warn(&1, Macro.Env.stacktrace(env)))
+
+          if store? do
+            Module.put_attribute(mod, :ash_dsl_config, new_dsl)
+          end
+
+          {:cont, new_dsl}
 
         {:ok, new_dsl} ->
           if store? do

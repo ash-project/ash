@@ -14,7 +14,12 @@ defmodule Ash.Dsl.Transformer do
   point in returning a new dsl structure from `transform/2` if `after_compile/0` is defined. Instead,
   simply return `:ok` or `{:error, error}`
   """
-  @callback transform(module, map) :: :ok | {:ok, map} | {:error, term} | :halt
+  @callback transform(module, map) ::
+              :ok
+              | {:ok, map}
+              | {:error, term}
+              | {:warn, map, String.t() | list(String.t())}
+              | :halt
   @callback before?(module) :: boolean
   @callback after?(module) :: boolean
   @callback after_compile?() :: boolean

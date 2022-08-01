@@ -30,14 +30,27 @@ defmodule Ash.Registry.Dsl do
     ],
     entities: [
       @entry
+    ],
+    schema: [
+      warn_on_empty?: [
+        type: :boolean,
+        doc: "Set to `false` to ignore warnings about an empty registry",
+        default: true
+      ]
     ]
   }
 
   @sections [@entries]
 
+  @transformers [Ash.Registry.Transformers.WarnOnEmpty]
+
   @moduledoc """
   A small DSL for declaring an `Ash.Registry`.
   """
 
-  use Ash.Dsl.Extension, sections: @sections
+  use Ash.Dsl.Extension, sections: @sections, transformers: @transformers
+
+  def warn_on_empty?(registry) do
+    Extension.get_opt(registry, [:entries], :warn_on_empty?, false, true)
+  end
 end
