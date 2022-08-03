@@ -5,6 +5,45 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.52.0-rc.22](https://github.com/ash-project/ash/compare/v1.52.0-rc.21...v1.52.0-rc.22) (2022-08-03)
+
+
+
+
+### Bug Fixes:
+
+* actually use `warn_on_empty?` config
+
+* check for actor on query/changeset for actor context
+
+* pass actor opt down
+
+* don't skip setting tenant when actor is present
+
+* don't use `apply/3` on kernel macros
+
+* small bug in DSL transformer manipulation.
+
+* && and || don't short-circuit to `nil`
+
+* `{:ok, _}` -> `{:known, _}` when evaluating operators
+
+* fix bad evaluation case for operators
+
+* ensure we only take unique related records when lazy loading
+
+### Improvements:
+
+* add warnings to DSL transformer returns
+
+* warn on empty registries
+
+* better sanitization around sensitive attributes in filters
+
+* change `always_authorize?` to `authorize` for multiple options
+
+* add error message for manual action missed
+
 ## [v1.52.0-rc.21](https://github.com/ash-project/ash/compare/v1.52.0-rc.20...v1.52.0-rc.21) (2022-07-19)
 
 
