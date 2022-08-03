@@ -936,7 +936,14 @@ defmodule Ash.Actions.Load do
   end
 
   defp load_for_calcs(query) do
-    Enum.reduce(query.calculations || %{}, query, fn {_, calc}, query ->
+    Enum.reduce(query.calculations || %{}, query, fn {name, calc}, query ->
+      resource_load =
+        if resource_calculation = Ash.Resource.Info.calculation(query.resource, name) do
+          List.wrap(resource_calculation.load)
+        else
+          []
+        end
+
       Ash.Query.load(
         query,
         calc.module.load(
@@ -946,6 +953,7 @@ defmodule Ash.Actions.Load do
         )
         |> Ash.Actions.Helpers.validate_calculation_load!(calc.module)
       )
+      |> Ash.Query.load(resource_load)
     end)
   end
 
