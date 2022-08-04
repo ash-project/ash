@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.53.0](https://github.com/ash-project/ash/compare/v1.52.0-rc.22...v1.53.0) (2022-08-04)
+
+
+
+
+### Bug Fixes:
+
+* (attempt) to fix calc loading issue
+
 ## [v1.52.0-rc.22](https://github.com/ash-project/ash/compare/v1.52.0-rc.21...v1.52.0-rc.22) (2022-08-03)
 
 
