@@ -108,7 +108,7 @@ defmodule Ash.DocIndex do
 
   defp find_undocumented_in_schema(schema, path) do
     Enum.each(schema, fn {key, opts} ->
-      if !opts[:link] do
+      if !opts[:links] do
         raise "Undocumented item #{Enum.reverse(path) |> Enum.join(".")}.#{key}"
       end
     end)

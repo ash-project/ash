@@ -23,14 +23,14 @@ Api.read!(User, actor: nil)
 Api.read!(User, authorize?: true)
 
 # Authorize with an actor
-Api.read!(Uer, actor: current_user)
+Api.read!(User, actor: current_user)
 
 # Authorize with an actor, but being explicit
-Api.read!(Uer, actor: current_user, authorize?: true)
+Api.read!(User, actor: current_user, authorize?: true)
 
-# Skip authorization, but set an actor. The actor can be used in other things than authorization
+# Skip authorization, but set an actor. **The** actor can be used in other things than authorization
 # so this may make sense depending on what you are doing.
-Api.read!(Uer, actor: current_user, authorize?: false)
+Api.read!(User, actor: current_user, authorize?: false)
 ```
 
 ### Context

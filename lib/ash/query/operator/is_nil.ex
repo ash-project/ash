@@ -30,7 +30,7 @@ defmodule Ash.Query.Operator.IsNil do
     end
   end
 
-  def evaluate(%{right: nil}), do: {:ok, nil}
+  def evaluate(%{right: nil}), do: {:known, nil}
 
   def evaluate(%{left: left, right: is_nil?}) do
     {:known, is_nil(left) == is_nil?}

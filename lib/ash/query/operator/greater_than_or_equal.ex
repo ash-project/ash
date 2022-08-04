@@ -10,8 +10,8 @@ defmodule Ash.Query.Operator.GreaterThanOrEqual do
     predicate?: true,
     types: [:same, :any]
 
-  def evaluate(%{left: nil}), do: {:ok, nil}
-  def evaluate(%{right: nil}), do: {:ok, nil}
+  def evaluate(%{left: nil}), do: {:known, nil}
+  def evaluate(%{right: nil}), do: {:known, nil}
 
   def evaluate(%{left: left, right: right}),
     do: {:known, Comp.greater_or_equal?(left, right)}

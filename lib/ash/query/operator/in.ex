@@ -21,8 +21,8 @@ defmodule Ash.Query.Operator.In do
 
   def new(left, right), do: {:ok, %__MODULE__{left: left, right: right}}
 
-  def evaluate(%{left: nil}), do: {:ok, nil}
-  def evaluate(%{right: nil}), do: {:ok, nil}
+  def evaluate(%{left: nil}), do: {:known, nil}
+  def evaluate(%{right: nil}), do: {:known, nil}
 
   def evaluate(%{left: left, right: right}) do
     {:known, Enum.any?(right, &Comp.equal?(&1, left))}

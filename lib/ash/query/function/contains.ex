@@ -25,8 +25,8 @@ defmodule Ash.Query.Function.Contains do
       [:ci_string, :string]
     ]
 
-  def evaluate(%{arguments: [nil, _]}), do: false
-  def evaluate(%{arguments: [_, nil]}), do: false
+  def evaluate(%{arguments: [nil, _]}), do: {:known, false}
+  def evaluate(%{arguments: [_, nil]}), do: {:known, false}
 
   def evaluate(%{arguments: [%CiString{} = left, %CiString{} = right]}) do
     {:known,
