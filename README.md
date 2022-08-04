@@ -9,7 +9,7 @@ All documentation is contained in the generated hex documentation located [here]
 
 ## Is the project still in beta?
 
-Ash is quite stable, but is technically still in beta. It is being used in production and has had many success stories along the way. 2.0.0 is coming very soon which will bring the proejct out of beta, which *may* contain some small breaking changes. The primary thing holding back the next release is an overhaul of the documentation, currently happening at https://www.ash-hq.org. For a funny story about why the package is in 1.0.0+ version but still in beta, see []()
+Ash is quite stable, but is technically still in beta. It is being used in production and has had many success stories along the way. 2.0.0 is coming very soon which will bring the proejct out of beta, which *may* contain some small breaking changes. The primary thing holding back the next release is an overhaul of the documentation, currently happening at https://www.ash-hq.org. For a funny story about why the package is in 1.0.0+ version but still in beta, see [below](#100-beta).
 
 # Dependency
 
