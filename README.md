@@ -7,7 +7,7 @@
 
 All documentation is contained in the generated hex documentation located [here](https://hexdocs.pm/ash). Head there for installation and usage information. What follows is only a brief introduction to Ash.
 
-## Beta NOTICE
+## Beta Notice
 
 Ash is in beta. The package version is 1.0.0+, and most of the time that means stable, but in this case it _does not_. The 2.0 release will be the stable release.
 
