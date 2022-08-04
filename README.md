@@ -7,11 +7,9 @@
 
 All documentation is contained in the generated hex documentation located [here](https://hexdocs.pm/ash). Head there for installation and usage information. What follows is only a brief introduction to Ash.
 
-## Beta Notice
+## Is the project still in beta?
 
-Ash is in beta. The package version is 1.0.0+, and most of the time that means stable, but in this case it _does not_. The 2.0 release will be the stable release.
-
-With that said, we are getting closer and closer to a non-beta release. The primary things that are being worked on to that end are documentation, some additional testing, and various interface improvements that are very likely to be backwards compatible. Ash is being used in production currently. We simply hold the project to a high standard when it comes to taking it out of beta.
+Ash is quite stable, but is technically still in beta. It is being used in production and has had many success stories along the way. 2.0.0 is coming very soon which will bring the proejct out of beta, which *may* contain some small breaking changes. The primary thing holding back the next release is an overhaul of the documentation, currently happening at https://www.ash-hq.org. For a funny story about why the package is in 1.0.0+ version but still in beta, see []()
 
 # Dependency
 
@@ -103,6 +101,10 @@ For those looking to add Ash extensions:
 - run `mix git_ops.release` (see git_ops documentation for more information)
 - check the changelog/new release number
 - push (with tags) and CI will automatically deploy the hex package
+
+# 1.0.0 Beta
+
+The package version is 1.0.0+ which typically does not mean beta, but there is a funny story behind it. The 1.0.0 version was accidentally released to hex.pm very early on (before anyone was really using Ash), and we had no way to revert it since it wasn't noticed until the 24 hour period had passed and the hex team were (rightfully) sticklers about breaking the rules around removing packages. Deprecating the package version didn't solve the problem because it was still shown as the latest available version for the package, so we decided to just roll forward with 1.0.0.
 
 # Contributors
 
