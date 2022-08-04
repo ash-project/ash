@@ -149,8 +149,8 @@ defmodule Ash.Filter.Runtime do
 
       %op{__operator__?: true, left: left, right: right} = operator ->
         with {:ok, [left, right]} <-
-               resolve_exprs([left, right], record) |> IO.inspect(),
-             {:known, val} <- op.evaluate(%{operator | left: left, right: right}) |> IO.inspect() do
+               resolve_exprs([left, right], record),
+             {:known, val} <- op.evaluate(%{operator | left: left, right: right}) do
           {:ok, val}
         else
           {:error, error} ->
