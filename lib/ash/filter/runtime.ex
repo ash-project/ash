@@ -13,7 +13,7 @@ defmodule Ash.Filter.Runtime do
   layer like `ash_postgres`, certain expressions will behave unpredictably.
   """
 
-  alias Ash.Query.{BooleanExpression, Not, Ref}
+  alias Ash.Query.{BooleanExpression, Call, Not, Ref}
 
   @doc """
   Removes any records that don't match the filter. Automatically loads
@@ -193,8 +193,11 @@ defmodule Ash.Filter.Runtime do
       %BooleanExpression{op: op, left: left, right: right} ->
         expression_matches(op, left, right, record)
 
+      %Call{} = call ->
+        raise "Unresolvable filter component: #{inspect(call)}"
+
       other ->
-        raise "Unresolvable filter component: #{inspect(other)}"
+        {:ok, other}
     end
   end
 

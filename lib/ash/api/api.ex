@@ -217,6 +217,12 @@ defmodule Ash.Api do
                     )
 
   @get_opts_schema [
+                     error?: [
+                       type: :boolean,
+                       default: true,
+                       doc:
+                         "Wether or not an error should be returned or raised when the record is not found. If set to false, `nil` will be returned."
+                     ],
                      load: [
                        type: :any,
                        doc: "Fields or relationships to load in the query. See `Ash.Query.load/2`"
@@ -660,11 +666,15 @@ defmodule Ash.Api do
           {:ok, single_result}
 
         {:ok, %{results: []}} ->
-          {:error,
-           NotFound.exception(
-             primary_key: filter,
-             resource: resource
-           )}
+          if opts[:error?] do
+            {:error,
+             NotFound.exception(
+               primary_key: filter,
+               resource: resource
+             )}
+          else
+            {:ok, nil}
+          end
 
         {:ok, %{results: results}} ->
           {:error,
@@ -678,11 +688,15 @@ defmodule Ash.Api do
           {:ok, single_result}
 
         {:ok, []} ->
-          {:error,
-           NotFound.exception(
-             primary_key: filter,
-             resource: resource
-           )}
+          if opts[:error?] do
+            {:error,
+             NotFound.exception(
+               primary_key: filter,
+               resource: resource
+             )}
+          else
+            {:ok, nil}
+          end
 
         {:error, error} ->
           {:error, error}

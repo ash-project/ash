@@ -2519,61 +2519,72 @@ defmodule Ash.Filter do
     parse_predicates([eq: value], field, context)
   end
 
+  defp parse_predicates(%struct{} = value, field, context)
+       when struct not in [Not, BooleanExpression, Ref, Call] do
+    parse_predicates([eq: value], field, context)
+  end
+
   defp parse_predicates(values, attr, context) do
-    if is_map(values) || Keyword.keyword?(values) do
-      Enum.reduce_while(values, {:ok, nil}, fn
-        {:not, value}, {:ok, expression} ->
-          case parse_predicates(List.wrap(value), attr, context) do
-            {:ok, not_expression} ->
-              {:cont,
-               {:ok,
-                BooleanExpression.optimized_new(:and, expression, %Not{expression: not_expression})}}
-
-            {:error, error} ->
-              {:halt, {:error, error}}
-          end
-
-        {key, value}, {:ok, expression} ->
-          case get_operator(key) do
-            nil ->
-              error = NoSuchFilterPredicate.exception(key: key, resource: context.resource)
-              {:halt, {:error, error}}
-
-            operator_module ->
-              left = %Ref{
-                attribute: attr,
-                relationship_path: context.relationship_path,
-                resource: context.resource
-              }
-
-              with {:ok, [left, right]} <-
-                     hydrate_refs([left, value], context),
-                   refs <- list_refs([left, right]),
-                   :ok <-
-                     validate_not_crossing_datalayer_boundaries(
-                       refs,
-                       context.resource,
-                       {attr, value}
-                     ),
-                   {:ok, operator} <- Operator.new(operator_module, left, right) do
-                if is_boolean(operator) do
-                  {:cont, {:ok, operator}}
-                else
-                  if Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, operator}) do
-                    {:cont, {:ok, BooleanExpression.optimized_new(:and, expression, operator)}}
-                  else
-                    {:halt,
-                     {:error, "data layer does not support the operator #{inspect(operator)}"}}
-                  end
-                end
-              else
-                {:error, error} -> {:halt, {:error, error}}
-              end
-          end
-      end)
+    if is_struct(values) && Map.has_key?(values, :__predicate__) do
+      parse_predicates([eq: values], attr, context)
     else
-      error = InvalidFilterValue.exception(value: values)
-      {:error, error}
+      if is_map(values) || Keyword.keyword?(values) do
+        Enum.reduce_while(values, {:ok, nil}, fn
+          {:not, value}, {:ok, expression} ->
+            case parse_predicates(List.wrap(value), attr, context) do
+              {:ok, not_expression} ->
+                {:cont,
+                 {:ok,
+                  BooleanExpression.optimized_new(:and, expression, %Not{
+                    expression: not_expression
+                  })}}
+
+              {:error, error} ->
+                {:halt, {:error, error}}
+            end
+
+          {key, value}, {:ok, expression} ->
+            case get_operator(key) do
+              nil ->
+                error = NoSuchFilterPredicate.exception(key: key, resource: context.resource)
+                {:halt, {:error, error}}
+
+              operator_module ->
+                left = %Ref{
+                  attribute: attr,
+                  relationship_path: context.relationship_path,
+                  resource: context.resource
+                }
+
+                with {:ok, [left, right]} <-
+                       hydrate_refs([left, value], context),
+                     refs <- list_refs([left, right]),
+                     :ok <-
+                       validate_not_crossing_datalayer_boundaries(
+                         refs,
+                         context.resource,
+                         {attr, value}
+                       ),
+                     {:ok, operator} <- Operator.new(operator_module, left, right) do
+                  if is_boolean(operator) do
+                    {:cont, {:ok, operator}}
+                  else
+                    if Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, operator}) do
+                      {:cont, {:ok, BooleanExpression.optimized_new(:and, expression, operator)}}
+                    else
+                      {:halt,
+                       {:error, "data layer does not support the operator #{inspect(operator)}"}}
+                    end
+                  end
+                else
+                  {:error, error} -> {:halt, {:error, error}}
+                end
+            end
+        end)
+      else
+        error = InvalidFilterValue.exception(value: values)
+        {:error, error}
+      end
     end
   end
 
