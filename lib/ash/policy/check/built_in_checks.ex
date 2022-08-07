@@ -21,6 +21,11 @@ defmodule Ash.Policy.Check.BuiltInChecks do
     {Ash.Policy.Check.Action, action: action}
   end
 
+  @doc "This check is true when there is an actor specified, and false when the actor is `nil`"
+  def actor_present do
+    Ash.Policy.Check.ActorPresent
+  end
+
   @doc "This check is true when the field is being selected and false when it is not"
   def selecting(attribute) do
     {Ash.Policy.Check.Selecting, attribute: attribute}
