@@ -2659,8 +2659,8 @@ defmodule Ash.Filter do
       end
     end
 
-    defp scrub_values(%BooleanExpression{op: op, left: left, right: right}) do
-      %{op | left: scrub_values(left), right: scrub_values(right)}
+    defp scrub_values(%BooleanExpression{op: op, left: left, right: right} = expr) do
+      %{expr | left: scrub_values(left), right: scrub_values(right)}
     end
 
     defp scrub_values(%Not{expression: expression} = not_expr) do
