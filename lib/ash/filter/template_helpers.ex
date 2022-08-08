@@ -1,6 +1,11 @@
 defmodule Ash.Filter.TemplateHelpers do
   @moduledoc "Helpers for building filter templates"
 
+  defguard is_expr(value)
+           when is_struct(value, Ash.Query.Not) or is_struct(value, Ash.Query.BooleanExpression) or
+                  is_struct(value, Ash.Query.Call) or is_struct(value, Ash.Query.Ref) or
+                  (is_struct(value) and is_map_key(value, :__predicate__?))
+
   @doc "A helper for using actor values in filter templates"
   def actor(value), do: {:_actor, value}
 

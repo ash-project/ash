@@ -9,25 +9,9 @@ defmodule Ash.Query.Function.If do
   def new([condition, block]) do
     if Keyword.keyword?(block) && Keyword.has_key?(block, :do) do
       if Keyword.has_key?(block, :else) do
-        if condition == true do
-          {:ok, block[:do]}
-        else
-          if condition == false do
-            {:ok, block[:else]}
-          else
-            super([condition, block[:do], block[:else]])
-          end
-        end
+        super([condition, block[:do], block[:else]])
       else
-        if condition == true do
-          {:ok, block[:do]}
-        else
-          if condition == false do
-            {:ok, nil}
-          else
-            super([condition, block[:do], nil])
-          end
-        end
+        super([condition, block[:do], nil])
       end
     else
       super([condition, block, nil])
@@ -38,11 +22,8 @@ defmodule Ash.Query.Function.If do
     super(other)
   end
 
-  def evaluate(%{arguments: [condition, when_true, when_false]}) do
-    if condition do
-      {:known, when_true}
-    else
-      {:known, when_false}
-    end
-  end
+  def evaluate(%{arguments: [true, when_true, _]}), do: {:known, when_true}
+  def evaluate(%{arguments: [false, _, when_false]}), do: {:known, when_false}
+  def evaluate(%{arguments: [nil, _, when_false]}), do: {:known, when_false}
+  def evaluate(%{arguments: [_, when_true, _]}), do: {:known, when_true}
 end

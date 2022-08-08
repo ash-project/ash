@@ -9,7 +9,7 @@ defmodule Ash.Query.Function.IsNil do
   def new([nil]), do: {:ok, true}
 
   def new([arg]) do
-    Ash.Query.Operator.IsNil.new(arg, true)
+    Ash.Query.Operator.new(Ash.Query.Operator.IsNil, arg, true)
   end
 
   def evaluate(%{arguments: [val]}) do

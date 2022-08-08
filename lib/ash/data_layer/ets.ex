@@ -314,6 +314,15 @@ defmodule Ash.DataLayer.Ets do
                         Map.update!(record, :calculations, &Map.put(&1, calculation.name, value))}}
                     end
 
+                  :unknown ->
+                    if calculation.load do
+                      {:cont, {:ok, Map.put(record, calculation.load, nil)}}
+                    else
+                      {:cont,
+                       {:ok,
+                        Map.update!(record, :calculations, &Map.put(&1, calculation.name, nil))}}
+                    end
+
                   {:error, error} ->
                     {:halt, {:error, error}}
                 end

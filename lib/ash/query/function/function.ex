@@ -7,6 +7,7 @@ defmodule Ash.Query.Function do
   """
 
   alias Ash.Query.{BooleanExpression, Call, Not, Ref}
+  import Ash.Filter.TemplateHelpers, only: [is_expr: 1]
 
   @type arg :: any
   @doc """
@@ -41,7 +42,23 @@ defmodule Ash.Query.Function do
               {:error, "Could not cast function arguments for #{mod.name()}/#{given_arg_count}"}
 
             casted ->
-              mod.new(casted)
+              case mod.new(casted) do
+                {:ok, function} ->
+                  if Enum.any?(casted, &is_expr/1) do
+                    {:ok, function}
+                  else
+                    case mod.evaluate(function) do
+                      {:known, result} ->
+                        {:ok, result}
+
+                      :unknown ->
+                        {:ok, function}
+                    end
+                  end
+
+                other ->
+                  other
+              end
           end
         else
           did_you_mean =
