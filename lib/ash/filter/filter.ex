@@ -2626,8 +2626,8 @@ defmodule Ash.Filter do
       concat(["#Ash.Filter<", to_doc(expression, opts), ">"])
     end
 
-    defp sanitize(%BooleanExpression{op: op, left: left, right: right}) do
-      %{op | left: sanitize(left), right: sanitize(right)}
+    defp sanitize(%BooleanExpression{left: left, right: right} = expr) do
+      %{expr | left: sanitize(left), right: sanitize(right)}
     end
 
     defp sanitize(%Not{expression: expression} = not_expr) do
@@ -2659,7 +2659,7 @@ defmodule Ash.Filter do
       end
     end
 
-    defp scrub_values(%BooleanExpression{op: op, left: left, right: right} = expr) do
+    defp scrub_values(%BooleanExpression{left: left, right: right} = expr) do
       %{expr | left: scrub_values(left), right: scrub_values(right)}
     end
 
