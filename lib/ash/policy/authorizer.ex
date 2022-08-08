@@ -402,6 +402,17 @@ defmodule Ash.Policy.Authorizer do
       {:error, error} ->
         {:error, error}
     end
+    |> tap(fn result ->
+      try do
+        raise "foo"
+        result
+      rescue
+        _ ->
+          IO.inspect(Exception.format_stacktrace(__STACKTRACE__))
+
+          result
+      end
+    end)
   end
 
   defp strict_filter(authorizer) do

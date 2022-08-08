@@ -872,7 +872,7 @@ defmodule Ash.Engine.Request do
 
     query_with_pkey_filter
     |> Map.put(:api, request.api)
-    |> Ash.Actions.Read.unpaginated_read()
+    |> Ash.Actions.Read.unpaginated_read(authorize?: false)
     |> case do
       {:ok, []} ->
         {:error,
