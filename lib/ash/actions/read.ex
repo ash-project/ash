@@ -69,6 +69,15 @@ defmodule Ash.Actions.Read do
           | {:error, term}
   def run(query, action, opts \\ []) do
     {query, opts} = Ash.Actions.Helpers.add_process_context(query.api, query, opts)
+
+    {query, opts} =
+      if opts[:unsafe_no_authorize?] do
+        {Ash.Query.set_context(query, %{private: %{authorize?: false}}),
+         Keyword.put(opts, :authorize?, false)}
+      else
+        {query, opts}
+      end
+
     authorize? = authorize?(opts)
     opts = sanitize_opts(opts, authorize?, query)
     query = set_tenant_opt(query, opts)
@@ -91,6 +100,7 @@ defmodule Ash.Actions.Read do
         query,
         action,
         actor: engine_opts[:actor],
+        authorize?: engine_opts[:authorize?],
         timeout: opts[:timeout],
         tenant: opts[:tenant]
       )
@@ -209,6 +219,7 @@ defmodule Ash.Actions.Read do
                     Ash.Query.for_read(resource, action.name, input,
                       tenant: tenant,
                       actor: actor,
+                      authorize?: authorize?,
                       timeout: timeout
                     )
 
@@ -218,6 +229,7 @@ defmodule Ash.Actions.Read do
                       action,
                       actor: actor,
                       tenant: tenant,
+                      authorize?: authorize?,
                       timeout: timeout
                     )
                 end

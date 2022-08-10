@@ -171,6 +171,16 @@ defmodule Ash.Filter do
     end
   end
 
+  # Used for fetching related data in filters, which will have already had authorization rules applied
+  defmodule ShadowApi do
+    @moduledoc false
+    use Ash.Api
+
+    resources do
+      allow_unregistered? true
+    end
+  end
+
   @doc """
   Parses a filter statement, accepting only public attributes/relationships
 
@@ -1320,7 +1330,7 @@ defmodule Ash.Filter do
       }
 
       relationship.destination
-      |> Ash.Query.new(api)
+      |> Ash.Query.new(ShadowApi)
       |> Ash.Query.do_filter(filter)
       |> Ash.Actions.Read.unpaginated_read()
       |> case do

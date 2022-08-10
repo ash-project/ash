@@ -24,25 +24,51 @@ defmodule Ash.Actions.Helpers do
           private: %{
             actor: actor
           }
-        } ->
+        }
+        when not is_nil(actor) ->
           Keyword.put_new(opts, :actor, actor)
 
         _ ->
           opts
       end
 
-    {add_context(query_or_changeset), opts |> add_actor(api) |> add_tenant()}
+    opts =
+      case query_or_changeset.context do
+        %{
+          private: %{
+            authorize?: authorize?
+          }
+        }
+        when is_boolean(authorize?) ->
+          Keyword.put_new(opts, :authorize?, authorize?)
+
+        _ ->
+          opts
+      end
+
+    opts = opts |> add_actor(api) |> add_authorize?(api) |> add_tenant()
+
+    query_or_changeset = add_context(query_or_changeset, opts)
+
+    {query_or_changeset, opts}
   end
 
-  defp add_context(query_or_changeset) do
+  defp add_context(query_or_changeset, opts) do
     context = Process.get(:ash_context, %{}) || %{}
+    private_context = Map.new(Keyword.take(opts, [:actor, :authorize?]))
 
     case query_or_changeset do
       %Ash.Query{} ->
-        Ash.Query.set_context(query_or_changeset, context)
+        query_or_changeset
+        |> Ash.Query.set_context(context)
+        |> Ash.Query.set_context(%{private: private_context})
 
       %Ash.Changeset{} ->
-        Ash.Changeset.set_context(query_or_changeset, context)
+        query_or_changeset
+        |> Ash.Changeset.set_context(context)
+        |> Ash.Changeset.set_context(%{
+          private: private_context
+        })
     end
   end
 
@@ -65,6 +91,29 @@ defmodule Ash.Actions.Helpers do
         raise Ash.Error.Forbidden.ApiRequiresActor, api: api
       end
 
+      opts
+    else
+      # The only time api would be nil here is when we call this helper inside of `Changeset.for_*` and `Query.for_read`
+      # meaning this will be run again later with the api, so we skip the validations on the api
+      opts
+    end
+  end
+
+  defp add_authorize?(opts, api) do
+    opts =
+      if Keyword.has_key?(opts, :authorize?) do
+        opts
+      else
+        case Process.get(:ash_authorize?) do
+          {:authorize?, value} when is_boolean(value) ->
+            Keyword.put(opts, :authorize?, value)
+
+          _ ->
+            opts
+        end
+      end
+
+    if api do
       case Ash.Api.authorize(api) do
         :always ->
           Keyword.put(opts, :authorize?, true)

@@ -27,15 +27,6 @@ defmodule Ash.Actions.Destroy do
   def run(api, %{resource: resource} = changeset, action, opts) do
     {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
 
-    opts =
-      case Map.fetch(changeset.context[:private] || %{}, :actor) do
-        {:ok, actor} ->
-          Keyword.put_new(opts, :actor, actor)
-
-        _ ->
-          opts
-      end
-
     authorize? = authorize?(opts)
     actor = opts[:actor]
     verbose? = opts[:verbose?]
@@ -124,7 +115,8 @@ defmodule Ash.Actions.Destroy do
         action: action,
         error_path: error_path,
         changeset:
-          Request.resolve(changeset_dependencies, fn %{actor: actor} = context ->
+          Request.resolve(changeset_dependencies, fn %{actor: actor, authorize?: authorize?} =
+                                                       context ->
             input = changeset_input.(context) || %{}
 
             tenant =
@@ -155,11 +147,13 @@ defmodule Ash.Actions.Destroy do
                       |> Ash.Changeset.for_destroy(action.name, input,
                         actor: actor,
                         tenant: tenant,
+                        authorize?: authorize?,
                         timeout: timeout
                       )
                       |> changeset(api, action,
                         actor: actor,
                         tenant: tenant,
+                        authorize?: authorize?,
                         timeout: timeout
                       )
                   end
@@ -167,6 +161,7 @@ defmodule Ash.Actions.Destroy do
                 changeset ->
                   changeset(changeset, api, action,
                     actor: actor,
+                    authorize?: authorize?,
                     tenant: tenant,
                     timeout: timeout
                   )
@@ -223,12 +218,12 @@ defmodule Ash.Actions.Destroy do
         data:
           Request.resolve(
             [path ++ [:data, :data], path ++ [:destroy, :changeset]],
-            fn %{actor: actor} = context ->
+            fn %{actor: actor, authorize?: authorize?} = context ->
               changeset = get_in(context, path ++ [:destroy, :changeset])
               record = changeset.data
 
               changeset
-              |> Ash.Changeset.put_context(:private, %{actor: actor})
+              |> Ash.Changeset.put_context(:private, %{actor: actor, authorize?: authorize?})
               |> Ash.Changeset.with_hooks(fn changeset ->
                 if action.manual? do
                   {:ok, record}

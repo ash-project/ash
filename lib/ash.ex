@@ -14,13 +14,14 @@ defmodule Ash do
   def get_context_for_transfer do
     context = Ash.get_context()
     actor = Process.get(:ash_actor)
-    tenant = Process.get(:tenant)
+    authorize? = Process.get(:ash_authorize?)
+    tenant = Process.get(:ash_tenant)
 
-    %{context: context, actor: actor, tenant: tenant}
+    %{context: context, actor: actor, tenant: tenant, authorize?: authorize?}
   end
 
   @spec transfer_context(term) :: :ok
-  def transfer_context(%{context: context, actor: actor, tenant: tenant}) do
+  def transfer_context(%{context: context, actor: actor, tenant: tenant, authorize?: authorize?}) do
     case actor do
       {:actor, actor} ->
         Ash.set_actor(actor)
@@ -32,6 +33,14 @@ defmodule Ash do
     case tenant do
       {:tenant, tenant} ->
         Ash.set_tenant(tenant)
+
+      _ ->
+        :ok
+    end
+
+    case authorize? do
+      {:authorize?, authorize?} ->
+        Ash.set_authorize?(authorize?)
 
       _ ->
         :ok
@@ -61,12 +70,36 @@ defmodule Ash do
   end
 
   @doc """
+  Sets authorize? into the process dictionary that is used for all changesets and queries.
+  """
+  @spec set_authorize?(map) :: :ok
+  def set_authorize?(map) do
+    Process.put(:ash_authorize?, {:authorize?, map})
+
+    :ok
+  end
+
+  @doc """
   Gets the current actor from the process dictionary
   """
   @spec get_actor() :: term()
   def get_actor do
     case Process.get(:ash_actor) do
       {:actor, value} ->
+        value
+
+      _ ->
+        nil
+    end
+  end
+
+  @doc """
+  Gets the current authorize? from the process dictionary
+  """
+  @spec get_authorize?() :: term()
+  def get_authorize? do
+    case Process.get(:ash_authorize?) do
+      {:authorize?, value} ->
         value
 
       _ ->

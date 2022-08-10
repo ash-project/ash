@@ -13,15 +13,6 @@ defmodule Ash.Actions.Create do
   def run(api, changeset, action, opts) do
     {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
 
-    opts =
-      case Map.fetch(changeset.context[:private] || %{}, :actor) do
-        {:ok, actor} ->
-          Keyword.put_new(opts, :actor, actor)
-
-        _ ->
-          opts
-      end
-
     upsert? = opts[:upsert?] || get_in(changeset.context, [:private, :upsert?]) || false
     authorize? = authorize?(opts)
     upsert_keys = opts[:upsert_keys]
@@ -142,7 +133,8 @@ defmodule Ash.Actions.Create do
         resource: resource,
         error_path: error_path,
         changeset:
-          Request.resolve(changeset_dependencies, fn %{actor: actor} = context ->
+          Request.resolve(changeset_dependencies, fn %{actor: actor, authorize?: authorize?} =
+                                                       context ->
             input = changeset_input.(context) || %{}
 
             tenant =
@@ -163,11 +155,13 @@ defmodule Ash.Actions.Create do
                   resource
                   |> Ash.Changeset.for_create(action.name, input,
                     actor: actor,
+                    authorize?: authorize?,
                     tenant: tenant,
                     timeout: timeout
                   )
                   |> changeset(api, action,
                     actor: actor,
+                    authorize?: authorize?,
                     tenant: tenant,
                     timeout: timeout
                   )
@@ -175,6 +169,7 @@ defmodule Ash.Actions.Create do
                 changeset ->
                   changeset(changeset, api, action,
                     actor: actor,
+                    authorize?: authorize?,
                     tenant: tenant,
                     timeout: timeout
                   )
@@ -263,7 +258,6 @@ defmodule Ash.Actions.Create do
 
               result =
                 changeset
-                |> Ash.Changeset.put_context(:private, %{actor: actor})
                 |> Ash.Changeset.before_action(
                   &Ash.Actions.ManagedRelationships.setup_managed_belongs_to_relationships(
                     &1,

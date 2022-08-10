@@ -793,7 +793,7 @@ defmodule Ash.Engine.Request do
 
     new_query
     |> Map.put(:api, request.api)
-    |> Ash.Actions.Read.unpaginated_read()
+    |> Ash.Actions.Read.unpaginated_read(actor: request.actor, unsafe_no_authorize?: false)
     |> case do
       {:ok, results} ->
         pkey = Ash.Resource.Info.primary_key(request.resource)

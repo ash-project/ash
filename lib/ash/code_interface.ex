@@ -191,7 +191,7 @@ defmodule Ash.CodeInterface do
                     |> Ash.Query.for_read(
                       unquote(action.name),
                       input,
-                      Keyword.take(opts, [:actor, :tenant])
+                      Keyword.take(opts, [:actor, :tenant, :authorize?])
                     )
                     |> Ash.Query.filter(filters)
                   else
@@ -200,13 +200,15 @@ defmodule Ash.CodeInterface do
                     |> Ash.Query.for_read(
                       unquote(action.name),
                       input,
-                      Keyword.take(opts, [:actor, :tenant])
+                      Keyword.take(opts, [:actor, :tenant, :authorize?])
                     )
                   end
 
                 if unquote(interface.get? || action.get?) do
                   query
-                  |> unquote(api).read_one(Keyword.drop(opts, [:query, :tenant]))
+                  |> unquote(api).read_one(
+                    Keyword.drop(opts, [:query, :tenant, :authorize?, :actor])
+                  )
                   |> case do
                     {:ok, nil} ->
                       {:error, Ash.Error.Query.NotFound.exception(resource: query.resource)}
@@ -218,7 +220,10 @@ defmodule Ash.CodeInterface do
                       {:error, error}
                   end
                 else
-                  unquote(api).read(query, Keyword.drop(opts, [:query, :tenant]))
+                  unquote(api).read(
+                    query,
+                    Keyword.drop(opts, [:query, :tenant, :actor, :authorize?])
+                  )
                 end
               end
             end
@@ -259,7 +264,7 @@ defmodule Ash.CodeInterface do
                     |> Ash.Query.for_read(
                       unquote(action.name),
                       input,
-                      Keyword.take(opts, [:actor, :tenant])
+                      Keyword.take(opts, [:actor, :tenant, :authorize?])
                     )
                     |> Ash.Query.filter(filters)
                   else
@@ -268,13 +273,15 @@ defmodule Ash.CodeInterface do
                     |> Ash.Query.for_read(
                       unquote(action.name),
                       input,
-                      Keyword.take(opts, [:actor, :tenant])
+                      Keyword.take(opts, [:actor, :tenant, :authorize?])
                     )
                   end
 
                 if unquote(interface.get? || action.get?) do
                   query
-                  |> unquote(api).read_one!(Keyword.drop(opts, [:query, :tenant]))
+                  |> unquote(api).read_one!(
+                    Keyword.drop(opts, [:query, :tenant, :authorize?, :actor])
+                  )
                   |> case do
                     nil ->
                       raise Ash.Error.Query.NotFound, resource: query.resource
@@ -283,7 +290,10 @@ defmodule Ash.CodeInterface do
                       result
                   end
                 else
-                  unquote(api).read!(query, Keyword.drop(opts, [:query, :tenant]))
+                  unquote(api).read!(
+                    query,
+                    Keyword.drop(opts, [:query, :tenant, :actor, :authorize?])
+                  )
                 end
               end
             end
@@ -316,10 +326,13 @@ defmodule Ash.CodeInterface do
                   |> Ash.Changeset.for_create(
                     unquote(action.name),
                     input,
-                    Keyword.take(opts, [:actor, :tenant])
+                    Keyword.take(opts, [:actor, :tenant, :authorize?])
                   )
 
-                unquote(api).create(changeset, Keyword.drop(opts, [:actor, :changeset, :tenant]))
+                unquote(api).create(
+                  changeset,
+                  Keyword.drop(opts, [:actor, :changeset, :tenant, :authorize?])
+                )
               end
             end
 
@@ -350,10 +363,13 @@ defmodule Ash.CodeInterface do
                   |> Ash.Changeset.for_create(
                     unquote(action.name),
                     input,
-                    Keyword.take(opts, [:actor, :tenant])
+                    Keyword.take(opts, [:actor, :tenant, :authorize?])
                   )
 
-                unquote(api).create!(changeset, Keyword.drop(opts, [:actor, :changeset]))
+                unquote(api).create!(
+                  changeset,
+                  Keyword.drop(opts, [:actor, :changeset, :authorize?])
+                )
               end
             end
 
@@ -386,10 +402,10 @@ defmodule Ash.CodeInterface do
                   |> Ash.Changeset.for_update(
                     unquote(action.name),
                     input,
-                    Keyword.take(opts, [:actor, :tenant])
+                    Keyword.take(opts, [:actor, :tenant, :authorize?])
                   )
 
-                unquote(api).update(changeset, Keyword.drop(opts, [:actor, :tenant]))
+                unquote(api).update(changeset, Keyword.drop(opts, [:actor, :tenant, :authorize?]))
               end
             end
 
@@ -422,10 +438,13 @@ defmodule Ash.CodeInterface do
                   |> Ash.Changeset.for_update(
                     unquote(action.name),
                     input,
-                    Keyword.take(opts, [:actor, :tenant])
+                    Keyword.take(opts, [:actor, :tenant, :authorize?])
                   )
 
-                unquote(api).update!(changeset, Keyword.drop(opts, [:actor, :tenant]))
+                unquote(api).update!(
+                  changeset,
+                  Keyword.drop(opts, [:actor, :tenant, :authorize?])
+                )
               end
             end
 
@@ -458,10 +477,13 @@ defmodule Ash.CodeInterface do
                   |> Ash.Changeset.for_destroy(
                     unquote(action.name),
                     input,
-                    Keyword.take(opts, [:actor, :tenant])
+                    Keyword.take(opts, [:actor, :tenant, :authorize?])
                   )
 
-                unquote(api).destroy(changeset, Keyword.drop(opts, [:actor, :tenant]))
+                unquote(api).destroy(
+                  changeset,
+                  Keyword.drop(opts, [:actor, :tenant, :authorize?])
+                )
               end
             end
 
@@ -494,10 +516,13 @@ defmodule Ash.CodeInterface do
                   |> Ash.Changeset.for_destroy(
                     unquote(action.name),
                     input,
-                    Keyword.take(opts, [:actor, :tenant])
+                    Keyword.take(opts, [:actor, :tenant, :authorize?])
                   )
 
-                unquote(api).destroy!(changeset, Keyword.drop(opts, [:actor, :tenant]))
+                unquote(api).destroy!(
+                  changeset,
+                  Keyword.drop(opts, [:actor, :tenant, :authorize?])
+                )
               end
             end
         end

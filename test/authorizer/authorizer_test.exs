@@ -125,8 +125,8 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
       # Filter always fails on creates
       assert_raise Ash.Error.Forbidden, fn ->
         Post
-        |> Ash.Changeset.for_create(:create, %{title: "test"})
-        |> Api.create!(authorize?: true)
+        |> Ash.Changeset.for_create(:create, %{title: "test"}, authorize?: true)
+        |> Api.create!()
       end
 
       good_post =
@@ -142,13 +142,13 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
       # Filters apply to the base data
       assert_raise Ash.Error.Forbidden, fn ->
         bad_post
-        |> Ash.Changeset.for_update(:update, %{title: "next"})
-        |> Api.update!(authorize?: true)
+        |> Ash.Changeset.for_update(:update, %{title: "next"}, authorize?: true)
+        |> Api.update!()
       end
 
       good_post
-      |> Ash.Changeset.for_update(:update, %{title: "next"})
-      |> Api.update!(authorize?: true)
+      |> Ash.Changeset.for_update(:update, %{title: "next"}, authorize?: true)
+      |> Api.update!()
     end
   end
 end

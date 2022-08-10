@@ -228,6 +228,11 @@ defmodule Ash.Query do
       doc:
         "set the actor, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)"
     ],
+    authorize?: [
+      type: :boolean,
+      doc:
+        "set authorize?, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)"
+    ],
     tenant: [
       type: :any,
       doc: "set the tenant on the query"
@@ -264,11 +269,12 @@ defmodule Ash.Query do
       query
       |> timeout(query.timeout || opts[:timeout])
       |> set_actor(opts)
+      |> set_authorize?(opts)
       |> Ash.Query.set_tenant(opts[:tenant] || query.tenant)
       |> Map.put(:action, action)
       |> Map.put(:__validated_for_action__, action_name)
       |> cast_params(action, args)
-      |> run_preparations(action, opts[:actor])
+      |> run_preparations(action, opts[:actor], opts[:authorize?])
       |> add_action_filters(action, opts[:actor])
       |> require_arguments(action)
     else
@@ -289,6 +295,14 @@ defmodule Ash.Query do
   defp set_actor(query, opts) do
     if Keyword.has_key?(opts, :actor) do
       put_context(query, :private, %{actor: opts[:actor]})
+    else
+      query
+    end
+  end
+
+  defp set_authorize?(query, opts) do
+    if Keyword.has_key?(opts, :authorize?) do
+      put_context(query, :private, %{authorize?: opts[:authorize?]})
     else
       query
     end
@@ -359,14 +373,14 @@ defmodule Ash.Query do
     Enum.any?(action.arguments, &(&1.private? == false && to_string(&1.name) == name))
   end
 
-  defp run_preparations(query, action, actor) do
+  defp run_preparations(query, action, actor, authorize?) do
     query.resource
     |> Ash.Resource.Info.preparations()
     |> Enum.concat(action.preparations || [])
     |> Enum.reduce(query, fn %{preparation: {module, opts}}, query ->
       case module.init(opts) do
         {:ok, opts} ->
-          case module.prepare(query, opts, %{actor: actor}) do
+          case module.prepare(query, opts, %{actor: actor, authorize?: authorize?}) do
             %__MODULE__{} = prepared ->
               prepared
 

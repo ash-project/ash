@@ -155,16 +155,6 @@ defmodule Ash.Changeset do
 
   require Ash.Query
 
-  # Used for eager validating identities
-  defmodule ShadowApi do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      allow_unregistered? true
-    end
-  end
-
   @doc """
   Return a changeset over a resource or a record. `params` can be either attributes, relationship values or arguments.
 
@@ -362,6 +352,11 @@ defmodule Ash.Changeset do
       doc:
         "set the actor, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)"
     ],
+    authorize?: [
+      type: :any,
+      doc:
+        "set authorize?, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)"
+    ],
     tenant: [
       type: :any,
       doc: "set the tenant on the changeset"
@@ -508,12 +503,13 @@ defmodule Ash.Changeset do
           changeset
           |> handle_errors(action.error_handler)
           |> set_actor(opts)
+          |> set_authorize(opts)
           |> set_tenant(opts[:tenant] || changeset.tenant)
           |> Map.put(:__validated_for_action__, action.name)
           |> Map.put(:action, action)
           |> cast_params(action, params)
           |> set_argument_defaults(action)
-          |> run_action_changes(action, opts[:actor])
+          |> run_action_changes(action, opts[:actor], opts[:authorize?])
           |> add_validations()
           |> mark_validated(action.name)
           |> require_arguments(action)
@@ -602,6 +598,7 @@ defmodule Ash.Changeset do
           changeset
           |> handle_errors(action.error_handler)
           |> set_actor(opts)
+          |> set_authorize(opts)
           |> timeout(changeset.timeout || opts[:timeout])
           |> set_tenant(opts[:tenant] || changeset.tenant || changeset.data.__metadata__[:tenant])
           |> Map.put(:action, action)
@@ -610,7 +607,7 @@ defmodule Ash.Changeset do
           |> set_argument_defaults(action)
           |> validate_attributes_accepted(action)
           |> require_values(action.type, false, action.require_attributes)
-          |> run_action_changes(action, opts[:actor])
+          |> run_action_changes(action, opts[:actor], opts[:authorize?])
           |> set_defaults(changeset.action_type, false)
           |> add_validations()
           |> mark_validated(action.name)
@@ -643,13 +640,13 @@ defmodule Ash.Changeset do
         Enum.reduce(identities, changeset, fn identity, changeset ->
           changeset =
             if identity.eager_check_with do
-              validate_identity(changeset, identity)
+              validate_identity(changeset, identity, identity.eager_check_with)
             else
               changeset
             end
 
           if identity.pre_check_with do
-            before_action(changeset, &validate_identity(&1, identity))
+            before_action(changeset, &validate_identity(&1, identity, identity.pre_check_with))
           else
             changeset
           end
@@ -659,37 +656,41 @@ defmodule Ash.Changeset do
 
   defp validate_identity(
          %{context: %{private: %{upsert?: true, upsert_identity: name}}} = changeset,
-         %{name: name}
+         %{name: name},
+         _api
        ) do
     changeset
   end
 
   defp validate_identity(
          %{action: %{soft?: true}} = changeset,
-         identity
+         identity,
+         api
        ) do
-    do_validate_identity(changeset, identity)
+    do_validate_identity(changeset, identity, api)
   end
 
   defp validate_identity(
          %{action: %{type: type}} = changeset,
-         identity
+         identity,
+         api
        )
        when type in [:create, :update] do
-    do_validate_identity(changeset, identity)
+    do_validate_identity(changeset, identity, api)
   end
 
   defp validate_identity(
          %{action: %{type: type}} = changeset,
-         identity
+         identity,
+         api
        )
        when type in [:create, :update] do
-    do_validate_identity(changeset, identity)
+    do_validate_identity(changeset, identity, api)
   end
 
-  defp validate_identity(changeset, _), do: changeset
+  defp validate_identity(changeset, _, _), do: changeset
 
-  defp do_validate_identity(changeset, identity) do
+  defp do_validate_identity(changeset, identity, api) do
     if Enum.any?(identity.keys, &changing_attribute?(changeset, &1)) do
       action = Ash.Resource.Info.primary_action(changeset.resource, :read).name
 
@@ -699,10 +700,14 @@ defmodule Ash.Changeset do
         end)
 
       changeset.resource
-      |> Ash.Query.for_read(action, %{}, tenant: changeset.tenant)
+      |> Ash.Query.for_read(action, %{},
+        tenant: changeset.tenant,
+        actor: changeset.context[:private][:actor],
+        authorize?: changeset.context[:private][:authorize?]
+      )
       |> Ash.Query.do_filter(values)
       |> Ash.Query.limit(1)
-      |> ShadowApi.read_one()
+      |> api.read_one()
       |> case do
         {:ok, nil} ->
           changeset
@@ -769,6 +774,14 @@ defmodule Ash.Changeset do
   defp set_actor(changeset, opts) do
     if Keyword.has_key?(opts, :actor) do
       put_context(changeset, :private, %{actor: opts[:actor]})
+    else
+      changeset
+    end
+  end
+
+  defp set_authorize(changeset, opts) do
+    if Keyword.has_key?(opts, :authorize?) do
+      put_context(changeset, :private, %{authorize?: opts[:authorize?]})
     else
       changeset
     end
@@ -860,7 +873,7 @@ defmodule Ash.Changeset do
     end)
   end
 
-  defp run_action_changes(changeset, %{changes: changes}, actor) do
+  defp run_action_changes(changeset, %{changes: changes}, actor, authorize?) do
     changes = changes ++ Ash.Resource.Info.changes(changeset.resource, changeset.action_type)
 
     Enum.reduce(changes, changeset, fn
@@ -872,7 +885,7 @@ defmodule Ash.Changeset do
              module.validate(changeset, opts) == :ok
            end) do
           {:ok, opts} = module.init(opts)
-          module.change(changeset, opts, %{actor: actor})
+          module.change(changeset, opts, %{actor: actor, authorize?: authorize?})
         else
           changeset
         end
@@ -2039,6 +2052,7 @@ defmodule Ash.Changeset do
         relationship.destination
         |> Ash.Query.for_read(action, %{},
           actor: changeset.context[:private][:actor],
+          authorize?: changeset.context[:private][:authorize?],
           tenant: changeset.tenant
         )
         |> Ash.Query.limit(Enum.count(input))
