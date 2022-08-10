@@ -5,6 +5,35 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.53.1](https://github.com/ash-project/ash/compare/v1.53.0...v1.53.1) (2022-08-10)
+
+
+
+
+### Bug Fixes:
+
+* propery set authorize?: false on runtime filter
+
+* explicitly don't authorize the runtime filter authorization logic
+
+* fix eager function/operator evaluation
+
+* scrub values properly, same as last bug
+
+* map update bug when sanitizing boolean expressions
+
+* fixs runtime filter fallbacks
+
+### Improvements:
+
+* support `authorize?` as a changeset option
+
+* add `actor_present` policy
+
+* add `error?` option to get
+
+* fix various operator evaluators
+
 ## [v1.53.0](https://github.com/ash-project/ash/compare/v1.52.0-rc.22...v1.53.0) (2022-08-04)
 
 
