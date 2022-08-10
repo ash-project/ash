@@ -24,8 +24,7 @@ defmodule Ash.Actions.Helpers do
           private: %{
             actor: actor
           }
-        }
-        when not is_nil(actor) ->
+        } ->
           Keyword.put_new(opts, :actor, actor)
 
         _ ->
@@ -38,8 +37,7 @@ defmodule Ash.Actions.Helpers do
           private: %{
             authorize?: authorize?
           }
-        }
-        when is_boolean(authorize?) ->
+        } ->
           Keyword.put_new(opts, :authorize?, authorize?)
 
         _ ->
@@ -105,7 +103,7 @@ defmodule Ash.Actions.Helpers do
         opts
       else
         case Process.get(:ash_authorize?) do
-          {:authorize?, value} when is_boolean(value) ->
+          {:authorize?, value} ->
             Keyword.put(opts, :authorize?, value)
 
           _ ->
