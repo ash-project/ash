@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v1.53.2](https://github.com/ash-project/ash/compare/v1.53.1...v1.53.2) (2022-08-10)
+
+
+
+
+### Bug Fixes:
+
+* persist a nil actor properly
+
 ## [v1.53.1](https://github.com/ash-project/ash/compare/v1.53.0...v1.53.1) (2022-08-10)
 
 
