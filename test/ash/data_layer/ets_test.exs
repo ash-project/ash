@@ -57,7 +57,7 @@ defmodule Ash.DataLayer.EtsTest do
   end
 
   test "won't compile with identities that don't precheck" do
-    assert_raise Ash.Error.Dsl.DslError, ~r/pre_check_with/, fn ->
+    assert_raise Spark.Error.DslError, ~r/pre_check_with/, fn ->
       defmodule Example do
         use Ash.Resource,
           data_layer: Ash.DataLayer.Ets

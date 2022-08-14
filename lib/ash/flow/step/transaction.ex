@@ -16,12 +16,12 @@ defmodule Ash.Flow.Step.Transaction do
           doc: "A timeout to apply to the transaction."
         ],
         resource: [
-          type: :ash_resource,
+          type: Ash.OptionsHelpers.ash_resource(),
           doc: """
           The Ash resource to use for the transaction.
           """
         ]
       ]
-      |> Ash.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")
+      |> Spark.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")
       |> Keyword.delete(:touches_resources)
 end

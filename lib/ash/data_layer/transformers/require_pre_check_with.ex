@@ -2,7 +2,7 @@ defmodule Ash.DataLayer.Transformers.RequirePreCheckWith do
   @moduledoc """
   Ensures that all identities have a `pre_check_with` configured, or raises.
   """
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
   require Logger
 
@@ -25,7 +25,7 @@ defmodule Ash.DataLayer.Transformers.RequirePreCheckWith do
           {:ok, dsl}
         else
           {:error,
-           Ash.Error.Dsl.DslError.exception(
+           Spark.Error.DslError.exception(
              module: resource,
              message: """
              The data layer for #{inspect(resource)} does not support native checking of identities.

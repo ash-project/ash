@@ -122,7 +122,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
   describe "validations" do
     test "fails if destination_field is not an atom" do
       assert_raise(
-        Ash.Error.Dsl.DslError,
+        Spark.Error.DslError,
         "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  expected :destination_field to be an atom, got: \"foo\"",
         fn ->
           defposts do
@@ -136,7 +136,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
 
     test "fails if source_field is not an atom" do
       assert_raise(
-        Ash.Error.Dsl.DslError,
+        Spark.Error.DslError,
         "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  expected :source_field to be an atom, got: \"foo\"",
         fn ->
           defposts do
@@ -150,7 +150,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
 
     test "fails if the destination is not an atom" do
       assert_raise(
-        Ash.Error.Dsl.DslError,
+        Spark.Error.DslError,
         "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  expected :destination to be an atom, got: \"foobar\"",
         fn ->
           defposts do
@@ -164,7 +164,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
 
     test "fails if the relationship name is not an atom" do
       assert_raise(
-        Ash.Error.Dsl.DslError,
+        Spark.Error.DslError,
         "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  expected :name to be an atom, got: \"foobar\"",
         fn ->
           defposts do
@@ -178,7 +178,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
 
     test "fails if `primary_key?` is not a boolean" do
       assert_raise(
-        Ash.Error.Dsl.DslError,
+        Spark.Error.DslError,
         "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  expected :primary_key? to be a boolean, got: \"blah\"",
         fn ->
           defposts do
@@ -192,7 +192,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
 
     test "fails if `private?` is not a boolean" do
       assert_raise(
-        Ash.Error.Dsl.DslError,
+        Spark.Error.DslError,
         "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  expected :private? to be a boolean, got: \"blah\"",
         fn ->
           defposts do
@@ -207,7 +207,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
 
   test "fails if `define_field?` is not a boolean" do
     assert_raise(
-      Ash.Error.Dsl.DslError,
+      Spark.Error.DslError,
       "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  expected :define_field? to be a boolean, got: \"blah\"",
       fn ->
         defposts do
@@ -221,7 +221,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
 
   test "fails in api initialization if the destination resource doesn't have the correct field" do
     assert_raise(
-      Ash.Error.Dsl.DslError,
+      Spark.Error.DslError,
       ~r/Relationship `post` expects source field `post_id` to be defined/,
       fn ->
         defposts do

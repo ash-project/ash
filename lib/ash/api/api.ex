@@ -38,9 +38,9 @@ defmodule Ash.Api do
   See the resource DSL documentation for more.
   """
 
-  use Ash.Dsl, default_extensions: [extensions: [Ash.Api.Dsl]]
+  use Spark.Dsl, default_extensions: [extensions: [Ash.Api.Dsl]]
 
-  import Ash.OptionsHelpers, only: [merge_schemas: 3]
+  import Spark.OptionsHelpers, only: [merge_schemas: 3]
 
   alias Ash.Actions.{Create, Destroy, Read, Update}
 
@@ -52,7 +52,7 @@ defmodule Ash.Api do
 
   alias Ash.Error.Query.NotFound
 
-  alias Ash.Dsl.Extension
+  alias Spark.Dsl.Extension
 
   require Ash.Query
 
@@ -197,7 +197,7 @@ defmodule Ash.Api do
   end
 
   defp validate_or_error(opts, schema) do
-    case Ash.OptionsHelpers.validate(opts, schema) do
+    case Spark.OptionsHelpers.validate(opts, schema) do
       {:ok, value} -> {:ok, value}
       {:error, error} -> {:error, Exception.message(error)}
     end
@@ -361,7 +361,7 @@ defmodule Ash.Api do
   For a resource with a composite primary key, pass a keyword list, e.g
   `MyApi.get(MyResource, first_key: 1, second_key: 2)`
 
-  #{Ash.OptionsHelpers.docs(@get_opts_schema)}
+  #{Spark.OptionsHelpers.docs(@get_opts_schema)}
   """
   @callback get(
               resource :: Ash.Resource.t(),
@@ -399,15 +399,15 @@ defmodule Ash.Api do
 
   For more information on building a query, see `Ash.Query`.
 
-  #{Ash.OptionsHelpers.docs(@read_opts_schema)}
+  #{Spark.OptionsHelpers.docs(@read_opts_schema)}
 
   ## Pagination
 
   #### Limit/offset pagination
-  #{Ash.OptionsHelpers.docs(@offset_page_opts)}
+  #{Spark.OptionsHelpers.docs(@offset_page_opts)}
 
   #### Keyset pagination
-  #{Ash.OptionsHelpers.docs(@keyset_page_opts)}
+  #{Spark.OptionsHelpers.docs(@keyset_page_opts)}
   """
   @callback read(Ash.Query.t(), params :: Keyword.t()) ::
               {:ok, list(Ash.Resource.record())}
@@ -453,7 +453,7 @@ defmodule Ash.Api do
   which case the loaded fields of the query are used. Relationship loads can be nested, for
   example: `MyApi.load(record, [posts: [:comments]])`.
 
-  #{Ash.OptionsHelpers.docs(@load_opts_schema)}
+  #{Spark.OptionsHelpers.docs(@load_opts_schema)}
   """
   @callback load(
               record_or_records :: Ash.Resource.record() | [Ash.Resource.record()],
@@ -473,7 +473,7 @@ defmodule Ash.Api do
   @doc """
   Create a record.
 
-  #{Ash.OptionsHelpers.docs(@create_opts_schema)}
+  #{Spark.OptionsHelpers.docs(@create_opts_schema)}
   """
   @callback create(Ash.Changeset.t(), params :: Keyword.t()) ::
               {:ok, Ash.Resource.record()}
@@ -491,7 +491,7 @@ defmodule Ash.Api do
   @doc """
   Update a record.
 
-  #{Ash.OptionsHelpers.docs(@update_opts_schema)}
+  #{Spark.OptionsHelpers.docs(@update_opts_schema)}
   """
   @callback update(Ash.Changeset.t(), params :: Keyword.t()) ::
               {:ok, Ash.Resource.record()}
@@ -511,7 +511,7 @@ defmodule Ash.Api do
   @doc """
   Destroy a record.
 
-  #{Ash.OptionsHelpers.docs(@destroy_opts_schema)}
+  #{Spark.OptionsHelpers.docs(@destroy_opts_schema)}
   """
   @callback destroy(Ash.Changeset.t() | Ash.Resource.record(), params :: Keyword.t()) ::
               :ok
@@ -547,7 +547,7 @@ defmodule Ash.Api do
   def resource(api, resource) do
     cond do
       allow_unregistered?(api) ->
-        if Ash.Dsl.is?(resource, Ash.Resource) do
+        if Spark.Dsl.is?(resource, Ash.Resource) do
           resource
         else
           nil
@@ -630,7 +630,7 @@ defmodule Ash.Api do
   @spec get!(Ash.Api.t(), Ash.Resource.t(), term(), Keyword.t()) ::
           Ash.Resource.record() | no_return
   def get!(api, resource, id, opts \\ []) do
-    opts = Ash.OptionsHelpers.validate!(opts, @get_opts_schema)
+    opts = Spark.OptionsHelpers.validate!(opts, @get_opts_schema)
 
     api
     |> get(resource, id, opts)
@@ -641,7 +641,7 @@ defmodule Ash.Api do
   @spec get(Ash.Api.t(), Ash.Resource.t(), term(), Keyword.t()) ::
           {:ok, Ash.Resource.record()} | {:error, term}
   def get(api, resource, id, opts) do
-    with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @get_opts_schema),
+    with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @get_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, resource),
          {:ok, filter} <- Ash.Filter.get_filter(resource, id) do
       query =
@@ -819,7 +819,7 @@ defmodule Ash.Api do
 
   @doc false
   def load!(api, data, query, opts \\ []) do
-    opts = Ash.OptionsHelpers.validate!(opts, @load_opts_schema)
+    opts = Spark.OptionsHelpers.validate!(opts, @load_opts_schema)
 
     api
     |> load(data, query, opts)
@@ -872,7 +872,7 @@ defmodule Ash.Api do
 
     with %{valid?: true} <- query,
          {:ok, action} <- get_action(query.resource, opts, :read, query.action),
-         {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @load_opts_schema) do
+         {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @load_opts_schema) do
       Read.unpaginated_read(query, action, Keyword.merge(opts, initial_data: data))
     else
       {:error, error} ->
@@ -887,7 +887,7 @@ defmodule Ash.Api do
   @spec read!(Ash.Api.t(), Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
           list(Ash.Resource.record()) | no_return
   def read!(api, query, opts \\ []) do
-    opts = Ash.OptionsHelpers.validate!(opts, @read_opts_schema)
+    opts = Spark.OptionsHelpers.validate!(opts, @read_opts_schema)
 
     api
     |> read(query, opts)
@@ -906,7 +906,7 @@ defmodule Ash.Api do
   def read(api, query, opts) do
     query = Ash.Query.set_api(query, api)
 
-    with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @read_opts_schema),
+    with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @read_opts_schema),
          {:ok, action} <- get_action(query.resource, opts, :read, query.action) do
       Read.run(query, action, opts)
     else
@@ -979,7 +979,7 @@ defmodule Ash.Api do
           | {Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | no_return
   def create!(api, changeset, opts) do
-    opts = Ash.OptionsHelpers.validate!(opts, @create_opts_schema)
+    opts = Spark.OptionsHelpers.validate!(opts, @create_opts_schema)
 
     api
     |> create(changeset, opts)
@@ -992,7 +992,7 @@ defmodule Ash.Api do
           | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | {:error, term}
   def create(api, changeset, opts) do
-    with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @create_opts_schema),
+    with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @create_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, changeset.resource),
          {:ok, action} <- get_action(resource, opts, :create, changeset.action) do
       Create.run(api, changeset, action, opts)
@@ -1001,7 +1001,7 @@ defmodule Ash.Api do
 
   @doc false
   def update!(api, changeset, opts) do
-    opts = Ash.OptionsHelpers.validate!(opts, @update_opts_schema)
+    opts = Spark.OptionsHelpers.validate!(opts, @update_opts_schema)
 
     api
     |> update(changeset, opts)
@@ -1014,7 +1014,7 @@ defmodule Ash.Api do
           | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | {:error, term}
   def update(api, changeset, opts) do
-    with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @update_opts_schema),
+    with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @update_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, changeset.resource),
          {:ok, action} <- get_action(resource, opts, :update, changeset.action) do
       Update.run(api, changeset, action, opts)
@@ -1029,7 +1029,7 @@ defmodule Ash.Api do
           | {Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | no_return()
   def destroy!(api, changeset, opts) do
-    opts = Ash.OptionsHelpers.validate!(opts, @destroy_opts_schema)
+    opts = Spark.OptionsHelpers.validate!(opts, @destroy_opts_schema)
 
     api
     |> destroy(changeset, opts)
@@ -1047,7 +1047,7 @@ defmodule Ash.Api do
           | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | {:error, term}
   def destroy(api, %Ash.Changeset{resource: resource} = changeset, opts) do
-    with {:ok, opts} <- Ash.OptionsHelpers.validate(opts, @destroy_opts_schema),
+    with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @destroy_opts_schema),
          {:ok, resource} <- Ash.Api.resource(api, resource),
          {:ok, action} <- get_action(resource, opts, :destroy, changeset.action) do
       Destroy.run(api, changeset, action, opts)

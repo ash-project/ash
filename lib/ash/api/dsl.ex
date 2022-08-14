@@ -1,5 +1,5 @@
 defmodule Ash.Api.Dsl do
-  @execution %Ash.Dsl.Section{
+  @execution %Spark.Dsl.Section{
     name: :execution,
     describe: "Options for how requests are executed using this Api",
     examples: [
@@ -18,7 +18,7 @@ defmodule Ash.Api.Dsl do
     ]
   }
 
-  @authorization %Ash.Dsl.Section{
+  @authorization %Spark.Dsl.Section{
     name: :authorization,
     describe: "Options for how requests are authorized using this Api",
     examples: [
@@ -56,7 +56,7 @@ defmodule Ash.Api.Dsl do
     ]
   }
 
-  @resources %Ash.Dsl.Section{
+  @resources %Spark.Dsl.Section{
     name: :resources,
     describe: "List the resources present in this API",
     examples: [
@@ -129,13 +129,13 @@ defmodule Ash.Api.Dsl do
 
   ### Index
 
-  #{Ash.Dsl.Extension.doc_index(@sections)}
+  #{Spark.Dsl.Extension.doc_index(@sections)}
 
   ### Docs
 
-  #{Ash.Dsl.Extension.doc(@sections)}
+  #{Spark.Dsl.Extension.doc(@sections)}
   <!--- ash-hq-hide-stop -->
   """
 
-  use Ash.Dsl.Extension, sections: @sections
+  use Spark.Dsl.Extension, sections: @sections
 end

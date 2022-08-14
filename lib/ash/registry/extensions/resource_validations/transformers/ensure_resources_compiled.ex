@@ -2,7 +2,7 @@ defmodule Ash.Registry.ResourceValidations.Transformers.EnsureResourcesCompiled 
   @moduledoc """
   Ensures that all resources for a given registry are compiled.
   """
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
   require Logger
 

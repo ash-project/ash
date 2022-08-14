@@ -6,10 +6,10 @@ defmodule Ash.Resource.Transformers.DefaultPrimaryKey do
   The reason for this is that resources must have a primary key, and embedded resources
   actually make sense without one. But this is simulated with a private uuid primary key.
   """
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
-  alias Ash.Dsl.Transformer
-  alias Ash.Error.Dsl.DslError
+  alias Spark.Dsl.Transformer
+  alias Spark.Error.DslError
 
   @extension Ash.Resource.Dsl
 

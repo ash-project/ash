@@ -58,7 +58,7 @@ defmodule Ash.Policy.Authorizer do
     ]
   ]
 
-  @authorize_if %Ash.Dsl.Entity{
+  @authorize_if %Spark.Dsl.Entity{
     name: :authorize_if,
     describe: "If the check is true, the request is authorized, otherwise run remaining checks.",
     args: [:check],
@@ -74,7 +74,7 @@ defmodule Ash.Policy.Authorizer do
     ]
   }
 
-  @forbid_if %Ash.Dsl.Entity{
+  @forbid_if %Spark.Dsl.Entity{
     name: :forbid_if,
     describe: "If the check is true, the request is forbidden, otherwise run remaining checks.",
     args: [:check],
@@ -90,7 +90,7 @@ defmodule Ash.Policy.Authorizer do
     ]
   }
 
-  @authorize_unless %Ash.Dsl.Entity{
+  @authorize_unless %Spark.Dsl.Entity{
     name: :authorize_unless,
     describe: "If the check is false, the request is authorized, otherwise run remaining checks.",
     args: [:check],
@@ -106,7 +106,7 @@ defmodule Ash.Policy.Authorizer do
     ]
   }
 
-  @forbid_unless %Ash.Dsl.Entity{
+  @forbid_unless %Spark.Dsl.Entity{
     name: :forbid_unless,
     describe: "If the check is true, the request is forbidden, otherwise run remaining checks.",
     args: [:check],
@@ -122,7 +122,7 @@ defmodule Ash.Policy.Authorizer do
     ]
   }
 
-  @policy %Ash.Dsl.Entity{
+  @policy %Spark.Dsl.Entity{
     name: :policy,
     describe: """
     A policy has a name, a condition, and a list of checks.
@@ -200,7 +200,7 @@ defmodule Ash.Policy.Authorizer do
         "A policy that, if passed, will skip all following policies. If failed, authorization moves on to the next policy"
   }
 
-  @policies %Ash.Dsl.Section{
+  @policies %Spark.Dsl.Section{
     name: :policies,
     describe: """
     A section for declaring authorization policies.
@@ -269,9 +269,9 @@ defmodule Ash.Policy.Authorizer do
 
   # DSL Documenation
   ## Table of Contents
-  #{Ash.Dsl.Extension.doc_index(@sections)}
+  #{Spark.Dsl.Extension.doc_index(@sections)}
 
-  #{Ash.Dsl.Extension.doc(@sections)}
+  #{Spark.Dsl.Extension.doc(@sections)}
 
   A resource can be given a set of policies, which are enforced on each call to a resource action.
 
@@ -294,7 +294,7 @@ defmodule Ash.Policy.Authorizer do
 
   @behaviour Ash.Authorizer
 
-  use Ash.Dsl.Extension, sections: @sections
+  use Spark.Dsl.Extension, sections: @sections
 
   @impl true
   def exception({:changeset_doesnt_match_filter, filter}, state) do

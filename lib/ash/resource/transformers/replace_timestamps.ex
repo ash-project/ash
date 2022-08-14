@@ -1,8 +1,8 @@
 defmodule Ash.Resource.Transformers.ReplaceTimestamps do
   @moduledoc "Replaces a single `timestamps()` attribute with `inserted_at` and `updated_at` timestamps."
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
-  alias Ash.Dsl.Transformer
+  alias Spark.Dsl.Transformer
 
   def transform(_resource, dsl_state) do
     attributes =
@@ -43,6 +43,6 @@ defmodule Ash.Resource.Transformers.ReplaceTimestamps do
       transform: nil
     }
 
-    Ash.Dsl.Entity.build(params, [], [])
+    Spark.Dsl.Entity.build(params, [], [])
   end
 end

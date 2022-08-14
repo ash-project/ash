@@ -1,6 +1,6 @@
 defmodule Ash.Registry.Transformers.WarnOnEmpty do
   @moduledoc "Warns if a registry has no entries in it"
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
   def transform(registry, dsl) do
     if Ash.Registry.warn_on_empty?(registry) do

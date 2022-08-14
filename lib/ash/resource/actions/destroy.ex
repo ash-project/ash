@@ -39,11 +39,11 @@ defmodule Ash.Resource.Actions.Destroy do
                     "If specified, the destroy action calls the datalayer's update function with any specified changes."
                 ]
               ]
-              |> Ash.OptionsHelpers.merge_schemas(
+              |> Spark.OptionsHelpers.merge_schemas(
                 @global_opts,
                 "Action Options"
               )
-              |> Ash.OptionsHelpers.merge_schemas(
+              |> Spark.OptionsHelpers.merge_schemas(
                 @create_update_opts,
                 "Create/Update Options (for soft destroys)"
               )

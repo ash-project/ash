@@ -12,7 +12,7 @@ defmodule Ash.DataLayer.Mnesia do
   """
   @behaviour Ash.DataLayer
 
-  @mnesia %Ash.Dsl.Section{
+  @mnesia %Spark.Dsl.Section{
     name: :mnesia,
     describe: """
     A section for configuring the mnesia data layer
@@ -32,12 +32,12 @@ defmodule Ash.DataLayer.Mnesia do
     ]
   }
 
-  use Ash.Dsl.Extension,
+  use Spark.Dsl.Extension,
     sections: [@mnesia],
     transformers: [Ash.DataLayer.Transformers.RequirePreCheckWith]
 
   alias Ash.Actions.Sort
-  alias Ash.Dsl.Extension
+  alias Spark.Dsl.Extension
   alias :mnesia, as: Mnesia
 
   def start(api) do

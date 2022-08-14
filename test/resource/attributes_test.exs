@@ -52,7 +52,7 @@ defmodule Ash.Test.Resource.AttributesTest do
   describe "validation" do
     test "raises if the attribute name is not an atom" do
       assert_raise(
-        Ash.Error.Dsl.DslError,
+        Spark.Error.DslError,
         "[Ash.Test.Resource.AttributesTest.Post]\n attributes -> attribute -> 10:\n  expected :name to be an atom, got: 10",
         fn ->
           defposts do
@@ -66,7 +66,7 @@ defmodule Ash.Test.Resource.AttributesTest do
 
     test "raises if you pass an invalid value for `primary_key?`" do
       assert_raise(
-        Ash.Error.Dsl.DslError,
+        Spark.Error.DslError,
         "[Ash.Test.Resource.AttributesTest.Post]\n attributes -> attribute -> foo:\n  expected :primary_key? to be a boolean, got: 10",
         fn ->
           defposts do
@@ -80,7 +80,7 @@ defmodule Ash.Test.Resource.AttributesTest do
 
     test "raises if you pass an invalid value for `private?`" do
       assert_raise(
-        Ash.Error.Dsl.DslError,
+        Spark.Error.DslError,
         "[Ash.Test.Resource.AttributesTest.Post]\n attributes -> attribute -> foo:\n  expected :private? to be a boolean, got: \"an_invalid_value\"",
         fn ->
           defposts do

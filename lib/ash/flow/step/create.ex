@@ -7,6 +7,6 @@ defmodule Ash.Flow.Step.Create do
   def schema,
     do:
       []
-      |> Ash.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")
-      |> Ash.OptionsHelpers.merge_schemas(@shared_action_opts, "Action Step Opts")
+      |> Spark.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")
+      |> Spark.OptionsHelpers.merge_schemas(@shared_action_opts, "Action Step Opts")
 end

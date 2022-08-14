@@ -5,9 +5,9 @@ defmodule Ash.Resource.Transformers.CreateJoinRelationship do
   This will likely not be around for long, as our logic around many to many relationships
   will update soon.
   """
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
-  alias Ash.Dsl.Transformer
+  alias Spark.Dsl.Transformer
 
   @extension Ash.Resource.Dsl
 

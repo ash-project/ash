@@ -101,7 +101,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
   describe "validation" do
     test "it fails if you pass a string to `through`" do
       assert_raise(
-        Ash.Error.Dsl.DslError,
+        Spark.Error.DslError,
         "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  expected :through to be an atom, got: \"some_table\"",
         fn ->
           defposts do
@@ -129,7 +129,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
 
     test "it fails if you dont pass an atom for `source_field_on_join_table`" do
       assert_raise(
-        Ash.Error.Dsl.DslError,
+        Spark.Error.DslError,
         "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  expected :source_field_on_join_table to be an atom, got: \"what\"",
         fn ->
           defposts do
@@ -146,7 +146,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
 
     test "it fails if you dont pass an atom for `destination_field_on_join_table`" do
       assert_raise(
-        Ash.Error.Dsl.DslError,
+        Spark.Error.DslError,
         "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  expected :destination_field_on_join_table to be an atom, got: \"what\"",
         fn ->
           defposts do
@@ -163,7 +163,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
 
     test "it fails if you dont pass an atom for `source_field`" do
       assert_raise(
-        Ash.Error.Dsl.DslError,
+        Spark.Error.DslError,
         "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  expected :source_field to be an atom, got: \"what\"",
         fn ->
           defposts do
@@ -181,7 +181,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
 
     test "it fails if you dont pass an atom for `destination_field`" do
       assert_raise(
-        Ash.Error.Dsl.DslError,
+        Spark.Error.DslError,
         "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  expected :destination_field to be an atom, got: \"what\"",
         fn ->
           defposts do
@@ -199,7 +199,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
 
     test "fails if private? is not an boolean" do
       assert_raise(
-        Ash.Error.Dsl.DslError,
+        Spark.Error.DslError,
         "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  expected :private? to be a boolean, got: \"an_invalid_field\"",
         fn ->
           defposts do

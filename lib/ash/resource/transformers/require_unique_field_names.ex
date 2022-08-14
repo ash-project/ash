@@ -2,10 +2,10 @@ defmodule Ash.Resource.Transformers.RequireUniqueFieldNames do
   @moduledoc """
   Confirms that a resource does not have multiple fields(attributes, calculations, aggregates, and relationships) with the same name.
   """
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
-  alias Ash.Dsl.Transformer
-  alias Ash.Error.Dsl.DslError
+  alias Spark.Dsl.Transformer
+  alias Spark.Error.DslError
 
   def transform(resource, dsl_state) do
     attributes =

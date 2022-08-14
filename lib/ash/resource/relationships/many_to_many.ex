@@ -46,13 +46,13 @@ defmodule Ash.Resource.Relationships.ManyToMany do
         }
 
   import Ash.Resource.Relationships.SharedOptions
-  alias Ash.OptionsHelpers
+  alias Spark.OptionsHelpers
 
   @global_opts shared_options()
                |> OptionsHelpers.set_default!(:destination_field, :id)
                |> OptionsHelpers.set_default!(:source_field, :id)
 
-  @opt_schema Ash.OptionsHelpers.merge_schemas(
+  @opt_schema Spark.OptionsHelpers.merge_schemas(
                 [
                   source_field_on_join_table: [
                     type: :atom,
@@ -77,7 +77,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
                       "The attribute on the join resource that should line up with `destination_field` on the related resource."
                   ],
                   through: [
-                    type: :ash_resource,
+                    type: Ash.OptionsHelpers.ash_resource(),
                     required: true,
                     links: [],
                     doc: "The resource to use as the join resource."
