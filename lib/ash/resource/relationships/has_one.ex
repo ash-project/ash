@@ -57,10 +57,9 @@ defmodule Ash.Resource.Relationships.HasOne do
                   [
                     required?: [
                       type: :boolean,
+                      links: [],
                       doc: """
-                      Marks the relationship as required. This is *not* currently validated anywhere, since the
-                      relationship is managed by the destination, but ash_graphql uses it for type information,
-                      and it can be used for expressiveness.
+                      Marks the relationship as required. Has no effect on validations, but can inform extensions that there will always be a related entity.
                       """
                     ]
                   ],

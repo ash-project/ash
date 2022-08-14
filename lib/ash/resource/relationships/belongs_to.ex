@@ -61,34 +61,51 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                 [
                   primary_key?: [
                     type: :boolean,
+                    links: [
+                      guides: ["ash:guide:Attributes"]
+                    ],
                     default: false,
-                    doc: "Whether this field is, or is part of, the primary key of a resource."
+                    doc:
+                      "Whether the generated attribute is, or is part of, the primary key of a resource."
                   ],
                   required?: [
                     type: :boolean,
                     default: false,
+                    links: [
+                      guides: ["ash:guide:Attributes"]
+                    ],
                     doc:
-                      "Whether this relationship must always be present, e.g: must be included on creation, and never removed (it can still be changed)"
+                      "Whether this relationship must always be present, e.g: must be included on creation, and never removed (it may be modified). The generated attribute will not allow nil values."
                   ],
                   attribute_writable?: [
                     type: :boolean,
                     default: false,
+                    links: [
+                      guides: ["ash:guide:Attributes"]
+                    ],
                     doc: """
-                    Whether this relationship's generated attribute will be marked as public & writable.
-
-                    Has no effect when combined with `define_field?: false`.
+                    Whether the generated attribute will be marked as public & writable.
                     """
                   ],
                   define_field?: [
                     type: :boolean,
                     default: true,
+                    links: [
+                      guides: ["ash:guide:Attributes"]
+                    ],
                     doc:
-                      "If set to `false` a field is not created on the resource for this relationship, and one must be manually added in `attributes`."
+                      "If set to `false` an attribute is not created on the resource for this relationship, and one must be manually added in `attributes`, invalidating many other options."
                   ],
                   field_type: [
                     type: :any,
+                    links: [
+                      modules: [
+                        "ash:module:Ash.Type"
+                      ],
+                      guides: ["ash:guide:Attributes"]
+                    ],
                     default: :uuid,
-                    doc: "The field type of the automatically created field."
+                    doc: "The type of the generated created attribute."
                   ]
                 ],
                 @global_opts,

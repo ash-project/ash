@@ -19,64 +19,88 @@ defmodule Ash.Resource.Calculation do
     name: [
       type: :atom,
       required: true,
+      links: [],
       doc: "The field name to use for the calculation value"
     ],
     type: [
       type: :any,
+      links: [
+        modules: [
+          "ash:module:Ash.Type"
+        ]
+      ],
       required: true
     ],
     constraints: [
       type: :keyword_list,
       default: [],
+      links: [
+        modules: [
+          "ash:module:Ash.Type"
+        ]
+      ],
       doc: "Constraints to provide to the type."
     ],
     allow_async?: [
       type: :boolean,
       default: false,
+      links: [
+        guides: [
+          "ash:guide:Actions"
+        ]
+      ],
       doc: """
       If set to `true`, then the calculation may be run after the main query.
-
-      This is useful for calculations that are very expensive, especially when combined with complex filters/join
-      scenarios. By adding this, we will rerun a trimmed down version of the main query, using the primary keys for
-      fast access. This will be done asynchronously for each calculation that has `allow_async?: true`.
-
-      Keep in mind that if the calculation is used in a filter or sort, it cannot be done asynchrnously,
-      and *must* be done in the main query.
       """
     ],
     calculation: [
       type: {:custom, __MODULE__, :calculation, []},
       required: true,
+      links: [],
       doc: "The module or `{module, opts}` to use for the calculation"
     ],
     description: [
       type: :string,
+      links: [
+        guides: [
+          "ash:guide:Documentation"
+        ]
+      ],
       doc: "An optional description for the calculation"
     ],
     private?: [
       type: :boolean,
       default: false,
+      links: [
+        guides: [
+          "ash:guide:Security"
+        ]
+      ],
       doc:
         "Whether or not the calculation will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql"
     ],
     select: [
       type: {:list, :atom},
       default: [],
-      doc: "A list of fields to ensure selected in the case that the calculation is run."
+      links: [],
+      doc: "A list of fields to ensure selected if the calculation is used."
     ],
     load: [
       type: :any,
       default: [],
+      links: [],
       doc: "A load statement to be applied if the calculation is used."
     ],
     allow_nil?: [
       type: :boolean,
       default: true,
+      links: [],
       doc: "Whether or not the calculation can return nil."
     ],
     filterable?: [
       type: {:or, [:boolean, {:in, [:simple_equality]}]},
       default: true,
+      links: [],
       doc: "Whether or not the calculation should be usable in filters."
     ]
   ]
@@ -98,26 +122,39 @@ defmodule Ash.Resource.Calculation do
       name: [
         type: :atom,
         required: true,
-        doc: "The name to use for the argument"
+        doc: "The name to use for the argument",
+        links: []
       ],
       type: [
         type: :ash_type,
         required: true,
+        links: [
+          modules: [
+            "ash:module:Ash.Type"
+          ]
+        ],
         doc: "The type of the argument"
       ],
       default: [
         type: {:or, [{:mfa_or_fun, 0}, :literal]},
         required: false,
+        links: [],
         doc: "A default value to use for the argument if not provided"
       ],
       allow_nil?: [
         type: :boolean,
         default: true,
-        doc: "Whether or not the argument value may be nil"
+        links: [],
+        doc: "Whether or not the argument value may be nil (or may be not provided)"
       ],
       constraints: [
         type: :keyword_list,
         default: [],
+        links: [
+          modules: [
+            "ash:module:Ash.Type"
+          ]
+        ],
         doc:
           "Constraints to provide to the type when casting the value. See the type's documentation for more information."
       ]

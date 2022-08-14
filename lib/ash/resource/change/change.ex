@@ -10,7 +10,7 @@ defmodule Ash.Resource.Change do
   when this change was configured on a resource, and the context, which currently only has
   the actor.
   """
-  defstruct [:change, :on, :only_when_valid?, where: []]
+  defstruct [:change, :on, :only_when_valid?, :description, where: []]
 
   @type t :: %__MODULE__{}
 
@@ -21,22 +21,30 @@ defmodule Ash.Resource.Change do
         type: {:custom, __MODULE__, :on, []},
         default: [:create, :update],
         doc: """
-        The action types the validation should run on.
-
-        Many validations don't make sense in the context of deletion, so by default it is left out of the list.
-        """
+        The action types the validation should run on. Destroy actions are omitted by default as most changes don't make sense for a destroy.
+        """,
+        links: []
       ],
       only_when_valid?: [
         type: :boolean,
         default: false,
+        links: [],
         doc: """
         If the change should only be run on valid changes. By default, all changes are run unless stated otherwise here.
-
-        For 2.0 this may become the default.
         """
+      ],
+      description: [
+        type: :string,
+        doc: "An optional description for the change",
+        links: []
       ],
       change: [
         type: {:ash_behaviour, Ash.Resource.Change, Ash.Resource.Change.Builtins},
+        links: [
+          modules: [
+            "ash:module:Ash.Resource.Change.Builtins"
+          ]
+        ],
         doc: """
         The module and options for a change.
         """,
@@ -46,6 +54,11 @@ defmodule Ash.Resource.Change do
         type:
           {:list, {:ash_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins}},
         required: false,
+        links: [
+          modules: [
+            "ash:module:Ash.Resource.Validation.Builtins"
+          ]
+        ],
         default: [],
         doc: """
         Validations that should pass in order for this validation to apply.

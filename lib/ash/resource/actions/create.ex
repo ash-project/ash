@@ -39,8 +39,13 @@ defmodule Ash.Resource.Actions.Create do
                   type: {:list, :atom},
                   doc: """
                   A list of attributes that would normally be required, but should not be for this action. They will still be validated just before
-                  the record is created, but this allows for setting required attributes in your changes under the hood.
-                  """
+                  the record is created.
+                  """,
+                  links: [
+                    guides: [
+                      "ash:guide:Actions"
+                    ]
+                  ]
                 ]
               ]
               |> Ash.OptionsHelpers.merge_schemas(

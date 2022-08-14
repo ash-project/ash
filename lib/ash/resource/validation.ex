@@ -69,20 +69,27 @@ defmodule Ash.Resource.Validation do
     validation: [
       type: {:ash_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins},
       required: true,
-      doc: "The module/opts pair of the validation"
+      doc: "The module/opts pair of the validation",
+      links: []
     ],
     where: [
       type: {:list, {:ash_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins}},
       required: false,
       default: [],
+      links: [
+        modules: [
+          "ash:module:Ash.Resource.Validation.Builtins"
+        ]
+      ],
       doc: """
       Validations that should pass in order for this validation to apply.
-      These validations failing will not invalidate the changes, but instead just result in this validation being ignored.
+      These validations failing will not invalidate the changes, but will instead result in this validation being ignored.
       """
     ],
     on: [
       type: {:custom, __MODULE__, :on, []},
       default: [:create, :update],
+      links: [],
       doc: """
       The action types the validation should run on.
 
@@ -92,22 +99,25 @@ defmodule Ash.Resource.Validation do
     expensive?: [
       type: :boolean,
       default: false,
+      links: [],
       doc:
         "If a validation is expensive, it won't be run on invalid changes. All inexpensive validations are always run, to provide informative errors."
     ],
     message: [
       type: :string,
-      doc: "If provided, overrides any message set by the validation error"
+      doc: "If provided, overrides any message set by the validation error",
+      links: []
     ],
     description: [
       type: :string,
-      doc: "An optional description for the validation"
+      doc: "An optional description for the validation",
+      links: []
     ],
     before_action?: [
       type: :boolean,
       default: false,
-      doc:
-        "If set to `true`, the validation is not run when building changesets using `Ash.Changeset.for_*`. The validation will only ever be run once the action itself is called."
+      links: [],
+      doc: "If set to `true`, the validation will be run in a before_action hook"
     ]
   ]
 

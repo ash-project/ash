@@ -160,6 +160,11 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
+    links: [
+      guides: [
+        "ash:guide:Relationships"
+      ]
+    ],
     modules: [:destination],
     target: Ash.Resource.Relationships.HasOne,
     schema: Ash.Resource.Relationships.HasOne.opt_schema(),
@@ -180,6 +185,11 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
+    links: [
+      guides: [
+        "ash:guide:Relationships"
+      ]
+    ],
     target: Ash.Resource.Relationships.HasMany,
     modules: [:destination],
     schema: Ash.Resource.Relationships.HasMany.opt_schema(),
@@ -193,6 +203,11 @@ defmodule Ash.Resource.Dsl do
 
     A join table is typically a table who's primary key consists of one foreign key to each resource.
     """,
+    links: [
+      guides: [
+        "ash:guide:Relationships"
+      ]
+    ],
     examples: [
       """
       # In a resource called `Word`
@@ -223,6 +238,11 @@ defmodule Ash.Resource.Dsl do
 
     This creates a field on the resource with the corresponding name and type, unless `define_field?: false` is provided.
     """,
+    links: [
+      guides: [
+        "ash:guide:Relationships"
+      ]
+    ],
     examples: [
       """
       # In a resource called `Word`
@@ -246,6 +266,11 @@ defmodule Ash.Resource.Dsl do
     Relationships are a core component of resource oriented design. Many components of Ash
     will use these relationships. A simple use case is loading relationships (done via the `Ash.Query.load/2`).
     """,
+    links: [
+      guides: [
+        "ash:guide:Relationships"
+      ]
+    ],
     examples: [
       """
       relationships do
@@ -348,6 +373,14 @@ defmodule Ash.Resource.Dsl do
 
   @change %Ash.Dsl.Entity{
     name: :change,
+    links: [
+      guides: [
+        "ash:guide:Actions"
+      ],
+      modules: [
+        "ash:module:Ash.Resource.Change"
+      ]
+    ],
     describe: """
     A change to be applied to the changeset after it is generated. They are run in order, from top to bottom.
 
@@ -375,6 +408,14 @@ defmodule Ash.Resource.Dsl do
     examples: [
       "validate {Mod, [foo: :bar]}",
       "validate at_least_one_of_present([:first_name, :last_name])"
+    ],
+    links: [
+      guides: [
+        "ash:guide:Actions"
+      ],
+      modules: [
+        "ash:module:Ash.Resource.Change"
+      ]
     ],
     target: Ash.Resource.Validation,
     schema: Ash.Resource.Validation.opt_schema(),
@@ -548,6 +589,11 @@ defmodule Ash.Resource.Dsl do
       Ash.Resource.Validation.Builtins,
       Ash.Filter.TemplateHelpers
     ],
+    links: [
+      guides: [
+        "ash:guide:Actions"
+      ]
+    ],
     schema: [
       defaults: [
         type: {:list, {:in, [:create, :read, :update, :destroy]}},
@@ -558,10 +604,14 @@ defmodule Ash.Resource.Dsl do
 
         By default, resources have no default actions. Embedded resources, however, have a default
         of all resource types.
-        """
+        """,
+        links: []
       ],
       default_accept: [
-        type: {:list, :atom}
+        type: {:list, :atom},
+        doc:
+          "A default value for the `accept` option for each action. Defaults to all public attributes.",
+        links: []
       ]
     ],
     examples: [
@@ -745,6 +795,9 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declare validations prior to performing actions against the resource
     """,
+    links: [
+      guides: ["ash:guides:Actions"]
+    ],
     imports: [Ash.Resource.Validation.Builtins],
     examples: [
       """
@@ -922,6 +975,11 @@ defmodule Ash.Resource.Dsl do
         allow_nil? false
       end
       """
+    ],
+    links: [
+      guides: [
+        "ash:guide:Calculations"
+      ]
     ],
     target: Ash.Resource.Calculation.Argument,
     args: [:name, :type],

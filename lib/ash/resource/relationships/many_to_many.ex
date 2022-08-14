@@ -57,22 +57,34 @@ defmodule Ash.Resource.Relationships.ManyToMany do
                   source_field_on_join_table: [
                     type: :atom,
                     required: true,
+                    links: [
+                      dsls: [
+                        "ash:dsl:attributes/attribute"
+                      ]
+                    ],
                     doc:
-                      "The field on the join table that should line up with `source_field` on this resource."
+                      "The attribute on the join resource that should line up with `source_field` on this resource."
                   ],
                   destination_field_on_join_table: [
                     type: :atom,
                     required: true,
+                    links: [
+                      dsls: [
+                        "ash:dsl:attributes/attribute"
+                      ]
+                    ],
                     doc:
-                      "The field on the join table that should line up with `destination_field` on the related resource."
+                      "The attribute on the join resource that should line up with `destination_field` on the related resource."
                   ],
                   through: [
                     type: :ash_resource,
                     required: true,
+                    links: [],
                     doc: "The resource to use as the join resource."
                   ],
                   join_relationship: [
                     type: :atom,
+                    links: [],
                     doc:
                       "The has_many relationship to the join table. Defaults to <relationship_name>_join_assoc"
                   ]

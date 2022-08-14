@@ -4,102 +4,125 @@ defmodule Ash.Resource.Relationships.SharedOptions do
   @shared_options [
     name: [
       type: :atom,
-      doc: "The name of the relationship"
+      doc: "The name of the relationship",
+      links: []
     ],
     destination: [
       type: :ash_resource,
-      doc: "The destination resource"
+      doc: "The destination resource",
+      links: []
+    ],
+    description: [
+      type: :string,
+      doc: "An optional description for the relationship",
+      links: [
+        modules: ["ash:guide:Documentation"]
+      ]
     ],
     destination_field: [
       type: :atom,
+      links: [
+        dsls: [
+          "ash:dsl:attributes/attribute"
+        ]
+      ],
       doc:
-        "The field on the related resource that should match the `source_field` on this resource."
+        "The attribute on the related resource that should match the `source_field` configured on this resource."
     ],
     validate_destination_field?: [
       type: :boolean,
       default: true,
       doc:
-        "Whether or not to validate that the destination field exists on the destination resource"
+        "Whether or not to validate that the destination field exists on the destination resource",
+      links: []
     ],
     source_field: [
       type: :atom,
+      links: [
+        dsls: [
+          "ash:dsl:attributes/attribute"
+        ]
+      ],
       doc:
         "The field on this resource that should match the `destination_field` on the related resource."
-    ],
-    description: [
-      type: :string,
-      doc: "An optional description for the relationship"
     ],
     relationship_context: [
       type: :any,
       as: :context,
+      links: [],
       doc: """
-      Context to be set on any queries or changesets generated for this relationship.
-
-      This is used by ash_postgres for polymorphic resources.
+      Context to be set on any queries or changesets generated for managing or querying this relationship.
       """
     ],
     private?: [
       type: :boolean,
       default: false,
+      links: [
+        guides: ["ash:guide:Security"]
+      ],
       doc:
         "Whether or not the relationship will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql"
     ],
     not_found_message: [
       type: :string,
       doc: """
-      A message to show if there is a conflict with this relationship in the database on update or create.
-
-      For example, if a value is added that has no match in the destination (very hard to do with the way Ash relationship changes work).
-      """
+      A message to show if there is a conflict with this relationship in the database on update or create, or when managing relationships.
+      """,
+      links: [
+        guides: ["ash:guide:Managing Relationships"]
+      ]
     ],
     writable?: [
       type: :boolean,
       default: true,
       doc: """
-      Wether or not the relationship may be edited.
-      """
+      Wether or not the relationship may be managed.
+      """,
+      links: []
     ],
     read_action: [
       type: :atom,
       doc: """
-      The read action on the destination resource to use when loading data.
-
-      Keep in mind, any filters that exist on the destination action are not honored when filtering on this
-      relationship. The only time the read action comes into play is when loading the actual relationship, which happens when they are loaded
-      explicitly and when the relationship is managed.
-      """
+      The read action on the destination resource to use when loading data and filtering.
+      """,
+      links: []
     ],
     api: [
       type: :atom,
       doc: """
       The API module to use when working with the related entity.
-      """
+      """,
+      links: [
+        guides: [
+          "ash:guide:Multiple Apis"
+        ]
+      ]
     ],
     filter: [
       type: :any,
       doc: """
       A filter to be applied when reading the relationship.
-      """
+      """,
+      links: []
     ],
     sort: [
       type: :any,
       doc: """
-      A sort statement to be applied when reading the relationship.
-      """
+      A sort statement to be applied when loading the relationship.
+      """,
+      links: []
     ],
     could_be_related_at_creation?: [
       type: :boolean,
       default: false,
+      links: [],
       doc: """
-      This toggle modifies the management of the relationship. Typically, on creation,
-      the existing value of the relationship isn't loaded. However, if it is possible for things
-      to be related *before* this record is created, for example if your data layers does not support
-      primary keys, then you should set this to true.
+      Wether or not related values may exist for this relationship at creation.
       """
     ],
     violation_message: [
       type: :string,
+      links: [],
       doc: """
       A message to show if there is a conflict with this relationship in the database on destroy.
       For example, if a record is deleted while related records still exist (and aren't configured to cascade deletes)
@@ -115,6 +138,7 @@ defmodule Ash.Resource.Relationships.SharedOptions do
     {:no_fields?,
      [
        type: :boolean,
+       links: [],
        doc: """
        If true, all existing entities are considered related, i.e this relationship is not based on any fields, and `source_field` and
        `destination_field` are ignored.
@@ -140,6 +164,7 @@ defmodule Ash.Resource.Relationships.SharedOptions do
   def manual do
     {:manual,
      type: {:ash_behaviour, Ash.Resource.ManualRelationship},
+     links: [],
      doc: """
      Allows for relationships that are fetched manually. WARNING: EXPERIMENTAL
 
