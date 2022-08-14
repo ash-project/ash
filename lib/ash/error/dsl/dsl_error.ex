@@ -1,4 +1,4 @@
-defmodule Ash.Error.Dsl.DslError do
+defmodule Spark.Error.DslError do
   @moduledoc "Used when a DSL is incorrectly configured."
   defexception [:module, :message, :path]
 

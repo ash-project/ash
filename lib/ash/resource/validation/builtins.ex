@@ -61,7 +61,7 @@ defmodule Ash.Resource.Validation.Builtins do
 
   If no options are provided, validates that they are all present.
 
-  #{Ash.OptionsHelpers.docs(Keyword.delete(Validation.Present.schema(), :attributes))}
+  #{Spark.OptionsHelpers.docs(Keyword.delete(Validation.Present.schema(), :attributes))}
   """
   def present(attributes, opts \\ []) do
     if opts == [] do

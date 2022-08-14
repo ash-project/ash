@@ -4,10 +4,10 @@ defmodule Ash.Resource.Transformers.ValidatePrimaryActions do
 
   If multiple primary actions exist this results in an error.
   """
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
-  alias Ash.Dsl.Transformer
-  alias Ash.Error.Dsl.DslError
+  alias Spark.Dsl.Transformer
+  alias Spark.Error.DslError
 
   @extension Ash.Resource.Dsl
 
@@ -51,7 +51,7 @@ defmodule Ash.Resource.Transformers.ValidatePrimaryActions do
     |> Enum.with_index()
     |> Enum.reduce(dsl_state, fn {type, i}, dsl_state ->
       unless type in [:create, :update, :read, :destroy] do
-        raise Ash.Error.Dsl.DslError,
+        raise Spark.Error.DslError,
           path: [:actions, :default_actions, i],
           module: resource,
           message: "#{type} is not a valid action type"

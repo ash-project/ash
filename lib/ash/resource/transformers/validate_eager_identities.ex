@@ -2,10 +2,10 @@ defmodule Ash.Resource.Transformers.ValidateEagerIdentities do
   @moduledoc """
   Confirms that eager identities are not declared on a resource with no primary read.
   """
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
-  alias Ash.Dsl.Transformer
-  alias Ash.Error.Dsl.DslError
+  alias Spark.Dsl.Transformer
+  alias Spark.Error.DslError
 
   def after_compile?, do: true
 

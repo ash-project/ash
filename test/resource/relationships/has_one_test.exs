@@ -62,7 +62,7 @@ defmodule Ash.Test.Resource.Relationships.HasOneTest do
   describe "validations" do
     test "fails if destination_field is not an atom" do
       assert_raise(
-        Ash.Error.Dsl.DslError,
+        Spark.Error.DslError,
         "[Ash.Test.Resource.Relationships.HasOneTest.Post]\n relationships -> has_one -> foobar:\n  expected :destination_field to be an atom, got: \"foo\"",
         fn ->
           defposts do
@@ -76,7 +76,7 @@ defmodule Ash.Test.Resource.Relationships.HasOneTest do
 
     test "fails if source_field is not an atom" do
       assert_raise(
-        Ash.Error.Dsl.DslError,
+        Spark.Error.DslError,
         "[Ash.Test.Resource.Relationships.HasOneTest.Post]\n relationships -> has_one -> foobar:\n  expected :source_field to be an atom, got: \"foo\"",
         fn ->
           defposts do
@@ -90,7 +90,7 @@ defmodule Ash.Test.Resource.Relationships.HasOneTest do
 
     test "fails if the destination is not an atom" do
       assert_raise(
-        Ash.Error.Dsl.DslError,
+        Spark.Error.DslError,
         "[Ash.Test.Resource.Relationships.HasOneTest.Post]\n relationships -> has_one -> foobar:\n  expected :destination to be an atom, got: \"foobar\"",
         fn ->
           defposts do
@@ -104,7 +104,7 @@ defmodule Ash.Test.Resource.Relationships.HasOneTest do
 
     test "fails if the relationship name is not an atom" do
       assert_raise(
-        Ash.Error.Dsl.DslError,
+        Spark.Error.DslError,
         "[Ash.Test.Resource.Relationships.HasOneTest.Post]\n relationships -> has_one -> foobar:\n  expected :name to be an atom, got: \"foobar\"",
         fn ->
           defposts do
@@ -118,7 +118,7 @@ defmodule Ash.Test.Resource.Relationships.HasOneTest do
 
     test "fails if private? is not an boolean" do
       assert_raise(
-        Ash.Error.Dsl.DslError,
+        Spark.Error.DslError,
         "[Ash.Test.Resource.Relationships.HasOneTest.Post]\n relationships -> has_one -> foobar:\n  expected :private? to be a boolean, got: \"foo\"",
         fn ->
           defposts do

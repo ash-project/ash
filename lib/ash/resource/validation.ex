@@ -67,13 +67,14 @@ defmodule Ash.Resource.Validation do
 
   @schema [
     validation: [
-      type: {:ash_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins},
+      type: {:spark_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins},
       required: true,
       doc: "The module/opts pair of the validation",
       links: []
     ],
     where: [
-      type: {:list, {:ash_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins}},
+      type:
+        {:list, {:spark_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins}},
       required: false,
       default: [],
       links: [

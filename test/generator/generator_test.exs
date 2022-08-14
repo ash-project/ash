@@ -226,7 +226,7 @@ defmodule Ash.Test.GeneratorTest do
       has_generator? = function_exported?(type, :generator, 1)
 
       for type <- [{:array, type}, type] do
-        constraints = Ash.OptionsHelpers.validate!([], Ash.Type.constraints(type))
+        constraints = Spark.OptionsHelpers.validate!([], Ash.Type.constraints(type))
 
         if has_generator? do
           test "#{inspect(type)} type can be generated" do

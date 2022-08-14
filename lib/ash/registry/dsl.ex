@@ -1,5 +1,5 @@
 defmodule Ash.Registry.Dsl do
-  @entry %Ash.Dsl.Entity{
+  @entry %Spark.Dsl.Entity{
     name: :entry,
     describe: "A reference to an ash module (typically a resource)",
     target: Ash.Registry.Entry,
@@ -16,7 +16,7 @@ defmodule Ash.Registry.Dsl do
     ]
   }
 
-  @entries %Ash.Dsl.Section{
+  @entries %Spark.Dsl.Section{
     name: :entries,
     describe: "List the entries present in this registry",
     examples: [
@@ -48,7 +48,7 @@ defmodule Ash.Registry.Dsl do
   A small DSL for declaring an `Ash.Registry`.
   """
 
-  use Ash.Dsl.Extension, sections: @sections, transformers: @transformers
+  use Spark.Dsl.Extension, sections: @sections, transformers: @transformers
 
   def warn_on_empty?(registry) do
     Extension.get_opt(registry, [:entries], :warn_on_empty?, false, true)

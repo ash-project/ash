@@ -1,7 +1,7 @@
 defmodule Ash.Notifier.PubSub do
   require Logger
 
-  @publish %Ash.Dsl.Entity{
+  @publish %Spark.Dsl.Entity{
     name: :publish,
     target: Ash.Notifier.PubSub.Publication,
     describe: """
@@ -65,7 +65,7 @@ defmodule Ash.Notifier.PubSub do
     args: [:action, :topic]
   }
 
-  @publish_all %Ash.Dsl.Entity{
+  @publish_all %Spark.Dsl.Entity{
     name: :publish_all,
     target: Ash.Notifier.PubSub.Publication,
     describe: """
@@ -79,7 +79,7 @@ defmodule Ash.Notifier.PubSub do
     args: [:type, :topic]
   }
 
-  @pub_sub %Ash.Dsl.Section{
+  @pub_sub %Spark.Dsl.Section{
     name: :pub_sub,
     describe: """
     A section for configuring how resource actions are published over pubsub
@@ -134,22 +134,22 @@ defmodule Ash.Notifier.PubSub do
   A pubsub notifier extension
   """
 
-  use Ash.Dsl.Extension, sections: @sections
+  use Spark.Dsl.Extension, sections: @sections
 
   def publications(resource) do
-    Ash.Dsl.Extension.get_entities(resource, [:pub_sub])
+    Spark.Dsl.Extension.get_entities(resource, [:pub_sub])
   end
 
   def module(resource) do
-    Ash.Dsl.Extension.get_opt(resource, [:pub_sub], :module, nil)
+    Spark.Dsl.Extension.get_opt(resource, [:pub_sub], :module, nil)
   end
 
   def prefix(resource) do
-    Ash.Dsl.Extension.get_opt(resource, [:pub_sub], :prefix, nil)
+    Spark.Dsl.Extension.get_opt(resource, [:pub_sub], :prefix, nil)
   end
 
   def name(resource) do
-    Ash.Dsl.Extension.get_opt(resource, [:pub_sub], :name, nil)
+    Spark.Dsl.Extension.get_opt(resource, [:pub_sub], :name, nil)
   end
 
   def notify(%Ash.Notifier.Notification{resource: resource} = notification) do

@@ -8,7 +8,7 @@ defmodule Ash.DataLayer do
   that it supports.
   """
 
-  alias Ash.Dsl.Extension
+  alias Spark.Dsl.Extension
 
   @type t :: module
   @type data_layer_query() :: struct

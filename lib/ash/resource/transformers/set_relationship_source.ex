@@ -1,8 +1,8 @@
 defmodule Ash.Resource.Transformers.SetRelationshipSource do
   @moduledoc "Sets the `source` key on relationships to be the resource they were defined on"
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
-  alias Ash.Dsl.Transformer
+  alias Spark.Dsl.Transformer
 
   def transform(resource, dsl_state) do
     dsl_state

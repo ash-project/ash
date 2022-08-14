@@ -89,7 +89,7 @@ See the [Getting Started Tutorial](https://hexdocs.pm/ash/getting_started.html) 
 
 For those looking to add Ash extensions:
 
-- see `Ash.Dsl.Extension` for adding configuration.
+- see `Spark.Dsl.Extension` for adding configuration.
 - If you are looking to write a new data source, also see the `Ash.DataLayer` documentation.
 - If you are looking to write a new authorizer, see `Ash.Authorizer`
 - If you are looking to write a "front end", something powered by Ash resources, a guide on

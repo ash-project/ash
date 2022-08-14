@@ -57,7 +57,7 @@ defmodule Ash.Type do
   Currently, the only composite type supported is a list type, specified via:
   `{:array, Type}`. The constraints available are:
 
-  #{Ash.OptionsHelpers.docs(@doc_array_constraints)}
+  #{Spark.OptionsHelpers.docs(@doc_array_constraints)}
 
   ## Defining Custom Types
 

@@ -243,7 +243,7 @@ defmodule Ash.ResourceFormatter do
     Enum.find_value(body, :error, fn
       {:use, _, using} ->
         [using, opts] =
-          case Ash.Dsl.Extension.expand_alias(using, __ENV__) do
+          case Spark.Dsl.Extension.expand_alias(using, __ENV__) do
             [using] ->
               [using, []]
 
@@ -278,7 +278,7 @@ defmodule Ash.ResourceFormatter do
       |> Enum.flat_map(fn extension ->
         case Code.ensure_compiled(extension) do
           {:module, module} ->
-            if Ash.Helpers.implements_behaviour?(module, Ash.Dsl.Extension) do
+            if Ash.Helpers.implements_behaviour?(module, Spark.Dsl.Extension) do
               [module]
             else
               []

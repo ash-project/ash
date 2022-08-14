@@ -1,8 +1,8 @@
 defmodule Ash.Resource.Transformers.HasDestinationField do
   @moduledoc "Guesses the `destination_field` for has many and has one relationships unless provided"
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
-  alias Ash.Dsl.Transformer
+  alias Spark.Dsl.Transformer
 
   def transform(resource, dsl_state) do
     new_dsl_state =

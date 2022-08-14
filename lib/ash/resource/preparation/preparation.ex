@@ -21,7 +21,7 @@ defmodule Ash.Resource.Preparation do
   def schema do
     [
       preparation: [
-        type: {:ash_behaviour, Ash.Resource.Preparation, Ash.Resource.Preparation.Builtins},
+        type: {:spark_behaviour, Ash.Resource.Preparation, Ash.Resource.Preparation.Builtins},
         doc: """
         The module and options for a preparation.
         """,

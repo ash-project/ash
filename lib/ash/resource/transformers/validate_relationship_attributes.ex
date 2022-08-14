@@ -2,7 +2,7 @@ defmodule Ash.Resource.Transformers.ValidateRelationshipAttributes do
   @moduledoc """
   Validates that all relationships point to valid fields
   """
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
   @impl true
   def after_compile?, do: true
@@ -27,7 +27,7 @@ defmodule Ash.Resource.Transformers.ValidateRelationshipAttributes do
 
   defp validate_relationship(relationship, attribute_names, resource) do
     unless relationship.source_field in attribute_names do
-      raise Ash.Error.Dsl.DslError,
+      raise Spark.Error.DslError,
         module: resource,
         path: [:relationships, relationship.name],
         message:
@@ -43,7 +43,7 @@ defmodule Ash.Resource.Transformers.ValidateRelationshipAttributes do
             |> Enum.map(& &1.name)
 
           unless relationship.source_field_on_join_table in through_attributes do
-            raise Ash.Error.Dsl.DslError,
+            raise Spark.Error.DslError,
               module: resource,
               path: [:relationships, relationship.name],
               message:
@@ -51,7 +51,7 @@ defmodule Ash.Resource.Transformers.ValidateRelationshipAttributes do
           end
 
           unless relationship.destination_field_on_join_table in through_attributes do
-            raise Ash.Error.Dsl.DslError,
+            raise Spark.Error.DslError,
               module: resource,
               path: [:relationships, relationship.name],
               message:
@@ -66,7 +66,7 @@ defmodule Ash.Resource.Transformers.ValidateRelationshipAttributes do
         |> Enum.map(& &1.name)
 
       unless relationship.destination_field in destination_attributes do
-        raise Ash.Error.Dsl.DslError,
+        raise Spark.Error.DslError,
           module: resource,
           path: [:relationships, relationship.name],
           message:
