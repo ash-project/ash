@@ -10,7 +10,7 @@ defmodule Ash.CodeInterface do
     action = Ash.Resource.Info.action(resource, interface.action || interface.name)
 
     unless action do
-      raise Ash.Error.Dsl.DslError,
+      raise Spark.Error.DslError,
         module: resource,
         message:
           "The interface of #{inspect(resource)} refers to a non-existent action #{interface.action || interface.name}",
@@ -151,7 +151,7 @@ defmodule Ash.CodeInterface do
 
         ## Options
 
-        #{Ash.OptionsHelpers.docs(Ash.Resource.Interface.interface_options(action.type))}
+        #{Spark.OptionsHelpers.docs(Ash.Resource.Interface.interface_options(action.type))}
         """
 
         case action.type do

@@ -383,7 +383,7 @@ defmodule Ash.Changeset do
 
   ### Opts
 
-  #{Ash.OptionsHelpers.docs(@for_create_opts)}
+  #{Spark.OptionsHelpers.docs(@for_create_opts)}
 
   ### Customization
 
@@ -1758,7 +1758,7 @@ defmodule Ash.Changeset do
 
   ## Options
 
-  #{Ash.OptionsHelpers.docs(@manage_opts)}
+  #{Spark.OptionsHelpers.docs(@manage_opts)}
 
   Each call to this function adds new records that will be handled according to their options. For example,
   if you tracked "tags to add" and "tags to remove" in separate fields, you could input them like so:
@@ -1866,13 +1866,13 @@ defmodule Ash.Changeset do
         defaults = manage_relationship_opts(opts[:type])
 
         Enum.reduce(defaults, @manage_opts, fn {key, value}, manage_opts ->
-          Ash.OptionsHelpers.set_default!(manage_opts, key, value)
+          Spark.OptionsHelpers.set_default!(manage_opts, key, value)
         end)
       else
         @manage_opts
       end
 
-    opts = Ash.OptionsHelpers.validate!(opts, manage_opts)
+    opts = Spark.OptionsHelpers.validate!(opts, manage_opts)
 
     opts =
       if Keyword.has_key?(opts[:meta] || [], :inputs_was_list?) do

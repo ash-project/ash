@@ -16,7 +16,7 @@ defmodule Ash.Type.Float do
 
   ### Constraints
 
-  #{Ash.OptionsHelpers.docs(@constraints)}
+  #{Spark.OptionsHelpers.docs(@constraints)}
   """
 
   use Ash.Type

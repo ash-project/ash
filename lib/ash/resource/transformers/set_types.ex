@@ -1,8 +1,8 @@
 defmodule Ash.Resource.Transformers.SetTypes do
   @moduledoc "Maps builtin type aliases to their type modules"
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
-  alias Ash.Dsl.Transformer
+  alias Spark.Dsl.Transformer
 
   def transform(_resource, dsl_state) do
     with {:ok, dsl_state} <- set_attribute_types(dsl_state),
@@ -168,7 +168,7 @@ defmodule Ash.Resource.Transformers.SetTypes do
     case type do
       {:array, type} ->
         with {:ok, new_constraints} <-
-               Ash.OptionsHelpers.validate(
+               Spark.OptionsHelpers.validate(
                  Keyword.delete(constraints, :items),
                  Ash.Type.array_constraints(type)
                ),
@@ -179,7 +179,7 @@ defmodule Ash.Resource.Transformers.SetTypes do
       type ->
         schema = Ash.Type.constraints(type)
 
-        case Ash.OptionsHelpers.validate(constraints, schema) do
+        case Spark.OptionsHelpers.validate(constraints, schema) do
           {:ok, constraints} ->
             validate_none_reserved(constraints, type)
 
@@ -192,7 +192,7 @@ defmodule Ash.Resource.Transformers.SetTypes do
   defp validate_item_constraints(type, constraints) do
     schema = Ash.Type.constraints(type)
 
-    case Ash.OptionsHelpers.validate(constraints[:items] || [], schema) do
+    case Spark.OptionsHelpers.validate(constraints[:items] || [], schema) do
       {:ok, item_constraints} ->
         validate_none_reserved(item_constraints, type)
 

@@ -94,7 +94,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
   describe "validations" do
     test "raises if you have multiple primary actions for a type" do
       assert_raise(
-        Ash.Error.Dsl.DslError,
+        Spark.Error.DslError,
         ~r/only one action per type can be the primary/,
         fn ->
           defposts do

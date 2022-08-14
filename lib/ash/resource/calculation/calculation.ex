@@ -126,7 +126,7 @@ defmodule Ash.Resource.Calculation do
         links: []
       ],
       type: [
-        type: :ash_type,
+        type: Ash.OptionsHelpers.ash_type(),
         required: true,
         links: [
           modules: [

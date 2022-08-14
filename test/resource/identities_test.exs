@@ -39,7 +39,7 @@ defmodule Ash.Test.Resource.IdentitiesTest do
     end
 
     test "eager_check_with requires a primary read action" do
-      assert_raise Ash.Error.Dsl.DslError,
+      assert_raise Spark.Error.DslError,
                    ~r/but the resource has no primary read action./,
                    fn ->
                      defposts do

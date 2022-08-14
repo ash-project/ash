@@ -2,9 +2,9 @@ defmodule Ash.Resource.Transformers.ValidateMultitenancy do
   @moduledoc """
   Ensures that the multitenancy configuration is valid for the given resource
   """
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
-  alias Ash.Dsl.Transformer
+  alias Spark.Dsl.Transformer
 
   # sobelow_skip ["DOS.BinToAtom"]
   def transform(resource, dsl_state) do
@@ -14,7 +14,7 @@ defmodule Ash.Resource.Transformers.ValidateMultitenancy do
     cond do
       strategy == :context && not Ash.DataLayer.data_layer_can?(resource, :multitenancy) ->
         {:error,
-         Ash.Error.Dsl.DslError.exception(
+         Spark.Error.DslError.exception(
            module: resource,
            path: [:multitenancy, :strategy],
            message: "Data layer does not support multitenancy"
@@ -22,7 +22,7 @@ defmodule Ash.Resource.Transformers.ValidateMultitenancy do
 
       strategy == :attribute && is_nil(Ash.Resource.Info.attribute(resource, attribute)) ->
         {:error,
-         Ash.Error.Dsl.DslError.exception(
+         Spark.Error.DslError.exception(
            module: resource,
            path: [:multitenancy, :attribute],
            message: "Attribute #{attribute} used in multitenancy configuration does not exist"

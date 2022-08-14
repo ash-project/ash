@@ -2,7 +2,7 @@ defmodule Ash.Registry.ResourceValidations.Transformers.EnsureNoEmbeds do
   @moduledoc """
   Ensures that all resources for a given registry are not embeds.
   """
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
   require Logger
 

@@ -2,7 +2,7 @@ defmodule Ash.Registry.ResourceValidations.Transformers.ValidateRelatedResourceI
   @moduledoc """
   Ensures that all related resources are included in an API.
   """
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
   @impl true
   def after_compile?, do: true

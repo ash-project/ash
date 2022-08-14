@@ -9,7 +9,7 @@ defmodule Ash.Flow.Argument do
       doc: "The name to use for the argument"
     ],
     type: [
-      type: :ash_type,
+      type: Ash.OptionsHelpers.ash_type(),
       required: true,
       doc: "The type of the argument"
     ],

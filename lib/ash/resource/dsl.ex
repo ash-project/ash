@@ -1,5 +1,5 @@
 defmodule Ash.Resource.Dsl do
-  @attribute %Ash.Dsl.Entity{
+  @attribute %Spark.Dsl.Entity{
     name: :attribute,
     describe: """
     Declares an attribute on the resource.
@@ -22,7 +22,7 @@ defmodule Ash.Resource.Dsl do
     schema: Ash.Resource.Attribute.attribute_schema()
   }
 
-  @create_timestamp %Ash.Dsl.Entity{
+  @create_timestamp %Spark.Dsl.Entity{
     name: :create_timestamp,
     describe: """
     Declares a non-writable attribute with a create default of `&DateTime.utc_now/0`
@@ -35,7 +35,7 @@ defmodule Ash.Resource.Dsl do
     schema: Ash.Resource.Attribute.create_timestamp_schema()
   }
 
-  @update_timestamp %Ash.Dsl.Entity{
+  @update_timestamp %Spark.Dsl.Entity{
     name: :update_timestamp,
     describe: """
     Declares a non-writable attribute with a create and update default of `&DateTime.utc_now/0`
@@ -48,7 +48,7 @@ defmodule Ash.Resource.Dsl do
     args: [:name]
   }
 
-  @timestamps %Ash.Dsl.Entity{
+  @timestamps %Spark.Dsl.Entity{
     name: :timestamps,
     describe: """
     Declares non-writable `inserted_at` and `updated_at` attributes with create and update defaults of `&DateTime.utc_now/0`.
@@ -62,7 +62,7 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
-  @integer_primary_key %Ash.Dsl.Entity{
+  @integer_primary_key %Spark.Dsl.Entity{
     name: :integer_primary_key,
     describe: """
     Declares a generated, non writable, non-nil, primary key column of type integer.
@@ -78,7 +78,7 @@ defmodule Ash.Resource.Dsl do
     auto_set_fields: [allow_nil?: false]
   }
 
-  @uuid_primary_key %Ash.Dsl.Entity{
+  @uuid_primary_key %Spark.Dsl.Entity{
     name: :uuid_primary_key,
     describe: """
     Declares a non writable, non-nil, primary key column of type uuid, which defaults to `Ash.UUID.generate/0`.
@@ -92,7 +92,7 @@ defmodule Ash.Resource.Dsl do
     auto_set_fields: [allow_nil?: false]
   }
 
-  @attributes %Ash.Dsl.Section{
+  @attributes %Spark.Dsl.Section{
     name: :attributes,
     describe: """
     A section for declaring attributes on the resource.
@@ -144,7 +144,7 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
-  @has_one %Ash.Dsl.Entity{
+  @has_one %Spark.Dsl.Entity{
     name: :has_one,
     describe: """
     Declares a has_one relationship. In a relational database, the foreign key would be on the *other* table.
@@ -171,7 +171,7 @@ defmodule Ash.Resource.Dsl do
     args: [:name, :destination]
   }
 
-  @has_many %Ash.Dsl.Entity{
+  @has_many %Spark.Dsl.Entity{
     name: :has_many,
     describe: """
     Declares a has_many relationship. There can be any number of related entities.
@@ -196,7 +196,7 @@ defmodule Ash.Resource.Dsl do
     args: [:name, :destination]
   }
 
-  @many_to_many %Ash.Dsl.Entity{
+  @many_to_many %Spark.Dsl.Entity{
     name: :many_to_many,
     describe: """
     Declares a many_to_many relationship. Many to many relationships require a join table.
@@ -231,7 +231,7 @@ defmodule Ash.Resource.Dsl do
     args: [:name, :destination]
   }
 
-  @belongs_to %Ash.Dsl.Entity{
+  @belongs_to %Spark.Dsl.Entity{
     name: :belongs_to,
     describe: """
     Declares a belongs_to relationship. In a relational database, the foreign key would be on the *source* table.
@@ -258,7 +258,7 @@ defmodule Ash.Resource.Dsl do
     args: [:name, :destination]
   }
 
-  @relationships %Ash.Dsl.Section{
+  @relationships %Spark.Dsl.Section{
     name: :relationships,
     describe: """
     A section for declaring relationships on the resource.
@@ -317,7 +317,7 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
-  @action_change %Ash.Dsl.Entity{
+  @action_change %Spark.Dsl.Entity{
     name: :change,
     describe: """
     A change to be applied to the changeset after it is generated. They are run in order, from top to bottom.
@@ -338,7 +338,7 @@ defmodule Ash.Resource.Dsl do
     args: [:change]
   }
 
-  @action_argument %Ash.Dsl.Entity{
+  @action_argument %Spark.Dsl.Entity{
     name: :argument,
     describe: """
     Declares an argument on the action
@@ -352,7 +352,7 @@ defmodule Ash.Resource.Dsl do
     schema: Ash.Resource.Actions.Argument.schema()
   }
 
-  @metadata %Ash.Dsl.Entity{
+  @metadata %Spark.Dsl.Entity{
     name: :metadata,
     describe: """
     A special kind of attribute that is only added to specific actions. Nothing sets this value, it must be set in a custom
@@ -371,7 +371,7 @@ defmodule Ash.Resource.Dsl do
     schema: Ash.Resource.Actions.Metadata.schema()
   }
 
-  @change %Ash.Dsl.Entity{
+  @change %Spark.Dsl.Entity{
     name: :change,
     links: [
       guides: [
@@ -400,7 +400,7 @@ defmodule Ash.Resource.Dsl do
     args: [:change]
   }
 
-  @validate %Ash.Dsl.Entity{
+  @validate %Spark.Dsl.Entity{
     name: :validate,
     describe: """
     Declares a validation for creates and updates.
@@ -424,7 +424,7 @@ defmodule Ash.Resource.Dsl do
     args: [:validation]
   }
 
-  @action_validate %Ash.Dsl.Entity{
+  @action_validate %Spark.Dsl.Entity{
     name: :validate,
     describe: """
     Declares a validation for the current action
@@ -439,7 +439,7 @@ defmodule Ash.Resource.Dsl do
     args: [:validation]
   }
 
-  @create %Ash.Dsl.Entity{
+  @create %Spark.Dsl.Entity{
     name: :create,
     describe: """
     Declares a `create` action. For calling this action, see the `Ash.Api` documentation.
@@ -469,7 +469,7 @@ defmodule Ash.Resource.Dsl do
     args: [:name]
   }
 
-  @preparation %Ash.Dsl.Entity{
+  @preparation %Spark.Dsl.Entity{
     name: :prepare,
     describe: """
     Declares a preparation, which can be used to prepare a query for a read action.
@@ -485,14 +485,14 @@ defmodule Ash.Resource.Dsl do
     args: [:preparation]
   }
 
-  @read %Ash.Dsl.Entity{
+  @read %Spark.Dsl.Entity{
     name: :read,
     describe: """
     Declares a `read` action. For calling this action, see the `Ash.Api` documentation.
 
     ## Pagination
 
-    #{Ash.OptionsHelpers.docs(Ash.Resource.Actions.Read.pagination_schema())}
+    #{Spark.OptionsHelpers.docs(Ash.Resource.Actions.Read.pagination_schema())}
     """,
     examples: [
       """
@@ -515,7 +515,7 @@ defmodule Ash.Resource.Dsl do
     args: [:name]
   }
 
-  @update %Ash.Dsl.Entity{
+  @update %Spark.Dsl.Entity{
     name: :update,
     describe: """
     Declares a `update` action. For calling this action, see the `Ash.Api` documentation.
@@ -541,7 +541,7 @@ defmodule Ash.Resource.Dsl do
     args: [:name]
   }
 
-  @destroy %Ash.Dsl.Entity{
+  @destroy %Spark.Dsl.Entity{
     name: :destroy,
     describe: """
     Declares a `destroy` action. For calling this action, see the `Ash.Api` documentation.
@@ -571,7 +571,7 @@ defmodule Ash.Resource.Dsl do
     args: [:name]
   }
 
-  @actions %Ash.Dsl.Section{
+  @actions %Spark.Dsl.Section{
     name: :actions,
     describe: """
     A section for declaring resource actions.
@@ -652,7 +652,7 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
-  @identity %Ash.Dsl.Entity{
+  @identity %Spark.Dsl.Entity{
     name: :identity,
     describe: """
     Represents a unique constraint on the resource.
@@ -673,7 +673,7 @@ defmodule Ash.Resource.Dsl do
     args: [:name, :keys]
   }
 
-  @identities %Ash.Dsl.Section{
+  @identities %Spark.Dsl.Section{
     name: :identities,
     describe: """
     Unique identifiers for the resource
@@ -691,7 +691,7 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
-  @resource %Ash.Dsl.Section{
+  @resource %Spark.Dsl.Section{
     name: :resource,
     describe: """
     Resource-wide configuration
@@ -721,7 +721,7 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
-  @define %Ash.Dsl.Entity{
+  @define %Spark.Dsl.Entity{
     name: :define,
     describe: """
     Defines a function on the Api with the corresponding name and arguments.
@@ -731,7 +731,7 @@ defmodule Ash.Resource.Dsl do
 
     All functions will have an optional last argument that accepts options. Those options are:
 
-    #{Ash.OptionsHelpers.docs(Ash.Resource.Interface.interface_options(nil))}
+    #{Spark.OptionsHelpers.docs(Ash.Resource.Interface.interface_options(nil))}
 
     For reads:
 
@@ -763,7 +763,7 @@ defmodule Ash.Resource.Dsl do
     args: [:name]
   }
 
-  @code_interface %Ash.Dsl.Section{
+  @code_interface %Spark.Dsl.Section{
     name: :code_interface,
     describe: """
     Functions that will be defined on the Api module to interact with this resource.
@@ -779,7 +779,7 @@ defmodule Ash.Resource.Dsl do
     ],
     schema: [
       define_for: [
-        type: {:behaviour, Ash.Api},
+        type: {:spark, Ash.Api},
         doc:
           "Defines the code interface on the resource module directly, using the provided Api.",
         default: false
@@ -790,7 +790,7 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
-  @validations %Ash.Dsl.Section{
+  @validations %Spark.Dsl.Section{
     name: :validations,
     describe: """
     Declare validations prior to performing actions against the resource
@@ -812,7 +812,7 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
-  @changes %Ash.Dsl.Section{
+  @changes %Spark.Dsl.Section{
     name: :changes,
     describe: """
     Declare changes that occur on create/update/destroy actions against the resource
@@ -831,7 +831,7 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
-  @preparations %Ash.Dsl.Section{
+  @preparations %Spark.Dsl.Section{
     name: :preparations,
     describe: """
     Declare preparations that occur on all read actions for a given resource
@@ -850,7 +850,7 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
-  @count %Ash.Dsl.Entity{
+  @count %Spark.Dsl.Entity{
     name: :count,
     describe: """
     Declares a named count aggregate on the resource
@@ -870,7 +870,7 @@ defmodule Ash.Resource.Dsl do
     auto_set_fields: [kind: :count]
   }
 
-  @first %Ash.Dsl.Entity{
+  @first %Spark.Dsl.Entity{
     name: :first,
     describe: """
     Declares a named `first` aggregate on the resource
@@ -892,7 +892,7 @@ defmodule Ash.Resource.Dsl do
     auto_set_fields: [kind: :first]
   }
 
-  @sum %Ash.Dsl.Entity{
+  @sum %Spark.Dsl.Entity{
     name: :sum,
     describe: """
     Declares a named `sum` aggregate on the resource
@@ -912,7 +912,7 @@ defmodule Ash.Resource.Dsl do
     auto_set_fields: [kind: :sum]
   }
 
-  @list %Ash.Dsl.Entity{
+  @list %Spark.Dsl.Entity{
     name: :list,
     describe: """
     Declares a named `list` aggregate on the resource.
@@ -933,7 +933,7 @@ defmodule Ash.Resource.Dsl do
     auto_set_fields: [kind: :list]
   }
 
-  @aggregates %Ash.Dsl.Section{
+  @aggregates %Spark.Dsl.Section{
     name: :aggregates,
     describe: """
     Declare named aggregates on the resource.
@@ -959,7 +959,7 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
-  @argument %Ash.Dsl.Entity{
+  @argument %Spark.Dsl.Entity{
     name: :argument,
     describe: """
     An argument to be passed into the calculation's arguments map
@@ -986,7 +986,7 @@ defmodule Ash.Resource.Dsl do
     schema: Ash.Resource.Calculation.Argument.schema()
   }
 
-  @calculation %Ash.Dsl.Entity{
+  @calculation %Spark.Dsl.Entity{
     name: :calculate,
     describe: """
     Declares a named calculation on the resource.
@@ -1019,7 +1019,7 @@ defmodule Ash.Resource.Dsl do
     schema: Ash.Resource.Calculation.schema()
   }
 
-  @calculations %Ash.Dsl.Section{
+  @calculations %Spark.Dsl.Section{
     name: :calculations,
     describe: """
     Declare named calculations on the resource.
@@ -1040,7 +1040,7 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
-  @multitenancy %Ash.Dsl.Section{
+  @multitenancy %Spark.Dsl.Section{
     name: :multitenancy,
     describe: """
     Options for configuring the multitenancy behavior of a resource.
@@ -1140,15 +1140,15 @@ defmodule Ash.Resource.Dsl do
 
   ### Index
 
-  #{Ash.Dsl.Extension.doc_index(@sections)}
+  #{Spark.Dsl.Extension.doc_index(@sections)}
 
   ### Docs
 
-  #{Ash.Dsl.Extension.doc(@sections)}
+  #{Spark.Dsl.Extension.doc(@sections)}
   <!--- ash-hq-hide-stop -->
   """
 
-  use Ash.Dsl.Extension,
+  use Spark.Dsl.Extension,
     sections: @sections,
     transformers: @transformers
 

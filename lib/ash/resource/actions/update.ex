@@ -34,11 +34,11 @@ defmodule Ash.Resource.Actions.Update do
   @create_update_opts create_update_opts()
 
   @opt_schema []
-              |> Ash.OptionsHelpers.merge_schemas(
+              |> Spark.OptionsHelpers.merge_schemas(
                 @global_opts,
                 "Action Options"
               )
-              |> Ash.OptionsHelpers.merge_schemas(
+              |> Spark.OptionsHelpers.merge_schemas(
                 @create_update_opts,
                 "Create/Update Options"
               )

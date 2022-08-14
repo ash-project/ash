@@ -1,6 +1,6 @@
 defmodule Ash.Flow.Transformers.ValidateUniqueNames do
   @moduledoc "Validates that steps have unique names."
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
   def before?(_), do: true
 
@@ -16,7 +16,7 @@ defmodule Ash.Flow.Transformers.ValidateUniqueNames do
 
       {name, [_ | _] = dupes} ->
         {:error,
-         Ash.Error.Dsl.DslError.exception(
+         Spark.Error.DslError.exception(
            module: flow,
            path: [:flow, :steps],
            message:

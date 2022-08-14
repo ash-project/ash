@@ -1,5 +1,5 @@
 defmodule Ash.Flow.Dsl do
-  @debug %Ash.Dsl.Entity{
+  @debug %Spark.Dsl.Entity{
     name: :debug,
     describe: """
     Declares a step that will inspect its input and provide
@@ -17,7 +17,7 @@ defmodule Ash.Flow.Dsl do
     schema: Ash.Flow.Step.Debug.schema()
   }
 
-  @create %Ash.Dsl.Entity{
+  @create %Spark.Dsl.Entity{
     name: :create,
     describe: """
     Declares a step that will call a create action on a resource.
@@ -33,7 +33,7 @@ defmodule Ash.Flow.Dsl do
     schema: Ash.Flow.Step.Create.schema()
   }
 
-  @update %Ash.Dsl.Entity{
+  @update %Spark.Dsl.Entity{
     name: :update,
     describe: """
     Declares a step that will call a update action on a resource.
@@ -51,7 +51,7 @@ defmodule Ash.Flow.Dsl do
     schema: Ash.Flow.Step.Update.schema()
   }
 
-  @destroy %Ash.Dsl.Entity{
+  @destroy %Spark.Dsl.Entity{
     name: :destroy,
     describe: """
     Declares a step that will call a destroy action on a resource.
@@ -67,7 +67,7 @@ defmodule Ash.Flow.Dsl do
     schema: Ash.Flow.Step.Destroy.schema()
   }
 
-  @read %Ash.Dsl.Entity{
+  @read %Spark.Dsl.Entity{
     name: :read,
     describe: """
     Declares a step that will call a read action on a resource.
@@ -83,7 +83,7 @@ defmodule Ash.Flow.Dsl do
     schema: Ash.Flow.Step.Read.schema()
   }
 
-  @run_flow %Ash.Dsl.Entity{
+  @run_flow %Spark.Dsl.Entity{
     name: :run_flow,
     describe: """
     Runs another flow as part of the current flow.
@@ -103,7 +103,7 @@ defmodule Ash.Flow.Dsl do
     schema: Ash.Flow.Step.RunFlow.schema()
   }
 
-  @custom %Ash.Dsl.Entity{
+  @custom %Spark.Dsl.Entity{
     name: :custom,
     describe: """
     Runs a custom step module.
@@ -128,7 +128,7 @@ defmodule Ash.Flow.Dsl do
     schema: Ash.Flow.Step.Custom.schema()
   }
 
-  @argument %Ash.Dsl.Entity{
+  @argument %Spark.Dsl.Entity{
     name: :argument,
     describe: """
     An argument to be passed into the flow
@@ -151,7 +151,7 @@ defmodule Ash.Flow.Dsl do
     schema: Ash.Flow.Argument.schema()
   }
 
-  @flow %Ash.Dsl.Section{
+  @flow %Spark.Dsl.Section{
     name: :flow,
     describe: """
     Details about the flow itself, like description and the successful return type.
@@ -190,7 +190,7 @@ defmodule Ash.Flow.Dsl do
 
   @step_entities [@create, @debug, @update, @destroy, @read, @run_flow, @custom]
 
-  @transaction %Ash.Dsl.Entity{
+  @transaction %Spark.Dsl.Entity{
     name: :transaction,
     describe: """
     Runs a set of steps in a transaction.
@@ -231,7 +231,7 @@ defmodule Ash.Flow.Dsl do
     ]
   }
 
-  @map %Ash.Dsl.Entity{
+  @map %Spark.Dsl.Entity{
     name: :map,
     describe: """
     Runs a set of steps for each item in a provided list.
@@ -266,7 +266,7 @@ defmodule Ash.Flow.Dsl do
   @transaction transaction
   @map map
 
-  @steps %Ash.Dsl.Section{
+  @steps %Spark.Dsl.Section{
     name: :steps,
     describe: """
     The steps to run.
@@ -300,15 +300,15 @@ defmodule Ash.Flow.Dsl do
 
   ### Index
 
-  #{Ash.Dsl.Extension.doc_index(@sections)}
+  #{Spark.Dsl.Extension.doc_index(@sections)}
 
   ### Docs
 
-  #{Ash.Dsl.Extension.doc(@sections)}
+  #{Spark.Dsl.Extension.doc(@sections)}
   <!--- ash-hq-hide-stop -->
   """
 
-  use Ash.Dsl.Extension,
+  use Spark.Dsl.Extension,
     sections: @sections,
     transformers: @transformers
 end
