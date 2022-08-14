@@ -2,10 +2,10 @@ defmodule Ash.Resource.Transformers.RequireUniqueActionNames do
   @moduledoc """
   Ensures that all actions have unique names.
   """
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
-  alias Ash.Dsl.Transformer
-  alias Ash.Error.Dsl.DslError
+  alias Spark.Dsl.Transformer
+  alias Spark.Error.DslError
 
   def transform(resource, dsl_state) do
     dsl_state

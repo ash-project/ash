@@ -3,7 +3,7 @@ defmodule Ash.Flow.Info do
   Flow introspection functions.
   """
 
-  alias Ash.Dsl.Extension
+  alias Spark.Dsl.Extension
 
   def description(flow) do
     Extension.get_opt(flow, [:flow], :description, "", true)

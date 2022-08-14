@@ -8,7 +8,7 @@ defmodule Ash.Resource do
   @type t :: module
   @type record :: struct()
 
-  use Ash.Dsl,
+  use Spark.Dsl,
     single_extension_kinds: [:data_layer],
     many_extension_kinds: [
       :authorizers,

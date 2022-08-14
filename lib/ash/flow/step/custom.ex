@@ -7,7 +7,7 @@ defmodule Ash.Flow.Step.Custom do
     [
       input: Ash.Flow.Step.input(),
       custom: [
-        type: {:ash_behaviour, Ash.Flow.Step}
+        type: {:spark_behaviour, Ash.Flow.Step}
       ],
       async?: [
         type: :boolean,
@@ -23,6 +23,6 @@ defmodule Ash.Flow.Step.Custom do
         default: false
       ]
     ]
-    |> Ash.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")
+    |> Spark.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")
   end
 end

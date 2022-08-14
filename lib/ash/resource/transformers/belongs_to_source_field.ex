@@ -2,9 +2,9 @@ defmodule Ash.Resource.Transformers.BelongsToSourceField do
   @moduledoc """
   Sets the default `source_field` for belongs_to attributes
   """
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
-  alias Ash.Dsl.Transformer
+  alias Spark.Dsl.Transformer
 
   # sobelow_skip ["DOS.BinToAtom"]
   def transform(_resource, dsl_state) do

@@ -23,5 +23,5 @@ defmodule Ash.Flow.Step.RunFlow do
           default: false
         ]
       ]
-      |> Ash.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")
+      |> Spark.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")
 end

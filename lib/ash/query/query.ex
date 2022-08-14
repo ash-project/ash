@@ -252,7 +252,7 @@ defmodule Ash.Query do
 
   ### Opts
 
-  #{Ash.OptionsHelpers.docs(@for_read_opts)}
+  #{Spark.OptionsHelpers.docs(@for_read_opts)}
 
   """
   def for_read(query, action_name, args \\ %{}, opts \\ []) do

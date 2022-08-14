@@ -6,7 +6,7 @@ defmodule Ash.Policy.Info do
   """
   @type request :: Ash.Engine.Request.t()
 
-  alias Ash.Dsl.Extension
+  alias Spark.Dsl.Extension
 
   @doc "Whether or not ash policy authorizer is configured to show policy breakdowns in error messages"
   def show_policy_breakdowns? do

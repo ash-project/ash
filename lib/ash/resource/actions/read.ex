@@ -30,7 +30,7 @@ defmodule Ash.Resource.Actions.Read do
 
   @global_opts shared_options()
 
-  @opt_schema Ash.OptionsHelpers.merge_schemas(
+  @opt_schema Spark.OptionsHelpers.merge_schemas(
                 [
                   filter: [
                     type: :any,
@@ -38,7 +38,7 @@ defmodule Ash.Resource.Actions.Read do
                       "A filter template, that may contain actor references. See `Ash.Filter` for more on templates"
                   ],
                   manual: [
-                    type: {:ash_behaviour, Ash.Resource.ManualRead},
+                    type: {:spark_behaviour, Ash.Resource.ManualRead},
                     doc: """
                     Allows for read actions that are fetched manually. WARNING: EXPERIMENTAL
 
@@ -152,7 +152,7 @@ defmodule Ash.Resource.Actions.Read do
   end
 
   def pagination(opts) do
-    case Ash.OptionsHelpers.validate(opts, @pagination_schema) do
+    case Spark.OptionsHelpers.validate(opts, @pagination_schema) do
       {:ok, result} ->
         pagination = struct(Pagination, result)
 

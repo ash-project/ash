@@ -1,7 +1,7 @@
 defmodule Ash.Resource.Info do
   @moduledoc "Introspection for resources"
 
-  alias Ash.Dsl.Extension
+  alias Spark.Dsl.Extension
 
   @spec set_metadata(Ash.Resource.record(), map) :: Ash.Resource.record()
   def set_metadata(record, map) do
@@ -267,7 +267,7 @@ defmodule Ash.Resource.Info do
   @doc "Whether or not a given module is a resource module"
   @spec resource?(module) :: boolean
   def resource?(module) when is_atom(module) do
-    Ash.Dsl.is?(module, Ash.Resource)
+    Spark.Dsl.is?(module, Ash.Resource)
   end
 
   def resource?(_), do: false
@@ -275,7 +275,7 @@ defmodule Ash.Resource.Info do
   @doc "A list of field names corresponding to the primary key"
   @spec primary_key(Ash.Resource.t()) :: list(atom)
   def primary_key(resource) do
-    Ash.Dsl.Extension.get_persisted(resource, :primary_key, [])
+    Spark.Dsl.Extension.get_persisted(resource, :primary_key, [])
   end
 
   @doc "Returns all relationships of a resource"
@@ -347,17 +347,17 @@ defmodule Ash.Resource.Info do
   @doc "Get the multitenancy strategy for a resource"
   @spec multitenancy_strategy(Ash.Resource.t()) :: :context | :attribute | nil
   def multitenancy_strategy(resource) do
-    Ash.Dsl.Extension.get_opt(resource, [:multitenancy], :strategy, nil)
+    Spark.Dsl.Extension.get_opt(resource, [:multitenancy], :strategy, nil)
   end
 
   @spec multitenancy_attribute(Ash.Resource.t()) :: atom | nil
   def multitenancy_attribute(resource) do
-    Ash.Dsl.Extension.get_opt(resource, [:multitenancy], :attribute, nil)
+    Spark.Dsl.Extension.get_opt(resource, [:multitenancy], :attribute, nil)
   end
 
   @spec multitenancy_parse_attribute(Ash.Resource.t()) :: {atom, atom, list(any)}
   def multitenancy_parse_attribute(resource) do
-    Ash.Dsl.Extension.get_opt(
+    Spark.Dsl.Extension.get_opt(
       resource,
       [:multitenancy],
       :parse_attribute,
@@ -370,17 +370,17 @@ defmodule Ash.Resource.Info do
 
   @spec multitenancy_global?(Ash.Resource.t()) :: atom | nil
   def multitenancy_global?(resource) do
-    Ash.Dsl.Extension.get_opt(resource, [:multitenancy], :global?, nil)
+    Spark.Dsl.Extension.get_opt(resource, [:multitenancy], :global?, nil)
   end
 
   @spec multitenancy_source(Ash.Resource.t()) :: atom | nil
   def multitenancy_source(resource) do
-    Ash.Dsl.Extension.get_opt(resource, [:multitenancy], :source, nil)
+    Spark.Dsl.Extension.get_opt(resource, [:multitenancy], :source, nil)
   end
 
   @spec multitenancy_template(Ash.Resource.t()) :: atom | nil
   def multitenancy_template(resource) do
-    Ash.Dsl.Extension.get_opt(resource, [:multitenancy], :template, nil)
+    Spark.Dsl.Extension.get_opt(resource, [:multitenancy], :template, nil)
   end
 
   @doc "Returns all calculations of a resource"

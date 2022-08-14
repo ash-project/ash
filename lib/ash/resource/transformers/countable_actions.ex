@@ -2,9 +2,9 @@ defmodule Ash.Resource.Transformers.CountableActions do
   @moduledoc """
   Ensures that countable paginated actions do not exist for resources that are not countable
   """
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
-  alias Ash.Dsl.Transformer
+  alias Spark.Dsl.Transformer
 
   # sobelow_skip ["DOS.BinToAtom"]
   def transform(resource, dsl_state) do
@@ -22,7 +22,7 @@ defmodule Ash.Resource.Transformers.CountableActions do
           {:ok, dsl_state}
         else
           {:error,
-           Ash.Error.Dsl.DslError.exception(
+           Spark.Error.DslError.exception(
              module: resource,
              path: [:actions, action.name],
              message:

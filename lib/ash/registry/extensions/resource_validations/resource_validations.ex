@@ -8,5 +8,5 @@ defmodule Ash.Registry.ResourceValidations do
     Ash.Registry.ResourceValidations.Transformers.EnsureNoEmbeds
   ]
 
-  use Ash.Dsl.Extension, transformers: @transformers
+  use Spark.Dsl.Extension, transformers: @transformers
 end

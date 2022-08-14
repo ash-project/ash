@@ -8,7 +8,7 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       links: []
     ],
     destination: [
-      type: :ash_resource,
+      type: Ash.OptionsHelpers.ash_resource(),
       doc: "The destination resource",
       links: []
     ],
@@ -163,7 +163,7 @@ defmodule Ash.Resource.Relationships.SharedOptions do
 
   def manual do
     {:manual,
-     type: {:ash_behaviour, Ash.Resource.ManualRelationship},
+     type: {:spark_behaviour, Ash.Resource.ManualRelationship},
      links: [],
      doc: """
      Allows for relationships that are fetched manually. WARNING: EXPERIMENTAL

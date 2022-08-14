@@ -7,7 +7,7 @@ defmodule Ash.DataLayer.Ets do
 
   @behaviour Ash.DataLayer
 
-  @ets %Ash.Dsl.Section{
+  @ets %Spark.Dsl.Section{
     name: :ets,
     describe: """
     A section for configuring the ets data layer
@@ -35,12 +35,12 @@ defmodule Ash.DataLayer.Ets do
     ]
   }
 
-  use Ash.Dsl.Extension,
+  use Spark.Dsl.Extension,
     sections: [@ets],
     transformers: [Ash.DataLayer.Transformers.RequirePreCheckWith]
 
   alias Ash.Actions.Sort
-  alias Ash.Dsl.Extension
+  alias Spark.Dsl.Extension
 
   @spec private?(Ash.Resource.t()) :: boolean
   def private?(resource) do

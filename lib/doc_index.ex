@@ -1,9 +1,9 @@
-defmodule Ash.DocIndex.AshDocIndex do
+defmodule Ash.DocIndex do
   @moduledoc """
   Some documentation about Ash.
   """
 
-  use Ash.DocIndex,
+  use Spark.DocIndex,
     otp_app: :ash,
     guides_from: [
       "documentation/**/*.md"
@@ -13,7 +13,7 @@ defmodule Ash.DocIndex.AshDocIndex do
   @spec for_library() :: String.t()
   def for_library, do: "ash"
 
-  @overview Ash.DocIndex.read!(:ash, "documentation/topics/overview.md")
+  @overview Spark.DocIndex.read!(:ash, "documentation/topics/overview.md")
 
   @impl true
   def guides do
@@ -34,7 +34,7 @@ defmodule Ash.DocIndex.AshDocIndex do
   def default_guide, do: "Overview"
 
   @impl true
-  @spec extensions() :: list(Ash.DocIndex.extension())
+  @spec extensions() :: list(Spark.DocIndex.extension())
   def extensions do
     [
       %{
@@ -155,14 +155,14 @@ defmodule Ash.DocIndex.AshDocIndex do
        ]},
       {"DSLs and Extensions",
        [
-         Ash.Dsl.Entity,
-         Ash.Dsl.Extension,
-         Ash.Dsl.Section,
-         Ash.Dsl.Transformer
+         Spark.Dsl.Entity,
+         Spark.Dsl.Extension,
+         Spark.Dsl.Section,
+         Spark.Dsl.Transformer
        ]},
       {"Documentation",
        [
-         Ash.DocIndex
+         Spark.DocIndex
        ]}
     ]
   end

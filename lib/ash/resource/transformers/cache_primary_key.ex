@@ -1,9 +1,9 @@
 defmodule Ash.Resource.Transformers.CachePrimaryKey do
   @moduledoc "Validates and caches the primary key of a resource"
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
-  alias Ash.Dsl.Transformer
-  alias Ash.Error.Dsl.DslError
+  alias Spark.Dsl.Transformer
+  alias Spark.Error.DslError
 
   def transform(resource, dsl_state) do
     primary_key_attribute =

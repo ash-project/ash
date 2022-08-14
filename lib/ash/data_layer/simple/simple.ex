@@ -6,7 +6,7 @@ defmodule Ash.DataLayer.Simple do
   by embedded resources, and resources without data layers.
   """
 
-  use Ash.Dsl.Extension, transformers: [], sections: []
+  use Spark.Dsl.Extension, transformers: [], sections: []
 
   def show_in_docs?, do: false
 

@@ -2,10 +2,10 @@ defmodule Ash.Resource.Transformers.BelongsToAttribute do
   @moduledoc """
   Creates the attribute for belongs_to relationships that have `define_field?: true`
   """
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
-  alias Ash.Dsl.Transformer
-  alias Ash.Error.Dsl.DslError
+  alias Spark.Dsl.Transformer
+  alias Spark.Error.DslError
 
   @extension Ash.Resource.Dsl
 

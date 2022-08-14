@@ -21,9 +21,9 @@ defmodule Ash.Registry do
 
   @type t :: module
 
-  use Ash.Dsl, default_extensions: [extensions: [Ash.Registry.Dsl]]
+  use Spark.Dsl, default_extensions: [extensions: [Ash.Registry.Dsl]]
 
-  alias Ash.Dsl.Extension
+  alias Spark.Dsl.Extension
 
   @spec entries(t()) :: list(module)
   def entries(registry) do

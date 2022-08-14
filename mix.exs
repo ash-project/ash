@@ -134,13 +134,13 @@ defmodule Ash.MixProject do
         pagination: ~r/Ash.Page/,
         notifications: ~r/Ash.Notifier/,
         extension: [
-          Ash.Dsl.Entity,
-          Ash.Dsl.Extension,
-          Ash.Dsl.Section,
-          Ash.Dsl.Transformer
+          Spark.Dsl.Entity,
+          Spark.Dsl.Extension,
+          Spark.Dsl.Section,
+          Spark.Dsl.Transformer
         ],
         "dsl tooling": [
-          Ash.Dsl
+          Spark.Dsl
         ],
         "resource dsl transformers": ~r/Ash.Resource.Transformers/,
         "api dsl transformers": ~r/Ash.Api.Transformers/,
@@ -175,7 +175,7 @@ defmodule Ash.MixProject do
           Ash.Query.Aggregate,
           Ash.Query.Type,
           Ash.SatSolver,
-          Ash.OptionsHelpers
+          Spark.OptionsHelpers
         ],
         comparable: ~r/Comparable/
       ]
@@ -201,11 +201,12 @@ defmodule Ash.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:spark, "~> 0.1.5"},
       {:ecto, "~> 3.7"},
       {:ets, "~> 0.8.0"},
       {:decimal, "~> 2.0"},
       {:picosat_elixir, "~> 0.2"},
-      {:nimble_options, "~> 0.3.5"},
+      {:nimble_options, "~> 0.4.0"},
       {:comparable, "~> 1.0"},
       {:jason, ">= 1.0.0"},
       {:sourceror, "~> 0.9"},

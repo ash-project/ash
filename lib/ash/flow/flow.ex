@@ -12,7 +12,7 @@ defmodule Ash.Flow do
 
   @type t :: module
 
-  use Ash.Dsl,
+  use Spark.Dsl,
     default_extensions: [
       extensions: [Ash.Flow.Dsl]
     ]

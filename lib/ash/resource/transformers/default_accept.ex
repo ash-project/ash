@@ -1,9 +1,9 @@
 defmodule Ash.Resource.Transformers.DefaultAccept do
   @moduledoc "Sets the default `accept` for each action"
 
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
-  alias Ash.Dsl.Transformer
+  alias Spark.Dsl.Transformer
 
   def transform(resource, dsl_state) do
     public_attribute_names =

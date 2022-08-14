@@ -1,6 +1,6 @@
 defmodule Ash.Flow.Transformers.ValidateNoEmptySteps do
   @moduledoc "Validates that no nested steps contain no steps"
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
   def transform(flow, dsl_state) do
     flow
@@ -14,7 +14,7 @@ defmodule Ash.Flow.Transformers.ValidateNoEmptySteps do
     for step <- steps do
       if Map.has_key?(step, :steps) do
         if Enum.empty?(step.steps || []) do
-          raise Ash.Error.Dsl.DslError,
+          raise Spark.Error.DslError,
             module: flow,
             message: "Must have at least one step.",
             path: Enum.reverse(trail, [step.name])

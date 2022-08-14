@@ -2,10 +2,10 @@ defmodule Ash.Resource.Transformers.ValidateManagedRelationshipOpts do
   @moduledoc """
   Confirms that all action types declared on a resource are supported by its data layer
   """
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
   alias Ash.Changeset.ManagedRelationshipHelpers
-  alias Ash.Dsl.Transformer
+  alias Spark.Dsl.Transformer
 
   def after_compile?, do: true
 
@@ -20,7 +20,7 @@ defmodule Ash.Resource.Transformers.ValidateManagedRelationshipOpts do
       )
       |> Enum.each(fn %Ash.Resource.Change{change: {_, opts}} ->
         unless Enum.find(action.arguments, &(&1.name == opts[:argument])) do
-          raise Ash.Error.Dsl.DslError,
+          raise Spark.Error.DslError,
             module: resource,
             path:
               [
@@ -35,7 +35,7 @@ defmodule Ash.Resource.Transformers.ValidateManagedRelationshipOpts do
 
         relationship =
           Ash.Resource.Info.relationship(resource, opts[:relationship]) ||
-            raise Ash.Error.Dsl.DslError,
+            raise Spark.Error.DslError,
               module: resource,
               path:
                 [
@@ -55,18 +55,18 @@ defmodule Ash.Resource.Transformers.ValidateManagedRelationshipOpts do
 
                 Enum.reduce(defaults, Ash.Changeset.manage_relationship_schema(), fn {key, value},
                                                                                      manage_opts ->
-                  Ash.OptionsHelpers.set_default!(manage_opts, key, value)
+                  Spark.OptionsHelpers.set_default!(manage_opts, key, value)
                 end)
               else
                 Ash.Changeset.manage_relationship_schema()
               end
 
-            opts = Ash.OptionsHelpers.validate!(opts[:opts], manage_opts)
+            opts = Spark.OptionsHelpers.validate!(opts[:opts], manage_opts)
 
             ManagedRelationshipHelpers.sanitize_opts(relationship, opts)
           rescue
             e ->
-              reraise Ash.Error.Dsl.DslError,
+              reraise Spark.Error.DslError,
                       [
                         module: resource,
                         path:

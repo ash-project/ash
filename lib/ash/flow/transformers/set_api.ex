@@ -1,6 +1,6 @@
 defmodule Ash.Flow.Transformers.SetApi do
   @moduledoc "Sets the api on the steps of a flow to the default api, unless an api is set explicitly."
-  use Ash.Dsl.Transformer
+  use Spark.Dsl.Transformer
 
   def before?(_), do: true
 
@@ -12,7 +12,7 @@ defmodule Ash.Flow.Transformers.SetApi do
     |> Enum.map(&set_api(&1, flow, api))
     |> Enum.reduce({:ok, dsl_state}, fn step, {:ok, dsl_state} ->
       {:ok,
-       Ash.Dsl.Transformer.replace_entity(
+       Spark.Dsl.Transformer.replace_entity(
          dsl_state,
          [:steps],
          step,
@@ -28,7 +28,7 @@ defmodule Ash.Flow.Transformers.SetApi do
       if step.api do
         step
       else
-        raise Ash.Error.Dsl.DslError,
+        raise Spark.Error.DslError,
           module: flow,
           path: [:flow, :steps, step.name, :api],
           message:

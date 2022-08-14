@@ -32,7 +32,7 @@ defmodule Ash.Resource.Attribute do
           writable?: boolean()
         }
 
-  alias Ash.OptionsHelpers
+  alias Spark.OptionsHelpers
 
   @schema [
     name: [
@@ -41,7 +41,7 @@ defmodule Ash.Resource.Attribute do
       links: []
     ],
     type: [
-      type: :ash_type,
+      type: Ash.OptionsHelpers.ash_type(),
       doc: "The type of the attribute.",
       links: [
         modules: ["ash:module:Ash.Type"]

@@ -46,7 +46,7 @@ defmodule Ash.Type.CiString do
 
   ### Constraints
 
-  #{Ash.OptionsHelpers.docs(@constraints)}
+  #{Spark.OptionsHelpers.docs(@constraints)}
   """
   use Ash.Type
 
