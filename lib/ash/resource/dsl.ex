@@ -155,8 +155,8 @@ defmodule Ash.Resource.Dsl do
       """
       # In a resource called `Word`
       has_one :dictionary_entry, DictionaryEntry do
-        source_field :text
-        destination_field :word_text
+        source_attribute :text
+        destination_attribute :word_text
       end
       """
     ],
@@ -180,8 +180,8 @@ defmodule Ash.Resource.Dsl do
       """
       # In a resource called `Word`
       has_many :definitions, DictionaryDefinition do
-        source_field :text
-        destination_field :word_text
+        source_attribute :text
+        destination_attribute :word_text
       end
       """
     ],
@@ -213,10 +213,10 @@ defmodule Ash.Resource.Dsl do
       # In a resource called `Word`
       many_to_many :books, Book do
         through BookWord
-        source_field :text
-        source_field_on_join_table :word_text
-        destination_field :id
-        destination_field_on_join_table :book_id
+        source_attribute :text
+        source_attribute_on_join_resource :word_text
+        destination_attribute :id
+        destination_attribute_on_join_resource :book_id
       end
 
       # And in `BookWord` (the resource that defines the join table)
@@ -236,7 +236,7 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declares a belongs_to relationship. In a relational database, the foreign key would be on the *source* table.
 
-    This creates a field on the resource with the corresponding name and type, unless `define_field?: false` is provided.
+    This creates a field on the resource with the corresponding name and type, unless `define_attribute?: false` is provided.
     """,
     links: [
       guides: [
@@ -247,8 +247,8 @@ defmodule Ash.Resource.Dsl do
       """
       # In a resource called `Word`
       belongs_to :dictionary_entry, DictionaryEntry do
-        source_field :text,
-        destination_field :word_text
+        source_attribute :text,
+        destination_attribute :word_text
       end
       """
     ],
@@ -289,19 +289,19 @@ defmodule Ash.Resource.Dsl do
 
         many_to_many :categories, MyApp.Category do
           through MyApp.PostCategory
-          destination_field_on_join_table :category_id
-          source_field_on_join_table :post_id
+          destination_attribute_on_join_resource :category_id
+          source_attribute_on_join_resource :post_id
         end
       end
       """,
       """
       relationships do
         has_many :posts, MyApp.Post do
-          destination_field :author_id
+          destination_attribute :author_id
         end
 
         has_many :composite_key_posts, MyApp.CompositeKeyPost do
-          destination_field :author_id
+          destination_attribute :author_id
         end
       end
       """

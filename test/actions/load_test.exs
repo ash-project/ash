@@ -27,10 +27,10 @@ defmodule Ash.Test.Actions.LoadTest do
     end
 
     relationships do
-      has_many :posts, Ash.Test.Actions.LoadTest.Post, destination_field: :author_id
+      has_many :posts, Ash.Test.Actions.LoadTest.Post, destination_attribute: :author_id
 
       has_one :latest_post, Ash.Test.Actions.LoadTest.Post,
-        destination_field: :author_id,
+        destination_attribute: :author_id,
         sort: [inserted_at: :desc]
     end
   end
@@ -92,8 +92,8 @@ defmodule Ash.Test.Actions.LoadTest do
 
       many_to_many :categories, Ash.Test.Actions.LoadTest.Category,
         through: Ash.Test.Actions.LoadTest.PostCategory,
-        destination_field_on_join_table: :category_id,
-        source_field_on_join_table: :post_id
+        destination_attribute_on_join_resource: :category_id,
+        source_attribute_on_join_resource: :post_id
     end
   end
 
@@ -138,8 +138,8 @@ defmodule Ash.Test.Actions.LoadTest do
     relationships do
       many_to_many :posts, Post,
         through: PostCategory,
-        destination_field_on_join_table: :post_id,
-        source_field_on_join_table: :category_id
+        destination_attribute_on_join_resource: :post_id,
+        source_attribute_on_join_resource: :category_id
     end
   end
 

@@ -5,10 +5,10 @@ defmodule Ash.Resource.Relationships.ManyToMany do
     :source,
     :through,
     :destination,
-    :source_field,
-    :destination_field,
-    :source_field_on_join_table,
-    :destination_field_on_join_table,
+    :source_attribute,
+    :destination_attribute,
+    :source_attribute_on_join_resource,
+    :destination_attribute_on_join_resource,
     :join_relationship,
     :not_found_message,
     :violation_message,
@@ -21,7 +21,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
     :filter,
     :has_many,
     could_be_related_at_creation?: false,
-    validate_destination_field?: true,
+    validate_destination_attribute?: true,
     cardinality: :many,
     type: :many_to_many
   ]
@@ -38,10 +38,10 @@ defmodule Ash.Resource.Relationships.ManyToMany do
           through: Ash.Resource.t(),
           destination: Ash.Resource.t(),
           join_relationship: atom,
-          source_field: atom,
-          destination_field: atom,
-          source_field_on_join_table: atom,
-          destination_field_on_join_table: atom,
+          source_attribute: atom,
+          destination_attribute: atom,
+          source_attribute_on_join_resource: atom,
+          destination_attribute_on_join_resource: atom,
           description: String.t()
         }
 
@@ -49,12 +49,12 @@ defmodule Ash.Resource.Relationships.ManyToMany do
   alias Spark.OptionsHelpers
 
   @global_opts shared_options()
-               |> OptionsHelpers.set_default!(:destination_field, :id)
-               |> OptionsHelpers.set_default!(:source_field, :id)
+               |> OptionsHelpers.set_default!(:destination_attribute, :id)
+               |> OptionsHelpers.set_default!(:source_attribute, :id)
 
   @opt_schema Spark.OptionsHelpers.merge_schemas(
                 [
-                  source_field_on_join_table: [
+                  source_attribute_on_join_resource: [
                     type: :atom,
                     required: true,
                     links: [
@@ -63,9 +63,9 @@ defmodule Ash.Resource.Relationships.ManyToMany do
                       ]
                     ],
                     doc:
-                      "The attribute on the join resource that should line up with `source_field` on this resource."
+                      "The attribute on the join resource that should line up with `source_attribute` on this resource."
                   ],
-                  destination_field_on_join_table: [
+                  destination_attribute_on_join_resource: [
                     type: :atom,
                     required: true,
                     links: [
@@ -74,7 +74,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
                       ]
                     ],
                     doc:
-                      "The attribute on the join resource that should line up with `destination_field` on the related resource."
+                      "The attribute on the join resource that should line up with `destination_attribute` on the related resource."
                   ],
                   through: [
                     type: Ash.OptionsHelpers.ash_resource(),

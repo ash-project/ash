@@ -19,7 +19,7 @@ defmodule Ash.Resource.Relationships.SharedOptions do
         modules: ["ash:guide:Documentation"]
       ]
     ],
-    destination_field: [
+    destination_attribute: [
       type: :atom,
       links: [
         dsls: [
@@ -27,16 +27,16 @@ defmodule Ash.Resource.Relationships.SharedOptions do
         ]
       ],
       doc:
-        "The attribute on the related resource that should match the `source_field` configured on this resource."
+        "The attribute on the related resource that should match the `source_attribute` configured on this resource."
     ],
-    validate_destination_field?: [
+    validate_destination_attribute?: [
       type: :boolean,
       default: true,
       doc:
         "Whether or not to validate that the destination field exists on the destination resource",
       links: []
     ],
-    source_field: [
+    source_attribute: [
       type: :atom,
       links: [
         dsls: [
@@ -44,7 +44,7 @@ defmodule Ash.Resource.Relationships.SharedOptions do
         ]
       ],
       doc:
-        "The field on this resource that should match the `destination_field` on the related resource."
+        "The field on this resource that should match the `destination_attribute` on the related resource."
     ],
     relationship_context: [
       type: :any,
@@ -134,18 +134,18 @@ defmodule Ash.Resource.Relationships.SharedOptions do
     @shared_options
   end
 
-  def no_fields do
-    {:no_fields?,
+  def no_attributes do
+    {:no_attributes?,
      [
        type: :boolean,
        links: [],
        doc: """
-       If true, all existing entities are considered related, i.e this relationship is not based on any fields, and `source_field` and
-       `destination_field` are ignored.
+       If true, all existing entities are considered related, i.e this relationship is not based on any fields, and `source_attribute` and
+       `destination_attribute` are ignored.
 
        This can be very useful when combined with multitenancy. Specifically, if you have a tenant resource like `Organization`,
-       you can use `no_fields?` to do things like `has_many :employees, Employee, no_fields?: true`, which lets you avoid having an
-       unnecessary `organization_id` field on `Employee`. The same works in reverse: `has_one :organization, Organization, no_fields?: true`
+       you can use `no_attributes?` to do things like `has_many :employees, Employee, no_attributes?: true`, which lets you avoid having an
+       unnecessary `organization_id` field on `Employee`. The same works in reverse: `has_one :organization, Organization, no_attributes?: true`
        allows relating the employee to their organization.
 
        Some important caveats here:

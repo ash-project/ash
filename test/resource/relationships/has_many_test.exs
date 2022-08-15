@@ -24,7 +24,7 @@ defmodule Ash.Test.Resource.Relationships.HasManyTest do
       defposts do
         relationships do
           has_many :foo, Foo
-          has_many :bar, Bar, destination_field: :bazz, private?: true
+          has_many :bar, Bar, destination_attribute: :bazz, private?: true
         end
       end
 
@@ -32,18 +32,18 @@ defmodule Ash.Test.Resource.Relationships.HasManyTest do
                %HasMany{
                  cardinality: :many,
                  destination: Foo,
-                 destination_field: :post_id,
+                 destination_attribute: :post_id,
                  name: :foo,
-                 source_field: :id,
+                 source_attribute: :id,
                  type: :has_many,
                  private?: false
                },
                %HasMany{
                  cardinality: :many,
                  destination: Bar,
-                 destination_field: :bazz,
+                 destination_attribute: :bazz,
                  name: :bar,
-                 source_field: :id,
+                 source_attribute: :id,
                  type: :has_many,
                  private?: true
                }
@@ -60,28 +60,28 @@ defmodule Ash.Test.Resource.Relationships.HasManyTest do
   end
 
   describe "validations" do
-    test "fails if destination_field is not an atom" do
+    test "fails if destination_attribute is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.HasManyTest.Post]\n relationships -> has_many -> foobar:\n  expected :destination_field to be an atom, got: \"foo\"",
+        "[Ash.Test.Resource.Relationships.HasManyTest.Post]\n relationships -> has_many -> foobar:\n  expected :destination_attribute to be an atom, got: \"foo\"",
         fn ->
           defposts do
             relationships do
-              has_many :foobar, FooBar, destination_field: "foo"
+              has_many :foobar, FooBar, destination_attribute: "foo"
             end
           end
         end
       )
     end
 
-    test "fails if source_field is not an atom" do
+    test "fails if source_attribute is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.HasManyTest.Post]\n relationships -> has_many -> foobar:\n  expected :source_field to be an atom, got: \"foo\"",
+        "[Ash.Test.Resource.Relationships.HasManyTest.Post]\n relationships -> has_many -> foobar:\n  expected :source_attribute to be an atom, got: \"foo\"",
         fn ->
           defposts do
             relationships do
-              has_many :foobar, FooBar, source_field: "foo", destination_field: :post_id
+              has_many :foobar, FooBar, source_attribute: "foo", destination_attribute: :post_id
             end
           end
         end
@@ -123,7 +123,7 @@ defmodule Ash.Test.Resource.Relationships.HasManyTest do
         fn ->
           defposts do
             relationships do
-              has_many :foobar, FooBar, private?: "foo", destination_field: :post_id
+              has_many :foobar, FooBar, private?: "foo", destination_attribute: :post_id
             end
           end
         end

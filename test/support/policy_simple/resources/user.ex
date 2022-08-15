@@ -32,12 +32,12 @@ defmodule Ash.Test.Support.PolicySimple.User do
 
   relationships do
     belongs_to(:organization, Ash.Test.Support.PolicySimple.Organization)
-    has_many(:posts, Ash.Test.Support.PolicySimple.Post, destination_field: :author_id)
+    has_many(:posts, Ash.Test.Support.PolicySimple.Post, destination_attribute: :author_id)
 
     many_to_many :cars, Ash.Test.Support.PolicySimple.Car do
       through(Ash.Test.Support.PolicySimple.CarUser)
-      source_field_on_join_table(:user_id)
-      destination_field_on_join_table(:car_id)
+      source_attribute_on_join_resource(:user_id)
+      destination_attribute_on_join_resource(:car_id)
     end
   end
 end

@@ -24,18 +24,18 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
     end
 
     relationships do
-      has_many :posts, Ash.Test.Actions.AsyncLoadTest.Post, destination_field: :author_id
+      has_many :posts, Ash.Test.Actions.AsyncLoadTest.Post, destination_attribute: :author_id
 
       has_many :authorized_actor_posts, Ash.Test.Actions.AsyncLoadTest.Post,
-        destination_field: :author_id,
+        destination_attribute: :author_id,
         read_action: :authorized_actor
 
       has_many :authorized_context_posts, Ash.Test.Actions.AsyncLoadTest.Post,
-        destination_field: :author_id,
+        destination_attribute: :author_id,
         read_action: :authorized_context
 
       has_one :latest_post, Ash.Test.Actions.AsyncLoadTest.Post,
-        destination_field: :author_id,
+        destination_attribute: :author_id,
         sort: [inserted_at: :desc]
     end
   end
@@ -95,8 +95,8 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
 
       many_to_many :categories, Ash.Test.Actions.AsyncLoadTest.Category,
         through: Ash.Test.Actions.AsyncLoadTest.PostCategory,
-        destination_field_on_join_table: :category_id,
-        source_field_on_join_table: :post_id
+        destination_attribute_on_join_resource: :category_id,
+        source_attribute_on_join_resource: :post_id
     end
 
     policies do
@@ -147,8 +147,8 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
     relationships do
       many_to_many :posts, Post,
         through: PostCategory,
-        destination_field_on_join_table: :post_id,
-        source_field_on_join_table: :category_id
+        destination_attribute_on_join_resource: :post_id,
+        source_attribute_on_join_resource: :category_id
     end
   end
 

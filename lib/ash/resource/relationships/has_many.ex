@@ -3,9 +3,9 @@ defmodule Ash.Resource.Relationships.HasMany do
   defstruct [
     :name,
     :destination,
-    :destination_field,
+    :destination_attribute,
     :private?,
-    :source_field,
+    :source_attribute,
     :source,
     :context,
     :description,
@@ -17,9 +17,9 @@ defmodule Ash.Resource.Relationships.HasMany do
     :manual,
     :api,
     :writable?,
-    no_fields?: false,
+    no_attributes?: false,
     could_be_related_at_creation?: false,
-    validate_destination_field?: true,
+    validate_destination_attribute?: true,
     cardinality: :many,
     type: :has_many
   ]
@@ -30,14 +30,14 @@ defmodule Ash.Resource.Relationships.HasMany do
           source: Ash.Resource.t(),
           read_action: atom,
           filter: Ash.Filter.t() | nil,
-          no_fields?: boolean,
+          no_attributes?: boolean,
           name: atom,
           type: Ash.Type.t(),
           writable?: boolean,
           destination: Ash.Resource.t(),
-          destination_field: atom,
+          destination_attribute: atom,
           private?: boolean,
-          source_field: atom,
+          source_attribute: atom,
           description: String.t(),
           manual: atom | {atom, Keyword.t()} | nil
         }
@@ -46,12 +46,12 @@ defmodule Ash.Resource.Relationships.HasMany do
   alias Spark.OptionsHelpers
 
   @global_opts shared_options()
-               |> OptionsHelpers.set_default!(:source_field, :id)
+               |> OptionsHelpers.set_default!(:source_attribute, :id)
 
   @opt_schema Spark.OptionsHelpers.merge_schemas(
                 [
                   manual(),
-                  no_fields()
+                  no_attributes()
                 ],
                 @global_opts,
                 "Relationship Options"

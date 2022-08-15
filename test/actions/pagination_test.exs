@@ -27,7 +27,7 @@ defmodule Ash.Actions.PaginationTest do
     end
 
     relationships do
-      belongs_to :user, Ash.Actions.PaginationTest.User, define_field?: false
+      belongs_to :user, Ash.Actions.PaginationTest.User, define_attribute?: false
     end
   end
 

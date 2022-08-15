@@ -1354,8 +1354,8 @@ defmodule Ash.Filter do
           relationship.through
           |> Ash.Query.new(api)
           |> Ash.Query.do_filter([
-            {relationship.destination_field_on_join_table,
-             in: Enum.map(results, &Map.get(&1, relationship.destination_field))}
+            {relationship.destination_attribute_on_join_resource,
+             in: Enum.map(results, &Map.get(&1, relationship.destination_attribute))}
           ])
           |> filter_related_in(
             Ash.Resource.Info.relationship(resource, join_relationship),
@@ -1429,9 +1429,9 @@ defmodule Ash.Filter do
       %Ref{
         relationship_path: path,
         resource: relationship.source,
-        attribute: Ash.Resource.Info.attribute(relationship.source, relationship.source_field)
+        attribute: Ash.Resource.Info.attribute(relationship.source, relationship.source_attribute)
       },
-      Map.get(single_record, relationship.destination_field)
+      Map.get(single_record, relationship.destination_attribute)
     )
   end
 

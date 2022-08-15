@@ -87,10 +87,10 @@ defmodule Ash.Test.NotifierTest do
     relationships do
       many_to_many :related_posts, __MODULE__,
         through: PostLink,
-        source_field_on_join_table: :source_post_id,
-        destination_field_on_join_table: :destination_post_id
+        source_attribute_on_join_resource: :source_post_id,
+        destination_attribute_on_join_resource: :destination_post_id
 
-      has_many :comments, Comment, destination_field: :post_id
+      has_many :comments, Comment, destination_attribute: :post_id
     end
   end
 

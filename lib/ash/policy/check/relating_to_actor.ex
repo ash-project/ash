@@ -18,9 +18,9 @@ defmodule Ash.Policy.Check.RelatingToActor do
       raise "Can only use `belongs_to` relationships in relating_to_actor checks"
     end
 
-    if Ash.Changeset.changing_attribute?(changeset, relationship.source_field) do
-      Ash.Changeset.get_attribute(changeset, relationship.source_field) ==
-        Map.get(actor, relationship.destination_field)
+    if Ash.Changeset.changing_attribute?(changeset, relationship.source_attribute) do
+      Ash.Changeset.get_attribute(changeset, relationship.source_attribute) ==
+        Map.get(actor, relationship.destination_attribute)
     else
       false
     end

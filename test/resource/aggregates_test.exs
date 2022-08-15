@@ -39,7 +39,7 @@ defmodule Ash.Test.Resource.AggregatesTest do
         end
 
         relationships do
-          has_many :comments, Comment, destination_field: :post_id
+          has_many :comments, Comment, destination_attribute: :post_id
         end
       end
 
@@ -85,7 +85,7 @@ defmodule Ash.Test.Resource.AggregatesTest do
         end
 
         relationships do
-          has_many :comments, Comment, destination_field: :post_id
+          has_many :comments, Comment, destination_attribute: :post_id
         end
       end
 

@@ -56,12 +56,12 @@ defmodule Ash.Resource.Info do
   defp reverse_relationship?(rel, destination_rel) do
     rel.source == destination_rel.destination &&
       rel.destination == destination_rel.source &&
-      rel.source_field == destination_rel.destination_field &&
-      rel.destination_field == destination_rel.source_field &&
-      Map.fetch(rel, :source_field_on_join_table) ==
-        Map.fetch(destination_rel, :destination_field_on_join_table) &&
-      Map.fetch(rel, :destination_field_on_join_table) ==
-        Map.fetch(destination_rel, :source_field_on_join_table) &&
+      rel.source_attribute == destination_rel.destination_attribute &&
+      rel.destination_attribute == destination_rel.source_attribute &&
+      Map.fetch(rel, :source_attribute_on_join_resource) ==
+        Map.fetch(destination_rel, :destination_attribute_on_join_resource) &&
+      Map.fetch(rel, :destination_attribute_on_join_resource) ==
+        Map.fetch(destination_rel, :source_attribute_on_join_resource) &&
       is_nil(destination_rel.context) &&
       is_nil(rel.context)
   end

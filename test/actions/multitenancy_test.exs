@@ -27,8 +27,10 @@ defmodule Ash.Actions.MultitenancyTest do
     end
 
     relationships do
-      has_many :posts, Ash.Actions.MultitenancyTest.Post, destination_field: :author_id
-      has_many :comments, Ash.Actions.MultitenancyTest.Comment, destination_field: :commenter_id
+      has_many :posts, Ash.Actions.MultitenancyTest.Post, destination_attribute: :author_id
+
+      has_many :comments, Ash.Actions.MultitenancyTest.Comment,
+        destination_attribute: :commenter_id
     end
   end
 
@@ -51,7 +53,7 @@ defmodule Ash.Actions.MultitenancyTest do
     end
 
     relationships do
-      has_many :comments, Ash.Actions.MultitenancyTest.Comment, destination_field: :post_id
+      has_many :comments, Ash.Actions.MultitenancyTest.Comment, destination_attribute: :post_id
       belongs_to :author, User
     end
   end

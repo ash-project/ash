@@ -123,8 +123,8 @@ defmodule Ash.Seed do
 
         %{
           type: :belongs_to,
-          source_field: source_field,
-          destination_field: destination_field,
+          source_attribute: source_attribute,
+          destination_attribute: destination_attribute,
           destination: destination,
           name: name
         } ->
@@ -133,8 +133,8 @@ defmodule Ash.Seed do
 
             changeset
             |> Ash.Changeset.force_change_attribute(
-              source_field,
-              Map.get(related, destination_field)
+              source_attribute,
+              Map.get(related, destination_attribute)
             )
             |> callback.()
             |> case do
@@ -148,8 +148,8 @@ defmodule Ash.Seed do
 
         %{
           type: :has_many,
-          source_field: source_field,
-          destination_field: destination_field,
+          source_attribute: source_attribute,
+          destination_attribute: destination_attribute,
           destination: destination,
           name: name
         } ->
@@ -161,8 +161,8 @@ defmodule Ash.Seed do
                 &update_or_seed!(
                   &1,
                   destination,
-                  Map.get(result, source_field),
-                  destination_field
+                  Map.get(result, source_attribute),
+                  destination_attribute
                 )
               )
 
@@ -171,8 +171,8 @@ defmodule Ash.Seed do
 
         %{
           type: :has_one,
-          source_field: source_field,
-          destination_field: destination_field,
+          source_attribute: source_attribute,
+          destination_attribute: destination_attribute,
           destination: destination,
           name: name
         } ->
@@ -182,8 +182,8 @@ defmodule Ash.Seed do
                 update_or_seed!(
                   value,
                   destination,
-                  Map.get(result, source_field),
-                  destination_field
+                  Map.get(result, source_attribute),
+                  destination_attribute
                 )
 
               {:ok, Map.put(result, name, related)}
@@ -194,11 +194,11 @@ defmodule Ash.Seed do
 
         %{
           type: :many_to_many,
-          source_field: source_field,
-          source_field_on_join_table: source_field_on_join_table,
-          destination_field_on_join_table: destination_field_on_join_table,
+          source_attribute: source_attribute,
+          source_attribute_on_join_resource: source_attribute_on_join_resource,
+          destination_attribute_on_join_resource: destination_attribute_on_join_resource,
           join_relationship: join_relationship,
-          destination_field: destination_field,
+          destination_attribute: destination_attribute,
           destination: destination,
           through: through,
           name: name
@@ -209,8 +209,9 @@ defmodule Ash.Seed do
             through =
               Enum.map(related, fn related ->
                 seed!(through, %{
-                  source_field_on_join_table => Map.get(result, source_field),
-                  destination_field_on_join_table => Map.get(related, destination_field)
+                  source_attribute_on_join_resource => Map.get(result, source_attribute),
+                  destination_attribute_on_join_resource =>
+                    Map.get(related, destination_attribute)
                 })
               end)
 

@@ -5,9 +5,9 @@ defmodule Ash.Resource.Relationships.HasOne do
     :name,
     :source,
     :destination,
-    :destination_field,
+    :destination_attribute,
     :private?,
-    :source_field,
+    :source_attribute,
     :allow_orphans?,
     :context,
     :description,
@@ -19,9 +19,9 @@ defmodule Ash.Resource.Relationships.HasOne do
     :violation_message,
     :manual,
     :writable?,
-    no_fields?: false,
+    no_attributes?: false,
     could_be_related_at_creation?: false,
-    validate_destination_field?: true,
+    validate_destination_attribute?: true,
     cardinality: :one,
     type: :has_one,
     required?: false
@@ -33,14 +33,14 @@ defmodule Ash.Resource.Relationships.HasOne do
           source: Ash.Resource.t(),
           name: atom,
           read_action: atom,
-          no_fields?: boolean,
+          no_attributes?: boolean,
           writable?: boolean,
           type: Ash.Type.t(),
           filter: Ash.Filter.t() | nil,
           destination: Ash.Resource.t(),
-          destination_field: atom,
+          destination_attribute: atom,
           private?: boolean,
-          source_field: atom,
+          source_attribute: atom,
           allow_orphans?: boolean,
           description: String.t(),
           manual: atom | {atom, Keyword.t()} | nil
@@ -50,10 +50,10 @@ defmodule Ash.Resource.Relationships.HasOne do
   alias Spark.OptionsHelpers
 
   @global_opts shared_options()
-               |> OptionsHelpers.set_default!(:source_field, :id)
+               |> OptionsHelpers.set_default!(:source_attribute, :id)
 
   @opt_schema Spark.OptionsHelpers.merge_schemas(
-                [manual(), no_fields()] ++
+                [manual(), no_attributes()] ++
                   [
                     required?: [
                       type: :boolean,

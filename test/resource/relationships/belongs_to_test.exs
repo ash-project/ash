@@ -78,32 +78,32 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
       defposts do
         relationships do
           belongs_to(:foo, Foo)
-          belongs_to(:bar, Bar, source_field: :bazz, private?: true)
+          belongs_to(:bar, Bar, source_attribute: :bazz, private?: true)
         end
       end
 
       assert [
                %BelongsTo{
                  cardinality: :one,
-                 define_field?: true,
+                 define_attribute?: true,
                  destination: Foo,
-                 destination_field: :id,
-                 field_type: :uuid,
+                 destination_attribute: :id,
+                 attribute_type: :uuid,
                  name: :foo,
                  primary_key?: false,
-                 source_field: :foo_id,
+                 source_attribute: :foo_id,
                  type: :belongs_to,
                  private?: false
                },
                %BelongsTo{
                  cardinality: :one,
-                 define_field?: true,
+                 define_attribute?: true,
                  destination: Bar,
-                 destination_field: :id,
-                 field_type: :uuid,
+                 destination_attribute: :id,
+                 attribute_type: :uuid,
                  name: :bar,
                  primary_key?: false,
-                 source_field: :bazz,
+                 source_attribute: :bazz,
                  type: :belongs_to,
                  private?: true
                }
@@ -120,28 +120,28 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
   end
 
   describe "validations" do
-    test "fails if destination_field is not an atom" do
+    test "fails if destination_attribute is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  expected :destination_field to be an atom, got: \"foo\"",
+        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  expected :destination_attribute to be an atom, got: \"foo\"",
         fn ->
           defposts do
             relationships do
-              belongs_to(:foobar, FooBar, destination_field: "foo")
+              belongs_to(:foobar, FooBar, destination_attribute: "foo")
             end
           end
         end
       )
     end
 
-    test "fails if source_field is not an atom" do
+    test "fails if source_attribute is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  expected :source_field to be an atom, got: \"foo\"",
+        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  expected :source_attribute to be an atom, got: \"foo\"",
         fn ->
           defposts do
             relationships do
-              belongs_to(:foobar, FooBar, source_field: "foo")
+              belongs_to(:foobar, FooBar, source_attribute: "foo")
             end
           end
         end
@@ -205,14 +205,14 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     end
   end
 
-  test "fails if `define_field?` is not a boolean" do
+  test "fails if `define_attribute?` is not a boolean" do
     assert_raise(
       Spark.Error.DslError,
-      "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  expected :define_field? to be a boolean, got: \"blah\"",
+      "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  expected :define_attribute? to be a boolean, got: \"blah\"",
       fn ->
         defposts do
           relationships do
-            belongs_to(:foobar, Foobar, define_field?: "blah")
+            belongs_to(:foobar, Foobar, define_attribute?: "blah")
           end
         end
       end
@@ -226,7 +226,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
       fn ->
         defposts do
           relationships do
-            belongs_to(:post, __MODULE__, define_field?: false)
+            belongs_to(:post, __MODULE__, define_attribute?: false)
           end
         end
 

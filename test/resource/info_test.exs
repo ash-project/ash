@@ -25,12 +25,12 @@ defmodule Ash.Test.Resource.InfoTest do
     relationships do
       many_to_many :tags, Tag do
         through TagOnPost
-        source_field_on_join_table :vendor_id
-        destination_field_on_join_table :shipping_method_id
+        source_attribute_on_join_resource(:vendor_id)
+        destination_attribute_on_join_resource(:shipping_method_id)
       end
 
-      has_many :comments, Comment, destination_field: :post_id
-      has_one :private, PostPrivate, destination_field: :post_id
+      has_many :comments, Comment, destination_attribute: :post_id
+      has_one :private, PostPrivate, destination_attribute: :post_id
     end
   end
 

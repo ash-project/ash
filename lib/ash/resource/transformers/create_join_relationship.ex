@@ -29,9 +29,9 @@ defmodule Ash.Resource.Transformers.CreateJoinRelationship do
           [
             name: relationship.join_relationship,
             destination: relationship.through,
-            destination_field: relationship.source_field_on_join_table,
+            destination_attribute: relationship.source_attribute_on_join_resource,
             api: relationship.api,
-            source_field: relationship.source_field,
+            source_attribute: relationship.source_attribute,
             private?: true
           ]
           |> add_messages(relationship)

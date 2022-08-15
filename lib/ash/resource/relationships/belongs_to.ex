@@ -5,11 +5,11 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :name,
     :destination,
     :primary_key?,
-    :define_field?,
-    :field_type,
-    :destination_field,
+    :define_attribute?,
+    :attribute_type,
+    :destination_attribute,
     :private?,
-    :source_field,
+    :source_attribute,
     :source,
     :read_action,
     :api,
@@ -22,7 +22,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :context,
     :description,
     :attribute_writable?,
-    validate_destination_field?: true,
+    validate_destination_attribute?: true,
     cardinality: :one,
     type: :belongs_to
   ]
@@ -38,13 +38,13 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           destination: Ash.Resource.t(),
           required?: boolean,
           primary_key?: boolean,
-          define_field?: boolean,
-          field_type: term,
+          define_attribute?: boolean,
+          attribute_type: term,
           writable?: boolean,
           attribute_writable?: boolean,
-          destination_field: atom,
+          destination_attribute: atom,
           private?: boolean,
-          source_field: atom | nil,
+          source_attribute: atom | nil,
           description: String.t()
         }
 
@@ -53,8 +53,8 @@ defmodule Ash.Resource.Relationships.BelongsTo do
   alias Spark.OptionsHelpers
 
   @global_opts shared_options()
-               |> OptionsHelpers.set_default!(:destination_field, :id)
-               |> OptionsHelpers.append_doc!(:source_field, "Defaults to <name>_id")
+               |> OptionsHelpers.set_default!(:destination_attribute, :id)
+               |> OptionsHelpers.append_doc!(:source_attribute, "Defaults to <name>_id")
                |> Keyword.delete(:could_be_related_at_creation?)
 
   @opt_schema Spark.OptionsHelpers.merge_schemas(
@@ -87,7 +87,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                     Whether the generated attribute will be marked as public & writable.
                     """
                   ],
-                  define_field?: [
+                  define_attribute?: [
                     type: :boolean,
                     default: true,
                     links: [
@@ -96,7 +96,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                     doc:
                       "If set to `false` an attribute is not created on the resource for this relationship, and one must be manually added in `attributes`, invalidating many other options."
                   ],
-                  field_type: [
+                  attribute_type: [
                     type: :any,
                     links: [
                       modules: [
