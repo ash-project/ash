@@ -43,7 +43,7 @@ defmodule Ash.Resource.Validation do
     :validation,
     :module,
     :opts,
-    :expensive?,
+    :only_when_valid?,
     :description,
     :message,
     :before_action?,
@@ -55,7 +55,7 @@ defmodule Ash.Resource.Validation do
           validation: {atom(), list(atom())},
           module: atom(),
           opts: list(atom()),
-          expensive?: boolean(),
+          only_when_valid?: boolean(),
           description: String.t() | nil,
           where: list({atom(), list(atom())}),
           on: list(atom())
@@ -97,12 +97,12 @@ defmodule Ash.Resource.Validation do
       Many validations don't make sense in the context of deletion, so by default it is left out of the list.
       """
     ],
-    expensive?: [
+    only_when_valid?: [
       type: :boolean,
       default: false,
       links: [],
       doc:
-        "If a validation is expensive, it won't be run on invalid changes. All inexpensive validations are always run, to provide informative errors."
+        "If the validation should only run on valid changes. Useful for expensive validations or validations that depend on valid data."
     ],
     message: [
       type: :string,

@@ -17,7 +17,7 @@ defmodule Ash.Test.Support.PolicyRbac.Organization do
 
   relationships do
     has_many :memberships, Ash.Test.Support.PolicyRbac.Membership do
-      destination_field(:organization_id)
+      destination_attribute(:organization_id)
     end
   end
 end

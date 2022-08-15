@@ -158,13 +158,13 @@ defmodule Ash.Actions.Sort do
           {field, {:ok, aggregate.type}}
 
         %Ash.Resource.Aggregate{} = agg ->
-          field_type =
+          attribute_type =
             if agg.field do
               related = Ash.Resource.Info.related(resource, agg.relationship_path)
               Ash.Resource.Info.attribute(related, agg.field).type
             end
 
-          {agg.name, Ash.Query.Aggregate.kind_to_type(agg.kind, field_type)}
+          {agg.name, Ash.Query.Aggregate.kind_to_type(agg.kind, attribute_type)}
       end
 
     case type do

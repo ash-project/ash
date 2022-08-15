@@ -31,8 +31,8 @@ defmodule Ash.Test.Support.PolicySimple.Car do
   relationships do
     many_to_many :users, Ash.Test.Support.PolicySimple.User do
       through(Ash.Test.Support.PolicySimple.CarUser)
-      source_field_on_join_table(:car_id)
-      destination_field_on_join_table(:user_id)
+      source_attribute_on_join_resource(:car_id)
+      destination_attribute_on_join_resource(:user_id)
     end
   end
 end

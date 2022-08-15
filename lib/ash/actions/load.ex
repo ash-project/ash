@@ -52,7 +52,7 @@ defmodule Ash.Actions.Load do
         else
           related_query
         end
-        |> Ash.Query.ensure_selected(relationship.destination_field)
+        |> Ash.Query.ensure_selected(relationship.destination_attribute)
 
       related_query =
         if relationship.cardinality == :one do
@@ -75,10 +75,10 @@ defmodule Ash.Actions.Load do
         )
 
       query =
-        if Map.get(relationship, :no_fields?) do
+        if Map.get(relationship, :no_attributes?) do
           query
         else
-          Ash.Query.ensure_selected(query, relationship.source_field)
+          Ash.Query.ensure_selected(query, relationship.source_attribute)
         end
 
       {
@@ -139,7 +139,7 @@ defmodule Ash.Actions.Load do
     data
   end
 
-  defp attach_to_many_loads(value, %{name: name, no_fields?: true}, data, lead_path) do
+  defp attach_to_many_loads(value, %{name: name, no_attributes?: true}, data, lead_path) do
     map_or_update(data, lead_path, fn record ->
       Map.put(record, name, List.wrap(value))
     end)
@@ -154,16 +154,16 @@ defmodule Ash.Actions.Load do
   end
 
   defp attach_to_many_loads(value, last_relationship, data, lead_path) do
-    values = Enum.group_by(value, &Map.get(&1, last_relationship.destination_field))
+    values = Enum.group_by(value, &Map.get(&1, last_relationship.destination_attribute))
 
     map_or_update(data, lead_path, fn record ->
-      source_key = Map.get(record, last_relationship.source_field)
+      source_key = Map.get(record, last_relationship.source_attribute)
       related_records = Map.get(values, source_key, [])
       Map.put(record, last_relationship.name, related_records)
     end)
   end
 
-  defp attach_to_one_loads(value, %{name: name, no_fields?: true}, data, lead_path) do
+  defp attach_to_one_loads(value, %{name: name, no_attributes?: true}, data, lead_path) do
     map_or_update(data, lead_path, fn record ->
       Map.put(record, name, value |> List.wrap() |> Enum.at(0))
     end)
@@ -182,11 +182,11 @@ defmodule Ash.Actions.Load do
       value
       |> Enum.reverse()
       |> Enum.into(%{}, fn item ->
-        {Map.get(item, last_relationship.destination_field), item}
+        {Map.get(item, last_relationship.destination_attribute), item}
       end)
 
     map_or_update(data, lead_path, fn record ->
-      source_key = Map.get(record, last_relationship.source_field)
+      source_key = Map.get(record, last_relationship.source_attribute)
       related_record = Map.get(values, source_key)
       Map.put(record, last_relationship.name, related_record)
     end)
@@ -201,20 +201,20 @@ defmodule Ash.Actions.Load do
       |> Map.get(:data, [])
 
     map_or_update(data, lead_path, fn record ->
-      source_value = Map.get(record, last_relationship.source_field)
+      source_value = Map.get(record, last_relationship.source_attribute)
 
       join_values =
         join_data
         |> Enum.filter(fn join_row ->
-          Map.get(join_row, last_relationship.source_field_on_join_table) ==
+          Map.get(join_row, last_relationship.source_attribute_on_join_resource) ==
             source_value
         end)
-        |> Enum.map(&Map.get(&1, last_relationship.destination_field_on_join_table))
+        |> Enum.map(&Map.get(&1, last_relationship.destination_attribute_on_join_resource))
 
       related_records =
         value
         |> Enum.filter(fn value ->
-          destination_value = Map.get(value, last_relationship.destination_field)
+          destination_value = Map.get(value, last_relationship.destination_attribute)
 
           destination_value in join_values
         end)
@@ -742,10 +742,10 @@ defmodule Ash.Actions.Load do
       end
       |> List.wrap()
       |> Enum.map(fn related ->
-        Map.get(related, relationship.destination_field)
+        Map.get(related, relationship.destination_attribute)
       end)
 
-    filter = [{relationship.destination_field_on_join_table, [{:in, ids}]}]
+    filter = [{relationship.destination_attribute_on_join_resource, [{:in, ids}]}]
 
     Ash.Query.filter(query, ^filter)
   end
@@ -841,10 +841,10 @@ defmodule Ash.Actions.Load do
                 lateral_join_source: {
                   source_data,
                   [
-                    {source_query, relationship.source_field,
-                     relationship.source_field_on_join_table, relationship},
-                    {relationship.through, relationship.destination_field_on_join_table,
-                     relationship.destination_field, join_relationship}
+                    {source_query, relationship.source_attribute,
+                     relationship.source_attribute_on_join_resource, relationship},
+                    {relationship.through, relationship.destination_attribute_on_join_resource,
+                     relationship.destination_attribute, join_relationship}
                   ]
                 }
               }
@@ -862,8 +862,8 @@ defmodule Ash.Actions.Load do
                 lateral_join_source:
                   {source_data,
                    [
-                     {source_query, relationship.source_field, relationship.destination_field,
-                      relationship}
+                     {source_query, relationship.source_attribute,
+                      relationship.destination_attribute, relationship}
                    ]}
               }
             })
@@ -908,7 +908,7 @@ defmodule Ash.Actions.Load do
         new_results =
           results
           |> Enum.group_by(fn record ->
-            Map.get(record, relationship.destination_field)
+            Map.get(record, relationship.destination_attribute)
           end)
           |> Enum.flat_map(fn {_, group} ->
             offset_records = Enum.drop(group, offset || 0)
@@ -999,7 +999,7 @@ defmodule Ash.Actions.Load do
          relationship,
          related_query
        ) do
-    if Map.get(relationship, :no_fields?) do
+    if Map.get(relationship, :no_attributes?) do
       relationship.destination
       |> Ash.Query.new(related_query.api)
     else
@@ -1010,14 +1010,14 @@ defmodule Ash.Actions.Load do
   end
 
   defp true_load_query(relationship, query, data, path, request_path) do
-    {source_field, path} =
+    {source_attribute, path} =
       if relationship.type == :many_to_many do
         join_relationship = join_relationship(relationship)
 
-        {relationship.destination_field_on_join_table,
+        {relationship.destination_attribute_on_join_resource,
          join_relationship_path(path, join_relationship) |> Enum.map(& &1.name)}
       else
-        {relationship.source_field, path |> Enum.reverse() |> Enum.map(& &1.name)}
+        {relationship.source_attribute, path |> Enum.reverse() |> Enum.map(& &1.name)}
       end
 
     source_data =
@@ -1042,18 +1042,18 @@ defmodule Ash.Actions.Load do
         :nothing
 
       _ ->
-        get_query(query, relationship, source_data, source_field)
+        get_query(query, relationship, source_data, source_attribute)
     end
   end
 
-  defp get_query(query, relationship, source_data, source_field) do
+  defp get_query(query, relationship, source_data, source_attribute) do
     {offset, limit} = offset_and_limit(query)
 
     cond do
       lateral_join?(query, relationship, source_data) ->
         {:ok, Ash.Query.unset(query, :load)}
 
-      Map.get(relationship, :no_fields?) ->
+      Map.get(relationship, :no_attributes?) ->
         {:ok, query}
 
       true ->
@@ -1076,7 +1076,7 @@ defmodule Ash.Actions.Load do
         ids =
           Enum.flat_map(related_data, fn data ->
             data
-            |> Map.get(source_field)
+            |> Map.get(source_attribute)
             |> List.wrap()
           end)
 
@@ -1091,7 +1091,7 @@ defmodule Ash.Actions.Load do
 
         new_query =
           query
-          |> Ash.Query.filter(^[{relationship.destination_field, filter_value}])
+          |> Ash.Query.filter(^[{relationship.destination_attribute, filter_value}])
           |> Ash.Query.unset(:load)
 
         {:ok, new_query}
@@ -1177,12 +1177,12 @@ defmodule Ash.Actions.Load do
   defp reverse_relationship?(rel, destination_rel) do
     rel.source == destination_rel.destination &&
       rel.destination == destination_rel.source &&
-      rel.source_field == destination_rel.destination_field &&
-      rel.destination_field == destination_rel.source_field &&
-      Map.fetch(rel, :source_field_on_join_table) ==
-        Map.fetch(destination_rel, :destination_field_on_join_table) &&
-      Map.fetch(rel, :destination_field_on_join_table) ==
-        Map.fetch(destination_rel, :source_field_on_join_table) &&
+      rel.source_attribute == destination_rel.destination_attribute &&
+      rel.destination_attribute == destination_rel.source_attribute &&
+      Map.fetch(rel, :source_attribute_on_join_resource) ==
+        Map.fetch(destination_rel, :destination_attribute_on_join_resource) &&
+      Map.fetch(rel, :destination_attribute_on_join_resource) ==
+        Map.fetch(destination_rel, :source_attribute_on_join_resource) &&
       is_nil(destination_rel.context) &&
       is_nil(rel.context)
   end

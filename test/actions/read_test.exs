@@ -36,7 +36,7 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     relationships do
-      has_many :posts, Ash.Test.Actions.ReadTest.Post, destination_field: :author1_id
+      has_many :posts, Ash.Test.Actions.ReadTest.Post, destination_attribute: :author1_id
     end
   end
 

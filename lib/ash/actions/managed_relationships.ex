@@ -103,7 +103,7 @@ defmodule Ash.Actions.ManagedRelationships do
           changeset =
             if input in [nil, []] && opts[:on_missing] != :ignore do
               changeset
-              |> maybe_force_change_attribute(relationship, :source_field, nil)
+              |> maybe_force_change_attribute(relationship, :source_attribute, nil)
               |> Ash.Changeset.after_action(fn _changeset, result ->
                 {:ok, Map.put(result, relationship.name, nil)}
               end)
@@ -176,8 +176,8 @@ defmodule Ash.Actions.ManagedRelationships do
                       })
                       |> maybe_force_change_attribute(
                         relationship,
-                        :source_field,
-                        Map.get(input, relationship.destination_field)
+                        :source_attribute,
+                        Map.get(input, relationship.destination_attribute)
                       )
 
                     {:cont, {changeset, instructions}}
@@ -237,8 +237,8 @@ defmodule Ash.Actions.ManagedRelationships do
                               })
                               |> maybe_force_change_attribute(
                                 relationship,
-                                :source_field,
-                                Map.get(found, relationship.destination_field)
+                                :source_attribute,
+                                Map.get(found, relationship.destination_attribute)
                               )
 
                             {:cont, {changeset, instructions}}
@@ -259,7 +259,7 @@ defmodule Ash.Actions.ManagedRelationships do
                   maybe_force_change_attribute(
                     changeset,
                     relationship,
-                    :source_field,
+                    :source_attribute,
                     nil
                   )
 
@@ -315,7 +315,7 @@ defmodule Ash.Actions.ManagedRelationships do
     relationship.api || changeset.api
   end
 
-  defp maybe_force_change_attribute(changeset, %{no_fields?: true}, _, _), do: changeset
+  defp maybe_force_change_attribute(changeset, %{no_attributes?: true}, _, _), do: changeset
 
   defp maybe_force_change_attribute(changeset, relationship, key, value) do
     Ash.Changeset.force_change_attribute(
@@ -349,7 +349,7 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Enum.reduce({changeset, instructions}, fn required_relationship,
                                                  {changeset, instructions} ->
       changeset =
-        case Ash.Changeset.get_attribute(changeset, required_relationship.source_field) do
+        case Ash.Changeset.get_attribute(changeset, required_relationship.source_attribute) do
           nil ->
             Ash.Changeset.add_error(
               changeset,
@@ -462,8 +462,8 @@ defmodule Ash.Actions.ManagedRelationships do
           })
           |> maybe_force_change_attribute(
             relationship,
-            :source_field,
-            Map.get(created, relationship.destination_field)
+            :source_attribute,
+            Map.get(created, relationship.destination_attribute)
           )
 
         {:cont,
@@ -944,13 +944,13 @@ defmodule Ash.Actions.ManagedRelationships do
         )
         |> maybe_force_change_attribute(
           relationship,
-          :source_field_on_join_table,
-          Map.get(record, relationship.source_field)
+          :source_attribute_on_join_resource,
+          Map.get(record, relationship.source_attribute)
         )
         |> maybe_force_change_attribute(
           relationship,
-          :destination_field_on_join_table,
-          Map.get(found, relationship.destination_field)
+          :destination_attribute_on_join_resource,
+          Map.get(found, relationship.destination_attribute)
         )
         |> Ash.Changeset.set_context(join_relationship.context)
         |> Ash.Changeset.set_tenant(changeset.tenant)
@@ -1006,8 +1006,8 @@ defmodule Ash.Actions.ManagedRelationships do
         )
         |> maybe_force_change_attribute(
           relationship,
-          :destination_field,
-          Map.get(record, relationship.source_field)
+          :destination_attribute,
+          Map.get(record, relationship.source_attribute)
         )
         |> Ash.Changeset.set_context(relationship.context)
         |> Ash.Changeset.set_tenant(changeset.tenant)
@@ -1066,8 +1066,8 @@ defmodule Ash.Actions.ManagedRelationships do
                 )
                 |> maybe_force_change_attribute(
                   relationship,
-                  :destination_field,
-                  Map.get(record, relationship.source_field)
+                  :destination_attribute,
+                  Map.get(record, relationship.source_attribute)
                 )
                 |> Ash.Changeset.set_context(relationship.context)
                 |> Ash.Changeset.set_tenant(changeset.tenant)
@@ -1134,13 +1134,13 @@ defmodule Ash.Actions.ManagedRelationships do
             )
             |> maybe_force_change_attribute(
               relationship,
-              :source_field_on_join_table,
-              Map.get(record, relationship.source_field)
+              :source_attribute_on_join_resource,
+              Map.get(record, relationship.source_attribute)
             )
             |> maybe_force_change_attribute(
               relationship,
-              :destination_field_on_join_table,
-              Map.get(created, relationship.destination_field)
+              :destination_attribute_on_join_resource,
+              Map.get(created, relationship.destination_attribute)
             )
             |> Ash.Changeset.set_context(join_relationship.context)
             |> Ash.Changeset.set_tenant(changeset.tenant)
@@ -1275,7 +1275,7 @@ defmodule Ash.Actions.ManagedRelationships do
               {match, regular_params}
           end
 
-        source_value = Map.get(source_record, relationship.source_field)
+        source_value = Map.get(source_record, relationship.source_attribute)
 
         match
         |> Ash.Changeset.new()
@@ -1289,15 +1289,17 @@ defmodule Ash.Actions.ManagedRelationships do
         |> api.update(return_notifications?: true)
         |> case do
           {:ok, updated, update_notifications} ->
-            destination_value = Map.get(updated, relationship.destination_field)
+            destination_value = Map.get(updated, relationship.destination_attribute)
 
             join_relationship =
               Ash.Resource.Info.relationship(relationship.source, relationship.join_relationship)
 
             relationship.through
-            |> Ash.Query.filter(ref(^relationship.source_field_on_join_table) == ^source_value)
             |> Ash.Query.filter(
-              ref(^relationship.destination_field_on_join_table) == ^destination_value
+              ref(^relationship.source_attribute_on_join_resource) == ^source_value
+            )
+            |> Ash.Query.filter(
+              ref(^relationship.destination_attribute_on_join_resource) == ^destination_value
             )
             |> Ash.Query.set_context(join_relationship.context)
             |> Ash.Query.limit(1)
@@ -1367,9 +1369,9 @@ defmodule Ash.Actions.ManagedRelationships do
 
   defp matches?(current_value, input, pkey, relationship) do
     if relationship && relationship.type in [:has_one, :has_many] &&
-         relationship.destination_field in pkey do
+         relationship.destination_attribute in pkey do
       Enum.all?(pkey, fn field ->
-        if field == relationship.destination_field do
+        if field == relationship.destination_attribute do
           if is_struct(input) do
             do_matches?(current_value, input, field)
           else
@@ -1445,16 +1447,18 @@ defmodule Ash.Actions.ManagedRelationships do
             {:cont, {:ok, [record | current_value], []}}
 
           {:destroy, action_name, join_action_name} ->
-            source_value = Map.get(source_record, relationship.source_field)
-            destination_value = Map.get(record, relationship.destination_field)
+            source_value = Map.get(source_record, relationship.source_attribute)
+            destination_value = Map.get(record, relationship.destination_attribute)
 
             join_relationship =
               Ash.Resource.Info.relationship(relationship.source, relationship.join_relationship)
 
             relationship.through
-            |> Ash.Query.filter(ref(^relationship.source_field_on_join_table) == ^source_value)
             |> Ash.Query.filter(
-              ref(^relationship.destination_field_on_join_table) == ^destination_value
+              ref(^relationship.source_attribute_on_join_resource) == ^source_value
+            )
+            |> Ash.Query.filter(
+              ref(^relationship.destination_attribute_on_join_resource) == ^destination_value
             )
             |> Ash.Query.limit(1)
             |> Ash.Query.set_tenant(changeset.tenant)
@@ -1571,15 +1575,17 @@ defmodule Ash.Actions.ManagedRelationships do
     action_name =
       action_name || Ash.Resource.Info.primary_action(relationship.through, :destroy).name
 
-    source_value = Map.get(source_record, relationship.source_field)
-    destination_value = Map.get(record, relationship.destination_field)
+    source_value = Map.get(source_record, relationship.source_attribute)
+    destination_value = Map.get(record, relationship.destination_attribute)
 
     join_relationship =
       Ash.Resource.Info.relationship(relationship.source, relationship.join_relationship)
 
     relationship.through
-    |> Ash.Query.filter(ref(^relationship.source_field_on_join_table) == ^source_value)
-    |> Ash.Query.filter(ref(^relationship.destination_field_on_join_table) == ^destination_value)
+    |> Ash.Query.filter(ref(^relationship.source_attribute_on_join_resource) == ^source_value)
+    |> Ash.Query.filter(
+      ref(^relationship.destination_attribute_on_join_resource) == ^destination_value
+    )
     |> Ash.Query.limit(1)
     |> Ash.Query.set_tenant(tenant)
     |> Ash.Query.set_context(join_relationship.context)
@@ -1626,7 +1632,7 @@ defmodule Ash.Actions.ManagedRelationships do
       authorize?: opts[:authorize?],
       actor: actor
     )
-    |> maybe_force_change_attribute(relationship, :destination_field, nil)
+    |> maybe_force_change_attribute(relationship, :destination_attribute, nil)
     |> Ash.Changeset.set_context(relationship.context)
     |> Ash.Changeset.set_tenant(tenant)
     |> api.update(return_notifications?: true)
@@ -1665,12 +1671,14 @@ defmodule Ash.Actions.ManagedRelationships do
     action_name =
       action_name || Ash.Resource.Info.primary_action(relationship.through, :destroy).name
 
-    source_value = Map.get(source_record, relationship.source_field)
-    destination_value = Map.get(record, relationship.destination_field)
+    source_value = Map.get(source_record, relationship.source_attribute)
+    destination_value = Map.get(record, relationship.destination_attribute)
 
     relationship.through
-    |> Ash.Query.filter(ref(^relationship.source_field_on_join_table) == ^source_value)
-    |> Ash.Query.filter(ref(^relationship.destination_field_on_join_table) == ^destination_value)
+    |> Ash.Query.filter(ref(^relationship.source_attribute_on_join_resource) == ^source_value)
+    |> Ash.Query.filter(
+      ref(^relationship.destination_attribute_on_join_resource) == ^destination_value
+    )
     |> Ash.Query.limit(1)
     |> Ash.Query.set_tenant(tenant)
     |> api.read_one(authorize?: opts[:authorize?], actor: actor)
