@@ -9,17 +9,17 @@ as a dev dependency. We're exploring ways to remove this requirement in the futu
 
 `{:elixir_sense, github: "elixir-lsp/elixir_sense", only: [:dev, :test]}`
 
-## Resource Formatter
+## Formatter plugin
 
-Ash resources often have a lot of DSL sections, and in order to increase the consistency of your resources, Ash ships with an elixir formatter plugin that allows for declaring a static section order and ensuring all resources honor it.
+The underlying DSL tooling `Spark` has a formatter plugin that can help you keep your resources consistent and neat.
 
-### Connecting to the formatter
+### Adding the plugin
 
 Add the following to your `.formatter.exs`
 
 ```elixir
 [
-  plugins: [Ash.ResourceFormatter], # <- add the plugin here
+  plugins: [Spark.Formatter], # <- add the plugin here
   inputs: ...
 ]
 ```
@@ -27,16 +27,29 @@ Add the following to your `.formatter.exs`
 ### Configuration
 
 ```elixir
-config :ash, :formatter,
-  # If you have a custom module that you use instead of `Ash.Resource` (a.k.a a "base resource"), you can configure it here.
-  using_modules: [Ash.Resource, MyApp.Resource],
-  # these sections will always appear in this order. Any other sections may still appear before/after/around them, so you typically want
-  # to include an order for every section that may appear in your resources.
-  section_order: [
-    :resource,
-    :identities,
-    :attributes,
-    :relationships,
-    ...
+config :spark, :formatter,
+  [
+    "Ash.Resource": [
+      section_order: [
+        :resource,
+        :identities,
+        :attributes,
+        :relationships,
+        ...
+      ]
+    ],
+    # If you use a different module than Ash.Resource
+    "MyApp.Resource": [
+      type: Ash.Resource,
+      # What extensions might be added by your base module
+      extensions: [...],
+      section_order: [
+        :resource,
+        :identities,
+        :attributes,
+        :relationships,
+        ...
+      ]
+    ]
   ]
 ```
