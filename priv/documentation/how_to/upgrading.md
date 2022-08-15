@@ -1,6 +1,13 @@
 # Upgrading
 
-## Upgrading to 2.0.0
+## Upgrading to 2.0
+
+### New DSL tooling
+
+The DSL tooling has been moved out of the Ash name space and into a more generalized tool called `Spark`. If you have written your own extensions, you will need
+to refer to those modules. They are all the same, they simply have different names. You will get compiler errors/warnings on the modules you need to change, for example: `Ash.Dsl` -> `Spark.Dsl` and `Ash.Dsl.Transformer` -> `Spark.Dsl.Transformer`. One exception, `Ash.Error.Dsl.DslError`, has been changed to `Spark.Error.DslError`.
+
+## Upgrading to 1.53
 
 ### Default actions
 
