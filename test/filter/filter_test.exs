@@ -64,11 +64,11 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     relationships do
-      has_many :posts, Ash.Test.Filter.FilterTest.Post, destination_field: :author1_id
+      has_many :posts, Ash.Test.Filter.FilterTest.Post, destination_attribute: :author1_id
 
-      has_many :second_posts, Ash.Test.Filter.FilterTest.Post, destination_field: :author1_id
+      has_many :second_posts, Ash.Test.Filter.FilterTest.Post, destination_attribute: :author1_id
 
-      has_one :profile, Profile, destination_field: :user_id
+      has_one :profile, Profile, destination_attribute: :user_id
     end
   end
 
@@ -118,23 +118,23 @@ defmodule Ash.Test.Filter.FilterTest do
 
     relationships do
       belongs_to :author1, User,
-        destination_field: :id,
-        source_field: :author1_id
+        destination_attribute: :id,
+        source_attribute: :author1_id
 
       belongs_to :special_author1, User,
-        destination_field: :id,
-        source_field: :author1_id,
-        define_field?: false,
+        destination_attribute: :id,
+        source_attribute: :author1_id,
+        define_attribute?: false,
         filter: expr(special == true)
 
       belongs_to :author2, User,
-        destination_field: :id,
-        source_field: :author2_id
+        destination_attribute: :id,
+        source_attribute: :author2_id
 
       many_to_many :related_posts, __MODULE__,
         through: PostLink,
-        source_field_on_join_table: :source_post_id,
-        destination_field_on_join_table: :destination_post_id
+        source_attribute_on_join_resource: :source_post_id,
+        destination_attribute_on_join_resource: :destination_post_id
     end
   end
 

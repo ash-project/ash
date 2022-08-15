@@ -1048,14 +1048,14 @@ defmodule Ash.Changeset do
   defp validate(changeset, validation) do
     if validation.before_action? do
       before_action(changeset, fn changeset ->
-        if validation.expensive? and not changeset.valid? do
+        if validation.only_when_valid? and not changeset.valid? do
           changeset
         else
           do_validation(changeset, validation)
         end
       end)
     else
-      if validation.expensive? and not changeset.valid? do
+      if validation.only_when_valid? and not changeset.valid? do
         changeset
       else
         do_validation(changeset, validation)
@@ -1243,7 +1243,7 @@ defmodule Ash.Changeset do
       resource
       |> Ash.Resource.Info.relationships()
       |> Enum.filter(&(&1.type == :belongs_to))
-      |> Enum.map(& &1.source_field)
+      |> Enum.map(& &1.source_attribute)
 
     action =
       case action do
@@ -1676,9 +1676,9 @@ defmodule Ash.Changeset do
           * `:no_match` - ignores the primary key match and follows the on_no_match instructions with these records instead.
           * `:unrelate` - the related item is not destroyed, but the data is "unrelated", making this behave like `remove_from_relationship/3`. The action should be:
             * many_to_many - the join resource row is destroyed
-            * has_many - the destination_field (on the related record) is set to `nil`
-            * has_one - the destination_field (on the related record) is set to `nil`
-            * belongs_to - the source_field (on this record) is set to `nil`
+            * has_many - the destination_attribute (on the related record) is set to `nil`
+            * has_one - the destination_attribute (on the related record) is set to `nil`
+            * belongs_to - the source_attribute (on this record) is set to `nil`
           * `{:unrelate, :action_name}` - the record is unrelated using the provided update action. The action should be:
             * many_to_many - a destroy action on the join resource
             * has_many - an update action on the destination resource
@@ -1699,9 +1699,9 @@ defmodule Ash.Changeset do
           * `:error`  - an error is returned indicating that a record would have been updated
           * `:unrelate` - the related item is not destroyed, but the data is "unrelated", making this behave like `remove_from_relationship/3`. The action should be:
             * many_to_many - the join resource row is destroyed
-            * has_many - the destination_field (on the related record) is set to `nil`
-            * has_one - the destination_field (on the related record) is set to `nil`
-            * belongs_to - the source_field (on this record) is set to `nil`
+            * has_many - the destination_attribute (on the related record) is set to `nil`
+            * has_one - the destination_attribute (on the related record) is set to `nil`
+            * belongs_to - the source_attribute (on this record) is set to `nil`
           * `{:unrelate, :action_name}` - the record is unrelated using the provided update action. The action should be:
             * many_to_many - a destroy action on the join resource
             * has_many - an update action on the destination resource
@@ -2008,7 +2008,7 @@ defmodule Ash.Changeset do
           Enum.find_value(pkeys, fn pkey ->
             this_filter =
               pkey
-              |> Enum.reject(&(&1.name == relationship.destination_field))
+              |> Enum.reject(&(&1.name == relationship.destination_attribute))
               |> Enum.all?(fn key ->
                 case fetch_identity_field(
                        item,
@@ -2037,14 +2037,14 @@ defmodule Ash.Changeset do
                   nil
               end
 
-            if Enum.any?(pkey, &(&1.name == relationship.destination_field)) &&
+            if Enum.any?(pkey, &(&1.name == relationship.destination_attribute)) &&
                  relationship.type in [:has_many, :has_one] do
-              destination_value = Map.get(changeset.data, relationship.source_field)
+              destination_value = Map.get(changeset.data, relationship.source_attribute)
 
               Ash.Query.expr(
                 ^this_filter and
-                  (is_nil(ref(^relationship.destination_field, [])) or
-                     ref(^relationship.destination_field, []) == ^destination_value)
+                  (is_nil(ref(^relationship.destination_attribute, [])) or
+                     ref(^relationship.destination_attribute, []) == ^destination_value)
               )
             else
               this_filter
@@ -2137,9 +2137,9 @@ defmodule Ash.Changeset do
   end
 
   defp fetch_identity_field(item, data, attribute, relationship) do
-    if attribute.name == relationship.destination_field &&
+    if attribute.name == relationship.destination_attribute &&
          relationship.type in [:has_many, :has_one] do
-      {:ok, Map.get(data, relationship.source_field)}
+      {:ok, Map.get(data, relationship.source_attribute)}
     else
       string_attribute = to_string(attribute.name)
 

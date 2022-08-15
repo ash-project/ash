@@ -7,6 +7,18 @@
 The DSL tooling has been moved out of the Ash name space and into a more generalized tool called `Spark`. If you have written your own extensions, you will need
 to refer to those modules. They are all the same, they simply have different names. You will get compiler errors/warnings on the modules you need to change, for example: `Ash.Dsl` -> `Spark.Dsl` and `Ash.Dsl.Transformer` -> `Spark.Dsl.Transformer`. One exception, `Ash.Error.Dsl.DslError`, has been changed to `Spark.Error.DslError`.
 
+## DSL name changes
+
+These should all be straight forward enough to do a simple find and replace in your resources.
+
+- `source_field` -> `source_attribute`
+- `destination_field` -> `destination_attribute`
+- `define_field?` -> `define_attribute?`
+- `field_type` -> `attribute_type`
+- `source_field_on_join_table` -> `source_attribute_on_join_resource`
+- `destination_field_on_join_table` -> `destination_attribute_on_join_resource`
+- `no_fields?` -> `no_attributes?`
+
 ## Upgrading to 1.53
 
 ### Default actions

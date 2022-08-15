@@ -169,9 +169,9 @@ defmodule Ash.SatSolver do
        when path != [] do
     with relationship when not is_nil(relationship) <-
            Ash.Resource.Info.relationship(resource, path),
-         true <- attribute.name == relationship.destination_field,
+         true <- attribute.name == relationship.destination_attribute,
          new_attribute when not is_nil(new_attribute) <-
-           Ash.Resource.Info.attribute(relationship.source, relationship.source_field) do
+           Ash.Resource.Info.attribute(relationship.source, relationship.source_attribute) do
       %{
         ref
         | relationship_path: :lists.droplast(path),
@@ -317,11 +317,11 @@ defmodule Ash.SatSolver do
 
       true ->
         comparison_keys = [
-          :source_field,
-          :destination_field,
-          :source_field_on_join_table,
-          :destination_field_on_join_table,
-          :destination_field,
+          :source_attribute,
+          :destination_attribute,
+          :source_attribute_on_join_resource,
+          :destination_attribute_on_join_resource,
+          :destination_attribute,
           :destination
         ]
 

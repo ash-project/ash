@@ -433,7 +433,7 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 * use new `no_depend_modules` everywhere
 
-* add `no_fields?` relationships
+* add `no_attributes?` relationships
 
 * add manual read actions
 
@@ -2059,7 +2059,7 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 ### Improvements:
 
-* add `validate_destination_field?`
+* add `validate_destination_attribute?`
 
 * add builtin `select` change
 
@@ -2790,7 +2790,7 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 ### Bug Fixes:
 
-* set `source_field` when replacing `belongs_to` relationship
+* set `source_attribute` when replacing `belongs_to` relationship
 
 * don't consider `false` as absent value
 
@@ -2890,7 +2890,7 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 ### Improvements:
 
-* derive has_one destination_field
+* derive has_one destination_attribute
 
 * finalize code API logic
 
@@ -3054,7 +3054,7 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 * many compile time fixes via code splitting
 
-* Guess destination_field for has many relationships (#187)
+* Guess destination_attribute for has many relationships (#187)
 
 * Implement string length validation (#183)
 
@@ -3067,7 +3067,7 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 * many compile time fixes via code splitting
 
-* Guess destination_field for has many relationships (#187)
+* Guess destination_attribute for has many relationships (#187)
 
 * Implement string length validation (#183)
 

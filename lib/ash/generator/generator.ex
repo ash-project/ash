@@ -63,7 +63,7 @@ defmodule Ash.Generator do
     resource
     |> Ash.Resource.Info.attributes()
     |> Enum.reject(fn attribute ->
-      Enum.any?(relationships, &(&1.source_field == attribute.name))
+      Enum.any?(relationships, &(&1.source_attribute == attribute.name))
     end)
     |> generate_attributes(generators, true, :create)
   end

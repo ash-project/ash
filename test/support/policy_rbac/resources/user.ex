@@ -19,7 +19,7 @@ defmodule Ash.Test.Support.PolicyRbac.User do
   end
 
   relationships do
-    has_many(:memberships, Ash.Test.Support.PolicyRbac.Membership, destination_field: :user_id)
+    has_many(:memberships, Ash.Test.Support.PolicyRbac.Membership, destination_attribute: :user_id)
 
     belongs_to(:organization, Ash.Test.Support.PolicyRbac.Organization)
   end

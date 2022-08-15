@@ -38,8 +38,8 @@ defmodule Ash.Resource.Validation.Changing do
            )}
         end
 
-      %{type: :belongs_to, source_field: source_field} = relationship ->
-        if Ash.Changeset.changing_attribute?(changeset, source_field) ||
+      %{type: :belongs_to, source_attribute: source_attribute} = relationship ->
+        if Ash.Changeset.changing_attribute?(changeset, source_attribute) ||
              Ash.Changeset.changing_relationship?(changeset, relationship.name) do
           :ok
         else

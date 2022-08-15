@@ -329,7 +329,7 @@ a `Tweet` belongs to a specific `User`.
 ```elixir
 # in lib/my_app/resources/user.ex
   relationships do
-    has_many :tweets, MyApp.Tweet, destination_field: :user_id
+    has_many :tweets, MyApp.Tweet, destination_attribute: :user_id
   end
 
 # in lib/my_app/resources/tweet.ex
