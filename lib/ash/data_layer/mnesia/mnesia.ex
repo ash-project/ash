@@ -37,9 +37,11 @@ defmodule Ash.DataLayer.Mnesia do
     transformers: [Ash.DataLayer.Transformers.RequirePreCheckWith]
 
   alias Ash.Actions.Sort
-  alias Spark.Dsl.Extension
   alias :mnesia, as: Mnesia
 
+  @doc """
+  Creates the table for each mnesia resource in an api
+  """
   def start(api) do
     Mnesia.create_schema([node()])
     Mnesia.start()
@@ -47,14 +49,13 @@ defmodule Ash.DataLayer.Mnesia do
     Code.ensure_compiled(api)
 
     api
-    |> Ash.Api.resources()
-    |> Enum.each(fn resource ->
-      resource |> table() |> Mnesia.create_table(attributes: [:_pkey, :val])
+    |> Ash.Api.Info.resources()
+    |> Enum.flat_map(fn resource ->
+      resource
+      |> Ash.DataLayer.Mnesia.Info.table()
+      |> List.wrap()
     end)
-  end
-
-  def table(resource) do
-    Extension.get_opt(resource, [:ets], :private?, resource, true)
+    |> Enum.each(&Mnesia.create_table(&1, attributes: [:_pkey, :val]))
   end
 
   defmodule Query do
@@ -62,6 +63,10 @@ defmodule Ash.DataLayer.Mnesia do
     defstruct [:api, :resource, :filter, :limit, :sort, relationships: %{}, offset: 0]
   end
 
+  @deprecated "use Ash.DataLayer.Mnesia.Info.table/1 instead"
+  defdelegate table(resource), to: Ash.DataLayer.Mnesia.Info
+
+  @doc false
   @impl true
   def can?(_, :async_engine), do: true
   def can?(_, :composite_primary_key), do: true
@@ -82,7 +87,7 @@ defmodule Ash.DataLayer.Mnesia do
     # if someone needs to use these both and *actually* needs real joins for private
     # ets resources then we can talk about making this only happen in ash tests
     not (Ash.DataLayer.data_layer(resource) == Ash.DataLayer.Ets &&
-           Ash.DataLayer.Ets.private?(resource))
+           Ash.DataLayer.Ets.Info.private?(resource))
   end
 
   def can?(_, {:filter_expr, _}), do: true
@@ -91,6 +96,7 @@ defmodule Ash.DataLayer.Mnesia do
 
   def can?(_, _), do: false
 
+  @doc false
   @impl true
   def resource_to_query(resource, api) do
     %Query{
@@ -99,15 +105,19 @@ defmodule Ash.DataLayer.Mnesia do
     }
   end
 
+  @doc false
   @impl true
   def in_transaction?(_), do: Mnesia.is_transaction()
 
+  @doc false
   @impl true
   def limit(query, offset, _), do: {:ok, %{query | limit: offset}}
 
+  @doc false
   @impl true
   def offset(query, offset, _), do: {:ok, %{query | offset: offset}}
 
+  @doc false
   @impl true
   def filter(query, filter, _resource) do
     if query.filter do
@@ -117,11 +127,13 @@ defmodule Ash.DataLayer.Mnesia do
     end
   end
 
+  @doc false
   @impl true
   def sort(query, sort, _resource) do
     {:ok, %{query | sort: sort}}
   end
 
+  @doc false
   @impl true
   def run_query(
         %Query{
@@ -177,6 +189,7 @@ defmodule Ash.DataLayer.Mnesia do
     end
   end
 
+  @doc false
   @impl true
   def create(resource, changeset) do
     {:ok, record} = Ash.Changeset.apply_attributes(changeset)
@@ -209,6 +222,7 @@ defmodule Ash.DataLayer.Mnesia do
     end
   end
 
+  @doc false
   @impl true
   def destroy(resource, %{data: record}) do
     pkey =
@@ -227,6 +241,7 @@ defmodule Ash.DataLayer.Mnesia do
     end
   end
 
+  @doc false
   @impl true
   def update(resource, changeset) do
     pkey = pkey_list(resource, changeset.data)
@@ -297,6 +312,7 @@ defmodule Ash.DataLayer.Mnesia do
     end
   end
 
+  @doc false
   @impl true
   def upsert(resource, changeset, keys) do
     keys = keys || Ash.Resource.Info.primary_key(resource)
@@ -336,6 +352,7 @@ defmodule Ash.DataLayer.Mnesia do
     end
   end
 
+  @doc false
   @impl true
   def transaction(_, func, _timeout) do
     case Mnesia.transaction(func) do
@@ -350,6 +367,7 @@ defmodule Ash.DataLayer.Mnesia do
     end
   end
 
+  @doc false
   @impl true
   @spec rollback(term, term) :: no_return
   def rollback(_, value) do

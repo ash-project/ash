@@ -57,7 +57,7 @@ defmodule Ash.Actions.Destroy do
       return_notifications?: opts[:return_notifications?],
       notification_metadata: opts[:notification_metadata],
       authorize?: authorize?,
-      timeout: opts[:timeout] || changeset.timeout || Ash.Api.timeout(api),
+      timeout: opts[:timeout] || changeset.timeout || Ash.Api.Info.timeout(api),
       transaction?: true
     )
     |> case do
@@ -231,7 +231,7 @@ defmodule Ash.Actions.Destroy do
                   case Ash.DataLayer.destroy(resource, changeset) do
                     :ok ->
                       {:ok,
-                       Ash.Resource.Info.set_meta(record, %Ecto.Schema.Metadata{
+                       Ash.Resource.set_meta(record, %Ecto.Schema.Metadata{
                          state: :deleted,
                          schema: resource
                        })}

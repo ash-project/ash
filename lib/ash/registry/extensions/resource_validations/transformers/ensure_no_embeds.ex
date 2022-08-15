@@ -12,7 +12,7 @@ defmodule Ash.Registry.ResourceValidations.Transformers.EnsureNoEmbeds do
   @impl true
   def transform(registry, dsl) do
     registry
-    |> Ash.Registry.entries()
+    |> Ash.Registry.Info.entries()
     |> Enum.filter(&Ash.Resource.Info.embedded?/1)
     |> case do
       [] ->
