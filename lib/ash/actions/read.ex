@@ -174,11 +174,11 @@ defmodule Ash.Actions.Read do
             case load do
               {key, _value} ->
                 calculation_or_aggregate?(resource, key) &&
-                  Ash.Resource.Info.loaded?(resource, key)
+                  Ash.Resource.loaded?(resource, key)
 
               key ->
                 calculation_or_aggregate?(resource, key) &&
-                  Ash.Resource.Info.loaded?(resource, key)
+                  Ash.Resource.loaded?(resource, key)
             end
           end)
 
@@ -237,7 +237,7 @@ defmodule Ash.Actions.Read do
               query = %{
                 query
                 | api: api,
-                  timeout: timeout || query.timeout || Ash.Api.timeout(api)
+                  timeout: timeout || query.timeout || Ash.Api.Info.timeout(api)
               }
 
               query =
@@ -469,7 +469,7 @@ defmodule Ash.Actions.Read do
     opts
     |> Keyword.take([:verbose?, :actor, :authorize?, :timeout])
     |> Keyword.put(:transaction?, action.transaction? || opts[:transaction?])
-    |> Keyword.put(:default_timeout, Ash.Api.timeout(api))
+    |> Keyword.put(:default_timeout, Ash.Api.Info.timeout(api))
     |> Keyword.put(:resource, resource)
     |> Keyword.put(:name, "#{inspect(resource)}.#{action.name}")
   end
@@ -1325,7 +1325,7 @@ defmodule Ash.Actions.Read do
     loads
     |> List.wrap()
     |> Enum.reject(fn load ->
-      Ash.Resource.Info.loaded?(results, load)
+      Ash.Resource.loaded?(results, load)
     end)
   end
 

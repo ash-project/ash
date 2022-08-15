@@ -23,25 +23,9 @@ defmodule Ash.Registry do
 
   use Spark.Dsl, default_extensions: [extensions: [Ash.Registry.Dsl]]
 
-  alias Spark.Dsl.Extension
+  @deprecated "use Ash.Registry.Info.warn_on_empty?/1 instead"
+  defdelegate warn_on_empty?(registry), to: Ash.Registry.Info
 
-  @spec entries(t()) :: list(module)
-  def entries(registry) do
-    case registry |> Extension.get_entities([:entries]) |> Enum.map(& &1.entry) do
-      [] ->
-        registry |> Extension.get_entities([:resources]) |> Enum.map(& &1.resource)
-
-      other ->
-        other
-    end
-  end
-
-  @spec warn_on_empty?(t()) :: boolean
-  def warn_on_empty?(registry) do
-    Extension.get_opt(registry, [:entries], :warn_on_empty?, true, true)
-  end
-
-  @spec api_or_api_and_registry(Ash.Api.t() | {Ash.Api.t(), t()}) :: {t(), t()}
-  def api_or_api_and_registry({api, registry}), do: {api, registry}
-  def api_or_api_and_registry(api), do: {api, api}
+  @deprecated "use Ash.Registry.Info.entries/1 instead"
+  defdelegate entries(registry), to: Ash.Registry.Info
 end

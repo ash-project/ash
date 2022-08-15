@@ -1849,12 +1849,12 @@ defmodule Ash.Changeset do
   post1 =
     changeset
     |> Api.create!()
-    |> Ash.Resource.Info.put_metadata(:join_keys, %{type: "a"})
+    |> Ash.Resource.put_metadata(:join_keys, %{type: "a"})
 
   post1 =
     changeset2
     |> Api.create!()
-    |> Ash.Resource.Info.put_metadata(:join_keys, %{type: "b"})
+    |> Ash.Resource.put_metadata(:join_keys, %{type: "b"})
 
   author = Api.create!(author_changeset)
 

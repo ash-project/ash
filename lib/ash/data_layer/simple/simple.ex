@@ -8,8 +8,7 @@ defmodule Ash.DataLayer.Simple do
 
   use Spark.Dsl.Extension, transformers: [], sections: []
 
-  def show_in_docs?, do: false
-
+  @doc false
   def can?(_, :create), do: true
   def can?(_, :update), do: true
   def can?(_, :destroy), do: true
@@ -35,10 +34,12 @@ defmodule Ash.DataLayer.Simple do
     Ash.Query.put_context(query, :data, data)
   end
 
+  @doc false
   def resource_to_query(resource, api) do
     %Query{data: [], resource: resource, api: api}
   end
 
+  @doc false
   def run_query(%{data_set?: false}, resource) do
     {:error,
      Ash.Error.SimpleDataLayer.NoDataProvided.exception(
@@ -61,20 +62,25 @@ defmodule Ash.DataLayer.Simple do
      end)}
   end
 
+  @doc false
   def limit(query, limit, _) do
     {:ok, %{query | limit: limit}}
   end
 
+  @doc false
   def set_tenant(_, query, _), do: {:ok, query}
 
+  @doc false
   def filter(query, filter, _resource) do
     {:ok, %{query | filter: filter}}
   end
 
+  @doc false
   def sort(query, sort, _resource) do
     {:ok, %{query | sort: sort}}
   end
 
+  @doc false
   def set_context(_resource, query, context) do
     case Map.fetch(context, :data) do
       {:ok, value} ->
@@ -85,14 +91,17 @@ defmodule Ash.DataLayer.Simple do
     end
   end
 
+  @doc false
   def create(_resource, changeset) do
     Ash.Changeset.apply_attributes(changeset)
   end
 
+  @doc false
   def update(_resource, changeset) do
     Ash.Changeset.apply_attributes(changeset)
   end
 
+  @doc false
   def destroy(_resource, _changeset) do
     :ok
   end

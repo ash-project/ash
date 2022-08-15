@@ -29,7 +29,7 @@ have a condition like `actor_attribute_equals(:admin, true)`.
 If both apply (i.e an admin is using a read action), then both policies must pass.
 A policy can produce one of three results: `:forbidden`, `:authorized`, or `:unknown`. `:unknown` is treated
 the same as a `:forbidden`.
-A policy contains checks, which determine wether or not the policy passes for a given request.
+A policy contains checks, which determine whether or not the policy passes for a given request.
 
 #### Bypass
 

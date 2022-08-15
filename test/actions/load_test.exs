@@ -297,7 +297,7 @@ defmodule Ash.Test.Actions.LoadTest do
         |> Api.read!(authorize?: true)
 
       assert author
-             |> Ash.Resource.Info.unload([:posts, :author])
+             |> Ash.Resource.unload([:posts, :author])
              |> Map.get(:posts)
              |> Enum.all?(fn post ->
                %Ash.NotLoaded{} = post.author

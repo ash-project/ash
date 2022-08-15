@@ -76,7 +76,7 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       type: :boolean,
       default: true,
       doc: """
-      Wether or not the relationship may be managed.
+      Whether or not the relationship may be managed.
       """,
       links: []
     ],
@@ -117,7 +117,7 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       default: false,
       links: [],
       doc: """
-      Wether or not related values may exist for this relationship at creation.
+      Whether or not related values may exist for this relationship at creation.
       """
     ],
     violation_message: [

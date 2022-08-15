@@ -12,7 +12,7 @@ defmodule Ash.Registry.ResourceValidations.Transformers.EnsureResourcesCompiled 
   @impl true
   def transform(registry, dsl) do
     registry
-    |> Ash.Registry.entries()
+    |> Ash.Registry.Info.entries()
     |> Enum.map(fn resource ->
       try do
         # This is to get the compiler to ensure that the resource is compiled
