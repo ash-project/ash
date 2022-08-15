@@ -38,8 +38,8 @@ defmodule Ash.Actions.Update do
       notification_metadata: opts[:notification_metadata],
       return_notifications?: opts[:return_notifications?],
       authorize?: authorize?,
-      timeout: opts[:timeout] || changeset.timeout || Ash.Api.timeout(api),
-      default_timeout: Ash.Api.timeout(api),
+      timeout: opts[:timeout] || changeset.timeout || Ash.Api.Info.timeout(api),
+      default_timeout: Ash.Api.Info.timeout(api),
       transaction?: Keyword.get(opts, :transaction?, true)
     )
     |> case do
@@ -226,7 +226,7 @@ defmodule Ash.Actions.Update do
             else
               changeset = %{
                 changeset
-                | timeout: timeout || changeset.timeout || Ash.Api.timeout(changeset.api)
+                | timeout: timeout || changeset.timeout || Ash.Api.Info.timeout(changeset.api)
               }
 
               changeset =

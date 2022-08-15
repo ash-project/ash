@@ -13,7 +13,7 @@ defmodule Ash.Registry.ResourceValidations.Transformers.ValidateRelatedResourceI
 
   @impl true
   def transform(module, dsl) do
-    resources = Ash.Registry.entries(module)
+    resources = Ash.Registry.Info.entries(module)
 
     resources
     |> Enum.flat_map(&get_all_related_resources(&1, resources))

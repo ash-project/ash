@@ -34,8 +34,7 @@ defmodule Ash.Api do
   The functions documented here can be used to call any action on any resource in the Api.
   For example, `MyApi.read(Myresource, [...])`.
 
-  Additionally, you can define a `code_interface` on each resource to be exposed in the Api module.
-  See the resource DSL documentation for more.
+  Additionally, you can define a `code_interface` on each resource. See the code interface guide for more.
   """
 
   use Spark.Dsl, default_extensions: [extensions: [Ash.Api.Dsl]]
@@ -51,8 +50,6 @@ defmodule Ash.Api do
   }
 
   alias Ash.Error.Query.NotFound
-
-  alias Spark.Dsl.Extension
 
   require Ash.Query
 
@@ -221,7 +218,7 @@ defmodule Ash.Api do
                        type: :boolean,
                        default: true,
                        doc:
-                         "Wether or not an error should be returned or raised when the record is not found. If set to false, `nil` will be returned."
+                         "Whether or not an error should be returned or raised when the record is not found. If set to false, `nil` will be returned."
                      ],
                      load: [
                        type: :any,
@@ -532,99 +529,43 @@ defmodule Ash.Api do
   @callback reload(record :: Ash.Resource.record()) ::
               {:ok, Ash.Resource.record()} | {:error, term}
 
+  @doc false
   def handle_opts(_) do
     quote do
       @behaviour Ash.Api
     end
   end
 
+  @doc false
   def handle_before_compile(_) do
     quote do
       use Ash.Api.Interface
     end
   end
 
-  def resource(api, resource) do
-    cond do
-      allow_unregistered?(api) ->
-        if Spark.Dsl.is?(resource, Ash.Resource) do
-          resource
-        else
-          nil
-        end
+  @deprecated "use Ash.Api.Info.resource/2 instead"
+  defdelegate resource(api, resource), to: Ash.Api.Info
 
-      Ash.Resource.Info.embedded?(resource) ->
-        resource
+  @deprecated "use Ash.Api.Info.resources/1 instead"
+  defdelegate resources(api), to: Ash.Api.Info
 
-      true ->
-        api
-        |> resources()
-        |> Enum.find(&(&1 == resource))
-    end
-    |> case do
-      nil ->
-        if allowed?(allow(api), resource) do
-          {:ok, resource}
-        else
-          {:error, NoSuchResource.exception(resource: resource)}
-        end
+  @deprecated "use Ash.Api.Info.registry/1 instead"
+  defdelegate registry(api), to: Ash.Api.Info
 
-      resource ->
-        {:ok, resource}
-    end
-  end
+  @deprecated "use Ash.Api.Info.allow/1 instead"
+  defdelegate allow(api), to: Ash.Api.Info
 
-  @spec allowed?(mfa | nil, module()) :: boolean
-  defp allowed?({m, f, a}, resource) do
-    apply(m, f, List.wrap(a) ++ [resource])
-  end
+  @deprecated "use Ash.Api.Info.timeout/1 instead"
+  defdelegate timeout(api), to: Ash.Api.Info
 
-  defp allowed?(_, _), do: false
+  @deprecated "use Ash.Api.Info.require_actor?/1 instead"
+  defdelegate require_actor?(api), to: Ash.Api.Info
 
-  @doc """
-  Gets the resources of an Api module. DO NOT USE AT COMPILE TIME.
+  @deprecated "use Ash.Api.Info.authorize/1 instead"
+  defdelegate authorize(api), to: Ash.Api.Info
 
-  If you need the resource list at compile time, you will need to introduce a compile time
-  dependency on all of the resources, and therefore should use the registry directly. `Registry |> Ash.Registry.entries()`.
-  """
-  @spec resources(Ash.Api.t()) :: list(Ash.Resource.t())
-  def resources(api) do
-    if registry = registry(api) do
-      Ash.Registry.entries(registry)
-    else
-      []
-    end
-  end
-
-  @spec registry(Ash.Api.t()) :: atom | nil
-  def registry(api) do
-    Extension.get_opt(api, [:resources], :registry, nil, true)
-  end
-
-  @spec allow(Ash.Api.t()) :: mfa() | nil
-  def allow(api) do
-    Extension.get_opt(api, [:resources], :allow, nil, true)
-  end
-
-  @spec timeout(Ash.Api.t()) :: nil | :infinity | integer()
-  def timeout(api) do
-    Extension.get_opt(api, [:execution], :timeout, 30_000, true)
-  end
-
-  @spec require_actor?(Ash.Api.t()) :: boolean
-  def require_actor?(api) do
-    Extension.get_opt(api, [:authorization], :require_actor?, false, true)
-  end
-
-  @spec authorize(Ash.Api.t()) :: :when_requested | :always | :by_default
-  def authorize(api) do
-    Extension.get_opt(api, [:authorization], :authorize, :when_requested, true)
-  end
-
-  @spec allow_unregistered?(Ash.Api.t()) :: atom | nil
-  def allow_unregistered?(api) do
-    Extension.get_opt(api, [:resources], :allow_unregistered?, nil)
-  end
+  @deprecated "use Ash.Api.Info.allow_unregistered?/1 instead"
+  defdelegate allow_unregistered?(api), to: Ash.Api.Info
 
   @doc false
   @spec get!(Ash.Api.t(), Ash.Resource.t(), term(), Keyword.t()) ::
@@ -642,7 +583,7 @@ defmodule Ash.Api do
           {:ok, Ash.Resource.record()} | {:error, term}
   def get(api, resource, id, opts) do
     with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @get_opts_schema),
-         {:ok, resource} <- Ash.Api.resource(api, resource),
+         {:ok, resource} <- Ash.Api.Info.resource(api, resource),
          {:ok, filter} <- Ash.Filter.get_filter(resource, id) do
       query =
         resource
@@ -711,6 +652,7 @@ defmodule Ash.Api do
     end
   end
 
+  @doc false
   def page!(api, keyset, request) do
     {_, opts} = keyset.rerun
 
@@ -719,6 +661,7 @@ defmodule Ash.Api do
     |> unwrap_or_raise!(opts[:stacktraces?])
   end
 
+  @doc false
   def page(_, %Ash.Page.Keyset{results: []} = page, :next) do
     {:ok, page}
   end
@@ -993,7 +936,7 @@ defmodule Ash.Api do
           | {:error, term}
   def create(api, changeset, opts) do
     with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @create_opts_schema),
-         {:ok, resource} <- Ash.Api.resource(api, changeset.resource),
+         {:ok, resource} <- Ash.Api.Info.resource(api, changeset.resource),
          {:ok, action} <- get_action(resource, opts, :create, changeset.action) do
       Create.run(api, changeset, action, opts)
     end
@@ -1015,7 +958,7 @@ defmodule Ash.Api do
           | {:error, term}
   def update(api, changeset, opts) do
     with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @update_opts_schema),
-         {:ok, resource} <- Ash.Api.resource(api, changeset.resource),
+         {:ok, resource} <- Ash.Api.Info.resource(api, changeset.resource),
          {:ok, action} <- get_action(resource, opts, :update, changeset.action) do
       Update.run(api, changeset, action, opts)
     end
@@ -1048,7 +991,7 @@ defmodule Ash.Api do
           | {:error, term}
   def destroy(api, %Ash.Changeset{resource: resource} = changeset, opts) do
     with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @destroy_opts_schema),
-         {:ok, resource} <- Ash.Api.resource(api, resource),
+         {:ok, resource} <- Ash.Api.Info.resource(api, resource),
          {:ok, action} <- get_action(resource, opts, :destroy, changeset.action) do
       Destroy.run(api, changeset, action, opts)
     end

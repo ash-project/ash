@@ -85,7 +85,7 @@ defmodule Ash.Actions.Helpers do
       end
 
     if api do
-      if !Keyword.has_key?(opts, :actor) && Ash.Api.require_actor?(api) do
+      if !Keyword.has_key?(opts, :actor) && Ash.Api.Info.require_actor?(api) do
         raise Ash.Error.Forbidden.ApiRequiresActor, api: api
       end
 
@@ -112,7 +112,7 @@ defmodule Ash.Actions.Helpers do
       end
 
     if api do
-      case Ash.Api.authorize(api) do
+      case Ash.Api.Info.authorize(api) do
         :always ->
           Keyword.put(opts, :authorize?, true)
 
@@ -232,7 +232,7 @@ defmodule Ash.Actions.Helpers do
     |> Enum.reduce(result, fn key, record ->
       Map.put(record, key, nil)
     end)
-    |> Ash.Resource.Info.put_metadata(:selected, select)
+    |> Ash.Resource.put_metadata(:selected, select)
   end
 
   def attributes_to_select(%{select: nil, resource: resource}) do

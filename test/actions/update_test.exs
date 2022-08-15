@@ -459,8 +459,8 @@ defmodule Ash.Test.Actions.UpdateTest do
         post
         |> new()
         |> replace_relationship(:related_posts, [
-          Ash.Resource.Info.set_metadata(post2, %{join_keys: %{type: "a"}}),
-          Ash.Resource.Info.set_metadata(post3, %{join_keys: %{type: "b"}})
+          Ash.Resource.set_metadata(post2, %{join_keys: %{type: "a"}}),
+          Ash.Resource.set_metadata(post3, %{join_keys: %{type: "b"}})
         ])
         |> Api.update!()
         |> Api.load!(:related_posts_join_assoc)
@@ -475,8 +475,8 @@ defmodule Ash.Test.Actions.UpdateTest do
         |> replace_relationship(
           :related_posts,
           [
-            Ash.Resource.Info.set_metadata(post2, %{join_keys: %{type: "c"}}),
-            Ash.Resource.Info.set_metadata(post3, %{join_keys: %{type: "d"}})
+            Ash.Resource.set_metadata(post2, %{join_keys: %{type: "c"}}),
+            Ash.Resource.set_metadata(post3, %{join_keys: %{type: "d"}})
           ],
           on_match: :update,
           on_lookup: :relate
