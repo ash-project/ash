@@ -11,7 +11,7 @@ defmodule Ash.Resource.Validation do
 
   ```
   validations do
-    validation {MyValidation, [foo: :bar]}
+    validate {MyValidation, [foo: :bar]}
   end
   ```
 
