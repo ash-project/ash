@@ -47,8 +47,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     relationships do
       many_to_many :posts, Ash.Test.Changeset.ChangesetTest.Post,
         through: Ash.Test.Changeset.ChangesetTest.PostCategory,
-        destination_field_on_join_table: :post_id,
-        source_field_on_join_table: :category_id
+        destination_attribute_on_join_resource: :post_id,
+        source_attribute_on_join_resource: :category_id
     end
   end
 
@@ -74,13 +74,13 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     relationships do
-      has_many :posts, Ash.Test.Changeset.ChangesetTest.Post, destination_field: :author_id
+      has_many :posts, Ash.Test.Changeset.ChangesetTest.Post, destination_attribute: :author_id
 
       has_many :unique_posts, Ash.Test.Changeset.ChangesetTest.UniqueNamePerAuthor,
-        destination_field: :author_id
+        destination_attribute: :author_id
 
       has_many :composite_key_posts, Ash.Test.Changeset.ChangesetTest.CompositeKeyPost,
-        destination_field: :author_id
+        destination_attribute: :author_id
     end
   end
 
@@ -128,8 +128,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       many_to_many :categories, Ash.Test.Changeset.ChangesetTest.Category,
         through: Ash.Test.Changeset.ChangesetTest.PostCategory,
-        destination_field_on_join_table: :category_id,
-        source_field_on_join_table: :post_id
+        destination_attribute_on_join_resource: :category_id,
+        source_attribute_on_join_resource: :post_id
     end
   end
 
@@ -157,8 +157,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       many_to_many :categories, Ash.Test.Changeset.ChangesetTest.Category,
         through: Ash.Test.Changeset.ChangesetTest.PostCategory,
-        destination_field_on_join_table: :category_id,
-        source_field_on_join_table: :post_id
+        destination_attribute_on_join_resource: :category_id,
+        source_attribute_on_join_resource: :post_id
     end
   end
 
@@ -190,8 +190,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       many_to_many :categories, Ash.Test.Changeset.ChangesetTest.Category,
         through: Ash.Test.Changeset.ChangesetTest.PostCategory,
-        destination_field_on_join_table: :category_id,
-        source_field_on_join_table: :post_id
+        destination_attribute_on_join_resource: :category_id,
+        source_attribute_on_join_resource: :post_id
     end
   end
 

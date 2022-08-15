@@ -1644,7 +1644,7 @@ defmodule Ash.Query do
 
           relationship ->
             cond do
-              !selecting?(query, relationship.source_field) ->
+              !selecting?(query, relationship.source_attribute) ->
                 [
                   {:error,
                    "Cannot load a relationship if you are not selecting the source field of that relationship"}

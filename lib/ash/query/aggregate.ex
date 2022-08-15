@@ -29,14 +29,14 @@ defmodule Ash.Query.Aggregate do
   def kinds, do: @kinds
 
   def new(resource, name, kind, relationship, query, field, default \\ nil, filterable? \\ true) do
-    field_type =
+    attribute_type =
       if field do
         related = Ash.Resource.Info.related(resource, relationship)
         Ash.Resource.Info.attribute(related, field).type
       end
 
     with :ok <- validate_path(resource, List.wrap(relationship)),
-         {:ok, type} <- kind_to_type(kind, field_type),
+         {:ok, type} <- kind_to_type(kind, attribute_type),
          {:ok, query} <- validate_query(query) do
       {:ok,
        %__MODULE__{
@@ -114,11 +114,11 @@ defmodule Ash.Query.Aggregate do
   end
 
   @doc false
-  def kind_to_type(:count, _field_type), do: {:ok, Ash.Type.Integer}
+  def kind_to_type(:count, _attribute_type), do: {:ok, Ash.Type.Integer}
   def kind_to_type(kind, nil), do: {:error, "Must provide field type for #{kind}"}
-  def kind_to_type(kind, field_type) when kind in [:first, :sum], do: {:ok, field_type}
-  def kind_to_type(:list, field_type), do: {:ok, {:array, field_type}}
-  def kind_to_type(kind, _field_type), do: {:error, "Invalid aggregate kind: #{kind}"}
+  def kind_to_type(kind, attribute_type) when kind in [:first, :sum], do: {:ok, attribute_type}
+  def kind_to_type(:list, attribute_type), do: {:ok, {:array, attribute_type}}
+  def kind_to_type(kind, _attribute_type), do: {:error, "Invalid aggregate kind: #{kind}"}
 
   def requests(initial_query, can_be_in_query?, authorizing?, calculations_in_query, request_path) do
     initial_query.aggregates
