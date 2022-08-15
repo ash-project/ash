@@ -13,7 +13,7 @@ defmodule Ash.Test.Actions.ReadTest do
 
     def prepare(query, _, _) do
       Ash.Query.after_action(query, fn _query, authors ->
-        {:ok, Enum.map(authors, &Ash.Resource.Info.set_metadata(&1, %{prepared?: true}))}
+        {:ok, Enum.map(authors, &Ash.Resource.set_metadata(&1, %{prepared?: true}))}
       end)
     end
   end

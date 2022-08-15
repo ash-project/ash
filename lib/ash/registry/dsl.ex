@@ -49,8 +49,4 @@ defmodule Ash.Registry.Dsl do
   """
 
   use Spark.Dsl.Extension, sections: @sections, transformers: @transformers
-
-  def warn_on_empty?(registry) do
-    Extension.get_opt(registry, [:entries], :warn_on_empty?, false, true)
-  end
 end

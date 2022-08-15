@@ -19,6 +19,7 @@ defmodule Ash.Resource do
       extensions: [Ash.Resource.Dsl]
     ]
 
+  @doc false
   def init(opts) do
     if opts[:data_layer] == :embedded do
       {:ok,
@@ -30,6 +31,7 @@ defmodule Ash.Resource do
     end
   end
 
+  @doc false
   def handle_opts(opts) do
     quote bind_quoted: [embedded?: opts[:embedded?]] do
       if embedded? do
@@ -63,6 +65,7 @@ defmodule Ash.Resource do
     end
   end
 
+  @doc false
   def handle_before_compile(_opts) do
     quote do
       require Ash.Schema
@@ -149,6 +152,118 @@ defmodule Ash.Resource do
             end)
         end
       end
+    end
+  end
+
+  @spec set_metadata(Ash.Resource.record(), map) :: Ash.Resource.record()
+  def set_metadata(record, map) do
+    %{record | __metadata__: Ash.Helpers.deep_merge_maps(record.__metadata__, map)}
+  end
+
+  @doc false
+  def set_meta(%{__meta__: _} = struct, meta) do
+    %{struct | __meta__: meta}
+  end
+
+  def set_meta(struct, _), do: struct
+
+  @spec put_metadata(Ash.Resource.record(), atom, term) :: Ash.Resource.record()
+  def put_metadata(record, key, term) do
+    set_metadata(record, %{key => term})
+  end
+
+  @doc "Sets a list of loaded key or paths to a key back to their original unloaded stated"
+  @spec unload_many(
+          nil | list(Ash.Resource.record()) | Ash.Resource.record() | Ash.Page.page(),
+          list(atom) | list(list(atom))
+        ) ::
+          nil | list(Ash.Resource.record()) | Ash.Resource.record() | Ash.Page.page()
+  def unload_many(data, paths) do
+    Enum.reduce(paths, data, &unload(&2, &1))
+  end
+
+  @doc "Sets a loaded key or path to a key back to its original unloaded stated"
+  @spec unload(
+          nil | list(Ash.Resource.record()) | Ash.Resource.record() | Ash.Page.page(),
+          atom | list(atom)
+        ) ::
+          nil | list(Ash.Resource.record()) | Ash.Resource.record() | Ash.Page.page()
+  def unload(nil, _), do: nil
+
+  def unload(%struct{results: results} = page, path)
+      when struct in [Ash.Page.Keyset, Ash.Page.Offset] do
+    %{page | results: unload(results, path)}
+  end
+
+  def unload(records, path) when is_list(records) do
+    Enum.map(records, &unload(&1, path))
+  end
+
+  def unload(record, [path]) do
+    unload(record, path)
+  end
+
+  def unload(record, [key | rest]) do
+    Map.update!(record, key, &unload(&1, rest))
+  end
+
+  def unload(%struct{} = record, key) when is_atom(key) do
+    Map.put(record, key, Map.get(struct.__struct__(), key))
+  end
+
+  def unload(other, _), do: other
+
+  @doc "Returns true if the load or path to load has been loaded"
+  @spec loaded?(
+          nil | list(Ash.Resource.record()) | Ash.Resource.record() | Ash.Page.page(),
+          atom | list(atom)
+        ) ::
+          boolean
+  def loaded?(nil, _), do: true
+
+  def loaded?(%page{results: results}, path) when page in [Ash.Page.Keyset, Ash.Page.Offset] do
+    loaded?(results, path)
+  end
+
+  def loaded?(records, path) when not is_list(path) do
+    loaded?(records, [path])
+  end
+
+  def loaded?(records, path) when is_list(records) do
+    Enum.all?(records, &loaded?(&1, path))
+  end
+
+  def loaded?(%Ash.NotLoaded{}, _), do: false
+
+  def loaded?(_, []), do: true
+
+  def loaded?(record, [key | rest]) do
+    record
+    |> Map.get(key)
+    |> loaded?(rest)
+  end
+
+  @spec get_metadata(Ash.Resource.record(), atom | list(atom)) :: term
+  def get_metadata(record, key_or_path) do
+    get_in(record.__metadata__ || %{}, List.wrap(key_or_path))
+  end
+
+  @spec selected?(Ash.Resource.record(), atom) :: boolean
+  def selected?(%resource{} = record, field) do
+    case get_metadata(record, :selected) do
+      nil ->
+        attribute = Ash.Resource.Info.attribute(resource, field)
+
+        attribute && (!attribute.private? || attribute.primary_key?)
+
+      select ->
+        if field in select do
+          true
+        else
+          attribute = Ash.Resource.Info.attribute(resource, field)
+
+          attribute && attribute.primary_key?
+        end
     end
   end
 end

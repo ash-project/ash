@@ -19,6 +19,51 @@ These should all be straight forward enough to do a simple find and replace in y
 - `destination_field_on_join_table` -> `destination_attribute_on_join_resource`
 - `no_fields?` -> `no_attributes?`
 
+## DSL changes
+
+A new option has been added to the pub_sub notifier. If you are using it with phoenix, and you want it to publish a `%Phoenix.Socket.Broadcast{}` struct (which is what it used to do if you specified the `name` option with pub sub), then you'll need to set `broadcast_type :phoenix_broadcast`
+
+## Function Changes
+
+The following functions have been moved from `Ash.Resource.Info` to `Ash.Resource`. The old functions still exist, but will warn as deprecated.
+
+- `set_metadata/2`
+- `put_metadata/3`
+- `unload_many/2`
+- `unload/2`
+- `get_metadata/2`
+- `selected?/2`
+
+The following functions have been moved from `Ash.Api` to `Ash.Api.Info`. The old functions still exist, but will warn as deprecated.
+
+- `resource/2`
+- `resources/1`
+- `registry/1`
+- `allow/1`
+- `timeout/1`
+- `require_actor?/1`
+- `authorize/1`
+- `allow_unregistered?/1`
+
+The following functions have been moved from `Ash.Notifier.PubSub` to `Ash.Notifier.PubSub.Info`. The old functions still exist, but will warn as deprecated.
+
+- `publications/1`
+- `module/1`
+- `prefix/1`
+- `name/1`
+
+The following functions have been moved. The old functions still exist, but will warn as deprecated.
+
+- `Ash.DataLayer.Ets.private?/1` -> `Ash.DataLayer.Ets.Info.private?/1`
+- `Ash.DataLayer.Ets.table/1` -> `Ash.DataLayer.Ets.Info.table/1`
+- `Ash.DataLayer.Mnesia.table/1` -> `Ash.DataLayer.Mnesia.table/1`
+- `Ash.Registry.warn_on_empty?/1` -> `Ash.Registry.Info.warn_on_empty?/1`
+- `Ash.Registry.entries/1` -> `Ash.Registry.Info.entries/1`
+
+The following functions have been moved:
+
+- `Ash.Resource.extensions/1` -> `Spark.extensions/1`
+
 ## Upgrading to 1.53
 
 ### Default actions

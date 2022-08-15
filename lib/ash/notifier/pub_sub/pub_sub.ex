@@ -112,6 +112,14 @@ defmodule Ash.Notifier.PubSub do
         doc:
           "A prefix for all pubsub messages, e.g `users`. A message with `created` would be published as `users:created`"
       ],
+      broadcast_type: [
+        type: {:one_of, [:notification, :phoenix_broadcast, :broadcast]},
+        default: :notification,
+        doc: """
+        What shape the event payloads will be in. `:notification` just sends the notification, `phoenix_broadcast` sends a `%Phoenix.Socket.Broadcast{}`, and `:broadcast`
+        sends `%{topic: <topic>, event: <event>, notification: <notification>}`
+        """
+      ],
       name: [
         type: :atom,
         doc: """
@@ -120,9 +128,6 @@ defmodule Ash.Notifier.PubSub do
         If you are simply using your `Endpoint` module for pubsub then this is unnecessary. If you want to use
         a custom pub started with something like `{Phoenix.PubSub, name: MyName}`, then you can provide `MyName` to
         here.
-
-        If this option is provided, we assume we are working with a `Phoenix.PubSub` and not a `Phoenix.Endpoint`, so
-        the payload is sent as a `%Phoenix.Socket.Broadcast{}` if that module is available.
         """
       ]
     ]
@@ -136,22 +141,19 @@ defmodule Ash.Notifier.PubSub do
 
   use Spark.Dsl.Extension, sections: @sections
 
-  def publications(resource) do
-    Spark.Dsl.Extension.get_entities(resource, [:pub_sub])
-  end
+  @deprecated "use Ash.Notifier.PubSub.Info.publications/1 instead"
+  defdelegate publications(resource), to: Ash.Notifier.PubSub.Info
 
-  def module(resource) do
-    Spark.Dsl.Extension.get_opt(resource, [:pub_sub], :module, nil)
-  end
+  @deprecated "use Ash.Notifier.PubSub.Info.module/1 instead"
+  defdelegate module(resource), to: Ash.Notifier.PubSub.Info
 
-  def prefix(resource) do
-    Spark.Dsl.Extension.get_opt(resource, [:pub_sub], :prefix, nil)
-  end
+  @deprecated "use Ash.Notifier.PubSub.Info.prefix/1 instead"
+  defdelegate prefix(resource), to: Ash.Notifier.PubSub.Info
 
-  def name(resource) do
-    Spark.Dsl.Extension.get_opt(resource, [:pub_sub], :name, nil)
-  end
+  @deprecated "use Ash.Notifier.PubSub.Info.name/1 instead"
+  defdelegate name(resource), to: Ash.Notifier.PubSub.Info
 
+  @doc false
   def notify(%Ash.Notifier.Notification{resource: resource} = notification) do
     resource
     |> publications()
@@ -182,7 +184,7 @@ defmodule Ash.Notifier.PubSub do
       args =
         case name(notification.resource) do
           nil ->
-            [prefixed_topic, event, notification]
+            [prefixed_topic, event, to_payload(topic, event, notification)]
 
           pub_sub ->
             payload = to_payload(topic, event, notification)
@@ -205,19 +207,41 @@ defmodule Ash.Notifier.PubSub do
 
   if Code.ensure_loaded?(Phoenix.Socket.Broadcast) do
     def to_payload(topic, event, notification) do
-      %Phoenix.Socket.Broadcast{
-        topic: topic,
-        event: event,
-        payload: notification
-      }
+      case Ash.Notifier.PubSub.Info.broadcast_type(notification.resource) do
+        :phoenix_broadcast ->
+          %Phoenix.Socket.Broadcast{
+            topic: topic,
+            event: event,
+            payload: notification
+          }
+
+        :broadcast ->
+          %{
+            topic: topic,
+            event: event,
+            payload: notification
+          }
+
+        :notification ->
+          notification
+      end
     end
   else
     def to_payload(topic, event, notification) do
-      %{
-        topic: topic,
-        event: event,
-        payload: notification
-      }
+      case Ash.Notifier.PubSub.Info.broadcast_type(notification.resource) do
+        :phoenix_broadcast ->
+          raise "A resource was configured with `broadcast_type :phoenix_broadcast` but `Phoenix.Socket.Broadcast` was not compiled."
+
+        :broadcast ->
+          %{
+            topic: topic,
+            event: event,
+            payload: notification
+          }
+
+        :notification ->
+          notification
+      end
     end
   end
 

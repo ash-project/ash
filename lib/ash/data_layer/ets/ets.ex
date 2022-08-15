@@ -40,17 +40,12 @@ defmodule Ash.DataLayer.Ets do
     transformers: [Ash.DataLayer.Transformers.RequirePreCheckWith]
 
   alias Ash.Actions.Sort
-  alias Spark.Dsl.Extension
 
-  @spec private?(Ash.Resource.t()) :: boolean
-  def private?(resource) do
-    Extension.get_opt(resource, [:ets], :private?, false, true)
-  end
+  @deprecated "use Ash.DataLayer.Ets.Info.private?/1 instead"
+  defdelegate private?(resource), to: Ash.DataLayer.Ets.Info
 
-  @spec table(Ash.Resource.t()) :: boolean
-  def table(resource) do
-    Extension.get_opt(resource, [:ets], :table, resource, true) || resource
-  end
+  @deprecated "use Ash.DataLayer.Ets.Info.table/1 instead"
+  defdelegate table(resource), to: Ash.DataLayer.Ets.Info
 
   defmodule Query do
     @moduledoc false
@@ -165,6 +160,7 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
+  @doc false
   @impl true
   def can?(resource, :async_engine) do
     not private?(resource)
@@ -198,6 +194,7 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, {:sort, _}), do: true
   def can?(_, _), do: false
 
+  @doc false
   @impl true
   def resource_to_query(resource, api) do
     %Query{
@@ -206,21 +203,26 @@ defmodule Ash.DataLayer.Ets do
     }
   end
 
+  @doc false
   @impl true
   def limit(query, offset, _), do: {:ok, %{query | limit: offset}}
 
+  @doc false
   @impl true
   def offset(query, offset, _), do: {:ok, %{query | offset: offset}}
 
+  @doc false
   @impl true
   def add_calculation(query, calculation, _, _),
     do: {:ok, %{query | calculations: [calculation | query.calculations]}}
 
+  @doc false
   @impl true
   def set_tenant(_resource, query, tenant) do
     {:ok, %{query | tenant: tenant}}
   end
 
+  @doc false
   @impl true
   def filter(query, filter, _resource) do
     if query.filter do
@@ -230,11 +232,13 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
+  @doc false
   @impl true
   def sort(query, sort, _resource) do
     {:ok, %{query | sort: sort}}
   end
 
+  @doc false
   @impl true
   def run_aggregate_query(%{api: api} = query, aggregates, resource) do
     case run_query(query, resource) do
@@ -260,6 +264,7 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
+  @doc false
   @impl true
   def run_query(
         %Query{
@@ -420,6 +425,7 @@ defmodule Ash.DataLayer.Ets do
     Ash.Filter.Runtime.filter_matches(api, records, filter)
   end
 
+  @doc false
   @impl true
   def upsert(resource, changeset, keys) do
     keys = keys || Ash.Resource.Info.primary_key(resource)
@@ -459,6 +465,7 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
+  @doc false
   @impl true
   def create(resource, changeset) do
     pkey =
@@ -525,6 +532,7 @@ defmodule Ash.DataLayer.Ets do
     end)
   end
 
+  @doc false
   @impl true
   def destroy(resource, %{data: record} = changeset) do
     do_destroy(resource, record, changeset.tenant)
@@ -541,6 +549,7 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
+  @doc false
   @impl true
   def update(resource, changeset) do
     pkey = pkey_map(resource, changeset.data)

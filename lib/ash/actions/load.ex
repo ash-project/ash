@@ -511,7 +511,7 @@ defmodule Ash.Actions.Load do
   end
 
   defp lazy_load_or(data, lazy?, relationship, api, related_query, request_opts, func) do
-    if lazy? && Ash.Resource.Info.loaded?(data, relationship) do
+    if lazy? && Ash.Resource.loaded?(data, relationship) do
       pkey = Ash.Resource.Info.primary_key(related_query.resource)
 
       data

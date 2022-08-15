@@ -44,7 +44,7 @@ defmodule Ash.Actions.Create do
       actor: actor,
       authorize?: authorize?,
       notification_metadata: opts[:notification_metadata],
-      timeout: opts[:timeout] || changeset.timeout || Ash.Api.timeout(api),
+      timeout: opts[:timeout] || changeset.timeout || Ash.Api.Info.timeout(api),
       return_notifications?: opts[:return_notifications?],
       transaction?: Keyword.get(opts, :transaction?, true)
     )
@@ -177,7 +177,7 @@ defmodule Ash.Actions.Create do
 
             changeset = %{
               changeset
-              | timeout: timeout || changeset.timeout || Ash.Api.timeout(api)
+              | timeout: timeout || changeset.timeout || Ash.Api.Info.timeout(api)
             }
 
             tenant =
