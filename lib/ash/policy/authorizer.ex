@@ -25,36 +25,20 @@ defmodule Ash.Policy.Authorizer do
       type: {:custom, __MODULE__, :validate_check, []},
       required: true,
       doc: """
-      A check is a tuple of `{module, keyword}`.
-
-      The module must implement the `Ash.Policy.Check` behaviour.
-      Generally, you won't be passing `{module, opts}`, but will use one
-      of the provided functions that return that, like `always()` or
-      `actor_attribute_matches_record(:foo, :bar)`. To make custom ones
-      define a module that implements the `Ash.Policy.Check` behaviour,
-      put a convenience function in that module that returns {module, opts}, and
-      import that into your resource.
-
-      ```elixir
-      defmodule MyResource do
-        use Ash.Resource, authorizers: [Ash.Policy.Authorizer]
-
-        import MyCustomCheck
-
-        policies do
-          ...
-          policy do
-            authorize_if my_custom_check(:foo)
-          end
-        end
-      end
-      ```
-      """
+      The check to run.
+      """,
+      links: [
+        modules: [
+          "ash:module:Ash.Policy.Check"
+        ]
+      ]
     ],
     name: [
       type: :string,
       required: false,
-      doc: "A short name or description for the check, used when explaining authorization results"
+      doc:
+        "A short name or description for the check, used when explaining authorization results",
+      links: []
     ]
   ]
 
@@ -67,6 +51,7 @@ defmodule Ash.Policy.Authorizer do
       "authorize_if logged_in()",
       "authorize_if actor_attribute_matches_record(:group, :group)"
     ],
+    links: [],
     target: Ash.Policy.Check,
     transform: {Ash.Policy.Check, :transform, []},
     auto_set_fields: [
@@ -81,6 +66,7 @@ defmodule Ash.Policy.Authorizer do
     schema: @check_schema,
     target: Ash.Policy.Check,
     transform: {Ash.Policy.Check, :transform, []},
+    links: [],
     examples: [
       "forbid_if not_logged_in()",
       "forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)"
@@ -97,6 +83,7 @@ defmodule Ash.Policy.Authorizer do
     schema: @check_schema,
     target: Ash.Policy.Check,
     transform: {Ash.Policy.Check, :transform, []},
+    links: [],
     examples: [
       "authorize_unless not_logged_in()",
       "authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)"
@@ -110,6 +97,7 @@ defmodule Ash.Policy.Authorizer do
     name: :forbid_unless,
     describe: "If the check is true, the request is forbidden, otherwise run remaining checks.",
     args: [:check],
+    links: [],
     schema: @check_schema,
     target: Ash.Policy.Check,
     transform: {Ash.Policy.Check, :transform, []},
@@ -124,6 +112,11 @@ defmodule Ash.Policy.Authorizer do
 
   @policy %Spark.Dsl.Entity{
     name: :policy,
+    links: [
+      guides: [
+        "ash:guide:Policies"
+      ]
+    ],
     describe: """
     A policy has a name, a condition, and a list of checks.
 
@@ -153,30 +146,21 @@ defmodule Ash.Policy.Authorizer do
     schema: [
       description: [
         type: :string,
-        doc: "A description for the policy, used when explaining authorization results"
+        doc: "A description for the policy, used when explaining authorization results",
+        links: []
       ],
       access_type: [
         type: {:one_of, [:strict, :filter, :runtime]},
+        links: [],
         doc: """
-        There are three choices for access_type:
-
-        * `:strict` - authentication uses *only* the request context, failing when unknown.
-        * `:filter` - this is probably what you want. Automatically removes unauthorized data by altering the request filter.
-        * `:runtime` - tries to add a filter before the query, but if it cannot, it fetches the records and checks authorization.
-
-        Be careful with runtime checks, as they can potentially cause a given scenario to fetch *all* records of a resource, because
-        it can't figure out a common filter between all of the possible scenarios. Use sparingly, if at all.
+        What portion of the checks inside the policy are allowed to run. See the guide for more.
         """
       ],
       condition: [
         type: {:custom, __MODULE__, :validate_condition, []},
+        links: [],
         doc: """
         A check or list of checks that must be true in order for this policy to apply.
-
-        If the policy does not apply, it is not run, and some other policy
-        will need to authorize the request. If no policies apply, the request
-        is forbidden. If multiple policies apply, they must each authorize the
-        request.
         """
       ]
     ],
@@ -208,6 +192,11 @@ defmodule Ash.Policy.Authorizer do
     Each policy that applies must pass independently in order for the
     request to be authorized.
     """,
+    links: [
+      guides: [
+        "ash:guide:Policies"
+      ]
+    ],
     examples: [
       """
       policies do
@@ -242,11 +231,10 @@ defmodule Ash.Policy.Authorizer do
     schema: [
       default_access_type: [
         type: {:one_of, [:strict, :filter, :runtime]},
+        links: [],
         default: :filter,
         doc: """
         The default access type of policies for this resource.
-
-        See the access type on individual policies for more information.
         """
       ]
     ]

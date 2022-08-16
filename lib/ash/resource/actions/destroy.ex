@@ -35,8 +35,8 @@ defmodule Ash.Resource.Actions.Destroy do
   @opt_schema [
                 soft?: [
                   type: :atom,
-                  doc:
-                    "If specified, the destroy action calls the datalayer's update function with any specified changes."
+                  doc: "If specified, the destroy action behaves as an update internally",
+                  links: []
                 ]
               ]
               |> Spark.OptionsHelpers.merge_schemas(

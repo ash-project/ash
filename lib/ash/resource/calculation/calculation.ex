@@ -29,6 +29,7 @@ defmodule Ash.Resource.Calculation do
           "ash:module:Ash.Type"
         ]
       ],
+      doc: "The type of the calculation",
       required: true
     ],
     constraints: [
@@ -122,7 +123,7 @@ defmodule Ash.Resource.Calculation do
       name: [
         type: :atom,
         required: true,
-        doc: "The name to use for the argument",
+        doc: "The name of the argument",
         links: []
       ],
       type: [

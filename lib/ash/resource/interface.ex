@@ -31,21 +31,20 @@ defmodule Ash.Resource.Interface do
     [
       tenant: [
         type: :any,
-        doc: "set the tenant of the query/changeset"
+        doc: "Set the tenant of the query/changeset"
       ],
       context: [
         type: :any,
-        doc: "set context on the query/changeset"
+        doc: "Set context on the query/changeset"
       ],
       actor: [
         type: :any,
-        doc: "set the actor for authorization"
+        doc: "Set the actor for authorization"
       ],
       authorize?: [
         type: :boolean,
         doc: """
-        whether or not to perform authorization.
-        If an actor option is provided (even if it is `nil`), defaults to `true`. If not, defaults to `false`.
+        Whether or not to perform authorization. The default behavior depends on the api configuration.
         """
       ],
       verbose?: [
@@ -54,7 +53,7 @@ defmodule Ash.Resource.Interface do
       ],
       timeout: [
         type: :timeout,
-        doc: "A timeout to apply to the operation. See the timeouts guide for more."
+        doc: "A timeout to apply to the operation."
       ]
     ] ++ action_type_opts(action_type)
   end
@@ -87,48 +86,42 @@ defmodule Ash.Resource.Interface do
     name: [
       type: :atom,
       doc: "The name of the function that will be defined",
-      required: true
+      required: true,
+      links: []
     ],
     action: [
       type: :atom,
       doc:
-        "The name of the action that will be called. Defaults to the same name as the function."
+        "The name of the action that will be called. Defaults to the same name as the function.",
+      links: []
     ],
     args: [
       type: {:list, {:or, [:atom, {:tagged_tuple, :optional, :atom}]}},
       doc: """
       Map specific arguments to named inputs. Can provide any argument/attributes that the action allows.
-      """
+      """,
+      links: []
     ],
     get?: [
       type: :boolean,
       doc: """
-      Only relevant for read actions. Expects to only receive a single result from a read action.
-
-      The action should return a single result based on any arguments provided. To make it so that the function
-      takes a specific field, and filters on that field, use `get_by` instead.
-
-      Useful for creating functions like `get_user_by_email` that map to an action that has an `:email` argument.
-      """
+      Expects to only receive a single result from a read action. Ignored for other action types.
+      """,
+      links: []
     ],
     get_by: [
       type: {:list, :atom},
       doc: """
-      Only relevant for read actions. Takes a list of fields and adds those fields as arguments, which will then be used to filter.
-
-      Automatically sets `get?` to `true`.
-
-      The action should return a single result based on any arguments provided. To make it so that the function
-      takes a specific field, and filters on that field, use `get_by` instead. When combined, `get_by` takes precedence.
-
-      Useful for creating functions like `get_user_by_id` that map to a basic read action.
-      """
+      Takes a list of fields and adds those fields as arguments, which will then be used to filter. Ignored for non-read actions.
+      """,
+      links: []
     ],
     get_by_identity: [
       type: :atom,
       doc: """
       Only relevant for read actions. Takes an identity, and gets its field list, performing the same logic as `get_by` once it has the list of fields.
-      """
+      """,
+      links: []
     ]
   ]
 

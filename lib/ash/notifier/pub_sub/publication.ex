@@ -13,27 +13,32 @@ defmodule Ash.Notifier.PubSub.Publication do
     action: [
       type: :atom,
       doc: "The name of the action that should be published",
-      required: true
+      required: true,
+      links: []
     ],
     topic: [
       type: {:custom, __MODULE__, :topic, []},
       doc: "The topic to publish",
-      required: true
+      required: true,
+      links: []
     ],
     event: [
       type: :string,
-      doc: "The name of the event to publish. Defaults to the action name"
+      doc: "The name of the event to publish. Defaults to the action name",
+      links: []
     ],
     dispatcher: [
       type: :atom,
       doc:
-        "The module to use as a dispatcher. If none is set, the pubsub module provided is used."
+        "The module to use as a dispatcher. If none is set, the pubsub module provided is used.",
+      links: []
     ]
   ]
 
   @publish_all_schema @schema
                       |> Keyword.update!(:action, &Keyword.delete(&1, :required))
                       |> Keyword.put(:type,
+                        links: [],
                         type: {:in, [:create, :update, :destroy]},
                         doc: "Publish on all actions of a given type"
                       )

@@ -10,11 +10,10 @@ defmodule Ash.Flow.Step.Read do
         get?: [
           type: :boolean,
           doc: """
-          Whether or not read action is expected to return 0 or 1 results.
-
-          Action result will be `nil` or a record.
+          Whether or not read action is expected to return a single result or `nil`.
           If the action is configured with `get? true` then this is automatically set to `true`.
           """,
+          links: [],
           default: false
         ]
       ]
