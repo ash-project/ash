@@ -7,7 +7,7 @@ defmodule Ash.Test.Resource.RequireUniqueActionNamesTest do
   test "fails if there are multiple read actions" do
     assert_raise(
       Spark.Error.DslError,
-      ~r/Multiple actions \(2\) with the name `read` defined in/,
+      ~r/Multiple actions \(2\) with the name `read` defined/,
       fn ->
         defposts do
           actions do

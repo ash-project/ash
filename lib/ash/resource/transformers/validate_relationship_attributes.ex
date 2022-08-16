@@ -3,32 +3,32 @@ defmodule Ash.Resource.Transformers.ValidateRelationshipAttributes do
   Validates that all relationships point to valid fields
   """
   use Spark.Dsl.Transformer
+  alias Spark.Dsl.Transformer
 
   @impl true
   def after_compile?, do: true
 
   @impl true
-  def transform(resource, dsl) do
+  def transform(dsl) do
     attribute_names =
-      resource
-      |> Ash.Resource.Info.attributes()
+      dsl
+      |> Transformer.get_entities([:attributes])
       |> Enum.map(& &1.name)
 
-    resource
-    |> Ash.Resource.Info.relationships()
+    dsl
+    |> Transformer.get_entities([:relationships])
     |> Enum.reject(fn relationship ->
       Map.get(relationship, :manual) || Map.get(relationship, :no_attributes?)
     end)
     |> Enum.filter(& &1.validate_destination_attribute?)
-    |> Enum.each(&validate_relationship(&1, attribute_names, resource))
+    |> Enum.each(&validate_relationship(&1, attribute_names))
 
     {:ok, dsl}
   end
 
-  defp validate_relationship(relationship, attribute_names, resource) do
+  defp validate_relationship(relationship, attribute_names) do
     unless relationship.source_attribute in attribute_names do
       raise Spark.Error.DslError,
-        module: resource,
         path: [:relationships, relationship.name],
         message:
           "Relationship `#{relationship.name}` expects source field `#{relationship.source_attribute}` to be defined"
@@ -44,7 +44,6 @@ defmodule Ash.Resource.Transformers.ValidateRelationshipAttributes do
 
           unless relationship.source_attribute_on_join_resource in through_attributes do
             raise Spark.Error.DslError,
-              module: resource,
               path: [:relationships, relationship.name],
               message:
                 "Relationship `#{relationship.name}` expects source field on join table `#{relationship.source_attribute_on_join_resource}` to be defined on #{inspect(relationship.through)}"
@@ -52,7 +51,6 @@ defmodule Ash.Resource.Transformers.ValidateRelationshipAttributes do
 
           unless relationship.destination_attribute_on_join_resource in through_attributes do
             raise Spark.Error.DslError,
-              module: resource,
               path: [:relationships, relationship.name],
               message:
                 "Relationship `#{relationship.name}` expects destination field on join table `#{relationship.destination_attribute_on_join_resource}` to be defined on #{inspect(relationship.through)}"
@@ -67,7 +65,6 @@ defmodule Ash.Resource.Transformers.ValidateRelationshipAttributes do
 
       unless relationship.destination_attribute in destination_attributes do
         raise Spark.Error.DslError,
-          module: resource,
           path: [:relationships, relationship.name],
           message:
             "Relationship `#{relationship.name}` expects destination field `#{relationship.destination_attribute}` to be defined on #{inspect(relationship.destination)}"

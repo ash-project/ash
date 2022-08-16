@@ -5,7 +5,7 @@ defmodule Ash.Resource.Transformers.CachePrimaryKey do
   alias Spark.Dsl.Transformer
   alias Spark.Error.DslError
 
-  def transform(resource, dsl_state) do
+  def transform(dsl_state) do
     primary_key_attribute =
       dsl_state
       |> Transformer.get_entities([:attributes])
@@ -22,18 +22,11 @@ defmodule Ash.Resource.Transformers.CachePrimaryKey do
 
     case primary_key do
       :error_pk_allows_nil ->
-        {:error,
-         DslError.exception(
-           module: resource,
-           message: "Primary keys must not be allowed to be nil"
-         )}
+        {:error, DslError.exception(message: "Primary keys must not be allowed to be nil")}
 
       [] ->
         {:error,
-         DslError.exception(
-           module: resource,
-           message: "Resources without a primary key are not yet supported"
-         )}
+         DslError.exception(message: "Resources without a primary key are not yet supported")}
 
       [field] ->
         dsl_state = Transformer.persist(dsl_state, :primary_key, [field])
@@ -41,18 +34,9 @@ defmodule Ash.Resource.Transformers.CachePrimaryKey do
         {:ok, dsl_state}
 
       fields ->
-        if Ash.DataLayer.data_layer(resource) &&
-             Ash.DataLayer.data_layer_can?(resource, :composite_primary_key) do
-          dsl_state = Transformer.persist(dsl_state, :primary_key, fields)
+        dsl_state = Transformer.persist(dsl_state, :primary_key, fields)
 
-          {:ok, dsl_state}
-        else
-          {:error,
-           DslError.exception(
-             module: resource,
-             message: "Data layer does not support composite primary keys"
-           )}
-        end
+        {:ok, dsl_state}
     end
   end
 

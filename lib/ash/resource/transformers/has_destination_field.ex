@@ -4,14 +4,14 @@ defmodule Ash.Resource.Transformers.HasDestinationField do
 
   alias Spark.Dsl.Transformer
 
-  def transform(resource, dsl_state) do
+  def transform(dsl_state) do
     new_dsl_state =
       dsl_state
       |> Transformer.get_entities([:relationships])
       |> Enum.reduce(dsl_state, fn
         %{type: type, destination_attribute: nil} = relationship, dsl_state
         when type in [:has_many, :has_one] ->
-          new_relationship = %{relationship | destination_attribute: resource_id_field(resource)}
+          new_relationship = %{relationship | destination_attribute: resource_id_field(dsl_state)}
 
           Transformer.replace_entity(
             dsl_state,
@@ -30,8 +30,9 @@ defmodule Ash.Resource.Transformers.HasDestinationField do
   end
 
   # sobelow_skip ["DOS.StringToAtom"]
-  defp resource_id_field(resource) do
-    resource
+  defp resource_id_field(dsl_state) do
+    dsl_state
+    |> Transformer.get_persisted(:module)
     |> Module.split()
     |> List.last()
     |> Macro.underscore()

@@ -87,7 +87,7 @@ defmodule Ash.Test.Resource.ResourceTest do
   test "fails if there are multiple fields that share the same name" do
     assert_raise(
       Spark.Error.DslError,
-      "[Ash.Test.Resource.ResourceTest.Post]\n There are 4 fields(attributes, calculations, aggregates, and relationships) that share the name `foobar` defined in Ash.Test.Resource.ResourceTest.Post\n",
+      ~r/There are 4 fields\(attributes, calculations, aggregates, and relationships\) that share the name `foobar`/,
       fn ->
         defposts do
           attributes do

@@ -3,16 +3,15 @@ defmodule Ash.Registry.ResourceValidations.Transformers.EnsureNoEmbeds do
   Ensures that all resources for a given registry are not embeds.
   """
   use Spark.Dsl.Transformer
-
-  require Logger
+  alias Spark.Dsl.Transformer
 
   @impl true
   def after_compile?, do: true
 
   @impl true
-  def transform(registry, dsl) do
-    registry
-    |> Ash.Registry.Info.entries()
+  def transform(dsl) do
+    dsl
+    |> Transformer.get_entities([:entries])
     |> Enum.filter(&Ash.Resource.Info.embedded?/1)
     |> case do
       [] ->

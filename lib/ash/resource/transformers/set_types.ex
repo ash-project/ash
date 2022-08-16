@@ -4,7 +4,7 @@ defmodule Ash.Resource.Transformers.SetTypes do
 
   alias Spark.Dsl.Transformer
 
-  def transform(_resource, dsl_state) do
+  def transform(dsl_state) do
     with {:ok, dsl_state} <- set_attribute_types(dsl_state),
          {:ok, dsl_state} <- set_argument_types(dsl_state),
          {:ok, dsl_state} <- set_metadata_types(dsl_state) do

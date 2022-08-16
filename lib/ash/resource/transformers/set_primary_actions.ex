@@ -11,8 +11,8 @@ defmodule Ash.Resource.Transformers.ValidatePrimaryActions do
 
   @extension Ash.Resource.Dsl
 
-  def transform(resource, dsl_state) do
-    dsl_state = add_defaults(dsl_state, resource)
+  def transform(dsl_state) do
+    dsl_state = add_defaults(dsl_state)
 
     dsl_state
     |> Transformer.get_entities([:actions])
@@ -31,7 +31,6 @@ defmodule Ash.Resource.Transformers.ValidatePrimaryActions do
             {:halt,
              {:error,
               DslError.exception(
-                module: resource,
                 message:
                   "Multiple actions of type #{type} configured as `primary?: true`, but only one action per type can be the primary",
                 path: [:actions, type]
@@ -43,17 +42,27 @@ defmodule Ash.Resource.Transformers.ValidatePrimaryActions do
     end)
   end
 
-  defp add_defaults(dsl_state, resource) do
+  defp add_defaults(dsl_state) do
     actions = Transformer.get_entities(dsl_state, [:actions])
 
-    resource
-    |> Ash.Resource.Info.default_actions()
+    default_defaults =
+      if Transformer.get_persisted(dsl_state, :embedded?) do
+        [:create, :read, :update, :destroy]
+        |> Enum.reject(fn action_name ->
+          Enum.any?(actions, &(&1.name == action_name))
+        end)
+      else
+        []
+      end
+
+    dsl_state
+    |> Transformer.get_option([:actions], :defaults)
+    |> Kernel.||(default_defaults)
     |> Enum.with_index()
     |> Enum.reduce(dsl_state, fn {type, i}, dsl_state ->
       unless type in [:create, :update, :read, :destroy] do
         raise Spark.Error.DslError,
           path: [:actions, :default_actions, i],
-          module: resource,
           message: "#{type} is not a valid action type"
       end
 
