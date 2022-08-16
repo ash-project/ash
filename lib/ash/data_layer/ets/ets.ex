@@ -20,17 +20,20 @@ defmodule Ash.DataLayer.Ets do
       end
       """
     ],
+    links: [],
     schema: [
       private?: [
         type: :boolean,
         default: false,
-        doc: "Sets the ets table protection to private"
+        doc: "Sets the ets table protection to private",
+        links: []
       ],
       table: [
         type: :atom,
         doc: """
         The name of the table. Defaults to the resource name.
-        """
+        """,
+        links: []
       ]
     ]
   }

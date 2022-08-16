@@ -23,7 +23,7 @@ To see what checks are built-in, see `Ash.Policy.Check.BuiltInChecks`
 
 #### Policy
 
-Policies are evaluated from top to bottom. Every policy that applies must pass for a given request.
+Every policy that applies must pass for a given request.
 For example, a policy might have a condition `action_type(:read)` and another one might
 have a condition like `actor_attribute_equals(:admin, true)`. 
 If both apply (i.e an admin is using a read action), then both policies must pass.
@@ -47,12 +47,12 @@ For each check, starting from the top:
 - Run the check.
   - If it returns `:authorized`, the policy is `:authorized`
   - If it returns `:forbidden`, the policy is `:forbidden`
-  - If it returns `:unknown`, the next policy down is checked
+  - If it returns `:unknown`, the next check down is checked
 
 #### Filter checks
 
 Some checks don't return a status, but instead return a "filter". Filter checks are applied to the query that is being run, and then the
-rest of the checks are run.
+rest of the checks are run. In general, all checks should be filter checks or simple checks.
 
 ### The Simplest Policy
 

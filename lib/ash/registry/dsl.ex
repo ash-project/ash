@@ -4,6 +4,7 @@ defmodule Ash.Registry.Dsl do
     describe: "A reference to an ash module (typically a resource)",
     target: Ash.Registry.Entry,
     args: [:entry],
+    links: [],
     examples: [
       "entry MyApp.User"
     ],
@@ -11,7 +12,8 @@ defmodule Ash.Registry.Dsl do
       entry: [
         type: :atom,
         required: true,
-        doc: "The referenced module"
+        doc: "The referenced module",
+        links: []
       ]
     ]
   }
@@ -19,6 +21,7 @@ defmodule Ash.Registry.Dsl do
   @entries %Spark.Dsl.Section{
     name: :entries,
     describe: "List the entries present in this registry",
+    links: [],
     examples: [
       """
       entries do
@@ -35,7 +38,8 @@ defmodule Ash.Registry.Dsl do
       warn_on_empty?: [
         type: :boolean,
         doc: "Set to `false` to ignore warnings about an empty registry",
-        default: true
+        default: true,
+        links: []
       ]
     ]
   }
@@ -46,6 +50,8 @@ defmodule Ash.Registry.Dsl do
 
   @moduledoc """
   A small DSL for declaring an `Ash.Registry`.
+
+  `Ash.Registry` can be used generically, but the main way it is used in Ash is to provide a compile-time registry for {{link:ash:guide:Apis}}.
   """
 
   use Spark.Dsl.Extension, sections: @sections, transformers: @transformers
