@@ -1,12 +1,13 @@
 defmodule Ash.Flow.Transformers.ValidateUniqueNames do
   @moduledoc "Validates that steps have unique names."
   use Spark.Dsl.Transformer
+  alias Spark.Dsl.Transformer
 
   def before?(_), do: true
 
-  def transform(flow, dsl_state) do
-    flow
-    |> Ash.Flow.Info.steps()
+  def transform(dsl_state) do
+    dsl_state
+    |> Transformer.get_entities([:steps])
     |> unnest()
     |> Enum.map(& &1.name)
     |> Enum.group_by(& &1)
@@ -17,7 +18,6 @@ defmodule Ash.Flow.Transformers.ValidateUniqueNames do
       {name, [_ | _] = dupes} ->
         {:error,
          Spark.Error.DslError.exception(
-           module: flow,
            path: [:flow, :steps],
            message:
              "Step names must be unique, but #{Enum.count(dupes)} steps share the name #{name}."

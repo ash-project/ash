@@ -3,6 +3,7 @@ defmodule Ash.Registry.ResourceValidations.Transformers.ValidateRelatedResourceI
   Ensures that all related resources are included in an API.
   """
   use Spark.Dsl.Transformer
+  alias Spark.Dsl.Transformer
 
   @impl true
   def after_compile?, do: true
@@ -12,8 +13,8 @@ defmodule Ash.Registry.ResourceValidations.Transformers.ValidateRelatedResourceI
   def after?(_), do: false
 
   @impl true
-  def transform(module, dsl) do
-    resources = Ash.Registry.Info.entries(module)
+  def transform(dsl) do
+    resources = Transformer.get_entities(dsl, [:entries])
 
     resources
     |> Enum.flat_map(&get_all_related_resources(&1, resources))
@@ -24,7 +25,7 @@ defmodule Ash.Registry.ResourceValidations.Transformers.ValidateRelatedResourceI
         {:ok, dsl}
 
       resources ->
-        raise "Resources #{Enum.map_join(resources, ", ", &inspect/1)} must be included in #{inspect(module)}"
+        raise "Resources #{Enum.map_join(resources, ", ", &inspect/1)} must be included in the registry."
     end
   end
 

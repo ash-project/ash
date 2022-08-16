@@ -9,7 +9,7 @@ defmodule Ash.Resource.Transformers.BelongsToAttribute do
 
   @extension Ash.Resource.Dsl
 
-  def transform(resource, dsl_state) do
+  def transform(dsl_state) do
     dsl_state
     |> Transformer.get_entities([:relationships])
     |> Enum.filter(&(&1.type == :belongs_to && &1.define_attribute?))
@@ -43,19 +43,18 @@ defmodule Ash.Resource.Transformers.BelongsToAttribute do
           {:error, "Relationship cannot be a primary key unless it is also marked as required"}
         end
 
-      add_entity(entity_or_error, dsl_state, relationship, resource)
+      add_entity(entity_or_error, dsl_state, relationship)
     end)
   end
 
-  defp add_entity({:ok, attribute}, dsl_state, _relationship, _resource),
+  defp add_entity({:ok, attribute}, dsl_state, _relationship),
     do: {:cont, {:ok, Transformer.add_entity(dsl_state, [:attributes], attribute, type: :append)}}
 
-  defp add_entity({:error, error}, _dsl_state, relationship, resource),
+  defp add_entity({:error, error}, _dsl_state, relationship),
     do:
       {:halt,
        {:error,
         DslError.exception(
-          module: resource,
           message:
             "Could not create attribute for belongs_to #{relationship.name}: #{inspect(error)}",
           path: [:relationships, relationship.name]

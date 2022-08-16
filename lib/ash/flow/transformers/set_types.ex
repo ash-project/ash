@@ -4,7 +4,7 @@ defmodule Ash.Flow.Transformers.SetTypes do
 
   alias Spark.Dsl.Transformer
 
-  def transform(_resource, dsl_state) do
+  def transform(dsl_state) do
     set_argument_types(dsl_state)
   end
 

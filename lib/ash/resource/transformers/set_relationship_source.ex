@@ -4,11 +4,11 @@ defmodule Ash.Resource.Transformers.SetRelationshipSource do
 
   alias Spark.Dsl.Transformer
 
-  def transform(resource, dsl_state) do
+  def transform(dsl_state) do
     dsl_state
     |> Transformer.get_entities([:relationships])
     |> Enum.reduce({:ok, dsl_state}, fn relationship, {:ok, dsl_state} ->
-      new_relationship = %{relationship | source: resource}
+      new_relationship = %{relationship | source: Transformer.get_persisted(dsl_state, :module)}
 
       new_dsl_state =
         Transformer.replace_entity(

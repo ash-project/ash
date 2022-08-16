@@ -7,7 +7,7 @@ defmodule Ash.Resource.Transformers.BelongsToSourceField do
   alias Spark.Dsl.Transformer
 
   # sobelow_skip ["DOS.BinToAtom"]
-  def transform(_resource, dsl_state) do
+  def transform(dsl_state) do
     dsl_state
     |> Transformer.get_entities([:relationships])
     |> Enum.filter(&(&1.type == :belongs_to))
