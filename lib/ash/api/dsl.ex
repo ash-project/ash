@@ -2,6 +2,7 @@ defmodule Ash.Api.Dsl do
   @execution %Spark.Dsl.Section{
     name: :execution,
     describe: "Options for how requests are executed using this Api",
+    links: [],
     examples: [
       """
       execution do
@@ -13,7 +14,12 @@ defmodule Ash.Api.Dsl do
       timeout: [
         type: :timeout,
         doc: "The default timeout to use for requests using this API.",
-        default: 30_000
+        default: 30_000,
+        links: [
+          guides: [
+            "ash:guides:Timeouts"
+          ]
+        ]
       ]
     ]
   }
@@ -66,44 +72,32 @@ defmodule Ash.Api.Dsl do
       end
       """
     ],
+    links: [],
     schema: [
       allow: [
         type: :mfa,
         doc: """
         Support a dynamic resource list by providing a callback that checks whether or not the resource should be allowed.
-        """
+        """,
+        links: []
       ],
       allow_unregistered?: [
         type: :boolean,
         default: false,
+        links: [],
         doc: """
-        By default, an api will only work with resources that are explicitly included in the provided registry. In order to separate your
-        application into multiple domains, you may wish to "mix and match" your resources across contexts. Specifying this option allows you
-        to refer to resources in different apis in your resources, and allows providing any resource to api actions (to facilitate that requirement).
-
-        Be sure to remove the Ash.Registry.ResourceValidations extension from your registry as well.
+        Whether the Api will support only registered entries or not.
         """
       ],
       registry: [
         type: {:behaviour, Ash.Registry},
-        doc: """
-        Allows declaring that only the modules in a certain registry should be allowed to work with this Api.
-
-        This option is ignored if any explicit resources are included in the api, so everything is either in the registry
-        or in the api. See the docs on `Ash.Registry` for what the registry is used for.
-
-        To optimize for compile times, you can place the connection from the api to the registry in application configuration.
-
-        To accomplish this:
-        1. Configure an `otp_app` when using your api, e.g `use Ash.Api, otp_app: :my_app`
-        2. Add application config to set up the connection
-
-        ```elixir
-        config :my_app, MyApp.Api,
-          resources: [
-            registry: MyApp.Api.Registry
+        links: [
+          guides: [
+            "ash:guide:Quick Start"
           ]
-        ```
+        ],
+        doc: """
+        Configure the registry that contains the resources. It is recommended to use application config for this, to help with compile times. See the quick start guide for more.
         """
       ]
     ],

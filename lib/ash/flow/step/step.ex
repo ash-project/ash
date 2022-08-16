@@ -24,7 +24,8 @@ defmodule Ash.Flow.Step do
       name: [
         type: :atom,
         required: true,
-        doc: "The name of the step. Will be used when expressing dependencies, and step inputs."
+        doc: "The name of the step. Will be used when expressing dependencies, and step inputs.",
+        links: []
       ],
       wait_for: [
         type: :any,
@@ -33,19 +34,26 @@ defmodule Ash.Flow.Step do
 
         This value is just a template that isn't used, except to determine dependencies, so you can
         use it like this `wait_for [result(:step_one), result(:step_two)]` or `wait_for result(:step)`.
-        """
+        """,
+        links: []
       ],
       touches_resources: [
         type: {:list, :atom},
         doc: """
         A list of resources touched by any custom logic in this step. This is used in the case that this step is run in a transaction. This is primarily only needed for `custom` steps.
-        """
+        """,
+        links: []
       ],
       description: [
         type: :string,
         doc: """
         A description for the step.
-        """
+        """,
+        links: [
+          guides: [
+            "ash:guide:Documentation"
+          ]
+        ]
       ]
     ]
   end
@@ -56,21 +64,25 @@ defmodule Ash.Flow.Step do
       resource: [
         type: :atom,
         required: true,
-        doc: "The resource to call the action on."
+        doc: "The resource to call the action on.",
+        links: []
       ],
       action: [
         type: :atom,
         required: true,
-        doc: "The action to call on the resource."
+        doc: "The action to call on the resource.",
+        links: []
       ],
       api: [
         type: :atom,
         doc:
-          "The api to use when calling the action. Defaults to the api set in the `flow` section."
+          "The api to use when calling the action. Defaults to the api set in the `flow` section.",
+        links: []
       ],
       tenant: [
         type: :any,
-        doc: "A tenant to use for the operation. May be a template or a literal value."
+        doc: "A tenant to use for the operation. May be a template or a literal value.",
+        links: []
       ],
       input: input()
     ]
@@ -82,12 +94,8 @@ defmodule Ash.Flow.Step do
       type: :any,
       doc: """
       A template for the input.
-
-      Available template functions:
-
-      - `arg/1` to refer to a flow argument
-      - `result/1` to refer to the result of another step
-      """
+      """,
+      links: []
     ]
   end
 end

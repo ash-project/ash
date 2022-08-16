@@ -25,7 +25,13 @@ defmodule Ash.Resource.Preparation do
         doc: """
         The module and options for a preparation.
         """,
-        required: true
+        required: true,
+        links: [
+          modules: [
+            "ash:module:Ash.Resource.Preparation",
+            "ash:module:Ash.Resource.Preparation.Builtins"
+          ]
+        ]
       ]
     ]
   end
