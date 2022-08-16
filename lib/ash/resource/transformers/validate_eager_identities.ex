@@ -9,8 +9,11 @@ defmodule Ash.Resource.Transformers.ValidateEagerIdentities do
 
   def after_compile?, do: true
 
-  def transform(resource, dsl_state) do
-    primary_read = Ash.Resource.Info.primary_action(resource, :read)
+  def transform(dsl_state) do
+    primary_read =
+      dsl_state
+      |> Transformer.get_entities([:actions])
+      |> Enum.find(&(&1.type == :read && &1.primary?))
 
     dsl_state
     |> Transformer.get_entities([:identities])
@@ -20,10 +23,14 @@ defmodule Ash.Resource.Transformers.ValidateEagerIdentities do
         {:ok, dsl_state}
 
       eager ->
+        attributes = Transformer.get_entities(dsl_state, [:attributes])
+
         if primary_read do
           non_attributes =
             Enum.filter(eager, fn identity ->
-              Enum.any?(identity.keys, &(!Ash.Resource.Info.attribute(resource, &1)))
+              Enum.any?(identity.keys, fn key ->
+                !Enum.any?(attributes, &(&1.name == key))
+              end)
             end)
 
           case non_attributes do
@@ -33,7 +40,6 @@ defmodule Ash.Resource.Transformers.ValidateEagerIdentities do
             [identity] ->
               {:error,
                DslError.exception(
-                 module: resource,
                  path: [:identities, identity.name],
                  message:
                    "Identity #{identity.name} is declared with `eager_check_with` or `pre_check_with` but not all of the `keys` are attributes."
@@ -42,7 +48,6 @@ defmodule Ash.Resource.Transformers.ValidateEagerIdentities do
             identities ->
               {:error,
                DslError.exception(
-                 module: resource,
                  path: [:identities],
                  message:
                    "Identities #{Enum.map_join(identities, ",", & &1.name)} are declared with `eager_check_with` or `pre_check_with` but not all of the `keys` are attributes."
@@ -55,7 +60,6 @@ defmodule Ash.Resource.Transformers.ValidateEagerIdentities do
             [name] ->
               {:error,
                DslError.exception(
-                 module: resource,
                  path: [:identities, name],
                  message:
                    "Identity #{name} is declared with `eager_check_with` or `pre_check_with` but the resource has no primary read action."
@@ -64,7 +68,6 @@ defmodule Ash.Resource.Transformers.ValidateEagerIdentities do
             names ->
               {:error,
                DslError.exception(
-                 module: resource,
                  path: [:identities],
                  message:
                    "Identities #{Enum.join(names, ",")} are declared with `eager_check_with` or `pre_check_with` but the resource has no primary read action."

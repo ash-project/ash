@@ -11,7 +11,7 @@ defmodule Ash.Resource.Transformers.CreateJoinRelationship do
 
   @extension Ash.Resource.Dsl
 
-  def transform(_resource, dsl_state) do
+  def transform(dsl_state) do
     dsl_state
     |> Transformer.get_entities([:relationships])
     |> Enum.filter(&(&1.type == :many_to_many))

@@ -4,7 +4,7 @@ defmodule Ash.Resource.Transformers.ReplaceTimestamps do
 
   alias Spark.Dsl.Transformer
 
-  def transform(_resource, dsl_state) do
+  def transform(dsl_state) do
     attributes =
       dsl_state
       |> Transformer.get_entities([:attributes])

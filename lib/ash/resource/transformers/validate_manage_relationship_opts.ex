@@ -9,7 +9,9 @@ defmodule Ash.Resource.Transformers.ValidateManagedRelationshipOpts do
 
   def after_compile?, do: true
 
-  def transform(resource, dsl_state) do
+  def transform(dsl_state) do
+    relationships = Transformer.get_entities(dsl_state, [:relationships])
+
     dsl_state
     |> Transformer.get_entities([:actions])
     |> Enum.reject(&(&1.type == :read))
@@ -21,7 +23,6 @@ defmodule Ash.Resource.Transformers.ValidateManagedRelationshipOpts do
       |> Enum.each(fn %Ash.Resource.Change{change: {_, opts}} ->
         unless Enum.find(action.arguments, &(&1.name == opts[:argument])) do
           raise Spark.Error.DslError,
-            module: resource,
             path:
               [
                 :actions,
@@ -34,9 +35,8 @@ defmodule Ash.Resource.Transformers.ValidateManagedRelationshipOpts do
         end
 
         relationship =
-          Ash.Resource.Info.relationship(resource, opts[:relationship]) ||
+          Enum.find(relationships, &(&1.name == opts[:relationship])) ||
             raise Spark.Error.DslError,
-              module: resource,
               path:
                 [
                   :actions,
@@ -68,7 +68,6 @@ defmodule Ash.Resource.Transformers.ValidateManagedRelationshipOpts do
             e ->
               reraise Spark.Error.DslError,
                       [
-                        module: resource,
                         path:
                           [
                             :actions,

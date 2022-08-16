@@ -4,15 +4,19 @@ defmodule Ash.DataLayer.Transformers.RequirePreCheckWith do
   """
   use Spark.Dsl.Transformer
 
+  alias Spark.Dsl.Transformer
+
   require Logger
 
   @impl true
   def after_compile?, do: true
 
   @impl true
-  def transform(resource, dsl) do
-    resource
-    |> Ash.Resource.Info.identities()
+  def transform(dsl) do
+    resource = Transformer.get_persisted(dsl, :module)
+
+    dsl
+    |> Transformer.get_entities([:identities])
     |> Enum.filter(fn identity ->
       is_nil(identity.pre_check_with)
     end)
@@ -26,13 +30,12 @@ defmodule Ash.DataLayer.Transformers.RequirePreCheckWith do
         else
           {:error,
            Spark.Error.DslError.exception(
-             module: resource,
              message: """
-             The data layer for #{inspect(resource)} does not support native checking of identities.
+             The data layer does not support native checking of identities.
 
              Identities: #{Enum.map_join(identities, ", ", & &1.name)}
 
-             They must specify the `pre_check_with` option.
+             Must specify the `pre_check_with` option.
              """
            )}
         end
