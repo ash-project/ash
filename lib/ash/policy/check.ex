@@ -38,13 +38,10 @@ defmodule Ash.Policy.Check do
   @doc """
   An optional callback, hat allows the check to work with policies set to `access_type :runtime`
 
-  Takes a list of records, and returns `{:ok, true}` if they are all authorized, or `{:ok, list}` containing the list
-  of records that are authorized. You can also just return the whole list, `{:ok, true}` is just a shortcut.
-
-  Can also return `{:error, error}` if something goes wrong
+  Takes a list of records, and returns the subset of authorized records.
   """
   @callback check(struct(), list(Ash.Resource.record()), map, options) ::
-              {:ok, list(Ash.Resource.record()) | boolean} | {:error, Ash.Error.t()}
+              list(Ash.Resource.record())
   @doc "Describe the check in human readable format, given the options"
   @callback describe(options()) :: String.t()
 
