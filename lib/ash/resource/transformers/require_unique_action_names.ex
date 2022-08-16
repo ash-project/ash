@@ -7,16 +7,15 @@ defmodule Ash.Resource.Transformers.RequireUniqueActionNames do
   alias Spark.Dsl.Transformer
   alias Spark.Error.DslError
 
-  def transform(resource, dsl_state) do
+  def transform(dsl_state) do
     dsl_state
     |> Transformer.get_entities([:actions])
     |> Enum.group_by(& &1.name)
     |> Enum.each(fn {name, actions} ->
       unless Enum.count(actions) == 1 do
         raise DslError.exception(
-                module: resource,
                 message: """
-                Multiple actions (#{Enum.count(actions)}) with the name `#{name}` defined in #{inspect(resource)}.
+                Multiple actions (#{Enum.count(actions)}) with the name `#{name}` defined.
 
                 In the past, the pattern of having multiple actions called `:default`
                 was promoted in the documentation, but that is no longer valid. All

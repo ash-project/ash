@@ -7,12 +7,17 @@ defmodule Ash.Resource.Transformers.ValidateActionTypesSupported do
   alias Spark.Dsl.Transformer
   alias Spark.Error.DslError
 
-  def transform(resource, dsl_state) do
+  def after_compile?, do: true
+
+  def transform(dsl_state) do
     dsl_state
     |> Transformer.get_entities([:actions])
     |> Enum.reject(&(&1.type == :read))
     |> Enum.each(fn action ->
-      unless Ash.DataLayer.data_layer_can?(resource, action.type) do
+      data_layer = Transformer.get_persisted(dsl_state, :data_layer)
+      resource = Transformer.get_persisted(dsl_state, :module)
+
+      unless data_layer && data_layer.can?(resource, action.type) do
         raise DslError,
           module: resource,
           message:

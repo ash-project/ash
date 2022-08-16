@@ -7,7 +7,7 @@ defmodule Ash.Resource.Transformers.RequireUniqueFieldNames do
   alias Spark.Dsl.Transformer
   alias Spark.Error.DslError
 
-  def transform(resource, dsl_state) do
+  def transform(dsl_state) do
     attributes =
       dsl_state
       |> Transformer.get_entities([:attributes])
@@ -34,9 +34,8 @@ defmodule Ash.Resource.Transformers.RequireUniqueFieldNames do
 
       unless name_count == 1 do
         raise DslError.exception(
-                module: resource,
                 message: """
-                There are #{name_count} fields(attributes, calculations, aggregates, and relationships) that share the name `#{name}` defined in #{inspect(resource)}
+                There are #{name_count} fields(attributes, calculations, aggregates, and relationships) that share the name `#{name}`
                 """
               )
       end

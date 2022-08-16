@@ -6,8 +6,10 @@ defmodule Ash.Resource.Transformers.CountableActions do
 
   alias Spark.Dsl.Transformer
 
+  def after_compile?, do: true
+
   # sobelow_skip ["DOS.BinToAtom"]
-  def transform(resource, dsl_state) do
+  def transform(dsl_state) do
     dsl_state
     |> Transformer.get_entities([:actions])
     |> Enum.filter(fn action ->
@@ -18,7 +20,10 @@ defmodule Ash.Resource.Transformers.CountableActions do
         {:ok, dsl_state}
 
       [action | _] ->
-        if Ash.DataLayer.data_layer_can?(resource, {:query_aggregate, :count}) do
+        data_layer = Transformer.get_persisted(dsl_state, :data_layer)
+        resource = Transformer.get_persisted(dsl_state, :module)
+
+        if data_layer && data_layer.can?(resource, {:query_aggregate, :count}) do
           {:ok, dsl_state}
         else
           {:error,

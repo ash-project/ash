@@ -3,6 +3,7 @@ defmodule Ash.Registry.ResourceValidations.Transformers.EnsureResourcesCompiled 
   Ensures that all resources for a given registry are compiled.
   """
   use Spark.Dsl.Transformer
+  alias Spark.Dsl.Transformer
 
   require Logger
 
@@ -10,9 +11,9 @@ defmodule Ash.Registry.ResourceValidations.Transformers.EnsureResourcesCompiled 
   def after_compile?, do: true
 
   @impl true
-  def transform(registry, dsl) do
-    registry
-    |> Ash.Registry.Info.entries()
+  def transform(dsl) do
+    dsl
+    |> Transformer.get_entities([:entries])
     |> Enum.map(fn resource ->
       try do
         # This is to get the compiler to ensure that the resource is compiled
