@@ -15,49 +15,46 @@ defmodule Ash.Resource.Identity do
     name: [
       type: :atom,
       required: true,
-      doc:
-        "The name of the identity. Used by extensions to target specific identities for fetching single instances of a resource"
+      doc: "The name of the identity.",
+      links: []
     ],
     keys: [
       type: {:custom, __MODULE__, :keys, []},
       required: true,
-      doc:
-        "The names of attributes, aggregates or calculations that uniquely identify this resource."
+      doc: "The names of the attributes that uniquely identify this resource.",
+      links: []
     ],
     eager_check_with: [
       type: {:behaviour, Ash.Api},
       doc: """
-      Validates that the unique identity provided is unique at validation time, using the api module provided.
-
-      The identity is checked on each validation of the changeset. For example, if you are using
-      `AshPhoenix.Form`, this looks for a conflicting record on each call to `Form.validate/2`.
-      For updates, it is only checked if one of the involved fields is being changed.
-
-      For creates, The identity is checked unless your are performing an `upsert`, and the
-      `upsert_identity` is this identity. Keep in mind that for this to work properly, you will need
-      to pass the `upsert?: true, upsert_identity: :identity_name` *when creating the changeset* instead of
-      passing it to the Api when creating.
-
-      The `primary?` action is used to search for a record. This will error if you have not
-      configured one.
-      """
+      Validates that the unique identity provided is unique at validation time, outside of any transactions, using the api module provided.
+      """,
+      links: []
     ],
     pre_check_with: [
       type: {:behaviour, Ash.Api},
       doc: """
-      Validates that the unique identity provided is unique *just prior* to enacting the resource action, using the Api provided.
-
-      Behaves the same as `eager_check_with`, but it runs just prior to the action being committed. Useful for
-      data layers that don't support transactions/unique constraints, or manual resources with identities.
-      """
+      Validates that the unique identity provided is unique in a before_action hook.
+      """,
+      links: []
     ],
     description: [
       type: :string,
-      doc: "An optional description for the identity"
+      doc: "An optional description for the identity",
+      links: [
+        guides: [
+          "ash:guide:Documentation"
+        ]
+      ]
     ],
     message: [
       type: :string,
-      doc: "An error message to use when the unique identity would be violated"
+      doc: "An error message to use when the unique identity would be violated",
+      links: [
+        guides: [
+          "ash:guide:Errors"
+        ]
+      ]
     ]
   ]
 

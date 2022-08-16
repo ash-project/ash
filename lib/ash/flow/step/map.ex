@@ -9,11 +9,13 @@ defmodule Ash.Flow.Step.Map do
         over: [
           type: :any,
           doc:
-            "The value to be iterated over. Will be available inside the `map` step as `element(:map_step_name)`"
+            "The value to be iterated over. Will be available inside the `map` step as `element(:map_step_name)`",
+          links: []
         ],
         output: [
           type: :atom,
-          doc: "Which step to use when constructing the output list. Defaults to the last step."
+          doc: "Which step to use when constructing the output list. Defaults to the last step.",
+          links: []
         ]
       ]
       |> Spark.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")

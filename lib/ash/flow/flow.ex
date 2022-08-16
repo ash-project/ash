@@ -1,13 +1,14 @@
 defmodule Ash.Flow do
   @moduledoc """
-  A flow is a static definition of a set of steps in your system. ALPHA - do not use
+  A flow is a static definition of a set of steps to be run.
 
   Flows are backed by `executors`, which determine how the workflow steps are performed.
   The executor can be overriden on invocation, but not all executors will be capable of running all flows.
+  As of this writing, the default executor is the only one. It runs all steps in parallel unless values must be provided from one step to another.
 
-  WARNING: this is *beyond* alpha. There are still active unknowns in the implementation, and the performance is entirely untested.
+  Ash.Flow is still in its early days, and is not as stable or complete as the rest of the framework.
 
-  Flow DSL documentation: `Ash.Flow`
+  See the {{link:ash:guide:Flows}} guide for more.
   """
 
   @type t :: module
@@ -17,7 +18,7 @@ defmodule Ash.Flow do
       extensions: [Ash.Flow.Dsl]
     ]
 
-  @spec run!(any, any, nil | maybe_improper_list | map) :: any
+  @spec run!(any, any, Keyword.t()) :: any
   def run!(flow, input, opts \\ []) do
     case run(flow, input, opts) do
       {:ok, result, metadata} ->
@@ -31,6 +32,7 @@ defmodule Ash.Flow do
     end
   end
 
+  @spec run(any, any, Keyword.t()) :: {:ok, any} | {:ok, any, any} | {:error, Ash.Error.t()}
   def run(flow, input, opts \\ []) do
     unless Application.get_env(:ash, :allow_flow) do
       raise "Flows are highly unstable and must be explicitly enabled in configuration, `config :ash, :allow_flow`"

@@ -35,48 +35,36 @@ defmodule Ash.Resource.Actions.Read do
                   filter: [
                     type: :any,
                     doc:
-                      "A filter template, that may contain actor references. See `Ash.Filter` for more on templates"
+                      "A filter template that will be applied whenever the action is used. See `Ash.Filter` for more on templates",
+                    links: [
+                      guides: [
+                        "ash:guide:Filters"
+                      ]
+                    ]
                   ],
                   manual: [
                     type: {:spark_behaviour, Ash.Resource.ManualRead},
                     doc: """
-                    Allows for read actions that are fetched manually. WARNING: EXPERIMENTAL
-
-                    Manual read actions will simply be handed the ash query and the data layer query.
-                    If you simply want to customize/intercept the query before it is sent to the data layer
-                    then use `modify_query` instead. Using them in conjunction can help ensure that calculations and aggregates
-                    are all correct. For example, you could modify the query to alter/replace the where clause/filter using
-                    `modify_query` which will affect which records calculations are returned for. Then you can customize how it is
-                    run using `manual`.
-
-                    ```elixir
-                    # in the resource
-                    actions do
-                      read :action_name do
-                        manual MyApp.ManualRead
-                        # or `{MyApp.ManualRead, ...opts}`
-                      end
-                    end
-
-                    # the implementation
-                    defmodule MyApp.ManualRead do
-                      use Ash.Resource.ManualRead
-
-                      def read(ash_query, ecto_query, _opts, _context) do
-                        ...
-                        {:ok, query_results} | {:error, error}
-                      end
-                    end
-                    ```
-                    """
+                    Delegates running of the query to the provided module.
+                    """,
+                    links: [
+                      guides: [
+                        "ash:guide:Manual Action"
+                      ]
+                    ]
                   ],
                   get?: [
                     type: :boolean,
                     default: false,
                     doc: """
                     Expresses that this action innately only returns a single result. Can be used by extensions to validate that you have not hooked something up that expects a list
-                    to an action that can only return one thing. This is not used internally (but may be in the future).
-                    """
+                    to an action that can only return one thing. Used by the code interface when defining functions for read actions.
+                    """,
+                    links: [
+                      guides: [
+                        "ash:guide:Code Interface"
+                      ]
+                    ]
                   ],
                   modify_query: [
                     type: :mfa,
@@ -86,15 +74,9 @@ defmodule Ash.Resource.Actions.Read do
                     The ash query and the data layer query will be provided as additional arguments.
                     The result must be `{:ok, new_data_layer_query} | {:error, error}`.
 
-                    This is an experimental option, so if you use it you should be sure to test it under
-                    various scenarios, like usage in aggregates/calculations and loading from relationships.
-                    """
-                  ],
-                  pagination: [
-                    type: {:custom, __MODULE__, :pagination, []},
-                    doc:
-                      "Options for how the action should support pagination. See the pagination section for more information.",
-                    default: false
+                    Here be dragons.
+                    """,
+                    links: []
                   ]
                 ],
                 @global_opts,
@@ -105,33 +87,39 @@ defmodule Ash.Resource.Actions.Read do
     keyset?: [
       type: :boolean,
       doc: "Whether or not keyset based pagination is supported",
-      default: false
+      default: false,
+      links: []
     ],
     offset?: [
       type: :boolean,
       doc: "Whether or not offset based pagination is supported",
-      default: false
+      default: false,
+      links: []
     ],
     default_limit: [
       type: :pos_integer,
-      doc: "The default page size to apply, if one is not supplied"
+      doc: "The default page size to apply, if one is not supplied",
+      links: []
     ],
     countable: [
       type: {:in, [true, false, :by_default]},
       doc:
         "Whether not a returned page will have a full count of all records. Use `:by_default` to do it automatically.",
-      default: false
+      default: false,
+      links: []
     ],
     max_page_size: [
       type: :pos_integer,
       doc: "The maximum amount of records that can be requested in a single page",
-      default: 250
+      default: 250,
+      links: []
     ],
     required?: [
       type: :boolean,
       doc:
         "Whether or not pagination can be disabled. Only relevant if some pagination configuration is supplied.",
-      default: true
+      default: true,
+      links: []
     ]
   ]
 
@@ -145,25 +133,21 @@ defmodule Ash.Resource.Actions.Read do
       keyset?: false,
       offset?: false
     ]
+
+    def transform(pagination) do
+      if pagination.keyset? or pagination.offset? do
+        {:ok, pagination}
+      else
+        {:error, "Must enable `keyset?` or `offset?`"}
+      end
+    end
   end
 
-  def pagination(false) do
-    {:ok, false}
-  end
-
-  def pagination(opts) do
-    case Spark.OptionsHelpers.validate(opts, @pagination_schema) do
-      {:ok, result} ->
-        pagination = struct(Pagination, result)
-
-        if pagination.keyset? or pagination.offset? do
-          {:ok, pagination}
-        else
-          {:error, "Must enable `keyset?` or `offset?`"}
-        end
-
-      {:error, error} ->
-        {:error, Exception.message(error)}
+  def transform(read) do
+    if read.pagination do
+      {:ok, %{read | pagination: List.last(read.pagination) || false}}
+    else
+      {:ok, %{read | pagination: false}}
     end
   end
 

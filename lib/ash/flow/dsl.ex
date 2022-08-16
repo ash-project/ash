@@ -5,6 +5,7 @@ defmodule Ash.Flow.Dsl do
     Declares a step that will inspect its input and provide
     additional debug information.
     """,
+    links: [],
     examples: [
       """
       debug :show_some_information do
@@ -27,6 +28,7 @@ defmodule Ash.Flow.Dsl do
       create :create_post, MyApp.Post, :create
       """
     ],
+    links: [],
     no_depend_modules: [:resource, :touches_resources],
     target: Ash.Flow.Step.Create,
     args: [:name, :resource, :action],
@@ -38,6 +40,7 @@ defmodule Ash.Flow.Dsl do
     describe: """
     Declares a step that will call a update action on a resource.
     """,
+    links: [],
     examples: [
       """
       update :update_post, MyApp.Post, :update do
@@ -56,6 +59,7 @@ defmodule Ash.Flow.Dsl do
     describe: """
     Declares a step that will call a destroy action on a resource.
     """,
+    links: [],
     examples: [
       """
       destroy :destroy_post, MyApp.Post, :destroy
@@ -77,6 +81,7 @@ defmodule Ash.Flow.Dsl do
       read :destroy_post, MyApp.Post, :destroy
       """
     ],
+    links: [],
     no_depend_modules: [:resource, :touches_resources],
     target: Ash.Flow.Step.Read,
     args: [:name, :resource, :action],
@@ -89,6 +94,7 @@ defmodule Ash.Flow.Dsl do
     Runs another flow as part of the current flow.
     The return value of the flow is the return value of the step.
     """,
+    links: [],
     examples: [
       """
       run_flow :get_org, GetOrgByName do
@@ -110,6 +116,7 @@ defmodule Ash.Flow.Dsl do
 
     See `Ash.Flow.Step` for the necessary callbacks and more information.
     """,
+    links: [],
     examples: [
       """
       custom :do_custom_thing, MyApp.DoCustomThing do
@@ -145,6 +152,7 @@ defmodule Ash.Flow.Dsl do
       end
       """
     ],
+    links: [],
     no_depend_modules: [:type],
     target: Ash.Flow.Argument,
     args: [:name, :type],
@@ -159,31 +167,28 @@ defmodule Ash.Flow.Dsl do
     entities: [
       @argument
     ],
+    links: [],
     schema: [
       api: [
         type: {:behaviour, Ash.Api},
-        doc: "An api to use by default when calling actions"
+        doc: "An api to use by default when calling actions",
+        links: []
       ],
       description: [
         type: :string,
-        doc: "A description of the flow"
+        doc: "A description of the flow",
+        links: [
+          guides: [
+            "ash:guide:Documentation"
+          ]
+        ]
       ],
       returns: [
         type: :any,
         doc: """
-        The step or step who's output to return.
-        If given a single step, then the result of the step is returned. If given multiple, then a map of step name to result is returned.
-        If nothing is provided, then the last step is returned.
-
-        To rename keys in the map of step names to results, use a keyword list, where the key is the step and the value is what should be in
-        the returned map.
-
-        For example:
-
-        `returns :step_name`
-        `returns [:step_one, :step_two]`
-        `returns [step_one: :one, step_two: :two]`
-        """
+        The step or step that should constitute the return value.
+        """,
+        links: []
       ]
     ]
   }
@@ -199,6 +204,7 @@ defmodule Ash.Flow.Dsl do
     target: Ash.Flow.Step.Transaction,
     args: [:name, :resource],
     recursive_as: :steps,
+    links: [],
     entities: [
       steps: @step_entities
     ],
@@ -241,6 +247,7 @@ defmodule Ash.Flow.Dsl do
     args: [:name, :over],
     recursive_as: :steps,
     no_depend_modules: [:touches_resources],
+    links: [],
     entities: [
       steps: @step_entities
     ],
@@ -279,6 +286,7 @@ defmodule Ash.Flow.Dsl do
       end
       """
     ],
+    links: [],
     imports: [Ash.Flow.StepHelpers],
     entities: [@map, @transaction] ++ @step_entities
   }

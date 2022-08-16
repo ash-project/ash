@@ -9,17 +9,20 @@ defmodule Ash.Flow.Step.Transaction do
         output: [
           type: :any,
           doc:
-            "Which step or steps to use when constructing the output list. Defaults to the last step."
+            "Which step or steps to use when constructing the output list. Defaults to the last step.",
+          links: []
         ],
         timeout: [
           type: :timeout,
-          doc: "A timeout to apply to the transaction."
+          doc: "A timeout to apply to the transaction.",
+          links: []
         ],
         resource: [
           type: Ash.OptionsHelpers.ash_resource(),
           doc: """
           The Ash resource to use for the transaction.
-          """
+          """,
+          links: []
         ]
       ]
       |> Spark.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")
