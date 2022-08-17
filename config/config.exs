@@ -1,7 +1,5 @@
 import Config
 
-config :ash, :allow_flow, true
-
 if Mix.env() == :dev do
   config :git_ops,
     mix_project: Ash.MixProject,

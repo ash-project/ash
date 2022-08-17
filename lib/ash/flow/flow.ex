@@ -34,10 +34,6 @@ defmodule Ash.Flow do
 
   @spec run(any, any, Keyword.t()) :: {:ok, any} | {:ok, any, any} | {:error, Ash.Error.t()}
   def run(flow, input, opts \\ []) do
-    unless Application.get_env(:ash, :allow_flow) do
-      raise "Flows are highly unstable and must be explicitly enabled in configuration, `config :ash, :allow_flow`"
-    end
-
     executor = opts[:executor] || Ash.Flow.Executor.AshEngine
 
     opts =
