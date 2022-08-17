@@ -335,14 +335,11 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Enum.reject(fn relationship ->
       errored? = changeset.context[:private][:error][relationship.name]
 
-      not_changing? =
-        if preflight? do
-          false
-        else
-          !Map.has_key?(changeset.relationships, relationship.name)
-        end
-
-      errored? || not_changing?
+      if preflight? do
+        errored? || not_changing?
+      else
+        errored?
+      end
     end)
     |> Enum.reduce({changeset, instructions}, fn required_relationship,
                                                  {changeset, instructions} ->
