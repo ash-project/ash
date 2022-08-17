@@ -304,23 +304,6 @@ defmodule Ash.Engine do
     "#{inspect(Enum.find(state.requests, &(&1.path == path)).name)}.#{dep}"
   end
 
-  defp run_iteration(%__MODULE__{tasks: tasks} = state) when tasks != [] do
-    Enum.reduce(tasks, state, fn task, state ->
-      case Task.yield(task, 0) do
-        {:ok, {request_path, result}} ->
-          state = %{state | tasks: tasks -- [task]}
-          request = Enum.find(state.requests, &(&1.path == request_path))
-
-          new_request = %{request | async_fetch_state: {:fetched, result}}
-
-          replace_request(state, new_request)
-
-        nil ->
-          state
-      end
-    end)
-  end
-
   defp run_iteration(
          %__MODULE__{unsent_dependencies: [{request_path, dep} | remaining_unsent_dependencies]} =
            state
@@ -364,6 +347,23 @@ defmodule Ash.Engine do
   defp run_iteration(state) do
     state = start_pending_tasks(state)
 
+    state =
+      state.tasks
+      |> Enum.reduce(state, fn task, state ->
+        case Task.yield(task, 0) do
+          {:ok, {request_path, result}} ->
+            state = %{state | tasks: state.tasks -- [task]}
+            request = Enum.find(state.requests, &(&1.path == request_path))
+
+            new_request = %{request | async_fetch_state: {:fetched, result}}
+
+            replace_request(state, new_request)
+
+          nil ->
+            state
+        end
+      end)
+
     case Enum.find(state.requests, &match?({:requested, _}, &1.async_fetch_state)) do
       nil ->
         {async, sync} =
@@ -400,14 +400,17 @@ defmodule Ash.Engine do
             {request.path, request.data.resolver.(resolver_context)}
           end
 
-          %{state | pending_tasks: [pending_task | state.pending_tasks]}
+          replace_request(
+            %{state | pending_tasks: [pending_task | state.pending_tasks]},
+            request
+          )
         else
           task =
             async(fn ->
               {request.path, request.data.resolver.(resolver_context)}
             end)
 
-          %{state | tasks: [task | state.tasks]}
+          replace_request(%{state | tasks: [task | state.tasks]}, request)
         end
     end
   end
