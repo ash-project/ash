@@ -325,6 +325,19 @@ defmodule Ash.Actions.ManagedRelationships do
     )
   end
 
+  defp keep_relationships_to_validate(relationships, changeset, true) do
+    Enum.filter(relationships, fn relationship ->
+      changeset.relationships[relationship.name] &&
+        !changeset.context[:private][:error][relationship.name]
+    end)
+  end
+
+  defp keep_relationships_to_validate(relationships, changeset, false) do
+    Enum.filter(relationships, fn relationship ->
+      !changeset.context[:private][:error][relationship.name]
+    end)
+  end
+
   def validate_required_belongs_to(changeset_instructions_or_error, preflight? \\ true)
   def validate_required_belongs_to({:error, error}, _), do: {:error, error}
 
@@ -332,15 +345,7 @@ defmodule Ash.Actions.ManagedRelationships do
     changeset.resource
     |> Ash.Resource.Info.relationships()
     |> Enum.filter(&(&1.type == :belongs_to && &1.required?))
-    |> Enum.reject(fn relationship ->
-      errored? = changeset.context[:private][:error][relationship.name]
-
-      if preflight? do
-        errored? || not_changing?
-      else
-        errored?
-      end
-    end)
+    |> keep_relationships_to_validate(changeset, preflight?)
     |> Enum.reduce({changeset, instructions}, fn required_relationship,
                                                  {changeset, instructions} ->
       changeset =
