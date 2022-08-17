@@ -1215,6 +1215,19 @@ defmodule Ash.Changeset do
   # Attributes that are private and/or are the source field of a belongs_to relationship
   # are typically not set by input, so they aren't required until the actual action
   # is run.
+  defp attributes_to_require(resource, %{type: :create, accept: accept}, true) do
+    resource
+    |> Ash.Resource.Info.attributes()
+    |> Enum.reject(&(&1.allow_nil? || &1.generated?))
+    |> Enum.filter(&(&1.name in accept))
+  end
+
+  defp attributes_to_require(resource, %{type: :create, accept: accept} = action, false) do
+    resource
+    |> do_attributes_to_require(action)
+    |> Enum.filter(&(&1.name in accept))
+  end
+
   defp attributes_to_require(resource, _action, true = _private_and_belongs_to?) do
     resource
     |> Ash.Resource.Info.attributes()
@@ -1222,6 +1235,10 @@ defmodule Ash.Changeset do
   end
 
   defp attributes_to_require(resource, action, false = _private_and_belongs_to?) do
+    do_attributes_to_require(resource, action)
+  end
+
+  defp do_attributes_to_require(resource, action) do
     belongs_to =
       resource
       |> Ash.Resource.Info.relationships()

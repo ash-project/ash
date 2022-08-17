@@ -99,6 +99,21 @@ defmodule Ash.Test.Actions.CreateTest do
     end
   end
 
+  defmodule ManualCreateAuthorWithRequiredId do
+    @moduledoc false
+    use Ash.Resource.Change
+
+    def change(changeset, _, _) do
+      Ash.Changeset.after_action(changeset, fn _, nil ->
+        {:ok,
+         Ash.Test.Actions.CreateTest.AuthorWithRequiredId
+         |> Ash.Changeset.for_create(:create, %{name: "manual"})
+         |> Ash.Changeset.force_change_attribute(:id, Ash.UUID.generate())
+         |> Ash.Test.Actions.CreateTest.Api.create!()}
+      end)
+    end
+  end
+
   defmodule Author do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -135,6 +150,31 @@ defmodule Ash.Test.Actions.CreateTest do
       has_one(:profile, Profile, destination_field: :author_id)
 
       has_many(:posts, Ash.Test.Actions.CreateTest.Post, destination_field: :author_id)
+    end
+  end
+
+  defmodule AuthorWithRequiredId do
+    @moduledoc false
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      defaults [:create, :read, :update, :destroy]
+
+      create :manual_create do
+        accept []
+        manual? true
+        change ManualCreateAuthorWithRequiredId
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id, generated?: false, default: nil
+      attribute(:name, :string, allow_nil?: false)
+      attribute(:bio, :string)
     end
   end
 
@@ -245,6 +285,7 @@ defmodule Ash.Test.Actions.CreateTest do
 
     entries do
       entry(Author)
+      entry(AuthorWithRequiredId)
       entry(Post)
       entry(Profile)
       entry(ProfileWithBelongsTo)
@@ -405,6 +446,14 @@ defmodule Ash.Test.Actions.CreateTest do
       |> Api.create!()
 
       assert [%{name: "manual"}] = Api.read!(Author)
+    end
+
+    test "the manual action does not require values that aren't accepted" do
+      AuthorWithRequiredId
+      |> Ash.Changeset.for_create(:manual_create)
+      |> Api.create!()
+
+      assert [%{name: "manual"}] = Api.read!(AuthorWithRequiredId)
     end
   end
 
