@@ -206,7 +206,6 @@ defmodule Ash.MixProject do
       {:decimal, "~> 2.0"},
       {:picosat_elixir, "~> 0.2"},
       {:nimble_options, "~> 0.3.5"},
-      {:timex, ">= 3.0.0"},
       {:comparable, "~> 1.0"},
       {:jason, ">= 1.0.0"},
       {:sourceror, "~> 0.9"},

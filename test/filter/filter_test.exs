@@ -666,11 +666,17 @@ defmodule Ash.Test.Filter.FilterTest do
     test "function calls are evaluated properly" do
       post1 =
         Post
-        |> new(%{title: "title1", approved_at: Timex.shift(Timex.now(), weeks: -1)})
+        |> new(%{
+          title: "title1",
+          approved_at: DateTime.new!(Date.utc_today() |> Date.add(-7), Time.utc_now())
+        })
         |> Api.create!()
 
       Post
-      |> new(%{title: "title1", approved_at: Timex.shift(Timex.now(), weeks: -4)})
+      |> new(%{
+        title: "title1",
+        approved_at: DateTime.new!(Date.utc_today() |> Date.add(-7 * 4), Time.utc_now())
+      })
       |> Api.create!()
 
       post_id = post1.id
