@@ -1044,7 +1044,7 @@ defmodule Ash.Resource.Dsl do
     ],
     links: [
       guides: [
-        "ash:guides:Aggregates"
+        "ash:guide:Aggregates"
       ]
     ],
     imports: [Ash.Filter.TemplateHelpers],
