@@ -29,78 +29,55 @@ defmodule Ash.MixProject do
     ]
   end
 
+  defp extras() do
+    "priv/documentation/**/*.md"
+    |> Path.wildcard()
+    |> Enum.map(fn path ->
+      title =
+        path
+        |> Path.basename(".md")
+        |> String.split(~r/[-_]/)
+        |> Enum.map(&String.capitalize/1)
+        |> Enum.join(" ")
+        |> case do
+          "F A Q" ->
+            "FAQ"
+
+          other ->
+            other
+        end
+
+      {String.to_atom(path),
+       [
+         title: title
+       ]}
+    end)
+  end
+
+  defp groups_for_extras() do
+    "priv/documentation/*"
+    |> Path.wildcard()
+    |> Enum.map(fn folder ->
+      name =
+        folder
+        |> Path.basename()
+        |> String.split(~r/[-_]/)
+        |> Enum.map(&String.capitalize/1)
+        |> Enum.join(" ")
+
+      {name, folder |> Path.join("**") |> Path.wildcard()}
+    end)
+  end
+
   defp docs do
     # The main page in the docs
     [
-      main: "readme",
+      main: "quick-start",
       source_ref: "v#{@version}",
       logo: "logos/small-logo.png",
       extra_section: "GUIDES",
-      extras: [
-        "README.md": [],
-        "old_documentation/introduction/getting_started.md": [
-          title: "Getting Started"
-        ],
-        "old_documentation/introduction/getting_started_phx.md": [
-          title: "Getting Started With Phoenix"
-        ],
-        "old_documentation/topics/expressions.md": [
-          title: "Expressions"
-        ],
-        "old_documentation/topics/managing_relationships.md": [
-          title: "Managing Relationships"
-        ],
-        "old_documentation/topics/resources_without_a_data_layer.md": [
-          title: "Resources without a Data Layer"
-        ],
-        "old_documentation/topics/authorization.md": [
-          title: "Authorization"
-        ],
-        "old_documentation/topics/identities.md": [
-          title: "Identities"
-        ],
-        "old_documentation/topics/pagination.md": [
-          title: "Pagination"
-        ],
-        "old_documentation/topics/validation.md": [
-          title: "Validation"
-        ],
-        "old_documentation/topics/notifiers.md": [
-          title: "Notifiers"
-        ],
-        "old_documentation/topics/error_handling.md": [
-          title: "Error Handling"
-        ],
-        "old_documentation/topics/aggregates.md": [
-          title: "Aggregates"
-        ],
-        "old_documentation/topics/calculations.md": [
-          title: "Calculations"
-        ],
-        "old_documentation/topics/embedded_resources.md": [
-          title: "Embedded Resources"
-        ],
-        "old_documentation/topics/multitenancy.md": [
-          title: "Multitenancy"
-        ],
-        "old_documentation/topics/compile_times.md": [
-          title: "Compile Times"
-        ],
-        "priv/documentation/topics/policies.md": [
-          title: "Policies"
-        ],
-        "priv/documentation/topics/overview.md": [
-          title: "Overview"
-        ],
-        "priv/documentation/topics/development-utilities.md": [
-          title: "Dev Utilities"
-        ]
-      ],
-      groups_for_extras: [
-        Introduction: Path.wildcard("old_documentation/introduction/*.md"),
-        Topics:
-          Path.wildcard("old_documentation/topics/*") ++ Path.wildcard("documentation/topics/*")
-      ],
+      extras: extras(),
+      groups_for_extras: groups_for_extras(),
       groups_for_modules: [
         entrypoint: [
           Ash,
@@ -133,15 +110,6 @@ defmodule Ash.MixProject do
         authorizer: ~r/Ash.Authorizer/,
         pagination: ~r/Ash.Page/,
         notifications: ~r/Ash.Notifier/,
-        extension: [
-          Spark.Dsl.Entity,
-          Spark.Dsl.Extension,
-          Spark.Dsl.Section,
-          Spark.Dsl.Transformer
-        ],
-        "dsl tooling": [
-          Spark.Dsl
-        ],
         "resource dsl transformers": ~r/Ash.Resource.Transformers/,
         "api dsl transformers": ~r/Ash.Api.Transformers/,
         "filter operators": ~r/Ash.Query.Operator/,
@@ -174,8 +142,7 @@ defmodule Ash.MixProject do
           Ash.NotLoaded,
           Ash.Query.Aggregate,
           Ash.Query.Type,
-          Ash.SatSolver,
-          Spark.OptionsHelpers
+          Ash.SatSolver
         ],
         comparable: ~r/Comparable/
       ]
