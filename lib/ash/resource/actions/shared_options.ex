@@ -31,7 +31,9 @@ defmodule Ash.Resource.Actions.SharedOptions do
       Has no effect if the data layer does not support transactions, or if that data layer is already in a transaction.
       """,
       links: [
-        "ash:guide:Transactions"
+        guides: [
+          "ash:guide:Transactions"
+        ]
       ]
     ],
     touches_resources: [
@@ -40,7 +42,9 @@ defmodule Ash.Resource.Actions.SharedOptions do
       A list of resources that the action may touch, used when building transactions.
       """,
       links: [
-        "ash:guide:Transactions"
+        guides: [
+          "ash:guide:Transactions"
+        ]
       ]
     ]
   ]
