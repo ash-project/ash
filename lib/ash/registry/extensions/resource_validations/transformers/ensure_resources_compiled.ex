@@ -14,6 +14,7 @@ defmodule Ash.Registry.ResourceValidations.Transformers.EnsureResourcesCompiled 
   def transform(dsl) do
     dsl
     |> Transformer.get_entities([:entries])
+    |> Enum.map(& &1.entry)
     |> Enum.map(fn resource ->
       try do
         # This is to get the compiler to ensure that the resource is compiled
