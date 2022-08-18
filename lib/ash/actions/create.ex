@@ -297,7 +297,7 @@ defmodule Ash.Actions.Create do
                             changeset.resource
                             |> Ash.Resource.Info.relationships()
                             |> Enum.filter(&(&1.type == :belongs_to))
-                            |> Enum.map(& &1.source_field)
+                            |> Enum.map(& &1.source_attribute)
 
                           final_check =
                             changeset.resource
