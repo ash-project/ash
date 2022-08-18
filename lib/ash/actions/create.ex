@@ -293,10 +293,18 @@ defmodule Ash.Actions.Create do
                         if action.manual? do
                           {:ok, nil}
                         else
+                          belongs_to_attrs =
+                            changeset.resource
+                            |> Ash.Resource.Info.relationships()
+                            |> Enum.filter(&(&1.type == :belongs_to))
+                            |> Enum.map(& &1.source_field)
+
                           final_check =
                             changeset.resource
                             |> Ash.Resource.Info.attributes()
-                            |> Enum.reject(&(&1.allow_nil? || &1.generated?))
+                            |> Enum.reject(
+                              &(&1.allow_nil? || &1.generated? || &1.name in belongs_to_attrs)
+                            )
 
                           changeset =
                             changeset
