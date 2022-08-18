@@ -17,7 +17,7 @@ defmodule Ash.Api.Dsl do
         default: 30_000,
         links: [
           guides: [
-            "ash:guides:Timeouts"
+            "ash:guide:Timeouts"
           ]
         ]
       ]
