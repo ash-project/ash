@@ -101,7 +101,7 @@ defmodule Ash.Api.Dsl do
         """
       ]
     ],
-    modules: [:registry]
+    no_depend_modules: [:registry]
   }
 
   @sections [@resources, @execution, @authorization]
