@@ -4,9 +4,9 @@
 
 In this guide we will:
 
-1. Create a new Elixir application, and add Ash as a dependency
+1. Create a new Elixir application and add Ash as a dependency
 2. Create a simple set of resources and show they can be used
-3. Illustrate some core concepts of Ash, and how you can leverage them
+3. Illustrate some core concepts of Ash
 4. Point you to good next resources so you can explore Ash further
 
 ## Things you may want to read first
