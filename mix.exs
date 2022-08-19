@@ -30,7 +30,7 @@ defmodule Ash.MixProject do
   end
 
   defp extras() do
-    "priv/documentation/**/*.md"
+    "documentation/**/*.md"
     |> Path.wildcard()
     |> Enum.map(fn path ->
       title =
@@ -55,7 +55,7 @@ defmodule Ash.MixProject do
   end
 
   defp groups_for_extras() do
-    "priv/documentation/*"
+    "documentation/*"
     |> Path.wildcard()
     |> Enum.map(fn folder ->
       name =
@@ -153,6 +153,8 @@ defmodule Ash.MixProject do
     [
       name: :ash,
       licenses: ["MIT"],
+      files: ~w(lib .formatter.exs mix.exs README* LICENSE*
+      CHANGELOG* documentation),
       links: %{
         GitHub: "https://github.com/ash-project/ash"
       }

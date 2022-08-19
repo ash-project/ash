@@ -4,7 +4,6 @@ defmodule Ash.DocIndex do
   """
 
   use Spark.DocIndex,
-    otp_app: :ash,
     guides_from: [
       "documentation/**/*.md"
     ]
@@ -12,23 +11,6 @@ defmodule Ash.DocIndex do
   @impl true
   @spec for_library() :: String.t()
   def for_library, do: "ash"
-
-  @overview Spark.DocIndex.read!(:ash, "documentation/topics/overview.md")
-
-  @impl true
-  def guides do
-    guides = Enum.reject(super(), &(&1.name == "Overview"))
-
-    [
-      %{
-        name: "Overview",
-        category: "Topics",
-        text: @overview,
-        route: "topics/overview.md"
-      }
-      | guides
-    ]
-  end
 
   @impl true
   def default_guide, do: "Overview"
