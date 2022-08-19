@@ -12,7 +12,7 @@ In this guide we will:
 ## Things you may want to read first
 
 - [Install Elixir](https://elixir-lang.org/install.html)
-- {{ash:guide:Philosophy}}
+- {{link:ash:guide:Philosophy}}
 
 ## Requirements
 
@@ -31,14 +31,12 @@ We will make the following resources:
 - `Helpdesk.Tickets.Ticket`
 - `Helpdesk.Tickets.Representative`
 - `Helpdesk.Tickets.Customer`
-- `Helpdesk.Tickets.Comment`
 
 The actions we will be able to take on these resources include:
 
 - Opening a new ticket
 - Closing a ticket
 - Assigning a ticket to a representative
-- Commenting on a ticket
 
 ### Create a new project
 
@@ -86,7 +84,7 @@ Lets start by creating our first resource along with our first API. We will crea
 
 - The API - `lib/helpdesk/tickets.ex`
 - A registry to list our resources - `lib/helpdesk/tickets/registry.ex`
-- Our tickets resource - `lib/helpdesk/tickets/resources/ticket.ex`.
+- Our tickets resource - `lib/helpdesk/tickets/resources/tickets/ticket.ex`.
 
 We also create an accompanying registry, in , which is where we will list the resources for our Api.
 
@@ -96,7 +94,7 @@ To create the required folders and files, you can use the following command:
 # Run in your terminal
 touch lib/helpdesk/tickets.ex
 mkdir -p lib/helpdesk/tickets/resources && touch $_/ticket.ex
-touch lib/**helpdesk**/tickets/registry.ex
+touch lib/helpdesk/tickets/registry.ex
 ```
 
 Add the following to the files we created
@@ -176,24 +174,9 @@ This returns what we call a `record` which is an instance of a resource.
 >}
 ```
 
-In this form, there is no persistence happening. All that this simple resource does is return the record back to us. You can see this lack of persistence by attempting to use a `read` action:
-
-```elixir
-Helpdesk.Tickets.read(Helpdesk.Tickets.Ticket)
-```
-
-Which will result in nothing being returned.
-
-```elixir
-{:ok, []}
-```
-
-Later on, we will discuss adding a {{ash:guide:Data Layers:Data Layer}} to your resources to achieve persistence. For now, however, we will focus on prototyping our resources and what we can add to them.
-
 ### Customizing our Actions
 
 One thing you may have noticed earlier is that we created a ticket without providing any input, and as a result our ticket had a `subject` of `nil`. Additionally, we don't have any other data on the ticket. Lets add a `status` attribute, ensure that `subject` can't be `nil`, and provide a better interface by making a custom action for opening a ticket, called `:open`.
-
 
 We'll start with the attribute changes:
 
@@ -268,3 +251,272 @@ If we didn't include a subject, or left out the input, we would see an error ins
 
 * attribute subject is required
 ```
+
+### Updates and validations
+
+Now lets add some logic to close a ticket. This time we'll add an `update` action.
+
+Here we will use a `change`. Changes allow you to customize how an action executes with very fine-grained control. There are built-in changes that are automatically available as functions, but you can define your own and pass it in as shown below. You can add multiple, and they will be run in order. See the {{link:ash:guide:Actions}} guides for more.
+
+```elixir
+actions do
+  ...
+  update :close do
+    # We don't want to accept any input here
+    accept [] 
+
+    change set_attribute(:status, :closed)
+    # A custom change could be added like so:
+    #
+    # change MyCustomChange
+    # change {MyCustomChange, opt: :val}
+  end
+end
+```
+
+Now we can try it out in iex, opening a ticket and closing it:
+
+```elixir
+# parenthesis so you can paste into iex
+ticket = (
+  Helpdesk.Tickets.Ticket
+  |> Ash.Changeset.for_create(:open, %{subject: "My mouse won't click!"})
+  |> Helpdesk.Tickets.create!()
+)
+
+ticket
+|> Ash.Changeset.for_update(:close)
+|> Helpdesk.Tickets.update!()
+
+#Helpdesk.Tickets.Ticket<
+  ...
+  status: :closed,
+  subject: "My mouse won't click!",
+  ...
+>
+```
+
+### Querying without persistence
+
+So far, there is no persistence happening. All that this simple resource does is return the record back to us. You can see this lack of persistence by attempting to use a `read` action:
+
+```elixir
+Helpdesk.Tickets.read!(Helpdesk.Tickets.Ticket)
+```
+
+Which will raise an error explaining that there is no data to be read for that resource.
+
+In order to add persistence, we need to add a {{link:ash:guide:Data Layers:Data Layer}} to our resources. Before we do that, however, lets go over how Ash allows us to work against many different data layers (or even no data layer at all). Resources without a data layer will implicitly be using `Ash.DataLayer.Simple`, which will just return structs and do no persistence.
+
+Try the following in iex. We will open some tickets, and close some of them, and then configure the simple data layer to use those tickets
+
+```elixir
+# Ash.Query is a macro, so it must be required
+require Ash.Query
+
+tickets = 
+  for i <- 0..5 do
+    ticket = 
+      Helpdesk.Tickets.Ticket
+      |> Ash.Changeset.for_create(:open, %{subject: "Issue #{i}"})
+      |> Helpdesk.Tickets.create!()
+    
+    if rem(i, 2) == 0 do
+      ticket
+      |> Ash.Changeset.for_update(:close)
+      |> Helpdesk.Tickets.update!()
+    else
+      ticket
+    end
+  end
+
+
+# Show the tickets where the subject contains "2"
+Helpdesk.Tickets.Ticket
+|> Ash.Query.filter(contains(subject, "2"))
+|> Ash.DataLayer.Simple.set_data(tickets)
+|> Helpdesk.Tickets.read!()
+
+# Show the tickets that are closed and their subject does not contain "4"
+Helpdesk.Tickets.Ticket
+|> Ash.Query.filter(closed and not(contains(subject, "4")))
+|> Ash.DataLayer.Simple.set_data(tickets)
+|> Helpdesk.Tickets.read!()
+```
+
+The examples shown here could be implemented easily using things like `Enum.filter`, but the real power here is to allow you to use the same tools when working with any data layer. If you were using AshPostgres, the above code would be exactly the same, except for the call to `set_data/2`.
+
+### Adding basic persistence
+
+Before we get into working with relationships, lets add some actual persistence to our resource. This will let us add relationships and try out querying data.
+
+There is a built in data layer that is good for testing and prototyping, that uses [ETS](https://elixir-lang.org/getting-started/mix-otp/ets.html).
+
+To add it to your resource, simply modify it like so:
+
+```elixir
+use Ash.Resource,
+  data_layer: Ash.DataLayer.Ets
+```
+
+Now we can slightly modify our code above, by removing the `Ash.DataLayer.Simple.set_data/2` calls, and we can see our persistence in action. Keep in mind, ETS is in memory, meaning restarting your application/iex session will remove all of the data.
+
+```elixir
+require Ash.Query
+
+for i <- 0..5 do
+  ticket = 
+    Helpdesk.Tickets.Ticket
+    |> Ash.Changeset.for_create(:open, %{subject: "Issue #{i}"})
+    |> Helpdesk.Tickets.create!()
+  
+  if rem(i, 2) == 0 do
+    ticket
+    |> Ash.Changeset.for_update(:close)
+    |> Helpdesk.Tickets.update!()
+  end
+end
+
+# Show the tickets where the subject contains "2"
+Helpdesk.Tickets.Ticket
+|> Ash.Query.filter(contains(subject, "2"))
+|> Helpdesk.Tickets.read!()
+
+# Show the tickets that are closed and their subject does not contain "4"
+Helpdesk.Tickets.Ticket
+|> Ash.Query.filter(closed and not(contains(subject, "4")))
+|> Helpdesk.Tickets.read!()
+```
+
+### Adding relationships
+
+Now we want to be able to assign a ticket to a representative. First, lets create the representative resource:
+
+```elixir
+# lib/helpdesk/tickets/resources/representative.ex
+
+defmodule Helpdesk.Tickets.Representative do
+  # This turns this module into a resource
+  use Ash.Resource,
+    data_layer: Ash.DataLayer.Ets
+
+  actions do
+    # Add the default simple actions
+    defaults [:create, :read, :update, :destroy]
+  end
+
+  # Attributes are the simple pieces of data that exist on your resource
+  attributes do
+    # Add an autogenerated UUID primary key called `:id`.
+    uuid_primary_key :id
+
+    # Add a string type attribute called `:name`
+    attribute :name, :string
+  end
+
+  relationships do
+    # has_many means that the destination attribute is not unique, meaning many related records could exist.
+    # We assume that the destination attribute is `representative_id` based
+    # on the module name of this resource and that the source attribute is `id`.
+    has_many :tickets, Helpdesk.Tickets.Ticket
+  end
+end
+```
+
+And lets modify our tickets resource to have a relationship to the representative
+
+```elixir
+# lib/helpdesk/tickets/resources/ticket.ex
+
+relationships do
+  # belongs_to means that the destination attribute is unique, meaning only one related record could exist.
+  # We assume that the destination attribute is `representative_id` based
+  # on the name of this relationship and that the source attribute is `representative_id`.
+  # We create `representative_id` automatically.
+  belongs_to :representative, Helpdesk.Tickets.Representative
+end
+```
+
+Finally, lets add our new resource to our registry
+
+```elixir
+# lib/helpdesk/tickets/registry.ex
+
+entries do
+ ...
+ entry Helpdesk.Tickets.Representative
+end
+```
+
+You may notice that if you don't add the resource to the registry, or if you don't add the `belongs_to` relationship, that you'll get helpful errors at compile time. Helpful compile time validations are a core concept of Ash. We focus as often as possible on ensuring that your application is valid before it compiles.
+
+## Working with relationships
+
+There are a wide array of options when managing relationships, and going over all of them here wouldn't be reasonable. See the guide on {{link:ash:guide:Managing Relationships}} for a full explanation. For now, we'll show a simple example. Add the following action to allow us to assign a ticket to a representative. 
+
+Here we also show the use of action arguments, the method by which you can accept additional input to an action.
+
+```elixir
+update :assign do
+  # No attributes should be accepted
+  accept []
+
+  # We accept a representative's id as input here
+  argument :representative_id, :uuid do
+    # This action requires representative_id
+    allow_nil? false
+  end
+
+  # We use a change here to replace the related representative
+  # If there is a different representative for this ticket, it will be changed to the new one
+  # The representative itself is not modified in any way
+  change manage_relationship(:representative_id, :representative, type: :replace)
+end
+```
+
+Lets try it out!
+
+```elixir
+# Open a ticket
+ticket = (
+  Helpdesk.Tickets.Ticket
+  |> Ash.Changeset.for_create(:open, %{subject: "I can't find my hand!"})
+  |> Helpdesk.Tickets.create!()
+)
+
+# Create a representative
+representative = (
+  Helpdesk.Tickets.Representative
+  |> Ash.Changeset.for_create(:create, %{name: "Joe Armstrong"})
+  |> Helpdesk.Tickets.create!()
+)
+
+# Assign that representative
+ticket = (
+  ticket
+  |> Ash.Changeset.for_update(:assign, %{representative_id: representative.id})
+  |> Helpdesk.Tickets.update!()
+)
+```
+
+### What next?
+
+What you've seen above constitutes some very simple usage of Ash, barely scratching the surface. In a lot of ways, it will look very similar to other tools that you've seen. If all that you ever used was the above, then realistically you won't see much benefit to using Ash over other options. Where Ash shines is in all of the additional turn-key tools that are built in, the ability to extend the framework yourself, and the consistent design patterns that enable unparalleled velocity, power and flexibility as your application and needs grow.
+
+#### Clean up your code that uses Ash?
+
+Creating and using changesets can be verbose. Check out the {{link:ash:guide:Code Interface}} to derive things like `Helpdesk.Tickets.Ticket.assign!(representative.id)`
+
+#### Persist your data
+
+See {{link:ash_postgres:guide:Get Started:AshPostgres}} to see how to back your resources with postgres. This is highly recommended, as the postgres data layer provides tons of advanced capabilities.
+
+See the {{link:ash:guide:Data Layers}} guide on how you might write your own data layer.
+
+#### Add an API
+
+Check out the AshJsonApi and AshGraphql extensions to effortlessly build APIs around your resources
+
+#### Authorize access and work with users
+
+See the {{link:ash:guide:Policies}} guide for information on how to authorize access to your resources using actors and policies.
