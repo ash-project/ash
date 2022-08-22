@@ -2148,10 +2148,13 @@ defmodule Ash.Query do
     end)
   end
 
+  @doc """
+  Takes a resource or a query and returns a query.
+  """
   @spec to_query(t() | Ash.Resource.t()) :: t()
-  defp to_query(%__MODULE__{} = query), do: query
+  def to_query(%__MODULE__{} = query), do: query
 
-  defp to_query(resource) do
+  def to_query(resource) do
     resource
     |> new()
     |> Ash.DataLayer.transform_query()
