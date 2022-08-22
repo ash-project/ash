@@ -1619,6 +1619,16 @@ defmodule Ash.Changeset do
             * Otherwise, an `InvalidRelationship` error is returned
       """
     ],
+    value_is_key: [
+      type: :atom,
+      doc: """
+      Configures what key to use when a single value is provided.
+
+      This is useful when you use things like a list of strings i.e `friend_emails` to manage the relationship, instead of a list of maps.
+
+      By default, we assume it is the primary key of the destination resource, unless it is a composite primary key.
+      """
+    ],
     identity_priority: [
       type: {:list, :atom},
       default: [:_primary_key],
@@ -1928,9 +1938,35 @@ defmodule Ash.Changeset do
         add_error(changeset, error)
 
       relationship ->
+        key =
+          opts[:value_is_key] ||
+            changeset.resource
+            |> Ash.Resource.Info.related(relationship.name)
+            |> Ash.Resource.Info.primary_key()
+            |> case do
+              [key] ->
+                key
+
+              _ ->
+                nil
+            end
+
         if relationship.cardinality == :many && is_map(input) && !is_struct(input) do
           case map_input_to_list(input) do
             {:ok, input} ->
+              input =
+                if key do
+                  Enum.map(input, fn input ->
+                    if is_map(input) || is_list(input) do
+                      input
+                    else
+                      %{key => input}
+                    end
+                  end)
+                else
+                  input
+                end
+
               manage_relationship(changeset, relationship.name, input, opts)
 
             :error ->
@@ -1938,23 +1974,18 @@ defmodule Ash.Changeset do
           end
         else
           input =
-            changeset.resource
-            |> Ash.Resource.Info.related(relationship.name)
-            |> Ash.Resource.Info.primary_key()
-            |> case do
-              [key] ->
-                input
-                |> List.wrap()
-                |> Enum.map(fn input ->
-                  if is_map(input) || is_list(input) do
-                    input
-                  else
-                    %{key => input}
-                  end
-                end)
-
-              _ ->
-                input
+            if key do
+              input
+              |> List.wrap()
+              |> Enum.map(fn input ->
+                if is_map(input) || is_list(input) do
+                  input
+                else
+                  %{key => input}
+                end
+              end)
+            else
+              input
             end
 
           if Enum.any?(

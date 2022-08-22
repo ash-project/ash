@@ -450,6 +450,33 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       assert [%{name: "bar"}, %{name: "foo"}] = Enum.sort_by(post.categories, & &1.name)
     end
 
+    test "value_is_key option determines what single values are keyed as" do
+      changeset =
+        Post
+        |> Changeset.new()
+        |> Changeset.manage_relationship(:categories, ["foo", "bar"],
+          on_lookup: :relate,
+          on_no_match: :create
+        )
+
+      inputs = changeset.relationships.categories |> Enum.at(0) |> elem(0)
+
+      assert inputs == [%{id: "foo"}, %{id: "bar"}]
+
+      changeset =
+        Post
+        |> Changeset.new()
+        |> Changeset.manage_relationship(:categories, ["foo", "bar"],
+          value_is_key: :name,
+          on_lookup: :relate,
+          on_no_match: :create
+        )
+
+      inputs = changeset.relationships.categories |> Enum.at(0) |> elem(0)
+
+      assert inputs == [%{name: "foo"}, %{name: "bar"}]
+    end
+
     test "upsert with many_to_many relationships can eager validate" do
       Category
       |> Changeset.new(name: "foo")
