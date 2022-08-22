@@ -1400,7 +1400,11 @@ defmodule Ash.Changeset do
   @doc "Gets the value of an argument provided to the changeset"
   @spec get_argument(t, atom) :: term
   def get_argument(changeset, argument) when is_atom(argument) do
-    Map.get(changeset.arguments, argument) || Map.get(changeset.arguments, to_string(argument))
+    if Map.has_key?(changeset.arguments, argument) do
+      Map.get(changeset.arguments, argument)
+    else
+      Map.get(changeset.arguments, to_string(argument))
+    end
   end
 
   @doc "fetches the value of an argument provided to the changeset or `:error`"
