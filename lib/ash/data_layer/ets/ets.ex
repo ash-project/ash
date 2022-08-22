@@ -525,11 +525,12 @@ defmodule Ash.DataLayer.Ets do
               {:cont, {:ok, Map.put(attrs, attribute.name, casted_value)}}
 
             :error ->
-              {:error,
-               "Failed to dump #{inspect(Map.get(record, attribute.name))} as type #{inspect(attribute.type)}"}
+              {:halt,
+               {:error,
+                "Failed to dump #{inspect(Map.get(record, attribute.name))} as type #{inspect(attribute.type)}"}}
 
             {:error, error} ->
-              {:error, error}
+              {:halt, {:error, error}}
           end
       end
     end)
