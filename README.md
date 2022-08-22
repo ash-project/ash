@@ -16,7 +16,7 @@ Ash is quite stable, but is technically still in beta. It is being used in produ
 ```elixir
 def deps do
   [
-    {:ash, "~> 1.53.2"}
+    {:ash, "~> 1.53.3"}
   ]
 end
 ```
