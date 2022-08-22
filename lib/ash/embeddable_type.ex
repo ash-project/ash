@@ -199,7 +199,7 @@ defmodule Ash.EmbeddableType do
 
               load ->
                 __MODULE__
-                |> Ash.Query.put_context(:data, [casted])
+                |> Ash.DataLayer.Simple.set_data([casted])
                 |> Ash.Query.load(load)
                 |> ShadowApi.read()
                 |> case do
@@ -274,7 +274,7 @@ defmodule Ash.EmbeddableType do
 
       def apply_constraints(term, constraints) do
         __MODULE__
-        |> Ash.Query.put_context(:data, [term])
+        |> Ash.DataLayer.Simple.set_data([term])
         |> Ash.Query.load(constraints[:load] || [])
         |> ShadowApi.read()
         |> case do
@@ -428,7 +428,7 @@ defmodule Ash.EmbeddableType do
           nil ->
             query =
               __MODULE__
-              |> Ash.Query.put_context(:data, term)
+              |> Ash.DataLayer.Simple.set_data(term)
               |> Ash.Query.load(constraints[:load] || [])
 
             query =
