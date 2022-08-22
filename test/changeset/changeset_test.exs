@@ -25,6 +25,16 @@ defmodule Ash.Test.Changeset.ChangesetTest do
           allow_nil? false
         end
 
+        argument :false_optional_argument, :boolean do
+          allow_nil? false
+          default false
+        end
+
+        argument :true_optional_argument, :boolean do
+          allow_nil? false
+          default true
+        end
+
         validate confirm(:name, :confirm_name)
       end
     end
@@ -854,6 +864,15 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         |> Changeset.new(%{"name" => "foo"})
         |> Api.create!(action: :create_with_confirmation)
       end
+    end
+
+    test "optional arguments should use the default" do
+      changeset =
+        Category
+        |> Changeset.for_create(:create_with_confirmation)
+
+      assert Changeset.get_argument(changeset, :true_optional_argument) == true
+      assert Changeset.get_argument(changeset, :false_optional_argument) == false
     end
   end
 
