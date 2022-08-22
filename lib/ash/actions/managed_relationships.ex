@@ -166,7 +166,7 @@ defmodule Ash.Actions.ManagedRelationships do
                   )
 
                 {_key, _create_or_update, read} ->
-                  if is_struct(input) do
+                  if is_struct(input, relationship.destination) do
                     changeset =
                       changeset
                       |> Ash.Changeset.set_context(%{
@@ -839,7 +839,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
             case Ash.Filter.get_filter(relationship.destination, input) do
               {:ok, keys} ->
-                if is_struct(input) do
+                if is_struct(input, relationship.destination) do
                   {:ok, input}
                 else
                   relationship.destination
@@ -986,10 +986,15 @@ defmodule Ash.Actions.ManagedRelationships do
 
       type when type in [:has_many, :has_one] ->
         {found, input} =
-          if is_struct(input) do
-            {input, %{}}
-          else
-            {found, input}
+          cond do
+            is_struct(input, relationship.destination) ->
+              {input, %{}}
+
+            is_struct(input) ->
+              {found, Map.from_struct(input)}
+
+            true ->
+              {found, input}
           end
 
         found
@@ -1041,9 +1046,16 @@ defmodule Ash.Actions.ManagedRelationships do
         case changeset.context[:private][:belongs_to_manage_created][relationship.name][index] do
           nil ->
             created =
-              if is_struct(input) do
+              if is_struct(input, relationship.destination) do
                 {:ok, input, []}
               else
+                input =
+                  if is_struct(input) do
+                    Map.from_struct(input)
+                  else
+                    input
+                  end
+
                 relationship.destination
                 |> Ash.Changeset.new()
                 |> Ash.Changeset.for_create(action_name, input,
@@ -1078,16 +1090,21 @@ defmodule Ash.Actions.ManagedRelationships do
         join_keys = params ++ Enum.map(params, &to_string/1)
 
         input =
-          if is_map(input) do
-            input
-          else
-            Enum.into(input, %{})
+          cond do
+            is_struct(input, relationship.destination) ->
+              input
+
+            is_struct(input) ->
+              Map.from_struct(input)
+
+            true ->
+              input
           end
 
         {join_params, regular_params} = split_join_keys(input, join_keys)
 
         created =
-          if is_struct(input) do
+          if is_struct(input, relationship.destination) do
             {:ok, input, [], [input]}
           else
             relationship.destination
@@ -1213,10 +1230,15 @@ defmodule Ash.Actions.ManagedRelationships do
 
       {:update, action_name} ->
         {match, input} =
-          if is_struct(input) do
-            {input, %{}}
-          else
-            {match, input}
+          cond do
+            is_struct(input, relationship.destination) ->
+              {input, %{}}
+
+            is_struct(input) ->
+              Map.from_struct(input)
+
+            true ->
+              {match, input}
           end
 
         match
@@ -1242,10 +1264,15 @@ defmodule Ash.Actions.ManagedRelationships do
         {join_params, regular_params} = split_join_keys(input, join_keys)
 
         {match, regular_params} =
-          if is_struct(regular_params) do
-            {regular_params, %{}}
-          else
-            {match, regular_params}
+          cond do
+            is_struct(regular_params, relationship.destination) ->
+              {regular_params, %{}}
+
+            is_struct(regular_params) ->
+              Map.from_struct(regular_params)
+
+            true ->
+              {match, regular_params}
           end
 
         source_value = Map.get(source_record, relationship.source_field)
