@@ -31,7 +31,8 @@ defmodule Ash.DataLayer.Simple do
   Sets the data for a query against a data-layer-less resource
   """
   def set_data(query, data) do
-    Ash.Query.put_context(query, :data, data)
+    query = Ash.Query.to_query(query)
+    Ash.Query.set_context(query, %{data_layer: %{data: %{query.resource => data}}})
   end
 
   @doc false
@@ -43,8 +44,13 @@ defmodule Ash.DataLayer.Simple do
   def run_query(%{data_set?: false}, resource) do
     {:error,
      Ash.Error.SimpleDataLayer.NoDataProvided.exception(
-       message:
-         "No data provided to resource #{resource}\nA common cause of this is not having a data layer for the resource.\n\nYou can create a data layer by including the following in your resource:\n`use Ash.Resource, data_layer: Ash.DataLayer.Ets`"
+       message: """
+       No data provided to resource #{resource}. Perhaps you are missing a call to `Ash.DataLayer.Simple.set_data/2`?.
+
+       Another common cause of this is failing to add a data layer for a resource. You can add a data layer like so:
+
+       `use Ash.Resource, data_layer: Ash.DataLayer.Ets`
+       """
      )}
   end
 
@@ -82,11 +88,12 @@ defmodule Ash.DataLayer.Simple do
 
   @doc false
   def set_context(_resource, query, context) do
-    case Map.fetch(context, :data) do
-      {:ok, value} ->
-        {:ok, %{query | data_set?: true, data: value || []}}
-
-      :error ->
+    with {:ok, data_layer_context} <- Map.fetch(context, :data_layer),
+         {:ok, data} <- Map.fetch(data_layer_context, :data),
+         {:ok, resource_data} <- Map.fetch(data, query.resource) do
+      {:ok, %{query | data_set?: true, data: resource_data || []}}
+    else
+      _ ->
         {:ok, query}
     end
   end
