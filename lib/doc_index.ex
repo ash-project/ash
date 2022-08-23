@@ -13,9 +13,6 @@ defmodule Ash.DocIndex do
   def for_library, do: "ash"
 
   @impl true
-  def default_guide, do: "Overview"
-
-  @impl true
   @spec extensions() :: list(Spark.DocIndex.extension())
   def extensions do
     [
