@@ -23,7 +23,7 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       type: :atom,
       links: [
         dsls: [
-          "ash:dsl:attributes/attribute"
+          "ash:dsl:resource/attributes/attribute"
         ]
       ],
       doc:
@@ -40,7 +40,7 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       type: :atom,
       links: [
         dsls: [
-          "ash:dsl:attributes/attribute"
+          "ash:dsl:resource/attributes/attribute"
         ]
       ],
       doc:

@@ -49,14 +49,14 @@ Api.read!(User)
 
 The default behavior is illustrated above, but it can be customized with the options in the {{link:ash:dsl:api/authorization}} section of the Api module you are calling.
 
-#### {{link:ash:dsl:api/authorization/require_actor?}}
+#### {{link:ash:option:api/authorization/require_actor?}}
 
 Requires that an actor is set for all requests.
 
 Important: `nil` is still a valid actor, so this won't prevent providing `actor: nil`.
 
 
-#### {{link:ash:dsl:api/authorization/authorize}}
+#### {{link:ash:option:api/authorization/authorize}}
 
 When to run authorization for a given request.
 
