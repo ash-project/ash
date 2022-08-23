@@ -1,5 +1,5 @@
 defmodule Ash.Flow.Step.Create do
-  @moduledoc "Runs a create action."
+  @moduledoc false
   use Ash.Flow.Step.BuiltinStep, [:resource, :action, :api, :tenant, :input]
   @shared_opts Ash.Flow.Step.shared_opts()
   @shared_action_opts Ash.Flow.Step.shared_action_opts()

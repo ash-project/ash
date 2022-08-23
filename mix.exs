@@ -72,79 +72,128 @@ defmodule Ash.MixProject do
   defp docs do
     # The main page in the docs
     [
-      main: "quick-start",
+      main: "get-started",
       source_ref: "v#{@version}",
       logo: "logos/small-logo.png",
       extra_section: "GUIDES",
       extras: extras(),
       groups_for_extras: groups_for_extras(),
       groups_for_modules: [
-        entrypoint: [
-          Ash,
-          Ash.Api,
-          Ash.Query,
-          Ash.Changeset,
-          Ash.Resource.Dsl,
+        "Extensions & DSLs": [
           Ash.Api.Dsl,
-          Ash.CodeInterface
+          Ash.Resource.Dsl,
+          Ash.Flow.Dsl,
+          Ash.DataLayer.Ets,
+          Ash.DataLayer.Mnesia,
+          Ash.DataLayer.Simple,
+          Ash.Notifier.PubSub,
+          Ash.Policy.Authorizer,
+          Ash.Registry,
+          Ash.Registry.Dsl,
+          Ash.Resource
         ],
-        tools: [
-          Ash.Filter,
-          Ash.Sort
+        Resources: [
+          Ash.Api,
+          Ash.Filter.TemplateHelpers,
+          Ash.Calculation,
+          Ash.Resource.Calculation.Builtins,
+          Ash.CodeInterface,
+          Ash.DataLayer,
+          Ash.Notifier,
+          Ash.Notifier.Notification,
+          Ash.Resource.ManualRead,
+          Ash.Resource.ManualRelationship
         ],
-        formatting: [
-          Ash.ResourceFormatter
-        ],
-        validations: ~r/Ash.Resource.Validation/,
-        changes: ~r/Ash.Resource.Change/,
-        calculations: [
-          ~r/Ash.Resource.Calculation/,
+        Queries: [
+          Ash.Query,
+          Ash.Resource.Preparation,
+          Ash.Resource.Preparation.Builtins,
           Ash.Query.Calculation,
-          Ash.Calculation
+          Ash.Query.Aggregate
         ],
-        values: [
-          Ash.CiString
+        Changesets: [
+          Ash.Changeset,
+          Ash.Resource.Change,
+          Ash.Resource.Change.Builtins,
+          Ash.Resource.Validation,
+          Ash.Resource.Validation.Builtins
         ],
-        type: ~r/Ash.Type/,
-        data_layer: ~r/Ash.DataLayer/,
-        authorizer: ~r/Ash.Authorizer/,
-        pagination: ~r/Ash.Page/,
-        notifications: ~r/Ash.Notifier/,
-        "resource dsl transformers": ~r/Ash.Resource.Transformers/,
-        "api dsl transformers": ~r/Ash.Api.Transformers/,
-        "filter operators": ~r/Ash.Query.Operator/,
-        "filter functions": ~r/Ash.Query.Function/,
-        "query expressions": [
-          Ash.Query.BooleanExpression,
-          Ash.Query.Not,
-          Ash.Query.Ref,
-          Ash.Query.Call
+        Authorization: [
+          Ash.Authorizer,
+          Ash.Policy.Check,
+          Ash.Policy.Check.BuiltInChecks,
+          Ash.Policy.FilterCheck,
+          Ash.Policy.SimpleCheck
         ],
-        filter: ~r/Ash.Filter/,
-        "resource introspection": ~r/Ash.Resource/,
-        "api introspection": ~r/Ash.Api/,
-        engine: [
-          ~r/Ash.Engine/
+        Introspection: [
+          Ash.Api.Info,
+          Ash.Registry.Info,
+          Ash.Resource.Info,
+          Ash.Flow.Info,
+          Ash.Policy.Info,
+          Ash.DataLayer.Ets.Info,
+          Ash.DataLayer.Mnesia.Info,
+          Ash.Notifier.PubSub.Info
         ],
-        registry: [Ash.Registry],
-        "registry introspection": ~r/Ash.Registry/,
-        errors: [
-          Ash.Error,
-          Ash.Error.Stacktrace,
-          Ash.Error.Exception
-        ],
-        flow: [
-          Ash.Flow
-        ],
-        miscellaneous: [
+        Utilities: [
+          Ash,
+          Ash.Page,
+          Ash.Page.Keyset,
+          Ash.Page.Offset,
+          Ash.Filter,
+          Ash.Filter.Runtime,
+          Ash.Sort,
+          Ash.CiString,
           Ash.UUID,
-          Ash.Changeset.ManagedRelationshipHelpers,
           Ash.NotLoaded,
-          Ash.Query.Aggregate,
-          Ash.Query.Type,
-          Ash.SatSolver
+          Ash.Changeset.ManagedRelationshipHelpers,
+          Ash.DataLayer.Simple,
+          Ash.Filter.Simple,
+          Ash.Filter.Simple.Not,
+          Ash.OptionsHelpers
         ],
-        comparable: ~r/Comparable/
+        Testing: [
+          Ash.Generator,
+          Ash.Seed,
+          Ash.Test
+        ],
+        Flow: [
+          Ash.Flow,
+          Ash.Flow.Executor,
+          Ash.Flow.Step,
+          Ash.Flow.Chart.Mermaid,
+          Ash.Flow.StepHelpers
+        ],
+        Errors: [
+          Ash.Error,
+          Ash.Error.Exception,
+          Ash.Error.Stacktrace
+        ],
+        Types: [
+          Ash.Type,
+          Ash.Type.Enum,
+          Ash.Type.Atom,
+          Ash.Type.Binary,
+          Ash.Type.Boolean,
+          Ash.Type.CiString,
+          Ash.Type.Date,
+          Ash.Type.Decimal,
+          Ash.Type.DurationName,
+          Ash.Type.Float,
+          Ash.Type.Function,
+          Ash.Type.Integer,
+          Ash.Type.Map,
+          Ash.Type.NaiveDatetime,
+          Ash.Type.String,
+          Ash.Type.Term,
+          Ash.Type.Time,
+          Ash.Type.UUID,
+          Ash.Type.UrlEncodedBinary,
+          Ash.Type.UtcDatetime,
+          Ash.Type.UtcDatetimeUsec
+        ],
+        Transformers: [~r/\.Transformers\./, Ash.Registry.ResourceValidations],
+        Internals: ~r/.*/
       ]
     ]
   end

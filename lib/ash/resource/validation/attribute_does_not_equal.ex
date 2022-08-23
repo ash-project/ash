@@ -1,9 +1,6 @@
 defmodule Ash.Resource.Validation.AttributeDoesNotEqual do
-  @moduledoc """
-  A validation that fails unless the attribute does not equal a specific value *before changes are applied*.
+  @moduledoc false
 
-  Creates, however, will take into account the changes.
-  """
   use Ash.Resource.Validation
 
   alias Ash.Error.Changes.InvalidAttribute

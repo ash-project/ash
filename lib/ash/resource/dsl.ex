@@ -1242,7 +1242,7 @@ defmodule Ash.Resource.Dsl do
 
   @moduledoc """
   The built in resource DSL.
-  <!--- ash-hq-hide-start -->
+  <!--- ash-hq-hide-start--> <!--- -->
 
   ## DSL Documentation
 
@@ -1253,7 +1253,7 @@ defmodule Ash.Resource.Dsl do
   ### Docs
 
   #{Spark.Dsl.Extension.doc(@sections)}
-  <!--- ash-hq-hide-stop -->
+  <!--- ash-hq-hide-stop--> <!--- -->
   """
 
   use Spark.Dsl.Extension,

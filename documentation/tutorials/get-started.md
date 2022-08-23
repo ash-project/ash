@@ -1,5 +1,13 @@
 # Get Started
 
+<!--- ash-hq-hide-start --> <!--- -->
+If you are reading this on hexdocs, you may notice a few strange things.
+
+Primarily, that there are a lot of templates, like {{link:...}}
+
+This documentation is best viewed at [ash-hq.org](https://ash-hq.org)
+<!--- ash-hq-hide-stop --> <!--- -->
+
 ## Goals
 
 In this guide we will:
@@ -514,7 +522,7 @@ Creating and using changesets can be verbose. Check out the {{link:ash:guide:Cod
 
 #### Persist your data
 
-See {{link:ash_postgres:guide:Get Started:AshPostgres}} to see how to back your resources with postgres. This is highly recommended, as the postgres data layer provides tons of advanced capabilities.
+See {{link:ash_postgres:guide:Get Started With Postgres:AshPostgres}} to see how to back your resources with postgres. This is highly recommended, as the postgres data layer provides tons of advanced capabilities.
 
 See the {{link:ash:guide:Data Layers}} guide on how you might write your own data layer.
 

@@ -255,12 +255,6 @@ defmodule Ash.Policy.Authorizer do
     ]
   ```
 
-  # DSL Documenation
-  ## Table of Contents
-  #{Spark.Dsl.Extension.doc_index(@sections)}
-
-  #{Spark.Dsl.Extension.doc(@sections)}
-
   A resource can be given a set of policies, which are enforced on each call to a resource action.
 
   For reads, policies can be configured to filter out data that the actor shouldn't see, as opposed to
@@ -276,6 +270,19 @@ defmodule Ash.Policy.Authorizer do
   authorization rules as they may be deemed unnecessary. As such, authorization
   checks should have no side effects. Ideally, the checks built-in to ash should
   cover the bulk of your needs.
+
+  <!--- ash-hq-hide-start--> <!--- -->
+
+  ## DSL Documentation
+
+  ### Index
+
+  #{Spark.Dsl.Extension.doc_index(@sections)}
+
+  ### Docs
+
+  #{Spark.Dsl.Extension.doc(@sections)}
+  <!--- ash-hq-hide-stop--> <!--- -->
   """
 
   require Logger

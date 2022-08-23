@@ -1,5 +1,5 @@
 defmodule Ash.Flow.Step.Update do
-  @moduledoc "Runs an update action"
+  @moduledoc false
   use Ash.Flow.Step.BuiltinStep, [:resource, :action, :api, :input, :tenant, :record]
   @shared_opts Ash.Flow.Step.shared_opts()
   @shared_action_opts Ash.Flow.Step.shared_action_opts()

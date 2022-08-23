@@ -52,6 +52,19 @@ defmodule Ash.Registry.Dsl do
   A small DSL for declaring an `Ash.Registry`.
 
   `Ash.Registry` can be used generically, but the main way it is used in Ash is to provide a compile-time registry for {{link:ash:guide:Apis}}.
+
+  <!--- ash-hq-hide-start--> <!--- -->
+
+  ## DSL Documentation
+
+  ### Index
+
+  #{Spark.Dsl.Extension.doc_index(@sections)}
+
+  ### Docs
+
+  #{Spark.Dsl.Extension.doc(@sections)}
+  <!--- ash-hq-hide-stop--> <!--- -->
   """
 
   use Spark.Dsl.Extension, sections: @sections, transformers: @transformers

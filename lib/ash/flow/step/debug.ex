@@ -1,5 +1,5 @@
 defmodule Ash.Flow.Step.Debug do
-  @moduledoc "IO.puts() the input provided, and any other debug information."
+  @moduledoc false
   use Ash.Flow.Step.BuiltinStep, [:input]
   @shared_opts Ash.Flow.Step.shared_opts()
 

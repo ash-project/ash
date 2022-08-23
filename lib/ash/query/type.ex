@@ -1,7 +1,5 @@
 defmodule Ash.Query.Type do
-  @moduledoc """
-  Type casting logic to be used with operator/function inputs
-  """
+  @moduledoc false
 
   def try_cast(list, {:array, type}) do
     if Enumerable.impl_for(list) do

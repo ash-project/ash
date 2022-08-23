@@ -302,7 +302,7 @@ defmodule Ash.Flow.Dsl do
 
   @moduledoc """
   The built in flow DSL.
-  <!--- ash-hq-hide-start -->
+  <!--- ash-hq-hide-start--> <!--- -->
 
   ## DSL Documentation
 
@@ -313,7 +313,7 @@ defmodule Ash.Flow.Dsl do
   ### Docs
 
   #{Spark.Dsl.Extension.doc(@sections)}
-  <!--- ash-hq-hide-stop -->
+  <!--- ash-hq-hide-stop--> <!--- -->
   """
 
   use Spark.Dsl.Extension,

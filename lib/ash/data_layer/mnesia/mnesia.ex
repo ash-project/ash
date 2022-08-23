@@ -1,15 +1,4 @@
 defmodule Ash.DataLayer.Mnesia do
-  @moduledoc """
-  An Mnesia backed Ash Datalayer.
-
-  In your application intialization, you will need to call `Mnesia.create_schema([node()])`.
-
-  Additionally, you will want to create your mnesia tables there.
-
-  This data layer is *extremely unoptimized*, fetching all records from a table and filtering them
-  in memory. This is primarily used for testing the behavior of data layers in Ash. If it was improved,
-  it could be a viable data layer.
-  """
   @behaviour Ash.DataLayer
 
   @mnesia %Spark.Dsl.Section{
@@ -33,6 +22,31 @@ defmodule Ash.DataLayer.Mnesia do
       ]
     ]
   }
+
+  @moduledoc """
+  An Mnesia backed Ash Datalayer.
+
+  In your application intialization, you will need to call `Mnesia.create_schema([node()])`.
+
+  Additionally, you will want to create your mnesia tables there.
+
+  This data layer is *extremely unoptimized*, fetching all records from a table and filtering them
+  in memory. This is primarily used for testing the behavior of data layers in Ash. If it was improved,
+  it could be a viable data layer.
+
+    <!--- ash-hq-hide-start--> <!--- -->
+
+  ## DSL Documentation
+
+  ### Index
+
+  #{Spark.Dsl.Extension.doc_index([@mnesia])}
+
+  ### Docs
+
+  #{Spark.Dsl.Extension.doc([@mnesia])}
+  <!--- ash-hq-hide-stop--> <!--- -->
+  """
 
   use Spark.Dsl.Extension,
     sections: [@mnesia],
