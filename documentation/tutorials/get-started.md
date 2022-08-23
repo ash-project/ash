@@ -89,7 +89,7 @@ Lets start by creating our first resource along with our first API. We will crea
 
 - The API - `lib/helpdesk/tickets.ex`
 - A registry to list our resources - `lib/helpdesk/tickets/registry.ex`
-- Our tickets resource - `lib/helpdesk/tickets/resources/tickets/ticket.ex`.
+- Our tickets resource - `lib/helpdesk/tickets/resources/ticket.ex`.
 
 We also create an accompanying registry, in , which is where we will list the resources for our Api.
 
