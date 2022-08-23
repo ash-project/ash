@@ -8,7 +8,9 @@ Example:
 
 ```elixir
 aggregates do
-  count :count_of_posts, :posts, filter: [published: true]
+  count :count_of_posts, :posts do
+    filter expr(published == true)
+  end
 end
 ```
 
