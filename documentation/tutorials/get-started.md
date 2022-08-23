@@ -1,4 +1,4 @@
-# Getting Started
+# Get Started
 
 ## Goals
 
@@ -30,7 +30,6 @@ We will make the following resources:
 
 - `Helpdesk.Tickets.Ticket`
 - `Helpdesk.Tickets.Representative`
-- `Helpdesk.Tickets.Customer`
 
 The actions we will be able to take on these resources include:
 
@@ -64,7 +63,7 @@ Add the ash dependency to your `mix.exs`
 
 {{mix_dep:ash}}
 
-Add ash to your .formatter.exs file
+Add `:ash` to your `.formatter.exs` file
 
 ```elixir
 [
@@ -75,6 +74,12 @@ Add ash to your .formatter.exs file
 ```
 
 And run `mix deps.get`
+
+If you are using ElixirLs (if you are using VScode, it is likely that you are), then add the following dependency to use Ash's custom autocomplete plugin.
+
+```elixir
+{:elixir_sense, github: "elixir-lsp/elixir_sense", only: [:dev, :test]}
+```
 
 ### Creating our first resources
 
