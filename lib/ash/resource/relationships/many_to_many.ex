@@ -59,7 +59,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
                     required: true,
                     links: [
                       dsls: [
-                        "ash:dsl:attributes/attribute"
+                        "ash:dsl:resource/attributes/attribute"
                       ]
                     ],
                     doc:
@@ -70,7 +70,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
                     required: true,
                     links: [
                       dsls: [
-                        "ash:dsl:attributes/attribute"
+                        "ash:dsl:resource/attributes/attribute"
                       ]
                     ],
                     doc:
