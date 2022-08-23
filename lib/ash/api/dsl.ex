@@ -117,7 +117,7 @@ defmodule Ash.Api.Dsl do
   that requires a list of resources. For example, most extensions look for two application
   environment variables called `:ash_apis` and `:ash_registries` to find any potential registries
 
-  <!--- ash-hq-hide-start -->
+  <!--- ash-hq-hide-start --> <!--- -->
 
   ## DSL Documentation
 
@@ -128,7 +128,7 @@ defmodule Ash.Api.Dsl do
   ### Docs
 
   #{Spark.Dsl.Extension.doc(@sections)}
-  <!--- ash-hq-hide-stop -->
+  <!--- ash-hq-hide-stop --> <!--- -->
   """
 
   use Spark.Dsl.Extension, sections: @sections

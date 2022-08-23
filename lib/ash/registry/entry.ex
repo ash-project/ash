@@ -1,5 +1,5 @@
 defmodule Ash.Registry.Entry do
-  @moduledoc "Represents an entry in a registry"
+  @moduledoc false
 
   defstruct [:entry]
 

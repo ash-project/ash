@@ -1,5 +1,6 @@
 defmodule Ash.Policy.Policy do
-  @moduledoc "The data structure for a policy, and functions for working with them."
+  @moduledoc false
+
   # For now we just write to `checks` and move them to `policies`
   # on build, when we support nested policies we can change that.
   defstruct [

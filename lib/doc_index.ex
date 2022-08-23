@@ -1,7 +1,5 @@
 defmodule Ash.DocIndex do
-  @moduledoc """
-  Some documentation about Ash.
-  """
+  @moduledoc false
 
   use Spark.DocIndex,
     guides_from: [
@@ -84,28 +82,86 @@ defmodule Ash.DocIndex do
       {"Resources",
        [
          Ash.Api,
-         Ash.Resource.Info,
-         Ash.Resource.Change,
-         Ash.Resource.Change.Builtins,
-         Ash.Resource.Validation,
-         Ash.Resource.Validation.Builtins,
-         Ash.Resource.Preparation,
-         Ash.Resource.Preparation.Builtins,
          Ash.Filter.TemplateHelpers,
          Ash.Calculation,
          Ash.Resource.Calculation.Builtins,
          Ash.CodeInterface,
+         Ash.DataLayer,
+         Ash.Notifier,
+         Ash.Notifier.Notification,
+         Ash.Resource.ManualRead,
+         Ash.Resource.ManualRelationship
+       ]},
+      {"Queries",
+       [
+         Ash.Query,
+         Ash.Resource.Preparation,
+         Ash.Resource.Preparation.Builtins,
+         Ash.Query.Calculation,
+         Ash.Query.Aggregate
+       ]},
+      {"Changesets",
+       [
          Ash.Changeset,
-         Ash.Query
+         Ash.Resource.Change,
+         Ash.Resource.Change.Builtins,
+         Ash.Resource.Validation,
+         Ash.Resource.Validation.Builtins
+       ]},
+      {"Authorization",
+       [
+         Ash.Authorizer,
+         Ash.Policy.Check,
+         Ash.Policy.Check.BuiltInChecks,
+         Ash.Policy.FilterCheck,
+         Ash.Policy.SimpleCheck
+       ]},
+      {"Introspection",
+       [
+         Ash.Api.Info,
+         Ash.Registry.Info,
+         Ash.Resource.Info,
+         Ash.Flow.Info,
+         Ash.Policy.Info,
+         Ash.DataLayer.Ets.Info,
+         Ash.DataLayer.Mnesia.Info,
+         Ash.Notifier.PubSub.Info
        ]},
       {"Utilities",
        [
+         Ash,
+         Ash.Page.Keyset,
+         Ash.Page.Offset,
          Ash.Filter,
-         Ash.Sort
+         Ash.Filter.Runtime,
+         Ash.Sort,
+         Ash.CiString,
+         Ash.UUID,
+         Ash.NotLoaded,
+         Ash.Changeset.ManagedRelationshipHelpers,
+         Ash.DataLayer.Simple,
+         Ash.Filter.Simple,
+         Ash.Filter.Simple.Not,
+         Ash.OptionsHelpers
+       ]},
+      {"Testing",
+       [
+         Ash.Generator,
+         Ash.Seed
+       ]},
+      {"Flow",
+       [
+         Ash.Flow,
+         Ash.Flow.Step,
+         Ash.Flow.Executor,
+         Ash.Flow.Chart.Mermaid,
+         Ash.Flow.StepHelpers
        ]},
       {"Errors",
        [
-         Ash.Error
+         Ash.Error,
+         Ash.Error.Exception,
+         Ash.Error.Stacktrace
        ]},
       {"Types",
        [
@@ -115,7 +171,6 @@ defmodule Ash.DocIndex do
          Ash.Type.Binary,
          Ash.Type.Boolean,
          Ash.Type.CiString,
-         Ash.CiString,
          Ash.Type.Date,
          Ash.Type.Decimal,
          Ash.Type.DurationName,
@@ -131,17 +186,6 @@ defmodule Ash.DocIndex do
          Ash.Type.UrlEncodedBinary,
          Ash.Type.UtcDatetime,
          Ash.Type.UtcDatetimeUsec
-       ]},
-      {"DSLs and Extensions",
-       [
-         Spark.Dsl.Entity,
-         Spark.Dsl.Extension,
-         Spark.Dsl.Section,
-         Spark.Dsl.Transformer
-       ]},
-      {"Documentation",
-       [
-         Spark.DocIndex
        ]}
     ]
   end

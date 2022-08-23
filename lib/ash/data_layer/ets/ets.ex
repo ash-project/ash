@@ -1,10 +1,4 @@
 defmodule Ash.DataLayer.Ets do
-  @moduledoc """
-  An ETS (Erlang Term Storage) backed Ash Datalayer, for testing.
-
-  This is used for testing. *Do not use this data layer in production*
-  """
-
   @behaviour Ash.DataLayer
 
   @ets %Spark.Dsl.Section{
@@ -37,6 +31,25 @@ defmodule Ash.DataLayer.Ets do
       ]
     ]
   }
+
+  @moduledoc """
+  An ETS (Erlang Term Storage) backed Ash Datalayer, for testing.
+
+  This is used for testing. *Do not use this data layer in production*
+
+  <!--- ash-hq-hide-start--> <!--- -->
+
+  ## DSL Documentation
+
+  ### Index
+
+  #{Spark.Dsl.Extension.doc_index([@ets])}
+
+  ### Docs
+
+  #{Spark.Dsl.Extension.doc([@ets])}
+  <!--- ash-hq-hide-stop--> <!--- -->
+  """
 
   use Spark.Dsl.Extension,
     sections: [@ets],

@@ -1,5 +1,5 @@
 defmodule Ash.Flow.Step.Map do
-  @moduledoc "Runs a series of steps over a given input."
+  @moduledoc false
   use Ash.Flow.Step.BuiltinStep, [:over, :element, :output, steps: []]
   @shared_opts Ash.Flow.Step.shared_opts()
 

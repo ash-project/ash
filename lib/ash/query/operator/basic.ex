@@ -37,9 +37,7 @@ defmodule Ash.Query.Operator.Basic do
     Module.create(
       mod,
       quote generated: true do
-        @moduledoc """
-        left #{unquote(opts[:symbol])} right
-        """
+        @moduledoc false
 
         use Ash.Query.Operator,
           operator: unquote(opts[:symbol]),

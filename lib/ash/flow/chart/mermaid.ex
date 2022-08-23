@@ -397,7 +397,7 @@ defmodule Ash.Flow.Chart.Mermaid do
 
     message =
       Enum.reduce(element_refs, message, fn element, message ->
-        add_line(message, "#{do_format_name(element)}.element --> #{destination}")
+        add_line(message, "#{do_format_name(element)}.element--> <!--- --> #{destination}")
       end)
 
     message =

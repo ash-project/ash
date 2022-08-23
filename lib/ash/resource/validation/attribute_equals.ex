@@ -1,9 +1,6 @@
 defmodule Ash.Resource.Validation.AttributeEquals do
-  @moduledoc """
-  A validation that fails unless the attribute equals a specific value *before* changes are applied.
+  @moduledoc false
 
-  Creates, however, will take into account the changes.
-  """
   @opt_schema [
     attribute: [
       type: :atom,
