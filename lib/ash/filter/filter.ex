@@ -352,9 +352,9 @@ defmodule Ash.Filter do
 
     multiple_filter_errors =
       refs
-      |> Enum.filter(&is_map(&1.attribute))
       |> Enum.filter(fn ref ->
-        Map.fetch(ref.attribute, :filterable?) == {:ok, :simple_equality}
+        is_map(ref.attribute) &&
+          Map.fetch(ref.attribute, :filterable?) == {:ok, :simple_equality}
       end)
       |> Enum.group_by(& &1.attribute.name)
       |> Enum.flat_map(fn
@@ -1692,13 +1692,7 @@ defmodule Ash.Filter do
     do: Ash.Resource.Info.public_attribute(resource, attribute)
 
   defp attribute(%{public?: false, resource: resource}, attribute) do
-    case Ash.Resource.Info.attribute(resource, attribute) do
-      nil ->
-        raise "what"
-
-      attr ->
-        attr
-    end
+    Ash.Resource.Info.attribute(resource, attribute)
   end
 
   defp aggregate(%{public?: true, resource: resource}, aggregate),
