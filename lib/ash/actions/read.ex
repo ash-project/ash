@@ -692,7 +692,15 @@ defmodule Ash.Actions.Read do
             else
               query =
                 initial_query
-                |> Ash.Query.unset([:filter, :aggregates, :sort, :limit, :offset, :distinct])
+                |> Ash.Query.unset([
+                  :filter,
+                  :aggregates,
+                  :sort,
+                  :limit,
+                  :offset,
+                  :distinct,
+                  :select
+                ])
                 |> Ash.Query.data_layer_query(only_validate_filter?: true)
 
               ash_query =

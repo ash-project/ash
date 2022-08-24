@@ -296,7 +296,9 @@ defmodule Ash.Query.Aggregate do
               {:ok, %{}}
             else
               initial_query =
-                Ash.Query.unset(initial_query, [:filter, :sort, :aggregates, :limit, :offset])
+                initial_query
+                |> Ash.Query.unset([:filter, :sort, :aggregates, :limit, :offset, :select])
+                |> Ash.Query.select([])
 
               query =
                 case records do
