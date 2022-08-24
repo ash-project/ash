@@ -234,7 +234,7 @@ defmodule Ash.Filter do
         filter
 
       {:error, error} ->
-        raise error
+        raise Ash.Error.to_error_class(error)
     end
   end
 
@@ -296,7 +296,13 @@ defmodule Ash.Filter do
         field =
           case ref.attribute do
             field when is_atom(field) ->
-              Ash.Resource.Info.field(resource, field)
+              case Ash.Resource.Info.field(resource, field) do
+                nil ->
+                  field
+
+                field ->
+                  field
+              end
 
             field ->
               field
@@ -307,36 +313,46 @@ defmodule Ash.Filter do
 
     errors =
       refs
-      |> Enum.flat_map(fn ref ->
-        field = ref.attribute
+      |> Enum.flat_map(fn
+        %{attribute: attribute, relationship_path: relationship_path} when is_atom(attribute) ->
+          [
+            NoSuchAttributeOrRelationship.exception(
+              attribute_or_relationship: attribute,
+              resource: Ash.Resource.Info.related(resource, relationship_path)
+            )
+          ]
 
-        # This handles manually added calcualtions and aggregates
-        case Map.fetch(field, :filterable?) do
-          :error ->
-            []
+        ref ->
+          field = ref.attribute
 
-          {:ok, true} ->
-            []
-
-          {:ok, false} ->
-            [Ash.Error.Query.InvalidFilterReference.exception(field: field.name)]
-
-          {:ok, :simple_equality} ->
-            if ref.simple_equality? do
+          # This handles manually added calcualtions and aggregates
+          case Map.fetch(field, :filterable?) do
+            :error ->
               []
-            else
-              [
-                Ash.Error.Query.InvalidFilterReference.exception(
-                  field: field.name,
-                  simple_equality?: true
-                )
-              ]
-            end
-        end
+
+            {:ok, true} ->
+              []
+
+            {:ok, false} ->
+              [Ash.Error.Query.InvalidFilterReference.exception(field: field.name)]
+
+            {:ok, :simple_equality} ->
+              if ref.simple_equality? do
+                []
+              else
+                [
+                  Ash.Error.Query.InvalidFilterReference.exception(
+                    field: field.name,
+                    simple_equality?: true
+                  )
+                ]
+              end
+          end
       end)
 
     multiple_filter_errors =
       refs
+      |> Enum.filter(&is_map(&1.attribute))
       |> Enum.filter(fn ref ->
         Map.fetch(ref.attribute, :filterable?) == {:ok, :simple_equality}
       end)
@@ -1675,8 +1691,15 @@ defmodule Ash.Filter do
   defp attribute(%{public?: true, resource: resource}, attribute),
     do: Ash.Resource.Info.public_attribute(resource, attribute)
 
-  defp attribute(%{public?: false, resource: resource}, attribute),
-    do: Ash.Resource.Info.attribute(resource, attribute)
+  defp attribute(%{public?: false, resource: resource}, attribute) do
+    case Ash.Resource.Info.attribute(resource, attribute) do
+      nil ->
+        raise "what"
+
+      attr ->
+        attr
+    end
+  end
 
   defp aggregate(%{public?: true, resource: resource}, aggregate),
     do: Ash.Resource.Info.public_aggregate(resource, aggregate)
@@ -1780,6 +1803,10 @@ defmodule Ash.Filter do
       {:error, error} ->
         {:error, error}
     end
+  end
+
+  defp add_expression_part(%Ref{} = ref, _context, _expression) do
+    {:ok, %{ref | bare?: true}}
   end
 
   defp add_expression_part({%Ref{} = ref, nested_statement}, context, expression) do
@@ -2314,7 +2341,7 @@ defmodule Ash.Filter do
                 new_ref = %{
                   ref
                   | relationship_path: ref.relationship_path ++ [relationship.name],
-                    attribute: Ash.Resource.Info.attribute(relationship.destination, key),
+                    attribute: attribute(%{context | resource: relationship.destination}, key),
                     resource: relationship.destination
                 }
 

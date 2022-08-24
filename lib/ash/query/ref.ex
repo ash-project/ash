@@ -1,6 +1,6 @@
 defmodule Ash.Query.Ref do
   @moduledoc "Represents a relation/attribute reference"
-  defstruct [:attribute, :relationship_path, :resource, :simple_equality?]
+  defstruct [:attribute, :relationship_path, :resource, :simple_equality?, :bare?]
 
   defimpl Inspect do
     def inspect(ref, _opts) do
