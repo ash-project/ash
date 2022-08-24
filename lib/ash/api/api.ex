@@ -885,7 +885,7 @@ defmodule Ash.Api do
 
   @doc false
   @spec read!(Ash.Api.t(), Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
-          list(Ash.Resource.record()) | no_return
+          list(Ash.Resource.record()) | Ash.Page.page() | no_return
   def read!(api, query, opts \\ []) do
     opts = Ash.OptionsHelpers.validate!(opts, @read_opts_schema)
 
