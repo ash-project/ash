@@ -340,7 +340,7 @@ defmodule Ash.DataLayer do
     end
   end
 
-  @spec select(data_layer_query(), offset :: list(atom), Ash.Resource.t()) ::
+  @spec select(data_layer_query(), select :: list(atom), Ash.Resource.t()) ::
           {:ok, data_layer_query()} | {:error, term}
   def select(query, nil, _resource), do: {:ok, query}
 

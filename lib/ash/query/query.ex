@@ -724,9 +724,19 @@ defmodule Ash.Query do
     query = to_query(query)
 
     if opts[:replace?] do
-      %{query | select: Enum.uniq(List.wrap(fields))}
+      %{
+        query
+        | select: Enum.uniq(List.wrap(fields) ++ Ash.Resource.Info.primary_key(query.resource))
+      }
     else
-      %{query | select: Enum.uniq(List.wrap(fields) ++ (query.select || []))}
+      %{
+        query
+        | select:
+            Enum.uniq(
+              List.wrap(fields) ++
+                (query.select || []) ++ Ash.Resource.Info.primary_key(query.resource)
+            )
+      }
     end
   end
 
@@ -1986,7 +1996,8 @@ defmodule Ash.Query do
              resource,
              query,
              Map.put(ash_query.context, :action, ash_query.action)
-           ) do
+           ),
+         {:ok, query} <- Ash.DataLayer.select(query, ash_query.select, ash_query.resource) do
       if opts[:no_modify?] || !ash_query.action || !ash_query.action.modify_query do
         {:ok, query}
       else
