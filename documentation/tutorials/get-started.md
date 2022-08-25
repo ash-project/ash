@@ -110,6 +110,18 @@ mkdir -p lib/helpdesk/tickets/resources && touch $_/ticket.ex
 touch lib/helpdesk/tickets/registry.ex
 ```
 
+Your project structure should now look like this:
+
+```sh
+lib/
+├─ helpdesk/
+│  ├─ tickets/
+│  │  ├─ registry.ex
+│  │  ├─ resources/
+│  │  │  ├─ ticket.ex
+│  ├─ tickets.ex
+```
+
 Add the following to the files we created
 
 ```elixir
@@ -179,12 +191,12 @@ Helpdesk.Tickets.Ticket
 This returns what we call a `record` which is an instance of a resource.
 
 ```elixir
-{:ok, #Helpdesk.Tickets.Ticket<
-  ...,
-  id: "c0f8dc32-a018-4eb4-8656-d5810118f4ea",
+#Helpdesk.Tickets.Ticket<
+  ...
+  id: "dae74581-7efc-4fa3-9855-fce93265a670",
   subject: nil,
   ...
->}
+>
 ```
 
 ### Customizing our Actions
@@ -194,6 +206,8 @@ One thing you may have noticed earlier is that we created a ticket without provi
 We'll start with the attribute changes:
 
 ```elixir
+# lib/helpdesk/tickets/resources/ticket.ex
+
 attributes do
   ...
   attribute :subject, :string do
@@ -222,6 +236,8 @@ end
 And then add our customized action:
 
 ```elixir
+# lib/helpdesk/tickets/resources/ticket.ex
+
 actions do
   ...
   create :open do
@@ -272,6 +288,8 @@ Now lets add some logic to close a ticket. This time we'll add an `update` actio
 Here we will use a `change`. Changes allow you to customize how an action executes with very fine-grained control. There are built-in changes that are automatically available as functions, but you can define your own and pass it in as shown below. You can add multiple, and they will be run in order. See the {{link:ash:guide:Actions}} guides for more.
 
 ```elixir
+# lib/helpdesk/tickets/resources/ticket.ex
+
 actions do
   ...
   update :close do
@@ -345,16 +363,16 @@ tickets =
 
 
 # Show the tickets where the subject contains "2"
-Helpdesk.Tickets.Ticket
+(Helpdesk.Tickets.Ticket
 |> Ash.Query.filter(contains(subject, "2"))
 |> Ash.DataLayer.Simple.set_data(tickets)
-|> Helpdesk.Tickets.read!()
+|> Helpdesk.Tickets.read!())
 
 # Show the tickets that are closed and their subject does not contain "4"
-Helpdesk.Tickets.Ticket
+(Helpdesk.Tickets.Ticket
 |> Ash.Query.filter(status == :closed and not(contains(subject, "4")))
 |> Ash.DataLayer.Simple.set_data(tickets)
-|> Helpdesk.Tickets.read!()
+|> Helpdesk.Tickets.read!())
 ```
 
 The examples shown here could be implemented easily using things like `Enum.filter`, but the real power here is to allow you to use the same tools when working with any data layer. If you were using AshPostgres, the above code would be exactly the same, except for the call to `set_data/2`.
@@ -368,6 +386,8 @@ There is a built in data layer that is good for testing and prototyping, that us
 To add it to your resource, simply modify it like so:
 
 ```elixir
+# lib/helpdesk/tickets/resources/ticket.ex
+
 use Ash.Resource,
   data_layer: Ash.DataLayer.Ets
 ```
@@ -391,14 +411,14 @@ for i <- 0..5 do
 end
 
 # Show the tickets where the subject contains "2"
-Helpdesk.Tickets.Ticket
+(Helpdesk.Tickets.Ticket
 |> Ash.Query.filter(contains(subject, "2"))
-|> Helpdesk.Tickets.read!()
+|> Helpdesk.Tickets.read!())
 
 # Show the tickets that are closed and their subject does not contain "4"
-Helpdesk.Tickets.Ticket
+(Helpdesk.Tickets.Ticket
 |> Ash.Query.filter(status == :closed and not(contains(subject, "4")))
-|> Helpdesk.Tickets.read!()
+|> Helpdesk.Tickets.read!())
 ```
 
 ### Adding relationships
@@ -470,6 +490,8 @@ There are a wide array of options when managing relationships, and going over al
 Here we also show the use of action arguments, the method by which you can accept additional input to an action.
 
 ```elixir
+# lib/helpdesk/tickets/resources/ticket.ex
+
 update :assign do
   # No attributes should be accepted
   accept []
