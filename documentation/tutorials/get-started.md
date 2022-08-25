@@ -36,8 +36,8 @@ For this tutorial, we'll use examples based around creating a help desk.
 
 We will make the following resources:
 
-- `Helpdesk.Tickets.Ticket`
-- `Helpdesk.Tickets.Representative`
+- `Helpdesk.Support.Ticket`
+- `Helpdesk.Support.Representative`
 
 The actions we will be able to take on these resources include:
 
@@ -95,9 +95,9 @@ The basic building blocks of an Ash application are resources. They are tied tog
 
 Lets start by creating our first resource along with our first API. We will create the following files:
 
-- The API - `lib/helpdesk/tickets.ex`
-- A registry to list our resources - `lib/helpdesk/tickets/registry.ex`
-- Our tickets resource - `lib/helpdesk/tickets/resources/tickets/ticket.ex`.
+- The API - `lib/helpdesk/support.ex`
+- A registry to list our resources - `lib/helpdesk/support/registry.ex`
+- Our tickets resource - `lib/helpdesk/support/resources/tickets/ticket.ex`.
 
 We also create an accompanying registry, in , which is where we will list the resources for our Api.
 
@@ -105,9 +105,9 @@ To create the required folders and files, you can use the following command:
 
 ```bash
 # Run in your terminal
-touch lib/helpdesk/tickets.ex
-mkdir -p lib/helpdesk/tickets/resources && touch $_/ticket.ex
-touch lib/helpdesk/tickets/registry.ex
+touch lib/helpdesk/support.ex
+mkdir -p lib/helpdesk/support/resources && touch $_/ticket.ex
+touch lib/helpdesk/support/registry.ex
 ```
 
 Your project structure should now look like this:
@@ -115,19 +115,19 @@ Your project structure should now look like this:
 ```sh
 lib/
 ├─ helpdesk/
-│  ├─ tickets/
+│  ├─ support/
 │  │  ├─ registry.ex
 │  │  ├─ resources/
 │  │  │  ├─ ticket.ex
-│  ├─ tickets.ex
+│  ├─ support.ex
 ```
 
 Add the following to the files we created
 
 ```elixir
-# lib/helpdesk/tickets/resources/ticket.ex
+# lib/helpdesk/support/resources/ticket.ex
 
-defmodule Helpdesk.Tickets.Ticket do
+defmodule Helpdesk.Support.Ticket do
   # This turns this module into a resource
   use Ash.Resource
 
@@ -148,9 +148,9 @@ end
 ```
 
 ```elixir
-# lib/helpdesk/tickets/registry.ex
+# lib/helpdesk/support/registry.ex
 
-defmodule Helpdesk.Tickets.Registry do
+defmodule Helpdesk.Support.Registry do
   use Ash.Registry,
     extensions: [
       # This extension adds helpful compile time validations
@@ -158,20 +158,20 @@ defmodule Helpdesk.Tickets.Registry do
     ]
 
   entries do
-    entry Helpdesk.Tickets.Ticket
+    entry Helpdesk.Support.Ticket
   end
 end
 ```
 
 ```elixir
-# lib/helpdesk/tickets.ex
+# lib/helpdesk/support.ex
 
-defmodule Helpdesk.Tickets do
+defmodule Helpdesk.Support do
   use Ash.Api
 
   resources do
     # This defines the set of resources that can be used with this API
-    registry Helpdesk.Tickets.Registry
+    registry Helpdesk.Support.Registry
   end
 end
 ```
@@ -180,18 +180,18 @@ end
 
 Run `iex -S mix` in your project and try it out
 
-To create a ticket, we first make an `Ash.Changeset` for the `:create` action of the `Helpdesk.Tickets.Ticket` resource. Then we pass it to the `create!/1` function on our API module `Helpdesk.Tickets`.
+To create a ticket, we first make an `Ash.Changeset` for the `:create` action of the `Helpdesk.Support.Ticket` resource. Then we pass it to the `create!/1` function on our API module `Helpdesk.Support`.
 
 ```elixir
-Helpdesk.Tickets.Ticket
+(Helpdesk.Support.Ticket
 |> Ash.Changeset.for_create(:create)
-|> Helpdesk.Tickets.create!()
+|> Helpdesk.Support.create!())
 ```
 
 This returns what we call a `record` which is an instance of a resource.
 
 ```elixir
-#Helpdesk.Tickets.Ticket<
+#Helpdesk.Support.Ticket<
   ...
   id: "dae74581-7efc-4fa3-9855-fce93265a670",
   subject: nil,
@@ -206,7 +206,7 @@ One thing you may have noticed earlier is that we created a ticket without provi
 We'll start with the attribute changes:
 
 ```elixir
-# lib/helpdesk/tickets/resources/ticket.ex
+# lib/helpdesk/support/resources/ticket.ex
 
 attributes do
   ...
@@ -236,7 +236,7 @@ end
 And then add our customized action:
 
 ```elixir
-# lib/helpdesk/tickets/resources/ticket.ex
+# lib/helpdesk/support/resources/ticket.ex
 
 actions do
   ...
@@ -256,15 +256,15 @@ We use `create!` with an exclamation point here because that will raise the erro
 # Use this to pick up changes you've made to your code, or restart your session
 recompile() 
 
-Helpdesk.Tickets.Ticket
+(Helpdesk.Support.Ticket
 |> Ash.Changeset.for_create(:open, %{subject: "My mouse won't click!"})
-|> Helpdesk.Tickets.create!()
+|> Helpdesk.Support.create!())
 ```
 
 And we can see our newly created ticket with a subject and a status.
 
 ```elixir
-#Helpdesk.Tickets.Ticket<
+#Helpdesk.Support.Ticket<
   ...
   id: "3c94d310-7b5e-41f0-9104-5b193b831a5d",
   status: :open,
@@ -288,7 +288,7 @@ Now lets add some logic to close a ticket. This time we'll add an `update` actio
 Here we will use a `change`. Changes allow you to customize how an action executes with very fine-grained control. There are built-in changes that are automatically available as functions, but you can define your own and pass it in as shown below. You can add multiple, and they will be run in order. See the {{link:ash:guide:Actions}} guides for more.
 
 ```elixir
-# lib/helpdesk/tickets/resources/ticket.ex
+# lib/helpdesk/support/resources/ticket.ex
 
 actions do
   ...
@@ -310,16 +310,16 @@ Now we can try it out in iex, opening a ticket and closing it:
 ```elixir
 # parenthesis so you can paste into iex
 ticket = (
-  Helpdesk.Tickets.Ticket
+  Helpdesk.Support.Ticket
   |> Ash.Changeset.for_create(:open, %{subject: "My mouse won't click!"})
-  |> Helpdesk.Tickets.create!()
+  |> Helpdesk.Support.create!()
 )
 
 ticket
 |> Ash.Changeset.for_update(:close)
-|> Helpdesk.Tickets.update!()
+|> Helpdesk.Support.update!()
 
-#Helpdesk.Tickets.Ticket<
+#Helpdesk.Support.Ticket<
   ...
   status: :closed,
   subject: "My mouse won't click!",
@@ -332,7 +332,7 @@ ticket
 So far, there is no persistence happening. All that this simple resource does is return the record back to us. You can see this lack of persistence by attempting to use a `read` action:
 
 ```elixir
-Helpdesk.Tickets.read!(Helpdesk.Tickets.Ticket)
+Helpdesk.Support.read!(Helpdesk.Support.Ticket)
 ```
 
 Which will raise an error explaining that there is no data to be read for that resource.
@@ -348,14 +348,14 @@ require Ash.Query
 tickets = 
   for i <- 0..5 do
     ticket = 
-      Helpdesk.Tickets.Ticket
+      Helpdesk.Support.Ticket
       |> Ash.Changeset.for_create(:open, %{subject: "Issue #{i}"})
-      |> Helpdesk.Tickets.create!()
+      |> Helpdesk.Support.create!()
     
     if rem(i, 2) == 0 do
       ticket
       |> Ash.Changeset.for_update(:close)
-      |> Helpdesk.Tickets.update!()
+      |> Helpdesk.Support.update!()
     else
       ticket
     end
@@ -363,16 +363,16 @@ tickets =
 
 
 # Show the tickets where the subject contains "2"
-(Helpdesk.Tickets.Ticket
+(Helpdesk.Support.Ticket
 |> Ash.Query.filter(contains(subject, "2"))
 |> Ash.DataLayer.Simple.set_data(tickets)
-|> Helpdesk.Tickets.read!())
+|> Helpdesk.Support.read!())
 
 # Show the tickets that are closed and their subject does not contain "4"
-(Helpdesk.Tickets.Ticket
+(Helpdesk.Support.Ticket
 |> Ash.Query.filter(status == :closed and not(contains(subject, "4")))
 |> Ash.DataLayer.Simple.set_data(tickets)
-|> Helpdesk.Tickets.read!())
+|> Helpdesk.Support.read!())
 ```
 
 The examples shown here could be implemented easily using things like `Enum.filter`, but the real power here is to allow you to use the same tools when working with any data layer. If you were using AshPostgres, the above code would be exactly the same, except for the call to `set_data/2`.
@@ -386,7 +386,7 @@ There is a built in data layer that is good for testing and prototyping, that us
 To add it to your resource, simply modify it like so:
 
 ```elixir
-# lib/helpdesk/tickets/resources/ticket.ex
+# lib/helpdesk/support/resources/ticket.ex
 
 use Ash.Resource,
   data_layer: Ash.DataLayer.Ets
@@ -399,26 +399,26 @@ require Ash.Query
 
 for i <- 0..5 do
   ticket = 
-    Helpdesk.Tickets.Ticket
+    Helpdesk.Support.Ticket
     |> Ash.Changeset.for_create(:open, %{subject: "Issue #{i}"})
-    |> Helpdesk.Tickets.create!()
+    |> Helpdesk.Support.create!()
   
   if rem(i, 2) == 0 do
     ticket
     |> Ash.Changeset.for_update(:close)
-    |> Helpdesk.Tickets.update!()
+    |> Helpdesk.Support.update!()
   end
 end
 
 # Show the tickets where the subject contains "2"
-(Helpdesk.Tickets.Ticket
+(Helpdesk.Support.Ticket
 |> Ash.Query.filter(contains(subject, "2"))
-|> Helpdesk.Tickets.read!())
+|> Helpdesk.Support.read!())
 
 # Show the tickets that are closed and their subject does not contain "4"
-(Helpdesk.Tickets.Ticket
+(Helpdesk.Support.Ticket
 |> Ash.Query.filter(status == :closed and not(contains(subject, "4")))
-|> Helpdesk.Tickets.read!())
+|> Helpdesk.Support.read!())
 ```
 
 ### Adding relationships
@@ -426,9 +426,9 @@ end
 Now we want to be able to assign a ticket to a representative. First, lets create the representative resource:
 
 ```elixir
-# lib/helpdesk/tickets/resources/representative.ex
+# lib/helpdesk/support/resources/representative.ex
 
-defmodule Helpdesk.Tickets.Representative do
+defmodule Helpdesk.Support.Representative do
   # This turns this module into a resource
   use Ash.Resource,
     data_layer: Ash.DataLayer.Ets
@@ -451,7 +451,7 @@ defmodule Helpdesk.Tickets.Representative do
     # has_many means that the destination attribute is not unique, meaning many related records could exist.
     # We assume that the destination attribute is `representative_id` based
     # on the module name of this resource and that the source attribute is `id`.
-    has_many :tickets, Helpdesk.Tickets.Ticket
+    has_many :tickets, Helpdesk.Support.Ticket
   end
 end
 ```
@@ -459,25 +459,25 @@ end
 And lets modify our tickets resource to have a relationship to the representative
 
 ```elixir
-# lib/helpdesk/tickets/resources/ticket.ex
+# lib/helpdesk/support/resources/ticket.ex
 
 relationships do
   # belongs_to means that the destination attribute is unique, meaning only one related record could exist.
   # We assume that the destination attribute is `representative_id` based
   # on the name of this relationship and that the source attribute is `representative_id`.
   # We create `representative_id` automatically.
-  belongs_to :representative, Helpdesk.Tickets.Representative
+  belongs_to :representative, Helpdesk.Support.Representative
 end
 ```
 
 Finally, lets add our new resource to our registry
 
 ```elixir
-# lib/helpdesk/tickets/registry.ex
+# lib/helpdesk/support/registry.ex
 
 entries do
  ...
- entry Helpdesk.Tickets.Representative
+ entry Helpdesk.Support.Representative
 end
 ```
 
@@ -490,22 +490,26 @@ There are a wide array of options when managing relationships, and going over al
 Here we also show the use of action arguments, the method by which you can accept additional input to an action.
 
 ```elixir
-# lib/helpdesk/tickets/resources/ticket.ex
+# lib/helpdesk/support/resources/ticket.ex
 
-update :assign do
-  # No attributes should be accepted
-  accept []
+actions do
+  ...
 
-  # We accept a representative's id as input here
-  argument :representative_id, :uuid do
-    # This action requires representative_id
-    allow_nil? false
+  update :assign do
+    # No attributes should be accepted
+    accept []
+
+    # We accept a representative's id as input here
+    argument :representative_id, :uuid do
+      # This action requires representative_id
+      allow_nil? false
+    end
+
+    # We use a change here to replace the related representative
+    # If there is a different representative for this ticket, it will be changed to the new one
+    # The representative itself is not modified in any way
+    change manage_relationship(:representative_id, :representative, type: :replace)
   end
-
-  # We use a change here to replace the related representative
-  # If there is a different representative for this ticket, it will be changed to the new one
-  # The representative itself is not modified in any way
-  change manage_relationship(:representative_id, :representative, type: :replace)
 end
 ```
 
@@ -514,23 +518,23 @@ Lets try it out!
 ```elixir
 # Open a ticket
 ticket = (
-  Helpdesk.Tickets.Ticket
+  Helpdesk.Support.Ticket
   |> Ash.Changeset.for_create(:open, %{subject: "I can't find my hand!"})
-  |> Helpdesk.Tickets.create!()
+  |> Helpdesk.Support.create!()
 )
 
 # Create a representative
 representative = (
-  Helpdesk.Tickets.Representative
+  Helpdesk.Support.Representative
   |> Ash.Changeset.for_create(:create, %{name: "Joe Armstrong"})
-  |> Helpdesk.Tickets.create!()
+  |> Helpdesk.Support.create!()
 )
 
 # Assign that representative
 ticket = (
   ticket
   |> Ash.Changeset.for_update(:assign, %{representative_id: representative.id})
-  |> Helpdesk.Tickets.update!()
+  |> Helpdesk.Support.update!()
 )
 ```
 
@@ -540,7 +544,7 @@ What you've seen above constitutes some very simple usage of Ash, barely scratch
 
 #### Clean up your code that uses Ash?
 
-Creating and using changesets can be verbose. Check out the {{link:ash:guide:Code Interface}} to derive things like `Helpdesk.Tickets.Ticket.assign!(representative.id)`
+Creating and using changesets can be verbose. Check out the {{link:ash:guide:Code Interface}} to derive things like `Helpdesk.Support.Ticket.assign!(representative.id)`
 
 #### Persist your data
 
