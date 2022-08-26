@@ -183,6 +183,15 @@ defmodule Ash.Flow.Dsl do
           ]
         ]
       ],
+      trace_name: [
+        type: :string,
+        doc: "The name to use when creating traces. Defaults to the short name."
+      ],
+      short_name: [
+        type: :atom,
+        doc:
+          "A short name to use for the flow. Defaults to the last to parts of the module name, underscored."
+      ],
       returns: [
         type: :any,
         doc: """

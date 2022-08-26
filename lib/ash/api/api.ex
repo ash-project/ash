@@ -67,6 +67,12 @@ defmodule Ash.Api do
       A positive integer, or `:infinity`. If none is provided, the timeout configured on the api is used (which defaults to `30_000`).
       """
     ],
+    tracer: [
+      type: :atom,
+      doc: """
+      A tracer that implements the `Ash.Tracer` behaviour. See that module for more.
+      """
+    ],
     verbose?: [
       type: :boolean,
       default: false,
@@ -537,9 +543,20 @@ defmodule Ash.Api do
   end
 
   @doc false
+  # sobelow_skip ["DOS.StringToAtom"]
   def handle_before_compile(_) do
     quote do
       use Ash.Api.Interface
+
+      @default_short_name __MODULE__
+                          |> Module.split()
+                          |> List.last()
+                          |> Macro.underscore()
+                          |> String.to_atom()
+
+      def default_short_name do
+        @default_short_name
+      end
     end
   end
 

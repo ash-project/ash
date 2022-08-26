@@ -4,6 +4,7 @@ defmodule Ash.Actions.Create do
   alias Ash.Actions.Helpers
   alias Ash.Engine.Request
 
+  require Ash.Tracer
   require Logger
 
   @spec run(Ash.Api.t(), Ash.Changeset.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
@@ -13,6 +14,45 @@ defmodule Ash.Actions.Create do
   def run(api, changeset, action, opts) do
     {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
 
+    Ash.Tracer.span :action,
+                    Ash.Api.Info.span_name(
+                      api,
+                      changeset.resource,
+                      action.name
+                    ),
+                    opts[:tracer] do
+      metadata = %{
+        api: api,
+        resource: changeset.resource,
+        resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+        actor: opts[:actor],
+        tenant: opts[:tenant],
+        action: action.name,
+        authorize?: opts[:authorize?]
+      }
+
+      if opts[:tracer] do
+        opts[:tracer].set_metadata(:action, metadata)
+      end
+
+      Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(api), :create],
+                                metadata do
+        case do_run(api, changeset, action, opts) do
+          {:error, error} ->
+            if opts[:tracer] do
+              opts[:tracer].set_error(Ash.Error.to_error_class(error))
+            end
+
+            {:error, error}
+
+          other ->
+            other
+        end
+      end
+    end
+  end
+
+  defp do_run(api, changeset, action, opts) do
     upsert? = opts[:upsert?] || get_in(changeset.context, [:private, :upsert?]) || false
     authorize? = authorize?(opts)
     upsert_keys = opts[:upsert_keys]
@@ -35,6 +75,7 @@ defmodule Ash.Actions.Create do
       authorize?: authorize?,
       actor: actor,
       tenant: opts[:tenant],
+      tracer: opts[:tracer],
       after_action: opts[:after_action]
     )
     |> Ash.Engine.run(
@@ -42,6 +83,7 @@ defmodule Ash.Actions.Create do
       verbose?: verbose?,
       name: "#{inspect(resource)}.#{action.name}",
       actor: actor,
+      tracer: opts[:tracer],
       authorize?: authorize?,
       notification_metadata: opts[:notification_metadata],
       timeout: opts[:timeout] || changeset.timeout || Ash.Api.Info.timeout(api),
@@ -125,6 +167,7 @@ defmodule Ash.Actions.Create do
     tenant = request_opts[:tenant]
     error_path = request_opts[:error_path]
     timeout = request_opts[:timeout]
+    tracer = request_opts[:tracer]
     after_action = request_opts[:after_action]
 
     authorization_request =
@@ -157,11 +200,13 @@ defmodule Ash.Actions.Create do
                     actor: actor,
                     authorize?: authorize?,
                     tenant: tenant,
+                    tracer: tracer,
                     timeout: timeout
                   )
                   |> changeset(api, action,
                     actor: actor,
                     authorize?: authorize?,
+                    tracer: tracer,
                     tenant: tenant,
                     timeout: timeout
                   )
@@ -170,6 +215,7 @@ defmodule Ash.Actions.Create do
                   changeset(changeset, api, action,
                     actor: actor,
                     authorize?: authorize?,
+                    tracer: tracer,
                     tenant: tenant,
                     timeout: timeout
                   )
@@ -217,7 +263,7 @@ defmodule Ash.Actions.Create do
         authorize?: true,
         data: nil,
         path: path ++ [:data],
-        name: "#{action.type} - `#{action.name}`: prepare"
+        name: "prepare #{inspect(resource)}.#{action.name}"
       )
 
     commit_request =
@@ -402,7 +448,7 @@ defmodule Ash.Actions.Create do
             end
           ),
         path: path ++ [:commit],
-        name: "#{action.type} - `#{action.name}`: commit"
+        name: "perform #{inspect(resource)}.#{action.name}"
       )
 
     [authorization_request, commit_request]

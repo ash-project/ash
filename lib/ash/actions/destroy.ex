@@ -4,12 +4,54 @@ defmodule Ash.Actions.Destroy do
   alias Ash.Actions.Helpers
   alias Ash.Engine.Request
 
+  require Ash.Tracer
+
   @spec run(Ash.Api.t(), Ash.Changeset.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
           {:ok, list(Ash.Notifier.Notification.t())}
           | :ok
           | {:error, Ash.Changeset.t()}
           | {:error, term}
-  def run(api, changeset, %{soft?: true} = action, opts) do
+  def run(api, changeset, action, opts) do
+    {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
+
+    Ash.Tracer.span :action,
+                    Ash.Api.Info.span_name(
+                      api,
+                      changeset.resource,
+                      action.name
+                    ),
+                    opts[:tracer] do
+      metadata = %{
+        api: api,
+        resource: changeset.resource,
+        resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+        actor: opts[:actor],
+        tenant: opts[:tenant],
+        action: action.name,
+        authorize?: opts[:authorize?]
+      }
+
+      if opts[:tracer] do
+        opts[:tracer].set_metadata(:action, metadata)
+      end
+
+      Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(api), :destroy], metadata do
+        case do_run(api, changeset, action, opts) do
+          {:error, error} ->
+            if opts[:tracer] do
+              opts[:tracer].set_error(Ash.Error.to_error_class(error))
+            end
+
+            {:error, error}
+
+          other ->
+            other
+        end
+      end
+    end
+  end
+
+  def do_run(api, changeset, %{soft?: true} = action, opts) do
     {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
 
     changeset =
@@ -21,10 +63,10 @@ defmodule Ash.Actions.Destroy do
         )
       end
 
-    Ash.Actions.Update.run(api, changeset, action, opts)
+    Ash.Actions.Update.do_run(api, changeset, action, opts)
   end
 
-  def run(api, %{resource: resource} = changeset, action, opts) do
+  def do_run(api, %{resource: resource} = changeset, action, opts) do
     {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
 
     authorize? = authorize?(opts)
@@ -46,6 +88,7 @@ defmodule Ash.Actions.Destroy do
       changeset: changeset,
       authorize?: authorize?,
       actor: actor,
+      tracer: opts[:tracer],
       timeout: opts[:timeout],
       tenant: opts[:tenant]
     )
@@ -54,6 +97,7 @@ defmodule Ash.Actions.Destroy do
       verbose?: verbose?,
       actor: actor,
       name: "#{inspect(resource)}.#{action.name}",
+      tracer: opts[:tracer],
       return_notifications?: opts[:return_notifications?],
       notification_metadata: opts[:notification_metadata],
       authorize?: authorize?,
@@ -102,6 +146,7 @@ defmodule Ash.Actions.Destroy do
     error_path = request_opts[:error_path]
     timeout = request_opts[:timeout]
     default_timeout = request_opts[:default_timeout]
+    tracer = request_opts[:tracer]
 
     record =
       request_opts[:record] ||
@@ -148,11 +193,13 @@ defmodule Ash.Actions.Destroy do
                         actor: actor,
                         tenant: tenant,
                         authorize?: authorize?,
+                        tracer: tracer,
                         timeout: timeout
                       )
                       |> changeset(api, action,
                         actor: actor,
                         tenant: tenant,
+                        tracer: tracer,
                         authorize?: authorize?,
                         timeout: timeout
                       )
@@ -162,6 +209,7 @@ defmodule Ash.Actions.Destroy do
                   changeset(changeset, api, action,
                     actor: actor,
                     authorize?: authorize?,
+                    tracer: tracer,
                     tenant: tenant,
                     timeout: timeout
                   )
@@ -198,7 +246,7 @@ defmodule Ash.Actions.Destroy do
                 {:ok, changeset.data}
             end
           end),
-        name: "destroy request"
+        name: "prepare #{inspect(resource)}.#{action.name}"
       )
 
     destroy_request =
@@ -215,6 +263,7 @@ defmodule Ash.Actions.Destroy do
           end),
         notify?: true,
         authorize?: false,
+        name: "commit #{inspect(resource)}.#{action.name}",
         data:
           Request.resolve(
             [path ++ [:data, :data], path ++ [:destroy, :changeset]],

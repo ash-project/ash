@@ -73,6 +73,8 @@ defmodule Ash.Query do
   alias Ash.Error.Load.{InvalidQuery, NoSuchRelationship}
   alias Ash.Query.{Aggregate, BooleanExpression, Calculation, Not}
 
+  require Ash.Tracer
+
   defimpl Inspect do
     import Inspect.Algebra
 
@@ -233,6 +235,16 @@ defmodule Ash.Query do
       doc:
         "set authorize?, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)"
     ],
+    authorize?: [
+      type: :boolean,
+      doc:
+        "set tracer, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)"
+    ],
+    tracer: [
+      type: :atom,
+      doc:
+        "A tracer to use. Will be carried over to the action. For more information see `Ash.Tracer`."
+    ],
     tenant: [
       type: :any,
       doc: "set the tenant on the query"
@@ -264,19 +276,39 @@ defmodule Ash.Query do
     action = Ash.Resource.Info.action(query.resource, action_name, :read)
 
     if action do
-      query = Map.put(query, :action, action.name)
+      name = "query:" <> Ash.Resource.Info.trace_name(query.resource) <> ":#{action_name}"
 
-      query
-      |> timeout(query.timeout || opts[:timeout])
-      |> set_actor(opts)
-      |> set_authorize?(opts)
-      |> Ash.Query.set_tenant(opts[:tenant] || query.tenant)
-      |> Map.put(:action, action)
-      |> Map.put(:__validated_for_action__, action_name)
-      |> cast_params(action, args)
-      |> run_preparations(action, opts[:actor], opts[:authorize?])
-      |> add_action_filters(action, opts[:actor])
-      |> require_arguments(action)
+      Ash.Tracer.span :query,
+                      name,
+                      opts[:tracer] do
+        metadata = %{
+          resource_short_name: Ash.Resource.Info.short_name(query.resource),
+          resource: query.resource,
+          actor: opts[:actor],
+          tenant: opts[:tenant],
+          action: action.name,
+          authorize?: opts[:authorize?]
+        }
+
+        if opts[:tracer] do
+          opts[:tracer].set_metadata(:query, metadata)
+        end
+
+        query = Map.put(query, :action, action.name)
+
+        query
+        |> timeout(query.timeout || opts[:timeout])
+        |> set_actor(opts)
+        |> set_authorize?(opts)
+        |> set_tracer(opts)
+        |> Ash.Query.set_tenant(opts[:tenant] || query.tenant)
+        |> Map.put(:action, action)
+        |> Map.put(:__validated_for_action__, action_name)
+        |> cast_params(action, args)
+        |> run_preparations(action, opts[:actor], opts[:authorize?], opts[:tracer], metadata)
+        |> add_action_filters(action, opts[:actor])
+        |> require_arguments(action)
+      end
     else
       add_error(query, :action, "No such action #{action_name}")
     end
@@ -303,6 +335,14 @@ defmodule Ash.Query do
   defp set_authorize?(query, opts) do
     if Keyword.has_key?(opts, :authorize?) do
       put_context(query, :private, %{authorize?: opts[:authorize?]})
+    else
+      query
+    end
+  end
+
+  defp set_tracer(query, opts) do
+    if Keyword.has_key?(opts, :tracer) do
+      put_context(query, :private, %{tracer: opts[:tracer]})
     else
       query
     end
@@ -373,29 +413,44 @@ defmodule Ash.Query do
     Enum.any?(action.arguments, &(&1.private? == false && to_string(&1.name) == name))
   end
 
-  defp run_preparations(query, action, actor, authorize?) do
+  defp run_preparations(query, action, actor, authorize?, tracer, metadata) do
     query.resource
     |> Ash.Resource.Info.preparations()
     |> Enum.concat(action.preparations || [])
     |> Enum.reduce(query, fn %{preparation: {module, opts}}, query ->
-      case module.init(opts) do
-        {:ok, opts} ->
-          case module.prepare(query, opts, %{actor: actor, authorize?: authorize?}) do
-            %__MODULE__{} = prepared ->
-              prepared
-
-            other ->
-              raise """
-              Invalid value returned from #{inspect(module)}.prepare/3
-
-              A query must be returned, but the following was received instead:
-
-              #{inspect(other)}
-              """
+      Ash.Tracer.span :preparation, "prepare: #{inspect(module)}", tracer do
+        Ash.Tracer.telemetry_span [:ash, :preparation], %{
+          resource_short_name: Ash.Resource.Info.short_name(query.resource),
+          preparation: inspect(module)
+        } do
+          if tracer do
+            tracer.set_metadata(:preparation, metadata)
           end
 
-        {:error, error} ->
-          Ash.Query.add_error(query, error)
+          case module.init(opts) do
+            {:ok, opts} ->
+              case module.prepare(query, opts, %{
+                     actor: actor,
+                     authorize?: authorize?,
+                     tracer: tracer
+                   }) do
+                %__MODULE__{} = prepared ->
+                  prepared
+
+                other ->
+                  raise """
+                  Invalid value returned from #{inspect(module)}.prepare/3
+
+                  A query must be returned, but the following was received instead:
+
+                  #{inspect(other)}
+                  """
+              end
+
+            {:error, error} ->
+              Ash.Query.add_error(query, error)
+          end
+        end
       end
     end)
   end

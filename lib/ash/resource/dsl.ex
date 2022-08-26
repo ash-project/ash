@@ -793,6 +793,24 @@ defmodule Ash.Resource.Dsl do
         type: :any,
         doc: "Default context to apply to any queries/changesets generated for this resource.",
         links: []
+      ],
+      trace_name: [
+        type: :string,
+        doc: "The name to use in traces. Defaults to the last part of the module",
+        links: [
+          guides: [
+            "ash:guide:Monitoring"
+          ]
+        ]
+      ],
+      short_name: [
+        type: :atom,
+        doc: "A short identifier for the resource, which should be unique.",
+        links: [
+          guides: [
+            "ash:guide:Monitoring"
+          ]
+        ]
       ]
     ]
   }

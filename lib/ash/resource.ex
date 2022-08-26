@@ -66,6 +66,7 @@ defmodule Ash.Resource do
   end
 
   @doc false
+  # sobelow_skip ["DOS.StringToAtom"]
   def handle_before_compile(_opts) do
     quote do
       require Ash.Schema
@@ -104,6 +105,16 @@ defmodule Ash.Resource do
       if api = Ash.Resource.Info.define_interface_for(__MODULE__) do
         require Ash.CodeInterface
         Ash.CodeInterface.define_interface(api, __MODULE__)
+      end
+
+      @default_short_name __MODULE__
+                          |> Module.split()
+                          |> List.last()
+                          |> Macro.underscore()
+                          |> String.to_atom()
+
+      def default_short_name do
+        @default_short_name
       end
 
       @doc """

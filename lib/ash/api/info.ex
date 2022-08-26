@@ -38,6 +38,30 @@ defmodule Ash.Api.Info do
     Extension.get_opt(api, [:execution], :timeout, 30_000, true)
   end
 
+  @doc "The short name for an api"
+  @spec short_name(Ash.Api.t()) :: nil | :infinity | integer()
+  def short_name(api) do
+    Extension.get_opt(api, [:execution], :short_name, nil) || api.default_short_name()
+  end
+
+  @doc "The trace name for an api"
+  @spec trace_name(Ash.Api.t()) :: String.t()
+  def trace_name(api) do
+    Extension.get_opt(api, [:execution], :trace_name, nil) || api |> Module.split() |> List.last()
+  end
+
+  @doc "The span_name for an api and resource combination"
+  @spec span_name(Ash.Api.t(), Ash.Resource.t(), action :: atom) :: String.t()
+  def span_name(api, resource, action) do
+    "#{trace_name(api)}:#{Ash.Resource.Info.trace_name(resource)}.#{action}"
+  end
+
+  @doc "Names a telemetry event for a given api/resource combo"
+  @spec telemetry_event_name(Ash.Api.t(), atom | list(atom)) :: list(atom)
+  def telemetry_event_name(api, name) do
+    List.flatten([:ash, short_name(api), name])
+  end
+
   @doc "Whether or not the actor is always required for an api"
   @spec require_actor?(Ash.Api.t()) :: boolean
   def require_actor?(api) do
