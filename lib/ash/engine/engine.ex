@@ -73,6 +73,7 @@ defmodule Ash.Engine do
   ]
 
   alias Ash.Engine.Request
+  require Ash.Tracer
   require Logger
 
   def run(requests, opts \\ []) do
@@ -101,9 +102,12 @@ defmodule Ash.Engine do
                 Ash.DataLayer.data_layer_can?(opts[:resource], :async_engine)) && opts[:timeout] &&
              opts[:timeout] != :infinity && !Ash.DataLayer.in_transaction?(opts[:resource]) do
           task =
-            async(fn ->
-              do_run(requests, opts)
-            end)
+            async(
+              fn ->
+                do_run(requests, opts)
+              end,
+              opts
+            )
 
           try do
             Task.await(task, opts[:timeout])
@@ -406,20 +410,42 @@ defmodule Ash.Engine do
           )
         else
           task =
-            async(fn ->
-              {request.path, request.data.resolver.(resolver_context)}
-            end)
+            async(
+              fn ->
+                Ash.Tracer.span :request_step,
+                                request.name,
+                                request.tracer do
+                  metadata = %{
+                    resource_short_name:
+                      request.resource && Ash.Resource.Info.short_name(request.resource),
+                    resource: request.resource,
+                    actor: request.actor,
+                    action: request.action && request.action.name,
+                    authorize?: request.authorize?
+                  }
+
+                  if request.tracer do
+                    request.tracer.set_metadata(:request_step, metadata)
+                  end
+
+                  Ash.Tracer.telemetry_span [:ash, :request_step], %{name: request.name} do
+                    {request.path, request.data.resolver.(resolver_context)}
+                  end
+                end
+              end,
+              state.opts
+            )
 
           replace_request(%{state | tasks: [task | state.tasks]}, request)
         end
     end
   end
 
-  defp async(func) do
-    ash_context = Ash.get_context_for_transfer()
+  defp async(func, opts) do
+    ash_context = Ash.get_context_for_transfer(opts)
 
     Task.async(fn ->
-      Ash.transfer_context(ash_context)
+      Ash.transfer_context(ash_context, opts)
 
       func.()
     end)
@@ -779,7 +805,8 @@ defmodule Ash.Engine do
             authorized?: !authorize?,
             actor: request.actor || state.actor,
             verbose?: request.verbose? || state.verbose?,
-            async?: request.async? and state.async?
+            async?: request.async? and state.async?,
+            tracer: state.opts[:tracer] || Application.get_env(:ash, :tracer)
         }
       end)
       |> Enum.map(&Request.add_initial_authorizer_state/1)

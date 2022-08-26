@@ -26,6 +26,8 @@ defmodule Ash.Engine.Request do
     :engine_pid,
     :error_path,
     :completion,
+    :tracer,
+    :trace_prefix,
     async_fetch_state: :not_requested,
     touches_resources: [],
     additional_context: %{},
@@ -42,6 +44,7 @@ defmodule Ash.Engine.Request do
   alias Ash.Error.Invalid.{DuplicatedPath, ImpossiblePath}
 
   require Ash.Query
+  require Ash.Tracer
   require Logger
 
   defmodule UnresolvedField do
@@ -1018,7 +1021,31 @@ defmodule Ash.Engine.Request do
               {_, result} = new_request.async_fetch_state
               {%{new_request | async_fetch_state: :not_requested}, result}
             else
-              {%{new_request | async_fetch_state: :not_requested}, resolver.(resolver_context)}
+              if field == :data do
+                Ash.Tracer.span :request_step,
+                                request.name,
+                                request.tracer do
+                  metadata = %{
+                    resource_short_name:
+                      request.resource && Ash.Resource.Info.short_name(request.resource),
+                    resource: request.resource,
+                    actor: request.actor,
+                    action: request.action && request.action.name,
+                    authorize?: request.authorize?
+                  }
+
+                  if request.tracer do
+                    request.tracer.set_metadata(:request_step, metadata)
+                  end
+
+                  Ash.Tracer.telemetry_span [:ash, :request_step], %{name: request.name} do
+                    {%{new_request | async_fetch_state: :not_requested},
+                     resolver.(resolver_context)}
+                  end
+                end
+              else
+                {%{new_request | async_fetch_state: :not_requested}, resolver.(resolver_context)}
+              end
             end
 
           case result do

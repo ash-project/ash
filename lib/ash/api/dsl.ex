@@ -20,6 +20,15 @@ defmodule Ash.Api.Dsl do
             "ash:guide:Timeouts"
           ]
         ]
+      ],
+      trace_name: [
+        type: :string,
+        doc: "The name to use in traces. Defaults to the last part of the module",
+        links: [
+          guides: [
+            "ash:guide:Monitoring"
+          ]
+        ]
       ]
     ]
   }

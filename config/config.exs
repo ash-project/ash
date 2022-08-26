@@ -1,5 +1,9 @@
 import Config
 
+if Mix.env() == :test do
+  config :ash, Ash.Tracer.Simple, handler: :send
+end
+
 if Mix.env() == :dev do
   config :git_ops,
     mix_project: Ash.MixProject,

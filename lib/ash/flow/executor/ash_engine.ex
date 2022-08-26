@@ -4,6 +4,7 @@ defmodule Ash.Flow.Executor.AshEngine do
   """
   use Ash.Flow.Executor
   require Logger
+  require Ash.Tracer
 
   defmodule Step do
     @moduledoc false
@@ -121,8 +122,13 @@ defmodule Ash.Flow.Executor.AshEngine do
 
   def execute(%Flow{steps: steps, flow: flow}, _input, opts) do
     steps
-    |> Enum.flat_map(&requests(steps, &1, opts))
-    |> Ash.Engine.run(verbose?: opts[:verbose?], timeout: opts[:timeout], name: inspect(flow))
+    |> Enum.flat_map(&requests(flow, steps, &1, opts))
+    |> Ash.Engine.run(
+      verbose?: opts[:verbose?],
+      timeout: opts[:timeout],
+      name: inspect(flow),
+      tracer: opts[:tracer]
+    )
     |> case do
       {:ok, %Ash.Engine{data: data, resource_notifications: resource_notifications}} ->
         if opts[:return_notifications?] do
@@ -223,7 +229,7 @@ defmodule Ash.Flow.Executor.AshEngine do
     end
   end
 
-  defp requests(all_steps, step, opts, request_opts \\ []) do
+  defp requests(flow, all_steps, step, opts, request_opts \\ []) do
     additional_context = request_opts[:context] || %{}
     transaction_name = request_opts[:transaction_name]
 
@@ -301,7 +307,7 @@ defmodule Ash.Flow.Executor.AshEngine do
               Ash.Engine.Request.resolve(depends_on_requests ++ request_deps, fn context ->
                 transaction_steps
                 |> Enum.flat_map(
-                  &requests(all_steps, &1, opts,
+                  &requests(flow, all_steps, &1, opts,
                     context: context,
                     transaction_name: transaction.name
                   )
@@ -326,6 +332,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                       resource: resource,
                       name: "Transaction #{inspect(name)}",
                       verbose?: opts[:verbose?],
+                      tracer: opts[:tracer],
                       transaction?: true
                     )
                     |> case do
@@ -430,7 +437,7 @@ defmodule Ash.Flow.Executor.AshEngine do
 
                         map_steps
                         |> Enum.flat_map(
-                          &requests(all_steps_with_map_steps, &1, opts,
+                          &requests(flow, all_steps_with_map_steps, &1, opts,
                             context: new_additional_context,
                             transaction_name: transaction_name
                           )
@@ -509,7 +516,21 @@ defmodule Ash.Flow.Executor.AshEngine do
 
                 context_arg = Map.take(context, [:actor, :authorize?, :async?, :verbose?])
 
-                mod.run(custom_input, opts, context_arg)
+                Ash.Tracer.span :custom_flow_step, "custom step #{inspect(mod)}", opts[:tracer] do
+                  metadata = %{
+                    flow_short_name: Ash.Flow.Info.short_name(flow),
+                    name: inspect(name),
+                    step: inspect(mod)
+                  }
+
+                  if opts[:tracer] do
+                    opts[:tracer].set_metadata(metadata)
+                  end
+
+                  Ash.Tracer.telemetry_span [:ash, :flow, :custom_step], metadata do
+                    mod.run(custom_input, opts, context_arg)
+                  end
+                end
               end)
           )
         ]
@@ -621,6 +642,7 @@ defmodule Ash.Flow.Executor.AshEngine do
           error_path: List.wrap(name),
           authorize?: opts[:authorize?],
           actor: opts[:actor],
+          tracer: opts[:tracer],
           query_dependencies: request_deps,
           get?: get? || action.get?,
           tenant: fn context ->
@@ -681,6 +703,7 @@ defmodule Ash.Flow.Executor.AshEngine do
           error_path: List.wrap(name),
           authorize?: opts[:authorize?],
           actor: opts[:actor],
+          tracer: opts[:tracer],
           changeset_dependencies: request_deps,
           tenant: fn context ->
             context = Ash.Helpers.deep_merge_maps(context, additional_context)
@@ -754,6 +777,7 @@ defmodule Ash.Flow.Executor.AshEngine do
               error_path: List.wrap(name),
               authorize?: opts[:authorize?],
               actor: opts[:actor],
+              tracer: opts[:tracer],
               changeset_dependencies: [[name, :fetch, :data] | request_deps],
               skip_on_nil_record?: true,
               tenant: fn context ->
@@ -832,6 +856,7 @@ defmodule Ash.Flow.Executor.AshEngine do
               error_path: List.wrap(name),
               authorize?: opts[:authorize?],
               actor: opts[:actor],
+              tracer: opts[:tracer],
               changeset_dependencies: [[name, :fetch, :data] | request_deps],
               skip_on_nil_record?: true,
               record: fn context ->

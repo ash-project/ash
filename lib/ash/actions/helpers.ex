@@ -44,7 +44,20 @@ defmodule Ash.Actions.Helpers do
           opts
       end
 
-    opts = opts |> add_actor(api) |> add_authorize?(api) |> add_tenant()
+    opts =
+      case query_or_changeset.context do
+        %{
+          private: %{
+            tracer: tracer
+          }
+        } ->
+          Keyword.put_new(opts, :tracer, tracer)
+
+        _ ->
+          opts
+      end
+
+    opts = opts |> add_actor(api) |> add_authorize?(api) |> add_tenant() |> add_tracer()
 
     query_or_changeset = add_context(query_or_changeset, opts)
 
@@ -139,6 +152,26 @@ defmodule Ash.Actions.Helpers do
 
         _ ->
           opts
+      end
+    end
+  end
+
+  defp add_tracer(opts) do
+    if Keyword.has_key?(opts, :tracer) do
+      opts
+    else
+      case Process.get(:ash_tracer) do
+        {:tracer, value} ->
+          Keyword.put(opts, :tracer, value)
+
+        _ ->
+          case Application.get_env(:ash, :tracer) do
+            nil ->
+              opts
+
+            tracer ->
+              Keyword.put(opts, :tracer, tracer)
+          end
       end
     end
   end

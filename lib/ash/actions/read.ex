@@ -10,6 +10,7 @@ defmodule Ash.Actions.Read do
 
   require Logger
   require Ash.Query
+  require Ash.Tracer
 
   def unpaginated_read(query, action \\ nil, opts \\ []) do
     action =
@@ -70,6 +71,40 @@ defmodule Ash.Actions.Read do
   def run(query, action, opts \\ []) do
     {query, opts} = Ash.Actions.Helpers.add_process_context(query.api, query, opts)
 
+    Ash.Tracer.span :action,
+                    Ash.Api.Info.span_name(query.api, query.resource, action.name),
+                    opts[:tracer] do
+      metadata = %{
+        api: query.api,
+        resource: query.resource,
+        resource_short_name: Ash.Resource.Info.short_name(query.resource),
+        actor: opts[:actor],
+        tenant: opts[:tenant],
+        action: action.name,
+        authorize?: opts[:authorize?]
+      }
+
+      Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(query.api), :read], metadata do
+        if opts[:tracer] do
+          opts[:tracer].set_metadata(:action, metadata)
+        end
+
+        case do_run(query, action, opts) do
+          {:error, error} ->
+            if opts[:tracer] do
+              opts[:tracer].set_error(Ash.Error.to_error_class(error))
+            end
+
+            {:error, error}
+
+          other ->
+            other
+        end
+      end
+    end
+  end
+
+  defp do_run(query, action, opts) do
     {query, opts} =
       if opts[:unsafe_no_authorize?] do
         {Ash.Query.set_context(query, %{private: %{authorize?: false}}),
@@ -86,7 +121,7 @@ defmodule Ash.Actions.Read do
     engine_opts =
       opts
       |> Keyword.put(:authorize?, authorize?)
-      |> engine_opts(action, query.api, query.resource)
+      |> engine_opts(action, query.api, query.resource, opts[:tracer])
 
     query =
       if opts[:load] do
@@ -120,7 +155,10 @@ defmodule Ash.Actions.Read do
         request_opts
       end
 
-    request_opts = Keyword.put(request_opts, :lazy?, opts[:lazy?] || false)
+    request_opts =
+      request_opts
+      |> Keyword.put(:lazy?, opts[:lazy?] || false)
+      |> Keyword.put(:tracer, opts[:tracer])
 
     requests =
       as_requests(
@@ -164,6 +202,7 @@ defmodule Ash.Actions.Read do
     timeout = request_opts[:timeout]
     error_path = request_opts[:error_path]
     lazy? = request_opts[:lazy?]
+    tracer = request_opts[:tracer]
 
     query =
       if initial_data && query && lazy? do
@@ -219,6 +258,7 @@ defmodule Ash.Actions.Read do
                     Ash.Query.for_read(resource, action.name, input,
                       tenant: tenant,
                       actor: actor,
+                      tracer: tracer,
                       authorize?: authorize?,
                       timeout: timeout
                     )
@@ -230,7 +270,8 @@ defmodule Ash.Actions.Read do
                       actor: actor,
                       tenant: tenant,
                       authorize?: authorize?,
-                      timeout: timeout
+                      timeout: timeout,
+                      tracer: tracer
                     )
                 end
 
@@ -270,7 +311,7 @@ defmodule Ash.Actions.Read do
                      Load.requests(
                        query,
                        lazy?,
-                       [actor: actor, authorize?: authorize?],
+                       [actor: actor, authorize?: authorize?, tracer: request_opts[:tracer]],
                        path ++ [:fetch]
                      ),
                    {:ok, sort} <-
@@ -314,7 +355,7 @@ defmodule Ash.Actions.Read do
         data: data_field(request_opts, path),
         path: path ++ [:fetch],
         async?: !Keyword.has_key?(request_opts, :initial_data),
-        name: "#{inspect(path)} #{action.type} - fetch `#{action.name}`"
+        name: "fetch #{inspect(resource)}.#{action.name}"
       )
 
     process =
@@ -325,7 +366,7 @@ defmodule Ash.Actions.Read do
         action: action,
         authorize?: false,
         async?: false,
-        name: "#{inspect(path)} #{action.type} - process `#{action.name}`",
+        name: "process #{inspect(resource)}.#{action.name}",
         error_path: error_path,
         data:
           Request.resolve([path ++ [:fetch, :data], path ++ [:fetch, :query]], fn context ->
@@ -465,13 +506,14 @@ defmodule Ash.Actions.Read do
     |> Keyword.merge(Map.get(query.context, :override_api_params) || [])
   end
 
-  defp engine_opts(opts, action, api, resource) do
+  defp engine_opts(opts, action, api, resource, tracer) do
     opts
     |> Keyword.take([:verbose?, :actor, :authorize?, :timeout])
     |> Keyword.put(:transaction?, action.transaction? || opts[:transaction?])
     |> Keyword.put(:default_timeout, Ash.Api.Info.timeout(api))
     |> Keyword.put(:resource, resource)
     |> Keyword.put(:name, "#{inspect(resource)}.#{action.name}")
+    |> Keyword.put(:tracer, tracer)
   end
 
   defp for_read(query, action, opts) do
@@ -1291,7 +1333,7 @@ defmodule Ash.Actions.Read do
             end
           end),
         path: path ++ [:calculation_results, calculation.name],
-        name: "#{inspect(path)} calculation #{calculation.name}"
+        name: "calculate #{calculation.name}"
       )
     else
       Request.new(
@@ -1324,7 +1366,7 @@ defmodule Ash.Actions.Read do
             end
           end),
         path: path ++ [:calculation_results, calculation.name],
-        name: "#{inspect(path)} calculation #{calculation.name}"
+        name: "calculate #{calculation.name}"
       )
     end
   end

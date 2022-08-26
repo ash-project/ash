@@ -18,6 +18,8 @@ defmodule Ash.Flow do
       extensions: [Ash.Flow.Dsl]
     ]
 
+  require Ash.Tracer
+
   @spec run!(any, any, Keyword.t()) :: any
   def run!(flow, input, opts \\ []) do
     case run(flow, input, opts) do
@@ -40,13 +42,20 @@ defmodule Ash.Flow do
       opts
       |> add_actor()
       |> add_tenant()
+      |> add_tracer()
 
-    with {:ok, input} <- cast_input(flow, input),
-         {:ok, built} <- executor.build(flow, input, opts) do
-      executor.execute(built, input, opts)
-    else
-      {:error, error} ->
-        {:error, error}
+    Ash.Tracer.span :flow, Ash.Flow.Info.trace_name(flow), opts[:tracer] do
+      Ash.Tracer.telemetry_span [:ash, :flow], %{
+        flow_short_name: Ash.Flow.Info.short_name(flow)
+      } do
+        with {:ok, input} <- cast_input(flow, input),
+             {:ok, built} <- executor.build(flow, input, opts) do
+          executor.execute(built, input, opts)
+        else
+          {:error, error} ->
+            {:error, error}
+        end
+      end
     end
   end
 
@@ -74,6 +83,20 @@ defmodule Ash.Flow do
 
         _ ->
           opts
+      end
+    end
+  end
+
+  defp add_tracer(opts) do
+    if Keyword.has_key?(opts, :tracer) do
+      opts
+    else
+      case Process.get(:ash_tracer) do
+        {:tracer, value} ->
+          Keyword.put(opts, :tracer, value || Application.get_env(:ash, :tracer))
+
+        _ ->
+          Keyword.put(opts, :tracer, Application.get_env(:ash, :tracer))
       end
     end
   end
@@ -107,6 +130,7 @@ defmodule Ash.Flow do
   end
 
   @doc false
+  # sobelow_skip ["DOS.StringToAtom"]
   def handle_before_compile(_opts) do
     quote bind_quoted: [] do
       {opt_args, args} =
@@ -189,6 +213,18 @@ defmodule Ash.Flow do
         all_input = Map.merge(required_input, opt_input)
 
         Ash.Flow.run(__MODULE__, all_input, opts)
+      end
+
+      @default_short_name __MODULE__
+                          |> Module.split()
+                          |> Enum.reverse()
+                          |> Enum.take(2)
+                          |> Enum.reverse()
+                          |> Enum.map_join("_", &Macro.underscore/1)
+                          |> String.to_atom()
+
+      def default_short_name do
+        @default_short_name
       end
     end
   end

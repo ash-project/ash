@@ -13,6 +13,14 @@ defmodule Ash.Flow.Info do
     Extension.get_opt(flow, [:flow], :returns, nil, false)
   end
 
+  def short_name(flow) do
+    Extension.get_opt(flow, [:flow], :short_name, nil, false) || flow.default_short_name()
+  end
+
+  def trace_name(flow) do
+    Extension.get_opt(flow, [:flow], :trace_name, nil, false) || to_string(short_name(flow))
+  end
+
   def api(flow) do
     Extension.get_opt(flow, [:flow], :api, nil, false)
   end

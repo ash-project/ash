@@ -10,18 +10,49 @@ defmodule Ash do
 
   Use `transfer_context/1` in the new process to set the context.
   """
-  @spec get_context_for_transfer() :: term
-  def get_context_for_transfer do
+  @spec get_context_for_transfer(opts :: Keyword.t()) :: term
+  def get_context_for_transfer(opts \\ []) do
     context = Ash.get_context()
     actor = Process.get(:ash_actor)
     authorize? = Process.get(:ash_authorize?)
     tenant = Process.get(:ash_tenant)
+    tracer = Process.get(:ash_tracer)
 
-    %{context: context, actor: actor, tenant: tenant, authorize?: authorize?}
+    tracer_context =
+      if opts[:tracer] do
+        {:tracer_context, opts[:tracer].get_span_context()}
+      else
+        case tracer do
+          {:tracer, tracer} ->
+            {:tracer_context, tracer.get_span_context()}
+
+          _ ->
+            nil
+        end
+      end
+
+    %{
+      context: context,
+      actor: actor,
+      tenant: tenant,
+      authorize?: authorize?,
+      tracer: tracer,
+      tracer_context: tracer_context
+    }
   end
 
-  @spec transfer_context(term) :: :ok
-  def transfer_context(%{context: context, actor: actor, tenant: tenant, authorize?: authorize?}) do
+  @spec transfer_context(term, opts :: Keyword.t()) :: :ok
+  def transfer_context(
+        %{
+          context: context,
+          actor: actor,
+          tenant: tenant,
+          authorize?: authorize?,
+          tracer: tracer,
+          tracer_context: tracer_context
+        },
+        opts \\ []
+      ) do
     case actor do
       {:actor, actor} ->
         Ash.set_actor(actor)
@@ -44,6 +75,44 @@ defmodule Ash do
 
       _ ->
         :ok
+    end
+
+    if opts[:tracer] do
+      case tracer_context do
+        {:tracer_context, tracer_context} ->
+          opts[:tracer].set_span_context(tracer_context)
+
+        _ ->
+          :ok
+      end
+    else
+      case tracer do
+        {:tracer, tracer} ->
+          Ash.set_tracer(tracer)
+
+          case tracer_context do
+            {:tracer_context, tracer_context} ->
+              tracer.set_span_context(tracer_context)
+
+            _ ->
+              :ok
+          end
+
+        _ ->
+          tracer = Application.get_env(:ash, :tracer) || opts[:tracer]
+
+          if tracer do
+            case tracer_context do
+              {:tracer_context, tracer_context} ->
+                tracer.set_span_context(tracer_context)
+
+              _ ->
+                :ok
+            end
+          end
+
+          :ok
+      end
     end
 
     Ash.set_context(context)
@@ -80,6 +149,16 @@ defmodule Ash do
   end
 
   @doc """
+  Sets the tracer into the process dictionary that will be used to trace requests
+  """
+  @spec set_tracer(module) :: :ok
+  def set_tracer(module) do
+    Process.put(:ash_tracer, module)
+
+    :ok
+  end
+
+  @doc """
   Gets the current actor from the process dictionary
   """
   @spec get_actor() :: term()
@@ -90,6 +169,20 @@ defmodule Ash do
 
       _ ->
         nil
+    end
+  end
+
+  @doc """
+  Gets the current tracer
+  """
+  @spec get_tracer() :: term()
+  def get_tracer do
+    case Process.get(:ash_tracer) do
+      {:tracer, value} ->
+        value
+
+      _ ->
+        Application.get_env(:ash, :tracer)
     end
   end
 

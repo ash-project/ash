@@ -103,6 +103,23 @@ defmodule Ash.Resource.Info do
   end
 
   @doc """
+  The trace_name of the resource
+  """
+  @spec trace_name(Ash.Resource.t()) :: String.t() | nil
+  def trace_name(resource) do
+    Extension.get_opt(resource, [:resource], :trace_name, nil) || to_string(short_name(resource))
+    resource |> Module.split() |> List.last()
+  end
+
+  @doc """
+  The short_name of the resource
+  """
+  @spec short_name(Ash.Resource.t()) :: String.t() | nil
+  def short_name(resource) do
+    Extension.get_opt(resource, [:resource], :short_name, nil) || resource.default_short_name()
+  end
+
+  @doc """
   The base filter of the resource
   """
   @spec base_filter(Ash.Resource.t()) :: term
