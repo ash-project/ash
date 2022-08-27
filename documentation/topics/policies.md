@@ -27,8 +27,7 @@ Every policy that applies must pass for a given request.
 For example, a policy might have a condition `action_type(:read)` and another one might
 have a condition like `actor_attribute_equals(:admin, true)`. 
 If both apply (i.e an admin is using a read action), then both policies must pass.
-A policy can produce one of three results: `:forbidden`, `:authorized`, or `:unknown`. `:unknown` is treated
-the same as a `:forbidden`.
+A policy can produce one of three results: `:forbidden`, `:authorized`, or `:unknown`. `:unknown` is treated the same as a `:forbidden`.
 A policy contains checks, which determine whether or not the policy passes for a given request.
 
 #### Bypass
@@ -118,9 +117,7 @@ public or owner == actor(:_primary_key)
 
 To understand what `actor(:_primary_key)` means, see the Filter Templates section in `Ash.Filter`
 
-To change this behavior, use `access_type :strict`. With `access_type :strict` you will force the request to fail unless a filter was provided to yield the appropriate data. In this case, any filter that is a subset of the authorization filter would work. For example: `[public: true]`, or `[owner: [id: current_user.id]]`.
-
-Additionally, some checks have more expensive components that can't be checked before the request is run. To enable those, use the `access_type :runtime`. This is still relatively experimental, but this will attempt to run as much of your checks in a strict fashion, and attach as many things as filters as possible, before running the expensive portion of the checks (defined on the check as `c:Ash.Policy.Check.check/4`)
+Additionally, some checks have more expensive components that can't be checked before the request is run. To enable those, use the `access_type :runtime`. All checks that can be implemented as filters or strict checks will still be done that way, but this enables checks to run their `check/4` callback if necessary.
 
 ### Custom checks
 

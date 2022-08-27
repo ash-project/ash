@@ -14,10 +14,18 @@ aggregates do
 end
 ```
 
-See the documentation for the aggregates section in `Ash.Resource.Dsl` for more information.
+The available aggregate types are:
+
+- `count` - counts related items meeting the criteria
+- `first` - gets the first related value matching the criteria. Must specify the `field` to get.
+- `sum` - sums the related items meeting the criteria. Must specify the `field` to sum.
+- `list` - lists the related values. Must specify the `field` to list.
+
+See the docs on {{link:ash:dsl:aggregates/aggregate}} for more information.
 
 The aggregates declared on a resource allow for declaring a set of named aggregates that can be used by extensions.
-They can also be loaded in the query using `Ash.Query.load/2`, or after the fact using `c:Ash.Api.load/3`. Aggregates declared on the resource will be keys in the resource's struct.
+
+As an escape hatch, they can also be loaded in the query using `Ash.Query.load/2`, or after the fact using `c:Ash.Api.load/3`. Aggregates declared on the resource will be keys in the resource's struct.
 
 ## Custom aggregates in the query
 
