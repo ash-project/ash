@@ -68,10 +68,10 @@ And here is the "right way", where the rules about getting the top tickets have 
 code_interface do
   define_for Helpdesk.Support
 
-  define :top, args: [:user_id]
+  define :top_tickets, args: [:user_id]
 end
 
-read :top do
+read :top_tickets do
   argument :user_id, :uuid do
     allow_nil? false
   end
@@ -82,11 +82,11 @@ read :top do
 end
 ```
 
-Now, whatever code I had that would have called `top_tickets/1` can now simply call `Helpdesk.Support.Ticket.top(user.id)`. By doing it this way, you get the primary benefit of getting a nice simple Api to call into, but you *also* have a way to modify how the action is invoked in any way necessary, by going back to the old way of simply building the query. For example, if I also only want to see top tickets that were opened in the last 10 minutes:
+Now, whatever code I had that would have called `top_tickets/1` can now simply call `Helpdesk.Support.top_tickets(user.id)`. By doing it this way, you get the primary benefit of getting a nice simple Api to call into, but you *also* have a way to modify how the action is invoked in any way necessary, by going back to the old way of simply building the query. For example, if I also only want to see top tickets that were opened in the last 10 minutes:
 
 ```elixir
 Ticket
-|> Ash.Query.for_read(:top)
+|> Ash.Query.for_read(:top_tickets)
 |> Ash.Query.filter(opened_at > ago(10, :minute))
 |> Helpdesk.Support.read!()
 ```
