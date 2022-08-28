@@ -290,9 +290,7 @@ defmodule Ash.Query do
           authorize?: opts[:authorize?]
         }
 
-        if opts[:tracer] do
-          opts[:tracer].set_metadata(:query, metadata)
-        end
+        Ash.Tracer.set_metadata(opts[:tracer], :query, metadata)
 
         query = Map.put(query, :action, action.name)
 
@@ -305,9 +303,10 @@ defmodule Ash.Query do
         |> Map.put(:action, action)
         |> Map.put(:__validated_for_action__, action_name)
         |> cast_params(action, args)
+        |> set_argument_defaults(action)
+        |> require_arguments(action)
         |> run_preparations(action, opts[:actor], opts[:authorize?], opts[:tracer], metadata)
         |> add_action_filters(action, opts[:actor])
-        |> require_arguments(action)
       end
     else
       add_error(query, :action, "No such action #{action_name}")
@@ -349,12 +348,6 @@ defmodule Ash.Query do
   end
 
   defp require_arguments(query, action) do
-    query
-    |> set_argument_defaults(action)
-    |> do_require_arguments(action)
-  end
-
-  defp do_require_arguments(query, action) do
     action.arguments
     |> Enum.filter(&(&1.allow_nil? == false))
     |> Enum.reduce(query, fn argument, query ->
@@ -423,9 +416,7 @@ defmodule Ash.Query do
           resource_short_name: Ash.Resource.Info.short_name(query.resource),
           preparation: inspect(module)
         } do
-          if tracer do
-            tracer.set_metadata(:preparation, metadata)
-          end
+          Ash.Tracer.set_metadata(opts[:tracer], :preparation, metadata)
 
           case module.init(opts) do
             {:ok, opts} ->
@@ -777,18 +768,30 @@ defmodule Ash.Query do
   """
   def select(query, fields, opts \\ []) do
     query = to_query(query)
+    fields = List.wrap(fields)
+
+    {fields, non_existent} =
+      Enum.split_with(fields, &Ash.Resource.Info.attribute(query.resource, &1))
+
+    query =
+      Enum.reduce(non_existent, query, fn field, query ->
+        Ash.Query.add_error(
+          query,
+          Ash.Error.Query.NoSuchAttribute.exception(resource: query.resource, name: field)
+        )
+      end)
 
     if opts[:replace?] do
       %{
         query
-        | select: Enum.uniq(List.wrap(fields) ++ Ash.Resource.Info.primary_key(query.resource))
+        | select: Enum.uniq(fields ++ Ash.Resource.Info.primary_key(query.resource))
       }
     else
       %{
         query
         | select:
             Enum.uniq(
-              List.wrap(fields) ++
+              fields ++
                 (query.select || []) ++ Ash.Resource.Info.primary_key(query.resource)
             )
       }

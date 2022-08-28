@@ -524,9 +524,7 @@ defmodule Ash.Changeset do
                 authorize?: opts[:authorize?]
               }
 
-              if opts[:tracer] do
-                opts[:tracer].set_metadata(:changeset, metadata)
-              end
+              Ash.Tracer.set_metadata(opts[:tracer], :changeset, metadata)
 
               changeset
               |> handle_errors(action.error_handler)
@@ -538,6 +536,7 @@ defmodule Ash.Changeset do
               |> Map.put(:action, action)
               |> cast_params(action, params)
               |> set_argument_defaults(action)
+              |> require_arguments(action)
               |> run_action_changes(
                 action,
                 opts[:actor],
@@ -547,7 +546,6 @@ defmodule Ash.Changeset do
               )
               |> add_validations(opts[:tracer], metadata)
               |> mark_validated(action.name)
-              |> require_arguments(action)
             end
           end
         end
@@ -649,9 +647,7 @@ defmodule Ash.Changeset do
               authorize?: opts[:authorize?]
             }
 
-            if opts[:tracer] do
-              opts[:tracer].set_metadata(:changeset, metadata)
-            end
+            Ash.Tracer.set_metadata(opts[:tracer], :changeset, metadata)
 
             changeset =
               changeset
@@ -667,6 +663,7 @@ defmodule Ash.Changeset do
               |> Map.put(:__validated_for_action__, action.name)
               |> cast_params(action, params || %{})
               |> set_argument_defaults(action)
+              |> require_arguments(action)
               |> validate_attributes_accepted(action)
               |> require_values(action.type, false, action.require_attributes)
               |> run_action_changes(
@@ -679,7 +676,6 @@ defmodule Ash.Changeset do
               |> set_defaults(changeset.action_type, false)
               |> add_validations(opts[:tracer], metadata)
               |> mark_validated(action.name)
-              |> require_arguments(action)
               |> eager_validate_identities()
 
             if Keyword.get(opts, :require?, true) do
@@ -798,11 +794,6 @@ defmodule Ash.Changeset do
   end
 
   defp require_arguments(changeset, action) do
-    changeset
-    |> do_require_arguments(action)
-  end
-
-  defp do_require_arguments(changeset, action) do
     action.arguments
     |> Enum.filter(&(&1.allow_nil? == false))
     |> Enum.reduce(changeset, fn argument, changeset ->
@@ -966,9 +957,7 @@ defmodule Ash.Changeset do
                  resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
                  validation: inspect(module)
                } do
-                 if tracer do
-                   tracer.set_metadata(:validation, metadata)
-                 end
+                 Ash.Tracer.set_metadata(opts[:tracer], :validation, metadata)
 
                  module.validate(changeset, opts) == :ok
                end
@@ -981,9 +970,7 @@ defmodule Ash.Changeset do
             } do
               {:ok, opts} = module.init(opts)
 
-              if tracer do
-                tracer.set_metadata(:change, metadata)
-              end
+              Ash.Tracer.set_metadata(opts[:tracer], :change, metadata)
 
               module.change(changeset, opts, %{
                 actor: actor,
@@ -1178,9 +1165,7 @@ defmodule Ash.Changeset do
           resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
           validation: inspect(validation.module)
         } do
-          if tracer do
-            tracer.set_metadata(:validation, metadata)
-          end
+          Ash.Tracer.set_metadata(tracer, :validation, metadata)
 
           case validation.module.validate(changeset, validation.opts) do
             :ok ->
@@ -1423,7 +1408,30 @@ defmodule Ash.Changeset do
         changeset.before_action,
         {changeset, %{notifications: []}},
         fn before_action, {changeset, instructions} ->
-          case before_action.(changeset) do
+          metadata = %{
+            api: changeset.api,
+            resource: changeset.resource,
+            resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+            actor: changeset.context[:private][:actor],
+            tenant: changeset.context[:private][:actor],
+            action: changeset.action && changeset.action.name,
+            authorize?: changeset.context[:private][:authorize?]
+          }
+
+          tracer = changeset.context[:private][:tracer]
+
+          result =
+            Ash.Tracer.span :before_action,
+                            "before_action",
+                            tracer do
+              Ash.Tracer.set_metadata(tracer, :before_action, metadata)
+
+              Ash.Tracer.telemetry_span [:ash, :before_action], metadata do
+                before_action.(changeset)
+              end
+            end
+
+          case result do
             {changeset, %{notifications: notifications}} ->
               cont =
                 if changeset.valid? do
@@ -1482,7 +1490,30 @@ defmodule Ash.Changeset do
       changeset.after_action,
       {:ok, result, changeset, %{notifications: before_action_notifications}},
       fn after_action, {:ok, result, changeset, %{notifications: notifications} = acc} ->
-        case after_action.(changeset, result) do
+        tracer = changeset.context[:private][:tracer]
+
+        metadata = %{
+          api: changeset.api,
+          resource: changeset.resource,
+          resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+          actor: changeset.context[:private][:actor],
+          tenant: changeset.context[:private][:actor],
+          action: changeset.action && changeset.action.name,
+          authorize?: changeset.context[:private][:authorize?]
+        }
+
+        result =
+          Ash.Tracer.span :after_action,
+                          "after_action",
+                          tracer do
+            Ash.Tracer.set_metadata(tracer, :after_action, metadata)
+
+            Ash.Tracer.telemetry_span [:ash, :after_action], metadata do
+              after_action.(changeset, result)
+            end
+          end
+
+        case result do
           {:ok, new_result, new_notifications} ->
             all_notifications =
               Enum.map(notifications ++ new_notifications, fn notification ->
