@@ -130,14 +130,19 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
         [list ++ [:start], list ++ [:stop]]
       end)
 
-    :telemetry.attach_many(
-      :test_handler,
-      events,
-      fn event_name, event_measurements, event_metadata, handler_config ->
-        send(pid, {:telemetry, {event_name, event_measurements, event_metadata, handler_config}})
-      end,
-      []
-    )
+    capture_log(fn ->
+      :telemetry.attach_many(
+        :test_handler,
+        events,
+        fn event_name, event_measurements, event_metadata, handler_config ->
+          send(
+            pid,
+            {:telemetry, {event_name, event_measurements, event_metadata, handler_config}}
+          )
+        end,
+        []
+      )
+    end)
 
     on_exit(fn ->
       :telemetry.detach(:test_handler)

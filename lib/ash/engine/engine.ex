@@ -424,9 +424,7 @@ defmodule Ash.Engine do
                     authorize?: request.authorize?
                   }
 
-                  if request.tracer do
-                    request.tracer.set_metadata(:request_step, metadata)
-                  end
+                  Ash.Tracer.set_metadata(request.tracer, :request_step, metadata)
 
                   Ash.Tracer.telemetry_span [:ash, :request_step], %{name: request.name} do
                     {request.path, request.data.resolver.(resolver_context)}

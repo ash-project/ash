@@ -85,9 +85,7 @@ defmodule Ash.Actions.Read do
       }
 
       Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(query.api), :read], metadata do
-        if opts[:tracer] do
-          opts[:tracer].set_metadata(:action, metadata)
-        end
+        Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 
         case do_run(query, action, opts) do
           {:error, error} ->

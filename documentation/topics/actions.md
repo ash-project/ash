@@ -95,20 +95,86 @@ That is the best of both worlds! These same lessons transfer to changeset based 
 
 ## How Do Actions Work
 
+Ash uses an "engine" internally that takes lists of "requests" that have dependencies on each-other, and resolves them in some acceptable order. This engine allows for things like parallelizing steps and performing complex workflows without having to handwrite all of the control flow. It isn't important that you know how the engine works, but knowing the basic idea of "list of requests get sent to the engine" should help contextualize the following flow charts.
+
 ### Read Actions
 
 Read actions operate on an `Ash.Query`. They take no input by default, but arguments can be added to the action. All read actions expect to work on lists. The act of pagination, or returning a single result, is handled as part of the interface, and is not a concern of the action itself. Here is an example of a read action:
 
 ```elixir
 # Giving your actions informative names is always a good idea
-# We do
 read :ticket_queue do
+  # Use arguments to take in values to run your read action.
   argument :priorities, {:array, :atom} do
     constraints items: [one_of: [:low, :medium, :high]]
   end
 
+  # This action may be paginated, and returns a total count of records by default
+  pagination offset: true, countable: :by_default
+
+  # Use arguments to modify filters
+  # You can also use arguments in custom preparations using `Ash.Changeset.get_argument/2`
+  # This is useful when a simple filter like the one below does not suffice
   filter expr(status == :open and priority in ^arg(:priorities))
 end
 ```
 
-***TBD mermaid chart here, and same type of explanation for create/update/destroy ***
+#### Ash.Query.for_read/4
+
+The following steps are performed when you call `Ash.Query.for_read/4`. 
+
+- Gather process context | {{link:ash:guide:Store Context In Process}}
+- Cast input arguments | {{link:ash:dsl:resource/actions/read/argument}
+- Set default argument values | {{link:ash:option:resource/actions/read/argument/default}}
+- Run query preparations | {{link:ash:dsl:resource/actions/read/prepare}}
+- Add action filter | {{link:ash:option:resource/actions/read/filter}}
+- Add errors for missing required arguments | {{link:ash:option:resource/actions/read/argument/allow_nil?}}
+
+#### Running the Read Action
+
+If the query has not yet been run through `Ash.Query.for_read/3` for the action in question, we do that first.  Then we perform the following steps. These steps are trimmed down, and are aimed at helping users understand the general flow. Some steps are omitted.
+
+- Gather process context | {{link:ash:guide:Store Context In Process}}
+- Run `Ash.Query.for_read/3` if it has not already been run
+- Apply tenant Filters for attribute {{link:ash:guide:Multitenancy}} 
+- Apply pagination options
+- Run before action hooks
+- Multi-datalayer filter is synthesized. We run queries in other data layers to fetch ids and translate related filters to `(destination_field in ^ids)`
+- Strict Check & Filter Authorization is run
+- Data layer query is built and validated
+- Data layer query is Run
+- Authorizer "runtime" checks are run (you likely do not have any of these)
+
+The following steps happen asynchronously during or after the main data layer query has been run
+
+- If paginating and count was requested, the count is determined at the same time as the query is run.
+- Any calculations & aggregates that were able to be run outside of the main query are run
+- Any relationships are loaded
+
+### Create/Update/Destroy Actions
+
+These actions operate on an `Ash.Changeset`. While standard destroy actions don't care about the changes you add to a changeset, you may mark a destroy action as {{ash:option:/resource/actions/destroy/soft?}}, which means you will be performing an update that will in some way "hide" the resource. Generally this hiding is done by adding a {{ash:option:resource/base_filter}} i.e `base_filter [is_nil: :archived_at]`
+
+#### Changesets for actions
+
+The following steps are run when calling `Ash.Changeset.for_create/4`, `Ash.Changeset.for_update/4` or `Ash.Changeset.for_destroy/4`.
+
+- Gather process context | {{link:ash:guide:Store Context In Process}}
+- Cast input params | This is any arguments in addition to any accepted attributes
+- Set argument defaults
+- Require any missing arguments
+- Run action changes
+- Run validations, or add them in `before_action` hooks if using {{link:ash:option:resource/actions/create/validate#before_action?}}
+
+#### Running The Create/Update/Destroy Action
+
+All of these actions are run in a transaction if the data layer supports it. You can opt out of this behavior by supplying `transaction?: false` when creating the action. When an action is being run in a transaction, all steps inside of it are serialized, because generally speaking, transactions cannot be split across processes.
+
+- Authorization is performed on the changes
+- A before action hook is added to set up belongs_to relationships that are managed. This means potentially creating/modifying the destination of the relationship, and then changing the `destination_attribute` of the relationship.
+- Before action hooks are performed in reverse order they were added. (unless `append?` option was used)
+- For manual actions, a before action hook must have set 
+- After action hooks are performed in the order they were added (unless `prepend?` option was used)
+- For {{link:ash:guide:Manual Actions}}, one of these after action hooks must have returned a result, otherwise an error is returned.
+- Non-belongs-to relationships are managed, creating/updating/destroying related records.
+- If an `after_action` option was passed when running the action, it is run with the changeset and the result. Only supported for create & update actions.

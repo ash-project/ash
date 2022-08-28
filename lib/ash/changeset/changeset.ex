@@ -2861,26 +2861,47 @@ defmodule Ash.Changeset do
     end
   end
 
-  @doc "Adds a before_action hook to the changeset."
+  @doc """
+  Adds a before_action hook to the changeset.
+
+  Provide the option `append?: true` to place the hook after all
+  other hooks instead of before.
+  """
   @spec before_action(
           t(),
-          (t() -> t() | {t(), %{notifications: list(Ash.Notifier.Notification.t())}})
+          (t() -> t() | {t(), %{notifications: list(Ash.Notifier.Notification.t())}}),
+          Keyword.t()
         ) ::
           t()
-  def before_action(changeset, func) do
-    %{changeset | before_action: [func | changeset.before_action]}
+  def before_action(changeset, func, opts \\ []) do
+    if opts[:append?] do
+      %{changeset | before_action: changeset.before_action ++ [func]}
+    else
+      %{changeset | before_action: [func | changeset.before_action]}
+    end
   end
 
-  @doc "Adds an after_action hook to the changeset."
+  @doc """
+  Adds an after_action hook to the changeset.
+
+
+  Provide the option `prepend?: true` to place the hook before all
+  other hooks instead of after.
+  """
   @spec after_action(
           t(),
           (t(), Ash.Resource.record() ->
              {:ok, Ash.Resource.record()}
              | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
-             | {:error, term})
+             | {:error, term}),
+          Keyword.t()
         ) :: t()
-  def after_action(changeset, func) do
-    %{changeset | after_action: changeset.after_action ++ [func]}
+  def after_action(changeset, func, opts \\ []) do
+    if opts[:prepend?] do
+      %{changeset | after_action: [func | changeset.after_action]}
+    else
+      %{changeset | after_action: changeset.after_action ++ [func]}
+    end
   end
 
   @doc """

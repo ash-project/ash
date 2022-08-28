@@ -523,9 +523,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                     step: inspect(mod)
                   }
 
-                  if opts[:tracer] do
-                    opts[:tracer].set_metadata(metadata)
-                  end
+                  Ash.Tracer.set_metadata(opts[:tracer], :custom_flow_step, metadata)
 
                   Ash.Tracer.telemetry_span [:ash, :flow, :custom_step], metadata do
                     mod.run(custom_input, opts, context_arg)

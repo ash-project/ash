@@ -32,9 +32,7 @@ defmodule Ash.Actions.Update do
         authorize?: opts[:authorize?]
       }
 
-      if opts[:tracer] do
-        opts[:tracer].set_metadata(:metadata, metadata)
-      end
+      Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 
       Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(api), :update], metadata do
         case do_run(api, changeset, action, opts) do

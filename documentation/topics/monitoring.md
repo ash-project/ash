@@ -40,7 +40,37 @@ Ash emits the following telemetry events, suffixed with `:start` and `:stop`. St
 - `[:ash, :query]` - A query being processed for an action, with `Ash.Query.for_read`. Use `resource_short_name` metadata to break down measurements.
 - `[:ash, :validation]` - A validation being run on a changeset. Use `resource_short_name` and `validation` metadata to break down measurements.
 - `[:ash, :change]` - A change being run on a changeset. Use `resource_short_name` and `change` metadata to break down measurements.
+- `[:ash, :before_action]` - A before_action being run on a changeset. Use `resource_short_name` to break down measurements. 
+- `[:ash, :after_action]` - An after_action being run on a changeset. Use `resource_short_name` to break down measurements.
+- `[:ash, :after_action]` - A before_action being run on a changeset.
 - `[:ash, :preparation]` - A preparation being run on a changeset. Use `resource_short_name` and `preparation` metadata to break down measurements.
 - `[:ash, :request_step]` - The resolution of an internal request. Ash breaks up its operations internally into multiple requests, this can give you a high resolution insight onto the execution of those internal requests resolution. Use `name` metadata to break down measurements.
 - `[:ash, :flow]` - The execution of an Ash flow. Use `flow_short_name` to break down measurements.
 - `[:ash, :flow, :custom_step]` - The execution of a custom flow step (only if using the built in runner, which is currently the only runner). Use `flow_short_name` and `name` metadata to break down measurements. 
+
+## After/Before Action Hooks
+
+Due to the way before/after action hooks run, their execution time won't be included in the span created for the change. In practice, before/after action hooks are where the long running operations tend to be. We start a corresponding `span` and emit a telemetry event for before and after hooks, but they are only so useful. In a trace, they can highlight that "some hook" took a long time. In telemetry metrics they are of even less use. The cardinality of the metric would be extremely high, and we don't have a "name" or anything to distinguish them. To that end, you can use the macros & functions available in `Ash.Tracer` to create custom spans and/or emit custom telemetry events from your hooks. They automatically handle cases where the provided tracer is `nil`, for convenience. For example:
+
+```elixir
+defmodule MyApp.CustomChange do
+  use Ash.Resource.Change
+
+  require Ash.Tracer
+
+  def change(changeset, _, _) do
+    changeset
+    |> Ash.Changeset.before_action(fn changeset -> 
+      Ash.Tracer.span(:custom, "custom name", changeset.context[:private][:tracer]) do
+        # optionally set some metadata
+        metadata = %{...}
+        Ash.Tracer.set_metadata(changeset.context[:private][:tracer], :custom, metadata)
+        # will get `:start` and `:stop` suffixed events emitted
+        Ash.Tracer.telemetry_span([:telemetry, :event, :name], metadata) do
+          ## Your logic here
+        end
+      end
+    end)
+  end
+end
+```

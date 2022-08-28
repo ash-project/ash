@@ -13,6 +13,7 @@ defmodule Ash.Tracer do
           | :validation
           | :preparation
           | :custom_flow_step
+          | :custom
           | {:custom, atom()}
 
   @type metadata() :: %{
@@ -86,6 +87,12 @@ defmodule Ash.Tracer do
         )
       end
     end
+  end
+
+  def set_metadata(nil, _type, _metadata), do: :ok
+
+  def set_metadata(tracer, type, metadata) do
+    tracer.set_metadata(type, metadata)
   end
 
   defmacro __using__(_) do
