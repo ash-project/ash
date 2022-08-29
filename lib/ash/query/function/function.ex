@@ -16,6 +16,7 @@ defmodule Ash.Query.Function do
   @callback args() :: [arg]
   @callback new(list(term)) :: {:ok, term} | {:error, String.t() | Exception.t()}
   @callback evaluate(func :: map) :: :unknown | {:known, term}
+  @callback private?() :: boolean
 
   def new(mod, args) do
     args = List.wrap(args)
@@ -149,6 +150,8 @@ defmodule Ash.Query.Function do
       def evaluate(_), do: :unknown
 
       def predicate?, do: unquote(opts[:predicate?] || false)
+
+      def private?, do: false
 
       defoverridable new: 1, evaluate: 1
 

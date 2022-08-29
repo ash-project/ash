@@ -781,10 +781,17 @@ defmodule Ash.Query do
         )
       end)
 
+    always_select =
+      query.resource
+      |> Ash.Resource.Info.attributes()
+      |> Enum.filter(& &1.always_select?)
+      |> Enum.map(& &1.name)
+
     if opts[:replace?] do
       %{
         query
-        | select: Enum.uniq(fields ++ Ash.Resource.Info.primary_key(query.resource))
+        | select:
+            Enum.uniq(fields ++ Ash.Resource.Info.primary_key(query.resource) ++ always_select)
       }
     else
       %{
@@ -792,7 +799,8 @@ defmodule Ash.Query do
         | select:
             Enum.uniq(
               fields ++
-                (query.select || []) ++ Ash.Resource.Info.primary_key(query.resource)
+                (query.select || []) ++
+                Ash.Resource.Info.primary_key(query.resource) ++ always_select
             )
       }
     end

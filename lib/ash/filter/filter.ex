@@ -1852,7 +1852,7 @@ defmodule Ash.Filter do
 
   defp add_expression_part({function, args}, context, expression)
        when is_tuple(args) and is_atom(function) do
-    case get_function(function, context.resource) do
+    case get_function(function, context.resource, context.public?) do
       nil ->
         {:error,
          NoSuchAttributeOrRelationship.exception(
@@ -2213,7 +2213,7 @@ defmodule Ash.Filter do
              refs <- list_refs(args),
              :ok <- validate_not_crossing_datalayer_boundaries(refs, context.resource, call),
              {:func, function_module} when not is_nil(function_module) <-
-               {:func, get_function(name, context.resource)},
+               {:func, get_function(name, context.resource, context.public?)},
              {:ok, function} <-
                Function.new(
                  function_module,
@@ -2619,17 +2619,31 @@ defmodule Ash.Filter do
     end
   end
 
-  def get_function(key, resource) when is_atom(key) do
-    @builtin_functions[key] ||
-      Enum.find(Ash.DataLayer.data_layer_functions(resource), &(&1.name() == key))
+  def get_function(key, resource, public?) when is_atom(key) do
+    function =
+      @builtin_functions[key] ||
+        Enum.find(Ash.DataLayer.data_layer_functions(resource), &(&1.name() == key))
+
+    if public? && function && function.private?() do
+      nil
+    else
+      function
+    end
   end
 
-  def get_function(key, resource) when is_binary(key) do
-    Map.get(@string_builtin_functions, key) ||
-      Enum.find(Ash.DataLayer.data_layer_functions(resource), &(&1.name() == key))
+  def get_function(key, resource, public?) when is_binary(key) do
+    function =
+      Map.get(@string_builtin_functions, key) ||
+        Enum.find(Ash.DataLayer.data_layer_functions(resource), &(&1.name() == key))
+
+    if public? && function && function.private?() do
+      nil
+    else
+      function
+    end
   end
 
-  def get_function(_, _), do: nil
+  def get_function(_, _, _), do: nil
 
   def get_operator(key) when is_atom(key) do
     @builtin_operators[key]
