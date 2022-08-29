@@ -155,6 +155,30 @@ The following steps happen asynchronously during or after the main data layer qu
 
 These actions operate on an `Ash.Changeset`. While standard destroy actions don't care about the changes you add to a changeset, you may mark a destroy action as {{ash:option:/resource/actions/destroy/soft?}}, which means you will be performing an update that will in some way "hide" the resource. Generally this hiding is done by adding a {{ash:option:resource/base_filter}} i.e `base_filter [is_nil: :archived_at]`
 
+Here is an example create action:
+
+```elixir
+create :register do
+  # By default all public attributes are accepted, but this should only take email
+  accept [:email]
+
+  # Accept additional input by adding arguments
+  argument :password, :string do
+    allow_nil? false
+  end
+
+  argument :password_confirmation, :string do
+    allow_nil? false
+  end
+
+  # Use the built in `confirm/2` validation
+  validate confirm(:password, :password_confirmation)
+
+  # Call a custom change that will hash the password
+  change MyApp.User.Changes.HashPassword
+end
+```
+
 #### Changesets for actions
 
 The following steps are run when calling `Ash.Changeset.for_create/4`, `Ash.Changeset.for_update/4` or `Ash.Changeset.for_destroy/4`.
@@ -166,7 +190,7 @@ The following steps are run when calling `Ash.Changeset.for_create/4`, `Ash.Chan
 - Run action changes
 - Run validations, or add them in `before_action` hooks if using {{link:ash:option:resource/actions/create/validate#before_action?}}
 
-#### Running The Create/Update/Destroy Action
+#### Running the Create/Update/Destroy Action
 
 All of these actions are run in a transaction if the data layer supports it. You can opt out of this behavior by supplying `transaction?: false` when creating the action. When an action is being run in a transaction, all steps inside of it are serialized, because generally speaking, transactions cannot be split across processes.
 
