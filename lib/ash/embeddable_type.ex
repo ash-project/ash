@@ -563,59 +563,66 @@ defmodule Ash.EmbeddableType do
 
           new_uncasted_values
           |> Enum.with_index()
-          |> Enum.reduce_while({:ok, []}, fn {new, index}, {:ok, new_uncasted_values} ->
-            pkey =
-              Enum.into(pkey_fields, %{}, fn pkey_field ->
-                case fetch_key(new, pkey_field) do
-                  :error ->
-                    {pkey_field, :error}
-
-                  {:ok, value} ->
-                    attr = Map.get(pkey_attributes, pkey_field)
-
-                    case Ash.Type.cast_input(attr.type, value, attr.constraints) do
-                      {:ok, casted} ->
-                        {pkey_field, casted}
-
-                      _ ->
-                        {pkey_field, :error}
-                    end
-                end
-              end)
-
-            if Enum.any?(Map.values(pkey), &(&1 == :error)) do
-              {:cont, {:ok, [new | new_uncasted_values]}}
-            else
-              value_updating_from =
-                Enum.find(old_values, fn old_value ->
-                  Map.take(old_value, pkey_fields) == pkey
-                end)
-
-              if value_updating_from do
-                value_updating_from
-                |> Ash.Changeset.new()
-                |> Ash.Changeset.set_context(%{__source__: constraints[:__source__]})
-                |> Ash.Changeset.for_update(action, new)
-                |> ShadowApi.update()
-                |> case do
-                  {:ok, value} ->
-                    {:cont, {:ok, [value | new_uncasted_values]}}
-
-                  {:error, error} ->
-                    errors =
-                      error
-                      |> Ash.EmbeddableType.handle_errors()
-                      |> Enum.map(fn keyword ->
-                        Keyword.put(keyword, :index, index)
-                      end)
-
-                    {:halt, {:error, errors}}
-                end
-              else
+          |> Enum.reduce_while(
+            {:ok, []},
+            fn
+              {new, _index}, {:ok, new_uncasted_values} when is_struct(new, __MODULE__) ->
                 {:cont, {:ok, [new | new_uncasted_values]}}
-              end
+
+              {new, index}, {:ok, new_uncasted_values} ->
+                pkey =
+                  Enum.into(pkey_fields, %{}, fn pkey_field ->
+                    case fetch_key(new, pkey_field) do
+                      :error ->
+                        {pkey_field, :error}
+
+                      {:ok, value} ->
+                        attr = Map.get(pkey_attributes, pkey_field)
+
+                        case Ash.Type.cast_input(attr.type, value, attr.constraints) do
+                          {:ok, casted} ->
+                            {pkey_field, casted}
+
+                          _ ->
+                            {pkey_field, :error}
+                        end
+                    end
+                  end)
+
+                if Enum.any?(Map.values(pkey), &(&1 == :error)) do
+                  {:cont, {:ok, [new | new_uncasted_values]}}
+                else
+                  value_updating_from =
+                    Enum.find(old_values, fn old_value ->
+                      Map.take(old_value, pkey_fields) == pkey
+                    end)
+
+                  if value_updating_from do
+                    value_updating_from
+                    |> Ash.Changeset.new()
+                    |> Ash.Changeset.set_context(%{__source__: constraints[:__source__]})
+                    |> Ash.Changeset.for_update(action, new)
+                    |> ShadowApi.update()
+                    |> case do
+                      {:ok, value} ->
+                        {:cont, {:ok, [value | new_uncasted_values]}}
+
+                      {:error, error} ->
+                        errors =
+                          error
+                          |> Ash.EmbeddableType.handle_errors()
+                          |> Enum.map(fn keyword ->
+                            Keyword.put(keyword, :index, index)
+                          end)
+
+                        {:halt, {:error, errors}}
+                    end
+                  else
+                    {:cont, {:ok, [new | new_uncasted_values]}}
+                  end
+                end
             end
-          end)
+          )
           |> case do
             {:ok, values} -> {:ok, Enum.reverse(values)}
             {:error, error} -> {:error, error}
