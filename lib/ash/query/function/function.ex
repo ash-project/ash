@@ -153,7 +153,7 @@ defmodule Ash.Query.Function do
 
       def private?, do: false
 
-      defoverridable new: 1, evaluate: 1
+      defoverridable new: 1, evaluate: 1, private: 0
 
       unless unquote(opts[:no_inspect?]) do
         defimpl Inspect do
