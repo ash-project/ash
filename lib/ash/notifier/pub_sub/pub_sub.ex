@@ -202,44 +202,46 @@ defmodule Ash.Notifier.PubSub do
     end)
   end
 
-  if Code.ensure_loaded?(Phoenix.Socket.Broadcast) do
-    def to_payload(topic, event, notification) do
-      case Ash.Notifier.PubSub.Info.broadcast_type(notification.resource) do
-        :phoenix_broadcast ->
-          %Phoenix.Socket.Broadcast{
-            topic: topic,
-            event: event,
-            payload: notification
-          }
+  case Code.ensure_compiled(Phoenix.Socket.Broadcast) do
+    {:module, _} ->
+      def to_payload(topic, event, notification) do
+        case Ash.Notifier.PubSub.Info.broadcast_type(notification.resource) do
+          :phoenix_broadcast ->
+            %Phoenix.Socket.Broadcast{
+              topic: topic,
+              event: event,
+              payload: notification
+            }
 
-        :broadcast ->
-          %{
-            topic: topic,
-            event: event,
-            payload: notification
-          }
+          :broadcast ->
+            %{
+              topic: topic,
+              event: event,
+              payload: notification
+            }
 
-        :notification ->
-          notification
+          :notification ->
+            notification
+        end
       end
-    end
-  else
-    def to_payload(topic, event, notification) do
-      case Ash.Notifier.PubSub.Info.broadcast_type(notification.resource) do
-        :phoenix_broadcast ->
-          raise "A resource was configured with `broadcast_type :phoenix_broadcast` but `Phoenix.Socket.Broadcast` was not compiled."
 
-        :broadcast ->
-          %{
-            topic: topic,
-            event: event,
-            payload: notification
-          }
+    _ ->
+      def to_payload(topic, event, notification) do
+        case Ash.Notifier.PubSub.Info.broadcast_type(notification.resource) do
+          :phoenix_broadcast ->
+            raise "A resource was configured with `broadcast_type :phoenix_broadcast` but `Phoenix.Socket.Broadcast` was not compiled."
 
-        :notification ->
-          notification
+          :broadcast ->
+            %{
+              topic: topic,
+              event: event,
+              payload: notification
+            }
+
+          :notification ->
+            notification
+        end
       end
-    end
   end
 
   defp fill_template(topic, _) when is_binary(topic), do: [topic]
