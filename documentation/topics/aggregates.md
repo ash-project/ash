@@ -21,7 +21,7 @@ The available aggregate types are:
 - `sum` - sums the related items meeting the criteria. Must specify the `field` to sum.
 - `list` - lists the related values. Must specify the `field` to list.
 
-See the docs on {{link:ash:dsl:aggregates/aggregate}} for more information.
+See the docs on {{link:ash:dsl:resource/aggregates}} for more information.
 
 The aggregates declared on a resource allow for declaring a set of named aggregates that can be used by extensions.
 

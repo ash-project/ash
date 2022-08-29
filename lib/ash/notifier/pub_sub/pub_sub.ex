@@ -202,46 +202,26 @@ defmodule Ash.Notifier.PubSub do
     end)
   end
 
-  case Code.ensure_compiled(Phoenix.Socket.Broadcast) do
-    {:module, _} ->
-      def to_payload(topic, event, notification) do
-        case Ash.Notifier.PubSub.Info.broadcast_type(notification.resource) do
-          :phoenix_broadcast ->
-            %Phoenix.Socket.Broadcast{
-              topic: topic,
-              event: event,
-              payload: notification
-            }
+  def to_payload(topic, event, notification) do
+    case Ash.Notifier.PubSub.Info.broadcast_type(notification.resource) do
+      :phoenix_broadcast ->
+        %{
+          __struct__: Phoenix.Socket.Broadcast,
+          topic: topic,
+          event: event,
+          payload: notification
+        }
 
-          :broadcast ->
-            %{
-              topic: topic,
-              event: event,
-              payload: notification
-            }
+      :broadcast ->
+        %{
+          topic: topic,
+          event: event,
+          payload: notification
+        }
 
-          :notification ->
-            notification
-        end
-      end
-
-    _ ->
-      def to_payload(topic, event, notification) do
-        case Ash.Notifier.PubSub.Info.broadcast_type(notification.resource) do
-          :phoenix_broadcast ->
-            raise "A resource was configured with `broadcast_type :phoenix_broadcast` but `Phoenix.Socket.Broadcast` was not compiled."
-
-          :broadcast ->
-            %{
-              topic: topic,
-              event: event,
-              payload: notification
-            }
-
-          :notification ->
-            notification
-        end
-      end
+      :notification ->
+        notification
+    end
   end
 
   defp fill_template(topic, _) when is_binary(topic), do: [topic]

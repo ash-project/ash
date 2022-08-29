@@ -51,7 +51,7 @@ defmodule Ash.Registry.Dsl do
   @moduledoc """
   A small DSL for declaring an `Ash.Registry`.
 
-  `Ash.Registry` can be used generically, but the main way it is used in Ash is to provide a compile-time registry for {{link:ash:guide:Apis}}.
+  `Ash.Registry` can be used generically, but the main way it is used in Ash is to provide a compile-time registry for an Ash Api.
 
   <!--- ash-hq-hide-start--> <!--- -->
 
