@@ -58,7 +58,7 @@ defmodule Ash.Resource.Dsl do
     examples: [
       "timestamps()"
     ],
-    links: [ ],
+    links: [],
     target: Ash.Resource.Attribute,
     auto_set_fields: [
       name: :__timestamps__
@@ -959,7 +959,7 @@ defmodule Ash.Resource.Dsl do
     that matches. Supports both `filter` and `sort`.
     """,
     examples: [
-      ""
+      """
       first :first_assigned_ticket_subject, :assigned_tickets, :subject do
         filter [active: true]
         sort [:subject]
