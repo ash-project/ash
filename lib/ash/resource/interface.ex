@@ -39,7 +39,11 @@ defmodule Ash.Resource.Interface do
       ],
       actor: [
         type: :any,
-        doc: "Set the actor for authorization"
+        doc: "set the actor for authorization"
+      ],
+      actor: [
+        type: :any,
+        doc: "set the tracer for the action"
       ],
       authorize?: [
         type: :boolean,
@@ -105,14 +109,14 @@ defmodule Ash.Resource.Interface do
     get?: [
       type: :boolean,
       doc: """
-      Expects to only receive a single result from a read action. Ignored for other action types.
+      Expects to only receive a single result from a read action, and returns a single result instead of a list. Ignored for other action types.
       """,
       links: []
     ],
     get_by: [
       type: {:list, :atom},
       doc: """
-      Takes a list of fields and adds those fields as arguments, which will then be used to filter. Ignored for non-read actions.
+      Takes a list of fields and adds those fields as arguments, which will then be used to filter. Sets `get?` to true automatically. Ignored for non-read actions.
       """,
       links: []
     ],

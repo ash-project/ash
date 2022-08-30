@@ -92,7 +92,7 @@ defmodule Ash.Flow.Dsl do
     name: :run_flow,
     describe: """
     Runs another flow as part of the current flow.
-    The return value of the flow is the return value of the step.
+    The return value of the step is the return value of the flow.
     """,
     links: [],
     examples: [
@@ -176,12 +176,7 @@ defmodule Ash.Flow.Dsl do
       ],
       description: [
         type: :string,
-        doc: "A description of the flow",
-        links: [
-          guides: [
-            "ash:guide:Documentation"
-          ]
-        ]
+        doc: "A description of the flow"
       ],
       trace_name: [
         type: :string,
@@ -227,13 +222,6 @@ defmodule Ash.Flow.Dsl do
             last_name: {Faker.Person, :last_name, []}
           }
         end
-
-        update :update_user, User, :update do
-          record
-
-        end
-        over range(1, arg(:count))
-        output :create_user
 
         create :create_user, Org, :create do
           input %{

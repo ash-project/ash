@@ -34,11 +34,7 @@ defmodule Ash.Resource.Actions.Argument do
       description: [
         type: :string,
         doc: "An optional description for the argument.",
-        links: [
-          guides: [
-            "ash:guide:Documentation"
-          ]
-        ]
+        links: []
       ],
       constraints: [
         type: :keyword_list,

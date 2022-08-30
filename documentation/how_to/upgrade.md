@@ -19,11 +19,11 @@ These should all be straight forward enough to do a simple find and replace in y
 - `destination_field_on_join_table` -> `destination_attribute_on_join_resource`
 - `no_fields?` -> `no_attributes?`
 
-## DSL changes
+### DSL changes
 
 A new option has been added to the pub_sub notifier. If you are using it with phoenix, and you want it to publish a `%Phoenix.Socket.Broadcast{}` struct (which is what it used to do if you specified the `name` option with pub sub), then you'll need to set `broadcast_type :phoenix_broadcast`
 
-## Function Changes
+### Function Changes
 
 The following functions have been moved from `Ash.Resource.Info` to `Ash.Resource`. The old functions still exist, but will warn as deprecated.
 
@@ -63,6 +63,10 @@ The following functions have been moved. The old functions still exist, but will
 The following functions have been moved:
 
 - Ash.Resource.extensions/1 -> `Spark.extensions/1`
+
+### Expression Changes
+
+The `has` operator has been removed from expressions. This is a holdover from when expressions only had partial support for nesting, and is unnecessary now. Now you can do `item in list` so `has` is unnecessary.
 
 ## Upgrading to 1.53
 

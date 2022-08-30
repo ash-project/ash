@@ -23,7 +23,6 @@ defmodule Ash.Filter do
     Eq,
     GreaterThan,
     GreaterThanOrEqual,
-    Has,
     In,
     LessThan,
     LessThanOrEqual,
@@ -48,8 +47,7 @@ defmodule Ash.Filter do
                LessThan,
                GreaterThan,
                LessThanOrEqual,
-               GreaterThanOrEqual,
-               Has
+               GreaterThanOrEqual
              ] ++ Ash.Query.Operator.Basic.operator_modules()
 
   @builtins @functions ++ @operators

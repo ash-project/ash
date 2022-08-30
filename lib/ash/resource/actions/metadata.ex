@@ -38,11 +38,7 @@ defmodule Ash.Resource.Actions.Metadata do
       description: [
         type: :string,
         doc: "An optional description for the metadata.",
-        links: [
-          guides: [
-            "ash:guide:Documentation"
-          ]
-        ]
+        links: []
       ],
       allow_nil?: [
         type: :boolean,

@@ -139,6 +139,7 @@ defmodule Ash.Filter.Runtime do
     end)
   end
 
+  @doc false
   def do_match(record, expression) do
     case expression do
       %Ash.Filter{expression: expression} ->
@@ -228,7 +229,7 @@ defmodule Ash.Filter.Runtime do
   end
 
   defp resolve_expr(%Ref{} = ref, record) do
-    {:ok, resolve_ref(ref, record)}
+    resolve_ref(ref, record)
   end
 
   defp resolve_expr(%BooleanExpression{left: left, right: right}, record) do
@@ -290,17 +291,36 @@ defmodule Ash.Filter.Runtime do
     |> get_related(path)
     |> case do
       nil ->
-        nil
+        {:ok, nil}
 
       [] ->
-        nil
+        {:ok, nil}
+
+      %struct{} = record ->
+        if Spark.Dsl.is?(struct, Ash.Resource) do
+          if Ash.Resource.Info.attribute(struct, name) do
+            if Ash.Resource.selected?(record, name) do
+              {:ok, Map.get(record, name)}
+            else
+              :unknown
+            end
+          else
+            if Ash.Resource.loaded?(record, name) do
+              {:ok, Map.get(record, name)}
+            else
+              :unknown
+            end
+          end
+        else
+          {:ok, Map.get(record, name)}
+        end
 
       record ->
-        Map.get(record, name)
+        {:ok, Map.get(record, name)}
     end
   end
 
-  defp resolve_ref(value, _record), do: value
+  defp resolve_ref(value, _record), do: {:ok, value}
 
   defp path_to_load([first]), do: {first, []}
 

@@ -1,6 +1,6 @@
-# Resources without a data layer
+# Use Without Data Layers
 
-If a resource is configured without a data layer, then it will always be working off of a temporary data set that lives only for the life of that query. This can be a powerful way to simply model input validations and/or custom/complex reads.
+If a resource is configured without a data layer, then it will always be working off of a temporary data set that lives only for the life of that query. This can be a powerful way to simply model input validations and/or custom/complex reads. Technically, resources without a data layer simply use `Ash.DataLayer.Simple`, which does no persistence, and expects to find any data it should use for read actions in a context on the query
 
 ## Example
 
@@ -10,7 +10,7 @@ defmodule MyApp.MyComplexResource do
   # notice no data layer is configured
   
   attributes do
-    #A primary key is always necessary on a resource, but you can make it a uuid and fill it in on each read, if you don't have one
+    #A primary key is always necessary on a resource, but this will simply generate one for you automatically
     uuid_primary_key :id
     attribute :some_complex_derived_number, :integer
   end

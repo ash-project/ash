@@ -62,11 +62,7 @@ defmodule Ash.Resource.Calculation do
     ],
     description: [
       type: :string,
-      links: [
-        guides: [
-          "ash:guide:Documentation"
-        ]
-      ],
+      links: [],
       doc: "An optional description for the calculation"
     ],
     private?: [

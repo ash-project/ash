@@ -41,11 +41,7 @@ defmodule Ash.Resource.Identity do
     description: [
       type: :string,
       doc: "An optional description for the identity",
-      links: [
-        guides: [
-          "ash:guide:Documentation"
-        ]
-      ]
+      links: []
     ],
     message: [
       type: :string,

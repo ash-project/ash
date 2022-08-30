@@ -1,49 +1,43 @@
+# Code Interface
 
+One of the ways that we interact with our resources is via hand-written code. The general pattern for that looks like building a query or a changeset for a given action, and dispatching it to the api using things like `MyApi.read/3` and `MyApi.create/3`. This, however, is just one way to use Ash, and is designed to help you build tools that work with resources, and to power things like `AshPhoenix.Form`, `AshGraphql.Resource` and `AshJsonApi.Resource`. When working with your resources in code, we generally want something more idiomatic and simple. For example, on a resource called `Helpdesk.Support.Ticket`:
 
-    If the action is an update or destroy, it will take a record or a changeset as its *first* argument.
-    If the action is a read action, it will take a starting query as an *opt in the last* argument.
+```elixir
+code_interface do
+  define_for Helpdesk.Support
 
-    All functions will have an optional last argument that accepts options. Those options are:
+  define :open_ticket, args: [:subject]
+end
+```
 
-    #{Spark.OptionsHelpers.docs(Ash.Resource.Interface.interface_options(nil))}
+This simple setup now allows you to open a ticket with `Helpdesk.Support.Ticket.open_ticket(subject)`. You can cause it to raise errors instead of return them with `Helpdesk.Support.Ticket.open_ticket!(subject)`. For information on the options and additional inputs these defined functions take, look at the generated function documentation, which you can do in iex with `h Helpdesk.Support.Ticket.open_ticket`. For more information on the code interface, read the DSL documentation: {{link:ash:dsl:resource/code_interface}}.
 
-    For reads:
+## Using the code interface
 
-    * `:query` - a query to start the action with, can be used to filter/sort the results of the action.
+If the action is an update or destroy, it will take a record or a changeset as its *first* argument.
+If the action is a read action, it will take a starting query as an *opt in the last* argument.
 
-    For creates:
+All functions will have an optional last argument that accepts options. Those options are:
 
-    * `:changeset` - a changeset to start the action with
+#{Spark.OptionsHelpers.docs(Ash.Resource.Interface.interface_options(nil))}
 
-    They will also have an optional second to last argument that is a freeform map to provide action input. It *must be a map*.
-    If it is a keyword list, it will be assumed that it is actually `options` (for convenience).
-    This allows for the following behaviour:
+For reads:
 
-    ```elixir
-    # Because the 3rd argument is a keyword list, we use it as options
-    Api.register_user(username, password, [tenant: "organization_22"])
-    # Because the 3rd argument is a keyword list, we use it as action input
-    Api.register_user(username, password, %{key: "val"})
-    # When all are provided it is unambiguous
-    Api.register_user(username, password, %{key: "val"}, [tenant: "organization_22"])
-    ```
+* `:query` - a query to start the action with, can be used to filter/sort the results of the action.
 
-    ## get?
+For creates:
 
-      Only relevant for read actions. Expects to only receive a single result from a read action.
+* `:changeset` - a changeset to start the action with
 
-      The action should return a single result based on any arguments provided. To make it so that the function
-      takes a specific field, and filters on that field, use `get_by` instead.
+They will also have an optional second to last argument that is a freeform map to provide action input. It *must be a map*.
+If it is a keyword list, it will be assumed that it is actually `options` (for convenience).
+This allows for the following behaviour:
 
-      Useful for creating functions like `get_user_by_email` that map to an action that has an `:email` argument.
-
-    ## get_by
-
-      Automatically sets `get?` to `true`.
-
-      The action should return a single result based on any arguments provided. To make it so that the function
-      takes a specific field, and filters on that field, use `get_by` instead. When combined, `get_by` takes precedence.
-
-      Useful for creating functions like `get_user_by_id` that map to a basic read action.
-
-    ## get_by_identity
+```elixir
+# Because the 3rd argument is a keyword list, we use it as options
+Api.register_user(username, password, [tenant: "organization_22"])
+# Because the 3rd argument is a keyword list, we use it as action input
+Api.register_user(username, password, %{key: "val"})
+# When all are provided it is unambiguous
+Api.register_user(username, password, %{key: "val"}, [tenant: "organization_22"])
+```

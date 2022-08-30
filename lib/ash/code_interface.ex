@@ -2,7 +2,7 @@ defmodule Ash.CodeInterface do
   @moduledoc """
   Used to define the functions of a code interface for a resource.
 
-  For more information on defining code interfaces, see: `Ash.Resource.Dsl.html#module-code_interface`
+  For more information on defining code interfaces, see {{link:ash:}}
   """
 
   @doc false
@@ -191,7 +191,7 @@ defmodule Ash.CodeInterface do
                     |> Ash.Query.for_read(
                       unquote(action.name),
                       input,
-                      Keyword.take(opts, [:actor, :tenant, :authorize?])
+                      Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
                     )
                     |> Ash.Query.filter(filters)
                   else
@@ -200,7 +200,7 @@ defmodule Ash.CodeInterface do
                     |> Ash.Query.for_read(
                       unquote(action.name),
                       input,
-                      Keyword.take(opts, [:actor, :tenant, :authorize?])
+                      Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
                     )
                   end
 
@@ -264,7 +264,7 @@ defmodule Ash.CodeInterface do
                     |> Ash.Query.for_read(
                       unquote(action.name),
                       input,
-                      Keyword.take(opts, [:actor, :tenant, :authorize?])
+                      Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
                     )
                     |> Ash.Query.filter(filters)
                   else
@@ -273,7 +273,7 @@ defmodule Ash.CodeInterface do
                     |> Ash.Query.for_read(
                       unquote(action.name),
                       input,
-                      Keyword.take(opts, [:actor, :tenant, :authorize?])
+                      Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
                     )
                   end
 
@@ -326,12 +326,12 @@ defmodule Ash.CodeInterface do
                   |> Ash.Changeset.for_create(
                     unquote(action.name),
                     input,
-                    Keyword.take(opts, [:actor, :tenant, :authorize?])
+                    Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
                   )
 
                 unquote(api).create(
                   changeset,
-                  Keyword.drop(opts, [:actor, :changeset, :tenant, :authorize?])
+                  Keyword.drop(opts, [:actor, :changeset, :tenant, :authorize?, :tracer])
                 )
               end
             end
@@ -363,12 +363,12 @@ defmodule Ash.CodeInterface do
                   |> Ash.Changeset.for_create(
                     unquote(action.name),
                     input,
-                    Keyword.take(opts, [:actor, :tenant, :authorize?])
+                    Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
                   )
 
                 unquote(api).create!(
                   changeset,
-                  Keyword.drop(opts, [:actor, :changeset, :authorize?])
+                  Keyword.drop(opts, [:actor, :changeset, :authorize?, :tracer])
                 )
               end
             end
@@ -402,10 +402,13 @@ defmodule Ash.CodeInterface do
                   |> Ash.Changeset.for_update(
                     unquote(action.name),
                     input,
-                    Keyword.take(opts, [:actor, :tenant, :authorize?])
+                    Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
                   )
 
-                unquote(api).update(changeset, Keyword.drop(opts, [:actor, :tenant, :authorize?]))
+                unquote(api).update(
+                  changeset,
+                  Keyword.drop(opts, [:actor, :tenant, :authorize?, :tracer])
+                )
               end
             end
 
@@ -438,12 +441,12 @@ defmodule Ash.CodeInterface do
                   |> Ash.Changeset.for_update(
                     unquote(action.name),
                     input,
-                    Keyword.take(opts, [:actor, :tenant, :authorize?])
+                    Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
                   )
 
                 unquote(api).update!(
                   changeset,
-                  Keyword.drop(opts, [:actor, :tenant, :authorize?])
+                  Keyword.drop(opts, [:actor, :tenant, :authorize?, :tracer])
                 )
               end
             end
@@ -477,12 +480,12 @@ defmodule Ash.CodeInterface do
                   |> Ash.Changeset.for_destroy(
                     unquote(action.name),
                     input,
-                    Keyword.take(opts, [:actor, :tenant, :authorize?])
+                    Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
                   )
 
                 unquote(api).destroy(
                   changeset,
-                  Keyword.drop(opts, [:actor, :tenant, :authorize?])
+                  Keyword.drop(opts, [:actor, :tenant, :authorize?, :tracer])
                 )
               end
             end
@@ -516,12 +519,12 @@ defmodule Ash.CodeInterface do
                   |> Ash.Changeset.for_destroy(
                     unquote(action.name),
                     input,
-                    Keyword.take(opts, [:actor, :tenant, :authorize?])
+                    Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
                   )
 
                 unquote(api).destroy!(
                   changeset,
-                  Keyword.drop(opts, [:actor, :tenant, :authorize?])
+                  Keyword.drop(opts, [:actor, :tenant, :authorize?, :tracer])
                 )
               end
             end

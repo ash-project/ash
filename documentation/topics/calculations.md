@@ -19,6 +19,8 @@ calculations do
 end
 ```
 
+See the {{link:ash:guide:Expressions}} guide for more.
+
 ### Module Calculations
 
 When calculations require more complex code or can't be pushed down into the data layer, a module that uses `Ash.Calculation` can be used.

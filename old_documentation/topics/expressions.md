@@ -60,12 +60,11 @@ end
 
 When referencing related values, if the reference is a `has_one` or `belongs_to`, the filter does exactly what it looks like (matches if the related value matches). If it is a `has_many` or a `many_to_many`, it matches if any of the related records match.
 
-
 ### Referencing aggregates and calculations
 
 Aggregates are simple, insofar as all aggregates can be referenced in filter expressions (if you are using a data layer that supports it).
 
-For calculations, only those that define an expression can be referenced in other expressions.  See the section below on declaring calculations with expressions. 
+For calculations, only those that define an expression can be referenced in other expressions.
 
 Here are some examples:
 

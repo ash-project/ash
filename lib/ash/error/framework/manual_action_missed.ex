@@ -19,7 +19,7 @@ defmodule Ash.Error.Framework.ManualActionMissed do
 
       # in the resource
 
-      action :special_create do
+      create :special_create do
         manual? true
         change MyApp.DoCreate
       end

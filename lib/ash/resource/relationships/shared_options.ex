@@ -15,9 +15,7 @@ defmodule Ash.Resource.Relationships.SharedOptions do
     description: [
       type: :string,
       doc: "An optional description for the relationship",
-      links: [
-        modules: ["ash:guide:Documentation"]
-      ]
+      links: []
     ],
     destination_attribute: [
       type: :atom,
@@ -92,11 +90,7 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       doc: """
       The API module to use when working with the related entity.
       """,
-      links: [
-        guides: [
-          "ash:guide:Multiple Apis"
-        ]
-      ]
+      links: []
     ],
     filter: [
       type: :any,

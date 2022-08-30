@@ -49,11 +49,7 @@ defmodule Ash.Flow.Step do
         doc: """
         A description for the step.
         """,
-        links: [
-          guides: [
-            "ash:guide:Documentation"
-          ]
-        ]
+        links: []
       ]
     ]
   end

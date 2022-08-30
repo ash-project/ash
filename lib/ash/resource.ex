@@ -113,7 +113,7 @@ defmodule Ash.Resource do
                           |> Macro.underscore()
                           |> String.to_atom()
 
-      def default_short_name do
+      def default_short_name() do
         @default_short_name
       end
 
@@ -263,9 +263,7 @@ defmodule Ash.Resource do
   def selected?(%resource{} = record, field) do
     case get_metadata(record, :selected) do
       nil ->
-        attribute = Ash.Resource.Info.attribute(resource, field)
-
-        attribute && (!attribute.private? || attribute.primary_key?)
+        !!Ash.Resource.Info.attribute(resource, field)
 
       select ->
         if field in select do

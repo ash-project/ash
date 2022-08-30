@@ -1,3 +1,5 @@
+# Validate Changes
+
 # Validations
 
 In ash, there are three kinds of validations.
@@ -45,11 +47,17 @@ can do this with custom validations as well. See the documentation in `Ash.Resou
 Right now, there are not very many built in validations, but the idea is that eventually we will have a rich
 library of built in validations to choose from.
 
-Validations can be scoped to the `type` (`:create`, `:update`, `:destroy`) of action (but not to specific actions). If you would like to adjust the validations for a specific action, that is (not yet, at the time of writing) supported by options on the action declaration.
+Validations can be scoped to the `type` (`:create`, `:update`, `:destroy`) of action (but not to specific actions). If you would like to adjust the validations for a specific action, you can place that validation directly in the action, i.e
+
+```elixir
+create :create do
+  validate attribute_equals(:name, "fred)
+end
+```
 
 ### Important Note
 
-By default, validations run on create and update only. Many validations don't make sense in the context of deletes.
+By default, validations in the global `validations` block will run on create and update only. Many validations don't make sense in the context of destroys. To make them run on destroy, use `on: [:create, :update, :destroy]`
 
 ### Examples
 

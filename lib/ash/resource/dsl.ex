@@ -774,20 +774,12 @@ defmodule Ash.Resource.Dsl do
         type: :string,
         doc:
           "A human readable description of the resource, to be used in generated documentation",
-        links: [
-          guides: [
-            "ash:guide:Documentation"
-          ]
-        ]
+        links: []
       ],
       base_filter: [
         type: :any,
         doc: "A filter statement to be applied to any queries on the resource",
-        links: [
-          guides: [
-            "ash:guide:Filters"
-          ]
-        ]
+        links: []
       ],
       default_context: [
         type: :any,

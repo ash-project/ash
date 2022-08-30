@@ -17,11 +17,7 @@ defmodule Ash.Resource.Actions.SharedOptions do
     description: [
       type: :string,
       doc: "An optional description for the action",
-      links: [
-        guides: [
-          "ash:guide:Documentation"
-        ]
-      ]
+      links: []
     ],
     transaction?: [
       type: :boolean,

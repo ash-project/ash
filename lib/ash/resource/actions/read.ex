@@ -36,11 +36,7 @@ defmodule Ash.Resource.Actions.Read do
                     type: :any,
                     doc:
                       "A filter template that will be applied whenever the action is used. See `Ash.Filter` for more on templates",
-                    links: [
-                      guides: [
-                        "ash:guide:Filters"
-                      ]
-                    ]
+                    links: []
                   ],
                   manual: [
                     type: {:spark_behaviour, Ash.Resource.ManualRead},

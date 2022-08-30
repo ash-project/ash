@@ -58,9 +58,7 @@ defmodule Ash.Resource.Attribute do
     description: [
       type: :string,
       doc: "An optional description for the attribute.",
-      links: [
-        modules: ["ash:guide:Documentation"]
-      ]
+      links: []
     ],
     sensitive?: [
       type: :boolean,

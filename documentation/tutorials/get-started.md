@@ -319,7 +319,7 @@ Helpdesk.Tickets.read!(Helpdesk.Tickets.Ticket)
 
 Which will raise an error explaining that there is no data to be read for that resource.
 
-In order to add persistence, we need to add a {{link:ash:guide:Data Layers:Data Layer}} to our resources. Before we do that, however, lets go over how Ash allows us to work against many different data layers (or even no data layer at all). Resources without a data layer will implicitly be using `Ash.DataLayer.Simple`, which will just return structs and do no persistence. The way that we do this is by leveraging `context`, a free-form map available on queries and changesets. The simple data layer looks for `query.context[:data_layer][:data][resource]`. It provides a utility, `Ash.DataLayer.Simple.set_data/2` to set it.
+In order to add persistence, we need to add a data layer to our resources. Before we do that, however, lets go over how Ash allows us to work against many different data layers (or even no data layer at all). Resources without a data layer will implicitly be using `Ash.DataLayer.Simple`, which will just return structs and do no persistence. The way that we do this is by leveraging `context`, a free-form map available on queries and changesets. The simple data layer looks for `query.context[:data_layer][:data][resource]`. It provides a utility, `Ash.DataLayer.Simple.set_data/2` to set it.
 
 Try the following in iex. We will open some tickets, and close some of them, and then use `Ash.DataLayer.Simple.set_data/2` to use those tickets.
 
