@@ -4,11 +4,7 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declares an attribute on the resource.
     """,
-    links: [
-      guides: [
-        "ash:guide:Attributes"
-      ]
-    ],
+    links: [],
     examples: [
       """
       attribute :name, :string do
@@ -102,11 +98,7 @@ defmodule Ash.Resource.Dsl do
     describe: """
     A section for declaring attributes on the resource.
     """,
-    links: [
-      guides: [
-        "ash:guide:Attributes"
-      ]
-    ],
+    links: [],
     examples: [
       """
       attributes do
@@ -204,9 +196,9 @@ defmodule Ash.Resource.Dsl do
   @many_to_many %Spark.Dsl.Entity{
     name: :many_to_many,
     describe: """
-    Declares a many_to_many relationship. Many to many relationships require a join table.
+    Declares a many_to_many relationship. Many to many relationships require a join resource.
 
-    A join table is typically a table who's primary key consists of one foreign key to each resource.
+    A join resource is a resource that consists of a relationship to the source and destination of the many to many.
     """,
     links: [
       guides: [
@@ -224,7 +216,7 @@ defmodule Ash.Resource.Dsl do
         destination_attribute_on_join_resource :book_id
       end
 
-      # And in `BookWord` (the resource that defines the join table)
+      # And in `BookWord` (the join resource)
       belongs_to :book, Book, primary_key?: true, required?: true
       belongs_to :word, Word, primary_key?: true, required?: true
       """

@@ -1761,7 +1761,7 @@ defmodule Ash.Changeset do
           * `:create` - the records are created using the destination's primary create action
           * `{:create, :action_name}` - the records are created using the specified action on the destination resource
           * `{:create, :action_name, :join_table_action_name, [:list, :of, :join_table, :params]}` - Same as `{:create, :action_name}` but takes
-              the list of params specified out and applies them when creating the join table row, with the provided join_table_action_name.
+              the list of params specified out and applies them when creating the join record, with the provided join_table_action_name.
           * `:error`  - an eror is returned indicating that a record would have been created
             *  If `on_lookup` is set, and the data contained a primary key or identity, then the error is a `NotFound` error
             * Otherwise, an `InvalidRelationship` error is returned
@@ -1816,7 +1816,7 @@ defmodule Ash.Changeset do
               * belongs_to - an update action on the source resource
           * `{:relate_and_update, :action_name, :read_action_name}` - Same as the above, but customizes the read action called to search for matches.
           * `{:relate_and_update, :action_name, :read_action_name, [:list, :of, :join_table, :params]}` - Same as the above, but uses the provided list of parameters when creating
-             the join row (only relevant for many to many relationships). Use `:all` to *only* update the join table row, and pass all parameters to its action
+             the join row (only relevant for many to many relationships). Use `:all` to *only* update the join record, and pass all parameters to its action
       """
     ],
     on_match: [
@@ -1828,9 +1828,9 @@ defmodule Ash.Changeset do
           * `:update` - the record is updated using the destination's primary update action
           * `{:update, :action_name}` - the record is updated using the specified action on the destination resource
           * `{:update, :action_name, :join_table_action_name, [:list, :of, :params]}` - Same as `{:update, :action_name}` but takes
-              the list of params specified out and applies them as an update to the join table row (only valid for many to many).
+              the list of params specified out and applies them as an update to the join record (only valid for many to many).
           * `{:destroy, :action_name}` - the record is destroyed using the specified action on the destination resource. The action should be:
-            * many_to_many - a destroy action on the join table
+            * many_to_many - a destroy action on the join record
             * has_many - a destroy action on the destination resource
             * has_one - a destroy action on the destination resource
             * belongs_to - a destroy action on the destination resource

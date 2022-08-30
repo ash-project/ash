@@ -534,7 +534,7 @@ defmodule Ash.Test.Actions.CreateTest do
       |> Api.create!()
     end
 
-    test "it updates the join table properly" do
+    test "it updates the join resource properly" do
       post2 =
         Post
         |> new()

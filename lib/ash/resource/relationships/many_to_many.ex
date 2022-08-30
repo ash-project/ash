@@ -86,7 +86,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
                     type: :atom,
                     links: [],
                     doc:
-                      "The has_many relationship to the join table. Defaults to <relationship_name>_join_assoc"
+                      "The has_many relationship to the join resource. Defaults to <relationship_name>_join_assoc"
                   ]
                 ],
                 @global_opts,

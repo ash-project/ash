@@ -388,7 +388,7 @@ defmodule Ash.Test.Actions.UpdateTest do
                Post |> Ash.Query.sort(:title) |> Api.read!() |> Enum.map(& &1.title)
     end
 
-    test "it updates the join table properly" do
+    test "it updates the join resource properly" do
       post =
         Post
         |> new(%{title: "title"})

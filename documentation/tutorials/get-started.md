@@ -524,8 +524,6 @@ Creating and using changesets can be verbose. Check out the {{link:ash:guide:Cod
 
 See {{link:ash_postgres:guide:Get Started With Postgres:AshPostgres}} to see how to back your resources with postgres. This is highly recommended, as the postgres data layer provides tons of advanced capabilities.
 
-See the {{link:ash:guide:Data Layers}} guide on how you might write your own data layer.
-
 #### Add an API
 
 Check out the AshJsonApi and AshGraphql extensions to effortlessly build APIs around your resources
