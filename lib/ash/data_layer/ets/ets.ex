@@ -90,7 +90,7 @@ defmodule Ash.DataLayer.Ets do
           Ash.DataLayer.Ets.table(resource)
         end
 
-      if Ash.DataLayer.Ets.private?(resource) do
+      if Ash.DataLayer.Ets.Info.private?(resource) do
         do_wrap_existing(resource, table)
       else
         case GenServer.start(__MODULE__, {resource, table},
@@ -124,7 +124,7 @@ defmodule Ash.DataLayer.Ets do
       case ETS.Set.wrap_existing(table) do
         {:error, :table_not_found} ->
           protection =
-            if Ash.DataLayer.Ets.private?(resource) do
+            if Ash.DataLayer.Ets.Info.private?(resource) do
               :private
             else
               :public
