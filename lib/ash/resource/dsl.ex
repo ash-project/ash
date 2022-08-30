@@ -30,11 +30,7 @@ defmodule Ash.Resource.Dsl do
     examples: [
       "create_timestamp :inserted_at"
     ],
-    links: [
-      guides: [
-        "ash:guide:Timestamps"
-      ]
-    ],
+    links: [],
     target: Ash.Resource.Attribute,
     args: [:name],
     schema: Ash.Resource.Attribute.create_timestamp_schema()
@@ -45,11 +41,7 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declares a non-writable attribute with a create and update default of `&DateTime.utc_now/0`
     """,
-    links: [
-      guides: [
-        "ash:guide:Timestamps"
-      ]
-    ],
+    links: [],
     examples: [
       "update_timestamp :inserted_at"
     ],
@@ -66,11 +58,7 @@ defmodule Ash.Resource.Dsl do
     examples: [
       "timestamps()"
     ],
-    links: [
-      guides: [
-        "ash:guide:Timestamps"
-      ]
-    ],
+    links: [ ],
     target: Ash.Resource.Attribute,
     auto_set_fields: [
       name: :__timestamps__
@@ -971,7 +959,7 @@ defmodule Ash.Resource.Dsl do
     that matches. Supports both `filter` and `sort`.
     """,
     examples: [
-      """
+      ""
       first :first_assigned_ticket_subject, :assigned_tickets, :subject do
         filter [active: true]
         sort [:subject]

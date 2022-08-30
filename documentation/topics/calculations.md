@@ -85,6 +85,22 @@ User
 
 See the documentation for `Ash.Query.calculate/4` for more information.
 
+## Arguments in calculations
+
+Using the above example with arguments, you can load a calculation with arguments like so:
+
+```elixir
+load(full_name: [separator: ","])
+```
+
+If the calculation uses an expression, you can also filter and sort on it like so:
+
+```elixir
+query
+|> Ash.Query.filter(full_name(separator: ","))
+|> Ash.Query.sort(full_name: {:asc, %{separator: ","}})
+```
+
 ## Async loading
 
 Expensive calculations can be marked as `allow_async?: true`, which will allow Ash to fetch it after the main query is run, in parallel with any other calculations that are being run async. This won't affect calculations that are being filtered on, since that must be placed in the data layer.
