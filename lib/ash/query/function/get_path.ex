@@ -44,9 +44,17 @@ defmodule Ash.Query.Function.GetPath do
       if is_map(obj) do
         value =
           if is_atom(key) do
-            Map.get(obj, key) || Map.get(obj, to_string(key))
+            Map.get(obj, key, Map.get(obj, to_string(key)))
           else
-            Map.get(obj, to_string(key))
+            case Enum.find(obj, fn {map_key, _val} ->
+                   is_atom(map_key) && to_string(map_key) == key
+                 end) do
+              {_, val} ->
+                val
+
+              nil ->
+                Map.get(obj, key)
+            end
           end
 
         case value do

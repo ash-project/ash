@@ -37,9 +37,15 @@ The following functions are built in:
 
 - `if` | Works like elixir's `if`.
 - `is_nil` | Works like elixir's `is_nil`
-- `get_path` | i.e `get_path(value, ["foo", "bar"])`. This is what expressions like `value["foo"]["bar"]` are turned into under the hood.
+- `get_path` | i.e `get_path(value, ["foo", "bar"])`. This is what expressions like `value[:foo]["bar"]` are turned into under the hood.
 - `ago` | i.e `deleted_at > ago(7, :day)`. The available time intervals are documented in {{link:ash:module:Ash.Type.DurationName}}
 - `contains` | if one string contains another string, i.e `contains("fred", "red")`
+
+
+## Primitives
+
+- `cond` - `cond` is transformed to a series of `if` expressions under the hood
+- `item[:key] or item["key"]` - accesses keys in a map. In both cases, it prefers a matching atom key, falling back to a matching string key. This is to aid with data stores that store embeds as JSON with string keys (like AshPostgres), so that this expression behaves the same in the data layer as it does in Elixir.
 
 ## Use cases for expressions
 

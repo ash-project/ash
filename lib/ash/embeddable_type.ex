@@ -39,6 +39,10 @@ defmodule Ash.EmbeddableType do
       doc:
         "The action to use on the resource when destroying an embed. The primary is used by default."
     ],
+    read_action: [
+      type: :atom,
+      doc: "The read action to use when reading the embed. The primary is used by default."
+    ],
     __source__: [
       type: :any,
       hide: true,
@@ -198,9 +202,14 @@ defmodule Ash.EmbeddableType do
                 {:ok, casted}
 
               load ->
+                action =
+                  constraints[:read_action] ||
+                    Ash.Resource.Info.primary_action!(__MODULE__, :read).name
+
                 __MODULE__
                 |> Ash.DataLayer.Simple.set_data([casted])
                 |> Ash.Query.load(load)
+                |> Ash.Query.for_read(action)
                 |> ShadowApi.read()
                 |> case do
                   {:ok, [casted]} ->
@@ -273,17 +282,7 @@ defmodule Ash.EmbeddableType do
       def apply_constraints(nil, _), do: {:ok, nil}
 
       def apply_constraints(term, constraints) do
-        __MODULE__
-        |> Ash.DataLayer.Simple.set_data([term])
-        |> Ash.Query.load(constraints[:load] || [])
-        |> ShadowApi.read()
-        |> case do
-          {:ok, [result]} ->
-            {:ok, result}
-
-          {:error, errors} ->
-            {:error, Ash.EmbeddableType.handle_errors(errors)}
-        end
+        ShadowApi.load(term, constraints[:load] || [])
       end
 
       def handle_change(nil, new_value, _constraints) do
