@@ -113,7 +113,7 @@ defmodule Ash.Resource do
                           |> Macro.underscore()
                           |> String.to_atom()
 
-      def default_short_name() do
+      def default_short_name do
         @default_short_name
       end
 
