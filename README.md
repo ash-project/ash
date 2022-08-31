@@ -3,13 +3,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Hex version badge](https://img.shields.io/hexpm/v/ash.svg)](https://hex.pm/packages/ash)
 
-## Documentation
+## 2.0 release coming soon!
 
-All documentation is contained in the generated hex documentation located [here](https://hexdocs.pm/ash). Head there for installation and usage information. What follows is only a brief introduction to Ash.
-
-## Big News
-
-2.0 release coming soon!
+2.0 release is coming any day now, just wrapping up some documentation. The current version of Ash is stable (v1.53.3). It is being used in production on several large applications and has had many success stories. There are release candidates available on hex for 2.0.0 if you'd like to start there.
 
 # Dependency
 
