@@ -98,10 +98,6 @@ For those looking to add Ash extensions:
 - check the changelog/new release number
 - push (with tags) and CI will automatically deploy the hex package
 
-# 1.0.0 Beta
-
-The package version is 1.0.0+ which typically does not mean beta, but there is a funny story behind it. The 1.0.0 version was accidentally released to hex.pm very early on (before anyone was really using Ash), and we had no way to revert it since it wasn't noticed until the 24 hour period had passed and the hex team were (rightfully) sticklers about breaking the rules around removing packages. Deprecating the package version didn't solve the problem because it was still shown as the latest available version for the package, so we decided to just roll forward with 1.0.0.
-
 # Contributors
 
 Ash is made possible by its excellent community!
