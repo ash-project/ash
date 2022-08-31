@@ -85,9 +85,9 @@ defmodule Ash.DataLayer.Ets do
     def start(resource, tenant) do
       table =
         if tenant do
-          Module.concat(to_string(Ash.DataLayer.Ets.table(resource)), to_string(tenant))
+          Module.concat(to_string(Ash.DataLayer.Ets.Info.table(resource)), to_string(tenant))
         else
-          Ash.DataLayer.Ets.table(resource)
+          Ash.DataLayer.Ets.Info.table(resource)
         end
 
       if Ash.DataLayer.Ets.Info.private?(resource) do
