@@ -9,7 +9,7 @@
 
 ## What is Ash?
 
-Check out [Ash HQ](ash-hq.org) for all the latest Ash goodness, from tutorials and reference to the Ash philosophy and what makes it unique and powerful.
+Check out [Ash HQ](http://www.ash-hq.org) for all the latest Ash goodness, from tutorials and reference to the Ash philosophy and what makes it unique and powerful.
 
 # Dependency
 
