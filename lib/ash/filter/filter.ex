@@ -72,9 +72,7 @@ defmodule Ash.Filter do
 
   ## Filter Templates
 
-  Filter templates are simplified fielter statements (they only support atom keys), that have substitutions in them.
-  Currently, the substitutions are `{:_actor, :field_or_path}` and `{:_actor, :_primary_key}`
-
+  To see the available templates, see `Ash.Filter.TemplateHelpers`.
   You can pass a filter template to `build_filter_from_template/2` with an actor, and it will return the new result
 
   Additionally, you can ask if the filter template contains an actor reference via `template_references_actor?/1`

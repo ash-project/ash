@@ -103,7 +103,7 @@ defmodule Ash.Actions.Sort do
             end
 
           !attribute ->
-            {sorts, [NoSuchAttribute.exception(name: field) | errors]}
+            {sorts, [NoSuchAttribute.exception(name: field, resource: resource) | errors]}
 
           Ash.Type.embedded_type?(attribute.type) ->
             {sorts, ["Cannot sort on embedded types" | errors]}

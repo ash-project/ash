@@ -1,8 +1,6 @@
 defmodule Ash.Tracer.Simple do
   @moduledoc """
   A simple tracer that can send traces to the current process or call a module with the trace.
-
-  Configure the behavior with `config :ash, Ash.Tracer.Simple, handler: :send | module`
   """
   use Ash.Tracer
 

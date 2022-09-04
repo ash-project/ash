@@ -34,7 +34,7 @@ defmodule Ash.Policy.Check do
 
   Return a keyword list filter that will be applied to the query being made, and will scope the results to match the rule
   """
-  @callback auto_filter(struct(), authorizer(), options()) :: Keyword.t()
+  @callback auto_filter(struct(), authorizer(), options()) :: Keyword.t() | Ash.Expr.t()
   @doc """
   An optional callback, hat allows the check to work with policies set to `access_type :runtime`
 
@@ -68,6 +68,8 @@ defmodule Ash.Policy.Check do
       @behaviour Ash.Policy.Check
 
       def type, do: :manual
+
+      defoverridable type: 0
     end
   end
 end

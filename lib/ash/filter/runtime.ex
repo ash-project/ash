@@ -382,6 +382,12 @@ defmodule Ash.Filter.Runtime do
     record
   end
 
+  defp get_related(records, paths) when is_list(records) do
+    Enum.flat_map(records, fn record ->
+      get_related(record, paths)
+    end)
+  end
+
   defp get_related(record, [key | rest]) do
     case Map.get(record, key) do
       nil ->

@@ -2,6 +2,8 @@ defmodule Ash.Expr do
   @moduledoc false
   alias Ash.Query.{BooleanExpression, Not}
 
+  @type t :: Macro.t()
+
   defmacro expr(do: body) do
     quote do
       Ash.Expr.expr(unquote(body))

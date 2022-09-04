@@ -275,7 +275,8 @@ defmodule Ash.Policy.Policy do
         false
 
       :error ->
-        {:and, {clause.check_module, clause.check_opts}, compile_policy_expression(rest, facts)}
+        {:or, {:not, {clause.check_module, clause.check_opts}},
+         compile_policy_expression(rest, facts)}
     end
   end
 end
