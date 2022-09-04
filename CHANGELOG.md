@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.0.0-rc.2](https://github.com/ash-project/ash/compare/v2.0.0-rc.1...v2.0.0-rc.2) (2022-09-04)
+
+
+
+
+### Bug Fixes:
+
+* the semantics of `forbid_unless` were not wrong
+
 ## [v2.0.0-rc.1](https://github.com/ash-project/ash/compare/v2.0.0-rc.0...v2.0.0-rc.1) (2022-09-04)
 
 
