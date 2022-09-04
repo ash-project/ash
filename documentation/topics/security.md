@@ -28,7 +28,7 @@ Api.read!(User, actor: current_user)
 # Authorize with an actor, but being explicit
 Api.read!(User, actor: current_user, authorize?: true)
 
-# Skip authorization, but set an actor. **The** actor can be used in other things than authorization
+# Skip authorization, but set an actor. The actor can be used in other things than authorization
 # so this may make sense depending on what you are doing.
 Api.read!(User, actor: current_user, authorize?: false)
 ```
