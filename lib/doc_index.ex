@@ -92,6 +92,10 @@ defmodule Ash.DocIndex do
          Ash.Resource.ManualRead,
          Ash.Resource.ManualRelationship
        ]},
+      {"Expressions",
+       [
+         Ash.Expr
+       ]},
       {"Queries",
        [
          Ash.Query,

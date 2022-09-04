@@ -1,5 +1,5 @@
 defmodule Ash.Expr do
-  @moduledoc false
+  @moduledoc "Tools to build Ash expressions"
   alias Ash.Query.{BooleanExpression, Not}
 
   @type t :: Macro.t()
