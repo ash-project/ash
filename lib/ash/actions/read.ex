@@ -769,7 +769,11 @@ defmodule Ash.Actions.Read do
               with %{valid?: true} <- ash_query,
                    {:ok, query} <- query,
                    {:ok, filter} <-
-                     filter_with_related(Enum.map(filter_requests, & &1.path), ash_query, data),
+                     filter_with_related(
+                       Enum.map(filter_requests, & &1.path),
+                       ash_query.filter,
+                       data
+                     ),
                    filter <- update_aggregate_filters(filter, data, path),
                    {:ok, query} <-
                      Ash.DataLayer.set_context(
@@ -1574,12 +1578,17 @@ defmodule Ash.Actions.Read do
     Ash.DataLayer.add_aggregates(data_layer_query, Map.values(aggregates), query.resource)
   end
 
-  defp filter_with_related(relationship_filter_paths, ash_query, data) do
-    Enum.reduce_while(
-      relationship_filter_paths,
-      {:ok, ash_query.filter},
+  defp filter_with_related(relationship_filter_paths, filter_expr, data, prefix \\ []) do
+    paths_to_global_filter_on =
+      filter_expr
+      |> Ash.Filter.relationship_paths()
+      |> Enum.filter(&((prefix ++ &1) in relationship_filter_paths))
+
+    paths_to_global_filter_on
+    |> Enum.reduce_while(
+      {:ok, filter_expr},
       fn path, {:ok, filter} ->
-        case get_in(data, path ++ [:authorization_filter]) do
+        case get_in(data, prefix ++ path ++ [:authorization_filter]) do
           nil ->
             {:cont, {:ok, filter}}
 
@@ -1590,6 +1599,30 @@ defmodule Ash.Actions.Read do
         end
       end
     )
+    |> case do
+      {:ok, filter} ->
+        {:ok,
+         filter
+         |> Ash.Filter.map(fn
+           %Ash.Query.Exists{path: exists_path, expr: exists_expr} = exists ->
+             paths =
+               Enum.filter(
+                 relationship_filter_paths,
+                 &List.starts_with?(&1, prefix ++ exists_path)
+               )
+
+             {:ok, new_expr} =
+               filter_with_related(paths, exists_expr, data, prefix ++ exists_path)
+
+             {:halt, %{exists | expr: new_expr}}
+
+           other ->
+             other
+         end)}
+
+      other ->
+        other
+    end
   end
 
   defp add_authorization_filter(filter, authorization_filter) do

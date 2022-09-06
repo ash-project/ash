@@ -13,10 +13,6 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
 
-    ets do
-      private?(true)
-    end
-
     actions do
       defaults [:create, :read, :update, :destroy]
     end
@@ -34,10 +30,6 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
   defmodule User do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
-
-    ets do
-      private?(true)
-    end
 
     actions do
       defaults [:create, :read, :update, :destroy]
@@ -251,6 +243,69 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
       post3_id = post3.id
 
       assert [%{id: ^post1_id, related_posts: [%{id: ^post3_id}]}] = Api.read!(query)
+    end
+
+    test "exists/2 in the same data layer" do
+      post2 =
+        Post
+        |> new(%{title: "two"})
+        |> Api.create!()
+
+      post3 =
+        Post
+        |> new(%{title: "three"})
+        |> Api.create!()
+
+      post1 =
+        Post
+        |> new(%{title: "one"})
+        |> replace_relationship(:related_posts, [post2, post3])
+        |> Api.create!()
+
+      Post
+      |> new(%{title: "four"})
+      |> replace_relationship(:related_posts, [post3])
+      |> Api.create!()
+
+      post2
+      |> Api.load!(:related_posts)
+
+      query =
+        Post
+        |> Ash.Query.filter(exists(related_posts, title == "two"))
+
+      post1_id = post1.id
+
+      assert [%{id: ^post1_id}] = Api.read!(query)
+    end
+
+    test "exists/2 across data layers" do
+      author =
+        User
+        |> new(%{name: "best author"})
+        |> Api.create!()
+
+      author2 =
+        User
+        |> new(%{name: "worst author"})
+        |> Api.create!()
+
+      post1 =
+        Post
+        |> new(%{title: "best"})
+        |> replace_relationship(:author, author)
+        |> Api.create!()
+
+      post1_id = post1.id
+
+      Post
+      |> new(%{title: "worst"})
+      |> replace_relationship(:author, author2)
+      |> Api.create!()
+
+      query = Ash.Query.filter(Post, exists(author, contains(name, "best")))
+
+      assert [%{id: ^post1_id}] = Api.read!(query)
     end
   end
 end

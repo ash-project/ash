@@ -507,7 +507,7 @@ defmodule Ash.DataLayer.Ets do
 
     case dump_to_native(record, attributes) do
       {:ok, casted} ->
-        case ETS.Set.put_new(table, {pkey, casted}) do
+        case ETS.Set.put(table, {pkey, casted}) do
           {:ok, set} ->
             {_key, record} = ETS.Set.get!(set, pkey)
             cast_record(record, resource)

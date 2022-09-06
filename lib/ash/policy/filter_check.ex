@@ -43,6 +43,14 @@ defmodule Ash.Policy.FilterCheck do
         []
       end
 
+      def strict_check(nil, _, opts) do
+        if Ash.Filter.template_references_actor?(opts[:filter]) do
+          {:ok, false}
+        else
+          {:ok, :unknown}
+        end
+      end
+
       def strict_check(_, _, _), do: {:ok, :unknown}
 
       def auto_filter(actor, authorizer, opts) do

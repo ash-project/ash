@@ -28,8 +28,7 @@ defmodule Ash.Filter.Runtime do
 
   def filter_matches(api, records, filter, loaded?) do
     filter
-    |> Ash.Filter.list_refs()
-    |> Enum.map(& &1.relationship_path)
+    |> Ash.Filter.relationship_paths(true)
     |> Enum.reject(&(&1 == []))
     |> Enum.uniq()
     |> Enum.reject(&Ash.Resource.loaded?(records, &1))
@@ -76,8 +75,7 @@ defmodule Ash.Filter.Runtime do
   def matches(record, expression) do
     relationship_paths =
       expression
-      |> Ash.Filter.list_refs()
-      |> Enum.map(& &1.relationship_path)
+      |> Ash.Filter.relationship_paths(true)
       |> Enum.uniq()
 
     relationship_paths
@@ -121,12 +119,14 @@ defmodule Ash.Filter.Runtime do
     end)
   end
 
-  defp flatten_many_to_many(record, rel, value, rest) do
-    Enum.flat_map(value, fn value ->
+  defp flatten_many_to_many(record, rel, values, rest) do
+    Enum.flat_map(values, fn value ->
       value
       |> flatten_relationships([rest])
       |> Enum.map(fn flattened_rest_value ->
-        Map.put(record, rel, flattened_rest_value)
+        record
+        |> Map.put(rel, flattened_rest_value)
+        |> Ash.Resource.set_metadata(%{unflattened_rels: %{rel => values}})
       end)
     end)
   end
@@ -135,7 +135,9 @@ defmodule Ash.Filter.Runtime do
     value
     |> flatten_relationships([rest])
     |> Enum.map(fn flattened_rest_value ->
-      Map.put(record, rel, flattened_rest_value)
+      record
+      |> Map.put(rel, flattened_rest_value)
+      |> Ash.Resource.set_metadata(%{unflattened_rels: %{rel => value}})
     end)
   end
 
@@ -191,6 +193,9 @@ defmodule Ash.Filter.Runtime do
             {:error, error}
         end
 
+      %Ash.Query.Exists{} = expr ->
+        resolve_expr(expr, record)
+
       %BooleanExpression{op: op, left: left, right: right} ->
         expression_matches(op, left, right, record)
 
@@ -200,6 +205,21 @@ defmodule Ash.Filter.Runtime do
       other ->
         {:ok, other}
     end
+  end
+
+  defp load_unflattened(record, []), do: record
+  defp load_unflattened(nil, _), do: nil
+
+  defp load_unflattened(records, path) when is_list(records) do
+    Enum.map(records, &load_unflattened(&1, path))
+  end
+
+  defp load_unflattened(record, [rel | rest]) do
+    Map.put(
+      record,
+      rel,
+      load_unflattened(record.__metadata__[:unflattened_rels][rel], rest)
+    )
   end
 
   defp resolve_exprs(exprs, record) do
@@ -244,6 +264,25 @@ defmodule Ash.Filter.Runtime do
       {:ok, resolved} -> {:ok, !resolved}
       other -> other
     end
+  end
+
+  defp resolve_expr(%Ash.Query.Exists{path: path, expr: expr}, record) do
+    record
+    |> load_unflattened(path)
+    |> get_related(path)
+    |> List.wrap()
+    |> Enum.reduce_while({:ok, false}, fn related, {:ok, false} ->
+      case resolve_expr(expr, related) do
+        {:ok, falsy} when falsy in [nil, false] ->
+          {:cont, {:ok, false}}
+
+        {:ok, _} ->
+          {:halt, {:ok, true}}
+
+        other ->
+          {:halt, other}
+      end
+    end)
   end
 
   defp resolve_expr(%mod{__predicate__?: _, left: left, right: right} = pred, record) do

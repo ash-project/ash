@@ -104,6 +104,7 @@ defmodule Ash.SatSolver do
   defp filter_to_expr(true), do: true
   defp filter_to_expr(%Filter{expression: expression}), do: filter_to_expr(expression)
   defp filter_to_expr(%{__predicate__?: _} = op_or_func), do: op_or_func
+  defp filter_to_expr(%Ash.Query.Exists{} = exists), do: exists
   defp filter_to_expr(%Not{expression: expression}), do: b(not filter_to_expr(expression))
 
   defp filter_to_expr(%BooleanExpression{op: op, left: left, right: right}) do
@@ -140,6 +141,15 @@ defmodule Ash.SatSolver do
 
   defp upgrade_related_filters_to_join_keys(%Not{expression: expression}, resource) do
     Not.new(upgrade_related_filters_to_join_keys(expression, resource))
+  end
+
+  defp upgrade_related_filters_to_join_keys(
+         %Ash.Query.Exists{path: path, expr: expr} = exists,
+         resource
+       ) do
+    related = Ash.Resource.Info.related(resource, path)
+
+    %{exists | expr: upgrade_related_filters_to_join_keys(expr, related)}
   end
 
   defp upgrade_related_filters_to_join_keys(
@@ -189,7 +199,7 @@ defmodule Ash.SatSolver do
   defp consolidate_relationships(expression, resource) do
     {replacements, _all_relationship_paths} =
       expression
-      |> Filter.relationship_paths()
+      |> Filter.relationship_paths(true)
       |> Enum.reduce({%{}, []}, fn path, {replacements, kept_paths} ->
         case find_synonymous_relationship_path(resource, kept_paths, path) do
           nil ->
@@ -216,6 +226,20 @@ defmodule Ash.SatSolver do
 
   defp do_consolidate_relationships(%Not{expression: expression}, replacements) do
     Not.new(do_consolidate_relationships(expression, replacements))
+  end
+
+  defp do_consolidate_relationships(
+         %Ash.Query.Exists{path: path, expr: expr} = exists,
+         replacements
+       ) do
+    path_count = Enum.count(path)
+
+    replacements =
+      replacements
+      |> Enum.filter(&List.starts_with?(&1, path))
+      |> Enum.map(&Enum.drop(&1, path_count))
+
+    %{exists | expr: do_consolidate_relationships(expr, replacements)}
   end
 
   defp do_consolidate_relationships(%Ash.Query.Ref{relationship_path: path} = ref, replacements)
@@ -649,6 +673,10 @@ defmodule Ash.SatSolver do
 
   defp simplify(%Not{expression: expression}) do
     Not.new(simplify(expression))
+  end
+
+  defp simplify(%Ash.Query.Exists{expr: expr} = exists) do
+    %{exists | expr: simplify(expr)}
   end
 
   defp simplify(%mod{__predicate__?: true} = predicate) do

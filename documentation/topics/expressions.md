@@ -55,7 +55,7 @@ actor(:key) # equivalent to `get_in(actor || %{}, [:key])`
 actor([:key1, :key2]) # equivalent to `get_in(actor || %{}, [:key, :key2])`
 arg(:arg_name) # equivalent to `Map.get(arguments, :arg_name)`
 ref(:key) # equivalent to referring to `key`. Allows for dynamic references
-ref([:path], :key) # equivalent to referring to `path.key`. Allows for dynamic references with dynamic (or static) paths.
+ref(:key, [:path]) # equivalent to referring to `path.key`. Allows for dynamic references with dynamic (or static) paths.
 context(:key) # equivalent to `get_in(context, :key)`
 context([:key1, :key2]) # equivalent to `get_in(context, [:key1, :key2])`
 ```

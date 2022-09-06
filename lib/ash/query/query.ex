@@ -491,6 +491,7 @@ defmodule Ash.Query do
   def is_expr?(%Ash.Query.Call{}), do: true
   def is_expr?(%Ash.Query.BooleanExpression{}), do: true
   def is_expr?(%Ash.Query.Not{}), do: true
+  def is_expr?(%Ash.Query.Exists{}), do: true
   def is_expr?(%Ash.Query.Ref{}), do: true
   def is_expr?(%{__predicate__?: _}), do: true
   def is_expr?(_), do: false

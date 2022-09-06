@@ -28,9 +28,9 @@ defmodule Ash.Filter.TemplateHelpers do
   @doc "A helper for building an expression style filter"
   defmacro expr(expr) do
     quote do
-      require Ash.Query
+      require Ash.Expr
 
-      Ash.Query.expr(unquote(expr))
+      Ash.Expr.expr(unquote(expr))
     end
   end
 end

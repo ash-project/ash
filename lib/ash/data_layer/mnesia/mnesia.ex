@@ -66,6 +66,7 @@ defmodule Ash.DataLayer.Mnesia do
 
     api
     |> Ash.Api.Info.resources()
+    |> Enum.filter(&(__MODULE__ in Spark.extensions(&1)))
     |> Enum.flat_map(fn resource ->
       resource
       |> Ash.DataLayer.Mnesia.Info.table()

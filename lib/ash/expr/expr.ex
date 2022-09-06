@@ -164,6 +164,29 @@ defmodule Ash.Expr do
     soft_escape(%Ash.Query.Call{name: op, args: args, operator?: true}, escape?)
   end
 
+  def do_expr({:exists, _, [path, expr]}, escape?) do
+    expr = do_expr(expr, escape?)
+
+    path =
+      case path do
+        {:., _, [left, right]} ->
+          ref = do_ref(left, right)
+          ref.relationship_path ++ [ref.attribute]
+
+        {{:., _, [left, right]}, _, _} ->
+          ref = do_ref(left, right)
+          ref.relationship_path ++ [ref.attribute]
+
+        {atom, _, _} when is_atom(atom) ->
+          [atom]
+
+        path when is_list(path) ->
+          path
+      end
+
+    soft_escape(Ash.Query.Exists.new(path, expr), escape?)
+  end
+
   def do_expr({left, _, [{op, _, [right]}]}, escape?)
       when is_atom(op) and op in @operator_symbols and is_atom(left) and left != :not do
     args = Enum.map([{left, [], nil}, right], &do_expr(&1, false))
