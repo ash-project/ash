@@ -335,6 +335,28 @@ defmodule Ash.Filter.Runtime do
       [] ->
         {:ok, nil}
 
+      [record] ->
+        {:ok, Map.get(record, name)}
+
+      [%struct{} = record] ->
+        if Spark.Dsl.is?(struct, Ash.Resource) do
+          if Ash.Resource.Info.attribute(struct, name) do
+            if Ash.Resource.selected?(record, name) do
+              {:ok, Map.get(record, name)}
+            else
+              :unknown
+            end
+          else
+            if Ash.Resource.loaded?(record, name) do
+              {:ok, Map.get(record, name)}
+            else
+              :unknown
+            end
+          end
+        else
+          {:ok, Map.get(record, name)}
+        end
+
       %struct{} = record ->
         if Spark.Dsl.is?(struct, Ash.Resource) do
           if Ash.Resource.Info.attribute(struct, name) do
