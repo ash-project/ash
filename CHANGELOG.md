@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.0.0-rc.3](https://github.com/ash-project/ash/compare/v2.0.0-rc.2...v2.0.0-rc.3) (2022-09-06)
+
+
+
+
+### Bug Fixes:
+
+* runtime filter handle new relationship shape
+
+### Improvements:
+
+* add `exists/2` expression
+
 ## [v2.0.0-rc.2](https://github.com/ash-project/ash/compare/v2.0.0-rc.1...v2.0.0-rc.2) (2022-09-04)
 
 
