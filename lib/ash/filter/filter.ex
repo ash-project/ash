@@ -1843,7 +1843,8 @@ defmodule Ash.Filter do
        ) do
     case parse_expression(exists_expression, %{
            context
-           | resource: Ash.Resource.Info.related(context.resource, path)
+           | resource: Ash.Resource.Info.related(context.resource, path),
+             root_resource: Ash.Resource.Info.related(context.resource, path)
          }) do
       {:ok, result} ->
         {:ok, BooleanExpression.optimized_new(:and, expression, %{exists | expr: result})}
