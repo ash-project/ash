@@ -24,6 +24,14 @@ These should all be straight forward enough to do a simple find and replace in y
 
 A new option has been added to the pub_sub notifier. If you are using it with phoenix, and you want it to publish a `%Phoenix.Socket.Broadcast{}` struct (which is what it used to do if you specified the `name` option with pub sub), then you'll need to set `broadcast_type :phoenix_broadcast`
 
+### Validation Changes
+
+`validate match/3` is now `validate match/2`. It used to accept a message as its third argument, but there is now support for setting a message on *all* validations like so:
+
+```elxir
+validate match(:attribute, ~r/regex/), message: "message"
+```
+
 ### Policy Changes
 
 When using a filter template that references the actor, it was previously acceptable for the actor to be `nil` and still have the check pass. For example, instead of:
