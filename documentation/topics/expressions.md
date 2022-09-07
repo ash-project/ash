@@ -40,6 +40,7 @@ The following functions are built in:
 - `get_path` | i.e `get_path(value, ["foo", "bar"])`. This is what expressions like `value[:foo]["bar"]` are turned into under the hood.
 - `ago` | i.e `deleted_at > ago(7, :day)`. The available time intervals are documented in {{link:ash:module:Ash.Type.DurationName}}
 - `contains` | if one string contains another string, i.e `contains("fred", "red")`
+- `exists` | `exists(foo.bar, name == "fred")` takes an expression scoped to the destination, and 
 
 ## Primitives
 
@@ -48,16 +49,16 @@ The following functions are built in:
 
 ## Templates
 
-Most of the time, when you are using an expression, you will actually be creating a `template`. In this template, you have a few references that can be used, which will be replaced when before the expression is evaluated. The following references are available:
+Most of the time, when you are using an expression, you will actually be creating a `template`. In this template, you have a few references that can be used, which will be replaced when before the expression is evaluated. The following references are available. The ones that start with `^` must be imported from `Ash.Filter.TemplateHelpers`.
 
 ```elixir
-actor(:key) # equivalent to `get_in(actor || %{}, [:key])`
-actor([:key1, :key2]) # equivalent to `get_in(actor || %{}, [:key, :key2])`
-arg(:arg_name) # equivalent to `Map.get(arguments, :arg_name)`
+^actor(:key) # equivalent to `get_in(actor || %{}, [:key])`
+^actor([:key1, :key2]) # equivalent to `get_in(actor || %{}, [:key, :key2])`
+^arg(:arg_name) # equivalent to `Map.get(arguments, :arg_name)`
+^context(:key) # equivalent to `get_in(context, :key)`
+^context([:key1, :key2]) # equivalent to `get_in(context, [:key1, :key2])`
 ref(:key) # equivalent to referring to `key`. Allows for dynamic references
 ref(:key, [:path]) # equivalent to referring to `path.key`. Allows for dynamic references with dynamic (or static) paths.
-context(:key) # equivalent to `get_in(context, :key)`
-context([:key1, :key2]) # equivalent to `get_in(context, [:key1, :key2])`
 ```
 
 ## Use cases for expressions

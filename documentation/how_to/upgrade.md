@@ -18,6 +18,7 @@ These should all be straight forward enough to do a simple find and replace in y
 - `source_field_on_join_table` -> `source_attribute_on_join_resource`
 - `destination_field_on_join_table` -> `destination_attribute_on_join_resource`
 - `no_fields?` -> `no_attributes?`
+- `expensive?` -> `before_action?` (on validations)
 
 ### DSL changes
 
