@@ -1841,10 +1841,24 @@ defmodule Ash.Filter do
          context,
          expression
        ) do
+    related = related(context, path)
+
+    if !related do
+      raise """
+      Could not determined related for `exists/2` expression.
+
+      Context Resource: #{inspect(context)}
+      Context Relationship Path: #{inspect(context.relationship_path)}
+      Path: #{inspect(path)}
+      Related: #{inspect(related)}
+      Expression: #{inspect(exists)}
+      """
+    end
+
     case parse_expression(exists_expression, %{
            context
-           | resource: Ash.Resource.Info.related(context.root_resource, path),
-             root_resource: Ash.Resource.Info.related(context.root_resource, path)
+           | resource: related,
+             root_resource: related
          }) do
       {:ok, result} ->
         {:ok, BooleanExpression.optimized_new(:and, expression, %{exists | expr: result})}
