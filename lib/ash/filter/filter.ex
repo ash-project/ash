@@ -190,16 +190,21 @@ defmodule Ash.Filter do
         statement,
         aggregates \\ %{},
         calculations \\ %{},
-        _context \\ %{}
+        context \\ %{}
       ) do
-    context = %{
-      resource: resource,
-      relationship_path: [],
-      aggregates: aggregates,
-      calculations: calculations,
-      public?: true,
-      data_layer: Ash.DataLayer.data_layer(resource)
-    }
+    context =
+      Map.merge(
+        %{
+          resource: resource,
+          root_resource: resource,
+          relationship_path: [],
+          aggregates: aggregates,
+          calculations: calculations,
+          public?: true,
+          data_layer: Ash.DataLayer.data_layer(resource)
+        },
+        context
+      )
 
     with {:ok, expression} <- parse_expression(statement, context),
          :ok <- validate_references(expression, resource) do
@@ -271,15 +276,20 @@ defmodule Ash.Filter do
     {:ok, nil}
   end
 
-  def parse(resource, statement, aggregates, calculations, _context) do
-    context = %{
-      resource: resource,
-      relationship_path: [],
-      aggregates: aggregates,
-      calculations: calculations,
-      public?: false,
-      data_layer: Ash.DataLayer.data_layer(resource)
-    }
+  def parse(resource, statement, aggregates, calculations, original_context) do
+    context =
+      Map.merge(
+        %{
+          resource: resource,
+          relationship_path: [],
+          aggregates: aggregates,
+          calculations: calculations,
+          public?: false,
+          root_resource: resource,
+          data_layer: Ash.DataLayer.data_layer(resource)
+        },
+        original_context
+      )
 
     with {:ok, expression} <- parse_expression(statement, context),
          :ok <- validate_references(expression, resource) do
@@ -1913,7 +1923,7 @@ defmodule Ash.Filter do
              :ok <-
                validate_not_crossing_datalayer_boundaries(
                  refs,
-                 context.resource,
+                 context.root_resource,
                  {function, nested_statement}
                ),
              {:ok, function} <-
@@ -1951,8 +1961,7 @@ defmodule Ash.Filter do
         context =
           context
           |> Map.update!(:relationship_path, fn path -> path ++ [rel.name] end)
-
-        # |> Map.put(:resource, rel.destination)
+          |> Map.put(:resource, rel.destination)
 
         if is_list(nested_statement) || is_map(nested_statement) do
           case parse_expression(nested_statement, context) do
@@ -2087,7 +2096,7 @@ defmodule Ash.Filter do
              :ok <-
                validate_not_crossing_datalayer_boundaries(
                  refs,
-                 context.resource,
+                 context.root_resource,
                  {field, nested_statement}
                ),
              {:ok, operator} <- Operator.new(op_module, left, right) do
@@ -2162,8 +2171,10 @@ defmodule Ash.Filter do
         [relationship.destination | each_related(relationship.destination, rest)]
       end
     else
+      {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
+
       Logger.warn(
-        "Failed to detect relationship #{inspect(resource)} | #{inspect([item | rest])}\n#{Process.info(self(), :current_stacktrace)}"
+        "Failed to detect relationship #{inspect(resource)} | #{inspect([item | rest])}\n#{Exception.format_stacktrace(stacktrace)}"
       )
 
       []
@@ -2218,7 +2229,7 @@ defmodule Ash.Filter do
            hydrate_refs(args, context),
          refs <- list_refs([left, right]),
          :ok <-
-           validate_not_crossing_datalayer_boundaries(refs, context.resource, call),
+           validate_not_crossing_datalayer_boundaries(refs, context.root_resource, call),
          {:ok, operator} <- Operator.new(op_module, left, right) do
       if is_boolean(operator) do
         {:ok, operator}
@@ -2279,7 +2290,7 @@ defmodule Ash.Filter do
              {:ok, args} <-
                hydrate_refs(args, context),
              refs <- list_refs(args),
-             :ok <- validate_not_crossing_datalayer_boundaries(refs, context.resource, call),
+             :ok <- validate_not_crossing_datalayer_boundaries(refs, context.root_resource, call),
              {:func, function_module} when not is_nil(function_module) <-
                {:func, get_function(name, context.resource, context.public?)},
              {:ok, function} <-
@@ -2319,6 +2330,8 @@ defmodule Ash.Filter do
   defp module_and_opts(module), do: {module, []}
 
   def hydrate_refs({key, value}, context) when is_atom(key) do
+    context = Map.put_new(context, :root_resource, context[:resource])
+
     case hydrate_refs(value, context) do
       {:ok, hydrated} ->
         {:ok, {key, hydrated}}
@@ -2333,6 +2346,8 @@ defmodule Ash.Filter do
         %{aggregates: aggregates, calculations: calculations} = context
       )
       when is_atom(attribute) do
+    context = Map.put_new(context, :root_resource, context[:resource])
+
     case related(context, ref.relationship_path) do
       nil ->
         {:error,
@@ -2421,10 +2436,13 @@ defmodule Ash.Filter do
   end
 
   def hydrate_refs(%Ref{relationship_path: relationship_path, resource: nil} = ref, context) do
+    context = Map.put_new(context, :root_resource, context[:resource])
     {:ok, %{ref | resource: Ash.Resource.Info.related(context.resource, relationship_path)}}
   end
 
   def hydrate_refs(%BooleanExpression{left: left, right: right} = expr, context) do
+    context = Map.put_new(context, :root_resource, context[:resource])
+
     with {:ok, left} <- hydrate_refs(left, context),
          {:ok, right} <- hydrate_refs(right, context) do
       {:ok, %{expr | left: left, right: right}}
@@ -2435,16 +2453,21 @@ defmodule Ash.Filter do
   end
 
   def hydrate_refs(%Not{expression: expression} = expr, context) do
+    context = Map.put_new(context, :root_resource, context[:resource])
+
     with {:ok, expression} <- hydrate_refs(expression, context) do
       {:ok, %{expr | expression: expression}}
     end
   end
 
   def hydrate_refs(%Call{} = call, context) do
+    context = Map.put_new(context, :root_resource, context[:resource])
     resolve_call(call, context)
   end
 
   def hydrate_refs(%{__predicate__?: _, left: left, right: right} = expr, context) do
+    context = Map.put_new(context, :root_resource, context[:resource])
+
     with {:ok, left} <- hydrate_refs(left, context),
          {:ok, right} <- hydrate_refs(right, context) do
       {:ok, %{expr | left: left, right: right}}
@@ -2455,6 +2478,8 @@ defmodule Ash.Filter do
   end
 
   def hydrate_refs(%{__predicate__?: _, arguments: arguments} = expr, context) do
+    context = Map.put_new(context, :root_resource, context[:resource])
+
     case hydrate_refs(arguments, context) do
       {:ok, args} ->
         {:ok, %{expr | arguments: args}}
@@ -2465,6 +2490,8 @@ defmodule Ash.Filter do
   end
 
   def hydrate_refs(list, context) when is_list(list) do
+    context = Map.put_new(context, :root_resource, context[:resource])
+
     list
     |> Enum.reduce_while({:ok, []}, fn val, {:ok, acc} ->
       case hydrate_refs(val, context) do
@@ -2661,7 +2688,7 @@ defmodule Ash.Filter do
                      :ok <-
                        validate_not_crossing_datalayer_boundaries(
                          refs,
-                         context.resource,
+                         context.root_resource,
                          {attr, value}
                        ),
                      {:ok, operator} <- Operator.new(operator_module, left, right) do

@@ -113,7 +113,13 @@ A simple way to define a policy is by using `expr/1` in the policy. For example:
 authorize_if expr(exists(role, name == "owner"))
 ```
 
-In these and in other filter checks, it is advised to use `exists/2` when referring to relationships, because of the way that the policy authorizer may mix & match your policies when building filters. Depending on the action type these expressions behave slightly differently.
+#### Using exists
+
+In these and in other filter checks, it is advised to use `exists/2` when referring to relationships, because of the way that the policy authorizer may mix & match your policies when building filters. There is a semantic difference in filters between `friends.first_name == "ted" and friends.last_name == "dansen"`. This means that you have a *single* friend with the first_name "bob" and the last name "fred". If you use `exists`, then your policies can be used in filters without excluding unnecessary data, i.e `exists(friends, first_name == "ted") and exists(friends, last_name == "dansen")` means "you have one friend with the first_name "ted" and one friend with the last_name "dansen".
+
+#### How expressions are used
+
+Depending on the action type these expressions behave slightly differently.
 
 - In reads, the expression will be applied to the query.
 - For creates, the expression applies to the result of *applying* the changes. In these cases, you can't use things like `fragment` because nothing exists in the database.

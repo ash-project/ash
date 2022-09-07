@@ -24,6 +24,21 @@ These should all be straight forward enough to do a simple find and replace in y
 
 A new option has been added to the pub_sub notifier. If you are using it with phoenix, and you want it to publish a `%Phoenix.Socket.Broadcast{}` struct (which is what it used to do if you specified the `name` option with pub sub), then you'll need to set `broadcast_type :phoenix_broadcast`
 
+### Policy Changes
+
+When using a filter template that references the actor, it was previously acceptable for the actor to be `nil` and still have the check pass. For example, instead of:
+
+```elixir
+authorize_if expr(actor(:field) != 10)
+```
+
+you might want
+
+```elixir
+authorize_if is_nil(actor(:field))
+forbid_if expr(actor(:field) != 10)
+```
+
 ### Function Changes
 
 The following functions have been moved from `Ash.Resource.Info` to `Ash.Resource`. The old functions still exist, but will warn as deprecated.
