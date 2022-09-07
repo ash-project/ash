@@ -26,8 +26,8 @@ defmodule Ash.Policy.FilterCheck do
   they will likely have undesired effects.
   """
   @type options :: Keyword.t()
-  @callback filter(options()) :: Keyword.t()
-  @callback reject(options()) :: Keyword.t()
+  @callback filter(options()) :: Keyword.t() | Ash.Expr.t()
+  @callback reject(options()) :: Keyword.t() | Ash.Expr.t()
   @optional_callbacks [filter: 1, reject: 1]
 
   defmacro __using__(_) do

@@ -50,7 +50,7 @@ For each check, starting from the top:
 
 #### Filter checks
 
-Some checks don't return a status, but instead return a "filter". Filter checks are applied to the query that is being run, and then the
+Most checks won't return a status, but instead return a "filter". Filter checks are applied to the query that is being run, and then the
 rest of the checks are run. In general, all checks should be filter checks or simple checks.
 
 ### The Simplest Policy
@@ -105,6 +105,20 @@ policies do
 end
 ```
 
+### Expression Policies
+
+A simple way to define a policy is by using `expr/1` in the policy. For example:
+
+```elixir
+authorize_if expr(exists(role, name == "owner"))
+```
+
+In these and in other filter checks, it is advised to use `exists/2` when referring to relationships, because of the way that the policy authorizer may mix & match your policies when building filters. Depending on the action type these expressions behave slightly differently.
+
+- In reads, the expression will be applied to the query.
+- For creates, the expression applies to the result of *applying* the changes. In these cases, you can't use things like `fragment` because nothing exists in the database.
+- For updates and destroys, the expression applies to the data *about* to be updated or destroyed
+
 ### Access Type
 
 The default access type is `:filter`. In most cases this will be all you need. In the example above, if a user made a request for all instances
@@ -112,7 +126,7 @@ of the resource, it wouldn't actually return a forbidden error. It simply attach
 If the actor attribute `active` was `false`, then the request _would_ be forbidden (because there is no data for which they can pass this policy). However, if `active` is `true`, the authorizer would attach the following filter to the request:
 
 ```elixir
-public or owner == actor(:_primary_key)
+public or owner == ^actor(:_primary_key)
 ```
 
 To understand what `actor(:_primary_key)` means, see the Filter Templates section in `Ash.Filter`
