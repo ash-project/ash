@@ -121,7 +121,7 @@ defmodule Ash.MixProject do
         Authorization: [
           Ash.Authorizer,
           Ash.Policy.Check,
-          Ash.Policy.Check.BuiltInChecks,
+          Ash.Policy.Check.Builtins,
           Ash.Policy.FilterCheck,
           Ash.Policy.SimpleCheck
         ],

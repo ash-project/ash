@@ -17,7 +17,7 @@ depending on the details of the request being authorized.
 
 ## Guide
 
-To see what checks are built-in, see `Ash.Policy.Check.BuiltInChecks`
+To see what checks are built-in, see `Ash.Policy.Check.Builtins`
 
 ### Basics
 

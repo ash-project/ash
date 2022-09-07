@@ -7,7 +7,7 @@ defmodule Ash.Resource.Validation.OneOf do
 
   @opt_schema [
     values: [
-      type: {:custom, __MODULE__, :values, []},
+      type: {:list, :any},
       required: true
     ],
     attribute: [

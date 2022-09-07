@@ -4,16 +4,28 @@ defmodule Ash.Resource.Change.RelateActor do
   alias Ash.Changeset
   alias Ash.Error.Changes.InvalidRelationship
 
-  def init(opts) do
-    case opts[:relationship] do
-      nil ->
-        {:error, "Relationship is required"}
+  @opt_schema [
+    relationship: [
+      doc: "The relationship to set the actor to.",
+      required: true,
+      type: :atom
+    ],
+    allow_nil?: [
+      doc: "Wether or not to allow the actor to be nil, in which case nothing will happen.",
+      type: :boolean,
+      default: false
+    ]
+  ]
 
-      relationship when is_atom(relationship) ->
+  def opt_schema(), do: @opt_schema
+
+  def init(opts) do
+    case Spark.OptionsHelpers.validate(opts, @opt_schema) do
+      {:ok, opts} ->
         {:ok, opts}
 
-      relationship ->
-        {:error, "Expected an atom for relationship, got: #{inspect(relationship)}"}
+      {:error, error} ->
+        {:error, Exception.message(error)}
     end
   end
 

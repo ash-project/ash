@@ -225,7 +225,7 @@ defmodule Ash.Policy.Authorizer do
       @bypass
     ],
     imports: [
-      Ash.Policy.Check.BuiltInChecks,
+      Ash.Policy.Check.Builtins,
       Ash.Filter.TemplateHelpers
     ],
     schema: [

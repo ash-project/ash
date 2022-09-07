@@ -16,6 +16,7 @@ defmodule Ash.Resource.Preparation do
   defstruct [:preparation]
 
   @type t :: %__MODULE__{}
+  @type ref :: {module(), Keyword.t()} | module()
 
   @doc false
   def schema do

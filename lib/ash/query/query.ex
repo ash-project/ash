@@ -1185,6 +1185,50 @@ defmodule Ash.Query do
     do_unload_load(loads, {field, []})
   end
 
+  @build_opts [
+    filter: [
+      type: :any,
+      doc: "A filter keyword, expression or %Ash.Filter{}"
+    ],
+    sort: [
+      type: :any,
+      doc: "A sort list or keyword"
+    ],
+    limit: [
+      type: :integer,
+      doc: "A limit to apply"
+    ],
+    offset: [
+      type: :integer,
+      doc: "An offset to apply"
+    ],
+    load: [
+      type: :any,
+      doc: "A load statement to add to the query"
+    ],
+    aggregate: [
+      type: :any,
+      doc:
+        "A custom aggregate to add to the query. Can be `{name, type, relationship}` or `{name, type, relationship, build_opts}`"
+    ],
+    calculate: [
+      type: :any,
+      doc:
+        "A custom calculation to add to the query. Can be `{name, module_and_opts}` or `{name, module_and_opts, context}`"
+    ],
+    distinct: [
+      type: {:list, :atom},
+      doc: "A distinct clause to add to the query"
+    ],
+    context: [
+      type: :map,
+      doc: "A map to merge into the query context"
+    ]
+  ]
+
+  @doc false
+  def build_opts, do: @build_opts
+
   @doc """
   Builds a query from a keyword list.
 
@@ -1208,18 +1252,9 @@ defmodule Ash.Query do
   Ash.Query.build(Myresource, filter: expr(name == "marge"))
   ```
 
-  Supported keys:
-  * `filter` - filter keyword/expr or `%Ash.Filter{}`
-  * `sort` - sort keyword
-  * `limit` - integer limit
-  * `offset` - integer offset
-  * `load` - keyword/list of atoms to load
-  * `aggregate` - `{name, type, relationship}`
-  * `aggregate` - `{name, type, relationship, query_in_build_format}`
-  * `calculate` - `{name, module_and_opts}`
-  * `calculate` - `{name, module_and_opts, context}`
-  * `distinct` - list of atoms
-  * `context: %{key: value}`
+  ## Options
+
+  #{Spark.OptionsHelpers.docs(@build_opts)}
   """
   @spec build(Ash.Resource.t(), Ash.Api.t() | nil, Keyword.t()) :: t()
   def build(resource, api \\ nil, keyword) do

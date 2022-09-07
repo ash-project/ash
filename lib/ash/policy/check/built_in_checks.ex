@@ -1,4 +1,4 @@
-defmodule Ash.Policy.Check.BuiltInChecks do
+defmodule Ash.Policy.Check.Builtins do
   @moduledoc "The global authorization checks built into ash"
 
   @doc "This check always passes"

@@ -111,6 +111,8 @@ defmodule Ash.Resource.Calculation do
           allow_nil?: boolean
         }
 
+  @type ref :: {module(), Keyword.t()} | module()
+
   defmodule Argument do
     @moduledoc "An argument to a calculation"
     defstruct [:name, :type, :default, :allow_nil?, :constraints]

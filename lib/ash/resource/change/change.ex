@@ -13,6 +13,7 @@ defmodule Ash.Resource.Change do
   defstruct [:change, :on, :only_when_valid?, :description, where: []]
 
   @type t :: %__MODULE__{}
+  @type ref :: {module(), Keyword.t()} | module()
 
   @doc false
   def schema do

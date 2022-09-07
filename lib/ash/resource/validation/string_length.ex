@@ -23,6 +23,8 @@ defmodule Ash.Resource.Validation.StringLength do
     ]
   ]
 
+  def opt_schema, do: @opt_schema
+
   @impl true
   def init(opts) do
     case Spark.OptionsHelpers.validate(opts, @opt_schema) do

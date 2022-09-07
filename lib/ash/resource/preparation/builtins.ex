@@ -2,12 +2,18 @@ defmodule Ash.Resource.Preparation.Builtins do
   @moduledoc "Builtin query preparations"
 
   @doc """
-  Merges the given query context. If an MFA is provided, it will be called with the query.
+  Merges the given query context.
 
+  If an MFA is provided, it will be called with the changeset.
   The MFA should return `{:ok, context_to_be_merged}` or `{:error, term}`
+
+  ## Examples
+
+      change set_context(%{something_used_internally: true})
+      change set_context({MyApp.Context, :set_context, []})
   """
-  @spec set_context(map | (Ash.Query.t() -> mfa)) ::
-          {atom, Keyword.t()}
+  @spec set_context(context :: map | mfa) ::
+          Ash.Resource.Preparation.ref()
   def set_context(context) do
     {Ash.Resource.Preparation.SetContext, context: context}
   end
@@ -15,18 +21,18 @@ defmodule Ash.Resource.Preparation.Builtins do
   @doc """
   Passes the given keyword list to `Ash.Query.build/2` with the query being prepared.
 
-  This allows declaring simple query modifications in-line. For more complicated query modifications,
-  use a custom preparation.
+  This allows declaring simple query modifications in-line.
 
-  For example:
+  ## Options
 
-  ```elixir
-  read :top_ten_songs do
-    prepare build(sort: [song_rank: :desc], limit: 10)
-  end
-  ```
+  #{Spark.OptionsHelpers.docs(Ash.Query.build_opts())}
+
+  ## Examples
+
+      prepare build(sort: [song_rank: :desc], limit: 10)
+      prepare build(load: [:friends])
   """
-  @spec build(Keyword.t()) :: {atom, Keyword.t()}
+  @spec build(Keyword.t()) :: Ash.Resource.Preparation.ref()
   def build(options) do
     {Ash.Resource.Preparation.Build, options: options}
   end

@@ -62,6 +62,8 @@ defmodule Ash.Resource.Validation do
         }
 
   @type path :: [atom | integer]
+  @type ref :: {module(), Keyword.t()} | module()
+
   @callback init(Keyword.t()) :: {:ok, Keyword.t()} | {:error, String.t()}
   @callback validate(Ash.Changeset.t(), Keyword.t()) :: :ok | {:error, term}
 
