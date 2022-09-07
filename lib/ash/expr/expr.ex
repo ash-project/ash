@@ -164,11 +164,14 @@ defmodule Ash.Expr do
     soft_escape(%Ash.Query.Call{name: op, args: args, operator?: true}, escape?)
   end
 
-  def do_expr({:exists, _, [path, expr]}, escape?) do
-    expr = do_expr(expr, escape?)
+  def do_expr({:exists, _, [path, original_expr]}, escape?) do
+    expr = do_expr(original_expr, escape?)
 
     path =
       case path do
+        {:^, _, [value]} ->
+          value
+
         {:., _, [left, right]} ->
           ref = do_ref(left, right)
           ref.relationship_path ++ [ref.attribute]
@@ -182,6 +185,9 @@ defmodule Ash.Expr do
 
         path when is_list(path) ->
           path
+
+        other ->
+          raise "Invalid value used in the first argument in exists, i.e exists(#{Macro.to_string(other)}, #{Macro.to_string(expr)})"
       end
 
     soft_escape(Ash.Query.Exists.new(path, expr), escape?)
