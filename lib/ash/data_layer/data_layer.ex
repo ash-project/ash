@@ -43,6 +43,7 @@ defmodule Ash.DataLayer do
           {Ash.Resource.t(), atom, atom, Ash.Resource.Relationships.relationship()}
 
   @callback functions(Ash.Resource.t()) :: [module]
+  @callback operators(Ash.Resource.t()) :: [module]
   @callback filter(data_layer_query(), Ash.Filter.t(), resource :: Ash.Resource.t()) ::
               {:ok, data_layer_query()} | {:error, term}
   @callback sort(data_layer_query(), Ash.Sort.t(), resource :: Ash.Resource.t()) ::
@@ -153,6 +154,7 @@ defmodule Ash.DataLayer do
                       transaction: 3,
                       rollback: 2,
                       upsert: 3,
+                      operators: 1,
                       functions: 1,
                       in_transaction?: 1,
                       add_aggregate: 3,

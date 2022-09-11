@@ -1648,7 +1648,7 @@ defmodule Ash.Changeset do
     %{changeset | context: Ash.Helpers.deep_merge_maps(changeset.context, map)}
   end
 
-  @type manage_relationship_type :: :replace | :append | :remove | :direct_control | :create
+  @type manage_relationship_type :: :replace | :append | :remove | :direct_control
 
   @spec manage_relationship_opts(manage_relationship_type()) :: Keyword.t()
   def manage_relationship_opts(:replace) do

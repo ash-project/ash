@@ -15,7 +15,6 @@ defmodule Ash.Actions.PaginationTest do
       uuid_primary_key :id
 
       attribute :user_id, :uuid
-      attribute :body, :string
     end
 
     actions do
@@ -90,10 +89,6 @@ defmodule Ash.Actions.PaginationTest do
       attribute :name, :string
     end
 
-    aggregates do
-      count :count_of_posts, :posts
-    end
-
     relationships do
       has_many :posts, Post
     end
@@ -134,13 +129,7 @@ defmodule Ash.Actions.PaginationTest do
   describe "offset pagination" do
     setup do
       for i <- 0..9 do
-        user = Api.create!(Ash.Changeset.new(User, %{name: "#{i}"}))
-
-        if i != 0 do
-          for x <- 1..i do
-            Api.create!(Ash.Changeset.new(Post, %{body: "#{i}-#{x}", user_id: user.id}))
-          end
-        end
+        Api.create!(Ash.Changeset.new(User, %{name: "#{i}"}))
       end
 
       :ok
@@ -268,13 +257,7 @@ defmodule Ash.Actions.PaginationTest do
     setup do
       users =
         for i <- 0..9 do
-          user = Api.create!(Ash.Changeset.new(User, %{name: "#{i}"}))
-
-          if i != 0 do
-            for x <- 1..i do
-              Api.create!(Ash.Changeset.new(Post, %{body: "#{i}-#{x}", user_id: user.id}))
-            end
-          end
+          Api.create!(Ash.Changeset.new(User, %{name: "#{i}"}))
         end
 
       [users: users]
@@ -405,68 +388,6 @@ defmodule Ash.Actions.PaginationTest do
         |> Enum.map(& &1.name)
 
       assert names == ["5", "6", "7", "8", "9"]
-    end
-
-    test "pagination works with a :desc sort applied" do
-      page =
-        User
-        |> Ash.Query.filter(name == "4")
-        |> Ash.Query.sort(name: :desc)
-        |> Api.read!(page: [limit: 1])
-
-      keyset = Enum.at(page.results, 0).__metadata__.keyset
-
-      names =
-        User
-        |> Ash.Query.sort(:name)
-        |> Api.read!(page: [after: keyset, limit: 5])
-        |> Map.get(:results)
-        |> Enum.map(& &1.name)
-
-      assert names == ["5", "6", "7", "8", "9"]
-    end
-
-    test "pagination works with a sort applied that uses an aggregate" do
-      page =
-        User
-        |> Ash.Query.filter(count_of_posts == 4)
-        |> Ash.Query.sort(:name)
-        |> Api.read!(page: [limit: 1])
-
-      keyset = Enum.at(page.results, 0).__metadata__.keyset
-
-      names =
-        User
-        |> Ash.Query.sort(:count_of_posts)
-        |> Api.read!(page: [after: keyset, limit: 5])
-        |> Map.get(:results)
-        |> Enum.map(& &1.name)
-
-      assert names == ["5", "6", "7", "8", "9"]
-    end
-
-    test "pagination works with a sort applied that uses an aggregate desc" do
-      User
-      |> Ash.Query.load(:count_of_posts)
-      |> Api.read!()
-      |> Enum.map(&{&1.name, &1.count_of_posts})
-
-      page =
-        User
-        |> Ash.Query.filter(count_of_posts == 4)
-        |> Ash.Query.sort(:name)
-        |> Api.read!(page: [limit: 1])
-
-      keyset = Enum.at(page.results, 0).__metadata__.keyset
-
-      names =
-        User
-        |> Ash.Query.sort(count_of_posts: :desc)
-        |> Api.read!(page: [after: keyset, limit: 5])
-        |> Map.get(:results)
-        |> Enum.map(& &1.name)
-
-      assert names == ["3", "2", "1", "0"]
     end
 
     test "pagination works with a reversed sort applied" do

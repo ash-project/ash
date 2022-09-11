@@ -14,9 +14,7 @@ defmodule Ash.Page.Keyset do
 
   @type t :: %__MODULE__{}
 
-  require Ash.Query
-
-  def new(results, count, _sort, original_query, more?, opts) do
+  def new(results, count, sort, original_query, more?, opts) do
     results =
       if opts[:page][:before] do
         Enum.reverse(results)
@@ -25,7 +23,7 @@ defmodule Ash.Page.Keyset do
       end
 
     %__MODULE__{
-      results: data_with_keyset(results, original_query.resource),
+      results: data_with_keyset(results, original_query.resource, sort),
       count: count,
       before: opts[:page][:before],
       after: opts[:page][:after],
@@ -35,86 +33,71 @@ defmodule Ash.Page.Keyset do
     }
   end
 
-  def data_with_keyset(results, resource) do
-    fields_in_keyset = Ash.Resource.Info.primary_key(resource)
+  def data_with_keyset(results, resource, sort) do
+    if any_complex?(resource, sort) do
+      results
+    else
+      fields_in_keyset =
+        sort
+        |> Keyword.keys()
+        |> Enum.sort()
 
-    Enum.map(results, fn result ->
-      Map.update!(
-        result,
-        :__metadata__,
-        &Map.put(&1, :keyset, keyset(result, fields_in_keyset))
-      )
+      Enum.map(results, fn result ->
+        Map.update!(
+          result,
+          :__metadata__,
+          &Map.put(&1, :keyset, keyset(result, fields_in_keyset))
+        )
+      end)
+    end
+  end
+
+  def filter(resource, values, sort, after_or_before) when after_or_before in [:after, :before] do
+    if any_complex?(resource, sort) do
+      {:error,
+       Ash.Error.Query.NoComplexSortsWithKeysetPagination.exception(
+         resource: resource,
+         sort: sort
+       )}
+    else
+      sort_fields =
+        sort
+        |> Keyword.keys()
+        |> Enum.sort()
+
+      with {:ok, decoded} <- decode_values(values, after_or_before),
+           {:ok, zipped} <- zip_fields(sort_fields, decoded) do
+        field_values =
+          Enum.map(sort, fn {field, direction} ->
+            {field, direction, Keyword.get(zipped, field)}
+          end)
+
+        {:ok, filters(field_values, after_or_before)}
+      end
+    end
+  end
+
+  defp any_complex?(resource, sort) do
+    Enum.any?(sort, fn
+      {key, _value} when is_atom(key) ->
+        if Ash.Resource.Info.calculation(resource, key) ||
+             Ash.Resource.Info.aggregate(resource, key) do
+          true
+        else
+          false
+        end
+
+      _ ->
+        true
     end)
   end
 
-  def filter(api, resource, keyset, sort, after_or_before, query_opts)
-      when after_or_before in [:after, :before] do
-    sort_fields = Keyword.keys(sort)
-
-    with {:ok, pkey_values} <- decode_values(keyset, resource, after_or_before),
-         {:ok, values} <- get_values(pkey_values, api, resource, sort, query_opts),
-         {:ok, zipped} <-
-           zip_fields(sort_fields, values) do
-      field_values =
-        Enum.map(sort, fn
-          {field, {_, direction}} ->
-            {field, direction, Keyword.get(zipped, field)}
-
-          {field, direction} ->
-            {field, direction, Keyword.get(zipped, field)}
-        end)
-
-      {:ok, filters(field_values, after_or_before)}
-    end
-  end
-
-  defp get_values(pkey, api, resource, sort, query_opts) do
-    primary_read = Ash.Resource.Info.primary_action!(resource, :read)
-
-    {select, load} =
-      Enum.split_with(sort, fn {key, _order} ->
-        Ash.Resource.Info.attribute(resource, key)
-      end)
-
-    select = Keyword.keys(select)
-
-    load =
-      Enum.map(load, fn
-        {key, {_, input}} ->
-          {key, input}
-
-        {key, _} ->
-          key
-      end)
-
-    resource
-    |> Ash.Query.for_read(primary_read.name, %{}, query_opts)
-    |> Ash.Query.filter(^pkey)
-    |> Ash.Query.load(load)
-    |> Ash.Query.select(select)
-    |> Ash.Query.limit(1)
-    |> api.read_one()
-    |> case do
-      {:ok, record} ->
-        {:ok,
-         Enum.map(sort, fn {key, _} ->
-           Map.get(record, key)
-         end)}
-
-      other ->
-        other
-    end
-  end
-
-  defp decode_values(values, resource, key) do
-    pkey = Ash.Resource.Info.primary_key(resource)
-
+  defp decode_values(values, key) do
     {:ok,
      values
      |> URI.decode_www_form()
      |> Base.decode64!()
-     |> non_executable_binary_to_term([:safe])
-     |> Enum.zip_with(pkey, &{&2, &1})}
+     |> non_executable_binary_to_term([:safe])}
   rescue
     _e ->
       {:error, Ash.Error.Page.InvalidKeyset.exception(value: values, key: key)}
