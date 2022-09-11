@@ -294,7 +294,11 @@ defmodule Ash.Actions.Read do
                    %{valid?: true} = query <-
                      query_with_initial_data(query, request_opts),
                    {:ok, initial_query, query, page_opts} <-
-                     paginate(query, action, page: request_opts[:page]),
+                     paginate(query, action, [page: request_opts[:page]],
+                       actor: actor,
+                       tenant: tenant,
+                       authorize?: authorize?
+                     ),
                    page_opts <- page_opts && Keyword.delete(page_opts, :filter),
                    {%{valid?: true} = query, before_notifications} <-
                      run_before_action(query),
@@ -576,7 +580,7 @@ defmodule Ash.Actions.Read do
     if page_opts[:offset] do
       if action.pagination.keyset? do
         data
-        |> Ash.Page.Keyset.data_with_keyset(original_query.resource, sort)
+        |> Ash.Page.Keyset.data_with_keyset(original_query.resource)
         |> Ash.Page.Offset.new(count, original_query, more?, opts)
       else
         Ash.Page.Offset.new(data, count, original_query, more?, opts)
@@ -585,7 +589,7 @@ defmodule Ash.Actions.Read do
       cond do
         action.pagination.offset? && action.pagination.keyset? ->
           data
-          |> Ash.Page.Keyset.data_with_keyset(original_query.resource, sort)
+          |> Ash.Page.Keyset.data_with_keyset(original_query.resource)
           |> Ash.Page.Offset.new(count, original_query, more?, opts)
 
         action.pagination.offset? ->
@@ -1024,7 +1028,7 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp paginate(starting_query, action, opts) do
+  defp paginate(starting_query, action, opts, query_opts) do
     page_opts = page_opts(action, opts)
 
     cond do
@@ -1042,7 +1046,7 @@ defmodule Ash.Actions.Read do
         end
 
       page_opts[:limit] || is_nil(page_opts) || page_opts == [] ->
-        case do_paginate(starting_query, action.pagination, opts) do
+        case do_paginate(starting_query, action.pagination, opts, query_opts) do
           {:ok, initial_query, query} ->
             {:ok, initial_query, query, page_opts}
 
@@ -1058,23 +1062,23 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp do_paginate(query, pagination, opts) do
+  defp do_paginate(query, pagination, opts, query_opts) do
     paginated =
       cond do
         opts[:page][:before] || opts[:page][:after] ->
-          keyset_pagination(query, pagination, opts[:page])
+          keyset_pagination(query, pagination, opts[:page], query_opts)
 
         opts[:page][:offset] ->
           limit_offset_pagination(query, pagination, opts[:page])
 
         pagination.offset? && pagination.keyset? ->
-          keyset_pagination(query, pagination, opts[:page])
+          keyset_pagination(query, pagination, opts[:page], query_opts)
 
         pagination.offset? ->
           limit_offset_pagination(query, pagination, opts[:page])
 
         true ->
-          keyset_pagination(query, pagination, opts[:page])
+          keyset_pagination(query, pagination, opts[:page], query_opts)
       end
 
     case paginated do
@@ -1091,7 +1095,7 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp keyset_pagination(query, pagination, opts) do
+  defp keyset_pagination(query, pagination, opts, query_opts) do
     sorted =
       if Ash.Actions.Sort.sorting_on_identity?(query) do
         query
@@ -1119,10 +1123,12 @@ defmodule Ash.Actions.Read do
         end
 
       case Ash.Page.Keyset.filter(
+             query.api,
              query.resource,
              opts[:before] || opts[:after],
              sorted.sort,
-             after_or_before
+             after_or_before,
+             query_opts
            ) do
         {:ok, filter} ->
           {:ok, limited,
