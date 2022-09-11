@@ -11,7 +11,7 @@ defmodule Ash.Resource.Change.RelateActor do
       type: :atom
     ],
     allow_nil?: [
-      doc: "Wether or not to allow the actor to be nil, in which case nothing will happen.",
+      doc: "Whether or not to allow the actor to be nil, in which case nothing will happen.",
       type: :boolean,
       default: false
     ]

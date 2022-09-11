@@ -1,9 +1,7 @@
 defmodule Ash.Api.Info.Diagram do
-  # possible options:
-  # - show attrs
-  # - show private attrs
-  # - show private relships
-  # - show calcs, aggs
+  @moduledoc """
+  Generate a Mermaid Entity Relationship Diagram from a specified API.
+  """
 
   def resources_with_attrs(api) do
     for resource <- Ash.Api.Info.resources(api) do
