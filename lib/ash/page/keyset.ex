@@ -16,7 +16,7 @@ defmodule Ash.Page.Keyset do
 
   require Ash.Query
 
-  def new(results, count, sort, original_query, more?, opts) do
+  def new(results, count, _sort, original_query, more?, opts) do
     results =
       if opts[:page][:before] do
         Enum.reverse(results)
@@ -116,7 +116,7 @@ defmodule Ash.Page.Keyset do
      |> non_executable_binary_to_term([:safe])
      |> Enum.zip_with(pkey, &{&2, &1})}
   rescue
-    e ->
+    _e ->
       {:error, Ash.Error.Page.InvalidKeyset.exception(value: values, key: key)}
   end
 
