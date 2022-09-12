@@ -33,63 +33,21 @@ defmodule Ash.Page.Keyset do
     }
   end
 
-  def data_with_keyset(results, resource, sort) do
-    if any_complex?(resource, sort) do
-      results
-    else
-      fields_in_keyset =
-        sort
-        |> Keyword.keys()
-        |> Enum.sort()
-
-      Enum.map(results, fn result ->
-        Map.update!(
-          result,
-          :__metadata__,
-          &Map.put(&1, :keyset, keyset(result, fields_in_keyset))
-        )
-      end)
-    end
+  def data_with_keyset(results, _resource, sort) do
+    Enum.map(results, fn result ->
+      Map.update!(
+        result,
+        :__metadata__,
+        &Map.put(&1, :keyset, keyset(result, sort))
+      )
+    end)
   end
 
   def filter(resource, values, sort, after_or_before) when after_or_before in [:after, :before] do
-    if any_complex?(resource, sort) do
-      {:error,
-       Ash.Error.Query.NoComplexSortsWithKeysetPagination.exception(
-         resource: resource,
-         sort: sort
-       )}
-    else
-      sort_fields =
-        sort
-        |> Keyword.keys()
-        |> Enum.sort()
-
-      with {:ok, decoded} <- decode_values(values, after_or_before),
-           {:ok, zipped} <- zip_fields(sort_fields, decoded) do
-        field_values =
-          Enum.map(sort, fn {field, direction} ->
-            {field, direction, Keyword.get(zipped, field)}
-          end)
-
-        {:ok, filters(field_values, after_or_before)}
-      end
+    with {:ok, decoded} <- decode_values(values, after_or_before),
+         {:ok, zipped} <- zip_fields(sort, decoded) do
+      {:ok, filters(zipped, resource, after_or_before)}
     end
-  end
-
-  defp any_complex?(resource, sort) do
-    Enum.any?(sort, fn
-      {key, _value} when is_atom(key) ->
-        if Ash.Resource.Info.calculation(resource, key) ||
-             Ash.Resource.Info.aggregate(resource, key) do
-          true
-        else
-          false
-        end
-
-      _ ->
-        true
-    end)
   end
 
   defp decode_values(values, key) do
@@ -103,13 +61,13 @@ defmodule Ash.Page.Keyset do
       {:error, Ash.Error.Page.InvalidKeyset.exception(value: values, key: key)}
   end
 
-  defp filters(keyset, after_or_before) do
-    [or: do_filters(keyset, after_or_before)]
+  defp filters(keyset, resource, after_or_before) do
+    [or: do_filters(keyset, resource, after_or_before)]
   end
 
-  defp do_filters([], _), do: []
+  defp do_filters([], _, _), do: []
 
-  defp do_filters([{field, direction, value} | rest], after_or_before) do
+  defp do_filters([{field, direction, value} | rest], resource, after_or_before) do
     operator = operator(after_or_before, direction)
 
     # keyset pagination is done like so
@@ -117,8 +75,17 @@ defmodule Ash.Page.Keyset do
     # (x = a AND y > b) OR
     # (x = a AND y = b AND z > c) OR
 
+    field =
+      case field do
+        %Ash.Query.Calculation{} = calc ->
+          %Ash.Query.Ref{attribute: calc, resource: resource, relationship_path: []}
+
+        field ->
+          field
+      end
+
     [[{field, [{operator, value}]}]] ++
-      Enum.map(do_filters(rest, after_or_before), fn nested ->
+      Enum.map(do_filters(rest, resource, after_or_before), fn nested ->
         [[{field, [eq: value]}]] ++ nested
       end)
   end
@@ -139,8 +106,8 @@ defmodule Ash.Page.Keyset do
   defp zip_fields(pkey, values, acc \\ [])
   defp zip_fields([], [], acc), do: {:ok, Enum.reverse(acc)}
 
-  defp zip_fields([pkey | rest_pkey], [value | rest_values], acc) do
-    zip_fields(rest_pkey, rest_values, [{pkey, value} | acc])
+  defp zip_fields([{pkey, direction} | rest_pkey], [value | rest_values], acc) do
+    zip_fields(rest_pkey, rest_values, [{pkey, direction, value} | acc])
   end
 
   defp zip_fields(_, _, _), do: {:error, "Invalid keyset"}
@@ -152,8 +119,18 @@ defmodule Ash.Page.Keyset do
     |> Base.encode64()
   end
 
-  defp field_values(record, fields) do
-    Enum.map(fields, &Map.get(record, &1))
+  defp field_values(record, sort) do
+    Enum.map(sort, fn
+      {%Ash.Query.Calculation{load: load, name: name}, _} ->
+        if load do
+          Map.get(record, load)
+        else
+          Map.get(record.calculations, name)
+        end
+
+      {field, _} ->
+        Map.get(record, field)
+    end)
   end
 
   @doc """

@@ -768,7 +768,7 @@ defmodule Ash.Resource.Dsl do
       ],
       trace_name: [
         type: :string,
-        doc: "The name to use in traces. Defaults to the last part of the module",
+        doc: "The name to use in traces. Defaults to the short_name stringified",
         links: [
           guides: [
             "ash:guide:Monitoring"

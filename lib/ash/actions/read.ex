@@ -1092,6 +1092,23 @@ defmodule Ash.Actions.Read do
   end
 
   defp keyset_pagination(query, pagination, opts) do
+    query =
+      query.sort
+      |> Enum.flat_map(fn
+        {%Ash.Query.Calculation{} = calc, _} ->
+          [calc]
+
+        _ ->
+          []
+      end)
+      |> Enum.reduce(query, fn
+        %{load: nil} = calc, query ->
+          Ash.Query.calculate(query, calc.name, {calc.module, calc.opts}, calc.type, calc.context)
+
+        %{load: load}, query ->
+          Ash.Query.load(query, load)
+      end)
+
     sorted =
       if Ash.Actions.Sort.sorting_on_identity?(query) do
         query

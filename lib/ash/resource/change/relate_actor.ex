@@ -17,7 +17,7 @@ defmodule Ash.Resource.Change.RelateActor do
     ]
   ]
 
-  def opt_schema(), do: @opt_schema
+  def opt_schema, do: @opt_schema
 
   def init(opts) do
     case Spark.OptionsHelpers.validate(opts, @opt_schema) do

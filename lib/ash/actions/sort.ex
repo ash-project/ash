@@ -142,10 +142,16 @@ defmodule Ash.Actions.Sort do
       |> Ash.Resource.Info.identities()
       |> Enum.map(& &1.keys)
 
-    sort_fields = Keyword.keys(query.sort)
-
     Enum.any?([Ash.Resource.Info.primary_key(query.resource) | identity_keys], fn keyset ->
-      Enum.all?(keyset, &(&1 in sort_fields))
+      Enum.all?(keyset, fn key ->
+        Enum.any?(query.sort, fn
+          {sort, _} when is_atom(sort) ->
+            sort == key
+
+          _ ->
+            false
+        end)
+      end)
     end)
   end
 
@@ -212,6 +218,7 @@ defmodule Ash.Actions.Sort do
              calc.filterable?,
              calc.load
            ) do
+      calc = Map.put(calc, :load, field)
       {sorts ++ [{calc, order}], errors}
     else
       {:error, error} ->

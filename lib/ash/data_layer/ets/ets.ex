@@ -73,6 +73,7 @@ defmodule Ash.DataLayer.Ets do
       :tenant,
       :api,
       calculations: [],
+      aggregates: [],
       relationships: %{},
       offset: 0
     ]
@@ -187,6 +188,9 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, :expression_calculation_sort), do: true
   def can?(_, :multitenancy), do: true
   def can?(_, :upsert), do: true
+  def can?(_, :aggregate_filter), do: true
+  def can?(_, :aggregate_sort), do: true
+  def can?(_, {:aggregate, :count}), do: true
   def can?(_, :create), do: true
   def can?(_, :read), do: true
   def can?(_, :update), do: true
@@ -231,6 +235,11 @@ defmodule Ash.DataLayer.Ets do
   @impl true
   def add_calculation(query, calculation, _, _),
     do: {:ok, %{query | calculations: [calculation | query.calculations]}}
+
+  @doc false
+  @impl true
+  def add_aggregate(query, aggregate, _),
+    do: {:ok, %{query | aggregates: [aggregate | query.aggregates]}}
 
   @doc false
   @impl true
@@ -291,81 +300,119 @@ defmodule Ash.DataLayer.Ets do
           sort: sort,
           tenant: tenant,
           calculations: calculations,
+          aggregates: aggregates,
           api: api
         },
         _resource
       ) do
     with {:ok, records} <- get_records(resource, tenant),
-         {:ok, filtered_records} <-
-           filter_matches(records, filter, api) do
+         {:ok, records} <- do_add_aggregates(records, api, resource, aggregates),
+         {:ok, records} <-
+           filter_matches(records, filter, api),
+         {:ok, records} <-
+           do_add_calculations(records, resource, calculations) do
       offset_records =
-        filtered_records
+        records
         |> Sort.runtime_sort(sort)
         |> Enum.drop(offset || 0)
 
-      limited_records =
-        if limit do
-          Enum.take(offset_records, limit)
-        else
-          offset_records
-        end
-
-      if Enum.empty?(calculations) do
-        {:ok, limited_records}
+      if limit do
+        {:ok, Enum.take(offset_records, limit)}
       else
-        Enum.reduce_while(limited_records, {:ok, []}, fn record, {:ok, records} ->
-          calculations
-          |> Enum.reduce_while({:ok, record}, fn calculation, {:ok, record} ->
-            expression = calculation.module.expression(calculation.opts, calculation.context)
+        {:ok, offset_records}
+      end
+    else
+      {:error, error} -> {:error, error}
+    end
+  end
 
-            case Ash.Filter.hydrate_refs(expression, %{
-                   resource: resource,
-                   aggregates: %{},
-                   calculations: %{},
-                   public?: false
-                 }) do
-              {:ok, expression} ->
-                case Ash.Filter.Runtime.do_match(record, expression) do
-                  {:ok, value} ->
-                    if calculation.load do
-                      {:cont, {:ok, Map.put(record, calculation.load, value)}}
-                    else
-                      {:cont,
-                       {:ok,
-                        Map.update!(record, :calculations, &Map.put(&1, calculation.name, value))}}
-                    end
+  defp do_add_calculations(records, _resource, []), do: {:ok, records}
 
-                  :unknown ->
-                    if calculation.load do
-                      {:cont, {:ok, Map.put(record, calculation.load, nil)}}
-                    else
-                      {:cont,
-                       {:ok,
-                        Map.update!(record, :calculations, &Map.put(&1, calculation.name, nil))}}
-                    end
+  defp do_add_calculations(records, resource, calculations) do
+    Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
+      calculations
+      |> Enum.reduce_while({:ok, record}, fn calculation, {:ok, record} ->
+        expression = calculation.module.expression(calculation.opts, calculation.context)
 
-                  {:error, error} ->
-                    {:halt, {:error, error}}
+        case Ash.Filter.hydrate_refs(expression, %{
+               resource: resource,
+               public?: false
+             }) do
+          {:ok, expression} ->
+            case Ash.Filter.Runtime.do_match(record, expression) do
+              {:ok, value} ->
+                if calculation.load do
+                  {:cont, {:ok, Map.put(record, calculation.load, value)}}
+                else
+                  {:cont,
+                   {:ok,
+                    Map.update!(record, :calculations, &Map.put(&1, calculation.name, value))}}
+                end
+
+              :unknown ->
+                if calculation.load do
+                  {:cont, {:ok, Map.put(record, calculation.load, nil)}}
+                else
+                  {:cont,
+                   {:ok, Map.update!(record, :calculations, &Map.put(&1, calculation.name, nil))}}
                 end
 
               {:error, error} ->
                 {:halt, {:error, error}}
             end
-          end)
-          |> case do
-            {:ok, record} ->
-              {:cont, {:ok, [record | records]}}
 
-            {:error, error} ->
-              {:halt, {:error, error}}
-          end
-        end)
-        |> case do
-          {:ok, records} -> {:ok, Enum.reverse(records)}
-          {:error, error} -> {:error, error}
+          {:error, error} ->
+            {:halt, {:error, error}}
         end
+      end)
+      |> case do
+        {:ok, record} ->
+          {:cont, {:ok, [record | records]}}
+
+        {:error, error} ->
+          {:halt, {:error, error}}
       end
-    else
+    end)
+    |> case do
+      {:ok, records} -> {:ok, Enum.reverse(records)}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp do_add_aggregates(records, _api, _resource, []), do: {:ok, records}
+
+  defp do_add_aggregates(records, api, _resource, aggregates) do
+    # TODO support crossing apis by getting the destination api, and set destination query context.
+    Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
+      aggregates
+      |> Enum.reduce_while({:ok, record}, fn %{
+                                               kind: :count,
+                                               relationship_path: relationship_path,
+                                               query: query,
+                                               name: name,
+                                               load: load
+                                             },
+                                             {:ok, record} ->
+        with {:ok, loaded_record} <- api.load(record, relationship_path),
+             related <- Ash.Filter.Runtime.get_related(loaded_record, relationship_path),
+             {:ok, filtered} <-
+               filter_matches(related, query.filter, api) do
+          {:cont, {:ok, Map.put(record, load || name, Enum.count(filtered))}}
+        else
+          other ->
+            {:halt, other}
+        end
+      end)
+      |> case do
+        {:ok, record} ->
+          {:cont, {:ok, [record | records]}}
+
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
+    end)
+    |> case do
+      {:ok, records} -> {:ok, Enum.reverse(records)}
       {:error, error} -> {:error, error}
     end
   end

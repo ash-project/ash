@@ -1885,6 +1885,7 @@ defmodule Ash.Filter do
         new_context = %{
           relationship_path: ref.relationship_path,
           resource: related,
+          root_resource: context.root_resource,
           aggregates: context.aggregates,
           calculations: context.calculations,
           public?: context.public?
@@ -2044,7 +2045,14 @@ defmodule Ash.Filter do
         end
 
       field in calculations ->
-        {module, _} = module_and_opts(Map.get(context.calculations, field).calculation)
+        module =
+          case Map.get(context.calculations, field) do
+            %{calculation: {module, _}} ->
+              module
+
+            %{module: module} ->
+              module
+          end
 
         field =
           if is_binary(field) do

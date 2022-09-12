@@ -27,6 +27,8 @@ defmodule Ash.Filter.Runtime do
   def filter_matches(_api, records, nil, _loaded), do: {:ok, records}
 
   def filter_matches(api, records, filter, loaded?) do
+    filter = replace_calcs(filter)
+
     filter
     |> Ash.Filter.relationship_paths(true)
     |> Enum.reject(&(&1 == []))
@@ -52,6 +54,22 @@ defmodule Ash.Filter.Runtime do
       _need_to_load when loaded? ->
         {:ok, []}
     end
+  end
+
+  defp replace_calcs(filter) do
+    Ash.Filter.map(filter, fn
+      %Ash.Query.Ref{
+        relationship_path: relationship_path,
+        attribute: %Ash.Query.Calculation{module: module, opts: opts, context: context}
+      } ->
+        opts
+        |> module.expression(context)
+        |> replace_calcs()
+        |> Ash.Filter.prefix_refs(relationship_path)
+
+      other ->
+        other
+    end)
   end
 
   @doc """
@@ -201,6 +219,9 @@ defmodule Ash.Filter.Runtime do
 
       %Call{} = call ->
         raise "Unresolvable filter component: #{inspect(call)}"
+
+      %Ref{} = ref ->
+        resolve_expr(ref, record)
 
       other ->
         {:ok, other}
@@ -439,17 +460,18 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
-  defp get_related(record, []) do
+  @doc false
+  def get_related(record, []) do
     record
   end
 
-  defp get_related(records, paths) when is_list(records) do
+  def get_related(records, paths) when is_list(records) do
     Enum.flat_map(records, fn record ->
       get_related(record, paths)
     end)
   end
 
-  defp get_related(record, [key | rest]) do
+  def get_related(record, [key | rest]) do
     case Map.get(record, key) do
       nil ->
         nil

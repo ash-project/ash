@@ -108,7 +108,6 @@ defmodule Ash.Resource.Info do
   @spec trace_name(Ash.Resource.t()) :: String.t() | nil
   def trace_name(resource) do
     Extension.get_opt(resource, [:resource], :trace_name, nil) || to_string(short_name(resource))
-    resource |> Module.split() |> List.last()
   end
 
   @doc """
