@@ -369,7 +369,7 @@ defmodule Ash.Resource.Info do
   @doc """
   Gets the type of an aggregate for a given resource.
   """
-  @spec aggregate_type(Ash.Resource.t(), Ash.Query.Aggregate.t() | atom) :: Ash.Type.t()
+  @spec aggregate_type(Ash.Resource.t(), Ash.Resource.Aggregate.t() | atom) :: Ash.Type.t()
   def aggregate_type(resource, aggregate) when is_atom(aggregate) do
     aggregate_type(resource, aggregate(resource, aggregate))
   end
