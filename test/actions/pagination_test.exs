@@ -515,26 +515,26 @@ defmodule Ash.Actions.PaginationTest do
     end
 
     test "pagination more? is false when there are no more records using `before`" do
-      # page =
-      #   User
-      #   |> Ash.Query.filter(count_of_posts == 5)
-      #   |> Ash.Query.sort(:name)
-      #   |> Api.read!(page: [limit: 1])
+      page =
+        User
+        |> Ash.Query.filter(count_of_posts == 4)
+        |> Ash.Query.sort(:name)
+        |> Api.read!(page: [limit: 1])
 
-      # keyset = Enum.at(page.results, 0).__metadata__.keyset
+      keyset = Enum.at(page.results, 0).__metadata__.keyset
 
-      # page =
-      #   User
-      #   |> Ash.Query.sort(:count_of_posts)
-      #   |> Api.read!(page: [after: keyset, limit: 4])
+      page =
+        User
+        |> Ash.Query.sort(:count_of_posts)
+        |> Api.read!(page: [before: keyset, limit: 4])
 
-      # names =
-      #   page
-      #   |> Map.get(:results)
-      #   |> Enum.map(& &1.name)
+      names =
+        page
+        |> Map.get(:results)
+        |> Enum.map(& &1.name)
 
-      # assert names == ["6", "7", "8", "9"]
-      # refute page.more?
+      assert names == ["0", "1", "2", "3"]
+      refute page.more?
     end
 
     test "pagination works with a sort applied that uses an aggregate desc" do
