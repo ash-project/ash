@@ -131,7 +131,8 @@ defmodule Ash.Resource.Validation.Builtins do
   """
   @spec match(attribute :: atom, match :: Regex.t()) :: Validation.ref()
   def match(attribute, match) do
-    {Validation.Match, attribute: attribute, match: match, message: "must match #{match}"}
+    {Validation.Match,
+     attribute: attribute, match: match, message: "must match #{inspect(match)}"}
   end
 
   @doc """
