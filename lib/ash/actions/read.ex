@@ -571,6 +571,13 @@ defmodule Ash.Actions.Read do
         {data, []}
       end
 
+    data =
+      if page_opts[:before] do
+        Enum.reverse(data)
+      else
+        data
+      end
+
     more? = not Enum.empty?(rest)
 
     if page_opts[:offset] do

@@ -169,7 +169,7 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
     assert [
              %Ash.Tracer.Simple.Span{
                type: :action,
-               name: "Api:Post.read",
+               name: "api:post.read",
                metadata: %{
                  action: :read,
                  resource: Ash.Test.TracerTest.AsyncLoadTest.Post
@@ -185,11 +185,11 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
     assert [
              %Ash.Tracer.Simple.Span{
                type: :changeset,
-               name: "changeset:Post:create"
+               name: "changeset:post:create"
              },
              %Ash.Tracer.Simple.Span{
                type: :action,
-               name: "Api:Post.create",
+               name: "api:post.create",
                metadata: %{
                  action: :create,
                  api: Ash.Test.TracerTest.AsyncLoadTest.Api,
@@ -286,7 +286,7 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
     assert [
              %Ash.Tracer.Simple.Span{
                type: :action,
-               name: "Api:Post.read",
+               name: "api:post.read",
                metadata: %{
                  action: :read,
                  resource: Ash.Test.TracerTest.AsyncLoadTest.Post
@@ -301,7 +301,7 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
              end)
 
     assert Enum.find(load.spans, fn span ->
-             span.name == "Api:Author.read"
+             span.name == "api:author.read"
            end)
   end
 end

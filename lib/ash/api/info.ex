@@ -47,7 +47,7 @@ defmodule Ash.Api.Info do
   @doc "The trace name for an api"
   @spec trace_name(Ash.Api.t()) :: String.t()
   def trace_name(api) do
-    Extension.get_opt(api, [:execution], :trace_name, nil) || api |> Module.split() |> List.last()
+    Extension.get_opt(api, [:execution], :trace_name, nil) || to_string(short_name(api))
   end
 
   @doc "The span_name for an api and resource combination"
