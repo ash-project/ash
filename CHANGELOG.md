@@ -5,6 +5,39 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.0.0-rc.4](https://github.com/ash-project/ash/compare/v2.0.0-rc.3...v2.0.0-rc.4) (2022-09-12)
+
+
+
+
+### Bug Fixes:
+
+* fix keyset pagination ordering bug
+
+* short names are snake cased
+
+* properly do pagination
+
+* handle pins in exists
+
+* add better error for `exists/2`
+
+* use root_resource for `related` path in filter
+
+* add `match/3` to upgrading guide
+
+* set root_resource in `exists` parsing
+
+* error fetching relationships in filter expressions
+
+* filter check typespecs
+
+### Improvements:
+
+* add `aggregate_type/2` helper
+
+* make two queries for full keyset pagination support
+
 ## [v2.0.0-rc.3](https://github.com/ash-project/ash/compare/v2.0.0-rc.2...v2.0.0-rc.3) (2022-09-06)
 
 
