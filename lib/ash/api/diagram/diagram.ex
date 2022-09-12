@@ -1,6 +1,6 @@
 defmodule Ash.Api.Info.Diagram do
   @moduledoc """
-  Generate a Mermaid Entity Relationship Diagram from a specified API.
+  Generate Mermaid diagrams from a specified API.
   """
 
   def resources_with_attrs(api) do
@@ -43,10 +43,10 @@ defmodule Ash.Api.Info.Diagram do
   def type(:has_one), do: "|o--||"
   def type(:many_to_many), do: "}o--o{"
 
-  def short_type({:array, t}), do: "[#{short_module(t)}]"
+  def short_type({:array, t}), do: "ArrayOf#{short_module(t)}"
   def short_type(t), do: short_module(t)
 
-  def mermaid(api) do
+  def mermaid_er_diagram(api) do
     indent = "    "
 
     resources =
