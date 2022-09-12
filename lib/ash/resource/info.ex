@@ -366,6 +366,24 @@ defmodule Ash.Resource.Info do
     |> Enum.find(&(&1.name == name && !&1.private?))
   end
 
+  @doc """
+  Gets the type of an aggregate for a given resource.
+  """
+  @spec aggregate_type(Ash.Resource.t(), Ash.Query.Aggregate.t() | atom) :: Ash.Type.t()
+  def aggregate_type(resource, aggregate) when is_atom(aggregate) do
+    aggregate_type(resource, aggregate(resource, aggregate))
+  end
+
+  def aggregate_type(resource, aggregate) do
+    attribute_type =
+      if aggregate.field do
+        related = Ash.Resource.Info.related(resource, aggregate.relationship_path)
+        Ash.Resource.Info.attribute(related, aggregate.field).type
+      end
+
+    Ash.Query.Aggregate.kind_to_type(aggregate.kind, attribute_type)
+  end
+
   @doc "Returns all aggregates of a resource"
   @spec aggregates(Ash.Resource.t()) :: list(Ash.Resource.Aggregate.t())
   def aggregates(resource) do
