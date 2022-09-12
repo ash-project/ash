@@ -36,8 +36,8 @@ This allows for the following behaviour:
 ```elixir
 # Because the 3rd argument is a keyword list, we use it as options
 Api.register_user(username, password, [tenant: "organization_22"])
-# Because the 3rd argument is a keyword list, we use it as action input
+# Because the 3rd argument is a map, we use it as action input
 Api.register_user(username, password, %{key: "val"})
-# When all are provided it is unambiguous
+# When all arguments are provided it is unambiguous
 Api.register_user(username, password, %{key: "val"}, [tenant: "organization_22"])
 ```
