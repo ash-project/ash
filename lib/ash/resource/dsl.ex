@@ -1227,7 +1227,8 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.SetTypes,
     Ash.Resource.Transformers.RequireUniqueFieldNames,
     Ash.Resource.Transformers.ValidateRelationshipAttributes,
-    Ash.Resource.Transformers.ValidateEagerIdentities
+    Ash.Resource.Transformers.ValidateEagerIdentities,
+    Ash.Resource.Transformers.ValidateAggregatesSupported
   ]
 
   @moduledoc """
