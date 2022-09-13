@@ -344,7 +344,7 @@ defmodule Ash.Actions.ManagedRelationships do
   def validate_required_belongs_to({changeset, instructions}, preflight?) do
     changeset.resource
     |> Ash.Resource.Info.relationships()
-    |> Enum.filter(&(&1.type == :belongs_to && &1.required?))
+    |> Enum.filter(&(&1.type == :belongs_to && !&1.allow_nil?))
     |> keep_relationships_to_validate(changeset, preflight?)
     |> Enum.reduce({changeset, instructions}, fn required_relationship,
                                                  {changeset, instructions} ->

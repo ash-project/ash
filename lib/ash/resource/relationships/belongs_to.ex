@@ -15,13 +15,14 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :api,
     :not_found_message,
     :violation_message,
-    :required?,
+    :allow_nil?,
     :filter,
     :sort,
     :writable?,
     :context,
     :description,
     :attribute_writable?,
+    filterable?: true,
     validate_destination_attribute?: true,
     cardinality: :one,
     type: :belongs_to
@@ -36,7 +37,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           filter: Ash.Filter.t() | nil,
           source: Ash.Resource.t(),
           destination: Ash.Resource.t(),
-          required?: boolean,
+          allow_nil?: boolean,
           primary_key?: boolean,
           define_attribute?: boolean,
           attribute_type: term,
@@ -44,6 +45,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           attribute_writable?: boolean,
           destination_attribute: atom,
           private?: boolean,
+          filterable?: boolean,
           source_attribute: atom | nil,
           description: String.t()
         }
@@ -66,9 +68,9 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                     doc:
                       "Whether the generated attribute is, or is part of, the primary key of a resource."
                   ],
-                  required?: [
+                  allow_nil?: [
                     type: :boolean,
-                    default: false,
+                    default: true,
                     links: [],
                     doc:
                       "Whether this relationship must always be present, e.g: must be included on creation, and never removed (it may be modified). The generated attribute will not allow nil values."

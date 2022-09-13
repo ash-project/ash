@@ -149,7 +149,19 @@ defmodule Ash.Actions.Load do
     primary_key = Ash.Resource.Info.primary_key(last_relationship.source)
 
     map_or_update(data, lead_path, fn record ->
-      Map.put(record, last_relationship.name, Map.get(value, Map.take(record, primary_key)))
+      case primary_key do
+        [field] ->
+          Map.put(
+            record,
+            last_relationship.name,
+            Map.get(value, Map.take(record, primary_key)) ||
+              Map.get(value, Map.get(record, field)) || []
+          )
+
+        _ ->
+          Map.put(record, last_relationship.name, Map.get(value, Map.take(record, primary_key))) ||
+            []
+      end
     end)
   end
 

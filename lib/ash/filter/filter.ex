@@ -1937,7 +1937,7 @@ defmodule Ash.Filter do
                hydrate_refs(List.wrap(nested_statement), context),
              refs <- list_refs(args),
              :ok <-
-               validate_not_crossing_datalayer_boundaries(
+               validate_refs(
                  refs,
                  context.root_resource,
                  {function, nested_statement}
@@ -2117,7 +2117,7 @@ defmodule Ash.Filter do
                hydrate_refs(nested_statement, context),
              refs <- list_refs([left, right]),
              :ok <-
-               validate_not_crossing_datalayer_boundaries(
+               validate_refs(
                  refs,
                  context.root_resource,
                  {field, nested_statement}
@@ -2204,7 +2204,46 @@ defmodule Ash.Filter do
     end
   end
 
-  defp validate_not_crossing_datalayer_boundaries(refs, resource, expr) do
+  defp validate_refs(refs, resource, expr) do
+    with :ok <- validate_filterable_relationship_paths(refs, resource) do
+      validate_not_crossing_data_layer_boundaries(refs, resource, expr)
+    end
+  end
+
+  defp validate_filterable_relationship_paths(refs, resource) do
+    Enum.find_value(
+      refs,
+      :ok,
+      fn ref ->
+        case check_filterable(resource, ref.relationship_path) do
+          :ok ->
+            false
+
+          {:error, error} ->
+            {:error, error}
+        end
+      end
+    )
+  end
+
+  defp check_filterable(_resource, []), do: :ok
+
+  defp check_filterable(resource, [relationship | rest]) do
+    relationship = Ash.Resource.Info.relationship(resource, relationship)
+
+    if relationship.filterable? do
+      if Ash.DataLayer.data_layer_can?(resource, {:filter_relationship, relationship}) do
+        check_filterable(relationship.destination, rest)
+      else
+        {:error, "#{inspect(resource)}.#{relationship.name} is not filterable"}
+      end
+    else
+      {:error,
+       "#{inspect(resource)}.#{relationship.name} has been configured as filterable?: false"}
+    end
+  end
+
+  defp validate_not_crossing_data_layer_boundaries(refs, resource, expr) do
     refs
     |> Enum.flat_map(&each_related(resource, &1.relationship_path))
     |> Enum.filter(& &1)
@@ -2252,7 +2291,7 @@ defmodule Ash.Filter do
            hydrate_refs(args, context),
          refs <- list_refs([left, right]),
          :ok <-
-           validate_not_crossing_datalayer_boundaries(refs, context.root_resource, call),
+           validate_refs(refs, context.root_resource, call),
          {:ok, operator} <- Operator.new(op_module, left, right) do
       if is_boolean(operator) do
         {:ok, operator}
@@ -2313,7 +2352,7 @@ defmodule Ash.Filter do
              {:ok, args} <-
                hydrate_refs(args, context),
              refs <- list_refs(args),
-             :ok <- validate_not_crossing_datalayer_boundaries(refs, context.root_resource, call),
+             :ok <- validate_refs(refs, context.root_resource, call),
              {:func, function_module} when not is_nil(function_module) <-
                {:func, get_function(name, context.resource, context.public?)},
              {:ok, function} <-
@@ -2709,7 +2748,7 @@ defmodule Ash.Filter do
                        hydrate_refs([left, value], context),
                      refs <- list_refs([left, right]),
                      :ok <-
-                       validate_not_crossing_datalayer_boundaries(
+                       validate_refs(
                          refs,
                          context.root_resource,
                          {attr, value}

@@ -99,6 +99,11 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       """,
       links: []
     ],
+    filterable?: [
+      type: :boolean,
+      default: true,
+      doc: "If set to `false`, the relationship will not be usable in filters."
+    ],
     sort: [
       type: :any,
       doc: """

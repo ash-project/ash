@@ -17,6 +17,7 @@ defmodule Ash.Resource.Relationships.HasMany do
     :manual,
     :api,
     :writable?,
+    filterable?: true,
     no_attributes?: false,
     could_be_related_at_creation?: false,
     validate_destination_attribute?: true,
@@ -37,6 +38,7 @@ defmodule Ash.Resource.Relationships.HasMany do
           destination: Ash.Resource.t(),
           destination_attribute: atom,
           private?: boolean,
+          filterable?: boolean,
           source_attribute: atom,
           description: String.t(),
           manual: atom | {atom, Keyword.t()} | nil

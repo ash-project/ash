@@ -26,7 +26,7 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
 
     relationships do
       belongs_to :author, Author do
-        required? false
+        allow_nil? true
       end
     end
 

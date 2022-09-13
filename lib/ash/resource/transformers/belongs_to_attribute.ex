@@ -27,14 +27,14 @@ defmodule Ash.Resource.Transformers.BelongsToAttribute do
             if relationship.primary_key? do
               false
             else
-              not relationship.required?
+              relationship.allow_nil?
             end,
           writable?: relationship.attribute_writable?,
           private?: !relationship.attribute_writable?,
           primary_key?: relationship.primary_key?
         )
 
-      valid_opts? = not (relationship.primary_key? && !relationship.required?)
+      valid_opts? = not (relationship.primary_key? && relationship.allow_nil?)
 
       entity_or_error =
         if valid_opts? do

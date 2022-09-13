@@ -19,6 +19,7 @@ defmodule Ash.DataLayer do
           | {:lateral_join, list(Ash.Resource.t())}
           | {:join, Ash.Resource.t()}
           | {:aggregate, Ash.Query.Aggregate.kind()}
+          | {:aggregate_relationship, Ash.Resource.Relationships.relationship()}
           | {:query_aggregate, Ash.Query.Aggregate.kind()}
           | :select
           | :aggregate_filter
@@ -34,6 +35,7 @@ defmodule Ash.DataLayer do
           | :transact
           | :filter
           | {:filter_expr, struct}
+          | {:filter_relationship, Ash.Resource.Relationships.relationship()}
           | :sort
           | {:sort, Ash.Type.t()}
           | :upsert

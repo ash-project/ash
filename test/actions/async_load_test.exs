@@ -123,11 +123,11 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
     end
 
     relationships do
-      belongs_to :post, Post, primary_key?: true, required?: true
+      belongs_to :post, Post, primary_key?: true, allow_nil?: false
 
       belongs_to :category, Ash.Test.Actions.AsyncLoadTest.Category,
         primary_key?: true,
-        required?: true
+        allow_nil?: false
     end
   end
 

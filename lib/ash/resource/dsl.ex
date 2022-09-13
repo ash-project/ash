@@ -217,8 +217,8 @@ defmodule Ash.Resource.Dsl do
       end
 
       # And in `BookWord` (the join resource)
-      belongs_to :book, Book, primary_key?: true, required?: true
-      belongs_to :word, Word, primary_key?: true, required?: true
+      belongs_to :book, Book, primary_key?: true, allow_nil?: false
+      belongs_to :word, Word, primary_key?: true, allow_nil?: false
       """
     ],
     modules: [:destination, :through],

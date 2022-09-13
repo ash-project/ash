@@ -87,11 +87,11 @@ defmodule Ash.Test.Filter.FilterTest do
     relationships do
       belongs_to :source_post, Ash.Test.Filter.FilterTest.Post,
         primary_key?: true,
-        required?: true
+        allow_nil?: false
 
       belongs_to :destination_post, Ash.Test.Filter.FilterTest.Post,
         primary_key?: true,
-        required?: true
+        allow_nil?: false
     end
   end
 

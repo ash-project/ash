@@ -24,7 +24,8 @@ defmodule Ash.Resource.Relationships.HasOne do
     validate_destination_attribute?: true,
     cardinality: :one,
     type: :has_one,
-    required?: false
+    allow_nil?: false,
+    filterable?: true
   ]
 
   @type t :: %__MODULE__{
@@ -32,6 +33,7 @@ defmodule Ash.Resource.Relationships.HasOne do
           cardinality: :one,
           source: Ash.Resource.t(),
           name: atom,
+          filterable?: boolean,
           read_action: atom,
           no_attributes?: boolean,
           writable?: boolean,
@@ -55,9 +57,10 @@ defmodule Ash.Resource.Relationships.HasOne do
   @opt_schema Spark.OptionsHelpers.merge_schemas(
                 [manual(), no_attributes()] ++
                   [
-                    required?: [
+                    allow_nil?: [
                       type: :boolean,
                       links: [],
+                      default: true,
                       doc: """
                       Marks the relationship as required. Has no effect on validations, but can inform extensions that there will always be a related entity.
                       """

@@ -97,11 +97,13 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     relationships do
-      belongs_to :post, Ash.Test.Changeset.ChangesetTest.Post, primary_key?: true, required?: true
+      belongs_to :post, Ash.Test.Changeset.ChangesetTest.Post,
+        primary_key?: true,
+        allow_nil?: false
 
       belongs_to :category, Ash.Test.Changeset.ChangesetTest.Category,
         primary_key?: true,
-        required?: true
+        allow_nil?: false
     end
   end
 

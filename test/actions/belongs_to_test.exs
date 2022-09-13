@@ -54,7 +54,7 @@ defmodule Ash.Test.Actions.BelongsToTest do
     end
 
     relationships do
-      belongs_to :reviewer, Ash.Test.Actions.BelongsToTest.Reviewer, required?: false
+      belongs_to :reviewer, Ash.Test.Actions.BelongsToTest.Reviewer, allow_nil?: true
     end
   end
 

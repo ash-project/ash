@@ -94,6 +94,7 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, :destroy), do: true
   def can?(_, :sort), do: true
   def can?(_, :filter), do: true
+  def can?(_, {:filter_relationship, _}), do: true
   def can?(_, :limit), do: true
   def can?(_, :offset), do: true
   def can?(_, :boolean_filter), do: true

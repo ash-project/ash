@@ -65,12 +65,12 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     relationships do
       belongs_to(:source_post, Ash.Test.Filter.FilterInteractionTest.Post,
         primary_key?: true,
-        required?: true
+        allow_nil?: false
       )
 
       belongs_to(:destination_post, Ash.Test.Filter.FilterInteractionTest.Post,
         primary_key?: true,
-        required?: true
+        allow_nil?: false
       )
     end
   end

@@ -190,6 +190,8 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, :upsert), do: true
   def can?(_, :aggregate_filter), do: true
   def can?(_, :aggregate_sort), do: true
+  def can?(_, {:aggregate_relationship, _}), do: true
+  def can?(_, {:filter_relationship, _}), do: true
   def can?(_, {:aggregate, :count}), do: true
   def can?(_, :create), do: true
   def can?(_, :read), do: true
