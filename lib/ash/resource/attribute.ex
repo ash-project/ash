@@ -26,8 +26,8 @@ defmodule Ash.Resource.Attribute do
           type: Ash.Type.t(),
           primary_key?: boolean(),
           private?: boolean(),
-          default: (() -> term),
-          update_default: (() -> term) | (Ash.Resource.record() -> term),
+          default: nil | term | (() -> term),
+          update_default: nil | term | (() -> term) | (Ash.Resource.record() -> term),
           sensitive?: boolean(),
           writable?: boolean()
         }
