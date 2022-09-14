@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.0.0-rc.5](https://github.com/ash-project/ash/compare/v2.0.0-rc.4...v2.0.0-rc.5) (2022-09-14)
+
+
+
+
+### Bug Fixes:
+
+* inspect the match for default message
+
+### Improvements:
+
+* validate aggregate paths supported
+
+* add `filterable?` option to relationships
+
+* add data layer capability for aggregate relationships & filter relationships
+
+* add guide on manual relationships
+
 ## [v2.0.0-rc.4](https://github.com/ash-project/ash/compare/v2.0.0-rc.3...v2.0.0-rc.4) (2022-09-12)
 
 
