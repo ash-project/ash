@@ -687,6 +687,17 @@ defmodule Ash.Test.Filter.FilterTest do
                |> Ash.Query.filter(length(roles || []) > 0)
                |> Api.read!()
     end
+
+    test "bad input" do
+      User
+      |> new()
+      |> Api.create!()
+
+      assert [] =
+               User
+               |> Ash.Query.filter(length(name) > 0)
+               |> Api.read!()
+    end
   end
 
   describe "calls in filters" do
