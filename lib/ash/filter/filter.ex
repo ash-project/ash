@@ -20,7 +20,7 @@ defmodule Ash.Filter do
 
   alias Ash.Error.Invalid.InvalidPrimaryKey
 
-  alias Ash.Query.Function.{Ago, Contains, If, IsNil}
+  alias Ash.Query.Function.{Ago, Contains, If, IsNil, Length}
 
   alias Ash.Query.Operator.{
     Eq,
@@ -39,7 +39,8 @@ defmodule Ash.Filter do
     Ago,
     Contains,
     IsNil,
-    If
+    If,
+    Length
   ]
 
   @operators [
