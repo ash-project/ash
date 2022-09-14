@@ -59,6 +59,7 @@ defmodule Ash.Query.Operator do
       {:ok, val} when not is_expr(left) and not is_expr(right) ->
         case mod.evaluate(val) do
           {:known, value} -> {:ok, value}
+          {:error, error} -> {:error, error}
           :unknown -> {:ok, val}
         end
 

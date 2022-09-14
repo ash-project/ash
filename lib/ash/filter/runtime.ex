@@ -100,15 +100,20 @@ defmodule Ash.Filter.Runtime do
     |> Enum.reject(&Ash.Resource.loaded?(record, &1))
     |> case do
       [] ->
-        {:ok,
-         record
-         |> flatten_relationships(relationship_paths)
-         |> Enum.any?(fn scenario ->
-           case do_match(scenario, expression) do
-             {:ok, val} -> val
-             _ -> false
-           end
-         end)}
+        record
+        |> flatten_relationships(relationship_paths)
+        |> Enum.reduce_while({:ok, false}, fn scenario, {:ok, false} ->
+          case do_match(scenario, expression) do
+            {:error, error} ->
+              {:halt, {:error, error}}
+
+            {:ok, val} when val ->
+              {:halt, {:ok, true}}
+
+            {:ok, _} ->
+              {:cont, {:ok, false}}
+          end
+        end)
 
       need_to_load ->
         {:load, Enum.map(need_to_load, &path_to_load/1)}
