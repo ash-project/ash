@@ -40,6 +40,7 @@ The following functions are built in:
 - `get_path` | i.e `get_path(value, ["foo", "bar"])`. This is what expressions like `value[:foo]["bar"]` are turned into under the hood.
 - `ago` | i.e `deleted_at > ago(7, :day)`. The available time intervals are documented in {{link:ash:module:Ash.Type.DurationName}}
 - `contains` | if one string contains another string, i.e `contains("fred", "red")`
+- `length` | the length of a list, i.e. `length([:foo, :bar])`
 - `exists` | `exists(foo.bar, name == "fred")` takes an expression scoped to the destination, and 
 
 ## Primitives

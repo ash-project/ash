@@ -61,6 +61,7 @@ defmodule Ash.Test.Filter.FilterTest do
       attribute :name, :string
       attribute :allow_second_author, :boolean
       attribute :special, :boolean
+      attribute :roles, {:array, :atom}
     end
 
     relationships do
@@ -644,6 +645,46 @@ defmodule Ash.Test.Filter.FilterTest do
       assert [%{category: %Ash.CiString{string: "foobar"}}] =
                Post
                |> Ash.Query.filter(contains(category, "OBA"))
+               |> Api.read!()
+    end
+  end
+
+  describe "length/1" do
+    test "length" do
+      user1 =
+        User
+        |> new(%{roles: [:user]})
+        |> Api.create!()
+
+      _user2 =
+        User
+        |> new(%{roles: []})
+        |> Api.create!()
+
+      user1_id = user1.id
+
+      assert [%User{id: ^user1_id}] =
+               User
+               |> Ash.Query.filter(length(roles) > 0)
+               |> Api.read!()
+    end
+
+    test "length when nil" do
+      user1 =
+        User
+        |> new(%{roles: [:user]})
+        |> Api.create!()
+
+      _user2 =
+        User
+        |> new()
+        |> Api.create!()
+
+      user1_id = user1.id
+
+      assert [%User{id: ^user1_id}] =
+               User
+               |> Ash.Query.filter(length(roles || []) > 0)
                |> Api.read!()
     end
   end
