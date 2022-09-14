@@ -54,6 +54,9 @@ defmodule Ash.Query.Function do
 
                       :unknown ->
                         {:ok, function}
+
+                      {:error, error} ->
+                        {:error, error}
                     end
                   end
 
