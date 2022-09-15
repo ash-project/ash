@@ -14,6 +14,8 @@ defmodule Ash.Query.Type do
         :error -> :error
         {:ok, val} -> {:ok, val}
       end
+    else
+      :error
     end
   end
 

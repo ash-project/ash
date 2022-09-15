@@ -104,12 +104,18 @@ defmodule Ash.Test.CalculationTest do
 
       calculate :conditional_full_name,
                 :string,
-                expr(if(first_name and last_name, first_name <> " " <> last_name, "(none)"))
+                expr(
+                  if(
+                    not is_nil(first_name) and not is_nil(last_name),
+                    first_name <> " " <> last_name,
+                    "(none)"
+                  )
+                )
 
       calculate :conditional_full_name_block,
                 :string,
                 expr(
-                  if first_name and last_name do
+                  if not is_nil(first_name) and not is_nil(last_name) do
                     first_name <> " " <> last_name
                   else
                     "(none)"
@@ -120,10 +126,10 @@ defmodule Ash.Test.CalculationTest do
                 :string,
                 expr(
                   cond do
-                    first_name and last_name ->
+                    not is_nil(first_name) and not is_nil(last_name) ->
                       first_name <> " " <> last_name
 
-                    first_name ->
+                    not is_nil(first_name) ->
                       first_name
 
                     true ->

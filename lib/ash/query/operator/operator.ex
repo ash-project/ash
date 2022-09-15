@@ -71,7 +71,8 @@ defmodule Ash.Query.Operator do
     end
   end
 
-  defp try_cast_with_ref(mod, left, right) do
+  @doc false
+  def try_cast_with_ref(mod, left, right) do
     Enum.find_value(mod.types(), fn type ->
       try_cast(left, right, type)
     end)
