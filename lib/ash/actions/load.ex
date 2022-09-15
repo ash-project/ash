@@ -147,30 +147,57 @@ defmodule Ash.Actions.Load do
 
   defp attach_to_many_loads(value, last_relationship, data, lead_path) when is_map(value) do
     primary_key = Ash.Resource.Info.primary_key(last_relationship.source)
+    value = Map.to_list(value)
 
     map_or_update(data, lead_path, fn record ->
       case primary_key do
         [field] ->
+          related =
+            Enum.find(value, fn {key, _value} ->
+              Comp.equal?(key, Map.get(record, field)) ||
+                Comp.equal?(key, Map.take(record, [field]))
+            end)
+            |> case do
+              nil ->
+                nil
+
+              {_, value} ->
+                value
+            end
+
           Map.put(
             record,
             last_relationship.name,
-            Map.get(value, Map.take(record, primary_key)) ||
-              Map.get(value, Map.get(record, field)) || []
+            related
           )
 
-        _ ->
-          Map.put(record, last_relationship.name, Map.get(value, Map.take(record, primary_key))) ||
-            []
+        primary_key ->
+          related =
+            Enum.find(value, fn {key, _value} ->
+              Comp.equal?(key, Map.take(record, primary_key))
+            end)
+            |> case do
+              nil ->
+                nil
+
+              {_, value} ->
+                value
+            end
+
+          Map.put(record, last_relationship.name, related)
       end
     end)
   end
 
   defp attach_to_many_loads(value, last_relationship, data, lead_path) do
-    values = Enum.group_by(value, &Map.get(&1, last_relationship.destination_attribute))
-
     map_or_update(data, lead_path, fn record ->
       source_key = Map.get(record, last_relationship.source_attribute)
-      related_records = Map.get(values, source_key, [])
+
+      related_records =
+        Enum.filter(value, fn maybe_related ->
+          Comp.equal?(Map.get(maybe_related, last_relationship.destination_attribute), source_key)
+        end)
+
       Map.put(record, last_relationship.name, related_records)
     end)
   end
@@ -185,21 +212,54 @@ defmodule Ash.Actions.Load do
     primary_key = Ash.Resource.Info.primary_key(last_relationship.source)
 
     map_or_update(data, lead_path, fn record ->
-      Map.put(record, last_relationship.name, Map.get(value, Map.take(record, primary_key)))
+      case primary_key do
+        [field] ->
+          related =
+            Enum.find(value, fn {key, _value} ->
+              Comp.equal?(key, Map.get(record, field)) ||
+                Comp.equal?(key, Map.take(record, [field]))
+            end)
+            |> case do
+              nil ->
+                nil
+
+              {_, value} ->
+                value
+            end
+
+          Map.put(
+            record,
+            last_relationship.name,
+            related
+          )
+
+        primary_key ->
+          related =
+            Enum.find(value, fn {key, _value} ->
+              Comp.equal?(key, Map.take(record, primary_key))
+            end)
+            |> case do
+              nil ->
+                nil
+
+              {_, value} ->
+                value
+            end
+
+          Map.put(record, last_relationship.name, related)
+      end
     end)
   end
 
   defp attach_to_one_loads(value, last_relationship, data, lead_path) do
-    values =
-      value
-      |> Enum.reverse()
-      |> Enum.into(%{}, fn item ->
-        {Map.get(item, last_relationship.destination_attribute), item}
-      end)
-
     map_or_update(data, lead_path, fn record ->
       source_key = Map.get(record, last_relationship.source_attribute)
-      related_record = Map.get(values, source_key)
+
+      related_record =
+        Enum.find(value, fn maybe_related ->
+          Comp.equal?(Map.get(maybe_related, last_relationship.destination_attribute), source_key)
+        end)
+
       Map.put(record, last_relationship.name, related_record)
     end)
   end
@@ -218,8 +278,10 @@ defmodule Ash.Actions.Load do
       join_values =
         join_data
         |> Enum.filter(fn join_row ->
-          Map.get(join_row, last_relationship.source_attribute_on_join_resource) ==
+          Comp.equal?(
+            Map.get(join_row, last_relationship.source_attribute_on_join_resource),
             source_value
+          )
         end)
         |> Enum.map(&Map.get(&1, last_relationship.destination_attribute_on_join_resource))
 

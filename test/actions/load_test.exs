@@ -5,6 +5,25 @@ defmodule Ash.Test.Actions.LoadTest do
   import Ash.Changeset
   require Ash.Query
 
+  defmodule Campaign do
+    @moduledoc false
+    use Ash.Resource,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      defaults [:create, :read, :update, :destroy]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :ci_string
+    end
+  end
+
   defmodule Author do
     @moduledoc false
     use Ash.Resource,
@@ -32,6 +51,13 @@ defmodule Ash.Test.Actions.LoadTest do
       has_one :latest_post, Ash.Test.Actions.LoadTest.Post,
         destination_attribute: :author_id,
         sort: [inserted_at: :desc]
+
+      belongs_to :campaign, Ash.Test.Actions.LoadTest.Campaign do
+        attribute_type :ci_string
+        source_attribute :campaign_name
+        destination_attribute :name
+        attribute_writable? true
+      end
     end
   end
 
@@ -176,6 +202,7 @@ defmodule Ash.Test.Actions.LoadTest do
       entry(Post)
       entry(Category)
       entry(PostCategory)
+      entry(Campaign)
     end
   end
 
@@ -239,6 +266,22 @@ defmodule Ash.Test.Actions.LoadTest do
                post1
                |> Api.load!(:posts_in_same_category)
                |> Map.get(:posts_in_same_category)
+    end
+
+    test "it uses `Comp.equal?/2` to support things like ci_string foreign keys" do
+      author =
+        Author
+        |> new(%{name: "zerg", campaign_name: "FrEd"})
+        |> Api.create!()
+
+      Campaign
+      |> new(%{name: "fReD"})
+      |> Api.create!()
+
+      assert %{
+               campaign: %{name: %Ash.CiString{string: "fReD"}},
+               campaign_name: %Ash.CiString{string: "FrEd"}
+             } = Api.load!(author, :campaign)
     end
 
     test "it allows loading related data" do

@@ -1394,7 +1394,7 @@ defmodule Ash.Actions.ManagedRelationships do
   defp do_matches?(current_value, input, field) do
     with {:ok, current_val} when not is_nil(current_val) <- Map.fetch(current_value, field),
          {:ok, input_val} when not is_nil(input_val) <- fetch_field(input, field) do
-      current_val == input_val
+      Comp.equal?(current_val, input_val)
     else
       _ ->
         false
