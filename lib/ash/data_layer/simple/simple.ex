@@ -55,17 +55,28 @@ defmodule Ash.DataLayer.Simple do
   end
 
   def run_query(%{data: data, sort: sort, api: api, filter: filter, limit: limit}, _resource) do
-    {:ok,
-     data
-     |> Enum.filter(&Ash.Filter.Runtime.matches?(api, &1, filter))
-     |> Ash.Actions.Sort.runtime_sort(sort)
-     |> then(fn data ->
-       if limit do
-         Enum.take(data, limit)
-       else
-         data
-       end
-     end)}
+    data
+    |> do_filter_matches(filter, api)
+    |> case do
+      {:ok, results} ->
+        {:ok,
+         results
+         |> Ash.Actions.Sort.runtime_sort(sort)
+         |> then(fn data ->
+           if limit do
+             Enum.take(data, limit)
+           else
+             data
+           end
+         end)}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp do_filter_matches(data, filter, api) do
+    Ash.Filter.Runtime.filter_matches(api, data, filter)
   end
 
   @doc false
