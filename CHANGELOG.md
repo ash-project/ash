@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.0.0-rc.7](https://github.com/ash-project/ash/compare/v2.0.0-rc.6...v2.0.0-rc.7) (2022-09-15)
+
+
+
+
+### Bug Fixes:
+
+* `nil` casts as any type (sort of)
+
+* return `nil` on `nil` inputs for length/1
+
+* properly reraise errors raised in tasks
+
+* properly return errors from tasks
+
+* use `Comp.equal?/2` when finding loaded data matches
+
 ## [v2.0.0-rc.6](https://github.com/ash-project/ash/compare/v2.0.0-rc.5...v2.0.0-rc.6) (2022-09-15)
 
 
