@@ -69,6 +69,7 @@ defmodule Ash.Resource.Change do
     ]
   end
 
+  @doc false
   def action_schema do
     Keyword.delete(schema(), :on)
   end
