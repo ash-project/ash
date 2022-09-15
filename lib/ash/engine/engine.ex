@@ -110,7 +110,13 @@ defmodule Ash.Engine do
             )
 
           try do
-            Task.await(task, opts[:timeout])
+            case Task.await(task, opts[:timeout]) do
+              {:__exception__, e, stacktrace} ->
+                raise e, stacktrace
+
+              other ->
+                other
+            end
           catch
             :exit, {:timeout, {Task, :await, [^task, timeout]}} ->
               {:error, Ash.Error.Invalid.Timeout.exception(timeout: timeout, name: opts[:name])}
@@ -355,9 +361,16 @@ defmodule Ash.Engine do
       state.tasks
       |> Enum.reduce(state, fn task, state ->
         case Task.yield(task, 0) do
+          {:ok, {:__exception__, exception, stacktrace}} ->
+            reraise exception, stacktrace
+
           {:ok, {request_path, result}} ->
             state = %{state | tasks: state.tasks -- [task]}
             request = Enum.find(state.requests, &(&1.path == request_path))
+
+            if is_nil(request) do
+              dbg()
+            end
 
             new_request = %{request | async_fetch_state: {:fetched, result}}
 
@@ -439,7 +452,8 @@ defmodule Ash.Engine do
     end
   end
 
-  defp async(func, opts) do
+  @doc false
+  def async(func, opts) do
     ash_context = Ash.get_context_for_transfer(opts)
 
     Task.async(fn ->
@@ -449,7 +463,7 @@ defmodule Ash.Engine do
         func.()
       rescue
         e ->
-          {:error, e}
+          {:__exception__, e, __STACKTRACE__}
       end
     end)
   end

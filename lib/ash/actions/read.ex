@@ -942,7 +942,13 @@ defmodule Ash.Actions.Read do
   end
 
   defp maybe_await(%Task{} = task) do
-    Task.await(task)
+    case Task.await(task) do
+      {:__exception__, e, stacktrace} ->
+        reraise e, stacktrace
+
+      other ->
+        other
+    end
   end
 
   defp maybe_await(other), do: other
@@ -958,15 +964,12 @@ defmodule Ash.Actions.Read do
           {:error, error} -> {:error, error}
         end
       else
-        {:ok,
-         Task.async(fn ->
-           try do
-             do_fetch_count(ash_query, query, initial_limit, initial_offset)
-           rescue
-             exception ->
-               {:error, exception}
-           end
-         end)}
+        Ash.Engine.async(
+          fn ->
+            {:ok, do_fetch_count(ash_query, query, initial_limit, initial_offset)}
+          end,
+          opts
+        )
       end
     else
       {:ok, {:ok, nil}}
