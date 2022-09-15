@@ -80,7 +80,7 @@ defmodule Ash.Query.Function do
     end
   end
 
-  defp try_cast_arguments(configured_args, args) do
+  def try_cast_arguments(configured_args, args) do
     args
     |> Enum.zip(configured_args)
     |> Enum.reduce_while({:ok, []}, fn

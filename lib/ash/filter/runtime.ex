@@ -195,12 +195,21 @@ defmodule Ash.Filter.Runtime do
       nil ->
         {:ok, true}
 
-      %op{__operator__?: true, left: left, right: right} = operator ->
+      %op{__operator__?: true, left: left, right: right} ->
         with {:ok, [left, right]} <-
                resolve_exprs([left, right], record),
-             {:known, val} <- op.evaluate(%{operator | left: left, right: right}) do
+             {:op, {:ok, %op{} = new_operator}} <-
+               {:op, Ash.Query.Operator.try_cast_with_ref(op, left, right)},
+             {:known, val} <-
+               op.evaluate(new_operator) do
           {:ok, val}
         else
+          {:op, {:error, error}} ->
+            {:error, error}
+
+          {:op, {:ok, expr}} ->
+            do_match(record, expr)
+
           {:error, error} ->
             {:error, error}
 
@@ -213,9 +222,15 @@ defmodule Ash.Filter.Runtime do
 
       %func{__function__?: true, arguments: arguments} = function ->
         with {:ok, args} <- resolve_exprs(arguments, record),
+             {:args, args} when not is_nil(args) <-
+               {:args, try_cast_arguments(func.args(), args)},
              {:known, val} <- func.evaluate(%{function | arguments: args}) do
           {:ok, val}
         else
+          {:args, nil} ->
+            {:error,
+             "Could not cast function arguments for #{func.name()}/#{Enum.count(arguments)}"}
+
           {:error, error} ->
             {:error, error}
 
@@ -333,11 +348,19 @@ defmodule Ash.Filter.Runtime do
     end)
   end
 
-  defp resolve_expr(%mod{__predicate__?: _, left: left, right: right} = pred, record) do
+  defp resolve_expr(%mod{__predicate__?: _, left: left, right: right}, record) do
     with {:ok, [left, right]} <- resolve_exprs([left, right], record),
-         {:known, val} <- mod.evaluate(%{pred | left: left, right: right}) do
+         {:op, {:ok, %mod{} = new_pred}} <-
+           {:op, Ash.Query.Operator.try_cast_with_ref(mod, left, right)},
+         {:known, val} <- mod.evaluate(new_pred) do
       {:ok, val}
     else
+      {:op, {:error, error}} ->
+        {:error, error}
+
+      {:op, {:ok, expr}} ->
+        resolve_expr(expr, record)
+
       {:error, error} ->
         {:error, error}
 
@@ -351,9 +374,14 @@ defmodule Ash.Filter.Runtime do
 
   defp resolve_expr(%mod{__predicate__?: _, arguments: args} = pred, record) do
     with {:ok, args} <- resolve_exprs(args, record),
+         {:args, args} when not is_nil(args) <-
+           {:args, try_cast_arguments(mod.args(), args)},
          {:known, val} <- mod.evaluate(%{pred | arguments: args}) do
       {:ok, val}
     else
+      {:args, nil} ->
+        {:error, "Could not cast function arguments for #{mod.name()}/#{Enum.count(args)}"}
+
       {:error, error} ->
         {:error, error}
 
@@ -366,6 +394,16 @@ defmodule Ash.Filter.Runtime do
   end
 
   defp resolve_expr(other, _), do: {:ok, other}
+
+  defp try_cast_arguments(configured_args, args) do
+    given_arg_count = Enum.count(args)
+
+    configured_args
+    |> Enum.filter(fn args ->
+      Enum.count(args) == given_arg_count
+    end)
+    |> Enum.find_value(&Ash.Query.Function.try_cast_arguments(&1, args))
+  end
 
   defp resolve_ref(%Ref{attribute: attribute, relationship_path: path}, record) do
     name =
