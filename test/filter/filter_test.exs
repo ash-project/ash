@@ -669,6 +669,26 @@ defmodule Ash.Test.Filter.FilterTest do
                |> Api.read!()
     end
 
+    test "length with an explicit list" do
+      user1 =
+        User
+        |> new(%{roles: [:user]})
+        |> Api.create!()
+
+      user1_id = user1.id
+      explicit_list = [:foo]
+
+      assert [%User{id: ^user1_id}] =
+               User
+               |> Ash.Query.filter(length(^explicit_list) > 0)
+               |> Api.read!()
+
+      assert [] =
+               User
+               |> Ash.Query.filter(length(^explicit_list) > 1)
+               |> Api.read!()
+    end
+
     test "length when nil" do
       user1 =
         User
@@ -693,10 +713,11 @@ defmodule Ash.Test.Filter.FilterTest do
       |> new()
       |> Api.create!()
 
-      assert [] =
-               User
-               |> Ash.Query.filter(length(name) > 0)
-               |> Api.read!()
+      assert_raise(Ash.Error.Unknown, fn ->
+        User
+        |> Ash.Query.filter(length(name) > 0)
+        |> Api.read!()
+      end)
     end
   end
 
