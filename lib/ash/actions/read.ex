@@ -967,7 +967,7 @@ defmodule Ash.Actions.Read do
         {:ok,
          Ash.Engine.async(
            fn ->
-             {:ok, do_fetch_count(ash_query, query, initial_limit, initial_offset)}
+             do_fetch_count(ash_query, query, initial_limit, initial_offset)
            end,
            opts
          )}
