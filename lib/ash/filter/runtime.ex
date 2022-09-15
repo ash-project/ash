@@ -37,10 +37,25 @@ defmodule Ash.Filter.Runtime do
     |> Enum.map(&path_to_load/1)
     |> case do
       [] ->
-        {:ok,
-         Enum.filter(records, fn record ->
-           matches?(nil, record, filter)
-         end)}
+        Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
+          case matches(record, filter) do
+            {:ok, falsey} when falsey in [false, nil] ->
+              {:cont, {:ok, records}}
+
+            {:ok, _} ->
+              {:cont, {:ok, [record | records]}}
+
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
+        end)
+        |> case do
+          {:ok, records} ->
+            {:ok, Enum.reverse(records)}
+
+          other ->
+            other
+        end
 
       need_to_load when not loaded? ->
         case api.load(records, need_to_load) do
@@ -85,12 +100,15 @@ defmodule Ash.Filter.Runtime do
       {:load, loads} when not is_nil(api) ->
         matches?(api, api.load!(record, loads), filter)
 
+      {:error, _} ->
+        false
+
       {:load, _} ->
         false
     end
   end
 
-  def matches(record, expression) do
+  def matches(record, expression, load_with \\ nil) do
     relationship_paths =
       expression
       |> Ash.Filter.relationship_paths(true)
@@ -116,7 +134,11 @@ defmodule Ash.Filter.Runtime do
         end)
 
       need_to_load ->
-        {:load, Enum.map(need_to_load, &path_to_load/1)}
+        if load_with do
+          matches(load_with.load!(record, need_to_load), expression, load_with)
+        else
+          {:load, Enum.map(need_to_load, &path_to_load/1)}
+        end
     end
   end
 
