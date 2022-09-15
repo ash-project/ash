@@ -443,9 +443,14 @@ defmodule Ash.Engine do
     ash_context = Ash.get_context_for_transfer(opts)
 
     Task.async(fn ->
-      Ash.transfer_context(ash_context, opts)
+      try do
+        Ash.transfer_context(ash_context, opts)
 
-      func.()
+        func.()
+      rescue
+        e ->
+          {:error, e}
+      end
     end)
   end
 
@@ -582,7 +587,7 @@ defmodule Ash.Engine do
 
     state = %{state | pending_tasks: remaining}
 
-    new_tasks = Enum.map(to_start, &Task.async/1)
+    new_tasks = Enum.map(to_start, &async(&1, state.opts))
 
     %{state | tasks: state.tasks ++ new_tasks}
   end

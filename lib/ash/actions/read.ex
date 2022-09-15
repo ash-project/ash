@@ -960,7 +960,12 @@ defmodule Ash.Actions.Read do
       else
         {:ok,
          Task.async(fn ->
-           do_fetch_count(ash_query, query, initial_limit, initial_offset)
+           try do
+             do_fetch_count(ash_query, query, initial_limit, initial_offset)
+           rescue
+             exception ->
+               {:error, exception}
+           end
          end)}
       end
     else
