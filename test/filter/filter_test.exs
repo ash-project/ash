@@ -650,7 +650,7 @@ defmodule Ash.Test.Filter.FilterTest do
   end
 
   describe "length/1" do
-    test "length" do
+    test "with an attribute" do
       user1 =
         User
         |> new(%{roles: [:user]})
@@ -669,7 +669,7 @@ defmodule Ash.Test.Filter.FilterTest do
                |> Api.read!()
     end
 
-    test "length with an explicit list" do
+    test "with an explicit list" do
       user1 =
         User
         |> new(%{roles: [:user]})
@@ -689,7 +689,7 @@ defmodule Ash.Test.Filter.FilterTest do
                |> Api.read!()
     end
 
-    test "length when nil" do
+    test "when nil" do
       user1 =
         User
         |> new(%{roles: [:user]})
@@ -708,7 +708,7 @@ defmodule Ash.Test.Filter.FilterTest do
                |> Api.read!()
     end
 
-    test "bad input" do
+    test "with bad input" do
       User
       |> new()
       |> Api.create!()
