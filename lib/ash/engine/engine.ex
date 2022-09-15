@@ -368,10 +368,6 @@ defmodule Ash.Engine do
             state = %{state | tasks: state.tasks -- [task]}
             request = Enum.find(state.requests, &(&1.path == request_path))
 
-            if is_nil(request) do
-              dbg()
-            end
-
             new_request = %{request | async_fetch_state: {:fetched, result}}
 
             replace_request(state, new_request)
