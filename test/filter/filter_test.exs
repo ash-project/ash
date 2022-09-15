@@ -650,7 +650,7 @@ defmodule Ash.Test.Filter.FilterTest do
   end
 
   describe "length/1" do
-    test "length" do
+    test "with an attribute" do
       user1 =
         User
         |> new(%{roles: [:user]})
@@ -669,7 +669,27 @@ defmodule Ash.Test.Filter.FilterTest do
                |> Api.read!()
     end
 
-    test "length when nil" do
+    test "with an explicit list" do
+      user1 =
+        User
+        |> new(%{roles: [:user]})
+        |> Api.create!()
+
+      user1_id = user1.id
+      explicit_list = [:foo]
+
+      assert [%User{id: ^user1_id}] =
+               User
+               |> Ash.Query.filter(length(^explicit_list) > 0)
+               |> Api.read!()
+
+      assert [] =
+               User
+               |> Ash.Query.filter(length(^explicit_list) > 1)
+               |> Api.read!()
+    end
+
+    test "when nil" do
       user1 =
         User
         |> new(%{roles: [:user]})
@@ -686,6 +706,18 @@ defmodule Ash.Test.Filter.FilterTest do
                User
                |> Ash.Query.filter(length(roles || []) > 0)
                |> Api.read!()
+    end
+
+    test "with bad input" do
+      User
+      |> new()
+      |> Api.create!()
+
+      assert_raise(Ash.Error.Unknown, fn ->
+        User
+        |> Ash.Query.filter(length(name) > 0)
+        |> Api.read!()
+      end)
     end
   end
 

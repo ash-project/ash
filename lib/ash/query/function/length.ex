@@ -13,7 +13,11 @@ defmodule Ash.Query.Function.Length do
 
   def args, do: [[{:array, :any}]]
 
-  def evaluate(%{arguments: [val]}) do
+  def evaluate(%{arguments: [val]}) when is_list(val) do
     {:known, Enum.count(val)}
+  end
+
+  def evaluate(_) do
+    {:error, "Cannot use length/1 on non-list inputs"}
   end
 end
