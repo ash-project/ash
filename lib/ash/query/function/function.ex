@@ -84,6 +84,9 @@ defmodule Ash.Query.Function do
     args
     |> Enum.zip(configured_args)
     |> Enum.reduce_while({:ok, []}, fn
+      {nil, _}, {:ok, args} ->
+        {:cont, {:ok, [nil | args]}}
+
       {arg, :any}, {:ok, args} ->
         {:cont, {:ok, [arg | args]}}
 
