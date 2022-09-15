@@ -964,12 +964,13 @@ defmodule Ash.Actions.Read do
           {:error, error} -> {:error, error}
         end
       else
-        Ash.Engine.async(
-          fn ->
-            {:ok, do_fetch_count(ash_query, query, initial_limit, initial_offset)}
-          end,
-          opts
-        )
+        {:ok,
+         Ash.Engine.async(
+           fn ->
+             {:ok, do_fetch_count(ash_query, query, initial_limit, initial_offset)}
+           end,
+           opts
+         )}
       end
     else
       {:ok, {:ok, nil}}
