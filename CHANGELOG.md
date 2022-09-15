@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.0.0-rc.6](https://github.com/ash-project/ash/compare/v2.0.0-rc.5...v2.0.0-rc.6) (2022-09-15)
+
+
+
+
+### Bug Fixes:
+
+* properly error on types when evaluating expressions at runtime
+
+* properly surface errors all the way from runtime filters
+
+* properly catch errors when running expressions at runtime
+
+### Improvements:
+
+* Implement length function (#379)
+
 ## [v2.0.0-rc.5](https://github.com/ash-project/ash/compare/v2.0.0-rc.4...v2.0.0-rc.5) (2022-09-14)
 
 
