@@ -19,6 +19,7 @@ These should all be straight forward enough to do a simple find and replace in y
 - `destination_field_on_join_table` -> `destination_attribute_on_join_resource`
 - `no_fields?` -> `no_attributes?`
 - `expensive?` -> `before_action?` (on validations)
+- `required?` -> `allow_nil?` (on belongs_to relationships) Be sure to flip the boolean value!!
 
 ### DSL changes
 
