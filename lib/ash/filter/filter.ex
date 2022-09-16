@@ -1936,6 +1936,15 @@ defmodule Ash.Filter do
           resource_calculation ->
             {module, opts} = module_and_opts(resource_calculation.calculation)
 
+            {args, nested_statement} =
+              case args do
+                {input, nested} ->
+                  {input || %{}, nested}
+
+                args ->
+                  {args, []}
+              end
+
             with {:ok, args} <-
                    Ash.Query.validate_calculation_arguments(resource_calculation, args),
                  {:ok, calculation} <-
@@ -1948,12 +1957,13 @@ defmodule Ash.Filter do
                      resource_calculation.filterable?,
                      resource_calculation.load
                    ) do
-              {:ok,
-               %Ash.Query.Ref{
-                 attribute: calculation,
-                 resource: context.resource,
-                 relationship_path: context.relationship_path
-               }}
+              case parse_predicates(nested_statement, calculation, context) do
+                {:ok, nested_statement} ->
+                  {:ok, BooleanExpression.optimized_new(:and, expression, nested_statement)}
+
+                {:error, error} ->
+                  {:error, error}
+              end
             else
               {:error, error} ->
                 {:error, error}
