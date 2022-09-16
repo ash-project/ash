@@ -1925,11 +1925,40 @@ defmodule Ash.Filter do
        when is_tuple(args) and is_atom(function) do
     case get_function(function, context.resource, context.public?) do
       nil ->
-        {:error,
-         NoSuchAttributeOrRelationship.exception(
-           attribute_or_relationship: function,
-           resource: context.resource
-         )}
+        case calculation(context, function) do
+          nil ->
+            {:error,
+             NoSuchAttributeOrRelationship.exception(
+               attribute_or_relationship: function,
+               resource: context.resource
+             )}
+
+          resource_calculation ->
+            {module, opts} = module_and_opts(resource_calculation.calculation)
+
+            with {:ok, args} <-
+                   Ash.Query.validate_calculation_arguments(resource_calculation, args),
+                 {:ok, calculation} <-
+                   Calculation.new(
+                     resource_calculation.name,
+                     module,
+                     opts,
+                     resource_calculation.type,
+                     args,
+                     resource_calculation.filterable?,
+                     resource_calculation.load
+                   ) do
+              {:ok,
+               %Ash.Query.Ref{
+                 attribute: calculation,
+                 resource: context.resource,
+                 relationship_path: context.relationship_path
+               }}
+            else
+              {:error, error} ->
+                {:error, error}
+            end
+        end
 
       function_module ->
         nested_statement = Tuple.to_list(args)

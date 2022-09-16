@@ -710,7 +710,7 @@ defmodule Ash.Test.Filter.FilterTest do
 
     test "with bad input" do
       User
-      |> new()
+      |> new(%{name: "fred"})
       |> Api.create!()
 
       assert_raise(Ash.Error.Unknown, fn ->
