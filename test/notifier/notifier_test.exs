@@ -157,7 +157,7 @@ defmodule Ash.Test.NotifierTest do
 
       Post
       |> Ash.Changeset.new(%{name: "foo"})
-      |> Ash.Changeset.replace_relationship(:comments, comment)
+      |> Ash.Changeset.manage_relationship(:comments, comment, type: :append_and_remove)
       |> Api.create!()
 
       assert_receive {:notification, %{action: %{type: :update}, resource: Comment}}
@@ -171,7 +171,7 @@ defmodule Ash.Test.NotifierTest do
 
       Post
       |> Ash.Changeset.new(%{name: "foo"})
-      |> Ash.Changeset.replace_relationship(:related_posts, [post])
+      |> Ash.Changeset.manage_relationship(:related_posts, [post], type: :append_and_remove)
       |> Api.create!()
 
       assert_receive {:notification, %{action: %{type: :create}, resource: PostLink}}
@@ -185,10 +185,10 @@ defmodule Ash.Test.NotifierTest do
 
       Post
       |> Ash.Changeset.new(%{name: "foo"})
-      |> Ash.Changeset.replace_relationship(:related_posts, [post])
+      |> Ash.Changeset.manage_relationship(:related_posts, [post], type: :append_and_remove)
       |> Api.create!()
       |> Ash.Changeset.new(%{})
-      |> Ash.Changeset.replace_relationship(:related_posts, [])
+      |> Ash.Changeset.manage_relationship(:related_posts, [], type: :append_and_remove)
       |> Api.update!()
 
       assert_receive {:notification, %{action: %{type: :destroy}, resource: PostLink}}

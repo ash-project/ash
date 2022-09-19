@@ -7,21 +7,6 @@ defmodule Ash.Changeset do
   actually incurs changes in a data layer. To commit a changeset, see `c:Ash.Api.create/2`
   and `c:Ash.Api.update/2`.
 
-  For example:
-
-  ```elixir
-  Ash.Changeset.replace_relationship(changeset, :linked_tickets, [
-    {1, %{link_type: "blocking"}},
-    {a_ticket, %{link_type: "caused_by"}},
-    {%{id: 2}, %{link_type: "related_to"}}
-  ])
-  ```
-
-  `Ash.Changeset.replace_relationship/3`, `Ash.Changeset.append_to_relationship/3` and `Ash.Changeset.remove_from_relationship/3`
-  are simply about managing what data is/isn't related. A simple example might be updating the *tags* of a post, where all the tags
-  already exist, we simply want to edit the information. They are shorthands for calling `Ash.Changeset.manage_relationship/4` with
-  a specific set of options.
-
   See the action DSL documentation for more.
   """
 
@@ -155,6 +140,7 @@ defmodule Ash.Changeset do
 
   require Ash.Query
   require Ash.Tracer
+  require Logger
 
   @doc """
   Return a changeset over a resource or a record. `params` can be either attributes, relationship values or arguments.
@@ -306,7 +292,7 @@ defmodule Ash.Changeset do
     end
   end
 
-  @manage_types [:replace, :append, :remove, :direct_control, :create]
+  @manage_types [:append_and_remove, :append, :remove, :direct_control, :create]
 
   @doc """
   Constructs a changeset for a given action, and validates it.
@@ -1648,10 +1634,19 @@ defmodule Ash.Changeset do
     %{changeset | context: Ash.Helpers.deep_merge_maps(changeset.context, map)}
   end
 
-  @type manage_relationship_type :: :replace | :append | :remove | :direct_control | :create
+  @type manage_relationship_type ::
+          :append_and_remove | :append | :remove | :direct_control | :create
 
   @spec manage_relationship_opts(manage_relationship_type()) :: Keyword.t()
   def manage_relationship_opts(:replace) do
+    Logger.warn(
+      "type: :replace has been renamed to `:append_and_remove` in 2.0, and it will be removed in 2.1"
+    )
+
+    manage_relationship_opts(:append_and_remove)
+  end
+
+  def manage_relationship_opts(:append_and_remove) do
     [
       on_lookup: :relate,
       on_no_match: :error,
@@ -1701,7 +1696,7 @@ defmodule Ash.Changeset do
 
       This allows for specifying certain operations much more succinctly. The defaults that are modified are listed below
 
-      ## `:replace`
+      ## `:append_and_remove`
         [
           on_lookup: :relate,
           on_no_match: :error,
@@ -2398,6 +2393,7 @@ defmodule Ash.Changeset do
           Keyword.t()
         ) ::
           t()
+  @deprecated "Use manage_relationship/4 instead"
   def append_to_relationship(changeset, relationship, record_or_records, opts \\ []) do
     manage_relationship(
       changeset,
@@ -2429,6 +2425,7 @@ defmodule Ash.Changeset do
     )
   ```
   """
+  @deprecated "Use manage_relationship/4 instead"
   @spec remove_from_relationship(
           t,
           atom,
@@ -2474,21 +2471,13 @@ defmodule Ash.Changeset do
           Ash.Resource.record() | map | term | [Ash.Resource.record() | map | term] | nil,
           Keyword.t()
         ) :: t()
+  @deprecated "Use manage_relationship/4 instead"
   def replace_relationship(changeset, relationship, record_or_records, opts \\ []) do
     manage_relationship(
       changeset,
       relationship,
       record_or_records,
-      Keyword.merge(
-        [
-          on_lookup: :relate,
-          on_no_match: :error,
-          on_match: :ignore,
-          on_missing: :unrelate,
-          authorize?: false
-        ],
-        opts
-      )
+      Keyword.put(opts, :type, :relate_and_update)
     )
   end
 

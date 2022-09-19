@@ -170,7 +170,7 @@ defmodule Ash.Test.CalculationTest do
     user2 =
       User
       |> Ash.Changeset.new(%{first_name: "brian", last_name: "cranston"})
-      |> Ash.Changeset.replace_relationship(:best_friend, user1)
+      |> Ash.Changeset.manage_relationship(:best_friend, user1, type: :append_and_remove)
       |> Api.create!()
 
     %{user1: user1, user2: user2}

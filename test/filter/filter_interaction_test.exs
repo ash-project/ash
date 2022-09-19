@@ -168,7 +168,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
       post1 =
         Post
         |> new(%{title: "best"})
-        |> replace_relationship(:author, author)
+        |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       post1_id = post1.id
@@ -197,7 +197,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
       post1 =
         Post
         |> new(%{title: "one"})
-        |> replace_relationship(:related_posts, [post2])
+        |> manage_relationship(:related_posts, [post2], type: :append_and_remove)
         |> Api.create!()
 
       query =
@@ -223,7 +223,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
       post1 =
         Post
         |> new(%{title: "one"})
-        |> replace_relationship(:related_posts, [post2, post3])
+        |> manage_relationship(:related_posts, [post2, post3], type: :append_and_remove)
         |> Api.create!()
 
       post2
@@ -259,12 +259,12 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
       post1 =
         Post
         |> new(%{title: "one"})
-        |> replace_relationship(:related_posts, [post2, post3])
+        |> manage_relationship(:related_posts, [post2, post3], type: :append_and_remove)
         |> Api.create!()
 
       Post
       |> new(%{title: "four"})
-      |> replace_relationship(:related_posts, [post3])
+      |> manage_relationship(:related_posts, [post3], type: :append_and_remove)
       |> Api.create!()
 
       post2
@@ -293,14 +293,14 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
       post1 =
         Post
         |> new(%{title: "best"})
-        |> replace_relationship(:author, author)
+        |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       post1_id = post1.id
 
       Post
       |> new(%{title: "worst"})
-      |> replace_relationship(:author, author2)
+      |> manage_relationship(:author, author2, type: :append_and_remove)
       |> Api.create!()
 
       query = Ash.Query.filter(Post, exists(author, contains(name, "best")))

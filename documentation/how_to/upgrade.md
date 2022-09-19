@@ -2,6 +2,8 @@
 
 ## Upgrading to 2.0
 
+All deprecations will be finalized in version 2.1.
+
 ### New DSL tooling
 
 The DSL tooling has been moved out of the Ash name space and into a more generalized tool called `Spark`. If you have written your own extensions, you will need
@@ -88,6 +90,12 @@ The following functions have been moved. The old functions still exist, but will
 The following functions have been moved:
 
 - Ash.Resource.extensions/1 -> `Spark.extensions/1`
+
+The following functions have been deprecated, and will be removed in 2.1
+
+- `Ash.Changeset.replace_relationship/4` - use `manage_relationship/4` instead. 
+- `Ash.Changeset.append_to_relationship/4` - use `manage_relationship/4` instead. 
+- `Ash.Changeset.remove_from_relationship/4` - use `manage_relationship/4` instead. 
 
 ### Expression Changes
 

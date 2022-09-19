@@ -505,7 +505,7 @@ update :assign do
   # We use a change here to replace the related representative
   # If there is a different representative for this ticket, it will be changed to the new one
   # The representative itself is not modified in any way
-  change manage_relationship(:representative_id, :representative, type: :replace)
+  change manage_relationship(:representative_id, :representative, type: :append_and_remove)
 end
 ```
 

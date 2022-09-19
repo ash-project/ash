@@ -55,15 +55,15 @@ defmodule Ash.Test.Policy.RbacTest do
   defp give_role(user, org, role, resource, resource_id) do
     Membership
     |> Ash.Changeset.new(%{role: role, resource: resource, resource_id: resource_id})
-    |> Ash.Changeset.replace_relationship(:user, user)
-    |> Ash.Changeset.replace_relationship(:organization, org)
+    |> Ash.Changeset.manage_relationship(:user, user, type: :append_and_remove)
+    |> Ash.Changeset.manage_relationship(:organization, org, type: :append_and_remove)
     |> Api.create!()
   end
 
   defp create_file(org, name) do
     File
     |> Ash.Changeset.new(%{name: name})
-    |> Ash.Changeset.replace_relationship(:organization, org)
+    |> Ash.Changeset.manage_relationship(:organization, org, type: :append_and_remove)
     |> Api.create!()
   end
 end

@@ -362,7 +362,7 @@ defmodule Ash.Test.Actions.UpdateTest do
 
       post
       |> new()
-      |> replace_relationship(:related_posts, [post2, post3])
+      |> manage_relationship(:related_posts, [post2, post3], type: :append_and_remove)
       |> Api.update!()
     end
 
@@ -406,7 +406,7 @@ defmodule Ash.Test.Actions.UpdateTest do
 
       post
       |> new()
-      |> replace_relationship(:related_posts, [post2, post3])
+      |> manage_relationship(:related_posts, [post2, post3], type: :append_and_remove)
       |> Api.update!()
 
       assert [_, _] = Api.read!(PostLink)
@@ -429,7 +429,10 @@ defmodule Ash.Test.Actions.UpdateTest do
         |> Api.create!()
 
       new_post =
-        post |> new() |> replace_relationship(:related_posts, [post2, post3]) |> Api.update!()
+        post
+        |> new()
+        |> manage_relationship(:related_posts, [post2, post3], type: :append_and_remove)
+        |> Api.update!()
 
       assert Enum.sort(strip_metadata(new_post.related_posts)) ==
                Enum.sort([
@@ -458,10 +461,14 @@ defmodule Ash.Test.Actions.UpdateTest do
       new_post =
         post
         |> new()
-        |> replace_relationship(:related_posts, [
-          Ash.Resource.set_metadata(post2, %{join_keys: %{type: "a"}}),
-          Ash.Resource.set_metadata(post3, %{join_keys: %{type: "b"}})
-        ])
+        |> manage_relationship(
+          :related_posts,
+          [
+            Ash.Resource.set_metadata(post2, %{join_keys: %{type: "a"}}),
+            Ash.Resource.set_metadata(post3, %{join_keys: %{type: "b"}})
+          ],
+          type: :append_and_remove
+        )
         |> Api.update!()
         |> Api.load!(:related_posts_join_assoc)
 
@@ -472,12 +479,13 @@ defmodule Ash.Test.Actions.UpdateTest do
       new_post =
         new_post
         |> new()
-        |> replace_relationship(
+        |> manage_relationship(
           :related_posts,
           [
             Ash.Resource.set_metadata(post2, %{join_keys: %{type: "c"}}),
             Ash.Resource.set_metadata(post3, %{join_keys: %{type: "d"}})
           ],
+          type: :append_and_remove,
           on_match: :update,
           on_lookup: :relate
         )
@@ -505,12 +513,12 @@ defmodule Ash.Test.Actions.UpdateTest do
       author =
         Author
         |> new(%{name: "fred"})
-        |> replace_relationship(:profile, profile)
+        |> manage_relationship(:profile, profile, type: :append_and_remove)
         |> Api.create!()
 
       author
       |> new()
-      |> replace_relationship(:profile, profile2)
+      |> manage_relationship(:profile, profile2, type: :append_and_remove)
       |> Api.update!()
     end
 
@@ -528,12 +536,12 @@ defmodule Ash.Test.Actions.UpdateTest do
       author =
         Author
         |> new(%{name: "fred"})
-        |> replace_relationship(:profile, profile)
+        |> manage_relationship(:profile, profile, type: :append_and_remove)
         |> Api.create!()
 
       author
       |> new()
-      |> replace_relationship(:profile, profile2)
+      |> manage_relationship(:profile, profile2, type: :append_and_remove)
       |> Api.update!()
 
       assert Api.get!(Profile, profile.id).author_id == nil
@@ -554,13 +562,13 @@ defmodule Ash.Test.Actions.UpdateTest do
       author =
         Author
         |> new(%{name: "fred"})
-        |> replace_relationship(:profile, profile)
+        |> manage_relationship(:profile, profile, type: :append_and_remove)
         |> Api.create!()
 
       updated_author =
         author
         |> new()
-        |> replace_relationship(:profile, profile2)
+        |> manage_relationship(:profile, profile2, type: :append_and_remove)
         |> Api.update!()
 
       assert %{updated_author.profile | __metadata__: nil} == %{
@@ -586,12 +594,12 @@ defmodule Ash.Test.Actions.UpdateTest do
       author =
         Author
         |> new(%{name: "foobar"})
-        |> replace_relationship(:posts, [post])
+        |> manage_relationship(:posts, [post], type: :append_and_remove)
         |> Api.create!()
 
       author
       |> new()
-      |> replace_relationship(:posts, [post, post2])
+      |> manage_relationship(:posts, [post, post2], type: :append_and_remove)
       |> Api.update!()
     end
 
@@ -609,13 +617,13 @@ defmodule Ash.Test.Actions.UpdateTest do
       author =
         Author
         |> new(%{name: "foobar"})
-        |> replace_relationship(:posts, [post])
+        |> manage_relationship(:posts, [post], type: :append_and_remove)
         |> Api.create!()
 
       author =
         author
         |> new()
-        |> replace_relationship(:posts, [post2.id])
+        |> manage_relationship(:posts, [post2.id], type: :append_and_remove)
         |> Api.update!()
 
       assert Api.get!(Post, post.id).author_id == nil
@@ -636,13 +644,13 @@ defmodule Ash.Test.Actions.UpdateTest do
       author =
         Author
         |> new(%{name: "foobar"})
-        |> replace_relationship(:posts, [post])
+        |> manage_relationship(:posts, [post], type: :append_and_remove)
         |> Api.create!()
 
       updated_author =
         author
         |> new()
-        |> replace_relationship(:posts, [post2])
+        |> manage_relationship(:posts, [post2], type: :append_and_remove)
         |> Api.update!()
 
       post = Api.get!(Post, post2.id)
@@ -668,12 +676,12 @@ defmodule Ash.Test.Actions.UpdateTest do
       post =
         Post
         |> new(%{title: "foobar"})
-        |> replace_relationship(:author, author)
+        |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       post
       |> new()
-      |> replace_relationship(:author, author2)
+      |> manage_relationship(:author, author2, type: :append_and_remove)
       |> Api.update!()
     end
 
@@ -691,12 +699,12 @@ defmodule Ash.Test.Actions.UpdateTest do
       post =
         Post
         |> new(%{title: "foobar"})
-        |> replace_relationship(:author, author)
+        |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       post
       |> new()
-      |> replace_relationship(:author, author2)
+      |> manage_relationship(:author, author2, type: :append_and_remove)
       |> Api.update!()
 
       author2 = Api.get!(Author, author2.id, load: :posts)
@@ -720,10 +728,14 @@ defmodule Ash.Test.Actions.UpdateTest do
       post =
         Post
         |> new(%{title: "foobar"})
-        |> replace_relationship(:author, author)
+        |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
-      updated_post = post |> new() |> replace_relationship(:author, author2) |> Api.update!()
+      updated_post =
+        post
+        |> new()
+        |> manage_relationship(:author, author2, type: :append_and_remove)
+        |> Api.update!()
 
       assert updated_post.author.id ==
                Api.get!(Author, author2.id).id

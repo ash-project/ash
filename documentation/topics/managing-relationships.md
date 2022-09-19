@@ -19,7 +19,7 @@ actions do
     change manage_relationship(:add_comment, :comments, type: :create)
 
     # Second argument can be omitted, as the argument name is the same as the relationship
-    change manage_relationship(:tags, type: :replace)
+    change manage_relationship(:tags, type: :append_and_remove)
   end
 end
 ```

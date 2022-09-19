@@ -530,7 +530,7 @@ defmodule Ash.Test.Actions.CreateTest do
 
       Post
       |> new(%{title: "cannot_be_missing"})
-      |> replace_relationship(:related_posts, [post2, post3])
+      |> manage_relationship(:related_posts, [post2, post3], type: :append_and_remove)
       |> Api.create!()
     end
 
@@ -549,7 +549,7 @@ defmodule Ash.Test.Actions.CreateTest do
 
       Post
       |> new(%{title: "title4"})
-      |> replace_relationship(:related_posts, [post2, post3])
+      |> manage_relationship(:related_posts, [post2, post3], type: :append_and_remove)
       |> Api.create!()
 
       assert [_, _] =
@@ -576,7 +576,7 @@ defmodule Ash.Test.Actions.CreateTest do
       post =
         Post
         |> new(%{title: "cannot_be_missing"})
-        |> replace_relationship(:related_posts, [post2, post3])
+        |> manage_relationship(:related_posts, [post2, post3], type: :append_and_remove)
         |> Api.create!()
         |> strip_metadata()
 
@@ -600,7 +600,7 @@ defmodule Ash.Test.Actions.CreateTest do
       Author
       |> new()
       |> change_attribute(:name, "fred")
-      |> replace_relationship(:profile, profile)
+      |> manage_relationship(:profile, profile, type: :append_and_remove)
     end
 
     test "it sets the relationship on the destination record accordingly" do
@@ -614,7 +614,7 @@ defmodule Ash.Test.Actions.CreateTest do
         Author
         |> new()
         |> change_attribute(:name, "fred")
-        |> replace_relationship(:profile, profile)
+        |> manage_relationship(:profile, profile, type: :append_and_remove)
         |> Api.create!()
 
       assert Api.get!(Profile, profile.id).author_id == author.id
@@ -631,7 +631,7 @@ defmodule Ash.Test.Actions.CreateTest do
         Author
         |> new()
         |> change_attribute(:name, "fred")
-        |> replace_relationship(:profile, profile)
+        |> manage_relationship(:profile, profile, type: :append_and_remove)
         |> Api.create!()
 
       assert author.profile.author_id == author.id
@@ -649,7 +649,7 @@ defmodule Ash.Test.Actions.CreateTest do
       Author
       |> new()
       |> change_attribute(:name, "foobar")
-      |> replace_relationship(:posts, [post])
+      |> manage_relationship(:posts, [post], type: :append_and_remove)
       |> Api.create!()
     end
   end
@@ -665,7 +665,7 @@ defmodule Ash.Test.Actions.CreateTest do
       Post
       |> new()
       |> change_attribute(:title, "foobar")
-      |> replace_relationship(:author, author)
+      |> manage_relationship(:author, author, type: :append_and_remove)
       |> Api.create!()
     end
 
@@ -680,7 +680,7 @@ defmodule Ash.Test.Actions.CreateTest do
         Post
         |> new()
         |> change_attribute(:title, "foobar")
-        |> replace_relationship(:author, author)
+        |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       assert Api.get!(Post, post.id).author_id == author.id
@@ -697,7 +697,7 @@ defmodule Ash.Test.Actions.CreateTest do
         Post
         |> new()
         |> change_attribute(:title, "foobar")
-        |> replace_relationship(:author, author)
+        |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       assert post.author_id == author.id
@@ -714,7 +714,7 @@ defmodule Ash.Test.Actions.CreateTest do
         Post
         |> new()
         |> change_attribute(:title, "foobar")
-        |> replace_relationship(:author, author)
+        |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       assert post.author.id == author.id
@@ -731,14 +731,14 @@ defmodule Ash.Test.Actions.CreateTest do
         Post
         |> new()
         |> change_attribute(:title, "foobar")
-        |> replace_relationship(:author, author)
+        |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       post =
         post
         |> new()
         |> change_attribute(:title, "foobuz")
-        |> replace_relationship(:author, nil)
+        |> manage_relationship(:author, nil, type: :append_and_remove)
         |> Api.update!()
 
       assert post.author == nil
@@ -763,7 +763,7 @@ defmodule Ash.Test.Actions.CreateTest do
 
       ProfileWithBelongsTo
       |> Ash.Changeset.for_create(:create)
-      |> Ash.Changeset.replace_relationship(:author, author)
+      |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
       |> Api.create!()
     end
 
@@ -774,7 +774,8 @@ defmodule Ash.Test.Actions.CreateTest do
 
       ProfileWithBelongsTo
       |> Ash.Changeset.for_create(:create)
-      |> Ash.Changeset.replace_relationship(:author, %{name: "author name"},
+      |> Ash.Changeset.manage_relationship(:author, %{name: "author name"},
+        type: :append_and_remove,
         on_no_match: :create,
         on_lookup: :relate,
         on_match: :ignore

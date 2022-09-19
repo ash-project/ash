@@ -43,9 +43,9 @@ API calls involving resources who's datalayer supports transactions (like Postgr
 ```elixir
 Post
 |> Ash.Changeset.new(%{})
-|> Ash.Changeset.append_to_relationship(:related_posts, [1, 2, 3])
-|> Ash.Changeset.remove_from_relationship(:related_posts, [4, 5])
-|> Ash.Changeset.append_to_relationship(:comments, [10])
+|> Ash.Changeset.manage_relationship(:related_posts, [1, 2, 3], type: :append)
+|> Ash.Changeset.manage_relationship(:related_posts, [4, 5], type: :remove)
+|> Ash.Changeset.manage_relationship(:comments, [10], type: :append)
 |> Api.update!()
 ```
 

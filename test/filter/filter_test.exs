@@ -380,14 +380,14 @@ defmodule Ash.Test.Filter.FilterTest do
       post3 =
         Post
         |> new(%{title: "title3", contents: "contents3", points: 3})
-        |> replace_relationship(:related_posts, [post1, post2])
+        |> manage_relationship(:related_posts, [post1, post2], type: :append_and_remove)
         |> Api.create!()
         |> strip_metadata()
 
       post4 =
         Post
         |> new(%{title: "title4", contents: "contents4", points: 4})
-        |> replace_relationship(:related_posts, [post3])
+        |> manage_relationship(:related_posts, [post3], type: :append_and_remove)
         |> Api.create!()
         |> strip_metadata()
 
@@ -400,22 +400,22 @@ defmodule Ash.Test.Filter.FilterTest do
       user1 =
         User
         |> new(%{name: "broseph"})
-        |> replace_relationship(:posts, [post1, post2])
-        |> replace_relationship(:profile, profile1)
+        |> manage_relationship(:posts, [post1, post2], type: :append_and_remove)
+        |> manage_relationship(:profile, profile1, type: :append_and_remove)
         |> Api.create!()
         |> strip_metadata()
 
       user2 =
         User
         |> new(%{name: "broseph", special: false})
-        |> replace_relationship(:posts, [post2])
+        |> manage_relationship(:posts, [post2], type: :append_and_remove)
         |> Api.create!()
         |> strip_metadata()
 
       profile2 =
         Profile
         |> new(%{bio: "dope2"})
-        |> replace_relationship(:user, user2)
+        |> manage_relationship(:user, user2, type: :append_and_remove)
         |> Api.create!()
         |> strip_metadata()
 

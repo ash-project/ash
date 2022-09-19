@@ -43,7 +43,7 @@ defmodule Ash.Test.Support.Flow do
 
       create :create do
         argument :org, :uuid, allow_nil?: false
-        change manage_relationship(:org, type: :replace)
+        change manage_relationship(:org, type: :append_and_remove)
       end
 
       update :update do

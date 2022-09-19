@@ -637,7 +637,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
   end
 
-  describe "replace_relationship/3" do
+  describe "manage_relationship/3 type: :append_and_remove" do
     test "it replaces entities to a resource's relationship" do
       post1 = Post |> Changeset.new(%{title: "title1"}) |> Api.create!()
       post2 = Post |> Changeset.new(%{title: "title2"}) |> Api.create!()
@@ -645,7 +645,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       author =
         Author
         |> Changeset.new()
-        |> Changeset.replace_relationship(:posts, [post1])
+        |> Changeset.manage_relationship(:posts, [post1], type: :append_and_remove)
         |> Api.create!()
 
       [author] =
@@ -661,7 +661,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       author =
         author
         |> Changeset.new()
-        |> Changeset.replace_relationship(:posts, [post2])
+        |> Changeset.manage_relationship(:posts, [post2], type: :append_and_remove)
         |> Api.update!()
 
       [author] =
@@ -684,9 +684,10 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       author =
         Author
         |> Changeset.new()
-        |> Changeset.replace_relationship(
+        |> Changeset.manage_relationship(
           :composite_key_posts,
-          [%{id: post1.id, serial: post1.serial}]
+          [%{id: post1.id, serial: post1.serial}],
+          type: :append_and_remove
         )
         |> Api.create!()
 
@@ -713,12 +714,13 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       author =
         Author
         |> Changeset.new()
-        |> Changeset.replace_relationship(
+        |> Changeset.manage_relationship(
           :composite_key_posts,
           [
             %{id: post1.id, serial: post1.serial},
             %{id: post2.id, serial: post2.serial}
-          ]
+          ],
+          type: :append_and_remove
         )
         |> Api.create!()
 
@@ -745,12 +747,13 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       author =
         Author
         |> Changeset.new()
-        |> Changeset.replace_relationship(
+        |> Changeset.manage_relationship(
           :composite_key_posts,
           [
             %{id: post1.id, serial: post1.serial},
             post2
-          ]
+          ],
+          type: :append_and_remove
         )
         |> Api.create!()
 
@@ -783,13 +786,14 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       changeset =
         Author
         |> Changeset.new()
-        |> Changeset.replace_relationship(
+        |> Changeset.manage_relationship(
           :composite_key_posts,
           [
             %{id: post1.id, serial: post1.serial},
             post2,
             invalid_post
-          ]
+          ],
+          type: :append_and_remove
         )
 
       assert [%Ash.Error.Changes.InvalidRelationship{} = relation_error] = changeset.errors
@@ -802,7 +806,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       changeset =
         Author
         |> Changeset.new()
-        |> Changeset.replace_relationship(:na, post1)
+        |> Changeset.manage_relationship(:na, post1, type: :append_and_remove)
 
       assert %{} == changeset.relationships
       assert [%Ash.Error.Changes.NoSuchRelationship{}] = changeset.errors
@@ -828,7 +832,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       changeset =
         Author
         |> Changeset.new()
-        |> Changeset.replace_relationship(:posts, [post])
+        |> Changeset.manage_relationship(:posts, [post], type: :append_and_remove)
 
       assert Changeset.changing_relationship?(changeset, :posts)
     end

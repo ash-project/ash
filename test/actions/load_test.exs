@@ -293,13 +293,13 @@ defmodule Ash.Test.Actions.LoadTest do
       post1 =
         Post
         |> new(%{title: "post1"})
-        |> replace_relationship(:author, author)
+        |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       post2 =
         Post
         |> new(%{title: "post2"})
-        |> replace_relationship(:author, author)
+        |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       [author] =
@@ -325,12 +325,12 @@ defmodule Ash.Test.Actions.LoadTest do
       post1 =
         Post
         |> new(%{title: "post1"})
-        |> replace_relationship(:author, author)
+        |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       Post
       |> new(%{title: "post2"})
-      |> replace_relationship(:author, author)
+      |> manage_relationship(:author, author, type: :append_and_remove)
       |> Api.create!()
 
       [author] =
@@ -355,12 +355,12 @@ defmodule Ash.Test.Actions.LoadTest do
 
       Post
       |> new(%{title: "post1"})
-      |> replace_relationship(:author, author)
+      |> manage_relationship(:author, author, type: :append_and_remove)
       |> Api.create!()
 
       Post
       |> new(%{title: "post2"})
-      |> replace_relationship(:author, author)
+      |> manage_relationship(:author, author, type: :append_and_remove)
       |> Api.create!()
 
       [author] =
@@ -382,13 +382,13 @@ defmodule Ash.Test.Actions.LoadTest do
       post1 =
         Post
         |> new(%{title: "post1"})
-        |> replace_relationship(:author, author)
+        |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       post2 =
         Post
         |> new(%{title: "post2"})
-        |> replace_relationship(:author, author)
+        |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       [author] =
@@ -407,7 +407,7 @@ defmodule Ash.Test.Actions.LoadTest do
       post3 =
         Post
         |> new(%{title: "post3"})
-        |> replace_relationship(:author, author)
+        |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       author =
@@ -423,7 +423,7 @@ defmodule Ash.Test.Actions.LoadTest do
 
       Post
       |> new(%{title: "post4"})
-      |> replace_relationship(:author, author)
+      |> manage_relationship(:author, author, type: :append_and_remove)
       |> Api.create!()
 
       author =
@@ -447,13 +447,13 @@ defmodule Ash.Test.Actions.LoadTest do
       post =
         Post
         |> new(%{title: "post1"})
-        |> replace_relationship(:author, author)
+        |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       rating =
         Rating
         |> new(%{rating: 10})
-        |> replace_relationship(:post, post)
+        |> manage_relationship(:post, post, type: :append_and_remove)
         |> Api2.create!()
 
       assert [loaded_rating] =
@@ -480,7 +480,7 @@ defmodule Ash.Test.Actions.LoadTest do
       post =
         Post
         |> new(%{title: "post1"})
-        |> replace_relationship(:categories, [category1, category2])
+        |> manage_relationship(:categories, [category1, category2], type: :append_and_remove)
         |> Api.create!()
 
       [post] =
@@ -508,7 +508,7 @@ defmodule Ash.Test.Actions.LoadTest do
       post =
         Post
         |> new(%{title: "post1"})
-        |> replace_relationship(:categories, [category1, category2])
+        |> manage_relationship(:categories, [category1, category2], type: :append_and_remove)
         |> Api.create!()
 
       [post] =
@@ -531,7 +531,7 @@ defmodule Ash.Test.Actions.LoadTest do
       _post1 =
         Post
         |> new(%{title: "post1"})
-        |> replace_relationship(:author, author)
+        |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       :timer.sleep(2)
@@ -539,7 +539,7 @@ defmodule Ash.Test.Actions.LoadTest do
       post2 =
         Post
         |> new(%{title: "post2"})
-        |> replace_relationship(:author, author)
+        |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       [author] =

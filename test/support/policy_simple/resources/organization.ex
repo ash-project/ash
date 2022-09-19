@@ -13,7 +13,7 @@ defmodule Ash.Test.Support.PolicySimple.Organization do
     create(:create) do
       primary? true
       argument(:owner, :uuid)
-      change(manage_relationship(:owner, type: :replace))
+      change(manage_relationship(:owner, type: :append_and_remove))
     end
   end
 

@@ -207,12 +207,12 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       post1 =
         Post
         |> new(%{title: "post1", actor_id: author.id})
-        |> replace_relationship(:author, author)
+        |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       Post
       |> new(%{title: "post2"})
-      |> replace_relationship(:author, author)
+      |> manage_relationship(:author, author, type: :append_and_remove)
       |> Api.create!()
 
       authorized_posts =
@@ -235,12 +235,12 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
 
       Post
       |> new(%{title: "post1", actor_id: author.id})
-      |> replace_relationship(:author, author)
+      |> manage_relationship(:author, author, type: :append_and_remove)
       |> Api.create!()
 
       Post
       |> new(%{title: "post2"})
-      |> replace_relationship(:author, author)
+      |> manage_relationship(:author, author, type: :append_and_remove)
       |> Api.create!()
 
       assert {:error, %Ash.Error.Forbidden{}} =
@@ -304,13 +304,13 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       post1 =
         Post
         |> new(%{title: "post1"})
-        |> replace_relationship(:author, author)
+        |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       post2 =
         Post
         |> new(%{title: "post2"})
-        |> replace_relationship(:author, author)
+        |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       [author] =
@@ -341,7 +341,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       post =
         Post
         |> new(%{title: "post1"})
-        |> replace_relationship(:categories, [category1, category2])
+        |> manage_relationship(:categories, [category1, category2], type: :append_and_remove)
         |> Api.create!()
 
       [post] =
@@ -369,7 +369,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       post =
         Post
         |> new(%{title: "post1"})
-        |> replace_relationship(:categories, [category1, category2])
+        |> manage_relationship(:categories, [category1, category2], type: :append_and_remove)
         |> Api.create!()
 
       [post] =
@@ -392,7 +392,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       _post1 =
         Post
         |> new(%{title: "post1"})
-        |> replace_relationship(:author, author)
+        |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       :timer.sleep(2)
@@ -400,7 +400,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       post2 =
         Post
         |> new(%{title: "post2"})
-        |> replace_relationship(:author, author)
+        |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       [author] =

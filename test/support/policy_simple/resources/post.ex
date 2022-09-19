@@ -38,10 +38,10 @@ defmodule Ash.Test.Support.PolicySimple.Post do
     create :create do
       primary? true
       argument(:author, :uuid)
-      change(manage_relationship(:author, type: :replace))
+      change(manage_relationship(:author, type: :append_and_remove))
 
       argument(:organization, :uuid)
-      change(manage_relationship(:organization, type: :replace))
+      change(manage_relationship(:organization, type: :append_and_remove))
     end
   end
 

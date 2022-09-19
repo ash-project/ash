@@ -216,7 +216,7 @@ defmodule Ash.FlowTest.SimpleFlowTest do
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "abc", org: org.id})
-    |> Ash.Changeset.replace_relationship(:org, org.id)
+    |> Ash.Changeset.manage_relationship(:org, org.id, type: :append_and_remove)
     |> Api.create!()
 
     User

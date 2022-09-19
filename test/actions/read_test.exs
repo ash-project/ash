@@ -480,8 +480,8 @@ defmodule Ash.Test.Actions.ReadTest do
       post =
         Post
         |> new(%{title: "test", contents: "yeet"})
-        |> replace_relationship(:author1, author1)
-        |> replace_relationship(:author2, author2)
+        |> manage_relationship(:author1, author1, type: :append_and_remove)
+        |> manage_relationship(:author2, author2, type: :append_and_remove)
         |> Api.create!()
 
       %{post: post, author1: author1, author2: author2}

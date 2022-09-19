@@ -14,7 +14,7 @@ defmodule Ash.Test.Support.PolicySimple.Car do
     create :create do
       primary? true
       argument(:users, {:array, :uuid})
-      change(manage_relationship(:users, type: :replace))
+      change(manage_relationship(:users, type: :append_and_remove))
     end
   end
 

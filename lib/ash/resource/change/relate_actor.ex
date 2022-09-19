@@ -44,6 +44,6 @@ defmodule Ash.Resource.Change.RelateActor do
   end
 
   def change(changeset, opts, %{actor: actor}) do
-    Changeset.replace_relationship(changeset, opts[:relationship], actor)
+    Changeset.manage_relationship(changeset, opts[:relationship], actor, type: :append_and_remove)
   end
 end
