@@ -14,10 +14,17 @@ defmodule Ash.Test.Support.PolicySimple.Trip do
     policy action_type(:read) do
       authorize_if(expr(car.users.id == ^actor(:id)))
     end
+
+    policy action(:cant_load_car) do
+      forbid_if loading(:car)
+      authorize_if always()
+    end
   end
 
   actions do
     defaults [:create, :read, :update, :destroy]
+
+    read :cant_load_car
   end
 
   attributes do

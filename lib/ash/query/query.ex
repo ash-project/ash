@@ -753,6 +753,36 @@ defmodule Ash.Query do
   end
 
   @doc """
+  Returns true if the field/relationship or path to field/relationship is being loaded.
+
+  It accepts an atom or a list of atoms, which is treated for as a "path", i.e:
+
+      Resource |> Ash.Query.load(friends: [enemies: [:score]]) |> Ash.Query.loaded?([:friends, :enemies, :score])
+      iex> true
+
+      Resource |> Ash.Query.load(friends: [enemies: [:score]]) |> Ash.Query.loaded?([:friends, :score])
+      iex> false
+
+      Resource |> Ash.Query.load(friends: [enemies: [:score]]) |> Ash.Query.loaded?(:friends)
+      iex> true
+  """
+  def loading?(query, [last]) do
+    loading?(query, last)
+  end
+
+  def loading?(query, [first | rest]) do
+    case Keyword.get(query.load || [], first) do
+      %Ash.Query{} = next -> loading?(next, rest)
+      nil -> false
+      other -> raise "Cannot check if loading path #{inspect(rest)} of #{inspect(other)}"
+    end
+  end
+
+  def loading?(query, item) when is_atom(item) do
+    Keyword.has_key?(query.load || [], item)
+  end
+
+  @doc """
   Loads relationships, calculations, or aggregates on the resource.
 
   Currently, loading attributes has no effects, as all attributes are returned.

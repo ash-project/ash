@@ -29,7 +29,7 @@ defmodule Ash.MixProject do
     ]
   end
 
-  defp extras() do
+  defp extras do
     "documentation/**/*.md"
     |> Path.wildcard()
     |> Enum.map(fn path ->
@@ -37,8 +37,7 @@ defmodule Ash.MixProject do
         path
         |> Path.basename(".md")
         |> String.split(~r/[-_]/)
-        |> Enum.map(&String.capitalize/1)
-        |> Enum.join(" ")
+        |> Enum.map_join(" ", &String.capitalize/1)
         |> case do
           "F A Q" ->
             "FAQ"
@@ -54,7 +53,7 @@ defmodule Ash.MixProject do
     end)
   end
 
-  defp groups_for_extras() do
+  defp groups_for_extras do
     "documentation/*"
     |> Path.wildcard()
     |> Enum.map(fn folder ->
@@ -62,8 +61,7 @@ defmodule Ash.MixProject do
         folder
         |> Path.basename()
         |> String.split(~r/[-_]/)
-        |> Enum.map(&String.capitalize/1)
-        |> Enum.join(" ")
+        |> Enum.map_join(" ", &String.capitalize/1)
 
       {name, folder |> Path.join("**") |> Path.wildcard()}
     end)

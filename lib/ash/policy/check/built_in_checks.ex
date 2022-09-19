@@ -31,6 +31,11 @@ defmodule Ash.Policy.Check.Builtins do
     {Ash.Policy.Check.Selecting, attribute: attribute}
   end
 
+  @doc "This check is true when the field or relationship, or path to field, is being loaded and false when it is not"
+  def loading(field) do
+    {Ash.Policy.Check.Loading, field: field}
+  end
+
   @doc " This check passes if the data relates to the actor via the specified relationship or path of relationships"
   def relates_to_actor_via(relationship_path) do
     {Ash.Policy.Check.RelatesToActorVia, relationship_path: List.wrap(relationship_path)}

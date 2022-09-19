@@ -33,6 +33,10 @@ defmodule Ash.Test.QueryTest do
       # obviously we won't ever do this in real life, this is to test sensitive attributes
       attribute :password, :string, sensitive?: true
     end
+
+    relationships do
+      belongs_to :best_friend, __MODULE__
+    end
   end
 
   defmodule Registry do
@@ -71,6 +75,14 @@ defmodule Ash.Test.QueryTest do
       concat = Ash.Query.filter(User, password <> "fred" == "fred") |> inspect()
       refute concat =~ "fred"
       assert concat =~ "**redacted**"
+    end
+  end
+
+  describe "loading?" do
+    test "it detects a simple load" do
+      assert User
+             |> Ash.Query.load(:best_friend)
+             |> Ash.Query.loading?(:best_friend)
     end
   end
 end
