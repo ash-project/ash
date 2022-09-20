@@ -2,6 +2,8 @@ defmodule Ash.Test.Actions.IdentityTest do
   @moduledoc false
   use ExUnit.Case, async: false
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -14,11 +16,11 @@ defmodule Ash.Test.Actions.IdentityTest do
 
     identities do
       identity :unique_title, [:title] do
-        eager_check_with(Ash.Test.Actions.IdentityTest.Api)
+        eager_check_with(Api)
       end
 
       identity :unique_url, [:url] do
-        pre_check_with(Ash.Test.Actions.IdentityTest.Api)
+        pre_check_with(Api)
       end
     end
 
@@ -34,24 +36,6 @@ defmodule Ash.Test.Actions.IdentityTest do
       uuid_primary_key :id
       attribute(:title, :string, allow_nil?: false)
       attribute(:url, :string)
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Post)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 

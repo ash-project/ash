@@ -16,6 +16,8 @@ defmodule Ash.DataLayer.EtsTest do
     end)
   end
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule EtsTestUser do
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
 
@@ -28,7 +30,7 @@ defmodule Ash.DataLayer.EtsTest do
     end
 
     identities do
-      identity :unique_name, [:name], pre_check_with: Ash.DataLayer.EtsTest.EtsApiTest
+      identity :unique_name, [:name], pre_check_with: Api
     end
 
     attributes do
@@ -36,23 +38,6 @@ defmodule Ash.DataLayer.EtsTest do
       attribute :name, :string
       attribute :age, :integer
       attribute :title, :string
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry EtsTestUser
-    end
-  end
-
-  defmodule EtsApiTest do
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 
@@ -99,7 +84,7 @@ defmodule Ash.DataLayer.EtsTest do
 
     user
     |> Ash.Changeset.new(name: "Joe")
-    |> EtsApiTest.update!()
+    |> Api.update!()
 
     assert [{%{id: ^id}, %EtsTestUser{name: "Joe", id: ^id}}] = user_table()
   end
@@ -120,7 +105,7 @@ defmodule Ash.DataLayer.EtsTest do
 
     assert length(user_table()) == 2
 
-    EtsApiTest.destroy!(mike)
+    Api.destroy!(mike)
 
     assert [{%{id: ^joes_id}, ^joe}] = strip_metadata(user_table())
   end
@@ -131,7 +116,7 @@ defmodule Ash.DataLayer.EtsTest do
     %{id: id} = create_user(%{name: "Matthew"})
     create_user(%{name: "Zachary"})
 
-    assert %EtsTestUser{id: ^id, name: "Matthew"} = EtsApiTest.get!(EtsTestUser, id)
+    assert %EtsTestUser{id: ^id, name: "Matthew"} = Api.get!(EtsTestUser, id)
   end
 
   test "sort" do
@@ -145,7 +130,7 @@ defmodule Ash.DataLayer.EtsTest do
       |> Ash.Query.new()
       |> Ash.Query.sort(:name)
 
-    assert [^joe, ^matthew, ^mike, ^zachary] = strip_metadata(EtsApiTest.read!(query))
+    assert [^joe, ^matthew, ^mike, ^zachary] = strip_metadata(Api.read!(query))
   end
 
   test "limit" do
@@ -160,7 +145,7 @@ defmodule Ash.DataLayer.EtsTest do
       |> Ash.Query.sort(:name)
       |> Ash.Query.limit(2)
 
-    assert [^joe, ^matthew] = strip_metadata(EtsApiTest.read!(query))
+    assert [^joe, ^matthew] = strip_metadata(Api.read!(query))
   end
 
   test "offset" do
@@ -175,7 +160,7 @@ defmodule Ash.DataLayer.EtsTest do
       |> Ash.Query.sort(:name)
       |> Ash.Query.offset(1)
 
-    assert [^matthew, ^mike, ^zachary] = strip_metadata(EtsApiTest.read!(query))
+    assert [^matthew, ^mike, ^zachary] = strip_metadata(Api.read!(query))
   end
 
   describe "filter" do
@@ -251,13 +236,13 @@ defmodule Ash.DataLayer.EtsTest do
     |> Ash.Query.new()
     |> Ash.Query.sort(:name)
     |> Ash.Query.filter(^filter)
-    |> EtsApiTest.read!()
+    |> Api.read!()
   end
 
   defp create_user(attrs, opts \\ []) do
     EtsTestUser
     |> Ash.Changeset.new(attrs)
-    |> EtsApiTest.create!(opts)
+    |> Api.create!(opts)
     |> strip_metadata()
   end
 

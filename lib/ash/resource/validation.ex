@@ -14,30 +14,6 @@ defmodule Ash.Resource.Validation do
     validate {MyValidation, [foo: :bar]}
   end
   ```
-
-  To make it more readable, you can define a function in the module that returns that tuple,
-  and import it into your resource.
-
-
-  ```
-  defmodule MyValidation do
-    def my_validation(value) do
-      {__MODULE__, foo: value}
-    end
-  end
-  ```
-
-  ```
-  defmodule MyResource do
-    ...
-
-    import MyValidation
-
-    validations do
-      validate my_validation(:foo)
-    end
-  end
-  ```
   """
   defstruct [
     :validation,

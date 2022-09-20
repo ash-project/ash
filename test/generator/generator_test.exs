@@ -1,10 +1,10 @@
 defmodule Ash.Test.GeneratorTest do
   @moduledoc false
   use ExUnit.Case, async: true
-
+  use ExUnitProperties
   import Ash.Seed
   require Ash.Query
-  use ExUnitProperties
+  alias Ash.Test.AnyApi, as: Api
 
   defmodule Author do
     @moduledoc false
@@ -95,7 +95,7 @@ defmodule Ash.Test.GeneratorTest do
     end
 
     identities do
-      identity :unique_name, [:name], pre_check_with: Ash.Test.GeneratorTest.Api
+      identity :unique_name, [:name], pre_check_with: Api
     end
 
     actions do
@@ -136,28 +136,6 @@ defmodule Ash.Test.GeneratorTest do
       belongs_to :post, Post do
         api Ash.Test.GeneratorTest.Category
       end
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Author)
-      entry(Post)
-      entry(Category)
-      entry(Rating)
-      entry(PostCategory)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 

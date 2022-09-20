@@ -2,6 +2,8 @@ defmodule Ash.Test.Resource.IdentitiesTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
@@ -30,7 +32,7 @@ defmodule Ash.Test.Resource.IdentitiesTest do
         end
 
         identities do
-          identity :foobar, [:name, :contents], pre_check_with: Foo
+          identity :foobar, [:name, :contents], pre_check_with: Api
         end
       end
 
@@ -44,7 +46,7 @@ defmodule Ash.Test.Resource.IdentitiesTest do
                    fn ->
                      defposts do
                        identities do
-                         identity :foobar, [:name], eager_check_with: Foobar, pre_check_with: Foo
+                         identity :foobar, [:name], eager_check_with: Api, pre_check_with: Api
                        end
                      end
                    end
@@ -61,7 +63,7 @@ defmodule Ash.Test.Resource.IdentitiesTest do
         identities do
           identity :foobar, [:name, :contents],
             description: "require one of name/contents",
-            pre_check_with: Foo
+            pre_check_with: Api
         end
       end
 

@@ -58,7 +58,7 @@ defmodule Ash.DataLayer.Mnesia do
   @doc """
   Creates the table for each mnesia resource in an api
   """
-  def start(api) do
+  def start(api, resources \\ []) do
     Mnesia.create_schema([node()])
     Mnesia.start()
 
@@ -66,6 +66,7 @@ defmodule Ash.DataLayer.Mnesia do
 
     api
     |> Ash.Api.Info.resources()
+    |> Enum.concat(resources)
     |> Enum.filter(&(__MODULE__ in Spark.extensions(&1)))
     |> Enum.flat_map(fn resource ->
       resource

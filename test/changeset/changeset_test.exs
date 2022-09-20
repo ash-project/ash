@@ -3,6 +3,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
   use ExUnit.Case, async: true
 
   alias Ash.Changeset
+  alias Ash.Test.AnyApi, as: Api
 
   require Ash.Query
 
@@ -14,7 +15,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     identities do
-      identity :unique_name, [:name], pre_check_with: Ash.Test.Changeset.ChangesetTest.Api
+      identity :unique_name, [:name], pre_check_with: Api
     end
 
     actions do
@@ -177,8 +178,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     identities do
-      identity :unique_name_per_author, [:title, :author_id],
-        pre_check_with: Ash.Test.Changeset.ChangesetTest.Api
+      identity :unique_name_per_author, [:title, :author_id], pre_check_with: Api
     end
 
     attributes do
@@ -194,29 +194,6 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         through: Ash.Test.Changeset.ChangesetTest.PostCategory,
         destination_attribute_on_join_resource: :category_id,
         source_attribute_on_join_resource: :post_id
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry Category
-      entry Author
-      entry PostCategory
-      entry Post
-      entry CompositeKeyPost
-      entry UniqueNamePerAuthor
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 
