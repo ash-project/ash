@@ -73,7 +73,7 @@ defmodule Ash.Resource.Info do
   @doc """
   The list of code interface definitions.
   """
-  @spec interfaces(Ash.Resource.t()) :: [Ash.Resource.Interface.t()]
+  @spec interfaces(Spark.Dsl.t() | Ash.Resource.t()) :: [Ash.Resource.Interface.t()]
   def interfaces(resource) do
     Extension.get_entities(resource, [:code_interface])
   end
@@ -81,7 +81,7 @@ defmodule Ash.Resource.Info do
   @doc """
   The Api to define the interface for, when defining it in the resource
   """
-  @spec define_interface_for(Ash.Resource.t()) :: atom | nil
+  @spec define_interface_for(Spark.Dsl.t() | Ash.Resource.t()) :: atom | nil
   def define_interface_for(resource) do
     Extension.get_opt(resource, [:code_interface], :define_for, nil)
   end
@@ -89,7 +89,7 @@ defmodule Ash.Resource.Info do
   @doc """
   Whether or not the resource is an embedded resource
   """
-  @spec embedded?(Ash.Resource.t()) :: boolean
+  @spec embedded?(Spark.Dsl.t() | Ash.Resource.t()) :: boolean
   def embedded?(resource) do
     Extension.get_persisted(resource, :embedded?, false)
   end
@@ -97,7 +97,7 @@ defmodule Ash.Resource.Info do
   @doc """
   The description of the resource
   """
-  @spec description(Ash.Resource.t()) :: String.t() | nil
+  @spec description(Spark.Dsl.t() | Ash.Resource.t()) :: String.t() | nil
   def description(resource) do
     Extension.get_opt(resource, [:resource], :description, "no description")
   end
@@ -105,7 +105,7 @@ defmodule Ash.Resource.Info do
   @doc """
   The trace_name of the resource
   """
-  @spec trace_name(Ash.Resource.t()) :: String.t() | nil
+  @spec trace_name(Spark.Dsl.t() | Ash.Resource.t()) :: String.t() | nil
   def trace_name(resource) do
     Extension.get_opt(resource, [:resource], :trace_name, nil) || to_string(short_name(resource))
   end
@@ -113,7 +113,7 @@ defmodule Ash.Resource.Info do
   @doc """
   The short_name of the resource
   """
-  @spec short_name(Ash.Resource.t()) :: String.t() | nil
+  @spec short_name(Spark.Dsl.t() | Ash.Resource.t()) :: String.t() | nil
   def short_name(resource) do
     Extension.get_opt(resource, [:resource], :short_name, nil) || resource.default_short_name()
   end
@@ -121,7 +121,7 @@ defmodule Ash.Resource.Info do
   @doc """
   The base filter of the resource
   """
-  @spec base_filter(Ash.Resource.t()) :: term
+  @spec base_filter(Spark.Dsl.t() | Ash.Resource.t()) :: term
   def base_filter(resource) do
     Extension.get_opt(resource, [:resource], :base_filter, nil)
   end
@@ -129,19 +129,19 @@ defmodule Ash.Resource.Info do
   @doc """
   The default context of the resource
   """
-  @spec default_context(Ash.Resource.t()) :: term
+  @spec default_context(Spark.Dsl.t() | Ash.Resource.t()) :: term
   def default_context(resource) do
     Extension.get_opt(resource, [:resource], :default_context, nil)
   end
 
   @doc "A list of identities for the resource"
-  @spec identities(Ash.Resource.t()) :: [Ash.Resource.Identity.t()]
+  @spec identities(Spark.Dsl.t() | Ash.Resource.t()) :: [Ash.Resource.Identity.t()]
   def identities(resource) do
     Extension.get_entities(resource, [:identities])
   end
 
   @doc "Get an identity by name from the resource"
-  @spec identity(Ash.Resource.t(), atom) :: Ash.Resource.Identity.t() | nil
+  @spec identity(Spark.Dsl.t() | Ash.Resource.t(), atom) :: Ash.Resource.Identity.t() | nil
   def identity(resource, name) do
     resource
     |> identities()
@@ -149,19 +149,19 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "A list of authorizers to be used when accessing"
-  @spec authorizers(Ash.Resource.t()) :: [module]
+  @spec authorizers(Spark.Dsl.t() | Ash.Resource.t()) :: [module]
   def authorizers(resource) do
     Extension.get_persisted(resource, :authorizers, [])
   end
 
   @doc "A list of notifiers to be used when accessing"
-  @spec notifiers(Ash.Resource.t()) :: [module]
+  @spec notifiers(Spark.Dsl.t() | Ash.Resource.t()) :: [module]
   def notifiers(resource) do
     Extension.get_persisted(resource, :notifiers, [])
   end
 
   @doc "A list of all validations for the resource for a given action type"
-  @spec validations(Ash.Resource.t(), :create | :update | :destroy) :: [
+  @spec validations(Spark.Dsl.t() | Ash.Resource.t(), :create | :update | :destroy) :: [
           Ash.Resource.Validation.t()
         ]
   def validations(resource, type) do
@@ -171,13 +171,13 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "A list of all validations for the resource"
-  @spec validations(Ash.Resource.t()) :: [Ash.Resource.Validation.t()]
+  @spec validations(Spark.Dsl.t() | Ash.Resource.t()) :: [Ash.Resource.Validation.t()]
   def validations(resource) do
     Extension.get_entities(resource, [:validations])
   end
 
   @doc "A list of all changes for the resource for a given action type"
-  @spec changes(Ash.Resource.t(), :create | :update | :destroy) ::
+  @spec changes(Spark.Dsl.t() | Ash.Resource.t(), :create | :update | :destroy) ::
           list(
             Ash.Resource.Validation.t()
             | Ash.Resource.Change.t()
@@ -189,12 +189,13 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "A list of all changes for the resource"
-  @spec changes(Ash.Resource.t()) :: list(Ash.Resource.Validation.t() | Ash.Resource.Change.t())
+  @spec changes(Spark.Dsl.t() | Ash.Resource.t()) ::
+          list(Ash.Resource.Validation.t() | Ash.Resource.Change.t())
   def changes(resource) do
     Extension.get_entities(resource, [:changes])
   end
 
-  @spec preparations(Ash.Resource.t()) :: list(Ash.Resource.Preparation.t())
+  @spec preparations(Spark.Dsl.t() | Ash.Resource.t()) :: list(Ash.Resource.Preparation.t())
   def preparations(resource) do
     Extension.get_entities(resource, [:preparations])
   end
@@ -208,19 +209,20 @@ defmodule Ash.Resource.Info do
   def resource?(_), do: false
 
   @doc "A list of field names corresponding to the primary key"
-  @spec primary_key(Ash.Resource.t()) :: list(atom)
+  @spec primary_key(Spark.Dsl.t() | Ash.Resource.t()) :: list(atom)
   def primary_key(resource) do
     Spark.Dsl.Extension.get_persisted(resource, :primary_key, [])
   end
 
   @doc "Returns all relationships of a resource"
-  @spec relationships(Ash.Resource.t()) :: list(Ash.Resource.Relationships.relationship())
+  @spec relationships(Spark.Dsl.t() | Ash.Resource.t()) ::
+          list(Ash.Resource.Relationships.relationship())
   def relationships(resource) do
     Extension.get_entities(resource, [:relationships])
   end
 
   @doc "Get a relationship by name or path"
-  @spec relationship(Ash.Resource.t(), atom | String.t() | [atom | String.t()]) ::
+  @spec relationship(Spark.Dsl.t() | Ash.Resource.t(), atom | String.t() | [atom | String.t()]) ::
           Ash.Resource.Relationships.relationship() | nil
   def relationship(resource, [name]) do
     relationship(resource, name)
@@ -249,7 +251,8 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "Returns all public relationships of a resource"
-  @spec public_relationships(Ash.Resource.t()) :: list(Ash.Resource.Relationships.relationship())
+  @spec public_relationships(Spark.Dsl.t() | Ash.Resource.t()) ::
+          list(Ash.Resource.Relationships.relationship())
   def public_relationships(resource) do
     resource
     |> relationships()
@@ -280,19 +283,19 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "The multitenancy strategy for a resource"
-  @spec multitenancy_strategy(Ash.Resource.t()) :: :context | :attribute | nil
+  @spec multitenancy_strategy(Spark.Dsl.t() | Ash.Resource.t()) :: :context | :attribute | nil
   def multitenancy_strategy(resource) do
     Spark.Dsl.Extension.get_opt(resource, [:multitenancy], :strategy, nil)
   end
 
   @doc "The multitenancy attribute for a resource"
-  @spec multitenancy_attribute(Ash.Resource.t()) :: atom | nil
+  @spec multitenancy_attribute(Spark.Dsl.t() | Ash.Resource.t()) :: atom | nil
   def multitenancy_attribute(resource) do
     Spark.Dsl.Extension.get_opt(resource, [:multitenancy], :attribute, nil)
   end
 
   @doc "The function to parse the tenant from the attribute"
-  @spec multitenancy_parse_attribute(Ash.Resource.t()) :: {atom, atom, list(any)}
+  @spec multitenancy_parse_attribute(Spark.Dsl.t() | Ash.Resource.t()) :: {atom, atom, list(any)}
   def multitenancy_parse_attribute(resource) do
     Spark.Dsl.Extension.get_opt(
       resource,
@@ -306,31 +309,32 @@ defmodule Ash.Resource.Info do
   def _identity(x), do: x
 
   @doc "The MFA to parse the tenant from the attribute"
-  @spec multitenancy_global?(Ash.Resource.t()) :: atom | nil
+  @spec multitenancy_global?(Spark.Dsl.t() | Ash.Resource.t()) :: atom | nil
   def multitenancy_global?(resource) do
     Spark.Dsl.Extension.get_opt(resource, [:multitenancy], :global?, nil)
   end
 
   @doc "The source attribute for multitenancy"
-  @spec multitenancy_source(Ash.Resource.t()) :: atom | nil
+  @spec multitenancy_source(Spark.Dsl.t() | Ash.Resource.t()) :: atom | nil
   def multitenancy_source(resource) do
     Spark.Dsl.Extension.get_opt(resource, [:multitenancy], :source, nil)
   end
 
   @doc "The template for creating the tenant name"
-  @spec multitenancy_template(Ash.Resource.t()) :: atom | nil
+  @spec multitenancy_template(Spark.Dsl.t() | Ash.Resource.t()) :: atom | nil
   def multitenancy_template(resource) do
     Spark.Dsl.Extension.get_opt(resource, [:multitenancy], :template, nil)
   end
 
   @doc "Returns all calculations of a resource"
-  @spec calculations(Ash.Resource.t()) :: list(Ash.Resource.Calculation.t())
+  @spec calculations(Spark.Dsl.t() | Ash.Resource.t()) :: list(Ash.Resource.Calculation.t())
   def calculations(resource) do
     Extension.get_entities(resource, [:calculations])
   end
 
   @doc "Get a calculation by name"
-  @spec calculation(Ash.Resource.t(), atom | String.t()) :: Ash.Resource.Calculation.t() | nil
+  @spec calculation(Spark.Dsl.t() | Ash.Resource.t(), atom | String.t()) ::
+          Ash.Resource.Calculation.t() | nil
   def calculation(resource, name) when is_binary(name) do
     resource
     |> calculations()
@@ -344,7 +348,8 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "Returns all public calculations of a resource"
-  @spec public_calculations(Ash.Resource.t()) :: list(Ash.Resource.Calculation.t())
+  @spec public_calculations(Spark.Dsl.t() | Ash.Resource.t()) ::
+          list(Ash.Resource.Calculation.t())
   def public_calculations(resource) do
     resource
     |> Extension.get_entities([:calculations])
@@ -352,7 +357,7 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "Get a public calculation by name"
-  @spec public_calculation(Ash.Resource.t(), atom | String.t()) ::
+  @spec public_calculation(Spark.Dsl.t() | Ash.Resource.t(), atom | String.t()) ::
           Ash.Resource.Calculation.t() | nil
   def public_calculation(resource, name) when is_binary(name) do
     resource
@@ -369,7 +374,8 @@ defmodule Ash.Resource.Info do
   @doc """
   Gets the type of an aggregate for a given resource.
   """
-  @spec aggregate_type(Ash.Resource.t(), Ash.Resource.Aggregate.t() | atom) :: Ash.Type.t()
+  @spec aggregate_type(Spark.Dsl.t() | Ash.Resource.t(), Ash.Resource.Aggregate.t() | atom) ::
+          Ash.Type.t()
   def aggregate_type(resource, aggregate) when is_atom(aggregate) do
     aggregate_type(resource, aggregate(resource, aggregate))
   end
@@ -385,13 +391,14 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "Returns all aggregates of a resource"
-  @spec aggregates(Ash.Resource.t()) :: list(Ash.Resource.Aggregate.t())
+  @spec aggregates(Spark.Dsl.t() | Ash.Resource.t()) :: list(Ash.Resource.Aggregate.t())
   def aggregates(resource) do
     Extension.get_entities(resource, [:aggregates])
   end
 
   @doc "Get an aggregate by name"
-  @spec aggregate(Ash.Resource.t(), atom | String.t()) :: Ash.Resource.Aggregate.t() | nil
+  @spec aggregate(Spark.Dsl.t() | Ash.Resource.t(), atom | String.t()) ::
+          Ash.Resource.Aggregate.t() | nil
   def aggregate(resource, name) when is_binary(name) do
     resource
     |> aggregates()
@@ -405,7 +412,7 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "Returns all public aggregates of a resource"
-  @spec public_aggregates(Ash.Resource.t()) :: list(Ash.Resource.Aggregate.t())
+  @spec public_aggregates(Spark.Dsl.t() | Ash.Resource.t()) :: list(Ash.Resource.Aggregate.t())
   def public_aggregates(resource) do
     resource
     |> Extension.get_entities([:aggregates])
@@ -413,7 +420,7 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "Get an aggregate by name"
-  @spec public_aggregate(Ash.Resource.t(), atom | String.t()) ::
+  @spec public_aggregate(Spark.Dsl.t() | Ash.Resource.t(), atom | String.t()) ::
           Ash.Resource.Aggregate.t() | nil
   def public_aggregate(resource, name) when is_binary(name) do
     resource
@@ -428,17 +435,20 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "Returns the primary action of the given type"
-  @spec primary_action!(Ash.Resource.t(), Ash.Resource.Actions.action_type()) ::
+  @spec primary_action!(Spark.Dsl.t() | Ash.Resource.t(), Ash.Resource.Actions.action_type()) ::
           Ash.Resource.Actions.action() | no_return
   def primary_action!(resource, type) do
     case primary_action(resource, type) do
-      nil -> raise "Required primary #{type} action for #{inspect(resource)}."
-      action -> action
+      nil ->
+        raise "Required primary #{type} action for #{Extension.get_persisted(resource, :module)}."
+
+      action ->
+        action
     end
   end
 
   @doc "Returns the primary action of a given type"
-  @spec primary_action(Ash.Resource.t(), Ash.Resource.Actions.action_type()) ::
+  @spec primary_action(Spark.Dsl.t() | Ash.Resource.t(), Ash.Resource.Actions.action_type()) ::
           Ash.Resource.Actions.action() | nil
   def primary_action(resource, type) do
     resource
@@ -447,7 +457,8 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "Returns the configured default actions"
-  @spec default_actions(Ash.Resource.t()) :: list(:create | :read | :update | :destroy)
+  @spec default_actions(Spark.Dsl.t() | Ash.Resource.t()) ::
+          list(:create | :read | :update | :destroy)
   def default_actions(resource) do
     default =
       if embedded?(resource) do
@@ -466,13 +477,13 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "Returns all actions of a resource"
-  @spec actions(Ash.Resource.t()) :: [Ash.Resource.Actions.action()]
+  @spec actions(Spark.Dsl.t() | Ash.Resource.t()) :: [Ash.Resource.Actions.action()]
   def actions(resource) do
     Extension.get_entities(resource, [:actions])
   end
 
   @doc "Returns the action with the matching name and type on the resource"
-  @spec action(Ash.Resource.t(), atom(), Ash.Resource.Actions.action_type() | nil) ::
+  @spec action(Spark.Dsl.t() | Ash.Resource.t(), atom(), Ash.Resource.Actions.action_type() | nil) ::
           Ash.Resource.Actions.action() | nil
   def action(resource, name, type \\ nil) do
     # We used to need type, but we don't anymore since action names are unique
@@ -502,13 +513,14 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "Returns all attributes of a resource"
-  @spec attributes(Ash.Resource.t()) :: [Ash.Resource.Attribute.t()]
+  @spec attributes(Spark.Dsl.t() | Ash.Resource.t()) :: [Ash.Resource.Attribute.t()]
   def attributes(resource) do
     Extension.get_entities(resource, [:attributes])
   end
 
   @doc "Get an attribute name from the resource"
-  @spec attribute(Ash.Resource.t(), String.t() | atom) :: Ash.Resource.Attribute.t() | nil
+  @spec attribute(Spark.Dsl.t() | Ash.Resource.t(), String.t() | atom) ::
+          Ash.Resource.Attribute.t() | nil
   def attribute(resource, name) when is_binary(name) do
     resource
     |> attributes()
@@ -522,7 +534,7 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "Returns all public attributes of a resource"
-  @spec public_attributes(Ash.Resource.t()) :: [Ash.Resource.Attribute.t()]
+  @spec public_attributes(Spark.Dsl.t() | Ash.Resource.t()) :: [Ash.Resource.Attribute.t()]
   def public_attributes(resource) do
     resource
     |> attributes()
@@ -530,7 +542,8 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "Get a public attribute name from the resource"
-  @spec public_attribute(Ash.Resource.t(), String.t() | atom) :: Ash.Resource.Attribute.t() | nil
+  @spec public_attribute(Spark.Dsl.t() | Ash.Resource.t(), String.t() | atom) ::
+          Ash.Resource.Attribute.t() | nil
   def public_attribute(resource, name) when is_binary(name) do
     resource
     |> attributes()
@@ -543,7 +556,7 @@ defmodule Ash.Resource.Info do
     |> Enum.find(&(&1.name == name && !&1.private?))
   end
 
-  @spec related(Ash.Resource.t(), atom() | String.t() | [atom() | String.t()]) ::
+  @spec related(Spark.Dsl.t() | Ash.Resource.t(), atom() | String.t() | [atom() | String.t()]) ::
           Ash.Resource.t() | nil
   def related(resource, relationship) when not is_list(relationship) do
     related(resource, [relationship])
@@ -559,7 +572,7 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "Get a field from a resource by name"
-  @spec field(Ash.Resource.t(), String.t() | atom) ::
+  @spec field(Spark.Dsl.t() | Ash.Resource.t(), String.t() | atom) ::
           Ash.Resource.Attribute.t()
           | Ash.Resource.Aggregate.t()
           | Ash.Resource.Calculation.t()
@@ -573,7 +586,7 @@ defmodule Ash.Resource.Info do
         relationship(resource, name)
 
   @doc "Get a public field from a resource by name"
-  @spec public_field(Ash.Resource.t(), String.t() | atom) ::
+  @spec public_field(Spark.Dsl.t() | Ash.Resource.t(), String.t() | atom) ::
           Ash.Resource.Attribute.t()
           | Ash.Resource.Aggregate.t()
           | Ash.Resource.Calculation.t()
@@ -587,7 +600,7 @@ defmodule Ash.Resource.Info do
         public_relationship(resource, name)
 
   @doc "Determine if a field is sortable by name"
-  @spec sortable?(Ash.Resource.t(), String.t() | atom,
+  @spec sortable?(Spark.Dsl.t() | Ash.Resource.t(), String.t() | atom,
           pagination_type: Ash.Page.type(),
           include_private?: boolean()
         ) ::
