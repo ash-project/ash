@@ -149,8 +149,8 @@ jobs:
         id: cache-build
         with:
           path: ${{matrix.project}}/_build
-          key: ${{matrix.project}}-otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-build-2-${{ hashFiles(format('{0}{1}', github.workspace, '/ash/mix.lock')) }}
-          restore-keys: ${{matrix.project}}-otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-build-2-
+          key: ${{matrix.project}}-otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-build-3-${{ hashFiles(format('{0}{1}', github.workspace, '/ash/mix.lock')) }}
+          restore-keys: ${{matrix.project}}-otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-build-3-
       - name: mix deps.get inside ./${{matrix.project}}
         run: mix deps.get
         working-directory: ./${{matrix.project}}
