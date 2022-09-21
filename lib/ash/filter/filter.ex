@@ -1934,7 +1934,7 @@ defmodule Ash.Filter do
              )}
 
           resource_calculation ->
-            {module, opts} = module_and_opts(resource_calculation.calculation)
+            {module, opts} = resource_calculation.calculation
 
             {args, nested_statement} =
               case args do
@@ -2114,7 +2114,7 @@ defmodule Ash.Filter do
         add_aggregate_expression(context, nested_statement, field, expression)
 
       resource_calculation = calculation(context, field) ->
-        {module, opts} = module_and_opts(resource_calculation.calculation)
+        {module, opts} = resource_calculation.calculation
 
         {input, nested_statement} =
           case nested_statement do
@@ -2358,7 +2358,7 @@ defmodule Ash.Filter do
 
     case {calculation(%{context | resource: resource}, name), could_be_calculation?} do
       {resource_calculation, true} when not is_nil(resource_calculation) ->
-        {module, opts} = module_and_opts(resource_calculation.calculation)
+        {module, opts} = resource_calculation.calculation
 
         with {:ok, args} <-
                Ash.Query.validate_calculation_arguments(
@@ -2428,9 +2428,6 @@ defmodule Ash.Filter do
     end
   end
 
-  defp module_and_opts({module, opts}), do: {module, opts}
-  defp module_and_opts(module), do: {module, []}
-
   def hydrate_refs({key, value}, context) when is_atom(key) do
     context = Map.put_new(context, :root_resource, context[:resource])
 
@@ -2469,7 +2466,7 @@ defmodule Ash.Filter do
             {:ok, %{ref | attribute: attribute, resource: related}}
 
           resource_calculation = calculation(context, attribute) ->
-            {module, opts} = module_and_opts(resource_calculation.calculation)
+            {module, opts} = resource_calculation.calculation
 
             with {:ok, args} <-
                    Ash.Query.validate_calculation_arguments(resource_calculation, %{}),

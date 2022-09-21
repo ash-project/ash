@@ -820,7 +820,7 @@ defmodule Ash.Query do
             load_relationship(query, [{field, nested_query}])
 
           resource_calculation = Ash.Resource.Info.calculation(query.resource, field) ->
-            {module, opts} = module_and_opts(resource_calculation.calculation)
+            {module, opts} = resource_calculation.calculation
 
             with {:ok, args} <- validate_calculation_arguments(resource_calculation, rest),
                  {:ok, calculation} <-
@@ -870,9 +870,6 @@ defmodule Ash.Query do
     end)
   end
 
-  defp module_and_opts({module, opts}), do: {module, opts}
-  defp module_and_opts(module), do: {module, []}
-
   defp do_load(query, field) do
     cond do
       Ash.Resource.Info.attribute(query.resource, field) ->
@@ -920,11 +917,7 @@ defmodule Ash.Query do
         end
 
       resource_calculation = Ash.Resource.Info.calculation(query.resource, field) ->
-        {module, opts} =
-          case resource_calculation.calculation do
-            {module, opts} -> {module, opts}
-            module -> {module, []}
-          end
+        {module, opts} = resource_calculation.calculation
 
         with {:ok, args} <- validate_calculation_arguments(resource_calculation, %{}),
              {:ok, calculation} <-

@@ -750,7 +750,9 @@ defmodule Ash.Type do
 
         @impl true
         def load(term, _, params) do
-          case @parent.cast_stored(term, params) do
+          parent = @parent
+
+          case parent.cast_stored(term, params) do
             {:ok, value} ->
               {:ok, value}
 
@@ -761,7 +763,9 @@ defmodule Ash.Type do
 
         @impl true
         def dump(term, _dumper, params) do
-          case @parent.dump_to_native(term, params) do
+          parent = @parent
+
+          case parent.dump_to_native(term, params) do
             {:ok, value} ->
               {:ok, value}
 

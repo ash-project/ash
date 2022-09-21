@@ -308,12 +308,12 @@ defmodule Ash.Flow.Chart.Mermaid do
   defp do_format_template(template, all_steps) when is_map(template) do
     body =
       Enum.map_join(template, ",<br/>", fn {key, value} ->
-        case do_format_template(key, all_steps) do
-          ":" <> key ->
-            "#{key}: #{do_format_template(value, all_steps)}"
+        result = do_format_template(key, all_steps)
 
-          key ->
-            "#{inspect(key)} => #{do_format_template(value, all_steps)}"
+        if String.starts_with?(result, ":") do
+          "#{String.trim_leading(result, ":")}: #{do_format_template(value, all_steps)}"
+        else
+          "#{inspect(result)} => #{do_format_template(value, all_steps)}"
         end
       end)
 
