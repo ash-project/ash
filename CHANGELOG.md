@@ -35,7 +35,7 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 * update to latest spark, support dsls in resource info
 
-* deprecate `:replace` in favor of `:relate_and_unrelate`
+* deprecate `:replace` in favor of `:append_and_remove`
 
 * add `loading?/1` query helper
 
