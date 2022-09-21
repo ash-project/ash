@@ -20,6 +20,17 @@ defmodule Ash.Resource.Attribute do
     constraints: []
   ]
 
+  defmodule Helpers do
+    @moduledoc "Helpers for building attributes"
+
+    defmacro timestamps(opts \\ []) do
+      quote do
+        create_timestamp :inserted_at, unquote(opts)
+        update_timestamp :updated_at, unquote(opts)
+      end
+    end
+  end
+
   @type t :: %__MODULE__{
           name: atom(),
           constraints: Keyword.t(),
