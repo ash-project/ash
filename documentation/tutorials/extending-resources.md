@@ -24,7 +24,7 @@ attributes do
 end
 ```
 
-Would, under the hood might look like this:
+Would, under the hood, look something like this:
 
 ```elixir
 %{
