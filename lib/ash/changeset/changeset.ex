@@ -2477,7 +2477,7 @@ defmodule Ash.Changeset do
       changeset,
       relationship,
       record_or_records,
-      Keyword.put(opts, :type, :relate_and_update)
+      Keyword.put(opts, :type, :relate_and_unrelate)
     )
   end
 
