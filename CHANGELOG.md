@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.0.0-rc.9](https://github.com/ash-project/ash/compare/v2.0.0-rc.8...v2.0.0-rc.9) (2022-09-21)
+
+
+
+
+### Bug Fixes:
+
+* fix `replace_relationship` type
+
 ## [v2.0.0-rc.8](https://github.com/ash-project/ash/compare/v2.0.0-rc.7...v2.0.0-rc.8) (2022-09-21)
 
 
