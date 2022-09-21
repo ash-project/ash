@@ -6,6 +6,7 @@ defmodule Ash.Resource.Transformers.ValidateManagedRelationshipOpts do
 
   alias Ash.Changeset.ManagedRelationshipHelpers
   alias Spark.Dsl.Transformer
+  require Logger
 
   def after_compile?, do: true
 
@@ -49,6 +50,19 @@ defmodule Ash.Resource.Transformers.ValidateManagedRelationshipOpts do
 
         if ensure_compiled?(relationship) do
           try do
+            opts =
+              if opts[:opts][:type] == :replace do
+                Logger.warn(
+                  "type: :replace has been renamed to `:append_and_remove` in 2.0, and it will be removed in 2.1"
+                )
+
+                Keyword.update!(opts, :opts, fn inner_opts ->
+                  Keyword.put(inner_opts, :type, :append_and_remove)
+                end)
+              else
+                opts
+              end
+
             manage_opts =
               if opts[:opts][:type] do
                 defaults = Ash.Changeset.manage_relationship_opts(opts[:opts][:type])

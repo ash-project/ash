@@ -2016,6 +2016,17 @@ defmodule Ash.Changeset do
   end
 
   def manage_relationship(changeset, relationship, input, opts) do
+    opts =
+      if opts[:type] == :replace do
+        Logger.warn(
+          "type: :replace has been renamed to `:append_and_remove` in 2.0, and it will be removed in 2.1"
+        )
+
+        Keyword.put(opts, :type, :append_and_remove)
+      else
+        opts
+      end
+
     inputs_was_list? = is_list(input)
 
     manage_opts =

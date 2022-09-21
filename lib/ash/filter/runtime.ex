@@ -395,6 +395,10 @@ defmodule Ash.Filter.Runtime do
 
   defp resolve_expr(other, _), do: {:ok, other}
 
+  defp try_cast_arguments(:var_args, args) do
+    Enum.map(args, fn _ -> :any end)
+  end
+
   defp try_cast_arguments(configured_args, args) do
     given_arg_count = Enum.count(args)
 
