@@ -5,6 +5,33 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.0.0-rc.8](https://github.com/ash-project/ash/compare/v2.0.0-rc.7...v2.0.0-rc.8) (2022-09-21)
+
+
+
+
+### Bug Fixes:
+
+* properly handle args/nested expression for tuple calcs
+
+* add a case for calculations as tuples in expr filters
+
+* return count, not {:ok, count}
+
+* bad return value when async fetching counts
+
+* remove dbg() call
+
+### Improvements:
+
+* update to latest spark, support dsls in resource info
+
+* deprecate `:replace` in favor of `:relate_and_unrelate`
+
+* add `loading?/1` query helper
+
+* add `loading/1` built in check
+
 ## [v2.0.0-rc.7](https://github.com/ash-project/ash/compare/v2.0.0-rc.6...v2.0.0-rc.7) (2022-09-15)
 
 
