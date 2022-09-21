@@ -19,6 +19,8 @@ jobs:
         include:
           - elixir: 1.13.1
             otp: 24.1.2
+          - elixir: 1.14.0
+            otp: 25.0.4
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
