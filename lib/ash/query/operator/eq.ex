@@ -13,6 +13,18 @@ defmodule Ash.Query.Operator.Eq do
     predicate?: true,
     types: [:same, :any]
 
+  def new(nil, right) when not is_nil(right) do
+    Ash.Query.Operator.IsNil.new(right, true)
+  end
+
+  def new(left, nil) when not is_nil(left) do
+    Ash.Query.Operator.IsNil.new(left, true)
+  end
+
+  def new(left, right) do
+    {:ok, struct(__MODULE__, left: left, right: right)}
+  end
+
   def evaluate(%{left: nil}), do: {:known, nil}
   def evaluate(%{right: nil}), do: {:known, nil}
 
