@@ -26,6 +26,10 @@ defmodule Ash.Type.Date do
   @impl true
   def cast_stored(nil, _), do: {:ok, nil}
 
+  def cast_stored(value, constraints) when is_binary(value) do
+    cast_input(value, constraints)
+  end
+
   def cast_stored(value, _) do
     Ecto.Type.load(:date, value)
   end
