@@ -24,6 +24,10 @@ defmodule Ash.Type.UtcDatetimeUsec do
   @impl true
   def cast_stored(nil, _), do: {:ok, nil}
 
+  def cast_stored(value, constraints) when is_binary(value) do
+    cast_input(value, constraints)
+  end
+
   def cast_stored(value, _) do
     case Ecto.Type.load(:utc_datetime_usec, value) do
       {:ok, value} ->
