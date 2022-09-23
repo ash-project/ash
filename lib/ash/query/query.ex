@@ -845,6 +845,8 @@ defmodule Ash.Query do
                   allow_async?: resource_calculation.allow_async?
               }
 
+              query = Ash.Query.ensure_selected(query, fields_to_select)
+
               query =
                 Ash.Query.load(
                   query,
@@ -1418,6 +1420,7 @@ defmodule Ash.Query do
     case Calculation.new(name, module, opts, type, Map.put(context, :context, query.context)) do
       {:ok, calculation} ->
         fields_to_select = module.select(query, opts, calculation.context) || []
+        query = Ash.Query.ensure_selected(query, fields_to_select)
 
         query =
           Ash.Query.load(
