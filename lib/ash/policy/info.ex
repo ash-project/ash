@@ -250,5 +250,8 @@ defmodule Ash.Policy.Info do
     %{check | check_opts: Keyword.update(check_opts, :access_type, default, &(&1 || default))}
   end
 
+  defp set_access_type({module, opts}, default),
+    do: {module, Keyword.update(opts, :access_type, default, &(&1 || default))}
+
   defp set_access_type(other, _), do: other
 end

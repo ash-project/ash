@@ -485,6 +485,7 @@ defmodule Ash.Policy.Authorizer do
           [[and: filters] | or_filters]
       end
     end)
+    |> Enum.filter(& &1)
   end
 
   defp maybe_forbid_strict(authorizer) do
@@ -523,6 +524,7 @@ defmodule Ash.Policy.Authorizer do
 
         scenarios = remove_clause(authorizer.scenarios, {check_module, check_opts})
         new_facts = Map.put(authorizer.facts, {check_module, check_opts}, required_status)
+
         global_filters(%{authorizer | facts: new_facts}, scenarios, [additional_filter | filter])
     end
   end

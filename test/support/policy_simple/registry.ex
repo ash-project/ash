@@ -11,5 +11,6 @@ defmodule Ash.Test.Support.PolicySimple.Registry do
     entry(Simple.Car)
     entry(Simple.CarUser)
     entry(Simple.Trip)
+    entry(Simple.Tweet)
   end
 end

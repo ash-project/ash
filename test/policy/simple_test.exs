@@ -3,12 +3,22 @@ defmodule Ash.Test.Policy.SimpleTest do
   use ExUnit.Case
   require Ash.Query
 
-  alias Ash.Test.Support.PolicySimple.{Api, Car, Organization, Post, Trip, User}
+  alias Ash.Test.Support.PolicySimple.{Api, Car, Organization, Post, Trip, Tweet, User}
 
   setup do
     [
-      user: Api.create!(Ash.Changeset.new(User))
+      user: Api.create!(Ash.Changeset.new(User)),
+      admin: Api.create!(Ash.Changeset.new(User, %{admin: true}))
     ]
+  end
+
+  test "bypass with condition does not apply subsequent filters", %{admin: admin, user: user} do
+    Api.create!(Ash.Changeset.new(Tweet))
+
+    Application.put_env(:ash, :foo, :bar)
+
+    assert [_] = Api.read!(Tweet, actor: admin)
+    assert [] = Api.read!(Tweet, actor: user)
   end
 
   test "filter checks work on create/update/destroy actions", %{user: user} do
