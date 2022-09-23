@@ -421,14 +421,18 @@ defmodule Ash.Policy.Authorizer do
         :authorized
 
       {_filters, []} ->
-        case filter do
-          [filter] ->
-            log(authorizer, "filtering with: #{inspect(filter)}, authorization complete")
-            {:filter, authorizer, filter}
+        if Enum.any?(filter, &(&1 == true)) do
+          :authorized
+        else
+          case filter do
+            [filter] ->
+              log(authorizer, "filtering with: #{inspect(filter)}, authorization complete")
+              {:filter, authorizer, filter}
 
-          filters ->
-            log(authorizer, "filtering with: #{inspect(or: filter)}, authorization complete")
-            {:filter, authorizer, [or: filters]}
+            filters ->
+              log(authorizer, "filtering with: #{inspect(or: filter)}, authorization complete")
+              {:filter, authorizer, [or: filters]}
+          end
         end
 
       {_filters, _require_check} ->
