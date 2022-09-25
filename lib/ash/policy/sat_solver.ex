@@ -16,10 +16,8 @@ defmodule Ash.Policy.SatSolver do
 
         {:ok,
          scenarios
-         |> Enum.uniq()
-         |> remove_irrelevant_clauses()
-         |> Enum.uniq()
-         |> Enum.map(&Map.drop(&1, static_checks))}
+         |> Enum.map(&Map.drop(&1, static_checks))
+         |> Enum.uniq()}
     end
   end
 
@@ -32,42 +30,54 @@ defmodule Ash.Policy.SatSolver do
     |> get_all_scenarios(expression, [Map.drop(scenario, [true, false]) | scenarios])
   end
 
-  def remove_irrelevant_clauses([scenario]), do: [scenario]
+  def simplify_clauses([scenario]), do: [scenario]
 
-  def remove_irrelevant_clauses(scenarios) do
-    new_scenarios =
-      scenarios
-      |> Enum.uniq()
-      |> Enum.map(fn scenario ->
-        unnecessary_fact = find_unnecessary_fact(scenario, scenarios)
-
-        Map.delete(scenario, unnecessary_fact)
+  def simplify_clauses(scenarios) do
+    scenarios
+    |> Enum.map(fn scenario ->
+      scenario
+      |> Enum.flat_map(fn {fact, value} ->
+        if Enum.find(scenarios, fn other_scenario ->
+             other_scenario != scenario &&
+               Map.delete(other_scenario, fact) == Map.delete(scenario, fact) &&
+               Map.fetch(other_scenario, fact) == {:ok, !value}
+           end) do
+          [fact]
+        else
+          []
+        end
       end)
-      |> Enum.uniq()
+      |> case do
+        [] ->
+          scenario
 
-    if new_scenarios == scenarios do
-      scenarios
-    else
-      remove_irrelevant_clauses(new_scenarios)
+        facts ->
+          Map.drop(scenario, facts)
+      end
+    end)
+    |> Enum.uniq()
+    |> case do
+      ^scenarios ->
+        scenarios
+
+      new_scenarios ->
+        simplify_clauses(new_scenarios)
     end
   end
 
-  defp find_unnecessary_fact(scenario, scenarios) do
-    Enum.find_value(scenario, fn
-      {fact, value_in_this_scenario} ->
-        matching =
-          Enum.find(scenarios, fn potential_irrelevant_maker ->
-            potential_irrelevant_maker != scenario &&
-              Map.delete(scenario, fact) == Map.delete(potential_irrelevant_maker, fact)
-          end)
+  def scenario_makes_fact_irrelevant?(potential_irrelevant_maker, scenario, fact) do
+    (Map.delete(potential_irrelevant_maker, fact) ==
+       Map.delete(scenario, fact) &&
+       Map.has_key?(potential_irrelevant_maker, fact) && Map.has_key?(scenario, fact) &&
+       Map.get(potential_irrelevant_maker, fact) !=
+         Map.get(scenario, fact)) ||
+      (!Map.has_key?(potential_irrelevant_maker, fact) &&
+         scenario_is_subset?(potential_irrelevant_maker, scenario))
+  end
 
-        case matching do
-          %{^fact => value} when is_boolean(value) and value != value_in_this_scenario ->
-            fact
-
-          _ ->
-            false
-        end
+  defp scenario_is_subset?(left, right) do
+    Enum.all?(left, fn {fact, value} ->
+      Map.get(right, fact) == value
     end)
   end
 

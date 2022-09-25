@@ -15,8 +15,6 @@ defmodule Ash.Test.Policy.SimpleTest do
   test "bypass with condition does not apply subsequent filters", %{admin: admin, user: user} do
     Api.create!(Ash.Changeset.new(Tweet))
 
-    Application.put_env(:ash, :foo, :bar)
-
     assert [_] = Api.read!(Tweet, actor: admin)
     assert [] = Api.read!(Tweet, actor: user)
   end

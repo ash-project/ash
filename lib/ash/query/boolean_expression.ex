@@ -239,8 +239,10 @@ defmodule Ash.Query.BooleanExpression do
         end
 
       %Eq{} = eq_op ->
-        with {:left, nil} <- {:left, Ash.Filter.find(left, &simplify?(&1, eq_op))},
-             {:right, nil} <- {:right, Ash.Filter.find(right, &simplify?(&1, eq_op))} do
+        with {:left, nil} <-
+               {:left, Ash.Filter.find(left, &simplify?(&1, eq_op))},
+             {:right, nil} <-
+               {:right, Ash.Filter.find(right, &simplify?(&1, eq_op))} do
           do_new(op, left_expr, eq_op)
         else
           {:left, _} ->

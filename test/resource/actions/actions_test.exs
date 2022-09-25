@@ -7,16 +7,12 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
 
   describe "default actions" do
     test "default actions are added" do
-      Application.put_env(:foo, :bar, true)
-
       resource =
         defposts do
           actions do
             defaults [:create, :read, :update, :destroy]
           end
         end
-
-      Application.delete_env(:foo, :bar)
 
       assert Ash.Resource.Info.primary_action!(resource, :read)
       assert Ash.Resource.Info.primary_action!(resource, :create)

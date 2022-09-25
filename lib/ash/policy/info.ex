@@ -239,8 +239,8 @@ defmodule Ash.Policy.Info do
        ) do
     %{
       policy
-      | policies: set_access_type(policies, default),
-        condition: set_access_type(conditions, default),
+      | policies: set_access_type(policies, access_type || default),
+        condition: set_access_type(conditions, access_type || default),
         checks: set_access_type(checks, default),
         access_type: access_type || default
     }

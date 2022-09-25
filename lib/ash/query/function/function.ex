@@ -6,7 +6,6 @@ defmodule Ash.Query.Function do
   are there. A function must meet both behaviours.
   """
 
-  alias Ash.Query.{BooleanExpression, Call, Not, Ref}
   import Ash.Filter.TemplateHelpers, only: [is_expr: 1]
 
   @type arg :: any
@@ -90,8 +89,7 @@ defmodule Ash.Query.Function do
       {arg, :any}, {:ok, args} ->
         {:cont, {:ok, [arg | args]}}
 
-      {%struct{} = arg, _}, {:ok, args}
-      when struct in [BooleanExpression, Call, Not, Ref] ->
+      {arg, _}, {:ok, args} when is_expr(arg) ->
         {:cont, {:ok, [arg | args]}}
 
       {%{__predicate__?: _} = arg, _}, {:ok, args} ->

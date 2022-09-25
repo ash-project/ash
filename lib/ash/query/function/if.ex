@@ -22,8 +22,14 @@ defmodule Ash.Query.Function.If do
     super(other)
   end
 
-  def evaluate(%{arguments: [true, when_true, _]}), do: {:known, when_true}
-  def evaluate(%{arguments: [false, _, when_false]}), do: {:known, when_false}
-  def evaluate(%{arguments: [nil, _, when_false]}), do: {:known, when_false}
+  def evaluate(%{arguments: [true, when_true, _]}),
+    do: {:known, when_true}
+
+  def evaluate(%{arguments: [false, _, when_false]}),
+    do: {:known, when_false}
+
+  def evaluate(%{arguments: [nil, _, when_false]}),
+    do: {:known, when_false}
+
   def evaluate(%{arguments: [_, when_true, _]}), do: {:known, when_true}
 end

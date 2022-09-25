@@ -200,6 +200,7 @@ defmodule Ash.SatSolver do
     {replacements, _all_relationship_paths} =
       expression
       |> Filter.relationship_paths(true)
+      |> Enum.uniq()
       |> Enum.reduce({%{}, []}, fn path, {replacements, kept_paths} ->
         case find_synonymous_relationship_path(resource, kept_paths, path) do
           nil ->
@@ -210,39 +211,74 @@ defmodule Ash.SatSolver do
         end
       end)
 
-    do_consolidate_relationships(expression, replacements)
+    do_consolidate_relationships(expression, replacements, resource)
   end
 
   defp do_consolidate_relationships(
          %BooleanExpression{op: op, left: left, right: right},
-         replacements
+         replacements,
+         resource
        ) do
     BooleanExpression.new(
       op,
-      do_consolidate_relationships(left, replacements),
-      do_consolidate_relationships(right, replacements)
+      do_consolidate_relationships(left, replacements, resource),
+      do_consolidate_relationships(right, replacements, resource)
     )
   end
 
-  defp do_consolidate_relationships(%Not{expression: expression}, replacements) do
-    Not.new(do_consolidate_relationships(expression, replacements))
+  defp do_consolidate_relationships(%Not{expression: expression}, replacements, resource) do
+    Not.new(do_consolidate_relationships(expression, replacements, resource))
   end
 
   defp do_consolidate_relationships(
-         %Ash.Query.Exists{path: path, expr: expr} = exists,
-         replacements
+         %Ash.Query.Exists{at_path: at_path, path: path, expr: expr} = exists,
+         replacements,
+         resource
        ) do
-    path_count = Enum.count(path)
+    exists =
+      case Map.fetch(replacements, at_path) do
+        {:ok, replacement} when not is_nil(replacement) ->
+          %{exists | at_path: replacement}
 
-    replacements =
-      replacements
-      |> Enum.filter(&List.starts_with?(&1, path))
-      |> Enum.map(&Enum.drop(&1, path_count))
+        :error ->
+          exists
+      end
 
-    %{exists | expr: do_consolidate_relationships(expr, replacements)}
+    related = Ash.Resource.Info.related(resource, at_path)
+
+    {replacements, _all_relationship_paths} =
+      expr
+      |> Filter.relationship_paths(true)
+      |> Enum.uniq()
+      |> Enum.reduce({%{}, []}, fn path, {replacements, kept_paths} ->
+        case find_synonymous_relationship_path(related, kept_paths, path) do
+          nil ->
+            {replacements, [path | kept_paths]}
+
+          synonymous_path ->
+            Map.put(replacements, path, synonymous_path)
+        end
+      end)
+
+    exists =
+      case Map.fetch(replacements, path) do
+        {:ok, replacement} when not is_nil(replacement) ->
+          %{exists | path: replacement}
+
+        :error ->
+          exists
+      end
+
+    full_related = Ash.Resource.Info.related(related, path)
+
+    %{exists | expr: consolidate_relationships(expr, full_related)}
   end
 
-  defp do_consolidate_relationships(%Ash.Query.Ref{relationship_path: path} = ref, replacements)
+  defp do_consolidate_relationships(
+         %Ash.Query.Ref{relationship_path: path} = ref,
+         replacements,
+         _resource
+       )
        when path != [] do
     case Map.fetch(replacements, path) do
       {:ok, replacement} when not is_nil(replacement) -> %{ref | relationship_path: replacement}
@@ -250,22 +286,27 @@ defmodule Ash.SatSolver do
     end
   end
 
-  defp do_consolidate_relationships(%{__function__?: true, arguments: args} = func, replacements) do
-    %{func | arguments: Enum.map(args, &do_consolidate_relationships(&1, replacements))}
+  defp do_consolidate_relationships(
+         %{__function__?: true, arguments: args} = func,
+         replacements,
+         resource
+       ) do
+    %{func | arguments: Enum.map(args, &do_consolidate_relationships(&1, replacements, resource))}
   end
 
   defp do_consolidate_relationships(
          %{__operator__?: true, left: left, right: right} = op,
-         replacements
+         replacements,
+         resource
        ) do
     %{
       op
-      | left: do_consolidate_relationships(left, replacements),
-        right: do_consolidate_relationships(right, replacements)
+      | left: do_consolidate_relationships(left, replacements, resource),
+        right: do_consolidate_relationships(right, replacements, resource)
     }
   end
 
-  defp do_consolidate_relationships(other, _), do: other
+  defp do_consolidate_relationships(other, _, _), do: other
 
   defp find_synonymous_relationship_path(resource, paths, path) do
     Enum.find_value(paths, fn candidate_path ->

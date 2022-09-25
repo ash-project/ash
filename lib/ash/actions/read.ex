@@ -298,13 +298,8 @@ defmodule Ash.Actions.Read do
                    page_opts <- page_opts && Keyword.delete(page_opts, :filter),
                    {%{valid?: true} = query, before_notifications} <-
                      run_before_action(query),
-                   {:ok, filter} <-
-                     Filter.run_other_data_layer_filters(
-                       query.api,
-                       query.resource,
-                       query.filter,
-                       {path, query.tenant, context}
-                     ),
+                   {:ok, filter_requests} <-
+                     filter_requests(query, path, request_opts),
                    {query, load_requests} <-
                      Load.requests(
                        query,
@@ -323,7 +318,6 @@ defmodule Ash.Actions.Read do
 
                 {:ok,
                  query
-                 |> Map.put(:filter, filter)
                  |> Map.put(:sort, sort)
                  |> Ash.Query.set_context(%{
                    load_paths: load_paths,
@@ -331,6 +325,7 @@ defmodule Ash.Actions.Read do
                    initial_offset: initial_offset,
                    page_opts: page_opts,
                    initial_query: initial_query,
+                   filter_requests: filter_requests,
                    query_opts: query_opts
                  }),
                  %{
@@ -338,9 +333,6 @@ defmodule Ash.Actions.Read do
                    notifications: before_notifications
                  }}
               else
-                {:filter_requests, requests} ->
-                  {:requests, requests}
-
                 %{valid?: false} = query ->
                   {:error, query.errors}
 
@@ -661,7 +653,7 @@ defmodule Ash.Actions.Read do
         authorize? = data[:authorize?]
 
         initial_query = ash_query.context[:initial_query]
-
+        filter_requests = ash_query.context[:filter_requests] || []
         initial_limit = initial_query.context[:initial_limit]
         initial_offset = initial_query.context[:initial_offset]
 
@@ -683,8 +675,6 @@ defmodule Ash.Actions.Read do
           else
             request_opts[:authorize?] || Keyword.has_key?(request_opts, :actor)
           end
-
-        filter_requests = filter_requests(ash_query, path, request_opts)
 
         {calculations_in_query, calculations_at_runtime} =
           if Ash.DataLayer.data_layer_can?(ash_query.resource, :expression_calculation) &&
@@ -711,16 +701,12 @@ defmodule Ash.Actions.Read do
           )
 
         cond do
-          match?({:error, _error}, filter_requests) ->
-            filter_requests
-
           # if aggregate auth requests is not empty but we have not received the data from
           # those requests, we should ask the engine to run the aggregate value requests
           !Enum.empty?(aggregate_auth_requests) && !get_in(data, path ++ [:aggregate]) ->
             {:requests, Enum.map(aggregate_auth_requests, &{&1, :authorization_filter})}
 
-          !match?({:ok, []}, filter_requests) && !get_in(data, path ++ [:filter]) ->
-            {:ok, filter_requests} = filter_requests
+          !Enum.empty?(filter_requests) && !get_in(data, path ++ [:filter]) ->
             {:requests, Enum.map(filter_requests, &{&1, :authorization_filter})}
 
           true ->
@@ -771,8 +757,6 @@ defmodule Ash.Actions.Read do
                   end
                 end)
 
-              {:ok, filter_requests} = filter_requests
-
               with %{valid?: true} <- ash_query,
                    {:ok, query} <- query,
                    {:ok, filter} <-
@@ -780,6 +764,13 @@ defmodule Ash.Actions.Read do
                        Enum.map(filter_requests, & &1.path),
                        ash_query.filter,
                        data
+                     ),
+                   {:ok, filter} <-
+                     Filter.run_other_data_layer_filters(
+                       ash_query.api,
+                       ash_query.resource,
+                       filter,
+                       {path, ash_query.tenant, data}
                      ),
                    filter <- update_aggregate_filters(filter, data, path),
                    {:ok, query} <-
@@ -845,15 +836,10 @@ defmodule Ash.Actions.Read do
                      run_after_action(initial_query, results),
                    {:ok, count} <- maybe_await(count) do
                 if request_opts[:return_query?] do
-                  ultimate_query =
-                    ash_query
-                    |> Ash.Query.unset(:filter)
-                    |> Ash.Query.filter(filter)
-
                   {:ok,
                    %{
                      results: results,
-                     ultimate_query: ultimate_query,
+                     ultimate_query: %{ash_query | filter: filter},
                      count: count,
                      calculations_at_runtime: calculations_at_runtime,
                      aggregates_in_query: aggregates_in_query,
@@ -880,6 +866,9 @@ defmodule Ash.Actions.Read do
                    }}
                 end
               else
+                {:filter_requests, other_data_layer_filter_requests} ->
+                  {:requests, other_data_layer_filter_requests}
+
                 %{valid?: false} = query ->
                   {:error, query.errors}
 
@@ -1032,7 +1021,7 @@ defmodule Ash.Actions.Read do
       Keyword.keyword?(opts[:page]) && !Keyword.has_key?(opts[:page], :limit) ->
         Keyword.put(opts[:page], :limit, action.pagination.default_limit)
 
-      is_nil(opts[:page]) ->
+      is_nil(opts[:page]) and action.pagination.required? ->
         [limit: action.pagination.default_limit]
 
       true ->
@@ -1611,24 +1600,69 @@ defmodule Ash.Actions.Read do
     Ash.DataLayer.add_aggregates(data_layer_query, Map.values(aggregates), query.resource)
   end
 
-  defp filter_with_related(relationship_filter_paths, filter_expr, data, prefix \\ []) do
+  defp filter_with_related(
+         relationship_filter_paths,
+         filter_expr,
+         data,
+         prefix \\ []
+       )
+
+  defp filter_with_related(
+         relationship_filter_paths,
+         %Ash.Filter{expression: expression} = filter,
+         data,
+         prefix
+       ) do
+    case filter_with_related(
+           relationship_filter_paths,
+           expression,
+           data,
+           prefix
+         ) do
+      {:ok, new_expr} ->
+        {:ok, %{filter | expression: new_expr}}
+
+      other ->
+        other
+    end
+  end
+
+  defp filter_with_related(
+         relationship_filter_paths,
+         %Ash.Query.BooleanExpression{op: :and, left: left, right: right},
+         data,
+         prefix
+       ) do
+    with {:ok, left} <-
+           filter_with_related(relationship_filter_paths, left, data, prefix),
+         {:ok, right} <-
+           filter_with_related(relationship_filter_paths, right, data, prefix) do
+      {:ok, Ash.Query.BooleanExpression.optimized_new(:and, left, right)}
+    end
+  end
+
+  defp filter_with_related(relationship_filter_paths, filter_expr, data, prefix) do
     paths_to_global_filter_on =
       filter_expr
-      |> Ash.Filter.relationship_paths()
-      |> Enum.filter(&((prefix ++ &1) in relationship_filter_paths))
+      |> Ash.Filter.relationship_paths(true)
+      |> Enum.filter(&([:data, :filter, prefix ++ &1] in relationship_filter_paths))
 
     paths_to_global_filter_on
     |> Enum.reduce_while(
       {:ok, filter_expr},
       fn path, {:ok, filter} ->
-        case get_in(data, prefix ++ path ++ [:authorization_filter]) do
+        case get_in(data, [:data, :filter, prefix ++ path, :authorization_filter]) do
           nil ->
             {:cont, {:ok, filter}}
 
-          authorization_filter ->
-            path = List.last(path)
-            authorization_filter = Ash.Filter.put_at_path(authorization_filter, path)
-            add_authorization_filter(filter, authorization_filter)
+          %Ash.Filter{expression: authorization_filter} ->
+            {:cont,
+             {:ok,
+              Ash.Query.BooleanExpression.optimized_new(
+                :and,
+                filter_expr,
+                Ash.Filter.move_to_relationship_path(authorization_filter, path)
+              )}}
         end
       end
     )
@@ -1637,15 +1671,15 @@ defmodule Ash.Actions.Read do
         {:ok,
          filter
          |> Ash.Filter.map(fn
-           %Ash.Query.Exists{path: exists_path, expr: exists_expr} = exists ->
+           %Ash.Query.Exists{at_path: at_path, path: exists_path, expr: exists_expr} = exists ->
              paths =
                Enum.filter(
                  relationship_filter_paths,
-                 &List.starts_with?(&1, prefix ++ exists_path)
+                 &List.starts_with?(&1, prefix ++ at_path ++ exists_path)
                )
 
              {:ok, new_expr} =
-               filter_with_related(paths, exists_expr, data, prefix ++ exists_path)
+               filter_with_related(paths, exists_expr, data, prefix ++ at_path ++ exists_path)
 
              {:halt, %{exists | expr: new_expr}}
 
@@ -1655,16 +1689,6 @@ defmodule Ash.Actions.Read do
 
       other ->
         other
-    end
-  end
-
-  defp add_authorization_filter(filter, authorization_filter) do
-    case Ash.Filter.add_to_filter(filter, authorization_filter) do
-      {:ok, new_filter} ->
-        {:cont, {:ok, new_filter}}
-
-      {:error, error} ->
-        {:halt, {:error, error}}
     end
   end
 end

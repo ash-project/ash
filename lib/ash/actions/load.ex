@@ -482,7 +482,7 @@ defmodule Ash.Actions.Load do
             |> get_in(request_path)
             |> Kernel.||(%{})
             |> Map.get(:load, %{})
-            |> Map.get(Enum.reverse(Enum.map(Enum.drop(path, 1), & &1.name)), %{})
+            |> Map.get(Enum.reverse(Enum.map(path, & &1.name)), %{})
             |> Map.get(:data, %{})
         end
 
@@ -727,6 +727,7 @@ defmodule Ash.Actions.Load do
                       |> Kernel.||(%{})
                       |> Map.get(:load, %{})
                       |> Map.get(Enum.reverse(Enum.map(path, & &1.name)), %{})
+                      |> Map.get(:data, %{})
                   end
 
                 lateral_join? = lateral_join?(related_query, relationship, source_data)

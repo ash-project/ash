@@ -122,7 +122,7 @@ defmodule Ash.Resource.Calculation.Expression do
         expression
         |> Ash.Filter.list_refs()
         |> Enum.filter(fn ref ->
-          ref.relationship_path != [] && match?(%Ash.Resource.Attribute{}, ref.attribute)
+          ref.relationship_path == [] && match?(%Ash.Resource.Attribute{}, ref.attribute)
         end)
         |> Enum.map(& &1.attribute.name)
     end

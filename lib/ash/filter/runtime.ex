@@ -60,7 +60,7 @@ defmodule Ash.Filter.Runtime do
       need_to_load when not loaded? ->
         case api.load(records, need_to_load) do
           {:ok, loaded} ->
-            filter_matches(api, loaded, filter, true)
+            filter_matches(api, loaded, filter)
 
           other ->
             other
@@ -165,24 +165,22 @@ defmodule Ash.Filter.Runtime do
   end
 
   defp flatten_many_to_many(record, rel, values, rest) do
-    Enum.flat_map(values, fn value ->
-      value
-      |> flatten_relationships([rest])
-      |> Enum.map(fn flattened_rest_value ->
-        record
-        |> Map.put(rel, flattened_rest_value)
-        |> Ash.Resource.set_metadata(%{unflattened_rels: %{rel => values}})
-      end)
+    full_flattened = Enum.map(values, &flatten_relationships(&1, [rest]))
+
+    Enum.map(full_flattened, fn value ->
+      record
+      |> Map.put(rel, value)
+      |> Ash.Resource.set_metadata(%{unflattened_rels: %{rel => full_flattened}})
     end)
   end
 
   defp flatten_to_one(record, rel, value, rest) do
-    value
-    |> flatten_relationships([rest])
-    |> Enum.map(fn flattened_rest_value ->
+    full_flattened = flatten_relationships(value, [rest])
+
+    Enum.map(full_flattened, fn value ->
       record
-      |> Map.put(rel, flattened_rest_value)
-      |> Ash.Resource.set_metadata(%{unflattened_rels: %{rel => value}})
+      |> Map.put(rel, value)
+      |> Ash.Resource.set_metadata(%{unflattened_rels: %{rel => full_flattened}})
     end)
   end
 
@@ -329,7 +327,7 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
-  defp resolve_expr(%Ash.Query.Exists{path: path, expr: expr}, record) do
+  defp resolve_expr(%Ash.Query.Exists{at_path: [], path: path, expr: expr}, record) do
     record
     |> load_unflattened(path)
     |> get_related(path)
@@ -341,6 +339,23 @@ defmodule Ash.Filter.Runtime do
 
         {:ok, _} ->
           {:halt, {:ok, true}}
+
+        other ->
+          {:halt, other}
+      end
+    end)
+  end
+
+  defp resolve_expr(%Ash.Query.Exists{at_path: at_path} = exists, record) do
+    record
+    |> get_related(at_path)
+    |> Enum.reduce_while({:ok, false}, fn related, {:ok, false} ->
+      case resolve_expr(%{exists | at_path: []}, related) do
+        {:ok, true} ->
+          {:halt, {:ok, true}}
+
+        {:ok, _} ->
+          {:cont, {:ok, false}}
 
         other ->
           {:halt, other}
@@ -419,9 +434,6 @@ defmodule Ash.Filter.Runtime do
     record
     |> get_related(path)
     |> case do
-      nil ->
-        {:ok, nil}
-
       [] ->
         {:ok, nil}
 
@@ -536,17 +548,17 @@ defmodule Ash.Filter.Runtime do
 
   def get_related(records, paths) when is_list(records) do
     Enum.flat_map(records, fn record ->
-      get_related(record, paths)
+      List.wrap(get_related(record, paths))
     end)
   end
 
   def get_related(record, [key | rest]) do
     case Map.get(record, key) do
       nil ->
-        nil
+        []
 
       value ->
-        get_related(value, rest)
+        List.wrap(get_related(value, rest))
     end
   end
 end

@@ -960,7 +960,7 @@ defmodule Ash.Changeset do
 
               module.change(changeset, opts, %{
                 actor: actor,
-                authorize?: authorize?,
+                authorize?: authorize? || false,
                 tracer: tracer
               })
             end

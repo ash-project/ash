@@ -22,9 +22,27 @@ defmodule Ash.Policy.Check.RelatingToActor do
       Ash.Changeset.get_attribute(changeset, relationship.source_attribute) ==
         Map.get(actor, relationship.destination_attribute)
     else
-      false
+      case changeset.relationships[relationship.name] do
+        [{[input], opts}] ->
+          primary_key = Ash.Resource.Info.primary_key(relationship.destination)
+
+          actor_keys = take_keys(actor, primary_key)
+          input_keys = take_keys(input, primary_key)
+
+          opts[:on_lookup] == :relate and Enum.all?(actor_keys, & &1) &&
+            Enum.all?(input_keys, & &1) and input_keys == actor_keys
+
+        _ ->
+          false
+      end
     end
   end
 
   def match?(_, _, _), do: false
+
+  defp take_keys(input, primary_key) do
+    Enum.map(primary_key, fn key ->
+      Map.get(input, key) || Map.get(input, to_string(key))
+    end)
+  end
 end

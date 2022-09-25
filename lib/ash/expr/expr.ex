@@ -5,20 +5,20 @@ defmodule Ash.Expr do
   @type t :: any
 
   defmacro expr(do: body) do
-    quote do
+    quote location: :keep do
       Ash.Expr.expr(unquote(body))
     end
   end
 
   defmacro expr(body) do
     if Keyword.keyword?(body) do
-      quote do
+      quote location: :keep do
         unquote(body)
       end
     else
       expr = do_expr(body)
 
-      quote do
+      quote location: :keep do
         unquote(expr)
       end
     end

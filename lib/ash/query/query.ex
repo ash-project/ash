@@ -148,7 +148,7 @@ defmodule Ash.Query do
   For more information on writing filters, see: `Ash.Filter`.
   """
   defmacro filter(query, %Ash.Filter{} = filter) do
-    quote do
+    quote location: :keep do
       Ash.Query.do_filter(unquote(query), unquote(filter))
     end
   end
@@ -157,27 +157,27 @@ defmodule Ash.Query do
   defmacro filter(query, true), do: query
 
   defmacro filter(query, false) do
-    quote do
+    quote location: :keep do
       Ash.Query.do_filter(unquote(query), false)
     end
   end
 
   defmacro filter(query, do: body) do
-    quote do
+    quote location: :keep do
       Ash.Query.do_filter(unquote(query), unquote(body))
     end
   end
 
   defmacro filter(query, expression) do
     if Keyword.keyword?(expression) do
-      quote do
+      quote location: :keep do
         Ash.Query.do_filter(unquote(query), unquote(expression))
       end
     else
       require Ash.Expr
       expr = Ash.Expr.do_expr(expression)
 
-      quote do
+      quote location: :keep do
         Ash.Query.do_filter(unquote(query), List.wrap(unquote(expr)))
       end
     end
@@ -500,7 +500,7 @@ defmodule Ash.Query do
   Creates an Ash expression for evaluation later.
   """
   defmacro expr(body) do
-    quote do
+    quote location: :keep do
       require Ash.Expr
       Ash.Expr.expr(unquote(body))
     end

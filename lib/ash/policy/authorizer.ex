@@ -463,7 +463,7 @@ defmodule Ash.Policy.Authorizer do
 
   defp strict_filters(filterable, authorizer) do
     filterable
-    |> Enum.reduce([], fn scenario, or_filters ->
+    |> Enum.map(fn scenario ->
       scenario
       |> Enum.filter(fn {{check_module, check_opts}, _} ->
         check_module.type() == :filter && check_opts[:access_type] in [:filter, :runtime]
@@ -471,12 +471,29 @@ defmodule Ash.Policy.Authorizer do
       |> Enum.reject(fn {{check_module, check_opts}, result} ->
         match?({:ok, ^result}, Policy.fetch_fact(authorizer.facts, {check_module, check_opts}))
       end)
+      |> Map.new()
+    end)
+    |> simplify_clauses()
+    |> Enum.reduce([], fn scenario, or_filters ->
+      scenario
       |> Enum.map(fn
         {{check_module, check_opts}, true} ->
-          check_module.auto_filter(authorizer.actor, authorizer, check_opts)
+          result = check_module.auto_filter(authorizer.actor, authorizer, check_opts)
+
+          if is_nil(result) do
+            false
+          else
+            result
+          end
 
         {{check_module, check_opts}, false} ->
-          check_module.auto_filter_not(authorizer.actor, authorizer, check_opts)
+          result = check_module.auto_filter_not(authorizer.actor, authorizer, check_opts)
+
+          if is_nil(result) do
+            false
+          else
+            result
+          end
       end)
       |> case do
         [] ->
@@ -489,7 +506,42 @@ defmodule Ash.Policy.Authorizer do
           [[and: filters] | or_filters]
       end
     end)
-    |> Enum.filter(& &1)
+  end
+
+  def simplify_clauses([scenario]), do: [scenario]
+
+  def simplify_clauses(scenarios) do
+    scenarios
+    |> Enum.map(fn scenario ->
+      scenario
+      |> Enum.flat_map(fn {fact, value} ->
+        if Enum.find(scenarios, fn other_scenario ->
+             other_scenario != scenario &&
+               Map.delete(other_scenario, fact) == Map.delete(scenario, fact) &&
+               Map.fetch(other_scenario, fact) == {:ok, !value}
+           end) do
+          [fact]
+        else
+          []
+        end
+      end)
+      |> case do
+        [] ->
+          scenario
+
+        facts ->
+          Map.drop(scenario, facts)
+      end
+    end)
+    |> Enum.reject(&(&1 == %{}))
+    |> Enum.uniq()
+    |> case do
+      ^scenarios ->
+        scenarios
+
+      new_scenarios ->
+        simplify_clauses(new_scenarios)
+    end
   end
 
   defp maybe_forbid_strict(authorizer) do
@@ -546,9 +598,7 @@ defmodule Ash.Policy.Authorizer do
           {:halt, {:error, :forbidden, authorizer}}
 
         scenarios ->
-          scenarios
-          |> Ash.Policy.SatSolver.remove_irrelevant_clauses()
-          |> do_check_result(authorizer, record)
+          do_check_result(scenarios, authorizer, record)
       end
     end)
   end
@@ -623,9 +673,7 @@ defmodule Ash.Policy.Authorizer do
         {:halt, {:forbidden, authorizer}}
 
       scenarios ->
-        cleaned_scenarios = Ash.Policy.SatSolver.remove_irrelevant_clauses(scenarios)
-
-        if Enum.any?(cleaned_scenarios, &scenario_applies?(&1, new_authorizer, record)) do
+        if Enum.any?(scenarios, &scenario_applies?(&1, new_authorizer, record)) do
           {:cont, {:ok, new_authorizer}}
         else
           check_facts_until_known(scenarios, new_authorizer, record)
@@ -637,17 +685,27 @@ defmodule Ash.Policy.Authorizer do
     if check_module.type() == :simple do
       raise "Assumption failed"
     else
-      authorized_records =
-        check_module.check(authorizer.actor, authorizer.data, authorizer, check_opts)
+      if authorizer.action.type == :read ||
+           Ash.DataLayer.data_layer_can?(authorizer.resource, :transact) do
+        authorized_records =
+          check_module.check(authorizer.actor, authorizer.data, authorizer, check_opts)
 
-      pkey = Ash.Resource.Info.primary_key(authorizer.resource)
+        pkey = Ash.Resource.Info.primary_key(authorizer.resource)
 
-      pkeys = MapSet.new(authorized_records, &Map.take(&1, pkey))
+        pkeys = MapSet.new(authorized_records, &Map.take(&1, pkey))
 
-      %{
-        authorizer
-        | data_facts: Map.put(authorizer.data_facts, {check_module, check_opts}, pkeys)
-      }
+        %{
+          authorizer
+          | data_facts: Map.put(authorizer.data_facts, {check_module, check_opts}, pkeys)
+        }
+      else
+        raise """
+        Attempted to use a `check/4` function on a non-read action with a resource who's data layer does
+        not support transactions. This means that you have a policy set to `access_type :runtime` that is
+        unsafe to be set as such. Authorization over create/update/destroy actions for resources that don't
+        support transactions must only be done with filter and/or strict checks.
+        """
+      end
     end
   end
 

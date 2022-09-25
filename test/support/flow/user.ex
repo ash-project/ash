@@ -36,6 +36,8 @@ defmodule Ash.Test.Support.Flow.User do
     attribute :first_name, :string
     attribute :last_name, :string
 
+    attribute :email, :string
+
     attribute :approved, :boolean do
       private? true
     end

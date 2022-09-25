@@ -63,7 +63,11 @@ defmodule Ash.Filter.Predicate do
         end
       end
     else
-      left.__struct__.compare(left, right)
+      if :erlang.function_exported(left.__struct__, :compare, 2) do
+        left.__struct__.compare(left, right)
+      else
+        :unknown
+      end
     end
   end
 end

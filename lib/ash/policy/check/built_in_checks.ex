@@ -88,7 +88,14 @@ defmodule Ash.Policy.Check.Builtins do
     {Ash.Policy.Check.ChangingAttributes, opts}
   end
 
-  @doc "This check is true when the specified relationship is being changed to the current actor"
+  @doc """
+  This check is true when the specified relationship is being changed to the current actor.
+
+  This only supports `belongs_to` relationships at the moment, and will detect two cases:
+
+  1. the `source_attribute` is being changed directly
+  2. the relationship is being changed with `on_lookup?: :relate`, and a single input is being provided.
+  """
   def relating_to_actor(relationship) do
     {Ash.Policy.Check.RelatingToActor, relationship: relationship}
   end
