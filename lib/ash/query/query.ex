@@ -837,30 +837,26 @@ defmodule Ash.Query do
                 resource_calculation.select
                 |> Kernel.||([])
                 |> Enum.concat(module.select(query, opts, calculation.context) || [])
+                |> Enum.uniq()
+
+              loads =
+                module.load(
+                  query,
+                  opts,
+                  Map.put(calculation.context, :context, query.context)
+                )
+                |> Ash.Actions.Helpers.validate_calculation_load!(module)
+                |> Enum.concat(List.wrap(resource_calculation.load))
 
               calculation = %{
                 calculation
                 | load: field,
                   select: fields_to_select,
-                  allow_async?: resource_calculation.allow_async?
+                  allow_async?: resource_calculation.allow_async?,
+                  required_loads: loads
               }
 
-              query = Ash.Query.ensure_selected(query, fields_to_select)
-
-              query =
-                Ash.Query.load(
-                  query,
-                  module.load(
-                    query,
-                    opts,
-                    Map.put(calculation.context, :context, query.context)
-                  )
-                  |> Ash.Actions.Helpers.validate_calculation_load!(module)
-                )
-
-              query
-              |> Ash.Query.load(resource_calculation.load || [])
-              |> Map.update!(:calculations, &Map.put(&1, field, calculation))
+              Map.update!(query, :calculations, &Map.put(&1, field, calculation))
             end
 
           true ->
@@ -932,28 +928,29 @@ defmodule Ash.Query do
                  resource_calculation.filterable?,
                  resource_calculation.load
                ) do
-          calculation = %{calculation | load: field}
-
           fields_to_select =
             resource_calculation.select
             |> Kernel.||([])
             |> Enum.concat(module.select(query, opts, calculation.context) || [])
+            |> Enum.uniq()
 
-          query =
-            Ash.Query.load(
+          loads =
+            module.load(
               query,
-              module.load(
-                query,
-                opts,
-                Map.put(calculation.context, :context, query.context)
-              )
-              |> Ash.Actions.Helpers.validate_calculation_load!(module)
+              opts,
+              Map.put(calculation.context, :context, query.context)
             )
-            |> Ash.Query.load(resource_calculation.load || [])
+            |> Ash.Actions.Helpers.validate_calculation_load!(module)
+            |> Enum.concat(List.wrap(resource_calculation.load))
 
-          query
-          |> Map.update!(:calculations, &Map.put(&1, field, calculation))
-          |> ensure_selected(fields_to_select)
+          calculation = %{
+            calculation
+            | load: field,
+              required_loads: loads,
+              select: fields_to_select
+          }
+
+          Map.update!(query, :calculations, &Map.put(&1, field, calculation))
         else
           {:error, error} ->
             add_error(query, :load, error)
@@ -1419,21 +1416,22 @@ defmodule Ash.Query do
 
     case Calculation.new(name, module, opts, type, Map.put(context, :context, query.context)) do
       {:ok, calculation} ->
-        fields_to_select = module.select(query, opts, calculation.context) || []
-        query = Ash.Query.ensure_selected(query, fields_to_select)
+        fields_to_select =
+          query
+          |> module.select(opts, calculation.context)
+          |> List.wrap()
+          |> Enum.concat(calculation.select)
 
-        query =
-          Ash.Query.load(
+        loads =
+          module.load(
             query,
-            module.load(
-              query,
-              opts,
-              Map.put(calculation.context, :context, query.context)
-            )
-            |> Ash.Actions.Helpers.validate_calculation_load!(module)
+            opts,
+            Map.put(calculation.context, :context, query.context)
           )
+          |> Ash.Actions.Helpers.validate_calculation_load!(module)
+          |> Enum.concat(List.wrap(calculation.required_loads))
 
-        calculation = %{calculation | select: fields_to_select}
+        calculation = %{calculation | select: fields_to_select, required_loads: loads}
         %{query | calculations: Map.put(query.calculations, name, calculation)}
 
       {:error, error} ->
@@ -1541,12 +1539,6 @@ defmodule Ash.Query do
 
           relationship ->
             cond do
-              !selecting?(query, relationship.source_attribute) ->
-                [
-                  {:error,
-                   "Cannot load a relationship if you are not selecting the source field of that relationship"}
-                ]
-
               !Ash.Resource.Info.primary_action(relationship.destination, :read) ->
                 [
                   {:error,
@@ -1734,55 +1726,16 @@ defmodule Ash.Query do
       query
     else
       if Ash.DataLayer.data_layer_can?(query.resource, :sort) do
-        query_with_sort =
-          sorts
-          |> List.wrap()
-          |> Enum.reduce(query, fn
-            {sort, direction}, query ->
-              %{query | sort: query.sort ++ [{sort, direction}]}
+        sorts
+        |> List.wrap()
+        |> Enum.reduce(query, fn
+          {sort, direction}, query ->
+            %{query | sort: query.sort ++ [{sort, direction}]}
 
-            sort, query ->
-              %{query | sort: query.sort ++ [{sort, :asc}]}
-          end)
-          |> validate_sort()
-
-        Enum.reduce(query_with_sort.sort || [], query_with_sort, fn
-          {%Ash.Query.Calculation{name: name, module: module, opts: opts} = calculation, _},
-          query ->
-            {resource_load, resource_select} =
-              if resource_calculation = Ash.Resource.Info.calculation(query.resource, name) do
-                {resource_calculation.load, resource_calculation.select}
-              else
-                {[], []}
-              end
-
-            fields_to_select =
-              resource_select
-              |> Kernel.||([])
-              |> Enum.concat(module.select(query, opts, calculation.context) || [])
-
-            calculation = %{calculation | load: name, select: fields_to_select}
-
-            query =
-              Ash.Query.load(
-                query,
-                module.load(
-                  query,
-                  opts,
-                  Map.put(calculation.context, :context, query.context)
-                )
-                |> Ash.Actions.Helpers.validate_calculation_load!(module)
-              )
-
-            Ash.Query.load(query, resource_load)
-
-          {key, _value}, query ->
-            if Ash.Resource.Info.aggregate(query.resource, key) do
-              Ash.Query.load(query, key)
-            else
-              query
-            end
+          sort, query ->
+            %{query | sort: query.sort ++ [{sort, :asc}]}
         end)
+        |> validate_sort()
       else
         add_error(query, :sort, "Data layer does not support sorting")
       end

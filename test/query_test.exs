@@ -30,8 +30,7 @@ defmodule Ash.Test.QueryTest do
     attributes do
       uuid_primary_key :id
       attribute :name, :string
-      # obviously we won't ever do this in real life, this is to test sensitive attributes
-      attribute :password, :string, sensitive?: true
+      attribute :email, :string, sensitive?: true
     end
 
     relationships do
@@ -65,14 +64,15 @@ defmodule Ash.Test.QueryTest do
 
   describe "sensitive attributes" do
     test "it hides the value in filters" do
-      equals = Ash.Query.filter(User, password == "fred") |> inspect()
+      equals = Ash.Query.filter(User, email == "fred") |> inspect()
       refute equals =~ "fred"
       assert equals =~ "**redacted**"
-      contains = Ash.Query.filter(User, contains(password, "fred")) |> inspect()
+      contains = Ash.Query.filter(User, contains(email, "fred")) |> inspect()
       refute contains =~ "fred"
       assert contains =~ "**redacted**"
 
-      concat = Ash.Query.filter(User, password <> "fred" == "fred") |> inspect()
+      concat = Ash.Query.filter(User, email <> "-fred" == "a@b.com-fred") |> inspect()
+
       refute concat =~ "fred"
       assert concat =~ "**redacted**"
     end

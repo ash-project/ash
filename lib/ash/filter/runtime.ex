@@ -125,6 +125,9 @@ defmodule Ash.Filter.Runtime do
             {:error, error} ->
               {:halt, {:error, error}}
 
+            :unknown ->
+              {:halt, {:ok, false}}
+
             {:ok, val} when val ->
               {:halt, {:ok, true}}
 

@@ -15,8 +15,9 @@ defmodule Ash.Actions.Load do
         tenant \\ nil
       )
 
-  def requests(nil, _, _opts, _, _, _, _), do: {nil, []}
-  def requests(%{load: []} = query, _, _opts, _, _, _, _), do: {query, []}
+  def requests(nil, _, _opts, _, _, _, _), do: []
+
+  def requests(%{load: []}, _, _opts, _, _, _, _), do: []
 
   def requests(
         %{load: loads} = query,
@@ -32,7 +33,7 @@ defmodule Ash.Actions.Load do
 
     loads
     |> List.wrap()
-    |> Enum.reduce({query, []}, fn {relationship, further}, {query, requests} ->
+    |> Enum.flat_map(fn {relationship, further} ->
       relationship = Ash.Resource.Info.relationship(query.resource, relationship)
 
       related_query =
@@ -63,38 +64,24 @@ defmodule Ash.Actions.Load do
 
       new_path = [relationship | path]
 
-      {related_query, further_requests} =
-        requests(
-          related_query,
+      requests(
+        related_query,
+        lazy?,
+        opts,
+        request_path,
+        root_query,
+        new_path,
+        related_query.tenant
+      ) ++
+        do_requests(
+          relationship,
           lazy?,
           opts,
           request_path,
-          root_query,
-          new_path,
-          related_query.tenant
+          related_query,
+          path,
+          root_query
         )
-
-      query =
-        if Map.get(relationship, :no_attributes?) do
-          query
-        else
-          Ash.Query.ensure_selected(query, relationship.source_attribute)
-        end
-
-      {
-        query,
-        requests ++
-          further_requests ++
-          do_requests(
-            relationship,
-            lazy?,
-            opts,
-            request_path,
-            related_query,
-            path,
-            root_query
-          )
-      }
     end)
   end
 
@@ -1005,31 +992,7 @@ defmodule Ash.Actions.Load do
   defp read(query, action, request_opts) do
     action = action || primary_read(query)
 
-    query
-    |> load_for_calcs()
-    |> Ash.Actions.Read.unpaginated_read(action, request_opts)
-  end
-
-  defp load_for_calcs(query) do
-    Enum.reduce(query.calculations || %{}, query, fn {name, calc}, query ->
-      resource_load =
-        if resource_calculation = Ash.Resource.Info.calculation(query.resource, name) do
-          List.wrap(resource_calculation.load)
-        else
-          []
-        end
-
-      Ash.Query.load(
-        query,
-        calc.module.load(
-          query,
-          calc.opts,
-          Map.put(calc.context, :context, query.context)
-        )
-        |> Ash.Actions.Helpers.validate_calculation_load!(calc.module)
-      )
-      |> Ash.Query.load(resource_load)
-    end)
+    Ash.Actions.Read.unpaginated_read(query, action, request_opts)
   end
 
   defp primary_read(query) do

@@ -3024,6 +3024,10 @@ defmodule Ash.Filter do
       %{call | args: poison_exprs(arguments)}
     end
 
+    defp sanitize(%Ash.Query.Exists{expr: expr} = exists) do
+      %{exists | expr: sanitize(expr)}
+    end
+
     defp sanitize(other) do
       other
     end
