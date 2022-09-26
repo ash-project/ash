@@ -2575,8 +2575,6 @@ defmodule Ash.Filter do
 
     case related(context, ref.relationship_path) do
       nil ->
-        raise "what"
-
         {:error,
          "Invalid reference #{inspect(ref)} at relationship_path #{inspect(ref.relationship_path)}"}
 
@@ -2657,7 +2655,6 @@ defmodule Ash.Filter do
             end
 
           true ->
-            raise "what dawg"
             {:error, "Invalid reference #{inspect(ref)}"}
         end
     end
