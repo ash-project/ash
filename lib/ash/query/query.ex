@@ -1798,7 +1798,7 @@ defmodule Ash.Query do
   @doc "Return the underlying data layer query for an ash query"
   def data_layer_query(ash_query, opts \\ [])
 
-  def data_layer_query(%{errors: errors}, _opts) do
+  def data_layer_query(%{errors: errors}, _opts) when errors not in [[], nil] do
     {:error, Ash.Error.to_error_class(errors)}
   end
 
