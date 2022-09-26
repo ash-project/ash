@@ -2,6 +2,10 @@ defmodule Ash.Query.Ref do
   @moduledoc "Represents a relation/attribute reference"
   defstruct [:attribute, :relationship_path, :resource, :simple_equality?, :bare?]
 
+  @doc "Returns the referenced field"
+  def name(%__MODULE__{attribute: %{name: name}}), do: name
+  def name(%__MODULE__{attribute: name}), do: name
+
   defimpl Inspect do
     def inspect(ref, _opts) do
       case ref.attribute do

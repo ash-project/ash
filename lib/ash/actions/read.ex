@@ -299,7 +299,7 @@ defmodule Ash.Actions.Read do
                    {%{valid?: true} = query, before_notifications} <-
                      run_before_action(query),
                    {:ok, filter_requests} <-
-                     filter_requests(query, path, request_opts),
+                     filter_requests(query, path, request_opts, actor, tenant),
                    {query, load_requests} <-
                      Load.requests(
                        query,
@@ -596,7 +596,7 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp filter_requests(query, request_path, opts) do
+  defp filter_requests(query, request_path, opts, actor, tenant) do
     authorizing? =
       if opts[:authorize?] == false do
         false
@@ -606,7 +606,7 @@ defmodule Ash.Actions.Read do
 
     if not Keyword.has_key?(opts, :initial_data) &&
          authorizing? do
-      Filter.read_requests(query.api, query.filter, request_path)
+      Filter.read_requests(query.api, query.filter, request_path, actor, tenant)
     else
       {:ok, []}
     end
@@ -691,6 +691,23 @@ defmodule Ash.Actions.Read do
             {[], Map.values(ash_query.calculations)}
           end
 
+        must_be_reselected =
+          if request_opts[:initial_data] do
+            calculations_at_runtime
+            |> Enum.flat_map(fn %{module: module, opts: opts, context: context} ->
+              ash_query
+              |> module.select(opts, context)
+              |> Enum.reject(fn field ->
+                request_opts[:initial_data]
+                |> List.wrap()
+                |> Enum.all?(&Ash.Resource.selected?(&1, field))
+              end)
+            end)
+            |> Enum.uniq()
+          else
+            []
+          end
+
         {aggregate_auth_requests, aggregate_value_requests, aggregates_in_query} =
           Aggregate.requests(
             ash_query,
@@ -709,176 +726,251 @@ defmodule Ash.Actions.Read do
           !Enum.empty?(filter_requests) && !get_in(data, path ++ [:filter]) ->
             {:requests, Enum.map(filter_requests, &{&1, :authorization_filter})}
 
-          true ->
-            if request_opts[:initial_data] do
-              {:ok,
-               %{
-                 results: request_opts[:initial_data],
-                 aggregates_in_query: aggregates_in_query,
-                 calculations_at_runtime: calculations_at_runtime,
-                 aggregate_value_request_paths:
-                   Enum.map(aggregate_value_requests, &(&1.path ++ [:data]))
-               },
-               %{
-                 requests: aggregate_value_requests
-               }}
-            else
-              query =
-                initial_query
-                |> Ash.Query.unset([
-                  :filter,
-                  :aggregates,
-                  :sort,
-                  :limit,
-                  :offset,
-                  :distinct,
-                  :select
-                ])
-                |> Ash.Query.data_layer_query(only_validate_filter?: true)
+          request_opts[:initial_data] && !Enum.empty?(must_be_reselected) ->
+            primary_key = Ash.Resource.Info.primary_key(ash_query.resource)
 
-              ash_query =
-                if ash_query.select || calculations_at_runtime == [] do
-                  ash_query
-                else
-                  to_select =
-                    ash_query.resource
-                    |> Ash.Resource.Info.attributes()
-                    |> Enum.map(& &1.name)
+            filter =
+              request_opts[:initial_data]
+              |> List.wrap()
+              |> Enum.map(&Map.take(&1, primary_key))
+              |> case do
+                [] ->
+                  false
 
-                  Ash.Query.select(ash_query, to_select)
-                end
+                [single] ->
+                  [single]
 
-              ash_query =
-                Enum.reduce(calculations_at_runtime, ash_query, fn calculation, ash_query ->
-                  if calculation.select do
-                    Ash.Query.select(ash_query, calculation.select || [])
-                  else
-                    ash_query
-                  end
-                end)
-
-              with %{valid?: true} <- ash_query,
-                   {:ok, query} <- query,
-                   {:ok, filter} <-
-                     filter_with_related(
-                       Enum.map(filter_requests, & &1.path),
-                       ash_query.filter,
-                       data
-                     ),
-                   {:ok, filter} <-
-                     Filter.run_other_data_layer_filters(
-                       ash_query.api,
-                       ash_query.resource,
-                       filter,
-                       {path, ash_query.tenant, data}
-                     ),
-                   filter <- update_aggregate_filters(filter, data, path),
-                   {:ok, query} <-
-                     Ash.DataLayer.set_context(
-                       ash_query.resource,
-                       query,
-                       Map.put(ash_query.context, :action, ash_query.action)
-                     ),
-                   {:ok, query} <-
-                     Ash.DataLayer.select(
-                       query,
-                       Helpers.attributes_to_select(ash_query),
-                       ash_query.resource
-                     ),
-                   {:ok, query} <-
-                     add_aggregates(
-                       query,
-                       ash_query,
-                       aggregates_in_query,
-                       Map.get(data, :aggregate, %{})
-                     ),
-                   {:ok, query} <-
-                     add_calculations(
-                       query,
-                       ash_query,
-                       calculations_in_query
-                     ),
-                   {:ok, query} <-
-                     Ash.DataLayer.filter(
-                       query,
-                       filter,
-                       ash_query.resource
-                     ),
-                   {:ok, query} <-
-                     Ash.DataLayer.sort(query, ash_query.sort, ash_query.resource),
-                   {:ok, query} <-
-                     Ash.DataLayer.distinct(query, ash_query.distinct, ash_query.resource),
-                   {:ok, count} <-
-                     fetch_count(
-                       ash_query,
-                       query,
-                       ash_query.resource,
-                       ash_query.action,
-                       initial_limit,
-                       initial_offset,
-                       request_opts
-                     ),
-                   {:ok, query} <- apply_keyset_filter(query, ash_query),
-                   {:ok, query} <-
-                     Ash.DataLayer.limit(query, ash_query.limit, ash_query.resource),
-                   {:ok, query} <-
-                     Ash.DataLayer.offset(query, ash_query.offset, ash_query.resource),
-                   {:ok, query} <- set_tenant(query, ash_query),
-                   {:ok, results} <-
-                     run_query(ash_query, query, %{
-                       actor: actor,
-                       tenant: ash_query.tenant,
-                       authorize?: authorize?,
-                       api: ash_query.api
-                     }),
-                   :ok <- validate_get(results, ash_query.action, ash_query),
-                   {:ok, results, after_notifications} <-
-                     run_after_action(initial_query, results),
-                   {:ok, count} <- maybe_await(count) do
-                if request_opts[:return_query?] do
-                  {:ok,
-                   %{
-                     results: results,
-                     ultimate_query: %{ash_query | filter: filter},
-                     count: count,
-                     calculations_at_runtime: calculations_at_runtime,
-                     aggregates_in_query: aggregates_in_query,
-                     aggregate_value_request_paths:
-                       Enum.map(aggregate_value_requests, &(&1.path ++ [:data]))
-                   },
-                   %{
-                     notifications: after_notifications,
-                     requests: aggregate_value_requests
-                   }}
-                else
-                  {:ok,
-                   %{
-                     results: results,
-                     count: count,
-                     calculations_at_runtime: calculations_at_runtime,
-                     aggregates_in_query: aggregates_in_query,
-                     aggregate_value_request_paths:
-                       Enum.map(aggregate_value_requests, &(&1.path ++ [:data]))
-                   },
-                   %{
-                     notifications: after_notifications,
-                     requests: aggregate_value_requests
-                   }}
-                end
-              else
-                {:filter_requests, other_data_layer_filter_requests} ->
-                  {:requests, other_data_layer_filter_requests}
-
-                %{valid?: false} = query ->
-                  {:error, query.errors}
-
-                other ->
-                  other
+                multiple ->
+                  [or: multiple]
               end
+
+            initial_query
+            |> Ash.Query.unset([
+              :filter,
+              :aggregates,
+              :sort,
+              :limit,
+              :offset,
+              :distinct,
+              :select
+            ])
+            |> Ash.Query.select(must_be_reselected)
+            |> Ash.Query.set_tenant(request_opts[:tenant])
+            |> Ash.Query.do_filter(filter)
+            |> Ash.Query.data_layer_query()
+            |> case do
+              {:ok, data_layer_query} ->
+                case Ash.DataLayer.run_query(data_layer_query, ash_query.resource) do
+                  {:ok, results} ->
+                    {:ok,
+                     %{
+                       results:
+                         attach_newly_selected_fields(
+                           request_opts[:initial_data],
+                           results,
+                           primary_key,
+                           must_be_reselected
+                         ),
+                       aggregates_in_query: aggregates_in_query,
+                       calculations_at_runtime: calculations_at_runtime,
+                       aggregate_value_request_paths:
+                         Enum.map(aggregate_value_requests, &(&1.path ++ [:data]))
+                     },
+                     %{
+                       requests: aggregate_value_requests
+                     }}
+
+                  {:error, error} ->
+                    {:error, error}
+                end
+
+              {:error, error} ->
+                {:error, error}
+            end
+
+          request_opts[:initial_data] ->
+            {:ok,
+             %{
+               results: request_opts[:initial_data],
+               aggregates_in_query: aggregates_in_query,
+               calculations_at_runtime: calculations_at_runtime,
+               aggregate_value_request_paths:
+                 Enum.map(aggregate_value_requests, &(&1.path ++ [:data]))
+             },
+             %{
+               requests: aggregate_value_requests
+             }}
+
+          true ->
+            query =
+              initial_query
+              |> Ash.Query.unset([
+                :filter,
+                :aggregates,
+                :sort,
+                :limit,
+                :offset,
+                :distinct,
+                :select
+              ])
+              |> Ash.Query.data_layer_query(only_validate_filter?: true)
+
+            ash_query =
+              if ash_query.select || calculations_at_runtime == [] do
+                ash_query
+              else
+                to_select =
+                  ash_query.resource
+                  |> Ash.Resource.Info.attributes()
+                  |> Enum.map(& &1.name)
+
+                Ash.Query.select(ash_query, to_select)
+              end
+
+            ash_query =
+              Enum.reduce(calculations_at_runtime, ash_query, fn calculation, ash_query ->
+                if calculation.select do
+                  Ash.Query.select(ash_query, calculation.select || [])
+                else
+                  ash_query
+                end
+              end)
+
+            with %{valid?: true} <- ash_query,
+                 {:ok, query} <- query,
+                 {:ok, filter} <-
+                   filter_with_related(
+                     Enum.map(filter_requests, & &1.path),
+                     ash_query.filter,
+                     data
+                   ),
+                 {:ok, filter} <-
+                   Filter.run_other_data_layer_filters(
+                     ash_query.api,
+                     ash_query.resource,
+                     filter,
+                     {path, ash_query.tenant, data}
+                   ),
+                 filter <- update_aggregate_filters(filter, data, path),
+                 {:ok, query} <-
+                   Ash.DataLayer.set_context(
+                     ash_query.resource,
+                     query,
+                     Map.put(ash_query.context, :action, ash_query.action)
+                   ),
+                 {:ok, query} <-
+                   Ash.DataLayer.select(
+                     query,
+                     Helpers.attributes_to_select(ash_query),
+                     ash_query.resource
+                   ),
+                 {:ok, query} <-
+                   add_aggregates(
+                     query,
+                     ash_query,
+                     aggregates_in_query,
+                     Map.get(data, :aggregate, %{})
+                   ),
+                 {:ok, query} <-
+                   add_calculations(
+                     query,
+                     ash_query,
+                     calculations_in_query
+                   ),
+                 {:ok, query} <-
+                   Ash.DataLayer.filter(
+                     query,
+                     filter,
+                     ash_query.resource
+                   ),
+                 {:ok, query} <-
+                   Ash.DataLayer.sort(query, ash_query.sort, ash_query.resource),
+                 {:ok, query} <-
+                   Ash.DataLayer.distinct(query, ash_query.distinct, ash_query.resource),
+                 {:ok, count} <-
+                   fetch_count(
+                     ash_query,
+                     query,
+                     ash_query.resource,
+                     ash_query.action,
+                     initial_limit,
+                     initial_offset,
+                     request_opts
+                   ),
+                 {:ok, query} <- apply_keyset_filter(query, ash_query),
+                 {:ok, query} <-
+                   Ash.DataLayer.limit(query, ash_query.limit, ash_query.resource),
+                 {:ok, query} <-
+                   Ash.DataLayer.offset(query, ash_query.offset, ash_query.resource),
+                 {:ok, query} <- set_tenant(query, ash_query),
+                 {:ok, results} <-
+                   run_query(ash_query, query, %{
+                     actor: actor,
+                     tenant: ash_query.tenant,
+                     authorize?: authorize?,
+                     api: ash_query.api
+                   }),
+                 :ok <- validate_get(results, ash_query.action, ash_query),
+                 {:ok, results, after_notifications} <-
+                   run_after_action(initial_query, results),
+                 {:ok, count} <- maybe_await(count) do
+              if request_opts[:return_query?] do
+                {:ok,
+                 %{
+                   results: results,
+                   ultimate_query: %{ash_query | filter: filter},
+                   count: count,
+                   calculations_at_runtime: calculations_at_runtime,
+                   aggregates_in_query: aggregates_in_query,
+                   aggregate_value_request_paths:
+                     Enum.map(aggregate_value_requests, &(&1.path ++ [:data]))
+                 },
+                 %{
+                   notifications: after_notifications,
+                   requests: aggregate_value_requests
+                 }}
+              else
+                {:ok,
+                 %{
+                   results: results,
+                   count: count,
+                   calculations_at_runtime: calculations_at_runtime,
+                   aggregates_in_query: aggregates_in_query,
+                   aggregate_value_request_paths:
+                     Enum.map(aggregate_value_requests, &(&1.path ++ [:data]))
+                 },
+                 %{
+                   notifications: after_notifications,
+                   requests: aggregate_value_requests
+                 }}
+              end
+            else
+              {:filter_requests, other_data_layer_filter_requests} ->
+                {:requests, other_data_layer_filter_requests}
+
+              %{valid?: false} = query ->
+                {:error, query.errors}
+
+              other ->
+                other
             end
         end
       end
     )
+  end
+
+  defp attach_newly_selected_fields(data, data_with_selected, primary_key, reselected_fields) do
+    Enum.map(data, fn record ->
+      case Enum.find(data_with_selected, fn selected_record ->
+             Map.take(selected_record, primary_key) == Map.take(record, primary_key)
+           end) do
+        nil ->
+          Ash.Resource.put_metadata(record, :private, %{missing_from_data_layer: true})
+
+        match ->
+          Map.merge(record, Map.take(match, reselected_fields))
+      end
+    end)
   end
 
   defp apply_keyset_filter(data_layer_query, query) do
@@ -1310,25 +1402,31 @@ defmodule Ash.Actions.Read do
         async?: true,
         data:
           Request.resolve(dependencies, fn data ->
+            primary_key = Ash.Resource.Info.primary_key(query.resource)
+
             temp_results =
               Enum.reduce(get_in(data, path ++ [:calculation_results]) || %{}, results, fn {key,
                                                                                             config},
                                                                                            results ->
-                add_calc_to_results(results, key, config[:data])
+                add_calc_to_results(results, key, config[:data], primary_key)
               end)
+              |> Enum.reject(& &1.__metadata__[:context][:private][:missing_from_data_layer])
+
+            primary_keys = Enum.map(temp_results, &Map.take(&1, primary_key))
 
             case calculation.module.calculate(temp_results, calculation.opts, calculation.context) do
               :unknown ->
-                case run_calculation_query(results, [calculation], query) do
+                case run_calculation_query(temp_results, [calculation], query) do
                   {:ok, results_with_calc} ->
                     {:ok,
                      %{
                        values:
                          Enum.map(results_with_calc, fn record ->
                            if calculation.load do
-                             Map.get(record, calculation.name)
+                             {Map.take(record, primary_key), Map.get(record, calculation.name)}
                            else
-                             Map.get(record.calculations, calculation.name)
+                             {Map.take(record, primary_key),
+                              Map.get(record.calculations, calculation.name)}
                            end
                          end),
                        load?: not is_nil(calculation.load)
@@ -1341,7 +1439,7 @@ defmodule Ash.Actions.Read do
               {:ok, values} ->
                 {:ok,
                  %{
-                   values: values,
+                   values: Enum.zip(primary_keys, values),
                    load?: not is_nil(calculation.load)
                  }}
 
@@ -1351,7 +1449,7 @@ defmodule Ash.Actions.Read do
               values ->
                 {:ok,
                  %{
-                   values: values,
+                   values: Enum.zip(primary_keys, values),
                    load?: not is_nil(calculation.load)
                  }}
             end
@@ -1440,7 +1538,7 @@ defmodule Ash.Actions.Read do
 
   defp add_calculation_values(
          results,
-         _resource,
+         resource,
          _api,
          _action,
          _error_path,
@@ -1450,31 +1548,47 @@ defmodule Ash.Actions.Read do
          calculation_values,
          _lazy?
        ) do
+    primary_key = Ash.Resource.Info.primary_key(resource)
+
     if calculation_values == :error do
       {:ok, results}
     else
       {:ok,
        Enum.reduce(calculation_values, results, fn {name, config}, results ->
-         add_calc_to_results(results, name, config[:data])
+         add_calc_to_results(results, name, config[:data], primary_key)
        end)}
     end
   end
 
-  defp add_calc_to_results(results, name, config) do
+  defp add_calc_to_results(results, name, config, primary_key) do
     if config[:load?] do
-      :lists.zipwith(
-        fn record, value -> Map.put(record, name, value) end,
-        results,
-        config[:values]
-      )
+      Enum.map(results, fn record ->
+        case Enum.find_value(config[:values], fn {pkey, value} ->
+               if pkey == Map.take(record, primary_key) do
+                 {:ok, value}
+               end
+             end) do
+          {:ok, value} ->
+            Map.put(record, name, value)
+
+          _ ->
+            Map.put(record, name, nil)
+        end
+      end)
     else
-      :lists.zipwith(
-        fn record, value ->
-          %{record | calculations: Map.put(record.calculations, name, value)}
-        end,
-        results,
-        config[:values]
-      )
+      Enum.map(results, fn record ->
+        case Enum.find_value(config[:values], fn {pkey, value} ->
+               if pkey == Map.take(record, primary_key) do
+                 {:ok, value}
+               end
+             end) do
+          {:ok, value} ->
+            %{record | calculations: Map.put(record.calculations, name, value)}
+
+          _ ->
+            %{record | calculations: Map.put(record.calculations, name, nil)}
+        end
+      end)
     end
   end
 

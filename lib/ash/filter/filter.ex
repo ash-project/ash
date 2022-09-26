@@ -13,8 +13,7 @@ defmodule Ash.Filter do
     NoSuchAttributeOrRelationship,
     NoSuchFilterPredicate,
     NoSuchFunction,
-    NoSuchOperator,
-    ReadActionRequired
+    NoSuchOperator
   }
 
   alias Ash.Error.Invalid.InvalidPrimaryKey
@@ -930,52 +929,95 @@ defmodule Ash.Filter do
     strict_subset_of(filter, candidate) == true
   end
 
-  def read_requests(_, nil, _), do: {:ok, []}
+  def read_requests(_, nil, _, _, _), do: {:ok, []}
 
-  def read_requests(api, %{resource: original_resource} = filter, request_path) do
-    filter
-    |> relationship_paths(true, true)
-    |> Enum.reject(fn {path, _} -> Enum.empty?(path) end)
-    |> Enum.reduce_while({:ok, []}, fn {path, names}, {:ok, requests} ->
-      resource = Ash.Resource.Info.related(original_resource, path)
+  def read_requests(api, %{resource: resource} = filter, request_path, actor, tenant) do
+    paths_with_refs = relationship_paths(filter, true, true)
 
-      names =
-        names
-        |> Enum.reject(&is_nil/1)
-        |> Enum.map(fn ref ->
-          case ref.attribute do
-            %{name: name} -> name
-            name -> name
-          end
-        end)
+    refs = group_refs_by_all_paths(paths_with_refs)
 
-      with %{errors: []} = query <- Ash.Query.new(resource, api),
-           {:action, action} when not is_nil(action) <-
-             {:action, Ash.Resource.Info.primary_action(resource, :read)} do
-        request =
-          Request.new(
-            resource: resource,
-            api: api,
-            query:
-              Ash.Query.set_context(query, %{
-                filter_only?: true,
-                filter_references: names
-              }),
-            async?: false,
-            path: request_path ++ [:filter, path],
-            strict_check_only?: true,
-            action: action,
-            name: "authorize filter #{Enum.join(path, ".")}",
-            data: []
-          )
+    paths_with_refs
+    |> Enum.map(&elem(&1, 0))
+    |> Enum.uniq()
+    |> Enum.reject(&(&1 == []))
+    |> Enum.reduce_while({:ok, []}, fn path, {:ok, requests} ->
+      case relationship_query(resource, path, actor, tenant) do
+        %{errors: []} = query ->
+          request =
+            Request.new(
+              resource: query.resource,
+              api: api,
+              query:
+                Ash.Query.set_context(query, %{
+                  filter_only?: true,
+                  filter_references: refs[path] || []
+                }),
+              async?: false,
+              path: request_path ++ [:filter, path],
+              strict_check_only?: true,
+              action: query.action,
+              name: "authorize filter #{Enum.join(path, ".")}",
+              data: []
+            )
 
-        {:cont, {:ok, [request | requests]}}
-      else
-        {:error, error} -> {:halt, {:error, error}}
-        %{errors: errors} -> {:halt, {:error, errors}}
-        {:action, nil} -> {:halt, {:error, ReadActionRequired.exception(resource: resource)}}
+          {:cont, {:ok, [request | requests]}}
+
+        %{errors: errors} ->
+          {:halt, {:error, errors}}
       end
     end)
+  end
+
+  defp relationship_query(resource, [last], actor, tenant) do
+    relationship = Ash.Resource.Info.relationship(resource, last)
+
+    action =
+      relationship.read_action ||
+        Ash.Resource.Info.primary_action!(relationship.destination, :read).name
+
+    relationship.destination
+    |> Ash.Query.set_context(relationship.context)
+    |> Ash.Query.sort(relationship.sort)
+    |> Ash.Query.do_filter(relationship.filter)
+    |> Ash.Query.for_read(action, %{},
+      actor: actor,
+      authorize?: true,
+      tenant: tenant
+    )
+  end
+
+  defp relationship_query(resource, [next | rest], actor, tenant) do
+    resource
+    |> Ash.Resource.Info.related(next)
+    |> relationship_query(rest, actor, tenant)
+  end
+
+  defp group_refs_by_all_paths(paths_with_refs) do
+    all_paths_with_refs =
+      paths_with_refs
+      |> Enum.flat_map(fn {path, refs} ->
+        Enum.map(refs, fn ref -> {path, ref} end)
+      end)
+      |> Enum.uniq()
+
+    acc = %{
+      [] => Enum.map(all_paths_with_refs, &elem(&1, 1))
+    }
+
+    Enum.reduce(all_paths_with_refs, acc, &add_ref_to_relevant_paths/2)
+  end
+
+  defp add_ref_to_relevant_paths(path_ref, acc, trail \\ [])
+
+  defp add_ref_to_relevant_paths({[], ref}, acc, trail) do
+    Map.update(acc, trail, [ref], &[ref | &1])
+  end
+
+  defp add_ref_to_relevant_paths({[next | rest], ref}, acc, trail) do
+    new_trail = trail ++ [next]
+    new_acc = Map.update(acc, new_trail, [ref], &[ref | &1])
+
+    add_ref_to_relevant_paths({rest, ref}, new_acc, new_trail)
   end
 
   def map(%__MODULE__{expression: nil} = filter, _) do

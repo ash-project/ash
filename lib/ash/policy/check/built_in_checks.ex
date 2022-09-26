@@ -1,57 +1,180 @@
 defmodule Ash.Policy.Check.Builtins do
   @moduledoc "The global authorization checks built into ash"
 
-  @doc "This check always passes"
+  @doc """
+  This check always passes
+
+  Can be useful for "deny-list" style authorization. For example:
+
+  ```elixir
+  policy action_type(:read) do
+    forbid_if actor_attribute_equals(:disabled, true)
+    forbid_if actor_attribute_equals(:active, false)
+    authorize_if always()
+  end
+  ```
+
+  Without that last clause, the policy would never pass.
+  """
+  @spec always() :: Ash.Policy.Check.ref()
   def always do
     {Ash.Policy.Check.Static, result: true}
   end
 
-  @doc "this check never passes"
+  @doc """
+  This check never passes.
+
+  There is, generally speaking, no reason to use this, but it exists for
+  completeness sake.
+  """
+  @spec never() :: Ash.Policy.Check.ref()
   def never do
     {Ash.Policy.Check.Static, result: false}
   end
 
-  @doc "This check is true when the action type matches the provided type"
+  @doc """
+  This check is true when the action type matches the provided type
+
+  This is useful for writing policies that apply to all actions of a given type.
+
+  For example:
+
+  ```elixir
+  policy action_type(:read) do
+    authorize_if relates_to_actor_via(:owner)
+  end
+  ```
+  """
+  @spec action_type(Ash.Resource.Actions.action_type()) :: Ash.Policy.Check.ref()
   def action_type(action_type) do
     {Ash.Policy.Check.ActionType, type: action_type}
   end
 
-  @doc "This check is true when the action name matches the provided action name"
+  @doc """
+  This check is true when the action name matches the provided action name
+
+  This is a very common pattern, allowing action-specific policies.
+  """
+  @spec action(atom) :: Ash.Policy.Check.ref()
   def action(action) do
     {Ash.Policy.Check.Action, action: action}
   end
 
-  @doc "This check is true when there is an actor specified, and false when the actor is `nil`"
+  @doc """
+  This check is true when there is an actor specified, and false when the actor is `nil`
+  """
+  @spec actor_present() :: Ash.Policy.Check.ref()
   def actor_present do
     Ash.Policy.Check.ActorPresent
   end
 
-  @doc "This check is true when the field is being selected and false when it is not"
+  @doc """
+  This check is true when the field provided is being referenced anywhere in a filter statement.
+
+  This applies to related filters as well. For example:
+
+  ```elixir
+  policy actor_attribute_equals(:is_admin, false) do
+    forbid_if filtering_on(:email)
+    # a path can be provided as well
+    forbid_if filtering_on([:owner], :email)
+  end
+  ```
+
+  The first will return true in situations like:
+
+  ```elixir
+  Ash.Query.filter(User, email == "blah")
+  Ash.Query.filter(Tweet, author.email == "blah")
+  ```
+
+  And the second will return true on queries like
+
+  ```elixir
+  Ash.Query.filter(Post, owner.email == "blah")
+  Ash.Query.filter(Comment, post.owner.email == "blah")
+  ```
+  """
+  @spec filtering_on(atom | list(atom), atom) :: Ash.Policy.Check.ref()
+  def filtering_on(path \\ [], field) do
+    {Ash.Policy.Check.FilteringOn, path: List.wrap(path), field: field}
+  end
+
+  @doc """
+  This check is true when the field is being selected and false when it is not
+
+  This won't affect filters placed on this resource, so you may also want to either
+
+  - Mark the given field as `filterable? false`
+  - Add another check for `filtering_on(:field)`
+
+  For example:
+
+  ```elixir
+  policy action_type(:read) do
+    # The actor can read and filter on their own email
+    authorize_if expr(id == ^actor(:id))
+
+    # No one else can select or filter on their email
+    forbid_if selecting(:email)
+    forbid_if filtering_on(:email)
+
+    # Otherwise, the policy passes
+    authorize_if always()
+  end
+  ```
+  """
+  @spec selecting(atom) :: Ash.Policy.Check.ref()
   def selecting(attribute) do
     {Ash.Policy.Check.Selecting, attribute: attribute}
   end
 
-  @doc "This check is true when the field or relationship, or path to field, is being loaded and false when it is not"
+  @doc """
+  This check is true when the field or relationship, or path to field, is being loaded and false when it is not
+
+  This is always false for create/update/destroy actions, because you cannot load fields on those action types.
+  """
+  @spec loading(atom) :: Ash.Policy.Check.ref()
   def loading(field) do
     {Ash.Policy.Check.Loading, field: field}
   end
 
-  @doc " This check passes if the data relates to the actor via the specified relationship or path of relationships"
+  @doc """
+  This check passes if the data relates to the actor via the specified relationship or path of relationships
+
+  For updates & destroys, this check will apply to *the original data*, i.e before the changes are applied.
+
+  For creates this check is very unlikely to apss. This is because relationships are modified *after* authorization
+  happens, not before.
+  """
+  @spec relates_to_actor_via(atom) :: Ash.Policy.Check.ref()
   def relates_to_actor_via(relationship_path) do
     {Ash.Policy.Check.RelatesToActorVia, relationship_path: List.wrap(relationship_path)}
   end
 
-  @doc "This check is true when a field on the record matches a specific filter"
+  @doc """
+  This check is true when a field on the record matches a specific filter
+  """
+  @deprecated "Use an `expr/1` check instead, i.e `expr(attribute == value)`"
+  @spec attribute(atom, any()) :: Ash.Policy.Check.ref()
   def attribute(attribute, filter) do
     {Ash.Policy.Check.Attribute, attribute: attribute, filter: filter}
   end
 
-  @doc "This check is true when the value of the specified attribute equals the specified value"
+  @doc """
+  This check is true when the value of the specified attribute of the actor equals the specified value
+
+  This check will *never* pass if the actor does not have the specified key. For example,
+  `actor_attribute_equals(:missing_key, nil)`
+  """
+  @spec actor_attribute_equals(atom, any()) :: Ash.Policy.Check.ref()
   def actor_attribute_equals(attribute, value) do
     {Ash.Policy.Check.ActorAttributeEquals, attribute: attribute, value: value}
   end
 
-  @doc "This check is true when the value of the specified key or path in the changeset or query context equals the specified value"
+  @doc """
+  This check is true when the value of the specified key or path in the changeset or query context equals the specified value.
+  """
   def context_equals(key, value) do
     {Ash.Policy.Check.ContextEquals, key: key, value: value}
   end

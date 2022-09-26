@@ -93,7 +93,7 @@ Ticket
 
 That is the best of both worlds! These same lessons transfer to changeset based actions as well.
 
-## How Do Actions Work
+## Action Lifecycle
 
 Ash uses an "engine" internally that takes lists of "requests" that have dependencies on each-other, and resolves them in some acceptable order. This engine allows for things like parallelizing steps and performing complex workflows without having to handwrite all of the control flow. It isn't important that you know how the engine works, but knowing the basic idea of "list of requests get sent to the engine" should help contextualize the following flow charts.
 

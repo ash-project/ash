@@ -12,6 +12,7 @@ defmodule Ash.Policy.Check do
   @type options :: Keyword.t()
   @type authorizer :: Ash.Policy.Authorizer.t()
   @type check_type :: :simple | :filter | :manual
+  @type ref :: {module(), Keyword.t()} | module()
 
   defstruct [:check, :check_module, :check_opts, :type]
 
