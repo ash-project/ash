@@ -40,7 +40,8 @@ defmodule Ash.Resource.Transformers.BelongsToAttribute do
         if valid_opts? do
           entity
         else
-          {:error, "Relationship cannot be a primary key unless it is also marked as required"}
+          {:error,
+           "Relationship cannot be a primary key unless it is also marked as `allow_nil? false`"}
         end
 
       add_entity(entity_or_error, dsl_state, relationship)
