@@ -91,5 +91,27 @@ defmodule Ash.Test.Resource.AttributesTest do
         end
       )
     end
+
+    test "does not raise if you pass underscore in `name`" do
+      defposts do
+        attributes do
+          attribute :foo_bar, :string
+        end
+      end
+    end
+
+    test "raises if you pass an invalid value for `name`" do
+      assert_raise(
+        Spark.Error.DslError,
+        "[Ash.Test.Resource.AttributesTest.Post]\n The field name foo? contains special characters",
+        fn ->
+          defposts do
+            attributes do
+              attribute :foo?, :string
+            end
+          end
+        end
+      )
+    end
   end
 end

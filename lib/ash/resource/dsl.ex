@@ -1210,6 +1210,7 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.DefaultAccept,
     Ash.Resource.Transformers.SetTypes,
     Ash.Resource.Transformers.RequireUniqueFieldNames,
+    Ash.Resource.Transformers.RequireAlphanumericFieldNames,
     Ash.Resource.Transformers.ValidateRelationshipAttributes,
     Ash.Resource.Transformers.ValidateEagerIdentities,
     Ash.Resource.Transformers.ValidateAggregatesSupported
