@@ -43,15 +43,69 @@ defmodule Ash.Policy.FilterCheck do
         []
       end
 
-      def strict_check(nil, _, opts) do
+      def strict_check(nil, authorizer, opts) do
         if Ash.Filter.template_references_actor?(opts[:filter]) do
           {:ok, false}
         else
-          {:ok, :unknown}
+          try_strict_check(nil, authorizer, opts)
         end
       end
 
-      def strict_check(_, _, _), do: {:ok, :unknown}
+      def strict_check(actor, authorizer, opts) do
+        try_strict_check(actor, authorizer, opts)
+      end
+
+      defp try_strict_check(actor, authorizer, opts) do
+        opts = Keyword.put_new(opts, :resource, authorizer.resource)
+
+        opts
+        |> filter()
+        |> Ash.Filter.build_filter_from_template(actor)
+        |> try_eval(authorizer)
+        |> case do
+          {:ok, false} ->
+            {:ok, false}
+
+          {:ok, nil} ->
+            {:ok, false}
+
+          {:ok, _} ->
+            {:ok, true}
+
+          _ ->
+            {:ok, :unknown}
+        end
+      end
+
+      defp try_eval(expression, %{query: %Ash.Query{} = query}) do
+        case Ash.Filter.hydrate_refs(expression, %{
+               resource: query.resource,
+               aggregates: query.aggregates,
+               calculations: query.calculations,
+               public?: false
+             }) do
+          {:ok, hydrated} ->
+            Ash.Filter.Runtime.do_match(nil, hydrated)
+
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+      end
+
+      defp try_eval(expression, %{resource: resource}) do
+        case Ash.Filter.hydrate_refs(expression, %{
+               resource: resource,
+               aggregates: %{},
+               calculations: %{},
+               public?: false
+             }) do
+          {:ok, hydrated} ->
+            Ash.Filter.Runtime.do_match(nil, hydrated)
+
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+      end
 
       def auto_filter(actor, authorizer, opts) do
         opts = Keyword.put_new(opts, :resource, authorizer.resource)

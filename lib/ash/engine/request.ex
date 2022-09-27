@@ -760,6 +760,14 @@ defmodule Ash.Engine.Request do
   end
 
   defp do_runtime_filter(
+         request,
+         nil,
+         _authorizer,
+         _authorizer_state
+       ),
+       do: {:ok, request}
+
+  defp do_runtime_filter(
          %{action: %{type: :read}, data: empty} = request,
          _filter,
          _authorizer,

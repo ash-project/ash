@@ -193,9 +193,6 @@ defmodule Ash.Filter.Runtime do
       %Ash.Filter{expression: expression} ->
         do_match(record, expression)
 
-      nil ->
-        {:ok, true}
-
       %op{__operator__?: true, left: left, right: right} ->
         with {:ok, [left, right]} <-
                resolve_exprs([left, right], record),
@@ -330,6 +327,8 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
+  defp resolve_expr(%Ash.Query.Exists{}, nil), do: :unknown
+
   defp resolve_expr(%Ash.Query.Exists{at_path: [], path: path, expr: expr}, record) do
     record
     |> load_unflattened(path)
@@ -426,6 +425,8 @@ defmodule Ash.Filter.Runtime do
     end)
     |> Enum.find_value(&Ash.Query.Function.try_cast_arguments(&1, args))
   end
+
+  defp resolve_ref(_, nil), do: :unknown
 
   defp resolve_ref(%Ref{attribute: attribute, relationship_path: path}, record) do
     name =
@@ -545,6 +546,8 @@ defmodule Ash.Filter.Runtime do
   end
 
   @doc false
+  def get_related(nil, _), do: []
+
   def get_related(record, []) do
     record
   end
