@@ -1405,7 +1405,7 @@ defmodule Ash.Filter do
          api,
          %{type: :many_to_many, join_relationship: join_relationship, through: through} =
            relationship,
-         data
+         {_, _, context} = data
        ) do
     if Ash.DataLayer.data_layer(through) == Ash.DataLayer.data_layer(resource) &&
          Ash.DataLayer.data_layer_can?(resource, {:join, through}) do
@@ -1432,7 +1432,10 @@ defmodule Ash.Filter do
       relationship.destination
       |> Ash.Query.new(ShadowApi)
       |> Ash.Query.do_filter(filter)
-      |> Ash.Actions.Read.unpaginated_read(authorize?: data[:authorize?], actor: data[:actor])
+      |> Ash.Actions.Read.unpaginated_read(
+        authorize?: context[:authorize?],
+        actor: context[:actor]
+      )
       |> case do
         {:ok, results} ->
           relationship.through
