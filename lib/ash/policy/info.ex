@@ -28,6 +28,8 @@ defmodule Ash.Policy.Info do
   end
 
   def strict_check(actor, %Ash.Query{} = query, api) do
+    query = Ash.Query.set_context(query, %{private: %{pre_flight_authorization?: true}})
+
     authorizer = %Ash.Policy.Authorizer{
       actor: actor,
       resource: query.resource,
@@ -54,6 +56,9 @@ defmodule Ash.Policy.Info do
   end
 
   def strict_check(actor, %Ash.Changeset{} = changeset, api) do
+    changeset =
+      Ash.Changeset.set_context(changeset, %{private: %{pre_flight_authorization?: true}})
+
     authorizer = %Ash.Policy.Authorizer{
       actor: actor,
       resource: changeset.resource,

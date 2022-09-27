@@ -22,7 +22,7 @@ defmodule Ash.Test.Support.PolicySimple.Tweet do
     end
 
     policy always() do
-      authorize_if(expr(user == ^actor(:id)))
+      authorize_if(expr(user_id == ^actor(:id)))
     end
   end
 

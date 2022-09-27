@@ -92,6 +92,50 @@ defmodule Ash.Policy.FilterCheck do
         end
       end
 
+      defp try_eval(expression, %{
+             resource: resource,
+             changeset: %Ash.Changeset{action_type: :create} = changeset
+           }) do
+        with {:ok, hydrated} <-
+               Ash.Filter.hydrate_refs(expression, %{
+                 resource: resource,
+                 aggregates: %{},
+                 calculations: %{},
+                 public?: false
+               }),
+             {:ok, fake_result} <- Ash.Changeset.apply_attributes(changeset, force?: true) do
+          Ash.Filter.Runtime.do_match(fake_result, hydrated)
+        else
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+      end
+
+      defp try_eval(expression, %{
+             resource: resource,
+             changeset: %Ash.Changeset{data: data} = changeset
+           }) do
+        case Ash.Filter.hydrate_refs(expression, %{
+               resource: resource,
+               aggregates: %{},
+               calculations: %{},
+               public?: false
+             }) do
+          {:ok, hydrated} ->
+            # We don't want to authorize on stale data in real life
+            # but when using utilities to check if something *will* be authorized
+            # that is our intent
+            if changeset.context[:private][:pre_flight_authorization?] do
+              Ash.Filter.Runtime.do_match(data, hydrated)
+            else
+              Ash.Filter.Runtime.do_match(nil, hydrated)
+            end
+
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+      end
+
       defp try_eval(expression, %{resource: resource}) do
         case Ash.Filter.hydrate_refs(expression, %{
                resource: resource,

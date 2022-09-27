@@ -125,7 +125,7 @@ Depending on the action type these expressions behave slightly differently.
 
 - In reads, the expression will be applied to the query.
 - For creates, the expression applies to the result of *applying* the changes. In these cases, you can't use things like `fragment` because nothing exists in the database.
-- For updates and destroys, the expression applies to the data *about* to be updated or destroyed
+- For updates and destroys, the expression applies to the data *about* to be updated or destroyed, i.e the data before the action is run
 
 ### Access Type
 
