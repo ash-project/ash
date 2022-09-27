@@ -27,6 +27,18 @@ defmodule Ash.Test.Policy.SimpleTest do
     end
   end
 
+  test "filter checks work on update/destroy actions", %{user: user} do
+    tweet =
+      Tweet
+      |> Ash.Changeset.for_create(:create)
+      |> Ash.Changeset.manage_relationship(:user, user, type: :append_and_remove)
+      |> Api.create!()
+
+    changeset = Ash.Changeset.for_update(tweet, :update)
+
+    assert Ash.Policy.Info.strict_check(user, changeset, Api) == true
+  end
+
   test "non-filter checks work on create/update/destroy actions" do
     user = Api.create!(Ash.Changeset.new(User))
 
