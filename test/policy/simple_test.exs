@@ -30,7 +30,8 @@ defmodule Ash.Test.Policy.SimpleTest do
   test "filter checks work on update/destroy actions", %{user: user} do
     tweet =
       Tweet
-      |> Ash.Changeset.for_create(:create, %{user: user})
+      |> Ash.Changeset.for_create(:create)
+      |> Ash.Changeset.manage_relationship(:user, user, type: :append_and_remove)
       |> Api.create!()
 
     changeset = Ash.Changeset.for_update(tweet, :update)
