@@ -126,9 +126,9 @@ The following steps are performed when you call `Ash.Query.for_read/4`.
 - Gather process context | {{link:ash:guide:Store Context In Process}}
 - Cast input arguments | {{link:ash:dsl:resource/actions/read/argument}
 - Set default argument values | {{link:ash:option:resource/actions/read/argument/default}}
+- Add errors for missing required arguments | {{link:ash:option:resource/actions/read/argument/allow_nil?}}
 - Run query preparations | {{link:ash:dsl:resource/actions/read/prepare}}
 - Add action filter | {{link:ash:option:resource/actions/read/filter}}
-- Add errors for missing required arguments | {{link:ash:option:resource/actions/read/argument/allow_nil?}}
 
 #### Running the Read Action
 
@@ -187,6 +187,7 @@ The following steps are run when calling `Ash.Changeset.for_create/4`, `Ash.Chan
 - Cast input params | This is any arguments in addition to any accepted attributes
 - Set argument defaults
 - Require any missing arguments
+- Run input validations
 - Run action changes
 - Run validations, or add them in `before_action` hooks if using {{link:ash:option:resource/actions/create/validate#before_action?}}
 
