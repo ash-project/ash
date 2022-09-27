@@ -25,6 +25,11 @@ ash-*.tar
 # Ignoring Elixir Language Server
 .elixir_ls/
 
+# Ignore Nix and direnv
+shell.nix
+.direnv/
+.envrc
+
 # Ignoring .tools-version
 .tool-versions
 
