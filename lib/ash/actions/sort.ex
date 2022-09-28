@@ -39,7 +39,7 @@ defmodule Ash.Actions.Sort do
           calc ->
             {module, opts} = calc.calculation
 
-            if :erlang.function_exported(module, :expression, 2) do
+            if function_exported?(module, :expression, 2) do
               if Ash.DataLayer.data_layer_can?(resource, :expression_calculation_sort) do
                 calculation_sort(
                   field,
