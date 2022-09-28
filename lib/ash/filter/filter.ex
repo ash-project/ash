@@ -1922,6 +1922,7 @@ defmodule Ash.Filter do
 
       Context Resource: #{inspect(context)}
       Context Relationship Path: #{inspect(context[:relationship_path])}
+      At Path: #{inspect(at_path)}
       Path: #{inspect(path)}
       Related: #{inspect(related)}
       Expression: #{inspect(exists)}
