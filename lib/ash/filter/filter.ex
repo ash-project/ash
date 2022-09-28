@@ -1910,11 +1910,11 @@ defmodule Ash.Filter do
   end
 
   defp add_expression_part(
-         %Ash.Query.Exists{path: path, expr: exists_expression} = exists,
+         %Ash.Query.Exists{at_path: at_path, path: path, expr: exists_expression} = exists,
          context,
          expression
        ) do
-    related = related(context, path)
+    related = related(context, at_path ++ path)
 
     if !related do
       raise """
