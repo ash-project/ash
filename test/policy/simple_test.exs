@@ -37,6 +37,15 @@ defmodule Ash.Test.Policy.SimpleTest do
     changeset = Ash.Changeset.for_update(tweet, :update)
 
     assert Ash.Policy.Info.strict_check(user, changeset, Api) == true
+
+    tweet =
+      Tweet
+      |> Ash.Changeset.for_create(:create)
+      |> Api.create!()
+
+    changeset = Ash.Changeset.for_update(tweet, :update)
+
+    assert Ash.Policy.Info.strict_check(%{user | id: nil}, changeset, Api) == false
   end
 
   test "non-filter checks work on create/update/destroy actions" do

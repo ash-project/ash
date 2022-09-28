@@ -145,7 +145,8 @@ defmodule Ash.Policy.Policy do
       true ->
         if bypass? do
           {:or, compile_policy_expression(policies, facts),
-           compile_policy_expression(rest, facts)}
+           {:and, compile_policy_expression(rest, facts),
+            at_least_one_policy_expression(Enum.take_while(rest, &(!&1.bypass?)), facts)}}
         else
           {:and, compile_policy_expression(policies, facts),
            compile_policy_expression(rest, facts)}
@@ -157,7 +158,8 @@ defmodule Ash.Policy.Policy do
       nil ->
         if bypass? do
           {:or, compile_policy_expression(policies, facts),
-           compile_policy_expression(rest, facts)}
+           {:and, compile_policy_expression(rest, facts),
+            at_least_one_policy_expression(Enum.take_while(rest, &(!&1.bypass?)), facts)}}
         else
           {:and, compile_policy_expression(policies, facts),
            compile_policy_expression(rest, facts)}
@@ -166,7 +168,8 @@ defmodule Ash.Policy.Policy do
       condition_expression ->
         if bypass? do
           {:or, {:and, condition_expression, compile_policy_expression(policies, facts)},
-           compile_policy_expression(rest, facts)}
+           {:and, compile_policy_expression(rest, facts),
+            at_least_one_policy_expression(Enum.take_while(rest, &(!&1.bypass?)), facts)}}
         else
           {:or, {:and, condition_expression, compile_policy_expression(policies, facts)},
            {:and, {:not, condition_expression}, compile_policy_expression(rest, facts)}}
