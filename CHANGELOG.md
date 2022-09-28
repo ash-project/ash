@@ -5,6 +5,59 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.0.0-rc.10](https://github.com/ash-project/ash/compare/v2.0.0-rc.9...v2.0.0-rc.10) (2022-09-28)
+
+
+
+
+### Bug Fixes:
+
+* bad pattern in `filter.ex`, fix dialyzer
+
+* attempt to evaluate filter checks for strict checks
+
+* only return errors when there actually are errors
+
+* return an error if `data_layer_query/2` is given a query with errors
+
+* various fixes with complex policy statements
+
+* ensure fields selected in-line when loading calcs
+
+* handle statically false conditions in filter logic
+
+* cast embedded datetimes properly
+
+* Ash.Calculation: fix return type for `load/3` callback. (#384)
+
+* warn instead of raise on `:replace` usage
+
+* handle var_args expression with literal args
+
+### Improvements:
+
+* catch more cases in preflight authorization checks
+
+* lazily set required loads/selects for calcs/sorts
+
+* reselect any necessary fields when loading calcs
+
+* set context when creating related filters allowing checks like `filtering_on`
+
+* simplify filter statements further
+
+* don't overconstraint filters on related data
+
+* any filter being statically true means `:authorized`
+
+* properly mark conditions w/ access_type
+
+* use `IsNil` instead of `Eq` when either side is `nil`
+
+* handle string dates for embeds
+
+* remove __timestamps__ in favor of simpler macro
+
 ## [v2.0.0-rc.9](https://github.com/ash-project/ash/compare/v2.0.0-rc.8...v2.0.0-rc.9) (2022-09-21)
 
 
