@@ -39,6 +39,8 @@ defmodule Ash.Actions.Sort do
           calc ->
             {module, opts} = calc.calculation
 
+            Code.ensure_compiled!(module)
+
             if function_exported?(module, :expression, 2) do
               if Ash.DataLayer.data_layer_can?(resource, :expression_calculation_sort) do
                 calculation_sort(
