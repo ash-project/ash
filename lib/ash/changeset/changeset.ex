@@ -3054,6 +3054,7 @@ defmodule Ash.Changeset do
     if Keyword.keyword?(errors) do
       errors
       |> to_change_error()
+      |> Ash.Error.set_path(path)
       |> handle_error(changeset)
     else
       Enum.reduce(errors, changeset, &add_error(&2, &1, path))
