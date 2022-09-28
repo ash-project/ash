@@ -107,9 +107,9 @@ To create the required folders and files, you can use the following command:
 
 ```bash
 # Run in your terminal
-touch lib/helpdesk/tickets.ex
 mkdir -p lib/helpdesk/support/resources && touch $_/ticket.ex
 touch lib/helpdesk/support/registry.ex
+touch lib/helpdesk/support.ex
 ```
 
 Your project structure should now look like this:
