@@ -76,6 +76,17 @@ defmodule Ash.DocIndex do
   end
 
   @impl true
+  @spec mix_tasks :: [{String.t(), list(module)}]
+  def mix_tasks do
+    {
+      "Charts",
+      [
+        Mix.Tasks.Ash.GenerateFlowCharts
+      ]
+    }
+  end
+
+  @impl true
   @spec code_modules :: [{String.t(), list(module)}]
   def code_modules do
     [
