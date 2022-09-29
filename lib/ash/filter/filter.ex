@@ -1225,7 +1225,7 @@ defmodule Ash.Filter do
         case do_run_other_data_layer_filters(
                expr,
                api,
-               Ash.Resource.Info.related(resource, path),
+               Ash.Resource.Info.related(resource, at_path ++ path),
                data
              ) do
           {:ok, new_nested} ->

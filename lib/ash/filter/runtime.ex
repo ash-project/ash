@@ -168,7 +168,7 @@ defmodule Ash.Filter.Runtime do
   end
 
   defp flatten_many_to_many(record, rel, values, rest) do
-    full_flattened = Enum.map(values, &flatten_relationships(&1, [rest]))
+    full_flattened = Enum.map(values, &flatten_relationships(&1, [rest])) |> List.flatten()
 
     Enum.map(full_flattened, fn value ->
       record

@@ -391,10 +391,18 @@ defmodule Ash.DataLayer.Ets do
                                                kind: :count,
                                                relationship_path: relationship_path,
                                                query: query,
+                                               authorization_filter: authorization_filter,
                                                name: name,
                                                load: load
                                              },
                                              {:ok, record} ->
+        query =
+          if authorization_filter do
+            Ash.Query.do_filter(query, authorization_filter)
+          else
+            query
+          end
+
         with {:ok, loaded_record} <- api.load(record, relationship_path),
              related <- Ash.Filter.Runtime.get_related(loaded_record, relationship_path),
              {:ok, filtered} <-

@@ -90,4 +90,11 @@ defmodule Ash.Test.Policy.ComplexTest do
              |> Ash.Query.filter(comments.text == "comment by a friend of a friend on my post")
              |> Api.read!(actor: me)
   end
+
+  test "aggregates can be loaded", %{me: me} do
+    Post
+    |> Ash.Query.load(:count_of_comments)
+    |> Ash.Query.filter(count_of_comments == 10)
+    |> Api.read!(actor: me)
+  end
 end
