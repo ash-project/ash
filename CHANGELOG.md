@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.0.0-rc.11](https://github.com/ash-project/ash/compare/v2.0.0-rc.10...v2.0.0-rc.11) (2022-09-29)
+
+
+
+
+### Bug Fixes:
+
+* use `at_path` when parsing `Exists`
+
+* properly require a condition of a following bypasses
+
+* don't transform == nil to is_nil automatically
+
+* pass path down to keyword list errors
+
+### Improvements:
+
+* optimize relates_to_actor_via checks
+
 ## [v2.0.0-rc.10](https://github.com/ash-project/ash/compare/v2.0.0-rc.9...v2.0.0-rc.10) (2022-09-28)
 
 
