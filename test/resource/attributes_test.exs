@@ -93,17 +93,32 @@ defmodule Ash.Test.Resource.AttributesTest do
     end
 
     test "raises if you pass a reserved name for `name`" do
-      assert_raise(
-        Spark.Error.DslError,
-        ~r/Field __metadata__ is using a reserved name/,
-        fn ->
-          defposts do
-            attributes do
-              attribute :__metadata__, :string
+      reserved_names = [
+        :__struct__,
+        :__metadata__,
+        :__meta__,
+        :__order__,
+        :calculations,
+        :aggregates
+      ]
+
+      for name <- reserved_names do
+        assert_raise(
+          Spark.Error.DslError,
+          ~r/Field #{name} is using a reserved name/,
+          fn ->
+            defmodule :"Resource#{name}" do
+              @moduledoc false
+              use Ash.Resource
+
+              attributes do
+                uuid_primary_key :id
+                attribute name, :string
+              end
             end
           end
-        end
-      )
+        )
+      end
     end
   end
 end

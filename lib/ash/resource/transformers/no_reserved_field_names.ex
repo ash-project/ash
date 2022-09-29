@@ -65,5 +65,5 @@ defmodule Ash.Resource.Transformers.NoReservedFieldNames do
     {:ok, dsl_state}
   end
 
-  def after_compile?, do: true
+  def after_compile?, do: false
 end
