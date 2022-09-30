@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.0.0-rc.12](https://github.com/ash-project/ash/compare/v2.0.0-rc.11...v2.0.0-rc.12) (2022-09-30)
+
+
+
+
+### Improvements:
+
+* optimize for `relates_to_actor_via`
+
 ## [v2.0.0-rc.11](https://github.com/ash-project/ash/compare/v2.0.0-rc.10...v2.0.0-rc.11) (2022-09-29)
 
 
