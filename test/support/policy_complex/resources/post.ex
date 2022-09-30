@@ -8,8 +8,8 @@ defmodule Ash.Test.Support.PolicyComplex.Post do
 
   policies do
     policy action_type(:read) do
-      authorize_if expr(author == ^actor(:id))
-      authorize_if expr(exists(author.friends, id == ^actor(:id)))
+      authorize_if relates_to_actor_via(:author)
+      authorize_if relates_to_actor_via([:author, :friends])
     end
 
     policy action_type(:create) do

@@ -16,7 +16,8 @@ defmodule Ash.Test.Support.PolicyComplex.FriendLink do
 
     # note to reader: in real life you'd want some kind of invite/approval system
     policy action_type(:read) do
-      authorize_if expr(source_id == ^actor(:id) or destination_id == ^actor(:id))
+      authorize_if relates_to_actor_via(:source)
+      authorize_if relates_to_actor_via(:destination)
     end
   end
 
