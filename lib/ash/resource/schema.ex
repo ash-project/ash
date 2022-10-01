@@ -14,7 +14,15 @@ defmodule Ash.Schema do
         @primary_key false
 
         embedded_schema do
-          for attribute <- Ash.Resource.Info.attributes(__MODULE__) do
+          for attribute <- Ash.Resource.Info.attributes(__MODULE__),
+              attribute.name not in [
+                :__struct__,
+                :__meta__,
+                :__metadata__,
+                :__order__,
+                :calculations,
+                :aggregates
+              ] do
             read_after_writes? = attribute.generated? and is_nil(attribute.default)
 
             constraint_opts =
@@ -102,7 +110,15 @@ defmodule Ash.Schema do
         @primary_key false
 
         schema Ash.DataLayer.source(__MODULE__) do
-          for attribute <- Ash.Resource.Info.attributes(__MODULE__) do
+          for attribute <- Ash.Resource.Info.attributes(__MODULE__),
+              attribute.name not in [
+                :__struct__,
+                :__meta__,
+                :__metadata__,
+                :__order__,
+                :calculations,
+                :aggregates
+              ] do
             read_after_writes? = attribute.generated? and is_nil(attribute.default)
 
             constraint_opts =

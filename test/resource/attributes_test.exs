@@ -107,7 +107,7 @@ defmodule Ash.Test.Resource.AttributesTest do
           Spark.Error.DslError,
           ~r/Field #{name} is using a reserved name/,
           fn ->
-            defmodule :"Resource#{name}" do
+            defmodule :"Elixir.Resource#{name}" do
               @moduledoc false
               use Ash.Resource
 
