@@ -5,6 +5,8 @@ defmodule Ash.Api.Info.Diagram do
 
   @indent "    "
 
+  @default_opts indent: @indent
+
   defp resource_name(resource) do
     resource
     |> Ash.Resource.Info.short_name()
@@ -49,14 +51,13 @@ defmodule Ash.Api.Info.Diagram do
 
   # default to one to one to just show connection
   defp rel_type(), do: "||--||"
-  defp rel_type(:has_many), do: "|o--o{"
-  defp rel_type(:has_one), do: "|o--||"
-  defp rel_type(:many_to_many), do: "}o--o{"
 
   defp short_type({:array, t}), do: "ArrayOf#{short_module(t)}"
   defp short_type(t), do: short_module(t)
 
-  def mermaid_er_diagram(api, indent \\ @indent) do
+  def mermaid_er_diagram(api, opts \\ @default_opts) do
+    indent = opts[:indent] || @indent
+
     resources =
       for {resource, attrs} <- resources_with_attrs(api) do
         """
@@ -80,11 +81,6 @@ defmodule Ash.Api.Info.Diagram do
     """
   end
 
-  # def class_type(:has_many), do: "--*"
-  # def class_type(:belongs_to), do: "*--"
-  # def class_type(:has_one), do: "--"
-  # def class_type(:many_to_many), do: "*--*"
-
   defp class_short_type({:array, t}), do: "#{short_module(t)}[]"
   defp class_short_type(t), do: short_module(t)
 
@@ -94,7 +90,9 @@ defmodule Ash.Api.Info.Diagram do
     |> Enum.join("\n")
   end
 
-  def mermaid_class_diagram(api, indent \\ @indent) do
+  def mermaid_class_diagram(api, opts \\ @default_opts) do
+    indent = opts[:indent] || @indent
+
     resources =
       for {resource, attrs} <- resources_with_attrs(api) do
         actions = Ash.Resource.Info.actions(resource)
