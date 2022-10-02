@@ -3,15 +3,30 @@ defmodule Ash.Api.Info.Diagram do
   Generate Mermaid diagrams from a specified API.
   """
 
-  def resources_with_attrs(api) do
+  @indent "    "
+
+  defp resource_name(resource) do
+    resource
+    |> Ash.Resource.Info.short_name()
+    |> to_string()
+    |> Macro.camelize()
+  end
+
+  defp short_module(module) do
+    module
+    |> Module.split()
+    |> List.last()
+  end
+
+  defp resources_with_attrs(api) do
     for resource <- Ash.Api.Info.resources(api) do
       {resource, Ash.Resource.Info.public_attributes(resource)}
     end
   end
 
-  def normalise_relationships(api) do
+  defp normalise_relationships(api) do
     for resource <- Ash.Api.Info.resources(api) do
-      for relationship <- Ash.Resource.Info.public_relationships(resource) do
+      for relationship <- Ash.Resource.Info.relationships(resource) do
         [relationship.source, relationship.destination]
         |> Enum.sort()
         |> List.to_tuple()
@@ -22,11 +37,7 @@ defmodule Ash.Api.Info.Diagram do
     |> Enum.sort()
   end
 
-  def short_module(mod) do
-    mod |> Module.split() |> List.last()
-  end
-
-  def aggregate_type(resource, aggregate) do
+  defp aggregate_type(resource, aggregate) do
     attribute_type =
       if aggregate.field do
         related = Ash.Resource.Info.related(resource, aggregate.relationship_path)
@@ -36,20 +47,20 @@ defmodule Ash.Api.Info.Diagram do
     Ash.Query.Aggregate.kind_to_type(aggregate.kind, attribute_type)
   end
 
-  def rel_type(:has_many), do: "|o--o{"
-  def rel_type(:has_one), do: "|o--||"
-  def rel_type(:many_to_many), do: "}o--o{"
+  # default to one to one to just show connection
+  defp rel_type(), do: "||--||"
+  defp rel_type(:has_many), do: "|o--o{"
+  defp rel_type(:has_one), do: "|o--||"
+  defp rel_type(:many_to_many), do: "}o--o{"
 
-  def short_type({:array, t}), do: "ArrayOf#{short_module(t)}"
-  def short_type(t), do: short_module(t)
+  defp short_type({:array, t}), do: "ArrayOf#{short_module(t)}"
+  defp short_type(t), do: short_module(t)
 
-  def mermaid_er_diagram(api) do
-    indent = "    "
-
+  def mermaid_er_diagram(api, indent \\ @indent) do
     resources =
       for {resource, attrs} <- resources_with_attrs(api) do
         """
-        #{indent}#{Ash.Resource.Info.trace_name(resource)} {
+        #{indent}#{resource_name(resource)} {
         #{Enum.join(for(attr <- attrs, do: "#{indent}#{indent}#{short_type(attr.type)} #{attr.name}"), "\n")}
         #{indent}}
         """
@@ -57,8 +68,8 @@ defmodule Ash.Api.Info.Diagram do
       |> Enum.join()
 
     relationships =
-      for {src, type, dest} <- normalise_relationships(api) do
-        ~s(#{indent}#{Ash.Resource.Info.trace_name(src)} #{rel_type(type)} #{Ash.Resource.Info.trace_name(dest)} : "")
+      for {src, dest} <- normalise_relationships(api) do
+        ~s(#{indent}#{resource_name(src)} #{rel_type()} #{resource_name(dest)} : "")
       end
       |> Enum.join("\n")
 
@@ -74,12 +85,16 @@ defmodule Ash.Api.Info.Diagram do
   # def class_type(:has_one), do: "--"
   # def class_type(:many_to_many), do: "*--*"
 
-  def class_short_type({:array, t}), do: "#{short_module(t)}[]"
-  def class_short_type(t), do: short_module(t)
+  defp class_short_type({:array, t}), do: "#{short_module(t)}[]"
+  defp class_short_type(t), do: short_module(t)
 
-  def mermaid_class_diagram(api) do
-    indent = "    "
+  defp join_template(list, indent, template_fn) do
+    list
+    |> Enum.map(fn item -> "#{indent}#{indent}#{template_fn.(item)}" end)
+    |> Enum.join("\n")
+  end
 
+  def mermaid_class_diagram(api, indent \\ @indent) do
     resources =
       for {resource, attrs} <- resources_with_attrs(api) do
         actions = Ash.Resource.Info.actions(resource)
@@ -87,13 +102,24 @@ defmodule Ash.Api.Info.Diagram do
         calcs = Ash.Resource.Info.public_calculations(resource)
         aggs = Ash.Resource.Info.public_aggregates(resource)
 
+        contents =
+          [
+            join_template(attrs, indent, &"#{class_short_type(&1.type)} #{&1.name}"),
+            join_template(calcs, indent, &"#{class_short_type(&1.type)} #{&1.name}"),
+            join_template(aggs, indent, &"#{aggregate_type(resource, &1)} #{&1.name}"),
+            join_template(
+              relationships,
+              indent,
+              &"#{resource_name(&1.destination)}#{if &1.cardinality == :many, do: "[]", else: ""} #{&1.name}"
+            ),
+            join_template(actions, indent, &"#{&1.name}()")
+          ]
+          |> Enum.reject(&(&1 == ""))
+          |> Enum.join("\n")
+
         """
-        #{indent}class #{Ash.Resource.Info.trace_name(resource)} {
-        #{Enum.join(for(attr <- attrs, do: "#{indent}#{indent}#{class_short_type(attr.type)} #{attr.name}"), "\n")}
-        #{Enum.join(for(calc <- calcs, do: "#{indent}#{indent}#{class_short_type(calc.type)} #{calc.name}"), "\n")}
-        #{Enum.join(for(agg <- aggs, do: "#{indent}#{indent}#{aggregate_type(resource, agg)} #{agg.name}"), "\n")}
-        #{Enum.join(for(rel <- relationships, do: "#{indent}#{indent}#{Ash.Resource.Info.trace_name(rel.destination)}#{if rel.cardinality == :many, do: "[]", else: ""} #{rel.name}"), "\n")}
-        #{Enum.join(for(action <- actions, do: "#{indent}#{indent}#{action.name}()"), "\n")}
+        #{indent}class #{resource_name(resource)} {
+        #{contents}
         #{indent}}
         """
       end
@@ -101,7 +127,7 @@ defmodule Ash.Api.Info.Diagram do
 
     relationships =
       for {src, dest} <- normalise_relationships(api) do
-        ~s(#{indent}#{Ash.Resource.Info.trace_name(src)} -- #{Ash.Resource.Info.trace_name(dest)})
+        ~s(#{indent}#{resource_name(src)} -- #{resource_name(dest)})
       end
       |> Enum.join("\n")
 

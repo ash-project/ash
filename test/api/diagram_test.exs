@@ -3,19 +3,52 @@ defmodule Ash.Test.Api.Info.DiagramTest do
   use ExUnit.Case, async: true
 
   test "generate a mermaid entity relationship diagram from an Api" do
-    assert Ash.Api.Info.Diagram.mermaid(Ash.Test.Support.Flow.Api) == """
+    assert Ash.Api.Info.Diagram.mermaid_er_diagram(Ash.Test.Support.Flow.Api) == """
            erDiagram
                User {
                    UUID id
                    String first_name
                    String last_name
+                   String email
                }
                Org {
                    UUID id
                    String name
                }
 
-               Org |o--o{ User : ""
+               Org ||--|| User : ""
+           """
+  end
+
+  test "generate a mermaid class diagram from an Api" do
+    assert Ash.Api.Info.Diagram.mermaid_class_diagram(Ash.Test.Support.Flow.Api) == """
+           classDiagram
+               class User {
+                   UUID id
+                   String first_name
+                   String last_name
+                   String email
+                   Org org
+                   destroy()
+                   read()
+                   for_org()
+                   create()
+                   update()
+                   approve()
+                   unapprove()
+               }
+               class Org {
+                   UUID id
+                   String name
+                   User[] users
+                   destroy()
+                   update()
+                   read()
+                   create()
+                   by_name()
+               }
+
+               Org -- User
            """
   end
 end
