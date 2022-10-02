@@ -20,12 +20,6 @@ defmodule Ash.Api.Info.Diagram do
     |> List.last()
   end
 
-  defp resources_with_attrs(api) do
-    for resource <- Ash.Api.Info.resources(api) do
-      {resource, Ash.Resource.Info.public_attributes(resource)}
-    end
-  end
-
   defp normalise_relationships(api) do
     for resource <- Ash.Api.Info.resources(api) do
       for relationship <- Ash.Resource.Info.relationships(resource) do
@@ -59,10 +53,23 @@ defmodule Ash.Api.Info.Diagram do
     indent = opts[:indent] || @indent
 
     resources =
-      for {resource, attrs} <- resources_with_attrs(api) do
+      for resource <- Ash.Api.Info.resources(api) do
+        attrs = Ash.Resource.Info.public_attributes(resource)
+        calcs = Ash.Resource.Info.public_calculations(resource)
+        aggs = Ash.Resource.Info.public_aggregates(resource)
+
+        contents =
+          [
+            join_template(attrs, indent, &"#{short_type(&1.type)} #{&1.name}"),
+            join_template(calcs, indent, &"#{short_type(&1.type)} #{&1.name}"),
+            join_template(aggs, indent, &"#{aggregate_type(resource, &1)} #{&1.name}")
+          ]
+          |> Enum.reject(&(&1 == ""))
+          |> Enum.join("\n")
+
         """
         #{indent}#{resource_name(resource)} {
-        #{Enum.join(for(attr <- attrs, do: "#{indent}#{indent}#{short_type(attr.type)} #{attr.name}"), "\n")}
+        #{contents}
         #{indent}}
         """
       end
@@ -94,11 +101,12 @@ defmodule Ash.Api.Info.Diagram do
     indent = opts[:indent] || @indent
 
     resources =
-      for {resource, attrs} <- resources_with_attrs(api) do
-        actions = Ash.Resource.Info.actions(resource)
-        relationships = Ash.Resource.Info.public_relationships(resource)
+      for resource <- Ash.Api.Info.resources(api) do
+        attrs = Ash.Resource.Info.public_attributes(resource)
         calcs = Ash.Resource.Info.public_calculations(resource)
         aggs = Ash.Resource.Info.public_aggregates(resource)
+        actions = Ash.Resource.Info.actions(resource)
+        relationships = Ash.Resource.Info.public_relationships(resource)
 
         contents =
           [
