@@ -1,6 +1,14 @@
 defmodule Ash.Api.Info.Diagram do
   @moduledoc """
   Generate Mermaid diagrams from a specified API.
+
+  ## Limitations
+
+  We can't easily model Ash relationships with Mermaid diagrams
+  because they are unidirectional and could be asymmetric.
+  Mermaid assumes symmetrical, biredirectional relationships.
+  If we try to model all unidirectional realtionships as separate
+  lines in the diagram it gets very hard to read very quickly.
   """
 
   @indent "    "
@@ -49,6 +57,13 @@ defmodule Ash.Api.Info.Diagram do
   defp short_type({:array, t}), do: "ArrayOf#{short_module(t)}"
   defp short_type(t), do: short_module(t)
 
+  @doc """
+  Generates a Mermaid Entity Relationship Diagram for a given API.
+
+  Shows only public attributes, calculations, aggregates and actions.
+  Shows a one-to-one line for relationships as enumerating all unidirectional
+  relationships is far too noisy.
+  """
   def mermaid_er_diagram(api, opts \\ @default_opts) do
     indent = opts[:indent] || @indent
 
@@ -95,6 +110,13 @@ defmodule Ash.Api.Info.Diagram do
     Enum.map_join(list, "\n", fn item -> "#{indent}#{indent}#{template_fn.(item)}" end)
   end
 
+  @doc """
+  Generates a Mermaid Class Diagram for a given API.
+
+  Shows only public attributes, calculations, aggregates and actions.
+  Shows a connecting line for relationships with the type of relationship
+  indicated in the attribute list.
+  """
   def mermaid_class_diagram(api, opts \\ @default_opts) do
     indent = opts[:indent] || @indent
 
