@@ -44,7 +44,7 @@ defmodule Ash.Api.Info.Diagram do
   end
 
   # default to one to one to just show connection
-  defp rel_type(), do: "||--||"
+  defp rel_type, do: "||--||"
 
   defp short_type({:array, t}), do: "ArrayOf#{short_module(t)}"
   defp short_type(t), do: short_module(t)
@@ -92,9 +92,7 @@ defmodule Ash.Api.Info.Diagram do
   defp class_short_type(t), do: short_module(t)
 
   defp join_template(list, indent, template_fn) do
-    list
-    |> Enum.map(fn item -> "#{indent}#{indent}#{template_fn.(item)}" end)
-    |> Enum.join("\n")
+    Enum.map_join(list, "\n", fn item -> "#{indent}#{indent}#{template_fn.(item)}" end)
   end
 
   def mermaid_class_diagram(api, opts \\ @default_opts) do
