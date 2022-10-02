@@ -50,7 +50,7 @@ defmodule Ash.Api.Info.Diagram do
 
     {:ok, type} = Ash.Query.Aggregate.kind_to_type(aggregate.kind, attribute_type)
 
-    type
+    short_type(type)
   end
 
   # default to one to one to just show connection
