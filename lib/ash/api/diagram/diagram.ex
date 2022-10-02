@@ -48,7 +48,9 @@ defmodule Ash.Api.Info.Diagram do
         Ash.Resource.Info.attribute(related, aggregate.field).type
       end
 
-    Ash.Query.Aggregate.kind_to_type(aggregate.kind, attribute_type)
+    {:ok, type} = Ash.Query.Aggregate.kind_to_type(aggregate.kind, attribute_type)
+
+    type
   end
 
   # default to one to one to just show connection
