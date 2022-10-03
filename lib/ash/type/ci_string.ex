@@ -202,6 +202,10 @@ defmodule Ash.Type.CiString do
     end
   end
 
+  def equal?(left, right) do
+    Ash.CiString.compare(left, right) == :eq
+  end
+
   def match(%Regex{} = regex), do: {:ok, regex}
 
   def match(_) do

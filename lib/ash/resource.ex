@@ -90,7 +90,7 @@ defmodule Ash.Resource do
                            end)
 
       @all_attributes __MODULE__
-                      |> Ash.Resource.Info.attributes()
+                      |> Ash.Resource.Info.public_attributes()
                       |> Enum.map(& &1.name)
                       |> Enum.uniq()
 
@@ -115,6 +115,36 @@ defmodule Ash.Resource do
 
       def default_short_name do
         @default_short_name
+      end
+
+      @primary_key_with_types __MODULE__
+                              |> Ash.Resource.Info.attributes()
+                              |> Enum.filter(& &1.primary_key?)
+                              |> Enum.map(&{&1.name, &1.type})
+
+      @primary_key @primary_key_with_types |> Enum.map(&elem(&1, 1))
+
+      case @primary_key_with_types do
+        [{field, type}] ->
+          @pkey_field field
+          @pkey_type type
+
+          def primary_key_matches?(left, right) do
+            Ash.Type.equal?(
+              @pkey_type,
+              Map.fetch!(left, @pkey_field),
+              Map.fetch!(right, @pkey_field)
+            )
+          end
+
+          def primary_key_matches?(_left, _right), do: false
+
+        _ ->
+          def primary_key_matches?(left, right) do
+            Enum.all?(@primary_key_with_types, fn {name, type} ->
+              Ash.Type.equal?(type, Map.fetch!(left, name), Map.fetch!(right, name))
+            end)
+          end
       end
 
       @doc """

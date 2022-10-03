@@ -75,11 +75,11 @@ defmodule Ash.CiString do
     do_compare(to_comparable_string(left), to_comparable_string(right))
   end
 
-  defp do_compare(left, right) when left < right, do: :lt
   defp do_compare(left, right) when left == right, do: :eq
+  defp do_compare(left, right) when left < right, do: :lt
   defp do_compare(_, _), do: :gt
 
-  @doc "Returns the downcased value, only downcasing if it hasn't already been down"
+  @doc "Returns the downcased value, only downcasing if it hasn't already been done"
   def to_comparable_string(value) when is_binary(value) do
     String.downcase(value)
   end
