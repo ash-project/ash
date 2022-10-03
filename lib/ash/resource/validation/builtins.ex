@@ -97,6 +97,8 @@ defmodule Ash.Resource.Validation.Builtins do
   @numericality_docs """
   Validates that an attribute or argument meets the given comparison criteria.
 
+  The values provided for each option may be a literal value, attribute, argument, or a zero argument function.
+
   ## Options
   #{Spark.OptionsHelpers.docs(Keyword.delete(Ash.Resource.Validation.Compare.opt_schema(), :attribute))}
 

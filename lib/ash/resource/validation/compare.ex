@@ -12,22 +12,22 @@ defmodule Ash.Resource.Validation.Compare do
       doc: "The attribute to check"
     ],
     greater_than: [
-      type: {:or, [:integer, :atom]},
+      type: {:or, [:integer, :atom, {:fun, 0}]},
       required: false,
-      doc: "The value that the attribute should be greater than"
+      doc: "The value that the attribute should be greater than."
     ],
     greater_than_or_equal_to: [
-      type: {:or, [:integer, :atom]},
+      type: {:or, [:integer, :atom, {:fun, 0}]},
       required: false,
       doc: "The value that the attribute should be greater than or equal to"
     ],
     less_than: [
-      type: {:or, [:integer, :atom]},
+      type: {:or, [:integer, :atom, {:fun, 0}]},
       required: false,
       doc: "The value that the attribute should be less than"
     ],
     less_than_or_equal_to: [
-      type: {:or, [:integer, :atom]},
+      type: {:or, [:integer, :atom, {:fun, 0}]},
       required: false,
       doc: "The value that the attribute should be less than or equal to"
     ]
@@ -63,7 +63,7 @@ defmodule Ash.Resource.Validation.Compare do
               {:greater_than, attribute} ->
                 if Comp.greater_than?(value, attribute_value(changeset, attribute)),
                   do: :ok,
-                  else: invalid_attribute_error(opts, "must be greater than #{attribute}")
+                  else: invalid_attribute_error(opts, "must be greater than %{value}")
 
               {:greater_than_or_equal_to, attribute} ->
                 if Comp.greater_or_equal?(value, attribute_value(changeset, attribute)),
@@ -71,13 +71,13 @@ defmodule Ash.Resource.Validation.Compare do
                   else:
                     invalid_attribute_error(
                       opts,
-                      "must be greater than or equal to #{attribute}"
+                      "must be greater than or equal to %{value}"
                     )
 
               {:less_than, attribute} ->
                 if Comp.less_than?(value, attribute_value(changeset, attribute)),
                   do: :ok,
-                  else: invalid_attribute_error(opts, "must be less than #{attribute}")
+                  else: invalid_attribute_error(opts, "must be less than %{value}")
 
               {:less_than_or_equal_to, attribute} ->
                 if Comp.less_or_equal?(value, attribute_value(changeset, attribute)),
@@ -85,7 +85,7 @@ defmodule Ash.Resource.Validation.Compare do
                   else:
                     invalid_attribute_error(
                       opts,
-                      "must be less than or equal to #{attribute}"
+                      "must be less than or equal to %{value}"
                     )
 
               true ->
@@ -99,6 +99,10 @@ defmodule Ash.Resource.Validation.Compare do
     end
   end
 
+  defp attribute_value(_changeset, attribute) when is_function(attribute, 0) do
+    attribute.()
+  end
+
   defp attribute_value(changeset, attribute) when is_atom(attribute),
     do: Ash.Changeset.get_argument_or_attribute(changeset, attribute)
 
@@ -110,6 +114,11 @@ defmodule Ash.Resource.Validation.Compare do
        field: opts[:attribute],
        message: opts[:message] || message,
        vars: [
+         value:
+           case opts[:attribute] do
+             fun when is_function(fun, 0) -> fun.()
+             v -> v
+           end,
          greater_than: opts[:greater_than],
          less_than: opts[:less_than],
          greater_than_or_equal_to: opts[:greater_than_or_equal_to],
