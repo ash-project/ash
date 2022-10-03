@@ -16,4 +16,4 @@ While Ash does have lofty goals and a roadmap, the priority for development is a
 
 ## Community
 
-The Ash community comes together and collaborates to make sure that we can all build our software quickly, effectively and in a way that will age gracefully. We have a strict code of conduct, and love working with people of any experience level or background. To experience this first-hand, join our [discord](https://discord.gg/nBqK7q4U)!
+The Ash community comes together and collaborates to make sure that we can all build our software quickly, effectively and in a way that will age gracefully. We have a strict code of conduct, and love working with people of any experience level or background. To experience this first-hand, join our [discord](https://discord.gg/D7FNG2q)!
