@@ -58,7 +58,8 @@ defmodule Ash.Schema do
             Module.put_attribute(__MODULE__, :ash_struct_fields, field)
           end
 
-          for relationship <- Ash.Resource.Info.relationships(__MODULE__) do
+          for relationship <- Ash.Resource.Info.relationships(__MODULE__),
+              relationship.name not in Ash.Resource.reserved_names() do
             Module.put_attribute(
               __MODULE__,
               :ash_struct_fields,
@@ -66,7 +67,8 @@ defmodule Ash.Schema do
             )
           end
 
-          for aggregate <- Ash.Resource.Info.aggregates(__MODULE__) do
+          for aggregate <- Ash.Resource.Info.aggregates(__MODULE__),
+              aggregate.name not in Ash.Resource.reserved_names() do
             {:ok, type} = Aggregate.kind_to_type(aggregate.kind, :string)
 
             field(aggregate.name, Ash.Type.ecto_type(type), virtual: true)
@@ -78,7 +80,8 @@ defmodule Ash.Schema do
             )
           end
 
-          for calculation <- Ash.Resource.Info.calculations(__MODULE__) do
+          for calculation <- Ash.Resource.Info.calculations(__MODULE__),
+              calculation.name not in Ash.Resource.reserved_names() do
             {mod, _} = calculation.calculation
 
             field(calculation.name, Ash.Type.ecto_type(calculation.type), virtual: true)
@@ -147,7 +150,8 @@ defmodule Ash.Schema do
             Module.put_attribute(__MODULE__, :ash_struct_fields, field)
           end
 
-          for relationship <- Ash.Resource.Info.relationships(__MODULE__) do
+          for relationship <- Ash.Resource.Info.relationships(__MODULE__),
+              relationship.name not in Ash.Resource.reserved_names() do
             Module.put_attribute(
               __MODULE__,
               :ash_struct_fields,
@@ -155,7 +159,8 @@ defmodule Ash.Schema do
             )
           end
 
-          for aggregate <- Ash.Resource.Info.aggregates(__MODULE__) do
+          for aggregate <- Ash.Resource.Info.aggregates(__MODULE__),
+              aggregate.name not in Ash.Resource.reserved_names() do
             {:ok, type} = Aggregate.kind_to_type(aggregate.kind, :string)
 
             field(aggregate.name, Ash.Type.ecto_type(type), virtual: true)
@@ -167,7 +172,8 @@ defmodule Ash.Schema do
             )
           end
 
-          for calculation <- Ash.Resource.Info.calculations(__MODULE__) do
+          for calculation <- Ash.Resource.Info.calculations(__MODULE__),
+              calculation.name not in Ash.Resource.reserved_names() do
             {mod, _} = calculation.calculation
 
             field(calculation.name, Ash.Type.ecto_type(calculation.type), virtual: true)
