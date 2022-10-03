@@ -8,3 +8,4 @@
   supporting real life use cases like yours, but we have to make sure that we do that in a sustainable way. The 
   best compromise there is to make sure that discussions are centered around the *use case* for a feature, rather
   than the proposed feature itself.
+* Before starting work, please comment on the issue and/or ask in the discord if anyone is handling an issue. Be aware that if you've commented on an issue that you'd like to tackle it, but no one can reach you and/or demand/need arises sooner, it may still need to be done before you have a chance to finish. However, we will make all efforts to allow you to finish anything you claim.
