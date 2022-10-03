@@ -9,6 +9,7 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
     public_attribute_names =
       dsl_state
       |> Transformer.get_entities([:attributes])
+      |> Enum.reject(& &1.private?)
       |> Enum.map(& &1.name)
 
     default_accept =
@@ -22,19 +23,19 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
     |> Transformer.get_entities([:actions])
     |> Enum.reject(&(&1.type == :read))
     |> Enum.reduce({:ok, dsl_state}, fn action, {:ok, dsl_state} ->
-      accept =
+      {accept, reject} =
         case {action.accept, action.reject} do
-          {_, :all} -> []
-          {nil, reject} -> reject(default_accept, reject)
-          {:all, reject} -> reject(public_attribute_names, reject)
-          {accept, reject} -> reject(accept, reject)
+          {_, :all} -> {[], public_attribute_names}
+          {nil, reject} -> {reject(default_accept, reject), reject}
+          {:all, reject} -> {reject(public_attribute_names, reject), reject}
+          {accept, reject} -> {reject(accept, reject), reject}
         end
 
       new_dsl_state =
         Transformer.replace_entity(
           dsl_state,
           [:actions],
-          %{action | accept: accept},
+          %{action | accept: accept, reject: reject},
           &(&1.name == action.name && &1.type == action.type)
         )
 
