@@ -9,6 +9,7 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
     public_attribute_names =
       dsl_state
       |> Transformer.get_entities([:attributes])
+      |> Enum.reject(& &1.private?)
       |> Enum.map(& &1.name)
 
     default_accept =
