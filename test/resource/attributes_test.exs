@@ -91,5 +91,25 @@ defmodule Ash.Test.Resource.AttributesTest do
         end
       )
     end
+
+    test "raises if you pass a reserved name for `name`" do
+      for name <- Ash.Resource.reserved_names() do
+        assert_raise(
+          Spark.Error.DslError,
+          ~r/Field #{name} is using a reserved name/,
+          fn ->
+            defmodule :"Elixir.Resource#{name}" do
+              @moduledoc false
+              use Ash.Resource
+
+              attributes do
+                uuid_primary_key :id
+                attribute name, :string
+              end
+            end
+          end
+        )
+      end
+    end
   end
 end

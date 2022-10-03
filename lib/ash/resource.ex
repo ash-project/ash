@@ -275,4 +275,16 @@ defmodule Ash.Resource do
         end
     end
   end
+
+  @doc false
+  def reserved_names do
+    [
+      :__struct__,
+      :__meta__,
+      :__metadata__,
+      :__order__,
+      :calculations,
+      :aggregates
+    ]
+  end
 end
