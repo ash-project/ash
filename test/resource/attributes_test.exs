@@ -93,16 +93,7 @@ defmodule Ash.Test.Resource.AttributesTest do
     end
 
     test "raises if you pass a reserved name for `name`" do
-      reserved_names = [
-        :__struct__,
-        :__metadata__,
-        :__meta__,
-        :__order__,
-        :calculations,
-        :aggregates
-      ]
-
-      for name <- reserved_names do
+      for name <- Ash.Resource.reserved_names() do
         assert_raise(
           Spark.Error.DslError,
           ~r/Field #{name} is using a reserved name/,
