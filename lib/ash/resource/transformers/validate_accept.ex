@@ -38,6 +38,7 @@ defmodule Ash.Resource.Transformers.ValidateAccept do
           end
         end
 
+        if accept != :all do
         Enum.each(
           accept,
           &validate_attribute_name.(
@@ -45,6 +46,9 @@ defmodule Ash.Resource.Transformers.ValidateAccept do
             :accept
           )
         )
+        end
+
+        if reject != :all do
 
         Enum.each(
           reject,
@@ -53,6 +57,7 @@ defmodule Ash.Resource.Transformers.ValidateAccept do
             :reject
           )
         )
+        end
 
         # read types do not have accept / reject fields
       %{type: :read} ->
