@@ -12,8 +12,9 @@ defmodule Ash.Api.Info.Diagram do
   """
 
   @indent "    "
+  @show_private? false
 
-  @default_opts indent: @indent
+  @default_opts indent: @indent, show_private?: @show_private?
 
   defp resource_name(resource) do
     resource
@@ -68,12 +69,22 @@ defmodule Ash.Api.Info.Diagram do
   """
   def mermaid_er_diagram(api, opts \\ @default_opts) do
     indent = opts[:indent] || @indent
+    show_private? = Access.get(opts, :show_private?, @show_private?)
 
     resources =
       for resource <- Ash.Api.Info.resources(api) do
-        attrs = Ash.Resource.Info.public_attributes(resource)
-        calcs = Ash.Resource.Info.public_calculations(resource)
-        aggs = Ash.Resource.Info.public_aggregates(resource)
+        {attrs, calcs, aggs} =
+          if show_private? do
+            {
+              Ash.Resource.Info.attributes(resource),
+              Ash.Resource.Info.calculations(resource),
+              Ash.Resource.Info.aggregates(resource)
+            }
+          else
+            {Ash.Resource.Info.public_attributes(resource),
+             Ash.Resource.Info.public_calculations(resource),
+             Ash.Resource.Info.public_aggregates(resource)}
+          end
 
         contents =
           [
@@ -121,14 +132,26 @@ defmodule Ash.Api.Info.Diagram do
   """
   def mermaid_class_diagram(api, opts \\ @default_opts) do
     indent = opts[:indent] || @indent
+    show_private? = Access.get(opts, :show_private?, @show_private?)
 
     resources =
       for resource <- Ash.Api.Info.resources(api) do
-        attrs = Ash.Resource.Info.public_attributes(resource)
-        calcs = Ash.Resource.Info.public_calculations(resource)
-        aggs = Ash.Resource.Info.public_aggregates(resource)
         actions = Ash.Resource.Info.actions(resource)
-        relationships = Ash.Resource.Info.public_relationships(resource)
+
+        {attrs, calcs, aggs, relationships} =
+          if show_private? do
+            {
+              Ash.Resource.Info.attributes(resource),
+              Ash.Resource.Info.calculations(resource),
+              Ash.Resource.Info.aggregates(resource),
+              Ash.Resource.Info.relationships(resource)
+            }
+          else
+            {Ash.Resource.Info.public_attributes(resource),
+             Ash.Resource.Info.public_calculations(resource),
+             Ash.Resource.Info.public_aggregates(resource),
+             Ash.Resource.Info.public_relationships(resource)}
+          end
 
         contents =
           [
