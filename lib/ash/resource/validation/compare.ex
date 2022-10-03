@@ -63,28 +63,36 @@ defmodule Ash.Resource.Validation.Compare do
               {:greater_than, attribute} ->
                 if Comp.greater_than?(value, attribute_value(changeset, attribute)),
                   do: :ok,
-                  else: invalid_attribute_error(opts, "must be greater than %{value}")
+                  else:
+                    invalid_attribute_error(
+                      Keyword.put(opts, :value, attribute),
+                      "must be greater than %{value}"
+                    )
 
               {:greater_than_or_equal_to, attribute} ->
                 if Comp.greater_or_equal?(value, attribute_value(changeset, attribute)),
                   do: :ok,
                   else:
                     invalid_attribute_error(
-                      opts,
+                      Keyword.put(opts, :value, attribute),
                       "must be greater than or equal to %{value}"
                     )
 
               {:less_than, attribute} ->
                 if Comp.less_than?(value, attribute_value(changeset, attribute)),
                   do: :ok,
-                  else: invalid_attribute_error(opts, "must be less than %{value}")
+                  else:
+                    invalid_attribute_error(
+                      Keyword.put(opts, :value, attribute),
+                      "must be less than %{value}"
+                    )
 
               {:less_than_or_equal_to, attribute} ->
                 if Comp.less_or_equal?(value, attribute_value(changeset, attribute)),
                   do: :ok,
                   else:
                     invalid_attribute_error(
-                      opts,
+                      Keyword.put(opts, :value, attribute),
                       "must be less than or equal to %{value}"
                     )
 
@@ -115,7 +123,7 @@ defmodule Ash.Resource.Validation.Compare do
        message: opts[:message] || message,
        vars: [
          value:
-           case opts[:attribute] do
+           case opts[:value] do
              fun when is_function(fun, 0) -> fun.()
              v -> v
            end,
