@@ -1,5 +1,5 @@
 defmodule Ash.Resource.Transformers.ValidateAccept do
-  @moduledoc "Validates that accept and reject lists only contains valid attributes"
+  @moduledoc "Validates that accept and reject lists only contain valid attributes"
   use Spark.Dsl.Transformer
 
   alias Spark.Dsl.Transformer
