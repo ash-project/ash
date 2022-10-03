@@ -46,16 +46,13 @@ defmodule Ash.Resource.Transformers.ValidateAccept do
           )
         )
 
-        # The DefaultAccept transformer does not modify :reject, so it may still be :all
-        unless reject == :all do
-          Enum.each(
-            reject,
-            &validate_attribute_name.(
-              &1,
-              :reject
-            )
+        Enum.each(
+          reject,
+          &validate_attribute_name.(
+            &1,
+            :reject
           )
-        end
+        )
 
       # read types do not have accept / reject fields
       %{type: :read} ->
