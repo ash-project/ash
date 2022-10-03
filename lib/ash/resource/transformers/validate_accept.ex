@@ -38,17 +38,16 @@ defmodule Ash.Resource.Transformers.ValidateAccept do
           end
         end
 
-        if accept != :all do
-          Enum.each(
-            accept,
-            &validate_attribute_name.(
-              &1,
-              :accept
-            )
+        Enum.each(
+          accept,
+          &validate_attribute_name.(
+            &1,
+            :accept
           )
-        end
+        )
 
-        if reject != :all do
+        # The DefaultAccept transformer does not modify :reject, so it may still be :all
+        unless reject == :all do
           Enum.each(
             reject,
             &validate_attribute_name.(
