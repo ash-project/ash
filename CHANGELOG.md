@@ -319,7 +319,7 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 ### Bug Fixes:
 
-* property set authorize?: false on runtime filter
+* properly set authorize?: false on runtime filter
 
 * explicitly don't authorize the runtime filter authorization logic
 
@@ -578,7 +578,7 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 * don't automatically url encode keyset values
 
-* fixed bug when embedded resources would always provide defaults, not allowing you to declare your own (primary?) actions (#339)
+* fixed bug where embedded resources would always provide defaults, not allowing you to declare your own (primary?) actions (#339)
 
 * keyset pagination counts all rows
 
