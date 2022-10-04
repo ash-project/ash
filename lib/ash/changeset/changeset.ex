@@ -156,9 +156,10 @@ defmodule Ash.Changeset do
   |> Ash.Changeset.for_action(...)
   ```
   """
-  @spec new(Ash.Resource.t() | Ash.Resource.record()) :: t
+  @spec new(Ash.Resource.t() | Ash.Resource.record(), params :: map) :: t
+  def new(resource, params \\ %{})
 
-  def new(%resource{} = record) do
+  def new(%resource{} = record, params) do
     tenant =
       record
       |> Map.get(:__metadata__, %{})
@@ -168,6 +169,7 @@ defmodule Ash.Changeset do
 
     if Ash.Resource.Info.resource?(resource) do
       %__MODULE__{resource: resource, data: record, action_type: :update}
+      |> change_attributes(params)
       |> set_context(context)
       |> set_tenant(tenant)
     else
@@ -182,13 +184,14 @@ defmodule Ash.Changeset do
     end
   end
 
-  def new(resource) do
+  def new(resource, params) do
     if Ash.Resource.Info.resource?(resource) do
       %__MODULE__{
         resource: resource,
         action_type: :create,
         data: struct(resource)
       }
+      |> change_attributes(params)
     else
       %__MODULE__{resource: resource, action_type: :create, data: struct(resource)}
       |> add_error(NoSuchResource.exception(resource: resource))
