@@ -5,6 +5,43 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.0.0-rc.13](https://github.com/ash-project/ash/compare/v2.0.0-rc.12...v2.0.0-rc.13) (2022-10-04)
+
+
+
+
+### Features:
+
+* `show_private?` option for diagrams (#396)
+
+* generate mermaid entity relationship diagrams from a given api (#376)
+
+### Bug Fixes:
+
+* add back in `new/2` to Changeset
+
+* properly load nested calcs
+
+* switch from no_depend_modules in most places
+
+* properly display compare/2 error message
+
+* use the short type for aggregate types
+
+* `kind_to_type/2` returns tagged tuple
+
+### Improvements:
+
+* allow select/load callbacks for calcs to return irrelevant keys
+
+* optimize load equality matching by not using `Comp`
+
+* Forbid reserved field names (#388)
+
+* validate accepted and rejected attributes in actions (#395)
+
+* support zero argument functions in `compare/2`
+
 ## [v2.0.0-rc.12](https://github.com/ash-project/ash/compare/v2.0.0-rc.11...v2.0.0-rc.12) (2022-09-30)
 
 
