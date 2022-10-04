@@ -29,4 +29,4 @@ Ash is made possible by its excellent community!
   <img src="https://contrib.rocks/image?repo=ash-project/ash" />
 </a>
 
-[Become a contributor](https://github.com/ash-project/ash/blob/main/.github/CONTRIBUTING.md)
+[Become a contributor](https://ash-hq.org/docs/guides/ash/latest/how_to/contribute.md)
