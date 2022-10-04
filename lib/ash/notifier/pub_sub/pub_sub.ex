@@ -65,7 +65,7 @@ defmodule Ash.Notifier.PubSub do
       @publish,
       @publish_all
     ],
-    modules: [:module],
+    no_depend_modules: [:module],
     links: [
       guides: [
         "ash:guide:PubSub",

@@ -316,7 +316,7 @@ defmodule Ash.Resource.Dsl do
       "change relate_actor(:reporter)",
       "change {MyCustomChange, :foo}"
     ],
-    modules: [:change],
+    no_depend_modules: [:change],
     target: Ash.Resource.Change,
     schema: Ash.Resource.Change.action_schema(),
     args: [:change]
@@ -374,7 +374,7 @@ defmodule Ash.Resource.Dsl do
       "change relate_actor(:reporter)",
       "change {MyCustomChange, :foo}"
     ],
-    modules: [:change],
+    no_depend_modules: [:change],
     target: Ash.Resource.Change,
     schema: Ash.Resource.Change.schema(),
     args: [:change]
@@ -399,7 +399,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Validation,
     schema: Ash.Resource.Validation.opt_schema(),
-    modules: [:validation],
+    no_depend_modules: [:validation],
     transform: {Ash.Resource.Validation, :transform, []},
     args: [:validation]
   }
@@ -422,7 +422,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Validation,
     schema: Ash.Resource.Validation.action_schema(),
-    modules: [:validation],
+    no_depend_modules: [:validation],
     transform: {Ash.Resource.Validation, :transform, []},
     args: [:validation]
   }
@@ -446,7 +446,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Actions.Create,
     schema: Ash.Resource.Actions.Create.opt_schema(),
-    modules: [:touches_resources],
+    no_depend_modules: [:touches_resources],
     entities: [
       changes: [
         @action_change,
@@ -479,7 +479,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Preparation,
     schema: Ash.Resource.Preparation.schema(),
-    modules: [:preparation],
+    no_depend_modules: [:preparation],
     args: [:preparation]
   }
 
@@ -513,7 +513,7 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Actions.Read,
     schema: Ash.Resource.Actions.Read.opt_schema(),
     transform: {Ash.Resource.Actions.Read, :transform, []},
-    modules: [:touches_resources],
+    no_depend_modules: [:touches_resources],
     links: [
       guides: [
         "ash:guide:Actions"
@@ -558,7 +558,7 @@ defmodule Ash.Resource.Dsl do
         @action_argument
       ]
     ],
-    modules: [:touches_resources],
+    no_depend_modules: [:touches_resources],
     target: Ash.Resource.Actions.Update,
     schema: Ash.Resource.Actions.Update.opt_schema(),
     args: [:name]
@@ -581,7 +581,7 @@ defmodule Ash.Resource.Dsl do
         "ash:guide:Actions"
       ]
     ],
-    modules: [:touches_resources],
+    no_depend_modules: [:touches_resources],
     entities: [
       changes: [
         @action_change,
@@ -696,7 +696,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Identity,
     schema: Ash.Resource.Identity.schema(),
-    modules: [:pre_check_with, :eager_check_with],
+    no_depend_modules: [:pre_check_with, :eager_check_with],
     args: [:name, :keys]
   }
 
@@ -1088,7 +1088,7 @@ defmodule Ash.Resource.Dsl do
       ]
     ],
     target: Ash.Resource.Calculation,
-    modules: [:calculation],
+    no_depend_modules: [:calculation],
     args: [:name, :type, :calculation],
     entities: [
       arguments: [@argument]

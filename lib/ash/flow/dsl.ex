@@ -29,7 +29,7 @@ defmodule Ash.Flow.Dsl do
       """
     ],
     links: [],
-    modules: [:resource, :touches_resources],
+    no_depend_modules: [:resource, :touches_resources],
     target: Ash.Flow.Step.Create,
     args: [:name, :resource, :action],
     schema: Ash.Flow.Step.Create.schema()
@@ -48,7 +48,7 @@ defmodule Ash.Flow.Dsl do
       end
       """
     ],
-    modules: [:resource, :touches_resources],
+    no_depend_modules: [:resource, :touches_resources],
     target: Ash.Flow.Step.Update,
     args: [:name, :resource, :action],
     schema: Ash.Flow.Step.Update.schema()
@@ -65,7 +65,7 @@ defmodule Ash.Flow.Dsl do
       destroy :destroy_post, MyApp.Post, :destroy
       """
     ],
-    modules: [:resource, :touches_resources],
+    no_depend_modules: [:resource, :touches_resources],
     target: Ash.Flow.Step.Destroy,
     args: [:name, :resource, :action],
     schema: Ash.Flow.Step.Destroy.schema()
@@ -82,7 +82,7 @@ defmodule Ash.Flow.Dsl do
       """
     ],
     links: [],
-    modules: [:resource, :touches_resources],
+    no_depend_modules: [:resource, :touches_resources],
     target: Ash.Flow.Step.Read,
     args: [:name, :resource, :action],
     schema: Ash.Flow.Step.Read.schema()
@@ -103,7 +103,7 @@ defmodule Ash.Flow.Dsl do
         }
       """
     ],
-    modules: [:resource, :touches_resources],
+    no_depend_modules: [:resource, :touches_resources],
     target: Ash.Flow.Step.RunFlow,
     args: [:name, :flow],
     schema: Ash.Flow.Step.RunFlow.schema()
@@ -129,7 +129,7 @@ defmodule Ash.Flow.Dsl do
       end
       """
     ],
-    modules: [:custom, :touches_resources],
+    no_depend_modules: [:custom, :touches_resources],
     target: Ash.Flow.Step.Custom,
     args: [:name, :custom],
     schema: Ash.Flow.Step.Custom.schema()
@@ -153,7 +153,7 @@ defmodule Ash.Flow.Dsl do
       """
     ],
     links: [],
-    modules: [:type],
+    no_depend_modules: [:type],
     target: Ash.Flow.Argument,
     args: [:name, :type],
     schema: Ash.Flow.Argument.schema()
@@ -212,7 +212,7 @@ defmodule Ash.Flow.Dsl do
     entities: [
       steps: @step_entities
     ],
-    modules: [:touches_resources],
+    no_depend_modules: [:touches_resources],
     examples: [
       """
       transaction :create_users do
@@ -243,7 +243,7 @@ defmodule Ash.Flow.Dsl do
     target: Ash.Flow.Step.Map,
     args: [:name, :over],
     recursive_as: :steps,
-    modules: [:touches_resources],
+    no_depend_modules: [:touches_resources],
     links: [],
     entities: [
       steps: @step_entities
