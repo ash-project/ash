@@ -27,7 +27,7 @@ When calculations require more complex code or can't be pushed down into the dat
 
 ```elixir
 defmodule Concat do
-  # An example concatenation calculation, that accepts the delimeter as an argument,
+  # An example concatenation calculation, that accepts the delimiter as an argument,
   #and the fields to concatenate as options
   use Ash.Calculation
 

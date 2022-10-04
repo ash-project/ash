@@ -129,7 +129,7 @@ defmodule Ash.Engine.Request do
 
     * query - The query to be used to fetch data. Used to authorize reads.
     * data - The ultimate goal of a request is to compute the data
-    * resource - The primary resource of the request. Used for openeing transactions on creates/updates/destroys
+    * resource - The primary resource of the request. Used for opening transactions on creates/updates/destroys
     * changeset - Any changes to be made to the resource. Used to authorize writes.
     * path - The path of the request. This serves as a unique id, and is the way that other requests can refer to this one
     * action_type - The action_type of the request

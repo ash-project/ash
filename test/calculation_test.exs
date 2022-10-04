@@ -3,7 +3,7 @@ defmodule Ash.Test.CalculationTest do
   use ExUnit.Case, async: true
 
   defmodule Concat do
-    # An example concatenation calculation, that accepts the delimeter as an argument
+    # An example concatenation calculation, that accepts the delimiter as an argument
     use Ash.Calculation
 
     def init(opts) do
@@ -24,7 +24,7 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule ConcatWithLoad do
-    # An example concatenation calculation, that accepts the delimeter as an argument
+    # An example concatenation calculation, that accepts the delimiter as an argument
     use Ash.Calculation
 
     def init(opts) do

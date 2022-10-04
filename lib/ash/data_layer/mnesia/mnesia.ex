@@ -26,7 +26,7 @@ defmodule Ash.DataLayer.Mnesia do
   @moduledoc """
   An Mnesia backed Ash Datalayer.
 
-  In your application intialization, you will need to call `Mnesia.create_schema([node()])`.
+  In your application initialization, you will need to call `Mnesia.create_schema([node()])`.
 
   Additionally, you will want to create your mnesia tables there.
 

@@ -3,7 +3,7 @@ defmodule Ash.Registry.Info do
 
   alias Spark.Dsl.Extension
 
-  @doc "Wether or not the registry will warn if it has no entries"
+  @doc "Whether or not the registry will warn if it has no entries"
   @spec warn_on_empty?(Ash.Registry.t()) :: boolean
   def warn_on_empty?(registry) do
     Extension.get_opt(registry, [:entries], :warn_on_empty?, true, true)

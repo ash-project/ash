@@ -10,7 +10,7 @@ defmodule Ash.Error do
   @type t :: struct
 
   # We use these error classes also to choose a single error
-  # to raise when multiple errors have occured. We raise them
+  # to raise when multiple errors have occurred. We raise them
   # sorted by their error classes
   @error_classes [
     :forbidden,
