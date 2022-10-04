@@ -4,6 +4,10 @@
 
 All deprecations will be finalized in version 2.1.
 
+### Ash.Flow
+
+While still more experimental than the rest of the framework, Ash.Flow is no longer feature-gated behind a configuration flag. It has been changed only slightly, and now returns an `Ash.Flow.Result` in all cases.
+
 ### New DSL tooling
 
 The DSL tooling has been moved out of the Ash name space and into a more generalized tool called `Spark`. If you have written your own extensions, you will need
