@@ -268,7 +268,7 @@ defmodule Ash.Test.Actions.LoadTest do
                |> Map.get(:posts_in_same_category)
     end
 
-    test "it uses `Comp.equal?/2` to support things like ci_string foreign keys" do
+    test "it uses `Ash.Type.equal?/2` to support things like ci_string foreign keys" do
       author =
         Author
         |> new(%{name: "zerg", campaign_name: "FrEd"})
