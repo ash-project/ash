@@ -5,7 +5,7 @@
 
 ## 2.0 release coming soon!
 
-2.0 release is coming any day now, just wrapping up some documentation. The current version of Ash is stable (v1.53.3). It is being used in production on several large applications and has had many success stories. There are release candidates available on hex for 2.0.0 if you'd like to start there.
+2.0 release is scheduled for October 17th!. There are release candidates available on hex for 2.0.0 if you'd like to try it out early.
 
 ## What is Ash?
 
