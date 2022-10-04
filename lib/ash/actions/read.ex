@@ -954,15 +954,7 @@ defmodule Ash.Actions.Read do
   end
 
   defp loaded_query(query) do
-    query =
-      query.calculations
-      |> Enum.reduce(query, fn {_name, calc}, query ->
-        Ash.Query.load(
-          query,
-          calc.required_loads
-        )
-        |> Ash.Query.ensure_selected(calc.select)
-      end)
+    query = load_calc_requirements(query)
 
     query =
       Enum.reduce(query.sort || [], query, fn
@@ -1022,6 +1014,24 @@ defmodule Ash.Actions.Read do
       _, _ ->
         query
     end)
+  end
+
+  defp load_calc_requirements(query, checked_calcs \\ []) do
+    unchecked_calcs = Map.drop(query.calculations, checked_calcs)
+
+    if unchecked_calcs == %{} do
+      query
+    else
+      query.calculations
+      |> Enum.reduce(query, fn {_name, calc}, query ->
+        Ash.Query.load(
+          query,
+          calc.required_loads
+        )
+        |> Ash.Query.ensure_selected(calc.select)
+      end)
+      |> load_calc_requirements(Map.keys(query.calculations))
+    end
   end
 
   defp attach_newly_selected_fields(data, data_with_selected, primary_key, reselected_fields) do
