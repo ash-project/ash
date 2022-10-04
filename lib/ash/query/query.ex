@@ -838,6 +838,7 @@ defmodule Ash.Query do
                 |> Kernel.||([])
                 |> Enum.concat(module.select(query, opts, calculation.context) || [])
                 |> Enum.uniq()
+                |> Enum.filter(&Ash.Resource.Info.attribute(query.resource, &1))
 
               loads =
                 module.load(
@@ -847,6 +848,7 @@ defmodule Ash.Query do
                 )
                 |> Ash.Actions.Helpers.validate_calculation_load!(module)
                 |> Enum.concat(List.wrap(resource_calculation.load))
+                |> Enum.reject(&Ash.Resource.Info.attribute(query.resource, &1))
 
               calculation = %{
                 calculation
@@ -933,6 +935,7 @@ defmodule Ash.Query do
             |> Kernel.||([])
             |> Enum.concat(module.select(query, opts, calculation.context) || [])
             |> Enum.uniq()
+            |> Enum.filter(&Ash.Resource.Info.attribute(query.resource, &1))
 
           loads =
             module.load(
@@ -942,6 +945,7 @@ defmodule Ash.Query do
             )
             |> Ash.Actions.Helpers.validate_calculation_load!(module)
             |> Enum.concat(List.wrap(resource_calculation.load))
+            |> Enum.reject(&Ash.Resource.Info.attribute(query.resource, &1))
 
           calculation = %{
             calculation
@@ -1421,6 +1425,7 @@ defmodule Ash.Query do
           |> module.select(opts, calculation.context)
           |> List.wrap()
           |> Enum.concat(calculation.select)
+          |> Enum.filter(&Ash.Resource.Info.attribute(query.resource, &1))
 
         loads =
           module.load(
@@ -1430,6 +1435,7 @@ defmodule Ash.Query do
           )
           |> Ash.Actions.Helpers.validate_calculation_load!(module)
           |> Enum.concat(List.wrap(calculation.required_loads))
+          |> Enum.reject(&Ash.Resource.Info.attribute(query.resource, &1))
 
         calculation = %{calculation | select: fields_to_select, required_loads: loads}
         %{query | calculations: Map.put(query.calculations, name, calculation)}

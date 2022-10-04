@@ -39,6 +39,10 @@ defmodule Ash.Test.CalculationTest do
       opts[:keys]
     end
 
+    def select(_query, opts, _) do
+      opts[:keys]
+    end
+
     def calculate(records, opts, _) do
       Enum.map(records, fn record ->
         Enum.map_join(opts[:keys], " ", fn key ->
@@ -93,6 +97,10 @@ defmodule Ash.Test.CalculationTest do
       calculate :full_name_plus_full_name,
                 :string,
                 {ConcatWithLoad, keys: [:full_name, :full_name]}
+
+      calculate :full_name_plus_full_name_plus_full_name,
+                :string,
+                {ConcatWithLoad, keys: [:full_name, :full_name_plus_full_name]}
 
       calculate :slug, :string, expr(full_name <> "123"), load: [:full_name]
 
@@ -200,6 +208,20 @@ defmodule Ash.Test.CalculationTest do
       |> Enum.sort()
 
     assert full_names == ["brian cranston brian cranston", "zach daniel zach daniel"]
+  end
+
+  test "it loads anything specified by the load callback, even when nested" do
+    full_names =
+      User
+      |> Ash.Query.load(:full_name_plus_full_name_plus_full_name)
+      |> Api.read!()
+      |> Enum.map(& &1.full_name_plus_full_name_plus_full_name)
+      |> Enum.sort()
+
+    assert full_names == [
+             "brian cranston brian cranston brian cranston",
+             "zach daniel zach daniel zach daniel"
+           ]
   end
 
   test "it doesn't reload anything specified by the load callback if its already been loaded when using `lazy?: true`" do
