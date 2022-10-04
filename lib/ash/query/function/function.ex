@@ -47,15 +47,21 @@ defmodule Ash.Query.Function do
                   if Enum.any?(casted, &is_expr/1) do
                     {:ok, function}
                   else
-                    case mod.evaluate(function) do
-                      {:known, result} ->
-                        {:ok, result}
+                    case function do
+                      %mod{__predicate__?: _} ->
+                        case mod.evaluate(function) do
+                          {:known, result} ->
+                            {:ok, result}
 
-                      :unknown ->
+                          :unknown ->
+                            {:ok, function}
+
+                          {:error, error} ->
+                            {:error, error}
+                        end
+
+                      _ ->
                         {:ok, function}
-
-                      {:error, error} ->
-                        {:error, error}
                     end
                   end
 

@@ -6,8 +6,6 @@ defmodule Ash.Query.Function.IsNil do
 
   def args, do: [[:any]]
 
-  def new([nil]), do: {:ok, true}
-
   def new([arg]) do
     Ash.Query.Operator.new(Ash.Query.Operator.IsNil, arg, true)
   end

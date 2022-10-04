@@ -57,10 +57,16 @@ defmodule Ash.Query.Operator do
   def new(mod, left, right) do
     case mod.new(left, right) do
       {:ok, val} when not is_expr(left) and not is_expr(right) ->
-        case mod.evaluate(val) do
-          {:known, value} -> {:ok, value}
-          {:error, error} -> {:error, error}
-          :unknown -> {:ok, val}
+        case val do
+          %mod{__predicate__?: _} ->
+            case mod.evaluate(val) do
+              {:known, value} -> {:ok, value}
+              {:error, error} -> {:error, error}
+              :unknown -> {:ok, val}
+            end
+
+          _ ->
+            {:ok, val}
         end
 
       {:ok, val} ->
