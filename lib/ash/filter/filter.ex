@@ -333,7 +333,7 @@ defmodule Ash.Filter do
         ref ->
           field = ref.attribute
 
-          # This handles manually added calcualtions and aggregates
+          # This handles manually added calculations and aggregates
           case Map.fetch(field, :filterable?) do
             :error ->
               []

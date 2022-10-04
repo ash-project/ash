@@ -7,7 +7,7 @@ defmodule Ash.Error.Query.NoComplexSortsWithKeysetPagination do
   we should either: 1.) make it a new pagination mode or 2.) add an option like `mode: :strict | :fetch`
   to pagination options.
 
-  Let me know if you're reading this and want to help implment it.
+  Let me know if you're reading this and want to help implement it.
   """
   use Ash.Error.Exception
 

@@ -118,7 +118,7 @@ defmodule Ash.Query.Function do
 
   # Copied from https://github.com/andrewhao/ordinal/blob/master/lib/ordinal.ex
   @doc """
-  Attaches the appropiate suffix to refer to an ordinal number, e.g 1 -> "1st"
+  Attaches the appropriate suffix to refer to an ordinal number, e.g 1 -> "1st"
   """
   def ordinal(num) do
     cond do

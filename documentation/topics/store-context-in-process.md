@@ -6,6 +6,6 @@ The following things can be stored in the process:
 
 - Query/changeset context, will be merged with the context of any query/changeset before it is run.
 - The current actor (i.e current_user)
-- Wether or not to run authorization, i.e `authorize?`
+- Whether or not to run authorization, i.e `authorize?`
 - The current tracer 
 - The current tenant

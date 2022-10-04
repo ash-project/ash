@@ -8,7 +8,7 @@ defmodule Ash.Notifier.Notification do
 
   `metadata` is freeform data to be set however you want. `resource`, `action`, `data`,
   `changeset` and `actor` are all set by default based on the details of the action, so
-  they can be ommitted.
+  they can be omitted.
 
   When creating a notification, a resource is required to ensure that the notification isn't
   sent until the current transaction for that resource is closed. If you don't need this

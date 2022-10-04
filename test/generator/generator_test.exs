@@ -161,7 +161,7 @@ defmodule Ash.Test.GeneratorTest do
   end
 
   describe "changeset" do
-    test "a directly useable changeset can be created" do
+    test "a directly usable changeset can be created" do
       Post
       |> Ash.Generator.changeset(:create)
       |> Api.create!()

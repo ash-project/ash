@@ -17,7 +17,7 @@ defmodule Ash.Filter.Runtime do
 
   @doc """
   Removes any records that don't match the filter. Automatically loads
-  if necessary. If there are any ambigious terms in the filter (e.g things
+  if necessary. If there are any ambiguous terms in the filter (e.g things
   that could only be determined by data layer), it is assumed that they
   are not matches.
   """

@@ -2903,7 +2903,7 @@ defmodule Ash.Changeset do
   `%{notifications: [%Ash.Resource.Notification{}, ...]}`.
 
   The around_action calls happen first, and then (after they each resolve their callbacks) the `before_action`
-  hooks are called, followed by the action itself ocurring at the data layer and then the `after_action` hooks being run.
+  hooks are called, followed by the action itself occurring at the data layer and then the `after_action` hooks being run.
   Then, the code that appeared *after* the callbacks were called is then run.
 
   For example:

@@ -3,7 +3,7 @@
 A flow is a static definition of a set of steps to be run.
 
 Flows are backed by `executors`, which determine how the workflow steps are performed.
-The executor can be overriden on invocation, but not all executors will be capable of running all flows.
+The executor can be overridden on invocation, but not all executors will be capable of running all flows.
 As of this writing, the default executor is the only one. It runs all steps in parallel unless values must be provided from one step to another, or in steps that are enclosed by a transaction.
 
 Ash.Flow is still in its early days, so expect many features, step types, and executors to come in the future.

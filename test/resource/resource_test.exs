@@ -22,7 +22,7 @@ defmodule Ash.Test.Resource.ResourceTest do
   end
 
   defmodule Concat do
-    # An example concatenation calculation, that accepts the delimeter as an argument
+    # An example concatenation calculation, that accepts the delimiter as an argument
     use Ash.Calculation
 
     def init(opts) do

@@ -319,7 +319,7 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 ### Bug Fixes:
 
-* propery set authorize?: false on runtime filter
+* property set authorize?: false on runtime filter
 
 * explicitly don't authorize the runtime filter authorization logic
 
@@ -578,7 +578,7 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 * don't automatically url encode keyset values
 
-* fixed bug wher embedded resources would always provide defaults, not allowing you to declare your own (primary?) actions (#339)
+* fixed bug when embedded resources would always provide defaults, not allowing you to declare your own (primary?) actions (#339)
 
 * keyset pagination counts all rows
 
@@ -812,7 +812,7 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 * add eager validate identities
 
-* percolate `nil` values in operators in ash expresion language (like SQL)
+* percolate `nil` values in operators in ash expression language (like SQL)
 
 * add `return_destroyed?` option
 
@@ -1497,7 +1497,7 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 * skip resource action if no changes have been made
 
-* add `changing_attributes?/1` to determine if any attributes are chaning
+* add `changing_attributes?/1` to determine if any attributes are changing
 
 * add global changes
 
@@ -1620,7 +1620,7 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 * update to latest picosat_elixir for releases
 
-* cast `nil` enum values propertly
+* cast `nil` enum values properly
 
 * set api in destroy action hooks
 
@@ -3956,7 +3956,7 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 ### Features:
 
-* Optimize relashionship records replacement (#135)
+* Optimize relationship records replacement (#135)
 
 ### Bug Fixes:
 
