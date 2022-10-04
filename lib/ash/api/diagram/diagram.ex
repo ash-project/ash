@@ -13,6 +13,7 @@ defmodule Ash.Api.Info.Diagram do
 
   @indent "    "
   @show_private? false
+  @argument_print_limit 4
 
   @default_opts indent: @indent, show_private?: @show_private?
 
@@ -123,6 +124,28 @@ defmodule Ash.Api.Info.Diagram do
     Enum.map_join(list, "\n", fn item -> "#{indent}#{indent}#{template_fn.(item)}" end)
   end
 
+  defp list_arguments_and_attributes(resource, action) do
+    arguments = action.arguments
+
+    attributes =
+      case action.type do
+        :read -> []
+        _ -> action.accept |> Enum.map(&Ash.Resource.Info.attribute(resource, &1))
+      end
+
+    list_arguments(arguments ++ attributes)
+  end
+
+  defp list_arguments(arguments) when length(arguments) > @argument_print_limit do
+    {displayed_args, _rest} = Enum.split(arguments, @argument_print_limit)
+    list_arguments(displayed_args) <> ", ..."
+  end
+
+  defp list_arguments(arguments) do
+    arguments
+    |> Enum.map_join(", ", &"#{class_short_type(&1.type)} #{&1.name}")
+  end
+
   @doc """
   Generates a Mermaid Class Diagram for a given API.
 
@@ -163,7 +186,11 @@ defmodule Ash.Api.Info.Diagram do
               indent,
               &"#{resource_name(&1.destination)}#{if &1.cardinality == :many, do: "[]", else: ""} #{&1.name}"
             ),
-            join_template(actions, indent, &"#{&1.name}()")
+            join_template(
+              actions,
+              indent,
+              &"#{&1.name}(#{list_arguments_and_attributes(resource, &1)})"
+            )
           ]
           |> Enum.reject(&(&1 == ""))
           |> Enum.join("\n")
