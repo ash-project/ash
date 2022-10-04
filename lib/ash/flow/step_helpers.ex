@@ -6,6 +6,11 @@ defmodule Ash.Flow.StepHelpers do
     {:_arg, name}
   end
 
+  @doc "Accesses a flow argument"
+  def merge(results) do
+    {:_merge, results}
+  end
+
   @doc "Accesses the result of a step"
   def result(step) do
     {:_result, step}

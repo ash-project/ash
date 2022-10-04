@@ -217,6 +217,10 @@ defmodule Ash.Flow.Chart.Mermaid do
     "Run Flow: #{inspect(flow)}"
   end
 
+  defp short_name(%Ash.Flow.Step.Validate{action: action, resource: resource}) do
+    "Validate: #{inspect(resource)}.#{action}"
+  end
+
   defp short_name(%Ash.Flow.Step.Create{action: action, resource: resource}) do
     "Create: #{inspect(resource)}.#{action}"
   end

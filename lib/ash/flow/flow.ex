@@ -14,21 +14,18 @@ defmodule Ash.Flow do
 
   require Ash.Tracer
 
-  @spec run!(any, any, Keyword.t()) :: any
+  @spec run!(any, any, Keyword.t()) :: Ash.Flow.Result.t() | no_return()
   def run!(flow, input, opts \\ []) do
     case run(flow, input, opts) do
-      {:ok, result, metadata} ->
-        {result, metadata}
-
-      {:ok, result} ->
+      %Ash.Flow.Result{valid?: true} = result ->
         result
 
-      {:error, error} ->
-        raise Ash.Error.to_error_class(error)
+      %Ash.Flow.Result{errors: errors} ->
+        raise Ash.Error.to_error_class(errors)
     end
   end
 
-  @spec run(any, any, Keyword.t()) :: {:ok, any} | {:ok, any, any} | {:error, Ash.Error.t()}
+  @spec run(any, any, Keyword.t()) :: Ash.Flow.Result.t()
   def run(flow, input, opts \\ []) do
     executor = opts[:executor] || Ash.Flow.Executor.AshEngine
 
@@ -44,10 +41,55 @@ defmodule Ash.Flow do
       } do
         with {:ok, input} <- cast_input(flow, input),
              {:ok, built} <- executor.build(flow, input, opts) do
-          executor.execute(built, input, opts)
+          case executor.execute(built, input, opts) do
+            {:ok, result, metadata} ->
+              %Ash.Flow.Result{
+                flow: flow,
+                params: input,
+                result: result,
+                notifications: metadata[:notifications] || [],
+                valid?: true,
+                complete?: true
+              }
+
+            {:ok, result} ->
+              %Ash.Flow.Result{
+                flow: flow,
+                params: input,
+                result: result,
+                valid?: true,
+                complete?: true
+              }
+
+            {:error, error} ->
+              %Ash.Flow.Result{
+                flow: flow,
+                params: input,
+                valid?: false,
+                complete?: false,
+                errors: List.wrap(error)
+              }
+          end
         else
+          {:error, new_input, error} ->
+            %Ash.Flow.Result{
+              flow: flow,
+              params: input,
+              input: new_input,
+              valid?: false,
+              complete?: false,
+              errors: List.wrap(error)
+            }
+
           {:error, error} ->
-            {:error, error}
+            %Ash.Flow.Result{
+              flow: flow,
+              params: input,
+              input: input,
+              valid?: false,
+              complete?: false,
+              errors: List.wrap(error)
+            }
         end
       end
     end
@@ -114,10 +156,10 @@ defmodule Ash.Flow do
               {:cont, {:ok, Map.put(acc, arg.name, nil)}}
 
             {:constrained, {:error, error}} ->
-              {:halt, {:error, error}}
+              {:halt, {:error, acc, error}}
 
             {:error, error} ->
-              {:halt, {:error, error}}
+              {:halt, {:error, acc, error}}
           end
       end
     end)
@@ -282,6 +324,10 @@ defmodule Ash.Flow do
     {:_path, do_remap_result_references(value, prefix), do_remap_result_references(path, prefix)}
   end
 
+  defp do_remap_result_references({:_merge, items}, prefix) do
+    {:_merge, do_remap_result_references(items, prefix)}
+  end
+
   defp do_remap_result_references({:_result, step}, prefix) when is_function(prefix) do
     {:_result, prefix.(step)}
   end
@@ -323,6 +369,13 @@ defmodule Ash.Flow do
 
   defp do_set_dependent_values({:_path, value, path}, input) do
     {:_path, do_set_dependent_values(value, input), do_set_dependent_values(path, input)}
+  end
+
+  defp do_set_dependent_values({:_merge, items}, input) do
+    items
+    |> Enum.map(&do_set_dependent_values(&1, input))
+    |> Enum.reject(&is_nil/1)
+    |> Enum.reduce(%{}, &Map.merge(&2, &1))
   end
 
   defp do_set_dependent_values({:_result, step}, input) do
@@ -432,6 +485,17 @@ defmodule Ash.Flow do
     {new_value, value_deps} = do_handle_input_template(value, input)
     {new_path, path_deps} = do_handle_input_template(path, input)
     {{:_path, new_value, new_path}, value_deps ++ path_deps}
+  end
+
+  defp do_handle_input_template({:_merge, items}, input) do
+    {new_items, deps} =
+      Enum.reduce(items, {[], []}, fn item, {items, deps} ->
+        {new_item, new_deps} = do_handle_input_template(item, input)
+
+        {[new_item | items], new_deps ++ deps}
+      end)
+
+    {{:_merge, new_items}, deps}
   end
 
   defp do_handle_input_template({:_arg, name}, input) do

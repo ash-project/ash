@@ -2,6 +2,7 @@ defmodule Ash.FlowTest.FlowCompositionTest do
   @moduledoc false
   use ExUnit.Case, async: false
 
+  alias Ash.Flow.Result
   alias Ash.Test.Support.Flow.{Api, Org, User}
 
   setup do
@@ -151,7 +152,8 @@ defmodule Ash.FlowTest.FlowCompositionTest do
 
     org_id = org.id
 
-    assert %{org: %{id: ^org_id}, users: users} = GetOrgAndUsers.run!("Org 1")
+    assert %Ash.Flow.Result{result: %{org: %{id: ^org_id}, users: users}} =
+             GetOrgAndUsers.run!("Org 1")
 
     assert users |> Enum.map(& &1.first_name) |> Enum.sort() == ["abc", "def"]
   end
@@ -189,6 +191,6 @@ defmodule Ash.FlowTest.FlowCompositionTest do
     |> Ash.Changeset.for_create(:create, %{first_name: "def", org: org.id})
     |> Api.create!()
 
-    assert GetOrgAndUsersAndUnapproveThemReturningCount.run!("Org 1") == 2
+    assert %Result{result: 2} = GetOrgAndUsersAndUnapproveThemReturningCount.run!("Org 1")
   end
 end

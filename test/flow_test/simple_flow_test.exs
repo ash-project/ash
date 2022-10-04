@@ -2,6 +2,7 @@ defmodule Ash.FlowTest.SimpleFlowTest do
   @moduledoc false
   use ExUnit.Case, async: false
 
+  alias Ash.Flow.Result
   alias Ash.Test.Support.Flow.{Api, Org, User}
 
   setup do
@@ -205,7 +206,7 @@ defmodule Ash.FlowTest.SimpleFlowTest do
 
     org_id = org.id
 
-    assert %{id: ^org_id} = GetOrgByName.run!("Org 1")
+    assert %Result{result: %{id: ^org_id}} = GetOrgByName.run!("Org 1")
   end
 
   test "a flow with multiple steps and dependencies can be run" do
@@ -225,7 +226,7 @@ defmodule Ash.FlowTest.SimpleFlowTest do
 
     org_id = org.id
 
-    assert %{org: %{id: ^org_id}, users: users} = GetOrgAndUsers.run!("Org 1")
+    assert %Result{result: %{org: %{id: ^org_id}, users: users}} = GetOrgAndUsers.run!("Org 1")
 
     assert users |> Enum.map(& &1.first_name) |> Enum.sort() == ["abc", "def"]
   end
@@ -236,8 +237,9 @@ defmodule Ash.FlowTest.SimpleFlowTest do
       |> Ash.Changeset.for_create(:create, %{name: "Org 1"})
       |> Api.create!()
 
-    assert %{org: %{name: "Org 1"}, user: %{first_name: "Bruce", last_name: "Wayne"}} =
-             SignUpUser.run!(org.name, "Bruce", "Wayne")
+    assert %Result{
+             result: %{org: %{name: "Org 1"}, user: %{first_name: "Bruce", last_name: "Wayne"}}
+           } = SignUpUser.run!(org.name, "Bruce", "Wayne")
   end
 
   test "a flow with a create and an update step works" do
@@ -246,9 +248,11 @@ defmodule Ash.FlowTest.SimpleFlowTest do
       |> Ash.Changeset.for_create(:create, %{name: "Org 1"})
       |> Api.create!()
 
-    assert %{
-             org: %{name: "Org 1"},
-             user: %{first_name: "Bruce", last_name: "Wayne", approved: true}
+    assert %Result{
+             result: %{
+               org: %{name: "Org 1"},
+               user: %{first_name: "Bruce", last_name: "Wayne", approved: true}
+             }
            } = SignUpAndApproveUser.run!(org.name, "Bruce", "Wayne")
   end
 
@@ -258,9 +262,11 @@ defmodule Ash.FlowTest.SimpleFlowTest do
       |> Ash.Changeset.for_create(:create, %{name: "Org 1"})
       |> Api.create!()
 
-    assert %{
-             org: %{name: "Org 1"},
-             user: %{first_name: "Bruce", last_name: "Wayne", approved: true}
+    assert %Result{
+             result: %{
+               org: %{name: "Org 1"},
+               user: %{first_name: "Bruce", last_name: "Wayne", approved: true}
+             }
            } = SignUpApproveUserThenDeleteIt.run!(org.name, "Bruce", "Wayne")
 
     assert Api.read!(User) == []

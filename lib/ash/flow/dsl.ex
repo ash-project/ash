@@ -54,6 +54,26 @@ defmodule Ash.Flow.Dsl do
     schema: Ash.Flow.Step.Update.schema()
   }
 
+  @validate %Spark.Dsl.Entity{
+    name: :validate,
+    describe: """
+    Validates some input against an action.
+    """,
+    links: [],
+    examples: [
+      """
+      validate :update_post, MyApp.Post, :update do
+        record result(:get_post)
+        only_keys [:name]
+      end
+      """
+    ],
+    no_depend_modules: [:resource, :touches_resources],
+    target: Ash.Flow.Step.Update,
+    args: [:name, :resource, :action],
+    schema: Ash.Flow.Step.Validate.schema()
+  }
+
   @destroy %Spark.Dsl.Entity{
     name: :destroy,
     describe: """
@@ -197,7 +217,7 @@ defmodule Ash.Flow.Dsl do
     ]
   }
 
-  @step_entities [@create, @debug, @update, @destroy, @read, @run_flow, @custom]
+  @step_entities [@create, @debug, @update, @destroy, @validate, @read, @run_flow, @custom]
 
   @transaction %Spark.Dsl.Entity{
     name: :transaction,

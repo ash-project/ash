@@ -44,6 +44,14 @@ defmodule Ash.Flow.Step do
         """,
         links: []
       ],
+      halt_if: [
+        type: :any,
+        doc: """
+        Halts the step by emitting an error (with an `Ash.Error.Flow.Halted`). Can use template variables.
+
+        To attach a specific reason, use a tuple, like so `halt_if {result(:halt_on_commit), :halting_before_commit}`
+        """
+      ],
       description: [
         type: :string,
         doc: """
