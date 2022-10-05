@@ -62,6 +62,7 @@ defmodule Ash.Policy.FilterCheck do
         |> filter()
         |> Ash.Filter.build_filter_from_template(actor)
         |> try_eval(authorizer)
+        |> IO.inspect(label: "result of attempting to eval at runtime")
         |> case do
           {:ok, false} ->
             {:ok, false}
@@ -96,18 +97,31 @@ defmodule Ash.Policy.FilterCheck do
              resource: resource,
              changeset: %Ash.Changeset{action_type: :create} = changeset
            }) do
-        with {:ok, hydrated} <-
-               Ash.Filter.hydrate_refs(expression, %{
-                 resource: resource,
-                 aggregates: %{},
-                 calculations: %{},
-                 public?: false
-               }),
-             {:ok, fake_result} <- Ash.Changeset.apply_attributes(changeset, force?: true) do
-          Ash.Filter.Runtime.do_match(fake_result, hydrated)
-        else
+        case Ash.Filter.hydrate_refs(expression, %{
+               resource: resource,
+               aggregates: %{},
+               calculations: %{},
+               public?: false
+             }) do
+          {:ok, hydrated} ->
+            if changeset.context[:private][:pre_flight_authorization?] do
+              with {:no_related_refs, true} <-
+                     {:no_related_refs, no_related_references?(expression)},
+                   {:ok, fake_result} <- Ash.Changeset.apply_attributes(changeset, force?: true) do
+                Ash.Filter.Runtime.do_match(fake_result, hydrated)
+              else
+                {:no_related_refs, false} ->
+                  :unknown
+
+                {:error, error} ->
+                  {:halt, {:error, error}}
+              end
+            else
+              Ash.Filter.Runtime.do_match(nil, hydrated)
+            end
+
           {:error, error} ->
-            {:halt, {:error, error}}
+            {:error, error}
         end
       end
 
@@ -149,6 +163,12 @@ defmodule Ash.Policy.FilterCheck do
           {:error, error} ->
             {:halt, {:error, error}}
         end
+      end
+
+      defp no_related_references?(expression) do
+        expression
+        |> Ash.Filter.list_refs()
+        |> Enum.any?(&(&1.relationship_path != []))
       end
 
       def auto_filter(actor, authorizer, opts) do

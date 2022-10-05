@@ -333,36 +333,50 @@ defmodule Ash.Filter.Runtime do
     record
     |> load_unflattened(path)
     |> get_related(path)
-    |> List.wrap()
-    |> Enum.reduce_while({:ok, false}, fn related, {:ok, false} ->
-      case resolve_expr(expr, related) do
-        {:ok, falsy} when falsy in [nil, false] ->
-          {:cont, {:ok, false}}
+    |> case do
+      :unknown ->
+        :unknown
 
-        {:ok, _} ->
-          {:halt, {:ok, true}}
+      related ->
+        related
+        |> List.wrap()
+        |> Enum.reduce_while({:ok, false}, fn related, {:ok, false} ->
+          case resolve_expr(expr, related) do
+            {:ok, falsy} when falsy in [nil, false] ->
+              {:cont, {:ok, false}}
 
-        other ->
-          {:halt, other}
-      end
-    end)
+            {:ok, _} ->
+              {:halt, {:ok, true}}
+
+            other ->
+              {:halt, other}
+          end
+        end)
+    end
   end
 
   defp resolve_expr(%Ash.Query.Exists{at_path: at_path} = exists, record) do
     record
     |> get_related(at_path)
-    |> Enum.reduce_while({:ok, false}, fn related, {:ok, false} ->
-      case resolve_expr(%{exists | at_path: []}, related) do
-        {:ok, true} ->
-          {:halt, {:ok, true}}
+    |> case do
+      :unknown ->
+        :unknown
 
-        {:ok, _} ->
-          {:cont, {:ok, false}}
+      related ->
+        related
+        |> Enum.reduce_while({:ok, false}, fn related, {:ok, false} ->
+          case resolve_expr(%{exists | at_path: []}, related) do
+            {:ok, true} ->
+              {:halt, {:ok, true}}
 
-        other ->
-          {:halt, other}
-      end
-    end)
+            {:ok, _} ->
+              {:cont, {:ok, false}}
+
+            other ->
+              {:halt, other}
+          end
+        end)
+    end
   end
 
   defp resolve_expr(%mod{__predicate__?: _, left: left, right: right}, record) do
@@ -438,6 +452,9 @@ defmodule Ash.Filter.Runtime do
     record
     |> get_related(path)
     |> case do
+      :unknown ->
+        :unknown
+
       [] ->
         {:ok, nil}
 
@@ -548,14 +565,30 @@ defmodule Ash.Filter.Runtime do
   @doc false
   def get_related(nil, _), do: []
 
+  def get_related(%Ash.NotLoaded{}, []) do
+    :unknown
+  end
+
   def get_related(record, []) do
     record
   end
 
   def get_related(records, paths) when is_list(records) do
-    Enum.flat_map(records, fn record ->
-      List.wrap(get_related(record, paths))
+    records
+    |> Enum.reduce_while([], fn
+      :unknown, _records ->
+        {:halt, :unknown}
+
+      record, records ->
+        {:cont, [record | records]}
     end)
+    |> case do
+      :unknown ->
+        :unknown
+
+      records ->
+        Enum.reverse(records)
+    end
   end
 
   def get_related(record, [key | rest]) do
@@ -564,7 +597,13 @@ defmodule Ash.Filter.Runtime do
         []
 
       value ->
-        List.wrap(get_related(value, rest))
+        case get_related(value, rest) do
+          :unknown ->
+            :unknown
+
+          related ->
+            List.wrap(related)
+        end
     end
   end
 end

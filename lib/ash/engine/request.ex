@@ -846,9 +846,7 @@ defmodule Ash.Engine.Request do
             Logger.error("""
             Could not apply filter policy because it cannot be checked using Ash.Filter.Runtime: #{inspect(filter)}.
 
-            If you are using policies and the policy must include a filter like this, try setting the access_type to `:runtime`"
-
-            Otherwise, please report this issue.
+            Many expressions, like those that reference relationships, require using custom checks for create actions.
             """)
 
             {:error,
