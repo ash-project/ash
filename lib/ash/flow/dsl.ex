@@ -176,6 +176,7 @@ defmodule Ash.Flow.Dsl do
     no_depend_modules: [:type],
     target: Ash.Flow.Argument,
     args: [:name, :type],
+    transform: {Ash.Type, :set_type_transformation, []},
     schema: Ash.Flow.Argument.schema()
   }
 
@@ -311,7 +312,6 @@ defmodule Ash.Flow.Dsl do
   @transformers [
     Ash.Flow.Transformers.SetApi,
     Ash.Flow.Transformers.ValidateUniqueNames,
-    Ash.Flow.Transformers.SetTypes,
     Ash.Flow.Transformers.ValidateNoEmptySteps
   ]
 

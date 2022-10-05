@@ -12,6 +12,7 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
+    transform: {Ash.Type, :set_type_transformation, []},
     target: Ash.Resource.Attribute,
     args: [:name, :type],
     modules: [:type],
@@ -29,7 +30,8 @@ defmodule Ash.Resource.Dsl do
     links: [],
     target: Ash.Resource.Attribute,
     args: [:name],
-    schema: Ash.Resource.Attribute.create_timestamp_schema()
+    schema: Ash.Resource.Attribute.create_timestamp_schema(),
+    transform: {Ash.Type, :set_type_transformation, []}
   }
 
   @update_timestamp %Spark.Dsl.Entity{
@@ -43,7 +45,8 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Attribute,
     schema: Ash.Resource.Attribute.update_timestamp_schema(),
-    args: [:name]
+    args: [:name],
+    transform: {Ash.Type, :set_type_transformation, []}
   }
 
   @integer_primary_key %Spark.Dsl.Entity{
@@ -60,7 +63,8 @@ defmodule Ash.Resource.Dsl do
     args: [:name],
     target: Ash.Resource.Attribute,
     schema: Ash.Resource.Attribute.integer_primary_key_schema(),
-    auto_set_fields: [allow_nil?: false]
+    auto_set_fields: [allow_nil?: false],
+    transform: {Ash.Type, :set_type_transformation, []}
   }
 
   @uuid_primary_key %Spark.Dsl.Entity{
@@ -75,7 +79,8 @@ defmodule Ash.Resource.Dsl do
     args: [:name],
     target: Ash.Resource.Attribute,
     schema: Ash.Resource.Attribute.uuid_primary_key_schema(),
-    auto_set_fields: [allow_nil?: false]
+    auto_set_fields: [allow_nil?: false],
+    transform: {Ash.Type, :set_type_transformation, []}
   }
 
   @attributes %Spark.Dsl.Section{
@@ -334,6 +339,7 @@ defmodule Ash.Resource.Dsl do
     modules: [:type],
     target: Ash.Resource.Actions.Argument,
     args: [:name, :type],
+    transform: {Ash.Type, :set_type_transformation, []},
     schema: Ash.Resource.Actions.Argument.schema()
   }
 
@@ -354,7 +360,8 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Actions.Metadata,
     args: [:name, :type],
-    schema: Ash.Resource.Actions.Metadata.schema()
+    schema: Ash.Resource.Actions.Metadata.schema(),
+    transform: {Ash.Type, :set_type_transformation, []}
   }
 
   @change %Spark.Dsl.Entity{
@@ -1055,7 +1062,8 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Calculation.Argument,
     args: [:name, :type],
-    schema: Ash.Resource.Calculation.Argument.schema()
+    schema: Ash.Resource.Calculation.Argument.schema(),
+    transform: {Ash.Type, :set_type_transformation, []}
   }
 
   @calculate %Spark.Dsl.Entity{
@@ -1093,6 +1101,7 @@ defmodule Ash.Resource.Dsl do
     entities: [
       arguments: [@argument]
     ],
+    transform: {Ash.Type, :set_type_transformation, []},
     schema: Ash.Resource.Calculation.schema()
   }
 
@@ -1208,7 +1217,6 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.ValidateMultitenancy,
     Ash.Resource.Transformers.DefaultPrimaryKey,
     Ash.Resource.Transformers.DefaultAccept,
-    Ash.Resource.Transformers.SetTypes,
     Ash.Resource.Transformers.RequireUniqueFieldNames,
     Ash.Resource.Transformers.NoReservedFieldNames,
     Ash.Resource.Transformers.ValidateRelationshipAttributes,

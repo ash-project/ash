@@ -834,4 +834,67 @@ defmodule Ash.Type do
   defp ash_type_module?(module) do
     Ash.Helpers.implements_behaviour?(module, __MODULE__)
   end
+
+  @doc false
+  def set_type_transformation(%{type: type, constraints: constraints} = thing) do
+    type = get_type(type)
+
+    case validate_constraints(type, constraints) do
+      {:ok, constraints} ->
+        {:ok, %{thing | type: type, constraints: constraints}}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp validate_constraints(type, constraints) do
+    case type do
+      {:array, type} ->
+        with {:ok, new_constraints} <-
+               Spark.OptionsHelpers.validate(
+                 Keyword.delete(constraints, :items),
+                 array_constraints(type)
+               ),
+             {:ok, item_constraints} <- validate_item_constraints(type, constraints) do
+          {:ok, Keyword.put(new_constraints, :items, item_constraints)}
+        end
+
+      type ->
+        schema = constraints(type)
+
+        case Spark.OptionsHelpers.validate(constraints, schema) do
+          {:ok, constraints} ->
+            validate_none_reserved(constraints, type)
+
+          {:error, error} ->
+            {:error, error}
+        end
+    end
+  end
+
+  defp validate_item_constraints(type, constraints) do
+    schema = constraints(type)
+
+    case Spark.OptionsHelpers.validate(constraints[:items] || [], schema) do
+      {:ok, item_constraints} ->
+        validate_none_reserved(item_constraints, type)
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  @reserved ~w(default source autogenerate read_after_writes virtual primary_key load_in_query redact)a
+
+  defp validate_none_reserved(constraints, type) do
+    case Enum.find(@reserved, &Keyword.has_key?(constraints, &1)) do
+      nil ->
+        {:ok, constraints}
+
+      key ->
+        {:error,
+         "Invalid constraint key #{key} in type #{inspect(type)}. This name is reserved due to the underlying ecto implementation."}
+    end
+  end
 end
