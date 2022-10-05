@@ -4,6 +4,7 @@ spark_locals_without_parens = [
   action: 1,
   allow: 1,
   allow_async?: 1,
+  allow_expr?: 1,
   allow_nil?: 1,
   allow_nil_input: 1,
   allow_unregistered?: 1,

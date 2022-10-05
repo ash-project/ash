@@ -74,6 +74,7 @@ defmodule Ash.Query do
   alias Ash.Query.{Aggregate, Calculation}
 
   require Ash.Tracer
+  import Ash.Filter.TemplateHelpers, only: [is_expr: 1]
 
   defimpl Inspect do
     import Inspect.Algebra
@@ -488,13 +489,8 @@ defmodule Ash.Query do
   end
 
   @doc "Returns true if the value is one of the expression structs."
-  def is_expr?(%Ash.Query.Call{}), do: true
-  def is_expr?(%Ash.Query.BooleanExpression{}), do: true
-  def is_expr?(%Ash.Query.Not{}), do: true
-  def is_expr?(%Ash.Query.Exists{}), do: true
-  def is_expr?(%Ash.Query.Ref{}), do: true
-  def is_expr?(%{__predicate__?: _}), do: true
-  def is_expr?(_), do: false
+  def is_expr?(item) when is_expr(item), do: true
+  def is_expr?(_), do: true
 
   @doc """
   Creates an Ash expression for evaluation later.
@@ -975,18 +971,29 @@ defmodule Ash.Query do
       end
 
     Enum.reduce_while(calculation.arguments, {:ok, %{}}, fn argument, {:ok, arg_values} ->
-      value = default(Map.get(args, argument.name), argument.default)
+      value =
+        default(
+          Map.get(args, argument.name, Map.get(args, to_string(argument.name))),
+          argument.default
+        )
 
-      if is_nil(value) do
-        if argument.allow_nil? do
+      cond do
+        is_expr(value) && argument.allow_expr? ->
           {:cont, {:ok, Map.put(arg_values, argument.name, nil)}}
-        else
+
+        is_expr(value) ->
+          {:halt, {:error, "Argument #{argument.name} does not support expressions!"}}
+
+        is_nil(value) && argument.allow_nil? ->
+          {:cont, {:ok, Map.put(arg_values, argument.name, nil)}}
+
+        is_nil(value) ->
           {:halt, {:error, "Argument #{argument.name} is required"}}
-        end
-      else
-        if !Map.get(args, argument.name) && value do
+
+        !Map.get(args, argument.name, Map.get(args, to_string(argument.name))) && value ->
           {:cont, {:ok, Map.put(arg_values, argument.name, value)}}
-        else
+
+        true ->
           with {:ok, casted} <- Ash.Type.cast_input(argument.type, value, argument.constraints),
                {:ok, casted} <-
                  Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
@@ -995,7 +1002,6 @@ defmodule Ash.Query do
             {:error, error} ->
               {:halt, {:error, error}}
           end
-        end
       end
     end)
   end
@@ -1442,6 +1448,62 @@ defmodule Ash.Query do
 
       {:error, error} ->
         add_error(query, :calculations, error)
+    end
+  end
+
+  @doc """
+  Adds a resource calculation to the query as a custom calculation with the provided name.
+  """
+  def load_calculation_as(query, calc_name, as_name, context \\ %{}) do
+    query = to_query(query)
+
+    if resource_calculation = Ash.Resource.Info.calculation(query.resource, calc_name) do
+      {module, opts} = resource_calculation.calculation
+
+      with {:ok, args} <- validate_calculation_arguments(resource_calculation, context),
+           {:ok, calculation} <-
+             Calculation.new(
+               resource_calculation.name,
+               module,
+               opts,
+               resource_calculation.type,
+               Map.put(args, :context, query.context),
+               resource_calculation.filterable?,
+               resource_calculation.load
+             ) do
+        fields_to_select =
+          resource_calculation.select
+          |> Kernel.||([])
+          |> Enum.concat(module.select(query, opts, calculation.context) || [])
+          |> Enum.uniq()
+          |> Enum.filter(&Ash.Resource.Info.attribute(query.resource, &1))
+
+        loads =
+          module.load(
+            query,
+            opts,
+            Map.put(calculation.context, :context, query.context)
+          )
+          |> Ash.Actions.Helpers.validate_calculation_load!(module)
+          |> Enum.concat(List.wrap(resource_calculation.load))
+          |> Enum.reject(&Ash.Resource.Info.attribute(query.resource, &1))
+
+        calculation = %{
+          calculation
+          | name: as_name,
+            load: nil,
+            select: fields_to_select,
+            allow_async?: resource_calculation.allow_async?,
+            required_loads: loads
+        }
+
+        Map.update!(query, :calculations, &Map.put(&1, as_name, calculation))
+      else
+        {:error, error} ->
+          Ash.Query.add_error(query, error)
+      end
+    else
+      Ash.Query.add_error(query, "No such calculation: #{inspect(calc_name)}")
     end
   end
 

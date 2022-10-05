@@ -115,7 +115,7 @@ defmodule Ash.Resource.Calculation do
 
   defmodule Argument do
     @moduledoc "An argument to a calculation"
-    defstruct [:name, :type, :default, :allow_nil?, :constraints]
+    defstruct [:name, :type, :default, :allow_nil?, :constraints, :allow_expr?]
 
     @schema [
       name: [
@@ -145,6 +145,13 @@ defmodule Ash.Resource.Calculation do
         default: true,
         links: [],
         doc: "Whether or not the argument value may be nil (or may be not provided)"
+      ],
+      allow_expr?: [
+        type: :boolean,
+        default: false,
+        links: [],
+        doc:
+          "Experimental option to allow passing expressions as argument values. Expressions cannot be type validated."
       ],
       constraints: [
         type: :keyword_list,
