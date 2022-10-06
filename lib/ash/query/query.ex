@@ -775,7 +775,8 @@ defmodule Ash.Query do
   end
 
   def loading?(query, item) when is_atom(item) do
-    Keyword.has_key?(query.load || [], item)
+    Keyword.has_key?(query.load || [], item) || Map.has_key?(query.calculations, item) ||
+      Map.has_key?(query.aggregates, item)
   end
 
   @doc """
