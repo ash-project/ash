@@ -116,7 +116,7 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
       assert [%Post{title: "foo"}] = Api.read!(Post, authorize?: true)
     end
 
-    test "a simple filter can also be applied to changesets" do
+    test "a filter cannot be applied to creates" do
       start_supervised(
         {Ash.Test.Authorizer,
          strict_check: {:filter, [title: "foo"]}, strict_check_context: [:query, :changeset]}

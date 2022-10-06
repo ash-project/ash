@@ -9,6 +9,12 @@ defmodule Ash.Policy.Check.ActionType do
 
   @impl true
   def match?(_actor, %{action: %{type: type}}, options) do
-    type == options[:type]
+    case List.wrap(options[:type]) do
+      [configured_type] ->
+        type == configured_type
+
+      types ->
+        Enum.any?(types, &(&1 == type))
+    end
   end
 end

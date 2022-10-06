@@ -62,7 +62,6 @@ defmodule Ash.Policy.FilterCheck do
         |> filter()
         |> Ash.Filter.build_filter_from_template(actor)
         |> try_eval(authorizer)
-        |> IO.inspect(label: "result of attempting to eval at runtime")
         |> case do
           {:ok, false} ->
             {:ok, false}

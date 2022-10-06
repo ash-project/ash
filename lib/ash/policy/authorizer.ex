@@ -393,7 +393,7 @@ defmodule Ash.Policy.Authorizer do
     |> do_strict_check_facts()
     |> case do
       {:ok, authorizer} ->
-        strict_check_result(authorizer) |> IO.inspect(label: "strict_check_result")
+        strict_check_result(authorizer)
 
       {:error, error} ->
         {:error, error}

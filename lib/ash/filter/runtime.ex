@@ -580,14 +580,22 @@ defmodule Ash.Filter.Runtime do
         {:halt, :unknown}
 
       record, records ->
-        {:cont, [record | records]}
+        case get_related(record, paths) do
+          :unknown ->
+            {:halt, :unknown}
+
+          related ->
+            {:cont, [related | records]}
+        end
     end)
     |> case do
       :unknown ->
         :unknown
 
       records ->
-        Enum.reverse(records)
+        records
+        |> List.flatten()
+        |> Enum.reverse()
     end
   end
 
