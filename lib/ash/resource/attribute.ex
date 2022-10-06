@@ -201,6 +201,10 @@ defmodule Ash.Resource.Attribute do
                               |> OptionsHelpers.set_default!(:type, :integer)
                               |> Keyword.delete(:allow_nil?)
 
+  def transform(attribute) do
+    Ash.Type.set_type_transformation(%{attribute | source: attribute.source || attribute.name})
+  end
+
   @doc false
   def attribute_schema, do: @schema
   def create_timestamp_schema, do: @create_timestamp_schema

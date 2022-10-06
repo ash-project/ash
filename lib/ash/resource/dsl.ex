@@ -12,7 +12,7 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
-    transform: {Ash.Type, :set_type_transformation, []},
+    transform: {Ash.Resource.Attribute, :transform, []},
     target: Ash.Resource.Attribute,
     args: [:name, :type],
     modules: [:type],
