@@ -9,6 +9,7 @@ defmodule Ash.Flow.Result do
     params: %{},
     input: %{},
     notifications: [],
+    runner_metadata: %{},
     errors: [],
     valid?: false,
     complete?: false

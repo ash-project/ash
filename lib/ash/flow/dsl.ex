@@ -285,11 +285,43 @@ defmodule Ash.Flow.Dsl do
     ]
   }
 
-  transaction = %{@transaction | entities: [steps: [@map | @step_entities]]}
-  map = %{@map | entities: [steps: [@transaction | @step_entities]]}
+  @branch %Spark.Dsl.Entity{
+    name: :branch,
+    describe: """
+    Runs a set of steps based on a given value.
+    """,
+    schema: Ash.Flow.Step.Branch.schema(),
+    target: Ash.Flow.Step.Branch,
+    args: [:name, :condition],
+    recursive_as: :steps,
+    no_depend_modules: [:touches_resources],
+    links: [],
+    entities: [
+      steps: @step_entities
+    ],
+    examples: [
+      """
+      branch :create_users, result(:create_users?) do
+        output :create_user
+
+        create :create_user, Org, :create do
+          input %{
+            first_name: {Faker.Person, :first_name, []},
+            last_name: {Faker.Person, :last_name, []}
+          }
+        end
+      end
+      """
+    ]
+  }
+
+  transaction = %{@transaction | entities: [steps: [@branch | [@map | @step_entities]]]}
+  map = %{@map | entities: [steps: [@branch | [@transaction | @step_entities]]]}
+  branch = %{@branch | entities: [steps: [@map | [@transaction | @step_entities]]]}
 
   @transaction transaction
   @map map
+  @branch branch
 
   @steps %Spark.Dsl.Section{
     name: :steps,
@@ -306,7 +338,7 @@ defmodule Ash.Flow.Dsl do
     ],
     links: [],
     imports: [Ash.Flow.StepHelpers],
-    entities: [@map, @transaction] ++ @step_entities
+    entities: [@map, @transaction, @branch] ++ @step_entities
   }
 
   @transformers [

@@ -1,8 +1,8 @@
 defmodule Ash.Flow do
   @moduledoc """
-  A flow is a static definition of a set of steps to be run.
+  A flow is a static definition of a set of steps to be .
 
-  See the {{link:ash:guide:Flows}} guide for more.
+  Seeuthe {{link:ash:guide:Flows}} guide for more.
   """
 
   @type t :: module
@@ -27,6 +27,7 @@ defmodule Ash.Flow do
 
   @spec run(any, any, Keyword.t()) :: Ash.Flow.Result.t()
   def run(flow, input, opts \\ []) do
+    params = input
     executor = opts[:executor] || Ash.Flow.Executor.AshEngine
 
     opts =
@@ -45,9 +46,11 @@ defmodule Ash.Flow do
             {:ok, result, metadata} ->
               %Ash.Flow.Result{
                 flow: flow,
-                params: input,
+                params: params,
+                input: input,
                 result: result,
                 notifications: metadata[:notifications] || [],
+                runner_metadata: metadata[:runner_metadata],
                 valid?: true,
                 complete?: true
               }
@@ -55,16 +58,30 @@ defmodule Ash.Flow do
             {:ok, result} ->
               %Ash.Flow.Result{
                 flow: flow,
-                params: input,
+                params: params,
+                input: input,
                 result: result,
                 valid?: true,
                 complete?: true
               }
 
+            {:error, metadata, error} ->
+              %Ash.Flow.Result{
+                flow: flow,
+                params: params,
+                input: input,
+                notifications: metadata[:notifications] || [],
+                runner_metadata: metadata[:runner_metadata],
+                valid?: false,
+                complete?: false,
+                errors: List.wrap(error)
+              }
+
             {:error, error} ->
               %Ash.Flow.Result{
                 flow: flow,
-                params: input,
+                params: params,
+                input: input,
                 valid?: false,
                 complete?: false,
                 errors: List.wrap(error)
@@ -172,7 +189,7 @@ defmodule Ash.Flow do
       {opt_args, args} =
         __MODULE__
         |> Ash.Flow.Info.arguments()
-        |> Enum.split_with(& &1.allow_nil?)
+        |> Enum.split_with(&(&1.allow_nil? || !is_nil(&1.default)))
 
       args = Enum.map(args, & &1.name)
 
@@ -286,6 +303,32 @@ defmodule Ash.Flow do
     do_get_in(do_handle_modifiers(value), path)
   end
 
+  defp do_handle_modifiers({:_expr, expr}) do
+    case Ash.Filter.hydrate_refs(expr, %{
+           resource: nil,
+           aggregates: %{},
+           calculations: %{},
+           public?: false
+         }) do
+      {:ok, hydrated} ->
+        case Ash.Filter.Runtime.do_match(nil, hydrated) do
+          {:ok, result} ->
+            result
+
+          :unknown ->
+            raise """
+            Expression #{inspect(expr)} could not be evaluated in the context of the flow
+            """
+
+          {:error, error} ->
+            raise Ash.Error.to_error_class(error)
+        end
+
+      {:error, error} ->
+        raise Ash.Error.to_error_class(error)
+    end
+  end
+
   defp do_handle_modifiers(action_input) when is_tuple(action_input) do
     List.to_tuple(do_handle_modifiers(Tuple.to_list(action_input)))
   end
@@ -302,6 +345,30 @@ defmodule Ash.Flow do
   def do_get_in(value, [key | rest]) do
     do_get_in(get_in(value, [key]), rest)
   end
+
+  def do_fetch_in(value, []), do: {:ok, value}
+
+  def do_fetch_in(value, [key | rest]) when is_atom(key) and is_struct(value) do
+    case Map.fetch(value, key) do
+      {:ok, value} ->
+        do_fetch_in(value, rest)
+
+      :error ->
+        :error
+    end
+  end
+
+  def do_fetch_in(value, [key | rest]) when is_map(value) do
+    case Map.fetch(value, key) do
+      {:ok, result} ->
+        do_fetch_in(result, rest)
+
+      :error ->
+        :error
+    end
+  end
+
+  def do_fetch_in(_, _), do: :error
 
   def remap_result_references(action_input, prefix) do
     do_remap_result_references(action_input, prefix)
@@ -326,6 +393,10 @@ defmodule Ash.Flow do
 
   defp do_remap_result_references({:_merge, items}, prefix) do
     {:_merge, do_remap_result_references(items, prefix)}
+  end
+
+  defp do_remap_result_references({:_expr, expr}, prefix) do
+    {:_expr, Ash.Filter.walk_filter_template(expr, &do_remap_result_references(&1, prefix))}
   end
 
   defp do_remap_result_references({:_result, step}, prefix) when is_function(prefix) do
@@ -371,6 +442,10 @@ defmodule Ash.Flow do
     {:_path, do_set_dependent_values(value, input), do_set_dependent_values(path, input)}
   end
 
+  defp do_set_dependent_values({:_expr, expr}, input) do
+    {:_expr, Ash.Filter.walk_filter_template(expr, &do_set_dependent_values(&1, input))}
+  end
+
   defp do_set_dependent_values({:_merge, items}, input) do
     items
     |> Enum.map(&do_set_dependent_values(&1, input))
@@ -404,6 +479,20 @@ defmodule Ash.Flow do
     Enum.flat_map(input, &arg_refs/1)
   end
 
+  def arg_refs({:_expr, expr}) do
+    list_expr_refs(
+      expr,
+      fn
+        {:_arg, _} ->
+          true
+
+        _ ->
+          false
+      end
+    )
+    |> Enum.map(&elem(&1, 1))
+  end
+
   def arg_refs({:_arg, name}) do
     [name]
   end
@@ -422,6 +511,20 @@ defmodule Ash.Flow do
 
   def element_refs(input) when is_list(input) do
     Enum.flat_map(input, &element_refs/1)
+  end
+
+  def element_refs({:_expr, expr}) do
+    list_expr_refs(
+      expr,
+      fn
+        {:_element, _} ->
+          true
+
+        _ ->
+          false
+      end
+    )
+    |> Enum.map(&elem(&1, 1))
   end
 
   def element_refs({:_element, name}) do
@@ -444,6 +547,20 @@ defmodule Ash.Flow do
     Enum.flat_map(input, &result_refs/1)
   end
 
+  def result_refs({:_expr, expr}) do
+    list_expr_refs(
+      expr,
+      fn
+        {:_result, _} ->
+          true
+
+        _ ->
+          false
+      end
+    )
+    |> Enum.map(&elem(&1, 1))
+  end
+
   def result_refs({:_result, name}) do
     [name]
   end
@@ -456,9 +573,96 @@ defmodule Ash.Flow do
 
   def result_refs(_), do: []
 
+  defp list_expr_refs(expression, matcher) do
+    expression
+    |> do_list_expr_refs(matcher)
+    |> Enum.uniq()
+  end
+
+  defp do_list_expr_refs(list, matcher) when is_list(list) do
+    Enum.flat_map(list, &do_list_expr_refs(&1, matcher))
+  end
+
+  defp do_list_expr_refs({key, value}, matcher) when is_atom(key),
+    do: do_list_expr_refs(value, matcher)
+
+  defp do_list_expr_refs(expression, matcher) do
+    case expression do
+      %Ash.Query.BooleanExpression{left: left, right: right} ->
+        do_list_expr_refs(left, matcher) ++ do_list_expr_refs(right, matcher)
+
+      %Ash.Query.Not{expression: not_expr} ->
+        do_list_expr_refs(not_expr, matcher)
+
+      %{__predicate__?: _, left: left, right: right} ->
+        do_list_expr_refs(left, matcher) ++
+          do_list_expr_refs(right, matcher)
+
+      %{__predicate__?: _, arguments: args} ->
+        Enum.flat_map(args, &do_list_expr_refs(&1, matcher))
+
+      %Ash.Query.Call{args: args} ->
+        args
+        |> Enum.flat_map(&do_list_expr_refs(&1, matcher))
+
+      v ->
+        if matcher.(v) do
+          [v]
+        else
+          []
+        end
+    end
+  end
+
   def handle_input_template(action_input, input) do
     {val, deps} = do_handle_input_template(action_input, input)
     {val, Enum.uniq(deps)}
+  end
+
+  defp do_handle_input_template({:_expr, expr}, input) do
+    {new_expr, deps} = do_handle_input_template(expr, input)
+
+    {{:_expr, new_expr}, deps}
+  end
+
+  defp do_handle_input_template(
+         %Ash.Query.BooleanExpression{left: left, right: right} = expr,
+         input
+       ) do
+    {new_left, left_deps} = do_handle_input_template(left, input)
+    {new_right, right_deps} = do_handle_input_template(right, input)
+    {%{expr | left: new_left, right: new_right}, left_deps ++ right_deps}
+  end
+
+  defp do_handle_input_template(%Ash.Query.Not{expression: expression} = not_expr, input) do
+    {new_expr, deps} = do_handle_input_template(expression, input)
+    {%{not_expr | expression: new_expr}, deps}
+  end
+
+  defp do_handle_input_template(%{__predicate__?: _, left: left, right: right} = pred, input) do
+    {new_left, left_deps} = do_handle_input_template(left, input)
+    {new_right, right_deps} = do_handle_input_template(right, input)
+    {%{pred | left: new_left, right: new_right}, left_deps ++ right_deps}
+  end
+
+  defp do_handle_input_template(%{__predicate__?: _, arguments: arguments} = func, input) do
+    {args, deps} =
+      Enum.reduce(arguments, {[], []}, fn arg, {args, deps} ->
+        {new_arg, new_deps} = do_handle_input_template(arg, input)
+        {[new_arg | args], deps ++ new_deps}
+      end)
+
+    {%{func | arguments: Enum.reverse(args)}, deps}
+  end
+
+  defp do_handle_input_template(%Ash.Query.Call{args: arguments} = call, input) do
+    {args, deps} =
+      Enum.reduce(arguments, {[], []}, fn arg, {args, deps} ->
+        {new_arg, new_deps} = do_handle_input_template(arg, input)
+        {[new_arg | args], deps ++ new_deps}
+      end)
+
+    {%{call | args: Enum.reverse(args)}, deps}
   end
 
   defp do_handle_input_template(action_input, input)

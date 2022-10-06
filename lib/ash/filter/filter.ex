@@ -568,7 +568,8 @@ defmodule Ash.Filter do
 
   def template_references_actor?(_), do: false
 
-  defp walk_filter_template(filter, mapper) when is_list(filter) do
+  @doc false
+  def walk_filter_template(filter, mapper) when is_list(filter) do
     case mapper.(filter) do
       ^filter ->
         Enum.map(filter, &walk_filter_template(&1, mapper))
@@ -578,7 +579,7 @@ defmodule Ash.Filter do
     end
   end
 
-  defp walk_filter_template(%BooleanExpression{left: left, right: right} = expr, mapper) do
+  def walk_filter_template(%BooleanExpression{left: left, right: right} = expr, mapper) do
     case mapper.(expr) do
       ^expr ->
         %{
@@ -592,7 +593,7 @@ defmodule Ash.Filter do
     end
   end
 
-  defp walk_filter_template(%Not{expression: expression} = not_expr, mapper) do
+  def walk_filter_template(%Not{expression: expression} = not_expr, mapper) do
     case mapper.(not_expr) do
       ^not_expr ->
         %{not_expr | expression: walk_filter_template(expression, mapper)}
@@ -602,7 +603,7 @@ defmodule Ash.Filter do
     end
   end
 
-  defp walk_filter_template(%Ash.Query.Exists{expr: expr} = exists_expr, mapper) do
+  def walk_filter_template(%Ash.Query.Exists{expr: expr} = exists_expr, mapper) do
     case mapper.(exists_expr) do
       ^exists_expr ->
         %{exists_expr | expr: walk_filter_template(expr, mapper)}
@@ -612,7 +613,7 @@ defmodule Ash.Filter do
     end
   end
 
-  defp walk_filter_template(%{__predicate__?: _, left: left, right: right} = pred, mapper) do
+  def walk_filter_template(%{__predicate__?: _, left: left, right: right} = pred, mapper) do
     case mapper.(pred) do
       ^pred ->
         %{
@@ -626,7 +627,7 @@ defmodule Ash.Filter do
     end
   end
 
-  defp walk_filter_template(%{__predicate__?: _, arguments: arguments} = func, mapper) do
+  def walk_filter_template(%{__predicate__?: _, arguments: arguments} = func, mapper) do
     case mapper.(func) do
       ^func ->
         %{
@@ -639,7 +640,7 @@ defmodule Ash.Filter do
     end
   end
 
-  defp walk_filter_template(%Call{args: args} = call, mapper) do
+  def walk_filter_template(%Call{args: args} = call, mapper) do
     case mapper.(call) do
       ^call ->
         %{
@@ -652,7 +653,7 @@ defmodule Ash.Filter do
     end
   end
 
-  defp walk_filter_template(filter, mapper) when is_map(filter) do
+  def walk_filter_template(filter, mapper) when is_map(filter) do
     if Map.has_key?(filter, :__struct__) do
       filter
     else
@@ -666,7 +667,7 @@ defmodule Ash.Filter do
     end
   end
 
-  defp walk_filter_template(tuple, mapper) when is_tuple(tuple) do
+  def walk_filter_template(tuple, mapper) when is_tuple(tuple) do
     case mapper.(tuple) do
       ^tuple ->
         tuple
@@ -679,7 +680,7 @@ defmodule Ash.Filter do
     end
   end
 
-  defp walk_filter_template(value, mapper), do: mapper.(value)
+  def walk_filter_template(value, mapper), do: mapper.(value)
 
   @doc """
   Can be used to find a simple equality predicate on an attribute
@@ -2418,7 +2419,8 @@ defmodule Ash.Filter do
       if is_boolean(operator) do
         {:ok, operator}
       else
-        if Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, operator}) do
+        if is_nil(context.resource) ||
+             Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, operator}) do
           {:ok, operator}
         else
           {:error, "data layer does not support the operator #{inspect(operator)}"}
@@ -2550,7 +2552,7 @@ defmodule Ash.Filter do
   end
 
   defp validate_datalayer_supports_nested_expressions(args, resource) do
-    if Enum.any?(args, &Ash.Query.is_expr?/1) &&
+    if resource && Enum.any?(args, &Ash.Query.is_expr?/1) &&
          !Ash.DataLayer.data_layer_can?(resource, :nested_expressions) do
       {:error, "Datalayer does not support nested expressions"}
     else

@@ -3,7 +3,13 @@ defmodule Ash.FlowTest.FlowCompositionTest do
   use ExUnit.Case, async: false
 
   alias Ash.Flow.Result
-  alias Ash.Test.Support.Flow.{Api, Org, User}
+  alias Ash.Test.Flow.{Api, Org, User}
+
+  alias Ash.Test.Flow.Flows.{
+    GetOrgAndUsers,
+    GetOrgAndUsersAndUnapproveThem,
+    GetOrgAndUsersAndUnapproveThemReturningCount
+  }
 
   setup do
     ExUnit.CaptureLog.capture_log(fn ->
@@ -16,122 +22,6 @@ defmodule Ash.FlowTest.FlowCompositionTest do
         :mnesia.delete_schema([node()])
       end)
     end)
-  end
-
-  defmodule GetOrgByName do
-    use Ash.Flow
-
-    flow do
-      api Api
-
-      argument :org_name, :string do
-        allow_nil? false
-      end
-
-      returns :get_org
-    end
-
-    steps do
-      read :get_org, Org, :by_name do
-        input(%{
-          name: arg(:org_name)
-        })
-      end
-    end
-  end
-
-  defmodule GetOrgAndUsers do
-    use Ash.Flow
-
-    flow do
-      api Api
-
-      argument :org_name, :string do
-        allow_nil? false
-      end
-
-      returns get_org: :org, list_users: :users
-    end
-
-    steps do
-      run_flow :get_org, GetOrgByName do
-        input %{
-          org_name: arg(:org_name)
-        }
-      end
-
-      read :list_users, User, :for_org do
-        input %{
-          org: path(result(:get_org), :id)
-        }
-      end
-    end
-  end
-
-  defmodule GetOrgAndUsersAndUnapproveThem do
-    use Ash.Flow
-
-    flow do
-      api Api
-
-      argument :org_name, :string do
-        allow_nil? false
-      end
-
-      returns :unapprove_users
-    end
-
-    steps do
-      run_flow :get_org_and_users, GetOrgAndUsers do
-        input %{
-          org_name: arg(:org_name)
-        }
-      end
-
-      map :unapprove_users, path(result(:get_org_and_users), :users) do
-        update :unapprove_user, User, :unapprove do
-          record element(:unapprove_users)
-        end
-      end
-    end
-  end
-
-  defmodule CountValue do
-    use Ash.Flow.Step
-
-    def run(input, opts, _context) do
-      field = opts[:field] || :value
-
-      {:ok, input |> Map.get(field) |> List.wrap() |> Enum.count()}
-    end
-  end
-
-  defmodule GetOrgAndUsersAndUnapproveThemReturningCount do
-    use Ash.Flow
-
-    flow do
-      api Api
-
-      argument :org_name, :string do
-        allow_nil? false
-      end
-
-      returns :count_unapproved_users
-    end
-
-    steps do
-      run_flow :get_org_and_users_and_unapprove_them, GetOrgAndUsersAndUnapproveThem do
-        input %{
-          org_name: arg(:org_name)
-        }
-      end
-
-      custom :count_unapproved_users, {CountValue, field: :users} do
-        input %{
-          users: result(:get_org_and_users_and_unapprove_them)
-        }
-      end
-    end
   end
 
   test "a flow can reference other flows" do

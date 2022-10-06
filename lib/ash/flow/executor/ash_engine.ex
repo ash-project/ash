@@ -5,6 +5,7 @@ defmodule Ash.Flow.Executor.AshEngine do
   use Ash.Flow.Executor
   require Logger
   require Ash.Tracer
+  require Ash.Flow.StepHelpers
 
   defmodule Step do
     @moduledoc false
@@ -54,7 +55,8 @@ defmodule Ash.Flow.Executor.AshEngine do
           name: name,
           flow: flow,
           input: run_flow_input,
-          wait_for: wait_for
+          wait_for: wait_for,
+          halt_if: halt_if
         }
       } = run_flow_step ->
         {run_flow_input, _} = Ash.Flow.handle_input_template(run_flow_input, input)
@@ -82,6 +84,19 @@ defmodule Ash.Flow.Executor.AshEngine do
               steps
             end
           end)
+          |> then(fn steps ->
+            if halt_if do
+              map_steps(steps, fn
+                %{halt_if: nil} = step ->
+                  %{step | halt_if: halt_if}
+
+                %{halt_if: step_halt_if} = step ->
+                  %{step | halt_if: Ash.Flow.StepHelpers.expr(^step_halt_if or ^halt_if)}
+              end)
+            else
+              steps
+            end
+          end)
           |> remap_step_names(fn nested_name ->
             List.wrap(name) ++ List.wrap(nested_name)
           end)
@@ -90,12 +105,13 @@ defmodule Ash.Flow.Executor.AshEngine do
         Enum.concat(built_steps, [
           %{run_flow_step | step: %{run_flow_step.step | built: built_steps}}
         ])
+        |> handle_input_templates()
 
       %Step{step: %{steps: steps} = inner_step} = step ->
-        [%{step | step: %{inner_step | steps: hydrate_flows(steps)}}]
+        [%{step | step: %{inner_step | steps: hydrate_flows(steps)}}] |> handle_input_templates()
 
       step ->
-        [step]
+        [step] |> handle_input_templates()
     end)
   end
 
@@ -109,6 +125,7 @@ defmodule Ash.Flow.Executor.AshEngine do
           case Map.fetch(step, key) do
             {:ok, value} ->
               {new_value, _} = Ash.Flow.handle_input_template(value, input)
+
               Map.put(step, key, new_value)
 
             :error ->
@@ -123,27 +140,55 @@ defmodule Ash.Flow.Executor.AshEngine do
   def execute(%Flow{steps: steps, flow: flow}, _input, opts) do
     steps
     |> Enum.flat_map(&requests(flow, steps, &1, opts))
-    |> Ash.Engine.run(
-      verbose?: opts[:verbose?],
-      timeout: opts[:timeout],
-      name: inspect(flow),
-      tracer: opts[:tracer]
-    )
+    |> resume(opts[:resume])
     |> case do
-      {:ok, %Ash.Engine{data: data, resource_notifications: resource_notifications}} ->
-        if opts[:return_notifications?] do
-          {:ok, return_value(steps, data, Ash.Flow.Info.returns(flow)),
-           %{notifications: resource_notifications}}
-        else
-          {:ok, return_value(steps, data, Ash.Flow.Info.returns(flow))}
-        end
-
-      {:error, %Ash.Engine{errors: errors}} ->
-        {:error, Ash.Error.to_error_class(errors)}
-
       {:error, error} ->
         {:error, error}
+
+      {:ok, requests} ->
+        requests
+        |> Ash.Engine.run(
+          verbose?: opts[:verbose?],
+          timeout: opts[:timeout],
+          name: inspect(flow),
+          failure_mode: :continue,
+          tracer: opts[:tracer]
+        )
+        |> case do
+          {:ok, %Ash.Engine{data: data, resource_notifications: resource_notifications}} ->
+            runner_metadata = %{data: data}
+
+            {:ok, return_value(steps, data, Ash.Flow.Info.returns(flow)),
+             %{notifications: resource_notifications, runner_metadata: runner_metadata}}
+
+          {:error,
+           %Ash.Engine{errors: errors, data: data, resource_notifications: resource_notifications}} ->
+            {:error, %{runner_metadata: %{data: data}, notifications: resource_notifications},
+             Ash.Error.to_error_class(errors)}
+
+          {:error, error} ->
+            {:error, error}
+        end
     end
+  end
+
+  defp resume(requests, nil), do: {:ok, requests}
+
+  defp resume(requests, %Ash.Flow.Result{runner_metadata: %{data: data}}) do
+    {:ok,
+     Enum.map(requests, fn request ->
+       case Ash.Flow.do_fetch_in(data, request.path) do
+         {:ok, result} ->
+           %{request | completion: true, data: result}
+
+         :error ->
+           request
+       end
+     end)}
+  end
+
+  defp resume(_, _) do
+    {:error, "Could not resume flow because engine data was not present!"}
   end
 
   defp must_be_local?(%{resource: resource, touches_resources: touches_resources}) do
@@ -229,16 +274,7 @@ defmodule Ash.Flow.Executor.AshEngine do
     end
   end
 
-  defp halt_if(halt_if, step, results, context, otherwise) do
-    {halt_if, reason} =
-      case halt_if do
-        {halt_if, reason} ->
-          {halt_if, reason}
-
-        halt_if ->
-          {halt_if, :halted}
-      end
-
+  defp halt_if(halt_if, reason, step, results, context, otherwise) do
     halt_if =
       halt_if
       |> Ash.Flow.set_dependent_values(%{
@@ -264,7 +300,8 @@ defmodule Ash.Flow.Executor.AshEngine do
           name: name,
           input: input,
           wait_for: wait_for,
-          halt_if: halt_if
+          halt_if: halt_if,
+          halt_reason: halt_reason
         }
       } ->
         {input, deps} = Ash.Flow.handle_input_template(input, %{})
@@ -288,7 +325,7 @@ defmodule Ash.Flow.Executor.AshEngine do
 
                 results = results(dep_paths, context)
 
-                halt_if(halt_if, name, results, context, fn ->
+                halt_if(halt_if, halt_reason, name, results, context, fn ->
                   input =
                     input
                     |> Ash.Flow.set_dependent_values(%{
@@ -317,6 +354,7 @@ defmodule Ash.Flow.Executor.AshEngine do
             resource: resource,
             wait_for: wait_for,
             halt_if: halt_if,
+            halt_reason: halt_reason,
             touches_resources: touches_resources
           } = transaction
       } ->
@@ -342,7 +380,7 @@ defmodule Ash.Flow.Executor.AshEngine do
 
                 results = results(dep_paths, context)
 
-                halt_if(halt_if, name, results, context, fn ->
+                halt_if(halt_if, halt_reason, name, results, context, fn ->
                   transaction_steps
                   |> Enum.flat_map(
                     &requests(flow, all_steps, &1, opts,
@@ -350,6 +388,8 @@ defmodule Ash.Flow.Executor.AshEngine do
                       transaction_name: transaction.name
                     )
                   )
+                  # TODO: Can we resume a transaction? For now, you cannot.
+                  # Either the whole thing fails or the whole thing succeeds.
                   |> case do
                     [] ->
                       {:ok, %{}}
@@ -371,6 +411,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                         name: "Transaction #{inspect(name)}",
                         verbose?: opts[:verbose?],
                         tracer: opts[:tracer],
+                        failure_mode: :continue,
                         transaction?: true
                       )
                       |> case do
@@ -400,13 +441,102 @@ defmodule Ash.Flow.Executor.AshEngine do
         ]
 
       %Step{
+        step: %Ash.Flow.Step.Branch{
+          name: name,
+          steps: branch_steps,
+          output: output,
+          condition: condition,
+          wait_for: wait_for,
+          halt_if: halt_if,
+          halt_reason: halt_reason
+        },
+        input: input
+      } ->
+        output = output || List.last(branch_steps).step.name
+
+        {condition, deps} = Ash.Flow.handle_input_template(condition, input)
+        {_, wait_for_deps} = Ash.Flow.handle_input_template(wait_for, input)
+        {_, halt_if_deps} = Ash.Flow.handle_input_template(halt_if, input)
+
+        dep_paths =
+          get_dep_paths(all_steps, deps, transaction_name, wait_for_deps ++ halt_if_deps)
+
+        request_deps = dependable_request_paths(dep_paths)
+
+        [
+          Ash.Engine.Request.new(
+            path: [name],
+            async?: true,
+            name: "#{inspect(name)}",
+            error_path: List.wrap(name),
+            data:
+              Ash.Engine.Request.resolve(request_deps, fn context ->
+                context = Ash.Helpers.deep_merge_maps(context, additional_context)
+
+                results = results(dep_paths, context)
+
+                halt_if(halt_if, halt_reason, name, results, context, fn ->
+                  execute? =
+                    condition
+                    |> Ash.Flow.set_dependent_values(%{
+                      results: results,
+                      elements: Map.get(context, :_ash_engine_elements)
+                    })
+                    |> Ash.Flow.handle_modifiers()
+
+                  output_step = Enum.find(branch_steps, &(&1.step.name == output))
+
+                  if is_nil(output_step) do
+                    raise "#{inspect(output)} not found in #{inspect(step_names(branch_steps))}"
+                  end
+
+                  output_step = output_step.step
+                  output_path = result_path(output_step)
+                  result = Ash.Flow.do_fetch_in(context, output_path)
+
+                  if execute? && match?({:ok, _}, result) do
+                    result
+                  else
+                    if execute? do
+                      all_steps_with_branch_steps =
+                        all_steps
+                        |> update_step(name, fn step ->
+                          %{step | step: %{step.step | steps: branch_steps}}
+                        end)
+
+                      {:requests,
+                       branch_steps
+                       |> Enum.flat_map(
+                         &requests(flow, all_steps_with_branch_steps, &1, opts,
+                           context: context,
+                           transaction_name: transaction_name
+                         )
+                       )
+                       |> Enum.map(fn request ->
+                         if request.path == :lists.droplast(output_path) do
+                           {request, :data}
+                         else
+                           request
+                         end
+                       end)}
+                    else
+                      {:ok, nil}
+                    end
+                  end
+                end)
+              end)
+          )
+        ]
+
+      %Step{
         step: %Ash.Flow.Step.Map{
           name: name,
           steps: map_steps,
           over: over,
           output: output,
           wait_for: wait_for,
-          halt_if: halt_if
+          halt_if: halt_if,
+          halt_reason: halt_reason
         },
         input: input
       } ->
@@ -433,7 +563,7 @@ defmodule Ash.Flow.Executor.AshEngine do
 
                 results = results(dep_paths, context)
 
-                halt_if(halt_if, name, results, context, fn ->
+                halt_if(halt_if, halt_reason, name, results, context, fn ->
                   elements =
                     over
                     |> Ash.Flow.set_dependent_values(%{
@@ -529,7 +659,8 @@ defmodule Ash.Flow.Executor.AshEngine do
           custom: {mod, opts},
           async?: async?,
           wait_for: wait_for,
-          halt_if: halt_if
+          halt_if: halt_if,
+          halt_reason: halt_reason
         },
         input: input
       } ->
@@ -555,7 +686,7 @@ defmodule Ash.Flow.Executor.AshEngine do
 
                 results = results(dep_paths, context)
 
-                halt_if(halt_if, name, results, context, fn ->
+                halt_if(halt_if, halt_reason, name, results, context, fn ->
                   custom_input =
                     custom_input
                     |> Ash.Flow.set_dependent_values(%{
@@ -669,7 +800,8 @@ defmodule Ash.Flow.Executor.AshEngine do
           tenant: tenant,
           get?: get?,
           wait_for: wait_for,
-          halt_if: halt_if
+          halt_if: halt_if,
+          halt_reason: halt_reason
         } = read
 
         %{
@@ -712,7 +844,7 @@ defmodule Ash.Flow.Executor.AshEngine do
             context = Ash.Helpers.deep_merge_maps(context, additional_context)
             results = results(dep_paths, context)
 
-            halt_if(halt_if, name, results, context, fn -> query end)
+            halt_if(halt_if, halt_reason, name, results, context, fn -> query end)
           end,
           query_input: fn context ->
             context = Ash.Helpers.deep_merge_maps(context, additional_context)
@@ -798,7 +930,8 @@ defmodule Ash.Flow.Executor.AshEngine do
           record: record,
           tenant: tenant,
           wait_for: wait_for,
-          halt_if: halt_if
+          halt_if: halt_if,
+          halt_reason: halt_reason
         } = validate
 
         %{
@@ -848,7 +981,7 @@ defmodule Ash.Flow.Executor.AshEngine do
 
                 results = results(changeset_deps ++ dep_paths, context)
 
-                halt_if(halt_if, name, results, context, fn ->
+                halt_if(halt_if, halt_reason, name, results, context, fn ->
                   tenant =
                     tenant
                     |> Ash.Flow.set_dependent_values(%{
@@ -928,7 +1061,8 @@ defmodule Ash.Flow.Executor.AshEngine do
           record: record,
           tenant: tenant,
           wait_for: wait_for,
-          halt_if: halt_if
+          halt_if: halt_if,
+          halt_reason: halt_reason
         } = update
 
         %{
@@ -973,7 +1107,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                 context = Ash.Helpers.deep_merge_maps(context, additional_context)
                 results = results(dep_paths, context)
 
-                halt_if(halt_if, name, results, context, fn -> changeset end)
+                halt_if(halt_if, halt_reason, name, results, context, fn -> changeset end)
               end,
               tenant: fn context ->
                 context = Ash.Helpers.deep_merge_maps(context, additional_context)
@@ -1014,7 +1148,8 @@ defmodule Ash.Flow.Executor.AshEngine do
           record: record,
           tenant: tenant,
           wait_for: wait_for,
-          halt_if: halt_if
+          halt_if: halt_if,
+          halt_reason: halt_reason
         } = destroy
 
         %{
@@ -1062,7 +1197,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                 context = Ash.Helpers.deep_merge_maps(context, additional_context)
                 results = results(dep_paths, context)
 
-                halt_if(halt_if, name, results, context, fn -> changeset end)
+                halt_if(halt_if, halt_reason, name, results, context, fn -> changeset end)
               end,
               tenant: fn context ->
                 context = Ash.Helpers.deep_merge_maps(context, additional_context)
@@ -1229,9 +1364,11 @@ defmodule Ash.Flow.Executor.AshEngine do
     output: [
       raw?: true
     ],
+    condition: [],
     record: [],
     tenant: [],
-    wait_for: []
+    wait_for: [],
+    halt_if: []
   ]
 
   defp remap_step(step, step_names, fun) do
@@ -1509,6 +1646,10 @@ defmodule Ash.Flow.Executor.AshEngine do
     [name, :data]
   end
 
+  defp result_path(%Ash.Flow.Step.Branch{name: name}) do
+    [name, :data]
+  end
+
   defp result_path(%Ash.Flow.Step.Map{name: name}) do
     [name, :data]
   end
@@ -1542,6 +1683,10 @@ defmodule Ash.Flow.Executor.AshEngine do
   end
 
   defp completion_path(%Ash.Flow.Step.RunFlow{name: name}) do
+    [name, :completion]
+  end
+
+  defp completion_path(%Ash.Flow.Step.Branch{name: name}) do
     [name, :completion]
   end
 
@@ -1586,6 +1731,10 @@ defmodule Ash.Flow.Executor.AshEngine do
   end
 
   defp data_path(%Ash.Flow.Step.Custom{name: name}) do
+    [name]
+  end
+
+  defp data_path(%Ash.Flow.Step.Branch{name: name}) do
     [name]
   end
 

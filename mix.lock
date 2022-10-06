@@ -10,7 +10,7 @@
   "earmark_parser": {:hex, :earmark_parser, "1.4.25", "2024618731c55ebfcc5439d756852ec4e85978a39d0d58593763924d9a15916f", [:mix], [], "hexpm", "56749c5e1c59447f7b7a23ddb235e4b3defe276afc220a6227237f3efe83f51e"},
   "ecto": {:hex, :ecto, "3.7.2", "44c034f88e1980754983cc4400585970b4206841f6f3780967a65a9150ef09a8", [:mix], [{:decimal, "~> 1.6 or ~> 2.0", [hex: :decimal, repo: "hexpm", optional: false]}, {:jason, "~> 1.0", [hex: :jason, repo: "hexpm", optional: true]}, {:telemetry, "~> 0.4 or ~> 1.0", [hex: :telemetry, repo: "hexpm", optional: false]}], "hexpm", "a600da5772d1c31abbf06f3e4a1ffb150e74ed3e2aa92ff3cee95901657a874e"},
   "elixir_make": {:hex, :elixir_make, "0.6.2", "7dffacd77dec4c37b39af867cedaabb0b59f6a871f89722c25b28fcd4bd70530", [:mix], [], "hexpm", "03e49eadda22526a7e5279d53321d1cced6552f344ba4e03e619063de75348d9"},
-  "elixir_sense": {:git, "https://github.com/elixir-lsp/elixir_sense.git", "219b4d0fcb27c46dd4dad915ece01ec2b92d0249", []},
+  "elixir_sense": {:git, "https://github.com/elixir-lsp/elixir_sense.git", "85d4a87d216678dae30f348270eb90f9ed49ce20", []},
   "erlex": {:hex, :erlex, "0.2.6", "c7987d15e899c7a2f34f5420d2a2ea0d659682c06ac607572df55a43753aa12e", [:mix], [], "hexpm", "2ed2e25711feb44d52b17d2780eabf998452f6efda104877a3881c2f8c0c0c75"},
   "ets": {:hex, :ets, "0.8.1", "8ff9bcda5682b98493f8878fc9dbd990e48d566cba8cce59f7c2a78130da29ea", [:mix], [], "hexpm", "6be41b50adb5bc5c43626f25ea2d0af1f4a242fb3fad8d53f0c67c20b78915cc"},
   "ex_check": {:hex, :ex_check, "0.12.0", "c0e2919ecc06afeaf62c52d64f3d91bd4bc7dd8deaac5f84becb6278888c967a", [:mix], [], "hexpm", "cfafa8ef97c2596d45a1f19b5794cb5c7f700f25d164d3c9f8d7ec17ee67cf42"},

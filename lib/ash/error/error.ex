@@ -79,21 +79,39 @@ defmodule Ash.Error do
 
   def to_error_class(values, opts \\ [])
 
-  def to_error_class(values, opts) when is_list(values) do
-    values =
-      values
-      |> flatten_preserving_keywords()
-      |> Enum.uniq_by(&clear_stacktraces/1)
-      |> Enum.map(fn value ->
-        if ash_error?(value) do
-          value
-        else
-          Unknown.exception(errors: values)
-        end
-      end)
-      |> Enum.uniq()
+  def to_error_class(%{class: :special} = special, _opts) do
+    special
+  end
 
-    choose_error(values, opts[:changeset] || opts[:query])
+  def to_error_class([%{class: :special} = special], _opts) do
+    special
+  end
+
+  def to_error_class(%Ash.Error.Invalid{errors: [%{class: :special} = special]}, _opts) do
+    special
+  end
+
+  def to_error_class(values, opts) when is_list(values) do
+    case values do
+      [%{class: :special} = exception] ->
+        exception
+
+      values ->
+        values =
+          values
+          |> flatten_preserving_keywords()
+          |> Enum.uniq_by(&clear_stacktraces/1)
+          |> Enum.map(fn value ->
+            if ash_error?(value) do
+              value
+            else
+              Unknown.exception(errors: values)
+            end
+          end)
+          |> Enum.uniq()
+
+        choose_error(values, opts[:changeset] || opts[:query])
+    end
   end
 
   def to_error_class(value, opts) do

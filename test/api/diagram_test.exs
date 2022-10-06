@@ -3,7 +3,7 @@ defmodule Ash.Test.Api.Info.DiagramTest do
   use ExUnit.Case, async: true
 
   test "generate a mermaid entity relationship diagram from an Api" do
-    assert Ash.Api.Info.Diagram.mermaid_er_diagram(Ash.Test.Support.Flow.Api) == """
+    assert Ash.Api.Info.Diagram.mermaid_er_diagram(Ash.Test.Flow.Api) == """
            erDiagram
                User {
                    UUID id
@@ -21,7 +21,7 @@ defmodule Ash.Test.Api.Info.DiagramTest do
   end
 
   test "generate a mermaid class diagram from an Api" do
-    assert Ash.Api.Info.Diagram.mermaid_class_diagram(Ash.Test.Support.Flow.Api) == """
+    assert Ash.Api.Info.Diagram.mermaid_class_diagram(Ash.Test.Flow.Api) == """
            classDiagram
                class User {
                    UUID id
@@ -53,7 +53,7 @@ defmodule Ash.Test.Api.Info.DiagramTest do
   end
 
   test "include private fields in a mermaid entity relationship diagram from an Api if specified" do
-    assert Ash.Api.Info.Diagram.mermaid_er_diagram(Ash.Test.Support.Flow.Api, show_private?: true) ==
+    assert Ash.Api.Info.Diagram.mermaid_er_diagram(Ash.Test.Flow.Api, show_private?: true) ==
              """
              erDiagram
                  User {
@@ -74,7 +74,7 @@ defmodule Ash.Test.Api.Info.DiagramTest do
   end
 
   test "include private fields in a mermaid class diagram from an Api if specified" do
-    assert Ash.Api.Info.Diagram.mermaid_class_diagram(Ash.Test.Support.Flow.Api,
+    assert Ash.Api.Info.Diagram.mermaid_class_diagram(Ash.Test.Flow.Api,
              show_private?: true
            ) == """
            classDiagram

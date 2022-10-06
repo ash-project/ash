@@ -15,7 +15,7 @@ defmodule Mix.Tasks.Ash.GenerateFlowCharts do
 
     only =
       if opts[:only] && opts[:only] != [] do
-        Enum.map(opts[:only], &Path.expand/1)
+        Enum.map(List.wrap(opts[:only]), &Path.expand/1)
       end
 
     flows()
@@ -59,7 +59,7 @@ defmodule Mix.Tasks.Ash.GenerateFlowCharts do
 
       file = Path.join(directory, filename)
 
-      create_flow_chart(file, Ash.Flow.Chart.Mermaid.chart(flow, expand?: false))
+      create_flow_chart(file, Ash.Flow.Chart.Mermaid.chart(flow, expand?: true))
     end
   end
 

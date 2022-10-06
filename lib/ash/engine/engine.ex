@@ -56,7 +56,7 @@ defmodule Ash.Engine do
     :concurrency_limit,
     # There are no other failure modes, but this is there
     # to express the intent for there to eventually be.
-    failure_mode: :complete,
+    failure_mode: :stop,
     return_notifications?: false,
     opts: [],
     requests: [],
@@ -152,6 +152,7 @@ defmodule Ash.Engine do
         resolved_fields: %{},
         actor: opts[:actor],
         return_notifications?: opts[:return_notifications?],
+        failure_mode: opts[:failure_mode] || :stop,
         concurrency_limit: System.schedulers_online() * 2,
         authorize?: opts[:authorize?] || false,
         verbose?: opts[:verbose?] || false,
@@ -164,16 +165,20 @@ defmodule Ash.Engine do
       "Engine Starting - #{Enum.map_join(state.requests, ", ", & &1.name)}"
     end)
 
-    case run_to_completion(state) do
-      %__MODULE__{errors: []} = result ->
-        {:ok,
-         result.requests
-         |> Enum.reduce(result, &add_data(&2, &1.path, &1.data))}
+    result = run_to_completion(state)
 
-      state ->
-        {:error, state}
-    end
+    status =
+      case result.errors do
+        [] -> :ok
+        _ -> :error
+      end
+
+    {status,
+     result.requests
+     |> Enum.reduce(result, &add_data(&2, &1.path, &1.data))}
   end
+
+  defp add_data(state, _path, %Ash.Engine.Request.UnresolvedField{}), do: state
 
   defp add_data(state, path, data) do
     %{
@@ -210,7 +215,7 @@ defmodule Ash.Engine do
   end
 
   defp run_to_completion(state) do
-    if Enum.all?(state.requests, &(&1.state in [:complete, :error])) do
+    if complete?(state) do
       log(state, "Engine Complete")
       state
     else
@@ -236,6 +241,15 @@ defmodule Ash.Engine do
           run_to_completion(new_state)
       end
     end
+  end
+
+  defp complete?(%{failure_mode: :continue} = state) do
+    Enum.all?(state.requests, &(&1.state in [:complete, :error]))
+  end
+
+  defp complete?(%{failure_mode: :stop} = state) do
+    Enum.all?(state.requests, &(&1.state in [:complete])) ||
+      Enum.any?(state.requests, &(&1.state in [:error]))
   end
 
   defp errors(state) do

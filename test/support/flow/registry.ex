@@ -1,9 +1,9 @@
-defmodule Ash.Test.Support.Flow.Registry do
+defmodule Ash.Test.Flow.Registry do
   @moduledoc false
   use Ash.Registry
 
   entries do
-    entry(Ash.Test.Support.Flow.User)
-    entry(Ash.Test.Support.Flow.Org)
+    entry(Ash.Test.Flow.User)
+    entry(Ash.Test.Flow.Org)
   end
 end

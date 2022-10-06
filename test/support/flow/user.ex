@@ -1,4 +1,4 @@
-defmodule Ash.Test.Support.Flow.User do
+defmodule Ash.Test.Flow.User do
   @moduledoc false
   use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
 
@@ -44,6 +44,6 @@ defmodule Ash.Test.Support.Flow.User do
   end
 
   relationships do
-    belongs_to :org, Ash.Test.Support.Flow.Org
+    belongs_to :org, Ash.Test.Flow.Org
   end
 end

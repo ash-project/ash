@@ -1,9 +1,9 @@
-defmodule Ash.Test.Support.Flow.Org do
+defmodule Ash.Test.Flow.Org do
   @moduledoc false
   use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
 
   identities do
-    identity :unique_name, [:name], pre_check_with: Ash.Test.Support.Flow.Api
+    identity :unique_name, [:name], pre_check_with: Ash.Test.Flow.Api
   end
 
   actions do
@@ -23,6 +23,6 @@ defmodule Ash.Test.Support.Flow.Org do
   end
 
   relationships do
-    has_many :users, Ash.Test.Support.Flow.User
+    has_many :users, Ash.Test.Flow.User
   end
 end

@@ -202,6 +202,17 @@ defmodule Ash.Flow.Chart.Mermaid do
     end
   end
 
+  defp short_name(%Ash.Flow.Step.Branch{steps: steps, output: output}) do
+    child_step =
+      if output do
+        find_step(steps, output)
+      else
+        List.last(steps)
+      end
+
+    "Branch result #{short_name(child_step)}"
+  end
+
   defp short_name(%Ash.Flow.Step.Map{steps: steps, output: output}) do
     child_step =
       if output do
@@ -241,28 +252,38 @@ defmodule Ash.Flow.Chart.Mermaid do
   #   add_line(message, "style #{id} fill:#4287f5,stroke:#333,stroke-width:4px")
   # end
 
-  defp add_links(message, steps, all_steps, opts) do
-    Enum.reduce(steps, message, fn step, message ->
+  def add_links(message, steps, all_steps, opts) do
+    steps
+    |> do_links(all_steps, opts)
+    |> Enum.uniq()
+    |> Enum.reject(fn link ->
+      [first | rest] = String.split(link, " ")
+      last = List.last(rest)
+      first == last
+    end)
+    |> Enum.reduce(message, fn link, message ->
+      add_line(message, link)
+    end)
+  end
+
+  defp do_links(steps, all_steps, opts) do
+    Enum.flat_map(steps, fn step ->
       case step do
         %Ash.Flow.Step.Map{steps: steps, over: over} = step ->
           id = "#{format_name(step)}.element"
 
-          message
-          |> add_dependencies(step, all_steps, [over], id)
-          |> add_links(steps, all_steps, opts)
+          dependencies(step, all_steps, [over], id) ++ do_links(steps, all_steps, opts)
 
         %Ash.Flow.Step.Transaction{steps: steps} = step ->
-          message
-          |> add_dependencies(step, all_steps)
-          |> add_links(steps, all_steps, opts)
+          dependencies(step, all_steps) ++ do_links(steps, all_steps, opts)
 
         %Ash.Flow.Step.RunFlow{flow: flow} = run_flow_step ->
           returns = Ash.Flow.Info.returns(flow)
           name = format_name(step)
 
-          message =
-            Enum.reduce(List.wrap(returns), message, fn
-              {key, _}, message ->
+          returns_links =
+            Enum.flat_map(List.wrap(returns), fn
+              {key, _} ->
                 {source, note} =
                   if opts[:expand?] do
                     link_source(all_steps, List.wrap(step.name) ++ List.wrap(key))
@@ -270,39 +291,33 @@ defmodule Ash.Flow.Chart.Mermaid do
                     link_source(all_steps, step.name)
                   end
 
-                message
-                |> add_link(source, note, name)
+                [link(source, note, name)]
 
-              value, message ->
-                {source, note} =
-                  if opts[:expand?] do
+              value ->
+                if opts[:expand?] do
+                  {source, note} =
                     link_source(all_steps, List.wrap(step.name) ++ List.wrap(value))
-                  else
-                    link_source(all_steps, step.name)
-                  end
 
-                message
-                |> add_link(source, note, name)
+                  [link(source, note, name)]
+                else
+                  []
+                end
             end)
 
-          if opts[:expand?] do
-            message
-          else
-            add_dependencies(message, run_flow_step, all_steps)
-          end
+          returns_links ++ dependencies(run_flow_step, all_steps)
 
         step ->
-          add_dependencies(message, step, all_steps)
+          dependencies(step, all_steps)
       end
     end)
   end
 
-  defp add_link(message, source, nil, name) do
-    add_line(message, "#{source}-->#{name}")
+  defp link(source, nil, name) do
+    "#{source} --> #{name}"
   end
 
-  defp add_link(message, source, note, name) do
-    add_line(message, "#{source}-->|#{note}|#{name}")
+  defp link(source, note, name) do
+    "#{source} --> |#{note}| #{name}"
   end
 
   defp format_template(template, all_steps) do
@@ -379,7 +394,7 @@ defmodule Ash.Flow.Chart.Mermaid do
     String.replace(string, "\"", "'")
   end
 
-  defp add_dependencies(message, step, all_steps, additional_inputs \\ [], name \\ nil) do
+  defp dependencies(step, all_steps, additional_inputs \\ [], name \\ nil) do
     deps =
       Enum.flat_map(Ash.Flow.Executor.AshEngine.deps_keys(), fn key ->
         case Map.fetch(step, key) do
@@ -391,29 +406,32 @@ defmodule Ash.Flow.Chart.Mermaid do
         end
       end)
 
-    add_deps(message, deps ++ additional_inputs, name || format_name(step), all_steps)
+    deps(deps ++ additional_inputs, name || format_name(step), all_steps)
   end
 
-  defp add_deps(message, template, destination, all_steps) do
+  defp deps(template, destination, all_steps) do
     result_refs = Ash.Flow.result_refs(template) |> Enum.uniq()
     arg_refs = Ash.Flow.arg_refs(template) |> Enum.uniq()
     element_refs = Ash.Flow.element_refs(template) |> Enum.uniq()
 
-    message =
-      Enum.reduce(element_refs, message, fn element, message ->
-        add_line(message, "#{do_format_name(element)}.element--> <!--- --> #{destination}")
+    element_ref_deps =
+      Enum.map(element_refs, fn element ->
+        "#{do_format_name(element)}.element --> #{destination}"
       end)
 
-    message =
-      Enum.reduce(arg_refs, message, fn arg, message ->
-        add_line(message, "_arguments.#{arg} -.-> #{destination}")
+    arg_ref_deps =
+      Enum.map(arg_refs, fn arg ->
+        "_arguments.#{arg} -.-> #{destination}"
       end)
 
-    Enum.reduce(result_refs, message, fn dep, message ->
-      {source, note} = link_source(all_steps, dep)
+    result_ref_deps =
+      Enum.map(result_refs, fn dep ->
+        {source, note} = link_source(all_steps, dep)
 
-      add_link(message, source, note, destination)
-    end)
+        link(source, note, destination)
+      end)
+
+    Enum.concat([element_ref_deps, arg_ref_deps, result_ref_deps])
   end
 
   defp link_source(all_steps, dep, note \\ nil) do

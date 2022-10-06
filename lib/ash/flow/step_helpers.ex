@@ -11,6 +11,14 @@ defmodule Ash.Flow.StepHelpers do
     {:_merge, results}
   end
 
+  @doc "Constructs an expression that can access"
+  defmacro expr(expr) do
+    quote do
+      require Ash.Expr
+      {:_expr, Ash.Expr.expr(unquote(expr))}
+    end
+  end
+
   @doc "Accesses the result of a step"
   def result(step) do
     {:_result, step}
