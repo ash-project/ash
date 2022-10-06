@@ -29,11 +29,11 @@ defmodule Ash.Test.Api.Info.DiagramTest do
                    String last_name
                    String email
                    Org org
-                   destroy()
+                   destroy(UUID id, String first_name, String last_name, String email)
                    read()
-                   for_org()
-                   create()
-                   update()
+                   for_org(UUID org)
+                   create(UUID org, UUID id, String first_name, String last_name, ...)
+                   update(UUID id, String first_name, String last_name, String email)
                    approve()
                    unapprove()
                }
@@ -41,11 +41,11 @@ defmodule Ash.Test.Api.Info.DiagramTest do
                    UUID id
                    String name
                    User[] users
-                   destroy()
-                   update()
+                   destroy(UUID id, String name)
+                   update(UUID id, String name)
                    read()
-                   create()
-                   by_name()
+                   create(UUID id, String name)
+                   by_name(String name)
                }
 
                Org -- User
@@ -86,11 +86,11 @@ defmodule Ash.Test.Api.Info.DiagramTest do
                    Boolean approved
                    UUID org_id
                    Org org
-                   destroy()
+                   destroy(UUID id, String first_name, String last_name, String email)
                    read()
-                   for_org()
-                   create()
-                   update()
+                   for_org(UUID org)
+                   create(UUID org, UUID id, String first_name, String last_name, ...)
+                   update(UUID id, String first_name, String last_name, String email)
                    approve()
                    unapprove()
                }
@@ -98,11 +98,11 @@ defmodule Ash.Test.Api.Info.DiagramTest do
                    UUID id
                    String name
                    User[] users
-                   destroy()
-                   update()
+                   destroy(UUID id, String name)
+                   update(UUID id, String name)
                    read()
-                   create()
-                   by_name()
+                   create(UUID id, String name)
+                   by_name(String name)
                }
 
                Org -- User
