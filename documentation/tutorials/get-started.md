@@ -193,12 +193,12 @@ Helpdesk.Support.Ticket
 This returns what we call a `record` which is an instance of a resource.
 
 ```elixir
-{:ok, #Helpdesk.Support.Ticket<
+#Helpdesk.Support.Ticket<
   ...,
   id: "c0f8dc32-a018-4eb4-8656-d5810118f4ea",
   subject: nil,
   ...
->}
+>
 ```
 
 ### Customizing our Actions
