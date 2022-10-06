@@ -383,6 +383,40 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       assert [%{posts: [%{id: ^post_id}]}, %{posts: [%{id: ^post_id}]}] = post.categories
     end
 
+    test "loading multiple at once works" do
+      category1 =
+        Category
+        |> new(%{name: "lame"})
+        |> Api.create!()
+
+      category2 =
+        Category
+        |> new(%{name: "cool"})
+        |> Api.create!()
+
+      author =
+        Author
+        |> new(%{name: "zerg"})
+        |> Api.create!()
+
+      post =
+        Post
+        |> new(%{title: "post1"})
+        |> manage_relationship(:categories, [category1, category2], type: :append_and_remove)
+        |> manage_relationship(:author, author, type: :append_and_remove)
+        |> Api.create!()
+
+      [post] =
+        Post
+        |> Ash.Query.load(categories: :posts, author: [])
+        |> Ash.Query.filter(id == ^post.id)
+        |> Api.read!(authorize?: true)
+
+      post_id = post.id
+
+      assert [%{posts: [%{id: ^post_id}]}, %{posts: [%{id: ^post_id}]}] = post.categories
+    end
+
     test "it loads sorted relationships in the proper order" do
       author =
         Author

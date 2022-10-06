@@ -227,6 +227,7 @@ defmodule Ash.Engine do
             """
           else
             state
+            |> start_pending_tasks()
             |> run_iteration()
             |> run_to_completion()
           end
@@ -355,8 +356,6 @@ defmodule Ash.Engine do
   end
 
   defp run_iteration(state) do
-    state = start_pending_tasks(state)
-
     state =
       state.tasks
       |> Enum.reduce(state, fn task, state ->
@@ -408,43 +407,31 @@ defmodule Ash.Engine do
         {_, resolver_context} = request.async_fetch_state
         request = %{request | async_fetch_state: :fetching}
 
-        if Enum.count(state.tasks) >= state.concurrency_limit do
-          pending_task = fn ->
-            {request.path, request.data.resolver.(resolver_context)}
+        pending_task = fn ->
+          Ash.Tracer.span :request_step,
+                          request.name,
+                          request.tracer do
+            metadata = %{
+              resource_short_name:
+                request.resource && Ash.Resource.Info.short_name(request.resource),
+              resource: request.resource,
+              actor: request.actor,
+              action: request.action && request.action.name,
+              authorize?: request.authorize?
+            }
+
+            Ash.Tracer.set_metadata(request.tracer, :request_step, metadata)
+
+            Ash.Tracer.telemetry_span [:ash, :request_step], %{name: request.name} do
+              {request.path, request.data.resolver.(resolver_context)}
+            end
           end
-
-          replace_request(
-            %{state | pending_tasks: [pending_task | state.pending_tasks]},
-            request
-          )
-        else
-          task =
-            async(
-              fn ->
-                Ash.Tracer.span :request_step,
-                                request.name,
-                                request.tracer do
-                  metadata = %{
-                    resource_short_name:
-                      request.resource && Ash.Resource.Info.short_name(request.resource),
-                    resource: request.resource,
-                    actor: request.actor,
-                    action: request.action && request.action.name,
-                    authorize?: request.authorize?
-                  }
-
-                  Ash.Tracer.set_metadata(request.tracer, :request_step, metadata)
-
-                  Ash.Tracer.telemetry_span [:ash, :request_step], %{name: request.name} do
-                    {request.path, request.data.resolver.(resolver_context)}
-                  end
-                end
-              end,
-              state.opts
-            )
-
-          replace_request(%{state | tasks: [task | state.tasks]}, request)
         end
+
+        replace_request(
+          %{state | pending_tasks: [pending_task | state.pending_tasks]},
+          request
+        )
     end
   end
 
@@ -597,9 +584,28 @@ defmodule Ash.Engine do
 
     state = %{state | pending_tasks: remaining}
 
-    new_tasks = Enum.map(to_start, &async(&1, state.opts))
+    case to_start do
+      [single_task] ->
+        case single_task.() do
+          {:__exception__, exception, stacktrace} ->
+            reraise exception, stacktrace
 
-    %{state | tasks: state.tasks ++ new_tasks}
+          {request_path, result} ->
+            request = Enum.find(state.requests, &(&1.path == request_path))
+
+            new_request = %{request | async_fetch_state: {:fetched, result}}
+
+            replace_request(state, new_request)
+        end
+
+      [] ->
+        state
+
+      to_start ->
+        new_tasks = Enum.map(to_start, &async(&1, state.opts))
+
+        %{state | tasks: state.tasks ++ new_tasks}
+    end
   end
 
   defp advance_request(%{state: state} = request, _state) when state in [:error] do
