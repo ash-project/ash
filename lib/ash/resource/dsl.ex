@@ -31,7 +31,7 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Attribute,
     args: [:name],
     schema: Ash.Resource.Attribute.create_timestamp_schema(),
-    transform: {Ash.Type, :set_type_transformation, []}
+    transform: {Ash.Resource.Attribute, :transform, []}
   }
 
   @update_timestamp %Spark.Dsl.Entity{
@@ -46,7 +46,7 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Attribute,
     schema: Ash.Resource.Attribute.update_timestamp_schema(),
     args: [:name],
-    transform: {Ash.Type, :set_type_transformation, []}
+    transform: {Ash.Resource.Attribute, :transform, []}
   }
 
   @integer_primary_key %Spark.Dsl.Entity{
@@ -64,7 +64,7 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Attribute,
     schema: Ash.Resource.Attribute.integer_primary_key_schema(),
     auto_set_fields: [allow_nil?: false],
-    transform: {Ash.Type, :set_type_transformation, []}
+    transform: {Ash.Resource.Attribute, :transform, []}
   }
 
   @uuid_primary_key %Spark.Dsl.Entity{
@@ -80,7 +80,7 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Attribute,
     schema: Ash.Resource.Attribute.uuid_primary_key_schema(),
     auto_set_fields: [allow_nil?: false],
-    transform: {Ash.Type, :set_type_transformation, []}
+    transform: {Ash.Resource.Attribute, :transform, []}
   }
 
   @attributes %Spark.Dsl.Section{
