@@ -18,7 +18,7 @@ defmodule Ash.Filter do
 
   alias Ash.Error.Invalid.InvalidPrimaryKey
 
-  alias Ash.Query.Function.{Ago, Contains, If, IsNil, Length}
+  alias Ash.Query.Function.{Ago, Contains, If, IsNil, Length, Type}
 
   alias Ash.Query.Operator.{
     Eq,
@@ -38,7 +38,8 @@ defmodule Ash.Filter do
     Contains,
     IsNil,
     If,
-    Length
+    Length,
+    Type
   ]
 
   @operators [
@@ -1993,6 +1994,10 @@ defmodule Ash.Filter do
 
   defp add_expression_part({:is_nil, attribute}, context, expression) when is_atom(attribute) do
     add_expression_part({attribute, [is_nil: true]}, context, expression)
+  end
+
+  defp add_expression_part({:fragment, _}, _context, _expression) do
+    raise "Cannot use fragment outside of expressionsyntax"
   end
 
   defp add_expression_part({function, args}, context, expression)

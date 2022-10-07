@@ -215,6 +215,11 @@ defmodule Ash.Expr do
     |> do_expr(escape?)
   end
 
+  def do_expr({:fragment, _, [first | _]}, _escape?) when not is_binary(first) do
+    raise "to prevent SQL injection attacks, fragment(...) does not allow strings " <>
+            "to be interpolated as the first argument via the `^` operator, got: `#{inspect(first)}`"
+  end
+
   def do_expr({op, _, args}, escape?) when is_atom(op) and is_list(args) do
     last_arg = List.last(args)
 
