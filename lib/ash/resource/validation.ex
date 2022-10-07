@@ -27,15 +27,13 @@ defmodule Ash.Resource.Validation do
     on: []
   ]
 
-  @type validation_tuple() :: {atom(), list(atom())}
-
   @type t :: %__MODULE__{
-          validation: validation_tuple(),
+          validation: {atom(), list(atom())},
           module: atom(),
           opts: list(atom()),
           only_when_valid?: boolean(),
           description: String.t() | nil,
-          where: validation_tuple() | list(validation_tuple()),
+          where: list({atom(), list(atom())}),
           on: list(atom())
         }
 
