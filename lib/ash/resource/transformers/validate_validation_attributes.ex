@@ -6,9 +6,6 @@ defmodule Ash.Resource.Transformers.ValidateValidationAttributes do
   alias Spark.Dsl.Transformer
 
   @impl true
-  def after_compile?, do: true
-
-  @impl true
   def transform(dsl) do
     attribute_names =
       dsl
