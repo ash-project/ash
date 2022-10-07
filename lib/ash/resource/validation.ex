@@ -43,16 +43,17 @@ defmodule Ash.Resource.Validation do
   @callback init(Keyword.t()) :: {:ok, Keyword.t()} | {:error, String.t()}
   @callback validate(Ash.Changeset.t(), Keyword.t()) :: :ok | {:error, term}
 
+  @validation_type {:spark_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins}
+
   @schema [
     validation: [
-      type: {:spark_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins},
+      type: @validation_type,
       required: true,
       doc: "The module/opts pair of the validation",
       links: []
     ],
     where: [
-      type:
-        {:list, {:spark_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins}},
+      type: {:or, [@validation_type, {:list, @validation_type}]},
       required: false,
       default: [],
       links: [
@@ -113,10 +114,20 @@ defmodule Ash.Resource.Validation do
   end
 
   @doc false
-  def transform(%{validation: {module, opts}} = validation) do
+  def transform(%{validation: {module, opts}, where: where} = validation) do
     case module.init(opts) do
-      {:ok, opts} -> {:ok, %{validation | validation: {module, opts}, module: module, opts: opts}}
-      {:error, error} -> {:error, error}
+      {:ok, opts} ->
+        {:ok,
+         %{
+           validation
+           | validation: {module, opts},
+             module: module,
+             opts: opts,
+             where: List.wrap(where)
+         }}
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 
