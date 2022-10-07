@@ -26,9 +26,8 @@ defmodule Ash.Test.Actions.ValidationTest do
         where([attribute_equals(:foo, true)])
       end
 
-      validate attribute_does_not_equal(:status, "foo") do
-        where([attribute_equals(:foo, false)])
-      end
+      validate attribute_does_not_equal(:status, "foo"),
+        where: attribute_equals(:foo, false)
     end
 
     attributes do
