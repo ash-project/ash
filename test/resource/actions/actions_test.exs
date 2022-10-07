@@ -102,5 +102,25 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
         end
       )
     end
+
+    test "raise if accept and reject keys overlap" do
+      assert_raise(
+        Spark.Error.DslError,
+        ~r/accept and reject keys cannot overlap/,
+        fn ->
+          defposts do
+            attributes do
+              attribute :attr, :string
+            end
+            actions do
+              create :create_2 do
+                accept [:attr, :id]
+                reject [:attr]
+              end
+            end
+          end
+        end
+      )
+    end
   end
 end
