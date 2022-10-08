@@ -727,9 +727,9 @@ defmodule Ash.Type do
 
       defmodule EctoType do
         @moduledoc false
-        use Ecto.ParameterizedType
-
         @parent parent
+        @compile {:no_warn_undefined, @parent}
+        use Ecto.ParameterizedType
 
         @impl true
         def init(opts) do

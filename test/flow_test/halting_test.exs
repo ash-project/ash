@@ -2,8 +2,7 @@ defmodule Ash.FlowTest.HaltingTest do
   @moduledoc false
   use ExUnit.Case, async: false
 
-  alias Ash.Flow.Result
-  alias Ash.Test.Flow.{Api, Org, User}
+  alias Ash.Test.Flow.Api
 
   setup do
     ExUnit.CaptureLog.capture_log(fn ->

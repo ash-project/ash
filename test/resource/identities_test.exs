@@ -2,8 +2,6 @@ defmodule Ash.Test.Resource.IdentitiesTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  alias Ash.Test.AnyApi, as: Api
-
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
