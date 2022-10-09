@@ -21,25 +21,35 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
 
     dsl_state
     |> Transformer.get_entities([:actions])
-    |> Enum.reject(&(&1.type == :read))
-    |> Enum.reduce({:ok, dsl_state}, fn action, {:ok, dsl_state} ->
-      {accept, reject} =
-        case {action.accept, action.reject} do
-          {_, :all} -> {[], public_attribute_names}
-          {nil, reject} -> {reject(default_accept, reject), reject}
-          {:all, reject} -> {reject(public_attribute_names, reject), reject}
-          {accept, reject} -> {reject(accept, reject), reject}
+    |> Enum.reduce({:ok, dsl_state}, fn
+      %{type: :read}, {:ok, _dsl_state} = acc ->
+        acc
+
+      action, {:ok, dsl_state} ->
+        if is_list(action.accept) && is_list(action.reject) &&
+             !MapSet.disjoint?(MapSet.new(action.accept), MapSet.new(action.reject)) do
+          raise Spark.Error.DslError,
+            path: [:actions, action.name],
+            message: "accept and reject keys cannot overlap"
         end
 
-      new_dsl_state =
-        Transformer.replace_entity(
-          dsl_state,
-          [:actions],
-          %{action | accept: accept, reject: reject},
-          &(&1.name == action.name && &1.type == action.type)
-        )
+        {accept, reject} =
+          case {action.accept, action.reject} do
+            {_, :all} -> {[], public_attribute_names}
+            {nil, reject} -> {reject(default_accept, reject), reject}
+            {:all, reject} -> {reject(public_attribute_names, reject), reject}
+            {accept, reject} -> {reject(accept, reject), reject}
+          end
 
-      {:ok, new_dsl_state}
+        new_dsl_state =
+          Transformer.replace_entity(
+            dsl_state,
+            [:actions],
+            %{action | accept: accept, reject: reject},
+            &(&1.name == action.name && &1.type == action.type)
+          )
+
+        {:ok, new_dsl_state}
     end)
   end
 
