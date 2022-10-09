@@ -26,10 +26,11 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
         acc
 
       action, {:ok, dsl_state} ->
-        if is_list(action.accept) && is_list(action.reject) && !MapSet.disjoint?(MapSet.new(action.accept), MapSet.new(action.reject)) do
+        if is_list(action.accept) && is_list(action.reject) &&
+             !MapSet.disjoint?(MapSet.new(action.accept), MapSet.new(action.reject)) do
           raise Spark.Error.DslError,
-          path: [:actions, action.name],
-          message: "accept and reject keys cannot overlap"
+            path: [:actions, action.name],
+            message: "accept and reject keys cannot overlap"
         end
 
         {accept, reject} =

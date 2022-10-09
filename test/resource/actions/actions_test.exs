@@ -112,6 +112,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
             attributes do
               attribute :attr, :string
             end
+
             actions do
               create :create_2 do
                 accept [:attr, :id]
