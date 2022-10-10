@@ -146,15 +146,20 @@ defmodule Ash.Policy.Info do
   See the documentation of `can/4` for more.
   """
   @type can_option? :: {:api, module} | {:maybe_is, boolean()}
-  @spec can?(Ash.Resource.t(), atom(), map() | nil, list(can_option?())) :: boolean()
-  def can?(resource, action_or_action_name, actor, opts \\ []) do
+  @spec can?(
+          Ash.Resource.t(),
+          atom() | Ash.Resource.Actions.action() | Ash.Query.t() | Ash.Changeset.t(),
+          map() | nil,
+          list(can_option?())
+        ) :: boolean()
+  def can?(resource, action_or_query_or_changeset, actor, opts \\ []) do
     opts = Keyword.put(opts, :maybe_is, Keyword.get(opts, :maybe_is, false))
 
-    can(resource, action_or_action_name, actor, opts)
+    can(resource, action_or_query_or_changeset, actor, opts)
   end
 
   @doc """
-  A utility to determine if an actor is or may be authorized for a given action.
+  A utility to determine if an actor is or may be authorized for a given action/query/changeset.
 
   This only runs the "strict check" portion of policies, meaning that it can return `:maybe` in some cases.
   If you have `access_type :runtime` in any of your policies, then you may get `:maybe` from this function.
@@ -166,13 +171,20 @@ defmodule Ash.Policy.Info do
   returned, and this function would return `true`.
   """
   @type can_option :: {:api, module} | {:maybe_is, boolean() | :maybe}
-  @spec can(Ash.Resource.t(), atom(), map() | nil, list(can_option())) :: boolean() | :maybe
-  def can(resource, action_or_action_name, actor, opts \\ []) do
+  @spec can(
+          Ash.Resource.t(),
+          atom() | Ash.Resource.Actions.action() | Ash.Query.t() | Ash.Changeset.t(),
+          map() | nil,
+          list(can_option())
+        ) :: boolean() | :maybe
+  def can(resource, action_or_query_or_changeset, actor, opts \\ []) do
     api = Keyword.fetch!(opts, :api)
     maybe_is = Keyword.get(opts, :maybe_is, :maybe)
 
-    action =
-      case action_or_action_name do
+    action_or_query_or_changeset =
+      case action_or_query_or_changeset do
+        %Ash.Query{} = query -> query
+        %Ash.Changeset{} = changeset -> changeset
         %Ash.Resource.Actions.Create{} = action -> action
         %Ash.Resource.Actions.Read{} = action -> action
         %Ash.Resource.Actions.Update{} = action -> action
@@ -181,37 +193,44 @@ defmodule Ash.Policy.Info do
       end
 
     # Get action type from resource
-    case action.type do
-      :update ->
+    case action_or_query_or_changeset do
+      %Ash.Query{} = query ->
+        run_check(actor, query, api: api, maybe_is: maybe_is)
+
+      %Ash.Changeset{} = changeset ->
+        run_check(actor, changeset, api: api, maybe_is: maybe_is)
+
+      %{type: :update, name: name} ->
         query =
           struct(resource)
           |> Ash.Changeset.new(%{})
-          |> Ash.Changeset.for_update(action.name)
+          |> Ash.Changeset.for_update(name)
 
         run_check(actor, query, api: api, maybe_is: maybe_is)
 
-      :create ->
+      %{type: :create, name: name} ->
         query =
           resource
           |> Ash.Changeset.new()
-          |> Ash.Changeset.for_create(action.name)
+          |> Ash.Changeset.for_create(name)
 
         run_check(actor, query, api: api, maybe_is: maybe_is)
 
-      :read ->
-        query = Ash.Query.for_read(resource, action.name)
+      %{type: :read, name: name} ->
+        query = Ash.Query.for_read(resource, name)
         run_check(actor, query, api: api, maybe_is: maybe_is)
 
-      :destroy ->
+      %{type: :destroy, name: name} ->
         query =
           struct(resource)
           |> Ash.Changeset.new()
-          |> Ash.Changeset.for_destroy(action.name)
+          |> Ash.Changeset.for_destroy(name)
 
         run_check(actor, query, api: api, maybe_is: maybe_is)
 
-      action_type ->
-        raise ArgumentError, message: "Invalid action type \"#{action_type}\""
+      _ ->
+        raise ArgumentError,
+          message: "Invalid action/query/changeset \"#{inspect(action_or_query_or_changeset)}\""
     end
   end
 
