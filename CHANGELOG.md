@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.0.0-rc.15](https://github.com/ash-project/ash/compare/v2.0.0-rc.14...v2.0.0-rc.15) (2022-10-10)
+
+
+
+
+### Bug Fixes:
+
+* handle upsert_identity better with ets/mnesia
+
+* always set source on attributes
+
+### Improvements:
+
+* Improve error when actions reject and accept keys overlap (#405)
+
+* update to latest spark
+
 ## [v2.0.0-rc.14](https://github.com/ash-project/ash/compare/v2.0.0-rc.13...v2.0.0-rc.14) (2022-10-07)
 
 
