@@ -304,7 +304,11 @@ defmodule Ash.Flow.Chart.Mermaid do
                 end
             end)
 
-          returns_links ++ dependencies(run_flow_step, all_steps)
+          if opts[:expand?] do
+            returns_links
+          else
+            returns_links ++ dependencies(run_flow_step, all_steps)
+          end
 
         step ->
           dependencies(step, all_steps)
