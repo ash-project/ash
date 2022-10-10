@@ -527,6 +527,7 @@ defmodule Ash.DataLayer.Ets do
 
           changeset =
             changeset
+            |> Map.put(:attributes, %{})
             |> Map.put(:data, result)
             |> Ash.Changeset.force_change_attributes(to_set)
 

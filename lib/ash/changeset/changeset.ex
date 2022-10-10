@@ -733,39 +733,43 @@ defmodule Ash.Changeset do
   defp validate_identity(changeset, _, _), do: changeset
 
   defp do_validate_identity(changeset, identity, api) do
-    if Enum.any?(identity.keys, &changing_attribute?(changeset, &1)) do
-      action = Ash.Resource.Info.primary_action(changeset.resource, :read).name
-
-      values =
-        Enum.map(identity.keys, fn key ->
-          {key, Ash.Changeset.get_attribute(changeset, key)}
-        end)
-
-      changeset.resource
-      |> Ash.Query.for_read(action, %{},
-        tenant: changeset.tenant,
-        actor: changeset.context[:private][:actor],
-        authorize?: changeset.context[:private][:authorize?],
-        tracer: changeset.context[:private][:tracer]
-      )
-      |> Ash.Query.do_filter(values)
-      |> Ash.Query.limit(1)
-      |> api.read_one()
-      |> case do
-        {:ok, nil} ->
-          changeset
-
-        {:ok, _} ->
-          error =
-            Ash.Error.Changes.InvalidChanges.exception(
-              fields: identity.keys,
-              message: identity.message || "has already been taken"
-            )
-
-          add_error(changeset, error)
-      end
-    else
+    if changeset.context[:private][:upsert_identity] == identity.name do
       changeset
+    else
+      if Enum.any?(identity.keys, &changing_attribute?(changeset, &1)) do
+        action = Ash.Resource.Info.primary_action(changeset.resource, :read).name
+
+        values =
+          Enum.map(identity.keys, fn key ->
+            {key, Ash.Changeset.get_attribute(changeset, key)}
+          end)
+
+        changeset.resource
+        |> Ash.Query.for_read(action, %{},
+          tenant: changeset.tenant,
+          actor: changeset.context[:private][:actor],
+          authorize?: changeset.context[:private][:authorize?],
+          tracer: changeset.context[:private][:tracer]
+        )
+        |> Ash.Query.do_filter(values)
+        |> Ash.Query.limit(1)
+        |> api.read_one()
+        |> case do
+          {:ok, nil} ->
+            changeset
+
+          {:ok, _} ->
+            error =
+              Ash.Error.Changes.InvalidChanges.exception(
+                fields: identity.keys,
+                message: identity.message || "has already been taken"
+              )
+
+            add_error(changeset, error)
+        end
+      else
+        changeset
+      end
     end
   end
 

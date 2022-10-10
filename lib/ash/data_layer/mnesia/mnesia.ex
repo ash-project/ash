@@ -360,6 +360,7 @@ defmodule Ash.DataLayer.Mnesia do
 
           changeset =
             changeset
+            |> Map.put(:attributes, %{})
             |> Map.put(:data, result)
             |> Ash.Changeset.force_change_attributes(to_set)
 

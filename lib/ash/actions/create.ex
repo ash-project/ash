@@ -58,6 +58,11 @@ defmodule Ash.Actions.Create do
     upsert_identity =
       opts[:upsert_identity] || get_in(changeset.context, [:private, :upsert_identity])
 
+    changeset =
+      Ash.Changeset.set_context(changeset, %{
+        private: %{upsert?: true, upsert_identity: upsert_identity}
+      })
+
     return_notifications? = opts[:return_notifications?]
     actor = opts[:actor]
     verbose? = opts[:verbose?]
