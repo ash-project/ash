@@ -314,12 +314,6 @@ defmodule Ash.Resource.Info do
     Spark.Dsl.Extension.get_opt(resource, [:multitenancy], :global?, nil)
   end
 
-  @doc "The source attribute for multitenancy"
-  @spec multitenancy_source(Spark.Dsl.t() | Ash.Resource.t()) :: atom | nil
-  def multitenancy_source(resource) do
-    Spark.Dsl.Extension.get_opt(resource, [:multitenancy], :source, nil)
-  end
-
   @doc "The template for creating the tenant name"
   @spec multitenancy_template(Spark.Dsl.t() | Ash.Resource.t()) :: atom | nil
   def multitenancy_template(resource) do

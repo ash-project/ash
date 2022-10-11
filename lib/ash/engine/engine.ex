@@ -112,7 +112,7 @@ defmodule Ash.Engine do
           try do
             case Task.await(task, opts[:timeout]) do
               {:__exception__, e, stacktrace} ->
-                raise e, stacktrace
+                reraise e, stacktrace
 
               other ->
                 other
