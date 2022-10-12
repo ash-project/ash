@@ -38,6 +38,10 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
         validate confirm(:name, :confirm_name)
       end
+
+      create :with_name_validation do
+        validate present(:name), message: "this validates the name is present"
+      end
     end
 
     attributes do
@@ -900,6 +904,17 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                  "name" => "foo",
                  "confirm_name" => "bar"
                }).errors
+    end
+
+    test "a message can be specified as part of a `present` validation" do
+      assert [
+               %Ash.Error.Changes.InvalidAttribute{
+                 class: :invalid,
+                 field: :name,
+                 message: "this validates the name is present",
+                 path: []
+               }
+             ] = Ash.Changeset.for_create(Category, :with_name_validation, %{"name" => ""}).errors
     end
   end
 end
