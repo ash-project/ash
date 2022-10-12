@@ -289,6 +289,13 @@ defmodule Ash.DataLayer.Ets do
       {:error, error} ->
         {:error, error}
     end
+    |> case do
+      {:error, error} ->
+        {:error, Ash.Error.to_ash_error(error)}
+
+      other ->
+        other
+    end
   end
 
   @doc false
@@ -324,7 +331,8 @@ defmodule Ash.DataLayer.Ets do
         {:ok, offset_records}
       end
     else
-      {:error, error} -> {:error, error}
+      {:error, error} ->
+        {:error, Ash.Error.to_ash_error(error)}
     end
   end
 
@@ -376,8 +384,11 @@ defmodule Ash.DataLayer.Ets do
       end
     end)
     |> case do
-      {:ok, records} -> {:ok, Enum.reverse(records)}
-      {:error, error} -> {:error, error}
+      {:ok, records} ->
+        {:ok, Enum.reverse(records)}
+
+      {:error, error} ->
+        {:error, Ash.Error.to_ash_error(error)}
     end
   end
 
@@ -422,8 +433,11 @@ defmodule Ash.DataLayer.Ets do
       end
     end)
     |> case do
-      {:ok, records} -> {:ok, Enum.reverse(records)}
-      {:error, error} -> {:error, error}
+      {:ok, records} ->
+        {:ok, Enum.reverse(records)}
+
+      {:error, error} ->
+        {:error, Ash.Error.to_ash_error(error)}
     end
   end
 
@@ -556,7 +570,7 @@ defmodule Ash.DataLayer.Ets do
            put_or_insert_new(table, {pkey, record}, resource) do
       {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
     else
-      {:error, error} -> {:error, error}
+      {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
     end
   end
 
@@ -620,7 +634,7 @@ defmodule Ash.DataLayer.Ets do
          {:ok, _} <- ETS.Set.delete(table, pkey) do
       :ok
     else
-      {:error, error} -> {:error, error}
+      {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
     end
   end
 
@@ -642,13 +656,14 @@ defmodule Ash.DataLayer.Ets do
             {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
 
           {:error, error} ->
-            {:error, error}
+            {:error, Ash.Error.to_ash_error(error)}
         end
       else
         {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
       end
     else
-      {:error, error} -> {:error, error}
+      {:error, error} ->
+        {:error, Ash.Error.to_ash_error(error)}
     end
   end
 

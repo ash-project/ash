@@ -4,6 +4,7 @@ defmodule Ash.Error do
   """
 
   alias Ash.Error.{Forbidden, Framework, Invalid, Unknown}
+  alias Ash.Error.Unknown.UnknownError
 
   @type error_class() :: :invalid | :authorization | :framework | :unknown
 
@@ -105,7 +106,7 @@ defmodule Ash.Error do
             if ash_error?(value) do
               value
             else
-              Unknown.exception(errors: values)
+              UnknownError.exception(error: value)
             end
           end)
           |> Enum.uniq()
@@ -130,53 +131,55 @@ defmodule Ash.Error do
         list
         |> Keyword.take([:error, :vars])
         |> Keyword.put_new(:error, list[:message])
-        |> Unknown.exception()
+        |> UnknownError.exception()
 
-      if stacktrace do
-        %{error | stacktrace: stacktrace}
-      else
-        stacktrace
-      end
+      add_stacktrace(error, stacktrace)
     else
       Enum.map(list, &to_ash_error(&1, stacktrace))
     end
   end
 
   def to_ash_error(error, stacktrace) when is_binary(error) do
-    if stacktrace do
-      error = Unknown.exception(error: error)
-      %{error | stacktrace: %Stacktrace{stacktrace: stacktrace}}
-    else
-      Unknown.exception(error: error)
-    end
+    add_stacktrace(UnknownError.exception(error: error), stacktrace)
   end
 
   def to_ash_error(other, stacktrace) do
     cond do
       ash_error?(other) ->
-        if stacktrace do
-          Map.put(other, :stacktrace, %Stacktrace{stacktrace: stacktrace})
-        else
-          other
-        end
+        add_stacktrace(other, stacktrace)
 
       is_exception(other) ->
-        if stacktrace do
-          other = Unknown.exception(error: Exception.format(:error, other))
-          Map.put(other, :stacktrace, %Stacktrace{stacktrace: stacktrace})
-        else
-          Unknown.exception(error: Exception.format(:error, other))
-        end
+        error = UnknownError.exception(error: Exception.format(:error, other))
+
+        add_stacktrace(error, stacktrace)
 
       true ->
-        other = Unknown.exception(error: "unknown error: #{inspect(other)}")
-
-        if stacktrace do
-          Map.put(other, :stacktrace, %Stacktrace{stacktrace: stacktrace})
-        else
-          other
-        end
+        error = UnknownError.exception(error: "unknown error: #{inspect(other)}")
+        add_stacktrace(error, stacktrace)
     end
+  end
+
+  defp add_stacktrace(%{stacktrace: %Stacktrace{stacktrace: stacktrace}} = error, _)
+       when not is_nil(stacktrace) do
+    error
+  end
+
+  defp add_stacktrace(error, stacktrace) do
+    stacktrace =
+      case stacktrace do
+        %Stacktrace{stacktrace: nil} ->
+          {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
+          %Stacktrace{stacktrace: stacktrace}
+
+        nil ->
+          {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
+          %Stacktrace{stacktrace: stacktrace}
+
+        stacktrace ->
+          %Stacktrace{stacktrace: stacktrace}
+      end
+
+    %{error | stacktrace: stacktrace}
   end
 
   @doc "A utility to flatten a list, but preserve keyword list elements"

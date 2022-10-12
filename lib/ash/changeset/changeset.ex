@@ -766,6 +766,9 @@ defmodule Ash.Changeset do
               )
 
             add_error(changeset, error)
+
+          {:error, error} ->
+            add_error(changeset, error)
         end
       else
         changeset

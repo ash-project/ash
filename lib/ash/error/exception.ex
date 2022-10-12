@@ -14,7 +14,6 @@ defmodule Ash.Error.Exception do
                        :changeset,
                        :query,
                        vars: [],
-                       private_vars: [],
                        path: [],
                        stacktrace: [],
                        class: unquote(opts)[:class]
@@ -22,10 +21,10 @@ defmodule Ash.Error.Exception do
 
       @impl Exception
 
-      def message(%{vars: vars, private_vars: private_vars} = exception) do
+      def message(%{vars: vars} = exception) do
         string = Ash.ErrorKind.message(exception)
 
-        Enum.reduce(List.wrap(vars) ++ List.wrap(private_vars), string, fn {key, value}, acc ->
+        Enum.reduce(List.wrap(vars), string, fn {key, value}, acc ->
           if String.contains?(acc, "%{#{key}}") do
             String.replace(acc, "%{#{key}}", to_string(value))
           else
@@ -36,7 +35,7 @@ defmodule Ash.Error.Exception do
 
       def exception(opts) do
         case Process.info(self(), :current_stacktrace) do
-          {:current_stacktrace, [_, _ | stacktrace]} ->
+          {:current_stacktrace, stacktrace} ->
             super(
               Keyword.put_new(opts, :stacktrace, %Ash.Error.Stacktrace{stacktrace: stacktrace})
             )
