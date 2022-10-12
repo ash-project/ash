@@ -19,13 +19,14 @@ defmodule Ash.DataLayer.Ets do
       private?: [
         type: :boolean,
         default: false,
-        doc: "Sets the ets table protection to private",
+        doc:
+          "Sets the ets table protection to private, and scopes it to only this process. The table name will not be used directly if this is true, to allow multiple processes to use this resource separately.",
         links: []
       ],
       table: [
         type: :atom,
         doc: """
-        The name of the table. Defaults to the resource name. Not used if `private?` is set to `true`.
+        The name of the table. Defaults to the resource name.
         """,
         links: []
       ]
@@ -720,7 +721,9 @@ defmodule Ash.DataLayer.Ets do
   # sobelow_skip ["DOS.StringToAtom"]
   defp wrap_or_create_table(resource, tenant) do
     if Ash.DataLayer.Ets.Info.private?(resource) do
-      case Process.get({:ash_ets_table, resource, tenant}) do
+      configured_table = Ash.DataLayer.Ets.Info.table(resource)
+
+      case Process.get({:ash_ets_table, configured_table, tenant}) do
         nil ->
           case ETS.Set.new(
                  protection: :private,
@@ -728,7 +731,7 @@ defmodule Ash.DataLayer.Ets do
                  read_concurrency: true
                ) do
             {:ok, table} ->
-              Process.put({:ash_ets_table, resource, tenant}, table)
+              Process.put({:ash_ets_table, configured_table, tenant}, table)
               {:ok, table}
 
             {:error, error} ->
