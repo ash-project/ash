@@ -9,10 +9,7 @@ defmodule Ash.DataLayer.EtsTest do
 
   setup do
     on_exit(fn ->
-      case ETS.Set.wrap_existing(EtsTestUser) do
-        {:error, :table_not_found} -> :ok
-        {:ok, set} -> ETS.Set.delete_all!(set)
-      end
+      Ash.DataLayer.Ets.stop(__MODULE__.EtsTestUser)
     end)
   end
 
@@ -20,10 +17,6 @@ defmodule Ash.DataLayer.EtsTest do
 
   defmodule EtsTestUser do
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
-
-    ets do
-      private?(true)
-    end
 
     actions do
       defaults [:read, :create, :update, :destroy]

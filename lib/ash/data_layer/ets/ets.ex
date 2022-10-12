@@ -25,7 +25,7 @@ defmodule Ash.DataLayer.Ets do
       table: [
         type: :atom,
         doc: """
-        The name of the table. Defaults to the resource name.
+        The name of the table. Defaults to the resource name. Not used if `private?` is set to `true`.
         """,
         links: []
       ]
@@ -121,19 +121,12 @@ defmodule Ash.DataLayer.Ets do
 
     def handle_call(:wait, _, state), do: {:reply, :ok, state}
 
-    defp do_wrap_existing(resource, table) do
+    defp do_wrap_existing(_resource, table) do
       case ETS.Set.wrap_existing(table) do
         {:error, :table_not_found} ->
-          protection =
-            if Ash.DataLayer.Ets.Info.private?(resource) do
-              :private
-            else
-              :public
-            end
-
           case ETS.Set.new(
                  name: table,
-                 protection: protection,
+                 protection: :public,
                  ordered: true,
                  read_concurrency: true
                ) do
@@ -159,21 +152,31 @@ defmodule Ash.DataLayer.Ets do
   @doc "Stops the storage for a given resource/tenant (deleting all of the data)"
   # sobelow_skip ["DOS.StringToAtom"]
   def stop(resource, tenant \\ nil) do
-    table =
-      if tenant do
-        String.to_atom(to_string(tenant) <> to_string(resource))
-      else
-        resource
+    if Ash.DataLayer.Ets.Info.private?(resource) do
+      case Process.get({:ash_ets_table, resource, tenant}) do
+        nil ->
+          :ok
+
+        table ->
+          ETS.Set.delete(table)
       end
+    else
+      table =
+        if tenant do
+          String.to_atom(to_string(tenant) <> to_string(resource))
+        else
+          resource
+        end
 
-    name = Module.concat(table, TableManager)
+      name = Module.concat(table, TableManager)
 
-    case Process.whereis(name) do
-      nil ->
-        :ok
+      case Process.whereis(name) do
+        nil ->
+          :ok
 
-      pid ->
-        Process.exit(pid, :shutdown)
+        pid ->
+          Process.exit(pid, :shutdown)
+      end
     end
   end
 
@@ -716,6 +719,27 @@ defmodule Ash.DataLayer.Ets do
 
   # sobelow_skip ["DOS.StringToAtom"]
   defp wrap_or_create_table(resource, tenant) do
-    TableManager.start(resource, tenant)
+    if Ash.DataLayer.Ets.Info.private?(resource) do
+      case Process.get({:ash_ets_table, resource, tenant}) do
+        nil ->
+          case ETS.Set.new(
+                 protection: :private,
+                 ordered: true,
+                 read_concurrency: true
+               ) do
+            {:ok, table} ->
+              Process.put({:ash_ets_table, resource, tenant}, table)
+              {:ok, table}
+
+            {:error, error} ->
+              {:error, error}
+          end
+
+        tab ->
+          {:ok, tab}
+      end
+    else
+      TableManager.start(resource, tenant)
+    end
   end
 end
