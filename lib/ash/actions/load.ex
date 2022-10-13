@@ -485,12 +485,21 @@ defmodule Ash.Actions.Load do
             get_in(data, request_path ++ [:data, :results])
 
           path ->
-            data
-            |> get_in(request_path)
-            |> Kernel.||(%{})
-            |> Map.get(:load, %{})
-            |> Map.get(Enum.reverse(Enum.map(path, & &1.name)), %{})
-            |> Map.get(:data, %{})
+            data =
+              data
+              |> get_in(request_path)
+              |> Kernel.||(%{})
+              |> Map.get(:load, %{})
+              |> Map.get(Enum.reverse(Enum.map(path, & &1.name)), %{})
+              |> Map.get(:data, %{})
+
+            if is_map(data) do
+              data
+              |> Map.values()
+              |> Enum.flat_map(&List.wrap/1)
+            else
+              data
+            end
         end
 
       lazy_load_or(
@@ -896,12 +905,21 @@ defmodule Ash.Actions.Load do
           get_in(data, request_path ++ [:data, :results])
 
         path ->
-          data
-          |> get_in(request_path)
-          |> Kernel.||(%{})
-          |> Map.get(:load, %{})
-          |> Map.get(Enum.reverse(Enum.map(path, & &1.name)), %{})
-          |> Map.get(:data, %{})
+          data =
+            data
+            |> get_in(request_path)
+            |> Kernel.||(%{})
+            |> Map.get(:load, %{})
+            |> Map.get(Enum.reverse(Enum.map(path, & &1.name)), %{})
+            |> Map.get(:data, %{})
+
+          if is_map(data) do
+            data
+            |> Map.values()
+            |> Enum.flat_map(&List.wrap/1)
+          else
+            data
+          end
       end
 
     lazy_load_or(

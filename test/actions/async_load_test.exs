@@ -295,6 +295,27 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
                |> Map.get(:posts_in_same_category)
     end
 
+    test "it allows loading through manual relationships" do
+      post1 =
+        Post
+        |> new(%{title: "post1", category: "foo"})
+        |> Api.create!()
+
+      Post
+      |> new(%{title: "post2", category: "bar"})
+      |> Api.create!()
+
+      Post
+      |> new(%{title: "post2", category: "foo"})
+      |> Api.create!()
+
+      assert [%Post{title: "post1"}] =
+               post1
+               |> Api.load!(posts_in_same_category: :posts_in_same_category)
+               |> Map.get(:posts_in_same_category)
+               |> Enum.flat_map(&Map.get(&1, :posts_in_same_category))
+    end
+
     test "it allows loading related data" do
       author =
         Author
