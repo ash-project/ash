@@ -9,7 +9,7 @@ defmodule Ash.Flow.Step.Transaction do
         output: [
           type: :any,
           doc:
-            "Which step or steps to use when constructing the output list. Defaults to the last step.",
+            "Which step or steps to use when constructing the output. Defaults to the last step.",
           links: []
         ],
         timeout: [

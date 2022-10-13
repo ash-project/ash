@@ -510,7 +510,8 @@ defmodule Ash.Actions.Load do
         related_query,
         request_opts,
         fn ->
-          mod.load(data, opts, %{
+          data
+          |> mod.load(opts, %{
             relationship: relationship,
             query: related_query,
             root_query: root_query,
@@ -519,6 +520,29 @@ defmodule Ash.Actions.Load do
             api: related_query.api,
             tenant: related_query.tenant
           })
+          |> case do
+            {:ok, result} ->
+              # TODO: this will result in quite a few requests potentially for aggs/calcs
+              # This should be optimized.
+              Enum.reduce_while(result, {:ok, %{}}, fn {key, records}, {:ok, acc} ->
+                case related_query.api.load(records, %{related_query | load: []},
+                       lazy?: true,
+                       tenant: related_query.tenant,
+                       actor: request_opts[:actor],
+                       authorize?: request_opts[:authorize?],
+                       tracer: request_opts[:tracer]
+                     ) do
+                  {:ok, results} ->
+                    {:cont, {:ok, Map.put(acc, key, results)}}
+
+                  {:error, error} ->
+                    {:halt, {:error, error}}
+                end
+              end)
+
+            {:error, error} ->
+              {:error, error}
+          end
         end
       )
     end)

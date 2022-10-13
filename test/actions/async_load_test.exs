@@ -99,6 +99,10 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
         source_attribute_on_join_resource: :post_id
     end
 
+    calculations do
+      calculate :title_plus_title, :string, expr((title || "foo") <> (title || "bar"))
+    end
+
     policies do
       policy action(:authorized_actor) do
         authorize_if expr(actor_id == ^actor(:id))
@@ -314,6 +318,43 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
                |> Api.load!(posts_in_same_category: :posts_in_same_category)
                |> Map.get(:posts_in_same_category)
                |> Enum.flat_map(&Map.get(&1, :posts_in_same_category))
+    end
+
+    test "it allows loading calculations on and through manual relationships" do
+      post1 =
+        Post
+        |> new(%{title: "post1", category: "foo"})
+        |> Api.create!()
+
+      Post
+      |> new(%{title: "post2", category: "bar"})
+      |> Api.create!()
+
+      Post
+      |> new(%{title: "post2", category: "foo"})
+      |> Api.create!()
+
+      assert %Post{
+               title: "post1",
+               title_plus_title: "post1post1",
+               posts_in_same_category: [
+                 %{
+                   title: "post2",
+                   title_plus_title: "post2post2",
+                   posts_in_same_category: [
+                     %{title: "post1", title_plus_title: "post1post1"}
+                   ]
+                 }
+               ]
+             } =
+               post1
+               |> Api.load!([
+                 :title_plus_title,
+                 posts_in_same_category: [
+                   :title_plus_title,
+                   posts_in_same_category: [:title_plus_title]
+                 ]
+               ])
     end
 
     test "it allows loading related data" do
