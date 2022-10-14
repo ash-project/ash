@@ -1,13 +1,23 @@
 defmodule Mix.Tasks.Ash.GenerateFlowCharts do
   @moduledoc """
-  Generates Mermaid Flow Chart PNGs for each `Ash.Flow` alongside the flow.
+  Generates a Mermaid Flow Chart for each `Ash.Flow` alongside the flow.
 
   If there is a `run_flow` step in the flow, this will also create
   an "expanded" Mermaid Flow Chart which includes all child steps.
+
+  ## Prerequisites
+
+  This mix task requires the Mermaid CLI to be installed on your system
+  See https://github.com/mermaid-js/mermaid-cli
+
+  ## Command line options
+
+    * `--only` - only generates the given Flow file
+
   """
   use Mix.Task
 
-  @shortdoc "Generates mermaid charts for each `Ash.Flow`"
+  @shortdoc "Generates Mermaid Flow Charts for each `Ash.Flow`"
   def run(argv) do
     Mix.Task.run("compile")
 
@@ -29,7 +39,7 @@ defmodule Mix.Tasks.Ash.GenerateFlowCharts do
           make_simple(flow, source, directory)
           make_expanded(flow, source, directory)
 
-          Mix.shell().info("Generated chart for #{inspect(flow)}")
+          Mix.shell().info("Generated flow chart for #{inspect(flow)}")
         end
       end,
       timeout: :infinity
@@ -42,7 +52,7 @@ defmodule Mix.Tasks.Ash.GenerateFlowCharts do
       source
       |> Path.basename()
       |> Path.rootname()
-      |> Kernel.<>("-mermaid-chart.png")
+      |> Kernel.<>("-mermaid-flowchart.pdf")
 
     file = Path.join(directory, filename)
 
@@ -55,7 +65,7 @@ defmodule Mix.Tasks.Ash.GenerateFlowCharts do
         source
         |> Path.basename()
         |> Path.rootname()
-        |> Kernel.<>("-expanded-mermaid-chart.png")
+        |> Kernel.<>("-expanded-mermaid-flowchart.pdf")
 
       file = Path.join(directory, filename)
 
@@ -73,7 +83,7 @@ defmodule Mix.Tasks.Ash.GenerateFlowCharts do
     |> System.cmd([
       "-c",
       """
-      cat <<EOF | mmdc --output #{file} #{config} --scale 10
+      cat <<EOF | mmdc --output #{file} #{config}
       #{text}
       EOF
       """
@@ -83,7 +93,7 @@ defmodule Mix.Tasks.Ash.GenerateFlowCharts do
         :ok
 
       {text, exit_status} ->
-        raise "Creating mermaid chart #{file} exited with status: #{exit_status}\n#{text}"
+        raise "Creating Mermaid Flow Chart #{file} exited with status: #{exit_status}\n#{text}"
     end
   end
 
