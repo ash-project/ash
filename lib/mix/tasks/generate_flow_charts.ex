@@ -1,9 +1,9 @@
 defmodule Mix.Tasks.Ash.GenerateFlowCharts do
   @moduledoc """
-  Generates mermaid chart pngs for each `Ash.Flow` alongside the flow
+  Generates Mermaid Flow Chart PNGs for each `Ash.Flow` alongside the flow.
 
-  If there is a `run_flow` step in the flow, this will also create an "expanded"
-  an "expanded" mermaid chart which includes all child steps.
+  If there is a `run_flow` step in the flow, this will also create
+  an "expanded" Mermaid Flow Chart which includes all child steps.
   """
   use Mix.Task
 
