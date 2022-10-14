@@ -32,9 +32,7 @@ defmodule Mix.Tasks.Ash.GenerateErDiagrams do
         source = api.module_info(:compile)[:source]
 
         if is_nil(only) || Path.expand(source) in only do
-          directory = Path.dirname(source)
-
-          make_diagram(api, source, directory)
+          make_diagram(api, Mix.Mermaid.file(source, "mermaid-erdiagram", "pdf"))
 
           Mix.shell().info("Generated ER diagram for #{inspect(api)}")
         end
@@ -44,46 +42,8 @@ defmodule Mix.Tasks.Ash.GenerateErDiagrams do
     |> Stream.run()
   end
 
-  defp make_diagram(api, source, directory) do
-    filename =
-      source
-      |> Path.basename()
-      |> Path.rootname()
-      |> Kernel.<>("-mermaid-erdiagram.pdf")
-
-    file = Path.join(directory, filename)
-
-    create_er_diagram(file, Ash.Api.Info.Diagram.mermaid_er_diagram(api))
-  end
-
-  defp create_er_diagram(file, text) do
-    config =
-      if File.exists?("mermaidConfig.json") do
-        "--configFile #{Path.expand("mermaidConfig.json")}"
-      end
-
-    "sh"
-    |> System.cmd([
-      "-c",
-      """
-      cat <<EOF | mmdc --output #{file} #{config}
-      #{text}
-      EOF
-      """
-    ])
-    |> case do
-      {_, 0} ->
-        :ok
-
-      {text, exit_status} ->
-        raise "Creating Mermaid ER Diagram #{file} exited with status: #{exit_status}\n#{text}"
-    end
-  end
-
-  def sibling_file(file) do
-    __ENV__.file
-    |> Path.dirname()
-    |> Path.join(file)
+  defp make_diagram(api, file) do
+    Mix.Mermaid.create_diagram(file, Ash.Api.Info.Diagram.mermaid_er_diagram(api))
   end
 
   def apis do
