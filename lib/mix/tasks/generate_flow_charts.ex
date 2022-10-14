@@ -40,7 +40,7 @@ defmodule Mix.Tasks.Ash.GenerateFlowCharts do
           make_simple(flow, source, directory)
           make_expanded(flow, source, directory)
 
-          Mix.shell().info("Generated flow chart for #{inspect(flow)}")
+          Mix.shell().info("Generated Mermaid Flow Chart for #{inspect(flow)}")
         end
       end,
       timeout: :infinity
