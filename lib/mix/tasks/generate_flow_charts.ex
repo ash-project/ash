@@ -7,7 +7,8 @@ defmodule Mix.Tasks.Ash.GenerateFlowCharts do
 
   ## Prerequisites
 
-  This mix task requires the Mermaid CLI to be installed on your system
+  This mix task requires the Mermaid CLI to be installed on your system.
+
   See https://github.com/mermaid-js/mermaid-cli
 
   ## Command line options

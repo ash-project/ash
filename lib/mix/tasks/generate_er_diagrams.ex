@@ -4,7 +4,8 @@ defmodule Mix.Tasks.Ash.GenerateErDiagrams do
 
   ## Prerequisites
 
-  This mix task requires the Mermaid CLI to be installed on your system
+  This mix task requires the Mermaid CLI to be installed on your system.
+
   See https://github.com/mermaid-js/mermaid-cli
 
   ## Command line options
@@ -65,7 +66,7 @@ defmodule Mix.Tasks.Ash.GenerateErDiagrams do
     |> System.cmd([
       "-c",
       """
-      cat <<EOF | mmdc --output #{file} #{config} --scale 10
+      cat <<EOF | mmdc --output #{file} #{config}
       #{text}
       EOF
       """
