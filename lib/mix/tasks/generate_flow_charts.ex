@@ -70,12 +70,12 @@ defmodule Mix.Tasks.Ash.GenerateFlowCharts do
   defp any_complex?(%{steps: steps}), do: any_complex?(steps)
   defp any_complex?(_), do: false
 
-  def modules do
+  defp modules do
     Mix.Project.config()[:app]
     |> Application.get_env(:modules, [])
   end
 
-  def flows do
+  defp flows do
     for module <- modules(),
         {:module, module} = Code.ensure_compiled(module),
         Spark.Dsl.is?(module, Ash.Flow) do
