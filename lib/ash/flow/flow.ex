@@ -583,8 +583,13 @@ defmodule Ash.Flow do
     Enum.flat_map(list, &do_list_expr_refs(&1, matcher))
   end
 
-  defp do_list_expr_refs({key, value}, matcher) when is_atom(key),
-    do: do_list_expr_refs(value, matcher)
+  defp do_list_expr_refs({key, value}, matcher) when is_atom(key) do
+    if matcher.({key, value}) do
+      [{key, value}]
+    else
+      do_list_expr_refs(value, matcher)
+    end
+  end
 
   defp do_list_expr_refs(expression, matcher) do
     case expression do

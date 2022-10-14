@@ -187,11 +187,17 @@ defmodule Ash.Flow.Chart.Mermaid do
   if Code.ensure_loaded?(Earmark) do
     defp as_html!(value) do
       value
+      |> escape()
       |> Earmark.as_html!()
       |> String.replace("<br>", "<br/>")
     end
   else
-    defp as_html!(value), do: value |> String.split("\n", trim: true) |> Enum.join("<br/>")
+    defp as_html!(value),
+      do:
+        value
+        |> String.replace("\"", "\\\"")
+        |> String.split("\n", trim: true)
+        |> Enum.join("<br/>")
   end
 
   defp short_name(%Ash.Flow.Step.Custom{custom: {mod, opts}}) do
@@ -269,6 +275,11 @@ defmodule Ash.Flow.Chart.Mermaid do
   defp do_links(steps, all_steps, opts) do
     Enum.flat_map(steps, fn step ->
       case step do
+        %Ash.Flow.Step.Branch{steps: steps, condition: condition} = step ->
+          id = "#{format_name(step)}"
+
+          dependencies(step, all_steps, [condition], id) ++ do_links(steps, all_steps, opts)
+
         %Ash.Flow.Step.Map{steps: steps, over: over} = step ->
           id = "#{format_name(step)}.element"
 
@@ -340,7 +351,7 @@ defmodule Ash.Flow.Chart.Mermaid do
         end
       end)
 
-    "%{<br/>#{body}<br/>}"
+    "%{<br/>#{escape(body)}<br/>}"
   end
 
   defp do_format_template(template, all_steps) when is_list(template) do
