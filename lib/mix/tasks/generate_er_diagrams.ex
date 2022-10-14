@@ -23,7 +23,7 @@ defmodule Mix.Tasks.Ash.GenerateErDiagrams do
 
     only =
       if opts[:only] && opts[:only] != [] do
-        Enum.map(opts[:only], &Path.expand/1)
+        Enum.map(List.wrap(opts[:only]), &Path.expand/1)
       end
 
     apis()
