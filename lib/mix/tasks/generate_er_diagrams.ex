@@ -80,12 +80,6 @@ defmodule Mix.Tasks.Ash.GenerateErDiagrams do
     end
   end
 
-  def sibling_file(file) do
-    __ENV__.file
-    |> Path.dirname()
-    |> Path.join(file)
-  end
-
   def apis do
     Mix.Project.config()[:app]
     |> Application.get_env(:ash_apis, [])

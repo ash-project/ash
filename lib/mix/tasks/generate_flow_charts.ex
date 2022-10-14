@@ -112,12 +112,6 @@ defmodule Mix.Tasks.Ash.GenerateFlowCharts do
   defp any_complex?(%{steps: steps}), do: any_complex?(steps)
   defp any_complex?(_), do: false
 
-  def sibling_file(file) do
-    __ENV__.file
-    |> Path.dirname()
-    |> Path.join(file)
-  end
-
   def flows do
     for module <- modules(),
         {:module, module} = Code.ensure_compiled(module),
