@@ -87,6 +87,7 @@ defmodule Mix.Tasks.Ash.GenerateErDiagrams do
   end
 
   def apis do
-    Mix.Project.config()[:app] |> Application.get_env(:ash_apis, []) |> dbg
+    Mix.Project.config()[:app]
+    |> Application.get_env(:ash_apis, [])
   end
 end
