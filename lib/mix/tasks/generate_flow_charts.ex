@@ -35,10 +35,8 @@ defmodule Mix.Tasks.Ash.GenerateFlowCharts do
         source = flow.module_info(:compile)[:source]
 
         if is_nil(only) || Path.expand(source) in only do
-          directory = Path.dirname(source)
-
-          make_simple(flow, source, directory)
-          make_expanded(flow, source, directory)
+          make_simple(flow, Mix.Mermaid.file(source, "mermaid-flowchart", "pdf"))
+          make_expanded(flow, Mix.Mermaid.file(source, "expanded-mermaid-flowchart", "pdf"))
 
           Mix.shell().info("Generated Mermaid Flow Chart for #{inspect(flow)}")
         end
@@ -48,53 +46,13 @@ defmodule Mix.Tasks.Ash.GenerateFlowCharts do
     |> Stream.run()
   end
 
-  defp make_simple(flow, source, directory) do
-    filename =
-      source
-      |> Path.basename()
-      |> Path.rootname()
-      |> Kernel.<>("-mermaid-flowchart.pdf")
-
-    file = Path.join(directory, filename)
-
-    create_flow_chart(file, Ash.Flow.Chart.Mermaid.chart(flow, expand?: false))
+  defp make_simple(flow, file) do
+    Mix.Mermaid.create_diagram(file, Ash.Flow.Chart.Mermaid.chart(flow, expand?: false))
   end
 
-  defp make_expanded(flow, source, directory) do
+  defp make_expanded(flow, file) do
     if has_run_flow_step?(flow) do
-      filename =
-        source
-        |> Path.basename()
-        |> Path.rootname()
-        |> Kernel.<>("-expanded-mermaid-flowchart.pdf")
-
-      file = Path.join(directory, filename)
-
-      create_flow_chart(file, Ash.Flow.Chart.Mermaid.chart(flow, expand?: true))
-    end
-  end
-
-  defp create_flow_chart(file, text) do
-    config =
-      if File.exists?("mermaidConfig.json") do
-        "--configFile #{Path.expand("mermaidConfig.json")}"
-      end
-
-    "sh"
-    |> System.cmd([
-      "-c",
-      """
-      cat <<EOF | mmdc --output #{file} #{config}
-      #{text}
-      EOF
-      """
-    ])
-    |> case do
-      {_, 0} ->
-        :ok
-
-      {text, exit_status} ->
-        raise "Creating Mermaid Flow Chart #{file} exited with status: #{exit_status}\n#{text}"
+      Mix.Mermaid.create_diagram(file, Ash.Flow.Chart.Mermaid.chart(flow, expand?: true))
     end
   end
 
@@ -112,22 +70,16 @@ defmodule Mix.Tasks.Ash.GenerateFlowCharts do
   defp any_complex?(%{steps: steps}), do: any_complex?(steps)
   defp any_complex?(_), do: false
 
+  def modules do
+    Mix.Project.config()[:app]
+    |> Application.get_env(:modules, [])
+  end
+
   def flows do
     for module <- modules(),
         {:module, module} = Code.ensure_compiled(module),
         Spark.Dsl.is?(module, Ash.Flow) do
       module
-    end
-  end
-
-  defp modules do
-    app = Mix.Project.config()[:app]
-
-    if app do
-      {:ok, modules} = :application.get_key(app, :modules)
-      modules
-    else
-      []
     end
   end
 end
