@@ -1,6 +1,16 @@
 defmodule Mix.Tasks.Ash.GenerateErDiagrams do
   @moduledoc """
-  Generates Mermaid ER Diagram PNGs for each Ash API.
+  Generates a Mermaid ER Diagram for each Ash API.
+
+  ## Prerequisites
+
+  This mix task requires the Mermaid CLI to be installed on your system
+  See https://github.com/mermaid-js/mermaid-cli
+
+  ## Command line options
+
+    * `--only` - only generates the given API file
+
   """
   use Mix.Task
 
@@ -38,7 +48,7 @@ defmodule Mix.Tasks.Ash.GenerateErDiagrams do
       source
       |> Path.basename()
       |> Path.rootname()
-      |> Kernel.<>("-mermaid-chart.png")
+      |> Kernel.<>("-mermaid-erdiagram.pdf")
 
     file = Path.join(directory, filename)
 
@@ -76,24 +86,6 @@ defmodule Mix.Tasks.Ash.GenerateErDiagrams do
   end
 
   def apis do
-    Application.get_application(__MODULE__) |> IO.inspect()
-
-    for module <- modules(),
-        {:module, module} = Code.ensure_compiled(module),
-        Spark.Dsl.is?(module, Ash.Api) do
-      module
-    end
-    |> dbg
-  end
-
-  defp modules do
-    app = Mix.Project.config()[:app]
-
-    if app do
-      {:ok, modules} = :application.get_key(app, :modules)
-      modules
-    else
-      []
-    end
+    Mix.Project.config()[:app] |> Application.get_env(:ash_apis, []) |> dbg
   end
 end
