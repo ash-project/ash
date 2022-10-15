@@ -135,6 +135,7 @@ defmodule Ash.Type do
               constraints
             ) ::
               {:ok, term} | error()
+
   @callback constraints() :: constraints()
   @callback array_constraints() :: constraints()
   @callback apply_constraints(term, constraints) ::
@@ -149,6 +150,7 @@ defmodule Ash.Type do
   @callback equal?(term, term) :: boolean
   @callback embedded?() :: boolean
   @callback generator(constraints) :: Enumerable.t()
+  @callback simple_equality?() :: boolean
 
   @optional_callbacks [
     cast_stored_array: 2,
@@ -717,11 +719,24 @@ defmodule Ash.Type do
     type.equal?(left, right)
   end
 
+  @doc """
+  Determines if a type can be compared using ==
+  """
+  @spec simple_equality?(t()) :: boolean
+  def simple_equality?({:array, type}), do: simple_equality?(type)
+
+  def simple_equality?(type) do
+    type = get_type(type)
+
+    type.simple_equality?()
+  end
+
   # @callback equal?(term, term) :: boolean
 
   defmacro __using__(opts) do
     quote location: :keep, generated: true do
       @behaviour Ash.Type
+      @before_compile Ash.Type
 
       parent = __MODULE__
 
@@ -787,9 +802,6 @@ defmodule Ash.Type do
       def ecto_type, do: EctoType
 
       @impl true
-      def equal?(left, right), do: left == right
-
-      @impl true
       def constraints, do: []
 
       @impl true
@@ -821,8 +833,7 @@ defmodule Ash.Type do
         unquote(opts[:embedded?] || false)
       end
 
-      defoverridable equal?: 2,
-                     constraints: 0,
+      defoverridable constraints: 0,
                      array_constraints: 0,
                      apply_constraints: 2,
                      handle_change: 3,
@@ -895,6 +906,26 @@ defmodule Ash.Type do
       key ->
         {:error,
          "Invalid constraint key #{key} in type #{inspect(type)}. This name is reserved due to the underlying ecto implementation."}
+    end
+  end
+
+  # Credit to @immutable from elixir discord for the idea
+  defmacro __before_compile__(_env) do
+    quote generated: true do
+      if Module.defines?(__MODULE__, {:equal?, 2}, :def) do
+        unless Module.defines?(__MODULE__, {:simple_equality, 0}, :def) do
+          @impl true
+          def simple_equality?, do: false
+        end
+      else
+        unless Module.defines?(__MODULE__, {:simple_equality, 0}, :def) do
+          @impl true
+          def simple_equality?, do: true
+        end
+
+        @impl true
+        def equal?(left, right), do: left == right
+      end
     end
   end
 end

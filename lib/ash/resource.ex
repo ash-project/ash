@@ -124,27 +124,33 @@ defmodule Ash.Resource do
 
       @primary_key @primary_key_with_types |> Enum.map(&elem(&1, 1))
 
-      case @primary_key_with_types do
-        [{field, type}] ->
-          @pkey_field field
-          @pkey_type type
+      if Ash.Resource.Info.primary_key_simple_equality?(__MODULE__) do
+        def primary_key_matches?(left, right) do
+          Map.take(left, @primary_key) == Map.take(right, @primary_key)
+        end
+      else
+        case @primary_key_with_types do
+          [{field, type}] ->
+            @pkey_field field
+            @pkey_type type
 
-          def primary_key_matches?(left, right) do
-            Ash.Type.equal?(
-              @pkey_type,
-              Map.fetch!(left, @pkey_field),
-              Map.fetch!(right, @pkey_field)
-            )
-          end
+            def primary_key_matches?(left, right) do
+              Ash.Type.equal?(
+                @pkey_type,
+                Map.fetch!(left, @pkey_field),
+                Map.fetch!(right, @pkey_field)
+              )
+            end
 
-          def primary_key_matches?(_left, _right), do: false
+            def primary_key_matches?(_left, _right), do: false
 
-        _ ->
-          def primary_key_matches?(left, right) do
-            Enum.all?(@primary_key_with_types, fn {name, type} ->
-              Ash.Type.equal?(type, Map.fetch!(left, name), Map.fetch!(right, name))
-            end)
-          end
+          _ ->
+            def primary_key_matches?(left, right) do
+              Enum.all?(@primary_key_with_types, fn {name, type} ->
+                Ash.Type.equal?(type, Map.fetch!(left, name), Map.fetch!(right, name))
+              end)
+            end
+        end
       end
 
       @doc """

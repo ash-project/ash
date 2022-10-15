@@ -304,7 +304,11 @@ defmodule Ash.Actions.Read do
                      Load.requests(
                        loaded_query(query),
                        lazy?,
-                       [actor: actor, authorize?: authorize?, tracer: request_opts[:tracer]],
+                       [
+                         actor: actor,
+                         authorize?: authorize?,
+                         tracer: request_opts[:tracer]
+                       ],
                        path ++ [:fetch]
                      ),
                    {:ok, sort} <-
@@ -1182,21 +1186,26 @@ defmodule Ash.Actions.Read do
 
   def page_opts(action, opts) do
     cond do
-      !(action.pagination && action.pagination.default_limit) ->
-        opts[:page]
+      action.pagination == false ->
+        nil
 
       Keyword.keyword?(opts[:page]) && !Keyword.has_key?(opts[:page], :limit) ->
         Keyword.put(opts[:page], :limit, action.pagination.default_limit)
 
       is_nil(opts[:page]) and action.pagination.required? ->
-        [limit: action.pagination.default_limit]
+        if action.pagination.default_limit do
+          [limit: action.pagination.default_limit]
+        else
+          opts[:page]
+        end
 
       true ->
         opts[:page]
     end
   end
 
-  defp paginate(starting_query, action, opts) do
+  @doc false
+  def paginate(starting_query, action, opts) do
     page_opts = page_opts(action, opts)
 
     cond do

@@ -231,7 +231,7 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
-  def limit(query, offset, _), do: {:ok, %{query | limit: offset}}
+  def limit(query, limit, _), do: {:ok, %{query | limit: limit}}
 
   @doc false
   @impl true

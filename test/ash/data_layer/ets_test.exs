@@ -18,6 +18,10 @@ defmodule Ash.DataLayer.EtsTest do
   defmodule EtsTestUser do
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
 
+    ets do
+      private? true
+    end
+
     actions do
       defaults [:read, :create, :update, :destroy]
     end
@@ -240,10 +244,15 @@ defmodule Ash.DataLayer.EtsTest do
   end
 
   defp user_table do
-    EtsTestUser
-    |> ETS.Set.wrap_existing!()
-    |> ETS.Set.to_list!()
-    |> Enum.map(&cast_user!/1)
+    table = Process.get({:ash_ets_table, EtsTestUser, nil})
+
+    if table do
+      table
+      |> ETS.Set.to_list!()
+      |> Enum.map(&cast_user!/1)
+    else
+      []
+    end
   end
 
   defp cast_user!({pkey, attrs}) do

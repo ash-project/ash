@@ -1786,25 +1786,38 @@ defmodule Ash.Query do
 
   Ash.Query.sort(query, [foo: :desc, bar: :asc])
   ```
+
+  ## Options
+
+  - `prepend?` - set to `true` to put your sort at the front of the list of a sort is already specified
   """
-  @spec sort(t() | Ash.Resource.t(), Ash.Sort.t()) :: t()
-  def sort(query, sorts) do
+  @spec sort(t() | Ash.Resource.t(), Ash.Sort.t(), opts :: Keyword.t()) :: t()
+  def sort(query, sorts, opts \\ []) do
     query = to_query(query)
 
     if sorts == [] || sorts == nil do
       query
     else
       if Ash.DataLayer.data_layer_can?(query.resource, :sort) do
-        sorts
-        |> List.wrap()
-        |> Enum.reduce(query, fn
-          {sort, direction}, query ->
-            %{query | sort: query.sort ++ [{sort, direction}]}
+        if opts[:prepend?] && query.sort != [] do
+          query_sort = query.sort
 
-          sort, query ->
-            %{query | sort: query.sort ++ [{sort, :asc}]}
-        end)
-        |> validate_sort()
+          query
+          |> Map.put(:sort, [])
+          |> sort(sorts)
+          |> sort(query_sort)
+        else
+          sorts
+          |> List.wrap()
+          |> Enum.reduce(query, fn
+            {sort, direction}, query ->
+              %{query | sort: query.sort ++ [{sort, direction}]}
+
+            sort, query ->
+              %{query | sort: query.sort ++ [{sort, :asc}]}
+          end)
+          |> validate_sort()
+        end
       else
         add_error(query, :sort, "Data layer does not support sorting")
       end

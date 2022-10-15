@@ -107,8 +107,7 @@ defmodule Ash.Api do
   @read_opts_schema merge_schemas(
                       [
                         page: [
-                          doc:
-                            "Nested pagination options, see the section on pagination for more",
+                          doc: "Pagination options, see the pagination docs for more",
                           type: {:custom, __MODULE__, :page_opts, []}
                         ],
                         load: [

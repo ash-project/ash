@@ -979,7 +979,7 @@ defmodule Ash.Filter do
 
     relationship.destination
     |> Ash.Query.set_context(relationship.context)
-    |> Ash.Query.sort(relationship.sort)
+    |> Ash.Query.sort(relationship.sort, prepend?: true)
     |> Ash.Query.do_filter(relationship.filter)
     |> Ash.Query.for_read(action, %{},
       actor: actor,
@@ -1476,7 +1476,7 @@ defmodule Ash.Filter do
     |> Ash.Query.new(api)
     |> Ash.Query.do_filter(filter)
     |> Ash.Query.do_filter(relationship.filter)
-    |> Ash.Query.sort(relationship.sort)
+    |> Ash.Query.sort(relationship.sort, prepend?: true)
     |> Ash.Query.set_context(relationship.context)
     |> filter_related_in(relationship, :lists.droplast(path), api, data)
   end

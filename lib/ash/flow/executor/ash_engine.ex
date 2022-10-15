@@ -115,7 +115,7 @@ defmodule Ash.Flow.Executor.AshEngine do
     end)
   end
 
-  @deps_keys [:input, :over, :record, :wait_for, :halt_if, :tenant]
+  @deps_keys [:input, :over, :record, :wait_for, :halt_if, :tenant, :condition]
 
   defp handle_input_templates(run_flow_steps) do
     run_flow_steps

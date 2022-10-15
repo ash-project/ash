@@ -202,6 +202,7 @@ defmodule Ash.Type.CiString do
     end
   end
 
+  @impl true
   def equal?(left, right) do
     Ash.CiString.compare(left, right) == :eq
   end

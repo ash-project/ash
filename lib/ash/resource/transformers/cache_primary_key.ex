@@ -12,6 +12,7 @@ defmodule Ash.Resource.Transformers.CachePrimaryKey do
       |> Enum.filter(& &1.primary_key?)
 
     pk_allows_nil? = Enum.any?(primary_key_attribute, & &1.allow_nil?)
+    simple_equality? = Enum.all?(primary_key_attribute, &Ash.Type.simple_equality?(&1.type))
 
     primary_key =
       if pk_allows_nil? == false do
@@ -29,12 +30,18 @@ defmodule Ash.Resource.Transformers.CachePrimaryKey do
          DslError.exception(message: "Resources without a primary key are not yet supported")}
 
       [field] ->
-        dsl_state = Transformer.persist(dsl_state, :primary_key, [field])
+        dsl_state =
+          dsl_state
+          |> Transformer.persist(:primary_key, [field])
+          |> Transformer.persist(:primary_key_simple_equality?, simple_equality?)
 
         {:ok, dsl_state}
 
       fields ->
-        dsl_state = Transformer.persist(dsl_state, :primary_key, fields)
+        dsl_state =
+          dsl_state
+          |> Transformer.persist(:primary_key, fields)
+          |> Transformer.persist(:primary_key_simple_equality?, simple_equality?)
 
         {:ok, dsl_state}
     end
