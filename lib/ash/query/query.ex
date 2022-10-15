@@ -518,7 +518,7 @@ defmodule Ash.Query do
   a relationship with a query, an error is produced if the query does not select the destination field
   of the relationship.
 
-  Use `ensure_selected/2` if you simply wish to make sure a field has been selected, without deselecting any other fields.
+  Use `ensure_selected/2` if you wish to make sure a field has been selected, without deselecting any other fields.
   """
   def select(query, fields, opts \\ []) do
     query = to_query(query)

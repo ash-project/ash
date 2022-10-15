@@ -2,7 +2,7 @@
 
 Ash includes a builtin notifier to help you publish events over any kind of pub-sub pattern. This is plug and play with `Phoenix.PubSub`, but could be used with any pubsub pattern. 
 
-You simply configure a module that defines a `broadcast/3` function, and then add some "publications" which configure under what conditions an event should be sent and what the topic should be.
+You configure a module that defines a `broadcast/3` function, and then add some "publications" which configure under what conditions an event should be sent and what the topic should be.
 
 ## Topic Templates
 

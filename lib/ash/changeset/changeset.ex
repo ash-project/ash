@@ -215,9 +215,9 @@ defmodule Ash.Changeset do
   of the relationship.
 
   Datalayers currently are not notified of the `select` for a changeset(unlike queries), and creates/updates select all fields when they are performed.
-  A select provided on a changeset simply sets the unselected fields to `nil` before returning the result.
+  A select provided on a changeset sets the unselected fields to `nil` before returning the result.
 
-  Use `ensure_selected/2` if you simply wish to make sure a field has been selected, without deselecting any other fields.
+  Use `ensure_selected/2` if you wish to make sure a field has been selected, without deselecting any other fields.
   """
   def select(changeset, fields, opts \\ []) do
     if opts[:replace?] do
@@ -287,7 +287,7 @@ defmodule Ash.Changeset do
   @doc """
   Constructs a changeset for a given action, and validates it.
 
-  Simply calls `for_create/4`, `for_update/4` or `for_destroy/4` based on the type of action passed in.
+  Calls `for_create/4`, `for_update/4` or `for_destroy/4` based on the type of action passed in.
 
   See those functions for more explanation.
   """

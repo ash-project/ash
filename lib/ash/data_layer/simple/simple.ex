@@ -1,6 +1,6 @@
 defmodule Ash.DataLayer.Simple do
   @moduledoc """
-  A data layer that simply returns structs
+  A data layer that returns structs.
 
   This is the data layer that is used under the hood
   by embedded resources, and resources without data layers.

@@ -191,7 +191,7 @@ defmodule Ash.Actions.Helpers do
             Missed #{Enum.count(missed)} notifications in action #{inspect(resource)}.#{action.name}.
 
             This happens when the resources are in a transaction, and you did not pass
-            `return_notifications?: true`. If you are in a changeset hook, you can simply
+            `return_notifications?: true`. If you are in a changeset hook, you can
             return the notifications. If not, you can send the notifications using
             `Ash.Notifier.notify/1` once your resources are out of a transaction.
             """
@@ -203,7 +203,7 @@ defmodule Ash.Actions.Helpers do
             Missed #{Enum.count(missed)} notifications in action #{inspect(resource)}.#{action.name}.
 
             This happens when the resources are in a transaction, and you did not pass
-            `return_notifications?: true`. If you are in a changeset hook, you can simply
+            `return_notifications?: true`. If you are in a changeset hook, you can
             return the notifications. If not, you can send the notifications using
             `Ash.Notifier.notify/1` once your resources are out of a transaction.
 

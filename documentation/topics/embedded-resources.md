@@ -20,8 +20,7 @@ Embedded resources cannot have relationships or aggregates.
 
 ## Adding embedded resource attributes
 
-Embedded resources simply define an `Ash.Type` under the hood, meaning you can use them anywhere you would 
-use an Ash type.
+Embedded resources define an `Ash.Type` under the hood, meaning you can use them anywhere you would use an Ash type.
 
 ```elixir
 defmodule MyApp.User do
@@ -144,7 +143,7 @@ Now, you can accept input meant to `update` individual list items. The entire li
 
 #### Single Embeds with primary keys
 
-* If you provide a struct, instead of a map, the value provided is simply used as the new relationship value.
+* If you provide a struct, instead of a map, the value provided is used as the new relationship value directly.
 * If the current value is `nil` - a `create` with the provided values
 * If the current value is not `nil` and the primary keys match - an `update` with the provided values
 * If the current value is not `nil` and the primary keys *don't* match - a `destroy` of the original value and a `create` of the new value
@@ -152,7 +151,7 @@ Now, you can accept input meant to `update` individual list items. The entire li
 
 #### Array Embeds with primary keys
 
-* If you provide structs, instead of maps, the value provided is simply used as the new relationship value.
+* If you provide structs, instead of maps, the value provided is used as the new relationship value directly.
 * Any values in the original list with no primary key matching in the new list are `destroy`ed.
 * Any values in the new list with no primary key matching in the original list are `create`d.
 * Any values with a primary key match in the original list and the new list are `update`d
@@ -163,7 +162,7 @@ Identities can be added on an embedded resource, which will ensure that for any 
 
 ## Usage in Extensions
 
-The AshJsonApi extension simply exposes these attributes as maps. However, the AshGraphql extension allows you
+The AshJsonApi extension exposes these attributes as maps. However, the AshGraphql extension allows you
 to specify a type (but not queries/mutations) for an embedded resource. If you do, instead of being treated as a `:json` type it will get its own named input object type and field type.
 
 ## Accessing the source changeset

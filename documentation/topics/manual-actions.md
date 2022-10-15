@@ -35,7 +35,7 @@ end
 ## Manual Read Actions
 
 Manual read actions work differently. They must be provided a module that will run the read action.
-The module should implement the `Ash.Resource.ManualRead` behaviour, and actions will simply be handed the ash query and the data layer query.
+The module should implement the `Ash.Resource.ManualRead` behaviour, and actions will be handed the ash query and the data layer query.
 
 ```elixir
 # in the resource

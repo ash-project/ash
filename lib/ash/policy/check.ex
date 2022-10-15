@@ -3,9 +3,9 @@ defmodule Ash.Policy.Check do
   A behaviour for declaring checks, which can be used to easily construct
   authorization rules.
 
-  If a check can be expressed simply as a function of the actor, or the context of the request,
+  If a check can be expressed simply, i.e as a function of the actor, or the context of the request,
   see `Ash.Policy.SimpleCheck` for an easy way to write that check.
-  If a check can be expressed simply with a filter statement, see `Ash.Policy.FilterCheck`
+  If a check can be expressed with a filter statement, see `Ash.Policy.FilterCheck`
   for an easy way to write that check.
   """
 

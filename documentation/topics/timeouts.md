@@ -6,7 +6,7 @@ Timeouts in Ash work a bit differently than other tools. The following considera
 2. If the resource action you are running, and any of its `touches_resources` is *already in a transaction* then the timeout is ignored, as the outer transaction is handling the timeout.
 3. If the resource is not in a transaction, and supports async execution (ash_postgres does), then everything is run in a task and awaited with the provided timeout.
 4. If the data layer of the resource does not support timeouts, or async execution then timeouts are **ignored**.
-5. As of the writing of this guide, none of the API extensions support specifying a timeout. If/when they do, they will simply run the action they are meant to run in a `Task`.
+5. As of the writing of this guide, none of the API extensions support specifying a timeout. If/when they do, they will run the action they are meant to run in a `Task`.
 
 ## Ways to Specify Timeouts
 

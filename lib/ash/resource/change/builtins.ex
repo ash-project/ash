@@ -67,7 +67,7 @@ defmodule Ash.Resource.Change.Builtins do
   @doc """
   Clears a change off of the changeset before the action runs.
 
-  Does not fail if it is being changed, simply ensures it is cleared just before the action.
+  Does not fail if it is being changed, but ensures it is cleared just before the action.
 
   Can be useful if a change is only used in validations but shouldn't ultimately be written to the data layer.
 
@@ -141,9 +141,9 @@ defmodule Ash.Resource.Change.Builtins do
   Keep in mind, this will *limit* the fields that are selected. You may want `ensure_selected/1` if you
   want to make sure that something is selected, without deselecting anything else.
 
-  Selecting in changesets does not actually do a select in the data layer, it simply nils out any
-  fields that were not selected. This can be useful if you are writing policies that have to do with
-  specific fields being selected.
+  Selecting in changesets does not actually do a select in the data layer. It nils out any
+  fields that were not selected after completing the action. This can be useful if you are writing
+  policies that have to do with specific fields being selected.
 
   ## Example
 

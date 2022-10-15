@@ -99,8 +99,8 @@ defmodule Ash.Notifier.PubSub do
         doc: """
         A named pub sub to pass as the first argument to broadcast.
 
-        If you are simply using your `Endpoint` module for pubsub then this is unnecessary. If you want to use
-        a custom pub started with something like `{Phoenix.PubSub, name: MyName}`, then you can provide `MyName` to
+        If you are using a phoenix `Endpoint` module for pubsub then this is unnecessary. If you want to use
+        a custom pub sub started with something like `{Phoenix.PubSub, name: MyName}`, then you can provide `MyName` to
         here.
         """,
         links: []

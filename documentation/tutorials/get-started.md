@@ -385,7 +385,7 @@ Before we get into working with relationships, lets add some actual persistence 
 
 There is a built in data layer that is good for testing and prototyping, that uses [ETS](https://elixir-lang.org/getting-started/mix-otp/ets.html).
 
-To add it to your resource, simply modify it like so:
+To add it to your resource, modify it like so:
 
 ```elixir
 use Ash.Resource,

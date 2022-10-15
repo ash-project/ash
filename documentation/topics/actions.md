@@ -31,7 +31,7 @@ A simple example where a primary action would be used:
 Api.get!(Resource, "8ba0ab56-c6e3-4ab0-9c9c-df70e9945281")
 ```
 
-To mark an action as primary, simply add the option, i.e
+To mark an action as primary, add the option, i.e
 
 ```elixir
 read :action_name do
@@ -82,7 +82,7 @@ read :top do
 end
 ```
 
-Now, whatever code I had that would have called `top_tickets/1` can now simply call `Helpdesk.Support.Ticket.top(user.id)`. By doing it this way, you get the primary benefit of getting a nice simple Api to call into, but you *also* have a way to modify how the action is invoked in any way necessary, by going back to the old way of simply building the query. For example, if I also only want to see top tickets that were opened in the last 10 minutes:
+Now, whatever code I had that would have called `top_tickets/1` can now call `Helpdesk.Support.Ticket.top(user.id)`. By doing it this way, you get the primary benefit of getting a nice simple Api to call into, but you *also* have a way to modify how the action is invoked in any way necessary, by going back to the old way of building the query manually. For example, if I also only want to see top tickets that were opened in the last 10 minutes:
 
 ```elixir
 Ticket

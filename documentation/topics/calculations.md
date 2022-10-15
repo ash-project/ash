@@ -11,7 +11,7 @@ data.
 
 ### Expression Calculations
 
-The simplest kind of calculation simply refers to an Ash expression. For example:
+The simplest kind of calculation refers to an Ash expression. For example:
 
 ```elixir
 calculations do

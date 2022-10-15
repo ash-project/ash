@@ -24,7 +24,7 @@ actions do
 end
 ```
 
-With this, those arguments can be used simply in action input:
+With this, those arguments can be used in action input:
 
 ```elixir
 post

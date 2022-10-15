@@ -156,7 +156,7 @@ You would see that it ran a SQL query with the `full_name` calculation as SQL. T
 Accounts.load!(user, :full_name)
 ```
 
-you would see that no SQL queries are run. The calculation is simply run in Elixir and the value is set.
+you would see that no SQL queries are run. The calculation is run directly in Elixir and the value is set.
 
 ### Referencing related values
 

@@ -991,7 +991,7 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declares a named `list` aggregate on the resource.
 
-    A list aggregate simply selects the list of all values for the given field
+    A list aggregate selects the list of all values for the given field
     and relationship combination.
     """,
     examples: [

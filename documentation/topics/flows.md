@@ -67,7 +67,7 @@ end
 
 ## Errors
 
-Currently, any error anywhere in the flow will simply fail the flow and will return an error. Over time, error handling behavior will be added, as well as the ability to customize how transactions are rolled back, and to handle errors in a custom way.
+Currently, any error anywhere in the flow will fail the flow and will return an error. Over time, error handling behavior will be added, as well as the ability to customize how transactions are rolled back, and to handle errors in a custom way.
 
 ## Custom steps
 

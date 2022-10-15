@@ -11,7 +11,7 @@ MyApp.MyApi.read(MyResource, actor: current_user)
 ## Important!
 
 Before we jump into the guide, it is critical to understand that the policy code doesn't actually
-_do_ anything in the classic sense. It simply builds up a set of policies that are stored for use later.
+_do_ anything in the classic sense. It only builds up a set of policies that are stored for use later.
 The checker that reads those policies and authorizes requests may run all, some of, or none of your checks,
 depending on the details of the request being authorized.
 
@@ -130,7 +130,7 @@ Depending on the action type these expressions behave slightly differently.
 ### Access Type
 
 The default access type is `:filter`. In most cases this will be all you need. In the example above, if a user made a request for all instances
-of the resource, it wouldn't actually return a forbidden error. It simply attaches the appropriate filter to fetch data that the user can see.
+of the resource, it wouldn't actually return a forbidden error. Instead, it attaches the appropriate filter to fetch data that the user can see.
 If the actor attribute `active` was `false`, then the request _would_ be forbidden (because there is no data for which they can pass this policy). However, if `active` is `true`, the authorizer would attach the following filter to the request:
 
 ```elixir
@@ -157,7 +157,7 @@ Here is an example policy breakdown from tests:
 ```text
 Policy Breakdown
 A check status of `?` implies that the solver did not need to determine that check.
-Some checks may look like they failed when in reality there was simply no need to check them.
+Some checks may look like they failed when in reality there was no need to check them.
 Look for policies with `✘` and `✓` in check statuses.
 
 A check with a `⬇` means that it didn't determine if the policy was authorized or forbidden, and so moved on to the next check.

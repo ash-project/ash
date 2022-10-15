@@ -2,8 +2,7 @@ defmodule Ash.Resource.Change do
   @moduledoc """
   The behaviour for an action-specific resource change.
 
-  To implement one, simply implement the behaviour. `c:init/1` is defined automatically
-  by `use Ash.Resource.Change`, but can be implemented if you want to validate/transform any
+  `c:init/1` is defined automatically by `use Ash.Resource.Change`, but can be implemented if you want to validate/transform any
   options passed to the module.
 
   The main function is `c:change/3`. It takes the changeset, any options that were provided

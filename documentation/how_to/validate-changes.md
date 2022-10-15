@@ -41,7 +41,7 @@ The only information available is the changeset. If you want to adjust the behav
 on other details of the request, like the current user, you are most likely looking for
 authorization.
 
-A validation is simply a module that implements the `Ash.Resource.Validation` behaviour. The built in validations
+A validation is a module that implements the `Ash.Resource.Validation` behaviour. The built in validations
 expose utility functions that are imported into the resource's scope, to make them easier to read. You
 can do this with custom validations as well. See the documentation in `Ash.Resource.Validation` for more information.
 Right now, there are not very many built in validations, but the idea is that eventually we will have a rich

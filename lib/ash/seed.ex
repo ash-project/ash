@@ -17,7 +17,7 @@ defmodule Ash.Seed do
   Any `nil` values will be overwritten with their default values. To avoid this, either use `seed/2`
   in which providing the key will have it not set the default values.
   If you want to force `nil` to be accepted and prevent the default value from being set, use the
-  `keep_nil/0` function provided here, which simply returns `:__keep_nil__`. Alternatively, use
+  `keep_nil/0` function provided here, which returns `:__keep_nil__`. Alternatively, use
   `seed!(Post, %{text: nil})`.
 
   See `seed!/2` for more information.

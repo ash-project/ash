@@ -69,10 +69,6 @@ defmodule Ash.Filter do
   @moduledoc """
   The representation of a filter in Ash.
 
-  Ash filters are stored as nested `Ash.Query.BooleanExpression{}` and `%Ash.Query.Not{}` structs,
-  terminating in an operator or a function struct. An expression is simply a boolean operator
-  and the left and right hand side of that operator.
-
   ## Filter Templates
 
   To see the available templates, see `Ash.Filter.TemplateHelpers`.

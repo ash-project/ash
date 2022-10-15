@@ -39,7 +39,7 @@ defmodule Ash.Error.Forbidden.Policy do
   @help_text """
 
   A check status of `?` implies that the solver did not need to determine that check.
-  Some checks may look like they failed when in reality there was simply no need to check them.
+  Some checks may look like they failed when in reality there was no need to check them.
   Look for policies with `✘` and `✓` in check statuses.
 
   A check with a `⬇` means that it didn't determine if the policy was authorized or forbidden, and so moved on to the next check.
