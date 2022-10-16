@@ -82,9 +82,11 @@ defmodule Ash.Api.Info.Diagram do
               Ash.Resource.Info.aggregates(resource)
             }
           else
-            {Ash.Resource.Info.public_attributes(resource),
-             Ash.Resource.Info.public_calculations(resource),
-             Ash.Resource.Info.public_aggregates(resource)}
+            {
+              Ash.Resource.Info.public_attributes(resource),
+              Ash.Resource.Info.public_calculations(resource),
+              Ash.Resource.Info.public_aggregates(resource)
+            }
           end
 
         contents =
