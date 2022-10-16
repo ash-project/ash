@@ -1018,6 +1018,15 @@ defmodule Ash.Engine.Request do
               end
             end
 
+          result =
+            case result do
+              {:requests, requests} ->
+                {:requests, requests, []}
+
+              other ->
+                other
+            end
+
           case result do
             {:new_deps, new_deps} ->
               log(request, fn -> "New dependencies for #{field}: #{inspect(new_deps)}" end)
@@ -1031,7 +1040,7 @@ defmodule Ash.Engine.Request do
 
               {:skipped, new_request, notifications, new_deps}
 
-            {:requests, requests} ->
+            {:requests, requests, new_deps} ->
               log(request, fn ->
                 paths =
                   Enum.map(requests, fn
@@ -1046,13 +1055,15 @@ defmodule Ash.Engine.Request do
               end)
 
               new_deps =
-                Enum.flat_map(requests, fn
+                requests
+                |> Enum.flat_map(fn
                   {request, key} ->
                     [request.path ++ [key]]
 
                   _request ->
                     []
                 end)
+                |> Enum.concat(new_deps)
 
               new_unresolved =
                 Map.update!(

@@ -115,7 +115,18 @@ defmodule Ash.Flow.Executor.AshEngine do
     end)
   end
 
-  @deps_keys [:input, :over, :record, :wait_for, :halt_if, :tenant, :condition]
+  @deps_keys [
+    :input,
+    :over,
+    :record,
+    :wait_for,
+    :halt_if,
+    :tenant,
+    :condition,
+    :resource,
+    :api,
+    :action
+  ]
 
   defp handle_input_templates(run_flow_steps) do
     run_flow_steps
@@ -511,14 +522,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                            context: context,
                            transaction_name: transaction_name
                          )
-                       )
-                       |> Enum.map(fn request ->
-                         if request.path == :lists.droplast(output_path) do
-                           {request, :data}
-                         else
-                           request
-                         end
-                       end)}
+                       ), [output_path]}
                     else
                       {:ok, nil}
                     end
@@ -804,60 +808,76 @@ defmodule Ash.Flow.Executor.AshEngine do
           halt_reason: halt_reason
         } = read
 
-        %{
-          action: action,
-          action_input: action_input,
-          dep_paths: dep_paths,
-          tenant: tenant,
-          request_deps: request_deps
-        } =
-          action_request_info(
-            all_steps,
-            resource,
-            action,
-            action_input,
+        List.wrap(
+          maybe_dynamic(
+            [resource, action],
+            name,
+            [name, :data],
             input,
+            all_steps,
             transaction_name,
-            tenant,
-            [wait_for, halt_if]
+            additional_context,
+            fn resource, action ->
+              %{
+                action: action,
+                action_input: action_input,
+                resource: resource,
+                api: api,
+                dep_paths: dep_paths,
+                tenant: tenant,
+                request_deps: request_deps
+              } =
+                action_request_info(
+                  all_steps,
+                  resource,
+                  action,
+                  api,
+                  action_input,
+                  input,
+                  transaction_name,
+                  tenant,
+                  [wait_for, halt_if]
+                )
+
+              Ash.Actions.Read.as_requests([name], resource, api, action,
+                error_path: List.wrap(name),
+                authorize?: opts[:authorize?],
+                actor: opts[:actor],
+                tracer: opts[:tracer],
+                query_dependencies: request_deps,
+                get?: get? || action.get?,
+                tenant: fn context ->
+                  context = Ash.Helpers.deep_merge_maps(context, additional_context)
+                  results = results(dep_paths, context)
+
+                  tenant
+                  |> Ash.Flow.set_dependent_values(%{
+                    results: results,
+                    elements: Map.get(context, :_ash_engine_elements)
+                  })
+                  |> Ash.Flow.handle_modifiers()
+                end,
+                modify_query: fn query, context ->
+                  context = Ash.Helpers.deep_merge_maps(context, additional_context)
+                  results = results(dep_paths, context)
+
+                  halt_if(halt_if, halt_reason, name, results, context, fn -> query end)
+                end,
+                query_input: fn context ->
+                  context = Ash.Helpers.deep_merge_maps(context, additional_context)
+
+                  results = results(dep_paths, context)
+
+                  action_input
+                  |> Ash.Flow.set_dependent_values(%{
+                    results: results,
+                    elements: Map.get(context, :_ash_engine_elements)
+                  })
+                  |> Ash.Flow.handle_modifiers()
+                end
+              )
+            end
           )
-
-        Ash.Actions.Read.as_requests([name], resource, api, action,
-          error_path: List.wrap(name),
-          authorize?: opts[:authorize?],
-          actor: opts[:actor],
-          tracer: opts[:tracer],
-          query_dependencies: request_deps,
-          get?: get? || action.get?,
-          tenant: fn context ->
-            context = Ash.Helpers.deep_merge_maps(context, additional_context)
-            results = results(dep_paths, context)
-
-            tenant
-            |> Ash.Flow.set_dependent_values(%{
-              results: results,
-              elements: Map.get(context, :_ash_engine_elements)
-            })
-            |> Ash.Flow.handle_modifiers()
-          end,
-          modify_query: fn query, context ->
-            context = Ash.Helpers.deep_merge_maps(context, additional_context)
-            results = results(dep_paths, context)
-
-            halt_if(halt_if, halt_reason, name, results, context, fn -> query end)
-          end,
-          query_input: fn context ->
-            context = Ash.Helpers.deep_merge_maps(context, additional_context)
-
-            results = results(dep_paths, context)
-
-            action_input
-            |> Ash.Flow.set_dependent_values(%{
-              results: results,
-              elements: Map.get(context, :_ash_engine_elements)
-            })
-            |> Ash.Flow.handle_modifiers()
-          end
         )
 
       %Step{step: %Ash.Flow.Step.Create{} = create, input: input} ->
@@ -872,53 +892,69 @@ defmodule Ash.Flow.Executor.AshEngine do
           halt_if: halt_if
         } = create
 
-        %{
-          action: action,
-          action_input: action_input,
-          dep_paths: dep_paths,
-          tenant: tenant,
-          request_deps: request_deps
-        } =
-          action_request_info(
-            all_steps,
-            resource,
-            action,
-            action_input,
+        List.wrap(
+          maybe_dynamic(
+            [resource, action],
+            name,
+            [name, :commit],
             input,
+            all_steps,
             transaction_name,
-            tenant,
-            [wait_for, halt_if]
+            additional_context,
+            fn resource, action ->
+              %{
+                action: action,
+                resource: resource,
+                api: api,
+                action_input: action_input,
+                dep_paths: dep_paths,
+                tenant: tenant,
+                request_deps: request_deps
+              } =
+                action_request_info(
+                  all_steps,
+                  resource,
+                  action,
+                  api,
+                  action_input,
+                  input,
+                  transaction_name,
+                  tenant,
+                  [wait_for, halt_if]
+                )
+
+              Ash.Actions.Create.as_requests([name], resource, api, action,
+                error_path: List.wrap(name),
+                authorize?: opts[:authorize?],
+                actor: opts[:actor],
+                tracer: opts[:tracer],
+                changeset_dependencies: request_deps,
+                tenant: fn context ->
+                  context = Ash.Helpers.deep_merge_maps(context, additional_context)
+                  results = results(dep_paths, context)
+
+                  tenant
+                  |> Ash.Flow.set_dependent_values(%{
+                    results: results,
+                    elements: Map.get(context, :_ash_engine_elements)
+                  })
+                  |> Ash.Flow.handle_modifiers()
+                end,
+                changeset_input: fn context ->
+                  context = Ash.Helpers.deep_merge_maps(context, additional_context)
+
+                  results = results(dep_paths, context)
+
+                  action_input
+                  |> Ash.Flow.set_dependent_values(%{
+                    results: results,
+                    elements: Map.get(context, :_ash_engine_elements)
+                  })
+                  |> Ash.Flow.handle_modifiers()
+                end
+              )
+            end
           )
-
-        Ash.Actions.Create.as_requests([name], resource, api, action,
-          error_path: List.wrap(name),
-          authorize?: opts[:authorize?],
-          actor: opts[:actor],
-          tracer: opts[:tracer],
-          changeset_dependencies: request_deps,
-          tenant: fn context ->
-            context = Ash.Helpers.deep_merge_maps(context, additional_context)
-            results = results(dep_paths, context)
-
-            tenant
-            |> Ash.Flow.set_dependent_values(%{
-              results: results,
-              elements: Map.get(context, :_ash_engine_elements)
-            })
-            |> Ash.Flow.handle_modifiers()
-          end,
-          changeset_input: fn context ->
-            context = Ash.Helpers.deep_merge_maps(context, additional_context)
-
-            results = results(dep_paths, context)
-
-            action_input
-            |> Ash.Flow.set_dependent_values(%{
-              results: results,
-              elements: Map.get(context, :_ash_engine_elements)
-            })
-            |> Ash.Flow.handle_modifiers()
-          end
         )
 
       %Step{step: %Ash.Flow.Step.Validate{only_keys: keys} = validate, input: input} ->
@@ -936,6 +972,7 @@ defmodule Ash.Flow.Executor.AshEngine do
 
         %{
           action: action,
+          resource: resource,
           action_input: action_input,
           dep_paths: dep_paths,
           tenant: tenant,
@@ -945,6 +982,7 @@ defmodule Ash.Flow.Executor.AshEngine do
             all_steps,
             resource,
             action,
+            nil,
             action_input,
             input,
             transaction_name,
@@ -1065,78 +1103,94 @@ defmodule Ash.Flow.Executor.AshEngine do
           halt_reason: halt_reason
         } = update
 
-        %{
-          action: action,
-          action_input: action_input,
-          dep_paths: dep_paths,
-          tenant: tenant,
-          request_deps: request_deps
-        } =
-          action_request_info(
-            all_steps,
-            resource,
-            action,
-            action_input,
-            input,
-            transaction_name,
-            tenant,
-            [wait_for, halt_if]
-          )
-
-        get_request =
-          get_request(
-            record,
-            input,
-            all_steps,
-            transaction_name,
+        List.wrap(
+          maybe_dynamic(
+            [resource, action],
             name,
-            resource,
-            additional_context
+            [name, :commit],
+            input,
+            all_steps,
+            transaction_name,
+            additional_context,
+            fn resource, action ->
+              %{
+                action: action,
+                action_input: action_input,
+                resource: resource,
+                api: api,
+                dep_paths: dep_paths,
+                tenant: tenant,
+                request_deps: request_deps
+              } =
+                action_request_info(
+                  all_steps,
+                  resource,
+                  action,
+                  api,
+                  action_input,
+                  input,
+                  transaction_name,
+                  tenant,
+                  [wait_for, halt_if]
+                )
+
+              get_request =
+                get_request(
+                  record,
+                  input,
+                  all_steps,
+                  transaction_name,
+                  name,
+                  resource,
+                  additional_context
+                )
+
+              [
+                get_request
+                | Ash.Actions.Update.as_requests([name], resource, api, action,
+                    error_path: List.wrap(name),
+                    authorize?: opts[:authorize?],
+                    actor: opts[:actor],
+                    tracer: opts[:tracer],
+                    changeset_dependencies: [[name, :fetch, :data] | request_deps],
+                    skip_on_nil_record?: true,
+                    modify_changeset: fn changeset, context ->
+                      context = Ash.Helpers.deep_merge_maps(context, additional_context)
+                      results = results(dep_paths, context)
+
+                      halt_if(halt_if, halt_reason, name, results, context, fn -> changeset end)
+                    end,
+                    tenant: fn context ->
+                      context = Ash.Helpers.deep_merge_maps(context, additional_context)
+                      results = results(dep_paths, context)
+
+                      tenant
+                      |> Ash.Flow.set_dependent_values(%{
+                        results: results,
+                        elements: Map.get(context, :_ash_engine_elements)
+                      })
+                      |> Ash.Flow.handle_modifiers()
+                    end,
+                    record: fn context ->
+                      Ash.Flow.do_get_in(context, [name, :fetch, :data])
+                    end,
+                    changeset_input: fn context ->
+                      context = Ash.Helpers.deep_merge_maps(context, additional_context)
+
+                      results = results(dep_paths, context)
+
+                      action_input
+                      |> Ash.Flow.set_dependent_values(%{
+                        results: results,
+                        elements: Map.get(context, :_ash_engine_elements)
+                      })
+                      |> Ash.Flow.handle_modifiers()
+                    end
+                  )
+              ]
+            end
           )
-
-        [
-          get_request
-          | Ash.Actions.Update.as_requests([name], resource, api, action,
-              error_path: List.wrap(name),
-              authorize?: opts[:authorize?],
-              actor: opts[:actor],
-              tracer: opts[:tracer],
-              changeset_dependencies: [[name, :fetch, :data] | request_deps],
-              skip_on_nil_record?: true,
-              modify_changeset: fn changeset, context ->
-                context = Ash.Helpers.deep_merge_maps(context, additional_context)
-                results = results(dep_paths, context)
-
-                halt_if(halt_if, halt_reason, name, results, context, fn -> changeset end)
-              end,
-              tenant: fn context ->
-                context = Ash.Helpers.deep_merge_maps(context, additional_context)
-                results = results(dep_paths, context)
-
-                tenant
-                |> Ash.Flow.set_dependent_values(%{
-                  results: results,
-                  elements: Map.get(context, :_ash_engine_elements)
-                })
-                |> Ash.Flow.handle_modifiers()
-              end,
-              record: fn context ->
-                Ash.Flow.do_get_in(context, [name, :fetch, :data])
-              end,
-              changeset_input: fn context ->
-                context = Ash.Helpers.deep_merge_maps(context, additional_context)
-
-                results = results(dep_paths, context)
-
-                action_input
-                |> Ash.Flow.set_dependent_values(%{
-                  results: results,
-                  elements: Map.get(context, :_ash_engine_elements)
-                })
-                |> Ash.Flow.handle_modifiers()
-              end
-            )
-        ]
+        )
 
       %Step{step: %Ash.Flow.Step.Destroy{} = destroy, input: input} ->
         %{
@@ -1152,78 +1206,148 @@ defmodule Ash.Flow.Executor.AshEngine do
           halt_reason: halt_reason
         } = destroy
 
-        %{
-          action: action,
-          action_input: action_input,
-          dep_paths: dep_paths,
-          tenant: tenant,
-          request_deps: request_deps
-        } =
-          action_request_info(
-            all_steps,
-            resource,
-            action,
-            action_input,
-            input,
-            transaction_name,
-            tenant,
-            [wait_for, halt_if]
-          )
-
-        get_request =
-          get_request(
-            record,
-            input,
-            all_steps,
-            transaction_name,
+        List.wrap(
+          maybe_dynamic(
+            [resource, action],
             name,
-            resource,
-            additional_context
+            [name, :commit],
+            input,
+            all_steps,
+            transaction_name,
+            additional_context,
+            fn resource, action ->
+              %{
+                action: action,
+                action_input: action_input,
+                resource: resource,
+                api: api,
+                dep_paths: dep_paths,
+                tenant: tenant,
+                request_deps: request_deps
+              } =
+                action_request_info(
+                  all_steps,
+                  resource,
+                  action,
+                  api,
+                  action_input,
+                  input,
+                  transaction_name,
+                  tenant,
+                  [wait_for, halt_if]
+                )
+
+              get_request =
+                get_request(
+                  record,
+                  input,
+                  all_steps,
+                  transaction_name,
+                  name,
+                  resource,
+                  additional_context
+                )
+
+              [
+                get_request
+                | Ash.Actions.Destroy.as_requests([name], resource, api, action,
+                    error_path: List.wrap(name),
+                    authorize?: opts[:authorize?],
+                    actor: opts[:actor],
+                    tracer: opts[:tracer],
+                    changeset_dependencies: [[name, :fetch, :data] | request_deps],
+                    skip_on_nil_record?: true,
+                    record: fn context ->
+                      Ash.Flow.do_get_in(context, [name, :fetch, :data])
+                    end,
+                    modify_changeset: fn changeset, context ->
+                      context = Ash.Helpers.deep_merge_maps(context, additional_context)
+                      results = results(dep_paths, context)
+
+                      halt_if(halt_if, halt_reason, name, results, context, fn -> changeset end)
+                    end,
+                    tenant: fn context ->
+                      context = Ash.Helpers.deep_merge_maps(context, additional_context)
+                      results = results(dep_paths, context)
+
+                      tenant
+                      |> Ash.Flow.set_dependent_values(%{
+                        results: results,
+                        elements: Map.get(context, :_ash_engine_elements)
+                      })
+                      |> Ash.Flow.handle_modifiers()
+                    end,
+                    changeset_input: fn context ->
+                      context = Ash.Helpers.deep_merge_maps(context, additional_context)
+
+                      results = results(dep_paths, context)
+
+                      action_input
+                      |> Ash.Flow.set_dependent_values(%{
+                        results: results,
+                        elements: Map.get(context, :_ash_engine_elements)
+                      })
+                      |> Ash.Flow.handle_modifiers()
+                    end
+                  )
+              ]
+            end
           )
+        )
+    end
+  end
 
-        [
-          get_request
-          | Ash.Actions.Destroy.as_requests([name], resource, api, action,
-              error_path: List.wrap(name),
-              authorize?: opts[:authorize?],
-              actor: opts[:actor],
-              tracer: opts[:tracer],
-              changeset_dependencies: [[name, :fetch, :data] | request_deps],
-              skip_on_nil_record?: true,
-              record: fn context ->
-                Ash.Flow.do_get_in(context, [name, :fetch, :data])
-              end,
-              modify_changeset: fn changeset, context ->
-                context = Ash.Helpers.deep_merge_maps(context, additional_context)
-                results = results(dep_paths, context)
+  defp maybe_dynamic(
+         items,
+         name,
+         request_path,
+         input,
+         all_steps,
+         transaction_name,
+         additional_context,
+         fun
+       ) do
+    # TODO: this only really works for resource/action right now
+    if Enum.all?(items, &is_atom/1) do
+      apply(fun, items)
+    else
+      {items, deps} =
+        Enum.reduce(items, {[], []}, fn item, {items, deps} ->
+          {item, new_deps} = Ash.Flow.handle_input_template(item, input)
+          {[item | items], deps ++ new_deps}
+        end)
 
-                halt_if(halt_if, halt_reason, name, results, context, fn -> changeset end)
-              end,
-              tenant: fn context ->
-                context = Ash.Helpers.deep_merge_maps(context, additional_context)
-                results = results(dep_paths, context)
+      dep_paths = get_dep_paths(all_steps, deps, transaction_name, [])
+      request_deps = dependable_request_paths(dep_paths)
 
-                tenant
-                |> Ash.Flow.set_dependent_values(%{
-                  results: results,
-                  elements: Map.get(context, :_ash_engine_elements)
-                })
-                |> Ash.Flow.handle_modifiers()
-              end,
-              changeset_input: fn context ->
-                context = Ash.Helpers.deep_merge_maps(context, additional_context)
+      Ash.Engine.Request.new(
+        authorize?: false,
+        async?: false,
+        name: "Run dynamic step #{inspect(name)}",
+        path: [:dynamic, request_path],
+        error_path: [],
+        data:
+          Ash.Engine.Request.resolve(request_deps, fn context ->
+            context = Ash.Helpers.deep_merge_maps(context, additional_context)
 
-                results = results(dep_paths, context)
+            results = results(dep_paths, context)
 
-                action_input
-                |> Ash.Flow.set_dependent_values(%{
-                  results: results,
-                  elements: Map.get(context, :_ash_engine_elements)
-                })
-                |> Ash.Flow.handle_modifiers()
-              end
-            )
-        ]
+            items =
+              items
+              |> Ash.Flow.set_dependent_values(%{
+                results: results,
+                elements: Map.get(context, :_ash_engine_elements)
+              })
+              |> Ash.Flow.handle_modifiers()
+
+            requests =
+              fun
+              |> apply(Enum.reverse(items))
+              |> List.wrap()
+
+            {:ok, nil, %{requests: requests}}
+          end)
+      )
     end
   end
 
@@ -1486,25 +1610,37 @@ defmodule Ash.Flow.Executor.AshEngine do
          all_steps,
          resource,
          action,
+         api,
          action_input,
          input,
          transaction_name,
          tenant,
          additional
        ) do
+    {action_input, deps} = Ash.Flow.handle_input_template(action_input, input)
+    {tenant, tenant_deps} = Ash.Flow.handle_input_template(tenant, input)
+    {_, additional_deps} = Ash.Flow.handle_input_template(additional, input)
+    {resource, resource_deps} = Ash.Flow.handle_input_template(resource, input)
+    {api, api_deps} = Ash.Flow.handle_input_template(api, input)
+    {action, action_deps} = Ash.Flow.handle_input_template(action, input)
+
     action =
       Ash.Resource.Info.action(resource, action) ||
         raise "No such action #{action} for #{resource}"
 
-    {action_input, deps} = Ash.Flow.handle_input_template(action_input, input)
-    {tenant, tenant_deps} = Ash.Flow.handle_input_template(tenant, input)
-    {_, additional_deps} = Ash.Flow.handle_input_template(additional, input)
-
-    dep_paths = get_dep_paths(all_steps, deps ++ tenant_deps, transaction_name, additional_deps)
+    dep_paths =
+      get_dep_paths(
+        all_steps,
+        deps ++ tenant_deps ++ api_deps ++ resource_deps ++ action_deps,
+        transaction_name,
+        additional_deps
+      )
 
     request_deps = dependable_request_paths(dep_paths)
 
     %{
+      resource: resource,
+      api: api,
       action: action,
       action_input: action_input,
       dep_paths: dep_paths,

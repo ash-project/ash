@@ -61,6 +61,7 @@ defmodule Ash.Engine do
     opts: [],
     requests: [],
     data: %{},
+    dependencies_waiting_on_request: MapSet.new(),
     unsent_dependencies: [],
     dependencies_seen: MapSet.new(),
     dependencies: %{},
@@ -466,7 +467,6 @@ defmodule Ash.Engine do
   end
 
   defp do_run_iteration(state, request) do
-    log(state, fn -> breakdown(state) end)
     {state, notifications, dependencies} = fully_advance_request(state, request)
 
     state
@@ -514,13 +514,6 @@ defmodule Ash.Engine do
           {source, [circular_dep]}
       end
     end
-  end
-
-  defp breakdown(state) do
-    """
-    State breakdown:
-    #{Enum.map_join(state.requests, "\n", &"#{&1.name}: #{&1.state}")}
-    """
   end
 
   def long_breakdown(state) do
@@ -724,32 +717,36 @@ defmodule Ash.Engine do
 
         depended_on_request = Enum.find(state.requests, &(&1.path == dep_path))
 
-        if !depended_on_request do
-          raise "Engine Error in request #{inspect(request_path)}: No request found with path #{inspect(dep_path)}. Available paths:\n #{Enum.map_join(state.requests, "\n", &inspect(&1.path))}"
+        if depended_on_request do
+          # we want to send things from non async requests
+          # after we've sent all info to async requests
+          unsent_dependencies =
+            if depended_on_request && depended_on_request.async? do
+              state.unsent_dependencies ++ [{request_path, dep}]
+            else
+              [{request_path, dep} | state.unsent_dependencies]
+            end
+
+          %{
+            state
+            | dependencies:
+                state.dependencies
+                |> Map.put_new_lazy(request_path, fn -> MapSet.new() end)
+                |> Map.update!(request_path, &MapSet.put(&1, {dep_path, dep_field})),
+              reverse_dependencies:
+                state.reverse_dependencies
+                |> Map.put_new_lazy(dep_path, fn -> MapSet.new() end)
+                |> Map.update!(dep_path, &MapSet.put(&1, {request_path, dep_field})),
+              dependencies_seen: MapSet.put(state.dependencies_seen, seen_dep),
+              unsent_dependencies: unsent_dependencies
+          }
+        else
+          %{
+            state
+            | dependencies_waiting_on_request:
+                MapSet.put(state.dependencies_waiting_on_request, {request_path, dep})
+          }
         end
-
-        # we want to send things from non async requests
-        # after we've sent all info to async requests
-        unsent_dependencies =
-          if depended_on_request.async? do
-            state.unsent_dependencies ++ [{request_path, dep}]
-          else
-            [{request_path, dep} | state.unsent_dependencies]
-          end
-
-        %{
-          state
-          | dependencies:
-              state.dependencies
-              |> Map.put_new_lazy(request_path, fn -> MapSet.new() end)
-              |> Map.update!(request_path, &MapSet.put(&1, {dep_path, dep_field})),
-            reverse_dependencies:
-              state.reverse_dependencies
-              |> Map.put_new_lazy(dep_path, fn -> MapSet.new() end)
-              |> Map.update!(dep_path, &MapSet.put(&1, {request_path, dep_field})),
-            dependencies_seen: MapSet.put(state.dependencies_seen, seen_dep),
-            unsent_dependencies: unsent_dependencies
-        }
       end
     )
   end
@@ -830,6 +827,12 @@ defmodule Ash.Engine do
     {async, non_async} =
       requests
       |> Enum.map(fn request ->
+        if Enum.find(state.requests, &(&1.path == request.path)) do
+          raise """
+          Attempted to add request #{inspect(request.path)} but it has already been added!
+          """
+        end
+
         authorize? = request.authorize? and state.authorize?
 
         %{
@@ -847,6 +850,26 @@ defmodule Ash.Engine do
       |> Enum.split_with(& &1.async?)
 
     %{state | requests: async ++ state.requests ++ non_async}
+    |> add_dependencies_waiting_on_request()
+  end
+
+  defp add_dependencies_waiting_on_request(state) do
+    state.dependencies_waiting_on_request
+    |> Enum.reduce(state, fn
+      {request_path, dep}, state ->
+        dep_path = :lists.droplast(dep)
+
+        if Enum.any?(state.requests, &(&1.path == dep_path)) do
+          %{
+            state
+            | unsent_dependencies: [{request_path, dep} | state.unsent_dependencies],
+              dependencies_waiting_on_request:
+                MapSet.delete(state.dependencies_waiting_on_request, {request_path, dep})
+          }
+        else
+          state
+        end
+    end)
   end
 
   defp build_dependencies(request, dependencies) do

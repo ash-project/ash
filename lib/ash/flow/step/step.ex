@@ -75,19 +75,19 @@ defmodule Ash.Flow.Step do
   def shared_action_opts do
     [
       resource: [
-        type: :atom,
+        type: :any,
         required: true,
         doc: "The resource to call the action on.",
         links: []
       ],
       action: [
-        type: :atom,
+        type: :any,
         required: true,
         doc: "The action to call on the resource.",
         links: []
       ],
       api: [
-        type: :atom,
+        type: :any,
         doc:
           "The api to use when calling the action. Defaults to the api set in the `flow` section.",
         links: []

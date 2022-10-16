@@ -37,6 +37,10 @@ defmodule Ash.Expr do
     soft_escape(%Ash.Query.Ref{relationship_path: [], attribute: op}, escape?)
   end
 
+  def do_expr({:__aliases__, _, _} = expr, _escape?) do
+    expr
+  end
+
   def do_expr({:^, _, [value]}, _escape?) do
     value
   end

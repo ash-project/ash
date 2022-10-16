@@ -65,6 +65,16 @@ end
 - `%{step_name: :key}` will return a map of each key to the provided step name, i.e `%{key: <step_name_result>}`
 - `[:step_name]` - which is equivalent to `%{step_name: :step_name}`
 
+A flow always returns an `%Ash.Flow.Result{}`, and the return value of a successful flow will be available in `%Ash.Flow.Result{result: result}` when the flow did not encounter an error.
+
+If the flow resulted in an error, `error?` is set to `true`, and the result will be `nil`.
+
+## Halting and Resuming Flows
+
+A flow can be halted by using the `halt_if` option on a step, or by a custom step returning `{:error, Ash.Flow.Error.Halted.exception(reason: reason)}`
+
+In this case, the flow will be marked as `complete?: false`. The result of each step up until this point is saved, and you can then rerun the flow with different inputs by passing the incomplete result into the `resume` option when running the flow again. Individual steps can be rerun by deleting them from the `data` field of the flow. 
+
 ## Errors
 
 Currently, any error anywhere in the flow will fail the flow and will return an error. Over time, error handling behavior will be added, as well as the ability to customize how transactions are rolled back, and to handle errors in a custom way.

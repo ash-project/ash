@@ -2,7 +2,7 @@ defmodule Ash.Flow do
   @moduledoc """
   A flow is a static definition of a set of steps to be .
 
-  Seeuthe {{link:ash:guide:Flows}} guide for more.
+  See the {{link:ash:guide:Flows}} guide for more.
   """
 
   @type t :: module
@@ -50,7 +50,6 @@ defmodule Ash.Flow do
                 input: input,
                 result: result,
                 notifications: metadata[:notifications] || [],
-                runner_metadata: metadata[:runner_metadata],
                 valid?: true,
                 complete?: true
               }
@@ -66,14 +65,16 @@ defmodule Ash.Flow do
               }
 
             {:error, metadata, error} ->
+              complete? = complete?(error)
+
               %Ash.Flow.Result{
                 flow: flow,
                 params: params,
                 input: input,
                 notifications: metadata[:notifications] || [],
-                runner_metadata: metadata[:runner_metadata],
+                runner_metadata: if(not complete?, do: metadata[:runner_metadata]),
                 valid?: false,
-                complete?: false,
+                complete?: complete?,
                 errors: List.wrap(error)
               }
 
@@ -83,7 +84,7 @@ defmodule Ash.Flow do
                 params: params,
                 input: input,
                 valid?: false,
-                complete?: false,
+                complete?: complete?(error),
                 errors: List.wrap(error)
               }
           end
@@ -94,7 +95,7 @@ defmodule Ash.Flow do
               params: input,
               input: new_input,
               valid?: false,
-              complete?: false,
+              complete?: complete?(error),
               errors: List.wrap(error)
             }
 
@@ -104,12 +105,20 @@ defmodule Ash.Flow do
               params: input,
               input: input,
               valid?: false,
-              complete?: false,
+              complete?: complete?(error),
               errors: List.wrap(error)
             }
         end
       end
     end
+  end
+
+  defp complete?(%Ash.Error.Flow.Halted{}) do
+    false
+  end
+
+  defp complete?(_) do
+    true
   end
 
   defp add_actor(opts) do
