@@ -29,7 +29,7 @@ Along with the 2.0 release of core, the `AshPostgres`, `AshPhoenix` and `AshArch
 
 ## Is Ash an alternative to X?
 
-Ash is not meant to be an alternative to Phoenix, Ecto, or Absinthe. Ash uses Ecto under the hood, `AshGraphql` uses Absinthe. Phoenix is absolutely the recommended way to building web interfaces on top of your Ash application (there is a whole package dedicated to it, `AshPhoenix`). Ash is not meant to be the only way that you ever interact with your data, so it is almost a certainty that you will need to use `Ecto` in some cases. For instance, Ash does not currently support bulk actions or atomic updates. For this reason, you can implement custom actions for things that can be encapsulated in your resource, and you have all of Elixir at your disposal to implement custom behavior outside of your resources, with a wide array of escape hatches in between.
+Ash is not meant to be an alternative to Phoenix, Ecto, or Absinthe. Ash uses Ecto under the hood, `AshGraphql` uses Absinthe. Phoenix is absolutely the recommended way to build web interfaces on top of your Ash application (there is a whole package dedicated to it, `AshPhoenix`). Ash is not meant to be the only way that you ever interact with your data, so it is almost a certainty that you will need to use `Ecto` in some cases. For instance, Ash does not currently support bulk actions or atomic updates. For this reason, you can implement custom actions for things that can be encapsulated in your resource, and you have all of Elixir at your disposal to implement custom behavior outside of your resources, with a wide array of escape hatches in between.
 
 ## Extensions
 
