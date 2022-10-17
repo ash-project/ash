@@ -29,7 +29,7 @@ defmodule Ash.Test.Api.Info.DiagramTest do
                    String last_name
                    String email
                    Org org
-                   destroy(UUID id, String first_name, String last_name, String email)
+                   destroy()
                    read()
                    for_org(UUID org)
                    create(UUID org, UUID id, String first_name, String last_name, ...)
@@ -41,7 +41,7 @@ defmodule Ash.Test.Api.Info.DiagramTest do
                    UUID id
                    String name
                    User[] users
-                   destroy(UUID id, String name)
+                   destroy()
                    update(UUID id, String name)
                    read()
                    create(UUID id, String name)
@@ -86,7 +86,7 @@ defmodule Ash.Test.Api.Info.DiagramTest do
                    Boolean approved
                    UUID org_id
                    Org org
-                   destroy(UUID id, String first_name, String last_name, String email)
+                   destroy()
                    read()
                    for_org(UUID org)
                    create(UUID org, UUID id, String first_name, String last_name, ...)
@@ -98,7 +98,7 @@ defmodule Ash.Test.Api.Info.DiagramTest do
                    UUID id
                    String name
                    User[] users
-                   destroy(UUID id, String name)
+                   destroy()
                    update(UUID id, String name)
                    read()
                    create(UUID id, String name)

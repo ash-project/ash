@@ -36,6 +36,7 @@ defmodule Ash.Resource.Actions.Destroy do
                 soft?: [
                   type: :atom,
                   doc: "If specified, the destroy action behaves as an update internally",
+                  default: false,
                   links: []
                 ]
               ]

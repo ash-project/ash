@@ -79,7 +79,7 @@ defmodule Ash.Api.Info.Livebook do
 
     #{action_header() |> String.trim()}
     #{for action <- Ash.Resource.Info.actions(resource) do
-      action_section(action)
+      action_section(resource, action)
     end |> Enum.join("\n")}
     """
   end
@@ -97,18 +97,27 @@ defmodule Ash.Api.Info.Livebook do
 
   def action_header do
     """
-    | Name | Type | Description | Args |
-    | ---- | ---- | ----------- | ---- |
+    | Name | Type | Input | Description |
+    | ---- | ---- | ----- | ----------- |
     """
   end
 
-  def action_section(action) do
-    "| **#{action.name}** | _#{action.type}_ | #{action.description} | <ul>#{action_arg_section(action)}</ul> |"
+  def action_section(resource, action) do
+    "| **#{action.name}** | _#{action.type}_ | <ul>#{action_input_section(resource, action)}</ul> | #{action.description} |"
   end
 
-  def action_arg_section(action) do
-    for arg <- action.arguments do
-      "<li><b>#{arg.name}</b> <i>#{class_short_type(arg.type)}</i> #{arg.description}</li>"
+  def action_input_section(resource, action) do
+    attributes =
+      if action.type == :destroy && !action.soft? do
+        []
+      else
+        action
+        |> Map.get(:accept, [])
+        |> Enum.map(&Ash.Resource.Info.attribute(resource, &1))
+      end
+
+    for input <- action.arguments ++ attributes do
+      "<li><b>#{input.name}</b> <i>#{class_short_type(input.type)}</i> #{input.description}</li>"
     end
   end
 end

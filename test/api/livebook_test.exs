@@ -17,7 +17,7 @@ defmodule Ash.Test.Api.Info.LivebookTest do
                      String last_name
                      String email
                      Org org
-                     destroy(UUID id, String first_name, String last_name, String email)
+                     destroy()
                      read()
                      for_org(UUID org)
                      create(UUID org, UUID id, String first_name, String last_name, ...)
@@ -29,7 +29,7 @@ defmodule Ash.Test.Api.Info.LivebookTest do
                      UUID id
                      String name
                      User[] users
-                     destroy(UUID id, String name)
+                     destroy()
                      update(UUID id, String name)
                      read()
                      create(UUID id, String name)
@@ -79,15 +79,15 @@ defmodule Ash.Test.Api.Info.LivebookTest do
 
              ### Actions
 
-             | Name | Type | Description | Args |
-             | ---- | ---- | ----------- | ---- |
-             | **destroy** | _destroy_ |  | <ul></ul> |
-             | **read** | _read_ |  | <ul></ul> |
-             | **for_org** | _read_ |  | <ul><li><b>org</b> <i>UUID</i> </li></ul> |
-             | **create** | _create_ |  | <ul><li><b>org</b> <i>UUID</i> </li></ul> |
-             | **update** | _update_ |  | <ul></ul> |
-             | **approve** | _update_ |  | <ul></ul> |
-             | **unapprove** | _update_ |  | <ul></ul> |
+             | Name | Type | Input | Description |
+             | ---- | ---- | ----- | ----------- |
+             | **destroy** | _destroy_ | <ul></ul> |  |
+             | **read** | _read_ | <ul></ul> |  |
+             | **for_org** | _read_ | <ul><li><b>org</b> <i>UUID</i> </li></ul> |  |
+             | **create** | _create_ | <ul><li><b>org</b> <i>UUID</i> </li><li><b>id</b> <i>UUID</i> PK</li><li><b>first_name</b> <i>String</i> User's first name</li><li><b>last_name</b> <i>String</i> User's last name</li><li><b>email</b> <i>String</i> User's email address</li></ul> |  |
+             | **update** | _update_ | <ul><li><b>id</b> <i>UUID</i> PK</li><li><b>first_name</b> <i>String</i> User's first name</li><li><b>last_name</b> <i>String</i> User's last name</li><li><b>email</b> <i>String</i> User's email address</li></ul> |  |
+             | **approve** | _update_ | <ul></ul> |  |
+             | **unapprove** | _update_ | <ul></ul> |  |
 
              ## Org
 
@@ -102,13 +102,13 @@ defmodule Ash.Test.Api.Info.LivebookTest do
 
              ### Actions
 
-             | Name | Type | Description | Args |
-             | ---- | ---- | ----------- | ---- |
-             | **destroy** | _destroy_ |  | <ul></ul> |
-             | **update** | _update_ |  | <ul></ul> |
-             | **read** | _read_ |  | <ul></ul> |
-             | **create** | _create_ |  | <ul></ul> |
-             | **by_name** | _read_ |  | <ul><li><b>name</b> <i>String</i> </li></ul> |
+             | Name | Type | Input | Description |
+             | ---- | ---- | ----- | ----------- |
+             | **destroy** | _destroy_ | <ul></ul> |  |
+             | **update** | _update_ | <ul><li><b>id</b> <i>UUID</i> </li><li><b>name</b> <i>String</i> </li></ul> |  |
+             | **read** | _read_ | <ul></ul> |  |
+             | **create** | _create_ | <ul><li><b>id</b> <i>UUID</i> </li><li><b>name</b> <i>String</i> </li></ul> |  |
+             | **by_name** | _read_ | <ul><li><b>name</b> <i>String</i> </li></ul> |  |
 
              """
   end
