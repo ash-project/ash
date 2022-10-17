@@ -26,45 +26,54 @@ defmodule Ash.Api.Info.Livebook do
 
   def overview(apis) do
     """
-    # API Overview
-
     #{for api <- apis, do: api_section(api)}
     """
   end
 
   def api_section(api) do
     """
-    ## #{module_name(api)}
+    # API #{module_name(api)}
 
-    ### Class Diagram
+    ## Class Diagram
 
     ```mermaid
     #{Ash.Api.Info.Diagram.mermaid_class_diagram(api) |> String.trim()}
     ```
 
-    ### ER Diagram
+    ## ER Diagram
 
     ```mermaid
     #{Ash.Api.Info.Diagram.mermaid_er_diagram(api) |> String.trim()}
     ```
 
-    ### Resources
+    ## Resources
 
+    #{for resource <- Ash.Api.Info.resources(api) do
+      """
+      - [#{resource_name(resource)}](##{resource_name(resource) |> String.downcase()})
+      """
+    end}
     #{for resource <- Ash.Api.Info.resources(api), do: resource_section(resource)}
     """
   end
 
   def resource_section(resource) do
     """
-    #### #{resource_name(resource)}
+    ## #{resource_name(resource)}
 
     #{Ash.Resource.Info.description(resource)}
 
-    ##### Attributes
+    ### Attributes
 
+    #{attr_header() |> String.trim()}
+    #{for attr <- Ash.Resource.Info.attributes(resource), do: attr_section(attr)}
+    """
+  end
+
+  def attr_header do
+    """
     | Name | Type | Description |
     | ---- | ---- | ----------- |
-    #{for attr <- Ash.Resource.Info.attributes(resource), do: attr_section(attr)}
     """
   end
 

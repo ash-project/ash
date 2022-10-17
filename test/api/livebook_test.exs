@@ -5,9 +5,9 @@ defmodule Ash.Test.Api.Info.LivebookTest do
   test "generate a livebook API section from a given API" do
     assert Ash.Api.Info.Livebook.api_section(Ash.Test.Flow.Api) ==
              """
-             ## Ash.Test.Flow.Api
+             # API Ash.Test.Flow.Api
 
-             ### Class Diagram
+             ## Class Diagram
 
              ```mermaid
              classDiagram
@@ -39,7 +39,7 @@ defmodule Ash.Test.Api.Info.LivebookTest do
                  Org -- User
              ```
 
-             ### ER Diagram
+             ## ER Diagram
 
              ```mermaid
              erDiagram
@@ -57,13 +57,16 @@ defmodule Ash.Test.Api.Info.LivebookTest do
                  Org ||--|| User : ""
              ```
 
-             ### Resources
+             ## Resources
 
-             #### User
+             - [User](#user)
+             - [Org](#org)
+
+             ## User
 
              User model
 
-             ##### Attributes
+             ### Attributes
 
              | Name | Type | Description |
              | ---- | ---- | ----------- |
@@ -74,11 +77,11 @@ defmodule Ash.Test.Api.Info.LivebookTest do
              | **approved** | Boolean | Is the user approved? |
              | **org_id** | UUID |  |
 
-             #### Org
+             ## Org
 
              Org model
 
-             ##### Attributes
+             ### Attributes
 
              | Name | Type | Description |
              | ---- | ---- | ----------- |
