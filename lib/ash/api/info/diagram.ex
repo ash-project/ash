@@ -136,7 +136,7 @@ defmodule Ash.Api.Info.Diagram do
         %{accept: accept} -> accept |> Enum.map(&Ash.Resource.Info.attribute(resource, &1))
       end
 
-    list_arguments(arguments ++ attributes)
+    list_arguments(Enum.uniq_by(arguments ++ attributes, & &1.name))
   end
 
   defp list_arguments(arguments) when length(arguments) > @argument_print_limit do

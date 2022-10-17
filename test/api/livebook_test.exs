@@ -84,8 +84,8 @@ defmodule Ash.Test.Api.Info.LivebookTest do
              | **destroy** | _destroy_ | <ul></ul> |  |
              | **read** | _read_ | <ul></ul> |  |
              | **for_org** | _read_ | <ul><li><b>org</b> <i>UUID</i> </li></ul> |  |
-             | **create** | _create_ | <ul><li><b>org</b> <i>UUID</i> </li><li><b>id</b> <i>UUID</i> PK</li><li><b>first_name</b> <i>String</i> User's first name</li><li><b>last_name</b> <i>String</i> User's last name</li><li><b>email</b> <i>String</i> User's email address</li></ul> |  |
-             | **update** | _update_ | <ul><li><b>id</b> <i>UUID</i> PK</li><li><b>first_name</b> <i>String</i> User's first name</li><li><b>last_name</b> <i>String</i> User's last name</li><li><b>email</b> <i>String</i> User's email address</li></ul> |  |
+             | **create** | _create_ | <ul><li><b>org</b> <i>UUID</i> </li><li><b>id</b> <i>UUID</i> attribute</li><li><b>first_name</b> <i>String</i> attribute</li><li><b>last_name</b> <i>String</i> attribute</li><li><b>email</b> <i>String</i> attribute</li></ul> |  |
+             | **update** | _update_ | <ul><li><b>id</b> <i>UUID</i> attribute</li><li><b>first_name</b> <i>String</i> attribute</li><li><b>last_name</b> <i>String</i> attribute</li><li><b>email</b> <i>String</i> attribute</li></ul> |  |
              | **approve** | _update_ | <ul></ul> |  |
              | **unapprove** | _update_ | <ul></ul> |  |
 
@@ -105,9 +105,9 @@ defmodule Ash.Test.Api.Info.LivebookTest do
              | Name | Type | Input | Description |
              | ---- | ---- | ----- | ----------- |
              | **destroy** | _destroy_ | <ul></ul> |  |
-             | **update** | _update_ | <ul><li><b>id</b> <i>UUID</i> </li><li><b>name</b> <i>String</i> </li></ul> |  |
+             | **update** | _update_ | <ul><li><b>id</b> <i>UUID</i> attribute</li><li><b>name</b> <i>String</i> attribute</li></ul> |  |
              | **read** | _read_ | <ul></ul> |  |
-             | **create** | _create_ | <ul><li><b>id</b> <i>UUID</i> </li><li><b>name</b> <i>String</i> </li></ul> |  |
+             | **create** | _create_ | <ul><li><b>id</b> <i>UUID</i> attribute</li><li><b>name</b> <i>String</i> attribute</li></ul> |  |
              | **by_name** | _read_ | <ul><li><b>name</b> <i>String</i> </li></ul> |  |
 
              """

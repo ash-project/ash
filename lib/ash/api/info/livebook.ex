@@ -116,8 +116,17 @@ defmodule Ash.Api.Info.Livebook do
         |> Enum.map(&Ash.Resource.Info.attribute(resource, &1))
       end
 
-    for input <- action.arguments ++ attributes do
-      "<li><b>#{input.name}</b> <i>#{class_short_type(input.type)}</i> #{input.description}</li>"
+    for input <- Enum.uniq_by(action.arguments ++ attributes, & &1.name) do
+      description =
+        case input do
+          %Ash.Resource.Attribute{} ->
+            "attribute"
+
+          %Ash.Resource.Actions.Argument{description: description} ->
+            description
+        end
+
+      "<li><b>#{input.name}</b> <i>#{class_short_type(input.type)}</i> #{description}</li>"
     end
   end
 end
