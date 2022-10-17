@@ -2,6 +2,10 @@ defmodule Ash.Test.Flow.Org do
   @moduledoc false
   use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
 
+  resource do
+    description "Org model"
+  end
+
   identities do
     identity :unique_name, [:name], pre_check_with: Ash.Test.Flow.Api
   end

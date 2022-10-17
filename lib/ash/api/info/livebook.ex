@@ -3,6 +3,13 @@ defmodule Ash.Api.Info.Livebook do
   Generate a Livebook from a specified API.
   """
 
+  # Strip Elixir off front of module
+  defp module_name(module) do
+    module
+    |> Module.split()
+    |> Enum.join(".")
+  end
+
   # TODO: move to Ash.Resource.Info as it's also used in diagram
   defp resource_name(resource) do
     resource
@@ -27,7 +34,7 @@ defmodule Ash.Api.Info.Livebook do
 
   def api_section(api) do
     """
-    ## #{api}
+    ## #{module_name(api)}
 
     ### Class Diagram
 
@@ -50,6 +57,10 @@ defmodule Ash.Api.Info.Livebook do
   def resource_section(resource) do
     """
     #### #{resource_name(resource)}
+
+    #{Ash.Resource.Info.description(resource)}
+
+    ##### Attributes
 
     #{for attr <- Ash.Resource.Info.attributes(resource), do: attr_section(attr)}
     """

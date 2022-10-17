@@ -2,6 +2,10 @@ defmodule Ash.Test.Flow.User do
   @moduledoc false
   use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
 
+  resource do
+    description "User model"
+  end
+
   actions do
     defaults [:read, :destroy]
 

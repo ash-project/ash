@@ -5,7 +5,7 @@ defmodule Ash.Test.Api.Info.LivebookTest do
   test "generate a livebook API section from a given API" do
     assert Ash.Api.Info.Livebook.api_section(Ash.Test.Flow.Api) ==
              """
-             ## Elixir.Ash.Test.Flow.Api
+             ## Ash.Test.Flow.Api
 
              ### Class Diagram
 
@@ -61,6 +61,10 @@ defmodule Ash.Test.Api.Info.LivebookTest do
 
              #### User
 
+             User model
+
+             ##### Attributes
+
              - **id** UUID
              - **first_name** String
              - **last_name** String
@@ -69,6 +73,10 @@ defmodule Ash.Test.Api.Info.LivebookTest do
              - **org_id** UUID
 
              #### Org
+
+             Org model
+
+             ##### Attributes
 
              - **id** UUID
              - **name** String
