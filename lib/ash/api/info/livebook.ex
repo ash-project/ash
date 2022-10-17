@@ -62,13 +62,15 @@ defmodule Ash.Api.Info.Livebook do
 
     ##### Attributes
 
+    | Name | Type | Description |
+    | ---- | ---- | ----------- |
     #{for attr <- Ash.Resource.Info.attributes(resource), do: attr_section(attr)}
     """
   end
 
   def attr_section(attr) do
     """
-    - **#{attr.name}** #{short_module(attr.type)}
+    | **#{attr.name}** | #{short_module(attr.type)} | #{attr.description} |
     """
   end
 end

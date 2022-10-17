@@ -36,13 +36,13 @@ defmodule Ash.Test.Flow.User do
   end
 
   attributes do
-    uuid_primary_key :id
-    attribute :first_name, :string
-    attribute :last_name, :string
-
-    attribute :email, :string
+    uuid_primary_key :id, description: "PK"
+    attribute :first_name, :string, description: "User's first name"
+    attribute :last_name, :string, description: "User's last name"
+    attribute :email, :string, description: "User's email address"
 
     attribute :approved, :boolean do
+      description "Is the user approved?"
       private? true
     end
   end

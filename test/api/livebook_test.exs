@@ -65,12 +65,14 @@ defmodule Ash.Test.Api.Info.LivebookTest do
 
              ##### Attributes
 
-             - **id** UUID
-             - **first_name** String
-             - **last_name** String
-             - **email** String
-             - **approved** Boolean
-             - **org_id** UUID
+             | Name | Type | Description |
+             | ---- | ---- | ----------- |
+             | **id** | UUID | PK |
+             | **first_name** | String | User's first name |
+             | **last_name** | String | User's last name |
+             | **email** | String | User's email address |
+             | **approved** | Boolean | Is the user approved? |
+             | **org_id** | UUID |  |
 
              #### Org
 
@@ -78,8 +80,10 @@ defmodule Ash.Test.Api.Info.LivebookTest do
 
              ##### Attributes
 
-             - **id** UUID
-             - **name** String
+             | Name | Type | Description |
+             | ---- | ---- | ----------- |
+             | **id** | UUID |  |
+             | **name** | String |  |
 
 
              """
