@@ -24,6 +24,9 @@ defmodule Ash.Api.Info.Livebook do
     |> List.last()
   end
 
+  defp class_short_type({:array, t}), do: "#{short_module(t)}[]"
+  defp class_short_type(t), do: short_module(t)
+
   def overview(apis) do
     """
     #{for api <- apis, do: api_section(api)}
@@ -53,7 +56,9 @@ defmodule Ash.Api.Info.Livebook do
       - [#{resource_name(resource)}](##{resource_name(resource) |> String.downcase()})
       """
     end}
-    #{for resource <- Ash.Api.Info.resources(api), do: resource_section(resource)}
+    #{for resource <- Ash.Api.Info.resources(api) do
+      resource_section(resource)
+    end |> Enum.join("\n")}
     """
   end
 
@@ -66,7 +71,16 @@ defmodule Ash.Api.Info.Livebook do
     ### Attributes
 
     #{attr_header() |> String.trim()}
-    #{for attr <- Ash.Resource.Info.attributes(resource), do: attr_section(attr)}
+    #{for attr <- Ash.Resource.Info.attributes(resource) do
+      attr_section(attr)
+    end |> Enum.join("\n")}
+
+    ### Actions
+
+    #{action_header() |> String.trim()}
+    #{for action <- Ash.Resource.Info.actions(resource) do
+      action_section(action)
+    end |> Enum.join("\n")}
     """
   end
 
@@ -78,8 +92,23 @@ defmodule Ash.Api.Info.Livebook do
   end
 
   def attr_section(attr) do
+    "| **#{attr.name}** | #{class_short_type(attr.type)} | #{attr.description} |"
+  end
+
+  def action_header do
     """
-    | **#{attr.name}** | #{short_module(attr.type)} | #{attr.description} |
+    | Name | Type | Description | Args |
+    | ---- | ---- | ----------- | ---- |
     """
+  end
+
+  def action_section(action) do
+    "| **#{action.name}** | _#{action.type}_ | #{action.description} | <ul>#{action_arg_section(action)}</ul> |"
+  end
+
+  def action_arg_section(action) do
+    for arg <- action.arguments do
+      "<li><b>#{arg.name}</b> <i>#{class_short_type(arg.type)}</i> #{arg.description}</li>"
+    end
   end
 end

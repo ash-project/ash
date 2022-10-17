@@ -77,6 +77,18 @@ defmodule Ash.Test.Api.Info.LivebookTest do
              | **approved** | Boolean | Is the user approved? |
              | **org_id** | UUID |  |
 
+             ### Actions
+
+             | Name | Type | Description | Args |
+             | ---- | ---- | ----------- | ---- |
+             | **destroy** | _destroy_ |  | <ul></ul> |
+             | **read** | _read_ |  | <ul></ul> |
+             | **for_org** | _read_ |  | <ul><li><b>org</b> <i>UUID</i> </li></ul> |
+             | **create** | _create_ |  | <ul><li><b>org</b> <i>UUID</i> </li></ul> |
+             | **update** | _update_ |  | <ul></ul> |
+             | **approve** | _update_ |  | <ul></ul> |
+             | **unapprove** | _update_ |  | <ul></ul> |
+
              ## Org
 
              Org model
@@ -88,6 +100,15 @@ defmodule Ash.Test.Api.Info.LivebookTest do
              | **id** | UUID |  |
              | **name** | String |  |
 
+             ### Actions
+
+             | Name | Type | Description | Args |
+             | ---- | ---- | ----------- | ---- |
+             | **destroy** | _destroy_ |  | <ul></ul> |
+             | **update** | _update_ |  | <ul></ul> |
+             | **read** | _read_ |  | <ul></ul> |
+             | **create** | _create_ |  | <ul></ul> |
+             | **by_name** | _read_ |  | <ul><li><b>name</b> <i>String</i> </li></ul> |
 
              """
   end
