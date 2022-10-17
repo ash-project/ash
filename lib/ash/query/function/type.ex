@@ -2,7 +2,7 @@ defmodule Ash.Query.Function.Type do
   @moduledoc """
   Casts the value to a given type. Can also be used to provide type hints to data layers, where appropriate.
   """
-  use Ash.Query.Function, name: :type
+  use Ash.Query.Function, name: :type, eager_evaluate?: false
 
   def args, do: [[:any, :any], [:any, :any, :any]]
 

@@ -49,15 +49,19 @@ defmodule Ash.Query.Function do
                   else
                     case function do
                       %mod{__predicate__?: _} ->
-                        case mod.evaluate(function) do
-                          {:known, result} ->
-                            {:ok, result}
+                        if mod.eager_evaluate?() do
+                          case mod.evaluate(function) do
+                            {:known, result} ->
+                              {:ok, result}
 
-                          :unknown ->
-                            {:ok, function}
+                            :unknown ->
+                              {:ok, function}
 
-                          {:error, error} ->
-                            {:error, error}
+                            {:error, error} ->
+                              {:error, error}
+                          end
+                        else
+                          {:ok, function}
                         end
 
                       _ ->
@@ -160,6 +164,8 @@ defmodule Ash.Query.Function do
       def evaluate(_), do: :unknown
 
       def predicate?, do: unquote(opts[:predicate?] || false)
+
+      def eager_evaluate?, do: unquote(Keyword.get(opts, :eager_evaluate?, true))
 
       def private?, do: false
 
