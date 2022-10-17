@@ -5,6 +5,55 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.0.0](https://github.com/ash-project/ash/compare/v1.53.3...v2.0.0) (2022-10-17)
+
+
+### Features:
+
+* basic livebook generator and mix task (#420)
+
+* mermaid class diagram mix task (#417)
+
+### Bug Fixes:
+
+* properly lateral join when possible
+
+* use `prepend?: true` when applying relationship sorts
+
+* don't miss dependencies in flow diagrams
+
+* fix deps finding in flow charts & flows
+
+* properly load calcs/aggs on manual relationships
+
+* properly load nested manual relationships
+
+* allow overriding validation message on a list of errors (#412)
+
+* reraise errors on task error
+
+* don't show dependencies for run_flow steps in expanded view(they are duplicates)
+
+### Improvements:
+
+* don't eager evaluate `type/2`
+
+* support depending on requests that will be added
+
+* support dynamic action steps in `Ash.Flow`
+
+* add `prepend?: true` option to sort
+
+* use `simple_equality?/0` to allow for optimized equality checking
+
+* mermaid mix task for ER diagrams (#415)
+
+* try to resolve flaky tests by not using named tables for private ets resources
+
+* better unknown error handling
+
+* allow passing query or changeset in can/can?/4 (#410)
+
 ## [v2.0.0-rc.15](https://github.com/ash-project/ash/compare/v2.0.0-rc.14...v2.0.0-rc.15) (2022-10-10)
 
 
