@@ -35,22 +35,22 @@ Ash is not meant to be an alternative to Phoenix, Ecto, or Absinthe. Ash uses Ec
 
 ### Extensions in 1.0+
 
-- `AshPostgres` - Back a resource with postgres. Rich querying capabilities, supporting aggregates, calculations, and fragments. Comes with a migration generator to get you up and running in record time!
-- `AshPhoenix` - Helpers to integrate Ash Resources with Phoenix. Tools like `AshPhoenix.Form` allow you to build forms over your resources, and manage complex nested related data with one data structure.
-- `AshArchival` - A tiny but powerful extension. Get archival (A.K.A soft deletion) with one line of code.
+- [`AshPostgres`](https://github.com/ash-project/ash_postgres) - Back a resource with postgres. Rich querying capabilities, supporting aggregates, calculations, and fragments. Comes with a migration generator to get you up and running in record time!
+- [`AshPhoenix`](https://github.com/ash-project/ash_phoenix) - Helpers to integrate Ash Resources with Phoenix. Tools like `AshPhoenix.Form` allow you to build forms over your resources, and manage complex nested related data with one data structure.
+- [`AshArchival`](https://github.com/ash-project/ash_archival) - A tiny but powerful extension. Get archival (A.K.A soft deletion) with one line of code.
 
 ### Extensions <1.0
 
-* `AshGraphql` - Create a GraphQL from your resources with only a few lines of code. Backed by the excellent Absinthe library. It comes with its own fully implemented dataloader, and automatically derives all the types, fields, and mutations automatically. Getting a relay compatible GraphQL API is as easy as setting the `relay?` toggle.
-- `AshJsonApi` - Create a JSON:API spec compliant API in minutes.
-- `AshAdmin` - A rich admin UI automatically derived from your resource definitions.
-- `AshCsv` - Back your resource with a CSV file.
-- `Spark` - The core declarative DSL library that backs Ash and its extensions.
+* [`AshGraphql`](https://github.com/ash-project/ash_graphql) - Create a GraphQL from your resources with only a few lines of code. Backed by the excellent Absinthe library. It comes with its own fully implemented dataloader, and automatically derives all the types, fields, and mutations automatically. Getting a relay compatible GraphQL API is as easy as setting the `relay?` toggle.
+- [`AshJsonApi`](https://github.com/ash-project/ash_json_api) - Create a JSON:API spec compliant API in minutes.
+- [`AshAdmin`](https://github.com/ash-project/ash_admin) - A rich admin UI automatically derived from your resource definitions.
+- [`AshCsv`](https://github.com/ash-project/ash_csv) - Back your resource with a CSV file.
+- [`Spark`](https://github.com/ash-project/spark) - The core declarative DSL library that backs Ash and its extensions.
 
 ### Unreleased Extensions
 
-- `AshPaperTrail` - Creates and manages a versions table for a resource, and writes all changes to that version resource. With one line of code.
-- `AshJsonApiWrapper` - Back your resource with an external API using finch and configuration to describe how your resource maps to the response from the external service.
+- [`AshPaperTrail`](https://github.com/ash-project/ash_paper_trail) - Creates and manages a versions table for a resource, and writes all changes to that version resource. With one line of code.
+- [`AshJsonApiWrapper`](https://github.com/ash-project/ash_json_api_wrapper) - Back your resource with an external API using finch and configuration to describe how your resource maps to the response from the external service.
 
 ### Your Own Extensions
 
