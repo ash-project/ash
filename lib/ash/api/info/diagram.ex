@@ -6,8 +6,8 @@ defmodule Ash.Api.Info.Diagram do
 
   We can't easily model Ash relationships with Mermaid diagrams
   because they are unidirectional and could be asymmetric.
-  Mermaid assumes symmetrical, biredirectional relationships.
-  If we try to model all unidirectional realtionships as separate
+  Mermaid assumes symmetrical, bidirectional relationships.
+  If we try to model all unidirectional relationships as separate
   lines in the diagram it gets very hard to read very quickly.
   """
 
@@ -82,9 +82,11 @@ defmodule Ash.Api.Info.Diagram do
               Ash.Resource.Info.aggregates(resource)
             }
           else
-            {Ash.Resource.Info.public_attributes(resource),
-             Ash.Resource.Info.public_calculations(resource),
-             Ash.Resource.Info.public_aggregates(resource)}
+            {
+              Ash.Resource.Info.public_attributes(resource),
+              Ash.Resource.Info.public_calculations(resource),
+              Ash.Resource.Info.public_aggregates(resource)
+            }
           end
 
         contents =
