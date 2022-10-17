@@ -3,9 +3,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Hex version badge](https://img.shields.io/hexpm/v/ash.svg)](https://hex.pm/packages/ash)
 
-## 2.0 release coming soon!
+## 2.0 is here!
 
-2.0 release is scheduled for October 17th!. There are release candidates available on hex for 2.0.0 if you'd like to try it out early.
+2.0 has been released! Thank you to everyone who helped make this happen, the amazing community and contributors!
 
 ## What is Ash?
 
