@@ -13,3 +13,12 @@ if Mix.env() == :dev do
     manage_readme_version: "README.md",
     version_tag_prefix: "v"
 end
+
+if Mix.env() == :test do
+  config :ash, :ash_apis, [
+    Ash.Test.Flow.Api,
+    Ash.Test.Support.PolicyRbac.Api,
+    Ash.Test.Support.PolicyComplex.Api,
+    Ash.Test.Support.PolicySimple.Api
+  ]
+end
