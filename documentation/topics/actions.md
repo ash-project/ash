@@ -187,8 +187,10 @@ The following steps are run when calling `Ash.Changeset.for_create/4`, `Ash.Chan
 - Cast input params | This is any arguments in addition to any accepted attributes
 - Set argument defaults
 - Require any missing arguments
-- Run input validations
-- Run action changes
+- Validate all provided attributes are accepted
+- Require any accepted attributes that are `allow_nil?` false
+- Set any default values for attributes
+- Run action changes & validations
 - Run validations, or add them in `before_action` hooks if using {{link:ash:option:resource/actions/create/validate#before_action?}}
 
 #### Running the Create/Update/Destroy Action
