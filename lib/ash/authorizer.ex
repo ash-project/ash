@@ -3,8 +3,9 @@ defmodule Ash.Authorizer do
   The interface for an ash authorizer
 
   These will typically be implemented by an extension, but a custom
-  one can be implemented by defining a module that adopts this behaviour
-  and using `@authorizers YourAuthorizer` to your resource.
+  one can be implemented by defining an extension that also adopts this behaviour.
+
+  Then you can extend a resource with `authorizers: [YourAuthorizer]`
   """
   @type state :: map
   @type context :: map
