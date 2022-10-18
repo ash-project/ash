@@ -642,6 +642,7 @@ defmodule Ash.Changeset do
               |> require_arguments(action)
               |> validate_attributes_accepted(action)
               |> require_values(action.type, false, action.require_attributes)
+              |> set_defaults(changeset.action_type, false)
               |> run_action_changes(
                 action,
                 opts[:actor],
@@ -649,7 +650,6 @@ defmodule Ash.Changeset do
                 opts[:tracer],
                 metadata
               )
-              |> set_defaults(changeset.action_type, false)
               |> add_validations(opts[:tracer], metadata)
               |> mark_validated(action.name)
               |> eager_validate_identities()
