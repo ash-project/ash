@@ -36,13 +36,15 @@ The following functions are built in. Data Layers can add their own functions to
 The following functions are built in:
 
 - `if` | Works like elixir's `if`.
-- `is_nil` | Works like elixir's `is_nil`
-- `get_path` | i.e `get_path(value, ["foo", "bar"])`. This is what expressions like `value[:foo]["bar"]` are turned into under the hood.
-- `ago` | i.e `deleted_at > ago(7, :day)`. The available time intervals are documented in {{link:ash:module:Ash.Type.DurationName}}
-- `contains` | if one string contains another string, i.e `contains("fred", "red")`
-- `length` | the length of a list, i.e. `length([:foo, :bar])`
-- `exists` | `exists(foo.bar, name == "fred")` takes an expression scoped to the destination resource, and checks if any related entry matches. See the section on `exists` below.
-- `path.exists` | Same as `exists` but the source of the relationship is itself a nested relationship. See the section on `exists` below.
+- `is_nil/1` | Works like elixir's `is_nil`
+- `get_path/2` | i.e `get_path(value, ["foo", "bar"])`. This is what expressions like `value[:foo]["bar"]` are turned into under the hood.
+- `ago/2` | i.e `deleted_at > ago(7, :day)`. The available time intervals are documented in {{link:ash:module:Ash.Type.DurationName}}
+- `contains/2` | if one string contains another string, i.e `contains("fred", "red")`
+- `length/1` | the length of a list, i.e. `length([:foo, :bar])`
+- `exists/2` | `exists(foo.bar, name == "fred")` takes an expression scoped to the destination resource, and checks if any related entry matches. See the section on `exists` below.
+- `path.exists/2` | Same as `exists` but the source of the relationship is itself a nested relationship. See the section on `exists` below.
+- `type/2` | Cast a given value to a specific type, i.e `type(^arg(:id), :uuid)` or `type(integer_field, :string)`
+- `now/0` | Evaluates to the current time when the expression is evaluated
 
 ## Primitives
 

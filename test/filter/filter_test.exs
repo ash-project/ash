@@ -759,5 +759,29 @@ defmodule Ash.Test.Filter.FilterTest do
                |> Ash.Query.filter(approved_at > ago(2, :week))
                |> Api.read!()
     end
+
+    test "now() evaluates to the current datetime" do
+      post1 =
+        Post
+        |> new(%{
+          title: "title1",
+          approved_at: DateTime.new!(Date.utc_today() |> Date.add(7), Time.utc_now())
+        })
+        |> Api.create!()
+
+      Post
+      |> new(%{
+        title: "title1",
+        approved_at: DateTime.new!(Date.utc_today() |> Date.add(-7), Time.utc_now())
+      })
+      |> Api.create!()
+
+      post_id = post1.id
+
+      assert [%Post{id: ^post_id}] =
+               Post
+               |> Ash.Query.filter(approved_at > now())
+               |> Api.read!()
+    end
   end
 end

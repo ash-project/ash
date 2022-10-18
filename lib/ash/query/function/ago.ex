@@ -8,7 +8,7 @@ defmodule Ash.Query.Function.Ago do
   Documentation + available intervals inspired by the corresponding ecto interval implementation
   """
 
-  use Ash.Query.Function, name: :ago
+  use Ash.Query.Function, name: :ago, eager_evaluate?: false
 
   def args, do: [[:integer, :duration_name]]
 
