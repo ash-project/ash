@@ -5,6 +5,38 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.1.0](https://github.com/ash-project/ash/compare/v2.0.0...v2.1.0) (2022-10-19)
+
+
+
+
+### Features:
+
+* Custom short names for types (#423)
+
+A compile env can be set to allow customizing the available type short names. This supports two things:
+
+1. Adding custom type short names, like `attribute :price, :money` mapping to `MyApp.Type.Money`
+2. Overriding the builtin type short names, like `attribute, :price, :string` mapping to a custom string type implementation (there is likely no reason to do this)
+Commit with unknown type in: feat: Custom short names for types (#423)
+
+See the docs for `Ash.Type` for more information
+
+* add `now()` to expressions
+
+### Bug Fixes:
+
+* set defaults before running changes
+
+### Improvements:
+
+* sort relationship in order of input when managing it
+
+This helps with things like https://github.com/ash-project/ash_phoenix/issues/57
+which involve rendering the relationship value after editing it. Retaining
+the order allows direct reuse without any gymnastics
+
+
 ## [v2.0.0](https://github.com/ash-project/ash/compare/v1.53.3...v2.0.0) (2022-10-17)
 
 
