@@ -107,8 +107,7 @@ defmodule Ash.Type do
 
   ### Short names
 
-  You can define short `:atom_names` for your custom types by adding them to the Ash
-  configuration:
+  You can define short `:atom_names` for your custom types by adding them to your Ash configuration:
 
   ```Elixir
   config :ash, :custom_types, [ash_float: GenTracker.AshFloat]
