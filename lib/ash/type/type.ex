@@ -37,6 +37,8 @@ defmodule Ash.Type do
     url_encoded_binary: Ash.Type.UrlEncodedBinary
   ]
 
+  @custom_short_names Application.compile_env(:ash, :custom_types, [])
+
   @doc_array_constraints Keyword.put(@array_constraints, :items,
                            type: :any,
                            doc:
@@ -51,6 +53,10 @@ defmodule Ash.Type do
   ## Built in types
 
   #{Enum.map_join(@short_names, fn {key, module} -> "* `#{inspect(key)}` - `#{inspect(module)}`\n" end)}
+
+  #{if @custom_short_names != [], do: "## Custom types"}
+
+  #{Enum.map_join(@custom_short_names, fn {key, module} -> "* `#{inspect(key)}` - `#{inspect(module)}`\n" end)}
 
   ### Composite Types
 
@@ -97,7 +103,22 @@ defmodule Ash.Type do
   ```
 
   All the Ash built-in types are implemented with `use Ash.Type` so they are good
-  examples to look at to create your own `Ash.Type`
+  examples to look at to create your own `Ash.Type`.
+
+  ### Short names
+
+  You can define short `:atom_names` for your custom types by adding them to the Ash
+  configuration:
+
+  ```Elixir
+  config :ash, :custom_types, [ash_float: GenTracker.AshFloat]
+  ```
+
+  Doing this will require a recompilation of the `:ash` dependency which can be triggered by calling:
+
+  ```bash
+  $ mix deps.compile ash --force
+  ```
   """
 
   @type constraints :: Keyword.t()
@@ -212,7 +233,9 @@ defmodule Ash.Type do
   end
 
   def get_type(value) when is_atom(value) do
-    case Keyword.fetch(@short_names, value) do
+    short_names = @short_names ++ @custom_short_names
+
+    case Keyword.fetch(short_names, value) do
       {:ok, mod} -> mod
       :error -> value
     end
