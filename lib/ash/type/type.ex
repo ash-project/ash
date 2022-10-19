@@ -15,7 +15,7 @@ defmodule Ash.Type do
     ]
   ]
 
-  @short_names [
+  @builtin_short_names [
     map: Ash.Type.Map,
     term: Ash.Type.Term,
     atom: Ash.Type.Atom,
@@ -37,6 +37,10 @@ defmodule Ash.Type do
     url_encoded_binary: Ash.Type.UrlEncodedBinary
   ]
 
+  @custom_short_names Application.compile_env(:ash, :custom_types, [])
+
+  @short_names @custom_short_names ++ @builtin_short_names
+
   @doc_array_constraints Keyword.put(@array_constraints, :items,
                            type: :any,
                            doc:
@@ -50,9 +54,9 @@ defmodule Ash.Type do
 
   ## Built in types
 
-  #{Enum.map_join(@short_names, fn {key, module} -> "* `#{inspect(key)}` - `#{inspect(module)}`\n" end)}
+  #{Enum.map_join(@builtin_short_names, fn {key, module} -> "* `#{inspect(key)}` - `#{inspect(module)}`\n" end)}
 
-  ### Composite Types
+  ## Composite Types
 
   Currently, the only composite type supported is a list type, specified via:
   `{:array, Type}`. The constraints available are:
@@ -97,7 +101,21 @@ defmodule Ash.Type do
   ```
 
   All the Ash built-in types are implemented with `use Ash.Type` so they are good
-  examples to look at to create your own `Ash.Type`
+  examples to look at to create your own `Ash.Type`.
+
+  ### Short names
+
+  You can define short `:atom_names` for your custom types by adding them to your Ash configuration:
+
+  ```Elixir
+  config :ash, :custom_types, [ash_float: GenTracker.AshFloat]
+  ```
+
+  Doing this will require a recompilation of the `:ash` dependency which can be triggered by calling:
+
+  ```bash
+  $ mix deps.compile ash --force
+  ```
   """
 
   @type constraints :: Keyword.t()
