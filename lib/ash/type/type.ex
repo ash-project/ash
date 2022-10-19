@@ -60,7 +60,7 @@ defmodule Ash.Type do
 
   #{Enum.map_join(@custom_short_names, fn {key, module} -> "* `#{inspect(key)}` - `#{inspect(module)}`\n" end)}
 
-  ### Composite Types
+  ## Composite Types
 
   Currently, the only composite type supported is a list type, specified via:
   `{:array, Type}`. The constraints available are:
