@@ -645,6 +645,13 @@ defmodule Ash.Actions.ManagedRelationships do
                opts
              ) do
           {:ok, new_value, notifications} ->
+            new_value =
+              if is_list(new_value) do
+                Enum.reverse(new_value)
+              else
+                new_value
+              end
+
             {:ok, Map.put(record, relationship.name, new_value),
              all_notifications ++ notifications}
 

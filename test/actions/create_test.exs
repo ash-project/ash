@@ -580,11 +580,11 @@ defmodule Ash.Test.Actions.CreateTest do
         |> Api.create!()
         |> strip_metadata()
 
-      assert Enum.sort(post.related_posts) ==
-               Enum.sort([
+      assert post.related_posts ==
+               [
                  Api.get!(Post, post2.id),
                  Api.get!(Post, post3.id)
-               ])
+               ]
                |> strip_metadata()
     end
   end
