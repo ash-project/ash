@@ -15,7 +15,7 @@ defmodule Ash.Type do
     ]
   ]
 
-  @short_names [
+  @builtin_short_names [
     map: Ash.Type.Map,
     term: Ash.Type.Term,
     atom: Ash.Type.Atom,
@@ -39,6 +39,8 @@ defmodule Ash.Type do
 
   @custom_short_names Application.compile_env(:ash, :custom_types, [])
 
+  @short_names @custom_short_names ++ @builtin_short_names
+
   @doc_array_constraints Keyword.put(@array_constraints, :items,
                            type: :any,
                            doc:
@@ -52,7 +54,7 @@ defmodule Ash.Type do
 
   ## Built in types
 
-  #{Enum.map_join(@short_names, fn {key, module} -> "* `#{inspect(key)}` - `#{inspect(module)}`\n" end)}
+  #{Enum.map_join(@builtin_short_names, fn {key, module} -> "* `#{inspect(key)}` - `#{inspect(module)}`\n" end)}
 
   #{if @custom_short_names != [], do: "## Custom types"}
 
@@ -232,9 +234,7 @@ defmodule Ash.Type do
   end
 
   def get_type(value) when is_atom(value) do
-    short_names = @short_names ++ @custom_short_names
-
-    case Keyword.fetch(short_names, value) do
+    case Keyword.fetch(@short_names, value) do
       {:ok, mod} -> mod
       :error -> value
     end
