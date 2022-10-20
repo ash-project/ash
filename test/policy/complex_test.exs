@@ -97,4 +97,16 @@ defmodule Ash.Test.Policy.ComplexTest do
     |> Ash.Query.filter(count_of_comments == 10)
     |> Api.read!(actor: me)
   end
+
+  test "data can be loaded without forbidden errors from selecting", %{me: me} do
+    users =
+      Ash.Test.Support.PolicyComplex.User
+      |> Ash.Query.deselect(:private_email)
+      |> Api.read!(actor: me)
+
+    Application.put_env(:foo, :bar, true)
+
+    users
+    |> Api.load!([:posts], actor: me, authorize?: true)
+  end
 end

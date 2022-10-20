@@ -947,10 +947,12 @@ defmodule Ash.Filter do
               resource: query.resource,
               api: api,
               query:
-                Ash.Query.set_context(query, %{
+                query
+                |> Ash.Query.set_context(%{
                   filter_only?: true,
                   filter_references: refs[path] || []
-                }),
+                })
+                |> Ash.Query.select([]),
               async?: false,
               path: request_path ++ [:filter, path],
               strict_check_only?: true,

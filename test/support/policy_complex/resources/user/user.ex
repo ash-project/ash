@@ -57,10 +57,6 @@ defmodule Ash.Test.Support.PolicyComplex.User do
     end
   end
 
-  preparations do
-    prepare build(deselect: :private_email)
-  end
-
   code_interface do
     define_for Ash.Test.Support.PolicyComplex.Api
     define :create, args: [:name]

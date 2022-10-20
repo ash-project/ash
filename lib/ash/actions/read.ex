@@ -236,6 +236,13 @@ defmodule Ash.Actions.Read do
             fn %{authorize?: authorize?, actor: actor} = context ->
               query_opts = query_opts(request_opts, context)
 
+              authorize? =
+                if Keyword.has_key?(request_opts, :initial_data) do
+                  request_opts[:authorize?]
+                else
+                  authorize?
+                end
+
               input = query_input.(context) || %{}
 
               tenant =
@@ -345,7 +352,7 @@ defmodule Ash.Actions.Read do
               end
             end
           ),
-        authorize?: true,
+        authorize?: !Keyword.has_key?(request_opts, :initial_data),
         data: data_field(request_opts, path),
         path: path ++ [:fetch],
         async?: !Keyword.has_key?(request_opts, :initial_data),

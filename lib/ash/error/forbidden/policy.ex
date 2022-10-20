@@ -158,27 +158,104 @@ defmodule Ash.Error.Forbidden.Policy do
         ""
       end
 
-    {description, state} = describe_checks(policy.policies, facts)
+    {condition_description, applies} = describe_conditions(policy.condition, facts)
 
-    tag =
-      case state do
-        :unknown ->
-          "⛔"
+    if applies == true do
+      {description, state} = describe_checks(policy.policies, facts)
 
-        :authorized ->
-          "🌟"
+      tag =
+        case state do
+          :unknown ->
+            "⛔"
 
-        :forbidden ->
-          "⛔"
-      end
+          :authorized ->
+            "🌟"
 
-    title(Enum.map(description, &["    ", &1]), [
-      "  ",
-      bypass,
-      policy.description || "Policy",
-      " | ",
-      tag
-    ])
+          :forbidden ->
+            "⛔"
+        end
+
+      title(
+        [Enum.map(condition_description, &["    ", &1]), Enum.map(description, &["    ", &1])],
+        [
+          "  ",
+          bypass,
+          policy.description || "Policy",
+          " | ",
+          tag
+        ]
+      )
+    else
+      tag =
+        if applies == false do
+          "⬇️"
+        else
+          "?"
+        end
+
+      title(
+        Enum.map(condition_description, &["    ", &1]),
+        ["  ", bypass, policy.description || "Policy", " | ", tag]
+      )
+    end
+  end
+
+  defp describe_conditions(condition, facts) do
+    condition
+    |> List.wrap()
+    |> case do
+      [{Ash.Policy.Check.Static, opts}] ->
+        {[], opts[:result]}
+
+      conditions ->
+        conditions
+        |> Enum.reduce({[], true}, fn condition, {conditions, status} ->
+          {mod, opts} =
+            case condition do
+              %{module: module, opts: opts} ->
+                {module, opts}
+
+              {module, opts} ->
+                {module, opts}
+            end
+
+          new_status =
+            if status in [false, :unknown] do
+              false
+            else
+              case Policy.fetch_fact(facts, {mod, opts}) do
+                {:ok, true} ->
+                  true
+
+                {:ok, false} ->
+                  false
+
+                _ ->
+                  :unknown
+              end
+            end
+
+          {[["condition: ", mod.describe(opts)] | conditions], new_status}
+        end)
+        |> then(fn {conditions, status} ->
+          conditions =
+            conditions
+            |> Enum.reverse()
+            |> case do
+              [] ->
+                []
+
+              conditions ->
+                [
+                  conditions
+                  |> Enum.intersperse("\n"),
+                  "\n"
+                ]
+            end
+
+          {conditions, status}
+        end)
+    end
   end
 
   defp describe_checks(checks, facts) do
