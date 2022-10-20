@@ -1,11 +1,6 @@
 # Calculations
 
 Calculations in Ash allow for displaying complex values as a top level value of a resource.
-They are relatively limited in their current form, supporting only functional calculations,
-where you provide a module that takes a list of records and returns a list of values for that
-calculation. Eventually, there will be support for calculations that can be embedded into the
-data layer(for things like postgres) that will allow for sorting and filtering on calculated
-data.
 
 ## Declaring calculations on a resource
 
