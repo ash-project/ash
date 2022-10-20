@@ -58,4 +58,3 @@ end
 
 ```
 
-This approach is relatively experimental. I haven't seen it done this way elsewhere, but it seems like a decent middle ground from a system that can generate multiple disparate errors on each pass.

@@ -150,8 +150,7 @@ defmodule Ash.Resource.Calculation do
         type: :boolean,
         default: false,
         links: [],
-        doc:
-          "Experimental option to allow passing expressions as argument values. Expressions cannot be type validated."
+        doc: "Allow passing expressions as argument values. Expressions cannot be type validated."
       ],
       constraints: [
         type: :keyword_list,
