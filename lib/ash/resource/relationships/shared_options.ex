@@ -165,7 +165,7 @@ defmodule Ash.Resource.Relationships.SharedOptions do
      type: {:spark_behaviour, Ash.Resource.ManualRelationship},
      links: [],
      doc: """
-     Allows for relationships that are fetched manually. WARNING: EXPERIMENTAL
+     Allows for relationships that are fetched manually.
 
      Manual relationships do not support filters or aggregates at the moment. In the future, what we may do is
      allow the data layer to be configured with a hook that expresses how to implement this manual relationship
