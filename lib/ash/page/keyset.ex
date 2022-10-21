@@ -14,9 +14,9 @@ defmodule Ash.Page.Keyset do
 
   @type t :: %__MODULE__{}
 
-  def new(results, count, sort, original_query, more?, opts) do
+  def new(results, count, _sort, original_query, more?, opts) do
     %__MODULE__{
-      results: data_with_keyset(results, original_query.resource, sort),
+      results: results,
       count: count,
       before: opts[:page][:before],
       after: opts[:page][:after],
@@ -26,7 +26,7 @@ defmodule Ash.Page.Keyset do
     }
   end
 
-  def data_with_keyset(results, _resource, sort) do
+  def data_with_keyset(results, _resource, sort) when is_list(results) do
     Enum.map(results, fn result ->
       Map.update!(
         result,

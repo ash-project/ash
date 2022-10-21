@@ -556,6 +556,16 @@ defmodule Ash.Actions.Read do
 
   @doc false
   def add_page(data, action, count, sort, original_query, opts) do
+    data =
+      if Enum.any?(
+           Ash.Resource.Info.actions(original_query.resource),
+           &(&1.type == :read && &1.pagination && &1.pagination.keyset?)
+         ) do
+        Ash.Page.Keyset.data_with_keyset(data, original_query.resource, sort)
+      else
+        data
+      end
+
     if opts[:page] && action.pagination && !opts[:initial_data] do
       to_page(data, action, count, sort, original_query, opts)
     else
@@ -585,18 +595,14 @@ defmodule Ash.Actions.Read do
 
     if page_opts[:offset] do
       if action.pagination.keyset? do
-        data
-        |> Ash.Page.Keyset.data_with_keyset(original_query.resource, sort)
-        |> Ash.Page.Offset.new(count, original_query, more?, opts)
+        Ash.Page.Offset.new(data, count, original_query, more?, opts)
       else
         Ash.Page.Offset.new(data, count, original_query, more?, opts)
       end
     else
       cond do
         action.pagination.offset? && action.pagination.keyset? ->
-          data
-          |> Ash.Page.Keyset.data_with_keyset(original_query.resource, sort)
-          |> Ash.Page.Offset.new(count, original_query, more?, opts)
+          Ash.Page.Offset.new(data, count, original_query, more?, opts)
 
         action.pagination.offset? ->
           Ash.Page.Offset.new(data, count, original_query, more?, opts)

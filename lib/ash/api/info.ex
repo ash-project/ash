@@ -8,8 +8,7 @@ defmodule Ash.Api.Info do
   @doc """
   Gets the resources of an Api module. DO NOT USE AT COMPILE TIME.
 
-  If you need the resource list at compile time, you will need to introduce a compile time
-  dependency on all of the resources, and therefore should use the registry directly. `Registry |> Ash.Registry.Info.entries()`.
+  If you need the resource list at compile time, use `depend_on_resources/1`
   """
   @spec resources(Ash.Api.t()) :: list(Ash.Resource.t())
   def resources(api) do
@@ -17,6 +16,26 @@ defmodule Ash.Api.Info do
       Ash.Registry.Info.entries(registry)
     else
       []
+    end
+  end
+
+  @doc """
+  Gets the resources of an Api module. Can be used at compile time.
+
+  Liberal use of this can greatly increase compile times, or even cause compiler deadlocks.
+  Use with care.
+  """
+  @spec depend_on_resources(Macro.t()) :: Macro.t()
+  defmacro depend_on_resources(api) do
+    quote do
+      if registry = Ash.Api.Info.registry(unquote(api)) do
+        for entry <- Ash.Registry.Info.entries(registry) do
+          @external_resource List.to_string(registry.module_info(:compile)[:source])
+          entry
+        end
+      else
+        []
+      end
     end
   end
 
