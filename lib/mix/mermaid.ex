@@ -12,6 +12,43 @@ defmodule Mix.Mermaid do
     end
   end
 
+  def generate_diagram(source, suffix, "plain", markdown, message) do
+    source
+    |> Mix.Mermaid.file(suffix, ".mermaid")
+    |> File.write!(markdown)
+
+    Mix.shell().info(message)
+  end
+
+  def generate_diagram(source, suffix, "md", markdown, message) do
+    source
+    |> Mix.Mermaid.file(suffix, ".mermaid")
+    |> File.write!("""
+    ```mermaid
+    #{markdown}
+    ```
+    """)
+
+    Mix.shell().info(message)
+  end
+
+  def generate_diagram(source, suffix, format, markdown, message)
+      when format in ["svg", "pdf", "png"] do
+    source
+    |> Mix.Mermaid.file(suffix, format)
+    |> Mix.Mermaid.create_diagram(markdown)
+
+    Mix.shell().info(message)
+  end
+
+  def generate_diagram(_, _, format, _, _) do
+    Mix.shell().error("""
+    Invalid format `#{format}`.
+
+    Valid options are `plain`, `md`, `svg`, `pdf` or `png`.
+    """)
+  end
+
   @doc """
   Generate a diagram filename next to the source file.
   """

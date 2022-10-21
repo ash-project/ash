@@ -31,6 +31,8 @@ defmodule Mix.Tasks.Ash.GenerateResourceDiagrams do
         Enum.map(List.wrap(opts[:only]), &Path.expand/1)
       end
 
+    format = Keyword.get(opts, :format, "plain")
+
     apis()
     |> Task.async_stream(
       fn api ->
@@ -39,18 +41,22 @@ defmodule Mix.Tasks.Ash.GenerateResourceDiagrams do
         if is_nil(only) || Path.expand(source) in only do
           case Keyword.get(opts, :type, "class") do
             "er" ->
-              source
-              |> Mix.Mermaid.file("mermaid-er-diagram", "pdf")
-              |> Mix.Mermaid.create_diagram(Ash.Api.Info.Diagram.mermaid_er_diagram(api))
-
-              Mix.shell().info("Generated ER Diagram for #{inspect(api)}")
+              Mix.Mermaid.generate_diagram(
+                source,
+                "mermaid-er-diagram",
+                format,
+                Ash.Api.Info.Diagram.mermaid_er_diagram(api),
+                "Generated ER Diagram for #{inspect(api)}"
+              )
 
             "class" ->
-              source
-              |> Mix.Mermaid.file("mermaid-class-diagram", "pdf")
-              |> Mix.Mermaid.create_diagram(Ash.Api.Info.Diagram.mermaid_class_diagram(api))
-
-              Mix.shell().info("Generated Class Diagram for #{inspect(api)}")
+              Mix.Mermaid.generate_diagram(
+                source,
+                "mermaid-class-diagram",
+                format,
+                Ash.Api.Info.Diagram.mermaid_class_diagram(api),
+                "Generated Class Diagram for #{inspect(api)}"
+              )
 
             type ->
               Mix.shell().error("""
