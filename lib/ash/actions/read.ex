@@ -601,6 +601,9 @@ defmodule Ash.Actions.Read do
       end
     else
       cond do
+        action.pagination.keyset? && (page_opts[:after] || page_opts[:before]) ->
+          Ash.Page.Keyset.new(data, count, sort, original_query, more?, opts)
+
         action.pagination.offset? && action.pagination.keyset? ->
           Ash.Page.Offset.new(data, count, original_query, more?, opts)
 
