@@ -112,4 +112,8 @@ defmodule Ash.Type.Decimal do
   def dump_to_native(value, _) do
     Ecto.Type.dump(:decimal, value)
   end
+
+  @doc false
+  def new(%Decimal{} = v), do: v
+  def new(v), do: Decimal.new(v)
 end

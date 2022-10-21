@@ -11,6 +11,8 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
       uuid_primary_key :id
       attribute :number_one, :integer
       attribute :number_two, :integer
+      attribute :number_three, :decimal
+      attribute :number_four, :float
     end
   end
 
@@ -39,6 +41,46 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
       changeset =
         Post
         |> Ash.Changeset.new(%{number_one: 100, number_two: 1})
+
+      assert :ok = Compare.validate(changeset, opts)
+    end
+
+    test "decimals can be compared against" do
+      {:ok, opts} = Compare.init(attribute: :number_three, greater_than: 0)
+
+      changeset =
+        Post
+        |> Ash.Changeset.new(%{number_three: Decimal.new(1)})
+
+      assert :ok = Compare.validate(changeset, opts)
+    end
+
+    test "floats can be compared against" do
+      {:ok, opts} = Compare.init(attribute: :number_four, greater_than: 0)
+
+      changeset =
+        Post
+        |> Ash.Changeset.new(%{number_four: 1.0})
+
+      assert :ok = Compare.validate(changeset, opts)
+    end
+
+    test "decimals can be compared with" do
+      {:ok, opts} = Compare.init(attribute: :number_one, greater_than: Decimal.new(0))
+
+      changeset =
+        Post
+        |> Ash.Changeset.new(%{number_one: 1})
+
+      assert :ok = Compare.validate(changeset, opts)
+    end
+
+    test "floats can be compared with" do
+      {:ok, opts} = Compare.init(attribute: :number_one, greater_than: 0.0)
+
+      changeset =
+        Post
+        |> Ash.Changeset.new(%{number_one: 1})
 
       assert :ok = Compare.validate(changeset, opts)
     end

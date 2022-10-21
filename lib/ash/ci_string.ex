@@ -95,7 +95,7 @@ defmodule Ash.CiString do
   def to_comparable_string(nil), do: nil
 end
 
-use Comp
+import Ash.Type.Comparable
 
 defcomparable left :: Ash.CiString, right :: BitString do
   Ash.CiString.compare(left, right)

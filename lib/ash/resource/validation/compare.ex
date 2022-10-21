@@ -12,22 +12,22 @@ defmodule Ash.Resource.Validation.Compare do
       doc: "The attribute to check"
     ],
     greater_than: [
-      type: {:or, [:integer, :atom, {:fun, 0}]},
+      type: {:or, [:integer, :atom, :float, {:struct, Decimal}, {:fun, 0}]},
       required: false,
       doc: "The value that the attribute should be greater than."
     ],
     greater_than_or_equal_to: [
-      type: {:or, [:integer, :atom, {:fun, 0}]},
+      type: {:or, [:integer, :atom, :float, {:struct, Decimal}, {:fun, 0}]},
       required: false,
       doc: "The value that the attribute should be greater than or equal to"
     ],
     less_than: [
-      type: {:or, [:integer, :atom, {:fun, 0}]},
+      type: {:or, [:integer, :atom, :float, {:struct, Decimal}, {:fun, 0}]},
       required: false,
       doc: "The value that the attribute should be less than"
     ],
     less_than_or_equal_to: [
-      type: {:or, [:integer, :atom, {:fun, 0}]},
+      type: {:or, [:integer, :atom, :float, {:struct, Decimal}, {:fun, 0}]},
       required: false,
       doc: "The value that the attribute should be less than or equal to"
     ]
