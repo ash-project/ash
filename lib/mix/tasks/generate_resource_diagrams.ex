@@ -29,7 +29,7 @@ defmodule Mix.Tasks.Ash.GenerateResourceDiagrams do
     {opts, _} =
       OptionParser.parse!(argv,
         strict: [only: :keep, type: :string, format: :string],
-        aliases: [o: :only, t: :type]
+        aliases: [o: :only, t: :type, f: :format]
       )
 
     only =

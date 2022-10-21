@@ -29,7 +29,10 @@ defmodule Mix.Tasks.Ash.GenerateFlowCharts do
     Mix.Task.run("compile")
 
     {opts, _} =
-      OptionParser.parse!(argv, strict: [only: :keep, format: :string], aliases: [o: :only])
+      OptionParser.parse!(argv,
+        strict: [only: :keep, format: :string],
+        aliases: [o: :only, f: :format]
+      )
 
     only =
       if opts[:only] && opts[:only] != [] do
