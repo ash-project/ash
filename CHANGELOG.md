@@ -5,6 +5,27 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.2.0](https://github.com/ash-project/ash/compare/v2.1.0...v2.2.0) (2022-10-21)
+
+
+
+
+### Features:
+
+* add `Ash.Api.Info.depend_on_resources/1` to get the list of resources at compile time
+
+### Bug Fixes:
+
+* don't attempt to re-authorize access to already retrieved records in `Api.load/2`
+
+### Improvements:
+
+* when returning a page, choose keyset if `before` or `after` was supplied
+
+* add keysets to records if any action supports keysets
+
+* show conditions in policy breakdowns
+
 ## [v2.1.0](https://github.com/ash-project/ash/compare/v2.0.0...v2.1.0) (2022-10-19)
 
 
