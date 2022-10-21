@@ -12,6 +12,12 @@ defmodule Mix.Tasks.Ash.GenerateResourceDiagrams do
 
     * `--type` - `er` or `class` (defaults to `class`)
     * `--only` - only generates the given API file
+    * `--format` - Can be set to one of either:
+      * `plain` - Prints just the mermaid output as text. This is the default.
+      * `md` - Prints the mermaid diagram in a markdown code block.
+      * `svg` - Generates an SVG
+      * `pdf` - Generates a PDF
+      * `png` - Generates a PNG
 
   """
   use Mix.Task
@@ -22,7 +28,7 @@ defmodule Mix.Tasks.Ash.GenerateResourceDiagrams do
 
     {opts, _} =
       OptionParser.parse!(argv,
-        strict: [only: :keep, type: :string],
+        strict: [only: :keep, type: :string, format: :string],
         aliases: [o: :only, t: :type]
       )
 

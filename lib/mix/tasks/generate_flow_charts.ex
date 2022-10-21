@@ -14,7 +14,6 @@ defmodule Mix.Tasks.Ash.GenerateFlowCharts do
   ## Command line options
 
     * `--only` - only generates the given Flow file
-
     * `--format` - Can be set to one of either:
       * `plain` - Prints just the mermaid output as text. This is the default.
       * `md` - Prints the mermaid diagram in a markdown code block.
