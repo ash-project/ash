@@ -62,7 +62,8 @@ It is a good idea to make it a git repository and commit the initial project. Yo
 # Run in your terminal
 git init
 git add -A
-git commit -m "init"
+git commit -m "first commit"
+git branch -M main
 ```
 
 Open the project in your text editor, and we'll get started.
@@ -71,24 +72,42 @@ Open the project in your text editor, and we'll get started.
 
 Add the ash dependency to your `mix.exs`
 
-{{mix_dep:ash}}
+```elixir
+defp deps do
+  [
+    # {:dep_from_hexpm, "~> 0.3.0"},
+    # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
+    {{mix_dep:ash}}, # <-- add this line
+  ]
+end
+```
 
 Add `:ash` to your `.formatter.exs` file
 
 ```elixir
+# Used by "mix format"
 [
-  # import the formatter rules from ash
-  import_deps: [:ash],
-  inputs: [...]
+  inputs: [
+    "{mix,.formatter}.exs",
+    "{config,lib,test}/**/*.{ex,exs}",
+    import_deps: [:ash] # <-- add this line, if you have more import_deps, just add it within the array
+  ]
 ]
 ```
 
 And run `mix deps.get`
 
-If you are using ElixirLs (if you are using VScode, it is likely that you are), then add the following dependency to use Ash's custom autocomplete plugin.
+If you are using ElixirLs (if you are using VScode, it is likely that you are), then add the following dependency to your `mix.exs` to use Ash's custom autocomplete plugin.
 
 ```elixir
-{:elixir_sense, github: "elixir-lsp/elixir_sense", only: [:dev, :test]}
+defp deps do
+  [
+    # {:dep_from_hexpm, "~> 0.3.0"},
+    # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
+    {{mix_dep:ash}},
+    {:elixir_sense, github: "elixir-lsp/elixir_sense", only: [:dev, :test]} # <-- add this line
+  ]
+end
 ```
 
 ### Creating our first resources
@@ -97,13 +116,14 @@ The basic building blocks of an Ash application are resources. They are tied tog
 
 Lets start by creating our first resource along with our first API. We will create the following files:
 
-- The API - `lib/helpdesk/support.ex`
-- A registry to list our resources - `lib/helpdesk/support/registry.ex`
-- Our tickets resource - `lib/helpdesk/support/resources/ticket.ex`.
+- The API [Helpdes.Support] - `lib/helpdesk/support.ex`
+- Our tickets resource [Helpdes.Support.Ticket] - `lib/helpdesk/support/resources/ticket.ex`.
 
 We also create an accompanying registry, in , which is where we will list the resources for our Api.
 
-To create the required folders and files, you can use the following command:
+- A registry to list our resources - `lib/helpdesk/support/registry.ex`
+
+To create the required folders and files, you can use the following command in your terminal:
 
 ```bash
 # Run in your terminal
@@ -310,6 +330,9 @@ end
 Now we can try it out in iex, opening a ticket and closing it:
 
 ```elixir
+# Use this to pick up changes you've made to your code, or restart your session
+recompile()
+
 # parenthesis so you can paste into iex
 ticket = (
   Helpdesk.Support.Ticket
@@ -388,6 +411,8 @@ There is a built in data layer that is good for testing and prototyping, that us
 To add it to your resource, modify it like so:
 
 ```elixir
+# lib/helpdesk/support/resources/ticket.ex
+
 use Ash.Resource,
   data_layer: Ash.DataLayer.Ets
 ```
@@ -395,6 +420,9 @@ use Ash.Resource,
 Now we can slightly modify our code above, by removing the `Ash.DataLayer.Simple.set_data/2` calls, and we can see our persistence in action. Keep in mind, ETS is in memory, meaning restarting your application/iex session will remove all of the data.
 
 ```elixir
+# Use this to pick up changes you've made to your code, or restart your session
+recompile()
+
 require Ash.Query
 
 for i <- 0..5 do
@@ -512,6 +540,9 @@ end
 Lets try it out!
 
 ```elixir
+# Use this to pick up changes you've made to your code, or restart your session
+recompile()
+
 # Open a ticket
 ticket = (
   Helpdesk.Support.Ticket
