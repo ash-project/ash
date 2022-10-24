@@ -76,7 +76,7 @@ defmodule Mix.Mermaid do
     |> System.cmd([
       "-c",
       """
-      cat <<EOF | mmdc --output #{file} #{config()}
+      cat <<EOF | mmdc --output #{file} --pdfFit #{config()}
       #{markdown}
       EOF
       """
