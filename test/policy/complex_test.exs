@@ -91,6 +91,14 @@ defmodule Ash.Test.Policy.ComplexTest do
              |> Api.read!(actor: me)
   end
 
+  test "it properly scopes single loads" do
+    assert [%{best_friend: %{name: "me"}}] =
+             User
+             |> Ash.Query.filter(best_friend.name == "me")
+             |> Api.read!()
+             |> Api.load!(:best_friend)
+  end
+
   test "aggregates can be loaded", %{me: me} do
     Post
     |> Ash.Query.load(:count_of_comments)

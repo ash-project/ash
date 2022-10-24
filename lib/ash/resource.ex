@@ -122,7 +122,7 @@ defmodule Ash.Resource do
                               |> Enum.filter(& &1.primary_key?)
                               |> Enum.map(&{&1.name, &1.type})
 
-      @primary_key @primary_key_with_types |> Enum.map(&elem(&1, 1))
+      @primary_key @primary_key_with_types |> Enum.map(&elem(&1, 0))
 
       if Ash.Resource.Info.primary_key_simple_equality?(__MODULE__) do
         def primary_key_matches?(left, right) do
