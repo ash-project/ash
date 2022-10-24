@@ -148,7 +148,8 @@ defmodule Ash.MixProject do
           Ash.DataLayer.Simple,
           Ash.Filter.Simple,
           Ash.Filter.Simple.Not,
-          Ash.OptionsHelpers
+          Ash.OptionsHelpers,
+          Ash.Resource.Builder
         ],
         Testing: [
           Ash.Generator,
