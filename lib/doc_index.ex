@@ -159,7 +159,8 @@ defmodule Ash.DocIndex do
          Ash.DataLayer.Simple,
          Ash.Filter.Simple,
          Ash.Filter.Simple.Not,
-         Ash.OptionsHelpers
+         Ash.OptionsHelpers,
+         Ash.Resource.Builder
        ]},
       {"Testing",
        [
