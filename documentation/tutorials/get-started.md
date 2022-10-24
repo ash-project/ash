@@ -116,8 +116,8 @@ The basic building blocks of an Ash application are resources. They are tied tog
 
 Lets start by creating our first resource along with our first API. We will create the following files:
 
-- The API [Helpdes.Support] - `lib/helpdesk/support.ex`
-- Our tickets resource [Helpdes.Support.Ticket] - `lib/helpdesk/support/resources/ticket.ex`.
+- The API [Helpdesk.Support] - `lib/helpdesk/support.ex`
+- Our tickets resource [Helpdesk.Support.Ticket] - `lib/helpdesk/support/resources/ticket.ex`.
 
 We also create an accompanying registry, in , which is where we will list the resources for our Api.
 
