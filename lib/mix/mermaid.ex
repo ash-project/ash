@@ -14,7 +14,7 @@ defmodule Mix.Mermaid do
 
   # sobelow_skip ["Traversal"]
   def generate_diagram(source, suffix, "plain", markdown, message) do
-    file = Mix.Mermaid.file(source, suffix, "mermaid")
+    file = Mix.Mermaid.file(source, suffix, "mmd")
 
     File.write!(file, markdown)
 
