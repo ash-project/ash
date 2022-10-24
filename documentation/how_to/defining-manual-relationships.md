@@ -37,3 +37,19 @@ defmodule Helpdesk.Support.Ticket.Relationships.TicketsAboveThreshold do
   end
 end
 ```
+
+## Using the Query
+
+Since you likely want to support things like filtering your relationship when being loaded, you will want to make sure that you use the query being provided. However, depending on how you're loading the relationship, you may need to do things like fetch extra records. To do this, you might do things like
+
+```elixir
+def load(records, _opts, %{query: query, ..}) do
+  # unset some fields
+  fetch_query = Ash.Query.unset(query, [:limit, :offset])
+
+  # or, to be more safe/explicit, you might make a new query, explicitly setting only a few fields
+  fetch_query = query.resource |> Ash.Query.filter(^query.filter) |> Ash.Query.sort(query.sort)
+
+  ...
+end
+```

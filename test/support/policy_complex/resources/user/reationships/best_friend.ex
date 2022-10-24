@@ -4,6 +4,7 @@ defmodule Ash.Test.Support.PolicyComplex.User.Relationships.BestFriend do
   require Ash.Query
 
   def load(users, _, %{api: api, query: query}) do
+    query = Ash.Query.unset(query, [:limit, :offset])
     user_ids = Enum.map(users, & &1.id)
 
     friend_links =
@@ -39,9 +40,9 @@ defmodule Ash.Test.Support.PolicyComplex.User.Relationships.BestFriend do
            end
            |> List.wrap()
          end)
-         |> Enum.uniq()
+         |> Enum.uniq_by(& &1.id)
          # obviously a weird heuristic for being someone's best friend 😆
-         |> Enum.sort_by(&String.jaro_distance(user.name, &1.name))
+         |> Enum.sort_by(&{String.jaro_distance(user.name, &1.name), &1.name})
          |> Enum.at(0)
 
        {user.id, best_friend}
