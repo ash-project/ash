@@ -14,33 +14,33 @@ defmodule Mix.Mermaid do
 
   # sobelow_skip ["Traversal"]
   def generate_diagram(source, suffix, "plain", markdown, message) do
-    source
-    |> Mix.Mermaid.file(suffix, "mermaid")
-    |> File.write!(markdown)
+    file = Mix.Mermaid.file(source, suffix, "mermaid")
 
-    Mix.shell().info(message)
+    File.write!(file, markdown)
+
+    Mix.shell().info(message <> " (#{file})")
   end
 
   # sobelow_skip ["Traversal"]
   def generate_diagram(source, suffix, "md", markdown, message) do
-    source
-    |> Mix.Mermaid.file(suffix, "md")
-    |> File.write!("""
+    file = Mix.Mermaid.file(source, suffix, "md")
+
+    File.write!(file, """
     ```mermaid
     #{markdown}
     ```
     """)
 
-    Mix.shell().info(message)
+    Mix.shell().info(message <> " (#{file})")
   end
 
   def generate_diagram(source, suffix, format, markdown, message)
       when format in ["svg", "pdf", "png"] do
-    source
-    |> Mix.Mermaid.file(suffix, format)
-    |> Mix.Mermaid.create_diagram(markdown)
+    file = Mix.Mermaid.file(source, suffix, format)
 
-    Mix.shell().info(message)
+    Mix.Mermaid.create_diagram(file, markdown)
+
+    Mix.shell().info(message <> " (#{file})")
   end
 
   def generate_diagram(_, _, format, _, _) do
