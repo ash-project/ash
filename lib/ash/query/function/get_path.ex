@@ -19,7 +19,8 @@ defmodule Ash.Query.Function.GetPath do
 
   def args,
     do: [
-      [:map, {:array, :any}]
+      [:map, {:array, :any}],
+      [:map, :any]
     ]
 
   def new([%__MODULE__{arguments: [inner_left, inner_right]} = get_path, right])

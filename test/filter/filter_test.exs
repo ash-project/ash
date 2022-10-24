@@ -30,6 +30,12 @@ defmodule Ash.Test.Filter.FilterTest do
 
     actions do
       defaults [:create, :read, :update, :destroy]
+
+      read :get_path_search do
+        argument :input, :map
+
+        filter expr(get_path(embedded_bio, [:title]) == get_path(^arg(:input), :title))
+      end
     end
 
     attributes do
@@ -718,6 +724,44 @@ defmodule Ash.Test.Filter.FilterTest do
         |> Ash.Query.filter(length(name) > 0)
         |> Api.read!()
       end)
+    end
+  end
+
+  describe "get_path/2" do
+    test "it can be used by name" do
+      profile =
+        Profile
+        |> Ash.Changeset.for_create(:create, %{embedded_bio: %{title: "fred"}})
+        |> Api.create!()
+
+      profile_id = profile.id
+
+      Profile
+      |> Ash.Changeset.for_create(:create, %{embedded_bio: %{title: "george"}})
+      |> Api.create!()
+
+      assert [%{id: ^profile_id}] =
+               Profile
+               |> Ash.Query.filter(get_path(embedded_bio, :title) == "fred")
+               |> Api.read!()
+    end
+
+    test "it can be used with arguments" do
+      profile =
+        Profile
+        |> Ash.Changeset.for_create(:create, %{embedded_bio: %{title: "fred"}})
+        |> Api.create!()
+
+      profile_id = profile.id
+
+      Profile
+      |> Ash.Changeset.for_create(:create, %{embedded_bio: %{title: "george"}})
+      |> Api.create!()
+
+      assert [%{id: ^profile_id}] =
+               Profile
+               |> Ash.Query.for_read(:get_path_search, %{input: %{title: "fred"}})
+               |> Api.read!()
     end
   end
 
