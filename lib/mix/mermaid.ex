@@ -14,7 +14,7 @@ defmodule Mix.Mermaid do
 
   def generate_diagram(source, suffix, "plain", markdown, message) do
     source
-    |> Mix.Mermaid.file(suffix, ".mermaid")
+    |> Mix.Mermaid.file(suffix, "mermaid")
     |> File.write!(markdown)
 
     Mix.shell().info(message)
@@ -22,7 +22,7 @@ defmodule Mix.Mermaid do
 
   def generate_diagram(source, suffix, "md", markdown, message) do
     source
-    |> Mix.Mermaid.file(suffix, ".mermaid")
+    |> Mix.Mermaid.file(suffix, "md")
     |> File.write!("""
     ```mermaid
     #{markdown}

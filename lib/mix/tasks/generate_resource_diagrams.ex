@@ -52,7 +52,7 @@ defmodule Mix.Tasks.Ash.GenerateResourceDiagrams do
                 "mermaid-er-diagram",
                 format,
                 Ash.Api.Info.Diagram.mermaid_er_diagram(api),
-                "Generated ER Diagram for #{inspect(api)}"
+                "Generated ER Diagram for #{inspect(api)} (as #{format})"
               )
 
             "class" ->
@@ -61,7 +61,7 @@ defmodule Mix.Tasks.Ash.GenerateResourceDiagrams do
                 "mermaid-class-diagram",
                 format,
                 Ash.Api.Info.Diagram.mermaid_class_diagram(api),
-                "Generated Class Diagram for #{inspect(api)}"
+                "Generated Class Diagram for #{inspect(api)} (as #{format})"
               )
 
             type ->
