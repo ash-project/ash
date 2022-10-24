@@ -12,6 +12,45 @@ defmodule Mix.Mermaid do
     end
   end
 
+  # sobelow_skip ["Traversal"]
+  def generate_diagram(source, suffix, "plain", markdown, message) do
+    file = Mix.Mermaid.file(source, suffix, "mmd")
+
+    File.write!(file, markdown)
+
+    Mix.shell().info(message <> " (#{file})")
+  end
+
+  # sobelow_skip ["Traversal"]
+  def generate_diagram(source, suffix, "md", markdown, message) do
+    file = Mix.Mermaid.file(source, suffix, "md")
+
+    File.write!(file, """
+    ```mermaid
+    #{markdown}
+    ```
+    """)
+
+    Mix.shell().info(message <> " (#{file})")
+  end
+
+  def generate_diagram(source, suffix, format, markdown, message)
+      when format in ["svg", "pdf", "png"] do
+    file = Mix.Mermaid.file(source, suffix, format)
+
+    Mix.Mermaid.create_diagram(file, markdown)
+
+    Mix.shell().info(message <> " (#{file})")
+  end
+
+  def generate_diagram(_, _, format, _, _) do
+    Mix.shell().error("""
+    Invalid format `#{format}`.
+
+    Valid options are `plain`, `md`, `svg`, `pdf` or `png`.
+    """)
+  end
+
   @doc """
   Generate a diagram filename next to the source file.
   """
@@ -37,7 +76,7 @@ defmodule Mix.Mermaid do
     |> System.cmd([
       "-c",
       """
-      cat <<EOF | mmdc --output #{file} #{config()}
+      cat <<EOF | mmdc --output #{file} --pdfFit #{config()}
       #{markdown}
       EOF
       """
