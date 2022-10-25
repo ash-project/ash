@@ -16,7 +16,7 @@ prefix "user"
 publish :create, ["created", :user_id]
 ```
 
-This might publish a message to \"user:created:1\"" for example.
+This might publish a message to "user:created:1" for example.
 
 For updates, if the field in the template is being changed, a message is sent
 to *both* values. So if you change `user 1` to `user 2`, the same message would

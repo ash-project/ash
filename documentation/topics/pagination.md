@@ -4,7 +4,7 @@ Pagination is configured at the action level. There are two kinds of pagination 
 pros and cons to each. An action can support both at the same time, or only one (or none). A full count of records can be
 requested by passing `page: [count: true]`, but it should be kept in mind that doing this requires running the same query
 twice, one of which is a count of all records. Ash does these in parallel, but it can still be quite expensive on large
-datasets. For more information on the options for configuring actions to support pagination, see the [pagination section](Ash.Resource.Dsl.html#module-pagination) in `Ash.Resource.Dsl`.
+datasets. For more information on the options for configuring actions to support pagination, see the {{link:ash:dsl:resource/actions/read/prepare}}
 
 ## Offset Pagination
 
@@ -28,8 +28,8 @@ Api.read(Resource, page: [limit: 10, offset: 10])
 
 ### Offset Cons
 
-- Does not perform well on large datasets
-- When moving between pages, if data was created or deleted, records may appear on multiple pages or be skipped
+- Does not perform well on large datasets (if you have to ask if your dataset is "large", it probably isn't)
+- When moving between pages, if data was created or deleted, records may appear on multiple pages
 
 ## Keyset Pagination
 
@@ -49,11 +49,6 @@ last_record = List.last(page.results)
 next_page = Api.read(Resource, page: [limit: 10, after: last_record.__metadata__.keyset])
 ```
 
-### Important Limitation
-
-Keyset pagination cannot currently be used in conjunction with aggregate and calculation sorting.
-Combining them will result in an error on the query.
-
 ### Keyset Pros
 
 - Performs very well on large datasets (assuming indices exist on the columns being sorted on)
@@ -61,10 +56,5 @@ Combining them will result in an error on the query.
 
 ### Keyset Cons
 
-- A bit more complex
+- A bit more complex to use
 - Can't go to a specific page number
-- Can't use aggregate and calculation sorting (at the moment, this will change soon)
-
-For more information on keyset vs offset based pagination, see:
-
-- [Offset vs Seek Pagination](https://taylorbrazelton.com/posts/2019/03/offset-vs-seek-pagination/)

@@ -117,7 +117,45 @@ Keep in mind that, for create actions, many `expr/1` checks won't make sense, an
 
 #### Using exists
 
-In these and in other filter checks, it is advised to use `exists/2` when referring to relationships, because of the way that the policy authorizer may mix & match your policies when building filters. There is a semantic difference in filters between `friends.first_name == "ted" and friends.last_name == "dansen"`. This means that you have a *single* friend with the first_name "bob" and the last name "fred". If you use `exists`, then your policies can be used in filters without excluding unnecessary data, i.e `exists(friends, first_name == "ted") and exists(friends, last_name == "dansen")` means "you have one friend with the first_name "ted" and one friend with the last_name "dansen".
+Lets compare the following expressions: 
+
+Filtering on related data by directly referencing the relationship
+```elixir
+friends.first_name == "ted" and friends.last_name == "dansen"
+```
+
+Filtering on related data using `exists/2`
+
+```elixir
+exists(friends, first_name == "ted") and exists(friends, last_name == "dansen")
+```
+
+In policies (and often any time you mean "a related thing exists where some condition is true") you should generally prefer filter checks, it is advised to use `exists/2` when referring to relationships, because of the way that the policy authorizer may mix & match your policies when building filters. This is also true when adding filters to actions. If you use `exists`, then your policies can be used in filters without excluding unnecessary data, i.e `exists(friends, first_name == "ted") and exists(friends, last_name == "dansen")` means "you have one friend with the first_name "ted" and one friend with the last_name "dansen". For instance, imagine a scenario where you have an action like this:
+
+```elixir
+read :friends_of_ted do
+  filter expr(friends.first_name == "ted")
+end
+```
+
+And someone calls it like so:
+```elixir
+Resource
+|> Ash.Query.for_read(:friends_of_ted)
+|> Ash.Query.filter(friends.last_name == "dansen")
+```
+
+The resulting filter is `friends.first_name == "ted" and friends.last_name == "dansen"`. This means that there must be one friend with the name "ted dansen". Sometimes that *is* what you mean to do, but generally speaking I would expect the above code to say "friends of ted that also have a friend with the last name `"dansen"`". To accomplish that, we can rework the example like so:
+```elixir
+read :friends_of_ted do
+  filter expr(exists(friends, first_name == "ted"))
+end
+
+# Calling it
+Resource
+|> Ash.Query.for_read(:friends_of_ted)
+|> Ash.Query.filter(exists(friends, last_name == "dansen"))
+```
 
 #### How expressions are used
 
