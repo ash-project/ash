@@ -73,7 +73,7 @@ defmodule Ash.DataLayer do
   @callback resource_to_query(Ash.Resource.t(), Ash.Api.t()) :: data_layer_query()
   @callback transform_query(Ash.Query.t()) :: Ash.Query.t()
   @callback run_query(data_layer_query(), Ash.Resource.t()) ::
-              {:ok, list(Ash.Resource.t())} | {:error, term}
+              {:ok, list(Ash.Resource.record())} | {:error, term}
   @callback run_aggregate_query(
               data_layer_query(),
               list(Ash.Query.Aggregate.t()),
