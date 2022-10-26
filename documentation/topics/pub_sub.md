@@ -4,6 +4,8 @@ Ash includes a builtin notifier to help you publish events over any kind of pub-
 
 You configure a module that defines a `broadcast/3` function, and then add some "publications" which configure under what conditions an event should be sent and what the topic should be.
 
+For the full DSL spec see {{link:ash:dsl:PubSub/pub_sub}}
+
 ## Topic Templates
 
 Often you want to include some piece of data in the thing being changed, like the `:id` attribute. This is done by providing a list as the topic, and using atoms which will be replaced by their corresponding values. They will ultimately be joined with `:`.

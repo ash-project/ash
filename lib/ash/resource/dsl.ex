@@ -763,7 +763,7 @@ defmodule Ash.Resource.Dsl do
         doc: "The name to use in traces. Defaults to the short_name stringified",
         links: [
           guides: [
-            "ash:guide:Monitoring"
+            "ash:guide:Instrumentation"
           ]
         ]
       ],
@@ -772,7 +772,7 @@ defmodule Ash.Resource.Dsl do
         doc: "A short identifier for the resource, which should be unique.",
         links: [
           guides: [
-            "ash:guide:Monitoring"
+            "ash:guide:Instrumentation"
           ]
         ]
       ]
