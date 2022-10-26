@@ -2,15 +2,17 @@
 
 ## Action Types
 
-There are four action types currently `:read`, `:create`, `:update`, `:destroy`. The purpose of these action types is to provide expectations about what is required to run those actions, and what is returned from them. The actions do not need to do *exactly* what their action type implies. Using manual actions, you will find that you can define a create action that actually updates something, or using the `soft?` option for `destroy` actions you can treat them as updates. The important part is their interface. More action types may be added in the future.
+Ash has 4 action types `:read`, `:create`, `:update`, `:destroy`. The purpose of these action types is to provide expectations about what is required to run those actions, and what is returned from them.
 
-`:read` actions are fundamentally different from `:create`, `:update` and `:destroy` actions. For the most part, `:create`, `:update` and `:destroy` follow all of the same rules, and so will be grouped together when explaining how they behave. Small differences will be pointed out in a few places.
+The actions do not need to do _exactly_ what their action type implies however. Using manual actions, you can define a create action that actually updates something, or using the `soft?` option for `destroy` actions you can treat them as updates. The important part to consider is their interface. More action types may be added in the future.
+
+Actions either read data or mutate it. `:read` actions are fundamentally different from `:create`, `:update` and `:destroy` actions. For the most part, `:create`, `:update` and `:destroy` follow all of the same rules, and so will be grouped together when explaining how they behave. Small differences will be pointed out in a few places.
 
 ## Idiomatic Actions
 
 ### Name Your Actions
 
-The intent behind Ash is *not* to have you building simple crud style applications. In a typical set up you may have a resource with four basic actions, there is even a shorthand to accomplish this:
+The intent behind Ash is _not_ to have you building simple CRUD style applications. In a typical set up you may have a resource with four basic actions, there is even a shorthand to accomplish this:
 
 ```elixir
 actions do
@@ -18,11 +20,11 @@ actions do
 end
 ```
 
-But that is just a simple way to get started, or to create resources that really don't do anything beyond those four operations. You can have *as many actions as you want*. The best designed Ash applications will have numerous actions, named after the intent behind how they are used. They won't have all reads going through a single read action, and the same goes for the other action types. The richer the actions on the resource, the better interface you can have. With that said, many resources may only have those four basic actions, especially those that are "managed" through some parent resource. See the guide on {{link:ash:guide:Managing Relationships}} for more.
+But that is just a simple way to get started, or to create resources that really don't do anything beyond those four operations. You can have _as many actions as you want_. The best designed Ash applications will have numerous actions, named after the intent behind how they are used. They won't have all reads going through a single read action, and the same goes for the other action types. The richer the actions on the resource, the better interface you can have. With that said, many resources may only have those four basic actions, especially those that are "managed" through some parent resource. See the guide on {{link:ash:guide:Managing Relationships}} for more.
 
 ### Primary Actions
 
-Primary actions are a way to inform the framework which actions should be used in certain "automated" circumstances, or in cases where an action has not been specified. If a primary action is attempted to be used but does not exist, you will get an error about it at runtime. The place you typically need primary actions is, when {{link:ash:guide:Managing Relationships}}. However, some prefer to be as explicit as possible, and so will *always* indicate an action name, and in that case will never use primary actions. When using the `defaults` option to add default actions, they are marked as primary.
+Primary actions are a way to inform the framework which actions should be used in certain "automated" circumstances, or in cases where an action has not been specified. If a primary action is attempted to be used but does not exist, you will get an error about it at runtime. The place you typically need primary actions is, when {{link:ash:guide:Managing Relationships}}. However, some prefer to be as explicit as possible, and so will _always_ indicate an action name, and in that case will never use primary actions. When using the `defaults` option to add default actions, they are marked as primary.
 
 A simple example where a primary action would be used:
 
@@ -41,7 +43,7 @@ end
 
 ### Put everything inside the action!
 
-Ash provides utilities to modify queries and changesets *outside* of the actions on the resources. This is a very important tool in our tool belt, *but* it is very easy to abuse. The intent is that as much behavior as possible is put into the action. Here is the "wrong way" to do it. There is a lot going on here, so don't hesitate to check out other relevant guides if you see something you don't understand.
+Ash provides utilities to modify queries and changesets _outside_ of the actions on the resources. This is a very important tool in our tool belt, _but_ it is very easy to abuse. The intent is that as much behavior as possible is put into the action. Here is the "wrong way" to do it. There is a lot going on here, so don't hesitate to check out other relevant guides if you see something you don't understand.
 
 ```elixir
 def top_tickets(user_id) do
@@ -60,7 +62,7 @@ end
 defaults [:read, ...]
 ```
 
-And here is the "right way", where the rules about getting the top tickets have been moved into the resource as a nicely named action, and included in the `code_interface` of that resource. The reality of the situation is that `top_tickets/1` is meant to be obsoleted by your Ash resource! Here is how it *should* be done.
+And here is the "right way", where the rules about getting the top tickets have been moved into the resource as a nicely named action, and included in the `code_interface` of that resource. The reality of the situation is that `top_tickets/1` is meant to be obsoleted by your Ash resource! Here is how it _should_ be done.
 
 ```elixir
 # in the resource
@@ -82,7 +84,7 @@ read :top do
 end
 ```
 
-Now, whatever code I had that would have called `top_tickets/1` can now call `Helpdesk.Support.Ticket.top(user.id)`. By doing it this way, you get the primary benefit of getting a nice simple Api to call into, but you *also* have a way to modify how the action is invoked in any way necessary, by going back to the old way of building the query manually. For example, if I also only want to see top tickets that were opened in the last 10 minutes:
+Now, whatever code I had that would have called `top_tickets/1` can now call `Helpdesk.Support.Ticket.top(user.id)`. By doing it this way, you get the primary benefit of getting a nice simple Api to call into, but you _also_ have a way to modify how the action is invoked in any way necessary, by going back to the old way of building the query manually. For example, if I also only want to see top tickets that were opened in the last 10 minutes:
 
 ```elixir
 Ticket
@@ -121,7 +123,7 @@ end
 
 #### Ash.Query.for_read/4
 
-The following steps are performed when you call `Ash.Query.for_read/4`. 
+The following steps are performed when you call `Ash.Query.for_read/4`.
 
 - Gather process context | {{link:ash:guide:Store Context In Process}}
 - Cast input arguments | {{link:ash:dsl:resource/actions/read/argument}}
@@ -132,11 +134,11 @@ The following steps are performed when you call `Ash.Query.for_read/4`.
 
 #### Running the Read Action
 
-If the query has not yet been run through `Ash.Query.for_read/3` for the action in question, we do that first.  Then we perform the following steps. These steps are trimmed down, and are aimed at helping users understand the general flow. Some steps are omitted.
+If the query has not yet been run through `Ash.Query.for_read/3` for the action in question, we do that first. Then we perform the following steps. These steps are trimmed down, and are aimed at helping users understand the general flow. Some steps are omitted.
 
 - Gather process context | {{link:ash:guide:Store Context In Process}}
 - Run `Ash.Query.for_read/3` if it has not already been run
-- Apply tenant Filters for attribute {{link:ash:guide:Multitenancy}} 
+- Apply tenant Filters for attribute {{link:ash:guide:Multitenancy}}
 - Apply pagination options
 - Run before action hooks
 - Multi-datalayer filter is synthesized. We run queries in other data layers to fetch ids and translate related filters to `(destination_field in ^ids)`
@@ -200,7 +202,7 @@ All of these actions are run in a transaction if the data layer supports it. You
 - Authorization is performed on the changes
 - A before action hook is added to set up belongs_to relationships that are managed. This means potentially creating/modifying the destination of the relationship, and then changing the `destination_attribute` of the relationship.
 - Before action hooks are performed in reverse order they were added. (unless `append?` option was used)
-- For manual actions, a before action hook must have set 
+- For manual actions, a before action hook must have set
 - After action hooks are performed in the order they were added (unless `prepend?` option was used)
 - For {{link:ash:guide:Manual Actions}}, one of these after action hooks must have returned a result, otherwise an error is returned.
 - Non-belongs-to relationships are managed, creating/updating/destroying related records.
