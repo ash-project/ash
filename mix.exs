@@ -19,7 +19,7 @@ defmodule Ash.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       package: package(),
       deps: deps(),
-      dialyzer: [plt_add_apps: [:mix, :mnesia, :earmark]],
+      dialyzer: [plt_add_apps: [:mix, :mnesia, :earmark, :plug]],
       xref: [exclude: [:mnesia]],
       docs: docs(),
       aliases: aliases(),
@@ -238,7 +238,8 @@ defmodule Ash.MixProject do
       {:git_ops, "~> 2.5", only: :dev},
       {:mix_test_watch, "~> 1.0", only: :dev, runtime: false},
       {:parse_trans, "3.3.0", only: [:dev, :test], override: true},
-      {:elixir_sense, github: "elixir-lsp/elixir_sense", only: [:dev, :test, :docs]}
+      {:elixir_sense, github: "elixir-lsp/elixir_sense", only: [:dev, :test, :docs]},
+      {:plug, ">= 0.0.0", only: [:dev, :test], runtime: false}
     ]
   end
 
