@@ -235,7 +235,10 @@ defmodule Ash.Filter do
         filter
 
       {:error, error} ->
-        raise Ash.Error.to_error_class(error)
+        raise Ash.Error.to_error_class(error,
+                error_context:
+                  "parsing #{inspect(resource)} #{inspect(statement)} #{inspect(aggregates)} #{inspect(calculations)} in #{inspect(context)}"
+              )
     end
   end
 
@@ -872,7 +875,10 @@ defmodule Ash.Filter do
         value
 
       {:error, error} ->
-        raise Ash.Error.to_ash_error(error)
+        raise Ash.Error.to_ash_error(error, nil,
+                error_context:
+                  "parsing #{inspect(base)} #{inspect(addition)} #{inspect(op)} #{inspect(aggregates)} #{inspect(calculations)} in #{inspect(context)}"
+              )
     end
   end
 

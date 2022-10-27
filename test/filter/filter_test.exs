@@ -566,6 +566,37 @@ defmodule Ash.Test.Filter.FilterTest do
 
       assert Filter.strict_subset_of?(filter, candidate)
     end
+
+    test "raises an error if the underlying parse returns an error" do
+      filter = Filter.parse!(Post, points: 1)
+
+      err =
+        assert_raise(Ash.Error.Query.NoSuchAttributeOrRelationship, fn ->
+          Filter.add_to_filter!(filter, bad_field: "bad field")
+        end)
+
+      [error_context] = err.error_context
+      assert error_context =~ "parsing #Ash.Filter<points =="
+      assert error_context =~ "[bad_field: \"bad field\"]"
+    end
+  end
+
+  describe "parse!" do
+    test "raises an error if the statement is invalid" do
+      filter = Filter.parse!(Post, points: 1)
+
+      err =
+        assert_raise(Ash.Error.Invalid, fn ->
+          Filter.parse!(filter, 1)
+        end)
+
+      [error_context] = err.error_context
+      assert error_context =~ "parsing #Ash.Filter<points =="
+
+      [inner_error] = err.errors
+      [inner_error_context] = inner_error.error_context
+      assert inner_error_context =~ "parsing #Ash.Filter<points =="
+    end
   end
 
   describe "parse_input" do

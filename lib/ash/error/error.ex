@@ -111,51 +111,62 @@ defmodule Ash.Error do
           end)
           |> Enum.uniq()
 
-        choose_error(values, opts[:changeset] || opts[:query])
+        values
+        |> choose_error(opts[:changeset] || opts[:query])
+        |> add_error_context(opts[:error_context])
     end
   end
 
   def to_error_class(value, opts) do
     if ash_error?(value) && value.__struct__ in Keyword.values(@error_modules) do
-      add_changeset_or_query(value, [value], opts[:changeset] || opts[:query])
+      value
+      |> add_changeset_or_query([value], opts[:changeset] || opts[:query])
+      |> Map.put(:error_context, [opts[:error_context] | value.error_context])
     else
       to_error_class([value], opts)
     end
   end
 
-  def to_ash_error(list, stacktrace \\ nil)
+  def to_ash_error(list, stacktrace \\ nil, opts \\ [])
 
-  def to_ash_error(list, stacktrace) when is_list(list) do
+  def to_ash_error(list, stacktrace, opts) when is_list(list) do
     if Keyword.keyword?(list) do
-      error =
-        list
-        |> Keyword.take([:error, :vars])
-        |> Keyword.put_new(:error, list[:message])
-        |> UnknownError.exception()
-
-      add_stacktrace(error, stacktrace)
+      list
+      |> Keyword.take([:error, :vars])
+      |> Keyword.put_new(:error, list[:message])
+      |> UnknownError.exception()
+      |> add_stacktrace(stacktrace)
+      |> add_error_context(opts[:error_context])
     else
-      Enum.map(list, &to_ash_error(&1, stacktrace))
+      Enum.map(list, &to_ash_error(&1, stacktrace, opts))
     end
   end
 
-  def to_ash_error(error, stacktrace) when is_binary(error) do
-    add_stacktrace(UnknownError.exception(error: error), stacktrace)
+  def to_ash_error(error, stacktrace, opts) when is_binary(error) do
+    [error: error]
+    |> UnknownError.exception()
+    |> add_stacktrace(stacktrace)
+    |> add_error_context(opts[:error_context])
   end
 
-  def to_ash_error(other, stacktrace) do
+  def to_ash_error(other, stacktrace, opts) do
     cond do
       ash_error?(other) ->
-        add_stacktrace(other, stacktrace)
+        other
+        |> add_stacktrace(stacktrace)
+        |> add_error_context(opts[:error_context])
 
       is_exception(other) ->
-        error = UnknownError.exception(error: Exception.format(:error, other))
-
-        add_stacktrace(error, stacktrace)
+        [error: Exception.format(:error, other)]
+        |> UnknownError.exception()
+        |> add_stacktrace(stacktrace)
+        |> add_error_context(opts[:error_context])
 
       true ->
-        error = UnknownError.exception(error: "unknown error: #{inspect(other)}")
-        add_stacktrace(error, stacktrace)
+        [error: "unknown error: #{inspect(other)}"]
+        |> UnknownError.exception()
+        |> add_stacktrace(stacktrace)
+        |> add_error_context(opts[:error_context])
     end
   end
 
@@ -180,6 +191,33 @@ defmodule Ash.Error do
       end
 
     %{error | stacktrace: stacktrace}
+  end
+
+  defp add_error_context(error, error_context) when is_binary(error_context) do
+    error
+    |> Map.put(:error_context, [error_context])
+    |> accumulate_error_context(error_context)
+  end
+
+  defp add_error_context(error, _) do
+    error
+  end
+
+  defp accumulate_error_context(%{errors: [_ | _] = errors} = error, error_context)
+       when is_binary(error_context) do
+    updated_errors =
+      errors
+      |> Enum.map(fn err ->
+        err
+        |> Map.put(:error_context, [error_context | err.error_context])
+        |> accumulate_error_context(error_context)
+      end)
+
+    %{error | errors: updated_errors}
+  end
+
+  defp accumulate_error_context(error, _) do
+    error
   end
 
   @doc "A utility to flatten a list, but preserve keyword list elements"
@@ -282,7 +320,8 @@ defmodule Ash.Error do
                 "* #{error}"
 
               %{stacktrace: %Stacktrace{stacktrace: stacktrace}} = class_error ->
-                "* #{Exception.message(class_error)}\n" <>
+                breadcrumb(class_error.error_context) <>
+                  "* #{Exception.message(class_error)}\n" <>
                   path(class_error) <>
                   Enum.map_join(stacktrace, "\n", fn stack_item ->
                     "  " <> Exception.format_stacktrace_entry(stack_item)
@@ -295,7 +334,8 @@ defmodule Ash.Error do
                 "* #{class_error}"
 
               class_error ->
-                "* #{Exception.message(class_error)}"
+                breadcrumb(class_error.error_context) <>
+                  "* #{Exception.message(class_error)}"
             end)
         end
       end)
@@ -348,4 +388,8 @@ defmodule Ash.Error do
   defp header(:forbidden), do: "Forbidden"
   defp header(:framework), do: "Framework Error"
   defp header(:unknown), do: "Unknown Error"
+
+  defp breadcrumb(error_context) do
+    "Context: " <> Enum.join(error_context, " > ") <> "\n"
+  end
 end
