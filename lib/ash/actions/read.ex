@@ -405,7 +405,7 @@ defmodule Ash.Actions.Read do
                     Map.get(fetched_data, :calculations_at_runtime) || [],
                     get_in(context, path ++ [:calculation_results]) || :error,
                     lazy?,
-                    tenant
+                    query.tenant
                   )
                   |> case do
                     {:ok, values} ->
@@ -770,7 +770,7 @@ defmodule Ash.Actions.Read do
               :select
             ])
             |> Ash.Query.select(must_be_reselected)
-            |> Ash.Query.set_tenant(request_opts[:tenant])
+            |> Ash.Query.set_tenant(request_opts[:tenant] || ash_query.tenant)
             |> Ash.Query.do_filter(filter)
             |> Ash.Query.data_layer_query()
             |> case do
