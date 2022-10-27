@@ -404,7 +404,8 @@ defmodule Ash.Actions.Read do
                     Map.get(fetched_data, :ultimate_query) || query,
                     Map.get(fetched_data, :calculations_at_runtime) || [],
                     get_in(context, path ++ [:calculation_results]) || :error,
-                    lazy?
+                    lazy?,
+                    tenant
                   )
                   |> case do
                     {:ok, values} ->
@@ -1458,7 +1459,8 @@ defmodule Ash.Actions.Read do
          results,
          calculation,
          query,
-         lazy?
+         lazy?,
+         tenant
        ) do
     all_calcs = Enum.map(all_calcs, & &1.name)
 
@@ -1506,7 +1508,7 @@ defmodule Ash.Actions.Read do
 
             case calculation.module.calculate(temp_results, calculation.opts, calculation.context) do
               :unknown ->
-                case run_calculation_query(temp_results, [calculation], query) do
+                case run_calculation_query(temp_results, [calculation], query, tenant) do
                   {:ok, results_with_calc} ->
                     {:ok,
                      %{
@@ -1558,7 +1560,7 @@ defmodule Ash.Actions.Read do
         async?: true,
         data:
           Request.resolve([], fn _ ->
-            case run_calculation_query(results, [calculation], query) do
+            case run_calculation_query(results, [calculation], query, tenant) do
               {:ok, results_with_calc} ->
                 {:ok,
                  %{
@@ -1605,7 +1607,8 @@ defmodule Ash.Actions.Read do
          query,
          calculations,
          :error,
-         lazy?
+         lazy?,
+         tenant
        )
        when calculations != [] do
     {:requests,
@@ -1621,7 +1624,8 @@ defmodule Ash.Actions.Read do
          results,
          &1,
          query,
-         lazy?
+         lazy?,
+         tenant
        )
      )}
   end
@@ -1636,7 +1640,8 @@ defmodule Ash.Actions.Read do
          _query,
          _calculations,
          calculation_values,
-         _lazy?
+         _lazy?,
+         _tenant
        ) do
     primary_key = Ash.Resource.Info.primary_key(resource)
 
@@ -1682,7 +1687,7 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp run_calculation_query(results, calculations, query) do
+  defp run_calculation_query(results, calculations, query, tenant) do
     pkey = Ash.Resource.Info.primary_key(query.resource)
 
     pkey_filter =
@@ -1696,6 +1701,7 @@ defmodule Ash.Actions.Read do
 
     with query <-
            Ash.Query.unset(query, [:filter, :aggregates, :sort, :limit, :offset, :load, :distinct]),
+         query <- Ash.Query.set_tenant(query, tenant),
          query <- Ash.Query.filter(query, ^[or: pkey_filter]),
          {:ok, data_layer_query} <- Ash.Query.data_layer_query(query),
          {:ok, data_layer_query} <-
