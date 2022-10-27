@@ -5,6 +5,39 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.3.0](https://github.com/ash-project/ash/compare/v2.2.0...v2.3.0) (2022-10-27)
+
+
+
+
+### Features:
+
+* Ash.PlugHelpers: standardise conn interface for actors/tenants. (#432)
+
+* add `Ash.Resource.Builder`, the start of DSL builder utilities of rextension writing
+
+### Bug Fixes:
+
+* DataLayer: incorrect typespec for `run_query/2` callback. (#431)
+
+* in Ash.Seed, don't try to update a non-loaded record
+
+* properly load manual to_one relationships
+
+* properly compare against decimal values
+
+### Improvements:
+
+* pass tenant to calculation query explicitly
+
+* allow using `get_path/2` by name, as well as bracket access
+
+* SVG, PDF, PNG, Markdown and plain mermaid formats (#428)
+
+* optimize nested `exists` filter statements
+
+* support floats & decimals in the `compare` validation
+
 ## [v2.2.0](https://github.com/ash-project/ash/compare/v2.1.0...v2.2.0) (2022-10-21)
 
 
