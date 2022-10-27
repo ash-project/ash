@@ -40,7 +40,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
           actor = engine_opts[:actor]
 
-          case api.load(acc, key, authorize?: authorize?, actor: actor, lazy?: true) do
+          case api.load(acc, key, authorize?: authorize?, actor: actor) do
             {:ok, loaded} -> {:cont, {:ok, loaded}}
             {:error, error} -> {:halt, {:error, error}}
           end
