@@ -7,6 +7,75 @@ defmodule Ash.Resource.Builder do
   use Spark.Dsl.Builder
 
   @doc """
+  Builds and adds a new action unless an action with that name already exists
+  """
+  @spec add_new_action(
+          Spark.Dsl.t(),
+          type :: Ash.Resource.Actions.action_type(),
+          name :: atom,
+          opts :: Keyword.t()
+        ) ::
+          Spark.Dsl.Builder.result()
+  defbuilder add_new_action(dsl_state, type, name, opts \\ []) do
+    if Ash.Resource.Info.action(dsl_state, name) do
+      dsl_state
+    else
+      add_action(dsl_state, type, name, opts)
+    end
+  end
+
+  @doc """
+  Builds and adds an action
+  """
+  @spec add_action(
+          Spark.Dsl.t(),
+          type :: Ash.Resource.Actions.action_type(),
+          name :: atom,
+          opts :: Keyword.t()
+        ) ::
+          Spark.Dsl.Builder.result()
+  defbuilder add_action(dsl_state, type, name, opts \\ []) do
+    with {:ok, action} <- build_action(type, name, opts) do
+      Transformer.add_entity(dsl_state, [:actions], action)
+    end
+  end
+
+  @doc """
+  Builds an action
+  """
+  @spec build_action(
+          type :: Ash.Resource.Actions.action_type(),
+          name :: atom,
+          opts :: Keyword.t()
+        ) ::
+          {:ok, Ash.Resource.Actions.action()} | {:error, term}
+  def build_action(type, name, opts \\ []) do
+    with {:ok, opts} <- handle_nested_builders(opts, [:changes, :arguments, :metadata]) do
+      Transformer.build_entity(
+        Ash.Resource.Dsl,
+        [:actions],
+        type,
+        Keyword.merge(opts, name: name)
+      )
+    end
+  end
+
+  @doc """
+  Builds an action change
+  """
+  @spec build_action_change(change :: Ash.Resource.Change.ref(), opts :: Keyword.t()) ::
+          {:ok, Ash.Resource.Change.t()} | {:error, term}
+  def build_action_change(change, opts \\ []) do
+    Transformer.build_entity(
+      Ash.Resource.Dsl,
+      # All action types  that support changes have the same change entity, so we just say `create` here
+      [:actions, :create],
+      :change,
+      Keyword.put(opts, :change, change)
+    )
+  end
+
+  @doc """
   Builds and adds an update_timestamp unless an update_timestamp with that name already exists
   """
   @spec add_new_update_timestamp(Spark.Dsl.t(), name :: atom, opts :: Keyword.t()) ::
@@ -34,8 +103,8 @@ defmodule Ash.Resource.Builder do
   Builds an update_timestamp with the given name, type, and options
   """
   @spec build_update_timestamp(name :: atom, opts :: Keyword.t()) ::
-          Spark.Dsl.Builder.result()
-  defbuilder build_update_timestamp(name, opts \\ []) do
+          {:ok, Ash.Resource.Attribute.t()} | {:error, term}
+  def build_update_timestamp(name, opts \\ []) do
     Transformer.build_entity(
       Ash.Resource.Dsl,
       [:attributes],
@@ -76,8 +145,8 @@ defmodule Ash.Resource.Builder do
   Builds an create_timestamp with the given name, type, and options
   """
   @spec build_create_timestamp(name :: atom, opts :: Keyword.t()) ::
-          Spark.Dsl.Builder.result()
-  defbuilder build_create_timestamp(name, opts \\ []) do
+          {:ok, Ash.Resource.Attribute.t()} | {:error, term}
+  def build_create_timestamp(name, opts \\ []) do
     Transformer.build_entity(
       Ash.Resource.Dsl,
       [:attributes],
@@ -114,8 +183,8 @@ defmodule Ash.Resource.Builder do
   Builds an attribute with the given name, type, and options
   """
   @spec build_attribute(name :: atom, type :: Ash.Type.t(), opts :: Keyword.t()) ::
-          Spark.Dsl.Builder.result()
-  defbuilder build_attribute(name, type, opts \\ []) do
+          {:ok, Ash.Resource.Attribute.t()} | {:error, term}
+  def build_attribute(name, type, opts \\ []) do
     Transformer.build_entity(
       Ash.Resource.Dsl,
       [:attributes],

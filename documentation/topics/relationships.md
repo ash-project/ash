@@ -7,10 +7,6 @@ Relationships are a core component of Ash. They provide a mechanism to describe 
 - Managing related records through changes on a single resource
 - Authorizing based on the state of related data
 
-## Managing related data
-
-See {{link:ash:guide:Managing Relationships}} for more information.
-
 ## Loading related data
 
 Loading relationships is a very common use case. There are two ways to load relationships, in the query, and on records.
@@ -35,7 +31,7 @@ User
 |> YourApi.read()
 ```
 
-## More complex data loading
+### More complex data loading
 
 Multiple relationships can be loaded at once, i.e
 
@@ -68,3 +64,131 @@ friends =
 # Will load friends and friends of those friends
 YourApi.load(users, friends: friends)
 ```
+
+## Managing related data
+
+See {{link:ash:guide:Managing Relationships}} for more information.
+
+
+## Relationships Basics
+
+All relationships have a `source` and a `destination`, as well as a corresponding `source_attribute` and `destination_attribute`. Many to many relationships have additional fields which are discussed below. Relationships will validate at compile time that their configured attributes exist. You don't need to have a corresponding "reverse" relationship for every relationship, i.e if you have a `MyApp.Tweets` resource with `belongs_to :user, User` you aren't required to have a `has_many :tweets, MyApp.Tweet`. All that is required is that the attributes used by the relationship exist.
+
+## Kinds of relationships
+
+### Belongs To
+
+```elixir
+belongs_to :owner, MyApp.User
+```
+
+A `belongs_to` relationship means that there is an attribute (`source_attribute`) on the source resource that uniquely identifies a record with a matching `destination_attribute` in the destination. In the example above, the source attribute would be `owner_id`, and if you wanted to change the owner, you'd modify the `owner_id` to point to a different `MyApp.User`
+
+#### Belongs to Source Attribute
+
+The `destination_attribute` defaults to `:id`.
+By default, a belongs_to relationship will define an attribute called `<relationship_name>_id` of type `:uuid` on the resource. To configure this, use options like:
+
+- {{link:ash:option:relationships/belongs_to/define_attribute?}} to define it yourself
+- {{link:ash:option:relationships/belongs_to/attribute_type}} to modify the default type
+- {{link:ash:option:relationships/belongs_to/attribute_writable?}} to make the source attribute `private?: false, writable?: true` (both are not the default)
+
+For example:
+
+```elixir
+belongs_to :owner, MyApp.User do
+  attribute_type :integer
+  attribute_writable? true
+end
+```
+
+Or if you wanted to define the attribute yourself,
+
+```elixir
+attributes do
+  attribute :owner_foo, MyApp.CustomType
+end
+
+...
+relationships do
+  belongs_to :owner, MyApp.User do
+    define_attribute? false
+    source_attribute :owner_foo
+  end
+end
+```
+
+See the docs for more: {{link:ash:dsl:relationships/belongs_to}}
+
+### Has One
+
+```elixir
+# on MyApp.User
+has_one :profile, MyApp.Profile
+```
+
+A `has_one` is similar to a `belongs_to` except the "reference" attribute is on
+the destination resource, instead of the source. In the example above, we'd expect a `profile_id` to be on `MyApp.Profile`, and that it is unique. 
+
+#### Has One Attribute Defaults
+
+By default, the `source_attribute` is assumed to be `:id`, and `destination_attribute` defaults to `<snake_cased_last_part_of_module_name>_id`. In the above example, it would default `destination_attribute` to `user_id`.
+
+See the docs for more: {{link:ash:dsl:relationships/has_one}}
+
+### Has Many
+
+```elixir
+# on MyApp.Post
+has_many :comments, Comment
+```
+
+A `has_many` relationship is similar to a `has_one` in that the reference attribute is on the destination resource. The only difference between this and `has_one` is that it does not expect the destination attribute is unique on the destination, and therefore will produce a list of related items.
+
+#### Has Many Attribute Defaults
+
+By default, the `source_attribute` is assumed to be `:id`, and `destination_attribute` defaults to `<snake_cased_last_part_of_module_name>_id`. In the above example, it would default `destination_attribute` to `post_id`.
+
+See the docs for more: {{link:ash:dsl:relationships/has_many}}
+## Many To Many Relationships
+
+Lets say that individual todo items in our app can be added to multiple lists, and every list has multiple todo items. This is a great case for `many_to_many` relationships.
+
+For example, we could define the following `many_to_many` relationship:
+
+```elixir
+# on MyApp.TodoList
+many_to_many :todo_items, MyApp.TodoItem do
+  through MyApp.TodoListItem
+  source_attribute_on_join_resource :list_id
+  destination_attribute_on_join_resource :item_id
+end
+```
+
+And then we could define the "join resource" to connect everything: `MyApp.TodoListItem`
+
+```elixir
+defmodule MyApp.TodoListItem do
+  use Ash.Resource,
+    data_layer: your_data_layer
+
+  attributes do
+    uuid_primary_key :id
+  end
+
+  relationships do
+    belongs_to :todo_list, MyApp.TodoList do
+      allow_nil? false
+    end
+
+    belongs_to :item, MyApp.TodoItem do
+      allow_nil? false
+    end
+  end
+end
+```
+
+Now that we have a resource with the proper attributes, Ash will use this automatically under the hood when 
+performing the relationship operations detailed above, like filtering and loading.
+
+See the docs for more: {{link:ash:dsl:relationships/many_to_many}}
