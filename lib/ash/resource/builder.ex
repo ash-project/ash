@@ -78,7 +78,7 @@ defmodule Ash.Resource.Builder do
   @doc """
   Builds and adds an update_timestamp unless an update_timestamp with that name already exists
   """
-  @spec add_new_update_timestamp(Spark.Dsl.t(), name :: atom, opts :: Keyword.t()) ::
+  @spec add_new_update_timestamp(Spark.Dsl.Builder.input(), name :: atom, opts :: Keyword.t()) ::
           Spark.Dsl.Builder.result()
   defbuilder add_new_update_timestamp(dsl_state, name, opts \\ []) do
     if Ash.Resource.Info.attribute(dsl_state, name) do
@@ -91,7 +91,7 @@ defmodule Ash.Resource.Builder do
   @doc """
   Builds and adds an update_timestamp
   """
-  @spec add_update_timestamp(Spark.Dsl.t(), name :: atom, opts :: Keyword.t()) ::
+  @spec add_update_timestamp(Spark.Dsl.Builder.input(), name :: atom, opts :: Keyword.t()) ::
           Spark.Dsl.Builder.result()
   defbuilder add_update_timestamp(dsl_state, name, opts \\ []) do
     with {:ok, update_timestamp} <- build_update_timestamp(name, opts) do
@@ -116,7 +116,7 @@ defmodule Ash.Resource.Builder do
   @doc """
   Builds and adds a create_timestamp unless a create_timestamp with that name already exists
   """
-  @spec add_new_create_timestamp(Spark.Dsl.t(), name :: atom, opts :: Keyword.t()) ::
+  @spec add_new_create_timestamp(Spark.Dsl.Builder.input(), name :: atom, opts :: Keyword.t()) ::
           Spark.Dsl.Builder.result()
   defbuilder add_new_create_timestamp(dsl_state, name, opts \\ []) do
     if Ash.Resource.Info.attribute(dsl_state, name) do
@@ -158,7 +158,12 @@ defmodule Ash.Resource.Builder do
   @doc """
   Builds and adds an attribute unless an attribute with that name already exists
   """
-  @spec add_new_attribute(Spark.Dsl.t(), name :: atom, type :: Ash.Type.t(), opts :: Keyword.t()) ::
+  @spec add_new_attribute(
+          Spark.Dsl.Builder.input(),
+          name :: atom,
+          type :: Ash.Type.t(),
+          opts :: Keyword.t()
+        ) ::
           Spark.Dsl.Builder.result()
   defbuilder add_new_attribute(dsl_state, name, type, opts \\ []) do
     if Ash.Resource.Info.attribute(dsl_state, name) do
@@ -171,7 +176,12 @@ defmodule Ash.Resource.Builder do
   @doc """
   Builds and adds an attribute to a resource
   """
-  @spec add_attribute(Spark.Dsl.t(), name :: atom, type :: Ash.Type.t(), opts :: Keyword.t()) ::
+  @spec add_attribute(
+          Spark.Dsl.Builder.input(),
+          name :: atom,
+          type :: Ash.Type.t(),
+          opts :: Keyword.t()
+        ) ::
           Spark.Dsl.Builder.result()
   defbuilder add_attribute(dsl_state, name, type, opts \\ []) do
     with {:ok, attribute} <- build_attribute(name, type, opts) do
