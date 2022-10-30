@@ -40,7 +40,8 @@ defmodule Ash.Actions.ManagedRelationships do
 
           actor = engine_opts[:actor]
 
-          case api.load(acc, key, authorize?: authorize?, actor: actor, lazy?: true) do
+          # In order to use `lazy?: true` here we need this feature: https://github.com/ash-project/ash/issues/438
+          case api.load(acc, key, authorize?: authorize?, actor: actor, lazy?: false) do
             {:ok, loaded} -> {:cont, {:ok, loaded}}
             {:error, error} -> {:halt, {:error, error}}
           end

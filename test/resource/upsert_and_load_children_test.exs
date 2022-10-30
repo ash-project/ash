@@ -150,12 +150,12 @@ defmodule Ash.Test.Resource.UpsertAndLoadChildrenTest do
       v = %{sku: "SOME_SKU", color: "Red"}
       v_updated = %{sku: v.sku, color: "Blue"}
 
-      {:ok, %{variants: [expected]}} = Product.upsert_variants(p, [v])
+      %{variants: [expected]} = Product.upsert_variants!(p, [v])
 
       assert expected.color == v.color
 
       # v_1 gets matched by sku and then updated
-      {:ok, %{variants: [expected_updated]}} = Product.upsert_variants(p, [v_updated])
+      %{variants: [expected_updated]} = Product.upsert_variants!(p, [v_updated])
 
       assert expected_updated.color == v_updated.color
     end
