@@ -342,6 +342,10 @@ defmodule Ash.Actions.ManagedRelationships do
   def validate_required_belongs_to(changeset_instructions_or_error, preflight? \\ true)
   def validate_required_belongs_to({:error, error}, _), do: {:error, error}
 
+  def validate_required_belongs_to({%{valid?: false} = changeset, instructions}, _) do
+    {changeset, instructions}
+  end
+
   def validate_required_belongs_to({changeset, instructions}, preflight?) do
     changeset.resource
     |> Ash.Resource.Info.relationships()
