@@ -365,34 +365,52 @@ defmodule Ash.Actions.Update do
                         changeset = set_tenant(changeset)
 
                         if changeset.valid? do
-                          if action.manual? do
-                            {:ok, changeset.data, %{notifications: []}}
-                          else
-                            if Ash.Changeset.changing_attributes?(changeset) do
-                              changeset =
-                                changeset
-                                |> Ash.Changeset.set_defaults(:update, true)
-                                |> Ash.Changeset.put_context(:changed?, true)
+                          cond do
+                            action.manual ->
+                              {mod, opts} = action.manual
 
-                              resource
-                              |> Ash.DataLayer.update(changeset)
-                              |> add_tenant(changeset)
-                              |> manage_relationships(api, changeset,
+                              mod.update(changeset, opts,
                                 actor: actor,
-                                authorize?: authorize?
+                                tenant: changeset.tenant,
+                                authorize?: authorize?,
+                                api: changeset.api
                               )
-                            else
-                              changeset = Ash.Changeset.put_context(changeset, :changed?, false)
 
-                              {:ok, changeset.data}
-                              |> add_tenant(changeset)
-                              |> manage_relationships(api, changeset,
-                                actor: actor,
-                                authorize?: authorize?
-                              )
-                            end
+                            action.manual? ->
+                              {:ok, changeset.data, %{notifications: []}}
+
+                            true ->
+                              if Ash.Changeset.changing_attributes?(changeset) do
+                                changeset =
+                                  changeset
+                                  |> Ash.Changeset.set_defaults(:update, true)
+                                  |> Ash.Changeset.put_context(:changed?, true)
+
+                                resource
+                                |> Ash.DataLayer.update(changeset)
+                                |> add_tenant(changeset)
+                                |> manage_relationships(api, changeset,
+                                  actor: actor,
+                                  authorize?: authorize?
+                                )
+                              else
+                                changeset = Ash.Changeset.put_context(changeset, :changed?, false)
+
+                                {:ok, changeset.data}
+                                |> add_tenant(changeset)
+                                |> manage_relationships(api, changeset,
+                                  actor: actor,
+                                  authorize?: authorize?
+                                )
+                              end
                           end
                           |> case do
+                            {:ok, result} ->
+                              {:ok, result,
+                               %{
+                                 notifications: manage_instructions.notifications
+                               }}
+
                             {:ok, result, notifications} ->
                               {:ok, result,
                                Map.update!(

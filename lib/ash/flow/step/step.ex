@@ -27,6 +27,12 @@ defmodule Ash.Flow.Step do
         doc: "The name of the step. Will be used when expressing dependencies, and step inputs.",
         links: []
       ],
+      short_name: [
+        type: :string,
+        doc:
+          "Set a short name for the step. Will be used when building things like mermaid charts.",
+        links: []
+      ],
       wait_for: [
         type: :any,
         doc: """

@@ -39,7 +39,9 @@ defmodule Ash.Resource.Actions.Read do
                     links: []
                   ],
                   manual: [
-                    type: {:spark_behaviour, Ash.Resource.ManualRead},
+                    type:
+                      {:spark_function_behaviour, Ash.Resource.ManualRead,
+                       {Ash.Resource.ManualRead.Function, 3}},
                     doc: """
                     Delegates running of the query to the provided module.
                     """,

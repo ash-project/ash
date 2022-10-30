@@ -51,10 +51,18 @@ defmodule Ash.Test.Actions.DestroyTest do
     actions do
       defaults [:create, :read, :update, :destroy]
 
-      destroy :manual do
+      destroy :old_manual do
         accept []
         manual? true
         change ManualDestroyAuthor
+      end
+
+      destroy :manual do
+        accept []
+
+        manual fn changeset, _ ->
+          Ash.Test.Actions.DestroyTest.Api.destroy(changeset.data, return_destroyed?: true)
+        end
       end
     end
 
@@ -178,7 +186,18 @@ defmodule Ash.Test.Actions.DestroyTest do
   end
 
   describe "manual destroy" do
-    test "allows destroying a record" do
+    test "old: allows destroying a record" do
+      author =
+        Author
+        |> new(%{name: "foo"})
+        |> Api.create!()
+
+      assert Api.destroy!(author, action: :old_manual) == :ok
+
+      refute Api.read_one!(Ash.Query.filter(Author, id == ^author.id))
+    end
+
+    test "new: allows destroying a record" do
       author =
         Author
         |> new(%{name: "foo"})

@@ -43,7 +43,8 @@ defmodule Ash.Resource.Validation do
   @callback init(Keyword.t()) :: {:ok, Keyword.t()} | {:error, String.t()}
   @callback validate(Ash.Changeset.t(), Keyword.t()) :: :ok | {:error, term}
 
-  @validation_type {:spark_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins}
+  @validation_type {:spark_function_behaviour, Ash.Resource.Validation,
+                    Ash.Resource.Validation.Builtins, {Ash.Resource.Validation.Function, 1}}
 
   @schema [
     validation: [

@@ -39,7 +39,9 @@ defmodule Ash.Resource.Change do
         links: []
       ],
       change: [
-        type: {:spark_behaviour, Ash.Resource.Change, Ash.Resource.Change.Builtins},
+        type:
+          {:spark_function_behaviour, Ash.Resource.Change, Ash.Resource.Change.Builtins,
+           {Ash.Resource.Change.Function, 2}},
         links: [
           modules: [
             "ash:module:Ash.Resource.Change.Builtins"
@@ -52,7 +54,9 @@ defmodule Ash.Resource.Change do
       ],
       where: [
         type:
-          {:list, {:spark_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins}},
+          {:list,
+           {:spark_function_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins,
+            {Ash.Resource.Validation.Function, 1}}},
         required: false,
         links: [
           modules: [

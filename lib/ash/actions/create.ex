@@ -307,14 +307,6 @@ defmodule Ash.Actions.Create do
 
               result =
                 changeset
-                |> Ash.Changeset.before_action(
-                  &Ash.Actions.ManagedRelationships.setup_managed_belongs_to_relationships(
-                    &1,
-                    actor,
-                    authorize?: authorize?,
-                    actor: actor
-                  )
-                )
                 |> Ash.Changeset.with_hooks(fn changeset ->
                   case Ash.Actions.ManagedRelationships.setup_managed_belongs_to_relationships(
                          changeset,
@@ -338,71 +330,83 @@ defmodule Ash.Actions.Create do
                         )
 
                       if changeset.valid? do
-                        if action.manual? do
-                          {:ok, nil}
-                        else
-                          belongs_to_attrs =
-                            changeset.resource
-                            |> Ash.Resource.Info.relationships()
-                            |> Enum.filter(&(&1.type == :belongs_to))
-                            |> Enum.map(& &1.source_attribute)
+                        cond do
+                          action.manual ->
+                            {mod, opts} = action.manual
 
-                          final_check =
-                            changeset.resource
-                            |> Ash.Resource.Info.attributes()
-                            |> Enum.reject(
-                              &(&1.allow_nil? || &1.generated? || &1.name in belongs_to_attrs)
+                            mod.create(changeset, opts,
+                              actor: actor,
+                              tenant: changeset.tenant,
+                              authorize?: authorize?,
+                              api: changeset.api
                             )
 
-                          changeset =
-                            changeset
-                            |> Ash.Changeset.require_values(
-                              :create,
-                              true,
-                              final_check
-                            )
+                          action.manual? ->
+                            {:ok, nil}
 
-                          {changeset, _} =
-                            Ash.Actions.ManagedRelationships.validate_required_belongs_to(
-                              {changeset, []},
-                              false
-                            )
+                          true ->
+                            belongs_to_attrs =
+                              changeset.resource
+                              |> Ash.Resource.Info.relationships()
+                              |> Enum.filter(&(&1.type == :belongs_to))
+                              |> Enum.map(& &1.source_attribute)
 
-                          if changeset.valid? do
-                            if upsert? do
-                              resource
-                              |> Ash.DataLayer.upsert(changeset, upsert_keys)
-                              |> add_tenant(changeset)
-                              |> manage_relationships(api, changeset,
-                                actor: actor,
-                                authorize?: authorize?,
-                                upsert?: upsert?
+                            final_check =
+                              changeset.resource
+                              |> Ash.Resource.Info.attributes()
+                              |> Enum.reject(
+                                &(&1.allow_nil? || &1.generated? || &1.name in belongs_to_attrs)
                               )
+
+                            changeset =
+                              changeset
+                              |> Ash.Changeset.require_values(
+                                :create,
+                                true,
+                                final_check
+                              )
+
+                            {changeset, _} =
+                              Ash.Actions.ManagedRelationships.validate_required_belongs_to(
+                                {changeset, []},
+                                false
+                              )
+
+                            if changeset.valid? do
+                              if upsert? do
+                                resource
+                                |> Ash.DataLayer.upsert(changeset, upsert_keys)
+                                |> add_tenant(changeset)
+                                |> manage_relationships(api, changeset,
+                                  actor: actor,
+                                  authorize?: authorize?,
+                                  upsert?: upsert?
+                                )
+                              else
+                                resource
+                                |> Ash.DataLayer.create(changeset)
+                                |> add_tenant(changeset)
+                                |> manage_relationships(api, changeset,
+                                  actor: actor,
+                                  authorize?: authorize?,
+                                  upsert?: upsert?
+                                )
+                              end
+                              |> case do
+                                {:ok, result, notifications} ->
+                                  {:ok, result,
+                                   Map.update!(
+                                     notifications,
+                                     :notifications,
+                                     &(&1 ++ manage_instructions.notifications)
+                                   )}
+
+                                {:error, error} ->
+                                  {:error, error}
+                              end
                             else
-                              resource
-                              |> Ash.DataLayer.create(changeset)
-                              |> add_tenant(changeset)
-                              |> manage_relationships(api, changeset,
-                                actor: actor,
-                                authorize?: authorize?,
-                                upsert?: upsert?
-                              )
+                              {:error, changeset.errors}
                             end
-                            |> case do
-                              {:ok, result, notifications} ->
-                                {:ok, result,
-                                 Map.update!(
-                                   notifications,
-                                   :notifications,
-                                   &(&1 ++ manage_instructions.notifications)
-                                 )}
-
-                              {:error, error} ->
-                                {:error, error}
-                            end
-                          else
-                            {:error, changeset.errors}
-                          end
                         end
                       else
                         {:error, changeset.errors}

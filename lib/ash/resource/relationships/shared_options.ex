@@ -162,7 +162,9 @@ defmodule Ash.Resource.Relationships.SharedOptions do
 
   def manual do
     {:manual,
-     type: {:spark_behaviour, Ash.Resource.ManualRelationship},
+     type:
+       {:spark_function_behaviour, Ash.Resource.ManualRelationship,
+        {Ash.Resource.ManualRelationship.Function, 2}},
      links: [],
      doc: """
      Allows for relationships that are fetched manually.

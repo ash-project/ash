@@ -7,7 +7,7 @@ defmodule Ash.Flow.Step.Custom do
     [
       input: Ash.Flow.Step.input(),
       custom: [
-        type: {:spark_behaviour, Ash.Flow.Step},
+        type: {:spark_function_behaviour, Ash.Flow.Step, {Ash.Flow.Step.Custom, 2}},
         doc: "The module that implements the step behaviour",
         links: []
       ],

@@ -7,6 +7,7 @@ defmodule Ash.Resource.Actions.Destroy do
     :soft?,
     :description,
     :error_handler,
+    manual: nil,
     manual?: false,
     arguments: [],
     touches_resources: [],
@@ -22,6 +23,7 @@ defmodule Ash.Resource.Actions.Destroy do
   @type t :: %__MODULE__{
           type: :destroy,
           name: atom,
+          manual: module | nil,
           arguments: list(Ash.Resource.Actions.Argument.t()),
           touches_resources: list(atom),
           primary?: boolean,
@@ -38,6 +40,19 @@ defmodule Ash.Resource.Actions.Destroy do
                   doc: "If specified, the destroy action behaves as an update internally",
                   default: false,
                   links: []
+                ],
+                manual: [
+                  type:
+                    {:spark_function_behaviour, Ash.Resource.ManualDestroy,
+                     {Ash.Resource.ManualDestroy.Function, 2}},
+                  links: [
+                    guides: [
+                      "ash:guide:Manual Actions"
+                    ]
+                  ],
+                  doc: """
+                  Override the update behavior. See the manual action guides for more.
+                  """
                 ]
               ]
               |> Spark.OptionsHelpers.merge_schemas(

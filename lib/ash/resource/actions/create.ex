@@ -7,6 +7,7 @@ defmodule Ash.Resource.Actions.Create do
     :error_handler,
     accept: nil,
     manual?: false,
+    manual: nil,
     touches_resources: [],
     require_attributes: [],
     arguments: [],
@@ -22,6 +23,7 @@ defmodule Ash.Resource.Actions.Create do
           type: :create,
           name: atom,
           accept: list(atom),
+          manual: module | nil,
           allow_nil_input: list(atom),
           touches_resources: list(atom),
           arguments: list(Ash.Resource.Actions.Argument.t()),
@@ -46,6 +48,19 @@ defmodule Ash.Resource.Actions.Create do
                       "ash:guide:Actions"
                     ]
                   ]
+                ],
+                manual: [
+                  type:
+                    {:spark_function_behaviour, Ash.Resource.ManualCreate,
+                     {Ash.Resource.ManualCreate.Function, 2}},
+                  links: [
+                    guides: [
+                      "ash:guide:Manual Actions"
+                    ]
+                  ],
+                  doc: """
+                  Override the creation behavior. See the manual action guides for more.
+                  """
                 ]
               ]
               |> Spark.OptionsHelpers.merge_schemas(
