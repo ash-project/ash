@@ -122,7 +122,7 @@
         {Credo.Check.Refactor.FunctionArity, false},
         {Credo.Check.Refactor.LongQuoteBlocks, false},
         {Credo.Check.Refactor.MapInto, false},
-        {Credo.Check.Refactor.MatchInCondition, []},
+        {Credo.Check.Refactor.MatchInCondition, false},
         {Credo.Check.Refactor.NegatedConditionsInUnless, []},
         {Credo.Check.Refactor.NegatedConditionsWithElse, []},
         {Credo.Check.Refactor.Nesting, [max_nesting: 5]},
