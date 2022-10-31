@@ -503,13 +503,14 @@ defmodule Ash.Changeset do
               Ash.Tracer.set_metadata(opts[:tracer], :changeset, metadata)
 
               changeset
+              |> Map.put(:action, action)
+              |> reset_arguments()
               |> handle_errors(action.error_handler)
               |> set_actor(opts)
               |> set_authorize(opts)
               |> set_tracer(opts)
               |> set_tenant(opts[:tenant] || changeset.tenant)
               |> Map.put(:__validated_for_action__, action.name)
-              |> Map.put(:action, action)
               |> cast_params(action, params)
               |> set_argument_defaults(action)
               |> require_arguments(action)
@@ -532,6 +533,14 @@ defmodule Ash.Changeset do
       changeset
     end
   end
+
+  defp reset_arguments(%{arguments: arguments} = changeset) when is_map(arguments) do
+    Enum.reduce(arguments, changeset, fn {key, value}, changeset ->
+      set_argument(changeset, key, value)
+    end)
+  end
+
+  defp reset_arguments(changeset), do: changeset
 
   @spec set_on_upsert(t(), list(atom)) :: Keyword.t()
   def set_on_upsert(changeset, upsert_keys) do
@@ -627,6 +636,8 @@ defmodule Ash.Changeset do
 
             changeset =
               changeset
+              |> Map.put(:action, action)
+              |> reset_arguments()
               |> handle_errors(action.error_handler)
               |> set_actor(opts)
               |> set_authorize(opts)
@@ -635,7 +646,6 @@ defmodule Ash.Changeset do
               |> set_tenant(
                 opts[:tenant] || changeset.tenant || changeset.data.__metadata__[:tenant]
               )
-              |> Map.put(:action, action)
               |> Map.put(:__validated_for_action__, action.name)
               |> cast_params(action, params || %{})
               |> set_argument_defaults(action)

@@ -516,7 +516,7 @@ defmodule Ash.Type do
 
       case list_constraint_errors do
         [] ->
-          nil_items? = Keyword.get(constraints, :nil_items?, true)
+          nil_items? = Keyword.get(constraints, :nil_items?, false)
           item_constraints = constraints[:items] || []
 
           if item_constraints != [] || !nil_items? do
@@ -593,14 +593,14 @@ defmodule Ash.Type do
     |> Enum.reduce([], fn
       {:min_length, min_length}, errors ->
         if length < min_length do
-          [message: "must have %{min} or more items", min: min_length]
+          [message: "must have %{min} or more items", vars: [min: min_length]]
         else
           errors
         end
 
       {:max_length, max_length}, errors ->
         if length > max_length do
-          [message: "must have %{max} or fewer items", max: max_length]
+          [message: "must have %{max} or fewer items", vars: [max: max_length]]
         else
           errors
         end

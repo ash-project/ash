@@ -294,15 +294,14 @@ defmodule Ash.Query do
 
         Ash.Tracer.set_metadata(opts[:tracer], :query, metadata)
 
-        query = Map.put(query, :action, action.name)
-
         query
+        |> Map.put(:action, action)
+        |> reset_arguments()
         |> timeout(query.timeout || opts[:timeout])
         |> set_actor(opts)
         |> set_authorize?(opts)
         |> set_tracer(opts)
         |> Ash.Query.set_tenant(opts[:tenant] || query.tenant)
-        |> Map.put(:action, action)
         |> Map.put(:__validated_for_action__, action_name)
         |> cast_params(action, args)
         |> set_argument_defaults(action)
@@ -1108,6 +1107,14 @@ defmodule Ash.Query do
       %{query | arguments: Map.put(query.arguments, argument, value)}
     end
   end
+
+  defp reset_arguments(%{arguments: arguments} = query) when is_map(arguments) do
+    Enum.reduce(arguments, query, fn {key, value}, query ->
+      set_argument(query, key, value)
+    end)
+  end
+
+  defp reset_arguments(query), do: query
 
   defp add_invalid_errors(query, argument, error) do
     messages =
