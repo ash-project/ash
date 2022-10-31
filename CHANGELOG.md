@@ -5,6 +5,29 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.0](https://github.com/ash-project/ash/compare/v2.3.0...v2.4.0) (2022-10-31)
+
+
+
+
+### Features:
+
+* support anonymous functions in DSL
+
+### Bug Fixes:
+
+* don't add required belongs_to error if changeset is invalid (#437)
+
+* don't lazy load when managing relationships
+
+### Improvements:
+
+* support anonymous functions for various behaviour based options
+
+* add more ergonomic manual action definitions.
+
+* more additions to the resource builder, update spark
+
 ## [v2.3.0](https://github.com/ash-project/ash/compare/v2.2.0...v2.3.0) (2022-10-27)
 
 
