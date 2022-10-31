@@ -14,6 +14,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 * support anonymous functions in DSL
 
+These include:
+    
+    - custom create/read/update/destroy actions
+    - changes
+    - preparations
+    - validations
+    - calculations
+    - manual relationships
+    
+    See the respective DSL guides for more.
+
 ### Bug Fixes:
 
 * don't add required belongs_to error if changeset is invalid (#437)
