@@ -43,7 +43,7 @@ defmodule Ash.Test.Actions.UpdateTest do
 
       update :set_private_attribute_from_arg do
         argument :private, :string
-        change set_attribute(:private, {:arg, :private})
+        change set_attribute(:private, arg(:private))
       end
     end
 
@@ -300,8 +300,9 @@ defmodule Ash.Test.Actions.UpdateTest do
 
       profile =
         profile
-        |> new(%{bio: "foobar", private: "blah"})
-        |> Api.update!(action: :set_private_attribute_from_arg)
+        |> new(%{bio: "foobar"})
+        |> for_update(:set_private_attribute_from_arg, %{private: "blah"})
+        |> Api.update!()
 
       assert profile.private == "blah"
     end

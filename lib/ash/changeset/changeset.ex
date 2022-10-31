@@ -520,7 +520,7 @@ defmodule Ash.Changeset do
                 opts[:tracer],
                 metadata
               )
-              |> add_validations(opts[:tracer], metadata)
+              |> add_validations(opts[:tracer], metadata, opts[:actor])
               |> mark_validated(action.name)
             end
           end
@@ -650,7 +650,7 @@ defmodule Ash.Changeset do
                 opts[:tracer],
                 metadata
               )
-              |> add_validations(opts[:tracer], metadata)
+              |> add_validations(opts[:tracer], metadata, opts[:actor])
               |> mark_validated(action.name)
               |> eager_validate_identities()
 
@@ -942,6 +942,14 @@ defmodule Ash.Changeset do
                } do
                  Ash.Tracer.set_metadata(opts[:tracer], :validation, metadata)
 
+                 opts =
+                   Ash.Filter.build_filter_from_template(
+                     opts,
+                     actor,
+                     changeset.arguments,
+                     changeset.context
+                   )
+
                  module.validate(changeset, opts) == :ok
                end
              end
@@ -955,6 +963,14 @@ defmodule Ash.Changeset do
 
               Ash.Tracer.set_metadata(opts[:tracer], :change, metadata)
 
+              opts =
+                Ash.Filter.build_filter_from_template(
+                  opts,
+                  actor,
+                  changeset.arguments,
+                  changeset.context
+                )
+
               module.change(changeset, opts, %{
                 actor: actor,
                 authorize?: authorize? || false,
@@ -967,7 +983,7 @@ defmodule Ash.Changeset do
         end
 
       %{validation: _} = validation, changeset ->
-        validate(changeset, validation, tracer, metadata)
+        validate(changeset, validation, tracer, metadata, actor)
     end)
   end
 
@@ -1113,34 +1129,42 @@ defmodule Ash.Changeset do
 
   defp default(:update, %{update_default: value}), do: value
 
-  defp add_validations(changeset, tracer, metadata) do
+  defp add_validations(changeset, tracer, metadata, actor) do
     changeset.resource
     # We use the `changeset.action_type` to support soft deletes
     # Because a delete is an `update` with an action type of `update`
     |> Ash.Resource.Info.validations(changeset.action_type)
-    |> Enum.reduce(changeset, &validate(&2, &1, tracer, metadata))
+    |> Enum.reduce(changeset, &validate(&2, &1, tracer, metadata, actor))
   end
 
-  defp validate(changeset, validation, tracer, metadata) do
+  defp validate(changeset, validation, tracer, metadata, actor) do
     if validation.before_action? do
       before_action(changeset, fn changeset ->
         if validation.only_when_valid? and not changeset.valid? do
           changeset
         else
-          do_validation(changeset, validation, tracer, metadata)
+          do_validation(changeset, validation, tracer, metadata, actor)
         end
       end)
     else
       if validation.only_when_valid? and not changeset.valid? do
         changeset
       else
-        do_validation(changeset, validation, tracer, metadata)
+        do_validation(changeset, validation, tracer, metadata, actor)
       end
     end
   end
 
-  defp do_validation(changeset, validation, tracer, metadata) do
+  defp do_validation(changeset, validation, tracer, metadata, actor) do
     if Enum.all?(validation.where || [], fn {module, opts} ->
+         opts =
+           Ash.Filter.build_filter_from_template(
+             opts,
+             actor,
+             changeset.arguments,
+             changeset.context
+           )
+
          module.validate(changeset, opts) == :ok
        end) do
       Ash.Tracer.span :validation, "validate: #{inspect(validation.module)}", tracer do
@@ -1150,7 +1174,15 @@ defmodule Ash.Changeset do
         } do
           Ash.Tracer.set_metadata(tracer, :validation, metadata)
 
-          case validation.module.validate(changeset, validation.opts) do
+          opts =
+            Ash.Filter.build_filter_from_template(
+              validation.opts,
+              actor,
+              changeset.arguments,
+              changeset.context
+            )
+
+          case validation.module.validate(changeset, opts) do
             :ok ->
               changeset
 

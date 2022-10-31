@@ -21,40 +21,20 @@ defmodule Ash.Resource.Change.SetAttribute do
   defp validate_value(_), do: :ok
 
   def change(changeset, opts, _) do
-    case opts[:value] do
-      {arg_key, arg} when arg_key in [:arg, :_arg] ->
-        case Ash.Changeset.fetch_argument(changeset, arg) do
-          {:ok, value} ->
-            if opts[:new?] do
-              if Ash.Changeset.changing_attribute?(changeset, opts[:attribute]) do
-                changeset
-              else
-                Changeset.force_change_attribute(changeset, opts[:attribute], value)
-              end
-            else
-              Changeset.force_change_attribute(changeset, opts[:attribute], value)
-            end
+    value =
+      case opts[:value] do
+        value when is_function(value) -> value.()
+        value -> value
+      end
 
-          _ ->
-            changeset
-        end
-
-      _ ->
-        value =
-          case opts[:value] do
-            value when is_function(value) -> value.()
-            value -> value
-          end
-
-        if opts[:new?] do
-          if Ash.Changeset.changing_attribute?(changeset, opts[:attribute]) do
-            changeset
-          else
-            Changeset.force_change_attribute(changeset, opts[:attribute], value)
-          end
-        else
-          Changeset.force_change_attribute(changeset, opts[:attribute], value)
-        end
+    if opts[:new?] do
+      if Ash.Changeset.changing_attribute?(changeset, opts[:attribute]) do
+        changeset
+      else
+        Changeset.force_change_attribute(changeset, opts[:attribute], value)
+      end
+    else
+      Changeset.force_change_attribute(changeset, opts[:attribute], value)
     end
   end
 end

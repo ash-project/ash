@@ -422,6 +422,14 @@ defmodule Ash.Query do
 
           case module.init(opts) do
             {:ok, opts} ->
+              opts =
+                Ash.Filter.build_filter_from_template(
+                  opts,
+                  actor,
+                  query.arguments,
+                  query.context
+                )
+
               case module.prepare(query, opts, %{
                      actor: actor,
                      authorize?: authorize?,
