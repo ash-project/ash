@@ -569,6 +569,10 @@ defmodule Ash.Filter do
     Enum.any?(list, &template_references_actor?/1)
   end
 
+  def template_references_actor?(map) when is_map(map) and not is_struct(map) do
+    Enum.any?(map, &template_references_actor?/1)
+  end
+
   def template_references_actor?(tuple) when is_tuple(tuple) do
     tuple
     |> Tuple.to_list()

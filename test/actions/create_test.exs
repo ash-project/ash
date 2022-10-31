@@ -423,6 +423,21 @@ defmodule Ash.Test.Actions.CreateTest do
       assert :tag in changeset.defaults
     end
 
+    test "a default being set and then overriden will no longer be annotated as a default" do
+      changeset =
+        Post
+        |> new()
+        |> change_attribute(:title, "foo")
+        |> Ash.Changeset.for_create(:create)
+
+      assert :tag in changeset.defaults
+
+      force_changeset = Ash.Changeset.force_change_attribute(changeset, :tag, "foo")
+      non_force_changeset = Ash.Changeset.change_attribute(changeset, :tag, "bar")
+      refute :tag in force_changeset.defaults
+      refute :tag in non_force_changeset.defaults
+    end
+
     test "nil will error on required attribute with default" do
       assert_raise Ash.Error.Invalid, ~r/required_with_default is required/, fn ->
         Post

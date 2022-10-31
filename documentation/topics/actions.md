@@ -124,7 +124,7 @@ end
 The following steps are performed when you call `Ash.Query.for_read/4`. 
 
 - Gather process context | {{link:ash:guide:Store Context In Process}}
-- Cast input arguments | {{link:ash:dsl:resource/actions/read/argument}
+- Cast input arguments | {{link:ash:dsl:resource/actions/read/argument}}
 - Set default argument values | {{link:ash:option:resource/actions/read/argument/default}}
 - Add errors for missing required arguments | {{link:ash:option:resource/actions/read/argument/allow_nil?}}
 - Run query preparations | {{link:ash:dsl:resource/actions/read/prepare}}
@@ -153,7 +153,7 @@ The following steps happen asynchronously during or after the main data layer qu
 
 ### Create/Update/Destroy Actions
 
-These actions operate on an `Ash.Changeset`. While standard destroy actions don't care about the changes you add to a changeset, you may mark a destroy action as {{ash:option:/resource/actions/destroy/soft?}}, which means you will be performing an update that will in some way "hide" the resource. Generally this hiding is done by adding a {{ash:option:resource/base_filter}} i.e `base_filter [is_nil: :archived_at]`
+These actions operate on an `Ash.Changeset`. While standard destroy actions don't care about the changes you add to a changeset, you may mark a destroy action as {{link:ash:option:/resource/actions/destroy/soft?}}, which means you will be performing an update that will in some way "hide" the resource. Generally this hiding is done by adding a {{link:ash:option:resource/base_filter}} i.e `base_filter [is_nil: :archived_at]`
 
 Here is an example create action:
 

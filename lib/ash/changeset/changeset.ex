@@ -2718,22 +2718,39 @@ defmodule Ash.Changeset do
 
           cond do
             changeset.action_type == :create ->
-              %{changeset | attributes: Map.put(changeset.attributes, attribute.name, casted)}
+              %{
+                changeset
+                | attributes: Map.put(changeset.attributes, attribute.name, casted),
+                  defaults: changeset.defaults -- [attribute.name]
+              }
 
             is_nil(data_value) and is_nil(casted) ->
-              %{changeset | attributes: Map.delete(changeset.attributes, attribute.name)}
+              %{
+                changeset
+                | attributes: Map.delete(changeset.attributes, attribute.name),
+                  defaults: changeset.defaults -- [attribute.name]
+              }
 
             Ash.Type.equal?(attribute.type, casted, data_value) ->
-              %{changeset | attributes: Map.delete(changeset.attributes, attribute.name)}
+              %{
+                changeset
+                | attributes: Map.delete(changeset.attributes, attribute.name),
+                  defaults: changeset.defaults -- [attribute.name]
+              }
 
             true ->
-              %{changeset | attributes: Map.put(changeset.attributes, attribute.name, casted)}
+              %{
+                changeset
+                | attributes: Map.put(changeset.attributes, attribute.name, casted),
+                  defaults: changeset.defaults -- [attribute.name]
+              }
           end
         else
           {{:error, error_or_errors}, last_val} ->
             changeset = %{
               changeset
-              | attributes: Map.put(changeset.attributes, attribute.name, last_val)
+              | attributes: Map.put(changeset.attributes, attribute.name, last_val),
+                defaults: changeset.defaults -- [attribute.name]
             }
 
             add_invalid_errors(:attribute, changeset, attribute, error_or_errors)
@@ -2741,7 +2758,8 @@ defmodule Ash.Changeset do
           :error ->
             changeset = %{
               changeset
-              | attributes: Map.put(changeset.attributes, attribute.name, value)
+              | attributes: Map.put(changeset.attributes, attribute.name, value),
+                defaults: changeset.defaults -- [attribute.name]
             }
 
             add_invalid_errors(:attribute, changeset, attribute)
@@ -2749,7 +2767,8 @@ defmodule Ash.Changeset do
           {:error, error_or_errors} ->
             changeset = %{
               changeset
-              | attributes: Map.put(changeset.attributes, attribute.name, value)
+              | attributes: Map.put(changeset.attributes, attribute.name, value),
+                defaults: changeset.defaults -- [attribute.name]
             }
 
             add_invalid_errors(:attribute, changeset, attribute, error_or_errors)
@@ -2875,14 +2894,33 @@ defmodule Ash.Changeset do
           changeset = remove_default(changeset, attribute.name)
 
           cond do
+            changeset.action_type == :create ->
+              %{
+                changeset
+                | attributes: Map.put(changeset.attributes, attribute.name, casted),
+                  defaults: changeset.defaults -- [attribute.name]
+              }
+
             is_nil(data_value) and is_nil(casted) ->
-              changeset
+              %{
+                changeset
+                | attributes: Map.delete(changeset.attributes, attribute.name),
+                  defaults: changeset.defaults -- [attribute.name]
+              }
 
             Ash.Type.equal?(attribute.type, casted, data_value) ->
-              changeset
+              %{
+                changeset
+                | attributes: Map.delete(changeset.attributes, attribute.name),
+                  defaults: changeset.defaults -- [attribute.name]
+              }
 
             true ->
-              %{changeset | attributes: Map.put(changeset.attributes, attribute.name, casted)}
+              %{
+                changeset
+                | attributes: Map.put(changeset.attributes, attribute.name, casted),
+                  defaults: changeset.defaults -- [attribute.name]
+              }
           end
         else
           :error ->
