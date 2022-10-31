@@ -29,8 +29,9 @@ defmodule Ash.Api.Info do
   defmacro depend_on_resources(api) do
     quote do
       if registry = Ash.Api.Info.registry(unquote(api)) do
+        @external_resource List.to_string(registry.module_info(:compile)[:source])
         for entry <- Ash.Registry.Info.entries(registry) do
-          @external_resource List.to_string(registry.module_info(:compile)[:source])
+          @external_resource List.to_string(entry.module_info(:compile)[:source])
           entry
         end
       else
