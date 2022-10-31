@@ -26,6 +26,7 @@ defmodule Ash.Resource.Preparation do
            {Ash.Resource.Preparation.Function, 2}},
         doc: """
         The module and options for a preparation.
+        Also accepts functions take the query and the context.
         """,
         required: true,
         links: [

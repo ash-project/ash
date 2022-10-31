@@ -50,7 +50,8 @@ defmodule Ash.Resource.Validation do
     validation: [
       type: @validation_type,
       required: true,
-      doc: "The module/opts pair of the validation",
+      doc:
+        "The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a one argument function that takes the changeset.",
       links: []
     ],
     where: [
@@ -65,6 +66,7 @@ defmodule Ash.Resource.Validation do
       doc: """
       Validations that should pass in order for this validation to apply.
       These validations failing will not invalidate the changes, but will instead result in this validation being ignored.
+      Accepts a module, module and opts, or a 1 argument function that takes the changeset.
       """
     ],
     on: [

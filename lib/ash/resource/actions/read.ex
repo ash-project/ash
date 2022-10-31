@@ -44,6 +44,7 @@ defmodule Ash.Resource.Actions.Read do
                        {Ash.Resource.ManualRead.Function, 3}},
                     doc: """
                     Delegates running of the query to the provided module.
+                    Accepts a module or module and opts, or a function that takes the changeset and context.
                     """,
                     links: [
                       guides: [

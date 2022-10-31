@@ -49,6 +49,7 @@ defmodule Ash.Resource.Change do
         ],
         doc: """
         The module and options for a change.
+        Also accepts a function that takes the changeset and the context.
         """,
         required: true
       ],
@@ -67,6 +68,7 @@ defmodule Ash.Resource.Change do
         doc: """
         Validations that should pass in order for this validation to apply.
         These validations failing will not invalidate the changes, but instead just result in this change being ignored.
+        Also accepts functions take the changeset.
         """
       ]
     ]

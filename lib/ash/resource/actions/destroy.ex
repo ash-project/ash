@@ -51,7 +51,7 @@ defmodule Ash.Resource.Actions.Destroy do
                     ]
                   ],
                   doc: """
-                  Override the update behavior. See the manual action guides for more.
+                  Override the update behavior. See the manual action guides for more. Accepts a module or module and opts, or a function that takes the changeset and context.
                   """
                 ]
               ]

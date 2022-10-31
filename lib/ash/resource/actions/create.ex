@@ -59,7 +59,7 @@ defmodule Ash.Resource.Actions.Create do
                     ]
                   ],
                   doc: """
-                  Override the creation behavior. See the manual action guides for more.
+                  Override the creation behavior. See the manual action guides for more. Accepts a module or module and opts, or a function that takes the changeset and context.
                   """
                 ]
               ]

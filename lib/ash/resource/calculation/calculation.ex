@@ -64,7 +64,10 @@ defmodule Ash.Resource.Calculation do
          ]},
       required: true,
       links: [],
-      doc: "The module or `{module, opts}` to use for the calculation"
+      doc: """
+      The module or `{module, opts}` to use for the calculation
+      Also accepts a function that takes the list of records and the context.
+      """
     ],
     description: [
       type: :string,
