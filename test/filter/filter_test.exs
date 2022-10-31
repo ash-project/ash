@@ -123,6 +123,10 @@ defmodule Ash.Test.Filter.FilterTest do
       attribute :category, :ci_string
     end
 
+    calculations do
+      calculate :cool_titles, {:array, :string}, expr(["yo", "dawg"])
+    end
+
     relationships do
       belongs_to :author1, User,
         destination_attribute: :id,
@@ -193,6 +197,23 @@ defmodule Ash.Test.Filter.FilterTest do
 
     resources do
       registry Registry
+    end
+  end
+
+  describe "in" do
+    test "in can be done with references on both sides" do
+      Post
+      |> new(%{title: "dawg"})
+      |> Api.create!()
+
+      Post
+      |> new(%{title: "lame"})
+      |> Api.create!()
+
+      assert [_] =
+               Post
+               |> Ash.Query.filter(title in cool_titles)
+               |> Api.read!()
     end
   end
 
