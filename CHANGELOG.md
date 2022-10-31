@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.1](https://github.com/ash-project/ash/compare/v2.4.0...v2.4.1) (2022-10-31)
+
+
+
+
+### Bug Fixes:
+
+* fix depend on resources to depend on each resource
+
+* allow references on both sides of `in`
+
+* properly upsert all explicitly changed fields
+
+* traverse maps for `template_references_actor?/1`
+
+### Improvements:
+
+* replace templates in change/preparation/validation opts
+
 ## [v2.4.0](https://github.com/ash-project/ash/compare/v2.3.0...v2.4.0) (2022-10-31)
 
 
