@@ -1,6 +1,5 @@
 defmodule Ash.Resource.Calculation do
   @moduledoc "Represents a named calculation on a resource"
-  import Ash.Filter.TemplateHelpers, only: [is_expr: 1]
 
   defstruct [
     :name,
