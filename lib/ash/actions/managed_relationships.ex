@@ -105,9 +105,12 @@ defmodule Ash.Actions.ManagedRelationships do
             if input in [nil, []] && opts[:on_missing] != :ignore do
               changeset
               |> maybe_force_change_attribute(relationship, :source_attribute, nil)
-              |> Ash.Changeset.after_action(fn _changeset, result ->
-                {:ok, Map.put(result, relationship.name, nil)}
-              end)
+              |> Ash.Changeset.after_action(
+                fn _changeset, result ->
+                  {:ok, Map.put(result, relationship.name, nil)}
+                end,
+                prepend?: true
+              )
             else
               changeset
             end

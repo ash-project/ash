@@ -51,12 +51,19 @@ defmodule Ash.Actions.Create do
   end
 
   defp do_run(api, changeset, action, opts) do
-    upsert? = opts[:upsert?] || get_in(changeset.context, [:private, :upsert?]) || false
+    upsert? =
+      action.upsert? || opts[:upsert?] || get_in(changeset.context, [:private, :upsert?]) || false
+
     authorize? = authorize?(opts)
     upsert_keys = opts[:upsert_keys]
 
     upsert_identity =
-      opts[:upsert_identity] || get_in(changeset.context, [:private, :upsert_identity])
+      if action.upsert? do
+        action.upsert_identity || opts[:upsert_identity] ||
+          get_in(changeset.context, [:private, :upsert_identity])
+      else
+        opts[:upsert_identity] || get_in(changeset.context, [:private, :upsert_identity])
+      end
 
     changeset =
       Ash.Changeset.set_context(changeset, %{
