@@ -61,6 +61,44 @@ defmodule Ash.Resource.Builder do
   end
 
   @doc """
+  Builds and adds an action
+  """
+  @spec add_change(
+          Spark.Dsl.t(),
+          ref :: module | {module, Keyword.t()},
+          opts :: Keyword.t()
+        ) ::
+          Spark.Dsl.Builder.result()
+  defbuilder add_change(dsl_state, ref, opts \\ []) do
+    ref =
+      case ref do
+        {module, opts} -> {module, opts}
+        module -> {module, []}
+      end
+
+    with {:ok, change} <- build_change(ref, opts) do
+      Transformer.add_entity(dsl_state, [:changes], change)
+    end
+  end
+
+  @doc """
+  Builds a change
+  """
+  @spec build_change(
+          ref :: module | {module, Keyword.t()},
+          opts :: Keyword.t()
+        ) ::
+          {:ok, Ash.Resource.Change.t()} | {:error, term}
+  def build_change(ref, opts \\ []) do
+    Transformer.build_entity(
+      Ash.Resource.Dsl,
+      [:changes],
+      :change,
+      Keyword.merge(opts, change: ref)
+    )
+  end
+
+  @doc """
   Builds an action change
   """
   @spec build_action_change(change :: Ash.Resource.Change.ref(), opts :: Keyword.t()) ::
