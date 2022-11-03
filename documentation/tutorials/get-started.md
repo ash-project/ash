@@ -118,7 +118,7 @@ It might be helpful to think of an Ash API as a Bounded Context (in the Domain D
 
 ### Creating our first resource
 
-Lets start by creating our first resource along with our first API. We will create the following files:
+Let's start by creating our first resource along with our first API. We will create the following files:
 
 - The API [Helpdesk.Support] - `lib/helpdesk/support.ex`
 - Our Ticket resource [Helpdesk.Support.Ticket] - `lib/helpdesk/support/resources/ticket.ex`.
@@ -308,7 +308,7 @@ If we didn't include a subject, or left off the arguments completely, we would s
 
 ### Updates and validations
 
-Now lets add some logic to close a ticket. This time we'll add an `update` action.
+Now let's add some logic to close a ticket. This time we'll add an `update` action.
 
 Here we will use a `change`. Changes allow you to customize how an action executes with very fine-grained control. There are built-in changes that are automatically available as functions, but you can define your own and pass it in as shown below. You can add multiple, and they will be run in order. See the {{link:ash:guide:Actions}} guides for more.
 
@@ -357,7 +357,7 @@ ticket
 
 ### Querying without persistence
 
-So far, we haven't stored any data in a database. All that this simple resource does is return the record back to us. You can see this lack of persistence by attempting to use a `read` action:
+So far we haven't used a data layer that does any persistence, like storing records in a database. All that this simple resource does is return the record back to us. You can see this lack of persistence by attempting to use a `read` action:
 
 ```elixir
 Helpdesk.Support.read!(Helpdesk.Support.Ticket)
@@ -365,7 +365,7 @@ Helpdesk.Support.read!(Helpdesk.Support.Ticket)
 
 Which will raise an error explaining that there is no data to be read for that resource.
 
-In order to save our data somewhere, we need to add a data layer to our resources. Before we do that, however, lets go over how Ash allows us to work against many different data layers (or even no data layer at all).
+In order to save our data somewhere, we need to add a data layer to our resources. Before we do that, however, let's go over how Ash allows us to work against many different data layers (or even no data layer at all).
 
 Resources without a data layer will implicitly be using `Ash.DataLayer.Simple`, which will just return structs and won't actually store anything. The way that we make our queries return some data is by leveraging `context`, a free-form map available on queries and changesets. The simple data layer looks for `query.context[:data_layer][:data][resource]`. It provides a utility, `Ash.DataLayer.Simple.set_data/2` to set it.
 
@@ -410,17 +410,15 @@ Helpdesk.Support.Ticket
 |> Helpdesk.Support.read!()
 ```
 
-The examples above could be easily implemented with `Enum.filter`, but the real power here is to allow you to use the same tools when working with any data layer. If you were using the (link?) AshPostgres data layer, the above code would be exactly the same, except we wouldn't need the call to `set_data/2`.
+The examples above could be easily implemented with `Enum.filter`, but the real power here is to allow you to use the same tools when working with any data layer. If you were using the {{link:ash_postgres:extension:AshPostgres.DataLayer}}, the above code would be exactly the same, except we wouldn't need the call to `set_data/2`.
 
-> TODO talk about any practical use for Simple Data layer, or explain why it is like it is (so you have something presumably until you set a real data layer)
-
-`Ash.DataLayer.Simple` isn't actually very useful in practice so
+Even though it doesn't persist data in any way, `Ash.DataLayer.Simple` can be useful to model static data, or be used for resources where all the actions are manual and inject data from other sources.
 
 ### Adding basic persistence
 
-Before we get into working with relationships, lets add some real persistence to our resource. This will let us add relationships and try out querying data.
+Before we get into working with relationships, let's add some real persistence to our resource. This will let us add relationships and try out querying data.
 
-There is a built in data layer that is good for testing and prototyping, that uses [ETS](https://elixir-lang.org/getting-started/mix-otp/ets.html). ETS (Erlang Term Storage) is OTP's in-memory database, so the data won't actually stick around beyond the lifespan of your program, but it's simple, and behaves just like a real database.
+There is a built in data layer that is useful for testing and prototyping, that uses [ETS](https://elixir-lang.org/getting-started/mix-otp/ets.html). ETS (Erlang Term Storage) is OTP's in-memory database, so the data won't actually stick around beyond the lifespan of your program, but it's a simple way to try things out.
 
 To add it to your resource, modify it like so:
 
@@ -523,7 +521,7 @@ entries do
 end
 ```
 
-You may notice that if you don't add the resource to the registry, or if you don't add the `belongs_to` relationship, that you'll get helpful errors at compile time. Helpful compile time validations are a core concept of Ash. We really want to ensure that your application is valid before it compiles.
+You may notice that if you don't add the resource to the registry, or if you don't add the `belongs_to` relationship, that you'll get helpful errors at compile time. Helpful compile time validations are a core concept of Ash as we really want to ensure that your application is valid.
 
 ## Working with relationships
 
@@ -584,29 +582,22 @@ representative = (
 ### Assign that Representative to the Ticket
 
 ```elixir
-ticket = (
-  ticket
-  |> Ash.Changeset.for_update(:assign, %{representative_id: representative.id})
-  |> Helpdesk.Support.update!()
-)
+ticket
+|> Ash.Changeset.for_update(:assign, %{representative_id: representative.id})
+|> Helpdesk.Support.update!()
 ```
-
-> Do we use the last assigned ticket?
-> When we say the "The representative itself is not modified in any way" isn't it updating both sides of the relationship?
 
 ### What next?
 
-What you've seen above barely scratches the surface of what Ash can do. In a lot of ways, it will look very similar to other tools that you've seen. If all that you ever used was the above, then realistically you won't see much benefit to using Ash over other options like Ecto.
+What you've seen above barely scratches the surface of what Ash can do. In a lot of ways, it will look very similar to other tools that you've seen. If all that you ever used was the above, then realistically you won't see much benefit to using Ash.
 
-> Long awkward sentence
-
-Where Ash shines is in all of the tools that can operate on your resources, the ability to extend the framework yourself, and the consistent design patterns that enable unparalleled efficiency, power and flexibility as your application and needs grow.
+Where Ash shines however, is all of the tools that can operate on your resources. You have the ability to extend the framework yourself, and apply consistent design patterns that enable unparalleled efficiency, power and flexibility as your application grows.
 
 #### Clean up your code that uses Ash?
 
-Creating and using changesets can be verbose. Check out the {{link:ash:guide:Code Interface}} to derive things like `Helpdesk.Support.Ticket.assign!(representative.id)`
+Creating and using changesets manually can be verbose, and they all look very similar. Luckily, Ash has your back and can generate these for you using Code Interfaces!
 
-> Not sure what this bit is about, needs expanding
+Check out the {{link:ash:guide:Code Interface}} to derive things like `Helpdesk.Support.Ticket.assign!(representative.id)`
 
 #### Persist your data
 
@@ -614,9 +605,7 @@ See {{link:ash_postgres:guide:Get Started With Postgres:AshPostgres}} to see how
 
 #### Add an API
 
-> Add links, how should we link to extensions?
-
-Check out the AshJsonApi and AshGraphql extensions to effortlessly build APIs around your resources
+Check out the {{link:ash_json_api:library|AshJsonApi}} and {{link:ash_graphql:library|AshGraphql}} extensions to effortlessly build APIs around your resources
 
 #### Authorize access and work with users
 
