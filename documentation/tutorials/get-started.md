@@ -2,10 +2,6 @@
 
 <!--- ash-hq-hide-start --> <!--- -->
 
-If you are reading this on hexdocs, you may notice a few strange things.
-
-Primarily, that there are a lot of templates, like {{link:...}}
-
 This documentation is best viewed at [ash-hq.org](https://ash-hq.org)
 
 <!--- ash-hq-hide-stop --> <!--- -->
@@ -77,7 +73,7 @@ defp deps do
   [
     # {:dep_from_hexpm, "~> 0.3.0"},
     # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
-    {{mix_dep:ash}}, # <-- add this line
+    ____mix_dep_ash____, # <-- add this line
   ]
 end
 ```
@@ -104,7 +100,7 @@ defp deps do
   [
     # {:dep_from_hexpm, "~> 0.3.0"},
     # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
-    {{mix_dep:ash}},
+    ____mix_dep_ash____,
     {:elixir_sense, github: "elixir-lsp/elixir_sense", only: [:dev, :test]} # <-- add this line
   ]
 end
