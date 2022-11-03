@@ -125,6 +125,17 @@ defmodule Ash.Test.ErrorTest do
       assert error_message =~ "Context: some higher context > some context"
       assert error_message =~ "Context: some higher context > some other context"
     end
+
+    test "error message still renders when there's no error context" do
+      error1 = Ash.Error.to_ash_error("whoops!")
+      error2 = Ash.Error.to_ash_error("whoops, again!!")
+
+      error_class = Ash.Error.to_error_class([error1, error2])
+
+      error_message = Ash.Error.Unknown.message(error_class)
+
+      assert error_message =~ "Unknown Error\n\n* whoops!"
+    end
   end
 
   describe "to_ash_error" do

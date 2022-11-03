@@ -389,6 +389,9 @@ defmodule Ash.Error do
   defp header(:framework), do: "Framework Error"
   defp header(:unknown), do: "Unknown Error"
 
+  defp breadcrumb(nil), do: ""
+  defp breadcrumb([]), do: ""
+
   defp breadcrumb(error_context) do
     "Context: " <> Enum.join(error_context, " > ") <> "\n"
   end
