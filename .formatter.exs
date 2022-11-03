@@ -186,6 +186,8 @@ spark_locals_without_parens = [
   update_default: 1,
   update_timestamp: 1,
   update_timestamp: 2,
+  upsert?: 1,
+  upsert_identity: 1,
   uuid_primary_key: 1,
   uuid_primary_key: 2,
   validate: 1,
