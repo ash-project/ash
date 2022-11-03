@@ -50,7 +50,7 @@ defmodule Mix.Tasks.Ash.ReplaceDocLinks do
             ~s(<a href="https://ash-hq.org/docs/dsl/#{library}/latest/#{sanitize_name(item)}">#{name || item}</a>)
 
           :link, %{type: "module", item: item, name_override: name, library: library}, _ ->
-            ~s(<a href="/docs/module/#{library}/latest/#{sanitize_name(item)}">#{name || item}</a>)
+            ~s(<a href="https://ash-hq.org/docs/module/#{library}/latest/#{sanitize_name(item)}">#{name || item}</a>)
 
           _, %{text: text}, _ ->
             raise "No link handler for: `#{text}`"
