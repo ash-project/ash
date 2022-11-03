@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.2](https://github.com/ash-project/ash/compare/v2.4.1...v2.4.2) (2022-11-03)
+
+
+
+
+### Bug Fixes:
+
+* properly set error vars with list constraints
+
+* when creating changesets/queries that already have arguments, revalidate arguments
+
+### Improvements:
+
+* update to latest spark
+
+* support statically configured upsert actions
+
+* add more builders
+
 ## [v2.4.1](https://github.com/ash-project/ash/compare/v2.4.0...v2.4.1) (2022-10-31)
 
 
