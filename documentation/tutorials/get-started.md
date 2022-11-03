@@ -30,7 +30,7 @@ If you want to follow along yourself, you will need the following things:
 
 1. Elixir and Erlang installed
 2. A text editor to make the changes that we make
-3. A terminal to run the commands we show using `iex`
+3. A terminal to run the examples using `iex`
 
 ## Steps
 
@@ -43,9 +43,9 @@ We will make the following resources:
 
 The actions we will be able to take on these resources include:
 
-- Opening a new ticket
-- Closing a ticket
-- Assigning a ticket to a representative
+- Opening a new Ticket
+- Closing a Ticket
+- Assigning a Ticket to a representative
 
 ### Create a new project
 
@@ -110,23 +110,26 @@ defp deps do
 end
 ```
 
-### Creating our first resources
+### Building your first Ash API
 
-The basic building blocks of an Ash application are resources. They are tied together by an API module (not to be confused with a web API), which will allow you to interact with those resources.
+The basic building blocks of an Ash application are Ash resources. They are tied together by an API module (not to be confused with a web API), which will allow you to interact with those resources.
 
-Lets start by creating our first resource along with our first API. We will create the following files:
+It might be helpful to think of an Ash API as a Bounded Context (in the Domain Driven Design sense), or as a Service (in the microservice sense).
+
+### Creating our first resource
+
+Let's start by creating our first resource along with our first API. We will create the following files:
 
 - The API [Helpdesk.Support] - `lib/helpdesk/support.ex`
-- Our tickets resource [Helpdesk.Support.Ticket] - `lib/helpdesk/support/resources/ticket.ex`.
+- Our Ticket resource [Helpdesk.Support.Ticket] - `lib/helpdesk/support/resources/ticket.ex`.
 
-We also create an accompanying registry, in , which is where we will list the resources for our Api.
+We also create an accompanying registry, in \*\*\*?, which is where we will list the resources for our Api.
 
 - A registry to list our resources - `lib/helpdesk/support/registry.ex`
 
 To create the required folders and files, you can use the following command in your terminal:
 
 ```bash
-# Run in your terminal
 mkdir -p lib/helpdesk/support/resources && touch $_/ticket.ex
 touch lib/helpdesk/support/registry.ex
 touch lib/helpdesk/support.ex
@@ -200,7 +203,7 @@ end
 
 ### Try our first resource out
 
-Run `iex -S mix` in your project and try it out
+Run `iex -S mix` in your project and try it out.
 
 To create a ticket, we first make an `Ash.Changeset` for the `:create` action of the `Helpdesk.Support.Ticket` resource. Then we pass it to the `create!/1` function on our API module `Helpdesk.Support`.
 
@@ -255,7 +258,7 @@ attributes do
 end
 ```
 
-And then add our customized action:
+And then add our customized `open` action which should take a `subject` argument:
 
 ```elixir
 # lib/helpdesk/support/resources/ticket.ex
@@ -270,7 +273,7 @@ actions do
 end
 ```
 
-Now we can play with these changes in iex:
+Let's try these changes in `iex`:
 
 We use `create!` with an exclamation point here because that will raise the error which gives a nicer view of the error in `iex`
 
@@ -295,7 +298,7 @@ And we can see our newly created ticket with a subject and a status.
 >
 ```
 
-If we didn't include a subject, or left out the input, we would see an error instead
+If we didn't include a subject, or left off the arguments completely, we would see an error instead
 
 ```text
 ** (Ash.Error.Invalid) Input Invalid
@@ -305,7 +308,7 @@ If we didn't include a subject, or left out the input, we would see an error ins
 
 ### Updates and validations
 
-Now lets add some logic to close a ticket. This time we'll add an `update` action.
+Now let's add some logic to close a ticket. This time we'll add an `update` action.
 
 Here we will use a `change`. Changes allow you to customize how an action executes with very fine-grained control. There are built-in changes that are automatically available as functions, but you can define your own and pass it in as shown below. You can add multiple, and they will be run in order. See the {{link:ash:guide:Actions}} guides for more.
 
@@ -327,7 +330,7 @@ actions do
 end
 ```
 
-Now we can try it out in iex, opening a ticket and closing it:
+Try out opening and closing a ticket in `iex`:
 
 ```elixir
 # Use this to pick up changes you've made to your code, or restart your session
@@ -354,7 +357,7 @@ ticket
 
 ### Querying without persistence
 
-So far, there is no persistence happening. All that this simple resource does is return the record back to us. You can see this lack of persistence by attempting to use a `read` action:
+So far we haven't used a data layer that does any persistence, like storing records in a database. All that this simple resource does is return the record back to us. You can see this lack of persistence by attempting to use a `read` action:
 
 ```elixir
 Helpdesk.Support.read!(Helpdesk.Support.Ticket)
@@ -362,9 +365,11 @@ Helpdesk.Support.read!(Helpdesk.Support.Ticket)
 
 Which will raise an error explaining that there is no data to be read for that resource.
 
-In order to add persistence, we need to add a data layer to our resources. Before we do that, however, lets go over how Ash allows us to work against many different data layers (or even no data layer at all). Resources without a data layer will implicitly be using `Ash.DataLayer.Simple`, which will just return structs and do no persistence. The way that we do this is by leveraging `context`, a free-form map available on queries and changesets. The simple data layer looks for `query.context[:data_layer][:data][resource]`. It provides a utility, `Ash.DataLayer.Simple.set_data/2` to set it.
+In order to save our data somewhere, we need to add a data layer to our resources. Before we do that, however, let's go over how Ash allows us to work against many different data layers (or even no data layer at all).
 
-Try the following in iex. We will open some tickets, and close some of them, and then use `Ash.DataLayer.Simple.set_data/2` to use those tickets.
+Resources without a data layer will implicitly be using `Ash.DataLayer.Simple`, which will just return structs and won't actually store anything. The way that we make our queries return some data is by leveraging `context`, a free-form map available on queries and changesets. The simple data layer looks for `query.context[:data_layer][:data][resource]`. It provides a utility, `Ash.DataLayer.Simple.set_data/2` to set it.
+
+Try the following in `iex`. We will open some tickets, and close some of them, and then use `Ash.DataLayer.Simple.set_data/2` to use those tickets.
 
 ```elixir
 # Ash.Query is a macro, so it must be required
@@ -385,28 +390,35 @@ tickets =
       ticket
     end
   end
+```
 
+Find the tickets where the subject contains `"2"`. Note that the we're setting the ticket data that we're querying using `set_data`.
 
-# Show the tickets where the subject contains "2"
+```elixir
 Helpdesk.Support.Ticket
 |> Ash.Query.filter(contains(subject, "2"))
 |> Ash.DataLayer.Simple.set_data(tickets)
 |> Helpdesk.Support.read!()
+```
 
-# Show the tickets that are closed and their subject does not contain "4"
+Find the tickets that are _closed_ and their subject does _not_ contain `"4"`
+
+```elixir
 Helpdesk.Support.Ticket
 |> Ash.Query.filter(status == :closed and not(contains(subject, "4")))
 |> Ash.DataLayer.Simple.set_data(tickets)
 |> Helpdesk.Support.read!()
 ```
 
-The examples shown here could be implemented easily using things like `Enum.filter`, but the real power here is to allow you to use the same tools when working with any data layer. If you were using AshPostgres, the above code would be exactly the same, except for the call to `set_data/2`.
+The examples above could be easily implemented with `Enum.filter`, but the real power here is to allow you to use the same tools when working with any data layer. If you were using the {{link:ash_postgres:extension:AshPostgres.DataLayer}}, the above code would be exactly the same, except we wouldn't need the call to `set_data/2`.
+
+Even though it doesn't persist data in any way, `Ash.DataLayer.Simple` can be useful to model static data, or be used for resources where all the actions are manual and inject data from other sources.
 
 ### Adding basic persistence
 
-Before we get into working with relationships, lets add some actual persistence to our resource. This will let us add relationships and try out querying data.
+Before we get into working with relationships, let's add some real persistence to our resource. This will let us add relationships and try out querying data.
 
-There is a built in data layer that is good for testing and prototyping, that uses [ETS](https://elixir-lang.org/getting-started/mix-otp/ets.html).
+There is a built in data layer that is useful for testing and prototyping, that uses [ETS](https://elixir-lang.org/getting-started/mix-otp/ets.html). ETS (Erlang Term Storage) is OTP's in-memory database, so the data won't actually stick around beyond the lifespan of your program, but it's a simple way to try things out.
 
 To add it to your resource, modify it like so:
 
@@ -417,7 +429,7 @@ use Ash.Resource,
   data_layer: Ash.DataLayer.Ets
 ```
 
-Now we can slightly modify our code above, by removing the `Ash.DataLayer.Simple.set_data/2` calls, and we can see our persistence in action. Keep in mind, ETS is in memory, meaning restarting your application/iex session will remove all of the data.
+Now we can slightly modify our code above, by removing the `Ash.DataLayer.Simple.set_data/2` calls, and we can see our persistence in action. Remember, ETS is in-memory, meaning restarting your application/iex session will remove all of the data.
 
 ```elixir
 # Use this to pick up changes you've made to your code, or restart your session
@@ -451,13 +463,13 @@ Helpdesk.Support.Ticket
 
 ### Adding relationships
 
-Now we want to be able to assign a ticket to a representative. First, lets create the representative resource:
+Now we want to be able to assign a Ticket to a Representative. First, let's create the Representative resource:
 
 ```elixir
 # lib/helpdesk/support/resources/representative.ex
 
 defmodule Helpdesk.Support.Representative do
-  # This turns this module into a resource
+  # This turns this module into a resource using the in memory ETS data layer
   use Ash.Resource,
     data_layer: Ash.DataLayer.Ets
 
@@ -476,7 +488,7 @@ defmodule Helpdesk.Support.Representative do
   end
 
   relationships do
-    # has_many means that the destination attribute is not unique, meaning many related records could exist.
+    # `has_many` means that the destination attribute is not unique, therefore many related records could exist.
     # We assume that the destination attribute is `representative_id` based
     # on the module name of this resource and that the source attribute is `id`.
     has_many :tickets, Helpdesk.Support.Ticket
@@ -484,7 +496,7 @@ defmodule Helpdesk.Support.Representative do
 end
 ```
 
-And lets modify our tickets resource to have a relationship to the representative
+Now let's modify our Ticket resource to have the inverse relationship to the Representative.
 
 ```elixir
 # lib/helpdesk/support/resources/ticket.ex
@@ -498,7 +510,7 @@ relationships do
 end
 ```
 
-Finally, lets add our new resource to our registry
+Finally, let's add our new Representative resource to our registry
 
 ```elixir
 # lib/helpdesk/support/registry.ex
@@ -509,13 +521,15 @@ entries do
 end
 ```
 
-You may notice that if you don't add the resource to the registry, or if you don't add the `belongs_to` relationship, that you'll get helpful errors at compile time. Helpful compile time validations are a core concept of Ash. We focus as often as possible on ensuring that your application is valid before it compiles.
+You may notice that if you don't add the resource to the registry, or if you don't add the `belongs_to` relationship, that you'll get helpful errors at compile time. Helpful compile time validations are a core concept of Ash as we really want to ensure that your application is valid.
 
 ## Working with relationships
 
-There are a wide array of options when managing relationships, and going over all of them here wouldn't be reasonable. See the guide on {{link:ash:guide:Managing Relationships}} for a full explanation. For now, we'll show a simple example. Add the following action to allow us to assign a ticket to a representative.
+There are a wide array of options when managing relationships, and we won't cover all of them here. See the guide on {{link:ash:guide:Managing Relationships}} for a full explanation.
 
-Here we also show the use of action arguments, the method by which you can accept additional input to an action.
+In this example we'll demonstrate the use of action arguments, the method by which you can accept additional input to an action.
+
+Add the `assign` action to allow us to assign a Ticket to a Representative.
 
 ```elixir
 # lib/helpdesk/support/resources/ticket.ex
@@ -530,56 +544,68 @@ update :assign do
     allow_nil? false
   end
 
-  # We use a change here to replace the related representative
-  # If there is a different representative for this ticket, it will be changed to the new one
-  # The representative itself is not modified in any way
+  # We use a change here to replace the related Representative
+  # If there is a different representative for this Ticket, it will be changed to the new one
+  # The Representative itself is not modified in any way
   change manage_relationship(:representative_id, :representative, type: :append_and_remove)
 end
 ```
 
-Lets try it out!
+Let's try it out in our `iex` console!
+
+Use `recompile` to pick up changes you've made to your code, or just restart your session.
 
 ```elixir
-# Use this to pick up changes you've made to your code, or restart your session
 recompile()
+```
 
-# Open a ticket
+### Open a Ticket
+
+```elixir
 ticket = (
   Helpdesk.Support.Ticket
   |> Ash.Changeset.for_create(:open, %{subject: "I can't find my hand!"})
   |> Helpdesk.Support.create!()
 )
+```
 
-# Create a representative
+### Create a Representative
+
+```elixir
 representative = (
   Helpdesk.Support.Representative
   |> Ash.Changeset.for_create(:create, %{name: "Joe Armstrong"})
   |> Helpdesk.Support.create!()
 )
+```
 
-# Assign that representative
-ticket = (
-  ticket
-  |> Ash.Changeset.for_update(:assign, %{representative_id: representative.id})
-  |> Helpdesk.Support.update!()
-)
+### Assign that Representative to the Ticket
+
+```elixir
+ticket
+|> Ash.Changeset.for_update(:assign, %{representative_id: representative.id})
+|> Helpdesk.Support.update!()
 ```
 
 ### What next?
 
-What you've seen above constitutes some very simple usage of Ash, barely scratching the surface. In a lot of ways, it will look very similar to other tools that you've seen. If all that you ever used was the above, then realistically you won't see much benefit to using Ash over other options. Where Ash shines is in all of the additional turn-key tools that are built in, the ability to extend the framework yourself, and the consistent design patterns that enable unparalleled velocity, power and flexibility as your application and needs grow.
+What you've seen above barely scratches the surface of what Ash can do. In a lot of ways, it will look very similar to other tools that you've seen. If all that you ever used was the above, then realistically you won't see much benefit to using Ash.
+
+Where Ash shines however, is all of the tools that can operate on your resources. You have the ability to extend the framework yourself, and apply consistent design patterns that enable unparalleled efficiency, power and flexibility as your application grows.
 
 #### Clean up your code that uses Ash?
 
-Creating and using changesets can be verbose. Check out the {{link:ash:guide:Code Interface}} to derive things like `Helpdesk.Support.Ticket.assign!(representative.id)`
+Creating and using changesets manually can be verbose, and they all look very similar. Luckily, Ash has your back and can generate these for you using Code Interfaces!
+
+Check out the {{link:ash:guide:Code Interface}} to derive things like `Helpdesk.Support.Ticket.assign!(representative.id)`
 
 #### Persist your data
 
-See {{link:ash_postgres:guide:Get Started With Postgres:AshPostgres}} to see how to back your resources with postgres. This is highly recommended, as the postgres data layer provides tons of advanced capabilities.
+See {{link:ash_postgres:guide:Get Started With Postgres:AshPostgres}} to see how to back your resources with Postgres. This is highly recommended, as the Postgres data layer provides tons of advanced capabilities.
 
 #### Add an API
 
-Check out the AshJsonApi and AshGraphql extensions to effortlessly build APIs around your resources
+Check out the {{link:ash_json_api:library|AshJsonApi}} and {{link:ash_graphql:library|AshGraphql}} extensions to effortlessly build APIs around your resources
 
 #### Authorize access and work with users
 
