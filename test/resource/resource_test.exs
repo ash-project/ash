@@ -99,7 +99,7 @@ defmodule Ash.Test.Resource.ResourceTest do
           end
 
           calculations do
-            calculate :foobar, {Concat, keys: [:foo, :bar]} do
+            calculate :foobar, :integer, {Concat, keys: [:foo, :bar]} do
             end
           end
 

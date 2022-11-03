@@ -865,8 +865,27 @@ defmodule Ash.Type do
   end
 
   @doc false
-  def set_type_transformation(%{type: type, constraints: constraints} = thing) do
-    type = get_type(type)
+  def set_type_transformation(%{type: original_type, constraints: constraints} = thing) do
+    type = get_type(original_type)
+
+    ash_type? =
+      try do
+        Ash.Type.ash_type?(type)
+      rescue
+        _ ->
+          false
+      end
+
+    unless ash_type? do
+      raise """
+      #{inspect(original_type)} is not a valid type.
+
+      Valid types include any custom types, or the following short codes (alongside the types they map to):
+
+      #{Enum.map_join(@builtin_short_names, "\n", fn {name, type} -> "  #{inspect(name)} -> #{inspect(type)}" end)}
+
+      """
+    end
 
     case validate_constraints(type, constraints) do
       {:ok, constraints} ->
