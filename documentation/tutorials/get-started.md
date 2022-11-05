@@ -406,7 +406,7 @@ Helpdesk.Support.Ticket
 |> Helpdesk.Support.read!()
 ```
 
-The examples above could be easily implemented with `Enum.filter`, but the real power here is to allow you to use the same tools when working with any data layer. If you were using the {{link:ash_postgres:extension:AshPostgres.DataLayer}}, the above code would be exactly the same, except we wouldn't need the call to `set_data/2`.
+The examples above could be easily implemented with `Enum.filter`, but the real power here is to allow you to use the same tools when working with any data layer. If you were using the {{link:ash_postgres:extension:AshPostgres}}, the above code would be exactly the same, except we wouldn't need the call to `set_data/2`.
 
 Even though it doesn't persist data in any way, `Ash.DataLayer.Simple` can be useful to model static data, or be used for resources where all the actions are manual and inject data from other sources.
 
