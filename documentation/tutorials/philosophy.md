@@ -6,7 +6,7 @@ The philosophy behind Ash allows us to build an extremely flexible and powerful 
 
 "Anything, not Everything" means building a framework capable of doing anything, not providing a framework that already does everything. The first is possible, the second is not. Our primary goal is to provide a framework that _unlocks_ potential, and frees developers to work on the things that make their application special.
 
-To this end, there are many prebuilt extensions to use, but there is also a rich suite of tools to build your _own_ extensions. In this way, you can make the framework work for you, instead of struggling to fit your application to a strictly proscribed pattern. Use as much of Ash as you can, and leverage the amazing Elixir ecosystem for everything else.
+To this end, there are many prebuilt extensions to use, but there is also a rich suite of tools to build your _own_ extensions. In this way, you can make the framework work for you, instead of struggling to fit your application to a strictly prescribed pattern. Use as much of Ash as you can, and leverage the amazing Elixir ecosystem for everything else.
 
 <!---
 > long sentences
