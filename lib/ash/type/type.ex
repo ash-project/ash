@@ -328,7 +328,11 @@ defmodule Ash.Type do
   end
 
   def ecto_type(type) do
-    type.ecto_type()
+    if Ash.Resource.Info.resource?(type) do
+      Module.concat(type, EctoType)
+    else
+      type.ecto_type()
+    end
   end
 
   def ash_type_option(type) do
