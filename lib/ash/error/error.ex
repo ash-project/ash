@@ -78,6 +78,108 @@ defmodule Ash.Error do
     !!Ash.ErrorKind.impl_for(value)
   end
 
+  @doc """
+  Conforms a term into one of the built-in Ash [Error classes](handle-errors.html#error-classes).
+
+  The provided term would usually be an Ash Error or a list of Ash Errors.
+
+  If the term is:
+  - a map/struct/Ash Error with a key `:class` having a value `:special`,
+  - a list with a single map/struct/Ash Error element as above, or
+  - an `Ash.Error.Invalid` containing such a list in its `:errors` field
+
+  then the term is returned unchanged.
+
+  Example:
+  ```elixir
+
+  iex(1)> Ash.Error.to_error_class("oops", changeset: Ash.Changeset.new(%Post{}), error_context: "some context")
+    %Ash.Error.Unknown{
+      changeset: #Ash.Changeset<
+        errors: [
+          %Ash.Error.Unknown.UnknownError{
+            changeset: nil,
+            class: :unknown,
+            error: "oops",
+            error_context: ["some context"],
+            field: nil,
+            path: [],
+            query: nil,
+            stacktrace: #Stacktrace<>,
+            vars: []
+          }
+        ],
+        ...
+      >,
+      class: :unknown,
+      error_context: ["some context"],
+      errors: [
+        %Ash.Error.Unknown.UnknownError{
+          changeset: nil,
+          class: :unknown,
+          error: "oops",
+          error_context: ["some context"],
+          field: nil,
+          path: [],
+          query: nil,
+          stacktrace: #Stacktrace<>,
+          vars: []
+        }
+      ],
+      stacktrace: #Stacktrace<>,
+      stacktraces?: true,
+      vars: []
+    }
+
+  ```
+
+  Example of nested errors:
+  ```elixir
+    iex(1)> error1 = Ash.Error.to_ash_error("whoops!", nil, error_context: "some context")
+    iex(2)> error2 = Ash.Error.to_ash_error("whoops, again!!", nil, error_context: "some other context")
+    iex(3)> Ash.Error.to_error_class([error1, error2], error_context: "some higher context")
+    %Ash.Error.Unknown{
+      changeset: nil,
+      class: :unknown,
+      error_context: ["some higher context"],
+      errors: [
+        %Ash.Error.Unknown.UnknownError{
+          changeset: nil,
+          class: :unknown,
+          error: "whoops!",
+          error_context: ["some higher context", "some context"],
+          field: nil,
+          path: [],
+          query: nil,
+          stacktrace: #Stacktrace<>,
+          vars: []
+        },
+        %Ash.Error.Unknown.UnknownError{
+          changeset: nil,
+          class: :unknown,
+          error: "whoops, again!!",
+          error_context: ["some higher context", "some other context"],
+          field: nil,
+          path: [],
+          query: nil,
+          stacktrace: #Stacktrace<>,
+          vars: []
+        }
+      ],
+      path: [],
+      query: nil,
+      stacktrace: #Stacktrace<>,
+      stacktraces?: true,
+      vars: []
+    }
+
+  ```
+
+  Options:
+  - `changeset`: a changeset related to the error
+  - `query`: a query related to the error
+  - `error_context`: a sting message providing extra context around the error
+  """
   def to_error_class(values, opts \\ [])
 
   def to_error_class(%{class: :special} = special, _opts) do
@@ -112,6 +214,7 @@ defmodule Ash.Error do
           |> Enum.uniq()
 
         values
+        |> accumulate_error_context(opts[:error_context])
         |> choose_error(opts[:changeset] || opts[:query])
         |> add_error_context(opts[:error_context])
     end
@@ -127,6 +230,87 @@ defmodule Ash.Error do
     end
   end
 
+  @doc """
+  Converts a term into an Ash Error.
+
+  The term could be a simple string, the second element in an `{:error, error}` tuple, an Ash Error, or a list of any of these.
+  In most cases the returned error is an Ash.Error.Unknown.UnknownError.
+
+  A stacktrace is added to the error, and any existing stacktrace (i.e. when the term is an Ash Error) is preserved.
+
+  `to_ash_error` converts string(s) into UnknownError(s):
+  ```elixir
+    iex(1)> Ash.Error.to_ash_error("whoops!", nil, error_context: "some context")
+    %Ash.Error.Unknown.UnknownError{
+      changeset: nil,
+      class: :unknown,
+      error: "whoops!",
+      error_context: ["some context"],
+      field: nil,
+      path: [],
+      query: nil,
+      stacktrace: #Stacktrace<>,
+      vars: []
+    }
+
+    iex(2)> Ash.Error.to_ash_error(["whoops!", "whoops, again!!"], nil, error_context: "some context")
+    [
+      %Ash.Error.Unknown.UnknownError{
+        changeset: nil,
+        class: :unknown,
+        error: "whoops!",
+        error_context: ["some context"],
+        field: nil,
+        path: [],
+        query: nil,
+        stacktrace: #Stacktrace<>,
+        vars: []
+      },
+      %Ash.Error.Unknown.UnknownError{
+        changeset: nil,
+        class: :unknown,
+        error: "whoops, again!!",
+        error_context: ["some context"],
+        field: nil,
+        path: [],
+        query: nil,
+        stacktrace: #Stacktrace<>,
+        vars: []
+      }
+    ]
+  ```
+
+  `to_ash_error` can preserve error-like data from a keyword-list and accumulate context if called against an Ash Error:
+  ```elixir
+    iex(1)> err = Ash.Error.to_ash_error([vars: [:some_var], message: "whoops!"], nil, error_context: " some context")
+    %Ash.Error.Unknown.UnknownError{
+      changeset: nil,
+      class: :unknown,
+      error: "whoops!",
+      error_context: ["some context"],
+      field: nil,
+      path: [],
+      query: nil,
+      stacktrace: #Stacktrace<>,
+      vars: [:some_var]
+    }
+    iex(2)> Ash.Error.to_ash_error(err, nil, error_context: "some higher context")
+    %Ash.Error.Unknown.UnknownError{
+      changeset: nil,
+      class: :unknown,
+      error: "whoops!",
+      error_context: ["some higher context", "some context"],
+      field: nil,
+      path: [],
+      query: nil,
+      stacktrace: #Stacktrace<>,
+      vars: [:some_var]
+    }
+  ```
+
+  Options:
+  - `error_context`: a sting message providing extra context around the error
+  """
   def to_ash_error(list, stacktrace \\ nil, opts \\ [])
 
   def to_ash_error(list, stacktrace, opts) when is_list(list) do
@@ -194,9 +378,7 @@ defmodule Ash.Error do
   end
 
   defp add_error_context(error, error_context) when is_binary(error_context) do
-    error
-    |> Map.put(:error_context, [error_context])
-    |> accumulate_error_context(error_context)
+    %{error | error_context: [error_context | error.error_context]}
   end
 
   defp add_error_context(error, _) do
@@ -205,15 +387,19 @@ defmodule Ash.Error do
 
   defp accumulate_error_context(%{errors: [_ | _] = errors} = error, error_context)
        when is_binary(error_context) do
-    updated_errors =
-      errors
-      |> Enum.map(fn err ->
-        err
-        |> Map.put(:error_context, [error_context | err.error_context])
-        |> accumulate_error_context(error_context)
-      end)
+    updated_errors = accumulate_error_context(errors, error_context)
 
     %{error | errors: updated_errors}
+  end
+
+  defp accumulate_error_context(errors, error_context)
+       when is_list(errors) and is_binary(error_context) do
+    errors
+    |> Enum.map(fn err ->
+      err
+      |> add_error_context(error_context)
+      |> accumulate_error_context(error_context)
+    end)
   end
 
   defp accumulate_error_context(error, _) do

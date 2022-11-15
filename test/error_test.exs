@@ -7,6 +7,18 @@ defmodule Ash.Test.ErrorTest do
     def_ash_error([:some_field])
   end
 
+  defmodule TestResource do
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+    actions do
+      defaults [:create, :read, :update, :destroy]
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+  end
+
   describe "to_error_class" do
     test "returns exception if it is a map/struct with class: :special" do
       assert Ash.Error.to_error_class(%{class: :special}, []) == %{class: :special}
@@ -135,6 +147,41 @@ defmodule Ash.Test.ErrorTest do
       error_message = Ash.Error.Unknown.message(error_class)
 
       assert error_message =~ "Unknown Error\n\n* whoops!"
+    end
+
+    test "has a context field populated in changeset" do
+      test_error = TestError.exception([])
+
+      cs = Ash.Changeset.for_create(TestResource, :create)
+
+      err = Ash.Error.to_error_class(test_error, changeset: cs, error_context: "some context")
+
+      assert err.error_context == ["some context"]
+
+      [cs_error] = err.changeset.errors
+      assert cs_error.error_context == ["some context"]
+    end
+
+    test "accumulates error_context field in changeset's copy of error hierarchy" do
+      error1 = Ash.Error.to_ash_error("whoops!", nil, error_context: "some context")
+      error2 = Ash.Error.to_ash_error("whoops, again!!", nil, error_context: "some other context")
+
+      cs = Ash.Changeset.for_create(TestResource, :create)
+
+      error_class =
+        Ash.Error.to_error_class([error1, error2],
+          changeset: cs,
+          error_context: "some higher context"
+        )
+
+      cs_child_error_1 =
+        Enum.find(error_class.changeset.errors, fn err -> err.error == "whoops!" end)
+
+      cs_child_error_2 =
+        Enum.find(error_class.changeset.errors, fn err -> err.error == "whoops, again!!" end)
+
+      assert cs_child_error_1.error_context == ["some higher context", "some context"]
+      assert cs_child_error_2.error_context == ["some higher context", "some other context"]
     end
   end
 
