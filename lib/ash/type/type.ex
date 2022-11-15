@@ -347,11 +347,11 @@ defmodule Ash.Type do
 
   def ash_type?(module) when is_atom(module) do
     case Code.ensure_compiled(module) do
-      {:module, _} ->
-        ash_type_module?(module)
+      {:module, module} ->
+        Ash.Resource.Info.resource?(module) || ash_type_module?(module)
 
       _ ->
-        false
+        Ash.Resource.Info.resource?(module)
     end
   end
 
