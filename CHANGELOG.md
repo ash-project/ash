@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.3](https://github.com/ash-project/ash/compare/v2.4.2...v2.4.3) (2022-11-15)
+
+
+
+
+### Bug Fixes:
+
+* don't incur compile time dependency for resources used as types
+
+* allow for not-yet-compiled resources as Ash types
+
+* properly raise error on invalid type.
+
+### Improvements:
+
+* optimize sat solving
+
 ## [v2.4.2](https://github.com/ash-project/ash/compare/v2.4.1...v2.4.2) (2022-11-03)
 
 
