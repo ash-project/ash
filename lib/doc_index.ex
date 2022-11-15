@@ -4,7 +4,14 @@ defmodule Ash.DocIndex do
   use Spark.DocIndex,
     guides_from: [
       "documentation/**/*.md"
-    ]
+    ],
+    guide_order: %{
+      "Tutorials" => [
+        "get-started.md",
+        "philosophy.md",
+        "why-ash.md"
+      ]
+    }
 
   @impl true
   @spec for_library() :: String.t()
