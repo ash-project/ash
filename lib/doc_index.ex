@@ -167,7 +167,8 @@ defmodule Ash.DocIndex do
          Ash.Filter.Simple,
          Ash.Filter.Simple.Not,
          Ash.OptionsHelpers,
-         Ash.Resource.Builder
+         Ash.Resource.Builder,
+         Ash.Tracer
        ]},
       {"Testing",
        [
