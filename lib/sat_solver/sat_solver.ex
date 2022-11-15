@@ -85,6 +85,7 @@ defmodule Ash.SatSolver do
 
       {:ok, _scenario} ->
         expr = BooleanExpression.new(:and, Not.new(filter.expression), candidate.expression)
+        Application.put_env(:foo, :bar, true)
 
         case transform_and_solve(
                filter.resource,
@@ -125,6 +126,8 @@ defmodule Ash.SatSolver do
   def transform_and_solve(resource, expression) do
     resource
     |> transform(expression)
+    |> to_cnf()
+    |> elem(0)
     |> solve_expression()
   end
 
@@ -732,7 +735,7 @@ defmodule Ash.SatSolver do
 
   defp simplify(other), do: other
 
-  def solve_expression(expression) do
+  def to_cnf(expression) do
     expression_with_constants = b(true and not false and expression)
 
     {bindings, expression} = extract_bindings(expression_with_constants)
@@ -741,23 +744,201 @@ defmodule Ash.SatSolver do
     |> to_conjunctive_normal_form()
     |> lift_clauses()
     |> negations_to_negative_numbers()
-    |> Enum.uniq()
-    |> Picosat.solve()
-    |> solutions_to_predicate_values(bindings)
+    |> Enum.map(fn scenario ->
+      Enum.sort_by(scenario, fn item ->
+        {abs(item), item}
+      end)
+    end)
+    |> group_predicates(bindings)
+    |> rebind()
   end
 
-  defp solutions_to_predicate_values({:ok, solution}, bindings) do
-    scenario =
-      Enum.reduce(solution, %{true: [], false: []}, fn var, state ->
-        fact = Map.get(bindings, abs(var))
+  defp group_predicates(expression, bindings) do
+    case expression do
+      [_] ->
+        {expression, bindings}
 
-        Map.put(state, fact, var > 0)
+      scenarios ->
+        Enum.reduce(scenarios, {[], bindings}, fn scenario, {new_scenarios, bindings} ->
+          {scenario, bindings} = group_scenario_predicates(scenario, scenarios, bindings)
+          {[scenario | new_scenarios], bindings}
+        end)
+    end
+  end
+
+  defp group_scenario_predicates(scenario, all_scenarios, bindings) do
+    scenario
+    |> Ash.SatSolver.Utils.ordered_sublists()
+    |> Enum.filter(&can_be_used_as_group?(&1, all_scenarios, bindings))
+    |> Enum.sort_by(&(-length(&1)))
+    |> Enum.reduce({scenario, bindings}, fn group, {scenario, bindings} ->
+      bindings = add_group_binding(bindings, group)
+
+      {Ash.SatSolver.Utils.replace_ordered_sublist(scenario, group, bindings[:groups][group]),
+       bindings}
+    end)
+  end
+
+  def unbind(expression, %{temp_bindings: temp_bindings, old_bindings: old_bindings}) do
+    expression =
+      Enum.flat_map(expression, fn statement ->
+        Enum.flat_map(statement, fn var ->
+          neg? = var < 0
+          old_binding = temp_bindings[abs(var)]
+
+          case old_bindings[:reverse_groups][old_binding] do
+            nil ->
+              if neg? do
+                [-old_binding]
+              else
+                [old_binding]
+              end
+
+            group ->
+              if neg? do
+                Enum.map(group, &(-&1))
+              else
+                [{:expand, group}]
+              end
+          end
+        end)
+        |> expand_groups()
       end)
 
-    {:ok, scenario}
+    {expression, old_bindings}
   end
 
-  defp solutions_to_predicate_values({:error, error}, _), do: {:error, error}
+  def expand_groups(expression) do
+    if Enum.any?(expression, &match?({:expand, _}, &1)) do
+      do_expand_groups(expression)
+    else
+      [expression]
+    end
+  end
+
+  defp do_expand_groups([]), do: [[]]
+
+  defp do_expand_groups([{:expand, group} | rest]) do
+    Enum.flat_map(group, fn var ->
+      Enum.map(do_expand_groups(rest), fn future ->
+        [var | future]
+      end)
+    end)
+  end
+
+  defp do_expand_groups([var | rest]) do
+    Enum.map(do_expand_groups(rest), fn future ->
+      [var | future]
+    end)
+  end
+
+  defp rebind({expression, bindings}) do
+    {expression, temp_bindings} =
+      Enum.reduce(expression, {[], %{current: 0}}, fn statement, {statements, acc} ->
+        {statement, acc} =
+          Enum.reduce(statement, {[], acc}, fn var, {statement, acc} ->
+            case acc[:reverse][abs(var)] do
+              nil ->
+                binding = acc.current + 1
+
+                value =
+                  if var < 0 do
+                    -binding
+                  else
+                    binding
+                  end
+
+                {[value | statement],
+                 acc
+                 |> Map.put(:current, binding)
+                 |> Map.update(:reverse, %{abs(var) => binding}, &Map.put(&1, abs(var), binding))
+                 |> Map.put(binding, abs(var))}
+
+              value ->
+                value =
+                  if var < 0 do
+                    -value
+                  else
+                    value
+                  end
+
+                {[value | statement], acc}
+            end
+          end)
+
+        {[Enum.reverse(statement) | statements], acc}
+      end)
+
+    bindings_with_old_bindings = %{temp_bindings: temp_bindings, old_bindings: bindings}
+
+    {expression, bindings_with_old_bindings}
+  end
+
+  def can_be_used_as_group?(group, scenarios, bindings) do
+    Map.has_key?(bindings[:groups] || %{}, group) ||
+      Enum.all?(scenarios, fn scenario ->
+        has_no_overlap?(scenario, group) || group_in_scenario?(scenario, group)
+      end)
+  end
+
+  defp has_no_overlap?(scenario, group) do
+    not Enum.any?(group, fn group_predicate ->
+      Enum.any?(scenario, fn scenario_predicate ->
+        abs(group_predicate) == abs(scenario_predicate)
+      end)
+    end)
+  end
+
+  defp group_in_scenario?(scenario, group) do
+    Ash.SatSolver.Utils.is_ordered_sublist_of?(group, scenario)
+  end
+
+  defp add_group_binding(bindings, group) do
+    if bindings[:groups][group] do
+      bindings
+    else
+      new_binding = bindings[:current] + 1
+
+      bindings
+      |> Map.put(:current, new_binding)
+      |> Map.put_new(:reverse_groups, %{})
+      |> Map.update!(:reverse_groups, &Map.put(&1, new_binding, group))
+      |> Map.put_new(:groups, %{})
+      |> Map.update!(:groups, &Map.put(&1, group, new_binding))
+    end
+  end
+
+  def solve_expression(cnf) do
+    Picosat.solve(cnf)
+  end
+
+  def contains?([], _), do: false
+
+  def contains?([_ | t] = l1, l2) do
+    List.starts_with?(l1, l2) or contains?(t, l2)
+  end
+
+  def solutions_to_predicate_values(solution, bindings) do
+    Enum.reduce(solution, %{true: [], false: []}, fn var, state ->
+      fact = Map.get(bindings, abs(var))
+
+      if is_nil(fact) do
+        raise Ash.Error.Framework.AssumptionFailed.exception(
+                message: """
+                A fact from the sat solver had no corresponding bound fact:
+
+                Bindings:
+                  #{inspect(bindings)}
+
+                Missing:
+                  #{inspect(var)}
+                """
+              )
+      end
+
+      Map.put(state, fact, var > 0)
+    end)
+  end
 
   defp extract_bindings(expr, bindings \\ %{current: 1})
 

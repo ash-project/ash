@@ -222,6 +222,7 @@ defmodule Ash.MixProject do
       {:ecto, "~> 3.7"},
       {:ets, "~> 0.8.0"},
       {:decimal, "~> 2.0"},
+      # {:picosat_elixir, path: "../picosat_elixir"},
       {:picosat_elixir, "~> 0.2"},
       {:nimble_options, "~> 0.4.0"},
       {:comparable, "~> 1.0"},
@@ -238,8 +239,8 @@ defmodule Ash.MixProject do
       {:git_ops, "~> 2.5", only: :dev},
       {:mix_test_watch, "~> 1.0", only: :dev, runtime: false},
       {:parse_trans, "3.3.0", only: [:dev, :test], override: true},
-      {:elixir_sense, github: "elixir-lsp/elixir_sense", only: [:dev, :test, :docs]},
-      {:plug, ">= 0.0.0", only: [:dev, :test], runtime: false}
+      {:plug, ">= 0.0.0", only: [:dev, :test], runtime: false},
+      {:benchee, "~> 1.1", only: [:dev, :test]}
     ]
   end
 
