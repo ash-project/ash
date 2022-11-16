@@ -849,4 +849,14 @@ defmodule Ash.Test.Filter.FilterTest do
                |> Api.read!()
     end
   end
+
+  describe "invalid syntax errors" do
+    test "using tuple instead of keyword list" do
+      assert_raise "TBD", fn ->
+        Post
+        |> Ash.Query.filter(id: {:in, [Ash.UUID.generate()]})
+        |> Api.read!()
+      end
+    end
+  end
 end
