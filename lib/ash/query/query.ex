@@ -283,31 +283,35 @@ defmodule Ash.Query do
       Ash.Tracer.span :query,
                       name,
                       opts[:tracer] do
-        metadata = %{
-          resource_short_name: Ash.Resource.Info.short_name(query.resource),
-          resource: query.resource,
-          actor: opts[:actor],
-          tenant: opts[:tenant],
-          action: action.name,
-          authorize?: opts[:authorize?]
-        }
+        Ash.Tracer.telemetry_span [:ash, :query], %{
+          resource_short_name: Ash.Resource.Info.short_name(query.resource)
+        } do
+          metadata = %{
+            resource_short_name: Ash.Resource.Info.short_name(query.resource),
+            resource: query.resource,
+            actor: opts[:actor],
+            tenant: opts[:tenant],
+            action: action.name,
+            authorize?: opts[:authorize?]
+          }
 
-        Ash.Tracer.set_metadata(opts[:tracer], :query, metadata)
+          Ash.Tracer.set_metadata(opts[:tracer], :query, metadata)
 
-        query
-        |> Map.put(:action, action)
-        |> reset_arguments()
-        |> timeout(query.timeout || opts[:timeout])
-        |> set_actor(opts)
-        |> set_authorize?(opts)
-        |> set_tracer(opts)
-        |> Ash.Query.set_tenant(opts[:tenant] || query.tenant)
-        |> Map.put(:__validated_for_action__, action_name)
-        |> cast_params(action, args)
-        |> set_argument_defaults(action)
-        |> require_arguments(action)
-        |> run_preparations(action, opts[:actor], opts[:authorize?], opts[:tracer], metadata)
-        |> add_action_filters(action, opts[:actor])
+          query
+          |> Map.put(:action, action)
+          |> reset_arguments()
+          |> timeout(query.timeout || opts[:timeout])
+          |> set_actor(opts)
+          |> set_authorize?(opts)
+          |> set_tracer(opts)
+          |> Ash.Query.set_tenant(opts[:tenant] || query.tenant)
+          |> Map.put(:__validated_for_action__, action_name)
+          |> cast_params(action, args)
+          |> set_argument_defaults(action)
+          |> require_arguments(action)
+          |> run_preparations(action, opts[:actor], opts[:authorize?], opts[:tracer], metadata)
+          |> add_action_filters(action, opts[:actor])
+        end
       end
     else
       add_error(query, :action, "No such action #{action_name}")
