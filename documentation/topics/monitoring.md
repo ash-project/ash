@@ -16,7 +16,6 @@ Ash emits the following telemetry events, suffixed with `:start` and `:stop`. St
 - `[:ash, :change]` - A change being run on a changeset. Use `resource_short_name` and `change` metadata to break down measurements.
 - `[:ash, :before_action]` - A before_action being run on a changeset. Use `resource_short_name` to break down measurements. 
 - `[:ash, :after_action]` - An after_action being run on a changeset. Use `resource_short_name` to break down measurements.
-- `[:ash, :after_action]` - A before_action being run on a changeset.
 - `[:ash, :preparation]` - A preparation being run on a changeset. Use `resource_short_name` and `preparation` metadata to break down measurements.
 - `[:ash, :request_step]` - The resolution of an internal request. Ash breaks up its operations internally into multiple requests, this can give you a high resolution insight onto the execution of those internal requests resolution. Use `name` metadata to break down measurements.
 - `[:ash, :flow]` - The execution of an Ash flow. Use `flow_short_name` to break down measurements.
