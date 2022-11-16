@@ -2011,7 +2011,7 @@ defmodule Ash.Filter do
   end
 
   defp add_expression_part({:fragment, _}, _context, _expression) do
-    raise "Cannot use fragment outside of expressionsyntax"
+    raise "Cannot use fragment outside of expression syntax"
   end
 
   defp add_expression_part({function, args}, context, expression)
@@ -2020,11 +2020,7 @@ defmodule Ash.Filter do
       nil ->
         case calculation(context, function) do
           nil ->
-            {:error,
-             NoSuchAttributeOrRelationship.exception(
-               attribute_or_relationship: function,
-               resource: context.resource
-             )}
+            add_expression_part({function, [args]}, context, expression)
 
           resource_calculation ->
             {module, opts} = resource_calculation.calculation
