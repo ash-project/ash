@@ -87,7 +87,14 @@ defmodule Mix.Tasks.Ash.GenerateFlowCharts do
 
   defp modules do
     Mix.Project.config()[:app]
-    |> Application.get_env(:modules, [])
+    |> :application.get_key(:modules)
+    |> case do
+      {:ok, mods} when is_list(mods) ->
+        mods
+
+      _ ->
+        []
+    end
   end
 
   defp flows do
