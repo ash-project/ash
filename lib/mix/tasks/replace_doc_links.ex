@@ -17,12 +17,14 @@ defmodule Mix.Tasks.Ash.ReplaceDocLinks do
         |> Spark.DocIndex.render_replacements(fn
           :mix_dep, %{library: ^current_project}, _context ->
             case Version.parse(Mix.Project.config()[:version]) do
-              {:ok, %Version{pre: pre, build: build} = version}
-              when not pre == [] or not is_nil(build) ->
-                ~s({:#{current_project}, "~> #{version}"})
+              {:ok, %Version{pre: pre, build: build}} when pre != [] or not is_nil(build) ->
+                ~s({:#{current_project}, "~> #{Mix.Project.config()[:version]}"})
 
               {:ok, %Version{major: major, minor: minor}} ->
                 ~s({:#{current_project}, "~> #{major}.#{minor}"})
+
+              _ ->
+                ~s({:#{current_project}, "~> x.y.z"})
             end
 
           :mix_dep, %{library: library}, _context ->
