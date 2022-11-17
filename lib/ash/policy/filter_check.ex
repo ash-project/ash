@@ -39,6 +39,10 @@ defmodule Ash.Policy.FilterCheck do
 
       def type, do: :filter
 
+      def describe(opts) do
+        inspect(filter(opts))
+      end
+
       def strict_check_context(opts) do
         []
       end
@@ -211,7 +215,7 @@ defmodule Ash.Policy.FilterCheck do
         end
       end
 
-      defoverridable reject: 1
+      defoverridable reject: 1, describe: 1
     end
   end
 

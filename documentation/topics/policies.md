@@ -2,10 +2,16 @@
 
 Policies determine what actions on a resource are permitted for a given actor.
 
-You can specify an actor using the code api via the `actor` option, like so:
+You can specify an actor using the `actor` option, whenever using the code interface or creating changesets/queries like so:
 
 ```elixir
 MyApp.MyApi.read(MyResource, actor: current_user)
+
+MyResource 
+|> Ash.Query.for_read(:read, %{}, actor: current_user)
+
+MyResource 
+|> Ash.Changeset.for_create(:create, %{}, actor: current_user)
 ```
 
 ## Important!
@@ -17,11 +23,14 @@ depending on the details of the request being authorized.
 
 ## Guide
 
-To see what checks are built-in, see `Ash.Policy.Check.Builtins`
+You'll need to add the extension to your resource, like so:
 
-### Basics
+```elixir
+use Ash.Resource,
+  authorizers: [Ash.Policy.Authorizer]
+```
 
-#### Policy
+### Policy
 
 Every policy that applies must pass for a given request.
 For example, a policy might have a condition `action_type(:read)` and another one might
@@ -30,28 +39,10 @@ If both apply (i.e an admin is using a read action), then both policies must pas
 A policy can produce one of three results: `:forbidden`, `:authorized`, or `:unknown`. `:unknown` is treated the same as a `:forbidden`.
 A policy contains checks, which determine whether or not the policy passes for a given request.
 
-#### Bypass
+### Bypass
 
-A bypass policy is just like a policy, except if a bypass passes, then other policies after it do _not_ need to pass.
+A bypass policy is just like a policy, except if a bypass passes, then other policies after it _do not need to pass_.
 This can be useful for writing complex access rules, or for a simple rule like "an admin can do anything".
-
-#### Check
-
-Checks, like policies, evaluate from top to bottom. A check can produce one of three results, the same that a policy can produce.
-While checks are not necessarily evaluated in order, they _logically apply_ in that order, so you may as well think of it in that way. 
-It can be thought of as a simple step-through algorithm.
-
-For each check, starting from the top:
-
-- Run the check.
-  - If it returns `:authorized`, the policy is `:authorized`
-  - If it returns `:forbidden`, the policy is `:forbidden`
-  - If it returns `:unknown`, the next check down is checked
-
-#### Filter checks
-
-Most checks won't return a status, but instead return a "filter". Filter checks are applied to the query that is being run, and then the
-rest of the checks are run. In general, all checks should be filter checks or simple checks.
 
 ### The Simplest Policy
 
@@ -79,6 +70,33 @@ There are four check types, all of which do what they sound like they do:
 
 In each case, if the policy is not authorized or forbidden, the flow moves to the next check.
 
+## IMPORTANT! How a decision is reached
+
+_Not every check must pass!_ This is described above, but is very important so another example is provided here. Checks go from top to bottom, and *the first one that reaches a decision* determines the *policy result*. For example:
+
+```elixir
+policy action_type(:create) do
+  authorize_if IsSuperUser 
+  forbid_if Deactivated
+  authorize_if IsAdminUser
+  forbid_if RegularUserCanCreate
+  authorize_if RegularUserAuthorized
+end
+```
+
+We check those from top to bottom, so the first one of those that returns `:authorized` or `:forbidden` determines the entire outcome. For example:
+
+```elixir
+authorize_if IsSuperUser # if this is true
+
+# None of the rest of them matter matter
+forbid_if Deactivated 
+authorize_if IsAdminUser
+forbid_if RegularUserCanCreate
+authorize_if RegularUserAuthorized
+```
+
+
 ### A realistic policy
 
 In this example, we use some of the provided built in checks.
@@ -95,17 +113,82 @@ policies do
 
   # This will likely be a common occurrence. Specifically, policies that apply to all read actions
   policy action_type(:read) do
-    # unless the actor is an active user, forbid their request
+    # unless the actor is an active user, forbid
     forbid_unless actor_attribute_equals(:active, true)
-    # if the record is marked as public, authorize the request
+    # if the record is marked as public, authorize
     authorize_if attribute(:public, true)
-    # if the actor is related to the data via that data's `owner` relationship, authorize the request
+    # if the actor is related to the data via that data's `owner` relationship, authorize
     authorize_if relates_to_actor_via(:owner)
   end
 end
 ```
 
-### Expression Policies
+### Check
+
+Checks, like policies, evaluate from top to bottom. A check can produce one of three results, the same that a policy can produce.
+While checks are not necessarily evaluated in order, they _logically apply_ in that order, so you may as well think of it in that way. 
+It can be thought of as a simple step-through algorithm.
+
+For each check, starting from the top:
+
+- Run the check.
+  - If it returns `:authorized`, the policy is `:authorized`
+  - If it returns `:forbidden`, the policy is `:forbidden`
+  - If it returns `:unknown`, the next check down is checked
+
+#### Builtin Checks
+
+To see what checks are built-in, see `Ash.Policy.Check.Builtins`
+
+#### Custom Checks
+
+There are three types of checks. `:simple`, `:filter` and `:manual`. Generally speaking, you will almost always want to write either `:simple` or `:filter` checks. They are both a subset of a `:manual` checks. To implement a manual check, create a module that adopts the `Ash.Policy.Check` behaviour. Simple and Filter checks are documented below.
+
+##### Simple Checks
+
+Simple checks are determined at the outset of a request, and can only cause a request to be authorized or unauthorized. See Filter Checks below for more information on writing checks that can be applied as filters.
+
+```elixir
+defmodule MyApp.Checks.ActorIsOldEnough do
+  use Ash.Policy.SimpleCheck
+
+  def describe(_) do
+    "actor is old enough"
+  end
+
+  # The context here has the changeset, query, resource, and api.
+  # match? just needs to return true or false, i.e "is the actor old enough"
+  def match?(%MyApp.User{age: age}, %{resource: MyApp.Beer}, _) do
+    age >= 21
+  end
+
+  def match?(_, _, _), do: true
+end
+```
+
+##### Filter Checks
+
+Many checks won't return a status, but instead return a "filter".
+Filter checks can be used in policies that may be applied to read, update, and destroy actions. For update and destroy, they apply to the data *before* the action is run. For reads, they will automatically restrict the returned data to be compliant with the filter. Expression checks, explained in more detail below, are really just Filter Checks.
+
+```elixir
+defmodule MyApp.Checks.ActorOverAgeLimit do
+  use Ash.Policy.FilterCheck
+
+  require Ash.Query
+  import Ash.Filter.TemplateHelpers, only: [actor: 1]
+
+  # A description is not necessary, as it will be derived from the filter, but one could be added
+  # def describe(_opts), do: "Actor is over the age limit"
+
+  # filter checks don't have the `context` available to them
+  def filter(_options) do
+    Ash.Query.expr(age_limit <= ^actor(:age))
+  end
+end
+```
+
+##### Expression Checks
 
 A simple way to define a policy is by using `expr/1` in the policy. For example:
 
@@ -115,7 +198,15 @@ authorize_if expr(exists(role, name == "owner"))
 
 Keep in mind that, for create actions, many `expr/1` checks won't make sense, and may return `false` when you wouldn't expect. Expression (and other filter) policies apply to "a synthesized result" of applying the action, so related values won't be available. For this reason, you may end up wanting to use other checks that are built for working against changesets, or only simple attribute-based filter checks. Custom checks may also be warranted here.
 
-#### Using exists
+###### Referencing the actor
+
+In expression policies, the `actor` template can be used (other templates that may work in filter expressions, for example, are not available). For example:
+
+```elixir
+authorize_if expr(author.id == ^actor(:id))
+```
+
+###### Using exists
 
 Lets compare the following expressions: 
 
@@ -157,14 +248,6 @@ Resource
 |> Ash.Query.filter(exists(friends, last_name == "dansen"))
 ```
 
-#### How expressions are used
-
-Depending on the action type these expressions behave slightly differently.
-
-- In reads, the expression will be applied to the query.
-- For creates, the expression applies to the result of *applying* the changes. In these cases, you can't use things like `fragment` because nothing exists in the database.
-- For updates and destroys, the expression applies to the data *about* to be updated or destroyed, i.e the data before the action is run
-
 ### Access Type
 
 The default access type is `:filter`. In most cases this will be all you need. In the example above, if a user made a request for all instances
@@ -178,10 +261,6 @@ public or owner == ^actor(:_primary_key)
 To understand what `actor(:_primary_key)` means, see the Filter Templates section in `Ash.Filter`
 
 Additionally, some checks have more expensive components that can't be checked before the request is run. To enable those, use the `access_type :runtime`. All checks that can be implemented as filters or strict checks will still be done that way, but this enables checks to run their `check/4` callback if necessary.
-
-### Custom checks
-
-See `Ash.Policy.Check` for more information on writing custom checks, which you will likely need at some point when the built in checks are insufficient
 
 ## Policy Breakdowns
 

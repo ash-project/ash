@@ -36,7 +36,7 @@ Additionally, one can be provide when creating changesets or calling an api, i.e
 ```elixir
 Resource
 # better to put it here, as changesets are traced as well. It will be carried over to the api action
-|> Ash.Changeset.for_create(:create, %{}, tracer: MyApp.Tracer)**** 
+|> Ash.Changeset.for_create(:create, %{}, tracer: MyApp.Tracer)
 # but you can also pass it here.
 |> Api.create!(tracer: MyApp.Tracer)
 ```
