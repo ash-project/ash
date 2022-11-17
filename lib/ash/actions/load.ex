@@ -230,7 +230,11 @@ defmodule Ash.Actions.Load do
 
   defp attach_to_one_loads(value, %{name: name, no_attributes?: true}, data, lead_path) do
     map_or_update(data, lead_path, fn record ->
-      Map.put(record, name, value |> List.wrap() |> Enum.at(0))
+      if is_map(data) do
+        Map.put(record, name, value |> List.wrap() |> Enum.at(0) |> elem(1))
+      else
+        Map.put(record, name, value |> List.wrap() |> Enum.at(0))
+      end
     end)
   end
 
@@ -248,7 +252,7 @@ defmodule Ash.Actions.Load do
 
     map_or_update(data, lead_path, fn record ->
       related =
-        Enum.filter(value, fn {key, _value} ->
+        Enum.find_value(value, fn {key, value} ->
           key =
             if is_map(key) || !single_primary_key do
               key
@@ -257,10 +261,16 @@ defmodule Ash.Actions.Load do
             end
 
           if last_relationship.source.primary_key_matches?(record, key) do
-            value
+            {:ok, value}
           end
         end)
-        |> List.wrap()
+        |> case do
+          {:ok, value} ->
+            value
+
+          _ ->
+            nil
+        end
 
       Map.put(
         record,

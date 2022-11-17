@@ -12,6 +12,12 @@ defmodule Mix.Tasks.Ash.GenerateResourceDiagrams do
 
     * `--type` - `er` or `class` (defaults to `class`)
     * `--only` - only generates the given API file
+    * `--format` - Can be set to one of either:
+      * `plain` - Prints just the mermaid output as text. This is the default.
+      * `md` - Prints the mermaid diagram in a markdown code block.
+      * `svg` - Generates an SVG
+      * `pdf` - Generates a PDF
+      * `png` - Generates a PNG
 
   """
   use Mix.Task
@@ -22,14 +28,16 @@ defmodule Mix.Tasks.Ash.GenerateResourceDiagrams do
 
     {opts, _} =
       OptionParser.parse!(argv,
-        strict: [only: :keep, type: :string],
-        aliases: [o: :only, t: :type]
+        strict: [only: :keep, type: :string, format: :string],
+        aliases: [o: :only, t: :type, f: :format]
       )
 
     only =
       if opts[:only] && opts[:only] != [] do
         Enum.map(List.wrap(opts[:only]), &Path.expand/1)
       end
+
+    format = Keyword.get(opts, :format, "plain")
 
     apis()
     |> Task.async_stream(
@@ -39,18 +47,22 @@ defmodule Mix.Tasks.Ash.GenerateResourceDiagrams do
         if is_nil(only) || Path.expand(source) in only do
           case Keyword.get(opts, :type, "class") do
             "er" ->
-              source
-              |> Mix.Mermaid.file("mermaid-er-diagram", "pdf")
-              |> Mix.Mermaid.create_diagram(Ash.Api.Info.Diagram.mermaid_er_diagram(api))
-
-              Mix.shell().info("Generated ER Diagram for #{inspect(api)}")
+              Mix.Mermaid.generate_diagram(
+                source,
+                "mermaid-er-diagram",
+                format,
+                Ash.Api.Info.Diagram.mermaid_er_diagram(api),
+                "Generated ER Diagram for #{inspect(api)}"
+              )
 
             "class" ->
-              source
-              |> Mix.Mermaid.file("mermaid-class-diagram", "pdf")
-              |> Mix.Mermaid.create_diagram(Ash.Api.Info.Diagram.mermaid_class_diagram(api))
-
-              Mix.shell().info("Generated Class Diagram for #{inspect(api)}")
+              Mix.Mermaid.generate_diagram(
+                source,
+                "mermaid-class-diagram",
+                format,
+                Ash.Api.Info.Diagram.mermaid_class_diagram(api),
+                "Generated Class Diagram for #{inspect(api)}"
+              )
 
             type ->
               Mix.shell().error("""

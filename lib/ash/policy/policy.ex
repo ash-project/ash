@@ -14,10 +14,21 @@ defmodule Ash.Policy.Policy do
 
   @type t :: %__MODULE__{}
 
+  @static_checks [
+    {Ash.Policy.Check.Static, [result: true]},
+    {Ash.Policy.Check.Static, [result: false]},
+    true,
+    false
+  ]
+
   def solve(authorizer) do
     authorizer.policies
     |> build_requirements_expression(authorizer.facts)
-    |> Ash.Policy.SatSolver.solve()
+    |> Ash.Policy.SatSolver.solve(fn scenario, bindings ->
+      scenario
+      |> Ash.SatSolver.solutions_to_predicate_values(bindings)
+      |> Map.drop(@static_checks)
+    end)
   end
 
   defp build_requirements_expression(policies, facts) do

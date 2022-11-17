@@ -4,11 +4,16 @@ defmodule Ash.Policy.SimpleCheck do
 
   Define `c:match?/3`, which gets the actor, request context, and opts, and returns true or false
   """
-  @type authorizer :: Ash.Policy.Authorizer.t()
+  @type context :: %{
+          optional(:query) => Ash.Query.t(),
+          optional(:changeset) => Ash.Query.t(),
+          :resource => Ash.Resource.t(),
+          :api => Ash.Api.t()
+        }
   @type options :: Keyword.t()
 
   @doc "Whether or not the request matches the check"
-  @callback match?(struct(), authorizer(), options) :: boolean
+  @callback match?(actor :: struct(), context(), options) :: boolean
 
   defmacro __using__(_) do
     quote do

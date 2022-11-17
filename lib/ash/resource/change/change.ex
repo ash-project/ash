@@ -39,7 +39,9 @@ defmodule Ash.Resource.Change do
         links: []
       ],
       change: [
-        type: {:spark_behaviour, Ash.Resource.Change, Ash.Resource.Change.Builtins},
+        type:
+          {:spark_function_behaviour, Ash.Resource.Change, Ash.Resource.Change.Builtins,
+           {Ash.Resource.Change.Function, 2}},
         links: [
           modules: [
             "ash:module:Ash.Resource.Change.Builtins"
@@ -47,12 +49,15 @@ defmodule Ash.Resource.Change do
         ],
         doc: """
         The module and options for a change.
+        Also accepts a function that takes the changeset and the context.
         """,
         required: true
       ],
       where: [
         type:
-          {:list, {:spark_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins}},
+          {:list,
+           {:spark_function_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins,
+            {Ash.Resource.Validation.Function, 1}}},
         required: false,
         links: [
           modules: [
@@ -63,6 +68,7 @@ defmodule Ash.Resource.Change do
         doc: """
         Validations that should pass in order for this validation to apply.
         These validations failing will not invalidate the changes, but instead just result in this change being ignored.
+        Also accepts functions take the changeset.
         """
       ]
     ]

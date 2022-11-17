@@ -283,32 +283,35 @@ defmodule Ash.Query do
       Ash.Tracer.span :query,
                       name,
                       opts[:tracer] do
-        metadata = %{
-          resource_short_name: Ash.Resource.Info.short_name(query.resource),
-          resource: query.resource,
-          actor: opts[:actor],
-          tenant: opts[:tenant],
-          action: action.name,
-          authorize?: opts[:authorize?]
-        }
+        Ash.Tracer.telemetry_span [:ash, :query], %{
+          resource_short_name: Ash.Resource.Info.short_name(query.resource)
+        } do
+          metadata = %{
+            resource_short_name: Ash.Resource.Info.short_name(query.resource),
+            resource: query.resource,
+            actor: opts[:actor],
+            tenant: opts[:tenant],
+            action: action.name,
+            authorize?: opts[:authorize?]
+          }
 
-        Ash.Tracer.set_metadata(opts[:tracer], :query, metadata)
+          Ash.Tracer.set_metadata(opts[:tracer], :query, metadata)
 
-        query = Map.put(query, :action, action.name)
-
-        query
-        |> timeout(query.timeout || opts[:timeout])
-        |> set_actor(opts)
-        |> set_authorize?(opts)
-        |> set_tracer(opts)
-        |> Ash.Query.set_tenant(opts[:tenant] || query.tenant)
-        |> Map.put(:action, action)
-        |> Map.put(:__validated_for_action__, action_name)
-        |> cast_params(action, args)
-        |> set_argument_defaults(action)
-        |> require_arguments(action)
-        |> run_preparations(action, opts[:actor], opts[:authorize?], opts[:tracer], metadata)
-        |> add_action_filters(action, opts[:actor])
+          query
+          |> Map.put(:action, action)
+          |> reset_arguments()
+          |> timeout(query.timeout || opts[:timeout])
+          |> set_actor(opts)
+          |> set_authorize?(opts)
+          |> set_tracer(opts)
+          |> Ash.Query.set_tenant(opts[:tenant] || query.tenant)
+          |> Map.put(:__validated_for_action__, action_name)
+          |> cast_params(action, args)
+          |> set_argument_defaults(action)
+          |> require_arguments(action)
+          |> run_preparations(action, opts[:actor], opts[:authorize?], opts[:tracer], metadata)
+          |> add_action_filters(action, opts[:actor])
+        end
       end
     else
       add_error(query, :action, "No such action #{action_name}")
@@ -422,6 +425,14 @@ defmodule Ash.Query do
 
           case module.init(opts) do
             {:ok, opts} ->
+              opts =
+                Ash.Filter.build_filter_from_template(
+                  opts,
+                  actor,
+                  query.arguments,
+                  query.context
+                )
+
               case module.prepare(query, opts, %{
                      actor: actor,
                      authorize?: authorize?,
@@ -1112,6 +1123,14 @@ defmodule Ash.Query do
       %{query | arguments: Map.put(query.arguments, argument, value)}
     end
   end
+
+  defp reset_arguments(%{arguments: arguments} = query) when is_map(arguments) do
+    Enum.reduce(arguments, query, fn {key, value}, query ->
+      set_argument(query, key, value)
+    end)
+  end
+
+  defp reset_arguments(query), do: query
 
   defp add_invalid_errors(query, argument, error) do
     messages =

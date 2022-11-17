@@ -1,10 +1,13 @@
 # Manual Actions
 
+Manual actions allow you to control how an action is performed instead of simply dispatching to a data layer. To do this, simply specify the `manual` option with a module that adopts the appropriate behavior. For example:
+
 Manual actions are a way to implement an action in a fully custom way. This can be a very useful escape hatch when you have something that you are finding difficult to model with Ash's builtin tools.
 
 ## Manual Creates/Updates/Destroy
 
-For manual create/update/destroy actions, everything works pretty much the same, with the exception that the `after_action` hooks on a resource will receive a `nil` value for creates, and the old unmodified value for updates, and you are expected to add an after action hook that changes that `nil` value into the result of the action.
+For manual create/update/destroy actions, you will provide 
+ everything works pretty much the same, with the exception that the `after_action` hooks on a resource will receive a `nil` value for creates, and the old unmodified value for updates, and you are expected to add an after action hook that changes that `nil` value into the result of the action.
 
 For example:
 
@@ -12,30 +15,22 @@ For example:
 
 ```elixir
 create :special_create do
-  manual? true
-  change MyApp.DoCreate
+  manual MyApp.DoCreate
 end
 
 # The change
 defmodule MyApp.DoCreate do
-  use Ash.Resource.Change
+  use Ash.Resource.ManualCreate
 
-  def change(changeset, _, _) do
-    Ash.Changeset.after_action(changeset, fn changeset, _result ->
-      # result will be `nil`, because this is a manual action
-
-      result = do_something_that_creates_the_record(changeset)
-
-      {:ok, result}
-    end)
+  def create(changeset, _, _) do
+    do_something_that_creates_the_record(changeset)
   end
 end
 ```
 
 ## Manual Read Actions
 
-Manual read actions work differently. They must be provided a module that will run the read action.
-The module should implement the `Ash.Resource.ManualRead` behaviour, and actions will be handed the ash query and the data layer query.
+Manual read actions work the same, except the will also get the "data layer query". For AshPostgres, this means you get the ecto query that would have been run.
 
 ```elixir
 # in the resource

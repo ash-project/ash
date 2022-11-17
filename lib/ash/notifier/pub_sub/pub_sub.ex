@@ -9,7 +9,7 @@ defmodule Ash.Notifier.PubSub do
     """,
     links: [
       guides: [
-        "ash:guide:PubSub",
+        "ash:guide:Pub Sub",
         "ash:guide:Notifiers"
       ]
     ],
@@ -32,7 +32,7 @@ defmodule Ash.Notifier.PubSub do
     """,
     links: [
       guides: [
-        "ash:guide:PubSub",
+        "ash:guide:Pub Sub",
         "ash:guide:Notifiers"
       ]
     ],
@@ -68,7 +68,7 @@ defmodule Ash.Notifier.PubSub do
     no_depend_modules: [:module],
     links: [
       guides: [
-        "ash:guide:PubSub",
+        "ash:guide:Pub Sub",
         "ash:guide:Notifiers"
       ]
     ],

@@ -18,7 +18,7 @@ defmodule Ash.Filter do
 
   alias Ash.Error.Invalid.InvalidPrimaryKey
 
-  alias Ash.Query.Function.{Ago, Contains, If, IsNil, Length, Now, Type}
+  alias Ash.Query.Function.{Ago, Contains, GetPath, If, IsNil, Length, Now, Type}
 
   alias Ash.Query.Operator.{
     Eq,
@@ -36,6 +36,7 @@ defmodule Ash.Filter do
   @functions [
     Ago,
     Contains,
+    GetPath,
     IsNil,
     If,
     Length,
@@ -564,6 +565,20 @@ defmodule Ash.Filter do
 
   def template_references_actor?(%Ash.Query.Call{args: args}) do
     Enum.any?(args, &template_references_actor?/1)
+  end
+
+  def template_references_actor?(list) when is_list(list) do
+    Enum.any?(list, &template_references_actor?/1)
+  end
+
+  def template_references_actor?(map) when is_map(map) and not is_struct(map) do
+    Enum.any?(map, &template_references_actor?/1)
+  end
+
+  def template_references_actor?(tuple) when is_tuple(tuple) do
+    tuple
+    |> Tuple.to_list()
+    |> Enum.any?(&template_references_actor?/1)
   end
 
   def template_references_actor?(_), do: false
@@ -2011,7 +2026,7 @@ defmodule Ash.Filter do
   end
 
   defp add_expression_part({:fragment, _}, _context, _expression) do
-    raise "Cannot use fragment outside of expressionsyntax"
+    raise "Cannot use fragment outside of expression syntax"
   end
 
   defp add_expression_part({function, args}, context, expression)
@@ -2020,11 +2035,7 @@ defmodule Ash.Filter do
       nil ->
         case calculation(context, function) do
           nil ->
-            {:error,
-             NoSuchAttributeOrRelationship.exception(
-               attribute_or_relationship: function,
-               resource: context.resource
-             )}
+            add_expression_part({function, [args]}, context, expression)
 
           resource_calculation ->
             {module, opts} = resource_calculation.calculation

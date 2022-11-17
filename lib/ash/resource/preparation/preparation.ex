@@ -21,9 +21,12 @@ defmodule Ash.Resource.Preparation do
   def schema do
     [
       preparation: [
-        type: {:spark_behaviour, Ash.Resource.Preparation, Ash.Resource.Preparation.Builtins},
+        type:
+          {:spark_function_behaviour, Ash.Resource.Preparation, Ash.Resource.Preparation.Builtins,
+           {Ash.Resource.Preparation.Function, 2}},
         doc: """
         The module and options for a preparation.
+        Also accepts functions take the query and the context.
         """,
         required: true,
         links: [

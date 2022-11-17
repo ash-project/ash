@@ -14,6 +14,12 @@ defmodule Mix.Tasks.Ash.GenerateFlowCharts do
   ## Command line options
 
     * `--only` - only generates the given Flow file
+    * `--format` - Can be set to one of either:
+      * `plain` - Prints just the mermaid output as text. This is the default.
+      * `md` - Prints the mermaid diagram in a markdown code block.
+      * `svg` - Generates an SVG
+      * `pdf` - Generates a PDF
+      * `png` - Generates a PNG
 
   """
   use Mix.Task
@@ -22,12 +28,18 @@ defmodule Mix.Tasks.Ash.GenerateFlowCharts do
   def run(argv) do
     Mix.Task.run("compile")
 
-    {opts, _} = OptionParser.parse!(argv, strict: [only: :keep], aliases: [o: :only])
+    {opts, _} =
+      OptionParser.parse!(argv,
+        strict: [only: :keep, format: :string],
+        aliases: [o: :only, f: :format]
+      )
 
     only =
       if opts[:only] && opts[:only] != [] do
         Enum.map(List.wrap(opts[:only]), &Path.expand/1)
       end
+
+    format = Keyword.get(opts, :format, "plain")
 
     flows()
     |> Task.async_stream(
@@ -35,25 +47,28 @@ defmodule Mix.Tasks.Ash.GenerateFlowCharts do
         source = flow.module_info(:compile)[:source]
 
         if is_nil(only) || Path.expand(source) in only do
-          make_simple(flow, Mix.Mermaid.file(source, "mermaid-flowchart", "pdf"))
-          make_expanded(flow, Mix.Mermaid.file(source, "expanded-mermaid-flowchart", "pdf"))
+          Mix.Mermaid.generate_diagram(
+            source,
+            "mermaid-flowchart",
+            format,
+            Ash.Flow.Chart.Mermaid.chart(flow, expand?: false),
+            "Generated Mermaid Flow Chart for #{inspect(flow)}"
+          )
 
-          Mix.shell().info("Generated Mermaid Flow Chart for #{inspect(flow)}")
+          if has_run_flow_step?(flow) do
+            Mix.Mermaid.generate_diagram(
+              source,
+              "expanded-mermaid-flowchart",
+              format,
+              Ash.Flow.Chart.Mermaid.chart(flow, expand?: true),
+              "Generated Expanded Mermaid Flow Chart for #{inspect(flow)}"
+            )
+          end
         end
       end,
       timeout: :infinity
     )
     |> Stream.run()
-  end
-
-  defp make_simple(flow, file) do
-    Mix.Mermaid.create_diagram(file, Ash.Flow.Chart.Mermaid.chart(flow, expand?: false))
-  end
-
-  defp make_expanded(flow, file) do
-    if has_run_flow_step?(flow) do
-      Mix.Mermaid.create_diagram(file, Ash.Flow.Chart.Mermaid.chart(flow, expand?: true))
-    end
   end
 
   defp has_run_flow_step?(flow) do
@@ -72,7 +87,14 @@ defmodule Mix.Tasks.Ash.GenerateFlowCharts do
 
   defp modules do
     Mix.Project.config()[:app]
-    |> Application.get_env(:modules, [])
+    |> :application.get_key(:modules)
+    |> case do
+      {:ok, mods} when is_list(mods) ->
+        mods
+
+      _ ->
+        []
+    end
   end
 
   defp flows do

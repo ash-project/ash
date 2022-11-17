@@ -194,7 +194,12 @@ defmodule Ash.Expr do
           raise "Invalid value used in the first argument in exists, i.e exists(#{Macro.to_string(other)}, #{Macro.to_string(expr)})"
       end
 
-    soft_escape(Ash.Query.Exists.new(path, expr), escape?)
+    soft_escape(
+      quote do
+        Ash.Query.Exists.new(unquote(path), unquote(expr))
+      end,
+      escape?
+    )
   end
 
   def do_expr({left, _, [{op, _, [right]}]}, escape?)

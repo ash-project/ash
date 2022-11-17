@@ -40,7 +40,8 @@ defmodule Ash.Actions.ManagedRelationships do
 
           actor = engine_opts[:actor]
 
-          case api.load(acc, key, authorize?: authorize?, actor: actor, lazy?: true) do
+          # In order to use `lazy?: true` here we need this feature: https://github.com/ash-project/ash/issues/438
+          case api.load(acc, key, authorize?: authorize?, actor: actor, lazy?: false) do
             {:ok, loaded} -> {:cont, {:ok, loaded}}
             {:error, error} -> {:halt, {:error, error}}
           end
@@ -104,9 +105,12 @@ defmodule Ash.Actions.ManagedRelationships do
             if input in [nil, []] && opts[:on_missing] != :ignore do
               changeset
               |> maybe_force_change_attribute(relationship, :source_attribute, nil)
-              |> Ash.Changeset.after_action(fn _changeset, result ->
-                {:ok, Map.put(result, relationship.name, nil)}
-              end)
+              |> Ash.Changeset.after_action(
+                fn _changeset, result ->
+                  {:ok, Map.put(result, relationship.name, nil)}
+                end,
+                prepend?: true
+              )
             else
               changeset
             end
@@ -341,6 +345,10 @@ defmodule Ash.Actions.ManagedRelationships do
   def validate_required_belongs_to(changeset_instructions_or_error, preflight? \\ true)
   def validate_required_belongs_to({:error, error}, _), do: {:error, error}
 
+  def validate_required_belongs_to({%{valid?: false} = changeset, instructions}, _) do
+    {changeset, instructions}
+  end
+
   def validate_required_belongs_to({changeset, instructions}, preflight?) do
     changeset.resource
     |> Ash.Resource.Info.relationships()
@@ -493,8 +501,8 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Enum.sort_by(fn {_key, _batch, opts, _index} ->
       opts[:meta][:order]
     end)
-    |> Enum.reduce_while({:ok, record, []}, fn {relationship, inputs, opts, index},
-                                               {:ok, record, all_notifications} ->
+    |> Enum.reduce({:ok, record, []}, fn {relationship, inputs, opts, index},
+                                         {:ok, record, all_notifications} ->
       inputs =
         if relationship.cardinality == :many do
           List.wrap(inputs)
@@ -515,10 +523,10 @@ defmodule Ash.Actions.ManagedRelationships do
               record
             end
 
-          {:cont, {:ok, record, notifications ++ all_notifications}}
+          {:ok, record, notifications ++ all_notifications}
 
         {:error, error} ->
-          {:halt, {:error, error}}
+          {:error, error}
       end
     end)
   end

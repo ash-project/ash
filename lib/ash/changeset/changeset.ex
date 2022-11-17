@@ -503,13 +503,14 @@ defmodule Ash.Changeset do
               Ash.Tracer.set_metadata(opts[:tracer], :changeset, metadata)
 
               changeset
+              |> Map.put(:action, action)
+              |> reset_arguments()
               |> handle_errors(action.error_handler)
               |> set_actor(opts)
               |> set_authorize(opts)
               |> set_tracer(opts)
               |> set_tenant(opts[:tenant] || changeset.tenant)
               |> Map.put(:__validated_for_action__, action.name)
-              |> Map.put(:action, action)
               |> cast_params(action, params)
               |> set_argument_defaults(action)
               |> require_arguments(action)
@@ -520,7 +521,7 @@ defmodule Ash.Changeset do
                 opts[:tracer],
                 metadata
               )
-              |> add_validations(opts[:tracer], metadata)
+              |> add_validations(opts[:tracer], metadata, opts[:actor])
               |> mark_validated(action.name)
             end
           end
@@ -532,6 +533,14 @@ defmodule Ash.Changeset do
       changeset
     end
   end
+
+  defp reset_arguments(%{arguments: arguments} = changeset) when is_map(arguments) do
+    Enum.reduce(arguments, changeset, fn {key, value}, changeset ->
+      set_argument(changeset, key, value)
+    end)
+  end
+
+  defp reset_arguments(changeset), do: changeset
 
   @spec set_on_upsert(t(), list(atom)) :: Keyword.t()
   def set_on_upsert(changeset, upsert_keys) do
@@ -627,6 +636,8 @@ defmodule Ash.Changeset do
 
             changeset =
               changeset
+              |> Map.put(:action, action)
+              |> reset_arguments()
               |> handle_errors(action.error_handler)
               |> set_actor(opts)
               |> set_authorize(opts)
@@ -635,7 +646,6 @@ defmodule Ash.Changeset do
               |> set_tenant(
                 opts[:tenant] || changeset.tenant || changeset.data.__metadata__[:tenant]
               )
-              |> Map.put(:action, action)
               |> Map.put(:__validated_for_action__, action.name)
               |> cast_params(action, params || %{})
               |> set_argument_defaults(action)
@@ -650,7 +660,7 @@ defmodule Ash.Changeset do
                 opts[:tracer],
                 metadata
               )
-              |> add_validations(opts[:tracer], metadata)
+              |> add_validations(opts[:tracer], metadata, opts[:actor])
               |> mark_validated(action.name)
               |> eager_validate_identities()
 
@@ -942,6 +952,14 @@ defmodule Ash.Changeset do
                } do
                  Ash.Tracer.set_metadata(opts[:tracer], :validation, metadata)
 
+                 opts =
+                   Ash.Filter.build_filter_from_template(
+                     opts,
+                     actor,
+                     changeset.arguments,
+                     changeset.context
+                   )
+
                  module.validate(changeset, opts) == :ok
                end
              end
@@ -955,6 +973,14 @@ defmodule Ash.Changeset do
 
               Ash.Tracer.set_metadata(opts[:tracer], :change, metadata)
 
+              opts =
+                Ash.Filter.build_filter_from_template(
+                  opts,
+                  actor,
+                  changeset.arguments,
+                  changeset.context
+                )
+
               module.change(changeset, opts, %{
                 actor: actor,
                 authorize?: authorize? || false,
@@ -967,7 +993,7 @@ defmodule Ash.Changeset do
         end
 
       %{validation: _} = validation, changeset ->
-        validate(changeset, validation, tracer, metadata)
+        validate(changeset, validation, tracer, metadata, actor)
     end)
   end
 
@@ -1113,34 +1139,42 @@ defmodule Ash.Changeset do
 
   defp default(:update, %{update_default: value}), do: value
 
-  defp add_validations(changeset, tracer, metadata) do
+  defp add_validations(changeset, tracer, metadata, actor) do
     changeset.resource
     # We use the `changeset.action_type` to support soft deletes
     # Because a delete is an `update` with an action type of `update`
     |> Ash.Resource.Info.validations(changeset.action_type)
-    |> Enum.reduce(changeset, &validate(&2, &1, tracer, metadata))
+    |> Enum.reduce(changeset, &validate(&2, &1, tracer, metadata, actor))
   end
 
-  defp validate(changeset, validation, tracer, metadata) do
+  defp validate(changeset, validation, tracer, metadata, actor) do
     if validation.before_action? do
       before_action(changeset, fn changeset ->
         if validation.only_when_valid? and not changeset.valid? do
           changeset
         else
-          do_validation(changeset, validation, tracer, metadata)
+          do_validation(changeset, validation, tracer, metadata, actor)
         end
       end)
     else
       if validation.only_when_valid? and not changeset.valid? do
         changeset
       else
-        do_validation(changeset, validation, tracer, metadata)
+        do_validation(changeset, validation, tracer, metadata, actor)
       end
     end
   end
 
-  defp do_validation(changeset, validation, tracer, metadata) do
+  defp do_validation(changeset, validation, tracer, metadata, actor) do
     if Enum.all?(validation.where || [], fn {module, opts} ->
+         opts =
+           Ash.Filter.build_filter_from_template(
+             opts,
+             actor,
+             changeset.arguments,
+             changeset.context
+           )
+
          module.validate(changeset, opts) == :ok
        end) do
       Ash.Tracer.span :validation, "validate: #{inspect(validation.module)}", tracer do
@@ -1150,7 +1184,15 @@ defmodule Ash.Changeset do
         } do
           Ash.Tracer.set_metadata(tracer, :validation, metadata)
 
-          case validation.module.validate(changeset, validation.opts) do
+          opts =
+            Ash.Filter.build_filter_from_template(
+              validation.opts,
+              actor,
+              changeset.arguments,
+              changeset.context
+            )
+
+          case validation.module.validate(changeset, opts) do
             :ok ->
               changeset
 
@@ -2686,22 +2728,39 @@ defmodule Ash.Changeset do
 
           cond do
             changeset.action_type == :create ->
-              %{changeset | attributes: Map.put(changeset.attributes, attribute.name, casted)}
+              %{
+                changeset
+                | attributes: Map.put(changeset.attributes, attribute.name, casted),
+                  defaults: changeset.defaults -- [attribute.name]
+              }
 
             is_nil(data_value) and is_nil(casted) ->
-              %{changeset | attributes: Map.delete(changeset.attributes, attribute.name)}
+              %{
+                changeset
+                | attributes: Map.delete(changeset.attributes, attribute.name),
+                  defaults: changeset.defaults -- [attribute.name]
+              }
 
             Ash.Type.equal?(attribute.type, casted, data_value) ->
-              %{changeset | attributes: Map.delete(changeset.attributes, attribute.name)}
+              %{
+                changeset
+                | attributes: Map.delete(changeset.attributes, attribute.name),
+                  defaults: changeset.defaults -- [attribute.name]
+              }
 
             true ->
-              %{changeset | attributes: Map.put(changeset.attributes, attribute.name, casted)}
+              %{
+                changeset
+                | attributes: Map.put(changeset.attributes, attribute.name, casted),
+                  defaults: changeset.defaults -- [attribute.name]
+              }
           end
         else
           {{:error, error_or_errors}, last_val} ->
             changeset = %{
               changeset
-              | attributes: Map.put(changeset.attributes, attribute.name, last_val)
+              | attributes: Map.put(changeset.attributes, attribute.name, last_val),
+                defaults: changeset.defaults -- [attribute.name]
             }
 
             add_invalid_errors(:attribute, changeset, attribute, error_or_errors)
@@ -2709,7 +2768,8 @@ defmodule Ash.Changeset do
           :error ->
             changeset = %{
               changeset
-              | attributes: Map.put(changeset.attributes, attribute.name, value)
+              | attributes: Map.put(changeset.attributes, attribute.name, value),
+                defaults: changeset.defaults -- [attribute.name]
             }
 
             add_invalid_errors(:attribute, changeset, attribute)
@@ -2717,7 +2777,8 @@ defmodule Ash.Changeset do
           {:error, error_or_errors} ->
             changeset = %{
               changeset
-              | attributes: Map.put(changeset.attributes, attribute.name, value)
+              | attributes: Map.put(changeset.attributes, attribute.name, value),
+                defaults: changeset.defaults -- [attribute.name]
             }
 
             add_invalid_errors(:attribute, changeset, attribute, error_or_errors)
@@ -2843,14 +2904,33 @@ defmodule Ash.Changeset do
           changeset = remove_default(changeset, attribute.name)
 
           cond do
+            changeset.action_type == :create ->
+              %{
+                changeset
+                | attributes: Map.put(changeset.attributes, attribute.name, casted),
+                  defaults: changeset.defaults -- [attribute.name]
+              }
+
             is_nil(data_value) and is_nil(casted) ->
-              changeset
+              %{
+                changeset
+                | attributes: Map.delete(changeset.attributes, attribute.name),
+                  defaults: changeset.defaults -- [attribute.name]
+              }
 
             Ash.Type.equal?(attribute.type, casted, data_value) ->
-              changeset
+              %{
+                changeset
+                | attributes: Map.delete(changeset.attributes, attribute.name),
+                  defaults: changeset.defaults -- [attribute.name]
+              }
 
             true ->
-              %{changeset | attributes: Map.put(changeset.attributes, attribute.name, casted)}
+              %{
+                changeset
+                | attributes: Map.put(changeset.attributes, attribute.name, casted),
+                  defaults: changeset.defaults -- [attribute.name]
+              }
           end
         else
           :error ->

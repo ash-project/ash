@@ -222,7 +222,7 @@ defmodule Ash.Seed do
   end
 
   defp update_or_seed!(
-         %resource{} = record,
+         %resource{__meta__: %{state: :loaded}} = record,
          resource,
          field_value,
          field

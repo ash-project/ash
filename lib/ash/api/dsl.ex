@@ -26,7 +26,7 @@ defmodule Ash.Api.Dsl do
         doc: "The name to use in traces. Defaults to the last part of the module",
         links: [
           guides: [
-            "ash:guide:Monitoring"
+            "ash:guide:Instrumentation"
           ]
         ]
       ]

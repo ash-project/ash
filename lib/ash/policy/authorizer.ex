@@ -260,7 +260,7 @@ defmodule Ash.Policy.Authorizer do
   For reads, policies can be configured to filter out data that the actor shouldn't see, as opposed to
   resulting in a forbidden error.
 
-  See the [policy writing guide](policies.md) for practical examples.
+  See the {{link:ash:guide:Policies}} for practical examples.
 
   Policies are solved/managed via a boolean satisfiability solver. To read more about boolean satisfiability,
   see this page: https://en.wikipedia.org/wiki/Boolean_satisfiability_problem. At the end of
@@ -488,7 +488,12 @@ defmodule Ash.Policy.Authorizer do
           end
 
         {{check_module, check_opts}, false} ->
-          result = check_module.auto_filter_not(authorizer.actor, authorizer, check_opts)
+          result =
+            if :erlang.function_exported(check_module, :auto_filter_not, 3) do
+              check_module.auto_filter_not(authorizer.actor, authorizer, check_opts)
+            else
+              [not: check_module.auto_filter(authorizer.actor, authorizer, check_opts)]
+            end
 
           if is_nil(result) do
             false
@@ -576,7 +581,11 @@ defmodule Ash.Policy.Authorizer do
           if required_status do
             check_module.auto_filter(authorizer.actor, authorizer, check_opts)
           else
-            check_module.auto_filter_not(authorizer.actor, authorizer, check_opts)
+            if :erlang.function_exported(check_module, :auto_filter_not, 3) do
+              check_module.auto_filter_not(authorizer.actor, authorizer, check_opts)
+            else
+              [not: check_module.auto_filter(authorizer.actor, authorizer, check_opts)]
+            end
           end
 
         scenarios = remove_clause(authorizer.scenarios, {check_module, check_opts})

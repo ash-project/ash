@@ -7,8 +7,11 @@ defmodule Ash.Resource.Actions.Create do
     :error_handler,
     accept: nil,
     manual?: false,
+    manual: nil,
     touches_resources: [],
     require_attributes: [],
+    upsert?: false,
+    upsert_identity: nil,
     arguments: [],
     changes: [],
     allow_nil_input: [],
@@ -22,6 +25,9 @@ defmodule Ash.Resource.Actions.Create do
           type: :create,
           name: atom,
           accept: list(atom),
+          manual: module | nil,
+          upsert?: boolean,
+          upsert_identity: atom | nil,
           allow_nil_input: list(atom),
           touches_resources: list(atom),
           arguments: list(Ash.Resource.Actions.Argument.t()),
@@ -46,6 +52,36 @@ defmodule Ash.Resource.Actions.Create do
                       "ash:guide:Actions"
                     ]
                   ]
+                ],
+                manual: [
+                  type:
+                    {:spark_function_behaviour, Ash.Resource.ManualCreate,
+                     {Ash.Resource.ManualCreate.Function, 2}},
+                  links: [
+                    guides: [
+                      "ash:guide:Manual Actions"
+                    ]
+                  ],
+                  doc: """
+                  Override the creation behavior. See the manual action guides for more. Accepts a module or module and opts, or a function that takes the changeset and context.
+                  """
+                ],
+                upsert?: [
+                  type: :boolean,
+                  default: false,
+                  doc: """
+                  Wether or not this action is always an upsert.
+
+                  If this is false, the action can still be used as an upsert by passing `upsert?: true` when using it.
+                  This option forces all uses of this action to be treated as an upsert
+                  """
+                ],
+                upsert_identity: [
+                  type: :atom,
+                  default: false,
+                  doc: """
+                  The identity to use for the upsert. Cannot be overriden by the caller. Ignored  if `upsert?` is not set to `true`.
+                  """
                 ]
               ]
               |> Spark.OptionsHelpers.merge_schemas(

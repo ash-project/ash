@@ -1,6 +1,25 @@
-# Monitoring
+# Instrumentation
 
-Monitoring Ash has two primary components, {{link:ash:module:Ash.Tracer}} and `:telemetry`.
+Instrumentation Ash has two primary components, {{link:ash:module:Ash.Tracer}} and `:telemetry`. Instrumentation is closely tied to observability and monitoring.
+
+## Telemetry
+
+Ash emits the following telemetry events, suffixed with `:start` and `:stop`. Start events have `system_time` measurements, and stop events have `system_time` and `duration` measurements. All times will be in the native time unit.
+
+- `[:ash, <api_short_name>, :create]` - The execution of a create action. Use `resource_short_name` and `action` metadata to break down measurements.
+- `[:ash, <api_short_name>, :update]` - The execution of a update action. Use `resource_short_name` and `action` metadata to break down measurements.
+- `[:ash, <api_short_name>, :read]` - The execution of a read action. Use `resource_short_name` and `action` metadata to break down measurements.
+- `[:ash, <api_short_name>, :destroy]` - The execution of a destroy action. Use `resource_short_name` and `action` metadata to break down measurements.
+- `[:ash, :changeset]` - A changeset being processed for a given action, i.e with `Ash.Changeset.for_create`. Use `resource_short_name` metadata to break down measurements.
+- `[:ash, :query]` - A query being processed for an action, with `Ash.Query.for_read`. Use `resource_short_name` metadata to break down measurements.
+- `[:ash, :validation]` - A validation being run on a changeset. Use `resource_short_name` and `validation` metadata to break down measurements.
+- `[:ash, :change]` - A change being run on a changeset. Use `resource_short_name` and `change` metadata to break down measurements.
+- `[:ash, :before_action]` - A before_action being run on a changeset. Use `resource_short_name` to break down measurements. 
+- `[:ash, :after_action]` - An after_action being run on a changeset. Use `resource_short_name` to break down measurements.
+- `[:ash, :preparation]` - A preparation being run on a changeset. Use `resource_short_name` and `preparation` metadata to break down measurements.
+- `[:ash, :request_step]` - The resolution of an internal request. Ash breaks up its operations internally into multiple requests, this can give you a high resolution insight onto the execution of those internal requests resolution. Use `name` metadata to break down measurements.
+- `[:ash, :flow]` - The execution of an Ash flow. Use `flow_short_name` to break down measurements.
+- `[:ash, :flow, :custom_step]` - The execution of a custom flow step (only if using the built in runner, which is currently the only runner). Use `flow_short_name` and `name` metadata to break down measurements. 
 
 ## Tracing
 
@@ -17,7 +36,7 @@ Additionally, one can be provide when creating changesets or calling an api, i.e
 ```elixir
 Resource
 # better to put it here, as changesets are traced as well. It will be carried over to the api action
-|> Ash.Changeset.for_create(:create, %{}, tracer: MyApp.Tracer)**** 
+|> Ash.Changeset.for_create(:create, %{}, tracer: MyApp.Tracer)
 # but you can also pass it here.
 |> Api.create!(tracer: MyApp.Tracer)
 ```
@@ -28,25 +47,6 @@ For customizing the names created for each span, see:
 - {{link:ash:option:resource/resource/trace_name}}
 - {{link:ash:option:flow/flow/trace_name}}
 
-## Telemetry
-
-Ash emits the following telemetry events, suffixed with `:start` and `:stop`. Start events have `system_time` measurements, and stop events have `system_time` and `duration` measurements. All times will be in the native time unit.
-
-- `[:ash, <api_short_name>, :create]` - The execution of a create action. Use `resource_short_name` and `action` metadata to break down measurements.
-- `[:ash, <api_short_name>, :update]` - The execution of a update action. Use `resource_short_name` and `action` metadata to break down measurements.
-- `[:ash, <api_short_name>, :read]` - The execution of a read action. Use `resource_short_name` and `action` metadata to break down measurements.
-- `[:ash, <api_short_name>, :destroy]` - The execution of a destroy action. Use `resource_short_name` and `action` metadata to break down measurements.
-- `[:ash, :changeset]` - A changeset being processed for a given action, i.e with `Ash.Changeset.for_create`. Use `resource_short_name` metadata to break down measurements.
-- `[:ash, :query]` - A query being processed for an action, with `Ash.Query.for_read`. Use `resource_short_name` metadata to break down measurements.
-- `[:ash, :validation]` - A validation being run on a changeset. Use `resource_short_name` and `validation` metadata to break down measurements.
-- `[:ash, :change]` - A change being run on a changeset. Use `resource_short_name` and `change` metadata to break down measurements.
-- `[:ash, :before_action]` - A before_action being run on a changeset. Use `resource_short_name` to break down measurements. 
-- `[:ash, :after_action]` - An after_action being run on a changeset. Use `resource_short_name` to break down measurements.
-- `[:ash, :after_action]` - A before_action being run on a changeset.
-- `[:ash, :preparation]` - A preparation being run on a changeset. Use `resource_short_name` and `preparation` metadata to break down measurements.
-- `[:ash, :request_step]` - The resolution of an internal request. Ash breaks up its operations internally into multiple requests, this can give you a high resolution insight onto the execution of those internal requests resolution. Use `name` metadata to break down measurements.
-- `[:ash, :flow]` - The execution of an Ash flow. Use `flow_short_name` to break down measurements.
-- `[:ash, :flow, :custom_step]` - The execution of a custom flow step (only if using the built in runner, which is currently the only runner). Use `flow_short_name` and `name` metadata to break down measurements. 
 
 ## After/Before Action Hooks
 

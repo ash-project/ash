@@ -328,7 +328,11 @@ defmodule Ash.Type do
   end
 
   def ecto_type(type) do
-    type.ecto_type()
+    if Ash.Resource.Info.resource?(type) do
+      Module.concat(type, EctoType)
+    else
+      type.ecto_type()
+    end
   end
 
   def ash_type_option(type) do
@@ -347,11 +351,11 @@ defmodule Ash.Type do
 
   def ash_type?(module) when is_atom(module) do
     case Code.ensure_compiled(module) do
-      {:module, _} ->
-        ash_type_module?(module)
+      {:module, module} ->
+        Ash.Resource.Info.resource?(module) || ash_type_module?(module)
 
       _ ->
-        false
+        Ash.Resource.Info.resource?(module)
     end
   end
 
@@ -516,7 +520,7 @@ defmodule Ash.Type do
 
       case list_constraint_errors do
         [] ->
-          nil_items? = Keyword.get(constraints, :nil_items?, true)
+          nil_items? = Keyword.get(constraints, :nil_items?, false)
           item_constraints = constraints[:items] || []
 
           if item_constraints != [] || !nil_items? do
@@ -865,8 +869,27 @@ defmodule Ash.Type do
   end
 
   @doc false
-  def set_type_transformation(%{type: type, constraints: constraints} = thing) do
-    type = get_type(type)
+  def set_type_transformation(%{type: original_type, constraints: constraints} = thing) do
+    type = get_type(original_type)
+
+    ash_type? =
+      try do
+        Ash.Type.ash_type?(type)
+      rescue
+        _ ->
+          false
+      end
+
+    unless ash_type? do
+      raise """
+      #{inspect(original_type)} is not a valid type.
+
+      Valid types include any custom types, or the following short codes (alongside the types they map to):
+
+      #{Enum.map_join(@builtin_short_names, "\n", fn {name, type} -> "  #{inspect(name)} -> #{inspect(type)}" end)}
+
+      """
+    end
 
     case validate_constraints(type, constraints) do
       {:ok, constraints} ->

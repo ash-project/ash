@@ -133,10 +133,19 @@ defmodule Ash.Test.Actions.CreateTest do
         change {DuplicateName, []}
       end
 
-      create :manual_create do
+      create :old_manual_create do
         accept []
         manual? true
         change ManualCreateAuthor
+      end
+
+      create :manual_create do
+        manual fn _, _ ->
+          {:ok,
+           Ash.Test.Actions.CreateTest.Author
+           |> Ash.Changeset.for_create(:create, %{name: "manual"})
+           |> Ash.Test.Actions.CreateTest.Api.create!()}
+        end
       end
     end
 
@@ -164,10 +173,22 @@ defmodule Ash.Test.Actions.CreateTest do
     actions do
       defaults [:create, :read, :update, :destroy]
 
-      create :manual_create do
+      create :old_manual_create do
         accept []
         manual? true
         change ManualCreateAuthorWithRequiredId
+      end
+
+      create :manual_create do
+        accept []
+
+        manual fn _, _ ->
+          {:ok,
+           Ash.Test.Actions.CreateTest.AuthorWithRequiredId
+           |> Ash.Changeset.for_create(:create, %{name: "manual"})
+           |> Ash.Changeset.force_change_attribute(:id, Ash.UUID.generate())
+           |> Ash.Test.Actions.CreateTest.Api.create!()}
+        end
       end
     end
 
@@ -402,6 +423,21 @@ defmodule Ash.Test.Actions.CreateTest do
       assert :tag in changeset.defaults
     end
 
+    test "a default being set and then overriden will no longer be annotated as a default" do
+      changeset =
+        Post
+        |> new()
+        |> change_attribute(:title, "foo")
+        |> Ash.Changeset.for_create(:create)
+
+      assert :tag in changeset.defaults
+
+      force_changeset = Ash.Changeset.force_change_attribute(changeset, :tag, "foo")
+      non_force_changeset = Ash.Changeset.change_attribute(changeset, :tag, "bar")
+      refute :tag in force_changeset.defaults
+      refute :tag in non_force_changeset.defaults
+    end
+
     test "nil will error on required attribute with default" do
       assert_raise Ash.Error.Invalid, ~r/required_with_default is required/, fn ->
         Post
@@ -440,7 +476,23 @@ defmodule Ash.Test.Actions.CreateTest do
   end
 
   describe "manual creates" do
-    test "the manual action succeeds" do
+    test "old: the manual action succeeds" do
+      Author
+      |> Ash.Changeset.for_create(:old_manual_create)
+      |> Api.create!()
+
+      assert [%{name: "manual"}] = Api.read!(Author)
+    end
+
+    test "old: the manual action does not require values that aren't accepted" do
+      AuthorWithRequiredId
+      |> Ash.Changeset.for_create(:old_manual_create)
+      |> Api.create!()
+
+      assert [%{name: "manual"}] = Api.read!(AuthorWithRequiredId)
+    end
+
+    test "new: the manual action succeeds" do
       Author
       |> Ash.Changeset.for_create(:manual_create)
       |> Api.create!()
@@ -448,7 +500,7 @@ defmodule Ash.Test.Actions.CreateTest do
       assert [%{name: "manual"}] = Api.read!(Author)
     end
 
-    test "the manual action does not require values that aren't accepted" do
+    test "new: the manual action does not require values that aren't accepted" do
       AuthorWithRequiredId
       |> Ash.Changeset.for_create(:manual_create)
       |> Api.create!()

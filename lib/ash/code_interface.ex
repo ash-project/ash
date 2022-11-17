@@ -1,8 +1,6 @@
 defmodule Ash.CodeInterface do
   @moduledoc """
   Used to define the functions of a code interface for a resource.
-
-  For more information on defining code interfaces, see {{link:ash:}}
   """
 
   @doc false

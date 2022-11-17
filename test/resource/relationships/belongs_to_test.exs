@@ -19,6 +19,21 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     end
   end
 
+  defmacrop defcomments(do: body) do
+    quote do
+      defmodule Comment do
+        @moduledoc false
+        use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+        attributes do
+          uuid_primary_key :id
+        end
+
+        unquote(body)
+      end
+    end
+  end
+
   describe "representation" do
     test "it creates an attribute" do
       defposts do
@@ -248,5 +263,58 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
         end
       end
     )
+  end
+
+  test "don't add required error for belongs_to if other errors are present" do
+    defposts do
+      relationships do
+        has_many(:comments, Comment)
+      end
+    end
+
+    defcomments do
+      actions do
+        defaults [:create]
+      end
+
+      relationships do
+        belongs_to(:post, Post, allow_nil?: false)
+      end
+    end
+
+    defmodule Registry do
+      @moduledoc false
+      use Ash.Registry
+
+      entries do
+        entry(Post)
+        entry(Comment)
+      end
+    end
+
+    defmodule Api do
+      @moduledoc false
+      use Ash.Api
+
+      resources do
+        registry Registry
+      end
+    end
+
+    assert {:error,
+            %Ash.Error.Invalid{
+              changeset: %{
+                errors: [
+                  # there should not be a Ash.Error.Changes.Required error in this list
+                  %Ash.Error.Invalid{path: [:post]}
+                ]
+              }
+            }} =
+             Comment
+             |> Ash.Changeset.new()
+             |> Ash.Changeset.manage_relationship(:post, Ecto.UUID.generate(),
+               type: :append_and_remove
+             )
+             |> Api.create()
   end
 end

@@ -272,20 +272,32 @@ defmodule Ash.Actions.Destroy do
               changeset
               |> Ash.Changeset.put_context(:private, %{actor: actor, authorize?: authorize?})
               |> Ash.Changeset.with_hooks(fn changeset ->
-                if action.manual? do
-                  {:ok, record}
-                else
-                  case Ash.DataLayer.destroy(resource, changeset) do
-                    :ok ->
-                      {:ok,
-                       Ash.Resource.set_meta(record, %Ecto.Schema.Metadata{
-                         state: :deleted,
-                         schema: resource
-                       })}
+                cond do
+                  action.manual ->
+                    {mod, opts} = action.manual
 
-                    {:error, error} ->
-                      {:error, error}
-                  end
+                    mod.destroy(changeset, opts,
+                      actor: actor,
+                      tenant: changeset.tenant,
+                      authorize?: authorize?,
+                      api: changeset.api
+                    )
+
+                  action.manual? ->
+                    {:ok, record}
+
+                  true ->
+                    case Ash.DataLayer.destroy(resource, changeset) do
+                      :ok ->
+                        {:ok,
+                         Ash.Resource.set_meta(record, %Ecto.Schema.Metadata{
+                           state: :deleted,
+                           schema: resource
+                         })}
+
+                      {:error, error} ->
+                        {:error, error}
+                    end
                 end
               end)
               |> case do

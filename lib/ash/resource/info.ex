@@ -440,7 +440,7 @@ defmodule Ash.Resource.Info do
   def primary_action!(resource, type) do
     case primary_action(resource, type) do
       nil ->
-        raise "Required primary #{type} action for #{Extension.get_persisted(resource, :module)}."
+        raise "Required primary #{type} action for #{inspect(Extension.get_persisted(resource, :module))}."
 
       action ->
         action

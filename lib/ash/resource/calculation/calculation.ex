@@ -1,5 +1,6 @@
 defmodule Ash.Resource.Calculation do
   @moduledoc "Represents a named calculation on a resource"
+
   defstruct [
     :name,
     :type,
@@ -55,10 +56,18 @@ defmodule Ash.Resource.Calculation do
       """
     ],
     calculation: [
-      type: {:custom, __MODULE__, :calculation, []},
+      type:
+        {:or,
+         [
+           {:spark_function_behaviour, Ash.Calculation, {Ash.Calculation.Function, 2}},
+           {:custom, __MODULE__, :expr_calc, []}
+         ]},
       required: true,
       links: [],
-      doc: "The module or `{module, opts}` to use for the calculation"
+      doc: """
+      The module or `{module, opts}` to use for the calculation
+      Also accepts a function that takes the list of records and the context.
+      """
     ],
     description: [
       type: :string,
@@ -170,12 +179,7 @@ defmodule Ash.Resource.Calculation do
 
   def schema, do: @schema
 
-  def calculation({module, opts}) when is_atom(module) and is_list(opts),
-    do: {:ok, {module, opts}}
-
-  def calculation(module) when is_atom(module), do: {:ok, {module, []}}
-
-  def calculation(other) do
-    {:ok, {Ash.Resource.Calculation.Expression, expr: other}}
+  def expr_calc(expr) do
+    {:ok, {Ash.Resource.Calculation.Expression, expr: expr}}
   end
 end

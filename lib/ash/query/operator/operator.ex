@@ -120,12 +120,22 @@ defmodule Ash.Query.Operator do
   end
 
   defp try_cast(%Ref{attribute: %{type: type}} = left, right, [:any, {:array, :same}]) do
-    case Ash.Query.Type.try_cast(right, {:array, type}) do
-      {:ok, new_right} ->
-        {:ok, left, new_right}
+    case right do
+      # TODO: app level type compatibility?
+      %Ref{attribute: %{type: {:array, _type}}} ->
+        {:ok, left, right}
 
-      _ ->
+      %Ref{} ->
         nil
+
+      right ->
+        case Ash.Query.Type.try_cast(right, {:array, type}) do
+          {:ok, new_right} ->
+            {:ok, left, new_right}
+
+          _ ->
+            nil
+        end
     end
   end
 

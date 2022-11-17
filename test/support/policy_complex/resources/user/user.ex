@@ -69,5 +69,9 @@ defmodule Ash.Test.Support.PolicyComplex.User do
     has_many :friends, Ash.Test.Support.PolicyComplex.User do
       manual Ash.Test.Support.PolicyComplex.User.Relationships.Friends
     end
+
+    has_one :best_friend, Ash.Test.Support.PolicyComplex.User do
+      manual Ash.Test.Support.PolicyComplex.User.Relationships.BestFriend
+    end
   end
 end

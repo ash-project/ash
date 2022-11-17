@@ -30,6 +30,12 @@ defmodule Ash.Test.Filter.FilterTest do
 
     actions do
       defaults [:create, :read, :update, :destroy]
+
+      read :get_path_search do
+        argument :input, :map
+
+        filter expr(get_path(embedded_bio, [:title]) == get_path(^arg(:input), :title))
+      end
     end
 
     attributes do
@@ -117,6 +123,10 @@ defmodule Ash.Test.Filter.FilterTest do
       attribute :category, :ci_string
     end
 
+    calculations do
+      calculate :cool_titles, {:array, :string}, expr(["yo", "dawg"])
+    end
+
     relationships do
       belongs_to :author1, User,
         destination_attribute: :id,
@@ -187,6 +197,23 @@ defmodule Ash.Test.Filter.FilterTest do
 
     resources do
       registry Registry
+    end
+  end
+
+  describe "in" do
+    test "in can be done with references on both sides" do
+      Post
+      |> new(%{title: "dawg"})
+      |> Api.create!()
+
+      Post
+      |> new(%{title: "lame"})
+      |> Api.create!()
+
+      assert [_] =
+               Post
+               |> Ash.Query.filter(title in cool_titles)
+               |> Api.read!()
     end
   end
 
@@ -756,6 +783,44 @@ defmodule Ash.Test.Filter.FilterTest do
     end
   end
 
+  describe "get_path/2" do
+    test "it can be used by name" do
+      profile =
+        Profile
+        |> Ash.Changeset.for_create(:create, %{embedded_bio: %{title: "fred"}})
+        |> Api.create!()
+
+      profile_id = profile.id
+
+      Profile
+      |> Ash.Changeset.for_create(:create, %{embedded_bio: %{title: "george"}})
+      |> Api.create!()
+
+      assert [%{id: ^profile_id}] =
+               Profile
+               |> Ash.Query.filter(get_path(embedded_bio, :title) == "fred")
+               |> Api.read!()
+    end
+
+    test "it can be used with arguments" do
+      profile =
+        Profile
+        |> Ash.Changeset.for_create(:create, %{embedded_bio: %{title: "fred"}})
+        |> Api.create!()
+
+      profile_id = profile.id
+
+      Profile
+      |> Ash.Changeset.for_create(:create, %{embedded_bio: %{title: "george"}})
+      |> Api.create!()
+
+      assert [%{id: ^profile_id}] =
+               Profile
+               |> Ash.Query.for_read(:get_path_search, %{input: %{title: "fred"}})
+               |> Api.read!()
+    end
+  end
+
   describe "calls in filters" do
     test "calls are evaluated and can be used in predicates" do
       post1 =
@@ -818,5 +883,11 @@ defmodule Ash.Test.Filter.FilterTest do
                |> Ash.Query.filter(approved_at > now())
                |> Api.read!()
     end
+  end
+
+  test "using tuple instead of keyword list does not raise an error" do
+    Post
+    |> Ash.Query.filter(id: {:in, [Ash.UUID.generate()]})
+    |> Api.read!()
   end
 end

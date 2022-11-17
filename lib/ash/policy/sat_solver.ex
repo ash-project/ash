@@ -1,33 +1,51 @@
 defmodule Ash.Policy.SatSolver do
   @moduledoc false
-  def solve(expression) do
-    expression
+  def solve(expression, mapper \\ nil) do
+    {cnf, bindings} = Ash.SatSolver.to_cnf(expression)
+
+    cnf
     |> add_negations_and_solve([])
-    |> get_all_scenarios(expression)
+    |> get_all_scenarios(cnf)
     |> case do
       [] ->
         {:error, :unsatisfiable}
 
       scenarios ->
-        static_checks = [
-          {Ash.Policy.Check.Static, [result: true]},
-          {Ash.Policy.Check.Static, [result: false]}
-        ]
+        {scenarios, bindings} = Ash.SatSolver.unbind(scenarios, bindings)
 
-        {:ok,
-         scenarios
-         |> Enum.map(&Map.drop(&1, static_checks))
-         |> Enum.uniq()}
+        if mapper do
+          {:ok,
+           Enum.map(scenarios, fn scenario ->
+             mapper.(scenario, bindings)
+           end)}
+        else
+          {:ok, scenarios}
+        end
     end
   end
 
-  defp get_all_scenarios(scenario_result, expression, scenarios \\ [])
-  defp get_all_scenarios({:error, :unsatisfiable}, _, scenarios), do: scenarios
+  defp get_all_scenarios(
+         scenario_result,
+         expression,
+         scenarios \\ [],
+         negations \\ []
+       )
 
-  defp get_all_scenarios({:ok, scenario}, expression, scenarios) do
+  defp get_all_scenarios(
+         {:error, :unsatisfiable},
+         _,
+         scenarios,
+         _negations
+       ),
+       do: scenarios
+
+  defp get_all_scenarios({:ok, scenario}, expression, scenarios, negations) do
+    all_scenarios = [scenario | scenarios]
+    negations = [Enum.map(scenario, &(-&1)) | negations]
+
     expression
-    |> add_negations_and_solve([Map.drop(scenario, [true, false]) | scenarios])
-    |> get_all_scenarios(expression, [Map.drop(scenario, [true, false]) | scenarios])
+    |> add_negations_and_solve(negations)
+    |> get_all_scenarios(expression, all_scenarios, negations)
   end
 
   def simplify_clauses([scenario]), do: [scenario]
@@ -82,29 +100,8 @@ defmodule Ash.Policy.SatSolver do
   end
 
   @spec add_negations_and_solve(term, term) :: term | no_return()
-  defp add_negations_and_solve(requirements_expression, negations) do
-    negations =
-      Enum.reduce(negations, nil, fn negation, expr ->
-        negation_statement =
-          negation
-          |> Map.drop([true, false])
-          |> facts_to_statement()
-
-        if expr do
-          {:and, expr, {:not, negation_statement}}
-        else
-          {:not, negation_statement}
-        end
-      end)
-
-    full_expression =
-      if negations do
-        {:and, requirements_expression, negations}
-      else
-        requirements_expression
-      end
-
-    solve_expression(full_expression)
+  defp add_negations_and_solve(cnf, negations) do
+    solve_expression(cnf ++ negations)
   end
 
   def facts_to_statement(facts) do

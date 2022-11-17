@@ -7,6 +7,7 @@ defmodule Ash.Resource.Actions.Update do
     :description,
     :error_handler,
     accept: nil,
+    manual: nil,
     manual?: false,
     require_attributes: [],
     arguments: [],
@@ -21,6 +22,7 @@ defmodule Ash.Resource.Actions.Update do
   @type t :: %__MODULE__{
           type: :update,
           name: atom,
+          manual: module | nil,
           accept: list(atom),
           arguments: list(Ash.Resource.Actions.Argument.t()),
           primary?: boolean,
@@ -33,7 +35,22 @@ defmodule Ash.Resource.Actions.Update do
   @global_opts shared_options()
   @create_update_opts create_update_opts()
 
-  @opt_schema []
+  @opt_schema [
+                manual: [
+                  type:
+                    {:spark_function_behaviour, Ash.Resource.ManualUpdate,
+                     {Ash.Resource.ManualUpdate.Function, 2}},
+                  links: [
+                    guides: [
+                      "ash:guide:Manual Actions"
+                    ]
+                  ],
+                  doc: """
+                  Override the update behavior. See the manual action guides for more.
+                  Accepts a module or module and opts, or a function that takes the changeset and context.
+                  """
+                ]
+              ]
               |> Spark.OptionsHelpers.merge_schemas(
                 @global_opts,
                 "Action Options"

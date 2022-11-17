@@ -105,6 +105,15 @@ defmodule Ash.Test.Actions.LoadTest do
       timestamps()
     end
 
+    code_interface do
+      define_for Ash.Test.Actions.LoadTest.Api
+
+      define :get_by_id do
+        action :read
+        get_by [:id]
+      end
+    end
+
     relationships do
       belongs_to :author, Author
 
@@ -494,6 +503,30 @@ defmodule Ash.Test.Actions.LoadTest do
       assert Enum.sort([category1.id, category2.id]) == Enum.sort([id1, id2])
     end
 
+    test "it allows loading many to many relationships after the fact" do
+      category1 =
+        Category
+        |> new(%{name: "lame"})
+        |> Api.create!()
+
+      category2 =
+        Category
+        |> new(%{name: "cool"})
+        |> Api.create!()
+
+      post =
+        Post
+        |> new(%{title: "post1"})
+        |> manage_relationship(:categories, [category1, category2], type: :append_and_remove)
+        |> Api.create!()
+
+      post = Post.get_by_id!(post.id, load: [:categories])
+
+      assert [%{id: id1}, %{id: id2}] = post.categories
+
+      assert Enum.sort([category1.id, category2.id]) == Enum.sort([id1, id2])
+    end
+
     test "it allows loading nested many to many relationships" do
       category1 =
         Category
@@ -533,8 +566,6 @@ defmodule Ash.Test.Actions.LoadTest do
         |> new(%{title: "post1"})
         |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
-
-      :timer.sleep(2)
 
       post2 =
         Post

@@ -5,6 +5,128 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.3](https://github.com/ash-project/ash/compare/v2.4.2...v2.4.3) (2022-11-15)
+
+
+
+
+### Bug Fixes:
+
+* don't incur compile time dependency for resources used as types
+
+* allow for not-yet-compiled resources as Ash types
+
+* properly raise error on invalid type.
+
+### Improvements:
+
+* optimize sat solving
+
+## [v2.4.2](https://github.com/ash-project/ash/compare/v2.4.1...v2.4.2) (2022-11-03)
+
+
+
+
+### Bug Fixes:
+
+* properly set error vars with list constraints
+
+* when creating changesets/queries that already have arguments, revalidate arguments
+
+### Improvements:
+
+* update to latest spark
+
+* support statically configured upsert actions
+
+* add more builders
+
+## [v2.4.1](https://github.com/ash-project/ash/compare/v2.4.0...v2.4.1) (2022-10-31)
+
+
+
+
+### Bug Fixes:
+
+* fix depend on resources to depend on each resource
+
+* allow references on both sides of `in`
+
+* properly upsert all explicitly changed fields
+
+* traverse maps for `template_references_actor?/1`
+
+### Improvements:
+
+* replace templates in change/preparation/validation opts
+
+## [v2.4.0](https://github.com/ash-project/ash/compare/v2.3.0...v2.4.0) (2022-10-31)
+
+
+
+
+### Features:
+
+* support anonymous functions in DSL
+
+These include:
+    
+    - custom create/read/update/destroy actions
+    - changes
+    - preparations
+    - validations
+    - calculations
+    - manual relationships
+    
+    See the respective DSL guides for more.
+
+### Bug Fixes:
+
+* don't add required belongs_to error if changeset is invalid (#437)
+
+* don't lazy load when managing relationships
+
+### Improvements:
+
+* support anonymous functions for various behaviour based options
+
+* add more ergonomic manual action definitions.
+
+* more additions to the resource builder, update spark
+
+## [v2.3.0](https://github.com/ash-project/ash/compare/v2.2.0...v2.3.0) (2022-10-27)
+
+
+
+
+### Features:
+
+* Ash.PlugHelpers: standardise conn interface for actors/tenants. (#432)
+
+* add `Ash.Resource.Builder`, the start of DSL builder utilities of rextension writing
+
+### Bug Fixes:
+
+* DataLayer: incorrect typespec for `run_query/2` callback. (#431)
+
+* in Ash.Seed, don't try to update a non-loaded record
+
+* properly load manual to_one relationships
+
+* properly compare against decimal values
+
+### Improvements:
+
+* pass tenant to calculation query explicitly
+
+* allow using `get_path/2` by name, as well as bracket access
+
+* SVG, PDF, PNG, Markdown and plain mermaid formats (#428)
+
+* optimize nested `exists` filter statements
+
+* support floats & decimals in the `compare` validation
+
 ## [v2.2.0](https://github.com/ash-project/ash/compare/v2.1.0...v2.2.0) (2022-10-21)
 
 

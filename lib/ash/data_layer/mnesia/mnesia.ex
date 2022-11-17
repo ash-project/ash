@@ -30,9 +30,9 @@ defmodule Ash.DataLayer.Mnesia do
 
   Additionally, you will want to create your mnesia tables there.
 
-  This data layer is *extremely unoptimized*, fetching all records from a table and filtering them
-  in memory. This is primarily used for testing the behavior of data layers in Ash. If it was improved,
-  it could be a viable data layer.
+  This data layer is *unoptimized*, fetching all records from a table and filtering them
+  in memory. For that reason, it is not recommended to use it with large amounts of data. It can be
+  great for prototyping or light usage, though.
 
     <!--- ash-hq-hide-start--> <!--- -->
 

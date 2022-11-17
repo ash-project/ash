@@ -43,13 +43,15 @@ defmodule Ash.Resource.Validation do
   @callback init(Keyword.t()) :: {:ok, Keyword.t()} | {:error, String.t()}
   @callback validate(Ash.Changeset.t(), Keyword.t()) :: :ok | {:error, term}
 
-  @validation_type {:spark_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins}
+  @validation_type {:spark_function_behaviour, Ash.Resource.Validation,
+                    Ash.Resource.Validation.Builtins, {Ash.Resource.Validation.Function, 1}}
 
   @schema [
     validation: [
       type: @validation_type,
       required: true,
-      doc: "The module/opts pair of the validation",
+      doc:
+        "The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a one argument function that takes the changeset.",
       links: []
     ],
     where: [
@@ -64,6 +66,7 @@ defmodule Ash.Resource.Validation do
       doc: """
       Validations that should pass in order for this validation to apply.
       These validations failing will not invalidate the changes, but will instead result in this validation being ignored.
+      Accepts a module, module and opts, or a 1 argument function that takes the changeset.
       """
     ],
     on: [

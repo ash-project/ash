@@ -73,4 +73,4 @@ You can also provide the `parse_attribute?` option if the tenant being set doesn
 
 Context multitenancy allows for the data layer to dictate how multitenancy works. For example, a csv data layer might implement multitenancy via saving the file with different suffixes, or an API wrapping data layer might use different subdomains for the tenant.
 
-For `AshPostgres` context multitenancy, which uses postgres schemas, see the [guide](https://hexdocs.pm/ash_postgres/multitenancy.html)
+For `AshPostgres` context multitenancy, which uses postgres schemas and is referred to ash "Schema Based Multitenancy", see the {{link:ash_postgres:guide:Schema Based Multitenancy|guide}}.

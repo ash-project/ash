@@ -43,7 +43,7 @@ defmodule Ash.Test.Actions.UpdateTest do
 
       update :set_private_attribute_from_arg do
         argument :private, :string
-        change set_attribute(:private, {:arg, :private})
+        change set_attribute(:private, arg(:private))
       end
     end
 
@@ -105,10 +105,22 @@ defmodule Ash.Test.Actions.UpdateTest do
         change {DuplicateName, []}
       end
 
-      update :manual_update do
+      update :old_manual_update do
         accept []
         manual? true
         change ManualUpdateAuthor
+      end
+
+      update :manual_update do
+        accept []
+
+        manual fn changeset, _ ->
+          {:ok,
+           changeset.data
+           |> Ash.Changeset.for_update(:update, changeset.attributes)
+           |> Ash.Changeset.change_attribute(:name, "manual")
+           |> Ash.Test.Actions.UpdateTest.Api.update!()}
+        end
       end
     end
 
@@ -238,7 +250,16 @@ defmodule Ash.Test.Actions.UpdateTest do
   end
 
   describe "manual updates" do
-    test "the update occurs properly" do
+    test "old: the update occurs properly" do
+      author =
+        Author
+        |> new(%{name: "auto"})
+        |> Api.create!()
+
+      assert %Author{name: "manual"} = author |> new() |> Api.update!(action: :old_manual_update)
+    end
+
+    test "new: the update occurs properly" do
       author =
         Author
         |> new(%{name: "auto"})
@@ -279,8 +300,9 @@ defmodule Ash.Test.Actions.UpdateTest do
 
       profile =
         profile
-        |> new(%{bio: "foobar", private: "blah"})
-        |> Api.update!(action: :set_private_attribute_from_arg)
+        |> new(%{bio: "foobar"})
+        |> for_update(:set_private_attribute_from_arg, %{private: "blah"})
+        |> Api.update!()
 
       assert profile.private == "blah"
     end
