@@ -5,6 +5,27 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.4](https://github.com/ash-project/ash/compare/v2.4.3...v2.4.4) (2022-11-18)
+
+
+
+
+### Bug Fixes:
+
+* various typespec/build fixes
+
+* handle tuples properly in some cases in expression syntax
+
+* Add missing `[:ash, :query]` telemetry (#451)
+
+### Improvements:
+
+* improve runtime expression running
+
+* add default description for filter checks
+
+* validate that modules exist and are documented when referenced
+
 ## [v2.4.3](https://github.com/ash-project/ash/compare/v2.4.2...v2.4.3) (2022-11-15)
 
 
