@@ -34,12 +34,16 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
             create :all_params
             create :no_params, accept: []
             create :one_param, accept: [:first_name]
+            destroy :destroy
+            destroy :destroy_one_param, accept: [:first_name]
           end
         end
 
       assert Info.action(resource, :all_params).accept == [:id, :first_name, :last_name]
       assert Info.action(resource, :no_params).accept == []
       assert Info.action(resource, :one_param).accept == [:first_name]
+      assert Info.action(resource, :destroy).accept == []
+      assert Info.action(resource, :destroy_one_param).accept == [:first_name]
     end
 
     test "some params" do

@@ -35,10 +35,17 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
 
         {accept, reject} =
           case {action.accept, action.reject} do
-            {_, :all} -> {[], public_attribute_names}
-            {nil, reject} -> {reject(default_accept, reject), reject}
-            {:all, reject} -> {reject(public_attribute_names, reject), reject}
-            {accept, reject} -> {reject(accept, reject), reject}
+            {_, :all} ->
+              {[], public_attribute_names}
+
+            {nil, reject} ->
+              {reject(if(action.type != :destroy, do: default_accept, else: []), reject), reject}
+
+            {:all, reject} ->
+              {reject(public_attribute_names, reject), reject}
+
+            {accept, reject} ->
+              {reject(accept, reject), reject}
           end
 
         new_dsl_state =
