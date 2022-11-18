@@ -188,83 +188,102 @@ defmodule Ash.Filter.Runtime do
   end
 
   @doc false
+
   def do_match(record, expression) do
-    case expression do
-      %Ash.Filter{expression: expression} ->
-        do_match(record, expression)
+    hydrated =
+      case record do
+        %resource{} ->
+          Ash.Filter.hydrate_refs(expression, %{
+            resource: resource,
+            public?: false
+          })
 
-      %op{__operator__?: true, left: left, right: right} ->
-        with {:ok, [left, right]} <-
-               resolve_exprs([left, right], record),
-             {:op, {:ok, %op{} = new_operator}} <-
-               {:op, Ash.Query.Operator.try_cast_with_ref(op, left, right)},
-             {:known, val} <-
-               op.evaluate(new_operator) do
-          {:ok, val}
-        else
-          {:op, {:error, error}} ->
-            {:error, error}
+        _ ->
+          {:ok, expression}
+      end
 
-          {:op, {:ok, expr}} ->
-            do_match(record, expr)
+    case hydrated do
+      {:ok, expression} ->
+        case expression do
+          %Ash.Filter{expression: expression} ->
+            do_match(record, expression)
 
-          {:error, error} ->
-            {:error, error}
+          %op{__operator__?: true, left: left, right: right} ->
+            with {:ok, [left, right]} <-
+                   resolve_exprs([left, right], record),
+                 {:op, {:ok, %op{} = new_operator}} <-
+                   {:op, Ash.Query.Operator.try_cast_with_ref(op, left, right)},
+                 {:known, val} <-
+                   op.evaluate(new_operator) do
+              {:ok, val}
+            else
+              {:op, {:error, error}} ->
+                {:error, error}
 
-          :unknown ->
-            :unknown
+              {:op, {:ok, expr}} ->
+                do_match(record, expr)
 
-          _ ->
-            {:ok, nil}
+              {:error, error} ->
+                {:error, error}
+
+              :unknown ->
+                :unknown
+
+              _ ->
+                {:ok, nil}
+            end
+
+          %func{__function__?: true, arguments: arguments} = function ->
+            with {:ok, args} <- resolve_exprs(arguments, record),
+                 {:args, args} when not is_nil(args) <-
+                   {:args, try_cast_arguments(func.args(), args)},
+                 {:known, val} <- func.evaluate(%{function | arguments: args}) do
+              {:ok, val}
+            else
+              {:args, nil} ->
+                {:error,
+                 "Could not cast function arguments for #{func.name()}/#{Enum.count(arguments)}"}
+
+              {:error, error} ->
+                {:error, error}
+
+              :unknown ->
+                :unknown
+
+              _ ->
+                {:ok, nil}
+            end
+
+          %Not{expression: expression} ->
+            case do_match(record, expression) do
+              :unknown ->
+                :unknown
+
+              {:ok, match?} ->
+                {:ok, !match?}
+
+              {:error, error} ->
+                {:error, error}
+            end
+
+          %Ash.Query.Exists{} = expr ->
+            resolve_expr(expr, record)
+
+          %BooleanExpression{op: op, left: left, right: right} ->
+            expression_matches(op, left, right, record)
+
+          %Call{} = call ->
+            raise "Unresolvable filter component: #{inspect(call)}"
+
+          %Ref{} = ref ->
+            resolve_expr(ref, record)
+
+          other ->
+            {:ok, other}
         end
 
-      %func{__function__?: true, arguments: arguments} = function ->
-        with {:ok, args} <- resolve_exprs(arguments, record),
-             {:args, args} when not is_nil(args) <-
-               {:args, try_cast_arguments(func.args(), args)},
-             {:known, val} <- func.evaluate(%{function | arguments: args}) do
-          {:ok, val}
-        else
-          {:args, nil} ->
-            {:error,
-             "Could not cast function arguments for #{func.name()}/#{Enum.count(arguments)}"}
-
-          {:error, error} ->
-            {:error, error}
-
-          :unknown ->
-            :unknown
-
-          _ ->
-            {:ok, nil}
-        end
-
-      %Not{expression: expression} ->
-        case do_match(record, expression) do
-          :unknown ->
-            :unknown
-
-          {:ok, match?} ->
-            {:ok, !match?}
-
-          {:error, error} ->
-            {:error, error}
-        end
-
-      %Ash.Query.Exists{} = expr ->
-        resolve_expr(expr, record)
-
-      %BooleanExpression{op: op, left: left, right: right} ->
-        expression_matches(op, left, right, record)
-
-      %Call{} = call ->
-        raise "Unresolvable filter component: #{inspect(call)}"
-
-      %Ref{} = ref ->
-        resolve_expr(ref, record)
-
-      other ->
-        {:ok, other}
+      {:error, error} ->
+        {:error, error}
     end
   end
 

@@ -63,6 +63,22 @@ defmodule Ash.Query.Operator.Basic do
           end
         end
 
+        defp do_evaluate(:<>, %Ash.CiString{string: left}, %Ash.CiString{string: right}) do
+          %Ash.CiString{string: left <> right}
+        end
+
+        defp do_evaluate(:<>, %Ash.CiString{string: left}, right) do
+          %Ash.CiString{string: left <> right}
+        end
+
+        defp do_evaluate(:<>, left, %Ash.CiString{string: right}) do
+          %Ash.CiString{string: left <> right}
+        end
+
+        defp do_evaluate(:<>, left, right) do
+          {:known, to_string(left) <> to_string(right)}
+        end
+
         defp do_evaluate(:<>, left, right) do
           {:known, to_string(left) <> to_string(right)}
         end
@@ -73,6 +89,22 @@ defmodule Ash.Query.Operator.Basic do
 
         defp do_evaluate(:&&, left, right) do
           {:known, left && right}
+        end
+
+        defp do_evaluate(:<, left, right) do
+          {:known, Comp.less_than?(left, right)}
+        end
+
+        defp do_evaluate(:<=, left, right) do
+          {:known, Comp.less_or_equal?(left, right)}
+        end
+
+        defp do_evaluate(:>, left, right) do
+          {:known, Comp.greater_than?(left, right)}
+        end
+
+        defp do_evaluate(:>=, left, right) do
+          {:known, Comp.greater_or_equal?(left, right)}
         end
 
         defp do_evaluate(op, left, right) do
