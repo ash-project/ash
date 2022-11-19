@@ -369,12 +369,12 @@ defmodule Ash.Actions.Update do
                             action.manual ->
                               {mod, opts} = action.manual
 
-                              mod.update(changeset, opts,
+                              mod.update(changeset, opts, %{
                                 actor: actor,
                                 tenant: changeset.tenant,
                                 authorize?: authorize?,
                                 api: changeset.api
-                              )
+                              })
 
                             action.manual? ->
                               {:ok, changeset.data, %{notifications: []}}

@@ -341,12 +341,12 @@ defmodule Ash.Actions.Create do
                           action.manual ->
                             {mod, opts} = action.manual
 
-                            mod.create(changeset, opts,
+                            mod.create(changeset, opts, %{
                               actor: actor,
                               tenant: changeset.tenant,
                               authorize?: authorize?,
                               api: changeset.api
-                            )
+                            })
 
                           action.manual? ->
                             {:ok, nil}

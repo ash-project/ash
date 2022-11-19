@@ -276,12 +276,12 @@ defmodule Ash.Actions.Destroy do
                   action.manual ->
                     {mod, opts} = action.manual
 
-                    mod.destroy(changeset, opts,
+                    mod.destroy(changeset, opts, %{
                       actor: actor,
                       tenant: changeset.tenant,
                       authorize?: authorize?,
                       api: changeset.api
-                    )
+                    })
 
                   action.manual? ->
                     {:ok, record}
