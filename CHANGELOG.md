@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.8](https://github.com/ash-project/ash/compare/v2.4.7...v2.4.8) (2022-11-19)
+
+
+
+
+### Bug Fixes:
+
+* fix `where` and `or_where` implementation
+
 ## [v2.4.7](https://github.com/ash-project/ash/compare/v2.4.6...v2.4.7) (2022-11-19)
 
 
