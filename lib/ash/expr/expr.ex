@@ -3,22 +3,25 @@ defmodule Ash.Expr do
   alias Ash.Query.{BooleanExpression, Not}
 
   @type t :: any
+  @pass_through_funcs [:where, :or_where, :expr]
 
   defmacro where(left, right) do
-    left = do_expr(left)
-    right = do_expr(right)
-
     quote do
-      Ash.Expr.expr(unquote(left) and unquote(right))
+      Ash.Query.BooleanExpression.optimized_new(
+        :and,
+        Ash.Expr.expr(unquote(left)),
+        Ash.Expr.expr(unquote(right))
+      )
     end
   end
 
   defmacro or_where(left, right) do
-    left = do_expr(left)
-    right = do_expr(right)
-
     quote do
-      Ash.Expr.expr(unquote(left) or unquote(right))
+      Ash.Query.BooleanExpression.optimized_new(
+        :or,
+        Ash.Expr.expr(unquote(left)),
+        Ash.Expr.expr(unquote(right))
+      )
     end
   end
 
@@ -46,6 +49,19 @@ defmodule Ash.Expr do
 
   @doc false
   def do_expr(expr, escape? \\ true)
+
+  def do_expr({:|>, _, [first, {func, meta, args}]}, escape?) do
+    do_expr({func, meta, [first | args]}, escape?)
+  end
+
+  def do_expr({func, _, _} = expr, _escape?) when func in @pass_through_funcs do
+    expr
+  end
+
+  def do_expr({{:., _, [_, func]}, _, _} = expr, _escape?)
+      when func in @pass_through_funcs do
+    expr
+  end
 
   def do_expr({op, _, nil}, escape?) when is_atom(op) do
     soft_escape(%Ash.Query.Ref{relationship_path: [], attribute: op}, escape?)
