@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.5](https://github.com/ash-project/ash/compare/v2.4.4...v2.4.5) (2022-11-19)
+
+
+
+
+### Bug Fixes:
+
+* properly pass a map to manual action context
+
+* destroy action types default to accepts [] (#453)
+
 ## [v2.4.4](https://github.com/ash-project/ash/compare/v2.4.3...v2.4.4) (2022-11-18)
 
 
