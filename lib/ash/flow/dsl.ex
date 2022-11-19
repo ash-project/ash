@@ -30,6 +30,7 @@ defmodule Ash.Flow.Dsl do
     ],
     links: [],
     no_depend_modules: [:resource, :touches_resources],
+    modules: [:manual],
     target: Ash.Flow.Step.Create,
     args: [:name, :resource, :action],
     schema: Ash.Flow.Step.Create.schema()
@@ -49,6 +50,7 @@ defmodule Ash.Flow.Dsl do
       """
     ],
     no_depend_modules: [:resource, :touches_resources],
+    modules: [:manual],
     target: Ash.Flow.Step.Update,
     args: [:name, :resource, :action],
     schema: Ash.Flow.Step.Update.schema()
@@ -85,6 +87,7 @@ defmodule Ash.Flow.Dsl do
       destroy :destroy_post, MyApp.Post, :destroy
       """
     ],
+    modules: [:manual],
     no_depend_modules: [:resource, :touches_resources],
     target: Ash.Flow.Step.Destroy,
     args: [:name, :resource, :action],
@@ -103,6 +106,7 @@ defmodule Ash.Flow.Dsl do
     ],
     links: [],
     no_depend_modules: [:resource, :touches_resources],
+    modules: [:manual],
     target: Ash.Flow.Step.Read,
     args: [:name, :resource, :action],
     schema: Ash.Flow.Step.Read.schema()
