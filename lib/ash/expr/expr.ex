@@ -4,6 +4,24 @@ defmodule Ash.Expr do
 
   @type t :: any
 
+  defmacro where(left, right) do
+    left = do_expr(left)
+    right = do_expr(right)
+
+    quote do
+      Ash.Expr.expr(unquote(left) and unquote(right))
+    end
+  end
+
+  defmacro or_where(left, right) do
+    left = do_expr(left)
+    right = do_expr(right)
+
+    quote do
+      Ash.Expr.expr(unquote(left) or unquote(right))
+    end
+  end
+
   defmacro expr(do: body) do
     quote location: :keep do
       Ash.Expr.expr(unquote(body))
