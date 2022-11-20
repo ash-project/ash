@@ -223,7 +223,6 @@ defmodule Ash.MixProject do
       {:ecto, "~> 3.7"},
       {:ets, "~> 0.8.0"},
       {:decimal, "~> 2.0"},
-      # {:picosat_elixir, path: "../picosat_elixir"},
       {:picosat_elixir, "~> 0.2"},
       {:nimble_options, "~> 0.4.0"},
       {:comparable, "~> 1.0"},
@@ -231,6 +230,7 @@ defmodule Ash.MixProject do
       {:earmark, "~> 1.4", optional: true},
       {:stream_data, "~> 0.5.0"},
       {:telemetry, "~> 1.1"},
+      {:plug, ">= 0.0.0", optional: true},
       # Dev/Test dependencies
       {:ex_doc, "~> 0.22", only: :dev, runtime: false},
       {:ex_check, "~> 0.12.0", only: :dev},
@@ -240,7 +240,6 @@ defmodule Ash.MixProject do
       {:git_ops, "~> 2.5", only: :dev},
       {:mix_test_watch, "~> 1.0", only: :dev, runtime: false},
       {:parse_trans, "3.3.0", only: [:dev, :test], override: true},
-      {:plug, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:benchee, "~> 1.1", only: [:dev, :test]}
     ]
   end
