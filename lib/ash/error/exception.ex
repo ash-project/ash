@@ -13,6 +13,7 @@ defmodule Ash.Error.Exception do
                      [
                        :changeset,
                        :query,
+                       error_context: [],
                        vars: [],
                        path: [],
                        stacktrace: [],

@@ -236,7 +236,9 @@ defmodule Ash.Filter do
         filter
 
       {:error, error} ->
-        raise Ash.Error.to_error_class(error)
+        raise Ash.Error.to_error_class(error,
+                error_context: parse_error_context(resource, statement, context)
+              )
     end
   end
 
@@ -929,7 +931,9 @@ defmodule Ash.Filter do
         value
 
       {:error, error} ->
-        raise Ash.Error.to_ash_error(error)
+        raise Ash.Error.to_ash_error(error, nil,
+                error_context: parse_error_context(base.resource, addition, context)
+              )
     end
   end
 
@@ -964,6 +968,17 @@ defmodule Ash.Filter do
       {:ok, filter} -> add_to_filter(base, filter, op, aggregates, calculations)
       {:error, error} -> {:error, error}
     end
+  end
+
+  defp parse_error_context(%{resource: resource} = _filter, addition, context) do
+    parse_error_context(resource, addition, context)
+  end
+
+  defp parse_error_context(resource, addition, context) do
+    context_str = if context, do: ", given context: #{inspect(context)}", else: ""
+
+    "parsing addition of filter statement: #{inspect(addition)}, to resource: #{inspect(resource)}" <>
+      context_str
   end
 
   @doc """
