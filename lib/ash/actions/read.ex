@@ -716,9 +716,28 @@ defmodule Ash.Actions.Read do
 
         must_be_reselected =
           if request_opts[:initial_data] do
-            Enum.flat_map(calculations_at_runtime, fn %{select: select} ->
-              List.wrap(select)
+            calc_selects =
+              Enum.flat_map(calculations_at_runtime, fn %{select: select} ->
+                List.wrap(select)
+              end)
+
+            ash_query.load
+            |> Enum.map(fn
+              {key, _} ->
+                key
+
+              key ->
+                key
             end)
+            |> Enum.flat_map(fn key ->
+              if relationship = Ash.Resource.Info.relationship(ash_query.resource, key) do
+                [relationship.source_attribute]
+              else
+                []
+              end
+            end)
+            |> Enum.concat(calc_selects)
+            |> remove_already_selected(request_opts[:initial_data])
           else
             []
           end
@@ -1053,6 +1072,18 @@ defmodule Ash.Actions.Read do
       end)
       |> load_calc_requirements(Map.keys(query.calculations))
     end
+  end
+
+  defp remove_already_selected(fields, %{results: results}),
+    do: remove_already_selected(fields, results)
+
+  defp remove_already_selected(fields, record) when not is_list(record),
+    do: remove_already_selected(fields, List.wrap(record))
+
+  defp remove_already_selected(fields, initial_data) do
+    Enum.reject(fields, fn field ->
+      Enum.all?(initial_data, &Ash.Resource.selected?(&1, field))
+    end)
   end
 
   defp attach_newly_selected_fields(data, data_with_selected, primary_key, reselected_fields) do
