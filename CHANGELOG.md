@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.10](https://github.com/ash-project/ash/compare/v2.4.9...v2.4.10) (2022-11-21)
+
+
+
+
+### Improvements:
+
+* return invalid primary key errors for `Api.get` when the input can't be cast
+
+* much more readable errors when building loads
+
+* better check module validation
+
 ## [v2.4.9](https://github.com/ash-project/ash/compare/v2.4.8...v2.4.9) (2022-11-21)
 
 
