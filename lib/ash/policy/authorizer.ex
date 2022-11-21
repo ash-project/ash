@@ -328,7 +328,11 @@ defmodule Ash.Policy.Authorizer do
 
   @doc false
   def validate_check({module, opts}) when is_atom(module) and is_list(opts) do
-    {:ok, {module, opts}}
+    if Ash.Helpers.implements_behaviour?(module, Ash.Policy.Check) do
+      {:ok, {module, opts}}
+    else
+      {:error, "All checks must implement the Ash.Policy.Check behaviour"}
+    end
   end
 
   def validate_check(module) when is_atom(module) do
@@ -341,12 +345,12 @@ defmodule Ash.Policy.Authorizer do
 
   def validate_condition(conditions) when is_list(conditions) do
     Enum.reduce_while(conditions, {:ok, []}, fn condition, {:ok, conditions} ->
-      {:ok, {condition, opts}} = validate_check(condition)
+      case validate_check(condition) do
+        {:ok, {condition, opts}} ->
+          {:cont, {:ok, [{condition, opts} | conditions]}}
 
-      if Ash.Helpers.implements_behaviour?(condition, Ash.Policy.Check) do
-        {:cont, {:ok, [{condition, opts} | conditions]}}
-      else
-        {:halt, {:error, "Expected all conditions to be valid checks"}}
+        {:error, "All checks must implement the Ash.Policy.Check behaviour"} ->
+          {:halt, {:error, "Expected all conditions to implement the Ash.Policy.Check behaviour"}}
       end
     end)
   end

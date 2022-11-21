@@ -2,24 +2,9 @@
 
 Policies determine what actions on a resource are permitted for a given actor.
 
-You can specify an actor using the `actor` option, whenever using the code interface or creating changesets/queries like so:
-
-```elixir
-MyApp.MyApi.read(MyResource, actor: current_user)
-
-MyResource 
-|> Ash.Query.for_read(:read, %{}, actor: current_user)
-
-MyResource 
-|> Ash.Changeset.for_create(:create, %{}, actor: current_user)
-```
-
 ## Important!
 
-Before we jump into the guide, it is critical to understand that the policy code doesn't actually
-_do_ anything in the classic sense. It only builds up a set of policies that are stored for use later.
-The checker that reads those policies and authorizes requests may run all, some of, or none of your checks,
-depending on the details of the request being authorized.
+Read and understand the {{link:ash:guide:Security}} guide before proceeding, which explains actors, how to set them, and other relevant configurations.
 
 ## Guide
 
