@@ -409,14 +409,26 @@ defmodule Ash.Filter do
 
     case {primary_key, id} do
       {[field], [{field, value}]} ->
-        {:ok, %{field => value}}
+        case cast_value(resource, field, value, id) do
+          {:ok, value} ->
+            {:ok, %{field => value}}
+
+          {:error, error} ->
+            {:error, error}
+        end
 
       {[field], value} when not keyval? ->
-        {:ok, %{field => value}}
+        case cast_value(resource, field, value, id) do
+          {:ok, value} ->
+            {:ok, %{field => value}}
+
+          {:error, error} ->
+            {:error, error}
+        end
 
       {fields, value} ->
         if keyval? do
-          with :error <- get_keys(value, fields),
+          with :error <- get_keys(value, fields, resource),
                :error <- get_identity_filter(resource, id) do
             {:error, InvalidPrimaryKey.exception(resource: resource, value: id)}
           end
@@ -426,22 +438,52 @@ defmodule Ash.Filter do
     end
   end
 
-  defp get_keys(value, fields) do
+  defp get_keys(value, fields, resource) do
+    original_value = value
+
     Enum.reduce_while(fields, {:ok, %{}}, fn field, {:ok, vals} ->
       case fetch(value, field) do
         {:ok, value} ->
-          {:cont, {:ok, Map.put(vals, field, value)}}
+          case cast_value(resource, field, value, original_value) do
+            {:ok, value} ->
+              {:cont, {:ok, Map.put(vals, field, value)}}
+
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
 
         :error ->
           case fetch(value, to_string(field)) do
             {:ok, value} ->
-              {:cont, {:ok, Map.put(vals, field, value)}}
+              case cast_value(resource, field, value, original_value) do
+                {:ok, value} ->
+                  {:cont, {:ok, Map.put(vals, field, value)}}
+
+                {:error, error} ->
+                  {:error, error}
+              end
 
             :error ->
               {:halt, :error}
           end
       end
     end)
+  end
+
+  defp cast_value(resource, field, value, id) do
+    attribute = Ash.Resource.Info.attribute(resource, field)
+
+    if attribute do
+      case Ash.Type.cast_input(attribute.type, value, attribute.constraints) do
+        {:ok, value} ->
+          {:ok, value}
+
+        _ ->
+          {:error, InvalidPrimaryKey.exception(resource: resource, value: id)}
+      end
+    else
+      {:error, InvalidPrimaryKey.exception(resource: resource, value: id)}
+    end
   end
 
   defp fetch(val, key) when is_map(val), do: Map.fetch(val, key)
@@ -454,7 +496,7 @@ defmodule Ash.Filter do
     |> Enum.find_value(
       :error,
       fn identity ->
-        case get_keys(id, identity.keys) do
+        case get_keys(id, identity.keys, resource) do
           {:ok, key} ->
             {:ok, key}
 

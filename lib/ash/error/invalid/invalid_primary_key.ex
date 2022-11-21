@@ -9,8 +9,10 @@ defmodule Ash.Error.Invalid.InvalidPrimaryKey do
 
     def code(_), do: "invalid_primary_key"
 
-    def message(%{resource: resource, value: value}) do
-      "invalid primary key #{inspect(value)} provided for resource #{inspect(resource)}"
+    def message(%{resource: _resource, value: value}) do
+      # TODO: removed the resource so as not to leak it, but it would be nice to show it internally somehow
+      # perhaps an `internal_message` that is only shown on raised exceptions
+      "invalid primary key #{inspect(value)} provided"
     end
   end
 end

@@ -143,6 +143,12 @@ defmodule Ash.Test.Actions.ReadTest do
       assert ^post = strip_metadata(Api.get!(Post, post.id))
     end
 
+    test "it gives an invalid primary key error when invalid input is provided" do
+      assert_raise Ash.Error.Invalid, ~r/invalid primary key "not good"/, fn ->
+        Api.get!(Post, "not good")
+      end
+    end
+
     test "it raises when there is no matching record" do
       res =
         assert_raise Ash.Error.Invalid, fn ->
