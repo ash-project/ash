@@ -117,11 +117,8 @@ It might be helpful to think of an Ash API as a Bounded Context (in the Domain D
 Let's start by creating our first resource along with our first API. We will create the following files:
 
 - The API [Helpdesk.Support] - `lib/helpdesk/support.ex`
+- An accompanying registry which lists the resources for our api. - `lib/helpdesk/support/registry.ex`
 - Our Ticket resource [Helpdesk.Support.Ticket] - `lib/helpdesk/support/resources/ticket.ex`.
-
-We also create an accompanying registry, in \*\*\*?, which is where we will list the resources for our Api.
-
-- A registry to list our resources - `lib/helpdesk/support/registry.ex`
 
 To create the required folders and files, you can use the following command in your terminal:
 

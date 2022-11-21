@@ -63,7 +63,27 @@ defmodule Mix.Tasks.Ash.ReplaceDocLinks do
             # TODO: validate extensions
             ~s(<a href="https://ash-hq.org/docs/dsl/#{library}/latest/#{sanitize_name(item)}">#{name || item}</a>)
 
+          :link,
+          %{type: "guide", item: item, name_override: name, library: ^current_project},
+          _ ->
+            Enum.find_value(doc_indexes(), fn doc_index ->
+              Enum.find(doc_index.guides(), fn guide ->
+                sanitize_name(item) == sanitize_name(guide.name)
+              end)
+            end)
+            |> case do
+              nil ->
+                raise "No such guide matching name #{item}"
+
+              _ ->
+                :ok
+            end
+
+            ~s(<a href="#{sanitize_name(item)}.html">#{name || item}</a>)
+
           :link, %{type: "guide", item: item, name_override: name, library: library}, _ ->
+            ~s(<a href="https://hexdocs.pm/#{library}/#{sanitize_name(item)}.html">#{name || item}</a>)
+
             # TODO: validate guides
             ~s(<a href="https://ash-hq.org/docs/dsl/#{library}/latest/#{sanitize_name(item)}">#{name || item}</a>)
 
