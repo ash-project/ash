@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.9](https://github.com/ash-project/ash/compare/v2.4.8...v2.4.9) (2022-11-21)
+
+
+
+
+### Bug Fixes:
+
+* reselect relationship source fields when loading relationships
+
+* make plug an optional dependency of Ash
+
 ## [v2.4.8](https://github.com/ash-project/ash/compare/v2.4.7...v2.4.8) (2022-11-19)
 
 
