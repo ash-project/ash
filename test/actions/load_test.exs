@@ -527,6 +527,14 @@ defmodule Ash.Test.Actions.LoadTest do
       assert Enum.sort([category1.id, category2.id]) == Enum.sort([id1, id2])
     end
 
+    test "it produces a nice error message on loading invalid loads" do
+      assert_raise Ash.Error.Invalid, ~r/:non_existent_thing is not a valid load/, fn ->
+        Post
+        |> Ash.Query.load(categories: [posts: :non_existent_thing])
+        |> Api.read!(authorize?: true)
+      end
+    end
+
     test "it allows loading nested many to many relationships" do
       category1 =
         Category

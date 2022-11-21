@@ -37,7 +37,9 @@ defmodule Ash.Error.Exception do
         case Process.info(self(), :current_stacktrace) do
           {:current_stacktrace, stacktrace} ->
             super(
-              Keyword.put_new(opts, :stacktrace, %Ash.Error.Stacktrace{stacktrace: stacktrace})
+              Keyword.put_new(opts, :stacktrace, %Ash.Error.Stacktrace{
+                stacktrace: Enum.drop(stacktrace, 2)
+              })
             )
 
           _ ->

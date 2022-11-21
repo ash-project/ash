@@ -870,7 +870,7 @@ defmodule Ash.Query do
             end
 
           true ->
-            add_error(query, :load, "Invalid load #{inspect(field)}")
+            add_error(query, :load, Ash.Error.Query.InvalidLoad.exception(load: field))
         end
 
       field, query ->
@@ -969,7 +969,7 @@ defmodule Ash.Query do
         end
 
       true ->
-        add_error(query, :load, "Could not load #{inspect(field)}")
+        add_error(query, :load, Ash.Error.Query.InvalidLoad.exception(load: field))
     end
   end
 
@@ -1577,7 +1577,7 @@ defmodule Ash.Query do
       %{query | load: new_loads}
     else
       {:error, errors} ->
-        Enum.reduce(errors, query, &add_error(&2, :load, &1))
+        Enum.reduce(errors, query, &add_error(&2, &1))
     end
   end
 
@@ -1594,14 +1594,8 @@ defmodule Ash.Query do
       [] ->
         []
 
-      _errors ->
-        [
-          {:error,
-           InvalidQuery.exception(
-             query: load_query,
-             load_path: Enum.reverse(path)
-           )}
-        ]
+      errors ->
+        Enum.map(errors, &Ash.Error.set_path(&1, path))
     end
   end
 
@@ -1610,6 +1604,8 @@ defmodule Ash.Query do
   end
 
   defp do_validate_load(query, loads, path) when is_list(loads) do
+    query = to_query(query)
+
     loads
     |> List.wrap()
     |> Enum.flat_map(fn
@@ -1617,43 +1613,31 @@ defmodule Ash.Query do
         case Ash.Resource.Info.relationship(query.resource, key) do
           nil ->
             [
-              {:error,
-               NoSuchRelationship.exception(
-                 resource: query.resource,
-                 relationship: key,
-                 load_path: Enum.reverse(path)
-               )}
+              NoSuchRelationship.exception(
+                resource: query.resource,
+                relationship: key,
+                load_path: Enum.reverse(path)
+              )
             ]
 
           relationship ->
             cond do
               !Ash.Resource.Info.primary_action(relationship.destination, :read) ->
                 [
-                  {:error,
-                   NoReadAction.exception(
-                     resource: relationship.destination,
-                     when: "loading relationship #{relationship.name}"
-                   )}
+                  NoReadAction.exception(
+                    resource: relationship.destination,
+                    when: "loading relationship #{relationship.name}"
+                  )
                 ]
 
               relationship.type == :many_to_many &&
                   !Ash.Resource.Info.primary_action(relationship.through, :read) ->
                 [
-                  {:error,
-                   NoReadAction.exception(
-                     resource: relationship.destination,
-                     when: "loading relationship #{relationship.name}"
-                   )}
+                  NoReadAction.exception(
+                    resource: relationship.destination,
+                    when: "loading relationship #{relationship.name}"
+                  )
                 ]
-
-              match?(%Ash.Query{}, value) ->
-                validate_matching_query_and_continue(
-                  value,
-                  query.resource,
-                  key,
-                  path,
-                  relationship
-                )
 
               true ->
                 validate_matching_query_and_continue(

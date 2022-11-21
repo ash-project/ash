@@ -169,11 +169,11 @@ defmodule Ash.Error do
       case stacktrace do
         %Stacktrace{stacktrace: nil} ->
           {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
-          %Stacktrace{stacktrace: stacktrace}
+          %Stacktrace{stacktrace: Enum.drop(stacktrace, 2)}
 
         nil ->
           {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
-          %Stacktrace{stacktrace: stacktrace}
+          %Stacktrace{stacktrace: Enum.drop(stacktrace, 2)}
 
         stacktrace ->
           %Stacktrace{stacktrace: stacktrace}
