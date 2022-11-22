@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.11](https://github.com/ash-project/ash/compare/v2.4.10...v2.4.11) (2022-11-22)
+
+
+
+
+### Bug Fixes:
+
+* fix typespec for Api.Info.trace_name/3
+
+### Improvements:
+
+* add error context to error creation / normalisation (#440)
+
+* update hexdocs processor to link guides on hexdocs
+
 ## [v2.4.10](https://github.com/ash-project/ash/compare/v2.4.9...v2.4.10) (2022-11-21)
 
 
