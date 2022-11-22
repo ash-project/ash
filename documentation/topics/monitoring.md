@@ -6,6 +6,12 @@ Instrumentation Ash has two primary components, {{link:ash:module:Ash.Tracer}} a
 
 Ash emits the following telemetry events, suffixed with `:start` and `:stop`. Start events have `system_time` measurements, and stop events have `system_time` and `duration` measurements. All times will be in the native time unit.
 
+### Important
+
+Note the mention of `:start` and `:stop` suffixes. The event below `[:ash, <api_short_name>, :create]`, is actually referring to two events, `[:ash, <api_short_name>, :create, :start]` and `[:ash, <api_short_name>, :create, :stop]`.
+
+### Events
+
 - `[:ash, <api_short_name>, :create]` - The execution of a create action. Use `resource_short_name` and `action` metadata to break down measurements.
 - `[:ash, <api_short_name>, :update]` - The execution of a update action. Use `resource_short_name` and `action` metadata to break down measurements.
 - `[:ash, <api_short_name>, :read]` - The execution of a read action. Use `resource_short_name` and `action` metadata to break down measurements.

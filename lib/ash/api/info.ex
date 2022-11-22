@@ -71,7 +71,7 @@ defmodule Ash.Api.Info do
   end
 
   @doc "The span_name for an api and resource combination"
-  @spec span_name(Ash.Api.t(), Ash.Resource.t(), action :: atom) :: String.t()
+  @spec span_name(Ash.Api.t(), Ash.Resource.t(), action :: atom | binary()) :: String.t()
   def span_name(api, resource, action) do
     "#{trace_name(api)}:#{Ash.Resource.Info.trace_name(resource)}.#{action}"
   end
