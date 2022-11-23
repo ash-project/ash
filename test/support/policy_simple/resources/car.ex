@@ -16,6 +16,8 @@ defmodule Ash.Test.Support.PolicySimple.Car do
       argument(:users, {:array, :uuid})
       change(manage_relationship(:users, type: :append_and_remove))
     end
+
+    create :authorize_unless
   end
 
   attributes do
@@ -23,8 +25,14 @@ defmodule Ash.Test.Support.PolicySimple.Car do
   end
 
   policies do
-    policy always() do
-      authorize_if(expr(users.id == ^actor(:id)))
+    policy action(:authorize_unless) do
+      authorize_if never()
+      authorize_unless never()
+      authorize_if never()
+    end
+
+    policy action_type([:read, :update, :destroy]) do
+      authorize_if expr(users.id == ^actor(:id))
     end
   end
 

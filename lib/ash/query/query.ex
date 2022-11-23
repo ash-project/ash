@@ -142,6 +142,28 @@ defmodule Ash.Query do
     defp or_empty(_, false), do: empty()
   end
 
+  defmacrop maybe_already_validated_error!(query) do
+    {function, _arity} = __CALLER__.function
+
+    quote do
+      query = unquote(query)
+
+      if query.__validated_for_action__ && !query.context[:private][:in_before_action?] do
+        raise ArgumentError, """
+        Changeset has already been validated for action #{inspect(query.__validated_for_action__)}.
+
+        For safety, we prevent any changes after that point because they will bypass validations or other action logic.
+        However, you should prefer a pattern like the below, which makes any custom modifications *before* calling the action.
+
+          Resource
+          |> Ash.Query.new()
+          |> Ash.Query.#{unquote(function)}(...)
+          |> Ash.Query.for_read(...)
+        """
+      end
+    end
+  end
+
   @doc """
   Attach a filter statement to the query.
 
@@ -305,12 +327,12 @@ defmodule Ash.Query do
           |> set_authorize?(opts)
           |> set_tracer(opts)
           |> Ash.Query.set_tenant(opts[:tenant] || query.tenant)
-          |> Map.put(:__validated_for_action__, action_name)
           |> cast_params(action, args)
           |> set_argument_defaults(action)
           |> require_arguments(action)
           |> run_preparations(action, opts[:actor], opts[:authorize?], opts[:tracer], metadata)
           |> add_action_filters(action, opts[:actor])
+          |> Map.put(:__validated_for_action__, action_name)
         end
       end
     else
@@ -1083,6 +1105,7 @@ defmodule Ash.Query do
   Add an argument to the query, which can be used in filter templates on actions
   """
   def set_argument(query, argument, value) do
+    maybe_already_validated_error!(query)
     query = to_query(query)
 
     if query.action do

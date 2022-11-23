@@ -1,54 +1,36 @@
-defmodule Ash.Policy.FilterCheck do
+defmodule Ash.Policy.FilterCheckWithContext do
   @moduledoc """
-  A type of check that is represented by a filter statement
-
-  That filter statement can be templated, currently only supporting `{:_actor, field}`
-  which will replace that portion of the filter with the appropriate field value from the actor and
-  `{:_actor, :_primary_key}` which will replace the value with a keyword list of the primary key
-  fields of an actor to their values, like `[id: 1]`. If the actor is not present `{:_actor, field}`
-  becomes `nil`, and `{:_actor, :_primary_key}` becomes `false`.
-
-  You can customize what the "negative" filter looks like by defining `c:reject/1`. This is important for
-  filters over related data. For example, given an `owner` relationship and a data layer like `ash_postgres`
-  where `column != NULL` does *not* evaluate to true (see postgres docs on NULL for more):
-
-      # The opposite of
-      `owner.id == 1`
-      # in most cases is not
-      `not(owner.id == 1)`
-      # because in postgres that would be `NOT (owner.id = NULL)` in cases where there was no owner
-      # A better opposite would be
-      `owner.id != 1 or is_nil(owner.id)`
-      # alternatively
-      `not(owner.id == 1) or is_nil(owner.id)`
-
-  By being able to customize the `reject` filter, you can use related filters in your policies. Without it,
-  they will likely have undesired effects.
+  A type of check that is represented by a filter statement, and has access to the
   """
+
   @type options :: Keyword.t()
-  @callback filter(options()) :: Keyword.t() | Ash.Expr.t()
-  @callback reject(options()) :: Keyword.t() | Ash.Expr.t()
-  @optional_callbacks [filter: 1, reject: 1]
+  @type context :: %{
+          optional(:query) => Ash.Query.t(),
+          optional(:changeset) => Ash.Query.t(),
+          :action => Ash.Resource.Actions.action(),
+          :resource => Ash.Resource.t(),
+          :api => Ash.Api.t()
+        }
+
+  @callback filter(actor :: term, context(), options()) :: Keyword.t() | Ash.Expr.t()
+  @callback reject(actor :: term, context(), options()) :: Keyword.t() | Ash.Expr.t()
+  @optional_callbacks [reject: 3]
 
   defmacro __using__(_) do
     quote do
-      @behaviour Ash.Policy.FilterCheck
+      @behaviour Ash.Policy.FilterCheckWithContext
       @behaviour Ash.Policy.Check
 
       require Ash.Query
 
       def type, do: :filter
 
-      def describe(opts) do
-        inspect(filter(opts))
-      end
-
       def strict_check_context(opts) do
         []
       end
 
       def strict_check(nil, authorizer, opts) do
-        if Ash.Filter.template_references_actor?(opts[:filter]) do
+        if Ash.Filter.template_references_actor?(filter(nil, authorizer, opts)) do
           {:ok, false}
         else
           try_strict_check(nil, authorizer, opts)
@@ -62,8 +44,8 @@ defmodule Ash.Policy.FilterCheck do
       defp try_strict_check(actor, authorizer, opts) do
         opts = Keyword.put_new(opts, :resource, authorizer.resource)
 
-        opts
-        |> filter()
+        actor
+        |> filter(authorizer, opts)
         |> Ash.Filter.build_filter_from_template(actor)
         |> try_eval(authorizer)
         |> case do
@@ -92,7 +74,7 @@ defmodule Ash.Policy.FilterCheck do
             Ash.Filter.Runtime.do_match(nil, hydrated)
 
           {:error, error} ->
-            {:halt, {:error, error}}
+            {:error, error}
         end
       end
 
@@ -135,7 +117,7 @@ defmodule Ash.Policy.FilterCheck do
             end
 
           {:error, error} ->
-            {:halt, {:error, error}}
+            {:error, error}
         end
       end
 
@@ -150,7 +132,7 @@ defmodule Ash.Policy.FilterCheck do
             Ash.Filter.Runtime.do_match(nil, hydrated)
 
           {:error, error} ->
-            {:halt, {:error, error}}
+            {:error, error}
         end
       end
 
@@ -162,16 +144,16 @@ defmodule Ash.Policy.FilterCheck do
 
       def auto_filter(actor, authorizer, opts) do
         opts = Keyword.put_new(opts, :resource, authorizer.resource)
-        Ash.Filter.build_filter_from_template(filter(opts), actor)
+        Ash.Filter.build_filter_from_template(filter(actor, authorizer, opts), actor)
       end
 
       def auto_filter_not(actor, authorizer, opts) do
         opts = Keyword.put_new(opts, :resource, authorizer.resource)
-        Ash.Filter.build_filter_from_template(reject(opts), actor)
+        Ash.Filter.build_filter_from_template(reject(actor, authorizer, opts), actor)
       end
 
-      def reject(opts) do
-        [not: filter(opts)]
+      def reject(actor, authorizer, opts) do
+        [not: filter(actor, authorizer, opts)]
       end
 
       def check(actor, data, authorizer, opts) do
@@ -186,7 +168,7 @@ defmodule Ash.Policy.FilterCheck do
         authorizer.resource
         |> authorizer.api.query()
         |> Ash.Query.filter(^filter)
-        |> Ash.Query.filter(^auto_filter(authorizer.actor, authorizer, opts))
+        |> Ash.Query.filter(^auto_filter(actor, authorizer, opts))
         |> authorizer.api.read()
         |> case do
           {:ok, authorized_data} ->
@@ -201,7 +183,7 @@ defmodule Ash.Policy.FilterCheck do
         end
       end
 
-      defoverridable reject: 1, describe: 1
+      defoverridable reject: 3
     end
   end
 

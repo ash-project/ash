@@ -121,6 +121,7 @@ defmodule Ash.MixProject do
           Ash.Policy.Check,
           Ash.Policy.Check.Builtins,
           Ash.Policy.FilterCheck,
+          Ash.Policy.FilterCheckWithContext,
           Ash.Policy.SimpleCheck
         ],
         Introspection: [

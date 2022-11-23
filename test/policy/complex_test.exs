@@ -7,7 +7,6 @@ defmodule Ash.Test.Policy.ComplexTest do
 
   setup do
     Application.put_env(:ash, :policies, show_policy_breakdowns?: true)
-    Logger.configure(level: :debug)
 
     on_exit(fn ->
       Application.delete_env(:ash, :policies)

@@ -1,6 +1,6 @@
 defmodule Ash.Policy.Check.RelatesToActorVia do
   @moduledoc false
-  use Ash.Policy.FilterCheck
+  use Ash.Policy.FilterCheckWithContext
 
   require Ash.Expr
   import Ash.Filter.TemplateHelpers
@@ -12,7 +12,7 @@ defmodule Ash.Policy.Check.RelatesToActorVia do
   end
 
   @impl true
-  def filter(opts) do
+  def filter(_actor, _context, opts) do
     opts = Keyword.update!(opts, :relationship_path, &List.wrap/1)
     {last_relationship, to_many?} = relationship_info(opts[:resource], opts[:relationship_path])
 
@@ -34,7 +34,7 @@ defmodule Ash.Policy.Check.RelatesToActorVia do
   end
 
   @impl true
-  def reject(opts) do
+  def reject(actor, context, opts) do
     opts = Keyword.update!(opts, :relationship_path, &List.wrap/1)
     {last_relationship, to_many?} = relationship_info(opts[:resource], opts[:relationship_path])
 
@@ -43,7 +43,7 @@ defmodule Ash.Policy.Check.RelatesToActorVia do
       |> Ash.Resource.Info.primary_key()
 
     if to_many? do
-      Ash.Expr.expr(not (^filter(opts)))
+      Ash.Expr.expr(not (^filter(actor, context, opts)))
     else
       expr =
         Enum.reduce(pkey, nil, fn field, expr ->
@@ -54,7 +54,7 @@ defmodule Ash.Policy.Check.RelatesToActorVia do
           end
         end)
 
-      Ash.Expr.expr(not (^filter(opts)) or ^expr)
+      Ash.Expr.expr(not (^filter(actor, context, opts)) or ^expr)
     end
   end
 

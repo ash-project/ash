@@ -1194,6 +1194,8 @@ defmodule Ash.Actions.Read do
   end
 
   defp run_before_action(query) do
+    query = Ash.Query.put_context(query, :private, %{in_before_action?: true})
+
     query.before_action
     |> Enum.reduce({query, []}, fn before_action, {query, notifications} ->
       case before_action.(query) do
@@ -1203,6 +1205,9 @@ defmodule Ash.Actions.Read do
         query ->
           {query, notifications}
       end
+    end)
+    |> then(fn {query, notifications} ->
+      {Ash.Query.put_context(query, :private, %{in_before_action?: false}), notifications}
     end)
   end
 

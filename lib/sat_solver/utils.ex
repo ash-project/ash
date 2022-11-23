@@ -41,9 +41,6 @@ defmodule Ash.SatSolver.Utils do
     list
     |> do_sublists_front()
     |> Enum.reject(fn
-      ^list ->
-        true
-
       [_] ->
         true
 

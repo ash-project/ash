@@ -142,6 +142,49 @@ defmodule Ash.Changeset do
   require Ash.Tracer
   require Logger
 
+  defmacrop maybe_already_validated_error!(changeset, alternative \\ nil) do
+    {function, arity} = __CALLER__.function
+
+    if alternative do
+      quote do
+        changeset = unquote(changeset)
+
+        if changeset.__validated_for_action__ && !changeset.context[:private][:in_before_action?] do
+          raise ArgumentError, """
+          Changeset has already been validated for action #{inspect(changeset.__validated_for_action__)}.
+
+          For safety, we prevent any changes after that point because they will bypass validations or other action logic.. To proceed anyway,
+          you can use `#{unquote(alternative)}/#{unquote(arity)}`. However, you should prefer a pattern like the below, which makes
+          any custom changes *before* calling the action.
+
+            Resource
+            |> Ash.Changeset.new()
+            |> Ash.Changeset.#{unquote(function)}(...)
+            |> Ash.Changeset.for_create(...)
+          """
+        end
+      end
+    else
+      quote do
+        changeset = unquote(changeset)
+
+        if changeset.__validated_for_action__ && !changeset.context[:private][:in_before_action?] do
+          raise ArgumentError, """
+          Changeset has already been validated for action #{inspect(changeset.__validated_for_action__)}.
+
+          For safety, we prevent any changes using `#{unquote(function)}/#{unquote(arity)}` after that point because they will bypass validations or other action logic.
+          Instead, you should change or set this value before calling the action, like so:
+
+            Resource
+            |> Ash.Changeset.new()
+            |> Ash.Changeset.#{unquote(function)}(...)
+            |> Ash.Changeset.for_create(...)
+          """
+        end
+      end
+    end
+  end
+
   @doc """
   Returns a new changeset over a resource. Prefer `for_action` or `for_create`, etc. over this function if possible.
 
@@ -510,7 +553,6 @@ defmodule Ash.Changeset do
               |> set_authorize(opts)
               |> set_tracer(opts)
               |> set_tenant(opts[:tenant] || changeset.tenant)
-              |> Map.put(:__validated_for_action__, action.name)
               |> cast_params(action, params)
               |> set_argument_defaults(action)
               |> require_arguments(action)
@@ -523,6 +565,7 @@ defmodule Ash.Changeset do
               )
               |> add_validations(opts[:tracer], metadata, opts[:actor])
               |> mark_validated(action.name)
+              |> Map.put(:__validated_for_action__, action.name)
             end
           end
         end
@@ -646,7 +689,6 @@ defmodule Ash.Changeset do
               |> set_tenant(
                 opts[:tenant] || changeset.tenant || changeset.data.__metadata__[:tenant]
               )
-              |> Map.put(:__validated_for_action__, action.name)
               |> cast_params(action, params || %{})
               |> set_argument_defaults(action)
               |> require_arguments(action)
@@ -663,6 +705,7 @@ defmodule Ash.Changeset do
               |> add_validations(opts[:tracer], metadata, opts[:actor])
               |> mark_validated(action.name)
               |> eager_validate_identities()
+              |> Map.put(:__validated_for_action__, action.name)
 
             if Keyword.get(opts, :require?, true) do
               require_values(changeset, action.type)
@@ -1442,6 +1485,8 @@ defmodule Ash.Changeset do
   end
 
   defp run_around_actions(%{around_action: []} = changeset, func) do
+    changeset = put_context(changeset, :private, %{in_before_action?: true})
+
     {changeset, %{notifications: before_action_notifications}} =
       Enum.reduce_while(
         changeset.before_action,
@@ -1498,6 +1543,8 @@ defmodule Ash.Changeset do
           end
         end
       )
+
+    changeset = put_context(changeset, :private, %{in_before_action?: false})
 
     case func.(changeset) do
       {:ok, result, instructions} ->
@@ -2568,6 +2615,8 @@ defmodule Ash.Changeset do
   @doc "Change an attribute only if is not currently being changed"
   @spec change_new_attribute(t(), atom, term) :: t()
   def change_new_attribute(changeset, attribute, value) do
+    maybe_already_validated_error!(changeset, :force_change_new_attribute)
+
     if changing_attribute?(changeset, attribute) do
       changeset
     else
@@ -2583,6 +2632,8 @@ defmodule Ash.Changeset do
   """
   @spec change_new_attribute_lazy(t(), atom, (() -> any)) :: t()
   def change_new_attribute_lazy(changeset, attribute, func) do
+    maybe_already_validated_error!(changeset, :force_change_new_attribute_lazy)
+
     if changing_attribute?(changeset, attribute) do
       changeset
     else
@@ -2594,6 +2645,8 @@ defmodule Ash.Changeset do
   Add an argument to the changeset, which will be provided to the action
   """
   def set_argument(changeset, argument, value) do
+    maybe_already_validated_error!(changeset, :set_argument)
+
     if changeset.action do
       argument =
         Enum.find(
@@ -2640,6 +2693,8 @@ defmodule Ash.Changeset do
   Remove an argument from the changeset
   """
   def delete_argument(changeset, argument_or_arguments) do
+    maybe_already_validated_error!(changeset)
+
     argument_or_arguments
     |> List.wrap()
     |> Enum.reduce(changeset, fn argument, changeset ->
@@ -2651,6 +2706,8 @@ defmodule Ash.Changeset do
   Merge a map of arguments to the arguments list
   """
   def set_arguments(changeset, map) do
+    maybe_already_validated_error!(changeset)
+
     Enum.reduce(map, changeset, fn {key, value}, changeset ->
       set_argument(changeset, key, value)
     end)
@@ -2687,6 +2744,8 @@ defmodule Ash.Changeset do
   @doc "Calls `change_attribute/3` for each key/value pair provided"
   @spec change_attributes(t(), map | Keyword.t()) :: t()
   def change_attributes(changeset, changes) do
+    maybe_already_validated_error!(changeset, :force_change_attributes)
+
     Enum.reduce(changes, changeset, fn {key, value}, changeset ->
       change_attribute(changeset, key, value)
     end)
@@ -2695,6 +2754,8 @@ defmodule Ash.Changeset do
   @doc "Adds a change to the changeset, unless the value matches the existing value"
   @spec change_attribute(t(), atom, any) :: t()
   def change_attribute(changeset, attribute, value) do
+    maybe_already_validated_error!(changeset, :change_attribute)
+
     case Ash.Resource.Info.attribute(changeset.resource, attribute) do
       nil ->
         error =
@@ -2794,6 +2855,8 @@ defmodule Ash.Changeset do
   """
   @spec change_default_attribute(t(), atom, any) :: t()
   def change_default_attribute(changeset, attribute, value) do
+    maybe_already_validated_error!(changeset)
+
     case Ash.Resource.Info.attribute(changeset.resource, attribute) do
       nil ->
         error =

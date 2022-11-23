@@ -18,6 +18,11 @@ defmodule Ash.Policy.Info do
     Application.get_env(:ash, :policies)[:log_policy_breakdowns]
   end
 
+  @doc "Whether or not ash policy authorizer is configured to show policy breakdowns in error messages"
+  def log_successful_policy_breakdowns do
+    Application.get_env(:ash, :policies)[:log_successful_policy_breakdowns]
+  end
+
   @doc """
   A utility to determine if a given query/changeset would pass authorization.
 

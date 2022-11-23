@@ -85,6 +85,12 @@ defmodule Ash.Test.Policy.SimpleTest do
     assert ids == Enum.sort([post1.id, post2.id])
   end
 
+  test "authorize_unless properly combines", %{user: user} do
+    Car
+    |> Ash.Changeset.for_create(:authorize_unless, %{users: [user.id]})
+    |> Api.create!(actor: user)
+  end
+
   test "filter checks work with many to many related data and a filter", %{user: user} do
     car1 =
       Car

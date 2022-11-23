@@ -93,7 +93,10 @@ defmodule Ash.Policy.Checker do
   def strict_check_scenarios(authorizer) do
     case Ash.Policy.Policy.solve(authorizer) do
       {:ok, scenarios} ->
-        {:ok, remove_scenarios_with_impossible_facts(scenarios, authorizer)}
+        {:ok,
+         scenarios
+         |> Ash.Policy.SatSolver.simplify_clauses()
+         |> remove_scenarios_with_impossible_facts(authorizer)}
 
       {:error, :unsatisfiable} ->
         {:error, :unsatisfiable}

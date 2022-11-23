@@ -118,7 +118,7 @@ defmodule Ash.Test.Actions.UpdateTest do
           {:ok,
            changeset.data
            |> Ash.Changeset.for_update(:update, changeset.attributes)
-           |> Ash.Changeset.change_attribute(:name, "manual")
+           |> Ash.Changeset.force_change_attribute(:name, "manual")
            |> Ash.Test.Actions.UpdateTest.Api.update!()}
         end
       end

@@ -74,7 +74,7 @@ We check those from top to bottom, so the first one of those that returns `:auth
 ```elixir
 authorize_if IsSuperUser # if this is true
 
-# None of the rest of them matter matter
+# None of the rest of them matter
 forbid_if Deactivated 
 authorize_if IsAdminUser
 forbid_if RegularUserCanCreate

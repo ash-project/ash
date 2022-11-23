@@ -751,6 +751,11 @@ defmodule Ash.SatSolver do
     end)
     |> group_predicates(bindings)
     |> rebind()
+    |> unique_clauses()
+  end
+
+  defp unique_clauses({clauses, bindings}) do
+    {Enum.uniq(clauses), bindings}
   end
 
   defp group_predicates(expression, bindings) do
@@ -770,13 +775,26 @@ defmodule Ash.SatSolver do
     scenario
     |> Ash.SatSolver.Utils.ordered_sublists()
     |> Enum.filter(&can_be_used_as_group?(&1, all_scenarios, bindings))
-    |> Enum.sort_by(&(-length(&1)))
+    |> Enum.sort_by(&length/1)
+    |> remove_overlapping()
     |> Enum.reduce({scenario, bindings}, fn group, {scenario, bindings} ->
       bindings = add_group_binding(bindings, group)
 
       {Ash.SatSolver.Utils.replace_ordered_sublist(scenario, group, bindings[:groups][group]),
        bindings}
     end)
+  end
+
+  defp remove_overlapping([]), do: []
+
+  defp remove_overlapping([item | rest]) do
+    if Enum.any?(item, fn n ->
+         Enum.any?(rest, &(n in &1 or -n in &1))
+       end) do
+      remove_overlapping(rest)
+    else
+      [item | remove_overlapping(rest)]
+    end
   end
 
   def unbind(expression, %{temp_bindings: temp_bindings, old_bindings: old_bindings}) do
@@ -809,11 +827,7 @@ defmodule Ash.SatSolver do
   end
 
   def expand_groups(expression) do
-    if Enum.any?(expression, &match?({:expand, _}, &1)) do
-      do_expand_groups(expression)
-    else
-      [expression]
-    end
+    do_expand_groups(expression)
   end
 
   defp do_expand_groups([]), do: [[]]
@@ -897,14 +911,14 @@ defmodule Ash.SatSolver do
     if bindings[:groups][group] do
       bindings
     else
-      new_binding = bindings[:current] + 1
+      binding = bindings[:current]
 
       bindings
-      |> Map.put(:current, new_binding)
       |> Map.put_new(:reverse_groups, %{})
-      |> Map.update!(:reverse_groups, &Map.put(&1, new_binding, group))
+      |> Map.update!(:reverse_groups, &Map.put(&1, binding, group))
       |> Map.put_new(:groups, %{})
-      |> Map.update!(:groups, &Map.put(&1, group, new_binding))
+      |> Map.update!(:groups, &Map.put(&1, group, binding))
+      |> Map.put(:current, binding + 1)
     end
   end
 

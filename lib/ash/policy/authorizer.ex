@@ -397,7 +397,18 @@ defmodule Ash.Policy.Authorizer do
     |> do_strict_check_facts()
     |> case do
       {:ok, authorizer} ->
-        strict_check_result(authorizer)
+        case strict_check_result(authorizer) do
+          :authorized ->
+            log_successful_policy_breakdown(authorizer)
+            :authorized
+
+          {:filter, authorizer, filter} ->
+            log_successful_policy_breakdown(authorizer, filter)
+            {:filter, authorizer, filter}
+
+          other ->
+            other
+        end
 
       {:error, error} ->
         {:error, error}
@@ -478,7 +489,7 @@ defmodule Ash.Policy.Authorizer do
       end)
       |> Map.new()
     end)
-    |> simplify_clauses()
+    |> Ash.Policy.SatSolver.simplify_clauses()
     |> Enum.reduce([], fn scenario, or_filters ->
       scenario
       |> Enum.map(fn
@@ -518,40 +529,20 @@ defmodule Ash.Policy.Authorizer do
     end)
   end
 
-  def simplify_clauses([scenario]), do: [scenario]
+  def print_tuple_boolean({op, l, r}) when op in [:and, :or] do
+    "(#{print_tuple_boolean(l)} #{op} #{print_tuple_boolean(r)})"
+  end
 
-  def simplify_clauses(scenarios) do
-    scenarios
-    |> Enum.map(fn scenario ->
-      scenario
-      |> Enum.flat_map(fn {fact, value} ->
-        if Enum.find(scenarios, fn other_scenario ->
-             other_scenario != scenario &&
-               Map.delete(other_scenario, fact) == Map.delete(scenario, fact) &&
-               Map.fetch(other_scenario, fact) == {:ok, !value}
-           end) do
-          [fact]
-        else
-          []
-        end
-      end)
-      |> case do
-        [] ->
-          scenario
+  def print_tuple_boolean({:not, l}) do
+    "not #{print_tuple_boolean(l)}"
+  end
 
-        facts ->
-          Map.drop(scenario, facts)
-      end
-    end)
-    |> Enum.reject(&(&1 == %{}))
-    |> Enum.uniq()
-    |> case do
-      ^scenarios ->
-        scenarios
+  def print_tuple_boolean({check, opts}) do
+    check.describe(opts)
+  end
 
-      new_scenarios ->
-        simplify_clauses(new_scenarios)
-    end
+  def print_tuple_boolean(v) do
+    inspect(v)
   end
 
   defp maybe_forbid_strict(authorizer) do
@@ -615,6 +606,41 @@ defmodule Ash.Policy.Authorizer do
           do_check_result(scenarios, authorizer, record)
       end
     end)
+    |> case do
+      {:ok, authorizer} ->
+        log_successful_policy_breakdown(authorizer)
+
+      other ->
+        other
+    end
+  end
+
+  defp log_successful_policy_breakdown(authorizer, filter \\ nil) do
+    case Ash.Policy.Info.log_successful_policy_breakdowns() do
+      nil ->
+        :ok
+
+      level ->
+        do_log_successful_policy_breakdown(authorizer, filter, level)
+    end
+  end
+
+  defp do_log_successful_policy_breakdown(authorizer, filter, level) do
+    title =
+      "Successful authorization: #{inspect(authorizer.resource)}.#{authorizer.action.name}\n"
+
+    Logger.log(
+      level,
+      [
+        title
+        | Ash.Error.Forbidden.Policy.get_breakdown(
+            authorizer.facts,
+            filter,
+            authorizer.policies,
+            success?: true
+          )
+      ]
+    )
   end
 
   defp do_check_result(cleaned_scenarios, authorizer, record) do

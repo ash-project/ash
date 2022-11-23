@@ -45,12 +45,14 @@ defmodule Ash.Error.Forbidden.Policy do
   A check with a `⬇` means that it didn't determine if the policy was authorized or forbidden, and so moved on to the next check.
   `🌟` and `⛔` mean that the check was responsible for producing an authorized or forbidden (respectively) status.
 
+  When viewing successful authorization breakdowns, a `🔎` means that the policy or check was enforced via a filter.
+
   If no check results in a status (they all have `⬇`) then the policy is assumed to have failed. In some cases, however, the policy
   may have just been ignored, as described above.
   """
 
   @doc """
-  Print a report of an authorization failure
+  Print a report of an authorization failure from a forbidden error
 
   Options:
 
@@ -73,47 +75,12 @@ defmodule Ash.Error.Forbidden.Policy do
               policies: policies,
               must_pass_strict_check?: must_pass_strict_check?
             } ->
-              must_pass_strict_check? =
-                if must_pass_strict_check? do
-                  """
-                  Scenario must pass strict check only, meaning `runtime` policies cannot be checked.
-
-                  This requirement is generally used for filtering on related resources, when we can't fetch those
-                  related resources to run `runtime` policies. For this reason, you generally want your primary read
-                  actions on your resources to have standard policies which can be checked statically (like `actor_attribute_equals`)
-                  in addition to filter policies, like `expr(foo == :bar)`.
-                  """
-                else
-                  ""
-                end
-
-              policy_breakdown_title =
-                if Keyword.get(opts, :help_text?, true) do
-                  ["Policy Breakdown", @help_text]
-                else
-                  "Policy Breakdown"
-                end
-
-              policy_explanation =
-                policies
-                |> Enum.filter(&relevant?(&1, facts))
-                |> Enum.map(&explain_policy(&1, facts))
-                |> Enum.intersperse("\n")
-                |> title(policy_breakdown_title, false)
-
-              filter =
-                if filter do
-                  title(
-                    "Did not match filter expression #{inspect(filter)}",
-                    "Generated Filter"
-                  )
-                else
-                  ""
-                end
-
-              [must_pass_strict_check?, filter, policy_explanation]
-              |> Enum.filter(& &1)
-              |> Enum.intersperse("\n\n")
+              get_breakdown(
+                facts,
+                filter,
+                policies,
+                Keyword.put(opts, :must_pass_strict_check?, must_pass_strict_check?)
+              )
           end)
           |> Enum.intersperse("\n\n")
 
@@ -121,6 +88,71 @@ defmodule Ash.Error.Forbidden.Policy do
         |> IO.iodata_to_binary()
         |> String.trim()
     end
+  end
+
+  @doc """
+  Print a report of an authorization failure from authorization information.
+
+  Options:
+
+  - `:help_text?`: Defaults to true. Displays help text at the top of the policy breakdown.
+  - `:success?`: Defaults to false. Changes the messaging/graphics around to indicate successful policy authorization.
+  - `:must_pass_strict_check?`: Defaults to false. Adds a message about this authorization requiring passing strict check.
+  """
+  def get_breakdown(facts, filter, policies, opts \\ []) do
+    must_pass_strict_check? =
+      if opts[:must_pass_strict_check?] do
+        """
+        Scenario must pass strict check only, meaning `runtime` policies cannot be checked.
+
+        This requirement is generally used for filtering on related resources, when we can't fetch those
+        related resources to run `runtime` policies. For this reason, you generally want your primary read
+        actions on your resources to have standard policies which can be checked statically (like `actor_attribute_equals`)
+        in addition to filter policies, like `expr(foo == :bar)`.
+        """
+      else
+        ""
+      end
+
+    policy_breakdown_title =
+      if Keyword.get(opts, :help_text?, true) do
+        ["Policy Breakdown", @help_text]
+      else
+        "Policy Breakdown"
+      end
+
+    policy_explanation =
+      policies
+      |> Enum.filter(&relevant?(&1, facts))
+      |> Enum.map(&explain_policy(&1, facts, opts[:success?] || false))
+      |> Enum.intersperse("\n")
+      |> title(policy_breakdown_title, false)
+
+    filter =
+      if filter do
+        title(
+          "#{nicely_formatted_filter(filter)}",
+          "Generated Filter"
+        )
+      else
+        ""
+      end
+
+    [must_pass_strict_check?, filter, policy_explanation]
+    |> Enum.filter(& &1)
+    |> Enum.intersperse("\n\n")
+  end
+
+  defp nicely_formatted_filter([{:or, list}]) when is_list(list) do
+    "(" <> Enum.map_join(list, " or ", &nicely_formatted_filter/1) <> ")"
+  end
+
+  defp nicely_formatted_filter([{:and, list}]) when is_list(list) do
+    "(" <> Enum.map_join(list, " and ", &nicely_formatted_filter/1) <> ")"
+  end
+
+  defp nicely_formatted_filter(value) do
+    inspect(value)
   end
 
   defp title_line(error) do
@@ -150,7 +182,7 @@ defmodule Ash.Error.Forbidden.Policy do
   defp title(other, title, true), do: [title, ":\n", other]
   defp title(other, title, false), do: [title, "\n", other]
 
-  defp explain_policy(policy, facts) do
+  defp explain_policy(policy, facts, success?) do
     bypass =
       if policy.bypass? do
         "Bypass: "
@@ -161,12 +193,13 @@ defmodule Ash.Error.Forbidden.Policy do
     {condition_description, applies} = describe_conditions(policy.condition, facts)
 
     if applies == true do
-      {description, state} = describe_checks(policy.policies, facts)
+      {description, state} = describe_checks(policy.policies, facts, success?)
 
       tag =
         case state do
           :unknown ->
-            "⛔"
+            # In successful cases, this means we must have filtered
+            "🔎"
 
           :authorized ->
             "🌟"
@@ -258,7 +291,7 @@ defmodule Ash.Error.Forbidden.Policy do
     end
   end
 
-  defp describe_checks(checks, facts) do
+  defp describe_checks(checks, facts, success?) do
     {description, state} =
       Enum.reduce(checks, {[], :unknown}, fn check, {descriptions, state} ->
         new_state =
@@ -273,6 +306,8 @@ defmodule Ash.Error.Forbidden.Policy do
               other
           end
 
+        filter_check? = function_exported?(elem(check.check, 0), :auto_filter, 3)
+
         tag =
           case {state, new_state} do
             {:unknown, :authorized} ->
@@ -282,20 +317,32 @@ defmodule Ash.Error.Forbidden.Policy do
               "⛔"
 
             {:unknown, :unknown} ->
-              "⬇"
+              if success? && filter_check? && Policy.fetch_fact(facts, check.check) == :error do
+                "🔎"
+              else
+                "⬇"
+              end
 
             _ ->
               ""
           end
 
-        {[describe_check(check, Policy.fetch_fact(facts, check.check), tag) | descriptions],
-         new_state}
+        {[
+           describe_check(
+             check,
+             Policy.fetch_fact(facts, check.check),
+             tag,
+             success?,
+             filter_check?
+           )
+           | descriptions
+         ], new_state}
       end)
 
     {Enum.intersperse(Enum.reverse(description), "\n"), state}
   end
 
-  defp describe_check(check, fact_result, tag) do
+  defp describe_check(check, fact_result, tag, success?, filter_check?) do
     fact_result =
       case fact_result do
         {:ok, true} ->
@@ -305,7 +352,11 @@ defmodule Ash.Error.Forbidden.Policy do
           "✘"
 
         :error ->
-          "?"
+          if success? && filter_check? do
+            "✓"
+          else
+            "?"
+          end
       end
 
     [

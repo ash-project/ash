@@ -34,24 +34,78 @@ defmodule Ash.Policy.Policy do
   defp build_requirements_expression(policies, facts) do
     at_least_one_policy_expression = at_least_one_policy_expression(policies, facts)
 
-    policy_expression =
-      {:and, at_least_one_policy_expression, compile_policy_expression(policies, facts)}
-
-    facts_expression = Ash.Policy.SatSolver.facts_to_statement(Map.drop(facts, [true, false]))
-
-    if facts_expression do
-      {:and, facts_expression, policy_expression}
+    if at_least_one_policy_expression == false do
+      false
     else
-      policy_expression
+      policy_expression =
+        if at_least_one_policy_expression == true do
+          compile_policy_expression(policies, facts)
+        else
+          case {:and, at_least_one_policy_expression, compile_policy_expression(policies, facts)} do
+            {:and, false, _} ->
+              false
+
+            {:and, _, false} ->
+              false
+
+            {:and, true, true} ->
+              true
+
+            {:and, left, true} ->
+              left
+
+            {:and, true, right} ->
+              right
+
+            other ->
+              other
+          end
+        end
+
+      used_facts = used_facts(policy_expression)
+
+      facts_expression =
+        facts
+        |> Map.drop([true, false])
+        |> Map.take(MapSet.to_list(used_facts))
+        |> Ash.Policy.SatSolver.facts_to_statement()
+
+      if facts_expression do
+        {:and, facts_expression, policy_expression}
+      else
+        policy_expression
+      end
     end
+  end
+
+  defp used_facts({_op, l, r}) do
+    MapSet.union(used_facts(l), used_facts(r))
+  end
+
+  defp used_facts({:not, fact}) do
+    used_facts(fact)
+  end
+
+  defp used_facts(other) do
+    MapSet.new([other])
   end
 
   def at_least_one_policy_expression(policies, facts) do
     policies
     |> Enum.map(&condition_expression(&1.condition, facts))
     |> Enum.filter(& &1)
-    |> Enum.reduce(false, fn condition, acc ->
-      {:or, condition, acc}
+    |> Enum.reduce(false, fn
+      _, true ->
+        true
+
+      true, _ ->
+        true
+
+      false, acc ->
+        acc
+
+      condition, acc ->
+        {:or, condition, acc}
     end)
   end
 
@@ -140,7 +194,11 @@ defmodule Ash.Policy.Policy do
         compiled_policies
 
       condition_expression ->
-        {:and, condition_expression, compiled_policies}
+        if compiled_policies == true do
+          condition_expression
+        else
+          {:and, condition_expression, compiled_policies}
+        end
     end
   end
 
@@ -248,7 +306,8 @@ defmodule Ash.Policy.Policy do
         true
 
       :error ->
-        {:or, {clause.check_module, clause.check_opts}, compile_policy_expression(rest, facts)}
+        {:or, {:not, {clause.check_module, clause.check_opts}},
+         compile_policy_expression(rest, facts)}
     end
   end
 
