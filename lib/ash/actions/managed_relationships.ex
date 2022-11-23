@@ -501,8 +501,8 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Enum.sort_by(fn {_key, _batch, opts, _index} ->
       opts[:meta][:order]
     end)
-    |> Enum.reduce({:ok, record, []}, fn {relationship, inputs, opts, index},
-                                         {:ok, record, all_notifications} ->
+    |> Enum.reduce_while({:ok, record, []}, fn {relationship, inputs, opts, index},
+                                               {:ok, record, all_notifications} ->
       inputs =
         if relationship.cardinality == :many do
           List.wrap(inputs)
@@ -523,10 +523,10 @@ defmodule Ash.Actions.ManagedRelationships do
               record
             end
 
-          {:ok, record, notifications ++ all_notifications}
+          {:cont, {:ok, record, notifications ++ all_notifications}}
 
         {:error, error} ->
-          {:error, error}
+          {:halt, {:error, error}}
       end
     end)
   end
