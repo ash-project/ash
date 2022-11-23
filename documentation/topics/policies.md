@@ -306,3 +306,9 @@ To have ash automatically log each authorization failure, use
 ```elixir
 config :ash, :policies, log_policy_breakdowns: :error # Use whatever log level you'd like to use here
 ```
+
+To have ash log all policies breakdowns, even successful ones (this will be lots of noise, and should only be used for dev testing)
+
+```elixir
+config :ash, :policies, log_successful_policy_breakdowns: :error # Use whatever log level you'd like to use here
+```
