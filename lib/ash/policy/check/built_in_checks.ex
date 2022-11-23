@@ -2,7 +2,7 @@ defmodule Ash.Policy.Check.Builtins do
   @moduledoc "The global authorization checks built into ash"
 
   @doc """
-  This check always passes
+  This check always passes.
 
   Can be useful for "deny-list" style authorization. For example:
 
@@ -51,7 +51,7 @@ defmodule Ash.Policy.Check.Builtins do
   end
 
   @doc """
-  This check is true when the action name matches the provided action name
+  This check is true when the action name matches the provided action name.
 
   This is a very common pattern, allowing action-specific policies.
   """
@@ -61,7 +61,7 @@ defmodule Ash.Policy.Check.Builtins do
   end
 
   @doc """
-  This check is true when there is an actor specified, and false when the actor is `nil`
+  This check is true when there is an actor specified, and false when the actor is `nil`.
   """
   @spec actor_present() :: Ash.Policy.Check.ref()
   def actor_present do
@@ -88,7 +88,7 @@ defmodule Ash.Policy.Check.Builtins do
   Ash.Query.filter(Tweet, author.email == "blah")
   ```
 
-  And the second will return true on queries like
+  The second will return true on queries like:
 
   ```elixir
   Ash.Query.filter(Post, owner.email == "blah")
@@ -101,9 +101,9 @@ defmodule Ash.Policy.Check.Builtins do
   end
 
   @doc """
-  This check is true when the field is being selected and false when it is not
+  This check is true when the field is being selected and false when it is not.
 
-  This won't affect filters placed on this resource, so you may also want to either
+  This won't affect filters placed on this resource, so you may also want to either:
 
   - Mark the given field as `filterable? false`
   - Add another check for `filtering_on(:field)`
@@ -130,9 +130,9 @@ defmodule Ash.Policy.Check.Builtins do
   end
 
   @doc """
-  This check is true when the field or relationship, or path to field, is being loaded and false when it is not
+  This check is true when the field or relationship, or path to field, is being loaded and false when it is not.
 
-  This is always false for create/update/destroy actions, because you cannot load fields on those action types.
+  This is always false for `create`/`update`/`destroy` actions, because you cannot load fields on those action types.
   """
   @spec loading(atom) :: Ash.Policy.Check.ref()
   def loading(field) do
@@ -140,11 +140,11 @@ defmodule Ash.Policy.Check.Builtins do
   end
 
   @doc """
-  This check passes if the data relates to the actor via the specified relationship or path of relationships
+  This check passes if the data relates to the actor via the specified relationship or path of relationships.
 
-  For updates & destroys, this check will apply to *the original data*, i.e before the changes are applied.
+  For `update` & `destroy` actions, this check will apply to *the original data* before the changes are applied.
 
-  For creates this check is very unlikely to apss. This is because relationships are modified *after* authorization
+  For `create` actions this check is very unlikely to pass. This is because relationships are modified *after* authorization
   happens, not before.
   """
   @spec relates_to_actor_via(atom) :: Ash.Policy.Check.ref()
@@ -153,7 +153,7 @@ defmodule Ash.Policy.Check.Builtins do
   end
 
   @doc """
-  This check is true when a field on the record matches a specific filter
+  This check is true when a field on the record matches a specific filter.
   """
   @deprecated "Use an `expr/1` check instead, i.e `expr(attribute == value)`"
   @spec attribute(atom, any()) :: Ash.Policy.Check.ref()
@@ -162,7 +162,7 @@ defmodule Ash.Policy.Check.Builtins do
   end
 
   @doc """
-  This check is true when the value of the specified attribute of the actor equals the specified value
+  This check is true when the value of the specified attribute of the actor equals the specified value.
 
   This check will *never* pass if the actor does not have the specified key. For example,
   `actor_attribute_equals(:missing_key, nil)`
