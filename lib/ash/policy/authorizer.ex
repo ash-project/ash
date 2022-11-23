@@ -202,7 +202,7 @@ defmodule Ash.Policy.Authorizer do
       policies do
         # Anything you can use in a condition, you can use in a check, and vice-versa
         # This policy applies if the actor is a super_user
-        # Addtionally, this policy is declared as a `bypass`. That means that this check is allowed to fail without
+        # Additionally, this policy is declared as a `bypass`. That means that this check is allowed to fail without
         # failing the whole request, and that if this check *passes*, the entire request passes.
         bypass actor_attribute_equals(:super_user, true) do
           authorize_if always()
