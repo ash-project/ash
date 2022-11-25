@@ -5,6 +5,31 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.12](https://github.com/ash-project/ash/compare/v2.4.11...v2.4.12) (2022-11-25)
+
+
+
+
+### Bug Fixes:
+
+* don't revisit nodes in the ash engine
+
+* properly map to `:destroy` step names
+
+* handle `Ash.Flow.Step.Destroy` in path matchers
+
+* resolve issue with `authorize_unless` and filter checks
+
+* fix pattern match error in manage relationship reduce
+
+### Improvements:
+
+* optimize various solver boolean optimizations
+
+* more comprehensively remove unnecessary clauses
+
+* prevent changing attributes and arguments after action validation
+
 ## [v2.4.11](https://github.com/ash-project/ash/compare/v2.4.10...v2.4.11) (2022-11-22)
 
 
