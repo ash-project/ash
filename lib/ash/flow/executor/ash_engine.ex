@@ -1766,6 +1766,10 @@ defmodule Ash.Flow.Executor.AshEngine do
     [name, :commit, :data]
   end
 
+  defp result_path(%Ash.Flow.Step.Destroy{name: name}) do
+    [name, :commit, :data]
+  end
+
   defp result_path(%Ash.Flow.Step.Validate{name: name}) do
     [name, :validate, :data]
   end
@@ -1814,6 +1818,10 @@ defmodule Ash.Flow.Executor.AshEngine do
     [name, :commit, :completion]
   end
 
+  defp completion_path(%Ash.Flow.Step.Destroy{name: name}) do
+    [name, :commit, :completion]
+  end
+
   defp completion_path(%Ash.Flow.Step.Transaction{name: name}) do
     [name, :completion]
   end
@@ -1851,6 +1859,10 @@ defmodule Ash.Flow.Executor.AshEngine do
   end
 
   defp data_path(%Ash.Flow.Step.Create{name: name}) do
+    [name, :commit]
+  end
+
+  defp data_path(%Ash.Flow.Step.Destroy{name: name}) do
     [name, :commit]
   end
 
