@@ -106,11 +106,11 @@ defmodule Ash.Actions.Destroy do
       {:ok, %{data: data} = engine_result} ->
         resource
         |> add_notifications(action, engine_result, return_notifications?)
-        |> add_destroyed(return_destroyed?, Map.get(data, :destroy))
+        |> add_destroyed(return_destroyed?, data)
 
       {:error, %Ash.Engine{errors: errors, requests: requests}} ->
         case Enum.find_value(requests, fn request ->
-               if request.path == [:destroy] && match?(%Ash.Changeset{}, request.changeset) do
+               if request.path == [:commit] && match?(%Ash.Changeset{}, request.changeset) do
                  request.changeset
                end
              end) do
@@ -251,7 +251,7 @@ defmodule Ash.Actions.Destroy do
       Request.new(
         resource: resource,
         api: api,
-        path: path ++ [:destroy],
+        path: path ++ [:commit],
         action: action,
         authorize?: false,
         error_path: error_path,
@@ -264,9 +264,9 @@ defmodule Ash.Actions.Destroy do
         name: "commit #{inspect(resource)}.#{action.name}",
         data:
           Request.resolve(
-            [path ++ [:data, :data], path ++ [:destroy, :changeset]],
+            [path ++ [:data, :data], path ++ [:commit, :changeset]],
             fn %{actor: actor, authorize?: authorize?} = context ->
-              changeset = get_in(context, path ++ [:destroy, :changeset])
+              changeset = get_in(context, path ++ [:commit, :changeset])
               record = changeset.data
 
               changeset
@@ -323,11 +323,11 @@ defmodule Ash.Actions.Destroy do
     end
   end
 
-  defp add_destroyed(:ok, true, destroyed) do
+  defp add_destroyed(:ok, true, %{commit: destroyed}) do
     {:ok, destroyed}
   end
 
-  defp add_destroyed({:ok, notifications}, true, destroyed) do
+  defp add_destroyed({:ok, notifications}, true, %{commit: destroyed}) do
     {:ok, destroyed, notifications}
   end
 

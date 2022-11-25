@@ -225,12 +225,16 @@ defmodule Ash.Engine do
       |> case do
         ^state ->
           if state.tasks == [] && state.pending_tasks == [] do
-            detect_deadlocks(state)
+            if state.errors == [] do
+              detect_deadlocks(state)
 
-            raise """
-            Engine Deadlock! No async tasks and state is the same after iteration.
-            #{long_breakdown(state)}
-            """
+              raise """
+              Engine Deadlock! No async tasks and state is the same after iteration.
+              #{long_breakdown(state)}
+              """
+            else
+              state
+            end
           else
             state
             |> start_pending_tasks()
@@ -400,22 +404,12 @@ defmodule Ash.Engine do
           end)
           |> Enum.split_with(& &1.async?)
 
-        {state, do_sync?} =
-          Enum.reduce(async, {state, true}, fn
-            request, {state, false} ->
-              {do_run_iteration(state, request), false}
+        new_state = Enum.reduce(async, state, &do_run_iteration(&2, &1))
 
-            request, {state, true} ->
-              new_state = do_run_iteration(state, request)
-              # We only want to process synchronous requests once all asynchronous requests
-              # have done all of their work.
-              {new_state, state == new_state}
-          end)
-
-        if do_sync? do
-          Enum.reduce(sync, state, &do_run_iteration(&2, &1))
+        if state == new_state do
+          Enum.reduce(sync, new_state, &do_run_iteration(&2, &1))
         else
-          state
+          new_state
         end
 
       request ->
@@ -850,16 +844,16 @@ defmodule Ash.Engine do
       |> Enum.split_with(& &1.async?)
 
     %{state | requests: async ++ state.requests ++ non_async}
-    |> add_dependencies_waiting_on_request()
+    |> add_dependencies_waiting_on_request(requests)
   end
 
-  defp add_dependencies_waiting_on_request(state) do
+  defp add_dependencies_waiting_on_request(state, new_requests) do
     state.dependencies_waiting_on_request
     |> Enum.reduce(state, fn
       {request_path, dep}, state ->
         dep_path = :lists.droplast(dep)
 
-        if Enum.any?(state.requests, &(&1.path == dep_path)) do
+        if Enum.any?(new_requests, &(&1.path == dep_path)) do
           %{
             state
             | unsent_dependencies: [{request_path, dep} | state.unsent_dependencies],

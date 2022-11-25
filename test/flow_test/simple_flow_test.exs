@@ -7,6 +7,7 @@ defmodule Ash.FlowTest.SimpleFlowTest do
 
   alias Ash.Test.Flow.Flows.{
     GetOrgAndUsers,
+    GetOrgAndUsersAndDestroyThem,
     GetOrgByName,
     SignUpAndDeleteUser,
     SignUpUser
@@ -56,6 +57,25 @@ defmodule Ash.FlowTest.SimpleFlowTest do
     assert %Result{result: %{org: %{id: ^org_id}, users: users}} = GetOrgAndUsers.run!("Org 1")
 
     assert users |> Enum.map(& &1.first_name) |> Enum.sort() == ["abc", "def"]
+  end
+
+  test "a flow with a destroy inside of a map works" do
+    org =
+      Org
+      |> Ash.Changeset.for_create(:create, %{name: "Org 1"})
+      |> Api.create!()
+
+    User
+    |> Ash.Changeset.for_create(:create, %{first_name: "abc", org: org.id})
+    |> Api.create!()
+
+    User
+    |> Ash.Changeset.for_create(:create, %{first_name: "def", org: org.id})
+    |> Api.create!()
+
+    GetOrgAndUsersAndDestroyThem.run!("Org 1")
+
+    assert User |> Api.read!() |> Enum.empty?()
   end
 
   test "a flow with a create and an update step works" do

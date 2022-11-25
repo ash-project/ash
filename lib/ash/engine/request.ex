@@ -462,18 +462,32 @@ defmodule Ash.Engine.Request do
 
         {:waiting, new_request, notifications, waiting}
 
-      {:ok, new_request, _, _} ->
+      {:ok, new_request, notifications, []} ->
         case Map.get(new_request, field) do
           %UnresolvedField{} ->
             log(request, fn -> "Field could not be resolved #{field}, registering dependency" end)
 
-            {:ok, new_request, []}
+            {:ok, new_request, notifications}
 
           value ->
             log(request, fn -> "Field #{field}, was resolved and provided" end)
-            {new_request, notifications} = notifications(request, field, value)
+            {new_request, new_notifications} = notifications(new_request, field, value)
 
-            {:ok, new_request, notifications}
+            {:ok, new_request, new_notifications ++ notifications}
+        end
+
+      {:ok, new_request, notifications, waiting} ->
+        case Map.get(new_request, field) do
+          %UnresolvedField{} ->
+            log(request, fn -> "Field could not be resolved #{field}, registering dependency" end)
+
+            {:waiting, new_request, notifications, waiting}
+
+          value ->
+            log(request, fn -> "Field #{field}, was resolved and provided" end)
+            {new_request, new_notifications} = notifications(new_request, field, value)
+
+            {:ok, new_request, new_notifications ++ notifications, waiting}
         end
 
       {:error, error} ->
