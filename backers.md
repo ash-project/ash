@@ -15,3 +15,5 @@ Philia Software
 [Theo Harris](https://github.com/Theosaurus-Rex)
 
 [kernel-io](https://github.com/kernel-io)
+
+Jean-Luc Geering
