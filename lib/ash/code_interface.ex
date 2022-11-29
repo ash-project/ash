@@ -21,14 +21,14 @@ defmodule Ash.CodeInterface do
   @doc false
   def default_value(resource, action, key) do
     field =
-      case Ash.Resource.Info.attribute(resource, key) do
+      case Enum.find(action.arguments, fn argument ->
+             argument.name == key
+           end) do
         nil ->
-          Enum.find(action.arguments, fn argument ->
-            argument.name == key
-          end)
+          Ash.Resource.Info.attribute(resource, key)
 
-        attribute ->
-          attribute
+        argument ->
+          argument
       end
 
     if !field.allow_nil? do
