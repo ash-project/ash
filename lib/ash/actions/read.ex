@@ -1206,9 +1206,6 @@ defmodule Ash.Actions.Read do
           {query, notifications}
       end
     end)
-    |> then(fn {query, notifications} ->
-      {Ash.Query.put_context(query, :private, %{in_before_action?: false}), notifications}
-    end)
   end
 
   defp run_after_action(query, results) do

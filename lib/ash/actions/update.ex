@@ -375,6 +375,10 @@ defmodule Ash.Actions.Update do
                                 authorize?: authorize?,
                                 api: changeset.api
                               })
+                              |> manage_relationships(api, changeset,
+                                actor: actor,
+                                authorize?: authorize?
+                              )
 
                             action.manual? ->
                               {:ok, changeset.data, %{notifications: []}}
@@ -460,6 +464,21 @@ defmodule Ash.Actions.Update do
       )
 
     [authorization_request, commit_request]
+  end
+
+  defp manage_relationships(
+         {:ok, updated, %{notifications: notifications}},
+         api,
+         changeset,
+         engine_opts
+       ) do
+    case manage_relationships({:ok, updated}, api, changeset, engine_opts) do
+      {:ok, updated, info} ->
+        {:ok, updated, Map.update(info, :notifications, notifications, &(&1 ++ notifications))}
+
+      other ->
+        other
+    end
   end
 
   defp manage_relationships({:ok, updated}, api, changeset, engine_opts) do

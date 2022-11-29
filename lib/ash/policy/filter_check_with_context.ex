@@ -30,6 +30,8 @@ defmodule Ash.Policy.FilterCheckWithContext do
       end
 
       def strict_check(nil, authorizer, opts) do
+        opts = Keyword.put_new(opts, :resource, authorizer.resource)
+
         if Ash.Filter.template_references_actor?(filter(nil, authorizer, opts)) do
           {:ok, false}
         else
@@ -153,6 +155,7 @@ defmodule Ash.Policy.FilterCheckWithContext do
       end
 
       def reject(actor, authorizer, opts) do
+        opts = Keyword.put_new(opts, :resource, authorizer.resource)
         [not: filter(actor, authorizer, opts)]
       end
 

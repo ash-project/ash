@@ -347,6 +347,11 @@ defmodule Ash.Actions.Create do
                               authorize?: authorize?,
                               api: changeset.api
                             })
+                            |> manage_relationships(api, changeset,
+                              actor: actor,
+                              authorize?: authorize?,
+                              upsert?: upsert?
+                            )
 
                           action.manual? ->
                             {:ok, nil}
@@ -483,6 +488,21 @@ defmodule Ash.Actions.Create do
 
   defp manage_relationships({:ok, nil}, _, _, _) do
     {:ok, nil, %{notifications: []}}
+  end
+
+  defp manage_relationships(
+         {:ok, created, %{notifications: notifications}},
+         api,
+         changeset,
+         engine_opts
+       ) do
+    case manage_relationships({:ok, created}, api, changeset, engine_opts) do
+      {:ok, created, info} ->
+        {:ok, created, Map.update(info, :notifications, notifications, &(&1 ++ notifications))}
+
+      other ->
+        other
+    end
   end
 
   defp manage_relationships({:ok, created}, api, changeset, engine_opts) do

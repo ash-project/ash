@@ -43,18 +43,27 @@ defmodule Ash.Policy.Checker do
     check_module = check.check_module
     opts = check.check_opts
 
-    case check_module.strict_check(authorizer.actor, authorizer, opts) do
-      {:ok, boolean} when is_boolean(boolean) ->
-        {:ok, authorizer, Map.put(facts, {check_module, opts}, boolean)}
+    try do
+      case check_module.strict_check(authorizer.actor, authorizer, opts) do
+        {:ok, boolean} when is_boolean(boolean) ->
+          {:ok, authorizer, Map.put(facts, {check_module, opts}, boolean)}
 
-      {:ok, :unknown} ->
-        {:ok, authorizer, facts}
+        {:ok, :unknown} ->
+          {:ok, authorizer, facts}
 
-      {:error, error} ->
-        {:error, error}
+        {:error, error} ->
+          {:error, error}
 
-      other ->
-        raise "Invalid return value from strict_check call #{check_module}.strict_check(actor, authorizer, #{inspect(opts)}) -  #{inspect(other)}"
+        other ->
+          raise "Invalid return value from strict_check call #{check_module}.strict_check(actor, authorizer, #{inspect(opts)}) -  #{inspect(other)}"
+      end
+    rescue
+      e ->
+        reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
+                  error_context:
+                    "Strict checking: #{check_module.describe(opts)} on resource: #{authorizer.resource}"
+                ),
+                __STACKTRACE__
     end
   end
 

@@ -410,7 +410,7 @@ defmodule Ash.Flow.Executor.AshEngine do
 
                     [first | rest] ->
                       # only one of the requests needs to be annotated as touching the resources
-                      # the transaction claims to touch, since the transaction is urn over all touched resources
+                      # the transaction claims to touch, since the transaction is run over all touched resources
                       # in all requests
                       [
                         %{
