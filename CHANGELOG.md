@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.13](https://github.com/ash-project/ash/compare/v2.4.12...v2.4.13) (2022-11-29)
+
+
+
+
+### Bug Fixes:
+
+* don't raise a backwards incompatible error message on certian changeset functions
+
+* properly apply managed relationships on manual actions
+
+* properly pass `resource` option in filter policies
+
 ## [v2.4.12](https://github.com/ash-project/ash/compare/v2.4.11...v2.4.12) (2022-11-25)
 
 
