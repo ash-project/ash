@@ -2,7 +2,7 @@ defmodule Ash.Resource.Interface do
   @moduledoc """
   Represents a function in a resource's code interface
   """
-  defstruct [:name, :action, :args, :get?, :get_by, :get_by_identity]
+  defstruct [:name, :action, :args, :get?, :get_by, :get_by_identity, :not_found_error?]
 
   @type t :: %__MODULE__{}
 
@@ -80,6 +80,11 @@ defmodule Ash.Resource.Interface do
       load: [
         type: :any,
         doc: "Adds a load statement to the query before passing it to the action."
+      ],
+      not_found_error?: [
+        type: :boolean,
+        doc:
+          "Whether or not to return or raise a `NotFound` error or to return `nil` when a get? action/interface is called."
       ]
     ]
   end
@@ -105,6 +110,12 @@ defmodule Ash.Resource.Interface do
       Map specific arguments to named inputs. Can provide any argument/attributes that the action allows.
       """,
       links: []
+    ],
+    not_found_error?: [
+      type: :boolean,
+      default: true,
+      doc:
+        "If the action or interface is configured with `get?: true`, this determines whether or not an error is raised or `nil` is returned."
     ],
     get?: [
       type: :boolean,

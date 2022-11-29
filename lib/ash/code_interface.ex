@@ -213,7 +213,12 @@ defmodule Ash.CodeInterface do
                   )
                   |> case do
                     {:ok, nil} ->
-                      {:error, Ash.Error.Query.NotFound.exception(resource: query.resource)}
+                      if unquote(interface.not_found_error?) == false ||
+                           Keyword.get(opts, :not_found_error?) == false do
+                        {:ok, nil}
+                      else
+                        {:error, Ash.Error.Query.NotFound.exception(resource: query.resource)}
+                      end
 
                     {:ok, result} ->
                       {:ok, result}
@@ -286,7 +291,12 @@ defmodule Ash.CodeInterface do
                   )
                   |> case do
                     nil ->
-                      raise Ash.Error.Query.NotFound, resource: query.resource
+                      if unquote(interface.not_found_error?) == false ||
+                           Keyword.get(opts, :not_found_error?) == false do
+                        nil
+                      else
+                        raise Ash.Error.Query.NotFound, resource: query.resource
+                      end
 
                     result ->
                       result

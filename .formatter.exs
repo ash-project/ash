@@ -121,6 +121,7 @@ spark_locals_without_parens = [
   module: 1,
   name: 1,
   no_attributes?: 1,
+  not_found_error?: 1,
   not_found_message: 1,
   offset?: 1,
   on: 1,
