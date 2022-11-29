@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.15](https://github.com/ash-project/ash/compare/v2.4.14...v2.4.15) (2022-11-29)
+
+
+
+
+### Improvements:
+
+* add `not_found_error?` option to interface builder and when calling
+
 ## [v2.4.14](https://github.com/ash-project/ash/compare/v2.4.13...v2.4.14) (2022-11-29)
 
 
