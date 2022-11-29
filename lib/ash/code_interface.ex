@@ -20,15 +20,15 @@ defmodule Ash.CodeInterface do
 
   @doc false
   def default_value(resource, action, key) do
-    field =
+    {field_type, field} =
       case Enum.find(action.arguments, fn argument ->
              argument.name == key
            end) do
         nil ->
-          Ash.Resource.Info.attribute(resource, key)
+          {:attribute, Ash.Resource.Info.attribute(resource, key)}
 
         argument ->
-          argument
+          {:argument, argument}
       end
 
     if !field.allow_nil? do
@@ -36,14 +36,18 @@ defmodule Ash.CodeInterface do
     end
 
     default =
-      if action.type == :update || (action.type == :destroy && action.soft?) do
-        if is_nil(action.update_default) do
-          field.default
-        else
-          field.update_default
-        end
-      else
+      if field_type == :argument do
         field.default
+      else
+        if action.type == :update || (action.type == :destroy && action.soft?) do
+          if is_nil(action.update_default) do
+            field.default
+          else
+            field.update_default
+          end
+        else
+          field.default
+        end
       end
 
     if is_function(default) do
