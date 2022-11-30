@@ -201,6 +201,7 @@ defmodule Ash.Actions.Read do
     error_path = request_opts[:error_path]
     lazy? = request_opts[:lazy?]
     tracer = request_opts[:tracer]
+    not_found_error? = request_opts[:not_found_error?]
 
     query =
       if initial_data && query && lazy? do
@@ -419,7 +420,7 @@ defmodule Ash.Actions.Read do
                         Keyword.put(query_opts, :page, query.context[:page_opts])
                       )
                       |> add_query(Map.get(fetched_data, :ultimate_query), request_opts)
-                      |> unwrap_for_get(get?, query.resource)
+                      |> unwrap_for_get(get?, not_found_error?, query.resource)
 
                     {:requests, requests} ->
                       {:requests, Enum.map(requests, &{&1, :data})}
@@ -435,12 +436,15 @@ defmodule Ash.Actions.Read do
     [fetch, process]
   end
 
-  defp unwrap_for_get({:ok, [value | _]}, true, _resource), do: {:ok, value}
+  defp unwrap_for_get({:ok, [value | _]}, true, _, _resource), do: {:ok, value}
 
-  defp unwrap_for_get({:ok, []}, true, resource),
+  defp unwrap_for_get({:ok, []}, true, true, resource),
     do: {:error, Ash.Error.Query.NotFound.exception(resource: resource)}
 
-  defp unwrap_for_get(other, false, _resource), do: other
+  defp unwrap_for_get({:ok, []}, true, _, _resource),
+    do: {:ok, nil}
+
+  defp unwrap_for_get(other, false, _, _resource), do: other
 
   defp query_opts(request_opts, %{authorize?: authorize?, actor: actor, verbose?: verbose?}) do
     request_opts

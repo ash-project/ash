@@ -1,6 +1,15 @@
 defmodule Ash.Flow.Step.Read do
   @moduledoc false
-  use Ash.Flow.Step.BuiltinStep, [:resource, :action, :api, :input, :tenant, get?: false]
+  use Ash.Flow.Step.BuiltinStep, [
+    :resource,
+    :action,
+    :api,
+    :input,
+    :tenant,
+    get?: false,
+    not_found_error?: false
+  ]
+
   @shared_opts Ash.Flow.Step.shared_opts()
   @shared_action_opts Ash.Flow.Step.shared_action_opts()
 
@@ -15,6 +24,13 @@ defmodule Ash.Flow.Step.Read do
           """,
           links: [],
           default: false
+        ],
+        not_found_error?: [
+          type: :boolean,
+          default: true,
+          doc: """
+          Whether or not finding no record should result in a not found error
+          """
         ]
       ]
       |> Spark.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")

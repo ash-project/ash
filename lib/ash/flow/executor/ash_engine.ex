@@ -806,6 +806,7 @@ defmodule Ash.Flow.Executor.AshEngine do
           input: action_input,
           tenant: tenant,
           get?: get?,
+          not_found_error?: not_found_error?,
           wait_for: wait_for,
           halt_if: halt_if,
           halt_reason: halt_reason
@@ -849,6 +850,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                 tracer: opts[:tracer],
                 query_dependencies: request_deps,
                 get?: get? || action.get?,
+                not_found_error?: not_found_error?,
                 tenant: fn context ->
                   context = Ash.Helpers.deep_merge_maps(context, additional_context)
                   results = results(dep_paths, context)

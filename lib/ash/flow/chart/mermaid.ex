@@ -145,7 +145,7 @@ defmodule Ash.Flow.Chart.Mermaid do
         %{input: input} = step when not is_nil(input) ->
           add_line(
             message,
-            "#{format_name(step)}(\"#{short_name(step)} <br/> #{format_template(input, all_steps)}#{description(step)}\")"
+            "#{format_name(step)}(\"#{short_name(step)} <br/> #{description(step)}\")"
           )
 
         step ->
@@ -198,6 +198,10 @@ defmodule Ash.Flow.Chart.Mermaid do
         |> String.replace("\"", "\\\"")
         |> String.split("\n", trim: true)
         |> Enum.join("<br/>")
+  end
+
+  defp short_name(%Ash.Flow.Step.Custom{custom: {Ash.Flow.Step.CustomFunction, _}}) do
+    "Custom Function"
   end
 
   defp short_name(%Ash.Flow.Step.Custom{custom: {mod, opts}}) do
