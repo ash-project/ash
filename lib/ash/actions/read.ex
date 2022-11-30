@@ -1735,26 +1735,38 @@ defmodule Ash.Actions.Read do
   defp run_calculation_query(results, calculations, query, tenant) do
     pkey = Ash.Resource.Info.primary_key(query.resource)
 
-    pkey_filter =
-      results
-      |> List.wrap()
-      |> Enum.map(fn result ->
-        result
-        |> Map.take(pkey)
-        |> Map.to_list()
-      end)
+    results
+    |> List.wrap()
+    |> Enum.map(fn result ->
+      result
+      |> Map.take(pkey)
+      |> Map.to_list()
+    end)
+    |> case do
+      [] ->
+        {:ok, []}
 
-    with query <-
-           Ash.Query.unset(query, [:filter, :aggregates, :sort, :limit, :offset, :load, :distinct]),
-         query <- Ash.Query.set_tenant(query, tenant),
-         query <- Ash.Query.filter(query, ^[or: pkey_filter]),
-         {:ok, data_layer_query} <- Ash.Query.data_layer_query(query),
-         {:ok, data_layer_query} <-
-           add_calculations(data_layer_query, query, calculations) do
-      Ash.DataLayer.run_query(
-        data_layer_query,
-        query.resource
-      )
+      pkey_filter ->
+        with query <-
+               Ash.Query.unset(query, [
+                 :filter,
+                 :aggregates,
+                 :sort,
+                 :limit,
+                 :offset,
+                 :load,
+                 :distinct
+               ]),
+             query <- Ash.Query.set_tenant(query, tenant),
+             query <- Ash.Query.filter(query, ^[or: pkey_filter]),
+             {:ok, data_layer_query} <- Ash.Query.data_layer_query(query),
+             {:ok, data_layer_query} <-
+               add_calculations(data_layer_query, query, calculations) do
+          Ash.DataLayer.run_query(
+            data_layer_query,
+            query.resource
+          )
+        end
     end
   end
 
