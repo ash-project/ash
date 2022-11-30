@@ -179,6 +179,7 @@ defmodule Ash.Actions.Create do
     timeout = request_opts[:timeout]
     tracer = request_opts[:tracer]
     after_action = request_opts[:after_action]
+    authorize? = request_opts[:authorize?]
 
     authorization_request =
       Request.new(
@@ -291,7 +292,7 @@ defmodule Ash.Actions.Create do
         data:
           Request.resolve(
             [path ++ [:commit, :changeset]],
-            fn %{authorize?: authorize?, actor: actor} = data ->
+            fn %{actor: actor} = data ->
               changeset = get_in(data, path ++ [:commit, :changeset])
 
               upsert_keys =

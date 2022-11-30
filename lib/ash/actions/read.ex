@@ -1426,19 +1426,27 @@ defmodule Ash.Actions.Read do
          query,
          _context
        ) do
-    query
-    |> Ash.DataLayer.run_query_with_lateral_join(
-      root_data,
-      destination_resource,
-      path
-    )
-    |> Helpers.select(ash_query)
+    if ash_query.limit == 0 do
+      {:ok, []}
+    else
+      query
+      |> Ash.DataLayer.run_query_with_lateral_join(
+        root_data,
+        destination_resource,
+        path
+      )
+      |> Helpers.select(ash_query)
+    end
   end
 
   defp run_query(%{resource: resource, action: %{manual: nil}} = ash_query, query, _context) do
-    query
-    |> Ash.DataLayer.run_query(resource)
-    |> Helpers.select(ash_query)
+    if ash_query.limit == 0 do
+      {:ok, []}
+    else
+      query
+      |> Ash.DataLayer.run_query(resource)
+      |> Helpers.select(ash_query)
+    end
   end
 
   defp run_query(

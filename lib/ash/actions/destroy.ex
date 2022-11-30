@@ -145,6 +145,7 @@ defmodule Ash.Actions.Destroy do
     timeout = request_opts[:timeout]
     default_timeout = request_opts[:default_timeout]
     tracer = request_opts[:tracer]
+    authorize? = request_opts[:authorize?]
 
     record =
       request_opts[:record] ||
@@ -265,7 +266,7 @@ defmodule Ash.Actions.Destroy do
         data:
           Request.resolve(
             [path ++ [:data, :data], path ++ [:commit, :changeset]],
-            fn %{actor: actor, authorize?: authorize?} = context ->
+            fn %{actor: actor} = context ->
               changeset = get_in(context, path ++ [:commit, :changeset])
               record = changeset.data
 

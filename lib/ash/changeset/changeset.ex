@@ -1491,7 +1491,7 @@ defmodule Ash.Changeset do
   defp run_around_actions(%{around_action: []} = changeset, func) do
     changeset = put_context(changeset, :private, %{in_before_action?: true})
 
-    {changeset, %{notifications: before_action_notifications}} =
+    result =
       Enum.reduce_while(
         changeset.before_action,
         {changeset, %{notifications: []}},
@@ -1520,6 +1520,9 @@ defmodule Ash.Changeset do
             end
 
           case result do
+            {:error, error} ->
+              {:halt, {:error, error}}
+
             {changeset, %{notifications: notifications}} ->
               cont =
                 if changeset.valid? do
@@ -1548,19 +1551,25 @@ defmodule Ash.Changeset do
         end
       )
 
-    case func.(changeset) do
-      {:ok, result, instructions} ->
-        run_after_actions(
-          result,
-          instructions[:new_changeset] || changeset,
-          List.wrap(instructions[:notifications]) ++ before_action_notifications
-        )
-
-      {:ok, result} ->
-        run_after_actions(result, changeset, before_action_notifications)
-
+    case result do
       {:error, error} ->
         {:error, error}
+
+      {changeset, %{notifications: before_action_notifications}} ->
+        case func.(changeset) do
+          {:ok, result, instructions} ->
+            run_after_actions(
+              result,
+              instructions[:new_changeset] || changeset,
+              List.wrap(instructions[:notifications]) ++ before_action_notifications
+            )
+
+          {:ok, result} ->
+            run_after_actions(result, changeset, before_action_notifications)
+
+          {:error, error} ->
+            {:error, error}
+        end
     end
   end
 

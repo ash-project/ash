@@ -133,7 +133,11 @@ defmodule Ash.Actions.Helpers do
           Keyword.put_new(opts, :authorize?, true)
 
         :when_requested ->
-          opts
+          if Keyword.has_key?(opts, :actor) do
+            Keyword.put_new(opts, :authorize?, true)
+          else
+            opts
+          end
       end
     else
       # The only time api would be nil here is when we call this helper inside of `Changeset.for_*` and `Query.for_read`

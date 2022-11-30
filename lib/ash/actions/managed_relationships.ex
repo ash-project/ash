@@ -78,6 +78,8 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Enum.reduce_while({changeset, %{notifications: []}}, fn {{relationship, {input, opts}},
                                                                 index},
                                                                {changeset, instructions} ->
+      opts = Ash.Changeset.ManagedRelationshipHelpers.sanitize_opts(relationship, opts)
+      opts = Keyword.put(opts, :authorize?, engine_opts[:authorize?] && opts[:authorize?])
       pkeys = pkeys(relationship, opts)
 
       changeset =
@@ -98,9 +100,6 @@ defmodule Ash.Actions.ManagedRelationships do
 
       case changeset do
         {:ok, changeset} ->
-          opts = Ash.Changeset.ManagedRelationshipHelpers.sanitize_opts(relationship, opts)
-          opts = Keyword.put(opts, :authorize?, engine_opts[:authorize?] && opts[:authorize?])
-
           changeset =
             if input in [nil, []] && opts[:on_missing] != :ignore do
               changeset

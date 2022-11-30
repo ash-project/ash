@@ -54,7 +54,7 @@ defmodule Ash.Actions.Update do
   def do_run(api, changeset, action, opts) do
     {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
 
-    authorize? = authorize?(opts)
+    authorize? = opts[:authorize?]
     return_notifications? = opts[:return_notifications?]
     actor = opts[:actor]
     verbose? = opts[:verbose?]
@@ -114,14 +114,6 @@ defmodule Ash.Actions.Update do
         error = Helpers.process_errors(changeset, error)
 
         {:error, Ash.Error.to_error_class(error, changeset: changeset)}
-    end
-  end
-
-  defp authorize?(opts) do
-    if opts[:authorize?] == false do
-      false
-    else
-      opts[:authorize?] || Keyword.has_key?(opts, :actor)
     end
   end
 
@@ -202,6 +194,7 @@ defmodule Ash.Actions.Update do
     error_path = request_opts[:error_path]
     timeout = request_opts[:timeout]
     tracer = request_opts[:tracer]
+    authorize? = request_opts[:authorize?]
 
     record =
       request_opts[:record] ||
@@ -323,7 +316,7 @@ defmodule Ash.Actions.Update do
         data:
           Request.resolve(
             [path ++ [:data, :changeset]],
-            fn %{actor: actor, authorize?: authorize?} = context ->
+            fn %{actor: actor} = context ->
               changeset = get_in(context, path ++ [:data, :changeset])
 
               if is_nil(changeset) && skip_on_nil_record? do
