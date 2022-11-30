@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.16](https://github.com/ash-project/ash/compare/v2.4.15...v2.4.16) (2022-11-30)
+
+
+
+
+### Bug Fixes:
+
+* properly authorize manage relationship calls
+
+### Improvements:
+
+* don't run calculation queries if no records were returned
+
+* don't run queries with `limit: 0`
+
+* more readable flow charts
+
+* `not_found_error?` option on `get?: true` `read` flow steps
+
 ## [v2.4.15](https://github.com/ash-project/ash/compare/v2.4.14...v2.4.15) (2022-11-29)
 
 
