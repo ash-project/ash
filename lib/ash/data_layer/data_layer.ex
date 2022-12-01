@@ -12,6 +12,35 @@ defmodule Ash.DataLayer do
 
   @type t :: module
   @type data_layer_query() :: struct
+  @type transaction_reason ::
+          %{type: :create, metadata: %{resource: Ash.Resource.t(), action: atom}}
+          | %{
+              type: :update,
+              metadata: %{
+                resource: Ash.Resource.t(),
+                action: atom,
+                record: Ash.Resource.record(),
+                actor: term()
+              }
+            }
+          | %{
+              type: :destroy,
+              metadata: %{
+                resource: Ash.Resource.t(),
+                action: atom,
+                record: Ash.Resource.record(),
+                actor: term()
+              }
+            }
+          | %{
+              type: :read,
+              metadata: %{resource: Ash.Resource.t(), query: Ash.Query.t(), actor: term()}
+            }
+          | %{
+              type: :flow_transaction,
+              metadata: %{step_name: atom | list(term), flow: module(), actor: term()}
+            }
+          | %{type: :custom, metadata: map()}
 
   @type feature() ::
           :transact
@@ -130,7 +159,12 @@ defmodule Ash.DataLayer do
             ) ::
               {:ok, data_layer_query()} | {:error, term}
   @callback destroy(Ash.Resource.t(), Ash.Changeset.t()) :: :ok | {:error, term}
-  @callback transaction(Ash.Resource.t(), (() -> term), nil | pos_integer()) ::
+  @callback transaction(
+              Ash.Resource.t(),
+              (() -> term),
+              nil | pos_integer(),
+              reason :: transaction_reason()
+            ) ::
               {:ok, term} | {:error, term}
   @callback in_transaction?(Ash.Resource.t()) :: boolean
   @callback source(Ash.Resource.t()) :: String.t()
@@ -152,7 +186,7 @@ defmodule Ash.DataLayer do
                       select: 3,
                       limit: 3,
                       offset: 3,
-                      transaction: 3,
+                      transaction: 4,
                       rollback: 2,
                       upsert: 3,
                       functions: 1,
@@ -189,18 +223,59 @@ defmodule Ash.DataLayer do
   end
 
   @doc "Wraps the execution of the function in a transaction with the resource's data_layer"
-  @spec transaction(Ash.Resource.t(), (() -> term), nil | pos_integer()) :: term
-  def transaction(resource, func, timeout) do
-    data_layer = data_layer(resource)
+  @spec transaction(
+          Ash.Resource.t() | [Ash.Resource.t()],
+          (() -> term),
+          nil | pos_integer(),
+          reason :: transaction_reason()
+        ) :: term
 
-    if data_layer.can?(resource, :transact) do
-      if function_exported?(data_layer, :transaction, 3) do
-        data_layer.transaction(resource, func, timeout)
-      else
-        data_layer.transaction(resource, func)
-      end
+  def transaction(
+        resource_or_resources,
+        func,
+        timeout \\ nil,
+        reason \\ %{type: :custom, metadata: %{}}
+      )
+
+  def transaction([], func, _, _reason) do
+    {:ok, func.()}
+  end
+
+  def transaction([resource], func, timeout, reason) do
+    transaction(resource, func, timeout, reason)
+  end
+
+  def transaction([resource | resources], func, timeout, reason) do
+    transaction(
+      resource,
+      fn ->
+        transaction(resources, func, timeout, reason)
+      end,
+      timeout,
+      reason
+    )
+  end
+
+  def transaction(resource, func, timeout, reason) do
+    if in_transaction?(resource) do
+      {:ok, func.()}
     else
-      func.()
+      data_layer = data_layer(resource)
+
+      if data_layer.can?(resource, :transact) do
+        cond do
+          function_exported?(data_layer, :transaction, 4) ->
+            data_layer.transaction(resource, func, timeout, reason)
+
+          function_exported?(data_layer, :transaction, 3) ->
+            data_layer.transaction(resource, func, timeout)
+
+          true ->
+            data_layer.transaction(resource, func)
+        end
+      else
+        func.()
+      end
     end
   end
 
@@ -455,15 +530,6 @@ defmodule Ash.DataLayer do
       destination_resource,
       path
     )
-  end
-
-  def transact(resource, func) do
-    if can?(:transact, resource) && not in_transaction?(resource) do
-      data_layer = Ash.DataLayer.data_layer(resource)
-      data_layer.transaction(resource, func)
-    else
-      {:ok, func.()}
-    end
   end
 
   def in_transaction?(resource) do

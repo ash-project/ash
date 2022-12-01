@@ -91,6 +91,14 @@ defmodule Ash.Actions.Destroy do
       tenant: opts[:tenant]
     )
     |> Ash.Engine.run(
+      transaction_reason: %{
+        type: :create,
+        metadata: %{
+          record: changeset.data,
+          resource: resource,
+          action: action.name
+        }
+      },
       resource: resource,
       verbose?: verbose?,
       actor: actor,

@@ -83,8 +83,14 @@ defmodule Ash.Engine do
         raise "Engine invoked with `transaction?: true` but no resource, so no transaction could be started."
 
       opts[:transaction?] && Ash.DataLayer.data_layer_can?(opts[:resource], :transact) ->
+        resources =
+          opts[:resource]
+          |> List.wrap()
+          |> Enum.concat(Enum.flat_map(requests, &(&1.touches_resources || [])))
+          |> Enum.concat(opts[:touches_resources] || [])
+
         Ash.DataLayer.transaction(
-          opts[:resource],
+          resources,
           fn ->
             case do_run(requests, opts) do
               {:ok, result} ->
@@ -94,7 +100,8 @@ defmodule Ash.Engine do
                 Ash.DataLayer.rollback(opts[:resource], error)
             end
           end,
-          opts[:timeout] || :infinity
+          opts[:timeout] || :infinity,
+          transaction_metadata(opts)
         )
 
       true ->
@@ -139,6 +146,24 @@ defmodule Ash.Engine do
 
       {:error, :timeout} ->
         {:error, Ash.Error.Invalid.Timeout.exception(timeout: opts[:timeout], name: opts[:name])}
+
+      other ->
+        other
+    end
+  end
+
+  defp transaction_metadata(opts) do
+    case opts[:transaction_reason] do
+      %{metadata: metadata} = reason ->
+        %{reason | metadata: Map.put(metadata, :actor, opts[:actor])}
+
+      nil ->
+        %{
+          type: :custom,
+          metadata: %{
+            actor: opts[:actor]
+          }
+        }
 
       other ->
         other

@@ -89,6 +89,13 @@ defmodule Ash.Actions.Create do
       after_action: opts[:after_action]
     )
     |> Ash.Engine.run(
+      transaction_reason: %{
+        type: :create,
+        metadata: %{
+          resource: resource,
+          action: action.name
+        }
+      },
       resource: resource,
       verbose?: verbose?,
       name: "#{inspect(resource)}.#{action.name}",

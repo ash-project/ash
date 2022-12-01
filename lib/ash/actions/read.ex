@@ -119,7 +119,7 @@ defmodule Ash.Actions.Read do
     engine_opts =
       opts
       |> Keyword.put(:authorize?, authorize?)
-      |> engine_opts(action, query.api, query.resource, opts[:tracer])
+      |> engine_opts(action, query.api, query.resource, opts[:tracer], query)
 
     query =
       if opts[:load] do
@@ -512,7 +512,7 @@ defmodule Ash.Actions.Read do
     |> Keyword.merge(Map.get(query.context, :override_api_params) || [])
   end
 
-  defp engine_opts(opts, action, api, resource, tracer) do
+  defp engine_opts(opts, action, api, resource, tracer, query) do
     opts
     |> Keyword.take([:verbose?, :actor, :authorize?, :timeout])
     |> Keyword.put(:transaction?, action.transaction? || opts[:transaction?])
@@ -520,6 +520,17 @@ defmodule Ash.Actions.Read do
     |> Keyword.put(:resource, resource)
     |> Keyword.put(:name, "#{inspect(resource)}.#{action.name}")
     |> Keyword.put(:tracer, tracer)
+    |> Keyword.put(
+      :transaction_reason,
+      %{
+        type: :read,
+        metadata: %{
+          query: query,
+          resource: resource,
+          action: action.name
+        }
+      }
+    )
   end
 
   defp for_read(query, action, opts) do

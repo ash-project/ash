@@ -421,6 +421,13 @@ defmodule Ash.Flow.Executor.AshEngine do
                         | rest
                       ]
                       |> Ash.Engine.run(
+                        transaction_reason: %{
+                          type: :flow_transaction,
+                          metadata: %{
+                            step_name: name,
+                            flow: flow
+                          }
+                        },
                         resource: resource,
                         name: "Transaction #{inspect(name)}",
                         verbose?: opts[:verbose?],

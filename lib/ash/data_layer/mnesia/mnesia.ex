@@ -374,7 +374,7 @@ defmodule Ash.DataLayer.Mnesia do
 
   @doc false
   @impl true
-  def transaction(_, func, _timeout) do
+  def transaction(_, func, _timeout, _reason) do
     case Mnesia.transaction(func) do
       {:atomic, result} ->
         {:ok, result}

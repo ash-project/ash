@@ -18,7 +18,8 @@ defmodule Ash.Flow.Step.Transaction do
           links: []
         ],
         resource: [
-          type: Ash.OptionsHelpers.ash_resource(),
+          type:
+            {:or, [Ash.OptionsHelpers.ash_resource(), {:list, Ash.OptionsHelpers.ash_resource()}]},
           doc: """
           The Ash resource to use for the transaction.
           """,
@@ -26,5 +27,4 @@ defmodule Ash.Flow.Step.Transaction do
         ]
       ]
       |> Spark.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")
-      |> Keyword.delete(:touches_resources)
 end
