@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.17](https://github.com/ash-project/ash/compare/v2.4.16...v2.4.17) (2022-12-01)
+
+
+
+
+### Improvements:
+
+* support data layers implementing transaction level hooks
+
 ## [v2.4.16](https://github.com/ash-project/ash/compare/v2.4.15...v2.4.16) (2022-11-30)
 
 
