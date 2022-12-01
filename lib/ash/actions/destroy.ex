@@ -92,7 +92,7 @@ defmodule Ash.Actions.Destroy do
     )
     |> Ash.Engine.run(
       transaction_reason: %{
-        type: :create,
+        type: :destroy,
         metadata: %{
           record: changeset.data,
           resource: resource,

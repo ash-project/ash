@@ -73,7 +73,7 @@ defmodule Ash.Actions.Update do
     )
     |> Ash.Engine.run(
       transaction_reason: %{
-        type: :create,
+        type: :update,
         metadata: %{
           record: changeset.data,
           resource: resource,
