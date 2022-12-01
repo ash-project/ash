@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.18](https://github.com/ash-project/ash/compare/v2.4.17...v2.4.18) (2022-12-01)
+
+
+
+
+### Bug Fixes:
+
+* set proper types in transaction reasons
+
 ## [v2.4.17](https://github.com/ash-project/ash/compare/v2.4.16...v2.4.17) (2022-12-01)
 
 
