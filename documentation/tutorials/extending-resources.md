@@ -100,7 +100,7 @@ So far we've covered transformers, and using them to modify resources, but now l
 
 ```elixir
 defmodule MyApp.Extensions.Base do
-  @base %Ash.Dsl.Section{
+  @base %Spark.Dsl.Section{
     name: :base,
     describe: """
     Configure the behavior of our base extension.
@@ -123,7 +123,7 @@ defmodule MyApp.Extensions.Base do
 
   defmodule Info do
     def timestamps?(resource) do
-      Spark.Dsl.Extension.get_option(resource, [:base], :timestamps?, true)
+      Spark.Dsl.Extension.get_opt(resource, [:base], :timestamps?, true)
     end
   end
 
