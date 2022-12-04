@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.19](https://github.com/ash-project/ash/compare/v2.4.18...v2.4.19) (2022-12-04)
+
+
+
+
+### Improvements:
+
+* set context once, early
+
 ## [v2.4.18](https://github.com/ash-project/ash/compare/v2.4.17...v2.4.18) (2022-12-01)
 
 
