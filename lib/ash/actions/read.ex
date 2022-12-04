@@ -862,6 +862,7 @@ defmodule Ash.Actions.Read do
                 :distinct,
                 :select
               ])
+              |> Ash.Query.set_context(%{action: ash_query.action})
               |> Ash.Query.data_layer_query(only_validate_filter?: true)
 
             ash_query =
@@ -901,12 +902,6 @@ defmodule Ash.Actions.Read do
                      {path, ash_query.tenant, data}
                    ),
                  filter <- update_aggregate_filters(filter, data, path),
-                 {:ok, query} <-
-                   Ash.DataLayer.set_context(
-                     ash_query.resource,
-                     query,
-                     Map.put(ash_query.context, :action, ash_query.action)
-                   ),
                  {:ok, query} <-
                    Ash.DataLayer.select(
                      query,

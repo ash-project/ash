@@ -1946,6 +1946,12 @@ defmodule Ash.Query do
     aggregates = Enum.uniq_by(filter_aggregates ++ sort_aggregates, & &1.name)
 
     with {:ok, query} <-
+           Ash.DataLayer.set_context(
+             resource,
+             query,
+             Map.put(ash_query.context, :action, ash_query.action)
+           ),
+         {:ok, query} <-
            add_tenant(query, ash_query),
          {:ok, query} <-
            add_aggregates(query, ash_query, aggregates),
@@ -1957,12 +1963,6 @@ defmodule Ash.Query do
            Ash.DataLayer.limit(query, ash_query.limit, resource),
          {:ok, query} <-
            Ash.DataLayer.offset(query, ash_query.offset, resource),
-         {:ok, query} <-
-           Ash.DataLayer.set_context(
-             resource,
-             query,
-             Map.put(ash_query.context, :action, ash_query.action)
-           ),
          {:ok, query} <- Ash.DataLayer.select(query, ash_query.select, ash_query.resource) do
       if opts[:no_modify?] || !ash_query.action || !ash_query.action.modify_query do
         {:ok, query}
