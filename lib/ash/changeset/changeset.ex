@@ -529,6 +529,8 @@ defmodule Ash.Changeset do
           {changeset, opts} =
             Ash.Actions.Helpers.add_process_context(changeset.api, changeset, opts)
 
+          changeset = set_context(changeset, Keyword.get(opts, :context, %{}))
+
           name =
             "changeset:" <> Ash.Resource.Info.trace_name(changeset.resource) <> ":#{action.name}"
 
@@ -656,6 +658,8 @@ defmodule Ash.Changeset do
 
   defp do_for_action(changeset, action_name, params, opts) do
     {changeset, opts} = Ash.Actions.Helpers.add_process_context(changeset.api, changeset, opts)
+
+    changeset = set_context(changeset, Keyword.get(opts, :context, %{}))
 
     if changeset.valid? do
       action = Ash.Resource.Info.action(changeset.resource, action_name, changeset.action_type)
