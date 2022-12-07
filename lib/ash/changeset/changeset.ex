@@ -529,8 +529,6 @@ defmodule Ash.Changeset do
           {changeset, opts} =
             Ash.Actions.Helpers.add_process_context(changeset.api, changeset, opts)
 
-          changeset = set_context(changeset, Keyword.get(opts, :context, %{}))
-
           name =
             "changeset:" <> Ash.Resource.Info.trace_name(changeset.resource) <> ":#{action.name}"
 
@@ -658,8 +656,6 @@ defmodule Ash.Changeset do
 
   defp do_for_action(changeset, action_name, params, opts) do
     {changeset, opts} = Ash.Actions.Helpers.add_process_context(changeset.api, changeset, opts)
-
-    changeset = set_context(changeset, Keyword.get(opts, :context, %{}))
 
     if changeset.valid? do
       action = Ash.Resource.Info.action(changeset.resource, action_name, changeset.action_type)
@@ -1061,13 +1057,15 @@ defmodule Ash.Changeset do
           not (is_function(attribute.default) or match?({_, _, _}, attribute.default))
       end)
       |> Enum.reduce(changeset, fn attribute, changeset ->
-        changeset
-        |> force_change_new_attribute_lazy(attribute.name, fn ->
-          default(:create, attribute)
-        end)
-        |> Map.update!(:defaults, fn defaults ->
-          [attribute.name | defaults]
-        end)
+        if changing_attribute?(changeset, attribute.name) do
+          changeset
+        else
+          changeset
+          |> force_change_attribute(attribute.name, default(:create, attribute))
+          |> Map.update!(:defaults, fn defaults ->
+            [attribute.name | defaults]
+          end)
+        end
       end)
       |> Map.update!(:defaults, &Enum.uniq/1)
 
@@ -1090,13 +1088,15 @@ defmodule Ash.Changeset do
                  match?({_, _, _}, attribute.update_default))
       end)
       |> Enum.reduce(changeset, fn attribute, changeset ->
-        changeset
-        |> force_change_new_attribute_lazy(attribute.name, fn ->
-          default(:update, attribute)
-        end)
-        |> Map.update!(:defaults, fn defaults ->
-          [attribute.name | defaults]
-        end)
+        if changing_attribute?(changeset, attribute.name) do
+          changeset
+        else
+          changeset
+          |> force_change_attribute(attribute.name, default(:update, attribute))
+          |> Map.update!(:defaults, fn defaults ->
+            [attribute.name | defaults]
+          end)
+        end
       end)
 
     if lazy? do
@@ -1123,13 +1123,15 @@ defmodule Ash.Changeset do
       !attribute.match_other_defaults? && get_default_fun(attribute, type)
     end)
     |> Enum.reduce(changeset, fn attribute, changeset ->
-      changeset
-      |> force_change_new_attribute_lazy(attribute.name, fn ->
-        default(type, attribute)
-      end)
-      |> Map.update!(:defaults, fn defaults ->
-        [attribute.name | defaults]
-      end)
+      if changing_attribute?(changeset, attribute.name) do
+        changeset
+      else
+        changeset
+        |> force_change_attribute(attribute.name, default(type, attribute))
+        |> Map.update!(:defaults, fn defaults ->
+          [attribute.name | defaults]
+        end)
+      end
     end)
   end
 
@@ -1170,11 +1172,15 @@ defmodule Ash.Changeset do
         end
 
       Enum.reduce(attributes, changeset, fn attribute, changeset ->
-        changeset
-        |> force_change_new_attribute(attribute.name, default_value)
-        |> Map.update!(:defaults, fn defaults ->
-          [attribute.name | defaults]
-        end)
+        if changing_attribute?(changeset, attribute.name) do
+          changeset
+        else
+          changeset
+          |> force_change_attribute(attribute.name, default_value)
+          |> Map.update!(:defaults, fn defaults ->
+            [attribute.name | defaults]
+          end)
+        end
       end)
     end)
   end
@@ -2966,6 +2972,7 @@ defmodule Ash.Changeset do
         add_error(changeset, error)
 
       attribute when is_nil(value) ->
+        changeset = remove_default(changeset, attribute.name)
         %{changeset | attributes: Map.put(changeset.attributes, attribute.name, nil)}
 
       attribute ->
@@ -2985,29 +2992,25 @@ defmodule Ash.Changeset do
             changeset.action_type == :create ->
               %{
                 changeset
-                | attributes: Map.put(changeset.attributes, attribute.name, casted),
-                  defaults: changeset.defaults -- [attribute.name]
+                | attributes: Map.put(changeset.attributes, attribute.name, casted)
               }
 
             is_nil(data_value) and is_nil(casted) ->
               %{
                 changeset
-                | attributes: Map.delete(changeset.attributes, attribute.name),
-                  defaults: changeset.defaults -- [attribute.name]
+                | attributes: Map.delete(changeset.attributes, attribute.name)
               }
 
             Ash.Type.equal?(attribute.type, casted, data_value) ->
               %{
                 changeset
-                | attributes: Map.delete(changeset.attributes, attribute.name),
-                  defaults: changeset.defaults -- [attribute.name]
+                | attributes: Map.delete(changeset.attributes, attribute.name)
               }
 
             true ->
               %{
                 changeset
-                | attributes: Map.put(changeset.attributes, attribute.name, casted),
-                  defaults: changeset.defaults -- [attribute.name]
+                | attributes: Map.put(changeset.attributes, attribute.name, casted)
               }
           end
         else
