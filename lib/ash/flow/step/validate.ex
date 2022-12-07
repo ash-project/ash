@@ -18,7 +18,7 @@ defmodule Ash.Flow.Step.Validate do
           links: []
         ],
         only_keys: [
-          type: {:list_of, {:or, [:atom, {:list_of, :atom}]}},
+          type: {:list, {:or, [:atom, {:list, :atom}]}},
           doc: """
           If the keys are set, the step will succeed as long as there are no errors for those specific fields.
           Additionally, only errors for those keys will be returned.
