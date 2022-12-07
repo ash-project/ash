@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.20](https://github.com/ash-project/ash/compare/v2.4.19...v2.4.20) (2022-12-07)
+
+
+
+
+### Bug Fixes:
+
+* more matching fixes on manual relationships
+
+* handle manual relationship load results when building query
+
+### Improvements:
+
+* only set `defaults` when attribute is actually set
+
+* Pass context into query and changeset for_... functions. (#460)
+
 ## [v2.4.19](https://github.com/ash-project/ash/compare/v2.4.18...v2.4.19) (2022-12-04)
 
 
