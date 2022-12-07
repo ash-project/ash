@@ -277,6 +277,29 @@ defmodule Ash.Test.Actions.LoadTest do
                |> Map.get(:posts_in_same_category)
     end
 
+    test "it allows loading through manual relationships" do
+      post1 =
+        Post
+        |> new(%{title: "post1", category: "foo"})
+        |> Api.create!()
+
+      Post
+      |> new(%{title: "post2", category: "bar"})
+      |> Api.create!()
+
+      post3 =
+        Post
+        |> new(%{title: "post2", category: "foo"})
+        |> Api.create!()
+
+      post3_id = post3.id
+
+      assert [%{id: ^post3_id}] =
+               post1
+               |> Api.load!(posts_in_same_category: :ratings)
+               |> Map.get(:posts_in_same_category)
+    end
+
     test "it uses `Comp.equal?/2` to support things like ci_string foreign keys" do
       author =
         Author

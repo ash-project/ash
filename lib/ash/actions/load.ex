@@ -1351,6 +1351,9 @@ defmodule Ash.Actions.Load do
 
         ids =
           Enum.flat_map(related_data, fn
+            {_, data} when is_list(data) ->
+              Enum.map(data, &Map.get(&1, source_attribute))
+
             {_, data} ->
               data
               |> Map.get(source_attribute)
@@ -1361,6 +1364,7 @@ defmodule Ash.Actions.Load do
               |> Map.get(source_attribute)
               |> List.wrap()
           end)
+          |> Enum.reject(&is_nil/1)
 
         filter_value =
           case ids do
