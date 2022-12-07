@@ -1350,10 +1350,16 @@ defmodule Ash.Actions.Load do
           end
 
         ids =
-          Enum.flat_map(related_data, fn data ->
-            data
-            |> Map.get(source_attribute)
-            |> List.wrap()
+          Enum.flat_map(related_data, fn
+            {_, data} ->
+              data
+              |> Map.get(source_attribute)
+              |> List.wrap()
+
+            data ->
+              data
+              |> Map.get(source_attribute)
+              |> List.wrap()
           end)
 
         filter_value =
