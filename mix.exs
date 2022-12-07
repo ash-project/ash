@@ -225,7 +225,6 @@ defmodule Ash.MixProject do
       {:ets, "~> 0.8.0"},
       {:decimal, "~> 2.0"},
       {:picosat_elixir, "~> 0.2"},
-      {:nimble_options, "~> 0.4.0"},
       {:comparable, "~> 1.0"},
       {:jason, ">= 1.0.0"},
       {:earmark, "~> 1.4", optional: true},
