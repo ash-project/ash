@@ -138,7 +138,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if destination_attribute is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  expected :destination_attribute to be an atom, got: \"foo\"",
+        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  invalid value for :destination_attribute option: expected atom, got: \"foo\"",
         fn ->
           defposts do
             relationships do
@@ -152,7 +152,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if source_attribute is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  expected :source_attribute to be an atom, got: \"foo\"",
+        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  invalid value for :source_attribute option: expected atom, got: \"foo\"",
         fn ->
           defposts do
             relationships do
@@ -166,7 +166,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if the destination is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  expected :destination to be an atom, got: \"foobar\"",
+        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  invalid value for :destination option: expected atom, got: \"foobar\"",
         fn ->
           defposts do
             relationships do
@@ -180,7 +180,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if the relationship name is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  expected :name to be an atom, got: \"foobar\"",
+        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  invalid value for :name option: expected atom, got: \"foobar\"",
         fn ->
           defposts do
             relationships do
@@ -194,7 +194,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if `primary_key?` is not a boolean" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  expected :primary_key? to be a boolean, got: \"blah\"",
+        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  invalid value for :primary_key? option: expected boolean, got: \"blah\"",
         fn ->
           defposts do
             relationships do
@@ -208,7 +208,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if `private?` is not a boolean" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  expected :private? to be a boolean, got: \"blah\"",
+        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  invalid value for :private? option: expected boolean, got: \"blah\"",
         fn ->
           defposts do
             relationships do
@@ -223,7 +223,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
   test "fails if `define_attribute?` is not a boolean" do
     assert_raise(
       Spark.Error.DslError,
-      "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  expected :define_attribute? to be a boolean, got: \"blah\"",
+      "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  invalid value for :define_attribute? option: expected boolean, got: \"blah\"",
       fn ->
         defposts do
           relationships do

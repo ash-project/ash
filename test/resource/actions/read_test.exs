@@ -40,7 +40,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.ReadTest do
     test "it fails if `name` is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Dsl.Resource.Actions.ReadTest.Post]\n actions -> read -> default:\n  expected :name to be an atom, got: \"default\"",
+        "[Ash.Test.Dsl.Resource.Actions.ReadTest.Post]\n actions -> read -> default:\n  invalid value for :name option: expected atom, got: \"default\"",
         fn ->
           defposts do
             actions do
@@ -54,7 +54,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.ReadTest do
     test "it fails if `primary?` is not a boolean" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Dsl.Resource.Actions.ReadTest.Post]\n actions -> read -> read:\n  expected :primary? to be a boolean, got: 10",
+        "[Ash.Test.Dsl.Resource.Actions.ReadTest.Post]\n actions -> read -> read:\n  invalid value for :primary? option: expected boolean, got: 10",
         fn ->
           defposts do
             actions do

@@ -43,6 +43,10 @@ defmodule Ash.Api.Info.Diagram do
     |> Enum.sort()
   end
 
+  defp aggregate_type(_resource, %{kind: :custom, type: type}) do
+    short_type(type)
+  end
+
   defp aggregate_type(resource, aggregate) do
     attribute_type =
       if aggregate.field do

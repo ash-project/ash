@@ -956,6 +956,56 @@ defmodule Ash.Resource.Dsl do
     auto_set_fields: [kind: :first]
   }
 
+  @max %Spark.Dsl.Entity{
+    name: :max,
+    links: [
+      guides: [
+        "ash:guide:Aggregates"
+      ]
+    ],
+    describe: """
+    Declares a named `max` aggregate on the resource
+
+    Supports `filter`, but not `sort` (because that wouldn't affect the max)
+    """,
+    examples: [
+      """
+      max :first_assigned_ticket_subject, :assigned_tickets, :severity do
+        filter [active: true]
+      end
+      """
+    ],
+    target: Ash.Resource.Aggregate,
+    args: [:name, :relationship_path, :field],
+    schema: Ash.Resource.Aggregate.schema() |> Keyword.delete(:sort),
+    auto_set_fields: [kind: :max]
+  }
+
+  @min %Spark.Dsl.Entity{
+    name: :min,
+    links: [
+      guides: [
+        "ash:guide:Aggregates"
+      ]
+    ],
+    describe: """
+    Declares a named `min` aggregate on the resource
+
+    Supports `filter`, but not `sort` (because that wouldn't affect the min)
+    """,
+    examples: [
+      """
+      min :first_assigned_ticket_subject, :assigned_tickets, :severity do
+        filter [active: true]
+      end
+      """
+    ],
+    target: Ash.Resource.Aggregate,
+    args: [:name, :relationship_path, :field],
+    schema: Ash.Resource.Aggregate.schema() |> Keyword.delete(:sort),
+    auto_set_fields: [kind: :min]
+  }
+
   @sum %Spark.Dsl.Entity{
     name: :sum,
     links: [
@@ -979,6 +1029,71 @@ defmodule Ash.Resource.Dsl do
     args: [:name, :relationship_path, :field],
     schema: Keyword.delete(Ash.Resource.Aggregate.schema(), :sort),
     auto_set_fields: [kind: :sum]
+  }
+
+  @avg %Spark.Dsl.Entity{
+    name: :avg,
+    links: [
+      guides: [
+        "ash:guide:Aggregates"
+      ]
+    ],
+    describe: """
+    Declares a named `avg` aggregate on the resource
+
+    Supports `filter`, but not `sort` (because that wouldn't affect the avg)
+    """,
+    examples: [
+      """
+      avg :assigned_ticket_price_sum, :assigned_tickets, :price do
+        filter [active: true]
+      end
+      """
+    ],
+    target: Ash.Resource.Aggregate,
+    args: [:name, :relationship_path, :field],
+    schema: Keyword.delete(Ash.Resource.Aggregate.schema(), :sort),
+    auto_set_fields: [kind: :avg]
+  }
+
+  @custom %Spark.Dsl.Entity{
+    name: :custom,
+    links: [
+      guides: [
+        "ash:guide:Aggregates"
+      ]
+    ],
+    describe: """
+    Declares a named `custom` aggregate on the resource
+
+    Supports `filter` and `sort`.
+
+    Custom aggregates provide an `implementation` which must implement data layer specific callbacks.
+
+    See the relevant data layer documentation for more.
+    """,
+    examples: [
+      """
+      custom :author_names, :authors, :string do
+        implementation {StringAgg, delimiter: ","}
+      end
+      """
+    ],
+    target: Ash.Resource.Aggregate,
+    args: [:name, :relationship_path, :type],
+    schema:
+      Ash.Resource.Aggregate.schema()
+      |> Keyword.put(:type,
+        type: :module,
+        required: true,
+        doc: "The type of the value returned by the aggregate"
+      )
+      |> Keyword.put(:implementation,
+        type: {:spark_behaviour, Ash.Resource.Aggregate.CustomAggregate},
+        required: true,
+        doc: "The module that implements the relevant data layer callbacks"
+      ),
+    auto_set_fields: [kind: :custom]
   }
 
   @list %Spark.Dsl.Entity{
@@ -1034,7 +1149,11 @@ defmodule Ash.Resource.Dsl do
       @count,
       @first,
       @sum,
-      @list
+      @list,
+      @max,
+      @min,
+      @avg,
+      @custom
     ]
   }
 

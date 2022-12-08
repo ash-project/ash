@@ -63,7 +63,7 @@ defmodule Ash.Test.Resource.Relationships.HasOneTest do
     test "fails if destination_attribute is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.HasOneTest.Post]\n relationships -> has_one -> foobar:\n  expected :destination_attribute to be an atom, got: \"foo\"",
+        "[Ash.Test.Resource.Relationships.HasOneTest.Post]\n relationships -> has_one -> foobar:\n  invalid value for :destination_attribute option: expected atom, got: \"foo\"",
         fn ->
           defposts do
             relationships do
@@ -77,7 +77,7 @@ defmodule Ash.Test.Resource.Relationships.HasOneTest do
     test "fails if source_attribute is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.HasOneTest.Post]\n relationships -> has_one -> foobar:\n  expected :source_attribute to be an atom, got: \"foo\"",
+        "[Ash.Test.Resource.Relationships.HasOneTest.Post]\n relationships -> has_one -> foobar:\n  invalid value for :source_attribute option: expected atom, got: \"foo\"",
         fn ->
           defposts do
             relationships do
@@ -91,7 +91,7 @@ defmodule Ash.Test.Resource.Relationships.HasOneTest do
     test "fails if the destination is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.HasOneTest.Post]\n relationships -> has_one -> foobar:\n  expected :destination to be an atom, got: \"foobar\"",
+        "[Ash.Test.Resource.Relationships.HasOneTest.Post]\n relationships -> has_one -> foobar:\n  invalid value for :destination option: expected atom, got: \"foobar\"",
         fn ->
           defposts do
             relationships do
@@ -105,7 +105,7 @@ defmodule Ash.Test.Resource.Relationships.HasOneTest do
     test "fails if the relationship name is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.HasOneTest.Post]\n relationships -> has_one -> foobar:\n  expected :name to be an atom, got: \"foobar\"",
+        "[Ash.Test.Resource.Relationships.HasOneTest.Post]\n relationships -> has_one -> foobar:\n  invalid value for :name option: expected atom, got: \"foobar\"",
         fn ->
           defposts do
             relationships do
@@ -119,7 +119,7 @@ defmodule Ash.Test.Resource.Relationships.HasOneTest do
     test "fails if private? is not an boolean" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.HasOneTest.Post]\n relationships -> has_one -> foobar:\n  expected :private? to be a boolean, got: \"foo\"",
+        "[Ash.Test.Resource.Relationships.HasOneTest.Post]\n relationships -> has_one -> foobar:\n  invalid value for :private? option: expected boolean, got: \"foo\"",
         fn ->
           defposts do
             relationships do

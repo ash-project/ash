@@ -2213,7 +2213,10 @@ defmodule Ash.Filter do
                  aggregate_query,
                  aggregate.field,
                  aggregate.default,
-                 aggregate.filterable?
+                 aggregate.filterable?,
+                 aggregate.type,
+                 aggregate.constraints,
+                 aggregate.implementation
                ) do
           case parse_predicates(nested_statement, query_aggregate, context) do
             {:ok, nested_statement} ->
@@ -2704,7 +2707,10 @@ defmodule Ash.Filter do
                      aggregate_query,
                      aggregate.field,
                      aggregate.default,
-                     aggregate.filterable?
+                     aggregate.filterable?,
+                     aggregate.type,
+                     aggregate.constraints,
+                     aggregate.implementation
                    ) do
               {:ok, %{ref | attribute: query_aggregate, resource: related}}
             else

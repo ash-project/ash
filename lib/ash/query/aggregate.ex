@@ -9,6 +9,8 @@ defmodule Ash.Query.Aggregate do
     :field,
     :kind,
     :type,
+    :constraints,
+    :implementation,
     :authorization_filter,
     :load,
     filterable?: true
@@ -16,7 +18,7 @@ defmodule Ash.Query.Aggregate do
 
   @type t :: %__MODULE__{}
 
-  @kinds [:count, :first, :sum, :list]
+  @kinds [:count, :first, :sum, :list, :max, :min, :avg, :sum, :custom]
   @type kind :: unquote(Enum.reduce(@kinds, &{:|, [], [&1, &2]}))
 
   alias Ash.Actions.Load
@@ -28,7 +30,27 @@ defmodule Ash.Query.Aggregate do
   @doc false
   def kinds, do: @kinds
 
-  def new(resource, name, kind, relationship, query, field, default \\ nil, filterable? \\ true) do
+  def new(
+        resource,
+        name,
+        kind,
+        relationship,
+        query,
+        field,
+        default \\ nil,
+        filterable? \\ true,
+        type \\ nil,
+        constraints \\ [],
+        implementation \\ nil
+      ) do
+    if kind == :custom && !type do
+      raise ArgumentError, "Must supply type when building a `custom` aggregate"
+    end
+
+    if kind == :custom && !implementation do
+      raise ArgumentError, "Must supply implementation when building a `custom` aggregate"
+    end
+
     attribute_type =
       if field do
         related = Ash.Resource.Info.related(resource, relationship)
@@ -36,14 +58,16 @@ defmodule Ash.Query.Aggregate do
       end
 
     with :ok <- validate_path(resource, List.wrap(relationship)),
-         {:ok, type} <- kind_to_type(kind, attribute_type),
+         {:ok, type} <- get_type(kind, type, attribute_type),
          {:ok, query} <- validate_query(query) do
       {:ok,
        %__MODULE__{
          name: name,
          resource: resource,
+         constraints: constraints,
          default_value: default || default_value(kind),
          relationship_path: List.wrap(relationship),
+         implementation: implementation,
          field: field,
          kind: kind,
          type: type,
@@ -51,6 +75,12 @@ defmodule Ash.Query.Aggregate do
          filterable?: filterable?
        }}
     end
+  end
+
+  defp get_type(:custom, type, _), do: {:ok, type}
+
+  defp get_type(kind, _, attribute_type) do
+    kind_to_type(kind, attribute_type)
   end
 
   defp validate_path(_, []), do: :ok
@@ -93,7 +123,11 @@ defmodule Ash.Query.Aggregate do
   def default_value(:count), do: 0
   def default_value(:first), do: nil
   def default_value(:sum), do: nil
+  def default_value(:max), do: nil
+  def default_value(:min), do: nil
+  def default_value(:avg), do: nil
   def default_value(:list), do: []
+  def default_value(:custom), do: nil
 
   defp validate_query(nil), do: {:ok, nil}
 
@@ -114,9 +148,14 @@ defmodule Ash.Query.Aggregate do
   end
 
   @doc false
+  def kind_to_type({:custom, type}, _attribute_type), do: {:ok, type}
   def kind_to_type(:count, _attribute_type), do: {:ok, Ash.Type.Integer}
   def kind_to_type(kind, nil), do: {:error, "Must provide field type for #{kind}"}
-  def kind_to_type(kind, attribute_type) when kind in [:first, :sum], do: {:ok, attribute_type}
+  def kind_to_type(:avg, _attribute_type), do: {:ok, :float}
+
+  def kind_to_type(kind, attribute_type) when kind in [:first, :sum, :max, :min],
+    do: {:ok, attribute_type}
+
   def kind_to_type(:list, attribute_type), do: {:ok, {:array, attribute_type}}
   def kind_to_type(kind, _attribute_type), do: {:error, "Invalid aggregate kind: #{kind}"}
 

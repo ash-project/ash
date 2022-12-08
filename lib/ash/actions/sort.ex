@@ -164,6 +164,9 @@ defmodule Ash.Actions.Sort do
 
           {field, {:ok, aggregate.type}}
 
+        %{name: name, kind: :custom, type: type} ->
+          {name, type}
+
         %Ash.Resource.Aggregate{} = agg ->
           attribute_type =
             if agg.field do

@@ -102,7 +102,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "it fails if you pass a string to `through`" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  expected :through to be an atom, got: \"some_table\"",
+        "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  invalid value for :through option: expected atom, got: \"some_table\"",
         fn ->
           defposts do
             relationships do
@@ -130,7 +130,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "it fails if you dont pass an atom for `source_attribute_on_join_resource`" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  expected :source_attribute_on_join_resource to be an atom, got: \"what\"",
+        "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  invalid value for :source_attribute_on_join_resource option: expected atom, got: \"what\"",
         fn ->
           defposts do
             relationships do
@@ -147,7 +147,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "it fails if you dont pass an atom for `destination_attribute_on_join_resource`" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  expected :destination_attribute_on_join_resource to be an atom, got: \"what\"",
+        "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  invalid value for :destination_attribute_on_join_resource option: expected atom, got: \"what\"",
         fn ->
           defposts do
             relationships do
@@ -164,7 +164,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "it fails if you dont pass an atom for `source_attribute`" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  expected :source_attribute to be an atom, got: \"what\"",
+        "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  invalid value for :source_attribute option: expected atom, got: \"what\"",
         fn ->
           defposts do
             relationships do
@@ -182,7 +182,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "it fails if you dont pass an atom for `destination_attribute`" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  expected :destination_attribute to be an atom, got: \"what\"",
+        "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  invalid value for :destination_attribute option: expected atom, got: \"what\"",
         fn ->
           defposts do
             relationships do
@@ -200,7 +200,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "fails if private? is not an boolean" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  expected :private? to be a boolean, got: \"an_invalid_field\"",
+        "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  invalid value for :private? option: expected boolean, got: \"an_invalid_field\"",
         fn ->
           defposts do
             relationships do

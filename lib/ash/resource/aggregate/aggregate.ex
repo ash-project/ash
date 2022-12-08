@@ -5,6 +5,9 @@ defmodule Ash.Resource.Aggregate do
     :relationship_path,
     :filter,
     :kind,
+    :implementation,
+    :constraints,
+    :type,
     :description,
     :private?,
     :field,
@@ -27,7 +30,12 @@ defmodule Ash.Resource.Aggregate do
       links: []
     ],
     kind: [
-      type: {:in, [:count, :first, :sum, :list]},
+      type:
+        {:or,
+         [
+           {:in, [:count, :first, :sum, :list, :avg, :max, :min, :custom]},
+           {:tuple, [{:in, [:custom]}, Ash.OptionsHelpers.ash_type()]}
+         ]},
       doc: "The kind of the aggregate",
       required: true,
       links: []
@@ -81,7 +89,7 @@ defmodule Ash.Resource.Aggregate do
           relationship_path: list(atom()),
           filter: Keyword.t(),
           field: atom,
-          kind: :count | :first | :sum | :list,
+          kind: Ash.Query.Aggregate.kind(),
           description: String.t() | nil,
           private?: boolean,
           default: term

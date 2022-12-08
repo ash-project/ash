@@ -929,7 +929,10 @@ defmodule Ash.Query do
                  aggregate_query,
                  aggregate.field,
                  aggregate.default,
-                 aggregate.filterable?
+                 aggregate.filterable?,
+                 aggregate.type,
+                 aggregate.constraints,
+                 aggregate.implementation
                ) do
           query_aggregate = %{query_aggregate | load: field}
           new_aggregates = Map.put(query.aggregates, aggregate.name, query_aggregate)
@@ -1418,18 +1421,21 @@ defmodule Ash.Query do
   def aggregate(
         query,
         name,
-        type,
+        kind,
         relationship,
         agg_query \\ nil,
         default \\ nil,
-        filterable? \\ true
+        filterable? \\ true,
+        type \\ nil,
+        constraints \\ [],
+        implementation \\ nil
       ) do
     {field, agg_query} = Keyword.pop(agg_query || [], :field)
 
     query = to_query(query)
     relationship = List.wrap(relationship)
 
-    if Ash.DataLayer.data_layer_can?(query.resource, {:aggregate, type}) do
+    if Ash.DataLayer.data_layer_can?(query.resource, {:aggregate, kind}) do
       agg_query =
         case agg_query do
           [] ->
@@ -1442,12 +1448,15 @@ defmodule Ash.Query do
       case Aggregate.new(
              query.resource,
              name,
-             type,
+             kind,
              relationship,
              agg_query,
              field,
              default,
-             filterable?
+             filterable?,
+             type,
+             constraints,
+             implementation
            ) do
         {:ok, aggregate} ->
           new_aggregates = Map.put(query.aggregates, aggregate.name, aggregate)
@@ -1461,7 +1470,7 @@ defmodule Ash.Query do
       add_error(
         query,
         :aggregate,
-        AggregatesNotSupported.exception(resource: query.resource, feature: "using")
+        AggregatesNotSupported.exception(resource: query.resource, feature: "using #{kind}")
       )
     end
   end
