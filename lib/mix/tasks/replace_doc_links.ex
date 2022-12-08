@@ -61,7 +61,6 @@ defmodule Mix.Tasks.Ash.ReplaceDocLinks do
 
           :link,
           %{
-            text: text,
             type: "extension",
             item: item,
             name_override: name,
@@ -74,14 +73,16 @@ defmodule Mix.Tasks.Ash.ReplaceDocLinks do
               {:module, module} ->
                 ~s(<a href="#{inspect(module)}.html" class="no-underline">#{name || inspect(module)}</a>)
 
-              {:error, error} ->
-                raise """
-                Module #{inspect(module)} referenced in #{text} does not exist or could not be compiled: #{inspect(error)}.
-                """
+              _ ->
+                ~s(<a href="https://ash-hq.org/docs/dsl/#{current_project}/latest/#{sanitize_name(item)}">#{name || item}</a>)
             end
 
           :link, %{type: "extension", item: item, name_override: name, library: library}, _ ->
-            ~s(<a href="https://hexdocs.pm/#{library}/#{item}.html" class="no-underline">#{name || item}</a>)
+            if String.contains?(item, " ") || !String.contains?(item, ".") do
+              ~s(<a href="https://ash-hq.org/docs/dsl/#{current_project}/latest/#{sanitize_name(item)}">#{name || item}</a>)
+            else
+              ~s(<a href="https://hexdocs.pm/#{library}/#{item}.html" class="no-underline">#{name || item}</a>)
+            end
 
           :link,
           %{type: "guide", item: item, name_override: name, library: ^current_project},
