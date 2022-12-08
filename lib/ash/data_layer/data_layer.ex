@@ -41,6 +41,7 @@ defmodule Ash.DataLayer do
               metadata: %{step_name: atom | list(term), flow: module(), actor: term()}
             }
           | %{type: :custom, metadata: map()}
+          | %{type: atom, metadata: map()}
 
   @type feature() ::
           :transact
