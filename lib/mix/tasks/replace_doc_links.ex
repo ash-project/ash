@@ -59,16 +59,37 @@ defmodule Mix.Tasks.Ash.ReplaceDocLinks do
 
             ~s(<a href="https://ash-hq.org/docs/dsl/#{library}/latest/#{dsl_path}">#{name}</a>)
 
+          :link,
+          %{
+            text: text,
+            type: "extension",
+            item: item,
+            name_override: name,
+            library: ^current_project
+          },
+          _ ->
+            module = Module.concat([item])
+
+            case Code.ensure_compiled(module) do
+              {:module, module} ->
+                ~s(<a href="#{inspect(module)}.html" class="no-underline">#{name || inspect(module)}</a>)
+
+              {:error, error} ->
+                raise """
+                Module #{inspect(module)} referenced in #{text} does not exist or could not be compiled: #{inspect(error)}.
+                """
+            end
+
           :link, %{type: "extension", item: item, name_override: name, library: library}, _ ->
-            # TODO: validate extensions
-            ~s(<a href="https://ash-hq.org/docs/dsl/#{library}/latest/#{sanitize_name(item)}">#{name || item}</a>)
+            ~s(<a href="https://hexdocs.pm/#{library}/#{item}.html" class="no-underline">#{name || item}</a>)
 
           :link,
           %{type: "guide", item: item, name_override: name, library: ^current_project},
           _ ->
             Enum.find_value(doc_indexes(), fn doc_index ->
               Enum.find(doc_index.guides(), fn guide ->
-                sanitize_name(item) == sanitize_name(guide.name)
+                sanitize_name(item) == sanitize_name(guide.name) ||
+                  sanitize_name_under(item) == sanitize_name_under(guide.name)
               end)
             end)
             |> case do
@@ -79,13 +100,10 @@ defmodule Mix.Tasks.Ash.ReplaceDocLinks do
                 :ok
             end
 
-            ~s(<a href="#{sanitize_name(item)}.html">#{name || item}</a>)
+            ~s(<a href="#{sanitize_name_under(item)}.html">#{name || item}</a>)
 
           :link, %{type: "guide", item: item, name_override: name, library: library}, _ ->
-            ~s(<a href="https://hexdocs.pm/#{library}/#{sanitize_name(item)}.html">#{name || item}</a>)
-
-            # TODO: validate guides
-            ~s(<a href="https://ash-hq.org/docs/dsl/#{library}/latest/#{sanitize_name(item)}">#{name || item}</a>)
+            ~s(<a href="https://hexdocs.pm/#{library}/#{sanitize_name_under(item)}.html">#{name || item}</a>)
 
           :link,
           %{
@@ -133,7 +151,7 @@ defmodule Mix.Tasks.Ash.ReplaceDocLinks do
                   """
                 end
 
-                ~s(<a href="https://ash-hq.org/docs/module/#{current_project}/latest/#{sanitize_name(item)}">#{name || item}</a>)
+                ~s(<a href="#{name}.html" class="no-underline"><code class="inline">#{name || item}</code></a>)
 
               {:error, error} ->
                 raise """
@@ -142,10 +160,10 @@ defmodule Mix.Tasks.Ash.ReplaceDocLinks do
             end
 
           :link, %{type: "module", item: item, name_override: name, library: library}, _ ->
-            ~s(<a href="https://ash-hq.org/docs/module/#{library}/latest/#{sanitize_name(item)}">#{name || item}</a>)
+            ~s(<a href="https://hexdocs.pm/#{library}/#{item}.html" class="no-underline">#{name || item}</a>)
 
           :link, %{type: "library", name_override: name, library: library}, _ ->
-            ~s(<a href="https://ash-hq.org/docs/#{library}/latest">#{name || library}</a>)
+            ~s(<a href="https://hexdocs.pm/#{library}">#{name || library}</a>)
 
           _, %{text: text}, _ ->
             raise "No link handler for: `#{text}`"
@@ -181,5 +199,9 @@ defmodule Mix.Tasks.Ash.ReplaceDocLinks do
 
   defp sanitize_name(name) do
     String.downcase(String.replace(name, ~r/[^A-Za-z0-9_]/, "-"))
+  end
+
+  defp sanitize_name_under(name) do
+    String.downcase(String.replace(name, ~r/[^A-Za-z0-9-]/, "_"))
   end
 end
