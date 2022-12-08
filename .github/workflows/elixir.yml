@@ -26,7 +26,7 @@ jobs:
     steps:
       - run: sudo apt-get install --yes erlang-dev
       - uses: actions/checkout@v2
-      - uses: erlef/setup-beam
+      - uses: erlef/setup-beam@v1
         with:
           experimental-otp: true
           otp-version: ${{matrix.otp}}
@@ -62,7 +62,7 @@ jobs:
     steps:
       - run: sudo apt-get install --yes erlang-dev
       - uses: actions/checkout@v2
-      - uses: erlef/setup-beam
+      - uses: erlef/setup-beam@v1
         with:
           experimental-otp: true
           otp-version: ${{matrix.otp}}
@@ -136,7 +136,7 @@ jobs:
         with:
           repository: ash-project/${{matrix.project}}
           path: ${{matrix.project}}
-      - uses: erlef/setup-beam
+      - uses: erlef/setup-beam@v1
         with:
           experimental-otp: true
           otp-version: ${{matrix.otp}}
