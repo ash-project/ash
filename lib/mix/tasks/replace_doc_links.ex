@@ -162,11 +162,53 @@ defmodule Mix.Tasks.Ash.ReplaceDocLinks do
           :link, %{type: "module", item: item, name_override: name, library: library}, _ ->
             ~s(<a href="https://hexdocs.pm/#{library}/#{item}.html" class="no-underline">#{name || item}</a>)
 
+          :link, %{type: "function", item: item, name_override: name, library: library}, _ ->
+            parts = String.split(item, ".")
+            function = List.last(parts)
+            module = parts |> :lists.droplast() |> Enum.join(".")
+
+            ~s(<a href="https://hexdocs.pm/#{library}/#{module}.html#{function}" class="no-underline">#{name || item}</a>)
+
           :link, %{type: "library", name_override: name, library: library}, _ ->
             ~s(<a href="https://hexdocs.pm/#{library}">#{name || library}</a>)
 
           _, %{text: text}, _ ->
             raise "No link handler for: `#{text}`"
+        end)
+
+      File.write!(file, new_contents)
+    end)
+
+    "doc/dist/*.js"
+    |> Path.wildcard()
+    |> Enum.filter(&String.contains?(&1, "sidebar"))
+    |> Enum.each(fn file ->
+      current_project = to_string(Mix.Project.config()[:app])
+
+      new_contents =
+        file
+        |> File.read!()
+        |> Spark.DocIndex.render_replacements(fn
+          :mix_dep, %{library: ^current_project}, _context ->
+            case Version.parse(Mix.Project.config()[:version]) do
+              {:ok, %Version{pre: pre, build: build}} when pre != [] or not is_nil(build) ->
+                ~s({:#{current_project}, "~> #{Mix.Project.config()[:version]}"})
+
+              {:ok, %Version{major: major, minor: minor}} ->
+                ~s({:#{current_project}, "~> #{major}.#{minor}"})
+
+              _ ->
+                ~s({:#{current_project}, "~> x.y.z"})
+            end
+
+          :mix_dep, %{library: library}, _context ->
+            library
+
+          :link, %{name_override: name, item: item}, _context ->
+            name || item
+
+          _, %{text: text}, _ ->
+            text
         end)
 
       File.write!(file, new_contents)
