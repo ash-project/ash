@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.22](https://github.com/ash-project/ash/compare/v2.4.21...v2.4.22) (2022-12-08)
+
+
+
+
+### Bug Fixes:
+
+* depend on latest spark
+
+* different formats for extensions
+
+### Improvements:
+
+* add `:struct` (`Ash.Type.struct`) type
+
 ## [v2.4.21](https://github.com/ash-project/ash/compare/v2.4.20...v2.4.21) (2022-12-08)
 
 
