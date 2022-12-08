@@ -25,6 +25,7 @@ defmodule Ash.Type do
     duration_name: Ash.Type.DurationName,
     function: Ash.Type.Function,
     boolean: Ash.Type.Boolean,
+    struct: Ash.Type.Struct,
     uuid: Ash.Type.UUID,
     binary: Ash.Type.Binary,
     date: Ash.Type.Date,
