@@ -55,8 +55,8 @@ jobs:
     name: Release
     strategy:
       matrix:
-        otp: ["24.1.2"]
-        elixir: ["1.13.1"]
+        otp: ["24.1"]
+        elixir: ["1.14.0"]
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -111,8 +111,8 @@ jobs:
             "ash_admin",
             "ash_archival",
           ]
-        otp: ["23"]
-        elixir: ["1.13.1"]
+        otp: ["24.1"]
+        elixir: ["1.14.0"]
     services:
       pg:
         image: postgres:13
