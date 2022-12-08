@@ -18,9 +18,9 @@ jobs:
       matrix:
         include:
           - elixir: 1.13.1
-            otp: 24.1.2
+            otp: 24.1
           - elixir: 1.14.1
-            otp: 25.1.1
+            otp: 25.1
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
