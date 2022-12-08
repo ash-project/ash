@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.21](https://github.com/ash-project/ash/compare/v2.4.20...v2.4.21) (2022-12-08)
+
+
+
+
+### Bug Fixes:
+
+* don't lock specific nimble options version
+
+### Improvements:
+
+* replace doc links in sidebar also
+
+* better doc replacement behavior
+
+* dep updates & new aggregate types avg/min/max/custom
+
 ## [v2.4.20](https://github.com/ash-project/ash/compare/v2.4.19...v2.4.20) (2022-12-07)
 
 
