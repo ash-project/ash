@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.23](https://github.com/ash-project/ash/compare/v2.4.22...v2.4.23) (2022-12-08)
+
+
+
+
+### Improvements:
+
+* add more transaction types
+
 ## [v2.4.22](https://github.com/ash-project/ash/compare/v2.4.21...v2.4.22) (2022-12-08)
 
 
