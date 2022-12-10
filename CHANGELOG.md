@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.24](https://github.com/ash-project/ash/compare/v2.4.23...v2.4.24) (2022-12-10)
+
+
+
+
+### Improvements:
+
+* more dependable notifications, support custom notifications better
+
 ## [v2.4.23](https://github.com/ash-project/ash/compare/v2.4.22...v2.4.23) (2022-12-08)
 
 
