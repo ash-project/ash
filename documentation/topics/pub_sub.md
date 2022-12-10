@@ -26,6 +26,12 @@ be published to `user:updated:1` and `user:updated:2`. If there are multiple
 attributes in the template, and they are all being changed, a message is sent for
 every combination of substitutions.
 
+## Important
+
+If the previous value was `nil` or the field was not selected on the data passed into the action, then a notification is not sent for the previous value.
+
+If the new value is `nil` then a notification is not sent for the new value.
+
 ## Template parts
 
 Templates may contain lists, in which case all combinations of values in the list will be used. Add

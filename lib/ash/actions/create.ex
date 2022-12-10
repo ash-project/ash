@@ -413,10 +413,10 @@ defmodule Ash.Actions.Create do
                                 )
                               end
                               |> case do
-                                {:ok, result, notifications} ->
+                                {:ok, result, instructions} ->
                                   {:ok, result,
-                                   Map.update!(
-                                     notifications,
+                                   instructions
+                                   |> Map.update!(
                                      :notifications,
                                      &(&1 ++ manage_instructions.notifications)
                                    )}
@@ -482,6 +482,14 @@ defmodule Ash.Actions.Create do
   end
 
   defp run_after_action({:ok, result, instructions}, changeset, opts) do
+    instructions =
+      Map.update(
+        instructions,
+        :set_keys,
+        %{changeset: changeset, notification_data: result},
+        &Map.merge(&1, %{changeset: changeset, notification_data: result})
+      )
+
     if opts[:after_action] do
       case opts[:after_action].(changeset, result) do
         {:ok, result} -> {:ok, Helpers.select(result, changeset), instructions}

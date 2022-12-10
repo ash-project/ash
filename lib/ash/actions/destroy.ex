@@ -311,6 +311,14 @@ defmodule Ash.Actions.Destroy do
               end)
               |> case do
                 {:ok, result, changeset, instructions} ->
+                  instructions =
+                    Map.update(
+                      instructions,
+                      :set_keys,
+                      %{changeset: changeset, notification_data: result},
+                      &Map.merge(&1, %{changeset: changeset, notification_data: result})
+                    )
+
                   {:ok, Helpers.select(result, changeset), instructions}
 
                 {:error, error} ->

@@ -138,6 +138,14 @@ defmodule Ash.Actions.Update do
   end
 
   defp run_after_action({:ok, result, instructions}, changeset, after_action) do
+    instructions =
+      Map.update(
+        instructions,
+        :set_keys,
+        %{changeset: changeset, notification_data: result},
+        &Map.merge(&1, %{changeset: changeset, notification_data: result})
+      )
+
     if after_action do
       case after_action.(changeset, result) do
         {:ok, result} -> {:ok, Helpers.select(result, changeset), instructions}

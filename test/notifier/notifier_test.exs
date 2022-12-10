@@ -148,6 +148,49 @@ defmodule Ash.Test.NotifierTest do
     end
   end
 
+  describe "custom notifications" do
+    test "a custom notification can be returned in a before or after action hook" do
+      Comment
+      |> Ash.Changeset.new(%{})
+      |> Ash.Changeset.before_action(fn changeset ->
+        {changeset,
+         %{
+           notifications: [
+             %Ash.Notifier.Notification{
+               resource: changeset.resource,
+               metadata: %{custom?: true}
+             }
+           ]
+         }}
+      end)
+      |> Api.create!()
+
+      assert_receive {:notification, %Ash.Notifier.Notification{metadata: %{custom?: true}}}
+    end
+  end
+
+  test "notifications use the data before its limited by a select statement" do
+    Comment
+    |> Ash.Changeset.new(%{name: "foobar"})
+    |> Ash.Changeset.select([:id])
+    |> Api.create!()
+
+    assert_receive {:notification, %Ash.Notifier.Notification{data: %{name: "foobar"}}}
+  end
+
+  test "notifications use the changeset after before_action callbacks" do
+    Comment
+    |> Ash.Changeset.new(%{name: "foobar"})
+    |> Ash.Changeset.before_action(fn changeset ->
+      Ash.Changeset.set_context(changeset, %{foobar: :baz})
+    end)
+    |> Ash.Changeset.select([:id])
+    |> Api.create!()
+
+    assert_receive {:notification,
+                    %Ash.Notifier.Notification{changeset: %{context: %{foobar: :baz}}}}
+  end
+
   describe "related notifications" do
     test "an update notification occurs when relating many to many" do
       comment =

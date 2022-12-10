@@ -419,7 +419,7 @@ defmodule Ash.Actions.Read do
                         initial_query,
                         Keyword.put(query_opts, :page, query.context[:page_opts])
                       )
-                      |> add_query(Map.get(fetched_data, :ultimate_query), request_opts)
+                      |> then(fn result -> {:ok, result} end)
                       |> unwrap_for_get(get?, not_found_error?, query.resource)
 
                     {:requests, requests} ->

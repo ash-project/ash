@@ -12,6 +12,7 @@ defmodule Ash.Engine.Request do
     :action_type,
     :action,
     :data,
+    :notification_data,
     :name,
     :api,
     :query,
@@ -201,7 +202,7 @@ defmodule Ash.Engine.Request do
       api: request.api,
       actor: request.actor,
       action: request.action,
-      data: request.data,
+      data: request.notification_data,
       changeset: request.changeset
     }
   end
@@ -1111,12 +1112,14 @@ defmodule Ash.Engine.Request do
                   {:set_extra_data, key, value}
                 end)
 
+              new_request = Map.merge(new_request, instructions[:set_keys] || %{})
+
               resource_notifications = Map.get(instructions, :notifications, [])
 
               extra_requests = Map.get(instructions, :requests, [])
 
               unless Enum.empty?(extra_requests) do
-                log(request, fn ->
+                log(new_request, fn ->
                   "added requests #{inspect(Enum.map(extra_requests, & &1.path))}"
                 end)
               end
