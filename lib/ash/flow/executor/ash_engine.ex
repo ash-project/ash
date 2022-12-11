@@ -432,7 +432,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                         name: "Transaction #{inspect(name)}",
                         verbose?: opts[:verbose?],
                         tracer: opts[:tracer],
-                        failure_mode: :continue,
+                        failure_mode: :stop,
                         transaction?: true
                       )
                       |> case do
