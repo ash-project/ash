@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.26](https://github.com/ash-project/ash/compare/v2.4.25...v2.4.26) (2022-12-15)
+
+
+
+
+### Improvements:
+
+* update spark
+
 ## [v2.4.25](https://github.com/ash-project/ash/compare/v2.4.24...v2.4.25) (2022-12-15)
 
 
