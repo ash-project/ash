@@ -265,6 +265,8 @@ defmodule Ash.Type do
   defp do_generator(type, constraints) do
     type = get_type(type)
 
+    Code.ensure_compiled!(type)
+
     if function_exported?(type, :generator, 1) do
       type.generator(constraints)
     else
