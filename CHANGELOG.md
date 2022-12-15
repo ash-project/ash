@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.25](https://github.com/ash-project/ash/compare/v2.4.24...v2.4.25) (2022-12-15)
+
+
+
+
+### Bug Fixes:
+
+* transaction steps use `failure_mode: :stop`
+
+### Improvements:
+
+* better expression detection
+
 ## [v2.4.24](https://github.com/ash-project/ash/compare/v2.4.23...v2.4.24) (2022-12-10)
 
 
