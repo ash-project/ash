@@ -74,7 +74,7 @@ defmodule Ash.Query do
   alias Ash.Query.{Aggregate, Calculation}
 
   require Ash.Tracer
-  import Ash.Filter.TemplateHelpers, only: [is_expr: 1]
+  import Ash.Filter.TemplateHelpers, only: [expr?: 1]
 
   defimpl Inspect do
     import Inspect.Algebra
@@ -526,8 +526,8 @@ defmodule Ash.Query do
   end
 
   @doc "Returns true if the value is one of the expression structs."
-  def is_expr?(item) when is_expr(item), do: true
-  def is_expr?(_), do: true
+  @deprecated "use Ash.Filter.TemplateHelpers.expr?/1"
+  def is_expr?(value), do: expr?(value)
 
   @doc """
   Creates an Ash expression for evaluation later.
@@ -1031,10 +1031,10 @@ defmodule Ash.Query do
         )
 
       cond do
-        is_expr(value) && argument.allow_expr? ->
+        expr?(value) && argument.allow_expr? ->
           {:cont, {:ok, Map.put(arg_values, argument.name, nil)}}
 
-        is_expr(value) ->
+        expr?(value) ->
           {:halt, {:error, "Argument #{argument.name} does not support expressions!"}}
 
         is_nil(value) && argument.allow_nil? ->

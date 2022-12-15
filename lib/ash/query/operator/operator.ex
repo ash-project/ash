@@ -7,7 +7,7 @@ defmodule Ash.Query.Operator do
   """
 
   alias Ash.Query.{Call, Expression, Not, Ref}
-  import Ash.Filter.TemplateHelpers, only: [is_expr: 1]
+  import Ash.Filter.TemplateHelpers, only: [expr?: 1]
 
   @doc """
   Create a new predicate. There are various return types possible:
@@ -55,25 +55,26 @@ defmodule Ash.Query.Operator do
   end
 
   def new(mod, left, right) do
-    case mod.new(left, right) do
-      {:ok, val} when not is_expr(left) and not is_expr(right) ->
-        case val do
-          %mod{__predicate__?: _} ->
-            case mod.evaluate(val) do
-              {:known, value} -> {:ok, value}
-              {:error, error} -> {:error, error}
-              :unknown -> {:ok, val}
-            end
+    if expr?(left) or expr?(right) do
+      mod.new(left, right)
+    else
+      case mod.new(left, right) do
+        {:ok, val} ->
+          case val do
+            %mod{__predicate__?: _} ->
+              case mod.evaluate(val) do
+                {:known, value} -> {:ok, value}
+                {:error, error} -> {:error, error}
+                :unknown -> {:ok, val}
+              end
 
-          _ ->
-            {:ok, val}
-        end
+            _ ->
+              {:ok, val}
+          end
 
-      {:ok, val} ->
-        {:ok, val}
-
-      {:error, error} ->
-        {:error, error}
+        {:error, error} ->
+          {:error, error}
+      end
     end
   end
 

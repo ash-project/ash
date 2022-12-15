@@ -6,7 +6,7 @@ defmodule Ash.Query.Function do
   are there. A function must meet both behaviours.
   """
 
-  import Ash.Filter.TemplateHelpers, only: [is_expr: 1]
+  import Ash.Filter.TemplateHelpers, only: [expr?: 1]
 
   @type arg :: any
   @doc """
@@ -44,7 +44,7 @@ defmodule Ash.Query.Function do
             casted ->
               case mod.new(casted) do
                 {:ok, function} ->
-                  if Enum.any?(casted, &is_expr/1) do
+                  if Enum.any?(casted, &expr?/1) do
                     {:ok, function}
                   else
                     case function do
@@ -99,16 +99,17 @@ defmodule Ash.Query.Function do
       {arg, :any}, {:ok, args} ->
         {:cont, {:ok, [arg | args]}}
 
-      {arg, _}, {:ok, args} when is_expr(arg) ->
-        {:cont, {:ok, [arg | args]}}
-
       {%{__predicate__?: _} = arg, _}, {:ok, args} ->
         {:cont, {:ok, [arg | args]}}
 
       {arg, type}, {:ok, args} ->
-        case Ash.Query.Type.try_cast(arg, type) do
-          {:ok, value} -> {:cont, {:ok, [value | args]}}
-          :error -> {:halt, :error}
+        if expr?(arg) do
+          {:cont, {:ok, [arg | args]}}
+        else
+          case Ash.Query.Type.try_cast(arg, type) do
+            {:ok, value} -> {:cont, {:ok, [value | args]}}
+            :error -> {:halt, :error}
+          end
         end
     end)
     |> case do

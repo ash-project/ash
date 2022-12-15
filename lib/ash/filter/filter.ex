@@ -2627,7 +2627,7 @@ defmodule Ash.Filter do
   end
 
   defp validate_datalayer_supports_nested_expressions(args, resource) do
-    if resource && Enum.any?(args, &Ash.Query.is_expr?/1) &&
+    if resource && Enum.any?(args, &Ash.Filter.TemplateHelpers.expr?/1) &&
          !Ash.DataLayer.data_layer_can?(resource, :nested_expressions) do
       {:error, "Datalayer does not support nested expressions"}
     else

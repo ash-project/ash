@@ -1,11 +1,40 @@
 defmodule Ash.Filter.TemplateHelpers do
   @moduledoc "Helpers for building filter templates"
 
+  @deprecated "Use `expr?/1` instead, which is not a guard"
   defguard is_expr(value)
            when is_struct(value, Ash.Query.Not) or is_struct(value, Ash.Query.BooleanExpression) or
                   is_struct(value, Ash.Query.Call) or is_struct(value, Ash.Query.Ref) or
                   is_struct(value, Ash.Query.Exists) or
                   (is_struct(value) and is_map_key(value, :__predicate__?))
+
+  def expr?(value)
+      when is_struct(value, Ash.Query.Not) or is_struct(value, Ash.Query.BooleanExpression) or
+             is_struct(value, Ash.Query.Call) or is_struct(value, Ash.Query.Ref) or
+             is_struct(value, Ash.Query.Exists) or
+             (is_struct(value) and is_map_key(value, :__predicate__?)) do
+    true
+  end
+
+  def expr?(value) when is_list(value) do
+    Enum.any?(value, &expr?/1)
+  end
+
+  def expr?(value) when is_map(value) do
+    value
+    |> Map.keys()
+    |> Enum.any?(&expr?/1)
+  end
+
+  def expr?({left, right}) do
+    expr?(left) || expr?(right)
+  end
+
+  def expr?(tuple) when is_tuple(tuple) do
+    tuple |> Tuple.to_list() |> expr?()
+  end
+
+  def expr?(_), do: false
 
   @doc "A helper for using actor values in filter templates"
   def actor(value), do: {:_actor, value}
