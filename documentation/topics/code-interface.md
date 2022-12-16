@@ -6,20 +6,18 @@ One of the ways that we interact with our resources is via hand-written code. Th
 code_interface do
   define_for Helpdesk.Support
 
-  define :open_ticket, args: [:subject]
+  define :open, args: [:subject]
 end
 ```
 
-This simple setup now allows you to open a ticket with `Helpdesk.Support.Ticket.open_ticket(subject)`. You can cause it to raise errors instead of return them with `Helpdesk.Support.Ticket.open_ticket!(subject)`. For information on the options and additional inputs these defined functions take, look at the generated function documentation, which you can do in iex with `h Helpdesk.Support.Ticket.open_ticket`. For more information on the code interface, read the DSL documentation: {{link:ash:dsl:resource/code_interface}}.
+This simple setup now allows you to open a ticket with `Helpdesk.Support.Ticket.open(subject)`. You can cause it to raise errors instead of return them with `Helpdesk.Support.Ticket.open!(subject)`. For information on the options and additional inputs these defined functions take, look at the generated function documentation, which you can do in iex with `h Helpdesk.Support.Ticket.open`. For more information on the code interface, read the DSL documentation: {{link:ash:dsl:resource/code_interface}}.
 
 ## Using the code interface
 
 If the action is an update or destroy, it will take a record or a changeset as its *first* argument.
 If the action is a read action, it will take a starting query as an *opt in the last* argument.
 
-All functions will have an optional last argument that accepts options. Those options are:
-
-#{Spark.OptionsHelpers.docs(Ash.Resource.Interface.interface_options(nil))}
+All functions will have an optional last argument that accepts options. See `Ash.Resource.Interface.interface_options/1` for valid options.
 
 For reads:
 
