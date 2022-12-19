@@ -1281,6 +1281,7 @@ defmodule Ash.Actions.Load do
     else
       relationship.destination
       |> Ash.Query.new(related_query.api)
+      |> Ash.Query.select(related_query.select)
       |> Ash.Query.filter(^related_query.filter)
     end
   end
