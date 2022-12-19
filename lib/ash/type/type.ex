@@ -267,10 +267,15 @@ defmodule Ash.Type do
 
     Code.ensure_compiled!(type)
 
-    if function_exported?(type, :generator, 1) do
-      type.generator(constraints)
+    if Ash.Type.embedded_type?(type) do
+      action = constraints[:create_action] || Ash.Resource.Info.primary_action!(type, :create)
+      Ash.Generator.action_input(type, action)
     else
-      raise "generator/1 unimplemented for #{inspect(type)}"
+      if function_exported?(type, :generator, 1) do
+        type.generator(constraints)
+      else
+        raise "generator/1 unimplemented for #{inspect(type)}"
+      end
     end
   end
 
