@@ -45,5 +45,11 @@ defmodule Ash.Test.Flow.Flows.Branching do
         input %{return: "second_branch happened"}
       end
     end
+
+    custom :depends_on_inner_branch_step, fn %{second_branch_return: value}, _ ->
+      {:ok, value}
+    end do
+      input %{second_branch_return: result(:second_branch_return)}
+    end
   end
 end

@@ -534,7 +534,23 @@ defmodule Ash.Flow.Executor.AshEngine do
                          )
                        ), [output_path]}
                     else
-                      {:ok, nil}
+                      requests =
+                        branch_steps
+                        |> step_names()
+                        |> Enum.map(fn name ->
+                          Ash.Engine.Request.new(
+                            authorize?: false,
+                            async?: false,
+                            name: "Set nil result for #{inspect(name)}",
+                            path: [name],
+                            data: {:ok, nil}
+                          )
+                        end)
+
+                      {:ok, nil,
+                       %{
+                         requests: requests
+                       }}
                     end
                   end
                 end)

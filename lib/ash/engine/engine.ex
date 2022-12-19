@@ -696,12 +696,12 @@ defmodule Ash.Engine do
 
         state
         |> Map.update!(:dependencies, fn dependencies ->
-          Map.update!(dependencies, receiver_request.path, fn deps ->
+          Map.update(dependencies, receiver_request.path, MapSet.new(), fn deps ->
             MapSet.delete(deps, {request_path, field})
           end)
         end)
         |> Map.update!(:reverse_dependencies, fn dependencies ->
-          Map.update!(dependencies, request_path, fn deps ->
+          Map.update(dependencies, request_path, MapSet.new(), fn deps ->
             MapSet.delete(deps, {receiver_request.path, field})
           end)
         end)
