@@ -268,7 +268,9 @@ defmodule Ash.Type do
     Code.ensure_compiled!(type)
 
     if Ash.Type.embedded_type?(type) do
-      action = constraints[:create_action] || Ash.Resource.Info.primary_action!(type, :create)
+      action =
+        constraints[:create_action] || Ash.Resource.Info.primary_action!(type, :create).name
+
       Ash.Generator.action_input(type, action)
     else
       if function_exported?(type, :generator, 1) do
