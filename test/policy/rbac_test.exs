@@ -40,6 +40,8 @@ defmodule Ash.Test.Policy.RbacTest do
     user: user,
     org: org
   } do
+    user = Map.put(user, :rel_check, true)
+
     file_with_access = create_file(org, "foo")
     give_role(user, org, :viewer, :file, file_with_access.id)
     create_file(org, "bar")

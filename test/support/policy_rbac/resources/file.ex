@@ -8,8 +8,12 @@ defmodule Ash.Test.Support.PolicyRbac.File do
 
   policies do
     policy always() do
-      forbid_if(selecting(:forbidden))
       authorize_if(can?(:file))
+    end
+
+    policy actor_attribute_equals(:rel_check, true) do
+      forbid_if selecting(:forbidden)
+      authorize_if always()
     end
   end
 
