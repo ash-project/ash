@@ -8,6 +8,7 @@ defmodule Ash.Test.Support.PolicyRbac.File do
 
   policies do
     policy always() do
+      forbid_if(selecting(:forbidden))
       authorize_if(can?(:file))
     end
   end
@@ -23,6 +24,7 @@ defmodule Ash.Test.Support.PolicyRbac.File do
   attributes do
     uuid_primary_key(:id)
     attribute(:name, :string)
+    attribute(:forbidden, :string)
   end
 
   relationships do

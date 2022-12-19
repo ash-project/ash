@@ -19,5 +19,7 @@ defmodule Ash.Test.Support.PolicyRbac.Organization do
     has_many :memberships, Ash.Test.Support.PolicyRbac.Membership do
       destination_attribute(:organization_id)
     end
+
+    has_many :files, Ash.Test.Support.PolicyRbac.File
   end
 end
