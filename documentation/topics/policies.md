@@ -252,7 +252,7 @@ Additionally, some checks have more expensive components that can't be checked b
 ## Explanation
 
 Policy breakdowns can be fetched on demand for a given forbidden error (either an `Ash.Error.Forbidden` that contains one ore more `Ash.Error.Forbidden.Policy`
-errors, or an `Ash.Error.Forbidden.Policy` error itself), via `Ash.Policy.Forbidden.Error.report/2`.
+errors, or an `Ash.Error.Forbidden.Policy` error itself), via `Ash.Error.Forbidden.Policy.report/2`.
 
 Here is an example policy breakdown from tests:
 
