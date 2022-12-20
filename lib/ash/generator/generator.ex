@@ -213,10 +213,10 @@ defmodule Ash.Generator do
           end
 
         options =
-          if is_nil(default) do
-            options
-          else
+          if attribute.allow_nil? && is_nil(default) do
             [StreamData.constant(nil) | options]
+          else
+            options
           end
 
         {required,
