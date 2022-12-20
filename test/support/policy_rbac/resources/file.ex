@@ -10,6 +10,11 @@ defmodule Ash.Test.Support.PolicyRbac.File do
     policy always() do
       authorize_if(can?(:file))
     end
+
+    policy actor_attribute_equals(:rel_check, true) do
+      forbid_if selecting(:forbidden)
+      authorize_if always()
+    end
   end
 
   ets do
@@ -23,6 +28,7 @@ defmodule Ash.Test.Support.PolicyRbac.File do
   attributes do
     uuid_primary_key(:id)
     attribute(:name, :string)
+    attribute(:forbidden, :string)
   end
 
   relationships do

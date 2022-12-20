@@ -510,11 +510,7 @@ defmodule Ash.Actions.Load do
       name: "load #{source}",
       api: related_query.api,
       path: this_request_path,
-      query:
-        load_query(
-          relationship,
-          related_query
-        ),
+      query: related_query,
       data:
         data(
           relationship,
@@ -798,11 +794,7 @@ defmodule Ash.Actions.Load do
       name: "load join #{join_relationship.name}",
       api: related_query.api,
       path: request_path ++ [:load, join_relationship_path_names],
-      query:
-        load_query(
-          join_relationship,
-          related_query
-        ),
+      query: related_query,
       data:
         Request.resolve(dependencies, fn
           data ->
@@ -1263,25 +1255,6 @@ defmodule Ash.Actions.Load do
           end)
 
         %{query | load: new_load}
-    end
-  end
-
-  defp load_query(%{manual: manual}, related_query)
-       when not is_nil(manual) do
-    related_query
-  end
-
-  defp load_query(
-         relationship,
-         related_query
-       ) do
-    if Map.get(relationship, :no_attributes?) do
-      relationship.destination
-      |> Ash.Query.new(related_query.api)
-    else
-      relationship.destination
-      |> Ash.Query.new(related_query.api)
-      |> Ash.Query.filter(^related_query.filter)
     end
   end
 
