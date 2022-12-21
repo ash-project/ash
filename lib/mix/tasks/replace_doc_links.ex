@@ -152,7 +152,7 @@ defmodule Mix.Tasks.Ash.ReplaceDocLinks do
                   """
                 end
 
-                ~s(<a href="#{name}.html" class="no-underline"><code class="inline">#{name || item}</code></a>)
+                ~s(<a href="#{inspect(module)}.html" class="no-underline"><code class="inline">#{name || item}</code></a>)
 
               {:error, error} ->
                 raise """
