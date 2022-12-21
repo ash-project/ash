@@ -5,6 +5,35 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.27](https://github.com/ash-project/ash/compare/v2.4.26...v2.4.27) (2022-12-21)
+
+
+
+
+### Bug Fixes:
+
+* properly include module in doc links
+
+* add test for string generator, and fix it
+
+* only allow `nil` in appropriate circumstances in generator
+
+* respect selects in related_query (#464)
+
+* use action name not struct for embedded generators
+
+* use create generators for embedded types
+
+* support dependencies on pruned branch steps
+
+* ensure type compiled for generator
+
+### Improvements:
+
+* fix decimal generator to only compare with floats at generation
+
+* filter min_length strings in generators
+
 ## [v2.4.26](https://github.com/ash-project/ash/compare/v2.4.25...v2.4.26) (2022-12-15)
 
 
