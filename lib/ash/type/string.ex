@@ -54,7 +54,7 @@ defmodule Ash.Type.String do
 
     if constraints[:trim?] && constraints[:min_length] do
       StreamData.filter(base_generator, fn value ->
-        value |> String.trim() |> String.length() |> Kernel.>(constraints[:min_length])
+        value |> String.trim() |> String.length() |> Kernel.>=(constraints[:min_length])
       end)
     else
       base_generator

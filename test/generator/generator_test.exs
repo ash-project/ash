@@ -160,6 +160,12 @@ defmodule Ash.Test.GeneratorTest do
     end
   end
 
+  test "string generator honors trim?: true" do
+    check all(string <- Ash.Type.String.generator(min_length: 5, trim?: true)) do
+      assert String.length(String.trim(string)) >= 5
+    end
+  end
+
   describe "changeset" do
     test "a directly usable changeset can be created" do
       Post
