@@ -46,10 +46,19 @@ defmodule Ash.Type.String do
 
   @impl true
   def generator(constraints) do
-    StreamData.string(
-      :printable,
-      Keyword.take(constraints, [:max_length, :min_length])
-    )
+    base_generator =
+      StreamData.string(
+        :printable,
+        Keyword.take(constraints, [:max_length, :min_length])
+      )
+
+    if constraints[:trim?] && constraints[:min_length] do
+      StreamData.filter(base_generator, fn value ->
+        value |> String.trim() |> String.length() |> Kernel.>(constraints[:min_length])
+      end)
+    else
+      base_generator
+    end
   end
 
   def apply_constraints(nil, _), do: :ok
