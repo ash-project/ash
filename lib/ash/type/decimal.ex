@@ -18,12 +18,43 @@ defmodule Ash.Type.Decimal do
 
   #{Spark.OptionsHelpers.docs(@constraints)}
   """
+  require Decimal
   use Ash.Type
 
   @impl true
   def generator(constraints) do
-    StreamData.float(Keyword.take(constraints, [:min, :max]))
+    params =
+      constraints
+      |> Keyword.take([:min, :max])
+      |> Enum.map(fn {key, value} ->
+        if Decimal.is_decimal(value) do
+          {key, Decimal.to_float(value)}
+        else
+          {key, value}
+        end
+      end)
+
+    params
+    |> StreamData.float()
     |> StreamData.map(&Decimal.from_float/1)
+    #  A second pass filter to account for inaccuracies in the above float -> decimal
+    |> StreamData.filter(fn value ->
+      less_than_max =
+        if constraints[:max] do
+          Decimal.lt?(value, constraints[:max]) || Decimal.eq?(value, constraints[:max])
+        else
+          true
+        end
+
+      greater_than_min =
+        if constraints[:min] do
+          Decimal.gt?(value, constraints[:min]) || Decimal.eq?(value, constraints[:min])
+        else
+          true
+        end
+
+      less_than_max && greater_than_min
+    end)
   end
 
   @impl true
