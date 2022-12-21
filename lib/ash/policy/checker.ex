@@ -32,7 +32,23 @@ defmodule Ash.Policy.Checker do
     end)
     |> case do
       {:ok, authorizer, facts} ->
-        strict_check_policies(policy.policies, authorizer, facts)
+        if Enum.all?(List.wrap(policy.condition), fn {check_module, opts} ->
+             case Ash.Policy.Policy.fetch_fact(facts, {check_module, opts}) do
+               {:ok, true} ->
+                 true
+
+               {:ok, false} ->
+                 false
+
+               _ ->
+                 # don't prune fact checking a branch if we don't know
+                 true
+             end
+           end) do
+          strict_check_policies(policy.policies, authorizer, facts)
+        else
+          {:ok, authorizer, facts}
+        end
 
       {:error, error} ->
         {:error, error}
