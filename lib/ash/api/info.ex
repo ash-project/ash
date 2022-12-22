@@ -19,6 +19,66 @@ defmodule Ash.Api.Info do
     end
   end
 
+  def find_manage_relationships_with_identity_not_configured(otp_app) do
+    otp_app
+    |> Application.get_env(:ash_apis, [])
+    |> Enum.flat_map(&Ash.Api.Info.resources/1)
+    |> Enum.flat_map(fn resource ->
+      resource
+      |> Ash.Resource.Info.actions()
+      |> Enum.flat_map(fn action ->
+        action
+        |> Map.get(:changes, [])
+        |> Enum.flat_map(fn
+          %{change: {Ash.Resource.Change.ManageRelationship, opts}} ->
+            related = Ash.Resource.Info.related(resource, opts[:relationship])
+            identities = Ash.Resource.Info.identities(related)
+            argument = Enum.find(action.arguments, &(&1.name == opts[:argument]))
+
+            if argument && map_type?(argument.type) && !Enum.empty?(identities) do
+              [{resource, action.name, opts[:argument]}]
+            else
+              []
+            end
+
+          _ ->
+            []
+        end)
+      end)
+    end)
+    |> Enum.group_by(
+      fn {resource, action, _} ->
+        {resource, action}
+      end,
+      &elem(&1, 2)
+    )
+    |> Enum.map_join("\n\n", fn {{resource, action}, args} ->
+      "#{inspect(resource)}.#{action}:\n" <>
+        Enum.map_join(args, "\n", fn arg ->
+          "* #{arg}"
+        end)
+    end)
+  end
+
+  defp map_type?({:array, type}) do
+    map_type?(type)
+  end
+
+  defp map_type?(:map), do: true
+  defp map_type?(Ash.Type.Map), do: true
+
+  defp map_type?(type) do
+    if Ash.Type.embedded_type?(type) do
+      if is_atom(type) && :erlang.function_exported(type, :admin_map_type?, 0) do
+        type.admin_map_type?()
+      else
+        false
+      end
+    else
+      false
+    end
+  end
+
   @doc """
   Gets the resources of an Api module. Can be used at compile time.
 

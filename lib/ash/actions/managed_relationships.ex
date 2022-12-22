@@ -6,6 +6,25 @@ defmodule Ash.Actions.ManagedRelationships do
 
   require Ash.Query
 
+  @use_all_identities_in_manage_relationship Application.compile_env(
+                                               :ash,
+                                               :use_all_identities_in_manage_relationship?
+                                             )
+
+  if is_nil(@use_all_identities_in_manage_relationship) do
+    IO.warn("""
+    * IMPORTANT *
+
+    The configuration `use_all_identities_in_manage_relationship` was not set. It is defaulting to `true`.
+
+    This configuration must now be manually set, and it should be set to `false`.
+
+    If you are currently using `manage_relationship`, please read https://github.com/ash-project/ash/issues/469
+    """)
+
+    @use_all_identities_in_manage_relationship true
+  end
+
   def load(_api, created, %{relationships: rels}, _) when rels == %{},
     do: {:ok, created}
 
@@ -531,7 +550,7 @@ defmodule Ash.Actions.ManagedRelationships do
   end
 
   def pkeys(relationship, opts) do
-    identity_priority = opts[:identity_priority] || []
+    identity_priority = opts[:identity_priority] || opts[:use_identities]
     use_identities = opts[:use_identities]
 
     identity_priority =
@@ -549,8 +568,12 @@ defmodule Ash.Actions.ManagedRelationships do
       end)
 
     unprioritized_identities =
-      relationship.destination
-      |> Ash.Resource.Info.identities()
+      if @use_all_identities_in_manage_relationship do
+        relationship.destination
+        |> Ash.Resource.Info.identities()
+      else
+        []
+      end
       |> then(fn identities ->
         if use_identities do
           Enum.filter(identities, &(&1.name in use_identities))

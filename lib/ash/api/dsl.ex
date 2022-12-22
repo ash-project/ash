@@ -78,7 +78,7 @@ defmodule Ash.Api.Dsl do
       """
       resources do
         registry MyApp.Registry
-      end
+      en
       """
     ],
     links: [],
