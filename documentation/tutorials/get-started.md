@@ -594,7 +594,7 @@ Check out the {{link:ash:guide:Code Interface}} to derive things like `Helpdesk.
 
 #### Persist your data
 
-See {{link:ash_postgres:guide:Get Started With Postgres:AshPostgres}} to see how to back your resources with Postgres. This is highly recommended, as the Postgres data layer provides tons of advanced capabilities.
+See {{link:ash_postgres:library|AshPostgres}} to see how to back your resources with Postgres. This is highly recommended, as the Postgres data layer provides tons of advanced capabilities.
 
 #### Add an API
 
