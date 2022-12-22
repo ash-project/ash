@@ -75,7 +75,8 @@ defmodule Ash.Test.Resource.UpsertAndLoadChildrenTest do
           manage_relationship(:variants, :variants,
             on_lookup: :ignore,
             on_no_match: :create,
-            on_match: :update
+            on_match: :update,
+            use_identities: [:_primary_key, :sku]
           )
         )
       end

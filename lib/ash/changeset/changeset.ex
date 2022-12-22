@@ -1895,12 +1895,12 @@ defmodule Ash.Changeset do
     ],
     identity_priority: [
       type: {:list, :atom},
-      default: [:_primary_key],
       doc: """
       The list, in priority order, of identities to use when looking up records for `on_lookup`, and matching records with `on_match`.
 
       Use `:_primary_key` to prioritize checking a match with the primary key.
       All identities, along with `:_primary_key` are checked regardless, this only allows ensuring that some are checked first.
+      Defaults to the list provided by `use_identities`, so you typically won't need this option.
       """
     ],
     use_identities: [

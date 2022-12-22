@@ -470,7 +470,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                |> Changeset.new()
                |> Changeset.manage_relationship(:categories, [%{name: "foo"}, %{name: "bar"}],
                  on_lookup: :relate,
-                 eager_validate_with: Api
+                 eager_validate_with: Api,
+                 use_identities: [:unique_name]
                )
 
       assert %{valid?: true} =
@@ -478,7 +479,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                |> Changeset.new()
                |> Changeset.manage_relationship(:categories, [%{name: "foo"}],
                  on_lookup: :relate,
-                 eager_validate_with: Api
+                 eager_validate_with: Api,
+                 use_identities: [:unique_name]
                )
     end
 
@@ -553,7 +555,10 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       author =
         Author
         |> Changeset.new()
-        |> Changeset.manage_relationship(:unique_posts, [post1, post2], on_no_match: :create)
+        |> Changeset.manage_relationship(:unique_posts, [post1, post2],
+          on_no_match: :create,
+          use_identities: [:unique_name_per_author]
+        )
         |> Api.create!()
 
       assert [%{title: "title"}, %{title: "title1"}] =
@@ -562,7 +567,10 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       author =
         author
         |> Changeset.new()
-        |> Changeset.manage_relationship(:unique_posts, [%{title: "title"}], on_missing: :unrelate)
+        |> Changeset.manage_relationship(:unique_posts, [%{title: "title"}],
+          on_missing: :unrelate,
+          use_identities: [:unique_name_per_author]
+        )
         |> Api.update!()
 
       assert [%{title: "title"}, %{title: "title1"}] =

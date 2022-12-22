@@ -550,42 +550,34 @@ defmodule Ash.Actions.ManagedRelationships do
   end
 
   def pkeys(relationship, opts) do
-    identity_priority = opts[:identity_priority] || opts[:use_identities]
-    use_identities = opts[:use_identities]
+    use_identities =
+      case opts[:use_identities] do
+        nil ->
+          if @use_all_identities_in_manage_relationship do
+            [
+              :_primary_key
+              | relationship.destination
+                |> Ash.Resource.Info.identities()
+                |> Enum.map(& &1.name)
+            ]
+          else
+            [:_primary_key]
+          end
 
-    identity_priority =
-      if :_primary_key in identity_priority do
-        identity_priority
-      else
-        identity_priority ++ [:_primary_key]
+        use_identities ->
+          use_identities
       end
-      |> then(fn identities ->
-        if use_identities do
-          Enum.filter(identities, &(&1 in use_identities))
-        else
-          identities
-        end
-      end)
 
-    unprioritized_identities =
-      if @use_all_identities_in_manage_relationship do
-        relationship.destination
-        |> Ash.Resource.Info.identities()
+    use_identities =
+      if opts[:identity_priority] do
+        Enum.sort_by(use_identities, fn identity ->
+          Enum.find_index(opts[:identity_priority], &(&1 == identity))
+        end)
       else
-        []
+        use_identities
       end
-      |> then(fn identities ->
-        if use_identities do
-          Enum.filter(identities, &(&1.name in use_identities))
-        else
-          identities
-        end
-      end)
-      |> Enum.reject(&(&1.name in identity_priority))
-      |> Enum.map(& &1.keys)
 
-    identity_priority
-    |> Kernel.||([])
+    use_identities
     |> Enum.map(fn
       :_primary_key ->
         Ash.Resource.Info.primary_key(relationship.destination)
@@ -593,7 +585,6 @@ defmodule Ash.Actions.ManagedRelationships do
       identity ->
         Ash.Resource.Info.identity(relationship.destination, identity).keys
     end)
-    |> Enum.concat(unprioritized_identities)
   end
 
   defp manage_relationship(
