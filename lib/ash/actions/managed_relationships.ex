@@ -15,11 +15,15 @@ defmodule Ash.Actions.ManagedRelationships do
     IO.warn("""
     * IMPORTANT *
 
-    The configuration `use_all_identities_in_manage_relationship` was not set. It is defaulting to `true`.
+    The configuration `use_all_identities_in_manage_relationship` was not set.
+    It is defaulting to `true` for backwards compatibility.
 
     This configuration must now be manually set, and it should be set to `false`.
+    If you have just started a new project, or haven't used `manage_relationship` yet, just set the following config:
 
-    If you are currently using `manage_relationship`, please read https://github.com/ash-project/ash/issues/469
+    config :ash, :use_all_identities_in_manage_relationship?, false
+
+    If you are currently using `manage_relationship`, please read https://github.com/ash-project/ash/issues/469 before proceeding
     """)
 
     @use_all_identities_in_manage_relationship true

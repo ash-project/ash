@@ -1907,8 +1907,9 @@ defmodule Ash.Changeset do
       type: {:list, :atom},
       doc: """
       A list of identities that may be used to look up and compare records.
-      Use `:_primary_key` to include the primary key. This does not determine the order
-      that they are checked, use `identity_priority` for that. By default, all are used.
+      Use `:_primary_key` to include the primary key. By default, only [:_primary_key] is used,
+      unless you have `config :ash, :use_all_identities_in_manage_relationship?: true` (an old
+      configuration that you should not set to `true`).
       """
     ],
     on_lookup: [
