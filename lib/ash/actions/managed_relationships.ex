@@ -748,16 +748,8 @@ defmodule Ash.Actions.ManagedRelationships do
           {:ok, new_value, notifications, used} ->
             {:cont, {:ok, new_value, all_notifications ++ notifications, all_used ++ used}}
 
-          {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
-            {:error, error}
-
           {:error, error} ->
-            {:halt,
-             {:error,
-              Ash.Error.set_path(
-                error,
-                opts[:error_path] || [opts[:meta][:id] || relationship.name]
-              )}}
+            {:halt, {:error, error}}
         end
       end
     )

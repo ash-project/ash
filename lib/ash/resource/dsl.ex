@@ -446,6 +446,11 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
+    imports: [
+      Ash.Resource.Change.Builtins,
+      Ash.Resource.Validation.Builtins,
+      Ash.Filter.TemplateHelpers
+    ],
     links: [
       guides: [
         "ash:guide:Actions"
@@ -517,6 +522,10 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
+    imports: [
+      Ash.Resource.Preparation.Builtins,
+      Ash.Filter.TemplateHelpers
+    ],
     target: Ash.Resource.Actions.Read,
     schema: Ash.Resource.Actions.Read.opt_schema(),
     transform: {Ash.Resource.Actions.Read, :transform, []},
@@ -545,6 +554,11 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declares a `update` action. For calling this action, see the `Ash.Api` documentation.
     """,
+    imports: [
+      Ash.Resource.Change.Builtins,
+      Ash.Resource.Validation.Builtins,
+      Ash.Filter.TemplateHelpers
+    ],
     examples: [
       "update :flag_for_review, primary?: true"
     ],
@@ -583,6 +597,11 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
+    imports: [
+      Ash.Resource.Change.Builtins,
+      Ash.Resource.Validation.Builtins,
+      Ash.Filter.TemplateHelpers
+    ],
     links: [
       guides: [
         "ash:guide:Actions"
@@ -618,12 +637,6 @@ defmodule Ash.Resource.Dsl do
     your resources to conform to your business logic. It is normal and expected to have
     multiple actions of each type in a large application.
     """,
-    imports: [
-      Ash.Resource.Change.Builtins,
-      Ash.Resource.Preparation.Builtins,
-      Ash.Resource.Validation.Builtins,
-      Ash.Filter.TemplateHelpers
-    ],
     links: [
       guides: [
         "ash:guide:Actions"
@@ -858,7 +871,11 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declare changes that occur on create/update/destroy actions against the resource
     """,
-    imports: [Ash.Resource.Validation.Builtins, Ash.Resource.Change.Builtins],
+    imports: [
+      Ash.Resource.Validation.Builtins,
+      Ash.Resource.Change.Builtins,
+      Ash.Filter.TemplateHelpers
+    ],
     links: [
       guides: [
         "ash:guide:Actions"
