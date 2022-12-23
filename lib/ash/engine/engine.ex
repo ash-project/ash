@@ -89,20 +89,28 @@ defmodule Ash.Engine do
           |> Enum.concat(Enum.flat_map(requests, &(&1.touches_resources || [])))
           |> Enum.concat(opts[:touches_resources] || [])
 
-        Ash.DataLayer.transaction(
-          resources,
-          fn ->
-            case do_run(requests, opts) do
-              {:ok, result} ->
-                result
+        resources
+        |> Enum.reject(&Ash.DataLayer.in_transaction?/1)
+        |> case do
+          [] ->
+            do_run(requests, opts)
 
-              {:error, error} ->
-                Ash.DataLayer.rollback(opts[:resource], error)
-            end
-          end,
-          opts[:timeout] || :infinity,
-          transaction_metadata(opts)
-        )
+          resources ->
+            Ash.DataLayer.transaction(
+              resources,
+              fn ->
+                case do_run(requests, opts) do
+                  {:ok, result} ->
+                    result
+
+                  {:error, error} ->
+                    Ash.DataLayer.rollback(opts[:resource], error)
+                end
+              end,
+              opts[:timeout] || :infinity,
+              transaction_metadata(opts)
+            )
+        end
 
       true ->
         if !Application.get_env(:ash, :disable_async?) &&
