@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.28](https://github.com/ash-project/ash/compare/v2.4.27...v2.4.28) (2022-12-23)
+
+
+
+
+### Bug Fixes:
+
+* import builtins at the action level, not the section level
+
+* fix broken default behavior around managing relationships.
+
+### Improvements:
+
+* fix tests to handle new defaults
+
+* optimize strict checks
+
 ## [v2.4.27](https://github.com/ash-project/ash/compare/v2.4.26...v2.4.27) (2022-12-21)
 
 
