@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.29](https://github.com/ash-project/ash/compare/v2.4.28...v2.4.29) (2022-12-27)
+
+
+
+
+### Bug Fixes:
+
+* handle `nil` constraints in array
+
+* only start transactions for resources not already in one
+
+### Improvements:
+
+* add calculations to builder
+
 ## [v2.4.28](https://github.com/ash-project/ash/compare/v2.4.27...v2.4.28) (2022-12-23)
 
 
