@@ -915,7 +915,7 @@ defmodule Ash.Type do
       {:array, type} ->
         with {:ok, new_constraints} <-
                Spark.OptionsHelpers.validate(
-                 Keyword.delete(constraints, :items),
+                 Keyword.delete(constraints || [], :items),
                  array_constraints(type)
                ),
              {:ok, item_constraints} <- validate_item_constraints(type, constraints) do

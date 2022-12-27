@@ -240,4 +240,59 @@ defmodule Ash.Resource.Builder do
       Keyword.merge(opts, name: name, type: type)
     )
   end
+
+  @doc """
+  Builds and adds a calculation unless a calculation with that name already exists
+  """
+  @spec add_new_calculation(
+          Spark.Dsl.Builder.input(),
+          name :: atom,
+          type :: Ash.Type.t(),
+          calculation :: module | {module, Keyword.t()},
+          opts :: Keyword.t()
+        ) ::
+          Spark.Dsl.Builder.result()
+  defbuilder add_new_calculation(dsl_state, name, type, calculation, opts \\ []) do
+    if Ash.Resource.Info.calculation(dsl_state, name) do
+      {:ok, dsl_state}
+    else
+      add_calculation(dsl_state, name, type, calculation, opts)
+    end
+  end
+
+  @doc """
+  Builds and adds a calculation to a resource
+  """
+  @spec add_calculation(
+          Spark.Dsl.Builder.input(),
+          name :: atom,
+          type :: Ash.Type.t(),
+          calculation :: module | {module, Keyword.t()},
+          opts :: Keyword.t()
+        ) ::
+          Spark.Dsl.Builder.result()
+  defbuilder add_calculation(dsl_state, name, type, calculation, opts \\ []) do
+    with {:ok, calculation} <- build_calculation(name, type, calculation, opts) do
+      Transformer.add_entity(dsl_state, [:calculations], calculation)
+    end
+  end
+
+  @doc """
+  Builds a calculation with the given name, type, and options
+  """
+  @spec build_calculation(
+          name :: atom,
+          type :: Ash.Type.t(),
+          calculation :: module | {module, Keyword.t()},
+          opts :: Keyword.t()
+        ) ::
+          {:ok, Ash.Resource.Calculation.t()} | {:error, term}
+  def build_calculation(name, type, calculation, opts \\ []) do
+    Transformer.build_entity(
+      Ash.Resource.Dsl,
+      [:calculations],
+      :calculation,
+      Keyword.merge(opts, name: name, type: type, calculation: calculation)
+    )
+  end
 end
