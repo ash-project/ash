@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.4.30](https://github.com/ash-project/ash/compare/v2.4.29...v2.4.30) (2022-12-27)
+
+
+
+
+### Bug Fixes:
+
+* calculation builder using wrong builder
+
+### Improvements:
+
+* add `simple_notifiers` as a compile time optimization
+
 ## [v2.4.29](https://github.com/ash-project/ash/compare/v2.4.28...v2.4.29) (2022-12-27)
 
 
