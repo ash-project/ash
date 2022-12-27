@@ -291,7 +291,7 @@ defmodule Ash.Resource.Builder do
     Transformer.build_entity(
       Ash.Resource.Dsl,
       [:calculations],
-      :calculation,
+      :calculate,
       Keyword.merge(opts, name: name, type: type, calculation: calculation)
     )
   end
