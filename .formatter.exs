@@ -170,6 +170,7 @@ spark_locals_without_parens = [
   select: 1,
   sensitive?: 1,
   short_name: 1,
+  simple_notifiers: 1,
   soft?: 1,
   sort: 1,
   source: 1,

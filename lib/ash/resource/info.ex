@@ -103,6 +103,14 @@ defmodule Ash.Resource.Info do
   end
 
   @doc """
+  A list of simple notifiers (require no DSL, used to avoid compile time dependencies)
+  """
+  @spec simple_notifiers(Spark.Dsl.t() | Ash.Resource.t()) :: list(module)
+  def simple_notifiers(resource) do
+    Extension.get_opt(resource, [:resource], :simple_notifiers) || []
+  end
+
+  @doc """
   The trace_name of the resource
   """
   @spec trace_name(Spark.Dsl.t() | Ash.Resource.t()) :: String.t() | nil
@@ -157,7 +165,7 @@ defmodule Ash.Resource.Info do
   @doc "A list of notifiers to be used when accessing"
   @spec notifiers(Spark.Dsl.t() | Ash.Resource.t()) :: [module]
   def notifiers(resource) do
-    Extension.get_persisted(resource, :notifiers, [])
+    Extension.get_persisted(resource, :notifiers, []) ++ simple_notifiers(resource)
   end
 
   @doc "A list of all validations for the resource for a given action type"

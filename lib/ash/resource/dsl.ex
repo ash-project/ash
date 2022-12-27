@@ -754,6 +754,7 @@ defmodule Ash.Resource.Dsl do
     ],
     links: [],
     imports: [Ash.Filter.TemplateHelpers],
+    modules: [:simple_notifiers],
     schema: [
       description: [
         type: :string,
@@ -788,6 +789,11 @@ defmodule Ash.Resource.Dsl do
             "ash:guide:Instrumentation"
           ]
         ]
+      ],
+      simple_notifiers: [
+        type: {:list, :module},
+        doc:
+          "A list of notifiers that require no DSL. Can be used to avoid compile time dependencies on notifiers"
       ]
     ]
   }

@@ -33,7 +33,9 @@ defmodule Ash.Resource do
 
   @doc false
   def handle_opts(opts) do
-    quote bind_quoted: [embedded?: opts[:embedded?]] do
+    quote bind_quoted: [
+            embedded?: opts[:embedded?]
+          ] do
       if embedded? do
         @persist {:embedded?, true}
 
@@ -74,6 +76,11 @@ defmodule Ash.Resource do
       if !@moduledoc do
         @moduledoc Ash.Resource.Info.description(__MODULE__) || false
       end
+
+      new_notifiers =
+        @persist[:notifiers] ++ Module.get_attribute(__MODULE__, :simple_notifiers) || []
+
+      @persist {:notifiers, new_notifiers}
 
       Ash.Schema.define_schema()
 
