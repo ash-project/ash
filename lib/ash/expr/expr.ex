@@ -98,6 +98,10 @@ defmodule Ash.Expr do
     do_expr(left, escape?)
   end
 
+  def do_expr(value, escape?) when is_list(value) do
+    Enum.map(value, &do_expr(&1, escape?))
+  end
+
   def do_expr({{:., _, [_, _]} = left, _, args}, escape?) do
     args = Enum.map(args, &do_expr(&1, false))
 
