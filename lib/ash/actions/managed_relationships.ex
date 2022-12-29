@@ -102,7 +102,7 @@ defmodule Ash.Actions.ManagedRelationships do
                                                                 index},
                                                                {changeset, instructions} ->
       opts = Ash.Changeset.ManagedRelationshipHelpers.sanitize_opts(relationship, opts)
-      opts = Keyword.put(opts, :authorize?, engine_opts[:authorize?] && opts[:authorize?])
+      opts = Keyword.put(opts, :authorize?, !!(engine_opts[:authorize?] && opts[:authorize?]))
       pkeys = pkeys(relationship, opts)
 
       changeset =
@@ -516,7 +516,7 @@ defmodule Ash.Actions.ManagedRelationships do
       |> Enum.reject(fn {_, opts} -> opts[:ignore?] end)
       |> Enum.with_index()
       |> Enum.map(fn {{batch, opts}, index} ->
-        opts = Keyword.put(opts, :authorize?, engine_opts[:authorize?] && opts[:authorize?])
+        opts = Keyword.put(opts, :authorize?, !!(engine_opts[:authorize?] && opts[:authorize?]))
         {key, batch, opts, index}
       end)
     end)
