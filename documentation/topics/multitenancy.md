@@ -35,7 +35,7 @@ Example usage of the above:
 MyApp.Users
 |> Ash.Query.filter(name == "fred")
 |> MyApi.read!()
-** (Ash.Error.Unknown)
+** (Ash.Error.Invalid)
 
 * "Queries against the Helpdesk.Accounts.User resource require a tenant to be specified"
     (ash 1.22.0) lib/ash/api/api.ex:944: Ash.Api.unwrap_or_raise!/2

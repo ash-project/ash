@@ -547,8 +547,7 @@ defmodule Ash.Actions.Read do
          initial_data do
       :ok
     else
-      {:error,
-       "Queries against the #{inspect(query.resource)} resource require a tenant to be specified"}
+      {:error, Ash.Error.Invalid.TenantRequired.exception(resource: query.resource)}
     end
   end
 

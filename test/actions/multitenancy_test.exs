@@ -196,5 +196,17 @@ defmodule Ash.Actions.MultitenancyTest do
       |> Ash.Changeset.new()
       |> Api.destroy!()
     end
+
+    test "a record cannot be read without tenant specified", %{
+      tenant1: tenant1
+    } do
+      Comment
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.set_tenant(tenant1)
+      |> Api.create!()
+
+      result = User |> Api.read()
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Invalid.TenantRequired{}]}} = result
+    end
   end
 end
