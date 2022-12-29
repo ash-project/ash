@@ -54,7 +54,7 @@ defmodule Ash.Actions.Create do
     upsert? =
       action.upsert? || opts[:upsert?] || get_in(changeset.context, [:private, :upsert?]) || false
 
-    authorize? = authorize?(opts)
+    authorize? = opts[:authorize?]
     upsert_keys = opts[:upsert_keys]
 
     upsert_identity =
@@ -130,14 +130,6 @@ defmodule Ash.Actions.Create do
         error = Helpers.process_errors(changeset, error)
 
         {:error, Ash.Error.to_error_class(error, changeset: changeset)}
-    end
-  end
-
-  defp authorize?(opts) do
-    if opts[:authorize?] == false do
-      false
-    else
-      opts[:authorize?] || Keyword.has_key?(opts, :actor)
     end
   end
 
