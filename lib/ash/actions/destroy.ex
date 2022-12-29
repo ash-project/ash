@@ -356,7 +356,7 @@ defmodule Ash.Actions.Destroy do
     if opts[:authorize?] == false do
       false
     else
-      opts[:authorize?] || Keyword.has_key?(opts, :actor)
+      opts[:authorize?] || !!Keyword.get(opts, :actor)
     end
   end
 
