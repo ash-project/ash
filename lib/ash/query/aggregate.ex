@@ -54,7 +54,7 @@ defmodule Ash.Query.Aggregate do
     attribute_type =
       if field do
         related = Ash.Resource.Info.related(resource, relationship)
-        Ash.Resource.Info.attribute(related, field).type
+        Ash.Resource.Info.field(related, field).type
       end
 
     with :ok <- validate_path(resource, List.wrap(relationship)),

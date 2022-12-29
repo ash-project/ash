@@ -278,6 +278,25 @@ defmodule Ash.Filter.Runtime do
           %Ref{} = ref ->
             resolve_expr(ref, record)
 
+          value when is_list(value) ->
+            value
+            |> Enum.reduce_while({:ok, []}, fn value, {:ok, list} ->
+              case do_match(record, value) do
+                {:ok, result} ->
+                  {:cont, {:ok, [result | list]}}
+
+                other ->
+                  {:halt, other}
+              end
+            end)
+            |> case do
+              {:ok, list} ->
+                {:ok, Enum.reverse(list)}
+
+              other ->
+                other
+            end
+
           other ->
             {:ok, other}
         end
