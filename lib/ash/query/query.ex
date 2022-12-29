@@ -862,7 +862,7 @@ defmodule Ash.Query do
                      resource_calculation.name,
                      module,
                      opts,
-                     resource_calculation.type,
+                     {resource_calculation.type, resource_calculation.constraints},
                      Map.put(args, :context, query.context),
                      resource_calculation.filterable?,
                      resource_calculation.load
@@ -974,7 +974,7 @@ defmodule Ash.Query do
                  resource_calculation.name,
                  module,
                  opts,
-                 resource_calculation.type,
+                 {resource_calculation.type, resource_calculation.constraints},
                  Map.put(args, :context, query.context),
                  resource_calculation.filterable?,
                  resource_calculation.load
@@ -1483,7 +1483,7 @@ defmodule Ash.Query do
   The `module_and_opts` argument accepts either a `module` or a `{module, opts}`. For more information
   on what that module should look like, see `Ash.Calculation`.
   """
-  def calculate(query, name, module_and_opts, type, context \\ %{}) do
+  def calculate(query, name, module_and_opts, type, context \\ %{}, constraints \\ []) do
     query = to_query(query)
 
     {module, opts} =
@@ -1492,7 +1492,13 @@ defmodule Ash.Query do
         module -> {module, []}
       end
 
-    case Calculation.new(name, module, opts, type, Map.put(context, :context, query.context)) do
+    case Calculation.new(
+           name,
+           module,
+           opts,
+           {type, constraints},
+           Map.put(context, :context, query.context)
+         ) do
       {:ok, calculation} ->
         fields_to_select =
           query
@@ -1534,7 +1540,7 @@ defmodule Ash.Query do
                resource_calculation.name,
                module,
                opts,
-               resource_calculation.type,
+               {resource_calculation.type, resource_calculation.constraints},
                Map.put(args, :context, query.context),
                resource_calculation.filterable?,
                resource_calculation.load

@@ -2098,7 +2098,7 @@ defmodule Ash.Filter do
                      resource_calculation.name,
                      module,
                      opts,
-                     resource_calculation.type,
+                     {resource_calculation.type, resource_calculation.constraints},
                      args,
                      resource_calculation.filterable?,
                      resource_calculation.load
@@ -2284,7 +2284,7 @@ defmodule Ash.Filter do
                  resource_calculation.name,
                  module,
                  opts,
-                 resource_calculation.type,
+                 {resource_calculation.type, resource_calculation.constraints},
                  args,
                  resource_calculation.filterable?,
                  resource_calculation.load
@@ -2560,7 +2560,7 @@ defmodule Ash.Filter do
                  resource_calculation.name,
                  module,
                  opts,
-                 resource_calculation.type,
+                 {resource_calculation.type, resource_calculation.constraints},
                  args,
                  resource_calculation.filterable?,
                  resource_calculation.load
@@ -2682,7 +2682,7 @@ defmodule Ash.Filter do
                      resource_calculation.name,
                      module,
                      opts,
-                     resource_calculation.type,
+                     {resource_calculation.type, resource_calculation.constraints},
                      args,
                      resource_calculation.filterable?,
                      resource_calculation.load

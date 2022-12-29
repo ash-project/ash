@@ -49,6 +49,7 @@ defmodule Ash.Actions.Sort do
                   module,
                   opts,
                   calc.type,
+                  calc.constraints,
                   order,
                   sorts,
                   errors,
@@ -91,6 +92,7 @@ defmodule Ash.Actions.Sort do
                   module,
                   opts,
                   calc.type,
+                  calc.constraints,
                   order,
                   sorts,
                   errors,
@@ -195,7 +197,18 @@ defmodule Ash.Actions.Sort do
     end
   end
 
-  defp calculation_sort(field, calc, module, opts, type, order, sorts, errors, context) do
+  defp calculation_sort(
+         field,
+         calc,
+         module,
+         opts,
+         type,
+         constraints,
+         order,
+         sorts,
+         errors,
+         context
+       ) do
     {order, calc_context} =
       case order do
         order when is_atom(order) ->
@@ -217,7 +230,7 @@ defmodule Ash.Actions.Sort do
              field,
              module,
              opts,
-             type,
+             {type, constraints},
              Map.put(input, :context, context),
              calc.filterable?,
              calc.load

@@ -1,6 +1,6 @@
 defmodule Ash.Resource.Calculation.Expression do
   @moduledoc false
-  use Ash.Calculation, type: :string
+  use Ash.Calculation
 
   def expression(opts, context) do
     expr =

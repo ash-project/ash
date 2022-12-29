@@ -7,6 +7,7 @@ defmodule Ash.Query.Calculation do
     :opts,
     :load,
     :type,
+    :constraints,
     context: %{},
     required_loads: [],
     select: [],
@@ -18,6 +19,18 @@ defmodule Ash.Query.Calculation do
   @type t :: %__MODULE__{}
 
   def new(name, module, opts, type, context \\ %{}, filterable? \\ true, required_loads \\ []) do
+    {type, constraints} =
+      case type do
+        {:array, type} ->
+          {{:array, type}, []}
+
+        {type, constraints} ->
+          {type, constraints}
+
+        other ->
+          {other, []}
+      end
+
     case module.init(opts) do
       {:ok, opts} ->
         {:ok,
@@ -26,6 +39,7 @@ defmodule Ash.Query.Calculation do
            module: module,
            type: type,
            opts: opts,
+           constraints: constraints,
            context: context,
            required_loads: required_loads,
            filterable?: filterable?
