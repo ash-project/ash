@@ -130,7 +130,7 @@ defmodule Ash.Type do
 
   You generally won't need this, but it can be an escape hatch for certain cases.
   """
-  @callback cast_in_query?() :: boolean
+  @callback cast_in_query?(constraints) :: boolean
   @callback ecto_type() :: Ecto.Type.t()
   @callback cast_input(term, constraints) ::
               {:ok, term} | error()
@@ -648,9 +648,13 @@ defmodule Ash.Type do
     end
   end
 
-  def cast_in_query?(type) do
+  def cast_in_query?(type, constraints \\ []) do
     if ash_type?(type) do
-      type.cast_in_query?()
+      if function_exported?(type, :cast_in_query, 0) do
+        type.cast_in_query?()
+      else
+        type.cast_in_query?(constraints)
+      end
     else
       false
     end
@@ -847,7 +851,7 @@ defmodule Ash.Type do
       def apply_constraints(_, _), do: :ok
 
       @impl true
-      def cast_in_query?, do: true
+      def cast_in_query?(_), do: true
 
       @impl true
       def handle_change(_old_value, new_value, _constraints), do: {:ok, new_value}
@@ -870,7 +874,7 @@ defmodule Ash.Type do
                      apply_constraints: 2,
                      handle_change: 3,
                      prepare_change: 3,
-                     cast_in_query?: 0
+                     cast_in_query?: 1
     end
   end
 
