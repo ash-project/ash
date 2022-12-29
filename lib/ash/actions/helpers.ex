@@ -238,6 +238,124 @@ defmodule Ash.Actions.Helpers do
 
   def process_errors(changeset, error), do: process_errors(changeset, [error])
 
+  def load_runtime_types({:ok, results}, query, attributes?) do
+    load_runtime_types(results, query, attributes?)
+  end
+
+  def load_runtime_types({:error, error}, _query, _attributes?) do
+    {:error, error}
+  end
+
+  def load_runtime_types(results, query, attributes?) when is_list(results) do
+    attributes = runtime_attributes(query, attributes?)
+    calcs = runtime_calculations(query)
+
+    if Enum.empty?(attributes) && Enum.empty?(calcs) do
+      {:ok, results}
+    else
+      Enum.reduce_while(results, {:ok, []}, fn result, {:ok, results} ->
+        case do_load_runtime_types(result, attributes, calcs) do
+          {:ok, result} ->
+            {:cont, {:ok, [result | results]}}
+
+          other ->
+            {:halt, other}
+        end
+      end)
+      |> case do
+        {:ok, results} -> {:ok, Enum.reverse(results)}
+        other -> other
+      end
+    end
+  end
+
+  def load_runtime_types(nil, _, _attributes?), do: {:ok, nil}
+
+  def load_runtime_types(result, query, attributes?) do
+    do_load_runtime_types(
+      result,
+      runtime_attributes(query, attributes?),
+      runtime_calculations(query)
+    )
+  end
+
+  defp runtime_attributes(query, true) do
+    case query.select do
+      nil ->
+        Ash.Resource.Info.attributes(query.resource)
+
+      select ->
+        Enum.map(select, &Ash.Resource.Info.attribute(query.resource, &1))
+    end
+    |> Enum.reject(fn %{type: type, constraints: constraints} ->
+      Ash.Type.cast_in_query?(type, constraints)
+    end)
+  end
+
+  defp runtime_attributes(_, _), do: []
+
+  defp runtime_calculations(query) do
+    query.calculations
+    |> Kernel.||(%{})
+    |> Enum.reject(fn {_name, calc} ->
+      constraints = Map.get(calc, :constraints, [])
+
+      if function_exported?(Ash.Type, :cast_in_query?, 2) do
+        Ash.Type.cast_in_query?(calc.type, constraints)
+      else
+        Ash.Type.cast_in_query?(calc.type)
+      end
+    end)
+  end
+
+  defp do_load_runtime_types(record, select, calculations) do
+    select
+    |> Enum.reduce_while({:ok, record}, fn attr, {:ok, record} ->
+      case Ash.Type.cast_stored(attr.type, Map.get(record, attr.name), attr.constraints) do
+        {:ok, value} ->
+          {:cont, {:ok, Map.put(record, attr.name, value)}}
+
+        other ->
+          {:halt, other}
+      end
+    end)
+    |> case do
+      {:ok, record} ->
+        Enum.reduce_while(calculations, {:ok, record}, fn {name, calc}, {:ok, record} ->
+          case calc.load do
+            nil ->
+              case Ash.Type.cast_stored(
+                     calc.type,
+                     Map.get(record.calculations || %{}, calc.name),
+                     Map.get(calc, :constraints, [])
+                   ) do
+                {:ok, value} ->
+                  {:cont, {:ok, Map.update!(record, :calculations, &Map.put(&1, name, value))}}
+
+                other ->
+                  {:halt, other}
+              end
+
+            load ->
+              case Ash.Type.cast_stored(
+                     calc.type,
+                     Map.get(record, load),
+                     Map.get(calc, :constraints, [])
+                   ) do
+                {:ok, casted} ->
+                  {:cont, {:ok, Map.put(record, load, casted)}}
+
+                other ->
+                  {:halt, other}
+              end
+          end
+        end)
+
+      other ->
+        other
+    end
+  end
+
   def select({:ok, results}, query) do
     {:ok, select(results, query)}
   end

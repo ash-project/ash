@@ -648,7 +648,13 @@ defmodule Ash.Type do
     end
   end
 
-  def cast_in_query?(type, constraints \\ []) do
+  def cast_in_query?(type, constraints \\ [])
+
+  def cast_in_query?({:array, type}, constraints) do
+    cast_in_query?(type, constraints[:items] || [])
+  end
+
+  def cast_in_query?(type, constraints) do
     if ash_type?(type) do
       if function_exported?(type, :cast_in_query?, 0) do
         type.cast_in_query?()

@@ -809,7 +809,17 @@ defmodule Ash.Actions.Read do
             |> Ash.Query.data_layer_query()
             |> case do
               {:ok, data_layer_query} ->
-                case Ash.DataLayer.run_query(data_layer_query, ash_query.resource) do
+                case run_query(
+                       ash_query,
+                       data_layer_query,
+                       %{
+                         actor: actor,
+                         tenant: ash_query.tenant,
+                         authorize?: authorize?,
+                         api: ash_query.api
+                       },
+                       true
+                     ) do
                   {:ok, results} ->
                     {:ok,
                      %{
@@ -948,12 +958,17 @@ defmodule Ash.Actions.Read do
                    Ash.DataLayer.offset(query, ash_query.offset, ash_query.resource),
                  {:ok, query} <- set_tenant(query, ash_query),
                  {:ok, results} <-
-                   run_query(ash_query, query, %{
-                     actor: actor,
-                     tenant: ash_query.tenant,
-                     authorize?: authorize?,
-                     api: ash_query.api
-                   }),
+                   run_query(
+                     ash_query,
+                     query,
+                     %{
+                       actor: actor,
+                       tenant: ash_query.tenant,
+                       authorize?: authorize?,
+                       api: ash_query.api
+                     },
+                     !Keyword.has_key?(request_opts, :initial_data)
+                   ),
                  :ok <- validate_get(results, ash_query.action, ash_query),
                  {:ok, results, after_notifications} <-
                    run_after_action(initial_query, results),
@@ -1430,7 +1445,8 @@ defmodule Ash.Actions.Read do
            }
          } = ash_query,
          query,
-         _context
+         _context,
+         load_attributes?
        ) do
     if ash_query.limit == 0 do
       {:ok, []}
@@ -1442,27 +1458,36 @@ defmodule Ash.Actions.Read do
         path
       )
       |> Helpers.select(ash_query)
+      |> Helpers.load_runtime_types(ash_query, load_attributes?)
     end
   end
 
-  defp run_query(%{resource: resource, action: %{manual: nil}} = ash_query, query, _context) do
+  defp run_query(
+         %{resource: resource, action: %{manual: nil}} = ash_query,
+         query,
+         _context,
+         load_attributes?
+       ) do
     if ash_query.limit == 0 do
       {:ok, []}
     else
       query
       |> Ash.DataLayer.run_query(resource)
       |> Helpers.select(ash_query)
+      |> Helpers.load_runtime_types(ash_query, load_attributes?)
     end
   end
 
   defp run_query(
          %{action: %{manual: {mod, opts}}} = ash_query,
          query,
-         context
+         context,
+         load_attributes?
        ) do
     ash_query
     |> mod.read(query, opts, context)
     |> Helpers.select(ash_query)
+    |> Helpers.load_runtime_types(ash_query, load_attributes?)
   end
 
   @doc false
@@ -1546,6 +1571,8 @@ defmodule Ash.Actions.Read do
         data:
           Request.resolve(dependencies, fn data ->
             primary_key = Ash.Resource.Info.primary_key(query.resource)
+            actor = data[:actor]
+            authorize? = data[:authorize?]
 
             temp_results =
               Enum.reduce(get_in(data, path ++ [:calculation_results]) || %{}, results, fn {key,
@@ -1559,7 +1586,14 @@ defmodule Ash.Actions.Read do
 
             case calculation.module.calculate(temp_results, calculation.opts, calculation.context) do
               :unknown ->
-                case run_calculation_query(temp_results, [calculation], query, tenant) do
+                case run_calculation_query(
+                       temp_results,
+                       [calculation],
+                       query,
+                       actor,
+                       authorize?,
+                       tenant
+                     ) do
                   {:ok, results_with_calc} ->
                     {:ok,
                      %{
@@ -1610,8 +1644,11 @@ defmodule Ash.Actions.Read do
         authorize?: false,
         async?: true,
         data:
-          Request.resolve([], fn _ ->
-            case run_calculation_query(results, [calculation], query, tenant) do
+          Request.resolve([], fn data ->
+            actor = data[:actor]
+            authorize? = data[:authorize?]
+
+            case run_calculation_query(results, [calculation], query, actor, authorize?, tenant) do
               {:ok, results_with_calc} ->
                 {:ok,
                  %{
@@ -1738,7 +1775,7 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp run_calculation_query(results, calculations, query, tenant) do
+  defp run_calculation_query(results, calculations, query, actor, authorize?, tenant) do
     pkey = Ash.Resource.Info.primary_key(query.resource)
 
     results
@@ -1768,9 +1805,16 @@ defmodule Ash.Actions.Read do
              {:ok, data_layer_query} <- Ash.Query.data_layer_query(query),
              {:ok, data_layer_query} <-
                add_calculations(data_layer_query, query, calculations) do
-          Ash.DataLayer.run_query(
+          run_query(
+            query,
             data_layer_query,
-            query.resource
+            %{
+              actor: actor,
+              tenant: query.tenant,
+              authorize?: authorize?,
+              api: query.api
+            },
+            false
           )
         end
     end

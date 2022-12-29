@@ -1032,7 +1032,7 @@ defmodule Ash.Query do
 
       cond do
         expr?(value) && argument.allow_expr? ->
-          {:cont, {:ok, Map.put(arg_values, argument.name, nil)}}
+          {:cont, {:ok, Map.put(arg_values, argument.name, value)}}
 
         expr?(value) ->
           {:halt, {:error, "Argument #{argument.name} does not support expressions!"}}
