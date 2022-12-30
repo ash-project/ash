@@ -3,7 +3,7 @@ defmodule Ash.Expr do
   alias Ash.Query.{BooleanExpression, Not}
 
   @type t :: any
-  @pass_through_funcs [:where, :or_where, :expr]
+  @pass_through_funcs [:where, :or_where, :expr, :@]
 
   defmacro where(left, right) do
     quote do
