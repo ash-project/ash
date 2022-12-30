@@ -111,7 +111,7 @@ defmodule Ash.Actions.Read do
         {query, opts}
       end
 
-    authorize? = authorize?(opts)
+    authorize? = opts[:authorize?]
     opts = sanitize_opts(opts, authorize?, query)
     query = set_tenant_opt(query, opts)
     action = get_action(query.resource, action)
@@ -474,14 +474,6 @@ defmodule Ash.Actions.Read do
       Ash.Query.filter(query, [{multitenancy_attribute, attribute_value}])
     else
       query
-    end
-  end
-
-  defp authorize?(opts) do
-    if opts[:authorize?] == false do
-      false
-    else
-      opts[:authorize?] || Keyword.has_key?(opts, :actor)
     end
   end
 

@@ -67,7 +67,7 @@ defmodule Ash.Actions.Destroy do
   def do_run(api, %{resource: resource} = changeset, action, opts) do
     {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
 
-    authorize? = authorize?(opts)
+    authorize? = opts[:authorize?]
     actor = opts[:actor]
     verbose? = opts[:verbose?]
     return_notifications? = opts[:return_notifications?]
@@ -350,14 +350,6 @@ defmodule Ash.Actions.Destroy do
 
   defp add_destroyed(result, _, _) do
     result
-  end
-
-  defp authorize?(opts) do
-    if opts[:authorize?] == false do
-      false
-    else
-      opts[:authorize?] || Keyword.has_key?(opts, :actor)
-    end
   end
 
   defp changeset(changeset, api, action, opts) do
