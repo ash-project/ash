@@ -198,6 +198,7 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, {:aggregate_relationship, _}), do: true
   def can?(_, {:filter_relationship, _}), do: true
   def can?(_, {:aggregate, :count}), do: true
+  def can?(_, {:aggregate, :first}), do: true
   def can?(_, :create), do: true
   def can?(_, :read), do: true
   def can?(_, :update), do: true
@@ -403,32 +404,72 @@ defmodule Ash.DataLayer.Ets do
     # TODO support crossing apis by getting the destination api, and set destination query context.
     Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
       aggregates
-      |> Enum.reduce_while({:ok, record}, fn %{
-                                               kind: :count,
-                                               relationship_path: relationship_path,
-                                               query: query,
-                                               authorization_filter: authorization_filter,
-                                               name: name,
-                                               load: load
-                                             },
-                                             {:ok, record} ->
-        query =
-          if authorization_filter do
-            Ash.Query.do_filter(query, authorization_filter)
-          else
-            query
-          end
+      |> Enum.reduce_while(
+        {:ok, record},
+        fn
+          %{
+            kind: :count,
+            relationship_path: relationship_path,
+            query: query,
+            authorization_filter: authorization_filter,
+            name: name,
+            load: load
+          },
+          {:ok, record} ->
+            query =
+              if authorization_filter do
+                Ash.Query.do_filter(query, authorization_filter)
+              else
+                query
+              end
 
-        with {:ok, loaded_record} <- api.load(record, relationship_path),
-             related <- Ash.Filter.Runtime.get_related(loaded_record, relationship_path),
-             {:ok, filtered} <-
-               filter_matches(related, query.filter, api) do
-          {:cont, {:ok, Map.put(record, load || name, Enum.count(filtered))}}
-        else
-          other ->
-            {:halt, other}
+            with {:ok, loaded_record} <- api.load(record, relationship_path),
+                 related <- Ash.Filter.Runtime.get_related(loaded_record, relationship_path),
+                 {:ok, filtered} <-
+                   filter_matches(related, query.filter, api) do
+              {:cont, {:ok, Map.put(record, load || name, Enum.count(filtered))}}
+            else
+              other ->
+                {:halt, other}
+            end
+
+          %{
+            kind: :first,
+            relationship_path: relationship_path,
+            query: query,
+            authorization_filter: authorization_filter,
+            name: name,
+            load: load,
+            field: field
+          },
+          {:ok, record} ->
+            query =
+              if authorization_filter do
+                Ash.Query.do_filter(query, authorization_filter)
+              else
+                query
+              end
+
+            with {:ok, loaded_record} <- api.load(record, relationship_path),
+                 related <- Ash.Filter.Runtime.get_related(loaded_record, relationship_path),
+                 {:ok, filtered} <-
+                   filter_matches(related, query.filter, api) do
+              value =
+                case filtered do
+                  [first | _] ->
+                    Map.get(first, field)
+
+                  _ ->
+                    nil
+                end
+
+              {:cont, {:ok, Map.put(record, load || name, value)}}
+            else
+              other ->
+                {:halt, other}
+            end
         end
-      end)
+      )
       |> case do
         {:ok, record} ->
           {:cont, {:ok, [record | records]}}

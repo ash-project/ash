@@ -391,7 +391,7 @@ defmodule Ash.Actions.Read do
                   data
                   |> Load.attach_loads(get_in(context, path ++ [:fetch, :load]) || %{})
                   |> add_aggregate_values(
-                    query.aggregates,
+                    loaded_query(query).aggregates,
                     query.resource,
                     get_in(context, path ++ [:aggregate_values]) || %{},
                     Map.get(fetched_data, :aggregates_in_query) || []

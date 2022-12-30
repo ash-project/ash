@@ -66,6 +66,20 @@ defmodule Ash.Test.CalculationTest do
     end
   end
 
+  defmodule BestFriendsFirstNamePlusStuff do
+    use Ash.Calculation
+
+    def load(_query, _opts, _) do
+      [:best_friends_first_name]
+    end
+
+    def calculate(records, _opts, _) do
+      Enum.map(records, fn record ->
+        record.best_friends_first_name && record.best_friends_first_name <> " stuff"
+      end)
+    end
+  end
+
   defmodule User do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -93,6 +107,10 @@ defmodule Ash.Test.CalculationTest do
           default: " ",
           constraints: [allow_empty?: true, trim?: false]
       end
+
+      calculate :best_friends_first_name_plus_stuff,
+                :string,
+                BestFriendsFirstNamePlusStuff
 
       calculate :full_name_plus_full_name,
                 :string,
@@ -144,6 +162,10 @@ defmodule Ash.Test.CalculationTest do
                       "(none)"
                   end
                 )
+    end
+
+    aggregates do
+      first :best_friends_first_name, :best_friend, :first_name
     end
 
     relationships do
@@ -259,12 +281,23 @@ defmodule Ash.Test.CalculationTest do
   test "nested calculations are loaded if necessary" do
     best_friends_names =
       User
-      |> Ash.Query.load([:best_friends_name, best_friend: [:expr_full_name]])
+      |> Ash.Query.load([:best_friends_name])
       |> Api.read!()
       |> Enum.map(& &1.best_friends_name)
       |> Enum.sort()
 
     assert best_friends_names == [nil, "zach daniel"]
+  end
+
+  test "nested aggregates are loaded if necessary" do
+    best_friends_first_names_plus_stuff =
+      User
+      |> Ash.Query.load([:best_friends_first_name_plus_stuff])
+      |> Api.read!()
+      |> Enum.map(& &1.best_friends_first_name_plus_stuff)
+      |> Enum.sort()
+
+    assert best_friends_first_names_plus_stuff == [nil, "zach stuff"]
   end
 
   test "arguments can be supplied" do

@@ -907,7 +907,7 @@ defmodule Ash.Query do
   defp do_load(query, field) do
     cond do
       Ash.Resource.Info.attribute(query.resource, field) ->
-        query
+        Ash.Query.ensure_selected(query, field)
 
       Ash.Resource.Info.relationship(query.resource, field) ->
         load_relationship(query, field)
