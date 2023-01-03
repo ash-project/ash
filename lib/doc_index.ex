@@ -96,7 +96,7 @@ defmodule Ash.DocIndex do
   end
 
   @impl true
-  @spec code_modules :: [{String.t(), list(module)}]
+  @spec code_modules :: Keyword.t()
   def code_modules do
     [
       Resources: [
