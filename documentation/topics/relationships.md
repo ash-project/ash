@@ -7,6 +7,14 @@ Relationships are a core component of Ash. They provide a mechanism to describe 
 - Managing related records through changes on a single resource
 - Authorizing based on the state of related data
 
+## Customizing default belongs_to attribute type
+
+By default, we assume foreign keys that we add by default (for `belongs_to` relationships) should be `:uuid`. To change this default, set the following configuration:
+
+```elixir
+config :ash, :default_belongs_to_type, :integer
+```
+
 ## Loading related data
 
 Loading relationships is a very common use case. There are two ways to load relationships, in the query, and on records.

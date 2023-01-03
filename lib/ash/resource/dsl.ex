@@ -1367,6 +1367,10 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.ValidateAccept
   ]
 
+  @verifiers [
+    Ash.Resource.Verifiers.ValidateRelationshipAttributesMatch
+  ]
+
   @moduledoc """
   The built in resource DSL.
   <!--- ash-hq-hide-start--> <!--- -->
@@ -1385,7 +1389,8 @@ defmodule Ash.Resource.Dsl do
 
   use Spark.Dsl.Extension,
     sections: @sections,
-    transformers: @transformers
+    transformers: @transformers,
+    verifiers: @verifiers
 
   @doc false
   def identity(x), do: x

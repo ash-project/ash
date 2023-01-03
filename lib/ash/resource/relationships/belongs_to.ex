@@ -97,7 +97,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                         "ash:module:Ash.Type"
                       ]
                     ],
-                    default: :uuid,
+                    default: Application.compile_env(:ash, :default_belongs_to_type, :uuid),
                     doc: "The type of the generated created attribute."
                   ]
                 ],

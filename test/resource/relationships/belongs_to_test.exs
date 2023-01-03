@@ -265,6 +265,42 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     )
   end
 
+  test "warns if the destination resource doesn't have the correct field" do
+    defposts do
+      relationships do
+        has_many(:comments, Comment)
+      end
+    end
+
+    defcomments do
+      actions do
+        defaults [:create]
+      end
+
+      relationships do
+        belongs_to(:post, Post, allow_nil?: false, attribute_type: :integer)
+      end
+    end
+
+    defmodule Registry do
+      @moduledoc false
+      use Ash.Registry
+
+      entries do
+        entry Post
+        entry Comment
+      end
+    end
+
+    defmodule Api do
+      use Ash.Api
+
+      resources do
+        registry Registry
+      end
+    end
+  end
+
   test "don't add required error for belongs_to if other errors are present" do
     defposts do
       relationships do
