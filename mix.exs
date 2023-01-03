@@ -100,6 +100,9 @@ defmodule Ash.MixProject do
           Ash.Notifier,
           Ash.Notifier.Notification,
           Ash.Resource.ManualRead,
+          Ash.Resource.ManualCreate,
+          Ash.Resource.ManualUpdate,
+          Ash.Resource.ManualDestroy,
           Ash.Resource.ManualRelationship
         ],
         Queries: [
