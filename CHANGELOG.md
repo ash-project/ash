@@ -5,6 +5,51 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.5.0-rc.0](https://github.com/ash-project/ash/compare/v2.4.30...v2.5.0-rc.0) (2023-01-04)
+
+
+
+
+### Features:
+
+* add `this/1` for use inside `exists/2` (and other places eventually)
+
+### Bug Fixes:
+
+* various fixes to expression syntax
+
+* encode the keyset for display in a URI automatically
+
+* fix authorize? method (#472)
+
+* calculations depending on aggregates were not including those dependencies properly
+
+* load types marked with `cast_in_query? false` at runtime
+
+* proper support for nested expressions in calculations
+
+* typo in `cast_in_query?`
+
+* allow lists in expr syntax
+
+### Improvements:
+
+* warn on potentially incompatible relationship attributes
+
+* add `default_belongs_to_type` configuration
+
+* loading an attribute is now equivalent to `ensure_selected`
+
+* support module attributes in exprs
+
+* Add Ash.Error.Invalid.TenantRequired error (#471)
+
+* add constraints to query calculations
+
+* cast_in_query? takes constraints
+
+* support for calculations in aggregate fields
+
 ## [v2.4.30](https://github.com/ash-project/ash/compare/v2.4.29...v2.4.30) (2022-12-27)
 
 
