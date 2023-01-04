@@ -110,6 +110,7 @@ defmodule Ash.Page.Keyset do
     |> field_values(fields)
     |> :erlang.term_to_binary()
     |> Base.encode64()
+    |> URI.encode_www_form()
   end
 
   defp field_values(record, sort) do
