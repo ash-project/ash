@@ -205,6 +205,7 @@ defmodule Ash.Filter do
       )
 
     with {:ok, expression} <- parse_expression(statement, context),
+         {:ok, expression} <- hydrate_refs(expression, context),
          :ok <- validate_references(expression, resource) do
       {:ok, %__MODULE__{expression: expression, resource: resource}}
     end
@@ -292,6 +293,7 @@ defmodule Ash.Filter do
       )
 
     with {:ok, expression} <- parse_expression(statement, context),
+         {:ok, expression} <- hydrate_refs(expression, context),
          :ok <- validate_references(expression, resource) do
       {:ok, %__MODULE__{expression: expression, resource: resource}}
     end
@@ -597,6 +599,10 @@ defmodule Ash.Filter do
     template_references_actor?(expr)
   end
 
+  def template_references_actor?(%Ash.Query.This{expr: expr}) do
+    template_references_actor?(expr)
+  end
+
   def template_references_actor?(%{left: left, right: right}) do
     template_references_actor?(left) || template_references_actor?(right)
   end
@@ -654,6 +660,16 @@ defmodule Ash.Filter do
     case mapper.(not_expr) do
       ^not_expr ->
         %{not_expr | expression: walk_filter_template(expression, mapper)}
+
+      other ->
+        walk_filter_template(other, mapper)
+    end
+  end
+
+  def walk_filter_template(%Ash.Query.This{expr: expr} = this_expr, mapper) do
+    case mapper.(this_expr) do
+      ^this_expr ->
+        %{this_expr | expr: walk_filter_template(expr, mapper)}
 
       other ->
         walk_filter_template(other, mapper)
@@ -767,10 +783,22 @@ defmodule Ash.Filter do
   defp simple_eq?(%Eq{left: %Ref{attribute: %{name: attribute}}}, attribute), do: true
   defp simple_eq?(_, _), do: false
 
+  def find_value(expr, pred) do
+    do_find(expr, pred, true)
+  end
+
   @doc "Find an expression inside of a filter that matches the provided predicate"
   def find(expr, pred) do
-    if pred.(expr) do
-      expr
+    do_find(expr, pred, false)
+  end
+
+  defp do_find(expr, pred, value?) do
+    if value = pred.(expr) do
+      if value? do
+        value
+      else
+        expr
+      end
     else
       case expr do
         %__MODULE__{expression: expression} ->
@@ -1116,6 +1144,10 @@ defmodule Ash.Filter do
       %Not{expression: not_expr} = expr ->
         %{expr | expression: map(not_expr, func)}
 
+      %Ash.Query.This{} = this ->
+        # you have to map over the internals of this yourself
+        func.(this)
+
       %Ash.Query.Exists{} = expr ->
         # you have to map over the internals of exists yourself
         func.(expr)
@@ -1135,6 +1167,45 @@ defmodule Ash.Filter do
                   map(arg, func)
               end)
         }
+
+      other ->
+        func.(other)
+    end
+  end
+
+  def flat_map(%__MODULE__{expression: nil}, _) do
+    []
+  end
+
+  def flat_map(%__MODULE__{expression: expression}, func) do
+    flat_map(expression, func)
+  end
+
+  def flat_map(expression, func) do
+    do_flat_map(expression, func)
+  end
+
+  defp do_flat_map(expression, func) do
+    case expression do
+      %BooleanExpression{left: left, right: right} ->
+        func.(expression) ++ flat_map(left, func) ++ flat_map(right, func)
+
+      %Not{expression: not_expr} ->
+        func.(expression) ++ flat_map(not_expr, func)
+
+      %Ash.Query.This{} = this ->
+        # you have to flat_map over the internals of this yourself
+        func.(this)
+
+      %Ash.Query.Exists{} = expr ->
+        # you have to flat_map over the internals of exists yourself
+        func.(expr)
+
+      %{__operator__?: true, left: left, right: right} = op ->
+        func.(op) ++ flat_map(left, func) ++ flat_map(right, func)
+
+      %{__function__?: true, arguments: arguments} = function ->
+        func.(function) ++ Enum.flat_map(arguments, &flat_map(&1, func))
 
       other ->
         func.(other)
@@ -1683,11 +1754,11 @@ defmodule Ash.Filter do
   end
 
   defp do_relationship_paths(%Ref{relationship_path: path} = ref, _, true) do
-    {path, ref}
+    [{path, ref}]
   end
 
   defp do_relationship_paths(%Ref{relationship_path: path}, _, false) do
-    {path}
+    [{path}]
   end
 
   defp do_relationship_paths(
@@ -1724,6 +1795,7 @@ defmodule Ash.Filter do
     |> Enum.flat_map(fn {rel_path} ->
       [{at_path}, {at_path ++ path ++ rel_path}]
     end)
+    |> Kernel.++(this_relationship_paths(expression, at_path, include_exists?, false))
   end
 
   defp do_relationship_paths(
@@ -1737,6 +1809,7 @@ defmodule Ash.Filter do
     |> Enum.flat_map(fn {rel_path, ref} ->
       [{at_path, nil}, {at_path ++ path ++ rel_path, ref}]
     end)
+    |> Kernel.++(this_relationship_paths(expression, at_path, include_exists?, true))
   end
 
   defp do_relationship_paths(
@@ -1744,10 +1817,7 @@ defmodule Ash.Filter do
          include_exists?,
          with_reference?
        ) do
-    [
-      do_relationship_paths(left, include_exists?, with_reference?),
-      do_relationship_paths(right, include_exists?, with_reference?)
-    ]
+    Enum.flat_map([left, right], &do_relationship_paths(&1, include_exists?, with_reference?))
   end
 
   defp do_relationship_paths({key, value}, include_exists?, with_reference?) when is_atom(key) do
@@ -1759,10 +1829,33 @@ defmodule Ash.Filter do
          include_exists?,
          with_reference?
        ) do
-    Enum.map(arguments, &do_relationship_paths(&1, include_exists?, with_reference?))
+    Enum.flat_map(arguments, &do_relationship_paths(&1, include_exists?, with_reference?))
+  end
+
+  defp do_relationship_paths(value, include_exists?, with_reference?) when is_list(value) do
+    Enum.flat_map(value, &do_relationship_paths(&1, include_exists?, with_reference?))
   end
 
   defp do_relationship_paths(_, _, _), do: []
+
+  defp this_relationship_paths(expression, at_path, include_exists?, with_reference?) do
+    expression
+    |> flat_map(fn
+      %Ash.Query.This{expr: expr} ->
+        expr
+        |> do_relationship_paths(include_exists?, with_reference?)
+        |> Enum.flat_map(fn
+          {rel_path, ref} ->
+            [{at_path ++ rel_path, ref}]
+
+          {rel_path} ->
+            [{at_path ++ rel_path}]
+        end)
+
+      _ ->
+        []
+    end)
+  end
 
   @doc false
   def embed_predicates(nil), do: nil
@@ -1830,10 +1923,25 @@ defmodule Ash.Filter do
       %{__predicate__?: _, arguments: args} ->
         Enum.flat_map(args, &do_list_refs(&1, true))
 
+      value when is_list(value) ->
+        Enum.flat_map(value, &do_list_refs(&1, true))
+
       %Ash.Query.Exists{at_path: at_path, path: path, expr: expr} ->
+        this_refs_inside_of_exists =
+          flat_map(expr, fn
+            %Ash.Query.This{expr: expr} ->
+              expr
+              |> do_list_refs(true)
+              |> Enum.map(&%{&1 | relationship_path: at_path ++ &1.relationship_path})
+
+            _ ->
+              []
+          end)
+
         expr
         |> do_list_refs(true)
         |> Enum.map(&%{&1 | relationship_path: at_path ++ path ++ &1.relationship_path})
+        |> Enum.concat(this_refs_inside_of_exists)
 
       %Call{args: args, relationship_path: relationship_path} ->
         args
@@ -1982,6 +2090,16 @@ defmodule Ash.Filter do
     end
   end
 
+  defp add_expression_part(%Ash.Query.This{expr: expr} = this, context, expression) do
+    case parse_expression(expr, %{context | resource: context.root_resource}) do
+      {:ok, result} ->
+        {:ok, BooleanExpression.optimized_new(:and, expression, %{this | expr: result})}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
   defp add_expression_part(
          %Ash.Query.Exists{at_path: at_path, path: path, expr: exists_expression} = exists,
          context,
@@ -2002,11 +2120,15 @@ defmodule Ash.Filter do
       """
     end
 
-    case parse_expression(exists_expression, %{
-           context
-           | resource: related,
-             root_resource: related
-         }) do
+    case parse_expression(
+           exists_expression,
+           %{
+             context
+             | resource: related,
+               root_resource: related
+           }
+           |> Map.put(:this_resource, context[:root_resource])
+         ) do
       {:ok, result} ->
         {:ok, BooleanExpression.optimized_new(:and, expression, %{exists | expr: result})}
 
@@ -2512,15 +2634,17 @@ defmodule Ash.Filter do
 
   defp resolve_call(%Call{name: :exists, args: [path_arg, expr_arg]} = call, context) do
     with {:ok, path} <- refs_to_path(path_arg),
-         context <- %{
-           context
-           | resource:
-               Ash.Resource.Info.related(
-                 context.resource,
-                 call.relationship_path ++ path
-               ),
-             relationship_path: []
-         },
+         context <-
+           %{
+             context
+             | resource:
+                 Ash.Resource.Info.related(
+                   context.resource,
+                   call.relationship_path ++ path
+                 ),
+               relationship_path: []
+           }
+           |> Map.put(:this_resource, context[:root_resource]),
          {:ok, expr} <- hydrate_refs(expr_arg, context),
          refs <- list_refs(expr),
          :ok <-
@@ -2798,6 +2922,47 @@ defmodule Ash.Filter do
     end
   end
 
+  def hydrate_refs(%Ash.Query.This{expr: expr} = this, context) do
+    context =
+      %{
+        context
+        | resource: context.this_resource,
+          root_resource: context.this_resource
+      }
+      |> Map.put(:relationship_path, [])
+
+    case hydrate_refs(expr, context) do
+      {:ok, expr} ->
+        {:ok, %{this | expr: expr}}
+
+      other ->
+        other
+    end
+  end
+
+  def hydrate_refs(%Ash.Query.Exists{expr: expr, at_path: at_path, path: path} = exists, context) do
+    new_resource = Ash.Resource.Info.related(context[:resource], at_path ++ path)
+
+    context = %{
+      resource: new_resource,
+      root_resource: new_resource,
+      this_resource: context[:root_resource],
+      relationship_path: [],
+      aggregates: %{},
+      calculations: %{},
+      public?: context[:public?],
+      data_layer: Ash.DataLayer.data_layer(new_resource)
+    }
+
+    case hydrate_refs(expr, context) do
+      {:ok, expr} ->
+        {:ok, %{exists | expr: expr}}
+
+      other ->
+        other
+    end
+  end
+
   def hydrate_refs(list, context) when is_list(list) do
     context = Map.put_new(context, :root_resource, context[:resource])
 
@@ -2927,8 +3092,22 @@ defmodule Ash.Filter do
       %{__function__?: true, arguments: args} = func ->
         %{func | arguments: Enum.map(args, &move_to_relationship_path(&1, relationship_path))}
 
-      %Ash.Query.Exists{} = exists ->
-        %{exists | at_path: relationship_path ++ exists.at_path}
+      %Ash.Query.Exists{expr: expr} = exists ->
+        %{
+          exists
+          | at_path: relationship_path ++ exists.at_path,
+            expr:
+              map(expr, fn
+                %Ash.Query.This{} = this ->
+                  move_to_relationship_path(this, relationship_path)
+
+                other ->
+                  other
+              end)
+        }
+
+      %Ash.Query.This{expr: expr} = this ->
+        %{this | expr: move_to_relationship_path(expr, relationship_path)}
 
       %Call{args: args} = call ->
         %{call | args: Enum.map(args, &move_to_relationship_path(&1, relationship_path))}
@@ -3103,6 +3282,10 @@ defmodule Ash.Filter do
 
     defp sanitize(%Call{args: arguments} = call) do
       %{call | args: poison_exprs(arguments)}
+    end
+
+    defp sanitize(%Ash.Query.This{expr: expr} = exists) do
+      %{exists | expr: sanitize(expr)}
     end
 
     defp sanitize(%Ash.Query.Exists{expr: expr} = exists) do

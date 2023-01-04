@@ -6,12 +6,14 @@ defmodule Ash.Filter.TemplateHelpers do
            when is_struct(value, Ash.Query.Not) or is_struct(value, Ash.Query.BooleanExpression) or
                   is_struct(value, Ash.Query.Call) or is_struct(value, Ash.Query.Ref) or
                   is_struct(value, Ash.Query.Exists) or
+                  is_struct(value, Ash.Query.This) or
                   (is_struct(value) and is_map_key(value, :__predicate__?))
 
   def expr?(value)
       when is_struct(value, Ash.Query.Not) or is_struct(value, Ash.Query.BooleanExpression) or
              is_struct(value, Ash.Query.Call) or is_struct(value, Ash.Query.Ref) or
              is_struct(value, Ash.Query.Exists) or
+             is_struct(value, Ash.Query.This) or
              (is_struct(value) and is_map_key(value, :__predicate__?)) do
     true
   end

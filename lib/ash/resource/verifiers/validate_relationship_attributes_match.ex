@@ -1,4 +1,7 @@
 defmodule Ash.Resource.Verifiers.ValidateRelationshipAttributesMatch do
+  @moduledoc """
+  Shows a warning on potentially incompatible relationship attributes.
+  """
   use Spark.Dsl.Verifier
 
   def verify(dsl) do

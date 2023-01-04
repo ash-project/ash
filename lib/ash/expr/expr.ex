@@ -5,6 +5,10 @@ defmodule Ash.Expr do
   @type t :: any
   @pass_through_funcs [:where, :or_where, :expr, :@]
 
+  def eval(expression, opts \\ []) do
+    Ash.Filter.Runtime.do_match(opts[:record], expression, opts[:this])
+  end
+
   defmacro where(left, right) do
     quote do
       Ash.Query.BooleanExpression.optimized_new(
@@ -204,6 +208,17 @@ defmodule Ash.Expr do
     args = Enum.map(args, &do_expr(&1, false))
 
     soft_escape(%Ash.Query.Call{name: op, args: args, operator?: true}, escape?)
+  end
+
+  def do_expr({:this, _, [expr]}, escape?) do
+    expr = do_expr(expr, escape?)
+
+    soft_escape(
+      quote do
+        Ash.Query.This.new(unquote(expr))
+      end,
+      escape?
+    )
   end
 
   def do_expr({:exists, _, [path, original_expr]}, escape?) do

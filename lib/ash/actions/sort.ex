@@ -274,7 +274,7 @@ defmodule Ash.Actions.Sort do
                public?: false
              }) do
           {:ok, expression} ->
-            case Ash.Filter.Runtime.do_match(record, expression) do
+            case Ash.Expr.eval(expression, record: record) do
               {:ok, value} ->
                 {:ok, value}
 

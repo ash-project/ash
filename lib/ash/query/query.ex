@@ -1714,7 +1714,7 @@ defmodule Ash.Query do
       new_filter =
         case query.filter do
           nil ->
-            {:ok, filter}
+            Ash.Filter.parse(query.resource, filter, query.aggregates, query.calculations)
 
           existing_filter ->
             Ash.Filter.add_to_filter(
@@ -2008,7 +2008,15 @@ defmodule Ash.Query do
   defp add_aggregates(query, ash_query, aggregates) do
     resource = ash_query.resource
 
-    aggregates = Enum.map(aggregates, &add_tenant_to_aggregate_query(&1, ash_query))
+    used =
+      ash_query
+      |> Ash.Query.Aggregate.aggregates_from_filter()
+      |> Enum.map(&elem(&1, 1))
+
+    aggregates =
+      aggregates
+      |> Enum.concat(used)
+      |> Enum.map(&add_tenant_to_aggregate_query(&1, ash_query))
 
     Ash.DataLayer.add_aggregates(query, aggregates, resource)
   end

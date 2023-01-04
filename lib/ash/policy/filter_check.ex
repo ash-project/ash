@@ -89,7 +89,7 @@ defmodule Ash.Policy.FilterCheck do
                public?: false
              }) do
           {:ok, hydrated} ->
-            Ash.Filter.Runtime.do_match(nil, hydrated)
+            Ash.Expr.eval(hydrated)
 
           {:error, error} ->
             {:halt, {:error, error}}
@@ -107,7 +107,7 @@ defmodule Ash.Policy.FilterCheck do
                public?: false
              }) do
           {:ok, hydrated} ->
-            Ash.Filter.Runtime.do_match(nil, hydrated)
+            Ash.Expr.eval(hydrated)
 
           {:error, error} ->
             {:error, error}
@@ -128,11 +128,14 @@ defmodule Ash.Policy.FilterCheck do
             # We don't want to authorize on stale data in real life
             # but when using utilities to check if something *will* be authorized
             # that is our intent
-            if changeset.context[:private][:pre_flight_authorization?] do
-              Ash.Filter.Runtime.do_match(data, hydrated)
-            else
-              Ash.Filter.Runtime.do_match(nil, hydrated)
-            end
+            data =
+              if changeset.context[:private][:pre_flight_authorization?] do
+                data
+              else
+                nil
+              end
+
+            Ash.Expr.eval(hydrated, record: data)
 
           {:error, error} ->
             {:halt, {:error, error}}
@@ -147,7 +150,7 @@ defmodule Ash.Policy.FilterCheck do
                public?: false
              }) do
           {:ok, hydrated} ->
-            Ash.Filter.Runtime.do_match(nil, hydrated)
+            Ash.Expr.eval(hydrated)
 
           {:error, error} ->
             {:halt, {:error, error}}

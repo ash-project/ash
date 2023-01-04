@@ -85,7 +85,6 @@ defmodule Ash.SatSolver do
 
       {:ok, _scenario} ->
         expr = BooleanExpression.new(:and, Not.new(filter.expression), candidate.expression)
-        Application.put_env(:foo, :bar, true)
 
         case transform_and_solve(
                filter.resource,
@@ -106,6 +105,7 @@ defmodule Ash.SatSolver do
   defp filter_to_expr(%Filter{expression: expression}), do: filter_to_expr(expression)
   defp filter_to_expr(%{__predicate__?: _} = op_or_func), do: op_or_func
   defp filter_to_expr(%Ash.Query.Exists{} = exists), do: exists
+  defp filter_to_expr(%Ash.Query.This{} = exists), do: exists
   defp filter_to_expr(%Not{expression: expression}), do: b(not filter_to_expr(expression))
 
   defp filter_to_expr(%BooleanExpression{op: op, left: left, right: right}) do

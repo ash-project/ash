@@ -16,8 +16,7 @@ defmodule Ash.Test.Support.PolicyComplex.Comment.Checks.ManualCanSeePost do
     |> Ash.Query.filter(id == ^post_id)
     |> Ash.Test.Support.PolicyComplex.Api.read_one!(
       actor: actor,
-      authorize?: true,
-      return_query?: true
+      authorize?: true
     )
     |> case do
       nil ->

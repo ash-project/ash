@@ -320,7 +320,7 @@ defmodule Ash.Flow do
            public?: false
          }) do
       {:ok, hydrated} ->
-        case Ash.Filter.Runtime.do_match(nil, hydrated) do
+        case Ash.Expr.eval(hydrated) do
           {:ok, result} ->
             result
 

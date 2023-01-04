@@ -21,14 +21,12 @@ defmodule Ash.Filter.Runtime do
   that could only be determined by data layer), it is assumed that they
   are not matches.
   """
-  def filter_matches(api, records, filter, loaded? \\ false)
-  def filter_matches(_api, [], _filter, _loaded), do: {:ok, []}
+  def filter_matches(api, records, filter, opts \\ [])
+  def filter_matches(_api, [], _filter, _opts), do: {:ok, []}
 
-  def filter_matches(_api, records, nil, _loaded), do: {:ok, records}
+  def filter_matches(_api, records, nil, _opts), do: {:ok, records}
 
-  def filter_matches(api, records, filter, loaded?) do
-    filter = replace_calcs(filter)
-
+  def filter_matches(api, records, filter, opts) do
     filter
     |> Ash.Filter.relationship_paths(true)
     |> Enum.reject(&(&1 == []))
@@ -38,7 +36,9 @@ defmodule Ash.Filter.Runtime do
     |> case do
       [] ->
         Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
-          case matches(record, filter) do
+          matches = matches(record, filter, Keyword.put(opts, :this_loaded?, true))
+
+          case matches do
             {:ok, falsey} when falsey in [false, nil] ->
               {:cont, {:ok, records}}
 
@@ -57,58 +57,36 @@ defmodule Ash.Filter.Runtime do
             other
         end
 
-      need_to_load when not loaded? ->
+      need_to_load ->
         case api.load(records, need_to_load) do
           {:ok, loaded} ->
-            filter_matches(api, loaded, filter)
+            filter_matches(api, loaded, filter, opts)
 
           other ->
             other
         end
-
-      _need_to_load when loaded? ->
-        {:ok, []}
     end
   end
 
-  defp replace_calcs(filter) do
-    Ash.Filter.map(filter, fn
-      %Ash.Query.Ref{
-        relationship_path: relationship_path,
-        attribute: %Ash.Query.Calculation{module: module, opts: opts, context: context}
-      } ->
-        opts
-        |> module.expression(context)
-        |> replace_calcs()
-        |> Ash.Filter.prefix_refs(relationship_path)
-
-      other ->
-        other
+  def load_this_requirements(api, expression, this) do
+    expression
+    |> Ash.Filter.flat_map(fn %Ash.Query.This{expr: expr} ->
+      expr
+      |> Ash.Filter.relationship_paths(true)
+      |> Enum.reject(&(&1 == []))
     end)
-  end
+    |> Enum.uniq()
+    |> Enum.reject(&Ash.Resource.loaded?(this, &1))
+    |> case do
+      [] ->
+        {:ok, this}
 
-  @doc """
-  Checks if a record matches a filter, loading any necessary relationships"
-
-  If it can't tell, this returns false.
-  """
-  def matches?(api, record, filter) do
-    case matches(record, filter) do
-      {:ok, boolean} ->
-        boolean
-
-      {:load, loads} when not is_nil(api) ->
-        matches?(api, api.load!(record, loads), filter)
-
-      {:error, _} ->
-        false
-
-      {:load, _} ->
-        false
+      requirements ->
+        api.load(this, requirements)
     end
   end
 
-  def matches(record, expression, load_with \\ nil) do
+  defp matches(record, expression, opts) do
     relationship_paths =
       expression
       |> Ash.Filter.relationship_paths(true)
@@ -121,7 +99,7 @@ defmodule Ash.Filter.Runtime do
         record
         |> flatten_relationships(relationship_paths)
         |> Enum.reduce_while({:ok, false}, fn scenario, {:ok, false} ->
-          case do_match(scenario, expression) do
+          case do_match(scenario, expression, opts[:this]) do
             {:error, error} ->
               {:halt, {:error, error}}
 
@@ -137,11 +115,7 @@ defmodule Ash.Filter.Runtime do
         end)
 
       need_to_load ->
-        if load_with do
-          matches(load_with.load!(record, need_to_load), expression, load_with)
-        else
-          {:load, Enum.map(need_to_load, &path_to_load/1)}
-        end
+        {:load, Enum.map(need_to_load, &path_to_load/1)}
     end
   end
 
@@ -188,8 +162,7 @@ defmodule Ash.Filter.Runtime do
   end
 
   @doc false
-
-  def do_match(record, expression) do
+  def do_match(record, expression, this \\ nil) do
     hydrated =
       case record do
         %resource{} ->
@@ -206,11 +179,11 @@ defmodule Ash.Filter.Runtime do
       {:ok, expression} ->
         case expression do
           %Ash.Filter{expression: expression} ->
-            do_match(record, expression)
+            do_match(record, expression, this)
 
           %op{__operator__?: true, left: left, right: right} ->
             with {:ok, [left, right]} <-
-                   resolve_exprs([left, right], record),
+                   resolve_exprs([left, right], record, this),
                  {:op, {:ok, %op{} = new_operator}} <-
                    {:op, Ash.Query.Operator.try_cast_with_ref(op, left, right)},
                  {:known, val} <-
@@ -221,7 +194,7 @@ defmodule Ash.Filter.Runtime do
                 {:error, error}
 
               {:op, {:ok, expr}} ->
-                do_match(record, expr)
+                do_match(record, expr, this)
 
               {:error, error} ->
                 {:error, error}
@@ -229,12 +202,12 @@ defmodule Ash.Filter.Runtime do
               :unknown ->
                 :unknown
 
-              _ ->
-                {:ok, nil}
+              _value ->
+                :unknown
             end
 
           %func{__function__?: true, arguments: arguments} = function ->
-            with {:ok, args} <- resolve_exprs(arguments, record),
+            with {:ok, args} <- resolve_exprs(arguments, record, this),
                  {:args, args} when not is_nil(args) <-
                    {:args, try_cast_arguments(func.args(), args)},
                  {:known, val} <- func.evaluate(%{function | arguments: args}) do
@@ -251,11 +224,11 @@ defmodule Ash.Filter.Runtime do
                 :unknown
 
               _ ->
-                {:ok, nil}
+                :unknown
             end
 
           %Not{expression: expression} ->
-            case do_match(record, expression) do
+            case do_match(record, expression, this) do
               :unknown ->
                 :unknown
 
@@ -267,21 +240,24 @@ defmodule Ash.Filter.Runtime do
             end
 
           %Ash.Query.Exists{} = expr ->
-            resolve_expr(expr, record)
+            resolve_expr(expr, record, this)
+
+          %Ash.Query.This{} = expr ->
+            resolve_expr(expr, this, nil)
 
           %BooleanExpression{op: op, left: left, right: right} ->
-            expression_matches(op, left, right, record)
+            expression_matches(op, left, right, record, this)
 
           %Call{} = call ->
             raise "Unresolvable filter component: #{inspect(call)}"
 
           %Ref{} = ref ->
-            resolve_expr(ref, record)
+            resolve_expr(ref, record, this)
 
           value when is_list(value) ->
             value
             |> Enum.reduce_while({:ok, []}, fn value, {:ok, list} ->
-              case do_match(record, value) do
+              case do_match(record, value, this) do
                 {:ok, result} ->
                   {:cont, {:ok, [result | list]}}
 
@@ -321,10 +297,10 @@ defmodule Ash.Filter.Runtime do
     )
   end
 
-  defp resolve_exprs(exprs, record) do
+  defp resolve_exprs(exprs, record, this) do
     exprs
     |> Enum.reduce_while({:ok, []}, fn expr, {:ok, exprs} ->
-      case resolve_expr(expr, record) do
+      case resolve_expr(expr, record, this) do
         {:ok, resolved} -> {:cont, {:ok, [resolved | exprs]}}
         {:error, error} -> {:halt, {:error, error}}
         :unknown -> {:halt, :unknown}
@@ -337,8 +313,8 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
-  defp resolve_expr({key, value}, record) when is_atom(key) do
-    case resolve_expr(value, record) do
+  defp resolve_expr({key, value}, record, this) when is_atom(key) do
+    case resolve_expr(value, record, this) do
       {:ok, resolved} ->
         {:ok, {key, resolved}}
 
@@ -347,27 +323,31 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
-  defp resolve_expr(%Ref{} = ref, record) do
-    resolve_ref(ref, record)
+  defp resolve_expr(%Ref{} = ref, record, this) do
+    resolve_ref(ref, record, this)
   end
 
-  defp resolve_expr(%BooleanExpression{left: left, right: right}, record) do
-    with {:ok, left_resolved} <- resolve_expr(left, record),
-         {:ok, right_resolved} <- resolve_expr(right, record) do
+  defp resolve_expr(%BooleanExpression{left: left, right: right}, record, this) do
+    with {:ok, left_resolved} <- resolve_expr(left, record, this),
+         {:ok, right_resolved} <- resolve_expr(right, record, this) do
       {:ok, left_resolved && right_resolved}
     end
   end
 
-  defp resolve_expr(%Not{expression: expression}, record) do
-    case resolve_expr(expression, record) do
+  defp resolve_expr(%Not{expression: expression}, record, this) do
+    case resolve_expr(expression, record, this) do
       {:ok, resolved} -> {:ok, !resolved}
       other -> other
     end
   end
 
-  defp resolve_expr(%Ash.Query.Exists{}, nil), do: :unknown
+  defp resolve_expr(%Ash.Query.This{expr: expr}, _, this) do
+    resolve_expr(expr, this, nil)
+  end
 
-  defp resolve_expr(%Ash.Query.Exists{at_path: [], path: path, expr: expr}, record) do
+  defp resolve_expr(%Ash.Query.Exists{}, nil, _this), do: :unknown
+
+  defp resolve_expr(%Ash.Query.Exists{at_path: [], path: path, expr: expr}, record, _this) do
     record
     |> load_unflattened(path)
     |> get_related(path)
@@ -379,7 +359,7 @@ defmodule Ash.Filter.Runtime do
         related
         |> List.wrap()
         |> Enum.reduce_while({:ok, false}, fn related, {:ok, false} ->
-          case resolve_expr(expr, related) do
+          case resolve_expr(expr, related, record) do
             {:ok, falsy} when falsy in [nil, false] ->
               {:cont, {:ok, false}}
 
@@ -393,7 +373,7 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
-  defp resolve_expr(%Ash.Query.Exists{at_path: at_path} = exists, record) do
+  defp resolve_expr(%Ash.Query.Exists{at_path: at_path} = exists, record, this) do
     record
     |> get_related(at_path)
     |> case do
@@ -403,7 +383,7 @@ defmodule Ash.Filter.Runtime do
       related ->
         related
         |> Enum.reduce_while({:ok, false}, fn related, {:ok, false} ->
-          case resolve_expr(%{exists | at_path: []}, related) do
+          case resolve_expr(%{exists | at_path: []}, related, this) do
             {:ok, true} ->
               {:halt, {:ok, true}}
 
@@ -417,8 +397,8 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
-  defp resolve_expr(%mod{__predicate__?: _, left: left, right: right}, record) do
-    with {:ok, [left, right]} <- resolve_exprs([left, right], record),
+  defp resolve_expr(%mod{__predicate__?: _, left: left, right: right}, record, this) do
+    with {:ok, [left, right]} <- resolve_exprs([left, right], record, this),
          {:op, {:ok, %mod{} = new_pred}} <-
            {:op, Ash.Query.Operator.try_cast_with_ref(mod, left, right)},
          {:known, val} <- mod.evaluate(new_pred) do
@@ -428,7 +408,7 @@ defmodule Ash.Filter.Runtime do
         {:error, error}
 
       {:op, {:ok, expr}} ->
-        resolve_expr(expr, record)
+        resolve_expr(expr, record, this)
 
       {:error, error} ->
         {:error, error}
@@ -441,8 +421,8 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
-  defp resolve_expr(%mod{__predicate__?: _, arguments: args} = pred, record) do
-    with {:ok, args} <- resolve_exprs(args, record),
+  defp resolve_expr(%mod{__predicate__?: _, arguments: args} = pred, record, this) do
+    with {:ok, args} <- resolve_exprs(args, record, this),
          {:args, args} when not is_nil(args) <-
            {:args, try_cast_arguments(mod.args(), args)},
          {:known, val} <- mod.evaluate(%{pred | arguments: args}) do
@@ -462,7 +442,7 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
-  defp resolve_expr(other, _), do: {:ok, other}
+  defp resolve_expr(other, _, _), do: {:ok, other}
 
   defp try_cast_arguments(:var_args, args) do
     Enum.map(args, fn _ -> :any end)
@@ -478,9 +458,32 @@ defmodule Ash.Filter.Runtime do
     |> Enum.find_value(&Ash.Query.Function.try_cast_arguments(&1, args))
   end
 
-  defp resolve_ref(_, nil), do: :unknown
+  defp resolve_ref(_, nil, _), do: :unknown
 
-  defp resolve_ref(%Ref{attribute: attribute, relationship_path: path}, record) do
+  defp resolve_ref(
+         %Ash.Query.Ref{
+           relationship_path: relationship_path,
+           attribute: %Ash.Query.Calculation{
+             module: module,
+             opts: opts,
+             context: context,
+             name: name
+           }
+         } = ref,
+         record,
+         this
+       ) do
+    if function_exported?(module, :expression, 2) do
+      opts
+      |> module.expression(context)
+      |> Ash.Filter.prefix_refs(relationship_path)
+      |> resolve_expr(record, this)
+    else
+      resolve_ref(%{ref | attribute: %Ash.Resource.Attribute{name: name}}, record, this)
+    end
+  end
+
+  defp resolve_ref(%Ref{attribute: attribute, relationship_path: path}, record, _this) do
     name =
       case attribute do
         %{name: name} -> name
@@ -542,7 +545,7 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
-  defp resolve_ref(value, _record), do: {:ok, value}
+  defp resolve_ref(_value, _record, _), do: :unknown
 
   defp path_to_load([first]), do: {first, []}
 
@@ -550,8 +553,8 @@ defmodule Ash.Filter.Runtime do
     {first, [path_to_load(rest)]}
   end
 
-  defp expression_matches(:and, left, right, record) do
-    case do_match(record, left) do
+  defp expression_matches(:and, left, right, record, this) do
+    case do_match(record, left, this) do
       {:ok, false} ->
         {:ok, false}
 
@@ -559,7 +562,7 @@ defmodule Ash.Filter.Runtime do
         {:ok, false}
 
       {:ok, true} ->
-        case do_match(record, right) do
+        case do_match(record, right, this) do
           {:ok, false} ->
             {:ok, false}
 
@@ -578,10 +581,10 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
-  defp expression_matches(:or, left, right, record) do
-    case do_match(record, left) do
+  defp expression_matches(:or, left, right, record, this) do
+    case do_match(record, left, this) do
       {:ok, falsy} when falsy in [nil, false] ->
-        case do_match(record, right) do
+        case do_match(record, right, this) do
           {:ok, falsy} when falsy in [nil, false] ->
             {:ok, false}
 

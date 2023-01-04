@@ -111,8 +111,6 @@ defmodule Ash.Test.Policy.ComplexTest do
       |> Ash.Query.deselect(:private_email)
       |> Api.read!(actor: me)
 
-    Application.put_env(:foo, :bar, true)
-
     users
     |> Api.load!([:posts], actor: me, authorize?: true)
   end

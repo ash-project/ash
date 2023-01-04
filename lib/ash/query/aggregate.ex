@@ -248,7 +248,8 @@ defmodule Ash.Query.Aggregate do
     end)
   end
 
-  defp aggregates_from_filter(query) do
+  @doc false
+  def aggregates_from_filter(query) do
     aggs =
       query.filter
       |> Ash.Filter.used_aggregates(:all, true)
