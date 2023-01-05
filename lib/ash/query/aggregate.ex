@@ -57,6 +57,13 @@ defmodule Ash.Query.Aggregate do
         Ash.Resource.Info.field(related, field).type
       end
 
+    default =
+      if is_function(default) do
+        default.()
+      else
+        default
+      end
+
     with :ok <- validate_path(resource, List.wrap(relationship)),
          {:ok, type} <- get_type(kind, type, attribute_type),
          {:ok, query} <- validate_query(query) do

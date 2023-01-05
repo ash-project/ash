@@ -162,12 +162,12 @@ Accounts.load!(user, :full_name)
 
 you would see that no SQL queries are run. The calculation is run directly in Elixir and the value is set.
 
-## This
+## Parent
 
-`This` is a way to "jump out" of a scoped expression. Here are some examples:
+`Parent` is a way to "jump out" of a scoped expression. Here are some examples:
 
 ```elixir
-Ash.Query.filter(exists(open_tickets, severity >= this(severity_threshold)))
+Ash.Query.filter(exists(open_tickets, severity >= parent(severity_threshold)))
 ```
 
 ### COMING SOON
@@ -176,13 +176,13 @@ The following two examples do not work currently, but are being worked on
 
 ```elixir
 has_many :relevant_tickets, Ticket **do**
-  filter expr(status == :open and severity >= this(severity_threshold))
+  filter expr(status == :open and severity >= parent(severity_threshold))
 end
 ```
 
 ```elixir
 count :count_of_relevant_tickets, :open_tickets do
-  filter expr(status == :open and severity >= this(severity_threshold))
+  filter expr(status == :open and severity >= parent(severity_threshold))
 end
 ```
 

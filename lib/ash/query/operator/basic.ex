@@ -39,6 +39,8 @@ defmodule Ash.Query.Operator.Basic do
       quote generated: true do
         @moduledoc false
 
+        require Decimal
+
         use Ash.Query.Operator,
           operator: unquote(opts[:symbol]),
           name: unquote(name),
@@ -108,7 +110,28 @@ defmodule Ash.Query.Operator.Basic do
         end
 
         defp do_evaluate(op, left, right) do
-          {:known, apply(Kernel, unquote(opts[:symbol]), [left, right])}
+          if Decimal.is_decimal(left) || Decimal.is_decimal(right) do
+            case op do
+              :+ -> Decimal.add(to_decimal(left), to_decimal(right))
+              :* -> Decimal.mult(to_decimal(left), to_decimal(right))
+              :- -> Decimal.sub(to_decimal(left), to_decimal(right))
+              :/ -> Decimal.div(to_decimal(left), to_decimal(right))
+            end
+          else
+            {:known, apply(Kernel, unquote(opts[:symbol]), [left, right])}
+          end
+        rescue
+          e ->
+            IO.inspect(e)
+            :unknown
+        end
+
+        defp to_decimal(value) when is_float(value) do
+          Decimal.from_float(value)
+        end
+
+        defp to_decimal(value) do
+          Decimal.new(value)
         end
       end,
       Macro.Env.location(__ENV__)

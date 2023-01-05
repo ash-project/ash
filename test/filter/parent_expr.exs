@@ -73,7 +73,7 @@ defmodule Ash.Test.Filter.ThisTest do
     end
   end
 
-  test "exists/2 can use `this` to refer to the root record" do
+  test "exists/2 can use `parent` to refer to the root record" do
     author =
       User
       |> new(%{name: "best"})
@@ -86,12 +86,12 @@ defmodule Ash.Test.Filter.ThisTest do
 
     assert [_] =
              User
-             |> Ash.Query.filter(exists(posts, title == this(name)))
+             |> Ash.Query.filter(exists(posts, title == parent(name)))
              |> Api.read!()
 
     assert [] =
              User
-             |> Ash.Query.filter(exists(posts, title == this(name <> "foo")))
+             |> Ash.Query.filter(exists(posts, title == parent(name <> "foo")))
              |> Api.read!()
   end
 end

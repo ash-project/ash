@@ -6,7 +6,7 @@ defmodule Ash.Expr do
   @pass_through_funcs [:where, :or_where, :expr, :@]
 
   def eval(expression, opts \\ []) do
-    Ash.Filter.Runtime.do_match(opts[:record], expression, opts[:this])
+    Ash.Filter.Runtime.do_match(opts[:record], expression, opts[:parent])
   end
 
   defmacro where(left, right) do
@@ -210,12 +210,12 @@ defmodule Ash.Expr do
     soft_escape(%Ash.Query.Call{name: op, args: args, operator?: true}, escape?)
   end
 
-  def do_expr({:this, _, [expr]}, escape?) do
+  def do_expr({:parent_expr, _, [expr]}, escape?) do
     expr = do_expr(expr, escape?)
 
     soft_escape(
       quote do
-        Ash.Query.This.new(unquote(expr))
+        Ash.Query.Parent.new(unquote(expr))
       end,
       escape?
     )

@@ -1023,6 +1023,8 @@ defmodule Ash.Query do
         args
       end
 
+    has_one_expr? = Enum.any?(args, fn {_, value} -> expr?(value) end)
+
     Enum.reduce_while(calculation.arguments, {:ok, %{}}, fn argument, {:ok, arg_values} ->
       value =
         default(
@@ -1032,7 +1034,13 @@ defmodule Ash.Query do
 
       cond do
         expr?(value) && argument.allow_expr? ->
-          {:cont, {:ok, Map.put(arg_values, argument.name, value)}}
+          {:cont,
+           {:ok,
+            Map.put(
+              arg_values,
+              argument.name,
+              expr(type(^value, ^argument.type, ^argument.constraints))
+            )}}
 
         expr?(value) ->
           {:halt, {:error, "Argument #{argument.name} does not support expressions!"}}
@@ -1043,14 +1051,41 @@ defmodule Ash.Query do
         is_nil(value) ->
           {:halt, {:error, "Argument #{argument.name} is required"}}
 
-        !Map.get(args, argument.name, Map.get(args, to_string(argument.name))) && value ->
-          {:cont, {:ok, Map.put(arg_values, argument.name, value)}}
+        is_nil(Map.get(args, argument.name, Map.get(args, to_string(argument.name)))) &&
+            not is_nil(value) ->
+          if has_one_expr? do
+            {:cont,
+             {:ok,
+              Map.put(
+                arg_values,
+                argument.name,
+                expr(type(^value, ^argument.type, ^argument.constraints))
+              )}}
+          else
+            {:cont,
+             {:ok,
+              Map.put(
+                arg_values,
+                argument.name,
+                value
+              )}}
+          end
 
         true ->
           with {:ok, casted} <- Ash.Type.cast_input(argument.type, value, argument.constraints),
                {:ok, casted} <-
                  Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
-            {:cont, {:ok, Map.put(arg_values, argument.name, casted)}}
+            if has_one_expr? do
+              {:cont,
+               {:ok,
+                Map.put(
+                  arg_values,
+                  argument.name,
+                  expr(type(^casted, ^argument.type, ^argument.constraints))
+                )}}
+            else
+              {:cont, {:ok, Map.put(arg_values, argument.name, casted)}}
+            end
           else
             {:error, error} ->
               {:halt, {:error, error}}

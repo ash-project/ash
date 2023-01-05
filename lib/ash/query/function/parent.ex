@@ -1,4 +1,4 @@
-defmodule Ash.Query.This do
+defmodule Ash.Query.Parent do
   @moduledoc """
   true if the provided field is nil
   Used to access values from the "source" of a given expression.
@@ -7,7 +7,7 @@ defmodule Ash.Query.This do
 
   ```elixir
    has_many :foo, Foo do
-     filter expr(priority == :foo and type == this(foo_type))
+     filter expr(priority == :foo and type == parent(foo_type))
    end
   ```
 
@@ -17,32 +17,7 @@ defmodule Ash.Query.This do
   defstruct [:expr]
 
   def new(expr) do
-    this = %__MODULE__{expr: expr}
-
-    nested =
-      Ash.Filter.find(expr, fn
-        %__MODULE__{} ->
-          true
-
-        _ ->
-          false
-      end)
-
-    if nested do
-      raise """
-      Cannot nest `this` expressions.
-
-      Found
-
-        #{inspect(nested)}
-
-      inside of
-
-        #{inspect(this)}.
-      """
-    end
-
-    this
+    %__MODULE__{expr: expr}
   end
 
   defimpl Inspect do
@@ -50,7 +25,7 @@ defmodule Ash.Query.This do
 
     def inspect(%{expr: expr}, opts) do
       concat([
-        "this(",
+        "parent(",
         to_doc(expr, opts),
         ")"
       ])

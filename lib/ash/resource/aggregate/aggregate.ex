@@ -65,8 +65,7 @@ defmodule Ash.Resource.Aggregate do
     ],
     default: [
       type: :any,
-      doc:
-        "A default value to use in cases where nil would be used. Count defaults to `0` but `first` and `count` do not have defaults.",
+      doc: "A default value to use in cases where nil would be used. Count defaults to `0`.",
       links: []
     ],
     private?: [

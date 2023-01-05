@@ -12,6 +12,11 @@ defmodule Ash.Type do
       type: :boolean,
       doc: "Whether or not the list can contain nil items",
       default: false
+    ],
+    empty_values: [
+      type: {:list, :any},
+      doc: "A set of values that, if encountered, will be considered an empty list.",
+      default: [""]
     ]
   ]
 
@@ -379,55 +384,62 @@ defmodule Ash.Type do
   @spec cast_input(t(), term, constraints | nil) :: {:ok, term} | {:error, Keyword.t()} | :error
   def cast_input(type, term, constraints \\ [])
 
-  def cast_input({:array, type}, empty, constraints) when empty in [nil, ""],
-    do: cast_input({:array, type}, [], constraints)
-
-  def cast_input({:array, _type}, term, _) when not (is_list(term) or is_map(term)) do
+  def cast_input({:array, _type}, term, _)
+      when not (is_list(term) or is_map(term) or is_nil(term)) do
     {:error, "is invalid"}
   end
 
   def cast_input({:array, type}, term, constraints) do
-    term =
-      if is_map(term) do
-        term
-        |> Enum.sort_by(&elem(&1, 1))
-        |> Enum.map(&elem(&1, 0))
-      else
-        term
-      end
+    cond do
+      empty?(term, constraints) ->
+        {:ok, []}
 
-    if is_atom(type) && :erlang.function_exported(type, :cast_input_array, 2) do
-      type.cast_input_array(term, constraints)
-    else
-      single_constraints = constraints[:items] || []
+      is_nil(term) ->
+        {:ok, nil}
 
-      term
-      |> Enum.with_index()
-      |> Enum.reverse()
-      |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
-        case cast_input(type, item, single_constraints) do
-          :error ->
-            {:halt, {:error, message: "invalid value at %{index}", index: index}}
+      true ->
+        term =
+          if is_map(term) do
+            term
+            |> Enum.sort_by(&elem(&1, 1))
+            |> Enum.map(&elem(&1, 0))
+          else
+            term
+          end
 
-          {:error, keyword} ->
-            errors =
-              keyword
-              |> List.wrap()
-              |> Ash.Error.flatten_preserving_keywords()
-              |> Enum.map(fn
-                message when is_binary(message) ->
-                  [message: message, index: index]
+        if is_atom(type) && :erlang.function_exported(type, :cast_input_array, 2) do
+          type.cast_input_array(term, constraints)
+        else
+          single_constraints = constraints[:items] || []
 
-                keyword ->
-                  Keyword.put(keyword, :index, index)
-              end)
+          term
+          |> Enum.with_index()
+          |> Enum.reverse()
+          |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
+            case cast_input(type, item, single_constraints) do
+              :error ->
+                {:halt, {:error, message: "invalid value at %{index}", index: index}}
 
-            {:halt, {:error, errors}}
+              {:error, keyword} ->
+                errors =
+                  keyword
+                  |> List.wrap()
+                  |> Ash.Error.flatten_preserving_keywords()
+                  |> Enum.map(fn
+                    message when is_binary(message) ->
+                      [message: message, index: index]
 
-          {:ok, value} ->
-            {:cont, {:ok, [value | casted]}}
+                    keyword ->
+                      Keyword.put(keyword, :index, index)
+                  end)
+
+                {:halt, {:error, errors}}
+
+              {:ok, value} ->
+                {:cont, {:ok, [value | casted]}}
+            end
+          end)
         end
-      end)
     end
   end
 
@@ -460,6 +472,10 @@ defmodule Ash.Type do
             {:error, other}
         end
     end
+  end
+
+  defp empty?(value, constraints) do
+    value in List.wrap(constraints[:empty_values])
   end
 
   @doc """
@@ -577,6 +593,8 @@ defmodule Ash.Type do
       end
     end
   end
+
+  def apply_constraints({:array, _}, nil, _), do: {:ok, nil}
 
   def apply_constraints({:array, _}, _, _) do
     {:error, ["must be a list"]}

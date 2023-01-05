@@ -1,6 +1,6 @@
 defmodule Ash.Query.Ref do
   @moduledoc "Represents a relation/attribute reference"
-  defstruct [:attribute, :relationship_path, :resource, :simple_equality?, :bare?, :this?]
+  defstruct [:attribute, :relationship_path, :resource, :simple_equality?, :bare?]
 
   @doc "Returns the referenced field"
   def name(%__MODULE__{attribute: %{name: name}}), do: name
