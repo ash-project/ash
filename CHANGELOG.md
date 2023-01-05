@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.5.0-rc.1](https://github.com/ash-project/ash/compare/v2.5.0-rc.0...v2.5.0-rc.1) (2023-01-05)
+
+
+
+
+### Bug Fixes:
+
+* remove all URI encoding/decoding from core for keysets
+
+### Improvements:
+
+* rename `this` to `parent` for clarity
+
 ## [v2.5.0-rc.0](https://github.com/ash-project/ash/compare/v2.4.30...v2.5.0-rc.0) (2023-01-04)
 
 
