@@ -461,8 +461,9 @@ defmodule Ash.Filter.Runtime do
   defp resolve_ref(%Ash.Query.Ref{attribute: attribute}, nil, _),
     do: :unknown |> or_default(attribute)
 
-  defp resolve_ref(_, nil, _),
-    do: :unknown
+  defp resolve_ref(_ref, nil, _) do
+    :unknown
+  end
 
   defp resolve_ref(
          %Ash.Query.Ref{

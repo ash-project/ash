@@ -5,7 +5,36 @@ defmodule Ash.Expr do
   @type t :: any
   @pass_through_funcs [:where, :or_where, :expr, :@]
 
+  @doc """
+  Evaluate an expression. See `eval/2` for more.
+  """
+  def eval!(expression, opts \\ []) do
+    case eval(expression, opts) do
+      {:ok, result} ->
+        result
+
+      {:error, error} ->
+        raise Ash.Error.to_ash_error(error)
+    end
+  end
+
+  @doc """
+  Evaluate an expression. This function only works if you have no references, or if you provide the `record` option.
+  """
   def eval(expression, opts \\ []) do
+    expression
+    |> Ash.Filter.hydrate_refs(%{})
+    |> case do
+      {:ok, hydrated} ->
+        eval_hydrated(hydrated, opts)
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  @doc false
+  def eval_hydrated(expression, opts \\ []) do
     Ash.Filter.Runtime.do_match(opts[:record], expression, opts[:parent])
   end
 

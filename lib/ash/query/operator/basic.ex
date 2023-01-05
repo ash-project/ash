@@ -112,10 +112,10 @@ defmodule Ash.Query.Operator.Basic do
         defp do_evaluate(op, left, right) do
           if Decimal.is_decimal(left) || Decimal.is_decimal(right) do
             case op do
-              :+ -> Decimal.add(to_decimal(left), to_decimal(right))
-              :* -> Decimal.mult(to_decimal(left), to_decimal(right))
-              :- -> Decimal.sub(to_decimal(left), to_decimal(right))
-              :/ -> Decimal.div(to_decimal(left), to_decimal(right))
+              :+ -> {:known, Decimal.add(to_decimal(left), to_decimal(right))}
+              :* -> {:known, Decimal.mult(to_decimal(left), to_decimal(right))}
+              :- -> {:known, Decimal.sub(to_decimal(left), to_decimal(right))}
+              :/ -> {:known, Decimal.div(to_decimal(left), to_decimal(right))}
             end
           else
             {:known, apply(Kernel, unquote(opts[:symbol]), [left, right])}

@@ -2007,6 +2007,7 @@ defmodule Ash.Query do
            ),
          {:ok, query} <-
            add_tenant(query, ash_query),
+         {:ok, query} <- Ash.DataLayer.select(query, ash_query.select, ash_query.resource),
          {:ok, query} <-
            add_aggregates(query, ash_query, aggregates),
          {:ok, query} <-
@@ -2016,8 +2017,7 @@ defmodule Ash.Query do
          {:ok, query} <-
            Ash.DataLayer.limit(query, ash_query.limit, resource),
          {:ok, query} <-
-           Ash.DataLayer.offset(query, ash_query.offset, resource),
-         {:ok, query} <- Ash.DataLayer.select(query, ash_query.select, ash_query.resource) do
+           Ash.DataLayer.offset(query, ash_query.offset, resource) do
       if opts[:no_modify?] || !ash_query.action || !ash_query.action.modify_query do
         {:ok, query}
       else

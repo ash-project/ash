@@ -355,7 +355,7 @@ defmodule Ash.DataLayer.Ets do
                public?: false
              }) do
           {:ok, expression} ->
-            case Ash.Expr.eval(expression, record: record) do
+            case Ash.Expr.eval_hydrated(expression, record: record) do
               {:ok, value} ->
                 if calculation.load do
                   {:cont, {:ok, Map.put(record, calculation.load, value)}}

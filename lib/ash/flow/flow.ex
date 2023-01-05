@@ -320,7 +320,7 @@ defmodule Ash.Flow do
            public?: false
          }) do
       {:ok, hydrated} ->
-        case Ash.Expr.eval(hydrated) do
+        case Ash.Expr.eval_hydrated(hydrated) do
           {:ok, result} ->
             result
 

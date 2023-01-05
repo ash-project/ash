@@ -89,7 +89,7 @@ defmodule Ash.Policy.FilterCheck do
                public?: false
              }) do
           {:ok, hydrated} ->
-            Ash.Expr.eval(hydrated)
+            Ash.Expr.eval_hydrated(hydrated)
 
           {:error, error} ->
             {:halt, {:error, error}}
@@ -107,7 +107,7 @@ defmodule Ash.Policy.FilterCheck do
                public?: false
              }) do
           {:ok, hydrated} ->
-            Ash.Expr.eval(hydrated)
+            Ash.Expr.eval_hydrated(hydrated)
 
           {:error, error} ->
             {:error, error}
@@ -135,7 +135,7 @@ defmodule Ash.Policy.FilterCheck do
                 nil
               end
 
-            Ash.Expr.eval(hydrated, record: data)
+            Ash.Expr.eval_hydrated(hydrated, record: data)
 
           {:error, error} ->
             {:halt, {:error, error}}
@@ -150,7 +150,7 @@ defmodule Ash.Policy.FilterCheck do
                public?: false
              }) do
           {:ok, hydrated} ->
-            Ash.Expr.eval(hydrated)
+            Ash.Expr.eval_hydrated(hydrated)
 
           {:error, error} ->
             {:halt, {:error, error}}

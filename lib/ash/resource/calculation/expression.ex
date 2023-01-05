@@ -23,7 +23,7 @@ defmodule Ash.Resource.Calculation.Expression do
              public?: false
            }) do
         {:ok, expression} ->
-          case Ash.Expr.eval(expression, record: record) do
+          case Ash.Expr.eval_hydrated(expression, record: record) do
             {:ok, value} ->
               {:cont, {:ok, [value | values]}}
 

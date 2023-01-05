@@ -890,7 +890,7 @@ defmodule Ash.Filter do
     |> Enum.flat_map(fn calculation ->
       expression = calculation.module.expression(calculation.opts, calculation.context)
 
-      case Ash.Filter.hydrate_refs(expression, %{
+      case hydrate_refs(expression, %{
              resource: resource,
              aggregates: aggregates,
              calculations: calculations,
@@ -1979,32 +1979,42 @@ defmodule Ash.Filter do
     end
   end
 
-  defp attribute(%{public?: true, resource: resource}, attribute),
+  defp attribute(%{public?: true, resource: resource}, attribute) when not is_nil(resource),
     do: Ash.Resource.Info.public_attribute(resource, attribute)
 
-  defp attribute(%{public?: false, resource: resource}, attribute) do
+  defp attribute(%{public?: false, resource: resource}, attribute) when not is_nil(resource) do
     Ash.Resource.Info.attribute(resource, attribute)
   end
 
-  defp aggregate(%{public?: true, resource: resource}, aggregate),
+  defp attribute(_, _), do: nil
+
+  defp aggregate(%{public?: true, resource: resource}, aggregate) when not is_nil(resource),
     do: Ash.Resource.Info.public_aggregate(resource, aggregate)
 
-  defp aggregate(%{public?: false, resource: resource}, aggregate),
+  defp aggregate(%{public?: false, resource: resource}, aggregate) when not is_nil(resource),
     do: Ash.Resource.Info.aggregate(resource, aggregate)
 
-  defp calculation(%{public?: true, resource: resource}, calculation),
+  defp aggregate(_, _), do: nil
+
+  defp calculation(%{public?: true, resource: resource}, calculation) when not is_nil(resource),
     do: Ash.Resource.Info.public_calculation(resource, calculation)
 
-  defp calculation(%{public?: false, resource: resource}, calculation),
+  defp calculation(%{public?: false, resource: resource}, calculation) when not is_nil(resource),
     do: Ash.Resource.Info.calculation(resource, calculation)
 
-  defp relationship(%{public?: true, resource: resource}, relationship) do
+  defp calculation(_, _), do: nil
+
+  defp relationship(%{public?: true, resource: resource}, relationship)
+       when not is_nil(resource) do
     Ash.Resource.Info.public_relationship(resource, relationship)
   end
 
-  defp relationship(%{public?: false, resource: resource}, relationship) do
+  defp relationship(%{public?: false, resource: resource}, relationship)
+       when not is_nil(resource) do
     Ash.Resource.Info.relationship(resource, relationship)
   end
+
+  defp relationship(_, _), do: nil
 
   defp related(context, relationship) when not is_list(relationship) do
     related(context, [relationship])
@@ -2262,10 +2272,17 @@ defmodule Ash.Filter do
           if is_boolean(function) do
             {:ok, BooleanExpression.optimized_new(:and, expression, function)}
           else
-            if Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, function}) do
+            if context.resource &&
+                 Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, function}) do
               {:ok, BooleanExpression.optimized_new(:and, expression, function)}
             else
-              {:error, "data layer does not support the function #{inspect(function)}"}
+              case function_module.evaluate(function) do
+                {:known, result} ->
+                  {:ok, result}
+
+                _ ->
+                  {:error, "data layer does not support the function #{inspect(function)}"}
+              end
             end
           end
         end
@@ -2725,10 +2742,17 @@ defmodule Ash.Filter do
           if is_boolean(function) do
             {:ok, function}
           else
-            if Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, function}) do
+            if context.resource &&
+                 Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, function}) do
               {:ok, function}
             else
-              {:error, "data layer does not support the function #{inspect(function)}"}
+              case function_module.evaluate(function) do
+                {:known, result} ->
+                  {:ok, result}
+
+                _ ->
+                  {:error, "data layer does not support the function #{inspect(function)}"}
+              end
             end
           end
         else
@@ -2767,10 +2791,18 @@ defmodule Ash.Filter do
     end
   end
 
-  def hydrate_refs({key, value}, context) when is_atom(key) do
-    context = Map.put_new(context, :root_resource, context[:resource])
+  def hydrate_refs(value, context) do
+    context =
+      context
+      |> Map.put_new(:resource, nil)
+      |> Map.put_new(:root_resource, context[:resource])
+      |> Map.put_new(:public?, false)
 
-    case hydrate_refs(value, context) do
+    do_hydrate_refs(value, context)
+  end
+
+  def do_hydrate_refs({key, value}, context) when is_atom(key) do
+    case do_hydrate_refs(value, context) do
       {:ok, hydrated} ->
         {:ok, {key, hydrated}}
 
@@ -2779,13 +2811,11 @@ defmodule Ash.Filter do
     end
   end
 
-  def hydrate_refs(
+  def do_hydrate_refs(
         %Ref{attribute: attribute} = ref,
         %{aggregates: aggregates, calculations: calculations} = context
       )
       when is_atom(attribute) do
-    context = Map.put_new(context, :root_resource, context[:resource])
-
     case related(context, ref.relationship_path) do
       nil ->
         {:error,
@@ -2876,16 +2906,13 @@ defmodule Ash.Filter do
     end
   end
 
-  def hydrate_refs(%Ref{relationship_path: relationship_path, resource: nil} = ref, context) do
-    context = Map.put_new(context, :root_resource, context[:resource])
+  def do_hydrate_refs(%Ref{relationship_path: relationship_path, resource: nil} = ref, context) do
     {:ok, %{ref | resource: Ash.Resource.Info.related(context.resource, relationship_path)}}
   end
 
-  def hydrate_refs(%BooleanExpression{left: left, right: right} = expr, context) do
-    context = Map.put_new(context, :root_resource, context[:resource])
-
-    with {:ok, left} <- hydrate_refs(left, context),
-         {:ok, right} <- hydrate_refs(right, context) do
+  def do_hydrate_refs(%BooleanExpression{left: left, right: right} = expr, context) do
+    with {:ok, left} <- do_hydrate_refs(left, context),
+         {:ok, right} <- do_hydrate_refs(right, context) do
       {:ok, %{expr | left: left, right: right}}
     else
       other ->
@@ -2893,24 +2920,19 @@ defmodule Ash.Filter do
     end
   end
 
-  def hydrate_refs(%Not{expression: expression} = expr, context) do
-    context = Map.put_new(context, :root_resource, context[:resource])
-
-    with {:ok, expression} <- hydrate_refs(expression, context) do
+  def do_hydrate_refs(%Not{expression: expression} = expr, context) do
+    with {:ok, expression} <- do_hydrate_refs(expression, context) do
       {:ok, %{expr | expression: expression}}
     end
   end
 
-  def hydrate_refs(%Call{} = call, context) do
-    context = Map.put_new(context, :root_resource, context[:resource])
+  def do_hydrate_refs(%Call{} = call, context) do
     resolve_call(call, context)
   end
 
-  def hydrate_refs(%{__predicate__?: _, left: left, right: right} = expr, context) do
-    context = Map.put_new(context, :root_resource, context[:resource])
-
-    with {:ok, left} <- hydrate_refs(left, context),
-         {:ok, right} <- hydrate_refs(right, context) do
+  def do_hydrate_refs(%{__predicate__?: _, left: left, right: right} = expr, context) do
+    with {:ok, left} <- do_hydrate_refs(left, context),
+         {:ok, right} <- do_hydrate_refs(right, context) do
       {:ok, %{expr | left: left, right: right}}
     else
       other ->
@@ -2918,10 +2940,8 @@ defmodule Ash.Filter do
     end
   end
 
-  def hydrate_refs(%{__predicate__?: _, arguments: arguments} = expr, context) do
-    context = Map.put_new(context, :root_resource, context[:resource])
-
-    case hydrate_refs(arguments, context) do
+  def do_hydrate_refs(%{__predicate__?: _, arguments: arguments} = expr, context) do
+    case do_hydrate_refs(arguments, context) do
       {:ok, args} ->
         {:ok, %{expr | arguments: args}}
 
@@ -2930,7 +2950,7 @@ defmodule Ash.Filter do
     end
   end
 
-  def hydrate_refs(%Ash.Query.Parent{expr: expr} = this, context) do
+  def do_hydrate_refs(%Ash.Query.Parent{expr: expr} = this, context) do
     context =
       %{
         context
@@ -2940,7 +2960,7 @@ defmodule Ash.Filter do
       }
       |> Map.put(:relationship_path, [])
 
-    case hydrate_refs(expr, context) do
+    case do_hydrate_refs(expr, context) do
       {:ok, expr} ->
         {:ok, %{this | expr: expr}}
 
@@ -2949,7 +2969,10 @@ defmodule Ash.Filter do
     end
   end
 
-  def hydrate_refs(%Ash.Query.Exists{expr: expr, at_path: at_path, path: path} = exists, context) do
+  def do_hydrate_refs(
+        %Ash.Query.Exists{expr: expr, at_path: at_path, path: path} = exists,
+        context
+      ) do
     new_resource = Ash.Resource.Info.related(context[:resource], at_path ++ path)
 
     context = %{
@@ -2963,7 +2986,7 @@ defmodule Ash.Filter do
       data_layer: Ash.DataLayer.data_layer(new_resource)
     }
 
-    case hydrate_refs(expr, context) do
+    case do_hydrate_refs(expr, context) do
       {:ok, expr} ->
         {:ok, %{exists | expr: expr}}
 
@@ -2972,12 +2995,10 @@ defmodule Ash.Filter do
     end
   end
 
-  def hydrate_refs(list, context) when is_list(list) do
-    context = Map.put_new(context, :root_resource, context[:resource])
-
+  def do_hydrate_refs(list, context) when is_list(list) do
     list
     |> Enum.reduce_while({:ok, []}, fn val, {:ok, acc} ->
-      case hydrate_refs(val, context) do
+      case do_hydrate_refs(val, context) do
         {:ok, value} ->
           {:cont, {:ok, [value | acc]}}
 
@@ -2991,7 +3012,7 @@ defmodule Ash.Filter do
     end
   end
 
-  def hydrate_refs(val, _context) do
+  def do_hydrate_refs(val, _context) do
     {:ok, val}
   end
 
