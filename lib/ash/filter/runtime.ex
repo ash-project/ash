@@ -458,7 +458,11 @@ defmodule Ash.Filter.Runtime do
     |> Enum.find_value(&Ash.Query.Function.try_cast_arguments(&1, args))
   end
 
-  defp resolve_ref(_, nil, _), do: :unknown
+  defp resolve_ref(%Ash.Query.Ref{attribute: attribute}, nil, _),
+    do: :unknown |> or_default(attribute)
+
+  defp resolve_ref(_, nil, _),
+    do: :unknown
 
   defp resolve_ref(
          %Ash.Query.Ref{
@@ -558,9 +562,29 @@ defmodule Ash.Filter.Runtime do
       record ->
         {:ok, Map.get(record, name)}
     end
+    |> or_default(attribute)
   end
 
   defp resolve_ref(_value, _record, _), do: :unknown
+
+  defp or_default(:unknown, %Ash.Resource.Aggregate{default: default}) when not is_nil(default) do
+    if is_function(default) do
+      {:ok, default.()}
+    else
+      {:ok, default}
+    end
+  end
+
+  defp or_default({:ok, nil}, %Ash.Resource.Aggregate{default: default})
+       when not is_nil(default) do
+    if is_function(default) do
+      {:ok, default.()}
+    else
+      {:ok, default}
+    end
+  end
+
+  defp or_default(other, _), do: other
 
   defp path_to_load([first]), do: {first, []}
 
