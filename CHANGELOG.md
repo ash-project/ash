@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.5.0-rc.2](https://github.com/ash-project/ash/compare/v2.5.0-rc.1...v2.5.0-rc.2) (2023-01-05)
+
+
+
+
+### Bug Fixes:
+
+* various filter & expression fixes
+
+* handle aggregate defaults when evaluating expressions
+
 ## [v2.5.0-rc.1](https://github.com/ash-project/ash/compare/v2.5.0-rc.0...v2.5.0-rc.1) (2023-01-05)
 
 
