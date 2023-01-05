@@ -120,10 +120,6 @@ defmodule Ash.Query.Operator.Basic do
           else
             {:known, apply(Kernel, unquote(opts[:symbol]), [left, right])}
           end
-        rescue
-          e ->
-            IO.inspect(e)
-            :unknown
         end
 
         defp to_decimal(value) when is_float(value) do
