@@ -59,8 +59,9 @@ defmodule Ash.Resource.Verifiers.ValidateRelationshipAttributesMatch do
 
     1. They are exactly the same
     2. Their `storage_type/0` callback returns the same value
-    3. The relationship has `validate_destination_attribute?` set to `false`.
-    4. They are explicitly configured as compatible. To do so in this instance, add it to your config like so:
+    3. The storage types are `:text` and `:string`
+    4. The relationship has `validate_destination_attribute?` set to `false`.
+    5. They are explicitly configured as compatible. To do so in this instance, add it to your config like so:
 
 
     config :ash, :compatible_foreign_key_types,
@@ -71,11 +72,20 @@ defmodule Ash.Resource.Verifiers.ValidateRelationshipAttributesMatch do
   end
 
   defp compatible_types?(%{type: source}, %{type: dest}) do
+    left_storage_type = Ash.Type.storage_type(source)
+    right_storage_type = Ash.Type.storage_type(dest)
+
     cond do
       source == dest ->
         true
 
-      Ash.Type.storage_type(source) == Ash.Type.storage_type(dest) ->
+      left_storage_type == right_storage_type ->
+        true
+
+      left_storage_type == :text and right_storage_type == :string ->
+        true
+
+      left_storage_type == :string and right_storage_type == :text ->
         true
 
       true ->
