@@ -364,7 +364,7 @@ defmodule Ash.SatSolver do
       relationship.type == :many_to_many && candidate_relationship.type == :has_many ->
         synonymous_relationship_paths?(left_resource, [relationship.join_relationship], [
           candidate_first
-        ]) &&
+        ]) && !Enum.empty?(candidate_rest) &&
           synonymous_relationship_paths?(
             left_resource,
             candidate_rest,
