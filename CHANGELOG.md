@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.5.0-rc.3](https://github.com/ash-project/ash/compare/v2.5.0-rc.2...v2.5.0-rc.3) (2023-01-06)
+
+
+
+
+### Bug Fixes:
+
+* stop seeing incorrect relationships as synonymous
+
 ## [v2.5.0-rc.2](https://github.com/ash-project/ash/compare/v2.5.0-rc.1...v2.5.0-rc.2) (2023-01-05)
 
 
