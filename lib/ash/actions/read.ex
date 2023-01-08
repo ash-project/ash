@@ -1550,6 +1550,8 @@ defmodule Ash.Actions.Read do
         path ++ [:calculation_results, key, :data]
       end)
 
+    primary_key = Ash.Resource.Info.primary_key(query.resource)
+
     if function_exported?(calculation.module, :calculate, 3) do
       Request.new(
         resource: resource,
@@ -1561,7 +1563,6 @@ defmodule Ash.Actions.Read do
         async?: true,
         data:
           Request.resolve(dependencies, fn data ->
-            primary_key = Ash.Resource.Info.primary_key(query.resource)
             actor = data[:actor]
             authorize? = data[:authorize?]
 
@@ -1646,9 +1647,10 @@ defmodule Ash.Actions.Read do
                    values:
                      Enum.map(results_with_calc, fn record ->
                        if calculation.load do
-                         Map.get(record, calculation.name)
+                         {Map.take(record, primary_key), Map.get(record, calculation.name)}
                        else
-                         Map.get(record.calculations, calculation.name)
+                         {Map.take(record, primary_key),
+                          Map.get(record.calculations, calculation.name)}
                        end
                      end),
                    load?: not is_nil(calculation.load)
