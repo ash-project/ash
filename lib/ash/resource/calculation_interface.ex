@@ -21,6 +21,7 @@ defmodule Ash.Resource.CalculationInterface do
     ],
     args: [
       type: :any,
+      default: [],
       doc: """
       Supply field or argument values referenced by the calculation.
 
