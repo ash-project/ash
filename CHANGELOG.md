@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.5.0-rc.6](https://github.com/ash-project/ash/compare/v2.5.0-rc.5...v2.5.0-rc.6) (2023-01-09)
+
+
+
+
+### Bug Fixes:
+
+* set interface args to empty list by default
+
 ## [v2.5.0-rc.5](https://github.com/ash-project/ash/compare/v2.5.0-rc.4...v2.5.0-rc.5) (2023-01-09)
 
 
