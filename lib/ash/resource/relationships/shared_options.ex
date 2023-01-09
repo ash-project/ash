@@ -168,7 +168,6 @@ defmodule Ash.Resource.Relationships.SharedOptions do
      links: [],
      doc: """
      A module that implements `Ash.Resource.ManualRelationship`. Also accepts a 2 argument function that takes the source records and the context.
-     ```
      """}
   end
 end
