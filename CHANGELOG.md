@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.5.0-rc.5](https://github.com/ash-project/ash/compare/v2.5.0-rc.4...v2.5.0-rc.5) (2023-01-09)
+
+
+
+
+### Bug Fixes:
+
+* properly zip calculation results with primary keys
+
+### Improvements:
+
+* add `Api.calculate/3` and `define_calculation` code interface builder
+
 ## [v2.5.0-rc.4](https://github.com/ash-project/ash/compare/v2.5.0-rc.3...v2.5.0-rc.4) (2023-01-06)
 
 
