@@ -798,10 +798,30 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
+  @define_calculation %Spark.Dsl.Entity{
+    name: :define_calculation,
+    describe: """
+    Defines a function with the corresponding name and arguments, that evaluates a calculation.
+    """,
+    examples: [
+      "define_calculation :referral_link, args: [:id]",
+      "define_calculation :referral_link, args: [{:arg, :id}, {:ref, :id}]"
+    ],
+    target: Ash.Resource.CalculationInterface,
+    schema: Ash.Resource.CalculationInterface.schema(),
+    transform: {Ash.Resource.CalculationInterface, :transform, []},
+    links: [
+      guides: [
+        "ash:guide:Code Interface"
+      ]
+    ],
+    args: [:name]
+  }
+
   @define %Spark.Dsl.Entity{
     name: :define,
     describe: """
-    Defines a function on the Api with the corresponding name and arguments.
+    Defines a function with the corresponding name and arguments.
     """,
     examples: [
       "define :get_user_by_id, action: :get_by_id, args: [:id], get?: true"
@@ -846,7 +866,8 @@ defmodule Ash.Resource.Dsl do
       ]
     ],
     entities: [
-      @define
+      @define,
+      @define_calculation
     ]
   }
 

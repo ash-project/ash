@@ -31,6 +31,8 @@ defmodule Ash.Query.Calculation do
           {other, []}
       end
 
+    context = Map.put(context, :ash, %{type: type, constraints: constraints})
+
     case module.init(opts) do
       {:ok, opts} ->
         {:ok,

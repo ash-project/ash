@@ -23,7 +23,7 @@ defmodule Ash.Expr do
   """
   def eval(expression, opts \\ []) do
     expression
-    |> Ash.Filter.hydrate_refs(%{})
+    |> Ash.Filter.hydrate_refs(opts[:context] || %{})
     |> case do
       {:ok, hydrated} ->
         eval_hydrated(hydrated, opts)

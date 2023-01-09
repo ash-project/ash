@@ -71,6 +71,81 @@ defmodule Ash.CodeInterface do
     end)
   end
 
+  def unwrap_calc_interface_args(keys, resource, arguments) do
+    {Enum.map(keys, &unwrap_calc_interface_arg_binding(resource, arguments, &1)),
+     Enum.map(keys, &unwrap_calc_interface_arg_access(&1))}
+  end
+
+  defp unwrap_calc_interface_arg_access({:optional, value}),
+    do: unwrap_calc_interface_arg_access(value)
+
+  defp unwrap_calc_interface_arg_access({:optional, value, _}),
+    do: unwrap_calc_interface_arg_access(value)
+
+  defp unwrap_calc_interface_arg_access(value) do
+    case value do
+      {tag, name} ->
+        [type: tag, name: name, value: {name, [], Elixir}]
+
+      name ->
+        [type: :both, name: name, value: {name, [], Elixir}]
+    end
+  end
+
+  defp unwrap_calc_interface_arg_binding(resource, arguments, {:optional, binding}) do
+    access = unwrap_calc_interface_arg_binding(resource, arguments, binding)
+    {:\\, [], [access, default_calc_value(resource, arguments, binding)]}
+  end
+
+  defp unwrap_calc_interface_arg_binding(resource, arguments, {:optional, binding, default}) do
+    access = unwrap_calc_interface_arg_binding(resource, arguments, binding)
+    {:\\, [], [access, default]}
+  end
+
+  defp unwrap_calc_interface_arg_binding(_resource, _arguments, {tag, value})
+       when tag in [:arg, :ref] do
+    {value, [], Elixir}
+  end
+
+  defp unwrap_calc_interface_arg_binding(_resource, _arguments, value) do
+    {value, [], Elixir}
+  end
+
+  defp default_calc_value(_resource, arguments, {:arg, arg_name}) do
+    arguments
+    |> Enum.find(&(&1.name == arg_name))
+    |> case do
+      nil ->
+        nil
+
+      argument ->
+        argument.default
+    end
+  end
+
+  defp default_calc_value(resource, _, {:ref, attribute}) do
+    resource
+    |> Ash.Resource.Info.attributes()
+    |> Enum.find(&(&1.name == attribute))
+    |> case do
+      nil ->
+        nil
+
+      attribute ->
+        attribute.default
+    end
+  end
+
+  defp default_calc_value(resource, arguments, name) do
+    case default_calc_value(resource, arguments, {:arg, name}) do
+      nil ->
+        default_calc_value(resource, arguments, {:ref, name})
+
+      value ->
+        value
+    end
+  end
+
   @doc """
   Defines the code interface for a given resource + api combination in the current module. For example:
 
@@ -111,6 +186,68 @@ defmodule Ash.CodeInterface do
   """
   defmacro define_interface(api, resource) do
     quote bind_quoted: [api: api, resource: resource], generated: true, location: :keep do
+      for interface <- Ash.Resource.Info.calculation_interfaces(resource) do
+        calculation = Ash.Resource.Info.calculation(resource, interface.calculation)
+
+        {arg_bindings, arg_access} =
+          interface.args
+          |> Kernel.||([])
+          |> Ash.CodeInterface.unwrap_calc_interface_args(resource, calculation.arguments)
+
+        @doc "Calculate `#{calculation.name}`, raising any errors. See `#{interface.name}/#{Enum.count(interface.args) + 1}` for more."
+        # sobelow_skip ["DOS.BinToAtom"]
+        def unquote(:"#{interface.name}!")(unquote_splicing(arg_bindings), opts \\ []) do
+          {refs, arguments} =
+            Enum.reduce([unquote_splicing(arg_access)], {%{}, %{}}, fn config,
+                                                                       {refs, arguments} ->
+              case config[:type] do
+                :both ->
+                  {Map.put(refs, config[:name], config[:value]),
+                   Map.put(arguments, config[:name], config[:value])}
+
+                :ref ->
+                  {Map.put(refs, config[:name], config[:value]), arguments}
+
+                :arg ->
+                  {refs, Map.put(arguments, config[:name], config[:value])}
+              end
+            end)
+
+          unquote(api).calculate!(unquote(resource), unquote(interface.calculation),
+            refs: refs,
+            args: arguments
+          )
+        end
+
+        @doc """
+        Calculate `#{calculation.name}`, returning `{:ok, result}` or `{:error, error}`.
+        #{if calculation.description, do: "\nDescription:" <> calculation.description}
+        """
+        # sobelow_skip ["DOS.BinToAtom"]
+        def unquote(interface.name)(unquote_splicing(arg_bindings), opts \\ []) do
+          {refs, arguments} =
+            Enum.reduce([unquote_splicing(arg_access)], {%{}, %{}}, fn config,
+                                                                       {refs, arguments} ->
+              case config[:type] do
+                :both ->
+                  {Map.put(refs, config[:name], config[:value]),
+                   Map.put(arguments, config[:name], config[:value])}
+
+                :ref ->
+                  {Map.put(refs, config[:name], config[:value]), arguments}
+
+                :arg ->
+                  {refs, Map.put(arguments, config[:name], config[:value])}
+              end
+            end)
+
+          unquote(api).calculate(unquote(resource), unquote(interface.calculation),
+            refs: refs,
+            args: arguments
+          )
+        end
+      end
+
       for interface <- Ash.Resource.Info.interfaces(resource) do
         action = Ash.CodeInterface.require_action(resource, interface)
 

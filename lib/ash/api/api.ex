@@ -347,6 +347,123 @@ defmodule Ash.Api do
 
   def destroy_opts_schema, do: @destroy_opts_schema
 
+  @calculate_opts [
+    args: [
+      type: :map,
+      doc: """
+      Values for arguments referenced by the calculation.
+      """,
+      default: %{}
+    ],
+    refs: [
+      type: :map,
+      doc: """
+      Values for references used by the calculation.
+      """,
+      default: %{}
+    ]
+  ]
+
+  @doc false
+  def calculate_opts, do: @calculate_opts
+
+  @doc """
+  Evaluates the calculation on the resource.
+
+  #{Spark.OptionsHelpers.docs(@calculate_opts)}
+  """
+  def calculate(resource, calculation, opts \\ []) do
+    with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, Ash.Api.calculate_opts()),
+         {:calc,
+          %{
+            arguments: arguments,
+            calculation: {module, calc_opts},
+            type: type,
+            constraints: constraints
+          }} <-
+           {:calc, Ash.Resource.Info.calculation(resource, calculation)},
+         record <- struct(resource, opts[:refs] || %{}) do
+      calc_context =
+        opts[:context]
+        |> Kernel.||(%{})
+        |> Map.merge(opts[:args] || %{})
+        |> Map.put(:ash, %{type: type, constraints: constraints})
+
+      calc_context =
+        Enum.reduce(arguments, calc_context, fn arg, context ->
+          if Map.has_key?(context, arg.name) do
+            context
+          else
+            if is_nil(arg.default) do
+              context
+            else
+              Map.put(context, arg.name, arg.default)
+            end
+          end
+        end)
+
+      if function_exported?(module, :expression, 2) do
+        expr =
+          case module.expression(calc_opts, calc_context) do
+            {:ok, result} -> {:ok, result}
+            {:error, error} -> {:error, error}
+            result -> {:ok, result}
+          end
+
+        with {:ok, expr} <- expr do
+          case Ash.Expr.eval(expr) do
+            {:ok, result} ->
+              {:ok, result}
+
+            :unknown ->
+              case module.calculate([record], calc_opts, calc_context) do
+                [result] ->
+                  result
+
+                {:ok, [result]} ->
+                  {:ok, result}
+
+                {:ok, _} ->
+                  {:error, "Invalid calculation return"}
+
+                {:error, error} ->
+                  {:error, error}
+              end
+
+            {:error, error} ->
+              {:error, error}
+          end
+        end
+      else
+        case module.calculate([record], calc_opts, calc_context) do
+          [result] ->
+            {:ok, result}
+
+          {:ok, [result]} ->
+            {:ok, result}
+
+          {:ok, _} ->
+            {:error, "Invalid calculation return"}
+
+          {:error, error} ->
+            {:error, error}
+        end
+      end
+    else
+      {:calc, nil} ->
+        {:error, "No such calculation"}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  @callback calculate(resource :: Ash.Resource.t(), calculation :: atom, opts :: Keyword.t()) ::
+              {:ok, term} | {:error, term}
+
+  @callback calculate!(resource :: Ash.Resource.t(), calculation :: atom, opts :: Keyword.t()) ::
+              term | no_return
+
   @doc """
   Get a record by a primary key. See `c:get/3` for more.
   """

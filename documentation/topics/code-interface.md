@@ -39,3 +39,34 @@ Api.register_user(username, password, %{key: "val"})
 # When all arguments are provided it is unambiguous
 Api.register_user(username, password, %{key: "val"}, [tenant: "organization_22"])
 ```
+
+## Calculations
+
+Resource calculations can be run dynamically using `YourApi.calculate/3`, but
+you can also expose them using the code_interface with `define_calculation`.
+
+For example:
+
+```elixir
+calculations do
+  calculate :full_name, :string, expr(first_name <> ^arg(:separator) <> last_name) do
+    argument :separator, :string do
+      allow_nil? false
+      default " "
+    end
+  end
+end
+
+code_interface do
+  define_for YourApi
+  define_calculation :full_name, args: [:first_name, :last_name, {:optional, :separator}]
+end
+```
+
+This could now be used like so:
+
+```elixir
+User.full_name("Jessie", "James", "-")
+```
+
+This allows for running calculations without an instance of a resource, i.e `Api.load(user, :full_name)`

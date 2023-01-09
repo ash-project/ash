@@ -5,6 +5,26 @@ defmodule Ash.Api.Interface do
     quote bind_quoted: [], generated: true do
       alias Ash.Api
 
+      def calculate!(resource, calculation, opts \\ []) do
+        case calculate(resource, calculation, opts) do
+          {:ok, result} ->
+            result
+
+          {:error, error} ->
+            raise error
+        end
+      end
+
+      def calculate(resource, calculation, opts \\ []) do
+        case Api.calculate(resource, calculation, opts) do
+          {:ok, result} ->
+            {:ok, result}
+
+          {:error, error} ->
+            {:error, Ash.Error.to_ash_error(error)}
+        end
+      end
+
       def get!(resource, id_or_filter, params \\ []) do
         Ash.Api.Interface.enforce_resource!(resource)
 

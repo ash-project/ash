@@ -4,6 +4,10 @@ defmodule Ash.Type do
       type: :non_neg_integer,
       doc: "A minimum length for the items"
     ],
+    items: [
+      type: :any,
+      doc: "A schema for individual items"
+    ],
     max_length: [
       type: :non_neg_integer,
       doc: "A maximum length for the items"

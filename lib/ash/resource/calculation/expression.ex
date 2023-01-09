@@ -6,7 +6,18 @@ defmodule Ash.Resource.Calculation.Expression do
     expr =
       Ash.Filter.build_filter_from_template(opts[:expr], nil, context, context[:context] || %{})
 
-    Ash.Filter.build_filter_from_template(expr, nil, context, context[:context] || %{})
+    if context[:ash][:type] do
+      {:ok, expr} =
+        Ash.Query.Function.Type.new([
+          expr,
+          context[:ash][:type],
+          context[:ash][:constraints] || []
+        ])
+
+      expr
+    else
+      expr
+    end
   end
 
   def calculate([], _, _), do: []

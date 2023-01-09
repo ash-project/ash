@@ -75,7 +75,31 @@ defmodule Ash.Resource.Info do
   """
   @spec interfaces(Spark.Dsl.t() | Ash.Resource.t()) :: [Ash.Resource.Interface.t()]
   def interfaces(resource) do
-    Extension.get_entities(resource, [:code_interface])
+    resource
+    |> Extension.get_entities([:code_interface])
+    |> Enum.filter(fn
+      %Ash.Resource.Interface{} ->
+        true
+
+      _ ->
+        false
+    end)
+  end
+
+  @doc """
+  The list of code interface calculation definitions.
+  """
+  @spec calculation_interfaces(Spark.Dsl.t() | Ash.Resource.t()) :: [Ash.Resource.Interface.t()]
+  def calculation_interfaces(resource) do
+    resource
+    |> Extension.get_entities([:code_interface])
+    |> Enum.filter(fn
+      %Ash.Resource.CalculationInterface{} ->
+        true
+
+      _ ->
+        false
+    end)
   end
 
   @doc """

@@ -16,6 +16,13 @@ defmodule Ash.Test.CodeInterfaceTest do
       define :read_users, action: :read
       define :get_by_id, action: :read, get_by: [:id]
       define :create, args: [{:optional, :first_name}]
+
+      define_calculation(:full_name, args: [:first_name, :last_name])
+
+      define_calculation(:full_name_opt,
+        calculation: :full_name,
+        args: [:first_name, :last_name, {:optional, :separator}]
+      )
     end
 
     actions do
@@ -29,6 +36,12 @@ defmodule Ash.Test.CodeInterfaceTest do
         argument :id, :uuid, allow_nil?: false
 
         filter expr(id == ^arg(:id))
+      end
+    end
+
+    calculations do
+      calculate :full_name, :string, expr(first_name <> ^arg(:separator) <> last_name) do
+        argument :separator, :string, default: " ", allow_nil?: false
       end
     end
 
@@ -58,6 +71,22 @@ defmodule Ash.Test.CodeInterfaceTest do
 
     resources do
       registry Registry
+    end
+  end
+
+  describe "calculations" do
+    test "calculation value can be fetched dynamically" do
+      assert {:ok, "Zach Daniel"} =
+               Api.calculate(User, :full_name, refs: %{first_name: "Zach", last_name: "Daniel"})
+    end
+
+    test "the same calculation can be fetched with the calculation interface" do
+      assert "Zach Daniel" = User.full_name!("Zach", "Daniel")
+    end
+
+    test "the same calculation can be fetched with the calculation interface with optional" do
+      assert "Zach Daniel" = User.full_name_opt!("Zach", "Daniel")
+      assert "Zach-Daniel" = User.full_name_opt!("Zach", "Daniel", "-")
     end
   end
 
