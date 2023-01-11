@@ -342,7 +342,7 @@ defmodule Ash.Policy.Authorizer do
   end
 
   def validate_condition(conditions) when is_list(conditions) do
-    Enum.map(conditions, &validate_check/1)
+    {:ok, Enum.map(conditions, &validate_check/1)}
   end
 
   @doc false
