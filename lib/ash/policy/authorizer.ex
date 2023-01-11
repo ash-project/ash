@@ -327,12 +327,10 @@ defmodule Ash.Policy.Authorizer do
   end
 
   @doc false
+  # We can't actually validate that they are check modules here
+  # without causing compile time dependencies
   def validate_check({module, opts}) when is_atom(module) and is_list(opts) do
-    if Ash.Helpers.implements_behaviour?(module, Ash.Policy.Check) do
-      {:ok, {module, opts}}
-    else
-      {:error, "All checks must implement the Ash.Policy.Check behaviour"}
-    end
+    {:ok, {module, opts}}
   end
 
   def validate_check(module) when is_atom(module) do
@@ -344,15 +342,7 @@ defmodule Ash.Policy.Authorizer do
   end
 
   def validate_condition(conditions) when is_list(conditions) do
-    Enum.reduce_while(conditions, {:ok, []}, fn condition, {:ok, conditions} ->
-      case validate_check(condition) do
-        {:ok, {condition, opts}} ->
-          {:cont, {:ok, [{condition, opts} | conditions]}}
-
-        {:error, "All checks must implement the Ash.Policy.Check behaviour"} ->
-          {:halt, {:error, "Expected all conditions to implement the Ash.Policy.Check behaviour"}}
-      end
-    end)
+    Enum.map(conditions, &validate_check/1)
   end
 
   @doc false
