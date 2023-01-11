@@ -350,13 +350,13 @@ defmodule Ash.Changeset do
 
     case action.type do
       :create ->
-        for_create(initial, action, params, opts)
+        for_create(initial, action.name, params, opts)
 
       :update ->
-        for_update(initial, action, params, opts)
+        for_update(initial, action.name, params, opts)
 
       :destroy ->
-        for_destroy(initial, action, params, opts)
+        for_destroy(initial, action.name, params, opts)
 
       :read ->
         raise ArgumentError,
