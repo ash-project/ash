@@ -458,6 +458,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Actions.Create,
     schema: Ash.Resource.Actions.Create.opt_schema(),
+    modules: [:manual],
     no_depend_modules: [:touches_resources],
     entities: [
       changes: [
@@ -530,6 +531,7 @@ defmodule Ash.Resource.Dsl do
     schema: Ash.Resource.Actions.Read.opt_schema(),
     transform: {Ash.Resource.Actions.Read, :transform, []},
     no_depend_modules: [:touches_resources],
+    modules: [:manual],
     links: [
       guides: [
         "ash:guide:Actions"
@@ -567,6 +569,7 @@ defmodule Ash.Resource.Dsl do
         "ash:guide:Actions"
       ]
     ],
+    modules: [:manual],
     entities: [
       changes: [
         @action_change,
@@ -597,6 +600,7 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
+    modules: [:manual],
     imports: [
       Ash.Resource.Change.Builtins,
       Ash.Resource.Validation.Builtins,
@@ -851,6 +855,7 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
+    modules: [:define_for],
     schema: [
       define_for: [
         type: {:spark, Ash.Api},
