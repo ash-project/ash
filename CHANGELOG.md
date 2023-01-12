@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.5.2](https://github.com/ash-project/ash/compare/v2.5.1...v2.5.2) (2023-01-12)
+
+
+
+
+### Bug Fixes:
+
+* properly set the context option on changesets
+
+* return proper value from validation
+
+### Improvements:
+
+* add `action_is/1` builtin validation
+
+* more compile time optimizations
+
 ## [v2.5.1](https://github.com/ash-project/ash/compare/v2.5.0...v2.5.1) (2023-01-11)
 
 
