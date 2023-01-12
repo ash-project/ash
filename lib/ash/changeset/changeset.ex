@@ -346,7 +346,7 @@ defmodule Ash.Changeset do
         resource -> resource
       end
 
-    action = Ash.Resource.Info.action(resource, action)
+    action = get_action_entity(resource, action)
 
     case action.type do
       :create ->
@@ -498,7 +498,7 @@ defmodule Ash.Changeset do
   New changes added are validated individually, though. This allows you to create a changeset according
   to a given action, and then add custom changes if necessary.
   """
-  def for_destroy(initial, action_name, params \\ %{}, opts \\ []) do
+  def for_destroy(initial, action_or_name, params \\ %{}, opts \\ []) do
     changeset =
       case initial do
         %__MODULE__{} = changeset ->
@@ -520,11 +520,11 @@ defmodule Ash.Changeset do
       end
 
     if changeset.valid? do
-      action = Ash.Resource.Info.action(changeset.resource, action_name, changeset.action_type)
+      action = get_action_entity(changeset.resource, action_or_name)
 
       if action do
         if action.soft? do
-          do_for_action(%{changeset | action_type: :destroy}, action.name, params, opts)
+          do_for_action(%{changeset | action_type: :destroy}, action, params, opts)
         else
           {changeset, opts} =
             Ash.Actions.Helpers.add_process_context(changeset.api, changeset, opts)
@@ -574,7 +574,7 @@ defmodule Ash.Changeset do
           end
         end
       else
-        raise_no_action(changeset.resource, action_name, :destroy)
+        raise_no_action(changeset.resource, action_or_name, :destroy)
       end
     else
       changeset
@@ -654,11 +654,11 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp do_for_action(changeset, action_name, params, opts) do
+  defp do_for_action(changeset, action_or_name, params, opts) do
     {changeset, opts} = Ash.Actions.Helpers.add_process_context(changeset.api, changeset, opts)
 
     if changeset.valid? do
-      action = Ash.Resource.Info.action(changeset.resource, action_name, changeset.action_type)
+      action = get_action_entity(changeset.resource, action_or_name)
 
       if action do
         name =
@@ -719,12 +719,17 @@ defmodule Ash.Changeset do
           end
         end
       else
-        raise_no_action(changeset.resource, action_name, changeset.action_type)
+        raise_no_action(changeset.resource, action_or_name, changeset.action_type)
       end
     else
       changeset
     end
   end
+
+  defp get_action_entity(resource, name) when is_atom(name),
+    do: Ash.Resource.Info.action(resource, name)
+
+  defp get_action_entity(_resource, action), do: action
 
   defp eager_validate_identities(changeset) do
     identities =
