@@ -15,7 +15,13 @@ defmodule Ash.Actions.Helpers do
 
   def validate_calculation_load!(other, _), do: other
 
+  defp set_context(%Ash.Changeset{} = changeset, context),
+    do: Ash.Changeset.set_context(changeset, context)
+
+  defp set_context(%Ash.Query{} = query, context), do: Ash.Query.set_context(query, context)
+
   def add_process_context(api, query_or_changeset, opts) do
+    query_or_changeset = set_context(query_or_changeset, opts[:context] || %{})
     api = api || query_or_changeset.api
 
     opts =

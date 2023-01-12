@@ -12,6 +12,21 @@ end
 
 This simple setup now allows you to open a ticket with `Helpdesk.Support.Ticket.open(subject)`. You can cause it to raise errors instead of return them with `Helpdesk.Support.Ticket.open!(subject)`. For information on the options and additional inputs these defined functions take, look at the generated function documentation, which you can do in iex with `h Helpdesk.Support.Ticket.open`. For more information on the code interface, read the DSL documentation: {{link:ash:dsl:resource/code_interface}}.
 
+## define_for and define_interface
+
+Notice how we included a specific Api module using `define_for` above. Without this, no functions will be defined in the resource. This is because you might want to define the interface for multiple resources in a single module. While we encourage the use of `define_for Api`, it is not the only way to do it. You could also do something like this:
+
+```elixir
+defmodule MyApp.MyApi.Interface do
+  require Ash.CodeInterface
+
+  Ash.CodeInterface.define_interface(MyApp.MyApi, MyApp.Resource1)
+  Ash.CodeInterface.define_interface(MyApp.MyApi, MyApp.Resource2)
+end
+```
+
+And then call functions on `MyApp.MyApi.Interface` instead.
+
 ## Using the code interface
 
 If the action is an update or destroy, it will take a record or a changeset as its *first* argument.

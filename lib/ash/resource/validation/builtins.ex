@@ -62,6 +62,18 @@ defmodule Ash.Resource.Validation.Builtins do
   end
 
   @doc """
+  Validates that the action is a specific action. Primarily meant for use in `where`.
+
+  ## Examples
+
+      validate present(:foo), where: [action_is(:bar)]
+  """
+  @spec action_is(action :: atom) :: Validation.ref()
+  def action_is(action) do
+    {Validation.ActionIs, action: action}
+  end
+
+  @doc """
   Validates that an attribute is being changed to a specific value, or equals the given value if it is not being changed.
 
   ## Examples
