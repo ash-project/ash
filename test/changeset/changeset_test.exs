@@ -914,6 +914,18 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                }).errors
     end
 
+    test "for_action works the same as calling for_<action>" do
+      changeset_1 =
+        Category
+        |> Changeset.for_create(:create)
+
+      changeset_2 =
+        Category
+        |> Changeset.for_action(:create)
+
+      assert changeset_1 == changeset_2
+    end
+
     test "a message can be specified as part of a `present` validation" do
       assert [
                %Ash.Error.Changes.InvalidAttribute{
