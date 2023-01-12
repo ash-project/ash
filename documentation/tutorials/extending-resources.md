@@ -16,7 +16,7 @@ end
 
 ## Creating a transformer
 
-Transformers are all run serially against a map of data called `dsl_state`,  which is the data structure that we build as we use the DSL. For example:
+Transformers are all run serially against a map of data called `dsl_state`, which is the data structure that we build as we use the DSL. For example:
 
 ```elixir
 attributes do
@@ -36,7 +36,7 @@ Would, under the hood, look something like this:
 }
 ```
 
-`Spark.Dsl.Transformer` provides utilities to work with this data structure, and most introspection utilities also work with with that data structure (i.e `Ash.Resource.Info.attributes(dsl_state)`). A transformer exposes `transform/1`, which takes the `dsl_state` and returns either `{:ok, dsl_state}` or `{:error, error}`
+`Spark.Dsl.Transformer` provides utilities to work with this data structure, and most introspection utilities also work with that data structure (i.e `Ash.Resource.Info.attributes(dsl_state)`). A transformer exposes `transform/1`, which takes the `dsl_state` and returns either `{:ok, dsl_state}` or `{:error, error}`
 
 ```elixir
 defmodule MyApp.Extensions.Base.AddTimestamps do
@@ -127,7 +127,7 @@ defmodule MyApp.Extensions.Base do
     end
   end
 
-  use Spark.Dsl.Extension, 
+  use Spark.Dsl.Extension,
     transformers: [MyApp.Extensions.Base.AddTimestamps],
     sections: [@base]
 end
