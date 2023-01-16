@@ -13,12 +13,14 @@ defmodule Ash.Test.Flow.Flows.BranchingTransaction do
       allow_nil? false
     end
 
-    returns :branch
+    returns :change_user_email
   end
 
   steps do
     branch :branch, arg(:do_branch) do
       read :get_user, Ash.Test.Flow.User, :by_name do
+        get? true
+
         input(%{
           name: arg(:name)
         })
@@ -30,7 +32,7 @@ defmodule Ash.Test.Flow.Flows.BranchingTransaction do
         end
 
         update :change_user_email, Ash.Test.Flow.User, :update do
-          record result(:get_user)
+          record result(:unapprove_user)
           input %{email: "changed@example.com"}
         end
       end

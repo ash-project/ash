@@ -4,7 +4,6 @@ defmodule Ash.FlowTest.BranchingTransactionTest do
   alias Ash.Test.Flow.{Api, Org, User}
 
   alias Ash.Test.Flow.Flows.SignUpUser
-  require IEx
 
   setup do
     ExUnit.CaptureLog.capture_log(fn ->
@@ -22,18 +21,22 @@ defmodule Ash.FlowTest.BranchingTransactionTest do
       Org
       |> Ash.Changeset.for_create(:create, %{name: "Org 1"})
       |> Api.create!()
+
     SignUpUser.run!(org.name, "Bruce", "Wayne")
     :ok
   end
 
-  test "branch with transaction inside BOOMS!" do
-    user = User
-           |> Ash.Query.for_read(:by_name, %{name: "Bruce"})
-           |> Api.read!()
-           |> List.first()
+  test "branch with transaction inside can refer to outer steps properly" do
+    user =
+      User
+      |> Ash.Query.for_read(:by_name, %{name: "Bruce"})
+      |> Api.read!()
+      |> List.first()
+
     assert user.email == nil
     assert user.approved == true
-    Ash.Test.Flow.Flows.BranchingTransaction.run!(true, "Bruce")
+    %{result: user} = Ash.Test.Flow.Flows.BranchingTransaction.run!(true, "Bruce")
+
     assert user.email == "changed@example.com"
     assert user.approved == false
   end
