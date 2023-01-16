@@ -3,9 +3,10 @@ defmodule Ash.Test.Flow.Flows.BranchingTransaction do
   use Ash.Flow
 
   flow do
+    api Ash.Test.Flow.Api
+
     argument :do_branch, :boolean do
       allow_nil? false
-      default true
     end
 
     argument :name, :string do
@@ -24,7 +25,7 @@ defmodule Ash.Test.Flow.Flows.BranchingTransaction do
       end
 
       transaction :multi_user_update, Ash.Test.Flow.User do
-        update :approve_user, Ash.Test.Flow.User, :approve do
+        update :unapprove_user, Ash.Test.Flow.User, :unapprove do
           record result(:get_user)
         end
 
