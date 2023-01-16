@@ -29,7 +29,7 @@ defmodule Ash.Resource.Validation.Confirm do
   def validate(changeset, opts) do
     confirmation_value =
       Changeset.get_argument(changeset, opts[:confirmation]) ||
-        Changeset.get_attribute(changeset, opts[:value])
+        Changeset.get_attribute(changeset, opts[:confirmation])
 
     value =
       Changeset.get_argument(changeset, opts[:field]) ||
