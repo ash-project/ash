@@ -15,6 +15,12 @@ defmodule Ash.Test.Flow.User do
       filter(expr(org_id == ^arg(:org)))
     end
 
+    read :by_name do
+      argument :name, :string, allow_nil?: false
+
+      filter(expr(first_name == ^arg(:name)))
+    end
+
     create :create do
       argument :org, :uuid, allow_nil?: false
       change manage_relationship(:org, type: :append_and_remove)

@@ -1596,10 +1596,11 @@ defmodule Ash.Flow.Executor.AshEngine do
        ) do
     {record, record_deps} = Ash.Flow.handle_input_template(record, input)
 
-    get_request_dep_paths = get_dep_paths(all_steps, record_deps, transaction_name, [])
+    get_request_dep_paths =
+      all_steps
+      |> get_dep_paths(record_deps, transaction_name, [])
 
-    get_request_deps =
-      Enum.map(get_request_dep_paths, fn {_, %{request_path: request_path}} -> request_path end)
+    get_request_deps = dependable_request_paths(get_request_dep_paths)
 
     Ash.Engine.Request.new(
       path: [name, :fetch],
@@ -1756,10 +1757,10 @@ defmodule Ash.Flow.Executor.AshEngine do
         nil
 
       %Step{step: %Ash.Flow.Step.Transaction{name: ^transaction_name, steps: steps}} ->
-        find_step_dep(steps, dep, nil)
+        find_step_dep(steps, dep, nil, stop_at_transaction_name?, no_depend?)
 
       %Step{step: %Ash.Flow.Step.Transaction{steps: steps} = step} ->
-        case find_step_dep(steps, dep, transaction_name, stop_at_transaction_name?) do
+        case find_step_dep(steps, dep, transaction_name, stop_at_transaction_name?, no_depend?) do
           nil ->
             nil
 
@@ -1779,7 +1780,7 @@ defmodule Ash.Flow.Executor.AshEngine do
         end
 
       %Step{step: %{steps: steps}} ->
-        find_step_dep(steps, dep, transaction_name, stop_at_transaction_name?)
+        find_step_dep(steps, dep, transaction_name, stop_at_transaction_name?, no_depend?)
 
       _ ->
         nil
