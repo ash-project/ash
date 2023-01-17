@@ -219,6 +219,8 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       |> manage_relationship(:author, author, type: :append_and_remove)
       |> Api.create!()
 
+      Application.put_env(:foo, :bar, true)
+
       authorized_posts =
         author
         |> Api.load!(:authorized_actor_posts)

@@ -308,17 +308,6 @@ defmodule Ash.Actions.Read do
                      run_before_action(query),
                    {:ok, filter_requests} <-
                      filter_requests(query, path, request_opts, actor, tenant),
-                   load_requests <-
-                     Load.requests(
-                       loaded_query(query),
-                       lazy?,
-                       [
-                         actor: actor,
-                         authorize?: authorize?,
-                         tracer: request_opts[:tracer]
-                       ],
-                       path ++ [:fetch]
-                     ),
                    {:ok, sort} <-
                      Ash.Actions.Sort.process(
                        query.resource,
@@ -326,13 +315,10 @@ defmodule Ash.Actions.Read do
                        query.aggregates,
                        query.context
                      ) do
-                load_paths = Enum.map(load_requests, & &1.path)
-
                 {:ok,
                  query
                  |> Map.put(:sort, sort)
                  |> Ash.Query.set_context(%{
-                   load_paths: load_paths,
                    initial_limit: initial_limit,
                    initial_offset: initial_offset,
                    page_opts: page_opts,
@@ -341,7 +327,6 @@ defmodule Ash.Actions.Read do
                    query_opts: query_opts
                  }),
                  %{
-                   requests: load_requests,
                    notifications: before_notifications
                  }}
               else
@@ -371,27 +356,28 @@ defmodule Ash.Actions.Read do
         name: "process #{inspect(resource)}.#{action.name}",
         error_path: error_path,
         data:
-          Request.resolve([path ++ [:fetch, :data], path ++ [:fetch, :query]], fn context ->
-            query_opts = query_opts(request_opts, context)
-            query = get_in(context, path ++ [:fetch, :query])
-            fetched_data = get_in(context, path ++ [:fetch, :data])
-            data = fetched_data[:results]
-            load_paths = query.context.load_paths
-            initial_query = query.context.initial_query
-            aggregate_value_request_paths = fetched_data[:aggregate_value_request_paths] || []
+          Request.resolve(
+            [path ++ [:fetch, :data], path ++ [:fetch, :query]],
+            fn context ->
+              query_opts = query_opts(request_opts, context)
+              query = get_in(context, path ++ [:fetch, :query])
+              fetched_data = get_in(context, path ++ [:fetch, :data])
+              data = fetched_data[:results]
+              initial_query = query.context.initial_query
+              aggregate_value_request_paths = fetched_data[:aggregate_value_request_paths] || []
 
-            if !Enum.empty?(aggregate_value_request_paths) &&
-                 !get_in(context, path ++ [:aggregate_values]) do
-              {:new_deps, aggregate_value_request_paths}
-            else
-              case Enum.filter(load_paths, fn path ->
-                     !get_in(context, path ++ [:data])
-                   end) do
-                [] ->
+              if !Enum.empty?(aggregate_value_request_paths) &&
+                   !get_in(context, path ++ [:aggregate_values]) do
+                {:new_deps, aggregate_value_request_paths}
+              else
+                if is_nil(get_in(context, path ++ [:fetch, :load])) &&
+                     !Enum.empty?(fetched_data[:load_paths]) do
+                  {:new_deps, Enum.map(fetched_data[:load_paths], &(&1 ++ [:data]))}
+                else
                   data
                   |> Load.attach_loads(get_in(context, path ++ [:fetch, :load]) || %{})
                   |> add_aggregate_values(
-                    loaded_query(query).aggregates,
+                    query.aggregates,
                     query.resource,
                     get_in(context, path ++ [:aggregate_values]) || %{},
                     Map.get(fetched_data, :aggregates_in_query) || []
@@ -425,12 +411,10 @@ defmodule Ash.Actions.Read do
                     {:requests, requests} ->
                       {:requests, Enum.map(requests, &{&1, :data})}
                   end
-
-                deps ->
-                  {:new_deps, Enum.map(deps, &(&1 ++ [:data]))}
+                end
               end
             end
-          end)
+          )
       )
 
     [fetch, process]
@@ -676,15 +660,13 @@ defmodule Ash.Actions.Read do
       [path ++ [:fetch, :query]],
       fn data ->
         ash_query = get_in(data, path ++ [:fetch, :query])
-        actor = data[:actor]
-        authorize? = data[:authorize?]
+        actor = request_opts[:actor]
+        authorize? = request_opts[:authorize?]
 
         initial_query = ash_query.context[:initial_query]
         filter_requests = ash_query.context[:filter_requests] || []
         initial_limit = initial_query.context[:initial_limit]
         initial_offset = initial_query.context[:initial_offset]
-
-        ash_query = loaded_query(ash_query)
 
         used_calculations =
           ash_query.filter
@@ -719,6 +701,16 @@ defmodule Ash.Actions.Read do
           else
             {[], Map.values(ash_query.calculations)}
           end
+
+        current_calculations = Map.keys(ash_query.calculations)
+
+        ash_query = loaded_query(ash_query, calculations_at_runtime)
+
+        calculations_at_runtime =
+          ash_query.calculations
+          |> Map.drop(current_calculations)
+          |> Map.values()
+          |> Enum.concat(calculations_at_runtime)
 
         must_be_reselected =
           if request_opts[:initial_data] do
@@ -756,6 +748,20 @@ defmodule Ash.Actions.Read do
             calculations_in_query,
             path
           )
+
+        load_requests =
+          Load.requests(
+            ash_query,
+            request_opts[:lazy?],
+            [
+              actor: actor,
+              authorize?: authorize?,
+              tracer: request_opts[:tracer]
+            ],
+            path ++ [:fetch]
+          )
+
+        load_paths = Enum.map(load_requests, & &1.path)
 
         cond do
           # if aggregate auth requests is not empty but we have not received the data from
@@ -821,13 +827,14 @@ defmodule Ash.Actions.Read do
                            primary_key,
                            must_be_reselected
                          ),
+                       load_paths: load_paths,
                        aggregates_in_query: aggregates_in_query,
                        calculations_at_runtime: calculations_at_runtime,
                        aggregate_value_request_paths:
                          Enum.map(aggregate_value_requests, &(&1.path ++ [:data]))
                      },
                      %{
-                       requests: aggregate_value_requests
+                       requests: aggregate_value_requests ++ load_requests
                      }}
 
                   {:error, error} ->
@@ -841,6 +848,7 @@ defmodule Ash.Actions.Read do
           request_opts[:initial_data] ->
             {:ok,
              %{
+               load_paths: load_paths,
                results: request_opts[:initial_data],
                aggregates_in_query: aggregates_in_query,
                calculations_at_runtime: calculations_at_runtime,
@@ -848,7 +856,7 @@ defmodule Ash.Actions.Read do
                  Enum.map(aggregate_value_requests, &(&1.path ++ [:data]))
              },
              %{
-               requests: aggregate_value_requests
+               requests: aggregate_value_requests ++ load_requests
              }}
 
           true ->
@@ -967,6 +975,7 @@ defmodule Ash.Actions.Read do
               if request_opts[:return_query?] do
                 {:ok,
                  %{
+                   load_paths: load_paths,
                    results: results,
                    ultimate_query: %{ash_query | filter: filter},
                    count: count,
@@ -977,11 +986,12 @@ defmodule Ash.Actions.Read do
                  },
                  %{
                    notifications: after_notifications,
-                   requests: aggregate_value_requests
+                   requests: aggregate_value_requests ++ load_requests
                  }}
               else
                 {:ok,
                  %{
+                   load_paths: load_paths,
                    results: results,
                    count: count,
                    calculations_at_runtime: calculations_at_runtime,
@@ -991,7 +1001,7 @@ defmodule Ash.Actions.Read do
                  },
                  %{
                    notifications: after_notifications,
-                   requests: aggregate_value_requests
+                   requests: aggregate_value_requests ++ load_requests
                  }}
               end
             else
@@ -1009,8 +1019,8 @@ defmodule Ash.Actions.Read do
     )
   end
 
-  defp loaded_query(query) do
-    query = load_calc_requirements(query)
+  defp loaded_query(query, calculations_at_runtime) do
+    query = load_calc_requirements(query, calculations_at_runtime)
 
     query =
       Enum.reduce(query.sort || [], query, fn
@@ -1072,22 +1082,42 @@ defmodule Ash.Actions.Read do
     end)
   end
 
-  defp load_calc_requirements(query, checked_calcs \\ []) do
-    unchecked_calcs = Map.drop(query.calculations, checked_calcs)
+  defp load_calc_requirements(query, unchecked_calcs, checked \\ [])
 
-    if unchecked_calcs == %{} do
-      query
-    else
-      query.calculations
-      |> Enum.reduce(query, fn {_name, calc}, query ->
-        Ash.Query.load(
-          query,
+  defp load_calc_requirements(query, [], _checked) do
+    query
+  end
+
+  defp load_calc_requirements(query, unchecked_calcs, checked) do
+    {query, new_loads} =
+      Enum.reduce(unchecked_calcs, {query, []}, fn calc, {query, new_loads} ->
+        loaded =
+          query
+          |> Ash.Query.load(calc.required_loads)
+          |> Ash.Query.ensure_selected(calc.select)
+
+        required_calc_loads =
           calc.required_loads
-        )
-        |> Ash.Query.ensure_selected(calc.select)
+          |> List.wrap()
+          |> Enum.concat(List.wrap(calc.select))
+          |> Enum.map(fn required_load ->
+            Map.get(loaded.calculations, required_load)
+          end)
+          |> Enum.filter(& &1)
+
+        {loaded
+         |> Ash.Query.ensure_selected(calc.select), new_loads ++ required_calc_loads}
       end)
-      |> load_calc_requirements(Map.keys(query.calculations))
-    end
+
+    new_loads =
+      Enum.reject(
+        new_loads,
+        &Enum.find(checked, fn checked ->
+          checked.name == &1.name
+        end)
+      )
+
+    load_calc_requirements(query, new_loads, new_loads ++ checked)
   end
 
   defp remove_already_selected(fields, %{results: results}),
