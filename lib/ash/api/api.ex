@@ -487,13 +487,13 @@ defmodule Ash.Api do
               id_or_filter :: term(),
               params :: Keyword.t()
             ) ::
-              {:ok, Ash.Resource.record()} | {:error, term}
+              {:ok, Ash.Resource.record()} | {:ok, nil} | {:error, term}
 
   @doc """
   Run an ash query, raising on more than one result. See `c:read_one/2` for more.
   """
   @callback read_one!(Ash.Query.t() | Ash.Resource.t(), params :: Keyword.t()) ::
-              Ash.Resource.record() | {Ash.Resource.record(), Ash.Query.t()} | no_return
+              Ash.Resource.record() | {Ash.Resource.record(), Ash.Query.t()} | nil | no_return
 
   @doc """
   Run a query on a resource, but fail on more than one result.
@@ -504,6 +504,7 @@ defmodule Ash.Api do
   @callback read_one(Ash.Query.t() | Ash.Resource.t(), params :: Keyword.t()) ::
               {:ok, Ash.Resource.record()}
               | {:ok, Ash.Resource.record(), Ash.Query.t()}
+              | {:ok, nil}
               | {:error, term}
   @doc """
   Run an ash query. See `c:read/2` for more.
