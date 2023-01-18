@@ -20,37 +20,21 @@ defmodule Ash.Resource.Calculation do
     name: [
       type: :atom,
       required: true,
-      links: [],
       doc: "The field name to use for the calculation value"
     ],
     type: [
       type: :any,
-      links: [
-        modules: [
-          "ash:module:Ash.Type"
-        ]
-      ],
-      doc: "The type of the calculation",
+      doc: "The type of the calculation. See `Ash.Type` for more.",
       required: true
     ],
     constraints: [
       type: :keyword_list,
       default: [],
-      links: [
-        modules: [
-          "ash:module:Ash.Type"
-        ]
-      ],
-      doc: "Constraints to provide to the type."
+      doc: "Constraints to provide to the type. See `Ash.Type` for more."
     ],
     allow_async?: [
       type: :boolean,
       default: false,
-      links: [
-        guides: [
-          "ash:guide:Actions"
-        ]
-      ],
       doc: """
       If set to `true`, then the calculation may be run after the main query.
       """
@@ -63,7 +47,6 @@ defmodule Ash.Resource.Calculation do
            {:custom, __MODULE__, :expr_calc, []}
          ]},
       required: true,
-      links: [],
       doc: """
       The module or `{module, opts}` to use for the calculation
       Also accepts a function that takes the list of records and the context.
@@ -71,42 +54,35 @@ defmodule Ash.Resource.Calculation do
     ],
     description: [
       type: :string,
-      links: [],
       doc: "An optional description for the calculation"
     ],
     private?: [
       type: :boolean,
       default: false,
-      links: [
-        guides: [
-          "ash:guide:Security"
-        ]
-      ],
-      doc:
-        "Whether or not the calculation will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql"
+      doc: """
+      Whether or not the calculation will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql
+
+      See the [security guide](/documentation/topics/security.md) for more.
+      """
     ],
     select: [
       type: {:list, :atom},
       default: [],
-      links: [],
       doc: "A list of fields to ensure selected if the calculation is used."
     ],
     load: [
       type: :any,
       default: [],
-      links: [],
       doc: "A load statement to be applied if the calculation is used."
     ],
     allow_nil?: [
       type: :boolean,
       default: true,
-      links: [],
       doc: "Whether or not the calculation can return nil."
     ],
     filterable?: [
       type: {:or, [:boolean, {:in, [:simple_equality]}]},
       default: true,
-      links: [],
       doc: "Whether or not the calculation should be usable in filters."
     ]
   ]
@@ -130,47 +106,33 @@ defmodule Ash.Resource.Calculation do
       name: [
         type: :atom,
         required: true,
-        doc: "The name of the argument",
-        links: []
+        doc: "The name of the argument"
       ],
       type: [
         type: Ash.OptionsHelpers.ash_type(),
         required: true,
-        links: [
-          modules: [
-            "ash:module:Ash.Type"
-          ]
-        ],
-        doc: "The type of the argument"
+        doc: "The type of the argument. See `Ash.Type` for more."
       ],
       default: [
         type: {:or, [{:mfa_or_fun, 0}, :literal]},
         required: false,
-        links: [],
         doc: "A default value to use for the argument if not provided"
       ],
       allow_nil?: [
         type: :boolean,
         default: true,
-        links: [],
         doc: "Whether or not the argument value may be nil (or may be not provided)"
       ],
       allow_expr?: [
         type: :boolean,
         default: false,
-        links: [],
         doc: "Allow passing expressions as argument values. Expressions cannot be type validated."
       ],
       constraints: [
         type: :keyword_list,
         default: [],
-        links: [
-          modules: [
-            "ash:module:Ash.Type"
-          ]
-        ],
         doc:
-          "Constraints to provide to the type when casting the value. See the type's documentation for more information."
+          "Constraints to provide to the type when casting the value. See the type's documentation and `Ash.Type` for more."
       ]
     ]
 

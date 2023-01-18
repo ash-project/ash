@@ -59,7 +59,6 @@ defmodule Ash.Resource.Relationships.HasOne do
                   [
                     allow_nil?: [
                       type: :boolean,
-                      links: [],
                       default: true,
                       doc: """
                       Marks the relationship as required. Has no effect on validations, but can inform extensions that there will always be a related entity.

@@ -38,20 +38,16 @@ defmodule Ash.Resource.Actions.Destroy do
                 soft?: [
                   type: :atom,
                   doc: "If specified, the destroy action behaves as an update internally",
-                  default: false,
-                  links: []
+                  default: false
                 ],
                 manual: [
                   type:
                     {:spark_function_behaviour, Ash.Resource.ManualDestroy,
                      {Ash.Resource.ManualDestroy.Function, 2}},
-                  links: [
-                    guides: [
-                      "ash:guide:Manual Actions"
-                    ]
-                  ],
                   doc: """
                   Override the update behavior. See the manual action guides for more. Accepts a module or module and opts, or a function that takes the changeset and context.
+
+                  See the [manual actions guide](/documentation/topics/manual-actions.md) for more.
                   """
                 ]
               ]

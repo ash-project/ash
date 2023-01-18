@@ -4,7 +4,6 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declares an attribute on the resource.
     """,
-    links: [],
     examples: [
       """
       attribute :name, :string do
@@ -27,7 +26,6 @@ defmodule Ash.Resource.Dsl do
     examples: [
       "create_timestamp :inserted_at"
     ],
-    links: [],
     target: Ash.Resource.Attribute,
     args: [:name],
     schema: Ash.Resource.Attribute.create_timestamp_schema(),
@@ -39,7 +37,6 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declares a non-writable attribute with a create and update default of `&DateTime.utc_now/0`
     """,
-    links: [],
     examples: [
       "update_timestamp :inserted_at"
     ],
@@ -59,7 +56,6 @@ defmodule Ash.Resource.Dsl do
     examples: [
       "integer_primary_key :id"
     ],
-    links: [],
     args: [:name],
     target: Ash.Resource.Attribute,
     schema: Ash.Resource.Attribute.integer_primary_key_schema(),
@@ -75,7 +71,6 @@ defmodule Ash.Resource.Dsl do
     examples: [
       "uuid_primary_key :id"
     ],
-    links: [],
     args: [:name],
     target: Ash.Resource.Attribute,
     schema: Ash.Resource.Attribute.uuid_primary_key_schema(),
@@ -89,7 +84,6 @@ defmodule Ash.Resource.Dsl do
     A section for declaring attributes on the resource.
     """,
     imports: [Ash.Resource.Attribute.Helpers],
-    links: [],
     examples: [
       """
       attributes do
@@ -137,6 +131,8 @@ defmodule Ash.Resource.Dsl do
     Declares a has_one relationship. In a relational database, the foreign key would be on the *other* table.
 
     Generally speaking, a `has_one` also implies that the destination table is unique on that foreign key.
+
+    See the [relationships guide](/documentation/topics/relationships.md) for more.
     """,
     examples: [
       """
@@ -146,11 +142,6 @@ defmodule Ash.Resource.Dsl do
         destination_attribute :word_text
       end
       """
-    ],
-    links: [
-      guides: [
-        "ash:guide:Relationships"
-      ]
     ],
     modules: [:destination],
     target: Ash.Resource.Relationships.HasOne,
@@ -162,6 +153,8 @@ defmodule Ash.Resource.Dsl do
     name: :has_many,
     describe: """
     Declares a has_many relationship. There can be any number of related entities.
+
+    See the [relationships guide](/documentation/topics/relationships.md) for more.
     """,
     examples: [
       """
@@ -171,11 +164,6 @@ defmodule Ash.Resource.Dsl do
         destination_attribute :word_text
       end
       """
-    ],
-    links: [
-      guides: [
-        "ash:guide:Relationships"
-      ]
     ],
     target: Ash.Resource.Relationships.HasMany,
     modules: [:destination],
@@ -189,12 +177,9 @@ defmodule Ash.Resource.Dsl do
     Declares a many_to_many relationship. Many to many relationships require a join resource.
 
     A join resource is a resource that consists of a relationship to the source and destination of the many to many.
+
+    See the [relationships guide](/documentation/topics/relationships.md) for more.
     """,
-    links: [
-      guides: [
-        "ash:guide:Relationships"
-      ]
-    ],
     examples: [
       """
       # In a resource called `Word`
@@ -224,12 +209,9 @@ defmodule Ash.Resource.Dsl do
     Declares a belongs_to relationship. In a relational database, the foreign key would be on the *source* table.
 
     This creates a field on the resource with the corresponding name and type, unless `define_attribute?: false` is provided.
+
+    See the [relationships guide](/documentation/topics/relationships.md) for more.
     """,
-    links: [
-      guides: [
-        "ash:guide:Relationships"
-      ]
-    ],
     examples: [
       """
       # In a resource called `Word`
@@ -252,12 +234,9 @@ defmodule Ash.Resource.Dsl do
 
     Relationships are a core component of resource oriented design. Many components of Ash
     will use these relationships. A simple use case is loading relationships (done via the `Ash.Query.load/2`).
+
+    See the [relationships guide](/documentation/topics/relationships.md) for more.
     """,
-    links: [
-      guides: [
-        "ash:guide:Relationships"
-      ]
-    ],
     examples: [
       """
       relationships do
@@ -308,15 +287,9 @@ defmodule Ash.Resource.Dsl do
     name: :change,
     describe: """
     A change to be applied to the changeset.
+
+    See `Ash.Resource.Change` for more.
     """,
-    links: [
-      guides: [
-        "ash:guide:Actions"
-      ],
-      modules: [
-        "ash:module:Ash.Resource.Change"
-      ]
-    ],
     examples: [
       "change relate_actor(:reporter)",
       "change {MyCustomChange, :foo}"
@@ -332,7 +305,6 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declares an argument on the action
     """,
-    links: [],
     examples: [
       "argument :password_confirmation, :string"
     ],
@@ -349,7 +321,6 @@ defmodule Ash.Resource.Dsl do
     A special kind of attribute that is only added to specific actions. Nothing sets this value, it must be set in a custom
     change via `Ash.Resource.Info.put_metadata/3`.
     """,
-    links: [],
     examples: [
       """
       metadata :api_token, :string, allow_nil?: false
@@ -366,16 +337,10 @@ defmodule Ash.Resource.Dsl do
 
   @change %Spark.Dsl.Entity{
     name: :change,
-    links: [
-      guides: [
-        "ash:guide:Actions"
-      ],
-      modules: [
-        "ash:module:Ash.Resource.Change"
-      ]
-    ],
     describe: """
     A change to be applied to the changeset.
+
+    See `Ash.Resource.Change` for more.
     """,
     examples: [
       "change relate_actor(:reporter)",
@@ -391,18 +356,12 @@ defmodule Ash.Resource.Dsl do
     name: :validate,
     describe: """
     Declares a validation for creates and updates.
+
+    See `Ash.Resource.Change` for more.
     """,
     examples: [
       "validate {Mod, [foo: :bar]}",
       "validate at_least_one_of_present([:first_name, :last_name])"
-    ],
-    links: [
-      guides: [
-        "ash:guide:Actions"
-      ],
-      modules: [
-        "ash:module:Ash.Resource.Change"
-      ]
     ],
     target: Ash.Resource.Validation,
     schema: Ash.Resource.Validation.opt_schema(),
@@ -415,17 +374,11 @@ defmodule Ash.Resource.Dsl do
     name: :validate,
     describe: """
     Declares a validation to be applied to the changeset.
+
+    See `Ash.Resource.Validation` for more.
     """,
     examples: [
       "validate changing(:email)"
-    ],
-    links: [
-      guides: [
-        "ash:guide:Actions"
-      ],
-      modules: [
-        "ash:module:Ash.Resource.Validation"
-      ]
     ],
     target: Ash.Resource.Validation,
     schema: Ash.Resource.Validation.action_schema(),
@@ -450,11 +403,6 @@ defmodule Ash.Resource.Dsl do
       Ash.Resource.Change.Builtins,
       Ash.Resource.Validation.Builtins,
       Ash.Filter.TemplateHelpers
-    ],
-    links: [
-      guides: [
-        "ash:guide:Actions"
-      ]
     ],
     target: Ash.Resource.Actions.Create,
     schema: Ash.Resource.Actions.Create.opt_schema(),
@@ -485,11 +433,6 @@ defmodule Ash.Resource.Dsl do
       prepare build(sort: [:foo, :bar])
       """
     ],
-    links: [
-      guides: [
-        "ash:guide:Actions"
-      ]
-    ],
     target: Ash.Resource.Preparation,
     schema: Ash.Resource.Preparation.schema(),
     no_depend_modules: [:preparation],
@@ -503,12 +446,7 @@ defmodule Ash.Resource.Dsl do
     """,
     target: Ash.Resource.Actions.Read.Pagination,
     schema: Ash.Resource.Actions.Read.pagination_schema(),
-    transform: {Ash.Resource.Actions.Read.Pagination, :transform, []},
-    links: [
-      guides: [
-        "ash:guide:Pagination"
-      ]
-    ]
+    transform: {Ash.Resource.Actions.Read.Pagination, :transform, []}
   }
 
   @read %Spark.Dsl.Entity{
@@ -532,11 +470,6 @@ defmodule Ash.Resource.Dsl do
     transform: {Ash.Resource.Actions.Read, :transform, []},
     no_depend_modules: [:touches_resources],
     modules: [:manual],
-    links: [
-      guides: [
-        "ash:guide:Actions"
-      ]
-    ],
     entities: [
       arguments: [
         @action_argument
@@ -563,11 +496,6 @@ defmodule Ash.Resource.Dsl do
     ],
     examples: [
       "update :flag_for_review, primary?: true"
-    ],
-    links: [
-      guides: [
-        "ash:guide:Actions"
-      ]
     ],
     modules: [:manual],
     entities: [
@@ -606,11 +534,6 @@ defmodule Ash.Resource.Dsl do
       Ash.Resource.Validation.Builtins,
       Ash.Filter.TemplateHelpers
     ],
-    links: [
-      guides: [
-        "ash:guide:Actions"
-      ]
-    ],
     no_depend_modules: [:touches_resources],
     entities: [
       changes: [
@@ -641,11 +564,6 @@ defmodule Ash.Resource.Dsl do
     your resources to conform to your business logic. It is normal and expected to have
     multiple actions of each type in a large application.
     """,
-    links: [
-      guides: [
-        "ash:guide:Actions"
-      ]
-    ],
     schema: [
       defaults: [
         type: {:list, {:in, [:create, :read, :update, :destroy]}},
@@ -656,14 +574,12 @@ defmodule Ash.Resource.Dsl do
 
         By default, resources have no default actions. Embedded resources, however, have a default
         of all resource types.
-        """,
-        links: []
+        """
       ],
       default_accept: [
         type: {:list, :atom},
         doc:
-          "A default value for the `accept` option for each action. Defaults to all public attributes.",
-        links: []
+          "A default value for the `accept` option for each action. Defaults to all public attributes."
       ]
     ],
     examples: [
@@ -708,15 +624,12 @@ defmodule Ash.Resource.Dsl do
     name: :identity,
     describe: """
     Represents a unique constraint on the resource.
+
+    See the [identities guide](/documentation/topics/identities.md) for more.
     """,
     examples: [
       "identity :name, [:name]",
       "identity :full_name, [:first_name, :last_name]"
-    ],
-    links: [
-      guides: [
-        "ash:guide:Identities"
-      ]
     ],
     target: Ash.Resource.Identity,
     schema: Ash.Resource.Identity.schema(),
@@ -726,7 +639,6 @@ defmodule Ash.Resource.Dsl do
 
   @identities %Spark.Dsl.Section{
     name: :identities,
-    links: [],
     describe: """
     Unique identifiers for the resource
     """,
@@ -756,43 +668,36 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
-    links: [],
     imports: [Ash.Filter.TemplateHelpers],
     modules: [:simple_notifiers],
     schema: [
       description: [
         type: :string,
-        doc:
-          "A human readable description of the resource, to be used in generated documentation",
-        links: []
+        doc: "A human readable description of the resource, to be used in generated documentation"
       ],
       base_filter: [
         type: :any,
-        doc: "A filter statement to be applied to any queries on the resource",
-        links: []
+        doc: "A filter statement to be applied to any queries on the resource"
       ],
       default_context: [
         type: :any,
-        doc: "Default context to apply to any queries/changesets generated for this resource.",
-        links: []
+        doc: "Default context to apply to any queries/changesets generated for this resource."
       ],
       trace_name: [
         type: :string,
-        doc: "The name to use in traces. Defaults to the short_name stringified",
-        links: [
-          guides: [
-            "ash:guide:Instrumentation"
-          ]
-        ]
+        doc: """
+        The name to use in traces. Defaults to the short_name stringified.
+
+        See the [monitoring guide](/documentation/topics/monitoring.md) for more.
+        """
       ],
       short_name: [
         type: :atom,
-        doc: "A short identifier for the resource, which should be unique.",
-        links: [
-          guides: [
-            "ash:guide:Instrumentation"
-          ]
-        ]
+        doc: """
+        A short identifier for the resource, which should be unique.
+
+        See the [monitoring guide](/documentation/topics/monitoring.md) for more.
+        """
       ],
       simple_notifiers: [
         type: {:list, :module},
@@ -806,6 +711,8 @@ defmodule Ash.Resource.Dsl do
     name: :define_calculation,
     describe: """
     Defines a function with the corresponding name and arguments, that evaluates a calculation.
+
+    See the [code interface guide](/documentation/topics/code-interface.md) for more.
     """,
     examples: [
       "define_calculation :referral_link, args: [:id]",
@@ -814,11 +721,6 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.CalculationInterface,
     schema: Ash.Resource.CalculationInterface.schema(),
     transform: {Ash.Resource.CalculationInterface, :transform, []},
-    links: [
-      guides: [
-        "ash:guide:Code Interface"
-      ]
-    ],
     args: [:name]
   }
 
@@ -826,17 +728,14 @@ defmodule Ash.Resource.Dsl do
     name: :define,
     describe: """
     Defines a function with the corresponding name and arguments.
+
+    See the [code interface guide](/documentation/topics/code-interface.md) for more.
     """,
     examples: [
       "define :get_user_by_id, action: :get_by_id, args: [:id], get?: true"
     ],
     target: Ash.Resource.Interface,
     schema: Ash.Resource.Interface.schema(),
-    links: [
-      guides: [
-        "ash:guide:Code Interface"
-      ]
-    ],
     transform: {Ash.Resource.Interface, :transform, []},
     args: [:name]
   }
@@ -845,6 +744,8 @@ defmodule Ash.Resource.Dsl do
     name: :code_interface,
     describe: """
     Functions that will be defined on the Api module to interact with this resource.
+
+    See the [code interface guide](/documentation/topics/code-interface.md) for more.
     """,
     examples: [
       """
@@ -861,13 +762,7 @@ defmodule Ash.Resource.Dsl do
         type: {:spark, Ash.Api},
         doc:
           "Defines the code interface on the resource module directly, using the provided Api.",
-        default: false,
-        links: []
-      ]
-    ],
-    links: [
-      guides: [
-        "ash:guide:Code Interface"
+        default: false
       ]
     ],
     entities: [
@@ -881,9 +776,6 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declare validations prior to performing actions against the resource
     """,
-    links: [
-      guides: ["ash:guide:Actions"]
-    ],
     imports: [Ash.Resource.Validation.Builtins],
     examples: [
       """
@@ -902,19 +794,13 @@ defmodule Ash.Resource.Dsl do
     name: :changes,
     describe: """
     Declare changes that occur on create/update/destroy actions against the resource
+
+    See `Ash.Resource.Change` for more.
     """,
     imports: [
       Ash.Resource.Validation.Builtins,
       Ash.Resource.Change.Builtins,
       Ash.Filter.TemplateHelpers
-    ],
-    links: [
-      guides: [
-        "ash:guide:Actions"
-      ],
-      modules: [
-        "ash:module:Ash.Resource.Change"
-      ]
     ],
     examples: [
       """
@@ -934,11 +820,6 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declare preparations that occur on all read actions for a given resource
     """,
-    links: [
-      guides: [
-        "ash:guide:Actions"
-      ]
-    ],
     imports: [Ash.Resource.Preparation.Builtins, Ash.Resource.Validation.Builtins],
     examples: [
       """
@@ -955,15 +836,12 @@ defmodule Ash.Resource.Dsl do
 
   @count %Spark.Dsl.Entity{
     name: :count,
-    links: [
-      guides: [
-        "ash:guide:Aggregates"
-      ]
-    ],
     describe: """
     Declares a named count aggregate on the resource
 
     Supports `filter`, but not `sort` (because that wouldn't affect the count)
+
+    See the [aggregates guide](/documentation/topics/aggregates.md) for more.
     """,
     examples: [
       """
@@ -980,16 +858,13 @@ defmodule Ash.Resource.Dsl do
 
   @first %Spark.Dsl.Entity{
     name: :first,
-    links: [
-      guides: [
-        "ash:guide:Aggregates"
-      ]
-    ],
     describe: """
     Declares a named `first` aggregate on the resource
 
     First aggregates return the first value of the related record
     that matches. Supports both `filter` and `sort`.
+
+    See the [aggregates guide](/documentation/topics/aggregates.md) for more.
     """,
     examples: [
       """
@@ -1007,15 +882,12 @@ defmodule Ash.Resource.Dsl do
 
   @max %Spark.Dsl.Entity{
     name: :max,
-    links: [
-      guides: [
-        "ash:guide:Aggregates"
-      ]
-    ],
     describe: """
     Declares a named `max` aggregate on the resource
 
     Supports `filter`, but not `sort` (because that wouldn't affect the max)
+
+    See the [aggregates guide](/documentation/topics/aggregates.md) for more.
     """,
     examples: [
       """
@@ -1032,15 +904,12 @@ defmodule Ash.Resource.Dsl do
 
   @min %Spark.Dsl.Entity{
     name: :min,
-    links: [
-      guides: [
-        "ash:guide:Aggregates"
-      ]
-    ],
     describe: """
     Declares a named `min` aggregate on the resource
 
     Supports `filter`, but not `sort` (because that wouldn't affect the min)
+
+    See the [aggregates guide](/documentation/topics/aggregates.md) for more.
     """,
     examples: [
       """
@@ -1057,15 +926,12 @@ defmodule Ash.Resource.Dsl do
 
   @sum %Spark.Dsl.Entity{
     name: :sum,
-    links: [
-      guides: [
-        "ash:guide:Aggregates"
-      ]
-    ],
     describe: """
     Declares a named `sum` aggregate on the resource
 
     Supports `filter`, but not `sort` (because that wouldn't affect the sum)
+
+    See the [aggregates guide](/documentation/topics/aggregates.md) for more.
     """,
     examples: [
       """
@@ -1082,15 +948,12 @@ defmodule Ash.Resource.Dsl do
 
   @avg %Spark.Dsl.Entity{
     name: :avg,
-    links: [
-      guides: [
-        "ash:guide:Aggregates"
-      ]
-    ],
     describe: """
     Declares a named `avg` aggregate on the resource
 
     Supports `filter`, but not `sort` (because that wouldn't affect the avg)
+
+    See the [aggregates guide](/documentation/topics/aggregates.md) for more.
     """,
     examples: [
       """
@@ -1107,11 +970,6 @@ defmodule Ash.Resource.Dsl do
 
   @custom %Spark.Dsl.Entity{
     name: :custom,
-    links: [
-      guides: [
-        "ash:guide:Aggregates"
-      ]
-    ],
     describe: """
     Declares a named `custom` aggregate on the resource
 
@@ -1119,7 +977,7 @@ defmodule Ash.Resource.Dsl do
 
     Custom aggregates provide an `implementation` which must implement data layer specific callbacks.
 
-    See the relevant data layer documentation for more.
+    See the relevant data layer documentation and the [aggregates guide](/documentation/topics/aggregates.md) for more.
     """,
     examples: [
       """
@@ -1147,16 +1005,13 @@ defmodule Ash.Resource.Dsl do
 
   @list %Spark.Dsl.Entity{
     name: :list,
-    links: [
-      guides: [
-        "ash:guide:Aggregates"
-      ]
-    ],
     describe: """
     Declares a named `list` aggregate on the resource.
 
     A list aggregate selects the list of all values for the given field
     and relationship combination.
+
+    See the [aggregates guide](/documentation/topics/aggregates.md) for more.
     """,
     examples: [
       """
@@ -1178,6 +1033,8 @@ defmodule Ash.Resource.Dsl do
 
     These are aggregates that can be loaded only by name using `Ash.Query.load/2`.
     They are also available as top level fields on the resource.
+
+    See the [aggregates guide](/documentation/topics/aggregates.md) for more.
     """,
     examples: [
       """
@@ -1187,11 +1044,6 @@ defmodule Ash.Resource.Dsl do
         end
       end
       """
-    ],
-    links: [
-      guides: [
-        "ash:guide:Aggregates"
-      ]
     ],
     imports: [Ash.Filter.TemplateHelpers],
     entities: [
@@ -1210,6 +1062,8 @@ defmodule Ash.Resource.Dsl do
     name: :argument,
     describe: """
     An argument to be passed into the calculation's arguments map
+
+    See the [calculations guide](/documentation/topics/calculations.md) for more.
     """,
     examples: [
       """
@@ -1222,11 +1076,6 @@ defmodule Ash.Resource.Dsl do
         allow_nil? false
       end
       """
-    ],
-    links: [
-      guides: [
-        "ash:guide:Calculations"
-      ]
     ],
     target: Ash.Resource.Calculation.Argument,
     args: [:name, :type],
@@ -1247,6 +1096,8 @@ defmodule Ash.Resource.Dsl do
     1.) Specifying the `select` option on a calculation in the resource.
     2.) Define a `select/2` callback in the calculation module
     3.) Set `always_select?` on the attribute in question
+
+    See the [calculations guide](/documentation/topics/calculations.md) for more.
     """,
     examples: [
       {
@@ -1257,11 +1108,6 @@ defmodule Ash.Resource.Dsl do
         "`expr/1` example:",
         "calculate :full_name, :string, expr(first_name <> \" \" <> last_name "
       }
-    ],
-    links: [
-      guides: [
-        "ash:guide:Calculation"
-      ]
     ],
     target: Ash.Resource.Calculation,
     no_depend_modules: [:calculation],
@@ -1275,16 +1121,13 @@ defmodule Ash.Resource.Dsl do
 
   @calculations %Spark.Dsl.Section{
     name: :calculations,
-    links: [
-      guides: [
-        "ash:guide:Calculations"
-      ]
-    ],
     describe: """
     Declare named calculations on the resource.
 
     These are calculations that can be loaded only by name using `Ash.Query.load/2`.
     They are also available as top level fields on the resource.
+
+    See the [calculations guide](/documentation/topics/calculations.md) for more.
     """,
     examples: [
       """
@@ -1306,6 +1149,8 @@ defmodule Ash.Resource.Dsl do
 
     To specify a tenant, use `Ash.Query.set_tenant/2` or
     `Ash.Changeset.set_tenant/2` before passing it to an operation.
+
+    See the [multitenancy guide](/documentation/topics/multitenancy.md)
     """,
     examples: [
       """
@@ -1316,41 +1161,32 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
-    links: [
-      guides: [
-        "ash:guide:Multitenancy"
-      ]
-    ],
     schema: [
       strategy: [
         type: {:in, [:context, :attribute]},
         default: :context,
         doc: """
         Determine if multitenancy is performed with attribute filters or using data layer features.
-        """,
-        links: []
+        """
       ],
       attribute: [
         type: :atom,
         doc: """
         If using the `attribute` strategy, the attribute to use, e.g `org_id`
-        """,
-        links: []
+        """
       ],
       global?: [
         type: :boolean,
         doc: """
         Whether or not the data also exists outside of each tenant.
         """,
-        default: false,
-        links: []
+        default: false
       ],
       parse_attribute: [
         type: :mfa,
         doc:
           "An mfa ({module, function, args}) pointing to a function that takes a tenant and returns the attribute value",
-        default: {__MODULE__, :identity, []},
-        links: []
+        default: {__MODULE__, :identity, []}
       ]
     ]
   }

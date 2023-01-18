@@ -9,8 +9,7 @@ defmodule Ash.Flow.Step.RunFlow do
         flow: [
           type: :atom,
           doc: "The flow to run.",
-          required: true,
-          links: []
+          required: true
         ],
         input: Ash.Flow.Step.input()
       ]

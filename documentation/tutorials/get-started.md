@@ -18,7 +18,7 @@ In this guide we will:
 ## Things you may want to read first
 
 - [Install Elixir](https://elixir-lang.org/install.html)
-- {{link:ash:guide:Philosophy}}
+- [Philosophy Guide](/documentation/tutorials/philosophy.md)
 
 ## Requirements
 
@@ -314,7 +314,7 @@ If we didn't include a subject, or left off the arguments completely, we would s
 
 Now let's add some logic to close a ticket. This time we'll add an `update` action.
 
-Here we will use a `change`. Changes allow you to customize how an action executes with very fine-grained control. There are built-in changes that are automatically available as functions, but you can define your own and pass it in as shown below. You can add multiple, and they will be run in order. See the {{link:ash:guide:Actions}} guides for more.
+Here we will use a `change`. Changes allow you to customize how an action executes with very fine-grained control. There are built-in changes that are automatically available as functions, but you can define your own and pass it in as shown below. You can add multiple, and they will be run in order. See the [Actions guide](/documentation/topics/actions.md) for more.
 
 ```elixir
 # lib/helpdesk/support/resources/ticket.ex
@@ -414,7 +414,7 @@ Helpdesk.Support.Ticket
 |> Helpdesk.Support.read!()
 ```
 
-The examples above could be easily implemented with `Enum.filter`, but the real power here is to allow you to use the same tools when working with any data layer. If you were using the {{link:ash_postgres:extension:AshPostgres}}, the above code would be exactly the same, except we wouldn't need the call to `set_data/2`.
+The examples above could be easily implemented with `Enum.filter`, but the real power here is to allow you to use the same tools when working with any data layer. If you were using the `AshPostgres.DataLayer` data layer.
 
 Even though it doesn't persist data in any way, `Ash.DataLayer.Simple` can be useful to model static data, or be used for resources where all the actions are manual and inject data from other sources.
 
@@ -529,7 +529,7 @@ You may notice that if you don't add the resource to the registry, or if you don
 
 ## Working with relationships
 
-There are a wide array of options when managing relationships, and we won't cover all of them here. See the guide on {{link:ash:guide:Managing Relationships}} for a full explanation.
+There are a wide array of options when managing relationships, and we won't cover all of them here. See the guide on [Managing Relationships](/documentation/topics/managing-relationships.md) for a full explanation.
 
 In this example we'll demonstrate the use of action arguments, the method by which you can accept additional input to an action.
 
@@ -601,16 +601,16 @@ Where Ash shines however, is all of the tools that can operate on your resources
 
 Creating and using changesets manually can be verbose, and they all look very similar. Luckily, Ash has your back and can generate these for you using Code Interfaces!
 
-Check out the {{link:ash:guide:Code Interface}} to derive things like `Helpdesk.Support.Ticket.assign!(representative.id)`
+Check out the [Code Interface Guide](/documentation/topics/code-interface.md) to derive things like `Helpdesk.Support.Ticket.assign!(representative.id)`
 
 #### Persist your data
 
-See {{link:ash_postgres:guide:Get Started With Postgres|AshPostgres}} to see how to back your resources with Postgres. This is highly recommended, as the Postgres data layer provides tons of advanced capabilities.
+See [The AshPostgres getting started guide](https://hexdocs.pm/ash_postgres/get-started-with-postgres.html) to see how to back your resources with Postgres. This is highly recommended, as the Postgres data layer provides tons of advanced capabilities.
 
 #### Add an API
 
-Check out the {{link:ash_json_api:library|AshJsonApi}} and {{link:ash_graphql:library|AshGraphql}} extensions to effortlessly build APIs around your resources
+Check out the `AshJsonApi` and `AshGraphql` extensions to effortlessly build APIs around your resources
 
 #### Authorize access and work with users
 
-See the {{link:ash:guide:Policies}} guide for information on how to authorize access to your resources using actors and policies.
+See the [Policies guide](/documentation/topics/policies.md) for information on how to authorize access to your resources using actors and policies.

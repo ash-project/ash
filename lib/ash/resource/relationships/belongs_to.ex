@@ -63,7 +63,6 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                 [
                   primary_key?: [
                     type: :boolean,
-                    links: [],
                     default: false,
                     doc:
                       "Whether the generated attribute is, or is part of, the primary key of a resource."
@@ -71,14 +70,12 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                   allow_nil?: [
                     type: :boolean,
                     default: true,
-                    links: [],
                     doc:
                       "Whether this relationship must always be present, e.g: must be included on creation, and never removed (it may be modified). The generated attribute will not allow nil values."
                   ],
                   attribute_writable?: [
                     type: :boolean,
                     default: false,
-                    links: [],
                     doc: """
                     Whether the generated attribute will be marked as public & writable.
                     """
@@ -86,19 +83,13 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                   define_attribute?: [
                     type: :boolean,
                     default: true,
-                    links: [],
                     doc:
                       "If set to `false` an attribute is not created on the resource for this relationship, and one must be manually added in `attributes`, invalidating many other options."
                   ],
                   attribute_type: [
                     type: :any,
-                    links: [
-                      modules: [
-                        "ash:module:Ash.Type"
-                      ]
-                    ],
                     default: Application.compile_env(:ash, :default_belongs_to_type, :uuid),
-                    doc: "The type of the generated created attribute."
+                    doc: "The type of the generated created attribute. See `Ash.Type` for more."
                   ]
                 ],
                 @global_opts,

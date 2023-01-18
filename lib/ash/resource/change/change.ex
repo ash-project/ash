@@ -22,34 +22,28 @@ defmodule Ash.Resource.Change do
         default: [:create, :update],
         doc: """
         The action types the validation should run on. Destroy actions are omitted by default as most changes don't make sense for a destroy.
-        """,
-        links: []
+        """
       ],
       only_when_valid?: [
         type: :boolean,
         default: false,
-        links: [],
         doc: """
         If the change should only be run on valid changes. By default, all changes are run unless stated otherwise here.
         """
       ],
       description: [
         type: :string,
-        doc: "An optional description for the change",
-        links: []
+        doc: "An optional description for the change"
       ],
       change: [
         type:
           {:spark_function_behaviour, Ash.Resource.Change, Ash.Resource.Change.Builtins,
            {Ash.Resource.Change.Function, 2}},
-        links: [
-          modules: [
-            "ash:module:Ash.Resource.Change.Builtins"
-          ]
-        ],
         doc: """
         The module and options for a change.
         Also accepts a function that takes the changeset and the context.
+
+        See `Ash.Resource.Change.Builtins` for more.
         """,
         required: true
       ],
@@ -59,11 +53,6 @@ defmodule Ash.Resource.Change do
            {:spark_function_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins,
             {Ash.Resource.Validation.Function, 1}}},
         required: false,
-        links: [
-          modules: [
-            "ash:module:Ash.Resource.Validation.Builtins"
-          ]
-        ],
         default: [],
         doc: """
         Validations that should pass in order for this validation to apply.

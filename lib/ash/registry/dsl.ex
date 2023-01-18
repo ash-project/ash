@@ -4,7 +4,6 @@ defmodule Ash.Registry.Dsl do
     describe: "A reference to an ash module (typically a resource)",
     target: Ash.Registry.Entry,
     args: [:entry],
-    links: [],
     examples: [
       "entry MyApp.User"
     ],
@@ -12,8 +11,7 @@ defmodule Ash.Registry.Dsl do
       entry: [
         type: :atom,
         required: true,
-        doc: "The referenced module",
-        links: []
+        doc: "The referenced module"
       ]
     ]
   }
@@ -21,7 +19,6 @@ defmodule Ash.Registry.Dsl do
   @entries %Spark.Dsl.Section{
     name: :entries,
     describe: "List the entries present in this registry",
-    links: [],
     examples: [
       """
       entries do
@@ -38,8 +35,7 @@ defmodule Ash.Registry.Dsl do
       warn_on_empty?: [
         type: :boolean,
         doc: "Set to `false` to ignore warnings about an empty registry",
-        default: true,
-        links: []
+        default: true
       ]
     ]
   }

@@ -13,12 +13,10 @@ defmodule Ash.DataLayer.Mnesia do
       end
       """
     ],
-    links: [],
     schema: [
       table: [
         type: :atom,
-        doc: "The table name to use, defaults to the name of the resource",
-        links: []
+        doc: "The table name to use, defaults to the name of the resource"
       ]
     ]
   }

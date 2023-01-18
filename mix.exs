@@ -48,23 +48,23 @@ defmodule Ash.MixProject do
 
       {String.to_atom(path),
        [
-         title: title
+         title: title,
+         default: title == "Get Started"
        ]}
     end)
   end
 
   defp groups_for_extras do
-    "documentation/*"
-    |> Path.wildcard()
-    |> Enum.map(fn folder ->
-      name =
-        folder
-        |> Path.basename()
-        |> String.split(~r/[-_]/)
-        |> Enum.map_join(" ", &String.capitalize/1)
-
-      {name, folder |> Path.join("**") |> Path.wildcard()}
-    end)
+    [
+      Tutorials: [
+        "documentation/tutorials/get-started.md",
+        "documentation/tutorials/philosophy.md",
+        "documentation/tutorials/why-ash.md",
+        ~r'documentation/tutorials'
+      ],
+      "How To": ~r'documentation/how_to',
+      Topics: ~r'documentation/topics'
+    ]
   end
 
   defp docs do
@@ -76,6 +76,73 @@ defmodule Ash.MixProject do
       extra_section: "GUIDES",
       extras: extras(),
       groups_for_extras: groups_for_extras(),
+      spark: [
+        extensions: [
+          %{
+            module: Ash.Resource.Dsl,
+            name: "Resource",
+            target: "Ash.Resource",
+            type: "Resource",
+            default_for_target?: true
+          },
+          %{
+            module: Ash.Api.Dsl,
+            name: "Api",
+            target: "Ash.Api",
+            type: "Api",
+            default_for_target?: true
+          },
+          %{
+            module: Ash.DataLayer.Ets,
+            name: "Ets",
+            target: "Ash.Resource",
+            type: "DataLayer"
+          },
+          %{
+            module: Ash.DataLayer.Mnesia,
+            name: "Mnesia",
+            target: "Ash.Resource",
+            type: "DataLayer"
+          },
+          %{
+            module: Ash.Policy.Authorizer,
+            name: "Policy Authorizer",
+            target: "Ash.Resource",
+            type: "Authorizer"
+          },
+          %{
+            module: Ash.Flow.Dsl,
+            name: "Flow",
+            target: "Ash.Flow",
+            type: "Flow",
+            default_for_target?: true
+          },
+          %{
+            module: Ash.Notifier.PubSub,
+            name: "PubSub",
+            target: "Ash.Resource",
+            type: "Notifier"
+          },
+          %{
+            module: Ash.Registry.Dsl,
+            name: "Registry",
+            target: "Ash.Registry",
+            type: "Registry",
+            default_for_target?: true
+          },
+          %{
+            module: Ash.Registry.ResourceValidations,
+            name: "Resource Validations",
+            type: "Extension",
+            target: "Ash.Registry"
+          }
+        ],
+        mix_tasks: [
+          Charts: [
+            Mix.Tasks.Ash.GenerateFlowCharts
+          ]
+        ]
+      ],
       groups_for_modules: [
         "Extensions & DSLs": [
           Ash.Api.Dsl,
@@ -168,33 +235,13 @@ defmodule Ash.MixProject do
           Ash.Flow.Chart.Mermaid,
           Ash.Flow.StepHelpers
         ],
+        Types: [
+          "Ash.Type",
+          ~r/Ash.Type\./
+        ],
         Errors: [
           Ash.Error,
-          Ash.Error.Exception,
-          Ash.Error.Stacktrace
-        ],
-        Types: [
-          Ash.Type,
-          Ash.Type.Enum,
-          Ash.Type.Atom,
-          Ash.Type.Binary,
-          Ash.Type.Boolean,
-          Ash.Type.CiString,
-          Ash.Type.Date,
-          Ash.Type.Decimal,
-          Ash.Type.DurationName,
-          Ash.Type.Float,
-          Ash.Type.Function,
-          Ash.Type.Integer,
-          Ash.Type.Map,
-          Ash.Type.NaiveDatetime,
-          Ash.Type.String,
-          Ash.Type.Term,
-          Ash.Type.Time,
-          Ash.Type.UUID,
-          Ash.Type.UrlEncodedBinary,
-          Ash.Type.UtcDatetime,
-          Ash.Type.UtcDatetimeUsec
+          ~r/Ash.Error\./
         ],
         Transformers: [~r/\.Transformers\./, Ash.Registry.ResourceValidations],
         Internals: ~r/.*/

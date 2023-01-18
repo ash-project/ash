@@ -95,21 +95,18 @@ defmodule Ash.Resource.Interface do
     name: [
       type: :atom,
       doc: "The name of the function that will be defined",
-      required: true,
-      links: []
+      required: true
     ],
     action: [
       type: :atom,
       doc:
-        "The name of the action that will be called. Defaults to the same name as the function.",
-      links: []
+        "The name of the action that will be called. Defaults to the same name as the function."
     ],
     args: [
       type: {:list, {:or, [:atom, {:tagged_tuple, :optional, :atom}]}},
       doc: """
       Map specific arguments to named inputs. Can provide any argument/attributes that the action allows.
-      """,
-      links: []
+      """
     ],
     not_found_error?: [
       type: :boolean,
@@ -121,22 +118,19 @@ defmodule Ash.Resource.Interface do
       type: :boolean,
       doc: """
       Expects to only receive a single result from a read action, and returns a single result instead of a list. Ignored for other action types.
-      """,
-      links: []
+      """
     ],
     get_by: [
       type: {:list, :atom},
       doc: """
       Takes a list of fields and adds those fields as arguments, which will then be used to filter. Sets `get?` to true automatically. Ignored for non-read actions.
-      """,
-      links: []
+      """
     ],
     get_by_identity: [
       type: :atom,
       doc: """
       Only relevant for read actions. Takes an identity, and gets its field list, performing the same logic as `get_by` once it has the list of fields.
-      """,
-      links: []
+      """
     ]
   ]
 

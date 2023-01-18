@@ -20,14 +20,12 @@ defmodule Ash.Resource.Aggregate do
     name: [
       type: :atom,
       doc: "The field to place the aggregate in",
-      required: true,
-      links: []
+      required: true
     ],
     relationship_path: [
       type: {:custom, __MODULE__, :relationship_path, []},
       doc: "The relationship or relationship path to use for the aggregate",
-      required: true,
-      links: []
+      required: true
     ],
     kind: [
       type:
@@ -37,49 +35,41 @@ defmodule Ash.Resource.Aggregate do
            {:tuple, [{:in, [:custom]}, Ash.OptionsHelpers.ash_type()]}
          ]},
       doc: "The kind of the aggregate",
-      required: true,
-      links: []
+      required: true
     ],
     field: [
       type: :atom,
       doc:
         "The field to aggregate. Defaults to the first field in the primary key of the resource",
-      required: false,
-      links: []
+      required: false
     ],
     filter: [
       type: :any,
       doc: "A filter to apply to the aggregate",
-      default: [],
-      links: []
+      default: []
     ],
     sort: [
       type: :any,
-      doc: "A sort to be applied to the aggregate",
-      links: []
+      doc: "A sort to be applied to the aggregate"
     ],
     description: [
       type: :string,
-      doc: "An optional description for the aggregate",
-      links: []
+      doc: "An optional description for the aggregate"
     ],
     default: [
       type: :any,
-      doc: "A default value to use in cases where nil would be used. Count defaults to `0`.",
-      links: []
+      doc: "A default value to use in cases where nil would be used. Count defaults to `0`."
     ],
     private?: [
       type: :boolean,
       default: false,
       doc:
-        "Whether or not the aggregate will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql",
-      links: []
+        "Whether or not the aggregate will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql"
     ],
     filterable?: [
       type: {:or, [:boolean, {:in, [:simple_equality]}]},
       default: true,
-      doc: "Whether or not the aggregate should be usable in filters.",
-      links: []
+      doc: "Whether or not the aggregate should be usable in filters."
     ]
   ]
 

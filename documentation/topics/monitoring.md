@@ -1,6 +1,6 @@
 # Instrumentation
 
-Instrumentation Ash has two primary components, {{link:ash:module:Ash.Tracer}} and `:telemetry`. Instrumentation is closely tied to observability and monitoring.
+Instrumentation Ash has two primary components, `Ash.Tracer` and `:telemetry`. Instrumentation is closely tied to observability and monitoring.
 
 ## Telemetry
 
@@ -49,10 +49,9 @@ Resource
 
 For customizing the names created for each span, see:
 
-- {{link:ash:option:api/execution/trace_name}}
-- {{link:ash:option:resource/resource/trace_name}}
-- {{link:ash:option:flow/flow/trace_name}}
-
+- `d:Ash.Api.execution|trace_name`
+- `d:Ash.Resource.resource|trace_name`
+- `d:Ash.Flow.flow|trace_name`
 
 ## After/Before Action Hooks
 

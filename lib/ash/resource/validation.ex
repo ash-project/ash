@@ -51,18 +51,12 @@ defmodule Ash.Resource.Validation do
       type: @validation_type,
       required: true,
       doc:
-        "The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a one argument function that takes the changeset.",
-      links: []
+        "The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a one argument function that takes the changeset."
     ],
     where: [
       type: {:or, [@validation_type, {:list, @validation_type}]},
       required: false,
       default: [],
-      links: [
-        modules: [
-          "ash:module:Ash.Resource.Validation.Builtins"
-        ]
-      ],
       doc: """
       Validations that should pass in order for this validation to apply.
       These validations failing will not invalidate the changes, but will instead result in this validation being ignored.
@@ -72,7 +66,6 @@ defmodule Ash.Resource.Validation do
     on: [
       type: {:custom, __MODULE__, :on, []},
       default: [:create, :update],
-      links: [],
       doc: """
       The action types the validation should run on.
 
@@ -82,24 +75,20 @@ defmodule Ash.Resource.Validation do
     only_when_valid?: [
       type: :boolean,
       default: false,
-      links: [],
       doc:
         "If the validation should only run on valid changes. Useful for expensive validations or validations that depend on valid data."
     ],
     message: [
       type: :string,
-      doc: "If provided, overrides any message set by the validation error",
-      links: []
+      doc: "If provided, overrides any message set by the validation error"
     ],
     description: [
       type: :string,
-      doc: "An optional description for the validation",
-      links: []
+      doc: "An optional description for the validation"
     ],
     before_action?: [
       type: :boolean,
       default: false,
-      links: [],
       doc: "If set to `true`, the validation will be run in a before_action hook"
     ]
   ]

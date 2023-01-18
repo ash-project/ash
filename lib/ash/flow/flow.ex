@@ -2,7 +2,7 @@ defmodule Ash.Flow do
   @moduledoc """
   A flow is a static definition of a set of steps to be .
 
-  See the {{link:ash:guide:Flows}} guide for more.
+  See the [guide](/documentation/topics/flows.md) for more.
   """
 
   @type t :: module
