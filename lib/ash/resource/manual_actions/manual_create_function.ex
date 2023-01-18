@@ -6,7 +6,7 @@ defmodule Ash.Resource.ManualCreate.Function do
     apply(m, f, [changeset, context | a])
   end
 
-  def create(query, data_layer_query, [fun: fun], context) do
-    fun.(query, data_layer_query, context)
+  def create(changeset, [fun: fun], context) do
+    fun.(changeset, context)
   end
 end
