@@ -1,6 +1,6 @@
 # Why Ash?
 
-One of the fundamental ideas behind Ash is that when the various components of your system can have consistent expectations of how the other components around them work, you can ultimately do a significant amount more, with less. 
+One of the fundamental ideas behind Ash is that when the various components of your system can have consistent expectations of how the other components around them work, you can ultimately do a significant amount more, with less.
 
 ## Example: Policies
 
@@ -29,13 +29,13 @@ MyApp.Blog.Comment
 |> MyApp.Blog.read!()
 ```
 
-Ash is aware of the policies on author and will translate this under the hood to 
+Ash is aware of the policies on author and will translate this under the hood to
 
 ```elixir
-MyApp.Blog.Comment 
-|> Ash.Query.filter(exists(author, id == ^current_user.id and <policies for reading authors>))
+MyApp.Blog.Comment
+|> Ash.Query.filter(exists(author, id == ^current_user.id and #Ash.Filter<policies for reading authors>))
 ```
- 
+
 Or if you want to display aggregate information, i.e in Ash
 
 ```elixir
@@ -47,7 +47,7 @@ end
 
 That should realistically show "the number of posts the user can see" (by default). So Ash is aware of the policies and details of the resource you are aggregating, meaning that aggregate will just "do the right thing"
 
-Policies are just one example of how a tool that is built for this kind of thing can often come with features that would be entirely unreasonable for developers to write by hand for every platform they are building. The declarative design patterns behind Ash allow us to build features that are context aware and extremely powerful. 
+Policies are just one example of how a tool that is built for this kind of thing can often come with features that would be entirely unreasonable for developers to write by hand for every platform they are building. The declarative design patterns behind Ash allow us to build features that are context aware and extremely powerful.
 
 ## It isn't about "less code"
 
