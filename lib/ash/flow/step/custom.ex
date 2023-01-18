@@ -9,15 +9,13 @@ defmodule Ash.Flow.Step.Custom do
       custom: [
         type: {:spark_function_behaviour, Ash.Flow.Step, {Ash.Flow.Step.CustomFunction, 2}},
         doc:
-          "The module that implements the step behaviour. Also accepts a 2 argument function that takes the input and the context.",
-        links: []
+          "The module that implements the step behaviour. Also accepts a 2 argument function that takes the input and the context."
       ],
       async?: [
         type: :boolean,
         doc: """
         Whether or not this step can be run outside of the current process. Defaults to true.
         """,
-        links: [],
         default: false
       ]
     ]

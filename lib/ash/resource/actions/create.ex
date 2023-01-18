@@ -46,24 +46,16 @@ defmodule Ash.Resource.Actions.Create do
                   doc: """
                   A list of attributes that would normally be required, but should not be for this action. They will still be validated just before
                   the record is created.
-                  """,
-                  links: [
-                    guides: [
-                      "ash:guide:Actions"
-                    ]
-                  ]
+                  """
                 ],
                 manual: [
                   type:
                     {:spark_function_behaviour, Ash.Resource.ManualCreate,
                      {Ash.Resource.ManualCreate.Function, 2}},
-                  links: [
-                    guides: [
-                      "ash:guide:Manual Actions"
-                    ]
-                  ],
                   doc: """
                   Override the creation behavior. See the manual action guides for more. Accepts a module or module and opts, or a function that takes the changeset and context.
+
+                  See the [manual actions guide](/documentation/topics/manual-actions.md) for more.
                   """
                 ],
                 upsert?: [

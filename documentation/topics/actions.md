@@ -20,11 +20,11 @@ actions do
 end
 ```
 
-But that is just a simple way to get started, or to create resources that really don't do anything beyond those four operations. You can have _as many actions as you want_. The best designed Ash applications will have numerous actions, named after the intent behind how they are used. They won't have all reads going through a single read action, and the same goes for the other action types. The richer the actions on the resource, the better interface you can have. With that said, many resources may only have those four basic actions, especially those that are "managed" through some parent resource. See the guide on {{link:ash:guide:Managing Relationships}} for more.
+But that is just a simple way to get started, or to create resources that really don't do anything beyond those four operations. You can have _as many actions as you want_. The best designed Ash applications will have numerous actions, named after the intent behind how they are used. They won't have all reads going through a single read action, and the same goes for the other action types. The richer the actions on the resource, the better interface you can have. With that said, many resources may only have those four basic actions, especially those that are "managed" through some parent resource. See the guide on [Managing Relationships](/documentation/topics/managing-relationships.md) for more.
 
 ### Primary Actions
 
-Primary actions are a way to inform the framework which actions should be used in certain "automated" circumstances, or in cases where an action has not been specified. If a primary action is attempted to be used but does not exist, you will get an error about it at runtime. The place you typically need primary actions is, when {{link:ash:guide:Managing Relationships}}. However, some prefer to be as explicit as possible, and so will _always_ indicate an action name, and in that case will never use primary actions. When using the `defaults` option to add default actions, they are marked as primary.
+Primary actions are a way to inform the framework which actions should be used in certain "automated" circumstances, or in cases where an action has not been specified. If a primary action is attempted to be used but does not exist, you will get an error about it at runtime. The place you typically need primary actions is, when [Managing Relationships](/documentation/topics/managing-relationships.md). However, some prefer to be as explicit as possible, and so will _always_ indicate an action name, and in that case will never use primary actions. When using the `defaults` option to add default actions, they are marked as primary.
 
 A simple example where a primary action would be used:
 
@@ -125,21 +125,20 @@ end
 
 The following steps are performed when you call `Ash.Query.for_read/4`.
 
-- Gather process context | {{link:ash:guide:Store Context In Process}}
-- Cast input arguments | {{link:ash:dsl:resource/actions/read/argument}}
-- Set default argument values | {{link:ash:option:resource/actions/read/argument/default}}
-- Add errors for missing required arguments | {{link:ash:option:resource/actions/read/argument/allow_nil?}}
-- Run query preparations | {{link:ash:dsl:resource/actions/read/prepare}}
-- Add action filter | {{link:ash:option:resource/actions/read/filter}}
+- [Gather Process Context](/documentation/topics/store-context-in-process.md)
+- Cast input arguments - `d:Ash.Resource.actions.read.argument`
+- Set default argument values - `d:Ash.Resource.actions.read.argument|default` 
+- Add errors for missing required arguments | `d:Ash.Resource.actions.read.argument|allow_nil?`
+- Run query preparations | `d:Ash.Resource.actions.read.prepare`
+- Add action filter | `d:Ash.Resource.actions.read|filter`
 
 #### Running the Read Action
 
 If the query has not yet been run through `Ash.Query.for_read/3` for the action in question, we do that first. Then we perform the following steps. These steps are trimmed down, and are aimed at helping users understand the general flow. Some steps are omitted.
 
-- Gather process context | {{link:ash:guide:Store Context In Process}}
 - Run `Ash.Query.for_read/3` if it has not already been run
-- Apply tenant Filters for attribute {{link:ash:guide:Multitenancy}}
-- Apply pagination options
+- [Apply tenant filters for attribute](/documentation/topics/multitenancy.md)
+- Apply [pagination](/documentation/topics/pagination.md) options
 - Run before action hooks
 - Multi-datalayer filter is synthesized. We run queries in other data layers to fetch ids and translate related filters to `(destination_field in ^ids)`
 - Strict Check & Filter Authorization is run
@@ -155,7 +154,7 @@ The following steps happen asynchronously during or after the main data layer qu
 
 ### Create/Update/Destroy Actions
 
-These actions operate on an `Ash.Changeset`. While standard destroy actions don't care about the changes you add to a changeset, you may mark a destroy action as {{link:ash:option:/resource/actions/destroy/soft?}}, which means you will be performing an update that will in some way "hide" the resource. Generally this hiding is done by adding a {{link:ash:option:resource/base_filter}} i.e `base_filter [is_nil: :archived_at]`
+These actions operate on an `Ash.Changeset`. While standard destroy actions don't care about the changes you add to a changeset, you may mark a destroy action as `d:Ash.Resource.actions.destroy|soft?`, which means you will be performing an update that will in some way "hide" the resource. Generally this hiding is done by adding a `d:Ash.Resource.resource|base_filter` i.e `base_filter [is_nil: :archived_at]`
 
 Here is an example create action:
 
@@ -185,7 +184,7 @@ end
 
 The following steps are run when calling `Ash.Changeset.for_create/4`, `Ash.Changeset.for_update/4` or `Ash.Changeset.for_destroy/4`.
 
-- Gather process context | {{link:ash:guide:Store Context In Process}}
+- [Gather process context](/documentation/topics/store-context-in-process.md)
 - Cast input params | This is any arguments in addition to any accepted attributes
 - Set argument defaults
 - Require any missing arguments
@@ -193,7 +192,7 @@ The following steps are run when calling `Ash.Changeset.for_create/4`, `Ash.Chan
 - Require any accepted attributes that are `allow_nil?` false
 - Set any default values for attributes
 - Run action changes & validations
-- Run validations, or add them in `before_action` hooks if using {{link:ash:option:resource/actions/create/validate#before_action?}}
+- Run validations, or add them in `before_action` hooks if using `d:Ash.Resource.actions.create.validate|before_action?`
 
 #### Running the Create/Update/Destroy Action
 
@@ -204,6 +203,6 @@ All of these actions are run in a transaction if the data layer supports it. You
 - Before action hooks are performed in reverse order they were added. (unless `append?` option was used)
 - For manual actions, a before action hook must have set
 - After action hooks are performed in the order they were added (unless `prepend?` option was used)
-- For {{link:ash:guide:Manual Actions}}, one of these after action hooks must have returned a result, otherwise an error is returned.
+- For [Manual Actions](/documentation/topics/manual-actions.md), one of these after action hooks must have returned a result, otherwise an error is returned.
 - Non-belongs-to relationships are managed, creating/updating/destroying related records.
 - If an `after_action` option was passed when running the action, it is run with the changeset and the result. Only supported for create & update actions.

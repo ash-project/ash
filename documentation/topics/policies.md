@@ -4,7 +4,7 @@ Policies determine what actions on a resource are permitted for a given actor.
 
 ## Important!
 
-Read and understand the {{link:ash:guide:Security}} guide before proceeding, which explains actors, how to set them, and other relevant configurations.
+Read and understand the [Security](/documentation/topics/security.md) guide before proceeding, which explains actors, how to set them, and other relevant configurations.
 
 ## Guide
 

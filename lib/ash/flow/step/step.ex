@@ -24,14 +24,12 @@ defmodule Ash.Flow.Step do
       name: [
         type: :atom,
         required: true,
-        doc: "The name of the step. Will be used when expressing dependencies, and step inputs.",
-        links: []
+        doc: "The name of the step. Will be used when expressing dependencies, and step inputs."
       ],
       short_name: [
         type: :string,
         doc:
-          "Set a short name for the step. Will be used when building things like mermaid charts.",
-        links: []
+          "Set a short name for the step. Will be used when building things like mermaid charts."
       ],
       wait_for: [
         type: :any,
@@ -40,15 +38,13 @@ defmodule Ash.Flow.Step do
 
         This value is just a template that isn't used, except to determine dependencies, so you can
         use it like this `wait_for [result(:step_one), result(:step_two)]` or `wait_for result(:step)`.
-        """,
-        links: []
+        """
       ],
       touches_resources: [
         type: {:list, :atom},
         doc: """
         A list of resources touched by any custom logic in this step. This is used in the case that this step is run in a transaction. This is primarily only needed for `custom` steps.
-        """,
-        links: []
+        """
       ],
       halt_if: [
         type: :any,
@@ -71,8 +67,7 @@ defmodule Ash.Flow.Step do
         type: :string,
         doc: """
         A description for the step.
-        """,
-        links: []
+        """
       ]
     ]
   end
@@ -83,25 +78,21 @@ defmodule Ash.Flow.Step do
       resource: [
         type: :any,
         required: true,
-        doc: "The resource to call the action on.",
-        links: []
+        doc: "The resource to call the action on."
       ],
       action: [
         type: :any,
         required: true,
-        doc: "The action to call on the resource.",
-        links: []
+        doc: "The action to call on the resource."
       ],
       api: [
         type: :any,
         doc:
-          "The api to use when calling the action. Defaults to the api set in the `flow` section.",
-        links: []
+          "The api to use when calling the action. Defaults to the api set in the `flow` section."
       ],
       tenant: [
         type: :any,
-        doc: "A tenant to use for the operation. May be a template or a literal value.",
-        links: []
+        doc: "A tenant to use for the operation. May be a template or a literal value."
       ],
       input: input()
     ]
@@ -113,8 +104,7 @@ defmodule Ash.Flow.Step do
       type: :any,
       doc: """
       A template for the input.
-      """,
-      links: []
+      """
     ]
   end
 end

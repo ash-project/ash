@@ -6,7 +6,7 @@ A great thing to do early on is to be explicit about your security configuration
 
 ## Authorization
 
-Authorization in Ash is done via authorizers. Generally, you won't need to create your own  authorizer, as the builtin policy authorizer {{link:ash:extension:Policy Authorizer}} should work well for any use case. Authorization is performed with a given actor and a query or changeset.
+Authorization in Ash is done via authorizers. Generally, you won't need to create your own  authorizer, as the builtin policy authorizer `Ash.Policy.Authorizer` should work well for any use case. Authorization is performed with a given actor and a query or changeset.
 
 ### Actors
 
@@ -71,16 +71,16 @@ Api.read!(User)
 
 ### Authorization Configuration
 
-The default behavior is illustrated above, but it can be customized with the options in the {{link:ash:dsl:api/authorization}} section of the Api module you are calling.
+The default behavior is illustrated above, but it can be customized with the options in the `d:Ash.Api.authorization` section of the Api module you are calling.
 
-#### {{link:ash:option:api/authorization/require_actor?}}
+#### `d:Ash.Api.authorization|require_actor?`
 
 Requires that an actor is set for all requests.
 
 Important: `nil` is still a valid actor, so this won't prevent providing `actor: nil`.
 
 
-#### {{link:ash:option:api/authorization/authorize}}
+#### `d:Ash.Api.authorization|authorize`
 
 ##### Important!
 

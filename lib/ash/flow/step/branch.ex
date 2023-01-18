@@ -8,13 +8,11 @@ defmodule Ash.Flow.Step.Branch do
       [
         condition: [
           type: :any,
-          doc: "A template that must evaluate to `true` for the branch to be executed.",
-          links: []
+          doc: "A template that must evaluate to `true` for the branch to be executed."
         ],
         output: [
           type: :atom,
-          doc: "Which step to use as the output. Defaults to the last step.",
-          links: []
+          doc: "Which step to use as the output. Defaults to the last step."
         ]
       ]
       |> Spark.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")

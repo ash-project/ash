@@ -2,7 +2,6 @@ defmodule Ash.Api.Dsl do
   @execution %Spark.Dsl.Section{
     name: :execution,
     describe: "Options for how requests are executed using this Api",
-    links: [],
     examples: [
       """
       execution do
@@ -13,29 +12,30 @@ defmodule Ash.Api.Dsl do
     schema: [
       timeout: [
         type: :timeout,
-        doc: "The default timeout to use for requests using this API.",
-        default: 30_000,
-        links: [
-          guides: [
-            "ash:guide:Timeouts"
-          ]
-        ]
+        doc: """
+        The default timeout to use for requests using this API.
+        See the [timeouts guide](/documentation/topics/timeouts.md) for more.
+        """,
+        default: 30_000
       ],
       trace_name: [
         type: :string,
-        doc: "The name to use in traces. Defaults to the last part of the module",
-        links: [
-          guides: [
-            "ash:guide:Instrumentation"
-          ]
-        ]
+        doc: """
+        The name to use in traces. Defaults to the last part of the module.
+
+        See the [monitoring guide](/documentation/topics/monitoring.md) for more
+        """
       ]
     ]
   }
 
   @authorization %Spark.Dsl.Section{
     name: :authorization,
-    describe: "Options for how requests are authorized using this Api",
+    describe: """
+    Options for how requests are authorized using this Api.
+
+    See the [security guide](/documentation/topics/security.md) for more.
+    """,
     examples: [
       """
       authorization do
@@ -44,29 +44,18 @@ defmodule Ash.Api.Dsl do
       end
       """
     ],
-    links: [
-      guides: [
-        "ash:guide:Security"
-      ]
-    ],
     schema: [
       require_actor?: [
         type: :boolean,
         default: false,
-        doc: "Requires that an actor has been supplied.",
-        links: [
-          guides: ["ash:guide:Security"]
-        ]
+        doc: "Requires that an actor has been supplied."
       ],
       authorize: [
         type: {:in, [:always, :by_default, :when_requested]},
         default: :when_requested,
         doc: """
         When to run authorization for a given request.
-        """,
-        links: [
-          guides: ["ash:guide:Security"]
-        ]
+        """
       ]
     ]
   }
@@ -81,30 +70,22 @@ defmodule Ash.Api.Dsl do
       en
       """
     ],
-    links: [],
     schema: [
       allow: [
         type: :mfa,
         doc: """
         Support a dynamic resource list by providing a callback that checks whether or not the resource should be allowed.
-        """,
-        links: []
+        """
       ],
       allow_unregistered?: [
         type: :boolean,
         default: false,
-        links: [],
         doc: """
         Whether the Api will support only registered entries or not.
         """
       ],
       registry: [
         type: {:behaviour, Ash.Registry},
-        links: [
-          guides: [
-            "ash:guide:Quick Start"
-          ]
-        ],
         doc: """
         Configure the registry that contains the resources. It is recommended to use application config for this, to help with compile times. See the quick start guide for more.
         """

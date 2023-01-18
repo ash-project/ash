@@ -22,7 +22,6 @@ defmodule Ash.Flow.Step.Read do
           Whether or not read action is expected to return a single result or `nil`.
           If the action is configured with `get? true` then this is automatically set to `true`.
           """,
-          links: [],
           default: false
         ],
         not_found_error?: [

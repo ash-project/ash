@@ -28,13 +28,7 @@ defmodule Ash.Resource.Preparation do
         The module and options for a preparation.
         Also accepts functions take the query and the context.
         """,
-        required: true,
-        links: [
-          modules: [
-            "ash:module:Ash.Resource.Preparation",
-            "ash:module:Ash.Resource.Preparation.Builtins"
-          ]
-        ]
+        required: true
       ]
     ]
   end

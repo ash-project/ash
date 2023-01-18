@@ -14,21 +14,18 @@ defmodule Ash.DataLayer.Ets do
       end
       """
     ],
-    links: [],
     schema: [
       private?: [
         type: :boolean,
         default: false,
         doc:
-          "Sets the ets table protection to private, and scopes it to only this process. The table name will not be used directly if this is true, to allow multiple processes to use this resource separately.",
-        links: []
+          "Sets the ets table protection to private, and scopes it to only this process. The table name will not be used directly if this is true, to allow multiple processes to use this resource separately."
       ],
       table: [
         type: :atom,
         doc: """
         The name of the table. Defaults to the resource name.
-        """,
-        links: []
+        """
       ]
     ]
   }

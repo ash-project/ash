@@ -15,42 +15,32 @@ defmodule Ash.Resource.Identity do
     name: [
       type: :atom,
       required: true,
-      doc: "The name of the identity.",
-      links: []
+      doc: "The name of the identity."
     ],
     keys: [
       type: {:custom, __MODULE__, :keys, []},
       required: true,
-      doc: "The names of the attributes that uniquely identify this resource.",
-      links: []
+      doc: "The names of the attributes that uniquely identify this resource."
     ],
     eager_check_with: [
       type: {:behaviour, Ash.Api},
       doc: """
       Validates that the unique identity provided is unique at validation time, outside of any transactions, using the api module provided.
-      """,
-      links: []
+      """
     ],
     pre_check_with: [
       type: {:behaviour, Ash.Api},
       doc: """
       Validates that the unique identity provided is unique in a before_action hook.
-      """,
-      links: []
+      """
     ],
     description: [
       type: :string,
-      doc: "An optional description for the identity",
-      links: []
+      doc: "An optional description for the identity"
     ],
     message: [
       type: :string,
-      doc: "An error message to use when the unique identity would be violated",
-      links: [
-        guides: [
-          "ash:guide:Errors"
-        ]
-      ]
+      doc: "An error message to use when the unique identity would be violated"
     ]
   ]
 

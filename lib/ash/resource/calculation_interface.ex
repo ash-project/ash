@@ -10,14 +10,12 @@ defmodule Ash.Resource.CalculationInterface do
     name: [
       type: :atom,
       doc: "The name of the function that will be defined",
-      required: true,
-      links: []
+      required: true
     ],
     calculation: [
       type: :atom,
       doc:
-        "The name of the calculation that will be evaluated. Defaults to the same name as the function.",
-      links: []
+        "The name of the calculation that will be evaluated. Defaults to the same name as the function."
     ],
     args: [
       type: :any,
@@ -38,8 +36,7 @@ defmodule Ash.Resource.CalculationInterface do
       ```elixir
       define_calculation :id_matches, args: [{:arg, :id}, {:optional, {:ref, :id}}]
       ```
-      """,
-      links: []
+      """
     ]
   ]
 

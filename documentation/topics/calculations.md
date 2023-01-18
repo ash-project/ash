@@ -14,7 +14,7 @@ calculations do
 end
 ```
 
-See the {{link:ash:guide:Expressions}} guide for more.
+See the [Expressions guide](/documentation/topics/expressions.md) for more.
 
 ### Module Calculations
 

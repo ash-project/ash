@@ -26,19 +26,14 @@ defmodule Ash.Policy.Authorizer do
       required: true,
       doc: """
       The check to run.
-      """,
-      links: [
-        modules: [
-          "ash:module:Ash.Policy.Check"
-        ]
-      ]
+
+      See `Ash.Policy.Check` for more.
+      """
     ],
     name: [
       type: :string,
       required: false,
-      doc:
-        "A short name or description for the check, used when explaining authorization results",
-      links: []
+      doc: "A short name or description for the check, used when explaining authorization results"
     ]
   ]
 
@@ -51,7 +46,6 @@ defmodule Ash.Policy.Authorizer do
       "authorize_if logged_in()",
       "authorize_if actor_attribute_matches_record(:group, :group)"
     ],
-    links: [],
     target: Ash.Policy.Check,
     transform: {Ash.Policy.Check, :transform, []},
     auto_set_fields: [
@@ -66,7 +60,6 @@ defmodule Ash.Policy.Authorizer do
     schema: @check_schema,
     target: Ash.Policy.Check,
     transform: {Ash.Policy.Check, :transform, []},
-    links: [],
     examples: [
       "forbid_if not_logged_in()",
       "forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)"
@@ -83,7 +76,6 @@ defmodule Ash.Policy.Authorizer do
     schema: @check_schema,
     target: Ash.Policy.Check,
     transform: {Ash.Policy.Check, :transform, []},
-    links: [],
     examples: [
       "authorize_unless not_logged_in()",
       "authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)"
@@ -97,7 +89,6 @@ defmodule Ash.Policy.Authorizer do
     name: :forbid_unless,
     describe: "If the check is true, the request is forbidden, otherwise run remaining checks.",
     args: [:check],
-    links: [],
     schema: @check_schema,
     target: Ash.Policy.Check,
     transform: {Ash.Policy.Check, :transform, []},
@@ -112,11 +103,6 @@ defmodule Ash.Policy.Authorizer do
 
   @policy %Spark.Dsl.Entity{
     name: :policy,
-    links: [
-      guides: [
-        "ash:guide:Policies"
-      ]
-    ],
     describe: """
     A policy has a name, a condition, and a list of checks.
 
@@ -141,24 +127,23 @@ defmodule Ash.Policy.Authorizer do
     policy always() do
       ...
     end
+
+    See the [policies guide](/documentation/topics/policies.md) for more
     ```
     """,
     schema: [
       description: [
         type: :string,
-        doc: "A description for the policy, used when explaining authorization results",
-        links: []
+        doc: "A description for the policy, used when explaining authorization results"
       ],
       access_type: [
         type: {:one_of, [:strict, :filter, :runtime]},
-        links: [],
         doc: """
         What portion of the checks inside the policy are allowed to run. See the guide for more.
         """
       ],
       condition: [
         type: {:custom, __MODULE__, :validate_condition, []},
-        links: [],
         doc: """
         A check or list of checks that must be true in order for this policy to apply.
         """
@@ -191,12 +176,9 @@ defmodule Ash.Policy.Authorizer do
 
     Each policy that applies must pass independently in order for the
     request to be authorized.
+
+    See the [policies guide](/documentation/topics/policies.md) for more.
     """,
-    links: [
-      guides: [
-        "ash:guide:Policies"
-      ]
-    ],
     examples: [
       """
       policies do
@@ -231,7 +213,6 @@ defmodule Ash.Policy.Authorizer do
     schema: [
       default_access_type: [
         type: {:one_of, [:strict, :filter, :runtime]},
-        links: [],
         default: :filter,
         doc: """
         The default access type of policies for this resource.
@@ -260,7 +241,7 @@ defmodule Ash.Policy.Authorizer do
   For reads, policies can be configured to filter out data that the actor shouldn't see, as opposed to
   resulting in a forbidden error.
 
-  See the {{link:ash:guide:Policies}} for practical examples.
+  See the [policies guide](/documentation/topics/flows.md) for practical examples.
 
   Policies are solved/managed via a boolean satisfiability solver. To read more about boolean satisfiability,
   see this page: https://en.wikipedia.org/wiki/Boolean_satisfiability_problem. At the end of

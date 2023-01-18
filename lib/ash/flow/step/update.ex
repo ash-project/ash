@@ -15,8 +15,7 @@ defmodule Ash.Flow.Step.Update do
 
           If the value is `nil`, the step is skipped and `nil` is the result of the step.
           Any other value is used as an input record.
-          """,
-          links: []
+          """
         ]
       ]
       |> Spark.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")

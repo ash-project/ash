@@ -195,11 +195,11 @@ defmodule MyApp.Tweet do
 end
 ```
 
-Your extension will be automatically supported by the `elixir_sense` extension, showing inline documentation and auto complete as you type. For more on that, see {{link:ash:guide:Development Utilities}}.
+Your extension will be automatically supported by the `elixir_sense` extension, showing inline documentation and auto complete as you type. For more on that, see p[Development Utilities](/documentation/topics/development-utilities.md)
 
 ## Making a Base Resource
 
-The "Base Resource" pattern has been adopted by some as a way to make it easy to ensure that your base extension is used everywhere. Instead of using `Ash.Resource` you use `MyApp.Resource`. Take a look at the {{link:ash:guide:Development Utilities}} guide if you do this, as you will need to update your formatter configuration, if you are using it.
+The "Base Resource" pattern has been adopted by some as a way to make it easy to ensure that your base extension is used everywhere. Instead of using `Ash.Resource` you use `MyApp.Resource`. Take a look at the [Development Utilities](/documentation/topics/development-utilities.md) guide if you do this, as you will need to update your formatter configuration, if you are using it.
 
 ```elixir
 defmodule MyApp.Resource do

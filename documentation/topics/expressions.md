@@ -38,7 +38,7 @@ The following functions are built in:
 - `if` | Works like elixir's `if`.
 - `is_nil/1` | Works like elixir's `is_nil`
 - `get_path/2` | i.e `get_path(value, ["foo", "bar"])`. This is what expressions like `value[:foo]["bar"]` are turned into under the hood.
-- `ago/2` | i.e `deleted_at > ago(7, :day)`. The available time intervals are documented in {{link:ash:module:Ash.Type.DurationName}}
+- `ago/2` | i.e `deleted_at > ago(7, :day)`. The available time intervals are documented in `Ash.Type.DurationName`
 - `contains/2` | if one string contains another string, i.e `contains("fred", "red")`
 - `length/1` | the length of a list, i.e. `length([:foo, :bar])`
 - `exists/2` | `exists(foo.bar, name == "fred")` takes an expression scoped to the destination resource, and checks if any related entry matches. See the section on `exists` below.

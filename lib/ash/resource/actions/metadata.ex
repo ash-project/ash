@@ -16,41 +16,31 @@ defmodule Ash.Resource.Actions.Metadata do
       name: [
         type: :atom,
         required: true,
-        doc: "The name of the metadata",
-        links: []
+        doc: "The name of the metadata"
       ],
       type: [
         type: :any,
         required: true,
-        doc: "The type of the metadata",
-        links: [
-          modules: [
-            "ash:module:Ash.Type"
-          ]
-        ]
+        doc: "The type of the metadata. See `Ash.Type` for more."
       ],
       constraints: [
         type: :keyword_list,
         default: [],
-        doc: "Type constraints on the metadata",
-        links: []
+        doc: "Type constraints on the metadata"
       ],
       description: [
         type: :string,
-        doc: "An optional description for the metadata.",
-        links: []
+        doc: "An optional description for the metadata."
       ],
       allow_nil?: [
         type: :boolean,
         default: true,
-        doc: "Whether or not the metadata may return `nil`",
-        links: []
+        doc: "Whether or not the metadata may return `nil`"
       ],
       default: [
         type: :any,
         doc:
-          "The default value for the metadata to take. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value",
-        links: []
+          "The default value for the metadata to take. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value"
       ]
     ]
   end

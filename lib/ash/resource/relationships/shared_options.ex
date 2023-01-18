@@ -4,26 +4,18 @@ defmodule Ash.Resource.Relationships.SharedOptions do
   @shared_options [
     name: [
       type: :atom,
-      doc: "The name of the relationship",
-      links: []
+      doc: "The name of the relationship"
     ],
     destination: [
       type: Ash.OptionsHelpers.ash_resource(),
-      doc: "The destination resource",
-      links: []
+      doc: "The destination resource"
     ],
     description: [
       type: :string,
-      doc: "An optional description for the relationship",
-      links: []
+      doc: "An optional description for the relationship"
     ],
     destination_attribute: [
       type: :atom,
-      links: [
-        dsls: [
-          "ash:dsl:resource/attributes/attribute"
-        ]
-      ],
       doc:
         "The attribute on the related resource that should match the `source_attribute` configured on this resource."
     ],
@@ -31,23 +23,16 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       type: :boolean,
       default: true,
       doc:
-        "Whether or not to validate that the destination field exists on the destination resource",
-      links: []
+        "Whether or not to validate that the destination field exists on the destination resource"
     ],
     source_attribute: [
       type: :atom,
-      links: [
-        dsls: [
-          "ash:dsl:resource/attributes/attribute"
-        ]
-      ],
       doc:
         "The field on this resource that should match the `destination_attribute` on the related resource."
     ],
     relationship_context: [
       type: :any,
       as: :context,
-      links: [],
       doc: """
       Context to be set on any queries or changesets generated for managing or querying this relationship.
       """
@@ -55,49 +40,42 @@ defmodule Ash.Resource.Relationships.SharedOptions do
     private?: [
       type: :boolean,
       default: false,
-      links: [
-        guides: ["ash:guide:Security"]
-      ],
-      doc:
-        "Whether or not the relationship will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql"
+      doc: """
+      Whether or not the relationship will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql
+
+      See the [security guide](/documentation/topics/security.md) for more.
+      """
     ],
     not_found_message: [
       type: :string,
       doc: """
       A message to show if there is a conflict with this relationship in the database on update or create, or when managing relationships.
-      """,
-      links: [
-        guides: ["ash:guide:Managing Relationships"]
-      ]
+      """
     ],
     writable?: [
       type: :boolean,
       default: true,
       doc: """
       Whether or not the relationship may be managed.
-      """,
-      links: []
+      """
     ],
     read_action: [
       type: :atom,
       doc: """
       The read action on the destination resource to use when loading data and filtering.
-      """,
-      links: []
+      """
     ],
     api: [
       type: :atom,
       doc: """
       The API module to use when working with the related entity.
-      """,
-      links: []
+      """
     ],
     filter: [
       type: :any,
       doc: """
       A filter to be applied when reading the relationship.
-      """,
-      links: []
+      """
     ],
     filterable?: [
       type: :boolean,
@@ -108,20 +86,17 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       type: :any,
       doc: """
       A sort statement to be applied when loading the relationship.
-      """,
-      links: []
+      """
     ],
     could_be_related_at_creation?: [
       type: :boolean,
       default: false,
-      links: [],
       doc: """
       Whether or not related values may exist for this relationship at creation.
       """
     ],
     violation_message: [
       type: :string,
-      links: [],
       doc: """
       A message to show if there is a conflict with this relationship in the database on destroy.
       For example, if a record is deleted while related records still exist (and aren't configured to cascade deletes)
@@ -137,7 +112,6 @@ defmodule Ash.Resource.Relationships.SharedOptions do
     {:no_attributes?,
      [
        type: :boolean,
-       links: [],
        doc: """
        If true, all existing entities are considered related, i.e this relationship is not based on any fields, and `source_attribute` and
        `destination_attribute` are ignored.
@@ -165,7 +139,6 @@ defmodule Ash.Resource.Relationships.SharedOptions do
      type:
        {:spark_function_behaviour, Ash.Resource.ManualRelationship,
         {Ash.Resource.ManualRelationship.Function, 2}},
-     links: [],
      doc: """
      A module that implements `Ash.Resource.ManualRelationship`. Also accepts a 2 argument function that takes the source records and the context.
      """}

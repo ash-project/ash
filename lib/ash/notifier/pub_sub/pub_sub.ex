@@ -6,13 +6,9 @@ defmodule Ash.Notifier.PubSub do
     target: Ash.Notifier.PubSub.Publication,
     describe: """
     Configure a given action to publish its results over a given topic.
+
+    See the [PubSub](/documentation/topics/pub_sub.md) and [Notifiers](/documentation/topics/notifiers.md) guides for more.
     """,
-    links: [
-      guides: [
-        "ash:guide:Pub Sub",
-        "ash:guide:Notifiers"
-      ]
-    ],
     examples: [
       "publish :create, \"created\"",
       """
@@ -29,13 +25,9 @@ defmodule Ash.Notifier.PubSub do
     describe: """
     Works just like `publish`, except that it takes a type
     and publishes all actions of that type
+
+    See the [PubSub](/documentation/topics/pub_sub.md) and [Notifiers](/documentation/topics/notifiers.md) guides for more.
     """,
-    links: [
-      guides: [
-        "ash:guide:Pub Sub",
-        "ash:guide:Notifiers"
-      ]
-    ],
     examples: [
       "publish_all :create, \"created\""
     ],
@@ -47,6 +39,8 @@ defmodule Ash.Notifier.PubSub do
     name: :pub_sub,
     describe: """
     A section for configuring how resource actions are published over pubsub
+
+    See the [PubSub](/documentation/topics/pub_sub.md) and [Notifiers](/documentation/topics/notifiers.md) guide for more.
     """,
     examples: [
       """
@@ -66,24 +60,16 @@ defmodule Ash.Notifier.PubSub do
       @publish_all
     ],
     no_depend_modules: [:module],
-    links: [
-      guides: [
-        "ash:guide:Pub Sub",
-        "ash:guide:Notifiers"
-      ]
-    ],
     schema: [
       module: [
         type: :atom,
         doc: "The module to call `broadcast/3` on e.g module.broadcast(topic, event, message).",
-        required: true,
-        links: []
+        required: true
       ],
       prefix: [
         type: :string,
         doc:
-          "A prefix for all pubsub messages, e.g `users`. A message with `created` would be published as `users:created`",
-        links: []
+          "A prefix for all pubsub messages, e.g `users`. A message with `created` would be published as `users:created`"
       ],
       broadcast_type: [
         type: {:one_of, [:notification, :phoenix_broadcast, :broadcast]},
@@ -91,8 +77,7 @@ defmodule Ash.Notifier.PubSub do
         doc: """
         What shape the event payloads will be in. `:notification` just sends the notification, `phoenix_broadcast` sends a `%Phoenix.Socket.Broadcast{}`, and `:broadcast`
         sends `%{topic: <topic>, event: <event>, notification: <notification>}`
-        """,
-        links: []
+        """
       ],
       name: [
         type: :atom,
@@ -102,8 +87,7 @@ defmodule Ash.Notifier.PubSub do
         If you are using a phoenix `Endpoint` module for pubsub then this is unnecessary. If you want to use
         a custom pub sub started with something like `{Phoenix.PubSub, name: MyName}`, then you can provide `MyName` to
         here.
-        """,
-        links: []
+        """
       ]
     ]
   }

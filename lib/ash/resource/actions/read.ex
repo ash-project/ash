@@ -35,8 +35,7 @@ defmodule Ash.Resource.Actions.Read do
                   filter: [
                     type: :any,
                     doc:
-                      "A filter template that will be applied whenever the action is used. See `Ash.Filter` for more on templates",
-                    links: []
+                      "A filter template that will be applied whenever the action is used. See `Ash.Filter` for more on templates"
                   ],
                   manual: [
                     type:
@@ -45,12 +44,9 @@ defmodule Ash.Resource.Actions.Read do
                     doc: """
                     Delegates running of the query to the provided module.
                     Accepts a module or module and opts, or a function that takes the changeset and context.
-                    """,
-                    links: [
-                      guides: [
-                        "ash:guide:Manual Action"
-                      ]
-                    ]
+
+                    See the [manual actions guide](/documentation/topics/manual-actions.md) for more.
+                    """
                   ],
                   get?: [
                     type: :boolean,
@@ -58,12 +54,9 @@ defmodule Ash.Resource.Actions.Read do
                     doc: """
                     Expresses that this action innately only returns a single result. Can be used by extensions to validate that you have not hooked something up that expects a list
                     to an action that can only return one thing. Used by the code interface when defining functions for read actions.
-                    """,
-                    links: [
-                      guides: [
-                        "ash:guide:Code Interface"
-                      ]
-                    ]
+
+                    See the [code interface guide](/documentation/topics/code-interface.md) for more.
+                    """
                   ],
                   modify_query: [
                     type: :mfa,
@@ -74,8 +67,7 @@ defmodule Ash.Resource.Actions.Read do
                     The result must be `{:ok, new_data_layer_query} | {:error, error}`.
 
                     Here be dragons.
-                    """,
-                    links: []
+                    """
                   ]
                 ],
                 @global_opts,
@@ -86,39 +78,33 @@ defmodule Ash.Resource.Actions.Read do
     keyset?: [
       type: :boolean,
       doc: "Whether or not keyset based pagination is supported",
-      default: false,
-      links: []
+      default: false
     ],
     offset?: [
       type: :boolean,
       doc: "Whether or not offset based pagination is supported",
-      default: false,
-      links: []
+      default: false
     ],
     default_limit: [
       type: :pos_integer,
-      doc: "The default page size to apply, if one is not supplied",
-      links: []
+      doc: "The default page size to apply, if one is not supplied"
     ],
     countable: [
       type: {:in, [true, false, :by_default]},
       doc:
         "Whether not a returned page will have a full count of all records. Use `:by_default` to do it automatically.",
-      default: false,
-      links: []
+      default: false
     ],
     max_page_size: [
       type: :pos_integer,
       doc: "The maximum amount of records that can be requested in a single page",
-      default: 250,
-      links: []
+      default: 250
     ],
     required?: [
       type: :boolean,
       doc:
         "Whether or not pagination can be disabled. Only relevant if some pagination configuration is supplied.",
-      default: true,
-      links: []
+      default: true
     ]
   ]
 

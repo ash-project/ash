@@ -14,8 +14,7 @@ defmodule Ash.Flow.Step.Validate do
 
           If the value is `nil` and would be required by the action type, the step is skipped and `nil` is the result of the step.
           Any other value is used as an input record.
-          """,
-          links: []
+          """
         ],
         only_keys: [
           type: {:list, {:or, [:atom, {:list, :atom}]}},
@@ -23,8 +22,7 @@ defmodule Ash.Flow.Step.Validate do
           If the keys are set, the step will succeed as long as there are no errors for those specific fields.
           Additionally, only errors for those keys will be returned.
           Use a list for the key if you want to check for an error at a path, and use `:_` to allow anything at that path
-          """,
-          links: []
+          """
         ]
       ]
       |> Spark.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")
