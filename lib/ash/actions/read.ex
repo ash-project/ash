@@ -1457,6 +1457,17 @@ defmodule Ash.Actions.Read do
   end
 
   defp run_query(
+         %{context: %{private: %{action_result: result}}} = ash_query,
+         _query,
+         _context,
+         load_attributes?
+       ) do
+    result
+    |> Helpers.select(ash_query)
+    |> Helpers.load_runtime_types(ash_query, load_attributes?)
+  end
+
+  defp run_query(
          %{
            resource: destination_resource,
            context: %{

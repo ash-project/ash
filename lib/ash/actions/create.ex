@@ -341,12 +341,17 @@ defmodule Ash.Actions.Create do
                           action.manual ->
                             {mod, opts} = action.manual
 
-                            mod.create(changeset, opts, %{
-                              actor: actor,
-                              tenant: changeset.tenant,
-                              authorize?: authorize?,
-                              api: changeset.api
-                            })
+                            if result = changeset.context[:private][:action_result] do
+                              result
+                            else
+                              mod.create(changeset, opts, %{
+                                actor: actor,
+                                tenant: changeset.tenant,
+                                authorize?: authorize?,
+                                api: changeset.api
+                              })
+                            end
+                            |> add_tenant(changeset)
                             |> manage_relationships(api, changeset,
                               actor: actor,
                               authorize?: authorize?,
@@ -385,24 +390,35 @@ defmodule Ash.Actions.Create do
                               )
 
                             if changeset.valid? do
-                              if upsert? do
-                                resource
-                                |> Ash.DataLayer.upsert(changeset, upsert_keys)
-                                |> add_tenant(changeset)
-                                |> manage_relationships(api, changeset,
-                                  actor: actor,
-                                  authorize?: authorize?,
-                                  upsert?: upsert?
-                                )
-                              else
-                                resource
-                                |> Ash.DataLayer.create(changeset)
-                                |> add_tenant(changeset)
-                                |> manage_relationships(api, changeset,
-                                  actor: actor,
-                                  authorize?: authorize?,
-                                  upsert?: upsert?
-                                )
+                              cond do
+                                result = changeset.context[:private][:action_result] ->
+                                  result
+                                  |> add_tenant(changeset)
+                                  |> manage_relationships(api, changeset,
+                                    actor: actor,
+                                    authorize?: authorize?,
+                                    upsert?: upsert?
+                                  )
+
+                                upsert? ->
+                                  resource
+                                  |> Ash.DataLayer.upsert(changeset, upsert_keys)
+                                  |> add_tenant(changeset)
+                                  |> manage_relationships(api, changeset,
+                                    actor: actor,
+                                    authorize?: authorize?,
+                                    upsert?: upsert?
+                                  )
+
+                                true ->
+                                  resource
+                                  |> Ash.DataLayer.create(changeset)
+                                  |> add_tenant(changeset)
+                                  |> manage_relationships(api, changeset,
+                                    actor: actor,
+                                    authorize?: authorize?,
+                                    upsert?: upsert?
+                                  )
                               end
                               |> case do
                                 {:ok, result, instructions} ->

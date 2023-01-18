@@ -589,6 +589,14 @@ defmodule Ash.Changeset do
 
   defp reset_arguments(changeset), do: changeset
 
+  @doc """
+  Set the result of the action. This will prevent running the underlying datalayer behavior
+  """
+  @spec set_result(t(), term) :: t()
+  def set_result(changeset, result) do
+    set_context(changeset, %{private: %{action_result: result}})
+  end
+
   @spec set_on_upsert(t(), list(atom)) :: Keyword.t()
   def set_on_upsert(changeset, upsert_keys) do
     keys = upsert_keys || Ash.Resource.Info.primary_key(changeset.resource)

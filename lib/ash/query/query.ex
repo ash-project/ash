@@ -1111,6 +1111,14 @@ defmodule Ash.Query do
   end
 
   @doc """
+  Set the result of the action. This will prevent running the underlying datalayer behavior
+  """
+  @spec set_result(t(), term) :: t()
+  def set_result(changeset, result) do
+    set_context(changeset, %{private: %{action_result: result}})
+  end
+
+  @doc """
   Merge a map of values into the query context
   """
   @spec set_context(t() | Ash.Resource.t(), map | nil) :: t()

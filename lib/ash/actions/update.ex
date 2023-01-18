@@ -378,12 +378,16 @@ defmodule Ash.Actions.Update do
                             action.manual ->
                               {mod, opts} = action.manual
 
-                              mod.update(changeset, opts, %{
-                                actor: actor,
-                                tenant: changeset.tenant,
-                                authorize?: authorize?,
-                                api: changeset.api
-                              })
+                              if result = changeset.context[:private][:action_result] do
+                                result
+                              else
+                                mod.update(changeset, opts, %{
+                                  actor: actor,
+                                  tenant: changeset.tenant,
+                                  authorize?: authorize?,
+                                  api: changeset.api
+                                })
+                              end
                               |> manage_relationships(api, changeset,
                                 actor: actor,
                                 authorize?: authorize?
@@ -393,28 +397,39 @@ defmodule Ash.Actions.Update do
                               {:ok, changeset.data, %{notifications: []}}
 
                             true ->
-                              if Ash.Changeset.changing_attributes?(changeset) do
-                                changeset =
-                                  changeset
-                                  |> Ash.Changeset.set_defaults(:update, true)
-                                  |> Ash.Changeset.put_context(:changed?, true)
+                              cond do
+                                result = changeset.context[:private][:action_result] ->
+                                  result
+                                  |> add_tenant(changeset)
+                                  |> manage_relationships(api, changeset,
+                                    actor: actor,
+                                    authorize?: authorize?
+                                  )
 
-                                resource
-                                |> Ash.DataLayer.update(changeset)
-                                |> add_tenant(changeset)
-                                |> manage_relationships(api, changeset,
-                                  actor: actor,
-                                  authorize?: authorize?
-                                )
-                              else
-                                changeset = Ash.Changeset.put_context(changeset, :changed?, false)
+                                Ash.Changeset.changing_attributes?(changeset) ->
+                                  changeset =
+                                    changeset
+                                    |> Ash.Changeset.set_defaults(:update, true)
+                                    |> Ash.Changeset.put_context(:changed?, true)
 
-                                {:ok, changeset.data}
-                                |> add_tenant(changeset)
-                                |> manage_relationships(api, changeset,
-                                  actor: actor,
-                                  authorize?: authorize?
-                                )
+                                  resource
+                                  |> Ash.DataLayer.update(changeset)
+                                  |> add_tenant(changeset)
+                                  |> manage_relationships(api, changeset,
+                                    actor: actor,
+                                    authorize?: authorize?
+                                  )
+
+                                true ->
+                                  changeset =
+                                    Ash.Changeset.put_context(changeset, :changed?, false)
+
+                                  {:ok, changeset.data}
+                                  |> add_tenant(changeset)
+                                  |> manage_relationships(api, changeset,
+                                    actor: actor,
+                                    authorize?: authorize?
+                                  )
                               end
                           end
                           |> case do
