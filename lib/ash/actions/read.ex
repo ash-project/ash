@@ -377,7 +377,7 @@ defmodule Ash.Actions.Read do
                   data
                   |> Load.attach_loads(get_in(context, path ++ [:fetch, :load]) || %{})
                   |> add_aggregate_values(
-                    query.aggregates,
+                    fetched_data[:aggregates],
                     query.resource,
                     get_in(context, path ++ [:aggregate_values]) || %{},
                     Map.get(fetched_data, :aggregates_in_query) || []
@@ -830,6 +830,7 @@ defmodule Ash.Actions.Read do
                        load_paths: load_paths,
                        aggregates_in_query: aggregates_in_query,
                        calculations_at_runtime: calculations_at_runtime,
+                       aggregates: ash_query.aggregates,
                        aggregate_value_request_paths:
                          Enum.map(aggregate_value_requests, &(&1.path ++ [:data]))
                      },
@@ -852,6 +853,7 @@ defmodule Ash.Actions.Read do
                results: request_opts[:initial_data],
                aggregates_in_query: aggregates_in_query,
                calculations_at_runtime: calculations_at_runtime,
+               aggregates: ash_query.aggregates,
                aggregate_value_request_paths:
                  Enum.map(aggregate_value_requests, &(&1.path ++ [:data]))
              },
@@ -980,6 +982,7 @@ defmodule Ash.Actions.Read do
                    ultimate_query: %{ash_query | filter: filter},
                    count: count,
                    calculations_at_runtime: calculations_at_runtime,
+                   aggregates: ash_query.aggregates,
                    aggregates_in_query: aggregates_in_query,
                    aggregate_value_request_paths:
                      Enum.map(aggregate_value_requests, &(&1.path ++ [:data]))
@@ -995,6 +998,7 @@ defmodule Ash.Actions.Read do
                    results: results,
                    count: count,
                    calculations_at_runtime: calculations_at_runtime,
+                   aggregates: ash_query.aggregates,
                    aggregates_in_query: aggregates_in_query,
                    aggregate_value_request_paths:
                      Enum.map(aggregate_value_requests, &(&1.path ++ [:data]))

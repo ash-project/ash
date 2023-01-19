@@ -56,6 +56,17 @@ defmodule Ash.Query.Calculation do
     import Inspect.Algebra
 
     def inspect(%{module: module, opts: calculation_opts, context: context}, _opts) do
+      context =
+        Map.drop(context, [
+          :actor,
+          :authorize?,
+          :filter_requests,
+          :initial_limit,
+          :initial_offset,
+          :context,
+          :ash
+        ])
+
       if context == %{} do
         module.describe(calculation_opts)
       else
