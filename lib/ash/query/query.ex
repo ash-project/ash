@@ -1182,15 +1182,15 @@ defmodule Ash.Query do
 
         {:constrained, {:error, error}, argument} ->
           query = %{query | arguments: Map.put(query.arguments, argument.name, value)}
-          add_invalid_errors(query, argument, error)
+          add_invalid_errors(value, query, argument, error)
 
         {:error, error} ->
           query = %{query | arguments: Map.put(query.arguments, argument.name, value)}
-          add_invalid_errors(query, argument, error)
+          add_invalid_errors(value, query, argument, error)
 
         :error ->
           query = %{query | arguments: Map.put(query.arguments, argument.name, value)}
-          add_invalid_errors(query, argument, "is invalid")
+          add_invalid_errors(value, query, argument, "is invalid")
       end
     else
       %{query | arguments: Map.put(query.arguments, argument, value)}
@@ -1205,7 +1205,7 @@ defmodule Ash.Query do
 
   defp reset_arguments(query), do: query
 
-  defp add_invalid_errors(query, argument, error) do
+  defp add_invalid_errors(value, query, argument, error) do
     messages =
       if Keyword.keyword?(error) do
         [error]
@@ -1218,7 +1218,7 @@ defmodule Ash.Query do
       message
       |> Ash.Changeset.error_to_exception_opts(argument)
       |> Enum.reduce(query, fn opts, query ->
-        add_error(query, InvalidArgument.exception(opts))
+        add_error(query, InvalidArgument.exception(Keyword.put(opts, :value, value)))
       end)
     end)
   end

@@ -31,10 +31,13 @@ defmodule Ash.Resource.Validation.AttributeDoesNotEqual do
 
   @impl true
   def validate(changeset, opts) do
-    if Ash.Changeset.get_attribute(changeset, opts[:attribute]) == opts[:value] do
+    value = Ash.Changeset.get_attribute(changeset, opts[:attribute])
+
+    if value == opts[:value] do
       {:error,
        InvalidAttribute.exception(
          field: opts[:attribute],
+         value: value,
          message: "must not equal %{value}",
          vars: [field: opts[:attribute], value: opts[:value]]
        )}

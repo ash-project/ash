@@ -60,9 +60,10 @@ defmodule Ash.Resource.Validation.Present do
           changes_error(opts, count, "must be absent")
         else
           if count == 1 do
-            attribute_error(opts, count, "must be present")
+            attribute_error(changeset, opts, count, "must be present")
           else
             attribute_error(
+              changeset,
               opts,
               count,
               "exactly %{exactly} of %{keys} must be present"
@@ -72,14 +73,14 @@ defmodule Ash.Resource.Validation.Present do
 
       opts[:at_least] && present < opts[:at_least] ->
         if count == 1 do
-          attribute_error(opts, count, "must be present")
+          attribute_error(changeset, opts, count, "must be present")
         else
           changes_error(opts, count, "at least %{at_least} of %{keys} must be present")
         end
 
       opts[:at_most] && present > opts[:at_most] ->
         if count == 1 do
-          attribute_error(opts, count, "must not be present")
+          attribute_error(changeset, opts, count, "must not be present")
         else
           changes_error(opts, count, "at least %{at_most} of %{keys} must be present")
         end
@@ -98,13 +99,14 @@ defmodule Ash.Resource.Validation.Present do
      )}
   end
 
-  defp attribute_error(opts, _count, message) do
+  defp attribute_error(changeset, opts, _count, message) do
     {:error,
      opts[:attributes]
      |> List.wrap()
      |> Enum.map(fn attribute ->
        InvalidAttribute.exception(
          field: attribute,
+         value: Ash.Changeset.get_attribute(changeset, attribute),
          message: message,
          vars: opts
        )

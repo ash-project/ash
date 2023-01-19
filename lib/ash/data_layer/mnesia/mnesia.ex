@@ -85,6 +85,7 @@ defmodule Ash.DataLayer.Mnesia do
   @doc false
   @impl true
   def can?(_, :async_engine), do: true
+  def can?(_, :multitenancy), do: true
   def can?(_, :composite_primary_key), do: true
   def can?(_, :upsert), do: true
   def can?(_, :create), do: true
@@ -94,6 +95,7 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, :sort), do: true
   def can?(_, :filter), do: true
   def can?(_, {:filter_relationship, _}), do: true
+  def can?(_, {:query_aggregate, :count}), do: true
   def can?(_, :limit), do: true
   def can?(_, :offset), do: true
   def can?(_, :boolean_filter), do: true
@@ -148,6 +150,39 @@ defmodule Ash.DataLayer.Mnesia do
   @impl true
   def sort(query, sort, _resource) do
     {:ok, %{query | sort: sort}}
+  end
+
+  @doc false
+  @impl true
+  def run_aggregate_query(%{api: api} = query, aggregates, resource) do
+    case run_query(query, resource) do
+      {:ok, results} ->
+        Enum.reduce_while(aggregates, {:ok, %{}}, fn
+          %{kind: :count, name: name, query: query}, {:ok, acc} ->
+            api
+            |> Ash.Filter.Runtime.filter_matches(results, Map.get(query || %{}, :filter))
+            |> case do
+              {:ok, matches} ->
+                {:cont, {:ok, Map.put(acc, name, Enum.count(matches))}}
+
+              {:error, error} ->
+                {:halt, {:error, error}}
+            end
+
+          _, _ ->
+            {:halt, {:error, "unsupported aggregate"}}
+        end)
+
+      {:error, error} ->
+        {:error, error}
+    end
+    |> case do
+      {:error, error} ->
+        {:error, Ash.Error.to_ash_error(error)}
+
+      other ->
+        other
+    end
   end
 
   @doc false

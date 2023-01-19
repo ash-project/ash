@@ -41,6 +41,7 @@ defmodule Ash.Resource.Validation.Confirm do
       {:error,
        InvalidAttribute.exception(
          field: opts[:confirmation],
+         value: confirmation_value,
          message: "Confirmation did not match value"
        )}
     end

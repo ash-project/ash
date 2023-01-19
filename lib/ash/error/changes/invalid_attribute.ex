@@ -2,7 +2,7 @@ defmodule Ash.Error.Changes.InvalidAttribute do
   @moduledoc "Used when an invalid value is provided for an attribute change"
   use Ash.Error.Exception
 
-  def_ash_error([:field, :message, :private_vars], class: :invalid)
+  def_ash_error([:field, :message, :private_vars, :value], class: :invalid)
 
   defimpl Ash.ErrorKind do
     def id(_), do: Ash.UUID.generate()
@@ -10,7 +10,11 @@ defmodule Ash.Error.Changes.InvalidAttribute do
     def code(_), do: "invalid_attribute"
 
     def message(error) do
-      "Invalid value provided#{for_field(error)}#{do_message(error)}"
+      """
+      Invalid value provided#{for_field(error)}#{do_message(error)}
+
+      #{inspect(error.value)}
+      """
     end
 
     defp for_field(%{field: field}) when not is_nil(field), do: " for #{field}"

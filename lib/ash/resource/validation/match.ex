@@ -46,6 +46,7 @@ defmodule Ash.Resource.Validation.Match do
               {:error,
                InvalidAttribute.exception(
                  field: opts[:attribute],
+                 value: changing_to,
                  message: opts[:message],
                  vars: [match: opts[:match]]
                )}
@@ -66,6 +67,7 @@ defmodule Ash.Resource.Validation.Match do
     _ ->
       {:error,
        InvalidAttribute.exception(
+         value: opts[:value],
          field: opts[:attribute],
          message: opts[:message],
          vars: [match: opts[:match]]

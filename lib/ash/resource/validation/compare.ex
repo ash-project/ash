@@ -66,6 +66,7 @@ defmodule Ash.Resource.Validation.Compare do
                   else:
                     invalid_attribute_error(
                       Keyword.put(opts, :value, attribute),
+                      value,
                       "must be greater than %{value}"
                     )
 
@@ -75,6 +76,7 @@ defmodule Ash.Resource.Validation.Compare do
                   else:
                     invalid_attribute_error(
                       Keyword.put(opts, :value, attribute),
+                      value,
                       "must be greater than or equal to %{value}"
                     )
 
@@ -84,6 +86,7 @@ defmodule Ash.Resource.Validation.Compare do
                   else:
                     invalid_attribute_error(
                       Keyword.put(opts, :value, attribute),
+                      value,
                       "must be less than %{value}"
                     )
 
@@ -93,6 +96,7 @@ defmodule Ash.Resource.Validation.Compare do
                   else:
                     invalid_attribute_error(
                       Keyword.put(opts, :value, attribute),
+                      value,
                       "must be less than or equal to %{value}"
                     )
 
@@ -116,11 +120,12 @@ defmodule Ash.Resource.Validation.Compare do
 
   defp attribute_value(_, attribute), do: attribute
 
-  defp invalid_attribute_error(opts, message) do
+  defp invalid_attribute_error(opts, attribute_value, message) do
     {:error,
      InvalidAttribute.exception(
        field: opts[:attribute],
        message: opts[:message] || message,
+       value: attribute_value,
        vars: [
          value:
            case opts[:value] do

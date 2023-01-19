@@ -30,9 +30,12 @@ defmodule Ash.Resource.Validation.AttributeEquals do
 
   @impl true
   def validate(changeset, opts) do
-    if Ash.Changeset.get_attribute(changeset, opts[:attribute]) != opts[:value] do
+    value = Ash.Changeset.get_attribute(changeset, opts[:attribute])
+
+    if value != opts[:value] do
       {:error,
        InvalidAttribute.exception(
+         value: value,
          field: opts[:attribute],
          message: "must equal %{value}",
          vars: [field: opts[:attribute], value: opts[:value]]

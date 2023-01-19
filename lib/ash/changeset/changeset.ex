@@ -988,10 +988,14 @@ defmodule Ash.Changeset do
     |> Enum.reject(fn {key, _value} ->
       key in accepted_attributes
     end)
-    |> Enum.reduce(changeset, fn {key, _}, changeset ->
+    |> Enum.reduce(changeset, fn {key, value}, changeset ->
       add_error(
         changeset,
-        InvalidAttribute.exception(field: key, message: "cannot be changed")
+        InvalidAttribute.exception(
+          field: key,
+          message: "cannot be changed",
+          value: value
+        )
       )
     end)
   end
@@ -1308,11 +1312,12 @@ defmodule Ash.Changeset do
 
   defp override_validation_message(error, message) do
     case error do
-      %{field: field} when not is_nil(field) ->
+      %{field: field} = error when not is_nil(field) ->
         error
         |> Map.take([:field, :vars])
         |> Map.to_list()
         |> Keyword.put(:message, message)
+        |> Keyword.put(:value, Map.get(error, :value))
         |> InvalidAttribute.exception()
 
       %{fields: fields} when fields not in [nil, []] ->
@@ -1320,6 +1325,7 @@ defmodule Ash.Changeset do
         |> Map.take([:fields, :vars])
         |> Map.to_list()
         |> Keyword.put(:message, message)
+        |> Keyword.put(:value, Map.get(error, :value))
         |> InvalidChanges.exception()
 
       _ ->
@@ -2706,7 +2712,7 @@ defmodule Ash.Changeset do
               | arguments: Map.put(changeset.arguments, argument.name, value)
             }
 
-            add_invalid_errors(:argument, changeset, argument, error)
+            add_invalid_errors(value, :argument, changeset, argument, error)
 
           {:error, error} ->
             changeset = %{
@@ -2714,7 +2720,7 @@ defmodule Ash.Changeset do
               | arguments: Map.put(changeset.arguments, argument.name, value)
             }
 
-            add_invalid_errors(:argument, changeset, argument, error)
+            add_invalid_errors(value, :argument, changeset, argument, error)
         end
       else
         %{changeset | arguments: Map.put(changeset.arguments, argument, value)}
@@ -2807,7 +2813,7 @@ defmodule Ash.Changeset do
           | attributes: Map.put(changeset.attributes, attribute.name, value)
         }
 
-        add_invalid_errors(:attribute, changeset, attribute, "Attribute is not writable")
+        add_invalid_errors(value, :attribute, changeset, attribute, "Attribute is not writable")
 
       attribute ->
         with value <- handle_indexed_maps(attribute.type, value),
@@ -2859,7 +2865,7 @@ defmodule Ash.Changeset do
                 defaults: changeset.defaults -- [attribute.name]
             }
 
-            add_invalid_errors(:attribute, changeset, attribute, error_or_errors)
+            add_invalid_errors(value, :attribute, changeset, attribute, error_or_errors)
 
           :error ->
             changeset = %{
@@ -2868,7 +2874,7 @@ defmodule Ash.Changeset do
                 defaults: changeset.defaults -- [attribute.name]
             }
 
-            add_invalid_errors(:attribute, changeset, attribute)
+            add_invalid_errors(value, :attribute, changeset, attribute)
 
           {:error, error_or_errors} ->
             changeset = %{
@@ -2877,7 +2883,7 @@ defmodule Ash.Changeset do
                 defaults: changeset.defaults -- [attribute.name]
             }
 
-            add_invalid_errors(:attribute, changeset, attribute, error_or_errors)
+            add_invalid_errors(value, :attribute, changeset, attribute, error_or_errors)
         end
     end
   end
@@ -3034,7 +3040,7 @@ defmodule Ash.Changeset do
               | attributes: Map.put(changeset.attributes, attribute.name, value)
             }
 
-            add_invalid_errors(:attribute, changeset, attribute)
+            add_invalid_errors(value, :attribute, changeset, attribute)
 
           {:error, error_or_errors} ->
             changeset = %{
@@ -3042,7 +3048,7 @@ defmodule Ash.Changeset do
               | attributes: Map.put(changeset.attributes, attribute.name, value)
             }
 
-            add_invalid_errors(:attribute, changeset, attribute, error_or_errors)
+            add_invalid_errors(value, :attribute, changeset, attribute, error_or_errors)
         end
     end
   end
@@ -3289,12 +3295,14 @@ defmodule Ash.Changeset do
         InvalidAttribute.exception(
           field: keyword[:field],
           message: keyword[:message],
+          value: keyword[:value],
           vars: keyword
         )
       else
         InvalidChanges.exception(
           fields: keyword[:fields] || [],
           message: keyword[:message],
+          value: keyword[:value],
           vars: keyword
         )
       end
@@ -3320,7 +3328,7 @@ defmodule Ash.Changeset do
     Ash.Type.handle_change(attribute.type, old_value, value, constraints)
   end
 
-  defp add_invalid_errors(type, changeset, attribute, message \\ nil) do
+  defp add_invalid_errors(value, type, changeset, attribute, message \\ nil) do
     messages =
       if Keyword.keyword?(message) do
         [message]
@@ -3340,6 +3348,7 @@ defmodule Ash.Changeset do
       Enum.reduce(opts, changeset, fn opts, changeset ->
         error =
           exception.exception(
+            value: value,
             field: Keyword.get(opts, :field),
             message: Keyword.get(opts, :message),
             vars: opts
