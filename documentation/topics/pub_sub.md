@@ -6,6 +6,15 @@ You configure a module that defines a `broadcast/3` function, and then add some 
 
 For the full DSL spec see `Ash.Notifier.PubSub`
 
+## Debugging PubSub
+
+It can be quite frustrating when setting up pub_sub when everything appears to be set up properly, but you aren't receiving events. This usually means some kind of mismatch between the event names produced by the resource/config
+of your publications, and you can use the following flag to display debug information about pub sub events coming from `Ash.Notifier.PubSub`
+
+```elixir
+config :ash, :pub_sub, debug?: true
+```
+
 ## Topic Templates
 
 Often you want to include some piece of data in the thing being changed, like the `:id` attribute. This is done by providing a list as the topic, and using atoms which will be replaced by their corresponding values. They will ultimately be joined with `:`.

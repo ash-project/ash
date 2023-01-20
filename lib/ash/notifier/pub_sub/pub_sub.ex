@@ -138,7 +138,17 @@ defmodule Ash.Notifier.PubSub do
     event = publish.event || to_string(notification.action.name)
     prefix = prefix(notification.resource) || ""
 
-    topics = fill_template(publish.topic, notification)
+    topics =
+      publish.topic
+      |> fill_template(notification)
+      |> Enum.map(fn topic ->
+        case {prefix, topic} do
+          {"", ""} -> ""
+          {prefix, ""} -> prefix
+          {"", topic} -> topic
+          {prefix, topic} -> "#{prefix}:#{topic}"
+        end
+      end)
 
     if debug? do
       Logger.debug("""
@@ -151,17 +161,15 @@ defmodule Ash.Notifier.PubSub do
     end
 
     Enum.each(topics, fn topic ->
-      prefixed_topic = prefix <> ":" <> topic
-
       args =
         case name(notification.resource) do
           nil ->
-            [prefixed_topic, event, to_payload(topic, event, notification)]
+            [topic, event, to_payload(topic, event, notification)]
 
           pub_sub ->
             payload = to_payload(topic, event, notification)
 
-            [pub_sub, prefixed_topic, payload]
+            [pub_sub, topic, payload]
         end
 
       args =
@@ -206,6 +214,7 @@ defmodule Ash.Notifier.PubSub do
     |> all_combinations_of_values(notification, notification.action.type)
     |> Enum.map(&List.flatten/1)
     |> Enum.map(&Enum.join(&1, ":"))
+    |> Enum.uniq()
   end
 
   defp all_combinations_of_values(items, notification, action_type, trail \\ [])
