@@ -5,6 +5,43 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.5.7](https://github.com/ash-project/ash/compare/v2.5.6...v2.5.7) (2023-01-20)
+
+
+
+
+### Bug Fixes:
+
+* properly load depended on aggregates
+
+* properly handle functional manual creates
+
+* Use proper options in `confirm` change.
+
+* only pass action name in Ash.Changeset.for_action (#476)
+
+* properly set the context option on changesets
+
+* return proper value from validation
+
+### Improvements:
+
+* include value in invalid error messages
+
+* cleaner inspect for calculations
+
+* add `set_result` for conditional manual actions/caching
+
+* update docs to new links formats for ash_hq (#483)
+
+* add nil return type to api get/3, read_one/2 and read_one!/2 (#482)
+
+* don't load dependencies for calcs in query
+
+* add `action_is/1` builtin validation
+
+* more compile time optimizations
+
 ## [v2.5.6](https://github.com/ash-project/ash/compare/v2.5.5...v2.5.6) (2023-01-19)
 
 
