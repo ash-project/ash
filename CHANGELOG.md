@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.5.9](https://github.com/ash-project/ash/compare/v2.5.8...v2.5.9) (2023-01-22)
+
+
+
+
+### Bug Fixes:
+
+* properly surface errors from embedded attributes
+
+* use original pkey for ets upsert lookup
+
 ## [v2.5.8](https://github.com/ash-project/ash/compare/v2.5.7...v2.5.8) (2023-01-20)
 
 
