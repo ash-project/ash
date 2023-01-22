@@ -558,7 +558,8 @@ defmodule Ash.DataLayer.Ets do
   @doc false
   @impl true
   def upsert(resource, changeset, keys) do
-    keys = keys || Ash.Resource.Info.primary_key(resource)
+    pkey = Ash.Resource.Info.primary_key(resource)
+    keys = keys || pkey
 
     if Enum.any?(keys, &is_nil(Ash.Changeset.get_attribute(changeset, &1))) do
       create(resource, changeset)
@@ -588,7 +589,7 @@ defmodule Ash.DataLayer.Ets do
             |> Map.put(:data, result)
             |> Ash.Changeset.force_change_attributes(to_set)
 
-          update(resource, changeset)
+          update(resource, changeset, Map.take(result, pkey))
 
         {:ok, _} ->
           {:error, "Multiple records matching keys"}
@@ -683,8 +684,8 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
-  def update(resource, changeset) do
-    pkey = pkey_map(resource, changeset.data)
+  def update(resource, changeset, pkey \\ nil) do
+    pkey = pkey || pkey_map(resource, changeset.data)
 
     with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
          {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
