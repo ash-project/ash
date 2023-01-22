@@ -3337,32 +3337,57 @@ defmodule Ash.Changeset do
       end
 
     Enum.reduce(messages, changeset, fn message, changeset ->
-      opts = error_to_exception_opts(message, attribute)
-
-      exception =
-        case type do
-          :attribute -> InvalidAttribute
-          :argument -> InvalidArgument
-        end
-
-      Enum.reduce(opts, changeset, fn opts, changeset ->
+      if Exception.exception?(message) do
         error =
-          exception.exception(
-            value: value,
-            field: Keyword.get(opts, :field),
-            message: Keyword.get(opts, :message),
-            vars: opts
-          )
+          message
+          |> Ash.Error.to_ash_error()
 
-        error =
-          if opts[:path] do
-            Ash.Error.set_path(error, opts[:path])
-          else
-            error
+        errors =
+          case error do
+            %class{errors: errors}
+            when class in [
+                   Ash.Error.Invalid,
+                   Ash.Error.Unknown,
+                   Ash.Error.Forbidden,
+                   Ash.Error.Framework
+                 ] ->
+              errors
+
+            error ->
+              [error]
           end
 
-        add_error(changeset, error)
-      end)
+        Enum.reduce(errors, changeset, fn error, changeset ->
+          add_error(changeset, Ash.Error.set_path(error, attribute.name))
+        end)
+      else
+        opts = error_to_exception_opts(message, attribute)
+
+        exception =
+          case type do
+            :attribute -> InvalidAttribute
+            :argument -> InvalidArgument
+          end
+
+        Enum.reduce(opts, changeset, fn opts, changeset ->
+          error =
+            exception.exception(
+              value: value,
+              field: Keyword.get(opts, :field),
+              message: Keyword.get(opts, :message),
+              vars: opts
+            )
+
+          error =
+            if opts[:path] do
+              Ash.Error.set_path(error, opts[:path])
+            else
+              error
+            end
+
+          add_error(changeset, error)
+        end)
+      end
     end)
   end
 
@@ -3403,6 +3428,11 @@ defmodule Ash.Changeset do
 
       message when is_binary(message) ->
         [[field: attribute.name, message: message]]
+
+      value when is_exception(value) ->
+        value
+        |> Ash.Error.to_ash_error()
+        |> Map.put(:field, attribute.name)
 
       _ ->
         [[field: attribute.name]]
