@@ -1,4 +1,4 @@
-# Extending Resource
+# Extending Resources
 
 Resource extensions allow you to make powerful modifications to resources, and extend the DSL to configure how those modifications are made. If you are using `AshPostgres`, `AshGraphql` or `AshJsonApi`, they are all integrated into a resource using extensions. In this guide we will build a simple extension that adds timestamps to your resource. We'll also show some simple patterns that can help ensure that all of your resources are using your extension.
 
