@@ -1,8 +1,6 @@
 # Validate Changes
 
-# Validations
-
-In ash, there are three kinds of validations.
+In Ash, there are three kinds of validations.
 
 - The simple `allow_nil?` and `writable?` validations provided for attributes
 - Type constraints, specific to each type
