@@ -205,6 +205,24 @@ defmodule Helpdesk.Support do
 end
 ```
 
+Next, add your api to your `config.exs`
+
+Run the following to create your `config.exs` if it doesn't already exist
+
+```elixir
+mkdir -p config
+touch config/config.exs
+```
+
+and add the following contents to it (if the file already exists, just make sure the `config` line is added)
+
+```elixir
+# in config/config.exs
+import Config
+
+config :helpdesk, :ash_apis, [Helpdesk.Support]
+```
+
 ### Try our first resource out
 
 Run `iex -S mix` in your project and try it out.

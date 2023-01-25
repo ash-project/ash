@@ -10,7 +10,7 @@ code_interface do
 end
 ```
 
-This simple setup now allows you to open a ticket with `Helpdesk.Support.Ticket.open(subject)`. You can cause it to raise errors instead of return them with `Helpdesk.Support.Ticket.open!(subject)`. For information on the options and additional inputs these defined functions take, look at the generated function documentation, which you can do in iex with `h Helpdesk.Support.Ticket.open`. For more information on the code interface, read the DSL documentation: `d:Ash.Resource.code_interface`.
+This simple setup now allows you to open a ticket with `Helpdesk.Support.Ticket.open(subject)`. You can cause it to raise errors instead of return them with `Helpdesk.Support.Ticket.open!(subject)`. For information on the options and additional inputs these defined functions take, look at the generated function documentation, which you can do in iex with `h Helpdesk.Support.Ticket.open`. For more information on the code interface, read the DSL documentation: `d:Ash.Resource.Dsl.code_interface`.
 
 ## define_for and define_interface
 

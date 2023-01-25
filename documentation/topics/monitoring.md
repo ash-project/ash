@@ -49,9 +49,9 @@ Resource
 
 For customizing the names created for each span, see:
 
-- `d:Ash.Api.execution|trace_name`
-- `d:Ash.Resource.resource|trace_name`
-- `d:Ash.Flow.flow|trace_name`
+- `d:Ash.Api.Dsl.execution|trace_name`
+- `d:Ash.Resource.Dsl.resource|trace_name`
+- `d:Ash.Flow.Dsl.flow|trace_name`
 
 ## After/Before Action Hooks
 

@@ -4,7 +4,7 @@ Pagination is configured at the action level. There are two kinds of pagination 
 pros and cons to each. An action can support both at the same time, or only one (or none). A full count of records can be
 requested by passing `page: [count: true]`, but it should be kept in mind that doing this requires running the same query
 twice, one of which is a count of all records. Ash does these in parallel, but it can still be quite expensive on large
-datasets. For more information on the options for configuring actions to support pagination, see `d:Ash.Resource.actions.read|prepare`
+datasets. For more information on the options for configuring actions to support pagination, see `d:Ash.Resource.Dsl.actions.read|prepare`
 
 ## Offset Pagination
 

@@ -97,9 +97,9 @@ A `belongs_to` relationship means that there is an attribute (`source_attribute`
 The `destination_attribute` defaults to `:id`.
 By default, a belongs_to relationship will define an attribute called `<relationship_name>_id` of type `:uuid` on the resource. To configure this, use options like:
 
-- `d:Ash.Resource.relationships.belongs_to|define_attribute?` to define it yourself
-- `d:Ash.Resource.relationships.belongs_to|attribute_type` to modify the default type
-- `d:Ash.Resource.relationships.belongs_to|attribute_writable?` to make the source attribute `private?: false, writable?: true` (both are not the default)
+- `d:Ash.Resource.Dsl.relationships.belongs_to|define_attribute?` to define it yourself
+- `d:Ash.Resource.Dsl.relationships.belongs_to|attribute_type` to modify the default type
+- `d:Ash.Resource.Dsl.relationships.belongs_to|attribute_writable?` to make the source attribute `private?: false, writable?: true` (both are not the default)
 
 For example:
 
@@ -126,7 +126,7 @@ relationships do
 end
 ```
 
-See the docs for more: `d:Ash.Resource.relationships.belongs_to`
+See the docs for more: `d:Ash.Resource.Dsl.relationships.belongs_to`
 
 ### Has One
 
@@ -142,7 +142,7 @@ the destination resource, instead of the source. In the example above, we'd expe
 
 By default, the `source_attribute` is assumed to be `:id`, and `destination_attribute` defaults to `<snake_cased_last_part_of_module_name>_id`. In the above example, it would default `destination_attribute` to `user_id`.
 
-See the docs for more: `d:Ash.Resource.relationships.has_one`
+See the docs for more: `d:Ash.Resource.Dsl.relationships.has_one`
 
 ### Has Many
 
@@ -157,7 +157,7 @@ A `has_many` relationship is similar to a `has_one` in that the reference attrib
 
 By default, the `source_attribute` is assumed to be `:id`, and `destination_attribute` defaults to `<snake_cased_last_part_of_module_name>_id`. In the above example, it would default `destination_attribute` to `post_id`.
 
-See the docs for more: `d:Ash.Resource.relationships.has_many`
+See the docs for more: `d:Ash.Resource.Dsl.relationships.has_many`
 ## Many To Many Relationships
 
 Lets say that individual todo items in our app can be added to multiple lists, and every list has multiple todo items. This is a great case for `many_to_many` relationships.
@@ -199,4 +199,4 @@ end
 Now that we have a resource with the proper attributes, Ash will use this automatically under the hood when 
 performing the relationship operations detailed above, like filtering and loading.
 
-See the docs for more: `d:Ash.Resource.relationships.many_to_many`
+See the docs for more: `d:Ash.Resource.Dsl.relationships.many_to_many`

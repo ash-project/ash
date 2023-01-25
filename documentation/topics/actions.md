@@ -126,11 +126,11 @@ end
 The following steps are performed when you call `Ash.Query.for_read/4`.
 
 - [Gather Process Context](/documentation/topics/store-context-in-process.md)
-- Cast input arguments - `d:Ash.Resource.actions.read.argument`
-- Set default argument values - `d:Ash.Resource.actions.read.argument|default` 
-- Add errors for missing required arguments | `d:Ash.Resource.actions.read.argument|allow_nil?`
-- Run query preparations | `d:Ash.Resource.actions.read.prepare`
-- Add action filter | `d:Ash.Resource.actions.read|filter`
+- Cast input arguments - `d:Ash.Resource.Dsl.actions.read.argument`
+- Set default argument values - `d:Ash.Resource.Dsl.actions.read.argument|default` 
+- Add errors for missing required arguments | `d:Ash.Resource.Dsl.actions.read.argument|allow_nil?`
+- Run query preparations | `d:Ash.Resource.Dsl.actions.read.prepare`
+- Add action filter | `d:Ash.Resource.Dsl.actions.read|filter`
 
 #### Running the Read Action
 
@@ -154,7 +154,7 @@ The following steps happen asynchronously during or after the main data layer qu
 
 ### Create/Update/Destroy Actions
 
-These actions operate on an `Ash.Changeset`. While standard destroy actions don't care about the changes you add to a changeset, you may mark a destroy action as `d:Ash.Resource.actions.destroy|soft?`, which means you will be performing an update that will in some way "hide" the resource. Generally this hiding is done by adding a `d:Ash.Resource.resource|base_filter` i.e `base_filter [is_nil: :archived_at]`
+These actions operate on an `Ash.Changeset`. While standard destroy actions don't care about the changes you add to a changeset, you may mark a destroy action as `d:Ash.Resource.Dsl.actions.destroy|soft?`, which means you will be performing an update that will in some way "hide" the resource. Generally this hiding is done by adding a `d:Ash.Resource.Dsl.resource|base_filter` i.e `base_filter [is_nil: :archived_at]`
 
 Here is an example create action:
 
@@ -192,7 +192,7 @@ The following steps are run when calling `Ash.Changeset.for_create/4`, `Ash.Chan
 - Require any accepted attributes that are `allow_nil?` false
 - Set any default values for attributes
 - Run action changes & validations
-- Run validations, or add them in `before_action` hooks if using `d:Ash.Resource.actions.create.validate|before_action?`
+- Run validations, or add them in `before_action` hooks if using `d:Ash.Resource.Dsl.actions.create.validate|before_action?`
 
 #### Running the Create/Update/Destroy Action
 

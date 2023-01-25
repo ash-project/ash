@@ -73,14 +73,14 @@ Api.read!(User)
 
 The default behavior is illustrated above, but it can be customized with the options in the `d:Ash.Api.authorization` section of the Api module you are calling.
 
-#### `d:Ash.Api.authorization|require_actor?`
+#### `d:Ash.Api.Dsl.authorization|require_actor?`
 
 Requires that an actor is set for all requests.
 
 Important: `nil` is still a valid actor, so this won't prevent providing `actor: nil`.
 
 
-#### `d:Ash.Api.authorization|authorize`
+#### `d:Ash.Api.dsl.authorization|authorize`
 
 ##### Important!
 
