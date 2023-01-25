@@ -1,6 +1,6 @@
 defmodule Ash.Policy.FilterCheckWithContext do
   @moduledoc """
-  A type of check that is represented by a filter statement, and has access to the
+  A type of check that is represented by a filter statement, and has access to the context.
   """
 
   @type options :: Keyword.t()

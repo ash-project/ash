@@ -8,17 +8,17 @@ defmodule Ash.Policy.Info do
 
   alias Spark.Dsl.Extension
 
-  @doc "Whether or not ash policy authorizer is configured to show policy breakdowns in error messages"
+  @doc "Whether or not Ash policy authorizer is configured to show policy breakdowns in error messages"
   def show_policy_breakdowns? do
     Application.get_env(:ash, :policies)[:show_policy_breakdowns?] || false
   end
 
-  @doc "Whether or not ash policy authorizer is configured to show policy breakdowns in error messages"
+  @doc "Whether or not Ash policy authorizer is configured to log policy breakdowns"
   def log_policy_breakdowns do
     Application.get_env(:ash, :policies)[:log_policy_breakdowns]
   end
 
-  @doc "Whether or not ash policy authorizer is configured to show policy breakdowns in error messages"
+  @doc "Whether or not Ash policy authorizer is configured to log successful policy breakdowns"
   def log_successful_policy_breakdowns do
     Application.get_env(:ash, :policies)[:log_successful_policy_breakdowns]
   end
