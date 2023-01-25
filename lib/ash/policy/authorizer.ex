@@ -127,9 +127,9 @@ defmodule Ash.Policy.Authorizer do
     policy always() do
       ...
     end
-
-    See the [policies guide](/documentation/topics/policies.md) for more
     ```
+
+    See the [policies guide](/documentation/topics/policies.md) for more.
     """,
     schema: [
       description: [
