@@ -5,17 +5,34 @@ defmodule Ash.Resource.Change.Builtins do
   The functions in this module are imported by default in the actions section.
   """
 
+  @relate_actor_opts [
+    relationship: [
+      doc: "The relationship to set the actor to.",
+      required: true,
+      type: :atom
+    ],
+    allow_nil?: [
+      doc: "Whether or not to allow the actor to be nil, in which case nothing will happen.",
+      type: :boolean,
+      default: false
+    ]
+  ]
+
   @doc """
   Relates the actor to the data being changed, as the provided relationship.
 
   ## Options
 
-  #{Spark.OptionsHelpers.docs(Ash.Resource.Change.RelateActor.opt_schema())}
+  #{Spark.OptionsHelpers.docs(@relate_actor_opts)}
 
   ## Examples
 
       change relate_actor(:owner, allow_nil?: true)
   """
+  def relate_actor_opts do
+    @relate_actor_opts
+  end
+
   @spec relate_actor(relationship :: atom, opts :: Keyword.t()) :: Ash.Resource.Change.ref()
   def relate_actor(relationship, opts \\ []) do
     opts =

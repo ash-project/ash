@@ -4,30 +4,15 @@ defmodule Ash.Resource.Validation.StringLength do
 
   alias Ash.Error.Changes.InvalidAttribute
 
-  @opt_schema [
-    attribute: [
-      type: :atom,
-      required: true
-    ],
-    min: [
-      type: :non_neg_integer,
-      doc: "String must be this length at least"
-    ],
-    max: [
-      type: :non_neg_integer,
-      doc: "String must be this length at most"
-    ],
-    exact: [
-      type: :non_neg_integer,
-      doc: "String must be this length exactly"
-    ]
-  ]
-
-  def opt_schema, do: @opt_schema
-
   @impl true
   def init(opts) do
-    case Spark.OptionsHelpers.validate(opts, @opt_schema) do
+    case Spark.OptionsHelpers.validate(
+           opts,
+           Keyword.put(Ash.Resource.Validation.Builtins.string_length_opts(), :attribute,
+             type: :atom,
+             required: true
+           )
+         ) do
       {:ok, opts} ->
         {:ok, opts}
 

@@ -138,8 +138,8 @@ defmodule Ash.Changeset do
     Invalid.TimeoutNotSupported
   }
 
-  require Ash.Query
   require Ash.Tracer
+  require Ash.Expr
   require Logger
 
   defmacrop maybe_already_validated_error!(changeset, alternative \\ nil) do
@@ -2371,7 +2371,7 @@ defmodule Ash.Changeset do
                  relationship.type in [:has_many, :has_one] do
               destination_value = Map.get(changeset.data, relationship.source_attribute)
 
-              Ash.Query.expr(
+              Ash.Expr.expr(
                 ^this_filter and
                   (is_nil(ref(^relationship.destination_attribute, [])) or
                      ref(^relationship.destination_attribute, []) == ^destination_value)
@@ -2382,7 +2382,7 @@ defmodule Ash.Changeset do
           end)
 
         if filter && filter != %{} do
-          Ash.Query.expr(^expr or ^filter)
+          Ash.Expr.expr(^expr or ^filter)
         else
           expr
         end
@@ -2403,7 +2403,7 @@ defmodule Ash.Changeset do
           tenant: changeset.tenant
         )
         |> Ash.Query.limit(Enum.count(input))
-        |> Ash.Query.filter(^search)
+        |> Ash.Query.do_filter(search)
         |> api.read()
       end
 
@@ -2696,7 +2696,8 @@ defmodule Ash.Changeset do
         )
 
       if argument do
-        with {:ok, casted} <- cast_input(argument.type, value, argument.constraints, changeset),
+        with {:ok, casted} <-
+               Ash.Type.Helpers.cast_input(argument.type, value, argument.constraints, changeset),
              {:constrained, {:ok, casted}, argument} when not is_nil(casted) <-
                {:constrained,
                 Ash.Type.apply_constraints(argument.type, casted, argument.constraints),
@@ -2816,11 +2817,17 @@ defmodule Ash.Changeset do
         add_invalid_errors(value, :attribute, changeset, attribute, "Attribute is not writable")
 
       attribute ->
-        with value <- handle_indexed_maps(attribute.type, value),
+        with value <- Ash.Type.Helpers.handle_indexed_maps(attribute.type, value),
              {:ok, prepared} <-
                prepare_change(changeset, attribute, value, attribute.constraints),
              {:ok, casted} <-
-               cast_input(attribute.type, prepared, attribute.constraints, changeset, true),
+               Ash.Type.Helpers.cast_input(
+                 attribute.type,
+                 prepared,
+                 attribute.constraints,
+                 changeset,
+                 true
+               ),
              {:ok, casted} <-
                handle_change(changeset, attribute, casted, attribute.constraints),
              {:ok, casted} <-
@@ -2917,59 +2924,6 @@ defmodule Ash.Changeset do
     end
   end
 
-  @doc false
-  def cast_input(type, term, constraints, changeset, return_value? \\ false)
-
-  def cast_input(type, value, constraints, changeset, return_value?) do
-    value = handle_indexed_maps(type, value)
-    constraints = Ash.Type.constraints(changeset, type, constraints)
-
-    case Ash.Type.cast_input(type, value, constraints) do
-      {:ok, value} ->
-        {:ok, value}
-
-      {:error, error} ->
-        if return_value? do
-          {{:error, error}, value}
-        else
-          {:error, error}
-        end
-    end
-  end
-
-  @doc false
-  def handle_indexed_maps({:array, type}, term) when is_map(term) and term != %{} do
-    term
-    |> Enum.reduce_while({:ok, []}, fn
-      {key, value}, {:ok, acc} when is_integer(key) ->
-        {:cont, {:ok, [{key, value} | acc]}}
-
-      {key, value}, {:ok, acc} when is_binary(key) ->
-        case Integer.parse(key) do
-          {int, ""} ->
-            {:cont, {:ok, [{int, value} | acc]}}
-
-          _ ->
-            {:halt, :error}
-        end
-
-      _, _ ->
-        {:halt, :error}
-    end)
-    |> case do
-      {:ok, value} ->
-        value
-        |> Enum.sort_by(&elem(&1, 0))
-        |> Enum.map(&elem(&1, 1))
-        |> Enum.map(&handle_indexed_maps(type, &1))
-
-      :error ->
-        term
-    end
-  end
-
-  def handle_indexed_maps(_, value), do: value
-
   @doc "Calls `force_change_attribute/3` for each key/value pair provided"
   @spec force_change_attributes(t(), map | Keyword.t()) :: t()
   def force_change_attributes(changeset, changes) do
@@ -2996,11 +2950,16 @@ defmodule Ash.Changeset do
         %{changeset | attributes: Map.put(changeset.attributes, attribute.name, nil)}
 
       attribute ->
-        with value <- handle_indexed_maps(attribute.type, value),
+        with value <- Ash.Type.Helpers.handle_indexed_maps(attribute.type, value),
              {:ok, prepared} <-
                prepare_change(changeset, attribute, value, attribute.constraints),
              {:ok, casted} <-
-               cast_input(attribute.type, prepared, attribute.constraints, changeset),
+               Ash.Type.Helpers.cast_input(
+                 attribute.type,
+                 prepared,
+                 attribute.constraints,
+                 changeset
+               ),
              {:ok, casted} <- handle_change(changeset, attribute, casted, attribute.constraints),
              {:ok, casted} <-
                Ash.Type.apply_constraints(attribute.type, casted, attribute.constraints) do
@@ -3361,7 +3320,7 @@ defmodule Ash.Changeset do
           add_error(changeset, Ash.Error.set_path(error, attribute.name))
         end)
       else
-        opts = error_to_exception_opts(message, attribute)
+        opts = Ash.Type.Helpers.error_to_exception_opts(message, attribute)
 
         exception =
           case type do
@@ -3389,65 +3348,5 @@ defmodule Ash.Changeset do
         end)
       end
     end)
-  end
-
-  @doc false
-  def error_to_exception_opts(message, attribute) do
-    case message do
-      keyword when is_list(keyword) ->
-        fields =
-          case List.wrap(keyword[:fields]) do
-            [] ->
-              List.wrap(keyword[:field])
-
-            fields ->
-              fields
-          end
-
-        fields
-        |> case do
-          [] ->
-            [
-              keyword
-              |> Keyword.put(
-                :message,
-                add_index(keyword[:message], keyword)
-              )
-              |> Keyword.put(:field, attribute.name)
-            ]
-
-          fields ->
-            Enum.map(
-              fields,
-              &Keyword.merge(message,
-                field: attribute.name,
-                message: add_index(add_field(keyword[:message], "#{&1}"), keyword)
-              )
-            )
-        end
-
-      message when is_binary(message) ->
-        [[field: attribute.name, message: message]]
-
-      value when is_exception(value) ->
-        value
-        |> Ash.Error.to_ash_error()
-        |> Map.put(:field, attribute.name)
-
-      _ ->
-        [[field: attribute.name]]
-    end
-  end
-
-  defp add_field(message, field) do
-    "at field #{field} " <> (message || "")
-  end
-
-  defp add_index(message, opts) do
-    if opts[:index] do
-      "at index #{opts[:index]} " <> (message || "")
-    else
-      message
-    end
   end
 end

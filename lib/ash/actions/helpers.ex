@@ -2,7 +2,7 @@ defmodule Ash.Actions.Helpers do
   @moduledoc false
   require Logger
 
-  def validate_calculation_load!(%Ash.Query{}, module) do
+  def validate_calculation_load!(%{__struct__: Ash.Query}, module) do
     raise """
     `#{inspect(module)}.load/3` returned a query.
 
@@ -15,10 +15,11 @@ defmodule Ash.Actions.Helpers do
 
   def validate_calculation_load!(other, _), do: other
 
-  defp set_context(%Ash.Changeset{} = changeset, context),
+  defp set_context(%{__struct__: Ash.Changeset} = changeset, context),
     do: Ash.Changeset.set_context(changeset, context)
 
-  defp set_context(%Ash.Query{} = query, context), do: Ash.Query.set_context(query, context)
+  defp set_context(%{__struct__: Ash.Query} = query, context),
+    do: Ash.Query.set_context(query, context)
 
   def add_process_context(api, query_or_changeset, opts) do
     query_or_changeset = set_context(query_or_changeset, opts[:context] || %{})
@@ -75,12 +76,12 @@ defmodule Ash.Actions.Helpers do
     private_context = Map.new(Keyword.take(opts, [:actor, :authorize?]))
 
     case query_or_changeset do
-      %Ash.Query{} ->
+      %{__struct__: Ash.Query} ->
         query_or_changeset
         |> Ash.Query.set_context(context)
         |> Ash.Query.set_context(%{private: private_context})
 
-      %Ash.Changeset{} ->
+      %{__struct__: Ash.Changeset} ->
         query_or_changeset
         |> Ash.Changeset.set_context(context)
         |> Ash.Changeset.set_context(%{

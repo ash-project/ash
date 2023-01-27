@@ -3,7 +3,7 @@ defmodule Ash.Error do
   Tools and utilities used by Ash to manage and conform errors
   """
 
-  alias Ash.Error.{Forbidden, Framework, Invalid, Unknown}
+  alias Ash.Error.{Forbidden, Framework, Invalid, Stacktrace, Unknown}
   alias Ash.Error.Unknown.UnknownError
 
   @type error_class() :: :invalid | :authorization | :framework | :unknown
@@ -31,17 +31,6 @@ defmodule Ash.Error do
 
   @doc false
   def error_modules, do: Keyword.values(@error_modules)
-
-  defmodule Stacktrace do
-    @moduledoc "A placeholder for a stacktrace so that we can avoid printing it everywhere"
-    defstruct [:stacktrace]
-
-    defimpl Inspect do
-      def inspect(_, _) do
-        "#Stacktrace<>"
-      end
-    end
-  end
 
   @doc false
   def set_path(errors, path) when is_list(errors) do

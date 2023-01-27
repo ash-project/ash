@@ -4,23 +4,8 @@ defmodule Ash.Resource.Change.RelateActor do
   alias Ash.Changeset
   alias Ash.Error.Changes.InvalidRelationship
 
-  @opt_schema [
-    relationship: [
-      doc: "The relationship to set the actor to.",
-      required: true,
-      type: :atom
-    ],
-    allow_nil?: [
-      doc: "Whether or not to allow the actor to be nil, in which case nothing will happen.",
-      type: :boolean,
-      default: false
-    ]
-  ]
-
-  def opt_schema, do: @opt_schema
-
   def init(opts) do
-    case Spark.OptionsHelpers.validate(opts, @opt_schema) do
+    case Spark.OptionsHelpers.validate(opts, Ash.Resource.Change.Builtins.relate_actor_opts()) do
       {:ok, opts} ->
         {:ok, opts}
 

@@ -5,39 +5,15 @@ defmodule Ash.Resource.Validation.Compare do
 
   alias Ash.Error.Changes.InvalidAttribute
 
-  @opt_schema [
-    attribute: [
-      type: :atom,
-      required: true,
-      doc: "The attribute to check"
-    ],
-    greater_than: [
-      type: {:or, [:integer, :atom, :float, {:struct, Decimal}, {:fun, 0}]},
-      required: false,
-      doc: "The value that the attribute should be greater than."
-    ],
-    greater_than_or_equal_to: [
-      type: {:or, [:integer, :atom, :float, {:struct, Decimal}, {:fun, 0}]},
-      required: false,
-      doc: "The value that the attribute should be greater than or equal to"
-    ],
-    less_than: [
-      type: {:or, [:integer, :atom, :float, {:struct, Decimal}, {:fun, 0}]},
-      required: false,
-      doc: "The value that the attribute should be less than"
-    ],
-    less_than_or_equal_to: [
-      type: {:or, [:integer, :atom, :float, {:struct, Decimal}, {:fun, 0}]},
-      required: false,
-      doc: "The value that the attribute should be less than or equal to"
-    ]
-  ]
-
-  def opt_schema, do: @opt_schema
-
   @impl true
   def init(opts) do
-    case Spark.OptionsHelpers.validate(opts, @opt_schema) do
+    case Spark.OptionsHelpers.validate(
+           opts,
+           Keyword.put(Ash.Resource.Validation.Builtins.compare_opts(), :attribute,
+             type: :atom,
+             required: true
+           )
+         ) do
       {:ok, opts} ->
         {:ok, opts}
 

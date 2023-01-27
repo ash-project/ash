@@ -172,7 +172,8 @@ defmodule Ash.Flow do
           {:cont, {:ok, acc}}
 
         arg ->
-          with {:ok, value} <- Ash.Changeset.cast_input(arg.type, value, arg.constraints, flow),
+          with {:ok, value} <-
+                 Ash.Type.Helpers.cast_input(arg.type, value, arg.constraints, flow),
                {:constrained, {:ok, casted}}
                when not is_nil(value) <-
                  {:constrained, Ash.Type.apply_constraints(arg.type, value, arg.constraints)} do

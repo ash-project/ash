@@ -1167,7 +1167,7 @@ defmodule Ash.Query do
 
       with {:arg, argument} when not is_nil(argument) <- {:arg, argument},
            {:ok, casted} <-
-             Ash.Changeset.cast_input(argument.type, value, argument.constraints, query),
+             Ash.Type.Helpers.cast_input(argument.type, value, argument.constraints, query),
            {:constrained, {:ok, casted}, argument} when not is_nil(casted) <-
              {:constrained,
               Ash.Type.apply_constraints(argument.type, casted, argument.constraints),
@@ -1216,7 +1216,7 @@ defmodule Ash.Query do
     messages
     |> Enum.reduce(query, fn message, query ->
       message
-      |> Ash.Changeset.error_to_exception_opts(argument)
+      |> Ash.Type.Helpers.error_to_exception_opts(argument)
       |> Enum.reduce(query, fn opts, query ->
         add_error(query, InvalidArgument.exception(Keyword.put(opts, :value, value)))
       end)
@@ -1378,13 +1378,12 @@ defmodule Ash.Query do
   Ash.Query.build(MyResource, filter: [name: "fred"], sort: [name: :asc], load: [:foo, :bar], offset: 10)
   ```
 
-  If you want to use the expression style filters, you can use `expr/1`. Be sure to `require Ash.Query` first,
-  or import it. Consider importing only the `expr/1` macro if you do that
+  If you want to use the expression style filters, you can use `expr/1`.
 
   For example:
 
   ```elixir
-  import Ash.Query, only: [expr: 1]
+  import Ash.Expr, only: [expr: 1]
 
   Ash.Query.build(Myresource, filter: expr(name == "marge"))
   ```

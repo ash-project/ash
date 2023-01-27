@@ -23,15 +23,14 @@ defmodule Ash.Resource.Preparation.Builtins do
 
   This allows declaring simple query modifications in-line.
 
-  ## Options
-
-  #{Spark.OptionsHelpers.docs(Ash.Query.build_opts())}
+  To see the available options, see `Ash.Query.build/2`
 
   ## Examples
 
       prepare build(sort: [song_rank: :desc], limit: 10)
       prepare build(load: [:friends])
   """
+
   @spec build(Keyword.t()) :: Ash.Resource.Preparation.ref()
   def build(options) do
     {Ash.Resource.Preparation.Build, options: options}
