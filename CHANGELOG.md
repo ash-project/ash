@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.5.10](https://github.com/ash-project/ash/compare/v2.5.9...v2.5.10) (2023-01-27)
+
+
+
+
+### Improvements:
+
+* upgrade to latest spark for compile time improvements
+
+* improve compile times by reorienting some compile deps
+
+* add relationships to underlying ecto schemas for better escape hatches
+
+* reselect explicitly selected queries on reload
+
 ## [v2.5.9](https://github.com/ash-project/ash/compare/v2.5.8...v2.5.9) (2023-01-22)
 
 
