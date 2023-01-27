@@ -170,7 +170,8 @@ defmodule Ash.MixProject do
           Ash.Resource.ManualCreate,
           Ash.Resource.ManualUpdate,
           Ash.Resource.ManualDestroy,
-          Ash.Resource.ManualRelationship
+          Ash.Resource.ManualRelationship,
+          Ash.Resource.Attribute.Helpers
         ],
         Queries: [
           Ash.Query,
