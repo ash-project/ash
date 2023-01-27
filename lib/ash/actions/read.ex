@@ -714,6 +714,11 @@ defmodule Ash.Actions.Read do
 
         must_be_reselected =
           if request_opts[:initial_data] do
+            # If there wasn't an explicit query select
+            # done by calling `Ash.Query.ensure_selected` or `Ash.Query.select`
+            # then we don't reselect them
+            query_selects = List.wrap(ash_query.select)
+
             calc_selects =
               Enum.flat_map(calculations_at_runtime, fn %{select: select} ->
                 List.wrap(select)
@@ -735,6 +740,7 @@ defmodule Ash.Actions.Read do
               end
             end)
             |> Enum.concat(calc_selects)
+            |> Enum.concat(query_selects)
             |> remove_already_selected(request_opts[:initial_data])
           else
             []
