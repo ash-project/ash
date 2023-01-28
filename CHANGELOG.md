@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.5.11](https://github.com/ash-project/ash/compare/v2.5.10...v2.5.11) (2023-01-28)
+
+
+
+
+### Improvements:
+
+* support `{:ignore, changeset}` from error handlers
+
+* add read action metadata
+
 ## [v2.5.10](https://github.com/ash-project/ash/compare/v2.5.9...v2.5.10) (2023-01-27)
 
 
