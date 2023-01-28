@@ -3237,6 +3237,9 @@ defmodule Ash.Changeset do
       :ignore ->
         changeset
 
+      {:ignore, changeset} ->
+        changeset
+
       %__MODULE__{} = changeset ->
         %{changeset | valid?: false}
 

@@ -479,6 +479,9 @@ defmodule Ash.Resource.Dsl do
       ],
       pagination: [
         @pagination
+      ],
+      metadata: [
+        @metadata
       ]
     ],
     args: [:name]

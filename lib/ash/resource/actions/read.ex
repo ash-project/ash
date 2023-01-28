@@ -14,6 +14,7 @@ defmodule Ash.Resource.Actions.Read do
     arguments: [],
     preparations: [],
     touches_resources: [],
+    metadata: [],
     type: :read
   ]
 
