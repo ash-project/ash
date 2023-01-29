@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.5.12](https://github.com/ash-project/ash/compare/v2.5.11...v2.5.12) (2023-01-29)
+
+
+
+
+### Improvements:
+
+* simplify aggregate loading, fix bug with auth query resource
+
 ## [v2.5.11](https://github.com/ash-project/ash/compare/v2.5.10...v2.5.11) (2023-01-28)
 
 
