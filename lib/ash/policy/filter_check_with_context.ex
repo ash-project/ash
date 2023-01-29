@@ -65,9 +65,9 @@ defmodule Ash.Policy.FilterCheckWithContext do
         end
       end
 
-      defp try_eval(expression, %{query: %Ash.Query{} = query}) do
+      defp try_eval(expression, %{resource: resource, query: %Ash.Query{} = query}) do
         case Ash.Filter.hydrate_refs(expression, %{
-               resource: query.resource,
+               resource: resource,
                aggregates: query.aggregates,
                calculations: query.calculations,
                public?: false
