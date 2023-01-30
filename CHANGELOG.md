@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.5.13](https://github.com/ash-project/ash/compare/v2.5.12...v2.5.13) (2023-01-30)
+
+
+
+
+### Bug Fixes:
+
+* use destination query for aggregates, join auth to come later
+
+* check `changeset.valid?` properly on destroys
+
+* properly halt on action errors in `before_action` hooks
+
+### Improvements:
+
+* no async loads except when loading on initial data
+
+* support length constraints on array embeds
+
 ## [v2.5.12](https://github.com/ash-project/ash/compare/v2.5.11...v2.5.12) (2023-01-29)
 
 
