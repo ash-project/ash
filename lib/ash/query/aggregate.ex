@@ -273,7 +273,7 @@ defmodule Ash.Query.Aggregate do
       resource: related,
       api: initial_query.api,
       async?: false,
-      query: aggregate_query(related, request_path),
+      query: Ash.Query.for_read(related, Ash.Resource.Info.primary_action!(related, :read).name),
       path: request_path ++ [:aggregate, relationship_path],
       strict_check_only?: true,
       action: Ash.Resource.Info.primary_action(related, :read),
@@ -303,7 +303,7 @@ defmodule Ash.Query.Aggregate do
     Request.new(
       resource: aggregate_resource,
       api: initial_query.api,
-      query: aggregate_query(related, request_path),
+      query: Ash.Query.for_read(related, Ash.Resource.Info.primary_action!(related, :read).name),
       path: request_path ++ [:aggregate_values, relationship_path],
       action: Ash.Resource.Info.primary_action(aggregate_resource, :read),
       name: "fetch aggregate: #{Enum.join(relationship_path, ".")}",
@@ -407,17 +407,6 @@ defmodule Ash.Query.Aggregate do
 
   defp add_data_layer_aggregates(data_layer_query, aggregates, aggregate_resource) do
     Ash.DataLayer.add_aggregates(data_layer_query, aggregates, aggregate_resource)
-  end
-
-  defp aggregate_query(_resource, request_path) do
-    Request.resolve(
-      [request_path ++ [:fetch, :query]],
-      fn data ->
-        data_query = get_in(data, request_path ++ [:fetch, :query])
-
-        {:ok, data_query}
-      end
-    )
   end
 
   defimpl Inspect do
