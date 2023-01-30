@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.5.14](https://github.com/ash-project/ash/compare/v2.5.13...v2.5.14) (2023-01-30)
+
+
+
+
+### Improvements:
+
+* registry resource validations transformers -> verifiers
+
+* better error message on unknown relationship
+
 ## [v2.5.13](https://github.com/ash-project/ash/compare/v2.5.12...v2.5.13) (2023-01-30)
 
 
