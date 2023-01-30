@@ -1,22 +1,19 @@
-defmodule Ash.Registry.ResourceValidations.Transformers.EnsureNoEmbeds do
+defmodule Ash.Registry.ResourceValidations.Verifiers.EnsureNoEmbeds do
   @moduledoc """
   Ensures that all resources for a given registry are not embeds.
   """
-  use Spark.Dsl.Transformer
-  alias Spark.Dsl.Transformer
+  use Spark.Dsl.Verifier
+  alias Spark.Dsl.Verifier
 
   @impl true
-  def after_compile?, do: true
-
-  @impl true
-  def transform(dsl) do
+  def verify(dsl) do
     dsl
-    |> Transformer.get_entities([:entries])
+    |> Verifier.get_entities([:entries])
     |> Enum.map(& &1.entry)
     |> Enum.filter(&Ash.Resource.Info.embedded?/1)
     |> case do
       [] ->
-        {:ok, dsl}
+        :ok
 
       rejected ->
         {:error,

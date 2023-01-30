@@ -2,11 +2,12 @@ defmodule Ash.Registry.ResourceValidations do
   @moduledoc """
   Adds some top level validations of resources present in a registry
   """
-  @transformers [
-    Ash.Registry.ResourceValidations.Transformers.EnsureResourcesCompiled,
-    Ash.Registry.ResourceValidations.Transformers.ValidateRelatedResourceInclusion,
-    Ash.Registry.ResourceValidations.Transformers.EnsureNoEmbeds
+
+  @verifiers [
+    Ash.Registry.ResourceValidations.Verifiers.EnsureResourcesCompiled,
+    Ash.Registry.ResourceValidations.Verifiers.ValidateRelatedResourceInclusion,
+    Ash.Registry.ResourceValidations.Verifiers.EnsureNoEmbeds
   ]
 
-  use Spark.Dsl.Extension, transformers: @transformers
+  use Spark.Dsl.Extension, verifiers: @verifiers
 end

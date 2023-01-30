@@ -1,19 +1,15 @@
-defmodule Ash.Registry.ResourceValidations.Transformers.EnsureResourcesCompiled do
+defmodule Ash.Registry.ResourceValidations.Verifiers.EnsureResourcesCompiled do
   @moduledoc """
   Ensures that all resources for a given registry are compiled.
   """
-  use Spark.Dsl.Transformer
-  alias Spark.Dsl.Transformer
+  use Spark.Dsl.Verifier
+  alias Spark.Dsl.Verifier
 
   require Logger
 
-  @impl true
-  def after_compile?, do: true
-
-  @impl true
-  def transform(dsl) do
+  def verify(dsl) do
     dsl
-    |> Transformer.get_entities([:entries])
+    |> Verifier.get_entities([:entries])
     |> Enum.map(& &1.entry)
     |> Enum.map(fn resource ->
       try do
@@ -37,7 +33,7 @@ defmodule Ash.Registry.ResourceValidations.Transformers.EnsureResourcesCompiled 
     |> Enum.filter(& &1)
     |> case do
       [] ->
-        {:ok, dsl}
+        :ok
 
       rejected ->
         for {resource, error} <- rejected do
@@ -46,7 +42,7 @@ defmodule Ash.Registry.ResourceValidations.Transformers.EnsureResourcesCompiled 
           )
         end
 
-        {:ok, dsl}
+        :ok
     end
   end
 end
