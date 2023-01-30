@@ -556,43 +556,39 @@ defmodule Ash.Type do
           nil_items? = Keyword.get(constraints, :nil_items?, false)
           item_constraints = constraints[:items] || []
 
-          if item_constraints != [] || !nil_items? do
-            term
-            |> Enum.with_index()
-            |> Enum.reduce({[], []}, fn {item, index}, {items, errors} ->
-              if is_nil(item) && not nil_items? do
-                {[item | items], [[message: "no nil values", index: index] | errors]}
-              else
-                case apply_constraints(type, item, item_constraints) do
-                  {:ok, value} ->
-                    {[value | items], errors}
+          term
+          |> Enum.with_index()
+          |> Enum.reduce({[], []}, fn {item, index}, {items, errors} ->
+            if is_nil(item) && not nil_items? do
+              {[item | items], [[message: "no nil values", index: index] | errors]}
+            else
+              case apply_constraints(type, item, item_constraints) do
+                {:ok, value} ->
+                  {[value | items], errors}
 
-                  {:error, new_errors} ->
-                    new_errors =
-                      new_errors
-                      |> List.wrap()
-                      |> Ash.Error.flatten_preserving_keywords()
-                      |> Enum.map(fn
-                        string when is_binary(string) ->
-                          [message: string, index: index]
+                {:error, new_errors} ->
+                  new_errors =
+                    new_errors
+                    |> List.wrap()
+                    |> Ash.Error.flatten_preserving_keywords()
+                    |> Enum.map(fn
+                      string when is_binary(string) ->
+                        [message: string, index: index]
 
-                        vars ->
-                          Keyword.put(vars, :index, index)
-                      end)
+                      vars ->
+                        Keyword.put(vars, :index, index)
+                    end)
 
-                    {[item | items], List.wrap(new_errors) ++ errors}
-                end
+                  {[item | items], List.wrap(new_errors) ++ errors}
               end
-            end)
-            |> case do
-              {terms, []} ->
-                {:ok, Enum.reverse(terms)}
-
-              {_, errors} ->
-                {:error, errors}
             end
-          else
-            {:ok, term}
+          end)
+          |> case do
+            {terms, []} ->
+              {:ok, Enum.reverse(terms)}
+
+            {_, errors} ->
+              {:error, errors}
           end
 
         errors ->
@@ -620,7 +616,8 @@ defmodule Ash.Type do
     end
   end
 
-  defp list_constraint_errors(term, constraints) do
+  @doc false
+  def list_constraint_errors(term, constraints) do
     length =
       if Keyword.has_key?(constraints, :max_length) || Keyword.has_key?(constraints, :min_length) do
         length(term)

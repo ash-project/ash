@@ -138,6 +138,11 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
         ]
 
       attribute :tags, {:array, Tag}
+
+      attribute :tags_max_length, {:array, Tag} do
+        constraints max_length: 2, min_length: 1
+      end
+
       attribute :tags_with_id, {:array, TagWithId}
     end
   end
@@ -177,6 +182,42 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
                }
              )
              |> Api.create!()
+  end
+
+  test "embedded resources can be constrained with min/max length" do
+    assert_raise Ash.Error.Invalid, ~r/must have 2 or fewer items/, fn ->
+      Changeset.for_create(
+        Author,
+        :create,
+        %{
+          profile: %{
+            first_name: "ash",
+            last_name: "ketchum"
+          },
+          tags_max_length: [
+            %{name: "trainer", score: 10},
+            %{name: "human", score: 100},
+            %{name: "gym_leader", score: 150}
+          ]
+        }
+      )
+      |> Api.create!()
+    end
+
+    assert_raise Ash.Error.Invalid, ~r/must have 1 or more items/, fn ->
+      Changeset.for_create(
+        Author,
+        :create,
+        %{
+          profile: %{
+            first_name: "ash",
+            last_name: "ketchum"
+          },
+          tags_max_length: []
+        }
+      )
+      |> Api.create!()
+    end
   end
 
   test "embedded resources support calculations" do

@@ -24,6 +24,14 @@ defmodule Ash.EmbeddableType do
       Aggregates are not supported on embedded resources.
       """
     ],
+    min_length: [
+      type: :non_neg_integer,
+      doc: "A minimum length for the items"
+    ],
+    max_length: [
+      type: :non_neg_integer,
+      doc: "A maximum length for the items"
+    ],
     create_action: [
       type: :atom,
       doc:
@@ -417,8 +425,6 @@ defmodule Ash.EmbeddableType do
       alias Ash.EmbeddableType.ShadowApi
       def array_constraints, do: Ash.EmbeddableType.embedded_resource_array_constraints()
 
-      def apply_constraints_array([], _constraints), do: {:ok, []}
-
       def apply_constraints_array(term, constraints) do
         pkey = Ash.Resource.Info.primary_key(__MODULE__)
         unique_keys = Enum.map(Ash.Resource.Info.identities(__MODULE__), & &1.keys) ++ [pkey]
@@ -437,7 +443,16 @@ defmodule Ash.EmbeddableType do
                 query
               end
 
-            ShadowApi.read(query)
+            case ShadowApi.read(query) do
+              {:ok, result} ->
+                case Ash.Type.list_constraint_errors(result, constraints) do
+                  [] ->
+                    {:ok, result}
+
+                  errors ->
+                    {:error, errors}
+                end
+            end
 
           keys ->
             {:error, message: "items must be unique on keys %{keys}", keys: Enum.join(keys, ",")}
