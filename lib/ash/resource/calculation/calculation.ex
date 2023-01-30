@@ -12,7 +12,6 @@ defmodule Ash.Resource.Calculation do
     :allow_nil?,
     :select,
     :load,
-    :allow_async?,
     filterable?: true
   ]
 
@@ -31,13 +30,6 @@ defmodule Ash.Resource.Calculation do
       type: :keyword_list,
       default: [],
       doc: "Constraints to provide to the type. See `Ash.Type` for more."
-    ],
-    allow_async?: [
-      type: :boolean,
-      default: false,
-      doc: """
-      If set to `true`, then the calculation may be run after the main query.
-      """
     ],
     calculation: [
       type:

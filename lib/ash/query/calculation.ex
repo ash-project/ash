@@ -12,7 +12,6 @@ defmodule Ash.Query.Calculation do
     required_loads: [],
     select: [],
     sequence: 0,
-    allow_async?: false,
     filterable?: true
   ]
 

@@ -888,7 +888,6 @@ defmodule Ash.Query do
                 calculation
                 | load: field,
                   select: fields_to_select,
-                  allow_async?: resource_calculation.allow_async?,
                   required_loads: loads
               }
 
@@ -1609,7 +1608,6 @@ defmodule Ash.Query do
           | name: as_name,
             load: nil,
             select: fields_to_select,
-            allow_async?: resource_calculation.allow_async?,
             required_loads: loads
         }
 

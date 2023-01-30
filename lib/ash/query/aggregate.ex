@@ -169,7 +169,7 @@ defmodule Ash.Query.Aggregate do
         initial_query,
         can_be_in_query?,
         authorizing?,
-        calculations_in_query,
+        _calculations_in_query,
         request_path
       ) do
     initial_query.aggregates
@@ -186,13 +186,7 @@ defmodule Ash.Query.Aggregate do
                                     {auth_requests, value_requests, aggregates_in_query} ->
       related = Ash.Resource.Info.related(aggregate_resource, relationship_path)
 
-      can_be_in_query? =
-        can_be_in_query? && ref_path == [] &&
-          any_aggregate_matching_path_used_in_query?(
-            initial_query,
-            relationship_path,
-            calculations_in_query
-          )
+      can_be_in_query? = can_be_in_query? && ref_path == []
 
       auth_request =
         if authorizing? do
@@ -459,102 +453,6 @@ defmodule Ash.Query.Aggregate do
         ">",
         opts,
         fn str, _ -> str end
-      )
-    end
-  end
-
-  defp any_aggregate_matching_path_used_in_query?(query, relationship_path, calculations_in_query) do
-    filter_aggregates =
-      if query.filter do
-        Ash.Filter.used_aggregates(query.filter)
-      else
-        []
-      end
-
-    used_calculations =
-      Ash.Filter.used_calculations(
-        query.filter,
-        query.resource
-      ) ++ calculations_in_query
-
-    calculation_aggregates =
-      used_calculations
-      |> Enum.filter(&:erlang.function_exported(&1.module, :expression, 2))
-      |> Enum.flat_map(fn calculation ->
-        case Ash.Filter.hydrate_refs(
-               calculation.module.expression(calculation.opts, calculation.context),
-               %{
-                 resource: query.resource,
-                 aggregates: query.aggregates,
-                 calculations: query.calculations,
-                 relationship_path: [],
-                 public?: false
-               }
-             ) do
-          {:ok, hydrated} ->
-            Ash.Filter.used_aggregates(hydrated)
-
-          _ ->
-            []
-        end
-      end)
-
-    if Enum.any?(
-         filter_aggregates ++ calculation_aggregates,
-         &(&1.relationship_path == relationship_path)
-       ) do
-      true
-    else
-      sort_aggregates =
-        Enum.flat_map(query.sort, fn {field, _} ->
-          case Map.fetch(query.aggregates, field) do
-            :error ->
-              []
-
-            {:ok, agg} ->
-              [agg]
-          end
-        end)
-
-      sort_calculations =
-        Enum.flat_map(query.sort, fn
-          {%Ash.Query.Calculation{} = calc, _} ->
-            [calc]
-
-          {field, _} ->
-            case Map.fetch(query.calculations, field) do
-              :error ->
-                []
-
-              {:ok, calc} ->
-                [calc]
-            end
-        end)
-
-      sort_calc_aggregates =
-        sort_calculations
-        |> Enum.filter(&:erlang.function_exported(&1.module, :expression, 2))
-        |> Enum.flat_map(fn calculation ->
-          case Ash.Filter.hydrate_refs(
-                 calculation.module.expression(calculation.opts, calculation.context),
-                 %{
-                   resource: query.resource,
-                   aggregates: query.aggregates,
-                   calculations: query.calculations,
-                   public?: false
-                 }
-               ) do
-            {:ok, hydrated} ->
-              Ash.Filter.used_aggregates(hydrated)
-
-            _ ->
-              []
-          end
-        end)
-
-      Enum.any?(
-        sort_aggregates ++ sort_calc_aggregates,
-        &(&1.relationship_path == relationship_path)
       )
     end
   end

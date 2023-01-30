@@ -95,7 +95,3 @@ query
 |> Ash.Query.filter(full_name(separator: ","))
 |> Ash.Query.sort(full_name: {:asc, %{separator: ","}})
 ```
-
-## Async loading
-
-Expensive calculations can be marked as `allow_async?: true`, which will allow Ash to fetch it after the main query is run, in parallel with any other calculations that are being run async. This won't affect calculations that are being filtered on, since that must be placed in the data layer.

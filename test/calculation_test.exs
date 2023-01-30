@@ -122,9 +122,7 @@ defmodule Ash.Test.CalculationTest do
 
       calculate :slug, :string, expr(full_name <> "123"), load: [:full_name]
 
-      calculate :expr_full_name, :string, expr(first_name <> " " <> last_name) do
-        allow_async? true
-      end
+      calculate :expr_full_name, :string, expr(first_name <> " " <> last_name)
 
       calculate :best_friends_name, :string, BestFriendsName
 

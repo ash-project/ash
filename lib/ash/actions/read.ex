@@ -668,15 +668,6 @@ defmodule Ash.Actions.Read do
         initial_limit = initial_query.context[:initial_limit]
         initial_offset = initial_query.context[:initial_offset]
 
-        used_calculations =
-          ash_query.filter
-          |> Ash.Filter.used_calculations(
-            ash_query.resource,
-            [],
-            ash_query.calculations,
-            ash_query.aggregates
-          )
-
         can_be_in_query? =
           not Keyword.has_key?(request_opts, :initial_data) && !ash_query.action.manual
 
@@ -693,10 +684,7 @@ defmodule Ash.Actions.Read do
             ash_query.calculations
             |> Map.values()
             |> Enum.split_with(fn calculation ->
-              Enum.find(used_calculations, &(&1.name == calculation.name)) ||
-                calculation.name in Enum.map(ash_query.sort || [], &elem(&1, 0)) ||
-                (:erlang.function_exported(calculation.module, :expression, 2) &&
-                   !calculation.allow_async?)
+              :erlang.function_exported(calculation.module, :expression, 2)
             end)
           else
             {[], Map.values(ash_query.calculations)}
