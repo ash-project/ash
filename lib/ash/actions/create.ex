@@ -430,14 +430,14 @@ defmodule Ash.Actions.Create do
                                    )}
 
                                 {:error, error} ->
-                                  {:error, error}
+                                  {:error, Ash.Changeset.add_error(changeset, error)}
                               end
                             else
-                              {:error, changeset.errors}
+                              {:error, changeset}
                             end
                         end
                       else
-                        {:error, changeset.errors}
+                        {:error, changeset}
                       end
                   end
                 end)
@@ -476,6 +476,9 @@ defmodule Ash.Actions.Create do
                     actor: actor,
                     authorize?: authorize?
                   )
+
+                {:error, %Ash.Changeset{} = changeset} ->
+                  {:error, changeset.errors, %{set: %{changeset: changeset}}}
 
                 other ->
                   other

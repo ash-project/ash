@@ -295,8 +295,12 @@ defmodule Ash.Engine.Request do
         log(request, fn -> "#{key} waiting on dependencies: #{inspect(waiting_for)}" end)
         {:waiting, new_request, notifications, waiting_for}
 
+      {:error, error, new_request} ->
+        log(request, fn -> "error fetching #{key}: #{inspect(error)}" end)
+        {:error, error, new_request}
+
       {:error, error} ->
-        log(request, fn -> "error fetching data: #{inspect(error)}" end)
+        log(request, fn -> "error fetching #{key}: #{inspect(error)}" end)
         {:error, error, request}
     end
   end
@@ -1165,6 +1169,12 @@ defmodule Ash.Engine.Request do
                 new_request,
                 notifications
               )
+
+            {:error, error, %{set: %{changeset: new_changeset}}} ->
+              {:error, error, %{request | changeset: new_changeset}}
+
+            {:error, error, %{set: %{query: new_query}}} ->
+              {:error, error, %{request | query: new_query}}
 
             {:error, error} ->
               log(request, fn ->

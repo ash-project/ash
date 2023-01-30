@@ -333,6 +333,9 @@ defmodule Ash.Actions.Read do
                 %{valid?: false} = query ->
                   {:error, query.errors}
 
+                {:error, %Ash.Query{} = query} ->
+                  {:error, query.errors, %{set: %{query: query}}}
+
                 other ->
                   other
               end
@@ -1241,13 +1244,19 @@ defmodule Ash.Actions.Read do
     query = Ash.Query.put_context(query, :private, %{in_before_action?: true})
 
     query.before_action
-    |> Enum.reduce({query, []}, fn before_action, {query, notifications} ->
+    |> Enum.reduce_while({query, []}, fn before_action, {query, notifications} ->
       case before_action.(query) do
+        {%{valid?: false} = query, _} ->
+          {:halt, {query, []}}
+
+        %{valid?: false} = query ->
+          {:halt, {query, []}}
+
         {query, new_notifications} ->
-          {query, notifications ++ new_notifications}
+          {:cont, {query, notifications ++ new_notifications}}
 
         query ->
-          {query, notifications}
+          {:cont, {query, notifications}}
       end
     end)
   end

@@ -448,10 +448,10 @@ defmodule Ash.Actions.Update do
                                )}
 
                             {:error, error} ->
-                              {:error, error}
+                              {:error, Ash.Changeset.add_error(changeset, error)}
                           end
                         else
-                          {:error, changeset.errors}
+                          {:error, changeset}
                         end
                     end
                   end)
@@ -476,6 +476,9 @@ defmodule Ash.Actions.Update do
                       {:ok, updated, instructions}
                     end
                     |> run_after_action(changeset, after_action)
+
+                  {:error, %Ash.Changeset{} = changeset} ->
+                    {:error, changeset.errors, %{set: %{changeset: changeset}}}
 
                   other ->
                     other
