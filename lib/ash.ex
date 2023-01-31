@@ -203,9 +203,9 @@ defmodule Ash do
   @doc """
   Sets tenant into the process dictionary that is used for all changesets and queries.
   """
-  @spec set_tenant(map) :: :ok
-  def set_tenant(map) do
-    Process.put(:ash_tenant, {:tenant, map})
+  @spec set_tenant(String.t()) :: :ok
+  def set_tenant(tenant) do
+    Process.put(:ash_tenant, {:tenant, tenant})
 
     :ok
   end
