@@ -30,9 +30,6 @@ shell.nix
 .direnv/
 .envrc
 
-# Ignoring .tools-version
-.tool-versions
-
 /Mnesia.*
 
 .DS_Store
