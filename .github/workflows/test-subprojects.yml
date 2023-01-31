@@ -7,7 +7,7 @@ on:
 jobs:
   test-subprojects:
     runs-on: ubuntu-latest
-    name: Subproject-${{matrix.project}} - OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
+    name: Subproject ${{matrix.project.org}}/${{matrix.project.name}} - OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
     strategy:
       fail-fast: false
       matrix:
