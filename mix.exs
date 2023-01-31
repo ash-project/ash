@@ -291,7 +291,8 @@ defmodule Ash.MixProject do
       {:git_ops, "~> 2.5", only: :dev},
       {:mix_test_watch, "~> 1.0", only: :dev, runtime: false},
       {:parse_trans, "3.3.0", only: [:dev, :test], override: true},
-      {:benchee, "~> 1.1", only: [:dev, :test]}
+      {:benchee, "~> 1.1", only: [:dev, :test]},
+      {:doctor, "~> 0.21", only: [:dev, :test]}
     ]
   end
 

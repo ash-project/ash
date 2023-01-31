@@ -11,6 +11,13 @@ defmodule Ash.CiString do
 
   defstruct [:string, casted?: false, case: nil]
 
+  @type t :: %__MODULE__{
+          string: String.t(),
+          casted?: boolean(),
+          case: nil | :lower | :upper
+        }
+
+  @doc "Creates a case insensitive string"
   def sigil_i(value, mods) do
     cond do
       ?l in mods ->

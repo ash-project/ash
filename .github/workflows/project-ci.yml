@@ -1,0 +1,154 @@
+name: Ash CI
+on:
+  push:
+    tags:
+      - "v*"
+    branches: [main]
+  workflow_call:
+jobs:
+  deps:
+    name: mix deps.get
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: team-alembic/staple-actions/actions/mix-deps-get@main
+
+  auditor:
+    name: mix hex.audit
+    runs-on: ubuntu-latest
+    needs: deps
+    steps:
+      - uses: actions/checkout@v3
+      - uses: team-alembic/staple-actions/actions/mix-hex-audit@main
+
+  build-test:
+    name: MIX_ENV=test mix.compile
+    runs-on: ubuntu-latest
+    needs: deps
+    steps:
+      - uses: actions/checkout@v3
+      - uses: team-alembic/staple-actions/actions/install-elixir@main
+      - uses: team-alembic/staple-actions/actions/mix-compile@main
+        with:
+          mix-env: test
+  formatter:
+    name: mix format --check-formatted
+    runs-on: ubuntu-latest
+    needs: build-test
+    steps:
+      - uses: actions/checkout@v3
+      - uses: team-alembic/staple-actions/actions/mix-format@main
+        with:
+          mix-env: test
+
+  # Need to clean lots of things up before we can add this
+  # doctor:
+  #   name: mix doctor --full --raise
+  #   runs-on: ubuntu-latest
+  #   needs: build-test
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: team-alembic/staple-actions/actions/mix-doctor@main
+  #       with:
+  #         mix-env: test
+  test:
+    name: mix test
+    runs-on: ubuntu-latest
+    needs: build-test
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v3
+      - uses: team-alembic/staple-actions/actions/mix-test@main
+        with:
+          mix-env: test
+        env:
+          PGUSER: postgres
+          PGPASS: postgres
+          PGHOST: postgres
+  dialyzer:
+    name: mix dialyzer
+    runs-on: ubuntu-latest
+    needs: build-test
+    steps:
+      - uses: actions/checkout@v3
+      - uses: team-alembic/staple-actions/actions/mix-dialyzer@main
+        with:
+          mix-env: test
+
+  build-dev:
+    name: MIX_ENV=dev mix.compile
+    runs-on: ubuntu-latest
+    needs:
+      - credo
+      - doctor
+      - formatter
+      - auditor
+      - test
+      - dialyzer
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: team-alembic/staple-actions/actions/mix-compile@main
+        with:
+          mix-env: dev
+  build-docs:
+    name: mix docs
+    runs-on: ubuntu-latest
+    needs: build-dev
+    steps:
+      - uses: actions/checkout@v3
+      - uses: team-alembic/staple-actions/actions/mix-docs@main
+        with:
+          mix-env: dev
+      - uses: actions/upload-pages-artifact@v1
+        with:
+          path: doc/
+  deploy-docs:
+    name: Deploy docs to GitHub pages.
+    runs-on: ubuntu-latest
+    needs: build-docs
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub pages
+        id: deployment
+        uses: actions/deploy-pages@v1
+  release:
+    needs: [build-dev]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    name: Release
+    steps:
+      - run: sudo apt-get install --yes erlang-dev
+      - uses: actions/checkout@v2
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{matrix.otp}}
+          elixir-version: ${{matrix.elixir}}
+      - uses: actions/cache@v1
+        id: cache-deps
+        with:
+          path: deps
+          key: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-deps-2-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+          restore-keys: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-deps-2-
+      - run: mix deps.get
+      - run: mix compile
+      - run: mix hex.publish --yes
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
