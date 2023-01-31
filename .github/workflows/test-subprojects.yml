@@ -39,11 +39,6 @@ jobs:
       ASH_VERSION: local
     steps:
       - run: sudo apt-get install --yes erlang-dev
-      - name: Split project_org
-        id: split
-        env:
-          PROJECT: ${{ matrix.project.name }}
-        run: echo "::set-output project_org=fragment::${PROJECT##*/}"
       - uses: actions/checkout@v2
         with:
           repository: ${{matrix.project.org}}/${{matrix.project.name}}
