@@ -40,6 +40,15 @@ jobs:
       - uses: team-alembic/staple-actions/actions/mix-format@main
         with:
           mix-env: test
+  credo:
+    name: mix credo --strict
+    runs-on: ubuntu-latest
+    needs: build-test
+    steps:
+      - uses: actions/checkout@v3
+      - uses: team-alembic/staple-actions/actions/mix-credo@main
+        with:
+          mix-env: test
 
   # Need to clean lots of things up before we can add this
   # doctor:

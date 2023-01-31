@@ -1,7 +1,9 @@
 name: Ash CI
 on:
   push:
-  workflow_call:
+    tags:
+      - "v*"
+    branches: [main]
 jobs:
   test-subprojects:
     runs-on: ubuntu-latest
@@ -37,14 +39,19 @@ jobs:
       ASH_VERSION: local
     steps:
       - run: sudo apt-get install --yes erlang-dev
-      - uses: actions/checkout@v2
-        with:
-          repository: ash-project/ash
-          path: ash
+      - name: Split project_org
+        id: split
+        env:
+          PROJECT: ${{ matrix.project }}
+        run: echo "::set-output project_org=fragment::${PROJECT##*/}"
       - uses: actions/checkout@v2
         with:
           repository: ${{matrix.project}}
           path: ${{matrix.project}}
+      - uses: actions/checkout@v2
+        with:
+          repository: ash-project/ash
+          path: ${{steps.split.output.project_org}}
       - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{matrix.otp}}
