@@ -2119,7 +2119,7 @@ defmodule Ash.Filter do
 
     if !related do
       raise """
-      Could not determined related for `exists/2` expression.
+      Could not determine related resource for `exists/2` expression.
 
       Context Resource: #{inspect(context)}
       Context Relationship Path: #{inspect(context[:relationship_path])}

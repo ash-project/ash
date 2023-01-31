@@ -214,7 +214,6 @@ defmodule Ash.Query.Aggregate do
           request =
             value_request(
               initial_query,
-              related,
               relationship_path,
               aggregates,
               auth_request,
@@ -284,7 +283,6 @@ defmodule Ash.Query.Aggregate do
 
   defp value_request(
          initial_query,
-         related,
          relationship_path,
          aggregates,
          auth_request,
@@ -303,7 +301,11 @@ defmodule Ash.Query.Aggregate do
     Request.new(
       resource: aggregate_resource,
       api: initial_query.api,
-      query: Ash.Query.for_read(related, Ash.Resource.Info.primary_action!(related, :read).name),
+      query:
+        Ash.Query.for_read(
+          aggregate_resource,
+          Ash.Resource.Info.primary_action!(aggregate_resource, :read).name
+        ),
       path: request_path ++ [:aggregate_values, relationship_path],
       action: Ash.Resource.Info.primary_action(aggregate_resource, :read),
       name: "fetch aggregate: #{Enum.join(relationship_path, ".")}",
