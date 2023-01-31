@@ -4,11 +4,6 @@ defmodule Ash.Page.Keyset do
 
   The results are generated with a `keyset` metadata,
   which can be used to fetch the next/previous pages.
-
-  ## Important
-
-  Keyset pagination cannot currently be used in conjunction with aggregate and calculation sorting.
-  Combining them will result in an error on the query.
   """
   defstruct [:results, :count, :before, :after, :limit, :rerun, :more?]
 
