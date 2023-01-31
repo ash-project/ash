@@ -1,4 +1,4 @@
-name: Ash CI
+name: Test Subprojects
 on:
   push:
     tags:
