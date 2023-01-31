@@ -100,7 +100,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - credo
-      - doctor
+      # - doctor
       - formatter
       - auditor
       - test
