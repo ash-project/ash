@@ -46,7 +46,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           repository: ash-project/ash
-          path: ${{steps.split.output.project_org}}
+          path: ash
       - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{matrix.otp}}
