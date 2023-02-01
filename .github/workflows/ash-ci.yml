@@ -42,6 +42,7 @@ jobs:
           mix-env: test
   spark-formatter:
     name: mix spark.formatter --check
+    if: ${{inputs.spark-formatter}}
     runs-on: ubuntu-latest
     needs: build-test
     steps:
