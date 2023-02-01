@@ -441,7 +441,7 @@ defmodule Ash.Query do
     query.resource
     |> Ash.Resource.Info.preparations()
     |> Enum.concat(action.preparations || [])
-    |> Enum.reduce(query, fn %{preparation: {module, opts}}, query ->
+    |> Enum.reduce_while(query, fn %{preparation: {module, opts}}, query ->
       Ash.Tracer.span :preparation, "prepare: #{inspect(module)}", tracer do
         Ash.Tracer.telemetry_span [:ash, :preparation], %{
           resource_short_name: Ash.Resource.Info.short_name(query.resource),
@@ -465,7 +465,7 @@ defmodule Ash.Query do
                      tracer: tracer
                    }) do
                 %__MODULE__{} = prepared ->
-                  prepared
+                  {:cont, prepared}
 
                 other ->
                   raise """
@@ -478,7 +478,7 @@ defmodule Ash.Query do
               end
 
             {:error, error} ->
-              Ash.Query.add_error(query, error)
+              {:halt, Ash.Query.add_error(query, error)}
           end
         end
       end

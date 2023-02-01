@@ -61,7 +61,7 @@ defmodule Ash.Resource.Builder do
   end
 
   @doc """
-  Builds and adds an action
+  Builds and adds a change
   """
   @spec add_change(
           Spark.Dsl.Builder.input(),
@@ -95,6 +95,44 @@ defmodule Ash.Resource.Builder do
       [:changes],
       :change,
       Keyword.merge(opts, change: ref)
+    )
+  end
+
+  @doc """
+  Builds and adds a preparation
+  """
+  @spec add_preparation(
+          Spark.Dsl.Builder.input(),
+          ref :: module | {module, Keyword.t()},
+          opts :: Keyword.t()
+        ) ::
+          Spark.Dsl.Builder.result()
+  defbuilder add_preparation(dsl_state, ref, opts \\ []) do
+    ref =
+      case ref do
+        {module, opts} -> {module, opts}
+        module -> {module, []}
+      end
+
+    with {:ok, preparation} <- build_preparation(ref, opts) do
+      Transformer.add_entity(dsl_state, [:preparations], preparation)
+    end
+  end
+
+  @doc """
+  Builds a preparation
+  """
+  @spec build_preparation(
+          ref :: module | {module, Keyword.t()},
+          opts :: Keyword.t()
+        ) ::
+          {:ok, Ash.Resource.Preparation.t()} | {:error, term}
+  def build_preparation(ref, opts \\ []) do
+    Transformer.build_entity(
+      Ash.Resource.Dsl,
+      [:preparations],
+      :prepare,
+      Keyword.merge(opts, preparation: ref)
     )
   end
 
