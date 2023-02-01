@@ -156,6 +156,7 @@ jobs:
       - test
       - test-with-postgres
       - dialyzer
+      - build-dev
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     name: Release
