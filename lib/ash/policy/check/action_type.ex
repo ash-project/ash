@@ -4,7 +4,19 @@ defmodule Ash.Policy.Check.ActionType do
 
   @impl true
   def describe(options) do
-    "action.type == #{inspect(options[:type])}"
+    {operator, type} =
+      case options[:type] do
+        [type] ->
+          {"==", type}
+
+        types when is_list(types) ->
+          {"in", types}
+
+        type ->
+          {"==", type}
+      end
+
+    "action.type #{operator} #{inspect(type)}"
   end
 
   @impl true
