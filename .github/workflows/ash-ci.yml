@@ -40,7 +40,16 @@ jobs:
       - uses: team-alembic/staple-actions/actions/mix-format@main
         with:
           mix-env: test
-      - run: MIX_ENV=test mix spark.formatter --check
+  spark-formatter:
+    name: mix spark.formatter --check
+    runs-on: ubuntu-latest
+    needs: build-test
+    steps:
+      - uses: actions/checkout@v3
+      - uses: team-alembic/staple-actions/actions/mix-task@main
+        with:
+          mix-env: test
+          task: spark.formatter --check
   credo:
     name: mix credo --strict
     runs-on: ubuntu-latest
