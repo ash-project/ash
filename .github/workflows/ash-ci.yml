@@ -73,7 +73,8 @@ jobs:
   #     - uses: team-alembic/staple-actions/actions/mix-doctor@main
   #       with:
   #         mix-env: test
-  test:
+  test-with-postgres:
+    if: ${{inputs.postgres}}
     name: mix test
     runs-on: ubuntu-latest
     needs: build-test
@@ -91,6 +92,22 @@ jobs:
           - 5432:5432
     steps:
       - uses: actions/checkout@v3
+      - uses: team-alembic/staple-actions/actions/mix-task@main
+        with:
+          mix-env: test
+          task: ash_postgres.generate_migrations --check
+      - uses: team-alembic/staple-actions/actions/mix-task@main
+        with:
+          mix-env: test
+          task: ash_postgres.create
+      - uses: team-alembic/staple-actions/actions/mix-task@main
+        with:
+          mix-env: test
+          task: ash_postgres.migrate
+      - uses: team-alembic/staple-actions/actions/mix-task@main
+        with:
+          mix-env: test
+          task: ash_postgres.migrate --tenants
       - uses: team-alembic/staple-actions/actions/mix-test@main
         with:
           mix-env: test
@@ -98,6 +115,16 @@ jobs:
           PGUSER: postgres
           PGPASS: postgres
           PGHOST: postgres
+  test:
+    if: ${{!inputs.postgres}}
+    name: mix test
+    runs-on: ubuntu-latest
+    needs: build-test
+    steps:
+      - uses: actions/checkout@v3
+      - uses: team-alembic/staple-actions/actions/mix-test@main
+        with:
+          mix-env: test
   dialyzer:
     name: mix dialyzer
     runs-on: ubuntu-latest
