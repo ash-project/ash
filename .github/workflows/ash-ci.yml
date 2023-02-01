@@ -148,6 +148,7 @@ jobs:
       - formatter
       - auditor
       - test
+      - test-with-postgres
       - dialyzer
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     steps:
