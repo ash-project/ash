@@ -40,6 +40,7 @@ jobs:
       - uses: team-alembic/staple-actions/actions/mix-format@main
         with:
           mix-env: test
+
   spark-formatter:
     name: mix spark.formatter --check
     if: ${{inputs.spark-formatter}}
@@ -113,6 +114,7 @@ jobs:
     needs:
       - credo
       # - doctor
+      - spark-formatter
       - formatter
       - auditor
       - test
