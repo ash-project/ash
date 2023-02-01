@@ -10,7 +10,7 @@ defmodule Ash.Resource.Builder do
   Builds and adds a new action unless an action with that name already exists
   """
   @spec add_new_action(
-          Spark.Dsl.t(),
+          Spark.Dsl.Builder.input(),
           type :: Ash.Resource.Actions.action_type(),
           name :: atom,
           opts :: Keyword.t()
@@ -28,7 +28,7 @@ defmodule Ash.Resource.Builder do
   Builds and adds an action
   """
   @spec add_action(
-          Spark.Dsl.t(),
+          Spark.Dsl.Builder.input(),
           type :: Ash.Resource.Actions.action_type(),
           name :: atom,
           opts :: Keyword.t()
@@ -64,7 +64,7 @@ defmodule Ash.Resource.Builder do
   Builds and adds an action
   """
   @spec add_change(
-          Spark.Dsl.t(),
+          Spark.Dsl.Builder.input(),
           ref :: module | {module, Keyword.t()},
           opts :: Keyword.t()
         ) ::
@@ -183,7 +183,7 @@ defmodule Ash.Resource.Builder do
   Builds and adds a create_timestamp to a resource
   """
   @spec add_create_timestamp(
-          Spark.Dsl.t(),
+          Spark.Dsl.Builder.input(),
           name :: atom,
           opts :: Keyword.t()
         ) ::
