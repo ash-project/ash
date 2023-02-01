@@ -1118,6 +1118,17 @@ defmodule Ash.Query do
   end
 
   @doc """
+  Removes a result set previously with `set_result/2`
+  """
+  @spec clear_result(t()) :: t()
+  def clear_result(changeset) do
+    %{
+      changeset
+      | context: Map.update(changeset.context, :private, %{}, &Map.delete(&1, :action_result))
+    }
+  end
+
+  @doc """
   Merge a map of values into the query context
   """
   @spec set_context(t() | Ash.Resource.t(), map | nil) :: t()

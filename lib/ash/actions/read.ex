@@ -965,7 +965,9 @@ defmodule Ash.Actions.Read do
                        authorize?: authorize?,
                        api: ash_query.api
                      },
-                     !Keyword.has_key?(request_opts, :initial_data)
+                     !Keyword.has_key?(request_opts, :initial_data),
+                     aggregates_in_query,
+                     calculations_in_query
                    ),
                  :ok <- validate_get(results, ash_query.action, ash_query),
                  {:ok, results, after_notifications} <-
@@ -1464,14 +1466,41 @@ defmodule Ash.Actions.Read do
   end
 
   defp run_query(
+         ash_query,
+         query,
+         context,
+         load_attributes?,
+         aggregates_if_runtime \\ [],
+         calculations_if_runtime \\ []
+       )
+
+  defp run_query(
          %{context: %{private: %{action_result: result}}} = ash_query,
          _query,
          _context,
-         load_attributes?
+         load_attributes?,
+         aggregates_if_runtime,
+         calculations_if_runtime
        ) do
     result
     |> Helpers.select(ash_query)
     |> Helpers.load_runtime_types(ash_query, load_attributes?)
+    |> case do
+      {:ok, result} ->
+        aggregates = aggregates_if_runtime |> Map.new(&{&1.name, &1})
+        calculations = calculations_if_runtime |> Map.new(&{&1.name, &1})
+
+        load_query =
+          ash_query.resource
+          |> Ash.Query.new()
+          |> Map.put(:calculations, calculations)
+          |> Map.put(:aggregates, aggregates)
+
+        ash_query.api.load(result, load_query, lazy?: true)
+
+      other ->
+        other
+    end
   end
 
   defp run_query(
@@ -1485,7 +1514,9 @@ defmodule Ash.Actions.Read do
          } = ash_query,
          query,
          _context,
-         load_attributes?
+         load_attributes?,
+         _aggregates_if_runtime,
+         _calculations_if_runtime
        ) do
     if ash_query.limit == 0 do
       {:ok, []}
@@ -1505,7 +1536,9 @@ defmodule Ash.Actions.Read do
          %{resource: resource, action: %{manual: nil}} = ash_query,
          query,
          _context,
-         load_attributes?
+         load_attributes?,
+         _aggregates_if_runtime,
+         _calculations_if_runtime
        ) do
     if ash_query.limit == 0 do
       {:ok, []}
@@ -1521,7 +1554,9 @@ defmodule Ash.Actions.Read do
          %{action: %{manual: {mod, opts}}} = ash_query,
          query,
          context,
-         load_attributes?
+         load_attributes?,
+         _aggregates_if_runtime,
+         _calculations_if_runtime
        ) do
     ash_query
     |> mod.read(query, opts, context)
@@ -1841,6 +1876,7 @@ defmodule Ash.Actions.Read do
                  :load,
                  :distinct
                ]),
+             query <- Ash.Query.clear_result(query),
              query <- Ash.Query.set_tenant(query, tenant),
              query <- Ash.Query.filter(query, ^[or: pkey_filter]),
              {:ok, data_layer_query} <- Ash.Query.data_layer_query(query),
