@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.5.16](https://github.com/ash-project/ash/compare/v2.5.15...v2.5.16) (2023-02-01)
+
+
+
+
+### Bug Fixes:
+
+* load lazily after action when results are set
+
+* fix typespec for `Ash.set_tenant/1`
+
 ## [v2.5.15](https://github.com/ash-project/ash/compare/v2.5.14...v2.5.15) (2023-01-31)
 
 
