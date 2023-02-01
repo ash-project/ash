@@ -48,7 +48,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: team-alembic/staple-actions/actions/mix-credo@main
-        if: ${{input.spark-formatter}}
+        if: ${{inputs.spark-formatter}}
         with:
           mix-env: test
 
