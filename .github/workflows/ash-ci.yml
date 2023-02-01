@@ -65,6 +65,16 @@ jobs:
         if: ${{inputs.spark-formatter}}
         with:
           mix-env: test
+  unused-deps:
+    name: mix deps.unlock --check-unused
+    runs-on: ubuntu-latest
+    needs: build-test
+    steps:
+      - uses: actions/checkout@v3
+      - uses: team-alembic/staple-actions/actions/mix-task@main
+        with:
+          mix-env: test
+          task: deps.unlock --check-unused
 
   # Need to clean lots of things up before we can add this
   # doctor:
@@ -150,6 +160,7 @@ jobs:
   release:
     needs:
       - credo
+      - unused-deps
       # - doctor
       - spark-formatter
       - formatter
