@@ -119,7 +119,7 @@ defmodule Ash.Api.Info do
   end
 
   @doc "The short name for an api"
-  @spec short_name(Ash.Api.t()) :: nil | :infinity | integer()
+  @spec short_name(Ash.Api.t()) :: atom
   def short_name(api) do
     Extension.get_opt(api, [:execution], :short_name, nil) || api.default_short_name()
   end

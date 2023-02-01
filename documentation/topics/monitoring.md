@@ -8,24 +8,26 @@ Ash emits the following telemetry events, suffixed with `:start` and `:stop`. St
 
 ### Important
 
-Note the mention of `:start` and `:stop` suffixes. The event below `[:ash, <api_short_name>, :create]`, is actually referring to two events, `[:ash, <api_short_name>, :create, :start]` and `[:ash, <api_short_name>, :create, :stop]`.
+Note the mention of `:start` and `:stop` suffixes. The event below `[:ash, (api_short_name), :create]`, is actually referring to two events, `[:ash, (api_short_name), :create, :start]` and `[:ash, (api_short_name), :create, :stop]`.
+
+_Replace `(api_short_name)` with your API short name, from `d:Ash.Api.Info.short_name`._
 
 ### Events
 
-- `[:ash, <api_short_name>, :create]` - The execution of a create action. Use `resource_short_name` and `action` metadata to break down measurements.
-- `[:ash, <api_short_name>, :update]` - The execution of a update action. Use `resource_short_name` and `action` metadata to break down measurements.
-- `[:ash, <api_short_name>, :read]` - The execution of a read action. Use `resource_short_name` and `action` metadata to break down measurements.
-- `[:ash, <api_short_name>, :destroy]` - The execution of a destroy action. Use `resource_short_name` and `action` metadata to break down measurements.
+- `[:ash, (api_short_name), :create]` - The execution of a create action. Use `resource_short_name` and `action` metadata to break down measurements.
+- `[:ash, (api_short_name), :update]` - The execution of a update action. Use `resource_short_name` and `action` metadata to break down measurements.
+- `[:ash, (api_short_name), :read]` - The execution of a read action. Use `resource_short_name` and `action` metadata to break down measurements.
+- `[:ash, (api_short_name), :destroy]` - The execution of a destroy action. Use `resource_short_name` and `action` metadata to break down measurements.
 - `[:ash, :changeset]` - A changeset being processed for a given action, i.e with `Ash.Changeset.for_create`. Use `resource_short_name` metadata to break down measurements.
 - `[:ash, :query]` - A query being processed for an action, with `Ash.Query.for_read`. Use `resource_short_name` metadata to break down measurements.
 - `[:ash, :validation]` - A validation being run on a changeset. Use `resource_short_name` and `validation` metadata to break down measurements.
 - `[:ash, :change]` - A change being run on a changeset. Use `resource_short_name` and `change` metadata to break down measurements.
-- `[:ash, :before_action]` - A before_action being run on a changeset. Use `resource_short_name` to break down measurements. 
+- `[:ash, :before_action]` - A before_action being run on a changeset. Use `resource_short_name` to break down measurements.
 - `[:ash, :after_action]` - An after_action being run on a changeset. Use `resource_short_name` to break down measurements.
 - `[:ash, :preparation]` - A preparation being run on a changeset. Use `resource_short_name` and `preparation` metadata to break down measurements.
 - `[:ash, :request_step]` - The resolution of an internal request. Ash breaks up its operations internally into multiple requests, this can give you a high resolution insight onto the execution of those internal requests resolution. Use `name` metadata to break down measurements.
 - `[:ash, :flow]` - The execution of an Ash flow. Use `flow_short_name` to break down measurements.
-- `[:ash, :flow, :custom_step]` - The execution of a custom flow step (only if using the built in runner, which is currently the only runner). Use `flow_short_name` and `name` metadata to break down measurements. 
+- `[:ash, :flow, :custom_step]` - The execution of a custom flow step (only if using the built in runner, which is currently the only runner). Use `flow_short_name` and `name` metadata to break down measurements.
 
 ## Tracing
 
@@ -65,7 +67,7 @@ defmodule MyApp.CustomChange do
 
   def change(changeset, _, _) do
     changeset
-    |> Ash.Changeset.before_action(fn changeset -> 
+    |> Ash.Changeset.before_action(fn changeset ->
       Ash.Tracer.span(:custom, "custom name", changeset.context[:private][:tracer]) do
         # optionally set some metadata
         metadata = %{...}
