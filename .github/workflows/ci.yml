@@ -1,0 +1,9 @@
+name: Ash CI
+on:
+  push:
+    tags:
+      - "v*"
+    branches: [main]
+jobs:
+  ash-ci:
+    uses: ash-project/ash/.github/workflows/ash-ci.yml@main

@@ -1,9 +1,5 @@
 name: Ash CI
 on:
-  push:
-    tags:
-      - "v*"
-    branches: [main]
   workflow_call:
     inputs:
       spark-formatter:
