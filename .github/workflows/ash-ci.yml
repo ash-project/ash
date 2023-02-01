@@ -5,6 +5,9 @@ on:
       spark-formatter:
         type: boolean
         default: true
+      postgres:
+        type: boolean
+        default: false
 jobs:
   deps:
     name: mix deps.get
