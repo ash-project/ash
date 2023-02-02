@@ -251,9 +251,8 @@ defmodule Ash.EmbeddableType do
 
       def dump_to_native(value, _) when is_map(value) do
         attributes = Ash.Resource.Info.attributes(__MODULE__)
-        calculations = Ash.Resource.Info.calculations(__MODULE__)
 
-        Enum.reduce_while(attributes ++ calculations, {:ok, %{}}, fn attribute, {:ok, acc} ->
+        Enum.reduce_while(attributes, {:ok, %{}}, fn attribute, {:ok, acc} ->
           case Map.fetch(value, attribute.name) do
             :error ->
               {:cont, {:ok, acc}}
