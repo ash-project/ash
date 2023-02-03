@@ -945,12 +945,14 @@ defmodule Ash.Type do
   defp validate_constraints(type, constraints) do
     case type do
       {:array, type} ->
+        array_constraints = array_constraints(type)
+
         with {:ok, new_constraints} <-
                Spark.OptionsHelpers.validate(
                  Keyword.delete(constraints || [], :items),
-                 array_constraints(type)
+                 Keyword.delete(array_constraints, :items)
                ),
-             {:ok, item_constraints} <- validate_item_constraints(type, constraints) do
+             {:ok, item_constraints} <- validate_constraints(type, constraints[:items] || []) do
           {:ok, Keyword.put(new_constraints, :items, item_constraints)}
         end
 
@@ -964,18 +966,6 @@ defmodule Ash.Type do
           {:error, error} ->
             {:error, error}
         end
-    end
-  end
-
-  defp validate_item_constraints(type, constraints) do
-    schema = constraints(type)
-
-    case Spark.OptionsHelpers.validate(constraints[:items] || [], schema) do
-      {:ok, item_constraints} ->
-        validate_none_reserved(item_constraints, type)
-
-      {:error, error} ->
-        {:error, error}
     end
   end
 

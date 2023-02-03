@@ -245,6 +245,10 @@ defmodule Ash.Test.Actions.CreateTest do
       create :create_with_required do
         require_attributes [:tag]
       end
+
+      create :create_with_nested_array_argument do
+        argument :array_of_names, {:array, {:array, :string}}
+      end
     end
 
     attributes do
@@ -355,6 +359,15 @@ defmodule Ash.Test.Actions.CreateTest do
         |> Api.create()
 
       assert %Ash.Error.Invalid{} = error
+    end
+
+    test "nested array arguments are accepted" do
+      Post
+      |> for_create(:create_with_nested_array_argument, %{
+        title: "foobar",
+        array_of_names: [["foo"], ["bar", "baz"]]
+      })
+      |> Api.create!()
     end
 
     test "allow_nil validation when attribute provided" do
