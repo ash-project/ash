@@ -37,6 +37,7 @@ defmodule Ash.Actions.Aggregate do
                 []
               )
 
+            query = %{query | aggregates: %{}}
             resource = query.resource
 
             case aggregate_auth_requests do

@@ -44,6 +44,13 @@ defmodule Ash.Query.Aggregate do
   Options:
 
   - `path`: Used when adding an aggregate to a query.
+  - `query`: A base query to use for the aggregate
+  - `field`: The field to aggregate
+  - `default`: A default value for the aggregate
+  - `filterable?`: Wether or not it should be filterable
+  - `type`: A type for the aggregate
+  - `constraints`: Type constraints for the aggregate's type
+  - `implementation`: The implementation module for custom aggregates
   """
   def new(resource, name, kind, opts \\ []) do
     new(

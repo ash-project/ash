@@ -1543,14 +1543,14 @@ defmodule Ash.Query do
           [] ->
             read_action = Ash.Resource.Info.primary_action!(related, :read).name
 
-            query
-            |> Ash.Query.for_read(related, read_action)
+            related
+            |> Ash.Query.for_read(read_action)
 
           options when is_list(options) ->
             read_action = Ash.Resource.Info.primary_action!(related, :read).name
 
-            query
-            |> Ash.Query.for_read(related, read_action)
+            related
+            |> Ash.Query.for_read(read_action)
             |> build(options)
 
           %Ash.Query{} = query ->
