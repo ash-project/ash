@@ -107,7 +107,7 @@ defmodule Ash.Api.Interface do
         @doc """
         Get the #{kind} of the given field from the given query, raising any errors.
         """
-
+        # sobelow_skip ["DOS.BinToAtom"]
         def unquote(:"#{kind}!")(query, field, opts \\ []) do
           query = Ash.Query.to_query(query)
 
