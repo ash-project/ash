@@ -347,6 +347,23 @@ defmodule Ash.Api do
 
   def destroy_opts_schema, do: @destroy_opts_schema
 
+  @aggregate_opts [] |> Spark.OptionsHelpers.merge_schemas(@global_opts, "Global Options")
+
+  @doc false
+  def aggregate_opts, do: @aggregate_opts
+
+  @doc """
+  Runs an aggregate or aggregates over a resource query
+
+  #{Spark.OptionsHelpers.docs(@aggregate_opts)}
+  """
+  def aggregate(api, query, aggregate_or_aggregates, opts \\ []) do
+    query = Ash.Query.new(query)
+    opts = Spark.OptionsHelpers.validate!(opts, @aggregate_opts)
+
+    Ash.Actions.Aggregate.run(api, query, List.wrap(aggregate_or_aggregates), opts)
+  end
+
   @calculate_opts [
     args: [
       type: :map,

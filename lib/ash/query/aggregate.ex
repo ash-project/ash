@@ -11,14 +11,13 @@ defmodule Ash.Query.Aggregate do
     :type,
     :constraints,
     :implementation,
-    :authorization_filter,
     :load,
     filterable?: true
   ]
 
   @type t :: %__MODULE__{}
 
-  @kinds [:count, :first, :sum, :list, :max, :min, :avg, :sum, :custom]
+  @kinds [:count, :first, :sum, :list, :max, :min, :avg, :custom]
   @type kind :: unquote(Enum.reduce(@kinds, &{:|, [], [&1, &2]}))
 
   alias Ash.Engine.Request
@@ -28,6 +27,29 @@ defmodule Ash.Query.Aggregate do
 
   @doc false
   def kinds, do: @kinds
+
+  @doc """
+  Create a new aggregate, used with `Query.aggregate` or `Api.aggregate`
+
+  Options:
+
+  - `path`: Used when adding an aggregate to a query.
+  """
+  def new(resource, name, kind, opts \\ []) do
+    new(
+      resource,
+      name,
+      kind,
+      opts[:path] || [],
+      opts[:query],
+      opts[:field],
+      opts[:default],
+      opts[:filterable?],
+      opts[:type],
+      opts[:constraints],
+      opts[:implementation]
+    )
+  end
 
   def new(
         resource,
@@ -268,6 +290,8 @@ defmodule Ash.Query.Aggregate do
   end
 
   defp auth_request(related, initial_query, relationship_path, request_path) do
+    auth_filter_path = request_path ++ [:aggregate, relationship_path, :authorization_filter]
+
     Request.new(
       resource: related,
       api: initial_query.api,
@@ -277,7 +301,10 @@ defmodule Ash.Query.Aggregate do
       strict_check_only?: true,
       action: Ash.Resource.Info.primary_action(related, :read),
       name: "authorize aggregate: #{Enum.join(relationship_path, ".")}",
-      data: []
+      data:
+        Request.resolve([auth_filter_path], fn data ->
+          {:ok, get_in(data, auth_filter_path)}
+        end)
     )
   end
 

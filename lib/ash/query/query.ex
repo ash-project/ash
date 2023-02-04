@@ -914,24 +914,29 @@ defmodule Ash.Query do
       aggregate = Ash.Resource.Info.aggregate(query.resource, field) ->
         related = Ash.Resource.Info.related(query.resource, aggregate.relationship_path)
 
+        read_action =
+          aggregate.read_action || Ash.Resource.Info.primary_action!(related, :read).name
+
         with {:can?, true} <-
                {:can?,
                 Ash.DataLayer.data_layer_can?(query.resource, {:aggregate, aggregate.kind})},
              %{valid?: true} = aggregate_query <-
-               build(related, filter: aggregate.filter, sort: aggregate.sort),
+               Ash.Query.for_read(related, read_action),
+             %{valid?: true} = aggregate_query <-
+               build(aggregate_query, filter: aggregate.filter, sort: aggregate.sort),
              {:ok, query_aggregate} <-
                Aggregate.new(
                  query.resource,
                  aggregate.name,
                  aggregate.kind,
-                 aggregate.relationship_path,
-                 aggregate_query,
-                 aggregate.field,
-                 aggregate.default,
-                 aggregate.filterable?,
-                 aggregate.type,
-                 aggregate.constraints,
-                 aggregate.implementation
+                 path: aggregate.relationship_path,
+                 query: aggregate_query,
+                 field: aggregate.field,
+                 default: aggregate.default,
+                 filterable?: aggregate.filterable?,
+                 type: aggregate.type,
+                 constraints: aggregate.constraints,
+                 implementation: aggregate.implementation
                ) do
           query_aggregate = %{query_aggregate | load: field}
           new_aggregates = Map.put(query.aggregates, aggregate.name, query_aggregate)
@@ -1462,53 +1467,108 @@ defmodule Ash.Query do
 
   The filter option accepts either a filter or a keyword list of options to supply to build a limiting query for that aggregate.
   See the DSL docs for each aggregate type in `Ash.Resource.Dsl` for more information.
+
+  Options:
+
+    * query: The query over the destination resource to use as a base for aggregation
+    * default: The default value to use if the aggregate returns nil
+    * filterable?: Wether or not this aggregate may be referenced in filters
+    * type: The type of the aggregate
+    * constraints: Type constraints for the aggregate's type
+    * implementation: An implementation used when the aggregate kind is custom
+  """
+  def aggregate(query, name, kind, relationship) do
+    aggregate(query, name, kind, relationship, [])
+  end
+
+  def aggregate(query, name, kind, relationship, opts) when is_list(opts) do
+    aggregate(
+      query,
+      name,
+      kind,
+      relationship,
+      opts[:query],
+      opts[:default],
+      Keyword.get(opts, :filterable?, true),
+      opts[:type],
+      Keyword.get(opts, :constraints, []),
+      opts[:implementation]
+    )
+  end
+
+  @doc """
+  Adds an aggregation to the query.
+
+  Aggregations are made available on the `aggregates` field of the records returned
+
+  The filter option accepts either a filter or a keyword list of options to supply to build a limiting query for that aggregate.
+  See the DSL docs for each aggregate type in `Ash.Resource.Dsl` for more information.
   """
   @spec aggregate(
           t() | Ash.Resource.t(),
           atom(),
           Ash.Query.Aggregate.kind(),
           atom | list(atom),
-          Keyword.t() | nil
+          Ash.Query.t() | Keyword.t() | nil
         ) :: t()
   def aggregate(
         query,
         name,
         kind,
         relationship,
-        agg_query \\ nil,
+        agg_query,
         default \\ nil,
         filterable? \\ true,
         type \\ nil,
         constraints \\ [],
         implementation \\ nil
       ) do
-    {field, agg_query} = Keyword.pop(agg_query || [], :field)
+    {field, agg_query} =
+      case agg_query do
+        %Ash.Query{} = query ->
+          {nil, query}
+
+        agg_query ->
+          Keyword.pop(agg_query || [], :field)
+      end
 
     query = to_query(query)
     relationship = List.wrap(relationship)
 
     if Ash.DataLayer.data_layer_can?(query.resource, {:aggregate, kind}) do
+      related = Ash.Resource.Info.related(query.resource, relationship)
+
       agg_query =
         case agg_query do
           [] ->
-            nil
+            read_action = Ash.Resource.Info.primary_action!(related, :read).name
+
+            query
+            |> Ash.Query.for_read(related, read_action)
 
           options when is_list(options) ->
-            build(Ash.Resource.Info.related(query.resource, relationship), options)
+            read_action = Ash.Resource.Info.primary_action!(related, :read).name
+
+            query
+            |> Ash.Query.for_read(related, read_action)
+            |> build(options)
+
+          %Ash.Query{} = query ->
+            query
         end
 
       case Aggregate.new(
              query.resource,
              name,
              kind,
-             relationship,
-             agg_query,
-             field,
-             default,
-             filterable?,
-             type,
-             constraints,
-             implementation
+             path: relationship,
+             query: agg_query,
+             field: field,
+             default: default,
+             filterable?: filterable?,
+             type: type,
+             constraints: constraints,
+             implementation: implementation
            ) do
         {:ok, aggregate} ->
           new_aggregates = Map.put(query.aggregates, aggregate.name, aggregate)

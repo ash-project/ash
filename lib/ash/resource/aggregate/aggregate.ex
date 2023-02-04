@@ -6,6 +6,7 @@ defmodule Ash.Resource.Aggregate do
     :filter,
     :kind,
     :implementation,
+    :read_action,
     :constraints,
     :type,
     :description,
@@ -21,6 +22,15 @@ defmodule Ash.Resource.Aggregate do
       type: :atom,
       doc: "The field to place the aggregate in",
       required: true
+    ],
+    read_action: [
+      type: :atom,
+      doc: """
+      The read action to use when building the aggregate
+
+      Defaults to the primary read action. Keep in mind this action must not
+      have any required arguments.
+      """
     ],
     relationship_path: [
       type: {:custom, __MODULE__, :relationship_path, []},

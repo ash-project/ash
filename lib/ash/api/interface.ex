@@ -25,6 +25,105 @@ defmodule Ash.Api.Interface do
         end
       end
 
+      def aggregate!(query, aggregate_or_aggregates, opts \\ []) do
+        case aggregate(query, aggregate_or_aggregates, opts) do
+          {:ok, result} ->
+            result
+
+          {:error, error} ->
+            raise error
+        end
+      end
+
+      @doc """
+      Get the count of results that a query would return, raising any errors.
+      """
+      def count!(query, opts \\ []) do
+        query = Ash.Query.to_query(query)
+
+        case Ash.Query.Aggregate.new(query.resource, :count, :count) do
+          {:ok, aggregate} ->
+            case Api.aggregate(__MODULE__, query, aggregate, opts) do
+              {:ok, value} ->
+                value
+
+              {:error, error} ->
+                raise Ash.Error.to_error_class(error)
+            end
+
+          {:error, error} ->
+            raise Ash.Error.to_error_class(error)
+        end
+      end
+
+      @doc """
+      Get the count of results that a query would return.
+      """
+      def count(query, opts \\ []) do
+        query = Ash.Query.to_query(query)
+
+        case Ash.Query.Aggregate.new(query.resource, :count, :count) do
+          {:ok, aggregate} ->
+            Api.aggregate(__MODULE__, query, aggregate, opts)
+
+          {:error, error} ->
+            {:error, Ash.Error.to_error_class(error)}
+        end
+      end
+
+      for kind <- [:first, :sum, :list, :max, :min, :avg] do
+        @doc """
+        Get the #{kind} of the given field from the given query.
+        """
+        def unquote(kind)(query, field, opts \\ []) do
+          query = Ash.Query.to_query(query)
+
+          case Ash.Query.Aggregate.new(query.resource, :count, :count,
+                 field: Keyword.put(opts, :field, field)
+               ) do
+            {:ok, aggregate} ->
+              Api.aggregate(__MODULE__, query, aggregate, opts)
+
+            {:error, error} ->
+              {:error, Ash.Error.to_error_class(error)}
+          end
+        end
+
+        @doc """
+        Get the #{kind} of the given field from the given query, raising any errors.
+        """
+
+        def unquote(:"#{kind}!")(query, field, opts \\ []) do
+          query = Ash.Query.to_query(query)
+
+          case Ash.Query.Aggregate.new(query.resource, :count, :count,
+                 field: Keyword.put(opts, :field, field)
+               ) do
+            {:ok, aggregate} ->
+              case Api.aggregate(__MODULE__, query, aggregate, opts) do
+                {:ok, result} ->
+                  result
+
+                {:error, error} ->
+                  raise Ash.Error.to_error_class(error)
+              end
+
+            {:error, error} ->
+              raise Ash.Error.to_error_class(error)
+          end
+        end
+      end
+
+      def aggregate(query, aggregate_or_aggregates, opts \\ []) do
+        case Api.aggregate(__MODULE__, query, aggregate_or_aggregates, opts) do
+          {:ok, result} ->
+            {:ok, result}
+
+          {:error, error} ->
+            {:error, Ash.Error.to_ash_error(error)}
+        end
+      end
+
       def get!(resource, id_or_filter, params \\ []) do
         Ash.Api.Interface.enforce_resource!(resource)
 

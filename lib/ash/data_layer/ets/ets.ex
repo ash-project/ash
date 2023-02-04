@@ -196,6 +196,11 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, {:filter_relationship, _}), do: true
   def can?(_, {:aggregate, :count}), do: true
   def can?(_, {:aggregate, :first}), do: true
+  def can?(_, {:aggregate, :sum}), do: true
+  def can?(_, {:aggregate, :list}), do: true
+  def can?(_, {:aggregate, :max}), do: true
+  def can?(_, {:aggregate, :min}), do: true
+  def can?(_, {:aggregate, :avg}), do: true
   def can?(_, :create), do: true
   def can?(_, :read), do: true
   def can?(_, :update), do: true
@@ -216,6 +221,12 @@ defmodule Ash.DataLayer.Ets do
 
   def can?(_, :nested_expressions), do: true
   def can?(_, {:query_aggregate, :count}), do: true
+  def can?(_, {:query_aggregate, :first}), do: true
+  def can?(_, {:query_aggregate, :sum}), do: true
+  def can?(_, {:query_aggregate, :list}), do: true
+  def can?(_, {:query_aggregate, :max}), do: true
+  def can?(_, {:query_aggregate, :min}), do: true
+  def can?(_, {:query_aggregate, :avg}), do: true
   def can?(_, {:sort, _}), do: true
   def can?(_, _), do: false
 
@@ -274,19 +285,19 @@ defmodule Ash.DataLayer.Ets do
     case run_query(query, resource) do
       {:ok, results} ->
         Enum.reduce_while(aggregates, {:ok, %{}}, fn
-          %{kind: :count, name: name, query: query}, {:ok, acc} ->
+          %{kind: kind, name: name, query: query, field: field, resource: resource}, {:ok, acc} ->
             results
             |> filter_matches(Map.get(query || %{}, :filter), api)
             |> case do
               {:ok, matches} ->
-                {:cont, {:ok, Map.put(acc, name, Enum.count(matches))}}
+                field = field || Enum.at(Ash.Resource.Info.primary_key(resource), 0)
+
+                value = aggregate_value(matches, kind, field)
+                {:cont, {:ok, Map.put(acc, name, value)}}
 
               {:error, error} ->
                 {:halt, {:error, error}}
             end
-
-          _, _ ->
-            {:halt, {:error, "unsupported aggregate"}}
         end)
 
       {:error, error} ->
@@ -405,60 +416,22 @@ defmodule Ash.DataLayer.Ets do
         {:ok, record},
         fn
           %{
-            kind: :count,
+            kind: kind,
+            field: field,
             relationship_path: relationship_path,
             query: query,
-            authorization_filter: authorization_filter,
             name: name,
             load: load
           },
           {:ok, record} ->
-            query =
-              if authorization_filter do
-                Ash.Query.do_filter(query, authorization_filter)
-              else
-                query
-              end
-
-            with {:ok, loaded_record} <- api.load(record, relationship_path),
+            with {:ok, loaded_record} <-
+                   api.load(record, relationship_path_to_load(relationship_path, field)),
                  related <- Ash.Filter.Runtime.get_related(loaded_record, relationship_path),
                  {:ok, filtered} <-
                    filter_matches(related, query.filter, api) do
-              {:cont, {:ok, Map.put(record, load || name, Enum.count(filtered))}}
-            else
-              other ->
-                {:halt, other}
-            end
+              field = field || Enum.at(Ash.Resource.Info.primary_key(query.resource), 0)
 
-          %{
-            kind: :first,
-            relationship_path: relationship_path,
-            query: query,
-            authorization_filter: authorization_filter,
-            name: name,
-            load: load,
-            field: field
-          },
-          {:ok, record} ->
-            query =
-              if authorization_filter do
-                Ash.Query.do_filter(query, authorization_filter)
-              else
-                query
-              end
-
-            with {:ok, loaded_record} <- api.load(record, relationship_path),
-                 related <- Ash.Filter.Runtime.get_related(loaded_record, relationship_path),
-                 {:ok, filtered} <-
-                   filter_matches(related, query.filter, api) do
-              value =
-                case filtered do
-                  [first | _] ->
-                    Map.get(first, field)
-
-                  _ ->
-                    nil
-                end
+              value = aggregate_value(filtered, kind, field)
 
               {:cont, {:ok, Map.put(record, load || name, value)}}
             else
@@ -481,6 +454,94 @@ defmodule Ash.DataLayer.Ets do
 
       {:error, error} ->
         {:error, Ash.Error.to_ash_error(error)}
+    end
+  end
+
+  defp relationship_path_to_load([], leaf) do
+    leaf
+  end
+
+  defp relationship_path_to_load([key | rest], leaf) do
+    [{key, relationship_path_to_load(rest, leaf)}]
+  end
+
+  defp aggregate_value(records, kind, field) do
+    case kind do
+      :count ->
+        Enum.count(records, &(not is_nil(Map.get(&1, field))))
+
+      :sum ->
+        records
+        |> Enum.map(&Map.get(&1, field))
+        |> case do
+          [] ->
+            nil
+
+          items ->
+            Enum.sum(items)
+        end
+
+      :first ->
+        Enum.find_value(records, fn record ->
+          case Map.get(record, field) do
+            nil ->
+              nil
+
+            value ->
+              {:ok, value}
+          end
+        end)
+        |> case do
+          nil ->
+            nil
+
+          {:ok, value} ->
+            value
+        end
+
+      :list ->
+        Enum.map(records, fn record ->
+          Map.get(record, field)
+        end)
+
+      :avg ->
+        records
+        |> Enum.reduce({0, 0}, fn record, {sum, count} ->
+          case Map.get(record, field) do
+            nil ->
+              {sum, count}
+
+            value ->
+              {sum + (value || 0), count + 1}
+          end
+        end)
+        |> case do
+          {_, 0} ->
+            nil
+
+          {sum, count} ->
+            sum / count
+        end
+
+      kind when kind in [:sum, :max, :min] ->
+        records
+        |> Enum.map(&Map.get(&1, field))
+        |> case do
+          [] ->
+            nil
+
+          items ->
+            case kind do
+              :sum ->
+                Enum.sum(items)
+
+              :max ->
+                Enum.max(items)
+
+              :min ->
+                Enum.min(items)
+            end
+        end
     end
   end
 

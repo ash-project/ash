@@ -2345,21 +2345,25 @@ defmodule Ash.Filter do
       aggregate = aggregate(context, field) ->
         related = Ash.Resource.Info.related(context.resource, aggregate.relationship_path)
 
-        with %{valid?: true} = aggregate_query <-
-               Ash.Query.build(related, filter: aggregate.filter, sort: aggregate.sort),
+        read_action =
+          aggregate.read_action || Ash.Resource.Info.primary_action!(related, :read).name
+
+        with %{valid?: true} = aggregate_query <- Ash.Query.for_read(related, read_action),
+             %{valid?: true} = aggregate_query <-
+               Ash.Query.build(aggregate_query, filter: aggregate.filter, sort: aggregate.sort),
              {:ok, query_aggregate} <-
                Aggregate.new(
                  context.resource,
                  aggregate.name,
                  aggregate.kind,
-                 aggregate.relationship_path,
-                 aggregate_query,
-                 aggregate.field,
-                 aggregate.default,
-                 aggregate.filterable?,
-                 aggregate.type,
-                 aggregate.constraints,
-                 aggregate.implementation
+                 path: aggregate.relationship_path,
+                 query: aggregate_query,
+                 field: aggregate.field,
+                 default: aggregate.default,
+                 filterable?: aggregate.filterable?,
+                 type: aggregate.type,
+                 constraints: aggregate.constraints,
+                 implementation: aggregate.implementation
                ) do
           case parse_predicates(nested_statement, query_aggregate, context) do
             {:ok, nested_statement} ->
@@ -2858,21 +2862,26 @@ defmodule Ash.Filter do
           aggregate = aggregate(context, attribute) ->
             agg_related = Ash.Resource.Info.related(related, aggregate.relationship_path)
 
+            read_action =
+              aggregate.read_action || Ash.Resource.Info.primary_action!(agg_related, :read).name
+
             with %{valid?: true} = aggregate_query <-
-                   Ash.Query.build(agg_related, filter: aggregate.filter, sort: aggregate.sort),
+                   Ash.Query.for_read(agg_related, read_action),
+                 %{valid?: true} = aggregate_query <-
+                   Ash.Query.build(aggregate_query, filter: aggregate.filter, sort: aggregate.sort),
                  {:ok, query_aggregate} <-
                    Aggregate.new(
                      related,
                      aggregate.name,
                      aggregate.kind,
-                     aggregate.relationship_path,
-                     aggregate_query,
-                     aggregate.field,
-                     aggregate.default,
-                     aggregate.filterable?,
-                     aggregate.type,
-                     aggregate.constraints,
-                     aggregate.implementation
+                     path: aggregate.relationship_path,
+                     query: aggregate_query,
+                     field: aggregate.field,
+                     default: aggregate.default,
+                     filterable?: aggregate.filterable?,
+                     type: aggregate.type,
+                     constraints: aggregate.constraints,
+                     implementation: aggregate.implementation
                    ) do
               {:ok, %{ref | attribute: query_aggregate, resource: related}}
             else

@@ -1181,7 +1181,8 @@ defmodule Ash.Actions.Read do
 
   defp validate_get(_, _, _), do: :ok
 
-  defp update_aggregate_filters(filter, data, path) do
+  @doc false
+  def update_aggregate_filters(filter, data, path) do
     Filter.update_aggregates(filter, fn aggregate, ref ->
       case get_in(
              data,
@@ -1193,7 +1194,7 @@ defmodule Ash.Actions.Read do
           aggregate
 
         authorization_filter ->
-          %{aggregate | authorization_filter: authorization_filter}
+          %{aggregate | query: Ash.Query.do_filter(aggregate.query, authorization_filter)}
       end
     end)
   end
@@ -1574,7 +1575,7 @@ defmodule Ash.Actions.Read do
         },
         query
       ) do
-    case Ash.Query.Aggregate.new(destination_resource, :count, :count, [], nil, nil) do
+    case Ash.Query.Aggregate.new(destination_resource, :count, :count) do
       {:ok, aggregate} ->
         Ash.DataLayer.run_aggregate_query_with_lateral_join(
           query,
@@ -1590,7 +1591,7 @@ defmodule Ash.Actions.Read do
   end
 
   def run_count_query(ash_query, query) do
-    case Ash.Query.Aggregate.new(ash_query.resource, :count, :count, [], nil, nil) do
+    case Ash.Query.Aggregate.new(ash_query.resource, :count, :count) do
       {:ok, aggregate} ->
         Ash.DataLayer.run_aggregate_query(query, [aggregate], ash_query.resource)
 
@@ -1978,20 +1979,19 @@ defmodule Ash.Actions.Read do
 
     aggregates =
       aggregates_to_add
-      |> Enum.reduce({aggregates_to_add, aggregate_filters}, fn {name, aggregate},
-                                                                {aggregates, aggregate_filters} ->
+      |> Enum.reduce(aggregates_to_add, fn {name, aggregate}, aggregates ->
         case Map.fetch(aggregate_filters, aggregate.relationship_path) do
           {:ok, %{authorization_filter: filter}} ->
             {Map.put(aggregates, name, %{aggregate | authorization_filter: filter}),
-             Map.delete(aggregates, aggregate.relationship_path)}
+             aggregate.relationship_path}
 
           :error ->
-            {aggregates, aggregate_filters}
+            aggregates
         end
       end)
-      |> elem(0)
+      |> Map.values()
 
-    Ash.DataLayer.add_aggregates(data_layer_query, Map.values(aggregates), query.resource)
+    Ash.DataLayer.add_aggregates(data_layer_query, aggregates, query.resource)
   end
 
   defp filter_with_related(
