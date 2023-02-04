@@ -37,11 +37,13 @@ defmodule Ash.Actions.Aggregate do
                 []
               )
 
+            resource = query.resource
+
             case aggregate_auth_requests do
               [] ->
                 case Ash.Query.data_layer_query(query) do
                   {:ok, query} ->
-                    Ash.DataLayer.run_aggregate_query(query, aggregates_in_query, query.resource)
+                    Ash.DataLayer.run_aggregate_query(query, aggregates_in_query, resource)
 
                   {:error, error} ->
                     {:error, error}
@@ -66,7 +68,7 @@ defmodule Ash.Actions.Aggregate do
                         Ash.DataLayer.run_aggregate_query(
                           query,
                           aggregates_in_query,
-                          query.resource
+                          resource
                         )
 
                       {:error, error} ->

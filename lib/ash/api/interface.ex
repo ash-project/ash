@@ -44,8 +44,8 @@ defmodule Ash.Api.Interface do
         case Ash.Query.Aggregate.new(query.resource, :count, :count) do
           {:ok, aggregate} ->
             case Api.aggregate(__MODULE__, query, aggregate, opts) do
-              {:ok, value} ->
-                value
+              {:ok, %{count: count}} ->
+                count
 
               {:error, error} ->
                 raise Ash.Error.to_error_class(error)
@@ -64,7 +64,13 @@ defmodule Ash.Api.Interface do
 
         case Ash.Query.Aggregate.new(query.resource, :count, :count) do
           {:ok, aggregate} ->
-            Api.aggregate(__MODULE__, query, aggregate, opts)
+            case Api.aggregate(__MODULE__, query, aggregate, opts) do
+              {:ok, %{count: count}} ->
+                {:ok, count}
+
+              {:error, error} ->
+                {:error, Ash.Error.to_error_class(error)}
+            end
 
           {:error, error} ->
             {:error, Ash.Error.to_error_class(error)}
@@ -78,11 +84,20 @@ defmodule Ash.Api.Interface do
         def unquote(kind)(query, field, opts \\ []) do
           query = Ash.Query.to_query(query)
 
-          case Ash.Query.Aggregate.new(query.resource, :count, :count,
-                 field: Keyword.put(opts, :field, field)
+          case Ash.Query.Aggregate.new(
+                 query.resource,
+                 unquote(kind),
+                 unquote(kind),
+                 Keyword.put(opts, :field, field)
                ) do
             {:ok, aggregate} ->
-              Api.aggregate(__MODULE__, query, aggregate, opts)
+              case Api.aggregate(__MODULE__, query, aggregate, opts) do
+                {:ok, %{unquote(kind) => value}} ->
+                  {:ok, value}
+
+                {:error, error} ->
+                  {:error, Ash.Error.to_error_class(error)}
+              end
 
             {:error, error} ->
               {:error, Ash.Error.to_error_class(error)}
@@ -96,13 +111,16 @@ defmodule Ash.Api.Interface do
         def unquote(:"#{kind}!")(query, field, opts \\ []) do
           query = Ash.Query.to_query(query)
 
-          case Ash.Query.Aggregate.new(query.resource, :count, :count,
-                 field: Keyword.put(opts, :field, field)
+          case Ash.Query.Aggregate.new(
+                 query.resource,
+                 unquote(kind),
+                 unquote(kind),
+                 Keyword.put(opts, :field, field)
                ) do
             {:ok, aggregate} ->
               case Api.aggregate(__MODULE__, query, aggregate, opts) do
-                {:ok, result} ->
-                  result
+                {:ok, %{unquote(kind) => value}} ->
+                  value
 
                 {:error, error} ->
                   raise Ash.Error.to_error_class(error)

@@ -28,6 +28,16 @@ defmodule Ash.Query.Aggregate do
   @doc false
   def kinds, do: @kinds
 
+  def new!(resource, name, kind, opts \\ []) do
+    case new(resource, name, kind, opts) do
+      {:ok, aggregate} ->
+        aggregate
+
+      {:error, error} ->
+        raise Ash.Error.to_error_class(error)
+    end
+  end
+
   @doc """
   Create a new aggregate, used with `Query.aggregate` or `Api.aggregate`
 
@@ -75,7 +85,16 @@ defmodule Ash.Query.Aggregate do
     attribute_type =
       if field do
         related = Ash.Resource.Info.related(resource, relationship)
-        Ash.Resource.Info.field(related, field).type
+
+        case Ash.Resource.Info.field(related, field) do
+          %{type: type} ->
+            {:ok, type}
+
+          _ ->
+            {:error, "No such field for #{inspect(related)}: #{inspect(field)}"}
+        end
+      else
+        {:ok, nil}
       end
 
     default =
@@ -85,7 +104,8 @@ defmodule Ash.Query.Aggregate do
         default
       end
 
-    with :ok <- validate_path(resource, List.wrap(relationship)),
+    with {:ok, attribute_type} <- attribute_type,
+         :ok <- validate_path(resource, List.wrap(relationship)),
          {:ok, type} <- get_type(kind, type, attribute_type),
          {:ok, query} <- validate_query(query) do
       {:ok,
