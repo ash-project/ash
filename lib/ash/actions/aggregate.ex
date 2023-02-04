@@ -88,7 +88,7 @@ defmodule Ash.Actions.Aggregate do
   defp validate_aggregates(query, aggregates) do
     aggregates
     |> Enum.reduce_while({:ok, []}, fn
-      %Ash.Resource.Aggregate{} = aggregate, {:ok, aggregates} ->
+      %Ash.Query.Aggregate{} = aggregate, {:ok, aggregates} ->
         {:cont, {:ok, [aggregate | aggregates]}}
 
       {name, kind}, {:ok, aggregates} ->
