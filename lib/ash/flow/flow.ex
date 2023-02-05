@@ -194,6 +194,7 @@ defmodule Ash.Flow do
 
   @doc false
   # sobelow_skip ["DOS.StringToAtom"]
+  @impl Spark.Dsl
   def handle_before_compile(_opts) do
     quote bind_quoted: [] do
       {opt_args, args} =
@@ -731,4 +732,9 @@ defmodule Ash.Flow do
   end
 
   defp do_handle_input_template(other, _), do: {other, []}
+
+  @impl Spark.Dsl
+  def explain(dsl_state, _) do
+    Ash.Flow.Info.description(dsl_state)
+  end
 end

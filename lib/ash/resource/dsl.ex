@@ -661,7 +661,7 @@ defmodule Ash.Resource.Dsl do
   @resource %Spark.Dsl.Section{
     name: :resource,
     describe: """
-    General Resource Configuration
+    General resource configuration
     """,
     examples: [
       """

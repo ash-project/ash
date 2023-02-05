@@ -100,6 +100,14 @@ defmodule Ash.Api.Info do
     end
   end
 
+  @doc """
+  The description of the api
+  """
+  @spec description(Spark.Dsl.t() | Ash.Api.t()) :: String.t() | nil
+  def description(api) do
+    Extension.get_opt(api, [:api], :description, nil)
+  end
+
   @doc "The resource registry for an api"
   @spec registry(Ash.Api.t()) :: atom | nil
   def registry(api) do

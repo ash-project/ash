@@ -670,6 +670,7 @@ defmodule Ash.Api do
               {:ok, Ash.Resource.record()} | {:error, term}
 
   @doc false
+  @impl Spark.Dsl
   def handle_opts(_) do
     quote do
       @behaviour Ash.Api
@@ -678,6 +679,7 @@ defmodule Ash.Api do
 
   @doc false
   # sobelow_skip ["DOS.StringToAtom"]
+  @impl Spark.Dsl
   def handle_before_compile(_) do
     quote do
       use Ash.Api.Interface
@@ -1224,5 +1226,10 @@ defmodule Ash.Api do
       _ ->
         raise exception
     end
+  end
+
+  @impl Spark.Dsl
+  def explain(dsl_state, _opts) do
+    Ash.Api.Info.description(dsl_state)
   end
 end

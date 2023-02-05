@@ -123,7 +123,7 @@ defmodule Ash.Resource.Info do
   """
   @spec description(Spark.Dsl.t() | Ash.Resource.t()) :: String.t() | nil
   def description(resource) do
-    Extension.get_opt(resource, [:resource], :description, "no description")
+    Extension.get_opt(resource, [:resource], :description, nil)
   end
 
   @doc """

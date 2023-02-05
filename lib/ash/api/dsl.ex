@@ -1,4 +1,26 @@
 defmodule Ash.Api.Dsl do
+  @api %Spark.Dsl.Section{
+    name: :api,
+    describe: "General Api configuration",
+    examples: [
+      """
+      api do
+        description \"\"\"
+        Resources related to the flux capacitor.
+        \"\"\"
+      end
+      """
+    ],
+    schema: [
+      description: [
+        type: :string,
+        doc: """
+        A description for the api.
+        """
+      ]
+    ]
+  }
+
   @execution %Spark.Dsl.Section{
     name: :execution,
     describe: "Options for how requests are executed using this Api",
@@ -94,7 +116,7 @@ defmodule Ash.Api.Dsl do
     no_depend_modules: [:registry]
   }
 
-  @sections [@resources, @execution, @authorization]
+  @sections [@api, @resources, @execution, @authorization]
 
   @moduledoc """
   A small DSL for declaring APIs

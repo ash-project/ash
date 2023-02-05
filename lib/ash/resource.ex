@@ -20,6 +20,7 @@ defmodule Ash.Resource do
     ]
 
   @doc false
+  @impl Spark.Dsl
   def init(opts) do
     if opts[:data_layer] == :embedded do
       {:ok,
@@ -32,6 +33,7 @@ defmodule Ash.Resource do
   end
 
   @doc false
+  @impl Spark.Dsl
   def handle_opts(opts) do
     quote bind_quoted: [
             embedded?: opts[:embedded?]
@@ -69,13 +71,10 @@ defmodule Ash.Resource do
 
   @doc false
   # sobelow_skip ["DOS.StringToAtom"]
+  @impl Spark.Dsl
   def handle_before_compile(_opts) do
     quote do
       require Ash.Schema
-
-      if !@moduledoc do
-        @moduledoc Ash.Resource.Info.description(__MODULE__) || false
-      end
 
       new_notifiers =
         @persist[:notifiers] ++ Module.get_attribute(__MODULE__, :simple_notifiers) || []
@@ -329,5 +328,10 @@ defmodule Ash.Resource do
       :calculations,
       :aggregates
     ]
+  end
+
+  @impl Spark.Dsl
+  def explain(dsl_state, _) do
+    Ash.Resource.Info.description(dsl_state)
   end
 end
