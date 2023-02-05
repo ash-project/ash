@@ -2805,6 +2805,17 @@ defmodule Ash.Filter do
     do_hydrate_refs(value, context)
   end
 
+  def do_hydrate_refs({:ref, value}, context) do
+    do_hydrate_refs(
+      %Ash.Query.Ref{
+        attribute: value,
+        relationship_path: [],
+        resource: context.root_resource
+      },
+      context
+    )
+  end
+
   def do_hydrate_refs({key, value}, context) when is_atom(key) do
     case do_hydrate_refs(value, context) do
       {:ok, hydrated} ->
