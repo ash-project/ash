@@ -5,6 +5,35 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.0](https://github.com/ash-project/ash/compare/v2.5.16...v2.6.0) (2023-02-05)
+
+
+
+
+### Features:
+
+* initial (and slightly experimental) Api.aggregate support
+
+### Bug Fixes:
+
+* handle `{:ref, ...}` tuple in static syntax
+
+* various fast follows to api aggregate functions
+
+* pattern match problem in aggregate action
+
+* properly handle nested array type constraint validation
+
+### Improvements:
+
+* update spark for latest doc improvements
+
+* better description of `action_type` check
+
+* add more builders
+
+* stop running preparations if one of them returns an error
+
 ## [v2.5.16](https://github.com/ash-project/ash/compare/v2.5.15...v2.5.16) (2023-02-01)
 
 
