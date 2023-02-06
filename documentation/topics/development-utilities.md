@@ -4,10 +4,9 @@
 
 The Ash ElixirSense plugin offers custom auto complete inside of any Ash DSL module (i.e resource/api/flow/registry)
 
-With the release of ElixirLS 0.10.0, there is only one requirement to make this work for your project, which is to add `elixir_sense`
-as a dev dependency. We're exploring ways to remove this requirement in the future so that it works with entirely automatically.
-
-`{:elixir_sense, github: "elixir-lsp/elixir_sense", only: [:dev, :test]}`
+As of this writing, this does not work with the currently released VSCode package. We are waiting for them to do another release
+to resolve this issue. However, you can clone down the elixir-ls repository, run its release command, and configure VSCode to point
+at the folder where you did that.
 
 ## Formatter plugin
 
