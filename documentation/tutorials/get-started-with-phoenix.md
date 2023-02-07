@@ -131,24 +131,6 @@ Now in the terminal install these new dependencies:
 mix deps.get
 ```
 
-### If using Phoenix 1.7 or higher
-
-we need to change `helpers: false` to `helpers: true` in the router section:
-
-```elixir
-# lib/example_web.ex
-
-defmodule PhoenixHelpdeskWeb do
-# ...
-  def router do
-    quote do
-      use Phoenix.Router, helpers: true # <-- Change this line
-    # ...
-    end
-  end
-end
-```
-
 ### Swap `Ecto.Repo` for `AshPostgres.Repo`
 
 Change your repo module to look like this:
@@ -165,7 +147,7 @@ defmodule PhoenixHelpdesk.Repo do
 end
 ```
 
-This now means Phoenix connects to AshPostgres instead of Ecto.
+`AshPostgres.Repo` enriches your repo with additional AshPostgres specific behaviour, but is essentially a thin wrapper around `Ecto.Repo`.
 
 ### Edit Config
 
@@ -223,18 +205,6 @@ defmodule PhoenixHelpdesk.Support.Registry do
   end
 end
 ```
-
----
-
-NOTE TO SELF
-
-Should I stop this first part here? Ash is now fully installed it's just not doing anything. It would be a good place to stop?
-
-Then I could make another building a very simple resource piece by piece.
-
-(reminder: I need to move the `mix ash_postgres.create` to this side of the article)
-
----
 
 In the registry we enumerate the Ash resources we want our Ash API to contain. We're going to have two Resources. `Ticket` and `Representative`.
 
