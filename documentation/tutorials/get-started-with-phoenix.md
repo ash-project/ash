@@ -49,13 +49,13 @@ The actions we will be able to take on these resources include:
 
 _This section is based the [Phoenix installation docs](https://hexdocs.pm/phoenix/installation.html). For more details go there._
 
-We first need to create a fresh phoenix project using the phoenix project generator.
+We first need to create a fresh Phoenix project using the Phoenix project generator.
 
 ```bash
 mix archive.install hex phx_new
 ```
 
-And then use the project generator.
+And then run the project generator. **NOTE: DO NOT run `mix ecto.create`** we will do this the Ash way later.
 
 ```bash
 mix phx.new phoenix_helpdesk
@@ -90,7 +90,7 @@ You can also run your app inside IEx (Interactive Elixir) as:
     $ iex -S mix phx.server
 ```
 
-Please `cd` into the project directory **BUT DO NOT RUN `mix ecto.create`.** We first need to integrate Ash and AshPostgres into our project.
+Please `cd` into the project directory, but again **DO NOT RUN `mix ecto.create`.** We first need to integrate Ash and AshPostgres into our project.
 
 ### Add Dependencies
 
