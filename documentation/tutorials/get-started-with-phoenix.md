@@ -11,9 +11,9 @@ This documentation is best viewed at [ash-hq.org](https://ash-hq.org)
 In this guide we will:
 
 1. Create a new Phoenix project
-2. setup Ash, AshPhoenix and AshPostgres as dependencies
+2. Setup Ash, AshPhoenix and AshPostgres as dependencies
 3. Create a very simple blog post resource
-4. Create and Migrate the database
+4. Create and migrate the database
 5. Perform CRUD actions on newly made resource
 
 ## Things you may want to read first
@@ -149,7 +149,7 @@ The database for MyAshPhoenixApp.Repo has been created
 
 ### Edit Config
 
-We need to specify the Ash API's that our application uses and some config for backwards compatibility that will be removed later.
+We need to specify the Ash APIs that our application uses and some config for backwards compatibility that will be removed later.
 Add this to your config:
 
 ```elixir
@@ -165,7 +165,7 @@ config :my_ash_phoenix_app,
   ash_apis: [MyAshPhoenixApp.Blog]
 ```
 
-### Create API
+### Create the API
 
 You may have noticed that `MyAshPhoenixApp.Blog` doesn't actually exist yet. Lets make it now.
 
@@ -207,7 +207,7 @@ In the registry we enumerate the Ash resources we want our Ash API to contain. I
 
 ### Creating the `Post` Resource
 
-Its convention to place all the resource in their own resources folder. So when we create `Post` we will place it in `lib/my_ash_phoenix_project/blog/resources/post.ex`. So the structure after making the resource should look like so:
+It's convention to place all the resource in their own resources folder. So when we create `Post` we will place it in `lib/my_ash_phoenix_project/blog/resources/post.ex`. So the structure after making the resource should look like so:
 
 ```
 lib/
@@ -336,7 +336,7 @@ If your terminal looks like this then you have successfully created your first a
 
 All interaction with your resource attributes **ALWAYS** occur through an **action**. In our resource we are using the default actions for `:create, :read, :update, :destroy`. Create and update actions **ALWAYS** take a changeset. Ash changesets are conceptually similar to [Ecto changesets](https://hexdocs.pm/ecto/Ecto.Changeset.html). They're data structures which represent an intended change to an Ash resource.
 
-Lets write a test to show how to interact with our resource.
+Let's write a test to show how to interact with our resource.
 
 ```elixir
 defmodule MyAshPhoenixApp.Blog.PostTest do
@@ -395,12 +395,13 @@ defmodule MyAshPhoenixApp.Blog.PostTest do
     ...
 ```
 
-Now lets read all of the data in the resource to check the creation we just performed worked. Notice how we don't need changeset here as we are not changing the data, we're just reading it.
+Now let's read all of the data in the resource to check the creation we just performed worked. Notice how we don't need changeset here as we are not changing the data, we're just reading it.
 
 ```elixir
   ...
 
   ### READ ACTION - read blog post(s) ###
+  # we need first_post for update action later
     assert [first_post = %{title: "hello world"}] =
              MyAshPhoenixApp.Blog.read!(MyAshPhoenixApp.Blog.Post)
 
