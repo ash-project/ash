@@ -928,7 +928,7 @@ defmodule Ash.Type do
 
       Valid types include any custom types, or the following short codes (alongside the types they map to):
 
-      #{Enum.map_join(@builtin_short_names, "\n", fn {name, type} -> "  #{inspect(name)} -> #{inspect(type)}" end)}
+      #{Enum.map_join(@short_names, "\n", fn {name, type} -> "  #{inspect(name)} -> #{inspect(type)}" end)}
 
       """
     end
