@@ -183,8 +183,8 @@ defmodule Ash.Api do
 
   @doc false
   def page_opts(page_opts) do
-    if page_opts == false do
-      {:ok, false}
+    if page_opts in [false, nil] do
+      {:ok, page_opts}
     else
       if page_opts[:after] || page_opts[:before] do
         validate_or_error(page_opts, @keyset_page_opts)

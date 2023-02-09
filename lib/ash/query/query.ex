@@ -1513,7 +1513,6 @@ defmodule Ash.Query do
           atom | list(atom),
           Ash.Query.t() | Keyword.t() | nil
         ) :: t()
-  @deprecated "use `aggregate/5` instead"
   def aggregate(
         query,
         name,
