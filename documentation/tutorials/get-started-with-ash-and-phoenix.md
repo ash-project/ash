@@ -1,4 +1,4 @@
-# Get Started
+# Get Started with Ash and Phoenix
 
 <!--- ash-hq-hide-start --> <!--- -->
 
@@ -12,9 +12,9 @@ In this guide we will:
 
 1. Create a new Phoenix project
 2. Setup Ash, AshPhoenix and AshPostgres as dependencies
-3. Create a very simple blog post resource
+3. Create a very simple `Blog.Post` resource
 4. Create and migrate the database
-5. Perform CRUD actions on newly made resource
+5. Perform CRUD actions on the newly made resource
 
 ## Things you may want to read first
 
@@ -28,7 +28,7 @@ If you want to follow along yourself, you will need the following things:
 
 1. Elixir (1.12 or later) and Erlang (22 or later) installed
 2. PostgreSQL installed
-3. A text editor to make the changes that we make
+3. A text editor
 4. A terminal to run the examples
 
 ### Create a New Phoenix Project
@@ -36,53 +36,24 @@ If you want to follow along yourself, you will need the following things:
 _This section is based the [Phoenix installation docs](https://hexdocs.pm/phoenix/installation.html). For more details go there._
 
 We first need to create a fresh Phoenix project using the Phoenix project generator.
+First we need to install the Phoenix project generator, then we'll run the generator to create our new project.
+
+**NOTE: DO NOT run `mix ecto.create`, (as it asks you to) we will do this the Ash way later.**
 
 ```bash
-mix archive.install hex phx_new
+# install Phoenix project generator
+$ mix archive.install hex phx_new
+
+# generate Phoenix project
+$ mix phx.new my_ash_phoenix_app
+
+# cd into project
+$ cd my_ash_phoenix_app
 ```
-
-And then run the project generator. **NOTE: DO NOT run `mix ecto.create`** we will do this the Ash way later.
-
-```bash
-mix phx.new my_ash_phoenix_app
-```
-
-This will then generate a project boilerplate and ask if you want to fetch and install dependencies.
-**Answer 'Yes' to 'Fetch and install dependencies? [Yn]'**.
-
-Your terminal should now look very similar to this:
-
-```bash
-* creating phoenix_helpdesk/priv/static/images/phoenix.png
-* creating phoenix_helpdesk/priv/static/favicon.ico
-
-Fetch and install dependencies? [Yn] y
-* running mix deps.get
-* running mix deps.compile
-
-We are almost there! The following steps are missing:
-
-    $ cd phoenix_helpdesk
-
-Then configure your database in config/dev.exs and run:
-
-    $ mix ecto.create
-
-Start your Phoenix app with:
-
-    $ mix phx.server
-
-You can also run your app inside IEx (Interactive Elixir) as:
-
-    $ iex -S mix phx.server
-```
-
-Please `cd` into the project directory, but again **DO NOT RUN `mix ecto.create`.**
 
 ### Add Dependencies
 
-We now need to add Ash, AshPhoenix and AshPostgres to our Phoenix project.
-First lets add the dependencies to the `deps` function in our `mix.exs`:
+We now need to add Ash, AshPhoenix and AshPostgres to our Phoenix project. We need to add the dependencies to the `deps` function in our `mix.exs`. We'll also need to add dependencies to our `.formatter.exs` to ensure consistent formatting when using `mix format`.
 
 ```elixir
 # mix.exs
@@ -100,8 +71,6 @@ First lets add the dependencies to the `deps` function in our `mix.exs`:
   end
 ```
 
-Each Ash package also has its own formatter extension, include these in your `.formatter.exs` to ensure consistent formatting.
-
 ```elixir
 # .formatter.exs
 [
@@ -114,13 +83,13 @@ Each Ash package also has its own formatter extension, include these in your `.f
 Now in the terminal install these new dependencies.
 
 ```bash
-mix deps.get
+$ mix deps.get
 ```
 
 ### Use `AshPostgres.Repo` and Create the Database
 
-Swap `Ecto.Repo` for `AshPostgres.Repo`
-Change your repo module to look like this:
+We need to swap `Ecto.Repo` for `AshPostgres.Repo`. `AshPostgres.Repo` enriches your repo with additional AshPostgres specific behaviour, but is essentially a thin wrapper around `Ecto.Repo`.
+To use `AshPostgres.Repo` change your repo module to look like this:
 
 ```elixir
 # lib/my_ash_phoenix_app/repo.ex
@@ -135,15 +104,11 @@ defmodule MyAshPhoenixApp.Repo do
 end
 ```
 
-`AshPostgres.Repo` enriches your repo with additional AshPostgres specific behaviour, but is essentially a thin wrapper around `Ecto.Repo`.
-
 After swapping `AshPostgres.Repo` in you are safe to create the database using:
 
 ```
-> mix ash_postgres.create
+$ mix ash_postgres.create
 
-Compiling 17 files (.ex)
-Generated my_ash_phoenix_app app
 The database for MyAshPhoenixApp.Repo has been created
 ```
 
@@ -165,9 +130,14 @@ config :my_ash_phoenix_app,
   ash_apis: [MyAshPhoenixApp.Blog]
 ```
 
-### Create the API
+### Create the API and Registry
 
-You may have noticed that `MyAshPhoenixApp.Blog` doesn't actually exist yet. Lets make it now.
+An Ash API can be thought of as a [Bounded Context](https://martinfowler.com/bliki/BoundedContext.html) in Domain Driven Design terms and can seen as analogous to a Phoenix context. If none of that made sense, don't worry most of the time you only need one.
+
+**Ash API's point to one or more Ash Registries** each of which can be configured with different extensions. In our case we have one API, `MyAshPhoenixApp.Blog`.
+
+**Each registry contains entries of one or more resources.** In our case we have one resource `MyAshPhoenixApp.Blog.Post`.
+Below is the `Blog` api and the `Blog.Registry` registry:
 
 ```elixir
 # lib/my_ash_phoenix_app/blog.ex
@@ -180,12 +150,6 @@ defmodule MyAshPhoenixApp.Blog do
   end
 end
 ```
-
-This tiny module tells Ash that `MyAshPhoenixApp.Blog` is an Ash API. It can be thought of as a [Bounded Context](https://martinfowler.com/bliki/BoundedContext.html) in Domain Driven Design terms and can seen as analogous to a Phoenix context.
-
-It also tells where to find the resources within this API - in the `MyAshPhoenixApp.Blog.Registry` which we will make now.
-
-### Create Registry
 
 ```elixir
 # lib/my_ash_phoenix_app/blog/registry.ex
@@ -203,9 +167,11 @@ defmodule MyAshPhoenixApp.Blog.Registry do
 end
 ```
 
-In the registry we enumerate the Ash resources we want our Ash API to contain. In this case its just one resource called `Post`.
-
 ### Creating the `Post` Resource
+
+We only have one thing left to create, the resource.
+
+A resource is a central concept in Ash. In short, a resource is a domain model object in your system. A resource defines the data it holds and defines the actions that can operate on that data.
 
 It's convention to place all the resource in their own resources folder. So when we create `Post` we will place it in `lib/my_ash_phoenix_project/blog/resources/post.ex`. So the structure after making the resource should look like so:
 
@@ -219,18 +185,16 @@ lib/
 │  ├─ blog.ex
 ```
 
-Below is resource module. Read the comments carefully, every line is explained.
+Below is resource module. Read the comments carefully, every line is explained:
 
 ```elixir
 defmodule MyAshPhoenixApp.Blog.Post do
-  # Using Ash.Resource here turns this model into an Ash resource.
+  # Using Ash.Resource turns this module into an Ash resource.
   use Ash.Resource,
     # Tells Ash you want this resource to store its data in postgres.
     data_layer: AshPostgres.DataLayer
 
   # The postgres keyword is specific to the AshPostgres module.
-  # It tells postgres what to call the table and to
-  # communicate with postgres through MyPhoenixApp.Repo
   postgres do
     # Tells postgres what to call the table
     table "posts"
@@ -243,7 +207,7 @@ defmodule MyAshPhoenixApp.Blog.Post do
     defaults [:create, :read, :update, :destroy]
   end
 
-  # Attributes are the simple pieces of data that exist on your resource
+  # Attributes are simple pieces of data that exist in your resource
   attributes do
     # Add an autogenerated UUID primary key called `:id`.
     uuid_primary_key :id
@@ -254,7 +218,7 @@ defmodule MyAshPhoenixApp.Blog.Post do
     end
 
     # Add a string type attribute called `:content`
-    # If not specified content can be `nil`
+    # If not `allow_nil?` specified content can be `nil`
     attribute :content, :string
   end
 end
@@ -262,26 +226,22 @@ end
 
 ### Migrate Database
 
-We have specified the resource attributes and actions in Ash. But we have yet to create them in our data layer (in our case postgres).
+We have specified the resource, attributes and actions in Ash. But we have yet to create them in our data layer (in our case postgres).
 
 We created our database earlier, but now we need to populate it. We do this by generating and performing a migration.
 
-We can use a generator to produce a migration for us. Ash can deduce what needs to go into the migration and do the hard work for us, just use the command below.
+We can use a generator to produce a migration for us. Ash can deduce what needs to go into the migration and do the hard work for us, just use the command below:
 
 ```bash
-> mix ash_postgres.generate_migrations --name initial_migration
+$ mix ash_postgres.generate_migrations --name initial_migration
 
-Extension Migrations:
-* creating priv/resource_snapshots/extensions.json
-* creating priv/repo/migrations/20230208045100_install_2_extensions.exs
-
-Generating Tenant Migrations:
+# ... don't worry about other files it creates
 
 Generating Migrations:
 * creating priv/repo/migrations/20230208045101_initial_migration.exs
 ```
 
-The file we are concerned with now is `20230208045101_initial_migration.exs`.
+Inside the migration file we find:
 
 ```elixir
 defmodule MyAshPhoenixApp.Repo.Migrations.InitialMigration do
@@ -312,29 +272,15 @@ end
 
 We can run this function which will run this up function and perform these operations on the postgres database. We Run this command:
 
+We can run the `up/0` function which will perform the desired operations on the postgres database. We do this with this command:
+
 ```bash
-> mix ash_postgres.migrate
-
-13:57:23.094 [info] == Running 20230208045100 MyAshPhoenixApp.Repo.Migrations.Install2Extensions.up/0 forward
-
-13:57:23.101 [info] execute "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\""
-
-13:57:23.131 [info] execute "CREATE EXTENSION IF NOT EXISTS \"citext\""
-
-13:57:23.163 [info] == Migrated 20230208045100 in 0.0s
-
-13:57:23.213 [info] == Running 20230208045101 MyAshPhoenixApp.Repo.Migrations.InitialMigration.up/0 forward
-
-13:57:23.213 [info] create table posts
-
-13:57:23.220 [info] == Migrated 20230208045101 in 0.0s
+$ mix ash_postgres.migrate
 ```
-
-If your terminal looks like this then you have successfully created your first ash postgres resource.
 
 ### Interacting with your resource
 
-All interaction with your resource attributes **ALWAYS** occur through an **action**. In our resource we are using the default actions for `:create, :read, :update, :destroy`. Create and update actions **ALWAYS** take a changeset. Ash changesets are conceptually similar to [Ecto changesets](https://hexdocs.pm/ecto/Ecto.Changeset.html). They're data structures which represent an intended change to an Ash resource.
+All interaction with your resource attributes **ALWAYS** occur through an **action**. In our resource we are using the default actions for `:create, :read, :update, :destroy`. Create, update and destroy actions **ALWAYS** take a changeset. Ash changesets are conceptually similar to [Ecto changesets](https://hexdocs.pm/ecto/Ecto.Changeset.html). They're data structures which represent an intended change to an Ash resource.
 
 Let's write a test to show how to interact with our resource.
 
@@ -484,6 +430,34 @@ Randomized with seed 333442
 
 It works 🎉🥳!
 
+### But how to integrate with Phoenix?
+
+Its simple, you can call the code in the tests above in your controller or LiveView.
+Here are some simple examples.
+
+In a controller:
+
+```elixir
+  def index(conn, _params) do
+    conn
+    |> assign(:posts, MyAshPhoenixApp.Blog.read!(MyAshPhoenixApp.Blog.Post))
+    |> render("index.html")
+  end
+```
+
+In a LiveView:
+
+```elixir
+  def mount(_params, _session, socket) do
+    socket =
+      assigns(socket, :posts, MyAshPhoenixApp.Blog.read!(MyAshPhoenixApp.Blog.Post))
+
+    {:ok, socket}
+  end
+```
+
+There are more idiomatic ways to interact with ash in the view layer, and we'll cover them. But this will do for now.
+
 ### Where to Next?
 
 We are just brushing the surface here, there is really so much more to Ash.
@@ -493,10 +467,10 @@ Here are a few things that we recommend looking at next.
 
 There's a few places you can go to learn more about how to use ash:
 
-- [Read about how to query the data in your resources.](https://ash-hq.org/docs/module/ash/latest/ash-query)
-- [Learn about how call your resources even more easily with the `code_interface`](https://ash-hq.org/docs/guides/ash/latest/topics/code-interface)
-- [Dig deeper into actions.](https://ash-hq.org/docs/guides/ash/latest/topics/actions)
-- [Study resource relationship management](https://ash-hq.org/docs/guides/ash/latest/topics/managing-relationships)
+- [Learn about how call your resources even more easily with the `code_interface`](/documentation/topics/code-interface)
+- [Read about how to query the data in your resources.](/documentation/module/ash/ash-query)
+- [Dig deeper into actions.](/documentation/topics/actions)
+- [Study resource relationship management](/documentation/topics/managing-relationships)
 
 #### Ash Authentication & Ash Authentication Phoenix
 
@@ -504,4 +478,4 @@ See the power ash can bring to your web app or api. [Get authentication working 
 
 #### Add an API (or two)
 
-Check out the [AshJsonApi](https://ash-hq.org/docs/guides/ash_json_api/latest/tutorials/getting-started-with-json-api) and [AshGraphql](https://ash-hq.org/docs/guides/ash_graphql/latest/tutorials/getting-started-with-graphql) extensions to effortlessly build APIs around your resources.
+Check out the [AshJsonApi](/documentation/guides/ash_json_api/tutorials/getting-started-with-json-api) and [AshGraphql](/documentation/guides/ash_graphql/tutorials/getting-started-with-graphql) extensions to effortlessly build APIs around your resources.
