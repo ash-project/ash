@@ -936,7 +936,8 @@ defmodule Ash.Query do
                  filterable?: aggregate.filterable?,
                  type: aggregate.type,
                  constraints: aggregate.constraints,
-                 implementation: aggregate.implementation
+                 implementation: aggregate.implementation,
+                 uniq?: aggregate.uniq?
                ) do
           query_aggregate = %{query_aggregate | load: field}
           new_aggregates = Map.put(query.aggregates, aggregate.name, query_aggregate)
@@ -1492,7 +1493,8 @@ defmodule Ash.Query do
       Keyword.get(opts, :filterable?, true),
       opts[:type],
       Keyword.get(opts, :constraints, []),
-      opts[:implementation]
+      opts[:implementation],
+      opts[:uniq?]
     )
   end
 
@@ -1511,6 +1513,7 @@ defmodule Ash.Query do
           atom | list(atom),
           Ash.Query.t() | Keyword.t() | nil
         ) :: t()
+  @deprecated "use `aggregate/5` instead"
   def aggregate(
         query,
         name,
@@ -1521,7 +1524,8 @@ defmodule Ash.Query do
         filterable? \\ true,
         type \\ nil,
         constraints \\ [],
-        implementation \\ nil
+        implementation \\ nil,
+        uniq? \\ false
       ) do
     {field, agg_query} =
       case agg_query do
@@ -1568,7 +1572,8 @@ defmodule Ash.Query do
              filterable?: filterable?,
              type: type,
              constraints: constraints,
-             implementation: implementation
+             implementation: implementation,
+             uniq?: uniq?
            ) do
         {:ok, aggregate} ->
           new_aggregates = Map.put(query.aggregates, aggregate.name, aggregate)

@@ -14,6 +14,7 @@ defmodule Ash.Resource.Aggregate do
     :field,
     :sort,
     :default,
+    :uniq?,
     filterable?: true
   ]
 
