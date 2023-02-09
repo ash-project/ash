@@ -12,6 +12,7 @@ defmodule Ash.Query.Aggregate do
     :constraints,
     :implementation,
     :load,
+    uniq?: false,
     filterable?: true
   ]
 
@@ -51,6 +52,7 @@ defmodule Ash.Query.Aggregate do
   - `type`: A type for the aggregate
   - `constraints`: Type constraints for the aggregate's type
   - `implementation`: The implementation module for custom aggregates
+  - `uniq?`: Wether or not the aggregate should be over unique values
   """
   def new(resource, name, kind, opts \\ []) do
     new(
@@ -64,10 +66,12 @@ defmodule Ash.Query.Aggregate do
       opts[:filterable?],
       opts[:type],
       opts[:constraints],
-      opts[:implementation]
+      opts[:implementation],
+      opts[:uniq?]
     )
   end
 
+  @deprecated "Use `new/4` instead."
   def new(
         resource,
         name,
@@ -79,7 +83,8 @@ defmodule Ash.Query.Aggregate do
         filterable? \\ true,
         type \\ nil,
         constraints \\ [],
-        implementation \\ nil
+        implementation \\ nil,
+        uniq? \\ false
       ) do
     if kind == :custom && !type do
       raise ArgumentError, "Must supply type when building a `custom` aggregate"
@@ -111,7 +116,8 @@ defmodule Ash.Query.Aggregate do
         default
       end
 
-    with {:ok, attribute_type} <- attribute_type,
+    with :ok <- validate_uniq(uniq?, kind),
+         {:ok, attribute_type} <- attribute_type,
          :ok <- validate_path(resource, List.wrap(relationship)),
          {:ok, type} <- get_type(kind, type, attribute_type),
          {:ok, query} <- validate_query(query) do
@@ -126,11 +132,21 @@ defmodule Ash.Query.Aggregate do
          field: field,
          kind: kind,
          type: type,
+         uniq?: uniq?,
          query: query,
          filterable?: filterable?
        }}
     end
   end
+
+  defp validate_uniq(true, kind) when kind in [:count, :list], do: :ok
+
+  defp validate_uniq(true, kind),
+    do:
+      {:error,
+       "#{kind} aggregates do not support the `uniq?` option. Only count and list are supported currently."}
+
+  defp validate_uniq(_, _), do: :ok
 
   defp get_type(:custom, type, _), do: {:ok, type}
 

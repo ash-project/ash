@@ -191,6 +191,7 @@ spark_locals_without_parens = [
   transaction: 3,
   transaction?: 1,
   type: 1,
+  uniq?: 1,
   update: 1,
   update: 2,
   update: 3,

@@ -285,14 +285,15 @@ defmodule Ash.DataLayer.Ets do
     case run_query(query, resource) do
       {:ok, results} ->
         Enum.reduce_while(aggregates, {:ok, %{}}, fn
-          %{kind: kind, name: name, query: query, field: field, resource: resource}, {:ok, acc} ->
+          %{kind: kind, name: name, query: query, field: field, resource: resource, uniq?: uniq?},
+          {:ok, acc} ->
             results
             |> filter_matches(Map.get(query || %{}, :filter), api)
             |> case do
               {:ok, matches} ->
                 field = field || Enum.at(Ash.Resource.Info.primary_key(resource), 0)
 
-                value = aggregate_value(matches, kind, field)
+                value = aggregate_value(matches, kind, field, uniq?)
                 {:cont, {:ok, Map.put(acc, name, value)}}
 
               {:error, error} ->
@@ -421,7 +422,8 @@ defmodule Ash.DataLayer.Ets do
             relationship_path: relationship_path,
             query: query,
             name: name,
-            load: load
+            load: load,
+            uniq?: uniq?
           },
           {:ok, record} ->
             with {:ok, loaded_record} <-
@@ -431,7 +433,7 @@ defmodule Ash.DataLayer.Ets do
                    filter_matches(related, query.filter, api) do
               field = field || Enum.at(Ash.Resource.Info.primary_key(query.resource), 0)
 
-              value = aggregate_value(filtered, kind, field)
+              value = aggregate_value(filtered, kind, field, uniq?)
 
               {:cont, {:ok, Map.put(record, load || name, value)}}
             else
@@ -465,49 +467,56 @@ defmodule Ash.DataLayer.Ets do
     [{key, relationship_path_to_load(rest, leaf)}]
   end
 
-  defp aggregate_value(records, kind, field) do
+  defp aggregate_value(records, kind, field, uniq?) do
     case kind do
       :count ->
-        Enum.count(records, &(not is_nil(Map.get(&1, field))))
-
-      :sum ->
-        records
-        |> Enum.map(&Map.get(&1, field))
-        |> case do
-          [] ->
-            nil
-
-          items ->
-            Enum.sum(items)
+        if uniq? do
+          records
+          |> Stream.map(&Map.get(&1, field))
+          |> Stream.uniq()
+          |> Stream.reject(&is_nil/1)
+          |> Enum.count()
+        else
+          Enum.count(records, &(not is_nil(Map.get(&1, field))))
         end
 
       :first ->
-        Enum.find_value(records, fn record ->
-          case Map.get(record, field) do
-            nil ->
-              nil
-
-            value ->
-              {:ok, value}
-          end
-        end)
-        |> case do
-          nil ->
+        case records do
+          [] ->
             nil
 
-          {:ok, value} ->
-            value
+          [record | _rest] ->
+            Map.get(record, field)
         end
 
       :list ->
-        Enum.map(records, fn record ->
+        records
+        |> Enum.map(fn record ->
           Map.get(record, field)
+        end)
+        |> then(fn values ->
+          if uniq? do
+            Enum.uniq(values)
+          else
+            values
+          end
         end)
 
       :avg ->
         records
-        |> Enum.reduce({0, 0}, fn record, {sum, count} ->
-          case Map.get(record, field) do
+        |> then(fn records ->
+          if uniq? do
+            records
+            |> Stream.map(&Map.get(&1, field))
+            |> Stream.uniq()
+          else
+            records
+            |> Stream.map(&Map.get(&1, field))
+            |> Stream.uniq()
+          end
+        end)
+        |> Enum.reduce({0, 0}, fn value, {sum, count} ->
+          case value do
             nil ->
               {sum, count}
 
@@ -531,6 +540,13 @@ defmodule Ash.DataLayer.Ets do
             nil
 
           items ->
+            items =
+              if uniq? do
+                items |> Stream.uniq() |> Stream.reject(&is_nil/1)
+              else
+                items |> Stream.reject(&is_nil/1)
+              end
+
             case kind do
               :sum ->
                 Enum.sum(items)

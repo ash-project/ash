@@ -855,7 +855,12 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path],
-    schema: Keyword.delete(Ash.Resource.Aggregate.schema(), :sort),
+    schema:
+      Keyword.put(Keyword.delete(Ash.Resource.Aggregate.schema(), :sort), :uniq?,
+        type: :boolean,
+        doc: "Wether or not to count unique values only",
+        default: false
+      ),
     auto_set_fields: [kind: :count]
   }
 
@@ -1025,7 +1030,12 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path, :field],
-    schema: Ash.Resource.Aggregate.schema(),
+    schema:
+      Keyword.put(Ash.Resource.Aggregate.schema(), :uniq?,
+        type: :boolean,
+        doc: "Wether or not to count unique values only",
+        default: false
+      ),
     auto_set_fields: [kind: :list]
   }
 
