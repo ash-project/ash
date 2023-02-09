@@ -180,21 +180,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Release
     steps:
-      - run: sudo apt-get install --yes erlang-dev
-      - uses: actions/checkout@v2
-      - uses: erlef/setup-beam@v1
-        with:
-          otp-version: ${{matrix.otp}}
-          elixir-version: ${{matrix.elixir}}
-      - uses: actions/cache@v1
-        id: cache-deps
-        with:
-          path: deps
-          key: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-deps-2-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
-          restore-keys: otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-deps-2-
-      - run: mix deps.get
-      - run: mix compile
+      - uses: team-alembic/staple-actions/actions/mix-compile@main
       - run: mix hex.publish --yes
-        if: startsWith(github.ref, 'refs/tags/v')
         env:
           HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
