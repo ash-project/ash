@@ -47,7 +47,7 @@ steps do
     }
   end
 
-  # The step is called :create_blank_project, and it creates a `Project` using the `:register_user` action.
+  # The step is called :create_blank_project, and it creates a `Project` using the `:create_example` action.
   create :create_blank_project, MyApp.Accounts.Project, :create_example do
     input %{
       # The input refers to the result of another step
