@@ -608,6 +608,31 @@ ticket
 |> Helpdesk.Support.update!()
 ```
 
+### Assigning the Representative to a Ticket during its creation
+
+With the current definition of the Ticket resource the following will execute without error, but the `representative_id` field of the newly generated ticket will still remain empty:
+
+```elixir
+Helpdesk.Support.Ticket
+|> Ash.Changeset.for_create(:open, %{subject: "My spoon is too big!", representative_id: representative.id})
+|> Helpdesk.Support.create!()
+)
+```
+
+The reason is that `belongs_to` relationships are not marked as public and writable by default (refer to the [define_attribute?](https://ash-hq.org/docs/dsl/ash/latest/resource/relationships/belongs_to#attribute_writable?) option of `belongs_to`).
+
+With the following modification the attribute can be written to, during the `:create` action:
+
+```elixir
+# lib/helpdesk/support/resources/ticket.ex
+
+relationships do
+  belongs_to :representative, Helpdesk.Support.Representative do
+    attribute_writable? true
+  end
+end
+```
+
 ### What next?
 
 What you've seen above barely scratches the surface of what Ash can do. In a lot of ways, it will look very similar to other tools that you've seen. If all that you ever used was the above, then realistically you won't see much benefit to using Ash.
