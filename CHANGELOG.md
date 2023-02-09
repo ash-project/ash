@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.1](https://github.com/ash-project/ash/compare/v2.6.0...v2.6.1) (2023-02-09)
+
+
+
+
+### Bug Fixes:
+
+* Type error: Suggest custom short type names as well (#508)
+
+### Improvements:
+
+* support uniq? for `count`/`list` attributes
+
 ## [v2.6.0](https://github.com/ash-project/ash/compare/v2.5.16...v2.6.0) (2023-02-05)
 
 
