@@ -182,7 +182,7 @@ jobs:
     name: Release
     steps:
       - uses: actions/checkout@v3
-      - uses: team-alembic/staple-actions/actions/mix-compile@main
-      - run: mix hex.publish --yes
-        env:
-          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+      - uses: team-alembic/staple-actions/actions/mix-hex-publish@main
+        with:
+          mix-env: dev
+          hex-api-key: ${{ secrets.HEX_API_KEY }}
