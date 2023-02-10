@@ -35,9 +35,8 @@ If you want to follow along yourself, you will need the following things:
 
 ### Create a New Phoenix Project
 
-_This section is based the [Phoenix installation docs](https://hexdocs.pm/phoenix/installation.html). For more details go there._
+_This section is based on the [Phoenix installation docs](https://hexdocs.pm/phoenix/installation.html). For more details go there._
 
-We first need to create a fresh Phoenix project using the Phoenix project generator.
 First we need to install the Phoenix project generator, then we'll run the generator to create our new project.
 
 **NOTE: DO NOT run `mix ecto.create`, (as it asks you to) we will do this the Ash way later.**
@@ -64,7 +63,7 @@ We now need to add Ash, AshPhoenix and AshPostgres to our Phoenix project. We ne
     [
       {:phoenix, "~> 1.6.15"},
       # ...
-      {:ash, "~> 2.5.10"},
+      {:ash, "~> 2.6.2"},
       {:ash_postgres, "~> 1.3.6"},
       {:ash_phoenix, "~> 1.1"},
       # If using ElixirLS then including elixir_sense to enable Ash auto-complete
@@ -97,16 +96,16 @@ To use `AshPostgres.Repo` change your repo module to look like this:
 # lib/my_ash_phoenix_app/repo.ex
 
 defmodule MyAshPhoenixApp.Repo do
-  use AshPostgres.Repo, opt_app: :my_ash_phoenix_app
+  use AshPostgres.Repo, otp_app: :my_ash_phoenix_app
 
-  # installs postgres extensions that ash commonly uses
+  # installs Postgres extensions that ash commonly uses
   def installed_extensions do
     ["uuid-ossp", "citext"]
   end
 end
 ```
 
-After swapping `AshPostgres.Repo` in you are safe to create the database using:
+After swapping `AshPostgres.Repo` in, you are safe to create the database using:
 
 ```
 $ mix ash_postgres.create
@@ -116,7 +115,7 @@ The database for MyAshPhoenixApp.Repo has been created
 
 ### Edit Config
 
-We need to specify the Ash APIs that our application uses and some config for backwards compatibility that will be removed later.
+We need to specify the Ash APIs that our application uses and some config for backwards compatibility that will be removed in the next major release.
 Add this to your config:
 
 ```elixir
@@ -134,12 +133,12 @@ config :my_ash_phoenix_app,
 
 ### Create the API and Registry
 
-An Ash API can be thought of as a [Bounded Context](https://martinfowler.com/bliki/BoundedContext.html) in Domain Driven Design terms and can seen as analogous to a Phoenix context. If none of that made sense, don't worry most of the time you only need one.
+An Ash API can be thought of as a [Bounded Context](https://martinfowler.com/bliki/BoundedContext.html) in Domain Driven Design terms and can seen as analogous to a Phoenix context. If none of that made sense, don't worry, most of the time you only need one. In our case our API is called `MyAshPhoenixApp.Blog`
 
-**Ash API's point to one or more Ash Registries** each of which can be configured with different extensions. In our case we have one API, `MyAshPhoenixApp.Blog`.
+An Ash API points to an Ash registry. The registry in our case is `MyAshPhoenixApp.Blog.Registry`
+An Ash registry points to one or more resources. In our case we only have a single resource `MyAshPhoenixApp.Blog.Post`. We'll be taking a deeper look into that in the next section.
 
-**Each registry contains entries of one or more resources.** In our case we have one resource `MyAshPhoenixApp.Blog.Post`.
-Below is the `Blog` api and the `Blog.Registry` registry:
+For now take a look at the `Blog` api and the `Blog.Registry`:
 
 ```elixir
 # lib/my_ash_phoenix_app/blog.ex
@@ -189,25 +188,25 @@ lib/
 │  ├─ blog.ex
 ```
 
-Below is resource module. Read the comments carefully, every line is explained:
+Below is the resource module. Read the comments carefully, every line is explained:
 
 ```elixir
 defmodule MyAshPhoenixApp.Blog.Post do
   # Using Ash.Resource turns this module into an Ash resource.
   use Ash.Resource,
-    # Tells Ash you want this resource to store its data in postgres.
+    # Tells Ash you want this resource to store its data in Postgres.
     data_layer: AshPostgres.DataLayer
 
-  # The postgres keyword is specific to the AshPostgres module.
+  # The Postgres keyword is specific to the AshPostgres module.
   postgres do
-    # Tells postgres what to call the table
+    # Tells Postgres what to call the table
     table "posts"
-    # Tells Ash how to interface with the postgres table
+    # Tells Ash how to interface with the Postgres table
     repo MyAshPhoenixApp.Repo
   end
 
   actions do
-    # Exposes default built in actions to modify the resource
+    # Exposes default built in actions to manage the resource
     defaults [:create, :read, :update, :destroy]
   end
 
@@ -222,19 +221,19 @@ defmodule MyAshPhoenixApp.Blog.Post do
     end
 
     # Add a string type attribute called `:content`
-    # If not `allow_nil?` specified content can be `nil`
+    # If allow_nil? is not specified, then content can be nil
     attribute :content, :string
   end
 end
 ```
 
-### Migrate Database
+### Migrate the Database
 
-We have specified the resource, attributes and actions in Ash. But we have yet to create them in our data layer (in our case postgres).
+We have specified the resource, attributes and actions in Ash. But we have yet to create them in our data layer (in our case Postgres).
 
 We created our database earlier, but now we need to populate it. We do this by generating and performing a migration.
 
-We can use a generator to produce a migration for us. Ash can deduce what needs to go into the migration and do the hard work for us, just use the command below:
+We can use a generator to produce a migration for us. Ash can deduce what needs to go into the migration and do the hard work for us, to do this use the command below:
 
 ```bash
 $ mix ash_postgres.generate_migrations --name initial_migration
@@ -245,7 +244,7 @@ Generating Migrations:
 * creating priv/repo/migrations/20230208045101_initial_migration.exs
 ```
 
-Inside the migration file we find:
+Here is the migration file commented in detail:
 
 ```elixir
 defmodule MyAshPhoenixApp.Repo.Migrations.InitialMigration do
@@ -253,30 +252,28 @@ defmodule MyAshPhoenixApp.Repo.Migrations.InitialMigration do
 
   # this function runs when migrating forward
   def up do
-    # creates the `:post` table
+    # creates the `:posts` table
     create table(:posts, primary_key: false) do
       # adds primary key attribute `:id` of type `:uuid`
       # nil values are not allowed
       add :id, :uuid, null: false, default: fragment("uuid_generate_v4()"), primary_key: true
 
-      # adds attribute `:title` of type `:text`, nil values are not allowed
+      # adds attribute `:title` of type `:text`, null values are not allowed
       add :title, :text, null: false
-      # adds attribute `:content` of type `:text`, nil values are allowed
+      # adds attribute `:content` of type `:text`, null values are allowed
       add :content, :text
     end
   end
 
   # this is the function that runs if you want to rollback this migration.
   def down do
-    # deletes the `:post` table
+    # deletes the `:posts` table
     drop table(:posts)
   end
 end
 ```
 
-We can run this function which will run this up function and perform these operations on the postgres database. We Run this command:
-
-We can run the `up/0` function which will perform the desired operations on the postgres database. We do this with this command:
+We can run the `up/0` function which will perform the desired operations on the Postgres database. We do this with this command:
 
 ```bash
 $ mix ash_postgres.migrate
@@ -284,7 +281,7 @@ $ mix ash_postgres.migrate
 
 ## Interacting with your resource
 
-All interaction with your resource attributes **ALWAYS** occur through an **action**. In our resource we are using the default actions for `:create, :read, :update, :destroy`. Create, update and destroy actions **ALWAYS** take a changeset. Ash changesets are conceptually similar to [Ecto changesets](https://hexdocs.pm/ecto/Ecto.Changeset.html). They're data structures which represent an intended change to an Ash resource and provide validation.
+All interaction with your resource attributes **ALWAYS** occur through an **action**. In our resource we are using the default actions for `:create, :read, :update, :destroy`. `:create, :update, :destroy` actions **ALWAYS** take a changeset. Ash changesets are conceptually similar to [Ecto changesets](https://hexdocs.pm/ecto/Ecto.Changeset.html). They're data structures which represent an intended change to an Ash resource and provide validation.
 
 Let's write a test to show how to interact with our resource.
 
@@ -380,7 +377,7 @@ For this we will use an `:update` action:
   ...
 
   ### UPDATE ACTION - update existing blog post ###
-    # notice how you have to parse in an existing resource to the changeset
+    # notice how you have to pass an existing resource in to the changeset
     assert %{
              title: "hello world",
              content: "hello to you too!"
@@ -404,7 +401,7 @@ For this we will use an `:update` action:
   ...
 ```
 
-Finally lets delete the post, and check its been removed from the resource, by performing one last read actions.
+Finally let's delete the post, and check it's been removed from the resource, by performing one last read action.
 
 ```elixir
   ...
@@ -436,8 +433,7 @@ It works 🎉🥳!
 
 ## But how to integrate with Phoenix?
 
-Its simple, you can call the code in the tests above in your controller or LiveView.
-Here are some simple examples.
+To use the Post resource in your controller or LiveView, you can use similar code to the test above.
 
 In a controller:
 
@@ -460,7 +456,7 @@ In a LiveView:
   end
 ```
 
-There are more idiomatic ways to interact with ash in the view layer, and we'll cover them. But this will do for now.
+There are more idiomatic ways to interact with Ash in the view layer, and we'll cover them. But this will do for now.
 
 ## Where to Next?
 
