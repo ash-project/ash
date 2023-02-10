@@ -34,7 +34,6 @@ defmodule Ash.Test.Support.PolicyComplex.Post do
 
     read :read do
       primary? true
-      pagination offset?: true
     end
 
     create :create do

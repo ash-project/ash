@@ -540,7 +540,8 @@ defmodule Ash.Actions.PaginationTest do
     test "pagination works with a sort applied that uses an aggregate desc" do
       User
       |> Ash.Query.load(:count_of_posts)
-      |> Api.read!()
+      |> Api.read!(page: [limit: 10])
+      |> Map.get(:results)
       |> Enum.map(&{&1.name, &1.count_of_posts})
 
       page =

@@ -550,6 +550,8 @@ defmodule Ash.Actions.Read do
 
   @doc false
   def add_page(data, action, count, sort, original_query, opts) do
+    page_opts = page_opts(action, opts)
+
     data =
       if Enum.any?(
            Ash.Resource.Info.actions(original_query.resource),
@@ -560,10 +562,24 @@ defmodule Ash.Actions.Read do
         data
       end
 
-    if opts[:page] && action.pagination && !opts[:initial_data] do
-      to_page(data, action, count, sort, original_query, opts)
-    else
-      data
+    cond do
+      opts[:initial_data] ->
+        data
+
+      action.pagination == false && page_opts ->
+        data
+
+      action.pagination == false ->
+        data
+
+      page_opts == false ->
+        data
+
+      page_opts[:limit] || is_nil(page_opts) || page_opts == [] ->
+        to_page(data, action, count, sort, original_query, opts)
+
+      true ->
+        data
     end
   end
 
@@ -1403,7 +1419,12 @@ defmodule Ash.Actions.Read do
         Ash.Query.sort(query, Ash.Resource.Info.primary_key(query.resource))
       end
 
-    limited = Ash.Query.limit(sorted, limit(opts[:limit], query.limit, pagination) + 1)
+    limited =
+      if query.limit in [0, 1] do
+        query
+      else
+        Ash.Query.limit(sorted, limit(opts[:limit], query.limit, pagination) + 1)
+      end
 
     if opts[:before] || opts[:after] do
       reversed =
@@ -1454,7 +1475,12 @@ defmodule Ash.Actions.Read do
   end
 
   defp limit_offset_pagination(query, pagination, opts) do
-    limited = Ash.Query.limit(query, limit(opts[:limit], query.limit, pagination) + 1)
+    limited =
+      if query.limit in [0, 1] do
+        query
+      else
+        Ash.Query.limit(query, limit(opts[:limit], query.limit, pagination) + 1)
+      end
 
     with_offset =
       if opts[:offset] do
