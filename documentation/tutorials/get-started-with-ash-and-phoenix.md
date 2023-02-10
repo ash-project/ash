@@ -31,6 +31,8 @@ If you want to follow along yourself, you will need the following things:
 3. A text editor
 4. A terminal to run the examples
 
+## Setup
+
 ### Create a New Phoenix Project
 
 _This section is based the [Phoenix installation docs](https://hexdocs.pm/phoenix/installation.html). For more details go there._
@@ -167,6 +169,8 @@ defmodule MyAshPhoenixApp.Blog.Registry do
 end
 ```
 
+## Creating Resources
+
 ### Creating the `Post` Resource
 
 We only have one thing left to create, the resource.
@@ -278,9 +282,9 @@ We can run the `up/0` function which will perform the desired operations on the 
 $ mix ash_postgres.migrate
 ```
 
-### Interacting with your resource
+## Interacting with your resource
 
-All interaction with your resource attributes **ALWAYS** occur through an **action**. In our resource we are using the default actions for `:create, :read, :update, :destroy`. Create, update and destroy actions **ALWAYS** take a changeset. Ash changesets are conceptually similar to [Ecto changesets](https://hexdocs.pm/ecto/Ecto.Changeset.html). They're data structures which represent an intended change to an Ash resource.
+All interaction with your resource attributes **ALWAYS** occur through an **action**. In our resource we are using the default actions for `:create, :read, :update, :destroy`. Create, update and destroy actions **ALWAYS** take a changeset. Ash changesets are conceptually similar to [Ecto changesets](https://hexdocs.pm/ecto/Ecto.Changeset.html). They're data structures which represent an intended change to an Ash resource and provide validation.
 
 Let's write a test to show how to interact with our resource.
 
@@ -430,7 +434,7 @@ Randomized with seed 333442
 
 It works 🎉🥳!
 
-### But how to integrate with Phoenix?
+## But how to integrate with Phoenix?
 
 Its simple, you can call the code in the tests above in your controller or LiveView.
 Here are some simple examples.
@@ -458,12 +462,12 @@ In a LiveView:
 
 There are more idiomatic ways to interact with ash in the view layer, and we'll cover them. But this will do for now.
 
-### Where to Next?
+## Where to Next?
 
 We are just brushing the surface here, there is really so much more to Ash.
 Here are a few things that we recommend looking at next.
 
-#### Continue Learning
+### Continue Learning
 
 There's a few places you can go to learn more about how to use ash:
 
@@ -472,10 +476,10 @@ There's a few places you can go to learn more about how to use ash:
 - [Dig deeper into actions.](/documentation/topics/actions)
 - [Study resource relationship management](/documentation/topics/managing-relationships)
 
-#### Ash Authentication & Ash Authentication Phoenix
+### Ash Authentication & Ash Authentication Phoenix
 
 See the power ash can bring to your web app or api. [Get authentication working in minutes](https://hexdocs.pm/ash_authentication_phoenix/getting-started-with-ash-authentication-phoenix.html).
 
-#### Add an API (or two)
+### Add an API (or two)
 
 Check out the [AshJsonApi](/documentation/guides/ash_json_api/tutorials/getting-started-with-json-api) and [AshGraphql](/documentation/guides/ash_graphql/tutorials/getting-started-with-graphql) extensions to effortlessly build APIs around your resources.
