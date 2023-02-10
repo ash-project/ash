@@ -26,6 +26,8 @@ defmodule Ash.Changeset do
     arguments: %{},
     context: %{},
     defaults: [],
+    before_transaction: [],
+    after_transaction: [],
     after_action: [],
     around_action: [],
     before_action: [],
@@ -134,8 +136,7 @@ defmodule Ash.Changeset do
     Changes.NoSuchAttribute,
     Changes.NoSuchRelationship,
     Changes.Required,
-    Invalid.NoSuchResource,
-    Invalid.TimeoutNotSupported
+    Invalid.NoSuchResource
   }
 
   require Ash.Tracer
@@ -1502,18 +1503,220 @@ defmodule Ash.Changeset do
           t(),
           (t() ->
              {:ok, term, %{notifications: list(Ash.Notifier.Notification.t())}}
-             | {:error, term})
+             | {:error, term}),
+          Keyword.t()
         ) ::
           {:ok, term, t(), %{notifications: list(Ash.Notifier.Notification.t())}} | {:error, term}
-  def with_hooks(%{valid?: false} = changeset, _func) do
+  def with_hooks(changeset, func, opts \\ [])
+
+  def with_hooks(%{valid?: false} = changeset, _func, _opts) do
     {:error, changeset.errors}
   end
 
-  def with_hooks(changeset, func) do
+  def with_hooks(changeset, func, opts) do
     if changeset.valid? do
-      run_around_actions(changeset, func)
+      if opts[:transaction?] && Ash.DataLayer.data_layer_can?(changeset.resource, :transact) do
+        transaction_hooks(changeset, fn changeset ->
+          resources =
+            changeset.resource
+            |> List.wrap()
+            |> Enum.concat(changeset.action.touches_resources)
+            |> Enum.uniq()
+
+          Process.put(
+            :ash_after_transaction,
+            Process.get(:ash_after_transaction, []) ++ changeset.after_transaction
+          )
+
+          resources
+          |> Enum.reject(&Ash.DataLayer.in_transaction?/1)
+          |> Ash.DataLayer.transaction(
+            fn ->
+              case run_around_actions(changeset, func) do
+                {:error, error} ->
+                  Ash.DataLayer.rollback(changeset.resource, error)
+
+                other ->
+                  other
+              end
+            end,
+            changeset.timeout || :infinity,
+            opts[:transaction_metadata]
+          )
+          |> case do
+            {:ok, result} ->
+              result
+
+            {:error, error} ->
+              {:error, error}
+          end
+        end)
+      else
+        transaction_hooks(changeset, fn changeset ->
+          if changeset.timeout do
+            Ash.Engine.task_with_timeout(
+              fn ->
+                run_around_actions(changeset, func)
+              end,
+              changeset.resource,
+              changeset.timeout,
+              "#{inspect(changeset.resource)}.#{changeset.action.name}",
+              opts[:tracer]
+            )
+          else
+            run_around_actions(changeset, func)
+          end
+        end)
+      end
     else
       {:error, changeset.errors}
+    end
+  end
+
+  defp transaction_hooks(changeset, func) do
+    changeset =
+      Enum.reduce_while(
+        changeset.before_transaction,
+        changeset,
+        fn before_transaction, changeset ->
+          metadata = %{
+            api: changeset.api,
+            resource: changeset.resource,
+            resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+            actor: changeset.context[:private][:actor],
+            tenant: changeset.context[:private][:actor],
+            action: changeset.action && changeset.action.name,
+            authorize?: changeset.context[:private][:authorize?]
+          }
+
+          tracer = changeset.context[:private][:tracer]
+
+          result =
+            Ash.Tracer.span :before_action,
+                            "before_action",
+                            tracer do
+              Ash.Tracer.set_metadata(tracer, :before_transaction, metadata)
+
+              Ash.Tracer.telemetry_span [:ash, :before_transaction], metadata do
+                before_transaction.(changeset)
+              end
+            end
+
+          case result do
+            {:error, error} ->
+              {:halt, {:error, error}}
+
+            changeset ->
+              cont =
+                if changeset.valid? do
+                  :cont
+                else
+                  :halt
+                end
+
+              {cont, changeset}
+          end
+        end
+      )
+
+    result =
+      try do
+        func.(changeset)
+      rescue
+        exception ->
+          {:raise, exception, __STACKTRACE__}
+      catch
+        :exit, reason ->
+          {:exit, reason}
+      end
+
+    case result do
+      {:exit, reason} ->
+        error = Ash.Error.to_ash_error(reason)
+
+        case run_after_transactions({:error, error}, changeset) do
+          {:ok, result} ->
+            {:ok, result, %{}}
+
+          {:error, new_error} when new_error == error ->
+            exit(reason)
+
+          {:error, new_error} ->
+            exit(new_error)
+        end
+
+      {:raise, exception, stacktrace} ->
+        case run_after_transactions({:error, exception}, changeset) do
+          {:ok, result} ->
+            {:ok, result, changeset, %{}}
+
+          {:error, error} ->
+            reraise error, stacktrace
+        end
+
+      {:ok, result, changeset, notifications} ->
+        case run_after_transactions({:ok, result}, changeset) do
+          {:ok, result} ->
+            {:ok, result, changeset, notifications}
+
+          {:error, error} ->
+            {:error, error}
+        end
+
+      {:ok, result, notifications} ->
+        case run_after_transactions({:ok, result}, changeset) do
+          {:ok, result} ->
+            {:ok, result, changeset, notifications}
+
+          {:error, error} ->
+            {:error, error}
+        end
+
+      {:error, error} ->
+        case run_after_transactions({:error, error}, changeset) do
+          {:ok, result} ->
+            {:ok, result, changeset, %{}}
+
+          {:error, error} ->
+            {:error, error}
+        end
+    end
+  end
+
+  defp run_after_transactions(result, changeset) do
+    changeset.after_transaction
+    |> Enum.reduce(
+      result,
+      fn after_transaction, result ->
+        tracer = changeset.context[:private][:tracer]
+
+        metadata = %{
+          api: changeset.api,
+          resource: changeset.resource,
+          resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+          actor: changeset.context[:private][:actor],
+          tenant: changeset.context[:private][:actor],
+          action: changeset.action && changeset.action.name,
+          authorize?: changeset.context[:private][:authorize?]
+        }
+
+        Ash.Tracer.span :after_transaction,
+                        "after_transaction",
+                        tracer do
+          Ash.Tracer.set_metadata(tracer, :after_transaction, metadata)
+
+          Ash.Tracer.telemetry_span [:ash, :after_transaction], metadata do
+            after_transaction.(changeset, result)
+          end
+        end
+      end
+    )
+    |> case do
+      {:ok, new_result} ->
+        {:ok, new_result}
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 
@@ -1755,11 +1958,7 @@ defmodule Ash.Changeset do
 
   @spec timeout(t(), nil | pos_integer, nil | pos_integer) :: t()
   def timeout(changeset, timeout, default \\ nil) do
-    if Ash.DataLayer.data_layer_can?(changeset.resource, :timeout) || is_nil(timeout) do
-      %{changeset | timeout: timeout || default}
-    else
-      add_error(changeset, TimeoutNotSupported.exception(resource: changeset.resource))
-    end
+    %{changeset | timeout: timeout || default}
   end
 
   @doc """
@@ -3033,8 +3232,26 @@ defmodule Ash.Changeset do
   end
 
   @doc """
-  Adds an after_action hook to the changeset.
+  Adds a before_transaction hook to the changeset.
 
+  Provide the option `append?: true` to place the hook after all
+  other hooks instead of before.
+  """
+  @spec before_transaction(
+          t(),
+          (t() -> t()),
+          Keyword.t()
+        ) :: t()
+  def before_transaction(changeset, func, opts \\ []) do
+    if opts[:append?] do
+      %{changeset | before_transaction: changeset.before_transaction ++ [func]}
+    else
+      %{changeset | before_transaction: [func | changeset.before_transaction]}
+    end
+  end
+
+  @doc """
+  Adds an after_action hook to the changeset.
 
   Provide the option `prepend?: true` to place the hook before all
   other hooks instead of after.
@@ -3052,6 +3269,30 @@ defmodule Ash.Changeset do
       %{changeset | after_action: [func | changeset.after_action]}
     else
       %{changeset | after_action: changeset.after_action ++ [func]}
+    end
+  end
+
+  @doc """
+  Adds an after_transaction hook to the changeset.
+
+  `after_transaction` hooks differ from `after_action` hooks in that they are run
+  on success *and* failure of the action or some previous hook.
+
+  Provide the option `prepend?: true` to place the hook before all
+  other hooks instead of after.
+  """
+  @spec after_transaction(
+          t(),
+          (t(), {:ok, Ash.Resource.record()} | {:error, term()} ->
+             {:ok, Ash.Resource.record()}
+             | {:error, term}),
+          Keyword.t()
+        ) :: t()
+  def after_transaction(changeset, func, opts \\ []) do
+    if opts[:prepend?] do
+      %{changeset | after_transaction: [func | changeset.after_transaction]}
+    else
+      %{changeset | after_transaction: changeset.after_transaction ++ [func]}
     end
   end
 

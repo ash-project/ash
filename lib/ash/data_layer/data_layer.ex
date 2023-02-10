@@ -275,7 +275,7 @@ defmodule Ash.DataLayer do
             data_layer.transaction(resource, func)
         end
       else
-        func.()
+        {:ok, func.()}
       end
     end
   end

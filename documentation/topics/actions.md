@@ -200,9 +200,14 @@ All of these actions are run in a transaction if the data layer supports it. You
 
 - Authorization is performed on the changes
 - A before action hook is added to set up belongs_to relationships that are managed. This means potentially creating/modifying the destination of the relationship, and then changing the `destination_attribute` of the relationship.
+- Before transaction hooks are called (`Ash.Changeset.before_transaction/2`)
+- A transaction is opened if the action is configured for it (by default they are) and the data layer supports transactions
 - Before action hooks are performed in reverse order they were added. (unless `append?` option was used)
 - For manual actions, a before action hook must have set
 - After action hooks are performed in the order they were added (unless `prepend?` option was used)
 - For [Manual Actions](/documentation/topics/manual-actions.md), one of these after action hooks must have returned a result, otherwise an error is returned.
 - Non-belongs-to relationships are managed, creating/updating/destroying related records.
+- A transaction is opened if the action is configured for it (by default they are) and the data layer supports transactions
 - If an `after_action` option was passed when running the action, it is run with the changeset and the result. Only supported for create & update actions.
+- The transaction is closed, if one was opened
+- After transaction hooks are invoked with the result of the transaction (even if it was an error)

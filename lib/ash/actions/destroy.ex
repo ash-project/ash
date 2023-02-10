@@ -81,24 +81,24 @@ defmodule Ash.Actions.Destroy do
         changeset
       end
 
+    engine_timeout =
+      if Keyword.get(opts, :transaction?, true) && action.transaction? do
+        nil
+      else
+        opts[:timeout] || changeset.timeout || Ash.Api.Info.timeout(api)
+      end
+
     []
     |> as_requests(resource, api, action,
       changeset: changeset,
       authorize?: authorize?,
       actor: actor,
+      timeout: opts[:timeout] || changeset.timeout || Ash.Api.Info.timeout(api),
       tracer: opts[:tracer],
       timeout: opts[:timeout],
       tenant: opts[:tenant]
     )
     |> Ash.Engine.run(
-      transaction_reason: %{
-        type: :destroy,
-        metadata: %{
-          record: changeset.data,
-          resource: resource,
-          action: action.name
-        }
-      },
       resource: resource,
       verbose?: verbose?,
       actor: actor,
@@ -107,8 +107,8 @@ defmodule Ash.Actions.Destroy do
       return_notifications?: opts[:return_notifications?],
       notification_metadata: opts[:notification_metadata],
       authorize?: authorize?,
-      timeout: opts[:timeout] || changeset.timeout || Ash.Api.Info.timeout(api),
-      transaction?: true
+      timeout: engine_timeout,
+      transaction?: false
     )
     |> case do
       {:ok, %{data: data} = engine_result} ->
@@ -166,6 +166,7 @@ defmodule Ash.Actions.Destroy do
         path: path ++ [:data],
         action: action,
         error_path: error_path,
+        async?: !(Keyword.get(request_opts, :transaction?, true) && action.transaction?),
         changeset:
           Request.resolve(changeset_dependencies, fn %{actor: actor, authorize?: authorize?} =
                                                        context ->
@@ -264,6 +265,7 @@ defmodule Ash.Actions.Destroy do
         action: action,
         authorize?: false,
         error_path: error_path,
+        async?: !(Keyword.get(request_opts, :transaction?, true) && action.transaction?),
         changeset:
           Request.resolve([path ++ [:data, :changeset]], fn context ->
             {:ok, get_in(context, path ++ [:data, :changeset])}
@@ -280,47 +282,60 @@ defmodule Ash.Actions.Destroy do
 
               changeset
               |> Ash.Changeset.put_context(:private, %{actor: actor, authorize?: authorize?})
-              |> Ash.Changeset.with_hooks(fn
-                %{valid?: false} = changeset ->
-                  {:error, changeset}
+              |> Ash.Changeset.with_hooks(
+                fn
+                  %{valid?: false} = changeset ->
+                    {:error, changeset}
 
-                changeset ->
-                  cond do
-                    action.manual ->
-                      {mod, opts} = action.manual
+                  changeset ->
+                    cond do
+                      action.manual ->
+                        {mod, opts} = action.manual
 
-                      if result = changeset.context[:private][:action_result] do
-                        result
-                      else
-                        mod.destroy(changeset, opts, %{
-                          actor: actor,
-                          tenant: changeset.tenant,
-                          authorize?: authorize?,
-                          api: changeset.api
-                        })
-                      end
-
-                    action.manual? ->
-                      {:ok, record}
-
-                    true ->
-                      if result = changeset.context[:private][:action_result] do
-                        result
-                      else
-                        case Ash.DataLayer.destroy(resource, changeset) do
-                          :ok ->
-                            {:ok,
-                             Ash.Resource.set_meta(record, %Ecto.Schema.Metadata{
-                               state: :deleted,
-                               schema: resource
-                             })}
-
-                          {:error, error} ->
-                            {:error, Ash.Changeset.add_error(changeset, error)}
+                        if result = changeset.context[:private][:action_result] do
+                          result
+                        else
+                          mod.destroy(changeset, opts, %{
+                            actor: actor,
+                            tenant: changeset.tenant,
+                            authorize?: authorize?,
+                            api: changeset.api
+                          })
                         end
-                      end
-                  end
-              end)
+
+                      action.manual? ->
+                        {:ok, record}
+
+                      true ->
+                        if result = changeset.context[:private][:action_result] do
+                          result
+                        else
+                          case Ash.DataLayer.destroy(resource, changeset) do
+                            :ok ->
+                              {:ok,
+                               Ash.Resource.set_meta(record, %Ecto.Schema.Metadata{
+                                 state: :deleted,
+                                 schema: resource
+                               })}
+
+                            {:error, error} ->
+                              {:error, Ash.Changeset.add_error(changeset, error)}
+                          end
+                        end
+                    end
+                end,
+                transaction?:
+                  Keyword.get(request_opts, :transaction?, true) && action.transaction?,
+                timeout: request_opts[:timeout],
+                transaction_metadata: %{
+                  type: :destroy,
+                  metadata: %{
+                    record: changeset.data,
+                    resource: resource,
+                    action: action.name
+                  }
+                }
+              )
               |> case do
                 {:ok, result, changeset, instructions} ->
                   instructions =

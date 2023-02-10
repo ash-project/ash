@@ -113,33 +113,15 @@ defmodule Ash.Engine do
         end
 
       true ->
-        if !Application.get_env(:ash, :disable_async?) &&
-             (is_nil(opts[:resource]) ||
-                Ash.DataLayer.data_layer_can?(opts[:resource], :async_engine)) && opts[:timeout] &&
-             opts[:timeout] != :infinity && !Ash.DataLayer.in_transaction?(opts[:resource]) do
-          task =
-            async(
-              fn ->
-                do_run(requests, opts)
-              end,
-              opts
-            )
-
-          try do
-            case Task.await(task, opts[:timeout]) do
-              {:__exception__, e, stacktrace} ->
-                reraise e, stacktrace
-
-              other ->
-                other
-            end
-          catch
-            :exit, {:timeout, {Task, :await, [^task, timeout]}} ->
-              {:error, Ash.Error.Invalid.Timeout.exception(timeout: timeout, name: opts[:name])}
-          end
-        else
-          do_run(requests, opts)
-        end
+        task_with_timeout(
+          fn ->
+            do_run(requests, opts)
+          end,
+          opts[:resource],
+          opts[:timeout],
+          opts[:name],
+          opts[:tracer]
+        )
     end
     |> case do
       {:ok, %{resource_notifications: resource_notifications} = result} ->
@@ -157,6 +139,35 @@ defmodule Ash.Engine do
 
       other ->
         other
+    end
+  end
+
+  @doc false
+  def task_with_timeout(fun, resource, timeout, name, tracer) do
+    if !Application.get_env(:ash, :disable_async?) &&
+         (is_nil(resource) ||
+            Ash.DataLayer.data_layer_can?(resource, :async_engine)) && timeout &&
+         timeout != :infinity && !Ash.DataLayer.in_transaction?(resource) do
+      task =
+        async(
+          fun,
+          tracer: tracer
+        )
+
+      try do
+        case Task.await(task, timeout) do
+          {:__exception__, e, stacktrace} ->
+            reraise e, stacktrace
+
+          other ->
+            other
+        end
+      catch
+        :exit, {:timeout, {Task, :await, [^task, timeout]}} ->
+          {:error, Ash.Error.Invalid.Timeout.exception(timeout: timeout, name: name)}
+      end
+    else
+      fun.()
     end
   end
 
