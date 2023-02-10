@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.2](https://github.com/ash-project/ash/compare/v2.6.1...v2.6.2) (2023-02-10)
+
+
+
+
+### Bug Fixes:
+
+* pagination behavior is incorrect
+
+* `nil` as page_opts is acceptable
+
+* fix aggregate.uniq?
+
 ## [v2.6.1](https://github.com/ash-project/ash/compare/v2.6.0...v2.6.1) (2023-02-09)
 
 
