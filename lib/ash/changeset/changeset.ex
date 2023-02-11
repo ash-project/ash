@@ -1573,7 +1573,35 @@ defmodule Ash.Changeset do
     end
   end
 
+  defp warn_on_transaction_hooks(_, [], _), do: :ok
+
+  defp warn_on_transaction_hooks(changeset, _, type) do
+    if changeset.context[:warn_on_transaction_hooks?] != false &&
+         Ash.DataLayer.in_transaction?(changeset.resource) && changeset.before_transaction != [] do
+      message =
+        if type == "before_transaction" do
+          "already"
+        else
+          "still"
+        end
+
+      Logger.warn("""
+      One or more `#{type}` hooks on `#{inspect(changeset.resource)}.#{changeset.action.name}` are being executed,
+      but there is an ongoing transaction #{message} happening.
+
+      This means that you may be running an action in a transaction that you did not design with the intent of running in a surrounding transaction.
+      You should either
+
+      1. Create another action that is safe to use in a surrounding transaction, and use that instead of this one
+      2. Silence this warning using `set_context(%{warn_on_transaction_hooks?: false})` in the action definition
+      3. If building a changeset manually, do #2 except programatically, `Ash.Changeset.set_context(changeset, %{warn_on_transaction_hooks?: false})`
+      """)
+    end
+  end
+
   defp transaction_hooks(changeset, func) do
+    warn_on_transaction_hooks(changeset, changeset.before_transaction, "before_transaction")
+
     changeset =
       Enum.reduce_while(
         changeset.before_transaction,
@@ -1684,6 +1712,8 @@ defmodule Ash.Changeset do
   end
 
   defp run_after_transactions(result, changeset) do
+    warn_on_transaction_hooks(changeset, changeset.before_transaction, "after_transaction")
+
     changeset.after_transaction
     |> Enum.reduce(
       result,

@@ -93,18 +93,6 @@ Add `:ash` to your `.formatter.exs` file
 
 And run `mix deps.get`
 
-If you are using ElixirLs (if you are using VScode, it is likely that you are), then add the following dependency to your `mix.exs` to use Ash's custom autocomplete plugin.
-
-```elixir
-defp deps do
-  [
-    # {:dep_from_hexpm, "~> 0.3.0"},
-    # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
-    {:ash, "~> 2.6.2"}
-  ]
-end
-```
-
 ### Temporary Config
 
 For backwards compatibility, the following configuration is required. Don't worry about it for now, just know that it needs to be set until the behavior is deprecated in the next major release. Create a file at `config/config.exs` with the following contents. If you already have one, just add the last line.
