@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.3](https://github.com/ash-project/ash/compare/v2.6.2...v2.6.3) (2023-02-12)
+
+
+
+
+### Bug Fixes:
+
+* fix non-optional pagination
+
+### Improvements:
+
+* add warning on usage of transaction hooks when in a surrounding transaction
+
+* add before_transaction and after_transaction
+
 ## [v2.6.2](https://github.com/ash-project/ash/compare/v2.6.1...v2.6.2) (2023-02-10)
 
 
