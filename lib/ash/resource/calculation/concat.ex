@@ -11,7 +11,7 @@ defmodule Ash.Resource.Calculation.Concat do
     end
   end
 
-  def select(_query, opts) do
+  def load(_query, opts, _) do
     opts[:keys]
   end
 
