@@ -3,6 +3,7 @@ defmodule Ash.Resource.Calculation.Concat do
   use Ash.Calculation
   require Ash.Query
 
+  @impl Ash.Calculation
   def init(opts) do
     if opts[:keys] && is_list(opts[:keys]) && Enum.all?(opts[:keys], &is_atom/1) do
       {:ok, opts}
@@ -11,10 +12,12 @@ defmodule Ash.Resource.Calculation.Concat do
     end
   end
 
+  @impl Ash.Calculation
   def load(_query, opts, _) do
     opts[:keys]
   end
 
+  @impl Ash.Calculation
   def expression(opts, _) do
     Enum.reduce(opts[:keys], nil, fn key, expr ->
       if expr do
@@ -29,6 +32,7 @@ defmodule Ash.Resource.Calculation.Concat do
     end)
   end
 
+  @impl Ash.Calculation
   def calculate(records, opts, _) do
     Enum.map(records, fn record ->
       Enum.map_join(opts[:keys], opts[:separator] || "", fn key ->

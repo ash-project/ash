@@ -37,6 +37,12 @@ defmodule Concat do
   end
 
   @impl true
+  # A callback to tell Ash what keys must be loaded/selected when running this calculation
+  def load(_query, opts, _context) do
+    opts[:keys]
+  end
+
+  @impl true
   def calculate(records, opts, %{separator: separator}) do
     Enum.map(records, fn record ->
       Enum.map_join(opts[:keys], separator, fn key ->
