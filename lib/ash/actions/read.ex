@@ -575,7 +575,7 @@ defmodule Ash.Actions.Read do
       page_opts == false ->
         data
 
-      page_opts[:limit] || is_nil(page_opts) || page_opts == [] ->
+      page_opts[:limit] ->
         to_page(data, action, count, sort, original_query, opts)
 
       true ->
@@ -1311,7 +1311,8 @@ defmodule Ash.Actions.Read do
       action.pagination == false ->
         nil
 
-      Keyword.keyword?(opts[:page]) && !Keyword.has_key?(opts[:page], :limit) ->
+      Keyword.keyword?(opts[:page]) && !Keyword.has_key?(opts[:page], :limit) &&
+          action.pagination.default_limit ->
         Keyword.put(opts[:page], :limit, action.pagination.default_limit)
 
       is_nil(opts[:page]) and action.pagination.required? ->
@@ -1344,7 +1345,7 @@ defmodule Ash.Actions.Read do
           {:ok, starting_query, starting_query, false}
         end
 
-      page_opts[:limit] || is_nil(page_opts) || page_opts == [] ->
+      page_opts[:limit] ->
         case do_paginate(starting_query, action.pagination, opts) do
           {:ok, initial_query, query} ->
             {:ok, initial_query, query, page_opts}
@@ -1357,7 +1358,7 @@ defmodule Ash.Actions.Read do
         {:error, LimitRequired.exception([])}
 
       true ->
-        {:error, LimitRequired.exception([])}
+        {:ok, starting_query, starting_query, false}
     end
   end
 
