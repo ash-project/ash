@@ -61,10 +61,14 @@ end
 # Usage in a resource
 calculations do
   calculate :full_name, :string, {Concat, keys: [:first_name, :last_name]} do
-    # You currently need to use the [allow_empty?: true, trim?: false] constraints here.
+    # You need to use the [allow_empty?: true, trim?: false] constraints here.
     # The separator could be an empty string or require a leading or trailing space, 
-    # but would be trimmed or even set to `nil` without the constraints.
-    argument :separator, :string, constraints: [allow_empty?: true, trim?: false]
+    # but would be trimmed or even set to `nil` without the constraints shown below.
+    argument :separator, :string do
+      allow_nil? false
+      constraints [allow_empty?: true, trim?: false]
+      default ""
+    end
   end
 end
 ```
