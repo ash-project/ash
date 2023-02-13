@@ -6,6 +6,10 @@ This documentation is best viewed at [ash-hq.org](https://ash-hq.org)
 
 <!--- ash-hq-hide-stop --> <!--- -->
 
+## Who is This For?
+
+This is designed to be a quick start guide for Ash with Phoenix. Familiarity with Phoenix and LiveView are not necessary, but would certainly be helpful.
+
 ## Goals
 
 In this guide we will:
@@ -14,9 +18,10 @@ In this guide we will:
 2. Setup Ash, AshPhoenix and AshPostgres as dependencies
 3. Create a basic `Blog.Post` resource
 4. Create and migrate the database
-5. Integrate a minimal Phoenix LiveView with Ash
+5. Learn how to interact with your resource
+6. Integrate a minimal Phoenix LiveView with Ash
 
-## Things you may want to read first
+## Things You May Want to Read First
 
 - [Install Elixir](https://elixir-lang.org/install.html)
 - [Phoenix - Up and Running Guide](https://hexdocs.pm/phoenix/up_and_running.html)
@@ -64,8 +69,8 @@ We now need to add Ash, AshPhoenix and AshPostgres to our Phoenix project. We ne
       {:phoenix, "~> 1.6.15"},
       # ...
       {:ash, "~> 2.6.2"},
-      {:ash_postgres, "~> 1.3.6"},
-      {:ash_phoenix, "~> 1.1"},
+      {:ash_postgres, "~> 1.3.10"},
+      {:ash_phoenix, "~> 1.2.5"},
       # If using ElixirLS then including elixir_sense to enable Ash auto-complete
       {:elixir_sense, github: "elixir-lsp/elixir_sense", only: [:dev, :test]}
     ]
@@ -98,14 +103,14 @@ To use `AshPostgres.Repo` change your repo module to look like this:
 defmodule MyAshPhoenixApp.Repo do
   use AshPostgres.Repo, otp_app: :my_ash_phoenix_app
 
-  # installs Postgres extensions that ash commonly uses
+  # Installs Postgres extensions that ash commonly uses
   def installed_extensions do
     ["uuid-ossp", "citext"]
   end
 end
 ```
 
-After swapping `AshPostgres.Repo` in, you are safe to create the database using:
+After swapping `AshPostgres.Repo` in, you can now create the database using:
 
 ```
 $ mix ash_postgres.create
@@ -138,7 +143,7 @@ An Ash API can be thought of as a [Bounded Context](https://martinfowler.com/bli
 An Ash API points to an Ash registry. The registry in our case is `MyAshPhoenixApp.Blog.Registry`
 An Ash registry points to one or more resources. In our case we only have a single resource `MyAshPhoenixApp.Blog.Post`. We'll be taking a deeper look into that in the next section.
 
-For now take a look at the `Blog` api and the `Blog.Registry`:
+For now take a look at the `Blog` API and the `Blog.Registry`:
 
 ```elixir
 # lib/my_ash_phoenix_app/blog.ex
@@ -171,8 +176,6 @@ end
 ## Creating Resources
 
 ### Creating the `Post` Resource
-
-We only have one thing left to create, the resource.
 
 A resource is a central concept in Ash. In short, a resource is a domain model object in your system. A resource defines the data it holds and defines the actions that can operate on that data.
 
@@ -222,12 +225,12 @@ defmodule MyAshPhoenixApp.Blog.Post do
 
     # Defines custom read action which fetches post by id.
     read :by_id do
-      # This action has one parameter :id of type :uuid
+      # This action has one argument :id of type :uuid
       argument :id, :uuid, allow_nil?: false
-      # Tells us we expect this action to return a single results
+      # Tells us we expect this action to return a single result
       get? true
-      # filters the :id given in the argument
-      # against the id of each element in the resource
+      # Filters the `:id` given in the argument
+      # against the `id` of each element in the resource
       filter expr(id == ^arg(:id))
     end
   end
@@ -251,7 +254,7 @@ end
 
 ### Migrate the Database
 
-We have specified the resource, attributes and actions in Ash. But we have yet to create them in our data layer (in our case Postgres).
+We have specified the resource in Ash. But we have yet to create it in our data layer (in our case Postgres).
 
 We created our database earlier, but now we need to populate it. We do this by generating and performing a migration.
 
@@ -272,30 +275,30 @@ Here is the migration file commented in detail:
 defmodule MyAshPhoenixApp.Repo.Migrations.InitialMigration do
   use Ecto.Migration
 
-  # this function runs when migrating forward
+  # This function runs when migrating forward
   def up do
-    # creates the `:posts` table
+    # Creates the `:posts` table
     create table(:posts, primary_key: false) do
-      # adds primary key attribute `:id` of type `:uuid`
-      # nil values are not allowed
+      # Adds primary key attribute `:id` of type `:uuid`
+      # null values are not allowed
       add :id, :uuid, null: false, default: fragment("uuid_generate_v4()"), primary_key: true
 
-      # adds attribute `:title` of type `:text`, null values are not allowed
+      # Adds attribute `:title` of type `:text`, null values are not allowed
       add :title, :text, null: false
-      # adds attribute `:content` of type `:text`, null values are allowed
+      # Adds attribute `:content` of type `:text`, null values are allowed
       add :content, :text
     end
   end
 
-  # this is the function that runs if you want to rollback this migration.
+  # This is the function that runs if you want to rollback the migration.
   def down do
-    # deletes the `:posts` table
+    # Deletes the `:posts` table
     drop table(:posts)
   end
 end
 ```
 
-We can run the `up/0` function which will perform the desired operations on the Postgres database. We do this with this command:
+We can run the `up/0` function which will perform the desired operations on the Postgres database. We do this with the migrate command:
 
 ```bash
 $ mix ash_postgres.migrate
@@ -303,11 +306,13 @@ $ mix ash_postgres.migrate
 
 ## Interacting with your Resources
 
-All interaction with your resource attributes **ALWAYS** occur through an **action**. In our resource we are using the default actions for `:create, :read, :update, :destroy`.
+**All interaction with your resource attributes always occur through an action**. In our resource we are using the default actions for `:create, :read, :update, :destroy` along with a custom action `:by_id`.
 
-`:create` and `:update` actions require a changeset. Ash changesets are conceptually similar to [Ecto changesets](https://hexdocs.pm/ecto/Ecto.Changeset.html). They're data structures which represent an intended change to an Ash resource and provide validation.
+`:create` and `:update` and `:destroy` actions require a changeset. Ash changesets are conceptually similar to [Ecto changesets](https://hexdocs.pm/ecto/Ecto.Changeset.html). They're data structures which represent an intended change to an Ash resource and provide validation.
 
-Here are some brief examples of how to access and alter the ash resource you recently made:
+The `:read` action takes a query instead of a changeset
+
+Below is the most verbose way of calling you resource. All other ways of interacting is some kind of shorthand of these. This means at some point a changeset is being created, even if its encapsulated within another function.
 
 ```elixir
 # create post
@@ -333,10 +338,12 @@ updated_post =
   |> MyAshPhoenixApp.Blog.update!()
 
 # delete post
-MyAshPhoenixApp.Blog.destroy!(updated_post)
+first_post
+|> Ash.Changeset.for_destroy(:destroy)
+|> MyAshPhoenixApp.Blog.destroy!()
 ```
 
-This is a little cumbersome, but there is a shortcut. You can define a `code_interface`. You may notice this has already been done in your `Post` resource. Here it is again with more explanation:
+As I said this is verbose, so Ash has a built in shortcut - The `code_interface`. You may notice this has already been done in your `Post` resource. Here it is again with more explanation:
 
 ```elixir
  code_interface do
@@ -356,7 +363,13 @@ This is a little cumbersome, but there is a shortcut. You can define a `code_int
   end
 ```
 
-> Note: that the function name doesn't have to match the action name in any way. You could also write `define :make, action: :create` for example. That's perfectly valid and could be called via `Blog.make/2`.
+> Note: The function name doesn't have to match the action name in any way. You could also write:
+>
+> ```elixir
+> define :make, action: :create
+> ```
+>
+> That's perfectly valid and could be called via `Blog.make/2`.
 
 Now we can call our resource like so:
 
@@ -377,9 +390,11 @@ updated_post = MyAshPhoenixApp.Blog.Post.update!(%{content: "hello to you too!"}
 MyAshPhoenixApp.Blog.Post.destroy!(updated_post)
 ```
 
-Now isn't that more convenient.
+Now isn't that more convenient?
 
-## Hooking up to a Phoenix LiveView
+> Note: All functions that interact with an Ash resource have a safe and unsafe version. For example there are two create functions `create/2` and `create!/2`. `create/2` returns `{:ok, resource}` or `{:error, reason}`. `create!/2` will return just the resource on success and will raise an error on failure.
+
+## Connecting your Resource to a Phoenix LiveView
 
 Now we know how to interact with our resource, lets connect it to a simple Phoenix LiveView. Here is the LiveView below:
 
@@ -463,25 +478,25 @@ end
 
 You can see how using functions created by our `code_interface` makes it easy to integrate Ash with Phoenix.
 
-You many also notice this is the first time we've used the AshPhoenix library. The AshPhoenix library contains utilities to help Ash integrate with Phoenix and LiveView Seamlessly. One of these utilities is `AshPhoenix.Form` which can automatically produce changesets to be used in the forms.
+You may also notice this is the first time we've used the AshPhoenix library. The AshPhoenix library contains utilities to help Ash integrate with Phoenix and LiveView Seamlessly. One of these utilities is `AshPhoenix.Form` which can automatically produce changesets to be used in the forms.
+
+That's it for this guide. We've gone from 0 to a fully working Phoenix App using Ash. But we are really just scratching the surface of what can be done in Ash. Look below for what to look at next.
 
 ## Where to Next?
 
-We are just brushing the surface here, there is really so much more to Ash.
 Here are a few things that we recommend looking at next.
 
 ### Continue Learning
 
 There's a few places you can go to learn more about how to use ash:
 
-- [Learn about how call your resources even more easily with the `code_interface`](/documentation/topics/code-interface)
-- [Read about how to query the data in your resources.](/documentation/module/ash/ash-query)
+- [Read more about how to query the data in your resources.](/documentation/module/ash/ash-query)
 - [Dig deeper into actions.](/documentation/topics/actions)
 - [Study resource relationship management](/documentation/topics/managing-relationships)
 
 ### Ash Authentication & Ash Authentication Phoenix
 
-See the power ash can bring to your web app or api. [Get authentication working in minutes](https://hexdocs.pm/ash_authentication_phoenix/getting-started-with-ash-authentication-phoenix.html).
+See the power Ash can bring to your web app or API. [Get authentication working in minutes](https://hexdocs.pm/ash_authentication_phoenix/getting-started-with-ash-authentication-phoenix.html).
 
 ### Add an API (or two)
 
