@@ -1003,7 +1003,8 @@ defmodule Ash.Api do
     query = Ash.Query.set_api(query, api)
 
     with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @read_opts_schema),
-         {:ok, action} <- get_action(query.resource, opts, :read, query.action) do
+         {:ok, action} <- get_action(query.resource, opts, :read, query.action),
+         {:ok, action} <- pagination_check(action, query.resource, opts) do
       Read.run(query, action, opts)
     else
       {:error, error} ->
@@ -1191,6 +1192,17 @@ defmodule Ash.Api do
               {:ok, action}
           end
         end
+    end
+  end
+
+  defp pagination_check(action, resource, opts) do
+    case Keyword.has_key?(opts, :page) && Map.get(action, :pagination) do
+      true ->
+        {:ok, action}
+
+      false ->
+        {:error,
+         "Pagination is not enabled on resource #{resource}. Check that you've set pagination to `true` in your action and also that you have set a page in your opts like this MyApp.MyAPI.read!(MyResource, page: [limit: 1])"}
     end
   end
 
