@@ -70,9 +70,7 @@ We now need to add Ash, AshPhoenix and AshPostgres to our Phoenix project. We ne
       # ...
       {:ash, "~> 2.6.2"},
       {:ash_postgres, "~> 1.3.10"},
-      {:ash_phoenix, "~> 1.2.5"},
-      # If using ElixirLS then including elixir_sense to enable Ash auto-complete
-      {:elixir_sense, github: "elixir-lsp/elixir_sense", only: [:dev, :test]}
+      {:ash_phoenix, "~> 1.2.5"}
     ]
   end
 ```
@@ -138,7 +136,7 @@ config :my_ash_phoenix_app,
 
 ### Create the API and Registry
 
-An Ash API can be thought of as a [Bounded Context](https://martinfowler.com/bliki/BoundedContext.html) in Domain Driven Design terms and can seen as analogous to a Phoenix context. If none of that made sense, don't worry, most of the time you only need one. In our case our API is called `MyAshPhoenixApp.Blog`
+An Ash API can be thought of as a [Bounded Context](https://martinfowler.com/bliki/BoundedContext.html) in Domain Driven Design terms and can seen as analogous to a Phoenix context. Put simply, its a way of grouping related resources together. In our case our API is called `MyAshPhoenixApp.Blog`.
 
 An Ash API points to an Ash registry. The registry in our case is `MyAshPhoenixApp.Blog.Registry`
 An Ash registry points to one or more resources. In our case we only have a single resource `MyAshPhoenixApp.Blog.Post`. We'll be taking a deeper look into that in the next section.
@@ -312,7 +310,7 @@ $ mix ash_postgres.migrate
 
 The `:read` action takes a query instead of a changeset
 
-Below is the most verbose way of calling you resource. All other ways of interacting is some kind of shorthand of these. This means at some point a changeset is being created, even if its encapsulated within another function.
+Below is the most verbose way of calling your resource. All other ways of interaction is some kind of shorthand of these. This means at some point a changeset is being created and passed to the API, even if its encapsulated within another function.
 
 ```elixir
 # create post
@@ -343,7 +341,7 @@ first_post
 |> MyAshPhoenixApp.Blog.destroy!()
 ```
 
-As I said this is verbose, so Ash has a built in shortcut - The `code_interface`. You may notice this has already been done in your `Post` resource. Here it is again with more explanation:
+As I said, this is verbose so Ash has a built in shortcut - The `code_interface`. You may notice this has already been done in your `Post` resource. Here it is again with more explanation:
 
 ```elixir
  code_interface do
