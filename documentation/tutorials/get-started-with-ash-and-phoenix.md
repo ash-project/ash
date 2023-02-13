@@ -12,9 +12,9 @@ In this guide we will:
 
 1. Create a new Phoenix project
 2. Setup Ash, AshPhoenix and AshPostgres as dependencies
-3. Create a very simple `Blog.Post` resource
+3. Create a basic `Blog.Post` resource
 4. Create and migrate the database
-5. Perform CRUD actions on the newly made resource
+5. Integrate a minimal Phoenix LiveView with Ash
 
 ## Things you may want to read first
 
@@ -205,9 +205,31 @@ defmodule MyAshPhoenixApp.Blog.Post do
     repo MyAshPhoenixApp.Repo
   end
 
+  # Defines convenience methods for
+  # interacting with the resource programmatically.
+  code_interface do
+    define_for MyAshPhoenixApp.Blog
+    define :create, action: :create
+    define :read_all, action: :read
+    define :update, action: :update
+    define :destroy, action: :destroy
+    define :get_by_id, args: [:id], action: :by_id
+  end
+
   actions do
     # Exposes default built in actions to manage the resource
     defaults [:create, :read, :update, :destroy]
+
+    # Defines custom read action which fetches post by id.
+    read :by_id do
+      # This action has one parameter :id of type :uuid
+      argument :id, :uuid, allow_nil?: false
+      # Tells us we expect this action to return a single results
+      get? true
+      # filters the :id given in the argument
+      # against the id of each element in the resource
+      filter expr(id == ^arg(:id))
+    end
   end
 
   # Attributes are simple pieces of data that exist in your resource
@@ -279,184 +301,169 @@ We can run the `up/0` function which will perform the desired operations on the 
 $ mix ash_postgres.migrate
 ```
 
-## Interacting with your resource
+## Interacting with your Resources
 
-All interaction with your resource attributes **ALWAYS** occur through an **action**. In our resource we are using the default actions for `:create, :read, :update, :destroy`. `:create, :update, :destroy` actions **ALWAYS** take a changeset. Ash changesets are conceptually similar to [Ecto changesets](https://hexdocs.pm/ecto/Ecto.Changeset.html). They're data structures which represent an intended change to an Ash resource and provide validation.
+All interaction with your resource attributes **ALWAYS** occur through an **action**. In our resource we are using the default actions for `:create, :read, :update, :destroy`.
 
-Let's write a test to show how to interact with our resource.
+`:create` and `:update` actions require a changeset. Ash changesets are conceptually similar to [Ecto changesets](https://hexdocs.pm/ecto/Ecto.Changeset.html). They're data structures which represent an intended change to an Ash resource and provide validation.
+
+Here are some brief examples of how to access and alter the ash resource you recently made:
 
 ```elixir
-defmodule MyAshPhoenixApp.Blog.PostTest do
-  use MyAshPhoenixApp.DataCase, async: true
+# create post
+new_post =
+  MyAshPhoenixApp.Blog.Post
+  |> Ash.Changeset.for_create(:create, %{title: "hello world"})
+  |>  MyAshPhoenixApp.Blog.create!()
 
-  test "testing blog post actions" do
-    ### CREATE ACTION - create new blog post ###
-    # We create an Ash changeset we intent to use to create an Ash resource
-    create_post_changeset =
-      Ash.Changeset.for_create(
-        # We specify which resource we want to create a changeset for
-        MyAshPhoenixApp.Blog.Post,
-        # We name the specific create action
-        :create,
-        # We pass the attributes we want to initialise our resource with
-        %{title: "hello world"}
+# read all posts
+MyAshPhoenixApp.Blog.Post
+|> Ash.Query.for_read(:read)
+|> MyAshPhoenixApp.Blog.read!()
+
+# get single post by id
+MyAshPhoenixApp.Blog.Post
+|> Ash.Query.for_read(:by_id, %{id: first_post.id})
+|> MyAshPhoenixApp.Blog.read_one!()
+
+# update post
+updated_post =
+  new_post
+  |> Ash.Changeset.for_update(:update, %{content: "hello to you too!"})
+  |> MyAshPhoenixApp.Blog.update!()
+
+# delete post
+MyAshPhoenixApp.Blog.destroy!(updated_post)
+```
+
+This is a little cumbersome, but there is a shortcut. You can define a `code_interface`. You may notice this has already been done in your `Post` resource. Here it is again with more explanation:
+
+```elixir
+ code_interface do
+    # defines the API this resource should be called from
+    define_for MyAshPhoenixApp.Blog
+    # defining function Post.create/2 it calls the :create action
+    define :create, action: :create
+    # defining function Post.read_all/2 it calls the :read action
+    define :read_all, action: :read
+    # defining function Post.update/2 it calls the :update action
+    define :update, action: :update
+    # defining function Post.destroy/2 it calls the :destroy action
+    define :destroy, action: :destroy
+    # defining function Post.get_by_id/2
+    # it calls the :by_id action with the argument :id
+    define :get_by_id, args: [:id], action: :by_id
+  end
+```
+
+> Note: that the function name doesn't have to match the action name in any way. You could also write `define :make, action: :create` for example. That's perfectly valid and could be called via `Blog.make/2`.
+
+Now we can call our resource like so:
+
+```elixir
+# create post
+new_post = MyAshPhoenixApp.Blog.Post.create!(%{title: "hello world"})
+
+# read post
+MyAshPhoenixApp.Blog.Post.read_all!()
+
+# get post by id
+MyAshPhoenixApp.Blog.Post.get_by_id!(new_post.id)
+
+# update post
+updated_post = MyAshPhoenixApp.Blog.Post.update!(%{content: "hello to you too!"})
+
+# delete post
+MyAshPhoenixApp.Blog.Post.destroy!(updated_post)
+```
+
+Now isn't that more convenient.
+
+## Hooking up to a Phoenix LiveView
+
+Now we know how to interact with our resource, lets connect it to a simple Phoenix LiveView. Here is the LiveView below:
+
+```elixir
+defmodule MyAshPhoenixAppWeb.ExampleLiveView do
+  use MyAshPhoenixAppWeb, :live_view
+  import Phoenix.HTML.Form
+  alias MyAshPhoenixApp.Blog.Post
+
+  def render(assigns) do
+    ~H"""
+    <h2>Posts</h2>
+    <div>
+    <%= for post <- @posts do %>
+      <div>
+        <div><%= post.title %></div>
+        <div><%= if Map.get(post, :content), do: post.content, else: "" %></div>
+        <button phx-click="delete_post" phx-value-post-id={post.id}>delete</button>
+      </div>
+    <% end %>
+    </div>
+    <h2>Create Post</h2>
+    <.form let={f} for={@create_form} phx-submit="create_post">
+      <%= text_input f, :title, placeholder: "input title" %>
+      <%= submit "create" %>
+    </.form>
+    <h2>Update Post</h2>
+    <.form let={f} for={@update_form} phx-submit="update_post">
+      <%= label f, :"post name" %>
+      <%= select f, :post_id, @post_selector %>
+      <%= text_input f, :content, value: "", placeholder: "input content" %>
+      <%= submit "update" %>
+    </.form>
+    """
+  end
+
+  def mount(_params, _session, socket) do
+    posts = Post.read_all!()
+
+    socket =
+      assign(socket,
+        posts: posts,
+        post_selector: post_selector(posts),
+        create_form: AshPhoenix.Form.for_create(Post, :create),
+        update_form: AshPhoenix.Form.for_update(List.first(posts, %Post{}), :update)
       )
 
-    # will return:
-    #
-    # #Ash.Changeset<
-    #   action_type: :create,
-    #   action: :create,
-    #   attributes: %{title: "hello world"},
-    #   relationships: %{},
-    #   errors: [],
-    #   data: #MyAshPhoenixApp.Blog.Post<
-    #     __meta__: #Ecto.Schema.Metadata<:built, "posts">,
-    #     id: nil,
-    #     title: nil,
-    #     content: nil,
-    #     aggregates: %{},
-    #     calculations: %{},
-    #     __order__: nil,
-    #     ...
-    #   >,
-    #   valid?: true
-    # >
+    {:ok, socket}
+  end
 
-    # This changeset is given to the Ash Api the resource belongs to (Blog in our case).
-    # The Api then tries to create the resource specified in the changeset.
-    assert %{title: "hello world"} = MyAshPhoenixApp.Blog.create!(create_post_changeset)
-    # will return:
-    #
-    # #MyAshPhoenixApp.Blog.Post<
-    #   __meta__: #Ecto.Schema.Metadata<:loaded, "posts">,
-    #   id: "d70dd979-0b30-4a3f-beb2-2d5bb2e24af7",
-    #   title: "hello world",
-    #   content: nil,
-    #   aggregates: %{},
-    #   calculations: %{},
-    #   __order__: nil,
-    #   ...
-    # >
+  def handle_event("delete_post", %{"post-id" => post_id}, socket) do
+    post_id |> Post.get_by_id!() |> Post.destroy!()
+    posts = Post.read_all!()
 
-    ...
-```
+    {:noreply, assign(socket, posts: posts, post_selector: post_selector(posts))}
+  end
 
-Now let's read all of the data in the resource to check the creation we just performed worked. Notice how we don't need changeset here as we are not changing the data, we're just reading it.
+  def handle_event("create_post", %{"form" => %{"title" => title}}, socket) do
+    Post.create(%{title: title})
+    posts = Post.read_all!()
 
-```elixir
-  ...
+    {:noreply, assign(socket, posts: posts, post_selector: post_selector(posts))}
+  end
 
-  ### READ ACTION - read blog post(s) ###
-  # we need first_post for update action later
-    assert [first_post = %{title: "hello world"}] =
-             MyAshPhoenixApp.Blog.read!(MyAshPhoenixApp.Blog.Post)
+  def handle_event("update_post", %{"form" => form_params}, socket) do
+    %{"post_id" => post_id, "content" => content} = form_params
 
-    # will return:
-    #
-    # [
-    #   #MyAshPhoenixApp.Blog.Post<
-    #     __meta__: #Ecto.Schema.Metadata<:loaded, "posts">,
-    #     id: "d70dd979-0b30-4a3f-beb2-2d5bb2e24af7",
-    #     title: "hello world",
-    #     content: nil,
-    #     aggregates: %{},
-    #     calculations: %{},
-    #     __order__: nil,
-    #     ...
-    #   >
-    # ]
+    post_id |> Post.get_by_id!() |> Post.update!(%{content: content})
+    posts = Post.read_all!()
 
-    ...
-```
+    {:noreply, assign(socket, :posts, posts)}
+  end
 
-Our post doesn't have any contents. Lets put some text in the `:content` attribute.
-For this we will use an `:update` action:
-
-```elixir
-  ...
-
-  ### UPDATE ACTION - update existing blog post ###
-    # notice how you have to pass an existing resource in to the changeset
-    assert %{
-             title: "hello world",
-             content: "hello to you too!"
-           } =
-             Ash.Changeset.for_update(first_post, :update, %{content: "hello to you too!"})
-             |> MyAshPhoenixApp.Blog.update!()
-
-    # will return:
-    #
-    # #MyAshPhoenixApp.Blog.Post<
-    #   __meta__: #Ecto.Schema.Metadata<:loaded, "posts">,
-    #   id: "d70dd979-0b30-4a3f-beb2-2d5bb2e24af7",
-    #   title: "hello world",
-    #   content: "hello to you too!",
-    #   aggregates: %{},
-    #   calculations: %{},
-    #   __order__: nil,
-    #   ...
-    # >
-
-  ...
-```
-
-Finally let's delete the post, and check it's been removed from the resource, by performing one last read action.
-
-```elixir
-  ...
-
-  ### DELETE ACTION - delete existing blog post ###
-    assert :ok ==
-             Ash.Changeset.for_destroy(first_post, :destroy)
-             |> MyAshPhoenixApp.Blog.destroy!()
-
-    # verifying no rows in resource
-    assert [] == MyAshPhoenixApp.Blog.read!(MyAshPhoenixApp.Blog.Post)
+  defp post_selector(posts) do
+    for post <- posts do
+      {:"#{post.title}", post.id}
+    end
   end
 end
 ```
 
-Now lets run the test.
+You can see how using functions created by our `code_interface` makes it easy to integrate Ash with Phoenix.
 
-```bash
-> mix test test/my_ash_phoenix_app/blog/resources/post_test.exs
-
-.
-Finished in 0.2 seconds (0.2s async, 0.00s sync)
-1 test, 0 failures
-
-Randomized with seed 333442
-```
-
-It works 🎉🥳!
-
-## But how to integrate with Phoenix?
-
-To use the Post resource in your controller or LiveView, you can use similar code to the test above.
-
-In a controller:
-
-```elixir
-  def index(conn, _params) do
-    conn
-    |> assign(:posts, MyAshPhoenixApp.Blog.read!(MyAshPhoenixApp.Blog.Post))
-    |> render("index.html")
-  end
-```
-
-In a LiveView:
-
-```elixir
-  def mount(_params, _session, socket) do
-    socket =
-      assigns(socket, :posts, MyAshPhoenixApp.Blog.read!(MyAshPhoenixApp.Blog.Post))
-
-    {:ok, socket}
-  end
-```
-
-There are more idiomatic ways to interact with Ash in the view layer, and we'll cover them. But this will do for now.
+You many also notice this is the first time we've used the AshPhoenix library. The AshPhoenix library contains utilities to help Ash integrate with Phoenix and LiveView Seamlessly. One of these utilities is `AshPhoenix.Form` which can automatically produce changesets to be used in the forms.
 
 ## Where to Next?
 
