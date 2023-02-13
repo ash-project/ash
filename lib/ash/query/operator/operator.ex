@@ -87,6 +87,9 @@ defmodule Ash.Query.Operator do
       nil ->
         {:error, "Could not cast expression: #{inspect(mod)} #{inspect(left)} #{inspect(right)}"}
 
+      {:error, error} ->
+        {:error, error}
+
       {:ok, left, right} ->
         mod.new(left, right)
     end
@@ -216,12 +219,16 @@ defmodule Ash.Query.Operator do
   end
 
   defp cast_one(value, type) do
-    case Ash.Query.Type.try_cast(value, type) do
-      {:ok, casted} ->
-        {:ok, casted}
+    if Ash.Filter.TemplateHelpers.expr?(value) do
+      {:ok, value}
+    else
+      case Ash.Query.Type.try_cast(value, type) do
+        {:ok, casted} ->
+          {:ok, casted}
 
-      _ ->
-        {:error, "Could not cast #{inspect(type)} as #{value}"}
+        _ ->
+          {:error, "Could not cast #{inspect(value)} as #{inspect(type)}"}
+      end
     end
   end
 

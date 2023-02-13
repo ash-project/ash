@@ -39,36 +39,87 @@ defmodule Ash.Query.Aggregate do
     end
   end
 
+  @schema [
+    path: [
+      type: {:list, :atom},
+      doc: "The relationship path to aggregate over. Only used when adding aggregates to a query."
+    ],
+    query: [
+      type: :any,
+      doc:
+        "A base query to use for the aggregate, or a keyword list to be passed to `Ash.Query.build/2`"
+    ],
+    field: [
+      type: :atom,
+      doc: "The field to use for the aggregate. Not necessary for all aggregate types."
+    ],
+    default: [
+      type: :any,
+      doc: "A default value to use for the aggregate if it returns `nil`."
+    ],
+    filterable?: [
+      type: :boolean,
+      doc: "Wether or not this aggregate may be used in filters."
+    ],
+    type: [
+      type: :any,
+      doc: "A type to use for the aggregate."
+    ],
+    constraints: [
+      type: :any,
+      doc: "Type constraints to use for the aggregate."
+    ],
+    implementation: [
+      type: :any,
+      doc: "The implementation for any custom aggregates."
+    ],
+    uniq?: [
+      type: :boolean,
+      doc:
+        "Wether or not to only consider unique values. Only relevant for `count` and `list` aggregates."
+    ]
+  ]
+
+  @keys Keyword.keys(@schema)
+
+  @doc false
+  def opt_keys do
+    @keys
+  end
+
   @doc """
   Create a new aggregate, used with `Query.aggregate` or `Api.aggregate`
 
   Options:
 
-  - `path`: Used when adding an aggregate to a query.
-  - `query`: A base query to use for the aggregate
-  - `field`: The field to aggregate
-  - `default`: A default value for the aggregate
-  - `filterable?`: Wether or not it should be filterable
-  - `type`: A type for the aggregate
-  - `constraints`: Type constraints for the aggregate's type
-  - `implementation`: The implementation module for custom aggregates
-  - `uniq?`: Wether or not the aggregate should be over unique values
+  #{Spark.OptionsHelpers.docs(@schema)}
   """
   def new(resource, name, kind, opts \\ []) do
-    new(
-      resource,
-      name,
-      kind,
-      opts[:path] || [],
-      opts[:query],
-      opts[:field],
-      opts[:default],
-      opts[:filterable?],
-      opts[:type],
-      opts[:constraints],
-      opts[:implementation],
-      opts[:uniq?]
-    )
+    opts =
+      Enum.reject(opts, fn
+        {_key, nil} ->
+          true
+
+        _ ->
+          false
+      end)
+
+    with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @schema) do
+      new(
+        resource,
+        name,
+        kind,
+        opts[:path] || [],
+        opts[:query],
+        opts[:field],
+        opts[:default],
+        opts[:filterable?],
+        opts[:type],
+        opts[:constraints],
+        opts[:implementation],
+        opts[:uniq?]
+      )
+    end
   end
 
   @deprecated "Use `new/4` instead."

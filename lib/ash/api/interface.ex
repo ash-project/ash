@@ -41,7 +41,9 @@ defmodule Ash.Api.Interface do
       def count!(query, opts \\ []) do
         query = Ash.Query.to_query(query)
 
-        case Ash.Query.Aggregate.new(query.resource, :count, :count) do
+        {aggregate_opts, opts} = split_aggregate_opts(opts)
+
+        case Ash.Query.Aggregate.new(query.resource, :count, :count, aggregate_opts) do
           {:ok, aggregate} ->
             case Api.aggregate(__MODULE__, query, aggregate, opts) do
               {:ok, %{count: count}} ->
@@ -62,7 +64,9 @@ defmodule Ash.Api.Interface do
       def count(query, opts \\ []) do
         query = Ash.Query.to_query(query)
 
-        case Ash.Query.Aggregate.new(query.resource, :count, :count) do
+        {aggregate_opts, opts} = split_aggregate_opts(opts)
+
+        case Ash.Query.Aggregate.new(query.resource, :count, :count, aggregate_opts) do
           {:ok, aggregate} ->
             case Api.aggregate(__MODULE__, query, aggregate, opts) do
               {:ok, %{count: count}} ->
@@ -84,11 +88,13 @@ defmodule Ash.Api.Interface do
         def unquote(kind)(query, field, opts \\ []) do
           query = Ash.Query.to_query(query)
 
+          {aggregate_opts, opts} = split_aggregate_opts(opts)
+
           case Ash.Query.Aggregate.new(
                  query.resource,
                  unquote(kind),
                  unquote(kind),
-                 Keyword.put(opts, :field, field)
+                 Keyword.put(aggregate_opts, :field, field)
                ) do
             {:ok, aggregate} ->
               case Api.aggregate(__MODULE__, query, aggregate, opts) do
@@ -111,11 +117,13 @@ defmodule Ash.Api.Interface do
         def unquote(:"#{kind}!")(query, field, opts \\ []) do
           query = Ash.Query.to_query(query)
 
+          {aggregate_opts, opts} = split_aggregate_opts(opts)
+
           case Ash.Query.Aggregate.new(
                  query.resource,
                  unquote(kind),
                  unquote(kind),
-                 Keyword.put(opts, :field, field)
+                 Keyword.put(aggregate_opts, :field, field)
                ) do
             {:ok, aggregate} ->
               case Api.aggregate(__MODULE__, query, aggregate, opts) do
@@ -130,6 +138,10 @@ defmodule Ash.Api.Interface do
               raise Ash.Error.to_error_class(error)
           end
         end
+      end
+
+      defp split_aggregate_opts(opts) do
+        Keyword.split(opts, Ash.Query.Aggregate.opt_keys())
       end
 
       def aggregate(query, aggregate_or_aggregates, opts \\ []) do

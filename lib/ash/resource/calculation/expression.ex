@@ -136,6 +136,9 @@ defmodule Ash.Resource.Calculation.Expression do
           ref.relationship_path == [] && match?(%Ash.Resource.Attribute{}, ref.attribute)
         end)
         |> Enum.map(& &1.attribute.name)
+
+      _ ->
+        []
     end
   end
 end

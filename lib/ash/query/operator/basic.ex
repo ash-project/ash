@@ -18,7 +18,8 @@ defmodule Ash.Query.Operator.Basic do
     ],
     concat: [
       symbol: :<>,
-      no_nils: true
+      no_nils: true,
+      types: [[:string, :string]]
     ],
     or: [
       symbol: :||
@@ -45,7 +46,7 @@ defmodule Ash.Query.Operator.Basic do
           operator: unquote(opts[:symbol]),
           name: unquote(name),
           predicate?: false,
-          types: [:same, :any]
+          types: unquote(opts[:types] || [:same, :any])
 
         if unquote(opts[:no_nils]) do
           def evaluate(%{left: left, right: right}) do
