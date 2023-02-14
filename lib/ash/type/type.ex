@@ -212,6 +212,7 @@ defmodule Ash.Type do
   end
 
   def embedded_type?(type) do
+    type = get_type(type)
     type.embedded?()
   end
 
