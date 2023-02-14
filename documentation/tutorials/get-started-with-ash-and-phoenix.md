@@ -192,6 +192,8 @@ lib/
 Below is the resource module. Read the comments carefully, every line is explained:
 
 ```elixir
+# lib/my_ash_phoenix_app/blog/post.ex
+
 defmodule MyAshPhoenixApp.Blog.Post do
   # Using Ash.Resource turns this module into an Ash resource.
   use Ash.Resource,
@@ -270,6 +272,8 @@ Generating Migrations:
 Here is the migration file commented in detail:
 
 ```elixir
+# priv/repo/migrations/20230208045101_initial_migration.exs
+
 defmodule MyAshPhoenixApp.Repo.Migrations.InitialMigration do
   use Ecto.Migration
 
@@ -308,9 +312,9 @@ $ mix ash_postgres.migrate
 
 `:create` and `:update` and `:destroy` actions require a changeset. Ash changesets are conceptually similar to [Ecto changesets](https://hexdocs.pm/ecto/Ecto.Changeset.html). They're data structures which represent an intended change to an Ash resource and provide validation.
 
-The `:read` action takes a query instead of a changeset
+The `:read` action takes a query instead of a changeset.
 
-Below is the most verbose way of calling your resource. All other ways of interaction is some kind of shorthand of these. This means at some point a changeset is being created and passed to the API, even if its encapsulated within another function.
+Below is the most verbose way of calling your resource. All other ways of interaction are some kind of shorthand of these. This means at some point a changeset is being created and passed to the API, even if it's encapsulated within another function.
 
 ```elixir
 # create post
@@ -394,7 +398,7 @@ Now isn't that more convenient?
 
 ## Connecting your Resource to a Phoenix LiveView
 
-Now we know how to interact with our resource, lets connect it to a simple Phoenix LiveView. Here is the LiveView below:
+Now we know how to interact with our resource, let's connect it to a simple Phoenix LiveView. Here is the LiveView below:
 
 ```elixir
 defmodule MyAshPhoenixAppWeb.ExampleLiveView do
@@ -478,11 +482,11 @@ You can see how using functions created by our `code_interface` makes it easy to
 
 You may also notice this is the first time we've used the AshPhoenix library. The AshPhoenix library contains utilities to help Ash integrate with Phoenix and LiveView Seamlessly. One of these utilities is `AshPhoenix.Form` which can automatically produce changesets to be used in the forms.
 
-That's it for this guide. We've gone from 0 to a fully working Phoenix App using Ash. But we are really just scratching the surface of what can be done in Ash. Look below for what to look at next.
+That's it for this guide. We've gone from 0 to a fully working Phoenix App using Ash. To get a closer look, see the accompanying repo [here](https://github.com/team-alembic/my_ash_phoenix_project).
 
 ## Where to Next?
 
-Here are a few things that we recommend looking at next.
+We are really just scratching the surface of what can be done in Ash. Look below for what to look at next.
 
 ### Continue Learning
 
