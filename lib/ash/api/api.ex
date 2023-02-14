@@ -46,7 +46,8 @@ defmodule Ash.Api do
   alias Ash.Error.Invalid.{
     NoPrimaryAction,
     NoSuchAction,
-    NoSuchResource
+    NoSuchResource,
+    PageRequiresPagination
   }
 
   alias Ash.Error.Query.NotFound
@@ -1003,7 +1004,8 @@ defmodule Ash.Api do
     query = Ash.Query.set_api(query, api)
 
     with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @read_opts_schema),
-         {:ok, action} <- get_action(query.resource, opts, :read, query.action) do
+         {:ok, action} <- get_action(query.resource, opts, :read, query.action),
+         {:ok, action} <- pagination_check(action, query.resource, opts) do
       Read.run(query, action, opts)
     else
       {:error, error} ->
@@ -1191,6 +1193,19 @@ defmodule Ash.Api do
               {:ok, action}
           end
         end
+    end
+  end
+
+  defp pagination_check(action, resource, opts) do
+    case Keyword.has_key?(opts, :page) && Map.get(action, :pagination) do
+      true ->
+        {:ok, action}
+
+      false ->
+        {:error,
+         Ash.Error.to_error_class(
+           PageRequiresPagination.exception(resource: resource, action: action)
+         )}
     end
   end
 
