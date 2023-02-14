@@ -1,4 +1,8 @@
 defmodule Ash.Union do
+  @moduledoc """
+  A wrapper for values that are sourced from `Ash.Type.Union`.
+  """
+
   @type t :: %__MODULE__{}
   defstruct [:value, :type]
 
