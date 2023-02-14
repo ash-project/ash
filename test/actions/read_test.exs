@@ -259,7 +259,7 @@ defmodule Ash.Test.Actions.ReadTest do
     test "raises an error when page is sent but pagination is not enabled on a resource" do
       res =
         assert_raise Ash.Error.Invalid, fn ->
-          Api.read!(Post)
+          Api.read!(Post, page: [])
         end
 
       assert %Ash.Error.Invalid.PageRequiresPagination{resource: Post, action: _} = hd(res.errors)
