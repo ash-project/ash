@@ -11,27 +11,27 @@ defmodule Ash.Type.Union do
       For example:
 
           types:  [
-            int: %{
+            int: [
               type: :integer,
               constraints: [
                 max: 10
               ]
-            },
-            object: %{
+            ],
+            object: [
               type: MyObjectType,
               tag: :type,
               tag_value: "my_object"
-            },
-            other_object: %{
+            ],
+            other_object: [
               type: MyOtherObjectType,
               tag: :type,
               tag_value: "my_other_object"
-            },
-            other_object_without_type: %{
+            ],
+            other_object_without_type: [
               type: MyOtherObjectTypeWithoutType,
               tag: :type,
               tag_value: nil
-            }
+            ]
           ]
 
       IMPORTANT:
@@ -44,6 +44,52 @@ defmodule Ash.Type.Union do
       """
     ]
   ]
+
+  @doc false
+  def union_types(value) do
+    {:ok,
+     Enum.reduce(value, [], fn {name, config}, types ->
+       config =
+         Keyword.update!(config, :type, fn type ->
+           Ash.Type.get_type(type)
+         end)
+
+       if config[:type] == Ash.Union do
+         config
+         |> Keyword.update!(:constraints, fn constraints ->
+           Keyword.update!(constraints, :types, fn types ->
+             {:ok, types} = union_types(types)
+             types
+           end)
+         end)
+         |> Keyword.get(:constraints)
+         |> Keyword.get(:types)
+         |> Enum.reduce(types, fn {new_name, new_config}, types ->
+           if types[new_name] do
+             raise "Detected a conflict in nested union type names. They must be unique all the way down."
+           else
+             Keyword.put(types, new_name, new_config)
+           end
+         end)
+       else
+         Keyword.put(types, name, config)
+       end
+     end)
+     |> Keyword.new(fn {key, config} ->
+       type = Ash.Type.get_type(config[:type])
+
+       if !Ash.Type.ash_type?(type) do
+         raise """
+         Unknown type in union type \"#{key}\": #{inspect(config[:type])}
+         """
+       end
+
+       schema = Ash.Type.constraints(type)
+       constraints = Spark.OptionsHelpers.validate!(config[:constraints] || [], schema)
+
+       {key, Keyword.put(config, :constraints, constraints)}
+     end)}
+  end
 
   @moduledoc """
   A union between multiple types, distinguished with a tag or by attempting to validate.
@@ -78,12 +124,12 @@ defmodule Ash.Type.Union do
   end
 
   def cast_input(value, constraints) do
-    types = constraints[:types] || %{}
+    types = constraints[:types] || []
 
     types
     |> Enum.sort_by(fn {_type_name, config} -> config[:tag] end)
     |> Enum.reverse()
-    |> Enum.reduce_while({:error, %{}}, fn {type_name, config}, {:error, errors} ->
+    |> Enum.reduce_while({:error, []}, fn {type_name, config}, {:error, errors} ->
       type = config[:type]
 
       if is_map(value) && config[:tag] do
@@ -96,7 +142,7 @@ defmodule Ash.Type.Union do
                    true <- has_key?(value, attr.name) do
                 update_key(value, attr.name, fn value ->
                   if is_map(value) && !is_struct(value) do
-                    Map.values(value)
+                    Keyword.values(value)
                   else
                     value
                   end
@@ -135,11 +181,11 @@ defmodule Ash.Type.Union do
         else
           {:cont,
            {:error,
-            Map.put(errors, type_name, "#{config[:tag]} does not equal #{config[:tag_value]}")}}
+            Keyword.put(errors, type_name, "#{config[:tag]} does not equal #{config[:tag_value]}")}}
         end
       else
         if config[:tag] do
-          {:cont, {:error, Map.put(errors, type_name, "is not a map")}}
+          {:cont, {:error, Keyword.put(errors, type_name, "is not a map")}}
         else
           case Ash.Type.cast_input(type, value, config[:constraints] || []) do
             {:ok, value} ->
@@ -153,14 +199,14 @@ defmodule Ash.Type.Union do
                     }}}
 
                 {:error, other} ->
-                  {:cont, {:error, Map.put(errors, type_name, other)}}
+                  {:cont, {:error, Keyword.put(errors, type_name, other)}}
               end
 
             {:error, other} ->
-              {:cont, {:error, Map.put(errors, type_name, other)}}
+              {:cont, {:error, Keyword.put(errors, type_name, other)}}
 
             :error ->
-              {:cont, {:error, Map.put(errors, type_name, "is invalid")}}
+              {:cont, {:error, Keyword.put(errors, type_name, "is invalid")}}
           end
         end
       end
@@ -209,9 +255,9 @@ defmodule Ash.Type.Union do
 
   def cast_stored(%{"type" => type, "value" => value}, constraints) do
     type = String.to_existing_atom(type)
-    types = constraints[:types] || %{}
+    types = constraints[:types] || []
 
-    case Map.fetch(types, type) do
+    case Keyword.fetch(types, type) do
       {:ok, config} ->
         case Ash.Type.cast_stored(config[:type], value, config[:constraints]) do
           {:ok, casted_value} ->

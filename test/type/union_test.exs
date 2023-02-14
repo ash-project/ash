@@ -17,6 +17,9 @@ defmodule Ash.Test.Type.UnionTest do
       ]
     ]
 
+    {:ok, %{constraints: constraints}} =
+      Ash.Type.set_type_transformation(%{type: Ash.Type.Union, constraints: constraints})
+
     assert {:ok, %Ash.Union{value: 1, type: :int}} = Ash.Type.cast_input(:union, 1, constraints)
 
     assert {:error, _} = Ash.Type.cast_input(:union, 11, constraints)
@@ -37,6 +40,9 @@ defmodule Ash.Test.Type.UnionTest do
         ]
       ]
     ]
+
+    {:ok, %{constraints: constraints}} =
+      Ash.Type.set_type_transformation(%{type: Ash.Type.Union, constraints: constraints})
 
     assert {:ok, %Ash.Union{value: %{type: :foo, bar: 1}, type: :foo}} =
              Ash.Type.cast_input(:union, %{type: :foo, bar: 1}, constraints)
