@@ -88,10 +88,18 @@ defmodule Ash.Api.Info do
   @spec depend_on_resources(Macro.t()) :: Macro.t()
   defmacro depend_on_resources(api) do
     quote do
+      Code.ensure_compiled!(unquote(api))
+
       if registry = Ash.Api.Info.registry(unquote(api)) do
-        @external_resource List.to_string(registry.module_info(:compile)[:source])
+        Code.ensure_compiled!(registry)
+        # I guess I have to do this because the module name is dynamic?
+        # Still, seems pretty strange. This works, at least.
+        Kernel.LexicalTracker.remote_dispatch(__ENV__.lexical_tracker, unquote(api), :compile)
+
         for entry <- Ash.Registry.Info.entries(registry) do
-          @external_resource List.to_string(entry.module_info(:compile)[:source])
+          Code.ensure_compiled!(entry)
+          # same note as above
+          Kernel.LexicalTracker.remote_dispatch(__ENV__.lexical_tracker, entry, :compile)
           entry
         end
       else
