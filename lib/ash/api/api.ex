@@ -1197,7 +1197,7 @@ defmodule Ash.Api do
   end
 
   defp pagination_check(action, resource, opts) do
-    case Keyword.has_key?(opts, :page) && Map.get(action, :pagination) do
+    case Keyword.get(opts, :page) && Map.get(action, :pagination) do
       true ->
         {:ok, action}
 
