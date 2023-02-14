@@ -345,7 +345,7 @@ first_post
 |> MyAshPhoenixApp.Blog.destroy!()
 ```
 
-As I said, this is verbose so Ash has a built in shortcut - The `code_interface`. You may notice this has already been done in your `Post` resource. Here it is again with more explanation:
+As stated above, this is verbose so Ash has a built in shortcut - The `code_interface`. You may notice this has already been done in your `Post` resource. Here it is again with more explanation:
 
 ```elixir
  code_interface do
@@ -401,6 +401,8 @@ Now isn't that more convenient?
 Now we know how to interact with our resource, let's connect it to a simple Phoenix LiveView. Here is the LiveView below:
 
 ```elixir
+# lib/my_ash_phoenix_app_web/example_live_view.ex
+
 defmodule MyAshPhoenixAppWeb.ExampleLiveView do
   use MyAshPhoenixAppWeb, :live_view
   import Phoenix.HTML.Form
@@ -477,6 +479,18 @@ defmodule MyAshPhoenixAppWeb.ExampleLiveView do
   end
 end
 ```
+
+Don't forget to add the LiveView to your router.
+
+```elixir
+# lib/my_ash_phoenix_web_app/
+  scope "/", MyAshPhoenixAppWeb do
+    # ...
+    live "/posts", ExampleLiveView
+  end
+```
+
+All being well you should be able to load up what we have just created on http://localhost:4000/posts .
 
 You can see how using functions created by our `code_interface` makes it easy to integrate Ash with Phoenix.
 
