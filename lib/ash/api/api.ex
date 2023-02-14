@@ -46,7 +46,8 @@ defmodule Ash.Api do
   alias Ash.Error.Invalid.{
     NoPrimaryAction,
     NoSuchAction,
-    NoSuchResource
+    NoSuchResource,
+    PageRequiresPagination
   }
 
   alias Ash.Error.Query.NotFound
@@ -1202,7 +1203,9 @@ defmodule Ash.Api do
 
       false ->
         {:error,
-         "Pagination is not enabled on resource #{resource}. Check that you've set pagination to `true` in your action and also that you have set a page in your opts like this MyApp.MyAPI.read!(MyResource, page: [limit: 1])"}
+         Ash.Error.to_error_class(
+           PageRequiresPagination.exception(resource: resource, action: action)
+         )}
     end
   end
 

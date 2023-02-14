@@ -255,6 +255,15 @@ defmodule Ash.Test.Actions.ReadTest do
       assert res.message =~ ~r/Ash.Test.AnyApi.read!\/2/
       assert res.message =~ ~r/expected a keyword list, but instead got \[1\]/
     end
+
+    test "raises an error when page is sent but pagination is not enabled on a resource" do
+      res =
+        assert_raise Ash.Error.Invalid, fn ->
+          Api.read!(Post)
+        end
+
+      assert %Ash.Error.Invalid.PageRequiresPagination{resource: Post, action: _} = hd(res.errors)
+    end
   end
 
   describe "Api.read/2" do
