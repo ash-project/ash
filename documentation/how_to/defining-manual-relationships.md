@@ -5,19 +5,9 @@ Individual data layers may interact with manual relationships in their own way, 
 
 By default, the only thing manual relationships support is being loaded.
 
-## Notes
-
-- What constitutes a complex or non-typical relationship?
-  - provide some examples of where the edges might be
-
 ## Example
 
 In our Helpdesk example, we'd like to have a way to find tickets
-
-- explain what we're trying to achieve in the example below
-  - why can't we do this another way?
-  - what are the tradeoffs?
-    - if we use manual relationships we can leverage policy authorizers
 
 In the `Rep?` resource, define a `has_many` relationship as `manual` and point to the module where
 it will be implemented.
