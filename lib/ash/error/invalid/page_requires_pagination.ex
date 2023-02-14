@@ -10,7 +10,7 @@ defmodule Ash.Error.Invalid.PageRequiresPagination do
     def code(_), do: "page_requires_pagination"
 
     def message(%{resource: resource, action: action}) do
-      "Pagination is not enabled on resource #{inspect(resource)} for the action #{inspect(action)}. Check that you've set pagination to `true` in your action and also that you have set a page in your opts like this MyApp.MyAPI.read!(MyResource, page: [limit: 1])"
+      "Pagination is not enabled on the #{inspect action} action on #{inspect resource}."
     end
   end
 end
