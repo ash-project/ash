@@ -1197,7 +1197,7 @@ defmodule Ash.Api do
   end
 
   defp pagination_check(action, resource, opts) do
-    if Keyword.get(opts, :page) && !Map.get(action, :pagination) do
+    if Keyword.get(opts, :page) && Keyword.get(opts, :page) != [] && !Map.get(action, :pagination) do
       {:error,
        Ash.Error.to_error_class(
          PageRequiresPagination.exception(resource: resource, action: action)
