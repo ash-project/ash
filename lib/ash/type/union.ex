@@ -254,7 +254,13 @@ defmodule Ash.Type.Union do
   def cast_stored(nil, _), do: {:ok, nil}
 
   def cast_stored(%{"type" => type, "value" => value}, constraints) do
-    type = String.to_existing_atom(type)
+    type =
+      if is_binary(type) do
+        String.to_existing_atom(type)
+      else
+        type
+      end
+
     types = constraints[:types] || []
 
     case Keyword.fetch(types, type) do
