@@ -124,9 +124,6 @@ defmodule Ash.Type.Union do
 
                 {:error, other} ->
                   {:halt, {:error, "is not a valid #{type_name}: #{inspect(other)}"}}
-
-                :error ->
-                  {:halt, {:error, "is not a valid #{type_name}"}}
               end
 
             {:error, other} ->
@@ -157,9 +154,6 @@ defmodule Ash.Type.Union do
 
                 {:error, other} ->
                   {:cont, {:error, Map.put(errors, type_name, other)}}
-
-                :error ->
-                  {:cont, {:error, Map.put(errors, type_name, "is invalid")}}
               end
 
             {:error, other} ->
