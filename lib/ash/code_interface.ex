@@ -307,7 +307,7 @@ defmodule Ash.CodeInterface do
                   __MODULE__,
                   elem(__ENV__.function, 0),
                   [
-                    unquote_splicing(arg_vars_function),
+                    unquote_splicing(arg_vars),
                     %{},
                     params_or_opts
                   ]
