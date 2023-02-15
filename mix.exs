@@ -214,6 +214,7 @@ defmodule Ash.MixProject do
           Ash.Filter.Runtime,
           Ash.Sort,
           Ash.CiString,
+          Ash.Union,
           Ash.UUID,
           Ash.NotLoaded,
           Ash.Changeset.ManagedRelationshipHelpers,
