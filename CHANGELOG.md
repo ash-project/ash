@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.5](https://github.com/ash-project/ash/compare/v2.6.4...v2.6.5) (2023-02-15)
+
+
+
+
+### Bug Fixes:
+
+* properly handle optional args in code interface
+
 ## [v2.6.4](https://github.com/ash-project/ash/compare/v2.6.3...v2.6.4) (2023-02-15)
 
 
