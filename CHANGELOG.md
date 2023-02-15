@@ -5,6 +5,33 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.4](https://github.com/ash-project/ash/compare/v2.6.3...v2.6.4) (2023-02-15)
+
+
+
+
+### Bug Fixes:
+
+* handle cases where union type is already atom
+
+* various union fixes
+
+* make `depend_on_resources` more reliable
+
+* use `load/3` for builtin concat calc
+
+### Improvements:
+
+* Add error message when page is added but pagination is not enabled (#511)
+
+* add union type and some tests around it
+
+* add union short name
+
+* add union type
+
+* better operator type casting and expression fixes
+
 ## [v2.6.3](https://github.com/ash-project/ash/compare/v2.6.2...v2.6.3) (2023-02-12)
 
 
