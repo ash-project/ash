@@ -5,6 +5,36 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
 
   alias Spark.Dsl.Transformer
 
+  @accept_public_attributes_by_default Application.compile_env(
+                                         :ash,
+                                         :accept_public_attributes_by_default?
+                                       )
+
+  if is_nil(@accept_public_attributes_by_default) do
+    IO.warn("""
+    * IMPORTANT *
+    The configuration `accept_public_attributes_by_default?` was not set.
+    It is defaulting to `true` for backwards compatibility.
+
+    This configuration must now be manually set, and it should be set to `false`.
+    If you have just started a new project, set the following config:
+
+    config :ash, :accept_public_attributes_by_default?, false
+
+    If you are already using Ash, then you have a few options:
+
+    1. set an explicit default_accept list for each resource that does not have one.
+    2. use `default_accept :all`, which is an alias for accepting all public attributes (`writable?: false` flag is still respected)
+    3. set `config :ash, :accept_public_attributes_by_default? true` to keep the current behavior.
+       in 3.0, this warning will go away, and the new default behavior will be used.
+
+    See the github issue for this for more information on why this change is being made, and
+    for some code to run in `iex` to find all resources that need to be updated.
+
+    https://github.com/ash-project/ash/issues/512
+    """)
+  end
+
   def transform(dsl_state) do
     public_attribute_names =
       dsl_state
@@ -12,12 +42,24 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
       |> Enum.reject(& &1.private?)
       |> Enum.map(& &1.name)
 
+    default_default_accept =
+      case @accept_public_attributes_by_default do
+        true ->
+          :all
+
+        false ->
+          []
+
+        nil ->
+          :all
+      end
+
     default_accept =
       Transformer.get_option(
         dsl_state,
         [:actions],
         :default_accept
-      ) || public_attribute_names
+      ) || default_default_accept
 
     dsl_state
     |> Transformer.get_entities([:actions])
