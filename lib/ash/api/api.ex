@@ -938,7 +938,7 @@ defmodule Ash.Api do
     api
     |> load(results, query, opts)
     |> case do
-      {:ok, results} -> %{page | results: results}
+      {:ok, results} -> {:ok, %{page | results: results}}
       {:error, error} -> {:error, error}
     end
   end
