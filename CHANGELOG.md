@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.7](https://github.com/ash-project/ash/compare/v2.6.6...v2.6.7) (2023-02-16)
+
+
+
+
+### Bug Fixes:
+
+* properly return `{:ok, page}` in all cases
+
 ## [v2.6.6](https://github.com/ash-project/ash/compare/v2.6.5...v2.6.6) (2023-02-16)
 
 
