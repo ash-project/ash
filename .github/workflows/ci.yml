@@ -8,4 +8,4 @@ jobs:
   ash-ci:
     uses: ash-project/ash/.github/workflows/ash-ci.yml@main
     with:
-      hex-api-key: ${{secrets.HEX_API_KEY}}
+      hex-api-key: ${{ secrets.HEX_API_KEY }}
