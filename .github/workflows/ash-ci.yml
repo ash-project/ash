@@ -187,4 +187,4 @@ jobs:
       - uses: team-alembic/staple-actions/actions/mix-hex-publish@main
         with:
           mix-env: dev
-          hex-api-key: ${{inputs.hex-api-key}}
+          hex-api-key: ${{secrets.HEX_API_KEY}}
