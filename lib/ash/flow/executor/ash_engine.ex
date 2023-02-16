@@ -162,6 +162,7 @@ defmodule Ash.Flow.Executor.AshEngine do
           actor: opts[:actor],
           verbose?: opts[:verbose?],
           timeout: opts[:timeout],
+          authorize?: Keyword.get(opts, :authorize?, true),
           name: inspect(flow),
           failure_mode: :continue,
           tracer: opts[:tracer]
@@ -429,10 +430,11 @@ defmodule Ash.Flow.Executor.AshEngine do
                             flow: flow
                           }
                         },
+                        authorize?: context[:authorize?],
                         resource: resource,
                         name: "Transaction #{inspect(name)}",
-                        verbose?: opts[:verbose?],
-                        tracer: opts[:tracer],
+                        verbose?: context[:verbose?],
+                        tracer: context[:tracer],
                         actor: context[:actor],
                         failure_mode: :stop,
                         transaction?: true
