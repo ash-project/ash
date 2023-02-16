@@ -159,6 +159,7 @@ defmodule Ash.Flow.Executor.AshEngine do
       {:ok, requests} ->
         requests
         |> Ash.Engine.run(
+          actor: opts[:actor],
           verbose?: opts[:verbose?],
           timeout: opts[:timeout],
           name: inspect(flow),
@@ -432,6 +433,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                         name: "Transaction #{inspect(name)}",
                         verbose?: opts[:verbose?],
                         tracer: opts[:tracer],
+                        actor: context[:actor],
                         failure_mode: :stop,
                         transaction?: true
                       )
