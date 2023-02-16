@@ -1,6 +1,9 @@
 name: Ash CI
 on:
   workflow_call:
+    secrets:
+      HEX_API_KEY:
+        required: false
     inputs:
       spark-formatter:
         type: boolean
