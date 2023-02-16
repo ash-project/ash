@@ -11,6 +11,8 @@ on:
       postgres:
         type: boolean
         default: false
+      hex-api-key:
+        type: string
 jobs:
   deps:
     name: mix deps.get
@@ -177,7 +179,7 @@ jobs:
       - dialyzer
       - build-dev
       - deps
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: ${{startsWith(github.ref, 'refs/tags/v') && inputs.hex-api-key}}
     runs-on: ubuntu-latest
     name: Release
     steps:
@@ -185,4 +187,4 @@ jobs:
       - uses: team-alembic/staple-actions/actions/mix-hex-publish@main
         with:
           mix-env: dev
-          hex-api-key: ${{ secrets.HEX_API_KEY }}
+          hex-api-key: ${{inputs.hex-api-key}}

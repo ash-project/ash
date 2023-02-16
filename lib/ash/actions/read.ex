@@ -406,6 +406,7 @@ defmodule Ash.Actions.Read do
                         Map.get(fetched_data, :count),
                         query.sort,
                         initial_query,
+                        request_opts[:initial_data],
                         Keyword.put(query_opts, :page, query.context[:page_opts])
                       )
                       |> then(fn result -> {:ok, result} end)
@@ -549,7 +550,7 @@ defmodule Ash.Actions.Read do
   end
 
   @doc false
-  def add_page(data, action, count, sort, original_query, opts) do
+  def add_page(data, action, count, sort, original_query, initial_data, opts) do
     page_opts = page_opts(action, opts)
 
     data =
@@ -557,15 +558,16 @@ defmodule Ash.Actions.Read do
            Ash.Resource.Info.actions(original_query.resource),
            &(&1.type == :read && &1.pagination && &1.pagination.keyset?)
          ) do
-        Ash.Page.Keyset.data_with_keyset(data, original_query.resource, sort)
+        if initial_data do
+          data
+        else
+          Ash.Page.Keyset.data_with_keyset(data, original_query.resource, sort)
+        end
       else
         data
       end
 
     cond do
-      opts[:initial_data] ->
-        data
-
       action.pagination == false && page_opts ->
         data
 
