@@ -32,24 +32,34 @@ defmodule Ash.Resource.Actions.Argument do
       constraints: [
         type: :keyword_list,
         default: [],
-        doc: "Type constraints on the argument"
+        doc: """
+        Constraints to provide to the type when casting the value.
+        For more information see the specific type's documentation,
+        for general type information see `Ash.Type` and
+        for practical example [see the constraints topic](/documentation/topics/constraints.md).
+        """
       ],
       allow_nil?: [
         type: :boolean,
         default: true,
-        doc: "Whether or not the argument value may be nil (or may be not provided)"
+        doc: """
+        Whether or not the argument value may be nil (or may be not provided)
+        If nil value is given error is raised.
+        """
       ],
       private?: [
         type: :boolean,
         default: false,
-        doc: "Whether or not the argument should be suppliable by the client."
+        doc: """
+        Whether or not the argument should be suppliable by the client.
+        """
       ],
       sensitive?: [
         type: :boolean,
         default: false,
         doc: """
-        Whether or not the attribute value contains sensitive information, like PII.
-
+        Whether or not the argument value contains sensitive information, like PII.
+        Using this option will cause the argument to be `** Redacted **` from the resource when logging or inspecting.
         See the [security guide](/documentation/topics/security.md) for more.
         """
       ],
