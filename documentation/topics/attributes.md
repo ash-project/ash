@@ -1,35 +1,25 @@
 # Attributes
 
-Attributes specify the name, type and options of a piece of information in a resource.
+Attributes specify the name, type and properties of a piece of information in a resource.
 
 ## Ways of writing attributes
 
 There are two ways to write an attribute:
 
 ```elixir
-defmodule MyProject.MyApi.MyResource do
-  use Ash.Resource, data_layer: ...
+attribute :name, :string, allow_nil?: false
 
-  actions do
-
-  end
-
-  attributes do
-    attribute :name, :string, allow_nil?: false
-
-    # or ...
-    attribute :name, :string do
-      allow_nil? false
-    end
-  end
+# or ...
+attribute :name, :string do
+  allow_nil? false
 end
 ```
 
-Both ways will work. Though when you're using many options the latter is preferred.
+Both ways will work. Though when you're using many options the latter is preferred. This is also true of any other keyword in the Ash DSL, so you can build a flexible yet concise domain model.
 
-For more information on attribute types including composite types and defining your own custom type see t:Ash.Type
+For more information on attribute types including composite types and defining your own custom type see `Ash.Type`
 
-You can find a comprehensive of attribute options with detailed descriptions on the d:attribute page.
+You can find a comprehensive of attribute options with detailed descriptions on the `d:Ash.Resource.Dsl.attributes` page.
 
 ## Special attributes
 

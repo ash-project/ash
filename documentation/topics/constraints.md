@@ -1,6 +1,6 @@
 # Constraints
 
-Constraints are a way of validating an input type. This validation can be used in both attributes and arguments. The kinds of constraints you can apply depends on the type the data. You can find all types in m:Ash.Type . Each type has its own page on which the available constraints are listed. For example in m:Ash.Type.String you can find 5 constraints:
+Constraints are a way of validating an input type. This validation can be used in both attributes and arguments. The kinds of constraints you can apply depends on the type the data. You can find all types in `Ash.Type` . Each type has its own page on which the available constraints are listed. For example in `Ash.Type.String` you can find 5 constraints:
 
 - `:max_length`
 - `:min_length`
