@@ -63,7 +63,7 @@ defmodule Ash.Type do
   @moduledoc """
   Describes how to convert data to `Ecto.Type` and eventually into the database.
 
-  This behaviour is a superset of the `Ecto.Type` behavior, that also contains
+  This behaviour is a superset of the `Ecto.Type` behaviour, that also contains
   API level information, like what kinds of filters are allowed.
 
   ## Built in types
@@ -82,11 +82,11 @@ defmodule Ash.Type do
   Generally you add `use Ash.Type` to your module (it is possible to add `@behaviour
   Ash.Type` and define everything yourself, but this is more work and error-prone).
 
-  Overriding the `{:array, type}` behavior. By defining the `*_array` versions
+  Overriding the `{:array, type}` behaviour. By defining the `*_array` versions
   of `cast_input`, `cast_stored`, `dump_to_native` and `apply_constraints`, you can
   override how your type behaves as a collection. This is how the features of embedded
   resources are implemented. No need to implement them unless you wish to override the
-  default behavior.
+  default behaviour.
 
   Simple example of a float custom type
 
