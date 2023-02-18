@@ -62,6 +62,10 @@ defmodule Ash.Api do
           :next | :prev | :first | :last | integer
 
   @global_opts [
+    internal?: [
+      type: :boolean,
+      hide: true
+    ],
     timeout: [
       type: :timeout,
       doc: """

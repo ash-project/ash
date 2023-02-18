@@ -62,7 +62,6 @@ defmodule Ash.Api.Dsl do
       """
       authorization do
         authorize :by_default
-        require_actor? true
       end
       """
     ],

@@ -64,7 +64,12 @@ defmodule Ash.Actions.Helpers do
           opts
       end
 
-    opts = opts |> add_actor(api) |> add_authorize?(api) |> add_tenant() |> add_tracer()
+    opts =
+      opts
+      |> add_actor(query_or_changeset, api)
+      |> add_authorize?(api)
+      |> add_tenant()
+      |> add_tracer()
 
     query_or_changeset = add_context(query_or_changeset, opts)
 
@@ -90,7 +95,7 @@ defmodule Ash.Actions.Helpers do
     end
   end
 
-  defp add_actor(opts, api) do
+  defp add_actor(opts, query_or_changeset, api) do
     opts =
       if Keyword.has_key?(opts, :actor) do
         opts
@@ -105,7 +110,8 @@ defmodule Ash.Actions.Helpers do
       end
 
     if api do
-      if !Keyword.has_key?(opts, :actor) && Ash.Api.Info.require_actor?(api) do
+      if !internal?(query_or_changeset) && !Keyword.has_key?(opts, :actor) &&
+           Ash.Api.Info.require_actor?(api) do
         raise Ash.Error.Forbidden.ApiRequiresActor, api: api
       end
 
@@ -116,6 +122,9 @@ defmodule Ash.Actions.Helpers do
       opts
     end
   end
+
+  defp internal?(%{context: %{private: %{internal?: true}}}), do: true
+  defp internal?(_), do: false
 
   defp add_authorize?(opts, api) do
     opts =

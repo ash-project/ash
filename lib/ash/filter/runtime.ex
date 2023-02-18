@@ -27,12 +27,21 @@ defmodule Ash.Filter.Runtime do
   def filter_matches(_api, records, nil, _opts), do: {:ok, records}
 
   def filter_matches(api, records, filter, opts) do
+    resource =
+      case records do
+        %resource{} ->
+          resource
+
+        [%resource{} | _] ->
+          resource
+      end
+
     filter
     |> Ash.Filter.relationship_paths(true)
     |> Enum.reject(&(&1 == []))
     |> Enum.uniq()
     |> Enum.reject(&Ash.Resource.loaded?(records, &1))
-    |> Enum.map(&path_to_load/1)
+    |> Enum.map(&path_to_load(resource, &1))
     |> case do
       [] ->
         Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
@@ -58,7 +67,12 @@ defmodule Ash.Filter.Runtime do
         end
 
       need_to_load ->
-        case api.load(records, need_to_load) do
+        query =
+          resource
+          |> Ash.Query.load(need_to_load)
+          |> Ash.Query.set_context(%{private: %{internal?: true}})
+
+        case api.load(records, query) do
           {:ok, loaded} ->
             filter_matches(api, loaded, filter, opts)
 
@@ -68,7 +82,7 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
-  def load_parent_requirements(api, expression, parent) do
+  def load_parent_requirements(api, expression, %resource{} = parent) do
     expression
     |> Ash.Filter.flat_map(fn %Ash.Query.Parent{expr: expr} ->
       expr
@@ -82,11 +96,16 @@ defmodule Ash.Filter.Runtime do
         {:ok, parent}
 
       requirements ->
-        api.load(parent, requirements)
+        query =
+          resource
+          |> Ash.Query.load(requirements)
+          |> Ash.Query.set_context(%{private: %{internal?: true}})
+
+        api.load(parent, query)
     end
   end
 
-  defp matches(record, expression, opts) do
+  defp matches(%resource{} = record, expression, opts) do
     relationship_paths =
       expression
       |> Ash.Filter.relationship_paths(true)
@@ -115,7 +134,7 @@ defmodule Ash.Filter.Runtime do
         end)
 
       need_to_load ->
-        {:load, Enum.map(need_to_load, &path_to_load/1)}
+        {:load, Enum.map(need_to_load, &path_to_load(resource, &1))}
     end
   end
 
@@ -587,10 +606,14 @@ defmodule Ash.Filter.Runtime do
 
   defp or_default(other, _), do: other
 
-  defp path_to_load([first]), do: {first, []}
+  defp path_to_load(resource, [first]) do
+    related = Ash.Resource.Info.related(resource, first)
+    {first, Ash.Query.set_context(related, %{private: %{internal?: true}})}
+  end
 
-  defp path_to_load([first | rest]) do
-    {first, [path_to_load(rest)]}
+  defp path_to_load(resource, [first | rest]) do
+    related = Ash.Resource.Info.related(resource, first)
+    {first, [path_to_load(related, rest)]}
   end
 
   defp expression_matches(:and, left, right, record, parent) do
