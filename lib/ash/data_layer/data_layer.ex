@@ -510,7 +510,7 @@ defmodule Ash.DataLayer do
         destination_resource,
         path
       ) do
-    Ash.DataLayer.data_layer(destination_resource).run_query_with_lateral_join(
+    Ash.DataLayer.data_layer(destination_resource).run_aggregate_query_with_lateral_join(
       query,
       aggregates,
       root_data,
