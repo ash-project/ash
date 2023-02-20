@@ -3,7 +3,7 @@ defmodule Ash.Query.Function.StringJoin do
   Joins a list of values.
 
   Ignores `nil` values and concatenates the remaining non-nil values. An optional
-  joiner can beprovided.
+  joiner can be provided.
 
       string_join(" ", first_name, last_name)
 
