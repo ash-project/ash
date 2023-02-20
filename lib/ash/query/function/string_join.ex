@@ -5,9 +5,9 @@ defmodule Ash.Query.Function.StringJoin do
   Ignores `nil` values and concatenates the remaining non-nil values. An optional
   joiner can be provided.
 
-      string_join(" ", first_name, last_name)
+      string_join(" ", [first_name, last_name])
 
-      string_join(item_a, item_b)
+      string_join([item_a, item_b])
   """
 
   use Ash.Query.Function, name: :string_join

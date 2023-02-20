@@ -46,6 +46,8 @@ The following functions are built in:
 - `this/1` | Allows an expression scoped to a resource to refer to the "outer" context.
 - `type/2` | Cast a given value to a specific type, i.e `type(^arg(:id), :uuid)` or `type(integer_field, :string)`
 - `now/0` | Evaluates to the current time when the expression is evaluated
+- `string_join/1` | Concatenates a list of strings, and ignores any nil values
+- `string_join/2` | As above, but with a joiner
 
 
 ## Primitives
