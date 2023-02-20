@@ -5,7 +5,7 @@ defmodule Ash.Query.Function.StringJoin do
   Ignores `nil` values and concatenates the remaining non-nil values. An optional
   joiner can be provided.
 
-      string_join(" ", [first_name, last_name])
+      string_join([first_name, last_name], " ")
 
       string_join([item_a, item_b])
   """
@@ -14,19 +14,19 @@ defmodule Ash.Query.Function.StringJoin do
 
   def args,
     do: [
-      [:string, {:array, :string}],
-      [{:array, :string}]
+      [{:array, :string}],
+      [{:array, :string}, :string]
     ]
 
-  def evaluate(%{arguments: [joiner, values]}) do
-    join(joiner, values)
+  def evaluate(%{arguments: [values, joiner]}) do
+    join(values, joiner)
   end
 
   def evaluate(%{arguments: [values]}) do
-    join("", values)
+    join(values)
   end
 
-  defp join(joiner, values) do
+  defp join(values, joiner \\ "") do
     joined =
       values
       |> Enum.reject(&is_nil/1)

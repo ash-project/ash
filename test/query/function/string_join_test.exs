@@ -4,9 +4,9 @@ defmodule Ash.Query.Function.StringJoinTest do
   alias Ash.Query.Function.StringJoin
 
   test "join strings with separator" do
-    assert {:known, "one, two"} = StringJoin.evaluate(%{arguments: [", ", ["one", "two"]]})
-    assert {:known, "one"} = StringJoin.evaluate(%{arguments: [", ", ["one", nil]]})
-    assert {:known, ""} = StringJoin.evaluate(%{arguments: [", ", [nil, nil]]})
+    assert {:known, "one, two"} = StringJoin.evaluate(%{arguments: [["one", "two"], ", "]})
+    assert {:known, "one"} = StringJoin.evaluate(%{arguments: [["one", nil], ", "]})
+    assert {:known, ""} = StringJoin.evaluate(%{arguments: [[nil, nil], ", "]})
   end
 
   test "join strings without separator" do
