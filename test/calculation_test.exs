@@ -124,6 +124,10 @@ defmodule Ash.Test.CalculationTest do
 
       calculate :expr_full_name, :string, expr(first_name <> " " <> last_name)
 
+      calculate :string_join_full_name,
+                :string,
+                expr(string_join([first_name, last_name], " "))
+
       calculate :best_friends_name, :string, BestFriendsName
 
       calculate :conditional_full_name,
@@ -405,6 +409,21 @@ defmodule Ash.Test.CalculationTest do
       |> Ash.Query.load(:conditional_full_name_cond)
       |> Api.read!()
       |> Enum.map(& &1.conditional_full_name_cond)
+      |> Enum.sort()
+
+    assert full_names == ["bob", "brian cranston", "zach daniel"]
+  end
+
+  test "expression based calculations can handle lists of fields" do
+    User
+    |> Ash.Changeset.new(%{first_name: "bob"})
+    |> Api.create!()
+
+    full_names =
+      User
+      |> Ash.Query.load(:string_join_full_name)
+      |> Api.read!()
+      |> Enum.map(& &1.string_join_full_name)
       |> Enum.sort()
 
     assert full_names == ["bob", "brian cranston", "zach daniel"]
