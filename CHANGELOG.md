@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.9](https://github.com/ash-project/ash/compare/v2.6.8...v2.6.9) (2023-02-21)
+
+
+
+
+### Bug Fixes:
+
+* make resource diagram task recursive
+
+* use `private.internal?` to bypass require_actor?
+
+* properly call `run_aggregate_query_with_lateral_join`
+
+### Improvements:
+
+* add `force` variations of set arguments
+
 ## [v2.6.8](https://github.com/ash-project/ash/compare/v2.6.7...v2.6.8) (2023-02-16)
 
 
