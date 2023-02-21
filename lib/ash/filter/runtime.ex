@@ -461,6 +461,26 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
+  defp resolve_expr(list, record, parent) when is_list(list) do
+    list
+    |> Enum.reduce_while({:ok, []}, fn item, {:ok, acc} ->
+      case resolve_expr(item, record, parent) do
+        {:ok, result} ->
+          {:cont, {:ok, [result | acc]}}
+
+        :unknown ->
+          {:halt, :unknown}
+
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
+    end)
+    |> case do
+      {:ok, results} -> {:ok, Enum.reverse(results)}
+      other -> other
+    end
+  end
+
   defp resolve_expr(other, _, _), do: {:ok, other}
 
   defp try_cast_arguments(:var_args, args) do

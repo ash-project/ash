@@ -18,7 +18,7 @@ defmodule Ash.Filter do
 
   alias Ash.Error.Invalid.InvalidPrimaryKey
 
-  alias Ash.Query.Function.{Ago, Contains, GetPath, If, IsNil, Length, Now, Type, StringJoin}
+  alias Ash.Query.Function.{Ago, Contains, GetPath, If, IsNil, Length, Now, StringJoin, Type}
 
   alias Ash.Query.Operator.{
     Eq,

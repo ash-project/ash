@@ -12,7 +12,7 @@ defmodule Ash.Query.Type do
       end)
       |> case do
         :error -> :error
-        {:ok, val} -> {:ok, val}
+        {:ok, val} -> {:ok, Enum.reverse(val)}
       end
     else
       :error
