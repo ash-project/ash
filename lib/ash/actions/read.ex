@@ -301,11 +301,11 @@ defmodule Ash.Actions.Read do
                    :ok <- validate_multitenancy(query, initial_data),
                    %{valid?: true} = query <-
                      query_with_initial_data(query, request_opts),
+                   {%{valid?: true} = query, before_notifications} <-
+                     run_before_action(query),
                    {:ok, initial_query, query, page_opts} <-
                      paginate(query, action, page: request_opts[:page]),
                    page_opts <- page_opts && Keyword.delete(page_opts, :filter),
-                   {%{valid?: true} = query, before_notifications} <-
-                     run_before_action(query),
                    {:ok, filter_requests} <-
                      filter_requests(query, path, request_opts, actor, tenant),
                    {:ok, sort} <-
@@ -318,7 +318,6 @@ defmodule Ash.Actions.Read do
                 {:ok,
                  query
                  |> Map.put(:sort, sort)
-                 |> Map.put(:context, query.context)
                  |> Ash.Query.set_context(%{
                    initial_limit: initial_limit,
                    initial_offset: initial_offset,
