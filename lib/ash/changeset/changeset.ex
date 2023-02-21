@@ -2916,7 +2916,19 @@ defmodule Ash.Changeset do
   """
   def set_argument(changeset, argument, value) do
     maybe_already_validated_error!(changeset, :set_argument)
+    do_set_argument(changeset, argument, value)
+  end
 
+  @doc """
+  Add an argument to the changeset, which will be provided to the action
+
+  Does not show a warning when used in before/after action hooks
+  """
+  def force_set_argument(changeset, argument, value) do
+    do_set_argument(changeset, argument, value)
+  end
+
+  defp do_set_argument(changeset, argument, value) do
     if changeset.action do
       argument =
         Enum.find(
@@ -2977,10 +2989,19 @@ defmodule Ash.Changeset do
   Merge a map of arguments to the arguments list
   """
   def set_arguments(changeset, map) do
-    maybe_already_validated_error!(changeset)
-
     Enum.reduce(map, changeset, fn {key, value}, changeset ->
       set_argument(changeset, key, value)
+    end)
+  end
+
+  @doc """
+  Merge a map of arguments to the arguments list
+
+  Does not show a warning when used in before/after action hooks
+  """
+  def force_set_arguments(changeset, map) do
+    Enum.reduce(map, changeset, fn {key, value}, changeset ->
+      force_set_argument(changeset, key, value)
     end)
   end
 
