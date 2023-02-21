@@ -4,6 +4,8 @@ on:
     tags:
       - "v*"
     branches: [main]
+  pull_request:
+    branches: [main]
 jobs:
   ash-ci:
     uses: ash-project/ash/.github/workflows/ash-ci.yml@main
