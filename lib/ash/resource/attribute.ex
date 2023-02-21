@@ -173,6 +173,7 @@ defmodule Ash.Resource.Attribute do
                            |> OptionsHelpers.set_default!(:match_other_defaults?, true)
                            |> OptionsHelpers.set_default!(:type, Ash.Type.UtcDatetimeUsec)
                            |> OptionsHelpers.set_default!(:allow_nil?, false)
+                           |> Ash.OptionsHelpers.hide_all_except([:name])
 
   @update_timestamp_schema @schema
                            |> OptionsHelpers.set_default!(:writable?, false)
@@ -185,6 +186,7 @@ defmodule Ash.Resource.Attribute do
                            )
                            |> OptionsHelpers.set_default!(:type, Ash.Type.UtcDatetimeUsec)
                            |> OptionsHelpers.set_default!(:allow_nil?, false)
+                           |> Ash.OptionsHelpers.hide_all_except([:name])
 
   @uuid_primary_key_schema @schema
                            |> OptionsHelpers.set_default!(:writable?, false)
@@ -192,6 +194,7 @@ defmodule Ash.Resource.Attribute do
                            |> OptionsHelpers.set_default!(:primary_key?, true)
                            |> OptionsHelpers.set_default!(:type, :uuid)
                            |> Keyword.delete(:allow_nil?)
+                           |> Ash.OptionsHelpers.hide_all_except([:name])
 
   @integer_primary_key_schema @schema
                               |> OptionsHelpers.set_default!(:writable?, false)
@@ -199,6 +202,7 @@ defmodule Ash.Resource.Attribute do
                               |> OptionsHelpers.set_default!(:generated?, true)
                               |> OptionsHelpers.set_default!(:type, :integer)
                               |> Keyword.delete(:allow_nil?)
+                              |> Ash.OptionsHelpers.hide_all_except([:name])
 
   def transform(attribute) do
     Ash.Type.set_type_transformation(%{attribute | source: attribute.source || attribute.name})

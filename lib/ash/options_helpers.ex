@@ -11,4 +11,14 @@ defmodule Ash.OptionsHelpers do
   def ash_resource do
     {:spark, Ash.Resource}
   end
+
+  def hide_all_except(options, keys) do
+    Enum.map(options, fn {key, config} ->
+      if key in keys do
+        {key, config}
+      else
+        {key, Keyword.put(config, :hide, true)}
+      end
+    end)
+  end
 end

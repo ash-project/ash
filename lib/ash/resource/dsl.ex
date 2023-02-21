@@ -22,6 +22,18 @@ defmodule Ash.Resource.Dsl do
     name: :create_timestamp,
     describe: """
     Declares a non-writable attribute with a create default of `&DateTime.utc_now/0`
+
+    Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except it sets
+    the following different defaults:
+
+    ```elixir
+      writable? false
+      private? true
+      default &DateTime.utc_now/0
+      match_other_defaults? true
+      type Ash.Type.UTCDatetimeUsec
+      allow_nil? false
+    ```
     """,
     examples: [
       "create_timestamp :inserted_at"
@@ -36,6 +48,19 @@ defmodule Ash.Resource.Dsl do
     name: :update_timestamp,
     describe: """
     Declares a non-writable attribute with a create and update default of `&DateTime.utc_now/0`
+
+    Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except it sets
+    the following different defaults:
+
+    ```elixir
+      writable? false
+      private? true
+      default &DateTime.utc_now/0
+      match_other_defaults? true
+      update_default &DateTime.utc_now/0
+      type Ash.Type.UTCDatetimeUsec
+      allow_nil? false
+    ```
     """,
     examples: [
       "update_timestamp :inserted_at"
@@ -52,6 +77,16 @@ defmodule Ash.Resource.Dsl do
     Declares a generated, non writable, non-nil, primary key column of type integer.
 
     Generated integer primary keys must be supported by the data layer.
+
+    Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except for `allow_nil?`, but it sets
+    the following different defaults:
+
+    ```elixir
+      writable? false
+      primary_key? true
+      generated? true
+      type :integer
+    ```
     """,
     examples: [
       "integer_primary_key :id"
@@ -67,6 +102,17 @@ defmodule Ash.Resource.Dsl do
     name: :uuid_primary_key,
     describe: """
     Declares a non writable, non-nil, primary key column of type uuid, which defaults to `Ash.UUID.generate/0`.
+
+    Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except for `allow_nil?`, but it sets
+    the following different defaults:
+
+    ```elixir
+      writable? false
+      default &Ash.UUID.generate/0
+      primary_key? true
+      generated? true
+      type :uuid
+    ```
     """,
     examples: [
       "uuid_primary_key :id"
