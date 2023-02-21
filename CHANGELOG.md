@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.10](https://github.com/ash-project/ash/compare/v2.6.9...v2.6.10) (2023-02-21)
+
+
+
+
+### Bug Fixes:
+
+* properly handle list args for functions
+
+* set query context from `before_action` hooks into initial query
+
+* set context into `initial_query`
+
+### Improvements:
+
+* Implement string_join expr function (#515)
+
 ## [v2.6.9](https://github.com/ash-project/ash/compare/v2.6.8...v2.6.9) (2023-02-21)
 
 
