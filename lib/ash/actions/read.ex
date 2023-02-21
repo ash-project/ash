@@ -318,6 +318,7 @@ defmodule Ash.Actions.Read do
                 {:ok,
                  query
                  |> Map.put(:sort, sort)
+                 |> Map.put(:context, query.context)
                  |> Ash.Query.set_context(%{
                    initial_limit: initial_limit,
                    initial_offset: initial_offset,
