@@ -750,7 +750,13 @@ defmodule Ash.Actions.Read do
             end)
             |> Enum.concat(calc_selects)
             |> Enum.concat(query_selects)
-            |> remove_already_selected(request_opts[:initial_data])
+            |> then(fn fields ->
+              if request_opts[:lazy?] do
+                remove_already_selected(fields, request_opts[:initial_data])
+              else
+                fields
+              end
+            end)
           else
             []
           end
@@ -1043,44 +1049,44 @@ defmodule Ash.Actions.Read do
   defp loaded_query(query, calculations_at_runtime) do
     query = load_calc_requirements(query, calculations_at_runtime)
 
-    query =
-      Enum.reduce(query.sort || [], query, fn
-        {%Ash.Query.Calculation{name: name, module: module, opts: opts} = calculation, _},
-        query ->
-          {resource_load, resource_select} =
-            if resource_calculation = Ash.Resource.Info.calculation(query.resource, name) do
-              {resource_calculation.load, resource_calculation.select}
-            else
-              {[], []}
-            end
+    # query =
+    #   Enum.reduce(query.sort || [], query, fn
+    #     {%Ash.Query.Calculation{name: name, module: module, opts: opts} = calculation, _},
+    #     query ->
+    #       {resource_load, resource_select} =
+    #         if resource_calculation = Ash.Resource.Info.calculation(query.resource, name) do
+    #           {resource_calculation.load, resource_calculation.select}
+    #         else
+    #           {[], []}
+    #         end
 
-          fields_to_select =
-            resource_select
-            |> Kernel.||([])
-            |> Enum.concat(module.select(query, opts, calculation.context) || [])
+    #       fields_to_select =
+    #         resource_select
+    #         |> Kernel.||([])
+    #         |> Enum.concat(module.select(query, opts, calculation.context) || [])
 
-          calculation = %{calculation | load: name, select: fields_to_select}
+    #       calculation = %{calculation | load: name, select: fields_to_select}
 
-          query =
-            Ash.Query.load(
-              query,
-              module.load(
-                query,
-                opts,
-                Map.put(calculation.context, :context, query.context)
-              )
-              |> Ash.Actions.Helpers.validate_calculation_load!(module)
-            )
+    #       query =
+    #         Ash.Query.load(
+    #           query,
+    #           module.load(
+    #             query,
+    #             opts,
+    #             Map.put(calculation.context, :context, query.context)
+    #           )
+    #           |> Ash.Actions.Helpers.validate_calculation_load!(module)
+    #         )
 
-          Ash.Query.load(query, resource_load)
+    #       Ash.Query.load(query, resource_load)
 
-        {key, _value}, query ->
-          if Ash.Resource.Info.aggregate(query.resource, key) do
-            Ash.Query.load(query, key)
-          else
-            query
-          end
-      end)
+    #     {key, _value}, query ->
+    #       if Ash.Resource.Info.aggregate(query.resource, key) do
+    #         Ash.Query.load(query, key)
+    #       else
+    #         query
+    #       end
+    #   end)
 
     query.load
     |> Enum.reduce(query, fn
@@ -1141,8 +1147,9 @@ defmodule Ash.Actions.Read do
     load_calc_requirements(query, new_loads, new_loads ++ checked)
   end
 
-  defp remove_already_selected(fields, %{results: results}),
-    do: remove_already_selected(fields, results)
+  defp remove_already_selected(fields, %struct{results: results})
+       when struct in [Ash.Page.Keyset, Ash.Page.Offset],
+       do: remove_already_selected(fields, results)
 
   defp remove_already_selected(fields, record) when not is_list(record),
     do: remove_already_selected(fields, List.wrap(record))

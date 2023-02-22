@@ -219,7 +219,7 @@ defmodule Ash.DataLayer.Mnesia do
               {:ok, filtered} ->
                 offset_records =
                   filtered
-                  |> Sort.runtime_sort(sort)
+                  |> Sort.runtime_sort(sort, api: api)
                   |> Enum.drop(offset || 0)
 
                 limited_records =

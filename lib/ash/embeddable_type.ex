@@ -289,7 +289,7 @@ defmodule Ash.EmbeddableType do
       def apply_constraints(nil, _), do: {:ok, nil}
 
       def apply_constraints(term, constraints) do
-        ShadowApi.load(term, constraints[:load] || [])
+        ShadowApi.load(term, constraints[:load] || [], lazy?: true)
       end
 
       def handle_change(nil, new_value, _constraints) do

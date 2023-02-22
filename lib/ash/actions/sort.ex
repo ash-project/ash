@@ -243,20 +243,49 @@ defmodule Ash.Actions.Sort do
     end
   end
 
-  def runtime_sort([], _empty), do: []
-  def runtime_sort(results, empty) when empty in [nil, []], do: results
+  @doc """
+  Sort records at runtime
 
-  def runtime_sort([%resource{} | _] = results, [{field, direction}]) do
-    sort_by(results, &resolve_field(&1, field, resource), direction)
-  end
+  Opts
 
-  def runtime_sort([%resource{} | _] = results, [{field, direction} | rest]) do
+  * `:api` - The api to use if data needs to be loaded
+  * `:lazy?` - Wether to use already loaded values or to re-load them when necessary. Defaults to `false`
+  """
+  def runtime_sort(results, sort, opts \\ [])
+  def runtime_sort([], _empty, _), do: []
+  def runtime_sort(results, empty, _) when empty in [nil, []], do: results
+  def runtime_sort([single_result], _, _), do: [single_result]
+
+  def runtime_sort([%resource{} | _] = results, [{field, direction} | rest], opts) do
     results
+    |> load_field(field, resource, opts)
     |> Enum.group_by(&resolve_field(&1, field, resource))
     |> sort_by(fn {key, _value} -> key end, direction)
     |> Enum.flat_map(fn {_, records} ->
-      runtime_sort(records, rest)
+      runtime_sort(records, rest, Keyword.put(opts, :rekey?, false))
     end)
+    |> tap(fn new_results ->
+      if opts[:rekey?] do
+        Enum.map(new_results, fn new_result ->
+          Enum.find(results, fn result ->
+            resource.primary_key_matches?(new_result, result)
+          end)
+        end)
+      end
+    end)
+  end
+
+  defp load_field(records, field, resource, opts) do
+    if is_nil(opts[:api]) || (opts[:lazy?] && Ash.Resource.loaded?(records, field)) do
+      records
+    else
+      query =
+        resource
+        |> Ash.Query.load(field)
+        |> Ash.Query.set_context(%{private: %{internal?: true}})
+
+      opts[:api].load!(records, query)
+    end
   end
 
   defp resolve_field(record, %Ash.Query.Calculation{} = calc, resource) do

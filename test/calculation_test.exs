@@ -2,6 +2,8 @@ defmodule Ash.Test.CalculationTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  require Ash.Query
+
   defmodule Concat do
     # An example concatenation calculation, that accepts the delimiter as an argument
     use Ash.Calculation
@@ -66,6 +68,32 @@ defmodule Ash.Test.CalculationTest do
     end
   end
 
+  defmodule NamesOfBestFriendsOfMe do
+    use Ash.Calculation
+
+    def load(_query, _opts, args) do
+      if args[:only_special] do
+        query =
+          __MODULE__.User
+          |> Ash.Query.filter(special == true)
+          |> Ash.Query.ensure_selected(:full_name)
+
+        [best_friends_of_me: query]
+      else
+        [best_friends_of_me: :full_name]
+      end
+    end
+
+    def calculate(records, _opts, _) do
+      Enum.map(records, fn record ->
+        record.best_friends_of_me
+        |> Enum.map(& &1.full_name)
+        |> Enum.sort()
+        |> Enum.join(" - ")
+      end)
+    end
+  end
+
   defmodule BestFriendsFirstNamePlusStuff do
     use Ash.Calculation
 
@@ -96,6 +124,7 @@ defmodule Ash.Test.CalculationTest do
       uuid_primary_key :id
       attribute :first_name, :string
       attribute :last_name, :string
+      attribute :special, :boolean
     end
 
     calculations do
@@ -129,6 +158,8 @@ defmodule Ash.Test.CalculationTest do
                 expr(string_join([first_name, last_name], " "))
 
       calculate :best_friends_name, :string, BestFriendsName
+
+      calculate :names_of_best_friends_of_me, :string, NamesOfBestFriendsOfMe
 
       calculate :conditional_full_name,
                 :string,
@@ -172,6 +203,10 @@ defmodule Ash.Test.CalculationTest do
 
     relationships do
       belongs_to :best_friend, __MODULE__
+
+      has_many :best_friends_of_me, __MODULE__ do
+        destination_attribute :best_friend_id
+      end
     end
   end
 
@@ -428,4 +463,35 @@ defmodule Ash.Test.CalculationTest do
 
     assert full_names == ["bob", "brian cranston", "zach daniel"]
   end
+
+  # test "loading calculations with different relationship dependencies won't collide", %{
+  #   user1: %{id: user1_id} = user1
+  # } do
+  #   user3 =
+  #     User
+  #     |> Ash.Changeset.new(%{first_name: "chidi", last_name: "anagonye", special: true})
+  #     |> Ash.Changeset.manage_relationship(:best_friend, user1, type: :append_and_remove)
+  #     |> Api.create!()
+
+  #   assert %{
+  #            calculations: %{
+  #              names_of_best_friends_of_me: "brian cranston - chidi anagonye",
+  #              names_of_special_best_friends_of_me: "chidi anagonye"
+  #            }
+  #          } =
+  #            User
+  #            |> Ash.Query.filter(id == ^user1_id)
+  #            |> Ash.Query.load_calculation_as(
+  #              :names_of_best_friends_of_me,
+  #              :names_of_special_best_friends_of_me,
+  #              %{
+  #                special: true
+  #              }
+  #            )
+  #            |> Ash.Query.load_calculation_as(
+  #              :names_of_best_friends_of_me,
+  #              :names_of_best_friends_of_me
+  #            )
+  #            |> Api.read_one!()
+  # end
 end

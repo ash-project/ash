@@ -36,12 +36,30 @@ defmodule Ash.Filter.Runtime do
           resource
       end
 
+    {refs_to_load, refs} =
+      filter
+      |> Ash.Filter.list_refs()
+      |> Enum.reject(&match?(%{attribute: %Ash.Resource.Attribute{}}, &1))
+      |> Enum.split_with(&(&1.relationship_path == []))
+
+    refs_to_load =
+      refs_to_load
+      |> Enum.map(fn
+        %{attribute: %Ash.Resource.Calculation{load: nil} = calc} ->
+          {calc.name, calc}
+
+        %{attribute: %{name: name}} ->
+          name
+      end)
+
+    records = api.load!(records, refs_to_load)
+
     filter
     |> Ash.Filter.relationship_paths(true)
     |> Enum.reject(&(&1 == []))
     |> Enum.uniq()
     |> Enum.reject(&Ash.Resource.loaded?(records, &1))
-    |> Enum.map(&path_to_load(resource, &1))
+    |> Enum.map(&path_to_load(resource, &1, refs))
     |> case do
       [] ->
         Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
@@ -85,20 +103,24 @@ defmodule Ash.Filter.Runtime do
   def load_parent_requirements(api, expression, %resource{} = parent) do
     expression
     |> Ash.Filter.flat_map(fn %Ash.Query.Parent{expr: expr} ->
-      expr
-      |> Ash.Filter.relationship_paths(true)
-      |> Enum.reject(&(&1 == []))
+      Ash.Filter.list_refs(expr)
     end)
+    |> Enum.reject(&match?(%{attribute: %Ash.Resource.Attribute{}}, &1))
     |> Enum.uniq()
-    |> Enum.reject(&Ash.Resource.loaded?(parent, &1))
     |> case do
       [] ->
         {:ok, parent}
 
-      requirements ->
+      refs ->
+        to_load =
+          refs
+          |> Enum.map(& &1.relationship_path)
+          |> Enum.uniq()
+          |> Enum.map(&path_to_load(resource, &1, refs))
+
         query =
           resource
-          |> Ash.Query.load(requirements)
+          |> Ash.Query.load(to_load)
           |> Ash.Query.set_context(%{private: %{internal?: true}})
 
         api.load(parent, query)
@@ -134,7 +156,7 @@ defmodule Ash.Filter.Runtime do
         end)
 
       need_to_load ->
-        {:load, Enum.map(need_to_load, &path_to_load(resource, &1))}
+        {:load, Enum.map(need_to_load, &path_to_load(resource, &1, []))}
     end
   end
 
@@ -626,14 +648,53 @@ defmodule Ash.Filter.Runtime do
 
   defp or_default(other, _), do: other
 
-  defp path_to_load(resource, [first]) do
-    related = Ash.Resource.Info.related(resource, first)
-    {first, Ash.Query.set_context(related, %{private: %{internal?: true}})}
+  defp path_to_load(resource, [first], refs) do
+    to_load =
+      refs
+      |> Enum.filter(&(&1.relationship_path == []))
+      |> Enum.map(fn
+        %{attribute: %Ash.Resource.Calculation{load: nil} = calc} ->
+          {calc.name, calc}
+
+        %{attribute: %{name: name}} ->
+          name
+      end)
+
+    query =
+      resource
+      |> Ash.Resource.Info.related(first)
+      |> Ash.Query.set_context(%{private: %{internal?: true}})
+      |> Ash.Query.load(to_load)
+
+    {first, query}
   end
 
-  defp path_to_load(resource, [first | rest]) do
+  defp path_to_load(resource, [first | rest], refs) do
     related = Ash.Resource.Info.related(resource, first)
-    {first, [path_to_load(related, rest)]}
+
+    to_load =
+      refs
+      |> Enum.filter(&(&1.relationship_path == []))
+      |> Enum.map(fn
+        %{attribute: %Ash.Resource.Calculation{load: nil} = calc} ->
+          {calc.name, calc}
+
+        %{attribute: %{name: name}} ->
+          name
+      end)
+
+    further_refs =
+      refs
+      |> Enum.filter(fn ref ->
+        ref.relationship_path
+        |> Enum.at(0)
+        |> Kernel.==(first)
+      end)
+      |> Enum.map(fn ref ->
+        %{ref | relationship_path: Enum.drop(ref.relationship_path, 1)}
+      end)
+
+    {first, [path_to_load(related, rest, further_refs)] ++ to_load}
   end
 
   defp expression_matches(:and, left, right, record, parent) do

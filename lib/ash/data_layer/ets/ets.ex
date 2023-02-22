@@ -337,7 +337,7 @@ defmodule Ash.DataLayer.Ets do
            do_add_calculations(records, resource, calculations) do
       offset_records =
         records
-        |> Sort.runtime_sort(sort)
+        |> Sort.runtime_sort(sort, api: api)
         |> Enum.drop(offset || 0)
 
       if limit do

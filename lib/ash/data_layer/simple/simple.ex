@@ -61,7 +61,7 @@ defmodule Ash.DataLayer.Simple do
       {:ok, results} ->
         {:ok,
          results
-         |> Ash.Actions.Sort.runtime_sort(sort)
+         |> Ash.Actions.Sort.runtime_sort(sort, api: api)
          |> then(fn data ->
            if limit do
              Enum.take(data, limit)

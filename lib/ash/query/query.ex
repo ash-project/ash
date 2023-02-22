@@ -834,7 +834,14 @@ defmodule Ash.Query do
   ```
 
   """
-  @spec load(t() | Ash.Resource.t(), atom | list(atom) | Keyword.t()) :: t()
+  @spec load(
+          t() | Ash.Resource.t(),
+          atom
+          | Ash.Query.Calculation.t()
+          | list(atom | Ash.Query.Calculation.t())
+          | list({atom | Ash.Query.Calculation.t(), term})
+        ) ::
+          t()
   def load(query, fields) when not is_list(fields) do
     load(query, List.wrap(fields))
   end
@@ -905,6 +912,33 @@ defmodule Ash.Query do
 
   defp do_load(query, field) do
     cond do
+      match?(%Ash.Query.Calculation{}, field) ->
+        calculation = field
+
+        fields_to_select =
+          calculation.module.select(query, calculation.opts, calculation.context)
+          |> Kernel.||([])
+          |> Enum.uniq()
+          |> Enum.filter(&Ash.Resource.Info.attribute(query.resource, &1))
+
+        loads =
+          calculation.module.load(
+            query,
+            calculation.opts,
+            Map.put(calculation.context, :context, query.context)
+          )
+          |> Ash.Actions.Helpers.validate_calculation_load!(calculation.module)
+          |> Enum.reject(&Ash.Resource.Info.attribute(query.resource, &1))
+
+        calculation = %{
+          calculation
+          | load: field,
+            required_loads: loads,
+            select: fields_to_select
+        }
+
+        Map.update!(query, :calculations, &Map.put(&1, calculation.name, calculation))
+
       Ash.Resource.Info.attribute(query.resource, field) ->
         Ash.Query.ensure_selected(query, field)
 
