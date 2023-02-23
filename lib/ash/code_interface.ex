@@ -215,7 +215,8 @@ defmodule Ash.CodeInterface do
 
           unquote(api).calculate!(unquote(resource), unquote(interface.calculation),
             refs: refs,
-            args: arguments
+            args: arguments,
+            actor: opts[:actor]
           )
         end
 
@@ -243,7 +244,8 @@ defmodule Ash.CodeInterface do
 
           unquote(api).calculate(unquote(resource), unquote(interface.calculation),
             refs: refs,
-            args: arguments
+            args: arguments,
+            actor: opts[:actor]
           )
         end
       end

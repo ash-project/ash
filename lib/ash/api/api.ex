@@ -383,6 +383,12 @@ defmodule Ash.Api do
       Values for references used by the calculation.
       """,
       default: %{}
+    ],
+    actor: [
+      type: :any,
+      doc: """
+      The actor for handling `^actor/1` templates.
+      """
     ]
   ]
 
@@ -423,6 +429,7 @@ defmodule Ash.Api do
             end
           end
         end)
+        |> Map.put(:actor, opts[:actor])
 
       if function_exported?(module, :expression, 2) do
         expr =

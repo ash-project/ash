@@ -4,7 +4,12 @@ defmodule Ash.Resource.Calculation.Expression do
 
   def expression(opts, context) do
     expr =
-      Ash.Filter.build_filter_from_template(opts[:expr], nil, context, context[:context] || %{})
+      Ash.Filter.build_filter_from_template(
+        opts[:expr],
+        context[:actor],
+        context,
+        context[:context] || %{}
+      )
 
     if context[:ash][:type] do
       {:ok, expr} =
@@ -34,7 +39,7 @@ defmodule Ash.Resource.Calculation.Expression do
              public?: false
            }) do
         {:ok, expression} ->
-          case Ash.Expr.eval_hydrated(expression, record: record) do
+          case Ash.Expr.eval_hydrated(expression, record: record, resource: resource) do
             {:ok, value} ->
               {:cont, {:ok, [value | values]}}
 

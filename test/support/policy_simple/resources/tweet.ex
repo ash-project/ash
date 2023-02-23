@@ -34,7 +34,13 @@ defmodule Ash.Test.Support.PolicySimple.Tweet do
     end
 
     policy action(:create_foo) do
-      authorize_if expr(^arg(:foo) == "foo")
+      authorize_if expr(is_foo(foo: arg(:foo)))
+    end
+  end
+
+  calculations do
+    calculate :is_foo, :boolean, expr(^arg(:foo) == "foo") do
+      argument :foo, :string, allow_nil?: false
     end
   end
 

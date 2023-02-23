@@ -303,7 +303,7 @@ defmodule Ash.Actions.Sort do
                public?: false
              }) do
           {:ok, expression} ->
-            case Ash.Expr.eval_hydrated(expression, record: record) do
+            case Ash.Expr.eval_hydrated(expression, record: record, resource: resource) do
               {:ok, value} ->
                 {:ok, value}
 

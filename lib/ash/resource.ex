@@ -51,7 +51,7 @@ defmodule Ash.Resource do
         def storage_type, do: :map
 
         @impl Ash.Type
-        def cast_input(nil, _), do: nil
+        def cast_input(nil, _), do: {:ok, nil}
         def cast_input(%struct{} = value, _) when struct == __MODULE__, do: {:ok, value}
 
         @impl Ash.Type
