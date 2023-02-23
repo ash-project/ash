@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.11](https://github.com/ash-project/ash/compare/v2.6.10...v2.6.11) (2023-02-23)
+
+
+
+
+### Bug Fixes:
+
+* allow argument references in policies
+
+### Improvements:
+
+* don't eager load sort data
+
 ## [v2.6.10](https://github.com/ash-project/ash/compare/v2.6.9...v2.6.10) (2023-02-21)
 
 
