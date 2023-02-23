@@ -19,6 +19,18 @@ defmodule Ash.Test.Policy.SimpleTest do
     assert [] = Api.read!(Tweet, actor: user)
   end
 
+  test "arguments can be referenced in expression policies", %{admin: admin, user: user} do
+    Tweet
+    |> Ash.Changeset.for_create(:create_foo, %{foo: "foo", user_id: admin.id}, actor: user)
+    |> Api.create!()
+
+    assert_raise Ash.Error.Forbidden, fn ->
+      Tweet
+      |> Ash.Changeset.for_create(:create_foo, %{foo: "bar", user_id: admin.id}, actor: user)
+      |> Api.create!()
+    end
+  end
+
   test "filter checks work on create/update/destroy actions", %{user: user} do
     user2 = Api.create!(Ash.Changeset.new(User))
 

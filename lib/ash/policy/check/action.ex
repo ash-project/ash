@@ -4,11 +4,18 @@ defmodule Ash.Policy.Check.Action do
 
   @impl true
   def describe(options) do
-    "action == #{inspect(options[:action])}"
+    operator =
+      if is_list(options[:action]) do
+        "in"
+      else
+        "=="
+      end
+
+    "action #{operator} #{inspect(options[:action])}"
   end
 
   @impl true
   def match?(_actor, %{action: %{name: name}}, options) do
-    name == options[:action]
+    name in List.wrap(options[:action])
   end
 end

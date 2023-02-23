@@ -64,7 +64,7 @@ defmodule Ash.Policy.FilterCheck do
 
         opts
         |> filter()
-        |> Ash.Filter.build_filter_from_template(actor)
+        |> Ash.Filter.build_filter_from_template(actor, Ash.Policy.FilterCheck.args(authorizer))
         |> try_eval(authorizer)
         |> case do
           {:ok, false} ->
@@ -165,12 +165,22 @@ defmodule Ash.Policy.FilterCheck do
 
       def auto_filter(actor, authorizer, opts) do
         opts = Keyword.put_new(opts, :resource, authorizer.resource)
-        Ash.Filter.build_filter_from_template(filter(opts), actor)
+
+        Ash.Filter.build_filter_from_template(
+          filter(opts),
+          actor,
+          Ash.Policy.FilterCheck.args(authorizer)
+        )
       end
 
       def auto_filter_not(actor, authorizer, opts) do
         opts = Keyword.put_new(opts, :resource, authorizer.resource)
-        Ash.Filter.build_filter_from_template(reject(opts), actor)
+
+        Ash.Filter.build_filter_from_template(
+          reject(opts),
+          actor,
+          Ash.Policy.FilterCheck.args(authorizer)
+        )
       end
 
       def reject(opts) do
@@ -211,4 +221,15 @@ defmodule Ash.Policy.FilterCheck do
   def is_filter_check?(module) do
     :erlang.function_exported(module, :filter, 1)
   end
+
+  @doc false
+  def args(%{changeset: %{arguments: arguments}}) do
+    arguments
+  end
+
+  def args(%{query: %{arguments: arguments}}) do
+    arguments
+  end
+
+  def args(_), do: %{}
 end

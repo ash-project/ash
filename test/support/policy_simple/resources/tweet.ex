@@ -10,6 +10,10 @@ defmodule Ash.Test.Support.PolicySimple.Tweet do
 
   actions do
     defaults [:create, :read, :update, :destroy]
+
+    create :create_foo do
+      argument :foo, :string
+    end
   end
 
   attributes do
@@ -21,12 +25,22 @@ defmodule Ash.Test.Support.PolicySimple.Tweet do
       authorize_if always()
     end
 
-    policy always() do
+    policy action_type([:read, :update, :destroy]) do
       authorize_if(expr(user_id == ^actor(:id)))
+    end
+
+    policy action(:create) do
+      authorize_if relating_to_actor(:user)
+    end
+
+    policy action(:create_foo) do
+      authorize_if expr(^arg(:foo) == "foo")
     end
   end
 
   relationships do
-    belongs_to :user, Ash.Test.Support.PolicySimple.User
+    belongs_to :user, Ash.Test.Support.PolicySimple.User do
+      attribute_writable? true
+    end
   end
 end

@@ -48,7 +48,7 @@ defmodule Ash.Policy.FilterCheckWithContext do
 
         actor
         |> filter(authorizer, opts)
-        |> Ash.Filter.build_filter_from_template(actor)
+        |> Ash.Filter.build_filter_from_template(actor, Ash.Policy.FilterCheck.args(authorizer))
         |> try_eval(authorizer)
         |> case do
           {:ok, false} ->
@@ -149,12 +149,22 @@ defmodule Ash.Policy.FilterCheckWithContext do
 
       def auto_filter(actor, authorizer, opts) do
         opts = Keyword.put_new(opts, :resource, authorizer.resource)
-        Ash.Filter.build_filter_from_template(filter(actor, authorizer, opts), actor)
+
+        Ash.Filter.build_filter_from_template(
+          filter(actor, authorizer, opts),
+          actor,
+          Ash.Policy.FilterCheck.args(authorizer)
+        )
       end
 
       def auto_filter_not(actor, authorizer, opts) do
         opts = Keyword.put_new(opts, :resource, authorizer.resource)
-        Ash.Filter.build_filter_from_template(reject(actor, authorizer, opts), actor)
+
+        Ash.Filter.build_filter_from_template(
+          reject(actor, authorizer, opts),
+          actor,
+          Ash.Policy.FilterCheck.args(authorizer)
+        )
       end
 
       def reject(actor, authorizer, opts) do
