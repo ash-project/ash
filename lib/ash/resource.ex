@@ -55,12 +55,16 @@ defmodule Ash.Resource do
         def cast_input(%struct{} = value, _) when struct == __MODULE__, do: {:ok, value}
 
         @impl Ash.Type
+        def cast_stored(nil, _), do: {:ok, nil}
+
         def cast_stored(_, _),
           do:
             {:error,
              "Cannot cast a non embedded resource from storage. A non-embedded resource may only be used as an argument type."}
 
         @impl Ash.Type
+        def dump_to_native(nil, _), do: {:ok, nil}
+
         def dump_to_native(_, _),
           do:
             {:error,
