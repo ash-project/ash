@@ -25,6 +25,21 @@ defmodule Ash.Test.CalculationTest do
     end
   end
 
+  defmodule NameWithUsersName do
+    # Don't do this kind of thing in real life
+    use Ash.Calculation
+
+    def load(_, _, _) do
+      [:full_name]
+    end
+
+    def calculate(records, _opts, %{actor: actor}) do
+      Enum.map(records, fn record ->
+        record.full_name <> " " <> actor.first_name <> " " <> actor.last_name
+      end)
+    end
+  end
+
   defmodule ConcatWithLoad do
     # An example concatenation calculation, that accepts the delimiter as an argument
     use Ash.Calculation
@@ -160,6 +175,7 @@ defmodule Ash.Test.CalculationTest do
       calculate :best_friends_name, :string, BestFriendsName
 
       calculate :names_of_best_friends_of_me, :string, NamesOfBestFriendsOfMe
+      calculate :name_with_users_name, :string, NameWithUsersName
 
       calculate :conditional_full_name,
                 :string,
@@ -256,6 +272,14 @@ defmodule Ash.Test.CalculationTest do
 
   test "loads dependencies", %{user1: user} do
     assert %{slug: "zach daniel123"} = Api.load!(user, [:slug])
+  end
+
+  test "calculations can access the actor", %{user1: user1, user2: user2} do
+    assert %{
+             name_with_users_name: "zach daniel brian cranston"
+           } =
+             user1
+             |> Api.load!(:name_with_users_name, actor: user2)
   end
 
   test "it loads anything specified by the load callback" do

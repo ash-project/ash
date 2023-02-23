@@ -281,6 +281,8 @@ defmodule Ash.Actions.Read do
                     )
                 end
 
+              query = add_calculation_context(query, actor, authorize?, tenant, tracer)
+
               query = %{
                 query
                 | api: api,
@@ -422,6 +424,77 @@ defmodule Ash.Actions.Read do
       )
 
     [fetch, process]
+  end
+
+  defp add_calculation_context(query, actor, authorize?, tenant, tracer) do
+    query =
+      if query.calculations do
+        %{
+          query
+          | calculations:
+              Map.new(query.calculations, fn {name, calc} ->
+                {name,
+                 %{
+                   calc
+                   | context:
+                       Map.merge(
+                         %{actor: actor, authorize?: authorize?, tenant: tenant, tracer: tracer},
+                         calc.context
+                       )
+                 }}
+              end)
+        }
+      end
+
+    if query.filter do
+      %{
+        query
+        | filter: add_calc_context_to_filter(query.filter, actor, authorize?, tenant, tracer)
+      }
+    else
+      query
+    end
+  end
+
+  defp add_calc_context_to_filter(filter, actor, authorize?, tenant, tracer) do
+    Ash.Filter.map(filter, fn
+      %Ash.Query.Parent{} = parent ->
+        %{
+          parent
+          | expr: add_calc_context_to_filter(parent.expr, actor, authorize?, tenant, tracer)
+        }
+
+      %Ash.Query.Exists{} = exists ->
+        %{
+          exists
+          | expr: add_calc_context_to_filter(exists.expr, actor, authorize?, tenant, tracer)
+        }
+
+      %Ash.Query.Ref{attribute: %Ash.Resource.Calculation{}} = ref ->
+        raise Ash.Error.Framework.AssumptionFailed,
+          message: "Unhandled calculation in filter statement #{inspect(ref)}"
+
+      %Ash.Query.Ref{attribute: %Ash.Query.Calculation{} = calc} = ref ->
+        %{
+          ref
+          | attribute: %{
+              calc
+              | context:
+                  Map.merge(
+                    %{
+                      actor: actor,
+                      authorize?: authorize?,
+                      tenant: tenant,
+                      tracer: tracer
+                    },
+                    calc.context
+                  )
+            }
+        }
+
+      other ->
+        other
+    end)
   end
 
   defp unwrap_for_get({:ok, [value | _]}, true, _, _resource), do: {:ok, value}
