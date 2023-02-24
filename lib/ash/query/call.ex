@@ -73,7 +73,9 @@ defmodule Ash.Query.Call do
         concat([
           prefix,
           to_string(call.name),
-          container_doc("(", call.args, ")", inspect_opts, &to_doc/2, separator: ", ")
+          container_doc("(", Map.delete(call.args, :ash), ")", inspect_opts, &to_doc/2,
+            separator: ", "
+          )
         ])
       end
     end

@@ -75,6 +75,8 @@ end
 code_interface do
   define_for YourApi
   define_calculation :full_name, args: [:first_name, :last_name, {:optional, :separator}]
+  # or if you want to take a record sa an argument
+  define_calculation :full_name, args: [:_record]
 end
 ```
 
@@ -82,6 +84,8 @@ This could now be used like so:
 
 ```elixir
 User.full_name("Jessie", "James", "-")
+# or with a record as an argument
+User.full_name(user)
 ```
 
 This allows for running calculations without an instance of a resource, i.e `Api.load(user, :full_name)`

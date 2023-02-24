@@ -84,6 +84,9 @@ defmodule Ash.CodeInterface do
 
   defp unwrap_calc_interface_arg_access(value) do
     case value do
+      :_record ->
+        [type: :record, name: :record, value: {:record, [], Elixir}]
+
       {tag, name} ->
         [type: tag, name: name, value: {name, [], Elixir}]
 
@@ -105,6 +108,10 @@ defmodule Ash.CodeInterface do
   defp unwrap_calc_interface_arg_binding(_resource, _arguments, {tag, value})
        when tag in [:arg, :ref] do
     {value, [], Elixir}
+  end
+
+  defp unwrap_calc_interface_arg_binding(_resource, _arguments, :_record) do
+    {:record, [], Elixir}
   end
 
   defp unwrap_calc_interface_arg_binding(_resource, _arguments, value) do
@@ -197,26 +204,33 @@ defmodule Ash.CodeInterface do
         @doc "Calculate `#{calculation.name}`, raising any errors. See `#{interface.name}/#{Enum.count(interface.args) + 1}` for more."
         # sobelow_skip ["DOS.BinToAtom"]
         def unquote(:"#{interface.name}!")(unquote_splicing(arg_bindings), opts \\ []) do
-          {refs, arguments} =
-            Enum.reduce([unquote_splicing(arg_access)], {%{}, %{}}, fn config,
-                                                                       {refs, arguments} ->
-              case config[:type] do
-                :both ->
-                  {Map.put(refs, config[:name], config[:value]),
-                   Map.put(arguments, config[:name], config[:value])}
+          {refs, arguments, record} =
+            Enum.reduce(
+              [unquote_splicing(arg_access)],
+              {%{}, %{}, nil},
+              fn config, {refs, arguments, record} ->
+                case config[:type] do
+                  :record ->
+                    {refs, arguments, config[:value]}
 
-                :ref ->
-                  {Map.put(refs, config[:name], config[:value]), arguments}
+                  :both ->
+                    {Map.put(refs, config[:name], config[:value]),
+                     Map.put(arguments, config[:name], config[:value]), record}
 
-                :arg ->
-                  {refs, Map.put(arguments, config[:name], config[:value])}
+                  :ref ->
+                    {Map.put(refs, config[:name], config[:value]), arguments, record}
+
+                  :arg ->
+                    {refs, Map.put(arguments, config[:name], config[:value]), record}
+                end
               end
-            end)
+            )
 
           unquote(api).calculate!(unquote(resource), unquote(interface.calculation),
             refs: refs,
             args: arguments,
-            actor: opts[:actor]
+            actor: opts[:actor],
+            record: record
           )
         end
 
@@ -226,26 +240,31 @@ defmodule Ash.CodeInterface do
         """
         # sobelow_skip ["DOS.BinToAtom"]
         def unquote(interface.name)(unquote_splicing(arg_bindings), opts \\ []) do
-          {refs, arguments} =
-            Enum.reduce([unquote_splicing(arg_access)], {%{}, %{}}, fn config,
-                                                                       {refs, arguments} ->
+          {refs, arguments, record} =
+            Enum.reduce([unquote_splicing(arg_access)], {%{}, %{}, nil}, fn config,
+                                                                            {refs, arguments,
+                                                                             record} ->
               case config[:type] do
+                :_record ->
+                  {refs, arguments, config[:value]}
+
                 :both ->
                   {Map.put(refs, config[:name], config[:value]),
-                   Map.put(arguments, config[:name], config[:value])}
+                   Map.put(arguments, config[:name], config[:value]), record}
 
                 :ref ->
-                  {Map.put(refs, config[:name], config[:value]), arguments}
+                  {Map.put(refs, config[:name], config[:value]), arguments, record}
 
                 :arg ->
-                  {refs, Map.put(arguments, config[:name], config[:value])}
+                  {refs, Map.put(arguments, config[:name], config[:value]), record}
               end
             end)
 
           unquote(api).calculate(unquote(resource), unquote(interface.calculation),
             refs: refs,
             args: arguments,
-            actor: opts[:actor]
+            actor: opts[:actor],
+            record: record
           )
         end
       end

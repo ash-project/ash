@@ -761,6 +761,8 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Defines a function with the corresponding name and arguments, that evaluates a calculation.
 
+    Use `:_record` to take an instance of a record.
+
     See the [code interface guide](/documentation/topics/code-interface.md) for more.
     """,
     examples: [

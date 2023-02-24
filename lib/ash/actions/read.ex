@@ -1122,45 +1122,6 @@ defmodule Ash.Actions.Read do
   defp loaded_query(query, calculations_at_runtime) do
     query = load_calc_requirements(query, calculations_at_runtime)
 
-    # query =
-    #   Enum.reduce(query.sort || [], query, fn
-    #     {%Ash.Query.Calculation{name: name, module: module, opts: opts} = calculation, _},
-    #     query ->
-    #       {resource_load, resource_select} =
-    #         if resource_calculation = Ash.Resource.Info.calculation(query.resource, name) do
-    #           {resource_calculation.load, resource_calculation.select}
-    #         else
-    #           {[], []}
-    #         end
-
-    #       fields_to_select =
-    #         resource_select
-    #         |> Kernel.||([])
-    #         |> Enum.concat(module.select(query, opts, calculation.context) || [])
-
-    #       calculation = %{calculation | load: name, select: fields_to_select}
-
-    #       query =
-    #         Ash.Query.load(
-    #           query,
-    #           module.load(
-    #             query,
-    #             opts,
-    #             Map.put(calculation.context, :context, query.context)
-    #           )
-    #           |> Ash.Actions.Helpers.validate_calculation_load!(module)
-    #         )
-
-    #       Ash.Query.load(query, resource_load)
-
-    #     {key, _value}, query ->
-    #       if Ash.Resource.Info.aggregate(query.resource, key) do
-    #         Ash.Query.load(query, key)
-    #       else
-    #         query
-    #       end
-    #   end)
-
     query.load
     |> Enum.reduce(query, fn
       {key, _}, query when is_atom(key) ->

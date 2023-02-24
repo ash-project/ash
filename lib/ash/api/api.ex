@@ -387,7 +387,32 @@ defmodule Ash.Api do
     actor: [
       type: :any,
       doc: """
-      The actor for handling `^actor/1` templates.
+      The actor for handling `^actor/1` templates, supplied to calculation context.
+      """
+    ],
+    tenant: [
+      type: :any,
+      doc: """
+      The tenant, supplied to calculation context.
+      """
+    ],
+    authorize?: [
+      type: :boolean,
+      default: true,
+      doc: """
+      Wether or not the request is being authorized, provided to calculation context.
+      """
+    ],
+    tracer: [
+      type: :any,
+      doc: """
+      A tracer, provided to the calculation context.
+      """
+    ],
+    record: [
+      type: :any,
+      doc: """
+      A record to use as the base of the calculation
       """
     ]
   ]
@@ -398,9 +423,17 @@ defmodule Ash.Api do
   @doc """
   Evaluates the calculation on the resource.
 
+  If a record is provided, its field values will be used to evaluate the calculation.
+
   #{Spark.OptionsHelpers.docs(@calculate_opts)}
   """
-  def calculate(resource, calculation, opts \\ []) do
+  def calculate(resource_or_record, calculation, opts \\ []) do
+    {resource, record} =
+      case resource_or_record do
+        %resource{} = record -> {resource, record}
+        resource -> {resource, opts[:record]}
+      end
+
     with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, Ash.Api.calculate_opts()),
          {:calc,
           %{
@@ -410,10 +443,16 @@ defmodule Ash.Api do
             constraints: constraints
           }} <-
            {:calc, Ash.Resource.Info.calculation(resource, calculation)},
-         record <- struct(resource, opts[:refs] || %{}) do
+         record <- struct(record || resource, opts[:refs] || %{}) do
       calc_context =
         opts[:context]
         |> Kernel.||(%{})
+        |> Map.merge(%{
+          actor: opts[:actor],
+          tenant: opts[:tenant],
+          authorize?: opts[:authorize?],
+          tracer: opts[:tracer]
+        })
         |> Map.merge(opts[:args] || %{})
         |> Map.put(:ash, %{type: type, constraints: constraints})
 
@@ -431,6 +470,8 @@ defmodule Ash.Api do
         end)
         |> Map.put(:actor, opts[:actor])
 
+      Code.ensure_compiled!(module)
+
       if function_exported?(module, :expression, 2) do
         expr =
           case module.expression(calc_opts, calc_context) do
@@ -440,7 +481,7 @@ defmodule Ash.Api do
           end
 
         with {:ok, expr} <- expr do
-          case Ash.Expr.eval(expr) do
+          case Ash.Expr.eval(expr, record: record) do
             {:ok, result} ->
               {:ok, result}
 

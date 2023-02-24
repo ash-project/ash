@@ -23,6 +23,8 @@ defmodule Ash.Test.CodeInterfaceTest do
         calculation: :full_name,
         args: [:first_name, :last_name, {:optional, :separator}]
       )
+
+      define_calculation(:full_name_record, calculation: :full_name, args: [:_record])
     end
 
     actions do
@@ -87,6 +89,15 @@ defmodule Ash.Test.CodeInterfaceTest do
     test "the same calculation can be fetched with the calculation interface with optional" do
       assert "Zach Daniel" = User.full_name_opt!("Zach", "Daniel")
       assert "Zach-Daniel" = User.full_name_opt!("Zach", "Daniel", "-")
+    end
+
+    test "the calculation can accept a record" do
+      user =
+        User
+        |> Ash.Changeset.for_create(:create, %{first_name: "Zach", last_name: "Daniel"})
+        |> Api.create!()
+
+      assert "Zach Daniel" = User.full_name_record!(user)
     end
   end
 
