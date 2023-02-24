@@ -76,7 +76,7 @@ defmodule Ash.Notifier.PubSub do
         default: :notification,
         doc: """
         What shape the event payloads will be in. `:notification` just sends the notification, `phoenix_broadcast` sends a `%Phoenix.Socket.Broadcast{}`, and `:broadcast`
-        sends `%{topic: <topic>, event: <event>, notification: <notification>}`
+        sends `%{topic: (topic), event: (event), notification: (notification)}`
         """
       ],
       name: [
