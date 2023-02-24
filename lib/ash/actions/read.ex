@@ -824,10 +824,10 @@ defmodule Ash.Actions.Read do
             |> Enum.concat(calc_selects)
             |> Enum.concat(query_selects)
             |> then(fn fields ->
-              if request_opts[:lazy?] do
-                remove_already_selected(fields, request_opts[:initial_data])
-              else
+              if request_opts[:reselect_all?] do
                 fields
+              else
+                remove_already_selected(fields, request_opts[:initial_data])
               end
             end)
           else

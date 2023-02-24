@@ -130,6 +130,14 @@ defmodule Ash.Api do
                           the data layer.
                           """,
                           default: false
+                        ],
+                        reselect_all?: [
+                          type: :boolean,
+                          default: false,
+                          doc: """
+                          Wether or not to reselect all attributes depended on by loads.
+                          By default, we only reselect fields that weren't already selected.
+                          """
                         ]
                       ],
                       @global_opts,
@@ -217,6 +225,14 @@ defmodule Ash.Api do
                           doc:
                             "If set to true, values will only be loaded if the related value isn't currently loaded.",
                           default: false
+                        ],
+                        reselect_all?: [
+                          type: :boolean,
+                          default: false,
+                          doc: """
+                          Wether or not to reselect all attributes depended on by loads.
+                          By default, we only reselect fields that weren't already selected.
+                          """
                         ]
                       ],
                       @global_opts,
@@ -245,6 +261,14 @@ defmodule Ash.Api do
                      context: [
                        type: :any,
                        doc: "Context to be set on the query being run"
+                     ],
+                     reselect_all?: [
+                       type: :boolean,
+                       default: false,
+                       doc: """
+                       Wether or not to reselect all attributes depended on by loads.
+                       By default, we only reselect fields that weren't already selected.
+                       """
                      ]
                    ]
                    |> merge_schemas(@global_opts, "Global Options")
