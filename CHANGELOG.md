@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.12](https://github.com/ash-project/ash/compare/v2.6.11...v2.6.12) (2023-02-24)
+
+
+
+
+### Bug Fixes:
+
+* support `nil` values in `dump_to_native`
+
+* properly support calc expansion in policies
+
+* support `nil` cast for resource type
+
+### Improvements:
+
+* support record's as calculate arguments
+
+* include actor in all calculation context
+
 ## [v2.6.11](https://github.com/ash-project/ash/compare/v2.6.10...v2.6.11) (2023-02-23)
 
 
