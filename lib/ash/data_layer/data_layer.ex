@@ -309,7 +309,7 @@ defmodule Ash.DataLayer do
   def source(resource) do
     data_layer = Ash.DataLayer.data_layer(resource)
 
-    Code.ensure_compiled!(resource)
+    Code.ensure_compiled!(data_layer)
 
     if :erlang.function_exported(data_layer, :source, 1) do
       data_layer.source(resource)
