@@ -285,8 +285,6 @@ defmodule Ash.DataLayer do
 
   @spec resource_to_query(Ash.Resource.t(), Ash.Api.t()) :: data_layer_query()
   def resource_to_query(resource, api) do
-    data_layer = Ash.DataLayer.data_layer(resource)
-
     Ash.DataLayer.data_layer(resource).resource_to_query(resource, api)
   end
 
@@ -310,6 +308,8 @@ defmodule Ash.DataLayer do
   @spec source(Ash.Resource.t()) :: String.t()
   def source(resource) do
     data_layer = Ash.DataLayer.data_layer(resource)
+
+    Code.ensure_compiled!(resource)
 
     if :erlang.function_exported(data_layer, :source, 1) do
       data_layer.source(resource)

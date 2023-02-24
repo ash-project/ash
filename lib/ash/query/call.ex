@@ -70,12 +70,19 @@ defmodule Ash.Query.Call do
             Enum.map_join(call.relationship_path, ".", &to_string/1) <> "."
           end
 
+        args =
+          case call.args do
+            %{ash: _} ->
+              Map.delete(call.args, :ash)
+
+            _ ->
+              call.args
+          end
+
         concat([
           prefix,
           to_string(call.name),
-          container_doc("(", Map.delete(call.args, :ash), ")", inspect_opts, &to_doc/2,
-            separator: ", "
-          )
+          container_doc("(", args, ")", inspect_opts, &to_doc/2, separator: ", ")
         ])
       end
     end
