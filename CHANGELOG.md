@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.13](https://github.com/ash-project/ash/compare/v2.6.12...v2.6.13) (2023-02-24)
+
+
+
+
+### Bug Fixes:
+
+* only use `resource_to_query/2`
+
 ## [v2.6.12](https://github.com/ash-project/ash/compare/v2.6.11...v2.6.12) (2023-02-24)
 
 
