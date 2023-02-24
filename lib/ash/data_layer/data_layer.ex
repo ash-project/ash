@@ -99,7 +99,6 @@ defmodule Ash.DataLayer do
             ) :: {:ok, data_layer_query()} | {:error, term}
   @callback set_tenant(Ash.Resource.t(), data_layer_query(), term) ::
               {:ok, data_layer_query()} | {:error, term}
-  @callback resource_to_query(Ash.Resource.t()) :: data_layer_query()
   @callback resource_to_query(Ash.Resource.t(), Ash.Api.t()) :: data_layer_query()
   @callback transform_query(Ash.Query.t()) :: Ash.Query.t()
   @callback run_query(data_layer_query(), Ash.Resource.t()) ::
@@ -199,9 +198,7 @@ defmodule Ash.DataLayer do
                       run_aggregate_query: 3,
                       run_aggregate_query_with_lateral_join: 5,
                       transform_query: 1,
-                      set_tenant: 3,
-                      resource_to_query: 1,
-                      resource_to_query: 2
+                      set_tenant: 3
 
   @doc "The data layer of the resource, or nil if it does not have one"
   @spec data_layer(Ash.Resource.t()) :: Ash.DataLayer.t()
@@ -290,11 +287,7 @@ defmodule Ash.DataLayer do
   def resource_to_query(resource, api) do
     data_layer = Ash.DataLayer.data_layer(resource)
 
-    if :erlang.function_exported(data_layer, :resource_to_query, 2) do
-      Ash.DataLayer.data_layer(resource).resource_to_query(resource, api)
-    else
-      Ash.DataLayer.data_layer(resource).resource_to_query(resource)
-    end
+    Ash.DataLayer.data_layer(resource).resource_to_query(resource, api)
   end
 
   @spec update(Ash.Resource.t(), Ash.Changeset.t()) ::
