@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.14](https://github.com/ash-project/ash/compare/v2.6.13...v2.6.14) (2023-02-24)
+
+
+
+
+### Bug Fixes:
+
+* don't reselect fields automatically
+
+* ensure data layer is compiled
+
+### Improvements:
+
+* introduce `reselect_all?` option for loading
+
 ## [v2.6.13](https://github.com/ash-project/ash/compare/v2.6.12...v2.6.13) (2023-02-24)
 
 
