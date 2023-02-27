@@ -55,9 +55,11 @@ defmodule Ash.Page.Keyset do
   defp do_filters([], _, _), do: []
 
   defp do_filters([{field, direction, value} | rest], resource, after_or_before) do
-    operator = operator(after_or_before, direction)
+    {operator, nils_first?} = operator(after_or_before, direction)
 
-    # keyset pagination is done like so
+    allow_nil? = allow_nil?(resource, field)
+
+    # keyset pagination is generally done like so
     # (x > a) OR
     # (x = a AND y > b) OR
     # (x = a AND y = b AND z > c) OR
@@ -71,24 +73,74 @@ defmodule Ash.Page.Keyset do
           field
       end
 
-    [[{field, [{operator, value}]}]] ++
+    operator_check =
+      if is_nil(value) do
+        if nils_first? do
+          {field, [is_nil: false]}
+        else
+          {field, [is_nil: true]}
+        end
+      else
+        if nils_first? do
+          {field, [{operator, value}]}
+        else
+          if allow_nil? do
+            [or: [{field, [{operator, value}]}, {field, [is_nil: true]}]]
+          else
+            {field, [{operator, value}]}
+          end
+        end
+      end
+
+    check = [[operator_check]]
+
+    stacked_check =
+      if is_nil(value) do
+        [[{field, [{:is_nil, true}]}]]
+      else
+        if nils_first? do
+          [[{field, [{:eq, value}]}]]
+        else
+          if allow_nil? do
+            [[[or: [{field, [{:eq, value}]}, {field, [is_nil: true]}]]]]
+          else
+            [[{field, [{:eq, value}]}]]
+          end
+        end
+      end
+
+    if is_nil(value) and not nils_first? do
       Enum.map(do_filters(rest, resource, after_or_before), fn nested ->
-        [[{field, [eq: value]}]] ++ nested
+        stacked_check ++ nested
       end)
+    else
+      check ++
+        Enum.map(do_filters(rest, resource, after_or_before), fn nested ->
+          stacked_check ++ nested
+        end)
+    end
   end
 
-  defp operator(:after, :asc), do: :gt
-  defp operator(:after, :asc_nils_first), do: :gt
-  defp operator(:after, :asc_nils_last), do: :gt
-  defp operator(:after, :desc), do: :lt
-  defp operator(:after, :desc_nulls_first), do: :lt
-  defp operator(:after, :desc_nulls_last), do: :lt
-  defp operator(:before, :asc), do: :lt
-  defp operator(:before, :asc_nils_first), do: :lt
-  defp operator(:before, :asc_nils_last), do: :lt
-  defp operator(:before, :desc), do: :gt
-  defp operator(:before, :desc_nulls_first), do: :gt
-  defp operator(:before, :desc_nulls_last), do: :gt
+  defp allow_nil?(resource, field) do
+    case Ash.Resource.Info.field(resource, field) do
+      %Ash.Resource.Attribute{allow_nil?: allow_nil?} -> allow_nil?
+      %Ash.Resource.Calculation{allow_nil?: allow_nil?} -> allow_nil?
+      _ -> true
+    end
+  end
+
+  defp operator(:after, :asc), do: {:gt, false}
+  defp operator(:after, :asc_nils_first), do: {:gt, true}
+  defp operator(:after, :asc_nils_last), do: {:gt, false}
+  defp operator(:after, :desc), do: {:lt, true}
+  defp operator(:after, :desc_nulls_first), do: {:lt}
+  defp operator(:after, :desc_nulls_last), do: {:lt, false}
+  defp operator(:before, :asc), do: {:lt, true}
+  defp operator(:before, :asc_nils_first), do: {:lt, false}
+  defp operator(:before, :asc_nils_last), do: {:lt, true}
+  defp operator(:before, :desc), do: {:gt, false}
+  defp operator(:before, :desc_nulls_first), do: {:gt, false}
+  defp operator(:before, :desc_nulls_last), do: {:gt, true}
 
   defp zip_fields(pkey, values, acc \\ [])
   defp zip_fields([], [], acc), do: {:ok, Enum.reverse(acc)}

@@ -145,9 +145,13 @@ defmodule Ash.Actions.Sort do
       |> Ash.Resource.Info.identities()
       |> Enum.map(& &1.keys)
 
+    count_of_sort = Enum.count(query.sort)
+
     Enum.any?([Ash.Resource.Info.primary_key(query.resource) | identity_keys], fn keyset ->
+      last_n_fields = query.sort |> Enum.reverse() |> Enum.take(count_of_sort)
+
       Enum.all?(keyset, fn key ->
-        Enum.any?(query.sort, fn
+        Enum.any?(last_n_fields, fn
           {sort, _} when is_atom(sort) ->
             sort == key
 
@@ -335,36 +339,12 @@ defmodule Ash.Actions.Sort do
   defp to_sort_by_fun(sorter) when is_function(sorter, 2),
     do: &sorter.(elem(&1, 1), elem(&2, 1))
 
-  defp to_sort_by_fun(:asc) do
-    fn
-      nil, nil ->
-        true
-
-      _, nil ->
-        true
-
-      nil, _ ->
-        false
-
-      x, y ->
-        Comp.less_or_equal?(elem(x, 1), elem(y, 1))
-    end
+  defp to_sort_by_fun(:desc) do
+    to_sort_by_fun(:desc_nils_first)
   end
 
-  defp to_sort_by_fun(:desc) do
-    fn
-      nil, nil ->
-        true
-
-      _, nil ->
-        false
-
-      nil, _ ->
-        true
-
-      x, y ->
-        Comp.greater_or_equal?(elem(x, 1), elem(y, 1))
-    end
+  defp to_sort_by_fun(:asc) do
+    to_sort_by_fun(:asc_nils_last)
   end
 
   defp to_sort_by_fun(:asc_nils_last) do

@@ -1406,6 +1406,15 @@ defmodule Ash.Actions.Read do
   end
 
   defp do_paginate(query, pagination, opts) do
+    # We want to make 100% sure that there is a stable sort at the end
+    # of the sort for pagination
+    query =
+      if Ash.Actions.Sort.sorting_on_identity?(query) do
+        query
+      else
+        Ash.Query.sort(query, Ash.Resource.Info.primary_key(query.resource))
+      end
+
     paginated =
       cond do
         opts[:page][:before] || opts[:page][:after] ->
@@ -1456,18 +1465,11 @@ defmodule Ash.Actions.Read do
           Ash.Query.load(query, load)
       end)
 
-    sorted =
-      if Ash.Actions.Sort.sorting_on_identity?(query) do
-        query
-      else
-        Ash.Query.sort(query, Ash.Resource.Info.primary_key(query.resource))
-      end
-
     limited =
       if query.limit in [0, 1] do
         query
       else
-        Ash.Query.limit(sorted, limit(opts[:limit], query.limit, pagination) + 1)
+        Ash.Query.limit(query, limit(opts[:limit], query.limit, pagination) + 1)
       end
 
     if opts[:before] || opts[:after] do
@@ -1490,7 +1492,7 @@ defmodule Ash.Actions.Read do
       case Ash.Page.Keyset.filter(
              query.resource,
              opts[:before] || opts[:after],
-             sorted.sort,
+             query.sort,
              after_or_before
            ) do
         {:ok, filter} ->
