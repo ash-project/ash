@@ -442,7 +442,7 @@ defmodule Ash.Test.CalculationTest do
     assert full_names == ["zach daniel", "brian cranston"]
   end
 
-  test "can sort on caclualation in paginated read" do
+  test "can sort on calculation in paginated read" do
     full_names =
       User
       |> Ash.Query.for_read(:paginated, %{salutation: "Mr"})
