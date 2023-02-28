@@ -445,14 +445,14 @@ defmodule Ash.Test.CalculationTest do
   test "can sort on calculation in paginated read" do
     full_names =
       User
-      |> Ash.Query.for_read(:paginated, %{salutation: "Mr"})
+      |> Ash.Query.for_read(:paginated)
       |> Ash.Query.load(full_name_with_salutation: [salutation: "Mr"])
       |> Ash.Query.sort(full_name_with_salutation: {:asc, %{salutation: "Mr"}})
       |> Api.read!()
       |> Map.get(:results)
       |> Enum.map(& &1.full_name_with_salutation)
 
-    assert full_names == []
+    assert full_names == ["Mr brian cranston", "Mr zach daniel"]
   end
 
   test "the `if` calculation resolves the first expr when true, and the second when false" do
