@@ -1007,7 +1007,7 @@ defmodule Ash.Query do
       resource_calculation = Ash.Resource.Info.calculation(query.resource, field) ->
         {module, opts} = resource_calculation.calculation
 
-        with {:ok, args} <- validate_calculation_arguments(resource_calculation, query.arguments),
+        with {:ok, args} <- validate_calculation_arguments(resource_calculation, %{}),
              {:ok, calculation} <-
                Calculation.new(
                  resource_calculation.name,
