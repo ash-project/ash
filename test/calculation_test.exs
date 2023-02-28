@@ -133,6 +133,13 @@ defmodule Ash.Test.CalculationTest do
 
     actions do
       defaults [:create, :read, :update, :destroy]
+
+      read :paginated do
+        pagination do
+          keyset? true
+          default_limit 10
+        end
+      end
     end
 
     attributes do
@@ -176,7 +183,7 @@ defmodule Ash.Test.CalculationTest do
 
       calculate :names_of_best_friends_of_me, :string, NamesOfBestFriendsOfMe
       calculate :name_with_users_name, :string, NameWithUsersName
-      
+
       calculate :full_name_with_salutation,
                 :string,
                 expr(^arg(:salutation) <> " " <> conditional_full_name) do
@@ -434,7 +441,7 @@ defmodule Ash.Test.CalculationTest do
 
     assert full_names == ["zach daniel", "brian cranston"]
   end
-  
+
   test "can sort on caclualation in paginated read" do
     full_names =
       User
