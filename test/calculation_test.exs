@@ -133,6 +133,13 @@ defmodule Ash.Test.CalculationTest do
 
     actions do
       defaults [:create, :read, :update, :destroy]
+
+      read :paginated do
+        pagination do
+          keyset? true
+          default_limit 10
+        end
+      end
     end
 
     attributes do
@@ -176,6 +183,13 @@ defmodule Ash.Test.CalculationTest do
 
       calculate :names_of_best_friends_of_me, :string, NamesOfBestFriendsOfMe
       calculate :name_with_users_name, :string, NameWithUsersName
+
+      calculate :full_name_with_salutation,
+                :string,
+                expr(^arg(:salutation) <> " " <> conditional_full_name) do
+        argument :salutation, :string, allow_nil?: false
+        load [:conditional_full_name]
+      end
 
       calculate :conditional_full_name,
                 :string,
@@ -426,6 +440,19 @@ defmodule Ash.Test.CalculationTest do
       |> Enum.map(& &1.expr_full_name)
 
     assert full_names == ["zach daniel", "brian cranston"]
+  end
+
+  test "can sort on calculation in paginated read" do
+    full_names =
+      User
+      |> Ash.Query.for_read(:paginated, %{salutation: "Mr"})
+      |> Ash.Query.load(full_name_with_salutation: [salutation: "Mr"])
+      |> Ash.Query.sort(full_name_with_salutation: {:asc, %{salutation: "Mr"}})
+      |> Api.read!()
+      |> Map.get(:results)
+      |> Enum.map(& &1.full_name_with_salutation)
+
+    assert full_names == []
   end
 
   test "the `if` calculation resolves the first expr when true, and the second when false" do
