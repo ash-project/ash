@@ -604,7 +604,6 @@ With the current definition of the Ticket resource the following will execute wi
 Helpdesk.Support.Ticket
 |> Ash.Changeset.for_create(:open, %{subject: "My spoon is too big!", representative_id: representative.id})
 |> Helpdesk.Support.create!()
-)
 ```
 
 The reason is that `belongs_to` relationships are not marked as public and writable by default (refer to the [define_attribute?](https://ash-hq.org/docs/dsl/ash/latest/resource/relationships/belongs_to#attribute_writable?) option of `belongs_to`).
@@ -613,7 +612,13 @@ With the following modification the attribute can be written to, during the `:cr
 
 ```elixir
 # lib/helpdesk/support/resources/ticket.ex
-
+...
+actions do
+  create :open do
+    accept([:subject, :representative_id])
+  end
+end
+...
 relationships do
   belongs_to :representative, Helpdesk.Support.Representative do
     attribute_writable? true
