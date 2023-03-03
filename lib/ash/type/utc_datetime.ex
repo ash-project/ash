@@ -6,6 +6,8 @@ defmodule Ash.Type.UtcDatetime do
   """
   use Ash.Type
 
+  @beginning_of_day Time.new!(0, 0, 0)
+
   @impl true
   def storage_type, do: :utc_datetime
 
@@ -17,6 +19,16 @@ defmodule Ash.Type.UtcDatetime do
   end
 
   @impl true
+  def cast_input(%Date{} = date, constraints) do
+    case DateTime.new(date, @beginning_of_day) do
+      {:ok, value} ->
+        cast_input(value, constraints)
+
+      _ ->
+        {:error, "Date could not be converted to datetime"}
+    end
+  end
+
   def cast_input(value, _) do
     Ecto.Type.cast(:utc_datetime, value)
   end
