@@ -200,7 +200,7 @@ All of these actions are run in a transaction if the data layer supports it. You
 
 - Authorization is performed on the changes
 - A before action hook is added to set up belongs_to relationships that are managed. This means potentially creating/modifying the destination of the relationship, and then changing the `destination_attribute` of the relationship.
-- Before transaction hooks are called (`Ash.Changeset.before_transaction/2`)
+- Before transaction hooks are called (`Ash.Changeset.before_transaction/2`). Keep in mind, any validations that are marked as `before_action? true` (or all global validations if your action has `delay_global_validations? true`) will not have happened at this point.
 - A transaction is opened if the action is configured for it (by default they are) and the data layer supports transactions
 - Before action hooks are performed in reverse order they were added. (unless `append?` option was used)
 - For manual actions, a before action hook must have set
