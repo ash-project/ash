@@ -37,6 +37,14 @@ defmodule Ash.Resource.Actions.SharedOptions do
       type: {:or, [in: [:all], list: :atom]},
       doc: "The list of attributes to accept. Defaults to all attributes on the resource"
     ],
+    delay_global_validations?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      If true, global validations will be done in a `before_action` hook, regardless of their configuration
+      on the resource.
+      """
+    ],
     reject: [
       type: {:or, [in: [:all], list: :atom]},
       doc: """

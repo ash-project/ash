@@ -10,6 +10,7 @@ defmodule Ash.Resource.Actions.Update do
     manual: nil,
     manual?: false,
     require_attributes: [],
+    delay_global_validations?: false,
     arguments: [],
     changes: [],
     reject: [],
@@ -25,6 +26,7 @@ defmodule Ash.Resource.Actions.Update do
           manual: module | nil,
           accept: list(atom),
           arguments: list(Ash.Resource.Actions.Argument.t()),
+          delay_global_validations?: boolean,
           primary?: boolean,
           touches_resources: list(atom),
           description: String.t()
