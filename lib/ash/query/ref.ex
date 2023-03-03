@@ -10,7 +10,7 @@ defmodule Ash.Query.Ref do
     def inspect(ref, _opts) do
       case ref.attribute do
         %Ash.Query.Calculation{} ->
-          case Map.delete(ref.attribute.context, :context) do
+          case Map.drop(ref.attribute.context || %{}, [:context, :ash]) do
             empty when empty == %{} ->
               inspect_ref(ref)
 
