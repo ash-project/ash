@@ -18,7 +18,21 @@ defmodule Ash.Filter do
 
   alias Ash.Error.Invalid.InvalidPrimaryKey
 
-  alias Ash.Query.Function.{Ago, Contains, GetPath, If, IsNil, Length, Now, StringJoin, Type}
+  alias Ash.Query.Function.{
+    Ago,
+    Contains,
+    DateAdd,
+    DateTimeAdd,
+    FromNow,
+    GetPath,
+    If,
+    IsNil,
+    Length,
+    Now,
+    StringJoin,
+    Today,
+    Type
+  }
 
   alias Ash.Query.Operator.{
     Eq,
@@ -36,11 +50,15 @@ defmodule Ash.Filter do
   @functions [
     Ago,
     Contains,
+    DateAdd,
+    DateTimeAdd,
+    FromNow,
     GetPath,
     IsNil,
     If,
     Length,
     Now,
+    Today,
     Type,
     StringJoin
   ]
@@ -3265,9 +3283,16 @@ defmodule Ash.Filter do
   end
 
   def get_function(key, resource, public?) when is_atom(key) do
+    function = @builtin_functions[key]
+
     function =
-      @builtin_functions[key] ||
-        Enum.find(Ash.DataLayer.data_layer_functions(resource), &(&1.name() == key))
+      if function do
+        function
+      else
+        if resource do
+          Enum.find(Ash.DataLayer.data_layer_functions(resource), &(&1.name() == key))
+        end
+      end
 
     if public? && function && function.private?() do
       nil

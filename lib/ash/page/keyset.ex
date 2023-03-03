@@ -121,13 +121,15 @@ defmodule Ash.Page.Keyset do
     end
   end
 
-  defp allow_nil?(resource, field) do
+  defp allow_nil?(resource, field) when is_atom(field) do
     case Ash.Resource.Info.field(resource, field) do
       %Ash.Resource.Attribute{allow_nil?: allow_nil?} -> allow_nil?
       %Ash.Resource.Calculation{allow_nil?: allow_nil?} -> allow_nil?
       _ -> true
     end
   end
+
+  defp allow_nil?(_, _), do: true
 
   defp operator(:after, :asc), do: {:gt, false}
   defp operator(:after, :asc_nils_first), do: {:gt, true}

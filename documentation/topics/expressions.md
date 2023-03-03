@@ -38,17 +38,26 @@ The following functions are built in:
 - `if` | Works like elixir's `if`.
 - `is_nil/1` | Works like elixir's `is_nil`
 - `get_path/2` | i.e `get_path(value, ["foo", "bar"])`. This is what expressions like `value[:foo]["bar"]` are turned into under the hood.
-- `ago/2` | i.e `deleted_at > ago(7, :day)`. The available time intervals are documented in `Ash.Type.DurationName`
 - `contains/2` | if one string contains another string, i.e `contains("fred", "red")`
 - `length/1` | the length of a list, i.e. `length([:foo, :bar])`
-- `exists/2` | `exists(foo.bar, name == "fred")` takes an expression scoped to the destination resource, and checks if any related entry matches. See the section on `exists` below.
-- `path.exists/2` | Same as `exists` but the source of the relationship is itself a nested relationship. See the section on `exists` below.
-- `this/1` | Allows an expression scoped to a resource to refer to the "outer" context.
 - `type/2` | Cast a given value to a specific type, i.e `type(^arg(:id), :uuid)` or `type(integer_field, :string)`
-- `now/0` | Evaluates to the current time when the expression is evaluated
 - `string_join/1` | Concatenates a list of strings, and ignores any nil values
 - `string_join/2` | As above, but with a joiner
 
+## Sub-expressions
+
+- `exists/2` | `exists(foo.bar, name == "fred")` takes an expression scoped to the destination resource, and checks if any related entry matches. See the section on `exists` below.
+- `path.exists/2` | Same as `exists` but the source of the relationship is itself a nested relationship. See the section on `exists` below.
+- `parent/1` | Allows an expression scoped to a resource to refer to the "outer" context.
+
+## DateTime Functions
+
+- `now/0` | Evaluates to the current time when the expression is evaluated
+- `today/0` | Evaluates to the current date when the expression is evaluated
+- `ago/2` | i.e `deleted_at > ago(7, :day)`. The available time intervals are documented in `Ash.Type.DurationName`
+- `from_now/2` | Same as `ago` but adds instead of subtracting
+- `datetime_add/3` | add an interval to a datetime, i.e `datetime_add(^datetime, 10, :hour)`
+- `date/3` | add an interval to a date, i.e `datetime_add(^date, 3, :day)`
 
 ## Primitives
 

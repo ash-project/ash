@@ -1462,7 +1462,7 @@ defmodule Ash.Actions.Read do
           Ash.Query.calculate(query, calc.name, {calc.module, calc.opts}, calc.type, calc.context)
 
         %{load: load, context: context}, query ->
-          Ash.Query.load(query, {load, context})
+          Ash.Query.load(query, [{load, context}])
       end)
 
     limited =
