@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.17](https://github.com/ash-project/ash/compare/v2.6.16...v2.6.17) (2023-03-06)
+
+
+
+
+### Bug Fixes:
+
+* add `actor` back to transaction metadata
+
+### Improvements:
+
+* add `delay_global_validations?` action option
+
 ## [v2.6.16](https://github.com/ash-project/ash/compare/v2.6.15...v2.6.16) (2023-03-03)
 
 
