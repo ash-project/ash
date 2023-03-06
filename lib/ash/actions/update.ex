@@ -465,7 +465,8 @@ defmodule Ash.Actions.Update do
                       metadata: %{
                         record: changeset.data,
                         resource: resource,
-                        action: action.name
+                        action: action.name,
+                        actor: actor
                       }
                     }
                   )

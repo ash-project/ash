@@ -330,6 +330,7 @@ defmodule Ash.Actions.Destroy do
                 transaction_metadata: %{
                   type: :destroy,
                   metadata: %{
+                    actor: actor,
                     record: changeset.data,
                     resource: resource,
                     action: action.name
