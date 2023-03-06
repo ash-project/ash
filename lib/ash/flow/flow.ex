@@ -1,6 +1,6 @@
 defmodule Ash.Flow do
   @moduledoc """
-  A flow is a static definition of a set of steps to be .
+  A flow is a static definition of a set of steps to be run.
 
   See the [guide](/documentation/topics/flows.md) for more.
   """
