@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.18](https://github.com/ash-project/ash/compare/v2.6.17...v2.6.18) (2023-03-08)
+
+
+
+
+### Improvements:
+
+* add `Api.can?` and `Api.can`
+
 ## [v2.6.17](https://github.com/ash-project/ash/compare/v2.6.16...v2.6.17) (2023-03-06)
 
 
