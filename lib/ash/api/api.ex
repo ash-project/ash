@@ -454,9 +454,13 @@ defmodule Ash.Api do
     query_or_changeset =
       case action_or_query_or_changeset do
         %{type: :update, name: name} ->
-          resource
-          |> struct()
-          |> Ash.Changeset.for_update(name)
+          if opts[:data] do
+            Ash.Changeset.for_update(opts[:data], name)
+          else
+            resource
+            |> struct()
+            |> Ash.Changeset.for_update(name)
+          end
 
         %{type: :create, name: name} ->
           Ash.Changeset.for_create(resource, name)
@@ -465,9 +469,13 @@ defmodule Ash.Api do
           Ash.Query.for_read(resource, name)
 
         %{type: :destroy, name: name} ->
-          resource
-          |> struct()
-          |> Ash.Changeset.for_destroy(name)
+          if opts[:data] do
+            Ash.Changeset.for_destroy(opts[:data], name)
+          else
+            resource
+            |> struct()
+            |> Ash.Changeset.for_destroy(name)
+          end
 
         other ->
           other
