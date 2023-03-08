@@ -720,7 +720,8 @@ defmodule Ash.Policy.Authorizer do
       raise "Assumption failed"
     else
       if authorizer.action.type == :read ||
-           Ash.DataLayer.data_layer_can?(authorizer.resource, :transact) do
+           (Ash.DataLayer.data_layer_can?(authorizer.resource, :transact) &&
+              Ash.DataLayer.in_transaction?(authorizer.resource)) do
         authorized_records =
           check_module.check(authorizer.actor, authorizer.data, authorizer, check_opts)
 
@@ -735,9 +736,10 @@ defmodule Ash.Policy.Authorizer do
       else
         raise """
         Attempted to use a `check/4` function on a non-read action with a resource who's data layer does
-        not support transactions. This means that you have a policy set to `access_type :runtime` that is
-        unsafe to be set as such. Authorization over create/update/destroy actions for resources that don't
-        support transactions must only be done with filter and/or strict checks.
+        not support transactions or is not currently in a transaction. This means that you have a policy
+        set to `access_type :runtime` that is unsafe to be set as such. Authorization over
+        create/update/destroy actions for resources that don't support transactions must only be done with
+        filter and/or strict checks.
         """
       end
     end

@@ -823,15 +823,23 @@ defmodule Ash.Engine.Request do
 
     new_query
     |> Map.put(:api, request.api)
-    |> Ash.Actions.Read.unpaginated_read(actor: request.actor, unsafe_no_authorize?: false)
+    |> Ash.Query.data_layer_query()
     |> case do
-      {:ok, results} ->
-        pkey = Ash.Resource.Info.primary_key(request.resource)
-        pkeys = Enum.map(results, &Map.take(&1, pkey))
+      {:ok, data_layer_query} ->
+        data_layer_query
+        |> Ash.DataLayer.run_query(request.resource)
+        |> case do
+          {:ok, results} ->
+            pkey = Ash.Resource.Info.primary_key(request.resource)
+            pkeys = Enum.map(results, &Map.take(&1, pkey))
 
-        new_data = Enum.filter(request.data, &(Map.take(&1, pkey) in pkeys))
+            new_data = Enum.filter(request.data, &(Map.take(&1, pkey) in pkeys))
 
-        {:ok, %{request | data: new_data, query: new_query}}
+            {:ok, %{request | data: new_data, query: new_query}}
+
+          {:error, error} ->
+            {:error, error}
+        end
 
       {:error, error} ->
         {:error, error}
@@ -866,21 +874,26 @@ defmodule Ash.Engine.Request do
 
     query_with_pkey_filter
     |> Map.put(:api, request.api)
-    |> Ash.Actions.Read.unpaginated_read(
-      Ash.Resource.Info.primary_action!(request.resource, :read),
-      authorize?: false
-    )
+    |> Ash.Query.data_layer_query()
     |> case do
-      {:ok, []} ->
-        {:error,
-         Authorizer.exception(
-           authorizer,
-           {:changeset_doesnt_match_filter, new_query.filter},
-           authorizer_state
-         )}
+      {:ok, data_layer_query} ->
+        data_layer_query
+        |> Ash.DataLayer.run_query(request.resource)
+        |> case do
+          {:ok, []} ->
+            {:error,
+             Authorizer.exception(
+               authorizer,
+               {:changeset_doesnt_match_filter, new_query.filter},
+               authorizer_state
+             )}
 
-      {:ok, [_]} ->
-        {:ok, request}
+          {:ok, [_]} ->
+            {:ok, request}
+
+          {:error, error} ->
+            {:error, error}
+        end
 
       {:error, error} ->
         {:error, error}

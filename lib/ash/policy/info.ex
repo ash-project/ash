@@ -157,6 +157,7 @@ defmodule Ash.Policy.Info do
           map() | nil,
           list(can_option?())
         ) :: boolean()
+  @deprecated "Please use `YourApi.can?` instead."
   def can?(resource, action_or_query_or_changeset, actor, opts \\ []) do
     opts = Keyword.put(opts, :maybe_is, Keyword.get(opts, :maybe_is, false))
 
@@ -182,6 +183,7 @@ defmodule Ash.Policy.Info do
           map() | nil,
           list(can_option())
         ) :: boolean() | :maybe
+  @deprecated "Please use `YourApi.can` instead."
   def can(resource, action_or_query_or_changeset, actor, opts \\ []) do
     api = Keyword.fetch!(opts, :api)
     maybe_is = Keyword.get(opts, :maybe_is, :maybe)

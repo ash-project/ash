@@ -393,6 +393,246 @@ defmodule Ash.Api do
     Ash.Actions.Aggregate.run(api, query, List.wrap(aggregate_or_aggregates), opts)
   end
 
+  @spec can?(
+          api :: Ash.Api.t(),
+          query_or_changeset_or_action ::
+            Ash.Query.t()
+            | Ash.Changeset.t()
+            | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()},
+          actor :: term,
+          opts :: Keyword.t()
+        ) ::
+          boolean | no_return
+  def can?(api, action_or_query_or_changeset, actor, opts \\ []) do
+    opts = Keyword.put_new(opts, :maybe_is, true)
+
+    case can(api, action_or_query_or_changeset, actor, opts) do
+      {:ok, :maybe} -> opts[:maybe_is]
+      {:ok, result} -> result
+      {:error, error} -> raise Ash.Error.to_ash_error(error)
+    end
+  end
+
+  @spec can(
+          api :: Ash.Api.t(),
+          action_or_query_or_changeset ::
+            Ash.Query.t()
+            | Ash.Changeset.t()
+            | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()},
+          actor :: term,
+          opts :: Keyword.t()
+        ) ::
+          {:ok, boolean | :maybe} | {:error, term}
+  def can(api, action_or_query_or_changeset, actor, opts \\ []) do
+    opts = Keyword.put_new(opts, :maybe_is, :maybe)
+    opts = Keyword.put_new(opts, :run_queries?, true)
+
+    {resource, action_or_query_or_changeset} =
+      case action_or_query_or_changeset do
+        %Ash.Query{} = query ->
+          {query.resource, query}
+
+        %Ash.Changeset{} = changeset ->
+          {changeset.resource, changeset}
+
+        {resource, %Ash.Resource.Actions.Create{}} = action ->
+          {resource, action}
+
+        {resource, %Ash.Resource.Actions.Read{}} = action ->
+          {resource, action}
+
+        {resource, %Ash.Resource.Actions.Update{}} = action ->
+          {resource, action}
+
+        {resource, %Ash.Resource.Actions.Destroy{}} = action ->
+          {resource, action}
+
+        {resource, name} when is_atom(name) ->
+          {resource, Ash.Resource.Info.action(resource, name)}
+      end
+
+    query_or_changeset =
+      case action_or_query_or_changeset do
+        %{type: :update, name: name} ->
+          resource
+          |> struct()
+          |> Ash.Changeset.for_update(name)
+
+        %{type: :create, name: name} ->
+          Ash.Changeset.for_create(resource, name)
+
+        %{type: :read, name: name} ->
+          Ash.Query.for_read(resource, name)
+
+        %{type: :destroy, name: name} ->
+          resource
+          |> struct()
+          |> Ash.Changeset.for_destroy(name)
+
+        other ->
+          other
+      end
+
+    # Get action type from resource
+    case query_or_changeset do
+      %Ash.Query{} = query ->
+        query =
+          query
+          |> Map.put(:api, api)
+          |> Ash.Query.set_context(%{private: %{pre_flight_authorization?: true}})
+
+        run_check(api, actor, query, opts)
+
+      %Ash.Changeset{} = changeset ->
+        changeset =
+          changeset
+          |> Map.put(:api, api)
+          |> Ash.Changeset.set_context(%{private: %{pre_flight_authorization?: true}})
+
+        run_check(api, actor, changeset, opts)
+
+      _ ->
+        raise ArgumentError,
+          message: "Invalid action/query/changeset \"#{inspect(action_or_query_or_changeset)}\""
+    end
+  end
+
+  defp run_check(api, actor, query_or_changeset, opts) do
+    query_or_changeset.resource
+    |> Ash.Resource.Info.authorizers()
+    |> Enum.reduce_while(
+      {false, nil},
+      fn authorizer, {_authorized?, query} ->
+        authorizer_state =
+          authorizer.initial_state(
+            actor,
+            query_or_changeset.resource,
+            query_or_changeset.action,
+            false
+          )
+
+        context =
+          case query_or_changeset do
+            %Ash.Query{} = query ->
+              %{
+                api: api,
+                query: query,
+                changeset: nil
+              }
+
+            changeset ->
+              %{
+                api: api,
+                query: nil,
+                changeset: changeset
+              }
+          end
+
+        case authorizer.strict_check(authorizer_state, context) do
+          {:error, error} ->
+            {:halt, {:error, error}}
+
+          :authorized ->
+            {:cont, {true, query}}
+
+          {:filter, _authorizer, filter} ->
+            query = query || Ash.Query.new(query_or_changeset.resource, api)
+            {:cont, {true, query |> Ash.Query.filter(^filter)}}
+
+          {:filter, filter} ->
+            query = query || Ash.Query.new(query_or_changeset.resource, api)
+            {:cont, {true, Ash.Query.filter(query, ^filter)}}
+
+          {:continue, _} ->
+            {:halt, {:maybe, nil}}
+
+          {:filter_and_continue, _, _} ->
+            {:halt, {:maybe, nil}}
+
+          :forbidden ->
+            {:halt, {false, nil}}
+        end
+      end
+    )
+    |> case do
+      {true, query} when not is_nil(query) ->
+        if opts[:run_queries?] do
+          case query_or_changeset do
+            %Ash.Query{} ->
+              if opts[:data] do
+                data = List.wrap(opts[:data])
+
+                pkey = Ash.Resource.Info.primary_key(query.resource)
+                pkey_values = Enum.map(data, &Map.take(&1, pkey))
+
+                if Enum.any?(pkey_values, fn pkey_value ->
+                     pkey_value |> Map.values() |> Enum.any?(&is_nil/1)
+                   end) do
+                  {:ok, :maybe}
+                else
+                  query
+                  |> Ash.Query.do_filter(or: pkey_values)
+                  |> Ash.Query.data_layer_query()
+                  |> case do
+                    {:ok, data_layer_query} ->
+                      case Ash.DataLayer.run_query(data_layer_query, query.resource) do
+                        {:ok, results} ->
+                          {:ok, Enum.count(results) == Enum.count(data)}
+
+                        {:error, error} ->
+                          {:error, error}
+                      end
+                  end
+                end
+              else
+                {:ok, true}
+              end
+
+            %Ash.Changeset{data: data, action_type: type, resource: resource}
+            when type in [:update, :destroy] ->
+              pkey = Ash.Resource.Info.primary_key(resource)
+              pkey_value = Map.take(data, pkey)
+
+              if pkey_value |> Map.values() |> Enum.any?(&is_nil/1) do
+                {:ok, :maybe}
+              else
+                query
+                |> Ash.Query.do_filter(pkey_value)
+                |> Ash.Query.data_layer_query()
+                |> case do
+                  {:ok, data_layer_query} ->
+                    case Ash.DataLayer.run_query(data_layer_query, resource) do
+                      {:ok, [_]} ->
+                        {:ok, true}
+
+                      {:error, error} ->
+                        {:error, error}
+
+                      _ ->
+                        {:ok, false}
+                    end
+                end
+              end
+
+            %Ash.Changeset{} ->
+              {:ok, false}
+          end
+        else
+          {:ok, :maybe}
+        end
+
+      {other, _} ->
+        {:ok, other}
+    end
+    |> case do
+      {:ok, :maybe} ->
+        {:ok, opts[:maybe_is]}
+
+      other ->
+        other
+    end
+  end
+
   @calculate_opts [
     args: [
       type: :map,
@@ -551,6 +791,66 @@ defmodule Ash.Api do
         {:error, error}
     end
   end
+
+  @doc """
+  Returns wether or not the user can perform the action, or raises on errors.
+
+  See `can/3` for more info.
+  """
+  @callback can?(
+              query_or_changeset_or_action ::
+                Ash.Query.t()
+                | Ash.Changeset.t()
+                | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()},
+              actor :: term,
+              opts :: Keyword.t()
+            ) ::
+              boolean | no_return
+
+  @callback can?(
+              query_or_changeset_or_action ::
+                Ash.Query.t()
+                | Ash.Changeset.t()
+                | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()},
+              actor :: term
+            ) ::
+              boolean | no_return
+  @doc """
+  Returns wether or not the user can perform the action, or `:maybe`, returning any errors.
+
+  In cases with "runtime" checks (checks after the action), we may not be able to determine
+  an answer, and so the value `:maybe` will be returned from `can/2`. The `can?` function assumes that
+  `:maybe` means `false`. Keep in mind, this is just for doing things like "can they do this" in a UI,
+  so assuming `:maybe` is `false` is fine. The actual action invocation will be properly checked regardless.
+  If you have runtime checks, you may need to use `can` instead of `can?`, or configure what `:maybe` means.
+
+  ## Options
+
+    - `maybe_is` - What to treat `:maybe` results as, defaults to `true` if using `can?`, or `:maybe` if using `can`.
+    - `run_queries?` - In order to determine authorization status for changesets that use filter checks, we may need to
+      run queries (almost always only one query). Set this to `false` to disable (returning `:maybe` instead).
+      The default value is `true`.
+    - `data` - A record or list of records. For authorizing reads with filter checks, this can be provided and a filter
+      check will only be `true` if all records match the filter. This is detected by running a query.
+  """
+  @callback can(
+              action_or_query_or_changeset ::
+                Ash.Query.t()
+                | Ash.Changeset.t()
+                | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()},
+              actor :: term,
+              opts :: Keyword.t()
+            ) ::
+              {:ok, boolean | :maybe} | {:error, term}
+
+  @callback can(
+              action_or_query_or_changeset ::
+                Ash.Query.t()
+                | Ash.Changeset.t()
+                | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()},
+              actor :: term
+            ) ::
+              {:ok, boolean | :maybe} | {:error, term}
 
   @callback calculate(resource :: Ash.Resource.t(), calculation :: atom, opts :: Keyword.t()) ::
               {:ok, term} | {:error, term}

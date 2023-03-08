@@ -5,6 +5,32 @@ defmodule Ash.Api.Interface do
     quote bind_quoted: [], generated: true do
       alias Ash.Api
 
+      @spec can?(
+              query_or_changeset_or_action ::
+                Ash.Query.t()
+                | Ash.Changeset.t()
+                | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()},
+              actor :: term,
+              opts :: Keyword.t()
+            ) ::
+              boolean | no_return
+      def can?(query_or_changeset_or_action, actor, opts \\ []) do
+        Api.can?(__MODULE__, query_or_changeset_or_action, actor, opts)
+      end
+
+      @spec can(
+              action_or_query_or_changeset ::
+                Ash.Query.t()
+                | Ash.Changeset.t()
+                | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()},
+              actor :: term,
+              opts :: Keyword.t()
+            ) ::
+              {:ok, boolean | :maybe} | {:error, term}
+      def can(action_or_query_or_changeset, actor, opts \\ []) do
+        Api.can(__MODULE__, action_or_query_or_changeset, actor, opts)
+      end
+
       def calculate!(resource, calculation, opts \\ []) do
         case calculate(resource, calculation, opts) do
           {:ok, result} ->

@@ -89,9 +89,12 @@ defmodule Ash.Test.Policy.RbacTest do
   } do
     file_with_access = create_file(org, "foo")
     give_role(user, org, :viewer, :file, file_with_access.id)
-    create_file(org, "bar")
-    create_file(org, "baz")
+    file1 = create_file(org, "bar")
+    file2 = create_file(org, "baz")
 
+    assert Api.can?({File, :read}, user)
+    refute Api.can?({File, :read}, user, data: [file1, file2])
+    assert Api.can?({File, :read}, user, data: file_with_access)
     assert Ash.Policy.Info.can(File, :read, user, api: Api)
   end
 
@@ -106,6 +109,7 @@ defmodule Ash.Test.Policy.RbacTest do
 
     query = Ash.Query.for_read(File, :read)
 
+    assert Api.can?(query, user)
     assert Ash.Policy.Info.can(File, query, user, api: Api)
   end
 
@@ -113,15 +117,26 @@ defmodule Ash.Test.Policy.RbacTest do
     user: user,
     org: org
   } do
-    file_with_access = create_file(org, "foo")
-    give_role(user, org, :viewer, :file, file_with_access.id)
-
     changeset =
       File
       |> Ash.Changeset.new(%{name: "bar"})
       |> Ash.Changeset.for_create(:create)
       |> Ash.Changeset.manage_relationship(:organization, org, type: :append_and_remove)
 
+    assert Api.can?(changeset, user)
+    assert Ash.Policy.Info.can(File, changeset, user, api: Api)
+  end
+
+  test "if the update can be performed with a filter, the can utility should return true", %{
+    user: user,
+    org: org
+  } do
+    file_with_access = create_file(org, "foo")
+    give_role(user, org, :admin, :file, file_with_access.id)
+
+    changeset = Ash.Changeset.for_update(file_with_access, :update, %{name: "bar"})
+
+    assert Api.can?(changeset, user)
     assert Ash.Policy.Info.can(File, changeset, user, api: Api)
   end
 

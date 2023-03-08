@@ -8,6 +8,8 @@ defmodule Ash.Test.Support.PolicyRbac.File do
 
   policies do
     policy always() do
+      # anyone can create files
+      authorize_if(action_type(:create))
       authorize_if(can?(:file))
     end
 
