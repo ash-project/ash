@@ -537,6 +537,9 @@ defmodule Ash.Api do
           end
 
         case authorizer.strict_check(authorizer_state, context) do
+          {:error, %{class: :forbidden} = e} when is_exception(e) ->
+            {:halt, {false, nil}}
+
           {:error, error} ->
             {:halt, {:error, error}}
 
@@ -563,6 +566,9 @@ defmodule Ash.Api do
       end
     )
     |> case do
+      {:error, error} ->
+        {:error, error}
+
       {true, query} when not is_nil(query) ->
         if opts[:run_queries?] do
           case query_or_changeset do
