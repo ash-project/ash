@@ -25,6 +25,26 @@ Add the following to your `.formatter.exs`
 
 ### Configuration
 
+#### Minimal config for your Ash Resources
+
+```elixir
+config :spark, :formatter,
+  remove_parens?: true,
+  "Ash.Resource": [
+    type: Ash.Resource,
+    section_order: [
+      :authentication,
+      :token,
+      :attributes,
+      :relationships,
+      :policies,
+      :postgres
+    ]
+  ]
+```
+
+#### If you use a different module than Ash.Resource
+
 ```elixir
 config :spark, :formatter,
   [
