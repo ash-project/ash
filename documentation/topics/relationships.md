@@ -9,7 +9,7 @@ Relationships describe the connections between resources and are a core componen
 
 ## Relationships Basics
 
-A relationship must exist between a source resource and a destination resource. These are defined in the `relationships` block of the source resource. For example, if `MyApp.Tweet` is the source resource, and `MyApp.User` is the destination resource, we could define a relationship called `:owner` like this:
+A relationship exists between a source resource and a destination resource. These are defined in the `relationships` block of the source resource. For example, if `MyApp.Tweet` is the source resource, and `MyApp.User` is the destination resource, we could define a relationship called `:owner` like this:
 
 ```elixir
 defmodule MyApp.Tweet do
