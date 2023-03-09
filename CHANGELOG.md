@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.19](https://github.com/ash-project/ash/compare/v2.6.18...v2.6.19) (2023-03-09)
+
+
+
+
+### Bug Fixes:
+
+* properly return `false` on forbidden errors
+
 ## [v2.6.18](https://github.com/ash-project/ash/compare/v2.6.17...v2.6.18) (2023-03-08)
 
 
