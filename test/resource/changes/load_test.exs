@@ -3,6 +3,7 @@ defmodule Ash.Test.Resource.Changes.LoadTest do
   use ExUnit.Case, async: true
 
   defmodule Post do
+    @moduledoc false
     use Ash.Resource,
       data_layer: Ash.DataLayer.Ets
 
