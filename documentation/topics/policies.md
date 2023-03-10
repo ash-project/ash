@@ -96,7 +96,7 @@ This will be covered in greater detail in [Checks](#checks), but will be briefly
 
 Ash provides two basic types of policy checks - _simple_ checks and _filter_ checks. Simple checks are what we commonly think of with authorization, and what the above example would suggest - is an actor allowed to perform a given operation, yes or no? But we can also use filter checks - given a list of resources, which ones is an actor allowed to perform the operation on?
 
-Filter checks are frequently used with read actions, as they can refer to multiple instances (eg. "list all products"), but may also be applied to actions like bulk-deleting records.
+Filter checks are frequently used with read actions, as they can refer to multiple instances (eg. "list all products"), but may also be applied to actions like bulk-deleting records (which is not currently supported, but will be eventually).
 
 ### Bypass policies
 
