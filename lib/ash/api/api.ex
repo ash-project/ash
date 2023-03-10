@@ -537,7 +537,7 @@ defmodule Ash.Api do
           {:error, error} ->
             {:halt, {:error, error}}
 
-          :authorized ->
+          {:authorized, _} ->
             {:cont, {true, query}}
 
           {:filter, _authorizer, filter} ->

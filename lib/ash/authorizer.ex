@@ -17,7 +17,7 @@ defmodule Ash.Authorizer do
             ) :: state
   @callback strict_check_context(state) :: [atom]
   @callback strict_check(state, context) ::
-              :authorized
+              {:authorized, state}
               | {:continue, state}
               | {:filter, Keyword.t()}
               | {:filter, Keyword.t(), state}

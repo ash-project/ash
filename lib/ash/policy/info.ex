@@ -49,7 +49,7 @@ defmodule Ash.Policy.Info do
       {:error, _error} ->
         false
 
-      :authorized ->
+      {:authorized, _} ->
         true
 
       {:filter, _, _} ->
@@ -78,7 +78,7 @@ defmodule Ash.Policy.Info do
       {:error, _error} ->
         false
 
-      :authorized ->
+      {:authorized, _} ->
         true
 
       {:filter, _, _} ->
@@ -242,7 +242,7 @@ defmodule Ash.Policy.Info do
   end
 
   defp run_check(actor, query, api: api, maybe_is: maybe_is) do
-    case Ash.Policy.Info.strict_check(actor, query, api) do
+    case strict_check(actor, query, api) do
       true ->
         true
 

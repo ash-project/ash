@@ -552,7 +552,7 @@ defmodule Ash.Engine.Request do
     case missing_strict_check_dependencies?(authorizer, request) do
       [] ->
         case strict_check_authorizer(authorizer, request) do
-          :authorized ->
+          {:authorized, _authorizer} ->
             {:ok, set_authorizer_state(request, authorizer, :authorized), notifications, []}
 
           {:filter, authorizer_state, filter} ->

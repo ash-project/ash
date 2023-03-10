@@ -369,24 +369,21 @@ defmodule Ash.Policy.Authorizer do
         api: context.api
     }
     |> get_policies()
-    |> do_strict_check_facts()
+    |> strict_check_result()
     |> case do
-      {:ok, authorizer} ->
-        case strict_check_result(authorizer) do
-          :authorized ->
-            log_successful_policy_breakdown(authorizer)
-            :authorized
+      {:authorized, authorizer} ->
+        log_successful_policy_breakdown(authorizer)
+        {:authorized, authorizer}
 
-          {:filter, authorizer, filter} ->
-            log_successful_policy_breakdown(authorizer, filter)
-            {:filter, authorizer, filter}
-
-          other ->
-            other
-        end
+      {:filter, authorizer, filter} ->
+        log_successful_policy_breakdown(authorizer, filter)
+        {:filter, authorizer, filter}
 
       {:error, error} ->
         {:error, error}
+
+      {other, _authorizer} ->
+        other
     end
   end
 
@@ -409,11 +406,11 @@ defmodule Ash.Policy.Authorizer do
 
     case {filter, require_check} do
       {[], []} ->
-        :authorized
+        {:authorized, authorizer}
 
       {_filters, []} ->
         if Enum.any?(filter, &(&1 == true)) do
-          :authorized
+          {:authorized, authorizer}
         else
           case filter do
             [filter] ->
@@ -759,7 +756,20 @@ defmodule Ash.Policy.Authorizer do
 
   defp strict_check_result(authorizer) do
     case Checker.strict_check_scenarios(authorizer) do
-      {:ok, scenarios} ->
+      {:ok, true, authorizer} ->
+        {:authorized, authorizer}
+
+      {:ok, false, authorizer} ->
+        {:error,
+         Ash.Error.Forbidden.Policy.exception(
+           facts: authorizer.facts,
+           policies: authorizer.policies,
+           resource: Map.get(authorizer, :resource),
+           action: Map.get(authorizer, :action),
+           scenarios: []
+         )}
+
+      {:ok, scenarios, authorizer} ->
         report_scenarios(authorizer, scenarios, "Potential Scenarios")
 
         case Checker.find_real_scenarios(scenarios, authorizer.facts) do
@@ -768,7 +778,7 @@ defmodule Ash.Policy.Authorizer do
 
           real_scenarios ->
             report_scenarios(authorizer, real_scenarios, "Real Scenarios")
-            :authorized
+            {:authorized, authorizer}
         end
 
       {:error, :unsatisfiable} ->
@@ -786,16 +796,6 @@ defmodule Ash.Policy.Authorizer do
   defp maybe_strict_filter(authorizer, scenarios) do
     log(authorizer, "No real scenarios, attempting to filter")
     strict_filter(%{authorizer | scenarios: scenarios})
-  end
-
-  defp do_strict_check_facts(authorizer) do
-    case Checker.strict_check_facts(authorizer) do
-      {:ok, authorizer, new_facts} ->
-        {:ok, %{authorizer | facts: new_facts}}
-
-      {:error, error} ->
-        {:error, error}
-    end
   end
 
   defp get_policies(authorizer) do

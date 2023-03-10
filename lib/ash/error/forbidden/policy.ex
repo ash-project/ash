@@ -317,7 +317,8 @@ defmodule Ash.Error.Forbidden.Policy do
               "⛔"
 
             {:unknown, :unknown} ->
-              if success? && filter_check? && Policy.fetch_fact(facts, check.check) == :error do
+              if (success? && filter_check? && Policy.fetch_fact(facts, check.check) == :error) ||
+                   {:ok, :unknown} do
                 "🔎"
               else
                 "⬇"

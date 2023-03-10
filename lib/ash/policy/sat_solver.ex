@@ -109,19 +109,23 @@ defmodule Ash.Policy.SatSolver do
   end
 
   def facts_to_statement(facts) do
-    Enum.reduce(facts, nil, fn {fact, true?}, expr ->
-      expr_component =
-        if true? do
-          fact
-        else
-          {:not, fact}
-        end
+    Enum.reduce(facts, nil, fn
+      {_fact, :unknown}, expr ->
+        expr
 
-      if expr do
-        {:and, expr, expr_component}
-      else
-        expr_component
-      end
+      {fact, true?}, expr ->
+        expr_component =
+          if true? do
+            fact
+          else
+            {:not, fact}
+          end
+
+        if expr do
+          {:and, expr, expr_component}
+        else
+          expr_component
+        end
     end)
   end
 

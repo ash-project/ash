@@ -27,7 +27,7 @@ defmodule Ash.Test.Authorizer do
   def strict_check_context(_), do: get(:strict_check_context, [])
 
   def strict_check(state, _),
-    do: get(:strict_check_result, :authorized) |> continue(state)
+    do: get(:strict_check_result, :authorized) |> continue(state) |> wrap_authorized(state)
 
   def check_context(_), do: []
 
@@ -35,6 +35,9 @@ defmodule Ash.Test.Authorizer do
 
   defp continue(:continue, state), do: {:continue, state}
   defp continue(other, _), do: other
+
+  defp wrap_authorized(:authorized, state), do: {:authorized, state}
+  defp wrap_authorized(other, _), do: other
 
   defp get(key, default) do
     Agent.get(__MODULE__, &Map.get(&1, key)) || default
