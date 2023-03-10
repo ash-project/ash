@@ -484,18 +484,12 @@ defmodule Ash.Api do
     # Get action type from resource
     case query_or_changeset do
       %Ash.Query{} = query ->
-        query =
-          query
-          |> Map.put(:api, api)
-          |> Ash.Query.set_context(%{private: %{pre_flight_authorization?: true}})
+        query = Map.put(query, :api, api)
 
         run_check(api, actor, query, opts)
 
       %Ash.Changeset{} = changeset ->
-        changeset =
-          changeset
-          |> Map.put(:api, api)
-          |> Ash.Changeset.set_context(%{private: %{pre_flight_authorization?: true}})
+        changeset = Map.put(changeset, :api, api)
 
         run_check(api, actor, changeset, opts)
 
