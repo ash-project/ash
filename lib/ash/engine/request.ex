@@ -823,6 +823,7 @@ defmodule Ash.Engine.Request do
 
     new_query
     |> Map.put(:api, request.api)
+    |> Ash.Query.select([])
     |> Ash.Query.data_layer_query()
     |> case do
       {:ok, data_layer_query} ->
@@ -874,6 +875,7 @@ defmodule Ash.Engine.Request do
 
     query_with_pkey_filter
     |> Map.put(:api, request.api)
+    |> Ash.Query.select([])
     |> Ash.Query.data_layer_query()
     |> case do
       {:ok, data_layer_query} ->

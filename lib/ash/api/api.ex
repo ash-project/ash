@@ -541,11 +541,15 @@ defmodule Ash.Api do
             {:cont, {true, query}}
 
           {:filter, _authorizer, filter} ->
-            query = query || Ash.Query.new(query_or_changeset.resource, api)
+            query =
+              query || Ash.Query.new(query_or_changeset.resource, api) |> Ash.Query.select([])
+
             {:cont, {true, query |> Ash.Query.filter(^filter)}}
 
           {:filter, filter} ->
-            query = query || Ash.Query.new(query_or_changeset.resource, api)
+            query =
+              query || Ash.Query.new(query_or_changeset.resource, api) |> Ash.Query.select([])
+
             {:cont, {true, Ash.Query.filter(query, ^filter)}}
 
           {:continue, _} ->
