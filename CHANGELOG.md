@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.20](https://github.com/ash-project/ash/compare/v2.6.19...v2.6.20) (2023-03-10)
+
+
+
+
+### Bug Fixes:
+
+* remove pre_flight expression checking
+
+### Improvements:
+
+* Add builtin changes for lifecycle hooks. (#523)
+
 ## [v2.6.19](https://github.com/ash-project/ash/compare/v2.6.18...v2.6.19) (2023-03-09)
 
 
