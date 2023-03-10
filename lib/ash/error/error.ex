@@ -8,7 +8,18 @@ defmodule Ash.Error do
 
   @type error_class() :: :invalid | :authorization | :framework | :unknown
 
-  @type t :: struct
+  @type t :: %{
+          required(:__struct__) => module,
+          required(:__exception__) => true,
+          required(:class) => :invalid | :forbidden | :framework | :unknown,
+          required(:path) => [atom | integer],
+          required(:changeset) => Ash.Changeset.t() | nil,
+          required(:query) => Ash.Query.t() | nil,
+          required(:error_context) => list(String.t()),
+          required(:vars) => Keyword.t(),
+          required(:stacktrace) => Ash.Error.Stacktrace.t() | nil,
+          optional(atom) => any
+        }
 
   # We use these error classes also to choose a single error
   # to raise when multiple errors have occurred. We raise them

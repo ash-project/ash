@@ -184,4 +184,112 @@ defmodule Ash.Resource.Change.Builtins do
   def ensure_selected(value) do
     {Ash.Resource.Change.Select, target: value, ensure?: true}
   end
+
+  @doc ~S"""
+  Directly attach an `after_action` function to the current change.
+
+  See `Ash.Changeset.after_action/3` for more information.
+
+  Provide the option `prepend?: true` to place the hook before all other hooks instead of after.
+
+  ## Example
+
+    change after_action(fn changeset, record ->
+      Logger.debug("Successfully executed action #{changeset.action} on #{inspect(changeset.resource)}")
+      {:ok, record}
+    end)
+  """
+  # @dialyzer {:nowarn_function, "MACRO-after_action": 3}
+  defmacro after_action(callback, opts \\ []) do
+    {value, function} = Spark.CodeHelpers.lift_functions(callback, :after_action, __CALLER__)
+
+    quote generated: true do
+      unquote(function)
+
+      {Ash.Resource.Change.AfterAction,
+       callback: unquote(value), prepend?: unquote(Keyword.get(opts, :prepend?, false))}
+    end
+  end
+
+  @doc ~S"""
+  Directly attach an `after_transaction` function to the current change.
+
+  See `Ash.Changeset.after_transaction/3` for more information.
+
+  Provide the option `prepend?: true` to place the hook before all other hooks instead of after.
+
+  ## Example
+
+    change after_transaction(fn
+      changeset, {:ok, record} ->
+        Logger.debug("Successfully executed transaction for action #{changeset.action} on #{inspect(changeset.resource)}")
+        {:ok, record}
+      changeset, {:error, reason} ->
+        Logger.debug("Failed to execute transaction for action #{changeset.action} on #{inspect(changeset.resource)}, reason: #{inspect(reason)}")
+        {:error, reason}
+    end)
+  """
+  defmacro after_transaction(callback, opts \\ []) do
+    {value, function} = Spark.CodeHelpers.lift_functions(callback, :after_transaction, __CALLER__)
+
+    quote generated: true do
+      unquote(function)
+
+      {Ash.Resource.Change.AfterTransaction,
+       callback: unquote(value), prepend?: unquote(Keyword.get(opts, :prepend?, false))}
+    end
+  end
+
+  @doc ~S"""
+  Directly attach a `before_action` function to the current change.
+
+  See `Ash.Changeset.before_action/3` for more information.
+
+  Provide the option `append?: true` to place the hook after all other hooks instead of before.
+
+  ## Example
+
+    change before_action(fn changeset ->
+      Logger.debug("About to execute #{changeset.action} on #{inspect(changeset.resource)})
+
+      changeset
+    end)
+  """
+  defmacro before_action(callback, opts \\ []) do
+    {value, function} = Spark.CodeHelpers.lift_functions(callback, :before_action, __CALLER__)
+
+    quote generated: true do
+      unquote(function)
+
+      {Ash.Resource.Change.BeforeAction,
+       callback: unquote(value), append?: unquote(Keyword.get(opts, :append?, false))}
+    end
+  end
+
+  @doc ~S"""
+  Directly attach a `before_transaction` function to the current change.
+
+  See `Ash.Changeset.before_transaction/3` for more information.
+
+  Provide the option `append?: true` to place the hook after all other hooks instead of before.
+
+  ## Example
+
+    change before_transaction(fn changeset ->
+      Logger.debug("About to execute transaction for #{changeset.action} on #{inspect(changeset.resource)})
+
+      changeset
+    end)
+  """
+  defmacro before_transaction(callback, opts \\ []) do
+    {value, function} =
+      Spark.CodeHelpers.lift_functions(callback, :before_transaction, __CALLER__)
+
+    quote generated: true do
+      unquote(function)
+
+      {Ash.Resource.Change.BeforeTransaction,
+       callback: unquote(value), append?: unquote(Keyword.get(opts, :append?, false))}
+    end
+  end
 end

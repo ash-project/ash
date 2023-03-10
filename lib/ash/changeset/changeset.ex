@@ -11,31 +11,31 @@ defmodule Ash.Changeset do
   """
 
   defstruct [
-    :data,
+    :__validated_for_action__,
     :action_type,
     :action,
-    :resource,
     :api,
-    :tenant,
-    :__validated_for_action__,
+    :data,
     :handle_errors,
+    :resource,
+    :tenant,
     :timeout,
-    select: nil,
-    params: %{},
     action_failed?: false,
+    after_action: [],
+    after_transaction: [],
     arguments: %{},
+    around_action: [],
+    attributes: %{},
+    before_action: [],
+    before_transaction: [],
     context: %{},
     defaults: [],
-    before_transaction: [],
-    after_transaction: [],
-    after_action: [],
-    around_action: [],
-    before_action: [],
     errors: [],
-    valid?: true,
-    attributes: %{},
+    params: %{},
+    phase: :validate,
     relationships: %{},
-    change_dependencies: []
+    select: nil,
+    valid?: true
   ]
 
   defimpl Inspect do
@@ -126,7 +126,51 @@ defmodule Ash.Changeset do
     end
   end
 
-  @type t :: %__MODULE__{data: Ash.Resource.record()}
+  @type t :: %__MODULE__{
+          __validated_for_action__: atom | nil,
+          action: Ash.Resource.Actions.action() | nil,
+          action_failed?: boolean,
+          action_type: Ash.Resource.Actions.action_type() | nil,
+          after_action: [
+            (t, Ash.Resource.record() ->
+               {:ok, Ash.Resource.record()}
+               | {:ok, Ash.Resource.record(), [Ash.Notifier.Notification.t()]}
+               | {:error, any})
+          ],
+          after_transaction: [
+            (t, {:ok, Ash.Resource.record()} | {:error, any} ->
+               {:ok, Ash.Resource.record()} | {:error, any})
+          ],
+          api: module | nil,
+          arguments: %{optional(atom) => any},
+          around_action: [(t, around_callback -> around_result)],
+          attributes: %{optional(atom) => any},
+          before_action: [(t -> t | {t, %{notifications: [Ash.Notifier.Notification.t()]}})],
+          before_transaction: [(t -> t)],
+          context: map,
+          data: Ash.Resource.record() | nil,
+          defaults: [atom],
+          errors: [Ash.Error.t()],
+          handle_errors:
+            nil | (t, error :: any -> :ignore | t | (error :: any) | {error :: any, t}),
+          params: %{optional(atom | binary) => any},
+          phase:
+            :validate
+            | :before_transaction
+            | :before_action
+            | :after_action
+            | :after_transaction
+            | :around_action,
+          relationships: %{
+            optional(atom) =>
+              %{optional(atom | binary) => any} | [%{optional(atom | binary) => any}]
+          },
+          resource: module,
+          select: [atom] | nil,
+          tenant: any,
+          timeout: pos_integer() | nil,
+          valid?: boolean
+        }
 
   alias Ash.Error.{
     Changes.InvalidArgument,
@@ -953,7 +997,7 @@ defmodule Ash.Changeset do
   defp cast_params(changeset, action, params) do
     changeset = %{
       changeset
-      | params: Map.merge(changeset.params || %{}, Enum.into(params || %{}, %{}))
+      | params: Map.merge(changeset.params, Enum.into(params, %{}))
     }
 
     Enum.reduce(params, changeset, fn {name, value}, changeset ->
@@ -1516,67 +1560,63 @@ defmodule Ash.Changeset do
           {:ok, term, t(), %{notifications: list(Ash.Notifier.Notification.t())}} | {:error, term}
   def with_hooks(changeset, func, opts \\ [])
 
-  def with_hooks(%{valid?: false} = changeset, _func, _opts) do
+  def with_hooks(changeset, _func, _opts) when changeset.valid? == false do
     {:error, changeset.errors}
   end
 
   def with_hooks(changeset, func, opts) do
-    if changeset.valid? do
-      if opts[:transaction?] && Ash.DataLayer.data_layer_can?(changeset.resource, :transact) do
-        transaction_hooks(changeset, fn changeset ->
-          resources =
-            changeset.resource
-            |> List.wrap()
-            |> Enum.concat(changeset.action.touches_resources)
-            |> Enum.uniq()
+    if opts[:transaction?] && Ash.DataLayer.data_layer_can?(changeset.resource, :transact) do
+      transaction_hooks(changeset, fn changeset ->
+        resources =
+          changeset.resource
+          |> List.wrap()
+          |> Enum.concat(changeset.action.touches_resources)
+          |> Enum.uniq()
 
-          Process.put(
-            :ash_after_transaction,
-            Process.get(:ash_after_transaction, []) ++ changeset.after_transaction
-          )
+        Process.put(
+          :ash_after_transaction,
+          Process.get(:ash_after_transaction, []) ++ changeset.after_transaction
+        )
 
-          resources
-          |> Enum.reject(&Ash.DataLayer.in_transaction?/1)
-          |> Ash.DataLayer.transaction(
-            fn ->
-              case run_around_actions(changeset, func) do
-                {:error, error} ->
-                  Ash.DataLayer.rollback(changeset.resource, error)
+        resources
+        |> Enum.reject(&Ash.DataLayer.in_transaction?/1)
+        |> Ash.DataLayer.transaction(
+          fn ->
+            case run_around_actions(changeset, func) do
+              {:error, error} ->
+                Ash.DataLayer.rollback(changeset.resource, error)
 
-                other ->
-                  other
-              end
-            end,
-            changeset.timeout || :infinity,
-            opts[:transaction_metadata]
-          )
-          |> case do
-            {:ok, result} ->
-              result
+              other ->
+                other
+            end
+          end,
+          changeset.timeout || :infinity,
+          opts[:transaction_metadata]
+        )
+        |> case do
+          {:ok, result} ->
+            result
 
-            {:error, error} ->
-              {:error, error}
-          end
-        end)
-      else
-        transaction_hooks(changeset, fn changeset ->
-          if changeset.timeout do
-            Ash.Engine.task_with_timeout(
-              fn ->
-                run_around_actions(changeset, func)
-              end,
-              changeset.resource,
-              changeset.timeout,
-              "#{inspect(changeset.resource)}.#{changeset.action.name}",
-              opts[:tracer]
-            )
-          else
-            run_around_actions(changeset, func)
-          end
-        end)
-      end
+          {:error, error} ->
+            {:error, error}
+        end
+      end)
     else
-      {:error, changeset.errors}
+      transaction_hooks(changeset, fn changeset ->
+        if changeset.timeout do
+          Ash.Engine.task_with_timeout(
+            fn ->
+              run_around_actions(changeset, func)
+            end,
+            changeset.resource,
+            changeset.timeout,
+            "#{inspect(changeset.resource)}.#{changeset.action.name}",
+            opts[:tracer]
+          )
+        else
+          run_around_actions(changeset, func)
+        end
+      end)
     end
   end
 
@@ -1612,7 +1652,7 @@ defmodule Ash.Changeset do
     changeset =
       Enum.reduce_while(
         changeset.before_transaction,
-        changeset,
+        set_phase(changeset, :before_transaction),
         fn before_transaction, changeset ->
           metadata = %{
             api: changeset.api,
@@ -1627,8 +1667,8 @@ defmodule Ash.Changeset do
           tracer = changeset.context[:private][:tracer]
 
           result =
-            Ash.Tracer.span :before_action,
-                            "before_action",
+            Ash.Tracer.span :before_transaction,
+                            "before_transaction",
                             tracer do
               Ash.Tracer.set_metadata(tracer, :before_transaction, metadata)
 
@@ -1656,7 +1696,7 @@ defmodule Ash.Changeset do
 
     result =
       try do
-        func.(changeset)
+        func.(clear_phase(changeset))
       rescue
         exception ->
           {:raise, exception, __STACKTRACE__}
@@ -1721,6 +1761,8 @@ defmodule Ash.Changeset do
   defp run_after_transactions(result, changeset) do
     warn_on_transaction_hooks(changeset, changeset.before_transaction, "after_transaction")
 
+    changeset = set_phase(changeset, :after_transaction)
+
     changeset.after_transaction
     |> Enum.reduce(
       result,
@@ -1758,7 +1800,10 @@ defmodule Ash.Changeset do
   end
 
   defp run_around_actions(%{around_action: []} = changeset, func) do
-    changeset = put_context(changeset, :private, %{in_before_action?: true})
+    changeset =
+      changeset
+      |> put_context(:private, %{in_before_action?: true})
+      |> set_phase(:before_action)
 
     result =
       Enum.reduce_while(
@@ -1825,7 +1870,10 @@ defmodule Ash.Changeset do
         {:error, error}
 
       {changeset, %{notifications: before_action_notifications}} ->
-        case func.(changeset) do
+        changeset
+        |> clear_phase()
+        |> func.()
+        |> case do
           {:ok, result, instructions} ->
             run_after_actions(
               result,
@@ -1846,12 +1894,16 @@ defmodule Ash.Changeset do
          %{around_action: [around | rest]} = changeset,
          func
        ) do
-    around.(changeset, fn changeset ->
+    changeset
+    |> set_phase(:around_action)
+    |> around.(fn changeset ->
       run_around_actions(%{changeset | around_action: rest}, func)
     end)
   end
 
   defp run_after_actions(result, changeset, before_action_notifications) do
+    changeset = set_phase(changeset, :after_action)
+
     Enum.reduce_while(
       changeset.after_action,
       {:ok, result, changeset, %{notifications: before_action_notifications}},
@@ -1899,10 +1951,11 @@ defmodule Ash.Changeset do
                 }
               end)
 
-            {:cont, {:ok, new_result, changeset, %{acc | notifications: all_notifications}}}
+            {:cont,
+             {:ok, new_result, clear_phase(changeset), %{acc | notifications: all_notifications}}}
 
           {:ok, new_result} ->
-            {:cont, {:ok, new_result, changeset, acc}}
+            {:cont, {:ok, new_result, clear_phase(changeset), acc}}
 
           {:error, error} ->
             {:halt, {:error, error}}
@@ -3651,4 +3704,12 @@ defmodule Ash.Changeset do
       end
     end)
   end
+
+  defp set_phase(changeset, phase) when changeset.phase == phase, do: changeset
+
+  defp set_phase(changeset, phase)
+       when phase in ~w[validate before_action after_action before_transaction after_transaction around_action]a,
+       do: %{changeset | phase: phase}
+
+  defp clear_phase(changeset), do: %{changeset | phase: :validate}
 end
