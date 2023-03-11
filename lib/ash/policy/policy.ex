@@ -41,8 +41,8 @@ defmodule Ash.Policy.Policy do
           {:ok, scenarios} ->
             {:ok, scenarios, authorizer}
 
-          other ->
-            other
+          {:error, error} ->
+            {:error, authorizer, error}
         end
     end
   end

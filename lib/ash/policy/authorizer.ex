@@ -373,17 +373,27 @@ defmodule Ash.Policy.Authorizer do
     |> case do
       {:authorized, authorizer} ->
         log_successful_policy_breakdown(authorizer)
-        {:authorized, authorizer}
+        {:authorized, strict_check_all_facts(authorizer)}
 
       {:filter, authorizer, filter} ->
         log_successful_policy_breakdown(authorizer, filter)
-        {:filter, authorizer, filter}
+        {:filter, strict_check_all_facts(authorizer), filter}
 
       {:error, error} ->
         {:error, error}
 
       {other, _authorizer} ->
         other
+    end
+  end
+
+  defp strict_check_all_facts(authorizer) do
+    case Checker.strict_check_all_facts(authorizer) do
+      {:ok, authorizer, new_facts} ->
+        %{authorizer | facts: new_facts}
+
+      _ ->
+        authorizer
     end
   end
 
@@ -781,7 +791,7 @@ defmodule Ash.Policy.Authorizer do
             {:authorized, authorizer}
         end
 
-      {:error, :unsatisfiable} ->
+      {:error, authorizer, :unsatisfiable} ->
         {:error,
          Ash.Error.Forbidden.Policy.exception(
            facts: authorizer.facts,

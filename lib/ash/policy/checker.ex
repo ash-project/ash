@@ -3,10 +3,10 @@ defmodule Ash.Policy.Checker do
 
   alias Ash.Policy.{Check, Policy}
 
-  def strict_check_facts(%{policies: policies} = authorizer) do
+  def strict_check_all_facts(%{policies: policies} = authorizer) do
     Enum.reduce_while(policies, {:ok, authorizer, authorizer.facts}, fn policy,
                                                                         {:ok, authorizer, facts} ->
-      case do_strict_check_facts(policy, authorizer, facts) do
+      case do_strict_check_all_facts(policy, authorizer, facts) do
         {:ok, authorizer, facts} ->
           {:cont, {:ok, authorizer, facts}}
 
@@ -16,12 +16,12 @@ defmodule Ash.Policy.Checker do
     end)
   end
 
-  defp do_strict_check_facts(%Policy{} = policy, authorizer, facts) do
+  defp do_strict_check_all_facts(%Policy{} = policy, authorizer, facts) do
     policy.condition
     |> List.wrap()
     |> Enum.reduce_while({:ok, authorizer, facts}, fn {check_module, opts},
                                                       {:ok, authorizer, facts} ->
-      case do_strict_check_facts(
+      case do_strict_check_all_facts(
              %Check{check_module: check_module, check_opts: opts},
              authorizer,
              facts
@@ -32,60 +32,23 @@ defmodule Ash.Policy.Checker do
     end)
     |> case do
       {:ok, authorizer, facts} ->
-        if Enum.all?(List.wrap(policy.condition), fn {check_module, opts} ->
-             case Ash.Policy.Policy.fetch_fact(facts, {check_module, opts}) do
-               {:ok, true} ->
-                 true
-
-               {:ok, false} ->
-                 false
-
-               _ ->
-                 # don't prune fact checking a branch if we don't know
-                 true
-             end
-           end) do
-          strict_check_policies(policy.policies, authorizer, facts)
-        else
-          {:ok, authorizer, facts}
-        end
+        strict_check_all_policies(policy.policies, authorizer, facts)
 
       {:error, error} ->
         {:error, error}
     end
   end
 
-  defp do_strict_check_facts(%Ash.Policy.Check{} = check, authorizer, facts) do
+  defp do_strict_check_all_facts(%Ash.Policy.Check{} = check, authorizer, facts) do
     check_module = check.check_module
     opts = check.check_opts
 
-    try do
-      case check_module.strict_check(authorizer.actor, authorizer, opts) do
-        {:ok, boolean} when is_boolean(boolean) ->
-          {:ok, authorizer, Map.put(facts, {check_module, opts}, boolean)}
-
-        {:ok, :unknown} ->
-          {:ok, authorizer, facts}
-
-        {:error, error} ->
-          {:error, error}
-
-        other ->
-          raise "Invalid return value from strict_check call #{check_module}.strict_check(actor, authorizer, #{inspect(opts)}) -  #{inspect(other)}"
-      end
-    rescue
-      e ->
-        reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
-                  error_context:
-                    "Strict checking: #{check_module.describe(opts)} on resource: #{authorizer.resource}"
-                ),
-                __STACKTRACE__
-    end
+    {:ok, authorizer, Map.put_new(facts, {check_module, opts}, :unknown)}
   end
 
-  defp strict_check_policies(policies, authorizer, facts) do
+  defp strict_check_all_policies(policies, authorizer, facts) do
     Enum.reduce_while(policies, {:ok, authorizer, facts}, fn policy, {:ok, authorizer, facts} ->
-      case do_strict_check_facts(policy, authorizer, facts) do
+      case do_strict_check_all_facts(policy, authorizer, facts) do
         {:ok, authorizer, facts} -> {:cont, {:ok, authorizer, facts}}
         {:error, error} -> {:halt, {:error, error}}
       end
@@ -126,8 +89,8 @@ defmodule Ash.Policy.Checker do
          |> Ash.Policy.SatSolver.simplify_clauses()
          |> remove_scenarios_with_impossible_facts(authorizer), authorizer}
 
-      {:error, :unsatisfiable} ->
-        {:error, :unsatisfiable}
+      {:error, authorizer, :unsatisfiable} ->
+        {:error, authorizer, :unsatisfiable}
     end
   end
 
