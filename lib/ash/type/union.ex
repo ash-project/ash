@@ -88,7 +88,7 @@ defmodule Ash.Type.Union do
        schema = Ash.Type.constraints(type)
        constraints = Spark.OptionsHelpers.validate!(config[:constraints] || [], schema)
 
-       {key, Keyword.put(config, :constraints, constraints)}
+       {key, config |> Keyword.put(:constraints, constraints) |> Keyword.put(:type, type)}
      end)}
   end
 

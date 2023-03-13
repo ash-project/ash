@@ -201,7 +201,7 @@ defmodule Ash.Type do
 
   @doc false
   def builtin_types do
-    @short_names
+    @builtin_types
   end
 
   def builtin?(type) when type in @builtin_types, do: true
