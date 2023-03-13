@@ -205,7 +205,7 @@ defmodule Ash.Test.GeneratorTest do
   end
 
   describe "built in generators" do
-    for type <- Enum.uniq(Enum.map(Ash.Type.builtin_types(), &elem(&1, 1))) do
+    for type <- Enum.uniq(Ash.Type.builtin_types()) do
       Code.ensure_compiled!(type)
       has_generator? = function_exported?(type, :generator, 1)
 
