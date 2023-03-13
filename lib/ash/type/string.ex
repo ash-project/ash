@@ -65,10 +65,16 @@ defmodule Ash.Type.String do
 
   def apply_constraints(value, constraints) do
     {value, errors} =
-      return_value(constraints[:allow_empty?], constraints[:trim?], value, constraints)
+      return_value(
+        Keyword.get(constraints, :allow_empty?, false),
+        Keyword.get(constraints, :trim?, true),
+        value,
+        constraints
+      )
 
     case errors do
       [] -> {:ok, value}
+      [error] -> {:error, error}
       errors -> {:error, errors}
     end
   end

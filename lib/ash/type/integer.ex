@@ -59,7 +59,7 @@ defmodule Ash.Type.Integer do
       end)
 
     case errors do
-      [] -> :ok
+      [] -> {:ok, value}
       errors -> {:error, errors}
     end
   end

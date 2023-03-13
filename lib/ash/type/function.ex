@@ -29,7 +29,7 @@ defmodule Ash.Type.Function do
     if constraints[:arity] && not is_function(term, constraints[:arity]) do
       {:error, message: "Expected a function of arity %{arity}", arity: constraints[:arity]}
     else
-      :ok
+      {:ok, term}
     end
   end
 

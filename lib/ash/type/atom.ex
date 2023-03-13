@@ -50,7 +50,7 @@ defmodule Ash.Type.Atom do
       end)
 
     case errors do
-      [] -> :ok
+      [] -> {:ok, value}
       errors -> {:error, errors}
     end
   end

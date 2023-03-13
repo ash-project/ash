@@ -878,7 +878,7 @@ defmodule Ash.Type do
       end
 
       @impl true
-      def apply_constraints(_, _), do: :ok
+      def apply_constraints(value, _), do: {:ok, value}
 
       @impl true
       def cast_in_query?(_), do: true
@@ -900,6 +900,9 @@ defmodule Ash.Type do
       end
 
       defoverridable constraints: 0,
+                     describe: 1,
+                     embedded?: 0,
+                     ecto_type: 0,
                      array_constraints: 0,
                      apply_constraints: 2,
                      handle_change: 3,

@@ -75,7 +75,7 @@ defmodule Ash.Type.Decimal do
   end
 
   @impl true
-  def apply_constraints(nil, _), do: :ok
+  def apply_constraints(nil, _), do: {:ok, nil}
 
   def apply_constraints(value, constraints) do
     errors =
@@ -96,7 +96,7 @@ defmodule Ash.Type.Decimal do
       end)
 
     case errors do
-      [] -> :ok
+      [] -> {:ok, value}
       errors -> {:error, errors}
     end
   end

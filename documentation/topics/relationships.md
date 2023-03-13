@@ -194,7 +194,7 @@ end
 
 There are two ways to load relationships:
 
-- in the query using `c:Ash.Query.load/2`
+- in the query using `Ash.Query.load/2`
 - directly on records using `c:Ash.Api.load/3`
 
 ### On records
@@ -236,7 +236,7 @@ User
 
 At present, loading relationships in the query is fundamentally the same as loading on records. Eventually, data layers will be able to optimize these loads (potentially including them as joins in the main query).
 
-See `c:Ash.Query.load/2` for more information.
+See `Ash.Query.load/2` for more information.
 
 ### More complex data loading
 

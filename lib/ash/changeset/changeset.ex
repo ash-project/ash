@@ -2765,7 +2765,7 @@ defmodule Ash.Changeset do
       if Map.has_key?(item, attribute.name) || Map.has_key?(item, string_attribute) do
         input_value = Map.get(item, attribute.name) || Map.get(item, string_attribute)
 
-        case Ash.Type.cast_input(attribute.type, input_value, attribute.name) do
+        case Ash.Type.cast_input(attribute.type, input_value, attribute.constraints) do
           {:ok, casted_input_value} ->
             {:ok, casted_input_value}
 

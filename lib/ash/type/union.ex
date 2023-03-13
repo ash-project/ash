@@ -77,6 +77,7 @@ defmodule Ash.Type.Union do
      end)
      |> Keyword.new(fn {key, config} ->
        type = Ash.Type.get_type(config[:type])
+       Code.ensure_compiled!(unwrap_type(type))
 
        if !Ash.Type.ash_type?(type) do
          raise """
@@ -90,6 +91,9 @@ defmodule Ash.Type.Union do
        {key, Keyword.put(config, :constraints, constraints)}
      end)}
   end
+
+  defp unwrap_type({:array, type}), do: unwrap_type(type)
+  defp unwrap_type(type), do: type
 
   @moduledoc """
   A union between multiple types, distinguished with a tag or by attempting to validate.
