@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.21](https://github.com/ash-project/ash/compare/v2.6.20...v2.6.21) (2023-03-13)
+
+
+
+
+### Improvements:
+
+* add `Ash.Type.NewType`
+
+* add `:unknown` for all potential facts
+
+* optimize policy check running with laziness
+
+* don't select when running policy queries
+
 ## [v2.6.20](https://github.com/ash-project/ash/compare/v2.6.19...v2.6.20) (2023-03-10)
 
 
