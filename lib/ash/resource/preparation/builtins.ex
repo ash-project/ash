@@ -35,4 +35,52 @@ defmodule Ash.Resource.Preparation.Builtins do
   def build(options) do
     {Ash.Resource.Preparation.Build, options: options}
   end
+
+  @doc ~S"""
+  Directly attach a `before_action` function to the query.
+
+  See `Ash.Query.before_action/2` for more information.
+
+  ## Example
+
+    prepare before_action(fn query ->
+      Logger.debug("About to execute query for #{query.action.name} on #{inspect(query.resource)})
+
+      query
+    end)
+  """
+  defmacro before_action(callback) do
+    {value, function} =
+      Spark.CodeHelpers.lift_functions(callback, :query_before_action, __CALLER__)
+
+    quote generated: true do
+      unquote(function)
+
+      {Ash.Resource.Preparation.BeforeAction, callback: unquote(value)}
+    end
+  end
+
+  @doc ~S"""
+  Directly attach an `after_action` function to the query.
+
+  See `Ash.Query.after_action/2` for more information.
+
+  ## Example
+
+    prepare after_action(fn query, records ->
+      Logger.debug("Query for #{query.action.name} on resource #{inspect(query.resource)} returned #{length(records)} records")
+
+      {:ok, records}
+    end)
+  """
+  defmacro after_action(callback) do
+    {value, function} =
+      Spark.CodeHelpers.lift_functions(callback, :query_after_action, __CALLER__)
+
+    quote generated: true do
+      unquote(function)
+
+      {Ash.Resource.Preparation.AfterAction, callback: unquote(value)}
+    end
+  end
 end

@@ -626,13 +626,11 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp reset_arguments(%{arguments: arguments} = changeset) when is_map(arguments) do
+  defp reset_arguments(%{arguments: arguments} = changeset) do
     Enum.reduce(arguments, changeset, fn {key, value}, changeset ->
       set_argument(changeset, key, value)
     end)
   end
-
-  defp reset_arguments(changeset), do: changeset
 
   @doc """
   Set the result of the action. This will prevent running the underlying datalayer behavior

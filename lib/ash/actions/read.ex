@@ -1054,7 +1054,7 @@ defmodule Ash.Actions.Read do
                  {:ok, query} <- set_tenant(query, ash_query),
                  {:ok, results} <-
                    run_query(
-                     ash_query,
+                     set_phase(ash_query, :executing),
                      query,
                      %{
                        actor: actor,
@@ -1303,7 +1303,10 @@ defmodule Ash.Actions.Read do
   end
 
   defp run_before_action(query) do
-    query = Ash.Query.put_context(query, :private, %{in_before_action?: true})
+    query =
+      query
+      |> Ash.Query.put_context(:private, %{in_before_action?: true})
+      |> set_phase(:before_action)
 
     query.before_action
     |> Enum.reduce_while({query, []}, fn before_action, {query, notifications} ->
@@ -1321,9 +1324,12 @@ defmodule Ash.Actions.Read do
           {:cont, {query, notifications}}
       end
     end)
+    |> then(fn {query, notifications} -> {set_phase(query), notifications} end)
   end
 
   defp run_after_action(query, results) do
+    query = set_phase(query, :after_action)
+
     query.after_action
     |> Enum.reduce_while({query, {:ok, results, []}}, fn after_action,
                                                          {query, {:ok, results, notifications}} ->
@@ -2157,4 +2163,8 @@ defmodule Ash.Actions.Read do
         other
     end
   end
+
+  defp set_phase(query, phase \\ :preparing)
+       when phase in ~w[preparing before_action after_action executing]a,
+       do: %{query | phase: phase}
 end
