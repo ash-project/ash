@@ -29,32 +29,63 @@ defmodule Ash.Query do
   """
 
   defstruct [
-    :api,
-    :resource,
-    :filter,
-    :tenant,
-    :action,
-    :distinct,
     :__validated_for_action__,
+    :action,
+    :api,
+    :distinct,
+    :filter,
+    :resource,
+    :tenant,
     :timeout,
-    params: %{},
-    arguments: %{},
+    action_failed?: false,
+    after_action: [],
     aggregates: %{},
-    load: [],
+    arguments: %{},
+    before_action: [],
     calculations: %{},
     context: %{},
+    errors: [],
+    limit: nil,
+    load: [],
+    offset: 0,
+    params: %{},
+    phase: :preparing,
     select: nil,
     sort: [],
-    limit: nil,
-    offset: 0,
-    errors: [],
-    action_failed?: false,
-    before_action: [],
-    after_action: [],
     valid?: true
   ]
 
-  @type t :: %__MODULE__{}
+  @type t :: %__MODULE__{
+          __validated_for_action__: atom | nil,
+          action: Ash.Resource.Actions.Read.t() | nil,
+          api: module | nil,
+          distinct: [atom],
+          filter: Ash.Filter.t() | nil,
+          resource: module,
+          tenant: any,
+          timeout: pos_integer() | nil,
+          action_failed?: boolean,
+          after_action: [
+            (t, [Ash.Resource.record()] ->
+               {:ok, [Ash.Resource.record()]}
+               | {:ok, [Ash.Resource.record()], [Ash.Notifier.Notification.t()]}
+               | {:error, any})
+          ],
+          aggregates: %{optional(atom) => Ash.Filter.t()},
+          arguments: %{optional(atom) => any},
+          before_action: [(t -> t)],
+          calculations: %{optional(atom) => :wat},
+          context: map,
+          errors: [Ash.Error.t()],
+          limit: nil | non_neg_integer(),
+          load: keyword(keyword),
+          offset: non_neg_integer(),
+          params: %{optional(atom | binary) => any},
+          phase: :preparing | :before_action | :after_action | :executing,
+          select: nil | [atom],
+          sort: [atom | {atom, :asc | :desc}],
+          valid?: boolean
+        }
 
   alias Ash.Actions.Sort
 
@@ -298,7 +329,7 @@ defmodule Ash.Query do
 
     query =
       query
-      |> Map.put(:params, Map.merge(query.params || %{}, Enum.into(args, %{})))
+      |> Map.put(:params, Map.merge(query.params, Map.new(args)))
       |> set_context(Keyword.get(opts, :context, %{}))
 
     action = Ash.Resource.Info.action(query.resource, action_name, :read)
@@ -1247,13 +1278,11 @@ defmodule Ash.Query do
     end
   end
 
-  defp reset_arguments(%{arguments: arguments} = query) when is_map(arguments) do
+  defp reset_arguments(%{arguments: arguments} = query) do
     Enum.reduce(arguments, query, fn {key, value}, query ->
       set_argument(query, key, value)
     end)
   end
-
-  defp reset_arguments(query), do: query
 
   defp add_invalid_errors(value, query, argument, error) do
     messages =

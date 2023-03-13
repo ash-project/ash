@@ -195,13 +195,14 @@ defmodule Ash.Resource.Change.Builtins do
   ## Example
 
     change after_action(fn changeset, record ->
-      Logger.debug("Successfully executed action #{changeset.action} on #{inspect(changeset.resource)}")
+      Logger.debug("Successfully executed action #{changeset.action.name} on #{inspect(changeset.resource)}")
       {:ok, record}
     end)
   """
   # @dialyzer {:nowarn_function, "MACRO-after_action": 3}
   defmacro after_action(callback, opts \\ []) do
-    {value, function} = Spark.CodeHelpers.lift_functions(callback, :after_action, __CALLER__)
+    {value, function} =
+      Spark.CodeHelpers.lift_functions(callback, :change_after_action, __CALLER__)
 
     quote generated: true do
       unquote(function)
@@ -222,15 +223,16 @@ defmodule Ash.Resource.Change.Builtins do
 
     change after_transaction(fn
       changeset, {:ok, record} ->
-        Logger.debug("Successfully executed transaction for action #{changeset.action} on #{inspect(changeset.resource)}")
+        Logger.debug("Successfully executed transaction for action #{changeset.action.name} on #{inspect(changeset.resource)}")
         {:ok, record}
       changeset, {:error, reason} ->
-        Logger.debug("Failed to execute transaction for action #{changeset.action} on #{inspect(changeset.resource)}, reason: #{inspect(reason)}")
+        Logger.debug("Failed to execute transaction for action #{changeset.action.name} on #{inspect(changeset.resource)}, reason: #{inspect(reason)}")
         {:error, reason}
     end)
   """
   defmacro after_transaction(callback, opts \\ []) do
-    {value, function} = Spark.CodeHelpers.lift_functions(callback, :after_transaction, __CALLER__)
+    {value, function} =
+      Spark.CodeHelpers.lift_functions(callback, :change_after_transaction, __CALLER__)
 
     quote generated: true do
       unquote(function)
@@ -250,13 +252,14 @@ defmodule Ash.Resource.Change.Builtins do
   ## Example
 
     change before_action(fn changeset ->
-      Logger.debug("About to execute #{changeset.action} on #{inspect(changeset.resource)})
+      Logger.debug("About to execute #{changeset.action.name} on #{inspect(changeset.resource)})
 
       changeset
     end)
   """
   defmacro before_action(callback, opts \\ []) do
-    {value, function} = Spark.CodeHelpers.lift_functions(callback, :before_action, __CALLER__)
+    {value, function} =
+      Spark.CodeHelpers.lift_functions(callback, :change_before_action, __CALLER__)
 
     quote generated: true do
       unquote(function)
@@ -276,14 +279,14 @@ defmodule Ash.Resource.Change.Builtins do
   ## Example
 
     change before_transaction(fn changeset ->
-      Logger.debug("About to execute transaction for #{changeset.action} on #{inspect(changeset.resource)})
+      Logger.debug("About to execute transaction for #{changeset.action.name} on #{inspect(changeset.resource)})
 
       changeset
     end)
   """
   defmacro before_transaction(callback, opts \\ []) do
     {value, function} =
-      Spark.CodeHelpers.lift_functions(callback, :before_transaction, __CALLER__)
+      Spark.CodeHelpers.lift_functions(callback, :change_before_transaction, __CALLER__)
 
     quote generated: true do
       unquote(function)
