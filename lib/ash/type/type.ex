@@ -197,7 +197,7 @@ defmodule Ash.Type do
     dump_to_embedded_array: 2
   ]
 
-  @builtin_types Keyword.values(@short_names)
+  @builtin_types Keyword.values(@builtin_short_names)
 
   @doc false
   def builtin_types do

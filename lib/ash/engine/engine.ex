@@ -54,8 +54,8 @@ defmodule Ash.Engine do
     :verbose?,
     :async?,
     :concurrency_limit,
-    # There are no other failure modes, but this is there
-    # to express the intent for there to eventually be.
+    # :continue - Go until the end, gathering all errors
+    # :stop - Stop at the first error
     failure_mode: :stop,
     return_notifications?: false,
     opts: [],
