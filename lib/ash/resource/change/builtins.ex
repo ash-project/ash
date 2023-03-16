@@ -194,10 +194,10 @@ defmodule Ash.Resource.Change.Builtins do
 
   ## Example
 
-    change after_action(fn changeset, record ->
-      Logger.debug("Successfully executed action #{changeset.action.name} on #{inspect(changeset.resource)}")
-      {:ok, record}
-    end)
+      change after_action(fn changeset, record ->
+        Logger.debug("Successfully executed action #{changeset.action.name} on #{inspect(changeset.resource)}")
+        {:ok, record}
+      end)
   """
   # @dialyzer {:nowarn_function, "MACRO-after_action": 3}
   defmacro after_action(callback, opts \\ []) do
@@ -221,14 +221,14 @@ defmodule Ash.Resource.Change.Builtins do
 
   ## Example
 
-    change after_transaction(fn
-      changeset, {:ok, record} ->
-        Logger.debug("Successfully executed transaction for action #{changeset.action.name} on #{inspect(changeset.resource)}")
-        {:ok, record}
-      changeset, {:error, reason} ->
-        Logger.debug("Failed to execute transaction for action #{changeset.action.name} on #{inspect(changeset.resource)}, reason: #{inspect(reason)}")
-        {:error, reason}
-    end)
+      change after_transaction(fn
+        changeset, {:ok, record} ->
+          Logger.debug("Successfully executed transaction for action #{changeset.action.name} on #{inspect(changeset.resource)}")
+          {:ok, record}
+        changeset, {:error, reason} ->
+          Logger.debug("Failed to execute transaction for action #{changeset.action.name} on #{inspect(changeset.resource)}, reason: #{inspect(reason)}")
+          {:error, reason}
+      end)
   """
   defmacro after_transaction(callback, opts \\ []) do
     {value, function} =
@@ -251,11 +251,11 @@ defmodule Ash.Resource.Change.Builtins do
 
   ## Example
 
-    change before_action(fn changeset ->
-      Logger.debug("About to execute #{changeset.action.name} on #{inspect(changeset.resource)})
+      change before_action(fn changeset ->
+        Logger.debug("About to execute #{changeset.action.name} on #{inspect(changeset.resource)})
 
-      changeset
-    end)
+        changeset
+      end)
   """
   defmacro before_action(callback, opts \\ []) do
     {value, function} =
@@ -278,11 +278,11 @@ defmodule Ash.Resource.Change.Builtins do
 
   ## Example
 
-    change before_transaction(fn changeset ->
-      Logger.debug("About to execute transaction for #{changeset.action.name} on #{inspect(changeset.resource)})
+      change before_transaction(fn changeset ->
+        Logger.debug("About to execute transaction for #{changeset.action.name} on #{inspect(changeset.resource)})
 
-      changeset
-    end)
+        changeset
+      end)
   """
   defmacro before_transaction(callback, opts \\ []) do
     {value, function} =
