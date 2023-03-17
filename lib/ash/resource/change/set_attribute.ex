@@ -4,21 +4,21 @@ defmodule Ash.Resource.Change.SetAttribute do
   alias Ash.Changeset
 
   def init(opts) do
-    with :ok <- validate_attribute(opts[:attribute]),
-         :ok <- validate_value(opts[:value]) do
-      {:ok, opts}
+    case Spark.OptionsHelpers.validate(opts, Ash.Resource.Change.Builtins.set_attribute_opts()) do
+      {:ok, opts} ->
+        {:ok, opts}
+
+      {:error, error} ->
+        {:error, Exception.message(error)}
     end
   end
 
-  defp validate_attribute(nil), do: {:error, "attribute is required"}
-  defp validate_attribute(value) when is_atom(value), do: :ok
-  defp validate_attribute(other), do: {:error, "attribute is invalid: #{inspect(other)}"}
-  defp validate_value(value) when is_function(value, 0), do: :ok
+  def validate_value(value) when is_function(value, 0), do: {:ok, value}
 
-  defp validate_value(value) when is_function(value),
+  def validate_value(value) when is_function(value),
     do: {:error, "only 0 argument functions are supported"}
 
-  defp validate_value(_), do: :ok
+  def validate_value(value), do: {:ok, value}
 
   def change(changeset, opts, _) do
     value =
@@ -34,7 +34,12 @@ defmodule Ash.Resource.Change.SetAttribute do
         Changeset.force_change_attribute(changeset, opts[:attribute], value)
       end
     else
-      Changeset.force_change_attribute(changeset, opts[:attribute], value)
+      if opts[:set_when_nil?] or
+           Changeset.get_attribute(changeset, opts[:attribute]) != nil do
+        Changeset.force_change_attribute(changeset, opts[:attribute], value)
+      else
+        changeset
+      end
     end
   end
 end
