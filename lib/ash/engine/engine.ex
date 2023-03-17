@@ -78,17 +78,20 @@ defmodule Ash.Engine do
   require Logger
 
   def run(requests, opts \\ []) do
+    resources =
+      opts[:resource]
+      |> List.wrap()
+      |> Enum.concat(Enum.flat_map(requests, &(&1.touches_resources || [])))
+      |> Enum.concat(Enum.flat_map(requests, &List.wrap(&1.resource)))
+      |> Enum.concat(opts[:touches_resources] || [])
+      |> Enum.reject(&is_nil/1)
+      |> Enum.filter(&Ash.DataLayer.data_layer_can?(&1, :transact))
+
     cond do
-      opts[:transaction?] && !opts[:resource] ->
+      opts[:transaction?] && Enum.empty?(resources) ->
         raise "Engine invoked with `transaction?: true` but no resource, so no transaction could be started."
 
-      opts[:transaction?] && Ash.DataLayer.data_layer_can?(opts[:resource], :transact) ->
-        resources =
-          opts[:resource]
-          |> List.wrap()
-          |> Enum.concat(Enum.flat_map(requests, &(&1.touches_resources || [])))
-          |> Enum.concat(opts[:touches_resources] || [])
-
+      opts[:transaction?] ->
         resources
         |> Enum.reject(&Ash.DataLayer.in_transaction?/1)
         |> case do
@@ -104,7 +107,7 @@ defmodule Ash.Engine do
                     result
 
                   {:error, error} ->
-                    Ash.DataLayer.rollback(opts[:resource], error)
+                    Ash.DataLayer.rollback(Enum.at(resources, 0), error)
                 end
               end,
               opts[:timeout] || :infinity,

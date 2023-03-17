@@ -247,7 +247,13 @@ defmodule Ash.DataLayer do
     transaction(
       resource,
       fn ->
-        transaction(resources, func, timeout, reason)
+        case transaction(resources, func, timeout, reason) do
+          {:ok, result} ->
+            result
+
+          {:error, error} ->
+            rollback(resource, error)
+        end
       end,
       timeout,
       reason

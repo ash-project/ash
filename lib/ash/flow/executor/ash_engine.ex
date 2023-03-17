@@ -383,6 +383,8 @@ defmodule Ash.Flow.Executor.AshEngine do
 
         request_deps = dependable_request_paths(dep_paths)
 
+        touches_resources = touches_resources ++ touches_resources_from_steps(transaction_steps)
+
         [
           Ash.Engine.Request.new(
             path: [name],
@@ -494,6 +496,7 @@ defmodule Ash.Flow.Executor.AshEngine do
             async?: true,
             name: "#{inspect(name)}",
             error_path: List.wrap(name),
+            touches_resources: touches_resources_from_steps(branch_steps),
             data:
               Ash.Engine.Request.resolve(request_deps, fn context ->
                 context = Ash.Helpers.deep_merge_maps(context, additional_context)
@@ -1465,6 +1468,27 @@ defmodule Ash.Flow.Executor.AshEngine do
       step ->
         step
     end)
+  end
+
+  defp touches_resources_from_steps(steps) when is_list(steps) do
+    Enum.flat_map(steps, fn step ->
+      touches_resources_from_steps(step)
+    end)
+  end
+
+  defp touches_resources_from_steps(%Step{step: %{steps: inner_steps} = step}) do
+    step
+    |> Map.get(:touches_resources)
+    |> Kernel.||([])
+    |> Enum.concat(touches_resources_from_steps(inner_steps))
+    |> Enum.concat(List.wrap(Map.get(step, :resource)))
+  end
+
+  defp touches_resources_from_steps(%Step{step: step}) do
+    step
+    |> Map.get(:touches_resources)
+    |> Kernel.||([])
+    |> Enum.concat(List.wrap(Map.get(step, :resource)))
   end
 
   defp remap_step_names(steps, fun, step_names \\ nil) do

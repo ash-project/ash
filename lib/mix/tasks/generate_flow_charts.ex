@@ -24,6 +24,8 @@ defmodule Mix.Tasks.Ash.GenerateFlowCharts do
   """
   use Mix.Task
 
+  @recursive true
+
   @shortdoc "Generates Mermaid Flow Charts for each `Ash.Flow`"
   def run(argv) do
     Mix.Task.run("compile")

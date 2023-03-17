@@ -60,7 +60,7 @@ defmodule Ash.Resource.Actions.Read do
                     """
                   ],
                   modify_query: [
-                    type: :mfa,
+                    type: {:or, [:mfa, {:fun, 2}]},
                     doc: """
                     Allows direct manipulation of the data layer query via an MFA.
 

@@ -2175,8 +2175,13 @@ defmodule Ash.Query do
       if opts[:no_modify?] || !ash_query.action || !ash_query.action.modify_query do
         {:ok, query}
       else
-        {m, f, a} = ash_query.action.modify_query
-        apply(m, f, a ++ [ash_query, query])
+        case ash_query.action.modify_query do
+          {m, f, a} ->
+            apply(m, f, a ++ [ash_query, query])
+
+          modify_query when is_function(modify_query, 2) ->
+            modify_query.(ash_query, query)
+        end
       end
     else
       {:error, error} -> {:error, error}

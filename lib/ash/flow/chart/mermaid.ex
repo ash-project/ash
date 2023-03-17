@@ -103,6 +103,16 @@ defmodule Ash.Flow.Chart.Mermaid do
 
           message
 
+        %Ash.Flow.Step.Branch{steps: steps} = step ->
+          name = format_name(step)
+
+          message
+          |> add_line("subgraph #{name}.subgraph [\"Branch\"]")
+          |> add_line("#{format_name(step)}(\"#{short_name(step)} <br/> #{description(step)}\")")
+          |> add_line("direction TB")
+          |> add_steps(steps, all_steps, opts)
+          |> add_line("end")
+
         %Ash.Flow.Step.Transaction{steps: steps} = step ->
           name = format_name(step)
 
@@ -212,7 +222,7 @@ defmodule Ash.Flow.Chart.Mermaid do
     end
   end
 
-  defp short_name(%Ash.Flow.Step.Branch{steps: steps, output: output}) do
+  defp short_name(%Ash.Flow.Step.Branch{steps: steps, output: output, condition: condition}) do
     child_step =
       if output do
         find_step(steps, output)
@@ -220,7 +230,7 @@ defmodule Ash.Flow.Chart.Mermaid do
         List.last(steps)
       end
 
-    "Branch result #{short_name(child_step)}"
+    "Branch condition: #{escape(inspect(condition))} <br> Branch Result: #{short_name(child_step)}"
   end
 
   defp short_name(%Ash.Flow.Step.Map{steps: steps, output: output}) do
@@ -282,7 +292,10 @@ defmodule Ash.Flow.Chart.Mermaid do
         %Ash.Flow.Step.Branch{steps: steps, condition: condition} = step ->
           id = "#{format_name(step)}"
 
-          dependencies(step, all_steps, [condition], id) ++ do_links(steps, all_steps, opts)
+          steps
+          |> Enum.map(&link(format_name(step), nil, format_name(&1)))
+          |> Enum.concat(dependencies(step, all_steps, [condition], id))
+          |> Enum.concat(do_links(steps, all_steps, opts))
 
         %Ash.Flow.Step.Map{steps: steps, over: over} = step ->
           id = "#{format_name(step)}.element"
