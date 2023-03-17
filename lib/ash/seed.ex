@@ -92,6 +92,22 @@ defmodule Ash.Seed do
     end
   end
 
+  def update!(record, input) when is_map(input) do
+    record
+    |> Ash.Changeset.new()
+    |> change_attributes(input)
+    |> change_relationships(input)
+    |> Ash.Changeset.set_defaults(:update, true)
+    |> update_via_data_layer()
+    |> case do
+      {:ok, result, _, _} ->
+        result
+
+      {:error, error} ->
+        raise Ash.Error.to_error_class(error)
+    end
+  end
+
   @doc """
   Returns `:__keep_nil__`, allowing to ensure a default value is not used when you want the value to be `nil`.
   """
@@ -100,6 +116,12 @@ defmodule Ash.Seed do
   defp create_via_data_layer(changeset) do
     Ash.Changeset.with_hooks(changeset, fn changeset ->
       Ash.DataLayer.create(changeset.resource, changeset)
+    end)
+  end
+
+  defp update_via_data_layer(changeset) do
+    Ash.Changeset.with_hooks(changeset, fn changeset ->
+      Ash.DataLayer.update(changeset.resource, changeset)
     end)
   end
 

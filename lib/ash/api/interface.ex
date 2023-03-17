@@ -69,6 +69,13 @@ defmodule Ash.Api.Interface do
 
         {aggregate_opts, opts} = split_aggregate_opts(opts)
 
+        opts =
+          if query.action do
+            Keyword.put(opts, :read_action, query.action.name)
+          else
+            opts
+          end
+
         case Ash.Query.Aggregate.new(query.resource, :count, :count, aggregate_opts) do
           {:ok, aggregate} ->
             case Api.aggregate(__MODULE__, query, aggregate, opts) do
@@ -91,6 +98,13 @@ defmodule Ash.Api.Interface do
         query = Ash.Query.to_query(query)
 
         {aggregate_opts, opts} = split_aggregate_opts(opts)
+
+        opts =
+          if query.action do
+            Keyword.put(opts, :read_action, query.action.name)
+          else
+            opts
+          end
 
         case Ash.Query.Aggregate.new(query.resource, :count, :count, aggregate_opts) do
           {:ok, aggregate} ->
@@ -115,6 +129,13 @@ defmodule Ash.Api.Interface do
           query = Ash.Query.to_query(query)
 
           {aggregate_opts, opts} = split_aggregate_opts(opts)
+
+          opts =
+            if query.action do
+              Keyword.put(opts, :read_action, query.action.name)
+            else
+              opts
+            end
 
           case Ash.Query.Aggregate.new(
                  query.resource,
@@ -144,6 +165,13 @@ defmodule Ash.Api.Interface do
           query = Ash.Query.to_query(query)
 
           {aggregate_opts, opts} = split_aggregate_opts(opts)
+
+          opts =
+            if query.action do
+              Keyword.put(opts, :read_action, query.action.name)
+            else
+              opts
+            end
 
           case Ash.Query.Aggregate.new(
                  query.resource,

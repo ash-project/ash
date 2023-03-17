@@ -4,6 +4,36 @@ defmodule Ash.Test.Actions.AggregateTest do
 
   require Ash.Query
 
+  defmodule Comment do
+    use Ash.Resource,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    actions do
+      defaults [:create, :read, :update, :destroy]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :public, :boolean do
+        default false
+      end
+    end
+
+    relationships do
+      belongs_to :post, Ash.Test.Actions.AggregateTest.Post do
+        attribute_writable? true
+      end
+    end
+
+    policies do
+      policy always() do
+        authorize_if expr(public == true)
+      end
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
@@ -27,6 +57,18 @@ defmodule Ash.Test.Actions.AggregateTest do
       end
     end
 
+    aggregates do
+      count :count_of_comments, :comments
+
+      count :count_of_comments_unauthorized, :comments do
+        authorize? false
+      end
+    end
+
+    relationships do
+      has_many :comments, Comment
+    end
+
     policies do
       policy always() do
         authorize_if expr(public == true)
@@ -40,6 +82,7 @@ defmodule Ash.Test.Actions.AggregateTest do
 
     entries do
       entry(Post)
+      entry(Comment)
     end
   end
 
@@ -52,35 +95,62 @@ defmodule Ash.Test.Actions.AggregateTest do
     end
   end
 
-  test "allows counting records" do
-    assert %{count: 0} = Api.aggregate!(Post, {:count, :count})
+  describe "Api.aggregate" do
+    test "allows counting records" do
+      assert %{count: 0} = Api.aggregate!(Post, {:count, :count})
 
-    Post
-    |> Ash.Changeset.for_create(:create, %{title: "title"})
-    |> Api.create!()
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "title"})
+      |> Api.create!()
 
-    assert %{count: 1} = Api.aggregate!(Post, {:count, :count})
+      assert %{count: 1} = Api.aggregate!(Post, {:count, :count})
 
-    Post
-    |> Ash.Changeset.for_create(:create, %{title: "title"})
-    |> Api.create!()
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "title"})
+      |> Api.create!()
 
-    assert %{count: 2} = Api.aggregate!(Post, {:count, :count})
+      assert %{count: 2} = Api.aggregate!(Post, {:count, :count})
+    end
+
+    test "runs authorization" do
+      assert %{count: 0} = Api.aggregate!(Post, {:count, :count}, authorize?: true)
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "title"})
+      |> Api.create!()
+
+      assert %{count: 0} = Api.aggregate!(Post, {:count, :count}, authorize?: true)
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "title", public: true})
+      |> Api.create!()
+
+      assert %{count: 1} = Api.aggregate!(Post, {:count, :count}, authorize?: true)
+    end
   end
 
-  test "runs authorization" do
-    assert %{count: 0} = Api.aggregate!(Post, {:count, :count}, authorize?: true)
+  describe "aggregate loading" do
+    test "loading aggregates can be authorized or not" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "title", public: true})
+        |> Api.create!()
 
-    Post
-    |> Ash.Changeset.for_create(:create, %{title: "title"})
-    |> Api.create!()
+      Comment
+      |> Ash.Changeset.for_create(:create, %{post_id: post.id, public: true})
+      |> Api.create!()
 
-    assert %{count: 0} = Api.aggregate!(Post, {:count, :count}, authorize?: true)
+      Comment
+      |> Ash.Changeset.for_create(:create, %{post_id: post.id, public: false})
+      |> Api.create!()
 
-    Post
-    |> Ash.Changeset.for_create(:create, %{title: "title", public: true})
-    |> Api.create!()
+      assert %{count_of_comments: 2, count_of_comments_unauthorized: 2} =
+               Api.load!(post, [:count_of_comments, :count_of_comments_unauthorized])
 
-    assert %{count: 1} = Api.aggregate!(Post, {:count, :count}, authorize?: true)
+      assert %{count_of_comments: 1, count_of_comments_unauthorized: 2} =
+               Api.load!(post, [:count_of_comments, :count_of_comments_unauthorized],
+                 authorize?: true
+               )
+    end
   end
 end

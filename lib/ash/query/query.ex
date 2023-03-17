@@ -1002,7 +1002,9 @@ defmodule Ash.Query do
                  type: aggregate.type,
                  constraints: aggregate.constraints,
                  implementation: aggregate.implementation,
-                 uniq?: aggregate.uniq?
+                 uniq?: aggregate.uniq?,
+                 read_action: aggregate.read_action,
+                 authorize?: aggregate.authorize?
                ) do
           query_aggregate = %{query_aggregate | load: field}
           new_aggregates = Map.put(query.aggregates, aggregate.name, query_aggregate)
@@ -1540,6 +1542,8 @@ defmodule Ash.Query do
     * type: The type of the aggregate
     * constraints: Type constraints for the aggregate's type
     * implementation: An implementation used when the aggregate kind is custom
+    * read_action: The read action to use on the destination resource
+    * authorize?: Wether or not to authorize access to this aggregate
   """
   def aggregate(query, name, kind, relationship) do
     aggregate(query, name, kind, relationship, [])
@@ -1557,7 +1561,9 @@ defmodule Ash.Query do
       opts[:type],
       Keyword.get(opts, :constraints, []),
       opts[:implementation],
-      opts[:uniq?]
+      opts[:uniq?],
+      opts[:read_action],
+      Keyword.get(opts, :authorize?, true)
     )
   end
 
@@ -1576,6 +1582,7 @@ defmodule Ash.Query do
           atom | list(atom),
           Ash.Query.t() | Keyword.t() | nil
         ) :: t()
+  @deprecated "Use aggregate/5 instead"
   def aggregate(
         query,
         name,
@@ -1587,7 +1594,9 @@ defmodule Ash.Query do
         type \\ nil,
         constraints \\ [],
         implementation \\ nil,
-        uniq? \\ false
+        uniq? \\ false,
+        read_action \\ nil,
+        authorize? \\ true
       ) do
     {field, agg_query} =
       case agg_query do
@@ -1635,7 +1644,9 @@ defmodule Ash.Query do
              type: type,
              constraints: constraints,
              implementation: implementation,
-             uniq?: uniq?
+             uniq?: uniq?,
+             read_action: read_action,
+             authorize?: authorize?
            ) do
         {:ok, aggregate} ->
           new_aggregates = Map.put(query.aggregates, aggregate.name, aggregate)

@@ -12,6 +12,8 @@ defmodule Ash.Query.Aggregate do
     :constraints,
     :implementation,
     :load,
+    :read_action,
+    authorize?: true,
     uniq?: false,
     filterable?: true
   ]
@@ -73,10 +75,24 @@ defmodule Ash.Query.Aggregate do
       type: :any,
       doc: "The implementation for any custom aggregates."
     ],
+    read_action: [
+      type: :atom,
+      doc: "The read action to use for the aggregate, defaults to the primary read action."
+    ],
     uniq?: [
       type: :boolean,
+      default: false,
       doc:
         "Wether or not to only consider unique values. Only relevant for `count` and `list` aggregates."
+    ],
+    authorize?: [
+      type: :boolean,
+      default: true,
+      doc: """
+      Wether or not the aggregate query should authorize based on the target action.
+
+      See `d:Ash.Resource.Dsl.aggregates|count` for more information.
+      """
     ]
   ]
 
@@ -113,11 +129,13 @@ defmodule Ash.Query.Aggregate do
         opts[:query],
         opts[:field],
         opts[:default],
-        opts[:filterable?],
+        Keyword.get(opts, :filterable?, true),
         opts[:type],
-        opts[:constraints],
+        Keyword.get(opts, :constraints, []),
         opts[:implementation],
-        opts[:uniq?]
+        opts[:uniq?],
+        opts[:read_action],
+        Keyword.get(opts, :authorize?, true)
       )
     end
   end
@@ -135,7 +153,9 @@ defmodule Ash.Query.Aggregate do
         type \\ nil,
         constraints \\ [],
         implementation \\ nil,
-        uniq? \\ false
+        uniq? \\ false,
+        read_action \\ nil,
+        authorize? \\ true
       ) do
     if kind == :custom && !type do
       raise ArgumentError, "Must supply type when building a `custom` aggregate"
@@ -185,7 +205,9 @@ defmodule Ash.Query.Aggregate do
          type: type,
          uniq?: uniq?,
          query: query,
-         filterable?: filterable?
+         filterable?: filterable?,
+         authorize?: authorize?,
+         read_action: read_action
        }}
     end
   end
@@ -292,25 +314,45 @@ defmodule Ash.Query.Aggregate do
     |> Map.values()
     |> Enum.map(&{{&1.resource, &1.relationship_path, []}, &1})
     |> Enum.concat(aggregates_from_filter(initial_query))
-    |> Enum.group_by(&elem(&1, 0))
+    |> Enum.group_by(fn {{resource, relationship_path, ref_path}, aggregate} ->
+      action =
+        aggregate.read_action ||
+          Ash.Resource.Info.primary_action(
+            Ash.Resource.Info.related(resource, relationship_path),
+            :read
+          ).name
+
+      {{resource, relationship_path, ref_path}, aggregate.authorize? && authorizing?, action}
+    end)
     |> Enum.map(fn {key, value} ->
-      {key, Enum.uniq_by(Enum.map(value, &elem(&1, 1)), & &1.name)}
+      {key, Enum.uniq_by(Enum.map(value, &elem(&1, 1)), &{&1.name, &1.load})}
     end)
     |> Enum.uniq()
-    |> Enum.reduce({[], [], []}, fn {{aggregate_resource, relationship_path, ref_path},
-                                     aggregates},
+    |> Enum.reduce({[], [], []}, fn {{{aggregate_resource, relationship_path, ref_path},
+                                      authorize?, read_action}, aggregates},
                                     {auth_requests, value_requests, aggregates_in_query} ->
       related = Ash.Resource.Info.related(aggregate_resource, relationship_path)
 
       can_be_in_query? = can_be_in_query? && ref_path == []
 
+      opts =
+        initial_query.context
+        |> Map.get(:private, %{})
+        |> Map.take([:tracer, :actor, :query])
+        |> Map.to_list()
+
+      related_query = Ash.Query.for_read(related, read_action, opts)
+
       auth_request =
-        if authorizing? do
+        if authorize? do
           auth_request(
             related,
             initial_query,
             relationship_path,
-            request_path
+            request_path,
+            related_query,
+            authorize?,
+            read_action
           )
         else
           nil
@@ -334,7 +376,10 @@ defmodule Ash.Query.Aggregate do
               aggregates,
               auth_request,
               aggregate_resource,
-              request_path
+              request_path,
+              related_query,
+              authorize?,
+              read_action
             )
 
           {new_auth_requests, [request | value_requests], aggregates_in_query}
@@ -383,15 +428,25 @@ defmodule Ash.Query.Aggregate do
     Enum.uniq_by(aggs ++ calculations, &elem(&1, 1).name)
   end
 
-  defp auth_request(related, initial_query, relationship_path, request_path) do
-    auth_filter_path = request_path ++ [:aggregate, relationship_path, :authorization_filter]
+  defp auth_request(
+         related,
+         initial_query,
+         relationship_path,
+         request_path,
+         related_query,
+         authorize?,
+         read_action
+       ) do
+    auth_filter_path =
+      request_path ++
+        [:aggregate, relationship_path, {authorize?, read_action}, :authorization_filter]
 
     Request.new(
       resource: related,
       api: initial_query.api,
       async?: false,
-      query: Ash.Query.for_read(related, Ash.Resource.Info.primary_action!(related, :read).name),
-      path: request_path ++ [:aggregate, relationship_path],
+      query: related_query,
+      path: request_path ++ [:aggregate, relationship_path, {authorize?, read_action}],
       strict_check_only?: true,
       action: Ash.Resource.Info.primary_action(related, :read),
       name: "authorize aggregate: #{Enum.join(relationship_path, ".")}",
@@ -408,7 +463,10 @@ defmodule Ash.Query.Aggregate do
          aggregates,
          auth_request,
          aggregate_resource,
-         request_path
+         request_path,
+         related_query,
+         authorize?,
+         read_action
        ) do
     pkey = Ash.Resource.Info.primary_key(aggregate_resource)
 
@@ -422,12 +480,9 @@ defmodule Ash.Query.Aggregate do
     Request.new(
       resource: aggregate_resource,
       api: initial_query.api,
-      query:
-        Ash.Query.for_read(
-          aggregate_resource,
-          Ash.Resource.Info.primary_action!(aggregate_resource, :read).name
-        ),
-      path: request_path ++ [:aggregate_values, relationship_path],
+      query: related_query,
+      authorize?: false,
+      path: request_path ++ [:aggregate_values, relationship_path, {authorize?, read_action}],
       action: Ash.Resource.Info.primary_action(aggregate_resource, :read),
       name: "fetch aggregate: #{Enum.join(relationship_path, ".")}",
       data:

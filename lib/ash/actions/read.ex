@@ -765,13 +765,6 @@ defmodule Ash.Actions.Read do
         can_be_in_query? =
           not Keyword.has_key?(request_opts, :initial_data) && !ash_query.action.manual
 
-        authorizing? =
-          if request_opts[:authorize?] == false do
-            false
-          else
-            request_opts[:authorize?] || Keyword.has_key?(request_opts, :actor)
-          end
-
         {calculations_in_query, calculations_at_runtime} =
           if Ash.DataLayer.data_layer_can?(ash_query.resource, :expression_calculation) &&
                !request_opts[:initial_data] do
@@ -838,7 +831,7 @@ defmodule Ash.Actions.Read do
           Aggregate.requests(
             ash_query,
             can_be_in_query?,
-            authorizing?,
+            authorize?,
             calculations_in_query,
             path
           )
@@ -1006,7 +999,7 @@ defmodule Ash.Actions.Read do
                      filter,
                      {path, ash_query.tenant, data}
                    ),
-                 filter <- update_aggregate_filters(filter, data, path),
+                 filter <- update_aggregate_filters(filter, data, path, authorize?),
                  {:ok, query} <-
                    Ash.DataLayer.select(
                      query,
@@ -1241,13 +1234,17 @@ defmodule Ash.Actions.Read do
   defp validate_get(_, _, _), do: :ok
 
   @doc false
-  def update_aggregate_filters(filter, data, path) do
+  def update_aggregate_filters(filter, data, path, authorize?) do
     Filter.update_aggregates(filter, fn aggregate, ref ->
+      authorize? = aggregate.authorize? && authorize?
+      # we rely on the fact that Ash.Filter sets this
+      read_action = aggregate.read_action
+
       case get_in(
              data,
              path ++
                [:aggregate, ref.relationship_path] ++
-               aggregate.relationship_path ++ [:authorization_filter]
+               aggregate.relationship_path ++ [{authorize?, read_action}, :authorization_filter]
            ) do
         nil ->
           aggregate
@@ -1978,14 +1975,17 @@ defmodule Ash.Actions.Read do
 
   defp add_aggregate_values(results, aggregates, resource, aggregate_values, aggregates_in_query) do
     keys_to_aggregates =
-      Enum.reduce(aggregate_values, %{}, fn
-        {_name, %{data: keys_to_values}}, acc ->
-          Enum.reduce(keys_to_values, acc, fn {pkey, values}, acc ->
-            Map.update(acc, pkey, values, &Map.merge(&1, values))
-          end)
+      aggregate_values
+      |> Enum.reduce(%{}, fn {_uniqueifier, aggregate_values}, acc ->
+        Enum.reduce(aggregate_values, acc, fn
+          {_name, %{data: keys_to_values}}, acc ->
+            Enum.reduce(keys_to_values, acc, fn {pkey, values}, acc ->
+              Map.update(acc, pkey, values, &Map.merge(&1, values))
+            end)
 
-        _, acc ->
-          acc
+          _, acc ->
+            acc
+        end)
       end)
 
     pkey = Ash.Resource.Info.primary_key(resource)

@@ -2383,7 +2383,14 @@ defmodule Ash.Filter do
                  type: aggregate.type,
                  constraints: aggregate.constraints,
                  implementation: aggregate.implementation,
-                 uniq?: aggregate.uniq?
+                 uniq?: aggregate.uniq?,
+                 read_action:
+                   aggregate.read_action ||
+                     Ash.Resource.Info.primary_action!(
+                       Ash.Resource.Info.related(context.resource, aggregate.relationship_path),
+                       :read
+                     ).name,
+                 authorize?: aggregate.authorize?
                ) do
           case parse_predicates(nested_statement, query_aggregate, context) do
             {:ok, nested_statement} ->
@@ -2913,7 +2920,9 @@ defmodule Ash.Filter do
                      type: aggregate.type,
                      constraints: aggregate.constraints,
                      implementation: aggregate.implementation,
-                     uniq?: aggregate.uniq?
+                     uniq?: aggregate.uniq?,
+                     read_action: aggregate.read_action,
+                     authorize?: aggregate.authorize?
                    ) do
               {:ok, %{ref | attribute: query_aggregate, resource: related}}
             else

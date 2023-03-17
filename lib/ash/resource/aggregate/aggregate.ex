@@ -15,6 +15,7 @@ defmodule Ash.Resource.Aggregate do
     :sort,
     :default,
     :uniq?,
+    authorize?: true,
     filterable?: true
   ]
 
@@ -81,6 +82,19 @@ defmodule Ash.Resource.Aggregate do
       type: {:or, [:boolean, {:in, [:simple_equality]}]},
       default: true,
       doc: "Whether or not the aggregate should be usable in filters."
+    ],
+    authorize?: [
+      type: :boolean,
+      default: true,
+      doc: """
+      Wether or not the aggregate query should authorize based on the target action.
+
+      If you are using filter checks or simple checks that don't depend on arguments on the destination resource, then
+      this should be set to `true`. Additionally, you can set `read_action` to a separate action that does have filter checks.
+      Otherwise, you can set `authorize? false` on the aggregate.
+
+      If the parent query is not being authorized, then the aggregate not be authorized either regardless of the setting.
+      """
     ]
   ]
 
@@ -92,6 +106,8 @@ defmodule Ash.Resource.Aggregate do
           kind: Ash.Query.Aggregate.kind(),
           description: String.t() | nil,
           private?: boolean,
+          authorize?: boolean,
+          read_action: atom | nil,
           default: term
         }
 

@@ -19,6 +19,7 @@ spark_locals_without_parens = [
   attribute_type: 1,
   attribute_writable?: 1,
   authorize: 1,
+  authorize?: 1,
   authorize_if: 1,
   authorize_if: 2,
   authorize_unless: 1,
