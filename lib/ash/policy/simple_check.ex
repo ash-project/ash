@@ -6,7 +6,7 @@ defmodule Ash.Policy.SimpleCheck do
   """
   @type context :: %{
           optional(:query) => Ash.Query.t(),
-          optional(:changeset) => Ash.Query.t(),
+          optional(:changeset) => Ash.Changeset.t(),
           :action => Ash.Resource.Actions.action(),
           :resource => Ash.Resource.t(),
           :api => Ash.Api.t()
