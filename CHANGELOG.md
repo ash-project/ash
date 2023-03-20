@@ -5,6 +5,31 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.22](https://github.com/ash-project/ash/compare/v2.6.21...v2.6.22) (2023-03-20)
+
+
+
+
+### Bug Fixes:
+
+* properly handle multi-resource transaction return values
+
+* various fixes in aggregate authorization behavior
+
+* use builtin short names for builtin type helper
+
+* properly set builtin types
+
+### Improvements:
+
+* better resource detection of transactions in `Ash.Flow`
+
+* better formatting for branches in flow charts
+
+* add `:read_action` and `:authorize?` configurations for resource aggregates
+
+* Add `before_action/1` and `after_action/1` to `Ash.Resource.Preparations.Builtins`. (#526)
+
 ## [v2.6.21](https://github.com/ash-project/ash/compare/v2.6.20...v2.6.21) (2023-03-13)
 
 
