@@ -207,6 +207,7 @@ defmodule Ash.MixProject do
         ],
         Utilities: [
           Ash,
+          Ash.Expr,
           Ash.Page,
           Ash.Page.Keyset,
           Ash.Page.Offset,
