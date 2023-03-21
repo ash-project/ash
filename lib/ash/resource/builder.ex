@@ -50,12 +50,70 @@ defmodule Ash.Resource.Builder do
         ) ::
           {:ok, Ash.Resource.Actions.action()} | {:error, term}
   def build_action(type, name, opts \\ []) do
-    with {:ok, opts} <- handle_nested_builders(opts, [:changes, :arguments, :metadata]) do
+    with {:ok, opts} <-
+           handle_nested_builders(opts, [:changes, :arguments, :metadata, :pagination]) do
       Transformer.build_entity(
         Ash.Resource.Dsl,
         [:actions],
         type,
         Keyword.merge(opts, name: name)
+      )
+    end
+  end
+
+  @doc """
+  Builds and adds a new relationship unless a relationship with that name already exists
+  """
+  @spec add_new_relationship(
+          Spark.Dsl.Builder.input(),
+          type :: Ash.Resource.Relationships.type(),
+          name :: atom,
+          destination :: module,
+          opts :: Keyword.t()
+        ) ::
+          Spark.Dsl.Builder.result()
+  defbuilder add_new_relationship(dsl_state, type, name, destination, opts \\ []) do
+    if Ash.Resource.Info.relationship(dsl_state, name) do
+      dsl_state
+    else
+      add_relationship(dsl_state, type, name, destination, opts)
+    end
+  end
+
+  @doc """
+  Builds and adds an action
+  """
+  @spec add_relationship(
+          Spark.Dsl.Builder.input(),
+          type :: Ash.Resource.Relationships.type(),
+          name :: atom,
+          destination :: module,
+          opts :: Keyword.t()
+        ) ::
+          Spark.Dsl.Builder.result()
+  defbuilder add_relationship(dsl_state, type, name, destination, opts \\ []) do
+    with {:ok, relationship} <- build_relationship(type, name, destination, opts) do
+      Transformer.add_entity(dsl_state, [:relationships], relationship)
+    end
+  end
+
+  @doc """
+  Builds an action
+  """
+  @spec build_relationship(
+          type :: Ash.Resource.Relationships.type(),
+          name :: atom,
+          destination :: module,
+          opts :: Keyword.t()
+        ) ::
+          {:ok, Ash.Resource.Relationships.relationship()} | {:error, term}
+  def build_relationship(type, name, destination, opts \\ []) do
+    with {:ok, opts} <- handle_nested_builders(opts, [:changes, :arguments, :metadata]) do
+      Transformer.build_entity(
+        Ash.Resource.Dsl,
+        [:relationships],
+        type,
+        Keyword.merge(opts, name: name, destination: destination)
       )
     end
   end
@@ -133,6 +191,21 @@ defmodule Ash.Resource.Builder do
       [:preparations],
       :prepare,
       Keyword.merge(opts, preparation: ref)
+    )
+  end
+
+  @doc """
+  Builds a pagination object
+  """
+  @spec build_pagination(pts :: Keyword.t()) ::
+          {:ok, Ash.Resource.Actions.Read.Pagination.t()} | {:error, term}
+  def build_pagination(opts \\ []) do
+    Transformer.build_entity(
+      Ash.Resource.Dsl,
+      # All action types that support arguments have the same entity, so we just say `create` here
+      [:actions, :read],
+      :pagination,
+      opts
     )
   end
 
@@ -341,6 +414,8 @@ defmodule Ash.Resource.Builder do
         ) ::
           {:ok, Ash.Resource.Calculation.t()} | {:error, term}
   def build_calculation(name, type, calculation, opts \\ []) do
+    opts = Keyword.put_new(opts, :arguments, [])
+
     Transformer.build_entity(
       Ash.Resource.Dsl,
       [:calculations],

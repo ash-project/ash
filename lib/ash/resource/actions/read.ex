@@ -120,6 +120,8 @@ defmodule Ash.Resource.Actions.Read do
       offset?: false
     ]
 
+    @type t :: %__MODULE__{}
+
     def transform(pagination) do
       if pagination.keyset? or pagination.offset? do
         {:ok, pagination}
@@ -131,7 +133,11 @@ defmodule Ash.Resource.Actions.Read do
 
   def transform(read) do
     if read.pagination do
-      {:ok, %{read | pagination: List.last(read.pagination) || false}}
+      if is_list(read.pagination) do
+        {:ok, %{read | pagination: List.last(read.pagination) || false}}
+      else
+        {:ok, %{read | pagination: read.pagination}}
+      end
     else
       {:ok, %{read | pagination: false}}
     end
