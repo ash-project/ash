@@ -352,12 +352,11 @@ defmodule Ash.Error.Forbidden.Policy do
         {:ok, false} ->
           "✘"
 
+        {:ok, :unknown} ->
+          unknown_or_error_glyph(success?, filter_check?)
+
         :error ->
-          if success? && filter_check? do
-            "✓"
-          else
-            "?"
-          end
+          unknown_or_error_glyph(success?, filter_check?)
       end
 
     [
@@ -370,6 +369,9 @@ defmodule Ash.Error.Forbidden.Policy do
       tag
     ]
   end
+
+  defp unknown_or_error_glyph(success?, filter_check?) when success? and filter_check?, do: "✓"
+  defp unknown_or_error_glyph(_, _), do: "?"
 
   defp check_type(%{type: :authorize_if}), do: "authorize if"
   defp check_type(%{type: :forbid_if}), do: "forbid if"
