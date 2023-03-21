@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.23](https://github.com/ash-project/ash/compare/v2.6.22...v2.6.23) (2023-03-21)
+
+
+
+
+### Improvements:
+
+* builder & typespec improvements
+
 ## [v2.6.22](https://github.com/ash-project/ash/compare/v2.6.21...v2.6.22) (2023-03-20)
 
 
