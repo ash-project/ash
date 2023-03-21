@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.25](https://github.com/ash-project/ash/compare/v2.6.24...v2.6.25) (2023-03-21)
+
+
+
+
+### Improvements:
+
+* add `skip_global_validations?` option for actions
+
 ## [v2.6.24](https://github.com/ash-project/ash/compare/v2.6.23...v2.6.24) (2023-03-21)
 
 
