@@ -13,7 +13,7 @@ defmodule Ash.Query.Function.DateTimeAdd do
   def args, do: [[:utc_datetime, :integer, :duration_name]]
 
   def evaluate(%{arguments: [datetime, factor, interval]}) do
-    shifted = Ash.Query.Function.Ago.datetime_add(datetime, -factor, interval)
+    shifted = Ash.Query.Function.Ago.datetime_add(datetime, factor, interval)
     {:known, shifted}
   end
 end

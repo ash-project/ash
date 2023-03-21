@@ -2291,7 +2291,7 @@ defmodule Ash.Filter do
           if is_boolean(function) do
             {:ok, BooleanExpression.optimized_new(:and, expression, function)}
           else
-            if context.resource &&
+            if is_nil(context.resource) ||
                  Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, function}) do
               {:ok, BooleanExpression.optimized_new(:and, expression, function)}
             else
@@ -2489,7 +2489,8 @@ defmodule Ash.Filter do
           if is_boolean(operator) do
             {:ok, BooleanExpression.optimized_new(:and, expression, operator)}
           else
-            if Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, operator}) do
+            if is_nil(context.resource) ||
+                 Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, operator}) do
               {:ok, BooleanExpression.optimized_new(:and, expression, operator)}
             else
               {:error, "data layer does not support the operator #{inspect(operator)}"}
@@ -2773,7 +2774,7 @@ defmodule Ash.Filter do
           if is_boolean(function) do
             {:ok, function}
           else
-            if context.resource &&
+            if is_nil(context.resource) ||
                  Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, function}) do
               {:ok, function}
             else
@@ -3067,7 +3068,7 @@ defmodule Ash.Filter do
   end
 
   defp add_aggregate_expression(context, nested_statement, field, expression) do
-    if Ash.DataLayer.data_layer_can?(context.resource, :aggregate_filter) do
+    if context.resource && Ash.DataLayer.data_layer_can?(context.resource, :aggregate_filter) do
       case parse_predicates(nested_statement, Map.get(context.aggregates, field), context) do
         {:ok, nested_statement} ->
           {:ok, BooleanExpression.optimized_new(:and, expression, nested_statement)}
@@ -3081,7 +3082,8 @@ defmodule Ash.Filter do
   end
 
   defp add_calculation_expression(context, nested_statement, field, module, expression) do
-    if Ash.DataLayer.data_layer_can?(context.resource, :expression_calculation) &&
+    if context.resource &&
+         Ash.DataLayer.data_layer_can?(context.resource, :expression_calculation) &&
          :erlang.function_exported(module, :expression, 2) do
       case parse_predicates(nested_statement, Map.get(context.calculations, field), context) do
         {:ok, nested_statement} ->
@@ -3272,7 +3274,8 @@ defmodule Ash.Filter do
                   if is_boolean(operator) do
                     {:cont, {:ok, operator}}
                   else
-                    if Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, operator}) do
+                    if is_nil(context.resource) ||
+                         Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, operator}) do
                       {:cont, {:ok, BooleanExpression.optimized_new(:and, expression, operator)}}
                     else
                       {:halt,
