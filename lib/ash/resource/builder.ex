@@ -155,7 +155,7 @@ defmodule Ash.Resource.Builder do
   @doc """
   Builds an action
   """
-  @spec build_relationship(
+  @spec build_identity(
           name :: atom,
           fields :: atom | list(atom),
           opts :: Keyword.t()
