@@ -175,6 +175,7 @@ spark_locals_without_parens = [
   sensitive?: 1,
   short_name: 1,
   simple_notifiers: 1,
+  skip_global_validations?: 1,
   soft?: 1,
   sort: 1,
   source: 1,

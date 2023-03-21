@@ -98,7 +98,7 @@ defmodule Ash.Resource.Builder do
   end
 
   @doc """
-  Builds an action
+  Builds a relationship
   """
   @spec build_relationship(
           type :: Ash.Resource.Relationships.type(),
@@ -114,6 +114,60 @@ defmodule Ash.Resource.Builder do
         [:relationships],
         type,
         Keyword.merge(opts, name: name, destination: destination)
+      )
+    end
+  end
+
+  @doc """
+  Builds and adds a new identity unless an identity with that name already exists
+  """
+  @spec add_new_identity(
+          Spark.Dsl.Builder.input(),
+          name :: atom,
+          fields :: atom | list(atom),
+          opts :: Keyword.t()
+        ) ::
+          Spark.Dsl.Builder.result()
+  defbuilder add_new_identity(dsl_state, name, fields, opts \\ []) do
+    if Ash.Resource.Info.identity(dsl_state, name) do
+      dsl_state
+    else
+      add_identity(dsl_state, name, fields, opts)
+    end
+  end
+
+  @doc """
+  Builds and adds an identity
+  """
+  @spec add_identity(
+          Spark.Dsl.Builder.input(),
+          name :: atom,
+          fields :: atom | list(atom),
+          opts :: Keyword.t()
+        ) ::
+          Spark.Dsl.Builder.result()
+  defbuilder add_identity(dsl_state, name, fields, opts \\ []) do
+    with {:ok, identity} <- build_identity(name, fields, opts) do
+      Transformer.add_entity(dsl_state, [:identities], identity)
+    end
+  end
+
+  @doc """
+  Builds an action
+  """
+  @spec build_relationship(
+          name :: atom,
+          fields :: atom | list(atom),
+          opts :: Keyword.t()
+        ) ::
+          {:ok, Ash.Resource.Relationships.relationship()} | {:error, term}
+  def build_identity(name, fields, opts \\ []) do
+    with {:ok, opts} <- handle_nested_builders(opts, [:changes, :arguments, :metadata]) do
+      Transformer.build_entity(
+        Ash.Resource.Dsl,
+        [:identities],
+        :identity,
+        Keyword.merge(opts, name: name, keys: fields)
       )
     end
   end

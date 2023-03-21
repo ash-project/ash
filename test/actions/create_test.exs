@@ -304,6 +304,40 @@ defmodule Ash.Test.Actions.CreateTest do
     end
   end
 
+  defmodule GlobalValidation do
+    @moduledoc false
+    use Ash.Resource,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      defaults [:create, :read, :update, :destroy]
+
+      create :manual do
+        skip_global_validations?(true)
+
+        manual fn changeset, _ ->
+          Ash.Changeset.apply_attributes(changeset)
+        end
+      end
+    end
+
+    validations do
+      validate compare(:foo, greater_than: 10)
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :foo, :integer do
+        allow_nil? false
+      end
+    end
+  end
+
   defmodule Registry do
     @moduledoc false
     use Ash.Registry
@@ -317,6 +351,7 @@ defmodule Ash.Test.Actions.CreateTest do
       entry(PostLink)
       entry(Authorized)
       entry(GeneratedPkey)
+      entry(GlobalValidation)
     end
   end
 
@@ -901,6 +936,18 @@ defmodule Ash.Test.Actions.CreateTest do
       end)
 
       assert [] = Api.read!(Authorized)
+    end
+  end
+
+  describe "global validations" do
+    test "they can be skipped" do
+      assert %{errors: [%Ash.Error.Changes.InvalidAttribute{field: :foo}]} =
+               GlobalValidation
+               |> Ash.Changeset.for_create(:create, %{foo: 5})
+
+      assert %{errors: []} =
+               GlobalValidation
+               |> Ash.Changeset.for_create(:manual, %{foo: 5})
     end
   end
 end

@@ -45,6 +45,13 @@ defmodule Ash.Resource.Actions.SharedOptions do
       on the resource.
       """
     ],
+    skip_global_validations?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      If true, global validations will be skipped. Useful for manual actions.
+      """
+    ],
     reject: [
       type: {:or, [in: [:all], list: :atom]},
       doc: """

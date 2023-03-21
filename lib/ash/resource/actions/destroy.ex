@@ -12,6 +12,7 @@ defmodule Ash.Resource.Actions.Destroy do
     arguments: [],
     touches_resources: [],
     delay_global_validations?: false,
+    skip_global_validations?: false,
     accept: nil,
     changes: [],
     reject: [],
@@ -27,6 +28,7 @@ defmodule Ash.Resource.Actions.Destroy do
           manual: module | nil,
           arguments: list(Ash.Resource.Actions.Argument.t()),
           delay_global_validations?: boolean,
+          skip_global_validations?: boolean,
           touches_resources: list(atom),
           primary?: boolean,
           description: String.t()
