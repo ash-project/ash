@@ -1287,7 +1287,8 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.ValidateRelationshipAttributes,
     Ash.Resource.Transformers.ValidateEagerIdentities,
     Ash.Resource.Transformers.ValidateAggregatesSupported,
-    Ash.Resource.Transformers.ValidateAccept
+    Ash.Resource.Transformers.ValidateAccept,
+    Ash.Resource.Transformers.GetByReadActions
   ]
 
   @verifiers [
