@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.24](https://github.com/ash-project/ash/compare/v2.6.23...v2.6.24) (2023-03-21)
+
+
+
+
+### Bug Fixes:
+
+* datetime_add was actually datetime_subtract in elixir
+
+* prevent exception when describing some checks (#531)
+
+### Improvements:
+
+* Add `get_by` option to read actions. (#530)
+
 ## [v2.6.23](https://github.com/ash-project/ash/compare/v2.6.22...v2.6.23) (2023-03-21)
 
 
