@@ -60,6 +60,14 @@ defmodule Ash.Test.Actions.ReadTest do
       read :read_with_after_action do
         prepare PostPreparation
       end
+
+      read :get_by_id do
+        get_by :id
+      end
+
+      read :get_by_id_and_uuid do
+        get_by [:id, :uuid]
+      end
     end
 
     attributes do
@@ -551,6 +559,65 @@ defmodule Ash.Test.Actions.ReadTest do
                |> Ash.Query.sort(title: :asc, contents: :asc)
                |> Api.read()
                |> strip_metadata()
+    end
+  end
+
+  describe "get_by with only a single field" do
+    setup do
+      post =
+        Enum.map(0..2, fn _ ->
+          Post
+          |> new(%{title: "test", contents: "yeet"})
+          |> Api.create!()
+          |> strip_metadata()
+        end)
+        |> Enum.random()
+
+      %{post_id: post.id}
+    end
+
+    test "it succeeds when the record exists", %{post_id: post_id} do
+      assert {:ok, %{id: ^post_id}} =
+               Post |> Ash.Query.for_read(:get_by_id, %{id: post_id}) |> Api.read_one()
+    end
+
+    test "it fails when the record does not exist" do
+      assert {:ok, nil} =
+               Post
+               |> Ash.Query.for_read(:get_by_id, %{id: Ash.UUID.generate()})
+               |> Api.read_one()
+    end
+  end
+
+  describe "get_by with multiple fields" do
+    setup do
+      post =
+        Enum.map(0..2, fn _ ->
+          Post
+          |> new(%{title: "test", contents: "yeet"})
+          |> Api.create!()
+          |> strip_metadata()
+        end)
+        |> Enum.random()
+
+      %{post_id: post.id, post_uuid: post.uuid}
+    end
+
+    test "it succeeds when the record exists", %{post_id: post_id, post_uuid: post_uuid} do
+      assert {:ok, %{id: ^post_id, uuid: ^post_uuid}} =
+               Post
+               |> Ash.Query.for_read(:get_by_id_and_uuid, %{id: post_id, uuid: post_uuid})
+               |> Api.read_one()
+    end
+
+    test "it fails when the record does not exist" do
+      assert {:ok, nil} =
+               Post
+               |> Ash.Query.for_read(:get_by_id_and_uuid, %{
+                 id: Ash.UUID.generate(),
+                 uuid: Ash.UUID.generate()
+               })
+               |> Api.read_one()
     end
   end
 end

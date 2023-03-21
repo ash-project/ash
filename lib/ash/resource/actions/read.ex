@@ -1,30 +1,37 @@
 defmodule Ash.Resource.Actions.Read do
   @moduledoc "Represents a read action on a resource."
 
-  defstruct [
-    :name,
-    :pagination,
-    :primary?,
-    :filter,
-    :description,
-    :get?,
-    :manual,
-    modify_query: nil,
-    transaction?: false,
-    arguments: [],
-    preparations: [],
-    touches_resources: [],
-    metadata: [],
-    type: :read
-  ]
+  defstruct arguments: [],
+            description: nil,
+            filter: nil,
+            get_by: nil,
+            get?: nil,
+            manual: nil,
+            metadata: [],
+            modify_query: nil,
+            name: nil,
+            pagination: nil,
+            preparations: [],
+            primary?: nil,
+            touches_resources: [],
+            transaction?: false,
+            type: :read
 
   @type t :: %__MODULE__{
-          type: :read,
-          name: atom,
+          arguments: [Ash.Resource.Actions.Argument.t()],
+          description: String.t(),
+          filter: any,
+          get_by: nil | [atom],
+          get?: nil | boolean,
           manual: atom | {atom, Keyword.t()} | nil,
+          metadata: [Ash.Resource.Actions.Metadata.t()],
+          modify_query: nil | mfa,
+          name: atom,
+          pagination: any,
           primary?: boolean,
-          touches_resources: list(atom),
-          description: String.t()
+          touches_resources: [atom],
+          transaction?: boolean,
+          type: :read
         }
 
   import Ash.Resource.Actions.SharedOptions
@@ -68,6 +75,17 @@ defmodule Ash.Resource.Actions.Read do
                     The result must be `{:ok, new_data_layer_query} | {:error, error}`.
 
                     Here be dragons.
+                    """
+                  ],
+                  get_by: [
+                    type: {:or, [:atom, {:list, :atom}]},
+                    default: nil,
+                    doc: """
+                    A helper to automatically generate a "get by X" action.
+
+                    Using this option will set `get?` to true, add arguments
+                    for each of the specified fields, and add a filter to the
+                    underlying query for each of the arguments.
                     """
                   ]
                 ],
