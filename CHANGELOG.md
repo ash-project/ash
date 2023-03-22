@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.27](https://github.com/ash-project/ash/compare/v2.6.26...v2.6.27) (2023-03-22)
+
+
+
+
+### Improvements:
+
+* add `update_actor` to `Ash.Plughelpers` (#532)
+
 ## [v2.6.26](https://github.com/ash-project/ash/compare/v2.6.25...v2.6.26) (2023-03-21)
 
 
