@@ -84,6 +84,38 @@ if Code.ensure_loaded?(Plug.Conn) do
     def get_actor(_), do: nil
 
     @doc """
+    Updates the actor inside the Plug connection.
+
+    The actor is stored inside the [connection's private
+    fields](https://hexdocs.pm/plug/Plug.Conn.html#module-private-fields).
+
+    ## Example
+
+        iex> actor = build_actor(%{email: "marty@1985.retro"})
+        ...> conn = build_conn() |> put_private(:ash, %{actor: actor})
+        ...> actor = get_actor(conn)
+        %{email: "marty@1985.retro"} = actor
+        ...> conn = update_actor(conn, fn actor -> Map.put(actor, :name, "Marty Retro") end)
+        ...> actor = get_actor(conn)
+        %{email: "marty@1985.retro", name: "Marty Retro"} = actor
+        ...> conn = update_actor(conn, fn actor -> Map.delete(actor, :email) end)
+        ...> actor = get_actor(conn)
+        %{name: "Marty Retro"} = actor
+    """
+    @spec update_actor(Conn.t(), (nil | Ash.Resource.record() -> nil | Ash.Resource.record())) ::
+            Conn.t()
+    def update_actor(conn, callback) do
+      case get_actor(conn) do
+        nil ->
+          conn
+
+        actor ->
+          conn
+          |> set_actor(callback.(actor))
+      end
+    end
+
+    @doc """
     Sets the tenant inside the Plug connection.
 
     The tenant is stored inside the [connection's private
