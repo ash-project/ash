@@ -18,6 +18,25 @@ defmodule Ash.Resource.Change.Builtins do
     ]
   ]
 
+  @set_attribute_opts [
+    attribute: [
+      doc: "The attribute to change.",
+      required: true,
+      type: :atom
+    ],
+    value: [
+      doc:
+        "The value to set the attribute to; may be a fn/0 which will be called to produce the value.",
+      required: true,
+      type: {:custom, Ash.Resource.Change.SetAttribute, :validate_value, []}
+    ],
+    set_when_nil?: [
+      doc: "When false, decline setting the attribute if it is nil.",
+      type: :boolean,
+      default: true
+    ]
+  ]
+
   @doc """
   Relates the actor to the data being changed, as the provided relationship.
 
@@ -50,16 +69,34 @@ defmodule Ash.Resource.Change.Builtins do
 
     Use `arg(:argument_name)` to use the value of the given argument. If the argument is not supplied then nothing happens.
 
+  ## Options
+
+  #{Spark.OptionsHelpers.docs(Keyword.drop(@set_attribute_opts, [:attribute, :value]))}
+
   ## Examples
 
       change set_attribute(:active, false)
       change set_attribute(:opened_at, &DateTime.utc_now/0)
       change set_attribute(:status, arg(:status))
+      change set_attribute(:encrypted_data, arg(:data), set_when_nil?: false)
   """
-  @spec set_attribute(relationship :: atom, (() -> term) | {:_arg, :status} | term()) ::
+  def set_attribute_opts do
+    @set_attribute_opts
+  end
+
+  @spec set_attribute(
+          relationship :: atom,
+          (() -> term) | {:_arg, :status} | term(),
+          opts :: Keyword.t()
+        ) ::
           Ash.Resource.Change.ref()
-  def set_attribute(attribute, value) do
-    {Ash.Resource.Change.SetAttribute, attribute: attribute, value: value}
+  def set_attribute(attribute, value, opts \\ []) do
+    opts =
+      opts
+      |> Keyword.put(:attribute, attribute)
+      |> Keyword.put(:value, value)
+
+    {Ash.Resource.Change.SetAttribute, opts}
   end
 
   @doc """
