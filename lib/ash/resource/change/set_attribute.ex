@@ -15,6 +15,8 @@ defmodule Ash.Resource.Change.SetAttribute do
 
   def validate_value(value) when is_function(value, 0), do: {:ok, value}
 
+  def validate_value(value) when is_function(value, 1), do: {:ok, value}
+
   def validate_value(value) when is_function(value),
     do: {:error, "only 0 argument functions are supported"}
 
@@ -23,8 +25,14 @@ defmodule Ash.Resource.Change.SetAttribute do
   def change(changeset, opts, _) do
     value =
       case opts[:value] do
-        value when is_function(value) -> value.()
-        value -> value
+        value when is_function(value, 0) ->
+          value.()
+
+        value when is_function(value, 1) ->
+          value.(Changeset.get_attribute(changeset, opts[:attribute]))
+
+        value ->
+          value
       end
 
     if opts[:new?] do

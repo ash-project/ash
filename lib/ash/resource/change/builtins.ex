@@ -65,9 +65,10 @@ defmodule Ash.Resource.Change.Builtins do
   @doc """
   Sets the attribute to the value provided.
 
-  If a zero argument function is provided, it is called to determine the value.
+  If a zero-argument function is provided, it is called to determine the value.
+  If a one-argument function is provided, it is called with the previous value to determine the value.
 
-    Use `arg(:argument_name)` to use the value of the given argument. If the argument is not supplied then nothing happens.
+  Use `arg(:argument_name)` to use the value of the given argument. If the argument is not supplied then nothing happens.
 
   ## Options
 
@@ -77,6 +78,7 @@ defmodule Ash.Resource.Change.Builtins do
 
       change set_attribute(:active, false)
       change set_attribute(:opened_at, &DateTime.utc_now/0)
+      change set_attribute(:count, &(&1 + 1))
       change set_attribute(:status, arg(:status))
       change set_attribute(:encrypted_data, arg(:data), set_when_nil?: false)
   """
@@ -84,19 +86,34 @@ defmodule Ash.Resource.Change.Builtins do
     @set_attribute_opts
   end
 
-  @spec set_attribute(
-          relationship :: atom,
-          (() -> term) | {:_arg, :status} | term(),
-          opts :: Keyword.t()
-        ) ::
-          Ash.Resource.Change.ref()
-  def set_attribute(attribute, value, opts \\ []) do
+  defmacro set_attribute(attribute, value, opts \\ []) do
+    {value, function} =
+      case value do
+        value when is_function(value) ->
+          Spark.CodeHelpers.lift_functions(value, :change_set_attribute, __CALLER__)
+
+        value ->
+          {value, nil}
+      end
+
     opts =
       opts
       |> Keyword.put(:attribute, attribute)
       |> Keyword.put(:value, value)
 
-    {Ash.Resource.Change.SetAttribute, opts}
+    case function do
+      nil ->
+        quote generated: true do
+          {Ash.Resource.Change.SetAttribute, unquote(opts)}
+        end
+
+      _ ->
+        quote generated: true do
+          unquote(function)
+
+          {Ash.Resource.Change.SetAttribute, unquote(opts)}
+        end
+    end
   end
 
   @doc """
