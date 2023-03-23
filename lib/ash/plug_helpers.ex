@@ -176,5 +176,81 @@ if Code.ensure_loaded?(Plug.Conn) do
 
     def get_tenant(%{private: %{ash: %{tenant: tenant}}}), do: tenant
     def get_tenant(_), do: nil
+
+    @doc """
+    Sets the context inside the Plug connection.
+
+    Context can be used to store abitrary data about the user, connection, or
+    anything else you like that doesn't belong as part of the actor or tenant.
+
+    The context is stored inside the [connection's private
+    fields](https://hexdocs.pm/plug/Plug.Conn.html#module-private-fields).
+
+    ## Example
+
+        iex> context = %{fraud_score: 0.427}
+        ...> conn = build_conn() |> set_context(context)
+        %Plug.Conn{private: %{ash: %{context: %{fraud_score: 0.427}}}}
+
+    """
+    @spec set_context(Conn.t(), Ash.Resource.record()) :: Conn.t()
+    def set_context(conn, context) do
+      ash_private =
+        conn.private
+        |> Map.get(:ash, %{})
+        |> Map.put(:context, context)
+
+      conn
+      |> Conn.put_private(:ash, ash_private)
+    end
+
+    @doc """
+    Retrieves the context from the Plug connection.
+
+    The context is stored inside the [connection's private
+    fields](https://hexdocs.pm/plug/Plug.Conn.html#module-private-fields).
+
+    ## Example
+
+        iex> context = %{fraud_score: 0.427}
+        ...> conn = build_conn() |> put_private(:ash, %{context: context})
+        ...> context = get_context(conn)
+        %{fraud_score: 0.427}
+    """
+    @spec get_context(Conn.t()) :: nil | Ash.Resource.record()
+    def get_context(%{private: %{ash: %{context: context}}}), do: context
+    def get_context(_), do: nil
+
+    @doc """
+    Updates the context inside the Plug connection.
+
+    The context is stored inside the [connection's private
+    fields](https://hexdocs.pm/plug/Plug.Conn.html#module-private-fields).
+
+    ## Example
+
+        iex> context = %{species: "Fythetropozoat"}
+        ...> conn = build_conn() |> put_private(:ash, %{context: context})
+        ...> context = get_context(conn)
+        %{fraud_score: 0.427}
+        ...> conn = update_context(conn, fn context -> Map.put(context, :location, "Barnard's Loop") end)
+        ...> context = get_context(conn)
+        %{species: "Fythetropozoat", location: "Barnard's Loop"}
+        ...> conn = update_context(conn, fn context -> Map.delete(context, :fraud_score) end)
+        ...> context = get_context(conn)
+        %{location: "Barnard's Loop"}
+    """
+    @spec update_context(Conn.t(), (nil | Ash.Resource.record() -> nil | Ash.Resource.record())) ::
+            Conn.t()
+    def update_context(conn, callback) do
+      case get_context(conn) do
+        nil ->
+          conn
+
+        context ->
+          conn
+          |> set_context(callback.(context))
+      end
+    end
   end
 end
