@@ -31,7 +31,7 @@ defmodule Ash.Resource.Actions.Update do
           skip_global_validations?: boolean,
           primary?: boolean,
           touches_resources: list(atom),
-          description: String.t()
+          description: String.t() | nil
         }
 
   import Ash.Resource.Actions.SharedOptions

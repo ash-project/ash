@@ -31,7 +31,7 @@ defmodule Ash.Resource.Actions.Destroy do
           skip_global_validations?: boolean,
           touches_resources: list(atom),
           primary?: boolean,
-          description: String.t()
+          description: String.t() | nil
         }
   import Ash.Resource.Actions.SharedOptions
 

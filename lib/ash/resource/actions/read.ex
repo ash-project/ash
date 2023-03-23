@@ -19,7 +19,7 @@ defmodule Ash.Resource.Actions.Read do
 
   @type t :: %__MODULE__{
           arguments: [Ash.Resource.Actions.Argument.t()],
-          description: String.t(),
+          description: String.t() | nil,
           filter: any,
           get_by: nil | [atom],
           get?: nil | boolean,

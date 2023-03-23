@@ -36,7 +36,7 @@ defmodule Ash.Resource.Actions.Create do
           touches_resources: list(atom),
           arguments: list(Ash.Resource.Actions.Argument.t()),
           primary?: boolean,
-          description: String.t()
+          description: String.t() | nil
         }
 
   import Ash.Resource.Actions.SharedOptions
