@@ -154,51 +154,51 @@ defmodule Ash.Schema do
             Module.put_attribute(__MODULE__, :ash_struct_fields, field)
           end
 
-          # for relationship <- Ash.Resource.Info.relationships(__MODULE__),
-          #     relationship.name not in Ash.Resource.reserved_names() do
-          #   case relationship do
-          #     %{no_attributes?: true} ->
-          #       :ok
+          for relationship <- Ash.Resource.Info.relationships(__MODULE__),
+              relationship.name not in Ash.Resource.reserved_names() do
+            #   case relationship do
+            #     %{no_attributes?: true} ->
+            #       :ok
 
-          #     %{manual?: true} ->
-          #       :ok
+            #     %{manual?: true} ->
+            #       :ok
 
-          #     %{manual: manual} when not is_nil(manual) ->
-          #       :ok
+            #     %{manual: manual} when not is_nil(manual) ->
+            #       :ok
 
-          #     %{type: :belongs_to} ->
-          #       belongs_to relationship.name, relationship.destination,
-          #         define_field: false,
-          #         references: relationship.destination_attribute,
-          #         foreign_key: relationship.source_attribute
+            #     %{type: :belongs_to} ->
+            #       belongs_to relationship.name, relationship.destination,
+            #         define_field: false,
+            #         references: relationship.destination_attribute,
+            #         foreign_key: relationship.source_attribute
 
-          #     %{type: :has_many} ->
-          #       has_many relationship.name, relationship.destination,
-          #         foreign_key: relationship.destination_attribute,
-          #         references: relationship.source_attribute
+            #     %{type: :has_many} ->
+            #       has_many relationship.name, relationship.destination,
+            #         foreign_key: relationship.destination_attribute,
+            #         references: relationship.source_attribute
 
-          #     %{type: :has_one} ->
-          #       has_one relationship.name, relationship.destination,
-          #         foreign_key: relationship.destination_attribute,
-          #         references: relationship.source_attribute
+            #     %{type: :has_one} ->
+            #       has_one relationship.name, relationship.destination,
+            #         foreign_key: relationship.destination_attribute,
+            #         references: relationship.source_attribute
 
-          #     %{type: :many_to_many} ->
-          #       many_to_many relationship.name, relationship.destination,
-          #         join_through: relationship.through,
-          #         join_keys: [
-          #           {relationship.source_attribute_on_join_resource,
-          #            relationship.source_attribute},
-          #           {relationship.destination_attribute_on_join_resource,
-          #            relationship.destination_attribute}
-          #         ]
-          #   end
+            #     %{type: :many_to_many} ->
+            #       many_to_many relationship.name, relationship.destination,
+            #         join_through: relationship.through,
+            #         join_keys: [
+            #           {relationship.source_attribute_on_join_resource,
+            #            relationship.source_attribute},
+            #           {relationship.destination_attribute_on_join_resource,
+            #            relationship.destination_attribute}
+            #         ]
+            #   end
 
-          #   Module.put_attribute(
-          #     __MODULE__,
-          #     :ash_struct_fields,
-          #     {relationship.name, %Ash.NotLoaded{type: :relationship, field: relationship.name}}
-          #   )
-          # end
+            Module.put_attribute(
+              __MODULE__,
+              :ash_struct_fields,
+              {relationship.name, %Ash.NotLoaded{type: :relationship, field: relationship.name}}
+            )
+          end
 
           for aggregate <- Ash.Resource.Info.aggregates(__MODULE__),
               aggregate.name not in Ash.Resource.reserved_names() do
