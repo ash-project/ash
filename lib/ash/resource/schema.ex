@@ -108,6 +108,13 @@ defmodule Ash.Schema do
         alias Ash.Query.Aggregate
         use Ecto.Schema
         @primary_key false
+        after_compile = @after_compile -- [{__MODULE__, :__after_compile__}]
+        Module.delete_attribute(__MODULE__, :after_compile)
+        Module.register_attribute(__MODULE__, :after_compile, accumulate: true)
+
+        for compile_hook <- after_compile do
+          @after_compile compile_hook
+        end
 
         schema Ash.DataLayer.source(__MODULE__) do
           for attribute <- Ash.Resource.Info.attributes(__MODULE__),
@@ -156,42 +163,42 @@ defmodule Ash.Schema do
 
           for relationship <- Ash.Resource.Info.relationships(__MODULE__),
               relationship.name not in Ash.Resource.reserved_names() do
-            #   case relationship do
-            #     %{no_attributes?: true} ->
-            #       :ok
+            case relationship do
+              %{no_attributes?: true} ->
+                :ok
 
-            #     %{manual?: true} ->
-            #       :ok
+              %{manual?: true} ->
+                :ok
 
-            #     %{manual: manual} when not is_nil(manual) ->
-            #       :ok
+              %{manual: manual} when not is_nil(manual) ->
+                :ok
 
-            #     %{type: :belongs_to} ->
-            #       belongs_to relationship.name, relationship.destination,
-            #         define_field: false,
-            #         references: relationship.destination_attribute,
-            #         foreign_key: relationship.source_attribute
+              %{type: :belongs_to} ->
+                belongs_to relationship.name, relationship.destination,
+                  define_field: false,
+                  references: relationship.destination_attribute,
+                  foreign_key: relationship.source_attribute
 
-            #     %{type: :has_many} ->
-            #       has_many relationship.name, relationship.destination,
-            #         foreign_key: relationship.destination_attribute,
-            #         references: relationship.source_attribute
+              %{type: :has_many} ->
+                has_many relationship.name, relationship.destination,
+                  foreign_key: relationship.destination_attribute,
+                  references: relationship.source_attribute
 
-            #     %{type: :has_one} ->
-            #       has_one relationship.name, relationship.destination,
-            #         foreign_key: relationship.destination_attribute,
-            #         references: relationship.source_attribute
+              %{type: :has_one} ->
+                has_one relationship.name, relationship.destination,
+                  foreign_key: relationship.destination_attribute,
+                  references: relationship.source_attribute
 
-            #     %{type: :many_to_many} ->
-            #       many_to_many relationship.name, relationship.destination,
-            #         join_through: relationship.through,
-            #         join_keys: [
-            #           {relationship.source_attribute_on_join_resource,
-            #            relationship.source_attribute},
-            #           {relationship.destination_attribute_on_join_resource,
-            #            relationship.destination_attribute}
-            #         ]
-            #   end
+              %{type: :many_to_many} ->
+                many_to_many relationship.name, relationship.destination,
+                  join_through: relationship.through,
+                  join_keys: [
+                    {relationship.source_attribute_on_join_resource,
+                     relationship.source_attribute},
+                    {relationship.destination_attribute_on_join_resource,
+                     relationship.destination_attribute}
+                  ]
+            end
 
             Module.put_attribute(
               __MODULE__,
