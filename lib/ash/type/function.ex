@@ -4,7 +4,7 @@ defmodule Ash.Type.Function do
 
   If the type would be dumped to a native format, `:erlang.term_to_binary(term, [:safe])` is used.
 
-  Please keep in mind, this is not safe to use with external input. This could easily cause you t
+  Please keep in mind, this is *NOT SAFE* to use with external input.
 
   More information available here: https://erlang.org/doc/man/erlang.html#binary_to_term-2
   """

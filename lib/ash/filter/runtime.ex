@@ -44,10 +44,14 @@ defmodule Ash.Filter.Runtime do
 
     refs_to_load =
       refs_to_load
-      |> Enum.map(fn
-        %{attribute: %Ash.Resource.Calculation{load: nil} = calc} ->
-          {calc.name, calc}
+      |> Enum.reject(fn
+        %{attribute: %Ash.Resource.Calculation{}} ->
+          true
 
+        _ ->
+          false
+      end)
+      |> Enum.map(fn
         %{attribute: %{name: name}} ->
           name
       end)
@@ -537,10 +541,9 @@ defmodule Ash.Filter.Runtime do
            attribute: %Ash.Query.Calculation{
              module: module,
              opts: opts,
-             context: context,
-             name: name
+             context: context
            }
-         } = ref,
+         },
          record,
          parent,
          resource
@@ -573,13 +576,20 @@ defmodule Ash.Filter.Runtime do
         |> resolve_expr(record, parent, resource)
       end
     else
-      # This is problematic with variadic loads
-      resolve_ref(
-        %{ref | attribute: %Ash.Resource.Attribute{name: name}},
-        record,
-        parent,
-        resource
-      )
+      # We need to rewrite this
+      # As it stands now, it will evaluate the calculation
+      # once per expanded result. I'm not sure what that will
+      # look like though.
+      case module.calculate([record], opts, context) do
+        [result] ->
+          {:ok, result}
+
+        {:ok, [result]} ->
+          {:ok, result}
+
+        _ ->
+          {:ok, nil}
+      end
     end
   end
 

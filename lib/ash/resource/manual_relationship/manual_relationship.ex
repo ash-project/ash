@@ -6,7 +6,6 @@ defmodule Ash.Resource.ManualRelationship do
   @type context :: %{
           relationship: Ash.Resource.Relationships.relationship(),
           query: Ash.Query.t(),
-          root_query: Ash.Query.t(),
           actor: term,
           tenant: term,
           authorize?: term,

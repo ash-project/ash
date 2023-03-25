@@ -920,7 +920,7 @@ defmodule Ash.Query do
                 )
                 |> Ash.Actions.Helpers.validate_calculation_load!(module)
                 |> Enum.concat(List.wrap(resource_calculation.load))
-                |> Enum.reject(&Ash.Resource.Info.attribute(query.resource, &1))
+                |> reify_calculations(query)
 
               calculation = %{
                 calculation
@@ -939,6 +939,88 @@ defmodule Ash.Query do
       field, query ->
         do_load(query, field)
     end)
+  end
+
+  defp reify_calculations(loads, query) do
+    loads
+    |> List.wrap()
+    |> Enum.map(fn
+      {load, args} ->
+        if resource_calculation = Ash.Resource.Info.calculation(query.resource, load) do
+          {module, opts} = resource_calculation.calculation
+
+          with {:ok, args} <- validate_calculation_arguments(resource_calculation, args),
+               {:ok, calculation} <-
+                 Calculation.new(
+                   resource_calculation.name,
+                   module,
+                   opts,
+                   {resource_calculation.type, resource_calculation.constraints},
+                   Map.put(args, :context, query.context),
+                   resource_calculation.filterable?,
+                   resource_calculation.load
+                 ) do
+            loads =
+              calculation.module.load(
+                query,
+                calculation.opts,
+                Map.put(calculation.context, :context, query.context)
+              )
+              |> Ash.Actions.Helpers.validate_calculation_load!(calculation.module)
+              |> Enum.concat(List.wrap(resource_calculation.load))
+              |> reify_calculations(query)
+
+            %{calculation | load: resource_calculation.name, required_loads: loads}
+          else
+            _ ->
+              {load, args}
+          end
+        else
+          if relationship = Ash.Resource.Info.relationship(query.resource, load) do
+            related_query = new(relationship.destination)
+            {load, reify_calculations(args, related_query)}
+          else
+            {load, args}
+          end
+        end
+
+      load ->
+        if resource_calculation = Ash.Resource.Info.calculation(query.resource, load) do
+          with %{calculation: {module, opts}} <- resource_calculation,
+               {:ok, args} <- validate_calculation_arguments(resource_calculation, %{}),
+               {:ok, calculation} <-
+                 Calculation.new(
+                   resource_calculation.name,
+                   module,
+                   opts,
+                   {resource_calculation.type, resource_calculation.constraints},
+                   Map.put(args, :context, query.context),
+                   resource_calculation.filterable?,
+                   resource_calculation.load
+                 ) do
+            loads =
+              calculation.module.load(
+                query,
+                calculation.opts,
+                Map.put(calculation.context, :context, query.context)
+              )
+              |> Ash.Actions.Helpers.validate_calculation_load!(calculation.module)
+              |> Enum.concat(List.wrap(resource_calculation.load))
+              |> reify_calculations(query)
+
+            %{calculation | load: resource_calculation.name, required_loads: loads}
+          else
+            _ ->
+              load
+          end
+        else
+          load
+        end
+    end)
+    |> case do
+      [%Ash.Query{} = query] -> query
+      other -> other
+    end
   end
 
   defp do_load(query, field) do
@@ -960,6 +1042,7 @@ defmodule Ash.Query do
           )
           |> Ash.Actions.Helpers.validate_calculation_load!(calculation.module)
           |> Enum.reject(&Ash.Resource.Info.attribute(query.resource, &1))
+          |> reify_calculations(query)
 
         calculation = %{
           calculation
@@ -1066,7 +1149,7 @@ defmodule Ash.Query do
             )
             |> Ash.Actions.Helpers.validate_calculation_load!(module)
             |> Enum.concat(List.wrap(resource_calculation.load))
-            |> Enum.reject(&Ash.Resource.Info.attribute(query.resource, &1))
+            |> reify_calculations(query)
 
           calculation = %{
             calculation
@@ -1705,7 +1788,7 @@ defmodule Ash.Query do
           )
           |> Ash.Actions.Helpers.validate_calculation_load!(module)
           |> Enum.concat(List.wrap(calculation.required_loads))
-          |> Enum.reject(&Ash.Resource.Info.attribute(query.resource, &1))
+          |> reify_calculations(query)
 
         calculation = %{calculation | select: fields_to_select, required_loads: loads}
         %{query | calculations: Map.put(query.calculations, name, calculation)}
@@ -1750,7 +1833,7 @@ defmodule Ash.Query do
           )
           |> Ash.Actions.Helpers.validate_calculation_load!(module)
           |> Enum.concat(List.wrap(resource_calculation.load))
-          |> Enum.reject(&Ash.Resource.Info.attribute(query.resource, &1))
+          |> reify_calculations(query)
 
         calculation = %{
           calculation
@@ -2103,24 +2186,42 @@ defmodule Ash.Query do
 
     keys
     |> Enum.reduce(query, fn key, query ->
-      if key in [:api, :resource] do
-        query
-      else
-        struct(query, [{key, Map.get(new, key)}])
-      end
+      do_unset(query, key, new)
     end)
   end
 
-  def unset(query, key) do
-    if key in [:api, :resource] do
-      to_query(query)
-    else
-      new = new(query.resource)
+  # def unset(query, key) when key in [:api, :resource] do
+  #   to_query(query)
+  # end
 
-      query
-      |> to_query()
-      |> struct([{key, Map.get(new, key)}])
-    end
+  # def unset(query, :load) do
+  #   query
+  #   |>
+  #   unset()
+
+  # end
+
+  def unset(query, key) do
+    new = new(query.resource)
+    do_unset(query, key, new)
+
+    query
+    |> to_query()
+    |> struct([{key, Map.get(new, key)}])
+  end
+
+  defp do_unset(query, key, _new) when key in [:api, :resource] do
+    query
+  end
+
+  defp do_unset(query, :load, new) do
+    query = unset(query, [:calculations, :aggregates])
+
+    struct(query, [{:load, Map.get(new, :load)}])
+  end
+
+  defp do_unset(query, key, new) do
+    struct(query, [{key, Map.get(new, key)}])
   end
 
   @doc "Return the underlying data layer query for an ash query"

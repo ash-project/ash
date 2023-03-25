@@ -4,6 +4,31 @@ defmodule Ash.Test.CalculationTest do
 
   require Ash.Query
 
+  defmodule FriendLink do
+    use Ash.Resource,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    actions do
+      defaults [:create, :read, :update, :destroy]
+    end
+
+    relationships do
+      belongs_to :source, Ash.Test.CalculationTest.Friend do
+        allow_nil? false
+        primary_key? true
+      end
+
+      belongs_to :target, Ash.Test.CalculationTest.Friend do
+        allow_nil? false
+        primary_key? true
+      end
+    end
+  end
+
   defmodule Concat do
     # An example concatenation calculation, that accepts the delimiter as an argument
     use Ash.Calculation
@@ -89,9 +114,9 @@ defmodule Ash.Test.CalculationTest do
     def load(_query, _opts, args) do
       if args[:only_special] do
         query =
-          __MODULE__.User
+          Ash.Test.CalculationTest.User
           |> Ash.Query.filter(special == true)
-          |> Ash.Query.ensure_selected(:full_name)
+          |> Ash.Query.load(:full_name)
 
         [best_friends_of_me: query]
       else
@@ -123,6 +148,32 @@ defmodule Ash.Test.CalculationTest do
     end
   end
 
+  defmodule FriendsNames do
+    use Ash.Calculation
+
+    def load(_query, _opts, _) do
+      [
+        friends:
+          Ash.Test.CalculationTest.User
+          |> Ash.Query.load([:full_name, :prefix])
+          |> Ash.Query.limit(5)
+      ]
+    end
+
+    def calculate(records, _opts, _) do
+      Enum.map(records, fn record ->
+        record.friends
+        |> Enum.map_join(" | ", fn friend ->
+          if friend.prefix do
+            friend.prefix <> " " <> friend.full_name
+          else
+            friend.full_name
+          end
+        end)
+      end)
+    end
+  end
+
   defmodule User do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -146,6 +197,7 @@ defmodule Ash.Test.CalculationTest do
       uuid_primary_key :id
       attribute :first_name, :string
       attribute :last_name, :string
+      attribute :prefix, :string
       attribute :special, :boolean
     end
 
@@ -171,7 +223,8 @@ defmodule Ash.Test.CalculationTest do
                 :string,
                 {ConcatWithLoad, keys: [:full_name, :full_name_plus_full_name]}
 
-      calculate :slug, :string, expr(full_name <> "123"), load: [:full_name]
+      calculate :slug, :string, expr(full_name <> "123")
+      calculate :friends_names, :string, FriendsNames
 
       calculate :expr_full_name, :string, expr(first_name <> " " <> last_name)
 
@@ -181,7 +234,10 @@ defmodule Ash.Test.CalculationTest do
 
       calculate :best_friends_name, :string, BestFriendsName
 
-      calculate :names_of_best_friends_of_me, :string, NamesOfBestFriendsOfMe
+      calculate :names_of_best_friends_of_me, :string, NamesOfBestFriendsOfMe do
+        argument :only_special, :boolean, default: false
+      end
+
       calculate :name_with_users_name, :string, NameWithUsersName
 
       calculate :full_name_with_salutation,
@@ -237,6 +293,12 @@ defmodule Ash.Test.CalculationTest do
       has_many :best_friends_of_me, __MODULE__ do
         destination_attribute :best_friend_id
       end
+
+      many_to_many :friends, __MODULE__ do
+        through FriendLink
+        destination_attribute_on_join_resource :target_id
+        source_attribute_on_join_resource :source_id
+      end
     end
   end
 
@@ -245,7 +307,8 @@ defmodule Ash.Test.CalculationTest do
     use Ash.Registry
 
     entries do
-      entry(User)
+      entry User
+      entry FriendLink
     end
   end
 
@@ -268,6 +331,7 @@ defmodule Ash.Test.CalculationTest do
       User
       |> Ash.Changeset.new(%{first_name: "brian", last_name: "cranston"})
       |> Ash.Changeset.manage_relationship(:best_friend, user1, type: :append_and_remove)
+      |> Ash.Changeset.manage_relationship(:friends, user1, type: :append_and_remove)
       |> Api.create!()
 
     %{user1: user1, user2: user2}
@@ -321,26 +385,10 @@ defmodule Ash.Test.CalculationTest do
            ]
   end
 
-  test "it doesn't reload anything specified by the load callback if its already been loaded when using `lazy?: true`" do
-    full_names =
-      User
-      |> Ash.Query.load(:full_name_plus_full_name)
-      |> Api.read!()
-      |> Enum.map(&%{&1 | full_name: &1.full_name <> " more"})
-      |> Api.load!(:full_name_plus_full_name, lazy?: true)
-      |> Enum.map(& &1.full_name_plus_full_name)
-      |> Enum.sort()
-
-    assert full_names == [
-             "brian cranston more brian cranston more",
-             "zach daniel more zach daniel more"
-           ]
-  end
-
   test "it reloads anything specified by the load callback if its already been loaded when using `lazy?: false`" do
     full_names =
       User
-      |> Ash.Query.load(:full_name_plus_full_name)
+      |> Ash.Query.load([:full_name, :full_name_plus_full_name])
       |> Api.read!()
       |> Enum.map(&%{&1 | full_name: &1.full_name <> " more"})
       |> Api.load!(:full_name_plus_full_name)
@@ -515,34 +563,75 @@ defmodule Ash.Test.CalculationTest do
     assert full_names == ["bob", "brian cranston", "zach daniel"]
   end
 
-  # test "loading calculations with different relationship dependencies won't collide", %{
-  #   user1: %{id: user1_id} = user1
-  # } do
-  #   user3 =
-  #     User
-  #     |> Ash.Changeset.new(%{first_name: "chidi", last_name: "anagonye", special: true})
-  #     |> Ash.Changeset.manage_relationship(:best_friend, user1, type: :append_and_remove)
-  #     |> Api.create!()
+  test "loading calculations with different relationship dependencies won't collide", %{
+    user1: %{id: user1_id} = user1
+  } do
+    User
+    |> Ash.Changeset.new(%{first_name: "chidi", last_name: "anagonye", special: true})
+    |> Ash.Changeset.manage_relationship(:best_friend, user1, type: :append_and_remove)
+    |> Api.create!()
 
-  #   assert %{
-  #            calculations: %{
-  #              names_of_best_friends_of_me: "brian cranston - chidi anagonye",
-  #              names_of_special_best_friends_of_me: "chidi anagonye"
-  #            }
-  #          } =
-  #            User
-  #            |> Ash.Query.filter(id == ^user1_id)
-  #            |> Ash.Query.load_calculation_as(
-  #              :names_of_best_friends_of_me,
-  #              :names_of_special_best_friends_of_me,
-  #              %{
-  #                special: true
-  #              }
-  #            )
-  #            |> Ash.Query.load_calculation_as(
-  #              :names_of_best_friends_of_me,
-  #              :names_of_best_friends_of_me
-  #            )
-  #            |> Api.read_one!()
-  # end
+    assert %{
+             calculations: %{
+               names_of_best_friends_of_me: "brian cranston - chidi anagonye",
+               names_of_special_best_friends_of_me: "chidi anagonye"
+             }
+           } =
+             User
+             |> Ash.Query.filter(id == ^user1_id)
+             |> Ash.Query.load_calculation_as(
+               :names_of_best_friends_of_me,
+               :names_of_special_best_friends_of_me,
+               %{
+                 only_special: true
+               }
+             )
+             |> Ash.Query.load_calculation_as(
+               :names_of_best_friends_of_me,
+               :names_of_best_friends_of_me
+             )
+             |> Api.read_one!()
+  end
+
+  test "loading calculations with different relationship dependencies won't collide, when manually loading one of the deps",
+       %{
+         user1: %{id: user1_id} = user1
+       } do
+    User
+    |> Ash.Changeset.new(%{first_name: "chidi", last_name: "anagonye", special: true})
+    |> Ash.Changeset.manage_relationship(:best_friend, user1, type: :append_and_remove)
+    |> Api.create!()
+
+    assert %{
+             calculations: %{
+               names_of_best_friends_of_me: "brian cranston - chidi anagonye",
+               names_of_special_best_friends_of_me: "chidi anagonye"
+             }
+           } =
+             User
+             |> Ash.Query.filter(id == ^user1_id)
+             |> Ash.Query.load(:best_friends_of_me)
+             |> Ash.Query.load_calculation_as(
+               :names_of_best_friends_of_me,
+               :names_of_special_best_friends_of_me,
+               %{
+                 only_special: true
+               }
+             )
+             |> Ash.Query.load_calculation_as(
+               :names_of_best_friends_of_me,
+               :names_of_best_friends_of_me
+             )
+             |> Api.read_one!()
+  end
+
+  test "calculations that depend on many to many relationships will load", %{user2: user2} do
+    assert %{
+             friends_names: "zach daniel"
+           } =
+             User
+             |> Ash.Query.filter(id == ^user2.id)
+             |> Ash.Query.load(:friends_names)
+             |> Api.read_one!()
+  end
 end

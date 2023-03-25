@@ -407,6 +407,25 @@ defmodule Ash.Actions.Load do
   end
 
   defp do_requests(relationship, lazy?, opts, request_path, related_query, path, root_query) do
+    join_assoc_request =
+      if relationship.type == :many_to_many &&
+           !lateral_join?(related_query, relationship, :unknown) do
+        join_assoc_request(
+          relationship,
+          request_path,
+          related_query,
+          root_query,
+          path,
+          opts,
+          lazy?
+        )
+      end
+
+    join_request_path =
+      if join_assoc_request do
+        join_assoc_request.path
+      end
+
     load_request =
       load_request(
         relationship,
@@ -415,31 +434,139 @@ defmodule Ash.Actions.Load do
         request_path,
         related_query,
         root_query,
-        path
+        path,
+        join_request_path
       )
 
-    case relationship.type do
-      :many_to_many ->
-        if lateral_join?(related_query, relationship, :unknown) do
-          [load_request]
-        else
-          join_assoc_request =
-            join_assoc_request(
-              relationship,
-              request_path,
-              related_query,
-              root_query,
-              path,
-              opts,
-              lazy?
-            )
-
-          [join_assoc_request, load_request]
-        end
-
-      _ ->
-        [load_request]
+    if join_assoc_request do
+      [join_assoc_request, load_request]
+    else
+      [load_request]
     end
+  end
+
+  @doc false
+  def calc_dep_requests(
+        relationship,
+        lazy?,
+        opts,
+        calc_dep,
+        path,
+        root_query,
+        select,
+        load
+      ) do
+    join_assoc_request =
+      if relationship.type == :many_to_many &&
+           !lateral_join?(calc_dep.query, relationship, :unknown) do
+        calc_dep_join_assoc_request(
+          relationship,
+          path,
+          root_query,
+          path,
+          opts,
+          lazy?,
+          calc_dep
+        )
+      end
+
+    load_request =
+      calc_dep_load_request(
+        relationship,
+        lazy?,
+        opts,
+        calc_dep,
+        root_query,
+        path,
+        select,
+        load
+      )
+
+    if join_assoc_request do
+      [join_assoc_request, load_request]
+    else
+      [load_request]
+    end
+  end
+
+  defp calc_dep_load_request(
+         relationship,
+         lazy?,
+         opts,
+         calc_dep,
+         root_query,
+         path,
+         select,
+         load
+       ) do
+    {parent_dep_path, parent_data_path, parent_query_path} =
+      case calc_dep.path do
+        [] ->
+          {path ++ [:fetch, :data], path ++ [:fetch, :data, :results], path ++ [:fetch, :query]}
+
+        dependent_path ->
+          {relationship, query} = List.last(dependent_path)
+
+          depended_dep = %{
+            type: :relationship,
+            path: :lists.droplast(dependent_path),
+            query: query,
+            relationship: relationship
+          }
+
+          data = path ++ [:calc_dep, depended_dep, :data]
+
+          {data, data, path ++ [:calc_dep, depended_dep, :query]}
+      end
+
+    this_request_path = path ++ [:calc_dep, calc_dep]
+
+    dependencies = [
+      this_request_path ++ [:authorization_filter],
+      parent_dep_path,
+      parent_query_path
+    ]
+
+    dependencies =
+      if relationship.type == :many_to_many &&
+           !lateral_join?(calc_dep.query, relationship, :unknown) do
+        dependencies ++ [this_request_path ++ [:join, :data]]
+      else
+        dependencies
+      end
+
+    rel_string =
+      calc_dep.path
+      |> Enum.map(&elem(&1, 0))
+      |> Enum.concat([calc_dep.relationship])
+      |> Enum.join(".")
+
+    actual_query = calc_dep.query |> Ash.Query.select(select) |> Ash.Query.load(load)
+
+    Request.new(
+      action:
+        calc_dep.query.action || Ash.Resource.Info.primary_action(relationship.destination, :read),
+      resource: relationship.destination,
+      name: "calc dep #{rel_string}",
+      api: calc_dep.query.api,
+      path: this_request_path,
+      query: actual_query,
+      data:
+        calc_dep_data(
+          relationship,
+          lazy?,
+          dependencies,
+          this_request_path,
+          calc_dep,
+          path,
+          root_query,
+          opts,
+          parent_data_path,
+          parent_query_path,
+          this_request_path ++ [:join],
+          actual_query
+        )
+    )
   end
 
   defp load_request(
@@ -449,7 +576,8 @@ defmodule Ash.Actions.Load do
          request_path,
          related_query,
          root_query,
-         path
+         path,
+         join_request_path
        ) do
     relationship_path = Enum.reverse(Enum.map([relationship | path], &Map.get(&1, :name)))
 
@@ -521,9 +649,147 @@ defmodule Ash.Actions.Load do
           related_query,
           path,
           root_query,
-          opts
+          opts,
+          join_request_path
         )
     )
+  end
+
+  defp calc_dep_data(
+         %{manual: manual} = relationship,
+         lazy?,
+         dependencies,
+         _this_request_path,
+         calc_dep,
+         _path,
+         root_query,
+         request_opts,
+         parent_data_path,
+         _parent_query_path,
+         _join_request_path,
+         actual_query
+       )
+       when not is_nil(manual) do
+    {mod, opts} =
+      case manual do
+        {mod, opts} ->
+          {mod, opts}
+
+        mod ->
+          {mod, []}
+      end
+
+    Request.resolve(dependencies, fn data ->
+      data = get_in(data, parent_data_path)
+
+      lazy_load_or(
+        data,
+        lazy?,
+        relationship.name,
+        root_query.query.api,
+        actual_query,
+        request_opts,
+        fn ->
+          data
+          |> mod.load(opts, %{
+            relationship: relationship,
+            query: actual_query,
+            actor: request_opts[:actor],
+            authorize?: request_opts[:authorize?],
+            api: calc_dep.query.api,
+            tenant: root_query.tenant
+          })
+          |> case do
+            {:ok, result} ->
+              # TODO: this will result in quite a few requests potentially for aggs/calcs
+              # This should be optimized.
+              Enum.reduce_while(result, {:ok, %{}}, fn {key, records}, {:ok, acc} ->
+                case calc_dep.query.api.load(records, %{actual_query | load: []},
+                       lazy?: true,
+                       tenant: calc_dep.query.tenant,
+                       actor: request_opts[:actor],
+                       authorize?: request_opts[:authorize?],
+                       tracer: request_opts[:tracer]
+                     ) do
+                  {:ok, results} ->
+                    {:cont, {:ok, Map.put(acc, key, results)}}
+
+                  {:error, error} ->
+                    {:halt, {:error, error}}
+                end
+              end)
+
+            {:error, error} ->
+              {:error, error}
+          end
+        end
+      )
+    end)
+  end
+
+  defp calc_dep_data(
+         relationship,
+         lazy?,
+         dependencies,
+         this_request_path,
+         calc_dep,
+         path,
+         _root_query,
+         opts,
+         parent_data_path,
+         parent_query_path,
+         join_request_path,
+         actual_query
+       ) do
+    Request.resolve(dependencies, fn data ->
+      base_query =
+        case get_in(data, this_request_path ++ [:authorization_filter]) do
+          nil ->
+            actual_query
+
+          authorization_filter ->
+            Ash.Query.filter(actual_query, ^authorization_filter)
+        end
+
+      source_query = get_in(data, parent_query_path)
+
+      source_query =
+        if calc_dep.query.tenant do
+          Ash.Query.set_tenant(source_query, calc_dep.query.tenant)
+        else
+          source_query
+        end
+
+      with {:ok, new_query} <-
+             true_load_query(
+               relationship,
+               base_query,
+               data,
+               parent_data_path,
+               join_request_path
+             ),
+           {:ok, results} <-
+             run_actual_query(
+               new_query,
+               base_query,
+               data,
+               path,
+               relationship,
+               source_query,
+               opts,
+               lazy?,
+               parent_data_path,
+               join_request_path
+             ) do
+        {:ok, results}
+      else
+        :nothing ->
+          {:ok, []}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    end)
   end
 
   defp data(
@@ -535,7 +801,8 @@ defmodule Ash.Actions.Load do
          related_query,
          path,
          root_query,
-         request_opts
+         request_opts,
+         _join_request_path
        )
        when not is_nil(manual) do
     {mod, opts} =
@@ -626,7 +893,8 @@ defmodule Ash.Actions.Load do
          related_query,
          path,
          root_query,
-         opts
+         opts,
+         join_request_path
        ) do
     Request.resolve(dependencies, fn data ->
       base_query =
@@ -662,13 +930,31 @@ defmodule Ash.Actions.Load do
           source_query
         end
 
+      data_path =
+        if relationship.type == :many_to_many do
+          join_relationship = join_relationship(relationship)
+
+          join_relationship_path(path, join_relationship) |> Enum.map(& &1.name)
+        else
+          path |> Enum.reverse() |> Enum.map(& &1.name)
+        end
+
+      source_data_path =
+        case path do
+          [] ->
+            request_path ++ [:data, :results]
+
+          _path ->
+            request_path ++ [:load] ++ [data_path] ++ [:data]
+        end
+
       with {:ok, new_query} <-
              true_load_query(
                relationship,
                base_query,
                data,
-               path,
-               request_path
+               source_data_path,
+               join_request_path
              ),
            {:ok, results} <-
              run_actual_query(
@@ -678,9 +964,10 @@ defmodule Ash.Actions.Load do
                path,
                relationship,
                source_query,
-               request_path,
                opts,
-               lazy?
+               lazy?,
+               source_data_path,
+               join_request_path
              ) do
         {:ok, results}
       else
@@ -755,22 +1042,6 @@ defmodule Ash.Actions.Load do
           [:load, Enum.reverse(Enum.map(path, &Map.get(&1, :name))), :data],
           [:load, Enum.reverse(Enum.map(path, &Map.get(&1, :name))), :query]
         ]
-      end
-
-    lateral_join? = lateral_join?(related_query, relationship, :unknown)
-
-    dependencies =
-      if lateral_join? do
-        dependencies ++
-          [
-            [
-              :load,
-              Enum.reverse(Enum.map(path, &Map.get(&1, :name))) ++ [relationship.name],
-              :data
-            ]
-          ]
-      else
-        dependencies
       end
 
     dependencies = [[:data] | dependencies]
@@ -858,13 +1129,24 @@ defmodule Ash.Actions.Load do
                 source_query
               end
 
+            data_path = path |> Enum.reverse() |> Enum.map(& &1.name)
+
+            source_data_path =
+              case path do
+                [] ->
+                  request_path ++ [:data, :results]
+
+                _path ->
+                  request_path ++ [:load] ++ [data_path] ++ [:data]
+              end
+
             with {:ok, new_query} <-
                    true_load_query(
                      join_relationship,
                      base_query,
                      data,
-                     path,
-                     request_path
+                     source_data_path,
+                     nil
                    ),
                  new_query <-
                    add_join_destination_filter(
@@ -872,7 +1154,11 @@ defmodule Ash.Actions.Load do
                      lateral_join?,
                      data,
                      relationship,
-                     Enum.reverse(Enum.map(path, &Map.get(&1, :name))) ++ [relationship.name]
+                     [
+                       :load,
+                       Enum.reverse(Enum.map(path, &Map.get(&1, :name))) ++ [relationship.name],
+                       :data
+                     ]
                    ),
                  {:ok, results} <-
                    run_actual_query(
@@ -882,9 +1168,129 @@ defmodule Ash.Actions.Load do
                      path,
                      join_relationship,
                      source_query,
-                     request_path,
                      opts,
-                     lazy?
+                     lazy?,
+                     source_data_path,
+                     nil
+                   ) do
+              {:ok, results}
+            else
+              :nothing ->
+                {:ok, []}
+
+              {:error, error} ->
+                {:error, error}
+            end
+        end)
+    )
+  end
+
+  defp calc_dep_join_assoc_request(
+         relationship,
+         path,
+         root_query,
+         path,
+         opts,
+         lazy?,
+         calc_dep
+       ) do
+    {parent_dep_path, parent_data_path, parent_query_path} =
+      case calc_dep.path do
+        [] ->
+          {path ++ [:fetch], path ++ [:fetch, :data, :results], path ++ [:fetch, :query]}
+
+        dependent_path ->
+          {relationship, query} = List.last(dependent_path)
+
+          depended_dep = %{
+            type: :relationship,
+            path: :lists.droplast(dependent_path),
+            query: query,
+            relationship: relationship
+          }
+
+          {path ++ [:calc_dep, depended_dep], path ++ [:calc_dep, depended_dep, :data, :results],
+           path ++ [:calc_dep, depended_dep, :query]}
+      end
+
+    this_request_path = path ++ [:calc_dep, calc_dep]
+    join_relationship = join_relationship(relationship)
+
+    dependencies = [
+      this_request_path ++ [:authorization_filter],
+      parent_dep_path ++ [:data],
+      parent_dep_path ++ [:query]
+    ]
+
+    base_query =
+      join_relationship.destination
+      |> Ash.Query.new(join_relationship.api || root_query.api)
+      |> Ash.Query.set_tenant(calc_dep.query.tenant)
+      |> Ash.Query.set_context(join_relationship.context)
+
+    Request.new(
+      action:
+        calc_dep.query.action ||
+          Ash.Resource.Info.primary_action(join_relationship.destination, :read),
+      resource: relationship.through,
+      name: "load calc_dep join #{join_relationship.name}",
+      api: calc_dep.query.api,
+      path: path ++ [:calc_dep, calc_dep, :join],
+      query: base_query,
+      data:
+        Request.resolve(dependencies, fn
+          data ->
+            base_query =
+              case get_in(
+                     data,
+                     this_request_path ++ [:authorization_filter]
+                   ) do
+                nil ->
+                  base_query
+
+                authorization_filter ->
+                  base_query
+                  |> Ash.Query.do_filter(authorization_filter)
+              end
+
+            source_data = get_in(data, parent_data_path)
+
+            lateral_join? = lateral_join?(calc_dep.query, relationship, source_data)
+
+            source_query =
+              get_in(
+                data,
+                parent_query_path
+              )
+
+            with {:ok, new_query} <-
+                   true_load_query(
+                     join_relationship,
+                     base_query,
+                     data,
+                     parent_data_path,
+                     nil
+                   ),
+                 new_query <-
+                   add_join_destination_filter(
+                     new_query,
+                     lateral_join?,
+                     data,
+                     relationship,
+                     parent_data_path
+                   ),
+                 {:ok, results} <-
+                   run_actual_query(
+                     new_query,
+                     base_query,
+                     data,
+                     path,
+                     relationship,
+                     source_query,
+                     opts,
+                     lazy?,
+                     parent_data_path,
+                     nil
                    ) do
               {:ok, results}
             else
@@ -901,11 +1307,7 @@ defmodule Ash.Actions.Load do
   defp add_join_destination_filter(query, true, data, relationship, destination_path) do
     ids =
       data
-      |> get_in([
-        :load,
-        destination_path,
-        :data
-      ])
+      |> get_in(destination_path)
       |> case do
         %page{results: results} when page in [Ash.Page.Keyset, Ash.Page.Offset] ->
           results
@@ -998,34 +1400,14 @@ defmodule Ash.Actions.Load do
          path,
          relationship,
          source_query,
-         request_path,
          request_opts,
-         lazy?
+         lazy?,
+         source_data_path,
+         join_request_path
        ) do
     {offset, limit} = offset_and_limit(base_query)
 
-    source_data =
-      case path do
-        [] ->
-          get_in(data, request_path ++ [:data, :results])
-
-        path ->
-          data =
-            data
-            |> get_in(request_path)
-            |> Kernel.||(%{})
-            |> Map.get(:load, %{})
-            |> Map.get(Enum.reverse(Enum.map(path, & &1.name)), %{})
-            |> Map.get(:data, %{})
-
-          if is_map(data) do
-            data
-            |> Map.values()
-            |> Enum.flat_map(&List.wrap/1)
-          else
-            data
-          end
-      end
+    source_data = get_in(data, source_data_path)
 
     lazy_load_or(
       source_data,
@@ -1086,9 +1468,9 @@ defmodule Ash.Actions.Load do
               relationship,
               request_opts,
               source_data,
-              request_path,
               path,
-              data
+              data,
+              join_request_path
             )
 
           true ->
@@ -1097,7 +1479,10 @@ defmodule Ash.Actions.Load do
             |> Ash.Query.do_filter(relationship.filter)
             |> Ash.Query.sort(relationship.sort, prepend?: true)
             |> remove_relationships_from_load()
-            |> read(relationship.read_action, request_opts)
+            |> read(
+              relationship.read_action,
+              request_opts
+            )
         end
       end
     )
@@ -1118,9 +1503,9 @@ defmodule Ash.Actions.Load do
          relationship,
          request_opts,
          _source_data,
-         request_path,
-         path,
-         data
+         _path,
+         data,
+         join_request_path
        ) do
     query
     |> Ash.Query.set_context(relationship.context)
@@ -1133,14 +1518,8 @@ defmodule Ash.Actions.Load do
         new_results =
           if relationship.type == :many_to_many do
             results = Enum.with_index(results)
-            join_path = path ++ [relationship.join_relationship]
 
-            join_data =
-              data
-              |> get_in(request_path ++ [:load])
-              |> Kernel.||(%{})
-              |> Map.get(join_path, %{})
-              |> Map.get(:data, [])
+            join_data = get_in(data, join_request_path ++ [:data])
 
             destination_attribute_on_join_resource_type =
               Ash.Resource.Info.attribute(
@@ -1258,39 +1637,22 @@ defmodule Ash.Actions.Load do
     end
   end
 
-  defp true_load_query(relationship, query, data, path, request_path) do
-    {source_attribute, path} =
-      if relationship.type == :many_to_many do
-        join_relationship = join_relationship(relationship)
-
-        {relationship.destination_attribute_on_join_resource,
-         join_relationship_path(path, join_relationship) |> Enum.map(& &1.name)}
+  defp true_load_query(relationship, query, data, source_data_path, join_relationship_path) do
+    {source_attribute, source_data_path} =
+      if relationship.type == :many_to_many && !lateral_join?(query, relationship, :unknown) do
+        {relationship.destination_attribute_on_join_resource, join_relationship_path ++ [:data]}
       else
-        {relationship.source_attribute, path |> Enum.reverse() |> Enum.map(& &1.name)}
+        {relationship.source_attribute, source_data_path}
       end
 
-    source_data =
-      case path do
-        [] ->
-          get_in(data, request_path ++ [:data, :results])
-
-        path ->
-          data
-          |> get_in(request_path)
-          |> Kernel.||(%{})
-          |> Map.get(:load, %{})
-          |> Map.get(path, %{})
-          |> Map.get(:data, %{})
-      end
-
-    case source_data do
+    case get_in(data, source_data_path) do
       %{data: empty} when empty in [[], nil] ->
         :nothing
 
       empty when empty in [[], nil] ->
         :nothing
 
-      _ ->
+      source_data ->
         get_query(query, relationship, source_data, source_attribute)
     end
   end
@@ -1323,7 +1685,8 @@ defmodule Ash.Actions.Load do
           end
 
         ids =
-          Enum.flat_map(related_data, fn
+          related_data
+          |> Enum.flat_map(fn
             {_, data} when is_list(data) ->
               Enum.map(data, &Map.get(&1, source_attribute))
 

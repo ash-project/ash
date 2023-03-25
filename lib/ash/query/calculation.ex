@@ -63,6 +63,8 @@ defmodule Ash.Query.Calculation do
           :initial_limit,
           :initial_offset,
           :context,
+          :tenant,
+          :tracer,
           :ash
         ])
 
