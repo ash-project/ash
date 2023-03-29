@@ -14,6 +14,7 @@ defmodule Ash.Policy.Check.RelatesToActorVia do
   @impl true
   def filter(_actor, _context, opts) do
     opts = Keyword.update!(opts, :relationship_path, &List.wrap/1)
+    subfield = Keyword.get(opts, :subfield)
     {last_relationship, to_many?} = relationship_info(opts[:resource], opts[:relationship_path])
 
     pkey =
@@ -21,17 +22,27 @@ defmodule Ash.Policy.Check.RelatesToActorVia do
       |> Ash.Resource.Info.primary_key()
 
     if to_many? do
-      Ash.Expr.expr(exists(^opts[:relationship_path], ^Enum.map(pkey, &{&1, {:_actor, &1}})))
+      Ash.Expr.expr(
+        exists(
+          ^opts[:relationship_path],
+          ^Enum.map(pkey, &{&1, {:_actor, actor_path(&1, subfield)}})
+        )
+      )
     else
       Enum.reduce(pkey, nil, fn field, expr ->
+        actor_path = actor_path(field, subfield)
+
         if expr do
-          Ash.Expr.expr(^expr and ^ref(opts[:relationship_path], field) == ^actor(field))
+          Ash.Expr.expr(^expr and ^ref(opts[:relationship_path], field) == ^actor(actor_path))
         else
-          Ash.Expr.expr(^ref(opts[:relationship_path], field) == ^actor(field))
+          Ash.Expr.expr(^ref(opts[:relationship_path], field) == ^actor(actor_path))
         end
       end)
     end
   end
+
+  defp actor_path(field, subfield) when is_nil(subfield), do: field
+  defp actor_path(field, subfield), do: [subfield, field]
 
   @impl true
   def reject(actor, context, opts) do

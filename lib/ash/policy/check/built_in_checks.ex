@@ -161,10 +161,29 @@ defmodule Ash.Policy.Check.Builtins do
 
   For `create` actions this check is very unlikely to pass. This is because relationships are modified *after* authorization
   happens, not before.
+
+  For example:
+
+  ```elixir
+  policy action_type(:read) do
+    authorize_if relates_to_actor_via(:owner)
+
+    # Path of relationships:
+    authorize_if relates_to_actor_via([:account, :user])
+
+    # When your resource relates to a subfield of the actor:
+    authorize_if relates_to_actor_via(:roles, subfield: :role)
+  end
+  ```
   """
-  @spec relates_to_actor_via(atom) :: Ash.Policy.Check.ref()
-  def relates_to_actor_via(relationship_path) do
-    {Ash.Policy.Check.RelatesToActorVia, relationship_path: List.wrap(relationship_path)}
+  @spec relates_to_actor_via(atom, keyword) :: Ash.Policy.Check.ref()
+  def relates_to_actor_via(relationship_path, opts \\ []) do
+    subfield = Keyword.get(opts, :subfield)
+
+    {
+      Ash.Policy.Check.RelatesToActorVia,
+      relationship_path: List.wrap(relationship_path), subfield: subfield
+    }
   end
 
   @doc """
