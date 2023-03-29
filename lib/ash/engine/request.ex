@@ -365,13 +365,13 @@ defmodule Ash.Engine.Request do
     end
   end
 
-  def summarize(%{name: name, action: %{name: action}, resource: resource})
+  def summarize(%{path: path, name: name, action: %{name: action}, resource: resource})
       when not is_nil(resource) do
-    "#{name}: #{inspect(resource)}.#{action}"
+    "#{inspect(path, structs: false)}\n#{name}: #{inspect(resource)}.#{action}"
   end
 
-  def summarize(%{name: name}) do
-    name
+  def summarize(%{path: path, name: name}) do
+    "#{inspect(path, structs: false)} - #{name}"
   end
 
   def sort_and_clean_notifications(notifications) do

@@ -16,7 +16,7 @@ defmodule Ash.Error.Exception do
                        error_context: [],
                        vars: [],
                        path: [],
-                       stacktrace: [],
+                       stacktrace: nil,
                        class: unquote(opts)[:class]
                      ]
 

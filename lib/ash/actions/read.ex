@@ -111,15 +111,11 @@ defmodule Ash.Actions.Read do
         {query, opts}
       end
 
-    authorize? = opts[:authorize?]
-    opts = sanitize_opts(opts, authorize?, query)
+    opts = sanitize_opts(opts, query)
     query = set_tenant_opt(query, opts)
     action = get_action(query.resource, action)
 
-    engine_opts =
-      opts
-      |> Keyword.put(:authorize?, authorize?)
-      |> engine_opts(action, query.api, query.resource, opts[:tracer], query)
+    engine_opts = engine_opts(opts, action, query.api, query.resource, opts[:tracer], query)
 
     query =
       if opts[:load] do
@@ -344,7 +340,7 @@ defmodule Ash.Actions.Read do
             end
           ),
         authorize?: !Keyword.has_key?(request_opts, :initial_data),
-        data: data_field(request_opts, path),
+        data: data_field(request_opts, path, error_path),
         path: path ++ [:fetch],
         async?: !Keyword.has_key?(request_opts, :initial_data),
         name: "fetch #{inspect(resource)}.#{action.name}"
@@ -396,8 +392,11 @@ defmodule Ash.Actions.Read do
                     Map.get(fetched_data, :ultimate_query) || query,
                     Map.get(fetched_data, :calculations_at_runtime) || [],
                     get_in(context, path ++ [:calculation_results]) || :error,
-                    lazy?,
-                    query.tenant
+                    query.tenant,
+                    context[:actor],
+                    context[:authorize?],
+                    context[:tracer],
+                    request_opts
                   )
                   |> case do
                     {:ok, values} ->
@@ -477,19 +476,7 @@ defmodule Ash.Actions.Read do
       %Ash.Query.Ref{attribute: %Ash.Query.Calculation{} = calc} = ref ->
         %{
           ref
-          | attribute: %{
-              calc
-              | context:
-                  Map.merge(
-                    %{
-                      actor: actor,
-                      authorize?: authorize?,
-                      tenant: tenant,
-                      tracer: tracer
-                    },
-                    calc.context
-                  )
-            }
+          | attribute: add_calc_context(calc, actor, authorize?, tenant, tracer)
         }
 
       other ->
@@ -559,10 +546,8 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp sanitize_opts(opts, authorize?, query) do
-    opts
-    |> Keyword.put(:authorize?, authorize?)
-    |> Keyword.merge(Map.get(query.context, :override_api_params) || [])
+  defp sanitize_opts(opts, query) do
+    Keyword.merge(opts, Map.get(query.context, :override_api_params) || [])
   end
 
   defp engine_opts(opts, action, api, resource, tracer, query) do
@@ -749,11 +734,13 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp data_field(request_opts, path) do
+  defp data_field(request_opts, path, error_path) do
     Request.resolve(
       [path ++ [:fetch, :query]],
       fn data ->
         ash_query = get_in(data, path ++ [:fetch, :query])
+        # We don't care if this specific request is authorizing
+        # or the actor of this request, we care if the whole operation
         actor = request_opts[:actor]
         authorize? = request_opts[:authorize?]
 
@@ -781,11 +768,42 @@ defmodule Ash.Actions.Read do
 
         ash_query = loaded_query(ash_query, calculations_at_runtime)
 
+        ash_query =
+          add_calc_context_to_query(ash_query, actor, authorize?, ash_query.tenant, data[:tracer])
+
         calculations_at_runtime =
           ash_query.calculations
           |> Map.drop(current_calculations)
           |> Map.values()
           |> Enum.concat(calculations_at_runtime)
+
+        calculation_dependencies =
+          calculations_at_runtime
+          |> Enum.flat_map(fn calc ->
+            calc_dependencies(
+              calc,
+              ash_query,
+              ash_query.api,
+              actor,
+              authorize?,
+              data[:tracer],
+              ash_query.tenant
+            )
+          end)
+          |> Enum.uniq()
+
+        calculation_dependency_requests =
+          calculation_dependency_requests(
+            ash_query,
+            calculation_dependencies,
+            request_opts,
+            path,
+            error_path,
+            actor,
+            ash_query.tenant,
+            authorize?,
+            data[:tracer]
+          )
 
         must_be_reselected =
           if request_opts[:initial_data] do
@@ -922,7 +940,10 @@ defmodule Ash.Actions.Read do
                          Enum.map(aggregate_value_requests, &(&1.path ++ [:data]))
                      },
                      %{
-                       requests: aggregate_value_requests ++ load_requests
+                       requests:
+                         aggregate_value_requests ++
+                           load_requests ++
+                           calculation_dependency_requests
                      }}
 
                   {:error, error} ->
@@ -945,7 +966,8 @@ defmodule Ash.Actions.Read do
                  Enum.map(aggregate_value_requests, &(&1.path ++ [:data]))
              },
              %{
-               requests: aggregate_value_requests ++ load_requests
+               requests:
+                 aggregate_value_requests ++ load_requests ++ calculation_dependency_requests
              }}
 
           true ->
@@ -1063,40 +1085,25 @@ defmodule Ash.Actions.Read do
                  {:ok, results, after_notifications} <-
                    run_after_action(initial_query, results),
                  {:ok, count} <- maybe_await(count) do
-              if request_opts[:return_query?] do
-                {:ok,
-                 %{
-                   load_paths: load_paths,
-                   results: results,
-                   ultimate_query: %{ash_query | filter: filter},
-                   count: count,
-                   calculations_at_runtime: calculations_at_runtime,
-                   aggregates: ash_query.aggregates,
-                   aggregates_in_query: aggregates_in_query,
-                   aggregate_value_request_paths:
-                     Enum.map(aggregate_value_requests, &(&1.path ++ [:data]))
-                 },
-                 %{
-                   notifications: after_notifications,
-                   requests: aggregate_value_requests ++ load_requests
-                 }}
-              else
-                {:ok,
-                 %{
-                   load_paths: load_paths,
-                   results: results,
-                   count: count,
-                   calculations_at_runtime: calculations_at_runtime,
-                   aggregates: ash_query.aggregates,
-                   aggregates_in_query: aggregates_in_query,
-                   aggregate_value_request_paths:
-                     Enum.map(aggregate_value_requests, &(&1.path ++ [:data]))
-                 },
-                 %{
-                   notifications: after_notifications,
-                   requests: aggregate_value_requests ++ load_requests
-                 }}
-              end
+              {:ok,
+               %{
+                 load_paths: load_paths,
+                 results: results,
+                 ultimate_query: %{ash_query | filter: filter},
+                 count: count,
+                 calculations_at_runtime: calculations_at_runtime,
+                 aggregates: ash_query.aggregates,
+                 aggregates_in_query: aggregates_in_query,
+                 aggregate_value_request_paths:
+                   Enum.map(aggregate_value_requests, &(&1.path ++ [:data]))
+               },
+               %{
+                 notifications: after_notifications,
+                 requests:
+                   aggregate_value_requests ++
+                     load_requests ++
+                     calculation_dependency_requests
+               }}
             else
               {:filter_requests, other_data_layer_filter_requests} ->
                 {:requests, other_data_layer_filter_requests}
@@ -1146,9 +1153,11 @@ defmodule Ash.Actions.Read do
     {query, new_loads} =
       Enum.reduce(unchecked_calcs, {query, []}, fn calc, {query, new_loads} ->
         loaded =
-          query
-          |> Ash.Query.load(calc.required_loads)
-          |> Ash.Query.ensure_selected(calc.select)
+          calc.required_loads
+          |> Enum.filter(fn load ->
+            is_atom(load) && Ash.Resource.Info.aggregate(query.resource, load)
+          end)
+          |> Enum.reduce(query, &Ash.Query.load(&2, &1))
 
         required_calc_loads =
           calc.required_loads
@@ -1167,7 +1176,7 @@ defmodule Ash.Actions.Read do
       Enum.reject(
         new_loads,
         &Enum.find(checked, fn checked ->
-          checked.name == &1.name
+          checked.name == &1.name && checked.load == &1.load
         end)
       )
 
@@ -1232,6 +1241,567 @@ defmodule Ash.Actions.Read do
   end
 
   defp validate_get(_, _, _), do: :ok
+
+  defp calculation_dependency_requests(
+         query,
+         calculation_deps,
+         request_opts,
+         path,
+         error_path,
+         actor,
+         _tenant,
+         authorize?,
+         tracer
+       ) do
+    calculation_deps
+    |> Enum.uniq()
+    |> Enum.reject(&(&1.type in [:aggregate, :attribute]))
+    |> Enum.flat_map(fn dep ->
+      parent_dep =
+        case dep.path do
+          [] ->
+            path ++ [:fetch, :data]
+
+          dep_path ->
+            {name, dep_query} = List.last(dep_path)
+
+            path ++
+              [:calc_dep] ++
+              [
+                %{
+                  path: :lists.droplast(dep_path),
+                  type: :relationship,
+                  relationship: name,
+                  query: dep_query
+                },
+                :data
+              ]
+        end
+
+      if loading?(query, dep) do
+        case dep.type do
+          type when type in [:attribute, :aggregate] ->
+            []
+
+          :calculation ->
+            relationship_path = Enum.map(dep.path, &elem(&1, 0))
+
+            actual_data_path =
+              path ++ [:calculation_results, {dep.calculation.name, dep.calculation.load}]
+
+            if dep.path == [] do
+              [
+                Request.new(
+                  resource: query.resource,
+                  api: query.api,
+                  action: query.action,
+                  error_path: error_path,
+                  async?: false,
+                  path: path ++ [:calc_dep, dep],
+                  name: "get calc data: #{Enum.join(relationship_path, ".")}",
+                  data:
+                    Request.resolve([actual_data_path ++ [:data]], fn data ->
+                      {:ok, get_in(data, actual_data_path ++ [:data])}
+                    end)
+                )
+              ]
+            else
+              []
+            end
+
+          :relationship ->
+            relationship_path = Enum.map(dep.path, &elem(&1, 0)) ++ [dep.relationship]
+            actual_data_path = path ++ [:fetch, :load, relationship_path]
+
+            [
+              Request.new(
+                resource: query.resource,
+                api: query.api,
+                action: query.action,
+                error_path: error_path,
+                async?: false,
+                path: path ++ [:calc_dep, dep],
+                name: "get relationship data: #{Enum.join(relationship_path, ".")}",
+                data:
+                  Request.resolve([actual_data_path ++ [:data]], fn data ->
+                    {:ok, get_in(data, actual_data_path ++ [:data])}
+                  end)
+              )
+            ]
+        end
+      else
+        case dep.type do
+          type when type in [:attribute, :aggregate] ->
+            []
+
+          :relationship ->
+            last_resource =
+              dep.path
+              |> Enum.reduce(
+                query.resource,
+                fn {rel, _}, resource ->
+                  Ash.Resource.Info.related(resource, rel)
+                end
+              )
+
+            relationship = Ash.Resource.Info.relationship(last_resource, dep.relationship)
+
+            load =
+              calculation_deps
+              |> Enum.filter(fn
+                %{type: :aggregate} = agg_dep ->
+                  agg_dep.path == dep.path ++ [{dep.relationship, dep.query}]
+
+                _ ->
+                  false
+              end)
+              |> Enum.map(& &1.aggregate)
+
+            select =
+              calculation_deps
+              |> Enum.filter(fn
+                %{type: :attribute} = attr_dep ->
+                  attr_dep.path == dep.path ++ [{dep.relationship, dep.query}]
+
+                _ ->
+                  false
+              end)
+              |> Enum.map(& &1.attribute)
+
+            Ash.Actions.Load.calc_dep_requests(
+              relationship,
+              request_opts[:lazy?],
+              [
+                actor: request_opts[:actor],
+                authorize?: authorize?,
+                tracer: request_opts[:tracer]
+              ],
+              dep,
+              path,
+              query,
+              select,
+              load
+            )
+
+          :calculation ->
+            calc_string =
+              dep.path
+              |> Enum.map(&elem(&1, 0))
+              |> Enum.concat([dep.calculation.name])
+              |> Enum.join(".")
+
+            calc_deps =
+              dep.calculation
+              |> calc_dependencies(query, query.api, actor, authorize?, query.tenant, tracer,
+                recurse?: false
+              )
+              |> Enum.reject(&(&1.type in [:attribute, :aggregate]))
+
+            calc_dep_paths = Enum.map(calc_deps, &calc_dep_path(path, &1))
+
+            [
+              Request.new(
+                resource: query.resource,
+                api: query.api,
+                action: query.action,
+                error_path: error_path,
+                query: query,
+                authorize?: false,
+                async?: true,
+                path: path ++ [:calc_dep, dep],
+                name: "calculate #{calc_string}",
+                data:
+                  Request.resolve([parent_dep] ++ calc_dep_paths, fn data ->
+                    results = get_in(data, parent_dep)
+                    actor = data[:actor]
+                    authorize? = authorize?
+                    primary_key = Ash.Resource.Info.primary_key(query.resource)
+                    tenant = query.tenant
+                    calculation = dep.calculation
+
+                    results =
+                      case results do
+                        %{results: results} ->
+                          results
+
+                        results ->
+                          results
+                      end
+
+                    temp_results = calc_temp_results(results, calc_deps, data, path, query)
+
+                    primary_keys = Enum.map(temp_results, &Map.take(&1, primary_key))
+
+                    case calculation.module.calculate(
+                           temp_results,
+                           calculation.opts,
+                           calculation.context
+                         ) do
+                      :unknown ->
+                        case run_calculation_query(
+                               temp_results,
+                               [calculation],
+                               query,
+                               actor,
+                               authorize?,
+                               tenant
+                             ) do
+                          {:ok, results_with_calc} ->
+                            {:ok,
+                             %{
+                               calc: calculation,
+                               values:
+                                 Enum.map(results_with_calc, fn record ->
+                                   if calculation.load do
+                                     {Map.take(record, primary_key),
+                                      Map.get(record, calculation.name)}
+                                   else
+                                     {Map.take(record, primary_key),
+                                      Map.get(record.calculations, calculation.name)}
+                                   end
+                                 end),
+                               load?: not is_nil(calculation.load)
+                             }}
+
+                          other ->
+                            other
+                        end
+
+                      {:ok, values} ->
+                        {:ok,
+                         %{
+                           calc: calculation,
+                           values: Enum.zip(primary_keys, values),
+                           load?: not is_nil(calculation.load)
+                         }}
+
+                      {:error, error} ->
+                        {:error, error}
+
+                      values ->
+                        {:ok,
+                         %{
+                           calc: calculation,
+                           values: Enum.zip(primary_keys, values),
+                           load?: not is_nil(calculation.load)
+                         }}
+                    end
+                  end)
+              )
+            ]
+        end
+      end
+    end)
+  end
+
+  defp calc_dep_path(path, dep) do
+    path ++ [:calc_dep, dep, :data]
+  end
+
+  defp calc_dependencies(calc, query, api, actor, authorize?, tenant, tracer, opts \\ []) do
+    calc.required_loads
+    |> Ash.Query.reify_calculations(query)
+    |> expand_load_paths(query, api, actor, authorize?, tenant, tracer, opts[:recurse?] || false)
+    |> Enum.uniq()
+  end
+
+  defp expand_load_relationship(
+         relationship,
+         api,
+         actor,
+         authorize?,
+         tenant,
+         tracer,
+         stop?,
+         path,
+         rest
+       ) do
+    query =
+      case rest do
+        %Ash.Query{} = query ->
+          query_unique_for_calc(query)
+
+        _list ->
+          relationship.destination
+          |> Ash.Query.new(api)
+          |> Ash.Query.set_tenant(tenant)
+      end
+
+    query = %{query | api: api, tenant: tenant}
+
+    this_load_path = [
+      %{
+        path: path,
+        relationship: relationship.name,
+        type: :relationship,
+        query: query
+      }
+    ]
+
+    rest
+    |> List.wrap()
+    |> Enum.flat_map(fn
+      %Ash.Query{
+        load: load,
+        calculations: calculations,
+        aggregates: aggregates,
+        resource: resource
+      } = query ->
+        attributes =
+          resource
+          |> Ash.Resource.Info.attributes()
+          |> Enum.filter(fn %{name: name} ->
+            Ash.Query.selecting?(query, name)
+          end)
+
+        load ++
+          Map.values(calculations) ++
+          Enum.map(Map.values(aggregates), & &1.name) ++ Enum.map(attributes, & &1.name)
+
+      other ->
+        other = List.wrap(other)
+
+        if Enum.any?(other, &Ash.Resource.Info.attribute(relationship.destination, &1)) do
+          other
+        else
+          relationship.destination
+          |> Ash.Resource.Info.attributes()
+          |> Enum.map(& &1.name)
+          |> Enum.concat(other)
+        end
+    end)
+    |> then(fn paths ->
+      if stop? do
+        []
+      else
+        expand_load_paths(
+          paths,
+          query,
+          relationship.api || api,
+          actor,
+          authorize?,
+          tenant,
+          tracer,
+          false,
+          path ++ [{relationship.name, query}]
+        )
+      end
+    end)
+    |> Enum.concat(this_load_path)
+  end
+
+  defp expand_load_paths(
+         required_loads,
+         query,
+         api,
+         actor,
+         authorize?,
+         tenant,
+         tracer,
+         stop?,
+         path \\ []
+       ) do
+    required_loads
+    |> List.wrap()
+    |> Enum.flat_map(fn
+      {load, rest} when is_atom(load) ->
+        if relationship = Ash.Resource.Info.relationship(query.resource, load) do
+          expand_load_relationship(
+            relationship,
+            api,
+            actor,
+            authorize?,
+            tenant,
+            tracer,
+            stop?,
+            path,
+            rest
+          )
+        else
+          raise Ash.Error.Framework.AssumptionFailed,
+            message: "Only calculation & relationship deps should have input"
+        end
+
+      %Ash.Query.Calculation{} = calculation ->
+        if stop? do
+          [%{path: path, type: :calculation, calculation: calculation}]
+        else
+          calculation.required_loads
+          |> Ash.Query.reify_calculations(query)
+          |> expand_load_paths(query, api, actor, authorize?, tenant, tracer, false, path)
+          |> Enum.concat([%{path: path, type: :calculation, calculation: calculation}])
+        end
+
+      other ->
+        cond do
+          Ash.Resource.Info.aggregate(query.resource, other) ->
+            [%{path: path, type: :aggregate, aggregate: other}]
+
+          Ash.Resource.Info.attribute(query.resource, other) ->
+            [%{path: path, type: :attribute, attribute: other}]
+
+          relationship = Ash.Resource.Info.relationship(query.resource, other) ->
+            expand_load_relationship(
+              relationship,
+              api,
+              actor,
+              authorize?,
+              tenant,
+              tracer,
+              stop?,
+              path,
+              []
+            )
+
+          calculation = Ash.Resource.Info.calculation(query.resource, other) ->
+            {:ok, calculation} = Ash.Query.resource_calc_to_calc(query, other, calculation)
+
+            [calculation] = Ash.Query.reify_calculations([calculation], query)
+
+            if stop? do
+              [%{path: path, type: :calculation, calculation: calculation}]
+            else
+              calculation.required_loads
+              |> Ash.Query.reify_calculations(query)
+              |> expand_load_paths(query, api, actor, authorize?, tenant, tracer, false, path)
+              |> Enum.concat([%{path: path, type: :calculation, calculation: calculation}])
+            end
+
+          true ->
+            raise Ash.Error.Framework.AssumptionFailed,
+              message:
+                "Only attribute & aggregate deps should remain at this point. Got #{inspect(other)} on #{inspect(query.resource)}"
+        end
+    end)
+  end
+
+  defp add_calc_context_to_query(query, actor, authorize?, tenant, tracer) do
+    %{
+      query
+      | load:
+          Keyword.new(query.load, fn {key, related_query} ->
+            case related_query do
+              %Ash.Query{} = related_query ->
+                {key, add_calc_context_to_query(related_query, actor, authorize?, tenant, tracer)}
+
+              other ->
+                load =
+                  query.resource
+                  |> Ash.Resource.Info.related(key)
+                  |> Ash.Query.new(query.api)
+                  |> Ash.Query.load(other)
+                  |> add_calc_context_to_query(actor, authorize?, tenant, tracer)
+
+                {key, load}
+            end
+          end),
+        calculations:
+          Map.new(query.calculations, fn {key, calc} ->
+            {key, add_calc_context(calc, actor, authorize?, tenant, tracer)}
+          end)
+    }
+  end
+
+  defp add_calc_context(calc, actor, authorize?, tenant, tracer) do
+    %{
+      calc
+      | context:
+          Map.merge(
+            %{
+              actor: actor,
+              authorize?: authorize?,
+              tenant: tenant,
+              tracer: tracer
+            },
+            calc.context
+          )
+    }
+  end
+
+  # TODO: Make more generic?
+  defp query_unique_for_calc(query) do
+    Ash.Query.unset(query, [:load])
+  end
+
+  defp loading?(query, %{
+         type: :relationship,
+         relationship: relationship,
+         path: [],
+         query: expected_query
+       }) do
+    loading_query =
+      case query.load[relationship] do
+        nil ->
+          nil
+
+        %Ash.Query{} = query ->
+          query
+
+        _other ->
+          expected_query.resource
+          |> Ash.Query.new(expected_query.api)
+          |> Ash.Query.set_tenant(expected_query.tenant)
+      end
+
+    loading_query && query_unique_for_calc(loading_query) == expected_query
+  end
+
+  defp loading?(query, %{path: [{name, path_query} | rest]} = load) do
+    case Keyword.get(query.load, name) do
+      nil ->
+        false
+
+      loaded_query ->
+        loaded_query =
+          case loaded_query do
+            [] ->
+              # We need to rewrite load validation so it always produces
+              # a keyed list of relationship to query. The fact it can produce
+              # an empty list should be changed.
+              Ash.Query.new(Ash.Resource.Info.related(query.resource, name), query.api)
+
+            %Ash.Query{} = query ->
+              query
+          end
+
+        if query_unique_for_calc(loaded_query) == path_query do
+          loading?(loaded_query, %{load | path: rest})
+        else
+          false
+        end
+    end
+  end
+
+  defp loading?(query, %{type: :calculation, path: [], calculation: calculation}) do
+    loading_calc = Map.get(query.calculations, calculation.name)
+
+    loading_calc &&
+      clean_calc_context(loading_calc) ==
+        clean_calc_context(calculation)
+  end
+
+  defp loading?(query, %{type: :attribute, path: [], attribute: attribute}) do
+    Ash.Query.selecting?(query, attribute)
+  end
+
+  defp loading?(query, %{type: :aggregate, path: [], aggregate: aggregate}) do
+    case query.aggregates[aggregate] do
+      %{load: ^aggregate} -> true
+      _ -> false
+    end
+  end
+
+  @calc_context_fields [:actor, :authorize?, :tenant, :tracer]
+
+  defp clean_calc_context(calc) do
+    Map.take(%{calc | context: Map.drop(calc.context, @calc_context_fields)}, [
+      :context,
+      :module,
+      :opts,
+      :load,
+      :name
+    ])
+  end
 
   @doc false
   def update_aggregate_filters(filter, data, path, authorize?) do
@@ -1546,8 +2116,8 @@ defmodule Ash.Actions.Read do
          query,
          context,
          load_attributes?,
-         aggregates_if_runtime \\ [],
-         calculations_if_runtime \\ []
+         aggregates_at_runtime \\ [],
+         calculations_at_runtime \\ []
        )
 
   defp run_query(
@@ -1555,20 +2125,21 @@ defmodule Ash.Actions.Read do
          _query,
          _context,
          load_attributes?,
-         aggregates_if_runtime,
-         calculations_if_runtime
+         aggregates_at_runtime,
+         calculations_at_runtime
        ) do
     result
     |> Helpers.select(ash_query)
     |> Helpers.load_runtime_types(ash_query, load_attributes?)
     |> case do
       {:ok, result} ->
-        aggregates = aggregates_if_runtime |> Map.new(&{&1.name, &1})
-        calculations = calculations_if_runtime |> Map.new(&{&1.name, &1})
+        aggregates = aggregates_at_runtime |> Map.new(&{&1.name, &1})
+        calculations = calculations_at_runtime |> Map.new(&{&1.name, &1})
 
         load_query =
           ash_query.resource
-          |> Ash.Query.new()
+          |> Ash.Query.new(ash_query.api)
+          |> Ash.Query.set_tenant(ash_query.tenant)
           |> Map.put(:calculations, calculations)
           |> Map.put(:aggregates, aggregates)
 
@@ -1591,8 +2162,8 @@ defmodule Ash.Actions.Read do
          query,
          _context,
          load_attributes?,
-         _aggregates_if_runtime,
-         _calculations_if_runtime
+         _aggregates_at_runtime,
+         _calculations_at_runtime
        ) do
     if ash_query.limit == 0 do
       {:ok, []}
@@ -1613,8 +2184,8 @@ defmodule Ash.Actions.Read do
          query,
          _context,
          load_attributes?,
-         _aggregates_if_runtime,
-         _calculations_if_runtime
+         _aggregates_at_runtime,
+         _calculations_at_runtime
        ) do
     if ash_query.limit == 0 do
       {:ok, []}
@@ -1631,8 +2202,8 @@ defmodule Ash.Actions.Read do
          query,
          context,
          load_attributes?,
-         _aggregates_if_runtime,
-         _calculations_if_runtime
+         _aggregates_at_runtime,
+         _calculations_at_runtime
        ) do
     ash_query
     |> mod.read(query, opts, context)
@@ -1676,7 +2247,6 @@ defmodule Ash.Actions.Read do
   end
 
   defp calculation_request(
-         all_calcs,
          resource,
          api,
          action,
@@ -1685,29 +2255,41 @@ defmodule Ash.Actions.Read do
          results,
          calculation,
          query,
-         lazy?,
-         tenant
+         tenant,
+         actor,
+         authorize?,
+         tracer,
+         request_opts,
+         _calculations
        ) do
-    all_calcs = Enum.map(all_calcs, & &1.name)
+    calc_dependencies =
+      calculation
+      |> calc_dependencies(query, api, actor, authorize?, tenant, tracer, recurse?: false)
+      |> Enum.filter(fn dep ->
+        cond do
+          dep.type in [:aggregate, :attribute] ->
+            false
 
-    dependencies =
-      calculation.required_loads
-      |> List.wrap()
-      |> reject_loaded(results, lazy?)
-      |> Enum.map(fn
-        {key, _} ->
-          key
+          dep.type == :relationship ->
+            true
 
-        key ->
-          key
+          dep.type == :calculation && dep.path == [] && loading?(query, dep) ->
+            would_be_in_query? =
+              Ash.DataLayer.data_layer_can?(resource, :expression_calculation) &&
+                !request_opts[:initial_data] &&
+                :erlang.function_exported(dep.calculation.module, :expression, 2)
+
+            !would_be_in_query?
+
+          dep.type == :calculation && dep.path != [] ->
+            !loading?(query, dep)
+
+          true ->
+            true
+        end
       end)
-      |> Enum.uniq()
-      |> Enum.filter(fn key ->
-        key in all_calcs
-      end)
-      |> Enum.map(fn key ->
-        path ++ [:calculation_results, key, :data]
-      end)
+
+    dependencies = Enum.map(calc_dependencies, &calc_dep_path(path, &1))
 
     primary_key = Ash.Resource.Info.primary_key(query.resource)
 
@@ -1717,22 +2299,11 @@ defmodule Ash.Actions.Read do
         api: api,
         action: action,
         error_path: error_path,
-        query: query,
         authorize?: false,
         async?: true,
         data:
           Request.resolve(dependencies, fn data ->
-            actor = data[:actor]
-            authorize? = data[:authorize?]
-
-            temp_results =
-              Enum.reduce(get_in(data, path ++ [:calculation_results]) || %{}, results, fn {key,
-                                                                                            config},
-                                                                                           results ->
-                add_calc_to_results(results, key, config[:data], primary_key)
-              end)
-              |> Enum.reject(& &1.__metadata__[:context][:private][:missing_from_data_layer])
-
+            temp_results = calc_temp_results(results, calc_dependencies, data, path, query)
             primary_keys = Enum.map(temp_results, &Map.take(&1, primary_key))
 
             case calculation.module.calculate(temp_results, calculation.opts, calculation.context) do
@@ -1748,6 +2319,7 @@ defmodule Ash.Actions.Read do
                   {:ok, results_with_calc} ->
                     {:ok,
                      %{
+                       calc: calculation,
                        values:
                          Enum.map(results_with_calc, fn record ->
                            if calculation.load do
@@ -1767,6 +2339,7 @@ defmodule Ash.Actions.Read do
               {:ok, values} ->
                 {:ok,
                  %{
+                   calc: calculation,
                    values: Enum.zip(primary_keys, values),
                    load?: not is_nil(calculation.load)
                  }}
@@ -1777,12 +2350,13 @@ defmodule Ash.Actions.Read do
               values ->
                 {:ok,
                  %{
+                   calc: calculation,
                    values: Enum.zip(primary_keys, values),
                    load?: not is_nil(calculation.load)
                  }}
             end
           end),
-        path: path ++ [:calculation_results, calculation.name],
+        path: path ++ [:calculation_results, {calculation.name, calculation.load}],
         name: "calculate #{calculation.name}"
       )
     else
@@ -1795,14 +2369,21 @@ defmodule Ash.Actions.Read do
         authorize?: false,
         async?: true,
         data:
-          Request.resolve([], fn data ->
-            actor = data[:actor]
-            authorize? = data[:authorize?]
+          Request.resolve(dependencies, fn data ->
+            temp_results = calc_temp_results(results, calc_dependencies, data, path, query)
 
-            case run_calculation_query(results, [calculation], query, actor, authorize?, tenant) do
+            case run_calculation_query(
+                   temp_results,
+                   [calculation],
+                   query,
+                   actor,
+                   authorize?,
+                   tenant
+                 ) do
               {:ok, results_with_calc} ->
                 {:ok,
                  %{
+                   calc: calculation,
                    values:
                      Enum.map(results_with_calc, fn record ->
                        if calculation.load do
@@ -1819,22 +2400,73 @@ defmodule Ash.Actions.Read do
                 other
             end
           end),
-        path: path ++ [:calculation_results, calculation.name],
+        path: path ++ [:calculation_results, {calculation.name, calculation.load}],
         name: "calculate #{calculation.name}"
       )
     end
   end
 
-  defp reject_loaded(loads, results, true) do
-    loads
-    |> List.wrap()
-    |> Enum.reject(fn load ->
-      Ash.Resource.loaded?(results, load)
-    end)
-  end
+  defp calc_temp_results(results, dependencies, data, path, query) do
+    data
+    |> get_in(path ++ [:calc_dep])
+    |> Kernel.||(%{})
+    |> Map.take(dependencies)
+    |> Enum.group_by(fn {dep, _config} ->
+      case dep do
+        %{type: :relationship, path: path, relationship: relationship, query: query} ->
+          path ++ [{relationship, query}]
 
-  defp reject_loaded(loads, _, _) do
-    loads
+        %{path: path} ->
+          path
+      end
+    end)
+    |> Enum.reduce(
+      results,
+      fn {_, deps_and_configs}, results ->
+        case Enum.split_with(deps_and_configs, fn {%{type: type}, _} ->
+               type == :relationship
+             end) do
+          {[], rest} ->
+            rest
+            |> Enum.reduce(results, fn {%{
+                                          type: :calculation,
+                                          path: path,
+                                          calculation: calculation
+                                        }, config},
+                                       results ->
+              resource = Ash.Resource.Info.related(query.resource, Enum.map(path, &elem(&1, 0)))
+
+              do_add_calculation_values(resource, results, %{
+                {calculation.name, calculation.load} => config
+              })
+            end)
+
+          {[{%{relationship: relationship, query: query}, rel_config}], rest} ->
+            relationship_data =
+              rest
+              |> Enum.reduce(rel_config[:data], fn
+                {%{type: :calculation, calculation: calculation, path: path}, config}, results ->
+                  resource =
+                    Ash.Resource.Info.related(
+                      query.resource,
+                      Enum.map(:lists.droplast(path), &elem(&1, 0))
+                    )
+
+                  do_add_calculation_values(resource, results, %{
+                    {calculation.name, calculation.load} => config
+                  })
+
+                _, results ->
+                  results
+              end)
+
+            Ash.Actions.Load.attach_loads(results, %{
+              [relationship] => %{data: relationship_data}
+            })
+        end
+      end
+    )
+    |> Enum.reject(& &1.__metadata__[:context][:private][:missing_from_data_layer])
   end
 
   defp add_calculation_values(
@@ -1847,15 +2479,17 @@ defmodule Ash.Actions.Read do
          query,
          calculations,
          :error,
-         lazy?,
-         tenant
+         tenant,
+         actor,
+         authorize?,
+         tracer,
+         request_opts
        )
        when calculations != [] do
     {:requests,
      Enum.map(
        calculations,
        &calculation_request(
-         calculations,
          resource,
          api,
          action,
@@ -1864,8 +2498,12 @@ defmodule Ash.Actions.Read do
          results,
          &1,
          query,
-         lazy?,
-         tenant
+         tenant,
+         actor,
+         authorize?,
+         tracer,
+         request_opts,
+         calculations
        )
      )}
   end
@@ -1880,19 +2518,26 @@ defmodule Ash.Actions.Read do
          _query,
          _calculations,
          calculation_values,
-         _lazy?,
-         _tenant
+         _tenant,
+         _actor,
+         _authorize?,
+         _tracer,
+         _request_opts
        ) do
-    primary_key = Ash.Resource.Info.primary_key(resource)
-
     if calculation_values == :error do
       {:ok, results}
     else
-      {:ok,
-       Enum.reduce(calculation_values, results, fn {name, config}, results ->
-         add_calc_to_results(results, name, config[:data], primary_key)
-       end)}
+      {:ok, do_add_calculation_values(resource, results, calculation_values)}
     end
+  end
+
+  defp do_add_calculation_values(resource, results, calculation_values) do
+    primary_key = Ash.Resource.Info.primary_key(resource)
+
+    Enum.reduce(calculation_values, results, fn
+      {{name, _load}, config}, results ->
+        add_calc_to_results(results, name, config[:data], primary_key)
+    end)
   end
 
   defp add_calc_to_results(results, name, config, primary_key) do

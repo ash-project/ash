@@ -152,7 +152,7 @@ defmodule Ash.Actions.Helpers do
           if Keyword.has_key?(opts, :actor) do
             Keyword.put_new(opts, :authorize?, true)
           else
-            opts
+            Keyword.put(opts, :authorize?, opts[:authorize?] || Keyword.has_key?(opts, :actor))
           end
       end
     else
@@ -202,7 +202,7 @@ defmodule Ash.Actions.Helpers do
         :ok
 
       missed ->
-        case Application.get_env(:ash, :missed_notifications, :ignore) do
+        case Application.get_env(:ash, :missed_notifications, :warn) do
           :ignore ->
             :ok
 

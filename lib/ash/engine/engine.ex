@@ -367,8 +367,21 @@ defmodule Ash.Engine do
     end
   end
 
-  defp depends_on_summary(request, state) do
-    dependencies = state.dependencies[request.path] || []
+  defp depends_on_summary(%{path: request_path} = request, state) do
+    dependencies =
+      state.dependencies_waiting_on_request
+      |> Kernel.||([])
+      |> Enum.filter(fn
+        {^request_path, _} ->
+          true
+
+        _ ->
+          false
+      end)
+      |> Enum.map(fn {_, dep} ->
+        {:lists.droplast(dep), List.last(dep)}
+      end)
+      |> Enum.concat(state.dependencies[request_path] || [])
 
     if Enum.empty?(dependencies) do
       " state: #{request.state}"
@@ -378,7 +391,13 @@ defmodule Ash.Engine do
   end
 
   defp name_of({path, dep}, state) do
-    "#{inspect(Enum.find(state.requests, &(&1.path == path)).name)}.#{dep}"
+    case Enum.find(state.requests, &(&1.path == path)) do
+      nil ->
+        "unknown dependency: #{inspect(path, structs: false)} -> #{inspect(dep)}"
+
+      request ->
+        "#{request.name} -> #{inspect(dep)}"
+    end
   end
 
   defp run_iteration(
