@@ -51,6 +51,8 @@ defmodule Ash.Test.Support.PolicyComplex.Comment do
       change manage_relationship(:post_id, :post, type: :append_and_remove)
       change relate_actor(:author)
     end
+
+    read :read_through_post
   end
 
   code_interface do

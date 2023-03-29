@@ -541,7 +541,13 @@ defmodule Ash.Actions.Load do
       |> Enum.concat([calc_dep.relationship])
       |> Enum.join(".")
 
-    actual_query = calc_dep.query |> Ash.Query.select(select) |> Ash.Query.load(load)
+    actual_query =
+      calc_dep.query
+      |> Ash.Query.select(select)
+      |> Ash.Query.set_context(%{
+        accessing_from: %{source: relationship.source, name: relationship.name}
+      })
+      |> Ash.Query.load(load)
 
     Request.new(
       action:
@@ -630,6 +636,11 @@ defmodule Ash.Actions.Load do
       [relationship | path]
       |> Enum.reverse()
       |> Enum.map_join(".", &Map.get(&1, :name))
+
+    related_query =
+      Ash.Query.set_context(related_query, %{
+        accessing_from: %{source: relationship.source, name: relationship.name}
+      })
 
     Request.new(
       action:
@@ -1055,6 +1066,11 @@ defmodule Ash.Actions.Load do
         Ash.Query.new(join_relationship.destination, related_query.api)
       end
 
+    related_query =
+      Ash.Query.set_context(related_query, %{
+        accessing_from: %{source: join_relationship.source, name: join_relationship.name}
+      })
+
     dependencies = Enum.map(dependencies, &(request_path ++ &1))
 
     Request.new(
@@ -1227,6 +1243,9 @@ defmodule Ash.Actions.Load do
       |> Ash.Query.new(join_relationship.api || root_query.api)
       |> Ash.Query.set_tenant(calc_dep.query.tenant)
       |> Ash.Query.set_context(join_relationship.context)
+      |> Ash.Query.set_context(%{
+        accessing_from: %{source: join_relationship.source, name: join_relationship.name}
+      })
 
     Request.new(
       action:

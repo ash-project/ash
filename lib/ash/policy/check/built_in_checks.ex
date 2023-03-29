@@ -140,6 +140,21 @@ defmodule Ash.Policy.Check.Builtins do
   end
 
   @doc """
+  This check is true when the current action is being run "through" a relationship.
+
+  Cases where this happens:
+
+  1. Loading related data
+  2. Managing relationships
+  3. Aggregating data
+  4. Filtering on relationships
+  """
+  @spec accessing_from(Ash.Resource.t(), atom) :: Ash.Policy.Check.ref()
+  def accessing_from(resource, relationship) do
+    {Ash.Policy.Check.AccessingFrom, source: resource, relationship: relationship}
+  end
+
+  @doc """
   This check passes if the data relates to the actor via the specified relationship or path of relationships.
 
   For `update` & `destroy` actions, this check will apply to *the original data* before the changes are applied.

@@ -3,7 +3,7 @@ defmodule Ash.Test.Policy.ComplexTest do
   use ExUnit.Case, async?: false
   require Ash.Query
 
-  alias Ash.Test.Support.PolicyComplex.{Api, Comment, Post, User}
+  alias Ash.Test.Support.PolicyComplex.{Api, Bio, Comment, Post, User}
 
   setup do
     Application.put_env(:ash, :policies, show_policy_breakdowns?: true)
@@ -12,7 +12,7 @@ defmodule Ash.Test.Policy.ComplexTest do
       Application.delete_env(:ash, :policies)
     end)
 
-    me = User.create!("me", %{email: "me@app.com"})
+    me = User.create!("me", %{email: "me@app.com", bio: "this is my bio"})
     my_friend = User.create!("my friend", %{email: "my_friend@app.com"})
 
     a_friend_of_my_friend =
@@ -113,5 +113,21 @@ defmodule Ash.Test.Policy.ComplexTest do
 
     users
     |> Api.load!([:posts], actor: me, authorize?: true)
+  end
+
+  test "loading data honors `accessing_from` policies", %{me: me} do
+    Api.load!(me, [:bio], authorize?: true, actor: me)
+    me |> User.set_bio!("New bio!", authorize?: true, actor: me)
+
+    User
+    |> Ash.Query.filter(bio == "New bio!")
+    |> Ash.Query.deselect(:private_email)
+    |> Api.read_one!(authorize?: true, actor: me)
+
+    me |> Api.load!([:bio_text], authorize?: true, actor: me)
+
+    assert_raise Ash.Error.Forbidden, fn ->
+      Api.read!(Bio, actor: me, authorize?: true)
+    end
   end
 end

@@ -9,5 +9,6 @@ defmodule Ash.Test.Support.PolicyComplex.Registry do
     entry(Complex.FriendLink)
     entry(Complex.Post)
     entry(Complex.Comment)
+    entry(Complex.Bio)
   end
 end

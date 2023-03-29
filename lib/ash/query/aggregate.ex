@@ -333,6 +333,15 @@ defmodule Ash.Query.Aggregate do
                                     {auth_requests, value_requests, aggregates_in_query} ->
       related = Ash.Resource.Info.related(aggregate_resource, relationship_path)
 
+      last_relationship =
+        Enum.reduce(relationship_path, nil, fn
+          relationship, nil ->
+            Ash.Resource.Info.relationship(initial_query.resource, relationship)
+
+          relationship, acc ->
+            Ash.Resource.Info.relationship(acc.destination, relationship)
+        end)
+
       can_be_in_query? = can_be_in_query? && ref_path == []
 
       opts =
@@ -341,7 +350,18 @@ defmodule Ash.Query.Aggregate do
         |> Map.take([:tracer, :actor, :query])
         |> Map.to_list()
 
-      related_query = Ash.Query.for_read(related, read_action, opts)
+      related_query =
+        related
+        |> then(fn query ->
+          if last_relationship do
+            Ash.Query.set_context(query, %{
+              accessing_from: %{source: last_relationship.source, name: last_relationship.name}
+            })
+          else
+            query
+          end
+        end)
+        |> Ash.Query.for_read(read_action, opts)
 
       auth_request =
         if authorize? do

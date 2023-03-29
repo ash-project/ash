@@ -1059,6 +1059,15 @@ defmodule Ash.Filter do
     |> Enum.uniq()
     |> Enum.reject(&(&1 == []))
     |> Enum.reduce_while({:ok, []}, fn path, {:ok, requests} ->
+      last_relationship =
+        Enum.reduce(path, nil, fn
+          relationship, nil ->
+            Ash.Resource.Info.relationship(resource, relationship)
+
+          relationship, acc ->
+            Ash.Resource.Info.relationship(acc.destination, relationship)
+        end)
+
       case relationship_query(resource, path, actor, tenant) do
         %{errors: []} = query ->
           request =
@@ -1067,6 +1076,12 @@ defmodule Ash.Filter do
               api: api,
               query:
                 query
+                |> Ash.Query.set_context(%{
+                  accessing_from: %{
+                    source: last_relationship.source,
+                    name: last_relationship.name
+                  }
+                })
                 |> Ash.Query.set_context(%{
                   filter_only?: true,
                   filter_references: refs[path] || []

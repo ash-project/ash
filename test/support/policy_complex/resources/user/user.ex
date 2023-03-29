@@ -42,7 +42,9 @@ defmodule Ash.Test.Support.PolicyComplex.User do
     create :create do
       primary? true
       argument :email, :string
+      argument :bio_text, :string
 
+      change manage_relationship(:bio_text, :bio, type: :create, value_is_key: :text)
       change set_attribute(:private_email, arg(:email))
     end
 
@@ -55,12 +57,25 @@ defmodule Ash.Test.Support.PolicyComplex.User do
 
       change Ash.Test.Support.PolicyComplex.User.Changes.AddFriend
     end
+
+    update :set_bio do
+      argument :bio, :string do
+        allow_nil? false
+      end
+
+      change manage_relationship(:bio, type: :direct_control, value_is_key: :text)
+    end
   end
 
   code_interface do
     define_for Ash.Test.Support.PolicyComplex.Api
     define :create, args: [:name]
     define :add_friend, args: [:friend_id]
+    define :set_bio, args: [:bio]
+  end
+
+  aggregates do
+    first :bio_text, :bio, :text
   end
 
   relationships do
@@ -73,5 +88,7 @@ defmodule Ash.Test.Support.PolicyComplex.User do
     has_one :best_friend, Ash.Test.Support.PolicyComplex.User do
       manual Ash.Test.Support.PolicyComplex.User.Relationships.BestFriend
     end
+
+    has_one :bio, Ash.Test.Support.PolicyComplex.Bio
   end
 end
