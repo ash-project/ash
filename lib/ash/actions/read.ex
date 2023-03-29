@@ -9,6 +9,7 @@ defmodule Ash.Actions.Read do
   alias Ash.Query.Aggregate
 
   require Logger
+  require Ash.Flags
   require Ash.Query
   require Ash.Tracer
 
@@ -68,35 +69,41 @@ defmodule Ash.Actions.Read do
           {:ok, Ash.Page.page() | list(Ash.Resource.record())}
           | {:ok, Ash.Page.page() | list(Ash.Resource.record()), Ash.Query.t()}
           | {:error, term}
-  def run(query, action, opts \\ []) do
-    {query, opts} = Ash.Actions.Helpers.add_process_context(query.api, query, opts)
+  def run(query, action, opts \\ [])
 
-    Ash.Tracer.span :action,
-                    Ash.Api.Info.span_name(query.api, query.resource, action.name),
-                    opts[:tracer] do
-      metadata = %{
-        api: query.api,
-        resource: query.resource,
-        resource_short_name: Ash.Resource.Info.short_name(query.resource),
-        actor: opts[:actor],
-        tenant: opts[:tenant],
-        action: action.name,
-        authorize?: opts[:authorize?]
-      }
+  if Ash.Flags.read_uses_flow?() do
+    def run(query, action, opts), do: Ash.Actions.ReadFlow.run(query, action, opts)
+  else
+    def run(query, action, opts) do
+      {query, opts} = Ash.Actions.Helpers.add_process_context(query.api, query, opts)
 
-      Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(query.api), :read], metadata do
-        Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
+      Ash.Tracer.span :action,
+                      Ash.Api.Info.span_name(query.api, query.resource, action.name),
+                      opts[:tracer] do
+        metadata = %{
+          api: query.api,
+          resource: query.resource,
+          resource_short_name: Ash.Resource.Info.short_name(query.resource),
+          actor: opts[:actor],
+          tenant: opts[:tenant],
+          action: action.name,
+          authorize?: opts[:authorize?]
+        }
 
-        case do_run(query, action, opts) do
-          {:error, error} ->
-            if opts[:tracer] do
-              opts[:tracer].set_error(Ash.Error.to_error_class(error))
-            end
+        Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(query.api), :read], metadata do
+          Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 
-            {:error, error}
+          case do_run(query, action, opts) do
+            {:error, error} ->
+              if opts[:tracer] do
+                opts[:tracer].set_error(Ash.Error.to_error_class(error))
+              end
 
-          other ->
-            other
+              {:error, error}
+
+            other ->
+              other
+          end
         end
       end
     end

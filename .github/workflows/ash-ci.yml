@@ -105,9 +105,19 @@ jobs:
   #     - uses: team-alembic/staple-actions/actions/mix-doctor@main
   #       with:
   #         mix-env: test
+
   test:
     name: mix test
+    strategy:
+      fail-fast: false
+      matrix:
+        read_uses_flow: [false]
+        experimental: [false]
+        include:
+         -  read_uses_flow: true
+            experimental: true
     runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental }}
     needs: build-test
     services:
       postgres:
@@ -150,6 +160,8 @@ jobs:
           PGUSER: postgres
           PGPASS: postgres
           PGHOST: postgres
+          FLAG_READ_USES_FLOW: ${{ matrix.read_uses_flow }}
+
   dialyzer:
     name: mix dialyzer
     runs-on: ubuntu-latest
