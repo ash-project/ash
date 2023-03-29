@@ -940,7 +940,6 @@ defmodule Ash.Query do
 
     fields_to_select =
       resource_calculation_select
-      |> Kernel.||([])
       |> Enum.concat(module.select(query, opts, calculation.context) || [])
       |> Enum.uniq()
       |> Enum.filter(&Ash.Resource.Info.attribute(query.resource, &1))
