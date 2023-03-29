@@ -72,7 +72,7 @@ defmodule Ash.Actions.Read do
   def run(query, action, opts \\ [])
 
   if Ash.Flags.read_uses_flow?() do
-    def run(query, action, opts), do: Ash.Actions.ReadFlow.run(query, action, opts)
+    def run(query, action, opts), do: Ash.Actions.Flows.Read.run(query, action, opts)
   else
     def run(query, action, opts) do
       {query, opts} = Ash.Actions.Helpers.add_process_context(query.api, query, opts)
