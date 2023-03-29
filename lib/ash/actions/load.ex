@@ -1662,10 +1662,10 @@ defmodule Ash.Actions.Load do
 
     cond do
       lateral_join?(query, relationship, source_data) ->
-        {:ok, Ash.Query.unset(query, :load)}
+        {:ok, %{query | load: []}}
 
       Map.get(relationship, :no_attributes?) ->
-        {:ok, query}
+        {:ok, %{query | load: []}}
 
       true ->
         query =
@@ -1714,7 +1714,7 @@ defmodule Ash.Actions.Load do
         new_query =
           query
           |> Ash.Query.filter(^[{relationship.destination_attribute, filter_value}])
-          |> Ash.Query.unset(:load)
+          |> Map.put(:load, [])
 
         {:ok, new_query}
     end

@@ -393,7 +393,7 @@ defmodule Ash.Engine do
   defp name_of({path, dep}, state) do
     case Enum.find(state.requests, &(&1.path == path)) do
       nil ->
-        "unknown dependency: #{inspect(path, structs: false)} -> #{inspect(dep)}"
+        "unknown dependency: #{inspect(path)} -> #{inspect(dep)}"
 
       request ->
         "#{request.name} -> #{inspect(dep)}"

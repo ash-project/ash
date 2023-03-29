@@ -148,6 +148,20 @@ defmodule Ash.Test.CalculationTest do
     end
   end
 
+  defmodule BestFriendsBestFriendsFirstName do
+    use Ash.Calculation
+
+    def load(_query, _opts, _) do
+      [best_friend: :best_friends_first_name]
+    end
+
+    def calculate(records, _opts, _) do
+      Enum.map(records, fn record ->
+        "bf: #{record.best_friend && record.best_friend.best_friends_first_name}"
+      end)
+    end
+  end
+
   defmodule FriendsNames do
     use Ash.Calculation
 
@@ -210,6 +224,8 @@ defmodule Ash.Test.CalculationTest do
           default: " ",
           constraints: [allow_empty?: true, trim?: false]
       end
+
+      calculate :best_friends_best_friends_first_name, :string, BestFriendsBestFriendsFirstName
 
       calculate :best_friends_first_name_plus_stuff,
                 :string,
@@ -655,5 +671,30 @@ defmodule Ash.Test.CalculationTest do
       |> Enum.sort()
 
     assert best_friends_names == [nil, "zach daniel"]
+  end
+
+  test "loading a nested aggregate works" do
+    best_friends_best_friends_first_names =
+      User
+      |> Ash.Query.load(:best_friends_best_friends_first_name)
+      |> Api.read!()
+      |> Enum.map(& &1.best_friends_best_friends_first_name)
+      |> Enum.sort()
+
+    assert best_friends_best_friends_first_names == ["bf: ", "bf: "]
+  end
+
+  test "loading a nested aggregate works even when its already being loaded" do
+    best_friends_best_friends_first_names =
+      User
+      |> Ash.Query.load([
+        :best_friends_best_friends_first_name,
+        best_friend: [best_friend: [:first_name]]
+      ])
+      |> Api.read!()
+      |> Enum.map(& &1.best_friends_best_friends_first_name)
+      |> Enum.sort()
+
+    assert best_friends_best_friends_first_names == ["bf: ", "bf: "]
   end
 end

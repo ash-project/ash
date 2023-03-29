@@ -812,6 +812,12 @@ defmodule Ash.Actions.Read do
             data[:tracer]
           )
 
+        ash_query =
+          add_aggregates_and_attributes_to_loaded_relationships(
+            ash_query,
+            calculation_dependencies
+          )
+
         must_be_reselected =
           if request_opts[:initial_data] do
             # If there wasn't an explicit query select
@@ -1248,6 +1254,43 @@ defmodule Ash.Actions.Read do
   end
 
   defp validate_get(_, _, _), do: :ok
+
+  defp add_aggregates_and_attributes_to_loaded_relationships(
+         query,
+         calculation_deps
+       ) do
+    calculation_deps = Enum.uniq(calculation_deps)
+
+    calculation_deps
+    |> Enum.filter(&(&1.type == :relationship && loading?(query, &1)))
+    |> Enum.reduce(query, fn relationship_dep, query ->
+      to_load =
+        calculation_deps
+        |> Enum.filter(fn dep ->
+          dep.type in [:attribute, :aggregate] &&
+            dep.path ==
+              relationship_dep.path ++ [{relationship_dep.relationship, relationship_dep.query}]
+        end)
+        |> Enum.map(fn dep ->
+          if dep.type == :attribute do
+            dep.attribute
+          else
+            dep.aggregate
+          end
+        end)
+
+      load =
+        relationship_dep.path
+        |> Enum.map(&elem(&1, 0))
+        |> Enum.concat([relationship_dep.relationship])
+        |> to_load(to_load)
+
+      Ash.Query.load(query, load)
+    end)
+  end
+
+  defp to_load([], leaf), do: leaf
+  defp to_load([path | rest], leaf), do: [{path, to_load(rest, leaf)}]
 
   defp calculation_dependency_requests(
          query,
@@ -1727,7 +1770,9 @@ defmodule Ash.Actions.Read do
 
   # TODO: Make more generic?
   defp query_unique_for_calc(query) do
-    Ash.Query.unset(query, [:load])
+    query
+    |> Ash.Query.unset([:load])
+    |> Map.put(:api, nil)
   end
 
   defp loading?(query, %{
