@@ -1395,14 +1395,22 @@ defmodule Ash.Changeset do
       attrs ||
         attributes_to_require(changeset.resource, changeset.action, private_and_belongs_to?)
 
-    Enum.reduce(attributes, changeset, fn required_attribute, changeset ->
-      if is_atom(required_attribute) do
-        if is_nil(get_attribute(changeset, required_attribute)) do
+    attributes
+    |> Enum.map(fn
+      attribute when is_struct(attribute, Ash.Resource.Attribute) ->
+        attribute
+
+      name when is_atom(name) ->
+        Ash.Resource.Info.attribute(changeset.resource, name)
+    end)
+    |> Enum.reduce(changeset, fn required_attribute, changeset ->
+      if changing_attribute?(changeset, required_attribute.name) do
+        if is_nil(get_attribute(changeset, required_attribute.name)) do
           add_error(
             changeset,
             Required.exception(
               resource: changeset.resource,
-              field: required_attribute,
+              field: required_attribute.name,
               type: :attribute
             )
           )
@@ -1410,32 +1418,18 @@ defmodule Ash.Changeset do
           changeset
         end
       else
-        if private_and_belongs_to? || changing_attribute?(changeset, required_attribute.name) do
-          if is_nil(get_attribute(changeset, required_attribute.name)) do
-            add_error(
-              changeset,
-              Required.exception(
-                resource: changeset.resource,
-                field: required_attribute.name,
-                type: :attribute
-              )
+        if is_nil(required_attribute.default) ||
+             required_attribute.name in changeset.action.require_attributes do
+          add_error(
+            changeset,
+            Required.exception(
+              resource: changeset.resource,
+              field: required_attribute.name,
+              type: :attribute
             )
-          else
-            changeset
-          end
+          )
         else
-          if is_nil(required_attribute.default) do
-            add_error(
-              changeset,
-              Required.exception(
-                resource: changeset.resource,
-                field: required_attribute.name,
-                type: :attribute
-              )
-            )
-          else
-            changeset
-          end
+          changeset
         end
       end
     end)
@@ -1446,14 +1440,22 @@ defmodule Ash.Changeset do
       attrs ||
         attributes_to_require(changeset.resource, changeset.action, private_and_belongs_to?)
 
-    Enum.reduce(attributes, changeset, fn required_attribute, changeset ->
-      if is_atom(required_attribute) do
-        if is_nil(get_attribute(changeset, required_attribute)) do
+    attributes
+    |> Enum.map(fn
+      attribute when is_struct(attribute, Ash.Resource.Attribute) ->
+        attribute
+
+      name when is_atom(name) ->
+        Ash.Resource.Info.attribute(changeset.resource, name)
+    end)
+    |> Enum.reduce(changeset, fn required_attribute, changeset ->
+      if changing_attribute?(changeset, required_attribute.name) do
+        if is_nil(get_attribute(changeset, required_attribute.name)) do
           add_error(
             changeset,
             Required.exception(
               resource: changeset.resource,
-              field: required_attribute,
+              field: required_attribute.name,
               type: :attribute
             )
           )
@@ -1461,22 +1463,7 @@ defmodule Ash.Changeset do
           changeset
         end
       else
-        if changing_attribute?(changeset, required_attribute.name) do
-          if is_nil(get_attribute(changeset, required_attribute.name)) do
-            add_error(
-              changeset,
-              Required.exception(
-                resource: changeset.resource,
-                field: required_attribute.name,
-                type: :attribute
-              )
-            )
-          else
-            changeset
-          end
-        else
-          changeset
-        end
+        changeset
       end
     end)
   end
@@ -1486,17 +1473,24 @@ defmodule Ash.Changeset do
   # Attributes that are private and/or are the source field of a belongs_to relationship
   # are typically not set by input, so they aren't required until the actual action
   # is run.
-  defp attributes_to_require(resource, %{type: :create, accept: accept}, true) do
+  defp attributes_to_require(
+         resource,
+         %{type: :create},
+         true
+       ) do
     resource
     |> Ash.Resource.Info.attributes()
     |> Enum.reject(&(&1.allow_nil? || &1.generated?))
-    |> Enum.filter(&(&1.name in accept))
   end
 
-  defp attributes_to_require(resource, %{type: :create, accept: accept} = action, false) do
+  defp attributes_to_require(
+         resource,
+         %{type: :create, accept: accept, require_attributes: require_attributes} = action,
+         false
+       ) do
     resource
     |> do_attributes_to_require(action)
-    |> Enum.filter(&(&1.name in accept))
+    |> Enum.filter(&(&1.name in accept || &1.name in require_attributes))
   end
 
   defp attributes_to_require(resource, _action, true = _private_and_belongs_to?) do
@@ -1510,12 +1504,6 @@ defmodule Ash.Changeset do
   end
 
   defp do_attributes_to_require(resource, action) do
-    belongs_to =
-      resource
-      |> Ash.Resource.Info.relationships()
-      |> Enum.filter(&(&1.type == :belongs_to))
-      |> Enum.map(& &1.source_attribute)
-
     action =
       case action do
         action when is_atom(action) ->
@@ -1540,7 +1528,7 @@ defmodule Ash.Changeset do
     |> Ash.Resource.Info.attributes()
     |> Enum.reject(
       &(&1.allow_nil? || &1.private? || !&1.writable? || &1.generated? ||
-          &1.name in masked_argument_names || &1.name in belongs_to ||
+          &1.name in masked_argument_names ||
           &1.name in allow_nil_input)
     )
   end

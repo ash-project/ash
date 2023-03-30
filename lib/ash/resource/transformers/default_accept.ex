@@ -48,6 +48,11 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
               {reject(accept, reject), reject}
           end
 
+        accept =
+          Enum.reject(accept, fn attr ->
+            Enum.any?(action.arguments, &(&1.name == attr))
+          end)
+
         new_dsl_state =
           Transformer.replace_entity(
             dsl_state,
