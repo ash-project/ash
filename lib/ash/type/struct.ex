@@ -11,8 +11,7 @@ defmodule Ash.Type.Struct do
   @constraints [
     instance_of: [
       type: :atom,
-      doc: "The module the struct should be an instance of",
-      default: false
+      doc: "The module the struct should be an instance of"
     ]
   ]
 
