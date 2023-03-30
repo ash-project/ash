@@ -27,7 +27,7 @@ defmodule Ash.Type.NewType do
   @callback subtype_of() :: module | atom
   @callback subtype_constraints() :: Keyword.t()
   @callback type_constraints(constraints :: Keyword.t(), subtype_constraints :: Keyword.t()) ::
-              module | atom
+              Keyword.t()
 
   @type t :: module | atom | {:array, module | atom}
 
