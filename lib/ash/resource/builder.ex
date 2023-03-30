@@ -428,7 +428,7 @@ defmodule Ash.Resource.Builder do
           Spark.Dsl.Builder.input(),
           name :: atom,
           type :: Ash.Type.t(),
-          calculation :: module | {module, Keyword.t()},
+          calculation :: module | {module, Keyword.t()} | Ash.Expr.t(),
           opts :: Keyword.t()
         ) ::
           Spark.Dsl.Builder.result()
