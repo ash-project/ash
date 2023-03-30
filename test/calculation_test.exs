@@ -162,6 +162,24 @@ defmodule Ash.Test.CalculationTest do
     end
   end
 
+  defmodule FullNamePlusFirstName do
+    use Ash.Calculation
+
+    def load(_, _, _) do
+      [:full_name]
+    end
+
+    def select(_, _, _) do
+      [:first_name]
+    end
+
+    def calculate(records, _, _) do
+      Enum.map(records, fn record ->
+        record.full_name <> " #{record.first_name}"
+      end)
+    end
+  end
+
   defmodule FriendsNames do
     use Ash.Calculation
 
@@ -230,6 +248,8 @@ defmodule Ash.Test.CalculationTest do
       calculate :best_friends_first_name_plus_stuff,
                 :string,
                 BestFriendsFirstNamePlusStuff
+
+      calculate :full_name_plus_first_name, :string, FullNamePlusFirstName
 
       calculate :full_name_plus_full_name,
                 :string,
@@ -696,5 +716,18 @@ defmodule Ash.Test.CalculationTest do
       |> Enum.sort()
 
     assert best_friends_best_friends_first_names == ["bf: ", "bf: "]
+  end
+
+  test "loading a calculation with selects that loads a calculation with selects works" do
+    full_names_plus_first_names =
+      User
+      |> Ash.Query.select([])
+      |> Ash.Query.load([
+        :full_names_plus_first_names
+      ])
+      |> Api.read!()
+      |> Enum.map(& &1.full_names_plus_first_names)
+      |> Enum.sort()
+      |> IO.inspect()
   end
 end

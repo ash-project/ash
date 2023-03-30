@@ -964,23 +964,12 @@ defmodule Ash.Query do
     |> Enum.map(fn
       {load, args} ->
         if resource_calculation = Ash.Resource.Info.calculation(query.resource, load) do
-          {module, opts} = resource_calculation.calculation
-
-          with {:ok, args} <- validate_calculation_arguments(resource_calculation, args),
-               {:ok, calculation} <-
-                 Calculation.new(
-                   resource_calculation.name,
-                   module,
-                   opts,
-                   {resource_calculation.type, resource_calculation.constraints},
-                   Map.put(args, :context, query.context),
-                   resource_calculation.filterable?,
-                   resource_calculation.load
-                 ) do
-            select_and_load_calc(resource_calculation, %{calculation | load: load}, query)
-          else
-            _ ->
+          case resource_calc_to_calc(query, load, resource_calculation, args) do
+            {:error, _} ->
               {load, args}
+
+            {:ok, calc} ->
+              calc
           end
         else
           if relationship = Ash.Resource.Info.relationship(query.resource, load) do
@@ -1015,9 +1004,9 @@ defmodule Ash.Query do
   end
 
   @doc false
-  def resource_calc_to_calc(query, name, resource_calculation) do
+  def resource_calc_to_calc(query, name, resource_calculation, args \\ %{}) do
     with %{calculation: {module, opts}} <- resource_calculation,
-         {:ok, args} <- validate_calculation_arguments(resource_calculation, %{}),
+         {:ok, args} <- validate_calculation_arguments(resource_calculation, args),
          {:ok, calculation} <-
            Calculation.new(
              resource_calculation.name,
