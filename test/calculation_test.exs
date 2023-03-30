@@ -29,6 +29,20 @@ defmodule Ash.Test.CalculationTest do
     end
   end
 
+  defmodule FullNameWithSelect do
+    use Ash.Calculation
+
+    def select(_, _, _) do
+      [:first_name, :last_name]
+    end
+
+    def calculate(records, _, _) do
+      Enum.map(records, fn record ->
+        "#{record.first_name} #{record.last_name}"
+      end)
+    end
+  end
+
   defmodule Concat do
     # An example concatenation calculation, that accepts the delimiter as an argument
     use Ash.Calculation
@@ -166,7 +180,7 @@ defmodule Ash.Test.CalculationTest do
     use Ash.Calculation
 
     def load(_, _, _) do
-      [:full_name]
+      [:full_name_with_select]
     end
 
     def select(_, _, _) do
@@ -175,7 +189,7 @@ defmodule Ash.Test.CalculationTest do
 
     def calculate(records, _, _) do
       Enum.map(records, fn record ->
-        record.full_name <> " #{record.first_name}"
+        record.full_name_with_select <> " #{record.first_name}"
       end)
     end
   end
@@ -236,6 +250,14 @@ defmodule Ash.Test.CalculationTest do
     calculations do
       calculate :full_name, :string, {Concat, keys: [:first_name, :last_name]} do
         select [:first_name, :last_name]
+        # We currently need to use the [allow_empty?: true, trim?: false] constraints here.
+        # As it's an empty string, the separator would otherwise be trimmed and set to `nil`.
+        argument :separator, :string,
+          default: " ",
+          constraints: [allow_empty?: true, trim?: false]
+      end
+
+      calculate :full_name_with_select, :string, FullNameWithSelect do
         # We currently need to use the [allow_empty?: true, trim?: false] constraints here.
         # As it's an empty string, the separator would otherwise be trimmed and set to `nil`.
         argument :separator, :string,
@@ -719,15 +741,14 @@ defmodule Ash.Test.CalculationTest do
   end
 
   test "loading a calculation with selects that loads a calculation with selects works" do
-    full_names_plus_first_names =
-      User
-      |> Ash.Query.select([])
-      |> Ash.Query.load([
-        :full_names_plus_first_names
-      ])
-      |> Api.read!()
-      |> Enum.map(& &1.full_names_plus_first_names)
-      |> Enum.sort()
-      |> IO.inspect()
+    assert ["brian  brian", "zach  zach"] ==
+             User
+             |> Ash.Query.select([])
+             |> Ash.Query.load([
+               :full_name_plus_first_name
+             ])
+             |> Api.read!()
+             |> Enum.map(& &1.full_name_plus_first_name)
+             |> Enum.sort()
   end
 end
