@@ -1440,6 +1440,15 @@ defmodule Ash.Actions.Read do
               |> Enum.concat([dep.calculation.name])
               |> Enum.join(".")
 
+            query =
+              case List.last(dep.path) do
+                {_, query} ->
+                  query
+
+                _ ->
+                  query
+              end
+
             calc_deps =
               dep.calculation
               |> calc_dependencies(query, query.api, actor, authorize?, query.tenant, tracer,
@@ -1718,6 +1727,8 @@ defmodule Ash.Actions.Read do
             end
 
           true ->
+            IO.i()
+
             raise Ash.Error.Framework.AssumptionFailed,
               message:
                 "Only attribute & aggregate deps should remain at this point. Got #{inspect(other)} on #{inspect(query.resource)}"

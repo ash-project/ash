@@ -220,6 +220,45 @@ defmodule Ash.Test.CalculationTest do
     end
   end
 
+  defmodule Role do
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+    actions do
+      defaults [:create, :read, :update, :destroy]
+    end
+
+    ets do
+      private? true
+    end
+
+    aggregates do
+      first :user_is_active, :user, :is_active do
+        default false
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string
+
+      attribute :is_active, :boolean do
+        allow_nil? false
+        default false
+      end
+    end
+
+    calculations do
+      calculate :active,
+                :boolean,
+                expr(is_active && user_is_active),
+                load: [:user_is_active]
+    end
+
+    relationships do
+      belongs_to :user, Ash.Test.CalculationTest.User
+    end
+  end
+
   defmodule User do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -245,9 +284,12 @@ defmodule Ash.Test.CalculationTest do
       attribute :last_name, :string
       attribute :prefix, :string
       attribute :special, :boolean
+      attribute :is_active, :boolean
     end
 
     calculations do
+      calculate :active, :boolean, expr(is_active)
+
       calculate :full_name, :string, {Concat, keys: [:first_name, :last_name]} do
         select [:first_name, :last_name]
         # We currently need to use the [allow_empty?: true, trim?: false] constraints here.
@@ -352,10 +394,61 @@ defmodule Ash.Test.CalculationTest do
         destination_attribute :best_friend_id
       end
 
+      has_many :role, Ash.Test.CalculationTest.Role
+
       many_to_many :friends, __MODULE__ do
         through FriendLink
         destination_attribute_on_join_resource :target_id
         source_attribute_on_join_resource :source_id
+      end
+    end
+  end
+
+  defmodule ActorActive do
+    use Ash.Calculation
+
+    def load(_, _, _) do
+      [user: [:active], role: [:active]]
+    end
+
+    def calculate(records, _, _) do
+      Enum.map(records, fn actor ->
+        if actor.role do
+          actor.role.active
+        else
+          actor.user.active
+        end
+      end)
+    end
+  end
+
+  defmodule Actor do
+    use Ash.Resource,
+      data_layer: Ash.DataLayer.Ets
+
+    actions do
+      defaults [:create, :read, :update, :destroy]
+    end
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    calculations do
+      calculate :active, :boolean, ActorActive
+    end
+
+    relationships do
+      belongs_to :user, User do
+        attribute_writable? true
+      end
+
+      belongs_to :role, Role do
+        attribute_writable? true
       end
     end
   end
@@ -367,6 +460,9 @@ defmodule Ash.Test.CalculationTest do
     entries do
       entry User
       entry FriendLink
+      entry Role
+      entry Account
+      entry Actor
     end
   end
 
@@ -385,12 +481,30 @@ defmodule Ash.Test.CalculationTest do
       |> Ash.Changeset.new(%{first_name: "zach", last_name: "daniel"})
       |> Api.create!()
 
+    admin_role =
+      Role
+      |> Ash.Changeset.for_create(:create, %{name: "admin"})
+      |> Api.create!()
+
+    normie_role =
+      Role
+      |> Ash.Changeset.for_create(:create, %{name: "normie"})
+      |> Api.create!()
+
+    Actor
+    |> Ash.Changeset.for_create(:create, %{user_id: user1.id, role_id: admin_role.id})
+    |> Api.create!()
+
     user2 =
       User
       |> Ash.Changeset.new(%{first_name: "brian", last_name: "cranston"})
       |> Ash.Changeset.manage_relationship(:best_friend, user1, type: :append_and_remove)
       |> Ash.Changeset.manage_relationship(:friends, user1, type: :append_and_remove)
       |> Api.create!()
+
+    Actor
+    |> Ash.Changeset.for_create(:create, %{user_id: user2.id, role_id: normie_role.id})
+    |> Api.create!()
 
     %{user1: user1, user2: user2}
   end
@@ -750,5 +864,13 @@ defmodule Ash.Test.CalculationTest do
              |> Api.read!()
              |> Enum.map(& &1.full_name_plus_first_name)
              |> Enum.sort()
+  end
+
+  test "nested calculations that depend on aggregates work" do
+    assert [false, false] =
+             Actor
+             |> Ash.Query.load(:active)
+             |> Api.read!(authorize?: true)
+             |> Enum.map(& &1.active)
   end
 end
