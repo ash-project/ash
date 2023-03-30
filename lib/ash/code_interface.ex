@@ -367,7 +367,7 @@ defmodule Ash.CodeInterface do
                 if unquote(interface.get? || action.get?) do
                   query
                   |> unquote(api).read_one(
-                    Keyword.drop(opts, [:query, :tenant, :authorize?, :actor])
+                    Keyword.drop(opts, [:query, :tenant, :authorize?, :actor, :not_found_error?])
                   )
                   |> case do
                     {:ok, nil} ->
@@ -445,7 +445,7 @@ defmodule Ash.CodeInterface do
                 if unquote(interface.get? || action.get?) do
                   query
                   |> unquote(api).read_one!(
-                    Keyword.drop(opts, [:query, :tenant, :authorize?, :actor])
+                    Keyword.drop(opts, [:query, :tenant, :authorize?, :actor, :not_found_error?])
                   )
                   |> case do
                     nil ->

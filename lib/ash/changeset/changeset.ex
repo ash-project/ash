@@ -3384,9 +3384,9 @@ defmodule Ash.Changeset do
   """
   @spec after_transaction(
           t(),
-          (t(), {:ok, Ash.Resource.record()} | {:error, term()} ->
+          (t(), {:ok, Ash.Resource.record()} | {:error, Ash.Changeset.t()} ->
              {:ok, Ash.Resource.record()}
-             | {:error, term}),
+             | {:error, Ash.Changeset.t()}),
           Keyword.t()
         ) :: t()
   def after_transaction(changeset, func, opts \\ []) do
