@@ -855,7 +855,7 @@ defmodule Ash.Test.CalculationTest do
   end
 
   test "loading a calculation with selects that loads a calculation with selects works" do
-    assert ["brian  brian", "zach  zach"] ==
+    assert ["brian cranston brian", "zach daniel zach"] ==
              User
              |> Ash.Query.select([])
              |> Ash.Query.load([

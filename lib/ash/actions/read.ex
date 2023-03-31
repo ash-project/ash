@@ -1176,8 +1176,18 @@ defmodule Ash.Actions.Read do
           calc.required_loads
           |> List.wrap()
           |> Enum.concat(List.wrap(calc.select))
-          |> Enum.map(fn required_load ->
-            Map.get(loaded.calculations, required_load)
+          |> Enum.map(fn
+            {required_load, _input} when is_atom(required_load) ->
+              Map.get(loaded.calculations, required_load)
+
+            required_load when is_atom(required_load) ->
+              Map.get(loaded.calculations, required_load)
+
+            %Ash.Query.Calculation{} = calc ->
+              calc
+
+            _ ->
+              nil
           end)
           |> Enum.filter(& &1)
 
@@ -1559,7 +1569,6 @@ defmodule Ash.Actions.Read do
 
   defp calc_dependencies(calc, query, api, actor, authorize?, tenant, tracer, opts \\ []) do
     calc.required_loads
-    |> Ash.Query.reify_calculations(query)
     |> expand_load_paths(query, api, actor, authorize?, tenant, tracer, opts[:recurse?] || false)
     |> Enum.uniq()
   end
@@ -1686,7 +1695,6 @@ defmodule Ash.Actions.Read do
           [%{path: path, type: :calculation, calculation: calculation}]
         else
           calculation.required_loads
-          |> Ash.Query.reify_calculations(query)
           |> expand_load_paths(query, api, actor, authorize?, tenant, tracer, false, path)
           |> Enum.concat([%{path: path, type: :calculation, calculation: calculation}])
         end
@@ -1715,13 +1723,10 @@ defmodule Ash.Actions.Read do
           calculation = Ash.Resource.Info.calculation(query.resource, other) ->
             {:ok, calculation} = Ash.Query.resource_calc_to_calc(query, other, calculation)
 
-            [calculation] = Ash.Query.reify_calculations([calculation], query)
-
             if stop? do
               [%{path: path, type: :calculation, calculation: calculation}]
             else
               calculation.required_loads
-              |> Ash.Query.reify_calculations(query)
               |> expand_load_paths(query, api, actor, authorize?, tenant, tracer, false, path)
               |> Enum.concat([%{path: path, type: :calculation, calculation: calculation}])
             end
