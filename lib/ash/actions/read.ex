@@ -1727,8 +1727,6 @@ defmodule Ash.Actions.Read do
             end
 
           true ->
-            IO.i()
-
             raise Ash.Error.Framework.AssumptionFailed,
               message:
                 "Only attribute & aggregate deps should remain at this point. Got #{inspect(other)} on #{inspect(query.resource)}"

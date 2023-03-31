@@ -210,8 +210,6 @@ defmodule Ash.Flow.Dsl do
     ]
   }
 
-  @step_entities [@create, @debug, @update, @destroy, @validate, @read, @run_flow, @custom]
-
   @transaction %Spark.Dsl.Entity{
     name: :transaction,
     describe: """
@@ -222,7 +220,7 @@ defmodule Ash.Flow.Dsl do
     args: [:name, :resource],
     recursive_as: :steps,
     entities: [
-      steps: @step_entities
+      steps: []
     ],
     no_depend_modules: [:touches_resources],
     examples: [
@@ -257,7 +255,7 @@ defmodule Ash.Flow.Dsl do
     recursive_as: :steps,
     no_depend_modules: [:touches_resources],
     entities: [
-      steps: @step_entities
+      steps: []
     ],
     examples: [
       """
@@ -286,7 +284,7 @@ defmodule Ash.Flow.Dsl do
     recursive_as: :steps,
     no_depend_modules: [:touches_resources],
     entities: [
-      steps: @step_entities
+      steps: []
     ],
     examples: [
       """
@@ -304,14 +302,6 @@ defmodule Ash.Flow.Dsl do
     ]
   }
 
-  transaction = %{@transaction | entities: [steps: [@branch | [@map | @step_entities]]]}
-  map = %{@map | entities: [steps: [@branch | [@transaction | @step_entities]]]}
-  branch = %{@branch | entities: [steps: [@map | [@transaction | @step_entities]]]}
-
-  @transaction transaction
-  @map map
-  @branch branch
-
   @steps %Spark.Dsl.Section{
     name: :steps,
     describe: """
@@ -326,7 +316,19 @@ defmodule Ash.Flow.Dsl do
       """
     ],
     imports: [Ash.Flow.StepHelpers],
-    entities: [@map, @transaction, @branch] ++ @step_entities
+    entities: [
+      @map,
+      @branch,
+      @transaction,
+      @create,
+      @debug,
+      @update,
+      @destroy,
+      @validate,
+      @read,
+      @run_flow,
+      @custom
+    ]
   }
 
   @transformers [
