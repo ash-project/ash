@@ -254,8 +254,7 @@ defmodule Ash.Engine do
 
   def must_be_local?(request) do
     [request.resource | request.touches_resources || []]
-    |> Enum.filter(& &1)
-    |> Enum.filter(&is_atom/1)
+    |> Enum.filter(fn item -> item && is_atom(item) end)
     |> Enum.any?(fn resource ->
       (Ash.DataLayer.data_layer_can?(resource, :transact) &&
          Ash.DataLayer.in_transaction?(resource)) ||
