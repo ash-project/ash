@@ -8,11 +8,11 @@ defmodule Ash.Resource.Interface do
 
   defmacro __using__(_) do
     quote bind_quoted: [], generated: true do
-      if Ash.Resource.Info.define_interface_for(__MODULE__) do
+      if define_for = Ash.Resource.Info.define_interface_for(__MODULE__) do
         require Ash.CodeInterface
 
         Ash.CodeInterface.define_interface(
-          Ash.Resource.Info.define_interface_for(__MODULE__),
+          define_for,
           __MODULE__
         )
       end

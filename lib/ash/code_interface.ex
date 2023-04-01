@@ -31,8 +31,18 @@ defmodule Ash.CodeInterface do
           {:argument, argument}
       end
 
-    if !field.allow_nil? do
-      raise "Code interface for #{action.name} has optional argument #{key} but it is not optional"
+    cond do
+      field.allow_nil? && !(field.name in Map.get(action, :require_attributes, [])) ->
+        :ok
+
+      field.name in Map.get(action, :allow_nil_input, []) ->
+        :ok
+
+      !(field.name in Map.get(action, :accept, [])) ->
+        :ok
+
+      true ->
+        raise "Code interface for #{action.name} has optional argument #{key} but it is not optional"
     end
 
     default =
