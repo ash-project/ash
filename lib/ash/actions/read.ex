@@ -286,63 +286,81 @@ defmodule Ash.Actions.Read do
 
               query = add_calculation_context(query, actor, authorize?, tenant, tracer)
 
-              query = %{
+              if Keyword.has_key?(request_opts, :initial_data) do
                 query
-                | api: api,
-                  timeout: timeout || query.timeout || Ash.Api.Info.timeout(api)
-              }
+                |> Ash.Query.set_context(%{
+                  initial_limit: query.limit,
+                  initial_offset: query.offset,
+                  page_opts: nil,
+                  initial_query: query,
+                  filter_requests: [],
+                  query_opts: query_opts
+                })
+                |> query_with_initial_data(request_opts)
+                |> case do
+                  %{valid?: true} = query ->
+                    {:ok, query}
 
-              query =
-                if tenant do
-                  Ash.Query.set_tenant(query, tenant)
-                else
-                  query
+                  %{valid?: false} = query ->
+                    {:error, query.errors, %{set: %{query: query}}}
                 end
-
-              with %{valid?: true} = query <- modify_query.(query, context),
-                   %{limit: initial_limit, offset: initial_offset} <- query,
-                   %{valid?: true} = query <-
-                     handle_attribute_multitenancy(query),
-                   :ok <- validate_multitenancy(query, initial_data),
-                   %{valid?: true} = query <-
-                     query_with_initial_data(query, request_opts),
-                   {%{valid?: true} = query, before_notifications} <-
-                     run_before_action(query),
-                   {:ok, initial_query, query, page_opts} <-
-                     paginate(query, action, page: request_opts[:page]),
-                   page_opts <- page_opts && Keyword.delete(page_opts, :filter),
-                   {:ok, filter_requests} <-
-                     filter_requests(query, path, request_opts, actor, tenant),
-                   {:ok, sort} <-
-                     Ash.Actions.Sort.process(
-                       query.resource,
-                       query.sort,
-                       query.aggregates,
-                       query.context
-                     ) do
-                {:ok,
-                 query
-                 |> Map.put(:sort, sort)
-                 |> Ash.Query.set_context(%{
-                   initial_limit: initial_limit,
-                   initial_offset: initial_offset,
-                   page_opts: page_opts,
-                   initial_query: initial_query,
-                   filter_requests: filter_requests,
-                   query_opts: query_opts
-                 }),
-                 %{
-                   notifications: before_notifications
-                 }}
               else
-                %{valid?: false} = query ->
-                  {:error, query.errors}
+                query = %{
+                  query
+                  | api: api,
+                    timeout: timeout || query.timeout || Ash.Api.Info.timeout(api)
+                }
 
-                {:error, %Ash.Query{} = query} ->
-                  {:error, query.errors, %{set: %{query: query}}}
+                query =
+                  if tenant do
+                    Ash.Query.set_tenant(query, tenant)
+                  else
+                    query
+                  end
 
-                other ->
-                  other
+                with %{valid?: true} = query <- modify_query.(query, context),
+                     %{limit: initial_limit, offset: initial_offset} <- query,
+                     %{valid?: true} = query <-
+                       handle_attribute_multitenancy(query),
+                     :ok <- validate_multitenancy(query),
+                     {%{valid?: true} = query, before_notifications} <-
+                       run_before_action(query),
+                     {:ok, initial_query, query, page_opts} <-
+                       paginate(query, action, page: request_opts[:page]),
+                     page_opts <- page_opts && Keyword.delete(page_opts, :filter),
+                     {:ok, filter_requests} <-
+                       filter_requests(query, path, request_opts, actor, tenant),
+                     {:ok, sort} <-
+                       Ash.Actions.Sort.process(
+                         query.resource,
+                         query.sort,
+                         query.aggregates,
+                         query.context
+                       ) do
+                  {:ok,
+                   query
+                   |> Map.put(:sort, sort)
+                   |> Ash.Query.set_context(%{
+                     initial_limit: initial_limit,
+                     initial_offset: initial_offset,
+                     page_opts: page_opts,
+                     initial_query: initial_query,
+                     filter_requests: filter_requests,
+                     query_opts: query_opts
+                   }),
+                   %{
+                     notifications: before_notifications
+                   }}
+                else
+                  %{valid?: false} = query ->
+                    {:error, query.errors}
+
+                  {:error, %Ash.Query{} = query} ->
+                    {:error, query.errors, %{set: %{query: query}}}
+
+                  other ->
+                    other
+                end
               end
             end
           ),
@@ -586,10 +604,9 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp validate_multitenancy(query, initial_data) do
+  defp validate_multitenancy(query) do
     if is_nil(Ash.Resource.Info.multitenancy_strategy(query.resource)) ||
-         Ash.Resource.Info.multitenancy_global?(query.resource) || query.tenant ||
-         initial_data do
+         Ash.Resource.Info.multitenancy_global?(query.resource) || query.tenant do
       :ok
     else
       {:error, Ash.Error.Invalid.TenantRequired.exception(resource: query.resource)}

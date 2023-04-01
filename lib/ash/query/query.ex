@@ -385,7 +385,8 @@ defmodule Ash.Query do
     end
   end
 
-  defp set_actor(query, opts) do
+  @doc false
+  def set_actor(query, opts) do
     if Keyword.has_key?(opts, :actor) do
       put_context(query, :private, %{actor: opts[:actor]})
     else
@@ -393,7 +394,8 @@ defmodule Ash.Query do
     end
   end
 
-  defp set_authorize?(query, opts) do
+  @doc false
+  def set_authorize?(query, opts) do
     if Keyword.has_key?(opts, :authorize?) do
       put_context(query, :private, %{authorize?: opts[:authorize?]})
     else
@@ -401,7 +403,8 @@ defmodule Ash.Query do
     end
   end
 
-  defp set_tracer(query, opts) do
+  @doc false
+  def set_tracer(query, opts) do
     if Keyword.has_key?(opts, :tracer) do
       put_context(query, :private, %{tracer: opts[:tracer]})
     else
