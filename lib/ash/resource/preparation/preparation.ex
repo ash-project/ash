@@ -48,7 +48,10 @@ defmodule Ash.Resource.Preparation do
     {:error, "Expected a module and opts, got: #{inspect(other)}"}
   end
 
-  @type context :: %{actor: Ash.Resource.record()} | %{}
+  @type context :: %{
+          optional(:actor) => Ash.Resource.record(),
+          optional(any) => any
+        }
   @callback init(Keyword.t()) :: {:ok, Keyword.t()} | {:error, term}
   @callback prepare(query, Keyword.t(), context) :: query when query: struct
 

@@ -4,10 +4,11 @@ defmodule Ash.Resource.ManualRead do
   """
 
   @type context :: %{
-          actor: term,
-          tenant: term,
-          authorize?: term,
-          api: module
+          optional(:actor) => term,
+          optional(:tenant) => term,
+          optional(:authorize?) => boolean,
+          optional(:api) => module,
+          optional(any) => any
         }
 
   @callback read(

@@ -4,12 +4,13 @@ defmodule Ash.Resource.ManualRelationship do
   """
 
   @type context :: %{
-          relationship: Ash.Resource.Relationships.relationship(),
-          query: Ash.Query.t(),
-          actor: term,
-          tenant: term,
-          authorize?: term,
-          api: module
+          optional(:relationship) => Ash.Resource.Relationships.relationship(),
+          optional(:query) => Ash.Query.t(),
+          optional(:actor) => term,
+          optional(:tenant) => term,
+          optional(:authorize?) => boolean,
+          optional(:api) => module,
+          optional(any) => any
         }
 
   @callback load(

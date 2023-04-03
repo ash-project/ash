@@ -97,7 +97,10 @@ defmodule Ash.Resource.Change do
     end
   end
 
-  @type context :: %{actor: Ash.Resource.record()} | %{}
+  @type context :: %{
+          optional(:actor) => Ash.Resource.record(),
+          optional(any) => any
+        }
   @callback init(Keyword.t()) :: {:ok, Keyword.t()} | {:error, term}
   @callback change(Ash.Changeset.t(), Keyword.t(), context) :: Ash.Changeset.t()
 
