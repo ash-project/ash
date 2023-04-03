@@ -5,6 +5,49 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.28](https://github.com/ash-project/ash/compare/v2.6.27...v2.6.28) (2023-04-03)
+
+
+
+
+### Bug Fixes:
+
+* properly handle nested calculation selects
+
+* fix typespecs and `not_found_error?` code interface option
+
+* typespec support `Expr.t()` in calculation builder
+
+* remove bad default for struct constraint
+
+* use values when already loading aggregates
+
+### Improvements:
+
+* thread context through when loading data
+
+* update spark to fix deeply nested DSLs
+
+* read_uses_flow?: Build stub for `Ash.Actions.Flows.Read`.
+
+* properly set related resource
+
+* simpler required attributes behavior
+
+* add :subfield option to relates_to_actor_via (#540)
+
+* add `accessing_from/2` builtin check
+
+* rewrite calculation loader
+
+* add `{set,update,get}_context` to `Ash.PlugHelpers` (#534)
+
+* improve compile times with ðª
+
+* fix action typespecs
+
+* add option `set_when_nil?` to builtin change `set_attribute` (#528)
+
 ## [v2.6.27](https://github.com/ash-project/ash/compare/v2.6.26...v2.6.27) (2023-03-22)
 
 
