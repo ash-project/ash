@@ -171,18 +171,18 @@ defmodule Ash.Policy.Check.Builtins do
     # Path of relationships:
     authorize_if relates_to_actor_via([:account, :user])
 
-    # When your resource relates to a subfield of the actor:
-    authorize_if relates_to_actor_via(:roles, subfield: :role)
+    # When the resource relates to a field of the actor:
+    authorize_if relates_to_actor_via(:roles, field: :role)
   end
   ```
   """
   @spec relates_to_actor_via(atom, keyword) :: Ash.Policy.Check.ref()
   def relates_to_actor_via(relationship_path, opts \\ []) do
-    subfield = Keyword.get(opts, :subfield)
+    field = Keyword.get(opts, :field)
 
     {
       Ash.Policy.Check.RelatesToActorVia,
-      relationship_path: List.wrap(relationship_path), subfield: subfield
+      relationship_path: List.wrap(relationship_path), field: field
     }
   end
 

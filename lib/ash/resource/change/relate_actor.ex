@@ -29,6 +29,21 @@ defmodule Ash.Resource.Change.RelateActor do
   end
 
   def change(changeset, opts, %{actor: actor}) do
-    Changeset.manage_relationship(changeset, opts[:relationship], actor, type: :append_and_remove)
+    field = opts[:field]
+
+    Changeset.manage_relationship(
+      changeset,
+      opts[:relationship],
+      actor_or_field(actor, field),
+      type: :append_and_remove
+    )
+  end
+
+  defp actor_or_field(actor, field) when is_nil(field) do
+    actor
+  end
+
+  defp actor_or_field(actor, field) do
+    Map.get(actor, field)
   end
 end

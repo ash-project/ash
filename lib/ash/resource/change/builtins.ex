@@ -15,6 +15,10 @@ defmodule Ash.Resource.Change.Builtins do
       doc: "Whether or not to allow the actor to be nil, in which case nothing will happen.",
       type: :boolean,
       default: false
+    ],
+    field: [
+      doc: "The field of the actor to set the relationship to",
+      type: :atom
     ]
   ]
 

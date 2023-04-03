@@ -70,11 +70,11 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
 
     policies do
       policy actor_attribute_equals(:type, :user) do
-        authorize_if relates_to_actor_via(:user, subfield: :user)
+        authorize_if relates_to_actor_via(:user, field: :user)
       end
 
       policy actor_attribute_equals(:type, :role) do
-        authorize_if relates_to_actor_via(:roles, subfield: :role)
+        authorize_if relates_to_actor_via(:roles, field: :role)
       end
     end
 
