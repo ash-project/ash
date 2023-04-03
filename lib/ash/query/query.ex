@@ -1613,7 +1613,7 @@ defmodule Ash.Query do
           Ash.Query.Aggregate.kind(),
           atom | list(atom),
           Ash.Query.t() | Keyword.t() | nil
-        ) :: t()  
+        ) :: t()
   def aggregate(
         query,
         name,

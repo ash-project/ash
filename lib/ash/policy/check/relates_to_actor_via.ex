@@ -33,7 +33,9 @@ defmodule Ash.Policy.Check.RelatesToActorVia do
         actor_path = actor_path(pkey_field, actor_field)
 
         if expr do
-          Ash.Expr.expr(^expr and ^ref(opts[:relationship_path], pkey_field) == ^actor(actor_path))
+          Ash.Expr.expr(
+            ^expr and ^ref(opts[:relationship_path], pkey_field) == ^actor(actor_path)
+          )
         else
           Ash.Expr.expr(^ref(opts[:relationship_path], pkey_field) == ^actor(actor_path))
         end
