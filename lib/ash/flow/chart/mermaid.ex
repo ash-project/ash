@@ -442,9 +442,9 @@ defmodule Ash.Flow.Chart.Mermaid do
   end
 
   defp deps(template, destination, all_steps) do
-    result_refs = Ash.Flow.result_refs(template) |> Enum.uniq()
-    arg_refs = Ash.Flow.arg_refs(template) |> Enum.uniq()
-    element_refs = Ash.Flow.element_refs(template) |> Enum.uniq()
+    result_refs = Ash.Flow.Template.result_refs(template) |> Enum.uniq()
+    arg_refs = Ash.Flow.Template.arg_refs(template) |> Enum.uniq()
+    element_refs = Ash.Flow.Template.element_refs(template) |> Enum.uniq()
 
     element_ref_deps =
       Enum.map(element_refs, fn element ->

@@ -1126,7 +1126,12 @@ defmodule Ash.Api do
   def get(api, resource, id, opts) do
     with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @get_opts_schema),
          {:ok, resource} <- Ash.Api.Info.resource(api, resource),
-         {:ok, filter} <- Ash.Filter.get_filter(resource, id) do
+         {:ok, filter} <- Ash.Filter.get_filter(resource, id),
+         {:ok, read_opts} <-
+           Spark.OptionsHelpers.validate(
+             Keyword.take(opts, Keyword.keys(@read_opts_schema)),
+             @read_opts_schema
+           ) do
       query =
         resource
         |> Ash.Query.new(api)
@@ -1143,7 +1148,7 @@ defmodule Ash.Api do
         end
 
       query
-      |> api.read(Keyword.take(opts, Keyword.keys(@read_opts_schema)))
+      |> Ash.Actions.Read.unpaginated_read(query.action, read_opts)
       |> case do
         {:ok, %{results: [single_result]}} ->
           {:ok, single_result}
