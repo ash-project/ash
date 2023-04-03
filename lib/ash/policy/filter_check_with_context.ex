@@ -5,11 +5,12 @@ defmodule Ash.Policy.FilterCheckWithContext do
 
   @type options :: Keyword.t()
   @type context :: %{
+          required(:action) => Ash.Resource.Actions.action(),
+          required(:resource) => Ash.Resource.t(),
+          required(:api) => Ash.Api.t(),
           optional(:query) => Ash.Query.t(),
           optional(:changeset) => Ash.Query.t(),
-          :action => Ash.Resource.Actions.action(),
-          :resource => Ash.Resource.t(),
-          :api => Ash.Api.t()
+          optional(any) => any
         }
 
   @callback filter(actor :: term, context(), options()) :: Keyword.t() | Ash.Expr.t()
