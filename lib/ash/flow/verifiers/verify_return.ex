@@ -1,4 +1,7 @@
 defmodule Ash.Flow.Verifiers.VerifyReturn do
+  @moduledoc """
+  Ensures that all steps in a return statement are returnable
+  """
   use Spark.Dsl.Verifier
 
   alias Spark.Dsl.Verifier
