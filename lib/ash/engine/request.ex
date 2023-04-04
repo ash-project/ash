@@ -1200,6 +1200,12 @@ defmodule Ash.Engine.Request do
           end
       end
     end
+  rescue
+    e ->
+      reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
+                error_context: "resolving #{field} on #{request.name}"
+              ),
+              __STACKTRACE__
   end
 
   defp handle_successful_resolve(field, value, new_request, notifications) do
