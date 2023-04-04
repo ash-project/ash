@@ -359,6 +359,7 @@ defmodule Ash.Actions.Read do
                     {:error, query.errors, %{set: %{query: query}}}
 
                   other ->
+                    IO.inspect(other, label: "DOES THIS GET PRINTED")
                     other
                 end
               end
