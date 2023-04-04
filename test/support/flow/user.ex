@@ -41,6 +41,12 @@ defmodule Ash.Test.Flow.User do
     end
   end
 
+  code_interface do
+    define_for Ash.Test.Flow
+
+    define :to_approved, action: :approve
+  end
+
   attributes do
     uuid_primary_key :id, description: "PK"
     attribute :first_name, :string, description: "User's first name"
