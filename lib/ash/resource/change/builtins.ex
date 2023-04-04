@@ -38,6 +38,12 @@ defmodule Ash.Resource.Change.Builtins do
       doc: "When false, decline setting the attribute if it is nil.",
       type: :boolean,
       default: true
+    ],
+    new?: [
+      doc:
+        "When true, sets the attribute to the value provided if the attribute is not already being changed.",
+      type: :boolean,
+      default: false
     ]
   ]
 
