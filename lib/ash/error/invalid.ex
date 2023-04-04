@@ -9,8 +9,16 @@ defmodule Ash.Error.Invalid do
 
     def code(_), do: "invalid"
 
-    def message(%{errors: errors, stacktraces?: stacktraces?}) do
-      Ash.Error.error_messages(errors, nil, stacktraces?)
+    def message(%{errors: errors, stacktraces?: stacktraces?, error_context: error_context}) do
+      messages = Ash.Error.error_messages(errors, nil, stacktraces?)
+
+      case Ash.Error.breadcrumb(error_context) do
+        "" ->
+          messages
+
+        error_context ->
+          error_context <> "\n" <> messages
+      end
     end
   end
 end
