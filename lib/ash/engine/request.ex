@@ -1043,12 +1043,29 @@ defmodule Ash.Engine.Request do
                   Ash.Tracer.set_metadata(request.tracer, :request_step, metadata)
 
                   Ash.Tracer.telemetry_span [:ash, :request_step], %{name: request.name} do
-                    {%{new_request | async_fetch_state: :not_requested},
-                     resolver.(resolver_context)}
+                    try do
+                      {%{new_request | async_fetch_state: :not_requested},
+                       resolver.(resolver_context)}
+                    rescue
+                      e ->
+                        reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
+                                  error_context: "resolving #{field} on #{request.name}"
+                                ),
+                                __STACKTRACE__
+                    end
                   end
                 end
               else
-                {%{new_request | async_fetch_state: :not_requested}, resolver.(resolver_context)}
+                try do
+                  {%{new_request | async_fetch_state: :not_requested},
+                   resolver.(resolver_context)}
+                rescue
+                  e ->
+                    reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
+                              error_context: "resolving #{field} on #{request.name}"
+                            ),
+                            __STACKTRACE__
+                end
               end
             end
 
@@ -1200,12 +1217,6 @@ defmodule Ash.Engine.Request do
           end
       end
     end
-  rescue
-    e ->
-      reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
-                error_context: "resolving #{field} on #{request.name}"
-              ),
-              __STACKTRACE__
   end
 
   defp handle_successful_resolve(field, value, new_request, notifications) do
