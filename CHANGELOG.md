@@ -5,6 +5,29 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.29](https://github.com/ash-project/ash/compare/v2.6.28...v2.6.29) (2023-04-04)
+
+
+
+
+### Bug Fixes:
+
+* various ash flow return value fixes
+
+* Fix set_new_attribute by adding missing option to set_attribute (#553)
+
+* show context on all errors
+
+* include error context in top level of errors
+
+### Improvements:
+
+* validate returnable steps in flow returns
+
+* update touched_resources logic
+
+* Add :field option to relate_actor change (#546)
+
 ## [v2.6.28](https://github.com/ash-project/ash/compare/v2.6.27...v2.6.28) (2023-04-03)
 
 
