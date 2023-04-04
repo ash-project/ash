@@ -546,7 +546,7 @@ defmodule Ash.Error do
     |> Enum.map_join("\n\n", fn {class, class_errors} ->
       header = header(class) <> "\n\n"
 
-      header <> Enum.map_join(class_errors, "\n", &"* #{Ash.ErrorKind.message(&1)}")
+      header <> Enum.map_join(class_errors, "\n", &"* #{Exception.message(&1)}")
     end)
   end
 

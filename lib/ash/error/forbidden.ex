@@ -8,16 +8,12 @@ defmodule Ash.Error.Forbidden do
   defimpl Ash.ErrorKind do
     def id(_), do: Ash.UUID.generate()
 
-    def message(%{errors: errors, stacktraces?: stacktraces?, error_context: error_context}) do
-      messages = Ash.Error.error_messages(errors, nil, stacktraces?)
+    def message(%{errors: errors, stacktraces?: stacktraces?}) when not is_nil(errors) do
+      Ash.Error.error_messages(errors, nil, stacktraces?)
+    end
 
-      case Ash.Error.breadcrumb(error_context) do
-        "" ->
-          messages
-
-        error_context ->
-          error_context <> "\n" <> messages
-      end
+    def message(%{errors: errors}) do
+      Ash.Error.error_descriptions(errors)
     end
 
     def code(_), do: "Forbidden"

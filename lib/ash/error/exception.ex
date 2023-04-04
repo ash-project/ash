@@ -25,6 +25,15 @@ defmodule Ash.Error.Exception do
       def message(%{vars: vars} = exception) do
         string = Ash.ErrorKind.message(exception)
 
+        string =
+          case Ash.Error.breadcrumb(Map.get(exception, :error_context)) do
+            "" ->
+              string
+
+            context ->
+              context <> "\n" <> string
+          end
+
         Enum.reduce(List.wrap(vars), string, fn {key, value}, acc ->
           if String.contains?(acc, "%{#{key}}") do
             String.replace(acc, "%{#{key}}", to_string(value))
