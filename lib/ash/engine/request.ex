@@ -1048,8 +1048,10 @@ defmodule Ash.Engine.Request do
                        resolver.(resolver_context)}
                     rescue
                       e ->
-                        reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
-                                  error_context: "resolving #{field} on #{request.name}"
+                        reraise Ash.Error.to_error_class(
+                                  Ash.Error.to_ash_error(e, __STACKTRACE__,
+                                    error_context: "resolving #{field} on #{request.name}"
+                                  )
                                 ),
                                 __STACKTRACE__
                     end
@@ -1061,8 +1063,10 @@ defmodule Ash.Engine.Request do
                    resolver.(resolver_context)}
                 rescue
                   e ->
-                    reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
-                              error_context: "resolving #{field} on #{request.name}"
+                    reraise Ash.Error.to_error_class(
+                              Ash.Error.to_ash_error(e, __STACKTRACE__,
+                                error_context: "resolving #{field} on #{request.name}"
+                              )
                             ),
                             __STACKTRACE__
                 end
