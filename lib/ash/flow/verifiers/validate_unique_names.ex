@@ -1,19 +1,17 @@
-defmodule Ash.Flow.Transformers.ValidateUniqueNames do
+defmodule Ash.Flow.Verifiers.ValidateUniqueNames do
   @moduledoc "Validates that steps have unique names."
-  use Spark.Dsl.Transformer
-  alias Spark.Dsl.Transformer
+  use Spark.Dsl.Verifier
+  alias Spark.Dsl.Verifier
 
-  def before?(_), do: true
-
-  def transform(dsl_state) do
+  def verify(dsl_state) do
     dsl_state
-    |> Transformer.get_entities([:steps])
+    |> Verifier.get_entities([:steps])
     |> unnest()
     |> Enum.map(& &1.name)
     |> Enum.group_by(& &1)
     |> Enum.find_value({:ok, dsl_state}, fn
       {_, [_]} ->
-        nil
+        :ok
 
       {name, [_ | _] = dupes} ->
         {:error,

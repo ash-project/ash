@@ -332,9 +332,13 @@ defmodule Ash.Flow.Dsl do
   }
 
   @transformers [
-    Ash.Flow.Transformers.SetApi,
-    Ash.Flow.Transformers.ValidateUniqueNames,
-    Ash.Flow.Transformers.ValidateNoEmptySteps
+    Ash.Flow.Transformers.SetApi
+  ]
+
+  @verifiers [
+    Ash.Flow.Verifiers.VerifyReturn,
+    Ash.Flow.Verifiers.ValidateUniqueNames,
+    Ash.Flow.Verifiers.ValidateNoEmptySteps
   ]
 
   @sections [@flow, @steps]
@@ -357,5 +361,6 @@ defmodule Ash.Flow.Dsl do
 
   use Spark.Dsl.Extension,
     sections: @sections,
-    transformers: @transformers
+    transformers: @transformers,
+    verifiers: @verifiers
 end

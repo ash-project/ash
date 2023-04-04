@@ -1,14 +1,14 @@
-defmodule Ash.Flow.Transformers.ValidateNoEmptySteps do
+defmodule Ash.Flow.Verifiers.ValidateNoEmptySteps do
   @moduledoc "Validates that no nested steps contain no steps"
-  use Spark.Dsl.Transformer
-  alias Spark.Dsl.Transformer
+  use Spark.Dsl.Verifier
+  alias Spark.Dsl.Verifier
 
-  def transform(dsl_state) do
+  def verify(dsl_state) do
     dsl_state
-    |> Transformer.get_entities([:steps])
+    |> Verifier.get_entities([:steps])
     |> validate_steps!()
 
-    {:ok, dsl_state}
+    :ok
   end
 
   defp validate_steps!(steps, trail \\ []) do
