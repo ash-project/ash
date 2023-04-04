@@ -19,7 +19,7 @@ defmodule Ash.Test.Flow.Flows.BranchingTransactionMapping do
       default nil
     end
 
-    returns :create_or_update_users
+    returns :cycle_users
   end
 
   steps do
@@ -47,12 +47,19 @@ defmodule Ash.Test.Flow.Flows.BranchingTransactionMapping do
             }
           end
         end
+
+        custom :return_value,
+               fn value, _ ->
+                 {:ok, value}
+               end,
+               input: expr(^result(:creation_bulk) || ^result(:update_bulk))
       end
     end
   end
 end
 
-defmodule MmsBiztalk.Flows.Steps.CreateUser do
+defmodule Ash.Test.Flow.Steps.CreateUser do
+  @moduledoc false
   use Ash.Flow.Step
   alias Ash.Changeset
 
@@ -72,7 +79,8 @@ defmodule MmsBiztalk.Flows.Steps.CreateUser do
   end
 end
 
-defmodule MmsBiztalk.Flows.Steps.UpdateUser do
+defmodule Ash.Test.Flow.Steps.UpdateUser do
+  @moduledoc false
   use Ash.Flow.Step
   alias Ash.Changeset
 
@@ -81,9 +89,9 @@ defmodule MmsBiztalk.Flows.Steps.UpdateUser do
       Ash.Test.Flow.User
       |> Ash.Query.for_read(
         :by_name,
-        %{name: input.attributes.firstname}
+        %{name: input.attributes.first_name}
       )
-      |> Ash.Test.Flow.Api.read!()
+      |> Ash.Test.Flow.Api.read_one!()
 
     user_updated =
       user_to_update

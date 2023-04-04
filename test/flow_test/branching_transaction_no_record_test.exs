@@ -29,6 +29,7 @@ defmodule Ash.FlowTest.BranchingTransactionNoRecordTest do
   test "if user exists does not create user" do
     assert %Ash.Flow.Result{result: %{user_not_found: nil, get_user: user}} =
              Ash.Test.Flow.Flows.BranchingTransactionNoRecord.run!("Bruce")
+
     assert user.first_name == "Bruce"
   end
 
@@ -40,14 +41,14 @@ defmodule Ash.FlowTest.BranchingTransactionNoRecordTest do
 
     assert user == []
 
-    %Ash.Flow.Result{result: %{user_not_found: user, get_user: nil}} = Ash.Test.Flow.Flows.BranchingTransactionNoRecord.run!("Bat")
-    IO.inspect(user)
+    %Ash.Flow.Result{result: %{user_not_found: user, get_user: nil}} =
+      Ash.Test.Flow.Flows.BranchingTransactionNoRecord.run!("Bat")
 
     assert user.create_user.first_name == "Bat"
 
     users =
       User
-      |> Ash.Query.for_read(:index)
+      |> Ash.Query.for_read(:read)
       |> Api.read!()
 
     assert length(users) == 2

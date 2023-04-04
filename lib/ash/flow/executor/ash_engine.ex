@@ -37,6 +37,17 @@ defmodule Ash.Flow.Executor.AshEngine do
       step =
         case step do
           %{steps: steps} = step ->
+            step =
+              if Map.has_key?(step, :output) && is_nil(step.output) do
+                if last_step = List.last(steps) do
+                  %{step | output: last_step.name}
+                else
+                  step
+                end
+              else
+                step
+              end
+
             %{step | steps: to_steps(steps, input)}
 
           step ->
@@ -278,6 +289,9 @@ defmodule Ash.Flow.Executor.AshEngine do
     case find_step_dep(steps, name, nil) do
       nil ->
         nil
+
+      %Ash.Flow.Step.Transaction{name: ^name, output: output} ->
+        get_return_value(steps, data, output)
 
       %Ash.Flow.Step.Transaction{name: transaction_name} ->
         Ash.Flow.do_get_in(data, [transaction_name, name])
@@ -1784,6 +1798,13 @@ defmodule Ash.Flow.Executor.AshEngine do
          no_depend? \\ false
        ) do
     Enum.find_value(steps, fn
+      %Step{step: %Ash.Flow.Step.Transaction{name: ^dep} = step} ->
+        if transaction_name && no_depend? do
+          {step, :no_depend}
+        else
+          step
+        end
+
       %Step{step: %Ash.Flow.Step.Transaction{name: ^transaction_name}}
       when stop_at_transaction_name? ->
         nil
