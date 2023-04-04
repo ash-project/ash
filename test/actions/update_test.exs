@@ -164,6 +164,25 @@ defmodule Ash.Test.Actions.UpdateTest do
     end
   end
 
+  defmodule CalculateSlug do
+    use Ash.Calculation
+
+    @impl true
+    def select(_, _, _), do: [:title]
+
+    @impl true
+    def calculate(records, _, _) do
+      Enum.map(
+        records,
+        fn record ->
+          record.title
+          |> String.downcase()
+          |> String.replace(" ", "-")
+        end
+      )
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -180,6 +199,13 @@ defmodule Ash.Test.Actions.UpdateTest do
       uuid_primary_key :id
       attribute :title, :string
       attribute :contents, :string
+    end
+
+    calculations do
+      calculate :slug,
+                :string,
+                CalculateSlug,
+                select: [:title]
     end
 
     relationships do
@@ -305,6 +331,25 @@ defmodule Ash.Test.Actions.UpdateTest do
         |> Api.update!()
 
       assert profile.private == "blah"
+    end
+
+    test "loaded calcluation are cleared from the resource" do
+      Post
+      |> new(%{title: "foo bar", contents: "bar"})
+      |> Api.create!()
+
+      post =
+        Post
+        |> Ash.Query.for_read(:read)
+        |> Ash.Query.load([:slug])
+        |> Ash.Query.limit(1)
+        |> Api.read_one!()
+
+      assert post.slug == "foo-bar"
+
+      updated_post = post |> new(%{title: "bar", contents: "foo"}) |> Api.update!()
+
+      assert %Ash.NotLoaded{type: :calculation} = updated_post.slug
     end
   end
 
