@@ -564,7 +564,7 @@ defmodule Ash.Filter do
           false
         end
 
-      {:_actor, field} when is_atom(field) ->
+      {:_actor, field} when is_atom(field) or is_binary(field) ->
         Map.get(actor || %{}, field)
 
       {:_actor, path} when is_list(path) ->
@@ -2234,7 +2234,8 @@ defmodule Ash.Filter do
     add_expression_part(pkey_filter, context, expression)
   end
 
-  defp add_expression_part({:is_nil, attribute}, context, expression) when is_atom(attribute) do
+  defp add_expression_part({:is_nil, attribute}, context, expression)
+       when is_atom(attribute) or is_binary(attribute) do
     add_expression_part({attribute, [is_nil: true]}, context, expression)
   end
 
@@ -2243,7 +2244,7 @@ defmodule Ash.Filter do
   end
 
   defp add_expression_part({function, args}, context, expression)
-       when is_tuple(args) and is_atom(function) do
+       when (is_tuple(args) and is_atom(function)) or is_binary(function) do
     case get_function(function, context.resource, context.public?) do
       nil ->
         case calculation(context, function) do
@@ -2860,7 +2861,7 @@ defmodule Ash.Filter do
     )
   end
 
-  def do_hydrate_refs({key, value}, context) when is_atom(key) do
+  def do_hydrate_refs({key, value}, context) when is_atom(key) or is_binary(key) do
     case do_hydrate_refs(value, context) do
       {:ok, hydrated} ->
         {:ok, {key, hydrated}}
@@ -2874,7 +2875,7 @@ defmodule Ash.Filter do
         %Ref{attribute: attribute} = ref,
         %{aggregates: aggregates, calculations: calculations} = context
       )
-      when is_atom(attribute) do
+      when is_atom(attribute) or is_binary(attribute) do
     case related(context, ref.relationship_path) do
       nil ->
         {:error,
