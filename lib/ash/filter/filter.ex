@@ -325,7 +325,7 @@ defmodule Ash.Filter do
       |> Enum.map(fn ref ->
         field =
           case ref.attribute do
-            field when is_atom(field) ->
+            field when is_atom(field) or is_binary(field) ->
               case Ash.Resource.Info.field(resource, field) do
                 nil ->
                   field
