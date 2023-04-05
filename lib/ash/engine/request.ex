@@ -1222,7 +1222,11 @@ defmodule Ash.Engine.Request do
             other ->
               {:error,
                Ash.Error.Framework.AssumptionFailed.exception(
-                 message: "Invalid return from request resolver for \"#{request.name}\" #{field}"
+                 message: """
+                 Invalid return from request resolver for "#{request.name}" #{field}:
+                 Got:
+                 #{inspect(other)}
+                 """
                )}
           end
       end
