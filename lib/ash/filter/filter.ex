@@ -345,7 +345,7 @@ defmodule Ash.Filter do
       refs
       |> Enum.flat_map(fn
         %{attribute: attribute, relationship_path: relationship_path}
-        when is_atom(attribute) || is_binary(attribute) ->
+        when is_atom(attribute) or is_binary(attribute) ->
           [
             NoSuchAttributeOrRelationship.exception(
               attribute_or_relationship: attribute,
