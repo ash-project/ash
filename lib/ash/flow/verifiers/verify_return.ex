@@ -26,27 +26,23 @@ defmodule Ash.Flow.Verifiers.VerifyReturn do
       end
       |> List.wrap()
 
-    if return_step_names do
-      case Enum.find(return_step_names, fn step_name ->
-             is_nil(returnable_step(steps, step_name))
-           end) do
-        nil ->
-          :ok
+    case Enum.find(return_step_names, fn step_name ->
+           is_nil(returnable_step(steps, step_name))
+         end) do
+      nil ->
+        :ok
 
-        invalid_step_name ->
-          module = Verifier.get_persisted(dsl_state, :module)
+      invalid_step_name ->
+        module = Verifier.get_persisted(dsl_state, :module)
 
-          {:error,
-           Spark.Error.DslError.exception(
-             module: module,
-             path: [:flow, :returns, invalid_step_name],
-             message: """
-             #{inspect(invalid_step_name)} is not a returnable step in #{inspect(module)}.
-             """
-           )}
-      end
-    else
-      :ok
+        {:error,
+         Spark.Error.DslError.exception(
+           module: module,
+           path: [:flow, :returns, invalid_step_name],
+           message: """
+           #{inspect(invalid_step_name)} is not a returnable step in #{inspect(module)}.
+           """
+         )}
     end
   end
 

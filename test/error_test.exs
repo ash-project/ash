@@ -64,7 +64,11 @@ defmodule Ash.Test.ErrorTest do
       assert match?(%Ash.Error.Invalid{}, result)
 
       # the parent error's errors field gets prepended to the list of other errors
-      assert same_elements?(result.errors, [:more, :errors, err1])
+      assert same_elements?(Enum.map(result.errors, &Map.delete(&1, :stacktrace)), [
+               :more,
+               :errors,
+               err1
+             ])
     end
 
     test "has a context field populated when there is a single error" do
