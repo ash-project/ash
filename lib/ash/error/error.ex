@@ -354,27 +354,25 @@ defmodule Ash.Error do
     end
   end
 
-  defp add_stacktrace(%{stacktrace: %Stacktrace{stacktrace: stacktrace}} = error, _)
-       when not is_nil(stacktrace) do
-    error
-  end
-
   defp add_stacktrace(error, stacktrace) do
     stacktrace =
       case stacktrace do
         %Stacktrace{stacktrace: nil} ->
-          {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
-          %Stacktrace{stacktrace: Enum.drop(stacktrace, 2)}
+          nil
 
         nil ->
-          {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
-          %Stacktrace{stacktrace: Enum.drop(stacktrace, 2)}
+          nil
 
         stacktrace ->
           %Stacktrace{stacktrace: stacktrace}
       end
 
-    %{error | stacktrace: stacktrace}
+    %{error | stacktrace: stacktrace || fake_stacktrace()}
+  end
+
+  defp fake_stacktrace() do
+    {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
+    %Stacktrace{stacktrace: Enum.drop(stacktrace, 2)}
   end
 
   defp add_error_context(error, error_context) when is_binary(error_context) do
