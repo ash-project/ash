@@ -1421,7 +1421,7 @@ defmodule Ash.Api do
          {:ok, action} <- get_action(query.resource, opts, :read, query.action),
          {:ok, action} <- pagination_check(action, query.resource, opts) do
       query
-      |> Ash.Actions.Read.unpaginated_read(query.action, opts)
+      |> Ash.Actions.Read.unpaginated_read(action, opts)
       |> unwrap_one()
     else
       {:error, error} ->
