@@ -2244,7 +2244,7 @@ defmodule Ash.Filter do
   end
 
   defp add_expression_part({function, args}, context, expression)
-       when (is_tuple(args) and is_atom(function)) or is_binary(function) do
+       when is_tuple(args) and (is_atom(function) or is_binary(function)) do
     case get_function(function, context.resource, context.public?) do
       nil ->
         case calculation(context, function) do

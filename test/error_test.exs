@@ -64,11 +64,7 @@ defmodule Ash.Test.ErrorTest do
       assert match?(%Ash.Error.Invalid{}, result)
 
       # the parent error's errors field gets prepended to the list of other errors
-      assert same_elements?(Enum.map(result.errors, &Map.delete(&1, :stacktrace)), [
-               :more,
-               :errors,
-               err1
-             ])
+      assert same_elements?(result.errors, [:more, :errors, err1])
     end
 
     test "has a context field populated when there is a single error" do
@@ -198,8 +194,16 @@ defmodule Ash.Test.ErrorTest do
   end
 
   defp same_elements?(xs, ys) when is_list(xs) and is_list(ys) do
-    Enum.sort(xs) == Enum.sort(ys)
+    Enum.sort(clean(xs)) == Enum.sort(clean(ys))
   end
 
   defp same_elements?(_, _), do: false
+
+  defp clean(list) when is_list(list), do: Enum.map(list, &clean/1)
+
+  defp clean(%{stacktrace: _} = value) do
+    %{value | stacktrace: nil}
+  end
+
+  defp clean(other), do: other
 end

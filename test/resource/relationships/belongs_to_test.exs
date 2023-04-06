@@ -267,6 +267,10 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
 
   test "don't add required error for belongs_to if other errors are present" do
     defposts do
+      actions do
+        defaults [:create, :read, :update, :destroy]
+      end
+
       relationships do
         has_many(:comments, Comment)
       end
