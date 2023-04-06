@@ -1415,9 +1415,18 @@ defmodule Ash.Api do
 
   @doc false
   def read_one(api, query, opts) do
-    api
-    |> read(query, opts)
-    |> unwrap_one()
+    query = Ash.Query.set_api(query, api)
+
+    with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @read_opts_schema),
+         {:ok, action} <- get_action(query.resource, opts, :read, query.action),
+         {:ok, action} <- pagination_check(action, query.resource, opts) do
+      query
+      |> Ash.Actions.Read.unpaginated_read(query.action, opts)
+      |> unwrap_one()
+    else
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   defp unwrap_one({:error, error}) do
