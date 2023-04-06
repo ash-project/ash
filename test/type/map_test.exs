@@ -64,11 +64,28 @@ defmodule Type.MapTest do
       |> for_create(:create, %{
         metadata: %{
           foo: "bar",
-          bar: nil
+          bar: 2
         }
       })
 
     assert changeset.valid?
+  end
+
+  test "cast result has only atom keys" do
+    changeset =
+      Post
+      |> for_create(:create, %{
+        metadata: %{
+          "bar" => nil,
+          foo: "bar"
+        }
+      })
+
+    assert changeset.valid?
+
+    assert changeset.attributes == %{
+             metadata: %{foo: "bar", bar: nil}
+           }
   end
 
   test "keys that can be nil don't need to be there" do
@@ -119,7 +136,7 @@ defmodule Type.MapTest do
     assert changeset.valid?
 
     assert changeset.attributes == %{
-             metadata: %{foo: "bar"}
+             metadata: %{foo: "bar", bar: nil}
            }
   end
 end

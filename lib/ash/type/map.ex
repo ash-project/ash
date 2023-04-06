@@ -117,7 +117,7 @@ defmodule Ash.Type.Map do
             if field_constraints[:allow_nil?] == false do
               {:error, [[message: "must not be nil", field: field]]}
             else
-              {:ok, checked_value}
+              {:ok, Map.put(checked_value, field, nil)}
             end
 
           field_value ->
