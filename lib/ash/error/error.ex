@@ -370,7 +370,7 @@ defmodule Ash.Error do
     %{error | stacktrace: stacktrace || fake_stacktrace()}
   end
 
-  defp fake_stacktrace do
+  defp fake_stacktrace() do
     {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
     %Stacktrace{stacktrace: Enum.drop(stacktrace, 2)}
   end

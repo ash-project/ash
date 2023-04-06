@@ -309,7 +309,8 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
             %Ash.Error.Invalid{
               changeset: %{
                 errors: [
-                  %{path: [:post]} | _
+                  # there should not be a Ash.Error.Changes.Required error in this list
+                  %Ash.Error.Invalid{path: [:post]}
                 ]
               }
             }} =
