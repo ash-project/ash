@@ -367,7 +367,7 @@ defmodule Ash.Error do
           %Stacktrace{stacktrace: stacktrace}
       end
 
-    %{error | stacktrace: stacktrace || fake_stacktrace()}
+    %{error | stacktrace: stacktrace || error.stacktrace || fake_stacktrace()}
   end
 
   defp fake_stacktrace() do
