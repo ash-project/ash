@@ -102,4 +102,24 @@ defmodule Type.MapTest do
 
     refute changeset.valid?
   end
+
+  test "extra fields are removed" do
+    changeset =
+      Post
+      |> for_create(
+        :create,
+        %{
+          metadata: %{
+            "foo" => "bar",
+            extra: "field"
+          }
+        }
+      )
+
+    assert changeset.valid?
+
+    assert changeset.attributes == %{
+             metadata: %{foo: "bar"}
+           }
+  end
 end

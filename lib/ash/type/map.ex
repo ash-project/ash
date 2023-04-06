@@ -1,9 +1,29 @@
 defmodule Ash.Type.Map do
+  # fields: [
+  #   type: :keyword_list,
+  #   keys: [
+  #     *: [
+  #       type: :keyword_list,
+  #       keys: [
+  #         type: [
+  #           type: Ash.OptionsHelpers.ash_type(),
+  #           required: true
+  #         ],
+  #         constraints: [
+  #           type: :keyword,
+  #           default: []
+  #         ]
+  #       ]
+  #     ]
+  #   ],
+
   @constraints [
     fields: [
       type: {:custom, __MODULE__, :field_types, []},
       doc: """
-      The types of the fields in the map
+      The types of the fields in the map, and their constraints.
+
+      If constraints are specified, only those fields will be in the casted map.
 
       For example:
 
@@ -57,7 +77,7 @@ defmodule Ash.Type.Map do
   def cast_input(value, constraints) when is_binary(value) do
     case Jason.decode(value) do
       {:ok, value} ->
-        check_constraints(value, constraints)
+        cast_input(value, constraints)
 
       _ ->
         :error
@@ -70,8 +90,7 @@ defmodule Ash.Type.Map do
   @impl true
   def cast_stored(nil, _), do: {:ok, nil}
 
-  def cast_stored(value, constraints) when is_map(value),
-    do: check_constraints(value, constraints)
+  def cast_stored(value, _) when is_map(value), do: {:ok, value}
 
   def cast_stored(_, _), do: :error
 
@@ -91,14 +110,14 @@ defmodule Ash.Type.Map do
   end
 
   defp check_fields(value, fields) do
-    Enum.reduce(fields, {:ok, value}, fn
-      {field, field_constraints}, {:ok, value} ->
-        case value[field] do
+    Enum.reduce(fields, {:ok, %{}}, fn
+      {field, field_constraints}, {:ok, checked_value} ->
+        case fetch_field(value, field) do
           nil ->
             if field_constraints[:allow_nil?] == false do
               {:error, [[message: "must not be nil", field: field]]}
             else
-              {:ok, value}
+              {:ok, checked_value}
             end
 
           field_value ->
@@ -108,7 +127,7 @@ defmodule Ash.Type.Map do
                    field_constraints[:constraints]
                  ) do
               {:ok, field_value} ->
-                {:ok, Map.put(value, field, field_value)}
+                {:ok, Map.put(checked_value, field, field_value)}
 
               {:error, errors} ->
                 {:error, errors}
@@ -119,4 +138,13 @@ defmodule Ash.Type.Map do
         {:error, errors}
     end)
   end
+
+  defp fetch_field(map, atom) when is_atom(atom) do
+    case Map.fetch(map, atom) do
+      {:ok, value} -> value
+      :error -> fetch_field(map, to_string(atom))
+    end
+  end
+
+  defp fetch_field(map, key), do: Map.get(map, key)
 end
