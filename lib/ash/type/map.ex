@@ -1,25 +1,26 @@
 defmodule Ash.Type.Map do
-  # fields: [
-  #   type: :keyword_list,
-  #   keys: [
-  #     *: [
-  #       type: :keyword_list,
-  #       keys: [
-  #         type: [
-  #           type: Ash.OptionsHelpers.ash_type(),
-  #           required: true
-  #         ],
-  #         constraints: [
-  #           type: :keyword,
-  #           default: []
-  #         ]
-  #       ]
-  #     ]
-  #   ],
-
   @constraints [
     fields: [
-      type: {:custom, __MODULE__, :field_types, []},
+      type: :keyword_list,
+      keys: [
+        *: [
+          type: :keyword_list,
+          keys: [
+            type: [
+              type: Ash.OptionsHelpers.ash_type(),
+              required: true
+            ],
+            allow_nil?: [
+              type: :boolean,
+              default: true
+            ],
+            constraints: [
+              type: :keyword_list,
+              default: []
+            ]
+          ]
+        ]
+      ],
       doc: """
       The types of the fields in the map, and their constraints.
 
@@ -84,7 +85,7 @@ defmodule Ash.Type.Map do
     end
   end
 
-  def cast_input(value, constraints) when is_map(value), do: check_constraints(value, constraints)
+  def cast_input(value, _) when is_map(value), do: {:ok, value}
   def cast_input(_, _), do: :error
 
   @impl true
@@ -99,7 +100,8 @@ defmodule Ash.Type.Map do
   def dump_to_native(value, _) when is_map(value), do: {:ok, value}
   def dump_to_native(_, _), do: :error
 
-  defp check_constraints(value, constraints) do
+  @impl true
+  def apply_constraints(value, constraints) do
     Enum.reduce(constraints, {:ok, value}, fn
       {:fields, fields}, {:ok, value} ->
         check_fields(value, fields)
@@ -113,15 +115,15 @@ defmodule Ash.Type.Map do
     Enum.reduce(fields, {:ok, %{}}, fn
       {field, field_constraints}, {:ok, checked_value} ->
         case fetch_field(value, field) do
-          nil ->
+          {:ok, nil} ->
             if field_constraints[:allow_nil?] == false do
-              {:error, [[message: "must not be nil", field: field]]}
+              {:error, [[message: "value must not be nil", field: field]]}
             else
               {:ok, Map.put(checked_value, field, nil)}
             end
 
-          field_value ->
-            case Ash.Type.cast_input(
+          {:ok, field_value} ->
+            case Ash.Type.apply_constraints(
                    field_constraints[:type],
                    field_value,
                    field_constraints[:constraints]
@@ -130,7 +132,15 @@ defmodule Ash.Type.Map do
                 {:ok, Map.put(checked_value, field, field_value)}
 
               {:error, errors} ->
-                {:error, errors}
+                {:error,
+                 Enum.map(errors, fn error -> [field: field, message: error[:message]] end)}
+            end
+
+          :error ->
+            if field_constraints[:allow_nil?] == false do
+              {:error, [[message: "field must be present", field: field]]}
+            else
+              {:ok, checked_value}
             end
         end
 
@@ -141,10 +151,10 @@ defmodule Ash.Type.Map do
 
   defp fetch_field(map, atom) when is_atom(atom) do
     case Map.fetch(map, atom) do
-      {:ok, value} -> value
+      {:ok, value} -> {:ok, value}
       :error -> fetch_field(map, to_string(atom))
     end
   end
 
-  defp fetch_field(map, key), do: Map.get(map, key)
+  defp fetch_field(map, key), do: Map.fetch(map, key)
 end

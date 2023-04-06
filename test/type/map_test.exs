@@ -24,6 +24,8 @@ defmodule Type.MapTest do
                       bar: [type: :integer, constraints: [min: 0]]
                     ]
       end
+
+      attribute :otherdata, :map
     end
   end
 
@@ -108,16 +110,47 @@ defmodule Type.MapTest do
       })
 
     refute changeset.valid?
+
+    assert [
+             %Ash.Error.Changes.InvalidAttribute{
+               field: :metadata,
+               message: "at field foo field must be present",
+               private_vars: nil,
+               value: %{bar: 1},
+               changeset: nil,
+               query: nil,
+               error_context: [],
+               vars: [field: :metadata, message: "at field foo field must be present"],
+               path: []
+             }
+           ] = changeset.errors
   end
 
   test "constraints of field types are checked" do
     changeset =
       Post
       |> for_create(:create, %{
-        metadata: %{bar: -1}
+        metadata: %{foo: "hello", bar: -1}
       })
 
     refute changeset.valid?
+
+    assert [
+             %Ash.Error.Changes.InvalidAttribute{
+               field: :metadata,
+               message: "at field bar must be more than or equal to %{min}",
+               private_vars: nil,
+               value: %{bar: -1, foo: "hello"},
+               changeset: nil,
+               query: nil,
+               error_context: [],
+               vars: [
+                 field: :metadata,
+                 message: "at field bar must be more than or equal to %{min}"
+               ],
+               path: []
+             }
+           ] = changeset.errors
   end
 
   test "extra fields are removed" do
@@ -136,7 +169,26 @@ defmodule Type.MapTest do
     assert changeset.valid?
 
     assert changeset.attributes == %{
-             metadata: %{foo: "bar", bar: nil}
+             metadata: %{foo: "bar"}
+           }
+  end
+
+  test "maps without constraints are left as is" do
+    changeset =
+      Post
+      |> for_create(
+        :create,
+        %{
+          otherdata: %{
+            extra: "field"
+          }
+        }
+      )
+
+    assert changeset.valid?
+
+    assert changeset.attributes == %{
+             otherdata: %{extra: "field"}
            }
   end
 end
