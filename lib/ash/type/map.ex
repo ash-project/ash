@@ -115,26 +115,8 @@ defmodule Ash.Type.Map do
     Enum.reduce(fields, {:ok, %{}}, fn
       {field, field_constraints}, {:ok, checked_value} ->
         case fetch_field(value, field) do
-          {:ok, nil} ->
-            if field_constraints[:allow_nil?] == false do
-              {:error, [[message: "value must not be nil", field: field]]}
-            else
-              {:ok, Map.put(checked_value, field, nil)}
-            end
-
           {:ok, field_value} ->
-            case Ash.Type.apply_constraints(
-                   field_constraints[:type],
-                   field_value,
-                   field_constraints[:constraints]
-                 ) do
-              {:ok, field_value} ->
-                {:ok, Map.put(checked_value, field, field_value)}
-
-              {:error, errors} ->
-                {:error,
-                 Enum.map(errors, fn error -> [field: field, message: error[:message]] end)}
-            end
+            check_field(checked_value, field, field_value, field_constraints)
 
           :error ->
             if field_constraints[:allow_nil?] == false do
@@ -147,6 +129,37 @@ defmodule Ash.Type.Map do
       {_, _}, {:error, errors} ->
         {:error, errors}
     end)
+  end
+
+  defp check_field(result, field, field_value, field_constraints) do
+    case Ash.Type.cast_input(
+           field_constraints[:type],
+           field_value,
+           field_constraints[:type]
+         ) do
+      {:ok, field_value} ->
+        case Ash.Type.apply_constraints(
+               field_constraints[:type],
+               field_value,
+               field_constraints[:constraints]
+             ) do
+          {:ok, nil} ->
+            if field_constraints[:allow_nil?] == false do
+              {:error, [[message: "value must not be nil", field: field]]}
+            else
+              {:ok, Map.put(result, field, nil)}
+            end
+
+          {:ok, field_value} ->
+            {:ok, Map.put(result, field, field_value)}
+
+          {:error, errors} ->
+            {:error, Enum.map(errors, fn error -> [field: field, message: error[:message]] end)}
+        end
+
+      :error ->
+        {:error, [[message: "invalid value", field: field]]}
+    end
   end
 
   defp fetch_field(map, atom) when is_atom(atom) do

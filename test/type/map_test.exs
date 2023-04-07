@@ -66,11 +66,15 @@ defmodule Type.MapTest do
       |> for_create(:create, %{
         metadata: %{
           foo: "bar",
-          bar: 2
+          bar: "2"
         }
       })
 
     assert changeset.valid?
+
+    assert changeset.attributes == %{
+             metadata: %{foo: "bar", bar: 2}
+           }
   end
 
   test "cast result has only atom keys" do
@@ -171,6 +175,36 @@ defmodule Type.MapTest do
     assert changeset.attributes == %{
              metadata: %{foo: "bar"}
            }
+  end
+
+  test "values are casted before checked" do
+    changeset =
+      Post
+      |> for_create(
+        :create,
+        %{
+          metadata: %{
+            "foo" => "",
+            bar: "2"
+          }
+        }
+      )
+
+    refute changeset.valid?
+
+    assert [
+             %Ash.Error.Changes.InvalidAttribute{
+               field: :metadata,
+               message: "at field foo value must not be nil",
+               private_vars: nil,
+               value: %{:bar => "2", "foo" => ""},
+               changeset: nil,
+               query: nil,
+               error_context: [],
+               vars: [field: :metadata, message: "at field foo value must not be nil"],
+               path: []
+             }
+           ] = changeset.errors
   end
 
   test "maps without constraints are left as is" do
