@@ -94,6 +94,7 @@ defmodule Ash.Query do
   alias Ash.Error.Query.{
     AggregatesNotSupported,
     InvalidArgument,
+    InvalidCalculationArgument,
     InvalidLimit,
     InvalidOffset,
     NoReadAction,
@@ -911,6 +912,9 @@ defmodule Ash.Query do
                 select_and_load_calc(resource_calculation, %{calculation | load: field}, query)
 
               Map.update!(query, :calculations, &Map.put(&1, field, calculation))
+            else
+              {:error, error} ->
+                Ash.Query.add_error(query, :load, error)
             end
 
           true ->
@@ -1147,13 +1151,27 @@ defmodule Ash.Query do
             )}}
 
         expr?(value) ->
-          {:halt, {:error, "Argument #{argument.name} does not support expressions!"}}
+          {:halt,
+           {:error,
+            InvalidCalculationArgument.exception(
+              field: argument.name,
+              calculation: calculation.name,
+              message: "does not support expressions",
+              value: value
+            )}}
 
         is_nil(value) && argument.allow_nil? ->
           {:cont, {:ok, Map.put(arg_values, argument.name, nil)}}
 
         is_nil(value) ->
-          {:halt, {:error, "Argument #{argument.name} is required"}}
+          {:halt,
+           {:error,
+            InvalidCalculationArgument.exception(
+              field: argument.name,
+              calculation: calculation.name,
+              message: "is required",
+              value: value
+            )}}
 
         is_nil(Map.get(args, argument.name, Map.get(args, to_string(argument.name)))) &&
             not is_nil(value) ->
@@ -1191,8 +1209,18 @@ defmodule Ash.Query do
               {:cont, {:ok, Map.put(arg_values, argument.name, casted)}}
             end
           else
+            {:error, error} when is_binary(error) ->
+              {:halt,
+               {:error,
+                InvalidCalculationArgument.exception(
+                  field: argument.name,
+                  calculation: calculation.name,
+                  message: error,
+                  value: value
+                )}}
+
             {:error, error} ->
-              {:halt, {:error, error}}
+              {:halt, {:error, Ash.Error.to_ash_error(error)}}
           end
       end
     end)
@@ -1776,7 +1804,7 @@ defmodule Ash.Query do
         Map.update!(query, :calculations, &Map.put(&1, as_name, calculation))
       else
         {:error, error} ->
-          Ash.Query.add_error(query, error)
+          Ash.Query.add_error(query, :load, error)
       end
     else
       Ash.Query.add_error(query, "No such calculation: #{inspect(calc_name)}")

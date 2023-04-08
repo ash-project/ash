@@ -873,4 +873,10 @@ defmodule Ash.Test.CalculationTest do
              |> Api.read!(authorize?: true)
              |> Enum.map(& &1.active)
   end
+
+  test "invalid calculation arguments show errors in the query" do
+    assert %{valid?: false} =
+             User
+             |> Ash.Query.load(full_name: %{separator: %{foo: :bar}})
+  end
 end
