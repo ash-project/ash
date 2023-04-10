@@ -5,6 +5,31 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.30](https://github.com/ash-project/ash/compare/v2.6.29...v2.6.30) (2023-04-10)
+
+
+
+
+### Bug Fixes:
+
+* don't require values if a changeset result has been set
+
+* properly return errors on invalid calculation arguments
+
+* user unpaginated_read for `read_one`
+
+* handle strings better in refs
+
+* consider strings in `ref`
+
+### Improvements:
+
+* add build_action_metadata to resource builder
+
+* add `Ash.merge_context/1` and `Ash.update_context/1`
+
+* add constraints to maps (#556)
+
 ## [v2.6.29](https://github.com/ash-project/ash/compare/v2.6.28...v2.6.29) (2023-04-04)
 
 
