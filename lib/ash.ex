@@ -120,10 +120,33 @@ defmodule Ash do
 
   @doc """
   Sets context into the process dictionary that is used for all changesets and queries.
+
+  In Ash 3.0, this will be updated to deep merge
   """
   @spec set_context(map) :: :ok
   def set_context(map) do
     Process.put(:ash_context, map)
+
+    :ok
+  end
+
+  @doc """
+  Deep merges context into the process dictionary that is used for all changesets and queries.
+  """
+  @spec merge_context(map) :: :ok
+  def merge_context(map) do
+    update_context(&Ash.Helpers.deep_merge_maps(&1, map))
+
+    :ok
+  end
+
+  @doc """
+  Updates the context into the process dictionary that is used for all changesets and queries.
+  """
+  @spec update_context((map -> map)) :: :ok
+  def update_context(fun) do
+    context = Process.get(:ash_context, %{})
+    set_context(fun.(context))
 
     :ok
   end

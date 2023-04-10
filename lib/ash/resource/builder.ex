@@ -279,6 +279,21 @@ defmodule Ash.Resource.Builder do
   end
 
   @doc """
+  Builds an action metadata
+  """
+  @spec build_action_metadata(name :: atom, type :: Ash.Type.t(), opts :: Keyword.t()) ::
+          {:ok, Ash.Resource.Actions.Metadata.t()} | {:error, term}
+  def build_action_metadata(name, type, opts \\ []) do
+    Transformer.build_entity(
+      Ash.Resource.Dsl,
+      # All action types that support arguments have the same entity, so we just say `create` here
+      [:actions, :create],
+      :metadata,
+      Keyword.merge(opts, name: name, type: type)
+    )
+  end
+
+  @doc """
   Builds an action change
   """
   @spec build_action_change(change :: Ash.Resource.Change.ref(), opts :: Keyword.t()) ::
