@@ -386,12 +386,13 @@ defmodule Ash.Actions.Create do
                                 if changeset.context[:private][:action_result] do
                                   changeset
                                 else
-                                  changeset
-                                  |> Ash.Changeset.require_values(
-                                    :create,
-                                    true,
-                                    final_check
-                                  )
+                                  changeset =
+                                    changeset
+                                    |> Ash.Changeset.require_values(
+                                      :create,
+                                      true,
+                                      final_check
+                                    )
 
                                   {changeset, _} =
                                     Ash.Actions.ManagedRelationships.validate_required_belongs_to(
