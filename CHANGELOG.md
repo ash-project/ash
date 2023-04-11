@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.6.31](https://github.com/ash-project/ash/compare/v2.6.30...v2.6.31) (2023-04-11)
+
+
+
+
+### Bug Fixes:
+
+* properly require attributes on creates
+
 ## [v2.6.30](https://github.com/ash-project/ash/compare/v2.6.29...v2.6.30) (2023-04-10)
 
 
