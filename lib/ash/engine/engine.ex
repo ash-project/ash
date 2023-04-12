@@ -124,15 +124,21 @@ defmodule Ash.Engine do
               )
               |> case do
                 {:ok, result} ->
-                  saved_notifications = Process.delete(:ash_engine_notifications)
-                  remaining_notifications = Ash.Notifier.notify(saved_notifications)
+                  saved_notifications = Process.delete(:ash_engine_notifications) || []
 
-                  {:ok,
-                   %{
-                     result
-                     | resource_notifications:
-                         result.resource_notifications ++ remaining_notifications
-                   }}
+                  if opts[:return_notifications?] do
+                    {:ok,
+                     %{
+                       result
+                       | resource_notifications:
+                           result.resource_notifications ++ saved_notifications
+                     }}
+                  else
+                    remaining_notifications =
+                      Ash.Notifier.notify(result.resource_notifications ++ saved_notifications)
+
+                    {:ok, %{result | resource_notifications: remaining_notifications}}
+                  end
 
                 {:error, error} ->
                   {:error, error}
