@@ -99,20 +99,49 @@ defmodule Ash.Engine do
             do_run(requests, opts)
 
           resources ->
-            Ash.DataLayer.transaction(
-              resources,
-              fn ->
-                case do_run(requests, opts) do
-                  {:ok, result} ->
-                    result
+            notify? =
+              if Process.get(:ash_engine_started_transaction?) do
+                false
+              else
+                Process.put(:ash_engine_started_transaction?, true)
+                true
+              end
 
-                  {:error, error} ->
-                    Ash.DataLayer.rollback(Enum.at(resources, 0), error)
-                end
-              end,
-              opts[:timeout] || :infinity,
-              transaction_metadata(opts)
-            )
+            try do
+              Ash.DataLayer.transaction(
+                resources,
+                fn ->
+                  case do_run(requests, opts) do
+                    {:ok, result} ->
+                      result
+
+                    {:error, error} ->
+                      Ash.DataLayer.rollback(Enum.at(resources, 0), error)
+                  end
+                end,
+                opts[:timeout] || :infinity,
+                transaction_metadata(opts)
+              )
+              |> case do
+                {:ok, result} ->
+                  saved_notifications = Process.delete(:ash_engine_notifications)
+                  remaining_notifications = Ash.Notifier.notify(saved_notifications)
+
+                  {:ok,
+                   %{
+                     result
+                     | resource_notifications:
+                         result.resource_notifications ++ remaining_notifications
+                   }}
+
+                {:error, error} ->
+                  {:error, error}
+              end
+            after
+              if notify? do
+                Process.delete(:ash_engine_started_transaction?)
+              end
+            end
         end
 
       true ->
@@ -133,6 +162,20 @@ defmodule Ash.Engine do
             resource_notifications
           else
             Ash.Notifier.notify(resource_notifications)
+          end
+
+        notifications =
+          if Process.get(:ash_engine_started_transaction?) do
+            current_notifications = Process.get(:ash_engine_notifications, [])
+
+            Process.put(
+              :ash_engine_notifications,
+              current_notifications ++ notifications
+            )
+
+            []
+          else
+            notifications
           end
 
         {:ok, %{result | resource_notifications: notifications}}

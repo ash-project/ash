@@ -58,7 +58,9 @@ defmodule Ash.Test.NotifierTest do
     end
 
     relationships do
-      belongs_to :post, Ash.Test.NotifierTest.Post
+      belongs_to :post, Ash.Test.NotifierTest.Post do
+        attribute_writable? true
+      end
     end
   end
 
@@ -76,6 +78,18 @@ defmodule Ash.Test.NotifierTest do
 
     actions do
       defaults [:create, :read, :update, :destroy]
+
+      create :create_with_comment do
+        change fn changeset, _ ->
+          Ash.Changeset.after_action(changeset, fn _changeset, result ->
+            Comment
+            |> Ash.Changeset.for_create(:create, %{post_id: result.id, name: "auto"})
+            |> Ash.Test.NotifierTest.Api.create!()
+
+            {:ok, result}
+          end)
+        end
+      end
     end
 
     attributes do
@@ -167,6 +181,14 @@ defmodule Ash.Test.NotifierTest do
 
       assert_receive {:notification, %Ash.Notifier.Notification{metadata: %{custom?: true}}}
     end
+  end
+
+  test "a nested notification is sent automatically" do
+    Post
+    |> Ash.Changeset.for_create(:create_with_comment, %{name: "foobar"})
+    |> Api.create!()
+
+    assert_receive {:notification, %Ash.Notifier.Notification{data: %Comment{name: "auto"}}}
   end
 
   test "notifications use the data before its limited by a select statement" do
