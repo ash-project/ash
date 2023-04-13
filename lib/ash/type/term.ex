@@ -2,12 +2,12 @@ defmodule Ash.Type.Term do
   @moduledoc """
   Represents a raw elixir term in the database
 
-  A builtin type that can be referenced via `:string`
+  A builtin type that can be referenced via `:binary`
   """
   use Ash.Type
 
   @impl true
-  def storage_type, do: :string
+  def storage_type, do: :binary
 
   @impl true
   def cast_input(value, _), do: {:ok, value}
