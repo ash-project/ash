@@ -16,6 +16,7 @@ defmodule Ash.DataLayer.EtsTest do
   alias Ash.Test.AnyApi, as: Api
 
   defmodule EtsTestUser do
+    @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -41,6 +42,7 @@ defmodule Ash.DataLayer.EtsTest do
   test "won't compile with identities that don't precheck" do
     assert_raise Spark.Error.DslError, ~r/pre_check_with/, fn ->
       defmodule Example do
+        @moduledoc false
         use Ash.Resource,
           data_layer: Ash.DataLayer.Ets
 
@@ -51,6 +53,29 @@ defmodule Ash.DataLayer.EtsTest do
 
         identities do
           identity :unique_name, [:name]
+        end
+      end
+    end
+  end
+
+  test "it won't compile with a configured table name and multitenancy enabled" do
+    assert_raise Spark.Error.DslError, ~r/multitenancy and an explicit table name/, fn ->
+      defmodule ExampleWithMultitenancyAndExplicitTableName do
+        @moduledoc false
+        use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+        attributes do
+          uuid_primary_key :id
+          attribute :name, :string
+        end
+
+        multitenancy do
+          strategy :attribute
+          attribute :name
+        end
+
+        ets do
+          table :hot_garbage_collection
         end
       end
     end
