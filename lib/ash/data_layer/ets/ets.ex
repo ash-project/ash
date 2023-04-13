@@ -62,122 +62,7 @@ defmodule Ash.DataLayer.Ets do
   @deprecated "use Ash.DataLayer.Ets.Info.table/1 instead"
   defdelegate table(resource), to: Ash.DataLayer.Ets.Info
 
-  defmodule Query do
-    @moduledoc false
-    defstruct [
-      :resource,
-      :filter,
-      :limit,
-      :sort,
-      :tenant,
-      :api,
-      calculations: [],
-      aggregates: [],
-      relationships: %{},
-      offset: 0
-    ]
-  end
-
-  defmodule TableManager do
-    @moduledoc false
-    use GenServer
-
-    def start(resource, tenant) do
-      table =
-        if tenant do
-          Module.concat(to_string(Ash.DataLayer.Ets.Info.table(resource)), to_string(tenant))
-        else
-          Ash.DataLayer.Ets.Info.table(resource)
-        end
-
-      if Ash.DataLayer.Ets.Info.private?(resource) do
-        do_wrap_existing(resource, table)
-      else
-        case GenServer.start(__MODULE__, {resource, table},
-               name: Module.concat(table, TableManager)
-             ) do
-          {:error, {:already_started, _pid}} ->
-            ETS.Set.wrap_existing(table)
-
-          {:error, error} ->
-            {:error, error}
-
-          _ ->
-            ETS.Set.wrap_existing(table)
-        end
-      end
-    end
-
-    def init({resource, table}) do
-      case do_wrap_existing(resource, table) do
-        {:ok, table} ->
-          {:ok, {resource, table}, :hibernate}
-
-        {:error, error} ->
-          {:error, error}
-      end
-    end
-
-    def handle_call(:wait, _, state), do: {:reply, :ok, state}
-
-    defp do_wrap_existing(_resource, table) do
-      case ETS.Set.wrap_existing(table) do
-        {:error, :table_not_found} ->
-          case ETS.Set.new(
-                 name: table,
-                 protection: :public,
-                 ordered: true,
-                 read_concurrency: true
-               ) do
-            {:ok, tab} ->
-              {:ok, tab}
-
-            {:error, :table_already_exists} ->
-              ETS.Set.wrap_existing(table)
-
-            other ->
-              other
-          end
-
-        {:ok, table} ->
-          {:ok, table}
-
-        {:error, other} ->
-          {:error, other}
-      end
-    end
-  end
-
-  @doc "Stops the storage for a given resource/tenant (deleting all of the data)"
-  # sobelow_skip ["DOS.StringToAtom"]
-  def stop(resource, tenant \\ nil) do
-    if Ash.DataLayer.Ets.Info.private?(resource) do
-      case Process.get({:ash_ets_table, resource, tenant}) do
-        nil ->
-          :ok
-
-        table ->
-          ETS.Set.delete(table)
-      end
-    else
-      table =
-        if tenant do
-          String.to_atom(to_string(tenant) <> to_string(resource))
-        else
-          resource
-        end
-
-      name = Module.concat(table, TableManager)
-
-      case Process.whereis(name) do
-        nil ->
-          :ok
-
-        pid ->
-          Process.exit(pid, :shutdown)
-      end
-    end
-  end
+  defdelegate stop(resource, tenant \\ nil), to: Ash.DataLayer.Ets.TableManager
 
   @doc false
   @impl true
@@ -233,7 +118,7 @@ defmodule Ash.DataLayer.Ets do
   @doc false
   @impl true
   def resource_to_query(resource, api) do
-    %Query{
+    %Ash.DataLayer.Ets.Query{
       resource: resource,
       api: api
     }
@@ -316,7 +201,7 @@ defmodule Ash.DataLayer.Ets do
   @doc false
   @impl true
   def run_query(
-        %Query{
+        %Ash.DataLayer.Ets.Query{
           resource: resource,
           filter: filter,
           offset: offset,
@@ -562,7 +447,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defp get_records(resource, tenant) do
-    with {:ok, table} <- wrap_or_create_table(resource, tenant),
+    with {:ok, table} <- Ash.DataLayer.Ets.TableManager.wrap_or_create_table(resource, tenant),
          {:ok, record_tuples} <- ETS.Set.to_list(table),
          records <- Enum.map(record_tuples, &elem(&1, 1)) do
       cast_records(records, resource)
@@ -684,7 +569,8 @@ defmodule Ash.DataLayer.Ets do
         {attr, Ash.Changeset.get_attribute(changeset, attr)}
       end)
 
-    with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
+    with {:ok, table} <-
+           Ash.DataLayer.Ets.TableManager.wrap_or_create_table(resource, changeset.tenant),
          {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
          record <- unload_relationships(resource, record),
          {:ok, record} <-
@@ -751,7 +637,7 @@ defmodule Ash.DataLayer.Ets do
   defp do_destroy(resource, record, tenant) do
     pkey = Map.take(record, Ash.Resource.Info.primary_key(resource))
 
-    with {:ok, table} <- wrap_or_create_table(resource, tenant),
+    with {:ok, table} <- Ash.DataLayer.Ets.TableManager.wrap_or_create_table(resource, tenant),
          {:ok, _} <- ETS.Set.delete(table, pkey) do
       :ok
     else
@@ -764,7 +650,8 @@ defmodule Ash.DataLayer.Ets do
   def update(resource, changeset, pkey \\ nil) do
     pkey = pkey || pkey_map(resource, changeset.data)
 
-    with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
+    with {:ok, table} <-
+           Ash.DataLayer.Ets.TableManager.wrap_or_create_table(resource, changeset.tenant),
          {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
          {:ok, record} <-
            do_update(table, {pkey, record}, resource),
@@ -833,33 +720,5 @@ defmodule Ash.DataLayer.Ets do
     |> Enum.reduce(record, fn relationship, record ->
       Map.put(record, relationship.name, Map.get(empty, relationship.name))
     end)
-  end
-
-  # sobelow_skip ["DOS.StringToAtom"]
-  defp wrap_or_create_table(resource, tenant) do
-    if Ash.DataLayer.Ets.Info.private?(resource) do
-      configured_table = Ash.DataLayer.Ets.Info.table(resource)
-
-      case Process.get({:ash_ets_table, configured_table, tenant}) do
-        nil ->
-          case ETS.Set.new(
-                 protection: :private,
-                 ordered: true,
-                 read_concurrency: true
-               ) do
-            {:ok, table} ->
-              Process.put({:ash_ets_table, configured_table, tenant}, table)
-              {:ok, table}
-
-            {:error, error} ->
-              {:error, error}
-          end
-
-        tab ->
-          {:ok, tab}
-      end
-    else
-      TableManager.start(resource, tenant)
-    end
   end
 end
