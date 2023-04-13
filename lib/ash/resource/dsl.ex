@@ -454,6 +454,9 @@ defmodule Ash.Resource.Dsl do
     schema: Ash.Resource.Actions.Create.opt_schema(),
     modules: [:manual],
     no_depend_modules: [:touches_resources],
+    deprecations: [
+      manual?: "Use the `manual` option instead, and provide an implementation."
+    ],
     entities: [
       changes: [
         @action_change,
@@ -559,6 +562,9 @@ defmodule Ash.Resource.Dsl do
         @action_argument
       ]
     ],
+    deprecations: [
+      manual?: "Use the `manual` option instead, and provide an implementation."
+    ],
     no_depend_modules: [:touches_resources],
     target: Ash.Resource.Actions.Update,
     schema: Ash.Resource.Actions.Update.opt_schema(),
@@ -582,6 +588,9 @@ defmodule Ash.Resource.Dsl do
       Ash.Resource.Change.Builtins,
       Ash.Resource.Validation.Builtins,
       Ash.Filter.TemplateHelpers
+    ],
+    deprecations: [
+      manual?: "Use the `manual` option instead, and provide an implementation."
     ],
     no_depend_modules: [:touches_resources],
     entities: [
