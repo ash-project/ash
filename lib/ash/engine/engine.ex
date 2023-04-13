@@ -100,10 +100,10 @@ defmodule Ash.Engine do
 
           resources ->
             notify? =
-              if Process.get(:ash_engine_started_transaction?) do
+              if Process.get(:ash_started_transaction?) do
                 false
               else
-                Process.put(:ash_engine_started_transaction?, true)
+                Process.put(:ash_started_transaction?, true)
                 true
               end
 
@@ -124,20 +124,14 @@ defmodule Ash.Engine do
               )
               |> case do
                 {:ok, result} ->
-                  saved_notifications = Process.delete(:ash_engine_notifications) || []
+                  if notify? do
+                    saved_notifications = Process.delete(:ash_notifications) || []
 
-                  if opts[:return_notifications?] do
-                    {:ok,
-                     %{
-                       result
-                       | resource_notifications:
-                           result.resource_notifications ++ saved_notifications
-                     }}
-                  else
-                    remaining_notifications =
-                      Ash.Notifier.notify(result.resource_notifications ++ saved_notifications)
+                    remaining_notifications = result.resource_notifications ++ saved_notifications
 
                     {:ok, %{result | resource_notifications: remaining_notifications}}
+                  else
+                    {:ok, result}
                   end
 
                 {:error, error} ->
@@ -145,7 +139,7 @@ defmodule Ash.Engine do
               end
             after
               if notify? do
-                Process.delete(:ash_engine_started_transaction?)
+                Process.delete(:ash_started_transaction?)
               end
             end
         end
@@ -164,23 +158,17 @@ defmodule Ash.Engine do
     |> case do
       {:ok, %{resource_notifications: resource_notifications} = result} ->
         notifications =
-          if opts[:return_notifications?] do
-            resource_notifications
+          if Process.get(:ash_started_transaction?) && !opts[:return_notifications?] do
+            current_notifications = Process.get(:ash_notifications, [])
+
+            Process.put(
+              :ash_notifications,
+              current_notifications ++ resource_notifications
+            )
+
+            []
           else
-            notifications = Ash.Notifier.notify(resource_notifications)
-
-            if Process.get(:ash_engine_started_transaction?) do
-              current_notifications = Process.get(:ash_engine_notifications, [])
-
-              Process.put(
-                :ash_engine_notifications,
-                current_notifications ++ notifications
-              )
-
-              []
-            else
-              notifications
-            end
+            resource_notifications
           end
 
         {:ok, %{result | resource_notifications: notifications}}

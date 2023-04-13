@@ -89,6 +89,7 @@ defmodule Ash.Actions.Create do
       timeout: opts[:timeout],
       upsert_identity: upsert_identity,
       upsert_keys: upsert_keys,
+      return_notifications?: opts[:return_notifications?],
       authorize?: authorize?,
       actor: actor,
       tenant: opts[:tenant],
@@ -459,6 +460,7 @@ defmodule Ash.Actions.Create do
                     Keyword.get(request_opts, :transaction?, true) && action.transaction?,
                   timeout: request_opts[:timeout],
                   tracer: request_opts[:tracer],
+                  return_notifications?: request_opts[:return_notifications?],
                   transaction_metadata: %{
                     type: :create,
                     metadata: %{

@@ -1563,32 +1563,51 @@ defmodule Ash.Changeset do
           |> Enum.concat(changeset.action.touches_resources)
           |> Enum.uniq()
 
-        Process.put(
-          :ash_after_transaction,
-          Process.get(:ash_after_transaction, []) ++ changeset.after_transaction
-        )
+        notify? =
+          if Process.get(:ash_started_transaction?) do
+            false
+          else
+            Process.put(:ash_started_transaction?, true)
+            true
+          end
 
-        resources
-        |> Enum.reject(&Ash.DataLayer.in_transaction?/1)
-        |> Ash.DataLayer.transaction(
-          fn ->
-            case run_around_actions(changeset, func) do
-              {:error, error} ->
-                Ash.DataLayer.rollback(changeset.resource, error)
+        try do
+          resources
+          |> Enum.reject(&Ash.DataLayer.in_transaction?/1)
+          |> Ash.DataLayer.transaction(
+            fn ->
+              case run_around_actions(changeset, func) do
+                {:error, error} ->
+                  Ash.DataLayer.rollback(changeset.resource, error)
 
-              other ->
-                other
-            end
-          end,
-          changeset.timeout || :infinity,
-          opts[:transaction_metadata]
-        )
-        |> case do
-          {:ok, result} ->
-            result
+                other ->
+                  other
+              end
+            end,
+            changeset.timeout || :infinity,
+            opts[:transaction_metadata]
+          )
+          |> case do
+            {:ok, {:ok, value, changeset, instructions}} ->
+              notifications =
+                if notify? && !opts[:return_notifications?] do
+                  Enum.concat(
+                    instructions[:notifications] || [],
+                    Process.delete(:ash_notifications) || []
+                  )
+                else
+                  instructions[:notifications] || []
+                end
 
-          {:error, error} ->
-            {:error, error}
+              {:ok, value, changeset, Map.put(instructions, :notifications, notifications)}
+
+            {:error, error} ->
+              {:error, error}
+          end
+        after
+          if notify? do
+            Process.delete(:ash_started_transaction?)
+          end
         end
       end)
     else
@@ -1607,6 +1626,30 @@ defmodule Ash.Changeset do
           run_around_actions(changeset, func)
         end
       end)
+    end
+    |> case do
+      {:ok, value, changeset, instructions} ->
+        if opts[:return_notifications?] do
+          {:ok, value, changeset, instructions}
+        else
+          if Process.get(:ash_started_transaction?) do
+            current_notifications = Process.get(:ash_notifications, [])
+
+            Process.put(
+              :ash_notifications,
+              current_notifications ++ (instructions[:notifications] || [])
+            )
+
+            {:ok, value, changeset, Map.put(instructions, :notifications, [])}
+          else
+            notifications = Ash.Notifier.notify(instructions[:notifications] || [])
+
+            {:ok, value, changeset, Map.put(instructions, :notifications, notifications)}
+          end
+        end
+
+      other ->
+        other
     end
   end
 

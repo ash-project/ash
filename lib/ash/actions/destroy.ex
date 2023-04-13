@@ -94,6 +94,7 @@ defmodule Ash.Actions.Destroy do
       authorize?: authorize?,
       actor: actor,
       timeout: opts[:timeout] || changeset.timeout || Ash.Api.Info.timeout(api),
+      return_notifications?: opts[:return_notifications?],
       tracer: opts[:tracer],
       timeout: opts[:timeout],
       tenant: opts[:tenant]
@@ -327,6 +328,7 @@ defmodule Ash.Actions.Destroy do
                 transaction?:
                   Keyword.get(request_opts, :transaction?, true) && action.transaction?,
                 timeout: request_opts[:timeout],
+                return_notifications?: request_opts[:return_notifications?],
                 transaction_metadata: %{
                   type: :destroy,
                   metadata: %{
