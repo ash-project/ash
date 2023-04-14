@@ -31,7 +31,7 @@ defmodule Ash.DataLayer.Ets do
   }
 
   @moduledoc """
-  An ETS (Erlang Term Storage) backed Ash Datalayer, for testing and lightweight usage.
+  An ETS (Erlang Term Storage) backed Ash DataLayer, for testing and lightweight usage.
 
   Remember, this does not have support for transactions! This is not recommended for production
   use, especially in multi-user applications. It can, however, be great for prototyping.
