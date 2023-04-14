@@ -125,11 +125,11 @@ defmodule Ash.DataLayer do
             ) ::
               {:ok, list(Ash.Resource.t())} | {:error, term}
   @callback create(Ash.Resource.t(), Ash.Changeset.t()) ::
-              {:ok, Ash.Resource.t()} | {:error, term}
+              {:ok, Ash.Resource.record()} | {:error, term}
   @callback upsert(Ash.Resource.t(), Ash.Changeset.t(), list(atom)) ::
-              {:ok, Ash.Resource.t()} | {:error, term}
+              {:ok, Ash.Resource.record()} | {:error, term}
   @callback update(Ash.Resource.t(), Ash.Changeset.t()) ::
-              {:ok, Ash.Resource.t()} | {:error, term}
+              {:ok, Ash.Resource.record()} | {:error, term}
   @callback add_aggregate(
               data_layer_query(),
               Ash.Query.Aggregate.t(),

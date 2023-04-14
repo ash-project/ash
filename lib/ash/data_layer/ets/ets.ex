@@ -115,57 +115,38 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, {:sort, _}), do: true
   def can?(_, _), do: false
 
-  @doc false
   @impl true
-  def resource_to_query(resource, api) do
-    %Ash.DataLayer.Ets.Query{
-      resource: resource,
-      api: api
-    }
-  end
+  defdelegate resource_to_query(resource, api), to: Ash.DataLayer.Ets.Query, as: :init
+
+  @impl true
+  defdelegate limit(query, limit, resource), to: Ash.DataLayer.Ets.Query
+
+  @impl true
+  defdelegate offset(query, offset, resource), to: Ash.DataLayer.Ets.Query
+
+  @impl true
+  defdelegate add_calculation(query, calculation, expression, resource),
+    to: Ash.DataLayer.Ets.Query
+
+  @impl true
+  defdelegate add_aggregate(query, aggregate, resource), to: Ash.DataLayer.Ets.Query
+
+  @impl true
+  defdelegate set_tenant(resource, query, resource), to: Ash.DataLayer.Ets.Query
+
+  @impl true
+  defdelegate filter(query, filter, resource), to: Ash.DataLayer.Ets.Query
+
+  @impl true
+  defdelegate sort(query, sort, resource), to: Ash.DataLayer.Ets.Query
 
   @doc false
   @impl true
-  def limit(query, limit, _), do: {:ok, %{query | limit: limit}}
-
-  @doc false
-  @impl true
-  def offset(query, offset, _), do: {:ok, %{query | offset: offset}}
-
-  @doc false
-  @impl true
-  def add_calculation(query, calculation, _, _),
-    do: {:ok, %{query | calculations: [calculation | query.calculations]}}
-
-  @doc false
-  @impl true
-  def add_aggregate(query, aggregate, _),
-    do: {:ok, %{query | aggregates: [aggregate | query.aggregates]}}
-
-  @doc false
-  @impl true
-  def set_tenant(_resource, query, tenant) do
-    {:ok, %{query | tenant: tenant}}
-  end
-
-  @doc false
-  @impl true
-  def filter(query, filter, _resource) do
-    if query.filter do
-      {:ok, %{query | filter: Ash.Filter.add_to_filter!(query.filter, filter)}}
-    else
-      {:ok, %{query | filter: filter}}
-    end
-  end
-
-  @doc false
-  @impl true
-  def sort(query, sort, _resource) do
-    {:ok, %{query | sort: sort}}
-  end
-
-  @doc false
-  @impl true
+  @spec run_aggregate_query(
+          Ash.DataLayer.Ets.Query.t(),
+          [Ash.Query.Aggregate.t()],
+          Ash.Resource.t()
+        ) :: {:ok, %{optional(atom) => any}} | {:error, Ash.Error.t()}
   def run_aggregate_query(%{api: api} = query, aggregates, resource) do
     case run_query(query, resource) do
       {:ok, results} ->
@@ -200,6 +181,8 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
+  @spec run_query(Ash.DataLayer.Ets.Query.t(), Ash.Resource.t()) ::
+          {:ok, [Ash.Resource.record()]} | {:error, Ash.Error.t()}
   def run_query(
         %Ash.DataLayer.Ets.Query{
           resource: resource,
@@ -455,6 +438,8 @@ defmodule Ash.DataLayer.Ets do
   end
 
   @doc false
+  @spec cast_records([Ash.Resource.record()], Ash.Resource.t()) ::
+          {:ok, [%{optional(atom) => any}]} | {:error, any}
   def cast_records(records, resource) do
     records
     |> Enum.reduce_while({:ok, []}, fn record, {:ok, casted} ->
@@ -476,6 +461,8 @@ defmodule Ash.DataLayer.Ets do
   end
 
   @doc false
+  @spec cast_record(Ash.Resource.record(), Ash.Resource.t()) ::
+          {:ok, %{optional(atom) => any}} | {:error, any}
   def cast_record(record, resource) do
     resource
     |> Ash.Resource.Info.attributes()
@@ -561,6 +548,8 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
+  @spec create(Ash.Resource.t(), Ash.Changeset.t()) ::
+          {:ok, Ash.Resource.record()} | {:error, Ash.Error.t()}
   def create(resource, changeset) do
     pkey =
       resource
@@ -630,6 +619,7 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
+  @spec destroy(Ash.Resource.t(), Ash.Changeset.t()) :: :ok | {:error, Ash.Error.t()}
   def destroy(resource, %{data: record} = changeset) do
     do_destroy(resource, record, changeset.tenant)
   end
@@ -647,6 +637,8 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
+  @spec update(Ash.Resource.t(), Ash.Changeset.t(), nil | %{optional(atom) => any}) ::
+          :ok | {:error, Ash.Error.t()}
   def update(resource, changeset, pkey \\ nil) do
     pkey = pkey || pkey_map(resource, changeset.data)
 
@@ -676,6 +668,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   @doc false
+  @spec pkey_map(Ash.Resource.t(), Ash.Resource.record()) :: %{optional(atom) => any}
   def pkey_map(resource, data) do
     resource
     |> Ash.Resource.Info.primary_key()

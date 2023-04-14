@@ -55,6 +55,8 @@ defmodule Ash.Query do
     valid?: true
   ]
 
+  @type sort :: [atom | {atom, :asc | :desc}]
+
   @type t :: %__MODULE__{
           __validated_for_action__: atom | nil,
           action: Ash.Resource.Actions.Read.t() | nil,
@@ -74,7 +76,7 @@ defmodule Ash.Query do
           aggregates: %{optional(atom) => Ash.Filter.t()},
           arguments: %{optional(atom) => any},
           before_action: [(t -> t)],
-          calculations: %{optional(atom) => :wat},
+          calculations: %{optional(atom) => Ash.Query.Calculation.t()},
           context: map,
           errors: [Ash.Error.t()],
           limit: nil | non_neg_integer(),
@@ -83,7 +85,7 @@ defmodule Ash.Query do
           params: %{optional(atom | binary) => any},
           phase: :preparing | :before_action | :after_action | :executing,
           select: nil | [atom],
-          sort: [atom | {atom, :asc | :desc}],
+          sort: sort,
           valid?: boolean
         }
 
