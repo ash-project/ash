@@ -313,7 +313,8 @@ defmodule Ash.Actions.Create do
                       )
                       |> Map.get(:keys)
 
-                    if changeset.tenant do
+                    if changeset.tenant &&
+                         Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do
                       [Ash.Resource.Info.multitenancy_attribute(changeset.resource) | keys]
                     else
                       keys
