@@ -964,7 +964,9 @@ defmodule Ash.Flow.Executor.AshEngine do
           input: action_input,
           tenant: tenant,
           wait_for: wait_for,
-          halt_if: halt_if
+          halt_if: halt_if,
+          upsert?: upsert?,
+          upsert_identity: upsert_identity
         } = create
 
         List.wrap(
@@ -1003,6 +1005,8 @@ defmodule Ash.Flow.Executor.AshEngine do
                 authorize?: opts[:authorize?],
                 actor: opts[:actor],
                 tracer: opts[:tracer],
+                upsert?: upsert?,
+                upsert_identity: upsert_identity,
                 changeset_dependencies: request_deps,
                 tenant: fn context ->
                   context = Ash.Helpers.deep_merge_maps(context, additional_context)
