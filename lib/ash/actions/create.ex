@@ -303,14 +303,21 @@ defmodule Ash.Actions.Create do
                     Ash.Resource.Info.primary_key(changeset.resource)
 
                   identity ->
-                    changeset.resource
-                    |> Ash.Resource.Info.identities()
-                    |> Enum.find(&(&1.name == identity))
-                    |> Kernel.||(
-                      raise ArgumentError,
-                            "No identity found for #{inspect(changeset.resource)} called #{inspect(identity)}"
-                    )
-                    |> Map.get(:keys)
+                    keys =
+                      changeset.resource
+                      |> Ash.Resource.Info.identities()
+                      |> Enum.find(&(&1.name == identity))
+                      |> Kernel.||(
+                        raise ArgumentError,
+                              "No identity found for #{inspect(changeset.resource)} called #{inspect(identity)}"
+                      )
+                      |> Map.get(:keys)
+
+                    if changeset.tenant do
+                      [Ash.Resource.Info.multitenancy_attribute(changeset.resource) | keys]
+                    else
+                      keys
+                    end
                 end
 
               changeset = set_tenant(changeset)
