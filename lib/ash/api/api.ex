@@ -804,6 +804,40 @@ defmodule Ash.Api do
     end
   end
 
+  @callback count(Ash.Query.t(), opts :: Keyword.t()) :: {:ok, integer} | {:error, Ash.Error.t()}
+  @callback count!(Ash.Query.t(), opts :: Keyword.t()) :: integer | no_return
+  @doc "Get the first of a given field from the given query"
+  @callback first(Ash.Query.t(), field :: atom, opts :: Keyword.t()) ::
+              {:ok, term} | {:error, Ash.Error.t()}
+  @doc "Get the first of a given field from the given query, raising any errors"
+  @callback first!(Ash.Query.t(), field :: atom, opts :: Keyword.t()) :: term | no_return
+  @doc "Get the sum of a given field from the given query"
+  @callback sum(Ash.Query.t(), field :: atom, opts :: Keyword.t()) ::
+              {:ok, term} | {:error, Ash.Error.t()}
+  @doc "Get the sum of a given field from the given query, raising any errors"
+  @callback sum!(Ash.Query.t(), field :: atom, opts :: Keyword.t()) :: term | no_return
+  @doc "Get the min of a given field from the given query"
+  @callback min(Ash.Query.t(), field :: atom, opts :: Keyword.t()) ::
+              {:ok, term} | {:error, Ash.Error.t()}
+  @doc "Get the min of a given field from the given query, raising any errors"
+  @callback min!(Ash.Query.t(), field :: atom, opts :: Keyword.t()) :: term | no_return
+  @doc "Get the max of a given field from the given query"
+  @callback max(Ash.Query.t(), field :: atom, opts :: Keyword.t()) ::
+              {:ok, term} | {:error, Ash.Error.t()}
+  @doc "Get the max of a given field from the given query, raising any errors"
+  @callback max!(Ash.Query.t(), field :: atom, opts :: Keyword.t()) :: term | no_return
+  @doc "Get the avg of a given field from the given query"
+  @callback avg(Ash.Query.t(), field :: atom, opts :: Keyword.t()) ::
+              {:ok, term} | {:error, Ash.Error.t()}
+  @doc "Get the avg of a given field from the given query, raising any errors"
+  @callback avg!(Ash.Query.t(), field :: atom, opts :: Keyword.t()) :: term | no_return
+  @doc "Get list of a given field from the given query"
+  @callback list(Ash.Query.t(), field :: atom, opts :: Keyword.t()) ::
+              {:ok, list(term)} | {:error, Ash.Error.t()}
+
+  @doc "Get the list of a given field from the given query, raising any errors"
+  @callback list!(Ash.Query.t(), field :: atom, opts :: Keyword.t()) :: list(term) | no_return
+
   @doc """
   Returns wether or not the user can perform the action, or raises on errors.
 

@@ -61,9 +61,6 @@ defmodule Ash.Api.Interface do
         end
       end
 
-      @doc """
-      Get the count of results that a query would return, raising any errors.
-      """
       def count!(query, opts \\ []) do
         query = Ash.Query.to_query(query)
 
@@ -91,9 +88,6 @@ defmodule Ash.Api.Interface do
         end
       end
 
-      @doc """
-      Get the count of results that a query would return.
-      """
       def count(query, opts \\ []) do
         query = Ash.Query.to_query(query)
 
@@ -122,9 +116,6 @@ defmodule Ash.Api.Interface do
       end
 
       for kind <- [:first, :sum, :list, :max, :min, :avg] do
-        @doc """
-        Get the #{kind} of the given field from the given query.
-        """
         def unquote(kind)(query, field, opts \\ []) do
           query = Ash.Query.to_query(query)
 
@@ -157,9 +148,6 @@ defmodule Ash.Api.Interface do
           end
         end
 
-        @doc """
-        Get the #{kind} of the given field from the given query, raising any errors.
-        """
         # sobelow_skip ["DOS.BinToAtom"]
         def unquote(:"#{kind}!")(query, field, opts \\ []) do
           query = Ash.Query.to_query(query)
