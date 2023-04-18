@@ -133,6 +133,11 @@ defmodule Ash.Resource.Calculation do
 
   def schema, do: @schema
 
+  def expr_calc(expr) when is_function(expr) do
+    {:error,
+     "Inline function calculations expect a function with arity 2. Got #{Function.info(expr)[:arity]}"}
+  end
+
   def expr_calc(expr) do
     {:ok, {Ash.Resource.Calculation.Expression, expr: expr}}
   end
