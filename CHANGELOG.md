@@ -5,6 +5,37 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.7.0](https://github.com/ash-project/ash/compare/v2.6.31...v2.7.0) (2023-04-20)
+
+
+
+
+### Features:
+
+* add `fields/1` and `public_fields/1` to Ash.Resource.Info (#569)
+
+### Bug Fixes:
+
+* don't optimize across `or` boundaries
+
+* handle calculation deps w/ multiple nested relationship paths
+
+* only do tenant things in ETS if strategy is `:context`
+
+* add the spark function version of calculations
+
+* proper error message on invalid inline function calculation
+
+* Add tenant attribute to identity attributes on upserts (#565)
+
+### Improvements:
+
+* Add upserts option to flow's create step (#566)
+
+* Change storage type of Ash.Type.Term to :binary (#561)
+
+* automatically gather up notifications
+
 ## [v2.6.31](https://github.com/ash-project/ash/compare/v2.6.30...v2.6.31) (2023-04-11)
 
 
