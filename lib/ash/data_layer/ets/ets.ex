@@ -84,7 +84,7 @@ defmodule Ash.DataLayer.Ets do
 
     def start(resource, tenant) do
       table =
-        if tenant do
+        if tenant && Ash.Resource.Info.multitenancy_strategy(resource) == :context do
           Module.concat(to_string(Ash.DataLayer.Ets.Info.table(resource)), to_string(tenant))
         else
           Ash.DataLayer.Ets.Info.table(resource)
@@ -151,6 +151,11 @@ defmodule Ash.DataLayer.Ets do
   @doc "Stops the storage for a given resource/tenant (deleting all of the data)"
   # sobelow_skip ["DOS.StringToAtom"]
   def stop(resource, tenant \\ nil) do
+    tenant =
+      if Ash.Resource.Info.multitenancy_strategy(resource) == :context do
+        tenant
+      end
+
     if Ash.DataLayer.Ets.Info.private?(resource) do
       case Process.get({:ash_ets_table, resource, tenant}) do
         nil ->
@@ -161,7 +166,7 @@ defmodule Ash.DataLayer.Ets do
       end
     else
       table =
-        if tenant do
+        if tenant && Ash.Resource.Info.multitenancy_strategy(resource) == :context do
           String.to_atom(to_string(tenant) <> to_string(resource))
         else
           resource
@@ -837,6 +842,11 @@ defmodule Ash.DataLayer.Ets do
 
   # sobelow_skip ["DOS.StringToAtom"]
   defp wrap_or_create_table(resource, tenant) do
+    tenant =
+      if Ash.Resource.Info.multitenancy_strategy(resource) == :context do
+        tenant
+      end
+
     if Ash.DataLayer.Ets.Info.private?(resource) do
       configured_table = Ash.DataLayer.Ets.Info.table(resource)
 
