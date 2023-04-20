@@ -2511,20 +2511,21 @@ defmodule Ash.Actions.Read do
              end) do
           {[], rest} ->
             rest
-            |> Enum.reduce(results, fn {%{
-                                          type: :calculation,
-                                          path: path,
-                                          calculation: calculation
-                                        }, config},
-                                       results ->
-              resource = Ash.Resource.Info.related(query.resource, Enum.map(path, &elem(&1, 0)))
+            |> Enum.reduce(results, fn
+              {%{
+                 type: :calculation,
+                 path: path,
+                 calculation: calculation
+               }, config},
+              results ->
+                resource = Ash.Resource.Info.related(query.resource, Enum.map(path, &elem(&1, 0)))
 
-              do_add_calculation_values(resource, results, %{
-                {calculation.name, calculation.load} => config
-              })
+                do_add_calculation_values(resource, results, %{
+                  {calculation.name, calculation.load} => config
+                })
             end)
 
-          {[{%{relationship: relationship, query: query}, rel_config}], rest} ->
+          {[{%{relationship: relationship, query: query, path: path}, rel_config}], rest} ->
             relationship_data =
               rest
               |> Enum.reduce(rel_config[:data], fn
@@ -2543,8 +2544,13 @@ defmodule Ash.Actions.Read do
                   results
               end)
 
+            rel_path =
+              path
+              |> Enum.map(&elem(&1, 0))
+              |> Enum.concat([relationship])
+
             Ash.Actions.Load.attach_loads(results, %{
-              [relationship] => %{data: relationship_data}
+              rel_path => %{data: relationship_data}
             })
         end
       end
