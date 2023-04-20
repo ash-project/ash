@@ -101,11 +101,37 @@ defmodule Ash.Test.Resource.InfoTest do
     test "get only public fields" do
       assert %Resource.Attribute{name: :title} = Info.public_field(Post, :title)
       assert nil == Info.public_field(Post, :points)
+
+      assert [
+               :authors,
+               :comments,
+               :contents,
+               :count_of_comments,
+               :id,
+               :metadata,
+               :private,
+               :tags,
+               :title
+             ] = Info.public_fields(Post) |> Enum.map(& &1.name) |> Enum.sort()
     end
 
     test "get any fields" do
       assert %Resource.Attribute{name: :title} = Info.public_field(Post, :title)
       assert %Resource.Attribute{name: :points} = Info.field(Post, :points)
+
+      assert [
+               :authors,
+               :comments,
+               :contents,
+               :count_of_comments,
+               :id,
+               :metadata,
+               :points,
+               :private,
+               :tags,
+               :tags_join_assoc,
+               :title
+             ] = Info.fields(Post) |> Enum.map(& &1.name) |> Enum.sort()
     end
 
     test "determine if field is sortable" do

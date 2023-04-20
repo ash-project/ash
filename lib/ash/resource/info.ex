@@ -603,6 +603,20 @@ defmodule Ash.Resource.Info do
     end
   end
 
+  @doc "Returns all attributes, aggregates, calculations and relationships of a resource"
+  @spec fields(Spark.Dsl.t() | Ash.Resource.t()) :: [
+          Ash.Resource.Attribute.t()
+          | Ash.Resource.Aggregate.t()
+          | Ash.Resource.Calculation.t()
+          | Ash.Resource.Relationships.relationship()
+        ]
+  def fields(resource) do
+    Extension.get_entities(resource, [:attributes])
+    |> Enum.concat(Extension.get_entities(resource, [:aggregates]))
+    |> Enum.concat(Extension.get_entities(resource, [:calculations]))
+    |> Enum.concat(Extension.get_entities(resource, [:relationships]))
+  end
+
   @doc "Get a field from a resource by name"
   @spec field(Spark.Dsl.t() | Ash.Resource.t(), String.t() | atom) ::
           Ash.Resource.Attribute.t()
@@ -616,6 +630,19 @@ defmodule Ash.Resource.Info do
         aggregate(resource, name) ||
         calculation(resource, name) ||
         relationship(resource, name)
+
+  @doc "Returns all public attributes, aggregates, calculations and relationships of a resource"
+  @spec public_fields(Spark.Dsl.t() | Ash.Resource.t()) :: [
+          Ash.Resource.Attribute.t()
+          | Ash.Resource.Aggregate.t()
+          | Ash.Resource.Calculation.t()
+          | Ash.Resource.Relationships.relationship()
+        ]
+  def public_fields(resource) do
+    resource
+    |> fields()
+    |> Enum.reject(& &1.private?)
+  end
 
   @doc "Get a public field from a resource by name"
   @spec public_field(Spark.Dsl.t() | Ash.Resource.t(), String.t() | atom) ::
