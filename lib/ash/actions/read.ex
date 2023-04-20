@@ -2263,7 +2263,21 @@ defmodule Ash.Actions.Read do
   end
 
   defp run_query(
-         %{resource: resource, action: %{manual: nil}} = ash_query,
+         %{action: %{manual: {mod, opts}}} = ash_query,
+         query,
+         context,
+         load_attributes?,
+         _aggregates_at_runtime,
+         _calculations_at_runtime
+       ) do
+    ash_query
+    |> mod.read(query, opts, context)
+    |> Helpers.select(ash_query)
+    |> Helpers.load_runtime_types(ash_query, load_attributes?)
+  end
+
+  defp run_query(
+         %{resource: resource} = ash_query,
          query,
          _context,
          load_attributes?,
@@ -2278,20 +2292,6 @@ defmodule Ash.Actions.Read do
       |> Helpers.select(ash_query)
       |> Helpers.load_runtime_types(ash_query, load_attributes?)
     end
-  end
-
-  defp run_query(
-         %{action: %{manual: {mod, opts}}} = ash_query,
-         query,
-         context,
-         load_attributes?,
-         _aggregates_at_runtime,
-         _calculations_at_runtime
-       ) do
-    ash_query
-    |> mod.read(query, opts, context)
-    |> Helpers.select(ash_query)
-    |> Helpers.load_runtime_types(ash_query, load_attributes?)
   end
 
   @doc false
