@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.7.1](https://github.com/ash-project/ash/compare/v2.7.0...v2.7.1) (2023-04-21)
+
+
+
+
+### Bug Fixes:
+
+* more fixes to optimized boolean filter building
+
 ## [v2.7.0](https://github.com/ash-project/ash/compare/v2.6.31...v2.7.0) (2023-04-20)
 
 
