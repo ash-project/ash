@@ -783,13 +783,15 @@ defmodule Ash.Filter do
   """
   def find_simple_equality_predicate(expression, attribute) do
     expression
-    |> find(&simple_eq?(&1, attribute))
+    |> find(&simple_eq?(&1, attribute), false)
     |> case do
       nil ->
         nil
 
-      %{right: right} ->
-        right
+      %{right: right, left: left} ->
+        Enum.find([right, left], fn value ->
+          !Ash.Filter.TemplateHelpers.expr?(value)
+        end)
     end
   end
 
