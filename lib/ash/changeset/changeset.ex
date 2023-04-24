@@ -1403,6 +1403,13 @@ defmodule Ash.Changeset do
       name when is_atom(name) ->
         Ash.Resource.Info.attribute(changeset.resource, name)
     end)
+    |> then(fn attributes ->
+      if private_and_belongs_to? do
+        attributes
+      else
+        Enum.reject(attributes, &belongs_to_attr_of_rel_being_managed?(&1, changeset))
+      end
+    end)
     |> Enum.reduce(changeset, fn required_attribute, changeset ->
       if changing_attribute?(changeset, required_attribute.name) do
         if is_nil(get_attribute(changeset, required_attribute.name)) do
@@ -1448,6 +1455,13 @@ defmodule Ash.Changeset do
       name when is_atom(name) ->
         Ash.Resource.Info.attribute(changeset.resource, name)
     end)
+    |> then(fn attributes ->
+      if private_and_belongs_to? do
+        attributes
+      else
+        Enum.reject(attributes, &belongs_to_attr_of_rel_being_managed?(&1, changeset))
+      end
+    end)
     |> Enum.reduce(changeset, fn required_attribute, changeset ->
       if changing_attribute?(changeset, required_attribute.name) do
         if is_nil(get_attribute(changeset, required_attribute.name)) do
@@ -1469,6 +1483,13 @@ defmodule Ash.Changeset do
   end
 
   def require_values(changeset, _, _, _), do: changeset
+
+  defp belongs_to_attr_of_rel_being_managed?(attribute, changeset) do
+    Enum.any?(changeset.relationships, fn {key, _} ->
+      relationship = Ash.Resource.Info.relationship(changeset.resource, key)
+      relationship.type == :belongs_to && relationship.source_attribute == attribute.name
+    end)
+  end
 
   # Attributes that are private and/or are the source field of a belongs_to relationship
   # are typically not set by input, so they aren't required until the actual action
