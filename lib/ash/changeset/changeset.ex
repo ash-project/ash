@@ -1485,11 +1485,28 @@ defmodule Ash.Changeset do
   def require_values(changeset, _, _, _), do: changeset
 
   defp belongs_to_attr_of_rel_being_managed?(attribute, changeset) do
+    do_belongs_to_attr_of_rel_being_managed?(changeset, attribute) ||
+      belongs_to_attr_of_being_managed_through?(changeset, attribute)
+  end
+
+  defp do_belongs_to_attr_of_rel_being_managed?(changeset, attribute) do
     Enum.any?(changeset.relationships, fn {key, _} ->
       relationship = Ash.Resource.Info.relationship(changeset.resource, key)
       relationship.type == :belongs_to && relationship.source_attribute == attribute.name
     end)
   end
+
+  defp belongs_to_attr_of_being_managed_through?(
+         %{context: %{accessing_from: %{source: source, name: relationship}}},
+         attribute
+       ) do
+    case Ash.Resource.Info.relationship(source, relationship) do
+      %{type: :belongs_to} -> false
+      relationship -> relationship.destination_attribute == attribute.name
+    end
+  end
+
+  defp belongs_to_attr_of_being_managed_through?(_, _), do: false
 
   # Attributes that are private and/or are the source field of a belongs_to relationship
   # are typically not set by input, so they aren't required until the actual action
