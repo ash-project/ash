@@ -892,7 +892,7 @@ defmodule Ash.Actions.ManagedRelationships do
                       relationship,
                       join_keys,
                       input,
-                      api(changeset, relationship),
+                      changeset.api,
                       opts,
                       found,
                       current_value,
@@ -991,7 +991,7 @@ defmodule Ash.Actions.ManagedRelationships do
         )
         |> Ash.Changeset.set_context(join_relationship.context)
         |> Ash.Changeset.set_tenant(changeset.tenant)
-        |> api.create(return_notifications?: true)
+        |> join_api(relationship, api).create(return_notifications?: true)
         |> case do
           {:ok, _created, notifications} ->
             case key do
@@ -1051,7 +1051,7 @@ defmodule Ash.Actions.ManagedRelationships do
         )
         |> Ash.Changeset.set_context(relationship.context)
         |> Ash.Changeset.set_tenant(changeset.tenant)
-        |> api.update(return_notifications?: true)
+        |> api(changeset, relationship).update(return_notifications?: true)
         |> case do
           {:ok, updated, notifications} ->
             {:ok, [updated | current_value], notifications, [updated]}
@@ -1193,7 +1193,9 @@ defmodule Ash.Actions.ManagedRelationships do
             )
             |> Ash.Changeset.set_context(join_relationship.context)
             |> Ash.Changeset.set_tenant(changeset.tenant)
-            |> api(changeset, relationship).create(return_notifications?: true)
+            |> join_api(relationship, api(changeset, relationship)).create(
+              return_notifications?: true
+            )
             |> case do
               {:ok, _join_row, notifications} ->
                 {:ok, [created | current_value], regular_notifications ++ notifications,
@@ -1362,7 +1364,7 @@ defmodule Ash.Actions.ManagedRelationships do
             |> Ash.Query.set_context(join_relationship.context)
             |> Ash.Query.limit(1)
             |> Ash.Query.set_tenant(changeset.tenant)
-            |> api(changeset, relationship).read_one(
+            |> join_api(relationship, api).read_one(
               authorize?: opts[:authorize?],
               actor: actor
             )
@@ -1391,7 +1393,7 @@ defmodule Ash.Actions.ManagedRelationships do
                   )
                   |> Ash.Changeset.set_context(join_relationship.context)
                   |> Ash.Changeset.set_tenant(changeset.tenant)
-                  |> api.update(return_notifications?: true)
+                  |> join_api(relationship, api).update(return_notifications?: true)
                   # credo:disable-for-next-line Credo.Check.Refactor.Nesting
                   |> case do
                     {:ok, _updated_join, join_update_notifications} ->
@@ -1532,7 +1534,7 @@ defmodule Ash.Actions.ManagedRelationships do
             |> Ash.Query.set_context(join_relationship.context)
             |> Ash.Query.do_filter(relationship.filter)
             |> Ash.Query.sort(relationship.sort, prepend?: true)
-            |> api.read_one(
+            |> join_api(relationship, api).read_one(
               authorize?: opts[:authorize?],
               actor: actor
             )
@@ -1554,7 +1556,7 @@ defmodule Ash.Actions.ManagedRelationships do
                 )
                 |> Ash.Changeset.set_context(join_relationship.context)
                 |> Ash.Changeset.set_tenant(changeset.tenant)
-                |> api.destroy(return_notifications?: true)
+                |> join_api(relationship, api).destroy(return_notifications?: true)
                 |> case do
                   {:ok, join_notifications} ->
                     notifications = join_notifications ++ all_notifications
@@ -1672,7 +1674,7 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Ash.Query.limit(1)
     |> Ash.Query.set_tenant(tenant)
     |> Ash.Query.set_context(join_relationship.context)
-    |> api.read_one(authorize?: opts[:authorize?], actor: actor)
+    |> join_api(relationship, api).read_one(authorize?: opts[:authorize?], actor: actor)
     |> case do
       {:ok, result} ->
         result
@@ -1683,7 +1685,7 @@ defmodule Ash.Actions.ManagedRelationships do
         |> Ash.Changeset.for_destroy(action_name, %{}, actor: actor, authorize?: opts[:authorize?])
         |> Ash.Changeset.set_context(join_relationship.context)
         |> Ash.Changeset.set_tenant(tenant)
-        |> api.destroy(return_notifications?: true)
+        |> join_api(relationship, api).destroy(return_notifications?: true)
         |> case do
           {:ok, notifications} ->
             {:ok, notifications}
@@ -1776,7 +1778,7 @@ defmodule Ash.Actions.ManagedRelationships do
     )
     |> Ash.Query.limit(1)
     |> Ash.Query.set_tenant(tenant)
-    |> api.read_one(authorize?: opts[:authorize?], actor: actor)
+    |> join_api(relationship, api).read_one(authorize?: opts[:authorize?], actor: actor)
     |> case do
       {:ok, result} ->
         result
@@ -1787,7 +1789,7 @@ defmodule Ash.Actions.ManagedRelationships do
         |> Ash.Changeset.for_destroy(action_name, %{}, actor: actor, authorize?: opts[:authorize?])
         |> Ash.Changeset.set_context(join_relationship.context)
         |> Ash.Changeset.set_tenant(tenant)
-        |> api.destroy(return_notifications?: true)
+        |> join_api(relationship, api).destroy(return_notifications?: true)
         |> case do
           {:ok, notifications} ->
             {:ok, notifications}
@@ -1827,5 +1829,20 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Ash.Changeset.set_context(relationship.context)
     |> Ash.Changeset.set_tenant(tenant)
     |> api.destroy(return_notifications?: true)
+  end
+
+  defp join_api(relationship, api) do
+    join_relationship =
+      Ash.Resource.Info.relationship(relationship.source, relationship.join_relationship)
+
+    if join_relationship.api do
+      join_relationship.api
+    else
+      if relationship.api && Ash.Api.Info.resource(api, relationship.through) do
+        relationship.api
+      else
+        api
+      end
+    end
   end
 end
