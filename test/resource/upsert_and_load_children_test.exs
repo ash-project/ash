@@ -131,10 +131,7 @@ defmodule Ash.Test.Resource.UpsertAndLoadChildrenTest do
 
   defmodule ProductCatalog.Registry do
     @moduledoc false
-    use Ash.Registry,
-      extensions: [
-        Ash.Registry.ResourceValidations
-      ]
+    use Ash.Registry
 
     entries do
       entry(ProductCatalog.Product)

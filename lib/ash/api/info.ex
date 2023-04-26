@@ -1,7 +1,7 @@
 defmodule Ash.Api.Info do
   @moduledoc "Introspection tools for Ash.Api"
 
-  alias Ash.Error.Invalid.NoSuchResource
+  alias Ash.Error.Invalid.{NoSuchResource, ResourceNotAllowed}
 
   alias Spark.Dsl.Extension
 
@@ -123,7 +123,7 @@ defmodule Ash.Api.Info do
   end
 
   @doc "The allow MFA for an api"
-  @spec allow(Ash.Api.t()) :: mfa() | nil
+  @spec allow(Ash.Api.t() | Spark.Dsl.t()) :: mfa() | nil
   def allow(api) do
     Extension.get_opt(api, [:resources], :allow, nil, true)
   end
@@ -171,7 +171,7 @@ defmodule Ash.Api.Info do
   end
 
   @doc "Whether or not the api allows unregistered resources to be used with it"
-  @spec allow_unregistered?(Ash.Api.t()) :: atom | nil
+  @spec allow_unregistered?(Ash.Api.t() | Spark.Dsl.t()) :: atom | nil
   def allow_unregistered?(api) do
     Extension.get_opt(api, [:resources], :allow_unregistered?, nil)
   end
@@ -179,7 +179,7 @@ defmodule Ash.Api.Info do
   @doc """
   Returns `{:ok, resource}` if the resource can be used by the api, or `{:error, error}`.
   """
-  @spec resource(Ash.Api.t(), Ash.Resource.t()) ::
+  @spec resource(Ash.Api.t() | Spark.Dsl.t(), Ash.Resource.t()) ::
           {:ok, Ash.Resource.t()} | {:error, Ash.Error.t()}
   def resource(api, resource) do
     cond do
@@ -203,7 +203,17 @@ defmodule Ash.Api.Info do
         if allowed?(allow(api), resource) do
           {:ok, resource}
         else
-          {:error, NoSuchResource.exception(resource: resource)}
+          if Ash.Resource.Info.resource?(resource) do
+            api =
+              case api do
+                api when is_atom(api) -> api
+                dsl -> Extension.get_persisted(dsl, :module)
+              end
+
+            {:error, ResourceNotAllowed.exception(api: api, resource: resource)}
+          else
+            {:error, NoSuchResource.exception(resource: resource)}
+          end
         end
 
       resource ->

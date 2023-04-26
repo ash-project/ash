@@ -131,7 +131,7 @@ defmodule Ash.Test.SeedTest do
 
     relationships do
       belongs_to :post, Post do
-        api Ash.Test.SeedTest.Category
+        api Ash.Test.SeedTest.Api
       end
     end
   end

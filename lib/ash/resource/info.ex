@@ -145,7 +145,18 @@ defmodule Ash.Resource.Info do
   @doc """
   The short_name of the resource
   """
+  # sobelow_skip ["DOS.StringToAtom"]
   @spec short_name(Spark.Dsl.t() | Ash.Resource.t()) :: String.t() | nil
+  def short_name(resource) when is_map(resource) do
+    Extension.get_opt(resource, [:resource], :short_name, nil) ||
+      resource
+      |> Extension.get_persisted(:module)
+      |> Module.split()
+      |> List.last()
+      |> Macro.underscore()
+      |> String.to_atom()
+  end
+
   def short_name(resource) do
     Extension.get_opt(resource, [:resource], :short_name, nil) || resource.default_short_name()
   end

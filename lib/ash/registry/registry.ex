@@ -6,10 +6,7 @@ defmodule Ash.Registry do
 
   ```elixir
   defmodule MyApp.MyRegistry do
-    use Ash.Registry,
-      extensions: [Ash.Registry.ResourceValidations]
-      # This extension adds some simple validations, for example that
-      # all related resources are also present in this registry.
+    use Ash.Registry
 
     entries do
       entry MyApp.Resource
@@ -21,7 +18,13 @@ defmodule Ash.Registry do
 
   @type t :: module
 
-  use Spark.Dsl, default_extensions: [extensions: [Ash.Registry.Dsl]]
+  use Spark.Dsl,
+    default_extensions: [
+      extensions: [
+        Ash.Registry.Dsl,
+        Ash.Registry.ResourceValidations
+      ]
+    ]
 
   @deprecated "use Ash.Registry.Info.warn_on_empty?/1 instead"
   defdelegate warn_on_empty?(registry), to: Ash.Registry.Info

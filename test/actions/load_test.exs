@@ -197,7 +197,7 @@ defmodule Ash.Test.Actions.LoadTest do
 
     relationships do
       belongs_to :post, Post do
-        api Ash.Test.Actions.LoadTest.Category
+        api Ash.Test.Actions.LoadTest.Api
       end
     end
   end

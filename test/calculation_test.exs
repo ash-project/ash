@@ -17,12 +17,12 @@ defmodule Ash.Test.CalculationTest do
     end
 
     relationships do
-      belongs_to :source, Ash.Test.CalculationTest.Friend do
+      belongs_to :source, Ash.Test.CalculationTest.User do
         allow_nil? false
         primary_key? true
       end
 
-      belongs_to :target, Ash.Test.CalculationTest.Friend do
+      belongs_to :target, Ash.Test.CalculationTest.User do
         allow_nil? false
         primary_key? true
       end
@@ -461,7 +461,6 @@ defmodule Ash.Test.CalculationTest do
       entry User
       entry FriendLink
       entry Role
-      entry Account
       entry Actor
     end
   end
