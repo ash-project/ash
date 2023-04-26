@@ -146,6 +146,14 @@ defmodule Ash.Api do
   @doc false
   def read_opts_schema, do: @read_opts_schema
 
+  @doc """
+  Streams the results of a query.
+
+  This utilizes keyset pagination to accomplish this stream, and for that reason,
+  the action for the query must support keyset pagination.
+  """
+  @callback stream!(Ash.Query.t(), opts :: Keyword.t()) :: Enumerable.t(Ash.Resource.record())
+
   @offset_page_opts [
     offset: [
       type: :non_neg_integer,
@@ -1406,6 +1414,62 @@ defmodule Ash.Api do
     end
   end
 
+  @spec stream!(api :: module(), query :: Ash.Query.t(), opts :: Keyword.t()) ::
+          Enumerable.t(Ash.Resource.record())
+  def stream!(api, query, opts \\ []) do
+    query = Ash.Query.to_query(query)
+
+    query =
+      if query.action do
+        query
+      else
+        Ash.Query.for_read(
+          query,
+          Ash.Resource.Info.primary_action!(query.resource, :read).name
+        )
+      end
+
+    {batch_size, opts} =
+      Keyword.pop(
+        opts,
+        :batch_size,
+        query.action.pagination.default_limit || query.action.pagination.max_page_size || 100
+      )
+
+    Stream.resource(
+      fn -> nil end,
+      fn
+        false ->
+          {:halt, nil}
+
+        after_keyset ->
+          if is_nil(query.action.pagination) || !query.action.pagination.keyset? do
+            raise Ash.Error.Invalid.NonStreamableAction,
+              resource: query.resource,
+              action: query.action
+          end
+
+          keyset = if after_keyset != nil, do: [after: after_keyset], else: []
+          page_opts = Keyword.merge(keyset, limit: batch_size)
+
+          opts =
+            [
+              page: page_opts
+            ]
+            |> Keyword.merge(opts)
+
+          case api.read!(query, opts) do
+            %{more?: true, results: results} ->
+              {results, List.last(results).__metadata__.keyset}
+
+            %{results: results} ->
+              {results, false}
+          end
+      end,
+      & &1
+    )
+  end
+
   @doc false
   @spec read!(Ash.Api.t(), Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
           list(Ash.Resource.record()) | Ash.Page.page() | no_return
@@ -1512,8 +1576,6 @@ defmodule Ash.Api do
           | {Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | no_return
   def create!(api, changeset, opts) do
-    opts = Spark.OptionsHelpers.validate!(opts, @create_opts_schema)
-
     api
     |> create(changeset, opts)
     |> unwrap_or_raise!(opts[:stacktraces?])

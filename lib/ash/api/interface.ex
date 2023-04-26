@@ -212,6 +212,10 @@ defmodule Ash.Api.Interface do
         end
       end
 
+      def stream!(query, opts \\ []) do
+        Ash.Api.stream!(__MODULE__, query, opts)
+      end
+
       def read!(query, opts \\ [])
 
       def read!(query, opts) do
