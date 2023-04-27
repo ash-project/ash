@@ -4,9 +4,7 @@ defmodule Ash.Test.Flow.Flows.Halting do
 
   flow do
     argument :on_step, :atom do
-      allow_nil? false
       constraints one_of: [:a, :b, :c]
-      default :a
     end
 
     returns :c

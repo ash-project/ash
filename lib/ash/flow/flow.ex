@@ -168,12 +168,37 @@ defmodule Ash.Flow do
   defp cast_input(flow, params) do
     arguments = Ash.Flow.Info.arguments(flow)
 
-    Enum.reduce_while(params, {:ok, %{}}, fn {name, value}, {:ok, acc} ->
-      case Enum.find(arguments, &(&1.name == name || to_string(&1.name) == name)) do
-        nil ->
-          {:cont, {:ok, acc}}
+    Enum.reduce_while(arguments, {:ok, %{}}, fn arg, {:ok, acc} ->
+      value =
+        case Map.fetch(params, arg.name) do
+          :error ->
+            Map.fetch(params, to_string(arg.name))
 
-        arg ->
+          other ->
+            other
+        end
+
+      case value do
+        :error ->
+          if not is_nil(arg.default) do
+            value =
+              case arg.default do
+                {m, f, a} ->
+                  apply(m, f, a)
+
+                fun when is_function(fun, 0) ->
+                  fun.()
+
+                value ->
+                  value
+              end
+
+            {:cont, {:ok, Map.put(acc, arg.name, value)}}
+          else
+            {:cont, {:ok, acc}}
+          end
+
+        {:ok, value} ->
           with {:ok, value} <-
                  Ash.Type.Helpers.cast_input(arg.type, value, arg.constraints, flow),
                {:constrained, {:ok, casted}}
