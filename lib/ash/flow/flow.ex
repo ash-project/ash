@@ -180,7 +180,9 @@ defmodule Ash.Flow do
 
       case value do
         :error ->
-          if not is_nil(arg.default) do
+          if is_nil(arg.default) do
+            {:cont, {:ok, acc}}
+          else
             value =
               case arg.default do
                 {m, f, a} ->
@@ -194,8 +196,6 @@ defmodule Ash.Flow do
               end
 
             {:cont, {:ok, Map.put(acc, arg.name, value)}}
-          else
-            {:cont, {:ok, acc}}
           end
 
         {:ok, value} ->
