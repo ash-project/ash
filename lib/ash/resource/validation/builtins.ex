@@ -88,6 +88,21 @@ defmodule Ash.Resource.Validation.Builtins do
     {Validation.AttributeEquals, attribute: attribute, value: value}
   end
 
+  @doc """
+  Validates that an attribute is being changed to one of a set of specific values, or is in the the given list if it is not being changed.
+
+  ## Examples
+
+      validate attribute_in(:state, [1, 2, 3])
+
+      # Or to only check for changing to a something in a given list
+      validate attribute_in(:state, [1, 2, 3]), where: [changing(:state)]
+  """
+  @spec attribute_in(attribute :: atom, list :: [term]) :: Validation.ref()
+  def attribute_in(attribute, list) do
+    {Validation.AttributeIn, attribute: attribute, list: list}
+  end
+
   @string_length_opts [
     min: [
       type: :non_neg_integer,
