@@ -5,6 +5,35 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.8.0](https://github.com/ash-project/ash/compare/v2.7.1...v2.8.0) (2023-04-28)
+
+
+
+
+### Features:
+
+* add `Api.stream!/1`
+
+### Bug Fixes:
+
+* set flow argument defaults
+
+* handle join relationship in different api
+
+* don't warn on being managed from attribute changing
+
+* don't initially require attributes for belongs to relationships being managed
+
+* simple equality filter should not traverse `or`s
+
+### Improvements:
+
+* introduce basic locking
+
+* include resource validations by default
+
+* validate explicit api configurations, with good error messages
+
 ## [v2.7.1](https://github.com/ash-project/ash/compare/v2.7.0...v2.7.1) (2023-04-21)
 
 
