@@ -173,7 +173,7 @@ defmodule Ash.DataLayer do
   @callback in_transaction?(Ash.Resource.t()) :: boolean
   @callback source(Ash.Resource.t()) :: String.t()
   @callback rollback(Ash.Resource.t(), term) :: no_return
-  @callback can?(Ash.Resource.t(), feature()) :: boolean
+  @callback can?(Ash.Resource.t() | Spark.Dsl.t(), feature()) :: boolean
   @callback set_context(Ash.Resource.t(), data_layer_query(), map) ::
               {:ok, data_layer_query()} | {:error, term}
 
@@ -479,7 +479,7 @@ defmodule Ash.DataLayer do
     end
   end
 
-  @spec can?(feature, Ash.Resource.t()) :: boolean
+  @spec can?(feature, Ash.Resource.t() | Spark.Dsl.t()) :: boolean
   def can?(feature, resource) do
     data_layer = Ash.DataLayer.data_layer(resource)
     data_layer.can?(resource, feature)

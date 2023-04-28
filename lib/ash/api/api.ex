@@ -1502,6 +1502,13 @@ defmodule Ash.Api do
   def read(api, query, opts) do
     query = Ash.Query.set_api(query, api)
 
+    query =
+      if opts[:lock] do
+        Ash.Query.lock(query, opts[:lock])
+      else
+        query
+      end
+
     with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @read_opts_schema),
          {:ok, action} <- get_action(query.resource, opts, :read, query.action),
          {:ok, action} <- pagination_check(action, query.resource, opts) do

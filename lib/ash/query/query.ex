@@ -2063,7 +2063,7 @@ defmodule Ash.Query do
   This must be run while in a transaction, and is not supported by all data layers.
   """
   @spec lock(t() | Ash.Resource.t(), Ash.DataLayer.lock_type()) :: t()
-  def lock(query, nil), do: query
+  def lock(query, nil), do: %{query | lock: nil}
 
   def lock(query, lock_type) do
     query = to_query(query)
