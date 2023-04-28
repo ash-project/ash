@@ -118,6 +118,10 @@ defmodule Ash.Api do
                           type: :any,
                           doc: "A load statement to add onto the query"
                         ],
+                        lock: [
+                          type: :any,
+                          doc: "A lock statement to add onto the query"
+                        ],
                         return_query?: [
                           type: :boolean,
                           doc: """
@@ -256,6 +260,10 @@ defmodule Ash.Api do
                      load: [
                        type: :any,
                        doc: "Fields or relationships to load in the query. See `Ash.Query.load/2`"
+                     ],
+                     lock: [
+                       type: :any,
+                       doc: "A lock statement to add onto the query"
                      ],
                      tenant: [
                        type: :any,
@@ -1180,6 +1188,7 @@ defmodule Ash.Api do
         |> Ash.Query.filter(^filter)
         |> Ash.Query.load(opts[:load] || [])
         |> Ash.Query.set_context(opts[:context] || %{})
+        |> Ash.Query.lock(opts[:lock])
 
       query =
         if Ash.DataLayer.data_layer_can?(query.resource, :limit) do

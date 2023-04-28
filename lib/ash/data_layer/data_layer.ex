@@ -12,6 +12,7 @@ defmodule Ash.DataLayer do
 
   @type t :: module
   @type data_layer_query() :: struct
+  @type lock_type :: :for_update | {:data_layer, term()}
   @type transaction_reason ::
           %{type: :create, metadata: %{resource: Ash.Resource.t(), action: atom}}
           | %{
@@ -64,6 +65,7 @@ defmodule Ash.DataLayer do
           | :offset
           | :transact
           | :filter
+          | {:lock, lock_type()}
           | {:filter_expr, struct}
           | {:filter_relationship, Ash.Resource.Relationships.relationship()}
           | :sort
@@ -103,6 +105,8 @@ defmodule Ash.DataLayer do
   @callback transform_query(Ash.Query.t()) :: Ash.Query.t()
   @callback run_query(data_layer_query(), Ash.Resource.t()) ::
               {:ok, list(Ash.Resource.record())} | {:error, term}
+  @callback lock(data_layer_query(), lock_type(), resource :: Ash.Resource.t()) ::
+              {:ok, data_layer_query()} | {:error, term}
   @callback run_aggregate_query(
               data_layer_query(),
               list(Ash.Query.Aggregate.t()),
@@ -176,6 +180,7 @@ defmodule Ash.DataLayer do
   @optional_callbacks source: 1,
                       run_query: 2,
                       distinct: 3,
+                      lock: 3,
                       run_query_with_lateral_join: 4,
                       create: 2,
                       update: 2,
@@ -500,6 +505,14 @@ defmodule Ash.DataLayer do
           {:ok, list(Ash.Resource.record())} | {:error, term}
   def run_query(query, central_resource) do
     Ash.DataLayer.data_layer(central_resource).run_query(query, central_resource)
+  end
+
+  @spec lock(data_layer_query(), lock_type :: lock_type() | nil, resource :: Ash.Resource.t()) ::
+          {:ok, data_layer_query()} | {:error, term}
+  def lock(query, nil, _), do: {:ok, query}
+
+  def lock(query, lock_type, resource) do
+    Ash.DataLayer.data_layer(resource).lock(query, lock_type, resource)
   end
 
   def run_aggregate_query_with_lateral_join(

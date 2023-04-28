@@ -37,6 +37,7 @@ defmodule Ash.Query do
     :resource,
     :tenant,
     :timeout,
+    :lock,
     action_failed?: false,
     after_action: [],
     aggregates: %{},
@@ -123,6 +124,7 @@ defmodule Ash.Query do
       tenant? = not is_nil(query.tenant)
       select? = query.select not in [[], nil]
       distinct? = query.distinct not in [[], nil]
+      lock? = not is_nil(query.lock)
 
       container_doc(
         "#Ash.Query<",
@@ -139,7 +141,8 @@ defmodule Ash.Query do
           or_empty(concat("calculations: ", to_doc(query.calculations, opts)), calculations?),
           or_empty(concat("errors: ", to_doc(query.errors, opts)), errors?),
           or_empty(concat("select: ", to_doc(query.select, opts)), select?),
-          or_empty(concat("distinct: ", to_doc(query.distinct, opts)), distinct?)
+          or_empty(concat("distinct: ", to_doc(query.distinct, opts)), distinct?),
+          or_empty(concat("lock: ", to_doc(query.lock, opts)), lock?)
         ],
         ">",
         opts,
@@ -1554,6 +1557,9 @@ defmodule Ash.Query do
       {:distinct, value}, query ->
         distinct(query, value)
 
+      {:lock, lock_type}, query ->
+        lock(query, lock_type)
+
       {:aggregate, {name, type, relationship}}, query ->
         aggregate(query, name, type, relationship)
 
@@ -2052,6 +2058,27 @@ defmodule Ash.Query do
   end
 
   @doc """
+  Lock the query results.
+
+  This must be run while in a transaction, and is not supported by all data layers.
+  """
+  @spec lock(t() | Ash.Resource.t(), Ash.DataLayer.lock_type()) :: t()
+  def lock(query, nil), do: query
+
+  def lock(query, lock_type) do
+    query = to_query(query)
+
+    if Ash.DataLayer.data_layer_can?(query.resource, {:lock, lock_type}) do
+      %{query | lock: lock_type}
+    else
+      add_error(
+        query,
+        Ash.Error.Query.LockNotSupported.exception(resource: query.resource, lock_type: lock_type)
+      )
+    end
+  end
+
+  @doc """
   Sort the results based on attributes, aggregates or calculations.
 
   Calculations are supported if they are defined with expressions, which can be done one of two ways.
@@ -2219,7 +2246,8 @@ defmodule Ash.Query do
          {:ok, query} <-
            Ash.DataLayer.limit(query, ash_query.limit, resource),
          {:ok, query} <-
-           Ash.DataLayer.offset(query, ash_query.offset, resource) do
+           Ash.DataLayer.offset(query, ash_query.offset, resource),
+         {:ok, query} <- Ash.DataLayer.lock(query, ash_query.lock, resource) do
       if opts[:no_modify?] || !ash_query.action || !ash_query.action.modify_query do
         {:ok, query}
       else

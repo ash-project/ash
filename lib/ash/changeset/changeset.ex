@@ -1277,13 +1277,17 @@ defmodule Ash.Changeset do
 
   defp validate(changeset, validation, tracer, metadata, actor) do
     if validation.before_action? do
-      before_action(changeset, fn changeset ->
-        if validation.only_when_valid? and not changeset.valid? do
-          changeset
-        else
-          do_validation(changeset, validation, tracer, metadata, actor)
-        end
-      end)
+      before_action(
+        changeset,
+        fn changeset ->
+          if validation.only_when_valid? and not changeset.valid? do
+            changeset
+          else
+            do_validation(changeset, validation, tracer, metadata, actor)
+          end
+        end,
+        append?: true
+      )
     else
       if validation.only_when_valid? and not changeset.valid? do
         changeset
