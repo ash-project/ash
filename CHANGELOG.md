@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.8.1](https://github.com/ash-project/ash/compare/v2.8.0...v2.8.1) (2023-04-28)
+
+
+
+
+### Improvements:
+
+* more typespec fixes
+
+* support lock option on read
+
+* data layer can? might get a dsl, not a resource
+
 ## [v2.8.0](https://github.com/ash-project/ash/compare/v2.7.1...v2.8.0) (2023-04-28)
 
 
