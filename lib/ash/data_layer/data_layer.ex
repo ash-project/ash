@@ -206,13 +206,13 @@ defmodule Ash.DataLayer do
                       set_tenant: 3
 
   @doc "The data layer of the resource, or nil if it does not have one"
-  @spec data_layer(Ash.Resource.t()) :: Ash.DataLayer.t()
+  @spec data_layer(Ash.Resource.t() | Spark.Dsl.t()) :: Ash.DataLayer.t()
   def data_layer(resource) do
     Extension.get_persisted(resource, :data_layer)
   end
 
   @doc "Whether or not the data layer supports a specific feature"
-  @spec data_layer_can?(Ash.Resource.t(), Ash.DataLayer.feature()) :: boolean
+  @spec data_layer_can?(Ash.Resource.t() | Spark.Dsl.t(), Ash.DataLayer.feature()) :: boolean
   def data_layer_can?(resource, feature) do
     data_layer = data_layer(resource)
 
