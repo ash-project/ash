@@ -942,7 +942,8 @@ defmodule Ash.Actions.Load do
         end
 
       data_path =
-        if relationship.type == :many_to_many do
+        if relationship.type == :many_to_many &&
+             !lateral_join?(source_query, relationship, :unknown) do
           join_relationship = join_relationship(relationship)
 
           join_relationship_path(path, join_relationship) |> Enum.map(& &1.name)
