@@ -1427,12 +1427,13 @@ defmodule Ash.Actions.Load do
        ) do
     {offset, limit} = offset_and_limit(base_query)
 
-    source_data = 
+    source_data =
       case get_in(data, source_data_path) do
         value when is_map(value) ->
           value
           |> Map.values()
           |> Enum.flat_map(&List.wrap/1)
+
         value ->
           value
       end
