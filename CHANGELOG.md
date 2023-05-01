@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.0](https://github.com/ash-project/ash/compare/v2.8.1...v2.9.0) (2023-05-01)
+
+
+
+
+### Features:
+
+* `attribute_in/2` builtin validation
+
+### Bug Fixes:
+
+* proper source path for lateral joined relationships
+
+### Improvements:
+
+* error if relationship.api is not an Ash.Api
+
 ## [v2.8.1](https://github.com/ash-project/ash/compare/v2.8.0...v2.8.1) (2023-04-28)
 
 
