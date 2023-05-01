@@ -14,6 +14,12 @@ defmodule Ash.Registry.ResourceValidations.Verifiers.ValidateRelatedResourceIncl
 
     for resource <- resources do
       for relationship <- Ash.Resource.Info.relationships(resource) do
+        if relationship.api && !Spark.Dsl.is?(relationship.api, Ash.Api) do
+          raise """
+          Api #{inspect(relationship.api)} referenced by #{inspect(resource)}.#{relationship.name} is not a valid api
+          """
+        end
+
         message =
           if relationship.api do
             "is not accepted by api `#{inspect(relationship.api)}`"
