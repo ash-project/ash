@@ -549,6 +549,7 @@ defmodule Ash.Engine do
   @doc false
   def async(func, opts) do
     ash_context = Ash.get_context_for_transfer(opts)
+    {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
 
     Task.async(fn ->
       try do
@@ -557,7 +558,18 @@ defmodule Ash.Engine do
         func.()
       rescue
         e ->
-          {:__exception__, e, __STACKTRACE__}
+          e =
+            if Ash.Error.ash_error?(e) do
+              if e.stacktrace && e.stacktrace.stacktrace do
+                update_in(e.stacktrace.stacktrace, &(&1 ++ Enum.drop(stacktrace, 1)))
+              else
+                e
+              end
+            else
+              e
+            end
+
+          {:__exception__, e, __STACKTRACE__ ++ Enum.drop(stacktrace, 1)}
       end
     end)
   end
@@ -687,28 +699,9 @@ defmodule Ash.Engine do
 
     state = %{state | pending_tasks: remaining}
 
-    case to_start do
-      [single_task] ->
-        case single_task.() do
-          {:__exception__, exception, stacktrace} ->
-            reraise exception, stacktrace
+    new_tasks = Enum.map(to_start, &async(&1, state.opts))
 
-          {request_path, result} ->
-            request = Enum.find(state.requests, &(&1.path == request_path))
-
-            new_request = %{request | async_fetch_state: {:fetched, result}}
-
-            replace_request(state, new_request)
-        end
-
-      [] ->
-        state
-
-      to_start ->
-        new_tasks = Enum.map(to_start, &async(&1, state.opts))
-
-        %{state | tasks: state.tasks ++ new_tasks}
-    end
+    %{state | tasks: state.tasks ++ new_tasks}
   end
 
   defp advance_request(%{state: state} = request, _state) when state in [:error] do
