@@ -433,11 +433,13 @@ defmodule Ash.Actions.Create.Bulk do
                }) do
             {:ok, result} ->
               {:ok,
-               Ash.Resource.put_metadata(
-                 result,
-                 :bulk_create_index,
-                 changeset.context.bulk_create.index
-               )}
+               [
+                 Ash.Resource.put_metadata(
+                   result,
+                   :bulk_create_index,
+                   changeset.context.bulk_create.index
+                 )
+               ]}
 
             {:error, error} ->
               {:error, error}
@@ -459,11 +461,13 @@ defmodule Ash.Actions.Create.Bulk do
           case Ash.DataLayer.create(resource, changeset) do
             {:ok, result} ->
               {:ok,
-               Ash.Resource.put_metadata(
-                 result,
-                 :bulk_create_index,
-                 changeset.context.bulk_create.index
-               )}
+               [
+                 Ash.Resource.put_metadata(
+                   result,
+                   :bulk_create_index,
+                   changeset.context.bulk_create.index
+                 )
+               ]}
 
             {:error, error} ->
               {:error, error}
