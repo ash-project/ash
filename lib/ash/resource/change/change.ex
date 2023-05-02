@@ -118,7 +118,7 @@ defmodule Ash.Resource.Change do
                 | Ash.Notifier.Notification.t()
               )
 
-  @optional_callbacks after_batch: 3
+  @optional_callbacks after_batch: 3, batch_change: 3
 
   defmacro __using__(_) do
     quote do
@@ -126,13 +126,7 @@ defmodule Ash.Resource.Change do
 
       def init(opts), do: {:ok, opts}
 
-      def batch_change(changesets, opts, context) do
-        Stream.map(changesets, fn changeset ->
-          change(changeset, opts, context)
-        end)
-      end
-
-      defoverridable init: 1, batch_change: 3
+      defoverridable init: 1
     end
   end
 end

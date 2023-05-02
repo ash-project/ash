@@ -4,7 +4,9 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
 
     ets do
       private? true
@@ -30,6 +32,18 @@ defmodule Ash.Test.Actions.BulkCreateTest do
         change after_transaction(fn _changeset, {:ok, result} ->
                  {:ok, %{result | title: result.title <> "_stuff"}}
                end)
+      end
+
+      create :create_with_policy do
+        argument :authorize?, :boolean, allow_nil?: false
+
+        change set_context(%{authorize?: arg(:authorize?)})
+      end
+    end
+
+    policies do
+      policy action(:create_with_policy) do
+        authorize_if context_equals(:authorize?, true)
       end
     end
 
@@ -95,5 +109,144 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                return_records?: true,
                sorted?: true
              )
+  end
+
+  describe "authorization" do
+    test "policy success results in successes" do
+      assert %Ash.BulkResult{records: [%{title: "title1"}, %{title: "title2"}]} =
+               Api.bulk_create!(
+                 [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}],
+                 Post,
+                 :create_with_policy,
+                 authorize?: true,
+                 return_records?: true,
+                 sorted?: true
+               )
+    end
+
+    test "policy failure results in failures" do
+      assert %Ash.BulkResult{errors: [_, _]} =
+               Api.bulk_create!(
+                 [%{title: "title1", authorize?: false}, %{title: "title2", authorize?: false}],
+                 Post,
+                 :create_with_policy,
+                 authorize?: true,
+                 return_records?: true,
+                 sorted?: true
+               )
+    end
+  end
+
+  describe "streaming" do
+    test "by default nothing is returned in the stream" do
+      assert [] =
+               [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}]
+               |> Api.bulk_create!(
+                 Post,
+                 :create_with_policy,
+                 authorize?: true,
+                 return_stream?: true
+               )
+               |> Enum.to_list()
+    end
+
+    test "by returning notifications, you get the notifications in the stream" do
+      assert [{:notification, _}, {:notification, _}] =
+               [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}]
+               |> Api.bulk_create!(
+                 Post,
+                 :create_with_policy,
+                 authorize?: true,
+                 return_stream?: true,
+                 notify?: true,
+                 return_notifications?: true
+               )
+               |> Enum.to_list()
+    end
+
+    test "by returning records, you get the records in the stream" do
+      assert [{:ok, %{title: "title1"}}, {:ok, %{title: "title2"}}] =
+               [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}]
+               |> Api.bulk_create!(
+                 Post,
+                 :create_with_policy,
+                 authorize?: true,
+                 return_stream?: true,
+                 return_records?: true
+               )
+               |> Enum.to_list()
+               |> Enum.sort_by(fn
+                 {:ok, v} ->
+                   v.title
+
+                 _ ->
+                   nil
+               end)
+    end
+
+    test "by returning notifications and records, you get them both in the stream" do
+      assert [
+               {:notification, _},
+               {:notification, _},
+               {:ok, %{title: "title1"}},
+               {:ok, %{title: "title2"}}
+             ] =
+               [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}]
+               |> Api.bulk_create!(
+                 Post,
+                 :create_with_policy,
+                 authorize?: true,
+                 notify?: true,
+                 return_stream?: true,
+                 return_notifications?: true,
+                 return_records?: true
+               )
+               |> Enum.to_list()
+               |> Enum.sort_by(fn
+                 {:ok, v} ->
+                   v.title
+
+                 {:notification, _} ->
+                   true
+
+                 _ ->
+                   nil
+               end)
+    end
+
+    test "any errors are also returned in the stream" do
+      assert [
+               {:error, %Ash.Changeset{}},
+               {:notification, _},
+               {:ok, %{title: "title1"}}
+             ] =
+               [
+                 %{title: "title1", authorize?: true},
+                 %{title: "title2", authorize?: false}
+               ]
+               |> Api.bulk_create!(
+                 Post,
+                 :create_with_policy,
+                 authorize?: true,
+                 notify?: true,
+                 return_stream?: true,
+                 return_notifications?: true,
+                 return_records?: true
+               )
+               |> Enum.to_list()
+               |> Enum.sort_by(fn
+                 {:ok, v} ->
+                   v.title
+
+                 {:notification, _} ->
+                   true
+
+                 {:error, _} ->
+                   false
+
+                 _ ->
+                   nil
+               end)
+    end
   end
 end

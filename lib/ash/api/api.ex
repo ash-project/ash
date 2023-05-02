@@ -371,6 +371,19 @@ defmodule Ash.Api do
                                doc:
                                  "Wether or not to return all of the records that were inserted. Defaults to false to account for large inserts."
                              ],
+                             return_stream?: [
+                               type: :boolean,
+                               default: false,
+                               doc: """
+                               If set to `true`, instead of an `Ash.BulkResult`, a mixed stream is returned.
+
+                               Potential elements:
+
+                               `{:notification, notification}` - if `return_notifications?` is set to `true`
+                               `{:ok, record}` - if `return_records?` is set to `true`
+                               `{:error, error}` - an error that occurred. May be changeset or an invidual error.
+                               """
+                             ],
                              stop_on_error?: [
                                type: :boolean,
                                default: false,
@@ -488,7 +501,7 @@ defmodule Ash.Api do
           actor :: term,
           opts :: Keyword.t()
         ) ::
-          {:ok, boolean | :maybe} | {:error, term}
+          {:ok, boolean | :maybe} | {:ok, false, Exception.t()} | {:error, term}
   def can(api, action_or_query_or_changeset, actor, opts \\ []) do
     opts = Keyword.put_new(opts, :maybe_is, :maybe)
     opts = Keyword.put_new(opts, :run_queries?, true)
@@ -598,7 +611,7 @@ defmodule Ash.Api do
 
         case authorizer.strict_check(authorizer_state, context) do
           {:error, %{class: :forbidden} = e} when is_exception(e) ->
-            {:halt, {false, nil}}
+            {:halt, {false, e}}
 
           {:error, error} ->
             {:halt, {:error, error}}
@@ -618,14 +631,22 @@ defmodule Ash.Api do
 
             {:cont, {true, Ash.Query.filter(query, ^filter)}}
 
-          {:continue, _} ->
-            {:halt, {:maybe, nil}}
+          {:continue, authorizer_state} ->
+            if opts[:maybe_is] == false do
+              {:halt, {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
+            else
+              {:halt, {:maybe, nil}}
+            end
 
-          {:filter_and_continue, _, _} ->
-            {:halt, {:maybe, nil}}
+          {:filter_and_continue, _, authorizer_state} ->
+            if opts[:maybe_is] == false do
+              {:halt, {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
+            else
+              {:halt, {:maybe, nil}}
+            end
 
           :forbidden ->
-            {:halt, {false, nil}}
+            {:halt, {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
         end
       end
     )
@@ -655,7 +676,15 @@ defmodule Ash.Api do
                     {:ok, data_layer_query} ->
                       case Ash.DataLayer.run_query(data_layer_query, query.resource) do
                         {:ok, results} ->
-                          {:ok, Enum.count(results) == Enum.count(data)}
+                          if Enum.count(results) == Enum.count(data) do
+                            {:ok, true}
+                          else
+                            if opts[:return_forbidden_error?] do
+                              {:ok, false, Ash.Error.Forbidden.exception([])}
+                            else
+                              {:ok, false}
+                            end
+                          end
 
                         {:error, error} ->
                           {:error, error}
@@ -687,16 +716,31 @@ defmodule Ash.Api do
                         {:error, error}
 
                       _ ->
-                        {:ok, false}
+                        if opts[:return_forbidden_error?] do
+                          {:ok, false, Ash.Error.Forbidden.exception([])}
+                        else
+                          {:ok, false}
+                        end
                     end
                 end
               end
 
             %Ash.Changeset{} ->
-              {:ok, false}
+              if opts[:return_forbidden_error?] do
+                {:ok, false, Ash.Error.Forbidden.exception([])}
+              else
+                {:ok, false}
+              end
           end
         else
           {:ok, :maybe}
+        end
+
+      {false, error} ->
+        if opts[:return_forbidden_error?] do
+          {:ok, false, error}
+        else
+          {:ok, false}
         end
 
       {other, _} ->
@@ -1224,6 +1268,11 @@ defmodule Ash.Api do
               params :: Keyword.t()
             ) ::
               Ash.BulkResult.t()
+              | Enumerable.t(
+                  {:ok, Ash.Resource.record()}
+                  | {:error, Ash.Changeset.t() | Ash.Error.t()}
+                  | {:notification, Ash.Notifier.Notification.t()}
+                )
 
   @doc """
   Creates many records, raising on any errors. See `bulk_create/2` for more.

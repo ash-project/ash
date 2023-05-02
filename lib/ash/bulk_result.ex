@@ -7,7 +7,7 @@ defmodule Ash.BulkResult do
           status: :success | :partial_success | :error,
           notifications: list(Ash.Notifier.Notification.t()) | nil,
           records: list(Ash.Resource.record()) | nil,
-          errors: list(term) | nil
+          errors: list(Ash.Error.t() | Ash.Changeset.t()) | nil
         }
 
   defstruct [
