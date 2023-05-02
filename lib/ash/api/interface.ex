@@ -295,6 +295,20 @@ defmodule Ash.Api.Interface do
         end
       end
 
+      def bulk_create!(inputs, resource, action, opts \\ []) do
+        Api.bulk_create!(__MODULE__, inputs, resource, action, opts)
+      end
+
+      def bulk_create(inputs, resource, action, opts \\ []) do
+        case Api.bulk_create(__MODULE__, inputs, resource, action, opts) do
+          {:error, error} ->
+            {:error, Ash.Error.to_error_class(error)}
+
+          other ->
+            other
+        end
+      end
+
       def create!(changeset, params \\ []) do
         Api.create!(__MODULE__, changeset, params)
       end

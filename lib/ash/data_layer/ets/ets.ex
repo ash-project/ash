@@ -190,6 +190,7 @@ defmodule Ash.DataLayer.Ets do
     not private?(resource)
   end
 
+  def can?(_, :bulk_create), do: true
   def can?(_, :composite_primary_key), do: true
   def can?(_, :expression_calculation), do: true
   def can?(_, :expression_calculation_sort), do: true
@@ -679,6 +680,44 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
+  @impl true
+  def bulk_create(resource, _action, stream, options) do
+    with {:ok, table} <- wrap_or_create_table(resource, options.tenant) do
+      Enum.reduce_while(stream, {:ok, []}, fn changeset, {:ok, results} ->
+        pkey =
+          resource
+          |> Ash.Resource.Info.primary_key()
+          |> Enum.into(%{}, fn attr ->
+            {attr, Ash.Changeset.get_attribute(changeset, attr)}
+          end)
+
+        with {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
+             record <- unload_relationships(resource, record) do
+          {:cont, {:ok, [{pkey, changeset.context.bulk_create.index, record} | results]}}
+        else
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+      end)
+      |> case do
+        {:ok, records} ->
+          case put_or_insert_new_batch(table, records, resource, options.return_records?) do
+            :ok ->
+              :ok
+
+            {:ok, records} ->
+              {:ok, Stream.map(records, &set_loaded/1)}
+
+            {:error, error} ->
+              {:error, error}
+          end
+
+        {:error, error} ->
+          {:error, error}
+      end
+    end
+  end
+
   @doc false
   @impl true
   def create(resource, changeset) do
@@ -694,10 +733,14 @@ defmodule Ash.DataLayer.Ets do
          record <- unload_relationships(resource, record),
          {:ok, record} <-
            put_or_insert_new(table, {pkey, record}, resource) do
-      {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
+      {:ok, set_loaded(record)}
     else
       {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
     end
+  end
+
+  defp set_loaded(%resource{} = record) do
+    %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}
   end
 
   defp put_or_insert_new(table, {pkey, record}, resource) do
@@ -709,6 +752,48 @@ defmodule Ash.DataLayer.Ets do
           {:ok, set} ->
             {_key, record} = ETS.Set.get!(set, pkey)
             cast_record(record, resource)
+
+          other ->
+            other
+        end
+
+      other ->
+        other
+    end
+  end
+
+  defp put_or_insert_new_batch(table, records, resource, return_records?) do
+    attributes = resource |> Ash.Resource.Info.attributes()
+
+    Enum.reduce_while(records, {:ok, [], []}, fn {pkey, index, record}, {:ok, acc, indices} ->
+      case dump_to_native(record, attributes) do
+        {:ok, casted} ->
+          {:cont, {:ok, [{pkey, casted} | acc], [{pkey, index} | indices]}}
+
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
+    end)
+    |> case do
+      {:ok, batch, indices} ->
+        case ETS.Set.put(table, batch) do
+          {:ok, set} ->
+            if return_records? do
+              Enum.reduce_while(indices, {:ok, []}, fn {pkey, index}, {:ok, acc} ->
+                {_key, record} = ETS.Set.get!(set, pkey)
+
+                case cast_record(record, resource) do
+                  {:ok, casted} ->
+                    {:cont,
+                     {:ok, [Ash.Resource.put_metadata(casted, :bulk_create_index, index) | acc]}}
+
+                  {:error, error} ->
+                    {:halt, {:error, error}}
+                end
+              end)
+            else
+              :ok
+            end
 
           other ->
             other

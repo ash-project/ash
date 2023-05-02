@@ -67,19 +67,22 @@ defmodule Ash.Actions.Helpers do
           opts
       end
 
-    opts =
-      opts
-      |> add_actor(query_or_changeset, api)
-      |> add_authorize?(api)
-      |> add_tenant()
-      |> add_tracer()
+    opts = set_opts(opts, api, query_or_changeset)
 
     query_or_changeset = add_context(query_or_changeset, opts)
 
     {query_or_changeset, opts}
   end
 
-  defp add_context(query_or_changeset, opts) do
+  def set_opts(opts, api, query_or_changeset \\ nil) do
+    opts
+    |> add_actor(query_or_changeset, api)
+    |> add_authorize?(api)
+    |> add_tenant()
+    |> add_tracer()
+  end
+
+  def add_context(query_or_changeset, opts) do
     context = Process.get(:ash_context, %{}) || %{}
     private_context = Map.new(Keyword.take(opts, [:actor, :authorize?]))
 

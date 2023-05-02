@@ -49,11 +49,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
   test "records can be streamed" do
     1..10
-    |> Enum.each(fn i ->
-      Post
-      |> Ash.Changeset.for_create(:create, %{title: "title#{i}"})
-      |> Api.create!()
-    end)
+    |> Stream.map(&%{title: "title#{&1}"})
+    |> Api.bulk_create!(Post, :create)
 
     count =
       Post

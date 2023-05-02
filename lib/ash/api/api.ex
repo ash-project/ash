@@ -358,6 +358,39 @@ defmodule Ash.Api do
                         "Shared create/update/destroy Options"
                       )
 
+  @bulk_create_opts_schema [
+                             sorted?: [
+                               type: :boolean,
+                               default: false,
+                               doc:
+                                 "Wether or not to sort results by their input position, in cases where `return_records?: true` was provided."
+                             ],
+                             return_records?: [
+                               type: :boolean,
+                               default: false,
+                               doc:
+                                 "Wether or not to return all of the records that were inserted. Defaults to false to account for large inserts."
+                             ],
+                             stop_on_errored_changesets?: [
+                               type: :boolean,
+                               default: true,
+                               doc: """
+                               If false, any changesets with errors will be returned and all other changesets will be honored.
+
+                               The data layer may still fail to perform the operation in some way, which may still return an error.
+                               See the specific data layer for more info on bulk action failure characteristics.
+                               """
+                             ]
+                           ]
+                           |> merge_schemas(
+                             Keyword.delete(@global_opts, :action),
+                             "Global Options"
+                           )
+                           |> merge_schemas(
+                             @shared_created_update_and_destroy_opts_schema,
+                             "Shared create/update/destroy Options"
+                           )
+
   @doc false
   def create_opts_schema, do: @create_opts_schema
 
@@ -1121,6 +1154,73 @@ defmodule Ash.Api do
               | {:error, term}
 
   @doc """
+  Creates many records.
+
+  ## Assumptions
+
+  We assume that the input is a list of changesets all for the same action, or a list of input maps for the
+  same action with the `:resource` and `:action` option provided to illustrate which action it is for.
+
+  ## Performance/Feasibility
+
+  The performance of this operation depends on the data layer in question.
+  Data layers like AshPostgres will choose reasonable batch sizes in an attempt
+  to handle large bulk actions, but that does not mean that you can pass a list of
+  500k inputs and expect things to go off without a hitch (although it might).
+  If you need to do large data processing, you should look into projects like
+  GenStage and Broadway. With that said, if you want to do things like support CSV upload
+  and you place some reasonable limits on the size this is a great tool. You'll need to
+  test it yourself, YMMV.
+
+  Passing `return_records?: true` can significantly increase the time it takes to perform the operation,
+  and can also make the operation completely unreasonable due to the memory requirement. If you want to
+  do very large bulk creates and display all of the results, the suggestion is to annotate them with a
+  "bulk_create_id" in the data layer, and then read the records with that `bulk_create_id` so that they can
+  be retrieved later if necessary.
+
+  ## Changes/Validations
+
+  Changes will be applied in the order they are given on the actions as normal. Any change that exposes
+  the `bulk_change` or `bulk_validate` callback will be applied on the entire list.
+
+  ## After Action Hooks
+
+  The following requirements must be met for `after_action` hooks to function properly. If they are not met,
+  and an after_action hook being applied to a changeset in a `change`.
+
+  1. `return_records?` must be set to `true`.
+  2. The changeset must be setting the primary key as part of its changes, so that we know which result applies to which
+     changeset.
+
+  It is possible to use `after_action` hooks with `bulk_change/3`, but you need to return the hooks along with the changesets.
+  This allows for setting up `after_action` hooks that don't need access to the returned record,
+  or `after_action` hooks that can operate on the entire list at once.  See the documentation for that callback for more on
+  how to do accomplish that.
+
+  #{Spark.OptionsHelpers.docs(@bulk_create_opts_schema)}
+  """
+  @callback bulk_create(
+              [map],
+              resource :: Ash.Resource.t(),
+              action :: atom,
+              params :: Keyword.t()
+            ) ::
+              Ash.BulkResult.t()
+
+  @doc """
+  Creates many records, raising on any errors. See `bulk_create/2` for more.
+
+  #{Spark.OptionsHelpers.docs(@bulk_create_opts_schema)}
+  """
+  @callback bulk_create!(
+              [map],
+              resource :: Ash.Resource.t(),
+              action :: atom,
+              params :: Keyword.t()
+            ) ::
+              Ash.BulkResult.t() | no_return()
+
+  @doc """
   Update a record. See `c:update/2` for more information.
   """
   @callback update!(Ash.Changeset.t(), params :: Keyword.t()) ::
@@ -1672,6 +1772,63 @@ defmodule Ash.Api do
          {:ok, resource} <- Ash.Api.Info.resource(api, changeset.resource),
          {:ok, action} <- get_action(resource, opts, :create, changeset.action) do
       Create.run(api, changeset, action, opts)
+    end
+  end
+
+  @doc false
+  @spec bulk_create!(Ash.Api.t(), [map], Ash.Resource.t(), atom, Keyword.t()) ::
+          Ash.BulkResult.t() | no_return
+  def bulk_create!(api, inputs, resource, action, opts) do
+    api
+    |> bulk_create(inputs, resource, action, opts)
+    |> case do
+      %Ash.BulkResult{status: :error, errors: errors} ->
+        raise Ash.Error.to_error_class(errors)
+
+      bulk_result ->
+        bulk_result
+    end
+  end
+
+  @doc false
+  @spec bulk_create(Ash.Api.t(), [map], Ash.Resource.t(), atom, Keyword.t()) :: Ash.BulkResult.t()
+  def bulk_create(api, inputs, resource, action, opts) do
+    case inputs do
+      [] ->
+        result = %Ash.BulkResult{status: :success, errors: []}
+
+        result =
+          if opts[:return_records?] do
+            %{result | records: []}
+          else
+            result
+          end
+
+        if opts[:return_notifications?] do
+          %{result | notifications: []}
+        else
+          result
+        end
+
+      inputs ->
+        with :ok <- check_can_bulk_insert(resource),
+             {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @bulk_create_opts_schema) do
+          Create.Bulk.run(api, resource, action, inputs, opts)
+        else
+          {:no_bulk, _resource, _actions} ->
+            raise "Cannot synthesize bulk actions yet!"
+
+          {:error, error} ->
+            %Ash.BulkResult{status: :error, errors: [Ash.Error.to_ash_error(error)]}
+        end
+    end
+  end
+
+  defp check_can_bulk_insert(resource) do
+    if Ash.DataLayer.data_layer_can?(resource, :bulk_create) do
+      :ok
+    else
+      :no_bulk
     end
   end
 

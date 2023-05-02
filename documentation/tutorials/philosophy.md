@@ -8,11 +8,6 @@ The philosophy behind Ash allows us to build an extremely flexible and powerful 
 
 To this end, there are many prebuilt extensions to use, but there is also a rich suite of tools to build your _own_ extensions. In this way, you can make the framework work for you, instead of struggling to fit your application to a strictly prescribed pattern. Use as much of Ash as you can, and leverage the amazing Elixir ecosystem for everything else.
 
-<!---
-> long sentences
-> last sentence sounds a bit either / or mutually exclusive, but we do both!
--->
-
 ## Declarative, Introspectable, Derivable
 
 The real superpower behind Ash is the declarative design pattern. All behavior is driven by explicit, static declarations. A resource, for example, is really just a configuration file. On its own it does nothing. It is provided to code that reads that configuration and acts accordingly.

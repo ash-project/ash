@@ -101,8 +101,24 @@ defmodule Ash.Resource.Change do
           optional(:actor) => Ash.Resource.record(),
           optional(any) => any
         }
+
   @callback init(Keyword.t()) :: {:ok, Keyword.t()} | {:error, term}
   @callback change(Ash.Changeset.t(), Keyword.t(), context) :: Ash.Changeset.t()
+  @callback batch_change([Ash.Changeset.t()], Keyword.t(), context) ::
+              Enumerable.t(Ash.Changeset.t() | Ash.Notifier.Notification.t())
+
+  @callback after_batch(
+              [{Ash.Changeset.t(), Ash.Resource.record()}],
+              Keyword.t(),
+              context
+            ) ::
+              Enumerable.t(
+                {:ok, Ash.Resource.record()}
+                | {:error, Ash.Error.t()}
+                | Ash.Notifier.Notification.t()
+              )
+
+  @optional_callbacks after_batch: 3
 
   defmacro __using__(_) do
     quote do
@@ -110,7 +126,13 @@ defmodule Ash.Resource.Change do
 
       def init(opts), do: {:ok, opts}
 
-      defoverridable init: 1
+      def batch_change(changesets, opts, context) do
+        Stream.map(changesets, fn changeset ->
+          change(changeset, opts, context)
+        end)
+      end
+
+      defoverridable init: 1, batch_change: 3
     end
   end
 end

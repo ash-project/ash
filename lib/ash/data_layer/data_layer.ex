@@ -127,13 +127,28 @@ defmodule Ash.DataLayer do
               source_resource :: Ash.Resource.t(),
               list(lateral_join_link())
             ) ::
-              {:ok, list(Ash.Resource.t())} | {:error, term}
+              {:ok, list(Ash.Resource.record())} | {:error, term}
+
+  @type bulk_options :: %{
+          batch_size: pos_integer,
+          return_records?: boolean,
+          tenant: String.t() | nil
+        }
+
+  @callback bulk_create(
+              Ash.Resource.t(),
+              action :: atom,
+              Enumerable.t(Ash.Changeset.t()),
+              options :: bulk_options
+            ) ::
+              {:ok, Enumerable.t(:ok | {:ok, Ash.Resource.record()} | {:error, Ash.Error.t()})}
+              | {:error, Ash.Error.t()}
   @callback create(Ash.Resource.t(), Ash.Changeset.t()) ::
-              {:ok, Ash.Resource.t()} | {:error, term}
+              {:ok, Ash.Resource.record()} | {:error, term}
   @callback upsert(Ash.Resource.t(), Ash.Changeset.t(), list(atom)) ::
-              {:ok, Ash.Resource.t()} | {:error, term}
+              {:ok, Ash.Resource.record()} | {:error, term}
   @callback update(Ash.Resource.t(), Ash.Changeset.t()) ::
-              {:ok, Ash.Resource.t()} | {:error, term}
+              {:ok, Ash.Resource.record()} | {:error, term}
   @callback add_aggregate(
               data_layer_query(),
               Ash.Query.Aggregate.t(),
@@ -179,6 +194,7 @@ defmodule Ash.DataLayer do
 
   @optional_callbacks source: 1,
                       run_query: 2,
+                      bulk_create: 4,
                       distinct: 3,
                       lock: 3,
                       run_query_with_lateral_join: 4,
@@ -309,6 +325,19 @@ defmodule Ash.DataLayer do
           {:ok, Ash.Resource.record()} | {:error, term}
   def create(resource, changeset) do
     Ash.DataLayer.data_layer(resource).create(resource, changeset)
+  end
+
+  @spec bulk_create(
+          Ash.Resource.t(),
+          action :: atom,
+          Enumerable.t(Ash.Changeset.t()),
+          options :: bulk_options
+        ) ::
+          :ok
+          | {:ok, Enumerable.t(Ash.Resource.record())}
+          | {:error, Ash.Error.t()}
+  def bulk_create(resource, action, changesets, options) do
+    Ash.DataLayer.data_layer(resource).bulk_create(resource, action, changesets, options)
   end
 
   @spec destroy(Ash.Resource.t(), Ash.Changeset.t()) :: :ok | {:error, term}
