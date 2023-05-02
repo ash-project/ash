@@ -107,6 +107,9 @@ defmodule Ash.Resource.Change do
   @callback batch_change([Ash.Changeset.t()], Keyword.t(), context) ::
               Enumerable.t(Ash.Changeset.t() | Ash.Notifier.Notification.t())
 
+  @callback before_batch([Ash.Changeset.t()], Keyword.t(), context) ::
+              Enumerable.t(Ash.Changeset.t() | Ash.Notifier.Notification.t())
+
   @callback after_batch(
               [{Ash.Changeset.t(), Ash.Resource.record()}],
               Keyword.t(),
@@ -118,7 +121,7 @@ defmodule Ash.Resource.Change do
                 | Ash.Notifier.Notification.t()
               )
 
-  @optional_callbacks after_batch: 3, batch_change: 3
+  @optional_callbacks before_batch: 3, after_batch: 3, batch_change: 3
 
   defmacro __using__(_) do
     quote do

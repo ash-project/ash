@@ -193,7 +193,15 @@ defmodule Ash.Actions.Create.Bulk do
                       opts[:tracer]
                     )
 
-                  batch = authorize(batch, api, opts)
+                  {batch, before_batch_notifications} =
+                    batch
+                    |> authorize(api, opts)
+                    |> Enum.to_list()
+                    |> run_bulk_before_batches(
+                      changes,
+                      all_changes,
+                      opts
+                    )
 
                   {batch, changesets_by_index} =
                     Enum.reduce(batch, {[], %{}}, fn changeset,
@@ -215,7 +223,8 @@ defmodule Ash.Actions.Create.Bulk do
                     must_return_records?,
                     must_return_records_for_changes?,
                     data_layer_can_bulk?,
-                    api
+                    api,
+                    before_batch_notifications
                   )
                   |> run_after_action_hooks(changesets_by_index)
                   |> process_results(changes, all_changes, opts)
@@ -263,7 +272,15 @@ defmodule Ash.Actions.Create.Bulk do
                 opts[:tracer]
               )
 
-            batch = authorize(batch, api, opts)
+            {batch, before_batch_notifications} =
+              batch
+              |> authorize(api, opts)
+              |> Enum.to_list()
+              |> run_bulk_before_batches(
+                changes,
+                all_changes,
+                opts
+              )
 
             {batch, changesets_by_index} =
               Enum.reduce(batch, {[], %{}}, fn changeset, {changesets, changesets_by_index} ->
@@ -284,7 +301,8 @@ defmodule Ash.Actions.Create.Bulk do
               must_return_records?,
               must_return_records_for_changes?,
               data_layer_can_bulk?,
-              api
+              api,
+              before_batch_notifications
             )
             |> run_after_action_hooks(changesets_by_index)
             |> process_results(changes, all_changes, opts)
@@ -441,6 +459,57 @@ defmodule Ash.Actions.Create.Bulk do
       }
   end
 
+  defp run_bulk_before_batches(
+         batch,
+         changes,
+         all_changes,
+         opts
+       ) do
+    all_changes
+    |> Enum.with_index()
+    |> Enum.filter(fn
+      {%{change: {module, _opts}}, _} ->
+        function_exported?(module, :before_batch, 3)
+
+      _ ->
+        false
+    end)
+    |> Enum.reduce(batch, fn {%{change: {module, change_opts}}, index}, batch ->
+      {matches, non_matches} =
+        batch
+        |> Enum.split_with(fn
+          %{valid?: false} ->
+            false
+
+          changeset ->
+            changes[index] == :all or
+              changeset.context.bulk_create.index in List.wrap(changes[index])
+
+          _ ->
+            false
+        end)
+
+      before_batch_results =
+        module.before_batch(matches, change_opts, %{
+          actor: opts[:actor],
+          tracer: opts[:tracer],
+          authorize?: opts[:authorize?]
+        })
+
+      Enum.concat([before_batch_results, non_matches])
+    end)
+    |> Enum.reduce(
+      {[], []},
+      fn
+        %Ash.Notifier.Notification{} = notification, {changesets, notifications} ->
+          {changesets, [notification | notifications]}
+
+        result, {changesets, notifications} ->
+          {[result | changesets], notifications}
+      end
+    )
+  end
+
   defp notify_stream(stream, notifications, resource, action, opts) do
     if opts[:notify?] do
       notifications = List.wrap(notifications)
@@ -557,10 +626,13 @@ defmodule Ash.Actions.Create.Bulk do
          must_return_records?,
          must_return_records_for_changes?,
          data_layer_can_bulk?,
-         api
+         api,
+         before_batch_notifications
        ) do
     {batch, invalid, notifications} =
-      Enum.reduce(batch, {[], [], []}, fn changeset, {changesets, invalid, notifications} ->
+      Enum.reduce(batch, {[], [], before_batch_notifications}, fn changeset,
+                                                                  {changesets, invalid,
+                                                                   notifications} ->
         if changeset.valid? do
           {changeset, %{notifications: new_notifications}} =
             Ash.Changeset.run_before_actions(changeset)
@@ -947,7 +1019,7 @@ defmodule Ash.Actions.Create.Bulk do
             changeset.context
           )
 
-        module.change(changeset, change_opts, context)
+        module.change(changeset, change_opts, Map.merge(context, :bulk?, true))
       end)
     end
   end
