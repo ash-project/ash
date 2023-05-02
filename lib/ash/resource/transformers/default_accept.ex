@@ -21,6 +21,7 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
 
     dsl_state
     |> Transformer.get_entities([:actions])
+    |> Enum.reject(&(&1.type == :action))
     |> Enum.reduce({:ok, dsl_state}, fn
       %{type: :read}, {:ok, _dsl_state} = acc ->
         acc

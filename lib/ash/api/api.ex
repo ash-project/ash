@@ -708,6 +708,60 @@ defmodule Ash.Api do
     ]
   ]
 
+  @run_action_opts [
+    actor: [
+      type: :any,
+      doc: """
+      The actor for handling `^actor/1` templates, supplied to calculation context.
+      """
+    ],
+    tenant: [
+      type: :any,
+      doc: """
+      The tenant, supplied to calculation context.
+      """
+    ],
+    authorize?: [
+      type: :boolean,
+      doc: """
+      Wether or not the request should be authorized.
+      """
+    ],
+    tracer: [
+      type: :any,
+      doc: """
+      A tracer, provided to the calculation context.
+      """
+    ]
+  ]
+
+  @spec run_action!(api :: Ash.Api.t(), input :: Ash.ActionInput.t(), opts :: Keyword.t()) ::
+          term | no_return
+  def run_action!(api, input, opts \\ []) do
+    api
+    |> run_action(input, opts)
+    |> unwrap_or_raise!(opts[:stacktraces?])
+  end
+
+  @doc """
+  Runs a basic action.
+
+  Options:
+
+  #{Spark.OptionsHelpers.docs(@run_action_opts)}
+  """
+  @spec run_action(api :: Ash.Api.t(), input :: Ash.ActionInput.t(), opts :: Keyword.t()) ::
+          {:ok, term} | {:error, Ash.Error.t()}
+  def run_action(api, input, opts \\ []) do
+    case Spark.OptionsHelpers.validate(opts, @run_action_opts) do
+      {:ok, opts} ->
+        Ash.Actions.Action.run(api, input, opts)
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
   @doc false
   def calculate_opts, do: @calculate_opts
 
@@ -914,6 +968,17 @@ defmodule Ash.Api do
               {:ok, boolean | :maybe} | {:error, term}
 
   @callback calculate(resource :: Ash.Resource.t(), calculation :: atom, opts :: Keyword.t()) ::
+              {:ok, term} | {:error, term}
+
+  @callback calculate!(resource :: Ash.Resource.t(), calculation :: atom, opts :: Keyword.t()) ::
+              term | no_return
+
+  @doc "Runs a basic action, raising on errors"
+  @callback run_action!(input :: Ash.ActionInput.t(), opts :: Keyword.t()) ::
+              term | no_return
+
+  @doc "Runs a basic action"
+  @callback run_action(input :: Ash.ActionInput.t(), opts :: Keyword.t()) ::
               {:ok, term} | {:error, term}
 
   @callback calculate!(resource :: Ash.Resource.t(), calculation :: atom, opts :: Keyword.t()) ::

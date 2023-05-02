@@ -15,7 +15,7 @@ defmodule Ash.Resource.Transformers.ValidateManagedRelationshipOpts do
 
     dsl_state
     |> Transformer.get_entities([:actions])
-    |> Enum.reject(&(&1.type == :read))
+    |> Enum.reject(&(&1.type in [:read, :action]))
     |> Enum.each(fn action ->
       action.changes
       |> Enum.filter(

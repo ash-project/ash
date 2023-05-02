@@ -54,8 +54,7 @@ defmodule Ash.Resource.Transformers.ValidateAccept do
           )
         )
 
-      # read types do not have accept / reject fields
-      %{type: :read} ->
+      _ ->
         :ok
     end)
 

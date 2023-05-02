@@ -16,6 +16,7 @@ defmodule Ash.Test.CodeInterfaceTest do
       define :read_users, action: :read
       define :get_by_id, action: :read, get_by: [:id]
       define :create, args: [{:optional, :first_name}]
+      define :hello, args: [:name]
 
       define_calculation(:full_name, args: [:first_name, :last_name])
 
@@ -38,6 +39,14 @@ defmodule Ash.Test.CodeInterfaceTest do
         argument :id, :uuid, allow_nil?: false
 
         filter expr(id == ^arg(:id))
+      end
+
+      action :hello, :string do
+        argument :name, :string, allow_nil?: false
+
+        run(fn input, _ ->
+          {:ok, "Hello #{input.arguments.name}"}
+        end)
       end
     end
 
@@ -73,6 +82,13 @@ defmodule Ash.Test.CodeInterfaceTest do
 
     resources do
       registry Registry
+    end
+  end
+
+  describe "basic actions" do
+    test "basic actions can be invoked" do
+      assert "Hello fred" == User.hello!("fred")
+      assert {:ok, "Hello george"} == User.hello("george")
     end
   end
 

@@ -29,4 +29,6 @@ defmodule Ash.Policy.Check.AccessingFrom do
       false
     end
   end
+
+  def match?(_, _, _), do: false
 end

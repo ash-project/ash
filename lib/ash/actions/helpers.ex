@@ -21,6 +21,9 @@ defmodule Ash.Actions.Helpers do
   defp set_context(%{__struct__: Ash.Query} = query, context),
     do: Ash.Query.set_context(query, context)
 
+  defp set_context(%{__struct__: Ash.ActionInput} = action_input, context),
+    do: Ash.ActionInput.set_context(action_input, context)
+
   def add_process_context(api, query_or_changeset, opts) do
     query_or_changeset = set_context(query_or_changeset, opts[:context] || %{})
     api = api || query_or_changeset.api
@@ -81,6 +84,11 @@ defmodule Ash.Actions.Helpers do
     private_context = Map.new(Keyword.take(opts, [:actor, :authorize?]))
 
     case query_or_changeset do
+      %{__struct__: Ash.ActionInput} ->
+        query_or_changeset
+        |> Ash.ActionInput.set_context(context)
+        |> Ash.ActionInput.set_context(%{private: private_context})
+
       %{__struct__: Ash.Query} ->
         query_or_changeset
         |> Ash.Query.set_context(context)

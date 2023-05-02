@@ -12,7 +12,7 @@ defmodule Ash.Resource.Transformers.ValidateActionTypesSupported do
   def transform(dsl_state) do
     dsl_state
     |> Transformer.get_entities([:actions])
-    |> Enum.reject(&(&1.type == :read))
+    |> Enum.reject(&(&1.type in [:read, :action]))
     |> Enum.each(fn action ->
       data_layer = Transformer.get_persisted(dsl_state, :data_layer)
       resource = Transformer.get_persisted(dsl_state, :module)

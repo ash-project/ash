@@ -2,7 +2,14 @@
 
 ## Action Types
 
-Ash has 4 action types `:read`, `:create`, `:update`, `:destroy`. The purpose of these action types is to provide expectations about what is required to run those actions, and what is returned from them.
+Ash has 5 action types `:read`, `:create`, `:update`, `:destroy` and `:action`. The purpose of these action types is to provide expectations about what is required to run those actions, and what is returned from them.
+
+### Basic Actions
+
+The `:action` type is a special type of action that can do essentially whatever you want. We refer to it as a "basic" action, because there are no special rules about how it works, and minimal structure surrounding it.
+A basic action takes arguments and returns a value. The struct used for building input for a basic action is `Ash.ActionInput`. For the rest of this document we will discuss the four main action types.
+
+### Create/Read/Update/Destroy
 
 The actions do not need to do _exactly_ what their action type implies however. Using manual actions, you can define a create action that actually updates something, or using the `soft?` option for `destroy` actions you can treat them as updates. The important part to consider is their interface. More action types may be added in the future.
 

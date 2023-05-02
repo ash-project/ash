@@ -31,6 +31,14 @@ defmodule Ash.Api.Interface do
         Api.can(__MODULE__, action_or_query_or_changeset, actor, opts)
       end
 
+      def run_action!(input, opts \\ []) do
+        Api.run_action!(__MODULE__, input, opts)
+      end
+
+      def run_action(input, opts \\ []) do
+        Api.run_action(__MODULE__, input, opts)
+      end
+
       def calculate!(resource, calculation, opts \\ []) do
         case calculate(resource, calculation, opts) do
           {:ok, result} ->

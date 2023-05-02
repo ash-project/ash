@@ -325,6 +325,81 @@ defmodule Ash.CodeInterface do
         """
 
         case action.type do
+          :action ->
+            @doc doc
+            @dialyzer {:nowarn_function, {interface.name, Enum.count(args) + 2}}
+            def unquote(interface.name)(
+                  unquote_splicing(arg_vars_function),
+                  params_or_opts \\ %{},
+                  opts \\ []
+                ) do
+              if opts == [] && Keyword.keyword?(params_or_opts) do
+                apply(__MODULE__, elem(__ENV__.function, 0), [
+                  unquote_splicing(arg_vars),
+                  %{},
+                  params_or_opts
+                ])
+              else
+                input =
+                  unquote(args)
+                  |> Enum.zip([unquote_splicing(arg_vars)])
+                  |> Enum.reduce(params_or_opts, fn {key, value}, params_or_opts ->
+                    Map.put(params_or_opts, key, value)
+                  end)
+
+                action_input =
+                  opts[:input]
+                  |> Kernel.||(unquote(resource))
+                  |> Ash.ActionInput.for_action(
+                    unquote(action.name),
+                    input,
+                    Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
+                  )
+
+                unquote(api).run_action(
+                  action_input,
+                  Keyword.drop(opts, [:actor, :changeset, :tenant, :authorize?, :tracer])
+                )
+              end
+            end
+
+            @doc doc
+            @dialyzer {:nowarn_function, {:"#{interface.name}!", Enum.count(args) + 2}}
+            # sobelow_skip ["DOS.BinToAtom"]
+            def unquote(:"#{interface.name}!")(
+                  unquote_splicing(arg_vars_function),
+                  params_or_opts \\ %{},
+                  opts \\ []
+                ) do
+              if opts == [] && Keyword.keyword?(params_or_opts) do
+                apply(__MODULE__, elem(__ENV__.function, 0), [
+                  unquote_splicing(arg_vars),
+                  %{},
+                  params_or_opts
+                ])
+              else
+                input =
+                  unquote(args)
+                  |> Enum.zip([unquote_splicing(arg_vars)])
+                  |> Enum.reduce(params_or_opts, fn {key, value}, params_or_opts ->
+                    Map.put(params_or_opts, key, value)
+                  end)
+
+                action_input =
+                  (opts[:input] || unquote(resource))
+                  |> Ash.ActionInput.for_action(
+                    unquote(action.name),
+                    input,
+                    Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
+                  )
+
+                unquote(api).run_action!(
+                  action_input,
+                  Keyword.drop(opts, [:actor, :changeset, :authorize?, :tracer])
+                )
+              end
+            end
+
           :read ->
             @doc doc
             @dialyzer {:nowarn_function, {interface.name, Enum.count(args) + 2}}

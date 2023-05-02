@@ -433,6 +433,36 @@ defmodule Ash.Resource.Dsl do
     args: [:validation]
   }
 
+  @action %Spark.Dsl.Entity{
+    name: :action,
+    describe: """
+    Declares a basic action. A combination of arguments, a return type and a run function.
+
+    For calling this action, see the `Ash.Api` documentation.
+    """,
+    examples: [
+      """
+      action :top_user_emails do
+        argument :limit, :integer, default: 10, allow_nil?: false
+        returns {:array, :string}
+        run fn input, context ->
+          with {:ok, top_users} <- top_users(input.limit) do
+            {:ok, Enum.map(top_users, &(&1.email))}
+          end
+        end
+      end
+      """
+    ],
+    target: Ash.Resource.Actions.Action,
+    schema: Ash.Resource.Actions.Action.opt_schema(),
+    entities: [
+      arguments: [
+        @action_argument
+      ]
+    ],
+    args: [:name, :returns]
+  }
+
   @create %Spark.Dsl.Entity{
     name: :create,
     describe: """
@@ -671,6 +701,7 @@ defmodule Ash.Resource.Dsl do
       """
     ],
     entities: [
+      @action,
       @create,
       @read,
       @update,

@@ -4,6 +4,7 @@ defmodule Ash.Policy.Authorizer do
     :resource,
     :query,
     :changeset,
+    :action_input,
     :data,
     :action,
     :api,
@@ -347,7 +348,7 @@ defmodule Ash.Policy.Authorizer do
 
   @impl true
   def strict_check_context(_authorizer) do
-    [:query, :changeset, :api, :resource]
+    [:query, :changeset, :api, :resource, :action_input]
   end
 
   @impl true
@@ -366,6 +367,7 @@ defmodule Ash.Policy.Authorizer do
       authorizer
       | query: context.query,
         changeset: context.changeset,
+        action_input: context[:action_input],
         api: context.api
     }
     |> get_policies()
