@@ -7,7 +7,7 @@ Ash has 5 action types `:read`, `:create`, `:update`, `:destroy` and `:action`. 
 ### Basic Actions
 
 The `:action` type is a special type of action that can do essentially whatever you want. We refer to it as a "basic" action, because there are no special rules about how it works, and minimal structure surrounding it.
-A basic action takes arguments and returns a value. The struct used for building input for a basic action is `Ash.ActionInput`. For the rest of this document we will discuss the four main action types.
+A basic action takes arguments and returns a value. The struct used for building input for a basic action is `Ash.ActionInput`. Most of this document we will focus on the four main action types.
 
 ### Create/Read/Update/Destroy
 
@@ -218,3 +218,29 @@ All of these actions are run in a transaction if the data layer supports it. You
 - If an `after_action` option was passed when running the action, it is run with the changeset and the result. Only supported for create & update actions.
 - The transaction is closed, if one was opened
 - After transaction hooks are invoked with the result of the transaction (even if it was an error)
+
+## Basic Actions
+
+A basic action consists of three main components:
+
+1. the return type
+2. the arguments
+3. the `run` function
+
+Here is an example:
+
+```elixir
+action :hello, :string do
+  argument :name, :string, allow_nil?: false
+
+  run(fn input, _context ->
+    {:ok, "Hello #{input.arguments.name}"}
+  end)
+end
+```
+
+The benefit of using basic actions instead of defining normal functions: 
+- They can be used with api extensions
+- They support Ash authorization patterns (i.e policies)
+- They be included in the code interface of a resource
+- They can be made transactional with a single option (`transaction? true`)
