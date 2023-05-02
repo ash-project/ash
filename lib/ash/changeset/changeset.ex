@@ -508,7 +508,10 @@ defmodule Ash.Changeset do
 
     changeset
     |> set_context(%{
-      private: %{upsert?: opts[:upsert?] || false, upsert_identity: opts[:upsert_identity]}
+      private: %{
+        upsert?: opts[:upsert?] || action.upsert? || false,
+        upsert_identity: opts[:upsert_identity] || action.upsert_identity
+      }
     })
     |> do_for_action(action, params, opts)
   end
