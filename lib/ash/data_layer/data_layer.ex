@@ -137,7 +137,6 @@ defmodule Ash.DataLayer do
 
   @callback bulk_create(
               Ash.Resource.t(),
-              action :: atom,
               Enumerable.t(Ash.Changeset.t()),
               options :: bulk_options
             ) ::
@@ -194,7 +193,7 @@ defmodule Ash.DataLayer do
 
   @optional_callbacks source: 1,
                       run_query: 2,
-                      bulk_create: 4,
+                      bulk_create: 3,
                       distinct: 3,
                       lock: 3,
                       run_query_with_lateral_join: 4,
@@ -329,15 +328,14 @@ defmodule Ash.DataLayer do
 
   @spec bulk_create(
           Ash.Resource.t(),
-          action :: atom,
           Enumerable.t(Ash.Changeset.t()),
           options :: bulk_options
         ) ::
           :ok
           | {:ok, Enumerable.t(Ash.Resource.record())}
           | {:error, Ash.Error.t()}
-  def bulk_create(resource, action, changesets, options) do
-    Ash.DataLayer.data_layer(resource).bulk_create(resource, action, changesets, options)
+  def bulk_create(resource, changesets, options) do
+    Ash.DataLayer.data_layer(resource).bulk_create(resource, changesets, options)
   end
 
   @spec destroy(Ash.Resource.t(), Ash.Changeset.t()) :: :ok | {:error, term}

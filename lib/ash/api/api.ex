@@ -371,14 +371,32 @@ defmodule Ash.Api do
                                doc:
                                  "Wether or not to return all of the records that were inserted. Defaults to false to account for large inserts."
                              ],
-                             stop_on_errored_changesets?: [
+                             stop_on_error?: [
                                type: :boolean,
-                               default: true,
+                               default: false,
                                doc: """
-                               If false, any changesets with errors will be returned and all other changesets will be honored.
+                               If true, the first encountered error will stop the action and be returned. Otherwise, errors
+                               will be skipped.
+                               """
+                             ],
+                             notify?: [
+                               type: :boolean,
+                               default: false,
+                               doc: """
+                               Wether or not to send notifications out. If this is set to `true` then the data layer must return
+                               the results from each batch. This may be intensive for large bulk actions.
+                               """
+                             ],
+                             transaction: [
+                               type: {:one_of, [:all, :batch, false]},
+                               default: :batch,
+                               doc: """
+                               Wether or not to wrap the entire execution in a transaction, each batch, or not at all.
 
-                               The data layer may still fail to perform the operation in some way, which may still return an error.
-                               See the specific data layer for more info on bulk action failure characteristics.
+                               Keep in mind:
+
+                               `before_transaction` and `after_transaction` hooks attached to changesets will have to be run
+                               *inside* the transaction if you choose `transaction: :all`.
                                """
                              ]
                            ]
@@ -1811,24 +1829,13 @@ defmodule Ash.Api do
         end
 
       inputs ->
-        with :ok <- check_can_bulk_insert(resource),
-             {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @bulk_create_opts_schema) do
-          Create.Bulk.run(api, resource, action, inputs, opts)
-        else
-          {:no_bulk, _resource, _actions} ->
-            raise "Cannot synthesize bulk actions yet!"
+        case Spark.OptionsHelpers.validate(opts, @bulk_create_opts_schema) do
+          {:ok, opts} ->
+            Create.Bulk.run(api, resource, action, inputs, opts)
 
           {:error, error} ->
             %Ash.BulkResult{status: :error, errors: [Ash.Error.to_ash_error(error)]}
         end
-    end
-  end
-
-  defp check_can_bulk_insert(resource) do
-    if Ash.DataLayer.data_layer_can?(resource, :bulk_create) do
-      :ok
-    else
-      :no_bulk
     end
   end
 

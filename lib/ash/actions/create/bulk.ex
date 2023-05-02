@@ -1,14 +1,5 @@
 defmodule Ash.Actions.Create.Bulk do
-  @moduledoc """
-  Bulk create
-
-  Outstanding issues:
-  transactions: In order support `before_transaction` hooks, we
-  have to do each batch in a transaction, not the entire operation. Because the input might be infinite.
-  If they want to run the whole thing in a transaction, the `before_transaction` hooks
-  will warn that we are currently in a transaction. Probably just need to message
-  this limitation.
-  """
+  @moduledoc false
   @spec run(Ash.Api.t(), Ash.Resource.t(), atom(), Enumerable.t(map), Keyword.t()) ::
           :ok
           | {:ok, [Ash.Resource.record()]}
@@ -32,7 +23,7 @@ defmodule Ash.Actions.Create.Bulk do
         end
 
       Ash.DataLayer.transaction(
-        List.wrap(resource) ++ (action.touches_resources || []),
+        List.wrap(resource) ++ action.touches_resources,
         fn ->
           do_run(api, resource, action, inputs, opts)
         end,
@@ -85,7 +76,23 @@ defmodule Ash.Actions.Create.Bulk do
     # TODO: add process context without a changeset
     {_, opts} = Ash.Actions.Helpers.add_process_context(api, Ash.Changeset.new(resource), opts)
 
-    batch_size = opts[:batch_size] || 100
+    manual_action_can_bulk? =
+      case action.manual do
+        {mod, _opts} ->
+          function_exported?(mod, :bulk_create, 3)
+
+        _ ->
+          false
+      end
+
+    data_layer_can_bulk? = Ash.DataLayer.data_layer_can?(resource, :bulk_create)
+
+    batch_size =
+      if data_layer_can_bulk? || manual_action_can_bulk? do
+        opts[:batch_size] || 100
+      else
+        1
+      end
 
     all_changes =
       action.changes
@@ -116,7 +123,7 @@ defmodule Ash.Actions.Create.Bulk do
         end
       end)
       |> Stream.transform(
-        fn -> %{batch: [], count: 0, must_return_records?: false} end,
+        fn -> %{batch: [], count: 0, must_return_records?: opts[:notify?]} end,
         fn
           {:ok, item}, state when state.count < batch_size ->
             must_return_records? = state.must_return_records? || !Enum.empty?(item.after_action)
@@ -206,7 +213,9 @@ defmodule Ash.Actions.Create.Bulk do
                     opts,
                     count,
                     must_return_records?,
-                    must_return_records_for_changes?
+                    must_return_records_for_changes?,
+                    data_layer_can_bulk?,
+                    api
                   )
                   |> run_after_action_hooks(changesets_by_index)
                   |> process_results(changes, all_changes, opts)
@@ -271,32 +280,13 @@ defmodule Ash.Actions.Create.Bulk do
               opts,
               count,
               must_return_records?,
-              must_return_records_for_changes?
+              must_return_records_for_changes?,
+              data_layer_can_bulk?,
+              api
             )
             |> run_after_action_hooks(changesets_by_index)
             |> process_results(changes, all_changes, opts)
           end
-
-          # |> case do
-          #   {:ok, bulk_result} ->
-          #     bulk_result =
-          #       if notify? do
-          #         %{
-          #           bulk_result
-          #           | notifications:
-          #               bulk_result.notifications ++ Process.delete(:ash_notifications) || []
-          #         }
-          #       else
-          #         bulk_result
-          #       end
-
-          #     handle_bulk_result(bulk_result, resource, action, opts)
-
-          #   {:error, error} ->
-          #     {:error, error}
-          # end
-          #     |> process_results(changes, all_changes, opts)
-          # end)
       end)
 
     if opts[:return_stream?] do
@@ -313,7 +303,12 @@ defmodule Ash.Actions.Create.Bulk do
           }
 
         {:ok, batch_result, notifications}, result ->
-          notifications = Ash.Notifier.notify(notifications)
+          notifications =
+            if opts[:notify?] do
+              Ash.Notifier.notify(notifications)
+            else
+              []
+            end
 
           records = Enum.concat(Enum.to_list(batch_result), result.records)
 
@@ -379,13 +374,17 @@ defmodule Ash.Actions.Create.Bulk do
     if opts[:return_notifications?] do
       result
     else
-      result = %{result | notifications: Ash.Notifier.notify(notifications)}
+      if opts[:notify?] do
+        result = %{result | notifications: Ash.Notifier.notify(notifications)}
 
-      Ash.Actions.Helpers.warn_missed!(resource, action, %{
-        resource_notifications: result.notifications
-      })
+        Ash.Actions.Helpers.warn_missed!(resource, action, %{
+          resource_notifications: result.notifications
+        })
 
-      result
+        result
+      else
+        result
+      end
     end
   end
 
@@ -396,7 +395,9 @@ defmodule Ash.Actions.Create.Bulk do
          opts,
          count,
          must_return_records?,
-         must_return_records_for_changes?
+         must_return_records_for_changes?,
+         data_layer_can_bulk?,
+         api
        ) do
     {batch, notifications} =
       Enum.reduce(batch, {[], []}, fn changeset, {changesets, notifications} ->
@@ -413,6 +414,7 @@ defmodule Ash.Actions.Create.Bulk do
             actor: opts[:actor],
             authorize?: opts[:authorize?],
             tracer: opts[:tracer],
+            api: api,
             batch_size: count,
             return_records?:
               opts[:return_records?] || must_return_records? ||
@@ -420,17 +422,53 @@ defmodule Ash.Actions.Create.Bulk do
             tenant: opts[:tenant]
           })
         else
-          raise "Manual action doesn't support bulk operation. Must define `bulk_create/3` in #{inspect(mod)}"
+          [changeset] = batch
+
+          case mod.create(changeset, opts, %{
+                 actor: opts[:actor],
+                 tenant: opts[:tenant],
+                 authorize?: opts[:authorize?],
+                 tracer: opts[:tracer],
+                 api: api
+               }) do
+            {:ok, result} ->
+              {:ok,
+               Ash.Resource.put_metadata(
+                 result,
+                 :bulk_create_index,
+                 changeset.context.bulk_create.index
+               )}
+
+            {:error, error} ->
+              {:error, error}
+          end
         end
 
       _ ->
-        Ash.DataLayer.bulk_create(resource, action, batch, %{
-          batch_size: count,
-          return_records?:
-            opts[:return_records?] || must_return_records? ||
-              must_return_records_for_changes?,
-          tenant: opts[:tenant]
-        })
+        if data_layer_can_bulk? do
+          Ash.DataLayer.bulk_create(resource, batch, %{
+            batch_size: count,
+            return_records?:
+              opts[:return_records?] || must_return_records? ||
+                must_return_records_for_changes?,
+            tenant: opts[:tenant]
+          })
+        else
+          [changeset] = batch
+
+          case Ash.DataLayer.create(resource, changeset) do
+            {:ok, result} ->
+              {:ok,
+               Ash.Resource.put_metadata(
+                 result,
+                 :bulk_create_index,
+                 changeset.context.bulk_create.index
+               )}
+
+            {:error, error} ->
+              {:error, error}
+          end
+        end
     end
     |> case do
       {:ok, result} ->
@@ -440,6 +478,8 @@ defmodule Ash.Actions.Create.Bulk do
         other
     end
   end
+
+  defp run_after_action_hooks(:ok, _), do: :ok
 
   defp run_after_action_hooks({:ok, batch_results, notifications}, changesets_by_index) do
     batch_results

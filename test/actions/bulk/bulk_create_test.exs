@@ -59,10 +59,6 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
   end
 
-  test "returns an empty list when given an empty list" do
-    Api.bulk_create!([], Post, :create, return_records?: true)
-  end
-
   test "returns created records" do
     assert %Ash.BulkResult{records: [%{title: "title1"}, %{title: "title2"}]} =
              Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,

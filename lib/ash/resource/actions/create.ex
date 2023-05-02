@@ -74,7 +74,6 @@ defmodule Ash.Resource.Actions.Create do
                 ],
                 upsert_identity: [
                   type: :atom,
-                  default: false,
                   doc: """
                   The identity to use for the upsert. Cannot be overriden by the caller. Ignored  if `upsert?` is not set to `true`.
                   """

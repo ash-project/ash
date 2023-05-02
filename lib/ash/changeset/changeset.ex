@@ -506,11 +506,17 @@ defmodule Ash.Changeset do
             """
       end
 
+    action =
+      case action do
+        name when is_atom(name) -> Ash.Resource.Info.action(changeset.resource, action)
+        action -> action
+      end
+
     changeset
     |> set_context(%{
       private: %{
-        upsert?: opts[:upsert?] || action.upsert? || false,
-        upsert_identity: opts[:upsert_identity] || action.upsert_identity
+        upsert?: opts[:upsert?] || (action && action.upsert?) || false,
+        upsert_identity: opts[:upsert_identity] || (action && action.upsert_identity)
       }
     })
     |> do_for_action(action, params, opts)

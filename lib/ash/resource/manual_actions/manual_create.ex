@@ -6,6 +6,7 @@ defmodule Ash.Resource.ManualCreate do
   @type context :: %{
           optional(:actor) => term,
           optional(:tenant) => term,
+          optional(:tracer) => term,
           optional(:authorize?) => boolean,
           optional(:api) => module,
           optional(any) => any

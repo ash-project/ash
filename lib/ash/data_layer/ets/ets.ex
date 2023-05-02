@@ -681,7 +681,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   @impl true
-  def bulk_create(resource, _action, stream, options) do
+  def bulk_create(resource, stream, options) do
     with {:ok, table} <- wrap_or_create_table(resource, options.tenant) do
       Enum.reduce_while(stream, {:ok, []}, fn changeset, {:ok, results} ->
         pkey =
