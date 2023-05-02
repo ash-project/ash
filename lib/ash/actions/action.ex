@@ -3,6 +3,10 @@ defmodule Ash.Actions.Action do
 
   require Ash.Tracer
 
+  def run(_api, %{valid?: false, errors: errors}, _opts) do
+    {:error, Ash.Error.to_error_class(errors)}
+  end
+
   def run(api, input, opts) do
     {input, opts} = Ash.Actions.Helpers.add_process_context(api, input, opts)
 

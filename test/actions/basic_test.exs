@@ -71,6 +71,19 @@ defmodule Ash.Test.Actions.BasicTest do
                |> Ash.ActionInput.for_action(:hello, %{name: "fred"})
                |> Api.run_action!()
     end
+
+    test "basic actions validate their input" do
+      assert {:error, %Ash.Error.Invalid{}} =
+               Post
+               |> Ash.ActionInput.for_action(:hello, %{name: %{a: 10}})
+               |> Api.run_action()
+
+      assert_raise Ash.Error.Invalid, ~r/Input Invalid/, fn ->
+        Post
+        |> Ash.ActionInput.for_action(:hello, %{name: %{a: 10}})
+        |> Api.run_action!()
+      end
+    end
   end
 
   describe "authorization" do

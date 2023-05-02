@@ -5,7 +5,16 @@ defmodule Ash.ActionInput do
 
   alias Ash.Error.Action.InvalidArgument
 
-  defstruct [:action, :api, :resource, arguments: %{}, params: %{}, context: %{}, valid?: true]
+  defstruct [
+    :action,
+    :api,
+    :resource,
+    arguments: %{},
+    params: %{},
+    context: %{},
+    valid?: true,
+    errors: []
+  ]
 
   @type t :: %__MODULE__{
           arguments: map(),
