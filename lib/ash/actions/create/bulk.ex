@@ -484,9 +484,6 @@ defmodule Ash.Actions.Create.Bulk do
           changeset ->
             changes[index] == :all or
               changeset.context.bulk_create.index in List.wrap(changes[index])
-
-          _ ->
-            false
         end)
 
       before_batch_results =
@@ -1019,7 +1016,7 @@ defmodule Ash.Actions.Create.Bulk do
             changeset.context
           )
 
-        module.change(changeset, change_opts, Map.merge(context, :bulk?, true))
+        module.change(changeset, change_opts, Map.put(context, :bulk?, true))
       end)
     end
   end
