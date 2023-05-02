@@ -214,6 +214,14 @@ defmodule Ash.Actions.Helpers do
             `return_notifications?: true`. If you are in a changeset hook, you can
             return the notifications. If not, you can send the notifications using
             `Ash.Notifier.notify/1` once your resources are out of a transaction.
+
+            To ignore these in all cases:
+
+            config :ash, :missed_notifications, :ignore
+
+            To turn this into warnings:
+
+            config :ash, :missed_notifications, :warn
             """
 
           :warn ->
@@ -228,6 +236,16 @@ defmodule Ash.Actions.Helpers do
             `Ash.Notifier.notify/1` once your resources are out of a transaction.
 
             #{Exception.format_stacktrace(stacktrace)}
+
+            While you should likely leave this setting on, you can ignore these or turn them into errors.
+
+            To ignore these in all cases:
+
+            config :ash, :missed_notifications, :ignore
+
+            To turn this into raised errors:
+
+            config :ash, :missed_notifications, :raise
             """)
         end
     end
