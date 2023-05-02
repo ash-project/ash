@@ -5,6 +5,37 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.2](https://github.com/ash-project/ash/compare/v2.9.1...v2.9.2) (2023-05-02)
+
+
+
+
+### Bug Fixes:
+
+* fix dialyzer
+
+* proper return value for synthesized bulk creates
+
+* assorted bulk create fixes
+
+* set upsert context from action on create changesets
+
+* handle invalid input in basic actions
+
+### Improvements:
+
+* bulk create improvements, docs
+
+* finishing initial touches on bulk actions
+
+* bulk create actions
+
+* initial support for basic actions
+
+* better messages for missed notifications
+
+* retain stacktraces from task errors
+
 ## [v2.9.1](https://github.com/ash-project/ash/compare/v2.9.0...v2.9.1) (2023-05-01)
 
 
