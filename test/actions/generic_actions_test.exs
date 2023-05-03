@@ -1,4 +1,4 @@
-defmodule Ash.Test.Actions.BasicTest do
+defmodule Ash.Test.Actions.GenericActionsTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
@@ -64,15 +64,15 @@ defmodule Ash.Test.Actions.BasicTest do
     end
   end
 
-  describe "basic actions can be called" do
-    test "basic actions can be run" do
+  describe "generic actions can be called" do
+    test "generic actions can be run" do
       assert "Hello fred" =
                Post
                |> Ash.ActionInput.for_action(:hello, %{name: "fred"})
                |> Api.run_action!()
     end
 
-    test "basic actions validate their input" do
+    test "generic actions validate their input" do
       assert {:error, %Ash.Error.Invalid{}} =
                Post
                |> Ash.ActionInput.for_action(:hello, %{name: %{a: 10}})
@@ -87,7 +87,7 @@ defmodule Ash.Test.Actions.BasicTest do
   end
 
   describe "authorization" do
-    test "basic actions can be authorized" do
+    test "generic actions can be authorized" do
       assert "Hello fred" =
                Post
                |> Ash.ActionInput.for_action(:hello, %{name: "fred"})

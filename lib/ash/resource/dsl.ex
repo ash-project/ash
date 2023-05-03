@@ -436,7 +436,7 @@ defmodule Ash.Resource.Dsl do
   @action %Spark.Dsl.Entity{
     name: :action,
     describe: """
-    Declares a basic action. A combination of arguments, a return type and a run function.
+    Declares a generic action. A combination of arguments, a return type and a run function.
 
     For calling this action, see the `Ash.Api` documentation.
     """,

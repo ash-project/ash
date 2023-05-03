@@ -85,8 +85,8 @@ defmodule Ash.Test.CodeInterfaceTest do
     end
   end
 
-  describe "basic actions" do
-    test "basic actions can be invoked" do
+  describe "generic actions" do
+    test "generic actions can be invoked" do
       assert "Hello fred" == User.hello!("fred")
       assert {:ok, "Hello george"} == User.hello("george")
     end

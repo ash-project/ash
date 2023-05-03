@@ -4,10 +4,10 @@
 
 Ash has 5 action types `:read`, `:create`, `:update`, `:destroy` and `:action`. The purpose of these action types is to provide expectations about what is required to run those actions, and what is returned from them.
 
-### Basic Actions
+### Generic Actions
 
-The `:action` type is a special type of action that can do essentially whatever you want. We refer to it as a "basic" action, because there are no special rules about how it works, and minimal structure surrounding it.
-A basic action takes arguments and returns a value. The struct used for building input for a basic action is `Ash.ActionInput`. Most of this document we will focus on the four main action types.
+The `:action` type is a special type of action that can do essentially whatever you want. We refer to it as a "generic" action, because there are no special rules about how it works, and minimal structure surrounding it.
+A generic action takes arguments and returns a value. The struct used for building input for a generic action is `Ash.ActionInput`. Most of this document we will focus on the four main action types.
 
 ### Create/Read/Update/Destroy
 
@@ -219,9 +219,9 @@ All of these actions are run in a transaction if the data layer supports it. You
 - The transaction is closed, if one was opened
 - After transaction hooks are invoked with the result of the transaction (even if it was an error)
 
-## Basic Actions
+## Generic Actions
 
-A basic action consists of three main components:
+A generic action consists of three main components:
 
 1. the return type
 2. the arguments
@@ -239,7 +239,7 @@ action :hello, :string do
 end
 ```
 
-The benefit of using basic actions instead of defining normal functions: 
+The benefit of using generic actions instead of defining normal functions: 
 - They can be used with api extensions
 - They support Ash authorization patterns (i.e policies)
 - They be included in the code interface of a resource

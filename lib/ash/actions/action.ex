@@ -163,28 +163,28 @@ defmodule Ash.Actions.Action do
 
           {:filter, _authorizer, filter} ->
             raise """
-            Cannot use filter checks with basic actions
+            Cannot use filter checks with generic actions
 
             Received #{inspect(filter)} when authorizing #{inspect(input.resource)}.#{input.action.name}
             """
 
           {:filter, filter} ->
             raise """
-            Cannot use filter checks with basic actions
+            Cannot use filter checks with generic actions
 
             Received #{inspect(filter)} when authorizing #{inspect(input.resource)}.#{input.action.name}
             """
 
           {:continue, _state} ->
             raise """
-            Cannot use runtime checks with basic actions
+            Cannot use runtime checks with generic actions
 
             Must use only simple checks or other checks that can be resolved without returning results #{inspect(input.resource)}.#{input.action.name}
             """
 
           {:filter_and_continue, filter, _} ->
             raise """
-            Cannot use filter checks with basic actions
+            Cannot use filter checks with generic actions
 
             Received #{inspect(filter)} when authorizing #{inspect(input.resource)}.#{input.action.name}
             """

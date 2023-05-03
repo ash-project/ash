@@ -839,7 +839,7 @@ defmodule Ash.Api do
   end
 
   @doc """
-  Runs a basic action.
+  Runs a generic action.
 
   Options:
 
@@ -1068,11 +1068,11 @@ defmodule Ash.Api do
   @callback calculate!(resource :: Ash.Resource.t(), calculation :: atom, opts :: Keyword.t()) ::
               term | no_return
 
-  @doc "Runs a basic action, raising on errors"
+  @doc "Runs a generic action, raising on errors"
   @callback run_action!(input :: Ash.ActionInput.t(), opts :: Keyword.t()) ::
               term | no_return
 
-  @doc "Runs a basic action"
+  @doc "Runs a generic action"
   @callback run_action(input :: Ash.ActionInput.t(), opts :: Keyword.t()) ::
               {:ok, term} | {:error, term}
 

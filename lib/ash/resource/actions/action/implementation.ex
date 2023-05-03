@@ -1,6 +1,6 @@
 defmodule Ash.Resource.Actions.Implementation do
   @moduledoc """
-  An implementation of a basic action.
+  An implementation of a generic action.
   """
   @type context :: %{
           optional(:actor) => term,
