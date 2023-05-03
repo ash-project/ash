@@ -27,7 +27,7 @@ defmodule Ash.ActionInput do
         }
 
   @doc """
-  Creates a new input for a basic action
+  Creates a new input for a generic action
   """
   @spec for_action(
           resource_or_input :: Ash.Resource.t() | t(),

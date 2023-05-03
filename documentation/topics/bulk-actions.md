@@ -30,3 +30,33 @@ Generally speaking, all regular Ash create actions are compatible (or can be mad
 
 - If your action uses `after_action` hooks, or has `after_batch/3` logic defined for any of its changes, then we *must* ask the data layer to return the records it inserted. Again, this is not generally a problem because we throw away the results of each batch by default. If you are using `return_records?: true` then you are already requesting all of the results anyway.
 
+## Returning a Stream
+
+Returning a stream allows you to work with a bulk action as an Elixir Stream. For example:
+
+```elixir
+input_stream()
+|> YourApi.bulk_create(Resource, :action, return_stream?: true, return_records?: true)
+|> Stream.map(fn {:ok, result} -> 
+  # process results
+  {:error, error} ->
+  # process errors
+end)
+|> Enum.reduce(%{}, fn {:ok, result}, acc -> 
+   # process results
+   {:error, error} ->
+   # process errors
+end)
+```
+
+### Considerations
+
+Because streams are lazily evaluated, if you were to do something like this:
+
+```elixir
+[input1, input2, ...] # has 300 things in it
+|> YourApi.bulk_create(Resource, :action, return_stream?: true, return_records?: true, batch_size: 100) # the default is 100
+|> Enum.take(150)
+```
+
+What would happen is that we would insert 200 records (assuming no errors were emitted). Because the stream would end after we process the first two batches. If you want to make sure that everything happens, just be sure you aren't using things like `Stream.take` or `Enum.take` to limit the amount of things pulled from the stream.
